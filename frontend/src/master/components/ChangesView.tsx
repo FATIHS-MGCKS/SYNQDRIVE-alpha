@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-data-diagnostic-v49572-2026-07-17',
+    version: '4.9.572',
+    title: 'V4.9.572 — Battery Data Diagnostic (Prompt 72/78)',
+    summary: [
+      'Read-only `BatteryDataDiagnosticService` + `scripts/ops/audit-battery-data.ts`.',
+      '13 Checks: REST wake/charging, REST_60M/6H timestamp collision, REST after trip start, crank coverage, BEV+ICE crank, LV SOH_PERCENT evidence, incompatible cycles, STABLE ohne Evidence, HV duplicates, legacy pairwise, unverified reference capacity, partial write chains.',
+      'CLI: `--organization-id`, `--vehicle-id`, `--limit`, `--output`, `--format` (json/markdown/console).',
+    ],
+    reason: 'Prompt 72/78: read-only Diagnose bestehender Battery-Daten vor Rollout/Repair.',
+    previousBehavior: 'Kein dediziertes Battery-Daten-Audit-Skript.',
+    details:
+      'battery-health/diagnostic/*, scripts/ops/audit-battery-data.ts — keine Datenänderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T07:00:00.000Z',
+  },
+  {
     id: 'battery-v2-deployment-runbook-v49571-2026-07-17',
     version: '4.9.571',
     title: 'V4.9.571 — Battery V2 Deployment Runbook (Prompt 71/78)',

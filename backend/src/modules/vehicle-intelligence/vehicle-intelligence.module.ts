@@ -134,6 +134,7 @@ import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/l
 import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy/battery-start-proxy-extract.service';
 import { BatteryV2RetentionAggregateService } from './battery-health/retention/battery-v2-retention-aggregate.service';
 import { BatteryV2RetentionService } from './battery-health/retention/battery-v2-retention.service';
+import { BatteryDataDiagnosticService } from './battery-health/diagnostic/battery-data-diagnostic.service';
 
 @Module({
   imports: [
@@ -247,6 +248,7 @@ import { BatteryV2RetentionService } from './battery-health/retention/battery-v2
     BatteryStartProxyExtractService,
     BatteryV2RetentionAggregateService,
     BatteryV2RetentionService,
+    BatteryDataDiagnosticService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -352,6 +354,7 @@ import { BatteryV2RetentionService } from './battery-health/retention/battery-v2
     LvStartProxyDiagnosticService,
     BatteryStartProxyExtractService,
     BatteryV2RetentionService,
+    BatteryDataDiagnosticService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,

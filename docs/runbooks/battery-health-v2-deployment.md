@@ -760,6 +760,7 @@ BATTERY_V2_RETENTION_INTEGRATION=1 npm test -- battery-v2-retention.integration
 
 | # | Test | Erwartung |
 |---|------|-----------|
+| S0 | Battery data diagnostic (pre/post) | `npx ts-node -r tsconfig-paths/register scripts/ops/audit-battery-data.ts --organization-id=<canary> --format=console` — Baseline dokumentieren |
 | S1 | `GET /api/v1/health` | 200 |
 | S2 | DIMO-Snapshot für Canary-Fahrzeug | `vehicle_latest_states` aktualisiert |
 | S3 | Metrics: `synqdrive_battery_provider_observation_total` | NEW oder DUPLICATE Events |
