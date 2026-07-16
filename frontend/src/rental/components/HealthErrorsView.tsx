@@ -45,6 +45,7 @@ import {
 import { segmentFromHealthState } from '../lib/health-segment-display';
 import { SegmentedHealthIndicator } from './health/SegmentedHealthIndicator';
 import { normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
+import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from '../lib/battery-lv-semantics';
 import { useRentalOrg } from '../RentalContext';
 import { useEffectiveHealth } from '../FleetContext';
 import {
@@ -1128,7 +1129,7 @@ export function HealthErrorsView({
     ? lvResting.batteryType.replace(/_/g, ' ')
     : bSummary?.specs?.batteryType ?? null;
   const lvEstimatedTooltip =
-    'Estimated from resting voltage, crank drop, recovery and stability. This is not a workshop-verified SOH.';
+    'Aus Ruhespannung, Startdip, Erholung und Stabilität abgeleitet. Dies ist kein werkstattverifizierter SOH.';
   const batteryLastCheckedAgo = (() => {
     const lc = bSummary?.lv?.freshness?.observedAt ?? bSummary?.currentState?.lastChecked;
     if (!lc) return null;
@@ -1300,7 +1301,7 @@ export function HealthErrorsView({
           );
         })()}
 
-        {/* ─── Battery card (12V) — SOH bar + current voltage ─── */}
+        {/* ─── Battery card (12V) — estimated health bars + current voltage ─── */}
         <div onClick={() => openModal(setShowBattery)} className={`${quickCardClass} order-4`}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
           {(() => {
@@ -1374,9 +1375,9 @@ export function HealthErrorsView({
               </>
             ) : (
               <>
-                {/* Estimated Battery Health — 3-bar indicator (no SOH %). */}
+                {/* Geschätzter 12V-Batteriezustand — 3-Balken (kein SOH-%). */}
                 <div className="mb-2" title={lvEstimatedTooltip}>
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Estimated Battery Health</p>
+                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>{ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
                   <div className="flex items-center gap-2">
                     <BatteryConditionBars
                       status={lvEstimatedStatus}
@@ -2152,13 +2153,13 @@ export function HealthErrorsView({
               </div>
             )}
 
-            {/* Estimated Battery Health + Resting Voltage */}
+            {/* Geschätzter 12V-Batteriezustand + Ruhespannung */}
             {(() => {
               if (lvNoBatteryDetected) {
                 return (
                   <div className={`rounded-lg px-5 py-4 mb-5 ${'bg-muted/60'}`}>
                     <div className="flex items-center justify-between mb-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
                       <span className={`text-sm font-semibold text-foreground`}>No LV Battery detected</span>
                     </div>
                     <p className={`text-[11px] text-muted-foreground`}>
@@ -2171,7 +2172,7 @@ export function HealthErrorsView({
                 return (
                   <div className={`rounded-lg px-5 py-4 mb-5 ${'sq-tone-info'}`}>
                     <div className="flex items-center justify-between mb-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--status-info)]'}`}>Estimated Battery Health</p>
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--status-info)]'}`}>{ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
                       <div className="flex items-center gap-1.5">
                         <span className={`text-sm font-semibold ${'text-[color:var(--status-info)]'}`}>Calibrating</span>
                         <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${'bg-[color:var(--status-info)]'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
@@ -2215,9 +2216,9 @@ export function HealthErrorsView({
                 ('bg-muted/60');
               return (
                 <div className={`rounded-lg px-5 py-4 mb-5 ${bgCol}`}>
-                  {/* Estimated Battery Health — behaviour-derived 3-bar indicator. */}
+                  {/* Geschätzter 12V-Batteriezustand — Verhaltenswert als 3-Balken. */}
                   <div className="flex items-center justify-between mb-2" title={lvEstimatedTooltip}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
                     <BatteryConditionBars status={lvEstimatedStatus} bars={lvEstimatedBars} size="md" />
                   </div>
                   {/* 12V-Ruhespannung — separate from live voltage and estimated health */}

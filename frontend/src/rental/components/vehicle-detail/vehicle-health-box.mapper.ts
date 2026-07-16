@@ -422,11 +422,22 @@ export function buildVehicleHealthBoxViewModel(params: {
 
   const tiresVal = tires?.overallPercent ?? vehicleTiresFallback ?? 0;
   const batteryPubState = battery?.lv?.publicationState ?? battery?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
-  const soh =
-    battery?.lv?.healthPercent ??
+  const lvHealthScore =
+    battery?.lv?.estimatedLvHealthScore?.value ??
+    battery?.lv?.estimatedHealth?.scorePct ??
     (batteryPubState === 'INITIAL_CALIBRATION'
       ? null
-      : (battery?.currentState?.publishedSohPct ?? battery?.currentState?.sohPercent ?? null));
+      : (battery?.lv?.estimatedHealthPercent ??
+        battery?.currentState?.estimatedLvHealthScore ??
+        battery?.currentState?.estimatedSohPct ??
+        null));
+  const legacyHealthScore =
+    batteryPubState === 'INITIAL_CALIBRATION'
+      ? null
+      : (battery?.lv?.healthPercent ??
+        battery?.currentState?.publishedSohPct ??
+        battery?.currentState?.sohPercent ??
+        null);
   const estimatedSoh = battery?.lv?.estimatedHealthPercent ?? battery?.currentState?.estimatedSohPct ?? null;
   const batteryVoltage = resolveOverviewBatteryVoltage(battery, lvBatteryVoltage);
   const hasStartProblemEvidence = hasBatteryStartProblemEvidence(battery);
@@ -436,7 +447,7 @@ export function buildVehicleHealthBoxViewModel(params: {
   const hasEstimatedSevere = isEstimatedBatteryHealthSevere(battery);
   const hasBackendCriticalBattery = rentalHealth?.modules.battery?.state === 'critical';
   const hasHardBatteryWarning = hasStartProblemEvidence || hasLowRestingVoltage || hasBackendCriticalBattery;
-  const batteryScore = soh ?? estimatedSoh ?? null;
+  const batteryScore = lvHealthScore ?? legacyHealthScore ?? estimatedSoh ?? null;
   const batterySeverity: 'good' | 'watch' | 'warning' | 'critical' | 'unknown' = (() => {
     if (hasBackendCriticalBattery || hasCriticalRestingVoltage) return 'critical';
     if (hasStartProblemEvidence || hasLowRestingVoltage) return 'warning';

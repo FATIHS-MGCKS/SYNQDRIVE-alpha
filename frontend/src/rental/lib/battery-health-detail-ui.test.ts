@@ -14,6 +14,10 @@ describe('battery-health-detail-ui', () => {
     expect(labelBatteryMeasurementType('RESTING_VOLTAGE_V')).toBe('12V-Ruhespannung');
     expect(labelBatteryMeasurementType('VOLTAGE_V')).toBe('Aktuelle Spannung');
     expect(labelBatteryMeasurementType('CHARGING_VOLTAGE_V')).toBe('Ladespannung');
+    expect(labelBatteryMeasurementType('SOH_PERCENT', { scope: 'LV' })).toBe(
+      'Geschätzter 12V-Batteriezustand',
+    );
+    expect(labelBatteryMeasurementType('SOH_PERCENT', { scope: 'HV' })).toBe('SOH');
   });
 
   it('separates resting vs live voltage resolution', () => {

@@ -23,6 +23,12 @@ import {
   type BatteryHealthStatus,
   type LvAggregateStatus,
 } from './battery-status';
+import {
+  ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
+  ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,
+  LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC,
+  mapLvEvidenceValueType,
+} from './battery-lv-semantics';
 
 export type BatteryStatus =
   | 'ready'
@@ -443,6 +449,8 @@ export class CanonicalBatteryHealthService {
           type: 'measurement' as const,
           date: s.recordedAt.toISOString(),
           soh: s.sohPercent ?? null,
+          sohSemantic: LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC,
+          estimatedLvHealthScore: s.sohPercent ?? null,
           voltage: s.voltageV ?? null,
           temperature: null,
         })),
@@ -479,10 +487,22 @@ export class CanonicalBatteryHealthService {
           scorePct: lvEstimatedHealthScorePct,
           displayMode: 'BARS' as const,
           bars: statusToBars(lvEstimatedHealthStatus),
-          label: 'Estimated Battery Health',
+          semanticType: ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,
+          label: ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
           confidence: (v2?.maturityConfidence as string | undefined) ?? 'none',
           calibrationStatus: lvPubState,
         },
+        estimatedLvHealthScore: {
+          value: lvEstimatedHealthScorePct,
+          semanticType: ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,
+          label: ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
+        },
+        healthPercentSemantic:
+          lvHealthPercent != null ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC : null,
+        estimatedHealthPercentSemantic:
+          lvEstimatedHealthPercent != null
+            ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC
+            : null,
         // Resting voltage state from battery-spec-aware thresholds.
         restingVoltage: {
           valueV: lvRestingVoltageValue,
@@ -596,8 +616,19 @@ export class CanonicalBatteryHealthService {
       // Compatibility layer for existing read models (temporary).
       currentState: {
         sohPercent: lvHealthPercent,
+        sohPercentSemantic:
+          lvHealthPercent != null ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC : null,
         publishedSohPct: lvPublishedSoh,
+        publishedSohPctSemantic:
+          lvPublishedSoh != null ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC : null,
         estimatedSohPct: lvEstimatedHealthPercent,
+        estimatedSohPctSemantic:
+          lvEstimatedHealthPercent != null
+            ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC
+            : null,
+        estimatedLvHealthScore: lvEstimatedHealthScorePct,
+        estimatedLvHealthScoreSemantic: ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,
+        estimatedLvHealthScoreLabel: ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
         publicationState: lvPubState,
         maturityConfidence: (v2?.maturityConfidence as string | undefined) ?? 'none',
         voltageV: lvVoltage,
@@ -629,11 +660,15 @@ export class CanonicalBatteryHealthService {
       trend7: trend7.map((d) => ({
         date: d.recordedAt.toISOString(),
         soh: d.sohPercent ?? null,
+        sohSemantic: LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC,
+        estimatedLvHealthScore: d.sohPercent ?? null,
         voltage: d.voltageV ?? null,
       })),
       trend30: trend30.map((d) => ({
         date: d.recordedAt.toISOString(),
         soh: d.sohPercent ?? null,
+        sohSemantic: LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC,
+        estimatedLvHealthScore: d.sohPercent ?? null,
         voltage: d.voltageV ?? null,
       })),
       history,
@@ -662,19 +697,24 @@ export class CanonicalBatteryHealthService {
       ...summary,
       detail: {
         lv: {
-          evidence: lvEvidence.map((e) => ({
-            id: e.id,
-            observedAt: e.observedAt.toISOString(),
-            sourceType: mapEvidenceSource(e.sourceType),
-            valueType: e.valueType,
-            value: e.numericValue,
-            unit: e.unit,
-            provider: e.provider,
-            confidence: e.confidence,
-            quality: e.quality,
-            documentExtractionId: e.documentExtractionId,
-            serviceEventId: e.serviceEventId,
-          })),
+          evidence: lvEvidence.map((e) => {
+            const mapped = mapLvEvidenceValueType(e.valueType, 'LV');
+            return {
+              id: e.id,
+              observedAt: e.observedAt.toISOString(),
+              sourceType: mapEvidenceSource(e.sourceType),
+              valueType: mapped.valueType,
+              semanticValueType: mapped.semanticValueType,
+              displayLabel: mapped.displayLabel,
+              value: e.numericValue,
+              unit: e.unit,
+              provider: e.provider,
+              confidence: e.confidence,
+              quality: e.quality,
+              documentExtractionId: e.documentExtractionId,
+              serviceEventId: e.serviceEventId,
+            };
+          }),
         },
         hv: {
           evidence: hvEvidence.map((e) => ({

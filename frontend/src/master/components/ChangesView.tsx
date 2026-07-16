@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-lv-score-semantics-v49507-2026-07-16',
+    version: '4.9.507',
+    title: 'V4.9.507 — Battery Health V2 LV score semantics (Prompt 5/78)',
+    summary: [
+      'LV-Verhaltensscore API/UI-semantisch von echtem SOH getrennt: `ESTIMATED_LV_HEALTH_SCORE` / „Geschätzter 12V-Batteriezustand“.',
+      '`CanonicalBatteryHealthService`: `estimatedLvHealthScore`, `healthPercentSemantic`, Legacy-Felder `LEGACY_ESTIMATED_LV_HEALTH`; Evidence `displayLabel` für LV `SOH_PERCENT`.',
+      'Frontend: Health Tab, Fleet Detail, Health Vehicle Panel — keine prominente LV-„SOH %“-Anzeige; 3-Balken + deutsche Labels.',
+      'HV Provider-/Werkstatt-SOH unverändert; keine Prisma-Migration, keine Scoreformel-Änderung.',
+    ],
+    reason: 'Prompt 5/78: Fachlich falsche SOH-Semantik aus API- und UI-Ausgaben entfernen ohne neues Datenmodell.',
+    previousBehavior: 'LV `publishedSohPct`/healthPercent und UI-Labels nutzten teils SOH-Semantik für den Verhaltenswert.',
+    details:
+      'backend: battery-lv-semantics.ts, canonical-battery-health.service.ts, health-summary.service.ts, vehicle-intelligence.controller.ts. frontend: api.ts, battery-health-detail-ui.ts, battery-display.utils.ts, HealthErrorsView, HealthVehicleDetailPanel, FleetConditionDetailView, vehicle-health-box.mapper.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T13:56:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-p1-fixes-v49506-2026-07-16',
     version: '4.9.506',
     title: 'V4.9.506 — Vehicle Operational State V2 P1 remediation (Prompt 43/43)',

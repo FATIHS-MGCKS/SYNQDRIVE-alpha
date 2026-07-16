@@ -36,6 +36,7 @@ import { buildModuleChips, formatRelativeTime } from '../../lib/fleet-health-con
 import { RENTAL_HEALTH_MODULE_LABELS } from '../../rental-health-ui';
 import { buildBokraftComplianceDisplay, buildNextServiceDisplay, buildTuvComplianceDisplay } from '../../lib/service-info-display';
 import { segmentFromHealthState } from '../../lib/health-segment-display';
+import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from '../../lib/battery-lv-semantics';
 import { DetailSection, HealthModuleCard } from './HealthModuleCard';
 import { HealthServiceActions } from './HealthServiceActions';
 import { SegmentedHealthIndicator } from './SegmentedHealthIndicator';
@@ -351,14 +352,6 @@ export function HealthVehicleDetailPanel({
       const bat = data.battery;
       const pub = bat?.lv?.publicationState ?? bat?.currentState?.publicationState;
       const calibrating = pub === 'INITIAL_CALIBRATION';
-      const soh =
-        bat?.lv?.healthPercent ??
-        bat?.currentState?.publishedSohPct ??
-        bat?.currentState?.sohPercent ??
-        null;
-      const est = bat?.lv?.estimatedHealthPercent ?? bat?.currentState?.estimatedSohPct ?? null;
-      const isEstimated = est != null && soh == null;
-      const displayPct = calibrating ? null : (soh ?? est);
       const batteryCondition = bat?.lv?.condition ?? bat?.condition ?? null;
       const lvEstimatedStatus =
         bat?.lv?.estimatedHealth?.status ??
@@ -369,9 +362,15 @@ export function HealthVehicleDetailPanel({
             : batteryCondition === 'attention'
               ? 'WARNING'
               : 'UNKNOWN');
+      const lvEstimatedLabel =
+        bat?.lv?.estimatedHealth?.label ??
+        bat?.currentState?.estimatedLvHealthScoreLabel ??
+        ESTIMATED_LV_HEALTH_SCORE_LABEL_DE;
       const batterySegment = segmentFromHealthState(
         lvEstimatedStatus,
-        displayPct,
+        bat?.lv?.estimatedLvHealthScore?.value ??
+          bat?.lv?.estimatedHealth?.scorePct ??
+          null,
         bat?.lv?.estimatedHealth?.bars ?? null,
       );
       return (
@@ -398,14 +397,12 @@ export function HealthVehicleDetailPanel({
                   : '—',
             },
             {
-              label: 'SOH / health',
+              label: lvEstimatedLabel,
               value: calibrating
                 ? 'Calibrating'
-                : soh != null
-                  ? `${Math.round(soh)}%`
-                  : est != null
-                    ? `~${Math.round(est)}% estimated`
-                    : 'No tracking',
+                : lvEstimatedStatus !== 'UNKNOWN'
+                  ? batterySegment.label
+                  : 'No tracking',
             },
             { label: 'Condition', value: batteryCondition ?? '—' },
           ]}
@@ -417,9 +414,7 @@ export function HealthVehicleDetailPanel({
               ariaLabel={`Battery: ${batterySegment.label}`}
             />
           )}
-          percent={displayPct}
-          percentLabel={isEstimated ? 'Estimated SOH' : 'SOH'}
-          showPercent={displayPct != null && !calibrating}
+          showPercent={false}
         />
         <ModuleServiceFooter
           vehicleId={vehicle.id}

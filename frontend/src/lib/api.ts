@@ -5761,6 +5761,17 @@ export interface BatteryFreshness {
   isFresh: boolean;
 }
 
+// LV behavioural score — never workshop SOH.
+export type LvHealthScoreSemantic =
+  | 'ESTIMATED_LV_HEALTH_SCORE'
+  | 'LEGACY_ESTIMATED_LV_HEALTH';
+
+export interface LvEstimatedHealthScoreRef {
+  value: number | null;
+  semanticType: 'ESTIMATED_LV_HEALTH_SCORE';
+  label: string;
+}
+
 // LV "Estimated Battery Health" — behaviour-derived, rendered as 3 bars, never
 // presented as a workshop-verified SOH percentage.
 export interface LvEstimatedHealth {
@@ -5768,6 +5779,7 @@ export interface LvEstimatedHealth {
   scorePct: number | null;
   displayMode: 'BARS';
   bars: 0 | 1 | 2 | 3;
+  semanticType: 'ESTIMATED_LV_HEALTH_SCORE';
   label: string;
   confidence: string | null;
   calibrationStatus: SohPublicationState | string | null;
@@ -5788,8 +5800,11 @@ export interface CanonicalLvBatterySection {
   healthStatus?: BatteryAggregateStatus;
   condition: BatteryRuntimeCondition;
   healthPercent: number | null;
+  healthPercentSemantic?: LvHealthScoreSemantic | null;
   estimatedHealthPercent: number | null;
+  estimatedHealthPercentSemantic?: LvHealthScoreSemantic | null;
   estimatedHealth?: LvEstimatedHealth;
+  estimatedLvHealthScore?: LvEstimatedHealthScoreRef;
   restingVoltage?: LvRestingVoltage;
   method: string | null;
   confidence: string | null;
@@ -5864,8 +5879,14 @@ export interface BatteryHealthSummary {
   // Compatibility fields for existing runtime consumers.
   currentState: {
     sohPercent: number | null;
+    sohPercentSemantic?: LvHealthScoreSemantic | null;
     publishedSohPct: number | null;
+    publishedSohPctSemantic?: LvHealthScoreSemantic | null;
     estimatedSohPct: number | null;
+    estimatedSohPctSemantic?: LvHealthScoreSemantic | null;
+    estimatedLvHealthScore?: number | null;
+    estimatedLvHealthScoreSemantic?: LvHealthScoreSemantic | null;
+    estimatedLvHealthScoreLabel?: string | null;
     publicationState: SohPublicationState;
     maturityConfidence: string;
     voltageV: number | null;
@@ -5879,13 +5900,15 @@ export interface BatteryHealthSummary {
   condition: 'good' | 'watch' | 'attention' | 'calibrating';
   trendDirection: 'stable' | 'declining' | 'improving' | 'unknown';
   specs: { batteryType: string | null; batteryAmpere: number | null; batteryVolt: number | null; sourceType: string } | null;
-  trend7: Array<{ date: string; soh: number | null; voltage: number | null }>;
-  trend30: Array<{ date: string; soh: number | null; voltage: number | null }>;
+  trend7: Array<{ date: string; soh: number | null; sohSemantic?: LvHealthScoreSemantic | null; estimatedLvHealthScore?: number | null; voltage: number | null }>;
+  trend30: Array<{ date: string; soh: number | null; sohSemantic?: LvHealthScoreSemantic | null; estimatedLvHealthScore?: number | null; voltage: number | null }>;
   history: Array<{
     id: string;
     type: 'measurement' | 'service';
     date: string;
     soh?: number | null;
+    sohSemantic?: LvHealthScoreSemantic | null;
+    estimatedLvHealthScore?: number | null;
     voltage?: number | null;
     temperature?: number | null;
     notes?: string | null;
@@ -5899,6 +5922,8 @@ export interface BatteryEvidenceItem {
   observedAt: string;
   sourceType: string | null;
   valueType: string;
+  semanticValueType?: LvHealthScoreSemantic | string | null;
+  displayLabel?: string | null;
   value: number | null;
   unit: string | null;
   provider: string | null;

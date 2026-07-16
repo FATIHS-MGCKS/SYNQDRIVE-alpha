@@ -1406,6 +1406,12 @@ export class VehicleIntelligenceController {
     return {
       voltageV: canonical.currentState?.voltageV ?? null,
       sohPercent: canonical.currentState?.sohPercent ?? null,
+      sohPercentSemantic: canonical.currentState?.sohPercentSemantic ?? null,
+      estimatedLvHealthScore: canonical.currentState?.estimatedLvHealthScore ?? null,
+      estimatedLvHealthScoreSemantic:
+        canonical.currentState?.estimatedLvHealthScoreSemantic ?? null,
+      estimatedLvHealthScoreLabel:
+        canonical.currentState?.estimatedLvHealthScoreLabel ?? null,
       temperatureC: canonical.currentState?.temperatureC ?? null,
       recordedAt: canonical.currentState?.lastChecked ?? null,
       restingVoltage: canonical.currentState?.restingVoltage ?? null,

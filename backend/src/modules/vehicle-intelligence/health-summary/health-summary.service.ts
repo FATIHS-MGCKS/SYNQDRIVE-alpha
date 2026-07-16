@@ -26,7 +26,7 @@ export interface HealthSummaryAgentInput {
     fuelType?: string | null;
   };
   healthModules: {
-    battery: { status: string; sohPercent: number | null; voltageV: number | null; hasData: boolean } | null;
+    battery: { status: string; sohPercent: number | null; sohPercentSemantic: string | null; estimatedLvHealthScore: number | null; estimatedLvHealthScoreSemantic: string | null; voltageV: number | null; hasData: boolean } | null;
     errorCodes: { activeCount: number; totalRecent: number; lastCheckedAt: string | null; hasData: boolean } | null;
     brakes: {
       stateClass: string | null;
@@ -269,10 +269,27 @@ export class HealthSummaryService {
                       ? 'poor'
                       : 'unknown',
               sohPercent: batterySummary.lv?.healthPercent ?? null,
+              sohPercentSemantic: batterySummary.lv?.healthPercentSemantic ?? null,
+              estimatedLvHealthScore:
+                batterySummary.lv?.estimatedLvHealthScore?.value ??
+                batterySummary.lv?.estimatedHealth?.scorePct ??
+                null,
+              estimatedLvHealthScoreSemantic:
+                batterySummary.lv?.estimatedLvHealthScore?.semanticType ??
+                batterySummary.lv?.estimatedHealth?.semanticType ??
+                null,
               voltageV: batterySummary.lv?.telemetry?.voltageV ?? null,
               hasData: true,
             }
-          : { status: 'unknown', sohPercent: null, voltageV: null, hasData: false },
+          : {
+              status: 'unknown',
+              sohPercent: null,
+              sohPercentSemantic: null,
+              estimatedLvHealthScore: null,
+              estimatedLvHealthScoreSemantic: null,
+              voltageV: null,
+              hasData: false,
+            },
         errorCodes: dtcStats != null
           ? {
               activeCount: (dtcStats as any).active ?? 0,
@@ -379,14 +396,14 @@ export class HealthSummaryService {
     const preventive: string[] = [];
     const maintenanceFocus: Array<{ area: string; priority: 'low' | 'medium' | 'high'; reason: string }> = [];
 
-    if (m.battery?.hasData && (m.battery.sohPercent ?? 0) >= 75) {
-      positives.push(`Estimated 12V battery health is within normal range.`);
-    } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 50) {
-      watchpoints.push('Geschätzte 12V-Batteriegesundheit kritisch — Startschwierigkeiten wahrscheinlich, Austausch empfohlen.');
-      maintenanceFocus.push({ area: 'battery', priority: 'high', reason: 'Low estimated battery health' });
-    } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 75) {
-      watchpoints.push('Geschätzte 12V-Batteriegesundheit niedrig — Startschwierigkeiten möglich, beobachten.');
-      maintenanceFocus.push({ area: 'battery', priority: 'medium', reason: 'Declining estimated battery health' });
+    if (m.battery?.hasData && (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) >= 75) {
+      positives.push(`Geschätzter 12V-Batteriezustand im normalen Bereich.`);
+    } else if (m.battery?.hasData && (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) < 50) {
+      watchpoints.push('Geschätzter 12V-Batteriezustand kritisch — Startschwierigkeiten wahrscheinlich, Austausch empfohlen.');
+      maintenanceFocus.push({ area: 'battery', priority: 'high', reason: 'Low estimated LV health score' });
+    } else if (m.battery?.hasData && (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) < 75) {
+      watchpoints.push('Geschätzter 12V-Batteriezustand niedrig — Startschwierigkeiten möglich, beobachten.');
+      maintenanceFocus.push({ area: 'battery', priority: 'medium', reason: 'Declining estimated LV health score' });
     }
 
     if (m.errorCodes?.hasData && m.errorCodes.activeCount === 0) {
@@ -485,7 +502,11 @@ export class HealthSummaryService {
     if (m.tires?.hasData && (m.tires.treadPercentEstimate ?? 100) < 60 && (m.tires.treadPercentEstimate ?? 0) >= 30) {
       futureItems.push('Monitor tire tread; plan replacement before it falls below 25%.');
     }
-    if (m.battery?.hasData && (m.battery.sohPercent ?? 100) < 75 && (m.battery.sohPercent ?? 0) >= 50) {
+    if (
+      m.battery?.hasData &&
+      (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 100) < 75 &&
+      (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) >= 50
+    ) {
       futureItems.push('Estimated 12V battery health is declining; recheck in a few months.');
     }
 

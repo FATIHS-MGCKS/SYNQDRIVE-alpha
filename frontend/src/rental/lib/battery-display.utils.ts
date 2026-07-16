@@ -3,6 +3,7 @@ import type {
   BatteryHealthSummary,
   BatteryRestingVoltageStatus,
 } from '../../lib/api';
+import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from './battery-lv-semantics';
 
 const MIN_REASONABLE_LV_VOLTAGE = 6;
 const MAX_REASONABLE_LV_VOLTAGE = 18;
@@ -168,11 +169,11 @@ export function estimatedBatteryHealthLabel(
 ): string | null {
   switch (normalizedStatus(estimatedBatteryHealthStatus(battery))) {
     case 'watch':
-      return 'Geschätzte Batteriegesundheit beobachten';
+      return `${ESTIMATED_LV_HEALTH_SCORE_LABEL_DE} beobachten`;
     case 'warning':
-      return 'Geschätzte Batteriegesundheit niedrig';
+      return `${ESTIMATED_LV_HEALTH_SCORE_LABEL_DE} niedrig`;
     case 'critical':
-      return 'Geschätzte Batteriegesundheit kritisch';
+      return `${ESTIMATED_LV_HEALTH_SCORE_LABEL_DE} kritisch`;
     default:
       return null;
   }

@@ -1,5 +1,9 @@
 import { BatteryEvidenceSourceType, SohPublicationState } from '@prisma/client';
 import { CanonicalBatteryHealthService } from './canonical-battery-health.service';
+import {
+  ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
+  ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,
+} from './battery-lv-semantics';
 
 describe('CanonicalBatteryHealthService', () => {
   const now = new Date('2026-04-13T10:00:00.000Z');
@@ -264,14 +268,21 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.lv.telemetry.voltageSource).toBe('resting_snapshot');
   });
 
-  it('exposes LV Estimated Battery Health as a 3-bar indicator (no SOH %)', async () => {
+  it('exposes LV estimated health score semantics (no SOH label)', async () => {
     const { svc } = buildService();
     const summary = await svc.getSummary('veh-1');
     // Published V2 score 80 → GOOD → 3 bars.
     expect(summary?.lv.estimatedHealth.status).toBe('GOOD');
     expect(summary?.lv.estimatedHealth.bars).toBe(3);
     expect(summary?.lv.estimatedHealth.displayMode).toBe('BARS');
-    expect(summary?.lv.estimatedHealth.label).toBe('Estimated Battery Health');
+    expect(summary?.lv.estimatedHealth.semanticType).toBe(ESTIMATED_LV_HEALTH_SCORE_SEMANTIC);
+    expect(summary?.lv.estimatedHealth.label).toBe(ESTIMATED_LV_HEALTH_SCORE_LABEL_DE);
+    expect(summary?.lv.estimatedLvHealthScore?.value).toBe(80);
+    expect(summary?.lv.healthPercentSemantic).toBe('LEGACY_ESTIMATED_LV_HEALTH');
+    expect(summary?.currentState?.sohPercentSemantic).toBe('LEGACY_ESTIMATED_LV_HEALTH');
+    expect(summary?.currentState?.estimatedLvHealthScoreSemantic).toBe(
+      ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,
+    );
   });
 
   it('classifies LV resting voltage with default (unknown battery type) bands', async () => {
