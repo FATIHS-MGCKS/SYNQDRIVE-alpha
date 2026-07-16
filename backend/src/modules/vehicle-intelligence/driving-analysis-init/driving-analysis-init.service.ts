@@ -6,6 +6,7 @@ import { DrivingAnalysisStageOrchestratorService } from '../driving-analysis-sta
 import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { DrivingIntelligenceJobRepository } from '../driving-intelligence-jobs/driving-intelligence-jobs.repository';
 import { DimoAvailableSignalsPreflightService } from '../driving-capability/dimo-available-signals-preflight.service';
+import { VehicleDrivingCapabilityLifecycleService } from '../driving-capability/vehicle-driving-capability-lifecycle.service';
 import {
   buildInitCorrelationId,
   buildInitJobIdempotencyKey,
@@ -28,6 +29,7 @@ export class DrivingAnalysisInitService {
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
     private readonly jobRepository: DrivingIntelligenceJobRepository,
     private readonly dimoPreflight: DimoAvailableSignalsPreflightService,
+    private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
   ) {}
 
   /**
@@ -63,12 +65,12 @@ export class DrivingAnalysisInitService {
       throw new BadRequestException('Trip vehicle mismatch for organization');
     }
 
-    void this.dimoPreflight
-      .runPreflightIfStale(input.organizationId, input.vehicleId)
+    void this.capabilityLifecycle
+      .refreshAfterTripInit(input.organizationId, input.vehicleId)
       .catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         this.logger.warn(
-          `DIMO capability preflight failed trip=${input.tripId} vehicle=${input.vehicleId}: ${message}`,
+          `Driving capability lifecycle refresh failed trip=${input.tripId} vehicle=${input.vehicleId}: ${message}`,
         );
       });
 

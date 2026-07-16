@@ -29,6 +29,7 @@ import {
   DIMO_PREFLIGHT_MIN_INTERVAL_MS,
 } from './dimo-preflight-classifier.config';
 import { buildPreflightProbes, type ClassifiedProbe } from './dimo-preflight-classifier';
+import type { CapabilityRefreshTrigger } from './vehicle-driving-capability-lifecycle.types';
 
 export type PreflightRunResult = {
   ran: boolean;
@@ -55,7 +56,11 @@ export class DimoAvailableSignalsPreflightService {
   async runPreflightIfStale(
     organizationId: string,
     vehicleId: string,
-    options?: { force?: boolean; minIntervalMs?: number },
+    options?: {
+      force?: boolean;
+      minIntervalMs?: number;
+      refreshTrigger?: CapabilityRefreshTrigger;
+    },
   ): Promise<PreflightRunResult> {
     if (!options?.force) {
       const stale = await this.isPreflightStale(
@@ -73,7 +78,9 @@ export class DimoAvailableSignalsPreflightService {
         };
       }
     }
-    return this.runPreflight(organizationId, vehicleId);
+    return this.runPreflight(organizationId, vehicleId, {
+      refreshTrigger: options?.refreshTrigger,
+    });
   }
 
   async isPreflightStale(
@@ -96,8 +103,15 @@ export class DimoAvailableSignalsPreflightService {
     return Date.now() - latest >= effectiveMin;
   }
 
-  async runPreflight(organizationId: string, vehicleId: string): Promise<PreflightRunResult> {
+  async runPreflight(
+    organizationId: string,
+    vehicleId: string,
+    options?: { refreshTrigger?: CapabilityRefreshTrigger },
+  ): Promise<PreflightRunResult> {
     const checkedAt = new Date();
+    const refreshTrigger = options?.refreshTrigger ?? 'PERIODIC_STALE';
+    const existingRows = await this.repository.findByVehicle(organizationId, vehicleId);
+    const existingByKey = new Map(existingRows.map((row) => [row.capabilityKey, row]));
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId },
       select: {
@@ -192,8 +206,11 @@ export class DimoAvailableSignalsPreflightService {
           ...(providerError ?? {}),
           preflightVersion: DIMO_CAPABILITY_PREFLIGHT_VERSION,
           availableSignalCount: availableSignals.length,
+          refreshTrigger,
         },
         capabilityVersion: DIMO_CAPABILITY_PREFLIGHT_VERSION,
+        refreshTrigger,
+        previousRow: existingByKey.get(probe.capabilityKey) ?? null,
       };
       await this.repository.upsertProbe(input);
       written += 1;

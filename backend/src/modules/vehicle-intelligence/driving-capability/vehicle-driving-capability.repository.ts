@@ -6,6 +6,7 @@ import {
   normalizeCapabilityStatusForWrite,
   resolveCapabilityKey,
 } from './vehicle-driving-capability.util';
+import { buildLifecycleMetadata } from './vehicle-driving-capability-lifecycle.transition';
 
 @Injectable()
 export class VehicleDrivingCapabilityRepository {
@@ -60,7 +61,19 @@ export class VehicleDrivingCapabilityRepository {
     const checkedAt = input.checkedAt;
     const lastSeenAt = input.lastSeenAt ?? checkedAt;
     const firstSeenAt = input.firstSeenAt ?? checkedAt;
-    const metadata = input.metadata as Prisma.InputJsonValue | undefined;
+
+    const lifecycleMetadata =
+      input.refreshTrigger != null
+        ? buildLifecycleMetadata({
+            refreshTrigger: input.refreshTrigger,
+            previousRow: input.previousRow ?? null,
+            nextStatus: capabilityStatus,
+            checkedAt,
+            existingMetadata: input.metadata ?? null,
+          })
+        : (input.metadata ?? null);
+
+    const metadata = lifecycleMetadata as Prisma.InputJsonValue | undefined;
 
     return this.prisma.vehicleDrivingCapability.upsert({
       where: {

@@ -3,6 +3,7 @@ import type {
   HardwareType,
   VehicleDrivingCapability,
 } from '@prisma/client';
+import type { CapabilityRefreshTrigger } from './vehicle-driving-capability-lifecycle.types';
 
 /** Known provider channels for capability probes (string column — extensible). */
 export const DRIVING_CAPABILITY_PROVIDER = {
@@ -39,6 +40,8 @@ export type UpsertVehicleDrivingCapabilityInput = {
   nativeEventAvailable?: boolean;
   metadata?: Record<string, unknown> | null;
   capabilityVersion: string;
+  refreshTrigger?: CapabilityRefreshTrigger;
+  previousRow?: VehicleDrivingCapability | null;
 };
 
 export type ResolvedVehicleDrivingCapability = {

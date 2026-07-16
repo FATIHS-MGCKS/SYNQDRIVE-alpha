@@ -89,6 +89,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly drivingIntelligenceJobRetry: Counter<string>;
   readonly drivingIntelligenceJobDeadLetter: Counter<string>;
   readonly drivingAnalysisReconciliationActions: Counter<string>;
+  readonly drivingCapabilityRefresh: Counter<string>;
+  readonly drivingCapabilityTransition: Counter<string>;
+  readonly drivingCapabilityDetectorChanged: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -639,6 +642,27 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_driving_analysis_reconciliation_actions_total',
       help: 'Driving analysis reconciliation remediations',
       labelNames: ['check_type', 'result'],
+      registers: [this.registry],
+    });
+
+    this.drivingCapabilityRefresh = new Counter({
+      name: 'synqdrive_driving_capability_refresh_total',
+      help: 'Driving capability lifecycle refresh attempts',
+      labelNames: ['trigger', 'result', 'skipped_reason'],
+      registers: [this.registry],
+    });
+
+    this.drivingCapabilityTransition = new Counter({
+      name: 'synqdrive_driving_capability_transition_total',
+      help: 'Capability signal transitions observed during refresh',
+      labelNames: ['kind', 'trigger'],
+      registers: [this.registry],
+    });
+
+    this.drivingCapabilityDetectorChanged = new Counter({
+      name: 'synqdrive_driving_capability_detector_changed_total',
+      help: 'Detector capability fingerprint changes after refresh',
+      labelNames: ['trigger'],
       registers: [this.registry],
     });
   }

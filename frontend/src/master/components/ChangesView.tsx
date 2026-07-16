@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p34-capability-lifecycle-2026-07-16',
+    version: '4.9.535',
+    title: 'Driving Intelligence V2 P34 — driving capability lifecycle and refresh',
+    summary: [
+      'Neuer `VehicleDrivingCapabilityLifecycleService` — stale-gated Refresh mit Audit-Trail in Metadata.',
+      'Trigger: neue Integration, Hardware-/Provideränderung, periodisch (7d), Signalverlust-Retry (24h), Signal-Wiederkehr, Diagnosepfad.',
+      'Keine aggressive Abfrage — weiterhin vehicle-scoped, kein Fleet-Poller.',
+      'Providerfehler bleiben DEGRADED, nicht UNSUPPORTED; `statusHistory` + `previousStatus` in Metadata.',
+      'Detector-Fingerprint-Änderung metrisch erfasst — Jobs lesen frische Capabilities bei Ausführung.',
+      'Bestehende Evidence bleibt erhalten; keine rückwirkende Kundenentscheidung.',
+      'POST `driving-capabilities/refresh-diagnostic` für internen Diagnosepfad.',
+      'Tests für Signalverlust und -wiederkehr.',
+    ],
+    reason:
+      'Prompt 34/76: Lifecycle und Refresh der Driving Capabilities mit auditierbarem Übergang und metrischer Erfassung.',
+    previousBehavior:
+      'P29 Preflight nur via `runPreflightIfStale` nach Trip-Init — kein Lifecycle, keine Transition-Erkennung, keine Detector-Fingerprint-Metrik.',
+    details:
+      'Prometheus: `driving_capability_refresh_total`, `driving_capability_transition_total`, `driving_capability_detector_changed_total`. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T13:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p33-dimo-segment-validation-2026-07-16',
     version: '4.9.534',
     title: 'Driving Intelligence V2 P33 — post-trip DIMO segment validation service',

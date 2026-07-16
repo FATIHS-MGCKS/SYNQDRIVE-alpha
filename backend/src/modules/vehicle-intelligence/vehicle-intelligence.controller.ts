@@ -73,6 +73,7 @@ import { TripEvidenceReadService } from '@modules/clickhouse/trip-evidence-read.
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessment-device-quality.service';
+import { VehicleDrivingCapabilityLifecycleService } from './driving-capability/vehicle-driving-capability-lifecycle.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
 import {
   CreateTireSetupDto,
@@ -148,6 +149,7 @@ export class VehicleIntelligenceController {
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
     private readonly tripEvidenceRead: TripEvidenceReadService,
     private readonly drivingAssessmentQuality: DrivingAssessmentDeviceQualityService,
+    private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1700,6 +1702,18 @@ export class VehicleIntelligenceController {
       this.hmSignalUsageService.getAiHealthCareSignals(vehicleId),
     ]);
     return { hmActive, service, tirePressure, aiHealth };
+  }
+
+  @Post('driving-capabilities/refresh-diagnostic')
+  async refreshDrivingCapabilitiesDiagnostic(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { organizationId?: string },
+  ) {
+    const organizationId = req.organizationId;
+    if (!organizationId) {
+      throw new BadRequestException('Organization context required');
+    }
+    return this.capabilityLifecycle.refreshDiagnostic(organizationId, vehicleId);
   }
 
   @Post('hm-vehicle-health/refresh-service')
