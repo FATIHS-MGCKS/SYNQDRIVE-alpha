@@ -8766,6 +8766,22 @@ model TripDrivingImpact {
   modelVersion      String @map("model_version")
   sourceSummaryJson Json?  @map("source_summary_json")
 
+  // P41 — source provenance (nullable for legacy rows; readers use driving-impact-provenance.reader)
+  primarySource            String? @map("primary_source")
+  measuredShare            Float?  @map("measured_share")
+  providerClassifiedShare  Float?  @map("provider_classified_share")
+  reconstructedShare       Float?  @map("reconstructed_share")
+  estimatedProxyShare      Float?  @map("estimated_proxy_share")
+  contextOnlyShare         Float?  @map("context_only_share")
+  nativeEventCount         Int?    @map("native_event_count")
+  hfEventCount             Int?    @map("hf_event_count")
+  measurementCoverage      Float?  @map("measurement_coverage")
+  hardwareProfile          String? @map("hardware_profile")
+  capabilityVersion        String? @map("capability_version")
+  healthEligibility        String? @map("health_eligibility")
+  provenanceMaturity       String? @map("provenance_maturity")
+  provenanceVersion        String? @map("provenance_version")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -8820,6 +8836,21 @@ model VehicleDrivingImpactCurrent {
   safetyScore             Float? @map("safety_score")
 
   modelVersion String   @map("model_version")
+
+  // P41 — rolling provenance aggregate (distance-weighted where applicable)
+  primarySource            String? @map("primary_source")
+  measuredShare            Float?  @map("measured_share")
+  providerClassifiedShare  Float?  @map("provider_classified_share")
+  reconstructedShare       Float?  @map("reconstructed_share")
+  estimatedProxyShare      Float?  @map("estimated_proxy_share")
+  contextOnlyShare         Float?  @map("context_only_share")
+  measurementCoverage      Float?  @map("measurement_coverage")
+  hardwareProfile          String? @map("hardware_profile")
+  capabilityVersion        String? @map("capability_version")
+  healthEligibility        String? @map("health_eligibility")
+  provenanceMaturity       String? @map("provenance_maturity")
+  provenanceVersion        String? @map("provenance_version")
+
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)

@@ -364,10 +364,29 @@ function makeMockPrisma() {
   return {
     vehicleTrip: { findUnique: jest.fn(), update: jest.fn() },
     tripBehaviorEvent: { count: jest.fn(), findMany: jest.fn() },
-    drivingEvent: { findMany: jest.fn() },
+    drivingEvent: { findMany: jest.fn(), count: jest.fn() },
+    drivingEvidence: { groupBy: jest.fn() },
+    vehicleDrivingCapability: { findFirst: jest.fn() },
     tripDrivingImpact: { upsert: jest.fn(), findMany: jest.fn(), findUnique: jest.fn() },
     vehicleDrivingImpactCurrent: { upsert: jest.fn(), findUnique: jest.fn() },
   } as any;
+}
+
+function mockProvenancePrereqs(prisma: ReturnType<typeof makeMockPrisma>, over: {
+  nativeEventCount?: number;
+  hfEventCount?: number;
+} = {}) {
+  prisma.drivingEvent.count.mockResolvedValue(over.nativeEventCount ?? 0);
+  prisma.tripBehaviorEvent.count.mockImplementation(async (args: any) => {
+    if (args?.where?.eventType) {
+      return 0;
+    }
+    return over.hfEventCount ?? 0;
+  });
+  prisma.drivingEvidence.groupBy.mockResolvedValue([]);
+  prisma.vehicleDrivingCapability.findFirst.mockResolvedValue({
+    capabilityVersion: 'cap-preflight-v1',
+  });
 }
 
 function makeMockMetrics() {
@@ -406,6 +425,7 @@ describe('DrivingImpactService.computeForTrip', () => {
     metrics = makeMockMetrics();
     prisma.drivingEvent.findMany.mockResolvedValue([]);
     prisma.vehicleTrip.update.mockResolvedValue({});
+    mockProvenancePrereqs(prisma);
     service = new DrivingImpactService(prisma, metrics);
   });
 
@@ -455,12 +475,54 @@ describe('DrivingImpactService.computeForTrip', () => {
     // speeding fields, so the service must persist null here.
     expect(createArg.safetyScore).toBeNull();
     expect(createArg.modelVersion).toBe(C.MODEL_VERSION);
+    expect(createArg.primarySource).toBeTruthy();
+    expect(createArg.provenanceVersion).toBe('impact-provenance-v1');
     expect(prisma.vehicleTrip.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'trip-1' },
         data: expect.objectContaining({ drivingScore: expect.any(Number) }),
       }),
     );
+  });
+
+  it('persists HF reconstructed provenance for SMART5 trips', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
+    mockProvenancePrereqs(prisma, { hfEventCount: 14, nativeEventCount: 0 });
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+      { startSpeedKmh: 90, endSpeedKmh: 10, peakValue: 6.5 },
+    ]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.primarySource).toBe('RECONSTRUCTED');
+    expect(createArg.hfEventCount).toBe(14);
+    expect(createArg.reconstructedShare).toBeGreaterThan(0);
+  });
+
+  it('persists mixed provenance when native and HF events coexist', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        vehicle: { organizationId: 'org-1', hardwareType: 'LTE_R1' },
+      }),
+    );
+    mockProvenancePrereqs(prisma, { nativeEventCount: 6, hfEventCount: 4 });
+    prisma.drivingEvent.findMany.mockResolvedValue([
+      { eventType: 'EXTREME_BRAKING', speedKmh: 80, severity: 0.9, deltaKmh: null },
+    ]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.primarySource).toBe('MIXED');
+    expect(createArg.nativeEventCount).toBe(6);
+    expect(createArg.hfEventCount).toBe(4);
   });
 
   it('V3 LTE_R1: derives extreme braking and brake statistics from DrivingEvent (TELEMETRY_EVENTS)', async () => {
@@ -475,7 +537,7 @@ describe('DrivingImpactService.computeForTrip', () => {
       { eventType: 'EXTREME_BRAKING', speedKmh: 80, severity: 0.9, deltaKmh: null },
       { eventType: 'HARSH_BRAKING', speedKmh: 50, severity: 0.6, deltaKmh: 10 },
     ]);
-    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
+    mockProvenancePrereqs(prisma, { nativeEventCount: 2, hfEventCount: 0 });
     prisma.tripDrivingImpact.upsert.mockResolvedValue({});
     prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
     prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
@@ -486,6 +548,7 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(prisma.tripBehaviorEvent.findMany).not.toHaveBeenCalled();
     const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
     expect(createArg.sourceSummaryJson.v3DrivingEventInput).toBe('TELEMETRY_EVENTS');
+    expect(createArg.primarySource).toBe('PROVIDER_CLASSIFIED');
     expect(createArg.sourceSummaryJson.extremeBrakeCount).toBe(1);
     expect(createArg.extremeBrakePer100Km).toBeCloseTo(2, 5);
   });
