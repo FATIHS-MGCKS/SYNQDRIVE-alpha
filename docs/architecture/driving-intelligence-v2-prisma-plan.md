@@ -142,6 +142,8 @@ Kanonische **Misuse Evidence** (Ebene 9). `DrivingEvidence` verweist auf diese R
 
 > **Migrationshinweis:** Jeder Enum in **eigener** Migration vor erster Spaltennutzung (PostgreSQL-Pattern wie `TaskStatus.WAITING`).
 
+**Implementierungsstand (P15, 2026-07-16):** Migration `20260716200000_driving_evidence` — `DrivingEvidence`-Modell + 7-wertiges `DrivingEvidenceSourceType` (ersetzt ungenutzte P12-Placeholder). Immutables Repository/Service unter `driving-evidence/`; Contract `validateDrivingEvidenceContract`.
+
 **Implementierungsstand (P14, 2026-07-16):** Migration `20260716194500_trip_assessabilities` — per-Dimension-Modell `TripAssessability` mit `TripAssessabilityDimension` + `TripAssessabilityDimensionStatus` (6 Werte, getrennt von Legacy `DrivingAssessabilityStatus`). Pure Policy `evaluateTripAssessability`, Repository/Service unter `trip-assessability/`. Legacy `deriveAnalysisAssessability` bleibt unverändert.
 
 **Implementierungsstand (P12, 2026-07-16):** Migration `20260716190000_driving_intelligence_v2_enums` — alle unten genannten Enum-Typen sind in `schema.prisma` deklariert. `TripAssessabilityStatus` heißt im Schema **`DrivingAssessabilityStatus`**; `DriverAttributionType` → **`DrivingAttributionType`**; `DriverAttributionConfidence` → **`DrivingAttributionConfidence`**. Zusätzlich: `VehicleLoadLevel`, `DriverConductLevel`, `MisuseEvidenceLevel`. Noch **keine** Modelle/Spalten.

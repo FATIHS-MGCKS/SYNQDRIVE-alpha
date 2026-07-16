@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p15-driving-evidence-2026-07-16',
+    version: '4.9.517',
+    title: 'Driving Intelligence V2 P15 — DrivingEvidence contract',
+    summary: [
+      'Neue Tabelle `driving_evidence` — immutabler Evidence-Index mit Source-Entity-Pointer (keine Payload-Spiegel).',
+      '`DrivingEvidenceSourceType` auf 7 Vertragswerte umgestellt: MEASURED_SIGNAL, PROVIDER_CLASSIFIED_EVENT, RECONSTRUCTED_EVENT, ESTIMATED_PROXY, CONTEXT_SIGNAL, MANUAL_VERIFIED, WORKSHOP_VERIFIED.',
+      'Felder: sourceType, strength, observedAt, providerSource, capabilityVersion, modelVersion, coverage, cadence, confidence, sourceEntity, context, idempotencyKey.',
+      'Pure Contract `validateDrivingEvidenceContract` + append-only `DrivingEvidenceRepository` / `DrivingEvidenceService`.',
+      'Regeln: geschätzt ≠ gemessen; Providerklassifikation sichtbar; CONTEXT_SIGNAL allein nicht misuse-eligible; tenant-Unique `(organizationId, idempotencyKey)`.',
+    ],
+    reason:
+      'Prompt 15/76: Zentraler Evidence-Vertrag für V2 — normalisierte Provenance über alle Quellen ohne Provider-Payload-Duplikation.',
+    previousBehavior:
+      'Evidence verteilt über `driving_events`, `trip_behavior_events`, `misuse_case_evidence` ohne einheitlichen V2-Vertrag.',
+    details:
+      'Migration 20260716200000; Module unter `driving-evidence/`; 10 Unit-Tests. Keine Trip-Detection-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T21:30:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p14-trip-assessability-2026-07-16',
     version: '4.9.516',
     title: 'Driving Intelligence V2 P14 — TripAssessability',
