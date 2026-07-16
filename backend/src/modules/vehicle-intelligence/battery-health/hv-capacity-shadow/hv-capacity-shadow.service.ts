@@ -7,6 +7,7 @@ import {
   HvCapacityObservationRepository,
 } from './hv-capacity-observation.repository';
 import { HvCapacityM2SampleProviderService } from './hv-capacity-m2-sample-provider.service';
+import { HvCapacityM3ValidationService } from './hv-capacity-m3-validation.service';
 import { HvCapacitySessionSummaryService } from './hv-capacity-session-summary.service';
 import {
   buildHvM2PointEstimates,
@@ -23,6 +24,7 @@ import {
   type HvCapacityM2SessionResult,
 } from './hv-capacity-m2.types';
 import type { HvCapacitySessionSummaryInputObservation } from './hv-capacity-session-summary.types';
+import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
 
 export interface RecomputeHvM2ShadowInput {
@@ -43,6 +45,7 @@ export class HvCapacityShadowService {
     private readonly sampleProvider: HvCapacityM2SampleProviderService,
     private readonly observations: HvCapacityObservationRepository,
     private readonly sessionSummary: HvCapacitySessionSummaryService,
+    private readonly m3Validation: HvCapacityM3ValidationService,
   ) {}
 
   async recomputeM2ForSession(
@@ -188,6 +191,19 @@ export class HvCapacityShadowService {
       );
     }
 
+    const m3Result = await this.m3Validation.validateSession({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      chargeSessionId: session.id,
+      m2MedianCapacityKwh: summary?.stats.medianCapacityKwh ?? sessionMedianKwh,
+    });
+
+    if (m3Result.persisted) {
+      this.logger.debug(
+        `M3 validation session=${session.id} capacity=${m3Result.estimate?.estimatedCapacityKwh.toFixed(2) ?? 'n/a'} kWh conflict=${m3Result.estimate?.methodConflict ?? false}`,
+      );
+    }
+
     return {
       sessionId: session.id,
       method: HV_M2_CAPACITY_METHOD,
@@ -197,6 +213,7 @@ export class HvCapacityShadowService {
       persistedCount,
       skippedCount,
       summary,
+      m3Validation: m3Result,
     };
   }
 
@@ -210,6 +227,7 @@ export class HvCapacityShadowService {
       persistedCount: 0,
       skippedCount: 0,
       summary: null,
+      m3Validation: null,
     };
   }
 }

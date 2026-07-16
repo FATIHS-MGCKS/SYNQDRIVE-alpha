@@ -31,6 +31,7 @@ describe('HvCapacityShadowService', () => {
   };
 
   const sessionSummary = { summarizeSession: jest.fn() };
+  const m3Validation = { validateSession: jest.fn() };
 
   let service: HvCapacityShadowService;
 
@@ -41,6 +42,7 @@ describe('HvCapacityShadowService', () => {
       sampleProvider as any,
       observations as any,
       sessionSummary as any,
+      m3Validation as any,
     );
 
     prisma.hvChargeSession.findFirst.mockResolvedValue({
@@ -68,6 +70,13 @@ describe('HvCapacityShadowService', () => {
       shadowGatePassed: true,
       gateReasonCodes: [],
       stats: { medianCapacityKwh: 55.5, coefficientOfVariation: 0.002 },
+    });
+    m3Validation.validateSession.mockResolvedValue({
+      sessionId: chargeSessionId,
+      method: 'SEGMENT_ADDED_ENERGY_OVER_SOC',
+      modelVersion: 1,
+      estimate: null,
+      persisted: false,
     });
   });
 
@@ -106,6 +115,7 @@ describe('HvCapacityShadowService', () => {
 
     expect(result.summary).not.toBeNull();
     expect(sessionSummary.summarizeSession).toHaveBeenCalled();
+    expect(m3Validation.validateSession).toHaveBeenCalled();
   });
 
   it('skips ineligible sessions', async () => {

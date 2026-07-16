@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-capacity-m3-validation-v49554-2026-07-17',
+    version: '4.9.554',
+    title: 'V4.9.554 — HV M3 Validation SEGMENT_ADDED_ENERGY_OVER_SOC (Prompt 54/78)',
+    summary: [
+      'M3 VALIDATION_ONLY auf qualifizierten Recharge-Segmentaggregaten — `segmentAddedEnergyKWh / (deltaSocPercent / 100)`.',
+      'Gates: finalisierte Session, capacityValidationEligible, ΔSOC ≥ 20 pp, Segment-Aggregat (nicht First/Last), plausible Energie, keine Reset-/Monotonieanomalie, starke Grenzen.',
+      'Persistenz `HvCapacityObservation` method `SEGMENT_ADDED_ENERGY_OVER_SOC` + `metadata.m3Validation` auf Session.',
+      'Starke Abweichung vs M2-Median (>10 %) → Method Conflict, Quality `INSUFFICIENT_COVERAGE`. Kein SOH, kein M2-Ersatz.',
+      'Tests: plausible ~55 kWh (Session 4) und implausible ~71 kWh (First/Last-Divergenz + Method Conflict).',
+    ],
+    reason: 'Prompt 54/78: unabhängige Validierungsmethode auf Segmentaggregation vor Publication.',
+    previousBehavior: 'Nur M2 Shadow + Session-Summary; keine M3-Validierung.',
+    details:
+      'hv-capacity-m3.*, hv-capacity-observation.repository.ts, hv-capacity-shadow.service.ts, docs/architecture/hv-capacity-m3-validation.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T12:00:00.000Z',
+  },
+  {
     id: 'hv-capacity-session-summary-v49553-2026-07-17',
     version: '4.9.553',
     title: 'V4.9.553 — HV M2 Session-Capacity-Summary Aggregation (Prompt 53/78)',

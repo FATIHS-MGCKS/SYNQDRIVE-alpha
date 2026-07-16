@@ -74,6 +74,8 @@ export interface HvCapacityM2PointEstimate {
   outlier: boolean;
 }
 
+import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
+
 export interface HvCapacityM2SessionResult {
   sessionId: string;
   method: typeof HV_M2_CAPACITY_METHOD;
@@ -83,6 +85,7 @@ export interface HvCapacityM2SessionResult {
   persistedCount: number;
   skippedCount: number;
   summary: HvCapacitySessionSummary | null;
+  m3Validation?: HvCapacityM3ValidationResult | null;
 }
 
 export interface HvCapacityObservationMetadata {
