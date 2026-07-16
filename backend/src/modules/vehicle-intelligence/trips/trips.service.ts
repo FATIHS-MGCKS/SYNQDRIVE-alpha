@@ -154,8 +154,10 @@ export class TripsService {
     return {
       totalTrips,
       totalDistanceKm: tripAgg._sum.distanceKm ?? 0,
+      /** @deprecated Mirror of avgDrivingStressScore (vehicle load). */
       avgDrivingScore: avgDrivingStressScore,
       avgDrivingStressScore,
+      /** @deprecated Mirror of avgDrivingStressScore. */
       avgDrivingStyleScore: avgDrivingStressScore,
       totalAccelerationEvents: tripAgg._sum.totalAccelerationEvents ?? 0,
       totalHardAccelerationEvents: tripAgg._sum.hardAccelerationEvents ?? 0,
