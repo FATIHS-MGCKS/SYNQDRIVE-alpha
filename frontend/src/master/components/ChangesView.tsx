@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-lv-evidence-selection-v49541-2026-07-17',
+    version: '4.9.541',
+    title: 'V4.9.541 — LV Evidence Selection Policy (Prompt 41/78)',
+    summary: [
+      'Zentrale `selectLvAssessmentEvidence()` — kombiniert nur kompatible Rest-/Startperioden mit VALID-Ruhe, Freshness und vollständiger Provenienz.',
+      'Output: `selectedEvidence`, `rejectedEvidence` (mit Gründen), `evidenceWindow`, `evidenceStrength`, `dataQuality`.',
+      'Ablehnung: kontaminierte/legacy/stale Messungen, VALID_PROXY-Ruhe, BEV ohne LV, unbekannte Chemie, zeitlich inkompatible Mischzyklen.',
+      'Start-Proxy nur als DIAGNOSTIC; Werkstatt als OVERRIDE; Policy-Version 1.0.0.',
+    ],
+    reason: 'Prompt 41/78: zentrale Evidence-Selection-Policy für LV-Assessments vor Publication/Score-Pipeline.',
+    previousBehavior: 'Keine zentrale Auswahlregel für kompatible LV-Assessment-Evidence über gemischte Lebenszyklen.',
+    details:
+      'lv-evidence-selection.policy.ts, lv-evidence-selection.policy.spec.ts, docs/architecture/battery-lv-evidence-selection.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T03:00:00.000Z',
+  },
+  {
     id: 'battery-start-proxy-diagnostic-v49540-2026-07-17',
     version: '4.9.540',
     title: 'V4.9.540 — Start-Proxy Diagnostic Wiring (Prompt 40/78)',
