@@ -5,8 +5,8 @@
 | **Audit ID** | `tire-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/tire-health-production-readiness-2026-07` |
-| **Phase** | 5 of 7 — Historical Wear-Model Backtest |
-| **Status** | Phases 1–5 complete; Phases 6–7 pending |
+| **Phase** | 6 of 7 — Consumer Wiring, Blocking & Tests |
+| **Status** | Phases 1–6 complete; Phase 7 pending |
 | **Production data modified** | **No** — all VPS/DB/DIMO access was read-only |
 | **Last VPS runtime probe** | 2026-07-16 (read-only SSH + DIMO Telemetry API) |
 
@@ -63,6 +63,8 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | DIMO signal capability CSV | `docs/audits/data/tire-health-dimo-signal-capability-2026-07.csv` |
 | DIMO timeseries coverage CSV | `docs/audits/data/tire-health-dimo-timeseries-coverage-2026-07.csv` |
 | Backtest summary CSV | `docs/audits/data/tire-health-backtest-summary-2026-07.csv` |
+| Consumer wiring CSV | `docs/audits/data/tire-health-consumer-wiring-2026-07.csv` |
+| Test coverage CSV | `docs/audits/data/tire-health-test-coverage-2026-07.csv` |
 | Phase 3 SQL (read-only) | `scripts/audits/tire-health-phase3-readonly.sql` |
 | Audit script (integrity) | `scripts/audits/audit-tire-health-production-readiness.ts` |
 | Audit script (DIMO signals) | `scripts/audits/audit-tire-health-dimo-signals.ts` |
@@ -113,12 +115,13 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 - Error metrics, confidence calibration, model-version audit
 - CSV artifact + read-only backtest script
 
-### Phase 6 — Integration & UX
+### Phase 6 — Consumer wiring, blocking & tests ✅
 
-- Rental Health evaluation & rental blocking
-- Alerts, notifications (`tire-health-warning`, `tire_critical` detector)
-- Frontend: HealthErrorsView (Quick Box + Detail Modal), VehicleHealthBox, FleetCondition, operator measure flow
-- API contract consistency (`/tires/summary`, `/tires/detail`)
+- Pressure data-flow end-to-end audit (DIMO/HM → wear → rental → UI)
+- Rental Health read model & blocking policy gap analysis
+- Frontend/API consumer matrix
+- Alerts, notifications, performance, observability
+- Test coverage matrix (30 scenarios); **165 tests passed** (136 backend + 29 frontend)
 
 ### Phase 7 — Production readiness verdict
 
@@ -1236,12 +1239,211 @@ Fleet too small for reliable segmented percentages. Qualitative notes:
 
 ---
 
-## Phase 6–7 placeholders
+## Phase 6 — Consumer wiring, blocking & tests
 
-> Sections will be expanded in subsequent audit prompts.
+**Audit ID:** `tire-health-consumer-wiring-2026-07`  
+**Method:** Code-path trace + VPS read-only pressure probe (2026-07-16) + existing unit test execution. **No production writes.**
 
-- **Phase 6:** Integrations & UX — _pending_
-- **Phase 7:** Final verdict — _pending_
+**Artifacts:**
+
+| File | Rows | Purpose |
+|------|------|---------|
+| `docs/audits/data/tire-health-consumer-wiring-2026-07.csv` | 22 | Consumer → canonical read model matrix |
+| `docs/audits/data/tire-health-test-coverage-2026-07.csv` | 30 | Scenario coverage matrix |
+| `docs/audits/data/tire-health-integrity-findings-2026-07.json` | +6 findings | Phase 6 P0/P1/P2 entries |
+
+---
+
+### Phase 6 — Teil 1: Pressure data flow
+
+**End-to-end path:**
+
+```
+DIMO signals (kPa) ──► DimoSnapshotProcessor ──► vehicle_latest_states.tire_pressure_*
+HM MQTT/REST (bar) ──► normalizeHmTirePressures ──► hm_signal_group_states (TIRE_PRESSURE)
+                              │
+TireHealthService.resolvePressureContext ◄── HM injected at /tires/* controller only
+                              │
+              TireWearModelService.computePressureFactor (bar assumption, DIMO columns only)
+                              │
+              TireHealthSummary.pressureContext ──► RentalHealth / UI / Alerts
+```
+
+| # | Check | Finding |
+|---|-------|---------|
+| 1 | DIMO unit | **kPa** (documented); stored **raw** — no `/100` at ingest |
+| 2 | HM unit | **bar** after `kilopascalToBar()` |
+| 3 | Internal/catalog unit | **`bar`** (`data-analyse-signal-catalog.ts`) |
+| 4 | kPa/bar conversion | **HM only**; DIMO path **missing** |
+| 5 | FL/FR/RL/RR mapping | DIMO Row1Left→FL … Row2Right→RR — **correct** |
+| 6 | Null vs 0 vs missing | `numVal()` treats 0 as valid; null = absent |
+| 7 | Plausibility filter | HM: 1.5–4.0 bar; wear model: deviation from 2.5 bar nominal |
+| 8 | Timestamp per wheel | **No** — single `sourceTimestamp` per vehicle state |
+| 9 | Freshness per source | DIMO: 2h/12h; HM: 6h/24h; rental `data_stale`: 48h on **tread** only |
+| 10 | Warm vs cold pressure | **Not distinguished** |
+| 11 | Manufacturer setpoint | `maxInflationKpa/100*0.9` when spec present |
+| 12 | maxInflationKpa vs operating | Uses 90% of max inflation as nominal — not OEM door-plate setpoint |
+| 13 | Source priority | `MIXED` > `DIMO` > `HM` > `NONE` in `resolvePressureContext` |
+| 14 | Source conflicts | HM ISSUE wins `overallStatus`; DIMO stale can force `STALE` |
+| 15 | TPMS warning without numbers | HM status strings path exists; DIMO `chassisTireSystemIsWarningOn` **not ingested** |
+| 16 | TPMS vs numeric contradiction | **Not unified** — dashboard lights separate from TireHealth |
+
+**VPS fleet pressure (2026-07-16):**
+
+| Vehicle | Provider | FL | FR | RL | RR | Coverage | Freshness |
+|---------|----------|----|----|----|----|----------|-----------|
+| VEHICLE_001 | DIMO | — | — | — | — | 0/4 | n/a |
+| VEHICLE_002 | DIMO | 293.8 | 301.4 | 273.6 | 288.8 | **4/4** | ~2 h (kPa-scale values) |
+| VEHICLE_003–006 | DIMO | — | — | — | — | 0/4 | n/a |
+
+VEHICLE_002 stats (stored values, kPa semantics): min 273.6, max 301.4, median 291.3, invalid rate 0% (plausible kPa), **static** over observation window.
+
+---
+
+### Phase 6 — Teil 2: Recommended Rental Health read model (not implemented)
+
+| Field | Recommended semantics |
+|-------|----------------------|
+| `wearEvidence` | `MEASURED` / `PROJECTED` / `DEFAULT` / `UNKNOWN` from `displayMode` + `currentTreadSource` |
+| `pressureEvidence` | `NUMERIC` / `STATUS_ONLY` / `WARNING_LIGHT` / `NONE` |
+| `specEvidence` | `USER_CONFIRMED` / `AI` / `DEFAULT` / `MISSING` |
+| `measurementFreshness` | Age/km since last **tread** measurement |
+| `pressureFreshness` | Per-source fresh/aging/stale from pressure timestamps |
+| `overallStatus` | `maxSeverity(wear, pressure)` with explicit UNKNOWN when stale |
+| `confidence` | Unified level + expose `tireSpecConfidence` / `modelConfidence` |
+| `rentalBlockingEvidence` | Structured codes — no regex on free-text hints |
+
+**Confirmed suspicion cases:**
+
+| # | Suspicion | Confirmed? |
+|---|-----------|------------|
+| 1 | DIMO/MIXED labeled `hm_oem` | **Yes** — `source: pressure.source !== 'NONE' ? 'hm_oem' : 'tire_health'` |
+| 2 | Regex pressure severity | **Yes** — `/niedrig\|low\|under\|alert/i` |
+| 3 | `last_updated_at` = tread not pressure | **Yes** — `summary.latestMeasurementAt` |
+| 4 | `evidence_type=measured` with estimated tread | **Yes** — any measurement timestamp suffices |
+| 5 | Missing signal = „kein TPMS“ | **Partial** — `UNKNOWN` + `source=NONE` → `n_a`; DIMO without HM still `hm_oem` label |
+| 6 | Numeric vs TPMS contradiction | **Yes** — separate dashboard-light path |
+
+---
+
+### Phase 6 — Teil 3: Rental blocking vs target policy
+
+| Policy rule | Current behavior | Deviation |
+|-------------|------------------|-----------|
+| Measured tread ≤ legal minimum → Hard Block | `overallStatus=CRITICAL` → blocks | ✅ Aligned (but tread often estimated) |
+| Direct TPMS critical evidence → Block/Review | HM ISSUE + regex → critical/warning | ⚠️ Regex fragile; rental path **misses HM** |
+| Estimated critical + high confidence → Manual review | **Not implemented** — CRITICAL blocks regardless | ❌ Deviation |
+| Estimated critical + low confidence → Measurement required | **Not implemented** | ❌ Deviation |
+| Stale/missing → Unknown/Review | `STALE` → unknown pressure; wear can still be EXCELLENT | ❌ No auto-review for stale pressure |
+
+**Blocking mechanics:** `BookingsService.enforceRentalHealthGate` → `getVehicleHealth` → `collectBlockingReasons` includes tires only when `state === 'critical'`. **WARNING/WATCH do not block.** No manual override in code path reviewed. Blocking reasons in API response only — **not persisted** revisionssicher.
+
+**Booking gate vs UI:** Same `getVehicleHealth` path — **consistent** when both call rental-health API. `/tires/summary` can show richer pressure context than rental-health module.
+
+---
+
+### Phase 6 — Teil 4: Frontend & API
+
+| Surface | Uses TireHealthSummary? | Independent logic? | Key gap |
+|---------|-------------------------|-------------------|---------|
+| `/tires/summary`, `/tires/detail` | ✅ Canonical | No | HM injected |
+| Rental Health API | Partial (via evaluateTires) | Mapping only | **No HM injection** |
+| HealthErrorsView | ✅ Primary | ⚠️ `tireWearAnalysis` fallback | Legacy % fallback |
+| VehicleHealthBox | ✅ Primary | ⚠️ Local % buckets | Partial rental overlay |
+| FleetCondition | ✅ | No | displayMode pill OK |
+| Vehicle Insights | Partial | ⚠️ `TIRE_ACTION_PCT` thresholds | Parallel thresholds |
+| Booking gate | Via rental health | No | Same HM gap |
+
+**UI checklist (summary):** measured vs estimated **visible** via `displayMode`; confidence shown; wheel positions correct; spec source partial; **pressure timestamp not separate**; remaining km may imply false precision; Measurement CTA via overdue alerts; rental blocking via `RentalHealthBadge`; DE copy present — EN completeness not fully audited; mobile layouts not runtime-tested in this phase.
+
+---
+
+### Phase 6 — Teil 5: Alerts & notifications
+
+**`detectAlerts` types present:** `CRITICAL_TREAD`, `LOW_TREAD`, `CRITICAL_REMAINING_KM`, `LOW_REMAINING_KM`, `UNEVEN_WEAR_*`, `ROTATION_*`, `PRESSURE_IMPACT`, `SEASON_MISMATCH`, `MEASUREMENT_OVERDUE`, `TIRE_AGE_WARNING`, `USED_TIRE_NO_MEASUREMENT`, `LOW_CONFIDENCE`.
+
+**`TPMS_WARNING`:** **not a distinct type** — pressure via `pressureContext` + `PRESSURE_IMPACT`.
+
+| Risk | Assessment |
+|------|------------|
+| Duplicate alerts | Low within `detectAlerts`; rental notification one-per-vehicle |
+| Resolution on tire change | Events append-only; no auto-resolve audit |
+| Notification vs alert mismatch | **Yes** — `PRESSURE_IMPACT` warning may not notify unless rental state escalates |
+| Structured reason codes | Partial — `TireAlertCode` exists; rental uses free-text `reason` |
+
+---
+
+### Phase 6 — Teil 6: Performance & observability
+
+| Metric | VPS / code (2026-07-16) |
+|--------|-------------------------|
+| Recalculation frequency | Hourly scheduler + manual API |
+| Snapshots 60d | **1 320** (~220/vehicle); table **1104 kB** |
+| Wear data points | **0** |
+| Scheduler query | `vehicle_tire_setups` ACTIVE + `lastRecalculatedAt` — no composite index |
+| Queue dedupe | `jobId: tire-recalc:{vehicleId}:{hourBucket}` |
+| N+1 risk | `recalculate()` per vehicle — multiple prisma reads + driving impact |
+
+**Prometheus metrics requested vs found:**
+
+| Metric | Status |
+|--------|--------|
+| `tire_recalculation_total` | **MISSING** |
+| `tire_recalculation_failed_total` | **MISSING** |
+| `tire_usage_duplicate_prevented_total` | **MISSING** |
+| `tire_measurement_total` | **MISSING** |
+| `tire_prediction_error_mm` / `tire_prediction_mae_mm` | **MISSING** |
+| `tire_pressure_coverage_ratio` | **MISSING** |
+| `tire_signal_stale_total` | **MISSING** |
+| `tire_default_baseline_total` | **MISSING** |
+| `tire_synthetic_ground_truth_total` | **MISSING** |
+| `tire_alert_total` | **MISSING** |
+| `tire_rental_block_total` | **MISSING** |
+| `tire_snapshot_created_total` | **MISSING** |
+
+`dimo.tire.recalculation` queue **not** in `MONITORED_QUEUES` — backlog invisible.
+
+---
+
+### Phase 6 — Teil 7: Test audit
+
+**Executed (read-only):**
+
+```bash
+cd backend && npm test -- --testPathPattern="tire-(health|status|lifecycle|identity)|tire-critical"  # 136 passed
+cd frontend && npm test -- --run tire-health-detail-ui operationalIssueTireTaxonomy vehicle-health-box.mapper  # 29 passed
+```
+
+| Layer | Files | Status |
+|-------|-------|--------|
+| Unit (wear math) | `tire-health.spec.ts`, `tire-status.spec.ts` | ✅ Strong |
+| Unit (lifecycle) | `tire-lifecycle.spec.ts`, `tire-identity.service.spec.ts` | ✅ Good |
+| Detector | `tire-critical.detector.spec.ts` | ✅ Partial |
+| Rental health | `rental-health.service.spec.ts` | ⚠️ Tires stubbed |
+| **TireHealthService** | — | ❌ **Missing** |
+| Integration/E2E | — | ❌ **Missing** |
+| Historical replay | `audit-tire-health-backtest.ts` | Manual only |
+
+**Coverage matrix:** 30 scenarios — **22 MISSING**, 8 PARTIAL/COVERED (`docs/audits/data/tire-health-test-coverage-2026-07.csv`).
+
+---
+
+### Phase 6 — New findings
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| **P0-TH-21** | P0 | Rental Health calls `getSummary` **without HM** — booking gate blind to HM TPMS |
+| **P1-TH-22** | P1 | Pressure severity via **regex** on hints/alerts |
+| **P1-TH-23** | P1 | `evidence_type=measured` conflates tread measurement with estimated display |
+| **P2-TH-24** | P2 | **Zero** `tire_*` Prometheus metrics; recalc queue unmonitored |
+| **P2-TH-25** | P2 | **22/30** test scenarios missing; no `TireHealthService` tests |
+| **P2-TH-26** | P2 | Notifications decoupled from `TireHealthSummary.alerts` |
+
+---
+
+## Phase 7 placeholder
+
+> Final production-readiness verdict — _pending Prompt 7_.
 
 ---
 
@@ -1283,12 +1485,13 @@ cd backend && TIRE_HEALTH_AUDIT_ALLOW_PROD=1 \
 | 2026-07-16 | 3 | VPS 60d integrity probe, ground-truth audit, fleet coverage CSV, findings JSON |
 | 2026-07-16 | 4 | DIMO signal audit (339 queries, 6 vehicles), capability + timeseries CSVs, unit/mapping findings |
 | 2026-07-16 | 5 | Historical backtest (5 GT measurements, n=4 reproducible), MAE 0.21 mm, NOT_ENOUGH_DATA verdict |
+| 2026-07-16 | 6 | Consumer wiring audit, rental blocking gaps, test matrix, 165 tests passed |
 
 ---
 
 ## Confirmation
 
-- ✅ No production data was modified during Phases 1–5.
+- ✅ No production data was modified during Phases 1–6.
 - ✅ No secrets, VINs, license plates, token IDs, or GPS coordinates are stored in committed audit artifacts.
-- ✅ VPS PostgreSQL and DIMO Telemetry API access was **read-only**; no recalculations or calibrations were triggered.
-- ✅ Phase 5 complete; Phase 6 not started per audit plan.
+- ✅ VPS PostgreSQL access was **read-only**; existing unit tests executed locally without production mutations.
+- ✅ Phase 6 complete; Phase 7 not started per audit plan.

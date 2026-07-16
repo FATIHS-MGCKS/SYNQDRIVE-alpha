@@ -1,0 +1,24 @@
+consumer,surface,usesTireHealthSummary,usesRentalHealth,independentLogic,pressureSourceAware,displayModeAware,blockingAware,finding,recommendation
+DIMO,DIMO Snapshot Processor,no,no,no,partial,no,no,DIMO kPa stored raw in tire_pressure_* without /100 conversion; chassisTireSystemIsWarningOn not ingested,Normalize kPa to bar at ingest or document column as kPa
+HM,HM MQTT/Fetch Ingestion,no,no,no,yes,no,no,HM normalizes to bar via kilopascalToBar; writes hm_signal_group_states not vehicle_latest_states,Mirror HM bar values or unify read path for wear model
+VehicleLatestState,DB persistence,no,no,no,partial,no,no,Only DIMO writes tire_pressure_fl/fr/rl/rr; 1/6 vehicles non-null on VPS probe,Expected given fleet DIMO TPMS coverage
+TireWearModelService,Wear formula,no,no,yes,partial,no,no,computePressureFactor assumes bar; reads only vehicle_latest_states; minReadingsForActive=3,Fix unit + consider HM for status-only not wear
+TireHealthService.resolvePressureContext,Canonical read model,yes,no,no,yes,no,no,Source priority MIXED>DIMO>HM; HM ISSUE drives overallStatus; DIMO stale can force STALE,Sound design; rental path must receive HM injection
+TireHealthService.getSummary/detail,API /tires/*,yes,no,no,yes,yes,no,Controller injects hmTirePressure; full pressure context on intelligence API,Keep as canonical API surface
+RentalHealthService.evaluateTires,Rental Health API,no,yes,mapping-only,partial,partial,yes,getSummary(vehicleId) WITHOUT hmTirePressure; source hm_oem when pressure.source!=NONE even for DIMO-only,P0 wiring gap: pass HM context or split source label DIMO/HM/MIXED
+RentalHealthService.evaluateTires,Pressure severity,no,yes,regex,yes,no,yes,Low pressure critical via /niedrig|low|under|alert/i on warningHints; TPMS via /tpms|druck|pressure/i on alert.type,Replace regex with structured TireAlertCode
+RentalHealthService.evaluateTires,last_updated_at,no,yes,no,no,no,no,Uses latestMeasurementAt (tread) not pressure timestamp,Add pressureFreshnessAt field to read model
+RentalHealthService.evaluateTires,evidence_type,no,yes,no,no,partial,yes,measured if any tread measurement exists even when displayMode=ESTIMATED,Split wearEvidence vs pressureEvidence
+BookingsService,Rental blocking gate,no,yes,no,partial,partial,yes,Blocks only tires.state=critical; same getVehicleHealth path as UI,Align with target policy for estimated critical
+TireCriticalDetector,Business insights,yes,no,partial,no,yes,no,Downgrades CRITICAL to WARNING when displayMode!=MEASURED,Good guard; not used by rental blocking
+rental-health-notification.projector,Notifications,no,yes,no,no,no,partial,Emits TIRE_CRITICAL from rental module state not raw TireHealthSummary.alerts,Dedupe via fingerprint; misses PRESSURE_IMPACT-only alerts
+HealthErrorsView,Frontend Quick Box + Modal,yes,partial,partial,yes,yes,no,Primary summary/detail API; legacy tireWearAnalysis fallback for %; hmTirePressure in modal,Remove legacy fallback; surface pressure timestamp
+VehicleHealthBox,Frontend vehicle detail,yes,partial,partial,partial,partial,partial,Uses rental health for accent when present; local % buckets if missing,Consume canonical overallStatus only
+FleetConditionDetailView,Frontend fleet,yes,no,no,partial,yes,no,Summary+detail on tires category; displayMode pill,OK
+vehicle-insights-logic,Frontend insights,partial,no,yes,no,partial,no,Local TIRE_ACTION_PCT thresholds parallel to canonical status,Migrate to overallStatus
+vehicle-health-box.mapper,Frontend mapper,partial,partial,partial,no,partial,partial,Tire module stubbed in tests; no pressure-specific mapping tests,Add pressure freshness display tests
+DashboardWarningLights,HM TPMS telltale,no,no,yes,yes,no,no,Separate path from TireHealth; tire_pressure_warning from HM statuses,Cross-link with TirePressureContext
+TireRecalculationScheduler,Worker scheduler,no,no,no,no,no,no,Hourly enqueue all ACTIVE setups; jobId hour-bucket dedupe; not in MONITORED_QUEUES,Add queue lag metrics
+TireRecalculationProcessor,Worker processor,indirect,no,no,no,no,no,Calls recalculate() which writes snapshots/events/data-points,Monitor duration; fix data-point leakage before enabling writes
+DataRetentionScheduler,Retention cron,no,no,no,no,no,no,Daily prune tire_health_snapshots if retention>0,OK at 1104kB current size
+DimoSnapshotScheduler,DIMO poll,no,no,no,no,no,no,30s interval; feeds pressure to latest state,OK
