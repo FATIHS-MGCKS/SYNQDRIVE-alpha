@@ -5,8 +5,8 @@
 | **Audit ID** | `tire-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/tire-health-production-readiness-2026-07` |
-| **Phase** | 1 of 7 — Architecture & Code Map |
-| **Status** | Phase 1 complete; Phases 2–7 pending |
+| **Phase** | 2 of 7 — Data Model, Spec Logic & Formula Audit |
+| **Status** | Phases 1–2 complete; Phases 3–7 pending |
 | **Production data modified** | **No** — all VPS/DB/DIMO access was read-only |
 | **Last VPS runtime probe** | 2026-07-16 (read-only SSH) |
 
@@ -55,6 +55,8 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 |----------|------|
 | Main report | `docs/audits/tire-health-production-readiness-2026-07.md` |
 | Code map CSV | `docs/audits/data/tire-health-code-map-2026-07.csv` |
+| Formula factor map CSV | `docs/audits/data/tire-health-formula-factor-map-2026-07.csv` |
+| Spec source map CSV | `docs/audits/data/tire-health-spec-source-map-2026-07.csv` |
 | Audit script (read-only skeleton) | `scripts/audits/audit-tire-health-production-readiness.ts` |
 
 ---
@@ -70,13 +72,13 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 - Preliminary risk register
 - CSV code map
 
-### Phase 2 — Domain model & schema integrity
+### Phase 2 — Domain model, spec logic & formula audit ✅
 
-- Prisma model review (`VehicleTireSetup`, `Tire`, measurements, snapshots, events)
-- Unit consistency (mm, km, %, pressure bar/kPa)
-- Enum / status taxonomy alignment (`tire-status.ts` ↔ DB ↔ API ↔ UI)
-- AI tire spec persistence shape
-- Legacy fields (`vehicleLatestState.tireHealthPercent`)
+- Prisma lifecycle & constraint analysis (15 audit questions)
+- Tire-spec source priority & factor influence table
+- Initial tread / evidence hierarchy (proposed)
+- Full wear-formula reconstruction & example calculation
+- CSV: `tire-health-formula-factor-map-2026-07.csv`, `tire-health-spec-source-map-2026-07.csv`
 
 ### Phase 3 — Wear model & mathematics
 
@@ -366,12 +368,290 @@ Full route list in CSV and `vehicle-intelligence.controller.ts`.
 
 ---
 
-## Phase 2–7 placeholders
+## Phase 2 — Prisma data model & lifecycle
 
-> Sections will be expanded in subsequent audit prompts. Do not treat empty subsections as "no issues found".
+### Models examined
 
-- **Phase 2:** Schema & unit integrity — _pending_
-- **Phase 3:** Wear model mathematics — _pending_
+| Model | Role | Soft delete / history |
+|-------|------|------------------------|
+| `VehicleTireSetup` | Set-level specs, usage counters, health aggregates, AI spec JSON | `removedAt`; status `ACTIVE`/`STORED`/`DISCARDED`/`SOLD` |
+| `Tire` | Per-wheel identity, position, per-tire km, estimated tread | `active=false`, `dismountedAt` |
+| `TirePositionHistory` | Rotation/replace audit trail | Append-only |
+| `VehicleTireTreadMeasurement` | 4-wheel fleet/workshop measurements per setup | Append-only; FK to setup |
+| `TireMeasurement` | Single-wheel measurement on `Tire` row | Append-only |
+| `TireEvent` | Domain events (`ROTATION`, `MEASUREMENT`, `RECALCULATION`, …) | Append-only JSON payload |
+| `TireHealthSnapshot` | Time-series recalc output | Append-only |
+| `TireWearDataPoint` | Regression training pairs per axle | Append-only (no dedupe) |
+| `VehicleLatestState` | DIMO snapshot: `tirePressureFl/Fr/Rl/Rr`, legacy `tireHealthPercent` | Upsert per vehicle |
+
+**Alerts** are not a separate table — computed at read time in `TireHealthService.detectAlerts()` and surfaced via `TireHealthSummary.alerts` / `tire-status.ts` codes.
+
+### Audit questions (15)
+
+| # | Question | Finding |
+|---|----------|---------|
+| 1 | Multiple simultaneous **ACTIVE** setups? | **Possible at DB level.** No `@@unique` on `(vehicleId, status=ACTIVE)`. Service uses `findFirst({ status: ACTIVE, removedAt: null }, orderBy: createdAt desc)` — if two ACTIVE rows exist, **newest wins silently**. |
+| 2 | DB constraints vs service logic? | **Service-only** for single-active invariant, 4-tire completeness, rotation validity. FK cascades exist; business rules are not enforced in PostgreSQL. |
+| 3 | Tire at multiple positions? | **No** while `active=true` — `applyRotation` updates `currentPosition` in one transaction; `replaceAtPosition` deactivates prior tire at position. DB allows duplicate `currentPosition` if service bypassed. |
+| 4 | Fewer/more than four active tires? | **Yes.** `ensureTiresForSetup` creates up to 4 if `existing.length < 4`; stops at `>= 4` without pruning extras. Partial replace can leave mixed-age tires. No hard DB check for exactly 4. |
+| 5 | Staggered setups? | `isStaggered` flag **or** differing `frontDimension`/`rearDimension`. Affects `expectedLifeKmFront/Rear`, width-based life adjustment, rotation template allowlist (`front_to_rear`, `side_swap_only`, `same_axle_swap` only). |
+| 6 | Front/rear axle separation? | **Yes** — separate reference tread (`initialTreadFrontMm`/`Rear`), k-factors, regen factors, pressure factors, regression per axle (`axle` = `front`/`rear`). |
+| 7 | Partial replace & mixed age? | **Supported** — `replaceTires` single/axle replaces `Tire` rows at positions with `referenceNewTreadFront/Rear`; records mixed measurement + `TIRE_CHANGE` event. |
+| 8 | Stored sets? | `status=STORED`, `removedAt` set when archived. `activateStoredSet` flips ACTIVE↔STORED in transaction. |
+| 9 | Cumulative km on re-activate? | **`totalKmOnSet` preserved** on setup row. **`installedAt` and `installedOdometerKm` reset to now** on activation — wear projection without fresh measurement uses **new** install odometer, which can **under/over-project** until next measure. |
+| 10 | Meaning of `installedAt`? | Timestamp of **current mounting period** on vehicle for this setup row — reset on `activateStoredSet`, set on `installTireSet`. Not first-ever tire manufacture date (DOT is separate). |
+| 11 | Separate fields for first mount / period / vehicle / cumulative km? | **Partial.** `installedAt`/`installedOdometerKm` = current period; `totalKmOnSet` + city/highway/rural = cumulative on this setup; `Tire.totalKmOnTire` exists but **trip usage increments setup only** (`updateTireUsageFromTrip`); per-tire km counters on `Tire` not updated from trips. No explicit “first global mount” field. |
+| 12 | Rotation transactional? | **Yes** — `TireIdentityService.applyRotation` uses `prisma.$transaction` for position updates + `TirePositionHistory` rows. |
+| 13 | Events vs position history inconsistent? | **Possible.** `getRotationHistory` groups position history by `changedAt` ISO string matching event `createdAt` — clock skew or missing history row → **empty moves[]** on event. Rotation also creates a **calibration measurement** without k-calibration. |
+| 14 | Soft delete & auditability? | Set archived via `removedAt` + status; tires `active=false`. Events/history/snapshots retained. No row-level delete on measurements. |
+| 15 | Wrong setup for measurement? | **Guarded** — `resolveSetupForMeasurement` checks `tireSetupId` belongs to `vehicleId`; default uses active setup. API caller can target **stored** setup if they pass its id (intentional for historical entry?). |
+| 16 | Org scoped queries? | `organizationId` on setup/tire/events but **not all queries filter org** — vehicle-scoped `vehicleId` is primary gate; multi-tenant relies on vehicle ownership + auth layer. |
+| 17 | Stored/archived sets in wear calc? | **No** — `computeWearAnalysis` filters `status: ACTIVE, removedAt: null`. Scheduler selects ACTIVE setups only. |
+
+### Lifecycle state machine
+
+```mermaid
+stateDiagram-v2
+  [*] --> NEW: installTireSet / upsertSetup\n(NEW_INSTALLED)
+  NEW --> ACTIVE: default status ACTIVE
+  ACTIVE --> ROTATED: rotateTires\n(+ calibration measure)
+  ACTIVE --> PARTIAL_REPLACEMENT: replaceTires single/axle
+  ACTIVE --> FULL_REPLACEMENT: replaceTires full_set
+  ACTIVE --> STORED: archive on install\nor activateStoredSet swap
+  STORED --> REACTIVATED: activateStoredSet\n(installedAt reset)
+  REACTIVATED --> ACTIVE: status ACTIVE
+  ACTIVE --> REMOVED: removedAt + DISCARDED/SOLD
+  PARTIAL_REPLACEMENT --> ACTIVE: same setup id
+  FULL_REPLACEMENT --> ACTIVE: new setup id
+  ROTATED --> ACTIVE: same setup id
+  ACTIVE --> RETIRED: Tire.active=false\n(dismount/replace)
+```
+
+| State | Code anchor | Persistence |
+|-------|-------------|-------------|
+| NEW | `TireSetupCondition.NEW_INSTALLED` | setup + 4 `Tire` rows |
+| ACTIVE | `TireSetupStatus.ACTIVE` | `removedAt=null` |
+| STORED | `TireSetupStatus.STORED` | `removedAt` set |
+| REMOVED | `DISCARDED`/`SOLD` + `removedAt` | no recalc |
+| REACTIVATED | `activateStoredSet` | `installedAt` overwritten |
+| PARTIAL_REPLACEMENT | `replaceTires` scope single/axle | `Tire` identity swap |
+| FULL_REPLACEMENT | `installTireSet` / full_set | new setup row |
+| ROTATED | `applyRotation` + `ROTATION` event | position history |
+| RETIRED | `dismountAllForSetup` / replace | `Tire.active=false` |
+
+---
+
+## Phase 2 — Tire spec audit
+
+### Source priority (central & deterministic)
+
+Implemented in `tire-health.config.ts`:
+
+**Reference new tread** (`resolveReferenceNewTread`):
+
+1. `manual_confirmed` — both `initialTreadFrontMm` and `initialTreadRearMm` (or `initialTreadDepthMm` for both)
+2. `ai_spec` — `aiTireSpec.newTreadDepthMm` if 4 < mm ≤ 16 (applies to missing axle manual values)
+3. `archetype_default` — `archetypeDefaults[archetype].newTreadMm` if archetype ≠ `default`
+4. `season_fallback` — `defaultInitialTreadFallbackMm` = **8.0 mm**
+
+**Operational replacement** (`resolveReplacementThreshold`):
+
+1. `spec_operational` → 2. `spec_recommended` → 3. archetype/season `replaceMm` → 4. `legal_minimum` path via season config
+
+**AI spec normalization** (`ai-tire-spec-normalizer.ts`): clamps numerics; invalid enums → null; **never invents** values.
+
+### Spec audit answers
+
+| # | Topic | Result |
+|---|-------|--------|
+| 1 | Conflict winner | Strict priority above; manual tread beats AI for reference; AI never sets **current** tread for mounted used tires in wear model |
+| 2 | Central deterministic? | **Yes** — `tire-health.config.ts` + `parseAiTireSpec` |
+| 3 | AI labeled? | UI: “AI Tire Spec matched” when `tireSpecMatched`; `specSourceType` in JSON. **Gap:** `buildPersistedAiTireSpec` sets `userConfirmedSpec: true` automatically on AI apply |
+| 4 | `userConfirmedSpec` respected? | Adds +30 to `tireSpecConfidence` in `computeConfidence`; **does not gate** use of AI numeric fields in `resolveReferenceNewTread` |
+| 5 | Revision-safe sources? | `jobId`, `fetchedAt`, `normalizedAt` in JSON; re-apply **overwrites** blob; URLs stored but no version chain |
+| 6 | Wrong AI match impact? | Can shift `expectedLifeKm` ±30%+ via `longevityBias`, behavior/heat/pressure sensitivities, reference new tread → **health % and remaining km** |
+| 7 | Front/rear separate? | **Yes** — dimensions, initial tread, k-factor, regen, pressure, regression per axle |
+| 8 | Different models per axle? | **Partial** — `brandModelFront`/`Rear` columns; single `aiTireSpec` blob (one matched model) |
+| 9 | Fields affecting calculation | See factor table below + CSV |
+| 10 | Display-only / unused | `urbanBias`, `highwayBias` stored **not used** in wear; load/speed index → confidence only |
+| 11 | Unused UI fields? | HM/DIMO pressure status strings partially; archetype variants |
+| 12 | Factors justified? | Config documents DACH-centric season bands; behavior anchors empirical; some coefficients appear **tuned constants** without external citation |
+| 13 | Plausible ranges enforced? | AI normalizer clamps tread 4–16 mm, sensitivities 0–2; manual registration **not clamped** at API layer |
+| 14 | Missing/contradictory spec? | Falls back archetype → 8 mm reference; factors default to 1.0; confidence drops |
+| 15 | Unrealistic new tread from spec? | Clamped 4–16 on AI; manual path **unbounded** at persistence |
+
+### Factor influence table
+
+| Faktor | Quelle | Default | Wertebereich | Einfluss | Confidence-Auswirkung | Risiko |
+|--------|--------|---------|--------------|----------|----------------------|--------|
+| Reference new tread | manual → AI → archetype → 8 mm | 8.0 mm | 4–16 (AI clamp) | Basis für % health & usable mm | +20 data if manual initial | **Hoch** wenn nur Fallback |
+| Operational replace | spec op → rec → archetype | 3.0 mm | ≥1.6 | Usable band, remaining km | indirekt | Hoch |
+| Expected life km | archetype × longevityBias | 38000 | archetype min/max clamp | Basis wear rate | modelConfidence | Mittel |
+| Axle factor | drivetrain + steering + load | 1.03 | 0.88–1.22 | Multiplikativ wear | gering | Niedrig |
+| Usage factor | DrivingImpact city/hwy/country | 1.0 | 0.93–1.15 | Multiplikativ | +10 data if impact | Mittel |
+| Behavior factor | stress scores × AI sensitivity | 1.0 | 0.97–1.35 | Multiplikativ | +10 driving impact | Hoch |
+| Heat stress | temp + speed + pressure + driving | 1.0 | 0.98–1.12 | Multiplikativ | gering | Mittel |
+| Pressure factor | DIMO/HM bar vs nominal | 1.0 | 1.00–1.18 | Multiplikativ | +3 pressure; −3 stale | **Hoch** (unit/coverage) |
+| Load factor | curb weight × payloadBias | 1.0 | 0.97–1.15 | Multiplikativ | gering | Niedrig |
+| Season mismatch | calendar temp vs tire season | 1.0 | 1.00–1.10 | Multiplikativ | gering | Mittel |
+| Interaction penalty | compound stressors | 1.0 | 1.00–1.08 | Multiplikativ | gering | Mittel |
+| Regen factor | EV/Hybrid axle table | 1.0 | 0.78–1.0 | Reduziert wear | gering | Mittel |
+| k-factor | EMA calibration | 1.0 | 0.75–1.30 | Multiplikativ | +5 stabilized | Mittel |
+| Staggered width adj | tire width mm | 1.0 | 0.75–1.15 | Scales life km | gering | Niedrig |
+| Regression blend | TireWearDataPoint history | off | 0–100% blend | Tread projection | regressionConfidence | Mittel |
+| Set health blend | min/avg wheel % | — | 0–100 | 55% min + 45% avg | — | Mittel (hides single bad tire) |
+| Remaining km discount | confidence label | 1.0 | 0.75–1.0 | Scales remaining km | explicit | Mittel |
+
+---
+
+## Phase 2 — Initial tread depth & evidence
+
+### Actual priority in code (current tread)
+
+| Priority | Mechanism | `TreadSource` / storage |
+|----------|-----------|-------------------------|
+| 1 | Latest `VehicleTireTreadMeasurement` | `manual_measurement` |
+| 2 | Measurement + odometer projection | `calibration_projection` |
+| 3 | No measurement: reference tread − km-driven wear | `initial_manual_plus_wear` |
+| 4 | Identity backfill literal | **8.0 mm** on `Tire.initialTreadDepthMm` (not a separate source enum) |
+
+**Reference new tread** (for % denominators) uses separate priority — see above.
+
+### Field mapping
+
+| Field | Meaning | Risk |
+|-------|---------|------|
+| `initialTreadDepthMm` / `Front` / `Rear` | User-supplied baseline at setup | May be null → fallback chain |
+| `Tire.initialTreadDepthMm` | Identity row at mount | **8 mm hardcoded** in `ensureTiresForSetup` lines 92–97 |
+| `Tire.estimatedTreadMm` | Model output / mount copy | Updated on replace/rotation |
+| `referenceNewTreadMm` | Persisted front reference on recalc | From `resolveReferenceNewTread` |
+| `initialTreadSource` on setup | **Misleading** — written from `currentTreadSource` on recalc | Name ≠ semantics |
+| `currentTreadSource` in explainability | `manual_measurement` / `calibration_projection` / `initial_manual_plus_wear` / `fallback_estimate` | Drives UI display mode |
+| Measurement `source` | `manual`, `workshop`, `ai_confirmed`, `calibration` | Mapped in lifecycle |
+
+### Confirmed: 8 mm fallback (`ensureTiresForSetup`)
+
+```typescript
+// tire-identity.service.ts:92-97
+const frontTread = ... ?? args.setup.initialTreadDepthMm ?? 8;
+const rearTread = ... ?? args.setup.initialTreadDepthMm ?? frontTread;
+```
+
+- **Still exists** (2026-07 audit)
+- Stored as `Tire.initialTreadDepthMm` and `estimatedTreadMm` at creation — **looks like measured data**
+- **Not** written to `VehicleTireTreadMeasurement` — wear model may use `initial_manual_plus_wear` from reference tread, not per-tire row
+- **Confidence:** setup without manual initial still gets +20 `initialTreadExists` if column populated later; 8 mm tire rows do not trigger measurement bonuses
+- **UI:** `resolveDisplayMode` → `ESTIMATED` unless measurement exists; **tire row mm values display as numeric fact**
+
+### Proposed evidence hierarchy (not implemented — audit target state)
+
+| Rank | Code | Description |
+|------|------|-------------|
+| 1 | `MEASURED` | User/operator tread gauge, recent |
+| 2 | `WORKSHOP_DOCUMENTED` | Workshop measurement + optional document |
+| 3 | `MANUFACTURER_CONFIRMED` | OEM/spec sheet confirmed by user |
+| 4 | `USER_CONFIRMED` | User confirmed spec/tread without workshop doc |
+| 5 | `AI_ESTIMATED` | AI tire spec agent output |
+| 6 | `MODEL_ESTIMATED` | Wear model projection from odometer |
+| 7 | `DEFAULT_ASSUMPTION` | Archetype / 8 mm / season fallback |
+| 8 | `UNKNOWN` | No usable signal |
+
+---
+
+## Phase 2 — Formula audit
+
+### Master wear equation (V2)
+
+From `TireWearModelService.computeWearAnalysis`:
+
+```
+usableAxle = referenceNewTreadAxle − operationalReplacementMm
+baseWearMmPerKmAxle = usableAxle / expectedLifeKmAxle   (× staggeredWidthAdj)
+
+effectiveWearMmPerKmAxle = baseWearMmPerKmAxle
+  × axleFactorAxle
+  × usageFactor
+  × behaviorFactor
+  × temperatureFactor      (heat stress composite)
+  × pressureFactorAxle
+  × loadFactor
+  × seasonMismatchFactor
+  × kFactorAxle
+  × regenFactorAxle
+  × interactionPenalty
+
+effectiveWearRateKmPerMmAxle = 1 / effectiveWearMmPerKmAxle
+
+projectedTread = anchorTread − (kmSinceAnchor / effectiveWearRateKmPerMm)
+```
+
+**Percent health (wheel):** `(treadMm − operationalReplacement) / (referenceNew − operationalReplacement) × 100`
+
+**Set health:** `0.55 × min(wheel%) + 0.45 × avg(wheel%)`
+
+**Remaining km:** `(lowestTread − operationalReplacement) / max(effectiveWearFront, effectiveWearRear)` then × confidence discount
+
+### Explicit checks (17)
+
+| # | Topic | Status |
+|---|-------|--------|
+| 1 | kPa/bar/PSI | Pressure compared as **bar** (`nominalPressureBar=2.5` or `maxInflationKpa/100×0.9`). DIMO/HM stored values assumed bar — **no unit conversion at ingest** → **P1 risk** if provider sends kPa |
+| 2 | km vs m | Distances in **km** throughout |
+| 3 | mm/1000km vs km/mm | Display `wearRateMmPer1000km = 1000/effectiveRate`; internally km/mm |
+| 4 | Percent 0–1 vs 0–100 | **0–100** integer percents in API |
+| 5 | Negative wear rates | Regression requires `slope < 0`; projection clamps tread `max(0, …)` |
+| 6 | Odometer rollback | **Not guarded** — negative `kmSince` skips projection but does not alert |
+| 7 | Unrealistic remaining km | Capped implicitly by tread floor 0; no upper cap (999999 rate fallback) |
+| 8 | Double confidence discount | Legacy score + `remainingKmConfidenceDiscount` — **single apply** on remaining km only |
+| 9 | Front/rear swap | Separate axle pipelines; rotation updates positions before measure |
+| 10 | FL/FR/RL/RR mapping | `BACK_LEFT` alias → `RL`; DB enums `FRONT_LEFT` etc. |
+| 11 | Staggered rotation | Template allowlist enforced in `rotateTires` |
+| 12 | Legal vs operational | **Separated** — `classifyTreadStatus` uses legal 1.6; model uses operational replace |
+| 13 | Model tread < 0 | Clamped `max(0, …)` |
+| 14 | Model tread > new | Measurement path uses measured; regression filters `actual > initial+1` |
+| 15 | Critical single tire hidden | **Partially** — set health uses 55% min weight but alerts per wheel |
+| 16 | Calendar season vs temperature | **Both** — month calendar in `classifySeasonStatus`; trip temp in wear + season mismatch |
+| 17 | Regen + load double count | Regen reduces wear; load factor separate — **possible overlap** with EV braking in behavior scores (not quantified) |
+
+### Example calculation (anonymized, plausible)
+
+**Inputs:** Summer touring; reference new 8.0 mm; operational replace 3.0 mm → usable 5.0 mm; expected life 40 000 km; base wear = 5/40000 = **0.000125 mm/km**. Factors: axleF 1.08, usage 1.05, behavior 1.08, heat 1.03, pressure 1.0, load 1.02, season 1.0, k 1.0, regen 1.0, interaction 1.0.
+
+```
+effectiveWearFront = 0.000125 × 1.08 × 1.05 × 1.08 × 1.03 × 1.0 × 1.02 × 1.0 × 1.0 × 1.0 × 1.0
+                   ≈ 0.000154 mm/km
+rateFront ≈ 6494 km/mm
+
+After 5000 km since measurement at 6.5 mm:
+projected = 6.5 − 5000/6494 ≈ 5.73 mm
+wheel% = (5.73−3)/(8−3)×100 ≈ 55%
+```
+
+Full factor-level detail: **`docs/audits/data/tire-health-formula-factor-map-2026-07.csv`**
+
+---
+
+## Phase 2 — P0/P1 findings (new)
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| **P0-TH-01** | P0 | `ensureTiresForSetup` **8 mm hard fallback** creates `Tire` rows appearing as real tread; poisons identity baseline |
+| **P0-TH-02** | P0 | No DB uniqueness on **one ACTIVE setup per vehicle** — duplicate ACTIVE possible |
+| **P1-TH-01** | P1 | `activateStoredSet` resets `installedAt`/`installedOdometerKm` but keeps `totalKmOnSet` — projection window inconsistent |
+| **P1-TH-02** | P1 | `initialTreadSource` column stores **current** tread source, not initial mount provenance |
+| **P1-TH-03** | P1 | `urbanBias` / `highwayBias` in AI spec **unused** in calculation |
+| **P1-TH-04** | P1 | `buildPersistedAiTireSpec` forces `userConfirmedSpec: true` on AI apply |
+| **P1-TH-05** | P1 | Tire pressure **unit not validated** at DIMO ingest (bar assumed) |
+| **P1-TH-06** | P1 | `TireWearDataPoint` **appended every recalc** without dedupe (confirmed Phase 1 R-TH-04) |
+| **P1-TH-07** | P1 | `updateTireUsageFromTrip` increments **setup only**, not `Tire.totalKmOnTire` |
+
+---
+
+## Phase 3–7 placeholders
+
+> Sections will be expanded in subsequent audit prompts.
+
+- **Phase 3:** Wear model deep-dive & edge-case replay — _pending_
 - **Phase 4:** Telemetry & idempotency — _pending_
 - **Phase 5:** Production data replay — _pending_
 - **Phase 6:** Integrations & UX — _pending_
@@ -398,12 +678,13 @@ npx ts-node -r tsconfig-paths/register scripts/audits/audit-tire-health-producti
 | Date | Phase | Action |
 |------|-------|--------|
 | 2026-07-16 | 1 | Initial architecture map, VPS probe, CSV, audit script skeleton |
+| 2026-07-16 | 2 | Data model Q&A, spec priority, formula audit, factor/spec CSVs, P0/P1 register |
 
 ---
 
 ## Confirmation
 
-- ✅ No production data was modified during Phase 1.
+- ✅ No production data was modified during Phases 1–2.
 - ✅ No secrets, VINs, license plates, or GPS coordinates are stored in committed audit artifacts.
-- ✅ VPS PostgreSQL queries were aggregate counts only.
-- ⏸ Phase 2 not started per audit plan.
+- ✅ VPS PostgreSQL queries were aggregate counts only (Phase 1).
+- ✅ Phase 2 complete; Phase 3 not started per audit plan.
