@@ -774,5 +774,25 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.canonical.capabilities.supportedMeasurementTypes.length).toBeGreaterThan(0);
     expect(summary?.canonical.legacy.collapsed).toBe(true);
     expect(summary?.canonical.dataQuality.staleReasons).toEqual([]);
+    expect(summary?.canonical.dataQuality.namedFreshnessSlices.liveVoltageFreshness.freshnessState).toBe('FRESH');
+    expect(summary?.canonical.dataQuality.namedFreshnessSlices.providerSohFreshness?.freshnessState).toBe('FRESH');
+    expect(summary?.canonical.dataQuality.namedFreshnessSlices.hvSessionFreshness?.freshnessState).toBe('FRESH');
+    expect(summary?.canonical.liveState.lv.signals.voltageV.freshness.providerDelayMs).not.toBeNull();
+    expect(summary?.canonical.dataQuality.errors.every((error) => !error.labelDe.includes('Bearer'))).toBe(true);
+  });
+
+  it('keeps stale HV provider SOH value visible when fetch is fresh', async () => {
+    const { svc, batteryEvidenceService } = buildService();
+    batteryEvidenceService.getLatest.mockResolvedValue({
+      numericValue: 82,
+      observedAt: new Date('2026-01-01T10:00:00.000Z'),
+      sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.canonical.liveState.hv.signals.providerSohPercent.value).toBe(82);
+    expect(summary?.canonical.liveState.hv.signals.providerSohPercent.freshness.freshnessState).toBe('STALE');
+    expect(summary?.canonical.liveState.hv.freshness.socPercent.freshnessState).toBe('FRESH');
+    expect(summary?.lv.fetchFreshness?.fetchState).toBe('FRESH');
   });
 });

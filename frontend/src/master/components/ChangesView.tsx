@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-signal-freshness-contract-v49560-2026-07-17',
+    version: '4.9.560',
+    title: 'V4.9.560 — Battery Signal Freshness & Error Contract (Prompt 60/78)',
+    summary: [
+      'Signalbezogener Freshness-Vertrag: observedAt, receivedAt, ageMs, freshnessState, providerDelayMs, source pro relevantem Wert.',
+      'Benannte Slices: liveVoltage, restMeasurement, startProxy, assessment, publication, providerSoh, hvSession Freshness.',
+      'Strukturierte Fehlercodes: PROVIDER_ERROR, QUERY_TIMEOUT, CAPABILITY_UNAVAILABLE, UNSUPPORTED, NO_MEASUREMENT, STALE, INTERNAL_ERROR.',
+      'Regeln: API-Fehler nicht zu null; frischer Fetch macht alten observedAt-Wert nicht fresh; keine Secrets/Stacktraces; Partial Response bei Modulfehlern.',
+      'Canonical DTO: liveState.freshness + liveState.signals; dataQuality.namedFreshnessSlices + errors[].',
+    ],
+    reason: 'Prompt 60/78: vollständiger Freshness-/Fehlervertrag für Battery-Consumer.',
+    previousBehavior: 'Domain-level observationFreshness ohne per-value Envelope; errors: [].',
+    details:
+      'battery-signal-freshness.contract.*, canonical-battery-signal-freshness.builder.*, canonical-battery-health.service.ts, docs/architecture/battery-signal-freshness-contract.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T19:30:00.000Z',
+  },
+  {
     id: 'canonical-battery-dto-v49559-2026-07-17',
     version: '4.9.559',
     title: 'V4.9.559 — Canonical Battery DTO (Prompt 59/78)',

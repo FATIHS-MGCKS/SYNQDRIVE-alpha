@@ -25,6 +25,8 @@ import {
   type CanonicalBatteryLiveStatus,
   type CanonicalBatteryUnsupportedMeasurement,
 } from './canonical-battery.types';
+import type { BatterySignalError } from '../battery-signal-freshness.contract';
+import type { CanonicalBatterySignalFreshnessResult } from './canonical-battery-signal-freshness.builder';
 import { BATTERY_MEASUREMENT_TYPES } from '../battery-v2-domain';
 
 export interface CanonicalBatteryHvChargeSessionInput {
@@ -95,8 +97,10 @@ export interface CanonicalBatteryBuildInput {
     hvFreshnessBundle: BatteryDomainFreshnessBundle | null;
     staleReasons: string[];
     unsupportedReasons: string[];
-    errors: string[];
+    errors: BatterySignalError[];
+    namedFreshnessSlices: CanonicalBatteryDto['dataQuality']['namedFreshnessSlices'];
   };
+  signalFreshness: CanonicalBatterySignalFreshnessResult;
   legacy: CanonicalBatteryDto['legacy'];
 }
 
@@ -194,6 +198,8 @@ export function buildCanonicalBatteryDto(
         observedAt: input.lvLive.observedAt,
         receivedAt: input.lvLive.receivedAt,
         status: input.lvStatus,
+        freshness: input.signalFreshness.live.lv,
+        signals: input.signalFreshness.lvSignals,
         values: {
           voltageV: input.lvLive.voltageV,
           voltageSource: input.lvLive.voltageSource,
@@ -208,6 +214,8 @@ export function buildCanonicalBatteryDto(
         observedAt: input.hvLive.observedAt,
         receivedAt: input.hvLive.receivedAt,
         status: input.hvStatus,
+        freshness: input.signalFreshness.live.hv,
+        signals: input.signalFreshness.hvSignals,
         values: {
           socPercent: input.hvLive.socPercent,
           rangeKm: input.hvLive.rangeKm,

@@ -4,6 +4,8 @@ import {
   BatteryDriveProfile,
 } from '../battery-v2-domain';
 import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
+import { buildObservationFreshness } from '../battery-freshness.policy';
+import { BATTERY_SIGNAL_FRESHNESS_THRESHOLDS_MS } from '../battery-signal-freshness.contract';
 import {
   buildCanonicalBatteryDto,
   collectStaleReasons,
@@ -13,6 +15,7 @@ import {
   mapLiveStatusFromLegacy,
   mapSohGateAssessmentRow,
 } from './canonical-battery.builder';
+import { buildCanonicalBatterySignalFreshness } from './canonical-battery-signal-freshness.builder';
 import { CANONICAL_BATTERY_RESOLVER_VERSION } from './canonical-battery.types';
 import type { CanonicalLvBatteryResponse } from '../lv-canonical/lv-canonical-battery.types';
 import type { HvMethodProfile } from '../hv-method-profile/hv-method-profile.types';
@@ -83,6 +86,86 @@ describe('canonical-battery.builder', () => {
   } as unknown as HvMethodProfile;
 
   it('builds canonical battery DTO with liveState, lv, hv, capabilities, dataQuality, legacy', () => {
+    const lvLive = {
+      voltageV: 12.5,
+      voltageSource: 'live_telemetry' as const,
+      temperatureC: 20,
+      restingVoltageV: 12.4,
+      crankingVoltageV: null,
+      chargingVoltageV: null,
+      engineRunning: false,
+      observedAt: now.toISOString(),
+      receivedAt: now.toISOString(),
+    };
+    const hvLive = {
+      socPercent: 72,
+      rangeKm: 280,
+      currentEnergyKwh: 52,
+      grossCapacityKwh: 76,
+      addedEnergyKwh: 4,
+      chargingPowerKw: 11,
+      currentVoltageV: 360,
+      temperatureC: 24,
+      isCharging: true,
+      chargingCableConnected: true,
+      providerSohPercent: 88,
+      observedAt: now.toISOString(),
+      receivedAt: now.toISOString(),
+    };
+    const signalFreshness = buildCanonicalBatterySignalFreshness({
+      now,
+      receivedAt: now,
+      lvValues: lvLive,
+      hvValues: hvLive,
+      lvVoltageObservedAt: now,
+      lvSnapshotObservedAt: now,
+      hvAggregateObservedAt: now,
+      providerSohObservedAt: now,
+      restMeasurementObservedAt: now,
+      startProxyObservedAt: null,
+      assessmentObservedAt: now,
+      publicationObservedAt: now,
+      hvSessionObservedAt: null,
+      lvObservationFreshness: buildObservationFreshness({
+        observedAt: now,
+        maxAgeMs: BATTERY_SIGNAL_FRESHNESS_THRESHOLDS_MS.lvLiveObservation,
+        now,
+        hasValueCarrier: true,
+      }),
+      lvRestMeasurementFreshness: buildObservationFreshness({
+        observedAt: now,
+        maxAgeMs: BATTERY_SIGNAL_FRESHNESS_THRESHOLDS_MS.restMeasurementObservation,
+        now,
+        hasValueCarrier: true,
+      }),
+      lvStartProxyFreshness: buildObservationFreshness({
+        observedAt: null,
+        maxAgeMs: BATTERY_SIGNAL_FRESHNESS_THRESHOLDS_MS.startProxyObservation,
+        now,
+        hasValueCarrier: false,
+      }),
+      lvAssessmentFreshness: buildObservationFreshness({
+        observedAt: now,
+        maxAgeMs: BATTERY_SIGNAL_FRESHNESS_THRESHOLDS_MS.assessmentObservation,
+        now,
+        hasValueCarrier: true,
+      }),
+      lvPublicationFreshness: buildObservationFreshness({
+        observedAt: now,
+        maxAgeMs: BATTERY_SIGNAL_FRESHNESS_THRESHOLDS_MS.publicationObservation,
+        now,
+        hasValueCarrier: true,
+      }),
+      providerSohObservationFreshness: buildObservationFreshness({
+        observedAt: now,
+        maxAgeMs: BATTERY_SIGNAL_FRESHNESS_THRESHOLDS_MS.providerSohObservation,
+        now,
+        hasValueCarrier: true,
+      }),
+      hvSessionObservationFreshness: null,
+      isEv: true,
+    });
+
     const dto = buildCanonicalBatteryDto({
       organizationId: 'org-1',
       vehicleId: 'veh-1',
@@ -93,32 +176,8 @@ describe('canonical-battery.builder', () => {
       lvCanonical,
       lvStatus: mapLiveStatusFromLegacy('ready'),
       hvStatus: mapLiveStatusFromLegacy('ready'),
-      lvLive: {
-        voltageV: 12.5,
-        voltageSource: 'live_telemetry',
-        temperatureC: 20,
-        restingVoltageV: 12.4,
-        crankingVoltageV: null,
-        chargingVoltageV: null,
-        engineRunning: false,
-        observedAt: now.toISOString(),
-        receivedAt: now.toISOString(),
-      },
-      hvLive: {
-        socPercent: 72,
-        rangeKm: 280,
-        currentEnergyKwh: 52,
-        grossCapacityKwh: 76,
-        addedEnergyKwh: 4,
-        chargingPowerKw: 11,
-        currentVoltageV: 360,
-        temperatureC: 24,
-        isCharging: true,
-        chargingCableConnected: true,
-        providerSohPercent: 88,
-        observedAt: now.toISOString(),
-        receivedAt: now.toISOString(),
-      },
+      lvLive,
+      hvLive,
       hvProviderSoh: {
         percent: 88,
         source: 'PROVIDER',
@@ -176,7 +235,9 @@ describe('canonical-battery.builder', () => {
         staleReasons: [],
         unsupportedReasons: [],
         errors: [],
+        namedFreshnessSlices: signalFreshness.namedSlices,
       },
+      signalFreshness,
       legacy: {
         collapsed: true,
         lvDiagnostic: null,
@@ -190,7 +251,10 @@ describe('canonical-battery.builder', () => {
     expect(dto.resolverVersion).toBe(CANONICAL_BATTERY_RESOLVER_VERSION);
     expect(dto.liveState.lv.values.voltageV).toBe(12.5);
     expect(dto.hv?.chargingState.state).toBe('charging');
-    expect(dto.lv.canonical.primaryTruth.estimatedHealthScore).toBe(80);
+    expect(dto.liveState.lv.freshness.voltageV.freshnessState).toBe('FRESH');
+    expect(dto.dataQuality.namedFreshnessSlices.liveVoltageFreshness.source).toBe(
+      'LIVE_TELEMETRY',
+    );
     expect(dto.capabilities.policy.driveProfile).toBe(BatteryDriveProfile.BEV);
     expect(dto.legacy.collapsed).toBe(true);
   });

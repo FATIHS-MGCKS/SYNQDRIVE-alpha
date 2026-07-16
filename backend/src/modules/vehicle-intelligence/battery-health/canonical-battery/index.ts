@@ -1,3 +1,10 @@
+export {
+  buildCanonicalBatterySignalFreshness,
+  collectCapabilitySignalErrors,
+  type CanonicalBatteryLiveSignalFreshness,
+  type CanonicalBatterySignalFreshnessInput,
+  type CanonicalBatterySignalFreshnessResult,
+} from './canonical-battery-signal-freshness.builder';
 export * from './canonical-battery.types';
 export {
   buildCanonicalBatteryDto,

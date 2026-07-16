@@ -6,6 +6,12 @@ import type {
   FetchFreshness,
   ObservationFreshness,
 } from '../battery-freshness.policy';
+import type {
+  BatteryNamedFreshnessSlices,
+  BatterySignalEnvelope,
+  BatterySignalError,
+  BatterySignalFreshness,
+} from '../battery-signal-freshness.contract';
 import type { HvMethodProfile } from '../hv-method-profile/hv-method-profile.types';
 import type {
   CanonicalLvBatteryResponse,
@@ -38,6 +44,13 @@ export interface CanonicalBatteryLiveScopeState {
   observedAt: string | null;
   receivedAt: string | null;
   status: CanonicalBatteryLiveStatus;
+  freshness: Record<string, BatterySignalFreshness>;
+  signals: Record<string, BatterySignalEnvelope<unknown>>;
+}
+
+export interface CanonicalBatteryLiveState {
+  lv: CanonicalBatteryLiveScopeState & { values: CanonicalBatteryLvLiveValues };
+  hv: CanonicalBatteryLiveScopeState & { values: CanonicalBatteryHvLiveValues };
 }
 
 export interface CanonicalBatteryLvLiveValues {
@@ -62,11 +75,6 @@ export interface CanonicalBatteryHvLiveValues {
   isCharging: boolean | null;
   chargingCableConnected: boolean | null;
   providerSohPercent: number | null;
-}
-
-export interface CanonicalBatteryLiveState {
-  lv: CanonicalBatteryLiveScopeState & { values: CanonicalBatteryLvLiveValues };
-  hv: CanonicalBatteryLiveScopeState & { values: CanonicalBatteryHvLiveValues };
 }
 
 export interface CanonicalBatteryLvSection {
@@ -180,9 +188,10 @@ export interface CanonicalBatteryDataQuality {
   observationFreshness: ObservationFreshness | null;
   lvFreshnessBundle: BatteryDomainFreshnessBundle | null;
   hvFreshnessBundle: BatteryDomainFreshnessBundle | null;
+  namedFreshnessSlices: BatteryNamedFreshnessSlices;
   staleReasons: string[];
   unsupportedReasons: string[];
-  errors: string[];
+  errors: BatterySignalError[];
 }
 
 export interface CanonicalBatteryLegacySection {
