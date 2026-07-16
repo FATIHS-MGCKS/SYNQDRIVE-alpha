@@ -1291,6 +1291,7 @@ model Organization {
   misuseCases                       MisuseCase[]
   vehicleDrivingCapabilities        VehicleDrivingCapability[]
   tripAssessabilities               TripAssessability[]
+  drivingEvidence                   DrivingEvidence[]
   orgInvoices                       OrgInvoice[]
   userAccountPreferences            UserAccountPreference[]
   userNotificationPreferences       UserNotificationPreference[]
@@ -1775,6 +1776,7 @@ model Vehicle {
   billingQuantityEvents             BillingQuantityEvent[]
   vehicleDrivingCapabilities        VehicleDrivingCapability[]
   tripAssessabilities               TripAssessability[]
+  drivingEvidence                   DrivingEvidence[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -6302,6 +6304,7 @@ model VehicleTrip {
   behaviorEvents       TripBehaviorEvent[]
   misuseCases          MisuseCase[]
   tripAssessabilities  TripAssessability[]
+  drivingEvidence      DrivingEvidence[]
   repairs              TripRepair[]
   rpmWebhookCandidates RpmWebhookCandidate[]
 
@@ -6537,17 +6540,16 @@ enum DrivingAssessabilityStatus {
   NOT_ASSESSABLE
 }
 
-/// Normalized evidence provenance for `driving_evidence` (aligned with, not replacing, `MisuseEvidenceSourceType`).
+/// Central evidence provenance kind (Driving Intelligence V2 P15).
+/// Replaces the unused P12 placeholder values — no columns referenced the prior set.
 enum DrivingEvidenceSourceType {
-  PROVIDER_TELEMETRY_EVENT
-  HF_BEHAVIOR_EVENT
-  MISUSE_CASE
-  MISUSE_CASE_EVIDENCE
-  EVENT_CONTEXT_ASSESSMENT
-  VEHICLE_TRIP_COUNTER
+  MEASURED_SIGNAL
+  PROVIDER_CLASSIFIED_EVENT
+  RECONSTRUCTED_EVENT
+  ESTIMATED_PROXY
+  CONTEXT_SIGNAL
   MANUAL_VERIFIED
-  DERIVED_PATTERN
-  RENTAL_PERIOD_AGGREGATE
+  WORKSHOP_VERIFIED
 }
 
 /// Publication / conduct eligibility strength for V2 evidence and summaries.
@@ -6713,6 +6715,52 @@ model TripAssessability {
   @@index([tripId, dimension])
   @@index([tripId, status])
   @@map("trip_assessabilities")
+}
+
+/// Immutable normalized evidence index — references source rows, never full provider payloads (P15).
+model DrivingEvidence {
+  id             String                    @id @default(uuid())
+  organizationId String                    @map("organization_id")
+  vehicleId      String                    @map("vehicle_id")
+  tripId         String?                   @map("trip_id")
+  bookingId      String?                   @map("booking_id")
+  customerId     String?                   @map("customer_id")
+  dimension      DrivingAnalysisDimension? @map("dimension")
+  analysisRunId  String?                   @map("analysis_run_id")
+
+  sourceType         DrivingEvidenceSourceType @map("source_type")
+  strength           DrivingEvidenceStrength
+  observedAt         DateTime                  @map("observed_at")
+  providerSource     String                    @map("provider_source")
+  capabilityVersion  String                    @map("capability_version")
+  modelVersion       String                    @map("model_version")
+  coverage           Float?                    @map("coverage")
+  effectiveCadenceMs Int?                      @map("effective_cadence_ms")
+  p95CadenceMs       Int?                      @map("p95_cadence_ms")
+  /// Detector or classifier confidence in [0, 1] when applicable.
+  confidence         Float?                    @map("confidence")
+  /// Pointer to canonical source row — not a payload copy.
+  sourceEntityJson   Json                      @map("source_entity_json")
+  /// Bounded operational context — no raw provider payloads.
+  contextJson        Json?                     @map("context_json")
+  idempotencyKey     String                    @map("idempotency_key")
+  /// False for CONTEXT_SIGNAL and other context-only rows that cannot alone justify misuse.
+  misuseCaseEligible Boolean                   @default(true) @map("misuse_case_eligible")
+  contractVersion    String                    @map("contract_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId])
+  @@index([vehicleId, observedAt])
+  @@index([tripId, dimension])
+  @@index([sourceType, observedAt])
+  @@index([analysisRunId])
+  @@map("driving_evidence")
 }
 
 model MisuseCase {
