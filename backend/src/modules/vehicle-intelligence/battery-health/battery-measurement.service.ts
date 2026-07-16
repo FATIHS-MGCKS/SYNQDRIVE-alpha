@@ -11,8 +11,8 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DriveProfileResolverService } from '../drive-profile/drive-profile-resolver.service';
-import { guardLvMeasurementQualityForProfile } from '../drive-profile/drive-profile-resolver';
+import { BatteryPolicyProfileService } from '../battery-policy-profile/battery-policy-profile.service';
+import { guardMeasurementQualityForPolicy } from '../battery-policy-profile/battery-policy-profile.resolver';
 import { type BatteryMeasurementType as BatteryMeasurementTypeDomain } from './battery-v2-domain';
 import { sanitizeBatteryMeasurementJson } from './battery-measurement-json';
 import {
@@ -50,7 +50,7 @@ export class BatteryMeasurementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly repository: BatteryMeasurementRepository,
-    private readonly driveProfileResolver: DriveProfileResolverService,
+    private readonly batteryPolicyProfileService: BatteryPolicyProfileService,
   ) {}
 
   async create(
@@ -115,13 +115,16 @@ export class BatteryMeasurementService {
       command.scope ??
       resolveBatteryMeasurementScope(command.type as BatteryMeasurementTypeDomain);
 
-    const resolvedProfile = await this.driveProfileResolver.resolveForVehicle(
+    const confirmedIceStart = readConfirmedIceStart(command.context);
+    const policy = await this.batteryPolicyProfileService.resolveForVehicle(
       command.vehicleId,
+      { confirmedIceStart },
     );
-    const quality = guardLvMeasurementQualityForProfile({
-      profile: resolvedProfile.profile,
+    const quality = guardMeasurementQualityForPolicy({
+      policy,
       measurementType: command.type as BatteryMeasurementTypeDomain,
       quality: command.quality,
+      context: { confirmedIceStart },
     });
 
     return this.repository.createIdempotent({
@@ -160,6 +163,16 @@ export class BatteryMeasurementService {
   ): Promise<BatteryMeasurement[]> {
     return this.repository.listForOrganization(filter);
   }
+}
+
+function readConfirmedIceStart(
+  context: Prisma.InputJsonValue | Record<string, unknown> | null | undefined,
+): boolean | undefined {
+  if (!context || typeof context !== 'object' || Array.isArray(context)) {
+    return undefined;
+  }
+  const value = (context as Record<string, unknown>).confirmedIceStart;
+  return value === true ? true : value === false ? false : undefined;
 }
 
 /** Maps measurement type to LV/HV scope for indexing and downstream gates. */

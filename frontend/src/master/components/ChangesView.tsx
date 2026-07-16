@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lv-battery-chemistry-resolver-v49527-2026-07-16',
+    version: '4.9.527',
+    title: 'V4.9.527 — Central LV Battery Chemistry Resolver (Prompt 26/78)',
+    summary: [
+      'Zentraler `resolveLvBatteryChemistry()` — Ausgabe LEAD_ACID/AGM/EFB/LITHIUM/UNKNOWN mit `source`, `verifiedAt`, `confidence`, `evidence`.',
+      'Priorität: bestätigte Battery Spec → Werkstatt-/Dokumentevidence → verifizierter manueller Eintrag; kein Raten aus Spannung allein.',
+      'EFB bleibt EFB (nicht still als AGM); Lead-Acid-Kurven nur für LA/AGM/EFB (`isLeadAcidCurveApplicable`).',
+      'Integration: `BatteryMeasurementSessionService` auto-resolve `chemistry`; `LvBatteryChemistryResolverService` in VehicleIntelligenceModule.',
+      'Tests: AGM, LEAD_ACID, EFB, LITHIUM, workshop/manual fallback, Konflikte, voltage-only rejection.',
+    ],
+    reason: 'Prompt 26/78: zentraler LV-Batteriechemie-Resolver statt verstreuter batteryType-Normalisierung.',
+    previousBehavior: 'Chemie nur aus einzelner `VehicleBatterySpec.batteryType`-Zeile ohne source/confidence/verifiedAt.',
+    details:
+      'lv-battery-chemistry/lv-battery-chemistry-resolver.ts, lv-battery-chemistry-resolver.service.ts, battery-measurement-session.service.ts, vehicle-intelligence.module.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T17:30:00.000Z',
+  },
+  {
     id: 'drive-profile-resolver-v49526-2026-07-16',
     version: '4.9.526',
     title: 'V4.9.526 — Central Drive Profile Resolver (Prompt 25/78)',

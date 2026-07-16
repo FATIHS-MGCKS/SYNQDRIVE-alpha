@@ -415,6 +415,16 @@ Regeln: kein Profil aus einem einzelnen Signal; Widersprüche Master↔Provider 
 
 **Regel B8:** AGM/EFB/LEAD_ACID-Schwellen **niemals** auf `LITHIUM` oder `UNKNOWN`.
 
+**Zentraler Resolver (V4.9.527, Prompt 26/78):** `resolveLvBatteryChemistry()` in `lv-battery-chemistry/lv-battery-chemistry-resolver.ts` — reine Domainfunktion, tenant-unabhängig.
+
+| Priorität | Quelle | `LvBatteryChemistrySource` | Confidence |
+|-----------|--------|----------------------------|------------|
+| 1 | Bestätigte `VehicleBatterySpec` (`batteryType`, `sourceConfidence`, `sourceType`) | `BATTERY_SPEC` | HIGH |
+| 2 | Werkstatt-/Dokumentevidence (`WORKSHOP_MEASUREMENT`, `DOCUMENT_CONFIRMED`) | `WORKSHOP_DOCUMENT` | HIGH |
+| 3 | Verifizierter manueller Eintrag (`MANUAL_REPORT` oder MANUAL-Spec) | `MANUAL_VERIFIED` | MEDIUM |
+
+Regeln: kein Raten aus Spannung allein; EFB bleibt EFB (nicht als AGM speichern); Policy darf AGM-ähnliche Schwellen für EFB nutzen; Lead-Acid-Kurven nur für LA/AGM/EFB (`isLeadAcidCurveApplicable`); Konflikte Spec↔Evidence → `UNKNOWN`. Integration: `LvBatteryChemistryResolverService`, `BatteryMeasurementSessionService` (auto `chemistry`).
+
 ### 5.3 Kombinierte Policy (`BatteryPolicyProfile`)
 
 | Policy | Drive + Chemistry |

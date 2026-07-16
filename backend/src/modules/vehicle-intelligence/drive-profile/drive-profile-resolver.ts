@@ -1,4 +1,13 @@
-import { BatteryDriveProfile, BatteryMeasurementQuality, BatteryMeasurementType } from '../battery-health/battery-v2-domain';
+import {
+  BatteryChemistry,
+  BatteryDriveProfile,
+  BatteryMeasurementQuality,
+  BatteryMeasurementType,
+} from '../battery-health/battery-v2-domain';
+import {
+  guardMeasurementQualityForPolicy,
+  resolveBatteryPolicy,
+} from '../battery-policy-profile/battery-policy-profile.resolver';
 import type {
   CanonicalPowertrainSpecInput,
   DriveProfile,
@@ -363,51 +372,30 @@ export function isHvMeasurementSupported(profile: DriveProfile): boolean {
   );
 }
 
-const BEV_ALLOWED_LV_MEASUREMENT_TYPES = new Set<BatteryMeasurementType>([
-  BatteryMeasurementType.LIVE_VOLTAGE,
-  BatteryMeasurementType.LIVE_LOADED_VOLTAGE,
-]);
-
-function isLvMeasurementType(type: BatteryMeasurementType): boolean {
-  switch (type) {
-    case BatteryMeasurementType.LIVE_HV_SOC:
-    case BatteryMeasurementType.LIVE_HV_RANGE:
-    case BatteryMeasurementType.LIVE_HV_CURRENT_ENERGY:
-    case BatteryMeasurementType.LIVE_HV_CHARGING_POWER:
-    case BatteryMeasurementType.PROVIDER_HV_SOH:
-    case BatteryMeasurementType.WORKSHOP_HV_SOH:
-    case BatteryMeasurementType.DOCUMENT_HV_SOH:
-    case BatteryMeasurementType.CHARGE_SESSION_CAPACITY:
-    case BatteryMeasurementType.DISCHARGE_SESSION_CAPACITY:
-      return false;
-    default:
-      return true;
-  }
-}
-
 /**
- * Downgrades LV REST/crank measurements for BEV to UNSUPPORTED_PROFILE.
- * Live LV reads remain allowed; MISSED/PROVIDER_ERROR pass through unchanged.
+ * @deprecated Prefer `guardMeasurementQualityForPolicy` with `resolveBatteryPolicy`.
+ * Retained as thin wrapper for existing call sites.
  */
 export function guardLvMeasurementQualityForProfile(input: {
   profile: DriveProfile;
   measurementType: BatteryMeasurementType;
   quality: BatteryMeasurementQuality;
+  chemistry?: BatteryChemistry;
+  lvSignalPresent?: boolean;
+  confirmedIceStart?: boolean;
 }): BatteryMeasurementQuality {
-  if (!isLvMeasurementType(input.measurementType)) {
-    return input.quality;
-  }
-  if (input.profile !== BatteryDriveProfile.BEV) {
-    return input.quality;
-  }
-  if (BEV_ALLOWED_LV_MEASUREMENT_TYPES.has(input.measurementType)) {
-    return input.quality;
-  }
-  if (
-    input.quality === BatteryMeasurementQuality.MISSED ||
-    input.quality === BatteryMeasurementQuality.PROVIDER_ERROR
-  ) {
-    return input.quality;
-  }
-  return BatteryMeasurementQuality.UNSUPPORTED_PROFILE;
+  const policy = resolveBatteryPolicy({
+    driveProfile: input.profile,
+    chemistry: input.chemistry ?? BatteryChemistry.UNKNOWN,
+    lvSignalPresent:
+      input.lvSignalPresent ??
+      input.profile !== BatteryDriveProfile.BEV,
+    confirmedIceStart: input.confirmedIceStart,
+  });
+  return guardMeasurementQualityForPolicy({
+    policy,
+    measurementType: input.measurementType,
+    quality: input.quality,
+    context: { confirmedIceStart: input.confirmedIceStart },
+  });
 }
