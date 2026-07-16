@@ -746,6 +746,16 @@ flowchart TB
 
 **Änderung gegenüber Ist:** Battery-Ingestion **awaited** oder Outbox; HV-Sessions aus **Segment-Job** (rolling 31d), nicht aus Poll-Paaren; Canonical unverändert Single-Source-of-Truth.
 
+### 11.1 Battery V2 Job Queue (Prompt 21/78 — Scaffold)
+
+| Attribut | Wert |
+|----------|------|
+| **Queue** | `battery.v2` (`QUEUE_NAMES.BATTERY_V2`) |
+| **Dispatcher** | `BatteryV2Processor` — `job.name` = Jobtyp |
+| **Payload** | ID-only, `organizationId` + `vehicleId` + `idempotencyKey` + `correlationId` + `attemptContext` + `modelVersion` |
+| **Jobtypen** | `BATTERY_OBSERVATION_CLASSIFY`, `BATTERY_REST_TARGET_EVALUATE`, `BATTERY_START_PROXY_EXTRACT`, `BATTERY_ASSESSMENT_RECOMPUTE`, `BATTERY_PUBLICATION_UPDATE`, `HV_CAPABILITY_REFRESH`, `HV_RECHARGE_SESSION_RECONCILE`, `HV_CAPACITY_SHADOW_RECOMPUTE` |
+| **Status P21** | Typen, Validierung, Registry, leere Handler — **keine Migration** der inline `onSnapshot` / `recordSnapshot` / `onTripStart` Hooks |
+
 ---
 
 ## 12. Referenzen

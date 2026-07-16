@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-job-types-v49522-2026-07-16',
+    version: '4.9.522',
+    title: 'V4.9.522 — Battery V2 Job Types + Queue Scaffold (Prompt 21/78)',
+    summary: [
+      'Zentrale Battery-V2-Jobtypen und typisierte ID-only-Payloads (8 Jobtypen) mit Runtime-Validierung und PII-Ablehnung.',
+      'Einzelne BullMQ-Queue `battery.v2` — Job-`name` = Jobtyp; `idempotencyKey` steuert Dedup/Retry.',
+      'Leere Handler-Registry + Processor-Skeleton; Producer-Service für spätere Migration der Fire-and-Forget-Pfade.',
+      'Per-Job-Retry-Policies; Queue in Workers + VehicleIntelligence registriert; Metrik-Monitoring ergänzt.',
+      'Keine Logik-Migration — bestehende inline Hooks unverändert.',
+    ],
+    reason: 'Prompt 21/78: Fundament für awaited/Outbox-Battery-V2-Schreibpfad laut Architekturvertrag.',
+    previousBehavior: 'Battery-V2-Arbeit lief fire-and-forget inline (onSnapshot, recordSnapshot, onTripStart) ohne zentrale Jobtypen.',
+    details:
+      'backend/src/modules/vehicle-intelligence/battery-health/jobs/*, backend/src/workers/processors/battery-v2.processor.ts, queue-names.ts, workers.module.ts, vehicle-intelligence.module.ts, metrics-refresh.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T15:30:00.000Z',
+  },
+  {
     id: 'battery-observation-integration-v49521-2026-07-16',
     version: '4.9.521',
     title: 'V4.9.521 — Battery Observation Integration Tests (Prompt 19/78)',
