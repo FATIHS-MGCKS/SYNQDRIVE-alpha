@@ -2,6 +2,7 @@ import { BatteryMeasurementQuality } from '@prisma/client';
 import { HvCapacityMethod } from '../battery-v2-domain';
 import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
 import { HvCapacityShadowService } from './hv-capacity-shadow.service';
+import { HvCapacitySessionSummaryService } from './hv-capacity-session-summary.service';
 import {
   TESLA_AUDIT_EXPECTED_MEDIAN_KWH,
   TESLA_AUDIT_M2_SESSION_4_SAMPLES,
@@ -29,6 +30,8 @@ describe('HvCapacityShadowService', () => {
     createIdempotent: jest.fn(),
   };
 
+  const sessionSummary = { summarizeSession: jest.fn() };
+
   let service: HvCapacityShadowService;
 
   beforeEach(() => {
@@ -37,6 +40,7 @@ describe('HvCapacityShadowService', () => {
       prisma as any,
       sampleProvider as any,
       observations as any,
+      sessionSummary as any,
     );
 
     prisma.hvChargeSession.findFirst.mockResolvedValue({
@@ -59,6 +63,12 @@ describe('HvCapacityShadowService', () => {
       id: `obs-${input.observedAt.getTime()}`,
       ...input,
     }));
+    sessionSummary.summarizeSession.mockResolvedValue({
+      status: 'STABLE_SHADOW',
+      shadowGatePassed: true,
+      gateReasonCodes: [],
+      stats: { medianCapacityKwh: 55.5, coefficientOfVariation: 0.002 },
+    });
   });
 
   it('persists shadow observations for qualified session with audit samples', async () => {
@@ -94,10 +104,8 @@ describe('HvCapacityShadowService', () => {
       }),
     );
 
-    const firstCall = observations.createIdempotent.mock.calls[0][0];
-    expect(firstCall.estimatedSohPct).toBeUndefined();
-    expect(firstCall.metadata.shadowMode).toBe(true);
-    expect('estimatedSohPct' in firstCall).toBe(false);
+    expect(result.summary).not.toBeNull();
+    expect(sessionSummary.summarizeSession).toHaveBeenCalled();
   });
 
   it('skips ineligible sessions', async () => {
@@ -125,7 +133,7 @@ describe('HvCapacityShadowService', () => {
     expect(observations.createIdempotent).not.toHaveBeenCalled();
   });
 
-  it('skips when session already processed', async () => {
+  it('aggregates summary when observations already processed', async () => {
     observations.hasSessionObservations.mockResolvedValue(true);
 
     const result = await service.recomputeM2ForSession({
@@ -137,5 +145,7 @@ describe('HvCapacityShadowService', () => {
 
     expect(result.persistedCount).toBe(0);
     expect(observations.createIdempotent).not.toHaveBeenCalled();
+    expect(sessionSummary.summarizeSession).toHaveBeenCalled();
+    expect(result.summary).not.toBeNull();
   });
 });

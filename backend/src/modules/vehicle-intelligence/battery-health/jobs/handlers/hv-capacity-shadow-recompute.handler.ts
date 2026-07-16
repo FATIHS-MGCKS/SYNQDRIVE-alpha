@@ -38,7 +38,7 @@ export class HvCapacityShadowRecomputeHandler
     });
 
     this.logger.debug(
-      `Battery V2 ${this.jobType} session=${chargeSessionId} persisted=${result.persistedCount} median=${result.sessionMedianKwh ?? 'n/a'}`,
+      `Battery V2 ${this.jobType} session=${chargeSessionId} persisted=${result.persistedCount} median=${result.sessionMedianKwh ?? 'n/a'} summary=${result.summary?.status ?? 'n/a'}`,
     );
   }
 }

@@ -1,4 +1,5 @@
 import { HvCapacityMethod } from '../battery-v2-domain';
+import type { HvCapacitySessionSummary } from './hv-capacity-session-summary.types';
 
 export const HV_M2_CAPACITY_METHOD = HvCapacityMethod.CURRENT_ENERGY_OVER_SOC;
 
@@ -81,6 +82,7 @@ export interface HvCapacityM2SessionResult {
   sessionMedianKwh: number | null;
   persistedCount: number;
   skippedCount: number;
+  summary: HvCapacitySessionSummary | null;
 }
 
 export interface HvCapacityObservationMetadata {
