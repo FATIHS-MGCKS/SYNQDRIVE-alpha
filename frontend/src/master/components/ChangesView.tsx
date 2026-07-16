@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-deployment-runbook-v49571-2026-07-17',
+    version: '4.9.571',
+    title: 'V4.9.571 — Battery V2 Deployment Runbook (Prompt 71/78)',
+    summary: [
+      'Neues Ops-Runbook `docs/runbooks/battery-health-v2-deployment.md` mit 20 Pflichtabschnitten.',
+      'Phasenplan: Backup/Restore, Migration, Deploy (Flags aus), Observation Dedup, Jobs, Capability, REST Shadow, Start Proxy, HV Sessions/Capacity Shadow, Monitoring, API/UI, Publication, Readiness, Rollback, DLQ, Retention Dry-Run, Smoke Tests, Abbruchkriterien, RACI.',
+      'Ausrichtung an implementierten Env-Flags (`battery-health-v2.config.ts`) und VPS-Deploy-Skript — keine produktive Aktion.',
+    ],
+    reason: 'Prompt 71/78: verbindliches schrittweises Deployment-Runbook für Battery Health V2.',
+    previousBehavior: 'Rollout-Flags und Monitoring-Docs vorhanden, aber kein zusammenhängendes Deployment-Runbook.',
+    details:
+      'docs/runbooks/battery-health-v2-deployment.md — referenziert rollout-flags, grafana-prometheus-ops, retention, vps-deploy-release.sh.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T06:00:00.000Z',
+  },
+  {
     id: 'battery-v2-retention-v49570-2026-07-17',
     version: '4.9.570',
     title: 'V4.9.570 — Battery V2 Retention & Aggregation (Prompt 70/78)',
