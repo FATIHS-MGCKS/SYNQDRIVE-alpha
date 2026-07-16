@@ -1155,7 +1155,7 @@ export class DimoSegmentsService {
       this.logger.warn(
         `Battery crank window fetch failed for tokenId=${tokenId}: ${err.message}`,
       );
-      return [];
+      throw err;
     }
   }
 }

@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { BatteryStartProxyExtractPayload } from '../battery-v2-job.types';
-import { BatteryV2SnapshotIngestionService } from '../battery-v2-snapshot-ingestion.service';
+import { BatteryStartProxyExtractService } from '../../lv-start-proxy/battery-start-proxy-extract.service';
+import { BatteryV2ProviderError } from '../battery-v2-job.errors';
 
 @Injectable()
 export class BatteryStartProxyExtractHandler
@@ -10,16 +11,32 @@ export class BatteryStartProxyExtractHandler
   readonly jobType = 'BATTERY_START_PROXY_EXTRACT' as const;
   private readonly logger = new Logger(BatteryStartProxyExtractHandler.name);
 
-  constructor(private readonly ingestion: BatteryV2SnapshotIngestionService) {}
+  constructor(private readonly extract: BatteryStartProxyExtractService) {}
 
   async handle(payload: BatteryStartProxyExtractPayload): Promise<void> {
-    this.logger.debug(
-      `Battery V2 start proxy job org=${payload.organizationId} vehicle=${payload.vehicleId} trip=${payload.tripId}`,
-    );
-    await this.ingestion.ingestStartProxyExtract({
+    const result = await this.extract.extractAndPersist({
+      organizationId: payload.organizationId,
       vehicleId: payload.vehicleId,
       tripId: payload.tripId,
-      tripStartedAt: payload.tripStartedAt,
+      tripStartedAt: new Date(payload.tripStartedAt),
     });
+
+    if (!result.ok) {
+      throw new BatteryV2ProviderError(result.reason, {
+        retryable: result.retryable,
+        jobType: this.jobType,
+      });
+    }
+
+    if (result.skipped) {
+      this.logger.debug(
+        `Start proxy skipped vehicle=${payload.vehicleId} trip=${payload.tripId} reason=${result.skipReason}`,
+      );
+      return;
+    }
+
+    this.logger.debug(
+      `Start proxy measurement persisted vehicle=${payload.vehicleId} trip=${payload.tripId} measurement=${result.measurementId}`,
+    );
   }
 }

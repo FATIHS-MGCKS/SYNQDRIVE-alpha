@@ -55,7 +55,7 @@ describe('battery-v2-job-idempotency.policy', () => {
 
   it('builds start proxy identity from trip id + model version', () => {
     const key = buildStartProxyJobIdempotencyKey({ tripId: TRIP, modelVersion: '1.0.0' });
-    expect(key).toBe(`start-proxy:1.0.0:trip:${TRIP}`);
+    expect(key).toBe(`battery-start-proxy:${TRIP}:1.0.0`);
   });
 
   it('builds assessment identity from vehicle + type + input version', () => {

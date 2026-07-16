@@ -1,19 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import {
   getBatteryV2StartProxyDelayMs,
-  isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
 } from '../../../../config/battery-health-v2.config';
+import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
 import { BATTERY_V2_JOB_MODEL_VERSION_DEFAULT } from './battery-v2-job.types';
 import { buildStartProxyJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 
 @Injectable()
 export class BatteryV2TripStartProducer {
-  constructor(private readonly jobProducer: BatteryV2JobProducerService) {}
+  constructor(
+    private readonly jobProducer: BatteryV2JobProducerService,
+    private readonly policyProfiles: BatteryPolicyProfileService,
+  ) {}
 
   isStartProxyEnabled(): boolean {
-    return isLegacyCrankAssessmentEnabled() || isStartWindowCollectionEnabled();
+    return isStartWindowCollectionEnabled();
+  }
+
+  async canEnqueueForVehicle(vehicleId: string): Promise<boolean> {
+    const policy = await this.policyProfiles.resolveForVehicle(vehicleId);
+    return policy.startProxyAllowed;
   }
 
   async enqueueStartProxy(input: {
@@ -23,6 +31,10 @@ export class BatteryV2TripStartProducer {
     tripStartedAt: Date;
   }): Promise<string | null> {
     if (!this.isStartProxyEnabled()) {
+      return null;
+    }
+
+    if (!(await this.canEnqueueForVehicle(input.vehicleId))) {
       return null;
     }
 

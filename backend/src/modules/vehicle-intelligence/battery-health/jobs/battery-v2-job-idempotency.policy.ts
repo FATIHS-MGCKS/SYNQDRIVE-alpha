@@ -16,7 +16,7 @@ export const BATTERY_V2_JOB_IDENTITY_PREFIX = {
   hvSnapshot: 'hv-snap',
   restTarget: 'rest-target',
   batteryRest: 'battery-rest',
-  startProxy: 'start-proxy',
+  startProxy: 'battery-start-proxy',
   assessment: 'assess',
   publication: 'pub',
   hvSession: 'hv-session',
@@ -72,13 +72,13 @@ export function targetSuffixForRestType(
   return restTargetType === 'REST_60M' ? '60m' : '6h';
 }
 
-/** Start proxy: trip ID + model version */
+/** Start proxy: battery-start-proxy:<tripId>:<modelVersion> */
 export function buildStartProxyJobIdempotencyKey(input: {
   tripId: string;
   modelVersion?: string;
 }): string {
   const version = input.modelVersion ?? BATTERY_V2_JOB_MODEL_VERSION_DEFAULT;
-  return `${BATTERY_V2_JOB_IDENTITY_PREFIX.startProxy}:${version}:trip:${input.tripId}`;
+  return `${BATTERY_V2_JOB_IDENTITY_PREFIX.startProxy}:${input.tripId}:${version}`;
 }
 
 /** Assessment: vehicle + assessment type + input version */

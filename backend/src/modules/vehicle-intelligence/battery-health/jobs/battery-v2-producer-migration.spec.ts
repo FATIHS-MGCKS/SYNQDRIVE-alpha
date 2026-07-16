@@ -321,7 +321,13 @@ describe('BatteryV2TripStartProducer', () => {
       add: queueAdd,
     };
     const jobProducer = createJobProducer(queue as any);
-    const tripProducer = new BatteryV2TripStartProducer(jobProducer);
+    const policyProfiles = {
+      resolveForVehicle: jest.fn().mockResolvedValue({ startProxyAllowed: true }),
+    };
+    const tripProducer = new BatteryV2TripStartProducer(
+      jobProducer,
+      policyProfiles as any,
+    );
 
     const prev = process.env.BATTERY_V2_START_PROXY_ENABLED;
     const prevCrank = process.env.BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED;
@@ -342,7 +348,7 @@ describe('BatteryV2TripStartProducer', () => {
       tripStartedAt: startedAt,
     });
 
-    const expectedKey = `start-proxy:1.0.0:trip:${TRIP}`;
+    const expectedKey = `battery-start-proxy:${TRIP}:1.0.0`;
     expect(first).toBe(`battery-v2:${expectedKey}`);
     expect(second).toBe(first);
     expect(queueAdd).toHaveBeenCalledTimes(1);
@@ -351,6 +357,65 @@ describe('BatteryV2TripStartProducer', () => {
 
     process.env.BATTERY_V2_START_PROXY_ENABLED = prev;
     process.env.BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED = prevCrank;
+  });
+
+  it('does not enqueue for BEV profiles', async () => {
+    const queueAdd = jest.fn();
+    const jobProducer = createJobProducer({ getJob: jest.fn().mockResolvedValue(null), add: queueAdd } as any);
+    const policyProfiles = {
+      resolveForVehicle: jest.fn().mockResolvedValue({ startProxyAllowed: false }),
+    };
+    const tripProducer = new BatteryV2TripStartProducer(
+      jobProducer,
+      policyProfiles as any,
+    );
+
+    const prev = process.env.BATTERY_V2_START_PROXY_ENABLED;
+    process.env.BATTERY_V2_START_PROXY_ENABLED = 'true';
+
+    const result = await tripProducer.enqueueStartProxy({
+      organizationId: ORG,
+      vehicleId: VEH,
+      tripId: TRIP,
+      tripStartedAt: new Date('2026-07-16T12:00:00.000Z'),
+    });
+
+    expect(result).toBeNull();
+    expect(queueAdd).not.toHaveBeenCalled();
+
+    process.env.BATTERY_V2_START_PROXY_ENABLED = prev;
+  });
+
+  it('applies configured provider delay before job execution', async () => {
+    const queueAdd = jest.fn().mockResolvedValue({ id: 'job-delay' });
+    const jobProducer = createJobProducer({
+      getJob: jest.fn().mockResolvedValue(null),
+      add: queueAdd,
+    } as any);
+    const policyProfiles = {
+      resolveForVehicle: jest.fn().mockResolvedValue({ startProxyAllowed: true }),
+    };
+    const tripProducer = new BatteryV2TripStartProducer(
+      jobProducer,
+      policyProfiles as any,
+    );
+
+    const prevDelay = process.env.BATTERY_V2_START_PROXY_DELAY_MS;
+    const prevFlag = process.env.BATTERY_V2_START_PROXY_ENABLED;
+    process.env.BATTERY_V2_START_PROXY_ENABLED = 'true';
+    process.env.BATTERY_V2_START_PROXY_DELAY_MS = '120000';
+
+    await tripProducer.enqueueStartProxy({
+      organizationId: ORG,
+      vehicleId: VEH,
+      tripId: TRIP,
+      tripStartedAt: new Date('2026-07-16T12:00:00.000Z'),
+    });
+
+    expect(queueAdd.mock.calls[0][2].delay).toBe(120_000);
+
+    process.env.BATTERY_V2_START_PROXY_DELAY_MS = prevDelay;
+    process.env.BATTERY_V2_START_PROXY_ENABLED = prevFlag;
   });
 });
 

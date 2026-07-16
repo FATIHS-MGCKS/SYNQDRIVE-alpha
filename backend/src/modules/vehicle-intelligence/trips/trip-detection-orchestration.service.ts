@@ -925,21 +925,19 @@ export class TripDetectionOrchestrationService {
             ),
           );
 
-          // Battery V2: durable start-proxy job (ICE/PHEV only — never BEV crank).
-          if (profile !== VehicleDetectionProfile.EV) {
-            const orgId = det.organizationId;
-            if (!orgId) {
-              this.logger.warn(
-                `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
-              );
-            } else {
-              await this.batteryTripStartProducer.enqueueStartProxy({
-                organizationId: orgId,
-                vehicleId,
-                tripId: trip.id,
-                tripStartedAt: effectiveStartAt,
-              });
-            }
+          // Battery V2: delayed START_DIP_PROXY job (policy-gated in producer).
+          const orgId = det.organizationId;
+          if (orgId) {
+            await this.batteryTripStartProducer.enqueueStartProxy({
+              organizationId: orgId,
+              vehicleId,
+              tripId: trip.id,
+              tripStartedAt: effectiveStartAt,
+            });
+          } else {
+            this.logger.warn(
+              `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
+            );
           }
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);

@@ -26,7 +26,7 @@ function basePayload(
 describe('BatteryV2IdempotentExecutionService', () => {
   const prisma = {
     hvBatteryHealthSnapshot: { findUnique: jest.fn() },
-    batteryMeasurement: { findUnique: jest.fn() },
+    batteryMeasurement: { findUnique: jest.fn(), findFirst: jest.fn() },
     batteryFeatures: { findUnique: jest.fn() },
     batteryAssessment: { findUnique: jest.fn() },
     batteryPublication: { findUnique: jest.fn() },
@@ -51,6 +51,7 @@ describe('BatteryV2IdempotentExecutionService', () => {
     );
     prisma.hvBatteryHealthSnapshot.findUnique.mockResolvedValue(null);
     prisma.batteryMeasurement.findUnique.mockResolvedValue(null);
+    prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
     prisma.batteryFeatures.findUnique.mockResolvedValue(null);
     prisma.batteryAssessment.findUnique.mockResolvedValue(null);
     prisma.batteryPublication.findUnique.mockResolvedValue(null);
@@ -101,14 +102,16 @@ describe('BatteryV2IdempotentExecutionService', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('skips start proxy when crank trip already recorded', async () => {
-    prisma.batteryFeatures.findUnique.mockResolvedValue({ crankTripId: TRIP });
+  it('skips start proxy when START_DIP_PROXY measurement already exists', async () => {
+    prisma.batteryMeasurement.findFirst.mockResolvedValue({ id: 'meas-1' });
     const handler = jest.fn();
 
     const result = await service.execute({
       jobType: 'BATTERY_START_PROXY_EXTRACT',
       payload: {
-        ...basePayload({ idempotencyKey: `start-proxy:1.0.0:trip:${TRIP}` }),
+        ...basePayload({
+          idempotencyKey: `battery-start-proxy:${TRIP}:1.0.0`,
+        }),
         tripId: TRIP,
         tripStartedAt: '2026-07-16T12:05:00.000Z',
       },

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-start-proxy-extract-v49537-2026-07-17',
+    version: '4.9.537',
+    title: 'V4.9.537 — BATTERY_START_PROXY_EXTRACT Delayed Job (Prompt 36/78)',
+    summary: [
+      'Verzögerter, retryfähiger `BATTERY_START_PROXY_EXTRACT`-Job bei bestätigtem Tripstart.',
+      'Job-ID: `battery-start-proxy:<tripId>:<modelVersion>`; Delay zentral via `BATTERY_V2_START_PROXY_DELAY_MS` (Default 90s).',
+      'Policy-Gate: kein BEV; PHEV nur bei bestätigtem ICE-Start (RPM ≥ 400); historisches Fenster tripStart −30s/+120s.',
+      'Providerfehler retrybar; doppelte Tripbestätigung erzeugt keinen zweiten Job.',
+      'Fire-and-forget `onTripStart`-Bridge entfernt — `BatteryStartProxyExtractService` persistiert `START_DIP_PROXY` (SHADOW, ohne Scorewirkung).',
+    ],
+    reason: 'Prompt 36/78: durable Startdip-Diagnostik als verzögerter BullMQ-Job mit Profil-Gates.',
+    previousBehavior: 'Handler delegierte an `BatteryV2Service.onTripStart()`; Job-Key `start-proxy:version:trip:id`.',
+    details:
+      'battery-start-proxy-extract.service.ts, battery-start-proxy.policy.ts, battery-v2-trip-start.producer.ts, battery-start-proxy-extract.handler.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:15:00.000Z',
+  },
+  {
     id: 'lv-rest-shadow-mode-v49536-2026-07-16',
     version: '4.9.536',
     title: 'V4.9.536 — LV REST Shadow Mode Only (Prompt 35/78)',
