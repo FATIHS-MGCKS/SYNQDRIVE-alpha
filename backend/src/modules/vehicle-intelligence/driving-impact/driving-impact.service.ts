@@ -15,14 +15,20 @@ import {
   type DrivingImpactSourceProvenance,
 } from './driving-impact-provenance';
 import {
+  buildBrakingProvenanceSummary,
+  computeBrakingStatistics,
+  mapHfBrakingRow,
+  mapNativeDrivingEventToBrakingRow,
+  reduceHealthEligibilityForBrakeProxy,
+  type ClassifiedBrakingRow,
+} from './driving-impact-braking-provenance';
+import {
   mergeRollingProvenance,
   readTripDrivingImpactProvenance,
 } from './driving-impact-provenance.reader';
 import {
   capLinear,
   per100Km,
-  percentile95,
-  meanBrakeEnergyPerKm,
   computeLongitudinalStressScore,
   computeBrakingStressScore,
   computeStopGoStressScore,
@@ -216,33 +222,16 @@ export class DrivingImpactService {
         : null;
 
     const estimatedProxyEventCount =
-      evidenceBySource.find((row) => row.sourceType === 'ESTIMATED_PROXY')?._count._all ?? 0;
+      (evidenceBySource.find((row) => row.sourceType === 'ESTIMATED_PROXY')?._count._all ?? 0);
     const contextOnlyEventCount =
       evidenceBySource.find((row) => row.sourceType === 'CONTEXT_SIGNAL')?._count._all ?? 0;
-
-    const provenance = buildDrivingImpactSourceProvenance({
-      hardwareProfile: hardwareType,
-      capabilityVersion: capabilityRow?.capabilityVersion ?? null,
-      modelVersion: C.MODEL_VERSION,
-      nativeEventCount,
-      hfEventCount,
-      estimatedProxyEventCount,
-      contextOnlyEventCount,
-      hasMeasuredRouteContext:
-        trip.citySharePercent != null && trip.highwaySharePercent != null,
-      measurementCoverage,
-    });
 
     // ── V3: LTE_R1 — normalized DrivingEvent rows (TELEMETRY_EVENTS source) ──
     // SMART5/UNKNOWN — HF-derived TripBehaviorEvent ACCELERATION/BRAKING rows.
     let extremeAccelCount: number;
     let extremeBrakeCount: number;
     let launchLikeCount: number;
-    let brakingEventRows: Array<{
-      startSpeedKmh: number | null;
-      endSpeedKmh: number | null;
-      peakValue: number | null;
-    }>;
+    let classifiedBrakingRows: ClassifiedBrakingRow[];
 
     if (useTelemetryDrivingEvents) {
       const drivingEvents = await this.prisma.drivingEvent.findMany({
@@ -262,30 +251,13 @@ export class DrivingImpactService {
         },
       });
 
-      brakingEventRows = drivingEvents
+      classifiedBrakingRows = drivingEvents
         .filter(
           (e) =>
             e.eventType === DrivingEventType.HARSH_BRAKING ||
             e.eventType === DrivingEventType.EXTREME_BRAKING,
         )
-        .map((e) => {
-          const start = e.speedKmh ?? null;
-          let end: number | null = null;
-          if (start != null && e.deltaKmh != null) {
-            end = Math.max(0, start - e.deltaKmh);
-          } else if (start != null && start > 5) {
-            end = Math.max(0, start * 0.72);
-          }
-          const peakProxy =
-            e.eventType === DrivingEventType.EXTREME_BRAKING
-              ? Math.min(12, 7.5 + (e.severity ?? 0.9) * 4)
-              : Math.min(9, 4.5 + (e.severity ?? 0.6) * 5);
-          return {
-            startSpeedKmh: start,
-            endSpeedKmh: end,
-            peakValue: peakProxy,
-          };
-        });
+        .map((e) => mapNativeDrivingEventToBrakingRow(e));
     } else {
       extremeAccelCount = await this.prisma.tripBehaviorEvent.count({
         where: {
@@ -310,7 +282,8 @@ export class DrivingImpactService {
         },
       });
 
-      brakingEventRows = await this.prisma.tripBehaviorEvent.findMany({
+      classifiedBrakingRows = (
+        await this.prisma.tripBehaviorEvent.findMany({
         where: {
           tripId,
           eventCategory: BehaviorEventCategory.BRAKING,
@@ -320,8 +293,36 @@ export class DrivingImpactService {
           endSpeedKmh: true,
           peakValue: true,
         },
-      });
+      })
+      ).map((row) => mapHfBrakingRow(row));
     }
+
+    const brakingStats = computeBrakingStatistics(classifiedBrakingRows, distanceKm, {
+      stopSpeedThresholdKmh: C.STOP_SPEED_THRESHOLD_KMH,
+      highSpeedBrakeThresholdKmh: C.HIGH_SPEED_BRAKE_THRESHOLD_KMH,
+    });
+    const brakingProvenance = buildBrakingProvenanceSummary(brakingStats);
+
+    const provenanceBase = buildDrivingImpactSourceProvenance({
+      hardwareProfile: hardwareType,
+      capabilityVersion: capabilityRow?.capabilityVersion ?? null,
+      modelVersion: C.MODEL_VERSION,
+      nativeEventCount,
+      hfEventCount,
+      estimatedProxyEventCount:
+        estimatedProxyEventCount + brakingStats.proxyKinematicCount,
+      contextOnlyEventCount,
+      hasMeasuredRouteContext:
+        trip.citySharePercent != null && trip.highwaySharePercent != null,
+      measurementCoverage,
+    });
+    const provenance: DrivingImpactSourceProvenance = {
+      ...provenanceBase,
+      healthEligibility: reduceHealthEligibilityForBrakeProxy(
+        provenanceBase.healthEligibility,
+        brakingStats.proxyKinematicShare,
+      ),
+    };
 
     // ── Compute per-100 km rates ─────────────────────────────────────────────
 
@@ -340,36 +341,26 @@ export class DrivingImpactService {
     const launchLikePer100Km = per100Km(launchLikeCount, distanceKm);
     const brakesPer100Km = per100Km(brakesTotal, distanceKm);
 
-    // ── Braking statistics from event rows ────────────────────────────────────
+    // ── Braking statistics (P42: measured/reconstructed vs ESTIMATED_PROXY) ─
 
-    const decelValues = brakingEventRows
-      .map((e) => e.peakValue ?? 0)
-      .filter((v) => v > 0);
+    const {
+      p95NegativeDecel,
+      p95NegativeDecelMeasured,
+      p95NegativeDecelProxy,
+      meanBrakeEnergyPerKm: mbe,
+      meanBrakeEnergyProxyPerKm,
+      stopDensity,
+      highSpeedBrakeShare,
+    } = brakingStats;
 
-    const p95NegativeDecel = percentile95(decelValues);
-
-    const highSpeedBrakeCount = brakingEventRows.filter(
+    const highSpeedBrakeCount = classifiedBrakingRows.filter(
       (e) => (e.startSpeedKmh ?? 0) >= C.HIGH_SPEED_BRAKE_THRESHOLD_KMH,
     ).length;
-    const highSpeedBrakeShare =
-      brakingEventRows.length > 0
-        ? Math.round((highSpeedBrakeCount / brakingEventRows.length) * 100) / 100
-        : 0;
-
-    const stopCount = brakingEventRows.filter(
-      (e) => (e.endSpeedKmh ?? 99) < C.STOP_SPEED_THRESHOLD_KMH,
+    const stopCount = classifiedBrakingRows.filter(
+      (e) =>
+        (e.endSpeedSource === 'RECONSTRUCTED' || e.endSpeedSource === 'MEASURED_DELTA') &&
+        (e.endSpeedKmh ?? 99) < C.STOP_SPEED_THRESHOLD_KMH,
     ).length;
-    const stopDensity = Math.round((stopCount / distanceKm) * 100) / 100;
-
-    const mbe = meanBrakeEnergyPerKm(
-      brakingEventRows
-        .filter((e) => e.startSpeedKmh != null && e.endSpeedKmh != null)
-        .map((e) => ({
-          startSpeedKmh: e.startSpeedKmh!,
-          endSpeedKmh: e.endSpeedKmh!,
-        })),
-      distanceKm,
-    );
 
     // ── Usage split ───────────────────────────────────────────────────────────
 
@@ -461,6 +452,9 @@ export class DrivingImpactService {
         highSpeedBrakeShare,
         meanBrakeEnergyPerKm: mbe,
         p95NegativeDecel,
+        p95NegativeDecelMeasured,
+        p95NegativeDecelProxy,
+        meanBrakeEnergyProxyPerKm,
 
         longitudinalStressScore,
         brakingStressScore,
@@ -494,6 +488,7 @@ export class DrivingImpactService {
           nativeEventCount: provenance.nativeEventCount,
           hfEventCount: provenance.hfEventCount,
           provenanceVersion: provenance.provenanceVersion,
+          brakingProvenance,
         },
         ...provenanceFields(provenance),
       },
@@ -548,6 +543,7 @@ export class DrivingImpactService {
           nativeEventCount: provenance.nativeEventCount,
           hfEventCount: provenance.hfEventCount,
           provenanceVersion: provenance.provenanceVersion,
+          brakingProvenance,
         },
         ...provenanceFields(provenance),
       },
@@ -652,6 +648,9 @@ export class DrivingImpactService {
         highSpeedBrakeShare: wavg('highSpeedBrakeShare'),
         meanBrakeEnergyPerKm: wavg('meanBrakeEnergyPerKm'),
         p95NegativeDecel: wavg('p95NegativeDecel'),
+        p95NegativeDecelMeasured: wavg('p95NegativeDecelMeasured'),
+        p95NegativeDecelProxy: wavg('p95NegativeDecelProxy'),
+        meanBrakeEnergyProxyPerKm: wavg('meanBrakeEnergyProxyPerKm'),
         longitudinalStressScore: wavg('longitudinalStressScore'),
         brakingStressScore: wavg('brakingStressScore'),
         stopGoStressScore: wavg('stopGoStressScore'),
@@ -682,6 +681,9 @@ export class DrivingImpactService {
         highSpeedBrakeShare: wavg('highSpeedBrakeShare'),
         meanBrakeEnergyPerKm: wavg('meanBrakeEnergyPerKm'),
         p95NegativeDecel: wavg('p95NegativeDecel'),
+        p95NegativeDecelMeasured: wavg('p95NegativeDecelMeasured'),
+        p95NegativeDecelProxy: wavg('p95NegativeDecelProxy'),
+        meanBrakeEnergyProxyPerKm: wavg('meanBrakeEnergyProxyPerKm'),
         longitudinalStressScore: wavg('longitudinalStressScore'),
         brakingStressScore: wavg('brakingStressScore'),
         stopGoStressScore: wavg('stopGoStressScore'),

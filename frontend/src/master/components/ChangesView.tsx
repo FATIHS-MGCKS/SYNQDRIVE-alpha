@@ -35,6 +35,52 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p42-braking-provenance-2026-07-16',
+    version: '4.9.543',
+    title: 'Driving Intelligence V2 P42 — Braking kinematic provenance separation',
+    summary: [
+      'Trennung provider-klassifizierter Bremsereignisse vs. gemessener/rekonstruierter vs. ESTIMATED_PROXY Kinematik.',
+      'Geschätzte Endgeschwindigkeit wird nicht mehr als gemessen für Stop-Dichte oder Brake-Energy verwendet.',
+      'Synthetische Verzögerung (Severity-Proxy) als ESTIMATED_PROXY; p95NegativeDecelMeasured vs p95NegativeDecelProxy getrennt.',
+      'meanBrakeEnergyProxyPerKm separat — keine physikalisch präzise Aussage für Proxy-Energy.',
+      'Provider Harsh/Extreme Braking Zähler unverändert (reale Providerklassifikation).',
+      'Driving Impact reduziert healthEligibility bei dominanter Proxy-Kinematik; keine Score-Formel-Änderung.',
+      'Keine vorhandenen Events gelöscht.',
+      'Tests: fehlende Endgeschwindigkeit, native Bremsereignisse, HF-Reconstruction.',
+    ],
+    reason:
+      'Prompt 42/76: Echte, providerklassifizierte und synthetisch geschätzte Bremsinformationen trennen.',
+    previousBehavior:
+      'P41 — LTE_R1 schätzte fehlende Endgeschwindigkeit (start×0.72) und mischte Proxy-p95 in gemessene Statistiken.',
+    details:
+      '`driving-impact-braking-provenance.ts` + Migration `20260716260000_driving_impact_braking_provenance`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p41-driving-impact-provenance-2026-07-16',
+    version: '4.9.542',
+    title: 'Driving Intelligence V2 P41 — Driving Impact source provenance',
+    summary: [
+      'TripDrivingImpact + VehicleDrivingImpactCurrent: vollständige Source-Provenienz.',
+      'Felder: measured/providerClassified/reconstructed/estimatedProxy/contextOnly shares, native/hf counts, measurementCoverage, hardwareProfile, capabilityVersion, healthEligibility, primarySource, provenanceMaturity.',
+      'primarySource nie leer; gemischte Quellen als MIXED transparent.',
+      'Legacy-Rows lesbar via readTripDrivingImpactProvenance (sourceSummaryJson-Fallback).',
+      'Keine Score-Änderung — nur Traceability/Maturity.',
+      'Tests: reine native, reine HF, gemischte Trips + Legacy-Reader.',
+    ],
+    reason:
+      'Prompt 41/76: Driving Impact um vollständige Source-Provenienz erweitern.',
+    previousBehavior:
+      'P40 ev_power_demand — sourceSummaryJson ohne primarySource/shares (Audit P1-4).',
+    details:
+      '`driving-impact-provenance.ts` + Migration `20260716250000_driving_impact_provenance`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T20:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p40-ev-power-demand-shadow-2026-07-16',
     version: '4.9.541',
     title: 'Driving Intelligence V2 P40 — BEV high power demand shadow detector',

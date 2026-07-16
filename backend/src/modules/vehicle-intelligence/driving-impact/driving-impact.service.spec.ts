@@ -553,6 +553,62 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(createArg.extremeBrakePer100Km).toBeCloseTo(2, 5);
   });
 
+  it('V3 LTE_R1: separates proxy braking kinematics when end speed is missing', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        vehicle: { organizationId: 'org-1', hardwareType: 'LTE_R1' },
+        hardBrakingCount: 1,
+        brakingEventCount: 1,
+        distanceKm: 50,
+      }),
+    );
+    prisma.drivingEvent.findMany.mockResolvedValue([
+      { eventType: 'EXTREME_BRAKING', speedKmh: 80, severity: 0.9, deltaKmh: null },
+    ]);
+    mockProvenancePrereqs(prisma, { nativeEventCount: 1, hfEventCount: 0 });
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.p95NegativeDecelMeasured).toBe(0);
+    expect(createArg.p95NegativeDecelProxy).toBeGreaterThan(0);
+    expect(createArg.meanBrakeEnergyPerKm).toBe(0);
+    expect(createArg.meanBrakeEnergyProxyPerKm).toBeGreaterThan(0);
+    expect(createArg.stopDensity).toBe(0);
+    expect(createArg.sourceSummaryJson.brakingProvenance.proxyKinematicShare).toBe(1);
+    expect(createArg.hardBrakePer100Km).toBeCloseTo(2, 5);
+  });
+
+  it('V3 LTE_R1: uses measured delta end speed for stop density and measured energy only', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        vehicle: { organizationId: 'org-1', hardwareType: 'LTE_R1' },
+        hardBrakingCount: 1,
+        brakingEventCount: 1,
+        distanceKm: 50,
+      }),
+    );
+    prisma.drivingEvent.findMany.mockResolvedValue([
+      { eventType: 'HARSH_BRAKING', speedKmh: 50, severity: 0.6, deltaKmh: 50 },
+    ]);
+    mockProvenancePrereqs(prisma, { nativeEventCount: 1, hfEventCount: 0 });
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.stopDensity).toBeCloseTo(0.02, 2);
+    expect(createArg.meanBrakeEnergyPerKm).toBeGreaterThan(0);
+    expect(createArg.p95NegativeDecelProxy).toBeGreaterThan(0);
+    expect(createArg.p95NegativeDecelMeasured).toBe(0);
+    expect(createArg.sourceSummaryJson.brakingProvenance.measuredDeltaKinematicCount).toBe(1);
+  });
+
   it('V3 LTE_R1: counts extreme acceleration via metadataJson.classification on HARSH_ACCELERATION', async () => {
     prisma.vehicleTrip.findUnique.mockResolvedValue(
       makeBaseTripRow({

@@ -8744,6 +8744,10 @@ model TripDrivingImpact {
   highSpeedBrakeShare  Float? @map("high_speed_brake_share")
   meanBrakeEnergyPerKm Float? @map("mean_brake_energy_per_km")
   p95NegativeDecel     Float? @map("p95_negative_decel")
+  // P42 — measured/reconstructed vs ESTIMATED_PROXY braking kinematics (nullable for legacy rows)
+  p95NegativeDecelMeasured   Float? @map("p95_negative_decel_measured")
+  p95NegativeDecelProxy      Float? @map("p95_negative_decel_proxy")
+  meanBrakeEnergyProxyPerKm  Float? @map("mean_brake_energy_proxy_per_km")
 
   // Normalized stress scores 0–100
   longitudinalStressScore Float? @map("longitudinal_stress_score")
@@ -8823,6 +8827,10 @@ model VehicleDrivingImpactCurrent {
   highSpeedBrakeShare  Float? @map("high_speed_brake_share")
   meanBrakeEnergyPerKm Float? @map("mean_brake_energy_per_km")
   p95NegativeDecel     Float? @map("p95_negative_decel")
+  // P42 — measured/reconstructed vs ESTIMATED_PROXY braking kinematics
+  p95NegativeDecelMeasured   Float? @map("p95_negative_decel_measured")
+  p95NegativeDecelProxy      Float? @map("p95_negative_decel_proxy")
+  meanBrakeEnergyProxyPerKm  Float? @map("mean_brake_energy_proxy_per_km")
 
   // Rolling stress scores (distance-weighted)
   longitudinalStressScore Float? @map("longitudinal_stress_score")
