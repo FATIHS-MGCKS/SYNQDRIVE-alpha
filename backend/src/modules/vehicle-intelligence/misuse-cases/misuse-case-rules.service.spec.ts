@@ -378,7 +378,7 @@ describe('resolveAttribution', () => {
 });
 
 describe('buildCaseFingerprint', () => {
-  it('is stable per org trip and type', () => {
+  it('is deprecated legacy colon format', () => {
     const fp = buildCaseFingerprint('org-1', 'trip-1', MisuseCaseType.COLD_ENGINE_ABUSE);
     expect(fp).toBe('org-1:trip-1:COLD_ENGINE_ABUSE');
   });

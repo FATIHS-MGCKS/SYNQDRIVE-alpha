@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { MisuseCaseRulesService } from './misuse-case-rules.service';
-import { MisuseCasePersistenceHelper } from './misuse-case-evidence.service';
+import { MisuseCasePersistenceHelper } from './misuse-case-persistence.helper';
 import {
   resolveAttribution,
   type ContextAnchor,

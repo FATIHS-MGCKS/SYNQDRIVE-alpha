@@ -9,6 +9,22 @@ import type {
 } from '@prisma/client';
 import type { TripEvidenceLevel } from '../../trips/trip-evidence-level.types';
 
+import type { MisuseCaseType } from '@prisma/client';
+
+export type MisuseCaseInputIdentity = {
+  organizationId: string;
+  tripId: string;
+  vehicleId: string;
+  caseType: MisuseCaseType;
+  tripEndTimeIso: string | null;
+  behaviorEventCount: number;
+  drivingEventCount: number;
+  contextAnchorCount: number;
+  dimoSafetyEventCount: number;
+  dtcEventCount: number;
+  modelVersion?: string;
+};
+
 export type MisuseCaseLifecycleSnapshot = {
   status: MisuseCaseStatus;
   modelVersion: string;

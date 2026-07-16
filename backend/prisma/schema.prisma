@@ -7028,7 +7028,7 @@ model MisuseCase {
 
   /// Lifecycle (P47) — telemetry creates CANDIDATE/REVIEW_REQUIRED only.
   status                MisuseCaseStatus              @default(CANDIDATE) @map("status")
-  modelVersion          String                        @default("misuse-case-lifecycle-v1") @map("model_version")
+  modelVersion          String                        @default("misuse-fingerprint-v1") @map("model_version")
   inputFingerprint      String                        @default("") @map("input_fingerprint")
   analysisRunId         String?                       @map("analysis_run_id")
   evidenceCount         Int                           @default(0) @map("evidence_count")
@@ -7064,6 +7064,7 @@ model MisuseCase {
   @@index([lastDetectedAt])
   @@index([analysisRunId])
   @@index([inputFingerprint])
+  @@index([organizationId, inputFingerprint])
   @@index([supersedesCaseId])
   @@map("misuse_cases")
 }

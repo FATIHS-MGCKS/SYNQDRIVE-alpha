@@ -35,6 +35,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p48-misuse-fingerprints-2026-07-16',
+    version: '4.9.549',
+    title: 'Driving Intelligence V2 P48 — Stable misuse fingerprints',
+    summary: [
+      'Neues Modul `misuse-case-fingerprint` (`misuse-fingerprint-v1`) mit SHA-256-Fingerprints.',
+      'Logical fingerprint: organizationId, vehicleId, Trip/Rental-Scope, category, type, attributionScope, qualifizierte Evidence-IDs.',
+      'Case fingerprint = logical + modelVersion; identischer Input → identischer Case.',
+      'Neue Modellversion superseded vorherigen Case (`supersedesCaseId`) statt Duplikat.',
+      'Zeitlich getrennte Muster (andere Evidence-IDs / Temporal-Buckets) → separate Cases.',
+      'Keine Freitexte im Fingerprint; tenant-sicher via organizationId.',
+      'Evidence-Änderung → kontrollierte Reconciliation (UPDATE / SUPERSEDE / CREATE).',
+      'Index `(organization_id, input_fingerprint)` für Supersede-Lookup.',
+      'Tests: Wiederholung, Modellversion-Supersede, temporale Trennung.',
+    ],
+    reason:
+      'Prompt 48/76 — stabile, deterministische Misuse-Fingerprints mit Supersede bei Modellwechsel.',
+    previousBehavior:
+      'Fingerprint = `org:trip:type` Colon-String; inputFingerprint aus Trip-Countern.',
+    details:
+      '`misuse-case-fingerprint/*`, `misuse-case-persistence.helper.ts`, Migration `20260716300000_misuse_case_fingerprint_index`, Persistence-/Reconciliation-Specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:45:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p47-misuse-lifecycle-2026-07-16',
     version: '4.9.548',
     title: 'Driving Intelligence V2 P47 — Misuse case lifecycle',

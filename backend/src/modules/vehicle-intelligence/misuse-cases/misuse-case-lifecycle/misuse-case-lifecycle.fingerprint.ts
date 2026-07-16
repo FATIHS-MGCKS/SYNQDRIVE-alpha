@@ -1,28 +1,12 @@
 import { createHash } from 'crypto';
-import type { MisuseCaseType } from '@prisma/client';
-import { MISUSE_CASE_LIFECYCLE_VERSION } from './misuse-case-lifecycle.config';
-
-export type MisuseCaseInputIdentity = {
-  organizationId: string;
-  tripId: string;
-  vehicleId: string;
-  caseType: MisuseCaseType;
-  tripEndTimeIso: string | null;
-  behaviorEventCount: number;
-  drivingEventCount: number;
-  contextAnchorCount: number;
-  dimoSafetyEventCount: number;
-  dtcEventCount: number;
-  modelVersion?: string;
-};
-
-function normalizePart(value: string | number | boolean | null | undefined): string {
-  if (value == null) return '';
-  return String(value).trim();
-}
+import type { MisuseCaseLogicalFingerprintInput } from '../misuse-case-fingerprint/misuse-case-fingerprint.types';
+import { buildMisuseCaseLogicalFingerprint } from '../misuse-case-fingerprint/misuse-case-fingerprint';
+import { MISUSE_CASE_FINGERPRINT_VERSION } from '../misuse-case-fingerprint/misuse-case-fingerprint.config';
+import type { MisuseCaseInputIdentity } from './misuse-case-lifecycle.types';
 
 /**
- * Deterministic input fingerprint for misuse case provenance (P47).
+ * @deprecated P48 — use buildMisuseCaseLogicalFingerprint / buildMisuseCaseFingerprintPair.
+ * Kept for transitional callers that still pass trip-level counters.
  */
 export function buildMisuseCaseInputFingerprint(identity: MisuseCaseInputIdentity): string {
   const parts = [
@@ -30,16 +14,21 @@ export function buildMisuseCaseInputFingerprint(identity: MisuseCaseInputIdentit
     identity.tripId,
     identity.vehicleId,
     identity.caseType,
-    normalizePart(identity.tripEndTimeIso),
-    normalizePart(identity.behaviorEventCount),
-    normalizePart(identity.drivingEventCount),
-    normalizePart(identity.contextAnchorCount),
-    normalizePart(identity.dimoSafetyEventCount),
-    normalizePart(identity.dtcEventCount),
-    identity.modelVersion ?? MISUSE_CASE_LIFECYCLE_VERSION,
+    identity.tripEndTimeIso ?? '',
+    identity.behaviorEventCount,
+    identity.drivingEventCount,
+    identity.contextAnchorCount,
+    identity.dimoSafetyEventCount,
+    identity.dtcEventCount,
+    identity.modelVersion ?? MISUSE_CASE_FINGERPRINT_VERSION,
   ];
-
   return createHash('sha256').update(parts.join('|')).digest('hex');
+}
+
+export function buildMisuseCaseInputFingerprintFromEvidence(
+  input: MisuseCaseLogicalFingerprintInput,
+): string {
+  return buildMisuseCaseLogicalFingerprint(input);
 }
 
 export function requiresMisuseCaseLifecycleRefresh(

@@ -3,10 +3,8 @@ import { MisuseCasesController } from './misuse-cases.controller';
 import { MisuseCasesService } from './misuse-cases.service';
 import { MisuseCaseAggregatorService } from './misuse-case-aggregator.service';
 import { MisuseCaseRulesService } from './misuse-case-rules.service';
-import {
-  MisuseCaseEvidenceService,
-  MisuseCasePersistenceHelper,
-} from './misuse-case-evidence.service';
+import { MisuseCaseEvidenceService } from './misuse-case-evidence.service';
+import { MisuseCasePersistenceHelper } from './misuse-case-persistence.helper';
 import { MisuseCaseLifecycleService } from './misuse-case-lifecycle/misuse-case-lifecycle.service';
 import { DimoModule } from '../../dimo/dimo.module';
 

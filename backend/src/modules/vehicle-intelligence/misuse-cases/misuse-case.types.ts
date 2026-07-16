@@ -152,6 +152,7 @@ export function buildCaseFingerprint(
   tripId: string,
   type: MisuseCaseType,
 ): string {
+  /** @deprecated P48 — legacy colon format; do not use for new writes. */
   return `${organizationId}:${tripId}:${type}`;
 }
 

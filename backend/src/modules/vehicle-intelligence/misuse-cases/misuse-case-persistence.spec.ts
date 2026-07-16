@@ -1,8 +1,8 @@
 import { MisuseCaseType, MisuseAttributionScope, MisuseCaseStatus } from '@prisma/client';
-import {
-  MisuseCaseEvidenceService,
-  MisuseCasePersistenceHelper,
-} from './misuse-case-evidence.service';
+import { MisuseCasePersistenceHelper } from './misuse-case-persistence.helper';
+import { MisuseCaseEvidenceService } from './misuse-case-evidence.service';
+import { buildMisuseCaseFingerprintPair, buildMisuseCaseScope } from './misuse-case-fingerprint/misuse-case-fingerprint';
+import { MISUSE_CASE_FINGERPRINT_VERSION } from './misuse-case-fingerprint/misuse-case-fingerprint.config';
 
 describe('MisuseCasePersistenceHelper idempotency', () => {
   const store = new Map<string, any>();
@@ -11,9 +11,20 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
   const prisma = {
     misuseCase: {
       findUnique: jest.fn(async ({ where }: any) => store.get(where.fingerprint) ?? null),
+      findFirst: jest.fn(async ({ where }: any) => {
+        const rows = [...store.values()].filter((row) => {
+          if (where.organizationId && row.organizationId !== where.organizationId) return false;
+          if (where.inputFingerprint && row.inputFingerprint !== where.inputFingerprint) return false;
+          if (where.status?.not && row.status === where.status.not) return false;
+          if (where.modelVersion?.not && row.modelVersion === where.modelVersion.not) return false;
+          return true;
+        });
+        return rows.sort((a, b) => b.createdAtMs - a.createdAtMs)[0] ?? null;
+      }),
       create: jest.fn(async ({ data }: any) => {
         const row = {
           id: `case-${store.size + 1}`,
+          createdAtMs: store.size + 1,
           ...data,
           eventCount: data.eventCount,
           status: data.status ?? MisuseCaseStatus.CANDIDATE,
@@ -134,7 +145,84 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     expect(stored.status).not.toBe(MisuseCaseStatus.CONFIRMED);
     expect(stored.informationalOnly).toBe(true);
     expect(stored.decisionEligibility).toBe('REVIEW_ONLY');
-    expect(stored.modelVersion).toBe('misuse-case-lifecycle-v1');
+    expect(stored.modelVersion).toBe(MISUSE_CASE_FINGERPRINT_VERSION);
     expect(stored.inputFingerprint).toHaveLength(64);
+    expect(stored.fingerprint).toHaveLength(64);
+  });
+
+  it('creates separate cases for temporally separated evidence patterns', async () => {
+    const morning = {
+      ...candidate,
+      evidence: [
+        {
+          sourceType: 'TRIP_BEHAVIOR_EVENT' as const,
+          sourceId: 'e-morning',
+          eventType: 'KICKDOWN',
+          occurredAt: new Date('2026-06-01T08:00:00Z'),
+        },
+      ],
+    };
+    const evening = {
+      ...candidate,
+      evidence: [
+        {
+          sourceType: 'TRIP_BEHAVIOR_EVENT' as const,
+          sourceId: 'e-evening',
+          eventType: 'KICKDOWN',
+          occurredAt: new Date('2026-06-01T20:00:00Z'),
+        },
+      ],
+    };
+
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', morning as any, attribution, upsertContext);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', evening as any, attribution, upsertContext);
+
+    expect(store.size).toBe(2);
+    expect(prisma.misuseCase.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('supersedes prior case when model version changes for same logical fingerprint', async () => {
+    const fingerprintsV0 = buildMisuseCaseFingerprintPair({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      scope: buildMisuseCaseScope({ tripId: 'trip-1', bookingId: 'book-1' }),
+      category: candidate.category,
+      caseType: candidate.type,
+      attributionScope: attribution.attributionScope,
+      evidence: candidate.evidence as any,
+      modelVersion: 'misuse-fingerprint-v0',
+    });
+
+    store.set(fingerprintsV0.caseFingerprint, {
+      id: 'case-old',
+      createdAtMs: 1,
+      organizationId: 'org-1',
+      fingerprint: fingerprintsV0.caseFingerprint,
+      inputFingerprint: fingerprintsV0.logicalFingerprint,
+      modelVersion: 'misuse-fingerprint-v0',
+      status: MisuseCaseStatus.ACTIVE,
+      eventCount: 5,
+      evidenceCount: 1,
+      informationalOnly: true,
+      decisionEligibility: 'INFORMATIONAL_ONLY',
+      attributionConfidence: 'HIGH',
+      analysisRunId: null,
+      resolvedAt: null,
+      resolutionReason: null,
+      severity: 'WARNING',
+      confidence: 'HIGH',
+      lastDetectedAt: new Date('2026-06-01T10:30:00Z'),
+      recommendedAction: null,
+    });
+
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+
+    expect(store.size).toBe(2);
+    const prior = [...store.values()].find((r) => r.id === 'case-old');
+    const next = [...store.values()].find((r) => r.id !== 'case-old');
+    expect(prior?.status).toBe(MisuseCaseStatus.SUPERSEDED);
+    expect(next?.supersedesCaseId).toBe('case-old');
+    expect(next?.modelVersion).toBe(MISUSE_CASE_FINGERPRINT_VERSION);
+    expect(next?.inputFingerprint).toBe(fingerprintsV0.logicalFingerprint);
   });
 });
