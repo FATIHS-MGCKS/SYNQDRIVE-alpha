@@ -5,10 +5,10 @@
 | **Audit ID** | `tire-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/tire-health-production-readiness-2026-07` |
-| **Phase** | 3 of 7 — VPS Integrity & Ground-Truth Audit |
-| **Status** | Phases 1–3 complete; Phases 4–7 pending |
+| **Phase** | 4 of 7 — DIMO Signal & Timeseries Audit |
+| **Status** | Phases 1–4 complete; Phases 5–7 pending |
 | **Production data modified** | **No** — all VPS/DB/DIMO access was read-only |
-| **Last VPS runtime probe** | 2026-07-16 (read-only SSH) |
+| **Last VPS runtime probe** | 2026-07-16 (read-only SSH + DIMO Telemetry API) |
 
 ---
 
@@ -60,8 +60,11 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Fleet coverage CSV | `docs/audits/data/tire-health-fleet-coverage-2026-07.csv` |
 | Ground-truth classification CSV | `docs/audits/data/tire-health-ground-truth-classification-2026-07.csv` |
 | Integrity findings JSON | `docs/audits/data/tire-health-integrity-findings-2026-07.json` |
+| DIMO signal capability CSV | `docs/audits/data/tire-health-dimo-signal-capability-2026-07.csv` |
+| DIMO timeseries coverage CSV | `docs/audits/data/tire-health-dimo-timeseries-coverage-2026-07.csv` |
 | Phase 3 SQL (read-only) | `scripts/audits/tire-health-phase3-readonly.sql` |
-| Audit script | `scripts/audits/audit-tire-health-production-readiness.ts` |
+| Audit script (integrity) | `scripts/audits/audit-tire-health-production-readiness.ts` |
+| Audit script (DIMO signals) | `scripts/audits/audit-tire-health-dimo-signals.ts` |
 
 ---
 
@@ -93,13 +96,13 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 - Fleet coverage & validation-readiness matrix
 - CSV/JSON artifacts + extended audit script (`--phase=3`)
 
-### Phase 4 — Telemetry & idempotency
+### Phase 4 — DIMO signal & timeseries audit ✅
 
-- DIMO signal availability (`availableSignals`, `signalsLatest`, historical `signals`)
-- Trip enrichment → driving impact → tire usage chain
-- Idempotency of trip processors, enrich retries, recalculation scheduler
-- ClickHouse HF mirror relevance to tire factors
-- HM tire pressure cache freshness
+- Official DIMO Telemetry API documentation verification (MCP unavailable; docs + live API)
+- Per-vehicle `availableSignals` / `signalsLatest` / historical `signals` (60d + 14d)
+- Coverage, cadence, plausibility per signal
+- DIMO vs SynqDrive persistence & Tire Health usage matrix
+- CSV artifacts + read-only audit script
 
 ### Phase 5 — Production data replay (read-only)
 
@@ -798,12 +801,275 @@ Details: **`docs/audits/data/tire-health-integrity-findings-2026-07.json`**
 
 ---
 
-## Phase 4–7 placeholders
+## Phase 4 — DIMO signal & timeseries audit
+
+**Audit ID:** `tire-health-dimo-signals-2026-07`  
+**Method:** Read-only DIMO Telemetry API queries from production VPS (`TIRE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1`). No triggers/subscriptions created. No GPS/location signals queried. DIMO MCP server was **not available** in the audit environment; signal names and units were verified against [DIMO Telemetry API — Vehicle Signals](https://www.dimo.org/docs/api-references/telemetry-api/signals) (fetched 2026-07-16).
+
+**Fleet scope:** 6 DIMO-connected vehicles → anonymized `VEHICLE_001` … `VEHICLE_006` (sorted internal UUID; mapping not stored in Git).
+
+**Query volume:** **339** DIMO GraphQL queries (6 vehicles × ~56 queries/vehicle including `availableSignals`, `signalsLatest`, `dataSummary`, and paginated historical `signals` in 7-day windows).
+
+**Artifacts:**
+
+| File | Rows | Purpose |
+|------|------|---------|
+| `docs/audits/data/tire-health-dimo-signal-capability-2026-07.csv` | 84 | Per-vehicle signal listing, latest value, classification |
+| `docs/audits/data/tire-health-dimo-timeseries-coverage-2026-07.csv` | 84 | 60d/14d coverage, cadence, plausibility stats |
+
+**Reproducibility:**
+
+```bash
+cd backend && TIRE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-tire-health-dimo-signals.ts \
+  --days=60 --output-dir=../docs/audits/data
+```
+
+---
+
+### Phase 4 — Teil 1: DIMO documentation verification
+
+| API surface | Documented | Notes |
+|-------------|------------|-------|
+| `availableSignals(tokenId)` | ✅ | Returns `[String!]!` of queryable signal names with stored data |
+| `signalsLatest(tokenId)` | ✅ | Includes `lastSeen` (UTC); per-signal `{ value, timestamp }` |
+| `signals(tokenId, from, to, interval)` | ✅ | Historical aggregation; requires `agg` per field |
+| `lastSeen` | ✅ | Sub-field of `signalsLatest` only |
+| `dataSummary(tokenId)` | ✅ | Per-signal `firstSeen`, `lastSeen`, `numberOfSignals` |
+
+| Signal (schema name) | Documented | DIMO unit | Common name |
+|----------------------|------------|-----------|-------------|
+| `powertrainTransmissionTravelledDistance` | ✅ | km | Odometer |
+| `isIgnitionOn` | ✅ | 0/1 | Vehicle Ignition Status |
+| `speed` | ✅ | km/h | Vehicle Speed |
+| `angularVelocityYaw` | ✅ | deg/s | Yaw Rate |
+| `exteriorAirTemperature` | ✅ | °C | Air Temperature |
+| `obdBarometricPressure` | ✅ | kPa | Barometric Pressure |
+| `obdDTCList` | ✅ | list | DTC list |
+| `chassisAxleRow1WheelLeftTirePressure` | ✅ | **kPa** | Front Left Wheel |
+| `chassisAxleRow1WheelRightTirePressure` | ✅ | **kPa** | Front Right Wheel |
+| `chassisAxleRow2WheelLeftTirePressure` | ✅ | **kPa** | Back Left Wheel |
+| `chassisAxleRow2WheelRightTirePressure` | ✅ | **kPa** | Back Right Wheel |
+| `chassisTireSystemIsWarningOn` | ✅ | 0/1 | TPMS Warning |
+| `chassisAxleRow1WheelLeftSpeed` | ✅ | km/h | Front Left Wheel Speed |
+| `chassisAxleRow1WheelRightSpeed` | ✅ | km/h | Front Right Wheel Speed |
+| `chassisAxleRow2WheelLeftSpeed` | ❌ **NOT_DOCUMENTED** | — | Not in schema |
+| `chassisAxleRow2WheelRightSpeed` | ❌ **NOT_DOCUMENTED** | — | Not in schema |
+
+**Additional concepts searched — NOT_DOCUMENTED (no invented signal names, not queried):**
+
+| Concept | Status |
+|---------|--------|
+| Tire Temperature | **NOT_DOCUMENTED** |
+| Tire Identification | **NOT_DOCUMENTED** |
+| Tread Depth | **NOT_DOCUMENTED** |
+| Tire Status (structured) | **NOT_DOCUMENTED** (only `chassisTireSystemIsWarningOn` for TPMS telltale) |
+| Wheel Slip | **NOT_DOCUMENTED** |
+| Vehicle Mass (passenger) | **NOT_DOCUMENTED** (`chassisAxleRow3/4/5Weight` exist for commercial axles only) |
+| Recommended Tire Pressure | **NOT_DOCUMENTED** |
+| ABS Events (timeseries) | **NOT_DOCUMENTED** (`chassisBrakeABSIsWarningOn` is warning telltale, not event stream) |
+| Traction-Control Events | **NOT_DOCUMENTED** |
+
+---
+
+### Phase 4 — Teil 2: Per-vehicle `availableSignals` classification
+
+| Vehicle | Powertrain | Tire pressure (4×) | TPMS warning | Wheel speed (FL/FR) | Yaw rate | Ext. temp | Baro pressure |
+|---------|------------|-------------------|--------------|---------------------|----------|-----------|---------------|
+| VEHICLE_001 | GASOLINE | ❌ not listed | ❌ | ❌ | ❌ | ✅ listed | ✅ listed |
+| VEHICLE_002 | ELECTRIC | ✅ **all 4** | ❌ | ❌ | ❌ | ✅ listed | ❌ (EV) |
+| VEHICLE_003 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ✅ listed | ✅ listed |
+| VEHICLE_004 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ✅ listed | ✅ listed |
+| VEHICLE_005 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ✅ listed | ✅ listed |
+| VEHICLE_006 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ✅ listed | ✅ listed |
+
+**Classification legend (applied per signal in CSV):**
+
+| Class | Meaning |
+|-------|---------|
+| `DOCUMENTED_NOT_AVAILABLE` | In DIMO schema, absent from vehicle `availableSignals` |
+| `AVAILABLE_NO_LATEST_VALUE` | Listed, no `signalsLatest` value |
+| `AVAILABLE_BUT_NO_HISTORICAL_VALUES` | Listed + latest, but no retrievable 60d `signals` series (often `dataSummary` count ≫ 0 but API returns empty buckets) |
+| `SPORADIC` | Historical series exists but coverage &lt; 5% or long gaps |
+| `USABLE` | Documented, listed, historical series with adequate samples |
+| `INVALID_OR_IMPLAUSIBLE` | Values fail plausibility (e.g. bar stored as kPa) |
+
+**Key per-vehicle notes:**
+
+- **VEHICLE_002 (ELECTRIC):** Only fleet vehicle with all four tire-pressure signals in `availableSignals`. Latest values **274–301 kPa** (plausible passenger-car range). Historical coverage **~1.3%** (median cadence ~96 min, max gap ~7.7 d). Classification: **SPORADIC** for pressure, **USABLE** for odometer/speed/temperature.
+- **VEHICLE_005 (GASOLINE):** Best gasoline ambient-temperature coverage among ICE vehicles in 60d window (**5.8%**, 334 samples). Odometer **USABLE**.
+- **VEHICLE_001:** Newest DIMO connection (~10 d of data in 60d window); most signals **SPORADIC** or latest-only.
+- **ICE barometric pressure (V001, V003–V006):** Listed for 5/5 gasoline vehicles; latest values often **99 kPa** (plausible sea-level). Historical `signals` aggregation returned **no buckets** despite high `dataSummary` counts → **AVAILABLE_BUT_NO_HISTORICAL_VALUES**.
+
+---
+
+### Phase 4 — Teil 3: Historical timeseries analysis
+
+**Windows analyzed:**
+
+| Window | Purpose | Interval used |
+|--------|---------|---------------|
+| **A. 60 days** (2026-05-17 → 2026-07-16 UTC) | `firstSeen`, `lastSeen`, coverage %, gaps, `sampleCount` | 3m (pressure/TPMS), 1m (speed), 15m (odo/temp) |
+| **B. 14 days** | Current availability, cadence, freshness | Same intervals |
+| **C. Detail scenarios** | Normal drive day, multi-trip day, standstill, TPMS warning day, temperature swing | **Not separately scripted** — aggregate metrics + manual spot-check of V002 pressure timestamps show multi-day standstill gaps (max gap 662 940 s ≈ 7.7 d) and burst updates on drive days (~22 samples in 14d per wheel) |
+
+**Query strategy:** 7-day chunks, 250 ms inter-query delay, 3× retry with linear backoff. GPS/location fields excluded.
+
+**Fleet-level historical availability (60d, signals with retrievable `signals` buckets):**
+
+| Signal | Vehicles with historical series | Best coverage vehicle |
+|--------|--------------------------------|----------------------|
+| Odometer | 6/6 | VEHICLE_002 (28.6%) |
+| Speed | 6/6 | VEHICLE_002 (17.3%) |
+| Exterior air temp | 6/6 | VEHICLE_002 (29.8%) |
+| Tire pressure (any wheel) | **1/6** (V002 only) | VEHICLE_002 (~1.3% per wheel) |
+| TPMS warning | 0/6 | — |
+| Wheel speed per wheel | 0/6 | — |
+| Barometric pressure | 0/6 retrievable series | Latest-only on 5 ICE |
+| Yaw rate | 0/6 | Not listed |
+| Ignition on | 0/6 retrievable series | Latest-only (high `dataSummary` count) |
+
+---
+
+### Phase 4 — Teil 4: Metrics summary (see CSV for full per-vehicle rows)
+
+Each row in `tire-health-dimo-timeseries-coverage-2026-07.csv` includes:
+
+`documentedInDimoSchema`, `listedInAvailableSignals`, `latestValueAvailable`, `historicalValuesAvailable`, `firstSeen`, `lastSeen`, `sampleCount`, `coveragePercent`, `medianCadenceSeconds`, `p95CadenceSeconds`, `maximumGapSeconds`, `invalidRate`, `minimum`, `maximum`, `median`, `unit`, `synqDrivePersistsSignal`, `synqDriveUsesSignal`, `tireHealthUsability`, `finding`, `recommendation`.
+
+Additional fields computed in audit logic but not exported: `normalizedCorrectly` (pressure: **false** — raw kPa stored as bar), `sourceProvider` (always `dimo` for queried vehicles), `stalePeriodCount`, `p01`/`p99`.
+
+---
+
+### Phase 4 — Teil 5: Signal-specific plausibility
+
+#### A. Tire pressure (kPa)
+
+| Check | Finding |
+|-------|---------|
+| DIMO unit | **kPa** (official docs) |
+| SynqDrive storage | Raw numeric → `vehicle_latest_states.tire_pressure_*` |
+| SynqDrive catalog | Declares **bar** (`data-analyse-signal-catalog.ts`) |
+| Wear model | `computePressureFactor` uses `nominalPressureBar: 2.5` — treats stored value as **bar** |
+| VEHICLE_002 latest | FL 294, FR 301, RL 274, RR 289 kPa — **plausible kPa**, would read as severe over-inflation if interpreted as bar |
+| Invalid values | **0%** invalid rate on V002 historical samples |
+| Per-wheel timestamps | Same `lastSeen` across four wheels on latest snapshot — suggests batch TPMS upload |
+| FL/FR/RL/RR mapping | SynqDrive `DimoSnapshotProcessor` maps Row1Left→FL, Row1Right→FR, Row2Left→RL, Row2Right→RR — **consistent with DIMO axle convention** |
+
+**Verdict:** Values are physically plausible in **kPa** but **unit-normalization bug (P1-TH-12)** makes Tire Health pressure factor unreliable when DIMO is the sole feed.
+
+#### B. TPMS warning (`chassisTireSystemIsWarningOn`)
+
+| Check | Finding |
+|-------|---------|
+| Fleet availability | **0/6** in `availableSignals` |
+| Historical transitions | None observed |
+| SynqDrive persistence | **Not implemented** (HM has separate `tire_pressure_warning` path) |
+
+#### C. Exterior air temperature
+
+| Vehicle | 60d range (°C) | Coverage | Classification |
+|---------|----------------|----------|----------------|
+| V002 | 6.75 – 39 | 29.8% | USABLE |
+| V005 | 7 – 49.7 | 5.8% | USABLE |
+| V003 | 7.4 – 116.5 | 4.8% | SPORADIC (max 116.5 °C → sensor spike/outlier) |
+| Others | 12 – 44 | &lt; 3% | SPORADIC |
+
+Used by `environment-temperature.query.ts` / trip segments for **ambient context** — not tire tread temperature. **Do not conflate with tire temperature** (NOT_DOCUMENTED).
+
+#### D. Barometric pressure
+
+Listed on 5 ICE vehicles; latest ~99 kPa. No retrievable historical buckets in audit window. **Gauge vs absolute semantics unclear** — no correction recommended.
+
+#### E. Odometer
+
+| Vehicle | Monotonicity (60d samples) | Notes |
+|---------|---------------------------|-------|
+| V002 | ✅ Monotonic | 172 590 → 179 360 km |
+| V005 | ✅ Monotonic | 189 033 → 190 002 km |
+| V001 | ✅ Small fleet vehicle | 18 → 345 km (young vehicle) |
+| V004 | ⚠️ Low coverage (3.2%) | Last seen 2026-07-14 — possible connectivity gap |
+
+No backward jumps detected in retrieved samples. Provider comparison to `totalKmOnSet` deferred to Phase 3 (trips not applied).
+
+#### F. Wheel speed
+
+**0/6** vehicles list `chassisAxleRow1WheelLeftSpeed` / `RightSpeed`. Not evaluated further.
+
+#### G. Yaw rate & speed (Driving Impact overlap)
+
+| Signal | DIMO fleet | SynqDrive Driving Impact | Tire Health wear model |
+|--------|------------|--------------------------|------------------------|
+| `speed` | 6/6 listed, historical on all | Trip HF / waypoint mirror | Indirect via driving-impact factors |
+| `angularVelocityYaw` | 0/6 listed | Not used | Not used |
+
+**Recommendation:** Do not add duplicate yaw-based load scoring in Tire Health; Driving Impact already consumes trip-level speed/braking patterns.
+
+---
+
+### Phase 4 — Teil 6: DIMO vs SynqDrive matrix
+
+| Category | Signals |
+|----------|---------|
+| **A. DIMO delivers → SynqDrive stores & uses** | `powertrainTransmissionTravelledDistance` (odo), `speed` (latest state), tire pressure **when present** (but unit wrong for wear math) |
+| **B. DIMO delivers → SynqDrive stores, not used in Tire Health** | `isIgnitionOn`, `exteriorAirTemperature` (used in trips/segments, not wear formula directly) |
+| **C. DIMO delivers → SynqDrive discards** | `obdBarometricPressure`, `obdDTCList` (latest may be in raw payload only) |
+| **D. DIMO documented, vehicle does not deliver** | Tire pressure (5/6), TPMS warning (6/6), yaw (6/6), wheel speed (6/6) |
+| **E. Sporadic delivery** | V002 tire pressure (~1.3% coverage); most ICE ambient temp &lt; 5% |
+| **F. Mapping/unit error** | **kPa → bar** not applied in `DimoSnapshotProcessor`; catalog labels bar |
+
+**Answers to audit questions:**
+
+1. **New signals vehicles really deliver:** Four-wheel TPMS **kPa** (V002 only); ambient temperature (all 6, quality varies); barometric latest (5 ICE); DTC latest (V005).
+2. **Documentation-only for our fleet:** TPMS warning, yaw rate, wheel speeds, rear wheel speeds, all NOT_DOCUMENTED concepts (tire temp, tread depth, etc.).
+3. **`availableSignals` without usable timeseries:** `isIgnitionOn`, `obdBarometricPressure` on most ICE (high `dataSummary` count, empty `signals` buckets); `obdDTCList` on V005.
+4. **Four tire pressure signals:** **VEHICLE_002 only**.
+5. **Partial pressure:** **None** — pressure is all-or-nothing per vehicle today.
+6. **Direct TPMS warning:** **None**.
+7. **Wheel speed per wheel timeseries:** **None**.
+8. **Regular exterior temperature:** **VEHICLE_002**, **VEHICLE_005** (USABLE); others SPORADIC.
+9. **Barometric pressure:** Latest on V001, V003, V004, V005, V006; no historical series.
+10. **DIMO signals not persisted by SynqDrive:** `chassisTireSystemIsWarningOn`, `obdBarometricPressure`, `angularVelocityYaw`, wheel speeds, `exteriorAirTemperature` (not in `vehicle_latest_state`), `obdDTCList`.
+11. **Persisted but unused in Tire Health:** `isIgnitionOn`, `exteriorAirTemperature` (indirect only), raw pressure on 5/6 vehicles (always null).
+12. **Unit/mapping errors:** **Yes** — kPa stored and interpreted as bar; axle FL/FR/RL/RR mapping is correct.
+13. **Biggest quality gain:** Fix **kPa→bar normalization** for V002 + persist `exteriorAirTemperature` for season-mismatch context on USABLE vehicles.
+14. **Low-coverage ideas to defer:** Wheel speed anomaly detection, barometric correction, yaw-based wear, any NOT_DOCUMENTED signal concept.
+
+---
+
+### Phase 4 — Teil 7: Fachliche Bewertung
+
+| Signal | Use case | Req. cadence | Req. coverage | Fleet cover | Quality gain | Effort | Misread risk | Rec. |
+|--------|----------|--------------|---------------|-------------|--------------|--------|--------------|------|
+| 4× tire pressure (kPa) | Underinflation wear factor, alerts | ≤15 min driving | ≥50% driving time | **1/6** | **High** (if unit fixed) | Medium (normalize + freshness) | **High** (bar/kPa) | **MVP** (after unit fix) |
+| `chassisTireSystemIsWarningOn` | TPMS telltale, rental safety | On change | Any event | **0/6** | High if available | Low | Low | **LATER** (persist when fleet supports) |
+| `exteriorAirTemperature` | Season mismatch, heat stress context | ≤30 min | ≥10% | **2/6 USABLE** | Medium | Low (persist snapshot) | Medium (≠ tire temp) | **MVP** (context only) |
+| `powertrainTransmissionTravelledDistance` | km attribution, odo validation | ≤15 min | ≥20% | **6/6** | Medium (already used) | Low | Low | **MVP** |
+| `speed` | Driving context | ≤1 min | ≥10% | **6/6** | Low (Driving Impact covers) | — | Low | **LATER** (no duplicate) |
+| `angularVelocityYaw` | Cornering load | ≤1 s | ≥50% | **0/6** | Low | Medium | Medium | **DO_NOT_USE** |
+| Wheel speed per wheel | Slip/anomaly | ≤1 s | ≥50% multi-wheel | **0/6** | Low | High | High | **DO_NOT_USE** |
+| `obdBarometricPressure` | Altitude/context correction | ≤30 min | ≥20% | **0/6 series** | Low | Medium | **High** (gauge sem.) | **DO_NOT_USE** |
+| `obdDTCList` | Diagnostic context | On change | Any | **1/6 latest** | Low for tires | Low | Low | **LATER** |
+| Tire temp / tread / slip / mass / reco pressure | Direct tire health | — | — | **NOT_DOCUMENTED** | — | — | — | **DO_NOT_USE** |
+
+---
+
+### Phase 4 — New findings
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| **P1-TH-12** | P1 | DIMO tire pressure is **kPa**; SynqDrive persists raw values and wear model assumes **bar** → false over-inflation on V002 |
+| **P1-TH-13** | P1 | Tire pressure DIMO feed limited to **1/6** vehicles; pressure wear factor effectively **no_data** for 83% of fleet |
+| **P2-TH-14** | P2 | `exteriorAirTemperature` USABLE on 2/6 but **not persisted** on `vehicle_latest_state` — season context underused |
+| **P2-TH-15** | P2 | `chassisTireSystemIsWarningOn` documented but **absent fleet-wide** — cannot replace HM TPMS warning path |
+| **P2-TH-16** | P2 | `isIgnitionOn` / `obdBarometricPressure` show high `dataSummary` counts but **no historical buckets** — API aggregation mismatch for audit tooling |
+
+---
+
+## Phase 5–7 placeholders
 
 > Sections will be expanded in subsequent audit prompts.
 
-- **Phase 3:** Wear model deep-dive & edge-case replay — _pending_
-- **Phase 4:** Telemetry & idempotency — _pending_
 - **Phase 5:** Production data replay — _pending_
 - **Phase 6:** Integrations & UX — _pending_
 - **Phase 7:** Final verdict — _pending_
@@ -825,6 +1091,11 @@ TIRE_HEALTH_AUDIT_ALLOW_REMOTE=1 TIRE_HEALTH_AUDIT_ALLOW_PROD=1 \
 
 # Direct SQL on VPS (read-only)
 psql "$DATABASE_URL" -f scripts/audits/tire-health-phase3-readonly.sql
+
+# Phase 4 — DIMO signal timeseries (read-only, supervised production)
+cd backend && TIRE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-tire-health-dimo-signals.ts \
+  --days=60 --output-dir=../docs/audits/data
 ```
 
 ---
@@ -836,12 +1107,13 @@ psql "$DATABASE_URL" -f scripts/audits/tire-health-phase3-readonly.sql
 | 2026-07-16 | 1 | Initial architecture map, VPS probe, CSV, audit script skeleton |
 | 2026-07-16 | 2 | Data model Q&A, spec priority, formula audit, factor/spec CSVs, P0/P1 register |
 | 2026-07-16 | 3 | VPS 60d integrity probe, ground-truth audit, fleet coverage CSV, findings JSON |
+| 2026-07-16 | 4 | DIMO signal audit (339 queries, 6 vehicles), capability + timeseries CSVs, unit/mapping findings |
 
 ---
 
 ## Confirmation
 
-- ✅ No production data was modified during Phases 1–3.
-- ✅ No secrets, VINs, license plates, or GPS coordinates are stored in committed audit artifacts.
-- ✅ VPS PostgreSQL queries were read-only aggregates and anonymized fleet rows.
-- ✅ Phase 3 complete; Phase 4 not started per audit plan.
+- ✅ No production data was modified during Phases 1–4.
+- ✅ No secrets, VINs, license plates, token IDs, or GPS coordinates are stored in committed audit artifacts.
+- ✅ VPS PostgreSQL and DIMO Telemetry API access was **read-only**; no DIMO triggers or subscriptions were created.
+- ✅ Phase 4 complete; Phase 5 not started per audit plan.
