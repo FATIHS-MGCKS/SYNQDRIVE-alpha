@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-grafana-prometheus-ops-v49569-2026-07-17',
+    version: '4.9.569',
+    title: 'V4.9.569 — Battery V2 Grafana/Prometheus Ops (Prompt 69/78)',
+    summary: [
+      'Neues Grafana-Dashboard `synqdrive-battery-v2.json` mit 11 Betriebspaneln (Polls vs Observations, Duplikatrate, Queue, REST, Start-Proxy, Capability, Recharge, M2-Dispersion, M2/M3-Agreement, Maturity, DB-Wachstum).',
+      'Alert-Gruppe `synqdrive_battery_v2` in `alerts.yml` — 7 operative Battery-V2-Alerts.',
+      'Ergänzende Metriken: Capability-Signals, M2-Session-CV-Histogramm, M2/M3-Method-Conflict, Postgres-Battery-Table-Rows.',
+      'VPS-Grafana-Setup kopiert Battery-V2-Dashboard neben bestehendem Ops-Dashboard.',
+      'Dokumentation: `docs/architecture/battery-v2-grafana-prometheus-ops.md`.',
+    ],
+    reason: 'Prompt 69/78: Battery-V2-Betriebsbeobachtung in bestehender Grafana/Prometheus-Struktur.',
+    previousBehavior: 'Battery-V2-Metriken vorhanden, aber kein dediziertes Dashboard und keine Battery-spezifischen Alerts.',
+    details:
+      'backend/monitoring/grafana/dashboards/synqdrive-battery-v2.json, backend/monitoring/prometheus/alerts.yml, trip-metrics.service.ts, metrics-refresh.service.ts, battery-v2-prometheus.metrics.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T04:00:00.000Z',
+  },
+  {
     id: 'battery-v2-prometheus-metrics-v49568-2026-07-17',
     version: '4.9.568',
     title: 'V4.9.568 — Battery V2 Prometheus Metrics (Prompt 68/78)',

@@ -2,6 +2,8 @@
 
 Low-cardinality Battery V2 counters registered on the shared `TripMetricsService` registry (`GET /api/v1/metrics`). No vehicle IDs, license plates, org IDs, or other high-cardinality labels.
 
+**Ops dashboards and alerts:** see `battery-v2-grafana-prometheus-ops.md` (V4.9.569).
+
 ## Metric catalog
 
 | Prometheus name | Labels | Emitted from |
@@ -23,6 +25,15 @@ Low-cardinality Battery V2 counters registered on the shared `TripMetricsService
 | `synqdrive_hv_capacity_sessions_qualified_total` | `qualified` | HV shadow session eligibility |
 | `synqdrive_battery_assessments_total` | `scope`, `mode`, `outcome` | LV assessment recompute |
 | `synqdrive_battery_publications_total` | `maturity`, `outcome` | LV publication update |
+
+### Supplementary ops metrics (V4.9.569)
+
+| Prometheus name | Labels | Emitted from |
+|-----------------|--------|--------------|
+| `synqdrive_battery_capability_signals_total` | `signal`, `status` | Capability preflight |
+| `synqdrive_hv_capacity_m2_session_cv` | — | M2 session summary CV |
+| `synqdrive_hv_capacity_method_conflict_total` | `outcome` | M3 validation agree/conflict |
+| `synqdrive_battery_postgres_table_rows` | `table` | MetricsRefreshService cron |
 
 ## Integration
 

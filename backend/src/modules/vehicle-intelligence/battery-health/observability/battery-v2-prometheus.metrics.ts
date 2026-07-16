@@ -217,3 +217,37 @@ export function recordBatteryPublication(
     outcome: input.outcome,
   });
 }
+
+export function recordBatteryCapabilitySignal(
+  metrics: TripMetricsService,
+  input: {
+    signal: string;
+    status: string;
+  },
+): void {
+  metrics.batteryCapabilitySignalsTotal.inc({
+    signal: input.signal,
+    status: input.status,
+  });
+}
+
+export function recordHvCapacityM2SessionCv(
+  metrics: TripMetricsService,
+  coefficientOfVariation: number,
+): void {
+  if (!Number.isFinite(coefficientOfVariation) || coefficientOfVariation < 0) {
+    return;
+  }
+  metrics.hvCapacityM2SessionCv.observe(coefficientOfVariation);
+}
+
+export function recordHvCapacityMethodConflict(
+  metrics: TripMetricsService,
+  input: {
+    conflict: boolean;
+  },
+): void {
+  metrics.hvCapacityMethodConflictTotal.inc({
+    outcome: input.conflict ? 'conflict' : 'agree',
+  });
+}

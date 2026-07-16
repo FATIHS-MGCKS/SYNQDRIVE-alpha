@@ -44,6 +44,9 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_battery_provider_observation_total');
     expect(text).toContain('synqdrive_battery_jobs_total');
     expect(text).toContain('synqdrive_battery_publications_total');
+    expect(text).toContain('synqdrive_battery_capability_signals_total');
+    expect(text).toContain('synqdrive_hv_capacity_method_conflict_total');
+    expect(text).toContain('synqdrive_battery_postgres_table_rows');
   });
 });
 
@@ -64,6 +67,9 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('synqdrive_enrichment_pending');
     expect(yaml).toContain('synqdrive_dimo_snapshot_poll_total');
     expect(yaml).toContain('DocumentExtractionQueueAgeHigh');
+    expect(yaml).toContain('BatteryJobsFailingDespiteSnapshotSuccess');
+    expect(yaml).toContain('BatteryV2DeadLetterJobsPresent');
+    expect(yaml).toContain('synqdrive_battery_jobs_failed_total');
     expect(yaml).not.toContain('vehicle_id');
     expect(yaml).not.toContain('trip_id');
   });

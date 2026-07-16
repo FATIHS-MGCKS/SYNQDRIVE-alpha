@@ -33,6 +33,8 @@ import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
 import {
   recordHvCapacityObservation,
+  recordHvCapacityM2SessionCv,
+  recordHvCapacityMethodConflict,
   recordHvCapacitySessionQualified,
 } from '../observability/battery-v2-prometheus.metrics';
 
@@ -208,6 +210,9 @@ export class HvCapacityShadowService {
       this.logger.debug(
         `M2 session summary session=${session.id} status=${summary.status} median=${summary.stats.medianCapacityKwh?.toFixed(2) ?? 'n/a'} cv=${summary.stats.coefficientOfVariation?.toFixed(4) ?? 'n/a'}`,
       );
+      if (this.metrics && summary.stats.coefficientOfVariation != null) {
+        recordHvCapacityM2SessionCv(this.metrics, summary.stats.coefficientOfVariation);
+      }
     }
 
     const m3Result = await this.m3Validation.validateSession({
@@ -221,6 +226,11 @@ export class HvCapacityShadowService {
       this.logger.debug(
         `M3 validation session=${session.id} capacity=${m3Result.estimate?.estimatedCapacityKwh.toFixed(2) ?? 'n/a'} kWh conflict=${m3Result.estimate?.methodConflict ?? false}`,
       );
+      if (this.metrics) {
+        recordHvCapacityMethodConflict(this.metrics, {
+          conflict: m3Result.estimate?.methodConflict === true,
+        });
+      }
     }
 
     const crossSessionResult = await this.crossSessionAssessment.recomputeForVehicle({

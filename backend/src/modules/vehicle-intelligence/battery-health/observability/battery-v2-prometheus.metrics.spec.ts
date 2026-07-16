@@ -1,6 +1,7 @@
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
   recordBatteryAssessment,
+  recordBatteryCapabilitySignal,
   recordBatteryJob,
   recordBatteryJobDeadLetter,
   recordBatteryJobFailed,
@@ -11,6 +12,8 @@ import {
   recordBatteryRestWindow,
   recordBatteryStartInsufficientCoverage,
   recordBatteryStartProxy,
+  recordHvCapacityM2SessionCv,
+  recordHvCapacityMethodConflict,
   recordHvCapacityObservation,
   recordHvCapacitySessionQualified,
   recordHvChargeSession,
@@ -44,6 +47,10 @@ describe('battery-v2-prometheus.metrics', () => {
       'synqdrive_hv_capacity_sessions_qualified_total',
       'synqdrive_battery_assessments_total',
       'synqdrive_battery_publications_total',
+      'synqdrive_battery_capability_signals_total',
+      'synqdrive_hv_capacity_method_conflict_total',
+      'synqdrive_hv_capacity_m2_session_cv',
+      'synqdrive_battery_postgres_table_rows',
     ];
     for (const name of required) {
       expect(text).toContain(name);
@@ -152,6 +159,28 @@ describe('battery-v2-prometheus.metrics', () => {
     );
     expect(text).toMatch(
       /synqdrive_battery_publications_total\{maturity="STABLE",outcome="persisted"\} 1/,
+    );
+  });
+
+  it('records capability, M2 CV, and method conflict metrics', async () => {
+    recordBatteryCapabilitySignal(metrics, {
+      signal: 'lv_voltage',
+      status: 'AVAILABLE_WITH_DATA',
+    });
+    recordHvCapacityM2SessionCv(metrics, 0.012);
+    recordHvCapacityMethodConflict(metrics, { conflict: true });
+    recordHvCapacityMethodConflict(metrics, { conflict: false });
+
+    const text = await metrics.getMetrics();
+    expect(text).toMatch(
+      /synqdrive_battery_capability_signals_total\{signal="lv_voltage",status="AVAILABLE_WITH_DATA"\} 1/,
+    );
+    expect(text).toContain('synqdrive_hv_capacity_m2_session_cv_bucket');
+    expect(text).toMatch(
+      /synqdrive_hv_capacity_method_conflict_total\{outcome="conflict"\} 1/,
+    );
+    expect(text).toMatch(
+      /synqdrive_hv_capacity_method_conflict_total\{outcome="agree"\} 1/,
     );
   });
 });

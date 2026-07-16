@@ -307,3 +307,106 @@ groups:
         annotations:
           summary: Connect webhooks with unresolved accounts
           description: Webhooks arrived for unknown connected accounts — verify Stripe Connect webhook endpoint and account mapping.
+
+  - name: synqdrive_battery_v2
+    rules:
+      - alert: BatteryJobsFailingDespiteSnapshotSuccess
+        expr: |
+          rate(synqdrive_battery_jobs_failed_total[30m]) > 0
+          and (
+            rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m])
+            /
+            clamp_min(
+              rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m])
+              + rate(synqdrive_dimo_snapshot_poll_total{result="failure"}[30m]),
+              0.001
+            )
+          ) > 0.9
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: Battery V2 jobs failing while snapshots succeed
+          description: Snapshot polls are healthy but Battery V2 job failures are occurring — inspect battery.v2 queue and job error codes.
+
+      - alert: BatteryRestWakeContaminationHigh
+        expr: |
+          (
+            sum(rate(synqdrive_battery_rest_measurements_total{quality="CONTAMINATED_BY_WAKE"}[30m]))
+            /
+            clamp_min(sum(rate(synqdrive_battery_rest_measurements_total[30m])), 0.001)
+          ) > 0.35
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Elevated REST wake contamination share
+          description: More than 35% of REST measurements are contaminated by wake events in the last 30 minutes.
+
+      - alert: BatteryRestCaptureMissingDespiteWindows
+        expr: |
+          sum(increase(synqdrive_battery_rest_windows_total{outcome="opened"}[6h])) > 20
+          and sum(increase(synqdrive_battery_rest_measurements_total{quality="VALID"}[6h])) == 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: No valid REST captures despite many rest windows
+          description: Rest windows are opening but no VALID REST measurements were recorded in 6 hours.
+
+      - alert: BatteryHvRechargeReconciliationFailing
+        expr: |
+          rate(synqdrive_battery_v2_hv_recharge_reconcile_errors_total[30m]) > 0
+          or (
+            rate(synqdrive_hv_recharge_segments_total{outcome="error"}[30m]) > 0
+            and rate(synqdrive_hv_recharge_segments_total{outcome="success"}[30m]) == 0
+          )
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: HV recharge reconciliation is failing
+          description: Recharge reconcile errors or segment fetch failures without successes in the last 30 minutes.
+
+      - alert: BatteryHvMethodDeviationUnusual
+        expr: |
+          (
+            sum(rate(synqdrive_hv_capacity_method_conflict_total{outcome="conflict"}[6h]))
+            /
+            clamp_min(sum(rate(synqdrive_hv_capacity_method_conflict_total[6h])), 0.001)
+          ) > 0.25
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: Unusual HV M2/M3 method deviation
+          description: More than 25% of HV capacity validations report M2/M3 method conflict in the last 6 hours.
+
+      - alert: BatteryProviderDuplicatePersistenceHigh
+        expr: |
+          (
+            sum(rate(synqdrive_battery_provider_duplicate_total[1h]))
+            /
+            clamp_min(
+              sum(rate(synqdrive_battery_provider_observation_total{outcome="NEW_OBSERVATION"}[1h]))
+              + sum(rate(synqdrive_battery_provider_duplicate_total[1h])),
+              0.001
+            )
+          ) > 0.5
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Strong duplicate observation persistence
+          description: More than half of provider observations are duplicates — check idempotency keys and snapshot dedup.
+
+      - alert: BatteryV2DeadLetterJobsPresent
+        expr: |
+          synqdrive_battery_v2_dead_letter_backlog > 0
+          or increase(synqdrive_battery_jobs_dead_letter_total[1h]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Battery V2 dead-letter jobs present
+          description: Battery V2 jobs moved to dead-letter — inspect battery.v2 dead-letter backlog and error codes.

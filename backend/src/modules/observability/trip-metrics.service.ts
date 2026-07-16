@@ -107,6 +107,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryPublicationsTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
+  readonly batteryCapabilitySignalsTotal: Counter<string>;
+  readonly hvCapacityMethodConflictTotal: Counter<string>;
+  readonly hvCapacityM2SessionCv: Histogram<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -127,6 +130,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationQueueBacklog: Gauge<string>;
   readonly taskAutomationOutboxBacklog: Gauge<string>;
   readonly batteryV2DeadLetterBacklog: Gauge<string>;
+  readonly batteryPostgresTableRows: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -783,6 +787,34 @@ export class TripMetricsService implements OnModuleInit {
       help: 'Delay between latest provider segment end and reconcile time',
       labelNames: ['trigger'],
       buckets: [60, 300, 900, 1800, 3600, 7200, 21600, 86400],
+      registers: [this.registry],
+    });
+
+    this.batteryCapabilitySignalsTotal = new Counter({
+      name: 'synqdrive_battery_capability_signals_total',
+      help: 'Battery capability preflight signal assessments',
+      labelNames: ['signal', 'status'],
+      registers: [this.registry],
+    });
+
+    this.hvCapacityMethodConflictTotal = new Counter({
+      name: 'synqdrive_hv_capacity_method_conflict_total',
+      help: 'HV M2/M3 capacity method agreement outcomes',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.hvCapacityM2SessionCv = new Histogram({
+      name: 'synqdrive_hv_capacity_m2_session_cv',
+      help: 'HV M2 intra-session capacity estimate coefficient of variation',
+      buckets: [0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5],
+      registers: [this.registry],
+    });
+
+    this.batteryPostgresTableRows = new Gauge({
+      name: 'synqdrive_battery_postgres_table_rows',
+      help: 'Battery V2 PostgreSQL table row counts',
+      labelNames: ['table'],
       registers: [this.registry],
     });
   }
