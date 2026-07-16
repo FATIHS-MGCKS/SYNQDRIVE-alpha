@@ -35,6 +35,42 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-prisma-plan-v49512-2026-07-16',
+    version: '4.9.512',
+    title: 'V4.9.512 — Battery Health V2 additive Prisma migration plan (Prompt 10/78)',
+    summary: [
+      'Neues Architektur-Dokument `docs/architecture/battery-health-v2-prisma-plan.md`: exakter additiver Migrationsplan ohne Schema-Change.',
+      'Plant Enums, `battery_measurement_sessions`, `battery_measurements`, `battery_assessments`, Publication-Erweiterung auf `battery_features`/`hv_battery_health_current`, `vehicle_battery_capabilities`, `vehicle_battery_reference_capacities`, `hv_charge_sessions`, `hv_capacity_observations`.',
+      'Pro Feld: Prisma-Typ, Nullable/Default, DB-Spalte, Relation, Tenant-Scope, Index, Unique, Retention, Backfill, Rollback, Legacy-Entsprechung.',
+      'INSERT-only Measurements, Idempotency Keys, observedAt/receivedAt/providerFetchedAt, keine Duplikation bestehender Publication-Felder.',
+    ],
+    reason: 'Prompt 10/78: Vor dem großen Redesign einen verbindlichen, additiven DB-Migrationsplan erstellen — noch keine Prisma-Migration.',
+    previousBehavior: 'Architekturvertrag (Prompt 2) und Messartenvertrag ohne tabellengranularen Migrationsplan.',
+    details:
+      'docs/architecture/battery-health-v2-prisma-plan.md. Basis: schema.prisma, battery_health_tables_guard, battery-health-v2.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:25:00.000Z',
+  },
+  {
+    id: 'battery-health-v2-data-quality-normalization-v49511-2026-07-16',
+    version: '4.9.511',
+    title: 'V4.9.511 — Unified battery data-quality presentation (Prompt 9/78)',
+    summary: [
+      'Zentrale `battery-data-quality` Policy (Backend + Frontend): VERIFIED, ESTIMATED, PROXY, EXPERIMENTAL, STALE, MISSED, UNAVAILABLE, UNSUPPORTED, LEGACY_UNVERIFIED.',
+      '`CanonicalBatteryHealthService` exponiert `dataQuality` + `dataQualityStatus` pro LV/HV-Slice; STALE aus beobachtetem Wertalter, MISSED für verpasste Messfenster.',
+      'Frontend: `BatteryDataQualityBadge`, i18n-Labels (`health.battery.dataQuality.*`), API-Fehler separat (`batteryLoadError`) — nicht als UNAVAILABLE.',
+      'Health Tab, Fleet Battery Detail, Vehicle Health Box zeigen Qualitäts-Badges; PROXY/EXPERIMENTAL/LEGACY_UNVERIFIED suggerieren keine sichere Health-Aussage.',
+    ],
+    reason: 'Prompt 9/78: Vor dem großen Redesign einheitliche sichere Darstellung unsicherer Battery-Daten ohne neues Prisma-Modell.',
+    previousBehavior: 'Parallele displayMode/confidence/freshness-Achsen ohne einheitliches Trust-Label; API-Fehler wurden still zu null.',
+    details:
+      'backend: battery-data-quality.ts (+spec), canonical-battery-health.service.ts. frontend: battery-data-quality.ts, battery-data-quality.utils.ts, BatteryDataQualityBadge.tsx, api.ts, HealthErrorsView.tsx, FleetConditionDetailView.tsx, vehicle-health-box.mapper.ts, useVehicleHealthBoxData.ts, i18n de/en.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:20:00.000Z',
+  },
+  {
     id: 'battery-health-v2-hv-legacy-pairwise-capacity-deprecation-v49510-2026-07-16',
     version: '4.9.510',
     title: 'V4.9.510 — HV legacy pairwise capacity assessment deprecated (Prompt 8/78)',
