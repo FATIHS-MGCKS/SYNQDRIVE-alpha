@@ -163,7 +163,7 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.hv.method).toBe('provider_reported_soh');
   });
 
-  it('falls back to publication SOH when provider value is stale', async () => {
+  it('does not fall back to legacy pairwise publication SOH when provider value is stale', async () => {
     const { svc, batteryEvidenceService } = buildService();
     batteryEvidenceService.getLatest.mockResolvedValue({
       numericValue: 88,
@@ -172,8 +172,9 @@ describe('CanonicalBatteryHealthService', () => {
     });
 
     const summary = await svc.getSummary('veh-1');
-    expect(summary?.hv.healthPercent).toBe(75);
-    expect(summary?.hv.method).toBe('capacity_measurement');
+    expect(summary?.hv.healthPercent).toBeNull();
+    expect(summary?.hv.status).toBe('estimate_unavailable');
+    expect(summary?.hv.legacyCapacity?.displayMode).toBe('LEGACY_UNVERIFIED');
   });
 
   it('marks LV health as no_recent_data when both legacy snapshot and live state are stale', async () => {

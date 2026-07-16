@@ -27,6 +27,9 @@ export {
   BATTERY_CRANK_SIGNAL_CADENCE_MS,
   BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV,
   BATTERY_V2_START_PROXY_ENV,
+  BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV,
+  HV_PAIRWISE_SNAPSHOT_CADENCE_MS,
   isLegacyCrankAssessmentEnabled,
+  isLegacyHvPairwiseCapacityAssessmentEnabled,
   isStartWindowCollectionEnabled,
 } from './battery-health-v2.config';

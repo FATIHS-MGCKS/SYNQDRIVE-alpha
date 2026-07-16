@@ -18,7 +18,12 @@ import {
   evaluateLegacyPublicationSafety,
 } from '../../vehicle-intelligence/battery-health/battery-legacy-publication-safety';
 import { effectiveCrankStatusForDecisions } from '../../vehicle-intelligence/battery-health/battery-crank-policy';
+import {
+  effectiveHvPublishedSohForDecisions,
+  isLegacyHvPairwiseCapacityMethod,
+} from '../../vehicle-intelligence/battery-health/hv-capacity-policy';
 import { isLegacyHvDegradationModel } from '../../vehicle-intelligence/battery-health/soh-publication';
+import { isLegacyHvPairwiseCapacityAssessmentEnabled } from '../../../config/battery-health-v2.config';
 import {
   DetectorContext,
   InsightCandidate,
@@ -454,8 +459,15 @@ export class BatteryCriticalDetector implements InsightDetector {
         const capacitySoh =
           hvCurrent &&
           !isLegacyHvDegradationModel(hvCurrent.publicationMethod) &&
+          !(
+            !isLegacyHvPairwiseCapacityAssessmentEnabled() &&
+            isLegacyHvPairwiseCapacityMethod(hvCurrent.publicationMethod)
+          ) &&
           hvCurrent.publicationState !== BatteryCriticalDetector.INITIAL_CALIBRATION
-            ? hvCurrent.publishedSohPct
+            ? effectiveHvPublishedSohForDecisions(
+                hvCurrent.publicationMethod,
+                hvCurrent.publishedSohPct,
+              )
             : null;
 
         const hvSoh = providerFresh

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-hv-legacy-pairwise-capacity-deprecation-v49510-2026-07-16',
+    version: '4.9.510',
+    title: 'V4.9.510 — HV legacy pairwise capacity assessment deprecated (Prompt 8/78)',
+    summary: [
+      'Zentrale Policy `hv-capacity-policy` + Config-Flag `BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED=false` (Prompt 3-Muster).',
+      '`HvBatteryHealthService.recordSnapshot`: keine neue ΔEnergy/ΔSOC-Kapazität, kein MODEL_DERIVED-SOH-Evidence, kein `upsertPublicationState` aus benachbarten ~30-s-Snapshots.',
+      'Bestehende Kapazitätswerte bleiben als `LEGACY_UNVERIFIED` lesbar (`legacyCapacity`); operatives SOH/Kapazität null — Provider-SOH, Live-Telemetrie (SOC, Energy, Range, Charging) unverändert.',
+      'Canonical + `BatteryCriticalDetector`: legacy pairwise `capacity_measurement`/`energy_throughput` nicht entscheidungsfähig; keine Readiness-/Alert-/Task-Wirkung.',
+    ],
+    reason: 'Prompt 8/78: HV-Kapazität aus benachbarten 30-Sekunden-Snapshots ist fachlich nicht production-ready und darf keine neuen Messungen oder Publications erzeugen.',
+    previousBehavior: 'Adjacent snapshots berechneten estimatedCapacityKwh/sohPercent, schrieben MODEL_DERIVED Evidence und aktualisierten die HV-Publication-Pipeline.',
+    details:
+      'backend: battery-health-v2.config.ts, hv-capacity-policy.ts, hv-battery-health.service.ts, canonical-battery-health.service.ts, battery-critical.detector.ts (+specs). Keine Ersatzschätzung in diesem Prompt.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:15:00.000Z',
+  },
+  {
     id: 'battery-health-v2-legacy-crank-deprecation-v49509-2026-07-16',
     version: '4.9.509',
     title: 'V4.9.509 — Battery legacy CRANK_MIN path deprecated (Prompt 7/78)',

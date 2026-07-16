@@ -30,6 +30,10 @@ import {
   mapLvEvidenceValueType,
 } from './battery-lv-semantics';
 import {
+  effectiveHvMeasuredSohForDecisions,
+  presentLegacyHvCapacity,
+} from './hv-capacity-policy';
+import {
   effectiveLvEstimatedHealthStatusForDecisions,
   evaluateLegacyPublicationSafety,
 } from './battery-legacy-publication-safety';
@@ -378,15 +382,19 @@ export class CanonicalBatteryHealthService {
         ? 'DOCUMENT'
         : 'MANUAL';
 
-    // Capacity/energy measurement from the HV service — publishedSohPercent/rawSohPercent
-    // are only used when method is capacity_measurement or energy_throughput.
+    // Capacity/energy measurement from the HV service — only when legacy pairwise
+    // assessment is explicitly enabled (Prompt 8/78).
     const hvMeasuredMethod = hvStatusAny?.sohMethod as string | undefined;
-    const hvMeasuredSoh =
-      hvMeasuredMethod === 'capacity_measurement' ||
-      hvMeasuredMethod === 'energy_throughput'
-        ? parseNum(hvStatusAny?.publishedSohPercent) ??
-          parseNum(hvStatusAny?.rawSohPercent)
-        : null;
+    const hvMeasuredSoh = effectiveHvMeasuredSohForDecisions(
+      hvMeasuredMethod,
+      parseNum(hvStatusAny?.publishedSohPercent) ?? parseNum(hvStatusAny?.rawSohPercent),
+    );
+    const hvLegacyCapacity = presentLegacyHvCapacity({
+      estimatedCapacityKwh: parseNum(hvStatusAny?.estimatedCurrentCapacityKwh),
+      sohPercent: parseNum(hvStatusAny?.rawSohPercent),
+      publicationMethod: hvStatusAny?.publicationMethod as string | undefined,
+      publishedSohPct: parseNum(hvStatusAny?.publishedSohPercent),
+    });
 
     let hvHealthPercent: number | null = null;
     let hvSohSource: HvSohSource | null = null;
@@ -614,6 +622,7 @@ export class CanonicalBatteryHealthService {
         publicationState:
           (hvStatusAny?.publicationState as SohPublicationState | undefined) ??
           SohPublicationState.INITIAL_CALIBRATION,
+        legacyCapacity: hvLegacyCapacity,
         telemetry: {
           socPercent:
             parseNum(latestState?.evSoc) ??

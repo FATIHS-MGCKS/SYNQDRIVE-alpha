@@ -14,23 +14,19 @@ import {
   type PublicationState,
 } from './soh-publication';
 import { BatteryEvidenceService } from './battery-evidence.service';
+import {
+  effectiveHvPublishedSohForDecisions,
+  isLegacyHvPairwiseCapacityMethod,
+  presentLegacyHvCapacity,
+} from './hv-capacity-policy';
+import { isLegacyHvPairwiseCapacityAssessmentEnabled } from '../../../config/battery-health-v2.config';
 
 /**
  * HV (High-Voltage) Battery Health Service for EV traction batteries.
  *
- * SOH Calculation (industry-standard capacity-based approach):
- *   SOH (%) = (Estimated Current Capacity / Nominal Capacity) × 100
- *
- * Current capacity is estimated from energy throughput between SoC readings:
- *   ΔEnergy = energy consumed/charged between two observations
- *   ΔSoC = change in state of charge
- *   Estimated Capacity = ΔEnergy / (|ΔSoC| / 100)
- *
- * V4.8 Battery overhaul — the previous age+mileage degradation fallback has
- * been removed. HV SOH is now only produced from a real data basis (provider
- * SOH, capacity/energy measurement, or a workshop/document report). When no
- * such basis exists the SOH is reported as unavailable (`insufficient_data`)
- * instead of a fabricated pseudo-precise percentage.
+ * V4.8+ — provider/workshop SOH only for operational decisions by default.
+ * Legacy pairwise ΔEnergy/ΔSOC capacity from ~30 s snapshots is disabled
+ * unless `BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED=true` (Prompt 8/78).
  */
 @Injectable()
 export class HvBatteryHealthService {
@@ -82,9 +78,16 @@ export class HvBatteryHealthService {
       take: 100,
     });
 
-    const sohResult = this.calculateSoh(nominalCapacity, snapshots);
+    const legacyPairwiseEnabled = isLegacyHvPairwiseCapacityAssessmentEnabled();
+    const sohResult = legacyPairwiseEnabled
+      ? this.calculateSoh(nominalCapacity, snapshots)
+      : { sohPercent: null, estimatedCapacity: null, method: 'insufficient_data' as const };
 
     const chargingSessions = this.deriveChargingSessions(snapshots);
+
+    const diagnosticSnapshot = snapshots.find(
+      (s) => s.estimatedCapacityKwh != null || s.sohPercent != null,
+    );
 
     const recentTrend = snapshots
       .filter((s) => s.sohPercent != null)
@@ -105,15 +108,24 @@ export class HvBatteryHealthService {
     const legacyDegradationModel = isLegacyHvDegradationModel(
       pubCurrent?.publicationMethod ?? sohResult.method,
     );
-    const publishedSoh = legacyDegradationModel
+    const legacyPairwiseMethod = isLegacyHvPairwiseCapacityMethod(
+      pubCurrent?.publicationMethod ?? sohResult.method,
+    );
+    const publishedSohRaw = legacyDegradationModel
       ? null
       : (pubCurrent?.publishedSohPct ?? null);
-    const publicationState = legacyDegradationModel
-      ? 'INITIAL_CALIBRATION'
-      : (pubCurrent?.publicationState ?? 'INITIAL_CALIBRATION');
-    const publicationMethod = legacyDegradationModel
-      ? 'insufficient_data'
-      : (pubCurrent?.publicationMethod ?? sohResult.method);
+    const publishedSoh = effectiveHvPublishedSohForDecisions(
+      pubCurrent?.publicationMethod ?? sohResult.method,
+      publishedSohRaw,
+    );
+    const publicationState =
+      legacyDegradationModel || (!legacyPairwiseEnabled && legacyPairwiseMethod)
+        ? 'INITIAL_CALIBRATION'
+        : (pubCurrent?.publicationState ?? 'INITIAL_CALIBRATION');
+    const publicationMethod =
+      legacyDegradationModel || (!legacyPairwiseEnabled && legacyPairwiseMethod)
+        ? 'insufficient_data'
+        : (pubCurrent?.publicationMethod ?? sohResult.method);
     const maturityConfidence = pubCurrent?.maturityConfidence ?? 'none';
 
     const latestProviderSohEvidence = await this.batteryEvidence.getLatest(
@@ -135,20 +147,29 @@ export class HvBatteryHealthService {
       : null;
     const providerSohIsFresh = providerSohAgeMs != null && providerSohAgeMs <= 45 * 24 * 60 * 60 * 1000;
 
-    // User-facing SOH: published when maturity allows, otherwise null
     const userFacingSoh = publicationState === 'INITIAL_CALIBRATION' ? null : publishedSoh;
     const resolvedSoh =
       providerSohIsFresh && providerSohValue != null
         ? providerSohValue
-        : userFacingSoh ?? sohResult.sohPercent;
+        : userFacingSoh ?? (legacyPairwiseEnabled ? sohResult.sohPercent : null);
     const resolvedMethod =
       providerSohIsFresh && providerSohValue != null
         ? 'provider_reported_soh'
-        : sohResult.method;
+        : legacyPairwiseEnabled
+          ? sohResult.method
+          : 'insufficient_data';
     const sohSourceType =
       providerSohIsFresh && providerSohValue != null
         ? 'provider_reported'
         : 'telemetry_derived';
+
+    const legacyCapacity = presentLegacyHvCapacity({
+      estimatedCapacityKwh:
+        diagnosticSnapshot?.estimatedCapacityKwh ?? sohResult.estimatedCapacity,
+      sohPercent: diagnosticSnapshot?.sohPercent ?? sohResult.sohPercent,
+      publicationMethod: pubCurrent?.publicationMethod ?? sohResult.method,
+      publishedSohPct: pubCurrent?.publishedSohPct ?? publishedSohRaw,
+    });
 
     return {
       isEv: true,
@@ -169,7 +190,8 @@ export class HvBatteryHealthService {
       sohInterpretation: this.interpretSoh(
         publicationState !== 'INITIAL_CALIBRATION' ? resolvedSoh : null,
       ),
-      estimatedCurrentCapacityKwh: sohResult.estimatedCapacity,
+      estimatedCurrentCapacityKwh: legacyCapacity.operationalEstimatedCapacityKwh,
+      legacyCapacity,
       snapshotCount: snapshots.length,
       chargingSessions,
       recentTrend,
@@ -319,6 +341,13 @@ export class HvBatteryHealthService {
    * Runs the three-layer pipeline: raw → stabilized → published.
    */
   private async upsertPublicationState(vehicleId: string): Promise<void> {
+    if (!isLegacyHvPairwiseCapacityAssessmentEnabled()) {
+      this.logger.debug(
+        `HV legacy pairwise publication suppressed: vehicle=${vehicleId} reason=legacy_pairwise_disabled`,
+      );
+      return;
+    }
+
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { hvBatteryCapacityKwh: true },
@@ -475,10 +504,11 @@ export class HvBatteryHealthService {
     providerSource?: string;
     observedAt?: Date;
   }) {
+    const legacyPairwiseEnabled = isLegacyHvPairwiseCapacityAssessmentEnabled();
     let estimatedCapacity: number | null = null;
     let soh: number | null = null;
 
-    if (data.nominalCapacityKwh && data.energyUsedKwh != null) {
+    if (legacyPairwiseEnabled && data.nominalCapacityKwh && data.energyUsedKwh != null) {
       const previous = await this.prisma.hvBatteryHealthSnapshot.findFirst({
         where: { vehicleId: data.vehicleId },
         orderBy: { recordedAt: 'desc' },
@@ -488,13 +518,26 @@ export class HvBatteryHealthService {
         const deltaEnergy = Math.abs(data.energyUsedKwh - previous.energyUsedKwh);
         if (deltaSoc >= 5 && deltaEnergy > 0) {
           estimatedCapacity = Math.round(((deltaEnergy / deltaSoc) * 100) * 10) / 10;
-          if (estimatedCapacity > data.nominalCapacityKwh * 0.5 && estimatedCapacity < data.nominalCapacityKwh * 1.2) {
-            soh = Math.max(0, Math.min(100, Math.round((estimatedCapacity / data.nominalCapacityKwh) * 100)));
+          if (
+            estimatedCapacity > data.nominalCapacityKwh * 0.5 &&
+            estimatedCapacity < data.nominalCapacityKwh * 1.2
+          ) {
+            soh = Math.max(
+              0,
+              Math.min(
+                100,
+                Math.round((estimatedCapacity / data.nominalCapacityKwh) * 100),
+              ),
+            );
           } else {
             estimatedCapacity = null;
           }
         }
       }
+    } else if (!legacyPairwiseEnabled && data.nominalCapacityKwh && data.energyUsedKwh != null) {
+      this.logger.debug(
+        `HV legacy pairwise capacity suppressed on snapshot: vehicle=${data.vehicleId} reason=legacy_pairwise_disabled`,
+      );
     }
 
     const snapshot = await this.prisma.hvBatteryHealthSnapshot.create({
@@ -514,7 +557,7 @@ export class HvBatteryHealthService {
     });
 
     const observedAt = data.observedAt ?? new Date();
-    await this.batteryEvidence.recordMany([
+    const evidenceRows = [
       {
         vehicleId: data.vehicleId,
         scope: BatteryEvidenceScope.HV,
@@ -568,17 +611,6 @@ export class HvBatteryHealthService {
       {
         vehicleId: data.vehicleId,
         scope: BatteryEvidenceScope.HV,
-        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
-        valueType: BatteryEvidenceValueType.SOH_PERCENT,
-        numericValue: soh,
-        unit: 'percent',
-        observedAt,
-        provider: 'SynqDrive',
-        confidence: soh == null ? null : 'derived_from_energy',
-      },
-      {
-        vehicleId: data.vehicleId,
-        scope: BatteryEvidenceScope.HV,
         sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
         valueType: BatteryEvidenceValueType.SOH_PERCENT,
         numericValue: data.providerReportedSohPercent,
@@ -586,12 +618,30 @@ export class HvBatteryHealthService {
         observedAt,
         provider: data.providerSource ?? 'DIMO',
       },
-    ]);
+    ];
 
-    // Update publication pipeline after new data
-    this.upsertPublicationState(data.vehicleId).catch((err) =>
-      this.logger.warn(`HV publication state update failed for ${data.vehicleId}: ${err instanceof Error ? err.message : err}`),
-    );
+    if (legacyPairwiseEnabled && soh != null) {
+      evidenceRows.push({
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        numericValue: soh,
+        unit: 'percent',
+        observedAt,
+        provider: 'SynqDrive',
+        confidence: 'derived_from_energy',
+      } as any);
+    }
+
+    await this.batteryEvidence.recordMany(evidenceRows);
+
+    // Update publication pipeline after new pairwise data only.
+    if (legacyPairwiseEnabled) {
+      this.upsertPublicationState(data.vehicleId).catch((err) =>
+        this.logger.warn(`HV publication state update failed for ${data.vehicleId}: ${err instanceof Error ? err.message : err}`),
+      );
+    }
 
     return snapshot;
   }
