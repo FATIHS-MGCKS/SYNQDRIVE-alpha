@@ -53,6 +53,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripCounterAnomalies: Counter<string>;
   readonly clickHouseMigrationFailures: Counter<string>;
   readonly dimoSnapshotPollTotal: Counter<string>;
+  readonly hvSnapshotDuplicatesDiscarded: Counter<string>;
   readonly metricsEndpointRequests: Counter<string>;
 
   /** Document extraction pipeline — low-cardinality labels only. */
@@ -269,6 +270,13 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_dimo_snapshot_poll_total',
       help: 'Total DIMO snapshot poll worker outcomes',
       labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.hvSnapshotDuplicatesDiscarded = new Counter({
+      name: 'synqdrive_hv_snapshot_duplicates_discarded_total',
+      help: 'HV battery health snapshots skipped by provider observation dedup policy',
+      labelNames: ['reason'],
       registers: [this.registry],
     });
 

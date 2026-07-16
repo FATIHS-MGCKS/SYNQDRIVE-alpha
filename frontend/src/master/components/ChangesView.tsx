@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-snapshot-observation-dedup-v49519-2026-07-16',
+    version: '4.9.519',
+    title: 'V4.9.519 — HV Snapshot Observation Dedup (Prompt 17/78)',
+    summary: [
+      'HV-Snapshot-Persistenz nutzt `evaluateHvSnapshotObservation` + Provider-Observation-Policy.',
+      'Persistiert nur bei neuem Provider-Timestamp, Charging-/Cable-Wechsel, neuem SOH oder erstem Sample.',
+      'Überspringt identische Provider-Timestamp+Wert-Polls; VLS-Update (Fetch-Zeit) bleibt unverändert.',
+      'Additive Spalten: `idempotencyKey`, `providerReceivedAt`, `energyObservedAt`, `providerSohPercent`, `chargingCableConnected`.',
+      'Prometheus: `synqdrive_hv_snapshot_duplicates_discarded_total{reason}`.',
+      'Tests: 100 identische Polls → 1 Key; Charging-Wechsel; P2002-Race.',
+    ],
+    reason: 'Prompt 17/78: HV-Snapshot-Persistenz auf Observation-Policy umstellen — keine Capacity-Berechnung.',
+    previousBehavior: 'Jeder Poll mit SOC erzeugte eine `hv_battery_health_snapshots`-Zeile (~93,7 % TS-Duplikate).',
+    details:
+      'hv-snapshot-observation.policy.ts, hv-battery-health.service.ts, migration hv_snapshot_observation_dedup, trip-metrics.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T16:05:00.000Z',
+  },
+  {
     id: 'battery-provider-observation-policy-v49518-2026-07-16',
     version: '4.9.518',
     title: 'V4.9.518 — Battery Provider Observation Policy (Prompt 16/78)',
