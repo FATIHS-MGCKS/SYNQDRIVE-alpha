@@ -1317,6 +1317,7 @@ model Organization {
   taskAutomationOutbox              TaskAutomationOutbox[]
   taskAutomationRuleOverrides       OrgTaskAutomationRuleOverride[]
   batteryMeasurementSessions        BatteryMeasurementSession[]
+  batteryMeasurements               BatteryMeasurement[]
 
   @@index([status])
   @@map("organizations")
@@ -1739,6 +1740,7 @@ model Vehicle {
   batteryFeatures                   BatteryFeatures?
   batteryEvidence                   BatteryEvidence[]
   batteryMeasurementSessions        BatteryMeasurementSession[]
+  batteryMeasurements               BatteryMeasurement[]
   brakeEvidence                     BrakeEvidence[]
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
@@ -5742,9 +5744,10 @@ model BatteryMeasurementSession {
   createdAt        DateTime                        @default(now()) @map("created_at")
   updatedAt        DateTime                        @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  trip         VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  measurements BatteryMeasurement[]
 
   @@unique([vehicleId, idempotencyKey], map: "battery_measurement_sessions_idempotency_key")
   @@index([organizationId, startedAt(sort: Desc)])
@@ -5754,6 +5757,47 @@ model BatteryMeasurementSession {
   @@index([vehicleId, scope, type])
   @@index([tripId])
   @@map("battery_measurement_sessions")
+}
+
+/// Battery Health V2 — immutable raw measurement (architecture layer 4).
+/// INSERT-only: business fields are never updated after commit.
+model BatteryMeasurement {
+  id                String                    @id @default(uuid())
+  organizationId    String                    @map("organization_id")
+  vehicleId         String                    @map("vehicle_id")
+  sessionId         String?                   @map("session_id")
+  scope             BatteryEvidenceScope
+  type              BatteryMeasurementType    @map("type")
+  numericValue      Float?                    @map("numeric_value")
+  textValue         String?                   @map("text_value")
+  unit              String?                   @map("unit")
+  quality           BatteryMeasurementQuality
+  observedAt        DateTime                  @map("observed_at")
+  receivedAt        DateTime                  @default(now()) @map("received_at")
+  providerTimestamp DateTime?                 @map("provider_timestamp")
+  providerSource    String?                   @map("provider_source")
+  signalName        String?                   @map("signal_name")
+  context           Json?                     @map("context")
+  provenance        Json?                     @map("provenance")
+  idempotencyKey    String                    @map("idempotency_key")
+  supersededById    String?                   @map("superseded_by_id")
+  createdAt         DateTime                  @default(now()) @map("created_at")
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  session      BatteryMeasurementSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  supersededBy BatteryMeasurement?        @relation("BatteryMeasurementSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes   BatteryMeasurement[]       @relation("BatteryMeasurementSupersede")
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_measurements_tenant_idempotency_key")
+  @@unique([vehicleId, type, observedAt], map: "battery_measurements_dedup_key")
+  @@index([organizationId, observedAt(sort: Desc)])
+  @@index([vehicleId, observedAt(sort: Desc)])
+  @@index([vehicleId, scope, type])
+  @@index([sessionId])
+  @@index([quality])
+  @@index([supersededById])
+  @@map("battery_measurements")
 }
 
 /// Per-vehicle battery feature store for V2 health scoring.

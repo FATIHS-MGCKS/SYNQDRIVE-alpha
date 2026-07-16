@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-measurement-session-v49514-2026-07-16',
+    version: '4.9.514',
+    title: 'V4.9.514 — BatteryMeasurementSession model + CR foundation (Prompt 12/78)',
+    summary: [
+      'Neues Prisma-Modell `BatteryMeasurementSession` / Tabelle `battery_measurement_sessions` (additive Migration P1).',
+      'Sessiontypen erweitert: u. a. ICE_START_PROXY, PHEV_ICE_START, EV_WAKE, HV_CHARGE, WORKSHOP_TEST, DOCUMENT_MEASUREMENT, MANUAL_CONFIRMED.',
+      'Felder: organizationId, vehicleId, scope, type, status, driveProfile, chemistry, startedAt, targetAt, endedAt, quality, providerSource, sourceEntityType/Id, tripId, idempotencyKey, metadata, modelVersion.',
+      'Tenant-Indizes + Unique `(vehicle_id, idempotency_key)`; Repository/Service nur Create/Read; Metadata-Sanitizer ohne PII.',
+      'Tests: Tenant-Scope und Idempotenz.',
+    ],
+    reason: 'Prompt 12/78: Session-Ebene als Grundlage für V2-Measurements — noch keine Automationslogik.',
+    previousBehavior: 'Nur V2-Enums (P0); Sessions existierten nur im Migrationsplan.',
+    details:
+      'schema.prisma, migrations/20260716150000_battery_v2_measurement_sessions, battery-measurement-session.{repository,service,metadata}.ts, battery-v2-domain.ts, vehicle-intelligence.module.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:45:00.000Z',
+  },
+  {
     id: 'battery-health-v2-enums-p49513-2026-07-16',
     version: '4.9.513',
     title: 'V4.9.513 — Battery Health V2 shared Prisma enums + domain types (Prompt 11/78)',
