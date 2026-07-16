@@ -80,8 +80,8 @@
     "overall": "CONDITIONALLY_READY"
   },
   "remainingFindings": {
-    "p0OpenUntilStagingApply": ["P0-TH-03"],
-    "p0MitigatedInCode": ["P0-TH-01", "P0-TH-02", "P0-TH-04", "P0-TH-21"],
+    "p0OpenUntilStagingApply": [],
+    "p0MitigatedInCode": ["P0-TH-01", "P0-TH-02", "P0-TH-03", "P0-TH-04", "P0-TH-21"],
     "p1Open": ["P1-TH-13", "P1-TH-17", "P1-TH-18"],
     "p2Open": ["P2-TH-14", "P2-TH-15", "P2-TH-24"],
     "p3": 0

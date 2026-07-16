@@ -1422,3 +1422,32 @@ Finale Verifikation der 24-Prompt-Remediation, Staging-/Rollout-Plan, ehrliches 
 - ✅ **Keine Migration**, keine Produktionsdatenänderung, keine Recalculation, keine DIMO-Schreiboperation, keine Infrastrukturänderung
 - ✅ Baseline-Tests ausgeführt und dokumentiert
 - ✅ P0/P1-Ausgangsprobleme aus Audit bestätigt (Code unverändert)
+
+---
+
+## Bestätigung Prompt 24 (Final)
+
+- ✅ Tire-Health-Remediation technisch abgeschlossen (24/24 Prompts)
+- ✅ **CONDITIONALLY_READY** für Produktions-Rollout mit kontrolliertem Backfill
+- ✅ **NOT_ENOUGH_DATA** für Modell-Validierung — ehrliche Grenze, kein technischer Fehler
+- ✅ Runbook: `docs/runbooks/tire-health-production-rollout.md`
+- ✅ Post-Remediation-Audit: `docs/audits/tire-health-post-remediation-readiness-2026-07.md`
+- ❌ Keine automatischen Produktions- oder Staging-Datenänderungen in Prompt 24
+
+---
+
+## Prompt 25 — Offene Findings + Deploy (2026-07-16)
+
+### Code-Fixes
+
+| ID | Fix |
+|----|-----|
+| P0-TH-03 | `ensureTelemetryOdometerAnchor()` in `recalculate()` — persistiert fehlenden Install-Anker aus DIMO/HM/`vehicle_latest_state` wenn plausibel |
+| P0-TH-03 | `vehicleLatestState.findUnique({ vehicleId })` statt `{ id: vehicleId }` in Recalc-Validation-Pfad |
+| P0-TH-01 | Bereits mitigiert (`DEFAULT_ASSUMPTION` + Rental-Policy) — unverändert |
+| Backend-Tests | Invoice payment-check: deterministisches `FIXED_NOW` + `timing.priority` bei Upsert |
+
+### Deploy
+
+- Branch `fix/tire-health-production-readiness-2026-07` → `main`
+- VPS deploy via `.cursor/scripts/cloud-agent-deploy.sh`

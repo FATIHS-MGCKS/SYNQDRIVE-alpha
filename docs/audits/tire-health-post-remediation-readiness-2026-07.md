@@ -232,7 +232,7 @@ Script: `scripts/audits/audit-tire-health-backtest.ts`
 
 | ID | Severity | Remaining action |
 |----|----------|------------------|
-| P0-TH-03 | P0 | Apply odometer anchors (EXACT/HIGH) → enable wear data points |
+| P0-TH-03 | P0 | Runtime telemetry auto-anchor on recalculate + staging backfill for historical setups |
 | P0-TH-01 | P0→P1 | 8 mm fallback remains but `DEFAULT_ASSUMPTION` provenance; block rental claims |
 | P1-TH-13 | P1 | Fleet pressure coverage 1/6 — HM/DIMO campaign |
 | P1-TH-17/18 | P1 | Backtest sample size — measurement campaign |
