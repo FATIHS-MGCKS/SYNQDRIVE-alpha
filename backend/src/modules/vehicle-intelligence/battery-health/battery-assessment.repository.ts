@@ -38,6 +38,80 @@ function mapConfidenceToMaturity(
 export class BatteryAssessmentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findLatestLvEstimatedHealth(input: {
+    organizationId: string;
+    vehicleId: string;
+  }): Promise<BatteryAssessment | null> {
+    return this.prisma.batteryAssessment.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        scope: BatteryEvidenceScope.LV,
+        type: BatteryAssessmentType.LV_ESTIMATED_HEALTH,
+        supersededById: null,
+      },
+      orderBy: { computedAt: 'desc' },
+    });
+  }
+
+  assessmentToEstimatedHealthModel(
+    row: BatteryAssessment,
+  ): LvEstimatedHealthAssessment | null {
+    const summary =
+      row.inputSummary && typeof row.inputSummary === 'object'
+        ? (row.inputSummary as Record<string, unknown>)
+        : null;
+    if (!summary) return null;
+
+    const measurementCoverage =
+      summary.measurementCoverage &&
+      typeof summary.measurementCoverage === 'object'
+        ? (summary.measurementCoverage as LvEstimatedHealthAssessment['measurementCoverage'])
+        : {
+            selectedCount: 0,
+            rejectedCount: 0,
+            restMeasurementCount: 0,
+            startProxyCount: 0,
+            workshopMeasurementCount: 0,
+            shadowExperimentalCount: 0,
+            weightedInputCount: 0,
+            coverageRatio: 0,
+          };
+
+    return {
+      assessmentType: 'LV_ESTIMATED_HEALTH',
+      scoreSemantics: 'ESTIMATED_HEALTH_NOT_SOH',
+      assessmentTrack:
+        (summary.assessmentTrack as LvEstimatedHealthAssessment['assessmentTrack']) ??
+        'TELEMETRY',
+      assessmentMode:
+        (summary.assessmentMode as LvEstimatedHealthAssessment['assessmentMode']) ??
+        'CANONICAL',
+      modelVersion: row.modelVersion,
+      estimatedHealthScore: row.scoreValue,
+      confidence:
+        (row.confidence as LvEstimatedHealthAssessment['confidence']) ??
+        'INSUFFICIENT',
+      confidenceScore:
+        typeof summary.confidenceScore === 'number'
+          ? summary.confidenceScore
+          : 0,
+      evidenceStrength: row.evidenceStrength,
+      dataQuality:
+        (row.dataQuality as LvEstimatedHealthAssessment['dataQuality']) ??
+        'UNAVAILABLE',
+      measurementCoverage,
+      validFrom: row.validFrom?.toISOString() ?? row.computedAt.toISOString(),
+      validUntil: row.validUntil?.toISOString() ?? null,
+      publicationEligible: summary.publicationEligible === true,
+      reasons: Array.isArray(summary.reasons)
+        ? (summary.reasons as LvEstimatedHealthAssessment['reasons'])
+        : [],
+      idempotencyKey: row.idempotencyKey,
+      inputSummary: summary,
+    };
+  }
+
   async persistLvEstimatedHealth(
     input: PersistLvEstimatedHealthAssessmentInput,
   ): Promise<BatteryAssessment> {
