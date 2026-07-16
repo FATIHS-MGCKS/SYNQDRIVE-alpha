@@ -1004,6 +1004,10 @@ enum DrivingEventType {
   HARSH_CORNERING
   SPEEDING
   IDLE_EXCESSIVE
+  /// Provider-native event without a dedicated SynqDrive taxonomy mapping (P23).
+  UNMAPPED_PROVIDER_EVENT
+  /// DIMO safety.collision and equivalent provider collision reports (P23).
+  SAFETY_COLLISION
 }
 
 // ── V3 Hardware types ────────────────────────────────────────────────────────

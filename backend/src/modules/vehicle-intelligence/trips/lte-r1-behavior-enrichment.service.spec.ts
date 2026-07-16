@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
+import { VehicleDrivingCapabilityResolverService } from '../driving-capability/vehicle-driving-capability-resolver.service';
 import {
   LteR1BehaviorEnrichmentService,
   mapDimoEventName,
@@ -84,7 +85,14 @@ describe('resolveNativeSeverity', () => {
 });
 
 describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
-  const service = new LteR1BehaviorEnrichmentService({} as any, {} as any, {} as any);
+  const service = new LteR1BehaviorEnrichmentService(
+    {} as any,
+    {} as any,
+    {} as any,
+    {
+      resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
+    } as any,
+  );
 
   const sample = (name: string, metadata: string | null = '{"counterValue":1}'): DimoVehicleEventRecord => ({
     timestamp: '2026-01-01T12:00:00.000Z',
@@ -114,17 +122,20 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
     expect(event.severity).toBe(0.6);
   });
 
-  it('drops unknown event names but keeps mappable ones', () => {
+  it('perserves unmapped provider events instead of dropping them', () => {
     const events = mapSamples([
       sample('behavior.harshBraking'),
       sample('behavior.unknownThing'),
       sample('behavior.extremeAcceleration'),
     ]);
-    expect(events).toHaveLength(2);
+    expect(events).toHaveLength(3);
     expect(events.map((e) => e.eventType)).toEqual([
       DrivingEventType.HARSH_BRAKING,
+      DrivingEventType.UNMAPPED_PROVIDER_EVENT,
       DrivingEventType.HARSH_ACCELERATION,
     ]);
+    expect(events[1].mapping.isKnownMapping).toBe(false);
+    expect(events[1].mapping.evidenceSourceType).toBe('PROVIDER_CLASSIFIED_EVENT');
   });
 });
 
@@ -139,6 +150,9 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
       prisma as any,
       {} as any,
       eventContext as any,
+      {
+        resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
+      } as any,
     );
     return { service, prisma };
   }
@@ -192,6 +206,10 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
           LteR1BehaviorEnrichmentService,
           { provide: PrismaService, useValue: {} },
           { provide: DimoSegmentsService, useValue: {} },
+          {
+            provide: VehicleDrivingCapabilityResolverService,
+            useValue: { resolveForVehicle: jest.fn() },
+          },
         ],
       }).compile(),
     ).rejects.toThrow();
@@ -256,6 +274,9 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       prisma as any,
       segments as any,
       { enrichDrivingEventContext } as any,
+      {
+        resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
+      } as any,
     );
     return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds };
   }

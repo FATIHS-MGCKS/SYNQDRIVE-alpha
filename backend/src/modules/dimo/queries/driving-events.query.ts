@@ -31,8 +31,7 @@
  * the DIMO connection (LTE R1 device) wallet address.
  *
  * Mapping to SynqDrive DrivingEventType is handled in
- * LteR1BehaviorEnrichmentService.normalizeEventName (case-insensitive,
- * prefix-tolerant).
+ * `dimo-native-driving-events/dimo-native-driving-event-mapper.ts` (versioned).
  */
 
 /** One record as returned by DIMO's `events(...)` root query. */
@@ -72,12 +71,13 @@ export function buildDrivingEventsQuery(
     'behavior.harshCornering',
     'behavior.extremeEmergency',
     'behavior.extremeEmergencyBraking',
+    'safety.collision',
   ]);
 }
 
 /**
- * Safety-family DIMO events (e.g. collision). Kept separate from behavior.*
- * driving events — NOT mapped to DrivingEventType rows.
+ * Safety-family DIMO events (e.g. collision). Included in the native driving-events
+ * ingest filter (P23) and mapped centrally via `mapDimoNativeDrivingEvent`.
  */
 export function buildSafetyEventsQuery(
   tokenId: number,

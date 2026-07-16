@@ -55,6 +55,8 @@ export const DRIVING_EVENT_CATEGORY_MAP: Record<string, string> = {
   HARSH_CORNERING: 'ACCELERATION',
   SPEEDING: 'ABUSE',
   IDLE_EXCESSIVE: 'ABUSE',
+  SAFETY_COLLISION: 'ABUSE',
+  UNMAPPED_PROVIDER_EVENT: 'ABUSE',
 };
 
 /** Fallback classification when a native event has no stored classification. */
