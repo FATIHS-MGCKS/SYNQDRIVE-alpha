@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-lv-canonical-resolver-v49545-2026-07-17',
+    version: '4.9.545',
+    title: 'V4.9.545 — LV Canonical Battery Resolver (Prompt 45/78)',
+    summary: [
+      '`resolveCanonicalLvBattery()` liefert die kanonische LV-Antwort während der Übergangsphase mit Priorität: Werkstatt/Manuell > V2-STABLE > V2-PROVISIONAL > Shadow > Live > LEGACY_UNVERIFIED.',
+      'Output: liveVoltage, latestQualifiedRestMeasurement, latestStartProxy, assessment, publication, profile, chemistry, freshness, quality, legacyDiagnostic optional.',
+      'Keine doppelte Wahrheit; Legacy niemals stärker als qualifizierte V2-/Werkstattdaten; kein SOH-Label für LV.',
+      'Rental Health und UI sollen später ausschließlich diesen Resolver verwenden.',
+    ],
+    reason: 'Prompt 45/78: zentraler LV-Resolver vor UI/Readiness-Umstellung.',
+    previousBehavior: 'LV-Wahrheit verteilt über `CanonicalBatteryHealthService`, Legacy `battery_features` und V2-Pfade ohne einheitliche Priorität.',
+    details:
+      'lv-canonical-battery.resolver.ts, lv-canonical-battery-resolver.service.ts, battery-assessment.repository.ts, docs/architecture/battery-lv-canonical-resolver.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T07:00:00.000Z',
+  },
+  {
     id: 'battery-lv-publication-policy-v49544-2026-07-17',
     version: '4.9.544',
     title: 'V4.9.544 — LV Publication Policy (Prompt 44/78)',
