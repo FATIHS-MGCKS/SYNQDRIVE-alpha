@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
+  getBatteryRest60mDelayMs,
+  getBatteryRest6hDelayMs,
+  getBatteryRestTargetDelayMs,
   getBatteryV2ObservationStaleMs,
   getBatteryV2ReconciliationBatchSize,
   getBatteryV2StartProxyDelayMs,
-  getBatteryRest60mDelayMs,
   isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
 } from '@config/battery-health-v2.config';
@@ -32,7 +34,8 @@ import {
   BatteryMeasurementType,
 } from '@prisma/client';
 import { LvRestWindowState } from '../battery-v2-domain';
-const REST_6H_MS = 6 * 60 * 60_000;
+import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
+
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
 
@@ -235,7 +238,8 @@ export class BatteryV2ReconciliationService {
 
   private async reconcileLvRestWindowTargets(batch: number): Promise<number> {
     const now = Date.now();
-    const dueBefore = new Date(now - getBatteryRest60mDelayMs());
+    const dueBefore60m = new Date(now - getBatteryRest60mDelayMs());
+    const dueBefore6h = new Date(now - getBatteryRest6hDelayMs());
 
     const sessions = await this.prisma.batteryMeasurementSession.findMany({
       where: {
@@ -246,7 +250,7 @@ export class BatteryV2ReconciliationService {
             BatteryMeasurementSessionStatus.COMPLETED,
           ],
         },
-        startedAt: { lte: dueBefore },
+        startedAt: { lte: dueBefore60m },
       },
       take: batch,
       select: {
@@ -270,30 +274,53 @@ export class BatteryV2ReconciliationService {
       ) {
         continue;
       }
-      if (isLvRestTargetAlreadyScheduled(session.metadata, LV_REST_TARGET_TYPES.REST_60M)) {
-        continue;
-      }
 
-      const hasMeasurement = await this.prisma.batteryMeasurement.findFirst({
-        where: {
-          organizationId: session.organizationId,
-          sessionId: session.id,
-          type: BatteryMeasurementType.REST_60M,
-        },
-        select: { id: true },
-      });
-      if (hasMeasurement) continue;
+      const targetTypes = [
+        LV_REST_TARGET_TYPES.REST_60M,
+        LV_REST_TARGET_TYPES.REST_6H,
+      ] as const;
 
-      const scheduleResult = await this.restTargetProducer.scheduleRest60m({
-        organizationId: session.organizationId,
-        vehicleId: session.vehicleId,
-        sessionId: session.id,
-        restWindowId: session.idempotencyKey,
-        restWindowStartedAt: session.startedAt,
-        now: new Date(now),
-      });
-      if (scheduleResult.scheduled || scheduleResult.bullJobId) {
-        enqueued += 1;
+      for (const targetType of targetTypes) {
+        const dueBefore =
+          targetType === LV_REST_TARGET_TYPES.REST_6H ? dueBefore6h : dueBefore60m;
+        if (session.startedAt.getTime() > dueBefore.getTime()) {
+          continue;
+        }
+        if (isLvRestTargetAlreadyScheduled(session.metadata, targetType)) {
+          continue;
+        }
+
+        const hasMeasurement = await this.prisma.batteryMeasurement.findFirst({
+          where: {
+            organizationId: session.organizationId,
+            sessionId: session.id,
+            type: measurementTypeForRestTarget(targetType),
+          },
+          select: { id: true },
+        });
+        if (hasMeasurement) continue;
+
+        const scheduleResult =
+          targetType === LV_REST_TARGET_TYPES.REST_60M
+            ? await this.restTargetProducer.scheduleRest60m({
+                organizationId: session.organizationId,
+                vehicleId: session.vehicleId,
+                sessionId: session.id,
+                restWindowId: session.idempotencyKey,
+                restWindowStartedAt: session.startedAt,
+                now: new Date(now),
+              })
+            : await this.restTargetProducer.scheduleRest6h({
+                organizationId: session.organizationId,
+                vehicleId: session.vehicleId,
+                sessionId: session.id,
+                restWindowId: session.idempotencyKey,
+                restWindowStartedAt: session.startedAt,
+                now: new Date(now),
+              });
+        if (scheduleResult.scheduled || scheduleResult.bullJobId) {
+          enqueued += 1;
+        }
       }
     }
 

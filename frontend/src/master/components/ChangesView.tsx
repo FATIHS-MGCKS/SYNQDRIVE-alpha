@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lv-rest-6h-target-job-v49533-2026-07-16',
+    version: '4.9.533',
+    title: 'V4.9.533 — LV REST_6H Target Job + Historical Evaluation (Prompt 32/78)',
+    summary: [
+      'Analog zu REST_60M: idempotenter `BATTERY_REST_TARGET_EVALUATE` Job `battery-rest:{vehicleId}:{restWindowId}:6h` bei RESTING-Bestätigung.',
+      'Zielzeitpunkt `startedAt + 6h`; eigener Job und Measurement-Typ `REST_6H`.',
+      'Historische LIVE_VOLTAGE-Observations im ±15m-Fenster um Zielzeit; REST_60M und REST_6H nutzen getrennte Source-Observations.',
+      'Kein Wake-Wert nach Zielzeitfenster; invalidiertes Fenster → Job `CANCELLED` ohne Measurement.',
+      'Reconciliation stellt fehlende 60m/6h-Jobs nach Deployment/Worker-Pause wieder her.',
+      'Tests: 6h-Delay, Invalidierung, Reconciliation, getrennte Measurements.',
+    ],
+    reason: 'Prompt 32/78: REST_6H-Zieljob und historische Observation-Auswertung mit Trennung zu REST_60M.',
+    previousBehavior: 'Nur REST_60M-Job-Planung; Handler ohne historische Observation-Auswertung.',
+    details:
+      'battery-rest-target-evaluation.ts, battery-rest-target-evaluation.service.ts, battery-v2-rest-target.producer.ts, battery-rest-target-evaluate.handler.ts, lv-rest-window.service.ts, battery-v2-reconciliation.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:00:00.000Z',
+  },
+  {
     id: 'lv-rest-60m-target-job-v49532-2026-07-16',
     version: '4.9.532',
     title: 'V4.9.532 — LV REST_60M Target Job Scheduling (Prompt 31/78)',

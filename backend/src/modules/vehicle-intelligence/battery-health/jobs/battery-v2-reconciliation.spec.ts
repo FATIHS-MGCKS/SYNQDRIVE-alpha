@@ -96,12 +96,21 @@ describe('BatteryV2ReconciliationService', () => {
     scheduleRest60m: jest.fn().mockResolvedValue({
       scheduled: true,
       skipped: false,
-      idempotencyKey: 'battery-rest:key',
+      idempotencyKey: 'battery-rest:60m',
       scheduledFor: new Date(),
       delayMs: 0,
-      bullJobId: 'job-id',
+      bullJobId: 'job-60m',
+    }),
+    scheduleRest6h: jest.fn().mockResolvedValue({
+      scheduled: true,
+      skipped: false,
+      idempotencyKey: 'battery-rest:6h',
+      scheduledFor: new Date(),
+      delayMs: 0,
+      bullJobId: 'job-6h',
     }),
     getRest60mDelayMs: jest.fn().mockReturnValue(60 * 60_000),
+    getRest6hDelayMs: jest.fn().mockReturnValue(6 * 60 * 60_000),
   };
 
   let service: BatteryV2ReconciliationService;
@@ -164,6 +173,36 @@ describe('BatteryV2ReconciliationService', () => {
     expect(first.restTargets).toBe(1);
     expect(second.restTargets).toBe(0);
     expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconciles REST_6H target after six hours without duplicate metadata', async () => {
+    const startedAt = new Date(Date.now() - 7 * 60 * 60_000);
+    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
+    prisma.batteryMeasurementSession.findMany.mockResolvedValueOnce([
+      {
+        id: 'sess-6h',
+        organizationId: ORG,
+        vehicleId: VEH,
+        startedAt,
+        idempotencyKey: windowId,
+        metadata: {
+          lvRestWindowState: 'RESTING',
+          scheduledTargets: {
+            REST_60M: {
+              idempotencyKey: `battery-rest:${VEH}:${windowId}:60m`,
+              scheduledFor: startedAt.toISOString(),
+              status: 'ENQUEUED',
+            },
+          },
+        },
+        status: 'ACTIVE',
+      },
+    ]);
+
+    const result = await service.reconcileAll();
+    expect(result.restTargets).toBe(1);
+    expect(restTargetProducer.scheduleRest6h).toHaveBeenCalledTimes(1);
+    expect(restTargetProducer.scheduleRest60m).not.toHaveBeenCalled();
   });
 
   it('reconciles legacy rest targets without duplicate enqueue', async () => {

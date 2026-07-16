@@ -115,17 +115,35 @@ export function isLegacyHvPairwiseCapacityAssessmentEnabled(): boolean {
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 
+/** Delay before REST_6H target evaluation after rest window anchor. */
+export const BATTERY_REST_6H_MS_ENV = 'BATTERY_REST_6H_MS';
+
 const DEFAULT_REST_60M_MS = 60 * 60_000;
+const DEFAULT_REST_6H_MS = 6 * 60 * 60_000;
 
 export function getBatteryRest60mDelayMs(): number {
   return parsePositiveIntEnv(process.env[BATTERY_REST_60M_MS_ENV], DEFAULT_REST_60M_MS);
 }
 
+export function getBatteryRest6hDelayMs(): number {
+  return parsePositiveIntEnv(process.env[BATTERY_REST_6H_MS_ENV], DEFAULT_REST_6H_MS);
+}
+
+export function getBatteryRestTargetDelayMs(
+  restTargetType: 'REST_60M' | 'REST_6H',
+): number {
+  return restTargetType === 'REST_6H'
+    ? getBatteryRest6hDelayMs()
+    : getBatteryRest60mDelayMs();
+}
+
 export function computeBatteryRestTargetDelayMs(
   restWindowStartedAt: Date,
   now: Date = new Date(),
+  restTargetType: 'REST_60M' | 'REST_6H' = 'REST_60M',
 ): number {
-  const targetAtMs = restWindowStartedAt.getTime() + getBatteryRest60mDelayMs();
+  const targetAtMs =
+    restWindowStartedAt.getTime() + getBatteryRestTargetDelayMs(restTargetType);
   return Math.max(0, targetAtMs - now.getTime());
 }
 
@@ -153,4 +171,5 @@ export default registerAs('batteryHealthV2', () => ({
   capabilityLossThreshold: getBatteryCapabilityLossThreshold(),
   capabilityDegradedGraceMs: getBatteryCapabilityDegradedGraceMs(),
   rest60mDelayMs: getBatteryRest60mDelayMs(),
+  rest6hDelayMs: getBatteryRest6hDelayMs(),
 }));

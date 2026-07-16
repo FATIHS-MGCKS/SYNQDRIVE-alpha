@@ -96,6 +96,7 @@ import { BatteryCapabilityPreflightService } from './battery-health/capability-p
 import { BatteryCapabilityRefreshService } from './battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityMeasurementGateService } from './battery-health/capability-preflight/battery-capability-measurement-gate.service';
 import { LvRestWindowStateMachineService } from './battery-health/lv-rest-window/lv-rest-window.service';
+import { BatteryRestTargetEvaluationService } from './battery-health/lv-rest-window/battery-rest-target-evaluation.service';
 
 @Module({
   imports: [
@@ -180,6 +181,7 @@ import { LvRestWindowStateMachineService } from './battery-health/lv-rest-window
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
     LvRestWindowStateMachineService,
+    BatteryRestTargetEvaluationService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -256,6 +258,7 @@ import { LvRestWindowStateMachineService } from './battery-health/lv-rest-window
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
     LvRestWindowStateMachineService,
+    BatteryRestTargetEvaluationService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
