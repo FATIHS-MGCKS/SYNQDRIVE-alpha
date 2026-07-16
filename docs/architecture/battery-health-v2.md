@@ -433,9 +433,26 @@ Regeln: kein Raten aus Spannung allein; EFB bleibt EFB (nicht als AGM speichern)
 | `ICE_AGM` | ICE + AGM |
 | `ICE_EFB` | ICE + EFB |
 | `PHEV_AUX` | PHEV + beliebig mit LV |
-| `BEV_HV_ONLY` | BEV — nur HV-Pfad |
-| `UNKNOWN_PROFILE` | Spec fehlt |
+| `EV_AUX_LEAD_ACID` | BEV mit LV + LA-Aux |
+| `EV_AUX_LITHIUM` | BEV mit LV + Li-Aux |
+| `UNKNOWN_PROFILE` | Spec/Kontext fehlt |
 | `UNSUPPORTED_PROFILE` | BEV ohne LV |
+
+**Zentraler Policy-Resolver (V4.9.528, Prompt 27/78):** `resolveBatteryPolicy()` in `battery-policy-profile/` — reine Domainfunktion + Katalog `BATTERY_POLICY_CATALOG`.
+
+Jedes Policy Profile definiert zentral:
+
+| Attribut | Bedeutung |
+|----------|-----------|
+| `supportedMeasurementTypes` / `forbiddenMeasurementTypes` | Erlaubte/verbotene Messarten |
+| `restingBands` | Chemiespezifische Ruhebereiche (good/watch/warning) |
+| `startProxyAllowed` + `startProxyRequiresConfirmedIceStart` | Start-Proxy-Gate (PHEV: nur bei bestätigtem ICE-Start) |
+| `lvAssessmentAllowed` | LV-Assessment-Pfad |
+| `hvPipelineAllowed` | HV-Pipeline (inkl. HEV/PHEV/BEV Override) |
+| `chemicalSocEstimationAllowed` | SOC-Kurve aus Spannung — **verboten** für UNKNOWN/LITHIUM/EV-Aux |
+| `minimumContext` | Mindestkontext (engine-off REST, Provider-TS, HV-SOC-Signal, …) |
+
+Regeln: BEV ohne LV → `UNSUPPORTED_PROFILE`; PHEV Startproxy nur mit `confirmedIceStart`; UNKNOWN keine chemische SOC-Schätzung; Messungs-Gate über `guardMeasurementQualityForPolicy` (keine verteilten if-Abfragen). Integration: `BatteryPolicyProfileService`, `BatteryMeasurementService`.
 
 Policy wird bei jedem Assessment-Run materialisiert und in API exponiert (`batterySummary.policyProfile`).
 
@@ -475,14 +492,16 @@ Policy wird bei jedem Assessment-Run materialisiert und in API exponiert (`batte
 
 | State | Bedeutung |
 |-------|-----------|
-| `AVAILABLE` | In `availableSignals` + Daten in 31 Tagen |
-| `AVAILABLE_STALE` | Signal existiert, TS > Schwellwert |
-| `AVAILABLE_NULL` | Gelistet, Wert null |
-| `NOT_LISTED` | Provider liefert nicht |
-| `QUERY_ERROR` | Technischer Fehler |
-| `UNSUPPORTED` | Profilverbotsfall |
+| `AVAILABLE` | In `availableSignals` + frische Daten (`AVAILABLE_WITH_DATA` im Preflight) |
+| `AVAILABLE_STALE` | Signal existiert, TS > Schwellwert (Default 6 h vs. `lastSeen`) |
+| `AVAILABLE_NULL` | Gelistet, Wert null (`AVAILABLE_BUT_NULL`) |
+| `NOT_LISTED` | Provider liefert nicht in `availableSignals` |
+| `QUERY_ERROR` | Technischer Fehler — **nicht** als NOT_LISTED klassifizieren |
+| `UNSUPPORTED` | Profilverbotsfall (Policy-Layer, nicht Preflight) |
 
-Preflight über DIMO `availableSignals(tokenId)` — nicht dokumentationsbasiert raten.
+Preflight über DIMO `availableSignals(tokenId)` + `signalsLatest` — nicht dokumentationsbasiert raten.
+
+**Implementierung (Prompt 28):** `BatteryCapabilityPreflightService` führt read-only Abfrage je Fahrzeug aus (JWT nur im HTTP-Layer, nicht persistiert), klassifiziert 12 Telemetry-Signale + Recharge-Segments-Probe (`mechanism: recharge`, 31-Tage-Fenster), mappt auf `VehicleBatteryCapability` (`vehicleId` + `signalKey`, `checkedAt` = Fetch-Freshness). Job-Anbindung: `HV_CAPABILITY_REFRESH` → Handler für alle DIMO-tokenisierten Fahrzeuge (LV + HV). Keine Assessment-Berechnung in diesem Schritt.
 
 ### 6.4 Reifezustände (`SohPublicationState`)
 

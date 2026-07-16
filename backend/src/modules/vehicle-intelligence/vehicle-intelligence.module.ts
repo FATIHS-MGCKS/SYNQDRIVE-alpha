@@ -91,6 +91,8 @@ import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jo
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
 import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 import { BatteryPolicyProfileService } from './battery-policy-profile/battery-policy-profile.service';
+import { BatteryCapabilityPreflightRepository } from './battery-health/capability-preflight/battery-capability-preflight.repository';
+import { BatteryCapabilityPreflightService } from './battery-health/capability-preflight/battery-capability-preflight.service';
 
 @Module({
   imports: [
@@ -170,6 +172,8 @@ import { BatteryPolicyProfileService } from './battery-policy-profile/battery-po
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
+    BatteryCapabilityPreflightRepository,
+    BatteryCapabilityPreflightService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -241,6 +245,8 @@ import { BatteryPolicyProfileService } from './battery-policy-profile/battery-po
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
+    BatteryCapabilityPreflightRepository,
+    BatteryCapabilityPreflightService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,

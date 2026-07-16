@@ -98,7 +98,7 @@ interface SignalSpec {
   convert?: (raw: number) => number;
 }
 
-const SIGNAL_SPECS = {
+export const SIGNAL_SPECS = {
   lvBatteryVoltage: {
     dimoSignalName: 'lowVoltageBatteryCurrentVoltage',
     sourceUnit: 'V',
@@ -179,7 +179,7 @@ const SIGNAL_SPECS = {
   },
 } as const satisfies Record<string, SignalSpec>;
 
-const BOOLEAN_SIGNAL_SPECS = {
+export const BOOLEAN_SIGNAL_SPECS = {
   tractionBatteryIsCharging: {
     dimoSignalName: 'powertrainTractionBatteryChargingIsCharging',
   },

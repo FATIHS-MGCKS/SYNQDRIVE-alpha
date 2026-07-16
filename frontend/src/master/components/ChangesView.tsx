@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-capability-preflight-v49529-2026-07-16',
+    version: '4.9.529',
+    title: 'V4.9.529 — DIMO Battery Capability Preflight (Prompt 28/78)',
+    summary: [
+      'Read-only DIMO-Capability-Preflight je Fahrzeug über Root-Query `availableSignals` + `signalsLatest`.',
+      '13 Battery-Signale inkl. Recharge-Segments-Probe; Status: AVAILABLE_WITH_DATA, AVAILABLE_BUT_NULL, NOT_LISTED, STALE, QUERY_ERROR.',
+      'Idempotente Persistenz in `VehicleBatteryCapability` mit `checkedAt`-Freshness; keine Tokens/Secrets, keine Assessment-Berechnung.',
+      'Providerfehler → QUERY_ERROR (nicht NOT_LISTED); `HvCapabilityRefreshHandler` ruft Preflight für DIMO-Fahrzeuge auf.',
+      'Unit-Tests mit Tesla-, ICE- und Fehlerpayloads.',
+    ],
+    reason: 'Prompt 28/78: Preflight-Capability-State pro Signal vor HV/LV-Messlogik.',
+    previousBehavior: 'HV_CAPABILITY_REFRESH war Stub ohne DIMO-Abfrage oder Persistenz in VehicleBatteryCapability.',
+    details:
+      'capability-preflight/*, battery-capability-preflight.query.ts, dimo-telemetry.service.ts, hv-capability-refresh.handler.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T19:00:00.000Z',
+  },
+  {
+    id: 'battery-policy-profile-v49528-2026-07-16',
+    version: '4.9.528',
+    title: 'V4.9.528 — Central Battery Policy Profile (Prompt 27/78)',
+    summary: [
+      'Zentraler `resolveBatteryPolicy()` — Drive Profile + Chemistry → Policy Profile (ICE_LEAD_ACID … UNSUPPORTED_PROFILE).',
+      'Katalog definiert pro Policy: supported/forbidden Messarten, Ruhebereiche, Start-Proxy, LV/HV-Pfade, Mindestkontext.',
+      'Regeln: BEV ohne LV → UNSUPPORTED; PHEV Startproxy nur bei `confirmedIceStart`; UNKNOWN ohne chemische SOC-Schätzung.',
+      '`guardMeasurementQualityForPolicy` ersetzt verteilte if-Abfragen; `BatteryMeasurementService` nutzt `BatteryPolicyProfileService`.',
+      'Unit-Tests für alle Policy-Kombinationen und PHEV/ BEV-Gates.',
+    ],
+    reason: 'Prompt 27/78: zentrale Zuordnung Drive+Chemistry → Battery Policy Profile.',
+    previousBehavior: 'Messungs-Gates nur über `guardLvMeasurementQualityForProfile` (BEV-Sonderfall) ohne vollständigen Policy-Katalog.',
+    details:
+      'battery-policy-profile/*, battery-measurement.service.ts, drive-profile-resolver.ts (Wrapper), vehicle-intelligence.module.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T18:00:00.000Z',
+  },
+  {
     id: 'lv-battery-chemistry-resolver-v49527-2026-07-16',
     version: '4.9.527',
     title: 'V4.9.527 — Central LV Battery Chemistry Resolver (Prompt 26/78)',
