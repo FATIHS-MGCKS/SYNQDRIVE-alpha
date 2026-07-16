@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import {
   buildReviewFields,
+  parseReviewFieldsForConfirm,
   type FlowStatus,
   type Plausibility,
   type ReviewField,
@@ -18,6 +19,7 @@ import {
 export interface UseDocumentExtractionFlowOptions {
   vehicleId: string;
   initialDocType?: string;
+  locale?: string;
   /** Form field `source` on multipart upload (e.g. operator_app, documents_tab). */
   uploadSource?: string;
   onComplete?: () => void;
@@ -26,6 +28,7 @@ export interface UseDocumentExtractionFlowOptions {
 export function useDocumentExtractionFlow({
   vehicleId,
   initialDocType = 'SERVICE',
+  locale = 'de',
   uploadSource = 'documents_tab',
   onComplete,
 }: UseDocumentExtractionFlowOptions) {
@@ -96,7 +99,7 @@ export function useDocumentExtractionFlow({
       if (record.sourceFileName) setUploadedFileName(record.sourceFileName);
 
       if (mapped === 'ready') {
-        setEditedFields(buildReviewFields(docType, (record.extractedData ?? undefined) as Record<string, unknown> | undefined));
+        setEditedFields(buildReviewFields(docType, (record.extractedData ?? undefined) as Record<string, unknown> | undefined, { locale }));
         setPlausibility((record.plausibility as Plausibility | null) ?? null);
         setFlow('ready');
         stopPolling();
@@ -212,17 +215,7 @@ export function useDocumentExtractionFlow({
     setFlow('applying');
     setErrorMessage(null);
 
-    const confirmedData: Record<string, unknown> = {};
-    for (const f of editedFields) {
-      const value = f.value === '' ? null : f.value;
-      if (f.key.includes('.')) {
-        const [parent, child] = f.key.split('.');
-        if (!confirmedData[parent]) confirmedData[parent] = {};
-        (confirmedData[parent] as Record<string, unknown>)[child] = value;
-      } else {
-        confirmedData[f.key] = value;
-      }
-    }
+    const confirmedData = parseReviewFieldsForConfirm(editedFields, { locale });
 
     try {
       await api.vehicleIntelligence.confirmDocumentExtraction(vehicleId, extractionId, {
@@ -234,7 +227,7 @@ export function useDocumentExtractionFlow({
       setErrorMessage(err instanceof Error ? err.message : 'Bestätigung fehlgeschlagen.');
       setFlow('ready');
     }
-  }, [editedFields, extractionId, onComplete, vehicleId]);
+  }, [editedFields, extractionId, locale, onComplete, vehicleId]);
 
   const openReview = useCallback(
     async (id: string, fileName?: string | null) => {

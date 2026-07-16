@@ -1,8 +1,24 @@
 /** Shared AI document extraction types & helpers (Documents tab + AI Upload view). */
 
 import { DOCUMENT_UPLOAD_ACCEPT_ATTR } from '../../lib/document-upload.constants';
+import {
+  formatCentsForDisplay,
+  formatIsoDateForDisplay,
+  parseCurrencyDisplayToCents,
+  parseDisplayDateToIso,
+  resolveDateLocale,
+  type ExtractionFieldType,
+} from '../../lib/document-extraction-field-format';
 
-export const EXTRACTION_TEMPLATES: Record<string, Array<{ key: string; label: string }>> = {
+export type { ExtractionFieldType };
+
+interface FieldTemplate {
+  key: string;
+  label: string;
+  fieldType?: ExtractionFieldType;
+}
+
+export const EXTRACTION_TEMPLATES: Record<string, FieldTemplate[]> = {
   SERVICE: [
     { key: 'eventDate', label: 'Service-Datum' },
     { key: 'odometerKm', label: 'Kilometerstand (km)' },
@@ -120,9 +136,15 @@ export const EXTRACTION_TEMPLATES: Record<string, Array<{ key: string; label: st
     { key: 'estimatedCostGross', label: 'Geschätzte Kosten' },
   ],
   FINE: [
-    { key: 'eventDate', label: 'Datum' },
-    { key: 'description', label: 'Grund' },
-    { key: 'totalCents', label: 'Betrag (Cent)' },
+    { key: 'licensePlate', label: 'Kennzeichen' },
+    { key: 'eventDate', label: 'Datum', fieldType: 'date' },
+    { key: 'dueDate', label: 'Zahlungsfrist', fieldType: 'date' },
+    { key: 'offenseType', label: 'Art des Verstoßes' },
+    { key: 'location', label: 'Ort' },
+    { key: 'issuingAuthority', label: 'Ausstellende Behörde / Firma' },
+    { key: 'feeBreakdown', label: 'Gebührenaufstellung', fieldType: 'multiline' },
+    { key: 'description', label: 'Grund (Kurzfassung)', fieldType: 'multiline' },
+    { key: 'totalCents', label: 'Betrag', fieldType: 'currency' },
     { key: 'reportNumber', label: 'Aktenzeichen' },
   ],
   OTHER: [
@@ -188,6 +210,7 @@ export interface ReviewField {
   key: string;
   label: string;
   value: string;
+  fieldType?: ExtractionFieldType;
 }
 
 export function mapFlowStatus(serverStatus: string | undefined, stage?: string): FlowStatus {
@@ -237,12 +260,65 @@ export function readField(extracted: Record<string, unknown> | null | undefined,
   return v == null ? '' : String(v);
 }
 
+function formatFieldValue(
+  fieldType: ExtractionFieldType | undefined,
+  raw: string,
+  locale: string,
+): string {
+  if (!raw) return '';
+  switch (fieldType) {
+    case 'date':
+      return formatIsoDateForDisplay(raw, locale) || raw;
+    case 'currency':
+      return formatCentsForDisplay(raw, locale);
+    default:
+      return raw;
+  }
+}
+
 export function buildReviewFields(
   docType: string,
   extracted: Record<string, unknown> | null | undefined,
+  options?: { locale?: string },
 ): ReviewField[] {
+  const locale = resolveDateLocale(options?.locale);
   const template = EXTRACTION_TEMPLATES[docType] || EXTRACTION_TEMPLATES.OTHER;
-  return template.map((f) => ({ key: f.key, label: f.label, value: readField(extracted, f.key) }));
+  return template.map((f) => {
+    const raw = readField(extracted, f.key);
+    return {
+      key: f.key,
+      label: f.label,
+      fieldType: f.fieldType,
+      value: formatFieldValue(f.fieldType, raw, locale),
+    };
+  });
+}
+
+export function parseReviewFieldsForConfirm(
+  fields: ReviewField[],
+  options?: { locale?: string },
+): Record<string, unknown> {
+  const locale = resolveDateLocale(options?.locale);
+  const confirmedData: Record<string, unknown> = {};
+  for (const f of fields) {
+    const trimmed = f.value.trim();
+    let value: unknown = trimmed === '' ? null : trimmed;
+    if (trimmed !== '') {
+      if (f.fieldType === 'date') {
+        value = parseDisplayDateToIso(trimmed, locale) ?? trimmed;
+      } else if (f.fieldType === 'currency') {
+        value = parseCurrencyDisplayToCents(trimmed);
+      }
+    }
+    if (f.key.includes('.')) {
+      const [parent, child] = f.key.split('.');
+      if (!confirmedData[parent]) confirmedData[parent] = {};
+      (confirmedData[parent] as Record<string, unknown>)[child] = value;
+    } else {
+      confirmedData[f.key] = value;
+    }
+  }
+  return confirmedData;
 }
 
 export const FLOW_STATUS_LABEL_DE: Record<FlowStatus, string> = {

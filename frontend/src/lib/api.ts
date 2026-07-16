@@ -5149,6 +5149,11 @@ export const api = {
       }
       return res.blob();
     },
+    reassignVehicle: (orgId: string, extractionId: string, vehicleId: string) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/vehicle`,
+        { vehicleId },
+      ),
   },
   partsAccessories: {
     providers: () => get<PartsProviderSummary[]>('/parts-accessories/providers'),

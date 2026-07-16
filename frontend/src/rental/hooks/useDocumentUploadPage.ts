@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import {
   buildReviewFields,
+  parseReviewFieldsForConfirm,
   type FlowStatus,
   type Plausibility,
   type ReviewField,
 } from '../components/documents/document-extraction.shared';
+import { findVehicleIdByPlate } from '../lib/document-extraction-field-format';
 import {
   formatConfidencePercent,
   getStepperIndex,
@@ -40,10 +42,12 @@ const NETWORK_WARN_THRESHOLD = 3;
 export interface VehicleOption {
   id: string;
   name: string;
+  licensePlate?: string | null;
 }
 
 export interface UseDocumentUploadPageOptions {
   orgId: string;
+  locale?: string;
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 }
 
@@ -65,10 +69,11 @@ function validationKey(code: UploadValidationCode): TranslationKey {
   return map[code];
 }
 
-export function useDocumentUploadPage({ orgId, t }: UseDocumentUploadPageOptions) {
+export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUploadPageOptions) {
   const abortRef = useRef<AbortController | null>(null);
   const pollerStopRef = useRef<(() => void) | null>(null);
   const processingStartedRef = useRef<number | null>(null);
+  const autoReassignAttemptedRef = useRef<string | null>(null);
 
   const [metadata, setMetadata] = useState<DocumentExtractionMetadata | null>(null);
   const [metadataLoading, setMetadataLoading] = useState(true);
@@ -129,8 +134,9 @@ export function useDocumentUploadPage({ orgId, t }: UseDocumentUploadPageOptions
       if (next.sourceFileName) setUploadedFileName(next.sourceFileName);
 
       if (mapped === 'ready') {
-        setEditedFields(buildReviewFields(effectiveType, next.extractedData ?? undefined));
+        setEditedFields(buildReviewFields(effectiveType, next.extractedData ?? undefined, { locale }));
         setPlausibility(toPlausibility(next.plausibility));
+        setSelectedVehicleId(next.vehicleId);
         setFlow('ready');
         stopPolling();
         writeActiveExtractionPointer({
@@ -175,7 +181,7 @@ export function useDocumentUploadPage({ orgId, t }: UseDocumentUploadPageOptions
         /* keep polling until APPLIED/FAILED */
       }
     },
-    [reloadHistory, stopPolling, t],
+    [locale, reloadHistory, stopPolling, t],
   );
 
   const startPolling = useCallback(
@@ -255,14 +261,41 @@ export function useDocumentUploadPage({ orgId, t }: UseDocumentUploadPageOptions
       const list = (res?.data ?? []).map((v) => ({
         id: String(v.id),
         name: String(v.vehicleName || `${v.make} ${v.model} (${v.year})`),
+        licensePlate: (v.licensePlate as string | null | undefined) ?? null,
       }));
       setVehicles(list);
-      if (list.length > 0) {
-        setSelectedVehicleId((prev) => prev || list[0].id);
-      }
     }).catch(() => []);
     void reloadHistory();
   }, [orgId, reloadHistory]);
+
+  useEffect(() => {
+    if (flow !== 'ready' || !record || !orgId || !extractionId) return;
+    const effectiveType = resolveEffectiveType(record);
+    if (effectiveType !== 'FINE') return;
+    const attemptKey = `${extractionId}:${record.vehicleId}`;
+    if (autoReassignAttemptedRef.current === attemptKey) return;
+
+    const extracted = (record.extractedData ?? {}) as Record<string, unknown>;
+    const plate = typeof extracted.licensePlate === 'string' ? extracted.licensePlate : null;
+    const matchedId = findVehicleIdByPlate(vehicles, plate);
+    if (!matchedId || matchedId === record.vehicleId) return;
+
+    autoReassignAttemptedRef.current = attemptKey;
+    let cancelled = false;
+    void api.documentExtraction
+      .reassignVehicle(orgId, extractionId, matchedId)
+      .then((updated) => {
+        if (cancelled) return;
+        setSelectedVehicleId(matchedId);
+        applyRecord(updated);
+      })
+      .catch(() => {
+        autoReassignAttemptedRef.current = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyRecord, extractionId, flow, orgId, record, vehicles]);
 
   useEffect(() => {
     const pointer = readActiveExtractionPointer();
@@ -442,17 +475,7 @@ export function useDocumentUploadPage({ orgId, t }: UseDocumentUploadPageOptions
     setFlow('applying');
     setErrorMessage(null);
 
-    const confirmedData: Record<string, unknown> = {};
-    for (const f of editedFields) {
-      const value = f.value === '' ? null : f.value;
-      if (f.key.includes('.')) {
-        const [parent, child] = f.key.split('.');
-        if (!confirmedData[parent]) confirmedData[parent] = {};
-        (confirmedData[parent] as Record<string, unknown>)[child] = value;
-      } else {
-        confirmedData[f.key] = value;
-      }
-    }
+    const confirmedData = parseReviewFieldsForConfirm(editedFields, { locale });
 
     try {
       await api.vehicleIntelligence.confirmDocumentExtraction(selectedVehicleId, extractionId, { confirmedData });
@@ -461,7 +484,29 @@ export function useDocumentUploadPage({ orgId, t }: UseDocumentUploadPageOptions
       setErrorMessage(err instanceof Error ? err.message : t('docUpload.applyFailed'));
       setFlow('ready');
     }
-  }, [editedFields, extractionId, record?.allowedActions, selectedVehicleId, startPolling, t]);
+  }, [editedFields, extractionId, locale, record?.allowedActions, selectedVehicleId, startPolling, t]);
+
+  const handleReassignVehicle = useCallback(
+    async (newVehicleId: string) => {
+      if (!orgId || !extractionId || newVehicleId === selectedVehicleId) {
+        setSelectedVehicleId(newVehicleId);
+        return;
+      }
+      try {
+        const updated = await api.documentExtraction.reassignVehicle(orgId, extractionId, newVehicleId);
+        setSelectedVehicleId(newVehicleId);
+        applyRecord(updated);
+        writeActiveExtractionPointer({
+          vehicleId: newVehicleId,
+          extractionId,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : t('docUpload.applyFailed'));
+      }
+    },
+    [applyRecord, extractionId, orgId, selectedVehicleId, t],
+  );
 
   const handleDownload = useCallback(async () => {
     if (!selectedVehicleId || !extractionId || !record?.hasStoredFile) {
@@ -564,6 +609,7 @@ export function useDocumentUploadPage({ orgId, t }: UseDocumentUploadPageOptions
     handleDropFiles,
     handleRetry,
     handleConfirm,
+    handleReassignVehicle,
     handleReset,
     handleSetDocumentType,
     handleReextract,
