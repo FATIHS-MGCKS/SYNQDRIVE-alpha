@@ -17,9 +17,10 @@ import type {
   EvidenceGrade,
   SignalCoverage,
 } from './event-context.types';
+import type { EventContextQuality } from './event-context-quality';
 
 /** Schema version of the persisted context assessment payload. */
-export const CONTEXT_ASSESSMENT_VERSION = 2;
+export const CONTEXT_ASSESSMENT_VERSION = 3;
 
 /**
  * High-level category of the native behaviour event a context window is anchored
@@ -123,6 +124,8 @@ export interface EventContextAssessment {
   usedSignals: EngineContextSignal[];
   /** Applicable signals with zero usable samples in the window. */
   missingSignals: EngineContextSignal[];
+  /** Traceable quality metadata for UI and diagnostics (P27). */
+  contextQuality: EventContextQuality;
   generatedAt: string;
   /** Populated when status = PROVIDER_ERROR. */
   error?: string | null;

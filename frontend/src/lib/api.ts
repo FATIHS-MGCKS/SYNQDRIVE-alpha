@@ -6509,6 +6509,21 @@ export interface TripEventContextAssessment {
     missingSignals?: string[];
     [key: string]: unknown;
   };
+  /** Traceable quality metadata (P27) — requested vs effective cadence, coverage, capability. */
+  contextQuality?: {
+    requestedInterval: '1s';
+    effectiveMedianCadenceMs: number | null;
+    effectiveP95CadenceMs: number | null;
+    sampleCount: number;
+    coverageBeforeAnchor: number;
+    coverageAfterAnchor: number;
+    providerDelayMs: number | null;
+    availableSignals: string[];
+    missingSignals: string[];
+    contextConfidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
+    capabilityVersion: string | null;
+    qualityReasons: string[];
+  };
   [key: string]: unknown;
 }
 

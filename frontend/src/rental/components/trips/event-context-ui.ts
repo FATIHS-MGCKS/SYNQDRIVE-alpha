@@ -113,7 +113,6 @@ export const EVIDENCE_GRADE_LABEL: Record<string, string> = {
 
 
 const REASON_CODE_LABEL: Record<string, string> = {
-
   HIGH_RPM: 'Hohe Drehzahl',
 
   HIGH_RPM_IN_WINDOW: 'Hohe Drehzahl im Kontextfenster',
@@ -137,6 +136,40 @@ const REASON_CODE_LABEL: Record<string, string> = {
   NOT_APPLICABLE_POWERTRAIN: 'Antrieb nicht zutreffend (Tesla/EV)',
 
   ENGINE_OFF: 'Motor vermutlich aus',
+
+};
+
+
+
+/** P27 — UI-ready context quality degradation reasons. */
+
+export const CONTEXT_QUALITY_REASON_LABEL: Record<string, string> = {
+
+  HF_INTERVAL_REQUESTED_NOT_EFFECTIVE:
+
+    'Angefordertes 1s-Intervall — effektive Kadenz weicht ab (kein echtes 1 Hz)',
+
+  EFFECTIVE_CADENCE_SPARSE: 'Effektive Kadenz dünn — Kontext nur eingeschränkt belastbar',
+
+  EFFECTIVE_CADENCE_INSUFFICIENT:
+
+    'Effektive Kadenz zu gering — Kontext nicht zuverlässig bewertbar',
+
+  LOW_SAMPLE_COUNT: 'Zu wenige Messpunkte im Kontextfenster',
+
+  WINDOW_GAPS: 'Lücken im Signalfenster',
+
+  MISSING_ENGINE_SIGNALS: 'Fehlende Motorsignale im Fenster',
+
+  PROVIDER_SAMPLE_DELAY: 'Verzögerung bis zum nächsten Provider-Sample am Anker',
+
+  NATIVE_EVENT_ANCHOR_PRESERVED:
+
+    'Natives DIMO-Ereignis bleibt Anker — Kontextsignale ersetzen es nicht',
+
+  CONTEXT_SIGNALS_EXPLAIN_ONLY:
+
+    'Kontextsignale erklären das Ereignis, ersetzen aber nicht den Provider-Trigger',
 
 };
 
@@ -169,6 +202,28 @@ export function contextClassificationLabel(code: string): string {
 export function reasonCodeLabel(code: string): string {
 
   return REASON_CODE_LABEL[code] ?? code.replace(/_/g, ' ').toLowerCase();
+
+}
+
+
+
+export function contextQualityReasonLabel(code: string): string {
+
+  return CONTEXT_QUALITY_REASON_LABEL[code] ?? code.replace(/_/g, ' ').toLowerCase();
+
+}
+
+
+
+export function contextQualityReasons(
+
+  ca: TripEventContextAssessment | null | undefined,
+
+): string[] {
+
+  if (!ca?.contextQuality || !Array.isArray(ca.contextQuality.qualityReasons)) return [];
+
+  return ca.contextQuality.qualityReasons.map(contextQualityReasonLabel);
 
 }
 

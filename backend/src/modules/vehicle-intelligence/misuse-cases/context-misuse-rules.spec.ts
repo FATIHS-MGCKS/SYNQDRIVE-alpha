@@ -11,6 +11,27 @@ import type {
   EngineContextSignal,
   EvidenceGrade,
 } from '../event-context/event-context.types';
+import { HF_REQUESTED_INTERVAL } from '../event-context/event-context-quality';
+
+function minimalContextQuality(
+  overrides: Partial<EventContextAssessment['contextQuality']> = {},
+): EventContextAssessment['contextQuality'] {
+  return {
+    requestedInterval: HF_REQUESTED_INTERVAL,
+    effectiveMedianCadenceMs: 1000,
+    effectiveP95CadenceMs: 2000,
+    sampleCount: 12,
+    coverageBeforeAnchor: 6,
+    coverageAfterAnchor: 6,
+    providerDelayMs: 0,
+    availableSignals: ['speed', 'rpm'],
+    missingSignals: [],
+    contextConfidence: 'MEDIUM',
+    capabilityVersion: 'cap-probe-v1',
+    qualityReasons: ['NATIVE_EVENT_ANCHOR_PRESERVED', 'CONTEXT_SIGNALS_EXPLAIN_ONLY'],
+    ...overrides,
+  };
+}
 
 function signal(
   s: EngineContextSignal,
@@ -95,6 +116,7 @@ function mkAssessment(
     evidenceGrade: overrides.evidenceGrade ?? 'B',
     usedSignals: ['speed', 'rpm'],
     missingSignals: [],
+    contextQuality: minimalContextQuality(),
     generatedAt: '2026-06-01T10:12:00.000Z',
     error: null,
   };
