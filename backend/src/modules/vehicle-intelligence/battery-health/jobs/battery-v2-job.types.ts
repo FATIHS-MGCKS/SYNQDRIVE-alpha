@@ -74,6 +74,7 @@ export interface BatteryPublicationUpdatePayload extends BatteryV2JobPayloadBase
 export interface HvCapabilityRefreshPayload extends BatteryV2JobPayloadBase {
   signalScope?: string | null;
   providerSource?: string | null;
+  refreshTrigger?: string | null;
 }
 
 export interface HvRechargeSessionReconcilePayload extends BatteryV2JobPayloadBase {

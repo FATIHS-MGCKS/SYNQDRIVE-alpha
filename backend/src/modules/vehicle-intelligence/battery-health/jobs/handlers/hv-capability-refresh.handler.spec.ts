@@ -46,6 +46,7 @@ describe('HvCapabilityRefreshHandler', () => {
     expect(capabilityPreflight.runForVehicle).toHaveBeenCalledWith(
       'org-1',
       'veh-1',
+      expect.objectContaining({ correlationId: 'corr-1' }),
     );
   });
 
@@ -56,6 +57,7 @@ describe('HvCapabilityRefreshHandler', () => {
     expect(capabilityPreflight.runForVehicle).toHaveBeenCalledWith(
       'org-1',
       'veh-1',
+      expect.objectContaining({ correlationId: 'corr-1' }),
     );
   });
 });

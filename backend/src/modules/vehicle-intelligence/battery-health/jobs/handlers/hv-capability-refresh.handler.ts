@@ -1,7 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BatteryCapabilityPreflightService } from '../../capability-preflight/battery-capability-preflight.service';
+import {
+  BatteryCapabilityRefreshTrigger,
+  type BatteryCapabilityRefreshTrigger as BatteryCapabilityRefreshTriggerType,
+} from '../../capability-preflight/battery-capability-lifecycle.policy';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { HvCapabilityRefreshPayload } from '../battery-v2-job.types';
+
+function parseRefreshTrigger(
+  value: string | null | undefined,
+): BatteryCapabilityRefreshTriggerType | undefined {
+  if (!value) return undefined;
+  const triggers = Object.values(BatteryCapabilityRefreshTrigger);
+  return triggers.includes(value as BatteryCapabilityRefreshTriggerType)
+    ? (value as BatteryCapabilityRefreshTriggerType)
+    : undefined;
+}
 
 @Injectable()
 export class HvCapabilityRefreshHandler implements BatteryV2JobHandler<'HV_CAPABILITY_REFRESH'> {
@@ -16,6 +30,10 @@ export class HvCapabilityRefreshHandler implements BatteryV2JobHandler<'HV_CAPAB
     const result = await this.capabilityPreflight.runForVehicle(
       payload.organizationId,
       payload.vehicleId,
+      {
+        refreshTrigger: parseRefreshTrigger(payload.refreshTrigger),
+        correlationId: payload.correlationId,
+      },
     );
 
     if (!result) {
@@ -32,7 +50,7 @@ export class HvCapabilityRefreshHandler implements BatteryV2JobHandler<'HV_CAPAB
     ).length;
 
     this.logger.debug(
-      `${this.jobType} completed org=${payload.organizationId} vehicle=${payload.vehicleId} signals=${result.signals.length} withData=${availableCount} queryError=${result.queryError ?? 'none'}`,
+      `${this.jobType} completed org=${payload.organizationId} vehicle=${payload.vehicleId} trigger=${payload.refreshTrigger ?? 'unknown'} signals=${result.signals.length} withData=${availableCount} queryError=${result.queryError ?? 'none'}`,
     );
   }
 }

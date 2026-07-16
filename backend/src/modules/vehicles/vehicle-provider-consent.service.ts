@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleProviderConsentGrantType, VehicleProviderConsentStatus } from '@prisma/client';
+import { BatteryCapabilityRefreshService } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
+import { BatteryCapabilityRefreshTrigger } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 
 export interface RecordDimoConsentInput {
   vehicleId: string;
@@ -46,7 +48,11 @@ export interface RevokeConsentInput {
 export class VehicleProviderConsentService {
   private readonly logger = new Logger(VehicleProviderConsentService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly batteryCapabilityRefresh?: BatteryCapabilityRefreshService,
+  ) {}
 
   /**
    * Record a DIMO consent grant when a vehicle is registered from DIMO.
@@ -71,6 +77,12 @@ export class VehicleProviderConsentService {
         },
       });
       this.logger.log(`DIMO consent recorded for vehicle ${input.vehicleId} (consent ${record.id})`);
+      void this.batteryCapabilityRefresh?.enqueueForDimoVehicle(
+        input.organizationId,
+        input.vehicleId,
+        BatteryCapabilityRefreshTrigger.PROVIDER_CHANGE,
+        { correlationId: record.id },
+      );
       return record.id;
     } catch (err: any) {
       this.logger.error(`Failed to record DIMO consent for vehicle ${input.vehicleId}: ${err?.message}`);

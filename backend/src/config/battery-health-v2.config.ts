@@ -45,6 +45,20 @@ export const BATTERY_V2_OBSERVATION_STALE_MS_ENV = 'BATTERY_V2_OBSERVATION_STALE
 /** Max items reconciled per category per tick. */
 export const BATTERY_V2_RECONCILIATION_BATCH_ENV = 'BATTERY_V2_RECONCILIATION_BATCH';
 
+/** Periodic capability refresh interval — default 6 h (no aggressive polling). */
+export const BATTERY_CAPABILITY_REFRESH_INTERVAL_MS_ENV =
+  'BATTERY_CAPABILITY_REFRESH_INTERVAL_MS';
+
+/** Re-check interval for DEGRADED/UNAVAILABLE capabilities — default 2 h. */
+export const BATTERY_CAPABILITY_SIGNAL_LOSS_RECHECK_MS_ENV =
+  'BATTERY_CAPABILITY_SIGNAL_LOSS_RECHECK_MS';
+
+/** Loss count before UNAVAILABLE — default 3 refreshes. */
+export const BATTERY_CAPABILITY_LOSS_THRESHOLD_ENV = 'BATTERY_CAPABILITY_LOSS_THRESHOLD';
+
+/** DEGRADED grace before UNAVAILABLE — default 24 h. */
+export const BATTERY_CAPABILITY_DEGRADED_GRACE_MS_ENV = 'BATTERY_CAPABILITY_DEGRADED_GRACE_MS';
+
 export function getBatteryV2ReconciliationIntervalMs(): number {
   return parsePositiveIntEnv(process.env[BATTERY_V2_RECONCILIATION_INTERVAL_MS_ENV], 300_000);
 }
@@ -55,6 +69,31 @@ export function getBatteryV2ObservationStaleMs(): number {
 
 export function getBatteryV2ReconciliationBatchSize(): number {
   return parsePositiveIntEnv(process.env[BATTERY_V2_RECONCILIATION_BATCH_ENV], 25);
+}
+
+export function getBatteryCapabilityRefreshIntervalMs(): number {
+  return parsePositiveIntEnv(
+    process.env[BATTERY_CAPABILITY_REFRESH_INTERVAL_MS_ENV],
+    6 * 60 * 60 * 1000,
+  );
+}
+
+export function getBatteryCapabilitySignalLossRecheckMs(): number {
+  return parsePositiveIntEnv(
+    process.env[BATTERY_CAPABILITY_SIGNAL_LOSS_RECHECK_MS_ENV],
+    2 * 60 * 60 * 1000,
+  );
+}
+
+export function getBatteryCapabilityLossThreshold(): number {
+  return parsePositiveIntEnv(process.env[BATTERY_CAPABILITY_LOSS_THRESHOLD_ENV], 3);
+}
+
+export function getBatteryCapabilityDegradedGraceMs(): number {
+  return parsePositiveIntEnv(
+    process.env[BATTERY_CAPABILITY_DEGRADED_GRACE_MS_ENV],
+    24 * 60 * 60 * 1000,
+  );
 }
 
 export function isBatteryV2ReconciliationEnabled(): boolean {
@@ -92,4 +131,8 @@ export default registerAs('batteryHealthV2', () => ({
   reconciliationIntervalMs: getBatteryV2ReconciliationIntervalMs(),
   observationStaleMs: getBatteryV2ObservationStaleMs(),
   reconciliationBatchSize: getBatteryV2ReconciliationBatchSize(),
+  capabilityRefreshIntervalMs: getBatteryCapabilityRefreshIntervalMs(),
+  capabilitySignalLossRecheckMs: getBatteryCapabilitySignalLossRecheckMs(),
+  capabilityLossThreshold: getBatteryCapabilityLossThreshold(),
+  capabilityDegradedGraceMs: getBatteryCapabilityDegradedGraceMs(),
 }));

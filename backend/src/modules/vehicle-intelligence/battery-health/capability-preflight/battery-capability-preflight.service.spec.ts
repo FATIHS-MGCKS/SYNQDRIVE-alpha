@@ -91,6 +91,7 @@ describe('BatteryCapabilityPreflightService', () => {
         expect.objectContaining({ signalKey: 'hv.soc' }),
         expect.objectContaining({ signalKey: 'dimo.segments.recharge' }),
       ]),
+      expect.any(Object),
     );
     expect(dimoAuth.getVehicleJwt).toHaveBeenCalledWith(12345);
   });

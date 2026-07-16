@@ -18,6 +18,7 @@ import { BATTERY_V2_JOB_MODEL_VERSION_DEFAULT } from './battery-v2-job.types';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
+import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
 
 const REST_60M_MS = 60 * 60_000;
 const REST_6H_MS = 6 * 60 * 60_000;
@@ -30,6 +31,8 @@ export interface BatteryV2ReconciliationResult {
   tripStarts: number;
   rechargeSegments: number;
   assessments: number;
+  capabilityRefresh: number;
+  capabilitySignalLoss: number;
 }
 
 @Injectable()
@@ -41,6 +44,7 @@ export class BatteryV2ReconciliationService {
     private readonly jobProducer: BatteryV2JobProducerService,
     private readonly observationProducer: BatteryV2SnapshotObservationProducer,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    private readonly capabilityRefresh: BatteryCapabilityRefreshService,
   ) {}
 
   async reconcileAll(): Promise<BatteryV2ReconciliationResult> {
@@ -51,6 +55,8 @@ export class BatteryV2ReconciliationService {
       tripStarts: 0,
       rechargeSegments: 0,
       assessments: 0,
+      capabilityRefresh: 0,
+      capabilitySignalLoss: 0,
     };
 
     result.observationClassify = await this.reconcileMissingObservations(batch);
@@ -58,13 +64,19 @@ export class BatteryV2ReconciliationService {
     result.tripStarts = await this.reconcileTripStarts(batch);
     result.rechargeSegments = await this.reconcileRechargeSegments(batch);
     result.assessments = await this.reconcilePendingAssessments(batch);
+    result.capabilityRefresh =
+      await this.capabilityRefresh.reconcilePeriodicRefresh(batch);
+    result.capabilitySignalLoss =
+      await this.capabilityRefresh.reconcileSignalLossRefresh(batch);
 
     const total =
       result.observationClassify +
       result.restTargets +
       result.tripStarts +
       result.rechargeSegments +
-      result.assessments;
+      result.assessments +
+      result.capabilityRefresh +
+      result.capabilitySignalLoss;
     if (total > 0) {
       this.logger.log(`Battery V2 reconciliation enqueued ${total} jobs: ${JSON.stringify(result)}`);
     }

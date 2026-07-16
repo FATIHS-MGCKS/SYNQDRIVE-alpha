@@ -503,6 +503,8 @@ Preflight über DIMO `availableSignals(tokenId)` + `signalsLatest` — nicht dok
 
 **Implementierung (Prompt 28):** `BatteryCapabilityPreflightService` führt read-only Abfrage je Fahrzeug aus (JWT nur im HTTP-Layer, nicht persistiert), klassifiziert 12 Telemetry-Signale + Recharge-Segments-Probe (`mechanism: recharge`, 31-Tage-Fenster), mappt auf `VehicleBatteryCapability` (`vehicleId` + `signalKey`, `checkedAt` = Fetch-Freshness). Job-Anbindung: `HV_CAPABILITY_REFRESH` → Handler für alle DIMO-tokenisierten Fahrzeuge (LV + HV). Keine Assessment-Berechnung in diesem Schritt.
 
+**Lifecycle & Refresh (Prompt 29):** `BatteryCapabilityRefreshService` enqueued `HV_CAPABILITY_REFRESH` bei Registrierung, Provider-Consent-Änderung, Reconciliation (periodisch 6 h, Signal-Loss 2 h), manuell via `POST /admin/vehicles/:vehicleId/battery-capability-refresh`. Signalverlust von operational → `DEGRADED` → `UNAVAILABLE` (3 Verlust-Refreshes oder 24 h Grace); `capabilityVersion` inkrement bei Statuswechsel; Audit in `vehicle_battery_capability_changes`. Alte Rows werden nicht gelöscht. `BatteryCapabilityMeasurementGateService` blockiert neue Assessments für deaktivierte Messarten, bestehende Evidence bleibt.
+
 ### 6.4 Reifezustände (`SohPublicationState`)
 
 | State | LV-Bedingung (Ziel) | HV-Bedingung (Ziel) |

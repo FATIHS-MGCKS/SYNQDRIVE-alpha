@@ -93,6 +93,8 @@ import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-bat
 import { BatteryPolicyProfileService } from './battery-policy-profile/battery-policy-profile.service';
 import { BatteryCapabilityPreflightRepository } from './battery-health/capability-preflight/battery-capability-preflight.repository';
 import { BatteryCapabilityPreflightService } from './battery-health/capability-preflight/battery-capability-preflight.service';
+import { BatteryCapabilityRefreshService } from './battery-health/capability-preflight/battery-capability-refresh.service';
+import { BatteryCapabilityMeasurementGateService } from './battery-health/capability-preflight/battery-capability-measurement-gate.service';
 
 @Module({
   imports: [
@@ -174,6 +176,8 @@ import { BatteryCapabilityPreflightService } from './battery-health/capability-p
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,
     BatteryCapabilityPreflightService,
+    BatteryCapabilityRefreshService,
+    BatteryCapabilityMeasurementGateService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -247,6 +251,8 @@ import { BatteryCapabilityPreflightService } from './battery-health/capability-p
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,
     BatteryCapabilityPreflightService,
+    BatteryCapabilityRefreshService,
+    BatteryCapabilityMeasurementGateService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
