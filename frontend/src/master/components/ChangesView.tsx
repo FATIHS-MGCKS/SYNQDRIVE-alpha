@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-v2-backend-tests-v49504-2026-07-16',
+    version: '4.9.504',
+    title: 'V4.9.504 — Vehicle Operational State V2 backend test package (Prompt 40/43)',
+    summary: [
+      'Neu: 10 Backend-Spec-Suites (53 Tests) unter `backend/src/modules/vehicles/operational/` + Controller/Overlap-Specs.',
+      'Abdeckung A–J: State Engine, Zukunftsbelegung, Reservierungsfenster, Active Rental, Data Quality, Raw Status, API-Konsistenz, Schreibschutz, Booking-Konflikte, Fleet-Map-Cache.',
+      'Doku: `docs/testing/vehicle-operational-state-v2-backend-coverage.md` mit Matrix, Ausführungsbefehlen und bekannter Cache-Lücke (TTL-only).',
+      'Keine Produktfunktionen geändert — reines Testpaket.',
+    ],
+    reason:
+      'Prompt 40/43: Regression-Gate für Vehicle Operational State V2 auf Backend-Seite — analog zum Task-Domain-V2-Coverage-Dokument.',
+    previousBehavior:
+      'Nur `vehicles.service.spec.ts` (deriveFleetStatusContext) und VBH-Diagnostic/Repair-Suites; keine systematische A–J-Matrix.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:45:00.000Z',
+  },
+  {
     id: 'vehicle-operational-status-repair-runbook-v49503-2026-07-16',
     version: '4.9.503',
     title: 'V4.9.503 — Vehicle operational status repair runbook (Prompt 39/43)',
