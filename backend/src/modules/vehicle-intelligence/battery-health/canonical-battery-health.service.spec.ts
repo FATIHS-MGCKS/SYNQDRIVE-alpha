@@ -1,4 +1,10 @@
 import { BatteryEvidenceSourceType, SohPublicationState } from '@prisma/client';
+import { resolveBatteryPolicy } from '../battery-policy-profile/battery-policy-profile.resolver';
+import {
+  BatteryChemistry,
+  BatteryDriveProfile,
+} from './battery-v2-domain';
+import { CANONICAL_BATTERY_RESOLVER_VERSION } from './canonical-battery';
 import { CanonicalBatteryHealthService } from './canonical-battery-health.service';
 import {
   ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
@@ -14,6 +20,8 @@ describe('CanonicalBatteryHealthService', () => {
       vehicleLatestState: { findUnique: jest.fn() },
       vehicleBatterySpec: { findMany: jest.fn() },
       vehicleServiceEvent: { findMany: jest.fn() },
+      vehicleBatteryReferenceCapacity: { findFirst: jest.fn() },
+      hvChargeSession: { findMany: jest.fn() },
     } as any;
 
     const batteryHealthService = {
@@ -54,6 +62,88 @@ describe('CanonicalBatteryHealthService', () => {
       }),
     };
 
+    const lvCanonicalResolver = {
+      resolveForVehicle: jest.fn().mockResolvedValue({
+        resolverVersion: '1.0.0',
+        vehicleId: 'veh-1',
+        resolvedAt: now.toISOString(),
+        profile: {
+          profile: 'ICE_STANDARD',
+          driveProfile: BatteryDriveProfile.BEV,
+          lvAssessmentAllowed: true,
+          supported: true,
+        },
+        chemistry: {
+          chemistry: BatteryChemistry.LITHIUM,
+          chemicalSocEstimationAllowed: true,
+        },
+        primaryTruth: {
+          source: 'V2_PUBLICATION_STABLE',
+          estimatedHealthScore: 80,
+          semanticType: 'ESTIMATED_HEALTH_NOT_SOH',
+          labelDe: 'Geschätzter 12V-Batteriezustand',
+          decisionCapable: true,
+        },
+        liveVoltage: {
+          voltageV: 12.4,
+          observedAt: now.toISOString(),
+          source: 'live_telemetry',
+          engineRunning: null,
+          safeForDecision: true,
+        },
+        latestQualifiedRestMeasurement: null,
+        latestStartProxy: null,
+        assessment: null,
+        publication: null,
+        freshness: { fetch: null, observation: null },
+        quality: {
+          aggregate: { status: 'ESTIMATED', labelDe: 'Geschätzt' },
+          primaryTruth: { status: 'ESTIMATED', labelDe: 'Geschätzt' },
+        },
+        legacyDiagnostic: null,
+        unsupported: false,
+        unavailable: false,
+      }),
+    };
+
+    const policyProfileService = {
+      resolveForVehicle: jest.fn().mockResolvedValue(
+        resolveBatteryPolicy({
+          driveProfile: BatteryDriveProfile.BEV,
+          chemistry: BatteryChemistry.LITHIUM,
+          lvSignalPresent: true,
+        }),
+      ),
+    };
+
+    const hvMethodProfileService = {
+      resolveForVehicle: jest.fn().mockResolvedValue({
+        resolverVersion: '1.0.0',
+        vehicleId: 'veh-1',
+        resolvedAt: now.toISOString(),
+        socAvailable: true,
+        currentEnergyAvailable: true,
+        addedEnergyAvailable: true,
+        rechargeSegmentsAvailable: true,
+        isChargingAvailable: true,
+        chargingCableConnectedAvailable: true,
+        providerSohAvailable: true,
+        grossCapacityAvailable: true,
+        packTemperatureAvailable: true,
+        chargingPowerAvailable: true,
+        currentPowerAvailable: true,
+        supportedCapacityMethods: ['M2_CURRENT_ENERGY_SOC'],
+        unsupportedReasons: [],
+        lastCheckedAt: now.toISOString(),
+        dataQuality: { status: 'VERIFIED', labelDe: 'Verifiziert' },
+      }),
+    };
+
+    const batteryAssessments = {
+      findLatestHvCapacityShadow: jest.fn().mockResolvedValue(null),
+      findLatestHvSohGateAssessment: jest.fn().mockResolvedValue(null),
+    };
+
     const svc = new CanonicalBatteryHealthService(
       prisma,
       batteryHealthService,
@@ -61,10 +151,15 @@ describe('CanonicalBatteryHealthService', () => {
       hvBatteryHealthService,
       batteryEvidenceService,
       startProxyDiagnostic as any,
+      lvCanonicalResolver as any,
+      policyProfileService as any,
+      hvMethodProfileService as any,
+      batteryAssessments as any,
     );
 
     prisma.vehicle.findUnique.mockResolvedValue({
       id: 'veh-1',
+      organizationId: 'org-1',
       fuelType: 'ELECTRIC',
       hvBatteryCapacityKwh: 76,
     });
@@ -96,6 +191,8 @@ describe('CanonicalBatteryHealthService', () => {
       },
     ]);
     prisma.vehicleServiceEvent.findMany.mockResolvedValue([]);
+    prisma.vehicleBatteryReferenceCapacity.findFirst.mockResolvedValue(null);
+    prisma.hvChargeSession.findMany.mockResolvedValue([]);
 
     batteryHealthService.getLatest.mockResolvedValue({
       voltageV: 12.5,
@@ -158,6 +255,11 @@ describe('CanonicalBatteryHealthService', () => {
       batteryHealthService,
       batteryV2Service,
       hvBatteryHealthService,
+      lvCanonicalResolver,
+      policyProfileService,
+      hvMethodProfileService,
+      batteryAssessments,
+      prisma,
     };
   };
 
@@ -593,5 +695,84 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.currentTelemetry.observationFreshness?.observationState).toBe(
       'FRESH',
     );
+  });
+
+  it('exposes canonical battery DTO from the same resolver path', async () => {
+    const { svc, batteryAssessments, batteryEvidenceService, prisma } = buildService();
+    batteryEvidenceService.getLatest.mockResolvedValue({
+      numericValue: 82,
+      observedAt: now,
+      sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
+    });
+    batteryAssessments.findLatestHvCapacityShadow.mockResolvedValue({
+      id: 'cross-1',
+      scoreValue: 55.2,
+      confidence: 'MEDIUM',
+      modelVersion: 1,
+      computedAt: now,
+      inputSummary: {
+        confidence: 'MEDIUM',
+        maturity: 'SHADOW',
+        shadowGatePassed: true,
+        gateReasonCodes: [],
+        sessionCount: 4,
+      },
+    });
+    batteryAssessments.findLatestHvSohGateAssessment.mockResolvedValue({
+      id: 'soh-gate-1',
+      scoreValue: 96.8,
+      confidence: 'MEDIUM',
+      modelVersion: 1,
+      computedAt: now,
+      inputSummary: {
+        sohAvailability: 'COMPUTED_INTERNAL',
+        estimatedUsableCapacityKwh: 55.2,
+        verifiedReferenceCapacityKwh: 57,
+        maturity: 'SHADOW',
+        confidence: 'MEDIUM',
+        sohGatePassed: true,
+        gateReasonCodes: [],
+        sohPublicationEnabled: false,
+      },
+    });
+    prisma.vehicleBatteryReferenceCapacity.findFirst.mockResolvedValue({
+      id: 'ref-1',
+      capacityKwh: 57,
+      capacityType: 'USABLE_NET',
+      source: 'VERIFIED_VEHICLE_SPEC',
+      verificationStatus: 'VERIFIED',
+      verifiedAt: now,
+    });
+    prisma.hvChargeSession.findMany.mockResolvedValue([
+      {
+        id: 'session-ongoing',
+        source: 'DIMO_RECHARGE_SEGMENT',
+        startAt: new Date('2026-04-13T08:00:00.000Z'),
+        endAt: null,
+        isOngoing: true,
+        metadata: {
+          qualityStatus: 'QUALIFIED',
+          capacityShadowEligible: true,
+          m2CapacitySummary: {
+            shadowGatePassed: true,
+            stats: { medianCapacityKwh: 55.1 },
+          },
+        },
+      },
+    ]);
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.canonical.resolverVersion).toBe(CANONICAL_BATTERY_RESOLVER_VERSION);
+    expect(summary?.canonical.organizationId).toBe('org-1');
+    expect(summary?.canonical.liveState.lv.status).toBe('ready');
+    expect(summary?.canonical.lv.profile).toBeDefined();
+    expect(summary?.canonical.hv?.soc.percent).toBe(66);
+    expect(summary?.canonical.hv?.providerSoh.percent).toBe(82);
+    expect(summary?.canonical.hv?.capacityAssessment?.estimatedUsableCapacityKwh).toBe(55.2);
+    expect(summary?.canonical.hv?.sohAssessment?.sohPublicationEnabled).toBe(false);
+    expect(summary?.canonical.hv?.currentChargeSession?.sessionId).toBe('session-ongoing');
+    expect(summary?.canonical.capabilities.supportedMeasurementTypes.length).toBeGreaterThan(0);
+    expect(summary?.canonical.legacy.collapsed).toBe(true);
+    expect(summary?.canonical.dataQuality.staleReasons).toEqual([]);
   });
 });

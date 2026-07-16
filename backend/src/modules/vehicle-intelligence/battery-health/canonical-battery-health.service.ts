@@ -61,6 +61,21 @@ import {
   toLegacyFreshnessInfo,
   type LegacyFreshnessInfo,
 } from './battery-freshness.policy';
+import { BatteryPolicyProfileService } from '../battery-policy-profile/battery-policy-profile.service';
+import { HvMethodProfileService } from './hv-method-profile/hv-method-profile.service';
+import { LvCanonicalBatteryResolverService } from './lv-canonical/lv-canonical-battery-resolver.service';
+import { BatteryAssessmentRepository } from './battery-assessment.repository';
+import {
+  buildCanonicalBatteryDto,
+  collectStaleReasons,
+  collectUnsupportedReasons,
+  mapChargeSessionInputRow,
+  mapCrossSessionAssessmentRow,
+  mapLiveStatusFromLegacy,
+  mapReferenceCapacityRow,
+  mapSohGateAssessmentRow,
+  type CanonicalBatteryDto,
+} from './canonical-battery';
 
 export type BatteryStatus =
   | 'ready'
@@ -102,6 +117,10 @@ export class CanonicalBatteryHealthService {
     private readonly hvBatteryHealthService: HvBatteryHealthService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
     private readonly startProxyDiagnostic: LvStartProxyDiagnosticService,
+    private readonly lvCanonicalResolver: LvCanonicalBatteryResolverService,
+    private readonly policyProfileService: BatteryPolicyProfileService,
+    private readonly hvMethodProfileService: HvMethodProfileService,
+    private readonly batteryAssessments: BatteryAssessmentRepository,
   ) {}
 
   async getSummary(vehicleId: string) {
@@ -121,7 +140,7 @@ export class CanonicalBatteryHealthService {
     ] = await Promise.all([
       this.prisma.vehicle.findUnique({
         where: { id: vehicleId },
-        select: { id: true, fuelType: true, hvBatteryCapacityKwh: true },
+        select: { id: true, organizationId: true, fuelType: true, hvBatteryCapacityKwh: true },
       }),
       this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },
@@ -180,6 +199,70 @@ export class CanonicalBatteryHealthService {
     ]);
 
     if (!vehicle) return null;
+
+    const decisionNow = new Date();
+
+    const [
+      lvCanonical,
+      policy,
+      hvMethodProfile,
+      crossSessionRow,
+      sohGateRow,
+      referenceCapacityRow,
+      chargeSessionRows,
+    ] = await Promise.all([
+      this.lvCanonicalResolver.resolveForVehicle({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+        now: decisionNow,
+      }),
+      this.policyProfileService.resolveForVehicle(vehicleId),
+      this.hvMethodProfileService.resolveForVehicle({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+        now: decisionNow,
+      }),
+      this.batteryAssessments.findLatestHvCapacityShadow({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+      }),
+      this.batteryAssessments.findLatestHvSohGateAssessment({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+      }),
+      this.prisma.vehicleBatteryReferenceCapacity.findFirst({
+        where: {
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          isActive: true,
+        },
+        orderBy: { effectiveFrom: 'desc' },
+        select: {
+          id: true,
+          capacityKwh: true,
+          capacityType: true,
+          source: true,
+          verificationStatus: true,
+          verifiedAt: true,
+        },
+      }),
+      this.prisma.hvChargeSession.findMany({
+        where: {
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+        },
+        orderBy: [{ isOngoing: 'desc' }, { endAt: 'desc' }],
+        take: 8,
+        select: {
+          id: true,
+          source: true,
+          startAt: true,
+          endAt: true,
+          isOngoing: true,
+          metadata: true,
+        },
+      }),
+    ]);
 
     const selectedBatterySpec = selectBestBatterySpec(specs);
 
@@ -305,7 +388,6 @@ export class CanonicalBatteryHealthService {
       lvRestingClassification.status,
     );
 
-    const decisionNow = new Date();
     const pollFetchedAt =
       latestState?.providerFetchedAt ?? latestState?.lastSeenAt ?? null;
     const telemetryFetchFreshness = buildFetchFreshness({
@@ -667,6 +749,141 @@ export class CanonicalBatteryHealthService {
     const lvStartProxyDiagnostic =
       await this.startProxyDiagnostic.getForVehicle(vehicleId, decisionNow);
 
+    const canonicalChargeSessions = chargeSessionRows.map(mapChargeSessionInputRow);
+    const crossSessionAssessment = mapCrossSessionAssessmentRow(crossSessionRow);
+    const sohGateAssessment = mapSohGateAssessmentRow(sohGateRow);
+    const referenceCapacity = mapReferenceCapacityRow(referenceCapacityRow);
+
+    const canonical: CanonicalBatteryDto = buildCanonicalBatteryDto({
+      organizationId: vehicle.organizationId,
+      vehicleId: vehicle.id,
+      resolvedAt: decisionNow,
+      isEv,
+      policy,
+      hvMethodProfile,
+      lvCanonical,
+      lvStatus: mapLiveStatusFromLegacy(lvStatus),
+      hvStatus: mapLiveStatusFromLegacy(hvStatusLabel),
+      lvLive: {
+        voltageV: lvVoltage,
+        voltageSource: lvVoltageSource,
+        temperatureC: parseNum(latestLvSnapshot?.temperatureC),
+        restingVoltageV: lvRestingVoltageValue,
+        crankingVoltageV: parseNum(latestLvSnapshot?.crankingVoltage),
+        chargingVoltageV: parseNum(latestLvSnapshot?.chargingVoltage),
+        engineRunning: latestLvSnapshot?.engineRunning ?? null,
+        observedAt: lvVoltageAt?.toISOString() ?? null,
+        receivedAt:
+          pollFetchedAt?.toISOString() ??
+          latestState?.lastSeenAt?.toISOString() ??
+          null,
+      },
+      hvLive: {
+        socPercent:
+          parseNum(latestState?.evSoc) ??
+          parseNum(hvStatusAny?.currentSocPercent),
+        rangeKm:
+          parseNum(latestState?.rangeKm) ??
+          parseNum(hvStatusAny?.estimatedRangeKm),
+        currentEnergyKwh: parseNum(latestState?.tractionBatteryCurrentEnergyKwh),
+        grossCapacityKwh:
+          parseNum(latestState?.tractionBatteryGrossCapacityKwh) ??
+          parseNum(hvStatusAny?.nominalCapacityKwh),
+        addedEnergyKwh: parseNum(latestState?.tractionBatteryAddedEnergyKwh),
+        chargingPowerKw:
+          parseNum(latestState?.tractionBatteryChargingPowerKw) ??
+          parseNum(hvStatusAny?.telemetry?.chargingPowerKw) ??
+          parseNum(hvStatusAny?.chargingPowerKw),
+        currentVoltageV: parseNum(latestState?.tractionBatteryCurrentVoltage),
+        temperatureC:
+          parseNum(latestState?.tractionBatteryTemperatureC) ??
+          parseNum(hvStatusAny?.telemetry?.temperatureC) ??
+          parseNum(hvStatusAny?.temperatureC),
+        isCharging:
+          latestState?.tractionBatteryIsCharging ??
+          (hvStatusAny?.telemetry?.isCharging ??
+            hvStatusAny?.isCharging ??
+            null),
+        chargingCableConnected:
+          latestState?.tractionBatteryChargingCableConnected ?? null,
+        providerSohPercent: providerSoh,
+        observedAt: hvLastObservedAt?.toISOString() ?? null,
+        receivedAt:
+          pollFetchedAt?.toISOString() ??
+          latestState?.lastSeenAt?.toISOString() ??
+          null,
+      },
+      hvProviderSoh: {
+        percent: hvHealthPercent,
+        source: hvSohSource,
+        observedAt: hvLastObservedAt?.toISOString() ?? null,
+        decisionFresh:
+          hvHealthPercent != null && observationFreshnessIsDecisionFresh(hvObservationFreshness),
+        evidenceType: hvSourceType,
+      },
+      referenceCapacity,
+      crossSessionAssessment,
+      sohGateAssessment,
+      chargeSessions: canonicalChargeSessions,
+      dataQuality: {
+        aggregate: presentQuality(dataQualitySlices.aggregate, lvFreshness.observedAt),
+        slices: {
+          lvEstimatedHealth: presentQuality(
+            dataQualitySlices.lvEstimatedHealth,
+            lvFreshness.observedAt,
+          ),
+          lvRestingVoltage: presentQuality(
+            dataQualitySlices.lvRestingVoltage,
+            lvFreshness.observedAt,
+          ),
+          lvCrank: presentQuality(
+            dataQualitySlices.lvCrank,
+            (v2?.crankAt as Date | null | undefined)?.toISOString?.() ??
+              (typeof v2?.crankAt === 'string' ? v2.crankAt : null),
+          ),
+          hvSoh: presentQuality(hvSohDataQuality, hvFreshness.observedAt),
+          hvLegacyCapacity: presentQuality(
+            hvLegacyCapacityDataQuality,
+            hvFreshness.observedAt,
+          ),
+        },
+        fetchFreshness: telemetryFetchFreshness,
+        observationFreshness: currentTelemetryObservationFreshness,
+        lvFreshnessBundle,
+        hvFreshnessBundle,
+        staleReasons: collectStaleReasons({
+          lvFreshness,
+          hvFreshness,
+          lvStatus,
+          hvStatus: hvStatusLabel,
+          isEv,
+        }),
+        unsupportedReasons: collectUnsupportedReasons({
+          lvCanonical,
+          policy,
+          hvMethodProfile,
+          isEv,
+        }),
+        errors: [],
+      },
+      legacy: {
+        collapsed: true,
+        lvDiagnostic: lvCanonical.legacyDiagnostic,
+        hvLegacyCapacity: hvLegacyCapacity as unknown as Record<string, unknown>,
+        crankDiagnostic: legacyCrank as unknown as Record<string, unknown>,
+        startProxyDiagnostic: lvStartProxyDiagnostic as unknown as Record<string, unknown>,
+        v2Features: {
+          publishedSohPct: lvPublishedSoh,
+          stabilizedSohPct: parseNum(v2?.stabilizedSohPct),
+          rawSohPct: parseNum(v2?.rawSohPct),
+          publicationState: lvPubState,
+          scoredAt:
+            (v2?.scoredAt as Date | null | undefined)?.toISOString?.() ??
+            (typeof v2?.scoredAt === 'string' ? v2.scoredAt : null),
+        },
+      },
+    });
+
     const summary = {
       vehicleId,
       generatedAt: new Date().toISOString(),
@@ -943,6 +1160,7 @@ export class CanonicalBatteryHealthService {
         voltage: d.voltageV ?? null,
       })),
       history,
+      canonical,
     };
 
     return summary;

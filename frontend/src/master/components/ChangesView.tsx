@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'canonical-battery-dto-v49559-2026-07-17',
+    version: '4.9.559',
+    title: 'V4.9.559 — Canonical Battery DTO (Prompt 59/78)',
+    summary: [
+      'Kanonisches Battery-DTO für alle Produktconsumer aus einem Resolver-Pfad.',
+      'Struktur: liveState (LV/HV), lv (profile/chemistry/rest/startProxy/assessment/publication), hv (SOC/energy/charging/sessions/capacity/SOH/reference), capabilities, dataQuality, legacy (collapsed).',
+      'Bestehende battery-health-summary/detail/latest Felder bleiben kompatibel; neues Feld `canonical` im Summary-Response.',
+      'Keine parallele Wahrheit — Legacy-Summary und canonical aus `CanonicalBatteryHealthService.getSummary()`.',
+      'Tests für Builder und Service-Integration.',
+    ],
+    reason: 'Prompt 59/78: einheitliches Battery-Read-Model vor Consumer-Migration.',
+    previousBehavior: 'Verteilte Legacy-Summary-Felder ohne kanonisches DTO.',
+    details:
+      'canonical-battery/*, canonical-battery-health.service.ts, docs/architecture/canonical-battery-dto.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T19:00:00.000Z',
+  },
+  {
     id: 'hv-capacity-shadow-evaluation-v49558-2026-07-17',
     version: '4.9.558',
     title: 'V4.9.558 — HV Capacity Shadow Evaluation Read Model (Prompt 58/78)',
