@@ -105,6 +105,13 @@ export class ShadowDetectorEnrichmentService {
     const engineRuntimeSampleCount = hfSamples.filter(
       (s) => s.engineRuntimeSec != null,
     ).length;
+    const tractionBatteryPowerSampleCount = hfSamples.filter(
+      (s) => s.tractionBatteryPowerKw != null,
+    ).length;
+    const socSampleCount = hfSamples.filter((s) => s.socPct != null).length;
+    const tractionBatteryTemperatureSampleCount = hfSamples.filter(
+      (s) => s.tractionBatteryTemperatureC != null,
+    ).length;
 
     const misuseCases: ShadowMisuseCaseRef[] = misuseRows.map((row) => ({
       type: row.type,
@@ -132,11 +139,16 @@ export class ShadowDetectorEnrichmentService {
       rpmSampleCount,
       speedSampleCount,
       engineRuntimeSampleCount,
+      tractionBatteryPowerSampleCount,
+      socSampleCount,
+      tractionBatteryTemperatureSampleCount,
       providerGaps: buildProviderGaps({
         ignitionSampleCount,
         rpmSampleCount,
         speedSampleCount,
         engineRuntimeSampleCount,
+        tractionBatteryPowerSampleCount,
+        socSampleCount,
         dimoIdlingSegments,
         dimoIdlingProviderError,
         isEvPowertrain: isEv,
@@ -158,6 +170,8 @@ function mapHfReadingToShadowSample(reading: HighFrequencyReading): ShadowDetect
     torquePct: reading.engineTorquePct ?? null,
     exteriorTempC: reading.exteriorAirTempC ?? null,
     tractionBatteryPowerKw: reading.tractionBatteryPowerKw,
+    socPct: reading.socPct ?? null,
+    tractionBatteryTemperatureC: reading.tractionBatteryTemperatureC ?? null,
     altitudeM: reading.altitudeM ?? null,
     gear: reading.currentGear ?? null,
     ignitionOn: reading.ignitionOn ?? null,
@@ -169,6 +183,8 @@ function buildProviderGaps(input: {
   rpmSampleCount: number;
   speedSampleCount: number;
   engineRuntimeSampleCount: number;
+  tractionBatteryPowerSampleCount: number;
+  socSampleCount: number;
   dimoIdlingSegments: readonly ShadowDimoIdlingSegmentRef[];
   dimoIdlingProviderError: string | null;
   isEvPowertrain: boolean;
@@ -179,6 +195,12 @@ function buildProviderGaps(input: {
   if (input.ignitionSampleCount === 0) gaps.push('MISSING_IGNITION');
   if (!input.isEvPowertrain && input.engineRuntimeSampleCount === 0) {
     gaps.push('MISSING_ENGINE_RUNTIME');
+  }
+  if (input.isEvPowertrain && input.tractionBatteryPowerSampleCount === 0) {
+    gaps.push('MISSING_TRACTION_BATTERY_POWER');
+  }
+  if (input.isEvPowertrain && input.socSampleCount === 0) {
+    gaps.push('MISSING_SOC');
   }
   if (input.dimoIdlingProviderError) {
     gaps.push('DIMO_IDLING_PROVIDER_ERROR');

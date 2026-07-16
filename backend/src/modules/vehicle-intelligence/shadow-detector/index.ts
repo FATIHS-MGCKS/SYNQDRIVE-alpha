@@ -12,5 +12,7 @@ export * from './shadow-detector-gates';
 export * from './detectors/sustained-high-load-shadow.policy';
 export * from './detectors/excessive-idling-shadow.policy';
 export * from './detectors/excessive-idling.shadow-detector';
+export * from './detectors/ev-power-demand-shadow.policy';
+export * from './detectors/ev-power-demand.shadow-detector';
 export * from './detectors/high-rpm-stationary-shadow.policy';
 export * from './detectors/high-rpm-stationary.shadow-detector';

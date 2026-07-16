@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p40-ev-power-demand-shadow-2026-07-16',
+    version: '4.9.541',
+    title: 'Driving Intelligence V2 P40 — BEV high power demand shadow detector',
+    summary: [
+      'Shadow-Detector `ev_power_demand` (`ev-power-demand-shadow-v1`) für BEV.',
+      'Inputs: Traction Battery Power, Speed, SOC, Trip Context, Temperatur (exterior/battery).',
+      'Vorzeichenkonvention empirisch pro Trip (NEGATIVE/POSITIVE_IS_DISCHARGE, AMBIGUOUS).',
+      'Autobahnauffahrt und Steigung als Kontext — reduzieren Confidence, kein Missbrauch.',
+      'Kadenz-/Coverage-Gate; Event `HIGH_EV_POWER_DEMAND` als Vehicle Load Shadow.',
+      'Kein aggressiver-Fahrer-Claim, kein Kundenurteil, keine Battery-/Health-Wirkung.',
+      'Tests mit fehlendem und vorhandenem Power-Signal.',
+    ],
+    reason:
+      'Prompt 40/76: BEV Shadow Detector für auffällig hohe Leistungsanforderung auf dem P35-Framework.',
+    previousBehavior:
+      'P39 idle detectors — kein `ev_power_demand` Shadow-Implementation registriert.',
+    details:
+      '`evPowerDemandShadowDetector` + HF-Query um SOC/Battery-Temp. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T19:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p39-idle-shadow-detectors-2026-07-16',
     version: '4.9.540',
     title: 'Driving Intelligence V2 P39 — idle shadow detectors (high RPM stationary + excessive idling)',

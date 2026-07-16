@@ -36,6 +36,8 @@ export function buildHighFrequencyQuery(
         powertrainTransmissionCurrentGear(agg: AVG)
         isIgnitionOn(agg: AVG)
         powertrainTractionBatteryCurrentPower(agg: AVG)
+        powertrainTractionBatteryStateOfChargeCurrent(agg: AVG)
+        powertrainTractionBatteryTemperatureAverage(agg: AVG)
       }
     }
   `.trim();

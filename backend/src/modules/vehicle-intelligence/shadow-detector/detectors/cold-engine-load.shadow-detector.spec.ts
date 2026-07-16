@@ -24,6 +24,8 @@ function hf(
     torquePct: null,
     exteriorTempC: 2,
     tractionBatteryPowerKw: null,
+    socPct: null,
+    tractionBatteryTemperatureC: null,
     altitudeM: null,
     gear: null,
     ignitionOn: null,

@@ -206,6 +206,10 @@ export interface HighFrequencyReading {
   ignitionOn?: boolean | null;
   /** kW from powertrainTractionBatteryCurrentPower (W → kW) */
   tractionBatteryPowerKw: number | null;
+  /** % from powertrainTractionBatteryStateOfChargeCurrent */
+  socPct?: number | null;
+  /** °C from powertrainTractionBatteryTemperatureAverage */
+  tractionBatteryTemperatureC?: number | null;
 }
 
 // ── Tire pressure reading from 3-minute buckets ──
@@ -847,6 +851,14 @@ export class DimoSegmentsService {
             ignitionOn:
               typeof s.isIgnitionOn === 'number' ? s.isIgnitionOn >= 0.5 : null,
             tractionBatteryPowerKw: w != null ? w / 1000 : null,
+            socPct:
+              typeof s.powertrainTractionBatteryStateOfChargeCurrent === 'number'
+                ? s.powertrainTractionBatteryStateOfChargeCurrent
+                : null,
+            tractionBatteryTemperatureC:
+              typeof s.powertrainTractionBatteryTemperatureAverage === 'number'
+                ? s.powertrainTractionBatteryTemperatureAverage
+                : null,
           };
         })
         .sort(

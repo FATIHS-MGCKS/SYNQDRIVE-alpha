@@ -26,6 +26,9 @@ export function baseShadowExecutionContext(
     rpmSampleCount: 0,
     speedSampleCount: 0,
     engineRuntimeSampleCount: 0,
+    tractionBatteryPowerSampleCount: 0,
+    socSampleCount: 0,
+    tractionBatteryTemperatureSampleCount: 0,
     providerGaps: [],
     ...over,
   };
