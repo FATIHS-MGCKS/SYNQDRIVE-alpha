@@ -35,6 +35,10 @@ export const BATTERY_V2_PUBLICATION_ENABLED_ENV = 'BATTERY_V2_PUBLICATION_ENABLE
 export const BATTERY_V2_HV_RECHARGE_SESSION_ENABLED_ENV =
   'BATTERY_V2_HV_RECHARGE_SESSION_ENABLED';
 
+/** Prompt 50 flag — telemetry fallback charge sessions when segments unavailable (default OFF). */
+export const BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED_ENV =
+  'BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED';
+
 /** DIMO crank query uses 5 s aggregation — no sub-second precision claims. */
 export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
 
@@ -137,6 +141,13 @@ export function isBatteryV2HvRechargeSessionEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_RECHARGE_SESSION_ENABLED_ENV], false);
 }
 
+export function isBatteryV2HvFallbackChargeSessionEnabled(): boolean {
+  return parseBooleanEnv(
+    process.env[BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED_ENV],
+    false,
+  );
+}
+
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 
@@ -212,4 +223,5 @@ export default registerAs('batteryHealthV2', () => ({
   restShadowEnabled: isBatteryV2RestShadowEnabled(),
   publicationEnabled: isBatteryV2PublicationEnabled(),
   hvRechargeSessionEnabled: isBatteryV2HvRechargeSessionEnabled(),
+  hvFallbackChargeSessionEnabled: isBatteryV2HvFallbackChargeSessionEnabled(),
 }));

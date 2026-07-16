@@ -10,3 +10,8 @@ export * from './hv-recharge-session-reconcile.policy';
 export * from './hv-recharge-session-reconcile.metrics';
 export * from './hv-recharge-session-reconcile.service';
 export * from './hv-recharge-session-reconcile-producer.service';
+export * from './hv-fallback-charge-session.types';
+export * from './hv-fallback-charge-session.policy';
+export * from './hv-fallback-charge-session.mapper';
+export * from './hv-fallback-charge-session.supersede';
+export * from './hv-fallback-charge-session-detector.service';

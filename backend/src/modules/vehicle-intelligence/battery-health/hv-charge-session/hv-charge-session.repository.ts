@@ -79,4 +79,15 @@ export class HvChargeSessionRepository {
   findById(id: string): Promise<HvChargeSession | null> {
     return this.prisma.hvChargeSession.findUnique({ where: { id } });
   }
+
+  findBySource(
+    vehicleId: string,
+    source: string,
+  ): Promise<HvChargeSessionRow[]> {
+    return this.prisma.hvChargeSession.findMany({
+      where: { vehicleId, source },
+      select: SESSION_SELECT,
+      orderBy: { startAt: 'desc' },
+    });
+  }
 }

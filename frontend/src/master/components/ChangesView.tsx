@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-fallback-charge-session-v49550-2026-07-17',
+    version: '4.9.550',
+    title: 'V4.9.550 — HV Fallback Charge Session Detection (Prompt 50/78)',
+    summary: [
+      'Nachrangige Telemetrie-Fallback-Erkennung wenn DIMO Recharge-Segmente fehlen.',
+      'Signal-Hierarchie: isCharging-Flanken → CableConnected → Added-Energy → SOC-Anstieg → Charging Power.',
+      'Regeln: Mindestdauer/-beobachtungen, Ladepause vs. Sessionende, Provider-Staleness, keine SOC-Einzel-Sprünge.',
+      'Fallback `TELEMETRY_POLL_FALLBACK` mit niedrigerer Evidence Strength; DIMO-Reconcile superseded überlappende Sessions.',
+      'Keine Capacity-Publication. 8 Policy-Tests: vollständig, partiell, Pause, False Positive.',
+    ],
+    reason: 'Prompt 50/78: Ladesessions auch ohne DIMO segments — strikt nachrangig zur Segment-Pipeline.',
+    previousBehavior: 'Bei fehlenden Recharge-Segmenten wurde reconcile übersprungen; nur UI-Heuristik in `deriveChargingSessions()`.',
+    details:
+      'hv-fallback-charge-session.*, hv-charge-session-persist.service.ts, hv-recharge-session-reconcile.service.ts, battery-v2-snapshot-ingestion.service.ts, docs/architecture/hv-fallback-charge-session.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'hv-recharge-session-reconcile-v49549-2026-07-17',
     version: '4.9.549',
     title: 'V4.9.549 — HV Recharge Session Reconcile (Prompt 49/78)',

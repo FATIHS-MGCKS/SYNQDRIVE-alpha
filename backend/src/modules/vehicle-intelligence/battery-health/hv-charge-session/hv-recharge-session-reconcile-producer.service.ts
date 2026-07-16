@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isBatteryV2HvFallbackChargeSessionEnabled } from '@config/battery-health-v2.config';
 import { BatteryCapabilityStatus } from '../battery-v2-domain';
-import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
+import {
+  RECHARGE_SEGMENTS_SIGNAL_KEY,
+} from '../capability-preflight/battery-capability-signals.registry';
 import { BatteryV2JobProducerService } from '../jobs/battery-v2-job-producer.service';
 import { BatteryV2JobDeadLetterService } from '../jobs/battery-v2-job-dead-letter.service';
 import {
@@ -104,6 +107,31 @@ export class HvRechargeSessionReconcileProducerService {
       });
 
       for (const row of capable) {
+        if (!targets.has(row.vehicleId)) {
+          targets.set(row.vehicleId, row);
+        }
+      }
+    }
+
+    if (targets.size < batchSize && isBatteryV2HvFallbackChargeSessionEnabled()) {
+      const chargingCapable = await this.prisma.vehicleBatteryCapability.findMany({
+        where: {
+          signalKey: 'hv.is_charging',
+          status: {
+            in: [
+              BatteryCapabilityStatus.AVAILABLE,
+              BatteryCapabilityStatus.AVAILABLE_STALE,
+            ],
+          },
+          vehicle: { dimoVehicle: { is: { tokenId: { not: null } } } },
+        },
+        distinct: ['vehicleId'],
+        take: batchSize - targets.size,
+        orderBy: { checkedAt: 'asc' },
+        select: { vehicleId: true, organizationId: true },
+      });
+
+      for (const row of chargingCapable) {
         if (!targets.has(row.vehicleId)) {
           targets.set(row.vehicleId, row);
         }

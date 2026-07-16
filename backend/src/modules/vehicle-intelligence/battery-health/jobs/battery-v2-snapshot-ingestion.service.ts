@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { isBatteryV2HvRechargeSessionEnabled } from '@config/battery-health-v2.config';
+import { isBatteryV2HvFallbackChargeSessionEnabled, isBatteryV2HvRechargeSessionEnabled } from '@config/battery-health-v2.config';
 import type { HvBatterySignalObservedAt } from '../../../dimo/mappers/dimo-battery-signal.mapper';
 import { BatteryV2Service } from '../battery-v2.service';
-import { HvBatteryHealthService } from '../hv-battery-health.service';
+import { HvFallbackChargeSessionDetectorService } from '../hv-charge-session/hv-fallback-charge-session-detector.service';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
+import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
+import { HvBatteryHealthService } from '../hv-battery-health.service';
 import { BatteryV2ProviderError } from './battery-v2-job.errors';
 import type { BatteryObservationClassifyPayload } from './battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
@@ -46,6 +48,8 @@ export class BatteryV2SnapshotIngestionService {
     private readonly batteryV2: BatteryV2Service,
     private readonly hvBattery: HvBatteryHealthService,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
+    private readonly hvMethodProfile: HvMethodProfileService,
+    private readonly fallbackDetector: HvFallbackChargeSessionDetectorService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -104,12 +108,25 @@ export class BatteryV2SnapshotIngestionService {
       ctx.tractionBatteryIsCharging != null &&
       previousChargingState?.tractionBatteryIsCharging !== ctx.tractionBatteryIsCharging
     ) {
-      await this.rechargeReconcileProducer.enqueueForChargingTransition({
+      const profile = await this.hvMethodProfile.resolveForVehicle({
         organizationId: payload.organizationId,
         vehicleId: payload.vehicleId,
-        isCharging: ctx.tractionBatteryIsCharging,
-        observedAt: parseIso(ctx.signalObservedAt?.isCharging) ?? receivedAt,
       });
+
+      if (profile.rechargeSegmentsAvailable) {
+        await this.rechargeReconcileProducer.enqueueForChargingTransition({
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          isCharging: ctx.tractionBatteryIsCharging,
+          observedAt: parseIso(ctx.signalObservedAt?.isCharging) ?? receivedAt,
+        });
+      } else if (isBatteryV2HvFallbackChargeSessionEnabled()) {
+        await this.fallbackDetector.detectAndPersistForVehicle({
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          correlationId: `hv-fallback:charging:${payload.vehicleId}`,
+        });
+      }
     }
 
     this.logger.debug(
