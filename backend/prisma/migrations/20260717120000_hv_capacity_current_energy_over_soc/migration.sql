@@ -1,0 +1,2 @@
+-- Prompt 52/78: M2 shadow capacity method CURRENT_ENERGY_OVER_SOC
+ALTER TYPE "HvCapacityMethod" ADD VALUE IF NOT EXISTS 'CURRENT_ENERGY_OVER_SOC';

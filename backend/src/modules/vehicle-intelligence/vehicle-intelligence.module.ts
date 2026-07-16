@@ -64,6 +64,12 @@ import {
   HvRechargeSessionReconcileProducerService,
   HvRechargeSessionReconcileService,
 } from './battery-health/hv-charge-session';
+import {
+  HvCapacityM2SampleProviderService,
+  HvCapacityObservationRepository,
+  HvCapacityShadowProducerService,
+  HvCapacityShadowService,
+} from './battery-health/hv-capacity-shadow';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
@@ -202,6 +208,10 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvFallbackChargeSessionDetectorService,
     HvRechargeSessionReconcileProducerService,
     HvRechargeSessionReconcileService,
+    HvCapacityObservationRepository,
+    HvCapacityM2SampleProviderService,
+    HvCapacityShadowService,
+    HvCapacityShadowProducerService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
@@ -294,6 +304,10 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvFallbackChargeSessionDetectorService,
     HvRechargeSessionReconcileProducerService,
     HvRechargeSessionReconcileService,
+    HvCapacityObservationRepository,
+    HvCapacityM2SampleProviderService,
+    HvCapacityShadowService,
+    HvCapacityShadowProducerService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,

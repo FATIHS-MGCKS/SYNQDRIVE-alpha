@@ -39,6 +39,10 @@ export const BATTERY_V2_HV_RECHARGE_SESSION_ENABLED_ENV =
 export const BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED_ENV =
   'BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED';
 
+/** Prompt 52 flag — HV M2 shadow capacity (CURRENT_ENERGY_OVER_SOC) pipeline (default OFF). */
+export const BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED_ENV =
+  'BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED';
+
 /** DIMO crank query uses 5 s aggregation — no sub-second precision claims. */
 export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
 
@@ -148,6 +152,10 @@ export function isBatteryV2HvFallbackChargeSessionEnabled(): boolean {
   );
 }
 
+export function isBatteryV2HvCapacityShadowEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED_ENV], false);
+}
+
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 
@@ -224,4 +232,5 @@ export default registerAs('batteryHealthV2', () => ({
   publicationEnabled: isBatteryV2PublicationEnabled(),
   hvRechargeSessionEnabled: isBatteryV2HvRechargeSessionEnabled(),
   hvFallbackChargeSessionEnabled: isBatteryV2HvFallbackChargeSessionEnabled(),
+  hvCapacityShadowEnabled: isBatteryV2HvCapacityShadowEnabled(),
 }));

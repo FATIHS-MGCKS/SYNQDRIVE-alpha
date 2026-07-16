@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { NormalizedDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.types';
 import { BatteryV2JobObservabilityService } from '../jobs/battery-v2-job-observability.service';
+import { HvCapacityShadowProducerService } from '../hv-capacity-shadow/hv-capacity-shadow-producer.service';
 import {
   buildFallbackSupersessionUpdate,
   findOverlappingFallbackSessions,
@@ -22,6 +23,7 @@ export class HvChargeSessionPersistService {
   constructor(
     private readonly repository: HvChargeSessionRepository,
     private readonly observability: BatteryV2JobObservabilityService,
+    private readonly capacityShadowProducer: HvCapacityShadowProducerService,
   ) {}
 
   async persistSessionDraft(input: {
@@ -47,12 +49,20 @@ export class HvChargeSessionPersistService {
         correlationId: input.correlationId ?? `hv-charge:create:${session.id}`,
         changeKind: 'created',
       });
-      return {
+      const result = {
         session,
         created: true,
         changed: true,
-        changeKind: 'created',
+        changeKind: 'created' as const,
       };
+      await this.capacityShadowProducer.maybeEnqueueAfterSessionPersist({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        session,
+        changeKind: result.changeKind,
+        correlationId: input.correlationId,
+      });
+      return result;
     }
 
     const merged = mergeHvChargeSessionUpdate({
@@ -87,12 +97,20 @@ export class HvChargeSessionPersistService {
       `HV charge session updated vehicle=${input.vehicleId} fingerprint=${draft.segmentFingerprint} change=${merged.changeKind}`,
     );
 
-    return {
+    const result = {
       session,
       created: false,
       changed: true,
       changeKind: merged.changeKind,
     };
+    await this.capacityShadowProducer.maybeEnqueueAfterSessionPersist({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      session,
+      changeKind: merged.changeKind,
+      correlationId: input.correlationId,
+    });
+    return result;
   }
 
   async persistRechargeSegment(input: {
