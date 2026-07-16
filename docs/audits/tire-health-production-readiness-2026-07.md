@@ -5,8 +5,8 @@
 | **Audit ID** | `tire-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/tire-health-production-readiness-2026-07` |
-| **Phase** | 2 of 7 — Data Model, Spec Logic & Formula Audit |
-| **Status** | Phases 1–2 complete; Phases 3–7 pending |
+| **Phase** | 3 of 7 — VPS Integrity & Ground-Truth Audit |
+| **Status** | Phases 1–3 complete; Phases 4–7 pending |
 | **Production data modified** | **No** — all VPS/DB/DIMO access was read-only |
 | **Last VPS runtime probe** | 2026-07-16 (read-only SSH) |
 
@@ -57,7 +57,11 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Code map CSV | `docs/audits/data/tire-health-code-map-2026-07.csv` |
 | Formula factor map CSV | `docs/audits/data/tire-health-formula-factor-map-2026-07.csv` |
 | Spec source map CSV | `docs/audits/data/tire-health-spec-source-map-2026-07.csv` |
-| Audit script (read-only skeleton) | `scripts/audits/audit-tire-health-production-readiness.ts` |
+| Fleet coverage CSV | `docs/audits/data/tire-health-fleet-coverage-2026-07.csv` |
+| Ground-truth classification CSV | `docs/audits/data/tire-health-ground-truth-classification-2026-07.csv` |
+| Integrity findings JSON | `docs/audits/data/tire-health-integrity-findings-2026-07.json` |
+| Phase 3 SQL (read-only) | `scripts/audits/tire-health-phase3-readonly.sql` |
+| Audit script | `scripts/audits/audit-tire-health-production-readiness.ts` |
 
 ---
 
@@ -80,15 +84,16 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 - Full wear-formula reconstruction & example calculation
 - CSV: `tire-health-formula-factor-map-2026-07.csv`, `tire-health-spec-source-map-2026-07.csv`
 
-### Phase 3 — Wear model & mathematics
+### Phase 3 — VPS integrity & ground-truth audit ✅
 
-- `TireWearModelService` formula audit (axle, usage, behavior, pressure, heat, season, regression, k-factor)
-- `tire-health.config.ts` threshold review
-- Measured vs estimated tread display logic
-- Calibration EMA stability
-- Edge cases: staggered setups, missing spec, zero km
+- PostgreSQL + ClickHouse data-source map (60d UTC window)
+- Ground-truth / synthetic data-point classification
+- Idempotency & duplicate detection (trips, snapshots, events)
+- Kilometer plausibility per anonymized vehicle
+- Fleet coverage & validation-readiness matrix
+- CSV/JSON artifacts + extended audit script (`--phase=3`)
 
-### Phase 4 — Telemetry, trips & idempotency
+### Phase 4 — Telemetry & idempotency
 
 - DIMO signal availability (`availableSignals`, `signalsLatest`, historical `signals`)
 - Trip enrichment → driving impact → tire usage chain
@@ -647,7 +652,153 @@ Full factor-level detail: **`docs/audits/data/tire-health-formula-factor-map-202
 
 ---
 
-## Phase 3–7 placeholders
+## Phase 3 — VPS integrity analysis (read-only)
+
+**Probe:** 2026-07-16 UTC via SSH to production VPS; PostgreSQL read-only SQL.  
+**Analysis window:** `2026-05-17` → `2026-07-16` UTC (~60 days).  
+**Organization timezone (for interpretation):** `Europe/Berlin` (CEST/CET).
+
+### Phase 3 — Data sources (60d)
+
+| Store | Tire-relevant content | Role |
+|-------|----------------------|------|
+| **PostgreSQL** | `vehicle_tire_setups`, `tires`, `vehicle_tire_tread_measurements`, `tire_health_snapshots`, `tire_wear_data_points`, `tire_events`, `vehicle_latest_states`, `vehicle_trips` | **Canonical** — all tire health persistence |
+| **ClickHouse** | HF telemetry, trip activity windows (no `tire_*` tables) | Analytics mirror; **not running** at probe time |
+| **Redis/BullMQ** | `dimo.tire.recalculation` hour-bucket jobs | Triggers `recalculate()` |
+| **DIMO/HM** | Pressure on `vehicle_latest_states` | Pressure factor input |
+
+**Recalculation triggers (code + runtime evidence):**
+
+| Trigger | Entry | Writes |
+|---------|-------|--------|
+| Hourly scheduler | `TireRecalculationScheduler` `@Interval(3600000)` | Enqueues BullMQ → `TireRecalculationProcessor` → `recalculate()` |
+| Manual API | `POST /vehicles/:id/tires/recalculate` | Direct `recalculate()` |
+| Lifecycle mutations | install / measure / rotate / replace | Often calls `recalculate()` after mutation |
+
+**60d production aggregates (PostgreSQL, UTC):**
+
+| Metric | Value |
+|--------|-------|
+| Vehicles with ACTIVE setup | **6** |
+| ACTIVE tire setups | **6** |
+| `tire_health_snapshots` | **1 320** |
+| `tire_events` RECALCULATION | **1 320** (1:1 with snapshots) |
+| `tire_wear_data_points` | **0** (all-time **0**) |
+| Manual tread measurements | **2** |
+| Completed trips | **554** (Σ **2 881.6 km**) |
+| Σ `total_km_on_set` (active) | **282.0 km** |
+| Vehicles with DIMO tire pressure | **1 / 6** |
+| Duplicate snapshot groups | **2** (+2 extra rows) |
+| Duplicate RECALCULATION event groups | **3** |
+
+**Interpretation:** Tire Health **is actively calculated** (~22 snapshots/vehicle/day ≈ hourly). Wear data-point persistence **never activated** in production because **all 6 setups lack `installed_odometer_km`** — the `recalculate()` guard skips `TireWearDataPoint.createMany` when `installedOdometerKm` is null.
+
+---
+
+### Phase 3 — Ground-truth & data-leakage audit
+
+**Code confirmation (still present 2026-07-16):**
+
+```typescript
+// tire-health.service.ts:428-429
+const actualFrontAvg = measFrontVals.length > 0 ? … : frontAvgPredicted;
+const actualRearAvg = measRearVals.length > 0 ? … : rearAvgPredicted;
+```
+
+| # | Question | Finding |
+|---|----------|---------|
+| 1 | Fallback still in code? | **Yes** — predicted tread copied to `actualTreadMm` when no measurement |
+| 2 | Data points with real measurements? | **0 rows in DB** — cannot observe in production yet |
+| 3 | Predicted-as-actual stored? | **Latent** — would be 100% of points until measurements exist |
+| 4 | Distinguishable in DB? | **No** — no `source`/`measurement_id` on `TireWearDataPoint`; only `abs(actual−predicted)<0.001` heuristic |
+| 5 | Points without ground truth? | Guard prevents writes today; when enabled, **all setups would start synthetic** |
+| 6 | Zero residuals? | **Yes** for synthetic rows → `residual_error` column unused in insert path |
+| 7 | Used in calibration/regression/confidence? | **Would be** — `filterRegressionDataPoints` + `fitLinearRegression` read `actualTreadMm`; `calibrateFromMeasurement` is separate and measurement-gated |
+| 8 | Retroactive classification possible? | **Partial** — join setup measurements + timestamp clustering; no measurement ID stored |
+| 9 | Unreliable accuracy claims? | **All fleet-level regression/accuracy metrics** until synthetic rows excluded |
+
+**Classification (production DB):** see `docs/audits/data/tire-health-ground-truth-classification-2026-07.csv`.
+
+---
+
+### Phase 3 — Idempotency & double counting
+
+| Call site | Idempotency | Risk |
+|-----------|-------------|------|
+| `updateTireUsageFromTrip` | **None** — Prisma `increment` only; no `tripId` ledger | Retry / re-enrich **can double-count** km & harsh events |
+| `recalculate` | BullMQ `jobId` hour-bucket dedupe for scheduler only | Manual + scheduled **can duplicate** snapshots/events |
+| `recordMeasurement` | Append-only measurement rows | Duplicate API calls create duplicate measurements |
+| `calibrateFromMeasurement` | EMA on setup row | Re-measure recalibrates (expected) |
+| `TireHealthSnapshot.create` | **No dedupe** | **2 duplicate groups** observed in 60d |
+| `TireWearDataPoint.createMany` | **No dedupe** | N/A (0 rows) |
+
+**Trip → tire setup attribution:**
+
+- `updateTireUsageFromTrip` uses **currently ACTIVE setup** at call time — no trip-timestamp binding.
+- Only invoked from `POST …/trips/:tripId/enrich` — **not** on trip finalize.
+- **No processing ledger** per `(tripId, setupId)`.
+- Old trips after tire change could credit **new** setup if enrich is called late.
+
+**60d integrity signals:**
+
+| Check | Result |
+|-------|--------|
+| Negative trip distances | **0** |
+| Trips >500 km single | **0** |
+| Rapid recalc bursts (>2/hour/set) | **0** |
+| Duplicate snapshots | **2 groups** |
+| Duplicate RECALC events | **3 groups** |
+| `total_km_on_set` vs trip km | **6/6 vehicles** — setup km **far below** trip km |
+
+---
+
+### Phase 3 — Kilometer plausibility (anonymized)
+
+| Vehicle | totalKmOnSet | Trip km (60d) | Δ abs | Class | Likely cause |
+|---------|--------------|---------------|-------|-------|--------------|
+| VEHICLE_001 | 34.7 | 243.5 | 208.8 | not_evaluable* | `trips_not_applied_to_setup` |
+| VEHICLE_002 | 0.0 | 1287.4 | 1287.4 | not_evaluable* | trips not applied; zero counter |
+| VEHICLE_003 | 27.0 | 289.5 | 262.5 | not_evaluable* | trips not applied |
+| VEHICLE_004 | 145.6 | 320.3 | 174.7 | not_evaluable* | trips not applied |
+| VEHICLE_005 | 47.8 | 565.6 | 517.8 | not_evaluable* | trips not applied |
+| VEHICLE_006 | 26.9 | 175.2 | 148.3 | not_evaluable* | trips not applied |
+
+\*Odometer plausibility **not_evaluable** — all setups have `installed_odometer_km IS NULL`.
+
+---
+
+### Phase 3 — Fleet coverage & validation readiness
+
+Full matrix: **`docs/audits/data/tire-health-fleet-coverage-2026-07.csv`**
+
+| Class | Vehicles | Notes |
+|-------|----------|-------|
+| **A. VALIDATION_READY** | **0** | No vehicle has fresh measurement + installed odo + ground-truth wear points |
+| **B. ESTIMATION_ONLY** | **1** (VEHICLE_004) | Best measurement coverage; still missing odo + trip km |
+| **C. SETUP_INCOMPLETE** | **2** (VEHICLE_003, 006) | 8 mm default tires, no spec, no measurement |
+| **D. DATA_INCONSISTENT** | **3** (001, 002, 005) | Trip km ≫ setup km |
+| **E. NO_USABLE_TIRE_DATA** | **0** | All 6 receive hourly recalculations |
+
+**Rental blocking:** All 6 show `EXCELLENT` tire health — **no tire-driven rental block** observed (other modules not audited here).
+
+---
+
+### Phase 3 — New P0/P1 findings
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| **P0-TH-03** | P0 | `installed_odometer_km` null on **all** setups → **zero** `TireWearDataPoint` rows despite 1 320 recalcs |
+| **P0-TH-04** | P0 | Code stores **predicted as actual** when no measurement (latent until data points write) |
+| **P1-TH-08** | P1 | Trip km (2 882 km) not applied to setups (282 km) — enrich-only path |
+| **P1-TH-09** | P1 | Duplicate snapshots (2 groups) |
+| **P1-TH-10** | P1 | Duplicate RECALCULATION events (3 groups) |
+| **P1-TH-11** | P1 | ClickHouse container down at probe — HF cross-check deferred |
+
+Details: **`docs/audits/data/tire-health-integrity-findings-2026-07.json`**
+
+---
+
+## Phase 4–7 placeholders
 
 > Sections will be expanded in subsequent audit prompts.
 
@@ -664,11 +815,16 @@ Full factor-level detail: **`docs/audits/data/tire-health-formula-factor-map-202
 Read-only entry point for later phases:
 
 ```bash
-# Dry-run (default) — no writes
-npx ts-node -r tsconfig-paths/register scripts/audits/audit-tire-health-production-readiness.ts --phase=1
+# Phase 1 — artifacts only
+npx ts-node scripts/audits/audit-tire-health-production-readiness.ts --phase=1
 
-# Future phases (not implemented yet)
-# --phase=5 --output=docs/audits/data/tire-health-replay-2026-07.json
+# Phase 3 — read-only DB integrity (supervised production)
+TIRE_HEALTH_AUDIT_ALLOW_REMOTE=1 TIRE_HEALTH_AUDIT_ALLOW_PROD=1 \
+  npx ts-node scripts/audits/audit-tire-health-production-readiness.ts --phase=3 --days=60 \
+  --output=docs/audits/data/tire-health-integrity-findings-runtime.json
+
+# Direct SQL on VPS (read-only)
+psql "$DATABASE_URL" -f scripts/audits/tire-health-phase3-readonly.sql
 ```
 
 ---
@@ -679,12 +835,13 @@ npx ts-node -r tsconfig-paths/register scripts/audits/audit-tire-health-producti
 |------|-------|--------|
 | 2026-07-16 | 1 | Initial architecture map, VPS probe, CSV, audit script skeleton |
 | 2026-07-16 | 2 | Data model Q&A, spec priority, formula audit, factor/spec CSVs, P0/P1 register |
+| 2026-07-16 | 3 | VPS 60d integrity probe, ground-truth audit, fleet coverage CSV, findings JSON |
 
 ---
 
 ## Confirmation
 
-- ✅ No production data was modified during Phases 1–2.
+- ✅ No production data was modified during Phases 1–3.
 - ✅ No secrets, VINs, license plates, or GPS coordinates are stored in committed audit artifacts.
-- ✅ VPS PostgreSQL queries were aggregate counts only (Phase 1).
-- ✅ Phase 2 complete; Phase 3 not started per audit plan.
+- ✅ VPS PostgreSQL queries were read-only aggregates and anonymized fleet rows.
+- ✅ Phase 3 complete; Phase 4 not started per audit plan.
