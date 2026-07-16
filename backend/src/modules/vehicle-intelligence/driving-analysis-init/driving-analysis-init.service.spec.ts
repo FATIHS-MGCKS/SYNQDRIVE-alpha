@@ -39,6 +39,16 @@ function makeJobRepository() {
   };
 }
 
+function makeShadowDetectors() {
+  return {
+    runForTrip: jest.fn().mockResolvedValue({
+      skippedFramework: true,
+      skipReason: 'shadow_flags_disabled',
+      results: [],
+    }),
+  };
+}
+
 function makeCapabilityLifecycle() {
   return {
     refreshAfterTripInit: jest.fn().mockResolvedValue({
@@ -63,6 +73,7 @@ describe('DrivingAnalysisInitService', () => {
   let jobDispatcher: ReturnType<typeof makeJobDispatcher>;
   let jobRepository: ReturnType<typeof makeJobRepository>;
   let capabilityLifecycle: ReturnType<typeof makeCapabilityLifecycle>;
+  let shadowDetectors: ReturnType<typeof makeShadowDetectors>;
   let service: DrivingAnalysisInitService;
 
   const baseInput = {
@@ -79,6 +90,7 @@ describe('DrivingAnalysisInitService', () => {
     jobDispatcher = makeJobDispatcher();
     jobRepository = makeJobRepository();
     capabilityLifecycle = makeCapabilityLifecycle();
+    shadowDetectors = makeShadowDetectors();
     service = new DrivingAnalysisInitService(
       prisma,
       analysisRunService as any,
@@ -87,6 +99,7 @@ describe('DrivingAnalysisInitService', () => {
       jobRepository as any,
       { runPreflightIfStale: jest.fn() } as any,
       capabilityLifecycle as any,
+      shadowDetectors as any,
     );
 
     prisma.vehicleTrip.findFirst.mockResolvedValue({

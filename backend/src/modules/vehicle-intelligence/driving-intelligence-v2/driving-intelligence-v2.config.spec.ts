@@ -11,6 +11,12 @@ describe('DrivingIntelligenceV2Config', () => {
         if (key === 'drivingIntelligenceV2.dimoSegmentValidationEnabled') {
           return env.dimoSegmentValidation ?? defaultValue;
         }
+        if (key === 'drivingIntelligenceV2.engineDetectorShadowEnabled') {
+          return env.engineDetectorShadow ?? defaultValue;
+        }
+        if (key === 'drivingIntelligenceV2.hfDetectorShadowEnabled') {
+          return env.hfDetectorShadow ?? defaultValue;
+        }
         return defaultValue;
       },
     } as ConfigService;
@@ -28,5 +34,15 @@ describe('DrivingIntelligenceV2Config', () => {
 
     const on = createConfig({ master: true, dimoSegmentValidation: true });
     expect(on.isDimoSegmentValidationEnabled()).toBe(true);
+  });
+
+  it('shadow detector flags require master flag', () => {
+    const off = createConfig({ master: false, engineDetectorShadow: true, hfDetectorShadow: true });
+    expect(off.isEngineDetectorShadowEnabled()).toBe(false);
+    expect(off.isHfDetectorShadowEnabled()).toBe(false);
+
+    const on = createConfig({ master: true, engineDetectorShadow: true, hfDetectorShadow: false });
+    expect(on.isEngineDetectorShadowEnabled()).toBe(true);
+    expect(on.isHfDetectorShadowEnabled()).toBe(false);
   });
 });

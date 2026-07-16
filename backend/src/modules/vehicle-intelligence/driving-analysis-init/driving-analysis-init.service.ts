@@ -7,6 +7,7 @@ import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence
 import { DrivingIntelligenceJobRepository } from '../driving-intelligence-jobs/driving-intelligence-jobs.repository';
 import { DimoAvailableSignalsPreflightService } from '../driving-capability/dimo-available-signals-preflight.service';
 import { VehicleDrivingCapabilityLifecycleService } from '../driving-capability/vehicle-driving-capability-lifecycle.service';
+import { ShadowDetectorOrchestratorService } from '../shadow-detector/shadow-detector.orchestrator.service';
 import {
   buildInitCorrelationId,
   buildInitJobIdempotencyKey,
@@ -30,6 +31,7 @@ export class DrivingAnalysisInitService {
     private readonly jobRepository: DrivingIntelligenceJobRepository,
     private readonly dimoPreflight: DimoAvailableSignalsPreflightService,
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
+    private readonly shadowDetectors: ShadowDetectorOrchestratorService,
   ) {}
 
   /**
@@ -100,6 +102,20 @@ export class DrivingAnalysisInitService {
       maturity: 'SHADOW',
       recomputeReason: input.source === 'REPAIR_FINALIZE' ? 'REPAIR_FINALIZE' : null,
     });
+
+    void this.shadowDetectors
+      .runForTrip({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        tripId: input.tripId,
+        analysisRunId: runResult.run.id,
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Shadow detector framework failed trip=${input.tripId} run=${runResult.run.id}: ${message}`,
+        );
+      });
 
     const queueErrors: string[] = [];
     const jobs: TripAnalysisInitJobResult[] = [];

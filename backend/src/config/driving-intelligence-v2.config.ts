@@ -16,4 +16,12 @@ export default registerAs('drivingIntelligenceV2', () => ({
     process.env.DRIVING_V2_DIMO_SEGMENT_VALIDATION_ENABLED,
     false,
   ),
+  engineDetectorShadowEnabled: parseBooleanEnv(
+    process.env.DRIVING_V2_ENGINE_DETECTOR_SHADOW_ENABLED,
+    true,
+  ),
+  hfDetectorShadowEnabled: parseBooleanEnv(
+    process.env.DRIVING_V2_HF_DETECTOR_SHADOW_ENABLED,
+    true,
+  ),
 }));
