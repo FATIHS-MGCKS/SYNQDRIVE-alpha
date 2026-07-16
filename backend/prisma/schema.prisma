@@ -1030,6 +1030,12 @@ enum DrivingEventSource {
   HF_DERIVED
 }
 
+/// Trip linkage for provider-native driving events (P24).
+enum DrivingEventTripAssignment {
+  ASSIGNED
+  UNASSIGNED
+}
+
 // ── RPM webhook candidate intake (V4.9.197) ─────────────────────────────────
 // DIMO Developer Console supports vss.powertrainCombustionEngineSpeed triggers.
 enum TelemetryTriggerType {
@@ -5446,6 +5452,12 @@ model DrivingEvent {
   durationMs     Int?               @map("duration_ms")
   driverName     String?            @map("driver_name")
   tripId         String?            @map("trip_id")
+  /// Deterministic provider identity for native DIMO events (P24).
+  provider                 String?                     @map("provider")
+  providerEventName        String?                     @map("provider_event_name")
+  providerSourceId         String?                     @map("provider_source_id")
+  providerFingerprint      String?                     @map("provider_fingerprint")
+  tripAssignment           DrivingEventTripAssignment  @default(UNASSIGNED) @map("trip_assignment")
   // V3: contextual enrichment (e.g. coldEngine badge from HF context on LTE_R1)
   metadataJson   Json?              @map("metadata_json")
   recordedAt     DateTime           @map("recorded_at")
@@ -5454,11 +5466,14 @@ model DrivingEvent {
   vehicle Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   trip    VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
 
+  @@unique([organizationId, providerFingerprint], map: "driving_events_org_provider_fingerprint")
   @@index([vehicleId])
   @@index([recordedAt])
   @@index([eventType])
   @@index([tripId])
   @@index([source])
+  @@index([vehicleId, tripAssignment])
+  @@index([organizationId, vehicleId, recordedAt])
   // Most driving-event reads are per-vehicle over a time range (analytics,
   // enrichment recovery) or per-trip (rental analysis). Composite indexes.
   @@index([vehicleId, recordedAt])

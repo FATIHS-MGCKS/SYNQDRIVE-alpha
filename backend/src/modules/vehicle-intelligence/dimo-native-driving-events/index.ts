@@ -12,3 +12,21 @@ export {
   type ZeroNativeEventsConductAssessment,
 } from './dimo-native-driving-event-mapper.types';
 export { assessZeroNativeEventsConduct } from './dimo-native-events-assessability';
+export {
+  DIMO_NATIVE_EVENT_PROVIDER,
+  buildDimoNativeEventFingerprint,
+  extractDimoNativeEventCoreMetadata,
+  isWithinTripBoundary,
+  resolveNativeEventTripAssignment,
+} from './dimo-native-event-fingerprint';
+export type {
+  DimoNativeEventCoreMetadata,
+  DimoNativeEventFingerprintInput,
+  NativeEventTripAssignmentResult,
+  NativeEventTripWindow,
+} from './dimo-native-event-fingerprint.types';
+export {
+  DimoNativeDrivingEventPersistenceService,
+  type PersistNativeDimoEventInput,
+  type PersistNativeDimoEventResult,
+} from './dimo-native-driving-event-persistence.service';

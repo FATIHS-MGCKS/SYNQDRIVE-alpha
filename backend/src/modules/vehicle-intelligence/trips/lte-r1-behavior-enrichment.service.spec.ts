@@ -4,6 +4,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
 import { VehicleDrivingCapabilityResolverService } from '../driving-capability/vehicle-driving-capability-resolver.service';
+import { DimoNativeDrivingEventPersistenceService } from '../dimo-native-driving-events/dimo-native-driving-event-persistence.service';
 import {
   LteR1BehaviorEnrichmentService,
   mapDimoEventName,
@@ -85,6 +86,10 @@ describe('resolveNativeSeverity', () => {
 });
 
 describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
+  const persistence = {
+    upsertNativeEvents: jest.fn(),
+    reconcileUnassignedEvents: jest.fn(),
+  };
   const service = new LteR1BehaviorEnrichmentService(
     {} as any,
     {} as any,
@@ -92,6 +97,7 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
     {
       resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
     } as any,
+    persistence as any,
   );
 
   const sample = (name: string, metadata: string | null = '{"counterValue":1}'): DimoVehicleEventRecord => ({
@@ -103,7 +109,7 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
   });
 
   function mapSamples(samples: DimoVehicleEventRecord[]): any[] {
-    return (service as any).mapToNormalizedEvents(samples, 'veh-1', 'org-1', 'trip-1', new Map());
+    return (service as any).mapToNormalizedEvents(samples, 'veh-1', 'org-1', new Map());
   }
 
   it('preserves the original DIMO event name and tags extreme acceleration distinctly', () => {
@@ -153,6 +159,7 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
       {
         resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
       } as any,
+      { upsertNativeEvents: jest.fn(), reconcileUnassignedEvents: jest.fn() } as any,
     );
     return { service, prisma };
   }
@@ -210,6 +217,10 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
             provide: VehicleDrivingCapabilityResolverService,
             useValue: { resolveForVehicle: jest.fn() },
           },
+          {
+            provide: DimoNativeDrivingEventPersistenceService,
+            useValue: { upsertNativeEvents: jest.fn(), reconcileUnassignedEvents: jest.fn() },
+          },
         ],
       }).compile(),
     ).rejects.toThrow();
@@ -229,10 +240,24 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
     const persistedIds = ['de-native-1'];
     const tx = {
       drivingEvent: {
-        deleteMany: jest.fn(async () => ({ count: 0 })),
-        createMany: jest.fn(async () => ({ count: 1 })),
+        findMany: jest.fn(async () => [
+          { eventType: DrivingEventType.HARSH_ACCELERATION },
+        ]),
       },
       vehicleTrip: { update: jest.fn(async () => ({})) },
+    };
+    const nativeEventPersistence = {
+      upsertNativeEvents: jest.fn(async () => [
+        {
+          id: 'de-native-1',
+          providerFingerprint: 'fp-1',
+          tripId: 'trip-1',
+          tripAssignment: 'ASSIGNED',
+          created: true,
+          eventType: DrivingEventType.HARSH_ACCELERATION,
+        },
+      ]),
+      reconcileUnassignedEvents: jest.fn(async () => ({ assigned: 0, examined: 0 })),
     };
     const prisma = {
       vehicleTrip: {
@@ -277,19 +302,21 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       {
         resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
       } as any,
+      nativeEventPersistence as any,
     );
-    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds };
+    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds, nativeEventPersistence };
   }
 
-  it('persists native events via createMany then reloads IDs for context enrichment', async () => {
-    const { service, prisma, tx, enrichDrivingEventContext, persistedIds } = makeEnrichTripHarness();
+  it('persists native events via fingerprint upsert then reloads IDs for context enrichment', async () => {
+    const { service, prisma, tx, enrichDrivingEventContext, persistedIds, nativeEventPersistence } =
+      makeEnrichTripHarness();
 
     const result = await service.enrichTrip('trip-1');
 
     expect(result?.drivingEventsIngested).toBe(1);
-    expect(tx.drivingEvent.deleteMany).toHaveBeenCalled();
-    expect(tx.drivingEvent.createMany).toHaveBeenCalledTimes(1);
-    expect(prisma.drivingEvent.findMany).toHaveBeenCalledWith(
+    expect(nativeEventPersistence.upsertNativeEvents).toHaveBeenCalledTimes(1);
+    expect(nativeEventPersistence.reconcileUnassignedEvents).toHaveBeenCalledTimes(1);
+    expect(tx.drivingEvent.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { tripId: 'trip-1', source: 'TELEMETRY_EVENTS' },
       }),
@@ -299,12 +326,14 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
   });
 
   it('does not roll back native events when context enrichment fails per event', async () => {
-    const { service, tx, enrichDrivingEventContext } = makeEnrichTripHarness({ contextThrows: true });
+    const { service, nativeEventPersistence, enrichDrivingEventContext } = makeEnrichTripHarness({
+      contextThrows: true,
+    });
 
     await expect(service.enrichTrip('trip-1')).resolves.toMatchObject({
       drivingEventsIngested: 1,
     });
-    expect(tx.drivingEvent.createMany).toHaveBeenCalledTimes(1);
+    expect(nativeEventPersistence.upsertNativeEvents).toHaveBeenCalledTimes(1);
     expect(enrichDrivingEventContext).toHaveBeenCalledTimes(1);
   });
 

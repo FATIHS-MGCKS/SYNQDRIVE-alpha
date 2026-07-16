@@ -35,6 +35,7 @@ import {
   assessZeroNativeEventsConduct,
   mapDimoNativeDrivingEvent,
   resolveDimoNativeEventSeverity,
+  DimoNativeDrivingEventPersistenceService,
   type DimoNativeDrivingEventMapping,
   type DimoNativeEventClassification,
   type ZeroNativeEventsConductAssessment,
@@ -105,6 +106,7 @@ export class LteR1BehaviorEnrichmentService {
     private readonly segments: DimoSegmentsService,
     private readonly eventContext: EventContextEnrichmentService,
     private readonly capabilityResolver: VehicleDrivingCapabilityResolverService,
+    private readonly nativeEventPersistence: DimoNativeDrivingEventPersistenceService,
   ) {}
 
   /**
@@ -159,7 +161,7 @@ export class LteR1BehaviorEnrichmentService {
     const hfContext = await this.buildHfContextMap(tokenId, trip.startTime, trip.endTime, tripId);
 
     // ── 3. Map to normalized driving events ─────────────────────────────────
-    const normalized = this.mapToNormalizedEvents(nativeSamples, vehicleId, organizationId, tripId, hfContext);
+    const normalized = this.mapToNormalizedEvents(nativeSamples, vehicleId, organizationId, hfContext);
     const counters = this.countByType(normalized);
     const coldEngineAnnotations = normalized.filter((e) => e.coldEngineContext).length;
     const nativeCapability = await this.resolveNativeCapabilityContext(
@@ -173,80 +175,73 @@ export class LteR1BehaviorEnrichmentService {
       nativeEventCount: normalized.length,
     });
 
-    // ── 4. Persist events (transaction-safe, idempotent) ─────────────────────
-    const hardBraking = counters.harshBraking + counters.extremeBraking;
-    const hardAccel = counters.harshAcceleration;
+    const tripEndTime = trip.endTime;
 
+    // ── 4. Persist events (fingerprint upsert — identity preserved on reprocess) ─
     await this.prisma.$transaction(async (tx) => {
-      // Idempotent re-enrichment: remove existing TELEMETRY_EVENTS for this trip
-      await tx.drivingEvent.deleteMany({
-        where: { tripId, source: DrivingEventSource.TELEMETRY_EVENTS },
+      await this.nativeEventPersistence.upsertNativeEvents(
+        normalized.map((e) => ({
+          organizationId: e.organizationId,
+          vehicleId: e.vehicleId,
+          providerEventName: e.rawName,
+          providerSourceId: e.dimoSource,
+          durationNs: e.durationNs,
+          metadataJson: e.metadataJson,
+          recordedAt: e.recordedAt,
+          eventType: e.eventType,
+          classification: e.classification,
+          severity: e.severity,
+          speedKmh: e.speedKmh,
+          durationMs: e.durationMs,
+          mapping: e.mapping,
+          enrichmentMetadata: {
+            coldEngineContext: e.coldEngineContext,
+            coolantC: e.contextCoolantC,
+            rpm: e.contextRpm,
+            throttlePct: e.contextThrottlePct,
+            hardwareSource: 'LTE_R1',
+          },
+        })),
+        { id: tripId, startTime: trip.startTime, endTime: tripEndTime },
+        tx,
+      );
+
+      await this.nativeEventPersistence.reconcileUnassignedEvents(
+        organizationId,
+        vehicleId,
+        tx,
+      );
+
+      const tripEvents = await tx.drivingEvent.findMany({
+        where: {
+          tripId,
+          source: DrivingEventSource.TELEMETRY_EVENTS,
+        },
+        select: { eventType: true },
       });
+      const tripCounters = this.countByType(tripEvents);
+      const hardBrakingTrip = tripCounters.harshBraking + tripCounters.extremeBraking;
+      const hardAccelTrip = tripCounters.harshAcceleration;
+      const abuseFromDimo = tripCounters.extremeBraking;
 
-      if (normalized.length > 0) {
-        await tx.drivingEvent.createMany({
-          data: normalized.map((e) => ({
-            vehicleId: e.vehicleId,
-            organizationId: e.organizationId,
-            tripId: e.tripId,
-            eventType: e.eventType,
-            source: DrivingEventSource.TELEMETRY_EVENTS,
-            recordedAt: e.recordedAt,
-            speedKmh: e.speedKmh,
-            severity: e.severity,
-            metadataJson: {
-              coldEngineContext: e.coldEngineContext,
-              coolantC: e.contextCoolantC,
-              rpm: e.contextRpm,
-              throttlePct: e.contextThrottlePct,
-              hardwareSource: 'LTE_R1',
-              dimoEventName: e.rawName,
-              dimoEventSource: e.dimoSource,
-              dimoCounterValue: e.counterValue,
-              classification: e.classification,
-              provider: 'DIMO',
-              detectionMethod: 'NATIVE_TELEMETRY_EVENT',
-              providerSource: e.mapping.providerSource,
-              evidenceSourceType: e.mapping.evidenceSourceType,
-              mappingVersion: e.mapping.mappingVersion,
-              isKnownMapping: e.mapping.isKnownMapping,
-            },
-          })),
-        });
-      }
-
-      // Update VehicleTrip canonical counters so Driving Impact engine receives
-      // the same interface as for SMART5 HF-derived trips.
-      //
-      // Severity-ladder for Abuse on LTE_R1:
-      //   DIMO `behavior.extremeBraking` = DIMO's own critical-severity braking
-      //   event.  In the absence of sufficient HF context (common on LTE_R1
-      //   because HF data is sparse for this hardware family), we surface
-      //   `extremeBraking` as an abuse event so the "Abuse Detection" KPI is
-      //   actually populated from vehicle-reported critical events.  When
-      //   HF-derived abuse events are also available, TripBehaviorEnrichment
-      //   overwrites abuseEvents below — but those additions are additive,
-      //   not a replacement, so the extremeBraking-sourced minimum remains.
-      const abuseFromDimo = counters.extremeBraking;
       await tx.vehicleTrip.update({
         where: { id: tripId },
         data: {
-          hardBrakingCount: hardBraking,
-          hardAccelerationCount: hardAccel,
-          totalAccelerationEvents: counters.harshAcceleration,
-          hardAccelerationEvents: hardAccel,
-          totalBrakingEvents: counters.harshBraking + counters.extremeBraking,
-          hardBrakingEvents: hardBraking,
+          hardBrakingCount: hardBrakingTrip,
+          hardAccelerationCount: hardAccelTrip,
+          totalAccelerationEvents: tripCounters.harshAcceleration,
+          hardAccelerationEvents: hardAccelTrip,
+          totalBrakingEvents: tripCounters.harshBraking + tripCounters.extremeBraking,
+          hardBrakingEvents: hardBrakingTrip,
           fullBrakingEvents: 0,
-          corneringEvents: counters.harshCornering,
+          corneringEvents: tripCounters.harshCornering,
           abuseEvents: abuseFromDimo,
           speedingEvents: 0,
-          harshBrakeCount: hardBraking,   // DEPRECATED alias — mirrored for compatibility
-          harshAccelCount: hardAccel,      // DEPRECATED alias — mirrored for compatibility
-          harshCornerCount: counters.harshCornering,
-          // Canonical event totals for Driving Impact (same semantics as HF path)
-          brakingEventCount: counters.harshBraking + counters.extremeBraking,
-          accelerationEventCount: counters.harshAcceleration,
+          harshBrakeCount: hardBrakingTrip,
+          harshAccelCount: hardAccelTrip,
+          harshCornerCount: tripCounters.harshCornering,
+          brakingEventCount: tripCounters.harshBraking + tripCounters.extremeBraking,
+          accelerationEventCount: tripCounters.harshAcceleration,
           behaviorEnrichedAt: new Date(),
         },
       });
@@ -419,18 +414,19 @@ export class LteR1BehaviorEnrichmentService {
     samples: DimoVehicleEventRecord[],
     vehicleId: string,
     organizationId: string,
-    tripId: string,
     hfContext: Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }>,
   ): Array<{
     vehicleId: string;
     organizationId: string;
-    tripId: string;
     eventType: DrivingEventType;
     classification: NativeEventClassification;
     mapping: DimoNativeDrivingEventMapping;
     recordedAt: Date;
     speedKmh: number | null;
     severity: number;
+    durationNs: number;
+    durationMs: number;
+    metadataJson: string | null;
     coldEngineContext: boolean;
     contextCoolantC: number | null;
     contextRpm: number | null;
@@ -467,13 +463,15 @@ export class LteR1BehaviorEnrichmentService {
       events.push({
         vehicleId,
         organizationId,
-        tripId,
         eventType,
         classification,
         mapping,
         recordedAt: new Date(s.timestamp),
         speedKmh: ctx.speedKmh,
         severity: mapping.severity,
+        durationNs: s.durationNs,
+        durationMs: Math.round(s.durationNs / 1_000_000),
+        metadataJson: s.metadata,
         coldEngineContext: coldEngine,
         contextCoolantC: ctx.coolantC,
         contextRpm: ctx.rpm,

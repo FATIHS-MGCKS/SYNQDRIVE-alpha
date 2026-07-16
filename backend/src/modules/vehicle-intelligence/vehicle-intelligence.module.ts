@@ -27,6 +27,7 @@ import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
 import { TripAnalysisCoordinatorService } from './trips/trip-analysis-coordinator.service';
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
+import { DimoNativeDrivingEventPersistenceService } from './dimo-native-driving-events/dimo-native-driving-event-persistence.service';
 import { EventContextEnrichmentService } from './event-context/event-context-enrichment.service';
 import { HfMirrorService } from './trips/hf-mirror.service';
 import { WaypointMirrorService } from './trips/waypoint-mirror.service';
@@ -149,6 +150,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TripAnalysisCoordinatorService,
     EventContextEnrichmentService,
     LteR1BehaviorEnrichmentService,
+    DimoNativeDrivingEventPersistenceService,
     DrivingAssessmentDeviceQualityService,
     HfMirrorService,
     WaypointMirrorService,
@@ -240,6 +242,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TripEnrichmentOrchestratorService,
     TripAnalysisCoordinatorService,
     LteR1BehaviorEnrichmentService,
+    DimoNativeDrivingEventPersistenceService,
     DrivingAssessmentDeviceQualityService,
     EventContextEnrichmentService,
     TripAssignmentService,
