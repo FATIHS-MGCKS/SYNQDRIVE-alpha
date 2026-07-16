@@ -17,6 +17,11 @@ describe('RentalHealthService (unit)', () => {
     evaluateCompliance: jest.fn(),
     toRentalModuleHealth: jest.fn(),
   };
+  const tireRentalReview = {
+    findActiveOverride: jest.fn().mockResolvedValue(null),
+    createOverride: jest.fn(),
+    revokeOverride: jest.fn(),
+  };
 
   const svc = new RentalHealthService(
     prisma as any,
@@ -26,6 +31,7 @@ describe('RentalHealthService (unit)', () => {
     dtc as any,
     hm as any,
     serviceCompliance as any,
+    tireRentalReview as any,
   );
 
   const evaluateBattery = (summary: any, hmAi: any = null) =>
@@ -33,6 +39,8 @@ describe('RentalHealthService (unit)', () => {
   const evaluateErrorCodes = (summary: any) =>
     (svc as any).evaluateErrorCodes(summary);
   const evaluateBrakes = (summary: any) => (svc as any).evaluateBrakes(summary);
+  const evaluateTires = (summary: any, override?: any) =>
+    (svc as any).evaluateTires(summary, override ?? null);
 
   const batterySummary = (overrides: {
     healthStatus?: string;
@@ -385,5 +393,157 @@ describe('RentalHealthService (unit)', () => {
     expect(gate.healthGateStatus).toBe('UNAVAILABLE');
     expect(gate.blocked).toBe(true);
     expect(gate.manualReviewRequired).toBe(true);
+  });
+
+  it('estimated critical tire does not add rental blocking reason', () => {
+    const tireModule = evaluateTires({
+      overallStatus: 'CRITICAL',
+      displayMode: 'ESTIMATED',
+      confidence: 'HIGH',
+      lowestTreadMm: 1.4,
+      isDefaultAssumption: false,
+      measurementAgeDays: null,
+      lastMeasurementAt: null,
+      latestMeasurementAt: null,
+      alerts: [],
+      activeSetupId: 'setup-1',
+      recommendedPressure: {
+        pressureSpecSource: 'UNKNOWN',
+        pressureSpecConfidence: 0,
+        wearFactorEligible: false,
+        pressureSpecMissingLabel: 'Solldruck nicht hinterlegt',
+      },
+      pressureSpecMissingLabel: 'Solldruck nicht hinterlegt',
+      pressureContext: {
+        sourceType: 'NONE',
+        overallStatus: 'UNKNOWN',
+        overallFreshness: 'no_data',
+        tpmsWarning: null,
+        wheels: {
+          frontLeft: { statusIssue: false, sourceTimestamp: null },
+          frontRight: { statusIssue: false, sourceTimestamp: null },
+          rearLeft: { statusIssue: false, sourceTimestamp: null },
+          rearRight: { statusIssue: false, sourceTimestamp: null },
+        },
+        coverage: { periodEnd: null },
+      },
+    });
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: tireModule,
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+    );
+    expect(reasons.some((r: string) => /Reifen:/i.test(r))).toBe(false);
+    expect(tireModule.evidence_type).toBe('estimated');
+    expect(tireModule.tire_read_model.reviewRequirement).toBe('REVIEW_REQUIRED');
+  });
+
+  it('measured below legal minimum tire blocks rental', () => {
+    const tireModule = evaluateTires({
+      overallStatus: 'CRITICAL',
+      displayMode: 'MEASURED',
+      confidence: 'HIGH',
+      lowestTreadMm: 1.5,
+      isDefaultAssumption: false,
+      measurementAgeDays: 3,
+      lastMeasurementAt: '2026-07-10T10:00:00.000Z',
+      latestMeasurementAt: '2026-07-10T10:00:00.000Z',
+      alerts: [],
+      activeSetupId: 'setup-1',
+      recommendedPressure: {
+        pressureSpecSource: 'DOOR_PLACARD',
+        pressureSpecConfidence: 98,
+        wearFactorEligible: true,
+      },
+      pressureSpecMissingLabel: null,
+      pressureContext: {
+        sourceType: 'DIMO',
+        overallStatus: 'OK',
+        overallFreshness: 'fresh',
+        tpmsWarning: null,
+        wheels: {
+          frontLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          frontRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+        },
+        coverage: { periodEnd: '2026-07-16T13:00:00.000Z' },
+      },
+    });
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: tireModule,
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+    );
+    expect(reasons.some((r: string) => /Reifen:/i.test(r))).toBe(true);
+    expect(tireModule.evidence_type).toBe('measured');
+  });
+
+  it('TPMS warning blocks rental with dimo source label', () => {
+    const tireModule = evaluateTires({
+      overallStatus: 'GOOD',
+      displayMode: 'ESTIMATED',
+      confidence: 'MEDIUM',
+      lowestTreadMm: 5,
+      isDefaultAssumption: false,
+      measurementAgeDays: null,
+      lastMeasurementAt: null,
+      latestMeasurementAt: null,
+      alerts: [],
+      activeSetupId: 'setup-1',
+      recommendedPressure: {
+        pressureSpecSource: 'UNKNOWN',
+        pressureSpecConfidence: 0,
+        wearFactorEligible: false,
+      },
+      pressureSpecMissingLabel: 'Solldruck nicht hinterlegt',
+      pressureContext: {
+        sourceType: 'DIMO',
+        overallStatus: 'ISSUE',
+        overallFreshness: 'fresh',
+        tpmsWarning: true,
+        wheels: {
+          frontLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          frontRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+        },
+        coverage: { periodEnd: '2026-07-16T13:00:00.000Z' },
+      },
+    });
+    expect(tireModule.source).toBe('dimo');
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: tireModule,
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+    );
+    expect(reasons.some((r: string) => /TPMS/i.test(r))).toBe(true);
   });
 });

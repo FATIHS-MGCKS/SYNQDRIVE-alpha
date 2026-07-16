@@ -1,0 +1,351 @@
+{
+  "auditId": "tire-trip-usage-backfill-2026-07",
+  "auditVersion": "tire-trip-usage-backfill-audit-2026-07-v1",
+  "generatedAt": "2026-07-16T18:24:09.665Z",
+  "mode": "fixtures",
+  "readOnly": true,
+  "filters": {
+    "organizationId": null,
+    "vehicleId": null,
+    "from": "2026-05-17T18:24:09.664Z",
+    "to": "2026-07-16T18:24:09.664Z",
+    "batchSize": 100,
+    "fullSetupHistory": true,
+    "lookbackDays": 60
+  },
+  "summary": {
+    "tripsScanned": 9,
+    "candidatesEligible": 4,
+    "singleSetupAttribution": 4,
+    "conflicts": 2,
+    "noSetup": 1,
+    "incompleteHistory": 1,
+    "tripBeforeFirstSetup": 1,
+    "tripAfterSetupRemoval": 0,
+    "skippedNotFinal": 0,
+    "skippedNoDistance": 0,
+    "skippedCancelled": 0,
+    "skippedMerged": 0,
+    "potentialDuplicates": 0,
+    "reprocessingCandidates": 1,
+    "odometerConflicts": 1,
+    "setupsWithKmDeviation": 2,
+    "totalExpectedKm": 159
+  },
+  "setupRollups": [
+    {
+      "anonymizedSetupId": "setup_96df3954a383",
+      "anonymizedVehicleId": "vehicle_de9aa316c52e",
+      "setupStatus": "ACTIVE",
+      "tripCountAttributed": 2,
+      "expectedKmFromBackfill": 87,
+      "existingLedgerKm": 40,
+      "currentTotalKmOnSet": 80,
+      "absoluteDeltaKm": 47,
+      "percentDelta": 1.175,
+      "hasKmDeviation": true
+    },
+    {
+      "anonymizedSetupId": "setup_65159cc0f3ea",
+      "anonymizedVehicleId": "vehicle_69254e5f20da",
+      "setupStatus": "STORED",
+      "tripCountAttributed": 2,
+      "expectedKmFromBackfill": 72,
+      "existingLedgerKm": 0,
+      "currentTotalKmOnSet": 22,
+      "absoluteDeltaKm": 50,
+      "percentDelta": 2.273,
+      "hasKmDeviation": true
+    }
+  ],
+  "trips": [
+    {
+      "anonymizedTripId": "trip_c36fe256dc7f",
+      "anonymizedVehicleId": "vehicle_de9aa316c52e",
+      "tripStartedAt": "2026-07-10T10:00:00.000Z",
+      "tripEndedAt": "2026-07-10T11:00:00.000Z",
+      "attributionClass": "SINGLE_SETUP",
+      "anonymizedSetupId": "setup_96df3954a383",
+      "attributedSetupStatus": "ACTIVE",
+      "eligibleForLedger": true,
+      "attributableKm": 42,
+      "distance": {
+        "authoritativeKm": 42,
+        "odometerDeltaKm": 42,
+        "waypointPlausibilityKm": 41.2,
+        "odometerDeltaAbs": 0,
+        "odometerDeltaPct": 0,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta=energy_event_or_trip_boundary_envelope",
+          "waypoint_points=12"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": "58a8b43b907b5758129e3b7428ba3e1cebe35f79abb44e072bf4989dce5c7e0e",
+      "recommendedAction": "eligible_for_controlled_backfill_apply",
+      "notes": []
+    },
+    {
+      "anonymizedTripId": "trip_b8ef07291769",
+      "anonymizedVehicleId": "vehicle_7e3f6348f429",
+      "tripStartedAt": "2026-07-11T10:00:00.000Z",
+      "tripEndedAt": "2026-07-11T11:00:00.000Z",
+      "attributionClass": "NO_SETUP",
+      "anonymizedSetupId": null,
+      "attributedSetupStatus": null,
+      "eligibleForLedger": false,
+      "attributableKm": 0,
+      "distance": {
+        "authoritativeKm": 18,
+        "odometerDeltaKm": null,
+        "waypointPlausibilityKm": null,
+        "odometerDeltaAbs": null,
+        "odometerDeltaPct": null,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta_unavailable"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": null,
+      "recommendedAction": "skip_not_eligible_for_ledger",
+      "notes": []
+    },
+    {
+      "anonymizedTripId": "trip_a77af7c24639",
+      "anonymizedVehicleId": "vehicle_020056988fed",
+      "tripStartedAt": "2026-07-10T10:00:00.000Z",
+      "tripEndedAt": "2026-07-10T12:00:00.000Z",
+      "attributionClass": "SETUP_CHANGE_IN_TRIP",
+      "anonymizedSetupId": null,
+      "attributedSetupStatus": null,
+      "eligibleForLedger": false,
+      "attributableKm": 0,
+      "distance": {
+        "authoritativeKm": 55,
+        "odometerDeltaKm": null,
+        "waypointPlausibilityKm": null,
+        "odometerDeltaAbs": null,
+        "odometerDeltaPct": null,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta_unavailable"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": null,
+      "recommendedAction": "manual_review_required_do_not_auto_attribute",
+      "notes": [
+        "setup_change_boundary_within_trip_interval",
+        "manual_review_required_no_auto_guess"
+      ]
+    },
+    {
+      "anonymizedTripId": "trip_7707f14e8e76",
+      "anonymizedVehicleId": "vehicle_020056988fed",
+      "tripStartedAt": "2026-07-10T10:30:00.000Z",
+      "tripEndedAt": "2026-07-10T11:30:00.000Z",
+      "attributionClass": "SETUP_CHANGE_IN_TRIP",
+      "anonymizedSetupId": null,
+      "attributedSetupStatus": null,
+      "eligibleForLedger": false,
+      "attributableKm": 0,
+      "distance": {
+        "authoritativeKm": 30,
+        "odometerDeltaKm": null,
+        "waypointPlausibilityKm": null,
+        "odometerDeltaAbs": null,
+        "odometerDeltaPct": null,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta_unavailable"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": null,
+      "recommendedAction": "manual_review_required_do_not_auto_attribute",
+      "notes": [
+        "setup_change_boundary_within_trip_interval",
+        "manual_review_required_no_auto_guess"
+      ]
+    },
+    {
+      "anonymizedTripId": "trip_d71ae01de46f",
+      "anonymizedVehicleId": "vehicle_de9aa316c52e",
+      "tripStartedAt": "2026-07-09T08:00:00.000Z",
+      "tripEndedAt": "2026-07-09T09:00:00.000Z",
+      "attributionClass": "SINGLE_SETUP",
+      "anonymizedSetupId": "setup_96df3954a383",
+      "attributedSetupStatus": null,
+      "eligibleForLedger": true,
+      "attributableKm": 45,
+      "distance": {
+        "authoritativeKm": 45,
+        "odometerDeltaKm": 45,
+        "waypointPlausibilityKm": null,
+        "odometerDeltaAbs": 0,
+        "odometerDeltaPct": 0,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta=energy_event_or_trip_boundary_envelope"
+        ]
+      },
+      "reprocessingPattern": "LEDGER_EXISTS_WOULD_REVISE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": "4a8016fdee48fd83441622f6dc824b8c6a9246d42ee9b5bdb9a4ed7da13cca38",
+      "recommendedAction": "controlled_replay_would_revise_ledger",
+      "notes": []
+    },
+    {
+      "anonymizedTripId": "trip_2ac567add763",
+      "anonymizedVehicleId": "vehicle_69254e5f20da",
+      "tripStartedAt": "2026-07-08T14:00:00.000Z",
+      "tripEndedAt": "2026-07-08T15:00:00.000Z",
+      "attributionClass": "SINGLE_SETUP",
+      "anonymizedSetupId": "setup_65159cc0f3ea",
+      "attributedSetupStatus": "STORED",
+      "eligibleForLedger": true,
+      "attributableKm": 50,
+      "distance": {
+        "authoritativeKm": 50,
+        "odometerDeltaKm": 10,
+        "waypointPlausibilityKm": 48,
+        "odometerDeltaAbs": 40,
+        "odometerDeltaPct": 0.8,
+        "odometerConflict": true,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta=energy_event_or_trip_boundary_envelope",
+          "waypoint_points=8",
+          "odometer_conflict_with_authoritative_distance"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": "fe7c86431ca1011351fa3718d2d9aae12ccaac6057ae1814d0bd5a1b4700be34",
+      "recommendedAction": "resolve_odometer_distance_conflict_before_apply",
+      "notes": []
+    },
+    {
+      "anonymizedTripId": "trip_0b5095b3b703",
+      "anonymizedVehicleId": "vehicle_69254e5f20da",
+      "tripStartedAt": "2026-07-07T09:00:00.000Z",
+      "tripEndedAt": "2026-07-07T10:00:00.000Z",
+      "attributionClass": "SINGLE_SETUP",
+      "anonymizedSetupId": "setup_65159cc0f3ea",
+      "attributedSetupStatus": "STORED",
+      "eligibleForLedger": true,
+      "attributableKm": 22,
+      "distance": {
+        "authoritativeKm": 22,
+        "odometerDeltaKm": 22,
+        "waypointPlausibilityKm": null,
+        "odometerDeltaAbs": 0,
+        "odometerDeltaPct": 0,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta=energy_event_or_trip_boundary_envelope"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": "16f75ea2a300563f84ccd710f9516f306250924c0d2b50431a92b5abfdfca2aa",
+      "recommendedAction": "eligible_for_controlled_backfill_apply",
+      "notes": []
+    },
+    {
+      "anonymizedTripId": "trip_0b510f86edc1",
+      "anonymizedVehicleId": "vehicle_9a3d9008775a",
+      "tripStartedAt": "2026-02-01T10:00:00.000Z",
+      "tripEndedAt": "2026-02-01T11:00:00.000Z",
+      "attributionClass": "TRIP_BEFORE_FIRST_SETUP",
+      "anonymizedSetupId": null,
+      "attributedSetupStatus": null,
+      "eligibleForLedger": false,
+      "attributableKm": 0,
+      "distance": {
+        "authoritativeKm": 15,
+        "odometerDeltaKm": null,
+        "waypointPlausibilityKm": null,
+        "odometerDeltaAbs": null,
+        "odometerDeltaPct": null,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta_unavailable"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": null,
+      "recommendedAction": "skip_not_eligible_for_ledger",
+      "notes": []
+    },
+    {
+      "anonymizedTripId": "trip_f77979ad5867",
+      "anonymizedVehicleId": "vehicle_2486ad181ae5",
+      "tripStartedAt": "2026-07-05T10:00:00.000Z",
+      "tripEndedAt": "2026-07-05T11:00:00.000Z",
+      "attributionClass": "INCOMPLETE_HISTORY",
+      "anonymizedSetupId": null,
+      "attributedSetupStatus": null,
+      "eligibleForLedger": false,
+      "attributableKm": 0,
+      "distance": {
+        "authoritativeKm": 12,
+        "odometerDeltaKm": null,
+        "waypointPlausibilityKm": null,
+        "odometerDeltaAbs": null,
+        "odometerDeltaPct": null,
+        "odometerConflict": false,
+        "distanceSource": "trip_distance_km",
+        "plausibilityOnly": true,
+        "notes": [
+          "authoritative_distance=trip.distance_km",
+          "waypoints_plausibility_only_not_summed",
+          "odometer_delta_unavailable"
+        ]
+      },
+      "reprocessingPattern": "NONE",
+      "potentialDuplicate": false,
+      "projectedFingerprint": null,
+      "recommendedAction": "repair_mount_period_history_before_backfill",
+      "notes": []
+    }
+  ]
+}

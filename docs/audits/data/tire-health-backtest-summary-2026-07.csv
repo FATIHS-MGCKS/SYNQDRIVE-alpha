@@ -1,0 +1,21 @@
+anonymizedVehicleId,tireSetupClass,measurementTimestamp,wheelPosition,groundTruthSource,predictedTreadMm,measuredTreadMm,signedErrorMm,absoluteErrorMm,confidence,specSource,baselineSource,pressureCoverage,distanceSinceBaselineKm,modelVersion,reproducible,exclusionReason
+VEHICLE_001,MEASURED_BASELINE,2026-07-06 17:27:15.939,FL,manual,,7.18,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_001,MEASURED_BASELINE,2026-07-06 17:27:15.939,FR,manual,,7.18,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_001,MEASURED_BASELINE,2026-07-06 17:27:15.939,RL,manual,,7.18,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_001,MEASURED_BASELINE,2026-07-06 17:27:15.939,RR,manual,,7.18,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_002,MEASURED_BASELINE,2026-04-04 20:25:46.899,FL,documented_registration,,6.68,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_002,MEASURED_BASELINE,2026-04-04 20:25:46.899,FR,documented_registration,,6.43,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_002,MEASURED_BASELINE,2026-04-04 20:25:46.899,RL,documented_registration,,5.3,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_002,MEASURED_BASELINE,2026-04-04 20:25:46.899,RR,documented_registration,,5.3,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_004,CALIBRATION_PROJECTION,2026-04-04 19:38:12.332,FL,documented_registration,,8.04,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_004,CALIBRATION_PROJECTION,2026-04-04 19:38:12.332,FR,documented_registration,,7.99,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_004,CALIBRATION_PROJECTION,2026-04-04 19:38:12.332,RL,documented_registration,,7.65,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_004,CALIBRATION_PROJECTION,2026-04-04 19:38:12.332,RR,documented_registration,,7.65,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_004,CALIBRATION_PROJECTION,2026-06-24 01:09:27.734,FL,manual,7.812,8.04,-0.228,0.228,Medium,ai_spec,prior_manual_measurement,no,1221,TIRE_HEALTH_V2,true,
+VEHICLE_004,CALIBRATION_PROJECTION,2026-06-24 01:09:27.734,FR,manual,7.762,7.99,-0.228,0.228,Medium,ai_spec,prior_manual_measurement,no,1221,TIRE_HEALTH_V2,true,
+VEHICLE_004,CALIBRATION_PROJECTION,2026-06-24 01:09:27.734,RL,manual,7.452,7.65,-0.198,0.198,Medium,ai_spec,prior_manual_measurement,no,1221,TIRE_HEALTH_V2,true,
+VEHICLE_004,CALIBRATION_PROJECTION,2026-06-24 01:09:27.734,RR,manual,7.452,7.65,-0.198,0.198,Medium,ai_spec,prior_manual_measurement,no,1221,TIRE_HEALTH_V2,true,
+VEHICLE_005,MEASURED_BASELINE,2026-04-04 22:22:06.669,FL,documented_registration,,8.12,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_005,MEASURED_BASELINE,2026-04-04 22:22:06.669,FR,documented_registration,,8.1,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_005,MEASURED_BASELINE,2026-04-04 22:22:06.669,RL,documented_registration,,8.23,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of
+VEHICLE_005,MEASURED_BASELINE,2026-04-04 22:22:06.669,RR,documented_registration,,8.11,,,Low,ai_spec,manual_confirmed,no,,TIRE_HEALTH_V2,false,first_measurement_no_prior_anchor_for_as_of

@@ -194,6 +194,8 @@ export interface HighFrequencyReading {
   tractionBatteryPowerKw: number | null;
 }
 
+import { normalizeDimoTirePressureKpa } from './dimo-tire-pressure.normalizer';
+
 // ── Tire pressure reading from 3-minute buckets ──
 export interface TirePressureReading {
   timestamp: string;
@@ -707,19 +709,27 @@ export class DimoSegmentsService {
           timestamp: s.timestamp,
           frontLeft:
             typeof s.chassisAxleRow1WheelLeftTirePressure === 'number'
-              ? s.chassisAxleRow1WheelLeftTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow1WheelLeftTirePressure,
+                ).normalizedValue
               : null,
           frontRight:
             typeof s.chassisAxleRow1WheelRightTirePressure === 'number'
-              ? s.chassisAxleRow1WheelRightTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow1WheelRightTirePressure,
+                ).normalizedValue
               : null,
           rearLeft:
             typeof s.chassisAxleRow2WheelLeftTirePressure === 'number'
-              ? s.chassisAxleRow2WheelLeftTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow2WheelLeftTirePressure,
+                ).normalizedValue
               : null,
           rearRight:
             typeof s.chassisAxleRow2WheelRightTirePressure === 'number'
-              ? s.chassisAxleRow2WheelRightTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow2WheelRightTirePressure,
+                ).normalizedValue
               : null,
         }))
         .sort(

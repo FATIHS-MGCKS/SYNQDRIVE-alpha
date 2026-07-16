@@ -196,11 +196,12 @@ export function buildPersistedAiTireSpec(
     confidenceScore: number | null;
     completedAt: string | null;
     specSourceType?: string;
+    userConfirmedSpec?: boolean;
   },
 ): PersistedAiTireSpec {
   return {
     ...normalized,
-    userConfirmedSpec: true,
+    userConfirmedSpec: metadata.userConfirmedSpec ?? false,
     specSourceType: toNormalizedEnum(metadata.specSourceType ?? 'ai_agent', SPEC_SOURCE_TYPES) ?? 'ai_agent',
     tireSpecConfidence: metadata.confidenceScore,
     fetchedAt: metadata.completedAt ?? new Date().toISOString(),

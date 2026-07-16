@@ -1,4 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  isSyntheticPredictedGroundTruthLeak,
+} from './tire-ground-truth.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   TIRE_HEALTH_CONFIG,
@@ -15,7 +18,23 @@ import {
   ReplacementThresholdSource,
 } from './tire-health.config';
 import { DrivingImpactService, VehicleImpactForTire } from '../driving-impact/driving-impact.service';
-import { TireSetupStatus } from '@prisma/client';
+import {
+  buildTirePressureContext,
+  extractDimoPerWheelTimestamps,
+  extractDimoTpmsWarningFromPayload,
+} from './tire-pressure-context.builder';
+import type { TirePressureContext } from './tire-pressure-context.types';
+import {
+  resolveCapabilityGatedOdometerKm,
+  resolveCapabilityGatedSpeedKmh,
+} from './tire-dimo-context.builder';
+import type { TireDimoContext } from './tire-dimo-context.types';
+import { assertNoWheelSpeedTreadDerivation } from './tire-dimo-signal-capability';
+import {
+  resolveAxleRecommendedPressureBar,
+  resolveRecommendedTirePressure,
+} from './tire-recommended-pressure';
+import { TireSetupStatus, TireEvidenceSource } from '@prisma/client';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -89,6 +108,17 @@ export interface RegressionResult {
   isUsable: boolean;
 }
 
+export interface WearAnalysisOptions {
+  /** Historical replay instant — excludes measurements/trips after this time. */
+  asOf?: Date;
+  /** Pin a specific setup (replay); defaults to active setup. */
+  tireSetupId?: string;
+  /** Canonical pressure read model — when omitted, built from DIMO latest state only. */
+  pressureContext?: TirePressureContext;
+  /** Capability-gated DIMO tire context (ambient, odometer plausibility, TPMS). */
+  dimoContext?: import('./tire-dimo-context.types').TireDimoContext | null;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function clamp(value: number, min: number, max: number): number {
@@ -104,18 +134,6 @@ function factorLabel(v: number): string {
   if (v <= 1.06) return 'mild';
   if (v <= 1.12) return 'moderate';
   return 'significant';
-}
-
-function resolvePressureFreshness(
-  timestamp: Date | null | undefined,
-  hasData: boolean,
-): 'fresh' | 'aging' | 'stale' | 'no_data' {
-  if (!hasData) return 'no_data';
-  if (!timestamp) return 'aging';
-  const ageMs = Date.now() - timestamp.getTime();
-  if (ageMs < 2 * 60 * 60 * 1000) return 'fresh';
-  if (ageMs < 12 * 60 * 60 * 1000) return 'aging';
-  return 'stale';
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -288,6 +306,7 @@ export class TireWearModelService {
     pressureFactor: number,
     behaviorFactor: number,
     spec: AiTireSpec | null,
+    options?: { drivingImpactAvailable?: boolean },
   ): number {
     const hs = this.cfg.heatStress;
 
@@ -296,7 +315,10 @@ export class TireWearModelService {
       ? hs.highSpeedExposureBonus * ((avgSpeedKmh - hs.highSpeedThresholdKmh) / 30)
       : 0;
     const pressureComponent = (pressureFactor - 1.0) * 0.5;
-    const drivingComponent = (behaviorFactor - 1.0) * 0.3;
+    const drivingComponent =
+      options?.drivingImpactAvailable === true
+        ? 0
+        : (behaviorFactor - 1.0) * 0.3;
 
     const composite =
       hs.ambientWeight * ambientComponent +
@@ -323,14 +345,14 @@ export class TireWearModelService {
     axle: 'front' | 'rear',
     pressureLeft: number | null,
     pressureRight: number | null,
+    recommendedBar: number | null,
     spec: AiTireSpec | null,
   ): number {
     const p = this.cfg.pressure;
     if (pressureLeft == null && pressureRight == null) return 1.0;
+    if (recommendedBar == null || recommendedBar <= 0) return 1.0;
 
-    const nominal = (spec?.maxInflationKpa != null)
-      ? spec.maxInflationKpa / 100 * 0.9
-      : p.nominalPressureBar;
+    const nominal = recommendedBar;
 
     const vals = [pressureLeft, pressureRight].filter((v): v is number => v != null);
     const avgPressure = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -636,6 +658,7 @@ export class TireWearModelService {
     for (const p of sorted) {
       if (p.distanceKm <= 0) continue;
       if (p.actualTreadMm <= 0 || p.actualTreadMm > p.initialTreadMm + 1) continue;
+      if (isSyntheticPredictedGroundTruthLeak(p.actualTreadMm, p.predictedTreadMm)) continue;
       if (p.distanceKm - prevDist < reg.minDistanceKmBetweenPoints) continue;
       if (prevTread < Infinity && p.actualTreadMm - prevTread > reg.maxTreadJumpMm) continue;
 
@@ -663,19 +686,40 @@ export class TireWearModelService {
   //                      × k × interaction
   // ═══════════════════════════════════════════════════════════════════════════
 
-  async computeWearAnalysis(vehicleId: string): Promise<TreadEstimate | null> {
+  async computeWearAnalysis(
+    vehicleId: string,
+    options: WearAnalysisOptions = {},
+  ): Promise<TreadEstimate | null> {
+    const asOf = options.asOf;
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { fuelType: true, driveType: true, curbWeightKg: true, frontWeightDistributionPct: true },
     });
 
-    const setup = await this.prisma.vehicleTireSetup.findFirst({
-      where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
-      orderBy: { createdAt: 'desc' },
-      include: { measurements: { orderBy: { measuredAt: 'desc' } } },
-    });
+    const setup = options.tireSetupId
+      ? await this.prisma.vehicleTireSetup.findFirst({
+          where: { id: options.tireSetupId, vehicleId },
+          include: {
+            measurements: {
+              where: asOf ? { measuredAt: { lte: asOf } } : undefined,
+              orderBy: { measuredAt: 'desc' },
+            },
+          },
+        })
+      : await this.prisma.vehicleTireSetup.findFirst({
+          where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            measurements: {
+              where: asOf ? { measuredAt: { lte: asOf } } : undefined,
+              orderBy: { measuredAt: 'desc' },
+            },
+          },
+        });
 
     if (!setup) return null;
+
+    const dimoContext: TireDimoContext | null = options.dimoContext ?? null;
 
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
@@ -684,14 +728,50 @@ export class TireWearModelService {
         tirePressureFl: true, tirePressureFr: true,
         tirePressureRl: true, tirePressureRr: true,
         speedKmh: true,
+        providerSource: true,
         sourceTimestamp: true,
         providerFetchedAt: true,
         lastSeenAt: true,
+        rawPayloadJson: true,
       },
     });
 
     // ── AI spec + archetype resolution ──────────────────────────────────────
     const spec = parseAiTireSpec(setup.aiTireSpec);
+    const recommendedPressure = resolveRecommendedTirePressure(setup);
+    const recommendedFront = resolveAxleRecommendedPressureBar(
+      'front',
+      recommendedPressure,
+    );
+    const recommendedRear = resolveAxleRecommendedPressureBar(
+      'rear',
+      recommendedPressure,
+    );
+
+    const pressureContext =
+      options.pressureContext ??
+      buildTirePressureContext({
+        asOf,
+        recommendedPressure,
+        dimo: latestState
+          ? {
+              tirePressureFl: latestState.tirePressureFl,
+              tirePressureFr: latestState.tirePressureFr,
+              tirePressureRl: latestState.tirePressureRl,
+              tirePressureRr: latestState.tirePressureRr,
+              providerSource: latestState.providerSource,
+              sourceTimestamp: latestState.sourceTimestamp,
+              providerFetchedAt: latestState.providerFetchedAt,
+              lastSeenAt: latestState.lastSeenAt,
+              perWheelTimestamps: extractDimoPerWheelTimestamps(
+                latestState.rawPayloadJson,
+              ),
+              tpmsWarning: extractDimoTpmsWarningFromPayload(
+                latestState.rawPayloadJson,
+              ),
+            }
+          : null,
+      });
     const season = setup.tireSeason ?? 'ALL_SEASON';
     const archetype = resolveArchetype(spec, season);
     const tireSpecMatched = spec != null && (spec.matchedBrand != null || spec.matchedModel != null);
@@ -707,7 +787,24 @@ export class TireWearModelService {
     const initialFront = refNewTread.front;
     const initialRear = refNewTread.rear;
     const isStaggered = isStaggeredSetup(setup);
-    const currentOdometer = latestState?.odometerKm ?? null;
+    const currentOdometer = resolveCapabilityGatedOdometerKm(
+      dimoContext,
+      latestState?.odometerKm ?? null,
+    );
+    const gatedSpeedKmh = resolveCapabilityGatedSpeedKmh(
+      dimoContext,
+      latestState?.speedKmh ?? null,
+    );
+
+    // Audit guard — wheel speed must never proxy tread depth.
+    for (const blocked of dimoContext?.blockedWearDerivations ?? []) {
+      if (
+        blocked === 'chassisAxleRow1WheelLeftSpeed' ||
+        blocked === 'chassisAxleRow1WheelRightSpeed'
+      ) {
+        assertNoWheelSpeedTreadDerivation(blocked);
+      }
+    }
 
     // ── Regen factors ─────────────────────────────────────────────────────
     const regenPositional = this.computePositionalRegenFactors(vehicle?.fuelType ?? null, vehicle?.driveType ?? null);
@@ -728,64 +825,76 @@ export class TireWearModelService {
     const behaviorFactor = this.computeBehaviorFactor(impact, spec);
 
     // ── Temperature factor (from recent trips) ────────────────────────────
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(
+      (asOf ?? new Date()).getTime() - 90 * 24 * 60 * 60 * 1000,
+    );
     const recentTrips = await this.prisma.vehicleTrip.findMany({
-      where: { vehicleId, startTime: { gte: ninetyDaysAgo } },
+      where: {
+        vehicleId,
+        startTime: {
+          gte: ninetyDaysAgo,
+          ...(asOf ? { lte: asOf } : {}),
+        },
+      },
       select: { outsideTemperatureStartC: true, distanceKm: true },
       take: 200,
     });
     const baseTemperatureFactor = this.computeWeightedTemperatureFactor(recentTrips);
 
+    const ambientAvgForSeason =
+      dimoContext?.ambient.usable && dimoContext.ambient.weightedAvgTempC != null
+        ? dimoContext.ambient.weightedAvgTempC
+        : null;
+
     // ── Pressure factor (staleness + minimum readings aware) ────────────────
     const pressureReadings = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
+      pressureContext.frontLeft,
+      pressureContext.frontRight,
+      pressureContext.rearLeft,
+      pressureContext.rearRight,
     ].filter((v): v is number => v != null);
-    const pressureFreshness = resolvePressureFreshness(
-      latestState?.sourceTimestamp ??
-        latestState?.providerFetchedAt ??
-        latestState?.lastSeenAt ??
-        null,
-      pressureReadings.length > 0,
-    );
-    const minReadingsForActive = this.cfg.pressure.minReadingsForActive ?? 2;
-    const pressureInputsActive =
-      pressureFreshness !== 'stale' &&
-      pressureReadings.length >= minReadingsForActive;
+    const pressureFreshness = pressureContext.overallFreshness;
+    const pressureInputsActive = pressureContext.wearEligibility.eligible;
     const pressureFactorFront = this.computePressureFactor(
       'front',
-      pressureInputsActive ? (latestState?.tirePressureFl ?? null) : null,
-      pressureInputsActive ? (latestState?.tirePressureFr ?? null) : null,
+      pressureInputsActive ? (pressureContext.frontLeft ?? null) : null,
+      pressureInputsActive ? (pressureContext.frontRight ?? null) : null,
+      pressureInputsActive ? recommendedFront : null,
       spec,
     );
     const pressureFactorRear = this.computePressureFactor(
       'rear',
-      pressureInputsActive ? (latestState?.tirePressureRl ?? null) : null,
-      pressureInputsActive ? (latestState?.tirePressureRr ?? null) : null,
+      pressureInputsActive ? (pressureContext.rearLeft ?? null) : null,
+      pressureInputsActive ? (pressureContext.rearRight ?? null) : null,
+      pressureInputsActive ? recommendedRear : null,
       spec,
     );
 
     // ── Heat stress factor (upgraded temperature) ─────────────────────────
     const avgPressureFactor = (pressureFactorFront + pressureFactorRear) / 2;
     const temperatureFactor = this.computeHeatStressFactor(
-      baseTemperatureFactor, latestState?.speedKmh ?? null, avgPressureFactor, behaviorFactor, spec,
+      baseTemperatureFactor,
+      gatedSpeedKmh,
+      avgPressureFactor,
+      behaviorFactor,
+      spec,
+      { drivingImpactAvailable: impact != null },
     );
 
     // ── Load factor ───────────────────────────────────────────────────────
     const loadFactor = this.computeLoadFactor(vehicle?.curbWeightKg ?? null, vehicle?.driveType ?? null, spec);
 
     // ── Season mismatch ───────────────────────────────────────────────────
-    const avgTemp = recentTrips.length > 0
+    const tripAvgTemp = recentTrips.length > 0
       ? recentTrips.filter(t => t.outsideTemperatureStartC != null).reduce((s, t) => s + (t.outsideTemperatureStartC ?? 0), 0) / Math.max(1, recentTrips.filter(t => t.outsideTemperatureStartC != null).length)
       : null;
+    const avgTemp = ambientAvgForSeason ?? tripAvgTemp;
     const highwayPct = impact?.highwaySharePct ?? null;
     const seasonMismatchFactor = this.computeSeasonMismatchFactor(season, avgTemp, highwayPct);
 
     // ── Interaction penalty ───────────────────────────────────────────────
     const interactionPenalty = this.computeInteractionPenalty(
-      behaviorFactor, avgPressureFactor, temperatureFactor, seasonMismatchFactor, latestState?.speedKmh ?? null,
+      behaviorFactor, avgPressureFactor, temperatureFactor, seasonMismatchFactor, gatedSpeedKmh,
     );
 
     // ── Model-aware expected life ─────────────────────────────────────────
@@ -825,7 +934,11 @@ export class TireWearModelService {
 
     try {
       const dataPoints = await this.prisma.tireWearDataPoint.findMany({
-        where: { vehicleId, tireSetId: setup.id },
+        where: {
+          vehicleId,
+          tireSetId: setup.id,
+          ...(asOf ? { createdAt: { lte: asOf } } : {}),
+        },
         orderBy: { createdAt: 'asc' },
       });
       dataPointCount = dataPoints.length;
@@ -881,7 +994,12 @@ export class TireWearModelService {
       }
     } else {
       fl = initialFront; fr = initialFront; rl = initialRear; rr = initialRear;
-      currentTreadSource = 'initial_manual_plus_wear';
+      const baselineEvidence = setup.initialTreadEvidenceSource as TireEvidenceSource | null | undefined;
+      if (baselineEvidence === TireEvidenceSource.DEFAULT_ASSUMPTION) {
+        currentTreadSource = 'fallback_estimate';
+      } else {
+        currentTreadSource = 'initial_manual_plus_wear';
+      }
       if (setup.installedOdometerKm != null && currentOdometer != null) {
         const kmDriven = currentOdometer - setup.installedOdometerKm;
         if (kmDriven > 0) {
@@ -929,13 +1047,12 @@ export class TireWearModelService {
       if (val > 1.02 && topDrivers.length < 3) topDrivers.push(name);
     }
 
-    const hints: string[] = [];
-    if (pressureFreshness === 'stale') {
-      hints.push('Pressure data is stale; pressure factor fallback is neutral');
-    } else if (pressureReadings.length > 0 && pressureReadings.length < minReadingsForActive) {
-      hints.push('Pressure data incomplete; confidence reduced for pressure-based effects');
+    const hints: string[] = [...pressureContext.qualityWarnings];
+    if (!pressureInputsActive) {
+      hints.push('Pressure factor neutral — eligibility gates not met.');
+    } else if (pressureFactorFront > 1.06 || pressureFactorRear > 1.06) {
+      hints.push('Check tire pressures — underinflation detected');
     }
-    if (pressureFactorFront > 1.06 || pressureFactorRear > 1.06) hints.push('Check tire pressures — underinflation detected');
     if (behaviorFactor > 1.15) hints.push('Aggressive driving behavior is accelerating wear');
     if (seasonMismatchFactor > 1.02) hints.push('Tire season may not match current operating conditions');
     if (loadFactor > 1.06) hints.push('Vehicle weight above average for tire class');

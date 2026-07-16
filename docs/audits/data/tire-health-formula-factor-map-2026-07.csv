@@ -1,0 +1,40 @@
+factor,sourceFile,sourceFunction,inputUnit,outputUnit,defaultValue,minClamp,maxClamp,formula,currentUsage,confidenceImpact,risk,findingSeverity
+baseWearMmPerKmFront,tire-wear-model.service.ts,computeWearAnalysis,mm/km (derived),mm/km,(refNew-operational)/expectedLifeKm,0,unbounded,usableFront/baseFrontLifeKm,core wear projection,indirect via modelConfidence,Medium,none
+baseWearMmPerKmRear,tire-wear-model.service.ts,computeWearAnalysis,mm/km,mm/km,same rear axle,0,unbounded,usableRear/baseRearLifeKm,core,indirect,Medium,none
+effectiveWearRateKmPerMm,tire-wear-model.service.ts,computeWearAnalysis,composite,km/mm,1/effectiveWear,1,999999,inverse of product formula,remaining km + wear rate display,remainingKmConfidenceDiscount,P1,none
+axleFactorFront,tire-wear-model.service.ts,computeAxleFactor,dimensionless,dimensionless,~1.03-1.08,0.88,1.22,drivetrain*steering*loadBiasDamped,multiplicative,P1,Low,none
+axleFactorRear,tire-wear-model.service.ts,computeAxleFactor,dimensionless,dimensionless,~0.96-1.08,0.88,1.22,same rear axle,multiplicative,Low,none
+usageFactor,tire-wear-model.service.ts,computeUsageFactor,percent shares,dimensionless,1.0,0.93,1.15,weighted city/highway/country from DrivingImpact,multiplicative,dataCompleteness +10 if impact,Medium,none
+behaviorFactor,tire-wear-model.service.ts,computeBehaviorFactor,scores 0-100,dimensionless,1.0,0.97,1.35,interpolate anchors * aggressiveDrivingSensitivity,multiplicative,drivingImpactAvailable +10,High,none
+temperatureFactorBase,tire-wear-model.service.ts,computeWeightedTemperatureFactor,degC,dimensionless,1.0,0.98,1.12,distance-weighted trip start temps,feeds heat stress,none,Medium,none
+heatStressFactor,tire-wear-model.service.ts,computeHeatStressFactor,composite,dimensionless,1.0,0.98,1.12,ambient*0.4+speed*0.25+pressure*0.2+driving*0.15 * heatSensitivity,replaces simple temp in V2,none,Medium,calendar season separate
+pressureFactorFront,tire-wear-model.service.ts,computePressureFactor,bar assumed,bar,dimensionless,1.0,1.00,1.18,1+stress*underinflationSensitivity,requires >=3 readings fresh,multiplicative,tirePressureAvailable +3,High,P1 if kPa/bar wrong
+pressureFactorRear,tire-wear-model.service.ts,computePressureFactor,bar,bar,dimensionless,1.0,1.00,1.18,same rear axle,multiplicative,High,P1
+loadFactor,tire-wear-model.service.ts,computeLoadFactor,kg,dimensionless,1.0,0.97,1.15,1+(weight-1500)/1000*0.04 * payloadBias,multiplicative,none,Low,none
+seasonMismatchFactor,tire-wear-model.service.ts,computeSeasonMismatchFactor,degC+season,dimensionless,1.0,1.00,1.10,season vs avgTemp penalties,multiplicative,none,Medium,calendar not live weather
+interactionPenalty,tire-wear-model.service.ts,computeInteractionPenalty,multi-factor,dimensionless,1.0,1.00,1.08,sum conditional penalties if factors>threshold,multiplicative,none,Medium,possible double-count with heat+pressure
+regenBrakingFactorFront,tire-wear-model.service.ts,computePositionalRegenFactors,fuel+drive,dimensionless,1.0,0.78,1.0,EV/Hybrid axle table,multiplicative wear reducer,none,Medium,not double with behavior if regen braking counted
+regenBrakingFactorRear,tire-wear-model.service.ts,computePositionalRegenFactors,fuel+drive,dimensionless,1.0,0.78,1.0,rear axle table,multiplicative,none,Medium,none
+kFactorFront,tire-wear-model.service.ts,calibrateKFactor,measurement history,dimensionless,1.0,0.75,1.30,EMA(actualWear/predictedWear),calibration multiplier,kFactorStabilized +5,Medium,none
+kFactorRear,tire-wear-model.service.ts,calibrateKFactor,dimensionless,dimensionless,1.0,0.75,1.30,rear axle EMA,multiplicative,Medium,none
+staggeredLifeAdjustment,tire-wear-model.service.ts,computeStaggeredLifeAdjustment,width mm,dimensionless,1.0,0.75,1.15,1-(width-205)/10*0.03,scales expectedLife per axle,none,Low,none
+regressionBlend,tire-wear-model.service.ts,blendFormulaAndRegression,data points,mm wear,formula only,0,100% regression,linear blend 5-15 points,tread projection when measurements exist,regressionConfidence,Medium,none
+wheelHealthPercent,tire-health.service.ts,computeWheelPercentV2,tread mm,percent 0-100,N/A,0,100,(tread-operational)/(refNew-operational)*100,set health + UI,feeds confidence level,Low,none
+setLevelHealthPercent,tire-health.service.ts,recalculate,wheel percents,percent,0,0,100,0.55*min+0.45*avg wheel percents,overallHealthPercent,none,Medium,min hides single bad tire partially
+estimatedRemainingKm,tire-wear-model.service.ts,computeWearAnalysis,mm+wear rate,km,0,0,unbounded,remainingMm/max(effectiveWearFront,effectiveWearRear),alerts + summary,confDiscount 0.75-1.0,High,uses lowest tread but max wear rate
+remainingKmConfidenceDiscount,tire-health.config.ts,remainingKmConfidenceDiscount,confidence label,multiplier,1.0,0.75,1.0,HIGH=1 MED=0.9 LOW=0.75,applied in recalculate,explicit,Medium,not double with legacy score
+wearRateMmPer1000km,tire-health.service.ts,recalculate,km/mm,mm/1000km,derived,0,unbounded,1000/effectiveRate,display + snapshots,none,Low,none
+treadProjectionFromMeasurement,tire-wear-model.service.ts,computeWearAnalysis,km since measure,mm,mm measured,0,refNew,tread-kmSince/rate,calibration_projection source,HIGH if recent measure,Medium,odometer rollback risk
+treadProjectionNoMeasurement,tire-wear-model.service.ts,computeWearAnalysis,km since install,mm,refNew tread,0,refNew,initial-km/rate,initial_manual_plus_wear,LOW,High,8mm fallback poisons baseline
+unevenWearSideDelta,tire-status.ts,classifyUnevenWear,mm,mm,0,N/A,N/A,|FL-FR| |RL-RR|,alerts WATCH/WARNING,none,Medium,none
+unevenWearAxleDelta,tire-status.ts,classifyUnevenWear,mm,mm,0,N/A,N/A,|frontAvg-rearAvg|,rotation recommendation,none,Low,staggered exempt in alerts
+aggregateTireStatus,tire-status.ts,aggregateTireStatus,status enum,status,worst wins,N/A,N/A,max rank CRITICAL>WARNING>WATCH,canonical overallStatus,none,Medium,none
+classifyTreadStatus,tire-status.ts,classifyTreadStatus,mm,mm bands,UNKNOWN,N/A,N/A,season bands + legal 1.6,safety status,none,High,separate from operational replace threshold
+classifySeasonStatus,tire-status.ts,classifySeasonStatus,calendar month,status,GOOD,N/A,N/A,winterMonths summerMonths,season suitability UI,none,Low,calendar not weather
+rotationRecommendation,tire-health.service.ts,detectAlerts,km+history,alert,N/A,N/A,N/A,km since rotation vs 12000/15000 thresholds,alerts,none,Low,staggered skips axle rotation alert
+measurementOverdue,tire-status.ts,classifyMeasurementOverdue,days,boolean,false,N/A,N/A,age>=180 days,warning,LOW confidence if no measure,Medium,none
+tireAgeDot,tire-status.ts,dotAgeYears,dot code,years,null,N/A,N/A,WWYY parse,advisory alerts,none,Low,none
+legalMinTreadMm,tire-health.config.ts,constant,mm,mm,1.6,N/A,N/A,fixed,CRITICAL threshold,none,High,EU legal
+defaultInitialTreadFallbackMm,tire-identity.service.ts,ensureTiresForSetup,mm,mm,8.0,N/A,N/A,hardcoded literal,Tire row creation,P0 shows as real tread,P0,P0
+resolveReferenceNewTread,tire-health.config.ts,resolveReferenceNewTread,multi,mm,8.0 fallback,4-16 AI,none,priority chain,reference tread only,initialTreadExists +20 if manual,High,AI used if manual partial
+resolveReplacementThreshold,tire-health.config.ts,resolveReplacementThreshold,multi,mm,3.0 season,1.6+,none,priority chain,operational replace,none,High,none

@@ -388,21 +388,25 @@ function buildBrakeItem(input: ForecastEngineInput, trend: MileageTrend): Planni
 
 function buildTireItem(input: ForecastEngineInput, trend: MileageTrend): PlanningItem | null {
   const { tires } = input;
-  if (!tires || tires.overallRemainingKm == null) return null;
+  const remaining = tires?.evidencePresentation?.remainingKm;
+  const kmRaw = remaining?.exactKm ?? remaining?.bandMinKm ?? tires?.estimatedRemainingKm ?? tires?.overallRemainingKm;
+  if (!tires || kmRaw == null || !remaining?.reliable && remaining?.bandMinKm == null && tires.estimatedRemainingKm == null) {
+    if (!tires?.predictionCapable) return null;
+  }
+  if (kmRaw == null) return null;
 
-  const kmUntil = Math.max(0, Math.round(tires.overallRemainingKm));
+  const kmUntil = Math.max(0, Math.round(kmRaw));
   const daysUntil = kmUntil > 0 ? Math.round(kmUntil / trend.dailyKm) : 0;
   if (!withinHorizon(kmUntil, daysUntil)) return null;
 
-  // Scale confidence from tire model's own confidence score
   const tireConf: MileageTrend['confidence'] =
-    (tires.confidenceScore ?? 0) >= 70 ? trend.confidence
-    : (tires.confidenceScore ?? 0) >= 40 ? 'medium'
+    tires.confidence === 'HIGH' ? trend.confidence
+    : tires.confidence === 'MEDIUM' ? 'medium'
     : 'low';
 
+  const ui = tires.evidencePresentation?.uiStatus ?? tires.overallStatus;
   const isReplacement =
-    tires.actionState === 'REPLACE' ||
-    (tires.overallPercent ?? 100) < 20;
+    tires.actionState === 'REPLACE' || ui === 'CRITICAL';
 
   return {
     type: 'tire_check',

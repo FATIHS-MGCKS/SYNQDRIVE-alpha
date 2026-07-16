@@ -21,6 +21,13 @@ import {
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import { getShortModel } from '../../data/vehicles';
+import {
+  tireDefaultAssumptionWarning,
+  tireLowestTreadLabel,
+  tireRemainingKmLabel,
+  tireStatusToSegment,
+  tireUiStatusLabel,
+} from '../../lib/tire-health-detail-ui';
 import { useHealthVehicleDetailData } from '../../hooks/useHealthVehicleDetailData';
 import {
   HEALTH_DETAIL_TABS,
@@ -244,12 +251,7 @@ export function HealthVehicleDetailPanel({
 
     if (activeTab === 'tires') {
       const s = data.tiresSummary;
-      const pct = s?.overallPercent;
-      const showPct =
-        pct != null &&
-        Number.isFinite(pct) &&
-        (s?.displayMode === 'MEASURED' || s?.displayMode === 'ESTIMATED');
-      const tireSegment = segmentFromHealthState(s?.overallStatus ?? health?.modules.tires?.state, showPct ? pct : null);
+      const tireSeg = tireStatusToSegment(s?.evidencePresentation?.uiStatus ?? s?.overallStatus ?? 'UNKNOWN');
       return (
         <div className="space-y-3">
         <HealthModuleCard
@@ -257,46 +259,38 @@ export function HealthVehicleDetailPanel({
           icon={CircleDot}
           rentalModule={health?.modules.tires}
           keyValues={[
-            { label: 'Overall status', value: s?.overallStatus ?? '—' },
+            { label: 'Status', value: tireUiStatusLabel(s) },
+            { label: 'Lowest tread', value: tireLowestTreadLabel(s) },
+            { label: 'Remaining km', value: tireRemainingKmLabel(s) },
             {
-              label: 'Lowest tread',
-              value: s?.displayTreadMm != null ? `${s.displayTreadMm.toFixed(1)} mm` : '—',
-            },
-            {
-              label: 'Remaining km',
-              value:
-                s?.overallRemainingKm != null
-                  ? `~${Math.round(s.overallRemainingKm).toLocaleString('de-DE')} km`
-                  : '—',
-            },
-            {
-              label: 'Last measured',
-              value: s?.lastMeasurementAt
-                ? new Date(s.lastMeasurementAt).toLocaleDateString('de-DE')
+              label: 'Last tread measurement',
+              value: s?.lastActualMeasurementAt ?? s?.lastMeasurementAt
+                ? new Date(s.lastActualMeasurementAt ?? s.lastMeasurementAt!).toLocaleDateString('de-DE')
                 : '—',
             },
-            ...(showPct
-              ? [{ label: s?.displayMode === 'ESTIMATED' ? 'Estimated tread life' : 'Tread life', value: `${Math.round(pct ?? 0)}%` }]
-              : []),
+            { label: 'Confidence', value: s?.confidence ?? '—' },
+            { label: 'Spec source', value: s?.evidencePresentation?.tireSpecSourceLabelDe ?? '—' },
           ]}
           indicator={(
             <SegmentedHealthIndicator
-              level={tireSegment.level}
-              tone={tireSegment.tone}
-              label={tireSegment.label}
-              ariaLabel={`Tires: ${tireSegment.label}`}
+              level={tireSeg.level}
+              tone={tireSeg.tone}
+              label={tireUiStatusLabel(s)}
+              ariaLabel={`Tires: ${tireUiStatusLabel(s)}`}
             />
           )}
-          percent={showPct ? pct : null}
-          percentLabel={s?.displayMode === 'ESTIMATED' ? 'Estimated tread life' : 'Tread life'}
-          showPercent={showPct}
+          percent={null}
+          percentLabel={undefined}
+          showPercent={false}
         />
         <ModuleServiceFooter
           vehicleId={vehicle.id}
           module="tires"
           rentalModule={health?.modules.tires}
           contextLines={[
-            s?.displayTreadMm != null ? `Profiltiefe: ${s.displayTreadMm.toFixed(1)} mm` : '',
+            tireLowestTreadLabel(s),
+            tireDefaultAssumptionWarning(s) ?? '',
+            s?.confidence ? `Confidence: ${s.confidence}` : '',
           ].filter(Boolean)}
           onOpenServiceCenter={onOpenServiceCenter}
           onOpenExistingTask={onOpenExistingTask}

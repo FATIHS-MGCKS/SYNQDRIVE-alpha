@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireHealthService } from '../../vehicle-intelligence/tires/tire-health.service';
+import { localizeTireAlertAction, localizeTireAlertMessage } from '../../vehicle-intelligence/tires/tire-health-alert.registry';
+import type { TireHealthAlertReasonCode } from '../../vehicle-intelligence/tires/tire-health-alert.types';
 import { isAlertableStatus } from '../../vehicle-intelligence/tires/tire-status';
 import {
   DetectorContext,
@@ -88,6 +90,7 @@ export class TireCriticalDetector implements InsightDetector {
         summary.alerts.find((a) => a.severity === 'critical') ??
         summary.alerts.find((a) => a.severity === 'warning') ??
         null;
+      const reasonCode = primaryAlert?.reasonCode as TireHealthAlertReasonCode | undefined;
       const treadTxt =
         summary.lowestTreadMm != null
           ? `${summary.lowestTreadMm.toFixed(1)} mm${summary.lowestTreadPosition ? ` (${summary.lowestTreadPosition})` : ''}`
@@ -97,13 +100,24 @@ export class TireCriticalDetector implements InsightDetector {
         severity === InsightSeverity.CRITICAL
           ? 'Reifen kritisch — Austausch nötig'
           : 'Reifen beobachten — Austausch planen';
+      const structuredMessage = reasonCode
+        ? localizeTireAlertMessage(reasonCode, 'de', {
+            position: primaryAlert?.position ?? null,
+            value: primaryAlert?.value ?? null,
+            displayMode: primaryAlert?.displayMode ?? summary.displayMode,
+          })
+        : null;
       const message =
+        structuredMessage ??
         primaryAlert?.message ??
         (severity === InsightSeverity.CRITICAL
           ? `Profiltiefe bei ${treadTxt} — Reifen umgehend austauschen.`
           : `Profiltiefe bei ${treadTxt} — Austausch zeitnah einplanen.`);
 
-      const reasons: string[] = [primaryAlert?.message ?? `Reifenzustand ${overall}`];
+      const reasons: string[] = [reasonCode ?? primaryAlert?.message ?? `Reifenzustand ${overall}`];
+      if (reasonCode) {
+        reasons.push(localizeTireAlertAction(reasonCode, 'de'));
+      }
       reasons.push(hasMeasurement ? 'Basis: gemessene Profiltiefe' : 'Basis: geschätzte Profiltiefe');
       if (summary.measurementAgeDays != null) {
         reasons.push(`Letzte Messung ${summary.measurementAgeDays} Tage her`);
@@ -133,7 +147,7 @@ export class TireCriticalDetector implements InsightDetector {
         },
         reasons,
         confidence: hasMeasurement ? 0.92 : 0.6,
-        dedupeKey: `tire_critical:${v.id}`,
+        dedupeKey: primaryAlert?.dedupeKey ?? `tire_critical:${v.id}`,
         groupKey: v.homeStationId ? `tire_critical:${v.homeStationId}` : 'tire_critical_fleet',
       });
     }

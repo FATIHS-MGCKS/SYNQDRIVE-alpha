@@ -36,6 +36,7 @@ export function buildLatestSnapshotQuery(tokenId: number): string {
         chassisAxleRow1WheelRightTirePressure { timestamp value }
         chassisAxleRow2WheelLeftTirePressure { timestamp value }
         chassisAxleRow2WheelRightTirePressure { timestamp value }
+        chassisTireSystemIsWarningOn { timestamp value }
         isIgnitionOn { timestamp value }
         obdIsPluggedIn { timestamp value }
         connectivityCellularIsJammingDetected { timestamp value }

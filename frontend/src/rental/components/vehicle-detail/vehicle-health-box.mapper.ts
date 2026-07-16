@@ -43,6 +43,13 @@ import {
   type SegmentTone,
 } from '../../lib/health-segment-display';
 import {
+  tireHasTrackableData,
+  tireRemainingKmLabel,
+  tireStatusToSegment,
+  tireUiStatus,
+  tireUiStatusLabel,
+} from '../../lib/tire-health-detail-ui';
+import {
   mapDataCoverageDisplay,
   mapHealthSeverityDisplay,
   type HealthSeverityDisplay,
@@ -420,7 +427,9 @@ export function buildVehicleHealthBoxViewModel(params: {
   const rentalCriticalCount = rentalReasons.filter((r) => r.state === 'critical').length;
   const rentalWarningCount = rentalReasons.filter((r) => r.state === 'warning').length;
 
-  const tiresVal = tires?.overallPercent ?? vehicleTiresFallback ?? 0;
+  const tiresTracked = tireHasTrackableData(tires);
+  const tireUi = tireUiStatus(tires);
+  const tiresVal = tires?.displayTreadMm ?? 0;
   const batteryPubState = battery?.lv?.publicationState ?? battery?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
   const soh =
     battery?.lv?.healthPercent ??
@@ -457,7 +466,6 @@ export function buildVehicleHealthBoxViewModel(params: {
   const batteryVal = batteryScore ?? (batterySeverity === 'critical' ? 15 : batterySeverity === 'warning' ? 45 : batterySeverity === 'watch' ? 65 : batteryVoltage.kind === 'unavailable' ? 0 : 85);
 
   const brakesTracked = brakes?.overallCondition != null && brakes.overallCondition !== 'UNKNOWN';
-  const tiresTracked = tires?.overallPercent != null || vehicleTiresFallback > 0;
   const batteryTracked = batteryScore != null || batteryVoltage.kind !== 'unavailable';
   const trackedFlags = [brakesTracked, tiresTracked, batteryTracked];
   const untrackedCount = 3 - trackedFlags.filter(Boolean).length;
@@ -468,12 +476,12 @@ export function buildVehicleHealthBoxViewModel(params: {
 
   const localCriticalCount = [
     brakeCond === 'CRITICAL',
-    tiresTracked && (tireCanon ? tireCanon === 'CRITICAL' : tiresVal < 30),
+    tiresTracked && (tireUi === 'CRITICAL' || tireUi === 'REVIEW_REQUIRED'),
     batteryTracked && batterySeverity === 'critical',
   ].filter(Boolean).length;
   const localDueSoonCount = [
     brakeCond === 'WARNING' || brakeCond === 'WATCH',
-    tiresTracked && (tireCanon ? (tireCanon === 'WARNING' || tireCanon === 'WATCH') : (tiresVal >= 30 && tiresVal < 60)),
+    tiresTracked && (tireUi === 'WARNING' || tireUi === 'MEASUREMENT_REQUIRED' || tireUi === 'LIMITED_DATA'),
     batteryTracked && (batterySeverity === 'warning' || batterySeverity === 'watch'),
   ].filter(Boolean).length;
 
@@ -504,12 +512,13 @@ export function buildVehicleHealthBoxViewModel(params: {
   })();
 
   const tiresDetail = (() => {
-    const remKm = tires?.overallRemainingKm;
-    if (remKm != null) return `~${Math.round(remKm / 1000)}k km`;
+    if (!tiresTracked) return 'No tracking';
+    const rem = tireRemainingKmLabel(tires, 'en');
+    if (rem !== '—') return rem;
     if (tires?.actionState === 'REPLACE') return 'Replace now';
     if (tires?.actionState === 'PLAN_SERVICE') return 'Plan service';
     if (tires?.actionState === 'CHECK_SOON') return 'Check soon';
-    return tiresTracked ? 'Model estimate unavailable' : 'No tracking';
+    return tireUiStatusLabel(tires, 'en');
   })();
 
   const batteryDetail = (() => {
@@ -538,7 +547,12 @@ export function buildVehicleHealthBoxViewModel(params: {
   })();
 
   const brakeSegment = segmentFromHealthState(brakesTracked ? brakeCond : 'UNKNOWN');
-  const tireSegment = segmentFromHealthState(tireCanon ?? (tiresTracked ? undefined : 'UNKNOWN'), tiresTracked ? tiresVal : null);
+  const tireSeg = tireStatusToSegment(tireUi);
+  const tireSegment = {
+    level: tireSeg.level,
+    tone: tireSeg.tone,
+    label: tireUiStatusLabel(tires, 'en'),
+  };
   const batterySegment = segmentFromHealthState(batteryTracked ? batterySeverity : 'UNKNOWN');
 
   const healthItems: VehicleHealthBoxViewModel['healthItems'] = [
@@ -572,16 +586,24 @@ export function buildVehicleHealthBoxViewModel(params: {
       tracked: tiresTracked,
       rowStyle: resolveModuleRowStyle(
         rentalHealth?.modules.tires,
-        getWearStatus(tiresVal, tiresTracked),
+        tiresTracked
+          ? {
+              label: tireUiStatusLabel(tires, 'en'),
+              labelColor: tireUi === 'CRITICAL' ? 'text-[color:var(--status-critical)]' : 'text-foreground',
+              bar: tireUi === 'CRITICAL' ? 'bg-[color:var(--status-critical)]' : tireUi === 'WARNING' ? 'bg-[color:var(--status-watch)]' : 'bg-[color:var(--status-positive)]',
+              barPct: tires?.overallPercent ?? 0,
+              accentRing: '',
+            }
+          : getWearStatus(0, false),
       ),
       showBadge: moduleShowBadge(
         rentalHealth?.modules.tires,
-        tiresTracked && (tireCanon ? tireCanon !== 'GOOD' : tiresVal < 60),
+        tiresTracked && tireUi !== 'GOOD' && tireUi !== 'UNKNOWN',
       ),
       isCalibrating: false,
       isStabilizing: false,
       isUntracked: !tiresTracked,
-      showPercent: true,
+      showPercent: false,
       segmentLevel: tireSegment.level,
       segmentTone: tireSegment.tone,
       segmentLabel: tireSegment.label,

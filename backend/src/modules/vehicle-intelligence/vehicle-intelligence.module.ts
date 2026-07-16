@@ -6,6 +6,7 @@ import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireWearModelService } from './tires/tire-wear-model.service';
 import { TireHealthService } from './tires/tire-health.service';
+import { TireHealthAlertService } from './tires/tire-health-alert.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { TireIdentityService } from './tires/tire-identity.service';
 import { BrakesService } from './brakes/brakes.service';
@@ -13,6 +14,14 @@ import { BrakeHealthService } from './brakes/brake-health.service';
 import { BrakeEvidenceService } from './brakes/brake-evidence.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { BrakeRegistrationBackfillService } from './brakes/brake-registration-backfill.service';
+import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-backfill.service';
+import { TireTripUsageBackfillService } from './tires/tire-trip-usage-backfill.service';
+import { TireTripUsageLedgerReconciliationService } from './tires/tire-trip-usage-ledger-reconciliation.service';
+import { TireTripUsageService } from './tires/tire-trip-usage.service';
+import { TireMetricsService } from './tires/tire-metrics.service';
+import { TireHealthObservabilityService } from './tires/tire-health-observability.service';
+import { TirePredictionValidationService } from './tires/tire-prediction-validation.service';
+import { TireHealthReplayService } from './tires/tire-health-replay.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
@@ -109,6 +118,9 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TireHealthAlertService,
+    TirePredictionValidationService,
+    TireHealthReplayService,
     TireLifecycleService,
     TireIdentityService,
     BrakesService,
@@ -116,6 +128,12 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeEvidenceService,
     BrakeLifecycleService,
     BrakeRegistrationBackfillService,
+    TireOdometerAnchorBackfillService,
+    TireTripUsageBackfillService,
+    TireTripUsageLedgerReconciliationService,
+    TireTripUsageService,
+    TireMetricsService,
+    TireHealthObservabilityService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
@@ -186,6 +204,9 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TireHealthAlertService,
+    TirePredictionValidationService,
+    TireHealthReplayService,
     TireLifecycleService,
     TireIdentityService,
     BrakesService,
@@ -193,6 +214,12 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeEvidenceService,
     BrakeLifecycleService,
     BrakeRegistrationBackfillService,
+    TireOdometerAnchorBackfillService,
+    TireTripUsageBackfillService,
+    TireTripUsageLedgerReconciliationService,
+    TireTripUsageService,
+    TireMetricsService,
+    TireHealthObservabilityService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,

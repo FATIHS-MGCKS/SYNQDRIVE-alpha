@@ -23,6 +23,12 @@ import {
   HEALTH_MODULE_LABELS,
   RENTAL_HEALTH_STATE_LABELS,
 } from '../lib/operatorVehicleQuickView.utils';
+import {
+  tireDefaultAssumptionWarning,
+  tireLowestTreadLabel,
+  tireRemainingKmLabel,
+  tireUiStatusLabel,
+} from '../../rental/lib/tire-health-detail-ui';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -423,17 +429,15 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
             />
             <InfoTile
               label="Profil (min.)"
-              value={
-                data.tireSummary.displayTreadMm != null
-                  ? `${data.tireSummary.displayTreadMm.toFixed(1)} mm`
-                  : data.tireSummary.lowestTreadMm != null
-                    ? `${data.tireSummary.lowestTreadMm.toFixed(1)} mm`
-                    : '—'
-              }
+              value={tireLowestTreadLabel(data.tireSummary)}
             />
             <InfoTile
               label="Status"
-              value={data.tireSummary.overallStatus ?? data.tireSummary.healthStatus ?? '—'}
+              value={tireUiStatusLabel(data.tireSummary)}
+            />
+            <InfoTile
+              label="Restlaufzeit"
+              value={tireRemainingKmLabel(data.tireSummary)}
             />
             <InfoTile
               label="Modus"

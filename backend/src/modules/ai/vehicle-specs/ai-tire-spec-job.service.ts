@@ -7,7 +7,8 @@ import {
   validateAiTireSpec,
   buildPersistedAiTireSpec,
 } from '../../vehicle-intelligence/tires/ai-tire-spec-normalizer';
-import { TireSetupStatus } from '@prisma/client';
+import { TireSetupStatus, TireEvidenceSource } from '@prisma/client';
+import { buildSetupBaselineFields } from '../../vehicle-intelligence/tires/tire-evidence-provenance';
 
 function mapTireSpecAliases(
   raw: Record<string, unknown> | null,
@@ -167,11 +168,26 @@ export class AiTireSpecJobService {
       confidenceScore: job.confidenceScore,
       completedAt: job.completedAt?.toISOString() ?? null,
       specSourceType: 'ai_agent',
+      userConfirmedSpec: true,
+    });
+
+    const aiBaseline = buildSetupBaselineFields({
+      aiTireSpec: persisted,
+      userConfirmedSpec: true,
+      treadMm: normalized.newTreadDepthMm,
+      confirmedAt: new Date(),
     });
 
     await this.prisma.vehicleTireSetup.update({
       where: { id: setup.id },
-      data: { aiTireSpec: persisted as any },
+      data: {
+        aiTireSpec: persisted as any,
+        ...aiBaseline,
+        initialTreadEvidenceSource:
+          aiBaseline.initialTreadEvidenceSource === TireEvidenceSource.USER_CONFIRMED
+            ? TireEvidenceSource.USER_CONFIRMED
+            : aiBaseline.initialTreadEvidenceSource,
+      },
     });
 
     await this.prisma.aiTireSpecJob.update({

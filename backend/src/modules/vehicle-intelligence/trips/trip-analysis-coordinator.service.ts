@@ -18,6 +18,7 @@ import {
   parseBehaviorSummaryJson,
   shouldFullySkipAnalysis,
 } from './trip-analysis-status';
+import { TireTripUsageService } from '../tires/tire-trip-usage.service';
 
 export interface AnalysisDiagnosticSnapshot {
   tripId: string;
@@ -43,6 +44,7 @@ export class TripAnalysisCoordinatorService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly tireTripUsageService?: TireTripUsageService,
   ) {}
 
   async onAnalysisEnqueued(tripId: string): Promise<void> {
@@ -144,6 +146,7 @@ export class TripAnalysisCoordinatorService {
       `Trip analysis behavior SKIPPED: trip=${tripId} status=${terminalStatus} reason=${reason} ` +
         `assessability=${assessability.analysisAssessability}`,
     );
+    await this.attributeTireUsageOnCanonicalFinalization(tripId, terminalStatus);
   }
 
   async onAnalysisFailed(tripId: string, reason: string, stage?: AnalysisStageName): Promise<void> {
@@ -255,6 +258,14 @@ export class TripAnalysisCoordinatorService {
         `Trip analysis ${terminalStatus}: trip=${tripId} latencyMs=${latencyMs ?? 'n/a'}`,
       );
       await this.logAnalysisDiagnostics(tripId, assess);
+
+      await this.prisma.vehicleTrip.update({
+        where: { id: tripId },
+        data: data as any,
+      });
+
+      await this.attributeTireUsageOnCanonicalFinalization(tripId, terminalStatus);
+      return;
     } else if (isAnalysisPartiallyReady(stages)) {
       Object.assign(data, {
         tripAnalysisStatus: 'PARTIAL',
@@ -400,5 +411,25 @@ export class TripAnalysisCoordinatorService {
       hfPointsTotal: typeof summary.hfPointsTotal === 'number' ? summary.hfPointsTotal : undefined,
       hfPointsCleaned: typeof summary.hfPointsCleaned === 'number' ? summary.hfPointsCleaned : undefined,
     };
+  }
+
+  /**
+   * Canonical tire usage hook — runs once analysis pipeline is terminal (COMPLETED|SKIPPED).
+   * Idempotent via TireTripUsageService + ledger fingerprint.
+   */
+  private async attributeTireUsageOnCanonicalFinalization(
+    tripId: string,
+    terminalStatus: TripAnalysisStatus,
+  ): Promise<void> {
+    if (!this.tireTripUsageService) return;
+    if (terminalStatus !== 'COMPLETED' && terminalStatus !== 'SKIPPED') return;
+    try {
+      await this.tireTripUsageService.processCanonicalTripFinalization(tripId, {
+        trigger: 'trip_analysis_terminal',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Tire trip usage attribution failed for trip ${tripId}: ${message}`);
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService, WearExplainability } from './tire-wear-model.service';
 import { DrivingImpactService } from '../driving-impact/driving-impact.service';
@@ -27,14 +27,74 @@ import {
   classifyTireAgeYears,
   dotAgeYears,
   aggregateTireStatus,
-  alertTypeToCode,
 } from './tire-status';
 import {
   TireHealthStatus,
-  TireChangeType,
   TireEventType,
+  TireEvidenceSource,
   TireSetupStatus,
+  Prisma,
 } from '@prisma/client';
+import {
+  buildSnapshotEvidenceSummary,
+  mapTreadSourceToEvidence,
+  resolveSummaryProvenanceFlags,
+} from './tire-evidence-provenance';
+import {
+  buildSnapshotProvenance,
+} from './tire-provenance.repository';
+import { mapLegacyMeasurementSourceToEvidence } from './tire-evidence-source';
+import {
+  applyAnchorToRemainingKmProjection,
+  buildSetupOdometerAnchorFields,
+  isPredictionCapable,
+  isRuntimeTelemetryAutoAnchorEligible,
+  resolveOdometerAnchor,
+  toFiniteOdometerKm,
+  type VehicleOdometerContext,
+} from './tire-odometer-anchor';
+import {
+  TIRE_WEAR_MODEL_VERSION,
+  computeTireWearModelConfigHash,
+  buildSnapshotPredictionPayload,
+} from './tire-wear-model-version';
+import { TirePredictionValidationService } from './tire-prediction-validation.service';
+import {
+  computeTireRecalculationInputFingerprint,
+  resolvePressureFreshnessBucket,
+  type TireRecalculationInputContext,
+} from './tire-recalculation-fingerprint';
+import { resolveCanonicalVehicleTirePressuresBar } from './tire-pressure-canonical.util';
+import {
+  buildTirePressureContext,
+  emptyTirePressureContext,
+  extractDimoPerWheelTimestamps,
+  extractDimoTpmsWarningFromPayload,
+} from './tire-pressure-context.builder';
+import type {
+  TirePressureContext,
+  TirePressureFreshness,
+} from './tire-pressure-context.types';
+import { resolveRecommendedTirePressure } from './tire-recommended-pressure';
+import type { HmTirePressureSignals } from '../../high-mobility/high-mobility-signal-usage.service';
+import {
+  buildTireHealthAlerts,
+  resolveKmSinceLastRotation,
+  structuredAlertsToApiAlerts,
+} from './tire-health-alert.builder';
+import { TireHealthAlertService } from './tire-health-alert.service';
+import type { TireHealthAlertReasonCode } from './tire-health-alert.types';
+import {
+  buildTireDimoContext,
+  resolveCapabilityGatedTpmsWarning,
+} from './tire-dimo-context.builder';
+import type { TireDimoContext } from './tire-dimo-context.types';
+import {
+  buildTireEvidencePresentation,
+  type TireEvidencePresentation,
+  type TireHealthSummaryForPresentation,
+} from './tire-health-presentation';
+import { TireHealthObservabilityService } from './tire-health-observability.service';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -64,18 +124,11 @@ export type TireActionState =
   | 'PLAN_SERVICE'
   | 'REPLACE';
 
-export type PressureFreshness = 'fresh' | 'aging' | 'stale' | 'no_data';
-
-export interface TirePressureContext {
-  source: 'DIMO' | 'HM' | 'MIXED' | 'NONE';
-  dimoFreshness: PressureFreshness;
-  hmFreshness: PressureFreshness;
-  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
-  warningHints: string[];
-}
+export type PressureFreshness = TirePressureFreshness;
+export type { TirePressureContext } from './tire-pressure-context.types';
 
 export interface TireReadContext {
-  hmTirePressure?: import('../../high-mobility/high-mobility-signal-usage.service').HmTirePressureSignals | null;
+  hmTirePressure?: HmTirePressureSignals | null;
 }
 
 export interface TireHealthSummary {
@@ -102,6 +155,13 @@ export interface TireHealthSummary {
   referenceNewTreadSource: string | null;
   replacementThresholdSource: string | null;
   currentTreadSource: string | null;
+  currentTreadValue: number | null;
+  currentTreadEvidenceSource: TireEvidenceSource | null;
+  isMeasured: boolean;
+  isEstimated: boolean;
+  isDefaultAssumption: boolean;
+  lastActualMeasurementAt: string | null;
+  baselineSource: TireEvidenceSource | null;
   operationalReplacementMm: number | null;
   topWearDrivers: string[];
   actionState: TireActionState;
@@ -109,6 +169,8 @@ export interface TireHealthSummary {
   measurementState: 'measured' | 'estimated' | 'mixed';
   dataQualityWarnings: string[];
   pressureContext: TirePressureContext;
+  recommendedPressure: import('./tire-recommended-pressure').RecommendedTirePressureSpec;
+  pressureSpecMissingLabel: string | null;
   latestMeasurementAt: string | null;
 
   // ── Canonical read model (single honest tire truth) ────────────────────────
@@ -131,12 +193,24 @@ export interface TireHealthSummary {
   unevenWearStatus: TireStatus;
   recommendations: string[];
 
+  /** Whether the active setup has a traceable odometer anchor for km projection. */
+  predictionCapable: boolean;
+  odometerAnchorStatus: string | null;
+  odometerAnchorConfidence: number | null;
+  installedOdometerSource: string | null;
+
   /** Whether the vehicle has an ACTIVE tire setup (canonical data-quality flag). */
   hasActiveSet: boolean;
   /** Whether the vehicle has any tire setup records (active or stored). */
   hasSetups: boolean;
   /** Whether tread measurements exist for this vehicle. */
   hasMeasurements: boolean;
+
+  /** UI-ready honest evidence presentation — single source for all consumers. */
+  evidencePresentation: TireEvidencePresentation;
+
+  /** Capability-gated DIMO context signals (ambient, odometer plausibility, TPMS). */
+  dimoContext: TireDimoContext;
 }
 
 export interface TireHealthDetail {
@@ -159,6 +233,10 @@ export interface TireAlert {
   message: string;
   position?: string;
   value?: number;
+  /** Structured reason code — replaces free-text business logic. */
+  reasonCode?: TireHealthAlertReasonCode;
+  displayMode?: TireDisplayMode;
+  dedupeKey?: string;
 }
 
 export interface RotationHistoryEntry {
@@ -189,17 +267,44 @@ export interface ConfidenceDimensions {
   modelConfidence: number;
 }
 
+export interface TireRecalculateOptions {
+  /** Bypass fingerprint dedupe (authorized manual refresh only). */
+  force?: boolean;
+  /** Required when `force` is true — recorded in the audit event. */
+  reason?: string;
+  /** Actor id for force-recalculation audit trail. */
+  actorId?: string | null;
+}
+
+export interface TireRecalculationResult {
+  overallPercent: number;
+  remainingKm: number | null;
+  healthStatus: string;
+  confidence: ConfidenceDimensions;
+  skipped?: boolean;
+  skipReason?: 'identical_input_fingerprint';
+  snapshotId?: string | null;
+  forced?: boolean;
+  inputFingerprint?: string;
+  timePolicyBucket?: string;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class TireHealthService {
   private readonly logger = new Logger(TireHealthService.name);
   private readonly cfg = TIRE_HEALTH_CONFIG;
+  private readonly modelVersion = TIRE_WEAR_MODEL_VERSION;
+  private readonly modelConfigHash = computeTireWearModelConfigHash();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly wearModel: TireWearModelService,
     private readonly drivingImpactService: DrivingImpactService,
+    private readonly predictionValidation: TirePredictionValidationService,
+    private readonly tireHealthAlertService: TireHealthAlertService,
+    @Optional() private readonly observability?: TireHealthObservabilityService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -225,19 +330,26 @@ export class TireHealthService {
     if (!setup) return null;
 
     const inventoryFlags = await this.resolveInventoryFlags(vehicleId, setup);
+    const dimoContext = await this.resolveDimoTireContext(vehicleId);
     const pressureContext = await this.resolvePressureContext(
       vehicleId,
       readContext.hmTirePressure ?? null,
+      setup,
+      dimoContext,
     );
-    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId);
-    if (!wearAnalysis) return this.buildEmptySummary(setup, pressureContext, inventoryFlags);
+    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId, {
+      pressureContext,
+      dimoContext,
+    });
+    if (!wearAnalysis) return this.buildEmptySummary(setup, pressureContext, inventoryFlags, dimoContext);
 
     const baseConfidence = await this.computeConfidence(vehicleId, setup);
     const confidence = this.applyPressureConfidenceOverlay(
       baseConfidence,
       pressureContext,
     );
-    const alerts = await this.detectAlerts(
+    const alerts = await this.buildAlertsForSetup(
+      setup.organizationId ?? (await this.resolveOrganizationId(vehicleId)),
       vehicleId,
       setup,
       wearAnalysis,
@@ -245,6 +357,8 @@ export class TireHealthService {
         setup,
         this.resolveMeasurementState(wearAnalysis.explainability.currentTreadSource),
       ).score,
+      pressureContext,
+      dimoContext,
     );
 
     return this.buildSummaryPayload(
@@ -254,6 +368,7 @@ export class TireHealthService {
       alerts,
       pressureContext,
       inventoryFlags,
+      dimoContext,
     );
   }
 
@@ -268,18 +383,25 @@ export class TireHealthService {
     const setup = await this.getActiveSetup(vehicleId);
     if (!setup) return null;
 
+    const dimoContext = await this.resolveDimoTireContext(vehicleId);
     const pressureContext = await this.resolvePressureContext(
       vehicleId,
       readContext.hmTirePressure ?? null,
+      setup,
+      dimoContext,
     );
-    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId);
+    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId, {
+      pressureContext,
+      dimoContext,
+    });
     const baseConfidence = await this.computeConfidence(vehicleId, setup);
     const confidence = this.applyPressureConfidenceOverlay(
       baseConfidence,
       pressureContext,
     );
     const alerts = wearAnalysis
-      ? await this.detectAlerts(
+      ? await this.buildAlertsForSetup(
+          setup.organizationId ?? (await this.resolveOrganizationId(vehicleId)),
           vehicleId,
           setup,
           wearAnalysis,
@@ -287,6 +409,8 @@ export class TireHealthService {
             setup,
             this.resolveMeasurementState(wearAnalysis.explainability.currentTreadSource),
           ).score,
+          pressureContext,
+          dimoContext,
         )
       : [];
 
@@ -304,8 +428,17 @@ export class TireHealthService {
           alerts,
           pressureContext,
           inventoryFlags,
+          dimoContext,
         )
-      : this.buildEmptySummary(setup, pressureContext, inventoryFlags);
+      : this.buildEmptySummary(setup, pressureContext, inventoryFlags, dimoContext);
+
+    if (wheels.length > 0) {
+      summary.evidencePresentation = buildTireEvidencePresentation({
+        summary,
+        wheels,
+        modelCalculatedAt: setup.lastRecalculatedAt?.toISOString() ?? null,
+      });
+    }
 
     return {
       summary,
@@ -327,12 +460,101 @@ export class TireHealthService {
   //  RECALCULATE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  async recalculate(vehicleId: string) {
-    const setup = await this.getActiveSetup(vehicleId);
+  async recalculate(
+    vehicleId: string,
+    options: TireRecalculateOptions = {},
+  ): Promise<TireRecalculationResult | null> {
+    if (options.force && !options.reason?.trim()) {
+      throw new BadRequestException(
+        'Force tire recalculation requires a non-empty reason.',
+      );
+    }
+
+    let setup = await this.getActiveSetup(vehicleId);
     if (!setup) return null;
 
-    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId);
-    if (!wearAnalysis) return null;
+    setup = await this.ensureTelemetryOdometerAnchor(vehicleId, setup);
+
+    const recalcAsOf = new Date();
+    const inputContext = await this.loadRecalculationInputContext(
+      vehicleId,
+      setup,
+      recalcAsOf,
+    );
+    const fingerprint = computeTireRecalculationInputFingerprint(inputContext, {
+      modelVersion: this.modelVersion,
+      modelConfigHash: this.modelConfigHash,
+      asOf: recalcAsOf,
+    });
+
+    const lastSnapshot = await this.prisma.tireHealthSnapshot.findFirst({
+      where: {
+        tireSetId: setup.id,
+        modelVersion: fingerprint.modelVersion,
+        inputFingerprint: fingerprint.inputFingerprint,
+      },
+      orderBy: { snapshotDate: 'desc' },
+      select: { id: true },
+    });
+
+    if (!options.force && lastSnapshot) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: setup.id },
+        data: { lastRecalculatedAt: recalcAsOf },
+      });
+      this.logger.debug(
+        `Skipping tire recalculation for vehicle=${vehicleId} setup=${setup.id} — identical input fingerprint`,
+      );
+      this.observability?.recordRecalculation({
+        result: 'deduplicated',
+        skipReason: 'identical_input_fingerprint',
+      });
+      return {
+        overallPercent: setup.overallHealthPercent ?? 0,
+        remainingKm: setup.overallRemainingKm ?? null,
+        healthStatus: setup.healthStatus,
+        confidence: {
+          score: setup.confidenceScore ?? 0,
+          label: setup.confidenceLabel ?? 'Low',
+          tireSpecConfidence: setup.tireSpecConfidence ?? 0,
+          dataCompletenessConfidence: setup.dataCompletenessConfidence ?? 0,
+          modelConfidence: setup.modelConfidence ?? 0,
+        },
+        skipped: true,
+        skipReason: 'identical_input_fingerprint',
+        snapshotId: lastSnapshot.id,
+        inputFingerprint: fingerprint.inputFingerprint,
+        timePolicyBucket: fingerprint.timePolicyBucket,
+      };
+    }
+
+    const dimoContext = await this.resolveDimoTireContext(vehicleId, recalcAsOf);
+    this.observeDimoOdometerAnchor(dimoContext);
+    const pressureContextForWear = await this.resolvePressureContext(
+      vehicleId,
+      null,
+      setup,
+      dimoContext,
+    );
+    this.observability?.recordPressureContext(pressureContextForWear);
+    this.observePressureInvalidWheels(pressureContextForWear);
+    const recalcStartedAt = Date.now();
+    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId, {
+      pressureContext: pressureContextForWear,
+      dimoContext,
+    });
+    if (!wearAnalysis) {
+      this.observability?.recordRecalculation({
+        result: 'skipped',
+        durationMs: Date.now() - recalcStartedAt,
+        skipReason: 'no_wear_analysis',
+      });
+      return null;
+    }
+
+    if (setup.initialTreadEvidenceSource === TireEvidenceSource.DEFAULT_ASSUMPTION) {
+      this.observability?.recordDefaultBaseline('8mm_default_setup');
+    }
 
     const confidence = await this.computeConfidence(vehicleId, setup);
     const wheels = [
@@ -371,15 +593,22 @@ export class TireHealthService {
     const unified = this.resolveUnifiedConfidence(setup, measurementState);
     const confDiscount =
       this.cfg.remainingKmConfidenceDiscount[unified.label.toLowerCase()] ?? 0.85;
-    const adjustedRemainingKm = Math.round(wearAnalysis.estimatedRemainingKm * confDiscount);
+    const rawAdjustedRemainingKm = Math.round(wearAnalysis.estimatedRemainingKm * confDiscount);
+    const anchorProjection = applyAnchorToRemainingKmProjection({
+      anchorStatus: setup.odometerAnchorStatus,
+      adjustedRemainingKm: rawAdjustedRemainingKm,
+      confidenceScore: unified.score,
+    });
+    const adjustedRemainingKm = anchorProjection.adjustedRemainingKm;
+    const unifiedScore = anchorProjection.confidenceScore;
 
     await this.prisma.vehicleTireSetup.update({
       where: { id: setup.id },
       data: {
         overallHealthPercent: setLevelPercent,
-        overallRemainingKm: adjustedRemainingKm,
+        overallRemainingKm: adjustedRemainingKm ?? 0,
         healthStatus,
-        confidenceScore: unified.score,
+        confidenceScore: unifiedScore,
         confidenceLabel: unified.label,
         tireSpecConfidence: confidence.tireSpecConfidence,
         dataCompletenessConfidence: confidence.dataCompletenessConfidence,
@@ -395,73 +624,123 @@ export class TireHealthService {
     });
 
     const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
-    const latestState = await this.prisma.vehicleLatestState.findUnique({ where: { vehicleId }, select: { odometerKm: true } });
+    const latestState = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { odometerKm: true },
+    });
 
-    await this.prisma.tireHealthSnapshot.create({
-      data: {
-        organizationId: vehicle!.organizationId,
-        vehicleId,
-        tireSetId: setup.id,
-        snapshotDate: new Date(),
-        odometerKm: latestState?.odometerKm ?? null,
-        estimatedTreadMm: lowestTread,
-        estimatedWearPercent: 100 - setLevelPercent,
-        estimatedRemainingKm: adjustedRemainingKm,
-        citySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.cityKm / setup.totalKmOnSet * 100) : null,
-        highwaySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.highwayKm / setup.totalKmOnSet * 100) : null,
-        ruralSharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.ruralKm / setup.totalKmOnSet * 100) : null,
-        confidenceScore: unified.score,
-        wearRateMmPer1000km,
+    const latestMeas = setup.measurements?.[0] ?? null;
+    const evidenceSummary = buildSnapshotEvidenceSummary({
+      currentTreadMm: lowestTread,
+      treadSource: wearAnalysis.explainability.currentTreadSource,
+      baselineSource: setup.initialTreadEvidenceSource ?? null,
+      lastMeasurementAt: latestMeas?.measuredAt ?? null,
+      measurementEvidenceSource:
+        latestMeas?.evidenceSource ??
+        mapLegacyMeasurementSourceToEvidence(latestMeas?.source) ??
+        null,
+    });
+
+    const predictionPayload = buildSnapshotPredictionPayload({
+      modelVersion: fingerprint.modelVersion,
+      modelConfigHash: fingerprint.modelConfigHash,
+      predictionGeneratedAt: recalcAsOf,
+      frontLeftMm: wearAnalysis.frontLeftMm,
+      frontRightMm: wearAnalysis.frontRightMm,
+      rearLeftMm: wearAnalysis.rearLeftMm,
+      rearRightMm: wearAnalysis.rearRightMm,
+    });
+
+    const snapshotProvenance = buildSnapshotProvenance({
+      modelVersion: fingerprint.modelVersion,
+      modelConfigHash: fingerprint.modelConfigHash,
+      inputFingerprint: fingerprint.inputFingerprint,
+      baselineSource: evidenceSummary.baselineSource,
+      evidenceSummary: {
+        ...evidenceSummary,
+        ...predictionPayload,
+        timePolicyBucket: fingerprint.timePolicyBucket,
       },
     });
 
-    // ── Persist regression data points ──
-    const currentOdo = latestState?.odometerKm ?? null;
-    const installedOdo = setup.installedOdometerKm ?? null;
-    if (currentOdo != null && installedOdo != null && currentOdo > installedOdo) {
-      const distanceKm = currentOdo - installedOdo;
-      const frontAvgPredicted = (wearAnalysis.frontLeftMm + wearAnalysis.frontRightMm) / 2;
-      const rearAvgPredicted = (wearAnalysis.rearLeftMm + wearAnalysis.rearRightMm) / 2;
-      const latestMeas = setup.measurements?.[0] ?? null;
-      const measFrontVals = [latestMeas?.frontLeftMm, latestMeas?.frontRightMm].filter((v): v is number => v != null);
-      const measRearVals = [latestMeas?.rearLeftMm, latestMeas?.rearRightMm].filter((v): v is number => v != null);
-      const actualFrontAvg = measFrontVals.length > 0 ? measFrontVals.reduce((a, b) => a + b, 0) / measFrontVals.length : frontAvgPredicted;
-      const actualRearAvg = measRearVals.length > 0 ? measRearVals.reduce((a, b) => a + b, 0) / measRearVals.length : rearAvgPredicted;
+    const snapshotData = {
+      organizationId: vehicle!.organizationId,
+      vehicleId,
+      tireSetId: setup.id,
+      snapshotDate: recalcAsOf,
+      predictionGeneratedAt: recalcAsOf,
+      odometerKm: latestState?.odometerKm ?? null,
+      estimatedTreadMm: lowestTread,
+      estimatedWearPercent: 100 - setLevelPercent,
+      estimatedRemainingKm: adjustedRemainingKm,
+      citySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.cityKm / setup.totalKmOnSet * 100) : null,
+      highwaySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.highwayKm / setup.totalKmOnSet * 100) : null,
+      ruralSharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.ruralKm / setup.totalKmOnSet * 100) : null,
+      confidenceScore: unified.score,
+      wearRateMmPer1000km,
+      modelVersion: snapshotProvenance.modelVersion ?? undefined,
+      modelConfigHash: snapshotProvenance.modelConfigHash ?? undefined,
+      inputFingerprint: snapshotProvenance.inputFingerprint ?? undefined,
+      baselineSource: snapshotProvenance.baselineSource ?? undefined,
+      evidenceSummary: (snapshotProvenance.evidenceSummary ?? undefined) as Prisma.InputJsonValue | undefined,
+    };
 
-      const baseDataPoint = {
+    let snapshot: { id: string };
+    if (lastSnapshot && options.force) {
+      // Snapshots are immutable historical records — force refresh never rewrites them.
+      snapshot = lastSnapshot;
+    } else {
+      try {
+        snapshot = await this.prisma.tireHealthSnapshot.create({
+          data: snapshotData,
+          select: { id: true },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          const existing = await this.prisma.tireHealthSnapshot.findFirst({
+            where: {
+              tireSetId: setup.id,
+              modelVersion: fingerprint.modelVersion,
+              inputFingerprint: fingerprint.inputFingerprint,
+            },
+            orderBy: { snapshotDate: 'desc' },
+            select: { id: true },
+          });
+          if (!existing) throw error;
+          snapshot = existing;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // ── Validation data points: link measurements to pre-measurement snapshots only ──
+    const allowWearDataPoints = !options.force;
+    if (allowWearDataPoints) {
+      const regenFactor =
+        (wearAnalysis.factors.regenBrakingFactorFront +
+          wearAnalysis.factors.regenBrakingFactorRear) /
+        2;
+      await this.predictionValidation.linkPendingValidationDataPoints({
         organizationId: vehicle!.organizationId,
         vehicleId,
-        tireSetId: setup.id,
-        distanceKm,
-        climateFactor: wearAnalysis.factors.temperatureFactor,
-        roadSurfaceFactor: 1.0,
-        roadTypeFactor: wearAnalysis.factors.usageFactor,
-        drivingStyleFactor: wearAnalysis.factors.behaviorFactor,
-        regenFactor: (wearAnalysis.factors.regenBrakingFactorFront + wearAnalysis.factors.regenBrakingFactorRear) / 2,
-        curbWeightKg: null as number | null,
+        tireSetupId: setup.id,
         tireSeason: setup.tireSeason,
-      };
-
-      await this.prisma.tireWearDataPoint.createMany({
-        data: [
-          {
-            ...baseDataPoint,
-            axle: 'front',
-            predictedTreadMm: frontAvgPredicted,
-            actualTreadMm: actualFrontAvg,
-            initialTreadMm: wearAnalysis.referenceNewTreadFront,
-            tireWidthMm: setup.frontTireWidthMm ?? null,
-          },
-          {
-            ...baseDataPoint,
-            axle: 'rear',
-            predictedTreadMm: rearAvgPredicted,
-            actualTreadMm: actualRearAvg,
-            initialTreadMm: wearAnalysis.referenceNewTreadRear,
-            tireWidthMm: setup.rearTireWidthMm ?? null,
-          },
-        ],
-      }).catch((e) => this.logger.warn(`Failed to write wear data points: ${e.message}`));
+        installedOdometerKm: setup.installedOdometerKm,
+        currentOdometerKm: latestState?.odometerKm ?? null,
+        referenceNewTreadFront: wearAnalysis.referenceNewTreadFront,
+        referenceNewTreadRear: wearAnalysis.referenceNewTreadRear,
+        frontTireWidthMm: setup.frontTireWidthMm ?? null,
+        rearTireWidthMm: setup.rearTireWidthMm ?? null,
+        climateFactor: wearAnalysis.factors.temperatureFactor,
+        usageFactor: wearAnalysis.factors.usageFactor,
+        behaviorFactor: wearAnalysis.factors.behaviorFactor,
+        regenFactor,
+        asOf: recalcAsOf,
+      });
     }
 
     await this.prisma.tireEvent.create({
@@ -470,11 +749,270 @@ export class TireHealthService {
         vehicleId,
         tireSetId: setup.id,
         type: TireEventType.RECALCULATION,
-        payload: { overallPercent: setLevelPercent, remainingKm: adjustedRemainingKm, confidence: confidence.score, healthStatus },
+        createdBy: options.actorId ?? undefined,
+        payload: {
+          overallPercent: setLevelPercent,
+          remainingKm: adjustedRemainingKm,
+          confidence: confidence.score,
+          healthStatus,
+          inputFingerprint: fingerprint.inputFingerprint,
+          timePolicyBucket: fingerprint.timePolicyBucket,
+          modelVersion: fingerprint.modelVersion,
+          forced: options.force ?? false,
+          forceReason: options.force ? options.reason?.trim() ?? null : null,
+          skippedWearDataPoints: options.force ?? false,
+        },
       },
     });
 
-    return { overallPercent: setLevelPercent, remainingKm: adjustedRemainingKm, healthStatus, confidence };
+    const pressureContext = await this.resolvePressureContext(
+      vehicleId,
+      null,
+      setup,
+      dimoContext,
+    );
+    const alertCandidates = await this.buildAlertCandidates(
+      vehicle!.organizationId,
+      vehicleId,
+      setup,
+      wearAnalysis,
+      unifiedScore,
+      pressureContext,
+      dimoContext,
+    );
+    await this.tireHealthAlertService.syncAlerts({
+      organizationId: vehicle!.organizationId,
+      vehicleId,
+      tireSetupId: setup.id,
+      candidates: alertCandidates,
+      inputFingerprint: fingerprint.inputFingerprint,
+    });
+
+    this.observability?.recordSnapshotCreated('created');
+    this.observability?.recordRecalculation({
+      result: 'success',
+      durationMs: Date.now() - recalcStartedAt,
+    });
+
+    return {
+      overallPercent: setLevelPercent,
+      remainingKm: adjustedRemainingKm,
+      healthStatus,
+      confidence,
+      snapshotId: snapshot.id,
+      forced: options.force ?? false,
+      inputFingerprint: fingerprint.inputFingerprint,
+      timePolicyBucket: fingerprint.timePolicyBucket,
+    };
+  }
+
+  private async loadRecalculationInputContext(
+    vehicleId: string,
+    setup: NonNullable<Awaited<ReturnType<TireHealthService['getActiveSetup']>>>,
+    asOf: Date,
+  ): Promise<TireRecalculationInputContext> {
+    const ninetyDaysAgo = new Date(asOf.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    const [
+      vehicle,
+      latestState,
+      tires,
+      measurements,
+      regressionPoints,
+      temperatureTrips,
+      drivingImpact,
+    ] = await Promise.all([
+      this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: {
+          fuelType: true,
+          driveType: true,
+          curbWeightKg: true,
+          frontWeightDistributionPct: true,
+        },
+      }),
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: {
+          odometerKm: true,
+          tirePressureFl: true,
+          tirePressureFr: true,
+          tirePressureRl: true,
+          tirePressureRr: true,
+          speedKmh: true,
+          providerSource: true,
+          sourceTimestamp: true,
+          providerFetchedAt: true,
+          lastSeenAt: true,
+        },
+      }),
+      this.prisma.tire.findMany({
+        where: { tireSetId: setup.id, vehicleId },
+        select: {
+          id: true,
+          currentPosition: true,
+          dotCode: true,
+          initialTreadDepthMm: true,
+          estimatedTreadMm: true,
+          initialTreadEvidenceSource: true,
+        },
+      }),
+      this.prisma.vehicleTireTreadMeasurement.findMany({
+        where: { vehicleId, tireSetupId: setup.id },
+        orderBy: { measuredAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          createdAt: true,
+          measuredAt: true,
+          source: true,
+          evidenceSource: true,
+          odometerAtMeasurement: true,
+          frontLeftMm: true,
+          frontRightMm: true,
+          rearLeftMm: true,
+          rearRightMm: true,
+        },
+      }),
+      this.prisma.tireWearDataPoint.findMany({
+        where: { vehicleId, tireSetId: setup.id },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          axle: true,
+          distanceKm: true,
+          actualTreadMm: true,
+          predictedTreadMm: true,
+          actualMeasurementId: true,
+        },
+      }),
+      this.prisma.vehicleTrip.findMany({
+        where: { vehicleId, startTime: { gte: ninetyDaysAgo } },
+        select: { distanceKm: true, outsideTemperatureStartC: true },
+        take: 200,
+      }),
+      this.drivingImpactService.getVehicleImpactForTire(vehicleId),
+    ]);
+
+    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
+      providerSource: latestState?.providerSource,
+      tirePressureFl: latestState?.tirePressureFl,
+      tirePressureFr: latestState?.tirePressureFr,
+      tirePressureRl: latestState?.tirePressureRl,
+      tirePressureRr: latestState?.tirePressureRr,
+      sourceTimestamp:
+        latestState?.sourceTimestamp ??
+        latestState?.providerFetchedAt ??
+        latestState?.lastSeenAt ??
+        null,
+    });
+
+    const pressureValues = [
+      canonicalPressures.tirePressureFl,
+      canonicalPressures.tirePressureFr,
+      canonicalPressures.tirePressureRl,
+      canonicalPressures.tirePressureRr,
+    ].filter((v): v is number => v != null);
+
+    return {
+      setupId: setup.id,
+      setupUpdatedAt: setup.updatedAt.toISOString(),
+      vehicle: {
+        fuelType: vehicle?.fuelType ?? null,
+        driveType: vehicle?.driveType ?? null,
+        curbWeightKg: vehicle?.curbWeightKg ?? null,
+        frontWeightDistributionPct: vehicle?.frontWeightDistributionPct ?? null,
+      },
+      setup: {
+        tireSeason: setup.tireSeason,
+        tireCondition: setup.tireCondition ?? null,
+        isStaggered: setup.isStaggered,
+        frontDimension: setup.frontDimension ?? null,
+        rearDimension: setup.rearDimension ?? null,
+        brandModelFront: setup.brandModelFront ?? null,
+        brandModelRear: setup.brandModelRear ?? null,
+        initialTreadDepthMm: setup.initialTreadDepthMm,
+        initialTreadFrontMm: setup.initialTreadFrontMm,
+        initialTreadRearMm: setup.initialTreadRearMm,
+        initialTreadEvidenceSource: setup.initialTreadEvidenceSource ?? null,
+        baselineStatus: setup.baselineStatus ?? null,
+        baselineConfidence: setup.baselineConfidence ?? null,
+        referenceNewTreadMm: setup.referenceNewTreadMm,
+        operationalReplacementMm: setup.operationalReplacementMm,
+        expectedLifeKm: setup.expectedLifeKm,
+        expectedLifeKmFront: setup.expectedLifeKmFront,
+        expectedLifeKmRear: setup.expectedLifeKmRear,
+        frontTireWidthMm: setup.frontTireWidthMm,
+        rearTireWidthMm: setup.rearTireWidthMm,
+        dotCodeFront: setup.dotCodeFront ?? null,
+        dotCodeRear: setup.dotCodeRear ?? null,
+        installedOdometerKm: setup.installedOdometerKm,
+        odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
+        kFactorFront: setup.kFactorFront,
+        kFactorRear: setup.kFactorRear,
+        kFactorCalibrationCount: setup.kFactorCalibrationCount,
+        regenBrakingFactorFront: setup.regenBrakingFactorFront,
+        regenBrakingFactorRear: setup.regenBrakingFactorRear,
+        aiTireSpec: setup.aiTireSpec,
+      },
+      ledgerAggregate: {
+        totalKmOnSet: setup.totalKmOnSet,
+        cityKm: setup.cityKm,
+        highwayKm: setup.highwayKm,
+        ruralKm: setup.ruralKm,
+        harshAccelEvents: setup.harshAccelEvents,
+        harshBrakeEvents: setup.harshBrakeEvents,
+        harshCornerEvents: setup.harshCornerEvents,
+      },
+      tires: tires.map((tire) => ({
+        id: tire.id,
+        currentPosition: String(tire.currentPosition),
+        dotCode: tire.dotCode,
+        initialTreadDepthMm: tire.initialTreadDepthMm,
+        estimatedTreadMm: tire.estimatedTreadMm,
+        initialTreadEvidenceSource: tire.initialTreadEvidenceSource,
+      })),
+      measurements: measurements.map((m) => ({
+        id: m.id,
+        createdAt: m.createdAt.toISOString(),
+        measuredAt: m.measuredAt.toISOString(),
+        source: m.source,
+        evidenceSource: m.evidenceSource,
+        odometerAtMeasurement: m.odometerAtMeasurement,
+        frontLeftMm: m.frontLeftMm,
+        frontRightMm: m.frontRightMm,
+        rearLeftMm: m.rearLeftMm,
+        rearRightMm: m.rearRightMm,
+      })),
+      regressionPoints: regressionPoints.map((p) => ({
+        id: p.id,
+        axle: p.axle,
+        distanceKm: p.distanceKm,
+        actualTreadMm: p.actualTreadMm,
+        predictedTreadMm: p.predictedTreadMm,
+        actualMeasurementId: p.actualMeasurementId,
+      })),
+      latestState: {
+        odometerKm: latestState?.odometerKm ?? null,
+        tirePressureFl: canonicalPressures.tirePressureFl,
+        tirePressureFr: canonicalPressures.tirePressureFr,
+        tirePressureRl: canonicalPressures.tirePressureRl,
+        tirePressureRr: canonicalPressures.tirePressureRr,
+        speedKmh: latestState?.speedKmh ?? null,
+        pressureFreshness: resolvePressureFreshnessBucket(
+          latestState?.sourceTimestamp ??
+            latestState?.providerFetchedAt ??
+            latestState?.lastSeenAt ??
+            null,
+          pressureValues.length > 0,
+          asOf,
+        ),
+      },
+      drivingImpact,
+      temperatureTrips,
+      modelVersion: this.modelVersion,
+      asOf,
+    };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -513,29 +1051,24 @@ export class TireHealthService {
     });
   }
 
+  /**
+   * @deprecated Use TireTripUsageService.processCanonicalTripFinalization — direct aggregate mutation removed (Prompt 10).
+   */
   async updateTireUsageFromTrip(
-    vehicleId: string,
-    tripData: {
+    _vehicleId: string,
+    _tripData: {
       distanceKm: number;
-      cityPercent: number; highwayPercent: number; ruralPercent: number;
-      harshBrakeCount: number; harshAccelCount: number; harshCornerCount: number;
+      cityPercent: number;
+      highwayPercent: number;
+      ruralPercent: number;
+      harshBrakeCount: number;
+      harshAccelCount: number;
+      harshCornerCount: number;
     },
   ) {
-    const setup = await this.getActiveSetup(vehicleId);
-    if (!setup) return;
-    const totalKm = tripData.distanceKm;
-    await this.prisma.vehicleTireSetup.update({
-      where: { id: setup.id },
-      data: {
-        totalKmOnSet: { increment: totalKm },
-        cityKm: { increment: totalKm * (tripData.cityPercent / 100) },
-        highwayKm: { increment: totalKm * (tripData.highwayPercent / 100) },
-        ruralKm: { increment: totalKm * (tripData.ruralPercent / 100) },
-        harshAccelEvents: { increment: tripData.harshAccelCount },
-        harshBrakeEvents: { increment: tripData.harshBrakeCount },
-        harshCornerEvents: { increment: tripData.harshCornerCount },
-      },
-    });
+    this.logger.warn(
+      'updateTireUsageFromTrip is deprecated — tire usage is attributed via TireTripUsageService on canonical trip finalization.',
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -572,17 +1105,31 @@ export class TireHealthService {
         tirePressureFr: true,
         tirePressureRl: true,
         tirePressureRr: true,
+        providerSource: true,
         sourceTimestamp: true,
         providerFetchedAt: true,
         lastSeenAt: true,
       },
     });
     if (latestState?.odometerKm != null) { dataScore += 12; legacyScore += c.odometerConsistent; }
+    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
+      providerSource: latestState?.providerSource,
+      tirePressureFl: latestState?.tirePressureFl,
+      tirePressureFr: latestState?.tirePressureFr,
+      tirePressureRl: latestState?.tirePressureRl,
+      tirePressureRr: latestState?.tirePressureRr,
+      sourceTimestamp:
+        latestState?.sourceTimestamp ??
+        latestState?.providerFetchedAt ??
+        latestState?.lastSeenAt ??
+        null,
+    });
+
     const pressureValues = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
+      canonicalPressures.tirePressureFl,
+      canonicalPressures.tirePressureFr,
+      canonicalPressures.tirePressureRl,
+      canonicalPressures.tirePressureRr,
     ].filter((v): v is number => v != null);
     const pressureFreshness = this.resolveFreshness(
       latestState?.sourceTimestamp ??
@@ -651,148 +1198,70 @@ export class TireHealthService {
   //  ALERTS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  private async detectAlerts(
-    vehicleId: string,
-    setup: any,
-    wearAnalysis: any,
-    confidenceScore: number,
-  ): Promise<TireAlert[]> {
-    const alerts: TireAlert[] = [];
-    const a = this.cfg.alerts;
-    const r = this.cfg.rotationReview;
+  private async resolveOrganizationId(vehicleId: string): Promise<string> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    return vehicle?.organizationId ?? '';
+  }
 
-    const operationalReplace = wearAnalysis.operationalReplacementMm ?? this.cfg.defaultReplaceThresholdMm;
-
-    const wheels = [
-      { pos: 'FL', mm: wearAnalysis.frontLeftMm },
-      { pos: 'FR', mm: wearAnalysis.frontRightMm },
-      { pos: 'RL', mm: wearAnalysis.rearLeftMm },
-      { pos: 'RR', mm: wearAnalysis.rearRightMm },
-    ];
-
-    for (const w of wheels) {
-      const treadStatus = classifyTreadStatus(w.mm, setup.tireSeason);
-      if (treadStatus === 'CRITICAL') {
-        alerts.push({
-          type: 'CRITICAL_TREAD',
-          severity: 'critical',
-          message: `${w.pos}: Tread at or below legal minimum (${w.mm.toFixed(1)} mm)`,
-          position: w.pos,
-          value: w.mm,
-        });
-      } else if (treadStatus === 'WARNING') {
-        alerts.push({
-          type: 'LOW_TREAD',
-          severity: 'warning',
-          message: `${w.pos}: Tread low — plan replacement (${w.mm.toFixed(1)} mm)`,
-          position: w.pos,
-          value: w.mm,
-        });
-      } else if (w.mm <= operationalReplace + 0.3) {
-        alerts.push({
-          type: 'LOW_TREAD',
-          severity: 'warning',
-          message: `${w.pos}: Tread approaching operational limit (${w.mm.toFixed(1)} mm)`,
-          position: w.pos,
-          value: w.mm,
-        });
-      }
-    }
-
-    if (wearAnalysis.estimatedRemainingKm <= a.criticalRemainingKm) {
-      alerts.push({ type: 'CRITICAL_REMAINING_KM', severity: 'critical', message: `Replacement imminent (${wearAnalysis.estimatedRemainingKm.toLocaleString()} km remaining)`, value: wearAnalysis.estimatedRemainingKm });
-    } else if (wearAnalysis.estimatedRemainingKm <= a.lowRemainingKm) {
-      alerts.push({ type: 'LOW_REMAINING_KM', severity: 'warning', message: `Plan replacement soon (${wearAnalysis.estimatedRemainingKm.toLocaleString()} km remaining)`, value: wearAnalysis.estimatedRemainingKm });
-    }
-
-    const sideDeltaFront = Math.abs(wearAnalysis.frontLeftMm - wearAnalysis.frontRightMm);
-    const sideDeltaRear = Math.abs(wearAnalysis.rearLeftMm - wearAnalysis.rearRightMm);
-    for (const [label, delta] of [['Front', sideDeltaFront], ['Rear', sideDeltaRear]] as const) {
-      if (delta >= a.unevenWearCriticalMm) {
-        alerts.push({ type: 'UNEVEN_WEAR_CRITICAL', severity: 'critical', message: `${label}: Critical side wear imbalance (${delta.toFixed(1)} mm)`, value: delta });
-      } else if (delta >= a.unevenWearAttentionMm) {
-        alerts.push({ type: 'UNEVEN_WEAR_ATTENTION', severity: 'warning', message: `${label}: Side wear imbalance detected (${delta.toFixed(1)} mm)`, value: delta });
-      }
-    }
-
-    const frontAvg = (wearAnalysis.frontLeftMm + wearAnalysis.frontRightMm) / 2;
-    const rearAvg = (wearAnalysis.rearLeftMm + wearAnalysis.rearRightMm) / 2;
-    const axleDelta = Math.abs(frontAvg - rearAvg);
-
-    const staggered = isStaggeredSetup(setup);
-
-    if (!staggered) {
-      const lastRotation = await this.prisma.tirePositionHistory.findFirst({
-        where: { vehicleId, changeType: TireChangeType.ROTATE },
-        orderBy: { changedAt: 'desc' },
-      });
-      const kmSinceLastRotation = lastRotation?.odometerKm != null
-        ? (setup.totalKmOnSet - (lastRotation.odometerKm - (setup.installedOdometerKm ?? 0)))
-        : setup.totalKmOnSet;
-
-      if (kmSinceLastRotation >= r.overdueKm) {
-        alerts.push({ type: 'ROTATION_OVERDUE', severity: 'warning', message: `Tire rotation overdue review (${Math.round(kmSinceLastRotation).toLocaleString()} km since last rotation)` });
-      } else if (
-        kmSinceLastRotation >= r.normalReviewKm &&
-        axleDelta >= r.wearImbalanceThresholdMm
-      ) {
-        alerts.push({ type: 'ROTATION_RECOMMENDED', severity: 'info', message: `Rotation recommended: ${axleDelta.toFixed(1)} mm front/rear delta after ${Math.round(kmSinceLastRotation).toLocaleString()} km` });
-      }
-
-      if (axleDelta >= a.frontRearRotationDeltaMm) {
-        alerts.push({ type: 'AXLE_WEAR_IMBALANCE', severity: 'warning', message: `Front/rear wear imbalance: ${axleDelta.toFixed(1)} mm difference`, value: axleDelta });
-      }
-    }
-
-    if (confidenceScore < a.lowConfidenceThreshold) {
-      alerts.push({ type: 'LOW_CONFIDENCE', severity: 'info', message: 'Estimate quality low — manual tread measurement recommended' });
-    }
-
-    // Pressure alerts from explainability (only when there is a real pressure feed)
-    if (wearAnalysis.factors?.pressureFactorFront > 1.06 || wearAnalysis.factors?.pressureFactorRear > 1.06) {
-      alerts.push({ type: 'PRESSURE_IMPACT', severity: 'warning', message: 'Tire pressure deviation detected — check and correct pressures' });
-    }
-
-    // ── Season suitability (calendar-based; weather can replace later) ────────
-    const seasonResult = classifySeasonStatus(setup.tireSeason);
-    if (seasonResult.mismatch && seasonResult.status === 'WARNING') {
-      alerts.push({ type: 'SEASON_MISMATCH', severity: 'warning', message: 'Summer tires fitted during the winter season — reduced grip in cold, wet or snow. Switch to winter/all-season tires.' });
-    } else if (seasonResult.mismatch && seasonResult.status === 'WATCH') {
-      alerts.push({ type: 'SEASON_MISMATCH', severity: 'info', message: 'Winter tires fitted during summer — increased wear and longer braking distance. Consider switching to summer tires.' });
-    }
-
-    // ── Measurement overdue ───────────────────────────────────────────────────
-    const latestMeas = setup.measurements?.[0] ?? null;
-    const measAgeDays = latestMeas?.measuredAt
-      ? Math.floor((Date.now() - new Date(latestMeas.measuredAt).getTime()) / 86400000)
-      : null;
-    if (classifyMeasurementOverdue(measAgeDays)) {
-      alerts.push({ type: 'MEASUREMENT_OVERDUE', severity: 'warning', message: `No tread measurement in ${measAgeDays} days — re-measure to keep the estimate reliable.` });
-    }
-
-    // ── Tire age from DOT ─────────────────────────────────────────────────────
-    const dotAges = [dotAgeYears(setup.dotCodeFront), dotAgeYears(setup.dotCodeRear)].filter(
-      (v): v is number => v != null,
+  private resolveAlertDisplayMode(
+    setup: { measurements?: Array<{ measuredAt: Date | string }> | null },
+    wearAnalysis: { explainability?: { currentTreadSource?: string | null } },
+  ): TireDisplayMode {
+    const measurementState = this.resolveMeasurementState(
+      wearAnalysis.explainability?.currentTreadSource,
     );
-    const maxAgeYears = dotAges.length > 0 ? Math.max(...dotAges) : null;
-    const ageStatus = classifyTireAgeYears(maxAgeYears);
-    if (ageStatus === 'WARNING') {
-      alerts.push({ type: 'TIRE_AGE_WARNING', severity: 'warning', message: `Tires are ~${Math.round(maxAgeYears!)} years old (DOT) — rubber ageing means replacement is recommended regardless of tread.` });
-    } else if (ageStatus === 'WATCH') {
-      alerts.push({ type: 'TIRE_AGE_WARNING', severity: 'info', message: `Tires are ~${Math.round(maxAgeYears!)} years old (DOT) — inspect rubber condition periodically.` });
-    }
+    return resolveDisplayMode(measurementState, (setup.measurements?.length ?? 0) > 0);
+  }
 
-    // No manual measurement warning for used tires
-    if (setup.tireCondition === 'ALREADY_MOUNTED' && (!setup.measurements || setup.measurements.length === 0)) {
-      alerts.push({ type: 'USED_TIRE_NO_MEASUREMENT', severity: 'warning', message: 'Used tires mounted without manual tread measurement — estimates may be inaccurate. Measure tread depth promptly.' });
-    }
+  private async buildAlertCandidates(
+    organizationId: string,
+    vehicleId: string,
+    setup: NonNullable<Awaited<ReturnType<TireHealthService['getActiveSetup']>>>,
+    wearAnalysis: NonNullable<Awaited<ReturnType<TireWearModelService['computeWearAnalysis']>>>,
+    confidenceScore: number,
+    pressureContext: TirePressureContext,
+    dimoContext?: TireDimoContext | null,
+  ) {
+    const kmSinceLastRotation = await resolveKmSinceLastRotation(
+      this.prisma,
+      vehicleId,
+      setup,
+    );
+    return buildTireHealthAlerts({
+      organizationId,
+      vehicleId,
+      setup,
+      wearAnalysis,
+      displayMode: this.resolveAlertDisplayMode(setup, wearAnalysis),
+      confidenceScore,
+      pressureContext,
+      kmSinceLastRotation,
+      dimoContext,
+    });
+  }
 
-    // Stamp every alert with its canonical, stable code.
-    for (const alert of alerts) {
-      if (!alert.code) alert.code = alertTypeToCode(alert.type);
-    }
-
-    return alerts;
+  private async buildAlertsForSetup(
+    organizationId: string,
+    vehicleId: string,
+    setup: NonNullable<Awaited<ReturnType<TireHealthService['getActiveSetup']>>>,
+    wearAnalysis: NonNullable<Awaited<ReturnType<TireWearModelService['computeWearAnalysis']>>>,
+    confidenceScore: number,
+    pressureContext: TirePressureContext,
+    dimoContext?: TireDimoContext | null,
+  ): Promise<TireAlert[]> {
+    const candidates = await this.buildAlertCandidates(
+      organizationId,
+      vehicleId,
+      setup,
+      wearAnalysis,
+      confidenceScore,
+      pressureContext,
+      dimoContext,
+    );
+    return structuredAlertsToApiAlerts(candidates);
   }
 
   private buildSummaryPayload(
@@ -802,6 +1271,7 @@ export class TireHealthService {
     alerts: TireAlert[],
     pressureContext: TirePressureContext,
     inventoryFlags: Pick<TireHealthSummary, 'hasActiveSet' | 'hasSetups' | 'hasMeasurements'>,
+    dimoContext: TireDimoContext,
   ): TireHealthSummary {
     const wheels = [
       { pos: 'FL', mm: wearAnalysis.frontLeftMm },
@@ -857,21 +1327,30 @@ export class TireHealthService {
     const unified = this.resolveUnifiedConfidence(setup, measurementState);
     const confDiscount =
       this.cfg.remainingKmConfidenceDiscount[unified.label.toLowerCase()] ?? 0.85;
-    const adjustedRemainingKm = Math.round(
+    const rawAdjustedRemainingKm = Math.round(
       wearAnalysis.estimatedRemainingKm * confDiscount,
     );
+    const anchorProjection = applyAnchorToRemainingKmProjection({
+      anchorStatus: setup.odometerAnchorStatus,
+      adjustedRemainingKm: rawAdjustedRemainingKm,
+      confidenceScore: unified.score,
+    });
+    const adjustedRemainingKm = anchorProjection.adjustedRemainingKm ?? 0;
+    const unifiedScore = anchorProjection.confidenceScore;
 
     const action = this.resolveActionState(
-      adjustedRemainingKm,
+      anchorProjection.adjustedRemainingKm ?? 0,
       alerts,
-      unified.score,
+      unifiedScore,
     );
     const dataQualityWarnings = this.resolveDataQualityWarnings({
       setup,
-      confidenceScore: unified.score,
+      confidenceScore: unifiedScore,
       measurementState,
       pressureContext,
       alerts,
+      anchorWarnings: anchorProjection.warnings,
+      dimoContext,
     });
 
     const canonical = this.buildCanonicalReadModel({
@@ -880,15 +1359,23 @@ export class TireHealthService {
       worst,
       measurementState,
       latestMeasurement,
-      adjustedRemainingKm,
+      adjustedRemainingKm: anchorProjection.adjustedRemainingKm ?? 0,
       pressureContext,
+      predictionCapable: anchorProjection.predictionCapable,
+      dimoContext,
     });
 
-    return {
+    const currentTreadEvidenceSource = mapTreadSourceToEvidence(
+      wearAnalysis.explainability.currentTreadSource,
+      setup.initialTreadEvidenceSource ?? null,
+    );
+    const provenanceFlags = resolveSummaryProvenanceFlags(currentTreadEvidenceSource);
+
+    const summaryCore = {
       overallPercent: setLevelPercent,
       overallRemainingKm: adjustedRemainingKm,
       healthStatus,
-      confidenceScore: unified.score,
+      confidenceScore: unifiedScore,
       confidenceLabel: unified.label,
       worstTirePosition: worst.pos,
       worstTirePercent: this.computeWheelPercentV2(
@@ -915,6 +1402,11 @@ export class TireHealthService {
       replacementThresholdSource:
         wearAnalysis.explainability.replacementThresholdSource,
       currentTreadSource: wearAnalysis.explainability.currentTreadSource,
+      currentTreadValue: this.round1(worst.mm),
+      currentTreadEvidenceSource,
+      ...provenanceFlags,
+      lastActualMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      baselineSource: setup.initialTreadEvidenceSource ?? null,
       operationalReplacementMm: wearAnalysis.operationalReplacementMm,
       topWearDrivers: wearAnalysis.explainability.topWearDrivers,
       actionState: action.state,
@@ -922,15 +1414,26 @@ export class TireHealthService {
       measurementState,
       dataQualityWarnings,
       pressureContext,
+      recommendedPressure: pressureContext.recommendedPressure,
+      pressureSpecMissingLabel: pressureContext.pressureSpecMissingLabel,
       latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      predictionCapable: anchorProjection.predictionCapable,
+      odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
+      odometerAnchorConfidence: setup.odometerAnchorConfidence ?? null,
+      installedOdometerSource: setup.installedOdometerSource ?? null,
       ...canonical,
       ...inventoryFlags,
+    } satisfies TireHealthSummaryForPresentation;
+
+    return {
+      ...summaryCore,
+      dimoContext,
+      evidencePresentation: buildTireEvidencePresentation({
+        summary: summaryCore,
+        modelCalculatedAt: setup.lastRecalculatedAt?.toISOString() ?? null,
+      }),
     };
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  CANONICAL READ MODEL (single honest tire truth)
-  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Derives the honest GOOD/WATCH/WARNING/CRITICAL read model from the wear
@@ -947,6 +1450,8 @@ export class TireHealthService {
     latestMeasurement: any | null;
     adjustedRemainingKm: number;
     pressureContext: TirePressureContext;
+    predictionCapable?: boolean;
+    dimoContext?: TireDimoContext | null;
   }): {
     overallStatus: TireStatus;
     displayMode: TireDisplayMode;
@@ -964,7 +1469,7 @@ export class TireHealthService {
     unevenWearStatus: TireStatus;
     recommendations: string[];
   } {
-    const { setup, wearAnalysis, worst, measurementState, latestMeasurement, adjustedRemainingKm, pressureContext } = args;
+    const { setup, wearAnalysis, worst, measurementState, latestMeasurement, adjustedRemainingKm, pressureContext, predictionCapable = true, dimoContext } = args;
 
     const estimatedTreadMm = this.round1(worst.mm);
     const lowestTreadPosition = this.positionLabel(worst.pos);
@@ -994,8 +1499,14 @@ export class TireHealthService {
 
     // ── Sub-statuses ──
     const treadStatus = classifyTreadStatus(lowestTreadMm, setup.tireSeason);
-    const remainingKmStatus = classifyRemainingKmStatus(adjustedRemainingKm);
-    const seasonResult = classifySeasonStatus(setup.tireSeason);
+    const remainingKmStatus = predictionCapable
+      ? classifyRemainingKmStatus(adjustedRemainingKm)
+      : 'UNKNOWN';
+    const seasonResult = classifySeasonStatus(setup.tireSeason, new Date(), {
+      weightedAvgTempC: dimoContext?.ambient.weightedAvgTempC ?? 0,
+      sampleCount: dimoContext?.ambient.sampleCount ?? 0,
+      capabilityUsable: dimoContext?.ambient.usable === true,
+    });
     const seasonStatus = seasonResult.status;
 
     const sideDeltaFront = Math.abs(wearAnalysis.frontLeftMm - wearAnalysis.frontRightMm);
@@ -1046,7 +1557,7 @@ export class TireHealthService {
       displayTreadMm,
       lastMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
       measurementAgeDays,
-      estimatedRemainingKm: adjustedRemainingKm,
+      estimatedRemainingKm: predictionCapable ? adjustedRemainingKm : null,
       pressureStatus,
       seasonStatus,
       unevenWearStatus,
@@ -1191,9 +1702,14 @@ export class TireHealthService {
 
   private resolveMeasurementState(
     currentTreadSource: string | null | undefined,
+    evidenceSource?: TireEvidenceSource | null,
   ): 'measured' | 'estimated' | 'mixed' {
+    if (evidenceSource && resolveSummaryProvenanceFlags(evidenceSource).isMeasured) {
+      return 'measured';
+    }
     if (currentTreadSource === 'manual_measurement') return 'measured';
     if (currentTreadSource === 'calibration_projection') return 'mixed';
+    if (currentTreadSource === 'fallback_estimate') return 'estimated';
     return 'estimated';
   }
 
@@ -1203,19 +1719,24 @@ export class TireHealthService {
     measurementState: 'measured' | 'estimated' | 'mixed';
     pressureContext: TirePressureContext;
     alerts: TireAlert[];
+    anchorWarnings?: string[];
+    dimoContext?: TireDimoContext | null;
   }): string[] {
-    const warnings: string[] = [];
+    const warnings: string[] = [...(args.anchorWarnings ?? [])];
+    if (!isPredictionCapable(args.setup.odometerAnchorStatus)) {
+      warnings.push('Odometer anchor missing or unvalidated for this setup.');
+    }
     if (args.confidenceScore < this.cfg.alerts.lowConfidenceThreshold) {
       warnings.push('Low confidence: add workshop or manual measurements for stronger anchors.');
     }
     if (args.measurementState !== 'measured') {
       warnings.push('Current tread state is partially estimated.');
     }
-    if (args.pressureContext.dimoFreshness === 'stale') {
+    if (args.pressureContext.overallFreshness === 'stale') {
       warnings.push('DIMO tire pressure data is stale.');
     }
-    if (args.pressureContext.hmFreshness === 'stale') {
-      warnings.push('HM tire pressure data is stale.');
+    if (args.pressureContext.wearEligibility.measurementHint) {
+      warnings.push(args.pressureContext.wearEligibility.measurementHint);
     }
     if (
       args.setup.tireCondition === 'ALREADY_MOUNTED' &&
@@ -1228,12 +1749,27 @@ export class TireHealthService {
     if (args.alerts.some((a) => a.type === 'LOW_CONFIDENCE')) {
       warnings.push('Model anchor quality is weak for long-horizon projection.');
     }
+    if (args.dimoContext?.ambient.pressureContextHintEn) {
+      warnings.push(args.dimoContext.ambient.pressureContextHintEn);
+    }
     return Array.from(new Set(warnings));
   }
 
   private async resolvePressureContext(
     vehicleId: string,
-    hmTirePressure: any | null,
+    hmTirePressure: HmTirePressureSignals | null,
+    setup?: {
+      aiTireSpec?: unknown;
+      recommendedPressureFrontBar?: number | null;
+      recommendedPressureRearBar?: number | null;
+      recommendedPressureLoadedFrontBar?: number | null;
+      recommendedPressureLoadedRearBar?: number | null;
+      pressureSpecSource?: string | null;
+      pressureSpecConfirmedAt?: Date | null;
+      pressureSpecConfidence?: number | null;
+      isStaggered?: boolean | null;
+    } | null,
+    dimoContext?: TireDimoContext | null,
   ): Promise<TirePressureContext> {
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
@@ -1242,82 +1778,302 @@ export class TireHealthService {
         tirePressureFr: true,
         tirePressureRl: true,
         tirePressureRr: true,
+        providerSource: true,
         providerFetchedAt: true,
         sourceTimestamp: true,
         lastSeenAt: true,
+        rawPayloadJson: true,
       },
     });
 
-    const dimoValues = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
-    ].filter((v): v is number => v != null);
-    const dimoFreshness = this.resolveFreshness(
-      latestState?.sourceTimestamp ??
-        latestState?.providerFetchedAt ??
-        latestState?.lastSeenAt ??
-        null,
-      dimoValues.length > 0,
+    const recommendedPressure = resolveRecommendedTirePressure(setup ?? {});
+    const rawTpms = latestState
+      ? extractDimoTpmsWarningFromPayload(latestState.rawPayloadJson)
+      : null;
+
+    return buildTirePressureContext({
+      recommendedPressure,
+      dimo: latestState
+        ? {
+            tirePressureFl: latestState.tirePressureFl,
+            tirePressureFr: latestState.tirePressureFr,
+            tirePressureRl: latestState.tirePressureRl,
+            tirePressureRr: latestState.tirePressureRr,
+            providerSource: latestState.providerSource,
+            sourceTimestamp: latestState.sourceTimestamp,
+            providerFetchedAt: latestState.providerFetchedAt,
+            lastSeenAt: latestState.lastSeenAt,
+            perWheelTimestamps: extractDimoPerWheelTimestamps(
+              latestState.rawPayloadJson,
+            ),
+            tpmsWarning: resolveCapabilityGatedTpmsWarning(
+              dimoContext?.tpms ?? {
+                architecturePrepared: true,
+                usable: false,
+                signalPresent: false,
+                warningActive: null,
+                sourceTimestamp: null,
+                reasons: [],
+              },
+              rawTpms,
+            ),
+            capability: {
+              tpms: dimoContext?.tpms ?? null,
+            },
+          }
+        : null,
+      hm: hmTirePressure
+        ? {
+            frontLeft: hmTirePressure.frontLeft,
+            frontRight: hmTirePressure.frontRight,
+            rearLeft: hmTirePressure.rearLeft,
+            rearRight: hmTirePressure.rearRight,
+            unit: hmTirePressure.unit,
+            statusFrontLeft: hmTirePressure.statusFrontLeft,
+            statusFrontRight: hmTirePressure.statusFrontRight,
+            statusRearLeft: hmTirePressure.statusRearLeft,
+            statusRearRight: hmTirePressure.statusRearRight,
+            overallStatus: hmTirePressure.overallStatus,
+            lastUpdatedAt: hmTirePressure.lastUpdatedAt,
+            freshnessStatus: hmTirePressure.freshnessStatus,
+          }
+        : null,
+    });
+  }
+
+  private observePressureInvalidWheels(context: TirePressureContext): void {
+    const positions = ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'] as const;
+    for (const position of positions) {
+      const wheel = context.wheels[position];
+      if (wheel.plausibility === 'valid' || wheel.plausibility === 'missing') {
+        continue;
+      }
+      this.observability?.recordPressureNormalization({
+        plausibility: wheel.plausibility,
+        invalid: true,
+        source: wheel.sourceProvider,
+      });
+    }
+  }
+
+  private async ensureTelemetryOdometerAnchor<
+    T extends {
+      id: string;
+      vehicleId: string;
+      installedOdometerKm: number | null;
+      installedOdometerSource?: string | null;
+      installedOdometerCapturedAt?: Date | null;
+      installedOdometerEvidenceId?: string | null;
+      odometerAnchorStatus?: string | null;
+      odometerAnchorConfidence?: number | null;
+    },
+  >(vehicleId: string, setup: T): Promise<T> {
+    if (setup.installedOdometerKm != null) {
+      return setup;
+    }
+
+    const context = await this.fetchVehicleOdometerContext(vehicleId);
+    const anchor = resolveOdometerAnchor({ context });
+    if (!isRuntimeTelemetryAutoAnchorEligible(anchor)) {
+      return setup;
+    }
+
+    const fields = buildSetupOdometerAnchorFields(anchor);
+    await this.prisma.vehicleTireSetup.update({
+      where: { id: setup.id },
+      data: fields,
+    });
+    await this.prisma.vehicleTireSetupMountPeriod.updateMany({
+      where: { tireSetupId: setup.id, removedAt: null },
+      data: fields,
+    });
+
+    this.observability?.recordOdometerAnchor({
+      status: 'anchored',
+      source: anchor.source,
+      issue: 'runtime_telemetry_bootstrap',
+    });
+    this.logger.log(
+      `Auto-anchored odometer for setup=${setup.id} vehicle=${vehicleId} ` +
+        `odometerKm=${anchor.odometerKm} source=${anchor.source}`,
     );
 
-    const hmFreshnessRaw = String(
-      hmTirePressure?.freshnessStatus ?? 'no_data',
-    ).toLowerCase();
-    const hmFreshness: PressureFreshness =
-      hmFreshnessRaw === 'fresh'
-        ? 'fresh'
-        : hmFreshnessRaw === 'aging'
-        ? 'aging'
-        : hmFreshnessRaw === 'stale'
-        ? 'stale'
-        : 'no_data';
+    return { ...setup, ...fields };
+  }
 
-    const hmStatus = String(hmTirePressure?.overallStatus ?? 'UNKNOWN').toUpperCase();
-    const warningHints: string[] = [];
-    if (hmStatus === 'ISSUE' && hmFreshness !== 'no_data') {
-      warningHints.push(
-        'HM indicates current underinflation or pressure imbalance.',
-      );
-    }
-    if (dimoFreshness === 'stale') {
-      warningHints.push('DIMO pressure snapshot is stale for wear interpretation.');
-    }
-    if (dimoFreshness === 'no_data' && hmFreshness === 'no_data') {
-      warningHints.push('No tire pressure feed available.');
-    }
+  private async fetchVehicleOdometerContext(
+    vehicleId: string,
+  ): Promise<VehicleOdometerContext> {
+    const [vehicle, latestState, lastSetup, recentEvents] = await Promise.all([
+      this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { mileageKm: true },
+      }),
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: {
+          odometerKm: true,
+          providerSource: true,
+          providerFetchedAt: true,
+          sourceTimestamp: true,
+          lastSeenAt: true,
+          source: true,
+        },
+      }),
+      this.prisma.vehicleTireSetup.findFirst({
+        where: { vehicleId, removedOdometerKm: { not: null } },
+        orderBy: { removedAt: 'desc' },
+        select: { removedOdometerKm: true },
+      }),
+      this.prisma.tireEvent.findMany({
+        where: { vehicleId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { payload: true },
+      }),
+    ]);
 
-    let source: TirePressureContext['source'] = 'NONE';
-    if (dimoValues.length > 0 && hmFreshness !== 'no_data') source = 'MIXED';
-    else if (dimoValues.length > 0) source = 'DIMO';
-    else if (hmFreshness !== 'no_data') source = 'HM';
-
-    let overallStatus: TirePressureContext['overallStatus'] = 'UNKNOWN';
-    if (hmStatus === 'ISSUE' && hmFreshness !== 'stale') overallStatus = 'ISSUE';
-    else if (dimoFreshness === 'stale' && hmFreshness !== 'fresh') overallStatus = 'STALE';
-    else if (source !== 'NONE') overallStatus = 'OK';
+    const eventOdos = recentEvents
+      .map((event) =>
+        toFiniteOdometerKm((event.payload as { odometerKm?: number } | null)?.odometerKm),
+      )
+      .filter((value): value is number => value != null);
+    const eventOdo = eventOdos.length > 0 ? Math.max(...eventOdos) : null;
+    const lastKnown = [lastSetup?.removedOdometerKm, eventOdo, vehicle?.mileageKm]
+      .map((value) => toFiniteOdometerKm(value))
+      .filter((value): value is number => value != null)
+      .reduce((max, value) => Math.max(max, value), Number.NEGATIVE_INFINITY);
 
     return {
-      source,
-      dimoFreshness,
-      hmFreshness,
-      overallStatus,
-      warningHints,
+      latestState,
+      vehicleMileageKm: vehicle?.mileageKm ?? null,
+      lastKnownOdometerKm: Number.isFinite(lastKnown) ? lastKnown : null,
     };
+  }
+
+  private observeDimoOdometerAnchor(dimoContext: TireDimoContext): void {
+    const odometer = dimoContext.odometer;
+    const status =
+      odometer.usable
+        ? 'anchored'
+        : odometer.valueKm != null &&
+            odometer.reasons.some((reason) => reason.includes('plausibility'))
+          ? 'plausibility_issue'
+          : 'required';
+    this.observability?.recordOdometerAnchor({
+      status,
+      source: odometer.source,
+      issue: odometer.reasons[0] ?? null,
+    });
+  }
+
+  private async resolveDimoTireContext(
+    vehicleId: string,
+    asOf?: Date,
+  ): Promise<TireDimoContext> {
+    const effectiveAsOf = asOf ?? new Date();
+    const fourteenDaysAgo = new Date(
+      effectiveAsOf.getTime() - 14 * 24 * 60 * 60 * 1000,
+    );
+
+    const [latestState, trips, setup] = await Promise.all([
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: {
+          odometerKm: true,
+          speedKmh: true,
+          providerSource: true,
+          sourceTimestamp: true,
+          providerFetchedAt: true,
+          lastSeenAt: true,
+          rawPayloadJson: true,
+        },
+      }),
+      this.prisma.vehicleTrip.findMany({
+        where: {
+          vehicleId,
+          startTime: {
+            gte: fourteenDaysAgo,
+            ...(asOf ? { lte: asOf } : {}),
+          },
+        },
+        select: {
+          startTime: true,
+          outsideTemperatureStartC: true,
+          distanceKm: true,
+        },
+        take: 500,
+        orderBy: { startTime: 'desc' },
+      }),
+      this.prisma.vehicleTireSetup.findFirst({
+        where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
+        select: { installedOdometerKm: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const ambientSamples = trips
+      .filter(
+        (t) =>
+          t.outsideTemperatureStartC != null &&
+          t.startTime != null &&
+          Number.isFinite(t.outsideTemperatureStartC),
+      )
+      .map((t) => ({
+        timestamp: t.startTime!.toISOString(),
+        temperatureC: t.outsideTemperatureStartC!,
+        weightKm: t.distanceKm ?? 1,
+      }));
+
+    const raw = latestState?.rawPayloadJson as Record<string, unknown> | null;
+    const availableSignalNames = raw
+      ? Object.keys(raw).filter((k) => !k.startsWith('_'))
+      : [];
+
+    const rawTpms = extractDimoTpmsWarningFromPayload(
+      latestState?.rawPayloadJson,
+    );
+
+    return buildTireDimoContext({
+      asOf: effectiveAsOf,
+      latestState,
+      ambientSamples,
+      availableSignalNames,
+      lastKnownOdometerKm: setup?.installedOdometerKm ?? null,
+      tpmsWarning: rawTpms,
+      coverage: {
+        exteriorAirTemperature: {
+          sampleCount14d: ambientSamples.length,
+          coveragePercent:
+            ambientSamples.length > 0
+              ? Math.min(100, ambientSamples.length)
+              : 0,
+        },
+        powertrainTransmissionTravelledDistance: {
+          sampleCount14d: latestState?.odometerKm != null ? 1 : 0,
+          coveragePercent: latestState?.odometerKm != null ? 1 : 0,
+        },
+        speed: {
+          sampleCount14d: latestState?.speedKmh != null ? 1 : 0,
+          coveragePercent: latestState?.speedKmh != null ? 1 : 0,
+        },
+      },
+    });
   }
 
   private applyPressureConfidenceOverlay(
     confidence: ConfidenceDimensions,
     pressureContext: TirePressureContext,
   ): ConfidenceDimensions {
-    let score = confidence.score;
-    if (pressureContext.dimoFreshness === 'stale') score -= 4;
-    if (pressureContext.dimoFreshness === 'no_data') score -= 6;
-    if (pressureContext.hmFreshness === 'fresh' && pressureContext.overallStatus === 'ISSUE') {
+    let score = confidence.score - pressureContext.wearEligibility.confidencePenalty;
+    if (pressureContext.tpmsWarning === true && pressureContext.overallFreshness !== 'stale') {
       score -= 3;
     }
-    if (pressureContext.hmFreshness === 'fresh' && pressureContext.dimoFreshness === 'no_data') {
+    if (
+      pressureContext.hmFreshness === 'fresh' &&
+      pressureContext.dimoFreshness === 'no_data' &&
+      pressureContext.sourceType === 'HIGH_MOBILITY'
+    ) {
       score += 2;
     }
     score = Math.max(0, Math.min(100, score));
@@ -1515,14 +2271,15 @@ export class TireHealthService {
       hasSetups: true,
       hasMeasurements: (setup.measurements?.length ?? 0) > 0,
     },
+    dimoContext?: TireDimoContext,
   ): TireHealthSummary {
-    const resolvedPressure = pressureContext ?? {
-      source: 'NONE' as const,
-      dimoFreshness: 'no_data' as const,
-      hmFreshness: 'no_data' as const,
-      overallStatus: 'UNKNOWN' as const,
-      warningHints: [],
-    };
+    const resolvedPressure = pressureContext ?? emptyTirePressureContext();
+    const resolvedDimo =
+      dimoContext ??
+      buildTireDimoContext({
+        asOf: new Date(),
+        ambientSamples: [],
+      });
 
     const latestMeasurement = setup.measurements?.[0] ?? null;
     const measuredVals = latestMeasurement
@@ -1537,7 +2294,11 @@ export class TireHealthService {
 
     // Without a wear baseline we cannot honestly assert tread health, but a
     // season mismatch or a live pressure issue is still a real, knowable fact.
-    const seasonResult = classifySeasonStatus(setup.tireSeason);
+    const seasonResult = classifySeasonStatus(setup.tireSeason, new Date(), {
+      weightedAvgTempC: resolvedDimo.ambient.weightedAvgTempC ?? 0,
+      sampleCount: resolvedDimo.ambient.sampleCount,
+      capabilityUsable: resolvedDimo.ambient.usable,
+    });
     const pressureStatus = this.mapPressureStatus(resolvedPressure);
     const knownStatus = aggregateTireStatus(seasonResult.status, pressureStatus);
     const overallStatus: TireStatus = knownStatus === 'GOOD' ? 'UNKNOWN' : knownStatus;
@@ -1549,7 +2310,7 @@ export class TireHealthService {
       recommendations.unshift('Switch to summer tires to reduce wear.');
     }
 
-    return {
+    const summaryCore = {
       overallPercent: 100,
       overallRemainingKm: setup.expectedLifeKm ?? 35000,
       healthStatus: 'EXCELLENT',
@@ -1573,19 +2334,26 @@ export class TireHealthService {
       referenceNewTreadSource: null,
       replacementThresholdSource: null,
       currentTreadSource: null,
+      currentTreadValue: measuredTreadMm,
+      currentTreadEvidenceSource: setup.initialTreadEvidenceSource ?? null,
+      ...resolveSummaryProvenanceFlags(setup.initialTreadEvidenceSource),
+      lastActualMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      baselineSource: setup.initialTreadEvidenceSource ?? null,
       operationalReplacementMm: null,
       topWearDrivers: [],
-      actionState: 'CHECK_SOON',
+      actionState: 'CHECK_SOON' as TireActionState,
       actionReasons: ['No calibrated wear baseline yet. Record first tread measurement.'],
-      measurementState: 'estimated',
+      measurementState: 'estimated' as const,
       dataQualityWarnings: ['No tire wear baseline measurement available.'],
       pressureContext: resolvedPressure,
+      recommendedPressure: resolvedPressure.recommendedPressure,
+      pressureSpecMissingLabel: resolvedPressure.pressureSpecMissingLabel,
       latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
 
       // ── Canonical read model ──
       overallStatus,
-      displayMode: measuredTreadMm != null ? 'MEASURED' : 'UNKNOWN',
-      confidence: measuredTreadMm != null ? 'LOW' : 'UNKNOWN',
+      displayMode: (measuredTreadMm != null ? 'MEASURED' : 'UNKNOWN') as TireDisplayMode,
+      confidence: (measuredTreadMm != null ? 'LOW' : 'UNKNOWN') as TireConfidenceLevel,
       lowestTreadMm: measuredTreadMm,
       lowestTreadPosition: null,
       measuredTreadMm,
@@ -1596,9 +2364,22 @@ export class TireHealthService {
       estimatedRemainingKm: null,
       pressureStatus,
       seasonStatus: seasonResult.status,
-      unevenWearStatus: 'UNKNOWN',
+      unevenWearStatus: 'UNKNOWN' as TireStatus,
       recommendations,
+      predictionCapable: isPredictionCapable(setup.odometerAnchorStatus),
+      odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
+      odometerAnchorConfidence: setup.odometerAnchorConfidence ?? null,
+      installedOdometerSource: setup.installedOdometerSource ?? null,
       ...inventoryFlags,
+    } satisfies TireHealthSummaryForPresentation;
+
+    return {
+      ...summaryCore,
+      dimoContext: resolvedDimo,
+      evidencePresentation: buildTireEvidencePresentation({
+        summary: summaryCore,
+        modelCalculatedAt: setup.lastRecalculatedAt?.toISOString() ?? null,
+      }),
     };
   }
 }

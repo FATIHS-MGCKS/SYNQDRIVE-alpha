@@ -240,7 +240,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'tires_critical',
-    fingerprintVersion: 1,
+    fingerprintVersion: 2,
     eventKind: NotificationEventKind.STATE,
     defaultSeverity: NotificationSeverity.CRITICAL,
     allowedSeverityEscalations: [NotificationSeverity.WARNING, NotificationSeverity.CRITICAL],

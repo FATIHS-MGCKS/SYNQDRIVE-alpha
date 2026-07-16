@@ -75,6 +75,87 @@ export interface RentalHealthModule {
     | 'sensor'
     | 'complaint'
     | 'unknown';
+  tire_read_model?: TireRentalHealthReadModel;
+}
+
+export type TireRentalReviewRequirement =
+  | 'NONE'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED';
+
+export type TireRentalReasonCode =
+  | 'TREAD_MEASURED_BELOW_LEGAL_MIN'
+  | 'TREAD_MEASURED_CRITICAL'
+  | 'TREAD_ESTIMATED_CRITICAL_HIGH_CONF'
+  | 'TREAD_ESTIMATED_CRITICAL_LOW_CONF'
+  | 'TREAD_DEFAULT_ASSUMPTION'
+  | 'TREAD_UNKNOWN'
+  | 'TREAD_STALE'
+  | 'PRESSURE_TPMS_CRITICAL'
+  | 'PRESSURE_PROVIDER_CRITICAL'
+  | 'PRESSURE_WARNING'
+  | 'PRESSURE_STALE'
+  | 'PRESSURE_UNKNOWN'
+  | 'NO_TIRE_DATA'
+  | 'DATA_STALE'
+  | 'REVIEW_OVERRIDE_ACTIVE';
+
+export interface TireRentalBlockingEvidence {
+  action: 'NONE' | 'HARD_BLOCK';
+  reasonCode: TireRentalReasonCode;
+  source: string;
+  value: number | string | null;
+  threshold: number | string | null;
+  timestamp: string | null;
+  setupId: string | null;
+  message: string;
+}
+
+export interface TireRentalHealthReadModel {
+  wearEvidence: {
+    displayMode: string;
+    lowestTreadMm: number | null;
+    lowestTreadPosition: string | null;
+    overallWearStatus: string;
+    measuredAt: string | null;
+    freshness: string;
+    isDefaultAssumption: boolean;
+    confidence: string;
+  };
+  pressureEvidence: {
+    sourceType: string;
+    sourceLabel: string;
+    overallPressureStatus: string;
+    tpmsWarning: boolean | null;
+    freshness: string;
+    lastUpdatedAt: string | null;
+    perWheelIssue: boolean;
+  };
+  specEvidence: {
+    pressureSpecSource: string;
+    pressureSpecConfidence: number;
+    wearFactorEligible: boolean;
+    pressureSpecMissingLabel: string | null;
+  };
+  measurementFreshness: string;
+  pressureFreshness: string;
+  overallStatus: RentalHealthState;
+  confidence: string;
+  reviewRequirement: TireRentalReviewRequirement;
+  rentalBlockingEvidence: TireRentalBlockingEvidence | null;
+  structuredReasonCodes: TireRentalReasonCode[];
+  activeReviewOverride: {
+    id: string;
+    reason: string;
+    grantedByUserId: string;
+    expiresAt: string;
+    createdAt: string;
+  } | null;
+  primaryReason: string;
+  lastUpdatedAt: string | null;
+  dataStale: boolean;
+  source: string;
+  evidenceType: string;
 }
 
 export interface VehicleHealthResponse {
@@ -5566,6 +5647,9 @@ export interface TireAlert {
   message: string;
   position?: string;
   value?: number;
+  reasonCode?: string;
+  displayMode?: TireDisplayMode;
+  dedupeKey?: string;
 }
 
 export type TireActionState =
@@ -5580,18 +5664,195 @@ export type TirePressureFreshness =
   | 'stale'
   | 'no_data';
 
+export interface TirePressureWheelReading {
+  value: number | null;
+  normalizedUnit: 'BAR';
+  sourceProvider: 'DIMO' | 'HIGH_MOBILITY' | null;
+  sourceTimestamp: string | null;
+  freshness: TirePressureFreshness;
+  statusToken: string | null;
+  statusIssue: boolean;
+}
+
+export interface TirePressureCoverage {
+  wheelsAvailable: number;
+  wheelsFresh: number;
+  wheelsUsableForWear: number;
+  coveragePercent: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  signalSpanMinutes: number | null;
+  continuousExposureEligible: boolean;
+  minWheelsRequired: number;
+  meetsWearThreshold: boolean;
+}
+
+export interface TirePressureWearEligibility {
+  eligible: boolean;
+  reasons: string[];
+  confidencePenalty: number;
+  measurementHint: string | null;
+}
+
+export type TirePressureSpecSource =
+  | 'VEHICLE_MANUFACTURER'
+  | 'DOOR_PLACARD'
+  | 'OWNER_MANUAL'
+  | 'WORKSHOP'
+  | 'USER_CONFIRMED'
+  | 'AI_ESTIMATED'
+  | 'UNKNOWN';
+
+export interface RecommendedTirePressureSpec {
+  recommendedPressureFrontBar: number | null;
+  recommendedPressureRearBar: number | null;
+  recommendedPressureLoadedFrontBar: number | null;
+  recommendedPressureLoadedRearBar: number | null;
+  pressureSpecSource: TirePressureSpecSource;
+  pressureSpecConfirmedAt: string | null;
+  pressureSpecConfidence: number;
+  wearFactorEligible: boolean;
+  pressureSpecMissingLabel: string | null;
+}
+
 export interface TirePressureContext {
-  source: 'DIMO' | 'HM' | 'MIXED' | 'NONE';
+  frontLeft: number | null;
+  frontRight: number | null;
+  rearLeft: number | null;
+  rearRight: number | null;
+  wheels: {
+    frontLeft: TirePressureWheelReading;
+    frontRight: TirePressureWheelReading;
+    rearLeft: TirePressureWheelReading;
+    rearRight: TirePressureWheelReading;
+  };
+  normalizedUnit: 'BAR';
+  sourceType: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | 'NONE';
+  overallFreshness: TirePressureFreshness;
+  coverage: TirePressureCoverage;
+  tpmsWarning: boolean | null;
+  tpmsWarningSource: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | null;
+  recommendedPressure: RecommendedTirePressureSpec;
+  pressureSpecMissingLabel: string | null;
+  qualityWarnings: string[];
+  wearEligibility: TirePressureWearEligibility;
+  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
+  /** @deprecated use sourceType */
+  source: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | 'NONE';
   dimoFreshness: TirePressureFreshness;
   hmFreshness: TirePressureFreshness;
-  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
+  /** @deprecated use qualityWarnings */
   warningHints: string[];
 }
 
-/** Canonical tire status taxonomy (see backend tire-status.ts). */
 export type TireCanonicalStatus = 'GOOD' | 'WATCH' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
 export type TireDisplayMode = 'MEASURED' | 'ESTIMATED' | 'UNKNOWN';
 export type TireConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+
+export type TireUiStatus =
+  | 'GOOD'
+  | 'WATCH'
+  | 'WARNING'
+  | 'CRITICAL'
+  | 'UNKNOWN'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED'
+  | 'LIMITED_DATA';
+
+export type TireTreadProvenance =
+  | 'MEASURED'
+  | 'ESTIMATED'
+  | 'DEFAULT_ASSUMPTION'
+  | 'MODEL'
+  | 'DOCUMENTED'
+  | 'UNKNOWN';
+
+export type TireStructuredActionCode =
+  | 'MEASURE_TREAD'
+  | 'CAPTURE_ODOMETER_ANCHOR'
+  | 'CONFIRM_TIRE_SPEC'
+  | 'SET_RECOMMENDED_PRESSURE'
+  | 'CHECK_PRESSURE'
+  | 'REPLACE_TIRES'
+  | 'REVIEW_ROTATION';
+
+export interface TireTreadEvidenceLine {
+  position: string;
+  axle: 'front' | 'rear';
+  valueMm: number | null;
+  provenance: TireTreadProvenance;
+  sourceCode: string | null;
+  sourceLabelDe: string;
+  sourceLabelEn: string;
+  measuredAt: string | null;
+  confidence: TireConfidenceLevel;
+  isDefaultAssumption: boolean;
+  displayLabelDe: string;
+  displayLabelEn: string;
+}
+
+export interface TireRemainingKmPresentation {
+  reliable: boolean;
+  displayDe: string;
+  displayEn: string;
+  exactKm: number | null;
+  bandMinKm: number | null;
+  bandMaxKm: number | null;
+  reasonDe: string | null;
+  reasonEn: string | null;
+}
+
+export interface TireStructuredAction {
+  code: TireStructuredActionCode;
+  labelDe: string;
+  labelEn: string;
+  priority: number;
+}
+
+export interface TireEvidencePresentation {
+  uiStatus: TireUiStatus;
+  uiStatusLabelDe: string;
+  uiStatusLabelEn: string;
+  treadLines: TireTreadEvidenceLine[];
+  lowestTread: TireTreadEvidenceLine | null;
+  remainingKm: TireRemainingKmPresentation;
+  lastTreadMeasurementAt: string | null;
+  lastPressureValueBar: number | null;
+  lastPressureSource: string | null;
+  pressureFreshness: string;
+  modelVersion: string;
+  modelCalculatedAt: string | null;
+  tireSpecSource: string | null;
+  tireSpecSourceLabelDe: string;
+  tireSpecSourceLabelEn: string;
+  structuredActions: TireStructuredAction[];
+  defaultAssumptionWarningDe: string | null;
+  defaultAssumptionWarningEn: string | null;
+}
+
+export interface TireDimoContextResponse {
+  asOf: string;
+  ambient: {
+    usable: boolean;
+    weightedAvgTempC: number | null;
+    seasonBand: 'COLD' | 'MILD' | 'WARM' | null;
+    stale: boolean;
+    pressureContextHintEn: string | null;
+  };
+  odometer: {
+    usable: boolean;
+    valueKm: number | null;
+    source: 'DIMO' | 'HIGH_MOBILITY' | 'VEHICLE_LATEST_STATE' | null;
+    plausibilityOnly: boolean;
+  };
+  tpms: {
+    architecturePrepared: boolean;
+    usable: boolean;
+    signalPresent: boolean;
+    warningActive: boolean | null;
+  };
+  blockedWearDerivations: string[];
+}
 
 export interface TireHealthSummaryResponse {
   overallPercent: number;
@@ -5617,6 +5878,22 @@ export interface TireHealthSummaryResponse {
   referenceNewTreadSource?: string | null;
   replacementThresholdSource?: string | null;
   currentTreadSource?: string | null;
+  currentTreadValue?: number | null;
+  currentTreadEvidenceSource?: string | null;
+  isMeasured?: boolean;
+  isEstimated?: boolean;
+  isDefaultAssumption?: boolean;
+  lastActualMeasurementAt?: string | null;
+  baselineSource?: string | null;
+  predictionCapable?: boolean;
+  odometerAnchorStatus?: string | null;
+  odometerAnchorConfidence?: number | null;
+  installedOdometerSource?: string | null;
+  hasActiveSet?: boolean;
+  hasSetups?: boolean;
+  hasMeasurements?: boolean;
+  evidencePresentation?: TireEvidencePresentation;
+  dimoContext?: TireDimoContextResponse;
   operationalReplacementMm?: number | null;
   topWearDrivers?: string[];
   actionState?: TireActionState;
@@ -5624,6 +5901,8 @@ export interface TireHealthSummaryResponse {
   measurementState?: 'measured' | 'estimated' | 'mixed';
   dataQualityWarnings?: string[];
   pressureContext?: TirePressureContext;
+  recommendedPressure?: RecommendedTirePressureSpec;
+  pressureSpecMissingLabel?: string | null;
   latestMeasurementAt?: string | null;
   // ── Canonical read model (single source of truth, mm-based) ────────────────
   overallStatus?: TireCanonicalStatus;

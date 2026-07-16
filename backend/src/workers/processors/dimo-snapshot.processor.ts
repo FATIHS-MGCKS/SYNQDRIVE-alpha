@@ -13,6 +13,10 @@ import { HvBatteryHealthService } from '../../modules/vehicle-intelligence/batte
 import { ClickHouseTelemetryService } from '../../modules/clickhouse/clickhouse-telemetry.service';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
+import {
+  normalizeDimoSnapshotTirePressures,
+  toSynqDriveTirePressureMeta,
+} from '@modules/dimo/dimo-tire-pressure.normalizer';
 import { capRawPayload } from '@shared/utils/json-payload.util';
 
 export interface DimoSnapshotJobData {
@@ -315,6 +319,22 @@ export class DimoSnapshotProcessor extends WorkerHost {
       | null
       | undefined;
 
+    const tirePressures = normalizeDimoSnapshotTirePressures(signals);
+    const tpmsWarningField = signals.chassisTireSystemIsWarningOn as
+      | { value?: number; timestamp?: number | string }
+      | null
+      | undefined;
+    const tpmsWarningSignalPresent =
+      tpmsWarningField != null &&
+      typeof tpmsWarningField === 'object' &&
+      tpmsWarningField.value != null &&
+      typeof tpmsWarningField.value === 'number' &&
+      Number.isFinite(tpmsWarningField.value);
+    const tpmsWarningValue = tpmsWarningSignalPresent
+      ? numVal(tpmsWarningField) != null && numVal(tpmsWarningField)! >= 0.5
+      : null;
+    const tpmsWarningTimestamp = this.extractSignalTimestamp(tpmsWarningField);
+
     return {
       lastSeenAt: ts(signals.lastSeen),
       latitude: locCoords?.value?.latitude ?? null,
@@ -323,10 +343,10 @@ export class DimoSnapshotProcessor extends WorkerHost {
       oilLevelRelative: numVal(signals.powertrainCombustionEngineEngineOilRelativeLevel),
       defLevel: numVal(signals.powertrainCombustionEngineDieselExhaustFluidLevel),
       rangeKm: numVal(signals.powertrainTractionBatteryRange),
-      tirePressureFl: numVal(signals.chassisAxleRow1WheelLeftTirePressure),
-      tirePressureFr: numVal(signals.chassisAxleRow1WheelRightTirePressure),
-      tirePressureRl: numVal(signals.chassisAxleRow2WheelLeftTirePressure),
-      tirePressureRr: numVal(signals.chassisAxleRow2WheelRightTirePressure),
+      tirePressureFl: tirePressures.fl.normalizedValue,
+      tirePressureFr: tirePressures.fr.normalizedValue,
+      tirePressureRl: tirePressures.rl.normalizedValue,
+      tirePressureRr: tirePressures.rr.normalizedValue,
       evSoc: numVal(signals.powertrainTractionBatteryStateOfChargeCurrent),
       tractionBatteryCurrentEnergyKwh: numVal(
         signals.powertrainTractionBatteryStateOfChargeCurrentEnergy,
@@ -374,7 +394,23 @@ export class DimoSnapshotProcessor extends WorkerHost {
       lvBatteryVoltage: numVal(signals.lowVoltageBatteryCurrentVoltage),
       coolantTempC: numVal(signals.powertrainCombustionEngineECT),
       speedKmh: numVal(signals.speed),
-      rawPayloadJson: capRawPayload(signals as object) as object,
+      rawPayloadJson: capRawPayload({
+        ...(signals as object),
+        _synqdrive: {
+          tirePressure: {
+            fl: toSynqDriveTirePressureMeta(tirePressures.fl),
+            fr: toSynqDriveTirePressureMeta(tirePressures.fr),
+            rl: toSynqDriveTirePressureMeta(tirePressures.rl),
+            rr: toSynqDriveTirePressureMeta(tirePressures.rr),
+          },
+          tpmsWarning: {
+            signalPresent: tpmsWarningSignalPresent,
+            value: tpmsWarningValue,
+            sourceProvider: 'DIMO',
+            sourceTimestamp: tpmsWarningTimestamp?.toISOString() ?? null,
+          },
+        },
+      }) as object,
     };
   }
 }

@@ -16,6 +16,7 @@ import {
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireHealthService } from './tires/tire-health.service';
+import { TireTripUsageService } from './tires/tire-trip-usage.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
@@ -74,6 +75,7 @@ import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-qu
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessment-device-quality.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
+import { buildSetupBaselineFields } from './tires/tire-evidence-provenance';
 import {
   CreateTireSetupDto,
   AddTireMeasurementDto,
@@ -82,7 +84,12 @@ import {
   RotateTiresDto,
   ChangeTiresDto,
   ActivateStoredSetDto,
+  StoreTireSetDto,
+  RemoveTireSetDto,
+  RetireTireDto,
   ApplyAiTireSpecDto,
+  TireRecalculateDto,
+  UpdateRecommendedPressureDto,
 } from './tires/dto/tire-mutation.dto';
 import {
   InitializeBrakeHealthDto,
@@ -111,6 +118,7 @@ export class VehicleIntelligenceController {
     private readonly batteryService: BatteryService,
     private readonly tiresService: TiresService,
     private readonly tireHealthService: TireHealthService,
+    private readonly tireTripUsageService: TireTripUsageService,
     private readonly tireLifecycleService: TireLifecycleService,
     private readonly brakesService: BrakesService,
     private readonly brakeHealthService: BrakeHealthService,
@@ -253,8 +261,33 @@ export class VehicleIntelligenceController {
       initialTreadRearMm: body.initialTreadRearMm,
       tireCondition: body.tireCondition,
       odometerKm: body.installedOdometerKm,
+      manualConfirmOdometer: body.confirmOdometerKm,
       notes: body.notes,
+      recommendedPressureFrontBar: body.recommendedPressureFrontBar,
+      recommendedPressureRearBar: body.recommendedPressureRearBar,
+      recommendedPressureLoadedFrontBar: body.recommendedPressureLoadedFrontBar,
+      recommendedPressureLoadedRearBar: body.recommendedPressureLoadedRearBar,
+      pressureSpecSource: body.pressureSpecSource,
+      confirmPressureSpec: body.confirmPressureSpec,
       archiveCurrent: false,
+    });
+  }
+
+  @Patch('tires/:tireSetupId/recommended-pressure')
+  async updateRecommendedPressure(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tireSetupId') tireSetupId: string,
+    @Body() body: UpdateRecommendedPressureDto,
+  ) {
+    return this.tireLifecycleService.updateRecommendedPressure({
+      vehicleId,
+      tireSetupId,
+      recommendedPressureFrontBar: body.recommendedPressureFrontBar,
+      recommendedPressureRearBar: body.recommendedPressureRearBar,
+      recommendedPressureLoadedFrontBar: body.recommendedPressureLoadedFrontBar,
+      recommendedPressureLoadedRearBar: body.recommendedPressureLoadedRearBar,
+      pressureSpecSource: body.pressureSpecSource,
+      confirmPressureSpec: body.confirmPressureSpec,
     });
   }
 
@@ -341,11 +374,20 @@ export class VehicleIntelligenceController {
         confidenceScore: normalized.confidenceScore ?? null,
         completedAt: null,
         specSourceType: 'ai_agent',
+        userConfirmedSpec: body.userConfirmedSpec ?? false,
       });
 
       await this.prisma.vehicleTireSetup.update({
         where: { id: setup.id },
-        data: { aiTireSpec: persisted as any },
+        data: {
+          aiTireSpec: persisted as any,
+          ...buildSetupBaselineFields({
+            aiTireSpec: persisted,
+            userConfirmedSpec: persisted.userConfirmedSpec,
+            treadMm: normalized.newTreadDepthMm,
+            confirmedAt: persisted.userConfirmedSpec ? new Date() : null,
+          }),
+        },
       });
 
       try {
@@ -394,7 +436,11 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: ChangeTiresDto,
   ) {
-    return this.tireLifecycleService.replaceTires({ vehicleId, ...body });
+    return this.tireLifecycleService.replaceTires({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/activate-stored-set')
@@ -402,7 +448,47 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: ActivateStoredSetDto,
   ) {
-    return this.tireLifecycleService.activateStoredSet({ vehicleId, ...body });
+    return this.tireLifecycleService.activateStoredSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
+  }
+
+  @Post('tires/store-set')
+  async storeTireSet(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: StoreTireSetDto,
+  ) {
+    return this.tireLifecycleService.storeTireSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
+  }
+
+  @Post('tires/remove-set')
+  async removeTireSet(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: RemoveTireSetDto,
+  ) {
+    return this.tireLifecycleService.removeTireSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
+  }
+
+  @Post('tires/retire')
+  async retireTire(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: RetireTireDto,
+  ) {
+    return this.tireLifecycleService.retireTire({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/measurement')
@@ -425,8 +511,16 @@ export class VehicleIntelligenceController {
   }
 
   @Post('tires/recalculate')
-  async recalculateTireHealth(@Param('vehicleId') vehicleId: string) {
-    return this.tireHealthService.recalculate(vehicleId);
+  async recalculateTireHealth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: TireRecalculateDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.tireHealthService.recalculate(vehicleId, {
+      force: body.force,
+      reason: body.reason,
+      actorId: req.user?.id ?? null,
+    });
   }
 
   // --- Brakes ---
@@ -1136,19 +1230,16 @@ export class VehicleIntelligenceController {
   ) {
     const result = await this.tripsService.enrichTrip(vehicleId, tripId);
     if (result) {
-      const trip = await this.prisma.vehicleTrip.findUnique({ where: { id: tripId } });
-      if (trip?.distanceKm) {
-        try {
-          await this.tireHealthService.updateTireUsageFromTrip(vehicleId, {
-            distanceKm: trip.distanceKm,
-            cityPercent: result.citySharePercent,
-            highwayPercent: result.highwaySharePercent,
-            ruralPercent: result.countrySharePercent,
-            harshBrakeCount: trip.harshBrakeCount ?? 0,
-            harshAccelCount: trip.harshAccelCount ?? 0,
-            harshCornerCount: trip.harshCornerCount ?? 0,
-          });
-        } catch { /* tire update is best-effort */ }
+      try {
+        await this.tireTripUsageService.processCanonicalTripFinalization(tripId, {
+          trigger: 'manual_route_enrich',
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Tire usage attribution after route enrich failed for trip ${tripId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
       }
     }
     return result;
