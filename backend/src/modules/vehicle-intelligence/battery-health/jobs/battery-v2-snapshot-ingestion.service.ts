@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isBatteryV2HvRechargeSessionEnabled } from '@config/battery-health-v2.config';
 import type { HvBatterySignalObservedAt } from '../../../dimo/mappers/dimo-battery-signal.mapper';
 import { BatteryV2Service } from '../battery-v2.service';
 import { HvBatteryHealthService } from '../hv-battery-health.service';
+import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { BatteryV2ProviderError } from './battery-v2-job.errors';
 import type { BatteryObservationClassifyPayload } from './battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
@@ -43,6 +45,7 @@ export class BatteryV2SnapshotIngestionService {
     private readonly prisma: PrismaService,
     private readonly batteryV2: BatteryV2Service,
     private readonly hvBattery: HvBatteryHealthService,
+    private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -55,6 +58,10 @@ export class BatteryV2SnapshotIngestionService {
     }
 
     const receivedAt = parseIso(ctx.providerFetchedAt) ?? new Date();
+    const previousChargingState = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId: payload.vehicleId },
+      select: { tractionBatteryIsCharging: true },
+    });
 
     if (ctx.lvBatteryVoltage != null) {
       await this.batteryV2.onSnapshot(
@@ -89,6 +96,19 @@ export class BatteryV2SnapshotIngestionService {
         signalObservedAt,
         observedAt:
           signalObservedAt?.soc ?? parseIso(ctx.collectionObservedAt) ?? undefined,
+      });
+    }
+
+    if (
+      isBatteryV2HvRechargeSessionEnabled() &&
+      ctx.tractionBatteryIsCharging != null &&
+      previousChargingState?.tractionBatteryIsCharging !== ctx.tractionBatteryIsCharging
+    ) {
+      await this.rechargeReconcileProducer.enqueueForChargingTransition({
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        isCharging: ctx.tractionBatteryIsCharging,
+        observedAt: parseIso(ctx.signalObservedAt?.isCharging) ?? receivedAt,
       });
     }
 

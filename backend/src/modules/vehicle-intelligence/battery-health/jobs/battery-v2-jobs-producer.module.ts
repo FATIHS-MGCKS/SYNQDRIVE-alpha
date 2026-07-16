@@ -8,6 +8,7 @@ import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.serv
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
+import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 
 /** Producer-side queue registration — safe to import from VehicleIntelligence without worker handlers. */
 @Module({
@@ -19,6 +20,7 @@ import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
     BatteryV2RestTargetProducer,
+    HvRechargeSessionReconcileProducerService,
     BatteryV2ReconciliationService,
   ],
   exports: [
@@ -27,6 +29,7 @@ import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
     BatteryV2RestTargetProducer,
+    HvRechargeSessionReconcileProducerService,
     BatteryV2ReconciliationService,
     BullModule,
   ],

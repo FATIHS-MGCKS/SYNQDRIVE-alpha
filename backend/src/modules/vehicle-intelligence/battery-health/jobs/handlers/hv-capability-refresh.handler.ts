@@ -4,6 +4,7 @@ import {
   BatteryCapabilityRefreshTrigger,
   type BatteryCapabilityRefreshTrigger as BatteryCapabilityRefreshTriggerType,
 } from '../../capability-preflight/battery-capability-lifecycle.policy';
+import { HvRechargeSessionReconcileProducerService } from '../../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { HvCapabilityRefreshPayload } from '../battery-v2-job.types';
 
@@ -24,6 +25,7 @@ export class HvCapabilityRefreshHandler implements BatteryV2JobHandler<'HV_CAPAB
 
   constructor(
     private readonly capabilityPreflight: BatteryCapabilityPreflightService,
+    private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
   ) {}
 
   async handle(payload: HvCapabilityRefreshPayload): Promise<void> {
@@ -51,6 +53,12 @@ export class HvCapabilityRefreshHandler implements BatteryV2JobHandler<'HV_CAPAB
 
     this.logger.debug(
       `${this.jobType} completed org=${payload.organizationId} vehicle=${payload.vehicleId} trigger=${payload.refreshTrigger ?? 'unknown'} signals=${result.signals.length} withData=${availableCount} queryError=${result.queryError ?? 'none'}`,
+    );
+
+    await this.rechargeReconcileProducer.enqueueAfterCapabilityRefresh(
+      payload.organizationId,
+      payload.vehicleId,
+      payload.correlationId,
     );
   }
 }

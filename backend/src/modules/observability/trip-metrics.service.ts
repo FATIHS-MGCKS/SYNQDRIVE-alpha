@@ -95,6 +95,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryV2RestCaptureTotal: Counter<string>;
   readonly batteryV2RestMissedTotal: Counter<string>;
   readonly batteryV2RestContaminationTotal: Counter<string>;
+  readonly batteryV2HvRechargeSegmentsTotal: Counter<string>;
+  readonly batteryV2HvRechargeSessionsPersisted: Counter<string>;
+  readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
+  readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -687,6 +691,35 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_battery_lv_rest_contamination_total',
       help: 'LV REST shadow contamination measurements',
       labelNames: ['window', 'quality'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2HvRechargeSegmentsTotal = new Counter({
+      name: 'synqdrive_battery_v2_hv_recharge_segments_total',
+      help: 'DIMO recharge segments fetched during HV reconcile',
+      labelNames: ['trigger', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2HvRechargeSessionsPersisted = new Counter({
+      name: 'synqdrive_battery_v2_hv_recharge_sessions_persisted_total',
+      help: 'HV charge sessions persisted during reconcile',
+      labelNames: ['trigger', 'change'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2HvRechargeReconcileErrors = new Counter({
+      name: 'synqdrive_battery_v2_hv_recharge_reconcile_errors_total',
+      help: 'HV recharge reconcile provider errors',
+      labelNames: ['trigger', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2HvRechargeProviderDelay = new Histogram({
+      name: 'synqdrive_battery_v2_hv_recharge_provider_delay_seconds',
+      help: 'Delay between latest provider segment end and reconcile time',
+      labelNames: ['trigger'],
+      buckets: [60, 300, 900, 1800, 3600, 7200, 21600, 86400],
       registers: [this.registry],
     });
   }

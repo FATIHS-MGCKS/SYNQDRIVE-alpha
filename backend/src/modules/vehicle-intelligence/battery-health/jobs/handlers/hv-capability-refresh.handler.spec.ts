@@ -5,8 +5,12 @@ describe('HvCapabilityRefreshHandler', () => {
   const capabilityPreflight = {
     runForVehicle: jest.fn(),
   };
+  const rechargeReconcileProducer = {
+    enqueueAfterCapabilityRefresh: jest.fn().mockResolvedValue('job-1'),
+  };
   const handler = new HvCapabilityRefreshHandler(
     capabilityPreflight as never,
+    rechargeReconcileProducer as never,
   );
 
   const payload: HvCapabilityRefreshPayload = {
@@ -48,6 +52,11 @@ describe('HvCapabilityRefreshHandler', () => {
       'veh-1',
       expect.objectContaining({ correlationId: 'corr-1' }),
     );
+    expect(rechargeReconcileProducer.enqueueAfterCapabilityRefresh).toHaveBeenCalledWith(
+      'org-1',
+      'veh-1',
+      'corr-1',
+    );
   });
 
   it('skips when preflight returns null (no DIMO token)', async () => {
@@ -59,5 +68,6 @@ describe('HvCapabilityRefreshHandler', () => {
       'veh-1',
       expect.objectContaining({ correlationId: 'corr-1' }),
     );
+    expect(rechargeReconcileProducer.enqueueAfterCapabilityRefresh).not.toHaveBeenCalled();
   });
 });
