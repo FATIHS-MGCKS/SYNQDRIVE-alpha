@@ -117,6 +117,23 @@ export function isPredictionCapable(
   return status === TireOdometerAnchorStatus.ANCHORED;
 }
 
+const RUNTIME_TELEMETRY_AUTO_ANCHOR_SOURCES = new Set<TireOdometerAnchorSource>([
+  TireOdometerAnchorSource.PROVIDER_DIMO,
+  TireOdometerAnchorSource.PROVIDER_HIGH_MOBILITY,
+  TireOdometerAnchorSource.VEHICLE_LATEST_STATE,
+]);
+
+/** Whether recalculate may persist a missing install anchor from live telemetry. */
+export function isRuntimeTelemetryAutoAnchorEligible(
+  anchor: ResolvedOdometerAnchor,
+): boolean {
+  return (
+    anchor.odometerKm != null &&
+    anchor.status === TireOdometerAnchorStatus.ANCHORED &&
+    RUNTIME_TELEMETRY_AUTO_ANCHOR_SOURCES.has(anchor.source)
+  );
+}
+
 export function resolveOdometerAnchor(
   input: ResolveOdometerAnchorInput,
 ): ResolvedOdometerAnchor {

@@ -46,7 +46,12 @@ import {
 import { mapLegacyMeasurementSourceToEvidence } from './tire-evidence-source';
 import {
   applyAnchorToRemainingKmProjection,
+  buildSetupOdometerAnchorFields,
   isPredictionCapable,
+  isRuntimeTelemetryAutoAnchorEligible,
+  resolveOdometerAnchor,
+  toFiniteOdometerKm,
+  type VehicleOdometerContext,
 } from './tire-odometer-anchor';
 import {
   TIRE_WEAR_MODEL_VERSION,
@@ -465,8 +470,10 @@ export class TireHealthService {
       );
     }
 
-    const setup = await this.getActiveSetup(vehicleId);
+    let setup = await this.getActiveSetup(vehicleId);
     if (!setup) return null;
+
+    setup = await this.ensureTelemetryOdometerAnchor(vehicleId, setup);
 
     const recalcAsOf = new Date();
     const inputContext = await this.loadRecalculationInputContext(
@@ -617,7 +624,10 @@ export class TireHealthService {
     });
 
     const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
-    const latestState = await this.prisma.vehicleLatestState.findUnique({ where: { id: vehicleId }, select: { odometerKm: true } });
+    const latestState = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { odometerKm: true },
+    });
 
     const latestMeas = setup.measurements?.[0] ?? null;
     const evidenceSummary = buildSnapshotEvidenceSummary({
@@ -1844,6 +1854,101 @@ export class TireHealthService {
         source: wheel.sourceProvider,
       });
     }
+  }
+
+  private async ensureTelemetryOdometerAnchor<
+    T extends {
+      id: string;
+      vehicleId: string;
+      installedOdometerKm: number | null;
+      installedOdometerSource?: string | null;
+      installedOdometerCapturedAt?: Date | null;
+      installedOdometerEvidenceId?: string | null;
+      odometerAnchorStatus?: string | null;
+      odometerAnchorConfidence?: number | null;
+    },
+  >(vehicleId: string, setup: T): Promise<T> {
+    if (setup.installedOdometerKm != null) {
+      return setup;
+    }
+
+    const context = await this.fetchVehicleOdometerContext(vehicleId);
+    const anchor = resolveOdometerAnchor({ context });
+    if (!isRuntimeTelemetryAutoAnchorEligible(anchor)) {
+      return setup;
+    }
+
+    const fields = buildSetupOdometerAnchorFields(anchor);
+    await this.prisma.vehicleTireSetup.update({
+      where: { id: setup.id },
+      data: fields,
+    });
+    await this.prisma.vehicleTireSetupMountPeriod.updateMany({
+      where: { tireSetupId: setup.id, removedAt: null },
+      data: fields,
+    });
+
+    this.observability?.recordOdometerAnchor({
+      status: 'anchored',
+      source: anchor.source,
+      issue: 'runtime_telemetry_bootstrap',
+    });
+    this.logger.log(
+      `Auto-anchored odometer for setup=${setup.id} vehicle=${vehicleId} ` +
+        `odometerKm=${anchor.odometerKm} source=${anchor.source}`,
+    );
+
+    return { ...setup, ...fields };
+  }
+
+  private async fetchVehicleOdometerContext(
+    vehicleId: string,
+  ): Promise<VehicleOdometerContext> {
+    const [vehicle, latestState, lastSetup, recentEvents] = await Promise.all([
+      this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { mileageKm: true },
+      }),
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: {
+          odometerKm: true,
+          providerSource: true,
+          providerFetchedAt: true,
+          sourceTimestamp: true,
+          lastSeenAt: true,
+          source: true,
+        },
+      }),
+      this.prisma.vehicleTireSetup.findFirst({
+        where: { vehicleId, removedOdometerKm: { not: null } },
+        orderBy: { removedAt: 'desc' },
+        select: { removedOdometerKm: true },
+      }),
+      this.prisma.tireEvent.findMany({
+        where: { vehicleId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { payload: true },
+      }),
+    ]);
+
+    const eventOdos = recentEvents
+      .map((event) =>
+        toFiniteOdometerKm((event.payload as { odometerKm?: number } | null)?.odometerKm),
+      )
+      .filter((value): value is number => value != null);
+    const eventOdo = eventOdos.length > 0 ? Math.max(...eventOdos) : null;
+    const lastKnown = [lastSetup?.removedOdometerKm, eventOdo, vehicle?.mileageKm]
+      .map((value) => toFiniteOdometerKm(value))
+      .filter((value): value is number => value != null)
+      .reduce((max, value) => Math.max(max, value), Number.NEGATIVE_INFINITY);
+
+    return {
+      latestState,
+      vehicleMileageKm: vehicle?.mileageKm ?? null,
+      lastKnownOdometerKm: Number.isFinite(lastKnown) ? lastKnown : null,
+    };
   }
 
   private observeDimoOdometerAnchor(dimoContext: TireDimoContext): void {

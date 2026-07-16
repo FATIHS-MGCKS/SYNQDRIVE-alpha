@@ -11,6 +11,7 @@ import {
   mapProviderToAnchorSource,
   resolveOdometerAnchor,
   applyAnchorToRemainingKmProjection,
+  isRuntimeTelemetryAutoAnchorEligible,
 } from './tire-odometer-anchor';
 
 describe('tire-odometer-anchor', () => {
@@ -152,6 +153,32 @@ describe('tire-odometer-anchor', () => {
     expect(anchor.odometerKm).toBe(45230);
     expect(anchor.clientValueIgnored).toBe(true);
     expect(anchor.source).toBe(TireOdometerAnchorSource.PROVIDER_DIMO);
+  });
+
+  it('allows runtime telemetry auto-anchor only for provider or latest-state sources', () => {
+    const providerAnchor = resolveOdometerAnchor({
+      context: {
+        ...baseContext,
+        latestState: {
+          odometerKm: 45230,
+          providerSource: 'DIMO',
+          providerFetchedAt: new Date(),
+          sourceTimestamp: new Date(),
+          lastSeenAt: new Date(),
+          source: 'dimo',
+        },
+      },
+    });
+    expect(isRuntimeTelemetryAutoAnchorEligible(providerAnchor)).toBe(true);
+
+    const inferredAnchor = resolveOdometerAnchor({
+      context: {
+        latestState: null,
+        vehicleMileageKm: 88000,
+        lastKnownOdometerKm: null,
+      },
+    });
+    expect(isRuntimeTelemetryAutoAnchorEligible(inferredAnchor)).toBe(false);
   });
 
   it('falls back to vehicle mileage as HISTORICAL_INFERRED when telemetry missing', () => {

@@ -19,7 +19,11 @@ import {
   hasValidGroundTruthMeasurement,
   resolveAxleGroundTruthTreadMm,
 } from './tire-ground-truth.util';
-import { assessOdometerPlausibility } from './tire-odometer-anchor';
+import {
+  assessOdometerPlausibility,
+  isRuntimeTelemetryAutoAnchorEligible,
+  resolveOdometerAnchor,
+} from './tire-odometer-anchor';
 import {
   classifySeasonStatus,
   classifyTreadStatus,
@@ -248,6 +252,26 @@ describe('tire health regression matrix', () => {
       const result = assessOdometerPlausibility(10000, 12000);
       expect(result.plausible).toBe(false);
       expect(result.issue).toBe('ROLLBACK');
+    });
+  });
+
+  describe('TC14b missing_odometer_telemetry_bootstrap', () => {
+    it('permits runtime telemetry auto-anchor for provider odometer', () => {
+      const anchor = resolveOdometerAnchor({
+        context: {
+          latestState: {
+            odometerKm: 30500,
+            providerSource: 'DIMO',
+            providerFetchedAt: AS_OF,
+            sourceTimestamp: AS_OF,
+            lastSeenAt: AS_OF,
+            source: 'dimo',
+          },
+          vehicleMileageKm: null,
+          lastKnownOdometerKm: null,
+        },
+      });
+      expect(isRuntimeTelemetryAutoAnchorEligible(anchor)).toBe(true);
     });
   });
 
