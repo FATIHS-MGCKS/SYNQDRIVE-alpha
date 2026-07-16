@@ -329,3 +329,17 @@ export const BATTERY_WEAK_REFERENCE_CAPACITY_SOURCES: readonly BatteryReferenceC
     BatteryReferenceCapacitySource.VEHICLE_MASTER,
     BatteryReferenceCapacitySource.DIMO_NOMINAL_SIGNAL,
   ];
+
+export const BatteryReferenceCapacityType = {
+  GROSS_NOMINAL: 'GROSS_NOMINAL',
+  USABLE_NET: 'USABLE_NET',
+  WORKSHOP_MEASURED: 'WORKSHOP_MEASURED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type BatteryReferenceCapacityType =
+  (typeof BatteryReferenceCapacityType)[keyof typeof BatteryReferenceCapacityType];
+
+export const BATTERY_REFERENCE_CAPACITY_TYPES = Object.values(
+  BatteryReferenceCapacityType,
+);

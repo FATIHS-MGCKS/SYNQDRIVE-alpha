@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-measurement-v49515-2026-07-16',
+    version: '4.9.515',
+    title: 'V4.9.515 — BatteryMeasurement immutable model + idempotent create (Prompt 13/78)',
+    summary: [
+      'Neues Prisma-Modell `BatteryMeasurement` / Tabelle `battery_measurements` (additive Migration P2).',
+      'Felder: organizationId, vehicleId, sessionId?, scope, type, numericValue?, textValue?, unit?, quality, observedAt, receivedAt, providerTimestamp?, providerSource?, signalName?, context, provenance, idempotencyKey, supersededById?, createdAt.',
+      'INSERT-only Semantik: Unique `(organization_id, vehicle_id, idempotency_key)` + Dedup `(vehicle_id, type, observed_at)`.',
+      'Repository/Service: tenant-sicheres idempotentes Create; MISSED/PROVIDER_ERROR ohne erfundene Werte; JSON-Sanitizer ohne Secrets/PII/Raw-Payloads.',
+      '`battery_evidence` unverändert; Tests für Idempotenz, Tenant-Scope und Null-Value-Regeln.',
+    ],
+    reason: 'Prompt 13/78: Unveränderliche Measurement-Ebene als Grundlage für Evidence-Link und Assessments.',
+    previousBehavior: 'Nur Sessions (P1); Measurements nur im Plan.',
+    details:
+      'schema.prisma, migrations/20260716153000_battery_v2_measurements, battery-measurement.{repository,service,json,value}.ts, vehicle-intelligence.module.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:55:00.000Z',
+  },
+  {
     id: 'battery-health-v2-measurement-session-v49514-2026-07-16',
     version: '4.9.514',
     title: 'V4.9.514 — BatteryMeasurementSession model + CR foundation (Prompt 12/78)',

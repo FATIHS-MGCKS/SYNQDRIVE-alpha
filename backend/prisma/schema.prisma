@@ -1318,6 +1318,12 @@ model Organization {
   taskAutomationRuleOverrides       OrgTaskAutomationRuleOverride[]
   batteryMeasurementSessions        BatteryMeasurementSession[]
   batteryMeasurements               BatteryMeasurement[]
+  batteryAssessments                BatteryAssessment[]
+  batteryPublications               BatteryPublication[]
+  vehicleBatteryCapabilities        VehicleBatteryCapability[]
+  vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  hvChargeSessions                  HvChargeSession[]
+  hvCapacityObservations            HvCapacityObservation[]
 
   @@index([status])
   @@map("organizations")
@@ -1375,6 +1381,7 @@ model User {
   taskAutomationRuleOverridesCreated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
+  verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
 
   @@map("users")
 }
@@ -1741,6 +1748,12 @@ model Vehicle {
   batteryEvidence                   BatteryEvidence[]
   batteryMeasurementSessions        BatteryMeasurementSession[]
   batteryMeasurements               BatteryMeasurement[]
+  batteryAssessments                BatteryAssessment[]
+  batteryPublications               BatteryPublication[]
+  vehicleBatteryCapabilities        VehicleBatteryCapability[]
+  vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  hvChargeSessions                  HvChargeSession[]
+  hvCapacityObservations            HvCapacityObservation[]
   brakeEvidence                     BrakeEvidence[]
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
@@ -2400,9 +2413,10 @@ model VehicleServiceEvent {
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
 
-  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  batteryEvidence BatteryEvidence[]
-  brakeEvidence   BrakeEvidence[]
+  vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  batteryEvidence                   BatteryEvidence[]
+  brakeEvidence                     BrakeEvidence[]
+  vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
 
   @@index([vehicleId])
   @@index([eventDate])
@@ -2467,9 +2481,10 @@ model VehicleDocumentExtraction {
   createdAt                 DateTime                             @default(now()) @map("created_at")
   updatedAt                 DateTime                             @updatedAt @map("updated_at")
 
-  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  batteryEvidence BatteryEvidence[]
-  brakeEvidence   BrakeEvidence[]
+  vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  batteryEvidence                   BatteryEvidence[]
+  brakeEvidence                     BrakeEvidence[]
+  vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
 
   @@index([vehicleId])
   @@index([status])
@@ -5719,6 +5734,13 @@ enum BatteryReferenceCapacitySource {
   DIMO_NOMINAL_SIGNAL
 }
 
+enum BatteryReferenceCapacityType {
+  GROSS_NOMINAL
+  USABLE_NET
+  WORKSHOP_MEASURED
+  UNKNOWN
+}
+
 /// Battery Health V2 — time-bounded measurement cycle (architecture layer 3).
 /// Mutable only in status, endedAt, targetAt, quality, metadata, updatedAt.
 model BatteryMeasurementSession {
@@ -5744,10 +5766,11 @@ model BatteryMeasurementSession {
   createdAt        DateTime                        @default(now()) @map("created_at")
   updatedAt        DateTime                        @updatedAt @map("updated_at")
 
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  trip         VehicleTrip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
-  measurements BatteryMeasurement[]
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle          Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip             VehicleTrip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  measurements     BatteryMeasurement[]
+  hvChargeSessions HvChargeSession[]
 
   @@unique([vehicleId, idempotencyKey], map: "battery_measurement_sessions_idempotency_key")
   @@index([organizationId, startedAt(sort: Desc)])
@@ -5788,6 +5811,7 @@ model BatteryMeasurement {
   session      BatteryMeasurementSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   supersededBy BatteryMeasurement?        @relation("BatteryMeasurementSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
   supersedes   BatteryMeasurement[]       @relation("BatteryMeasurementSupersede")
+  evidenceRows BatteryEvidence[]
 
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_measurements_tenant_idempotency_key")
   @@unique([vehicleId, type, observedAt], map: "battery_measurements_dedup_key")
@@ -5798,6 +5822,216 @@ model BatteryMeasurement {
   @@index([quality])
   @@index([supersededById])
   @@map("battery_measurements")
+}
+
+/// Battery Health V2 — versioned assessment run (architecture layer 6, append-only).
+model BatteryAssessment {
+  id               String                    @id @default(uuid())
+  organizationId   String                    @map("organization_id")
+  vehicleId        String                    @map("vehicle_id")
+  scope            BatteryEvidenceScope
+  type             BatteryAssessmentType     @map("type")
+  scoreValue       Float?                    @map("score_value")
+  textValue        String?                   @map("text_value")
+  confidence       String?                   @map("confidence")
+  evidenceStrength BatteryEvidenceStrength   @map("evidence_strength")
+  dataQuality      String?                   @map("data_quality")
+  maturity         BatteryAssessmentMaturity
+  modelVersion     Int                       @default(1) @map("model_version")
+  validFrom        DateTime?                 @map("valid_from")
+  validUntil       DateTime?                 @map("valid_until")
+  inputSummary     Json?                     @map("input_summary")
+  idempotencyKey   String                    @map("idempotency_key")
+  supersededById   String?                   @map("superseded_by_id")
+  supersededAt     DateTime?                 @map("superseded_at")
+  computedAt       DateTime                  @default(now()) @map("computed_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle              Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  supersededBy         BatteryAssessment?      @relation("BatteryAssessmentSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes           BatteryAssessment[]     @relation("BatteryAssessmentSupersede")
+  publications         BatteryPublication[]
+  capacityObservations HvCapacityObservation[]
+
+  @@unique([vehicleId, idempotencyKey], map: "battery_assessments_idempotency_key")
+  @@index([organizationId, computedAt(sort: Desc)])
+  @@index([vehicleId, computedAt(sort: Desc)])
+  @@index([vehicleId, scope, type])
+  @@index([maturity])
+  @@index([supersededById])
+  @@map("battery_assessments")
+}
+
+/// Battery Health V2 — immutable publication record (append-only history).
+/// Operational read path remains `battery_features` / `hv_battery_health_current`.
+model BatteryPublication {
+  id             String               @id @default(uuid())
+  organizationId String               @map("organization_id")
+  vehicleId      String               @map("vehicle_id")
+  scope          BatteryEvidenceScope
+  assessmentId   String?              @map("assessment_id")
+  status         SohPublicationState
+  publishedAt    DateTime             @map("published_at")
+  staleAt        DateTime?            @map("stale_at")
+  reason         String?              @map("reason")
+  version        Int                  @default(1)
+  idempotencyKey String               @map("idempotency_key")
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  assessment   BatteryAssessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_publications_tenant_idempotency_key")
+  @@index([organizationId, publishedAt(sort: Desc)])
+  @@index([vehicleId, scope, publishedAt(sort: Desc)])
+  @@index([assessmentId])
+  @@index([status])
+  @@map("battery_publications")
+}
+
+/// Preflight capability state per provider signal / measurement kind.
+model VehicleBatteryCapability {
+  id              String                  @id @default(uuid())
+  organizationId  String                  @map("organization_id")
+  vehicleId       String                  @map("vehicle_id")
+  signalKey       String                  @map("signal_key")
+  provider        String?                 @map("provider")
+  status          BatteryCapabilityStatus
+  measurementType BatteryMeasurementType? @map("measurement_type")
+  firstSeenAt     DateTime?               @map("first_seen_at")
+  lastSeenAt      DateTime?               @map("last_seen_at")
+  sourceTimestamp DateTime?               @map("source_timestamp")
+  lastValue       Float?                  @map("last_value")
+  metadata        Json?                   @map("metadata")
+  checkedAt       DateTime                @default(now()) @map("checked_at")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, signalKey], map: "vehicle_battery_capabilities_signal_key")
+  @@index([organizationId])
+  @@index([vehicleId, status])
+  @@index([checkedAt])
+  @@map("vehicle_battery_capabilities")
+}
+
+/// Verified HV reference capacity for SOH-% and session-capacity decisions.
+model VehicleBatteryReferenceCapacity {
+  id                 String                              @id @default(uuid())
+  organizationId     String                              @map("organization_id")
+  vehicleId          String                              @map("vehicle_id")
+  capacityKwh        Float                               @map("capacity_kwh")
+  capacityType       BatteryReferenceCapacityType        @map("capacity_type")
+  source             BatteryReferenceCapacitySource
+  verificationStatus ReferenceCapacityVerificationStatus @map("verification_status")
+  verifiedByUserId   String?                             @map("verified_by_user_id")
+  verifiedAt         DateTime?                           @map("verified_at")
+  documentId         String?                             @map("document_id")
+  serviceEventId     String?                             @map("service_event_id")
+  effectiveFrom      DateTime                            @default(now()) @map("effective_from")
+  effectiveTo        DateTime?                           @map("effective_to")
+  isActive           Boolean                             @default(true) @map("is_active")
+  supersededById     String?                             @map("superseded_by_id")
+  notes              String?                             @map("notes")
+  createdAt          DateTime                            @default(now()) @map("created_at")
+
+  organization   Organization                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  verifiedByUser User?                             @relation(fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  document       VehicleDocumentExtraction?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  serviceEvent   VehicleServiceEvent?              @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+  supersededBy   VehicleBatteryReferenceCapacity?  @relation("VehicleBatteryReferenceCapacitySupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes     VehicleBatteryReferenceCapacity[] @relation("VehicleBatteryReferenceCapacitySupersede")
+
+  @@index([organizationId])
+  @@index([vehicleId, effectiveFrom(sort: Desc)])
+  @@index([verificationStatus])
+  @@index([isActive])
+  @@index([documentId])
+  @@index([supersededById])
+  @@map("vehicle_battery_reference_capacities")
+}
+
+/// HV charge session from DIMO recharge segment or poll fallback.
+model HvChargeSession {
+  id                   String                     @id @default(uuid())
+  organizationId       String                     @map("organization_id")
+  vehicleId            String                     @map("vehicle_id")
+  measurementSessionId String?                    @map("measurement_session_id")
+  segmentFingerprint   String                     @map("segment_fingerprint")
+  dimoSegmentId        String?                    @map("dimo_segment_id")
+  source               String                     @default("DIMO_RECHARGE_SEGMENT")
+  startAt              DateTime                   @map("start_at")
+  endAt                DateTime?                  @map("end_at")
+  startSocPercent      Float?                     @map("start_soc_percent")
+  endSocPercent        Float?                     @map("end_soc_percent")
+  startEnergyKwh       Float?                     @map("start_energy_kwh")
+  endEnergyKwh         Float?                     @map("end_energy_kwh")
+  energyAddedKwh       Float?                     @map("energy_added_kwh")
+  deltaSocPercent      Float?                     @map("delta_soc_percent")
+  isOngoing            Boolean                    @default(false) @map("is_ongoing")
+  quality              BatteryMeasurementQuality? @map("quality")
+  idempotencyKey       String                     @map("idempotency_key")
+  providerObservedAt   DateTime?                  @map("provider_observed_at")
+  receivedAt           DateTime                   @default(now()) @map("received_at")
+  metadata             Json?                      @map("metadata")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  updatedAt            DateTime                   @updatedAt @map("updated_at")
+
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle              Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  measurementSession   BatteryMeasurementSession? @relation(fields: [measurementSessionId], references: [id], onDelete: SetNull)
+  capacityObservations HvCapacityObservation[]
+
+  @@unique([vehicleId, idempotencyKey], map: "hv_charge_sessions_idempotency_key")
+  @@unique([vehicleId, segmentFingerprint], map: "hv_charge_sessions_segment_fingerprint")
+  @@index([organizationId, startAt(sort: Desc)])
+  @@index([vehicleId, startAt(sort: Desc)])
+  @@index([vehicleId, isOngoing])
+  @@index([dimoSegmentId])
+  @@index([measurementSessionId])
+  @@map("hv_charge_sessions")
+}
+
+/// HV capacity observation — INSERT-only shadow/session estimate.
+model HvCapacityObservation {
+  id                   String                    @id @default(uuid())
+  organizationId       String                    @map("organization_id")
+  vehicleId            String                    @map("vehicle_id")
+  chargeSessionId      String?                   @map("charge_session_id")
+  assessmentId         String?                   @map("assessment_id")
+  method               HvCapacityMethod          @map("method")
+  estimatedCapacityKwh Float?                    @map("estimated_capacity_kwh")
+  estimatedSohPct      Float?                    @map("estimated_soh_pct")
+  referenceCapacityKwh Float?                    @map("reference_capacity_kwh")
+  deltaSocPercent      Float?                    @map("delta_soc_percent")
+  deltaEnergyKwh       Float?                    @map("delta_energy_kwh")
+  sampleStats          Json?                     @map("sample_stats")
+  quality              BatteryMeasurementQuality @default(SHADOW)
+  modelVersion         Int                       @default(1) @map("model_version")
+  observedAt           DateTime                  @map("observed_at")
+  receivedAt           DateTime                  @default(now()) @map("received_at")
+  idempotencyKey       String                    @map("idempotency_key")
+  metadata             Json?                     @map("metadata")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  chargeSession HvChargeSession?   @relation(fields: [chargeSessionId], references: [id], onDelete: SetNull)
+  assessment    BatteryAssessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+
+  @@unique([vehicleId, idempotencyKey], map: "hv_capacity_observations_idempotency_key")
+  @@unique([vehicleId, method, observedAt], map: "hv_capacity_observations_dedup_key")
+  @@index([organizationId, observedAt(sort: Desc)])
+  @@index([vehicleId, observedAt(sort: Desc)])
+  @@index([chargeSessionId])
+  @@index([assessmentId])
+  @@index([method, quality])
+  @@map("hv_capacity_observations")
 }
 
 /// Per-vehicle battery feature store for V2 health scoring.
@@ -5906,6 +6140,7 @@ model HvBatteryHealthCurrent {
 model BatteryEvidence {
   id                   String                    @id @default(uuid())
   vehicleId            String                    @map("vehicle_id")
+  measurementId        String?                   @map("measurement_id")
   scope                BatteryEvidenceScope
   sourceType           BatteryEvidenceSourceType @map("source_type")
   valueType            BatteryEvidenceValueType  @map("value_type")
@@ -5921,6 +6156,7 @@ model BatteryEvidence {
   createdAt            DateTime                  @default(now()) @map("created_at")
 
   vehicle            Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  measurement        BatteryMeasurement?        @relation(fields: [measurementId], references: [id], onDelete: SetNull)
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
 
@@ -5929,6 +6165,7 @@ model BatteryEvidence {
   @@index([sourceType, observedAt])
   @@index([documentExtractionId])
   @@index([serviceEventId])
+  @@index([measurementId])
   @@map("battery_evidence")
 }
 
