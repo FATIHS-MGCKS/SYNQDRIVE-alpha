@@ -90,6 +90,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jobs-producer.module';
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
 import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
+import { BatteryPolicyProfileService } from './battery-policy-profile/battery-policy-profile.service';
 
 @Module({
   imports: [
@@ -168,6 +169,7 @@ import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-bat
     BatteryMeasurementService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
+    BatteryPolicyProfileService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -238,6 +240,7 @@ import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-bat
     BatteryMeasurementService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
+    BatteryPolicyProfileService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,

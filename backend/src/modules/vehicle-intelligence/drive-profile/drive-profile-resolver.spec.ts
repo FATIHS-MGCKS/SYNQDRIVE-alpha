@@ -1,5 +1,6 @@
 import {
   BatteryDriveProfile,
+  BatteryChemistry,
   BatteryMeasurementQuality,
   BatteryMeasurementType,
 } from '../battery-health/battery-v2-domain';
@@ -143,18 +144,21 @@ describe('guardLvMeasurementQualityForProfile', () => {
     expect(quality).toBe(BatteryMeasurementQuality.UNSUPPORTED_PROFILE);
   });
 
-  it('allows BEV live LV voltage measurements', () => {
+  it('allows BEV live LV voltage measurements when LV signal is present', () => {
     const quality = guardLvMeasurementQualityForProfile({
       profile: BatteryDriveProfile.BEV,
+      chemistry: BatteryChemistry.LEAD_ACID,
+      lvSignalPresent: true,
       measurementType: BatteryMeasurementType.LIVE_VOLTAGE,
       quality: BatteryMeasurementQuality.VALID,
     });
     expect(quality).toBe(BatteryMeasurementQuality.VALID);
   });
 
-  it('does not alter ICE REST measurements', () => {
+  it('does not alter ICE REST measurements with known chemistry', () => {
     const quality = guardLvMeasurementQualityForProfile({
       profile: BatteryDriveProfile.ICE,
+      chemistry: BatteryChemistry.AGM,
       measurementType: BatteryMeasurementType.REST_60M,
       quality: BatteryMeasurementQuality.VALID,
     });

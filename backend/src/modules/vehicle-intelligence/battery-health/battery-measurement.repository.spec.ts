@@ -1,4 +1,5 @@
 import {
+  BatteryChemistry,
   BatteryDriveProfile,
   BatteryEvidenceScope,
   BatteryMeasurementQuality,
@@ -7,7 +8,7 @@ import {
 } from '@prisma/client';
 import { BatteryMeasurementRepository } from './battery-measurement.repository';
 import { BatteryMeasurementService } from './battery-measurement.service';
-import { DriveProfileResolverService } from '../drive-profile/drive-profile-resolver.service';
+import { BatteryPolicyProfileService } from '../battery-policy-profile/battery-policy-profile.service';
 import {
   isBatteryMeasurementValueAllowed,
 } from './battery-measurement-value';
@@ -194,19 +195,33 @@ describe('BatteryMeasurementService (mocked Prisma)', () => {
   };
 
   const repository = new BatteryMeasurementRepository(prisma as any);
-  const driveProfileResolver = {
+  const batteryPolicyProfileService = {
     resolveForVehicle: jest.fn(async () => ({
-      profile: BatteryDriveProfile.ICE,
-      source: 'VEHICLE_MASTER',
-      confidence: 'HIGH',
-      telemetryFallback: false,
-      evidence: ['master:fuel_type:DIESEL'],
+      profile: 'ICE_AGM',
+      driveProfile: BatteryDriveProfile.ICE,
+      chemistry: BatteryChemistry.AGM,
+      supportedMeasurementTypes: [],
+      forbiddenMeasurementTypes: [],
+      restingBands: null,
+      chemicalSocEstimationAllowed: true,
+      startProxyAllowed: true,
+      startProxyRequiresConfirmedIceStart: false,
+      lvAssessmentAllowed: true,
+      hvPipelineAllowed: false,
+      minimumContext: {
+        lvLiveRequiresProviderTimestamp: true,
+        restRequiresEngineOff: true,
+        crankRequiresConfirmedIceStart: false,
+        hvRequiresSocOrEnergySignal: false,
+      },
+      evidence: [],
     })),
-  } as unknown as jest.Mocked<Pick<DriveProfileResolverService, 'resolveForVehicle'>>;
+  } as unknown as jest.Mocked<Pick<BatteryPolicyProfileService, 'resolveForVehicle'>>;
+
   const service = new BatteryMeasurementService(
     prisma as any,
     repository,
-    driveProfileResolver as unknown as DriveProfileResolverService,
+    batteryPolicyProfileService as unknown as BatteryPolicyProfileService,
   );
 
   beforeEach(() => {
@@ -295,12 +310,25 @@ describe('BatteryMeasurementService (mocked Prisma)', () => {
   });
 
   it('downgrades BEV REST measurements to UNSUPPORTED_PROFILE', async () => {
-    driveProfileResolver.resolveForVehicle.mockResolvedValueOnce({
-      profile: BatteryDriveProfile.BEV,
-      source: 'VEHICLE_MASTER',
-      confidence: 'HIGH',
-      telemetryFallback: false,
-      evidence: ['master:fuel_type:ELECTRIC'],
+    batteryPolicyProfileService.resolveForVehicle.mockResolvedValueOnce({
+      profile: 'UNSUPPORTED_PROFILE',
+      driveProfile: BatteryDriveProfile.BEV,
+      chemistry: BatteryChemistry.UNKNOWN,
+      supportedMeasurementTypes: [],
+      forbiddenMeasurementTypes: [BatteryMeasurementType.REST_60M],
+      restingBands: null,
+      chemicalSocEstimationAllowed: false,
+      startProxyAllowed: false,
+      startProxyRequiresConfirmedIceStart: false,
+      lvAssessmentAllowed: false,
+      hvPipelineAllowed: true,
+      minimumContext: {
+        lvLiveRequiresProviderTimestamp: false,
+        restRequiresEngineOff: false,
+        crankRequiresConfirmedIceStart: false,
+        hvRequiresSocOrEnergySignal: true,
+      },
+      evidence: ['policy:UNSUPPORTED_PROFILE'],
     });
 
     const created = await service.create({
