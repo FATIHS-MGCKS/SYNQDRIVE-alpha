@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-remaining-models-v49516-2026-07-16',
+    version: '4.9.516',
+    title: 'V4.9.516 — Battery V2 remaining Prisma models (Prompt 14/78)',
+    summary: [
+      'Additive Migration `battery_v2_remaining_models`: Assessment, Publication (append-only history), Capability, Reference Capacity, HV Charge Session, HV Capacity Observation.',
+      '`BatteryAssessment`: type, score/text value, confidence, evidenceStrength, dataQuality, maturity, modelVersion, validFrom/Until, inputSummary, supersededAt.',
+      '`BatteryPublication`: assessmentId, SohPublicationState status, publishedAt, staleAt, reason, version — ergänzt (nicht ersetzt) operative Publication auf `battery_features`/`hv_battery_health_current`.',
+      '`VehicleBatteryCapability`, `VehicleBatteryReferenceCapacity`, `HvChargeSession`, `HvCapacityObservation` mit Tenant-Indizes und Idempotency-Keys.',
+      '`battery_evidence.measurement_id` optional FK; `battery_evidence` Tabelle bleibt erhalten.',
+    ],
+    reason: 'Prompt 14/78: Verbleibende V2-Schema-Modelle nach Plan — noch keine fachliche Berechnung.',
+    previousBehavior: 'Nur Enums, Sessions und Measurements (P0–P2).',
+    details:
+      'schema.prisma, migrations/20260716160000_battery_v2_remaining_models, battery-v2-domain.ts (BatteryReferenceCapacityType).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T15:05:00.000Z',
+  },
+  {
     id: 'battery-health-v2-measurement-v49515-2026-07-16',
     version: '4.9.515',
     title: 'V4.9.515 — BatteryMeasurement immutable model + idempotent create (Prompt 13/78)',

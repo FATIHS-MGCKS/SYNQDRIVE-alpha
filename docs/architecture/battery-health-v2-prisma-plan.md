@@ -722,4 +722,4 @@ Writes in Snapshots werden per Feature-Flag gestoppt, Tabelle bleibt für Trend.
 
 ---
 
-*Implementierungsstatus: **P0 Enums + P1 Sessions + P2 `BatteryMeasurement`** (Prompt 11–13/78). Nächster Schritt: `battery_assessments` / Evidence-FK Phase P5/P2.*
+*Implementierungsstatus: **P0–P5 Schema komplett** (Prompt 11–14/78): Enums, Sessions, Measurements, Assessments, Publication-History, Capabilities, Reference Capacity, HV Sessions/Observations. Nächster Schritt: Publication-Erweiterung `battery_features`/`hv_battery_health_current` (P6) + Businesslogik.*
