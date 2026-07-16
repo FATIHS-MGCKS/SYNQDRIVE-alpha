@@ -8786,6 +8786,9 @@ model TripDrivingImpact {
   provenanceMaturity       String? @map("provenance_maturity")
   provenanceVersion        String? @map("provenance_version")
 
+  // P43 — structured vehicle load components (nullable for legacy rows)
+  loadComponentsJson Json? @map("load_components_json")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -8858,6 +8861,9 @@ model VehicleDrivingImpactCurrent {
   healthEligibility        String? @map("health_eligibility")
   provenanceMaturity       String? @map("provenance_maturity")
   provenanceVersion        String? @map("provenance_version")
+
+  // P43 — rolling structured load components snapshot
+  loadComponentsJson Json? @map("load_components_json")
 
   updatedAt    DateTime @updatedAt @map("updated_at")
 

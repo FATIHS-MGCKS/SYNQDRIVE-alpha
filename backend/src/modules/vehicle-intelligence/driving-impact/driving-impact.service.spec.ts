@@ -363,6 +363,7 @@ describe('safetyDataConfidenceFromTrip', () => {
 function makeMockPrisma() {
   return {
     vehicleTrip: { findUnique: jest.fn(), update: jest.fn() },
+    vehicle: { findUnique: jest.fn() },
     tripBehaviorEvent: { count: jest.fn(), findMany: jest.fn() },
     drivingEvent: { findMany: jest.fn(), count: jest.fn() },
     drivingEvidence: { groupBy: jest.fn() },
@@ -387,6 +388,7 @@ function mockProvenancePrereqs(prisma: ReturnType<typeof makeMockPrisma>, over: 
   prisma.vehicleDrivingCapability.findFirst.mockResolvedValue({
     capabilityVersion: 'cap-preflight-v1',
   });
+  prisma.vehicle.findUnique.mockResolvedValue({ fuelType: 'PETROL' });
 }
 
 function makeMockMetrics() {
@@ -399,7 +401,7 @@ function makeBaseTripRow(overrides: Partial<any> = {}) {
   return {
     id: 'trip-1',
     vehicleId: 'vehicle-1',
-    vehicle: { organizationId: 'org-1', hardwareType: 'UNKNOWN' },
+    vehicle: { organizationId: 'org-1', hardwareType: 'UNKNOWN', fuelType: 'PETROL' },
     startTime: new Date('2026-03-01T08:00:00Z'),
     endTime: new Date('2026-03-01T09:00:00Z'),
     distanceKm: 50,
@@ -483,6 +485,33 @@ describe('DrivingImpactService.computeForTrip', () => {
         data: expect.objectContaining({ drivingScore: expect.any(Number) }),
       }),
     );
+  });
+
+  it('persists structured loadComponentsJson with vehicle load coverage', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        avgEngineLoad: 52,
+        avgRpm: 2400,
+        avgThrottlePosition: 30,
+      }),
+    );
+    mockProvenancePrereqs(prisma, { nativeEventCount: 10, hfEventCount: 0 });
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+      { startSpeedKmh: 80, endSpeedKmh: 20, peakValue: 5.5 },
+    ]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.loadComponentsJson).toBeDefined();
+    expect(createArg.loadComponentsJson.version).toBe('impact-load-components-v1');
+    expect(createArg.loadComponentsJson.longitudinalLoad.score).not.toBeNull();
+    expect(createArg.loadComponentsJson.engineLoad.assessability).toBe('ASSESSABLE');
+    expect(createArg.loadComponentsJson.vehicleLoad.coverage).toBe(1);
+    expect(createArg.sourceSummaryJson.loadComponents).toBeDefined();
   });
 
   it('persists HF reconstructed provenance for SMART5 trips', async () => {
