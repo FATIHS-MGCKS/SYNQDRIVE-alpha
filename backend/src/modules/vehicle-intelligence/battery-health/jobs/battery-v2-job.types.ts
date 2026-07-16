@@ -51,6 +51,8 @@ export interface BatteryObservationClassifyPayload extends BatteryV2JobPayloadBa
 }
 
 export interface BatteryRestTargetEvaluatePayload extends BatteryV2JobPayloadBase {
+  /** Stable LV rest window idempotency key (`lv-rest:{vehicleId}:{anchorAtMs}`). */
+  restWindowId?: string | null;
   /** Optional rest-window anchor (ISO) — classification input, not PII. */
   restWindowStartedAt?: string | null;
   restTargetType?: 'REST_60M' | 'REST_6H' | 'REST_TARGET' | null;

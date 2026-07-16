@@ -7,6 +7,7 @@ import {
   BatteryMeasurementSession,
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
+  BatteryMeasurementType,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -123,6 +124,34 @@ export class BatteryMeasurementSessionRepository {
       },
       orderBy: { startedAt: 'desc' },
     });
+  }
+
+  findLvRestWindowByIdempotencyKey(
+    organizationId: string,
+    vehicleId: string,
+    idempotencyKey: string,
+  ): Promise<BatteryMeasurementSession | null> {
+    return this.prisma.batteryMeasurementSession.findFirst({
+      where: {
+        organizationId,
+        vehicleId,
+        type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+        idempotencyKey,
+      },
+    });
+  }
+
+  hasSessionMeasurementType(
+    organizationId: string,
+    sessionId: string,
+    type: BatteryMeasurementType,
+  ): Promise<boolean> {
+    return this.prisma.batteryMeasurement
+      .findFirst({
+        where: { organizationId, sessionId, type },
+        select: { id: true },
+      })
+      .then((row) => row != null);
   }
 
   updateMutable(

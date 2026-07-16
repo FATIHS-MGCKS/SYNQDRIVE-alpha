@@ -1,6 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  BatteryMeasurementSessionStatus,
+  BatteryMeasurementSessionType,
+  BatteryMeasurementType,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import { BatteryV2ProviderError } from '../battery-v2-job.errors';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { BatteryRestTargetEvaluatePayload } from '../battery-v2-job.types';
+import { LvRestWindowState } from '../../battery-v2-domain';
+import {
+  LV_REST_TARGET_JOB_STATUS,
+  LV_REST_TARGET_TYPES,
+  mergeLvRestTargetJobMetadata,
+  readLvRestWindowSessionMetadata,
+} from '../../lv-rest-window/lv-rest-window-target.metadata';
+import { mapSessionStatusToLvRestWindowState } from '../../lv-rest-window/lv-rest-window.state-machine';
 
 @Injectable()
 export class BatteryRestTargetEvaluateHandler
@@ -9,9 +24,152 @@ export class BatteryRestTargetEvaluateHandler
   readonly jobType = 'BATTERY_REST_TARGET_EVALUATE' as const;
   private readonly logger = new Logger(BatteryRestTargetEvaluateHandler.name);
 
+  constructor(private readonly prisma: PrismaService) {}
+
   async handle(payload: BatteryRestTargetEvaluatePayload): Promise<void> {
-    this.logger.debug(
-      `Battery V2 stub: ${this.jobType} org=${payload.organizationId} vehicle=${payload.vehicleId}`,
+    const restTargetType = this.normalizeRestTargetType(payload.restTargetType);
+    const restWindowId = payload.restWindowId;
+    if (!restWindowId) {
+      throw new BatteryV2ProviderError(
+        'REST target job missing restWindowId',
+        { retryable: false, jobType: this.jobType },
+      );
+    }
+
+    const session = await this.loadSession(payload, restWindowId);
+    if (!session) {
+      throw new BatteryV2ProviderError(
+        'REST target session not found for rest window',
+        { retryable: true, jobType: this.jobType },
+      );
+    }
+
+    const metadataState = readLvRestWindowSessionMetadata(session.metadata);
+    const fsmState =
+      mapSessionStatusToLvRestWindowState(
+        session.status,
+        metadataState.lvRestWindowState ?? null,
+      ) ?? null;
+
+    const hasMeasurement = await this.hasTargetMeasurement(
+      payload.organizationId,
+      session.id,
+      restTargetType,
     );
+
+    if (hasMeasurement) {
+      await this.updateTargetMetadata(session, restTargetType, {
+        status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
+        completedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    if (this.shouldCancelForInvalidatedWindow(fsmState, session.status)) {
+      await this.updateTargetMetadata(session, restTargetType, {
+        status: LV_REST_TARGET_JOB_STATUS.CANCELLED,
+        completedAt: new Date().toISOString(),
+        cancelReason: metadataState.invalidatedReason ?? 'rest_window_invalidated',
+      });
+      this.logger.debug(
+        `REST target cancelled (invalidated window): vehicle=${payload.vehicleId} window=${restWindowId}`,
+      );
+      return;
+    }
+
+    await this.updateTargetMetadata(session, restTargetType, {
+      status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
+      lastAttemptAt: new Date().toISOString(),
+    });
+
+    this.logger.debug(
+      `REST target ready for historical evaluation (next prompt): vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType}`,
+    );
+  }
+
+  private normalizeRestTargetType(
+    value: BatteryRestTargetEvaluatePayload['restTargetType'],
+  ): typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H {
+    return value === LV_REST_TARGET_TYPES.REST_6H
+      ? LV_REST_TARGET_TYPES.REST_6H
+      : LV_REST_TARGET_TYPES.REST_60M;
+  }
+
+  private async loadSession(
+    payload: BatteryRestTargetEvaluatePayload,
+    restWindowId: string,
+  ) {
+    if (payload.sourceEntityId) {
+      const byId = await this.prisma.batteryMeasurementSession.findFirst({
+        where: {
+          id: payload.sourceEntityId,
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+        },
+      });
+      if (byId) return byId;
+    }
+
+    return this.prisma.batteryMeasurementSession.findFirst({
+      where: {
+        organizationId: payload.organizationId,
+        vehicleId: payload.vehicleId,
+        type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+        idempotencyKey: restWindowId,
+      },
+    });
+  }
+
+  private async hasTargetMeasurement(
+    organizationId: string,
+    sessionId: string,
+    restTargetType: string,
+  ): Promise<boolean> {
+    const measurementType =
+      restTargetType === LV_REST_TARGET_TYPES.REST_6H
+        ? BatteryMeasurementType.REST_6H
+        : BatteryMeasurementType.REST_60M;
+
+    const existing = await this.prisma.batteryMeasurement.findFirst({
+      where: {
+        organizationId,
+        sessionId,
+        type: measurementType,
+      },
+      select: { id: true },
+    });
+    return existing != null;
+  }
+
+  private shouldCancelForInvalidatedWindow(
+    fsmState: LvRestWindowState | null,
+    sessionStatus: BatteryMeasurementSessionStatus,
+  ): boolean {
+    if (fsmState === LvRestWindowState.INVALIDATED) return true;
+    if (fsmState === LvRestWindowState.EXPIRED) return true;
+    if (sessionStatus === BatteryMeasurementSessionStatus.INVALID) return true;
+    if (sessionStatus === BatteryMeasurementSessionStatus.MISSED) return true;
+    return false;
+  }
+
+  private async updateTargetMetadata(
+    session: { id: string; organizationId: string; metadata: unknown },
+    restTargetType: typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H,
+    patch: Parameters<typeof mergeLvRestTargetJobMetadata>[2],
+  ): Promise<void> {
+    await this.prisma.batteryMeasurementSession.update({
+      where: {
+        id: session.id,
+        organizationId: session.organizationId,
+      },
+      data: {
+        metadata: mergeLvRestTargetJobMetadata(
+          session.metadata,
+          restTargetType,
+          patch,
+        ),
+      },
+    });
   }
 }

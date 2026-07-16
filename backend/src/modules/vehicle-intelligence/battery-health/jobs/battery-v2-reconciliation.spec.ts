@@ -75,6 +75,8 @@ describe('BatteryV2ReconciliationService', () => {
   const prisma = {
     vehicleLatestState: { findMany: jest.fn().mockResolvedValue([]) },
     batteryFeatures: { findMany: jest.fn().mockResolvedValue([]) },
+    batteryMeasurementSession: { findMany: jest.fn().mockResolvedValue([]) },
+    batteryMeasurement: { findFirst: jest.fn().mockResolvedValue(null) },
     vehicleTrip: { findMany: jest.fn().mockResolvedValue([]) },
     vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([]) },
     hvChargeSession: { findUnique: jest.fn() },
@@ -90,6 +92,17 @@ describe('BatteryV2ReconciliationService', () => {
     reconcilePeriodicRefresh: jest.fn().mockResolvedValue(0),
     reconcileSignalLossRefresh: jest.fn().mockResolvedValue(0),
   };
+  const restTargetProducer = {
+    scheduleRest60m: jest.fn().mockResolvedValue({
+      scheduled: true,
+      skipped: false,
+      idempotencyKey: 'battery-rest:key',
+      scheduledFor: new Date(),
+      delayMs: 0,
+      bullJobId: 'job-id',
+    }),
+    getRest60mDelayMs: jest.fn().mockReturnValue(60 * 60_000),
+  };
 
   let service: BatteryV2ReconciliationService;
 
@@ -97,17 +110,65 @@ describe('BatteryV2ReconciliationService', () => {
     jest.clearAllMocks();
     prisma.batteryFeatures.findMany.mockResolvedValue([]);
     prisma.vehicleEnergyEvent.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
+    prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
     service = new BatteryV2ReconciliationService(
       prisma as any,
       jobProducer as any,
       observationProducer as any,
       deadLetters as any,
       capabilityRefresh as any,
+      restTargetProducer as any,
     );
   });
 
-  it('reconciles rest targets without duplicate enqueue', async () => {
+  it('reconciles LV rest window targets without duplicate schedule metadata', async () => {
     const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
+    const windowId = `lv-rest:${VEH}:${startedAt.getTime()}`;
+    prisma.batteryMeasurementSession.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'sess-1',
+          organizationId: ORG,
+          vehicleId: VEH,
+          startedAt,
+          idempotencyKey: windowId,
+          metadata: { lvRestWindowState: 'RESTING' },
+          status: 'ACTIVE',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'sess-1',
+          organizationId: ORG,
+          vehicleId: VEH,
+          startedAt,
+          idempotencyKey: windowId,
+          metadata: {
+            lvRestWindowState: 'RESTING',
+            scheduledTargets: {
+              REST_60M: {
+                idempotencyKey: `battery-rest:${VEH}:${windowId}:60m`,
+                scheduledFor: startedAt.toISOString(),
+                status: 'ENQUEUED',
+              },
+            },
+          },
+          status: 'ACTIVE',
+        },
+      ]);
+
+    const first = await service.reconcileAll();
+    const second = await service.reconcileAll();
+
+    expect(first.restTargets).toBe(1);
+    expect(second.restTargets).toBe(0);
+    expect(restTargetProducer.scheduleRest60m).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconciles legacy rest targets without duplicate enqueue', async () => {
+    const startedAt = new Date(Date.now() - 2 * 60 * 60_000);
+    prisma.batteryMeasurementSession.findMany.mockResolvedValue([]);
     prisma.batteryFeatures.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
       if (args.where?.restWindowStartedAt != null) {
         return [
