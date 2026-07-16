@@ -1,8 +1,8 @@
-import type { BatteryDataQualityStatus } from './battery-data-quality';
+import type { BatteryDataQualityStatus } from '../lib/battery-data-quality';
 import {
   batteryDataQualityChipTone,
   batteryDataQualityShortLabel,
-} from './battery-data-quality.utils';
+} from '../lib/battery-data-quality.utils';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface BatteryDataQualityBadgeProps {

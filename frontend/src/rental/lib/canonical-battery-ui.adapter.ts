@@ -24,7 +24,9 @@ export function readCanonicalBattery(
 export function resolveCanonicalLvHealthStatus(
   summary: BatteryHealthSummary | null | undefined,
 ): BatteryHealthStatus | null {
-  return summary?.lv?.healthStatus ?? null;
+  const status = summary?.lv?.healthStatus ?? null;
+  if (status === 'UNSUPPORTED') return 'UNKNOWN';
+  return status;
 }
 
 export function resolveCanonicalEstimatedHealthScore(
@@ -63,7 +65,7 @@ export function resolveCanonicalHvSohPercent(
 ): number | null {
   return (
     summary?.canonical?.hv?.providerSoh.percent ??
-    summary?.canonical?.liveState.hv.values.providerSohPercent ??
+    summary?.canonical?.liveState.hv?.values.providerSohPercent ??
     summary?.hv?.sohPct ??
     null
   );

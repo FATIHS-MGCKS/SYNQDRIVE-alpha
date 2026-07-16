@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-frontend-e2e-v49575-2026-07-16',
+    version: '4.9.575',
+    title: 'V4.9.575 — Battery V2 Frontend & E2E Tests (Prompt 75/78)',
+    summary: [
+      'Frontend-Testpaket: 21 Vitest-Dateien / 78 Tests für LV/HV View-Models, Adapter, Query-Schicht, Komponenten und Label-Verträge (kein falsches LV-SOH / kein ungated HV-SOH).',
+      'Playwright E2E: 11 Tests (Fleet Health Battery-Tab, stale/proxy/EV/error/retry, responsive 320–1280, dark/light, Overflow-Check).',
+      'Scripts: `test:battery:v2`, `test:battery:v2:e2e`, `test:battery:v2:verify` + `scripts/test/battery-health-v2-verify.sh`.',
+      'Fix: `useBatteryHealthQuery` setzt `healthFetchedAt` bei Fetch-Fehlern — verhindert Endlos-Refetch auf Error-UI.',
+      'Doku: `docs/testing/battery-health-v2-frontend-e2e-coverage.md`. Letzter Verify: tsc + 78 Unit + 11 E2E + Build grün.',
+    ],
+    reason: 'Prompt 75/78: nachvollziehbares Frontend-/E2E-Testpaket für Battery Health V2 inkl. Label-Schutz und CI-tauglichem Verify-Pfad.',
+    previousBehavior: 'Verteilte Frontend-Logik ohne zentrales Battery-V2-Testpaket, keine E2E-Abdeckung für Fleet-Battery-Tab.',
+    details:
+      'frontend/src/rental/lib/battery-test-fixtures.ts, frontend/e2e/battery-health-*.ts, frontend/scripts/test/battery-health-v2-verify.sh, docs/testing/battery-health-v2-frontend-e2e-coverage.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T21:45:00.000Z',
+  },
+  {
     id: 'battery-v2-backend-test-package-v49574-2026-07-16',
     version: '4.9.574',
     title: 'V4.9.574 — Battery V2 Backend Test Package (Prompt 74/78)',

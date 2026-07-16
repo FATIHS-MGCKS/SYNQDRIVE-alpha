@@ -139,9 +139,14 @@ export function useBatteryHealthQuery<T extends BatteryHealthQueryVariant>(input
       } catch (err) {
         if (isBatteryHealthAbortError(err) || requestId !== requestIdRef.current) return;
         const message = mapBatteryHealthQueryError(err);
+        const now = Date.now();
+        const priorEntry = getBatteryHealthCacheEntry<BatteryHealthDataMap[T]>(cacheKey);
         const entry = setBatteryHealthCacheEntry(cacheKey, {
           data: dataRef.current,
           error: message,
+          healthFetchedAt: scope === 'live' ? (priorEntry?.healthFetchedAt ?? null) : now,
+          liveFetchedAt:
+            scope === 'live' ? now : (priorEntry?.liveFetchedAt ?? null),
         });
         applyCacheEntry(entry);
       } finally {

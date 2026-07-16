@@ -181,11 +181,11 @@ export function buildBatteryHvLiveVm(summary: BatteryHealthSummary | null | unde
 
   return {
     socPercent: hv?.socPercent ?? live?.socPercent ?? canonicalLive?.socPercent ?? null,
-    currentEnergyKwh: hv?.currentEnergyKwh ?? canonicalLive?.currentEnergyKwh ?? null,
-    rangeKm: hv?.rangeKm ?? live?.rangeKm ?? canonicalLive?.rangeKm ?? null,
+    currentEnergyKwh: hv?.currentEnergyKwh ?? live?.genericEnergyPercent ?? null,
+    rangeKm: hv?.rangeKm ?? live?.rangeKm ?? null,
     isCharging,
     cableConnected: hv?.chargingCableConnected ?? null,
-    chargingPowerKw: hv?.chargingPowerKw ?? live?.chargingPowerKw ?? canonicalLive?.chargingPowerKw ?? null,
+    chargingPowerKw: hv?.chargingPowerKw ?? live?.chargingPowerKw ?? null,
     chargingStateKey,
     observedAtLabel: formatIsoRelative(observedAt, locale),
   };

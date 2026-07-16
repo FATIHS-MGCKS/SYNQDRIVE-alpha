@@ -41,7 +41,7 @@ export function deriveHvBatteryStatusFromDetail(
       addedEnergyKwh: detail.hv?.telemetry?.addedEnergyKwh ?? null,
     },
     providerSohObservedAt: detail.hv?.freshness?.observedAt ?? null,
-    canonical: detail.canonical?.hv ?? detail.hv ?? null,
+    canonical: detail.hv ?? null,
     currentTelemetry: detail.currentTelemetry,
   };
 }

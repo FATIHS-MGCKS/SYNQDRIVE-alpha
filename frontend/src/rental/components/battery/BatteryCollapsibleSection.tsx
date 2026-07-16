@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export interface BatteryCollapsibleSectionProps {
   title: string;
@@ -83,10 +84,10 @@ export function BatterySliceQualityRow({
         <span
           key={item.label}
           className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground"
-          title={item.status ? t(`health.battery.dataQuality.${item.status}`) : undefined}
+          title={item.status ? t(`health.battery.dataQuality.${item.status}` as TranslationKey) : undefined}
         >
           <span>{item.label}</span>
-          <span className="text-foreground">{item.status ? t(`health.battery.dataQuality.short.${item.status}`) : '—'}</span>
+          <span className="text-foreground">{item.status ? t(`health.battery.dataQuality.short.${item.status}` as TranslationKey) : '—'}</span>
         </span>
       ))}
     </div>

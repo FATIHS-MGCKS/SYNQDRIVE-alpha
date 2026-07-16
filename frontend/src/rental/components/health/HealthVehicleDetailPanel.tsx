@@ -40,6 +40,7 @@ import { buildBatteryLvSummaryVm } from '../../lib/battery-lv-view-model';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
 import { formatVolts } from '../../lib/battery-ui-formatters';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { DetailSection, HealthModuleCard } from './HealthModuleCard';
 import { HealthServiceActions } from './HealthServiceActions';
 import { SegmentedHealthIndicator } from './SegmentedHealthIndicator';
@@ -420,7 +421,7 @@ export function HealthVehicleDetailPanel({
             )}
           </div>
           <p className="text-[10px] text-muted-foreground mt-2">
-            {t(batteryVm.voltage.contextKey)}
+            {t(batteryVm.voltage.contextKey as TranslationKey)}
             {batteryVm.voltage.ageLabel ? ` · ${batteryVm.voltage.ageLabel}` : ''}
           </p>
         </HealthModuleCard>

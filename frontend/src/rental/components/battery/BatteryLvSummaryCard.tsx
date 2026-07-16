@@ -1,6 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { BatteryConditionBars, RestingVoltageBadge } from '../BatteryConditionBars';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { BatteryLvSummaryVm } from '../../lib/battery-lv-view-model';
 import { formatVolts } from '../../lib/battery-ui-formatters';
@@ -63,7 +64,7 @@ export function BatteryLvSummaryCard({
           <>
             <div className="mb-1.5 flex items-center gap-1.5">
               <span className="text-xs font-medium text-[color:var(--status-info)]">
-                {t(publicationStateI18nKey('INITIAL_CALIBRATION'))}
+                {t(publicationStateI18nKey('INITIAL_CALIBRATION') as TranslationKey)}
               </span>
               <span className="inline-flex">
                 {[0, 1, 2].map((i) => (
@@ -79,7 +80,7 @@ export function BatteryLvSummaryCard({
           </>
         ) : (
           <>
-            <div className="mb-2" title={t(vm.estimatedHealth.tooltipKey)}>
+            <div className="mb-2" title={t(vm.estimatedHealth.tooltipKey as TranslationKey)}>
               <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground">
                 {vm.estimatedHealth.label}
               </p>
@@ -109,7 +110,7 @@ export function BatteryLvSummaryCard({
                   {formatVolts(vm.voltage.currentV)}
                 </p>
                 <p className="text-[9px] text-muted-foreground">
-                  {t(vm.voltage.contextKey)}
+                  {t(vm.voltage.contextKey as TranslationKey)}
                   {vm.voltage.ageLabel ? ` · ${vm.voltage.ageLabel}` : ''}
                 </p>
               </div>

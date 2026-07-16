@@ -1,6 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { BatteryHvSummaryVm } from '../../lib/battery-hv-view-model';
 import { formatKwh, formatPercent, publicationStateI18nKey } from '../../lib/battery-ui-formatters';
 
@@ -43,7 +44,7 @@ export function BatteryHvSummaryCard({ vm, onOpenDetail, cardClass }: BatteryHvS
         {vm.isCalibrating ? (
           <>
             <p className="text-sm font-semibold text-[color:var(--status-info)]">
-              {t(publicationStateI18nKey('INITIAL_CALIBRATION'))}
+              {t(publicationStateI18nKey('INITIAL_CALIBRATION') as TranslationKey)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-1">{t('health.battery.hv.calibratingHint')}</p>
           </>
@@ -54,7 +55,7 @@ export function BatteryHvSummaryCard({ vm, onOpenDetail, cardClass }: BatteryHvS
                 {soh.prefixApproximate ? '~' : ''}
                 {soh.primaryValue}%
               </span>
-              <span className="text-[10px] text-muted-foreground">{t(soh.primaryLabelKey)}</span>
+              <span className="text-[10px] text-muted-foreground">{t(soh.primaryLabelKey as TranslationKey)}</span>
               {vm.isStabilizing && (
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold sq-chip-watch border border-border">
                   {t('health.battery.publication.stabilizing')}
@@ -88,7 +89,7 @@ export function BatteryHvSummaryCard({ vm, onOpenDetail, cardClass }: BatteryHvS
             <p className="text-sm font-bold text-foreground tabular-nums">{formatKwh(live.currentEnergyKwh)}</p>
           </div>
         </div>
-        <p className="text-[10px] mt-1 text-muted-foreground/70">{t(live.chargingStateKey)}</p>
+        <p className="text-[10px] mt-1 text-muted-foreground/70">{t(live.chargingStateKey as TranslationKey)}</p>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { Icon } from '../ui/Icon';
 import { BatteryConditionBars, RestingVoltageBadge } from '../BatteryConditionBars';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { BatteryLvDetailVm } from '../../lib/battery-lv-view-model';
 import type { BatteryMeasurementRow } from '../../lib/battery-health-detail-ui';
 import {
@@ -32,7 +33,7 @@ export function BatteryLvDetailContent({ vm, measurementRows = [], chartSlot }: 
                 : vm.estimatedHealth.isStabilizing
                   ? 'STABILIZING'
                   : 'STABLE',
-            ))}
+            ) as TranslationKey)}
           </span>
         )}
       </div>
@@ -47,7 +48,7 @@ export function BatteryLvDetailContent({ vm, measurementRows = [], chartSlot }: 
         <BatteryMetricTile
           label={t('health.battery.lv.currentVoltage')}
           value={formatVolts(vm.voltage.currentV)}
-          hint={`${t(vm.voltage.contextKey)}${vm.voltage.ageLabel ? ` · ${vm.voltage.ageLabel}` : ''}`}
+          hint={`${t(vm.voltage.contextKey as TranslationKey)}${vm.voltage.ageLabel ? ` · ${vm.voltage.ageLabel}` : ''}`}
           tone="brand"
         />
         <BatteryMetricTile
@@ -81,7 +82,7 @@ export function BatteryLvDetailContent({ vm, measurementRows = [], chartSlot }: 
               )}
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground">{t(vm.estimatedHealth.tooltipKey)}</p>
+          <p className="text-[10px] text-muted-foreground">{t(vm.estimatedHealth.tooltipKey as TranslationKey)}</p>
           {(vm.estimatedHealth.confidence || vm.sliceQualities.estimatedHealth) && (
             <p className="text-[10px] mt-2 text-muted-foreground">
               {t('health.battery.lv.confidence')}: {formatConfidenceLabel(vm.estimatedHealth.confidence)}

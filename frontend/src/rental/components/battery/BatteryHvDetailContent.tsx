@@ -1,6 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { BatteryHvDetailVm } from '../../lib/battery-hv-view-model';
 import {
   BatteryCollapsibleSection,
@@ -28,7 +29,7 @@ export function BatteryHvDetailContent({ vm, trendChartSlot }: BatteryHvDetailCo
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider sq-chip-neutral border border-border">
-          {t(publicationStateI18nKey(vm.publicationState))}
+          {t(publicationStateI18nKey(vm.publicationState) as TranslationKey)}
         </span>
         {soh.dataQualityStatus && <BatteryDataQualityBadge status={soh.dataQualityStatus} short={false} />}
       </div>
@@ -43,7 +44,7 @@ export function BatteryHvDetailContent({ vm, trendChartSlot }: BatteryHvDetailCo
               {soh.prefixApproximate ? '~' : ''}
               {soh.primaryValue}%
             </p>
-            <p className="text-xs text-muted-foreground mt-1">{t(soh.primaryLabelKey)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t(soh.primaryLabelKey as TranslationKey)}</p>
             {soh.interpretationDescription && (
               <p className="text-xs text-muted-foreground mt-2">{soh.interpretationDescription}</p>
             )}
@@ -70,7 +71,7 @@ export function BatteryHvDetailContent({ vm, trendChartSlot }: BatteryHvDetailCo
         <BatteryMetricTile label={t('health.battery.hv.energy')} value={formatKwh(live.currentEnergyKwh)} />
         <BatteryMetricTile
           label={t('health.battery.hv.chargingState')}
-          value={t(live.chargingStateKey)}
+          value={t(live.chargingStateKey as TranslationKey)}
           hint={live.chargingPowerKw != null ? `${live.chargingPowerKw.toFixed(1)} kW` : live.observedAtLabel}
         />
         <BatteryMetricTile
@@ -105,7 +106,7 @@ export function BatteryHvDetailContent({ vm, trendChartSlot }: BatteryHvDetailCo
             </p>
             <p className="text-lg font-bold text-foreground tabular-nums">{capacity.referenceCapacityText}</p>
             {capacity.referenceVerificationKey && (
-              <p className="text-[10px] text-muted-foreground mt-1">{t(capacity.referenceVerificationKey)}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{t(capacity.referenceVerificationKey as TranslationKey)}</p>
             )}
             {capacity.referenceSource && (
               <p className="text-[10px] text-muted-foreground">{capacity.referenceSource}</p>
@@ -118,7 +119,7 @@ export function BatteryHvDetailContent({ vm, trendChartSlot }: BatteryHvDetailCo
               </p>
               <p className="text-lg font-bold text-foreground tabular-nums">{capacity.usableCapacityText}</p>
               {capacity.usableCapacityHintKey && (
-                <p className="text-[10px] text-muted-foreground mt-1">{t(capacity.usableCapacityHintKey)}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{t(capacity.usableCapacityHintKey as TranslationKey)}</p>
               )}
             </div>
           ) : capacity.legacyUnverified ? (
