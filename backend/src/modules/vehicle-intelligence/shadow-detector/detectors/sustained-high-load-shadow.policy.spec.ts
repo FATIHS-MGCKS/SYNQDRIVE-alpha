@@ -23,6 +23,7 @@ function sample(
     exteriorTempC: 18,
     tractionBatteryPowerKw: null,
     altitudeM: 400,
+    gear: null,
     ...over,
   };
 }

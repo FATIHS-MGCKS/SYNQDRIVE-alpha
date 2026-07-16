@@ -33,6 +33,7 @@ export function buildHighFrequencyQuery(
         powertrainCombustionEngineTorquePercent(agg: AVG)
         exteriorAirTemperature(agg: AVG)
         currentLocationAltitude(agg: AVG)
+        powertrainTransmissionCurrentGear(agg: AVG)
         powertrainTractionBatteryCurrentPower(agg: AVG)
       }
     }

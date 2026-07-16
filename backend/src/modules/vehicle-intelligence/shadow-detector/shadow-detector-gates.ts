@@ -62,3 +62,16 @@ export function assessDetectorCapabilityGate(input: {
     status: input.capability.status,
   };
 }
+
+export function assessSynchronyGate(input: {
+  syncDeltaMs: number | null;
+  maxSyncDeltaMs: number;
+}): { passed: boolean; rejectionReasons: string[] } {
+  if (input.syncDeltaMs == null) {
+    return { passed: true, rejectionReasons: [] };
+  }
+  if (input.syncDeltaMs > input.maxSyncDeltaMs) {
+    return { passed: false, rejectionReasons: ['SIGNAL_SYNC_OUT_OF_RANGE'] };
+  }
+  return { passed: true, rejectionReasons: [] };
+}

@@ -24,6 +24,7 @@ function hf(
     exteriorTempC: 2,
     tractionBatteryPowerKw: null,
     altitudeM: null,
+    gear: null,
     ...over,
   };
 }

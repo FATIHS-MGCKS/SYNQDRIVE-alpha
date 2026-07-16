@@ -112,5 +112,6 @@ function mapHfReadingToShadowSample(reading: HighFrequencyReading): ShadowDetect
     exteriorTempC: reading.exteriorAirTempC ?? null,
     tractionBatteryPowerKw: reading.tractionBatteryPowerKw,
     altitudeM: reading.altitudeM ?? null,
+    gear: reading.currentGear ?? null,
   };
 }

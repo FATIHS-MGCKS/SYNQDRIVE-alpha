@@ -53,6 +53,8 @@ export type ShadowDetectorHfSample = {
   tractionBatteryPowerKw: number | null;
   /** Optional post-trip altitude context (m) — never proves abuse alone. */
   altitudeM: number | null;
+  /** Optional transmission gear — kickdown-like context only. */
+  gear: number | null;
 };
 
 export type ShadowMisuseCaseRef = {
