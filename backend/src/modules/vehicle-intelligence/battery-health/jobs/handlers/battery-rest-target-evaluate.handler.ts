@@ -4,9 +4,11 @@ import {
   BatteryMeasurementSessionType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isBatteryV2RestShadowEnabled } from '@config/battery-health-v2.config';
 import { BatteryV2ProviderError } from '../battery-v2-job.errors';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { BatteryRestTargetEvaluatePayload } from '../battery-v2-job.types';
+import { BatteryV2JobObservabilityService } from '../battery-v2-job-observability.service';
 import { LvRestWindowState } from '../../battery-v2-domain';
 import { BatteryRestTargetEvaluationService } from '../../lv-rest-window/battery-rest-target-evaluation.service';
 import { measurementTypeForRestTarget } from '../../lv-rest-window/battery-rest-target-evaluation';
@@ -28,9 +30,17 @@ export class BatteryRestTargetEvaluateHandler
   constructor(
     private readonly prisma: PrismaService,
     private readonly evaluation: BatteryRestTargetEvaluationService,
+    private readonly observability: BatteryV2JobObservabilityService,
   ) {}
 
   async handle(payload: BatteryRestTargetEvaluatePayload): Promise<void> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      this.logger.debug(
+        `REST target skipped (shadow disabled): vehicle=${payload.vehicleId} type=${payload.restTargetType}`,
+      );
+      return;
+    }
+
     const restTargetType = this.normalizeRestTargetType(payload.restTargetType);
     const restWindowId = payload.restWindowId;
     if (!restWindowId) {
@@ -96,6 +106,7 @@ export class BatteryRestTargetEvaluateHandler
         );
       }
       if (result.missed) {
+        this.recordShadowMetrics(restTargetType, result.quality ?? 'MISSED');
         await this.updateTargetMetadata(session, restTargetType, {
           status: LV_REST_TARGET_JOB_STATUS.MISSED,
           completedAt: new Date().toISOString(),
@@ -106,6 +117,9 @@ export class BatteryRestTargetEvaluateHandler
         );
         return;
       }
+      if (result.quality) {
+        this.recordShadowMetrics(restTargetType, result.quality);
+      }
       await this.updateTargetMetadata(session, restTargetType, {
         status: LV_REST_TARGET_JOB_STATUS.FAILED,
         completedAt: new Date().toISOString(),
@@ -114,6 +128,7 @@ export class BatteryRestTargetEvaluateHandler
       return;
     }
 
+    this.recordShadowMetrics(restTargetType, result.quality);
     await this.updateTargetMetadata(session, restTargetType, {
       status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
       completedAt: new Date().toISOString(),
@@ -121,6 +136,16 @@ export class BatteryRestTargetEvaluateHandler
     this.logger.debug(
       `REST target measurement persisted: vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType} measurement=${result.measurementId}`,
     );
+  }
+
+  private recordShadowMetrics(
+    restTargetType: typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H,
+    quality: import('@prisma/client').BatteryMeasurementQuality,
+  ): void {
+    this.observability.recordLvRestShadowMeasurement({
+      targetType: restTargetType,
+      quality,
+    });
   }
 
   private normalizeRestTargetType(

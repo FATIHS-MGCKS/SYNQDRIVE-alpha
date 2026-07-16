@@ -26,11 +26,29 @@ describe('BatteryRestTargetEvaluateHandler', () => {
     evaluateAndPersist: jest.fn(),
   };
 
+  const observability = {
+    recordLvRestShadowMeasurement: jest.fn(),
+  };
+
   let handler: BatteryRestTargetEvaluateHandler;
+  const originalEnv = process.env.BATTERY_V2_REST_SHADOW_ENABLED;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    handler = new BatteryRestTargetEvaluateHandler(prisma as any, evaluation as any);
+    process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'true';
+    handler = new BatteryRestTargetEvaluateHandler(
+      prisma as any,
+      evaluation as any,
+      observability as any,
+    );
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.BATTERY_V2_REST_SHADOW_ENABLED;
+    } else {
+      process.env.BATTERY_V2_REST_SHADOW_ENABLED = originalEnv;
+    }
   });
 
   const basePayload = (restTargetType: 'REST_60M' | 'REST_6H') => ({
@@ -91,6 +109,7 @@ describe('BatteryRestTargetEvaluateHandler', () => {
       ok: true,
       measurementId: 'meas-6h',
       sourceObservationId: 'obs-6h',
+      quality: 'VALID',
     });
 
     await handler.handle(basePayload('REST_6H'));
@@ -166,5 +185,14 @@ describe('BatteryRestTargetEvaluateHandler', () => {
         }),
       }),
     );
+  });
+
+  it('skips evaluation when REST shadow flag is disabled', async () => {
+    process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'false';
+
+    await handler.handle(basePayload('REST_60M'));
+
+    expect(evaluation.evaluateAndPersist).not.toHaveBeenCalled();
+    expect(prisma.batteryMeasurementSession.findFirst).not.toHaveBeenCalled();
   });
 });

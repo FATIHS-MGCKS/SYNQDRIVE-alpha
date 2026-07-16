@@ -91,6 +91,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryV2JobsRetry: Counter<string>;
   readonly batteryV2JobsDeadLetter: Counter<string>;
   readonly batteryV2JobProcessingDuration: Histogram<string>;
+  readonly batteryV2RestShadowTotal: Counter<string>;
+  readonly batteryV2RestCaptureTotal: Counter<string>;
+  readonly batteryV2RestMissedTotal: Counter<string>;
+  readonly batteryV2RestContaminationTotal: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -655,6 +659,34 @@ export class TripMetricsService implements OnModuleInit {
       help: 'Battery V2 job handler processing duration',
       labelNames: ['job_type'],
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30, 60],
+      registers: [this.registry],
+    });
+
+    this.batteryV2RestShadowTotal = new Counter({
+      name: 'synqdrive_battery_v2_rest_shadow_total',
+      help: 'LV REST shadow measurements persisted by target window and quality',
+      labelNames: ['window', 'quality'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2RestCaptureTotal = new Counter({
+      name: 'synqdrive_battery_lv_rest_capture_total',
+      help: 'LV REST shadow target captures (non-MISSED)',
+      labelNames: ['window'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2RestMissedTotal = new Counter({
+      name: 'synqdrive_battery_v2_rest_missed_total',
+      help: 'LV REST shadow targets classified as MISSED',
+      labelNames: ['window'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2RestContaminationTotal = new Counter({
+      name: 'synqdrive_battery_lv_rest_contamination_total',
+      help: 'LV REST shadow contamination measurements',
+      labelNames: ['window', 'quality'],
       registers: [this.registry],
     });
   }

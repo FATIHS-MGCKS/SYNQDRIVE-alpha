@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import type { BatteryMeasurementQuality } from '@prisma/client';
 import type { BatteryV2JobType } from './battery-v2-job.types';
 import type { BatteryV2JobErrorCode } from './battery-v2-job.errors';
+import {
+  recordLvRestShadowMeasurementMetrics,
+  type LvRestShadowTargetWindow,
+} from '../lv-rest-window/lv-rest-shadow-metrics';
 
 export interface BatteryV2JobLogEvent {
   jobType: BatteryV2JobType;
@@ -71,5 +76,12 @@ export class BatteryV2JobObservabilityService {
 
   observeProcessingDuration(jobType: BatteryV2JobType, seconds: number): void {
     this.metrics.batteryV2JobProcessingDuration.observe({ job_type: jobType }, seconds);
+  }
+
+  recordLvRestShadowMeasurement(input: {
+    targetType: LvRestShadowTargetWindow;
+    quality: BatteryMeasurementQuality;
+  }): void {
+    recordLvRestShadowMeasurementMetrics(this.metrics, input);
   }
 }

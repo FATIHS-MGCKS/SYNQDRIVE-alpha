@@ -7,6 +7,7 @@ import {
   getBatteryV2ObservationStaleMs,
   getBatteryV2ReconciliationBatchSize,
   getBatteryV2StartProxyDelayMs,
+  isBatteryV2RestShadowEnabled,
   isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
 } from '@config/battery-health-v2.config';
@@ -237,6 +238,10 @@ export class BatteryV2ReconciliationService {
   }
 
   private async reconcileLvRestWindowTargets(batch: number): Promise<number> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      return 0;
+    }
+
     const now = Date.now();
     const dueBefore60m = new Date(now - getBatteryRest60mDelayMs());
     const dueBefore6h = new Date(now - getBatteryRest6hDelayMs());
@@ -328,6 +333,10 @@ export class BatteryV2ReconciliationService {
   }
 
   private async reconcileLegacyRestTargets(batch: number): Promise<number> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      return 0;
+    }
+
     const now = Date.now();
     const REST_60M_MS = getBatteryRest60mDelayMs();
     const REST_6H_MS = 6 * 60 * 60_000;

@@ -4,6 +4,7 @@ import {
   getBatteryRest60mDelayMs,
   getBatteryRest6hDelayMs,
   getBatteryRestTargetDelayMs,
+  isBatteryV2RestShadowEnabled,
 } from '../../../../config/battery-health-v2.config';
 import {
   buildBatteryRestTargetJobIdempotencyKey,
@@ -103,6 +104,18 @@ export class BatteryV2RestTargetProducer {
       restWindowId: input.restWindowId,
       restTargetType: input.restTargetType,
     });
+
+    if (!isBatteryV2RestShadowEnabled()) {
+      return {
+        scheduled: false,
+        skipped: true,
+        skipReason: 'rest_shadow_disabled',
+        idempotencyKey,
+        scheduledFor,
+        delayMs,
+        bullJobId: null,
+      };
+    }
 
     const bullJobId = await this.jobProducer.enqueue(
       'BATTERY_REST_TARGET_EVALUATE',

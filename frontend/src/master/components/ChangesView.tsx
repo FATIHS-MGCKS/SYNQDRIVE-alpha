@@ -35,6 +35,47 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lv-rest-shadow-mode-v49536-2026-07-16',
+    version: '4.9.536',
+    title: 'V4.9.536 — LV REST Shadow Mode Only (Prompt 35/78)',
+    summary: [
+      'Feature Flag `batteryV2RestShadowEnabled` (`BATTERY_V2_REST_SHADOW_ENABLED`): REST_60M/REST_6H nur im Shadow Mode.',
+      'Bei aktivem Flag: gültige, kontaminierte und verpasste Measurements persistieren mit `shadowMode` in Context/Provenance.',
+      'Keine BatteryPublication, kein Rental-Readiness-Effekt, kein Alert, kein Task, keine prominente Health-Prozentzahl.',
+      'Bei deaktiviertem Flag: keine neuen REST-Jobs (Producer, FSM, Reconciliation, Handler early-exit).',
+      'Interne Diagnose-API `GET …/battery-health/lv-rest-shadow-summary` mit Ruhefensterzahl, Capture-Raten, Qualitätsverteilung, Wake-Kontamination, letzter gültiger Messung.',
+      'Prometheus-Metriken: capture, MISSED, contamination + `battery_v2_rest_shadow_total`.',
+      'Dokumentierte Shadow-Akzeptanzkriterien (AC-SH01–AC-SH09).',
+    ],
+    reason: 'Prompt 35/78: kontrollierter Shadow-Rollout für LV-Ruhemessungen ohne User-facing Side Effects.',
+    previousBehavior: 'REST-Targets liefen ohne expliziten Shadow-Gate; kein interner Shadow-Summary-Resolver.',
+    details:
+      'lv-rest-shadow.policy.ts, lv-rest-shadow-summary.resolver.ts, lv-rest-shadow-metrics.ts, battery-v2-rest-target.producer.ts, battery-rest-target-evaluate.handler.ts, vehicle-intelligence.controller.ts, docs/architecture/lv-rest-shadow-acceptance.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:59:00.000Z',
+  },
+  {
+    id: 'lv-rest-measurement-quality-v49535-2026-07-16',
+    version: '4.9.535',
+    title: 'V4.9.535 — LV Rest Measurement Quality Classification (Prompt 34/78)',
+    summary: [
+      'Verbindliche Qualitätsklassifikation für REST_60M/REST_6H: VALID, VALID_PROXY, CONTAMINATED_*, STALE, TIMESTAMP_INCONSISTENT, MISSING_CONTEXT, MISSED, PROVIDER_DELAY, PROVIDER_ERROR, UNSUPPORTED_PROFILE.',
+      'Spannung über Lade-/Wake-Grenze nur als Verdachtsindikator — Kontamination erst mit belastbarem Kontext.',
+      'Maschinenlesbare `qualityReasonCode` + UI-`qualityReasonLabel` in Context/Provenance; `evidenceEligible`/`publicationEligible` Flags.',
+      'Kontaminierte Measurements werden persistiert, erzeugen aber keine Evidence und keine Publication.',
+      'Fehlende Messungen (MISSED/PROVIDER_DELAY/UNSUPPORTED_PROFILE) ohne erfundene Zahlenwerte.',
+      'Prisma: neues Enum `MISSING_CONTEXT`. Tests für alle Qualitätsklassen.',
+    ],
+    reason: 'Prompt 34/78: verbindliches LV-Ruhemessungs-Qualitätsmodell gemäß Architekturvertrag.',
+    previousBehavior: 'REST-Targets wurden überwiegend als VALID oder MISSED persistiert ohne differenzierte Kontaminations-/Proxy-Qualitäten.',
+    details:
+      'lv-rest-measurement-quality.ts, battery-rest-target-evaluation.service.ts, battery-v2-domain.ts, schema.prisma migration, battery-measurement-value.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:45:00.000Z',
+  },
+  {
     id: 'lv-rest-historical-observation-v49534-2026-07-16',
     version: '4.9.534',
     title: 'V4.9.534 — LV REST Historical Provider Observation Selection (Prompt 33/78)',

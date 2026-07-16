@@ -50,6 +50,7 @@ import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
+import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
 import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
@@ -133,6 +134,7 @@ export class VehicleIntelligenceController {
     private readonly batteryV2Service: BatteryV2Service,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
+    private readonly lvRestShadowSummaryService: LvRestShadowSummaryService,
     private readonly vehicleHealthTabSummaryService: VehicleHealthTabSummaryService,
     private readonly aiHealthCareAggregationService: AiHealthCareAggregationService,
     private readonly dashboardWarningLightsService: DashboardWarningLightsService,
@@ -1511,6 +1513,12 @@ export class VehicleIntelligenceController {
           }
         : null,
     };
+  }
+
+  /** Internal diagnostic API — LV REST shadow capture summary (no user-facing health impact). */
+  @Get('battery-health/lv-rest-shadow-summary')
+  async getLvRestShadowSummary(@Param('vehicleId') vehicleId: string) {
+    return this.lvRestShadowSummaryService.getSummaryForVehicle(vehicleId);
   }
 
   @Get('battery-health/trend')
