@@ -6,6 +6,11 @@ import type {
   TireUiStatus,
   TireWheelEstimate,
 } from '../../lib/api';
+import {
+  segmentFromHealthState,
+  type SegmentLevel,
+  type SegmentTone,
+} from './health-segment-display';
 
 export type TireUiLocale = 'de' | 'en';
 
@@ -163,8 +168,31 @@ export type WheelPosition = (typeof WHEEL_POSITIONS)[number];
 export function resolveWheelByPosition(
   wheels: TireWheelEstimate[] | undefined,
   position: WheelPosition,
+  wearFallbackMm?: Partial<Record<WheelPosition, number | null | undefined>>,
 ): TireWheelEstimate | null {
-  return wheels?.find((w) => w.position === position) ?? null;
+  const found = wheels?.find((w) => w.position === position) ?? null;
+  if (found) return found;
+  const fallbackMm = wearFallbackMm?.[position];
+  if (fallbackMm == null || !Number.isFinite(fallbackMm)) return null;
+  return {
+    position,
+    treadMm: fallbackMm,
+    wearPercent: 0,
+    remainingKm: 0,
+    healthStatus: 'UNKNOWN',
+    initialTreadMm: 0,
+    lastMeasuredMm: null,
+    lastMeasuredAt: null,
+    confidenceScore: 0,
+    confidenceLabel: 'Low',
+    brand: null,
+    tireModel: null,
+    size: null,
+    totalKm: 0,
+    cityKm: 0,
+    highwayKm: 0,
+    ruralKm: 0,
+  };
 }
 
 export function formatTireQuickNextMeasurementLabel(
@@ -255,21 +283,14 @@ export function treadMmColorClass(mm: number): string {
 }
 
 export function tireStatusToSegment(status: TireUiStatus): {
-  level: 'good' | 'watch' | 'warning' | 'critical' | 'unknown';
-  tone: 'positive' | 'watch' | 'warning' | 'critical' | 'neutral';
+  level: SegmentLevel;
+  tone: SegmentTone;
+  label: string;
 } {
-  switch (status) {
-    case 'GOOD':
-      return { level: 'good', tone: 'positive' };
-    case 'WARNING':
-    case 'LIMITED_DATA':
-      return { level: 'watch', tone: 'watch' };
-    case 'REVIEW_REQUIRED':
-    case 'MEASUREMENT_REQUIRED':
-      return { level: 'warning', tone: 'warning' };
-    case 'CRITICAL':
-      return { level: 'critical', tone: 'critical' };
-    default:
-      return { level: 'unknown', tone: 'neutral' };
-  }
+  const segment = segmentFromHealthState(status);
+  return {
+    level: segment.level,
+    tone: segment.tone,
+    label: segment.label,
+  };
 }

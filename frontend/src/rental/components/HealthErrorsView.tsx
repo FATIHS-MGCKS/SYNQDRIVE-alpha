@@ -1665,6 +1665,8 @@ export function HealthErrorsView({
           const uiStatus = tireUiStatus(th);
           const tireSeg = tireStatusToSegment(uiStatus);
           const nextMeasurementLabel = formatTireQuickNextMeasurementLabel(th);
+          const pct = th?.overallPercent ?? null;
+          const lastMeasuredAt = th?.lastMeasurementAt ?? th?.lastActualMeasurementAt ?? null;
           const tireAccent = quickCardAccentFromRentalState(rentalHealth?.modules.tires.state);
           return (
             <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${quickCardClass} order-5 ${!hasTireData ? 'opacity-60' : ''}`}>

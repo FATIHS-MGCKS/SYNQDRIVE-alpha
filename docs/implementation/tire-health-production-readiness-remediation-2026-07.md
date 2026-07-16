@@ -1308,6 +1308,88 @@ Tire Health operativ beobachtbar machen (strukturierte Logs + Prometheus) und kr
 
 ---
 
+## Prompt 24 — Staging verification & production rollout (2026-07-16)
+
+### Ziel
+
+Finale Verifikation der 24-Prompt-Remediation, Staging-/Rollout-Plan, ehrliches Production-Readiness-Urteil — **ohne unkontrollierte Produktionsdatenänderung**.
+
+### Neue Artefakte
+
+| Datei | Rolle |
+|-------|-------|
+| `docs/runbooks/tire-health-production-rollout.md` | 15-Schritt Produktions-Rollout + Rollback |
+| `docs/audits/tire-health-post-remediation-readiness-2026-07.md` | Kategorie-Urteile A–I, Abnahmekriterien |
+| `docs/audits/data/tire-health-post-remediation-verification-2026-07.json` | Maschinenlesbare Verifikationszusammenfassung |
+
+### Voraussetzungen (Agent-CI)
+
+| Check | Ergebnis |
+|-------|----------|
+| Prisma validate | ✅ |
+| Backend typecheck + build | ✅ |
+| Frontend typecheck + build | ✅ (Prompt-21 UI-Typfixes inkl. `tireStatusToSegment` → `SegmentLevel`) |
+| Tire tests | ✅ **519** |
+| Frontend tests | ✅ **1461** |
+| Regression matrix TC01–TC36 | ✅ |
+| Replay/audit suites | ✅ **84** |
+
+### Staging / Live-Audits
+
+| Aktivität | Ergebnis |
+|-----------|----------|
+| DB-Backup / Staging-Snapshot | ⚠️ Nicht in Agent-Umgebung |
+| `migrate deploy` | ⚠️ Operator (Runbook) |
+| Read-only VPS-Audits | ⚠️ Benötigt `DATABASE_URL` |
+| Kontrollierter Staging-Apply | ❌ **Nicht ausgeführt** |
+| Post-fix Backtest live | ❌ **Nicht ausgeführt** — weiterhin **NOT_ENOUGH_DATA** (n=4 Räder) |
+
+### Finales Urteil
+
+| Kategorie | Urteil |
+|-----------|--------|
+| Gesamt | **CONDITIONALLY_READY** |
+| Model Validity | **NOT_ENOUGH_DATA** |
+| Safety / Reliability / Observability / Tests | **READY** |
+
+### 24 Implementation Commits
+
+| # | Hash | Beschreibung |
+|---|------|--------------|
+| 1 | `08908ed` | Remediation baseline |
+| 2 | `402b7e4` | Ground-truth leak fix |
+| 3 | `7b49bf1` | Evidence/provenance schema |
+| 4 | `b28f91a` | Provenance write paths |
+| 5 | `3ae02f9` | Lifecycle invariants |
+| 6 | `0c96083` | Traceable odometer anchors |
+| 7 | `d3d3327` | Odometer backfill audit |
+| 8 | `af2e220` | Odometer backfill apply |
+| 9 | `d58d6c6` | Trip usage ledger |
+| 10 | `850e230` | Trip finalization → usage |
+| 11 | `df9f2ee` | Replay & concurrency |
+| 12 | `f065a08` | Trip usage backfill audit |
+| 13 | `97579b2` | Ledger backfill + reconciliation |
+| 14 | `f9a27ac` | Recalculation fingerprint dedupe |
+| 15 | `4df2c2c` | Prediction versioning |
+| 16 | `7bf7715` | DIMO kPa → bar |
+| 17 | `ea1c96d` | TirePressureContext |
+| 18 | `09dc183` | Recommended pressure |
+| 19 | `0482512` | Rental blocking policy |
+| 20 | `d501dac` | Structured alerts |
+| 21 | `d446b79` | Honest UI evidence |
+| 22 | `9ba78b4` | DIMO context signals |
+| 23 | `06e4e4f` | Observability + regression matrix |
+| 24 | *(dieser Commit)* | Final verification + runbook |
+
+### Bestätigung Prompt 24
+
+- ✅ Keine Produktions-/Staging-Datenänderung in diesem Prompt
+- ✅ Runbook und Post-Remediation-Audit erstellt
+- ✅ Builds und Tire-Tests grün
+- ⚠️ Live-Staging-Replay und Backtest-Re-Run an Operator delegiert
+
+---
+
 ## Change Log
 
 | Datum | Prompt | Aktion | Commit |
@@ -1327,7 +1409,8 @@ Tire Health operativ beobachtbar machen (strukturierte Logs + Prometheus) und kr
 | 2026-07-16 | 20 | Structured tire health alerts with dedupe + revision-safe resolution | *(dieser Commit)* |
 | 2026-07-16 | 21 | Honest tire health evidence in API + UI | *(dieser Commit)* |
 | 2026-07-16 | 22 | Capability-gated DIMO tire context signals | `9ba78b4` |
-| 2026-07-16 | 23 | Observability + TC01–TC36 regression matrix | *(dieser Commit)* |
+| 2026-07-16 | 23 | Observability + TC01–TC36 regression matrix | `06e4e4f` |
+| 2026-07-16 | 24 | Staging verification + production rollout runbook | *(dieser Commit)* |
 
 ---
 
