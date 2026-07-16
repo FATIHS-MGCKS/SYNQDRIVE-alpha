@@ -2,7 +2,7 @@ import type { StressLevel } from '../driving-impact/stress-level.util';
 
 import type { TripEvidenceLevel } from './trip-evidence-level.types';
 
-export const TRIP_ASSESSMENT_VERSION = '1.1.0';
+export const TRIP_ASSESSMENT_VERSION = '1.3.0';
 
 export type TripAssessmentStatus =
   | 'UNAUFFAELLIG'
@@ -12,11 +12,21 @@ export type TripAssessmentStatus =
   | 'PRUEFHINWEIS'
   | 'NICHT_BEWERTBAR';
 
+/** Disambiguates PRUEFHINWEIS causes — additive to legacy status. */
+export type TripAssessmentReasonCategory =
+  | 'DATA_QUALITY_REVIEW'
+  | 'DRIVER_CONDUCT_REVIEW'
+  | 'VEHICLE_LOAD_REVIEW'
+  | 'MISUSE_REVIEW'
+  | 'DAMAGE_INSPECTION'
+  | 'ATTRIBUTION_REVIEW';
+
 export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type TripAssessmentSource =
   | 'NATIVE_EVENTS'
   | 'HF_RECONSTRUCTED'
+  /** @deprecated Vehicle load no longer drives conduct assessment status (v1.2.0). */
   | 'STRESS_ONLY'
   | 'MISUSE_EVIDENCE'
   | 'MIXED'
@@ -32,6 +42,7 @@ export interface TripAssessmentEventInput {
 
 export interface TripAssessmentInput {
   unifiedEvents: TripAssessmentEventInput[];
+  /** Vehicle load 0–100 (higher = more mechanical stress). Does not imply driver conduct. */
   drivingStressScore: number | null;
   drivingStressLevel: StressLevel | null;
   misuseCaseCount: number;
@@ -42,6 +53,10 @@ export interface TripAssessmentInput {
   nativeEventCount: number;
   reconstructedEventCount: number;
   deviceQualityDegraded?: boolean;
+  /** Trip/booking attribution uncertain — operator should verify before customer action. */
+  attributionNeedsReview?: boolean;
+  /** Elevated vehicle mechanical load warrants inspection (not driver conduct). */
+  vehicleLoadNeedsReview?: boolean;
 }
 
 export interface TripAssessmentSignals {
@@ -49,6 +64,7 @@ export interface TripAssessmentSignals {
   abuseRelevantEvents: number;
   misuseCases: number;
   maxEvidenceLevel: TripEvidenceLevel | null;
+  /** Vehicle load signal — separate from conduct assessment. */
   drivingStressScore: number | null;
   drivingStressLevel: string | null;
   hasEnoughData: boolean;
@@ -58,6 +74,8 @@ export interface TripAssessment {
   status: TripAssessmentStatus;
   label: string;
   primaryReason: string;
+  /** Set when status is PRUEFHINWEIS — disambiguates review cause. */
+  reasonCategory: TripAssessmentReasonCategory | null;
   confidence: TripAssessmentConfidence;
   source: TripAssessmentSource;
   version: string;

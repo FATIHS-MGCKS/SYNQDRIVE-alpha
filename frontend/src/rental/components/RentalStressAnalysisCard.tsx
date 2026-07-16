@@ -5,7 +5,6 @@ import { Icon } from './ui/Icon';
 import { VehicleStressPanel } from './VehicleStressPanel';
 import {
   getDataConfidenceLabel,
-  resolveDrivingStressScore,
   type DataConfidence,
 } from '../lib/scoreFormat';
 
@@ -48,9 +47,7 @@ export function RentalStressAnalysisCard({
   const meta = payload.analysisMeta;
   const wear = payload.wearImpactAssessment;
 
-  const stressScore =
-    stress?.drivingStressScore ??
-    resolveDrivingStressScore({ drivingScore: analysis.drivingScore });
+  const stressScore = stress?.drivingStressScore ?? analysis.drivingStressScore ?? null;
 
   return (
     <div className="space-y-4">

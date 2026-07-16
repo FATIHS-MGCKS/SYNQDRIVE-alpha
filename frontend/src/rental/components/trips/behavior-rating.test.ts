@@ -16,10 +16,10 @@ function trip(overrides: Partial<TripTimelineTrip> = {}): TripTimelineTrip {
 const noEvents: TripBehaviorEvent[] = [];
 
 describe('deriveBehaviorOverallStatus — assessability gate', () => {
-  it('returns "unremarkable" for a clean, assessable trip', () => {
+  it('returns not_assessable for a trip without conduct events', () => {
     expect(
       deriveBehaviorOverallStatus(trip(), noEvents, { assessable: true }),
-    ).toBe('unremarkable');
+    ).toBe('not_assessable');
   });
 
   it('returns "not_assessable" for a clean trip with insufficient data', () => {
@@ -36,8 +36,8 @@ describe('deriveBehaviorOverallStatus — assessability gate', () => {
     ).toBe('abuse_suspect');
   });
 
-  it('defaults to unremarkable when no assessability gate is supplied', () => {
-    expect(deriveBehaviorOverallStatus(trip(), noEvents)).toBe('unremarkable');
+  it('defaults to not_assessable when no conduct events are present', () => {
+    expect(deriveBehaviorOverallStatus(trip(), noEvents)).toBe('not_assessable');
   });
 
   it('does not return not_assessable when behavior events are loaded', () => {

@@ -46,10 +46,11 @@ export function mapTripForVehicleApi(
   return {
     ...rest,
     behaviorEnrichmentStatus,
-    drivingScore:
-      summary?.scores?.drivingStressScore ?? trip.drivingScore ?? null,
+    // Legacy mirror of drivingStressScore (vehicle load — not driver conduct).
+    drivingScore: summary?.scores?.drivingStressScore ?? null,
     drivingStressScore: summary?.scores?.drivingStressScore ?? null,
     stressLevel: summary?.scores?.stressLevel ?? null,
+    // Legacy alias of drivingStressScore.
     drivingStyleScore: summary?.scores?.drivingStressScore ?? null,
     scoreSource: summary?.scores?.scoreSource ?? 'derived',
     totalAccelerationEvents: summary?.events?.totalAccelerationEvents ?? 0,

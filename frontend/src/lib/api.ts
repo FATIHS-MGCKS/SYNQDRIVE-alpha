@@ -1500,6 +1500,14 @@ export type TripAssessmentStatus =
   | 'PRUEFHINWEIS'
   | 'NICHT_BEWERTBAR';
 
+export type TripAssessmentReasonCategory =
+  | 'DATA_QUALITY_REVIEW'
+  | 'DRIVER_CONDUCT_REVIEW'
+  | 'VEHICLE_LOAD_REVIEW'
+  | 'MISUSE_REVIEW'
+  | 'DAMAGE_INSPECTION'
+  | 'ATTRIBUTION_REVIEW';
+
 export type TripEvidenceLevel =
   | 'NONE'
   | 'INFO'
@@ -1542,6 +1550,7 @@ export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 export type TripAssessmentSource =
   | 'NATIVE_EVENTS'
   | 'HF_RECONSTRUCTED'
+  /** @deprecated Vehicle load no longer drives conduct status (assessment v1.2.0). */
   | 'STRESS_ONLY'
   | 'MISUSE_EVIDENCE'
   | 'MIXED'
@@ -1551,6 +1560,8 @@ export interface TripAssessment {
   status: TripAssessmentStatus;
   label: string;
   primaryReason: string;
+  /** Disambiguates PRUEFHINWEIS — null for other statuses. */
+  reasonCategory: TripAssessmentReasonCategory | null;
   confidence: TripAssessmentConfidence;
   source: TripAssessmentSource;
   version: string;
@@ -1577,7 +1588,9 @@ export interface VehicleTripAnalytics {
   maxSpeedKmh?: number | null;
   drivingStressScore?: number | null;
   stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
-  /** @deprecated Legacy mirror — use drivingStressScore */
+  /**
+   * @deprecated Legacy mirror of `drivingStressScore` (vehicle load 0–100, not driver quality).
+   */
   drivingScore?: number | null;
   scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
   totalAccelerationEvents?: number;
@@ -1655,8 +1668,13 @@ export interface VehicleTripStats {
   totalDistanceKm: number;
   avgDrivingStressScore: number | null;
   stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
-  /** @deprecated Mirror of avgDrivingStressScore */
+  /**
+   * @deprecated Mirror of `avgDrivingStressScore` (vehicle load aggregate).
+   */
   avgDrivingScore: number | null;
+  /**
+   * @deprecated Mirror of `avgDrivingStressScore`.
+   */
   avgDrivingStyleScore: number | null;
   totalAccelerationEvents: number;
   totalHardAccelerationEvents: number;
@@ -1748,7 +1766,9 @@ export interface RentalDrivingAnalysisItem {
   periodEnd: string;
   overallLevel: string;
   riskLevel: string;
-  /** Legacy column — mirrors vehicle stress score */
+  /**
+   * @deprecated Legacy DB column — mirrors `payload.vehicleStressSummary.drivingStressScore` (vehicle load).
+   */
   drivingScore: number | null;
   drivingEventsCount?: number | null;
   abuseDetectionCount?: number | null;

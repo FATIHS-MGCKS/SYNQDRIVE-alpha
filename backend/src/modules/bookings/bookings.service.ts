@@ -9,6 +9,10 @@ import {
 import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalDrivingAnalysisService } from '../rental-driving-analysis/rental-driving-analysis.service';
+import {
+  readCanonicalDrivingStressFromRentalPayload,
+  readCanonicalStressLevelFromRentalPayload,
+} from '../vehicle-intelligence/driving-impact/legacy-score-mirror';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import {
@@ -1210,8 +1214,8 @@ export class BookingsService {
         warningWarnings,
       },
       usage: {
-        drivingStressScore: analysis?.drivingScore ?? null,
-        stressLevel: null,
+        drivingStressScore: readCanonicalDrivingStressFromRentalPayload(payload),
+        stressLevel: readCanonicalStressLevelFromRentalPayload(payload),
         drivingEventsCount: Number(eventSummary.drivingEventsCount ?? analysis?.drivingEventsCount) || null,
         abuseDetectionCount: Number(eventSummary.abuseDetectionCount ?? analysis?.abuseDetectionCount) || null,
         misuseCaseCount: misuseCount,

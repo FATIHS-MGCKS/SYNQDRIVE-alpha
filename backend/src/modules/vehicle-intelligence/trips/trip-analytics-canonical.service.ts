@@ -37,11 +37,13 @@ export interface CanonicalTripEventSummary {
 }
 
 export interface CanonicalTripScoreSummary {
-  /** Composite vehicle stress 0–100. Higher = more load. */
+  /** Composite vehicle stress 0–100. Higher = more load. Not driver conduct. */
   drivingStressScore: number | null;
   stressLevel: StressLevel | null;
-  scoreSource: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
-  /** @deprecated Use drivingStressScore */
+  scoreSource: 'trip_driving_impact' | 'derived';
+  /**
+   * @deprecated Legacy alias for `drivingStressScore` (vehicle load, not driver quality).
+   */
   drivingStyleScore?: number | null;
 }
 
@@ -59,8 +61,13 @@ export interface CanonicalTripStats {
   totalDistanceKm: number;
   avgDrivingStressScore: number | null;
   stressLevel: StressLevel | null;
-  /** @deprecated Mirror of avgDrivingStressScore */
+  /**
+   * @deprecated Mirror of `avgDrivingStressScore` (vehicle load aggregate).
+   */
   avgDrivingScore: number | null;
+  /**
+   * @deprecated Mirror of `avgDrivingStressScore`.
+   */
   avgDrivingStyleScore: number | null;
   totalAccelerationEvents: number;
   totalHardAccelerationEvents: number;
@@ -221,6 +228,7 @@ export class TripAnalyticsCanonicalService {
       distanceKm: trip.distanceKm ?? null,
       durationMinutes: trip.durationMinutes ?? null,
       assessability,
+      attribution: canonicalSummary.attribution ?? null,
     });
   }
 
@@ -302,11 +310,10 @@ export class TripAnalyticsCanonicalService {
     };
 
     const impactHasStress = impact?.drivingStressScore != null;
-    const drivingStressScore = impactHasStress
-      ? impact!.drivingStressScore
-      : (trip.drivingScore ?? null);
-    const scoreSource: CanonicalTripScoreSummary['scoreSource'] =
-      impactHasStress ? 'trip_driving_impact' : drivingStressScore != null ? 'vehicle_trip_compat' : 'derived';
+    const drivingStressScore = impactHasStress ? impact!.drivingStressScore : null;
+    const scoreSource: CanonicalTripScoreSummary['scoreSource'] = impactHasStress
+      ? 'trip_driving_impact'
+      : 'derived';
 
     return {
       events,

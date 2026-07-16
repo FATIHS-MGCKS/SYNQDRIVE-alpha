@@ -12,6 +12,9 @@ import { TripAttributionService } from '../vehicle-intelligence/trips/trip-attri
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
 import type { RentalDrivingAnalysisPayload } from './rental-driving-analysis.types';
 import {
+  readCanonicalDrivingStressFromRentalPayload,
+} from '../vehicle-intelligence/driving-impact/legacy-score-mirror';
+import {
   parsePagination,
   buildPaginatedResult,
   PaginationParams,
@@ -186,8 +189,7 @@ export class RentalDrivingAnalysisService {
     const aggregationRows: AggregationRow[] = tripsWithMetrics.map((trip) => {
       const impact = impactMap.get(trip.id);
       return {
-        drivingStressScore:
-          impact?.drivingStressScore ?? trip.drivingScore ?? null,
+        drivingStressScore: impact?.drivingStressScore ?? null,
         distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
       };
     });
@@ -533,7 +535,7 @@ export class RentalDrivingAnalysisService {
       overallLevel: r.overallLevel,
       driverStyleCategory: r.driverStyleCategory,
       riskLevel: r.riskLevel,
-      drivingStressScore: r.drivingScore,
+      drivingStressScore: readCanonicalDrivingStressFromRentalPayload(r.payload),
       drivingEventsCount: r.drivingEventsCount,
       abuseDetectionCount: r.abuseDetectionCount,
       wearImpact: r.wearImpact,

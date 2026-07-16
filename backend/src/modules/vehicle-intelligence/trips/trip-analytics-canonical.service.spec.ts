@@ -104,7 +104,7 @@ describe('TripAnalyticsCanonicalService', () => {
     expect(result[0].canonicalTripSummary.events.totalBrakingEvents).toBe(6);
   });
 
-  it('falls back to legacy drivingScore when impact row is missing', async () => {
+  it('ignores legacy VehicleTrip.drivingScore when impact row is missing', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
     assignmentService.resolveForTrip.mockResolvedValue({
       assignmentStatus: TripAssignmentStatus.PRIVATE_UNASSIGNED,
@@ -151,9 +151,9 @@ describe('TripAnalyticsCanonicalService', () => {
       },
     ] as any);
 
-    expect(result[0].canonicalTripSummary.scores.drivingStressScore).toBe(55);
-    expect(result[0].canonicalTripSummary.scores.stressLevel).toBe('high');
-    expect(result[0].canonicalTripSummary.scores.scoreSource).toBe('vehicle_trip_compat');
+    expect(result[0].canonicalTripSummary.scores.drivingStressScore).toBeNull();
+    expect(result[0].canonicalTripSummary.scores.stressLevel).toBeNull();
+    expect(result[0].canonicalTripSummary.scores.scoreSource).toBe('derived');
   });
 
   it('does not expose safety score fields', async () => {

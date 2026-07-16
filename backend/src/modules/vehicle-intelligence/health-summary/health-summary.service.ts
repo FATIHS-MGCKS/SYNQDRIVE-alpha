@@ -162,7 +162,7 @@ export class HealthSummaryService {
       })),
       this.serviceEventsService.findByVehicle(vehicleId, { page: 1, limit: 50 }).catch(() => ({ data: [] })),
       this.tripsService.getStats(vehicleId).catch(() => ({
-        avgDrivingScore: null,
+        avgDrivingStressScore: null,
         avgSafetyScore: null,
         totalTrips: 0,
         totalDistanceKm: 0,
@@ -349,14 +349,9 @@ export class HealthSummaryService {
         },
       },
       behaviorAndUsage: {
-        drivingStressScore:
-          (tripStats as any).avgDrivingStressScore ??
-          (tripStats as any).avgDrivingScore ??
-          null,
-        drivingScore:
-          (tripStats as any).avgDrivingStressScore ??
-          (tripStats as any).avgDrivingScore ??
-          null,
+        drivingStressScore: (tripStats as any).avgDrivingStressScore ?? null,
+        /** @deprecated Write-only mirror — same value as drivingStressScore when present. */
+        drivingScore: (tripStats as any).avgDrivingStressScore ?? null,
         drivingEventsCount,
         abuseDetectionCount: (tripStats as any).totalAbuseEvents ?? 0,
         accelerationBehavior,
@@ -463,7 +458,7 @@ export class HealthSummaryService {
       preventive.push('Log oil changes to keep intervals accurate.');
     }
 
-    const vehicleStress = b.drivingStressScore ?? b.drivingScore;
+    const vehicleStress = b.drivingStressScore;
     if (vehicleStress != null && vehicleStress <= 25) {
       positives.push('Recent trips show low vehicle stress — gentle load on tires and brakes.');
     } else if (vehicleStress != null && vehicleStress >= 76) {
