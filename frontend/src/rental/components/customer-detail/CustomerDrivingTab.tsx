@@ -120,7 +120,7 @@ export function CustomerDrivingTab({
 
       <VehicleStressPanel
 
-        title="Fahrbelastung (Kunde)"
+        title="Fahrzeugbelastung (Kunde)"
 
         stressScore={drivingStressScore}
 

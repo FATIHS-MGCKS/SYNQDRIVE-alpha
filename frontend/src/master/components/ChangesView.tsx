@@ -35,6 +35,67 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p7-trip-analysis-status-resolver-2026-07-16',
+    version: '4.9.509',
+    title: 'Driving Intelligence V2 P7 — TripAnalysisStatusResolver',
+    summary: [
+      'Zentraler `TripAnalysisStatusResolver`: 7 Stages (behavior, nativeEvents, route, eventContext, drivingImpact, misuse, attribution) → kanonische Status NOT_STARTED | IN_PROGRESS | PARTIAL | COMPLETED | FAILED | SKIPPED | NOT_ASSESSABLE.',
+      'Nicht-kritische Stage-Fehler (route, misuse, …) → PARTIAL statt globalem FAILED; behavior failed bleibt FAILED.',
+      'Legacy `tripAnalysisStatus` spiegelbar: NOT_STARTED→PENDING, NOT_ASSESSABLE→SKIPPED.',
+      'TripAnalysisCoordinatorService nutzt Resolver in `markStage` / `onBehaviorSkipped`; keine Trip-FSM-Änderung.',
+      'Unit-Tests für alle Ausgabestatus und Stage-Kombinationen.',
+    ],
+    reason:
+      'Prompt 7/76: Eine zentrale Ableitung für Analysezustände bereits persistierter Trips — ohne verteilte Statusregeln.',
+    previousBehavior:
+      'Coordinator setzte bei jedem Stage-Failure sofort FAILED; 4-Stage-JSON ohne nativeEvents/eventContext/attribution; Completion-Logik verteilt in areAnalysisStagesComplete.',
+    details:
+      'Backend: trip-analysis-status-resolver.ts, trip-analysis-status-resolver.types.ts, trip-analysis-status-resolver.spec.ts; trip-analysis-status.ts (7-Stage-JSON, resolveTripAnalysisStatusFromStages); trip-analysis-coordinator.service.ts. Keine Trip-Detection-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T12:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p6-pruefhinweis-reason-categories-2026-07-16',
+    version: '4.9.508',
+    title: 'Driving Intelligence V2 P6 — PRUEFHINWEIS Reason-Kategorien',
+    summary: [
+      'Additive `reasonCategory` auf `tripAssessment` (v1.3.0): DATA_QUALITY_REVIEW, DRIVER_CONDUCT_REVIEW, VEHICLE_LOAD_REVIEW, MISUSE_REVIEW, DAMAGE_INSPECTION, ATTRIBUTION_REVIEW.',
+      'Legacy-Status `PRUEFHINWEIS` bleibt API-kompatibel; schlechte Gerätequalität erzeugt ausschließlich DATA_QUALITY_REVIEW.',
+      'Frontend: kurze Kategorie-Labels in Prüfhinweis-Zeile (`trip-assessment-reason-copy.ts`).',
+      'Tests für jede Ursache in Backend + Frontend.',
+    ],
+    reason:
+      'Prompt 6/76: PRUEFHINWEIS darf nicht mehr verschiedene Ursachen ohne Kontext zusammenfassen.',
+    previousBehavior:
+      'Ein Prüfhinweis-Badge deckte Datenqualität, Fahrverhalten, Missbrauch, Schaden und Zuordnung ohne maschinenlesbare Unterscheidung ab.',
+    details:
+      'Backend: trip-assessment-reason-category.ts, trip-assessment.service.ts v1.3.0, trip-assessment.builder.ts (Attribution/Zuordnung + Vehicle-Load-Flags). Frontend: api.ts, behavior-ui.utils.ts, trip-assessment-reason-copy.ts. Keine vollständige UX-Neugestaltung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p5-load-conduct-separation-2026-07-16',
+    version: '4.9.507',
+    title: 'Driving Intelligence V2 P5 — Fahrzeugbelastung vs. Fahrverhalten getrennt',
+    summary: [
+      '`assessTrip` v1.2.0: Fahrverhaltens-Status (UNAUFFAELLIG/AUFFAELLIG/…) nur noch aus Ereignissen/Evidenz — `drivingStressScore` bleibt reines Belastungssignal in `signals`.',
+      'Frontend `deriveBehaviorOverallStatus`: kein Stress→Conduct-Fallback mehr; UI-Labels „Fahrzeugbelastung“ statt „Fahrbewertung“ für Score-Spalten.',
+      'Legacy-Felder `drivingScore`, `drivingStyleScore`, `avgDrivingScore` in DTOs/API als deprecated dokumentiert (DB-Spalten unverändert).',
+      'Tests: hoher Stress ohne Events ≠ auffälliges Fahrverhalten; niedriger Stress ohne Events ≠ unauffälliges Fahrverhalten.',
+    ],
+    reason:
+      'Prompt 5/76: Semantische Trennung Vehicle Load / Driver Conduct — ohne Scoreformel- oder Trip-Erkennungsänderung.',
+    previousBehavior:
+      'Trip-Assessment und Frontend-Fallback leiteten BEOBACHTEN/KRITISCH/UNAUFFAELLIG teils allein aus Fahrbelastung ab; UI nannte Stress-Scores „Fahrbewertung“.',
+    details:
+      'Backend: trip-assessment.service.ts (v1.2.0), trip-assessment.types.ts, trip-api.mapper.ts, trip-analytics-canonical.service.ts, customers.service.ts, trips.service.ts. Frontend: behavior-ui.utils.ts, scoreFormat.ts, VehicleStressPanel, CustomerDrivingTab, i18n de/en, api.ts JSDoc. Keine Trip-Detection-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:00:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-p1-fixes-v49506-2026-07-16',
     version: '4.9.506',
     title: 'V4.9.506 — Vehicle Operational State V2 P1 remediation (Prompt 43/43)',
