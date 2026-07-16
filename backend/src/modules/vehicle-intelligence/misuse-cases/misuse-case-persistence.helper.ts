@@ -25,6 +25,11 @@ import {
   appendSupersededRatingAudit,
   reconcileMisuseCaseRating,
 } from './misuse-case-rating-reconciliation/misuse-case-rating-reconciliation';
+import {
+  applyCategoryEffectCaps,
+  assessCandidateCategoryEvidenceStrength,
+} from './misuse-case-category-evidence-strength/misuse-case-category-evidence-strength.gate';
+import { buildCategoryEvidenceStrengthSummary } from './misuse-case-category-evidence-strength/misuse-case-category-evidence-strength';
 
 import type { MisuseCaseUpsertContext } from './misuse-case-upsert.types';
 
@@ -105,6 +110,11 @@ export class MisuseCasePersistenceHelper {
       existingConfidence: exactMatch?.confidence ?? null,
     });
 
+    const categoryAssessment = assessCandidateCategoryEvidenceStrength(candidate, attribution);
+    if (!categoryAssessment.passes) {
+      return;
+    }
+
     const evidenceSummary = {
       eventTypes: [...new Set(recalc.qualifiedEvidence.map((e) => e.eventType))],
       sources: [...new Set(recalc.qualifiedEvidence.map((e) => e.sourceType))],
@@ -116,6 +126,7 @@ export class MisuseCasePersistenceHelper {
         exactMatch?.evidenceSummary as Record<string, unknown> | null | undefined,
         rating,
       ),
+      ...buildCategoryEvidenceStrengthSummary(categoryAssessment),
       ...(candidate.evidenceSummary ?? {}),
     };
 
@@ -160,6 +171,7 @@ export class MisuseCasePersistenceHelper {
         plan.priorCaseId,
         recalc,
         rating,
+        categoryAssessment,
       );
       return;
     }
@@ -177,11 +189,14 @@ export class MisuseCasePersistenceHelper {
         recalc.qualifiedEvidence,
       );
 
-      const lifecycle = applyTelemetryLifecycle({
-        ...baseLifecycleInput,
-        evidenceCount: recalc.eventCount,
-        existing: existingSnapshot,
-      });
+      const lifecycle = applyCategoryEffectCaps(
+        applyTelemetryLifecycle({
+          ...baseLifecycleInput,
+          evidenceCount: recalc.eventCount,
+          existing: existingSnapshot,
+        }),
+        categoryAssessment,
+      );
 
       await this.prisma.misuseCase.update({
         where: { id: existing.id },
@@ -226,6 +241,7 @@ export class MisuseCasePersistenceHelper {
       plan.priorCaseId,
       recalc,
       rating,
+      categoryAssessment,
     );
   }
 
@@ -257,12 +273,16 @@ export class MisuseCasePersistenceHelper {
     supersedesCaseId: string | null,
     recalc: ReturnType<typeof recalculateMisuseCaseEvidenceCounts>,
     rating: ReturnType<typeof reconcileMisuseCaseRating>,
+    categoryAssessment: ReturnType<typeof assessCandidateCategoryEvidenceStrength>,
   ): Promise<void> {
-    const lifecycle = applyTelemetryLifecycle({
-      ...baseLifecycleInput,
-      evidenceCount: recalc.eventCount,
-      existing: null,
-    });
+    const lifecycle = applyCategoryEffectCaps(
+      applyTelemetryLifecycle({
+        ...baseLifecycleInput,
+        evidenceCount: recalc.eventCount,
+        existing: null,
+      }),
+      categoryAssessment,
+    );
 
     const created = await this.prisma.misuseCase.create({
       data: {

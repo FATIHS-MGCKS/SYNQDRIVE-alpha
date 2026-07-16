@@ -98,6 +98,12 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
         occurredAt: new Date('2026-06-01T10:05:00Z'),
       },
       {
+        sourceType: 'TRIP_BEHAVIOR_EVENT' as const,
+        sourceId: 'e2',
+        eventType: 'KICKDOWN',
+        occurredAt: new Date('2026-06-01T10:10:00Z'),
+      },
+      {
         sourceType: MisuseEvidenceSourceType.VEHICLE_TRIP_COUNTER,
         eventType: 'kickdownCount',
         occurredAt: new Date('2026-06-01T10:05:00Z'),
@@ -131,7 +137,7 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
-    expect(evidenceRows.length).toBe(1);
+    expect(evidenceRows.length).toBe(2);
     expect(evidenceRows[0]?.sourceType).toBe('TRIP_BEHAVIOR_EVENT');
   });
 
@@ -139,8 +145,8 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
     const stored = [...store.values()][0];
-    expect(stored.eventCount).toBe(1);
-    expect(stored.evidenceCount).toBe(1);
+    expect(stored.eventCount).toBe(2);
+    expect(stored.evidenceCount).toBe(2);
     expect(stored.eventCount).not.toBe(candidate.eventCount);
   });
 
@@ -150,8 +156,8 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
     const stored = [...store.values()][0];
-    expect(stored.eventCount).toBe(1);
-    expect(stored.evidenceCount).toBe(1);
+    expect(stored.eventCount).toBe(2);
+    expect(stored.evidenceCount).toBe(2);
     expect(store.size).toBe(1);
   });
 
@@ -179,7 +185,7 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     }
 
     const stored = [...store.values()][0];
-    expect(stored.eventCount).toBe(1);
+    expect(stored.eventCount).toBe(2);
     expect(store.size).toBe(1);
     expect(prisma.misuseCase.create).toHaveBeenCalledTimes(1);
   });
@@ -203,9 +209,15 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
       evidence: [
         {
           sourceType: 'TRIP_BEHAVIOR_EVENT' as const,
-          sourceId: 'e-morning',
+          sourceId: 'e-morning-1',
           eventType: 'KICKDOWN',
           occurredAt: new Date('2026-06-01T08:00:00Z'),
+        },
+        {
+          sourceType: 'TRIP_BEHAVIOR_EVENT' as const,
+          sourceId: 'e-morning-2',
+          eventType: 'KICKDOWN',
+          occurredAt: new Date('2026-06-01T08:05:00Z'),
         },
       ],
     };
@@ -214,9 +226,15 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
       evidence: [
         {
           sourceType: 'TRIP_BEHAVIOR_EVENT' as const,
-          sourceId: 'e-evening',
+          sourceId: 'e-evening-1',
           eventType: 'KICKDOWN',
           occurredAt: new Date('2026-06-01T20:00:00Z'),
+        },
+        {
+          sourceType: 'TRIP_BEHAVIOR_EVENT' as const,
+          sourceId: 'e-evening-2',
+          eventType: 'KICKDOWN',
+          occurredAt: new Date('2026-06-01T20:05:00Z'),
         },
       ],
     };
@@ -236,7 +254,7 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
       category: candidate.category,
       caseType: candidate.type,
       attributionScope: attribution.attributionScope,
-      evidence: [candidate.evidence[0]] as any,
+      evidence: [candidate.evidence[0], candidate.evidence[1]] as any,
       modelVersion: 'misuse-fingerprint-v0',
     });
 
@@ -271,7 +289,7 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     expect(next?.supersedesCaseId).toBe('case-old');
     expect(next?.modelVersion).toBe(MISUSE_CASE_FINGERPRINT_VERSION);
     expect(next?.inputFingerprint).toBe(fingerprintsV0.logicalFingerprint);
-    expect(next?.eventCount).toBe(1);
+    expect(next?.eventCount).toBe(2);
   });
 
   it('uses reconciled rating instead of monotonic max on update (P50)', async () => {
