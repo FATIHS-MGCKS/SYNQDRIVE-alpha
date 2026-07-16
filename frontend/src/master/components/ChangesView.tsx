@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-battery-reference-capacity-v49556-2026-07-17',
+    version: '4.9.556',
+    title: 'V4.9.556 — VehicleBatteryReferenceCapacity Service + API (Prompt 56/78)',
+    summary: [
+      'Service, API und Berechtigungsprüfung für `VehicleBatteryReferenceCapacity`.',
+      'Erlaubte Quellen: MANUFACTURER_VERIFIED, VIN_DECODED_VERIFIED, BMS_REPORT, WORKSHOP_DOCUMENT, VERIFIED_VEHICLE_SPEC, MANUAL_VERIFIED.',
+      'Felder: capacityKWh, capacityType (gross/net/usable-kompatibel), source, verificationStatus, evidence, verifiedBy/At, notes.',
+      '57 kWh KS FH 660E bleibt UNVERIFIED bis explizite Verifizierung — kein Auto-Verify, Supersede statt Überschreiben, Audit-Trail.',
+      'Permissions: fleet-condition read/write/manage. Keine SOH-Berechnung aktiviert.',
+    ],
+    reason: 'Prompt 56/78: belastbare Referenzkapazität mit Verifizierungsworkflow vor Publication.',
+    previousBehavior: 'Nur Prisma-Modell; keine API, kein Audit, kein Verifizierungsflow.',
+    details:
+      'reference-capacity/*, prisma migration, battery-v2-domain.ts, docs/architecture/vehicle-battery-reference-capacity.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T16:00:00.000Z',
+  },
+  {
     id: 'hv-capacity-cross-session-assessment-v49555-2026-07-17',
     version: '4.9.555',
     title: 'V4.9.555 — HV Cross-Session Shadow BatteryAssessment (Prompt 55/78)',

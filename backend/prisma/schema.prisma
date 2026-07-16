@@ -1323,6 +1323,7 @@ model Organization {
   vehicleBatteryCapabilities        VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges   VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
   batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
@@ -1384,6 +1385,7 @@ model User {
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
+  batteryReferenceCapacityChanges   VehicleBatteryReferenceCapacityChange[]
 
   @@map("users")
 }
@@ -1755,6 +1757,7 @@ model Vehicle {
   vehicleBatteryCapabilities        VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges   VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
   batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
@@ -5744,6 +5747,12 @@ enum BatteryReferenceCapacitySource {
   PROVIDER_GROSS_NOMINAL
   VEHICLE_MASTER
   DIMO_NOMINAL_SIGNAL
+  MANUFACTURER_VERIFIED
+  VIN_DECODED_VERIFIED
+  BMS_REPORT
+  WORKSHOP_DOCUMENT
+  VERIFIED_VEHICLE_SPEC
+  MANUAL_VERIFIED
 }
 
 enum BatteryReferenceCapacityType {
@@ -5751,6 +5760,9 @@ enum BatteryReferenceCapacityType {
   USABLE_NET
   WORKSHOP_MEASURED
   UNKNOWN
+  GROSS
+  NET
+  USABLE
 }
 
 /// Battery Health V2 — time-bounded measurement cycle (architecture layer 3).
@@ -5987,6 +5999,7 @@ model VehicleBatteryReferenceCapacity {
   serviceEvent   VehicleServiceEvent?              @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
   supersededBy   VehicleBatteryReferenceCapacity?  @relation("VehicleBatteryReferenceCapacitySupersede", fields: [supersededById], references: [id], onDelete: SetNull)
   supersedes     VehicleBatteryReferenceCapacity[] @relation("VehicleBatteryReferenceCapacitySupersede")
+  changes        VehicleBatteryReferenceCapacityChange[]
 
   @@index([organizationId])
   @@index([vehicleId, effectiveFrom(sort: Desc)])
@@ -5995,6 +6008,30 @@ model VehicleBatteryReferenceCapacity {
   @@index([documentId])
   @@index([supersededById])
   @@map("vehicle_battery_reference_capacities")
+}
+
+/// Append-only audit trail for reference capacity lifecycle.
+model VehicleBatteryReferenceCapacityChange {
+  id                   String   @id @default(uuid())
+  organizationId       String   @map("organization_id")
+  vehicleId            String   @map("vehicle_id")
+  referenceCapacityId  String?  @map("reference_capacity_id")
+  action               String   @map("action")
+  previousStatus       ReferenceCapacityVerificationStatus? @map("previous_status")
+  newStatus            ReferenceCapacityVerificationStatus? @map("new_status")
+  actorUserId          String?  @map("actor_user_id")
+  metadata             Json?    @map("metadata")
+  changedAt            DateTime @default(now()) @map("changed_at")
+
+  organization      Organization                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle                          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  referenceCapacity VehicleBatteryReferenceCapacity? @relation(fields: [referenceCapacityId], references: [id], onDelete: SetNull)
+  actorUser         User?                            @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([vehicleId, changedAt(sort: Desc)])
+  @@index([referenceCapacityId])
+  @@map("vehicle_battery_reference_capacity_changes")
 }
 
 /// HV charge session from DIMO recharge segment or poll fallback.

@@ -374,6 +374,12 @@ export const BatteryReferenceCapacitySource = {
   PROVIDER_GROSS_NOMINAL: 'PROVIDER_GROSS_NOMINAL',
   VEHICLE_MASTER: 'VEHICLE_MASTER',
   DIMO_NOMINAL_SIGNAL: 'DIMO_NOMINAL_SIGNAL',
+  MANUFACTURER_VERIFIED: 'MANUFACTURER_VERIFIED',
+  VIN_DECODED_VERIFIED: 'VIN_DECODED_VERIFIED',
+  BMS_REPORT: 'BMS_REPORT',
+  WORKSHOP_DOCUMENT: 'WORKSHOP_DOCUMENT',
+  VERIFIED_VEHICLE_SPEC: 'VERIFIED_VEHICLE_SPEC',
+  MANUAL_VERIFIED: 'MANUAL_VERIFIED',
 } as const;
 
 export type BatteryReferenceCapacitySource =
@@ -383,11 +389,24 @@ export const BATTERY_REFERENCE_CAPACITY_SOURCES = Object.values(
   BatteryReferenceCapacitySource,
 );
 
+/** API-allowed sources for explicit reference capacity records (Prompt 56). */
+export const BATTERY_REFERENCE_CAPACITY_ALLOWED_SOURCES: readonly BatteryReferenceCapacitySource[] =
+  [
+    BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+    BatteryReferenceCapacitySource.VIN_DECODED_VERIFIED,
+    BatteryReferenceCapacitySource.BMS_REPORT,
+    BatteryReferenceCapacitySource.WORKSHOP_DOCUMENT,
+    BatteryReferenceCapacitySource.VERIFIED_VEHICLE_SPEC,
+    BatteryReferenceCapacitySource.MANUAL_VERIFIED,
+  ];
+
 /** Sources that alone are not decision-capable for HV SOH-% publication. */
 export const BATTERY_WEAK_REFERENCE_CAPACITY_SOURCES: readonly BatteryReferenceCapacitySource[] =
   [
     BatteryReferenceCapacitySource.VEHICLE_MASTER,
     BatteryReferenceCapacitySource.DIMO_NOMINAL_SIGNAL,
+    BatteryReferenceCapacitySource.PROVIDER_GROSS_NOMINAL,
+    BatteryReferenceCapacitySource.VERIFIED_VEHICLE_SPEC,
   ];
 
 export const BatteryReferenceCapacityType = {
@@ -395,6 +414,9 @@ export const BatteryReferenceCapacityType = {
   USABLE_NET: 'USABLE_NET',
   WORKSHOP_MEASURED: 'WORKSHOP_MEASURED',
   UNKNOWN: 'UNKNOWN',
+  GROSS: 'GROSS',
+  NET: 'NET',
+  USABLE: 'USABLE',
 } as const;
 
 export type BatteryReferenceCapacityType =
@@ -403,3 +425,12 @@ export type BatteryReferenceCapacityType =
 export const BATTERY_REFERENCE_CAPACITY_TYPES = Object.values(
   BatteryReferenceCapacityType,
 );
+
+/** Capacity kinds compatible with HV usable-capacity shadow assessment. */
+export const BATTERY_REFERENCE_CAPACITY_ASSESSMENT_COMPATIBLE_TYPES: readonly BatteryReferenceCapacityType[] =
+  [
+    BatteryReferenceCapacityType.USABLE,
+    BatteryReferenceCapacityType.USABLE_NET,
+    BatteryReferenceCapacityType.NET,
+    BatteryReferenceCapacityType.WORKSHOP_MEASURED,
+  ];

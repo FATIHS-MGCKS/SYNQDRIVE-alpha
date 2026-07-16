@@ -73,6 +73,11 @@ import {
   HvCapacityShadowService,
   HvCapacitySessionSummaryService,
 } from './battery-health/hv-capacity-shadow';
+import {
+  VehicleBatteryReferenceCapacityController,
+  VehicleBatteryReferenceCapacityRepository,
+  VehicleBatteryReferenceCapacityService,
+} from './battery-health/reference-capacity';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
@@ -145,7 +150,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
       { name: QUEUE_NAMES.BATTERY_V2 },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, VehicleBatteryReferenceCapacityController],
   providers: [
     BatteryService,
     TiresService,
@@ -218,6 +223,8 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacitySessionSummaryService,
     HvCapacityM3ValidationService,
     HvCapacityCrossSessionAssessmentService,
+    VehicleBatteryReferenceCapacityRepository,
+    VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
@@ -317,6 +324,8 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacitySessionSummaryService,
     HvCapacityM3ValidationService,
     HvCapacityCrossSessionAssessmentService,
+    VehicleBatteryReferenceCapacityRepository,
+    VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
