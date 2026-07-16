@@ -64,4 +64,10 @@ describe('tire evidence schema contracts', () => {
       expect.arrayContaining(['NEW', 'ACTIVE', 'STORED', 'REMOVED', 'RETIRED', 'DISCARDED', 'SOLD']),
     );
   });
+
+  it('exposes TireTripUsageLedger model via Prisma client (Prompt 9)', () => {
+    const { Prisma } = require('@prisma/client');
+    const model = Prisma.ModelName.TireTripUsageLedger;
+    expect(model).toBe('TireTripUsageLedger');
+  });
 });

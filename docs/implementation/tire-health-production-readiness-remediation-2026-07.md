@@ -600,6 +600,47 @@ cd backend && npm test -- tire-odometer-anchor-backfill
 
 ---
 
+## Prompt 9 — Tire Trip Usage Ledger (2026-07-16)
+
+### Ziel
+
+Persistenter, mandantensicherer und idempotenter Ledger für die Zuordnung abgeschlossener Trips zu Tire Setups. **Noch keine Integration** in den Trip-Finalisierungspfad.
+
+### Geänderte / neue Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `schema.prisma` | **Neu** `TireTripUsageLedger` mit allen Pflichtfeldern |
+| `20260716210000_tire_trip_usage_ledger` | Additive Migration + Tenant-Scope-Trigger |
+| `tire-trip-usage-ledger.ts` | Source-Version, deterministischer `sourceFingerprint`, Road-Split-Helper |
+| `tire-trip-usage-ledger.repository.ts` | Idempotentes Upsert, Tenant-Guards, Setup-Queries |
+| `tire-trip-usage-ledger.repository.spec.ts` | Fingerprint, Idempotenz, Cross-Tenant, Upsert |
+| `tire-trip-usage-ledger.schema.spec.ts` | Prisma-Validate, Schema-/Migrations-Contracts |
+| `tire-trip-usage-attribution-policy-2026-07.md` | **Neu** — keine Auto-Split-Policy bei Setup-Wechsel |
+
+### Ledger-Vertrag
+
+- **Source of Truth** für zugeordnete Tire-Usage-Daten pro `(tripId, tireSetupId)`
+- `@@unique([tripId, tireSetupId])` — ein Trip pro Setup nur einmal
+- Updates nur bei geändertem `sourceFingerprint` (Reprocessing, verspätete Segmente, Distanzänderung, Invalidierung)
+- `totalKmOnSet` / Belastungszähler auf Setup **unverändert** (später abgeleitete Aggregate)
+
+### Tests
+
+```bash
+cd backend && npm test -- tire-trip-usage-ledger
+```
+
+### Bestätigung Prompt 9
+
+- ✅ Ein Trip kann pro Setup nur einmal zugeordnet werden (Unique Constraint)
+- ✅ `sourceFingerprint` deterministisch vorhanden
+- ✅ Ledger mandantensicher (App-Guards + DB-Trigger)
+- ✅ Bestehende Aggregate unverändert — keine Trip-Finalisierungs-Integration
+- ✅ Keine automatische Split-Logik bei Setup-Wechsel (Policy dokumentiert)
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause

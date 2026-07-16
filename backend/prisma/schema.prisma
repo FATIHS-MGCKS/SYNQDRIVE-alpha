@@ -1767,6 +1767,7 @@ model Vehicle {
   tireEvents                        TireEvent[]
   tireHealthSnapshots               TireHealthSnapshot[]
   tireWearDataPoints                TireWearDataPoint[]
+  tireTripUsageLedgers              TireTripUsageLedger[]
   brakeSpecs                        VehicleBrakeReferenceSpec[]
   serviceEvents                     VehicleServiceEvent[]
   enrichmentJobs                    VehicleEnrichmentJob[]
@@ -2188,6 +2189,7 @@ model VehicleTireSetup {
   events               TireEvent[]
   snapshots            TireHealthSnapshot[]
   wearDataPoints       TireWearDataPoint[]
+  tripUsageLedger      TireTripUsageLedger[]
   mountPeriods         VehicleTireSetupMountPeriod[]
   initialTreadEvidence VehicleTireTreadMeasurement?  @relation("SetupInitialTreadEvidence", fields: [initialTreadEvidenceId], references: [id], onDelete: SetNull)
 
@@ -2459,6 +2461,44 @@ model TireWearDataPoint {
   @@index([predictionSnapshotId])
   @@index([isGroundTruth])
   @@map("tire_wear_data_points")
+}
+
+/// Source of truth for tire-set-attributed trip usage (km splits, harsh events, driving impact).
+/// One row per (trip, tire setup) pair. Updates only when `sourceFingerprint` changes.
+/// Not wired into trip finalization yet — Prompt 9 schema + repository only.
+model TireTripUsageLedger {
+  id                      String   @id @default(uuid())
+  organizationId          String   @map("organization_id")
+  vehicleId               String   @map("vehicle_id")
+  tripId                  String   @map("trip_id")
+  tireSetupId             String   @map("tire_setup_id")
+  tripStartedAt           DateTime @map("trip_started_at")
+  tripEndedAt             DateTime? @map("trip_ended_at")
+  distanceKm              Float    @map("distance_km")
+  cityKm                  Float    @default(0) @map("city_km")
+  ruralKm                 Float    @default(0) @map("rural_km")
+  highwayKm               Float    @default(0) @map("highway_km")
+  harshAccelerationCount  Int      @default(0) @map("harsh_acceleration_count")
+  harshBrakingCount       Int      @default(0) @map("harsh_braking_count")
+  harshCorneringCount     Int      @default(0) @map("harsh_cornering_count")
+  drivingImpactSummary    Json?    @map("driving_impact_summary")
+  sourceVersion           String   @map("source_version")
+  sourceFingerprint       String   @map("source_fingerprint")
+  processedAt             DateTime @map("processed_at")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  vehicle   Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip      VehicleTrip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tireSetup VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
+
+  @@unique([tripId, tireSetupId])
+  @@index([tireSetupId, tripStartedAt])
+  @@index([vehicleId, tripStartedAt])
+  @@index([organizationId, vehicleId])
+  @@index([tripId])
+  @@index([sourceFingerprint])
+  @@map("tire_trip_usage_ledger")
 }
 
 // ------------------------------------------------
@@ -6409,6 +6449,7 @@ model VehicleTrip {
 
   vehicle              Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   waypoints            VehicleTripWaypoint[]
+  tireTripUsageLedgers TireTripUsageLedger[]
   events               DrivingEvent[]
   behaviorEvents       TripBehaviorEvent[]
   misuseCases          MisuseCase[]
