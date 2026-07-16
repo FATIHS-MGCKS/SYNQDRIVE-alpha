@@ -919,6 +919,51 @@ Apply nur nach Review: `UPDATE … SET tire_pressure_* = tire_pressure_* / 100` 
 
 ---
 
+## Prompt 17 — Kanonisches TirePressureContext Read Model (2026-07-16)
+
+### Ziel
+
+Implizite/widersprüchliche Drucklogik (aggregierte DIMO/HM-Freshness, pauschales `hm_oem`, globale Timestamps) durch ein zentrales Read Model ersetzen.
+
+### Neue Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `tire-pressure-context.types.ts` | Kanonisches Schema: Räder, Coverage, Eligibility, TPMS |
+| `tire-pressure-context.builder.ts` | Deterministischer Merge DIMO↔HM, Freshness, Wear-Gates |
+| `tire-pressure-context.builder.spec.ts` | 14 Szenarien (DIMO/HM/MIXED/NONE, stale, TPMS, …) |
+
+### Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-health.service.ts` | `resolvePressureContext` → Builder; Context an Wear-Modell |
+| `tire-wear-model.service.ts` | Druckfaktor nur bei `wearEligibility.eligible` |
+| `rental-health.service.ts` | Kein Text-Regex für Druckseverity; `sourceType`-basierte Quelle |
+| `dimo-snapshot.processor.ts` + Query | `chassisTireSystemIsWarningOn` strukturiert in `_synqdrive.tpmsWarning` |
+| `frontend/src/lib/api.ts` | Erweitertes `TirePressureContext`-Interface |
+
+### Read-Model (Auszug)
+
+- Pro Rad: `value`, `sourceProvider`, `sourceTimestamp`, `freshness`
+- `sourceType`: `DIMO` \| `HIGH_MOBILITY` \| `MIXED` \| `NONE` (pro Rad, nicht pauschal HM)
+- `coverage`: `wheelsAvailable`, `coveragePercent` (nie 100 % aus 1 Rad), `continuousExposureEligible`
+- `tpmsWarning` / `tpmsWarningSource` — capability-gated (fehlend ≠ kein TPMS)
+- `wearEligibility` — Druck nur als Wear-Faktor wenn plausibel, frisch, Quelle bekannt, Solldruck bekannt, Coverage ≥ `minReadingsForActive`
+
+### Source Priority
+
+Pro Rad: **neuerer `sourceTimestamp` gewinnt**; Tie → `HIGH_MOBILITY`.
+
+### Bestätigung Prompt 17
+
+- ✅ Druckquelle und Freshness pro Rad nachvollziehbar
+- ✅ Kein Text-Regex als kanonische Severity-Quelle (Rental Health)
+- ✅ Stale Druck → neutraler Wear-Faktor, `continuousExposureEligible=false`
+- ✅ MIXED mit per-wheel `sourceProvider`
+
+---
+
 ### Root Cause
 
 `TireHealthService.recalculate()` (Z.428–429) setzte `actualTreadMm` auf Achsenmittel der **Prediction**, wenn keine Messwerte vorhanden waren (`actualFrontAvg = frontAvgPredicted`). Dadurch entstanden bei aktiviertem Odometer-Guard synthetische Validierungsdaten mit Null-Residual — Regression und Accuracy würden sich selbst bestätigen.
@@ -1064,6 +1109,7 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 12 | Historical tire trip usage backfill dry-run audit | `f065a08` |
 | 2026-07-16 | 13 | Controlled ledger backfill + aggregate reconciliation | *(dieser Commit)* |
 | 2026-07-16 | 16 | DIMO tire pressure kPa → bar at provider boundary + read compat | *(dieser Commit)* |
+| 2026-07-16 | 17 | Canonical TirePressureContext read model | *(dieser Commit)* |
 
 ---
 

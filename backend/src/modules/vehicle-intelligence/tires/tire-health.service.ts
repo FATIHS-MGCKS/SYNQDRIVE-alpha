@@ -62,6 +62,17 @@ import {
   type TireRecalculationInputContext,
 } from './tire-recalculation-fingerprint';
 import { resolveCanonicalVehicleTirePressuresBar } from './tire-pressure-canonical.util';
+import {
+  buildTirePressureContext,
+  emptyTirePressureContext,
+  extractDimoPerWheelTimestamps,
+  extractDimoTpmsWarningFromPayload,
+} from './tire-pressure-context.builder';
+import type {
+  TirePressureContext,
+  TirePressureFreshness,
+} from './tire-pressure-context.types';
+import type { HmTirePressureSignals } from '../../high-mobility/high-mobility-signal-usage.service';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -91,18 +102,11 @@ export type TireActionState =
   | 'PLAN_SERVICE'
   | 'REPLACE';
 
-export type PressureFreshness = 'fresh' | 'aging' | 'stale' | 'no_data';
-
-export interface TirePressureContext {
-  source: 'DIMO' | 'HM' | 'MIXED' | 'NONE';
-  dimoFreshness: PressureFreshness;
-  hmFreshness: PressureFreshness;
-  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
-  warningHints: string[];
-}
+export type PressureFreshness = TirePressureFreshness;
+export type { TirePressureContext } from './tire-pressure-context.types';
 
 export interface TireReadContext {
-  hmTirePressure?: import('../../high-mobility/high-mobility-signal-usage.service').HmTirePressureSignals | null;
+  hmTirePressure?: HmTirePressureSignals | null;
 }
 
 export interface TireHealthSummary {
@@ -293,8 +297,11 @@ export class TireHealthService {
     const pressureContext = await this.resolvePressureContext(
       vehicleId,
       readContext.hmTirePressure ?? null,
+      setup,
     );
-    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId);
+    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId, {
+      pressureContext,
+    });
     if (!wearAnalysis) return this.buildEmptySummary(setup, pressureContext, inventoryFlags);
 
     const baseConfidence = await this.computeConfidence(vehicleId, setup);
@@ -336,8 +343,11 @@ export class TireHealthService {
     const pressureContext = await this.resolvePressureContext(
       vehicleId,
       readContext.hmTirePressure ?? null,
+      setup,
     );
-    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId);
+    const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId, {
+      pressureContext,
+    });
     const baseConfidence = await this.computeConfidence(vehicleId, setup);
     const confidence = this.applyPressureConfidenceOverlay(
       baseConfidence,
@@ -1663,11 +1673,11 @@ export class TireHealthService {
     if (args.measurementState !== 'measured') {
       warnings.push('Current tread state is partially estimated.');
     }
-    if (args.pressureContext.dimoFreshness === 'stale') {
+    if (args.pressureContext.overallFreshness === 'stale') {
       warnings.push('DIMO tire pressure data is stale.');
     }
-    if (args.pressureContext.hmFreshness === 'stale') {
-      warnings.push('HM tire pressure data is stale.');
+    if (args.pressureContext.wearEligibility.measurementHint) {
+      warnings.push(args.pressureContext.wearEligibility.measurementHint);
     }
     if (
       args.setup.tireCondition === 'ALREADY_MOUNTED' &&
@@ -1685,7 +1695,8 @@ export class TireHealthService {
 
   private async resolvePressureContext(
     vehicleId: string,
-    hmTirePressure: any | null,
+    hmTirePressure: HmTirePressureSignals | null,
+    setup?: { aiTireSpec?: unknown } | null,
   ): Promise<TirePressureContext> {
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
@@ -1698,92 +1709,68 @@ export class TireHealthService {
         providerFetchedAt: true,
         sourceTimestamp: true,
         lastSeenAt: true,
+        rawPayloadJson: true,
       },
     });
 
-    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
-      providerSource: latestState?.providerSource,
-      tirePressureFl: latestState?.tirePressureFl,
-      tirePressureFr: latestState?.tirePressureFr,
-      tirePressureRl: latestState?.tirePressureRl,
-      tirePressureRr: latestState?.tirePressureRr,
-      sourceTimestamp:
-        latestState?.sourceTimestamp ??
-        latestState?.providerFetchedAt ??
-        latestState?.lastSeenAt ??
-        null,
+    const spec = setup ? parseAiTireSpec(setup.aiTireSpec) : null;
+    const nominalPressureBar =
+      spec?.maxInflationKpa != null
+        ? (spec.maxInflationKpa / 100) * 0.9
+        : this.cfg.pressure.nominalPressureBar;
+
+    return buildTirePressureContext({
+      dimo: latestState
+        ? {
+            tirePressureFl: latestState.tirePressureFl,
+            tirePressureFr: latestState.tirePressureFr,
+            tirePressureRl: latestState.tirePressureRl,
+            tirePressureRr: latestState.tirePressureRr,
+            providerSource: latestState.providerSource,
+            sourceTimestamp: latestState.sourceTimestamp,
+            providerFetchedAt: latestState.providerFetchedAt,
+            lastSeenAt: latestState.lastSeenAt,
+            perWheelTimestamps: extractDimoPerWheelTimestamps(
+              latestState.rawPayloadJson,
+            ),
+            tpmsWarning: extractDimoTpmsWarningFromPayload(
+              latestState.rawPayloadJson,
+            ),
+          }
+        : null,
+      hm: hmTirePressure
+        ? {
+            frontLeft: hmTirePressure.frontLeft,
+            frontRight: hmTirePressure.frontRight,
+            rearLeft: hmTirePressure.rearLeft,
+            rearRight: hmTirePressure.rearRight,
+            unit: hmTirePressure.unit,
+            statusFrontLeft: hmTirePressure.statusFrontLeft,
+            statusFrontRight: hmTirePressure.statusFrontRight,
+            statusRearLeft: hmTirePressure.statusRearLeft,
+            statusRearRight: hmTirePressure.statusRearRight,
+            overallStatus: hmTirePressure.overallStatus,
+            lastUpdatedAt: hmTirePressure.lastUpdatedAt,
+            freshnessStatus: hmTirePressure.freshnessStatus,
+          }
+        : null,
+      nominalPressureBar,
     });
-
-    const dimoValues = [
-      canonicalPressures.tirePressureFl,
-      canonicalPressures.tirePressureFr,
-      canonicalPressures.tirePressureRl,
-      canonicalPressures.tirePressureRr,
-    ].filter((v): v is number => v != null);
-    const dimoFreshness = this.resolveFreshness(
-      latestState?.sourceTimestamp ??
-        latestState?.providerFetchedAt ??
-        latestState?.lastSeenAt ??
-        null,
-      dimoValues.length > 0,
-    );
-
-    const hmFreshnessRaw = String(
-      hmTirePressure?.freshnessStatus ?? 'no_data',
-    ).toLowerCase();
-    const hmFreshness: PressureFreshness =
-      hmFreshnessRaw === 'fresh'
-        ? 'fresh'
-        : hmFreshnessRaw === 'aging'
-        ? 'aging'
-        : hmFreshnessRaw === 'stale'
-        ? 'stale'
-        : 'no_data';
-
-    const hmStatus = String(hmTirePressure?.overallStatus ?? 'UNKNOWN').toUpperCase();
-    const warningHints: string[] = [];
-    if (hmStatus === 'ISSUE' && hmFreshness !== 'no_data') {
-      warningHints.push(
-        'HM indicates current underinflation or pressure imbalance.',
-      );
-    }
-    if (dimoFreshness === 'stale') {
-      warningHints.push('DIMO pressure snapshot is stale for wear interpretation.');
-    }
-    if (dimoFreshness === 'no_data' && hmFreshness === 'no_data') {
-      warningHints.push('No tire pressure feed available.');
-    }
-
-    let source: TirePressureContext['source'] = 'NONE';
-    if (dimoValues.length > 0 && hmFreshness !== 'no_data') source = 'MIXED';
-    else if (dimoValues.length > 0) source = 'DIMO';
-    else if (hmFreshness !== 'no_data') source = 'HM';
-
-    let overallStatus: TirePressureContext['overallStatus'] = 'UNKNOWN';
-    if (hmStatus === 'ISSUE' && hmFreshness !== 'stale') overallStatus = 'ISSUE';
-    else if (dimoFreshness === 'stale' && hmFreshness !== 'fresh') overallStatus = 'STALE';
-    else if (source !== 'NONE') overallStatus = 'OK';
-
-    return {
-      source,
-      dimoFreshness,
-      hmFreshness,
-      overallStatus,
-      warningHints,
-    };
   }
 
   private applyPressureConfidenceOverlay(
     confidence: ConfidenceDimensions,
     pressureContext: TirePressureContext,
   ): ConfidenceDimensions {
-    let score = confidence.score;
-    if (pressureContext.dimoFreshness === 'stale') score -= 4;
-    if (pressureContext.dimoFreshness === 'no_data') score -= 6;
-    if (pressureContext.hmFreshness === 'fresh' && pressureContext.overallStatus === 'ISSUE') {
+    let score = confidence.score - pressureContext.wearEligibility.confidencePenalty;
+    if (pressureContext.tpmsWarning === true && pressureContext.overallFreshness !== 'stale') {
       score -= 3;
     }
-    if (pressureContext.hmFreshness === 'fresh' && pressureContext.dimoFreshness === 'no_data') {
+    if (
+      pressureContext.hmFreshness === 'fresh' &&
+      pressureContext.dimoFreshness === 'no_data' &&
+      pressureContext.sourceType === 'HIGH_MOBILITY'
+    ) {
       score += 2;
     }
     score = Math.max(0, Math.min(100, score));
@@ -1982,13 +1969,7 @@ export class TireHealthService {
       hasMeasurements: (setup.measurements?.length ?? 0) > 0,
     },
   ): TireHealthSummary {
-    const resolvedPressure = pressureContext ?? {
-      source: 'NONE' as const,
-      dimoFreshness: 'no_data' as const,
-      hmFreshness: 'no_data' as const,
-      overallStatus: 'UNKNOWN' as const,
-      warningHints: [],
-    };
+    const resolvedPressure = pressureContext ?? emptyTirePressureContext();
 
     const latestMeasurement = setup.measurements?.[0] ?? null;
     const measuredVals = latestMeasurement

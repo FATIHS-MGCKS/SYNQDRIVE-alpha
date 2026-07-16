@@ -320,6 +320,20 @@ export class DimoSnapshotProcessor extends WorkerHost {
       | undefined;
 
     const tirePressures = normalizeDimoSnapshotTirePressures(signals);
+    const tpmsWarningField = signals.chassisTireSystemIsWarningOn as
+      | { value?: number; timestamp?: number | string }
+      | null
+      | undefined;
+    const tpmsWarningSignalPresent =
+      tpmsWarningField != null &&
+      typeof tpmsWarningField === 'object' &&
+      tpmsWarningField.value != null &&
+      typeof tpmsWarningField.value === 'number' &&
+      Number.isFinite(tpmsWarningField.value);
+    const tpmsWarningValue = tpmsWarningSignalPresent
+      ? numVal(tpmsWarningField) != null && numVal(tpmsWarningField)! >= 0.5
+      : null;
+    const tpmsWarningTimestamp = this.extractSignalTimestamp(tpmsWarningField);
 
     return {
       lastSeenAt: ts(signals.lastSeen),
@@ -388,6 +402,12 @@ export class DimoSnapshotProcessor extends WorkerHost {
             fr: toSynqDriveTirePressureMeta(tirePressures.fr),
             rl: toSynqDriveTirePressureMeta(tirePressures.rl),
             rr: toSynqDriveTirePressureMeta(tirePressures.rr),
+          },
+          tpmsWarning: {
+            signalPresent: tpmsWarningSignalPresent,
+            value: tpmsWarningValue,
+            sourceProvider: 'DIMO',
+            sourceTimestamp: tpmsWarningTimestamp?.toISOString() ?? null,
           },
         },
       }) as object,

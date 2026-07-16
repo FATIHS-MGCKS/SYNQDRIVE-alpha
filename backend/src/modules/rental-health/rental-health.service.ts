@@ -376,7 +376,7 @@ export class RentalHealthService {
         ? 'Kein Reifenverschleiß-Signal'
         : `Reifenzustand ${summary.overallStatus}`);
 
-    // Pressure state — pressureContext is always present on a summary.
+    // Pressure state — structured canonical context only (no text-regex severity).
     const pressure = summary.pressureContext;
     let pressureState: HealthState;
     let pressureReason: string;
@@ -386,15 +386,13 @@ export class RentalHealthService {
         pressureReason = 'Reifendruck normal';
         break;
       case 'ISSUE':
-        // Distinguish "pressure low" (critical) from TPMS warning only
-        // (warning). The TireHealthService surfaces both via warningHints.
-        {
-          const hasLowPressure = pressure.warningHints.some((h) =>
-            /niedrig|low|under|alert/i.test(h),
-          );
-          pressureState = hasLowPressure ? 'critical' : 'warning';
-          pressureReason = pressure.warningHints[0] ?? 'Druckanomalie erkannt';
-        }
+        pressureState =
+          pressure.tpmsWarning === true ||
+          Object.values(pressure.wheels).some((w) => w.statusIssue)
+            ? 'critical'
+            : 'warning';
+        pressureReason =
+          pressure.qualityWarnings[0] ?? 'Druckanomalie erkannt';
         break;
       case 'STALE':
         pressureState = 'unknown';
@@ -402,19 +400,18 @@ export class RentalHealthService {
         break;
       case 'UNKNOWN':
       default:
-        // No TPMS source at all ⇒ n_a for this vehicle (not unknown).
-        pressureState = pressure.source === 'NONE' ? 'n_a' : 'unknown';
+        pressureState = pressure.sourceType === 'NONE' ? 'n_a' : 'unknown';
         pressureReason =
           pressureState === 'n_a'
-            ? 'Kein TPMS verbaut'
+            ? 'Kein TPMS-Signal verfügbar'
             : 'Kein Reifendruck-Signal verfügbar';
         break;
     }
 
-    // Explicit TPMS-alert-from-critical-alerts escalation — TireHealth
-    // already flags these; mirror their severity into pressure-state.
     const criticalTpmsAlert = summary.alerts.some(
-      (a) => a.severity === 'critical' && /tpms|druck|pressure/i.test(a.type),
+      (a) =>
+        a.severity === 'critical' &&
+        (a.type === 'PRESSURE_IMPACT' || a.code === 'TIRE_PRESSURE_ISSUE'),
     );
     if (criticalTpmsAlert) {
       pressureState = 'critical';
@@ -431,7 +428,14 @@ export class RentalHealthService {
       reason,
       last_updated_at: toIso(summary.latestMeasurementAt),
       data_stale: isStale(summary.latestMeasurementAt),
-      source: pressure.source === 'NONE' ? 'tire_health' : 'hm_oem',
+      source:
+        pressure.sourceType === 'NONE'
+          ? 'tire_health'
+          : pressure.sourceType === 'HIGH_MOBILITY'
+            ? 'hm_oem'
+            : pressure.sourceType === 'DIMO'
+              ? 'dimo'
+              : 'tire_health',
       evidence_type:
         summary.latestMeasurementAt != null ? 'measured' : 'estimated',
     };

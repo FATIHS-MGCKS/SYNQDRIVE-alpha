@@ -18,7 +18,12 @@ import {
   ReplacementThresholdSource,
 } from './tire-health.config';
 import { DrivingImpactService, VehicleImpactForTire } from '../driving-impact/driving-impact.service';
-import { resolveCanonicalVehicleTirePressuresBar } from './tire-pressure-canonical.util';
+import {
+  buildTirePressureContext,
+  extractDimoPerWheelTimestamps,
+  extractDimoTpmsWarningFromPayload,
+} from './tire-pressure-context.builder';
+import type { TirePressureContext } from './tire-pressure-context.types';
 import { TireSetupStatus, TireEvidenceSource } from '@prisma/client';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
@@ -98,6 +103,8 @@ export interface WearAnalysisOptions {
   asOf?: Date;
   /** Pin a specific setup (replay); defaults to active setup. */
   tireSetupId?: string;
+  /** Canonical pressure read model — when omitted, built from DIMO latest state only. */
+  pressureContext?: TirePressureContext;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -720,24 +727,41 @@ export class TireWearModelService {
         sourceTimestamp: true,
         providerFetchedAt: true,
         lastSeenAt: true,
+        rawPayloadJson: true,
       },
-    });
-
-    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
-      providerSource: latestState?.providerSource,
-      tirePressureFl: latestState?.tirePressureFl,
-      tirePressureFr: latestState?.tirePressureFr,
-      tirePressureRl: latestState?.tirePressureRl,
-      tirePressureRr: latestState?.tirePressureRr,
-      sourceTimestamp:
-        latestState?.sourceTimestamp ??
-        latestState?.providerFetchedAt ??
-        latestState?.lastSeenAt ??
-        null,
     });
 
     // ── AI spec + archetype resolution ──────────────────────────────────────
     const spec = parseAiTireSpec(setup.aiTireSpec);
+    const nominalPressureBar =
+      spec?.maxInflationKpa != null
+        ? (spec.maxInflationKpa / 100) * 0.9
+        : this.cfg.pressure.nominalPressureBar;
+
+    const pressureContext =
+      options.pressureContext ??
+      buildTirePressureContext({
+        asOf,
+        nominalPressureBar,
+        dimo: latestState
+          ? {
+              tirePressureFl: latestState.tirePressureFl,
+              tirePressureFr: latestState.tirePressureFr,
+              tirePressureRl: latestState.tirePressureRl,
+              tirePressureRr: latestState.tirePressureRr,
+              providerSource: latestState.providerSource,
+              sourceTimestamp: latestState.sourceTimestamp,
+              providerFetchedAt: latestState.providerFetchedAt,
+              lastSeenAt: latestState.lastSeenAt,
+              perWheelTimestamps: extractDimoPerWheelTimestamps(
+                latestState.rawPayloadJson,
+              ),
+              tpmsWarning: extractDimoTpmsWarningFromPayload(
+                latestState.rawPayloadJson,
+              ),
+            }
+          : null,
+      });
     const season = setup.tireSeason ?? 'ALL_SEASON';
     const archetype = resolveArchetype(spec, season);
     const tireSpecMatched = spec != null && (spec.matchedBrand != null || spec.matchedModel != null);
@@ -792,33 +816,23 @@ export class TireWearModelService {
 
     // ── Pressure factor (staleness + minimum readings aware) ────────────────
     const pressureReadings = [
-      canonicalPressures.tirePressureFl,
-      canonicalPressures.tirePressureFr,
-      canonicalPressures.tirePressureRl,
-      canonicalPressures.tirePressureRr,
+      pressureContext.frontLeft,
+      pressureContext.frontRight,
+      pressureContext.rearLeft,
+      pressureContext.rearRight,
     ].filter((v): v is number => v != null);
-    const pressureFreshness = resolvePressureFreshness(
-      latestState?.sourceTimestamp ??
-        latestState?.providerFetchedAt ??
-        latestState?.lastSeenAt ??
-        null,
-      pressureReadings.length > 0,
-      asOf,
-    );
-    const minReadingsForActive = this.cfg.pressure.minReadingsForActive ?? 2;
-    const pressureInputsActive =
-      pressureFreshness !== 'stale' &&
-      pressureReadings.length >= minReadingsForActive;
+    const pressureFreshness = pressureContext.overallFreshness;
+    const pressureInputsActive = pressureContext.wearEligibility.eligible;
     const pressureFactorFront = this.computePressureFactor(
       'front',
-      pressureInputsActive ? (canonicalPressures.tirePressureFl ?? null) : null,
-      pressureInputsActive ? (canonicalPressures.tirePressureFr ?? null) : null,
+      pressureInputsActive ? (pressureContext.frontLeft ?? null) : null,
+      pressureInputsActive ? (pressureContext.frontRight ?? null) : null,
       spec,
     );
     const pressureFactorRear = this.computePressureFactor(
       'rear',
-      pressureInputsActive ? (canonicalPressures.tirePressureRl ?? null) : null,
-      pressureInputsActive ? (canonicalPressures.tirePressureRr ?? null) : null,
+      pressureInputsActive ? (pressureContext.rearLeft ?? null) : null,
+      pressureInputsActive ? (pressureContext.rearRight ?? null) : null,
       spec,
     );
 
@@ -993,13 +1007,12 @@ export class TireWearModelService {
       if (val > 1.02 && topDrivers.length < 3) topDrivers.push(name);
     }
 
-    const hints: string[] = [];
-    if (pressureFreshness === 'stale') {
-      hints.push('Pressure data is stale; pressure factor fallback is neutral');
-    } else if (pressureReadings.length > 0 && pressureReadings.length < minReadingsForActive) {
-      hints.push('Pressure data incomplete; confidence reduced for pressure-based effects');
+    const hints: string[] = [...pressureContext.qualityWarnings];
+    if (!pressureInputsActive) {
+      hints.push('Pressure factor neutral — eligibility gates not met.');
+    } else if (pressureFactorFront > 1.06 || pressureFactorRear > 1.06) {
+      hints.push('Check tire pressures — underinflation detected');
     }
-    if (pressureFactorFront > 1.06 || pressureFactorRear > 1.06) hints.push('Check tire pressures — underinflation detected');
     if (behaviorFactor > 1.15) hints.push('Aggressive driving behavior is accelerating wear');
     if (seasonMismatchFactor > 1.02) hints.push('Tire season may not match current operating conditions');
     if (loadFactor > 1.06) hints.push('Vehicle weight above average for tire class');

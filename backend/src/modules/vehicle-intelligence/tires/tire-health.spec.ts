@@ -533,7 +533,7 @@ describe('computeWearAnalysis pressure freshness gating', () => {
     expect(result?.explainability.pressureDataFreshness).toBe('stale');
     expect(result?.explainability.pressureReadingsUsed).toBe(0);
     expect(result?.explainability.possibleCauseHints).toContain(
-      'Pressure data is stale; pressure factor fallback is neutral',
+      'Pressure factor neutral — eligibility gates not met.',
     );
   });
 

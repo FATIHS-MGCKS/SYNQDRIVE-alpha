@@ -5580,11 +5580,62 @@ export type TirePressureFreshness =
   | 'stale'
   | 'no_data';
 
+export interface TirePressureWheelReading {
+  value: number | null;
+  normalizedUnit: 'BAR';
+  sourceProvider: 'DIMO' | 'HIGH_MOBILITY' | null;
+  sourceTimestamp: string | null;
+  freshness: TirePressureFreshness;
+  statusToken: string | null;
+  statusIssue: boolean;
+}
+
+export interface TirePressureCoverage {
+  wheelsAvailable: number;
+  wheelsFresh: number;
+  wheelsUsableForWear: number;
+  coveragePercent: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  signalSpanMinutes: number | null;
+  continuousExposureEligible: boolean;
+  minWheelsRequired: number;
+  meetsWearThreshold: boolean;
+}
+
+export interface TirePressureWearEligibility {
+  eligible: boolean;
+  reasons: string[];
+  confidencePenalty: number;
+  measurementHint: string | null;
+}
+
 export interface TirePressureContext {
-  source: 'DIMO' | 'HM' | 'MIXED' | 'NONE';
+  frontLeft: number | null;
+  frontRight: number | null;
+  rearLeft: number | null;
+  rearRight: number | null;
+  wheels: {
+    frontLeft: TirePressureWheelReading;
+    frontRight: TirePressureWheelReading;
+    rearLeft: TirePressureWheelReading;
+    rearRight: TirePressureWheelReading;
+  };
+  normalizedUnit: 'BAR';
+  sourceType: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | 'NONE';
+  overallFreshness: TirePressureFreshness;
+  coverage: TirePressureCoverage;
+  tpmsWarning: boolean | null;
+  tpmsWarningSource: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | null;
+  nominalPressureBar: number | null;
+  qualityWarnings: string[];
+  wearEligibility: TirePressureWearEligibility;
+  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
+  /** @deprecated use sourceType */
+  source: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | 'NONE';
   dimoFreshness: TirePressureFreshness;
   hmFreshness: TirePressureFreshness;
-  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
+  /** @deprecated use qualityWarnings */
   warningHints: string[];
 }
 
