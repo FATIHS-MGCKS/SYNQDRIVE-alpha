@@ -151,6 +151,60 @@ export const BATTERY_MEASUREMENT_SESSION_STATUSES = Object.values(
   BatteryMeasurementSessionStatus,
 );
 
+// ── LV rest window state machine (Prompt 30) ─────────────────────────────────
+
+export const LvRestWindowState = {
+  CANDIDATE: 'CANDIDATE',
+  RESTING: 'RESTING',
+  INVALIDATED: 'INVALIDATED',
+  COMPLETED: 'COMPLETED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export type LvRestWindowState =
+  (typeof LvRestWindowState)[keyof typeof LvRestWindowState];
+
+export const LV_REST_WINDOW_STATES = Object.values(LvRestWindowState);
+
+export const LvRestWindowEventType = {
+  TRIP_ENDED: 'TRIP_ENDED',
+  REST_SNAPSHOT: 'REST_SNAPSHOT',
+  WAKE_DETECTED: 'WAKE_DETECTED',
+  CHARGING_DETECTED: 'CHARGING_DETECTED',
+  NEW_TRIP_STARTED: 'NEW_TRIP_STARTED',
+  PROVIDER_ERROR: 'PROVIDER_ERROR',
+  REST_WINDOW_EXPIRED: 'REST_WINDOW_EXPIRED',
+} as const;
+
+export type LvRestWindowEventType =
+  (typeof LvRestWindowEventType)[keyof typeof LvRestWindowEventType];
+
+export function mapLvRestWindowStateToSessionStatus(
+  state: LvRestWindowState,
+): BatteryMeasurementSessionStatus {
+  switch (state) {
+    case LvRestWindowState.CANDIDATE:
+      return BatteryMeasurementSessionStatus.PLANNED;
+    case LvRestWindowState.RESTING:
+      return BatteryMeasurementSessionStatus.ACTIVE;
+    case LvRestWindowState.INVALIDATED:
+      return BatteryMeasurementSessionStatus.INVALID;
+    case LvRestWindowState.COMPLETED:
+      return BatteryMeasurementSessionStatus.COMPLETED;
+    case LvRestWindowState.EXPIRED:
+      return BatteryMeasurementSessionStatus.MISSED;
+    default:
+      return BatteryMeasurementSessionStatus.INVALID;
+  }
+}
+
+export function buildLvRestWindowIdempotencyKey(
+  vehicleId: string,
+  anchorAt: Date,
+): string {
+  return `lv-rest:${vehicleId}:${anchorAt.getTime()}`;
+}
+
 /** Derives LV/HV scope from session type for persistence and indexing. */
 export function resolveBatteryMeasurementSessionScope(
   type: BatteryMeasurementSessionType,

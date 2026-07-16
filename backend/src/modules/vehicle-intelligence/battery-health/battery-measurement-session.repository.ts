@@ -40,6 +40,16 @@ export interface ListBatteryMeasurementSessionsFilter {
   limit?: number;
 }
 
+export interface UpdateBatteryMeasurementSessionInput {
+  organizationId: string;
+  sessionId: string;
+  status?: BatteryMeasurementSessionStatus;
+  endedAt?: Date | null;
+  targetAt?: Date | null;
+  quality?: BatteryMeasurementQuality;
+  metadata?: Prisma.InputJsonValue;
+}
+
 @Injectable()
 export class BatteryMeasurementSessionRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -94,6 +104,42 @@ export class BatteryMeasurementSessionRepository {
   ): Promise<BatteryMeasurementSession | null> {
     return this.prisma.batteryMeasurementSession.findFirst({
       where: { id, organizationId },
+    });
+  }
+
+  findOpenLvRestWindow(
+    vehicleId: string,
+  ): Promise<BatteryMeasurementSession | null> {
+    return this.prisma.batteryMeasurementSession.findFirst({
+      where: {
+        vehicleId,
+        type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+        status: {
+          in: [
+            BatteryMeasurementSessionStatus.PLANNED,
+            BatteryMeasurementSessionStatus.ACTIVE,
+          ],
+        },
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+  }
+
+  updateMutable(
+    input: UpdateBatteryMeasurementSessionInput,
+  ): Promise<BatteryMeasurementSession> {
+    return this.prisma.batteryMeasurementSession.update({
+      where: {
+        id: input.sessionId,
+        organizationId: input.organizationId,
+      },
+      data: {
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.endedAt !== undefined ? { endedAt: input.endedAt } : {}),
+        ...(input.targetAt !== undefined ? { targetAt: input.targetAt } : {}),
+        ...(input.quality ? { quality: input.quality } : {}),
+        ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
+      },
     });
   }
 
