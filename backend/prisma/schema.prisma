@@ -1290,6 +1290,7 @@ model Organization {
   rentalContracts                   RentalContract[]
   misuseCases                       MisuseCase[]
   vehicleDrivingCapabilities        VehicleDrivingCapability[]
+  tripAssessabilities               TripAssessability[]
   orgInvoices                       OrgInvoice[]
   userAccountPreferences            UserAccountPreference[]
   userNotificationPreferences       UserNotificationPreference[]
@@ -1773,6 +1774,7 @@ model Vehicle {
   billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
   billingQuantityEvents             BillingQuantityEvent[]
   vehicleDrivingCapabilities        VehicleDrivingCapability[]
+  tripAssessabilities               TripAssessability[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -6299,6 +6301,7 @@ model VehicleTrip {
   events               DrivingEvent[]
   behaviorEvents       TripBehaviorEvent[]
   misuseCases          MisuseCase[]
+  tripAssessabilities  TripAssessability[]
   repairs              TripRepair[]
   rpmWebhookCandidates RpmWebhookCandidate[]
 
@@ -6652,6 +6655,64 @@ model VehicleDrivingCapability {
   @@index([vehicleId, checkedAt])
   @@index([providerSource, capabilityKey])
   @@map("vehicle_driving_capabilities")
+}
+
+/// Per-dimension trip analysis gate (Driving Intelligence V2 P14).
+enum TripAssessabilityDimension {
+  TRIP_BOUNDARY
+  ROUTE
+  VEHICLE_LOAD
+  NATIVE_BEHAVIOR
+  RECONSTRUCTED_BEHAVIOR
+  ENGINE_MISUSE
+  BRAKING_INTENSITY
+  CORNERING
+  DAMAGE_RISK
+  DRIVER_CONDUCT
+  ATTRIBUTION
+}
+
+/// Per-dimension assessability status — distinct from legacy `DrivingAssessabilityStatus`.
+enum TripAssessabilityDimensionStatus {
+  ASSESSABLE
+  LIMITED
+  INSUFFICIENT_DATA
+  UNSUPPORTED
+  PROVIDER_ERROR
+  NOT_APPLICABLE
+}
+
+/// Materialized per-dimension assessability for one trip (Driving Intelligence V2 P14).
+model TripAssessability {
+  id                 String                           @id @default(uuid())
+  organizationId     String                           @map("organization_id")
+  vehicleId          String                           @map("vehicle_id")
+  tripId             String                           @map("trip_id")
+  dimension          TripAssessabilityDimension
+  status             TripAssessabilityDimensionStatus
+  reasonsJson        Json                             @default("[]") @map("reasons_json")
+  coverage           Float?                           @map("coverage")
+  effectiveCadenceMs Int?                             @map("effective_cadence_ms")
+  p95CadenceMs       Int?                             @map("p95_cadence_ms")
+  capabilityVersion  String                           @map("capability_version")
+  inputWindowStart   DateTime                         @map("input_window_start")
+  inputWindowEnd     DateTime?                        @map("input_window_end")
+  calculatedAt       DateTime                         @map("calculated_at")
+  policyVersion      String                           @map("policy_version")
+  analysisRunId      String?                          @map("analysis_run_id")
+  createdAt          DateTime                         @default(now()) @map("created_at")
+  updatedAt          DateTime                         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, tripId, dimension])
+  @@index([organizationId])
+  @@index([vehicleId, calculatedAt])
+  @@index([tripId, dimension])
+  @@index([tripId, status])
+  @@map("trip_assessabilities")
 }
 
 model MisuseCase {
