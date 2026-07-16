@@ -39,12 +39,25 @@ function makeJobRepository() {
   };
 }
 
+function makeDimoPreflight() {
+  return {
+    runPreflightIfStale: jest.fn().mockResolvedValue({
+      ran: false,
+      skippedReason: 'preflight_not_stale',
+      probesWritten: 0,
+      capabilityVersion: 'cap-preflight-v1',
+      checkedAt: new Date().toISOString(),
+    }),
+  };
+}
+
 describe('DrivingAnalysisInitService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let analysisRunService: ReturnType<typeof makeAnalysisRunService>;
   let stageOrchestrator: ReturnType<typeof makeStageOrchestrator>;
   let jobDispatcher: ReturnType<typeof makeJobDispatcher>;
   let jobRepository: ReturnType<typeof makeJobRepository>;
+  let dimoPreflight: ReturnType<typeof makeDimoPreflight>;
   let service: DrivingAnalysisInitService;
 
   const baseInput = {
@@ -60,12 +73,14 @@ describe('DrivingAnalysisInitService', () => {
     stageOrchestrator = makeStageOrchestrator();
     jobDispatcher = makeJobDispatcher();
     jobRepository = makeJobRepository();
+    dimoPreflight = makeDimoPreflight();
     service = new DrivingAnalysisInitService(
       prisma,
       analysisRunService as any,
       stageOrchestrator as any,
       jobDispatcher as any,
       jobRepository as any,
+      dimoPreflight as any,
     );
 
     prisma.vehicleTrip.findFirst.mockResolvedValue({
@@ -157,6 +172,8 @@ describe('DrivingAnalysisInitService', () => {
         correlationId: 'trip-finalize:trip-1',
       }),
     );
+
+    expect(dimoPreflight.runPreflightIfStale).toHaveBeenCalledWith('org-1', 'vehicle-1');
   });
 
   it('deduplicates duplicate finalize events — second init does not enqueue again', async () => {

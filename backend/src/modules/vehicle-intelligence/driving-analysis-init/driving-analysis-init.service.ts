@@ -5,6 +5,7 @@ import { DrivingAnalysisRunService } from '../driving-analysis-run/driving-analy
 import { DrivingAnalysisStageOrchestratorService } from '../driving-analysis-stage/driving-analysis-stage.orchestrator.service';
 import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { DrivingIntelligenceJobRepository } from '../driving-intelligence-jobs/driving-intelligence-jobs.repository';
+import { DimoAvailableSignalsPreflightService } from '../driving-capability/dimo-available-signals-preflight.service';
 import {
   buildInitCorrelationId,
   buildInitJobIdempotencyKey,
@@ -26,6 +27,7 @@ export class DrivingAnalysisInitService {
     private readonly stageOrchestrator: DrivingAnalysisStageOrchestratorService,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
     private readonly jobRepository: DrivingIntelligenceJobRepository,
+    private readonly dimoPreflight: DimoAvailableSignalsPreflightService,
   ) {}
 
   /**
@@ -60,6 +62,15 @@ export class DrivingAnalysisInitService {
     if (trip.vehicleId !== input.vehicleId) {
       throw new BadRequestException('Trip vehicle mismatch for organization');
     }
+
+    void this.dimoPreflight
+      .runPreflightIfStale(input.organizationId, input.vehicleId)
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `DIMO capability preflight failed trip=${input.tripId} vehicle=${input.vehicleId}: ${message}`,
+        );
+      });
 
     const waypointCount = await this.prisma.vehicleTripWaypoint.count({
       where: { tripId: input.tripId },
