@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-station-scope-v49588-2026-07-17',
+    version: '4.9.588',
+    title: 'V4.9.588 — Stations V2: StationScopeGuard + zentraler Scope-Resolver (Prompt 8/78)',
+    summary: [
+      '`StationScopeService` — Membership-first Scope-Auflösung für `ALL_STATIONS`, `ASSIGNED_STATIONS`, `NO_STATIONS` mit Legacy-Fallback (`stationScope`/`stationIds`).',
+      'Station-ID-Resolver: `params.id`, `params.stationId`, `body.stationId`, `query.stationId`; verschachtelte Vehicle/Booking-Auflösung serverseitig.',
+      'Strukturierte 403-Codes (`STATION_SCOPE_*`); archivierte Stationen nur für historische Reads bei `stations.read`.',
+      '`StationScopeGuard` + `@RequireStationScope()` — opt-in per Handler; noch nicht an alle Controller verdrahtet.',
+    ],
+    reason:
+      'Ist-Guard prüfte nur `params.stationId` und JWT-String — V2 verlangt zentralen Resolver mit Tenant-Validierung und Scope-Modi.',
+    previousBehavior:
+      '`station-scope.guard.ts` unwired; nur `user.stationScope` String-Vergleich ohne Membership/DB-Verifikation.',
+    details:
+      'backend/src/shared/stations/station-scope.*, station-scope.guard.ts, decorators/station-scope.decorator.ts, shared-guards.module.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:05:00.000Z',
+  },
+  {
     id: 'stations-v2-permissions-v49587-2026-07-17',
     version: '4.9.587',
     title: 'V4.9.587 — Stations V2: kanonische Permissions (Prompt 7/78)',
