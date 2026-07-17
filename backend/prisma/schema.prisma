@@ -10277,7 +10277,9 @@ model TwilioWebhookEvent {
 
 enum VoiceSubscriptionStatus {
   PENDING
+  TRIAL
   ACTIVE
+  PAST_DUE
   SUSPENDED
   CANCELLED
 }
@@ -10373,15 +10375,22 @@ model VoiceSubscription {
   organizationId String       @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  planCode           String                  @map("plan_code")
-  planReference      String?                 @map("plan_reference")
-  status             VoiceSubscriptionStatus @default(PENDING)
-  currentPeriodStart DateTime?               @map("current_period_start")
-  currentPeriodEnd   DateTime?               @map("current_period_end")
-  activatedAt        DateTime?               @map("activated_at")
-  suspendedAt        DateTime?               @map("suspended_at")
-  cancelledAt        DateTime?               @map("cancelled_at")
-  archivedAt         DateTime?               @map("archived_at")
+  planCode              String                  @map("plan_code")
+  planCatalogVersion    String                  @default("2026-07-17") @map("plan_catalog_version")
+  planReference         String?                 @map("plan_reference")
+  status                VoiceSubscriptionStatus @default(PENDING)
+  setupFeeCents         Int                     @default(0) @map("setup_fee_cents")
+  setupFeePaidAt        DateTime?               @map("setup_fee_paid_at")
+  pendingPlanCode       String?                 @map("pending_plan_code")
+  pendingPlanCatalogVersion String?             @map("pending_plan_catalog_version")
+  pendingPlanEffectiveAt DateTime?              @map("pending_plan_effective_at")
+  trialEndsAt           DateTime?               @map("trial_ends_at")
+  currentPeriodStart    DateTime?               @map("current_period_start")
+  currentPeriodEnd      DateTime?               @map("current_period_end")
+  activatedAt           DateTime?               @map("activated_at")
+  suspendedAt           DateTime?               @map("suspended_at")
+  cancelledAt           DateTime?               @map("cancelled_at")
+  archivedAt            DateTime?               @map("archived_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -10690,8 +10699,11 @@ model VoiceUsageEvent {
   eventType          VoiceUsageEventType       @map("event_type")
   billableSeconds    Int?                      @map("billable_seconds")
   billableMinutes    Int?                      @map("billable_minutes")
-  providerCostCents  Int?                      @map("provider_cost_cents")
+  providerCostCents    Int?                      @map("provider_cost_cents")
   internalCostCents  Int?                      @map("internal_cost_cents")
+  twilioCostCents    Int?                      @map("twilio_cost_cents")
+  elevenLabsCostCents Int?                     @map("elevenlabs_cost_cents")
+  llmCostCents       Int?                      @map("llm_cost_cents")
   customerPriceCents Int?                      @map("customer_price_cents")
   currency           String                    @default("EUR") @db.Char(3)
   externalUsageRef   String?                   @map("external_usage_ref")
@@ -10716,16 +10728,22 @@ model VoiceBillingPeriod {
   organizationId String       @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  periodStart       DateTime                 @map("period_start")
-  periodEnd         DateTime                 @map("period_end")
-  includedMinutes   Int                      @default(0) @map("included_minutes")
-  consumedMinutes   Int                      @default(0) @map("consumed_minutes")
-  overageMinutes    Int                      @default(0) @map("overage_minutes")
-  providerCostCents Int                      @default(0) @map("provider_cost_cents")
-  revenueCents      Int                      @default(0) @map("revenue_cents")
-  marginCents       Int                      @default(0) @map("margin_cents")
-  currency          String                   @default("EUR") @db.Char(3)
-  status            VoiceBillingPeriodStatus @default(OPEN)
+  periodStart         DateTime                 @map("period_start")
+  periodEnd           DateTime                 @map("period_end")
+  planCode            String?                  @map("plan_code")
+  planCatalogVersion  String?                  @map("plan_catalog_version")
+  monthlyBaseFeeCents Int                      @default(0) @map("monthly_base_fee_cents")
+  setupFeeCents       Int                      @default(0) @map("setup_fee_cents")
+  includedMinutes     Int                      @default(0) @map("included_minutes")
+  consumedMinutes     Int                      @default(0) @map("consumed_minutes")
+  inboundMinutes      Int                      @default(0) @map("inbound_minutes")
+  outboundMinutes     Int                      @default(0) @map("outbound_minutes")
+  overageMinutes      Int                      @default(0) @map("overage_minutes")
+  providerCostCents   Int                      @default(0) @map("provider_cost_cents")
+  revenueCents        Int                      @default(0) @map("revenue_cents")
+  marginCents         Int                      @default(0) @map("margin_cents")
+  currency            String                   @default("EUR") @db.Char(3)
+  status              VoiceBillingPeriodStatus @default(OPEN)
 
   finalizedAt DateTime? @map("finalized_at")
   invoicedAt  DateTime? @map("invoiced_at")

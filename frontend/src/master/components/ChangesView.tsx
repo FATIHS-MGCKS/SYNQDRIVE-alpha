@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-plans-entitlements-usage-ledger-2026-07-17',
+    version: '4.9.594',
+    title: 'V4.9.594 — Voice AI: plans, entitlements, and usage ledger',
+    summary: [
+      'Versionierter Plan-Katalog START/PRO/BUSINESS (EUR netto) mit Entitlements für Minuten, Nummern, Niederlassungen, Sprachen und Parallelität.',
+      'Subscription-Lifecycle TRIAL/ACTIVE/PAST_DUE/SUSPENDED/CANCELLED, Planwechsel mit Periodenwirkung, Setup-Fee getrennt.',
+      'Usage-Ledger: Sekunden-Rohwert, 6s-Grace-Minutenregel, Dedup, ESTIMATED/FINAL, Provider-Kostensplits, APIs für Verbrauch/Forecast und Master-Admin-Marge.',
+    ],
+    reason:
+      'Prompt 8A — verbindliche Voice-AI-Tarife, Entitlements, Usage-Aggregation und Kosten-/Umsatzberechnung ohne Vermischung mit Fahrzeugpreislogik.',
+    previousBehavior:
+      'VoiceSubscription/UsageEvent/BillingPeriod nur als Schema/Repos; costTrackingConnected stub; keine Metering-Pipeline.',
+    details:
+      'Module voice-billing; Migration 20260717280000; Lifecycle-Hook nach COMPLETED; architecture/VOICE_AI_PLANS_ENTITLEMENTS_USAGE_LEDGER_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T22:30:00.000Z',
+  },
+  {
     id: 'voice-native-twilio-call-orchestration-2026-07-17',
     version: '4.9.593',
     title: 'V4.9.593 — Voice AI: native ElevenLabs-Twilio call orchestration',

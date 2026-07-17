@@ -50,7 +50,9 @@ describe('Voice webhook ingestion pipeline', () => {
     };
 
     correlation = new VoiceWebhookCorrelationService(prisma);
-    lifecycle = new VoiceConversationLifecycleService(prisma);
+    lifecycle = new VoiceConversationLifecycleService(prisma, {
+      recordConversationUsage: jest.fn(),
+    } as any);
     ingest = new VoiceWebhookIngestService(events as never, correlation, queue as never);
     processing = new VoiceWebhookProcessingService(
       events as never,

@@ -4,8 +4,10 @@ import {
   VoiceConversationLifecycleState,
   VoiceConversationOutcome,
   VoiceConversationStatus,
+  VoiceControlPlaneProvider,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VoiceUsageLedgerService } from '@modules/voice-billing/voice-usage-ledger.service';
 import { isLegacyTwimlConversation, buildElevenLabsConversationMetadata, preferDurationSeconds, resolveElevenLabsSyncOutcome } from '@modules/voice-assistant/voice-conversation-lifecycle.util';
 import { hasConversationTranscript } from '@modules/voice-assistant/voice-conversation.util';
 import {
@@ -22,7 +24,10 @@ import { VOICE_WEBHOOK_EVENT_TYPES } from './voice-webhook-ingestion.constants';
 export class VoiceConversationLifecycleService {
   private readonly logger = new Logger(VoiceConversationLifecycleService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usageLedger: VoiceUsageLedgerService,
+  ) {}
 
   async applyWebhookEvent(params: {
     eventType: string;
@@ -123,6 +128,8 @@ export class VoiceConversationLifecycleService {
       data: update,
     });
 
+    await this.recordMeteredUsageIfApplicable(updated);
+
     return { conversationId: updated.id, lifecycleState: updated.lifecycleState };
   }
 
@@ -209,6 +216,8 @@ export class VoiceConversationLifecycleService {
       where: { id: conversation.id },
       data: update,
     });
+
+    await this.recordMeteredUsageIfApplicable(updated);
 
     return { conversationId: updated.id, lifecycleState: updated.lifecycleState };
   }
@@ -341,5 +350,37 @@ export class VoiceConversationLifecycleService {
       current = (current as Record<string, unknown>)[segment];
     }
     return typeof current === 'number' && Number.isFinite(current) ? current : null;
+  }
+
+  private async recordMeteredUsageIfApplicable(conversation: {
+    id: string;
+    organizationId: string;
+    direction: import('@prisma/client').VoiceConversationDirection;
+    durationSeconds: number | null;
+    status: VoiceConversationStatus;
+    twilioCallSid: string | null;
+    elevenLabsConvId: string | null;
+  }) {
+    if (conversation.status !== VoiceConversationStatus.COMPLETED) {
+      return;
+    }
+    if (!conversation.durationSeconds || conversation.durationSeconds <= 0) {
+      return;
+    }
+
+    try {
+      await this.usageLedger.recordConversationUsage({
+        organizationId: conversation.organizationId,
+        voiceConversationId: conversation.id,
+        direction: conversation.direction,
+        durationSeconds: conversation.durationSeconds,
+        provider: VoiceControlPlaneProvider.TWILIO,
+        externalUsageRef: conversation.twilioCallSid ?? conversation.elevenLabsConvId,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to record voice usage for conversation ${conversation.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 }

@@ -36,10 +36,14 @@ export type CreateVoiceUsageEventInput = {
   billableMinutes?: number | null;
   providerCostCents?: number | null;
   internalCostCents?: number | null;
+  twilioCostCents?: number | null;
+  elevenLabsCostCents?: number | null;
+  llmCostCents?: number | null;
   customerPriceCents?: number | null;
   currency?: string;
   externalUsageRef?: string | null;
   idempotencyKey: string;
+  costStatus?: 'ESTIMATED' | 'FINAL';
 };
 
 export type CreateVoiceToolExecutionInput = {
@@ -82,6 +86,10 @@ export type CreateVoiceBillingPeriodInput = {
   organizationId: string;
   periodStart: Date;
   periodEnd: Date;
+  planCode?: string;
+  planCatalogVersion?: string;
+  monthlyBaseFeeCents?: number;
+  setupFeeCents?: number;
   includedMinutes?: number;
 };
 

@@ -193,24 +193,100 @@ export class VoiceUsageEventRepository {
       return { event: existing, created: false };
     }
 
-    const event = await this.prisma.voiceUsageEvent.create({
-      data: {
-        organizationId: input.organizationId,
-        voiceConversationId: input.voiceConversationId ?? null,
-        provider: input.provider,
-        eventType: input.eventType,
-        billableSeconds: input.billableSeconds ?? null,
-        billableMinutes: input.billableMinutes ?? null,
-        providerCostCents: input.providerCostCents ?? null,
-        internalCostCents: input.internalCostCents ?? null,
-        customerPriceCents: input.customerPriceCents ?? null,
-        currency: input.currency ?? 'EUR',
-        externalUsageRef: input.externalUsageRef ?? null,
-        idempotencyKey: input.idempotencyKey,
-      },
-    });
+    try {
+      const event = await this.prisma.voiceUsageEvent.create({
+        data: {
+          organizationId: input.organizationId,
+          voiceConversationId: input.voiceConversationId ?? null,
+          provider: input.provider,
+          eventType: input.eventType,
+          billableSeconds: input.billableSeconds ?? null,
+          billableMinutes: input.billableMinutes ?? null,
+          providerCostCents: input.providerCostCents ?? null,
+          internalCostCents: input.internalCostCents ?? null,
+          twilioCostCents: input.twilioCostCents ?? null,
+          elevenLabsCostCents: input.elevenLabsCostCents ?? null,
+          llmCostCents: input.llmCostCents ?? null,
+          customerPriceCents: input.customerPriceCents ?? null,
+          currency: input.currency ?? 'EUR',
+          externalUsageRef: input.externalUsageRef ?? null,
+          idempotencyKey: input.idempotencyKey,
+          costStatus: input.costStatus ?? 'ESTIMATED',
+        },
+      });
 
-    return { event, created: true };
+      return { event, created: true };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const raced = await this.findByIdempotencyKey(input.organizationId, input.idempotencyKey);
+        if (raced) {
+          return { event: raced, created: false };
+        }
+      }
+      throw err;
+    }
+  }
+
+  sumBillableMinutesInPeriod(organizationId: string, periodStart: Date, periodEnd: Date) {
+    return this.prisma.voiceUsageEvent.aggregate({
+      where: {
+        organizationId,
+        occurredAt: { gte: periodStart, lt: periodEnd },
+        eventType: { in: ['INBOUND_CALL', 'OUTBOUND_CALL', 'CONVERSATION_MINUTE'] },
+      },
+      _sum: { billableMinutes: true },
+    });
+  }
+
+  sumCustomerPriceInPeriod(organizationId: string, periodStart: Date, periodEnd: Date) {
+    return this.prisma.voiceUsageEvent.aggregate({
+      where: {
+        organizationId,
+        occurredAt: { gte: periodStart, lt: periodEnd },
+      },
+      _sum: { customerPriceCents: true, internalCostCents: true, providerCostCents: true },
+    });
+  }
+
+  sumDirectionalMinutesInPeriod(
+    organizationId: string,
+    periodStart: Date,
+    periodEnd: Date,
+  ) {
+    return this.prisma.voiceUsageEvent.groupBy({
+      by: ['eventType'],
+      where: {
+        organizationId,
+        occurredAt: { gte: periodStart, lt: periodEnd },
+        eventType: { in: ['INBOUND_CALL', 'OUTBOUND_CALL'] },
+      },
+      _sum: { billableMinutes: true },
+    });
+  }
+
+  async updateCostsIfNotFinal(
+    organizationId: string,
+    id: string,
+    data: {
+      providerCostCents: number;
+      internalCostCents: number;
+      twilioCostCents: number;
+      elevenLabsCostCents: number;
+      llmCostCents: number;
+      costStatus: 'ESTIMATED' | 'FINAL';
+    },
+  ) {
+    const row = await this.findById(organizationId, id);
+    if (!row || row.costStatus === 'FINAL') {
+      return null;
+    }
+    return this.prisma.voiceUsageEvent.update({
+      where: { id },
+      data,
+    });
   }
 }
 
@@ -224,12 +300,79 @@ export class VoiceBillingPeriodRepository {
     });
   }
 
+  findOpenForOrganization(organizationId: string, periodStart: Date, periodEnd: Date) {
+    return this.prisma.voiceBillingPeriod.findFirst({
+      where: {
+        organizationId,
+        periodStart,
+        periodEnd,
+        status: 'OPEN',
+      },
+    });
+  }
+
+  async upsertOpenPeriod(input: CreateVoiceBillingPeriodInput) {
+    return this.prisma.voiceBillingPeriod.upsert({
+      where: {
+        organizationId_periodStart_periodEnd: {
+          organizationId: input.organizationId,
+          periodStart: input.periodStart,
+          periodEnd: input.periodEnd,
+        },
+      },
+      create: {
+        organizationId: input.organizationId,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+        planCode: input.planCode ?? null,
+        planCatalogVersion: input.planCatalogVersion ?? null,
+        monthlyBaseFeeCents: input.monthlyBaseFeeCents ?? 0,
+        setupFeeCents: input.setupFeeCents ?? 0,
+        includedMinutes: input.includedMinutes ?? 0,
+      },
+      update: {
+        planCode: input.planCode ?? undefined,
+        planCatalogVersion: input.planCatalogVersion ?? undefined,
+        monthlyBaseFeeCents: input.monthlyBaseFeeCents ?? undefined,
+        setupFeeCents: input.setupFeeCents ?? undefined,
+        includedMinutes: input.includedMinutes ?? undefined,
+      },
+    });
+  }
+
+  async refreshAggregates(
+    organizationId: string,
+    id: string,
+    aggregates: {
+      consumedMinutes: number;
+      inboundMinutes: number;
+      outboundMinutes: number;
+      overageMinutes: number;
+      providerCostCents: number;
+      revenueCents: number;
+      marginCents: number;
+    },
+  ) {
+    const row = await this.findById(organizationId, id);
+    if (!row) {
+      throw new NotFoundException('Voice billing period not found for organization');
+    }
+    return this.prisma.voiceBillingPeriod.update({
+      where: { id },
+      data: aggregates,
+    });
+  }
+
   create(input: CreateVoiceBillingPeriodInput) {
     return this.prisma.voiceBillingPeriod.create({
       data: {
         organizationId: input.organizationId,
         periodStart: input.periodStart,
         periodEnd: input.periodEnd,
+        planCode: input.planCode ?? null,
+        planCatalogVersion: input.planCatalogVersion ?? null,
+        monthlyBaseFeeCents: input.monthlyBaseFeeCents ?? 0,
+        setupFeeCents: input.setupFeeCents ?? 0,
         includedMinutes: input.includedMinutes ?? 0,
       },
     });

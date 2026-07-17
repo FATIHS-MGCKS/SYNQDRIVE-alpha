@@ -16,8 +16,11 @@ import type {
 export type CreateVoiceSubscriptionInput = {
   organizationId: string;
   planCode: string;
+  planCatalogVersion?: string;
   planReference?: string | null;
   status?: VoiceSubscriptionStatus;
+  setupFeeCents?: number;
+  trialEndsAt?: Date | null;
   currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
 };

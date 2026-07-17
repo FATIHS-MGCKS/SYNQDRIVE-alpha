@@ -367,7 +367,7 @@ describe('VoiceAssistantService', () => {
     expect(overview.assistants[0].readinessPercent).toBeGreaterThanOrEqual(0);
     expect(overview.assistants[1].assistantStatus).toBe('NOT_CONFIGURED');
     expect(overview.summary.configuredOrgs).toBe(1);
-    expect(overview.summary.costTrackingConnected).toBe(false);
+    expect(overview.summary.costTrackingConnected).toBe(true);
   });
 
   it('rejects admin sync for unknown organization', async () => {

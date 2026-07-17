@@ -230,8 +230,8 @@ describe('VoiceAssistant admin characterization', () => {
       expect(overview.assistants).toHaveLength(2);
       expect(overview.assistants[0].organizationId).toBe('org-1');
       expect(overview.assistants[1].assistantStatus).toBe('NOT_CONFIGURED');
-      expect(overview.summary.costTrackingConnected).toBe(false);
-      expect(overview.summary.costTrackingMessage).toContain('not connected');
+      expect(overview.summary.costTrackingConnected).toBe(true);
+      expect(overview.summary.costTrackingMessage).toContain('connected');
     });
 
     it('does not derive ElevenLabs admin connectivity from Twilio-only config', async () => {

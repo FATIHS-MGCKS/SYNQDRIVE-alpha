@@ -83,13 +83,15 @@ export class VoiceCallPolicyService {
 
   private async assertSubscriptionActive(organizationId: string): Promise<void> {
     const subscriptions = await this.subscriptions.listByOrganization(organizationId);
-    const active = subscriptions.find((row) => row.status === VoiceSubscriptionStatus.ACTIVE);
-    if (!active) {
+    const operational = subscriptions.find((row) =>
+      ['TRIAL', 'ACTIVE', 'PAST_DUE'].includes(row.status),
+    );
+    if (!operational) {
+      const suspended = subscriptions.find((row) => row.status === VoiceSubscriptionStatus.SUSPENDED);
+      if (suspended) {
+        throw new ForbiddenException('Voice AI subscription is suspended.');
+      }
       throw new ForbiddenException('Voice AI subscription is not active for this organization.');
-    }
-    const suspended = subscriptions.find((row) => row.status === VoiceSubscriptionStatus.SUSPENDED);
-    if (suspended && !active) {
-      throw new ForbiddenException('Voice AI subscription is suspended.');
     }
   }
 

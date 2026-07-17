@@ -5,6 +5,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { VoiceProviderWebhookEventRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
+import { VoiceBillingModule } from '@modules/voice-billing/voice-billing.module';
 import { ElevenLabsWebhookController } from './elevenlabs-webhook.controller';
 import { VoiceWebhookReplayController } from './voice-webhook-replay.controller';
 import { VoiceWebhookIngestService, VoiceWebhookQueueProducer } from './voice-webhook-ingest.service';
@@ -21,6 +22,7 @@ import { VoiceInternalEventIngestService } from './voice-internal-event-ingest.s
     ConfigModule,
     PrismaModule,
     SharedGuardsModule,
+    VoiceBillingModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS }),
   ],
   controllers: [ElevenLabsWebhookController, VoiceWebhookReplayController],

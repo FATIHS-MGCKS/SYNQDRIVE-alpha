@@ -35,12 +35,38 @@ export class VoiceSubscriptionRepository {
       data: {
         organizationId: input.organizationId,
         planCode: input.planCode,
+        planCatalogVersion: input.planCatalogVersion ?? '2026-07-17',
         planReference: input.planReference ?? null,
         status: input.status ?? 'PENDING',
+        setupFeeCents: input.setupFeeCents ?? 0,
+        trialEndsAt: input.trialEndsAt ?? null,
         currentPeriodStart: input.currentPeriodStart ?? null,
         currentPeriodEnd: input.currentPeriodEnd ?? null,
       },
     });
+  }
+
+  findActiveByOrganization(organizationId: string) {
+    return this.prisma.voiceSubscription.findFirst({
+      where: {
+        organizationId,
+        ...ACTIVE_LIFECYCLE_FILTER,
+        status: { in: ['TRIAL', 'ACTIVE', 'PAST_DUE'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async update(
+    organizationId: string,
+    id: string,
+    data: Prisma.VoiceSubscriptionUpdateInput,
+  ) {
+    const row = await this.findById(organizationId, id);
+    if (!row) {
+      throw new NotFoundException('Voice subscription not found for organization');
+    }
+    return this.prisma.voiceSubscription.update({ where: { id }, data });
   }
 
   async archive(organizationId: string, id: string) {
