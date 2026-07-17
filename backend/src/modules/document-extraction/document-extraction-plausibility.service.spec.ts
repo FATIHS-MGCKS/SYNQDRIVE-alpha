@@ -124,10 +124,25 @@ describe('DocumentExtractionPlausibilityService', () => {
     expect(codes(result)).toContain('TREAD_IMPLAUSIBLE_FR');
   });
 
-  it('never asserts a crash for DAMAGE/ACCIDENT, only adds a review note', () => {
+  it('never asserts a crash for DAMAGE/ACCIDENT without structured blockers alone', () => {
     const result = svc.runChecks('ACCIDENT', { description: 'rear bumper' }, baseCtx);
     expect(result.recommendedHumanReviewNotes.length).toBeGreaterThan(0);
-    // No automatic collision claim → no BLOCKER from this alone.
-    expect(result.overallStatus).not.toBe('BLOCKER');
+    expect(result.checks.some((check) => check.code === 'DAMAGE_AREA_NOT_TRACEABLE')).toBe(true);
+    expect(result.overallStatus).toBe('BLOCKER');
+  });
+
+  it('runs damage plausibility checks for confirmed damage documents', () => {
+    const result = svc.runChecks(
+      'DAMAGE',
+      {
+        damageDescription: 'Kratzer',
+        damageAreas: ['front_bumper'],
+        damageType: 'UNKNOWN',
+        severity: 'UNKNOWN',
+      },
+      baseCtx,
+    );
+    expect(result.checks.some((check) => check.code === 'DAMAGE_TYPE_UNKNOWN')).toBe(true);
+    expect(result.checks.some((check) => check.code === 'DAMAGE_SEVERITY_UNKNOWN')).toBe(true);
   });
 });

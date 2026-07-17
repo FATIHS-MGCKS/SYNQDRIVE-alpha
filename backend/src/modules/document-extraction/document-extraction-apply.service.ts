@@ -45,6 +45,13 @@ import {
   readSupplier,
   resolveInvoiceApplyTotals,
 } from './document-invoice-extraction.rules';
+import {
+  assessDamageApplyGate,
+  buildDamageCreatePayload,
+  findDuplicateDamageCandidate,
+  readDamageAreas,
+  type DamageDocumentType,
+} from './document-damage-extraction.rules';
 
 export interface ApplyInput {
   extractionId: string;
@@ -128,13 +135,7 @@ export class DocumentExtractionApplyService {
     }
 
     if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
-      await this.damagesService.create(vehicleId, {
-        damageType: (d.damageType as any) || 'SCRATCH',
-        description: typeof d.description === 'string' ? d.description : `${docType} report`,
-        severity: (d.severity as any) || 'MODERATE',
-        source: 'AI_UPLOAD',
-      });
-      return {};
+      return this.applyDamageReport(input, d, docType);
     }
 
     if (docType === 'INVOICE') {
@@ -517,6 +518,60 @@ export class DocumentExtractionApplyService {
     });
 
     return { detail: { fineId: fine.id } };
+  }
+
+  private async applyDamageReport(
+    input: ApplyInput,
+    d: Record<string, unknown>,
+    docType: DamageDocumentType,
+  ): Promise<ApplyResult> {
+    const { vehicleId } = input;
+    const candidateAreas = readDamageAreas(d);
+    const payload = buildDamageCreatePayload(d);
+
+    const existingDamages = await this.prisma.vehicleDamage.findMany({
+      where: { vehicleId },
+      select: {
+        id: true,
+        damageType: true,
+        severity: true,
+        description: true,
+        locationLabel: true,
+        createdAt: true,
+      },
+    });
+
+    const duplicate =
+      payload != null
+        ? findDuplicateDamageCandidate(existingDamages, payload, candidateAreas)
+        : null;
+
+    const gate = assessDamageApplyGate({
+      documentType: docType,
+      fields: d,
+      duplicateDamageId: duplicate?.id ?? null,
+    });
+
+    if (!gate.canApply || !payload) {
+      throw new BadRequestException({
+        message: 'Damage apply gate blocked — missing or invalid confirmed fields',
+        blockers: gate.blockers,
+        documentMode: gate.documentMode,
+      });
+    }
+
+    const damage = await this.damagesService.create(vehicleId, {
+      damageType: payload.damageType,
+      severity: payload.severity,
+      description: payload.description,
+      locationLabel: payload.locationLabel ?? undefined,
+      estimatedCostCents: payload.estimatedCostCents ?? undefined,
+      bookingId: payload.bookingId ?? undefined,
+      liabilityNote: payload.liabilityNote ?? undefined,
+      source: 'AI_UPLOAD',
+    });
+
+    return { detail: { damageId: damage.id } };
   }
 
   private async applyInvoice(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {

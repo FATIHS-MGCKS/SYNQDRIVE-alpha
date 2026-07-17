@@ -133,6 +133,45 @@ describe('document-extraction.schemas', () => {
       );
     });
 
+    it('declares production damage and accident fields', () => {
+      for (const docType of ['DAMAGE', 'ACCIDENT'] as const) {
+        const keys = getFieldSchema(docType).map((field) => field.key);
+        expect(keys).toEqual(
+          expect.arrayContaining([
+            'eventDateTime',
+            'damageDescription',
+            'damageAreas',
+            'damageType',
+            'severity',
+            'estimatedCostGross',
+          ]),
+        );
+      }
+
+      const damageKeys = getFieldSchema('DAMAGE').map((field) => field.key);
+      expect(damageKeys).toEqual(
+        expect.arrayContaining(['locationLabel', 'documentKind', 'linkedDamageId']),
+      );
+
+      const accidentKeys = getFieldSchema('ACCIDENT').map((field) => field.key);
+      expect(accidentKeys).toEqual(
+        expect.arrayContaining([
+          'drivable',
+          'thirdPartyInvolved',
+          'policeReference',
+          'insuranceReference',
+          'bookingContext',
+          'accidentApplyConfirmed',
+        ]),
+      );
+
+      const damageTypeField = getFieldSchema('DAMAGE').find((field) => field.key === 'damageType');
+      expect(damageTypeField?.enumValues).toEqual(
+        expect.arrayContaining(['SCRATCH', 'UNKNOWN']),
+      );
+      expect(damageTypeField?.hint).toMatch(/no SCRATCH default/i);
+    });
+
     it('declares schemas for every DocumentExtractionType', () => {
       for (const t of SUPPORTED_DOCUMENT_TYPES) {
         expect(Array.isArray(DOCUMENT_FIELD_SCHEMAS[t])).toBe(true);

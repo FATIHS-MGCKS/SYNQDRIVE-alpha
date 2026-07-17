@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-damage-hardening-2026-07-17',
+    version: '4.9.607',
+    title: 'V4.9.607 — Document Intake V2 Damage / Accident Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrales Modul document-damage-extraction.rules für Schadens-, Unfall- und Gutachten-Dokumente.',
+      'Felder: eventDateTime, damageDescription, damageAreas, damageType, severity, drivable, thirdPartyInvolved, policeReference, insuranceReference, bookingContext, estimatedCost.',
+      'Kein SCRATCH-/MODERATE-Default; UNKNOWN bleibt bestätigungspflichtig; Unfallbericht zunächst Draft-only.',
+      'Schadensbereich muss nachvollziehbar sein; vorhandener Damage Case wird als Kandidat gesucht; Duplikat-Upload blockiert Apply.',
+      'document-action-planner.damage-rules + Fixtures/Tests für Schaden, Unfall und Gutachten.',
+    ],
+    reason: 'Prompt 32/84: Härtung von Damage-/Accident-Schemas und Planner.',
+    previousBehavior:
+      'Apply nutzte SCRATCH/MODERATE-Defaults; kein Apply-Gate, keine Duplikatprüfung, minimales Schema.',
+    details:
+      'document-damage-extraction.rules.ts (+ spec, fixtures), document-action-planner.damage-rules.ts (+ spec), schema/plausibility/apply/APPLY_ALIAS_KEYS/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T11:00:00.000Z',
+  },
+  {
     id: 'document-inspection-hardening-2026-07-17',
     version: '4.9.606',
     title: 'V4.9.606 — Document Intake V2 TÜV / BOKraft Extraction, Plausibility & Action Planning',

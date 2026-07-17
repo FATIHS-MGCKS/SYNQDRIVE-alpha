@@ -6,6 +6,10 @@ import {
   collectInspectionPlausibilityChecks,
   isInspectionDocumentType,
 } from './document-inspection-extraction.rules';
+import {
+  collectDamagePlausibilityChecks,
+  isDamageDocumentType,
+} from './document-damage-extraction.rules';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 export type PlausibilitySource = 'DOCUMENT' | 'SYNQDRIVE_DB' | 'DIMO' | 'SYSTEM';
@@ -84,6 +88,13 @@ export class DocumentExtractionPlausibilityService {
       );
     } else if (isInspectionDocumentType(documentType)) {
       checks.push(...collectInspectionPlausibilityChecks(documentType, fields));
+    } else if (isDamageDocumentType(documentType)) {
+      checks.push(...collectDamagePlausibilityChecks(documentType, fields));
+      notes.push(
+        context.dimoContextAvailable
+          ? 'DIMO telemetry is available for this vehicle but collision/harsh-braking corroboration is not automatically evaluated. Verify the incident manually.'
+          : 'No DIMO telemetry context available to corroborate this incident. Verify the incident manually.',
+      );
     } else if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
       const isFine = documentType === 'FINE';
       checks.push({
@@ -188,15 +199,6 @@ export class DocumentExtractionPlausibilityService {
           });
         }
       }
-    }
-
-    // Damage / accident: do not assert a crash; note corroboration availability only.
-    if (documentType === 'DAMAGE' || documentType === 'ACCIDENT') {
-      notes.push(
-        context.dimoContextAvailable
-          ? 'DIMO telemetry is available for this vehicle but collision/harsh-braking corroboration is not automatically evaluated. Verify the incident manually.'
-          : 'No DIMO telemetry context available to corroborate this incident. Verify the incident manually.',
-      );
     }
 
     if (options?.chunkingWarnings?.length) {
