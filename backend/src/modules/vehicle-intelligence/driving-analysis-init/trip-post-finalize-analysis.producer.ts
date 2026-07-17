@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { DrivingAnalysisInitService } from './driving-analysis-init.service';
 import type { TripAnalysisInitResult, TripAnalysisInitSource } from './driving-analysis-init.types';
+import { RentalDrivingAnalysisRecomputeTriggerService } from '../../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
+import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../../rental-driving-analysis/rental-driving-analysis.recompute.types';
 
 /**
  * Post-finalize producer — awaited durable analysis init only after persisted COMPLETED trip.
@@ -10,7 +12,12 @@ import type { TripAnalysisInitResult, TripAnalysisInitSource } from './driving-a
 export class TripPostFinalizeAnalysisProducer {
   private readonly logger = new Logger(TripPostFinalizeAnalysisProducer.name);
 
-  constructor(private readonly analysisInit: DrivingAnalysisInitService) {}
+  constructor(
+    private readonly analysisInit: DrivingAnalysisInitService,
+    @Optional()
+    @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeTriggerService))
+    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerService,
+  ) {}
 
   async produceAfterPersistedCompletion(input: {
     tripId: string;
@@ -39,6 +46,21 @@ export class TripPostFinalizeAnalysisProducer {
             result.queueErrors.join('; '),
         );
       }
+
+      void this.rentalRecomputeTrigger
+        ?.enqueueForTrip({
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          tripId: input.tripId,
+          reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.TRIP_COMPLETED,
+          correlationId: `rental-recompute:trip:${input.tripId}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.TRIP_COMPLETED}`,
+        })
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `Rental analysis recompute enqueue failed trip=${input.tripId}: ${message}`,
+          );
+        });
 
       return result;
     } catch (err) {

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import type { DrivingAnalysisRunStatus } from '@prisma/client';
 import { ClickHouseAnalysisHealthService } from '@modules/clickhouse/clickhouse-analysis-health.service';
 import { canProceedAnalysisStage } from '@modules/clickhouse/clickhouse-analysis-degradation';
@@ -21,6 +21,8 @@ import type {
   InitializeStagesForRunInput,
   InitializeStagesForRunResult,
 } from './driving-analysis-stage.types';
+import { RentalDrivingAnalysisRecomputeTriggerService } from '../../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
+import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../../rental-driving-analysis/rental-driving-analysis.recompute.types';
 
 @Injectable()
 export class DrivingAnalysisStageOrchestratorService {
@@ -31,6 +33,9 @@ export class DrivingAnalysisStageOrchestratorService {
     private readonly runRepository: DrivingAnalysisRunRepository,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
     @Optional() private readonly clickHouseHealth?: ClickHouseAnalysisHealthService,
+    @Optional()
+    @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeTriggerService))
+    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerService,
   ) {}
 
   initializeStagesForRun(
@@ -150,6 +155,23 @@ export class DrivingAnalysisStageOrchestratorService {
     await this.syncRunStatusFromStages(organizationId, analysisRunId);
 
     const run = await this.runRepository.findById(organizationId, analysisRunId);
+    if (run?.status === 'COMPLETED' && run.tripId) {
+      void this.rentalRecomputeTrigger
+        ?.enqueueForTrip({
+          organizationId,
+          vehicleId: run.vehicleId,
+          tripId: run.tripId,
+          reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.TRIP_ANALYSIS_COMPLETED,
+          correlationId: `rental-recompute:trip-analysis:${run.tripId}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.TRIP_ANALYSIS_COMPLETED}`,
+        })
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `Rental analysis recompute enqueue failed run=${analysisRunId}: ${message}`,
+          );
+        });
+    }
+
     if (!run?.tripId) return;
 
     await this.enqueueReadyStages({

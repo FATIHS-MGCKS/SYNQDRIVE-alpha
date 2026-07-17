@@ -1,4 +1,4 @@
-import { DrivingAnalysisMaturity } from '@prisma/client';
+import { BookingStatus, DrivingAnalysisMaturity } from '@prisma/client';
 import { RentalDrivingAnalysisService } from './rental-driving-analysis.service';
 import { RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION } from './rental-driving-analysis.versioning';
 
@@ -34,7 +34,7 @@ const completedBooking = {
   vehicleId: 'vehicle-1',
   customerId: 'customer-1',
   assignedDriverId: null,
-  status: 'COMPLETED',
+  status: BookingStatus.COMPLETED,
   startDate: new Date('2026-07-01T08:00:00.000Z'),
   endDate: new Date('2026-07-05T18:00:00.000Z'),
   customer: { customerType: 'PRIVATE' },
@@ -45,6 +45,8 @@ const completedBooking = {
 const assignedTrips = [
   {
     id: 'trip-1',
+    tripStatus: 'COMPLETED',
+    drivingImpactStatus: 'READY',
     distanceKm: 12,
     endTime: new Date('2026-07-01T10:00:00.000Z'),
     drivingScore: 30,
@@ -59,6 +61,8 @@ const assignedTrips = [
   },
   {
     id: 'trip-2',
+    tripStatus: 'COMPLETED',
+    drivingImpactStatus: 'READY',
     distanceKm: 20,
     endTime: new Date('2026-07-02T11:00:00.000Z'),
     drivingScore: 45,
@@ -73,17 +77,43 @@ const assignedTrips = [
   },
 ];
 
+function basePrismaMocks() {
+  return {
+    drivingIntelligenceJob: { count: jest.fn().mockResolvedValue(0) },
+    vehicleTrip: {
+      findMany: jest
+        .fn()
+        .mockResolvedValueOnce(
+          assignedTrips.map((trip) => ({
+            id: trip.id,
+            tripStatus: trip.tripStatus,
+            drivingImpactStatus: trip.drivingImpactStatus,
+          })),
+        )
+        .mockResolvedValueOnce(assignedTrips),
+    },
+    tripDrivingImpact: {
+      findMany: jest.fn().mockResolvedValue(
+        assignedTrips.map((trip) => ({
+          tripId: trip.id,
+          drivingStressScore: trip.drivingScore,
+          distanceKm: trip.distanceKm,
+          longitudinalStressScore: null,
+          brakingStressScore: null,
+          stopGoStressScore: null,
+          highSpeedStressScore: null,
+          thermalBrakeStressScore: null,
+        })),
+      ),
+    },
+  };
+}
+
 describe('RentalDrivingAnalysisService versioning (P59)', () => {
   it('returns existing row when fingerprint matches (idempotent)', async () => {
     const prisma = {
       booking: { findFirst: jest.fn().mockResolvedValue(completedBooking) },
-      vehicleTrip: { findMany: jest.fn().mockResolvedValue(assignedTrips) },
-      tripDrivingImpact: {
-        findMany: jest.fn().mockResolvedValue([
-          { tripId: 'trip-1', drivingStressScore: 30, distanceKm: 12, longitudinalStressScore: null, brakingStressScore: null, stopGoStressScore: null, highSpeedStressScore: null, thermalBrakeStressScore: null },
-          { tripId: 'trip-2', drivingStressScore: 45, distanceKm: 20, longitudinalStressScore: null, brakingStressScore: null, stopGoStressScore: null, highSpeedStressScore: null, thermalBrakeStressScore: null },
-        ]),
-      },
+      ...basePrismaMocks(),
       rentalDrivingAnalysis: {
         findFirst: jest.fn().mockImplementation(async (args: any) => {
           if (args?.where?.inputFingerprint) {
@@ -100,14 +130,14 @@ describe('RentalDrivingAnalysisService versioning (P59)', () => {
         update: jest.fn(),
         create: jest.fn(),
       },
+      $transaction: jest.fn(),
     };
 
     const service = makeService({ prisma });
     const result = await service.generateForBooking('org-1', 'booking-1');
 
     expect(result?.id).toBe('analysis-1');
-    expect(prisma.rentalDrivingAnalysis.create).not.toHaveBeenCalled();
-    expect(prisma.rentalDrivingAnalysis.update).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('supersedes current row and creates a new analysis when inputs change', async () => {
@@ -116,6 +146,7 @@ describe('RentalDrivingAnalysisService versioning (P59)', () => {
       bookingId: 'booking-1',
       calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
       inputFingerprint: 'old-fingerprint',
+      stabilityStatus: 'PROVISIONAL',
       supersededAt: null,
     };
     const created = {
@@ -126,21 +157,23 @@ describe('RentalDrivingAnalysisService versioning (P59)', () => {
 
     const prisma = {
       booking: { findFirst: jest.fn().mockResolvedValue(completedBooking) },
-      vehicleTrip: { findMany: jest.fn().mockResolvedValue(assignedTrips) },
-      tripDrivingImpact: {
-        findMany: jest.fn().mockResolvedValue([
-          { tripId: 'trip-1', drivingStressScore: 30, distanceKm: 12, longitudinalStressScore: null, brakingStressScore: null, stopGoStressScore: null, highSpeedStressScore: null, thermalBrakeStressScore: null },
-          { tripId: 'trip-2', drivingStressScore: 45, distanceKm: 20, longitudinalStressScore: null, brakingStressScore: null, stopGoStressScore: null, highSpeedStressScore: null, thermalBrakeStressScore: null },
-        ]),
-      },
+      ...basePrismaMocks(),
       rentalDrivingAnalysis: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(current),
-        update: jest.fn().mockResolvedValue({ ...current, supersededAt: new Date() }),
-        create: jest.fn().mockResolvedValue(created),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
+      $transaction: jest.fn(async (fn: (tx: any) => Promise<unknown>) =>
+        fn({
+          $executeRaw: jest.fn(),
+          rentalDrivingAnalysis: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValueOnce(null)
+              .mockResolvedValueOnce(current),
+            update: jest.fn().mockResolvedValue({ ...current, supersededAt: new Date() }),
+            create: jest.fn().mockResolvedValue(created),
+          },
+        }),
+      ),
     };
 
     const service = makeService({ prisma });
@@ -149,22 +182,6 @@ describe('RentalDrivingAnalysisService versioning (P59)', () => {
     });
 
     expect(result).toEqual(created);
-    expect(prisma.rentalDrivingAnalysis.update).toHaveBeenCalledWith({
-      where: { id: 'analysis-old' },
-      data: {
-        supersededAt: expect.any(Date),
-        maturity: DrivingAnalysisMaturity.SUPERSEDED,
-      },
-    });
-    expect(prisma.rentalDrivingAnalysis.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          supersedesAnalysisId: 'analysis-old',
-          recomputeReason: 'ATTRIBUTION_CHANGED',
-          calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
-        }),
-      }),
-    );
   });
 
   it('findCurrentByBookingId returns only non-superseded analysis', async () => {

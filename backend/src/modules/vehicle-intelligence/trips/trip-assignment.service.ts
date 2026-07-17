@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Optional, Inject, forwardRef } from '@nestjs/common';
 import {
   BookingStatus,
   TripAssignmentStatus,
@@ -11,6 +11,8 @@ import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
 import type { BookingOverlapCandidate } from './trip-canonical-hydration.types';
 import { pickBookingForAssignment } from './trip-canonical-hydration.booking-match';
+import { RentalDrivingAnalysisRecomputeTriggerService } from '../../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
+import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../../rental-driving-analysis/rental-driving-analysis.recompute.types';
 
 export interface TripAssignmentResolution {
   assignmentStatus: TripAssignmentStatus;
@@ -48,6 +50,9 @@ export class TripAssignmentService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional()
+    @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeTriggerService))
+    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerService,
   ) {}
 
   async applyAssignmentToTrip(tripId: string): Promise<TripAssignmentResolution | null> {
@@ -87,6 +92,26 @@ export class TripAssignmentService {
         isPrivateTrip: resolution.isPrivateTrip,
       },
     });
+
+    if (resolution.assignedBookingId) {
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: trip.vehicleId },
+        select: { organizationId: true },
+      });
+      if (vehicle?.organizationId) {
+        void this.rentalRecomputeTrigger
+          ?.enqueueForBooking({
+            organizationId: vehicle.organizationId,
+            vehicleId: trip.vehicleId,
+            bookingId: resolution.assignedBookingId,
+            tripId,
+            reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_ASSIGNMENT_CORRECTED,
+            correlationId: `rental-recompute:${resolution.assignedBookingId}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_ASSIGNMENT_CORRECTED}`,
+          })
+          .catch(() => {});
+      }
+    }
+
     return resolution;
   }
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional, forwardRef } from '@nestjs/common';
 import { DriverAttributionSource, HandoverKind } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { resolveBookingDriverPool, isDriverInBookingPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
@@ -15,6 +15,8 @@ import { DRIVER_ATTRIBUTION_MODEL_VERSION } from './driver-attribution.config';
 import { pickCanonicalDriverAttribution } from './driver-attribution-priority';
 import { DriverAttributionRepository } from './driver-attribution.repository';
 import type { DriverAttributionEvidence, UpsertDriverAttributionInput } from './driver-attribution.types';
+import { RentalDrivingAnalysisRecomputeTriggerService } from '../../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
+import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../../rental-driving-analysis/rental-driving-analysis.recompute.types';
 
 const HANDOVER_WINDOW_MS = 6 * 60 * 60 * 1000;
 
@@ -25,6 +27,9 @@ export class DriverAttributionService {
     private readonly repository: DriverAttributionRepository,
     private readonly tripAttributionService: TripAttributionService,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
+    @Optional()
+    @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeTriggerService))
+    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerService,
   ) {}
 
   findByTrip(organizationId: string, tripId: string) {
@@ -392,11 +397,13 @@ export class DriverAttributionService {
     });
 
     if (input.bookingId) {
-      await this.jobDispatcher.enqueue({
-        ...base,
+      await this.rentalRecomputeTrigger?.enqueueForBooking({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
         bookingId: input.bookingId,
-        jobType: 'RENTAL_DRIVING_ANALYSIS_RECOMPUTE',
-        idempotencyKey: `${input.bookingId}:rental-analysis:${analysisRunId}:attribution`,
+        tripId: input.tripId,
+        reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.ATTRIBUTION_CHANGED,
+        correlationId: `rental-recompute:${input.bookingId}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.ATTRIBUTION_CHANGED}`,
       });
     }
   }

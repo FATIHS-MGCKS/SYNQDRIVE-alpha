@@ -4390,6 +4390,12 @@ enum RentalDrivingAnalysisCompleteness {
   INSUFFICIENT
 }
 
+/// Publication stability for rental analysis (P60).
+enum RentalDrivingAnalysisStability {
+  PROVISIONAL
+  STABLE
+}
+
 // ------------------------------------------------
 // RENTAL DRIVING ANALYSIS (stored per completed rental period)
 // ------------------------------------------------
@@ -4420,6 +4426,7 @@ model RentalDrivingAnalysis {
   generatedAt            DateTime                          @default(now()) @map("generated_at")
   sourceTripsFinalizedAt DateTime?                         @map("source_trips_finalized_at")
   analysisCompleteness   RentalDrivingAnalysisCompleteness @default(PARTIAL) @map("analysis_completeness")
+  stabilityStatus        RentalDrivingAnalysisStability    @default(PROVISIONAL) @map("stability_status")
   maturity               DrivingAnalysisMaturity           @default(PUBLISHED) @map("maturity")
   supersededAt           DateTime?                         @map("superseded_at")
   supersedesAnalysisId   String?                           @map("supersedes_analysis_id")
@@ -4446,6 +4453,7 @@ model RentalDrivingAnalysis {
   @@index([driverId])
   @@index([periodStart, periodEnd])
   @@index([bookingId, supersededAt])
+  @@index([bookingId, stabilityStatus])
   @@index([inputFingerprint])
   @@index([supersedesAnalysisId])
   @@map("rental_driving_analyses")
