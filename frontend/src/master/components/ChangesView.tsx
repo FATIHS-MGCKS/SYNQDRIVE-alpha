@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pm2-stability-bootstrap-fix-2026-07-17',
+    version: '4.9.582',
+    title: 'V4.9.582 — PM2 Bootstrap-Stabilität (Audit Prompt 6)',
+    summary: [
+      'Pre-Deploy `ops:bootstrap-smoke` bricht Deploy vor `pm2 reload` ab, wenn NestJS-DI scheitert (belegte Ursache: 517× exit code 1 Crash-Loops).',
+      '`ecosystem.config.cjs`: `min_uptime` 10s, `max_restarts` 5, `exp_backoff_restart_delay` 2s — begrenzt Autorestart-Schleifen.',
+      '`main.ts`: strukturierte `unhandledRejection`-Logs (kein Prozess-Exit); `BOOTSTRAP_FAILED` bei Startfehlern.',
+      'Battery V2: BullMQ-Job-IDs ohne `:` (`battery-v2-` + sanitized key) — behebt 7540+ Scheduler-Enqueue-Fehler.',
+    ],
+    reason:
+      'Prompt 6/84: Nur PROVEN/LIKELY Restart-Ursachen aus `docs/audits/document-worker-pm2-stability.md` — Deploy-Bootstrap-Fehler + PM2-Autorestart-Verstärkung + Battery-Job-ID-Kolon.',
+    previousBehavior:
+      'Deploy → `pm2 restart` auf kaputtem Build → ~2–3s Crash-Loop (517×); keine Bootstrap-Smoke; Battery-IDs mit `:` von BullMQ abgelehnt.',
+    details:
+      'main.ts, ecosystem.config.cjs, scripts/ops/bootstrap-smoke.ts, vps-deploy-release.sh, battery-v2-job-queue.util.ts (+ Specs), package.json ops:* scripts.',
+    affectsArchitecture: true,
+    module: 'Ops',
+    createdAt: '2026-07-17T14:30:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',

@@ -58,6 +58,29 @@ function resolveLogLevels(): LogLevel[] {
     : ['fatal', 'error', 'warn', 'log', 'debug', 'verbose'];
 }
 
+function registerProcessHandlers(): void {
+  const logger = new Logger('Process');
+
+  process.on('unhandledRejection', (reason: unknown) => {
+    const message = reason instanceof Error ? reason.message : String(reason);
+    const stack = reason instanceof Error ? reason.stack : undefined;
+    logger.error({
+      event: 'unhandledRejection',
+      message,
+      stack,
+    });
+  });
+
+  process.on('uncaughtException', (error: Error) => {
+    logger.error({
+      event: 'uncaughtException',
+      message: error.message,
+      stack: error.stack,
+    });
+    process.exit(1);
+  });
+}
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const logLevels = resolveLogLevels();
@@ -137,4 +160,16 @@ async function bootstrap() {
   logger.log(`Active log levels: [${logLevels.join(', ')}]`);
 }
 
-bootstrap();
+registerProcessHandlers();
+
+bootstrap().catch((error: unknown) => {
+  const logger = new Logger('Bootstrap');
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  logger.error({
+    event: 'BOOTSTRAP_FAILED',
+    message,
+    stack,
+  });
+  process.exit(1);
+});

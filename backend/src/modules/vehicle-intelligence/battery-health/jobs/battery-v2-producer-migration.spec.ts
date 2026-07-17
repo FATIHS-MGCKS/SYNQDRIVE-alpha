@@ -112,7 +112,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       lvBatteryObservedAt: receivedAt,
     });
 
-    expect(jobId).toContain('battery-v2:');
+    expect(jobId).toContain('battery-v2-');
     expect(queueAdd).toHaveBeenCalledTimes(1);
     const [jobType, payload, opts] = queueAdd.mock.calls[0];
     expect(jobType).toBe('BATTERY_OBSERVATION_CLASSIFY');
@@ -349,7 +349,7 @@ describe('BatteryV2TripStartProducer', () => {
     });
 
     const expectedKey = `battery-start-proxy:${TRIP}:1.0.0`;
-    expect(first).toBe(`battery-v2:${expectedKey}`);
+    expect(first).toBe(`battery-v2-${expectedKey.replace(/:/g, '-')}`);
     expect(second).toBe(first);
     expect(queueAdd).toHaveBeenCalledTimes(1);
     expect(queueAdd.mock.calls[0][2].delay).toBeGreaterThan(0);
