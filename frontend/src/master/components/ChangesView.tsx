@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p64-rental-pattern-summary-2026-07-17',
+    version: '4.9.565',
+    title: 'Driving Intelligence V2 P64 — Rental Pattern Summary',
+    summary: [
+      'Kunden- und fahrerbezogene Pattern Summary ohne automatische Sperre.',
+      'Bewertet nur ausreichend attribuierte, bewertbare Mieten mit kompatiblem Modell und qualifizierter Evidence.',
+      'Output: assessedRentals, concerningRentals, repeatedPattern, strongSingleIncident, attributionCoverage, dataCoverage, recommendationEligibility, reasons.',
+      'Einzelner Proxy erzeugt kein Muster; private/unklare Fahrten werden nicht zugerechnet.',
+      'Vertragspartner und tatsächlicher Fahrer bleiben getrennte Scopes.',
+    ],
+    reason: 'Prompt 64/76 — kunden- bzw. fahrerbezogene Mustererkennung über mehrere Mieten, informativ ohne Auto-Block.',
+    previousBehavior:
+      'P63 lieferte nur Einzel-Miet-Analyse — keine aggregierte Wiederholungs- oder Einzelfall-Bewertung über Miet-Historie.',
+    details:
+      '`rental-driving-analysis.pattern-summary.ts`, Integration in `recomputeForBooking` + Payload `patternSummary.bookingCustomer` / `patternSummary.driverConduct`. Keine automatische Sperre.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p63-rental-road-distribution-aggregation-2026-07-17',
     version: '4.9.564',
     title: 'Driving Intelligence V2 P63 — Rental Road Distribution Aggregation',
