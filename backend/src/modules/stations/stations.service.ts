@@ -13,6 +13,9 @@ import { CreateStationDto } from './dto/create-station.dto';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
 import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
+import type { StationScopeContext } from '@shared/stations/station-scope.types';
+import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
+import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 
@@ -129,6 +132,37 @@ export interface StationVehicleAssignmentResult {
   movedFromOtherStations: number;
 }
 
+export interface StationOperationsDto {
+  pickupEnabled: boolean;
+  returnEnabled: boolean;
+  afterHoursReturnEnabled: boolean;
+  keyBoxAvailable: boolean;
+  capacity: number | null;
+  radiusMeters: number | null;
+  geofenceRadiusMeters: number | null;
+  openingHours: Prisma.JsonValue | null;
+  holidayRules: Prisma.JsonValue | null;
+  handoverInstructions: string | null;
+  returnInstructions: string | null;
+  timezone: string | null;
+}
+
+export interface StationTeamDto {
+  managerName: string | null;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+  staff: Array<{ id: string; name: string; role: string | null }>;
+}
+
+export interface StationActivityEntryDto {
+  id: string;
+  action: string;
+  description: string;
+  userName: string;
+  createdAt: string;
+}
+
 @Injectable()
 export class StationsService {
   private readonly logger = new Logger(StationsService.name);
@@ -136,6 +170,7 @@ export class StationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stationValidation: StationValidationService,
+    private readonly stationAccessScope: StationAccessScopeService,
   ) {}
 
   private stationIncludeCount() {
@@ -146,14 +181,21 @@ export class StationsService {
   // CRUD
   // ─────────────────────────────────────────────────────────────
 
-  async findAll(organizationId: string, query?: ListStationsQueryDto): Promise<StationDto[]> {
-    const where: Prisma.StationWhereInput = { organizationId };
-    if (query?.status) where.status = query.status;
-    if (query?.type) where.type = query.type;
+  async findAll(
+    organizationId: string,
+    query?: ListStationsQueryDto,
+    scope?: StationScopeContext,
+  ): Promise<StationDto[]> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const extra: Prisma.StationWhereInput = {};
+    if (query?.status) extra.status = query.status;
+    if (query?.type) extra.type = query.type;
     if (query?.selectableOnly === 'true') {
-      where.status = { in: SELECTABLE_STATION_STATUSES };
-      where.pickupEnabled = true;
+      extra.status = { in: SELECTABLE_STATION_STATUSES };
+      extra.pickupEnabled = true;
     }
+
+    const where = this.stationAccessScope.buildStationWhere(access, extra);
 
     const stations = await this.prisma.station.findMany({
       where,
@@ -163,12 +205,19 @@ export class StationsService {
     return stations.map((s) => this.toDto(s, s._count.vehiclesHome));
   }
 
-  async findOne(organizationId: string, id: string): Promise<StationDto> {
+  async findOne(
+    organizationId: string,
+    id: string,
+    scope?: StationScopeContext,
+  ): Promise<StationDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
     const station = await this.prisma.station.findFirst({
-      where: { id, organizationId },
+      where: this.stationAccessScope.buildStationWhere(access, { id }),
       include: this.stationIncludeCount(),
     });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
+    if (!station) {
+      throw new NotFoundException(`Station ${id} not found`);
+    }
     return this.toDto(station, station._count.vehiclesHome);
   }
 
@@ -363,16 +412,21 @@ export class StationsService {
   // Stats for dashboard header / sidebar
   // ─────────────────────────────────────────────────────────────
 
-  async getStationStats(organizationId: string): Promise<StationsStatsDto> {
+  async getStationStats(
+    organizationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationsStatsDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+
     const [stations, unassignedVehicles] = await Promise.all([
       this.prisma.station.findMany({
-        where: { organizationId, status: { not: 'ARCHIVED' } },
+        where: this.stationAccessScope.buildStationWhere(access, {
+          status: { not: 'ARCHIVED' },
+        }),
         include: { _count: { select: { vehiclesHome: true } } },
         orderBy: [{ isPrimary: 'desc' }, { status: 'asc' }, { name: 'asc' }],
       }),
-      this.prisma.vehicle.count({
-        where: { organizationId, homeStationId: null },
-      }),
+      this.countUnassignedVehicles(access),
     ]);
 
     const totalVehicles = stations.reduce((sum, s) => sum + s._count.vehiclesHome, 0);
@@ -398,16 +452,25 @@ export class StationsService {
   async getStationOverviewStats(
     organizationId: string,
     stationId: string,
+    scope?: StationScopeContext,
   ): Promise<StationOverviewStatsDto> {
-    const station = await this.prisma.station.findFirst({
-      where: { id: stationId, organizationId },
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        capacity: true,
+        latitude: true,
+        longitude: true,
+        openingHours: true,
+        pickupEnabled: true,
+        returnEnabled: true,
+        status: true,
+      },
     });
-    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
-    const stationVehicleWhere: Prisma.VehicleWhereInput = {
-      organizationId,
-      OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
-    };
+    const stationVehicleWhere = this.stationAccessScope.buildStationLinkedVehicleWhere(
+      access,
+      stationId,
+    );
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -425,12 +488,8 @@ export class StationsService {
 
     const stationBookingIds = (
       await this.prisma.booking.findMany({
-        where: {
-          organizationId,
-          OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
-        },
+        where: this.stationAccessScope.buildStationBookingsWhere(access, stationId),
         select: { id: true },
-        take: 500,
       })
     ).map((b) => b.id);
 
@@ -458,56 +517,39 @@ export class StationsService {
         },
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
+        where: this.stationAccessScope.buildStationPickupBookingsWhere(access, stationId, {
           startDate: { gte: startOfToday, lt: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
+        where: this.stationAccessScope.buildStationReturnBookingsWhere(access, stationId, {
           endDate: { gte: startOfToday, lt: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
+        where: this.stationAccessScope.buildStationPickupBookingsWhere(access, stationId, {
           startDate: { gte: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
+        where: this.stationAccessScope.buildStationReturnBookingsWhere(access, stationId, {
           endDate: { gte: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
     ]);
 
-    let openTasks = 0;
-    if (stationVehicleIds.length || stationBookingIds.length) {
-      openTasks = await this.prisma.orgTask.count({
-        where: {
-          organizationId,
-          status: { in: ['OPEN', 'IN_PROGRESS'] },
-          OR: [
-            ...(stationVehicleIds.length
-              ? [{ vehicleId: { in: stationVehicleIds } }]
-              : []),
-            ...(stationBookingIds.length
-              ? [{ bookingId: { in: stationBookingIds } }]
-              : []),
-          ],
-        },
-      });
-    }
+    const openTasks = await this.prisma.orgTask.count({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        stationVehicleIds,
+        stationBookingIds,
+      ),
+    });
 
     const capacity = station.capacity ?? null;
     const capacityUsagePercent =
@@ -534,13 +576,18 @@ export class StationsService {
     };
   }
 
-  async getStationFleet(organizationId: string, stationId: string) {
-    await this.findOne(organizationId, stationId);
+  async getStationFleet(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ) {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true },
+    });
+
     return this.prisma.vehicle.findMany({
-      where: {
-        organizationId,
-        OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
-      },
+      where: this.stationAccessScope.buildStationFleetWhere(access, stationId),
       select: {
         id: true,
         vehicleName: true,
@@ -556,13 +603,18 @@ export class StationsService {
     });
   }
 
-  async getStationBookings(organizationId: string, stationId: string) {
-    await this.findOne(organizationId, stationId);
+  async getStationBookings(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ) {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true, status: true },
+    });
+
     const bookings = await this.prisma.booking.findMany({
-      where: {
-        organizationId,
-        OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
-      },
+      where: this.stationAccessScope.buildStationBookingsWhere(access, stationId),
       include: {
         customer: { select: { firstName: true, lastName: true } },
         vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
@@ -585,6 +637,104 @@ export class StationsService {
         b.vehicle.licensePlate ||
         '',
     }));
+  }
+
+  async getStationOperations(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationOperationsDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        pickupEnabled: true,
+        returnEnabled: true,
+        afterHoursReturnEnabled: true,
+        keyBoxAvailable: true,
+        capacity: true,
+        radiusMeters: true,
+        openingHours: true,
+        holidayRules: true,
+        handoverInstructions: true,
+        returnInstructions: true,
+        timezone: true,
+      },
+    });
+
+    return {
+      pickupEnabled: station.pickupEnabled,
+      returnEnabled: station.returnEnabled,
+      afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+      keyBoxAvailable: station.keyBoxAvailable,
+      capacity: station.capacity,
+      radiusMeters: station.radiusMeters,
+      geofenceRadiusMeters: station.radiusMeters,
+      openingHours: station.openingHours,
+      holidayRules: station.holidayRules,
+      handoverInstructions: station.handoverInstructions,
+      returnInstructions: station.returnInstructions,
+      timezone: station.timezone,
+    };
+  }
+
+  async getStationTeam(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationTeamDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        managerName: true,
+        phone: true,
+        email: true,
+      },
+    });
+
+    return {
+      managerName: station.managerName,
+      contactPerson: station.managerName,
+      phone: station.phone,
+      email: station.email,
+      staff: [],
+    };
+  }
+
+  async getStationActivity(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+    limit = 50,
+  ): Promise<StationActivityEntryDto[]> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true },
+    });
+
+    const entries = await this.prisma.activityLog.findMany({
+      where: this.stationAccessScope.buildStationActivityWhere(access, stationId),
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Math.max(limit, 1), 100),
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    return entries.map((entry) => ({
+      id: entry.id,
+      action: entry.action,
+      description: entry.description,
+      userName: entry.user?.name || entry.user?.email || '',
+      createdAt: entry.createdAt.toISOString(),
+    }));
+  }
+
+  private async countUnassignedVehicles(access: StationAccessScope): Promise<number> {
+    if (access.readableStationIds !== null) {
+      return 0;
+    }
+
+    return this.prisma.vehicle.count({
+      where: { organizationId: access.orgId, homeStationId: null },
+    });
   }
 
   async assignVehicleToStation(
