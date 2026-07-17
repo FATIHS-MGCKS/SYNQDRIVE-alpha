@@ -14,7 +14,7 @@ import {
 } from '../components/documents/document-extraction.shared';
 import { mapServerToFlowStatus } from '../lib/document-extraction-lifecycle';
 import { createExtractionPoller } from '../lib/document-extraction-polling';
-import type { DocumentExtractionMetadata, PublicDocumentExtraction } from '../lib/document-extraction.types';
+import type { DocumentExtractionMetadata, PublicDocumentExtraction, PublicUploadContextDisplay } from '../lib/document-extraction.types';
 import {
   buildAcceptAttribute,
   validateUploadFile,
@@ -52,6 +52,7 @@ export function useDocumentExtractionFlow({
   const [editingFields, setEditingFields] = useState(false);
   const [editedFields, setEditedFields] = useState<ReviewField[]>([]);
   const [plausibility, setPlausibility] = useState<Plausibility | null>(null);
+  const [uploadContext, setUploadContext] = useState<PublicUploadContextDisplay | null>(null);
   const [extractionId, setExtractionId] = useState<string | null>(null);
   const [confirmedDocType, setConfirmedDocType] = useState(initialDocType);
 
@@ -105,6 +106,7 @@ export function useDocumentExtractionFlow({
       const docType = record.effectiveDocumentType || record.documentType || documentType;
       setConfirmedDocType(docType);
       if (record.sourceFileName) setUploadedFileName(record.sourceFileName);
+      setUploadContext(record.uploadContext ?? null);
 
       if (mapped === 'ready') {
         setEditedFields(buildReviewFields(docType, (record.extractedData ?? undefined) as Record<string, unknown> | undefined, { locale }));
@@ -157,6 +159,7 @@ export function useDocumentExtractionFlow({
     setEditingFields(false);
     setEditedFields([]);
     setPlausibility(null);
+    setUploadContext(null);
     setExtractionId(null);
     setErrorMessage(null);
     setValidationError(null);
@@ -379,6 +382,7 @@ export function useDocumentExtractionFlow({
     editedFields,
     setEditedFields,
     plausibility,
+    uploadContext,
     extractionId,
     duplicateBlocked,
     uploadDuplicateWarning,

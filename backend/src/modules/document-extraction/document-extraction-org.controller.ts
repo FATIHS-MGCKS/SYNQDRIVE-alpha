@@ -89,6 +89,7 @@ export class DocumentExtractionOrgController {
       requestedDocumentType: body.requestedDocumentType,
       optionalContextType: body.optionalContextType,
       optionalContextId: body.optionalContextId,
+      sourceSurface: body.sourceSurface ?? body.source ?? 'org_inbox',
       originalName: file.originalname,
       mimeType: file.mimetype,
       buffer: file.buffer,

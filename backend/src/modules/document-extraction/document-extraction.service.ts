@@ -37,6 +37,7 @@ import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentRetentionService } from './document-retention.service';
 import { DocumentRetentionRunOptions } from './document-retention.types';
 import { DocumentUploadContextService } from './document-upload-context.service';
+import { buildInitialUploadContextPipelineState } from './document-upload-context.util';
 import {
   DocumentMalwareDetectedError,
   DocumentMalwareDownloadBlockedError,
@@ -256,6 +257,7 @@ export interface CreateFromOrgUploadInput {
   requestedDocumentType?: string;
   optionalContextType?: string | null;
   optionalContextId?: string | null;
+  sourceSurface?: string | null;
   originalName: string;
   mimeType: string;
   buffer: Buffer;
@@ -361,6 +363,7 @@ export class DocumentExtractionService implements OnModuleInit {
       organizationId: vehicle.organizationId,
       vehicleId: input.vehicleId,
       requestedDocumentType: input.documentType,
+      sourceSurface: input.uploadSource ?? 'vehicle_detail',
       originalName: input.originalName,
       mimeType: input.mimeType,
       buffer: input.buffer,
@@ -391,6 +394,8 @@ export class DocumentExtractionService implements OnModuleInit {
       vehicleId: input.vehicleId ?? null,
       optionalContextType: input.optionalContextType,
       optionalContextId: input.optionalContextId,
+      sourceSurface: input.sourceSurface ?? input.uploadSource ?? 'org_inbox',
+      providedByUserId: input.userId ?? null,
     });
     const organizationId = uploadTarget.organizationId;
     const resolvedVehicleId = uploadTarget.vehicleId;
@@ -503,6 +508,7 @@ export class DocumentExtractionService implements OnModuleInit {
           mergePipelinePlausibility(null, {
             fileFingerprint,
             uploadDuplicate: pipelineDuplicate,
+            uploadContext: buildInitialUploadContextPipelineState(uploadTarget.contextCandidate),
           }),
           this.lifecycle.buildStorageCapabilitiesSnapshot(),
         ) as Prisma.InputJsonValue,

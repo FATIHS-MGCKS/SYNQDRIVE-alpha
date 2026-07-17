@@ -20,6 +20,7 @@ export interface PipelinePlausibilityPayload {
   uploadDuplicate?: import('./document-upload-duplicate.types').PipelineUploadDuplicatePayload;
   malwareScan?: import('./document-malware-scan-status.types').DocumentMalwareScanPipelineState;
   lifecycle?: import('./document-storage-lifecycle.types').DocumentPipelineLifecyclePayload;
+  uploadContext?: import('./document-upload-context.types').DocumentUploadContextPipelineState;
 }
 
 export interface DocumentTypeAuditEntry {
@@ -97,6 +98,7 @@ export function mergePipelinePlausibility(
     uploadDuplicate: patch.uploadDuplicate ?? current.uploadDuplicate,
     malwareScan: patch.malwareScan ?? current.malwareScan,
     lifecycle: patch.lifecycle ?? current.lifecycle,
+    uploadContext: patch.uploadContext ?? current.uploadContext,
   };
   return base;
 }

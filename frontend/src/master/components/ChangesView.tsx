@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-optional-context-contract-2026-07-17',
+    version: '4.9.626',
+    title: 'V4.9.626 — Document Intake V2 OptionalContext Contract',
+    summary: [
+      'OptionalContext-Typen VEHICLE, BOOKING, CUSTOMER, DRIVER, FINE, INVOICE, NONE mit Candidate-Feldern entityType/Id, sourceSurface, providedAt, providedByUserId.',
+      'Kontext wird als CANDIDATE in plausibility._pipeline.uploadContext gespeichert — nicht automatisch bestätigt.',
+      'Resolver ALIGNED/CONFLICT/NO_SIGNAL nach OCR; Konflikte im Public DTO und UI-Banner „Aufgerufen aus … – noch nicht bestätigt“.',
+      'searchScope grenzt Entity Search ein (narrowEntitySearchCandidates) ohne leere Listen zu erfinden; nur VEHICLE setzt vehicleId.',
+    ],
+    reason:
+      'Upload-Herkunft transparent machen, OCR-Widersprüche sichtbar halten und Entity-Suche kontextuell eingrenzen ohne Auto-Bestätigung.',
+    previousBehavior:
+      'DocumentUploadContextService nur VEHICLE; kein Pipeline-State, kein Resolver, kein UI-Banner für unbestätigten Kontext.',
+    details: 'architecture/DOCUMENT_OPTIONAL_CONTEXT_CONTRACT_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T20:00:00.000Z',
+  },
+  {
     id: 'document-org-upload-endpoint-2026-07-17',
     version: '4.9.625',
     title: 'V4.9.625 — Document Intake V2 Org-Wide Upload Endpoint',

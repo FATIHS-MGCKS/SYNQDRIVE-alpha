@@ -14,6 +14,11 @@ import {
 import { getAllowedDocumentExtractionActions } from './document-extraction-actions.util';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
 import { buildPublicUploadDuplicateDto } from './dto/public-upload-duplicate.dto';
+import {
+  buildUploadContextDisplayLabel,
+  readUploadContextPipelineState,
+} from './document-upload-context.util';
+import type { PublicUploadContextDisplayDto } from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
   id: string;
@@ -156,6 +161,32 @@ function buildAudit(record: ExtractionRecord): PublicDocumentExtractionAuditDto 
   };
 }
 
+function buildUploadContextDisplay(
+  record: ExtractionRecord,
+): PublicUploadContextDisplayDto | null {
+  const pipeline = readUploadContextPipelineState(record.plausibility);
+  const candidate = pipeline?.candidate;
+  if (!candidate) return null;
+  const resolver = pipeline?.resolver;
+  return {
+    entityType: candidate.entityType,
+    entityId: candidate.entityId,
+    sourceSurface: candidate.sourceSurface,
+    providedAt: candidate.providedAt,
+    providedByUserId: candidate.providedByUserId,
+    confirmationStatus: 'CANDIDATE',
+    label: buildUploadContextDisplayLabel(candidate),
+    resolverStatus: resolver?.status ?? 'PENDING',
+    conflicts: (resolver?.conflicts ?? []).map((conflict) => ({
+      field: conflict.field,
+      message: conflict.message,
+      contextValue: conflict.contextValue,
+      resolvedValue: conflict.resolvedValue,
+      severity: conflict.severity,
+    })),
+  };
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
@@ -166,6 +197,7 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     organizationId: record.organizationId ?? null,
     uploadContextType: record.uploadContextType ?? null,
     uploadContextId: record.uploadContextId ?? null,
+    uploadContext: buildUploadContextDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,
