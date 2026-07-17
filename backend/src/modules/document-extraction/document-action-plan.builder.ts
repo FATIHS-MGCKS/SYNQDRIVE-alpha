@@ -9,6 +9,7 @@ import {
 import { assessTechnicalPlan, isTechnicalDocumentProfile } from './document-action-planner.technical-rules';
 import { assessFinePlan, isFineDocumentProfile } from './document-action-planner.fine-rules';
 import { assessServicePlan, isServiceDocumentProfile } from './document-action-planner.service-rules';
+import { resolveConfirmedValuesForActionPlan } from './document-field-provenance.util';
 import {
   DOCUMENT_ACTION_PLAN_VERSION,
   computeActionPlanFingerprint,
@@ -34,9 +35,10 @@ function withSequences(
 }
 
 function assessPlanForDocumentType(input: BuildDocumentActionPlanInput): PlannerAssessment {
+  const confirmedData = resolveConfirmedValuesForActionPlan(input.confirmedData);
   const plannerInput = {
     effectiveDocumentType: input.documentType,
-    confirmedData: input.confirmedData,
+    confirmedData,
     plausibilityChecks: input.plausibilityChecks,
     ...(input.planContext ?? {}),
   };

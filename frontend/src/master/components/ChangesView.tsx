@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-field-provenance-2026-07-17',
+    version: '4.9.638',
+    title: 'V4.9.638 — Document Intake V2 Field Provenance',
+    summary: [
+      'Pro-Feld-Provenienz: rawValue, normalizedValue, confidence, page, textEvidence, sourceType, manuallyEdited, confirmedValue, confirmedBy, confirmedAt.',
+      'Textbelege begrenzt (~120 Zeichen) und für sensible Felder maskiert — kein Volltext im API-Standardpayload.',
+      'Review-DTO zeigt KI-Wert vs. Nutzerkorrektur; correctionCount/correctedFieldKeys für Field Correction Rate.',
+      'Action Plan nutzt ausschließlich bestätigte Werte; confirm() aktualisiert fieldProvenance in _pipeline.',
+    ],
+    reason:
+      'Nachvollziehbare Feldherkunft und messbare Korrekturrate — getrennte AI- und Nutzerwerte für Review und Apply.',
+    previousBehavior:
+      'Strukturierte Extraktion ohne separates confirmedValue; keine bounded textEvidence; Action Plan ohne expliziten Confirmed-Values-Vertrag.',
+    details: 'architecture/DOCUMENT_FIELD_PROVENANCE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T07:00:00.000Z',
+  },
+  {
     id: 'document-structured-extraction-registry-2026-07-17',
     version: '4.9.637',
     title: 'V4.9.637 — Document Intake V2 Structured Extraction via Schema Registry',

@@ -32,6 +32,7 @@ export interface PipelinePlausibilityPayload {
   structuredExtraction?: import('./document-structured-extraction.types').StructuredExtractionPayload | null;
   structuredExtractionRun?: import('./document-structured-extraction.types').StructuredExtractionRun | null;
   supersededExtractionRuns?: import('./document-structured-extraction.types').SupersededStructuredExtractionRun[];
+  fieldProvenance?: import('./document-field-provenance.types').DocumentFieldProvenanceRegistry | null;
 }
 
 export interface DocumentTypeAuditEntry {
@@ -121,6 +122,8 @@ export function mergePipelinePlausibility(
         : current.structuredExtractionRun,
     supersededExtractionRuns:
       patch.supersededExtractionRuns ?? current.supersededExtractionRuns,
+    fieldProvenance:
+      'fieldProvenance' in patch ? patch.fieldProvenance : current.fieldProvenance,
   };
   return base;
 }

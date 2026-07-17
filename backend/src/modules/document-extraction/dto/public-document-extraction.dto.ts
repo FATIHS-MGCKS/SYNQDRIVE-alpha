@@ -171,6 +171,26 @@ export interface PublicEntityCandidateRankingDto {
   candidates: PublicEntityCandidateRankDto[];
 }
 
+export interface PublicFieldProvenanceDto {
+  fieldKey: string;
+  rawValue: unknown;
+  normalizedValue: unknown;
+  confidence: number | null;
+  page: number | null;
+  textEvidence: string | null;
+  sourceType:
+    | 'ai_extraction'
+    | 'ai_merged'
+    | 'ai_conflict'
+    | 'missing'
+    | 'user_correction'
+    | 'user_confirmed';
+  manuallyEdited: boolean;
+  confirmedValue: unknown;
+  confirmedBy: string | null;
+  confirmedAt: string | null;
+}
+
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
@@ -222,6 +242,9 @@ export interface PublicDocumentExtractionDto {
   extractedData: unknown;
   plausibility: unknown;
   confirmedData: unknown;
+  /** Per-field AI vs user provenance for review (no full document text). */
+  fieldProvenance: PublicFieldProvenanceDto[] | null;
+  fieldCorrectionCount: number | null;
   queuedAt: string | null;
   processedAt: string | null;
   appliedAt: string | null;
@@ -247,9 +270,10 @@ export interface PublicDocumentExtractionDto {
 /** List projection — omits heavy extracted/confirmed payloads by default. */
 export type PublicDocumentExtractionSummaryDto = Omit<
   PublicDocumentExtractionDto,
-  'extractedData' | 'confirmedData' | 'plausibility'
+  'extractedData' | 'confirmedData' | 'plausibility' | 'fieldProvenance'
 > & {
   extractedData: null;
   confirmedData: null;
   plausibility: null;
+  fieldProvenance: null;
 };
