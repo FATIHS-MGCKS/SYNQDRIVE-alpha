@@ -36,6 +36,10 @@ import {
   buildStructuredExtractionRun,
   collectMissingFieldPlausibilityChecks,
 } from './document-structured-extraction.util';
+import {
+  buildFieldProvenanceFromStructuredFields,
+  toPublicFieldProvenance,
+} from './document-field-provenance.util';
 import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomy } from './document-taxonomy.util';
 import {
   buildContentCacheEntry,
@@ -687,9 +691,14 @@ export class DocumentExtractionProcessor extends WorkerHost {
       provider: agentResult.providerId ?? null,
       modelVersion: agentResult.modelId ?? null,
     });
+    const fieldProvenance = buildFieldProvenanceFromStructuredFields({
+      fields: structuredExtraction.fields,
+      pages: content.pages,
+    });
     pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
       structuredExtraction,
       structuredExtractionRun,
+      fieldProvenance,
     });
     const pipelinePayload = readPipelinePayload(pipelineWithContext);
     await this.prisma.vehicleDocumentExtraction.updateMany({
@@ -711,6 +720,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
           extractionConflicts: agentResult.extractionConflicts ?? null,
           structuredExtraction,
           structuredExtractionRun,
+          fieldProvenance: toPublicFieldProvenance(fieldProvenance),
           missingFields: structuredExtraction.missingFields,
           extractionFieldConflicts: structuredExtraction.conflicts,
           chunking: agentResult.chunking ?? null,

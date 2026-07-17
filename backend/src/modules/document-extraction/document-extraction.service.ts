@@ -80,7 +80,13 @@ import {
   readContentCache,
 } from './document-content-cache.util';
 import { archiveSupersededExtractionRun } from './document-structured-extraction.util';
-import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomyFromLegacyType } from './document-taxonomy.util';
+import {
+  applyFieldProvenanceConfirmations,
+  mergeFieldProvenancePipeline,
+  readFieldProvenanceRegistry,
+  resolveConfirmedValuesForActionPlan,
+} from './document-field-provenance.util';
+import { readDocumentTaxonomyPipelineState, mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomyFromLegacyType } from './document-taxonomy.util';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import {
   buildDocumentExtractionPaginatedResult,
@@ -1090,11 +1096,25 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const applyDocumentType = requireApplyDocumentType(existing);
     const confirmedData = this.sanitizeConfirmedData(applyDocumentType, confirmedDataRaw);
+    const confirmedAt = new Date().toISOString();
+    const taxonomySubtype =
+      readDocumentTaxonomyPipelineState(existing.plausibility)?.documentSubtype ?? null;
+    const existingFieldProvenance = readFieldProvenanceRegistry(existing.plausibility);
+    const fieldProvenanceAfterConfirm = existingFieldProvenance
+      ? applyFieldProvenanceConfirmations({
+          registry: existingFieldProvenance,
+          confirmedData,
+          confirmedBy: userId ?? null,
+          confirmedAt,
+          schemaFieldKeys: getFieldSchema(applyDocumentType, taxonomySubtype).map((field) => field.key),
+        })
+      : null;
+    const actionPlanConfirmedData = resolveConfirmedValuesForActionPlan(confirmedData);
 
     const plausibility = await this.runConfirmPlausibility(
       vehicleId,
       applyDocumentType,
-      confirmedData,
+      actionPlanConfirmedData,
       extractionId,
     );
     if (plausibility.overallStatus === 'BLOCKER') {
@@ -1108,14 +1128,26 @@ export class DocumentExtractionService implements OnModuleInit {
       existing.sourceFileUrl ??
       (existing.objectKey ? `storage://${existing.objectKey}` : null);
 
-    const plausibilityPayload = {
-      ...(typeof existing.plausibility === 'object' &&
-      existing.plausibility &&
-      !Array.isArray(existing.plausibility)
-        ? (existing.plausibility as Record<string, unknown>)
-        : {}),
-      ...(plausibility as unknown as Record<string, unknown>),
-    };
+    const plausibilityPayload = fieldProvenanceAfterConfirm
+      ? mergeFieldProvenancePipeline(
+          {
+            ...(typeof existing.plausibility === 'object' &&
+            existing.plausibility &&
+            !Array.isArray(existing.plausibility)
+              ? (existing.plausibility as Record<string, unknown>)
+              : {}),
+            ...(plausibility as unknown as Record<string, unknown>),
+          },
+          fieldProvenanceAfterConfirm,
+        )
+      : {
+          ...(typeof existing.plausibility === 'object' &&
+          existing.plausibility &&
+          !Array.isArray(existing.plausibility)
+            ? (existing.plausibility as Record<string, unknown>)
+            : {}),
+          ...(plausibility as unknown as Record<string, unknown>),
+        };
     const plausibilityWithConfirmAudit = appendExtractionActionAudit(plausibilityPayload, {
       action: 'confirm',
       at: new Date().toISOString(),
@@ -1154,7 +1186,7 @@ export class DocumentExtractionService implements OnModuleInit {
           vehicleId,
           documentType: applyDocumentType,
           sourceFileUrl,
-          confirmedData,
+          confirmedData: actionPlanConfirmedData,
           confirmedById: userId ?? null,
           plausibilityChecks: plausibility.checks,
           plausibility: plausibilityWithConfirmAudit,
@@ -1165,7 +1197,7 @@ export class DocumentExtractionService implements OnModuleInit {
           vehicleId,
           documentType: applyDocumentType,
           sourceFileUrl,
-          confirmedData,
+          confirmedData: actionPlanConfirmedData,
         });
       }
       this.observability.recordApply('success');

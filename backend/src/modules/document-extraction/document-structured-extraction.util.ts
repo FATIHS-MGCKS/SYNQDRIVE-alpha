@@ -20,6 +20,8 @@ import type {
   SupersededStructuredExtractionRun,
 } from './document-structured-extraction.types';
 import { DOCUMENT_STRUCTURED_EXTRACTION_VERSION } from './document-structured-extraction.types';
+import type { DocumentFieldProvenanceRegistry } from './document-field-provenance.types';
+import { readFieldProvenanceRegistry } from './document-field-provenance.util';
 
 function readNested(source: Record<string, unknown>, key: string): unknown {
   if (!key.includes('.')) return source[key];
@@ -233,6 +235,7 @@ export function archiveSupersededExtractionRun(input: {
     run,
     structuredExtraction: structured,
     extractedData,
+    fieldProvenance: readFieldProvenanceRegistry(input.plausibility),
     supersededAt: new Date().toISOString(),
     supersededReason: input.supersededReason,
     previousDocumentType: input.previousDocumentType,
@@ -244,5 +247,6 @@ export function archiveSupersededExtractionRun(input: {
     supersededExtractionRuns: [...current, superseded],
     structuredExtraction: null,
     structuredExtractionRun: null,
+    fieldProvenance: null,
   });
 }

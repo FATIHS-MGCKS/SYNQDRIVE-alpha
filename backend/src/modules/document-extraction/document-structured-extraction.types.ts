@@ -1,6 +1,8 @@
 import type { ApplyDocumentExtractionType, FieldDef } from './document-extraction.schemas';
 import type { DocumentSubtype } from './document-taxonomy.types';
-import type { FieldExtractionEvidence } from '@modules/ai/documents/document-extraction-merge.service';
+import type {
+  DocumentFieldProvenanceRegistry,
+} from './document-field-provenance.types';
 
 export const DOCUMENT_STRUCTURED_EXTRACTION_VERSION = '1.0.0' as const;
 
@@ -49,6 +51,7 @@ export type SupersededStructuredExtractionRun = {
   run: StructuredExtractionRun;
   structuredExtraction: StructuredExtractionPayload;
   extractedData: Record<string, unknown>;
+  fieldProvenance?: DocumentFieldProvenanceRegistry | null;
   supersededAt: string;
   supersededReason: 'type_change' | 'reextract';
   previousDocumentType: string | null;

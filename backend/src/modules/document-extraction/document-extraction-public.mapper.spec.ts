@@ -68,4 +68,46 @@ describe('document-extraction-public.mapper', () => {
     expect(dto.documentType).toBeNull();
     expect(dto.hasStoredFile).toBe(true);
   });
+
+  it('projects field provenance for review without pipeline payload', () => {
+    const dto = toPublicDocumentExtraction({
+      ...baseRecord,
+      requestedDocumentType: 'INVOICE',
+      effectiveDocumentType: 'INVOICE',
+      documentType: 'INVOICE',
+      plausibility: {
+        _pipeline: {
+          fieldProvenance: {
+            contractVersion: '1.0.0',
+            correctionCount: 1,
+            correctedFieldKeys: ['invoiceNumber'],
+            fields: [
+              {
+                fieldKey: 'invoiceNumber',
+                rawValue: 'INV-AI',
+                normalizedValue: 'INV-AI',
+                confidence: 0.9,
+                page: 1,
+                textEvidence: '…INV-AI…',
+                sourceType: 'user_correction',
+                manuallyEdited: true,
+                confirmedValue: 'INV-USER',
+                confirmedBy: 'user-1',
+                confirmedAt: '2026-07-17T12:00:00.000Z',
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(dto.fieldProvenance).toHaveLength(1);
+    expect(dto.fieldProvenance?.[0]).toMatchObject({
+      normalizedValue: 'INV-AI',
+      confirmedValue: 'INV-USER',
+      manuallyEdited: true,
+    });
+    expect(dto.fieldCorrectionCount).toBe(1);
+    expect((dto.plausibility as Record<string, unknown>)._pipeline).toBeUndefined();
+  });
 });

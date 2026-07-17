@@ -28,6 +28,10 @@ import {
   readDocumentTaxonomyPipelineState,
   resolveDocumentTaxonomy,
 } from './document-taxonomy.util';
+import {
+  readFieldProvenanceRegistry,
+  toPublicFieldProvenance,
+} from './document-field-provenance.util';
 import type {
   PublicUploadContextDisplayDto,
   PublicVehicleCandidateDto,
@@ -384,6 +388,7 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
   const taxonomy = buildDocumentTaxonomyDisplay(record);
+  const fieldProvenanceRegistry = readFieldProvenanceRegistry(record.plausibility);
 
   return {
     id: record.id,
@@ -427,6 +432,8 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     extractedData: record.extractedData ?? null,
     plausibility: stripPipelineFromPlausibility(record.plausibility) ?? null,
     confirmedData: record.confirmedData ?? null,
+    fieldProvenance: toPublicFieldProvenance(fieldProvenanceRegistry),
+    fieldCorrectionCount: fieldProvenanceRegistry?.correctionCount ?? null,
     queuedAt: toIso(record.queuedAt),
     processedAt: toIso(record.processedAt),
     appliedAt: toIso(record.appliedAt),
@@ -469,5 +476,7 @@ export function toPublicDocumentExtractionSummary(
     extractedData: null,
     confirmedData: null,
     plausibility: null,
+    fieldProvenance: null,
+    fieldCorrectionCount: null,
   };
 }
