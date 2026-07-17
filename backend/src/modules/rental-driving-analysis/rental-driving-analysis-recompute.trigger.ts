@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
 import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DrivingIntelligenceJobDispatcherService } from '../vehicle-intelligence/driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
@@ -22,7 +22,9 @@ export class RentalDrivingAnalysisRecomputeTriggerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
-    @Optional() private readonly analysisInit?: DrivingAnalysisInitService,
+    @Optional()
+    @Inject(forwardRef(() => DrivingAnalysisInitService))
+    private readonly analysisInit?: DrivingAnalysisInitService,
   ) {}
 
   async enqueueForBooking(input: EnqueueRentalDrivingAnalysisRecomputeInput) {

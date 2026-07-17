@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import type { DrivingIntelligenceJobType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DrivingAnalysisRunService } from '../driving-analysis-run/driving-analysis-run.service';
@@ -26,6 +26,7 @@ export class DrivingAnalysisInitService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly analysisRunService: DrivingAnalysisRunService,
+    @Inject(forwardRef(() => DrivingAnalysisStageOrchestratorService))
     private readonly stageOrchestrator: DrivingAnalysisStageOrchestratorService,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
     private readonly jobRepository: DrivingIntelligenceJobRepository,
