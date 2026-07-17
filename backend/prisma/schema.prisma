@@ -601,6 +601,19 @@ enum DocumentApplyMode {
   ARCHIVE_ONLY
 }
 
+/// Lifecycle status for persisted document action plans (dry-run / apply preview).
+enum DocumentActionPlanStatus {
+  DRAFT
+  READY
+  APPLYING
+  PARTIALLY_APPLIED
+  APPLIED
+  APPLY_FAILED
+  SUPERSEDED
+  INVALIDATED
+  ARCHIVE_ONLY
+}
+
 enum EnrichmentJobType {
   BATTERY
   BRAKE
@@ -1536,6 +1549,7 @@ model Organization {
   hvCapacityObservations                 HvCapacityObservation[]
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
+  documentActionPlans                    DocumentActionPlan[]
 
   @@index([status])
   @@map("organizations")
@@ -1600,6 +1614,7 @@ model User {
   tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
+  documentActionPlansConfirmed        DocumentActionPlan[]                    @relation("DocumentActionPlanConfirmedBy")
 
   @@map("users")
 }
@@ -2845,6 +2860,7 @@ model VehicleDocumentExtraction {
   batteryEvidence                   BatteryEvidence[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  documentActionPlans               DocumentActionPlan[]
 
   @@index([vehicleId])
   @@index([status])
@@ -2852,6 +2868,44 @@ model VehicleDocumentExtraction {
   @@index([vehicleId, createdAt])
   @@index([status, updatedAt])
   @@map("vehicle_document_extractions")
+}
+
+/// Immutable dry-run / apply-preview snapshot for a document extraction (Document Intake V2 P16).
+model DocumentActionPlan {
+  id                 String                   @id @default(uuid())
+  organizationId     String                   @map("organization_id")
+  extractionId       String                   @map("extraction_id")
+  planVersion        Int                      @map("plan_version")
+  inputFingerprint   String                   @map("input_fingerprint")
+  status             DocumentActionPlanStatus @default(DRAFT)
+  applyMode          DocumentApplyMode        @default(PREVIEW) @map("apply_mode")
+  snapshotJson       Json                     @map("snapshot_json")
+  summary            String?
+  blockingReasons    Json?                    @map("blocking_reasons")
+  generatedAt        DateTime                 @default(now()) @map("generated_at")
+  generatedBy        String?                  @map("generated_by")
+  confirmedAt        DateTime?                @map("confirmed_at")
+  confirmedByUserId  String?                  @map("confirmed_by_user_id")
+  invalidatedAt      DateTime?                @map("invalidated_at")
+  invalidationReason String?                  @map("invalidation_reason")
+  supersedesPlanId   String?                  @map("supersedes_plan_id")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
+
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  extraction        VehicleDocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  confirmedByUser   User?                     @relation("DocumentActionPlanConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  supersedesPlan    DocumentActionPlan?       @relation("DocumentActionPlanSupersedes", fields: [supersedesPlanId], references: [id], onDelete: SetNull)
+  supersededByPlans DocumentActionPlan[]      @relation("DocumentActionPlanSupersedes")
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, extractionId])
+  @@index([extractionId, createdAt])
+  @@index([extractionId, status])
+  @@index([extractionId, invalidatedAt])
+  @@index([inputFingerprint])
+  @@index([supersedesPlanId])
+  @@map("document_action_plans")
 }
 
 // ------------------------------------------------

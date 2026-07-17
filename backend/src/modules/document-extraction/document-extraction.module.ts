@@ -21,6 +21,7 @@ import { DocumentExtractionRecoveryScheduler } from '@workers/schedulers/documen
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentActionPlanRepository } from './document-action-plan.repository';
 
 /**
  * AI Document Upload feature module.
@@ -55,9 +56,15 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     DocumentExtractionHealthService,
     DocumentExtractionRecoveryScheduler,
     DocumentExtractionObservabilityService,
+    DocumentActionPlanRepository,
     LocalDocumentStorageService,
     { provide: DOCUMENT_STORAGE, useClass: LocalDocumentStorageService },
   ],
-  exports: [DocumentExtractionService, DocumentExtractionApplyService, DocumentExtractionHealthService],
+  exports: [
+    DocumentExtractionService,
+    DocumentExtractionApplyService,
+    DocumentExtractionHealthService,
+    DocumentActionPlanRepository,
+  ],
 })
 export class DocumentExtractionModule {}

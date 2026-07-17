@@ -160,6 +160,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 15, 2026-07-17):** Migration `20260717193000_document_intake_v2_enums` — 13 additive Enum-Typen in `schema.prisma` (keine Spalten/Modelle). Prisma-Namen gemäß Prompt 15: `DocumentCategory`, `DocumentSubtype`, `DocumentEntityType`, `DocumentCandidateStatus`, `DocumentLinkStatus`, `DocumentActionType`, `DocumentActionStatus`, `DocumentActionRequirement`, `DocumentFollowUpType`, `DocumentFollowUpStatus`, `DocumentProcessingMaturity`, `DocumentDuplicateStatus`, `DocumentApplyMode`. Bestehende `DocumentExtraction*` Enums unverändert.
 
+**Implementierungsstand (Prompt 16, 2026-07-17):** Migration `20260717200000_document_action_plans` — `DocumentActionPlan` + `DocumentActionPlanStatus`; partial unique current index auf `(extraction_id, input_fingerprint) WHERE invalidated_at IS NULL`; Repository `DocumentActionPlanRepository.resolveOrCreatePlan` (Dedup, Invalidierung, Supersede-Kette). Keine `DocumentAction`-Ausführung.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.
