@@ -805,6 +805,34 @@ BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD=1 \
 
 **Guards:** `BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_REMOTE=1`, für Produktion zusätzlich `BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD=1`. Globale PM2-Flags (`BATTERY_V2_PUBLICATION_ENABLED`) **nicht** dauerhaft aktivieren.
 
+### 18.1d Phase 3 — REST Shadow Canary starten
+
+Nach Option-B-Backfill (§18.1c) und Domain-Freigabe: **live** REST-Fenster-Pipeline aktivieren — weiterhin ohne Publication/Readiness.
+
+**Canary-Tracking:** `docs/runbooks/battery-rest-shadow-canary-faa710c9.md`
+
+```bash
+# VPS: /opt/synqdrive/shared/backend.env
+BATTERY_V2_REST_SHADOW_ENABLED=true
+BATTERY_V2_PUBLICATION_ENABLED=false
+BATTERY_V2_READINESS_ENABLED=false
+
+pm2 restart synqdrive --update-env
+curl -sS https://app.synqdrive.eu/api/v1/health
+```
+
+| Schritt | Aktion |
+|---------|--------|
+| 1 | T0 dokumentieren (Datum, Org, Fahrzeugliste) |
+| 2 | Flags setzen — **nur** `REST_SHADOW`; Publication/Readiness explizit `false` |
+| 3 | PM2 restart mit `--update-env` |
+| 4 | T0+1h: Health, `BATTERY_REST_TARGET_EVALUATE` completed, ggf. erste `LV_REST_WINDOW` Sessions |
+| 5 | **T+7:** Shadow-Report (`--observation-days=7`), `liveRestCount > 0`, Wake-Gate ≤ 35 % |
+| 6 | **T+28:** formales Gate-Review (Shadow Validation Runbook §7) — **kein** Auto-Publish |
+
+**Exit T+7:** Live REST-Capture bestätigt → Shadow fortsetzen bis T+28.  
+**Rollback:** `BATTERY_V2_REST_SHADOW_ENABLED=false` → Restart (Shadow-Daten behalten, §7.5).
+
 ### 18.2 Produktions-Smoke nach jeder Phase
 
 | # | Test | Erwartung |
