@@ -5,7 +5,7 @@
 | **Audit date (UTC)** | 2026-07-17 |
 | **Mode** | Controlled dry-run — no production writes |
 | **Basis** | [document-intake-production-reality.md](./document-intake-production-reality.md) (Audit 1) |
-| **Repository commit** | `bdf333a0` (pre-audit); harness + this doc committed separately |
+| **Repository commit** | `8b4f714d` (`docs(audit): document intake test matrix audit 2 of 2`) |
 | **Harness** | `backend/scripts/audit/document-intake-test-matrix-dry-run.ts` |
 | **Dry-run output** | Ephemeral JSON (`--out=`); not committed (no PII) |
 
