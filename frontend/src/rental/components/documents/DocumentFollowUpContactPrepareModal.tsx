@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Loader2, Mail, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '../../components/ui/button';
-import { FormDialog } from '../../components/patterns';
-import { api } from '../../lib/api';
-import type { PublicDocumentFollowUpContactPrepare } from '../lib/document-extraction.types';
-import type { TranslationKey } from '../i18n/translations/en';
+import { Button } from '../../../components/ui/button';
+import { FormDialog } from '../../../components/patterns';
+import { api } from '../../../lib/api';
+import type { PublicDocumentFollowUpContactPrepare } from '../../lib/document-extraction.types';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export interface DocumentFollowUpContactPrepareModalProps {
   open: boolean;

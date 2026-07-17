@@ -1,6 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+vi.mock('../hooks/useDocumentReviewInbox', () => ({
+  useDocumentReviewInbox: () => ({
+    items: [],
+    loading: false,
+    error: null,
+    page: 1,
+    setPage: vi.fn(),
+    totalPages: 1,
+    reviewCountEstimate: 0,
+    reload: vi.fn(),
+  }),
+}));
+
 vi.mock('../hooks/useDocumentUploadPage', () => ({
   useDocumentUploadPage: () => ({
     metadata: null,
@@ -91,11 +104,19 @@ vi.mock('../RentalContext', () => ({
 }));
 
 describe('DocumentUploadView', () => {
+  it('renders three-tab document intake shell', async () => {
+    const { DocumentUploadView } = await import('./DocumentUploadView');
+    const html = renderToStaticMarkup(<DocumentUploadView isDarkMode={false} />);
+    expect(html).toContain('docUpload.tab.upload');
+    expect(html).toContain('docUpload.tab.review');
+    expect(html).toContain('docUpload.tab.archive');
+  });
+
   it('renders shared review and action preview on ready state', async () => {
     const { DocumentUploadView } = await import('./DocumentUploadView');
     const html = renderToStaticMarkup(<DocumentUploadView isDarkMode={false} />);
     expect(html).toContain('docUpload.analysisComplete');
-    expect(html).toContain('Geplante Aktionen');
+    expect(html).toContain('docUpload.actionPlan.locked');
     expect(html).toContain('invoice.pdf');
   });
 });

@@ -1,12 +1,18 @@
 import { CheckCircle, Eye, Sparkles, Upload } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { api } from '../../lib/api';
 import { Icon } from './ui/Icon';
 
 import { formatUploadContextBanner, hasUploadContextConflict } from '../../lib/document-upload-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useDocumentUploadPage } from '../hooks/useDocumentUploadPage';
+import { useDocumentReviewInbox } from '../hooks/useDocumentReviewInbox';
 import type { PlausibilityStatus } from './documents/document-extraction.shared';
-import type { PublicDocumentExtractionSummary } from '../lib/document-extraction.types';
+import type {
+  PublicDocumentExtractionArchiveItem,
+  PublicDocumentExtractionSummary,
+} from '../lib/document-extraction.types';
 import { DocumentExtractionReviewPanel } from './documents/DocumentExtractionReviewPanel';
 import { DocumentApplyResultPanel } from './documents/DocumentApplyResultPanel';
 import { DocumentFollowUpSuggestionsPanel } from './documents/DocumentFollowUpSuggestionsPanel';
@@ -14,6 +20,18 @@ import { useDocumentFollowUpSuggestions } from '../hooks/useDocumentFollowUpSugg
 import { DocumentExtractionFlowStatus } from './documents/DocumentExtractionFlowStatus';
 import { DocumentIntakeUploadZone } from './documents/DocumentIntakeUploadZone';
 import { DocumentClassificationResultPanel } from './documents/DocumentClassificationResultPanel';
+import { DocumentIntakeTabBar } from './documents/DocumentIntakeTabBar';
+import { DocumentReviewInboxPanel } from './documents/DocumentReviewInboxPanel';
+import { DocumentArchivePanel } from './documents/DocumentArchivePanel';
+import {
+  archiveItemToSummary,
+} from '../lib/document-review-inbox.util';
+import {
+  type DocumentIntakeTab,
+  readDocumentIntakeExtractionId,
+  readDocumentIntakeTab,
+  replaceDocumentIntakeUrl,
+} from '../lib/document-intake-navigation';
 
 interface DocumentUploadViewProps {
   isDarkMode: boolean;
@@ -27,19 +45,80 @@ function getFileIcon(name: string) {
   return <Icon name="file" className="w-5 h-5 text-gray-500" />;
 }
 
-function formatHistoryDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
 export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUploadViewProps) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
+  const [locationSearch, setLocationSearch] = useState(
+    () => (typeof window !== 'undefined' ? window.location.search : ''),
+  );
+  const activeTab = readDocumentIntakeTab(locationSearch);
+  const urlExtractionId = readDocumentIntakeExtractionId(locationSearch);
+  const autoSwitchedFlowRef = useRef<string | null>(null);
 
   const page = useDocumentUploadPage({ orgId, locale, t });
+  const reviewInbox = useDocumentReviewInbox(orgId, 'all');
+
+  const setActiveTab = useCallback((tab: DocumentIntakeTab, extractionId?: string | null) => {
+    replaceDocumentIntakeUrl({ tab, extractionId: extractionId ?? page.extractionId ?? urlExtractionId });
+    setLocationSearch(window.location.search);
+  }, [page.extractionId, urlExtractionId]);
+
+  useEffect(() => {
+    const onPopState = () => setLocationSearch(window.location.search);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    if (!urlExtractionId || !orgId) return;
+    if (page.extractionId === urlExtractionId) return;
+    void page.handleOpenHistoryItem({
+      id: urlExtractionId,
+      sourceFileName: null,
+      vehicleId: null,
+    } as PublicDocumentExtractionSummary);
+  }, [orgId, page, urlExtractionId]);
+
+  useEffect(() => {
+    const reviewReady =
+      page.flow === 'ready' ||
+      page.flow === 'awaiting_type' ||
+      page.flow === 'apply_failed' ||
+      (page.flow === 'partially_done' && !page.canShowApplyDone);
+    if (!reviewReady || !page.extractionId) return;
+    if (autoSwitchedFlowRef.current === page.extractionId) return;
+    autoSwitchedFlowRef.current = page.extractionId;
+    if (activeTab === 'upload') {
+      setActiveTab('review', page.extractionId);
+    }
+  }, [activeTab, page.canShowApplyDone, page.extractionId, page.flow, setActiveTab]);
+
+  const openReviewItem = useCallback(
+    (item: PublicDocumentExtractionArchiveItem | PublicDocumentExtractionSummary) => {
+      const summary = 'acceptedEntityLinks' in item ? archiveItemToSummary(item) : item;
+      void page.handleOpenHistoryItem(summary);
+      setActiveTab('review', summary.id);
+    },
+    [page, setActiveTab],
+  );
+
+  const handleArchiveDownload = useCallback(
+    async (item: PublicDocumentExtractionArchiveItem) => {
+      if (!orgId || !item.canDownload) return;
+      try {
+        const blob = await api.documentExtraction.downloadByOrg(orgId, item.id);
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = item.sourceFileName || `document-${item.id}`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        /* noop */
+      }
+    },
+    [orgId],
+  );
 
   const followUpEnabled =
     !!page.extractionId &&
@@ -109,50 +188,23 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
     }`;
   };
 
-  const renderHistoryActions = (item: PublicDocumentExtractionSummary) => {
-    const actions = item.allowedActions ?? [];
-    const btn = (label: string, onClick: () => void, primary = false) => (
-      <button
-        key={label}
-        type="button"
-        onClick={onClick}
-        className={`text-[10px] font-semibold px-2 py-1 rounded-md ${
-          primary
-            ? 'bg-brand text-brand-foreground'
-            : isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'
-        }`}
-      >
-        {label}
-      </button>
-    );
-    const nodes = [];
-    if (item.status === 'READY_FOR_REVIEW' || item.status === 'AWAITING_DOCUMENT_TYPE') {
-      nodes.push(btn(t('docUpload.openReview'), () => page.handleOpenHistoryItem(item), true));
-    }
-    if (actions.includes('retry')) {
-      nodes.push(btn(t('docUpload.retry'), () => page.handleOpenHistoryItem(item)));
-    }
-    if (actions.includes('download') && item.hasStoredFile) {
-      nodes.push(btn(t('docUpload.viewFile'), () => {
-        page.handleOpenHistoryItem(item);
-        void page.handleDownload();
-      }));
-    }
-    return nodes;
-  };
-
-  const showMainIdle = page.flow === 'idle';
+  const showMainIdle = page.flow === 'idle' && activeTab === 'upload';
+  const showActiveFlow = activeTab === 'upload' ? page.flow !== 'idle' : activeTab === 'review';
   const showAwaitingType = page.flow === 'awaiting_type';
-  const showProcessingStatus = (page.isBusy && !showAwaitingType) || page.flow === 'failed';
-  const showDuplicate = page.flow === 'duplicate_blocked';
-  const showDone = page.flow === 'done' && page.canShowApplyDone;
-  const showPartiallyDone = page.flow === 'partially_done' && page.canShowApplyDone;
+  const showProcessingStatus =
+    showActiveFlow && ((page.isBusy && !showAwaitingType) || page.flow === 'failed');
+  const showDuplicate = showActiveFlow && page.flow === 'duplicate_blocked';
+  const showDone = showActiveFlow && page.flow === 'done' && page.canShowApplyDone;
+  const showPartiallyDone = showActiveFlow && page.flow === 'partially_done' && page.canShowApplyDone;
   const showReview =
-    page.flow === 'ready' ||
-    page.flow === 'applying' ||
-    page.flow === 'apply_failed' ||
-    (page.flow === 'partially_done' && !page.canShowApplyDone);
-  const showCancelled = page.flow === 'cancelled';
+    showActiveFlow &&
+    (page.flow === 'ready' ||
+      page.flow === 'applying' ||
+      page.flow === 'apply_failed' ||
+      (page.flow === 'partially_done' && !page.canShowApplyDone));
+  const showCancelled = showActiveFlow && page.flow === 'cancelled';
+  const showUploadStepper = activeTab === 'upload' && page.flow !== 'idle';
+  const reviewDetailActive = activeTab === 'review' && Boolean(page.extractionId || urlExtractionId);
   const uploadContextBanner = formatUploadContextBanner(page.record?.uploadContext);
   const uploadContextConflict = hasUploadContextConflict(page.record?.uploadContext);
 
@@ -189,6 +241,35 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
         <p className={`text-xs mt-1 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.subtitle')}</p>
       </div>
 
+      <DocumentIntakeTabBar
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab, tab === 'review' ? page.extractionId ?? urlExtractionId : null)}
+        reviewCount={reviewInbox.reviewCountEstimate}
+        t={t}
+      />
+
+      {activeTab === 'review' && !reviewDetailActive ? (
+        <DocumentReviewInboxPanel
+          orgId={orgId}
+          isDarkMode={isDarkMode}
+          t={t}
+          typeLabel={page.typeLabel}
+          onOpenItem={openReviewItem}
+        />
+      ) : null}
+
+      {activeTab === 'archive' ? (
+        <DocumentArchivePanel
+          orgId={orgId}
+          isDarkMode={isDarkMode}
+          t={t}
+          typeLabel={page.typeLabel}
+          onOpenItem={(item) => openReviewItem(item)}
+          onDownload={(item) => void handleArchiveDownload(item)}
+        />
+      ) : null}
+
+      {(activeTab === 'upload' || reviewDetailActive) && showUploadStepper ? (
       <div className={`rounded-lg p-3 sm:p-4 mb-3 min-w-0 ${glass}`}>
         <div className="grid grid-cols-4 gap-1 min-w-0 sm:hidden">
           {stepConfig.map((s, i) => (
@@ -212,9 +293,25 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
           ))}
         </div>
       </div>
+      ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 min-w-0">
-        <div className="lg:col-span-2 min-w-0">
+      {(activeTab === 'upload' || reviewDetailActive) ? (
+      <div className="min-w-0">
+        {activeTab === 'review' && reviewDetailActive ? (
+          <button
+            type="button"
+            onClick={() => {
+              page.handleReset();
+              setActiveTab('review', null);
+            }}
+            className={`mb-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
+              isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            {t('docUpload.review.backToInbox')}
+          </button>
+        ) : null}
+
           {showMainIdle && (
             <div className={`rounded-lg p-4 min-w-0 ${isDarkMode ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200'}`}>
               <DocumentIntakeUploadZone
@@ -243,7 +340,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
             </div>
           )}
 
-          {showAwaitingType && (
+          {showActiveFlow && showAwaitingType && (
             <div className={`rounded-lg p-4 sm:p-6 min-w-0 space-y-4 ${glass}`}>
               <DocumentExtractionFlowStatus {...flowStatusProps} />
               <div className="border-t pt-4 min-w-0" style={{ borderColor: isDarkMode ? 'var(--border)' : undefined }}>
@@ -525,49 +622,8 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
               <iframe title={t('docUpload.viewFile')} src={page.previewUrl} className="w-full min-h-[320px] rounded-lg border border-gray-200" />
             </div>
           )}
-        </div>
-
-        <div className="space-y-5 min-w-0 w-full">
-          <div className={`rounded-lg overflow-hidden min-w-0 ${glass}`}>
-            <div className={`px-3 py-2 border-b flex items-center justify-between gap-2 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
-              <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.recentUploads')}</h3>
-              {page.historyLoading && <Icon name="loader-2" className="w-4 h-4 animate-spin text-muted-foreground" />}
-            </div>
-            <div className="p-3">
-              {page.history.length === 0 ? (
-                <div className="py-8 text-center">
-                  <Icon name="file-text" className={`w-5 h-5 mx-auto mb-2 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.noUploads')}</p>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {page.history.map((doc) => (
-                    <div key={doc.id} className={`flex flex-col gap-2 p-2.5 rounded-lg transition-colors min-w-0 ${isDarkMode ? 'hover:surface-premium' : 'hover:bg-gray-50'}`}>
-                      <div className="flex items-start sm:items-center gap-3 min-w-0">
-                        <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-green-500/10' : 'bg-green-50'}`}>
-                          <Icon name="file-text" className="w-4 h-4 text-brand" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-[11px] font-semibold break-all ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{doc.sourceFileName || doc.id}</p>
-                          <p className={`text-xs break-words ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
-                            {page.typeLabel(`documentExtraction.type.${doc.effectiveDocumentType || doc.documentType || 'OTHER'}`, doc.effectiveDocumentType || doc.documentType || 'OTHER')}
-                          </p>
-                          <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{page.serverStatusLabel(doc.status)}</p>
-                          {doc.errorPhase && doc.status === 'FAILED' && (
-                            <p className={`text-[10px] ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{page.errorPhaseLabel(doc.errorPhase)}</p>
-                          )}
-                        </div>
-                        <span className={`text-[10px] font-medium shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{formatHistoryDate(doc.createdAt)}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 pl-8">{renderHistoryActions(doc)}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
+      ) : null}
     </div>
   );
 }

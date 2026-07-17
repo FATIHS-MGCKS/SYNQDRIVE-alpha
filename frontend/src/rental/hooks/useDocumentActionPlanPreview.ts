@@ -4,7 +4,7 @@ import type {
   PublicDocumentActionPlanPreview,
   PublicDocumentExtraction,
 } from '../lib/document-extraction.types';
-import { hasSavedFieldReview } from './document-schema-field-review';
+import { hasSavedFieldReview } from '../lib/document-schema-field-review';
 import { resolveEntityLinksScope } from '../lib/document-entity-links';
 import { toggleDisabledOptionalAction } from '../lib/document-action-plan-preview';
 

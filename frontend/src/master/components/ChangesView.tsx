@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-three-tab-hub-2026-07-17',
+    version: '4.9.653',
+    title: 'V4.9.653 — Document Intake Three-Tab Hub',
+    summary: [
+      'Dokumentenseite verbindlich in Hochladen, Zu prüfen und Archiv strukturiert.',
+      'Review-Inbox mit Grund-Filtern (Typ, Entity, Pflichtfelder, Plausibilität, Action Preview, Apply, Follow-up).',
+      'Archiv-Tab mit Suche, Filtern, Pagination, bestätigten Links, Actions, Folgeaufgaben, Download und Audit-Trail-Zeitleiste.',
+      'URL-/Tab-State (`documentTab`, `extractionId`, `archiveQ`); keine lokale React-State-Historie als Navigation.',
+    ],
+    reason:
+      'Prompt 78/84 — Klare Drei-Tab-Struktur für kanonischen Upload, Review-Posteingang und Archiv.',
+    previousBehavior:
+      'DocumentUploadView mit Upload-Flow und lokaler Sidebar-Historie; kein dedizierter Review-Inbox- oder Archiv-Tab.',
+    details:
+      'Frontend: DocumentIntakeTabBar, DocumentReviewInboxPanel, DocumentArchivePanel, useDocumentReviewInbox, useDocumentArchiveList, document-intake-navigation, document-review-inbox.util, document-archive-audit.util. i18n en/de/fr. Tests. Architektur: architecture/DOCUMENT_INTAKE_THREE_TAB_HUB_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T03:00:00.000Z',
+  },
+  {
     id: 'document-extraction-archive-read-model-2026-07-17',
     version: '4.9.652',
     title: 'V4.9.652 — Document Extraction Archive Read Model',
