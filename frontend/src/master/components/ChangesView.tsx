@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-structured-extraction-registry-2026-07-17',
+    version: '4.9.637',
+    title: 'V4.9.637 — Document Intake V2 Structured Extraction via Schema Registry',
+    summary: [
+      'Extraktion nutzt DocumentSchemaRegistry nach bestätigtem oder hochsicheren Untertyp (Taxonomie/Classification).',
+      'Strukturierter Vertrag: raw/normalized, Provenienz, Seiten, Confidence, missingFields, conflicts.',
+      'Processing Run (runId, modelVersion, trigger) in _pipeline.structuredExtractionRun; kein Apply-Default.',
+      'Typänderung/Re-Extraction archiviert vorherigen Lauf in supersededExtractionRuns — keine stille Überschreibung.',
+    ],
+    reason:
+      'Einheitliche registry-basierte Extraktion mit nachvollziehbarer Feldherkunft und kontrollierter Re-Extraction bei Typwechsel.',
+    previousBehavior:
+      'getFieldSchema(legacyType) ohne Subtype; flaches extractedData ohne raw/provenance; Re-Extract löschte Daten ohne Archiv.',
+    details: 'architecture/DOCUMENT_STRUCTURED_EXTRACTION_REGISTRY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
     id: 'document-classification-taxonomy-contract-2026-07-17',
     version: '4.9.636',
     title: 'V4.9.636 — Document Intake V2 Classification Taxonomy Contract',

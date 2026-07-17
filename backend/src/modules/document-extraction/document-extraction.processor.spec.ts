@@ -177,14 +177,26 @@ describe('DocumentExtractionProcessor retry/idempotency', () => {
       classificationMode: 'AUTO',
       requestedDocumentType: 'AUTO',
     };
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const { processor, classification, aiExtraction } = makeProcessor({
-      prisma: { findUnique: jest.fn().mockResolvedValue(autoRecord) },
+      prisma: {
+        findUnique: jest.fn().mockResolvedValue(autoRecord),
+        updateMany,
+      },
     });
     await processor.process(makeJob());
     expect(classification.classify).toHaveBeenCalled();
     expect(aiExtraction.extract).toHaveBeenCalledWith(
       expect.objectContaining({ documentType: 'SERVICE' }),
     );
+    const readyCall = updateMany.mock.calls.find(
+      (call) => (call[0] as { data?: { status?: string } }).data?.status === 'READY_FOR_REVIEW',
+    );
+    expect(readyCall).toBeDefined();
+    const plausibility = (readyCall?.[0] as { data: { plausibility: Record<string, unknown> } }).data
+      .plausibility;
+    expect(plausibility.structuredExtractionRun).toBeDefined();
+    expect(plausibility.missingFields).toBeDefined();
   });
 
   it('AUTO with low confidence stops at AWAITING_DOCUMENT_TYPE (not FAILED)', async () => {
