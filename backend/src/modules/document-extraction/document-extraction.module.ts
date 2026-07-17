@@ -68,6 +68,7 @@ import { BookingCandidateResolverService } from './booking-candidate-resolver.se
 import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
 import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
 import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
+import { DocumentEntityLinkService } from './document-entity-link.service';
 
 /**
  * AI Document Upload feature module.
@@ -121,6 +122,7 @@ import { PartnerCandidateResolverService } from './partner-candidate-resolver.se
     CustomerCandidateResolverService,
     DriverCandidateResolverService,
     PartnerCandidateResolverService,
+    DocumentEntityLinkService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,
