@@ -12,10 +12,12 @@ BACKUP_DIR="${BRAKE_STAGING_BACKUP_DIR:-/opt/synqdrive/shared/backups}"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 
 if [[ -f /opt/synqdrive/shared/backend.env ]]; then
+  set +u
   set -a
   # shellcheck disable=SC1091
   source /opt/synqdrive/shared/backend.env
   set +a
+  set -u
 fi
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
