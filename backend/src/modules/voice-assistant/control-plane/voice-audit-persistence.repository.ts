@@ -1,0 +1,257 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import type {
+  CreateVoiceApprovalRequestInput,
+  CreateVoiceBillingPeriodInput,
+  CreateVoiceProviderWebhookEventInput,
+  CreateVoiceTestRunInput,
+  CreateVoiceToolExecutionInput,
+  CreateVoiceUsageEventInput,
+  UpsertVoiceBudgetPolicyInput,
+} from './voice-audit-persistence.types';
+
+@Injectable()
+export class VoiceProviderWebhookEventRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findByProviderEventId(provider: CreateVoiceProviderWebhookEventInput['provider'], externalEventId: string) {
+    return this.prisma.voiceProviderWebhookEvent.findUnique({
+      where: {
+        provider_externalEventId: {
+          provider,
+          externalEventId,
+        },
+      },
+    });
+  }
+
+  listByOrganization(organizationId: string) {
+    return this.prisma.voiceProviderWebhookEvent.findMany({
+      where: { organizationId },
+      orderBy: { receivedAt: 'desc' },
+    });
+  }
+
+  async persistOrGet(input: CreateVoiceProviderWebhookEventInput) {
+    const existing = await this.findByProviderEventId(input.provider, input.externalEventId);
+    if (existing) {
+      return { event: existing, created: false };
+    }
+
+    const event = await this.prisma.voiceProviderWebhookEvent.create({
+      data: {
+        organizationId: input.organizationId ?? null,
+        provider: input.provider,
+        externalEventId: input.externalEventId,
+        eventType: input.eventType ?? null,
+        payloadHash: input.payloadHash,
+        redactedPayload: input.redactedPayload,
+      },
+    });
+
+    return { event, created: true };
+  }
+}
+
+@Injectable()
+export class VoiceUsageEventRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findById(organizationId: string, id: string) {
+    return this.prisma.voiceUsageEvent.findFirst({
+      where: { id, organizationId },
+    });
+  }
+
+  findByIdempotencyKey(organizationId: string, idempotencyKey: string) {
+    return this.prisma.voiceUsageEvent.findUnique({
+      where: {
+        organizationId_idempotencyKey: {
+          organizationId,
+          idempotencyKey,
+        },
+      },
+    });
+  }
+
+  async persistOrGet(input: CreateVoiceUsageEventInput) {
+    const existing = await this.findByIdempotencyKey(input.organizationId, input.idempotencyKey);
+    if (existing) {
+      return { event: existing, created: false };
+    }
+
+    const event = await this.prisma.voiceUsageEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        voiceConversationId: input.voiceConversationId ?? null,
+        provider: input.provider,
+        eventType: input.eventType,
+        billableSeconds: input.billableSeconds ?? null,
+        billableMinutes: input.billableMinutes ?? null,
+        providerCostCents: input.providerCostCents ?? null,
+        internalCostCents: input.internalCostCents ?? null,
+        customerPriceCents: input.customerPriceCents ?? null,
+        currency: input.currency ?? 'EUR',
+        externalUsageRef: input.externalUsageRef ?? null,
+        idempotencyKey: input.idempotencyKey,
+      },
+    });
+
+    return { event, created: true };
+  }
+}
+
+@Injectable()
+export class VoiceBillingPeriodRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findById(organizationId: string, id: string) {
+    return this.prisma.voiceBillingPeriod.findFirst({
+      where: { id, organizationId },
+    });
+  }
+
+  create(input: CreateVoiceBillingPeriodInput) {
+    return this.prisma.voiceBillingPeriod.create({
+      data: {
+        organizationId: input.organizationId,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+        includedMinutes: input.includedMinutes ?? 0,
+      },
+    });
+  }
+}
+
+@Injectable()
+export class VoiceBudgetPolicyRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findByOrganization(organizationId: string) {
+    return this.prisma.voiceBudgetPolicy.findUnique({
+      where: { organizationId },
+    });
+  }
+
+  upsert(input: UpsertVoiceBudgetPolicyInput) {
+    return this.prisma.voiceBudgetPolicy.upsert({
+      where: { organizationId: input.organizationId },
+      create: {
+        organizationId: input.organizationId,
+        monthlyBudgetCents: input.monthlyBudgetCents ?? null,
+        dailyLimitCents: input.dailyLimitCents ?? null,
+        maxConversationDurationSeconds: input.maxConversationDurationSeconds ?? null,
+        maxConcurrentCalls: input.maxConcurrentCalls ?? null,
+        allowedCountries: input.allowedCountries ?? [],
+        warnThresholdPct: input.warnThresholdPct ?? null,
+        hardLimitThresholdPct: input.hardLimitThresholdPct ?? null,
+      },
+      update: {
+        monthlyBudgetCents: input.monthlyBudgetCents ?? null,
+        dailyLimitCents: input.dailyLimitCents ?? null,
+        maxConversationDurationSeconds: input.maxConversationDurationSeconds ?? null,
+        maxConcurrentCalls: input.maxConcurrentCalls ?? null,
+        allowedCountries: input.allowedCountries ?? [],
+        warnThresholdPct: input.warnThresholdPct ?? null,
+        hardLimitThresholdPct: input.hardLimitThresholdPct ?? null,
+      },
+    });
+  }
+}
+
+@Injectable()
+export class VoiceToolExecutionRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findById(organizationId: string, id: string) {
+    return this.prisma.voiceToolExecution.findFirst({
+      where: { id, organizationId },
+    });
+  }
+
+  findByIdempotencyKey(organizationId: string, idempotencyKey: string) {
+    return this.prisma.voiceToolExecution.findUnique({
+      where: {
+        organizationId_idempotencyKey: {
+          organizationId,
+          idempotencyKey,
+        },
+      },
+    });
+  }
+
+  async persistOrGet(input: CreateVoiceToolExecutionInput) {
+    const existing = await this.findByIdempotencyKey(input.organizationId, input.idempotencyKey);
+    if (existing) {
+      return { execution: existing, created: false };
+    }
+
+    const execution = await this.prisma.voiceToolExecution.create({
+      data: {
+        organizationId: input.organizationId,
+        voiceConversationId: input.voiceConversationId,
+        toolName: input.toolName,
+        riskClass: input.riskClass,
+        requestHash: input.requestHash,
+        idempotencyKey: input.idempotencyKey,
+        redactedInput: input.redactedInput ?? Prisma.JsonNull,
+      },
+    });
+
+    return { execution, created: true };
+  }
+
+  async assertInOrg(organizationId: string, id: string) {
+    const row = await this.findById(organizationId, id);
+    if (!row) {
+      throw new NotFoundException('Voice tool execution not found for organization');
+    }
+    return row;
+  }
+}
+
+@Injectable()
+export class VoiceApprovalRequestRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findById(organizationId: string, id: string) {
+    return this.prisma.voiceApprovalRequest.findFirst({
+      where: { id, organizationId },
+    });
+  }
+
+  async create(input: CreateVoiceApprovalRequestInput) {
+    return this.prisma.voiceApprovalRequest.create({
+      data: {
+        organizationId: input.organizationId,
+        toolExecutionId: input.toolExecutionId,
+        confirmationType: input.confirmationType,
+        expiresAt: input.expiresAt ?? null,
+        protectedDecisionTokenRef: input.protectedDecisionTokenRef ?? null,
+      },
+    });
+  }
+}
+
+@Injectable()
+export class VoiceTestRunRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findById(organizationId: string, id: string) {
+    return this.prisma.voiceTestRun.findFirst({
+      where: { id, organizationId },
+    });
+  }
+
+  create(input: CreateVoiceTestRunInput) {
+    return this.prisma.voiceTestRun.create({
+      data: {
+        organizationId: input.organizationId,
+        agentDeploymentId: input.agentDeploymentId,
+        scenario: input.scenario,
+        assertions: input.assertions ?? [],
+      },
+    });
+  }
+}

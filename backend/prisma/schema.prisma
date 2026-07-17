@@ -1460,6 +1460,13 @@ model Organization {
   voicePhoneNumbers                      VoicePhoneNumber[]
   voiceAgentDeployments                  VoiceAgentDeployment[]
   voiceProvisioningJobs                  VoiceProvisioningJob[]
+  voiceProviderWebhookEvents             VoiceProviderWebhookEvent[]
+  voiceUsageEvents                       VoiceUsageEvent[]
+  voiceBillingPeriods                    VoiceBillingPeriod[]
+  voiceBudgetPolicies                    VoiceBudgetPolicy[]
+  voiceToolExecutions                    VoiceToolExecution[]
+  voiceApprovalRequests                  VoiceApprovalRequest[]
+  voiceTestRuns                          VoiceTestRun[]
   rentalContracts                        RentalContract[]
   misuseCases                            MisuseCase[]
   vehicleDrivingCapabilities             VehicleDrivingCapability[]
@@ -10230,6 +10237,9 @@ model VoiceConversation {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
+  usageEvents    VoiceUsageEvent[]
+  toolExecutions VoiceToolExecution[]
+
   @@index([organizationId, startedAt])
   @@index([voiceAssistantId])
   @@index([outcome])
@@ -10462,6 +10472,8 @@ model VoiceAgentDeployment {
   updatedByUserId      String?                    @map("updated_by_user_id")
   archivedAt           DateTime?                  @map("archived_at")
 
+  testRuns VoiceTestRun[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -10508,6 +10520,270 @@ model VoiceProvisioningJob {
   @@index([status, updatedAt])
   @@index([organizationId, archivedAt])
   @@map("voice_provisioning_jobs")
+}
+
+// ── Voice AI usage, events, tools, and audit models ──
+
+enum VoiceProviderWebhookProcessingStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+enum VoiceUsageEventType {
+  CONVERSATION_MINUTE
+  INBOUND_CALL
+  OUTBOUND_CALL
+  NUMBER_RENTAL
+  AGENT_SESSION
+  ADJUSTMENT
+}
+
+enum VoiceUsageCostStatus {
+  ESTIMATED
+  FINAL
+}
+
+enum VoiceBillingPeriodStatus {
+  OPEN
+  FINALIZED
+  INVOICED
+}
+
+enum VoiceBudgetOverflowBehavior {
+  WARN
+  HARD_STOP
+  ALLOW_OVERAGE
+}
+
+enum VoiceToolRiskClass {
+  READ_ONLY
+  CONFIRMATION_REQUIRED
+  STAFF_APPROVAL_REQUIRED
+  PROHIBITED
+}
+
+enum VoiceToolExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DENIED
+  CANCELLED
+}
+
+enum VoiceApprovalConfirmationType {
+  CUSTOMER
+  STAFF
+}
+
+enum VoiceApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum VoiceTestRunStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  CANCELLED
+}
+
+/// Unified provider webhook intake with PII-redacted payload storage.
+model VoiceProviderWebhookEvent {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  provider        VoiceControlPlaneProvider            @map("provider")
+  externalEventId String                               @map("external_event_id")
+  eventType       String?                              @map("event_type")
+  payloadHash     String                               @map("payload_hash")
+  redactedPayload Json                                 @map("redacted_payload")
+  status          VoiceProviderWebhookProcessingStatus @default(RECEIVED)
+  receivedAt      DateTime                             @default(now()) @map("received_at")
+  processedAt     DateTime?                            @map("processed_at")
+  failedAt        DateTime?                            @map("failed_at")
+  retryCount      Int                                  @default(0) @map("retry_count")
+  errorCode       String?                              @map("error_code")
+  errorMessage    String?                              @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, externalEventId])
+  @@index([organizationId, receivedAt])
+  @@index([status, receivedAt])
+  @@index([provider, eventType])
+  @@map("voice_provider_webhook_events")
+}
+
+/// Billable usage ledger row — monetary values stored as integer cents.
+model VoiceUsageEvent {
+  id                  String             @id @default(uuid())
+  organizationId      String             @map("organization_id")
+  organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  voiceConversationId String?            @map("voice_conversation_id")
+  voiceConversation   VoiceConversation? @relation(fields: [voiceConversationId], references: [id], onDelete: SetNull)
+
+  provider           VoiceControlPlaneProvider @map("provider")
+  eventType          VoiceUsageEventType       @map("event_type")
+  billableSeconds    Int?                      @map("billable_seconds")
+  billableMinutes    Int?                      @map("billable_minutes")
+  providerCostCents  Int?                      @map("provider_cost_cents")
+  internalCostCents  Int?                      @map("internal_cost_cents")
+  customerPriceCents Int?                      @map("customer_price_cents")
+  currency           String                    @default("EUR") @db.Char(3)
+  externalUsageRef   String?                   @map("external_usage_ref")
+  idempotencyKey     String                    @map("idempotency_key")
+  costStatus         VoiceUsageCostStatus      @default(ESTIMATED) @map("cost_status")
+
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, idempotencyKey])
+  @@unique([provider, externalUsageRef])
+  @@index([organizationId, occurredAt])
+  @@index([voiceConversationId])
+  @@index([organizationId, costStatus])
+  @@map("voice_usage_events")
+}
+
+/// Closed billing period aggregates per tenant.
+model VoiceBillingPeriod {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  periodStart       DateTime                 @map("period_start")
+  periodEnd         DateTime                 @map("period_end")
+  includedMinutes   Int                      @default(0) @map("included_minutes")
+  consumedMinutes   Int                      @default(0) @map("consumed_minutes")
+  overageMinutes    Int                      @default(0) @map("overage_minutes")
+  providerCostCents Int                      @default(0) @map("provider_cost_cents")
+  revenueCents      Int                      @default(0) @map("revenue_cents")
+  marginCents       Int                      @default(0) @map("margin_cents")
+  currency          String                   @default("EUR") @db.Char(3)
+  status            VoiceBillingPeriodStatus @default(OPEN)
+
+  finalizedAt DateTime? @map("finalized_at")
+  invoicedAt  DateTime? @map("invoiced_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([organizationId, periodStart, periodEnd])
+  @@index([organizationId, status])
+  @@index([periodEnd])
+  @@map("voice_billing_periods")
+}
+
+/// Tenant spend and concurrency guardrails.
+model VoiceBudgetPolicy {
+  id             String       @id @default(uuid())
+  organizationId String       @unique @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  monthlyBudgetCents             Int?                        @map("monthly_budget_cents")
+  dailyLimitCents                Int?                        @map("daily_limit_cents")
+  maxConversationDurationSeconds Int?                        @map("max_conversation_duration_seconds")
+  maxConcurrentCalls             Int?                        @map("max_concurrent_calls")
+  allowedCountries               String[]                    @default([]) @map("allowed_countries")
+  warnThresholdPct               Int?                        @map("warn_threshold_pct")
+  hardLimitThresholdPct          Int?                        @map("hard_limit_threshold_pct")
+  overflowBehavior               VoiceBudgetOverflowBehavior @default(WARN) @map("overflow_behavior")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("voice_budget_policies")
+}
+
+/// MCP / agent tool invocation audit row with redacted I/O.
+model VoiceToolExecution {
+  id                  String            @id @default(uuid())
+  organizationId      String            @map("organization_id")
+  organization        Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  voiceConversationId String            @map("voice_conversation_id")
+  voiceConversation   VoiceConversation @relation(fields: [voiceConversationId], references: [id], onDelete: Cascade)
+
+  toolName       String                   @map("tool_name")
+  riskClass      VoiceToolRiskClass       @map("risk_class")
+  requestHash    String                   @map("request_hash")
+  idempotencyKey String                   @map("idempotency_key")
+  status         VoiceToolExecutionStatus @default(PENDING)
+  redactedInput  Json?                    @map("redacted_input")
+  redactedOutput Json?                    @map("redacted_output")
+  durationMs     Int?                     @map("duration_ms")
+  errorCode      String?                  @map("error_code")
+  errorMessage   String?                  @map("error_message")
+  auditUserId    String?                  @map("audit_user_id")
+  auditAgentRef  String?                  @map("audit_agent_ref")
+
+  approvalRequests VoiceApprovalRequest[]
+
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, voiceConversationId])
+  @@index([voiceConversationId, toolName])
+  @@index([organizationId, status])
+  @@map("voice_tool_executions")
+}
+
+/// Human/customer approval gate for gated tool executions.
+model VoiceApprovalRequest {
+  id              String             @id @default(uuid())
+  organizationId  String             @map("organization_id")
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  toolExecutionId String             @map("tool_execution_id")
+  toolExecution   VoiceToolExecution @relation(fields: [toolExecutionId], references: [id], onDelete: Cascade)
+
+  confirmationType          VoiceApprovalConfirmationType @map("confirmation_type")
+  status                    VoiceApprovalRequestStatus    @default(PENDING)
+  expiresAt                 DateTime?                     @map("expires_at")
+  decidedByUserId           String?                       @map("decided_by_user_id")
+  decisionReason            String?                       @map("decision_reason")
+  protectedDecisionTokenRef String?                       @map("protected_decision_token_ref")
+
+  decidedAt DateTime? @map("decided_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([organizationId, status])
+  @@index([toolExecutionId])
+  @@index([expiresAt])
+  @@map("voice_approval_requests")
+}
+
+/// Non-production agent test harness run — no customer PII in stored results.
+model VoiceTestRun {
+  id                String               @id @default(uuid())
+  organizationId    String               @map("organization_id")
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentDeploymentId String               @map("agent_deployment_id")
+  agentDeployment   VoiceAgentDeployment @relation(fields: [agentDeploymentId], references: [id], onDelete: Cascade)
+
+  scenario       String             @map("scenario")
+  status         VoiceTestRunStatus @default(PENDING)
+  assertions     Json               @default("[]")
+  redactedResult Json?              @map("redacted_result")
+
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([organizationId, status])
+  @@index([agentDeploymentId, createdAt])
+  @@map("voice_test_runs")
 }
 
 // ── V2 Trip Detection State Machine ──
