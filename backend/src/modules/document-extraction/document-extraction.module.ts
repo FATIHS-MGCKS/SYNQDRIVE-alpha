@@ -112,6 +112,7 @@ import { ConfigType } from '@nestjs/config';
     DocumentUploadContextService,
     VehicleCandidateResolverService,
     BookingCandidateResolverService,
+    CustomerCandidateResolverService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,

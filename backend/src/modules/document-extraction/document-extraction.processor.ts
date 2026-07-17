@@ -51,12 +51,14 @@ import { patchMistralTransferState } from './document-pipeline-lifecycle.util';
 import { DocumentUploadContextService } from './document-upload-context.service';
 import { VehicleCandidateResolverService } from './vehicle-candidate-resolver.service';
 import { BookingCandidateResolverService } from './booking-candidate-resolver.service';
+import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
 import {
   evaluateUploadContextResolver,
   extractUploadResolverHints,
   readUploadContextPipelineState,
 } from './document-upload-context.util';
 import { mapFieldEvidence, readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
+import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
 import { makePlausibilityCheck } from './document-plausibility.types';
 
 const SKIP_STATUSES = new Set([
@@ -91,6 +93,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     private readonly uploadContext: DocumentUploadContextService,
     private readonly vehicleCandidateResolver: VehicleCandidateResolverService,
     private readonly bookingCandidateResolver: BookingCandidateResolverService,
+    private readonly customerCandidateResolver: CustomerCandidateResolverService,
   ) {
     super();
   }
@@ -545,6 +548,31 @@ export class DocumentExtractionProcessor extends WorkerHost {
 
       pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
         bookingCandidates,
+      });
+    }
+
+    const bookingPipeline = readBookingCandidatePipelineState(pipelineWithContext);
+    const linkedBookingId =
+      uploadPipeline?.candidate?.entityType === 'BOOKING'
+        ? uploadPipeline.candidate.entityId
+        : bookingPipeline?.candidates?.find((candidate) => candidate.rank === 1)?.bookingId ?? null;
+    const uploadContextCustomerId =
+      uploadPipeline?.candidate?.entityType === 'CUSTOMER' ||
+      uploadPipeline?.candidate?.entityType === 'DRIVER'
+        ? uploadPipeline.candidate.entityId
+        : null;
+
+    if (organizationId && this.customerCandidateResolver.supportsDocumentType(applyDocumentType)) {
+      const customerCandidates = await this.customerCandidateResolver.resolve({
+        organizationId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        uploadContextCustomerId,
+        linkedBookingId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        customerCandidates,
       });
     }
 

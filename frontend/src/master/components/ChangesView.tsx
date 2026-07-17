@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-customer-candidate-resolver-2026-07-17',
+    version: '4.9.629',
+    title: 'V4.9.629 — Document Intake V2 Customer Candidate Resolver',
+    summary: [
+      'CustomerCandidateResolver aus Kundennummer, Booking-Link, normalisiertem Name, Anschrift, E-Mail, Telefon und Dokumentkontext.',
+      'Kandidaten mit customerId, confidence, matchReasons, conflicts, rank, confirmationRequired, displayLabel (ohne PII) in _pipeline.customerCandidates.',
+      'Booking-Link höherwertig als Name; kein aggressives Fuzzy; mehrere gleichnamige Kunden bleiben sichtbar mit DUPLICATE_NAME.',
+      'Kein Auto-Create, kein Auto-Kontakt; Kandidaten getrennt von acceptedEntityLinks; tenant-scoped.',
+    ],
+    reason:
+      'Nach Fahrzeug- und Buchungsvorschlag Kundenkandidaten für Fine/Invoice-Review vorschlagen — sicher, mehrdeutigkeits-sichtbar, ohne Auto-Link.',
+    previousBehavior:
+      'Kein Customer Candidate Resolver; Kundenzuordnung nur manuell über acceptedEntityLinks außerhalb des Extraction-Flows.',
+    details: 'architecture/DOCUMENT_CUSTOMER_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T22:00:00.000Z',
+  },
+  {
     id: 'document-booking-candidate-resolver-2026-07-17',
     version: '4.9.628',
     title: 'V4.9.628 — Document Intake V2 Booking Candidate Resolver',

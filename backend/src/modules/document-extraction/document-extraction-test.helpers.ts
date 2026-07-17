@@ -123,6 +123,29 @@ export function makeBookingCandidateResolverMock() {
   };
 }
 
+export function makeCustomerCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) =>
+      ['FINE', 'INVOICE', 'DAMAGE', 'ACCIDENT', 'OTHER'].includes(type),
+    ),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {
+        customerNumberPresent: false,
+        bookingLinkPresent: false,
+        namePresent: false,
+        emailPresent: false,
+        phonePresent: false,
+        addressPresent: false,
+        documentReferencePresent: false,
+      },
+      candidates: [],
+      ambiguousNameMatch: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
 export function makeLifecycleMock() {
   return {
     buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({

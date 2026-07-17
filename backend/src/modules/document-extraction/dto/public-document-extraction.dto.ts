@@ -90,6 +90,21 @@ export interface PublicBookingCandidateDto {
   confirmationRequired: boolean;
 }
 
+export interface PublicCustomerCandidateDto {
+  customerId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  confirmationRequired: boolean;
+  displayLabel: string;
+}
+
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
@@ -100,6 +115,7 @@ export interface PublicDocumentExtractionDto {
   uploadContext: PublicUploadContextDisplayDto | null;
   vehicleCandidates: PublicVehicleCandidateDto[] | null;
   bookingCandidates: PublicBookingCandidateDto[] | null;
+  customerCandidates: PublicCustomerCandidateDto[] | null;
   vehicle: PublicVehicleDisplayDto | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;
