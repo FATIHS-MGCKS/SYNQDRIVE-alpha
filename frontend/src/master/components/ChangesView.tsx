@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-read-endpoints-v49589-2026-07-17',
+    version: '4.9.589',
+    title: 'V4.9.589 — Stations V2: lesende Endpunkte abgesichert (Prompt 9/78)',
+    summary: [
+      'Alle lesenden Stations-Routen erfordern `stations.read` via `StationsPermissionGuard` + `@RequireStationsPermission`.',
+      'Listen/Stats/KPIs serverseitig nach `StationScopeContext` gefiltert; Detail-Routen mit `StationScopeGuard`.',
+      'Neue Read-Endpunkte: `GET :id/operations`, `:id/team`, `:id/activity` (Activity aus `activity_logs`).',
+      'Controller-/Service-Tests für ALL/ASSIGNED/NO_STATIONS, Cross-Tenant und archivierte Station.',
+    ],
+    reason:
+      'Stations-Reads waren nur durch OrgScoping/RolesGuard geschützt — V2 verlangt Permission + Scope auf allen Read-Pfaden.',
+    previousBehavior:
+      'Kein `stations.read`-Check; keine serverseitige Scope-Filterung in `findAll`/`getStationStats`; keine operations/team/activity Reads.',
+    details:
+      'stations.controller.ts, stations.service.ts, stations-access.service.ts, stations-permission.guard.ts, stations-read-scope.util.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:20:00.000Z',
+  },
+  {
     id: 'stations-v2-station-scope-v49588-2026-07-17',
     version: '4.9.588',
     title: 'V4.9.588 — Stations V2: StationScopeGuard + zentraler Scope-Resolver (Prompt 8/78)',

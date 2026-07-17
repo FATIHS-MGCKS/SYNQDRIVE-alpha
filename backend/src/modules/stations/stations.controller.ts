@@ -8,6 +8,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { StationsService } from './stations.service';
@@ -24,9 +25,15 @@ import {
 } from './dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { StationScopeGuard } from '@shared/guards/station-scope.guard';
+import { RequireStationScope } from '@shared/decorators/station-scope.decorator';
+import { STATION_SCOPE_CONTEXT_KEY } from '@shared/stations/station-scope.constants';
+import type { StationScopeContext } from '@shared/stations/station-scope.types';
+import { StationsPermissionGuard } from './guards/stations-permission.guard';
+import { RequireStationsPermission } from './decorators/require-stations-permission.decorator';
 
 @Controller('organizations/:orgId/stations')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
 export class StationsController {
   constructor(
     private readonly stationsService: StationsService,
@@ -34,16 +41,28 @@ export class StationsController {
   ) {}
 
   @Get()
-  async findAll(@Param('orgId') orgId: string, @Query() query: ListStationsQueryDto) {
-    return this.stationsService.findAll(orgId, query);
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'list' })
+  async findAll(
+    @Param('orgId') orgId: string,
+    @Query() query: ListStationsQueryDto,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.findAll(orgId, query, req[STATION_SCOPE_CONTEXT_KEY]);
   }
 
   @Get('stats')
-  async getStats(@Param('orgId') orgId: string) {
-    return this.stationsService.getStationStats(orgId);
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'list' })
+  async getStats(
+    @Param('orgId') orgId: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationStats(orgId, req[STATION_SCOPE_CONTEXT_KEY]);
   }
 
   @Get('search/mapbox')
+  @RequireStationScope({ resource: 'none' })
   async searchMapbox(@Query() query: StationMapboxSearchQueryDto) {
     return this.stationMapbox.search(query.query, {
       country: query.country,
@@ -52,6 +71,7 @@ export class StationsController {
   }
 
   @Get('search/mapbox/:mapboxId')
+  @RequireStationScope({ resource: 'none' })
   async retrieveMapbox(
     @Param('mapboxId') mapboxId: string,
     @Query() query: StationMapboxRetrieveQueryDto,
@@ -78,23 +98,84 @@ export class StationsController {
   }
 
   @Get(':id')
-  async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.findOne(orgId, id);
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async findOne(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.findOne(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
   }
 
   @Get(':id/overview-stats')
-  async getOverviewStats(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.getStationOverviewStats(orgId, id);
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getOverviewStats(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationOverviewStats(
+      orgId,
+      id,
+      req[STATION_SCOPE_CONTEXT_KEY],
+    );
   }
 
   @Get(':id/fleet')
-  async getFleet(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.getStationFleet(orgId, id);
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getFleet(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationFleet(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
   }
 
   @Get(':id/bookings')
-  async getBookings(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.getStationBookings(orgId, id);
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getBookings(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationBookings(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+  }
+
+  @Get(':id/operations')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getOperations(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationOperations(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+  }
+
+  @Get(':id/team')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getTeam(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationTeam(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+  }
+
+  @Get(':id/activity')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getActivity(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationActivity(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
   }
 
   @Post()

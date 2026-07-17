@@ -13,6 +13,12 @@ import { CreateStationDto } from './dto/create-station.dto';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
 import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
+import type { StationScopeContext } from '@shared/stations/station-scope.types';
+import { STATION_SCOPE_MODE } from '@shared/stations/station-scope.constants';
+import {
+  buildScopedStationWhere,
+  buildScopedVehicleHomeWhere,
+} from '@shared/stations/stations-read-scope.util';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 
@@ -129,6 +135,37 @@ export interface StationVehicleAssignmentResult {
   movedFromOtherStations: number;
 }
 
+export interface StationOperationsDto {
+  pickupEnabled: boolean;
+  returnEnabled: boolean;
+  afterHoursReturnEnabled: boolean;
+  keyBoxAvailable: boolean;
+  capacity: number | null;
+  radiusMeters: number | null;
+  geofenceRadiusMeters: number | null;
+  openingHours: Prisma.JsonValue | null;
+  holidayRules: Prisma.JsonValue | null;
+  handoverInstructions: string | null;
+  returnInstructions: string | null;
+  timezone: string | null;
+}
+
+export interface StationTeamDto {
+  managerName: string | null;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+  staff: Array<{ id: string; name: string; role: string | null }>;
+}
+
+export interface StationActivityEntryDto {
+  id: string;
+  action: string;
+  description: string;
+  userName: string;
+  createdAt: string;
+}
+
 @Injectable()
 export class StationsService {
   private readonly logger = new Logger(StationsService.name);
@@ -146,14 +183,20 @@ export class StationsService {
   // CRUD
   // ─────────────────────────────────────────────────────────────
 
-  async findAll(organizationId: string, query?: ListStationsQueryDto): Promise<StationDto[]> {
-    const where: Prisma.StationWhereInput = { organizationId };
-    if (query?.status) where.status = query.status;
-    if (query?.type) where.type = query.type;
+  async findAll(
+    organizationId: string,
+    query?: ListStationsQueryDto,
+    scope?: StationScopeContext,
+  ): Promise<StationDto[]> {
+    const extra: Prisma.StationWhereInput = {};
+    if (query?.status) extra.status = query.status;
+    if (query?.type) extra.type = query.type;
     if (query?.selectableOnly === 'true') {
-      where.status = { in: SELECTABLE_STATION_STATUSES };
-      where.pickupEnabled = true;
+      extra.status = { in: SELECTABLE_STATION_STATUSES };
+      extra.pickupEnabled = true;
     }
+
+    const where = buildScopedStationWhere(organizationId, scope, extra);
 
     const stations = await this.prisma.station.findMany({
       where,
@@ -163,9 +206,14 @@ export class StationsService {
     return stations.map((s) => this.toDto(s, s._count.vehiclesHome));
   }
 
-  async findOne(organizationId: string, id: string): Promise<StationDto> {
+  async findOne(
+    organizationId: string,
+    id: string,
+    scope?: StationScopeContext,
+  ): Promise<StationDto> {
+    const where = buildScopedStationWhere(organizationId, scope, { id });
     const station = await this.prisma.station.findFirst({
-      where: { id, organizationId },
+      where,
       include: this.stationIncludeCount(),
     });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
@@ -363,16 +411,19 @@ export class StationsService {
   // Stats for dashboard header / sidebar
   // ─────────────────────────────────────────────────────────────
 
-  async getStationStats(organizationId: string): Promise<StationsStatsDto> {
+  async getStationStats(
+    organizationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationsStatsDto> {
     const [stations, unassignedVehicles] = await Promise.all([
       this.prisma.station.findMany({
-        where: { organizationId, status: { not: 'ARCHIVED' } },
+        where: buildScopedStationWhere(organizationId, scope, {
+          status: { not: 'ARCHIVED' },
+        }),
         include: { _count: { select: { vehiclesHome: true } } },
         orderBy: [{ isPrimary: 'desc' }, { status: 'asc' }, { name: 'asc' }],
       }),
-      this.prisma.vehicle.count({
-        where: { organizationId, homeStationId: null },
-      }),
+      this.countUnassignedVehicles(organizationId, scope),
     ]);
 
     const totalVehicles = stations.reduce((sum, s) => sum + s._count.vehiclesHome, 0);
@@ -398,9 +449,10 @@ export class StationsService {
   async getStationOverviewStats(
     organizationId: string,
     stationId: string,
+    scope?: StationScopeContext,
   ): Promise<StationOverviewStatsDto> {
     const station = await this.prisma.station.findFirst({
-      where: { id: stationId, organizationId },
+      where: buildScopedStationWhere(organizationId, scope, { id: stationId }),
     });
     if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
@@ -534,8 +586,12 @@ export class StationsService {
     };
   }
 
-  async getStationFleet(organizationId: string, stationId: string) {
-    await this.findOne(organizationId, stationId);
+  async getStationFleet(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ) {
+    await this.findOne(organizationId, stationId, scope);
     return this.prisma.vehicle.findMany({
       where: {
         organizationId,
@@ -556,8 +612,12 @@ export class StationsService {
     });
   }
 
-  async getStationBookings(organizationId: string, stationId: string) {
-    await this.findOne(organizationId, stationId);
+  async getStationBookings(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ) {
+    await this.findOne(organizationId, stationId, scope);
     const bookings = await this.prisma.booking.findMany({
       where: {
         organizationId,
@@ -585,6 +645,110 @@ export class StationsService {
         b.vehicle.licensePlate ||
         '',
     }));
+  }
+
+  async getStationOperations(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationOperationsDto> {
+    const station = await this.prisma.station.findFirst({
+      where: buildScopedStationWhere(organizationId, scope, { id: stationId }),
+      select: {
+        pickupEnabled: true,
+        returnEnabled: true,
+        afterHoursReturnEnabled: true,
+        keyBoxAvailable: true,
+        capacity: true,
+        radiusMeters: true,
+        openingHours: true,
+        holidayRules: true,
+        handoverInstructions: true,
+        returnInstructions: true,
+        timezone: true,
+      },
+    });
+    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
+
+    return {
+      pickupEnabled: station.pickupEnabled,
+      returnEnabled: station.returnEnabled,
+      afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+      keyBoxAvailable: station.keyBoxAvailable,
+      capacity: station.capacity,
+      radiusMeters: station.radiusMeters,
+      geofenceRadiusMeters: station.radiusMeters,
+      openingHours: station.openingHours,
+      holidayRules: station.holidayRules,
+      handoverInstructions: station.handoverInstructions,
+      returnInstructions: station.returnInstructions,
+      timezone: station.timezone,
+    };
+  }
+
+  async getStationTeam(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationTeamDto> {
+    const station = await this.prisma.station.findFirst({
+      where: buildScopedStationWhere(organizationId, scope, { id: stationId }),
+      select: {
+        managerName: true,
+        phone: true,
+        email: true,
+      },
+    });
+    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
+
+    return {
+      managerName: station.managerName,
+      contactPerson: station.managerName,
+      phone: station.phone,
+      email: station.email,
+      staff: [],
+    };
+  }
+
+  async getStationActivity(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+    limit = 50,
+  ): Promise<StationActivityEntryDto[]> {
+    await this.findOne(organizationId, stationId, scope);
+
+    const entries = await this.prisma.activityLog.findMany({
+      where: {
+        organizationId,
+        entity: 'STATION',
+        entityId: stationId,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Math.max(limit, 1), 100),
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    return entries.map((entry) => ({
+      id: entry.id,
+      action: entry.action,
+      description: entry.description,
+      userName: entry.user?.name || entry.user?.email || '',
+      createdAt: entry.createdAt.toISOString(),
+    }));
+  }
+
+  private async countUnassignedVehicles(
+    organizationId: string,
+    scope?: StationScopeContext,
+  ): Promise<number> {
+    if (scope && scope.mode !== STATION_SCOPE_MODE.ALL_STATIONS) {
+      return 0;
+    }
+
+    return this.prisma.vehicle.count({
+      where: { organizationId, homeStationId: null },
+    });
   }
 
   async assignVehicleToStation(
