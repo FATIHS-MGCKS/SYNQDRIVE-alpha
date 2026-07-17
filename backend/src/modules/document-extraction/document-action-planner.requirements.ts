@@ -5,15 +5,9 @@ import type {
 } from './document-action-planner.types';
 import type { ApplyDocumentExtractionType } from './document-extraction.schemas';
 
-const VEHICLE_SCOPED_TYPES = new Set<DocumentExtractionType>([
-  'BRAKE',
-  'TIRE',
-  'BATTERY',
-]);
+const VEHICLE_SCOPED_TYPES = new Set<DocumentExtractionType>();
 
-const CRITICAL_FIELD_KEYS: Partial<Record<ApplyDocumentExtractionType, string[]>> = {
-  TIRE: ['treadDepthMm.fl'],
-};
+const CRITICAL_FIELD_KEYS: Partial<Record<ApplyDocumentExtractionType, string[]>> = {};
 
 export function resolvePlannerRoutingType(
   input: Pick<DocumentActionPlannerInput, 'effectiveDocumentType' | 'documentCategory'>,
@@ -59,13 +53,6 @@ function hasNestedField(data: Record<string, unknown>, key: string): boolean {
   return nested != null && nested !== '';
 }
 
-function hasAnyTreadDepth(data: Record<string, unknown>): boolean {
-  const tread = data.treadDepthMm;
-  if (tread == null || typeof tread !== 'object') return false;
-  const record = tread as Record<string, unknown>;
-  return ['fl', 'fr', 'rl', 'rr'].some((wheel) => record[wheel] != null && record[wheel] !== '');
-}
-
 export function collectFieldMissingRequirements(
   routingType: DocumentExtractionType | null,
   confirmedData: Record<string, unknown>,
@@ -76,12 +63,7 @@ export function collectFieldMissingRequirements(
 
   const applyType = routingType as ApplyDocumentExtractionType;
   const keys = CRITICAL_FIELD_KEYS[applyType] ?? [];
-  const missingKeys = keys.filter((key) => {
-    if (applyType === 'TIRE' && key.startsWith('treadDepthMm')) {
-      return !hasAnyTreadDepth(confirmedData);
-    }
-    return !hasNestedField(confirmedData, key);
-  });
+  const missingKeys = keys.filter((key) => !hasNestedField(confirmedData, key));
 
   if (missingKeys.length === 0) return [];
 

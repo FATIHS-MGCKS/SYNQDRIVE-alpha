@@ -156,6 +156,7 @@ describe('DocumentActionPlannerEngine', () => {
         }),
       );
 
+      expect(result.planDraft.snapshot.planningMode).toBe('EVIDENCE');
       expect(result.planDraft.isBlocked).toBe(false);
       expect(result.actions[0].actionType).toBe('RECORD_TIRE_MEASUREMENT');
     });
@@ -211,16 +212,21 @@ describe('DocumentActionPlannerEngine', () => {
   });
 
   describe('entity links', () => {
-    it('blocks maintenance apply without confirmed vehicle link', () => {
+    it('blocks evidence apply without confirmed vehicle link', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'BRAKE',
+          confirmedData: {
+            eventDate: '2026-04-01',
+            frontPadMm: 8,
+          },
           entityLinks: [],
         }),
       );
 
+      expect(result.planDraft.snapshot.planningMode).toBe('EVIDENCE');
       expect(result.planDraft.isBlocked).toBe(true);
-      expect(result.missingRequirements.some((m) => m.code === 'MISSING_VEHICLE_ENTITY_LINK')).toBe(
+      expect(result.missingRequirements.some((m) => m.code === 'MISSING_CONFIRMED_VEHICLE_LINK')).toBe(
         true,
       );
       expect(executableActions(result)).toHaveLength(0);
@@ -352,15 +358,26 @@ describe('DocumentActionPlannerEngine', () => {
   describe('plan draft snapshot', () => {
     it('includes action audit metadata for persistence layer', () => {
       const result = planDocumentActions(
-        buildPlannerTestInput({ effectiveDocumentType: 'BATTERY' }),
+        buildPlannerTestInput({
+          effectiveDocumentType: 'BATTERY',
+          confirmedData: {
+            eventDate: '2026-05-01',
+            scope: 'lv',
+            voltageV: 12.4,
+            sohPercent: 92,
+          },
+        }),
       );
 
       expect(result.planDraft.snapshot).toMatchObject({
         plannerVersion: expect.any(String),
         inputFingerprint: expect.any(String),
         routingType: 'BATTERY',
+        planningMode: 'EVIDENCE',
         isBlocked: false,
         actionTypes: ['RECORD_BATTERY_EVIDENCE'],
+        noHealthScoreOverwrite: true,
+        supplementalEvidenceOnly: true,
       });
     });
   });

@@ -16,6 +16,10 @@ import {
   extractMaintenanceSemanticAction,
   MAINTENANCE_SEMANTIC_ACTIONS,
 } from './document-action-planner.maintenance-rules';
+import {
+  extractEvidenceSemanticAction,
+  EVIDENCE_SEMANTIC_ACTIONS,
+} from './document-action-planner.evidence-rules';
 import { listActionTemplatesForRoutingType } from './document-action-planner.catalog';
 import type {
   DocumentActionBlockingReason,
@@ -41,6 +45,7 @@ const SEMANTIC_PREVIEW_ACTION_TYPES = new Set<string>([
   ...Object.values(FINE_SEMANTIC_ACTIONS),
   ...Object.values(FINANCE_SEMANTIC_ACTIONS),
   ...Object.values(MAINTENANCE_SEMANTIC_ACTIONS),
+  ...Object.values(EVIDENCE_SEMANTIC_ACTIONS),
 ]);
 
 export type DocumentActionPreviewActionType =
@@ -48,7 +53,8 @@ export type DocumentActionPreviewActionType =
   | (typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS)[keyof typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS]
   | (typeof FINE_SEMANTIC_ACTIONS)[keyof typeof FINE_SEMANTIC_ACTIONS]
   | (typeof FINANCE_SEMANTIC_ACTIONS)[keyof typeof FINANCE_SEMANTIC_ACTIONS]
-  | (typeof MAINTENANCE_SEMANTIC_ACTIONS)[keyof typeof MAINTENANCE_SEMANTIC_ACTIONS];
+  | (typeof MAINTENANCE_SEMANTIC_ACTIONS)[keyof typeof MAINTENANCE_SEMANTIC_ACTIONS]
+  | (typeof EVIDENCE_SEMANTIC_ACTIONS)[keyof typeof EVIDENCE_SEMANTIC_ACTIONS];
 
 export type DocumentActionPreviewRow = {
   sequence: number;
@@ -63,6 +69,8 @@ export type DocumentActionPreviewRow = {
 
 function resolvePreviewActionType(action: PlannedDocumentActionInput): DocumentActionPreviewActionType {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const evidenceSemantic = extractEvidenceSemanticAction(payload);
+  if (evidenceSemantic) return evidenceSemantic;
   const maintenanceSemantic = extractMaintenanceSemanticAction(payload);
   if (maintenanceSemantic) return maintenanceSemantic;
   const financeSemantic = extractFinanceSemanticAction(payload);
@@ -79,6 +87,25 @@ function mapActionPreviewStatus(
   planBlocked: boolean,
 ): DocumentActionPreviewStatus {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const evidenceSemantic = extractEvidenceSemanticAction(payload);
+  if (
+    evidenceSemantic === EVIDENCE_SEMANTIC_ACTIONS.CREATE_TIRE_MEASUREMENT ||
+    evidenceSemantic === EVIDENCE_SEMANTIC_ACTIONS.CREATE_BRAKE_EVIDENCE ||
+    evidenceSemantic === EVIDENCE_SEMANTIC_ACTIONS.CREATE_BATTERY_EVIDENCE ||
+    evidenceSemantic === EVIDENCE_SEMANTIC_ACTIONS.CREATE_SERVICE_EVENT
+  ) {
+    return planBlocked ? 'BLOCKED' : 'WOULD_CREATE';
+  }
+  if (evidenceSemantic === EVIDENCE_SEMANTIC_ACTIONS.LINK_VEHICLE) {
+    return 'WOULD_LINK';
+  }
+  if (
+    evidenceSemantic === EVIDENCE_SEMANTIC_ACTIONS.SUGGEST_WORKSHOP_TASK ||
+    evidenceSemantic === EVIDENCE_SEMANTIC_ACTIONS.SUGGEST_REMEASUREMENT
+  ) {
+    return 'WOULD_SUGGEST';
+  }
+
   const maintenanceSemantic = extractMaintenanceSemanticAction(payload);
   if (
     maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.CREATE_SERVICE_EVENT ||
@@ -169,6 +196,9 @@ function buildBlockedTemplatePreviews(
   if (plannerResult.planDraft.snapshot.planningMode === 'MAINTENANCE') {
     return [];
   }
+  if (plannerResult.planDraft.snapshot.planningMode === 'EVIDENCE') {
+    return [];
+  }
 
   const routingType = plannerResult.planDraft.snapshot.routingType as string | null | undefined;
   if (!routingType || !plannerResult.planDraft.isBlocked) {
@@ -232,9 +262,10 @@ export function buildDocumentActionPreviewRows(
   const isFinePlan = plannerResult.planDraft.snapshot.planningMode === 'FINE';
   const isFinancePlan = plannerResult.planDraft.snapshot.planningMode === 'FINANCE';
   const isMaintenancePlan = plannerResult.planDraft.snapshot.planningMode === 'MAINTENANCE';
+  const isEvidencePlan = plannerResult.planDraft.snapshot.planningMode === 'EVIDENCE';
   const rows: DocumentActionPreviewRow[] = [];
 
-  if (!isArchiveOnlyPlan && !isFinePlan && !isFinancePlan && !isMaintenancePlan) {
+  if (!isArchiveOnlyPlan && !isFinePlan && !isFinancePlan && !isMaintenancePlan && !isEvidencePlan) {
     const linkPreview = buildVehicleLinkPreview(vehicleEntityId, 0);
     if (linkPreview) {
       rows.push({ ...linkPreview, sequence: 1 });

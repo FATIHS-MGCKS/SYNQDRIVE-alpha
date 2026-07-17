@@ -14,68 +14,9 @@ function confirmedFieldSnapshot(ctx: DocumentActionPlannerBuildContext): Record<
   };
 }
 
-function tirePayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    treadDepthMm: ctx.input.confirmedData.treadDepthMm ?? null,
-    odometerKm: ctx.input.confirmedData.odometerKm ?? null,
-  };
-}
-
-function brakePayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  const data = ctx.input.confirmedData;
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    serviceKind: data.serviceKind ?? null,
-    scopeCsv: data.scopeCsv ?? null,
-    frontPadMm: data.frontPadMm ?? null,
-    rearPadMm: data.rearPadMm ?? null,
-    frontDiscMm: data.frontDiscMm ?? null,
-    rearDiscMm: data.rearDiscMm ?? null,
-  };
-}
-
-function batteryPayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  const data = ctx.input.confirmedData;
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    recordKind: data.recordKind ?? null,
-    scope: data.scope ?? null,
-    voltageV: data.voltageV ?? null,
-    sohPercent: data.sohPercent ?? null,
-  };
-}
-
 const ACTION_TEMPLATES_BY_TYPE: Partial<
   Record<DocumentExtractionType, DocumentActionPlannerActionTemplate[]>
 > = {
-  BRAKE: [
-    {
-      actionType: 'RECORD_BRAKE_EVIDENCE',
-      requirement: 'REQUIRED',
-      capabilityKey: 'brakeEvidence',
-      targetEntityType: 'VEHICLE',
-      buildPayload: brakePayload,
-    },
-  ],
-  TIRE: [
-    {
-      actionType: 'RECORD_TIRE_MEASUREMENT',
-      requirement: 'REQUIRED',
-      capabilityKey: 'tireMeasurements',
-      targetEntityType: 'VEHICLE',
-      buildPayload: tirePayload,
-    },
-  ],
-  BATTERY: [
-    {
-      actionType: 'RECORD_BATTERY_EVIDENCE',
-      requirement: 'REQUIRED',
-      capabilityKey: 'batteryEvidence',
-      targetEntityType: 'VEHICLE',
-      buildPayload: batteryPayload,
-    },
-  ],
   OTHER: [
     {
       actionType: 'ARCHIVE_ONLY',

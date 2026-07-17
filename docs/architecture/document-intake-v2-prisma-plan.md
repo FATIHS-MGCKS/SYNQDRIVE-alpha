@@ -180,6 +180,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 25, 2026-07-17):** `document-action-planner.maintenance-rules.ts` — Maintenance-Profile (SERVICE, OIL_CHANGE, TUV, BOKRAFT, DAMAGE, ACCIDENT, VEHICLE_CONDITION). Semantic Actions: CREATE_SERVICE_EVENT, UPDATE_TUV/BOKRAFT_COMPLIANCE, CREATE_DAMAGE/INSPECTION_DRAFT, LINK_*, SUGGEST_REPAIR/INSPECTION/INSURANCE_REVIEW. Kein Datums-Fallback; validUntil nur bestätigt; Mangelstatus; Accident ≠ auto-Schaden; Readiness über applySafetyDecision. Planner-Version `document-action-planner-v5`.
 
+**Implementierungsstand (Prompt 26, 2026-07-17):** `document-action-planner.evidence-rules.ts` — Evidence-Profile (TIRE, BRAKE, BATTERY, Werkstatt-/Messberichte via SERVICE/OIL_CHANGE + WORKSHOP_MEASUREMENT). Semantic Actions: CREATE_TIRE_MEASUREMENT, CREATE_BRAKE_EVIDENCE, CREATE_BATTERY_EVIDENCE, CREATE_SERVICE_EVENT, LINK_VEHICLE, SUGGEST_WORKSHOP_TASK, SUGGEST_REMEASUREMENT. Maßeinheiten validiert; unplausible Werte → REQUIRES_REMEASUREMENT; getrennte Provenienz (CONFIRMED_DOCUMENT / DOCUMENT_INTAKE_CONFIRMED / workshopFindingProvenance); nur bestätigte Felder; noHealthScoreOverwrite. Planner-Version `document-action-planner-v6`.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

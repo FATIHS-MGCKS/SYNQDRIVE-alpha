@@ -59,6 +59,17 @@ import {
   resolveMaintenanceFollowUpCandidateTypes,
   stripMaintenanceExecutableActions,
 } from './document-action-planner.maintenance-rules';
+import {
+  assessEvidenceDraftRequirements,
+  buildEvidencePlannerActions,
+  buildEvidencePlannerSummary,
+  collectEvidenceReadinessBlockers,
+  EVIDENCE_PLAN_OUTCOMES,
+  isEvidenceDocumentProfile,
+  resolveEvidenceDocumentMode,
+  resolveEvidenceFollowUpCandidateTypes,
+  stripEvidenceExecutableActions,
+} from './document-action-planner.evidence-rules';
 
 const EXECUTABLE_REQUIREMENTS = new Set<DocumentActionRequirement>(['REQUIRED', 'OPTIONAL']);
 
@@ -190,6 +201,9 @@ export function planDocumentActions(input: DocumentActionPlannerInput): Document
   }
   if (isFinanceDocumentProfile(input)) {
     return planFinanceDocument(input);
+  }
+  if (isEvidenceDocumentProfile(input)) {
+    return planEvidenceDocument(input);
   }
   if (isMaintenanceDocumentProfile(input)) {
     return planMaintenanceDocument(input);
@@ -673,6 +687,180 @@ function planMaintenanceDocument(input: DocumentActionPlannerInput): DocumentAct
       entityCandidateCount: input.entityCandidates.length,
       plausibilityOverallStatus: input.plausibility.overallStatus,
       noCurrentDateFallback: true,
+    },
+  };
+
+  return {
+    planDraft,
+    actions,
+    blockingReasons,
+    missingRequirements,
+    followUpCandidateTypes,
+  };
+}
+
+function planEvidenceDocument(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
+  const plannerVersion = input.plannerVersion ?? DOCUMENT_ACTION_PLANNER_VERSION;
+  const routingType = resolvePlannerRoutingType(input);
+  const vehicleEntityId = findVehicleEntityId(input.entityLinks);
+  const evidenceMode = resolveEvidenceDocumentMode(input);
+  const assessment = assessEvidenceDraftRequirements(input);
+  const inputFingerprint = buildDocumentActionPlannerInputFingerprint({
+    ...input,
+    plannerVersion,
+  });
+
+  const blockingReasons: DocumentActionBlockingReason[] = [];
+  const missingRequirements = assessment.missingRequirements;
+
+  blockingReasons.push(
+    ...missingRequirements.map((missing) =>
+      toBlockingReasonFromMissing(
+        missing,
+        missing.entityType ? 'ENTITY' : 'REQUIREMENT',
+      ),
+    ),
+  );
+  blockingReasons.push(
+    ...assessment.measurementIssues
+      .filter((issue) => issue.severity === 'BLOCKER')
+      .map((issue) => ({
+        code: issue.code,
+        message: issue.message,
+        source: 'REQUIREMENT' as const,
+        severity: 'BLOCKER' as const,
+      })),
+  );
+  blockingReasons.push(...collectPlausibilityBlockers(input));
+  blockingReasons.push(...collectEvidenceReadinessBlockers(input));
+
+  if (!input.featureFlags.actionPreviewEnabled) {
+    blockingReasons.push({
+      code: 'ACTION_PREVIEW_DISABLED',
+      message: 'Action preview is disabled by feature flag.',
+      source: 'FEATURE_FLAG',
+      severity: 'BLOCKER',
+    });
+  }
+
+  const ctx: DocumentActionPlannerBuildContext = {
+    input: { ...input, plannerVersion },
+    vehicleEntityId,
+    routingType,
+  };
+
+  let actions =
+    blockingReasons.some((reason) => reason.code === 'ACTION_PREVIEW_DISABLED')
+      ? []
+      : buildEvidencePlannerActions(ctx);
+
+  const capabilityChecks: Array<{
+    enabled: boolean;
+    code: string;
+    message: string;
+    actionTypes: string[];
+  }> = [
+    {
+      enabled: isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'tireMeasurements'),
+      code: 'CAPABILITY_DISABLED_TIREMEASUREMENTS',
+      message: 'Downstream tire measurements capability is disabled.',
+      actionTypes: ['RECORD_TIRE_MEASUREMENT'],
+    },
+    {
+      enabled: isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'brakeEvidence'),
+      code: 'CAPABILITY_DISABLED_BRAKEEVIDENCE',
+      message: 'Downstream brake evidence capability is disabled.',
+      actionTypes: ['RECORD_BRAKE_EVIDENCE'],
+    },
+    {
+      enabled: isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'batteryEvidence'),
+      code: 'CAPABILITY_DISABLED_BATTERYEVIDENCE',
+      message: 'Downstream battery evidence capability is disabled.',
+      actionTypes: ['RECORD_BATTERY_EVIDENCE'],
+    },
+    {
+      enabled: isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'serviceEvents'),
+      code: 'CAPABILITY_DISABLED_SERVICEEVENTS',
+      message: 'Downstream service events capability is disabled.',
+      actionTypes: ['CREATE_SERVICE_EVENT'],
+    },
+  ];
+
+  for (const check of capabilityChecks) {
+    if (check.enabled) continue;
+    if (!actions.some((action) => check.actionTypes.includes(action.actionType))) continue;
+    blockingReasons.push({
+      code: check.code,
+      message: check.message,
+      source: 'CAPABILITY',
+      severity: 'BLOCKER',
+    });
+  }
+
+  const hardBlockCodes = new Set([
+    'PLAUSIBILITY_OVERALL_BLOCKER',
+    'ACTION_PREVIEW_DISABLED',
+    'APPLY_SAFETY_BLOCKED',
+    'READINESS_POLICY_BLOCKED',
+    'CONFIRMED_ACTION_REQUIRED',
+    'CAPABILITY_DISABLED_TIREMEASUREMENTS',
+    'CAPABILITY_DISABLED_BRAKEEVIDENCE',
+    'CAPABILITY_DISABLED_BATTERYEVIDENCE',
+    'CAPABILITY_DISABLED_SERVICEEVENTS',
+  ]);
+
+  const isBlocked =
+    assessment.planOutcome === EVIDENCE_PLAN_OUTCOMES.BLOCKED ||
+    blockingReasons.some((reason) => hardBlockCodes.has(reason.code));
+
+  if (isBlocked) {
+    actions = stripEvidenceExecutableActions(actions);
+    if (blockingReasons.some((reason) => hardBlockCodes.has(reason.code))) {
+      actions = stripExecutableActions(actions);
+    }
+  } else if (assessment.planOutcome === EVIDENCE_PLAN_OUTCOMES.REQUIRES_REMEASUREMENT) {
+    actions = stripEvidenceExecutableActions(actions);
+  }
+
+  const followUpCandidateTypes = resolveEvidenceFollowUpCandidateTypes(
+    assessment.planOutcome,
+    isBlocked,
+  );
+
+  const planDraft: DocumentActionPlanDraft = {
+    plannerVersion,
+    documentCategory: input.documentCategory,
+    documentSubtype: input.documentSubtype,
+    effectiveDocumentType: input.effectiveDocumentType,
+    inputFingerprint,
+    applyMode: input.applyMode,
+    isBlocked,
+    summary: buildEvidencePlannerSummary(evidenceMode, assessment.planOutcome, actions.length),
+    snapshot: {
+      plannerVersion,
+      inputFingerprint,
+      routingType,
+      planningMode: 'EVIDENCE',
+      evidenceDocumentMode: evidenceMode,
+      evidencePlanOutcome: assessment.planOutcome,
+      documentCategory: input.documentCategory,
+      documentSubtype: input.documentSubtype,
+      effectiveDocumentType: input.effectiveDocumentType,
+      applyMode: input.applyMode,
+      isBlocked,
+      actionTypes: actions.map((action) => action.actionType),
+      semanticActions: actions
+        .map((action) => (action.previewPayload as Record<string, unknown> | undefined)?.semanticAction)
+        .filter(Boolean),
+      blockingReasonCodes: blockingReasons.map((reason) => reason.code),
+      missingRequirementCodes: missingRequirements.map((missing) => missing.code),
+      measurementIssueCodes: assessment.measurementIssues.map((issue) => issue.code),
+      followUpCandidateTypes,
+      entityLinkCount: input.entityLinks.length,
+      entityCandidateCount: input.entityCandidates.length,
+      plausibilityOverallStatus: input.plausibility.overallStatus,
+      noHealthScoreOverwrite: true,
+      supplementalEvidenceOnly: true,
     },
   };
 

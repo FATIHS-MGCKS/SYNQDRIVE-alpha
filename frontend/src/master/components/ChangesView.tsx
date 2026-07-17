@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-evidence-planner-rules-2026-07-17',
+    version: '4.9.602',
+    title: 'V4.9.602 — Document Intake V2 Tire / Brake / Battery / Workshop Evidence Action Plan Rules',
+    summary: [
+      'Planner-Regeln für TIRE, BRAKE, BATTERY und technische Werkstatt-/Messberichte (WORKSHOP_MEASUREMENT).',
+      'Semantic Actions: CREATE_TIRE_MEASUREMENT, CREATE_BRAKE_EVIDENCE, CREATE_BATTERY_EVIDENCE, CREATE_SERVICE_EVENT, LINK_VEHICLE, SUGGEST_WORKSHOP_TASK, SUGGEST_REMEASUREMENT.',
+      'Maßeinheiten validiert (mm, V, %); unplausible Werte → REQUIRES_REMEASUREMENT ohne Evidence-Erzeugung; Werkstattbefund vs. KI-Extraktion getrennte Provenienz; nur bestätigte Felder erzeugen Evidence; noHealthScoreOverwrite + supplementalEvidenceOnly.',
+      'Planner v6 (`document-action-planner-v6`); Tests für gültige, fehlende und unplausible Messwerte.',
+    ],
+    reason: 'Prompt 26/84: deterministischer Evidence-Action-Planner vor Apply-Verdrahtung.',
+    previousBehavior: 'TIRE/BRAKE/BATTERY nutzten generische Catalog-Templates ohne Domain-Validierung und Provenienz-Regeln.',
+    details:
+      'document-action-planner.evidence-rules.ts (+ spec), engine evidence path (fine → finance → evidence → maintenance → archive), preview mapper, catalog cleanup.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
     id: 'document-maintenance-planner-rules-2026-07-17',
     version: '4.9.601',
     title: 'V4.9.601 — Document Intake V2 Maintenance / Inspection / Damage Action Plan Rules',
