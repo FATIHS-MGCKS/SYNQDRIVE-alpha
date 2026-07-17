@@ -209,6 +209,7 @@ export function buildVehicleBrakeBaselineAuditInput(
         observedAt,
         odometerKm,
         evidenceRef: evidenceRef('ev', ev.id, args.auditSalt),
+        rawRefId: ev.id,
         confidence,
       });
     }
@@ -220,6 +221,7 @@ export function buildVehicleBrakeBaselineAuditInput(
         observedAt,
         odometerKm,
         evidenceRef: evidenceRef('ev_disc', ev.id, args.auditSalt),
+        rawRefId: ev.id,
         confidence,
       });
     }
@@ -231,6 +233,7 @@ export function buildVehicleBrakeBaselineAuditInput(
         observedAt,
         odometerKm,
         evidenceRef: evidenceRef('ev_disc', ev.id, args.auditSalt),
+        rawRefId: ev.id,
         confidence,
       });
     }
@@ -270,6 +273,7 @@ export function buildVehicleBrakeBaselineAuditInput(
           observedAt,
           odometerKm,
           evidenceRef: evidenceRef('svc_mm', `${event.id}:${component}`, args.auditSalt),
+          rawRefId: event.id,
           confidence: 'HIGH',
           serviceScope: scope,
         });
@@ -284,6 +288,7 @@ export function buildVehicleBrakeBaselineAuditInput(
           observedAt,
           odometerKm,
           evidenceRef: evidenceRef('svc_rep', `${event.id}:${component}`, args.auditSalt),
+          rawRefId: event.id,
           isDocumentedReplacement: true,
           serviceScope: scope,
         });

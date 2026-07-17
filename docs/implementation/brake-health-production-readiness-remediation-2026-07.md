@@ -772,6 +772,95 @@ npm test -- --testPathPattern='brake-reference-spec|register-brake-baseline|brak
 
 ---
 
+## Component-Specific Wear Thresholds (Prompt 11) — 2026-07-17
+
+### Ziel
+
+P0-Fix: Keine generische 2-mm-Scheibenabnutzung als sicherheitsrelevante Wahrheit. Critical/Warning basieren auf bauteilspezifischen, bestätigten Mindestwerten.
+
+### Schema (Migration `20260717170000_brake_wear_thresholds`)
+
+- `frontPadMinimumThicknessMm`, `rearPadMinimumThicknessMm`, `frontDiscMinimumThicknessMm`, `rearDiscMinimumThicknessMm`
+- `thresholdSource` (`BrakeWearThresholdSource`), `thresholdConfidence`, `thresholdConfirmedAt`
+
+### Semantik-Trennung
+
+| Konzept | Feld / Quelle |
+|---------|----------------|
+| Nominal thickness | `*NominalThicknessMm` |
+| Current measured | Evidence / `currentMeasuredThicknessMm` |
+| Operational warning | `warningThresholdMm` (konservativer, getrennt) |
+| Manufacturer minimum | `*MinimumThicknessMm` + `thresholdSource` |
+| Safety critical | `criticalThresholdMm` nur bei `confirmed` |
+
+### Domain (`brake-wear-threshold.domain.ts`)
+
+- `resolveComponentWearThreshold()` — Pad/Disc und Front/Rear getrennt
+- Disc ohne bestätigtes Minimum: `thresholdMissing=true`, keine Health/Remaining-Projektion
+- AI/LEGACY_DEFAULT: kein measured CRITICAL hard block
+- API: `componentThresholds[]` mit `warningThresholdMm`, `criticalThresholdMm`, `source`, `confirmed`, `thresholdMissing`
+
+### Condition Engine
+
+- `classifyMeasuredThicknessWithThresholds()` — nur bestätigte Minima für CRITICAL
+- `BrakeHealthService` Wear-Model und Alerts nutzen `resolveComponentWearThreshold()`
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-wear-threshold|brake-health.spec|brake-lifecycle|brake-service-application'
+# 167 passed
+```
+
+---
+
+## Controlled Component Baseline Backfill (Prompt 12) — 2026-07-17
+
+### Ziel
+
+Kontrolliertes Backfill-Werkzeug für bestehende Fahrzeuge und Brake-Komponenten. Standard: **DRY RUN**. Apply nur mit expliziten Guards. **Nicht gegen Produktion ausgeführt in diesem Prompt.**
+
+### Apply-Layer
+
+| Datei | Rolle |
+|-------|-------|
+| `brake-baseline-backfill-apply.ts` | Plan, Report-Hash, Apply-Request-Validierung |
+| `brake-baseline-backfill-apply.safety.ts` | Prod/Remote-Guards für Apply |
+| `brake-baseline-backfill.service.ts` | Orchestrierung → `BrakeComponentLifecycleService` |
+| `audit-brake-health-baseline-candidates.ts` | Erweitert um Apply-Modus (DRY RUN default) |
+
+### Auto-apply Policy
+
+| Klasse | Auto |
+|--------|:----:|
+| `EXACT_MEASURED` | ✓ |
+| `CONFIRMED_REPLACEMENT` | ✓ |
+| `HIGH_CONFIDENCE_DOCUMENTED` | ✓ nur HIGH + gemessene Dicke + sauberer Odometer |
+| `SPEC_ONLY` / `REGISTRATION_ASSERTION_ONLY` / `CONFLICTING_DATA` / `NO_SAFE_BASELINE` | ✗ |
+
+### Apply-Guards
+
+`--apply` erfordert: `organizationId` oder `vehicleId`, `--confirm-backup`, `--expected-report-hash`, `--confirm-git-ref`, `--confirm-schema-version`, `--operator`, `--reason`, `--max-batch-size`.
+
+### Idempotenz
+
+- Report-Hash schützt vor veraltetem Plan
+- Idempotency-Key pro Komponente (`brake-baseline-backfill:<fingerprint>`)
+- Re-Apply = No-op, keine doppelten Installationen
+
+### Runbook
+
+[`docs/runbooks/brake-health-component-baseline-backfill.md`](../runbooks/brake-health-component-baseline-backfill.md)
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-baseline-backfill|brake-baseline-candidate-audit'
+# 33 passed
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -786,7 +875,8 @@ npm test -- --testPathPattern='brake-reference-spec|register-brake-baseline|brak
 | 8 | `43fbb3e6` | `fix(brakes): enforce component-specific brake service scope` |
 | 9 | `8ef69289` | `fix(brakes): apply brake service lifecycle atomically` |
 | 10 | `0de2caa3` | `feat(brakes): add brake reference spec provenance and thickness semantics` |
-| 11 | *(dieser Commit)* | `fix(brakes): use component-specific brake wear thresholds` |
+| 11 | `f3fc1faf` | `fix(brakes): use component-specific brake wear thresholds` |
+| 12 | *(dieser Commit)* | `feat(brakes): add controlled brake component baseline backfill` |
 
 ---
 

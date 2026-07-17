@@ -33,6 +33,8 @@ export interface BrakeThicknessSignal {
   observedAt: string;
   odometerKm: number | null;
   evidenceRef: string;
+  /** Raw entity id for controlled apply (evidence, service event, document). */
+  rawRefId?: string;
   isNominalSpec?: boolean;
   isDocumentedReplacement?: boolean;
   confidence?: BrakeBaselineConfidence;
@@ -179,6 +181,8 @@ export interface BrakeBaselineAuditReport {
 
 export const BRAKE_BASELINE_AUDIT_ID = 'brake-health-baseline-backfill-candidates-2026-07';
 export const BRAKE_BASELINE_CANDIDATE_VERSION = 'brake-baseline-backfill-audit-2026-07-v1';
+export const BRAKE_BASELINE_BACKFILL_SCHEMA_VERSION =
+  '20260717140000_brake_component_installation_lifecycle';
 
 export const ALL_BRAKE_COMPONENTS: BrakeBaselineComponent[] = [
   'FRONT_PADS',
@@ -494,6 +498,12 @@ export function auditComponentBaseline(
 
   const documented = pickDocumented(signals);
   if (documented) {
+    const autoApplicable =
+      odometerAnchor.resolvedAnchorKm != null &&
+      odometerConflicts.length === 0 &&
+      documented.confidence === 'HIGH' &&
+      finiteMm(documented.thicknessMm) != null &&
+      documented.isNominalSpec !== true;
     return {
       component,
       candidateClass: 'HIGH_CONFIDENCE_DOCUMENTED',
@@ -503,8 +513,8 @@ export function auditComponentBaseline(
       odometerKm: documented.odometerKm ?? odometerAnchor.resolvedAnchorKm,
       confidence: documented.confidence ?? 'MEDIUM',
       conflicts: odometerConflicts,
-      recommendedAction: recommendedActionFor('HIGH_CONFIDENCE_DOCUMENTED', false),
-      autoApplicable: false,
+      recommendedAction: recommendedActionFor('HIGH_CONFIDENCE_DOCUMENTED', autoApplicable),
+      autoApplicable,
       partialBaselineOnly: true,
       signalsReviewed: signals.length,
     };
@@ -850,6 +860,29 @@ export function buildSyntheticBrakeBaselineFixtures(): VehicleBrakeBaselineAudit
         },
       ],
       brakeServiceEventCount: 1,
+    }),
+    base('fixture-high-confidence-documented', {
+      thicknessSignals: [
+        {
+          component: 'FRONT_PADS',
+          thicknessMm: 8.5,
+          source: 'WORKSHOP_DOCUMENT_CONFIRMED',
+          observedAt: '2026-03-08T10:00:00.000Z',
+          odometerKm: 45100,
+          evidenceRef: evidenceRef('doc', 'hd1', salt),
+          rawRefId: 'doc-hd1',
+          confidence: 'HIGH',
+        },
+      ],
+      odometerSignals: [
+        {
+          odometerKm: 45100,
+          observedAt: '2026-03-08T10:00:00.000Z',
+          source: 'AI_DOCUMENT',
+          evidenceRef: evidenceRef('doc', 'hd1', salt),
+        },
+      ],
+      confirmedDocumentCount: 1,
     }),
     base('fixture-spec-only', {
       referenceSpec: {

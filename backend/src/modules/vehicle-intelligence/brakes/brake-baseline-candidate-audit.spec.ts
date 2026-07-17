@@ -130,7 +130,7 @@ describe('brake-baseline-candidate-audit', () => {
     });
 
     expect(report.readOnly).toBe(true);
-    expect(report.summary.vehiclesAudited).toBe(9);
+    expect(report.summary.vehiclesAudited).toBe(10);
     expect(report.summary.byCandidateClass.EXACT_MEASURED).toBeGreaterThanOrEqual(2);
     expect(report.summary.byCandidateClass.SPEC_ONLY).toBeGreaterThanOrEqual(4);
     expect(report.summary.byCandidateClass.CONFLICTING_DATA).toBeGreaterThanOrEqual(1);

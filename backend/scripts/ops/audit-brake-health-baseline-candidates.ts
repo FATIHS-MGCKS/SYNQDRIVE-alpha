@@ -1,21 +1,31 @@
 /**
- * Read-only audit for existing vehicles without BrakeHealthCurrent or reliable baseline.
+ * Read-only audit + controlled apply plan for brake component baseline backfill (Prompts 5 + 12).
  *
- * Does NOT mutate production data, enqueue jobs, or execute backfill.
+ * Default: read-only audit report (DRY RUN).
+ * With --organization-id or --vehicle-id: outputs apply plan (DRY RUN unless --apply).
  *
  * Usage (fixture report — no DB):
  *   cd backend
  *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts --fixtures-only
  *
- * Usage (database audit):
- *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts
- *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts --organization-id=<uuid>
- *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts --vehicle-id=<uuid> --limit=50
+ * Usage (dry-run apply plan):
+ *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts \
+ *     --organization-id=<uuid> \
+ *     --confirm-git-ref=$(git rev-parse HEAD) \
+ *     --confirm-schema-version=20260717140000_brake_component_installation_lifecycle \
+ *     --operator=ops@example --reason=staging-validation --max-batch-size=25 \
+ *     --expected-audit-version=brake-baseline-backfill-audit-2026-07-v1
+ *
+ * Usage (controlled apply — never run against production without explicit override):
+ *   ...same flags... --confirm-backup --apply --expected-report-hash=<from-plan>
  *
  * Environment:
- *   BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1   read-only audit on remote DB
- *   BRAKE_HEALTH_AUDIT_ALLOW_PROD=1     read-only audit on prod-like DB (supervised)
+ *   BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1
+ *   BRAKE_HEALTH_AUDIT_ALLOW_PROD=1
+ *   BRAKE_BASELINE_BACKFILL_APPLY_ALLOW_REMOTE=1
+ *   BRAKE_BASELINE_BACKFILL_APPLY_ALLOW_PROD=1
  */
+import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
@@ -23,15 +33,70 @@ import { AppModule } from '../../src/app.module';
 import {
   auditBrakeBaselineCandidates,
   BRAKE_BASELINE_AUDIT_ID,
+  BRAKE_BASELINE_BACKFILL_SCHEMA_VERSION,
+  BRAKE_BASELINE_CANDIDATE_VERSION,
   buildSyntheticBrakeBaselineFixtures,
   renderBrakeBaselineAuditMarkdown,
 } from '../../src/modules/vehicle-intelligence/brakes/brake-baseline-candidate-audit';
+import {
+  DEFAULT_MAX_BRAKE_BASELINE_BATCH_SIZE,
+  type BrakeBaselineBackfillApplyRequest,
+} from '../../src/modules/vehicle-intelligence/brakes/brake-baseline-backfill-apply';
+import { BrakeBaselineBackfillService } from '../../src/modules/vehicle-intelligence/brakes/brake-baseline-backfill.service';
 import { BrakeBaselineCandidateAuditService } from '../../src/modules/vehicle-intelligence/brakes/brake-baseline-candidate-audit.service';
 import { assertSafeBrakeBaselineAuditTarget } from '../../src/modules/vehicle-intelligence/brakes/brake-baseline-candidate-audit.safety';
 
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
   return arg?.split('=').slice(1).join('=').trim() || undefined;
+}
+
+function hasFlag(flag: string): boolean {
+  return process.argv.includes(flag);
+}
+
+function currentGitRef(): string | undefined {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function parseComponents(): Array<'FRONT_PADS' | 'REAR_PADS' | 'FRONT_DISCS' | 'REAR_DISCS'> | undefined {
+  const raw = process.argv
+    .filter((a) => a.startsWith('--component='))
+    .map((a) => a.split('=').slice(1).join('=').trim().toUpperCase())
+    .filter(Boolean);
+  if (raw.length === 0) return undefined;
+  return raw as Array<'FRONT_PADS' | 'REAR_PADS' | 'FRONT_DISCS' | 'REAR_DISCS'>;
+}
+
+function hasApplyScope(): boolean {
+  return Boolean(parseArg('--organization-id') || parseArg('--vehicle-id'));
+}
+
+function buildApplyRequest(): BrakeBaselineBackfillApplyRequest {
+  const maxBatchRaw = parseArg('--max-batch-size');
+  const maxBatchSize = maxBatchRaw ? Number(maxBatchRaw) : DEFAULT_MAX_BRAKE_BASELINE_BATCH_SIZE;
+  const recalcMaxRaw = parseArg('--recalculate-max-vehicles');
+
+  return {
+    apply: hasFlag('--apply'),
+    organizationId: parseArg('--organization-id'),
+    vehicleId: parseArg('--vehicle-id'),
+    components: parseComponents(),
+    expectedAuditVersion: parseArg('--expected-audit-version') ?? BRAKE_BASELINE_CANDIDATE_VERSION,
+    expectedReportHash: parseArg('--expected-report-hash'),
+    confirmGitRef: parseArg('--confirm-git-ref') ?? '',
+    confirmSchemaVersion: parseArg('--confirm-schema-version') ?? BRAKE_BASELINE_BACKFILL_SCHEMA_VERSION,
+    confirmBackup: hasFlag('--confirm-backup'),
+    operator: parseArg('--operator') ?? '',
+    reason: parseArg('--reason') ?? '',
+    maxBatchSize,
+    recalculate: hasFlag('--recalculate'),
+    recalculateMaxVehicles: recalcMaxRaw ? Number(recalcMaxRaw) : undefined,
+  };
 }
 
 function loadEnv(): void {
@@ -82,9 +147,13 @@ function runFixturesAudit(): void {
   );
 }
 
-async function runDatabaseAudit(limit?: number): Promise<void> {
+async function loadAuditInputsForReport(options?: {
+  organizationId?: string;
+  vehicleId?: string;
+  limit?: number;
+}): Promise<void> {
   assertSafeBrakeBaselineAuditTarget({
-    allowRemote: process.argv.includes('--allow-remote-db'),
+    allowRemote: hasFlag('--allow-remote-db'),
     allowProd: process.env.BRAKE_HEALTH_AUDIT_ALLOW_PROD === '1',
   });
 
@@ -95,12 +164,56 @@ async function runDatabaseAudit(limit?: number): Promise<void> {
   try {
     const auditService = app.get(BrakeBaselineCandidateAuditService);
     const report = await auditService.runAudit({
-      organizationId: parseArg('--organization-id'),
-      vehicleId: parseArg('--vehicle-id'),
-      limit,
+      organizationId: options?.organizationId,
+      vehicleId: options?.vehicleId,
+      limit: options?.limit,
       mode: 'database',
     });
     writeAuditOutputs(report);
+  } finally {
+    await app.close();
+  }
+}
+
+async function runBackfillWorkflow(
+  auditInputs: ReturnType<typeof buildSyntheticBrakeBaselineFixtures>,
+): Promise<void> {
+  const request = buildApplyRequest();
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  });
+
+  try {
+    const service = app.get(BrakeBaselineBackfillService);
+    const { plan, result } = await service.run({
+      request,
+      auditInputs,
+      auditSalt: BRAKE_BASELINE_AUDIT_ID,
+      actualGitRef: currentGitRef(),
+      allowRemote: hasFlag('--allow-remote-db'),
+      allowProd: process.env.BRAKE_BASELINE_BACKFILL_APPLY_ALLOW_PROD === '1',
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          mode: request.apply ? 'apply' : 'dry-run',
+          auditVersion: plan.auditVersion,
+          reportHash: plan.reportHash,
+          plan: {
+            autoApplicable: plan.autoApplicable.length,
+            manualReview: plan.manualReview.length,
+            skipped: plan.skipped.length,
+          },
+          result,
+          manualReviewItems: plan.manualReview.map(
+            (i) => `${i.vehicleId}:${i.component}:${i.candidateClass}`,
+          ),
+        },
+        null,
+        2,
+      ),
+    );
   } finally {
     await app.close();
   }
@@ -115,12 +228,40 @@ async function main(): Promise<void> {
     throw new Error('--limit must be a positive number');
   }
 
-  if (process.argv.includes('--fixtures-only') || !process.env.DATABASE_URL) {
+  if (hasApplyScope()) {
+    const fixturesOnly = hasFlag('--fixtures-only') || !process.env.DATABASE_URL;
+    let auditInputs;
+    if (fixturesOnly) {
+      auditInputs = buildSyntheticBrakeBaselineFixtures();
+    } else {
+      assertSafeBrakeBaselineAuditTarget({
+        allowRemote: hasFlag('--allow-remote-db'),
+        allowProd: process.env.BRAKE_HEALTH_AUDIT_ALLOW_PROD === '1',
+      });
+      const app = await NestFactory.createApplicationContext(AppModule, {
+        logger: ['error', 'warn', 'log'],
+      });
+      try {
+        const auditService = app.get(BrakeBaselineCandidateAuditService);
+        auditInputs = await auditService.loadCandidates({
+          organizationId: parseArg('--organization-id'),
+          vehicleId: parseArg('--vehicle-id'),
+          limit,
+        });
+      } finally {
+        await app.close();
+      }
+    }
+    await runBackfillWorkflow(auditInputs);
+    return;
+  }
+
+  if (hasFlag('--fixtures-only') || !process.env.DATABASE_URL) {
     runFixturesAudit();
     return;
   }
 
-  await runDatabaseAudit(limit);
+  await loadAuditInputsForReport({ limit });
 }
 
 main().catch((err) => {

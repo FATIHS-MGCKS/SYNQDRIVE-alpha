@@ -39,7 +39,17 @@ export class BrakeBaselineCandidateAuditService {
     });
   }
 
-  private async loadCandidates(options?: {
+  /** Load candidate vehicles for audit or controlled backfill apply. */
+  async loadCandidates(options?: {
+    organizationId?: string;
+    vehicleId?: string;
+    limit?: number;
+    auditSalt?: string;
+  }): Promise<VehicleBrakeBaselineAuditInput[]> {
+    return this.loadCandidatesFromDb(options);
+  }
+
+  private async loadCandidatesFromDb(options?: {
     organizationId?: string;
     vehicleId?: string;
     limit?: number;
