@@ -152,12 +152,28 @@ export interface PublicVehicleCandidate {
   confirmationRequired: boolean;
 }
 
+export interface PublicBookingCandidate {
+  bookingId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  temporalOverlap: boolean;
+  rank: number;
+  confirmationRequired: boolean;
+}
+
 export interface PublicDocumentExtraction {
   id: string;
   vehicleId: string | null;
   organizationId: string | null;
   uploadContext: PublicUploadContextDisplay | null;
   vehicleCandidates: PublicVehicleCandidate[] | null;
+  bookingCandidates: PublicBookingCandidate[] | null;
   vehicle: PublicVehicleDisplay | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

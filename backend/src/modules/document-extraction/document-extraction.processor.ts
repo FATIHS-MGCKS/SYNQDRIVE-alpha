@@ -50,12 +50,13 @@ import { isMalwareScanReadyForProcessing } from './document-malware-scan.util';
 import { patchMistralTransferState } from './document-pipeline-lifecycle.util';
 import { DocumentUploadContextService } from './document-upload-context.service';
 import { VehicleCandidateResolverService } from './vehicle-candidate-resolver.service';
+import { BookingCandidateResolverService } from './booking-candidate-resolver.service';
 import {
   evaluateUploadContextResolver,
   extractUploadResolverHints,
   readUploadContextPipelineState,
 } from './document-upload-context.util';
-import { mapFieldEvidence } from './vehicle-candidate-matching.util';
+import { mapFieldEvidence, readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
 import { makePlausibilityCheck } from './document-plausibility.types';
 
 const SKIP_STATUSES = new Set([
@@ -89,6 +90,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     private readonly observability: DocumentExtractionObservabilityService,
     private readonly uploadContext: DocumentUploadContextService,
     private readonly vehicleCandidateResolver: VehicleCandidateResolverService,
+    private readonly bookingCandidateResolver: BookingCandidateResolverService,
   ) {
     super();
   }
@@ -516,6 +518,34 @@ export class DocumentExtractionProcessor extends WorkerHost {
         ];
         overallStatus = 'BLOCKER';
       }
+    }
+
+    const vehiclePipeline = readVehicleCandidatePipelineState(pipelineWithContext);
+    const resolvedVehicleId =
+      vehicleId ?? vehiclePipeline?.candidates?.find((candidate) => candidate.rank === 1)?.vehicleId ?? null;
+
+    if (
+      organizationId &&
+      resolvedVehicleId &&
+      this.bookingCandidateResolver.supportsDocumentType(applyDocumentType)
+    ) {
+      const uploadContextBookingId =
+        uploadPipeline?.candidate?.entityType === 'BOOKING'
+          ? uploadPipeline.candidate.entityId
+          : null;
+
+      const bookingCandidates = await this.bookingCandidateResolver.resolve({
+        organizationId,
+        vehicleId: resolvedVehicleId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        uploadContextBookingId,
+        fieldEvidence: mapFieldEvidence(agentResult.fieldEvidence),
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        bookingCandidates,
+      });
     }
 
     const existingPublic = stripPipelineFromPlausibility(pipelineWithContext);

@@ -19,7 +19,12 @@ import {
   readUploadContextPipelineState,
 } from './document-upload-context.util';
 import { readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
-import type { PublicUploadContextDisplayDto, PublicVehicleCandidateDto } from './dto/public-document-extraction.dto';
+import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
+import type {
+  PublicUploadContextDisplayDto,
+  PublicVehicleCandidateDto,
+  PublicBookingCandidateDto,
+} from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
   id: string;
@@ -206,6 +211,25 @@ function buildVehicleCandidatesDisplay(record: ExtractionRecord): PublicVehicleC
   }));
 }
 
+function buildBookingCandidatesDisplay(record: ExtractionRecord): PublicBookingCandidateDto[] | null {
+  const pipeline = readBookingCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    bookingId: candidate.bookingId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    temporalOverlap: candidate.temporalOverlap,
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+  }));
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
@@ -218,6 +242,7 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     uploadContextId: record.uploadContextId ?? null,
     uploadContext: buildUploadContextDisplay(record),
     vehicleCandidates: buildVehicleCandidatesDisplay(record),
+    bookingCandidates: buildBookingCandidatesDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,
