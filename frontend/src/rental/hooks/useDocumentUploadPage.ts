@@ -27,6 +27,7 @@ import {
 import { useDocumentIntakeFlow } from './useDocumentIntakeFlow';
 import type { FlowStatus } from '../components/documents/document-extraction.shared';
 import { canShowApplyDone } from '../lib/document-apply-result';
+import { readDocumentIntakeEntry, type DocumentIntakeEntryState } from '../lib/document-intake-entry';
 
 const AUTO_TYPE = 'AUTO';
 const UPLOAD_SOURCE = 'rental_ui';
@@ -64,7 +65,10 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [documentType, setDocumentType] = useState(AUTO_TYPE);
-  const [pendingTypeSelection, setPendingTypeSelection] = useState('SERVICE');
+  const [pendingTypeSelection, setPendingTypeSelection] = useState(AUTO_TYPE);
+  const [intakeEntry, setIntakeEntry] = useState<DocumentIntakeEntryState>(() =>
+    readDocumentIntakeEntry(typeof window !== 'undefined' ? window.location.search : ''),
+  );
   const [history, setHistory] = useState<PublicDocumentExtractionSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -90,6 +94,9 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     initialDocType: documentType,
     locale,
     uploadSource: UPLOAD_SOURCE,
+    optionalContextType: intakeEntry.optionalContextType ?? undefined,
+    optionalContextId: intakeEntry.optionalContextId ?? undefined,
+    sourceSurface: intakeEntry.sourceSurface ?? 'rental_ui',
     mode: 'page',
     pollThroughApply: true,
     respectAllowedActions: true,
@@ -144,6 +151,19 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     }).catch(() => []);
     void reloadHistory();
   }, [orgId, reloadHistory]);
+
+  useEffect(() => {
+    const syncEntry = () => {
+      const next = readDocumentIntakeEntry(window.location.search);
+      setIntakeEntry(next);
+      if (next.contextVehicleId) {
+        setSelectedVehicleId(next.contextVehicleId);
+      }
+    };
+    syncEntry();
+    window.addEventListener('popstate', syncEntry);
+    return () => window.removeEventListener('popstate', syncEntry);
+  }, []);
 
   useEffect(() => {
     if (intake.flow !== 'ready' || !intake.record || !orgId || !intake.extractionId) return;
@@ -434,6 +454,7 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     setDocumentType,
     pendingTypeSelection,
     setPendingTypeSelection,
+    intakeEntry,
     flow: intake.flow,
     record: intake.record,
     uploadedFileName: intake.uploadedFileName,

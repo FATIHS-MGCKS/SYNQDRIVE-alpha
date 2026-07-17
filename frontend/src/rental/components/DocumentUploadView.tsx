@@ -13,6 +13,7 @@ import type {
   PublicDocumentExtractionArchiveItem,
   PublicDocumentExtractionSummary,
 } from '../lib/document-extraction.types';
+import type { DocumentIntakeEntryState } from '../lib/document-intake-entry';
 import { DocumentExtractionReviewPanel } from './documents/DocumentExtractionReviewPanel';
 import { DocumentApplyResultPanel } from './documents/DocumentApplyResultPanel';
 import { DocumentFollowUpSuggestionsPanel } from './documents/DocumentFollowUpSuggestionsPanel';
@@ -36,6 +37,7 @@ import {
 interface DocumentUploadViewProps {
   isDarkMode: boolean;
   onEntityNavigate?: (target: { view: string; tab?: string; entityId: string }) => void;
+  onReturnToOrigin?: (entry: DocumentIntakeEntryState) => void;
 }
 
 function getFileIcon(name: string) {
@@ -45,7 +47,7 @@ function getFileIcon(name: string) {
   return <Icon name="file" className="w-5 h-5 text-gray-500" />;
 }
 
-export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUploadViewProps) {
+export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOrigin }: DocumentUploadViewProps) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const [locationSearch, setLocationSearch] = useState(
@@ -236,9 +238,22 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
 
   return (
     <div className="w-full max-w-[1200px] mx-auto min-w-0 overflow-x-clip">
-      <div className="mb-3 min-w-0">
-        <h1 className="min-w-0 break-words font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{t('docUpload.title')}</h1>
-        <p className={`text-xs mt-1 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.subtitle')}</p>
+      <div className="mb-3 min-w-0 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="min-w-0 break-words font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{t('docUpload.title')}</h1>
+          <p className={`text-xs mt-1 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.subtitle')}</p>
+        </div>
+        {page.intakeEntry?.returnView && onReturnToOrigin ? (
+          <button
+            type="button"
+            onClick={() => onReturnToOrigin(page.intakeEntry)}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${
+              isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            {t('docUpload.backToOrigin')}
+          </button>
+        ) : null}
       </div>
 
       <DocumentIntakeTabBar

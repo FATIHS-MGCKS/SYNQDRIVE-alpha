@@ -14,6 +14,8 @@ import {
   OPERATOR_UPLOAD_SOURCE,
   type OperatorAiUploadContextMode,
 } from './operatorAiUpload.config';
+import { mapOperatorContextModeToEntry } from '../../rental/lib/document-intake-entry';
+import { useRentalOrg } from '../../rental/RentalContext';
 import { OperatorAiUploadReview } from './OperatorAiUploadReview';
 import { extractTreadFromAiReviewFields, parseTreadMm } from '../tire-measure/operatorTireMeasure.utils';
 
@@ -25,6 +27,7 @@ interface Props {
 
 export function OperatorAiUploadFlow({ action }: Props) {
   const { closeSheet, openSheet } = useOperatorShell();
+  const { orgId } = useRentalOrg();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -33,11 +36,21 @@ export function OperatorAiUploadFlow({ action }: Props) {
 
   const contextMode: OperatorAiUploadContextMode = action.contextMode ?? 'vehicle';
   const initialDocType = action.initialDocType ?? CONTEXT_DEFAULT_DOC_TYPE[contextMode];
+  const operatorContext = mapOperatorContextModeToEntry({
+    contextMode,
+    vehicleId: action.vehicleId,
+    bookingId: action.bookingId,
+    customerId: action.customerId,
+  });
 
   const flow = useDocumentExtractionFlow({
     vehicleId: action.vehicleId,
+    orgId,
     initialDocType,
     uploadSource: OPERATOR_UPLOAD_SOURCE,
+    optionalContextType: operatorContext.optionalContextType,
+    optionalContextId: operatorContext.optionalContextId,
+    sourceSurface: 'operator_ai_upload',
     onComplete: () => {
       action.onComplete?.();
       setTimeout(closeSheet, 900);

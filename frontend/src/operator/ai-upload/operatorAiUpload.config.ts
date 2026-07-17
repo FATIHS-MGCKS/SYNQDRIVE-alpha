@@ -48,7 +48,7 @@ export const CONTEXT_DEFAULT_DOC_TYPE: Record<OperatorAiUploadContextMode, strin
   customer: 'OTHER',
   damage: 'DAMAGE',
   tire: 'TIRE',
-  service: 'SERVICE',
+  service: 'AUTO',
 };
 
 export const DOC_TYPE_TARGET_MODULE: Record<string, string> = {

@@ -627,6 +627,7 @@ export const fr: Record<TranslationKey, string> = {
   'docUpload.tab.upload': 'Televerser',
   'docUpload.tab.review': 'A verifier',
   'docUpload.tab.archive': 'Archives',
+  'docUpload.backToOrigin': 'Retour a l origine',
   'docUpload.review.title': 'A verifier',
   'docUpload.review.subtitle': 'Documents necessitant classification, revue, application ou suivi.',
   'docUpload.review.backToInbox': 'Retour a la liste',

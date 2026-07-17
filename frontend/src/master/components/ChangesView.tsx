@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-entry-points-2026-07-17',
+    version: '4.9.654',
+    title: 'V4.9.654 — Document Intake V2 Entry Points',
+    summary: [
+      'Alle relevanten Dokumenten-Einstiegspunkte auf kanonischen Document Intake V2 Flow migriert.',
+      'openDocumentIntake mit URL-Kontext, Ruecknavigation, DocumentIntakeLaunchButton.',
+      'Legacy InvoiceExtractionUpload und FinesView AIUploadFlow Stub entfernt; Operator org-context upload.',
+      'KYC- und Invoice-Attachment-Uploads unveraendert getrennt.',
+    ],
+    reason: 'Prompt 79/84 — Ein Flow mit optionalem Kontext ueber alle Surfaces.',
+    previousBehavior:
+      'Parallele Legacy-Flows (Invoice KI, Fines KI-Stub), Health-Stubs ohne Navigation, Operator-Kontext nur UI.',
+    details:
+      'Frontend: document-intake-entry.ts, DocumentIntakeLaunchButton, App openDocumentIntake, useDocumentExtractionFlow optional context, entry-point tests. Architektur: architecture/DOCUMENT_INTAKE_V2_ENTRY_POINTS_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T04:00:00.000Z',
+  },
+  {
     id: 'document-intake-three-tab-hub-2026-07-17',
     version: '4.9.653',
     title: 'V4.9.653 — Document Intake Three-Tab Hub',

@@ -9,7 +9,6 @@ import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
 import { CreateInvoiceDialog } from './CreateInvoiceDialog';
 import { InvoiceDetail } from './InvoiceDetail';
-import { InvoiceExtractionUpload } from './InvoiceExtractionUpload';
 import { InvoiceFilters } from './InvoiceFilters';
 import { InvoiceKpiGrid } from './InvoiceKpiGrid';
 import { InvoiceList } from './InvoiceList';
@@ -18,8 +17,9 @@ import { useInvoices } from './hooks/useInvoices';
 import type { Invoice, InvoiceListItem } from './invoiceTypes';
 import { getInvoiceThemeClasses } from './invoiceTheme';
 import type { InvoiceRelationNavigation } from './InvoiceRelations';
+import { DocumentIntakeLaunchAiButton } from '../documents/DocumentIntakeLaunchButton';
 
-export type InvoicePageView = 'list' | 'create' | 'upload' | 'detail';
+export type InvoicePageView = 'list' | 'create' | 'detail';
 
 interface InvoicesPageProps {
   isDarkMode: boolean;
@@ -113,25 +113,6 @@ export function InvoicesPage({
     );
   }
 
-  if (view === 'upload') {
-    return (
-      <InvoiceExtractionUpload
-        isDarkMode={isDarkMode}
-        orgId={orgId || ''}
-        vehicles={invoicesState.lookup.vehicles}
-        onClose={() => setView('list')}
-        onCreated={(inv) => {
-          setView('detail');
-          setSelectedInvoice(inv);
-          void invoicesState.reload();
-        }}
-        card={theme.card}
-        tp={theme.tp}
-        ts={theme.ts}
-      />
-    );
-  }
-
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
       <PageHeader
@@ -141,10 +122,16 @@ export function InvoicesPage({
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
             {canWriteInvoices ? (
               <>
-                <Button type="button" variant="ai" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('upload'); }}>
-                  <Icon name="sparkles" className="size-3.5" />
-                  KI-Upload
-                </Button>
+                <DocumentIntakeLaunchAiButton
+                  label="KI-Upload"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 surface-premium px-3 py-2 text-[10px] font-semibold"
+                  request={{
+                    optionalContextType: 'INVOICE',
+                    sourceSurface: 'invoices_page',
+                    returnView: 'invoices',
+                    documentTab: 'upload',
+                  }}
+                />
                 <Button type="button" variant="primary" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('create'); }}>
                   <Icon name="plus" className="size-3.5" />
                   <span className="hidden min-[420px]:inline">Rechnung erstellen</span>

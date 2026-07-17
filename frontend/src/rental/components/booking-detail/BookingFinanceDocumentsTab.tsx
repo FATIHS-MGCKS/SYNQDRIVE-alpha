@@ -1,6 +1,7 @@
 import type { BookingDetailDto } from '../../../lib/api';
 import { BookingDocumentsSection } from '../BookingDocumentsSection';
 import { BookingPaymentCard } from '../booking-payment/BookingPaymentCard';
+import { DocumentIntakeLaunchAiButton } from '../documents/DocumentIntakeLaunchButton';
 import { EM_DASH, formatCurrencyCents, parseBookingExtras, paymentStatusLabel, depositStatusLabel } from './bookingDetailUtils';
 
 import { bd } from './booking-detail-ui';
@@ -26,6 +27,30 @@ export function BookingFinanceDocumentsTab({
 
   return (
     <div className="space-y-6">
+      <div className={bd.card}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xs font-bold">Dokumente per KI-Upload</h3>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Kanonischer Document-Intake-Flow mit Buchungskontext (noch nicht bestätigt).
+            </p>
+          </div>
+          <DocumentIntakeLaunchAiButton
+            label="KI-Upload"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[11px] font-semibold text-brand-foreground"
+            request={{
+              optionalContextType: 'BOOKING',
+              optionalContextId: detail.core.bookingId,
+              contextVehicleId: detail.vehicle?.vehicleId ?? null,
+              sourceSurface: 'booking_detail',
+              returnView: 'bookings',
+              returnEntityId: detail.core.bookingId,
+              documentTab: 'upload',
+            }}
+          />
+        </div>
+      </div>
+
       <BookingPaymentCard
         orgId={orgId}
         bookingId={detail.core.bookingId}

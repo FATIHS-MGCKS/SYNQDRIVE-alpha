@@ -38,6 +38,7 @@ import {
   type UploadValidationCode,
 } from '../lib/document-extraction-validation';
 import type { UseDocumentIntakeFlowOptions } from './useDocumentIntakeFlow.types';
+import { shouldUseOrgUploadForContext } from '../lib/document-intake-entry';
 
 const LONG_RUNNING_MS = 90_000;
 const NETWORK_WARN_THRESHOLD = 3;
@@ -117,6 +118,11 @@ export function useDocumentIntakeFlow({
   const isBusy = isBusyFlow(flow);
   const blockerPresent = plausibility?.overallStatus === 'BLOCKER';
   const canUseOrgScope = mode === 'page' && Boolean(orgId);
+  const useOrgContextUpload =
+    Boolean(orgId) &&
+    shouldUseOrgUploadForContext(optionalContextType) &&
+    Boolean(optionalContextId);
+  const useOrgUploadPath = canUseOrgScope || (mode === 'embedded' && useOrgContextUpload);
   const savedFieldReviewReady = hasSavedFieldReview(record?.confirmedData);
   const canConfirmActionPlan =
     savedFieldReviewReady &&
@@ -375,7 +381,7 @@ export function useDocumentIntakeFlow({
         effectiveDocumentType?: string | null;
       };
 
-      if (vehicleId) {
+      if (vehicleId && !useOrgUploadPath) {
         res = await api.vehicleIntelligence.uploadDocumentExtraction(
           vehicleId,
           file,
@@ -388,8 +394,8 @@ export function useDocumentIntakeFlow({
             referenceNumberHint: options?.referenceNumberHint,
           },
         );
-      } else if (canUseOrgScope) {
-        res = await api.documentExtraction.upload(orgId!, file, {
+      } else if (useOrgUploadPath && orgId) {
+        res = await api.documentExtraction.upload(orgId, file, {
           requestedDocumentType: documentType,
           optionalContextType,
           optionalContextId,
@@ -434,6 +440,7 @@ export function useDocumentIntakeFlow({
       sourceSurface,
       startPolling,
       uploadSource,
+      useOrgUploadPath,
       vehicleId,
       writePagePointer,
     ],
@@ -441,7 +448,7 @@ export function useDocumentIntakeFlow({
 
   const handleFile = useCallback(
     async (file: File) => {
-      if (mode === 'embedded' && !vehicleId) return;
+      if (mode === 'embedded' && !vehicleId && !useOrgContextUpload) return;
       if (mode === 'page' && !orgId) return;
       setValidationError(null);
       setErrorMessage(null);
@@ -456,8 +463,8 @@ export function useDocumentIntakeFlow({
       setProcessingStartedAt(Date.now());
 
       const validation = validateUploadFile(file, metadata, {
-        vehicleSelected: Boolean(vehicleId) || canUseOrgScope,
-        requireVehicle: mode === 'embedded',
+        vehicleSelected: Boolean(vehicleId) || useOrgUploadPath,
+        requireVehicle: mode === 'embedded' && !useOrgContextUpload,
       });
       if (!validation.ok && validation.code) {
         setValidationError(defaultValidationMessage(validation.code, metadata?.maxUploadMb ?? 10));
@@ -481,7 +488,7 @@ export function useDocumentIntakeFlow({
         setFlow('failed');
       }
     },
-    [canUseOrgScope, metadata, mode, orgId, performUpload, vehicleId],
+    [canUseOrgScope, metadata, mode, orgId, performUpload, useOrgContextUpload, useOrgUploadPath, vehicleId],
   );
 
   const handleAuthorizedReupload = useCallback(

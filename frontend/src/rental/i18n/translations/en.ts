@@ -1669,6 +1669,7 @@ export const en = {
   'docUpload.tab.upload': 'Upload',
   'docUpload.tab.review': 'To review',
   'docUpload.tab.archive': 'Archive',
+  'docUpload.backToOrigin': 'Back to origin',
   'docUpload.review.title': 'To review',
   'docUpload.review.subtitle': 'Documents that need classification, review, apply, or follow-up.',
   'docUpload.review.backToInbox': 'Back to inbox',

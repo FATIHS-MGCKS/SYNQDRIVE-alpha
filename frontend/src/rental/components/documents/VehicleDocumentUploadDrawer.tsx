@@ -53,7 +53,10 @@ export function VehicleDocumentUploadDrawer({
 
   const flow = useDocumentExtractionFlow({
     vehicleId,
+    orgId: rentalOrgId,
     initialDocType: 'AUTO',
+    optionalContextType: 'VEHICLE',
+    optionalContextId: vehicleId,
     uploadSource: 'documents_tab',
     sourceSurface: 'vehicle_detail',
     onComplete: handleComplete,

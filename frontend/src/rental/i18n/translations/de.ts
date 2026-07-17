@@ -1742,6 +1742,7 @@ export const de: Record<TranslationKey, string> = {
   'docUpload.tab.upload': 'Hochladen',
   'docUpload.tab.review': 'Zu prüfen',
   'docUpload.tab.archive': 'Archiv',
+  'docUpload.backToOrigin': 'Zurueck zum Ursprung',
   'docUpload.review.title': 'Zu prüfen',
   'docUpload.review.subtitle': 'Dokumente mit offener Klassifikation, Prüfung, Übernahme oder Folgeaktion.',
   'docUpload.review.backToInbox': 'Zurück zur Inbox',

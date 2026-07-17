@@ -23,7 +23,15 @@ vi.mock('../hooks/useDocumentUploadPage', () => ({
     setSelectedVehicleId: vi.fn(),
     documentType: 'AUTO',
     setDocumentType: vi.fn(),
-    pendingTypeSelection: 'SERVICE',
+    pendingTypeSelection: 'AUTO',
+    intakeEntry: {
+      optionalContextType: null,
+      optionalContextId: null,
+      contextVehicleId: null,
+      sourceSurface: null,
+      returnView: null,
+      returnEntityId: null,
+    },
     setPendingTypeSelection: vi.fn(),
     flow: 'ready',
     record: {
