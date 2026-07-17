@@ -50,7 +50,10 @@ import {
   serviceKindIsHistoryOnly,
   type BrakeMeasuredSnapshot,
 } from './brake-service-scope.matrix';
-import { resolveAnchorEligibleThicknessForInstallation } from './brake-reference-spec.domain';
+import {
+  pickPreferredReferenceSpec,
+  resolveAnchorEligibleThicknessForInstallation,
+} from './brake-reference-spec.domain';
 
 @Injectable()
 export class BrakeServiceApplicationService {
@@ -202,6 +205,11 @@ export class BrakeServiceApplicationService {
           resolvedComponents,
           measured,
         );
+        const referenceSpecs = await tx.vehicleBrakeReferenceSpec.findMany({
+          where: { vehicleId: input.vehicleId },
+          orderBy: { createdAt: 'desc' },
+        });
+        const referenceSpec = pickPreferredReferenceSpec(referenceSpecs);
 
         if (resolvedComponents.length > 0 && input.initializeIfPossible !== false) {
           const odometerKm = this.normalizeOdometer(input.odometerKm);
@@ -267,7 +275,7 @@ export class BrakeServiceApplicationService {
                     anchor.anchorSource === BrakeComponentInstallationAnchorSource.MEASURED
                       ? serviceDate
                       : null,
-                  minimumThicknessMm: defaultMinimumThicknessMm(componentType),
+                  minimumThicknessMm: defaultMinimumThicknessMm(componentType, referenceSpec),
                   serviceEventId: serviceEvent.id,
                   modelVersionAtInstallation: BRAKE_HEALTH_CONFIG.MODEL_VERSION,
                 },

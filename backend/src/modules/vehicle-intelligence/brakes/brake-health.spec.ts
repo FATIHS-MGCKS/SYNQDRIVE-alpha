@@ -1,7 +1,26 @@
 import { BrakeHealthService } from './brake-health.service';
 import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
+import { resolveComponentWearThreshold } from './brake-wear-threshold.domain';
 
 const cfg = BRAKE_HEALTH_CONFIG;
+
+const confirmedPadThreshold = (minimum = 2) =>
+  resolveComponentWearThreshold('FRONT_PADS', {
+    frontPadMinimumThicknessMm: minimum,
+    thresholdSource: 'MANUFACTURER_MINIMUM' as never,
+    thresholdConfirmedAt: '2026-06-01T10:00:00Z',
+  });
+
+const confirmedDiscThreshold = (anchor = 28, minimum = 26) =>
+  resolveComponentWearThreshold(
+    'FRONT_DISCS',
+    {
+      frontDiscMinimumThicknessMm: minimum,
+      thresholdSource: 'MANUFACTURER_MINIMUM' as never,
+      thresholdConfirmedAt: '2026-06-01T10:00:00Z',
+    },
+    { anchorMm: anchor },
+  );
 
 const mockPrisma = {
   brakeHealthCurrent: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
@@ -84,7 +103,7 @@ describe('computePadWear', () => {
   });
 
   it('remaining km is 0 when pad is at critical', () => {
-    const r = svc.computePadWear(12, 80000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const r = svc.computePadWear(12, 80000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, confirmedPadThreshold());
     expect(r.remainingKm).toBe(0);
   });
 
@@ -101,7 +120,8 @@ describe('computePadWear', () => {
   });
 
   it('returns 0% health when anchor equals critical', () => {
-    const r = svc.computePadWear(2.0, 1000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedPadThreshold(2);
+    const r = svc.computePadWear(2.0, 1000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.healthPct).toBe(0);
     expect(r.remainingKm).toBe(0);
   });
@@ -118,49 +138,70 @@ describe('computeDiscWear', () => {
   });
 
   it('returns 100% health at 0 km', () => {
-    const r = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const r = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.estimatedMm).toBe(28);
     expect(r.healthPct).toBe(100);
   });
 
   it('reduces disc thickness over distance', () => {
-    const r = svc.computeDiscWear(28, 45000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const r = svc.computeDiscWear(28, 45000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.estimatedMm!).toBeLessThan(28);
     expect(r.healthPct!).toBeGreaterThan(0);
     expect(r.healthPct!).toBeLessThan(100);
   });
 
   it('disc reaches 0% at base life (ICE, balanced)', () => {
-    const r = svc.computeDiscWear(28, 90000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const r = svc.computeDiscWear(28, 90000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.healthPct!).toBeLessThanOrEqual(5);
   });
 
   it('EV reku is > ICE reku (discs last longer on EVs)', () => {
-    const ice = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-    const ev = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, cfg.discRekuFactors.ELECTRIC, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const ice = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
+    const ev = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, cfg.discRekuFactors.ELECTRIC, 1.0, threshold);
     expect(ev.estimatedMm!).toBeGreaterThan(ice.estimatedMm!);
   });
 
   it('thermal factor > 1 wears discs faster', () => {
-    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-    const hot = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.15, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
+    const hot = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.15, 1.0, 1.0, threshold);
     expect(hot.estimatedMm!).toBeLessThan(base.estimatedMm!);
   });
 
   it('highSpeedBrake factor > 1 accelerates disc wear', () => {
-    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-    const high = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.18, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
+    const high = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.18, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(high.estimatedMm!).toBeLessThan(base.estimatedMm!);
   });
 
-  it('disc health clamped between 0 and 100', () => {
-    const fresh = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+  it('disc health uses component-specific minimum when confirmed', () => {
+    const threshold = resolveComponentWearThreshold(
+      'FRONT_DISCS',
+      {
+        frontDiscMinimumThicknessMm: 26,
+        thresholdSource: 'MANUFACTURER_MINIMUM' as never,
+        thresholdConfirmedAt: '2026-06-01T10:00:00Z',
+      },
+      { anchorMm: 28 },
+    );
+    const fresh = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(fresh.healthPct).toBe(100);
-    const worn = svc.computeDiscWear(28, 200000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const worn = svc.computeDiscWear(28, 200000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(worn.healthPct).toBe(0);
   });
 
-  it('disc max wear is 2.0mm (health 0 at anchor-2.0)', () => {
+  it('disc without confirmed minimum does not project health or remaining km', () => {
+    const result = svc.computeDiscWear(28, 10000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    expect(result.healthPct).toBeNull();
+    expect(result.remainingKm).toBeNull();
+  });
+
+  it('legacy config disc maxWearMm is not used as safety truth', () => {
     expect(cfg.disc.maxWearMm).toBe(2.0);
   });
 });
@@ -487,6 +528,14 @@ describe('canonical read model', () => {
       rearDiscRemainingKm: 20000,
     });
     mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    mockPrisma.vehicleBrakeReferenceSpec.findMany.mockResolvedValueOnce([
+      {
+        frontPadMinimumThicknessMm: 2,
+        thresholdSource: 'MANUFACTURER_MINIMUM',
+        thresholdConfirmedAt: new Date('2026-01-01T00:00:00Z'),
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      },
+    ]);
     // … but a fresh manual measurement says the front pad is at 1.5 mm (≤ critical 2.0).
     mockBrakeEvidence.listRecent.mockResolvedValueOnce([
       {

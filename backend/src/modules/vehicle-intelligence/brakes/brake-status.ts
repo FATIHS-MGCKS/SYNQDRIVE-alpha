@@ -177,6 +177,38 @@ export function classifyMeasuredThickness(
   return 'GOOD';
 }
 
+export interface MeasuredThicknessThresholdInput {
+  criticalThresholdMm: number | null;
+  warningThresholdMm: number | null;
+  confirmed: boolean;
+  thresholdMissing: boolean;
+  usesLegacyDefault?: boolean;
+}
+
+/**
+ * Measured thickness against component-specific confirmed minimums.
+ * Generic legacy defaults never produce a measured CRITICAL hard block.
+ */
+export function classifyMeasuredThicknessWithThresholds(
+  measuredMm: number | null | undefined,
+  thresholds: MeasuredThicknessThresholdInput,
+): BrakeCondition {
+  if (measuredMm == null || !Number.isFinite(measuredMm)) return 'UNKNOWN';
+  if (
+    thresholds.thresholdMissing ||
+    !thresholds.confirmed ||
+    thresholds.criticalThresholdMm == null ||
+    thresholds.usesLegacyDefault
+  ) {
+    return 'UNKNOWN';
+  }
+  const warning =
+    thresholds.warningThresholdMm != null
+      ? thresholds.warningThresholdMm
+      : thresholds.criticalThresholdMm + 1;
+  return classifyMeasuredThickness(measuredMm, thresholds.criticalThresholdMm, warning);
+}
+
 /** Brake-fluid status string → condition. */
 export function classifyFluidStatus(status: string | null | undefined): BrakeCondition {
   switch ((status ?? '').toUpperCase()) {

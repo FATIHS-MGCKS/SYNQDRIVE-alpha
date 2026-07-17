@@ -6,10 +6,18 @@ import {
 describe('BrakeLifecycleService scoped service matrix', () => {
   it('preserves unaffected alerts after partial front pad service', async () => {
     const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 30000 });
+    await h.prisma.vehicleBrakeReferenceSpec.create({
+      data: {
+        vehicle: { connect: { id: h.vehicleId } },
+        rearPadMinimumThicknessMm: 2,
+        thresholdSource: 'MANUFACTURER_MINIMUM',
+        thresholdConfirmedAt: new Date('2026-01-01T00:00:00Z'),
+      },
+    });
     await seedMeasuredBrakeBaseline(h, {
       odometerKm: 25000,
       frontPadMm: 4.5,
-      rearPadMm: 9,
+      rearPadMm: 1.5,
       frontDiscMm: 28,
       rearDiscMm: 26,
     });

@@ -4,6 +4,8 @@ import {
   BrakeComponentInstallationType,
 } from '@prisma/client';
 import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
+import { resolveWearThresholdForInstallation } from './brake-wear-threshold.domain';
+import type { BrakeReferenceSpecRecord } from './brake-reference-spec.types';
 
 export const ACTIVE_BRAKE_COMPONENT_UNIQUE_INDEX =
   'brake_component_installations_one_active_per_vehicle_component';
@@ -41,12 +43,19 @@ export interface ValidateBrakeComponentInstallationInput {
 
 export function defaultMinimumThicknessMm(
   componentType: BrakeComponentInstallationType,
-): number {
-  if (componentType === BrakeComponentInstallationType.FRONT_DISCS ||
-      componentType === BrakeComponentInstallationType.REAR_DISCS) {
-    return BRAKE_HEALTH_CONFIG.disc.maxWearMm;
+  spec?: BrakeReferenceSpecRecord | null,
+): number | null {
+  const resolved = resolveWearThresholdForInstallation(componentType, spec ?? null);
+  if (!resolved || resolved.thresholdMissing) {
+    if (
+      componentType === BrakeComponentInstallationType.FRONT_DISCS ||
+      componentType === BrakeComponentInstallationType.REAR_DISCS
+    ) {
+      return null;
+    }
+    return BRAKE_HEALTH_CONFIG.pad.criticalMm;
   }
-  return BRAKE_HEALTH_CONFIG.pad.criticalMm;
+  return resolved.minimumThicknessMm;
 }
 
 export function isActiveBrakeComponentInstallation(

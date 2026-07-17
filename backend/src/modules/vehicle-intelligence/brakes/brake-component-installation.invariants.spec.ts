@@ -18,7 +18,13 @@ describe('brake-component-installation.invariants', () => {
 
   it('defaults minimum thickness by component type', () => {
     expect(defaultMinimumThicknessMm(BrakeComponentInstallationType.FRONT_PADS)).toBe(2);
-    expect(defaultMinimumThicknessMm(BrakeComponentInstallationType.FRONT_DISCS)).toBe(2);
+    expect(defaultMinimumThicknessMm(BrakeComponentInstallationType.FRONT_DISCS)).toBeNull();
+    expect(
+      defaultMinimumThicknessMm(BrakeComponentInstallationType.FRONT_DISCS, {
+        frontDiscMinimumThicknessMm: 22,
+        thresholdConfirmedAt: '2026-06-01T10:00:00Z',
+      }),
+    ).toBe(22);
   });
 
   it('rejects cross-tenant organization mismatch', () => {

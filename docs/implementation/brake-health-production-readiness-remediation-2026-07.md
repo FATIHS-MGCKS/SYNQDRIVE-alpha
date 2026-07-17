@@ -785,7 +785,8 @@ npm test -- --testPathPattern='brake-reference-spec|register-brake-baseline|brak
 | 7 | `7617ba59b296ef2db27b413f56534fea7ce2f9f4` | `feat(brakes): centralize brake component lifecycle mutations` |
 | 8 | `43fbb3e6` | `fix(brakes): enforce component-specific brake service scope` |
 | 9 | `8ef69289` | `fix(brakes): apply brake service lifecycle atomically` |
-| 10 | *(dieser Commit)* | `feat(brakes): add brake reference spec provenance and thickness semantics` |
+| 10 | `0de2caa3` | `feat(brakes): add brake reference spec provenance and thickness semantics` |
+| 11 | *(dieser Commit)* | `fix(brakes): use component-specific brake wear thresholds` |
 
 ---
 

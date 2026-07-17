@@ -1,4 +1,4 @@
-import type { BrakeReferenceSpecEvidenceCategory } from '@prisma/client';
+import type { BrakeReferenceSpecEvidenceCategory, BrakeWearThresholdSource } from '@prisma/client';
 
 export type BrakeReferenceSpecComponent =
   | 'FRONT_PADS'
@@ -15,6 +15,9 @@ export interface BrakeReferenceSpecProvenanceInput {
   sourceConfidence?: number | null;
   userConfirmedAt?: Date | string | null;
   userConfirmedBy?: string | null;
+  thresholdSource?: BrakeWearThresholdSource | null;
+  thresholdConfidence?: number | null;
+  thresholdConfirmedAt?: Date | string | null;
 }
 
 export interface BrakeReferenceSpecThicknessInput {
@@ -22,6 +25,10 @@ export interface BrakeReferenceSpecThicknessInput {
   rearPadNominalThicknessMm?: number | null;
   frontDiscNominalThicknessMm?: number | null;
   rearDiscNominalThicknessMm?: number | null;
+  frontPadMinimumThicknessMm?: number | null;
+  rearPadMinimumThicknessMm?: number | null;
+  frontDiscMinimumThicknessMm?: number | null;
+  rearDiscMinimumThicknessMm?: number | null;
   frontPadEvidenceCategory?: BrakeReferenceSpecEvidenceCategory | null;
   rearPadEvidenceCategory?: BrakeReferenceSpecEvidenceCategory | null;
   frontDiscEvidenceCategory?: BrakeReferenceSpecEvidenceCategory | null;

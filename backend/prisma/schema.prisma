@@ -467,6 +467,16 @@ enum BrakeReferenceSpecEvidenceCategory {
   UNKNOWN
 }
 
+enum BrakeWearThresholdSource {
+  MANUFACTURER_MINIMUM
+  WORKSHOP_DOCUMENTED
+  USER_CONFIRMED
+  PART_CATALOG
+  AI_ESTIMATED
+  LEGACY_DEFAULT
+  UNKNOWN
+}
+
 enum DocumentExtractionStatus {
   PENDING
   QUEUED
@@ -2616,6 +2626,10 @@ model VehicleBrakeReferenceSpec {
   rearPadNominalThicknessMm   Float? @map("rear_pad_nominal_thickness_mm")
   frontDiscNominalThicknessMm Float? @map("front_disc_nominal_thickness_mm")
   rearDiscNominalThicknessMm  Float? @map("rear_disc_nominal_thickness_mm")
+  frontPadMinimumThicknessMm  Float? @map("front_pad_minimum_thickness_mm")
+  rearPadMinimumThicknessMm   Float? @map("rear_pad_minimum_thickness_mm")
+  frontDiscMinimumThicknessMm Float? @map("front_disc_minimum_thickness_mm")
+  rearDiscMinimumThicknessMm  Float? @map("rear_disc_minimum_thickness_mm")
   frontPadEvidenceCategory    BrakeReferenceSpecEvidenceCategory? @map("front_pad_evidence_category")
   rearPadEvidenceCategory     BrakeReferenceSpecEvidenceCategory? @map("rear_pad_evidence_category")
   frontDiscEvidenceCategory   BrakeReferenceSpecEvidenceCategory? @map("front_disc_evidence_category")
@@ -2628,6 +2642,9 @@ model VehicleBrakeReferenceSpec {
   sourceConfidence   Float?   @map("source_confidence")
   userConfirmedAt    DateTime? @map("user_confirmed_at")
   userConfirmedBy    String?  @map("user_confirmed_by")
+  thresholdSource    BrakeWearThresholdSource? @map("threshold_source")
+  thresholdConfidence Float?  @map("threshold_confidence")
+  thresholdConfirmedAt DateTime? @map("threshold_confirmed_at")
   semanticMappingVersion String? @map("semantic_mapping_version")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")

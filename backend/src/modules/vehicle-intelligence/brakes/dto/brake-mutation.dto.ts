@@ -171,6 +171,18 @@ export class CreateBrakeSpecDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(DISC_MM_MAX)
   rearDiscNominalThicknessMm?: number;
 
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(PAD_MM_MAX)
+  frontPadMinimumThicknessMm?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(PAD_MM_MAX)
+  rearPadMinimumThicknessMm?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(DISC_MM_MAX)
+  frontDiscMinimumThicknessMm?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(DISC_MM_MAX)
+  rearDiscMinimumThicknessMm?: number;
+
   @IsOptional() @IsString() @MaxLength(80)
   sourceType?: string;
 
