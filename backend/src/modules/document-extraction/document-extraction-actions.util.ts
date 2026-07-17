@@ -39,15 +39,10 @@ export function getAllowedDocumentExtractionActions(
         actions.push('set_document_type', 'delete_file', 'cancel');
       }
       break;
-    case 'READY_FOR_REVIEW': {
-      const reviewActions: DocumentExtractionAction[] = ['set_document_type', 'reextract'];
-      if (isConfirmAllowedByApplySafety(options?.applySafety)) {
-        reviewActions.push('confirm');
-      }
-      actions.push(...reviewActions);
+    case 'READY_FOR_REVIEW':
+      actions.push('set_document_type', 'reextract', 'confirm');
       if (hasFile) actions.push('delete_file', 'cancel');
       break;
-    }
     case 'PENDING':
     case 'QUEUED':
     case 'PROCESSING':
@@ -62,11 +57,4 @@ export function getAllowedDocumentExtractionActions(
   }
 
   return Array.from(new Set(actions));
-}
-
-function isConfirmAllowedByApplySafety(
-  decision?: DocumentApplySafetyDecision | null,
-): boolean {
-  if (!decision) return true;
-  return decision === 'APPLY_ALLOWED' || decision === 'ARCHIVE_ONLY';
 }

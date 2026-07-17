@@ -14,6 +14,11 @@ import {
 import { getAllowedDocumentExtractionActions } from './document-extraction-actions.util';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
 import type { PublicDocumentApplySafetyDto } from './document-apply-safety.types';
+import {
+  getPlausibilityBlockerCodes,
+  hasUnresolvedPlausibilityBlocker,
+} from './document-extraction-plausibility-blocker.util';
+import type { PlausibilityResult } from './document-extraction-plausibility.service';
 
 type MapperOptions = {
   applySafety?: PublicDocumentApplySafetyDto | null;
@@ -152,10 +157,26 @@ function buildAudit(record: ExtractionRecord): PublicDocumentExtractionAuditDto 
   };
 }
 
+function readPlausibilityResult(plausibility: unknown): PlausibilityResult | null {
+  if (!plausibility || typeof plausibility !== 'object' || Array.isArray(plausibility)) {
+    return null;
+  }
+  const row = plausibility as Record<string, unknown>;
+  if (!Array.isArray(row.checks) || typeof row.overallStatus !== 'string') {
+    return null;
+  }
+  return plausibility as PlausibilityResult;
+}
+
 function mapBase(record: ExtractionRecord, options?: MapperOptions): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const applySafety = options?.applySafety ?? null;
-  const allowedActions = getAllowedDocumentExtractionActions(record, { applySafety: applySafety?.decision });
+  const plausibilityResult = readPlausibilityResult(record.plausibility);
+  const plausibilityBlockers = getPlausibilityBlockerCodes(plausibilityResult);
+  const applyBlockedByPlausibility = hasUnresolvedPlausibilityBlocker(plausibilityResult);
+  const allowedActions = getAllowedDocumentExtractionActions(record, {
+    applySafety: applySafety?.decision,
+  });
 
   return {
     id: record.id,
@@ -201,6 +222,8 @@ function mapBase(record: ExtractionRecord, options?: MapperOptions): PublicDocum
     hasStoredFile: Boolean(record.objectKey),
     allowedActions,
     applySafety,
+    plausibilityBlockers,
+    applyBlockedByPlausibility,
     audit: buildAudit(record),
   };
 }

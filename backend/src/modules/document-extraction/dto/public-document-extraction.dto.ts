@@ -95,6 +95,10 @@ export interface PublicDocumentExtractionDto {
   allowedActions: DocumentExtractionAction[];
   /** Central apply safety gate — populated for review/confirm states. */
   applySafety: PublicDocumentApplySafetyDto | null;
+  /** Machine-readable unresolved plausibility BLOCKER codes (fresh server checks). */
+  plausibilityBlockers: string[];
+  /** True when server-side plausibility BLOCKER prevents apply. */
+  applyBlockedByPlausibility: boolean;
   audit: PublicDocumentExtractionAuditDto;
 }
 

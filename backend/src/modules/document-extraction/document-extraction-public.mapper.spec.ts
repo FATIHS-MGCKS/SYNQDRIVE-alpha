@@ -40,6 +40,8 @@ describe('document-extraction-public.mapper', () => {
       hasStoredFile: true,
       allowedActions: expect.any(Array),
       applySafety: null,
+      plausibilityBlockers: [],
+      applyBlockedByPlausibility: false,
       audit: expect.objectContaining({
         createdBy: null,
         typeChanges: expect.any(Array),

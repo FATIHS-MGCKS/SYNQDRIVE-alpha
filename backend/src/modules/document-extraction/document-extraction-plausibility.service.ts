@@ -30,13 +30,11 @@ export interface PlausibilityVehicleContext {
 const NEGATIVE = -0.0001;
 
 /**
- * Server-side plausibility checks. These NEVER block storage of an extraction —
- * they only inform the human review step. The worst individual status becomes
- * the overall status.
+ * Server-side plausibility checks for human review and apply gating.
  *
- * Checks are grounded in the SynqDrive vehicle record (and DIMO-derived odometer
- * where available). The AI agent's own plausibility output is not trusted here;
- * its advisory notes are merged separately by the worker.
+ * Extraction storage is never blocked. At confirm time a fresh run is executed;
+ * unresolved BLOCKER checks prevent downstream apply (confirm may still persist
+ * corrections). WARNING does not block apply.
  */
 export interface PlausibilityRunOptions {
   extractionConflicts?: FieldExtractionEvidence[];
@@ -58,6 +56,52 @@ export class DocumentExtractionPlausibilityService {
     const lastKnown = context.lastKnownOdometerKm ?? null;
     const eventDate = this.toDate(fields['eventDate'] ?? fields['invoiceDate']);
     const now = new Date();
+
+    // FINE: offense date and amount are mandatory before apply.
+    if (documentType === 'FINE') {
+      if (!eventDate) {
+        checks.push({
+          code: 'FINE_OFFENSE_DATE_REQUIRED',
+          status: 'BLOCKER',
+          message: 'Offense date (eventDate) is required before this fine can be applied.',
+          source: 'DOCUMENT',
+        });
+      }
+      const totalCents = this.toNum(fields['totalCents']);
+      if (totalCents != null && totalCents < 0) {
+        checks.push({
+          code: 'NEGATIVE_AMOUNT',
+          status: 'BLOCKER',
+          message: 'Fine amount must not be negative.',
+          source: 'DOCUMENT',
+        });
+      }
+    }
+
+    // Monetary fields — negative totals block apply across invoice/service docs.
+    for (const key of ['totalCents', 'costCents'] as const) {
+      const amount = this.toNum(fields[key]);
+      if (amount != null && amount < 0) {
+        checks.push({
+          code: 'NEGATIVE_AMOUNT',
+          status: 'BLOCKER',
+          message: `${key} must not be negative.`,
+          source: 'DOCUMENT',
+        });
+      }
+    }
+
+    // TÜV / BOKraft inspection date required before apply.
+    if (documentType === 'TUV_REPORT' || documentType === 'BOKRAFT_REPORT') {
+      if (!eventDate) {
+        checks.push({
+          code: 'TUV_INSPECTION_DATE_REQUIRED',
+          status: 'BLOCKER',
+          message: 'Inspection date (eventDate) is required before this report can be applied.',
+          source: 'DOCUMENT',
+        });
+      }
+    }
 
     // VIN / license plate cross-check (only when document carries an identifier)
     const docVin = this.toStr(fields['vin']);
@@ -149,16 +193,16 @@ export class DocumentExtractionPlausibilityService {
       const soh = this.toNum(fields['sohPercent']);
       if (scope === 'lv' && voltage != null && (voltage < 6 || voltage > 16)) {
         checks.push({
-          code: 'LV_VOLTAGE_RANGE',
-          status: 'WARNING',
+          code: 'LV_VOLTAGE_OUT_OF_RANGE',
+          status: 'BLOCKER',
           message: `12V battery voltage (${voltage} V) is outside the plausible 6–16 V range.`,
           source: 'DOCUMENT',
         });
       }
       if (soh != null && (soh < 0 || soh > 100)) {
         checks.push({
-          code: 'SOH_RANGE',
-          status: 'WARNING',
+          code: 'SOH_OUT_OF_RANGE',
+          status: 'BLOCKER',
           message: `State of health (${soh}%) is outside 0–100%.`,
           source: 'DOCUMENT',
         });

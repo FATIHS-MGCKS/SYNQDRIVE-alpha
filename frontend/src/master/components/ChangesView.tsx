@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'plausibility-blocker-apply-gate-2026-07-17',
+    version: '4.9.587',
+    title: 'V4.9.587 — Plausibilitäts-BLOCKER als serverseitige Apply-Sperre',
+    summary: [
+      'Confirm speichert Korrekturen auch bei BLOCKER; Apply startet erst nach frischer Plausibilitätsprüfung ohne BLOCKER.',
+      'WARNING bleibt bestätigbar und apply-fähig. BLOCKER-Codes maschinenlesbar (`plausibilityBlockers`, `applyBlockedByPlausibility`).',
+      'Kein blindes Wiederverwenden alter Checkresultate — `buildFreshConfirmPlausibilityPayload` + frische Runs in confirm/retry.',
+      'Neue BLOCKER: FINE_OFFENSE_DATE_REQUIRED, NEGATIVE_AMOUNT, TUV_INSPECTION_DATE_REQUIRED, LV_VOLTAGE_OUT_OF_RANGE, SOH_OUT_OF_RANGE.',
+    ],
+    reason: 'Prompt 11/84: Frontend-Status ist keine Sicherheitsgrenze — Apply-Gate serverseitig verbindlich.',
+    previousBehavior: 'Confirm warf 400 bei BLOCKER und speicherte Korrekturen nicht; Recovery konnte stale Plausibility nutzen.',
+    details:
+      'document-extraction-plausibility-blocker.util, plausibility-payload.util, plausibility.service, confirm/retry in document-extraction.service, public DTO/mapper (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T17:30:00.000Z',
+  },
+  {
     id: 'document-apply-provenance-gate-2026-07-17',
     version: '4.9.586',
     title: 'V4.9.586 — Apply-Provenance-Gate (kein APPLIED ohne Downstream-Beweis)',

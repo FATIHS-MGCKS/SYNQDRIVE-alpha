@@ -55,6 +55,11 @@ import {
   appendExtractionActionAudit,
   readContentCache,
 } from './document-content-cache.util';
+import {
+  assertApplyNotBlockedByPlausibility,
+  hasUnresolvedPlausibilityBlocker,
+} from './document-extraction-plausibility-blocker.util';
+import { buildFreshConfirmPlausibilityPayload } from './document-extraction-plausibility-payload.util';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import {
   buildDocumentExtractionPaginatedResult,
@@ -694,11 +699,38 @@ export class DocumentExtractionService implements OnModuleInit {
       applyDocumentType,
       confirmedData,
     );
-    if (plausibility.overallStatus === 'BLOCKER') {
-      throw new BadRequestException({
-        message: 'Plausibility checks failed — cannot apply data with BLOCKER status',
-        plausibility,
+
+    const plausibilityPayload = buildFreshConfirmPlausibilityPayload(
+      existing.plausibility,
+      plausibility,
+    );
+    const plausibilityWithConfirmAudit = appendExtractionActionAudit(plausibilityPayload, {
+      action: 'confirm',
+      at: new Date().toISOString(),
+      userId: userId ?? null,
+    });
+
+    if (hasUnresolvedPlausibilityBlocker(plausibility)) {
+      const blockerSave = await this.prisma.vehicleDocumentExtraction.updateMany({
+        where: { id: extractionId, status: 'READY_FOR_REVIEW' },
+        data: {
+          confirmedData: confirmedData as Prisma.InputJsonValue,
+          processingStage: 'REVIEW',
+          confirmedById: userId ?? null,
+          plausibility: plausibilityWithConfirmAudit as Prisma.InputJsonValue,
+          errorPhase: null,
+          errorCode: null,
+          errorMessage: null,
+        },
       });
+      if (blockerSave.count === 0) {
+        const latest = await this.getForVehicle(vehicleId, extractionId);
+        if (latest.status === 'APPLIED') return latest;
+        throw new BadRequestException(
+          `Extraction must be READY_FOR_REVIEW before confirmation (current: ${latest.status})`,
+        );
+      }
+      return this.getForVehicle(vehicleId, extractionId);
     }
 
     const applySafety = this.applySafetyPolicy.evaluate({
@@ -714,20 +746,6 @@ export class DocumentExtractionService implements OnModuleInit {
     const sourceFileUrl =
       existing.sourceFileUrl ??
       (existing.objectKey ? `storage://${existing.objectKey}` : null);
-
-    const plausibilityPayload = {
-      ...(typeof existing.plausibility === 'object' &&
-      existing.plausibility &&
-      !Array.isArray(existing.plausibility)
-        ? (existing.plausibility as Record<string, unknown>)
-        : {}),
-      ...(plausibility as unknown as Record<string, unknown>),
-    };
-    const plausibilityWithConfirmAudit = appendExtractionActionAudit(plausibilityPayload, {
-      action: 'confirm',
-      at: new Date().toISOString(),
-      userId: userId ?? null,
-    });
 
     const confirmUpdate = await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'READY_FOR_REVIEW' },
@@ -760,6 +778,7 @@ export class DocumentExtractionService implements OnModuleInit {
         status: 'completed',
       });
     } else {
+      assertApplyNotBlockedByPlausibility(plausibility);
       try {
         applyResult = await this.applyService.apply({
           extractionId,
@@ -850,10 +869,19 @@ export class DocumentExtractionService implements OnModuleInit {
       return false;
     }
 
+    const plausibility = await this.runConfirmPlausibility(
+      record.vehicleId,
+      applyDocumentType,
+      record.confirmedData as Record<string, unknown>,
+    );
+    if (hasUnresolvedPlausibilityBlocker(plausibility)) {
+      return false;
+    }
+
     const applySafety = this.applySafetyPolicy.evaluate({
       documentType: applyDocumentType,
       confirmedData: record.confirmedData as Record<string, unknown>,
-      plausibility: record.plausibility as Parameters<DocumentApplySafetyPolicy['evaluate']>[0]['plausibility'],
+      plausibility,
       vehicleId: record.vehicleId,
       organizationId: record.organizationId ?? null,
       extractionId,
@@ -877,6 +905,7 @@ export class DocumentExtractionService implements OnModuleInit {
       if (applySafety.decision === 'ARCHIVE_ONLY') {
         applyResult = createArchiveOnlyApplySuccess();
       } else {
+        assertApplyNotBlockedByPlausibility(plausibility);
         applyResult = await this.applyService.apply({
           extractionId,
           vehicleId: record.vehicleId,
@@ -950,14 +979,10 @@ export class DocumentExtractionService implements OnModuleInit {
         applyDocumentType,
         extractedFields,
       );
-      plausibilityPayload = {
-        ...(typeof record.plausibility === 'object' &&
-        record.plausibility &&
-        !Array.isArray(record.plausibility)
-          ? (record.plausibility as Record<string, unknown>)
-          : {}),
-        ...(plausibility as unknown as Record<string, unknown>),
-      } as Prisma.JsonValue;
+      plausibilityPayload = buildFreshConfirmPlausibilityPayload(
+        record.plausibility,
+        plausibility,
+      ) as Prisma.JsonValue;
     }
 
     await this.prisma.vehicleDocumentExtraction.update({
