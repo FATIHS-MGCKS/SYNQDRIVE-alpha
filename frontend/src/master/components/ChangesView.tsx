@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-capacity-policy-v49609-2026-07-18',
+    version: '4.9.609',
+    title: 'V4.9.609 — Stations V2: StationCapacityPolicy (Prompt 29/78)',
+    summary: [
+      'Zentrale `StationCapacityPolicy`: configuredCapacity, currentOnSiteCount, expectedArrival/Departure, projectedOccupancy, availablePhysicalSlots, capacityStatus.',
+      'Status: UNKNOWN, AVAILABLE, NEAR_CAPACITY, FULL, OVER_CAPACITY, PROJECTED_OVER_CAPACITY.',
+      'Physische Präsenz als Basis; Heimatflotte ≠ Belegung; vermietete Heimatfahrzeuge zählen nicht; Fremdfahrzeuge vor Ort zählen.',
+      'Transfers und Booking-Returns/Departures getrennt; null = unbekannt; keine Booking-Blockade.',
+    ],
+    reason:
+      'Kapazitätslogik war auf Heimatflotte/`totalVehicles` verteilt — ohne klare physische Belegung und Projektion.',
+    previousBehavior:
+      '`capacityUsagePercent` aus Heimatflotte in Overview-Stats; keine zentrale Capacity-Policy mit Status und Projektion.',
+    details:
+      'station-capacity-policy.{contract,ts}, *spec.ts; keine Consumer-Migration in diesem Prompt.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T11:00:00.000Z',
+  },
+  {
     id: 'stations-v2-timezone-utils-v49608-2026-07-18',
     version: '4.9.608',
     title: 'V4.9.608 — Stations V2: Central Station Timezone Utilities (Prompt 28/78)',
