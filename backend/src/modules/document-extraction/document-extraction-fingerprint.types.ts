@@ -1,4 +1,5 @@
 import type { AllowedDocumentMimeType } from './document-upload.constants';
+import type { DocumentFileIdentificationStatus } from './document-file-identification-status.types';
 
 export type DocumentExtractionFileFingerprint = {
   algorithm: 'sha256';
@@ -8,6 +9,10 @@ export type DocumentExtractionFileFingerprint = {
   detectedMime: AllowedDocumentMimeType;
   displayFileName: string;
   identifiedAt: string;
+  identificationStatus?: DocumentFileIdentificationStatus;
+  pageCount?: number;
+  pixelCount?: number;
+  rotationDegrees?: number;
 };
 
 export function buildDocumentExtractionFileFingerprint(input: {
@@ -16,6 +21,10 @@ export function buildDocumentExtractionFileFingerprint(input: {
   sizeBytes: number;
   detectedMime: AllowedDocumentMimeType;
   displayFileName: string;
+  identificationStatus?: DocumentFileIdentificationStatus;
+  pageCount?: number;
+  pixelCount?: number;
+  rotationDegrees?: number;
 }): DocumentExtractionFileFingerprint {
   return {
     algorithm: 'sha256',
@@ -25,6 +34,10 @@ export function buildDocumentExtractionFileFingerprint(input: {
     detectedMime: input.detectedMime,
     displayFileName: input.displayFileName,
     identifiedAt: new Date().toISOString(),
+    identificationStatus: input.identificationStatus,
+    pageCount: input.pageCount,
+    pixelCount: input.pixelCount,
+    rotationDegrees: input.rotationDegrees,
   };
 }
 

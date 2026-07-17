@@ -15,6 +15,17 @@ import {
   DOCUMENT_PIPELINE_ERROR_CODES,
   DocumentExtractionPipelineError,
 } from './document-extraction.errors';
+import {
+  DOCUMENT_FILE_IDENTIFICATION_STATUSES,
+  type DocumentFileIdentificationStatus,
+  type DocumentFilePreprocessLimits,
+} from './document-file-identification-status.types';
+import { probePdfBuffer } from './document-pdf-probe.util';
+import { probeJpegBuffer, probePngBuffer, probeWebpBuffer } from './document-image-probe.util';
+import {
+  DocumentIdentificationTimeoutError,
+  withIdentificationTimeout,
+} from './document-identification-timeout.util';
 
 export type DetectedDocumentKind = 'pdf' | 'jpeg' | 'png' | 'webp' | 'plain-text';
 
@@ -47,6 +58,10 @@ export interface IdentifiedDocumentFile {
   clientMime: string;
   displayFileName: string;
   sizeBytes: number;
+  identificationStatus: DocumentFileIdentificationStatus;
+  pageCount?: number;
+  pixelCount?: number;
+  rotationDegrees?: number;
 }
 
 @Injectable()
@@ -103,13 +118,165 @@ export class DocumentFileIdentificationService {
     const detectedMime = KIND_TO_MIME[detectedKind];
     this.assertCompatibleMime(clientMime, detectedMime, detectedKind);
 
+    const limits = this.resolvePreprocessLimits();
+    try {
+      const preprocessed = await withIdentificationTimeout(
+        async () => this.preprocessDetectedFile(input.buffer, detectedKind, limits),
+        limits.timeoutMs,
+      );
+      return {
+        detectedKind,
+        detectedMime,
+        clientMime,
+        displayFileName,
+        sizeBytes,
+        ...preprocessed,
+      };
+    } catch (error) {
+      if (error instanceof DocumentExtractionPipelineError) {
+        throw error;
+      }
+      if (error instanceof DocumentIdentificationTimeoutError) {
+        throw new DocumentExtractionPipelineError({
+          code: DOCUMENT_PIPELINE_ERROR_CODES.FILE_IDENTIFICATION_TIMEOUT,
+          safeMessage: 'File identification took too long — try a smaller document',
+          stage: 'UPLOAD',
+        });
+      }
+      throw error;
+    }
+  }
+
+  private resolvePreprocessLimits(): DocumentFilePreprocessLimits {
     return {
-      detectedKind,
-      detectedMime,
-      clientMime,
-      displayFileName,
-      sizeBytes,
+      timeoutMs: this.config.identifyTimeoutMs,
+      maxPdfPages: this.config.identifyMaxPdfPages,
+      maxImagePixels: this.config.identifyMaxImagePixels,
+      maxDecompressedBytes: this.config.identifyMaxDecompressedBytes,
+      maxPdfObjects: this.config.identifyMaxPdfObjects,
+      maxPdfStreams: this.config.identifyMaxPdfStreams,
     };
+  }
+
+  private preprocessDetectedFile(
+    buffer: Buffer,
+    detectedKind: DetectedDocumentKind,
+    limits: DocumentFilePreprocessLimits,
+  ): Pick<
+    IdentifiedDocumentFile,
+    'identificationStatus' | 'pageCount' | 'pixelCount' | 'rotationDegrees'
+  > {
+    if (detectedKind === 'pdf') {
+      return this.preprocessPdf(buffer, limits);
+    }
+    if (detectedKind === 'jpeg' || detectedKind === 'png' || detectedKind === 'webp') {
+      return this.preprocessImage(buffer, detectedKind, limits);
+    }
+    return { identificationStatus: DOCUMENT_FILE_IDENTIFICATION_STATUSES.ACCEPTED };
+  }
+
+  private preprocessPdf(
+    buffer: Buffer,
+    limits: DocumentFilePreprocessLimits,
+  ): Pick<IdentifiedDocumentFile, 'identificationStatus' | 'pageCount'> {
+    const probe = probePdfBuffer(buffer);
+
+    if (probe.corrupt) {
+      throw this.rejectionError(
+        DOCUMENT_FILE_IDENTIFICATION_STATUSES.REJECTED_CORRUPT,
+        DOCUMENT_PIPELINE_ERROR_CODES.FILE_CORRUPTED,
+        'The PDF file appears to be damaged or incomplete',
+      );
+    }
+
+    if (probe.passwordProtected) {
+      throw this.rejectionError(
+        DOCUMENT_FILE_IDENTIFICATION_STATUSES.REQUIRES_PASSWORD,
+        DOCUMENT_PIPELINE_ERROR_CODES.PDF_PASSWORD_REQUIRED,
+        'Password-protected PDFs are not supported — remove the password and try again',
+      );
+    }
+
+    if (probe.pageCount > limits.maxPdfPages) {
+      throw this.rejectionError(
+        DOCUMENT_FILE_IDENTIFICATION_STATUSES.REJECTED_TOO_MANY_PAGES,
+        DOCUMENT_PIPELINE_ERROR_CODES.FILE_TOO_MANY_PAGES,
+        `The PDF has too many pages (maximum ${limits.maxPdfPages})`,
+      );
+    }
+
+    if (
+      probe.objectCount > limits.maxPdfObjects ||
+      probe.streamCount > limits.maxPdfStreams ||
+      probe.estimatedDecompressedBytes > limits.maxDecompressedBytes
+    ) {
+      throw this.rejectionError(
+        DOCUMENT_FILE_IDENTIFICATION_STATUSES.REJECTED_TOO_COMPLEX,
+        DOCUMENT_PIPELINE_ERROR_CODES.FILE_TOO_COMPLEX,
+        'The PDF structure is too complex to process safely',
+      );
+    }
+
+    const looksScanned = probe.streamCount > 0 && probe.pageCount >= 1;
+    return {
+      identificationStatus: looksScanned
+        ? DOCUMENT_FILE_IDENTIFICATION_STATUSES.OCR_REQUIRED
+        : DOCUMENT_FILE_IDENTIFICATION_STATUSES.ACCEPTED,
+      pageCount: probe.pageCount,
+    };
+  }
+
+  private preprocessImage(
+    buffer: Buffer,
+    detectedKind: Extract<DetectedDocumentKind, 'jpeg' | 'png' | 'webp'>,
+    limits: DocumentFilePreprocessLimits,
+  ): Pick<IdentifiedDocumentFile, 'identificationStatus' | 'pixelCount' | 'rotationDegrees'> {
+    const probe =
+      detectedKind === 'jpeg'
+        ? probeJpegBuffer(buffer)
+        : detectedKind === 'png'
+          ? probePngBuffer(buffer)
+          : probeWebpBuffer(buffer);
+
+    if (probe.corrupt) {
+      throw this.rejectionError(
+        DOCUMENT_FILE_IDENTIFICATION_STATUSES.REJECTED_CORRUPT,
+        DOCUMENT_PIPELINE_ERROR_CODES.FILE_CORRUPTED,
+        'The image file appears to be damaged or incomplete',
+      );
+    }
+
+    if (probe.pixelCount > limits.maxImagePixels) {
+      throw this.rejectionError(
+        DOCUMENT_FILE_IDENTIFICATION_STATUSES.REJECTED_TOO_COMPLEX,
+        DOCUMENT_PIPELINE_ERROR_CODES.FILE_TOO_COMPLEX,
+        'The image resolution is too large to process safely',
+      );
+    }
+
+    const needsRotationOcr = probe.rotationDegrees !== 0;
+    return {
+      identificationStatus: needsRotationOcr
+        ? DOCUMENT_FILE_IDENTIFICATION_STATUSES.OCR_REQUIRED
+        : DOCUMENT_FILE_IDENTIFICATION_STATUSES.ACCEPTED,
+      pixelCount: probe.pixelCount,
+      rotationDegrees: probe.rotationDegrees,
+    };
+  }
+
+  private rejectionError(
+    identificationStatus: DocumentFileIdentificationStatus,
+    code: string,
+    safeMessage: string,
+  ): DocumentExtractionPipelineError {
+    const err = new DocumentExtractionPipelineError({
+      code,
+      safeMessage,
+      stage: 'UPLOAD',
+    });
+    (err as DocumentExtractionPipelineError & { identificationStatus?: string }).identificationStatus =
+      identificationStatus;
+    return err;
   }
 
   private identifyWithoutMagicBytes(
@@ -140,6 +307,7 @@ export class DocumentFileIdentificationService {
       clientMime,
       displayFileName,
       sizeBytes,
+      identificationStatus: DOCUMENT_FILE_IDENTIFICATION_STATUSES.ACCEPTED,
     };
   }
 

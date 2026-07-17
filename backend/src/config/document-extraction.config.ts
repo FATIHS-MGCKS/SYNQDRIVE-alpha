@@ -112,6 +112,19 @@ export default registerAs('documentExtraction', () => ({
     process.env.DOCUMENT_UPLOAD_RATE_LIMIT_ADMIN_MULTIPLIER,
     4,
   ),
+  /** Upload identification / preprocessing guards (byte-level probes, no PDF execution). */
+  identifyTimeoutMs: parsePositiveIntEnv(process.env.DOCUMENT_IDENTIFY_TIMEOUT_MS, 5_000),
+  identifyMaxPdfPages: parsePositiveIntEnv(process.env.DOCUMENT_IDENTIFY_MAX_PDF_PAGES, 50),
+  identifyMaxImagePixels: parsePositiveIntEnv(
+    process.env.DOCUMENT_IDENTIFY_MAX_IMAGE_PIXELS,
+    40_000_000,
+  ),
+  identifyMaxDecompressedBytes: parsePositiveIntEnv(
+    process.env.DOCUMENT_IDENTIFY_MAX_DECOMPRESSED_BYTES,
+    80 * 1024 * 1024,
+  ),
+  identifyMaxPdfObjects: parsePositiveIntEnv(process.env.DOCUMENT_IDENTIFY_MAX_PDF_OBJECTS, 5_000),
+  identifyMaxPdfStreams: parsePositiveIntEnv(process.env.DOCUMENT_IDENTIFY_MAX_PDF_STREAMS, 2_000),
   /** Chunking — conservative char budgets (≈ token estimate via chars/3.5). */
   chunkTargetChars: parsePositiveIntEnv(process.env.DOCUMENT_EXTRACTION_CHUNK_TARGET_CHARS, 6_000),
   chunkMaxChars: parsePositiveIntEnv(process.env.DOCUMENT_EXTRACTION_CHUNK_MAX_CHARS, 8_000),

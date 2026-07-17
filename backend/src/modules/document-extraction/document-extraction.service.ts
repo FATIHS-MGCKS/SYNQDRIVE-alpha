@@ -361,6 +361,9 @@ export class DocumentExtractionService implements OnModuleInit {
           message: error.safeMessage,
           errorCode: error.code,
           stage: error.stage,
+          identificationStatus:
+            (error as DocumentExtractionPipelineError & { identificationStatus?: string })
+              .identificationStatus ?? undefined,
         });
       }
       throw error;
@@ -388,6 +391,10 @@ export class DocumentExtractionService implements OnModuleInit {
       sizeBytes: identified.sizeBytes,
       detectedMime: identified.detectedMime,
       displayFileName: identified.displayFileName,
+      identificationStatus: identified.identificationStatus,
+      pageCount: identified.pageCount,
+      pixelCount: identified.pixelCount,
+      rotationDegrees: identified.rotationDegrees,
     });
 
     const pipelineDuplicate =
