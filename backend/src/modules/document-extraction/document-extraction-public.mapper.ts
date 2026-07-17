@@ -31,7 +31,7 @@ type UserJoin = {
 
 type ExtractionRecord = {
   id: string;
-  vehicleId: string;
+  vehicleId: string | null;
   organizationId?: string | null;
   status: PublicDocumentExtractionDto['status'];
   processingStage: PublicDocumentExtractionDto['processingStage'];
@@ -155,7 +155,9 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     id: record.id,
     vehicleId: record.vehicleId,
     organizationId: record.organizationId ?? null,
-    vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
+    vehicle: record.vehicleId
+      ? toVehicleDisplay(record.vehicle, record.vehicleId)
+      : null,
     status: record.status,
     processingStage: record.processingStage,
     sourceFileName: record.sourceFileName ?? null,
