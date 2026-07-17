@@ -532,17 +532,14 @@ export function summarizeCanonicalBrakingIncidents(
 }
 
 /**
- * Wear model note (Prompt 15):
- * `harshBrakeWearMultiplier()` in brake-status.ts is NOT applied in recalculate().
- * Active path uses `lookupSteppedFactor(hardBrakePer100Km, padHardBrakeAnchors)` and
- * `discHardBrakeAnchors` in brake-health.service.ts — a separate stepped model on the
- * same canonical hard-brake rate. Do not stack harshBrakeWearMultiplier on top.
+ * Wear model note:
+ * `harshBrakeWearMultiplier()` in brake-status.ts is the canonical hard-brake wear factor
+ * applied in `BrakeHealthService.resolveHardBrakeWearFactor()` during recalculate().
  */
 export const HARSH_BRAKE_WEAR_MULTIPLIER_STATUS = {
   function: 'harshBrakeWearMultiplier',
   module: 'brake-status.ts',
-  appliedInRecalculate: false,
-  activeWearFormula:
-    'lookupSteppedFactor(hardBrakePer100Km, padHardBrakeAnchors|discHardBrakeAnchors)',
+  appliedInRecalculate: true,
+  activeWearFormula: 'harshBrakeWearMultiplier(hardBrakePer100Km).multiplier',
   activeModule: 'brake-health.service.ts',
 } as const;

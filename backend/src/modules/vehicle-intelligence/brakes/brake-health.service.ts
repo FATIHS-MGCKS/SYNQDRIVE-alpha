@@ -41,6 +41,7 @@ import {
   conditionToLegacyStatus,
   dataBasisFromAnchorValidation,
   evidenceSourceToDataBasis,
+  harshBrakeWearMultiplier,
   isAlertableCondition,
   strongerDataBasis,
   type BrakeAlertCode,
@@ -75,6 +76,7 @@ import {
   serializeAlertsSummary,
 } from './brake-snapshot.domain';
 import { buildSnapshotPredictionPayload } from './brake-wear-model-version';
+import { calibrateBrakeKFactorForComponent } from './brake-health-calibration.domain';
 import {
   allocateTripDistancesToOdometerBudget,
   assessBrakeCoverageGap,
@@ -851,16 +853,6 @@ export class BrakeHealthService {
         discsHealthPct: canInitialize ? 100 : null,
         discsRemainingKm: null,
         distanceSinceAnchorKm: canInitialize ? 0 : null,
-        ...(scoped
-          ? {}
-          : {
-              frontPadKFactor: 1.0,
-              rearPadKFactor: 1.0,
-              frontDiscKFactor: 1.0,
-              rearDiscKFactor: 1.0,
-              calibrationCount: 0,
-              hasAlert: false,
-            }),
         stateClass: stateClass,
         anchorValidationStatus: canInitialize
           ? hasMeasuredAnchor
@@ -1152,10 +1144,23 @@ export class BrakeHealthService {
       throw new BadRequestException('Force brake recalculation requires a non-empty reason.');
     }
 
-    const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    let current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
     if (!current?.isInitialized || current.anchorOdometerKm == null || !current.anchorServiceDate) {
       return null;
     }
+
+    const trigger = options.trigger ?? 'manual';
+    if (trigger === 'measurement') {
+      await this.calibrateFromLatestMeasurement(vehicleId);
+      current =
+        (await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } })) ?? current;
+      if (!current.isInitialized || current.anchorOdometerKm == null || !current.anchorServiceDate) {
+        return null;
+      }
+    }
+
+    const anchorOdometerKm = current.anchorOdometerKm;
+    const anchorServiceDate = current.anchorServiceDate;
 
     const inputContext = await this.recalcInputLoader.load(vehicleId);
     if (!inputContext) return null;
@@ -1165,7 +1170,6 @@ export class BrakeHealthService {
       modelConfigHash,
     });
 
-    const trigger = options.trigger ?? 'manual';
     const recalcAsOf = new Date();
 
     const lastSnapshot = await this.prisma.brakeHealthSnapshot.findFirst({
@@ -1238,7 +1242,7 @@ export class BrakeHealthService {
     const tripImpacts = await this.prisma.tripDrivingImpact.findMany({
       where: {
         vehicleId,
-        tripStartedAt: { gte: current.anchorServiceDate },
+        tripStartedAt: { gte: anchorServiceDate },
         analysisStatus: { in: ['COMPLETE', 'PARTIAL'] },
       },
       orderBy: { tripStartedAt: 'asc' },
@@ -1288,10 +1292,7 @@ export class BrakeHealthService {
         trip.stopDensity ?? 0,
         this.cfg.padStopDensityAnchors,
       );
-      const padHardBrake = lookupSteppedFactor(
-        trip.hardBrakePer100Km ?? 0,
-        this.cfg.padHardBrakeAnchors,
-      );
+      const padHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const padFullBraking = lookupSteppedFactor(
         trip.fullBrakingPer100Km ?? 0,
         this.cfg.padFullBrakingAnchors,
@@ -1332,10 +1333,7 @@ export class BrakeHealthService {
         (trip.highSpeedBrakeShare ?? 0) * 100,
         this.cfg.discHighSpeedBrakeAnchors,
       );
-      const discHardBrake = lookupSteppedFactor(
-        trip.hardBrakePer100Km ?? 0,
-        this.cfg.discHardBrakeAnchors,
-      );
+      const discHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const discFullBraking = lookupSteppedFactor(
         trip.fullBrakingPer100Km ?? 0,
         this.cfg.discFullBrakingAnchors,
@@ -1507,13 +1505,7 @@ export class BrakeHealthService {
       (v): v is number => v != null,
     );
     const padsHealthPct =
-      padsPcts.length > 0
-        ? round2(
-            this.cfg.setLevel.minWeight * Math.min(...padsPcts) +
-              this.cfg.setLevel.avgWeight *
-                (padsPcts.reduce((a, b) => a + b, 0) / padsPcts.length),
-          )
-        : null;
+      padsPcts.length > 0 ? round2(Math.min(...padsPcts)) : null;
     const padsRemainingKm = Math.min(
       frontPadResult.remainingKm ?? Number.POSITIVE_INFINITY,
       rearPadResult.remainingKm ?? Number.POSITIVE_INFINITY,
@@ -1523,13 +1515,7 @@ export class BrakeHealthService {
       (v): v is number => v != null,
     );
     const discsHealthPct =
-      discsPcts.length > 0
-        ? round2(
-            this.cfg.setLevel.minWeight * Math.min(...discsPcts) +
-              this.cfg.setLevel.avgWeight *
-                (discsPcts.reduce((a, b) => a + b, 0) / discsPcts.length),
-          )
-        : null;
+      discsPcts.length > 0 ? round2(Math.min(...discsPcts)) : null;
     const discsRemainingKm = Math.min(
       frontDiscResult.remainingKm ?? Number.POSITIVE_INFINITY,
       rearDiscResult.remainingKm ?? Number.POSITIVE_INFINITY,
@@ -1597,21 +1583,6 @@ export class BrakeHealthService {
       recalculationModelVersion: fingerprint.modelVersion,
     };
 
-    const alerts = this.computeAlerts({ ...current, ...updatedData } as any, wearThresholds);
-    const wearSafetyLegacyTypes = new Set([
-      'PAD_CRITICAL',
-      'PAD_WARNING',
-      'DISC_CRITICAL',
-      'DISC_WARNING',
-      'CRITICAL_REMAINING_KM',
-      'LOW_REMAINING_KM',
-    ]);
-    (updatedData as any).hasAlert = alerts.some(
-      (a) =>
-        wearSafetyLegacyTypes.has(a.type) &&
-        (a.severity === 'warning' || a.severity === 'critical'),
-    );
-
     await this.prisma.brakeHealthCurrent.update({
       where: { vehicleId },
       data: updatedData,
@@ -1631,6 +1602,19 @@ export class BrakeHealthService {
       this.observability?.recordSpecFallback('spec_fallback_anchor');
     }
 
+    const mergedCurrent = { ...current, ...updatedData } as BrakeHealthCurrent;
+    const canonicalPreSnapshot = await this.buildCanonicalReadModel(
+      vehicleId,
+      mergedCurrent,
+      this.deriveModeledComponents(mergedCurrent),
+      { emitNotifications: false },
+    );
+    const snapshotAlerts = canonicalPreSnapshot.openAlerts.map((alert) => ({
+      type: alert.code,
+      severity: alert.severity,
+      message: alert.message,
+    }));
+
     const snapshot = await this.persistHealthSnapshot({
       organizationId: current.organizationId,
       vehicleId,
@@ -1646,7 +1630,7 @@ export class BrakeHealthService {
       padsHealthPct,
       discsHealthPct,
       confidence,
-      alerts,
+      alerts: snapshotAlerts,
       modelingSource,
       coverageRatioRaw,
       observedDistanceKm: modeledDistanceFromTrips,
@@ -1661,7 +1645,6 @@ export class BrakeHealthService {
       });
     }
 
-    const mergedCurrent = { ...current, ...updatedData } as BrakeHealthCurrent;
     const canonical = await this.buildCanonicalReadModel(
       vehicleId,
       mergedCurrent,
@@ -1692,7 +1675,7 @@ export class BrakeHealthService {
       padsRemainingKm,
       discsRemainingKm,
       confidence,
-      alertCount: alerts.length,
+      alertCount: canonical.openAlerts.length,
       modeledDistanceKm: round2(modeledDistance),
       coverageRatio: coverageRatioRaw != null ? round2(coverageRatioRaw) : null,
       gapAssessment,
@@ -1938,10 +1921,7 @@ export class BrakeHealthService {
         trip.stopDensity ?? 0,
         this.cfg.padStopDensityAnchors,
       );
-      const padHardBrake = lookupSteppedFactor(
-        trip.hardBrakePer100Km ?? 0,
-        this.cfg.padHardBrakeAnchors,
-      );
+      const padHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const padFullBraking = lookupSteppedFactor(
         trip.fullBrakingPer100Km ?? 0,
         this.cfg.padFullBrakingAnchors,
@@ -1982,10 +1962,7 @@ export class BrakeHealthService {
         (trip.highSpeedBrakeShare ?? 0) * 100,
         this.cfg.discHighSpeedBrakeAnchors,
       );
-      const discHardBrake = lookupSteppedFactor(
-        trip.hardBrakePer100Km ?? 0,
-        this.cfg.discHardBrakeAnchors,
-      );
+      const discHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const discFullBraking = lookupSteppedFactor(
         trip.fullBrakingPer100Km ?? 0,
         this.cfg.discFullBrakingAnchors,
@@ -2176,6 +2153,172 @@ export class BrakeHealthService {
       return;
     }
     await this.recalculate(vehicleId, { trigger });
+  }
+
+  /**
+   * Workshop ground-truth calibration — adjusts scoped k-factors from confirmed mm measurements.
+   * Requires initialized brake health and sufficient predicted wear since anchor.
+   */
+  async calibrateFromMeasurement(
+    vehicleId: string,
+    measurement: {
+      frontPadMm?: number | null;
+      rearPadMm?: number | null;
+      frontDiscMm?: number | null;
+      rearDiscMm?: number | null;
+    },
+  ): Promise<{
+    frontPadKFactor: number;
+    rearPadKFactor: number;
+    frontDiscKFactor: number;
+    rearDiscKFactor: number;
+    calibrationCount: number;
+    calibratedComponents: string[];
+  }> {
+    const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    if (!current?.isInitialized) {
+      return {
+        frontPadKFactor: current?.frontPadKFactor ?? 1,
+        rearPadKFactor: current?.rearPadKFactor ?? 1,
+        frontDiscKFactor: current?.frontDiscKFactor ?? 1,
+        rearDiscKFactor: current?.rearDiscKFactor ?? 1,
+        calibrationCount: current?.calibrationCount ?? 0,
+        calibratedComponents: [],
+      };
+    }
+
+    const count = current.calibrationCount ?? 0;
+    let frontPadKFactor = current.frontPadKFactor ?? 1;
+    let rearPadKFactor = current.rearPadKFactor ?? 1;
+    let frontDiscKFactor = current.frontDiscKFactor ?? 1;
+    let rearDiscKFactor = current.rearDiscKFactor ?? 1;
+    const calibratedComponents: string[] = [];
+
+    const apply = (
+      component: 'FRONT_PADS' | 'REAR_PADS' | 'FRONT_DISCS' | 'REAR_DISCS',
+      anchorMm: number | null,
+      predictedMm: number | null,
+      measuredMm: number | null | undefined,
+      currentK: number,
+    ): number => {
+      if (anchorMm == null || predictedMm == null || measuredMm == null) return currentK;
+      const result = calibrateBrakeKFactorForComponent(
+        component,
+        currentK,
+        anchorMm,
+        predictedMm,
+        measuredMm,
+        count + 1,
+      );
+      if (result.applied) calibratedComponents.push(component);
+      return result.newK;
+    };
+
+    frontPadKFactor = apply(
+      'FRONT_PADS',
+      current.frontPadAnchorMm,
+      current.frontPadEstimatedMm,
+      measurement.frontPadMm,
+      frontPadKFactor,
+    );
+    rearPadKFactor = apply(
+      'REAR_PADS',
+      current.rearPadAnchorMm,
+      current.rearPadEstimatedMm,
+      measurement.rearPadMm,
+      rearPadKFactor,
+    );
+    frontDiscKFactor = apply(
+      'FRONT_DISCS',
+      current.frontDiscAnchorMm,
+      current.frontDiscEstimatedMm,
+      measurement.frontDiscMm,
+      frontDiscKFactor,
+    );
+    rearDiscKFactor = apply(
+      'REAR_DISCS',
+      current.rearDiscAnchorMm,
+      current.rearDiscEstimatedMm,
+      measurement.rearDiscMm,
+      rearDiscKFactor,
+    );
+
+    if (calibratedComponents.length === 0) {
+      return {
+        frontPadKFactor,
+        rearPadKFactor,
+        frontDiscKFactor,
+        rearDiscKFactor,
+        calibrationCount: count,
+        calibratedComponents,
+      };
+    }
+
+    const newCount = count + 1;
+    await this.prisma.brakeHealthCurrent.update({
+      where: { vehicleId },
+      data: {
+        frontPadKFactor,
+        rearPadKFactor,
+        frontDiscKFactor,
+        rearDiscKFactor,
+        calibrationCount: newCount,
+      },
+    });
+
+    return {
+      frontPadKFactor,
+      rearPadKFactor,
+      frontDiscKFactor,
+      rearDiscKFactor,
+      calibrationCount: newCount,
+      calibratedComponents,
+    };
+  }
+
+  private async calibrateFromLatestMeasurement(vehicleId: string): Promise<void> {
+    const rows = await this.prisma.brakeEvidence.findMany({
+      where: {
+        vehicleId,
+        active: true,
+        supersededByEvidenceId: null,
+        OR: [{ measuredPadMm: { not: null } }, { measuredDiscMm: { not: null } }],
+      },
+      orderBy: [{ measuredAt: 'desc' }, { createdAt: 'desc' }],
+      take: 5,
+      select: {
+        source: true,
+        confirmationStatus: true,
+        measuredPadMm: true,
+        measuredDiscMm: true,
+        axle: true,
+      },
+    });
+    const evidence = rows.find((row) => isMmGroundTruth(row));
+    if (!evidence) return;
+
+    await this.calibrateFromMeasurement(vehicleId, {
+      frontPadMm:
+        evidence.axle === 'FRONT' || evidence.axle === 'UNKNOWN'
+          ? evidence.measuredPadMm
+          : null,
+      rearPadMm:
+        evidence.axle === 'REAR' || evidence.axle === 'UNKNOWN'
+          ? evidence.measuredPadMm
+          : null,
+      frontDiscMm:
+        evidence.axle === 'FRONT' || evidence.axle === 'UNKNOWN'
+          ? evidence.measuredDiscMm
+          : null,
+      rearDiscMm:
+        evidence.axle === 'REAR' || evidence.axle === 'UNKNOWN'
+          ? evidence.measuredDiscMm
+          : null,
+    });
+  }
+
+  private resolveHardBrakeWearFactor(hardBrakePer100Km: number | null | undefined): number {
+    return harshBrakeWearMultiplier(hardBrakePer100Km).multiplier;
   }
 
   private async writeRecalculationAudit(input: {
@@ -2515,9 +2658,17 @@ export class BrakeHealthService {
   ): { score: number; label: string } {
     const c = this.cfg.confidence;
     let score = 0;
+    const hasMeasuredAnchor = this.hasMeasuredAnchorStatus(current);
+    const anchorStatus = String(current.anchorValidationStatus ?? '').toLowerCase();
+    const specFallbackOnly =
+      !hasMeasuredAnchor &&
+      (anchorStatus.includes('spec_fallback') || anchorStatus.includes('spec_only'));
 
-    if (current.frontPadAnchorMm != null || current.rearPadAnchorMm != null) score += c.padAnchors;
-    if (current.frontDiscAnchorMm != null || current.rearDiscAnchorMm != null) score += c.rotorAnchors;
+    if (hasMeasuredAnchor) {
+      if (current.frontPadAnchorMm != null || current.rearPadAnchorMm != null) score += c.padAnchors;
+      if (current.frontDiscAnchorMm != null || current.rearDiscAnchorMm != null) score += c.rotorAnchors;
+      score += c.measurementExists;
+    }
     if (current.anchorServiceDate != null) score += c.serviceEvents;
     if (
       impact &&
@@ -2552,6 +2703,9 @@ export class BrakeHealthService {
       gapAssessment.gapShare > 0.5
     ) {
       score = Math.min(score, this.cfg.confidenceThresholds.high - 1);
+    }
+    if (specFallbackOnly) {
+      score = Math.min(score, this.cfg.confidenceThresholds.medium);
     }
 
     score = clamp(score, 0, 100);
@@ -3637,10 +3791,7 @@ export class BrakeHealthService {
         impact?.stopDensity ?? 0,
         this.cfg.padStopDensityAnchors,
       ),
-      padHardBrakeFactor: lookupSteppedFactor(
-        impact?.hardBrakePer100Km ?? 0,
-        this.cfg.padHardBrakeAnchors,
-      ),
+      padHardBrakeFactor: this.resolveHardBrakeWearFactor(impact?.hardBrakePer100Km),
       padFullBrakingFactor: lookupSteppedFactor(
         impact?.fullBrakingPer100Km ?? 0,
         this.cfg.padFullBrakingAnchors,
@@ -3651,10 +3802,7 @@ export class BrakeHealthService {
         (impact?.highSpeedBrakeShare ?? 0) * 100,
         this.cfg.discHighSpeedBrakeAnchors,
       ),
-      discHardBrakeFactor: lookupSteppedFactor(
-        impact?.hardBrakePer100Km ?? 0,
-        this.cfg.discHardBrakeAnchors,
-      ),
+      discHardBrakeFactor: this.resolveHardBrakeWearFactor(impact?.hardBrakePer100Km),
       discFullBrakingFactor: lookupSteppedFactor(
         impact?.fullBrakingPer100Km ?? 0,
         this.cfg.discFullBrakingAnchors,

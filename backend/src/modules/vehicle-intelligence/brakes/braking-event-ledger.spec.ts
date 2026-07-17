@@ -150,9 +150,9 @@ describe('braking-event-ledger.domain', () => {
     expect(summary.totalBrakingEvents).toBe(1);
   });
 
-  it('documents harshBrakeWearMultiplier is not stacked on active wear formula', () => {
-    expect(HARSH_BRAKE_WEAR_MULTIPLIER_STATUS.appliedInRecalculate).toBe(false);
-    expect(HARSH_BRAKE_WEAR_MULTIPLIER_STATUS.activeWearFormula).toContain('padHardBrakeAnchors');
+  it('documents harshBrakeWearMultiplier is wired in recalculate wear formula', () => {
+    expect(HARSH_BRAKE_WEAR_MULTIPLIER_STATUS.appliedInRecalculate).toBe(true);
+    expect(HARSH_BRAKE_WEAR_MULTIPLIER_STATUS.activeWearFormula).toContain('harshBrakeWearMultiplier');
   });
 
   it('maps provider and HF sources with explicit priority ordering', () => {
