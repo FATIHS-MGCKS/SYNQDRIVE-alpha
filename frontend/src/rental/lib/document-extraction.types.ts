@@ -222,6 +222,32 @@ export interface PublicPartnerNewSuggestion {
   sourceField: string;
 }
 
+export interface PublicEntityCandidateRank {
+  entityType: string;
+  entityId: string;
+  score: number;
+  confidenceLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  positiveReasons: string[];
+  negativeReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  autoSelectEligibility: boolean;
+}
+
+export interface PublicEntityCandidateRanking {
+  rankingVersion: string;
+  evaluatedAt: string;
+  documentType: string;
+  preselectionBlocked: boolean;
+  preselectionBlockedReason: string | null;
+  candidates: PublicEntityCandidateRank[];
+}
+
 export interface PublicDocumentExtraction {
   id: string;
   vehicleId: string | null;
@@ -233,6 +259,7 @@ export interface PublicDocumentExtraction {
   driverCandidates: PublicDriverCandidate[] | null;
   partnerCandidates: PublicPartnerCandidate[] | null;
   partnerNewSuggestion: PublicPartnerNewSuggestion | null;
+  entityCandidateRanking: PublicEntityCandidateRanking | null;
   vehicle: PublicVehicleDisplay | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

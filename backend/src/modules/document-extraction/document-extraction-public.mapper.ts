@@ -23,6 +23,7 @@ import { readBookingCandidatePipelineState } from './booking-candidate-matching.
 import { readCustomerCandidatePipelineState } from './customer-candidate-matching.util';
 import { readDriverCandidatePipelineState } from './driver-candidate-matching.util';
 import { readPartnerCandidatePipelineState } from './partner-candidate-matching.util';
+import { readEntityCandidateRankingPipelineState } from './entity-candidate-ranking.policy';
 import type {
   PublicUploadContextDisplayDto,
   PublicVehicleCandidateDto,
@@ -31,6 +32,7 @@ import type {
   PublicDriverCandidateDto,
   PublicPartnerCandidateDto,
   PublicPartnerNewSuggestionDto,
+  PublicEntityCandidateRankingDto,
 } from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
@@ -304,6 +306,36 @@ function buildPartnerNewSuggestionDisplay(
   return pipeline?.newPartnerSuggestion ?? null;
 }
 
+function buildEntityCandidateRankingDisplay(
+  record: ExtractionRecord,
+): PublicEntityCandidateRankingDto | null {
+  const pipeline = readEntityCandidateRankingPipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return {
+    rankingVersion: pipeline.rankingVersion,
+    evaluatedAt: pipeline.evaluatedAt,
+    documentType: pipeline.documentType,
+    preselectionBlocked: pipeline.preselectionBlocked,
+    preselectionBlockedReason: pipeline.preselectionBlockedReason,
+    candidates: pipeline.candidates.map((candidate) => ({
+      entityType: candidate.entityType,
+      entityId: candidate.entityId,
+      score: candidate.ranking.score,
+      confidenceLevel: candidate.ranking.confidenceLevel,
+      positiveReasons: candidate.ranking.positiveReasons,
+      negativeReasons: candidate.ranking.negativeReasons,
+      conflicts: candidate.ranking.conflicts.map((conflict) => ({
+        code: conflict.code,
+        field: conflict.field,
+        message: conflict.message,
+        severity: conflict.severity,
+      })),
+      rank: candidate.ranking.rank,
+      autoSelectEligibility: candidate.ranking.autoSelectEligibility,
+    })),
+  };
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
@@ -321,6 +353,7 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     driverCandidates: buildDriverCandidatesDisplay(record),
     partnerCandidates: buildPartnerCandidatesDisplay(record),
     partnerNewSuggestion: buildPartnerNewSuggestionDisplay(record),
+    entityCandidateRanking: buildEntityCandidateRankingDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,

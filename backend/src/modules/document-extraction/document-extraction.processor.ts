@@ -54,6 +54,7 @@ import { BookingCandidateResolverService } from './booking-candidate-resolver.se
 import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
 import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
 import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
+import { buildEntityCandidateRankingFromPipeline } from './entity-candidate-ranking.util';
 import {
   evaluateUploadContextResolver,
   extractUploadResolverHints,
@@ -610,6 +611,16 @@ export class DocumentExtractionProcessor extends WorkerHost {
         partnerCandidates,
       });
     }
+
+    const uploadContextAfterResolvers = readUploadContextPipelineState(pipelineWithContext);
+    const entityCandidateRanking = buildEntityCandidateRankingFromPipeline({
+      documentType: applyDocumentType,
+      plausibility: pipelineWithContext,
+      uploadContextResolverStatus: uploadContextAfterResolvers?.resolver?.status ?? null,
+    });
+    pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+      entityCandidateRanking,
+    });
 
     const existingPublic = stripPipelineFromPlausibility(pipelineWithContext);
     const classificationMeta =
