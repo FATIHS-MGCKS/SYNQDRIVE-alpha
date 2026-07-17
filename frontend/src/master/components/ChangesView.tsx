@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'twilio-sdk-backend-install-v49583-2026-07-17',
+    version: '4.9.583',
+    title: 'V4.9.583 — Twilio Node.js SDK: Backend-Installation + IE1-Config',
+    summary: [
+      'Offizielles `twilio` SDK (^6.0.2) als Production-Dependency im NestJS-Backend (`synqdrive-backend`).',
+      '`twilio.config.ts` + lazy `getTwilioClient()` — optionale Env-Variablen, kein Bootstrap-Fail ohne Credentials.',
+      '`.env.example` + `backend/docs/twilio-setup.md`: API-Key-Auth, region `ie1`, edge `dublin` (festes Paar).',
+      'Import-Compat-Spec (`twilio-import.compat.spec.ts`) — kein Live-API-Call.',
+    ],
+    reason:
+      'Twilio-Telefonie-Integration vorbereiten: SDK serverseitig installieren und EU-Routing (IE1/Dublin) dokumentieren, ohne Voice-Flows oder Live-Requests.',
+    previousBehavior: 'Kein Twilio-Paket, keine Twilio-Env-Variablen, keine Config-Factory im Backend.',
+    details:
+      'backend/package.json, package-lock.json, twilio.config.ts, twilio-client.util.ts, twilio-import.compat.spec.ts, app.module.ts, .env.example, docs/twilio-setup.md, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Cloud Agents / Telephony',
+    createdAt: '2026-07-17T17:30:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',

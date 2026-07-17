@@ -770,6 +770,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Twilio Programmable Voice — SDK groundwork (V4.9.583)',
+    icon: Radio,
+    color: 'text-[color:var(--brand)]',
+    apis: [
+      { label: 'SDK', detail: 'Official twilio npm package in synqdrive-backend only — not bundled in frontend' },
+      { label: 'Auth', detail: 'API Key SID + Secret (not Account Auth Token); optional until telephony enabled' },
+      { label: 'EU routing', detail: 'region ie1 + edge dublin — fixed pair; IE1-region API keys required — backend/docs/twilio-setup.md' },
+      { label: 'Config', detail: 'twilio.config.ts + getTwilioClient() lazy factory — no network on import/bootstrap' },
+      { label: 'Related', detail: 'Voice Assistant (ElevenLabs) separate today; Twilio module/flows deferred' },
+    ],
+  },
+  {
     name: 'Meta WhatsApp Cloud API — V4.8.86',
     icon: Radio,
     color: 'text-[color:var(--status-positive)]',
