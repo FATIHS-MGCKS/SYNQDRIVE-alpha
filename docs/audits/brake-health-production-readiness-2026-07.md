@@ -5,14 +5,175 @@
 | **Audit ID** | `brake-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/brake-health-production-readiness-2026-07` |
-| **Phase** | **6 of 7 — Consumer Wiring, Safety Policy & Test Audit** |
-| **Status** | Phases 1–6 complete; Phase 7 pending |
-| **Production-Readiness verdict (preliminary)** | **`NOT_READY`** — fleet has zero initialized brake baselines |
+| **Phase** | **7 of 7 — Final Synthesis (complete)** |
+| **Status** | **All 7 phases complete** |
+| **Production-Readiness verdict** | **`NOT_READY`** — see [§26](#26-production-readiness-verdict-und-umsetzungsplan) |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | 60 days ending 2026-07-17 UTC |
 | **Fleet scope** | 6 vehicles (anonymized `VEHICLE_001`–`VEHICLE_006`) |
 
 ---
+
+### File completeness (Teil 1 — Phase 7)
+
+All 22 required artifacts present — see [Document map](#document-map). `service-scope-replay` empty because production has 0 `BRAKE_SERVICE` events (**UNVERIFIABLE**, not missing).
+
+---
+
+# Final synthesis — 26 chapters
+
+## 1. Executive Summary
+
+SynqDrive’s **Brake Health V2** module is **architecturally sound** with canonical read models shared via `brake-status.ts`. Rental Health, Booking Gate, Fleet UI, and Business Insights consume `overallCondition` as primary truth.
+
+**Production reality (VPS, 60d ending 2026-07-17):** Module **inactive fleet-wide** — 0 initialized `brake_health_current`, 0 `brake_evidence`, 0 `BRAKE_SERVICE` events, despite 355 TDI rows and 5 reference specs.
+
+| Dimension | Verdict |
+|-----------|---------|
+| **Overall** | **`NOT_READY`** |
+| **Ground truth / backtest** | **`NOT_ENOUGH_DATA`** (0 measurements) |
+| **DIMO brake signals** | **0/6** vehicles on LTE_R1 |
+| **Tests** | 164 passed; 14/36 scenario gaps |
+
+**Go-live blockers:** Fleet init, scope integrity, disc anchor semantics, DTC→evidence, calibration, harsh-brake wiring.
+
+## 2. Scope und Methodik
+
+7-phase read-only audit; 6 anonymized DIMO vehicles; static code + Jest/Vitest + read-only PostgreSQL + 156 DIMO GraphQL queries + isolated formula replay. Rules: no spec as measurement; unknown ≠ good; pedal/ABS ≠ wear thickness.
+
+## 3. VPS Runtime
+
+PM2 monolith (`synqdrive`); PostgreSQL OK; ClickHouse unreachable; Prometheus without `brake_*` metrics. Triggers: post-trip recalc (no-op), hourly scheduler (0 vehicles).
+
+## 4. Ist-Architektur
+
+`BrakeLifecycleService` → `BrakeHealthCurrent` ← `recalculate()` ← TDI. Read path: `buildCanonicalReadModel` → consumers. Orphans: `BrakeTripMetric`, BRAKE enrichment jobs, deprecated `/brake-status`.
+
+## 5. Brake Component Lifecycle
+
+Four axle scalars, no component IDs (P0-BH-09). Paths: registration, service, AI upload. Re-init resets all anchors regardless of scope (P0-BH-10).
+
+## 6. Service Kind und Service Scope
+
+Kinds: inspection/pads/discs/fluid/full. Scope array on events but **not** passed to init logic. Production: 0 events → replay UNVERIFIABLE.
+
+## 7. Brake Reference Spec
+
+5/6 vehicles with specs; rotor **width** misused as disc thickness (P0-BH-14). SPEC_ONLY — not ground truth.
+
+## 8. Anchor- und Baseline-Wahrheit
+
+0/6 initialized; 0 measured anchors; 5 spec-fallback eligible; 1 NO_BASELINE. No snapshot history (P0-BH-13).
+
+## 9. Evidence und Ground Truth
+
+0 `brake_evidence`; 1 active DTC not mirrored (P0-BH-06); 20 SPEC_ONLY rows excluded from backtest.
+
+## 10. Formeln und Einheiten
+
+Pad/disc wear with bias, reku, k-factor, harsh steps. Generic 2mm disc limit (P1-BH-30). Set-average masking (P1-BH-36). `harshBrakeWearMultiplier` unwired (P0-BH-05).
+
+## 11. Trip Driving Impact
+
+356/579 trips with TDI (61.5%); 223 without (P1-BH-41); 135 km mismatches (P1-BH-42).
+
+## 12. Odometer- und Model Coverage
+
+`modelCoverageRatio` <0.6 → legacy COVERAGE_GAP only; not in canonical `openAlerts` (P1-BH-53).
+
+## 13. Rolling-Gap-Modellierung
+
+VDI rolling fills uncovered km — temporal leakage risk (P1-BH-38). VDI hard_brake=0 despite 454 harsh events (P1-BH-45).
+
+## 14. Calibration und K-Faktoren
+
+No runtime calibration (P0-BH-04); k always 1.0; reset on init (P0-BH-12). Fleet calibrations: 0.
+
+## 15. Confidence
+
+Spec-only can reach HIGH without measurement (P1-BH-50). ESTIMATED capped at MEDIUM. Range-based remaining km.
+
+## 16. DIMO Capability Matrix
+
+All `chassisBrake*` → DOCUMENTED_NOT_AVAILABLE on 0/6 LTE_R1 vehicles. 156 queries. See `brake-health-dimo-signal-capability-2026-07.csv`.
+
+## 17. DIMO Historical Timeseries
+
+Zero brake signal history fleet-wide. Speed SPORADIC (0.4–3% coverage). EV battery power on VEHICLE_002 only.
+
+## 18. Brake Pedal/Pressure/ABS/Regeneration
+
+Pedal/pressure/ABS: 0/6 — DO_NOT_USE for wear. EV regen correlation 0.1% — NOT_DETERMINABLE. DIMO events: 144; V003 ingestion gap (P1-BH-46).
+
+## 19. Historisches Backtesting
+
+**NOT_ENOUGH_DATA** — 0 GT measurements, 0 reproducible backtests, MAE/RMSE N/A. 20 SPEC_ONLY excluded.
+
+## 20. Rental Health und Blocking
+
+`overallCondition` primary; hard block = CRITICAL + (MEASURED or critical openAlert). Gate = UI. Fail-closed on error. `hasAlert` dual semantics (P1-BH-52).
+
+## 21. Alerts und Notifications
+
+Dual pipelines (legacy `computeAlerts` vs canonical `openAlerts`). Notifications per vehicle `BRAKE_CRITICAL`; dedupe `brake_critical:{id}`.
+
+## 22. Frontend und API
+
+Canonical UI surfaces; legacy `/brake-status` and fleet `brakePadPercent` remain (P2). Service scope via `recordBrakeService`.
+
+## 23. Performance und Observability
+
+Hourly inline scheduler, no locks (P2-BH-59). All 20 `brake_*` Prometheus metrics missing (P1-BH-54).
+
+## 24. Test Coverage
+
+161 backend + 3 frontend passed. Matrix: 12 COVERED / 10 PARTIAL / 14 GAP. See `brake-health-test-coverage-2026-07.csv`.
+
+## 25. Findings P0–P3
+
+**Register:** `brake-health-integrity-findings-2026-07.json` — **44 findings** (P0: 15, P1: 22, P2: 7, P3: 0). **10 production blockers** flagged in JSON.
+
+## 26. Production-Readiness-Verdict und Umsetzungsplan
+
+### Einzelbewertung
+
+| Dim | Rating |
+|-----|--------|
+| A Correctness | NOT_READY |
+| B Lifecycle | NOT_READY |
+| C Reference Spec | CONDITIONALLY_READY |
+| D Evidence | NOT_READY |
+| E Model Validity | NOT_ENOUGH_DATA |
+| F Safety | NOT_READY |
+| G Reliability | NOT_READY |
+| H Observability | NOT_READY |
+| I UX | CONDITIONALLY_READY |
+| J DIMO | NOT_READY |
+| K Tests | CONDITIONALLY_READY |
+
+### Gesamturteil: **`NOT_READY`**
+
+### DIMO-Empfehlungen (Kurz)
+
+| Signal | availableSignals | TS | Priorität |
+|--------|------------------|-----|-----------|
+| chassisBrake* (all) | 0/6 | 0/6 | DO_NOT_USE |
+| obdDTCCount/List | 3/6 | partial | **P0** (→ BrakeEvidence) |
+| speed | 6/6 | 6/6 | MVP (context) |
+| EV battery power | 1/6 | 1/6 | LATER |
+| behavior braking events | 2/6 | 144 events | **P1** (fix ingestion) |
+
+### Umsetzungsplan (~26 Prompts / 10 Phasen)
+
+A Fleet activation (3) → B Lifecycle/scope (4) → C Anchors (2) → D Safety evidence (3) → E Model (3) → F Calibration (2) → G Consumers (2) → H Observability (2) → I Validation (3) → J DIMO (2). No fix prompts written in this audit.
+
+### PII-Scan
+
+All audit artifacts scanned — **no VIN, plates, GPS, secrets, or raw telemetry** in Git.
+
+---
+
+# Appendix: Detailed phase audit trail
 
 ## Executive summary (Phase 1)
 
@@ -81,8 +242,6 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Consumer wiring CSV | `docs/audits/data/brake-health-consumer-wiring-2026-07.csv` | 6 |
 | Alert/blocking matrix CSV | `docs/audits/data/brake-health-alert-blocking-matrix-2026-07.csv` | 6 |
 | Test coverage matrix CSV | `docs/audits/data/brake-health-test-coverage-2026-07.csv` | 6 |
-| Consumer wiring CSV | `docs/audits/data/brake-health-consumer-wiring-2026-07.csv` | 6 (pending) |
-| Test coverage CSV | `docs/audits/data/brake-health-test-coverage-2026-07.csv` | 6 (pending) |
 
 ---
 
@@ -95,8 +254,8 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | **3** | VPS integrity & fleet coverage | Read-only SQL, anchors, scope replay, trip coverage, evidence | ✅ **Complete** |
 | **4** | DIMO & telemetry signal audit | `availableSignals`, brake sensors, DTC, native events, timeseries, SynqDrive persistence | ✅ **Complete** |
 | **5** | Historical replay & backtest | As-of replay against measured evidence; MAE/coverage; isolated pure mode | ✅ **Complete** |
-| **6** | Consumer wiring & ops | Rental health, alerts, blocking, frontend, notifications, performance, test matrix | ⏳ Pending |
-| **7** | Final synthesis | Go/no-go verdict, findings register, remediation roadmap | ⏳ Pending |
+| **6** | Consumer wiring & ops | Rental health, alerts, blocking, frontend, notifications, performance, test matrix | ✅ **Complete** |
+| **7** | Final synthesis | Go/no-go verdict, findings register, remediation roadmap | ✅ **Complete** |
 
 ---
 
@@ -1269,19 +1428,18 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-brake-health-from-re
 | 2026-07-17 | 3 | VPS 60d integrity: fleet coverage, anchor/scope/trip/evidence CSVs, findings JSON (12 findings) |
 | 2026-07-17 | 4 | DIMO brake signal audit: 156 GraphQL queries, 3 CSV artifacts, `audit-brake-health-dimo-signals.ts` |
 | 2026-07-17 | 5 | Historical backtest: 0 GT measurements, NOT_ENOUGH_DATA verdict, 3 CSV artifacts, `audit-brake-health-backtest.ts` |
-| 2026-07-17 | 6 | Consumer wiring + safety policy + test matrix; 3 CSV artifacts; 161+3 tests passed; findings P1-BH-52–P2-BH-59 |
+| 2026-07-17 | 6 | Consumer wiring + safety policy + test matrix; 3 CSV artifacts; 161+3 tests passed |
+| 2026-07-17 | 7 | Final synthesis: 26 chapters, 44 findings, NOT_READY verdict, implementation roadmap |
 
 ---
 
-## Confirmation (Phases 1–6)
+## Confirmation (Phases 1–7 — final)
 
-- ✅ No production data was modified during Phases 1–6.
+- ✅ No production data was modified during the entire audit.
 - ✅ No brake recalculation, evidence creation, or anchor mutations were triggered.
 - ✅ No DIMO triggers or subscriptions were created.
 - ✅ No infrastructure was changed (PM2, Redis, PostgreSQL, ClickHouse, Docker, workers).
-- ✅ No secrets, VINs, license plates, token IDs, GPS coordinates, customer PII, or raw telemetry are stored in committed audit artifacts.
-- ✅ Phase 3–5 VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
-- ✅ Phase 6 re-confirmed VPS read-only fleet state (0 initialized BHC).
-- ✅ Phase 5 backtest used **isolated formula replay** — no `recalculate()` or calibration writes.
-- ✅ Phase 2 & 6 were **code-only** static analysis plus test execution.
-- ⏳ Phase 7 **not started** per audit plan.
+- ✅ No secrets, VINs, license plates, token IDs, GPS coordinates, customer PII, or raw telemetry in committed artifacts.
+- ✅ VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
+- ✅ PII/secret scan on all audit files — **clean**.
+- ✅ **Audit complete** — production readiness verdict: **`NOT_READY`**.
