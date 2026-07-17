@@ -1327,6 +1327,7 @@ model Organization {
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
   batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
+  batteryRetentionAggregates        BatteryRetentionAggregate[]
 
   @@index([status])
   @@map("organizations")
@@ -1761,6 +1762,7 @@ model Vehicle {
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
   batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
+  batteryRetentionAggregates        BatteryRetentionAggregate[]
   brakeEvidence                     BrakeEvidence[]
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
@@ -5680,6 +5682,7 @@ enum BatteryAssessmentType {
   HV_SOH_PROVIDER
   HV_CAPACITY_SESSION
   HV_CAPACITY_SHADOW
+  HV_SOH_CAPACITY_ESTIMATE
 }
 
 enum BatteryAssessmentMaturity {
@@ -6133,6 +6136,34 @@ model BatteryV2JobDeadLetter {
   @@index([organizationId, vehicleId])
   @@index([failedAt(sort: Desc)])
   @@map("battery_v2_job_dead_letters")
+}
+
+enum BatteryRetentionAggregateBucket {
+  SESSION
+  DAILY
+}
+
+/// Pre-raw-delete rollup for Battery V2 retention (session/day summaries).
+model BatteryRetentionAggregate {
+  id             String                          @id @default(uuid())
+  organizationId String                          @map("organization_id")
+  vehicleId      String                          @map("vehicle_id")
+  scope          BatteryEvidenceScope
+  bucketType     BatteryRetentionAggregateBucket @map("bucket_type")
+  bucketKey      String                          @map("bucket_key")
+  bucketStartAt  DateTime                        @map("bucket_start_at")
+  bucketEndAt    DateTime?                       @map("bucket_end_at")
+  summary        Json                            @map("summary")
+  createdAt      DateTime                        @default(now()) @map("created_at")
+  updatedAt      DateTime                        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, bucketType, bucketKey], map: "battery_retention_aggregates_bucket_key")
+  @@index([organizationId, bucketStartAt(sort: Desc)])
+  @@index([vehicleId, bucketType, bucketStartAt(sort: Desc)])
+  @@map("battery_retention_aggregates")
 }
 
 /// Per-vehicle battery feature store for V2 health scoring.

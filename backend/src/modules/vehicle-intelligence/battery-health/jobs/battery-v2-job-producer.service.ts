@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import {
   BATTERY_V2_JOB_MODEL_VERSION_DEFAULT,
@@ -17,6 +18,7 @@ import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency
 import { buildBatteryV2JobId, buildBatteryV2JobOptions } from './battery-v2-job-queue.util';
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
+import { recordBatteryJob } from '../observability/battery-v2-prometheus.metrics';
 
 export type BatteryV2JobEnqueueInput<T extends BatteryV2JobType> = Omit<
   BatteryV2JobPayload<T>,
@@ -42,6 +44,7 @@ export class BatteryV2JobProducerService {
   constructor(
     @InjectQueue(QUEUE_NAMES.BATTERY_V2) private readonly queue: Queue,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async enqueue<T extends BatteryV2JobType>(
@@ -104,6 +107,9 @@ export class BatteryV2JobProducerService {
 
     try {
       await this.queue.add(jobType, payload, { ...options, jobId });
+      if (this.metrics) {
+        recordBatteryJob(this.metrics, { jobType, outcome: 'enqueued' });
+      }
       return jobId;
     } catch (err) {
       if (isDuplicateBatteryV2JobError(err)) {

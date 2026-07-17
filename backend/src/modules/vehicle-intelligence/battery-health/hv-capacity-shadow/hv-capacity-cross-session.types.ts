@@ -63,6 +63,7 @@ export interface HvCrossSessionVehicleContext {
   referenceCapacityKwh: number | null;
   referenceCapacityId: string | null;
   modelVersion: number;
+  capabilityVersion?: number | null;
   now?: Date;
 }
 

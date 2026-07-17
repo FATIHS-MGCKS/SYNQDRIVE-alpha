@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   BatteryMeasurementSession,
   BatteryMeasurementSessionStatus,
@@ -7,6 +7,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isBatteryV2RestShadowEnabled } from '@config/battery-health-v2.config';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordBatteryRestWindow } from '../observability/battery-v2-prometheus.metrics';
 import {
   mapLvRestWindowStateToSessionStatus,
   LvRestWindowState,
@@ -36,6 +38,7 @@ export class LvRestWindowStateMachineService {
     private readonly sessions: BatteryMeasurementSessionRepository,
     private readonly policyProfiles: BatteryPolicyProfileService,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async processEvent(
@@ -90,6 +93,12 @@ export class LvRestWindowStateMachineService {
         sourceEntityId: next.tripId,
         metadata,
       });
+      if (this.metrics && transition.reason === 'opened_candidate') {
+        recordBatteryRestWindow(this.metrics, {
+          window: 'session',
+          outcome: 'opened',
+        });
+      }
     } else {
       persistedSession = await this.sessions.updateMutable({
         organizationId,
@@ -113,6 +122,13 @@ export class LvRestWindowStateMachineService {
       next.state === LvRestWindowState.INVALIDATED ||
       next.state === LvRestWindowState.EXPIRED
     ) {
+      if (this.metrics) {
+        recordBatteryRestWindow(this.metrics, {
+          window: 'session',
+          outcome:
+            next.state === LvRestWindowState.EXPIRED ? 'expired' : 'invalidated',
+        });
+      }
       metadata = await this.cancelScheduledRestTargets({
         organizationId,
         sessionId: persistedSession.id,

@@ -10,6 +10,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-health-assessment.policy';
 import type { HvCrossSessionAssessment } from './hv-capacity-shadow/hv-capacity-cross-session.types';
+import type { HvSohGateAssessment } from './hv-capacity-shadow/hv-soh-gate.types';
 
 export interface PersistLvEstimatedHealthAssessmentInput {
   organizationId: string;
@@ -21,6 +22,12 @@ export interface PersistHvCapacityShadowAssessmentInput {
   organizationId: string;
   vehicleId: string;
   assessment: HvCrossSessionAssessment;
+}
+
+export interface PersistHvSohGateAssessmentInput {
+  organizationId: string;
+  vehicleId: string;
+  assessment: HvSohGateAssessment;
 }
 
 function mapConfidenceToMaturity(
@@ -72,6 +79,22 @@ export class BatteryAssessmentRepository {
         vehicleId: input.vehicleId,
         scope: BatteryEvidenceScope.HV,
         type: BatteryAssessmentType.HV_CAPACITY_SHADOW,
+        supersededById: null,
+      },
+      orderBy: { computedAt: 'desc' },
+    });
+  }
+
+  async findLatestHvSohGateAssessment(input: {
+    organizationId: string;
+    vehicleId: string;
+  }): Promise<BatteryAssessment | null> {
+    return this.prisma.batteryAssessment.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        type: BatteryAssessmentType.HV_SOH_CAPACITY_ESTIMATE,
         supersededById: null,
       },
       orderBy: { computedAt: 'desc' },
@@ -230,6 +253,76 @@ export class BatteryAssessmentRepository {
         sohEligible: false,
         reasons: assessment.reasons,
         sessionIds: assessment.sessionIds,
+      } as unknown as Prisma.InputJsonValue,
+      idempotencyKey: assessment.idempotencyKey,
+      computedAt: new Date(assessment.computedAt),
+    };
+
+    try {
+      return await this.prisma.batteryAssessment.create({ data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return this.prisma.batteryAssessment.findUniqueOrThrow({
+          where: {
+            vehicleId_idempotencyKey: {
+              vehicleId: input.vehicleId,
+              idempotencyKey: assessment.idempotencyKey,
+            },
+          },
+        });
+      }
+      throw error;
+    }
+  }
+
+  async persistHvSohGateAssessment(
+    input: PersistHvSohGateAssessmentInput,
+  ): Promise<BatteryAssessment> {
+    const { assessment } = input;
+    const hasScore = assessment.estimatedSohPercent != null;
+
+    const data: Prisma.BatteryAssessmentUncheckedCreateInput = {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      scope: BatteryEvidenceScope.HV,
+      type: BatteryAssessmentType.HV_SOH_CAPACITY_ESTIMATE,
+      scoreValue: assessment.estimatedSohPercent,
+      textValue: assessment.scoreSemantics,
+      confidence: assessment.confidence,
+      evidenceStrength: BatteryEvidenceStrength.SUPPLEMENTARY,
+      dataQuality: assessment.sohGatePassed ? 'SHADOW' : 'INSUFFICIENT_COVERAGE',
+      maturity: hasScore
+        ? assessment.maturity === 'PROVISIONAL'
+          ? BatteryAssessmentMaturity.MEDIUM
+          : BatteryAssessmentMaturity.LOW
+        : BatteryAssessmentMaturity.INSUFFICIENT_DATA,
+      modelVersion: assessment.modelVersion,
+      validFrom: new Date(assessment.computedAt),
+      validUntil: null,
+      inputSummary: {
+        ...assessment.inputSummary,
+        assessmentMode: assessment.assessmentMode,
+        maturity: assessment.maturity,
+        sohAvailability: assessment.sohAvailability,
+        confidence: assessment.confidence,
+        estimatedSohPercent: assessment.estimatedSohPercent,
+        estimatedUsableCapacityKwh: assessment.estimatedUsableCapacityKwh,
+        verifiedReferenceCapacityKwh: assessment.verifiedReferenceCapacityKwh,
+        referenceCapacityId: assessment.referenceCapacityId,
+        referenceVerificationStatus: assessment.referenceVerificationStatus,
+        referenceCapacityType: assessment.referenceCapacityType,
+        sessionCount: assessment.sessionCount,
+        crossSessionAssessmentIdempotencyKey:
+          assessment.crossSessionAssessmentIdempotencyKey,
+        capabilityVersion: assessment.capabilityVersion,
+        gateReasonCodes: assessment.gateReasonCodes,
+        sohGatePassed: assessment.sohGatePassed,
+        publicationEligible: false,
+        sohPublicationEnabled: assessment.sohPublicationEnabled,
+        reasons: assessment.reasons,
       } as unknown as Prisma.InputJsonValue,
       idempotencyKey: assessment.idempotencyKey,
       computedAt: new Date(assessment.computedAt),

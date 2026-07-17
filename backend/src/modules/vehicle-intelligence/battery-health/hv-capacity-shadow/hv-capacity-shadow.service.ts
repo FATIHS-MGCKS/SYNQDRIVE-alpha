@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { isBatteryV2HvCapacityShadowEnabled } from '@config/battery-health-v2.config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import {
   buildHvCapacityObservationIdempotencyKey,
@@ -8,6 +9,7 @@ import {
 } from './hv-capacity-observation.repository';
 import { HvCapacityM2SampleProviderService } from './hv-capacity-m2-sample-provider.service';
 import { HvCapacityCrossSessionAssessmentService } from './hv-capacity-cross-session-assessment.service';
+import { HvSohGateAssessmentService } from './hv-soh-gate-assessment.service';
 import { HvCapacityM3ValidationService } from './hv-capacity-m3-validation.service';
 import { HvCapacitySessionSummaryService } from './hv-capacity-session-summary.service';
 import {
@@ -26,8 +28,15 @@ import {
 } from './hv-capacity-m2.types';
 import type { HvCapacitySessionSummaryInputObservation } from './hv-capacity-session-summary.types';
 import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session.types';
+import type { HvSohGateAssessmentResult } from './hv-soh-gate.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
+import {
+  recordHvCapacityObservation,
+  recordHvCapacityM2SessionCv,
+  recordHvCapacityMethodConflict,
+  recordHvCapacitySessionQualified,
+} from '../observability/battery-v2-prometheus.metrics';
 
 export interface RecomputeHvM2ShadowInput {
   organizationId: string;
@@ -49,6 +58,8 @@ export class HvCapacityShadowService {
     private readonly sessionSummary: HvCapacitySessionSummaryService,
     private readonly m3Validation: HvCapacityM3ValidationService,
     private readonly crossSessionAssessment: HvCapacityCrossSessionAssessmentService,
+    private readonly sohGateAssessment: HvSohGateAssessmentService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async recomputeM2ForSession(
@@ -74,7 +85,11 @@ export class HvCapacityShadowService {
     }
 
     const metadata = (session.metadata ?? {}) as unknown as HvChargeSessionMetadata;
-    if (metadata.capacityShadowEligible !== true) {
+    const eligible = metadata.capacityShadowEligible === true;
+    if (this.metrics) {
+      recordHvCapacitySessionQualified(this.metrics, { qualified: eligible });
+    }
+    if (!eligible) {
       this.logger.debug(
         `M2 shadow skipped — session not eligible id=${session.id} status=${metadata.qualityStatus ?? 'unknown'}`,
       );
@@ -153,6 +168,9 @@ export class HvCapacityShadowService {
             observedAt: estimate.sample.observedAt,
           }),
         });
+        if (this.metrics) {
+          recordHvCapacityObservation(this.metrics, { quality });
+        }
         persistedCount += 1;
       }
 
@@ -192,6 +210,9 @@ export class HvCapacityShadowService {
       this.logger.debug(
         `M2 session summary session=${session.id} status=${summary.status} median=${summary.stats.medianCapacityKwh?.toFixed(2) ?? 'n/a'} cv=${summary.stats.coefficientOfVariation?.toFixed(4) ?? 'n/a'}`,
       );
+      if (this.metrics && summary.stats.coefficientOfVariation != null) {
+        recordHvCapacityM2SessionCv(this.metrics, summary.stats.coefficientOfVariation);
+      }
     }
 
     const m3Result = await this.m3Validation.validateSession({
@@ -205,6 +226,11 @@ export class HvCapacityShadowService {
       this.logger.debug(
         `M3 validation session=${session.id} capacity=${m3Result.estimate?.estimatedCapacityKwh.toFixed(2) ?? 'n/a'} kWh conflict=${m3Result.estimate?.methodConflict ?? false}`,
       );
+      if (this.metrics) {
+        recordHvCapacityMethodConflict(this.metrics, {
+          conflict: m3Result.estimate?.methodConflict === true,
+        });
+      }
     }
 
     const crossSessionResult = await this.crossSessionAssessment.recomputeForVehicle({
@@ -215,6 +241,18 @@ export class HvCapacityShadowService {
     if (crossSessionResult?.persisted) {
       this.logger.debug(
         `HV cross-session assessment vehicle=${input.vehicleId} capacity=${crossSessionResult.assessment.estimatedUsableCapacityKwh?.toFixed(2) ?? 'n/a'} kWh sessions=${crossSessionResult.assessment.sessionCount}`,
+      );
+    }
+
+    const sohGateResult = await this.sohGateAssessment.recomputeForVehicle({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      crossSessionAssessment: crossSessionResult?.assessment ?? null,
+    });
+
+    if (sohGateResult?.persisted) {
+      this.logger.debug(
+        `HV SOH gate assessment vehicle=${input.vehicleId} soh=${sohGateResult.assessment.estimatedSohPercent?.toFixed(2) ?? 'n/a'} % availability=${sohGateResult.assessment.sohAvailability}`,
       );
     }
 
@@ -229,6 +267,7 @@ export class HvCapacityShadowService {
       summary,
       m3Validation: m3Result,
       crossSessionAssessment: crossSessionResult,
+      sohGateAssessment: sohGateResult,
     };
   }
 
@@ -244,6 +283,7 @@ export class HvCapacityShadowService {
       summary: null,
       m3Validation: null,
       crossSessionAssessment: null,
+      sohGateAssessment: null,
     };
   }
 }

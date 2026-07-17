@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryMeasurement,
@@ -7,6 +7,8 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordBatteryMeasurementDuplicateSkip } from './observability/battery-v2-prometheus.metrics';
 
 export interface CreateBatteryMeasurementInput {
   organizationId: string;
@@ -38,11 +40,22 @@ export interface ListBatteryMeasurementsFilter {
 
 @Injectable()
 export class BatteryMeasurementRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly metrics?: TripMetricsService,
+  ) {}
 
   async createIdempotent(
     input: CreateBatteryMeasurementInput,
   ): Promise<BatteryMeasurement> {
+    const existing = await this.findExisting(input);
+    if (existing) {
+      if (this.metrics) {
+        recordBatteryMeasurementDuplicateSkip(this.metrics);
+      }
+      return existing;
+    }
+
     const data: Prisma.BatteryMeasurementUncheckedCreateInput = {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -93,6 +106,31 @@ export class BatteryMeasurementRepository {
       }
       throw error;
     }
+  }
+
+  private async findExisting(
+    input: CreateBatteryMeasurementInput,
+  ): Promise<BatteryMeasurement | null> {
+    const byIdempotency = await this.prisma.batteryMeasurement.findUnique({
+      where: {
+        organizationId_vehicleId_idempotencyKey: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      },
+    });
+    if (byIdempotency) return byIdempotency;
+
+    return this.prisma.batteryMeasurement.findUnique({
+      where: {
+        vehicleId_type_observedAt: {
+          vehicleId: input.vehicleId,
+          type: input.type,
+          observedAt: input.observedAt,
+        },
+      },
+    });
   }
 
   findByIdForOrganization(

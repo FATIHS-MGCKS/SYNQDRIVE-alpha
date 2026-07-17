@@ -24,6 +24,7 @@ import {
 import { isLegacyHvPairwiseCapacityAssessmentEnabled } from '../../../config/battery-health-v2.config';
 import type { HvBatterySignalObservedAt } from '../../dimo/mappers/dimo-battery-signal.mapper';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { recordBatteryProviderDuplicate } from './observability/battery-v2-prometheus.metrics';
 import {
   evaluateHvSnapshotObservation,
   type HvSnapshotSkipReason,
@@ -786,6 +787,12 @@ export class HvBatteryHealthService {
 
   private recordHvSnapshotDuplicateDiscarded(reason: HvSnapshotSkipReason): void {
     this.tripMetrics?.hvSnapshotDuplicatesDiscarded.inc({ reason });
+    if (this.tripMetrics) {
+      recordBatteryProviderDuplicate(this.tripMetrics, {
+        signal: 'hv',
+        reason,
+      });
+    }
   }
 
   private async createSnapshotIdempotent(

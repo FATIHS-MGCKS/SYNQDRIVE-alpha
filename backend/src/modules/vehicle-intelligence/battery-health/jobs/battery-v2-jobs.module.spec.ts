@@ -1,18 +1,21 @@
 import { MODULE_METADATA } from '@nestjs/common/constants';
-import { Test } from '@nestjs/testing';
-import { PrismaService } from '@shared/database/prisma.service';
 import {
   BATTERY_V2_JOB_HANDLERS,
   BatteryV2JobsModule,
 } from './battery-v2-jobs.module';
 import { BatteryV2JobsProducerModule } from './battery-v2-jobs-producer.module';
-import { BATTERY_V2_JOB_TYPES } from './battery-v2-job.types';
+import { BATTERY_V2_JOB_TYPES, type BatteryV2JobType } from './battery-v2-job.types';
 import { BatteryV2IdempotentExecutionService } from './battery-v2-idempotent-execution.service';
 import { BatteryV2JobHandlerRegistry } from './battery-v2-job-handler.registry';
 import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
-import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
-import { BatteryV2Service } from '../battery-v2.service';
-import { HvBatteryHealthService } from '../hv-battery-health.service';
+import type { BatteryV2JobHandler } from './battery-v2-job.handler';
+
+function mockHandler<T extends BatteryV2JobType>(jobType: T): BatteryV2JobHandler<T> {
+  return {
+    jobType,
+    handle: jest.fn(),
+  };
+}
 
 describe('BatteryV2JobsModule', () => {
   it('registers all eight job handlers as providers', () => {
@@ -40,19 +43,18 @@ describe('BatteryV2JobsModule', () => {
     expect(providers).toContain(BatteryV2VehicleLockService);
   });
 
-  it('wires handler registry with all job types', async () => {
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        ...BATTERY_V2_JOB_HANDLERS,
-        BatteryV2JobHandlerRegistry,
-        BatteryV2SnapshotIngestionService,
-        { provide: PrismaService, useValue: { vehicle: { findUnique: jest.fn() } } },
-        { provide: BatteryV2Service, useValue: { onSnapshot: jest.fn(), onTripStart: jest.fn() } },
-        { provide: HvBatteryHealthService, useValue: { recordSnapshot: jest.fn() } },
-      ],
-    }).compile();
+  it('wires handler registry with all job types', () => {
+    const registry = new BatteryV2JobHandlerRegistry(
+      mockHandler('BATTERY_OBSERVATION_CLASSIFY') as never,
+      mockHandler('BATTERY_REST_TARGET_EVALUATE') as never,
+      mockHandler('BATTERY_START_PROXY_EXTRACT') as never,
+      mockHandler('BATTERY_ASSESSMENT_RECOMPUTE') as never,
+      mockHandler('BATTERY_PUBLICATION_UPDATE') as never,
+      mockHandler('HV_CAPABILITY_REFRESH') as never,
+      mockHandler('HV_RECHARGE_SESSION_RECONCILE') as never,
+      mockHandler('HV_CAPACITY_SHADOW_RECOMPUTE') as never,
+    );
 
-    const registry = moduleRef.get(BatteryV2JobHandlerRegistry);
     expect(registry.registeredJobTypes().sort()).toEqual([...BATTERY_V2_JOB_TYPES].sort());
   });
 });

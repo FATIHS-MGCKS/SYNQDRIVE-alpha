@@ -1,4 +1,8 @@
 import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import {
+  recordHvChargeSession,
+  recordHvRechargeSegments,
+} from '../observability/battery-v2-prometheus.metrics';
 import type { HvRechargeSessionReconcileTrigger } from './hv-recharge-session-reconcile.trigger';
 
 export function recordHvRechargeReconcileMetrics(
@@ -13,35 +17,27 @@ export function recordHvRechargeReconcileMetrics(
     errorCode?: string | null;
   },
 ): void {
-  metrics.batteryV2HvRechargeSegmentsTotal.inc(
-    {
-      trigger: input.trigger,
-      outcome: input.errorCode ? 'error' : 'success',
-    },
-    input.segmentsFetched,
-  );
+  recordHvRechargeSegments(metrics, {
+    trigger: input.trigger,
+    outcome: input.errorCode ? 'error' : 'success',
+    count: input.segmentsFetched,
+  });
 
-  metrics.batteryV2HvRechargeSessionsPersisted.inc(
-    {
-      trigger: input.trigger,
-      change: 'created',
-    },
-    input.created,
-  );
-  metrics.batteryV2HvRechargeSessionsPersisted.inc(
-    {
-      trigger: input.trigger,
-      change: 'updated',
-    },
-    input.updated,
-  );
-  metrics.batteryV2HvRechargeSessionsPersisted.inc(
-    {
-      trigger: input.trigger,
-      change: 'unchanged',
-    },
-    input.unchanged,
-  );
+  recordHvChargeSession(metrics, {
+    trigger: input.trigger,
+    change: 'created',
+    count: input.created,
+  });
+  recordHvChargeSession(metrics, {
+    trigger: input.trigger,
+    change: 'updated',
+    count: input.updated,
+  });
+  recordHvChargeSession(metrics, {
+    trigger: input.trigger,
+    change: 'unchanged',
+    count: input.unchanged,
+  });
 
   if (input.errorCode) {
     metrics.batteryV2HvRechargeReconcileErrors.inc({

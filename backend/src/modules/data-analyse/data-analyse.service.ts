@@ -55,6 +55,7 @@ import {
   isLteR1NativeEventCapable,
   shouldRunIceEventContextEnrichment,
 } from '@modules/vehicle-intelligence/event-context/engine-context.guards';
+import { CanonicalBatteryHealthService } from '@modules/vehicle-intelligence/battery-health/canonical-battery-health.service';
 
 import type { SignalCatalogEntry } from './data-analyse-signal-catalog';
 
@@ -101,6 +102,7 @@ export class DataAnalyseService {
     private readonly clickHouseDiagnostics: ClickHouseDiagnosticsService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
+    private readonly canonicalBatteryHealth: CanonicalBatteryHealthService,
   ) {}
 
   /**
@@ -934,13 +936,13 @@ export class DataAnalyseService {
         };
       });
 
-    const [brake, tireSetup, hvBattery, lvSnapshot, drivingImpact, eventCounts] =
+    const [brake, tireSetup, batterySummary, lvSnapshot, drivingImpact, eventCounts] =
       await Promise.all([
         this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } }),
         this.prisma.vehicleTireSetup.findFirst({
           where: { vehicleId, status: 'ACTIVE' },
         }),
-        this.prisma.hvBatteryHealthCurrent.findUnique({ where: { vehicleId } }),
+        this.canonicalBatteryHealth.getSummary(vehicleId).catch(() => null),
         this.prisma.batteryHealthSnapshot.findFirst({
           where: { vehicleId },
           orderBy: { recordedAt: 'desc' },
@@ -984,15 +986,17 @@ export class DataAnalyseService {
     );
 
     const batteryFreshness = classifyHealthFreshness(
-      hvBattery?.lastPublishedAt ?? lvSnapshot?.recordedAt,
+      batterySummary?.canonical?.resolvedAt ??
+        batterySummary?.generatedAt ??
+        lvSnapshot?.recordedAt,
       nowMs,
     );
     const batteryInputs: string[] = [];
     const batteryMissing: string[] = [];
+    if (batterySummary) batteryInputs.push('canonical_battery_health_summary');
+    else batteryMissing.push('canonical_battery_health_summary');
     if (lvSnapshot) batteryInputs.push('battery_health_snapshots');
     else batteryMissing.push('lv_battery_snapshots');
-    if (hvBattery) batteryInputs.push('hv_battery_health_current');
-    else batteryMissing.push('hv_battery_health_current');
 
     return {
       brake: {
@@ -1046,31 +1050,38 @@ export class DataAnalyseService {
         ],
       },
       battery: {
-        status: hvBattery?.publicationState ?? (lvSnapshot ? 'LV snapshot' : null),
+        status:
+          batterySummary?.lv?.healthStatus ??
+          batterySummary?.hv?.healthStatus ??
+          (lvSnapshot ? 'LV snapshot' : null),
         lastCalculationAt:
-          hvBattery?.lastPublishedAt?.toISOString() ??
+          batterySummary?.canonical?.resolvedAt ??
+          batterySummary?.generatedAt ??
           lvSnapshot?.recordedAt?.toISOString() ??
           null,
-        calculationSource: 'CanonicalBatteryHealthService / battery_health_snapshots + hv_battery_health_current',
+        calculationSource: 'CanonicalBatteryHealthService.getSummary',
         freshness: batteryFreshness,
-        inputBasis:
-          lvSnapshot && hvBattery
+        inputBasis: batterySummary
+          ? batterySummary.support?.hv
             ? 'mixed'
-            : lvSnapshot
-              ? 'signal-based'
-              : hvBattery
-                ? 'modeled'
-                : 'unknown',
+            : 'signal-based'
+          : lvSnapshot
+            ? 'signal-based'
+            : 'unknown',
         inputsAvailable: batteryInputs,
         inputsMissing: batteryMissing,
         evidence: {
-          lvVoltage: lvSnapshot?.voltageV ?? null,
-          lvSoh: lvSnapshot?.sohPercent ?? null,
-          hvPublishedSoh: hvBattery?.publishedSohPct ?? null,
-          hvRawSoh: hvBattery?.rawSohPct ?? null,
+          lvVoltage:
+            batterySummary?.canonical?.liveState.lv.values.voltageV ??
+            lvSnapshot?.voltageV ??
+            null,
+          lvAggregateStatus: batterySummary?.lv?.healthStatus ?? null,
+          lvRestingStatus: batterySummary?.lv?.restingVoltage?.status ?? null,
+          hvSohPercent: batterySummary?.hv?.sohPct ?? null,
+          hvHealthStatus: batterySummary?.hv?.healthStatus ?? null,
           consumedSignals: traceSignals(batterySignals),
-          calculationBlocked: batteryMissing.length === batterySignals.length,
-          calculationWeakened: batteryMissing.length > 0 && batteryMissing.length < batterySignals.length,
+          calculationBlocked: batteryMissing.includes('canonical_battery_health_summary'),
+          calculationWeakened: batteryMissing.length > 0,
         },
         notes: batteryMissing.length
           ? ['Input-source mapping unavailable for some battery scopes.']

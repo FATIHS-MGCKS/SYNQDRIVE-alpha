@@ -7,6 +7,11 @@ import { ServiceEventsService } from '../service-events/service-events.service';
 import { TripsService } from '../trips/trips.service';
 import { DrivingEventsService } from '../driving-events/driving-events.service';
 import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
+import {
+  mapHealthSummaryBatteryModule,
+  mapHealthSummaryBatteryNarrative,
+  type HealthSummaryBatteryModule,
+} from '../battery-health/canonical-battery';
 import { ServiceComplianceService } from '../service-compliance/service-compliance.service';
 import { FULL_SERVICE_BASELINE_EVENT_TYPES } from '../service-events/service-events.constants';
 import {
@@ -26,7 +31,7 @@ export interface HealthSummaryAgentInput {
     fuelType?: string | null;
   };
   healthModules: {
-    battery: { status: string; sohPercent: number | null; sohPercentSemantic: string | null; estimatedLvHealthScore: number | null; estimatedLvHealthScoreSemantic: string | null; voltageV: number | null; hasData: boolean } | null;
+    battery: HealthSummaryBatteryModule | null;
     errorCodes: { activeCount: number; totalRecent: number; lastCheckedAt: string | null; hasData: boolean } | null;
     brakes: {
       stateClass: string | null;
@@ -258,38 +263,7 @@ export class HealthSummaryService {
         fuelType: vehicle.fuelType ?? undefined,
       },
       healthModules: {
-        battery: batterySummary
-          ? {
-              status:
-                batterySummary.lv?.condition === 'good'
-                  ? 'good'
-                  : batterySummary.lv?.condition === 'watch'
-                    ? 'fair'
-                    : batterySummary.lv?.condition === 'attention'
-                      ? 'poor'
-                      : 'unknown',
-              sohPercent: batterySummary.lv?.healthPercent ?? null,
-              sohPercentSemantic: batterySummary.lv?.healthPercentSemantic ?? null,
-              estimatedLvHealthScore:
-                batterySummary.lv?.estimatedLvHealthScore?.value ??
-                batterySummary.lv?.estimatedHealth?.scorePct ??
-                null,
-              estimatedLvHealthScoreSemantic:
-                batterySummary.lv?.estimatedLvHealthScore?.semanticType ??
-                batterySummary.lv?.estimatedHealth?.semanticType ??
-                null,
-              voltageV: batterySummary.lv?.telemetry?.voltageV ?? null,
-              hasData: true,
-            }
-          : {
-              status: 'unknown',
-              sohPercent: null,
-              sohPercentSemantic: null,
-              estimatedLvHealthScore: null,
-              estimatedLvHealthScoreSemantic: null,
-              voltageV: null,
-              hasData: false,
-            },
+        battery: mapHealthSummaryBatteryModule(batterySummary),
         errorCodes: dtcStats != null
           ? {
               activeCount: (dtcStats as any).active ?? 0,
@@ -396,14 +370,29 @@ export class HealthSummaryService {
     const preventive: string[] = [];
     const maintenanceFocus: Array<{ area: string; priority: 'low' | 'medium' | 'high'; reason: string }> = [];
 
-    if (m.battery?.hasData && (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) >= 75) {
-      positives.push(`Geschätzter 12V-Batteriezustand im normalen Bereich.`);
-    } else if (m.battery?.hasData && (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) < 50) {
-      watchpoints.push('Geschätzter 12V-Batteriezustand kritisch — Startschwierigkeiten wahrscheinlich, Austausch empfohlen.');
-      maintenanceFocus.push({ area: 'battery', priority: 'high', reason: 'Low estimated LV health score' });
-    } else if (m.battery?.hasData && (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) < 75) {
-      watchpoints.push('Geschätzter 12V-Batteriezustand niedrig — Startschwierigkeiten möglich, beobachten.');
-      maintenanceFocus.push({ area: 'battery', priority: 'medium', reason: 'Declining estimated LV health score' });
+    const batteryFallback: HealthSummaryBatteryModule = {
+      status: 'unknown',
+      sohPercent: null,
+      sohPercentSemantic: null,
+      estimatedLvHealthScore: null,
+      estimatedLvHealthScoreSemantic: null,
+      voltageV: null,
+      hasData: false,
+      aggregateHealthStatus: null,
+      hvHealthStatus: null,
+      hvSohPercent: null,
+    };
+    const batteryNarrative = mapHealthSummaryBatteryNarrative(m.battery ?? batteryFallback);
+    if (batteryNarrative.positive) positives.push(batteryNarrative.positive);
+    if (batteryNarrative.watchpoint) {
+      watchpoints.push(batteryNarrative.watchpoint);
+      if (batteryNarrative.maintenancePriority && batteryNarrative.maintenanceReason) {
+        maintenanceFocus.push({
+          area: 'battery',
+          priority: batteryNarrative.maintenancePriority,
+          reason: batteryNarrative.maintenanceReason,
+        });
+      }
     }
 
     if (m.errorCodes?.hasData && m.errorCodes.activeCount === 0) {

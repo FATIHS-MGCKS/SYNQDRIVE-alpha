@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { isBatteryV2HvCapacityShadowEnabled } from '@config/battery-health-v2.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
+import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
 import { BatteryAssessmentRepository } from '../battery-assessment.repository';
 import { computeHvCrossSessionAssessment } from './hv-capacity-cross-session.policy';
 import {
@@ -45,6 +46,16 @@ export class HvCapacityCrossSessionAssessmentService {
       select: { id: true, capacityKwh: true },
     });
 
+    const capability = await this.prisma.vehicleBatteryCapability.findUnique({
+      where: {
+        vehicleId_signalKey: {
+          vehicleId: input.vehicleId,
+          signalKey: RECHARGE_SEGMENTS_SIGNAL_KEY,
+        },
+      },
+      select: { capabilityVersion: true },
+    });
+
     const sessions =
       input.sessionsOverride ??
       (await this.loadQualifiedSessions(input.organizationId, input.vehicleId));
@@ -60,6 +71,10 @@ export class HvCapacityCrossSessionAssessmentService {
       modelVersion:
         input.contextOverride?.modelVersion ??
         HV_M2_SESSION_SUMMARY_MODEL_VERSION,
+      capabilityVersion:
+        input.contextOverride?.capabilityVersion ??
+        capability?.capabilityVersion ??
+        null,
       now: input.contextOverride?.now,
     };
 

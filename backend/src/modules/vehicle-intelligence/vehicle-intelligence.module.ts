@@ -71,7 +71,10 @@ import {
   HvCapacityObservationRepository,
   HvCapacityShadowProducerService,
   HvCapacityShadowService,
+  HvSohGateAssessmentService,
   HvCapacitySessionSummaryService,
+  HvCapacityShadowEvaluationService,
+  HvCapacityShadowEvaluationController,
 } from './battery-health/hv-capacity-shadow';
 import {
   VehicleBatteryReferenceCapacityController,
@@ -86,6 +89,7 @@ import { DashboardWarningLightsService } from './dashboard-warning-lights/dashbo
 import { ServiceComplianceService } from './service-compliance/service-compliance.service';
 import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
 import { ServiceOverdueTaskService } from './service-compliance/service-overdue-task.service';
+import { BatteryTaskService } from './battery-health/battery-task.service';
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
@@ -128,6 +132,10 @@ import { BatteryRestTargetEvaluationService } from './battery-health/lv-rest-win
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
 import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
 import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy/battery-start-proxy-extract.service';
+import { BatteryV2RetentionAggregateService } from './battery-health/retention/battery-v2-retention-aggregate.service';
+import { BatteryV2RetentionService } from './battery-health/retention/battery-v2-retention.service';
+import { BatteryDataDiagnosticService } from './battery-health/diagnostic/battery-data-diagnostic.service';
+import { BatteryDataRepairService } from './battery-health/diagnostic/battery-data-repair.service';
 
 @Module({
   imports: [
@@ -150,7 +158,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
       { name: QUEUE_NAMES.BATTERY_V2 },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, VehicleBatteryReferenceCapacityController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController],
   providers: [
     BatteryService,
     TiresService,
@@ -223,6 +231,8 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacitySessionSummaryService,
     HvCapacityM3ValidationService,
     HvCapacityCrossSessionAssessmentService,
+    HvSohGateAssessmentService,
+    HvCapacityShadowEvaluationService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
@@ -237,6 +247,10 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
     BatteryStartProxyExtractService,
+    BatteryV2RetentionAggregateService,
+    BatteryV2RetentionService,
+    BatteryDataDiagnosticService,
+    BatteryDataRepairService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -244,6 +258,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
+    BatteryTaskService,
     VehicleFileSummaryService,
     DrivingImpactService,
     EnergyEventsService,
@@ -324,6 +339,8 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacitySessionSummaryService,
     HvCapacityM3ValidationService,
     HvCapacityCrossSessionAssessmentService,
+    HvSohGateAssessmentService,
+    HvCapacityShadowEvaluationService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
@@ -338,9 +355,13 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
     BatteryStartProxyExtractService,
+    BatteryV2RetentionService,
+    BatteryDataDiagnosticService,
+    BatteryDataRepairService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
+    BatteryTaskService,
     DrivingImpactService,
     EnergyEventsService,
     TripDecisionEngine,

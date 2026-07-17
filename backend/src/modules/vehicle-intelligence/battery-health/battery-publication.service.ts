@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { isBatteryV2PublicationEnabled } from '@config/battery-health-v2.config';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { BatteryPolicyProfileService } from '../battery-policy-profile/battery-policy-profile.service';
 import { BatteryPublicationRepository } from './battery-publication.repository';
 import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-health-assessment.policy';
@@ -8,6 +9,7 @@ import {
   type LvPublicationDecision,
   type LvPublicationEvidenceSummary,
 } from './lv-assessment/lv-publication.policy';
+import { recordBatteryPublication } from './observability/battery-v2-prometheus.metrics';
 
 export interface UpdateLvPublicationInput {
   organizationId: string;
@@ -31,6 +33,7 @@ export class BatteryPublicationService {
   constructor(
     private readonly policyProfileService: BatteryPolicyProfileService,
     private readonly publicationRepository: BatteryPublicationRepository,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   buildEvidenceSummaryFromAssessment(
@@ -141,6 +144,12 @@ export class BatteryPublicationService {
     });
 
     if (!decision.shouldPersistPublication || !assessment || !assessmentRow) {
+      if (this.metrics) {
+        recordBatteryPublication(this.metrics, {
+          maturity: decision.maturity,
+          outcome: 'skipped',
+        });
+      }
       return {
         ok: true,
         decision,
@@ -170,6 +179,13 @@ export class BatteryPublicationService {
     this.logger.log(
       `LV publication ${decision.maturity} vehicle=${input.vehicleId} assessment=${input.assessmentId} published=${decision.publishedEstimatedHealth}`,
     );
+
+    if (this.metrics) {
+      recordBatteryPublication(this.metrics, {
+        maturity: decision.maturity,
+        outcome: decision.supersedePublicationId ? 'superseded' : 'persisted',
+      });
+    }
 
     return {
       ok: true,

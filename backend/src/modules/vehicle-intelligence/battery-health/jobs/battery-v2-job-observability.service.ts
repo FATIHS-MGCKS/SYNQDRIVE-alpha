@@ -4,9 +4,12 @@ import type { BatteryMeasurementQuality } from '@prisma/client';
 import type { BatteryV2JobType } from './battery-v2-job.types';
 import type { BatteryV2JobErrorCode } from './battery-v2-job.errors';
 import {
-  recordLvRestShadowMeasurementMetrics,
-  type LvRestShadowTargetWindow,
-} from '../lv-rest-window/lv-rest-shadow-metrics';
+  recordBatteryJob,
+  recordBatteryJobDeadLetter,
+  recordBatteryJobFailed,
+  recordBatteryRestMeasurement,
+  toBatteryRestWindowLabel,
+} from '../observability/battery-v2-prometheus.metrics';
 
 export interface BatteryV2JobLogEvent {
   jobType: BatteryV2JobType;
@@ -55,7 +58,7 @@ export class BatteryV2JobObservabilityService {
   }
 
   recordCompleted(jobType: BatteryV2JobType): void {
-    this.metrics.batteryV2JobsCompleted.inc({ job_type: jobType });
+    recordBatteryJob(this.metrics, { jobType, outcome: 'completed' });
   }
 
   recordRetry(jobType: BatteryV2JobType, errorCode: BatteryV2JobErrorCode): void {
@@ -63,11 +66,11 @@ export class BatteryV2JobObservabilityService {
   }
 
   recordFailed(jobType: BatteryV2JobType, errorCode: BatteryV2JobErrorCode): void {
-    this.metrics.batteryV2JobsFailed.inc({ job_type: jobType, error_code: errorCode });
+    recordBatteryJobFailed(this.metrics, { jobType, errorCode });
   }
 
   recordDeadLetter(jobType: BatteryV2JobType, errorCode: BatteryV2JobErrorCode): void {
-    this.metrics.batteryV2JobsDeadLetter.inc({ job_type: jobType, error_code: errorCode });
+    recordBatteryJobDeadLetter(this.metrics, { jobType, errorCode });
   }
 
   setDeadLetterBacklog(count: number): void {
@@ -79,9 +82,12 @@ export class BatteryV2JobObservabilityService {
   }
 
   recordLvRestShadowMeasurement(input: {
-    targetType: LvRestShadowTargetWindow;
+    targetType: 'REST_60M' | 'REST_6H';
     quality: BatteryMeasurementQuality;
   }): void {
-    recordLvRestShadowMeasurementMetrics(this.metrics, input);
+    recordBatteryRestMeasurement(this.metrics, {
+      window: toBatteryRestWindowLabel(input.targetType),
+      quality: input.quality,
+    });
   }
 }

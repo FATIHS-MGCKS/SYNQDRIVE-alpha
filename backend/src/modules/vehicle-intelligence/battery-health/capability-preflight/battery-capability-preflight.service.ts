@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import {
@@ -9,6 +10,7 @@ import {
 import { BatteryCapabilityPreflightRepository } from './battery-capability-preflight.repository';
 import type { BatteryCapabilityPreflightResult } from './battery-capability-preflight.types';
 import type { BatteryCapabilityRefreshTrigger } from './battery-capability-lifecycle.policy';
+import { recordBatteryCapabilitySignal } from '../observability/battery-v2-prometheus.metrics';
 
 const RECHARGE_PROBE_LOOKBACK_DAYS = 31;
 
@@ -26,6 +28,7 @@ export class BatteryCapabilityPreflightService {
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly repository: BatteryCapabilityPreflightRepository,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async runForVehicle(
@@ -95,6 +98,15 @@ export class BatteryCapabilityPreflightService {
         correlationId: options?.correlationId,
       },
     );
+
+    if (this.metrics) {
+      for (const signal of assessedSignals) {
+        recordBatteryCapabilitySignal(this.metrics, {
+          signal: signal.signalKey,
+          status: signal.preflightStatus,
+        });
+      }
+    }
 
     return {
       organizationId,

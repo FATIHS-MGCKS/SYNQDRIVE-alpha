@@ -360,8 +360,9 @@ export const TASK_AUTOMATION_RULE_CATALOG: readonly TaskAutomationRuleDefinition
   materializationRule('BATTERY_CRITICAL_HEALTH', {
     ruleId: 'insight.health.battery_critical',
     version: 1,
-    nameDe: 'Batterie kritisch',
-    descriptionDe: 'Kritischer Batteriezustand — Spannung und Startverhalten prüfen.',
+    nameDe: 'Batterie — operative Aufgaben',
+    descriptionDe:
+      'Handlungsfähige Battery-Alerts und bestätigte Evidenz erzeugen semantische Tasks (12V-Prüfung, Warnleuchte, BMS-Bericht, Referenzkapazität). Kein Task aus Shadow oder experimentellen Messungen.',
     sourceType: 'ALERT',
     taskType: 'BATTERY_CHECK',
     defaultEnabled: true,
@@ -371,9 +372,11 @@ export const TASK_AUTOMATION_RULE_CATALOG: readonly TaskAutomationRuleDefinition
     assignmentStrategy: 'UNASSIGNED',
     dedupScope: {
       kind: 'PER_VEHICLE',
-      keyTemplate: 'battery_critical:{vehicleId}',
+      keyTemplate: 'battery_task:{vehicleId}:{taskIntent}',
+      legacyKeyTemplates: ['battery_critical:{vehicleId}'],
     },
-    autoResolveCondition: 'BATTERY_MEASURED_OK | BATTERY_REPLACED | FALSE_POSITIVE',
+    autoResolveCondition:
+      'BATTERY_MEASURED_OK | BATTERY_REPLACED | REFERENCE_CAPACITY_VERIFIED | WARNING_LIGHT_CLEARED | WORKSHOP_RESOLVED | FALSE_POSITIVE',
     supersedeConditions: ['INSIGHT_STALE'],
     checklistTemplateId: 'BATTERY_CHECK',
     configurableFields: markOrgOverridableConfigurableFields([]),

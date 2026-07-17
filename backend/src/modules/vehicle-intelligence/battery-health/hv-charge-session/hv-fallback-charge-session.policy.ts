@@ -1,4 +1,7 @@
-import { BatteryEvidenceStrength } from '../battery-v2-domain';
+import {
+  mapTierToLegacyEvidenceStrength,
+} from '../battery-evidence-strength.policy';
+import { BatteryEvidenceStrength, BatteryEvidenceStrengthTier } from '../battery-v2-domain';
 import {
   HV_FALLBACK_DETECTION_TIER,
   type HvFallbackChargeObservation,
@@ -166,20 +169,18 @@ function resolveEvidenceStrength(
   corroborating: HvFallbackDetectionTier[],
 ): BatteryEvidenceStrength {
   const tiers = new Set([primaryTier, ...corroborating]);
-  if (
+  const hasStrongFlank =
     tiers.has(HV_FALLBACK_DETECTION_TIER.IS_CHARGING_FLANK) &&
     (tiers.has(HV_FALLBACK_DETECTION_TIER.CABLE_CONNECTED) ||
-      tiers.has(HV_FALLBACK_DETECTION_TIER.ADDED_ENERGY))
-  ) {
-    return BatteryEvidenceStrength.SUPPLEMENTARY;
-  }
-  if (
+      tiers.has(HV_FALLBACK_DETECTION_TIER.ADDED_ENERGY));
+  const hasModerateFlank =
     tiers.has(HV_FALLBACK_DETECTION_TIER.IS_CHARGING_FLANK) ||
-    tiers.has(HV_FALLBACK_DETECTION_TIER.CABLE_CONNECTED)
-  ) {
-    return BatteryEvidenceStrength.SUPPLEMENTARY;
-  }
-  return BatteryEvidenceStrength.DIAGNOSTIC;
+    tiers.has(HV_FALLBACK_DETECTION_TIER.CABLE_CONNECTED);
+
+  const evidenceTier = hasStrongFlank || hasModerateFlank
+    ? BatteryEvidenceStrengthTier.QUALIFIED_TELEMETRY_PROVISIONAL
+    : BatteryEvidenceStrengthTier.PROXY;
+  return mapTierToLegacyEvidenceStrength(evidenceTier);
 }
 
 function isProviderStale(

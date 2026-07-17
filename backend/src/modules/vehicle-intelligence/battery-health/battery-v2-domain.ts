@@ -232,6 +232,7 @@ export const BatteryAssessmentType = {
   HV_SOH_PROVIDER: 'HV_SOH_PROVIDER',
   HV_CAPACITY_SESSION: 'HV_CAPACITY_SESSION',
   HV_CAPACITY_SHADOW: 'HV_CAPACITY_SHADOW',
+  HV_SOH_CAPACITY_ESTIMATE: 'HV_SOH_CAPACITY_ESTIMATE',
 } as const;
 
 export type BatteryAssessmentType =
@@ -334,6 +335,34 @@ export type BatteryEvidenceStrength =
 export const BATTERY_EVIDENCE_STRENGTHS = Object.values(
   BatteryEvidenceStrength,
 );
+
+/** Cross-cutting evidence tier for publication, readiness, and conflict policy. */
+export const BatteryEvidenceStrengthTier = {
+  WORKSHOP_OR_BMS_VERIFIED: 'WORKSHOP_OR_BMS_VERIFIED',
+  DOCUMENT_VERIFIED: 'DOCUMENT_VERIFIED',
+  PROVIDER_OEM_SOH: 'PROVIDER_OEM_SOH',
+  QUALIFIED_TELEMETRY_STABLE: 'QUALIFIED_TELEMETRY_STABLE',
+  QUALIFIED_TELEMETRY_PROVISIONAL: 'QUALIFIED_TELEMETRY_PROVISIONAL',
+  ESTIMATED: 'ESTIMATED',
+  PROXY: 'PROXY',
+  LIVE_TELEMETRY: 'LIVE_TELEMETRY',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type BatteryEvidenceStrengthTier =
+  (typeof BatteryEvidenceStrengthTier)[keyof typeof BatteryEvidenceStrengthTier];
+
+export const BATTERY_EVIDENCE_STRENGTH_TIERS = Object.values(
+  BatteryEvidenceStrengthTier,
+);
+
+/** Diagnostic-only evidence — separate from SOH/capacity tiers (e.g. warning light / DTC). */
+export const BatteryDiagnosticEvidenceKind = {
+  WARNING_LIGHT_DTC: 'WARNING_LIGHT_DTC',
+} as const;
+
+export type BatteryDiagnosticEvidenceKind =
+  (typeof BatteryDiagnosticEvidenceKind)[keyof typeof BatteryDiagnosticEvidenceKind];
 
 // ── HV capacity observation method ───────────────────────────────────────────
 

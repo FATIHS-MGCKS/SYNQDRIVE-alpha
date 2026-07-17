@@ -57,10 +57,46 @@ import {
   buildBatteryDomainFreshnessBundle,
   buildFetchFreshness,
   buildObservationFreshness,
+  buildUnavailableObservationFreshness,
   observationFreshnessIsDecisionFresh,
   toLegacyFreshnessInfo,
   type LegacyFreshnessInfo,
 } from './battery-freshness.policy';
+import { BatteryPolicyProfileService } from '../battery-policy-profile/battery-policy-profile.service';
+import { resolveBatteryPolicy } from '../battery-policy-profile/battery-policy-profile.resolver';
+import { BatteryPolicyProfile } from '../battery-policy-profile/battery-policy-profile.types';
+import {
+  BatteryChemistry,
+  BatteryDriveProfile,
+  BatteryEvidenceStrengthTier,
+} from './battery-v2-domain';
+import {
+  resolveHvSohEvidenceConflict,
+} from './battery-evidence-strength.policy';
+import type { CanonicalLvBatteryResponse } from './lv-canonical/lv-canonical-battery.types';
+import { LV_CANONICAL_RESOLVER_VERSION } from './lv-canonical/lv-canonical-battery.types';
+import { HvMethodProfileService } from './hv-method-profile/hv-method-profile.service';
+import { LvCanonicalBatteryResolverService } from './lv-canonical/lv-canonical-battery-resolver.service';
+import { BatteryAssessmentRepository } from './battery-assessment.repository';
+import {
+  buildCanonicalBatteryDto,
+  collectStaleReasons,
+  collectUnsupportedReasons,
+  mapChargeSessionInputRow,
+  mapCrossSessionAssessmentRow,
+  mapLiveStatusFromLegacy,
+  mapReferenceCapacityRow,
+  mapSohGateAssessmentRow,
+  type CanonicalBatteryDto,
+} from './canonical-battery';
+import {
+  buildCanonicalBatterySignalFreshness,
+  collectCapabilitySignalErrors,
+} from './canonical-battery/canonical-battery-signal-freshness.builder';
+import {
+  classifyBatteryModuleError,
+  type BatterySignalError,
+} from './battery-signal-freshness.contract';
 
 export type BatteryStatus =
   | 'ready'
@@ -93,6 +129,51 @@ function parseNum(value: unknown): number | null {
   return null;
 }
 
+function createUnavailableLvCanonicalFallback(
+  vehicleId: string,
+  now: Date,
+): CanonicalLvBatteryResponse {
+  const unavailableFreshness = buildBatteryDomainFreshnessBundle({
+    fetch: buildFetchFreshness({ fetchedAt: null, now }),
+    observation: buildUnavailableObservationFreshness(),
+  });
+  return {
+    resolverVersion: LV_CANONICAL_RESOLVER_VERSION,
+    vehicleId,
+    resolvedAt: now.toISOString(),
+    profile: {
+      profile: BatteryPolicyProfile.ICE_LEAD_ACID,
+      driveProfile: BatteryDriveProfile.UNKNOWN,
+      lvAssessmentAllowed: false,
+      supported: false,
+    },
+    chemistry: {
+      chemistry: BatteryChemistry.UNKNOWN,
+      chemicalSocEstimationAllowed: false,
+    },
+    primaryTruth: {
+      source: 'UNAVAILABLE',
+      estimatedHealthScore: null,
+      semanticType: 'ESTIMATED_HEALTH_NOT_SOH',
+      labelDe: 'Geschätzter 12V-Batteriezustand',
+      decisionCapable: false,
+    },
+    liveVoltage: null,
+    latestQualifiedRestMeasurement: null,
+    latestStartProxy: null,
+    assessment: null,
+    publication: null,
+    freshness: unavailableFreshness,
+    quality: {
+      aggregate: { status: 'UNAVAILABLE', labelKey: 'battery.data_quality.unavailable', decisionCapable: false, observedAt: null },
+      primaryTruth: { status: 'UNAVAILABLE', labelKey: 'battery.data_quality.unavailable', decisionCapable: false, observedAt: null },
+    },
+    legacyDiagnostic: null,
+    unsupported: true,
+    unavailable: true,
+  };
+}
+
 @Injectable()
 export class CanonicalBatteryHealthService {
   constructor(
@@ -102,6 +183,10 @@ export class CanonicalBatteryHealthService {
     private readonly hvBatteryHealthService: HvBatteryHealthService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
     private readonly startProxyDiagnostic: LvStartProxyDiagnosticService,
+    private readonly lvCanonicalResolver: LvCanonicalBatteryResolverService,
+    private readonly policyProfileService: BatteryPolicyProfileService,
+    private readonly hvMethodProfileService: HvMethodProfileService,
+    private readonly batteryAssessments: BatteryAssessmentRepository,
   ) {}
 
   async getSummary(vehicleId: string) {
@@ -121,7 +206,7 @@ export class CanonicalBatteryHealthService {
     ] = await Promise.all([
       this.prisma.vehicle.findUnique({
         where: { id: vehicleId },
-        select: { id: true, fuelType: true, hvBatteryCapacityKwh: true },
+        select: { id: true, organizationId: true, fuelType: true, hvBatteryCapacityKwh: true },
       }),
       this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },
@@ -180,6 +265,127 @@ export class CanonicalBatteryHealthService {
     ]);
 
     if (!vehicle) return null;
+
+    const decisionNow = new Date();
+    const moduleErrors: BatterySignalError[] = [];
+
+    const settled = await Promise.allSettled([
+      this.lvCanonicalResolver.resolveForVehicle({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+        now: decisionNow,
+      }),
+      this.policyProfileService.resolveForVehicle(vehicleId),
+      this.hvMethodProfileService.resolveForVehicle({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+        now: decisionNow,
+      }),
+      this.batteryAssessments.findLatestHvCapacityShadow({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+      }),
+      this.batteryAssessments.findLatestHvSohGateAssessment({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+      }),
+      this.prisma.vehicleBatteryReferenceCapacity.findFirst({
+        where: {
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          isActive: true,
+        },
+        orderBy: { effectiveFrom: 'desc' },
+        select: {
+          id: true,
+          capacityKwh: true,
+          capacityType: true,
+          source: true,
+          verificationStatus: true,
+          verifiedAt: true,
+        },
+      }),
+      this.prisma.hvChargeSession.findMany({
+        where: {
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+        },
+        orderBy: [{ isOngoing: 'desc' }, { endAt: 'desc' }],
+        take: 8,
+        select: {
+          id: true,
+          source: true,
+          startAt: true,
+          endAt: true,
+          isOngoing: true,
+          metadata: true,
+        },
+      }),
+    ]);
+
+    const moduleNames = [
+      'lvCanonical',
+      'batteryPolicy',
+      'hvMethodProfile',
+      'hvCapacityShadow',
+      'hvSohGate',
+      'referenceCapacity',
+      'hvChargeSessions',
+    ] as const;
+
+    const unwrap = <T>(result: PromiseSettledResult<T>, module: (typeof moduleNames)[number]): T | null => {
+      if (result.status === 'fulfilled') return result.value;
+      moduleErrors.push(classifyBatteryModuleError(module, result.reason));
+      return null;
+    };
+
+    const lvCanonicalResult = unwrap(settled[0]!, 'lvCanonical');
+    const policyResult = unwrap(settled[1]!, 'batteryPolicy');
+    const hvMethodProfileResult = unwrap(settled[2]!, 'hvMethodProfile');
+    const crossSessionRow = unwrap(settled[3]!, 'hvCapacityShadow');
+    const sohGateRow = unwrap(settled[4]!, 'hvSohGate');
+    const referenceCapacityRow = unwrap(settled[5]!, 'referenceCapacity');
+    const chargeSessionRows = unwrap(settled[6]!, 'hvChargeSessions');
+
+    const isEvVehicle =
+      vehicle.fuelType === 'ELECTRIC' || vehicle.fuelType === 'PLUGIN_HYBRID';
+    const lvCanonical =
+      lvCanonicalResult ??
+      createUnavailableLvCanonicalFallback(vehicle.id, decisionNow);
+    const policy =
+      policyResult ??
+      resolveBatteryPolicy({
+        driveProfile: isEvVehicle ? BatteryDriveProfile.BEV : BatteryDriveProfile.ICE,
+        chemistry: BatteryChemistry.UNKNOWN,
+        lvSignalPresent: parseNum(latestState?.lvBatteryVoltage) != null,
+      });
+    const hvMethodProfile =
+      hvMethodProfileResult ?? {
+        resolverVersion: '1.0.0',
+        vehicleId: vehicle.id,
+        resolvedAt: decisionNow.toISOString(),
+        socAvailable: false,
+        currentEnergyAvailable: false,
+        addedEnergyAvailable: false,
+        rechargeSegmentsAvailable: false,
+        isChargingAvailable: false,
+        chargingCableConnectedAvailable: false,
+        providerSohAvailable: false,
+        grossCapacityAvailable: false,
+        packTemperatureAvailable: false,
+        chargingPowerAvailable: false,
+        currentPowerAvailable: false,
+        supportedCapacityMethods: [],
+        unsupportedReasons: [],
+        lastCheckedAt: null,
+        dataQuality: {
+          status: 'UNAVAILABLE',
+          labelKey: 'battery.data_quality.unavailable',
+          decisionCapable: false,
+          observedAt: null,
+        },
+      };
+    const safeChargeSessionRows = chargeSessionRows ?? [];
 
     const selectedBatterySpec = selectBestBatterySpec(specs);
 
@@ -305,7 +511,6 @@ export class CanonicalBatteryHealthService {
       lvRestingClassification.status,
     );
 
-    const decisionNow = new Date();
     const pollFetchedAt =
       latestState?.providerFetchedAt ?? latestState?.lastSeenAt ?? null;
     const telemetryFetchFreshness = buildFetchFreshness({
@@ -467,33 +672,78 @@ export class CanonicalBatteryHealthService {
       publicationMethod: hvStatusAny?.publicationMethod as string | undefined,
       publishedSohPct: parseNum(hvStatusAny?.publishedSohPercent),
     });
+    const hvMeasuredObservedAt = hvStatusAny?.lastRecordedAt
+      ? new Date(hvStatusAny.lastRecordedAt)
+      : null;
+
+    const hvSohConflict = resolveHvSohEvidenceConflict({
+      now: decisionNow,
+      providerSoh:
+        providerSoh != null
+          ? {
+              id: 'provider-soh',
+              tier: BatteryEvidenceStrengthTier.PROVIDER_OEM_SOH,
+              scope: BatteryEvidenceScope.HV,
+              observedAt: providerSohObservedAt,
+              freshnessMaxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.providerSohObservation,
+            }
+          : null,
+      reportedSoh:
+        reportedSoh != null
+          ? {
+              id: 'reported-soh',
+              tier:
+                hvReportedSohEvidence?.sourceType ===
+                BatteryEvidenceSourceType.WORKSHOP_MEASUREMENT
+                  ? BatteryEvidenceStrengthTier.WORKSHOP_OR_BMS_VERIFIED
+                  : BatteryEvidenceStrengthTier.DOCUMENT_VERIFIED,
+              scope: BatteryEvidenceScope.HV,
+              observedAt: hvReportedSohEvidence?.observedAt ?? null,
+              freshnessMaxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.reportedSohObservation,
+              traceability: {
+                sourceType: hvReportedSohEvidence?.sourceType ?? null,
+                serviceEventId: hvReportedSohEvidence?.serviceEventId ?? null,
+                documentExtractionId:
+                  hvReportedSohEvidence?.documentExtractionId ?? null,
+              },
+            }
+          : null,
+      capacityEstimate:
+        hvMeasuredSoh != null
+          ? {
+              id: 'capacity-estimate',
+              tier: BatteryEvidenceStrengthTier.ESTIMATED,
+              scope: BatteryEvidenceScope.HV,
+              observedAt: hvMeasuredObservedAt,
+              freshnessMaxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.hvTelemetryObservation,
+            }
+          : null,
+    });
 
     let hvHealthPercent: number | null = null;
     let hvSohSource: HvSohSource | null = null;
     let hvSourceType: string | null = null;
     let hvMethod: string | null = null;
 
-    if (providerSohUsable) {
+    const hvSohWinner = hvSohConflict.winner;
+    if (hvSohWinner?.id === 'provider-soh' && providerSohUsable) {
       hvHealthPercent = providerSoh;
       hvSohSource = 'PROVIDER';
       hvSourceType = 'provider_reported';
       hvMethod = 'provider_reported_soh';
-    } else if (reportedSohUsable) {
+    } else if (hvSohWinner?.id === 'reported-soh' && reportedSohUsable) {
       hvHealthPercent = reportedSoh;
       hvSohSource = reportedSohSource;
       hvSourceType =
         mapEvidenceSource(hvReportedSohEvidence?.sourceType ?? null) ?? 'document_confirmed';
       hvMethod = 'reported_soh';
-    } else if (hvMeasuredSoh != null) {
+    } else if (hvSohWinner?.id === 'capacity-estimate' && hvMeasuredSoh != null) {
       hvHealthPercent = hvMeasuredSoh;
       hvSohSource = 'CAPACITY_ESTIMATE';
       hvSourceType = 'telemetry_derived';
       hvMethod = hvMeasuredMethod ?? 'capacity_measurement';
     }
 
-    const hvMeasuredObservedAt = hvStatusAny?.lastRecordedAt
-      ? new Date(hvStatusAny.lastRecordedAt)
-      : null;
     const hvLastObservedAt = providerSohUsable
       ? providerSohObservedAt
       : reportedSohUsable
@@ -515,11 +765,22 @@ export class CanonicalBatteryHealthService {
       now: decisionNow,
       hasValueCarrier: parseNum(hvStatusAny?.publishedSohPercent) != null,
     });
+    const latestHvChargeSession = safeChargeSessionRows[0] ?? null;
+    const hvSessionObservationFreshness = buildObservationFreshness({
+      observedAt:
+        latestHvChargeSession?.endAt ??
+        latestHvChargeSession?.startAt ??
+        null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.hvSessionObservation,
+      now: decisionNow,
+      hasValueCarrier: latestHvChargeSession != null,
+    });
     const hvFreshnessBundle = buildBatteryDomainFreshnessBundle({
       fetch: hvFetchFreshness,
       observation: hvObservationFreshness,
       providerSohFreshness: providerSohObservationFreshness,
       publicationFreshness: hvPublicationFreshness,
+      hvSessionFreshness: hvSessionObservationFreshness,
     });
     const currentTelemetryObservationFreshness = buildObservationFreshness({
       observedAt: latestState?.sourceTimestamp ?? null,
@@ -666,6 +927,191 @@ export class CanonicalBatteryHealthService {
 
     const lvStartProxyDiagnostic =
       await this.startProxyDiagnostic.getForVehicle(vehicleId, decisionNow);
+
+    const canonicalChargeSessions = safeChargeSessionRows.map(mapChargeSessionInputRow);
+    const crossSessionAssessment = mapCrossSessionAssessmentRow(crossSessionRow);
+    const sohGateAssessment = mapSohGateAssessmentRow(sohGateRow);
+    const referenceCapacity = mapReferenceCapacityRow(referenceCapacityRow);
+
+    const lvLiveValues = {
+      voltageV: lvVoltage,
+      voltageSource: lvVoltageSource,
+      temperatureC: parseNum(latestLvSnapshot?.temperatureC),
+      restingVoltageV: lvRestingVoltageValue,
+      crankingVoltageV: parseNum(latestLvSnapshot?.crankingVoltage),
+      chargingVoltageV: parseNum(latestLvSnapshot?.chargingVoltage),
+      engineRunning: latestLvSnapshot?.engineRunning ?? null,
+    };
+    const hvLiveValues = {
+      socPercent:
+        parseNum(latestState?.evSoc) ??
+        parseNum(hvStatusAny?.currentSocPercent),
+      rangeKm:
+        parseNum(latestState?.rangeKm) ??
+        parseNum(hvStatusAny?.estimatedRangeKm),
+      currentEnergyKwh: parseNum(latestState?.tractionBatteryCurrentEnergyKwh),
+      grossCapacityKwh:
+        parseNum(latestState?.tractionBatteryGrossCapacityKwh) ??
+        parseNum(hvStatusAny?.nominalCapacityKwh),
+      addedEnergyKwh: parseNum(latestState?.tractionBatteryAddedEnergyKwh),
+      chargingPowerKw:
+        parseNum(latestState?.tractionBatteryChargingPowerKw) ??
+        parseNum(hvStatusAny?.telemetry?.chargingPowerKw) ??
+        parseNum(hvStatusAny?.chargingPowerKw),
+      currentVoltageV: parseNum(latestState?.tractionBatteryCurrentVoltage),
+      temperatureC:
+        parseNum(latestState?.tractionBatteryTemperatureC) ??
+        parseNum(hvStatusAny?.telemetry?.temperatureC) ??
+        parseNum(hvStatusAny?.temperatureC),
+      isCharging:
+        latestState?.tractionBatteryIsCharging ??
+        (hvStatusAny?.telemetry?.isCharging ??
+          hvStatusAny?.isCharging ??
+          null),
+      chargingCableConnected:
+        latestState?.tractionBatteryChargingCableConnected ?? null,
+      providerSohPercent: providerSoh,
+    };
+
+    const signalFreshness = buildCanonicalBatterySignalFreshness({
+      now: decisionNow,
+      receivedAt: pollFetchedAt,
+      lvValues: lvLiveValues,
+      hvValues: hvLiveValues,
+      lvVoltageObservedAt: lvVoltageAt,
+      lvSnapshotObservedAt: snapshotAt,
+      hvAggregateObservedAt: latestState?.sourceTimestamp ?? null,
+      providerSohObservedAt: providerSohObservedAt,
+      restMeasurementObservedAt:
+        (v2?.rest6hCapturedAt as Date | null | undefined) ??
+        (v2?.rest60mCapturedAt as Date | null | undefined) ??
+        null,
+      startProxyObservedAt: (v2?.crankAt as Date | null | undefined) ?? null,
+      assessmentObservedAt: (v2?.scoredAt as Date | null | undefined) ?? null,
+      publicationObservedAt:
+        (v2?.lastPublishedAt as Date | null | undefined) ?? null,
+      hvSessionObservedAt:
+        latestHvChargeSession?.endAt ??
+        latestHvChargeSession?.startAt ??
+        null,
+      lvObservationFreshness,
+      lvRestMeasurementFreshness,
+      lvStartProxyFreshness,
+      lvAssessmentFreshness,
+      lvPublicationFreshness,
+      providerSohObservationFreshness,
+      hvSessionObservationFreshness,
+      isEv,
+    });
+
+    const signalErrors = [
+      ...moduleErrors,
+      ...collectCapabilitySignalErrors({
+        lvUnsupported: lvCanonical.unsupported,
+        lvAssessmentAllowed: policy.lvAssessmentAllowed,
+        hvUnsupportedReasons: hvMethodProfile.unsupportedReasons,
+        isEv,
+      }),
+    ];
+
+    const canonical: CanonicalBatteryDto = buildCanonicalBatteryDto({
+      organizationId: vehicle.organizationId,
+      vehicleId: vehicle.id,
+      resolvedAt: decisionNow,
+      isEv,
+      policy,
+      hvMethodProfile,
+      lvCanonical,
+      lvStatus: mapLiveStatusFromLegacy(lvStatus),
+      hvStatus: mapLiveStatusFromLegacy(hvStatusLabel),
+      lvLive: {
+        ...lvLiveValues,
+        observedAt: lvVoltageAt?.toISOString() ?? null,
+        receivedAt:
+          pollFetchedAt?.toISOString() ??
+          latestState?.lastSeenAt?.toISOString() ??
+          null,
+      },
+      hvLive: {
+        ...hvLiveValues,
+        observedAt: hvLastObservedAt?.toISOString() ?? null,
+        receivedAt:
+          pollFetchedAt?.toISOString() ??
+          latestState?.lastSeenAt?.toISOString() ??
+          null,
+      },
+      hvProviderSoh: {
+        percent: hvHealthPercent,
+        source: hvSohSource,
+        observedAt: hvLastObservedAt?.toISOString() ?? null,
+        decisionFresh:
+          hvHealthPercent != null && observationFreshnessIsDecisionFresh(hvObservationFreshness),
+        evidenceType: hvSourceType,
+      },
+      referenceCapacity,
+      crossSessionAssessment,
+      sohGateAssessment,
+      chargeSessions: canonicalChargeSessions,
+      dataQuality: {
+        aggregate: presentQuality(dataQualitySlices.aggregate, lvFreshness.observedAt),
+        slices: {
+          lvEstimatedHealth: presentQuality(
+            dataQualitySlices.lvEstimatedHealth,
+            lvFreshness.observedAt,
+          ),
+          lvRestingVoltage: presentQuality(
+            dataQualitySlices.lvRestingVoltage,
+            lvFreshness.observedAt,
+          ),
+          lvCrank: presentQuality(
+            dataQualitySlices.lvCrank,
+            (v2?.crankAt as Date | null | undefined)?.toISOString?.() ??
+              (typeof v2?.crankAt === 'string' ? v2.crankAt : null),
+          ),
+          hvSoh: presentQuality(hvSohDataQuality, hvFreshness.observedAt),
+          hvLegacyCapacity: presentQuality(
+            hvLegacyCapacityDataQuality,
+            hvFreshness.observedAt,
+          ),
+        },
+        fetchFreshness: telemetryFetchFreshness,
+        observationFreshness: currentTelemetryObservationFreshness,
+        lvFreshnessBundle,
+        hvFreshnessBundle,
+        staleReasons: collectStaleReasons({
+          lvFreshness,
+          hvFreshness,
+          lvStatus,
+          hvStatus: hvStatusLabel,
+          isEv,
+        }),
+        unsupportedReasons: collectUnsupportedReasons({
+          lvCanonical,
+          policy,
+          hvMethodProfile,
+          isEv,
+        }),
+        errors: signalErrors,
+        namedFreshnessSlices: signalFreshness.namedSlices,
+      },
+      signalFreshness,
+      legacy: {
+        collapsed: true,
+        lvDiagnostic: lvCanonical.legacyDiagnostic,
+        hvLegacyCapacity: hvLegacyCapacity as unknown as Record<string, unknown>,
+        crankDiagnostic: legacyCrank as unknown as Record<string, unknown>,
+        startProxyDiagnostic: lvStartProxyDiagnostic as unknown as Record<string, unknown>,
+        v2Features: {
+          publishedSohPct: lvPublishedSoh,
+          stabilizedSohPct: parseNum(v2?.stabilizedSohPct),
+          rawSohPct: parseNum(v2?.rawSohPct),
+          publicationState: lvPubState,
+          scoredAt:
+            (v2?.scoredAt as Date | null | undefined)?.toISOString?.() ??
+            (typeof v2?.scoredAt === 'string' ? v2.scoredAt : null),
+        },
+      },
+    });
 
     const summary = {
       vehicleId,
@@ -943,6 +1389,7 @@ export class CanonicalBatteryHealthService {
         voltage: d.voltageV ?? null,
       })),
       history,
+      canonical,
     };
 
     return summary;

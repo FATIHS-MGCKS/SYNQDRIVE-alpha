@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryMeasurement,
 } from '@prisma/client';
 import { isBatteryV2RestShadowEnabled } from '@config/battery-health-v2.config';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { BatteryPolicyProfileService } from '../battery-policy-profile/battery-policy-profile.service';
 import { BatteryAssessmentRepository } from './battery-assessment.repository';
 import { BatteryMeasurementRepository } from './battery-measurement.repository';
@@ -12,6 +13,7 @@ import {
   type LvEstimatedHealthAssessment,
 } from './lv-assessment/lv-estimated-health-assessment.policy';
 import type { LvAssessmentEvidenceCandidate } from './lv-assessment/lv-evidence-selection.policy';
+import { recordBatteryAssessment } from './observability/battery-v2-prometheus.metrics';
 
 export interface RecomputeLvEstimatedHealthAssessmentInput {
   organizationId: string;
@@ -38,6 +40,7 @@ export class BatteryAssessmentService {
     private readonly policyProfileService: BatteryPolicyProfileService,
     private readonly measurementRepository: BatteryMeasurementRepository,
     private readonly assessmentRepository: BatteryAssessmentRepository,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   private mapMeasurementToCandidate(
@@ -115,6 +118,13 @@ export class BatteryAssessmentService {
     });
 
     if (!computed.ok) {
+      if (this.metrics) {
+        recordBatteryAssessment(this.metrics, {
+          scope: 'lv',
+          mode: shadowMode ? 'shadow' : 'canonical',
+          outcome: computed.unsupportedProfile ? 'unsupported' : 'skipped',
+        });
+      }
       return {
         ok: false,
         unsupportedProfile: computed.unsupportedProfile,
@@ -132,6 +142,13 @@ export class BatteryAssessmentService {
         assessment,
       });
       persistedAssessmentIds.push(persisted.id);
+      if (this.metrics) {
+        recordBatteryAssessment(this.metrics, {
+          scope: 'lv',
+          mode: shadowMode ? 'shadow' : 'canonical',
+          outcome: 'persisted',
+        });
+      }
     }
 
     this.logger.log(

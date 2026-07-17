@@ -1401,31 +1401,32 @@ export class VehicleIntelligenceController {
 
   @Get('battery-health/latest')
   async getLatestBatteryHealth(@Param('vehicleId') vehicleId: string) {
-    const [canonical, v2] = await Promise.all([
-      this.canonicalBatteryHealthService.getSummary(vehicleId),
-      this.batteryV2Service.getV2Health(vehicleId),
-    ]);
+    const summary = await this.canonicalBatteryHealthService.getSummary(vehicleId);
+    if (!summary) return null;
 
-    if (!canonical) return null;
+    const v2 = await this.batteryV2Service.getV2Health(vehicleId).catch(() => null);
 
     return {
-      voltageV: canonical.currentState?.voltageV ?? null,
-      sohPercent: canonical.currentState?.sohPercent ?? null,
-      sohPercentSemantic: canonical.currentState?.sohPercentSemantic ?? null,
-      estimatedLvHealthScore: canonical.currentState?.estimatedLvHealthScore ?? null,
+      _compat: true,
+      _canonical: 'Prefer battery-health-summary.canonical for new consumers.',
+      canonical: summary.canonical,
+      voltageV: summary.currentState?.voltageV ?? null,
+      sohPercent: summary.currentState?.sohPercent ?? null,
+      sohPercentSemantic: summary.currentState?.sohPercentSemantic ?? null,
+      estimatedLvHealthScore: summary.currentState?.estimatedLvHealthScore ?? null,
       estimatedLvHealthScoreSemantic:
-        canonical.currentState?.estimatedLvHealthScoreSemantic ?? null,
+        summary.currentState?.estimatedLvHealthScoreSemantic ?? null,
       estimatedLvHealthScoreLabel:
-        canonical.currentState?.estimatedLvHealthScoreLabel ?? null,
-      temperatureC: canonical.currentState?.temperatureC ?? null,
-      recordedAt: canonical.currentState?.lastChecked ?? null,
-      restingVoltage: canonical.currentState?.restingVoltage ?? null,
-      crankingVoltage: canonical.currentState?.crankingVoltage ?? null,
-      chargingVoltage: canonical.currentState?.chargingVoltage ?? null,
+        summary.currentState?.estimatedLvHealthScoreLabel ?? null,
+      temperatureC: summary.currentState?.temperatureC ?? null,
+      recordedAt: summary.currentState?.lastChecked ?? null,
+      restingVoltage: summary.currentState?.restingVoltage ?? null,
+      crankingVoltage: summary.currentState?.crankingVoltage ?? null,
+      chargingVoltage: summary.currentState?.chargingVoltage ?? null,
       source: 'canonical',
-      lv: canonical.lv,
-      hv: canonical.hv,
-      currentTelemetry: canonical.currentTelemetry,
+      lv: summary.lv,
+      hv: summary.hv,
+      currentTelemetry: summary.currentTelemetry,
       v2: v2
         ? {
             estimatedSocPct: v2.estimatedSocPct,
@@ -1664,15 +1665,40 @@ export class VehicleIntelligenceController {
   // --- HV Battery Health (EV) ---
   @Get('hv-battery-status')
   async getHvBatteryStatus(@Param('vehicleId') vehicleId: string) {
-    const [summary, legacy] = await Promise.all([
-      this.canonicalBatteryHealthService.getSummary(vehicleId),
-      this.hvBatteryHealthService.getHvBatteryStatus(vehicleId),
-    ]);
-    if (!legacy) return null;
+    const summary = await this.canonicalBatteryHealthService.getSummary(vehicleId);
+    if (!summary?.support?.hv) return null;
+
+    const legacy = await this.hvBatteryHealthService
+      .getHvBatteryStatus(vehicleId)
+      .catch(() => null);
+
+    const hv = summary.hv;
+    const canonicalHv = summary.canonical?.hv ?? null;
+
     return {
-      ...legacy,
-      canonical: summary?.hv ?? null,
-      currentTelemetry: summary?.currentTelemetry ?? null,
+      _compat: true,
+      _canonical: 'Prefer battery-health-summary.canonical.hv for new consumers.',
+      isEv: true,
+      nominalCapacityKwh:
+        canonicalHv?.referenceCapacity?.capacityKwh ??
+        legacy?.nominalCapacityKwh ??
+        hv?.telemetry?.grossCapacityKwh ??
+        null,
+      currentSocPercent: hv?.telemetry?.socPercent ?? legacy?.currentSocPercent ?? null,
+      estimatedRangeKm: hv?.telemetry?.rangeKm ?? legacy?.estimatedRangeKm ?? null,
+      sohPercent: hv?.sohPct ?? legacy?.sohPercent ?? null,
+      publishedSohPercent: hv?.sohPct ?? legacy?.publishedSohPercent ?? null,
+      sohMethod: hv?.method ?? legacy?.sohMethod ?? 'canonical',
+      sohSourceType: hv?.sohSource ?? legacy?.sohSourceType ?? null,
+      publicationState: hv?.publicationState ?? legacy?.publicationState ?? null,
+      maturityConfidence: hv?.confidence ?? legacy?.maturityConfidence ?? null,
+      snapshotCount: hv?.snapshotCount ?? legacy?.snapshotCount ?? 0,
+      telemetry: hv?.telemetry ?? legacy?.telemetry ?? null,
+      lastRecordedAt: hv?.freshness?.observedAt ?? legacy?.lastRecordedAt ?? null,
+      canonical: canonicalHv,
+      canonicalSummary: hv,
+      currentTelemetry: summary.currentTelemetry ?? null,
+      legacy: legacy ?? undefined,
     };
   }
 

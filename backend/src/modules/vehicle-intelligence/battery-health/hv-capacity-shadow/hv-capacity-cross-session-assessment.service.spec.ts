@@ -24,6 +24,7 @@ describe('HvCapacityCrossSessionAssessmentService', () => {
 
   const prisma = {
     vehicleBatteryReferenceCapacity: { findFirst: jest.fn() },
+    vehicleBatteryCapability: { findUnique: jest.fn() },
     hvChargeSession: { findMany: jest.fn() },
   };
   const assessments = {
@@ -43,6 +44,9 @@ describe('HvCapacityCrossSessionAssessmentService', () => {
     prisma.vehicleBatteryReferenceCapacity.findFirst.mockResolvedValue({
       id: 'ref-cap-57',
       capacityKwh: 57,
+    });
+    prisma.vehicleBatteryCapability.findUnique.mockResolvedValue({
+      capabilityVersion: 3,
     });
     assessments.findLatestHvCapacityShadow.mockResolvedValue(null);
     assessments.persistHvCapacityShadow.mockImplementation(async (input) => ({

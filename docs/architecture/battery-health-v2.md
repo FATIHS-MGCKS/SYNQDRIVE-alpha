@@ -528,6 +528,8 @@ Preflight über DIMO `availableSignals(tokenId)` + `signalsLatest` — nicht dok
 
 ## 7. Evidence-Priorität
 
+> **V4.9.564 (Prompt 64/78):** Zentrale Implementierung in `battery-evidence-strength.policy.ts` mit `BatteryEvidenceStrengthTier`-Hierarchie, Capability-Matrix und `resolveEvidenceConflict()`. Siehe [`battery-evidence-strength-policy.md`](./battery-evidence-strength-policy.md).
+
 ### 7.1 LV — Assessment-Input-Priorität
 
 | Rang | Quelle | `sourceType` | Override |
@@ -670,6 +672,8 @@ Backup-Tabellen vor jeder Migration.
 
 ### 9.4 Rental Readiness-Vertrag
 
+> **V4.9.565 (Prompt 65/78):** Implementierung in `battery-readiness.policy.ts`, aktiviert via `BATTERY_V2_READINESS_ENABLED`. Siehe [`battery-readiness-policy.md`](./battery-readiness-policy.md).
+
 | Evidenz | `battery.state` | `rental_blocked` |
 |---------|-----------------|------------------|
 | Keine LV-Daten | `unknown` / `n_a` | **false** |
@@ -684,10 +688,15 @@ Backup-Tabellen vor jeder Migration.
 
 ### 9.5 Alert/Task-Vertrag
 
-- `BatteryCriticalDetector` liest **nur** `publishedEstimatedHealth` (LV) und `publishedSohPct` (HV) mit `maturityConfidence ≥ medium`
-- Kein Alert aus Shadow, CONTAMINATED, `INITIAL_CALIBRATION`
-- Kein Rückgriff auf `battery_health_snapshots.sohPercent`
-- Task-Materialisierung: `BATTERY_CRITICAL_HEALTH` → `BATTERY_CHECK` (bestehend)
+> **V4.9.566 (Prompt 66/78):** Zentrale `BatteryAlertPolicy` in `battery-alert.policy.ts`. Siehe [`battery-alert-policy.md`](./battery-alert-policy.md).
+
+> **V4.9.567 (Prompt 67/78):** Automatische Battery-Tasks in `battery-task.policy.ts` / `battery-task.service.ts`. Siehe [`battery-task-policy.md`](./battery-task-policy.md).
+
+- `BatteryCriticalDetector` ruft `evaluateBatteryAlerts()` — ein Insight pro `ruleId` mit semantischem `dedupeKey` `battery_alert:{vehicleId}:{ruleId}`
+- `BatteryTaskService` materialisiert semantische Tasks `battery_task:{vehicleId}:{taskIntent}` (12V-Prüfung, Warnleuchte, BMS-Bericht, Referenzkapazität)
+- Belastbare Quellen: Warnleuchte, sicherheitsrelevanter DTC, stabile qualifizierte LV-Publikation, Werkstattbefund
+- Kein Task aus Shadow, experimentellen Messungen oder HV-Shadow-Kapazität allein
+- Auto-Resolve via `shouldAutoResolveBatteryTask()` + Referenzkapazität-Verify-Hook
 
 ---
 

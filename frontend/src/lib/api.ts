@@ -4995,8 +4995,10 @@ export const api = {
     batteryHealthLatest: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery-health/latest`),
     batteryHealthTrend: (vehicleId: string, days?: number) =>
       get<any[]>(`/vehicles/${vehicleId}/battery-health/trend` + (days ? `?days=${days}` : '')),
-    batteryHealthSummary: (vehicleId: string) => get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`),
-    batteryHealthDetail: (vehicleId: string) => get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`),
+    batteryHealthSummary: (vehicleId: string, init?: RequestInit) =>
+      get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`, init),
+    batteryHealthDetail: (vehicleId: string, init?: RequestInit) =>
+      get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`, init),
     createServiceEvent: (vehicleId: string, data: CreateVehicleServiceEventInput) =>
       post<VehicleServiceEventRecord>(`/vehicles/${vehicleId}/service-events`, data),
     updateServiceEvent: (vehicleId: string, eventId: string, data: UpdateVehicleServiceEventInput) =>
@@ -5968,6 +5970,73 @@ export interface BatteryCurrentTelemetrySection {
   genericEnergyPercent: number | null;
 }
 
+export interface CanonicalBatteryLiveValues {
+  voltageV: number | null;
+  restingVoltageV: number | null;
+  socPercent?: number | null;
+  providerSohPercent?: number | null;
+}
+
+export interface CanonicalBatteryHvReferenceCapacity {
+  id: string;
+  capacityKwh: number;
+  capacityType: string;
+  source: string;
+  verificationStatus: string;
+  verifiedAt: string | null;
+}
+
+export interface CanonicalBatteryHvSohAssessment {
+  estimatedSohPercent: number | null;
+  estimatedUsableCapacityKwh: number | null;
+  sohGatePassed: boolean;
+  confidence: string | null;
+  maturity: string | null;
+}
+
+export interface CanonicalBatteryHvProviderSoh {
+  percent: number | null;
+  source: HvSohSource | null;
+  decisionFresh: boolean;
+  observedAt?: string | null;
+}
+
+export interface CanonicalBatteryHvChargeSession {
+  sessionId: string;
+  source: string;
+  startAt: string;
+  endAt: string | null;
+  isOngoing: boolean;
+}
+
+export interface CanonicalBatteryDto {
+  resolverVersion: string;
+  organizationId?: string;
+  vehicleId: string;
+  resolvedAt: string;
+  isEv: boolean;
+  liveState: {
+    lv: { observedAt: string | null; values: CanonicalBatteryLiveValues };
+    hv?: { observedAt: string | null; values: CanonicalBatteryLiveValues };
+  };
+  lv: {
+    assessment?: { estimatedHealthScore: number | null } | null;
+    publication?: { maturity: string | null } | null;
+  };
+  hv?: {
+    supported: boolean;
+    providerSoh: CanonicalBatteryHvProviderSoh;
+    referenceCapacity?: CanonicalBatteryHvReferenceCapacity | null;
+    currentChargeSession?: CanonicalBatteryHvChargeSession | null;
+    lastChargeSession?: CanonicalBatteryHvChargeSession | null;
+    sohAssessment?: CanonicalBatteryHvSohAssessment | null;
+  } | null;
+  dataQuality?: {
+    aggregate: BatteryDataQualityPresentation;
+    errors?: Array<{ code: string; messageDe?: string }>;
+  };
+}
+
 export interface BatteryHealthSummary {
   vehicleId: string;
   generatedAt: string;
@@ -6021,6 +6090,8 @@ export interface BatteryHealthSummary {
     workshopName?: string | null;
     odometerKm?: number | null;
   }>;
+  /** Canonical resolver output — preferred read model for new consumers. */
+  canonical?: CanonicalBatteryDto | null;
 }
 
 export interface BatteryEvidenceItem {

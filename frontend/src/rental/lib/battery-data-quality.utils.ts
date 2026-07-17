@@ -1,4 +1,7 @@
 import type { BatteryDataQualityStatus } from './battery-data-quality';
+import type { TranslationKey } from '../i18n/translations/en';
+
+export type BatteryTranslate = (key: TranslationKey) => string;
 
 export type BatteryDataQualityChipTone =
   | 'success'
@@ -33,21 +36,21 @@ export function batteryDataQualityChipTone(
 
 export function batteryDataQualityLabel(
   status: BatteryDataQualityStatus | null | undefined,
-  t: (key: string) => string,
+  t: BatteryTranslate,
 ): string {
   if (!status) return t('health.battery.dataQuality.UNAVAILABLE');
-  return t(`health.battery.dataQuality.${status}`);
+  return t(`health.battery.dataQuality.${status}` as TranslationKey);
 }
 
 export function batteryDataQualityShortLabel(
   status: BatteryDataQualityStatus | null | undefined,
-  t: (key: string) => string,
+  t: BatteryTranslate,
 ): string {
   if (!status) return t('health.battery.dataQuality.short.UNAVAILABLE');
-  return t(`health.battery.dataQuality.short.${status}`);
+  return t(`health.battery.dataQuality.short.${status}` as TranslationKey);
 }
 
-export function batteryLoadErrorLabel(t: (key: string) => string): string {
+export function batteryLoadErrorLabel(t: BatteryTranslate): string {
   return t('health.battery.loadError');
 }
 

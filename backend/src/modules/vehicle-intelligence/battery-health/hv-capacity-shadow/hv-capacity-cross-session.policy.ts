@@ -358,6 +358,7 @@ export function computeHvCrossSessionAssessment(input: {
     })),
     referenceCapacityKwh: context.referenceCapacityKwh,
     referenceCapacityId: context.referenceCapacityId,
+    capabilityVersion: context.capabilityVersion ?? null,
   };
 
   return {
