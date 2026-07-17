@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-apply-safety-policy-2026-07-17',
+    version: '4.9.585',
+    title: 'V4.9.585 — DocumentApplySafetyPolicy (zentrale Apply-Sicherheit)',
+    summary: [
+      'Zentrale `DocumentApplySafetyPolicy` entscheidet je Dokumenttyp: APPLY_ALLOWED, DRAFT_ONLY, ARCHIVE_ONLY, BLOCKED, LEGACY_DISABLED.',
+      'Regeln: FINE ohne Tatdatum/positiven Betrag → BLOCKED; INVOICE ohne klare Steuersemantik → DRAFT_ONLY; DAMAGE ohne bestätigte Beschreibung/Severity → DRAFT_ONLY/BLOCKED; OTHER/VEHICLE_CONDITION → ARCHIVE_ONLY; BATTERY nur mit validen Messwerten.',
+      'Feature Flags: `DOCUMENT_APPLY_ENABLED`, `DOCUMENT_APPLY_DISABLED_TYPES`, `DOCUMENT_APPLY_STRICT_IDEMPOTENCY`.',
+      'Confirm-Flow und Recovery respektieren die Policy; `applySafety` wird auf READY_FOR_REVIEW/CONFIRMED in der Public API exponiert.',
+    ],
+    reason: 'Prompt 9/84: Server-seitiges Apply-Gate vor Downstream-Writes — kein stiller Legacy-Fallback mehr bei kritischen Lücken.',
+    previousBehavior: 'Confirm blockierte nur Plausibility-BLOCKER; Apply-Service nutzte still Defaults (z. B. DAMAGE severity).',
+    details:
+      'document-apply-safety.policy.ts, document-apply-safety.types.ts, document-apply-safety.config.util.ts, document-extraction.config.ts, document-extraction.service.ts, public DTO/mapper/actions (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T16:30:00.000Z',
+  },
+  {
     id: 'document-extraction-health-runtime-2026-07-17',
     version: '4.9.584',
     title: 'V4.9.584 — Document Extraction Health: Runtime & Readiness',

@@ -1,5 +1,6 @@
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { DocumentExtractionService } from './document-extraction.service';
+import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
 import { DocumentExtractionEnqueueFailedException } from './document-extraction-enqueue.exception';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 
@@ -108,6 +109,7 @@ function makeService(overrides: {
     applyService as any,
     plausibility as any,
     observability as any,
+    new DocumentApplySafetyPolicy(),
   );
   return { svc, prisma, storage, queue, applyService, docConfig };
 }

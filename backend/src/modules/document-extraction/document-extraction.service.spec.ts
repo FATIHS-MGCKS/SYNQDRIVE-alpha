@@ -1,5 +1,6 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DocumentExtractionService } from './document-extraction.service';
+import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -62,6 +63,7 @@ describe('DocumentExtractionService', () => {
       setActiveJobs: jest.fn(),
       observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
     };
+    const applySafetyPolicy = new DocumentApplySafetyPolicy();
     const svc = new DocumentExtractionService(
       prisma as any,
       config as any,
@@ -71,6 +73,7 @@ describe('DocumentExtractionService', () => {
       applyService as any,
       plausibility as any,
       observability as any,
+      applySafetyPolicy,
     );
     return { svc, prisma, applyService, storage, queue, observability };
   }

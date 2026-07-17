@@ -1,6 +1,8 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { ConfigType } from '@nestjs/config';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import documentExtractionConfig from '@config/document-extraction.config';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { FinesModule } from '@modules/fines/fines.module';
@@ -21,6 +23,8 @@ import { DocumentExtractionRecoveryScheduler } from '@workers/schedulers/documen
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
+import { buildDocumentApplyFeatureFlags } from './document-apply-safety.config.util';
 import {
   shouldRegisterDocumentExtractionApi,
   shouldRegisterDocumentExtractionConsumers,
@@ -65,6 +69,12 @@ const documentExtractionConsumers = shouldRegisterDocumentExtractionConsumers()
     DocumentContentExtractorService,
     DocumentExtractionHealthService,
     DocumentExtractionObservabilityService,
+    {
+      provide: DocumentApplySafetyPolicy,
+      useFactory: (config: ConfigType<typeof documentExtractionConfig>) =>
+        new DocumentApplySafetyPolicy(buildDocumentApplyFeatureFlags(config)),
+      inject: [documentExtractionConfig.KEY],
+    },
     LocalDocumentStorageService,
     { provide: DOCUMENT_STORAGE, useClass: LocalDocumentStorageService },
     ...documentExtractionConsumers,

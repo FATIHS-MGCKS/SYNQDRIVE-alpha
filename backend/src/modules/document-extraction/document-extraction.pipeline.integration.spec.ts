@@ -5,6 +5,7 @@ import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
 import { DocumentExtractionProcessor } from './document-extraction.processor';
 import {
   DocumentExtractionPipelineError,
@@ -159,6 +160,7 @@ describe('Document extraction pipeline (integration wiring)', () => {
       applyService as any,
       plausibility as any,
       observability,
+      new DocumentApplySafetyPolicy(),
     );
   });
 
