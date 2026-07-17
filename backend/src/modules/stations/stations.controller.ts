@@ -218,6 +218,21 @@ export class StationsController {
     return this.stationsService.deactivateStation(orgId, id);
   }
 
+  @Get(':id/archive-preview')
+  @RequireStationsPermission('stations.archive')
+  @RequireStationScope({ resource: 'station' })
+  async getArchivePreview(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationArchivePreview(
+      orgId,
+      id,
+      req[STATION_SCOPE_CONTEXT_KEY],
+    );
+  }
+
   @Post(':id/archive')
   @RequireStationsPermission('stations.archive')
   @RequireStationScope({ resource: 'station' })

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-archive-preview-v49599-2026-07-18',
+    version: '4.9.599',
+    title: 'V4.9.599 — Stations V2: Archive Preview Endpoint (Prompt 19/78)',
+    summary: [
+      'Read-only `GET /stations/:id/archive-preview` — Preflight vor Archive ohne Mutation.',
+      'Zeigt Heimat-/Anwesend-/Erwartungs-Fahrzeuge, zukünftige Pickups/Returns, offene Übergaben, scoped Staff, Primary-Status, Tasks, Transfers, Capabilities.',
+      'Output: `blockingReasons`, `warnings`, `affectedCounts`, `requiredFollowUpActions`; Listen mit `truncated`/`partial` bei Limit 25.',
+      'LifecyclePolicy ARCHIVE + tenant/scope-sicher; archivierte Station idempotent; Unit- + Integrationstests (leer + stark verknüpft).',
+    ],
+    reason:
+      'Archive ohne Vorschau der betroffenen Verknüpfungen und Blocker war operativ riskant — UI und API brauchten strukturierten Preflight.',
+    previousBehavior:
+      'Kein dedizierter Archive-Preview-Endpoint; Verknüpfungen mussten manuell über Fleet/Bookings/Team zusammengesucht werden.',
+    details:
+      'station-archive-preview.{types,util}.ts, stations.service getStationArchivePreview, stations.controller.ts, *spec.ts, authz fixtures.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T01:30:00.000Z',
+  },
+  {
     id: 'stations-v2-activate-deactivate-v49598-2026-07-17',
     version: '4.9.598',
     title: 'V4.9.598 — Stations V2: Activate/Deactivate Commands (Prompt 18/78)',

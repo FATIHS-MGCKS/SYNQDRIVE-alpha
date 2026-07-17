@@ -46,6 +46,7 @@ describe('StationsController read security', () => {
     expect(metadata(STATIONS_PERMISSION_KEY, 'getOperations')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getTeam')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getActivity')).toBe('stations.view_activity');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'getArchivePreview')).toBe('stations.archive');
   });
 
   it('uses list scope for collection reads and station scope for detail reads', () => {
@@ -56,6 +57,7 @@ describe('StationsController read security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'getOperations')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getTeam')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getActivity')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'getArchivePreview')).toEqual({ resource: 'station' });
   });
 });
 

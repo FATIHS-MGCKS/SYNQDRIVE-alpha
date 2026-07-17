@@ -33,9 +33,20 @@ import {
   StationLifecycleCommandOutcome,
   type StationLifecycleCommandResult,
 } from './station-lifecycle-command.types';
+import {
+  buildArchivePreviewListSection,
+  evaluateStationArchivePreview,
+} from './station-archive-preview.util';
+import {
+  STATION_ARCHIVE_PREVIEW_LIST_LIMIT,
+  type StationArchivePreviewResult,
+} from './station-archive-preview.types';
+import { parseStationIds } from '@shared/stations/station-scope.util';
+import { isStationReadableInAccessScope } from '@shared/stations/station-access-scope.util';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 const FUTURE_BOOKING_STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE'];
+const OPEN_HANDOVER_STATUSES: BookingStatus[] = ['CONFIRMED', 'ACTIVE'];
 
 // ---------- Input payload contracts (accepted by controller) ----------
 
@@ -845,6 +856,486 @@ export class StationsService {
       handoverInstructions: station.handoverInstructions,
       returnInstructions: station.returnInstructions,
       timezone: station.timezone,
+    };
+  }
+
+  async getStationArchivePreview(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationArchivePreviewResult> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        id: true,
+        organizationId: true,
+        name: true,
+        code: true,
+        status: true,
+        isPrimary: true,
+        archivedAt: true,
+        pickupEnabled: true,
+        returnEnabled: true,
+        afterHoursReturnEnabled: true,
+        keyBoxAvailable: true,
+      },
+    });
+
+    const limit = STATION_ARCHIVE_PREVIEW_LIST_LIMIT;
+    const now = new Date();
+    const successorCandidates = station.isPrimary
+      ? await this.prisma.station.findMany({
+          where: {
+            organizationId,
+            status: 'ACTIVE',
+            id: { not: stationId },
+          },
+          select: { id: true, name: true, code: true },
+          orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }],
+          take: limit,
+        })
+      : [];
+
+    const homeWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'homeStationId');
+    const presentWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'currentStationId');
+    const expectedWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'expectedStationId');
+    const plannedTransferWhere: Prisma.VehicleWhereInput = {
+      ...expectedWhere,
+      OR: [
+        { currentStationId: null },
+        { currentStationId: { not: stationId } },
+      ],
+    };
+
+    const futurePickupWhere = this.stationAccessScope.buildStationPickupBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        startDate: { gt: now },
+      },
+    );
+    const futureReturnWhere = this.stationAccessScope.buildStationReturnBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        endDate: { gt: now },
+      },
+    );
+
+    const openPickupHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ pickupStationId: stationId }, { actualPickupStationId: stationId }],
+      handoverProtocols: { none: { kind: 'PICKUP' } },
+    };
+    const openReturnHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ returnStationId: stationId }, { actualReturnStationId: stationId }],
+      handoverProtocols: { none: { kind: 'RETURN' } },
+    };
+
+    const stationVehicleWhere = this.stationAccessScope.buildStationLinkedVehicleWhere(
+      access,
+      stationId,
+    );
+    const stationBookingWhere = this.stationAccessScope.buildStationBookingsWhere(access, stationId);
+
+    const [
+      homeVehiclesCount,
+      presentVehiclesCount,
+      expectedVehiclesCount,
+      plannedTransfersCount,
+      futurePickupCount,
+      futureReturnCount,
+      openPickupHandoverCount,
+      openReturnHandoverCount,
+      activeBookingCount,
+      homeVehicles,
+      presentVehicles,
+      expectedVehicles,
+      plannedTransfers,
+      futurePickupBookings,
+      futureReturnBookings,
+      openPickupHandovers,
+      openReturnHandovers,
+      openTasksCount,
+      openTasks,
+    ] = await Promise.all([
+      this.prisma.vehicle.count({ where: homeWhere }),
+      this.prisma.vehicle.count({ where: presentWhere }),
+      this.prisma.vehicle.count({ where: expectedWhere }),
+      this.prisma.vehicle.count({ where: plannedTransferWhere }),
+      this.prisma.booking.count({ where: futurePickupWhere }),
+      this.prisma.booking.count({ where: futureReturnWhere }),
+      this.prisma.booking.count({ where: openPickupHandoverWhere }),
+      this.prisma.booking.count({ where: openReturnHandoverWhere }),
+      this.prisma.booking.count({
+        where: {
+          ...stationBookingWhere,
+          status: 'ACTIVE',
+        },
+      }),
+      this.prisma.vehicle.findMany({
+        where: homeWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.vehicle.findMany({
+        where: presentWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.vehicle.findMany({
+        where: expectedWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.vehicle.findMany({
+        where: plannedTransferWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: futurePickupWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { startDate: 'asc' },
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: futureReturnWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { endDate: 'asc' },
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: openPickupHandoverWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { startDate: 'asc' },
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: openReturnHandoverWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { endDate: 'asc' },
+        take: limit,
+      }),
+      this.countStationOpenTasks(access, stationId, stationVehicleWhere, stationBookingWhere),
+      this.loadStationOpenTasks(access, stationId, stationVehicleWhere, stationBookingWhere, limit),
+    ]);
+
+    const scopedStaff = await this.loadStationScopedStaff(organizationId, stationId, limit);
+    const openHandoverCount = openPickupHandoverCount + openReturnHandoverCount;
+
+    const evaluation = evaluateStationArchivePreview({
+      snapshot: {
+        stationId: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        archivedAt: station.archivedAt,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        successorCandidates,
+      },
+      counts: {
+        homeVehicles: homeVehiclesCount,
+        presentVehicles: presentVehiclesCount,
+        expectedVehicles: expectedVehiclesCount,
+        futurePickupBookings: futurePickupCount,
+        futureReturnBookings: futureReturnCount,
+        openHandovers: openHandoverCount,
+        scopedStaff: scopedStaff.totalCount,
+        openTasks: openTasksCount,
+        plannedTransfers: plannedTransfersCount,
+        activeBookings: activeBookingCount,
+      },
+    });
+
+    const openHandoverItems = [
+      ...openPickupHandovers.map((booking) =>
+        this.mapArchivePreviewHandoverItem(booking, 'PICKUP', booking.startDate),
+      ),
+      ...openReturnHandovers.map((booking) =>
+        this.mapArchivePreviewHandoverItem(booking, 'RETURN', booking.endDate),
+      ),
+    ].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
+    const previewSections = {
+      homeVehicles: buildArchivePreviewListSection(homeVehicles, homeVehiclesCount, limit),
+      presentVehicles: buildArchivePreviewListSection(presentVehicles, presentVehiclesCount, limit),
+      expectedVehicles: buildArchivePreviewListSection(expectedVehicles, expectedVehiclesCount, limit),
+      futurePickupBookings: buildArchivePreviewListSection(
+        futurePickupBookings.map((booking) => this.mapArchivePreviewBookingItem(booking)),
+        futurePickupCount,
+        limit,
+      ),
+      futureReturnBookings: buildArchivePreviewListSection(
+        futureReturnBookings.map((booking) => this.mapArchivePreviewBookingItem(booking)),
+        futureReturnCount,
+        limit,
+      ),
+      openHandovers: buildArchivePreviewListSection(
+        openHandoverItems.slice(0, limit),
+        openHandoverCount,
+        limit,
+      ),
+      scopedStaff: buildArchivePreviewListSection(
+        scopedStaff.items,
+        scopedStaff.totalCount,
+        limit,
+      ),
+      openTasks: buildArchivePreviewListSection(openTasks, openTasksCount, limit),
+      plannedTransfers: buildArchivePreviewListSection(
+        plannedTransfers,
+        plannedTransfersCount,
+        limit,
+      ),
+    };
+
+    const partial = Object.values(previewSections).some((section) => section.truncated);
+
+    return {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      status: station.status,
+      alreadyArchived: station.status === 'ARCHIVED',
+      isPrimary: station.isPrimary,
+      primaryStatus: {
+        isPrimary: station.isPrimary,
+        successorCandidates,
+      },
+      capabilities: {
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+      },
+      partial,
+      preview: previewSections,
+      ...evaluation,
+    };
+  }
+
+  private buildArchivePreviewVehicleWhere(
+    access: StationAccessScope,
+    stationId: string,
+    field: 'homeStationId' | 'currentStationId' | 'expectedStationId',
+  ): Prisma.VehicleWhereInput {
+    if (!isStationReadableInAccessScope(access, stationId)) {
+      return { organizationId: access.orgId, id: { in: [] } };
+    }
+
+    return {
+      organizationId: access.orgId,
+      [field]: stationId,
+    };
+  }
+
+  private async countStationOpenTasks(
+    access: StationAccessScope,
+    stationId: string,
+    stationVehicleWhere: Prisma.VehicleWhereInput,
+    stationBookingWhere: Prisma.BookingWhereInput,
+  ): Promise<number> {
+    const stationVehicleIds = (
+      await this.prisma.vehicle.findMany({
+        where: stationVehicleWhere,
+        select: { id: true },
+      })
+    ).map((vehicle) => vehicle.id);
+    const stationBookingIds = (
+      await this.prisma.booking.findMany({
+        where: stationBookingWhere,
+        select: { id: true },
+      })
+    ).map((booking) => booking.id);
+
+    return this.prisma.orgTask.count({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        stationVehicleIds,
+        stationBookingIds,
+      ),
+    });
+  }
+
+  private async loadStationOpenTasks(
+    access: StationAccessScope,
+    stationId: string,
+    stationVehicleWhere: Prisma.VehicleWhereInput,
+    stationBookingWhere: Prisma.BookingWhereInput,
+    limit: number,
+  ) {
+    const stationVehicleIds = (
+      await this.prisma.vehicle.findMany({
+        where: stationVehicleWhere,
+        select: { id: true },
+      })
+    ).map((vehicle) => vehicle.id);
+    const stationBookingIds = (
+      await this.prisma.booking.findMany({
+        where: stationBookingWhere,
+        select: { id: true },
+      })
+    ).map((booking) => booking.id);
+
+    return this.prisma.orgTask.findMany({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        stationVehicleIds,
+        stationBookingIds,
+      ),
+      select: {
+        id: true,
+        title: true,
+        status: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  private async loadStationScopedStaff(
+    organizationId: string,
+    stationId: string,
+    limit: number,
+  ) {
+    const memberships = await this.prisma.organizationMembership.findMany({
+      where: {
+        organizationId,
+        status: 'ACTIVE',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    const matched = memberships.filter((membership) => {
+      const assignedIds = parseStationIds(membership.stationIds);
+      if (assignedIds.includes(stationId)) return true;
+      const legacyScope = membership.stationScope?.trim();
+      return legacyScope === stationId;
+    });
+
+    const items = matched.slice(0, limit).map((membership) => ({
+      membershipId: membership.id,
+      userId: membership.user.id,
+      name:
+        `${membership.user.firstName ?? ''} ${membership.user.lastName ?? ''}`.trim() ||
+        membership.user.email ||
+        membership.user.id,
+      role: membership.role,
+    }));
+
+    return {
+      totalCount: matched.length,
+      items,
+    };
+  }
+
+  private mapArchivePreviewBookingItem(booking: {
+    id: string;
+    status: BookingStatus;
+    startDate: Date;
+    endDate: Date;
+    customer: { firstName: string | null; lastName: string | null };
+    vehicle: {
+      vehicleName: string | null;
+      make: string | null;
+      model: string | null;
+      licensePlate: string | null;
+    };
+  }) {
+    return {
+      id: booking.id,
+      status: booking.status,
+      startDate: booking.startDate.toISOString(),
+      endDate: booking.endDate.toISOString(),
+      customerName: `${booking.customer.firstName ?? ''} ${booking.customer.lastName ?? ''}`.trim(),
+      vehicleLabel:
+        booking.vehicle.vehicleName ||
+        `${booking.vehicle.make ?? ''} ${booking.vehicle.model ?? ''}`.trim() ||
+        booking.vehicle.licensePlate ||
+        '',
+    };
+  }
+
+  private mapArchivePreviewHandoverItem(
+    booking: {
+      id: string;
+      status: BookingStatus;
+      customer: { firstName: string | null; lastName: string | null };
+      vehicle: {
+        vehicleName: string | null;
+        make: string | null;
+        model: string | null;
+        licensePlate: string | null;
+      };
+    },
+    kind: 'PICKUP' | 'RETURN',
+    scheduledAt: Date,
+  ) {
+    return {
+      bookingId: booking.id,
+      kind,
+      status: booking.status,
+      scheduledAt: scheduledAt.toISOString(),
+      customerName: `${booking.customer.firstName ?? ''} ${booking.customer.lastName ?? ''}`.trim(),
+      vehicleLabel:
+        booking.vehicle.vehicleName ||
+        `${booking.vehicle.make ?? ''} ${booking.vehicle.model ?? ''}`.trim() ||
+        booking.vehicle.licensePlate ||
+        '',
     };
   }
 

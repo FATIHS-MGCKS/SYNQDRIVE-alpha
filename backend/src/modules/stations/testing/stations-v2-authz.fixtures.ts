@@ -156,6 +156,13 @@ export const AUTHZ_READ_ENDPOINTS: AuthzEndpointCase[] = [
     scope: { resource: 'station' },
     params: { id: AUTHZ_STATION_A },
   },
+  {
+    key: 'archive-preview',
+    method: 'GET',
+    permission: 'stations.archive',
+    scope: { resource: 'station' },
+    params: { id: AUTHZ_STATION_A },
+  },
 ];
 
 export const AUTHZ_MUTATION_ENDPOINTS: AuthzEndpointCase[] = [
