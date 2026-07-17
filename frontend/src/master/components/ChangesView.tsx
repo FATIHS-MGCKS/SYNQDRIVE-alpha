@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-entity-candidate-link-2026-07-17',
+    version: '4.9.594',
+    title: 'V4.9.594 — Document Intake V2 Entity Candidate + Link (additiv)',
+    summary: [
+      'Neue Modelle `DocumentEntityCandidate` und `DocumentEntityLink` für Resolver-Vorschläge vs. bestätigte Zuordnungen.',
+      'Candidate: confidence, matchReasons, conflicts, rank, resolverVersion, status PROPOSED/CONFIRMED/…',
+      'Link: source, confirmedByUserId/At, supersededAt; partial unique ein aktiver Link pro (extraction, entityType).',
+      'CUSTOMER und DRIVER getrennt; ORGANIZATION als Kontext ohne Auto-Bestätigung; Tenant-Validierung polymorpher entityIds.',
+      'Repositories: replaceProposedCandidates, confirmCandidate (supersede), createManualLink, supersedeLink.',
+    ],
+    reason: 'Prompt 18/84: normalisierte Entity-Auflösung vor Resolver-/Apply-Verdrahtung.',
+    previousBehavior: 'Nur vehicleId auf Extraction; Kandidaten ad-hoc in JSON.',
+    details:
+      'schema.prisma, migration 20260717220000_document_entity_candidates_links, document-entity*.{types,scope,ranking,candidate.repository,link.repository}.ts (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T22:00:00.000Z',
+  },
+  {
     id: 'document-action-2026-07-17',
     version: '4.9.593',
     title: 'V4.9.593 — Document Intake V2 DocumentAction (additiv)',
