@@ -15,6 +15,7 @@ import {
   readQueueRecoveryCount,
   withIncrementedRecoveryCount,
 } from '@modules/document-extraction/document-extraction-recovery.util';
+import { DocumentExtractionObservabilityService } from '@modules/document-extraction/document-extraction-observability.service';
 
 /**
  * Conservative recovery scheduler for document.extraction jobs.
@@ -30,6 +31,7 @@ export class DocumentExtractionRecoveryScheduler {
     private readonly extractionService: DocumentExtractionService,
     @Inject(documentExtractionConfig.KEY)
     private readonly config: ConfigType<typeof documentExtractionConfig>,
+    private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
   @Interval(120_000)
@@ -87,6 +89,7 @@ export class DocumentExtractionRecoveryScheduler {
         },
       });
       logRecoveryAction(this.logger, 're-enqueued stale QUEUED', row.id);
+      this.observability.recordRecovery({ kind: 'pipeline', outcome: 'recovered' });
     }
   }
 
@@ -126,6 +129,7 @@ export class DocumentExtractionRecoveryScheduler {
 
       await this.extractionService.markQueuedAfterEnqueue(row.id);
       logRecoveryAction(this.logger, 'recovered stale PROCESSING', row.id);
+      this.observability.recordRecovery({ kind: 'pipeline', outcome: 'recovered' });
     }
   }
 
@@ -149,6 +153,7 @@ export class DocumentExtractionRecoveryScheduler {
           data: { plausibility: withIncrementedRecoveryCount(row.plausibility) },
         });
         logRecoveryAction(this.logger, 'retried stale CONFIRMED apply', row.id);
+        this.observability.recordRecovery({ kind: 'pipeline', outcome: 'recovered' });
       }
     }
   }

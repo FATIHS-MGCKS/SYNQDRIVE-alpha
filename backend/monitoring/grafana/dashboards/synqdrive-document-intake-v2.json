@@ -1,0 +1,316 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["synqdrive"],
+      "targetBlank": false,
+      "title": "SynqDrive Ops",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Upload Funnel",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_document_upload_total[5m]))", "refId": "A" }],
+      "title": "Uploads accepted/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 2,
+      "targets": [{ "expr": "sum(rate(synqdrive_document_upload_rejected_total[5m]))", "refId": "A" }],
+      "title": "Uploads rejected/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 3,
+      "targets": [
+        { "expr": "sum(rate(synqdrive_document_upload_total[5m]))", "legendFormat": "accepted", "refId": "A" },
+        { "expr": "sum by (reason) (rate(synqdrive_document_upload_rejected_total[5m]))", "legendFormat": "rejected {{reason}}", "refId": "B" },
+        { "expr": "sum(rate(synqdrive_document_extraction_jobs_total{status=\"READY_FOR_REVIEW\"}[5m]))", "legendFormat": "ready for review", "refId": "C" }
+      ],
+      "title": "Upload funnel (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 101,
+      "title": "OCR-Latenz und Fehler",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "id": 4,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(synqdrive_document_extraction_duration_seconds_bucket{stage=\"OCR\"}[10m])))", "legendFormat": "OCR p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(synqdrive_document_extraction_duration_seconds_bucket{stage=\"OCR\"}[10m])))", "legendFormat": "OCR p50", "refId": "B" }
+      ],
+      "title": "OCR stage latency (10m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "id": 5,
+      "targets": [
+        { "expr": "sum by (method) (rate(synqdrive_document_ocr_total[5m]))", "legendFormat": "{{method}}", "refId": "A" },
+        { "expr": "sum by (error_code) (rate(synqdrive_document_ocr_failed_total[5m]))", "legendFormat": "failed {{error_code}}", "refId": "B" }
+      ],
+      "title": "OCR throughput & failures (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 102,
+      "title": "Klassifikationsverteilung",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 6,
+      "targets": [
+        { "expr": "sum by (result) (rate(synqdrive_document_classification_total[5m]))", "legendFormat": "{{result}}", "refId": "A" }
+      ],
+      "title": "Classification results (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 7,
+      "targets": [
+        { "expr": "sum by (source) (rate(synqdrive_document_awaiting_type_total[5m]))", "legendFormat": "{{source}}", "refId": "A" }
+      ],
+      "title": "Awaiting document type (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "id": 103,
+      "title": "Required-Field-Completeness",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 28 },
+      "id": 8,
+      "targets": [{
+        "expr": "sum(rate(synqdrive_document_required_field_total{requirement=\"required\",presence=\"present\"}[30m])) / clamp_min(sum(rate(synqdrive_document_required_field_total{requirement=\"required\"}[30m])), 0.001)",
+        "refId": "A"
+      }],
+      "title": "Required field presence (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 28 },
+      "id": 9,
+      "targets": [
+        { "expr": "sum by (document_category, presence) (rate(synqdrive_document_required_field_total{requirement=\"required\"}[5m]))", "legendFormat": "{{document_category}} {{presence}}", "refId": "A" }
+      ],
+      "title": "Required fields by category (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "id": 104,
+      "title": "Entity-Match-Confidence",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 37 },
+      "id": 10,
+      "targets": [
+        { "expr": "sum by (entity_type, confidence) (rate(synqdrive_document_entity_candidate_total[5m]))", "legendFormat": "{{entity_type}} {{confidence}}", "refId": "A" }
+      ],
+      "title": "Entity candidate confidence bands (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 45 },
+      "id": 105,
+      "title": "Action-Erfolg",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 46 },
+      "id": 11,
+      "targets": [
+        { "expr": "sum by (outcome) (rate(synqdrive_document_action_plan_total[5m]))", "legendFormat": "plan {{outcome}}", "refId": "A" },
+        { "expr": "sum by (outcome) (rate(synqdrive_document_action_total[5m]))", "legendFormat": "action {{outcome}}", "refId": "B" }
+      ],
+      "title": "Action plan & execution (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 46 },
+      "id": 12,
+      "targets": [
+        { "expr": "sum by (semantic_action) (rate(synqdrive_document_action_failed_total[5m]))", "legendFormat": "{{semantic_action}}", "refId": "A" }
+      ],
+      "title": "Failed actions by type (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 54 },
+      "id": 106,
+      "title": "Partial Apply",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 55 },
+      "id": 13,
+      "targets": [
+        { "expr": "sum by (reason) (rate(synqdrive_document_partial_apply_total[5m]))", "legendFormat": "{{reason}}", "refId": "A" }
+      ],
+      "title": "Partial apply reasons (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 55 },
+      "id": 14,
+      "targets": [{
+        "expr": "sum(rate(synqdrive_document_partial_apply_total[30m])) / clamp_min(sum(rate(synqdrive_document_action_plan_total{outcome=\"completed\"}[30m])), 0.001)",
+        "legendFormat": "partial apply ratio",
+        "refId": "A"
+      }],
+      "title": "Partial apply ratio vs completed plans (30m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 63 },
+      "id": 107,
+      "title": "Duplicate Rate",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 64 },
+      "id": 15,
+      "targets": [{
+        "expr": "sum(rate(synqdrive_document_duplicate_total{outcome=\"blocked\"}[30m])) / clamp_min(sum(rate(synqdrive_document_upload_total[30m])) + sum(rate(synqdrive_document_duplicate_total{outcome=\"blocked\"}[30m])), 0.001)",
+        "refId": "A"
+      }],
+      "title": "Blocked duplicate rate (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 64 },
+      "id": 16,
+      "targets": [
+        { "expr": "sum by (outcome) (rate(synqdrive_document_duplicate_total[5m]))", "legendFormat": "{{outcome}}", "refId": "A" }
+      ],
+      "title": "Duplicate outcomes (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 72 },
+      "id": 108,
+      "title": "Worker/Queue Stability",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 73 },
+      "id": 17,
+      "targets": [
+        { "expr": "synqdrive_document_extraction_queue_age_seconds", "legendFormat": "queue age", "refId": "A" },
+        { "expr": "synqdrive_document_extraction_active_jobs", "legendFormat": "active jobs", "refId": "B" }
+      ],
+      "title": "Queue age & active jobs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 73 },
+      "id": 18,
+      "targets": [
+        { "expr": "sum by (kind, outcome) (rate(synqdrive_document_recovery_total[5m]))", "legendFormat": "{{kind}} {{outcome}}", "refId": "A" },
+        { "expr": "sum by (stage) (rate(synqdrive_document_extraction_retries_total[5m]))", "legendFormat": "retry {{stage}}", "refId": "B" }
+      ],
+      "title": "Recovery & retries (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 81 },
+      "id": 109,
+      "title": "Follow-up-Akzeptanz",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 82 },
+      "id": 19,
+      "targets": [{
+        "expr": "sum(rate(synqdrive_document_follow_up_total{outcome=\"accepted\"}[30m])) / clamp_min(sum(rate(synqdrive_document_follow_up_total{outcome=\"suggested\"}[30m])), 0.001)",
+        "refId": "A"
+      }],
+      "title": "Follow-up acceptance rate (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 82 },
+      "id": 20,
+      "targets": [
+        { "expr": "sum by (outcome) (rate(synqdrive_document_follow_up_total[5m]))", "legendFormat": "{{outcome}}", "refId": "A" }
+      ],
+      "title": "Follow-up lifecycle (5m)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "document-intake"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SynqDrive Document Intake V2",
+  "uid": "synqdrive-document-intake-v2",
+  "version": 1
+}

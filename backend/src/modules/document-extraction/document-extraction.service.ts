@@ -420,9 +420,11 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const requestedDocumentType = input.requestedDocumentType ?? AUTO_CLASSIFICATION_REQUEST;
     if (!isRequestDocumentType(requestedDocumentType)) {
+      this.observability.recordUploadRejected('validation');
       throw new BadRequestException(`Unsupported document type: ${requestedDocumentType}`);
     }
     if (!isAllowedMimeType(input.mimeType)) {
+      this.observability.recordUploadRejected('mime');
       throw new BadRequestException(`Unsupported file type: ${input.mimeType}`);
     }
 
@@ -464,6 +466,7 @@ export class DocumentExtractionService implements OnModuleInit {
       contentSha256 = await computeDocumentContentSha256(input.buffer);
     } catch (error) {
       if (error instanceof DocumentExtractionPipelineError) {
+        this.observability.recordUploadRejected('identification');
         throw new BadRequestException({
           message: error.safeMessage,
           errorCode: error.code,
@@ -485,8 +488,12 @@ export class DocumentExtractionService implements OnModuleInit {
       referenceNumberHint: input.referenceNumberHint,
     });
     if (duplicateAssessment.blocked) {
+      this.observability.recordDuplicateOutcome('blocked');
+      this.observability.recordUploadRejected('duplicate');
       throw new DocumentUploadDuplicateBlockedException(duplicateAssessment);
     }
+
+    this.observability.recordDuplicateOutcome(mapDuplicateStatusToMetric(duplicateAssessment.status));
 
     const uploadDuplicateStatus = duplicateAssessment.status;
     const relatedExtractionId = duplicateAssessment.relatedExtractionId ?? null;
@@ -566,6 +573,8 @@ export class DocumentExtractionService implements OnModuleInit {
           organizationId,
           contentSha256,
         });
+        this.observability.recordDuplicateOutcome('blocked');
+        this.observability.recordUploadRejected('duplicate');
         throw new DocumentUploadDuplicateBlockedException(blocked);
       }
     }
@@ -578,6 +587,7 @@ export class DocumentExtractionService implements OnModuleInit {
       mimeType: identified.detectedMime,
     }).catch(async (error) => {
       if (error instanceof DocumentMalwareDetectedError) {
+        this.observability.recordUploadRejected('malware');
         await this.prisma.vehicleDocumentExtraction.update({
           where: { id: record.id },
           data: {
@@ -599,6 +609,7 @@ export class DocumentExtractionService implements OnModuleInit {
         });
       }
       if (error instanceof DocumentMalwareScanFailedError) {
+        this.observability.recordUploadRejected('malware');
         await this.prisma.vehicleDocumentExtraction.update({
           where: { id: record.id },
           data: {
@@ -655,6 +666,7 @@ export class DocumentExtractionService implements OnModuleInit {
     });
 
     if (!enqueueResult.ok) {
+      this.observability.recordUploadRejected('queue');
       const failed = await this.markEnqueueFailure(record.id, {
         errorPhase: 'QUEUE',
         errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.QUEUE_UNAVAILABLE,
@@ -674,6 +686,10 @@ export class DocumentExtractionService implements OnModuleInit {
         errorMessage: null,
         nextRetryAt: null,
       },
+    });
+    this.observability.recordUploadAccepted({
+      scope: resolvedVehicleId ? 'vehicle' : 'org',
+      sourceSurface: input.sourceSurface ?? input.uploadSource ?? 'org_inbox',
     });
     return queued;
   }
@@ -1466,6 +1482,9 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const updated = await this.getForVehicle(vehicleId, extractionId);
     await this.archiveIndexService.upsertForRecord(updated);
+    if (extractionStatus === 'PARTIALLY_APPLIED') {
+      this.observability.recordPartialApply('partial_lifecycle');
+    }
     return applyResult.detail ? { ...updated, applyResult: applyResult.detail } : updated;
   }
 
@@ -2410,4 +2429,12 @@ export class DocumentExtractionService implements OnModuleInit {
 
     return out;
   }
+}
+
+function mapDuplicateStatusToMetric(
+  status: string,
+): 'unique' | 'business_duplicate' | 'reupload_allowed' {
+  if (status === 'POSSIBLE_BUSINESS_DUPLICATE') return 'business_duplicate';
+  if (status === 'REUPLOAD_ALLOWED') return 'reupload_allowed';
+  return 'unique';
 }

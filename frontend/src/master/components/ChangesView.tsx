@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-metrics-grafana-2026-07-18',
+    version: '4.9.657',
+    title: 'V4.9.657 — Document Intake V2 Metrics & Grafana',
+    summary: [
+      '17 neue Prometheus-Counter fuer Document Intake V2 (Upload, OCR, Klassifikation, Extraktion, Entity-Matching, Action-Plan, Follow-up, Archive, Recovery).',
+      'Grafana-Dashboard synqdrive-document-intake-v2 mit 10 Ops-Bereichen (Upload Funnel, OCR, Klassifikation, Required Fields, Entity Confidence, Actions, Partial Apply, Duplicates, Queue, Follow-up).',
+      'Alert-Gruppe synqdrive_document_intake_v2; OCR-Latenz via observeStage; keine Dokument-IDs oder Kennzeichen als Labels.',
+    ],
+    reason: 'Operative Transparenz und Alerting fuer den Document-Intake-V2-Flow ohne PII in Metriken.',
+    previousBehavior: 'Nur Legacy synqdrive_document_extraction_* Metriken in synqdrive-ops.json; kein dediziertes Intake-V2-Dashboard.',
+    details: 'backend/src/modules/document-extraction/observability/document-intake-v2-prometheus.metrics.ts, TripMetricsService, DocumentExtractionObservabilityService, Instrumentierung in Processor/Service/Orchestrator/Follow-up/Archive/Recovery. docs/architecture/document-intake-v2-grafana-prometheus-ops.md',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
     id: 'document-intake-v2-frontend-e2e-tests-2026-07-18',
     version: '4.9.656',
     title: 'V4.9.656 — Document Intake V2 Frontend & E2E Test Package',

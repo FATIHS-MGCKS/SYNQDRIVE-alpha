@@ -9,12 +9,15 @@ import {
   DOCUMENT_EXECUTOR_ACTION_TYPES,
 } from '../document-action.types';
 import type { DocumentActionExecutor } from '../document-action-executor.interface';
+import { DocumentExtractionObservabilityService } from '../document-extraction-observability.service';
 
 @Injectable()
 export class ArchiveDocumentActionExecutor implements DocumentActionExecutor<
   typeof DOCUMENT_EXECUTOR_ACTION_TYPES.ARCHIVE_DOCUMENT
 > {
   readonly actionType = DOCUMENT_EXECUTOR_ACTION_TYPES.ARCHIVE_DOCUMENT;
+
+  constructor(private readonly observability: DocumentExtractionObservabilityService) {}
 
   async execute(context: import('../document-action-executor.interface').DocumentActionExecutionContext) {
     if (context.priorResult?.status === DOCUMENT_ACTION_EXECUTION_STATUSES.SUCCEEDED) {
@@ -28,6 +31,7 @@ export class ArchiveDocumentActionExecutor implements DocumentActionExecutor<
     const payload = buildArchiveApplyPayload(context.confirmedData);
 
     if (!gate.canArchive || !payload) {
+      this.observability.recordArchive('skipped');
       return {
         status: DOCUMENT_ACTION_EXECUTION_STATUSES.FAILED,
         errorCode: 'ARCHIVE_GATE_BLOCKED',
@@ -39,6 +43,7 @@ export class ArchiveDocumentActionExecutor implements DocumentActionExecutor<
       };
     }
 
+    this.observability.recordArchive('applied');
     return {
       status: DOCUMENT_ACTION_EXECUTION_STATUSES.SUCCEEDED,
       resultEntityType: 'document_extraction',

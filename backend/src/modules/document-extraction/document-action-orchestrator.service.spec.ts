@@ -34,6 +34,13 @@ import {
 import { DocumentActionPlanError } from './document-action.errors';
 import { readDocumentActionPlanState } from './document-action-plan.store';
 
+const archiveObservability = { recordArchive: jest.fn() } as any;
+const observability = {
+  recordActionPlan: jest.fn(),
+  recordActionExecution: jest.fn(),
+  recordPartialApply: jest.fn(),
+} as any;
+
 describe('DocumentActionOrchestratorService', () => {
   const prisma = {
     vehicleDocumentExtraction: {
@@ -50,13 +57,13 @@ describe('DocumentActionOrchestratorService', () => {
   };
 
   const registry = new DocumentActionExecutorRegistry();
-  registry.register(new ArchiveDocumentActionExecutor());
+  registry.register(new ArchiveDocumentActionExecutor(archiveObservability));
   registry.register(new LinkEntityDocumentActionExecutor());
 
   const orchestrator = new DocumentActionOrchestratorService(
     prisma as any,
     registry,
-    new ArchiveDocumentActionExecutor(),
+    new ArchiveDocumentActionExecutor(archiveObservability),
     new LinkEntityDocumentActionExecutor(),
     new CreateFineDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
     new CreateInvoiceDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
@@ -80,6 +87,7 @@ describe('DocumentActionOrchestratorService', () => {
     new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
     new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
     { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
+    observability,
   );
 
   const baseInput = {

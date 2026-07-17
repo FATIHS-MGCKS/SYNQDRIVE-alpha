@@ -32,6 +32,7 @@ import {
   type PublicDocumentFollowUpSuggestionDto,
   toPublicFollowUpSuggestion,
 } from './document-follow-up-suggestion.types';
+import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
 
 type ExtractionRecord = {
   id: string;
@@ -54,6 +55,7 @@ export class DocumentFollowUpSuggestionService {
     private readonly schemaRegistry: DocumentSchemaRegistryService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
+    private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
   listForRecord(record: ExtractionRecord): PublicDocumentFollowUpSuggestionDto[] {
@@ -106,6 +108,15 @@ export class DocumentFollowUpSuggestionService {
       where: { id: input.record.id },
       data: { plausibility: plausibility as Prisma.InputJsonValue },
     });
+    for (const suggestion of merged) {
+      const existed = existing.some((row) => row.suggestionId === suggestion.suggestionId);
+      if (!existed && suggestion.status === DOCUMENT_FOLLOW_UP_SUGGESTION_STATUSES.SUGGESTED) {
+        this.observability.recordFollowUp({
+          followUpType: suggestion.type,
+          outcome: 'suggested',
+        });
+      }
+    }
     return merged;
   }
 
@@ -159,6 +170,14 @@ export class DocumentFollowUpSuggestionService {
       where: { id: input.record.id },
       data: { plausibility: plausibility as Prisma.InputJsonValue },
     });
+    this.observability.recordFollowUp({
+      followUpType: updated.type,
+      outcome: 'accepted',
+    });
+    this.observability.recordFollowUp({
+      followUpType: updated.type,
+      outcome: 'task_created',
+    });
     return toPublicFollowUpSuggestion(updated);
   }
 
@@ -193,6 +212,10 @@ export class DocumentFollowUpSuggestionService {
     await this.prisma.vehicleDocumentExtraction.update({
       where: { id: input.record.id },
       data: { plausibility: plausibility as Prisma.InputJsonValue },
+    });
+    this.observability.recordFollowUp({
+      followUpType: updated.type,
+      outcome: 'dismissed',
     });
     return toPublicFollowUpSuggestion(updated);
   }

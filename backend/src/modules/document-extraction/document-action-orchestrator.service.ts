@@ -61,6 +61,7 @@ import {
 } from './document-action.errors';
 import type { ApplyResult } from './document-extraction-apply.service';
 import { isArchiveDocumentType } from './document-archive-extraction.rules';
+import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
 import { isFineDocumentType, readFineReportNumber } from './document-fine-extraction.rules';
 import {
   isInvoiceDocumentType,
@@ -129,6 +130,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     private readonly applyBrakeMeasurementExecutor: ApplyBrakeMeasurementDocumentActionExecutor,
     private readonly applyBatteryMeasurementExecutor: ApplyBatteryMeasurementDocumentActionExecutor,
     private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
+    private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
   onModuleInit(): void {
@@ -163,7 +165,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
 
   async buildPreviewPlan(input: ExecuteDocumentActionPlanInput): Promise<DocumentActionPlan> {
     const planContext = await this.buildPlanContext(input);
-    return buildDocumentActionPlan({
+    const plan = buildDocumentActionPlan({
       extractionId: input.extractionId,
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -173,6 +175,11 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       confirmedById: input.confirmedById,
       planContext,
     });
+    this.observability.recordActionPlan({
+      documentType: input.documentType,
+      outcome: 'preview',
+    });
+    return plan;
   }
 
   async prepareConfirmedPlan(input: ExecuteDocumentActionPlanInput): Promise<DocumentActionPlan> {
@@ -212,6 +219,11 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       record,
       plan,
       confirmedData: resolveConfirmedValuesForActionPlan(input.confirmedData),
+    });
+
+    this.observability.recordActionPlan({
+      documentType: input.documentType,
+      outcome: 'ready',
     });
 
     return plan;
@@ -258,6 +270,11 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       lifecycle,
       DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLYING,
     );
+
+    this.observability.recordActionPlan({
+      documentType: input.documentType,
+      outcome: 'executing',
+    });
 
     const applyingPlausibility = storeDocumentActionPlanApplyLifecycle(
       storeDocumentActionPlan(input.plausibility, {
@@ -311,6 +328,8 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         plausibility: plausibilityWithExecution as Prisma.InputJsonValue,
       },
     });
+
+    this.recordApplyOutcomeMetrics(input.documentType, outcome.lifecycleStatus);
 
     if (outcome.lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED) {
       const failedRequired = execution.actions.find(
@@ -407,6 +426,8 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       },
     });
 
+    this.recordApplyOutcomeMetrics(input.documentType, outcome.lifecycleStatus);
+
     if (outcome.lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED) {
       const failedRequired = execution.actions.find(
         (row) =>
@@ -497,11 +518,19 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         prior.status === DOCUMENT_ACTION_EXECUTION_STATUSES.SUCCEEDED
       ) {
         records.push(prior);
+        this.observability.recordActionExecution({
+          semanticAction: action.semanticAction,
+          outcome: 'succeeded',
+        });
         continue;
       }
 
       if (prior?.idempotencyKey === idempotencyKey && prior.status === DOCUMENT_ACTION_EXECUTION_STATUSES.SKIPPED) {
         records.push(prior);
+        this.observability.recordActionExecution({
+          semanticAction: action.semanticAction,
+          outcome: 'skipped',
+        });
         continue;
       }
 
@@ -516,6 +545,10 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
           output: { disabledByUser: true },
           completedAt: new Date().toISOString(),
         });
+        this.observability.recordActionExecution({
+          semanticAction: action.semanticAction,
+          outcome: 'skipped',
+        });
         continue;
       }
 
@@ -528,6 +561,10 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
           status: DOCUMENT_ACTION_EXECUTION_STATUSES.SKIPPED,
           output: { informational: true },
           completedAt: new Date().toISOString(),
+        });
+        this.observability.recordActionExecution({
+          semanticAction: action.semanticAction,
+          outcome: 'skipped',
         });
         continue;
       }
@@ -542,6 +579,10 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
             status: DOCUMENT_ACTION_EXECUTION_STATUSES.SKIPPED,
             output: { reason: 'EXECUTOR_NOT_REGISTERED' },
             completedAt: new Date().toISOString(),
+          });
+          this.observability.recordActionExecution({
+            semanticAction: action.semanticAction,
+            outcome: 'skipped',
           });
           continue;
         }
@@ -558,6 +599,11 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
           completedAt: new Date().toISOString(),
         };
         records.push(record);
+        this.observability.recordActionExecution({
+          semanticAction: action.semanticAction,
+          outcome: 'failed',
+          errorCode: record.errorCode,
+        });
         failed = true;
         break;
       }
@@ -595,6 +641,27 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         };
         records.push(record);
 
+        if (result.status === DOCUMENT_ACTION_EXECUTION_STATUSES.SUCCEEDED) {
+          this.observability.recordActionExecution({
+            semanticAction: action.semanticAction,
+            outcome: 'succeeded',
+          });
+        } else if (result.status === DOCUMENT_ACTION_EXECUTION_STATUSES.SKIPPED) {
+          this.observability.recordActionExecution({
+            semanticAction: action.semanticAction,
+            outcome: 'skipped',
+          });
+        } else {
+          this.observability.recordActionExecution({
+            semanticAction: action.semanticAction,
+            outcome: 'failed',
+            errorCode: result.errorCode ?? DOCUMENT_ACTION_ERROR_CODES.TECHNICAL_FAILURE,
+          });
+          if (action.requirement === DOCUMENT_ACTION_REQUIREMENTS.OPTIONAL) {
+            this.observability.recordPartialApply('optional_failed');
+          }
+        }
+
         if (
           result.status === DOCUMENT_ACTION_EXECUTION_STATUSES.FAILED &&
           action.requirement === DOCUMENT_ACTION_REQUIREMENTS.REQUIRED
@@ -617,6 +684,14 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
           completedAt: new Date().toISOString(),
         };
         records.push(record);
+        this.observability.recordActionExecution({
+          semanticAction: action.semanticAction,
+          outcome: 'failed',
+          errorCode: record.errorCode ?? DOCUMENT_ACTION_ERROR_CODES.TECHNICAL_FAILURE,
+        });
+        if (action.requirement === DOCUMENT_ACTION_REQUIREMENTS.OPTIONAL) {
+          this.observability.recordPartialApply('optional_failed');
+        }
 
         if (action.requirement === DOCUMENT_ACTION_REQUIREMENTS.REQUIRED) {
           failed = true;
@@ -655,6 +730,26 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         row.status === DOCUMENT_ACTION_EXECUTION_STATUSES.FAILED,
     );
     return optionalFailed ? 'PARTIALLY_COMPLETED' : 'COMPLETED';
+  }
+
+  private recordApplyOutcomeMetrics(
+    documentType: string,
+    lifecycleStatus: DocumentActionPlanApplyLifecycle['status'],
+  ): void {
+    this.observability.recordActionPlan({
+      documentType,
+      outcome:
+        lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED
+          ? 'failed'
+          : 'completed',
+    });
+    if (lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.PARTIALLY_APPLIED) {
+      this.observability.recordPartialApply('partial_lifecycle');
+    } else if (
+      lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLIED_WITH_WARNINGS
+    ) {
+      this.observability.recordPartialApply('applied_with_warnings');
+    }
   }
 
   private toApplyResult(plan: DocumentActionPlan, execution: DocumentActionPlanExecution): ApplyResult {
