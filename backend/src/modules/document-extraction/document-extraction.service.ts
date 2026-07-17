@@ -55,6 +55,11 @@ import {
   appendExtractionActionAudit,
   readContentCache,
 } from './document-content-cache.util';
+import {
+  assertApplyNotBlockedByPlausibility,
+  hasUnresolvedPlausibilityBlocker,
+} from './document-extraction-plausibility-blocker.util';
+import { buildFreshConfirmPlausibilityPayload } from './document-extraction-plausibility-payload.util';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import {
   buildDocumentExtractionPaginatedResult,
@@ -63,6 +68,18 @@ import {
 } from './document-extraction-query.util';
 import { sanitizeDownloadFileName } from './document-extraction-download.util';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
+import type {
+  DocumentApplySafetyResult,
+  PublicDocumentApplySafetyDto,
+} from './document-apply-safety.types';
+import type { DocumentApplyTypedResult } from './document-extraction-apply-result.types';
+import {
+  createArchiveOnlyApplySuccess,
+  isProvenApplySuccess,
+  readProvenApplyFromAudit,
+  toProvenApplyAuditDetails,
+} from './document-extraction-apply-result.util';
 
 /** Extra confirmedData keys (beyond schema) that the apply layer understands. */
 const APPLY_ALIAS_KEYS = new Set<string>([
@@ -146,6 +163,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly applyService: DocumentExtractionApplyService,
     private readonly plausibilityService: DocumentExtractionPlausibilityService,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly applySafetyPolicy: DocumentApplySafetyPolicy,
   ) {}
 
   onModuleInit(): void {
@@ -334,11 +352,13 @@ export class DocumentExtractionService implements OnModuleInit {
   }
 
   toPublicExtraction<T extends Parameters<typeof toPublicDocumentExtraction>[0]>(record: T) {
-    return toPublicDocumentExtraction(record);
+    const applySafety = this.resolveApplySafety(record);
+    return toPublicDocumentExtraction(record, { applySafety });
   }
 
   toPublicSummary<T extends Parameters<typeof toPublicDocumentExtractionSummary>[0]>(record: T) {
-    return toPublicDocumentExtractionSummary(record);
+    const applySafety = this.resolveApplySafety(record);
+    return toPublicDocumentExtractionSummary(record, { applySafety });
   }
 
   async getPublicForVehicle(vehicleId: string, extractionId: string) {
@@ -679,30 +699,53 @@ export class DocumentExtractionService implements OnModuleInit {
       applyDocumentType,
       confirmedData,
     );
-    if (plausibility.overallStatus === 'BLOCKER') {
-      throw new BadRequestException({
-        message: 'Plausibility checks failed — cannot apply data with BLOCKER status',
-        plausibility,
-      });
-    }
 
-    const sourceFileUrl =
-      existing.sourceFileUrl ??
-      (existing.objectKey ? `storage://${existing.objectKey}` : null);
-
-    const plausibilityPayload = {
-      ...(typeof existing.plausibility === 'object' &&
-      existing.plausibility &&
-      !Array.isArray(existing.plausibility)
-        ? (existing.plausibility as Record<string, unknown>)
-        : {}),
-      ...(plausibility as unknown as Record<string, unknown>),
-    };
+    const plausibilityPayload = buildFreshConfirmPlausibilityPayload(
+      existing.plausibility,
+      plausibility,
+    );
     const plausibilityWithConfirmAudit = appendExtractionActionAudit(plausibilityPayload, {
       action: 'confirm',
       at: new Date().toISOString(),
       userId: userId ?? null,
     });
+
+    if (hasUnresolvedPlausibilityBlocker(plausibility)) {
+      const blockerSave = await this.prisma.vehicleDocumentExtraction.updateMany({
+        where: { id: extractionId, status: 'READY_FOR_REVIEW' },
+        data: {
+          confirmedData: confirmedData as Prisma.InputJsonValue,
+          processingStage: 'REVIEW',
+          confirmedById: userId ?? null,
+          plausibility: plausibilityWithConfirmAudit as Prisma.InputJsonValue,
+          errorPhase: null,
+          errorCode: null,
+          errorMessage: null,
+        },
+      });
+      if (blockerSave.count === 0) {
+        const latest = await this.getForVehicle(vehicleId, extractionId);
+        if (latest.status === 'APPLIED') return latest;
+        throw new BadRequestException(
+          `Extraction must be READY_FOR_REVIEW before confirmation (current: ${latest.status})`,
+        );
+      }
+      return this.getForVehicle(vehicleId, extractionId);
+    }
+
+    const applySafety = this.applySafetyPolicy.evaluate({
+      documentType: applyDocumentType,
+      confirmedData,
+      plausibility,
+      vehicleId,
+      organizationId: existing.organizationId ?? null,
+      extractionId,
+    });
+    this.assertConfirmAllowedByApplySafety(applySafety);
+
+    const sourceFileUrl =
+      existing.sourceFileUrl ??
+      (existing.objectKey ? `storage://${existing.objectKey}` : null);
 
     const confirmUpdate = await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'READY_FOR_REVIEW' },
@@ -725,42 +768,66 @@ export class DocumentExtractionService implements OnModuleInit {
       );
     }
 
-    let applyResult: Awaited<ReturnType<DocumentExtractionApplyService['apply']>>;
-    try {
-      applyResult = await this.applyService.apply({
-        extractionId,
-        vehicleId,
-        documentType: applyDocumentType,
-        sourceFileUrl,
-        confirmedData,
-      });
+    let applyResult: DocumentApplyTypedResult;
+    if (applySafety.decision === 'ARCHIVE_ONLY') {
+      applyResult = createArchiveOnlyApplySuccess();
       this.observability.recordApply('success');
       this.observability.logEvent({
         extractionId,
         stage: 'APPLY',
         status: 'completed',
       });
-    } catch (err) {
-      const message = (err as Error).message?.slice(0, 500) ?? 'Apply failed';
-      this.observability.recordApply('error');
+    } else {
+      assertApplyNotBlockedByPlausibility(plausibility);
+      try {
+        applyResult = await this.applyService.apply({
+          extractionId,
+          vehicleId,
+          documentType: applyDocumentType,
+          sourceFileUrl,
+          confirmedData,
+        });
+      } catch (err) {
+        const message = (err as Error).message?.slice(0, 500) ?? 'Apply failed';
+        this.observability.recordApply('error');
+        this.observability.logEvent({
+          extractionId,
+          stage: 'APPLY',
+          status: 'failed',
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
+        });
+        await this.markApplyFailed(extractionId, message);
+        this.logger.error(`Apply failed for extraction ${extractionId}: ${message}`);
+        throw new BadRequestException(`Failed to apply confirmed data: ${message}`);
+      }
+
+      if (!isProvenApplySuccess(applyResult)) {
+        const message =
+          applyResult.errors.join('; ') || 'Downstream apply produced no provable result';
+        this.observability.recordApply('error');
+        this.observability.logEvent({
+          extractionId,
+          stage: 'APPLY',
+          status: 'failed',
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
+        });
+        await this.markApplyFailed(extractionId, message);
+        this.logger.error(`Apply no-op for extraction ${extractionId}: ${message}`);
+        throw new BadRequestException({
+          message: 'Failed to apply confirmed data — no downstream entity created',
+          applyResult,
+        });
+      }
+
+      this.observability.recordApply('success');
       this.observability.logEvent({
         extractionId,
         stage: 'APPLY',
-        status: 'failed',
-        errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
+        status: 'completed',
       });
-      await this.prisma.vehicleDocumentExtraction.update({
-        where: { id: extractionId },
-        data: {
-          errorPhase: 'APPLY',
-          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
-          errorMessage: message,
-        },
-      });
-      this.logger.error(`Apply failed for extraction ${extractionId}: ${message}`);
-      throw new BadRequestException(`Failed to apply confirmed data: ${message}`);
     }
 
+    const provenApply = toProvenApplyAuditDetails(applyResult);
     const appliedUpdate = await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'CONFIRMED' },
       data: {
@@ -776,6 +843,7 @@ export class DocumentExtractionService implements OnModuleInit {
           action: 'apply',
           at: new Date().toISOString(),
           userId: userId ?? null,
+          details: (provenApply ?? undefined) as unknown as Record<string, unknown> | undefined,
         }) as Prisma.InputJsonValue,
         ...(applyResult.serviceEventId ? { serviceEventId: applyResult.serviceEventId } : {}),
       },
@@ -801,41 +869,69 @@ export class DocumentExtractionService implements OnModuleInit {
       return false;
     }
 
+    const plausibility = await this.runConfirmPlausibility(
+      record.vehicleId,
+      applyDocumentType,
+      record.confirmedData as Record<string, unknown>,
+    );
+    if (hasUnresolvedPlausibilityBlocker(plausibility)) {
+      return false;
+    }
+
+    const applySafety = this.applySafetyPolicy.evaluate({
+      documentType: applyDocumentType,
+      confirmedData: record.confirmedData as Record<string, unknown>,
+      plausibility,
+      vehicleId: record.vehicleId,
+      organizationId: record.organizationId ?? null,
+      extractionId,
+    });
+    if (!applySafety.allowsDownstreamApply && applySafety.decision !== 'ARCHIVE_ONLY') {
+      return false;
+    }
+
+    const provenFromAudit = readProvenApplyFromAudit(record.plausibility);
+    if (provenFromAudit) {
+      await this.finalizeProvenApply(extractionId, provenFromAudit, record.serviceEventId);
+      return true;
+    }
+
     const sourceFileUrl =
       record.sourceFileUrl ??
       (record.objectKey ? `storage://${record.objectKey}` : null);
 
     try {
-      const applyResult = await this.applyService.apply({
+      let applyResult: DocumentApplyTypedResult;
+      if (applySafety.decision === 'ARCHIVE_ONLY') {
+        applyResult = createArchiveOnlyApplySuccess();
+      } else {
+        assertApplyNotBlockedByPlausibility(plausibility);
+        applyResult = await this.applyService.apply({
+          extractionId,
+          vehicleId: record.vehicleId,
+          documentType: applyDocumentType,
+          sourceFileUrl,
+          confirmedData: record.confirmedData as Record<string, unknown>,
+        });
+        if (!isProvenApplySuccess(applyResult)) {
+          const message =
+            applyResult.errors.join('; ') || 'Downstream apply produced no provable result';
+          await this.markApplyFailed(extractionId, message);
+          return false;
+        }
+      }
+
+      await this.finalizeProvenApply(
         extractionId,
-        vehicleId: record.vehicleId,
-        documentType: applyDocumentType,
-        sourceFileUrl,
-        confirmedData: record.confirmedData as Record<string, unknown>,
-      });
-      await this.prisma.vehicleDocumentExtraction.updateMany({
-        where: { id: extractionId, status: 'CONFIRMED' },
-        data: {
-          status: 'APPLIED',
-          processingStage: 'APPLY',
-          appliedAt: new Date(),
-          processingCompletedAt: new Date(),
-          errorPhase: null,
-          errorCode: null,
-          errorMessage: null,
-          ...(applyResult.serviceEventId ? { serviceEventId: applyResult.serviceEventId } : {}),
-        },
-      });
+        toProvenApplyAuditDetails(applyResult)!,
+        applyResult.serviceEventId ?? record.serviceEventId,
+      );
       return true;
     } catch (err) {
-      await this.prisma.vehicleDocumentExtraction.update({
-        where: { id: extractionId },
-        data: {
-          errorPhase: 'APPLY',
-          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
-          errorMessage: ((err as Error).message ?? 'Apply failed').slice(0, 500),
-        },
-      });
+      await this.markApplyFailed(
+        extractionId,
+        ((err as Error).message ?? 'Apply failed').slice(0, 500),
+      );
       return false;
     }
   }
@@ -883,14 +979,10 @@ export class DocumentExtractionService implements OnModuleInit {
         applyDocumentType,
         extractedFields,
       );
-      plausibilityPayload = {
-        ...(typeof record.plausibility === 'object' &&
-        record.plausibility &&
-        !Array.isArray(record.plausibility)
-          ? (record.plausibility as Record<string, unknown>)
-          : {}),
-        ...(plausibility as unknown as Record<string, unknown>),
-      } as Prisma.JsonValue;
+      plausibilityPayload = buildFreshConfirmPlausibilityPayload(
+        record.plausibility,
+        plausibility,
+      ) as Prisma.JsonValue;
     }
 
     await this.prisma.vehicleDocumentExtraction.update({
@@ -1047,6 +1139,107 @@ export class DocumentExtractionService implements OnModuleInit {
         processingCompletedAt: completedAt,
         processedAt: completedAt,
       },
+    });
+  }
+
+  private async markApplyFailed(extractionId: string, message: string): Promise<void> {
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: extractionId },
+      data: {
+        status: 'FAILED',
+        processingStage: 'APPLY',
+        errorPhase: 'APPLY',
+        errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
+        errorMessage: message.slice(0, 500),
+      },
+    });
+  }
+
+  private async finalizeProvenApply(
+    extractionId: string,
+    provenApply: NonNullable<ReturnType<typeof toProvenApplyAuditDetails>>,
+    serviceEventId?: string | null,
+  ): Promise<void> {
+    const record = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: extractionId },
+      select: { plausibility: true },
+    });
+    const plausibilityWithApplyAudit = appendExtractionActionAudit(record?.plausibility, {
+      action: 'apply',
+      at: new Date().toISOString(),
+      userId: null,
+      details: provenApply as unknown as Record<string, unknown>,
+    });
+
+    await this.prisma.vehicleDocumentExtraction.updateMany({
+      where: { id: extractionId, status: 'CONFIRMED' },
+      data: {
+        status: 'APPLIED',
+        processingStage: 'APPLY',
+        appliedAt: new Date(),
+        processingCompletedAt: new Date(),
+        errorPhase: null,
+        errorCode: null,
+        errorMessage: null,
+        plausibility: plausibilityWithApplyAudit as Prisma.InputJsonValue,
+        ...(serviceEventId ? { serviceEventId } : {}),
+      },
+    });
+  }
+
+  private resolveApplySafety(record: {
+    id: string;
+    vehicleId: string;
+    organizationId?: string | null;
+    status: string;
+    confirmedData?: unknown;
+    extractedData?: unknown;
+    plausibility?: unknown;
+    effectiveDocumentType?: DocumentExtractionType | null;
+    documentType?: DocumentExtractionType | null;
+  }): PublicDocumentApplySafetyDto | null {
+    if (record.status !== 'READY_FOR_REVIEW' && record.status !== 'CONFIRMED') {
+      return null;
+    }
+    const documentType = resolveEffectiveDocumentType(record);
+    if (!documentType || !isApplyDocumentType(documentType)) {
+      return null;
+    }
+    const confirmedData =
+      record.confirmedData != null && typeof record.confirmedData === 'object' && !Array.isArray(record.confirmedData)
+        ? (record.confirmedData as Record<string, unknown>)
+        : record.extractedData != null && typeof record.extractedData === 'object' && !Array.isArray(record.extractedData)
+          ? (record.extractedData as Record<string, unknown>)
+          : {};
+    const result = this.applySafetyPolicy.evaluate({
+      documentType,
+      confirmedData,
+      plausibility: record.plausibility as Parameters<DocumentApplySafetyPolicy['evaluate']>[0]['plausibility'],
+      vehicleId: record.vehicleId,
+      organizationId: record.organizationId ?? null,
+      extractionId: record.id,
+    });
+    return this.toPublicApplySafety(result);
+  }
+
+  private toPublicApplySafety(result: DocumentApplySafetyResult): PublicDocumentApplySafetyDto {
+    return {
+      decision: result.decision,
+      reasons: result.reasons,
+      missingFields: result.missingFields,
+      allowsDownstreamApply: result.allowsDownstreamApply,
+      implementationStatus: result.implementationStatus,
+      downstreamIdempotency: result.downstreamIdempotency,
+    };
+  }
+
+  private assertConfirmAllowedByApplySafety(result: DocumentApplySafetyResult): void {
+    if (result.decision === 'APPLY_ALLOWED' || result.decision === 'ARCHIVE_ONLY') {
+      return;
+    }
+    throw new BadRequestException({
+      message: 'Apply safety policy rejected confirmation',
+      applySafety: this.toPublicApplySafety(result),
     });
   }
 

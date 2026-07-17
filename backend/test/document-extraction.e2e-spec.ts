@@ -65,7 +65,13 @@ describe('Document extraction HTTP (e2e)', () => {
   };
 
   const healthService = {
-    getHealth: jest.fn().mockResolvedValue({ status: 'ok', queueReachable: true }),
+    getHealth: jest.fn().mockResolvedValue({
+      status: 'ok',
+      readiness: 'ready',
+      queueReachable: true,
+      processRole: 'all',
+      workerConsumerPresent: true,
+    }),
   };
 
   beforeAll(async () => {

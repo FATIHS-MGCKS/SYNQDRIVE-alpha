@@ -1,4 +1,5 @@
 import { DocumentExtractionStatus, DocumentExtractionType } from '@prisma/client';
+import type { DocumentApplySafetyDecision } from './document-apply-safety.types';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
 
 export type DocumentExtractionAction =
@@ -10,12 +11,15 @@ export type DocumentExtractionAction =
   | 'download'
   | 'cancel';
 
-export function getAllowedDocumentExtractionActions(record: {
-  status: DocumentExtractionStatus;
-  objectKey?: string | null;
-  effectiveDocumentType?: DocumentExtractionType | null;
-  documentType?: DocumentExtractionType | null;
-}): DocumentExtractionAction[] {
+export function getAllowedDocumentExtractionActions(
+  record: {
+    status: DocumentExtractionStatus;
+    objectKey?: string | null;
+    effectiveDocumentType?: DocumentExtractionType | null;
+    documentType?: DocumentExtractionType | null;
+  },
+  options?: { applySafety?: DocumentApplySafetyDecision | null },
+): DocumentExtractionAction[] {
   const actions: DocumentExtractionAction[] = [];
   const hasFile = Boolean(record.objectKey);
   const effectiveType = resolveEffectiveDocumentType(record);
