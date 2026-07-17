@@ -736,6 +736,42 @@ Abgedeckt: voller Erfolg, Cross-Tenant, Doppelrequest, Payload-Mismatch, Evidenc
 
 ---
 
+## Brake Reference Spec Provenance (Prompt 10) — 2026-07-17
+
+### Ziel
+
+P0-Fix: `frontRotorWidth`/`rearRotorWidth` dürfen nicht ungeprüft als Scheiben-Nominaldicke dienen. Nominal Thickness, Quelle, Confidence und Bestätigung sind revisionssicher.
+
+### Schema (Migration `20260717160000_brake_reference_spec_provenance`)
+
+- **Nominalfelder:** `frontPadNominalThicknessMm`, `rearPadNominalThicknessMm`, `frontDiscNominalThicknessMm`, `rearDiscNominalThicknessMm`
+- **Evidence-Kategorie je Komponente:** `BrakeReferenceSpecEvidenceCategory` (`MANUFACTURER_CONFIRMED` … `LEGACY_UNVERIFIED`)
+- **Provenance:** `sourceUrl`, `sourcePartNumber`, `sourceProvider`, `sourceRetrievedAt`, `sourceConfidence`, `userConfirmedAt`, `userConfirmedBy`, `semanticMappingVersion`
+- **Legacy:** `frontRotorWidth`/`rearRotorWidth` bleiben erhalten, werden als `LEGACY_UNVERIFIED` markiert
+
+### Domain (`brake-reference-spec.domain.ts`)
+
+| Regel | Verhalten |
+|-------|-----------|
+| Source Priority | `MANUFACTURER_CONFIRMED` > `USER_CONFIRMED` > `PART_CATALOG_CONFIRMED` > … > `LEGACY_UNVERIFIED` |
+| Anchor-Eligibility | `AI_ESTIMATED`, `LEGACY_UNVERIFIED`, `UNKNOWN` → kein Spec-Fallback-Anchor |
+| Plausibilität | Pads 2–25 mm, Discs 15–40 mm (getrennte Bereiche) |
+| Legacy Rotor Width | Adapter markiert `LEGACY_UNVERIFIED`, kein Disc-Nominal-Backfill |
+| AI | niemals auto-bestätigt; Disc-Nominal aus AI wird abgelehnt |
+
+### Runtime
+
+`resolveAnchorEligibleThicknessForInstallation()` in `BrakeHealthService`, `BrakeServiceApplicationService` und Audit-Loader — nur bestätigte Nominaldicke als Anchor.
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-reference-spec|register-brake-baseline|brake-registration|brake-lifecycle|brake-service-application|brake-baseline-candidate-audit|brake-health.spec'
+# 139 passed
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -748,7 +784,8 @@ Abgedeckt: voller Erfolg, Cross-Tenant, Doppelrequest, Payload-Mismatch, Evidenc
 | 6 | `39c7e176226328be215dc1046f6e34fa56460d42` | `feat(brakes): add brake component installation lifecycle` |
 | 7 | `7617ba59b296ef2db27b413f56534fea7ce2f9f4` | `feat(brakes): centralize brake component lifecycle mutations` |
 | 8 | `43fbb3e6` | `fix(brakes): enforce component-specific brake service scope` |
-| 9 | *(dieser Commit)* | `fix(brakes): apply brake service lifecycle atomically` |
+| 9 | `8ef69289` | `fix(brakes): apply brake service lifecycle atomically` |
+| 10 | *(dieser Commit)* | `feat(brakes): add brake reference spec provenance and thickness semantics` |
 
 ---
 

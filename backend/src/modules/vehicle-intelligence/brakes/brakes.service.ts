@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { VehicleBrakeReferenceSpec, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { BrakeReferenceSpecService, type CreateBrakeReferenceSpecInput } from './brake-reference-spec.service';
 
 @Injectable()
 export class BrakesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly brakeReferenceSpec: BrakeReferenceSpecService,
+  ) {}
 
   async findByVehicle(vehicleId: string): Promise<VehicleBrakeReferenceSpec[]> {
     return this.prisma.vehicleBrakeReferenceSpec.findMany({
@@ -15,11 +19,10 @@ export class BrakesService {
 
   async create(
     vehicleId: string,
-    data: Omit<Prisma.VehicleBrakeReferenceSpecCreateInput, 'vehicle'>,
+    data: CreateBrakeReferenceSpecInput,
   ): Promise<VehicleBrakeReferenceSpec> {
-    return this.prisma.vehicleBrakeReferenceSpec.create({
-      data: { ...data, vehicle: { connect: { id: vehicleId } } },
-    });
+    const created = await this.brakeReferenceSpec.createForVehicle(vehicleId, data);
+    return created.spec;
   }
 
   async update(

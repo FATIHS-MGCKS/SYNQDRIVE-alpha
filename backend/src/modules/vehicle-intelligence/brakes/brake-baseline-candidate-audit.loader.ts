@@ -10,7 +10,10 @@ import {
   inferBackfillBrakeCondition,
   isRegistrationBrakeSpecSource,
 } from './brake-registration-backfill.service';
-import { applyNewBrakeDefaults, normalizeRegistrationBrakeCondition } from './register-brake-baseline';
+import {
+  isAnchorEligibleCategory,
+  resolveNominalThickness,
+} from './brake-reference-spec.domain';
 
 const BRAKE_DTC_PREFIXES = ['C0', 'C1', 'B1'];
 
@@ -117,9 +120,9 @@ function snapshotComponent(
     case 'REAR_PADS':
       return num(snapshot.rearPadMm as string) ?? num(snapshot.rearPadThickness as string);
     case 'FRONT_DISCS':
-      return num(snapshot.frontDiscMm as string) ?? num(snapshot.frontRotorWidth as string);
+      return num(snapshot.frontDiscMm as string);
     case 'REAR_DISCS':
-      return num(snapshot.rearDiscMm as string) ?? num(snapshot.rearRotorWidth as string);
+      return num(snapshot.rearDiscMm as string);
     default:
       return null;
   }
@@ -139,40 +142,33 @@ function buildSpecSignals(
   vehicleId: string,
   registrationMileageKm: number | null,
 ): BrakeThicknessSignal[] {
-  const manual = {
-    condition: inferBackfillBrakeCondition({ sourceType: spec.sourceType }),
-    serviceDate: spec.createdAt,
-    frontPadThickness: spec.frontPadThickness,
-    rearPadThickness: spec.rearPadThickness,
-    frontRotorWidth: spec.frontRotorWidth,
-    rearRotorWidth: spec.rearRotorWidth,
-    source: spec.sourceType ?? 'manual_registration',
-  };
-  const condition = normalizeRegistrationBrakeCondition(manual.condition);
-  const withDefaults = applyNewBrakeDefaults(manual, condition);
   const observedAt = spec.createdAt;
   const odometerKm = registrationMileageKm;
-
-  const rows: Array<{ component: BrakeBaselineComponent; mm: number | null }> = [
-    { component: 'FRONT_PADS', mm: withDefaults.frontPadThickness ?? null },
-    { component: 'REAR_PADS', mm: withDefaults.rearPadThickness ?? null },
-    { component: 'FRONT_DISCS', mm: withDefaults.frontRotorWidth ?? null },
-    { component: 'REAR_DISCS', mm: withDefaults.rearRotorWidth ?? null },
+  const components: BrakeBaselineComponent[] = [
+    'FRONT_PADS',
+    'REAR_PADS',
+    'FRONT_DISCS',
+    'REAR_DISCS',
   ];
 
-  return rows
-    .filter((r) => r.mm != null)
-    .map((r) => ({
-      component: r.component,
-      thicknessMm: r.mm,
-      source: isRegistrationBrakeSpecSource(spec.sourceType)
-        ? ('REGISTRATION_SPEC' as const)
-        : ('REFERENCE_SPEC_NOMINAL' as const),
-      observedAt,
-      odometerKm,
-      evidenceRef: evidenceRef('spec', `${vehicleId}:${r.component}`, auditSalt),
-      isNominalSpec: true,
-    }));
+  return components
+    .map((component) => {
+      const resolved = resolveNominalThickness(spec, component);
+      if (!resolved) return null;
+      return {
+        component,
+        thicknessMm: resolved.thicknessMm,
+        source: isRegistrationBrakeSpecSource(spec.sourceType)
+          ? ('REGISTRATION_SPEC' as const)
+          : ('REFERENCE_SPEC_NOMINAL' as const),
+        observedAt,
+        odometerKm,
+        evidenceRef: evidenceRef('spec', `${vehicleId}:${component}`, auditSalt),
+        isNominalSpec: true,
+        confidence: isAnchorEligibleCategory(resolved.evidenceCategory) ? 'LOW' : 'UNKNOWN',
+      } satisfies BrakeThicknessSignal;
+    })
+    .filter((row): row is BrakeThicknessSignal => row != null);
 }
 
 export function buildVehicleBrakeBaselineAuditInput(

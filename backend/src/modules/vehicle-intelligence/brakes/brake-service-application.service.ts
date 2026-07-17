@@ -50,6 +50,7 @@ import {
   serviceKindIsHistoryOnly,
   type BrakeMeasuredSnapshot,
 } from './brake-service-scope.matrix';
+import { resolveAnchorEligibleThicknessForInstallation } from './brake-reference-spec.domain';
 
 @Injectable()
 export class BrakeServiceApplicationService {
@@ -675,23 +676,22 @@ export class BrakeServiceApplicationService {
     spec?: {
       frontPadThickness?: number | null;
       rearPadThickness?: number | null;
+      frontPadNominalThicknessMm?: number | null;
+      rearPadNominalThicknessMm?: number | null;
+      frontDiscNominalThicknessMm?: number | null;
+      rearDiscNominalThicknessMm?: number | null;
       frontRotorWidth?: number | null;
       rearRotorWidth?: number | null;
+      frontPadEvidenceCategory?: import('@prisma/client').BrakeReferenceSpecEvidenceCategory | null;
+      rearPadEvidenceCategory?: import('@prisma/client').BrakeReferenceSpecEvidenceCategory | null;
+      frontDiscEvidenceCategory?: import('@prisma/client').BrakeReferenceSpecEvidenceCategory | null;
+      rearDiscEvidenceCategory?: import('@prisma/client').BrakeReferenceSpecEvidenceCategory | null;
+      sourceType?: string | null;
+      userConfirmedAt?: Date | null;
+      semanticMappingVersion?: string | null;
     } | null,
   ): number | null {
-    if (!spec) return null;
-    switch (component) {
-      case BrakeComponentInstallationType.FRONT_PADS:
-        return this.normalizePositive(spec.frontPadThickness);
-      case BrakeComponentInstallationType.REAR_PADS:
-        return this.normalizePositive(spec.rearPadThickness);
-      case BrakeComponentInstallationType.FRONT_DISCS:
-        return this.normalizePositive(spec.frontRotorWidth);
-      case BrakeComponentInstallationType.REAR_DISCS:
-        return this.normalizePositive(spec.rearRotorWidth);
-      default:
-        return null;
-    }
+    return resolveAnchorEligibleThicknessForInstallation(spec, component);
   }
 
   private normalizeScope(scope?: ApplyBrakeServiceInput['scope']): string[] {

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeInitializationWorkflowService } from './brake-initialization-workflow.service';
+import { BrakeReferenceSpecService } from './brake-reference-spec.service';
 import {
   applyNewBrakeDefaults,
   hasRegistrationBrakeSpecValues,
@@ -30,6 +31,7 @@ export class BrakeRegistrationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly brakeInitializationWorkflow: BrakeInitializationWorkflowService,
+    private readonly brakeReferenceSpec: BrakeReferenceSpecService,
   ) {}
 
   /**
@@ -64,18 +66,45 @@ export class BrakeRegistrationService {
 
     let specCreated = false;
     if (shouldCreateSpec) {
-      await this.prisma.vehicleBrakeReferenceSpec.create({
-        data: {
-          vehicleId: input.vehicleId,
+      const vehicleMeta = await this.prisma.vehicle.findFirst({
+        where: { id: input.vehicleId, organizationId: input.organizationId },
+        select: { make: true, model: true, year: true, fuelType: true },
+      });
+      const created = await this.brakeReferenceSpec.createForVehicle(
+        input.vehicleId,
+        {
           frontRotorDiameter: brakesForSpec.frontRotorDiameter ?? null,
           frontRotorWidth: brakesForSpec.frontRotorWidth ?? null,
           frontPadThickness: brakesForSpec.frontPadThickness ?? null,
+          frontPadNominalThicknessMm:
+            brakesForSpec.frontPadNominalThicknessMm ?? brakesForSpec.frontPadThickness ?? null,
           rearRotorDiameter: brakesForSpec.rearRotorDiameter ?? null,
           rearRotorWidth: brakesForSpec.rearRotorWidth ?? null,
           rearPadThickness: brakesForSpec.rearPadThickness ?? null,
+          rearPadNominalThicknessMm:
+            brakesForSpec.rearPadNominalThicknessMm ?? brakesForSpec.rearPadThickness ?? null,
+          frontDiscNominalThicknessMm: brakesForSpec.frontDiscNominalThicknessMm ?? null,
+          rearDiscNominalThicknessMm: brakesForSpec.rearDiscNominalThicknessMm ?? null,
           sourceType: rawBrakes.source?.trim() || 'manual_registration',
+          sourceUrl: rawBrakes.sourceUrl ?? null,
+          sourcePartNumber: rawBrakes.sourcePartNumber ?? null,
+          sourceProvider: rawBrakes.sourceProvider ?? null,
+          sourceConfidence: rawBrakes.sourceConfidence ?? null,
+          userConfirmedAt: rawBrakes.userConfirmedAt ?? null,
+          userConfirmedBy: rawBrakes.userConfirmedBy ?? null,
         },
-      });
+        {
+          make: vehicleMeta?.make,
+          model: vehicleMeta?.model,
+          modelYear: vehicleMeta?.year,
+          powertrain: vehicleMeta?.fuelType,
+        },
+      );
+      if (created.warnings.length > 0) {
+        this.logger.warn(
+          `Brake reference spec legacy warnings for vehicle ${input.vehicleId}: ${created.warnings.join('; ')}`,
+        );
+      }
       specCreated = true;
     }
 

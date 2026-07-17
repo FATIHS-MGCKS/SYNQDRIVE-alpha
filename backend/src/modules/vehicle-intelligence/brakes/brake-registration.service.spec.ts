@@ -3,7 +3,7 @@ import { BrakeRegistrationService } from './brake-registration.service';
 import { BrakeInitializationWorkflowService } from './brake-initialization-workflow.service';
 
 const store = {
-  vehicles: new Map<string, { id: string; organizationId: string }>(),
+  vehicles: new Map<string, { id: string; organizationId: string; make?: string; model?: string; modelYear?: number; powertrain?: string }>(),
   specs: [] as any[],
   bhc: new Map<string, any>(),
 };
@@ -14,12 +14,6 @@ const mockPrisma = {
       const row = store.vehicles.get(where.id);
       if (!row || row.organizationId !== where.organizationId) return null;
       return row;
-    }),
-  },
-  vehicleBrakeReferenceSpec: {
-    create: jest.fn(async ({ data }: any) => {
-      store.specs.push(data);
-      return { id: `spec-${store.specs.length}`, ...data };
     }),
   },
   brakeHealthCurrent: {
@@ -37,9 +31,18 @@ const mockWorkflow = {
   initializeFromRegistration: jest.fn(),
 } as any;
 
+const mockReferenceSpec = {
+  createForVehicle: jest.fn(async (vehicleId: string, input: any) => {
+    const row = { id: `spec-${store.specs.length + 1}`, vehicleId, ...input };
+    store.specs.push(row);
+    return { spec: row, warnings: [] };
+  }),
+} as any;
+
 const svc = new BrakeRegistrationService(
   mockPrisma,
   mockWorkflow as BrakeInitializationWorkflowService,
+  mockReferenceSpec,
 );
 
 describe('BrakeRegistrationService', () => {
@@ -48,7 +51,14 @@ describe('BrakeRegistrationService', () => {
     store.vehicles.clear();
     store.specs.length = 0;
     store.bhc.clear();
-    store.vehicles.set('veh-1', { id: 'veh-1', organizationId: 'org-1' });
+    store.vehicles.set('veh-1', {
+      id: 'veh-1',
+      organizationId: 'org-1',
+      make: 'VW',
+      model: 'ID.4',
+      modelYear: 2024,
+      powertrain: 'EV',
+    });
   });
 
   const baseInput = {

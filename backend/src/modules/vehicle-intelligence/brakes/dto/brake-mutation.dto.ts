@@ -150,6 +150,9 @@ export class CreateBrakeSpecDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(PAD_MM_MAX)
   frontPadThickness?: number;
 
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(PAD_MM_MAX)
+  frontPadNominalThicknessMm?: number;
+
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(1000)
   rearRotorDiameter?: number;
 
@@ -159,8 +162,35 @@ export class CreateBrakeSpecDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(PAD_MM_MAX)
   rearPadThickness?: number;
 
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(PAD_MM_MAX)
+  rearPadNominalThicknessMm?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(DISC_MM_MAX)
+  frontDiscNominalThicknessMm?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(DISC_MM_MAX)
+  rearDiscNominalThicknessMm?: number;
+
   @IsOptional() @IsString() @MaxLength(80)
   sourceType?: string;
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  sourceUrl?: string;
+
+  @IsOptional() @IsString() @MaxLength(120)
+  sourcePartNumber?: string;
+
+  @IsOptional() @IsString() @MaxLength(160)
+  sourceProvider?: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(1)
+  sourceConfidence?: number;
+
+  @IsOptional() @IsISO8601()
+  userConfirmedAt?: string;
+
+  @IsOptional() @IsString() @MaxLength(120)
+  userConfirmedBy?: string;
 }
 
 export class UpdateBrakeSpecDto extends CreateBrakeSpecDto {}

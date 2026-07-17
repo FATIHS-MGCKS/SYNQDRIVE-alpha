@@ -456,6 +456,17 @@ enum BrakeServiceOutboxEventType {
   NOTIFY
 }
 
+enum BrakeReferenceSpecEvidenceCategory {
+  MANUFACTURER_CONFIRMED
+  PART_CATALOG_CONFIRMED
+  USER_CONFIRMED
+  DOCUMENTED
+  AI_ESTIMATED
+  LEGACY_UNVERIFIED
+  DEFAULT_ASSUMPTION
+  UNKNOWN
+}
+
 enum DocumentExtractionStatus {
   PENDING
   QUEUED
@@ -2601,7 +2612,23 @@ model VehicleBrakeReferenceSpec {
   rearRotorDiameter  Float?   @map("rear_rotor_diameter")
   rearRotorWidth     Float?   @map("rear_rotor_width")
   rearPadThickness   Float?   @map("rear_pad_thickness")
+  frontPadNominalThicknessMm  Float? @map("front_pad_nominal_thickness_mm")
+  rearPadNominalThicknessMm   Float? @map("rear_pad_nominal_thickness_mm")
+  frontDiscNominalThicknessMm Float? @map("front_disc_nominal_thickness_mm")
+  rearDiscNominalThicknessMm  Float? @map("rear_disc_nominal_thickness_mm")
+  frontPadEvidenceCategory    BrakeReferenceSpecEvidenceCategory? @map("front_pad_evidence_category")
+  rearPadEvidenceCategory     BrakeReferenceSpecEvidenceCategory? @map("rear_pad_evidence_category")
+  frontDiscEvidenceCategory   BrakeReferenceSpecEvidenceCategory? @map("front_disc_evidence_category")
+  rearDiscEvidenceCategory    BrakeReferenceSpecEvidenceCategory? @map("rear_disc_evidence_category")
   sourceType         String?  @map("source_type")
+  sourceUrl          String?  @map("source_url")
+  sourcePartNumber   String?  @map("source_part_number")
+  sourceProvider     String?  @map("source_provider")
+  sourceRetrievedAt  DateTime? @map("source_retrieved_at")
+  sourceConfidence   Float?   @map("source_confidence")
+  userConfirmedAt    DateTime? @map("user_confirmed_at")
+  userConfirmedBy    String?  @map("user_confirmed_by")
+  semanticMappingVersion String? @map("semantic_mapping_version")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
@@ -2609,6 +2636,7 @@ model VehicleBrakeReferenceSpec {
   componentInstallations BrakeComponentInstallation[]
 
   @@index([vehicleId])
+  @@index([vehicleId, createdAt])
   @@map("vehicle_brake_reference_specs")
 }
 

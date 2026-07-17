@@ -13,6 +13,10 @@ import {
 import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
 import { BrakeEvidenceService } from './brake-evidence.service';
 import {
+  pickPreferredReferenceSpec,
+  resolveAnchorEligibleThicknessForInstallation,
+} from './brake-reference-spec.domain';
+import {
   aggregateBrakeCondition,
   alertCodeSeverity,
   alertTypeToCode,
@@ -509,9 +513,8 @@ export class BrakeHealthService {
     const specs = await this.prisma.vehicleBrakeReferenceSpec.findMany({
       where: { vehicleId },
       orderBy: { createdAt: 'desc' },
-      take: 1,
     });
-    const spec = specs[0];
+    const spec = pickPreferredReferenceSpec(specs);
     const existing = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
     const scoped = options?.scopedComponents ? new Set(options.scopedComponents) : null;
 
@@ -540,25 +543,25 @@ export class BrakeHealthService {
     const frontPadAnchor = resolveAnchor(
       BrakeComponentInstallationType.FRONT_PADS,
       measured.frontPadMm,
-      spec?.frontPadThickness ?? null,
+      resolveAnchorEligibleThicknessForInstallation(spec, BrakeComponentInstallationType.FRONT_PADS),
       existing?.frontPadAnchorMm,
     );
     const rearPadAnchor = resolveAnchor(
       BrakeComponentInstallationType.REAR_PADS,
       measured.rearPadMm,
-      spec?.rearPadThickness ?? null,
+      resolveAnchorEligibleThicknessForInstallation(spec, BrakeComponentInstallationType.REAR_PADS),
       existing?.rearPadAnchorMm,
     );
     const frontDiscAnchor = resolveAnchor(
       BrakeComponentInstallationType.FRONT_DISCS,
       measured.frontDiscMm,
-      spec?.frontRotorWidth ?? null,
+      resolveAnchorEligibleThicknessForInstallation(spec, BrakeComponentInstallationType.FRONT_DISCS),
       existing?.frontDiscAnchorMm,
     );
     const rearDiscAnchor = resolveAnchor(
       BrakeComponentInstallationType.REAR_DISCS,
       measured.rearDiscMm,
-      spec?.rearRotorWidth ?? null,
+      resolveAnchorEligibleThicknessForInstallation(spec, BrakeComponentInstallationType.REAR_DISCS),
       existing?.rearDiscAnchorMm,
     );
 

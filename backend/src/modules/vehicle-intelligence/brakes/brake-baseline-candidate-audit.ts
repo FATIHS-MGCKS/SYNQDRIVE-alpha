@@ -73,6 +73,16 @@ export interface VehicleBrakeBaselineAuditInput {
     rearPadThickness: number | null;
     frontRotorWidth: number | null;
     rearRotorWidth: number | null;
+    frontPadNominalThicknessMm?: number | null;
+    rearPadNominalThicknessMm?: number | null;
+    frontDiscNominalThicknessMm?: number | null;
+    rearDiscNominalThicknessMm?: number | null;
+    frontPadEvidenceCategory?: string | null;
+    rearPadEvidenceCategory?: string | null;
+    frontDiscEvidenceCategory?: string | null;
+    rearDiscEvidenceCategory?: string | null;
+    userConfirmedAt?: string | Date | null;
+    semanticMappingVersion?: string | null;
   } | null;
   thicknessSignals: BrakeThicknessSignal[];
   odometerSignals: OdometerSignal[];

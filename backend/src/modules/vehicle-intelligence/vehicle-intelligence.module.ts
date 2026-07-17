@@ -19,6 +19,7 @@ import { ValidateBrakeServiceScopePipe } from './brakes/brake-service-scope.vali
 import { BrakeInitializationWorkflowService } from './brakes/brake-initialization-workflow.service';
 import { BrakeEnrichmentJobDiagnosticsService } from './brakes/brake-enrichment-job-diagnostics.service';
 import { BrakeRegistrationService } from './brakes/brake-registration.service';
+import { BrakeReferenceSpecService } from './brakes/brake-reference-spec.service';
 import { BrakeRegistrationBackfillService } from './brakes/brake-registration-backfill.service';
 import { BrakeBaselineCandidateAuditService } from './brakes/brake-baseline-candidate-audit.service';
 import { BrakeComponentInstallationService } from './brakes/brake-component-installation.service';
@@ -133,6 +134,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TireLifecycleService,
     TireIdentityService,
     BrakesService,
+    BrakeReferenceSpecService,
     BrakeHealthService,
     BrakeEvidenceService,
     BrakeLifecycleService,
@@ -228,6 +230,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TireLifecycleService,
     TireIdentityService,
     BrakesService,
+    BrakeReferenceSpecService,
     BrakeHealthService,
     BrakeEvidenceService,
     BrakeLifecycleService,

@@ -190,6 +190,16 @@ export class BrakeBaselineCandidateAuditService {
               rearPadThickness: spec.rearPadThickness,
               frontRotorWidth: spec.frontRotorWidth,
               rearRotorWidth: spec.rearRotorWidth,
+              frontPadNominalThicknessMm: spec.frontPadNominalThicknessMm,
+              rearPadNominalThicknessMm: spec.rearPadNominalThicknessMm,
+              frontDiscNominalThicknessMm: spec.frontDiscNominalThicknessMm,
+              rearDiscNominalThicknessMm: spec.rearDiscNominalThicknessMm,
+              frontPadEvidenceCategory: spec.frontPadEvidenceCategory,
+              rearPadEvidenceCategory: spec.rearPadEvidenceCategory,
+              frontDiscEvidenceCategory: spec.frontDiscEvidenceCategory,
+              rearDiscEvidenceCategory: spec.rearDiscEvidenceCategory,
+              userConfirmedAt: spec.userConfirmedAt,
+              semanticMappingVersion: spec.semanticMappingVersion,
             }
           : null,
         evidence: vehicle.brakeEvidence.map((ev) => ({
