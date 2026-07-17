@@ -4,7 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT/backend"
+cd "$ROOT"
 
 STAGING_DB="${BRAKE_STAGING_DB_NAME:-synqdrive_staging_brake}"
 SOURCE_DB="${BRAKE_SOURCE_DB_NAME:-synqdrive}"
