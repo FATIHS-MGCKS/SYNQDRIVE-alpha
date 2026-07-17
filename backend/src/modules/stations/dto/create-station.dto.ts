@@ -10,13 +10,23 @@ import {
   Max,
   MaxLength,
   Min,
+  Validate,
 } from 'class-validator';
 import { StationStatus, StationType } from '@prisma/client';
+import {
+  IsAllowedStationCreateStatus,
+  IsStationCoordinatePair,
+  IsStationCreateCapacity,
+  IsStationIanaTimezone,
+  IsValidStationOpeningHours,
+  StationPickupReturnConsistentConstraint,
+} from './station-create.dto.validators';
 
 export class CreateStationDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
+  @Validate(StationPickupReturnConsistentConstraint)
   name!: string;
 
   @IsOptional()
@@ -25,6 +35,7 @@ export class CreateStationDto {
   code?: string;
 
   @IsOptional()
+  @IsAllowedStationCreateStatus()
   @IsEnum(StationStatus)
   status?: StationStatus;
 
@@ -63,15 +74,21 @@ export class CreateStationDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(-90)
+  @Max(90)
+  @IsStationCoordinatePair()
   latitude?: number | null;
 
   @IsOptional()
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   longitude?: number | null;
 
   @IsOptional()
   @IsString()
   @MaxLength(64)
+  @IsStationIanaTimezone()
   timezone?: string;
 
   @IsOptional()
@@ -112,11 +129,11 @@ export class CreateStationDto {
   keyBoxAvailable?: boolean;
 
   @IsOptional()
-  @IsInt()
-  @Min(0)
+  @IsStationCreateCapacity()
   capacity?: number | null;
 
   @IsOptional()
+  @IsValidStationOpeningHours()
   @IsObject()
   openingHours?: Record<string, unknown> | null;
 
