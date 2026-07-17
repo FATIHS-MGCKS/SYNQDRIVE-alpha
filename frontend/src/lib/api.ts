@@ -9762,6 +9762,7 @@ export type VoiceConnectionStatus =
   | 'ERROR';
 
 export type VoiceConversationOutcome =
+  | 'PENDING'
   | 'RESOLVED'
   | 'ESCALATED'
   | 'FAILED'
@@ -9878,6 +9879,7 @@ export interface VoiceAssistantData {
   forbiddenActions: string | null;
   knowledgeSnippets: string | null;
   provider: string;
+  pstnProvider?: 'ELEVENLABS' | 'TWILIO' | string;
   elevenLabsAgentId: string | null;
   elevenLabsPhoneNumberId: string | null;
   phoneNumberId: string | null;
@@ -9934,6 +9936,7 @@ export type VoiceTelephonyOperationalStatus =
   | 'agent_not_provisioned'
   | 'no_phone_number'
   | 'assigned_inactive'
+  | 'legacy_diagnostic_only'
   | 'ready_for_inbound'
   | 'telephony_disabled';
 
@@ -9974,6 +9977,7 @@ export interface VoiceReadinessItem {
   label: string;
   ok: boolean;
   required?: boolean;
+  verification?: 'configured' | 'reachable' | 'authorized' | 'healthy' | 'unknown' | 'not_verified';
 }
 
 export interface VoiceAssistantReadiness {
@@ -10090,6 +10094,7 @@ export interface VoiceAssistantAdminOverviewRow {
   readinessPercent: number;
   missingReadinessItemsCount: number;
   elevenLabsConnected: boolean;
+  twilioConnected?: boolean;
   agentProvisioned: boolean;
   telephonyEnabled: boolean;
   phoneNumber: string | null;
@@ -10120,6 +10125,8 @@ export interface VoiceAssistantAdminOverview {
     costTrackingMessage: string;
   };
   providerConfigured: boolean;
+  elevenLabsConfigured?: boolean;
+  twilioConfigured?: boolean;
 }
 
 export interface VoiceConversationAdminSummary {

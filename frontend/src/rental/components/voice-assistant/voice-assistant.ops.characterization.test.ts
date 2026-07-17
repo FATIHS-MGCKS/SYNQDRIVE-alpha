@@ -90,6 +90,12 @@ describe('voice-assistant.ops characterization', () => {
       expect(providerStatusLabel('DEGRADED', true)).toBe('Degraded');
     });
 
+    it('reports provider status as diagnostic PSTN for Twilio path', () => {
+      expect(providerStatusLabel('CONNECTED', true, true, 'twilio')).toBe(
+        'Diagnostic PSTN only',
+      );
+    });
+
     it('derives telephony label from assistant telephony snapshot', () => {
       expect(telephonyStatusLabel(buildAssistant())).toBe('Disabled');
       expect(
@@ -97,9 +103,20 @@ describe('voice-assistant.ops characterization', () => {
           buildAssistant({
             telephonyEnabled: true,
             phoneNumber: '+49123456789',
+            telephonyStatus: {
+              status: 'legacy_diagnostic_only',
+              label: 'Diagnostic PSTN only',
+              detail: 'Twilio Say diagnostic path',
+              providerConfigured: true,
+              pstnProvider: 'twilio',
+              agentProvisioned: true,
+              phoneAssigned: true,
+              inboundReady: false,
+              outboundEnabled: false,
+            },
           }),
         ),
-      ).toBe('Connected');
+      ).toBe('Diagnostic PSTN only');
     });
   });
 

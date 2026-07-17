@@ -75,18 +75,29 @@ export function operatorStatusLabel(status: OperatorStatus): string {
 export function providerStatusLabel(
   connectionStatus: VoiceConnectionStatus | undefined,
   elevenLabsOk: boolean | undefined,
+  twilioOk?: boolean | undefined,
+  pstnProvider?: 'elevenlabs' | 'twilio',
 ): string {
-  if (connectionStatus === 'CONNECTED' && elevenLabsOk) return 'Connected';
-  if (connectionStatus === 'DEGRADED') return 'Degraded';
   if (connectionStatus === 'ERROR') return 'Error';
+  if (connectionStatus === 'DEGRADED') return 'Degraded';
   if (connectionStatus === 'NOT_CONFIGURED' || !elevenLabsOk) return 'Not configured';
+  if (pstnProvider === 'twilio') {
+    if (twilioOk === false) return 'Twilio not configured';
+    if (connectionStatus === 'CONNECTED' && elevenLabsOk) {
+      return 'Diagnostic PSTN only';
+    }
+  }
+  if (connectionStatus === 'CONNECTED' && elevenLabsOk) return 'Connected';
   return connectionStatus ?? 'Unknown';
 }
 
 export function telephonyStatusLabel(assistant: VoiceAssistantData | null): string {
   if (assistant?.telephonyStatus?.label) return assistant.telephonyStatus.label;
   if (!assistant?.telephonyEnabled && !assistant?.inboundEnabled) return 'Disabled';
-  if (assistant?.phoneNumber) return 'Connected';
+  if (assistant?.telephonyStatus?.status === 'legacy_diagnostic_only') {
+    return 'Diagnostic PSTN only';
+  }
+  if (assistant?.phoneNumber) return 'Number assigned';
   return 'Not connected';
 }
 

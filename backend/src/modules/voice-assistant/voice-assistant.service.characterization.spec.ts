@@ -3,6 +3,8 @@ import {
   VoiceAssistantStatus,
   VoiceConnectionStatus,
   VoiceConversationDirection,
+  VoiceConversationOutcome,
+  VoiceConversationStatus,
   VoicePstnProvider,
 } from '@prisma/client';
 import { VoiceAssistantService } from './voice-assistant.service';
@@ -287,6 +289,8 @@ describe('VoiceAssistantService characterization', () => {
             organizationId: 'org-1',
             twilioCallSid: 'CA-out-1',
             direction: VoiceConversationDirection.OUTBOUND,
+            status: VoiceConversationStatus.ACTIVE,
+            outcome: VoiceConversationOutcome.PENDING,
           }),
         }),
       );

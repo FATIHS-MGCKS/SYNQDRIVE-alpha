@@ -26,6 +26,8 @@ export function outcomeBadgeTone(
       return 'success';
     case 'ESCALATED':
       return 'warning';
+    case 'PENDING':
+      return 'neutral';
     case 'FAILED':
     case 'ABANDONED':
       return 'critical';
@@ -44,6 +46,7 @@ export function isInbound(direction: VoiceConversationEntry['direction']): boole
 }
 
 export const OUTCOME_OPTIONS: VoiceConversationOutcome[] = [
+  'PENDING',
   'RESOLVED',
   'ESCALATED',
   'FAILED',

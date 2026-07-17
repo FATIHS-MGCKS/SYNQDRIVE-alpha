@@ -11,6 +11,7 @@ import { TwilioPhoneNumberRecord } from './twilio.types';
 import {
   buildTwilioWebhookUrl,
 } from './twilio-signature.util';
+import { buildOutboundVoiceTwiml } from './twilio-voice-twiml.util';
 
 @Injectable()
 export class TwilioTelephonyService {
@@ -117,7 +118,7 @@ export class TwilioTelephonyService {
       const call = await client.calls.create({
         from: params.from,
         to: params.to,
-        twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say>${params.twimlMessage}</Say></Response>`,
+        twiml: buildOutboundVoiceTwiml(params.twimlMessage),
         statusCallback: urls.statusUrl,
         statusCallbackMethod: 'POST',
       });

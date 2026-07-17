@@ -10,6 +10,7 @@ export type TelephonyOperationalStatus =
   | 'agent_not_provisioned'
   | 'no_phone_number'
   | 'assigned_inactive'
+  | 'legacy_diagnostic_only'
   | 'ready_for_inbound'
   | 'telephony_disabled';
 
@@ -148,6 +149,21 @@ export function computeTelephonyStatus(
       status: 'assigned_inactive',
       label: 'Assigned but inactive',
       detail: 'A number is linked but inbound telephony is disabled.',
+      providerConfigured: true,
+      pstnProvider,
+      agentProvisioned: true,
+      phoneAssigned: true,
+      inboundReady: false,
+      outboundEnabled: assistant.outboundEnabled,
+    };
+  }
+
+  if (pstnProvider === 'twilio') {
+    return {
+      status: 'legacy_diagnostic_only',
+      label: 'Diagnostic PSTN only',
+      detail:
+        'Twilio currently plays a static Say message for connectivity testing. Native ElevenLabs integration is required for productive AI inbound calls.',
       providerConfigured: true,
       pstnProvider,
       agentProvisioned: true,

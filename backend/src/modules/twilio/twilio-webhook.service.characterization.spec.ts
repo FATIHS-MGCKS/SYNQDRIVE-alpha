@@ -80,7 +80,7 @@ describe('TwilioWebhookService characterization', () => {
   });
 
   describe('signature validation', () => {
-    it('accepts inbound voice webhooks with a valid Twilio signature', async () => {
+    it('creates inbound conversations with pending outcome and legacy metadata', async () => {
       const twiml = await service.handleInboundVoice({
         body,
         headers: signedHeaders(body),
@@ -88,7 +88,19 @@ describe('TwilioWebhookService characterization', () => {
       });
 
       expect(twiml).toContain('Response');
-      expect(prisma.voiceConversation.create).toHaveBeenCalled();
+      expect(prisma.voiceConversation.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'ACTIVE',
+            outcome: 'PENDING',
+            metadata: expect.objectContaining({
+              telephonyMode: 'LEGACY_TWIML_SAY',
+              aiProvider: null,
+              productiveAiCall: false,
+            }),
+          }),
+        }),
+      );
     });
 
     it('rejects inbound voice webhooks with an invalid signature when auth token is set', async () => {

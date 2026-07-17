@@ -1,5 +1,8 @@
 import { VoiceAssistant, VoiceAssistantStatus } from '@prisma/client';
 
+export const LEGACY_TWIML_DIAGNOSTIC_COMMENT =
+  '<!-- LEGACY_TWIML_SAY diagnostic PSTN test — not a productive ElevenLabs AI call -->';
+
 export function buildInboundVoiceTwiml(assistant: VoiceAssistant | null): string {
   if (!assistant || assistant.status !== VoiceAssistantStatus.ACTIVE) {
     return wrapTwiml('<Say language="en-US">This number is not available right now.</Say>');
@@ -11,13 +14,7 @@ export function buildInboundVoiceTwiml(assistant: VoiceAssistant | null): string
     'Hello. Please hold while we connect you.';
 
   const language = mapTwilioLanguage(assistant.language);
-  const parts: string[] = [`<Say language="${language}">${escapeXml(greeting)}</Say>`];
-
-  if (assistant.elevenLabsAgentId) {
-    parts.push(
-      '<!-- ElevenLabs agent provisioned: PSTN audio handled here until SIP/stream bridge is enabled -->',
-    );
-  }
+  const parts: string[] = [LEGACY_TWIML_DIAGNOSTIC_COMMENT, `<Say language="${language}">${escapeXml(greeting)}</Say>`];
 
   const escalation = assistant.escalationPhone?.trim();
   if (escalation) {
@@ -30,7 +27,9 @@ export function buildInboundVoiceTwiml(assistant: VoiceAssistant | null): string
 }
 
 export function buildOutboundVoiceTwiml(message: string, language = 'en-US'): string {
-  return wrapTwiml(`<Say language="${language}">${escapeXml(message)}</Say>`);
+  return wrapTwiml(
+    `${LEGACY_TWIML_DIAGNOSTIC_COMMENT}<Say language="${language}">${escapeXml(message)}</Say>`,
+  );
 }
 
 function wrapTwiml(inner: string): string {

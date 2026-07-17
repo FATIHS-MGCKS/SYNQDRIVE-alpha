@@ -46,6 +46,19 @@ import {
   minimalConversationMetadata,
 } from './voice-conversation.util';
 import {
+  buildElevenLabsConversationMetadata,
+  buildLegacyTwimlMetadata,
+  isAnalyticsAnsweredConversation,
+  isAnalyticsMissedConversation,
+  resolveElevenLabsSyncOutcome,
+  withCountersApplied,
+} from './voice-conversation-lifecycle.util';
+import {
+  evaluateConfiguredProviderHealth,
+  readinessCheckOkFromHealth,
+  type ProviderVerificationLevel,
+} from './voice-provider-health.util';
+import {
   computeTelephonyStatus,
   hasPhoneNumberAssigned,
   isPstnProviderConfigured,
@@ -69,6 +82,7 @@ export interface ReadinessCheck {
   label: string;
   ok: boolean;
   required: boolean;
+  verification?: ProviderVerificationLevel;
 }
 
 export interface ReadinessResult {
@@ -96,7 +110,7 @@ export class VoiceAssistantService {
     const created = await this.prisma.voiceAssistant.create({
       data: {
         organizationId,
-        connectionStatus: this.mapConnectionStatus(),
+        connectionStatus: this.deriveConnectionStatus(),
       },
     });
     return this.formatAssistant(created);
@@ -160,7 +174,11 @@ export class VoiceAssistantService {
       data: {
         status: VoiceAssistantStatus.ACTIVE,
         elevenLabsAgentId: agentId,
-        connectionStatus: VoiceConnectionStatus.CONNECTED,
+        connectionStatus: this.deriveConnectionStatus({
+          ...assistant,
+          elevenLabsAgentId: agentId,
+          status: VoiceAssistantStatus.ACTIVE,
+        }),
         lastProvisionedAt: new Date(),
         activatedAt: new Date(),
         deactivatedAt: null,
@@ -220,7 +238,7 @@ export class VoiceAssistantService {
       };
     }
 
-    const { signedUrl, expiresAt } = await this.elevenLabs.getSignedTestUrl(
+    const { expiresAt } = await this.elevenLabs.getSignedTestUrl(
       assistant.elevenLabsAgentId,
     );
 
@@ -235,7 +253,7 @@ export class VoiceAssistantService {
       expiresAt: expiresAt ?? fallbackExpiry,
       warnings,
       readinessSummary,
-      developerDetails: { signedUrl },
+      developerDetails: null,
     };
   }
 
@@ -276,24 +294,20 @@ export class VoiceAssistantService {
         status: true,
         durationSeconds: true,
         escalationReason: true,
+        metadata: true,
+        transcript: true,
       },
     });
 
     const totalCalls = conversations.length;
-    const answeredCalls = conversations.filter(
-      (c) =>
-        c.outcome === VoiceConversationOutcome.RESOLVED ||
-        c.outcome === VoiceConversationOutcome.ESCALATED ||
-        (c.durationSeconds != null && c.durationSeconds > 0),
+    const answeredCalls = conversations.filter((c) =>
+      isAnalyticsAnsweredConversation(c),
     ).length;
-    const missedCalls = conversations.filter(
-      (c) =>
-        c.outcome === VoiceConversationOutcome.ABANDONED ||
-        c.outcome === VoiceConversationOutcome.FAILED,
-    ).length;
+    const missedCalls = conversations.filter((c) => isAnalyticsMissedConversation(c)).length;
     const escalatedCalls = conversations.filter((c) => isConversationEscalated(c)).length;
 
     const durations = conversations
+      .filter((c) => isAnalyticsAnsweredConversation(c))
       .map((c) => c.durationSeconds)
       .filter((d): d is number => d != null && d > 0);
     const totalTalkTimeSeconds = durations.reduce((sum, d) => sum + d, 0);
@@ -393,6 +407,20 @@ export class VoiceAssistantService {
           ? transcriptSource
           : JSON.stringify(transcriptSource ?? '');
 
+      const outcome = resolveElevenLabsSyncOutcome({
+        remoteStatus: conv.status,
+        transcript,
+      });
+      const metadata = buildElevenLabsConversationMetadata(
+        detail?.metadata && typeof detail.metadata === 'object'
+          ? (detail.metadata as Record<string, unknown>)
+          : undefined,
+      );
+      const shouldIncrementCounters =
+        outcome === VoiceConversationOutcome.RESOLVED &&
+        durationSeconds != null &&
+        durationSeconds > 0;
+
       await this.prisma.voiceConversation.create({
         data: {
           organizationId,
@@ -406,16 +434,13 @@ export class VoiceAssistantService {
             conv.status === 'done'
               ? VoiceConversationStatus.COMPLETED
               : VoiceConversationStatus.FAILED,
-          outcome:
-            conv.status === 'done'
-              ? VoiceConversationOutcome.RESOLVED
-              : VoiceConversationOutcome.FAILED,
+          outcome,
           transcript,
           summary:
             typeof detail?.metadata?.summary === 'string'
               ? detail.metadata.summary
               : null,
-          metadata: detail?.metadata ? (detail.metadata as Prisma.InputJsonValue) : undefined,
+          metadata: shouldIncrementCounters ? withCountersApplied(metadata) : metadata,
           startedAt: conv.start_time_unix_secs
             ? new Date(conv.start_time_unix_secs * 1000)
             : new Date(),
@@ -425,7 +450,7 @@ export class VoiceAssistantService {
         },
       });
 
-      if (durationSeconds && durationSeconds > 0) {
+      if (shouldIncrementCounters) {
         await this.prisma.voiceAssistant.update({
           where: { id: assistant.id },
           data: {
@@ -496,7 +521,15 @@ export class VoiceAssistantService {
         phoneNumber: selected.phone_number ?? assistant.phoneNumber,
         twilioPhoneNumberSid: null,
         telephonyEnabled: true,
-        connectionStatus: VoiceConnectionStatus.CONNECTED,
+        connectionStatus: this.deriveConnectionStatus({
+          ...assistant,
+          pstnProvider: VoicePstnProvider.ELEVENLABS,
+          elevenLabsPhoneNumberId: phoneNumberId,
+          phoneNumberId: phoneNumberId,
+          phoneNumber: selected.phone_number ?? assistant.phoneNumber,
+          twilioPhoneNumberSid: null,
+          telephonyEnabled: true,
+        }),
       },
     });
 
@@ -534,7 +567,15 @@ export class VoiceAssistantService {
         phoneNumber: selected.phoneNumber ?? assistant.phoneNumber,
         elevenLabsPhoneNumberId: null,
         telephonyEnabled: true,
-        connectionStatus: VoiceConnectionStatus.CONNECTED,
+        connectionStatus: this.deriveConnectionStatus({
+          ...assistant,
+          pstnProvider: VoicePstnProvider.TWILIO,
+          twilioPhoneNumberSid: phoneNumberSid,
+          phoneNumberId: phoneNumberSid,
+          phoneNumber: selected.phoneNumber ?? assistant.phoneNumber,
+          elevenLabsPhoneNumberId: null,
+          telephonyEnabled: true,
+        }),
       },
     });
 
@@ -709,11 +750,8 @@ export class VoiceAssistantService {
         callerNumber: to.trim(),
         direction: VoiceConversationDirection.OUTBOUND,
         status: VoiceConversationStatus.ACTIVE,
-        outcome: VoiceConversationOutcome.RESOLVED,
-        metadata: {
-          pstnProvider: 'twilio',
-          aiProvider: 'elevenlabs',
-        },
+        outcome: VoiceConversationOutcome.PENDING,
+        metadata: buildLegacyTwimlMetadata({ direction: 'outbound' }),
       },
     });
 
@@ -742,8 +780,6 @@ export class VoiceAssistantService {
 
   async getAdminOverview() {
     const providerConfig = this.getTelephonyProviderConfig();
-    const providerConfigured =
-      providerConfig.elevenLabsConfigured || providerConfig.twilioConfigured;
     const todayStart = startOfToday();
 
     const [organizations, assistants, callsTodayGroups, lastCallGroups] = await Promise.all([
@@ -780,7 +816,8 @@ export class VoiceAssistantService {
           assistantStatus: 'NOT_CONFIGURED',
           readinessPercent: 0,
           missingReadinessItemsCount: 0,
-          elevenLabsConnected: providerConfigured,
+          elevenLabsConnected: providerConfig.elevenLabsConfigured,
+          twilioConnected: providerConfig.twilioConfigured,
           agentProvisioned: false,
           telephonyEnabled: false,
           phoneNumber: null,
@@ -792,7 +829,11 @@ export class VoiceAssistantService {
           missedCalls: 0,
           lastCallAt: lastCallMap.get(org.id)?.toISOString() ?? null,
           lastSyncedAt: null,
-          providerWarning: resolveProviderWarning(providerConfigured, null, null),
+          providerWarning: resolveProviderWarning(
+            providerConfig.elevenLabsConfigured,
+            null,
+            null,
+          ),
           lastError: null,
           connectionStatus: null,
           telephonyLabel: 'Not configured',
@@ -808,7 +849,8 @@ export class VoiceAssistantService {
         assistantStatus: assistant.status,
         readinessPercent: readinessPercent(readiness),
         missingReadinessItemsCount: readiness.missing.length,
-        elevenLabsConnected: providerConfigured,
+        elevenLabsConnected: providerConfig.elevenLabsConfigured,
+        twilioConnected: providerConfig.twilioConfigured,
         agentProvisioned: Boolean(assistant.elevenLabsAgentId),
         telephonyEnabled: assistant.telephonyEnabled,
         phoneNumber: assistant.phoneNumber,
@@ -820,7 +862,11 @@ export class VoiceAssistantService {
         missedCalls: assistant.missedCalls,
         lastCallAt: lastCallMap.get(org.id)?.toISOString() ?? null,
         lastSyncedAt: assistant.lastSyncedAt?.toISOString() ?? null,
-        providerWarning: resolveProviderWarning(providerConfigured, assistant, telephony),
+        providerWarning: resolveProviderWarning(
+          providerConfig.elevenLabsConfigured,
+          assistant,
+          telephony,
+        ),
         lastError:
           assistant.connectionStatus === VoiceConnectionStatus.ERROR
             ? 'Connection status: ERROR'
@@ -847,7 +893,9 @@ export class VoiceAssistantService {
         costTrackingConnected: false,
         costTrackingMessage: 'Cost tracking not connected yet',
       },
-      providerConfigured,
+      providerConfigured: providerConfig.elevenLabsConfigured || providerConfig.twilioConfigured,
+      elevenLabsConfigured: providerConfig.elevenLabsConfigured,
+      twilioConfigured: providerConfig.twilioConfigured,
     };
   }
 
@@ -924,17 +972,23 @@ export class VoiceAssistantService {
       return this.prisma.voiceAssistant.create({
         data: {
           organizationId,
-          connectionStatus: this.mapConnectionStatus(),
+          connectionStatus: this.deriveConnectionStatus(),
         },
       });
     }
     return assistant;
   }
 
-  private mapConnectionStatus(): VoiceConnectionStatus {
+  private deriveConnectionStatus(assistant?: VoiceAssistant | null): VoiceConnectionStatus {
     const config = this.getTelephonyProviderConfig();
-    if (!config.elevenLabsConfigured && !config.twilioConfigured) {
+    if (!config.elevenLabsConfigured) {
       return VoiceConnectionStatus.NOT_CONFIGURED;
+    }
+    if (assistant?.pstnProvider === VoicePstnProvider.TWILIO && !config.twilioConfigured) {
+      return VoiceConnectionStatus.DEGRADED;
+    }
+    if (!assistant?.elevenLabsAgentId && assistant?.status === VoiceAssistantStatus.ACTIVE) {
+      return VoiceConnectionStatus.DEGRADED;
     }
     return VoiceConnectionStatus.CONNECTED;
   }
@@ -957,6 +1011,16 @@ export class VoiceAssistantService {
   ): ReadinessResult {
     const telephonyRequired =
       options.forActivation && isTelephonyLiveModeRequested(assistant);
+
+    const providerConfig = this.getTelephonyProviderConfig();
+    const elevenLabsHealth = evaluateConfiguredProviderHealth(
+      providerConfig.elevenLabsConfigured,
+      'ElevenLabs',
+    );
+    const twilioHealth = evaluateConfiguredProviderHealth(
+      providerConfig.twilioConfigured,
+      'Twilio',
+    );
 
     const checks: ReadinessCheck[] = [
       { key: 'name', label: 'Assistant name', ok: Boolean(assistant.name?.trim()), required: true },
@@ -982,16 +1046,21 @@ export class VoiceAssistantService {
       {
         key: 'elevenlabs',
         label: 'ElevenLabs connected',
-        ok: this.elevenLabs.isConfigured(),
+        ok: readinessCheckOkFromHealth(elevenLabsHealth),
         required: true,
+        verification: elevenLabsHealth.verification,
       },
       {
         key: 'twilio',
         label: 'Twilio connected',
         ok:
           assistant.pstnProvider !== VoicePstnProvider.TWILIO ||
-          this.twilioTelephony.isConfigured(),
+          readinessCheckOkFromHealth(twilioHealth),
         required: assistant.pstnProvider === VoicePstnProvider.TWILIO,
+        verification:
+          assistant.pstnProvider === VoicePstnProvider.TWILIO
+            ? twilioHealth.verification
+            : 'unknown',
       },
       {
         key: 'agentProvisioned',

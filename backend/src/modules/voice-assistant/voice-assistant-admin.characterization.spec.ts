@@ -220,6 +220,23 @@ describe('VoiceAssistant admin characterization', () => {
       expect(overview.summary.costTrackingConnected).toBe(false);
       expect(overview.summary.costTrackingMessage).toContain('not connected');
     });
+
+    it('does not derive ElevenLabs admin connectivity from Twilio-only config', async () => {
+      prisma.organization.findMany.mockResolvedValue([
+        { id: 'org-1', companyName: 'Alpha Fleet' },
+      ]);
+      prisma.voiceAssistant.findMany.mockResolvedValue([]);
+      prisma.voiceConversation.groupBy.mockResolvedValue([]);
+      elevenLabs.isConfigured.mockReturnValue(false);
+      twilioTelephony.isConfigured.mockReturnValue(true);
+
+      const overview = await service.getAdminOverview();
+
+      expect(overview.elevenLabsConfigured).toBe(false);
+      expect(overview.twilioConfigured).toBe(true);
+      expect(overview.assistants[0].elevenLabsConnected).toBe(false);
+      expect(overview.assistants[0].twilioConnected).toBe(true);
+    });
   });
 
   describe('assertOrgAccess', () => {

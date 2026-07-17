@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { TwilioWebhookController } from './twilio-webhook.controller';
 import { TwilioWebhookService } from './twilio-webhook.service';
 
@@ -17,14 +18,7 @@ describe('TwilioWebhookController characterization', () => {
   });
 
   it('reconstructs public HTTPS URL from x-forwarded-proto behind reverse proxy', async () => {
-    const send = jest.fn();
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      send,
-      type: jest.fn().mockReturnThis(),
-    };
-
-    await controller.inboundVoice(
+    const twiml = await controller.inboundVoice(
       {
         headers: { 'x-forwarded-proto': 'https' },
         protocol: 'http',
@@ -32,7 +26,6 @@ describe('TwilioWebhookController characterization', () => {
         originalUrl: '/api/v1/webhooks/twilio/voice',
       } as never,
       { CallSid: 'CA-proxy-1' },
-      res as never,
     );
 
     expect(webhookService.handleInboundVoice).toHaveBeenCalledWith(
@@ -40,18 +33,10 @@ describe('TwilioWebhookController characterization', () => {
         requestUrl: 'https://app.synqdrive.eu/api/v1/webhooks/twilio/voice',
       }),
     );
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(send).toHaveBeenCalledWith('<Response/>');
+    expect(twiml).toBe('<Response/>');
   });
 
   it('falls back to req.protocol when x-forwarded-proto is absent', async () => {
-    const send = jest.fn();
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      send,
-      type: jest.fn().mockReturnThis(),
-    };
-
     await controller.inboundVoice(
       {
         headers: {},
@@ -60,7 +45,6 @@ describe('TwilioWebhookController characterization', () => {
         originalUrl: '/api/v1/webhooks/twilio/voice',
       } as never,
       {},
-      res as never,
     );
 
     expect(webhookService.handleInboundVoice).toHaveBeenCalledWith(
@@ -88,29 +72,21 @@ describe('TwilioWebhookController characterization', () => {
     );
   });
 
-  it('returns TwiML error response on inbound handler rejection (current behavior)', async () => {
-    webhookService.handleInboundVoice.mockRejectedValue(new Error('signature invalid'));
-    const send = jest.fn();
-    const type = jest.fn().mockReturnThis();
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      send,
-      type,
-    };
-
-    await controller.inboundVoice(
-      {
-        headers: {},
-        protocol: 'https',
-        get: () => 'app.synqdrive.eu',
-        originalUrl: '/api/v1/webhooks/twilio/voice',
-      } as never,
-      {},
-      res as never,
+  it('propagates signature failures as HTTP errors instead of success TwiML', async () => {
+    webhookService.handleInboundVoice.mockRejectedValue(
+      new UnauthorizedException('Invalid Twilio webhook signature'),
     );
 
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(type).toHaveBeenCalledWith('text/xml');
-    expect(send).toHaveBeenCalledWith(expect.stringContaining('Service unavailable'));
+    await expect(
+      controller.inboundVoice(
+        {
+          headers: {},
+          protocol: 'https',
+          get: () => 'app.synqdrive.eu',
+          originalUrl: '/api/v1/webhooks/twilio/voice',
+        } as never,
+        {},
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { VoiceAssistant } from '@prisma/client';
+import { LEGACY_TWIML_SAY_MODE } from '@modules/voice-assistant/voice-conversation-lifecycle.util';
 import { buildInboundVoiceTwiml } from './twilio-voice-twiml.util';
 
 /**
  * Bridges Twilio PSTN ingress to the org Voice Assistant persona.
- * ElevenLabs remains the AI agent provider; Twilio handles phone numbers and call control.
+ * Current runtime path is LEGACY_TWIML_SAY (diagnostic Say only).
  */
 @Injectable()
 export class TwilioVoiceBridgeService {
@@ -14,18 +15,17 @@ export class TwilioVoiceBridgeService {
 
   describeBridge(assistant: VoiceAssistant | null): {
     pstnProvider: 'twilio';
-    aiProvider: 'elevenlabs';
+    telephonyMode: typeof LEGACY_TWIML_SAY_MODE;
+    aiProvider: null;
     agentProvisioned: boolean;
     inboundReady: boolean;
   } {
-    const agentProvisioned = Boolean(assistant?.elevenLabsAgentId);
     return {
       pstnProvider: 'twilio',
-      aiProvider: 'elevenlabs',
-      agentProvisioned,
-      inboundReady: Boolean(
-        assistant?.telephonyEnabled || assistant?.inboundEnabled,
-      ) && agentProvisioned,
+      telephonyMode: LEGACY_TWIML_SAY_MODE,
+      aiProvider: null,
+      agentProvisioned: Boolean(assistant?.elevenLabsAgentId),
+      inboundReady: false,
     };
   }
 }

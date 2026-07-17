@@ -237,24 +237,40 @@ describe('VoiceAssistantService', () => {
         status: 'COMPLETED',
         durationSeconds: 120,
         escalationReason: null,
+        metadata: { productiveAiCall: true },
+        transcript: 'Booking confirmed.',
       },
       {
         outcome: 'ESCALATED',
         status: 'COMPLETED',
         durationSeconds: 60,
         escalationReason: 'Low confidence',
+        metadata: { productiveAiCall: true },
+        transcript: null,
       },
       {
         outcome: 'ESCALATED',
         status: 'COMPLETED',
         durationSeconds: 45,
         escalationReason: 'Low confidence',
+        metadata: { productiveAiCall: true },
+        transcript: null,
       },
       {
         outcome: 'ABANDONED',
         status: 'FAILED',
         durationSeconds: null,
         escalationReason: null,
+        metadata: { telephonyMode: 'LEGACY_TWIML_SAY', productiveAiCall: false },
+        transcript: null,
+      },
+      {
+        outcome: 'RESOLVED',
+        status: 'COMPLETED',
+        durationSeconds: 30,
+        escalationReason: null,
+        metadata: { telephonyMode: 'LEGACY_TWIML_SAY', productiveAiCall: false },
+        transcript: null,
       },
     ]);
 
@@ -263,7 +279,8 @@ describe('VoiceAssistantService', () => {
     expect(prisma.voiceConversation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { organizationId: 'org-1' } }),
     );
-    expect(analytics.totalCalls).toBe(4);
+    expect(analytics.totalCalls).toBe(5);
+    expect(analytics.answeredCalls).toBe(3);
     expect(analytics.escalatedCalls).toBe(2);
     expect(analytics.missedCalls).toBe(1);
     expect(analytics.topEscalationReasons[0]).toEqual({

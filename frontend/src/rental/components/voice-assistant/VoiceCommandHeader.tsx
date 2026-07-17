@@ -73,13 +73,20 @@ export function VoiceCommandHeader({
 }: VoiceCommandHeaderProps) {
   const operatorStatus = resolveOperatorStatus(assistant, readiness);
   const elevenLabsOk = readiness?.checks.find(c => c.key === 'elevenlabs')?.ok;
+  const twilioOk = readiness?.checks.find(c => c.key === 'twilio')?.ok;
+  const pstnProvider = assistant.pstnProvider === 'TWILIO' ? 'twilio' : 'elevenlabs';
   const readinessPct = readinessPercent(readiness);
 
   const metaItems = [
     {
       icon: 'zap' as const,
       label: 'Provider',
-      value: providerStatusLabel(assistant.connectionStatus, elevenLabsOk),
+      value: providerStatusLabel(
+        assistant.connectionStatus,
+        elevenLabsOk,
+        twilioOk,
+        pstnProvider,
+      ),
     },
     {
       icon: 'phone' as const,
@@ -129,7 +136,13 @@ export function VoiceCommandHeader({
                 {operatorStatusLabel(operatorStatus)}
               </StatusChip>
               <StatusChip tone={elevenLabsOk ? 'info' : 'watch'} className="text-[10px]">
-                ElevenLabs · {providerStatusLabel(assistant.connectionStatus, elevenLabsOk)}
+                ElevenLabs ·{' '}
+                {providerStatusLabel(
+                  assistant.connectionStatus,
+                  elevenLabsOk,
+                  twilioOk,
+                  pstnProvider,
+                )}
               </StatusChip>
             </div>
 

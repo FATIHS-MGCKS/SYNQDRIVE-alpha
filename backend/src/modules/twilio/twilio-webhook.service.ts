@@ -6,12 +6,22 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   Prisma,
+  VoiceAssistantStatus,
   VoiceConversationDirection,
   VoiceConversationOutcome,
   VoiceConversationStatus,
   VoicePstnProvider,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  buildLegacyTwimlMetadata,
+  hasCountersApplied,
+  isLegacyTwimlConversation,
+  preferDurationSeconds,
+  resolveLegacyTwimlTerminalOutcome,
+  withCountersApplied,
+} from '@modules/voice-assistant/voice-conversation-lifecycle.util';
+import { sanitizeWebhookHeaders } from '@modules/voice-assistant/voice-conversation.util';
 import { TwilioService } from './twilio.service';
 import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
 import {
@@ -62,7 +72,12 @@ export class TwilioWebhookService {
       signatureValid: true,
     });
 
-    if (assistant && context.callSid) {
+    if (
+      assistant &&
+      assistant.status === VoiceAssistantStatus.ACTIVE &&
+      (assistant.telephonyEnabled || assistant.inboundEnabled) &&
+      context.callSid
+    ) {
       await this.ensureInboundConversation(assistant, context);
     }
 
@@ -182,11 +197,8 @@ export class TwilioWebhookService {
         callerNumber: context.from,
         direction: VoiceConversationDirection.INBOUND,
         status: VoiceConversationStatus.ACTIVE,
-        outcome: VoiceConversationOutcome.RESOLVED,
-        metadata: {
-          pstnProvider: 'twilio',
-          aiProvider: 'elevenlabs',
-        } as Prisma.InputJsonValue,
+        outcome: VoiceConversationOutcome.PENDING,
+        metadata: buildLegacyTwimlMetadata({ direction: 'inbound' }),
       },
     });
   }
@@ -210,10 +222,11 @@ export class TwilioWebhookService {
       return;
     }
 
+    const existingMetadata = conversation.metadata;
     const data: Prisma.VoiceConversationUpdateInput = {
       metadata: {
-        ...(typeof conversation.metadata === 'object' && conversation.metadata
-          ? (conversation.metadata as Record<string, unknown>)
+        ...(typeof existingMetadata === 'object' && existingMetadata
+          ? (existingMetadata as Record<string, unknown>)
           : {}),
         twilioCallStatus: context.callStatus,
       } as Prisma.InputJsonValue,
@@ -223,13 +236,33 @@ export class TwilioWebhookService {
       data.status = VoiceConversationStatus.COMPLETED;
       data.endedAt = new Date();
       if (durationSeconds && Number.isFinite(durationSeconds)) {
-        data.durationSeconds = durationSeconds;
+        data.durationSeconds = preferDurationSeconds(
+          conversation.durationSeconds,
+          durationSeconds,
+          'twilio',
+        );
       }
-      if (status === 'no-answer' || status === 'busy') {
+
+      if (isLegacyTwimlConversation(conversation.metadata)) {
+        data.outcome = resolveLegacyTwimlTerminalOutcome(context.callStatus);
+      } else if (status === 'no-answer' || status === 'busy') {
         data.outcome = VoiceConversationOutcome.ABANDONED;
       } else if (status === 'failed' || status === 'canceled') {
         data.outcome = VoiceConversationOutcome.FAILED;
+      } else if (status === 'completed') {
+        data.outcome = VoiceConversationOutcome.ABANDONED;
       }
+    }
+
+    const shouldCount =
+      terminal.has(status) &&
+      durationSeconds &&
+      durationSeconds > 0 &&
+      status === 'completed' &&
+      !hasCountersApplied(conversation.metadata);
+
+    if (shouldCount) {
+      data.metadata = withCountersApplied(data.metadata ?? existingMetadata);
     }
 
     await this.prisma.voiceConversation.update({
@@ -237,18 +270,14 @@ export class TwilioWebhookService {
       data,
     });
 
-    if (terminal.has(status) && durationSeconds && durationSeconds > 0) {
-      const answered = status === 'completed';
+    if (shouldCount) {
       await this.prisma.voiceAssistant.update({
         where: { id: assistant.id },
         data: {
           totalCalls: { increment: 1 },
-          answeredCalls: answered ? { increment: 1 } : undefined,
-          missedCalls: answered ? undefined : { increment: 1 },
-          totalTalkTimeSeconds: answered ? { increment: durationSeconds } : undefined,
-          totalTalkMinutes: answered
-            ? { increment: durationSeconds / 60 }
-            : undefined,
+          missedCalls: { increment: 1 },
+          totalTalkTimeSeconds: { increment: durationSeconds },
+          totalTalkMinutes: { increment: durationSeconds / 60 },
         },
       });
     }
@@ -271,7 +300,7 @@ export class TwilioWebhookService {
           externalEventId: params.externalEventId,
           eventType: params.eventType,
           payload: params.payload as Prisma.InputJsonValue,
-          headers: params.headers as Prisma.InputJsonValue,
+          headers: sanitizeWebhookHeaders(params.headers) as Prisma.InputJsonValue,
           signatureValid: params.signatureValid,
           processedAt: new Date(),
         },

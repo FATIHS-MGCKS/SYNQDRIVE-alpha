@@ -6,9 +6,9 @@ import {
   Logger,
   Post,
   Req,
-  Res,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Request } from 'express';
 import { TwilioWebhookService } from './twilio-webhook.service';
 
 @Controller('webhooks/twilio')
@@ -20,40 +20,43 @@ export class TwilioWebhookController {
   @Post('voice')
   @HttpCode(200)
   @Header('Content-Type', 'text/xml')
-  async inboundVoice(
-    @Req() req: Request,
-    @Body() body: unknown,
-    @Res() res: Response,
-  ) {
+  async inboundVoice(@Req() req: Request, @Body() body: unknown): Promise<string> {
     try {
-      const twiml = await this.webhookService.handleInboundVoice({
+      return await this.webhookService.handleInboundVoice({
         body,
         headers: req.headers as Record<string, string | string[] | undefined>,
         requestUrl: this.resolveRequestUrl(req),
       });
-      return res.status(200).send(twiml);
     } catch (err) {
-      this.logger.warn(
-        `Twilio voice webhook rejected: ${err instanceof Error ? err.message : 'unknown'}`,
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
+      this.logger.error(
+        `Twilio voice webhook failed: ${err instanceof Error ? err.message : 'unknown'}`,
       );
-      return res
-        .status(200)
-        .type('text/xml')
-        .send(
-          '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Service unavailable.</Say></Response>',
-        );
+      throw err;
     }
   }
 
   @Post('status')
   @HttpCode(200)
   async statusCallback(@Req() req: Request, @Body() body: unknown) {
-    await this.webhookService.handleStatusCallback({
-      body,
-      headers: req.headers as Record<string, string | string[] | undefined>,
-      requestUrl: this.resolveRequestUrl(req),
-    });
-    return { success: true };
+    try {
+      await this.webhookService.handleStatusCallback({
+        body,
+        headers: req.headers as Record<string, string | string[] | undefined>,
+        requestUrl: this.resolveRequestUrl(req),
+      });
+      return { success: true };
+    } catch (err) {
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
+      this.logger.error(
+        `Twilio status webhook failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      throw err;
+    }
   }
 
   private resolveRequestUrl(req: Request): string {

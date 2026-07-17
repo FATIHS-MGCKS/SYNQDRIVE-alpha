@@ -4,6 +4,7 @@ import {
   VoiceConversationOutcome,
   VoiceConversationStatus,
 } from '@prisma/client';
+import { isLegacyTwimlConversation, readConversationMetadata } from './voice-conversation-lifecycle.util';
 
 export interface ConversationLinkIds {
   linkedBookingId: string | null;
@@ -17,6 +18,18 @@ const LINK_KEYS = [
   'linkedCustomerId',
   'linkedVehicleId',
   'taskId',
+] as const;
+
+const SAFE_METADATA_KEYS = [
+  'provider',
+  'channel',
+  'language',
+  'trainingExample',
+  'telephonyMode',
+  'runtimePath',
+  'diagnostic',
+  'productiveAiCall',
+  'pstnProvider',
 ] as const;
 
 export function maskCallerNumber(raw: string | null | undefined): string | null {
@@ -55,8 +68,12 @@ export function minimalConversationMetadata(metadata: unknown): Record<string, u
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
   const record = metadata as Record<string, unknown>;
   const safe: Record<string, unknown> = {};
-  for (const key of ['provider', 'channel', 'language', 'trainingExample']) {
+  for (const key of SAFE_METADATA_KEYS) {
     if (record[key] !== undefined) safe[key] = record[key];
+  }
+  if (isLegacyTwimlConversation(record)) {
+    safe.diagnostic = true;
+    safe.productiveAiCall = false;
   }
   return Object.keys(safe).length > 0 ? safe : null;
 }
@@ -130,4 +147,18 @@ export function buildConversationWhere(
   }
 
   return and.length === 1 ? and[0] : { AND: and };
+}
+
+export function sanitizeWebhookHeaders(
+  headers: Record<string, string | string[] | undefined>,
+): Record<string, string | string[] | undefined> {
+  const sanitized: Record<string, string | string[] | undefined> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    const lower = key.toLowerCase();
+    if (lower === 'authorization' || lower === 'cookie' || lower === 'x-api-key') {
+      continue;
+    }
+    sanitized[key] = value;
+  }
+  return sanitized;
 }

@@ -10104,6 +10104,7 @@ enum VoiceConversationStatus {
 }
 
 enum VoiceConversationOutcome {
+  PENDING
   RESOLVED
   ESCALATED
   FAILED
@@ -10208,7 +10209,7 @@ model VoiceConversation {
   direction              VoiceConversationDirection @default(INBOUND)
   durationSeconds        Int?                       @map("duration_seconds")
   status                 VoiceConversationStatus    @default(COMPLETED)
-  outcome                VoiceConversationOutcome   @default(RESOLVED)
+  outcome                VoiceConversationOutcome   @default(PENDING)
   transcript             String?                    @db.Text
   summary                String?
   escalationReason       String?                    @map("escalation_reason")
