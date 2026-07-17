@@ -35,6 +35,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p53-driver-customer-roles-2026-07-16',
+    version: '4.9.554',
+    title: 'Driving Intelligence V2 P53 — Booking customer vs driver role separation',
+    summary: [
+      'Neues Modul `driving-attribution-roles` (`driving-attribution-roles-v1`).',
+      'Getrennte Rollen: bookingCustomerId, assignedDriverId, actualDriverId, vehicleOnly, unknown.',
+      'Buchungskunde = Vertragspartner — nicht automatisch Fahrer; Firmenkunde kann separaten Fahrer haben.',
+      'Entfernt Gleichsetzung `driverId = booking.customerId` in RentalDrivingAnalysis.',
+      'Schema: Booking.assignedDriverId; Trip/MisuseCase/RentalAnalysis Role-Felder.',
+      'TripAssignment + TripAttribution + Misuse resolveAttribution nutzen Role-Resolver.',
+      'Legacy: `driverId`-Query/API filtert bookingCustomerId; alte driverId-Spalte lesbar.',
+      'Corporate: keine customerDecisionEligible ohne Fahrerzuordnung.',
+      'Tests: Privatkunde, Firmenkunde, Zusatzfahrer.',
+    ],
+    reason:
+      'Prompt 53/76 — fachliche Trennung Vertragspartner vs. tatsächlicher Fahrer.',
+    previousBehavior:
+      'driverId wurde still mit booking.customerId gespiegelt; Kunde galt implizit als Fahrer.',
+    details:
+      '`driving-attribution-roles/*`, `trip-assignment.service.ts`, `trip-attribution.service.ts`, `misuse-case.types.ts`, `rental-driving-analysis.service.ts`, Prisma migration `20260716310000_driving_attribution_roles`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:20:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p52-misuse-reconcile-2026-07-16',
     version: '4.9.553',
     title: 'Driving Intelligence V2 P52 — DRIVING_MISUSE_RECONCILE orchestration',

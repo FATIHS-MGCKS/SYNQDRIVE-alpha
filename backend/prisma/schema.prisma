@@ -3643,11 +3643,17 @@ model Customer {
 
   organization           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookings               Booking[]
-  rentalDrivingAnalyses  RentalDrivingAnalysis[]
+  assignedDriverBookings Booking[]                 @relation("BookingAssignedDriver")
+  rentalDrivingAnalysesAsBookingCustomer RentalDrivingAnalysis[] @relation("RentalAnalysisBookingCustomer")
+  rentalDrivingAnalysesAsAssignedDriver RentalDrivingAnalysis[] @relation("RentalAnalysisAssignedDriver")
+  rentalDrivingAnalysesAsActualDriver   RentalDrivingAnalysis[] @relation("RentalAnalysisActualDriver")
+  rentalDrivingAnalysesLegacyDriver     RentalDrivingAnalysis[] @relation("RentalAnalysisLegacyDriver")
   documents              CustomerDocument[]
   verificationChecks     CustomerVerificationCheck[]
   timelineEvents         CustomerTimelineEvent[]
   misuseCases            MisuseCase[]
+  misuseCasesAsAssignedDriver MisuseCase[] @relation("MisuseCaseAssignedDriver")
+  misuseCasesAsActualDriver   MisuseCase[] @relation("MisuseCaseActualDriver")
   outboundEmails         OutboundEmail[]
   bookingPaymentRequests BookingPaymentRequest[]
 
@@ -3916,6 +3922,7 @@ model Booking {
   id                      String                @id @default(uuid())
   organizationId          String                @map("organization_id")
   customerId              String                @map("customer_id")
+  assignedDriverId        String?               @map("assigned_driver_id")
   vehicleId               String                @map("vehicle_id")
   pickupStationId         String?               @map("pickup_station_id")
   returnStationId         String?               @map("return_station_id")
@@ -3947,6 +3954,7 @@ model Booking {
 
   organization            Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer                Customer                    @relation(fields: [customerId], references: [id])
+  assignedDriver          Customer?                   @relation("BookingAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
   vehicle                 Vehicle                     @relation(fields: [vehicleId], references: [id])
   pickupStation           Station?                    @relation("BookingPickupStation", fields: [pickupStationId], references: [id], onDelete: SetNull)
   returnStation           Station?                    @relation("BookingReturnStation", fields: [returnStationId], references: [id], onDelete: SetNull)
@@ -3966,6 +3974,7 @@ model Booking {
 
   @@index([organizationId])
   @@index([customerId])
+  @@index([assignedDriverId])
   @@index([vehicleId])
   @@index([status])
   @@index([startDate, endDate])
@@ -4344,7 +4353,12 @@ model RentalDrivingAnalysis {
   organizationId      String   @map("organization_id")
   bookingId           String   @unique @map("booking_id")
   vehicleId           String   @map("vehicle_id")
-  driverId            String   @map("driver_id")
+  /// Contract holder (Vertragspartner) — not automatically the driver.
+  bookingCustomerId   String   @map("booking_customer_id")
+  assignedDriverId    String?  @map("assigned_driver_id")
+  actualDriverId      String?  @map("actual_driver_id")
+  /// @deprecated Legacy mirror of booking customer — read via readLegacyDriverId(); do not write customerId here.
+  driverId            String?  @map("driver_id")
   periodStart         DateTime @map("period_start")
   periodEnd           DateTime @map("period_end")
   payload             Json     @map("payload")
@@ -4357,13 +4371,19 @@ model RentalDrivingAnalysis {
   wearImpact          String?  @map("wear_impact")
   createdAt           DateTime @default(now()) @map("created_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  driver       Customer     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking         Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle         Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  bookingCustomer Customer     @relation("RentalAnalysisBookingCustomer", fields: [bookingCustomerId], references: [id], onDelete: Cascade)
+  assignedDriver  Customer?    @relation("RentalAnalysisAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  actualDriver    Customer?    @relation("RentalAnalysisActualDriver", fields: [actualDriverId], references: [id], onDelete: SetNull)
+  driver          Customer?    @relation("RentalAnalysisLegacyDriver", fields: [driverId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([vehicleId])
+  @@index([bookingCustomerId])
+  @@index([assignedDriverId])
+  @@index([actualDriverId])
   @@index([driverId])
   @@index([periodStart, periodEnd])
   @@map("rental_driving_analyses")
@@ -6199,6 +6219,9 @@ model VehicleTrip {
   assignmentSubjectId   String?                    @map("assignment_subject_id")
   assignedBookingId     String?                    @map("assigned_booking_id")
   bookingLinkSource     TripBookingLinkSource?     @map("booking_link_source")
+  bookingCustomerId     String?                    @map("booking_customer_id")
+  assignedDriverId      String?                    @map("assigned_driver_id")
+  actualDriverId        String?                    @map("actual_driver_id")
   isPrivateTrip         Boolean                    @default(false) @map("is_private_trip")
   startTime             DateTime                   @map("start_time")
   endTime               DateTime?                  @map("end_time")
@@ -7001,6 +7024,8 @@ model MisuseCase {
   tripId         String? @map("trip_id")
   bookingId      String? @map("booking_id")
   customerId     String? @map("customer_id")
+  assignedDriverId String? @map("assigned_driver_id")
+  actualDriverId   String? @map("actual_driver_id")
 
   category   MisuseCaseCategory
   type       MisuseCaseType
@@ -7046,6 +7071,8 @@ model MisuseCase {
   trip            VehicleTrip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
   booking         Booking?             @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   customer        Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedDriver  Customer?            @relation("MisuseCaseAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  actualDriver    Customer?            @relation("MisuseCaseActualDriver", fields: [actualDriverId], references: [id], onDelete: SetNull)
   analysisRun     DrivingAnalysisRun?  @relation(fields: [analysisRunId], references: [id], onDelete: SetNull)
   supersedesCase  MisuseCase?          @relation("MisuseCaseSupersedes", fields: [supersedesCaseId], references: [id], onDelete: SetNull)
   supersededCases MisuseCase[]         @relation("MisuseCaseSupersedes")

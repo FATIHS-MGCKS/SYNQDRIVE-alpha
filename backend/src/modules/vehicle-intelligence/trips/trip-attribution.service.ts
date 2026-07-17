@@ -6,12 +6,28 @@ import type {
   TripAttributionBookingOverlap,
   TripAttributionInput,
 } from './trip-attribution.types';
+import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
 
 @Injectable()
 export class TripAttributionService {
   constructor(private readonly prisma: PrismaService) {}
 
   resolveAttribution(input: TripAttributionInput): TripAttribution {
+    const roles = resolveDrivingAttributionRoles({
+      isPrivateTrip: input.isPrivateTrip,
+      assignmentStatus: input.assignmentStatus as TripAssignmentStatus | null,
+      assignmentSubjectType: input.assignmentSubjectType ?? null,
+      assignmentSubjectId: input.assignmentSubjectId,
+      assignedBookingId: input.assignedBookingId,
+      bookingLinkSource: input.bookingLinkSource,
+      bookingCustomerId: input.bookingCustomerId,
+      bookingAssignedDriverId: input.bookingAssignedDriverId,
+      bookingCustomerType: input.bookingCustomerType,
+      tripBookingCustomerId: input.tripBookingCustomerId,
+      tripAssignedDriverId: input.tripAssignedDriverId,
+      tripActualDriverId: input.tripActualDriverId,
+    });
+
     if (
       input.isPrivateTrip ||
       input.assignmentStatus === TripAssignmentStatus.PRIVATE_UNASSIGNED
@@ -24,6 +40,12 @@ export class TripAttributionService {
         customerChargeable: false,
         bookingId: null,
         customerId: null,
+        bookingCustomerId: null,
+        assignedDriverId: null,
+        actualDriverId: null,
+        customerDecisionEligible: false,
+        driverDecisionEligible: false,
+        attributionType: roles.attributionType,
         reason: 'Privatfahrt — nicht kunden- oder buchungsrelevant',
       };
     }
@@ -39,7 +61,13 @@ export class TripAttributionService {
         bookingRelevant: true,
         customerChargeable: false,
         bookingId: input.assignedBookingId,
-        customerId: input.assignmentSubjectId,
+        customerId: roles.bookingCustomerId,
+        bookingCustomerId: roles.bookingCustomerId,
+        assignedDriverId: roles.assignedDriverId,
+        actualDriverId: roles.actualDriverId,
+        customerDecisionEligible: roles.customerDecisionEligible,
+        driverDecisionEligible: roles.driverDecisionEligible,
+        attributionType: roles.attributionType,
         reason: 'Explizit mit Buchung verknüpft',
       };
     }
@@ -56,7 +84,13 @@ export class TripAttributionService {
         bookingRelevant: true,
         customerChargeable: false,
         bookingId: input.assignedBookingId,
-        customerId: input.assignmentSubjectId ?? overlap?.customerId ?? null,
+        customerId: roles.bookingCustomerId ?? overlap?.bookingCustomerId ?? null,
+        bookingCustomerId: roles.bookingCustomerId ?? overlap?.bookingCustomerId ?? null,
+        assignedDriverId: roles.assignedDriverId ?? overlap?.assignedDriverId ?? null,
+        actualDriverId: roles.actualDriverId,
+        customerDecisionEligible: false,
+        driverDecisionEligible: roles.driverDecisionEligible,
+        attributionType: roles.attributionType,
         reason: 'Nur über Buchungszeitfenster gefunden — Zuordnung nicht bestätigt',
       };
     }
@@ -69,7 +103,13 @@ export class TripAttributionService {
         bookingRelevant: true,
         customerChargeable: false,
         bookingId: overlap.bookingId,
-        customerId: overlap.customerId,
+        customerId: overlap.bookingCustomerId,
+        bookingCustomerId: overlap.bookingCustomerId,
+        assignedDriverId: overlap.assignedDriverId,
+        actualDriverId: null,
+        customerDecisionEligible: false,
+        driverDecisionEligible: Boolean(overlap.assignedDriverId),
+        attributionType: roles.attributionType,
         reason: 'Nur über Buchungszeitfenster gefunden — Zuordnung nicht bestätigt',
       };
     }
@@ -82,6 +122,12 @@ export class TripAttributionService {
       customerChargeable: false,
       bookingId: null,
       customerId: null,
+      bookingCustomerId: null,
+      assignedDriverId: null,
+      actualDriverId: null,
+      customerDecisionEligible: false,
+      driverDecisionEligible: false,
+      attributionType: roles.attributionType,
       reason: 'Keine Buchung verknüpft',
     };
   }
@@ -91,7 +137,11 @@ export class TripAttributionService {
     assignmentStatus: TripAssignmentStatus | null;
     assignedBookingId: string | null;
     assignmentSubjectId: string | null;
+    assignmentSubjectType: string | null;
     bookingLinkSource: 'EXPLICIT' | 'TIME_WINDOW' | null;
+    bookingCustomerId?: string | null;
+    assignedDriverId?: string | null;
+    actualDriverId?: string | null;
     vehicleId: string;
     startTime: Date;
     endTime: Date | null;
@@ -106,7 +156,11 @@ export class TripAttributionService {
       assignmentStatus: trip.assignmentStatus,
       assignedBookingId: trip.assignedBookingId,
       assignmentSubjectId: trip.assignmentSubjectId,
+      assignmentSubjectType: trip.assignmentSubjectType,
       bookingLinkSource: trip.bookingLinkSource,
+      tripBookingCustomerId: trip.bookingCustomerId,
+      tripAssignedDriverId: trip.assignedDriverId,
+      tripActualDriverId: trip.actualDriverId,
       bookingOverlap: overlap,
     });
   }
@@ -131,14 +185,24 @@ export class TripAttributionService {
     const booking = await this.prisma.booking.findFirst({
       where,
       orderBy: { startDate: 'desc' },
-      select: { id: true, customerId: true },
+      select: {
+        id: true,
+        customerId: true,
+        assignedDriverId: true,
+        customer: { select: { customerType: true } },
+      },
     });
     if (!booking) return null;
-    return { bookingId: booking.id, customerId: booking.customerId };
+    return {
+      bookingId: booking.id,
+      bookingCustomerId: booking.customerId,
+      assignedDriverId: booking.assignedDriverId,
+      customerType: booking.customer.customerType,
+    };
   }
 
   isCustomerAnalyticsEligible(attribution: TripAttribution): boolean {
-    return attribution.scope === 'BOOKING_ASSIGNED';
+    return attribution.scope === 'BOOKING_ASSIGNED' && attribution.customerDecisionEligible;
   }
 
   isBookingAnalyticsEligible(attribution: TripAttribution): boolean {

@@ -1,10 +1,17 @@
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
+import type { DrivingAttributionType } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.types';
 
 /** Structured agent response for Rental Driving Analysis (vehicle stress focus). */
 export interface RentalDrivingAnalysisPayload {
   analysisMeta: {
     vehicleId: string;
-    driverId: string;
+    bookingCustomerId: string | null;
+    assignedDriverId: string | null;
+    actualDriverId: string | null;
+    attributionType?: DrivingAttributionType;
+    customerDecisionEligible?: boolean;
+    /** @deprecated Legacy mirror — use bookingCustomerId */
+    driverId?: string | null;
     rentalPeriodId: string;
     periodStart: string;
     periodEnd: string;

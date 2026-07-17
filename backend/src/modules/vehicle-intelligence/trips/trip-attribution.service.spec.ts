@@ -39,13 +39,17 @@ describe('TripAttributionService', () => {
       assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
       assignedBookingId: 'book-1',
       assignmentSubjectId: 'cust-1',
+      assignmentSubjectType: 'BOOKING_CUSTOMER',
       bookingLinkSource: 'EXPLICIT',
+      bookingCustomerId: 'cust-1',
     });
 
     expect(attribution.scope).toBe('BOOKING_ASSIGNED');
     expect(attribution.confidence).toBe('HIGH');
     expect(attribution.bookingRelevant).toBe(true);
     expect(attribution.customerRelevant).toBe(true);
+    expect(attribution.bookingCustomerId).toBe('cust-1');
+    expect(attribution.assignedDriverId).toBeNull();
     expect(attribution.customerChargeable).toBe(false);
   });
 
@@ -82,6 +86,8 @@ describe('TripAttributionService', () => {
     prisma.booking.findFirst.mockResolvedValue({
       id: 'book-3',
       customerId: 'cust-3',
+      assignedDriverId: null,
+      customer: { customerType: 'INDIVIDUAL' },
     });
 
     const attribution = await service.resolveAttributionForTrip({
@@ -89,6 +95,7 @@ describe('TripAttributionService', () => {
       assignmentStatus: TripAssignmentStatus.UNKNOWN_ASSIGNMENT,
       assignedBookingId: null,
       assignmentSubjectId: null,
+      assignmentSubjectType: null,
       bookingLinkSource: null,
       vehicleId: 'veh-1',
       startTime: new Date('2026-06-01T10:00:00Z'),
@@ -99,7 +106,7 @@ describe('TripAttributionService', () => {
     expect(attribution.customerChargeable).toBe(false);
   });
 
-  it('customer analytics eligibility requires BOOKING_ASSIGNED', () => {
+  it('customer analytics eligibility requires BOOKING_ASSIGNED and decision eligibility', () => {
     expect(
       service.isCustomerAnalyticsEligible({
         scope: 'BOOKING_ASSIGNED',
@@ -109,9 +116,33 @@ describe('TripAttributionService', () => {
         customerChargeable: false,
         bookingId: 'b1',
         customerId: 'c1',
+        bookingCustomerId: 'c1',
+        assignedDriverId: null,
+        actualDriverId: null,
+        customerDecisionEligible: true,
+        driverDecisionEligible: false,
+        attributionType: 'BOOKING_CUSTOMER' as any,
         reason: 'x',
       }),
     ).toBe(true);
+    expect(
+      service.isCustomerAnalyticsEligible({
+        scope: 'BOOKING_ASSIGNED',
+        confidence: 'HIGH',
+        customerRelevant: true,
+        bookingRelevant: true,
+        customerChargeable: false,
+        bookingId: 'b1',
+        customerId: 'corp-1',
+        bookingCustomerId: 'corp-1',
+        assignedDriverId: null,
+        actualDriverId: null,
+        customerDecisionEligible: false,
+        driverDecisionEligible: false,
+        attributionType: 'BOOKING_CUSTOMER' as any,
+        reason: 'x',
+      }),
+    ).toBe(false);
     expect(
       service.isCustomerAnalyticsEligible({
         scope: 'PRIVATE',
@@ -121,8 +152,30 @@ describe('TripAttributionService', () => {
         customerChargeable: false,
         bookingId: null,
         customerId: null,
+        bookingCustomerId: null,
+        assignedDriverId: null,
+        actualDriverId: null,
+        customerDecisionEligible: false,
+        driverDecisionEligible: false,
+        attributionType: 'PRIVATE_UNASSIGNED' as any,
         reason: 'x',
       }),
     ).toBe(false);
+  });
+
+  it('corporate booking without driver is not customer-decision eligible', () => {
+    const attribution = service.resolveAttribution({
+      isPrivateTrip: false,
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+      assignedBookingId: 'book-corp',
+      assignmentSubjectId: 'corp-1',
+      assignmentSubjectType: 'BOOKING_CUSTOMER',
+      bookingLinkSource: 'EXPLICIT',
+      bookingCustomerId: 'corp-1',
+      bookingCustomerType: 'CORPORATE' as any,
+    });
+
+    expect(attribution.bookingCustomerId).toBe('corp-1');
+    expect(attribution.customerDecisionEligible).toBe(false);
   });
 });

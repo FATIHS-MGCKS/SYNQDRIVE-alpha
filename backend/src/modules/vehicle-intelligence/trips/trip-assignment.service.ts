@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
 
 export interface TripAssignmentResolution {
   assignmentStatus: TripAssignmentStatus;
@@ -16,6 +17,9 @@ export interface TripAssignmentResolution {
   assignmentSubjectId: string | null;
   assignedBookingId: string | null;
   bookingLinkSource: TripBookingLinkSource | null;
+  bookingCustomerId: string | null;
+  assignedDriverId: string | null;
+  actualDriverId: string | null;
   isPrivateTrip: boolean;
   scoreEligible: boolean;
 }
@@ -32,6 +36,9 @@ type TripAssignmentInput = Pick<
   | 'assignmentSubjectId'
   | 'assignedBookingId'
   | 'bookingLinkSource'
+  | 'bookingCustomerId'
+  | 'assignedDriverId'
+  | 'actualDriverId'
   | 'isPrivateTrip'
 >;
 
@@ -56,6 +63,9 @@ export class TripAssignmentService {
         assignmentSubjectId: true,
         assignedBookingId: true,
         bookingLinkSource: true,
+        bookingCustomerId: true,
+        assignedDriverId: true,
+        actualDriverId: true,
         isPrivateTrip: true,
       },
     });
@@ -70,6 +80,9 @@ export class TripAssignmentService {
         assignmentSubjectId: resolution.assignmentSubjectId ?? undefined,
         assignedBookingId: resolution.assignedBookingId ?? undefined,
         bookingLinkSource: resolution.bookingLinkSource ?? undefined,
+        bookingCustomerId: resolution.bookingCustomerId ?? undefined,
+        assignedDriverId: resolution.assignedDriverId ?? undefined,
+        actualDriverId: resolution.actualDriverId ?? undefined,
         isPrivateTrip: resolution.isPrivateTrip,
       },
     });
@@ -96,6 +109,7 @@ export class TripAssignmentService {
     tripId: string,
     bookingId: string,
     customerId: string,
+    assignedDriverId?: string | null,
   ): Promise<TripAssignmentResolution | null> {
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
@@ -110,10 +124,24 @@ export class TripAssignmentService {
         assignmentSubjectId: true,
         assignedBookingId: true,
         bookingLinkSource: true,
+        bookingCustomerId: true,
+        assignedDriverId: true,
+        actualDriverId: true,
         isPrivateTrip: true,
       },
     });
     if (!trip) return null;
+
+    const roles = resolveDrivingAttributionRoles({
+      isPrivateTrip: false,
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      assignmentSubjectId: customerId,
+      assignedBookingId: bookingId,
+      bookingLinkSource: TripBookingLinkSource.EXPLICIT,
+      bookingCustomerId: customerId,
+      bookingAssignedDriverId: assignedDriverId ?? null,
+    });
 
     const resolution: TripAssignmentResolution = {
       assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
@@ -121,6 +149,9 @@ export class TripAssignmentService {
       assignmentSubjectId: customerId,
       assignedBookingId: bookingId,
       bookingLinkSource: TripBookingLinkSource.EXPLICIT,
+      bookingCustomerId: roles.bookingCustomerId,
+      assignedDriverId: roles.assignedDriverId,
+      actualDriverId: roles.actualDriverId,
       isPrivateTrip: false,
       scoreEligible: true,
     };
@@ -133,6 +164,9 @@ export class TripAssignmentService {
         assignmentSubjectId: resolution.assignmentSubjectId,
         assignedBookingId: resolution.assignedBookingId,
         bookingLinkSource: resolution.bookingLinkSource,
+        bookingCustomerId: resolution.bookingCustomerId,
+        assignedDriverId: resolution.assignedDriverId,
+        actualDriverId: resolution.actualDriverId,
         isPrivateTrip: false,
       },
     });
@@ -145,12 +179,26 @@ export class TripAssignmentService {
       const explicitBooking =
         trip.bookingLinkSource === TripBookingLinkSource.EXPLICIT &&
         trip.assignedBookingId != null;
+      const roles = resolveDrivingAttributionRoles({
+        isPrivateTrip: trip.isPrivateTrip === true,
+        assignmentStatus: trip.assignmentStatus,
+        assignmentSubjectType: trip.assignmentSubjectType,
+        assignmentSubjectId: trip.assignmentSubjectId,
+        assignedBookingId: trip.assignedBookingId,
+        bookingLinkSource: trip.bookingLinkSource,
+        tripBookingCustomerId: trip.bookingCustomerId,
+        tripAssignedDriverId: trip.assignedDriverId,
+        tripActualDriverId: trip.actualDriverId,
+      });
       return {
         assignmentStatus: trip.assignmentStatus,
         assignmentSubjectType: trip.assignmentSubjectType ?? null,
         assignmentSubjectId: trip.assignmentSubjectId ?? null,
         assignedBookingId: trip.assignedBookingId ?? null,
         bookingLinkSource: trip.bookingLinkSource ?? null,
+        bookingCustomerId: roles.bookingCustomerId,
+        assignedDriverId: roles.assignedDriverId,
+        actualDriverId: roles.actualDriverId,
         isPrivateTrip: trip.isPrivateTrip === true,
         scoreEligible:
           explicitBooking ||
@@ -163,12 +211,23 @@ export class TripAssignmentService {
 
     const normalizedDriver = this.normalizeSubjectId(trip.driverName);
     if (normalizedDriver) {
+      const roles = resolveDrivingAttributionRoles({
+        isPrivateTrip: false,
+        assignmentStatus: TripAssignmentStatus.ASSIGNED_DRIVER,
+        assignmentSubjectType: TripAssignmentSubjectType.DRIVER,
+        assignmentSubjectId: normalizedDriver,
+        assignedBookingId: null,
+        bookingLinkSource: null,
+      });
       return {
         assignmentStatus: TripAssignmentStatus.ASSIGNED_DRIVER,
         assignmentSubjectType: TripAssignmentSubjectType.DRIVER,
         assignmentSubjectId: normalizedDriver,
         assignedBookingId: null,
         bookingLinkSource: null,
+        bookingCustomerId: roles.bookingCustomerId,
+        assignedDriverId: roles.assignedDriverId,
+        actualDriverId: roles.actualDriverId,
         isPrivateTrip: false,
         scoreEligible: true,
       };
@@ -181,6 +240,9 @@ export class TripAssignmentService {
         assignmentSubjectId: null,
         assignedBookingId: null,
         bookingLinkSource: null,
+        bookingCustomerId: null,
+        assignedDriverId: null,
+        actualDriverId: null,
         isPrivateTrip: false,
         scoreEligible: false,
       };
@@ -192,6 +254,9 @@ export class TripAssignmentService {
       assignmentSubjectId: null,
       assignedBookingId: null,
       bookingLinkSource: null,
+      bookingCustomerId: null,
+      assignedDriverId: null,
+      actualDriverId: null,
       isPrivateTrip: true,
       scoreEligible: false,
     };
@@ -212,9 +277,26 @@ export class TripAssignmentService {
     const booking = await this.prisma.booking.findFirst({
       where: overlapWhere,
       orderBy: { startDate: 'desc' },
-      select: { id: true, customerId: true },
+      select: {
+        id: true,
+        customerId: true,
+        assignedDriverId: true,
+        customer: { select: { customerType: true } },
+      },
     });
     if (!booking) return null;
+
+    const roles = resolveDrivingAttributionRoles({
+      isPrivateTrip: false,
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      assignmentSubjectId: booking.customerId,
+      assignedBookingId: booking.id,
+      bookingLinkSource: TripBookingLinkSource.TIME_WINDOW,
+      bookingCustomerId: booking.customerId,
+      bookingAssignedDriverId: booking.assignedDriverId,
+      bookingCustomerType: booking.customer.customerType,
+    });
 
     return {
       assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
@@ -222,6 +304,9 @@ export class TripAssignmentService {
       assignmentSubjectId: booking.customerId,
       assignedBookingId: booking.id,
       bookingLinkSource: TripBookingLinkSource.TIME_WINDOW,
+      bookingCustomerId: roles.bookingCustomerId,
+      assignedDriverId: roles.assignedDriverId,
+      actualDriverId: roles.actualDriverId,
       isPrivateTrip: false,
       scoreEligible: false,
     };
@@ -232,4 +317,3 @@ export class TripAssignmentService {
     return normalized.length > 0 ? normalized : null;
   }
 }
-
