@@ -1,4 +1,9 @@
 import { ApplyDocumentExtractionType } from '@modules/document-extraction/document-extraction.schemas';
+import type {
+  ClassificationAlternativeCandidate,
+  ClassificationDetectedIdentifier,
+  DocumentClassificationContract,
+} from '@modules/document-extraction/document-classification-contract.types';
 import type { DocumentCategory, DocumentSubtype } from '@modules/document-extraction/document-taxonomy.types';
 
 /** Classification sentinel when the model cannot map to a supported type. */
@@ -23,11 +28,26 @@ export interface DocumentClassificationInput {
   pageBoundaryReliable?: boolean;
 }
 
+export type ClassificationAlternativeLlmCandidate = {
+  documentCategory: string;
+  documentSubtype: string;
+  confidence: number;
+  rationale?: string | null;
+};
+
 export interface DocumentClassificationLlmResponse {
   detectedDocumentType: ClassificationDetectedType;
+  documentCategory?: string | null;
+  documentSubtype?: string | null;
   confidence: number;
   rationale: string;
   sourcePages: number[] | null;
+  alternatives?: ClassificationAlternativeLlmCandidate[] | null;
+  detectedIdentifiers?: Array<{
+    identifierType: string;
+    value: string;
+    evidencePage?: number | null;
+  }> | null;
 }
 
 export interface DocumentClassificationResult {
@@ -42,5 +62,13 @@ export interface DocumentClassificationResult {
   documentCategory: DocumentCategory | null;
   documentSubtype: DocumentSubtype | null;
   taxonomyVersion: string | null;
+  category: DocumentCategory | null;
+  subtype: DocumentSubtype | null;
+  alternatives: ClassificationAlternativeCandidate[];
+  evidencePages: number[];
+  detectedIdentifiers: ClassificationDetectedIdentifier[];
+  modelVersion: string | null;
+  contractVersion: string | null;
+  contract: DocumentClassificationContract;
   error?: string;
 }

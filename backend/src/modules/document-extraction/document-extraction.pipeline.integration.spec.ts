@@ -13,7 +13,7 @@ import {
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
 import { DocumentExtractionEnqueueFailedException } from './document-extraction-enqueue.exception';
 import { DOCUMENT_EXTRACTION_ERROR_CODES } from './document-extraction-lifecycle.util';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, makeVehicleCandidateResolverMock, makeBookingCandidateResolverMock, makeCustomerCandidateResolverMock, makeDriverCandidateResolverMock, makePartnerCandidateResolverMock } from './document-extraction-test.helpers';
+import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, makeVehicleCandidateResolverMock, makeBookingCandidateResolverMock, makeCustomerCandidateResolverMock, makeDriverCandidateResolverMock, makePartnerCandidateResolverMock, makeClassificationResultMock } from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -114,16 +114,16 @@ describe('Document extraction pipeline (integration wiring)', () => {
       }),
     };
     classification = {
-      classify: jest.fn().mockResolvedValue({
-        success: true,
-        detectedDocumentType: 'INVOICE',
-        confidence: 0.92,
-        rationale: 'Invoice layout',
-        sourcePages: [1],
-        provider: 'mistral',
-        model: 'mistral-small',
-        processingDurationMs: 50,
-      }),
+      classify: jest.fn().mockResolvedValue(
+        makeClassificationResultMock({
+          detectedDocumentType: 'INVOICE',
+          documentCategory: 'FINANCE',
+          documentSubtype: 'INVOICE',
+          confidence: 0.92,
+          rationale: 'Invoice layout',
+          sourcePages: [1],
+        }, { processingDurationMs: 50 }),
+      ),
     };
     aiExtraction = {
       extract: jest.fn().mockResolvedValue({
@@ -252,16 +252,16 @@ describe('Document extraction pipeline (integration wiring)', () => {
   });
 
   it('7. AUTO uncertain → AWAITING_DOCUMENT_TYPE', async () => {
-    classification.classify.mockResolvedValue({
-      success: true,
-      detectedDocumentType: 'SERVICE',
-      confidence: 0.6,
-      rationale: 'Uncertain',
-      sourcePages: [1],
-      provider: 'mistral',
-      model: 'mistral-small',
-      processingDurationMs: 10,
-    });
+    classification.classify.mockResolvedValue(
+      makeClassificationResultMock({
+        detectedDocumentType: 'SERVICE',
+        documentCategory: 'TECHNICAL',
+        documentSubtype: 'SERVICE_REPORT',
+        confidence: 0.6,
+        rationale: 'Uncertain workshop evidence overall',
+        sourcePages: [1],
+      }),
+    );
     prisma.vehicleDocumentExtraction.findUnique.mockResolvedValue(baseRecord);
     await processor.process(job());
     expect(prisma.vehicleDocumentExtraction.updateMany).toHaveBeenCalledWith(
@@ -411,16 +411,16 @@ describe('Document extraction pipeline (integration wiring)', () => {
   });
 
   it('UNKNOWN classification without suggestion awaits user', async () => {
-    classification.classify.mockResolvedValue({
-      success: true,
-      detectedDocumentType: CLASSIFICATION_UNKNOWN,
-      confidence: 0.2,
-      rationale: 'Unknown',
-      sourcePages: [],
-      provider: 'mistral',
-      model: 'mistral-small',
-      processingDurationMs: 10,
-    });
+    classification.classify.mockResolvedValue(
+      makeClassificationResultMock({
+        detectedDocumentType: CLASSIFICATION_UNKNOWN,
+        documentCategory: 'GENERAL',
+        documentSubtype: 'OTHER',
+        confidence: 0.2,
+        rationale: 'Unknown document without clear subtype',
+        sourcePages: [],
+      }),
+    );
     prisma.vehicleDocumentExtraction.findUnique.mockResolvedValue(baseRecord);
     await processor.process(job());
     expect(prisma.vehicleDocumentExtraction.updateMany).toHaveBeenCalledWith(

@@ -1,3 +1,6 @@
+import { buildDocumentClassificationContract } from './document-classification-taxonomy.util';
+import { SUPPORTED_DOCUMENT_TYPES } from './document-extraction.schemas';
+
 export function makeMalwareScanMock(storage?: {
   putObject: jest.Mock | ((input: unknown) => Promise<unknown>);
 }) {
@@ -259,6 +262,50 @@ export function makeStorageMock(overrides: Partial<Record<string, jest.Mock>> = 
       backup: { strategy: 'none', documentObjectsIncluded: false },
     }),
     resolveStorageZone: jest.fn().mockReturnValue('clean'),
+    ...overrides,
+  };
+}
+
+export function makeClassificationResultMock(
+  raw: Record<string, unknown> = {},
+  overrides: Record<string, unknown> = {},
+) {
+  const contract = buildDocumentClassificationContract({
+    raw: {
+      detectedDocumentType: 'SERVICE',
+      documentCategory: 'TECHNICAL',
+      documentSubtype: 'SERVICE_REPORT',
+      confidence: 0.9,
+      rationale: 'Workshop service maintenance record on page 1',
+      sourcePages: [1],
+      alternatives: [],
+      detectedIdentifiers: [],
+      ...raw,
+    },
+    allowed: SUPPORTED_DOCUMENT_TYPES,
+    maxPage: 1,
+    modelVersion: 'mistral-small',
+  });
+  return {
+    success: true,
+    detectedDocumentType: contract.detectedDocumentType,
+    confidence: contract.confidence,
+    rationale: contract.rationale,
+    sourcePages: contract.evidencePages,
+    provider: 'mistral',
+    model: 'mistral-small',
+    processingDurationMs: 10,
+    documentCategory: contract.category,
+    documentSubtype: contract.subtype,
+    taxonomyVersion: contract.taxonomyVersion,
+    category: contract.category,
+    subtype: contract.subtype,
+    alternatives: contract.alternatives,
+    evidencePages: contract.evidencePages,
+    detectedIdentifiers: contract.detectedIdentifiers,
+    modelVersion: contract.modelVersion,
+    contractVersion: contract.contractVersion,
+    contract,
     ...overrides,
   };
 }

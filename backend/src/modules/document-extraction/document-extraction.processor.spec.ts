@@ -4,6 +4,7 @@ import {
   DocumentExtractionPipelineError,
   DOCUMENT_PIPELINE_ERROR_CODES,
 } from './document-extraction.errors';
+import { makeClassificationResultMock } from './document-extraction-test.helpers';
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
 
 function makeProcessor(overrides: Record<string, unknown> = {}) {
@@ -42,16 +43,7 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     ...(overrides.contentExtractor as object),
   };
   const classification = {
-    classify: jest.fn().mockResolvedValue({
-      success: true,
-      detectedDocumentType: 'SERVICE',
-      confidence: 0.9,
-      rationale: 'Workshop service maintenance record on page 1',
-      sourcePages: [1],
-      provider: 'mistral',
-      model: 'mistral-small',
-      processingDurationMs: 10,
-    }),
+    classify: jest.fn().mockResolvedValue(makeClassificationResultMock()),
     ...(overrides.classification as object),
   };
   const aiExtraction = {
@@ -210,16 +202,16 @@ describe('DocumentExtractionProcessor retry/idempotency', () => {
         updateMany,
       },
       classification: {
-        classify: jest.fn().mockResolvedValue({
-          success: true,
-          detectedDocumentType: CLASSIFICATION_UNKNOWN,
-          confidence: 0.2,
-          rationale: 'Too generic to classify with confidence',
-          sourcePages: [],
-          provider: 'mistral',
-          model: 'mistral-small',
-          processingDurationMs: 5,
-        }),
+        classify: jest.fn().mockResolvedValue(
+          makeClassificationResultMock({
+            detectedDocumentType: CLASSIFICATION_UNKNOWN,
+            documentCategory: 'GENERAL',
+            documentSubtype: 'OTHER',
+            confidence: 0.2,
+            rationale: 'Too generic to classify with confidence',
+            sourcePages: [],
+          }),
+        ),
       },
     });
     await processor.process(makeJob());

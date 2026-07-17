@@ -23,6 +23,10 @@ import {
   resolveEffectiveDocumentType,
 } from './document-extraction-lifecycle.util';
 import { evaluateClassificationDecision } from './document-classification-decision.util';
+import {
+  buildClassificationPipelinePayload,
+  buildStoredClassificationPayload,
+} from './document-classification-pipeline.util';
 import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomy } from './document-taxonomy.util';
 import {
   buildContentCacheEntry,
@@ -223,14 +227,22 @@ export class DocumentExtractionProcessor extends WorkerHost {
             autoContinueMinConfidence: this.docConfig.classificationAutoContinueMinConfidence,
             suggestionMinConfidence: this.docConfig.classificationSuggestionMinConfidence,
           },
+          category: classificationResult.category,
+          subtype: classificationResult.subtype,
+          legacyDocumentType: classificationResult.contract.legacyDocumentType,
+          alternatives: classificationResult.alternatives,
         });
 
         const classificationCompletedAt = new Date();
         const detectedForDb = decision.detectedType;
         const classificationTaxonomy = resolveDocumentTaxonomy({
           legacyDocumentType: detectedForDb ?? classificationResult.detectedDocumentType ?? 'OTHER',
+          documentSubtype: classificationResult.subtype,
           source: 'classification',
         });
+        const classificationPayload = buildStoredClassificationPayload(
+          buildClassificationPipelinePayload({ classificationResult, decision }),
+        );
         const plausibilityWithTaxonomy = mergeDocumentTaxonomyPipeline(
           mergePipelinePlausibility(record.plausibility, {
             contentCache: buildContentCacheEntry(content, record.objectKey),
@@ -259,17 +271,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
               errorPhase: null,
               plausibility: {
                 ...plausibilityWithTaxonomy,
-                classification: {
-                  rationale: classificationResult.rationale,
-                  sourcePages: classificationResult.sourcePages,
-                  provider: classificationResult.provider,
-                  model: classificationResult.model,
-                  hasSuggestion: decision.hasSuggestion,
-                  processingDurationMs: classificationResult.processingDurationMs,
-                  documentCategory: classificationResult.documentCategory,
-                  documentSubtype: classificationResult.documentSubtype,
-                  taxonomyVersion: classificationResult.taxonomyVersion,
-                },
+                classification: classificationPayload,
               } as unknown as Prisma.InputJsonValue,
             },
           });
@@ -289,17 +291,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
             processingStage: 'EXTRACTION',
             plausibility: {
               ...plausibilityWithTaxonomy,
-              classification: {
-                rationale: classificationResult.rationale,
-                sourcePages: classificationResult.sourcePages,
-                provider: classificationResult.provider,
-                model: classificationResult.model,
-                hasSuggestion: true,
-                processingDurationMs: classificationResult.processingDurationMs,
-                documentCategory: classificationResult.documentCategory,
-                documentSubtype: classificationResult.documentSubtype,
-                taxonomyVersion: classificationResult.taxonomyVersion,
-              },
+              classification: classificationPayload,
             } as unknown as Prisma.InputJsonValue,
           },
         });
