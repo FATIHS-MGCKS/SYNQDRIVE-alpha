@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-permissions-v49587-2026-07-17',
+    version: '4.9.587',
+    title: 'V4.9.587 — Stations V2: kanonische Permissions (Prompt 7/78)',
+    summary: [
+      '15 granulare `stations.*` Actions als `membership.permissions.stationsV2` — Resolver mit Legacy-Fallback aus `stations.{read,write,manage}`.',
+      'Rollen-Templates (`organization-role.defaults.ts`) erhalten explizite `stationsV2`-Blöcke; Legacy-Modul `stations` bleibt unverändert.',
+      'Backend: `stations-v2-permission.constants.ts`, `stations-v2-permission.util.ts`, `stations-v2-role-permissions.ts` + Unit-Tests.',
+      'Frontend-Spiegel: `frontend/src/lib/stations-v2-permissions.ts`. Kein Controller-/Guard-Wiring in diesem Schritt.',
+    ],
+    reason:
+      'Stations V2 verlangt auditierbare granulare Permissions statt impliziter ORG_ADMIN-Bypasses — Grundlage für späteres PermissionsGuard-Wiring (Prompt 8+).',
+    previousBehavior:
+      'Nur grobes Modul `stations` mit read/write/manage; kein `stationsV2`-Evaluator; ORG_ADMIN-Bypass in `assertMembershipPermission`.',
+    details:
+      'docs/architecture/stations-v2-permissions.md, backend/src/shared/auth/stations-v2-*.ts, organization-role.defaults.ts, frontend/src/lib/stations-v2-permissions.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T21:50:00.000Z',
+  },
+  {
     id: 'twilio-vps-env-sync-v49586-2026-07-17',
     version: '4.9.586',
     title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',
