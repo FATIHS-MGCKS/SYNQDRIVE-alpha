@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-recovery-reconcile-2026-07-17',
+    version: '4.9.618',
+    title: 'V4.9.618 — Document Intake V2 Action Recovery Scheduler & Inventory Reconciliation',
+    summary: [
+      'DocumentIntakeActionRecoveryScheduler — findet hängende APPLYING-Lifecycles, prüft Downstream per Idempotency-Key/documentExtractionId, markiert vorhandenen Erfolg, retried nur fehlende Actions mit Attempt-Limit und Dead Letter.',
+      'DocumentIntakeReconciliationService — read-only Bestandsdiagnose: APPLIED ohne Downstream, Downstream ohne APPLIED, CONFIRMED-Legacy, Duplikate, ungültige Statuskombinationen, STUCK_APPLYING, RECOVERY_DEAD_LETTER.',
+      'CLI scripts/ops/document-intake-reconcile.ts — Default immer --dry-run, keine automatische Produktionsreparatur.',
+      'Tests inkl. historischem FINE-No-op-Szenario (APPLIED ohne fines-Zeile) und Downstream-Reconcile bei stuck APPLYING.',
+    ],
+    reason:
+      'Prompt 43/84 — Kontrollierte Action-Recovery und read-only Inventar-Reconciliation für Document Intake V2.',
+    previousBehavior:
+      'Nur Queue/CONFIRMED-Recovery ohne APPLYING-Lifecycle-Unwind, ohne Downstream-Probe und ohne Inventar-CLI.',
+    details: 'architecture/DOCUMENT_INTAKE_RECOVERY_RECONCILE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T18:30:00.000Z',
+  },
+  {
     id: 'document-action-plan-state-machine-2026-07-17',
     version: '4.9.617',
     title: 'V4.9.617 — Document Intake V2 Action Plan Apply Lifecycle State Machine',
