@@ -768,6 +768,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Stripe', detail: 'Hosted MCP + STRIPE_SECRET_KEY header' },
       { label: 'Hostinger', detail: 'npx hostinger-api-mcp@1.5.5 — HOSTINGER_API_TOKEN for DNS/VPS ops scripts' },
       { label: 'ElevenLabs', detail: 'uvx elevenlabs-mcp — ELEVENLABS_API_KEY (TTS, voice clone, transcription; shared with Voice Assistant backend)' },
+      { label: 'Twilio Docs', detail: 'Hosted https://mcp.twilio.com/docs — twilio__search + twilio__retrieve over Twilio docs/API specs (Public Beta, no auth)' },
     ],
   },
   {

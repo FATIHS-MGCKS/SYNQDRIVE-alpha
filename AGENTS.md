@@ -98,6 +98,7 @@ Project template: `.cursor/mcp.json.example` (committed). Runtime config: `.curs
 | **stripe** | Env | `STRIPE_SECRET_KEY` (Bearer to `https://mcp.stripe.com`) |
 | **hostinger-api** | Env | `HOSTINGER_API_TOKEN` |
 | **elevenlabs** | Env | `ELEVENLABS_API_KEY` — stdio via `uvx elevenlabs-mcp` (same key as Voice Assistant backend) |
+| **twilio-docs** | None | Hosted `https://mcp.twilio.com/docs` — docs/API search (`twilio__search`, `twilio__retrieve`); Public Beta, no API key |
 
 Cloud Agent bootstrap runs `cloud-agent-mcp-setup.sh` during install (writes `.cursor/mcp.json`). After adding secrets, restart the Cloud Agent. Didit still needs one-time OAuth in the MCP panel.
 

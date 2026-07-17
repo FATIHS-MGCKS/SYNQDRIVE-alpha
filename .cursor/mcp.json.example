@@ -38,6 +38,9 @@
       "env": {
         "ELEVENLABS_API_KEY": "${env:ELEVENLABS_API_KEY}"
       }
+    },
+    "twilio-docs": {
+      "url": "https://mcp.twilio.com/docs"
     }
   }
 }

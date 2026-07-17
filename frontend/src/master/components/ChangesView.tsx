@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'twilio-mcp-cursor-setup-2026-07-17',
+    version: '4.9.582',
+    title: 'Cursor MCP — Twilio Docs Server (search + API schemas)',
+    summary: [
+      '`.cursor/mcp.json.example` — gehosteter Server `twilio-docs` → `https://mcp.twilio.com/docs` (Streamable HTTP, keine Auth).',
+      'Tools: `twilio__search` (Docs/API-Suche), `twilio__retrieve` (vollständige Parameter-Schemas).',
+      '`AGENTS.md` + ArchitekturView: Public Beta, kein API-Key nötig; Cloud-Agent-Allowlist um `mcp.twilio.com` erweitern.',
+    ],
+    reason:
+      'Twilio MCP für Agent-Workflows (SMS, Voice, Verify, Compliance) mit aktueller Doku statt Training-Daten.',
+    previousBehavior: 'Kein Twilio MCP in Cursor/Cloud-Agent MCP-Template.',
+    details:
+      '.cursor/mcp.json.example, AGENTS.md, ArchitekturView Cursor MCP Tooling — https://github.com/twilio/ai',
+    affectsArchitecture: true,
+    module: 'Cloud Agents / MCP',
+    createdAt: '2026-07-17T16:46:00.000Z',
+  },
+  {
     id: 'elevenlabs-mcp-cursor-setup-2026-07-17',
     version: '4.9.581',
     title: 'Cursor MCP — ElevenLabs Server (TTS, Voice, Transcription)',
