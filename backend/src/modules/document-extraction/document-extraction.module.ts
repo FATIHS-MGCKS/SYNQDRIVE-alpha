@@ -8,6 +8,7 @@ import { AiModule } from '@modules/ai/ai.module';
 import { DocumentExtractionController } from './document-extraction.controller';
 import { DocumentExtractionOrgController } from './document-extraction-org.controller';
 import { DocumentExtractionMetadataController } from './document-extraction-metadata.controller';
+import { DocumentSchemaRegistryController } from './document-schema-registry.controller';
 import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentExtractionMetadataService } from './document-extraction-metadata.service';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
@@ -69,6 +70,7 @@ import { CustomerCandidateResolverService } from './customer-candidate-resolver.
 import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
 import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
 import { DocumentEntityLinkService } from './document-entity-link.service';
+import { DocumentSchemaRegistryService } from './document-schema-registry.service';
 
 /**
  * AI Document Upload feature module.
@@ -90,6 +92,7 @@ import { DocumentEntityLinkService } from './document-entity-link.service';
     DocumentExtractionController,
     DocumentExtractionOrgController,
     DocumentExtractionMetadataController,
+    DocumentSchemaRegistryController,
   ],
   providers: [
     DocumentExtractionService,
@@ -123,6 +126,7 @@ import { DocumentEntityLinkService } from './document-entity-link.service';
     DriverCandidateResolverService,
     PartnerCandidateResolverService,
     DocumentEntityLinkService,
+    DocumentSchemaRegistryService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,
