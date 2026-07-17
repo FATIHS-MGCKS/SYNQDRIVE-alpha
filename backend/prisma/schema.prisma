@@ -1551,6 +1551,8 @@ model Organization {
   batteryRetentionAggregates             BatteryRetentionAggregate[]
   documentActionPlans                    DocumentActionPlan[]
   documentActions                        DocumentAction[]
+  documentEntityCandidates               DocumentEntityCandidate[]
+  documentEntityLinks                    DocumentEntityLink[]
 
   @@index([status])
   @@map("organizations")
@@ -1616,6 +1618,7 @@ model User {
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
   documentActionPlansConfirmed        DocumentActionPlan[]                    @relation("DocumentActionPlanConfirmedBy")
+  documentEntityLinksConfirmed        DocumentEntityLink[]                    @relation("DocumentEntityLinkConfirmedBy")
 
   @@map("users")
 }
@@ -2863,6 +2866,8 @@ model VehicleDocumentExtraction {
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   documentActionPlans               DocumentActionPlan[]
   documentActions                   DocumentAction[]
+  documentEntityCandidates          DocumentEntityCandidate[]
+  documentEntityLinks               DocumentEntityLink[]
 
   @@index([vehicleId])
   @@index([status])
@@ -2948,6 +2953,62 @@ model DocumentAction {
   @@index([extractionId, actionType])
   @@index([targetEntityType, targetEntityId])
   @@map("document_actions")
+}
+
+/// Proposed entity match for a document extraction — not a confirmed link (Document Intake V2 P18).
+model DocumentEntityCandidate {
+  id              String                  @id @default(uuid())
+  organizationId  String                  @map("organization_id")
+  extractionId    String                  @map("extraction_id")
+  entityType      DocumentEntityType      @map("entity_type")
+  entityId        String?                 @map("entity_id")
+  confidence      Decimal?                @db.Decimal(5, 4)
+  matchReasons    Json                    @default("[]") @map("match_reasons")
+  conflicts       Json                    @default("[]")
+  rank            Int
+  status          DocumentCandidateStatus @default(PROPOSED)
+  resolverVersion String                  @map("resolver_version")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  extraction     VehicleDocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  confirmedLinks DocumentEntityLink[]      @relation("DocumentEntityLinkSourceCandidate")
+
+  @@index([organizationId, extractionId])
+  @@index([extractionId, entityType, rank])
+  @@index([extractionId, status])
+  @@index([entityType, entityId])
+  @@map("document_entity_candidates")
+}
+
+/// Confirmed operational entity link for a document extraction (Document Intake V2 P18).
+model DocumentEntityLink {
+  id                String             @id @default(uuid())
+  organizationId    String             @map("organization_id")
+  extractionId      String             @map("extraction_id")
+  entityType        DocumentEntityType @map("entity_type")
+  entityId          String             @map("entity_id")
+  source            String
+  status            DocumentLinkStatus @default(ACTIVE)
+  confirmedByUserId String?            @map("confirmed_by_user_id")
+  confirmedAt       DateTime           @default(now()) @map("confirmed_at")
+  supersededAt      DateTime?          @map("superseded_at")
+  sourceCandidateId String?            @map("source_candidate_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  organization    Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  extraction      VehicleDocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  confirmedByUser User?                     @relation("DocumentEntityLinkConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  sourceCandidate DocumentEntityCandidate?  @relation("DocumentEntityLinkSourceCandidate", fields: [sourceCandidateId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, extractionId])
+  @@index([extractionId, entityType, supersededAt])
+  @@index([extractionId, status])
+  @@index([entityType, entityId])
+  @@index([sourceCandidateId])
+  @@map("document_entity_links")
 }
 
 // ------------------------------------------------

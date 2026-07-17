@@ -23,6 +23,8 @@ import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
 import { DocumentActionPlanRepository } from './document-action-plan.repository';
 import { DocumentActionRepository } from './document-action.repository';
+import { DocumentEntityCandidateRepository } from './document-entity-candidate.repository';
+import { DocumentEntityLinkRepository } from './document-entity-link.repository';
 
 /**
  * AI Document Upload feature module.
@@ -59,6 +61,8 @@ import { DocumentActionRepository } from './document-action.repository';
     DocumentExtractionObservabilityService,
     DocumentActionPlanRepository,
     DocumentActionRepository,
+    DocumentEntityCandidateRepository,
+    DocumentEntityLinkRepository,
     LocalDocumentStorageService,
     { provide: DOCUMENT_STORAGE, useClass: LocalDocumentStorageService },
   ],
@@ -68,6 +72,8 @@ import { DocumentActionRepository } from './document-action.repository';
     DocumentExtractionHealthService,
     DocumentActionPlanRepository,
     DocumentActionRepository,
+    DocumentEntityCandidateRepository,
+    DocumentEntityLinkRepository,
   ],
 })
 export class DocumentExtractionModule {}
