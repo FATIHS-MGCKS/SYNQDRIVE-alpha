@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-required-field-registry-2026-07-17',
+    version: '4.9.603',
+    title: 'V4.9.603 — Document Intake V2 Required-Field Registry (versioned, API-backed)',
+    summary: [
+      'Zentrale versionierte Required-Field-Registry pro DocumentSubtype/Profile.',
+      'Felder: requiredForReview, requiredForDraft, requiredForApply, optionalFields, conditionalFields, entityRequirements, allowedActions, blockingRules.',
+      'Backend Source of Truth; Metadaten über GET /document-extractions/metadata → requiredFieldRegistry.',
+      'Registry-Version + Profil-Key im Action-Plan-Snapshot; keine Default-Ersetzung fehlender Werte.',
+      'Tests für alle Prisma-Subtypes sowie Archive-/Finance-/Fine-/Evidence-Aliase.',
+    ],
+    reason: 'Prompt 27/84: eine Pflichtfeld-Wahrheit statt verteilter Duplikate in Frontend/Backend.',
+    previousBehavior: 'Pflichtfelder verteilt in Planner-Rules, Audit-Skript und leerem CRITICAL_FIELD_KEYS.',
+    details:
+      'document-required-field.registry.ts (+ evaluator, resolver, public DTO), metadata API extension, planner snapshot enrichment.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T07:00:00.000Z',
+  },
+  {
     id: 'document-evidence-planner-rules-2026-07-17',
     version: '4.9.602',
     title: 'V4.9.602 — Document Intake V2 Tire / Brake / Battery / Workshop Evidence Action Plan Rules',

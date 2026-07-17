@@ -10,6 +10,7 @@ import {
   resolveFollowUpCandidateTypes,
 } from './document-action-planner.catalog';
 import { buildDocumentActionPlannerInputFingerprint } from './document-action-planner.fingerprint';
+import { buildRequiredFieldRegistrySnapshot } from './document-required-field.resolver';
 import {
   collectEntityMissingRequirements,
   collectFieldMissingRequirements,
@@ -179,6 +180,16 @@ function materializeTemplateActions(
   return { actions, capabilityBlockers };
 }
 
+function withRequiredFieldRegistrySnapshot(
+  input: DocumentActionPlannerInput,
+  snapshot: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...snapshot,
+    ...buildRequiredFieldRegistrySnapshot(input),
+  };
+}
+
 function stripExecutableActions(actions: PlannedDocumentActionInput[]): PlannedDocumentActionInput[] {
   return actions.filter(
     (action) => !action.requirement || !EXECUTABLE_REQUIREMENTS.has(action.requirement),
@@ -261,7 +272,7 @@ function planArchiveOnlyDocument(input: DocumentActionPlannerInput): DocumentAct
     summary: isBlocked
       ? 'Blocked archive-only action plan.'
       : buildArchiveOnlyPlannerSummary(archiveSubtype, actions.length),
-    snapshot: {
+    snapshot: withRequiredFieldRegistrySnapshot(input, {
       plannerVersion,
       inputFingerprint,
       routingType,
@@ -283,7 +294,7 @@ function planArchiveOnlyDocument(input: DocumentActionPlannerInput): DocumentAct
       plausibilityOverallStatus: input.plausibility.overallStatus,
       noDownstreamApply: true,
       noAutomaticContact: true,
-    },
+    }),
   };
 
   return {
@@ -377,7 +388,7 @@ function planFineDocument(input: DocumentActionPlannerInput): DocumentActionPlan
     applyMode: input.applyMode,
     isBlocked,
     summary: buildFinePlannerSummary(fineMode, assessment.canCreateFineDraft, actions.length),
-    snapshot: {
+    snapshot: withRequiredFieldRegistrySnapshot(input, {
       plannerVersion,
       inputFingerprint,
       routingType,
@@ -400,7 +411,7 @@ function planFineDocument(input: DocumentActionPlannerInput): DocumentActionPlan
       entityCandidateCount: input.entityCandidates.length,
       plausibilityOverallStatus: input.plausibility.overallStatus,
       noAutomaticContact: true,
-    },
+    }),
   };
 
   return {
@@ -507,7 +518,7 @@ function planFinanceDocument(input: DocumentActionPlannerInput): DocumentActionP
     applyMode: input.applyMode,
     isBlocked,
     summary: buildFinancePlannerSummary(financeMode, assessment.planOutcome, actions.length),
-    snapshot: {
+    snapshot: withRequiredFieldRegistrySnapshot(input, {
       plannerVersion,
       inputFingerprint,
       routingType,
@@ -534,7 +545,7 @@ function planFinanceDocument(input: DocumentActionPlannerInput): DocumentActionP
       entityCandidateCount: input.entityCandidates.length,
       plausibilityOverallStatus: input.plausibility.overallStatus,
       vendorRequiresConfirmation: true,
-    },
+    }),
   };
 
   return {
@@ -665,7 +676,7 @@ function planMaintenanceDocument(input: DocumentActionPlannerInput): DocumentAct
     applyMode: input.applyMode,
     isBlocked,
     summary: buildMaintenancePlannerSummary(routingType, assessment.isReady, actions.length),
-    snapshot: {
+    snapshot: withRequiredFieldRegistrySnapshot(input, {
       plannerVersion,
       inputFingerprint,
       routingType,
@@ -687,7 +698,7 @@ function planMaintenanceDocument(input: DocumentActionPlannerInput): DocumentAct
       entityCandidateCount: input.entityCandidates.length,
       plausibilityOverallStatus: input.plausibility.overallStatus,
       noCurrentDateFallback: true,
-    },
+    }),
   };
 
   return {
@@ -836,7 +847,7 @@ function planEvidenceDocument(input: DocumentActionPlannerInput): DocumentAction
     applyMode: input.applyMode,
     isBlocked,
     summary: buildEvidencePlannerSummary(evidenceMode, assessment.planOutcome, actions.length),
-    snapshot: {
+    snapshot: withRequiredFieldRegistrySnapshot(input, {
       plannerVersion,
       inputFingerprint,
       routingType,
@@ -861,7 +872,7 @@ function planEvidenceDocument(input: DocumentActionPlannerInput): DocumentAction
       plausibilityOverallStatus: input.plausibility.overallStatus,
       noHealthScoreOverwrite: true,
       supplementalEvidenceOnly: true,
-    },
+    }),
   };
 
   return {
@@ -954,7 +965,7 @@ function planDownstreamDocumentActions(input: DocumentActionPlannerInput): Docum
     applyMode: input.applyMode,
     isBlocked,
     summary: buildPlannerSummary(routingType, actions.length, isBlocked),
-    snapshot: {
+    snapshot: withRequiredFieldRegistrySnapshot(input, {
       plannerVersion,
       inputFingerprint,
       routingType,
@@ -975,7 +986,7 @@ function planDownstreamDocumentActions(input: DocumentActionPlannerInput): Docum
       entityLinkCount: input.entityLinks.length,
       entityCandidateCount: input.entityCandidates.length,
       plausibilityOverallStatus: input.plausibility.overallStatus,
-    },
+    }),
   };
 
   return {

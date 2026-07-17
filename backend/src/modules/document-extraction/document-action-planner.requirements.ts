@@ -3,11 +3,38 @@ import type {
   DocumentActionMissingRequirement,
   DocumentActionPlannerInput,
 } from './document-action-planner.types';
-import type { ApplyDocumentExtractionType } from './document-extraction.schemas';
+import { hasConfirmedFieldValue } from './document-required-field.evaluator';
+import { resolveDocumentRequiredFieldProfile } from './document-required-field.resolver';
 
-const VEHICLE_SCOPED_TYPES = new Set<DocumentExtractionType>();
+const VEHICLE_SCOPED_TYPES = new Set<DocumentExtractionType>([
+  'SERVICE',
+  'OIL_CHANGE',
+  'TUV_REPORT',
+  'BOKRAFT_REPORT',
+  'TIRE',
+  'BRAKE',
+  'BATTERY',
+  'DAMAGE',
+  'ACCIDENT',
+  'VEHICLE_CONDITION',
+  'FINE',
+]);
 
-const CRITICAL_FIELD_KEYS: Partial<Record<ApplyDocumentExtractionType, string[]>> = {};
+function profileInputFromRouting(
+  routingType: DocumentExtractionType,
+  confirmedData: Record<string, unknown>,
+): Pick<
+  DocumentActionPlannerInput,
+  'effectiveDocumentType' | 'documentSubtype' | 'documentCategory' | 'confirmedData' | 'entityLinks'
+> {
+  return {
+    effectiveDocumentType: routingType,
+    documentSubtype: null,
+    documentCategory: 'SERVICE',
+    confirmedData,
+    entityLinks: [],
+  };
+}
 
 export function resolvePlannerRoutingType(
   input: Pick<DocumentActionPlannerInput, 'effectiveDocumentType' | 'documentCategory'>,
@@ -41,18 +68,6 @@ function categoryToDefaultRoutingType(
   }
 }
 
-function hasNestedField(data: Record<string, unknown>, key: string): boolean {
-  if (!key.includes('.')) {
-    const value = data[key];
-    return value != null && value !== '';
-  }
-  const [parent, child] = key.split('.');
-  const obj = data[parent];
-  if (obj == null || typeof obj !== 'object') return false;
-  const nested = (obj as Record<string, unknown>)[child];
-  return nested != null && nested !== '';
-}
-
 export function collectFieldMissingRequirements(
   routingType: DocumentExtractionType | null,
   confirmedData: Record<string, unknown>,
@@ -61,9 +76,12 @@ export function collectFieldMissingRequirements(
     return [];
   }
 
-  const applyType = routingType as ApplyDocumentExtractionType;
-  const keys = CRITICAL_FIELD_KEYS[applyType] ?? [];
-  const missingKeys = keys.filter((key) => !hasNestedField(confirmedData, key));
+  const profile = resolveDocumentRequiredFieldProfile(
+    profileInputFromRouting(routingType, confirmedData),
+  );
+  const missingKeys = profile.requiredForApply.filter(
+    (key) => !hasConfirmedFieldValue(confirmedData, key),
+  );
 
   if (missingKeys.length === 0) return [];
 

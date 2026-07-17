@@ -61,6 +61,7 @@ describe('Document extraction HTTP (e2e)', () => {
       extensions: ['.pdf'],
       maxUploadBytes: 10485760,
       maxUploadMb: 10,
+      requiredFieldRegistry: { version: 'document-required-field-registry-v1', profiles: [] },
     }),
   };
 

@@ -27,10 +27,11 @@ import {
 import { DocumentExtractionPlausibilityService } from '../../src/modules/document-extraction/document-extraction-plausibility.service';
 import { evaluateClassificationDecision } from '../../src/modules/document-extraction/document-classification-decision.util';
 import {
-  DOCUMENT_FIELD_SCHEMAS,
   SUPPORTED_DOCUMENT_TYPES,
   type ApplyDocumentExtractionType,
 } from '../../src/modules/document-extraction/document-extraction.schemas';
+import { resolveDocumentRequiredFieldProfile } from '../../src/modules/document-extraction/document-required-field.resolver';
+import { hasConfirmedFieldValue } from '../../src/modules/document-extraction/document-required-field.evaluator';
 import { evaluatePdfTextQuality } from '../../src/modules/document-extraction/pdf-text-quality.util';
 import { getAllowedDocumentExtractionActions } from '../../src/modules/document-extraction/document-extraction-actions.util';
 import { CLASSIFICATION_UNKNOWN } from '../../src/modules/ai/documents/document-classification.types';
@@ -181,28 +182,26 @@ function planActions(
 }
 
 function requiredFieldKeys(docType: ApplyDocumentExtractionType): string[] {
-  const schema = DOCUMENT_FIELD_SCHEMAS[docType] ?? [];
-  const critical: Record<string, string[]> = {
-    FINE: ['eventDate', 'totalCents'],
-    INVOICE: ['invoiceNumber', 'totalCents'],
-    TUV_REPORT: ['eventDate', 'validUntil'],
-    BOKRAFT_REPORT: ['eventDate', 'validUntil'],
-    TIRE: ['treadDepthMm.fl'],
-    DAMAGE: ['description'],
-    ACCIDENT: ['description', 'eventDate'],
-  };
-  return critical[docType] ?? schema.slice(0, 2).map((f) => f.key);
+  const profile = resolveDocumentRequiredFieldProfile({
+    effectiveDocumentType: docType,
+    documentSubtype: null,
+    documentCategory: 'SERVICE',
+    confirmedData: {},
+  });
+  return [
+    ...profile.requiredForApply,
+    ...profile.conditionalFields
+      .filter((rule) => rule.stages.includes('apply'))
+      .flatMap((rule) => {
+        if (rule.require.kind === 'anyFieldPresent') return rule.require.fieldKeys;
+        if (rule.require.kind === 'fieldPresent') return [rule.require.fieldKey];
+        return [];
+      }),
+  ];
 }
 
 function missingRequired(docType: ApplyDocumentExtractionType, fields: Record<string, unknown>): string[] {
-  return requiredFieldKeys(docType).filter((key) => {
-    if (key.includes('.')) {
-      const [parent, child] = key.split('.');
-      const obj = fields[parent] as Record<string, unknown> | undefined;
-      return obj?.[child] == null;
-    }
-    return fields[key] == null || fields[key] === '';
-  });
+  return requiredFieldKeys(docType).filter((key) => !hasConfirmedFieldValue(fields, key));
 }
 
 async function tryFileId(

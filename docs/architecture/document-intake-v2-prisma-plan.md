@@ -182,6 +182,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 26, 2026-07-17):** `document-action-planner.evidence-rules.ts` — Evidence-Profile (TIRE, BRAKE, BATTERY, Werkstatt-/Messberichte via SERVICE/OIL_CHANGE + WORKSHOP_MEASUREMENT). Semantic Actions: CREATE_TIRE_MEASUREMENT, CREATE_BRAKE_EVIDENCE, CREATE_BATTERY_EVIDENCE, CREATE_SERVICE_EVENT, LINK_VEHICLE, SUGGEST_WORKSHOP_TASK, SUGGEST_REMEASUREMENT. Maßeinheiten validiert; unplausible Werte → REQUIRES_REMEASUREMENT; getrennte Provenienz (CONFIRMED_DOCUMENT / DOCUMENT_INTAKE_CONFIRMED / workshopFindingProvenance); nur bestätigte Felder; noHealthScoreOverwrite. Planner-Version `document-action-planner-v6`.
 
+**Implementierungsstand (Prompt 27, 2026-07-17):** `document-required-field.registry.ts` — versionierte Required-Field-Registry (`document-required-field-registry-v1`) pro Profil/Subtype mit requiredForReview/Draft/Apply, conditionalFields, entityRequirements, allowedActions, blockingRules. Evaluator + Resolver; API via `GET /document-extractions/metadata.requiredFieldRegistry`; Action-Plan-Snapshot speichert Registry-Version und Profil-Evaluation. Keine Default-Ersetzung fehlender Werte.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.
