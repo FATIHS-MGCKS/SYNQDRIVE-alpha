@@ -176,6 +176,27 @@ describe('StationsService location master data', () => {
     const result = await service.create(ORG, { name: 'No Geo' });
     expect(result.hasMissingCoordinates).toBe(true);
   });
+
+  it('exposes geofenceCapability NOT_CONFIGURED when coordinates are missing', async () => {
+    const result = await service.create(ORG, { name: 'No Geo' });
+    expect(result.geofenceCapability.status).toBe('NOT_CONFIGURED');
+    expect(result.geofenceCapability.allowsAutomaticLocationDetectionClaim).toBe(false);
+    expect(result.geofenceCapability.uiHint).toContain('keine automatische Standorterkennung');
+  });
+
+  it('exposes geofenceCapability CONFIGURED_ONLY when coordinates and radius exist', async () => {
+    const result = await service.create(ORG, {
+      name: 'Geo Station',
+      latitude: 52.52,
+      longitude: 13.405,
+      radiusMeters: 150,
+    });
+    expect(result.geofenceCapability.status).toBe('CONFIGURED_ONLY');
+    expect(result.geofenceCapability.geofenceConfigured).toBe(true);
+    expect(result.geofenceCapability.writesCurrentStationId).toBe(false);
+    expect(result.geofenceCapability.allowsAutomaticLocationDetectionClaim).toBe(false);
+    expect(result.geofenceCapability.uiHint).toContain('keine automatische Standorterkennung aktiv');
+  });
 });
 
 describe('parseMapboxForwardGeocodeFeature', () => {

@@ -35,6 +35,10 @@ import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import {
+  evaluateStationGeofenceCapability,
+  type StationGeofenceCapabilityResult,
+} from '@shared/stations/station-geofence-capability.policy';
+import {
   buildStationLifecycleCommandAudit,
   evaluateStationLifecycleCommand,
 } from './station-lifecycle-command.util';
@@ -127,6 +131,7 @@ export interface StationDto {
   coordinatesSource: StationCoordinatesSource | null;
   coordinatesConfirmedAt: Date | null;
   hasMissingCoordinates: boolean;
+  geofenceCapability: StationGeofenceCapabilityResult;
   timezone: string | null;
   radiusMeters: number | null;
   geofenceRadiusMeters: number | null;
@@ -2483,6 +2488,11 @@ export class StationsService {
       coordinatesSource: row.coordinatesSource,
       coordinatesConfirmedAt: row.coordinatesConfirmedAt,
       hasMissingCoordinates: stationHasMissingCoordinates(row.latitude, row.longitude),
+      geofenceCapability: evaluateStationGeofenceCapability({
+        latitude: row.latitude,
+        longitude: row.longitude,
+        radiusMeters: row.radiusMeters,
+      }),
       timezone: row.timezone,
       radiusMeters: row.radiusMeters,
       geofenceRadiusMeters: row.radiusMeters,

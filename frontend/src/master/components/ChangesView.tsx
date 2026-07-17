@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-geofence-capability-v49610-2026-07-18',
+    version: '4.9.610',
+    title: 'V4.9.610 — Stations V2: Geofence Capability Status (Prompt 30/78)',
+    summary: [
+      'Zentraler `StationGeofenceCapabilityStatus`: NOT_CONFIGURED, CONFIGURED_ONLY, SHADOW_VALIDATION, PRODUCTION_ACTIVE, DEGRADED.',
+      'Koordinaten + Radius ≠ aktive Standortautomation — Ist-Zustand ohne Writer = CONFIGURED_ONLY.',
+      'Kein currentStationId-Auto-Write, keine bestätigte Geofence-Ankunft; UI darf „Automatische Standorterkennung aktiv“ nur bei PRODUCTION_ACTIVE.',
+      'Shadow-Plan dokumentiert (`STATION_GEOFENCE_SHADOW_VALIDATION`); `geofenceCapability` im `StationDto`.',
+    ],
+    reason:
+      'Geofence-Konfiguration wurde fälschlich mit aktiver Standortautomation verwechselt — ohne klaren Capability-Status und UI-Wahrheit.',
+    previousBehavior:
+      'Nur `radiusMeters`/`hasMissingCoordinates` im DTO; Frontend-HOME/AWAY-Badge ohne Backend-Capability-Status.',
+    details:
+      'station-geofence-capability.{contract,policy}.ts, *spec.ts, `StationDto.geofenceCapability`; Runtime-Flags für späteren Shadow/Production-Rollout; keine Writer-Implementierung.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T12:00:00.000Z',
+  },
+  {
     id: 'stations-v2-capacity-policy-v49609-2026-07-18',
     version: '4.9.609',
     title: 'V4.9.609 — Stations V2: StationCapacityPolicy (Prompt 29/78)',

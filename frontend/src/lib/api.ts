@@ -8984,6 +8984,7 @@ export interface Station {
   coordinatesSource: 'MANUAL' | 'FORWARD_GEOCODE' | 'MAPBOX_RETRIEVE' | null;
   coordinatesConfirmedAt: string | null;
   hasMissingCoordinates: boolean;
+  geofenceCapability: StationGeofenceCapability;
   timezone: string | null;
   radiusMeters: number | null;
   geofenceRadiusMeters: number | null;
@@ -9161,6 +9162,30 @@ export interface StationOperationalCapabilityContractMetadata {
   inputs: string[];
   outputs: string[];
   bookingIntegration: false;
+}
+
+export type StationGeofenceCapabilityStatus =
+  | 'NOT_CONFIGURED'
+  | 'CONFIGURED_ONLY'
+  | 'SHADOW_VALIDATION'
+  | 'PRODUCTION_ACTIVE'
+  | 'DEGRADED';
+
+export interface StationGeofenceCapabilityReason {
+  code: string;
+  message: string;
+}
+
+export interface StationGeofenceCapability {
+  capabilityVersion: number;
+  status: StationGeofenceCapabilityStatus;
+  geofenceConfigured: boolean;
+  automationActive: boolean;
+  writesCurrentStationId: boolean;
+  publishesConfirmedArrival: boolean;
+  allowsAutomaticLocationDetectionClaim: boolean;
+  reasons: StationGeofenceCapabilityReason[];
+  uiHint: string;
 }
 
 export interface StationOverviewStats {
