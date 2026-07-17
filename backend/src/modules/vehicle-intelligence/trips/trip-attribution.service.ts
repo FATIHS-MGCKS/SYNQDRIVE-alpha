@@ -7,6 +7,7 @@ import type {
   TripAttributionInput,
 } from './trip-attribution.types';
 import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
+import { resolveBookingDriverPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
 
 @Injectable()
 export class TripAttributionService {
@@ -26,6 +27,8 @@ export class TripAttributionService {
       tripBookingCustomerId: input.tripBookingCustomerId,
       tripAssignedDriverId: input.tripAssignedDriverId,
       tripActualDriverId: input.tripActualDriverId,
+      bookingAllowedDriverIds: input.bookingAllowedDriverIds,
+      bookingPrimaryDriverId: input.bookingPrimaryDriverId,
     });
 
     if (
@@ -151,6 +154,11 @@ export class TripAttributionService {
         ? null
         : await this.findBookingOverlap(trip);
 
+    const allowedDriverContext =
+      trip.assignedBookingId != null
+        ? await this.loadBookingDriverPool(trip.assignedBookingId)
+        : null;
+
     return this.resolveAttribution({
       isPrivateTrip: trip.isPrivateTrip,
       assignmentStatus: trip.assignmentStatus,
@@ -161,7 +169,26 @@ export class TripAttributionService {
       tripBookingCustomerId: trip.bookingCustomerId,
       tripAssignedDriverId: trip.assignedDriverId,
       tripActualDriverId: trip.actualDriverId,
+      bookingAllowedDriverIds: allowedDriverContext?.allowedDriverIds,
+      bookingPrimaryDriverId: allowedDriverContext?.primaryDriverId,
       bookingOverlap: overlap,
+    });
+  }
+
+  private async loadBookingDriverPool(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        customerId: true,
+        assignedDriverId: true,
+        allowedDrivers: { select: { customerId: true, role: true } },
+      },
+    });
+    if (!booking) return null;
+    return resolveBookingDriverPool({
+      bookingCustomerId: booking.customerId,
+      assignedDriverId: booking.assignedDriverId,
+      allowedRows: booking.allowedDrivers,
     });
   }
 

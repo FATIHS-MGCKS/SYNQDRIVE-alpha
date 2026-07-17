@@ -50,5 +50,7 @@ export interface TripAttributionInput {
   tripBookingCustomerId?: string | null;
   tripAssignedDriverId?: string | null;
   tripActualDriverId?: string | null;
+  bookingAllowedDriverIds?: string[];
+  bookingPrimaryDriverId?: string | null;
   bookingOverlap?: TripAttributionBookingOverlap | null;
 }

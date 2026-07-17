@@ -11,8 +11,18 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { MembershipRole } from '@prisma/client';
 import { BookingsService } from './bookings.service';
 import { BookingsHandoverService } from './bookings-handover.service';
+import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
+import {
+  assertCanManageBookingDrivers,
+  assertCanReadBookingDrivers,
+} from './booking-allowed-drivers/booking-allowed-drivers.policy';
+import {
+  AddBookingAllowedDriverDto,
+  SetBookingPrimaryDriverDto,
+} from './booking-allowed-drivers/dto/booking-allowed-drivers.dto';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import {
@@ -39,6 +49,7 @@ export class BookingsController {
     private readonly handoverService: BookingsHandoverService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
     private readonly wizardDraftService: BookingWizardDraftService,
+    private readonly allowedDriversService: BookingAllowedDriversService,
   ) {}
 
   @Get('today/pickups')
@@ -152,6 +163,82 @@ export class BookingsController {
       depositReceived:
         query.depositReceived === true ||
         (query.depositReceived as unknown) === 'true',
+    });
+  }
+
+  @Get(':id/allowed-drivers')
+  async listAllowedDrivers(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+  ) {
+    assertCanReadBookingDrivers(membershipRole);
+    return this.allowedDriversService.listForBooking(orgId, id);
+  }
+
+  @Post(':id/allowed-drivers')
+  async addAllowedDriver(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: AddBookingAllowedDriverDto,
+  ) {
+    assertCanManageBookingDrivers(membershipRole);
+    return this.allowedDriversService.addAdditionalDriver({
+      organizationId: orgId,
+      bookingId: id,
+      customerId: body.customerId,
+      userId,
+    });
+  }
+
+  @Patch(':id/primary-driver')
+  async setPrimaryDriver(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Body() body: SetBookingPrimaryDriverDto,
+  ) {
+    assertCanManageBookingDrivers(membershipRole);
+    return this.allowedDriversService.setPrimaryDriver({
+      organizationId: orgId,
+      bookingId: id,
+      customerId: body.customerId,
+      userId,
+    });
+  }
+
+  @Delete(':id/allowed-drivers/:customerId')
+  async removeAllowedDriver(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('customerId') customerId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+  ) {
+    assertCanManageBookingDrivers(membershipRole);
+    return this.allowedDriversService.removeAllowedDriver({
+      organizationId: orgId,
+      bookingId: id,
+      customerId,
+      userId,
+    });
+  }
+
+  @Get('drivers/:customerId/conduct-history')
+  async getDriverConductHistory(
+    @Param('orgId') orgId: string,
+    @Param('customerId') customerId: string,
+    @CurrentUser('membershipRole') membershipRole: MembershipRole | undefined,
+    @Query('limit') limit?: string,
+  ) {
+    assertCanReadBookingDrivers(membershipRole);
+    return this.allowedDriversService.getDriverConductHistory({
+      organizationId: orgId,
+      driverCustomerId: customerId,
+      limit: limit != null ? Number(limit) : undefined,
     });
   }
 

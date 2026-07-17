@@ -44,6 +44,9 @@ export interface DrivingAttributionRolesInput {
   tripBookingCustomerId?: string | null;
   tripAssignedDriverId?: string | null;
   tripActualDriverId?: string | null;
+  /** Allowed driver pool from BookingAllowedDriver rows (P56). */
+  bookingAllowedDriverIds?: string[];
+  bookingPrimaryDriverId?: string | null;
 }
 
 export interface ResolvedDrivingAttributionRoles extends DrivingAttributionRoleIds {
@@ -57,4 +60,8 @@ export interface ResolvedDrivingAttributionRoles extends DrivingAttributionRoleI
   /** Operator/customer-facing decision allowed (corporate requires driver assignment). */
   customerDecisionEligible: boolean;
   driverDecisionEligible: boolean;
+  /** Resolved allowed driver pool for the booking (primary + additional). */
+  primaryDriverId: string | null;
+  additionalDriverIds: string[];
+  allowedDriverIds: string[];
 }

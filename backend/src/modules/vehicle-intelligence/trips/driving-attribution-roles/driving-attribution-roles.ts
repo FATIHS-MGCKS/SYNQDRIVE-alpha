@@ -41,13 +41,30 @@ function resolveAssignedDriverId(input: DrivingAttributionRolesInput): string | 
   return null;
 }
 
+function resolveDriverPool(input: DrivingAttributionRolesInput) {
+  const primaryDriverId =
+    input.bookingPrimaryDriverId ?? resolveAssignedDriverId(input) ?? null;
+  const allowedFromInput = input.bookingAllowedDriverIds ?? [];
+  const additionalDriverIds = allowedFromInput.filter((id) => id !== primaryDriverId);
+  const allowedDriverIds = [
+    ...new Set(
+      [primaryDriverId, ...allowedFromInput].filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  return { primaryDriverId, additionalDriverIds, allowedDriverIds };
+}
+
+
 function resolveActualDriverId(input: DrivingAttributionRolesInput): string | null {
   if (input.tripActualDriverId) return input.tripActualDriverId;
   const assigned = resolveAssignedDriverId(input);
+  const pool = resolveDriverPool(input);
+  const poolDefined = (input.bookingAllowedDriverIds?.length ?? 0) > 0;
   if (
     assigned &&
     input.bookingLinkSource === 'EXPLICIT' &&
-    input.assignedBookingId != null
+    input.assignedBookingId != null &&
+    (!poolDefined || pool.allowedDriverIds.includes(assigned))
   ) {
     return assigned;
   }
@@ -142,6 +159,7 @@ export function resolveDrivingAttributionRoles(
   });
 
   const driverConductSubjectId = actualDriverId ?? assignedDriverId;
+  const pool = resolveDriverPool(input);
 
   return {
     modelVersion: DRIVING_ATTRIBUTION_ROLES_VERSION,
@@ -154,5 +172,8 @@ export function resolveDrivingAttributionRoles(
     driverConductSubjectId,
     customerDecisionEligible,
     driverDecisionEligible: Boolean(driverConductSubjectId),
+    primaryDriverId: pool.primaryDriverId,
+    additionalDriverIds: pool.additionalDriverIds,
+    allowedDriverIds: pool.allowedDriverIds,
   };
 }
