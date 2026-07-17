@@ -45,6 +45,7 @@ export type CreateVoicePhoneNumberInput = {
   capabilities?: Prisma.InputJsonValue;
   lifecycle?: VoicePhoneNumberLifecycle;
   regulatoryStatus?: VoicePhoneRegulatoryStatus;
+  regulatoryDetails?: Prisma.InputJsonValue;
   elevenLabsImportStatus?: VoiceElevenLabsImportStatus;
   voiceAssistantId?: string | null;
 };
@@ -89,4 +90,6 @@ export type UpdateVoiceProvisioningJobProgressInput = {
   completedAt?: Date | null;
   failedAt?: Date | null;
   cancelledAt?: Date | null;
+  providerAccountId?: string | null;
+  phoneNumberId?: string | null;
 };

@@ -1,4 +1,4 @@
-import { SecretRefResolver } from './secret-ref.resolver';
+import { SecretRefResolver, resetSecretMemoryStoreForTests } from './secret-ref.resolver';
 import { TwilioInvalidConfigurationError } from '../errors/twilio-provider.errors';
 
 describe('SecretRefResolver', () => {
@@ -7,11 +7,23 @@ describe('SecretRefResolver', () => {
   const saved = process.env[envKey];
 
   afterEach(() => {
+    resetSecretMemoryStoreForTests();
     if (saved === undefined) {
       delete process.env[envKey];
     } else {
       process.env[envKey] = saved;
     }
+  });
+
+  it('resolves in-memory registered secret references', async () => {
+    const ref = resolver.registerMemoryJson(envKey, {
+      accountSid: 'ACmemory123',
+      apiKeySid: 'SKmemory123',
+      apiKeySecret: 'memory-secret',
+    });
+
+    const credentials = await resolver.resolveTwilioSubaccountCredentials(ref);
+    expect(credentials.accountSid).toBe('ACmemory123');
   });
 
   it('resolves env-json secret references', async () => {

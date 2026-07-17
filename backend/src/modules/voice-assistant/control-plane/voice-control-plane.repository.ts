@@ -156,6 +156,7 @@ export class VoicePhoneNumberRepository {
         capabilities: input.capabilities ?? Prisma.JsonNull,
         lifecycle: input.lifecycle ?? 'DRAFT',
         regulatoryStatus: input.regulatoryStatus ?? 'UNKNOWN',
+        regulatoryDetails: input.regulatoryDetails ?? Prisma.JsonNull,
         elevenLabsImportStatus: input.elevenLabsImportStatus ?? 'NOT_IMPORTED',
         voiceAssistantId: input.voiceAssistantId ?? null,
       },

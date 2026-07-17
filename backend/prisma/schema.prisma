@@ -10311,6 +10311,7 @@ enum VoicePhoneNumberLifecycle {
 enum VoicePhoneRegulatoryStatus {
   UNKNOWN
   PENDING
+  IN_REVIEW
   APPROVED
   REJECTED
 }
@@ -10434,6 +10435,8 @@ model VoicePhoneNumber {
   capabilities           Json?
   lifecycle              VoicePhoneNumberLifecycle   @default(DRAFT)
   regulatoryStatus       VoicePhoneRegulatoryStatus  @default(UNKNOWN) @map("regulatory_status")
+  /// Structured bundle/address/end-user compliance breakdown — no document payloads.
+  regulatoryDetails      Json?                       @map("regulatory_details")
   elevenLabsImportStatus VoiceElevenLabsImportStatus @default(NOT_IMPORTED) @map("elevenlabs_import_status")
   voiceAssistantId       String?                     @map("voice_assistant_id")
   voiceAssistant         VoiceAssistant?             @relation(fields: [voiceAssistantId], references: [id], onDelete: SetNull)

@@ -1,7 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
+import {
+  VoicePhoneNumberRepository,
+  VoiceProvisioningJobRepository,
+  VoiceSubscriptionRepository,
+} from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
 import { SecretRefResolver } from './secrets/secret-ref.resolver';
+import { TwilioProvisioningProviderClient } from './provisioning/twilio-provisioning-provider.client';
+import { TwilioSecretStoreService } from './provisioning/twilio-secret-store.service';
+import { TwilioTenantProvisioningController } from './provisioning/twilio-tenant-provisioning.controller';
+import { TwilioTenantProvisioningService } from './provisioning/twilio-tenant-provisioning.service';
 import { TwilioControlPlaneClient } from './twilio-control-plane.client';
 import { TwilioControlPlaneTelephonyService } from './twilio-control-plane.telephony.service';
 import { TwilioService } from './twilio.service';
@@ -13,7 +22,7 @@ import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
 
 @Module({
   imports: [PrismaModule, ConfigModule],
-  controllers: [TwilioWebhookController],
+  controllers: [TwilioWebhookController, TwilioTenantProvisioningController],
   providers: [
     SecretRefResolver,
     TwilioService,
@@ -23,6 +32,12 @@ import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
     TwilioControlPlaneTelephonyService,
     TwilioWebhookService,
     TwilioVoiceBridgeService,
+    TwilioProvisioningProviderClient,
+    TwilioSecretStoreService,
+    TwilioTenantProvisioningService,
+    VoiceSubscriptionRepository,
+    VoicePhoneNumberRepository,
+    VoiceProvisioningJobRepository,
   ],
   exports: [
     TwilioService,
@@ -30,6 +45,7 @@ import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
     TwilioControlPlaneTelephonyService,
     TwilioTenantClientFactory,
     TwilioVoiceBridgeService,
+    TwilioTenantProvisioningService,
   ],
 })
 export class TwilioModule {}
