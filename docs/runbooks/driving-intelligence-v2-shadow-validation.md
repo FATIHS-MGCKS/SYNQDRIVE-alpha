@@ -51,7 +51,31 @@ npm test -- --testPathPattern="misuse-case-persistence"
 
 ## 4. Staging-Aktivierung (Shadow only)
 
-### 4.1 Flags setzen
+### 4.0 Prod-Canary starten (parallel zu Battery)
+
+**Canary-Tracking:** `docs/runbooks/driving-intelligence-v2-shadow-canary-faa710c9.md`
+
+```bash
+# VPS: /opt/synqdrive/shared/backend.env
+DRIVING_INTELLIGENCE_V2_ENABLED=true
+DRIVING_V2_ENGINE_DETECTOR_SHADOW_ENABLED=true
+DRIVING_V2_HF_DETECTOR_SHADOW_ENABLED=true
+DRIVING_V2_DIMO_SEGMENT_VALIDATION_ENABLED=false
+
+pm2 restart synqdrive --update-env
+curl -sS https://app.synqdrive.eu/api/v1/health
+```
+
+| Schritt | Aktion |
+|---------|--------|
+| 1 | T0 dokumentieren (Datum, Org, Fahrzeugliste) |
+| 2 | Nur Master + Detector-Shadow; Segment-Validation + Customer Decision **aus** |
+| 3 | PM2 restart mit `--update-env` |
+| 4 | Nach erstem Post-T0-Trip: Shadow-Evidence in DB prüfen |
+| 5 | **T+7 (24.07.):** gemeinsam mit Battery-Canary reviewen |
+| 6 | **T+28 (14.08.):** formales Gate-Review — kein Auto-Publish |
+
+### 4.1 Flags setzen (Staging)
 
 ```bash
 DRIVING_INTELLIGENCE_V2_ENABLED=true
