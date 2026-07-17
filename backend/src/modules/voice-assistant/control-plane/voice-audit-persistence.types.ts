@@ -97,11 +97,17 @@ export type UpsertVoiceBudgetPolicyInput = {
   organizationId: string;
   monthlyBudgetCents?: number | null;
   dailyLimitCents?: number | null;
+  dailyOutboundMinutesLimit?: number | null;
   maxConversationDurationSeconds?: number | null;
   maxConcurrentCalls?: number | null;
+  maxRepeatsPerDestination?: number | null;
+  destinationCooldownSeconds?: number | null;
+  destinationRegionPolicy?: 'DE_ONLY' | 'DE_EEA' | 'CUSTOM';
   allowedCountries?: string[];
   warnThresholdPct?: number | null;
   hardLimitThresholdPct?: number | null;
+  hardLimitGraceMinutes?: number | null;
+  overflowBehavior?: 'WARN' | 'HARD_STOP' | 'ALLOW_OVERAGE';
 };
 
 export type CreateVoiceTestRunInput = {

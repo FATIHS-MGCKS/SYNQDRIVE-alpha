@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import {
   Prisma,
   VoiceAgentDeploymentStatus,
@@ -29,6 +30,7 @@ import { VoiceMcpTokenService } from '@modules/voice-mcp-gateway/voice-mcp-token
 import { VoiceInternalEventIngestService } from '@modules/voice-webhook-ingestion/voice-internal-event-ingest.service';
 import { buildInboundFallbackTwiml, buildLegacyDiagnosticTwiml } from '@modules/twilio/twilio-voice-twiml.util';
 import { VoiceCallPolicyService } from './voice-call-policy.service';
+import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
 import { resolveAllowedMcpToolsForAssistant } from './voice-mcp-tools.util';
 import {
   assertLiveProviderCallsAllowed,
@@ -55,6 +57,7 @@ export class VoiceCallOrchestrationService {
     private readonly deployments: VoiceAgentDeploymentRepository,
     private readonly phoneNumbers: VoicePhoneNumberRepository,
     private readonly policy: VoiceCallPolicyService,
+    private readonly protection: VoiceBudgetEnforcementService,
     private readonly mcpTokens: VoiceMcpTokenService,
     private readonly internalEvents: VoiceInternalEventIngestService,
   ) {}
@@ -114,6 +117,14 @@ export class VoiceCallOrchestrationService {
       blockers.push({
         code: 'mcp_url_missing',
         message: 'MCP gateway public URL is not configured.',
+      });
+    }
+
+    const budgetDegradation = await this.protection.evaluateInboundDegradation(organizationId);
+    if (budgetDegradation.degraded) {
+      blockers.push({
+        code: budgetDegradation.reasonCode ?? 'inbound_budget_degraded',
+        message: budgetDegradation.message ?? 'Inbound voice degraded due to budget limits.',
       });
     }
 
@@ -191,10 +202,13 @@ export class VoiceCallOrchestrationService {
       throw new NotFoundException('Voice assistant not found.');
     }
 
+    const conversationId = randomUUID();
+
     await this.policy.assertOutboundCallAllowed({
       organizationId: request.organizationId,
       toE164: request.toE164,
       voiceAssistantId: assistant.id,
+      conversationId,
     });
 
     const existing = await this.findIdempotentOutboundConversation(
@@ -243,6 +257,7 @@ export class VoiceCallOrchestrationService {
     const dryRun = !isVoiceCallProviderStagingEnabled();
     if (dryRun) {
       const conversation = await this.createOutboundConversation({
+        conversationId,
         organizationId: request.organizationId,
         assistantId: assistant.id,
         deploymentId: deployment.id,
@@ -273,6 +288,7 @@ export class VoiceCallOrchestrationService {
     });
 
     const conversation = await this.createOutboundConversation({
+      conversationId,
       organizationId: request.organizationId,
       assistantId: assistant.id,
       deploymentId: deployment.id,
@@ -420,6 +436,7 @@ export class VoiceCallOrchestrationService {
   }
 
   private async createOutboundConversation(params: {
+    conversationId?: string;
     organizationId: string;
     assistantId: string;
     deploymentId: string;
@@ -434,6 +451,7 @@ export class VoiceCallOrchestrationService {
   }) {
     return this.prisma.voiceConversation.create({
       data: {
+        id: params.conversationId,
         organizationId: params.organizationId,
         voiceAssistantId: params.assistantId,
         callerNumber: params.toE164,

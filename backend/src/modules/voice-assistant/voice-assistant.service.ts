@@ -75,6 +75,11 @@ import {
   type VoiceTestSessionResponse,
 } from './voice-assistant-test.util';
 import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
+import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
+import {
+  VoiceProtectionDeniedError,
+  toProtectionHttpException,
+} from '@modules/voice-protection/voice-protection-reason-codes';
 import {
   isLegacyDiagnosticCallsEnabled,
   isVoiceNativeTwilioIntegrationEnabled,
@@ -107,6 +112,7 @@ export class VoiceAssistantService {
     private readonly twilioTelephony: TwilioTelephonyService,
     private readonly twilioControlPlaneTelephony: TwilioControlPlaneTelephonyService,
     private readonly callOrchestration: VoiceCallOrchestrationService,
+    private readonly protection: VoiceBudgetEnforcementService,
   ) {}
 
   async getOrCreateAssistantForOrg(organizationId: string) {
@@ -152,6 +158,15 @@ export class VoiceAssistantService {
         missing: readiness.missing,
         checks: readiness.checks.filter((c) => c.required && !c.ok),
       });
+    }
+
+    try {
+      await this.protection.assertActivationAllowed(organizationId);
+    } catch (err) {
+      if (err instanceof VoiceProtectionDeniedError) {
+        throw toProtectionHttpException(err);
+      }
+      throw err;
     }
 
     const prompt = this.buildFullPrompt(assistant);

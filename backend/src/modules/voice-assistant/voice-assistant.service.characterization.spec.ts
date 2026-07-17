@@ -53,6 +53,7 @@ describe('VoiceAssistantService characterization', () => {
     orchestrateOutboundCall: jest.fn(),
     assertLegacyDiagnosticCallAllowed: jest.fn(),
   };
+  const protection = { assertActivationAllowed: jest.fn().mockResolvedValue(undefined) };
 
   let service: VoiceAssistantService;
 
@@ -134,6 +135,7 @@ describe('VoiceAssistantService characterization', () => {
       twilioTelephony as never,
       twilioControlPlaneTelephony as never,
       callOrchestration as never,
+      protection as never,
     );
   });
 

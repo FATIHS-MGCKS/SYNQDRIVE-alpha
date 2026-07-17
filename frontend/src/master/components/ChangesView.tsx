@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-budget-abuse-protection-2026-07-17',
+    version: '4.9.595',
+    title: 'V4.9.595 — Voice AI: budget limits and abuse protection',
+    summary: [
+      'Server-seitige Limits: Gesprächsdauer-Flag, tägliche Outbound-Minuten, Monatsbudget, Parallelität, Ziel-Wiederholungen/Cooldown, Plan-Entitlements.',
+      'Destination Policy DE/EEA, Sonderrufnummernblock, E.164-Normalisierung; Inbound degradiert sicher bei Budget-Hard-Limit.',
+      'Warnungen 70/85/100 %, Forecast, Org-Admin-Audit, Master-Override mit Ablauf; Abuse-Signale und vollständiges Protection-Audit.',
+    ],
+    reason:
+      'Prompt 8B — Schutz vor unkontrollierten Telefoniekosten, Betrug und missbräuchlichen Outbound-Aktionen.',
+    previousBehavior:
+      'Basis-Policy nur Subscription/Budget/Allowlist in VoiceCallPolicyService; keine Concurrency-Reservation, Abuse-Detection oder Override-Audit.',
+    details:
+      'Module voice-protection; Migration 20260717290000; Redis-Lua Parallelitätsreservierung; architecture/VOICE_AI_BUDGET_ABUSE_PROTECTION_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T22:45:00.000Z',
+  },
+  {
     id: 'voice-plans-entitlements-usage-ledger-2026-07-17',
     version: '4.9.594',
     title: 'V4.9.594 — Voice AI: plans, entitlements, and usage ledger',

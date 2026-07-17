@@ -390,27 +390,31 @@ export class VoiceBudgetPolicyRepository {
   }
 
   upsert(input: UpsertVoiceBudgetPolicyInput) {
+    const data = {
+      monthlyBudgetCents: input.monthlyBudgetCents ?? null,
+      dailyLimitCents: input.dailyLimitCents ?? null,
+      dailyOutboundMinutesLimit: input.dailyOutboundMinutesLimit ?? null,
+      maxConversationDurationSeconds: input.maxConversationDurationSeconds ?? null,
+      maxConcurrentCalls: input.maxConcurrentCalls ?? null,
+      maxRepeatsPerDestination: input.maxRepeatsPerDestination ?? null,
+      destinationCooldownSeconds: input.destinationCooldownSeconds ?? null,
+      destinationRegionPolicy: input.destinationRegionPolicy ?? undefined,
+      allowedCountries: input.allowedCountries ?? [],
+      warnThresholdPct: input.warnThresholdPct ?? null,
+      hardLimitThresholdPct: input.hardLimitThresholdPct ?? null,
+      hardLimitGraceMinutes: input.hardLimitGraceMinutes ?? undefined,
+      overflowBehavior: input.overflowBehavior ?? undefined,
+    };
+
     return this.prisma.voiceBudgetPolicy.upsert({
       where: { organizationId: input.organizationId },
       create: {
         organizationId: input.organizationId,
-        monthlyBudgetCents: input.monthlyBudgetCents ?? null,
-        dailyLimitCents: input.dailyLimitCents ?? null,
-        maxConversationDurationSeconds: input.maxConversationDurationSeconds ?? null,
-        maxConcurrentCalls: input.maxConcurrentCalls ?? null,
-        allowedCountries: input.allowedCountries ?? [],
-        warnThresholdPct: input.warnThresholdPct ?? null,
-        hardLimitThresholdPct: input.hardLimitThresholdPct ?? null,
+        ...data,
+        destinationRegionPolicy: input.destinationRegionPolicy ?? 'DE_EEA',
+        hardLimitGraceMinutes: input.hardLimitGraceMinutes ?? 0,
       },
-      update: {
-        monthlyBudgetCents: input.monthlyBudgetCents ?? null,
-        dailyLimitCents: input.dailyLimitCents ?? null,
-        maxConversationDurationSeconds: input.maxConversationDurationSeconds ?? null,
-        maxConcurrentCalls: input.maxConcurrentCalls ?? null,
-        allowedCountries: input.allowedCountries ?? [],
-        warnThresholdPct: input.warnThresholdPct ?? null,
-        hardLimitThresholdPct: input.hardLimitThresholdPct ?? null,
-      },
+      update: data,
     });
   }
 }

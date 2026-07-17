@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { TwilioModule } from '@modules/twilio/twilio.module';
 import { VoiceCallOrchestrationModule } from '@modules/voice-call-orchestration/voice-call-orchestration.module';
+import { VoiceProtectionModule } from '@modules/voice-protection/voice-protection.module';
 import { ElevenLabsService } from './elevenlabs.service';
 import { VoiceAssistantService } from './voice-assistant.service';
 import { VoiceAssistantController, VoiceAssistantAdminController } from './voice-assistant.controller';
@@ -25,7 +26,7 @@ import { AgentDeploymentReadinessService } from './agent-deployment/agent-deploy
 import { AgentDeploymentService } from './agent-deployment/agent-deployment.service';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, TwilioModule, forwardRef(() => VoiceCallOrchestrationModule)],
+  imports: [PrismaModule, ConfigModule, TwilioModule, forwardRef(() => VoiceCallOrchestrationModule), VoiceProtectionModule],
   controllers: [
     VoiceAssistantController,
     VoiceAssistantAdminController,

@@ -31,7 +31,13 @@ describe('VoiceCallOrchestrationService', () => {
 
   const deployments = { findById: jest.fn() };
   const phoneNumbers = { findById: jest.fn() };
-  const policy = { assertOutboundCallAllowed: jest.fn(), assertLegacyDiagnosticAllowed: jest.fn() };
+  const policy = {
+    assertOutboundCallAllowed: jest.fn().mockResolvedValue({ conversationSlotId: 'slot-1' }),
+    assertLegacyDiagnosticAllowed: jest.fn(),
+  };
+  const protection = {
+    evaluateInboundDegradation: jest.fn().mockResolvedValue({ degraded: false }),
+  };
   const mcpTokens = { issue: jest.fn() };
   const internalEvents = { recordConversationLifecycle: jest.fn() };
 
@@ -49,6 +55,7 @@ describe('VoiceCallOrchestrationService', () => {
       deployments as never,
       phoneNumbers as never,
       policy as never,
+      protection as never,
       mcpTokens as never,
       internalEvents as never,
     );
@@ -131,22 +138,18 @@ describe('VoiceCallPolicyService', () => {
   const ORG = 'org-policy-1';
   const prisma = {
     voiceAssistant: { findFirst: jest.fn() },
-    voiceUsageEvent: { aggregate: jest.fn() },
     organizationMembership: { findFirst: jest.fn() },
   };
-  const subscriptions = { listByOrganization: jest.fn() };
-  const budgetPolicies = { findByOrganization: jest.fn() };
+  const enforcement = {
+    assertOutboundAllowed: jest.fn(),
+  };
 
   let policy: VoiceCallPolicyService;
 
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.VOICE_NATIVE_TWILIO_INTEGRATION = 'true';
-    policy = new VoiceCallPolicyService(
-      prisma as never,
-      subscriptions as never,
-      budgetPolicies as never,
-    );
+    policy = new VoiceCallPolicyService(prisma as never, enforcement as never);
   });
 
   it('rejects outbound when subscription is suspended', async () => {
@@ -155,9 +158,13 @@ describe('VoiceCallPolicyService', () => {
       status: VoiceAssistantStatus.ACTIVE,
       outboundEnabled: true,
     });
-    subscriptions.listByOrganization.mockResolvedValue([
-      { status: VoiceSubscriptionStatus.SUSPENDED },
-    ]);
+    const { VoiceProtectionDeniedError } = require('@modules/voice-protection/voice-protection-reason-codes');
+    enforcement.assertOutboundAllowed.mockRejectedValue(
+      new VoiceProtectionDeniedError({
+        reasonCode: 'subscription_suspended',
+        message: 'Voice AI subscription is suspended.',
+      }),
+    );
 
     await expect(
       policy.assertOutboundCallAllowed({
@@ -174,8 +181,14 @@ describe('VoiceCallPolicyService', () => {
       status: VoiceAssistantStatus.ACTIVE,
       outboundEnabled: true,
     });
-    subscriptions.listByOrganization.mockResolvedValue([{ status: VoiceSubscriptionStatus.ACTIVE }]);
-    budgetPolicies.findByOrganization.mockResolvedValue(null);
+    const { VoiceProtectionDeniedError } = require('@modules/voice-protection/voice-protection-reason-codes');
+    enforcement.assertOutboundAllowed.mockRejectedValue(
+      new VoiceProtectionDeniedError({
+        reasonCode: 'destination_blocked_special',
+        message: 'Destination number is blocked.',
+        httpStatus: 400,
+      }),
+    );
 
     await expect(
       policy.assertOutboundCallAllowed({

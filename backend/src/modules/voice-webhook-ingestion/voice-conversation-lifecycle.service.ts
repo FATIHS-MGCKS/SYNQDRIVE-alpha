@@ -8,6 +8,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VoiceUsageLedgerService } from '@modules/voice-billing/voice-usage-ledger.service';
+import { VoiceBudgetWarningService } from '@modules/voice-protection/voice-budget-warning.service';
+import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
 import { isLegacyTwimlConversation, buildElevenLabsConversationMetadata, preferDurationSeconds, resolveElevenLabsSyncOutcome } from '@modules/voice-assistant/voice-conversation-lifecycle.util';
 import { hasConversationTranscript } from '@modules/voice-assistant/voice-conversation.util';
 import {
@@ -27,6 +29,8 @@ export class VoiceConversationLifecycleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usageLedger: VoiceUsageLedgerService,
+    private readonly protection: VoiceBudgetEnforcementService,
+    private readonly warnings: VoiceBudgetWarningService,
   ) {}
 
   async applyWebhookEvent(params: {
@@ -129,6 +133,7 @@ export class VoiceConversationLifecycleService {
     });
 
     await this.recordMeteredUsageIfApplicable(updated);
+    await this.trackConversationProgress(updated);
 
     return { conversationId: updated.id, lifecycleState: updated.lifecycleState };
   }
@@ -218,6 +223,7 @@ export class VoiceConversationLifecycleService {
     });
 
     await this.recordMeteredUsageIfApplicable(updated);
+    await this.trackConversationProgress(updated);
 
     return { conversationId: updated.id, lifecycleState: updated.lifecycleState };
   }
@@ -360,6 +366,8 @@ export class VoiceConversationLifecycleService {
     status: VoiceConversationStatus;
     twilioCallSid: string | null;
     elevenLabsConvId: string | null;
+    callerNumber?: string | null;
+    outcome?: import('@prisma/client').VoiceConversationOutcome;
   }) {
     if (conversation.status !== VoiceConversationStatus.COMPLETED) {
       return;
@@ -377,10 +385,40 @@ export class VoiceConversationLifecycleService {
         provider: VoiceControlPlaneProvider.TWILIO,
         externalUsageRef: conversation.twilioCallSid ?? conversation.elevenLabsConvId,
       });
+      await this.warnings.evaluateThresholds(conversation.organizationId);
     } catch (err) {
       this.logger.warn(
         `Failed to record voice usage for conversation ${conversation.id}: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
+
+    await this.protection.onConversationProgress({
+      organizationId: conversation.organizationId,
+      conversationId: conversation.id,
+      durationSeconds: conversation.durationSeconds ?? 0,
+      destinationE164: conversation.callerNumber ?? null,
+      outcomeFailed: conversation.outcome === VoiceConversationOutcome.FAILED,
+    }).catch(() => undefined);
+
+    await this.protection.releaseConversationSlot(conversation.organizationId, conversation.id).catch(() => undefined);
+  }
+
+  private async trackConversationProgress(conversation: {
+    id: string;
+    organizationId: string;
+    durationSeconds: number | null;
+    callerNumber?: string | null;
+    outcome?: import('@prisma/client').VoiceConversationOutcome;
+  }) {
+    if (!conversation.durationSeconds || conversation.durationSeconds <= 0) {
+      return;
+    }
+    await this.protection.onConversationProgress({
+      organizationId: conversation.organizationId,
+      conversationId: conversation.id,
+      durationSeconds: conversation.durationSeconds,
+      destinationE164: conversation.callerNumber ?? null,
+      outcomeFailed: conversation.outcome === VoiceConversationOutcome.FAILED,
+    }).catch(() => undefined);
   }
 }

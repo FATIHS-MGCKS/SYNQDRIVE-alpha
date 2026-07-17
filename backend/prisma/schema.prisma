@@ -1464,6 +1464,9 @@ model Organization {
   voiceUsageEvents                       VoiceUsageEvent[]
   voiceBillingPeriods                    VoiceBillingPeriod[]
   voiceBudgetPolicies                    VoiceBudgetPolicy[]
+  voiceProtectionOverrides               VoiceProtectionOverride[]
+  voiceProtectionAuditEvents             VoiceProtectionAuditEvent[]
+  voiceBudgetWarningStates               VoiceBudgetWarningState[]
   voiceToolExecutions                    VoiceToolExecution[]
   voiceApprovalRequests                  VoiceApprovalRequest[]
   voiceTestRuns                          VoiceTestRun[]
@@ -10608,6 +10611,34 @@ enum VoiceBudgetOverflowBehavior {
   ALLOW_OVERAGE
 }
 
+enum VoiceDestinationRegionPolicy {
+  DE_ONLY
+  DE_EEA
+  CUSTOM
+}
+
+enum VoiceProtectionOverrideScope {
+  OUTBOUND_DESTINATION
+  MONTHLY_BUDGET
+  DAILY_OUTBOUND
+  CONCURRENT_CALLS
+  ALL_LIMITS
+}
+
+enum VoiceProtectionAuditAction {
+  OUTBOUND_BLOCKED
+  INBOUND_DEGRADED
+  BUDGET_WARNING
+  BUDGET_HARD_LIMIT
+  ABUSE_DETECTED
+  OVERRIDE_CREATED
+  OVERRIDE_REVOKED
+  BUDGET_POLICY_UPDATED
+  CONCURRENT_LIMIT
+  ACTIVATION_BLOCKED
+  DURATION_LIMIT_FLAG
+}
+
 enum VoiceToolRiskClass {
   READ_ONLY
   CONFIRMATION_REQUIRED
@@ -10764,17 +10795,71 @@ model VoiceBudgetPolicy {
 
   monthlyBudgetCents             Int?                        @map("monthly_budget_cents")
   dailyLimitCents                Int?                        @map("daily_limit_cents")
+  dailyOutboundMinutesLimit      Int?                        @map("daily_outbound_minutes_limit")
   maxConversationDurationSeconds Int?                        @map("max_conversation_duration_seconds")
   maxConcurrentCalls             Int?                        @map("max_concurrent_calls")
+  maxRepeatsPerDestination       Int?                        @map("max_repeats_per_destination")
+  destinationCooldownSeconds     Int?                        @map("destination_cooldown_seconds")
+  destinationRegionPolicy        VoiceDestinationRegionPolicy @default(DE_EEA) @map("destination_region_policy")
   allowedCountries               String[]                    @default([]) @map("allowed_countries")
   warnThresholdPct               Int?                        @map("warn_threshold_pct")
   hardLimitThresholdPct          Int?                        @map("hard_limit_threshold_pct")
+  hardLimitGraceMinutes          Int                         @default(0) @map("hard_limit_grace_minutes")
   overflowBehavior               VoiceBudgetOverflowBehavior @default(WARN) @map("overflow_behavior")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("voice_budget_policies")
+}
+
+/// Time-bound manual exception to a voice protection limit.
+model VoiceProtectionOverride {
+  id              String                       @id @default(uuid())
+  organizationId  String                       @map("organization_id")
+  organization    Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scope           VoiceProtectionOverrideScope @map("scope")
+  targetRef       String?                      @map("target_ref")
+  reason          String
+  createdByUserId String                       @map("created_by_user_id")
+  expiresAt       DateTime                     @map("expires_at")
+  revokedAt       DateTime?                    @map("revoked_at")
+  createdAt       DateTime                     @default(now()) @map("created_at")
+  updatedAt       DateTime                     @updatedAt @map("updated_at")
+
+  @@index([organizationId, scope, expiresAt])
+  @@index([organizationId, revokedAt])
+  @@map("voice_protection_overrides")
+}
+
+/// Immutable audit trail for blocks, warnings, overrides, and policy changes.
+model VoiceProtectionAuditEvent {
+  id             String                     @id @default(uuid())
+  organizationId String                     @map("organization_id")
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  action         VoiceProtectionAuditAction @map("action")
+  reasonCode     String                     @map("reason_code")
+  message        String?
+  metadata       Json?
+  actorUserId    String?                    @map("actor_user_id")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, action])
+  @@map("voice_protection_audit_events")
+}
+
+/// Dedupes budget threshold warnings per billing period.
+model VoiceBudgetWarningState {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  periodStart    DateTime     @map("period_start")
+  warnedPct      Int          @map("warned_pct")
+  warnedAt       DateTime     @default(now()) @map("warned_at")
+
+  @@unique([organizationId, periodStart, warnedPct])
+  @@map("voice_budget_warning_states")
 }
 
 /// MCP / agent tool invocation audit row with redacted I/O.
