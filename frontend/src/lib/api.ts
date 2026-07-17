@@ -3895,6 +3895,8 @@ export const api = {
       get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
+    activity: (orgId: string, stationId: string) =>
+      get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
@@ -8979,6 +8981,14 @@ export interface StationBookingRow {
   isOneWayRental: boolean;
   customerName: string;
   vehicleLabel: string;
+}
+
+export interface StationActivityEntry {
+  id: string;
+  action: string;
+  description: string | null;
+  userName: string;
+  createdAt: string;
 }
 
 export interface StationUpsertPayload {

@@ -176,7 +176,7 @@ export class StationsController {
   }
 
   @Get(':id/activity')
-  @RequireStationsPermission('stations.read')
+  @RequireStationsPermission('stations.view_activity')
   @RequireStationScope({ resource: 'station' })
   async getActivity(
     @Param('orgId') orgId: string,

@@ -53,7 +53,8 @@ describe('stations-read-scope.util', () => {
       allowedStationIds: [STATION_A],
       bypassScope: false,
     };
-    expect(isStationVisibleInScope(STATION_A, scope)).toBe(true);
-    expect(isStationVisibleInScope(STATION_B, scope)).toBe(false);
+    expect(isStationVisibleInScope(STATION_A, scope, ORG)).toBe(true);
+    expect(isStationVisibleInScope(STATION_B, scope, ORG)).toBe(false);
+    expect(isStationVisibleInScope(STATION_A, undefined, ORG)).toBe(false);
   });
 });
