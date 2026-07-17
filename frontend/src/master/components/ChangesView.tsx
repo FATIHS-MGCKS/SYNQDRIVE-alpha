@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-unified-flow-2026-07-17',
+    version: '4.9.640',
+    title: 'V4.9.640 — Document Intake Unified Flow (canonical hook)',
+    summary: [
+      'useDocumentIntakeFlow als kanonischer Hook + State Machine für Page, Drawer und Operator.',
+      'Gemeinsame Komponenten: DocumentExtractionFlowStatus, DocumentExtractionReviewPanel, Action Preview, Entity Resolution Preview.',
+      'Gleiche Polling-/Fehlerbehandlung (Duplicate, Rate-Limit, Identification); Page pollt durch Apply bis APPLIED.',
+      'useDocumentExtractionFlow und useDocumentUploadPage sind dünne Wrapper — Drawer nur andere Darstellung.',
+    ],
+    reason:
+      'Keine parallelen Upload-Templates mehr; einheitliche Review- und Status-UX über alle Document-Extraction-Flows.',
+    previousBehavior:
+      'Zwei parallele Hooks (useDocumentUploadPage, useDocumentExtractionFlow) und drei getrennte Review-UIs ohne Action/Entity Preview.',
+    details: 'architecture/DOCUMENT_INTAKE_UNIFIED_FLOW_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T09:00:00.000Z',
+  },
+  {
     id: 'document-intake-golden-corpus-2026-07-17',
     version: '4.9.639',
     title: 'V4.9.639 — Document Intake V2 Golden Fixture Corpus',

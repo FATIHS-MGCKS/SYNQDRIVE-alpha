@@ -2,15 +2,14 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
-import { formatUploadContextBanner, hasUploadContextConflict } from '../../../lib/document-upload-context';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
 import {
   DOC_TYPE_LABELS,
   EXTRACTION_TEMPLATES,
   FLOW_STATUS_LABEL_DE,
-  type PlausibilityStatus,
 } from './document-extraction.shared';
-import { DocumentUploadDuplicatePanel } from './DocumentUploadDuplicatePanel';
+import { DocumentExtractionFlowStatus } from './DocumentExtractionFlowStatus';
+import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
 import { CATEGORY_TO_DOC_TYPE } from './vehicle-file.constants';
 
@@ -26,12 +25,6 @@ export interface VehicleDocumentUploadDrawerProps {
   extractionId?: string | null;
   fileName?: string | null;
   onComplete?: () => void;
-}
-
-function plausClass(status: PlausibilityStatus): string {
-  if (status === 'BLOCKER') return 'border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] text-[color:var(--status-critical)]';
-  if (status === 'WARNING') return 'border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] text-[color:var(--status-watch)]';
-  return 'border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.06] text-[color:var(--status-success)]';
 }
 
 export function VehicleDocumentUploadDrawer({
@@ -57,8 +50,6 @@ export function VehicleDocumentUploadDrawer({
     initialDocType,
     onComplete: handleComplete,
   });
-  const uploadContextLabel = formatUploadContextBanner(flow.uploadContext);
-  const uploadContextConflict = hasUploadContextConflict(flow.uploadContext);
 
   useEffect(() => {
     if (!open) {
@@ -110,6 +101,9 @@ export function VehicleDocumentUploadDrawer({
         Fertig
       </button>
     ) : undefined;
+
+  const showReview =
+    flow.flow === 'ready' || flow.flow === 'applying' || (mode === 'view' && flow.flow === 'done');
 
   return (
     <DetailDrawer
@@ -176,110 +170,21 @@ export function VehicleDocumentUploadDrawer({
           </>
         )}
 
-        {flow.validationError && flow.flow === 'idle' && (
-          <p className="text-[11px] text-[color:var(--status-critical)]">{flow.validationError}</p>
-        )}
+        <DocumentExtractionFlowStatus
+          flow={flow.flow}
+          uploadedFileName={flow.uploadedFileName}
+          errorMessage={flow.errorMessage}
+          validationError={flow.validationError}
+          uploadContext={flow.uploadContext}
+          duplicateBlocked={flow.duplicateBlocked}
+          uploadDuplicateWarning={flow.uploadDuplicateWarning}
+          onRetry={() => void flow.handleRetry()}
+          onReset={flow.handleReset}
+          onAuthorizedReupload={(reason) => void flow.handleAuthorizedReupload(reason)}
+        />
 
-        {flow.isBusy && (
-          <div className="surface-premium rounded-xl border border-border bg-muted/20 p-8 text-center">
-            {uploadContextLabel ? (
-              <div
-                className={`mb-4 rounded-lg border px-3 py-2 text-left text-[11px] ${
-                  uploadContextConflict
-                    ? 'border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.08] text-[color:var(--status-watch)]'
-                    : 'border-primary/30 bg-primary/[0.06] text-primary'
-                }`}
-              >
-                <p className="font-semibold break-words">{uploadContextLabel}</p>
-                {uploadContextConflict && flow.uploadContext?.conflicts?.length ? (
-                  <ul className="mt-1.5 space-y-1 opacity-90">
-                    {flow.uploadContext.conflicts.map((entry, index) => (
-                      <li key={`${entry.message}-${index}`} className="break-words">
-                        {entry.message}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            ) : null}
-            <Icon name="loader-2" className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
-            <p className="text-[13px] font-semibold text-foreground">{FLOW_STATUS_LABEL_DE[flow.flow]}</p>
-            {flow.uploadedFileName ? (
-              <p className="mt-1 truncate text-[11px] text-muted-foreground">{flow.uploadedFileName}</p>
-            ) : null}
-          </div>
-        )}
-
-        {flow.flow === 'duplicate_blocked' && flow.duplicateBlocked ? (
-          <DocumentUploadDuplicatePanel
-            payload={flow.duplicateBlocked.payload}
-            onCancel={flow.handleReset}
-            onReupload={(reason) => void flow.handleAuthorizedReupload(reason)}
-          />
-        ) : null}
-
-        {flow.uploadDuplicateWarning ? (
-          <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.05] p-4">
-            <p className="text-[12px] font-semibold text-foreground">Mögliches Business-Duplikat</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Rechnungs- oder Aktenzeichen-Hinweis passt zu einem bestehenden Dokument in dieser Organisation.
-              Der Upload wurde dennoch gestartet.
-            </p>
-            {flow.uploadDuplicateWarning.existingExtraction ? (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Referenz: {flow.uploadDuplicateWarning.existingExtraction.sourceFileName || flow.uploadDuplicateWarning.existingExtraction.id}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        {flow.flow === 'failed' && (
-          <div className="rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.05] p-5 text-center">
-            <Icon name="alert-triangle" className="mx-auto mb-2 h-7 w-7 text-[color:var(--status-critical)]" />
-            <p className="text-[13px] font-semibold text-foreground">Verarbeitung fehlgeschlagen</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{flow.errorMessage}</p>
-            <div className="mt-4 flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => void flow.handleRetry()}
-                className="sq-press inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-primary-foreground"
-              >
-                <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
-                Erneut versuchen
-              </button>
-              <button
-                type="button"
-                onClick={flow.handleReset}
-                className="sq-press rounded-lg border border-border px-3 py-2 text-[11px] font-semibold text-muted-foreground"
-              >
-                Abbrechen
-              </button>
-            </div>
-          </div>
-        )}
-
-        {(flow.flow === 'ready' || flow.flow === 'applying' || (mode === 'view' && flow.flow === 'done')) && (
+        {showReview && (
           <div className="space-y-3">
-            {uploadContextLabel ? (
-              <div
-                className={`rounded-lg border px-3 py-2 text-[11px] ${
-                  uploadContextConflict
-                    ? 'border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.08] text-[color:var(--status-watch)]'
-                    : 'border-primary/30 bg-primary/[0.06] text-primary'
-                }`}
-              >
-                <p className="font-semibold break-words">{uploadContextLabel}</p>
-                {uploadContextConflict && flow.uploadContext?.conflicts?.length ? (
-                  <ul className="mt-1.5 space-y-1 opacity-90">
-                    {flow.uploadContext.conflicts.map((entry, index) => (
-                      <li key={`${entry.message}-${index}`} className="break-words">
-                        {entry.message}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            ) : null}
             <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
               <Icon name="file-text" className="w-4 h-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 truncate text-[12px] font-medium text-foreground">
@@ -294,69 +199,32 @@ export function VehicleDocumentUploadDrawer({
               <p className="text-[11px] text-[color:var(--status-critical)]">{flow.errorMessage}</p>
             ) : null}
 
-            {flow.plausibility ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="sq-section-label">Plausibilität</span>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${plausClass(flow.plausibility.overallStatus)}`}>
-                    {flow.plausibility.overallStatus}
-                  </span>
-                </div>
-                {flow.plausibility.checks.map((c, i) => (
-                  <div key={`${c.code}-${i}`} className={`rounded-lg border px-3 py-2 text-[11px] ${plausClass(c.status)}`}>
-                    {c.message}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="sq-section-label">Erkannte Felder</span>
-                {flow.flow === 'ready' && (
+            <DocumentExtractionReviewPanel
+              confirmedDocType={flow.confirmedDocType}
+              editedFields={flow.editedFields}
+              plausibility={flow.plausibility}
+              record={flow.record}
+              editingFields={flow.editingFields}
+              readOnly={flow.flow !== 'ready'}
+              canEdit={flow.flow === 'ready'}
+              onToggleEdit={() => flow.setEditingFields(!flow.editingFields)}
+              onFieldChange={(index, value) => {
+                const next = [...flow.editedFields];
+                next[index] = { ...next[index], value };
+                flow.setEditedFields(next);
+              }}
+              footerSlot={
+                flow.flow === 'ready' && flow.record?.allowedActions?.includes('reextract') !== false ? (
                   <button
                     type="button"
-                    onClick={() => flow.setEditingFields(!flow.editingFields)}
-                    className="text-[10px] font-semibold text-primary"
+                    onClick={() => void flow.handleReextract()}
+                    className="text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
                   >
-                    {flow.editingFields ? 'Fertig' : 'Bearbeiten'}
+                    Erneut extrahieren
                   </button>
-                )}
-              </div>
-              <div className="overflow-hidden rounded-xl border border-border">
-                {flow.editedFields.map((field, i) => (
-                  <div
-                    key={field.key}
-                    className={`flex items-center gap-3 px-3 py-2 ${i > 0 ? 'border-t border-border' : ''} bg-muted/10`}
-                  >
-                    <span className="w-36 shrink-0 text-[10px] font-medium text-muted-foreground">{field.label}</span>
-                    {flow.editingFields && flow.flow === 'ready' ? (
-                      <input
-                        value={field.value}
-                        onChange={(e) => {
-                          const next = [...flow.editedFields];
-                          next[i] = { ...next[i], value: e.target.value };
-                          flow.setEditedFields(next);
-                        }}
-                        className="flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
-                      />
-                    ) : (
-                      <span className="text-[11px] font-medium text-foreground">{field.value || '—'}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {flow.flow === 'ready' && (
-              <button
-                type="button"
-                onClick={() => void flow.handleRetry()}
-                className="text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
-              >
-                Erneut extrahieren
-              </button>
-            )}
+                ) : null
+              }
+            />
           </div>
         )}
 
