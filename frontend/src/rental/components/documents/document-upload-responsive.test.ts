@@ -8,6 +8,11 @@ const viewSource = readFileSync(
   'utf8',
 );
 
+const reviewPanelSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), './DocumentExtractionReviewPanel.tsx'),
+  'utf8',
+);
+
 describe('DocumentUploadView responsive layout guards', () => {
   it('clips horizontal overflow at the page root without hiding the underlying fix', () => {
     expect(viewSource).toMatch(/w-full max-w-\[1200px\].*min-w-0.*overflow-x-clip/s);
@@ -24,9 +29,9 @@ describe('DocumentUploadView responsive layout guards', () => {
   });
 
   it('stacks review fields and action buttons on mobile', () => {
-    expect(viewSource).toContain('flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3');
+    expect(reviewPanelSource).toContain('flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3');
     expect(viewSource).toContain('flex flex-col sm:flex-row sm:items-center gap-3 pt-2 min-w-0');
-    expect(viewSource).toContain('sm:w-44');
+    expect(reviewPanelSource).toContain('sm:w-44');
   });
 
   it('avoids truncating the page title on mobile', () => {

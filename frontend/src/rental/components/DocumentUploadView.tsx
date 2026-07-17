@@ -8,6 +8,8 @@ import { useRentalOrg } from '../RentalContext';
 import { useDocumentUploadPage } from '../hooks/useDocumentUploadPage';
 import type { PlausibilityStatus } from './documents/document-extraction.shared';
 import type { PublicDocumentExtractionSummary } from '../lib/document-extraction.types';
+import { DocumentExtractionReviewPanel } from './documents/DocumentExtractionReviewPanel';
+import { DocumentExtractionFlowStatus } from './documents/DocumentExtractionFlowStatus';
 
 interface DocumentUploadViewProps {
   isDarkMode: boolean;
@@ -128,6 +130,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
   const showBusy = page.isBusy;
   const showAwaitingType = page.flow === 'awaiting_type';
   const showFailed = page.flow === 'failed';
+  const showDuplicate = page.flow === 'duplicate_blocked';
   const showReview = page.flow === 'ready' || page.flow === 'applying';
   const showDone = page.flow === 'done';
   const showCancelled = page.flow === 'cancelled';
@@ -301,6 +304,15 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
             </div>
           )}
 
+          {showDuplicate && page.duplicateBlocked && (
+            <DocumentExtractionFlowStatus
+              flow={page.flow}
+              duplicateBlocked={page.duplicateBlocked}
+              onReset={page.handleReset}
+              onAuthorizedReupload={(reason) => void page.handleAuthorizedReupload?.(reason)}
+            />
+          )}
+
           {showFailed && (
             <div className={`rounded-lg p-6 sm:p-10 text-center min-w-0 ${glass}`}>
               <div className={`w-16 h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-red-500/15' : 'bg-red-100/80'}`}>
@@ -425,66 +437,23 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   </div>
                 )}
 
-                {page.plausibility && (
-                  <div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5 min-w-0">
-                      <label className={`text-xs font-semibold uppercase tracking-wider block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.plausibilityTitle')}</label>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${plausStyles(page.plausibility.overallStatus)}`}>{page.plausibility.overallStatus}</span>
-                    </div>
-                    {page.plausibility.checks.length === 0 ? (
-                      <div className={`px-3 py-2 rounded-lg text-xs border ${plausStyles('OK')}`}>{t('docUpload.plausibilityOk')}</div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {page.plausibility.checks.map((c, i) => (
-                          <div key={`${c.code}-${i}`} className={`px-3 py-2 rounded-lg text-xs border min-w-0 ${plausStyles(c.status)}`}>
-                            <div className="flex flex-wrap items-center gap-2 min-w-0">
-                              <span className="font-semibold shrink-0">{c.status}</span>
-                              <span className="opacity-70 break-words min-w-0">&middot; {c.source}</span>
-                            </div>
-                            <p className="mt-0.5 break-words">{c.message}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div>
-                  <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.detectedFields')}</label>
-                  <div className={`rounded-lg overflow-hidden border ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
-                    {page.editedFields.map((field, i) => (
-                      <div key={field.key} className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 px-3 py-2.5 min-w-0 ${i > 0 ? (isDarkMode ? 'border-t border-neutral-800' : 'border-t border-gray-200/40') : ''}`}>
-                        <span className={`sm:w-44 text-xs font-semibold shrink-0 min-w-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{field.label}</span>
-                        {page.editingFields ? (
-                          field.fieldType === 'multiline' ? (
-                            <textarea
-                              value={field.value}
-                              rows={3}
-                              onChange={(e) => {
-                                const updated = [...page.editedFields];
-                                updated[i] = { ...updated[i], value: e.target.value };
-                                page.setEditedFields(updated);
-                              }}
-                              className={`w-full min-w-0 sm:flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
-                            />
-                          ) : (
-                            <input
-                              value={field.value}
-                              onChange={(e) => {
-                                const updated = [...page.editedFields];
-                                updated[i] = { ...updated[i], value: e.target.value };
-                                page.setEditedFields(updated);
-                              }}
-                              className={`w-full min-w-0 sm:flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
-                            />
-                          )
-                        ) : (
-                          <span className={`w-full min-w-0 break-words text-xs font-semibold whitespace-pre-wrap ${field.value ? (isDarkMode ? 'text-white' : 'text-gray-900') : (isDarkMode ? 'text-gray-600' : 'text-muted-foreground')}`}>{field.value || '—'}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <DocumentExtractionReviewPanel
+                  confirmedDocType={page.confirmedDocType}
+                  editedFields={page.editedFields}
+                  plausibility={page.plausibility}
+                  record={page.record}
+                  editingFields={page.editingFields}
+                  readOnly={page.flow !== 'ready'}
+                  canEdit={false}
+                  onFieldChange={(index, value) => {
+                    const updated = [...page.editedFields];
+                    updated[index] = { ...updated[index], value };
+                    page.setEditedFields(updated);
+                  }}
+                  fieldsTitle={t('docUpload.detectedFields')}
+                  plausibilityTitle={t('docUpload.plausibilityTitle')}
+                  isDarkMode={isDarkMode}
+                />
 
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 min-w-0">
                   <button
