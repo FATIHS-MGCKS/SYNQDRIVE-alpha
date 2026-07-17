@@ -15,12 +15,10 @@ const VEHICLE_SCOPED_TYPES = new Set<DocumentExtractionType>([
   'BATTERY',
   'DAMAGE',
   'ACCIDENT',
-  'INVOICE',
   'VEHICLE_CONDITION',
 ]);
 
 const CRITICAL_FIELD_KEYS: Partial<Record<ApplyDocumentExtractionType, string[]>> = {
-  INVOICE: ['invoiceNumber', 'totalCents'],
   TUV_REPORT: ['eventDate', 'validUntil'],
   BOKRAFT_REPORT: ['eventDate', 'validUntil'],
   TIRE: ['treadDepthMm.fl'],

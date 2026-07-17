@@ -176,6 +176,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 23, 2026-07-17):** `document-action-planner.fine-rules.ts` — FINE-Profile mit Modi FINE_NOTICE / HEARING_FORM / DRIVER_INQUIRY. Semantic Actions: CREATE_FINE_DRAFT, LINK_*, SUGGEST_DRIVER_REVIEW, SUGGEST_DEADLINE_TASK, SUGGEST_CUSTOMER_CONTACT. Pflichtfelder Fine Draft nur für FINE_NOTICE; fehlende Tatzeit blockiert Booking-/Driver-Attribution; mehrere Fahrer → keine Auto-Zuordnung; kein offenseType-Default; Anhörungsbogen kein blindes Bußgeld. Planner-Version `document-action-planner-v3`.
 
+**Implementierungsstand (Prompt 24, 2026-07-17):** `document-action-planner.invoice-rules.ts` — Finance-Profile (Eingangsrechnung, Gutschrift, Mahnung, Zahlungsnachweis). Semantic Actions: CREATE_INVOICE_DRAFT, CREATE_CREDIT_NOTE_DRAFT, LINK_*, LINK_EXISTING_INVOICE, SUGGEST_PAYMENT_REVIEW, SUGGEST_DUE_DATE_TASK, ARCHIVE_ONLY. Kein pauschales 19 %-VAT; explizite oder unklare Betrags-/Steuersemantik; taxLines für Mehrfachsätze; Plan-Outcomes READY/DRAFT_ONLY/BLOCKED. Planner-Version `document-action-planner-v4`.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

@@ -8,6 +8,10 @@ import {
   extractFineSemanticAction,
   FINE_SEMANTIC_ACTIONS,
 } from './document-action-planner.fine-rules';
+import {
+  extractFinanceSemanticAction,
+  FINANCE_SEMANTIC_ACTIONS,
+} from './document-action-planner.invoice-rules';
 import { listActionTemplatesForRoutingType } from './document-action-planner.catalog';
 import type {
   DocumentActionBlockingReason,
@@ -31,12 +35,14 @@ const PREVIEW_STATUS_BY_ACTION_TYPE: Record<DocumentActionType, DocumentActionPr
 const SEMANTIC_PREVIEW_ACTION_TYPES = new Set<string>([
   ...Object.values(ARCHIVE_ONLY_SEMANTIC_ACTIONS),
   ...Object.values(FINE_SEMANTIC_ACTIONS),
+  ...Object.values(FINANCE_SEMANTIC_ACTIONS),
 ]);
 
 export type DocumentActionPreviewActionType =
   | DocumentActionType
   | (typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS)[keyof typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS]
-  | (typeof FINE_SEMANTIC_ACTIONS)[keyof typeof FINE_SEMANTIC_ACTIONS];
+  | (typeof FINE_SEMANTIC_ACTIONS)[keyof typeof FINE_SEMANTIC_ACTIONS]
+  | (typeof FINANCE_SEMANTIC_ACTIONS)[keyof typeof FINANCE_SEMANTIC_ACTIONS];
 
 export type DocumentActionPreviewRow = {
   sequence: number;
@@ -51,6 +57,8 @@ export type DocumentActionPreviewRow = {
 
 function resolvePreviewActionType(action: PlannedDocumentActionInput): DocumentActionPreviewActionType {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const financeSemantic = extractFinanceSemanticAction(payload);
+  if (financeSemantic) return financeSemantic;
   const fineSemantic = extractFineSemanticAction(payload);
   if (fineSemantic) return fineSemantic;
   const semantic = extractSemanticAction(payload);
@@ -63,6 +71,26 @@ function mapActionPreviewStatus(
   planBlocked: boolean,
 ): DocumentActionPreviewStatus {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const financeSemantic = extractFinanceSemanticAction(payload);
+  if (
+    financeSemantic === FINANCE_SEMANTIC_ACTIONS.CREATE_INVOICE_DRAFT ||
+    financeSemantic === FINANCE_SEMANTIC_ACTIONS.CREATE_CREDIT_NOTE_DRAFT
+  ) {
+    return planBlocked ? 'BLOCKED' : 'WOULD_CREATE';
+  }
+  if (financeSemantic?.startsWith('LINK_')) {
+    return 'WOULD_LINK';
+  }
+  if (
+    financeSemantic === FINANCE_SEMANTIC_ACTIONS.SUGGEST_PAYMENT_REVIEW ||
+    financeSemantic === FINANCE_SEMANTIC_ACTIONS.SUGGEST_DUE_DATE_TASK
+  ) {
+    return 'WOULD_SUGGEST';
+  }
+  if (financeSemantic === FINANCE_SEMANTIC_ACTIONS.ARCHIVE_ONLY) {
+    return 'ARCHIVE_ONLY';
+  }
+
   const fineSemantic = extractFineSemanticAction(payload);
   if (fineSemantic === FINE_SEMANTIC_ACTIONS.CREATE_FINE_DRAFT) {
     return planBlocked ? 'BLOCKED' : 'WOULD_CREATE';
@@ -166,9 +194,10 @@ export function buildDocumentActionPreviewRows(
   const planBlocked = plannerResult.planDraft.isBlocked;
   const isArchiveOnlyPlan = plannerResult.planDraft.snapshot.planningMode === 'ARCHIVE_ONLY';
   const isFinePlan = plannerResult.planDraft.snapshot.planningMode === 'FINE';
+  const isFinancePlan = plannerResult.planDraft.snapshot.planningMode === 'FINANCE';
   const rows: DocumentActionPreviewRow[] = [];
 
-  if (!isArchiveOnlyPlan && !isFinePlan) {
+  if (!isArchiveOnlyPlan && !isFinePlan && !isFinancePlan) {
     const linkPreview = buildVehicleLinkPreview(vehicleEntityId, 0);
     if (linkPreview) {
       rows.push({ ...linkPreview, sequence: 1 });

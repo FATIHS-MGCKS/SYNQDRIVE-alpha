@@ -40,6 +40,16 @@ import {
   resolveFineDocumentMode,
   resolveFineFollowUpCandidateTypes,
 } from './document-action-planner.fine-rules';
+import {
+  assessFinanceDraftRequirements,
+  buildFinancePlannerActions,
+  buildFinancePlannerSummary,
+  FINANCE_PLAN_OUTCOMES,
+  isFinanceDocumentProfile,
+  resolveFinanceDocumentMode,
+  resolveFinanceFollowUpCandidateTypes,
+  stripFinanceDraftActions,
+} from './document-action-planner.invoice-rules';
 
 const EXECUTABLE_REQUIREMENTS = new Set<DocumentActionRequirement>(['REQUIRED', 'OPTIONAL']);
 
@@ -171,6 +181,9 @@ export function planDocumentActions(input: DocumentActionPlannerInput): Document
   }
   if (isFineDocumentProfile(input)) {
     return planFineDocument(input);
+  }
+  if (isFinanceDocumentProfile(input)) {
+    return planFinanceDocument(input);
   }
   return planDownstreamDocumentActions(input);
 }
@@ -361,6 +374,140 @@ function planFineDocument(input: DocumentActionPlannerInput): DocumentActionPlan
       entityCandidateCount: input.entityCandidates.length,
       plausibilityOverallStatus: input.plausibility.overallStatus,
       noAutomaticContact: true,
+    },
+  };
+
+  return {
+    planDraft,
+    actions,
+    blockingReasons,
+    missingRequirements,
+    followUpCandidateTypes,
+  };
+}
+
+function planFinanceDocument(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
+  const plannerVersion = input.plannerVersion ?? DOCUMENT_ACTION_PLANNER_VERSION;
+  const routingType = resolvePlannerRoutingType(input);
+  const vehicleEntityId = findVehicleEntityId(input.entityLinks);
+  const financeMode = resolveFinanceDocumentMode(input);
+  const assessment = assessFinanceDraftRequirements(input);
+  const inputFingerprint = buildDocumentActionPlannerInputFingerprint({
+    ...input,
+    plannerVersion,
+  });
+
+  const blockingReasons: DocumentActionBlockingReason[] = [];
+  const missingRequirements =
+    assessment.planOutcome === FINANCE_PLAN_OUTCOMES.BLOCKED
+      ? assessment.missingRequirements
+      : assessment.planOutcome === FINANCE_PLAN_OUTCOMES.DRAFT_ONLY
+        ? assessment.missingRequirements
+        : [];
+
+  if (assessment.planOutcome === FINANCE_PLAN_OUTCOMES.BLOCKED) {
+    blockingReasons.push(
+      ...assessment.missingRequirements.map((missing) =>
+        toBlockingReasonFromMissing(
+          missing,
+          missing.entityType ? 'ENTITY' : 'REQUIREMENT',
+        ),
+      ),
+    );
+  }
+
+  blockingReasons.push(...collectPlausibilityBlockers(input));
+
+  if (!input.featureFlags.actionPreviewEnabled) {
+    blockingReasons.push({
+      code: 'ACTION_PREVIEW_DISABLED',
+      message: 'Action preview is disabled by feature flag.',
+      source: 'FEATURE_FLAG',
+      severity: 'BLOCKER',
+    });
+  }
+
+  const wantsInvoiceDraft =
+    assessment.canCreateInvoiceDraft || assessment.canCreateCreditNoteDraft;
+  if (
+    wantsInvoiceDraft &&
+    !isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'invoices')
+  ) {
+    blockingReasons.push({
+      code: 'CAPABILITY_DISABLED_INVOICES',
+      message: 'Downstream invoices capability is disabled for finance draft creation.',
+      source: 'CAPABILITY',
+      severity: 'BLOCKER',
+    });
+  }
+
+  const ctx: DocumentActionPlannerBuildContext = {
+    input: { ...input, plannerVersion },
+    vehicleEntityId,
+    routingType,
+  };
+
+  let actions =
+    blockingReasons.some((reason) => reason.code === 'ACTION_PREVIEW_DISABLED')
+      ? []
+      : buildFinancePlannerActions(ctx);
+
+  const isBlocked =
+    assessment.planOutcome === FINANCE_PLAN_OUTCOMES.BLOCKED ||
+    blockingReasons.some(
+      (reason) =>
+        reason.code === 'PLAUSIBILITY_OVERALL_BLOCKER' ||
+        reason.code === 'ACTION_PREVIEW_DISABLED' ||
+        reason.code === 'CAPABILITY_DISABLED_INVOICES',
+    );
+
+  if (isBlocked) {
+    actions = stripExecutableActions(actions);
+  } else if (assessment.planOutcome === FINANCE_PLAN_OUTCOMES.DRAFT_ONLY) {
+    actions = stripFinanceDraftActions(actions);
+  }
+
+  const followUpCandidateTypes = resolveFinanceFollowUpCandidateTypes(
+    financeMode,
+    assessment.planOutcome,
+  );
+
+  const planDraft: DocumentActionPlanDraft = {
+    plannerVersion,
+    documentCategory: input.documentCategory,
+    documentSubtype: input.documentSubtype,
+    effectiveDocumentType: input.effectiveDocumentType,
+    inputFingerprint,
+    applyMode: input.applyMode,
+    isBlocked,
+    summary: buildFinancePlannerSummary(financeMode, assessment.planOutcome, actions.length),
+    snapshot: {
+      plannerVersion,
+      inputFingerprint,
+      routingType,
+      planningMode: 'FINANCE',
+      financeDocumentMode: financeMode,
+      financePlanOutcome: assessment.planOutcome,
+      documentCategory: input.documentCategory,
+      documentSubtype: input.documentSubtype,
+      effectiveDocumentType: input.effectiveDocumentType,
+      applyMode: input.applyMode,
+      isBlocked,
+      canCreateInvoiceDraft: assessment.canCreateInvoiceDraft,
+      canCreateCreditNoteDraft: assessment.canCreateCreditNoteDraft,
+      amountSemantics: assessment.amountTaxAssessment.amountSemantics,
+      taxSemantics: assessment.amountTaxAssessment.taxSemantics,
+      actionTypes: actions.map((action) => action.actionType),
+      semanticActions: actions
+        .map((action) => (action.previewPayload as Record<string, unknown> | undefined)?.semanticAction)
+        .filter(Boolean),
+      blockingReasonCodes: blockingReasons.map((reason) => reason.code),
+      missingRequirementCodes: missingRequirements.map((missing) => missing.code),
+      followUpCandidateTypes,
+      entityLinkCount: input.entityLinks.length,
+      entityCandidateCount: input.entityCandidates.length,
+      plausibilityOverallStatus: input.plausibility.overallStatus,
+      vendorRequiresConfirmation: true,
     },
   };
 

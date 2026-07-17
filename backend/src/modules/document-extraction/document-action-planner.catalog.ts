@@ -80,17 +80,6 @@ function damagePayload(ctx: DocumentActionPlannerBuildContext): Record<string, u
   };
 }
 
-function invoicePayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  const data = ctx.input.confirmedData;
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    invoiceNumber: data.invoiceNumber ?? null,
-    totalCents: data.totalCents ?? null,
-    eventDate: data.eventDate ?? data.invoiceDate ?? null,
-    vendorName: data.vendorName ?? null,
-  };
-}
-
 const ACTION_TEMPLATES_BY_TYPE: Partial<
   Record<DocumentExtractionType, DocumentActionPlannerActionTemplate[]>
 > = {
@@ -199,15 +188,6 @@ const ACTION_TEMPLATES_BY_TYPE: Partial<
       buildPayload: damagePayload,
     },
   ],
-  INVOICE: [
-    {
-      actionType: 'CREATE_INVOICE',
-      requirement: 'REQUIRED',
-      capabilityKey: 'invoices',
-      targetEntityType: 'VEHICLE',
-      buildPayload: invoicePayload,
-    },
-  ],
   OTHER: [
     {
       actionType: 'ARCHIVE_ONLY',
@@ -226,7 +206,6 @@ export function listActionTemplatesForRoutingType(
 }
 
 const FOLLOW_UP_BY_TYPE: Partial<Record<DocumentExtractionType, DocumentFollowUpCandidateType[]>> = {
-  INVOICE: ['CREATE_TASK', 'REQUEST_CUSTOMER_INFO'],
   TUV_REPORT: ['SCHEDULE_INSPECTION', 'CREATE_TASK'],
   BOKRAFT_REPORT: ['SCHEDULE_INSPECTION'],
   SERVICE: ['CREATE_TASK'],

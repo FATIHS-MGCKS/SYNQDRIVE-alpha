@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-invoice-planner-rules-2026-07-17',
+    version: '4.9.600',
+    title: 'V4.9.600 — Document Intake V2 Invoice / Credit / Reminder / Payment-Proof Action Plan Rules',
+    summary: [
+      'Planner-Regeln für Eingangsrechnung, Gutschrift, Mahnung und Zahlungsnachweis.',
+      'Semantic Actions: CREATE_INVOICE_DRAFT, CREATE_CREDIT_NOTE_DRAFT, LINK_VENDOR/VEHICLE/BOOKING, LINK_EXISTING_INVOICE, SUGGEST_PAYMENT_REVIEW, SUGGEST_DUE_DATE_TASK, ARCHIVE_ONLY.',
+      'Kein pauschales 19 %-VAT; Brutto/Netto/Steuer/Steuersatz explizit oder als unklar markiert; mehrere Steuersätze via taxLines; Gutschrift nicht als positive Rechnung; Mahnung verknüpft bestehende Rechnung; fehlende Rechnungsnummer/Betragssemantik → DRAFT_ONLY/BLOCKED; Vendor-Link bestätigungspflichtig.',
+      'Planner v4 (`document-action-planner-v4`); Tests für 19 %, 7 %, steuerfrei, Multi-Rate und unklar.',
+    ],
+    reason: 'Prompt 24/84: deterministischer Finance-Action-Planner vor Apply-Verdrahtung.',
+    previousBehavior: 'INVOICE nutzte generisches CREATE_INVOICE-Template; PAYMENT_PROOF nur Archive-Only ohne Finance-Semantik.',
+    details:
+      'document-action-planner.invoice-rules.ts (+ spec), engine finance path, preview mapper, archive PAYMENT_PROOF routing.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T04:00:00.000Z',
+  },
+  {
     id: 'document-fine-planner-rules-2026-07-17',
     version: '4.9.599',
     title: 'V4.9.599 — Document Intake V2 Fine / Hearing / Driver-Inquiry Action Plan Rules',

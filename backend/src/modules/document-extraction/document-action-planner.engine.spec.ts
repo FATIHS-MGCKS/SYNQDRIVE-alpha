@@ -222,13 +222,20 @@ describe('DocumentActionPlannerEngine', () => {
   });
 
   describe('downstream capabilities', () => {
-    it('blocks executable actions when capability is disabled', () => {
+    it('blocks executable actions when finance capability is disabled', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'INVOICE',
+          documentCategory: 'FINANCE',
           confirmedData: {
             invoiceNumber: 'INV-1',
-            totalCents: 12000,
+            totalCents: 11900,
+            grossCents: 11900,
+            netCents: 10000,
+            taxCents: 1900,
+            taxRatePercent: 19,
+            amountSemantics: 'GROSS',
+            taxSemantics: 'EXPLICIT',
             eventDate: '2026-01-01',
           },
           downstreamCapabilities: {
@@ -313,13 +320,20 @@ describe('DocumentActionPlannerEngine', () => {
       expect(result.followUpCandidateTypes).not.toContain('NOTIFY_DRIVER');
     });
 
-    it('suggests vendor follow-up for invoice without vendor link', () => {
+    it('suggests vendor follow-up for finance invoice without vendor link', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'INVOICE',
+          documentCategory: 'FINANCE',
           confirmedData: {
             invoiceNumber: 'INV-22',
-            totalCents: 5000,
+            totalCents: 11900,
+            grossCents: 11900,
+            netCents: 10000,
+            taxCents: 1900,
+            taxRatePercent: 19,
+            amountSemantics: 'GROSS',
+            taxSemantics: 'EXPLICIT',
             eventDate: '2026-04-01',
           },
         }),

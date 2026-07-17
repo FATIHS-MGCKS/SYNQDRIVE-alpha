@@ -62,13 +62,13 @@ describe('document-action-planner.archive-rules', () => {
       expect(isArchiveOnlyDocumentProfile(input)).toBe(false);
     });
 
-    it('treats payment proof subtype as archive-only even under finance category', () => {
+    it('routes payment proof on INVOICE to finance planner instead of archive-only', () => {
       const input = buildPlannerTestInput({
         effectiveDocumentType: 'INVOICE',
         documentCategory: 'FINANCE',
         documentSubtype: ARCHIVE_ONLY_DOCUMENT_SUBTYPES.PAYMENT_PROOF,
       });
-      expect(isArchiveOnlyDocumentProfile(input)).toBe(true);
+      expect(isArchiveOnlyDocumentProfile(input)).toBe(false);
     });
   });
 

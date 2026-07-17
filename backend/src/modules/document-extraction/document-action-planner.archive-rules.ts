@@ -107,6 +107,13 @@ export function isArchiveOnlyDocumentProfile(input: DocumentActionPlannerInput):
   }
 
   if (isKnownArchiveOnlySubtype(input.documentSubtype)) {
+    const normalized = normalizeArchiveDocumentSubtype(input.documentSubtype);
+    if (
+      input.effectiveDocumentType === 'INVOICE' &&
+      normalized === ARCHIVE_ONLY_DOCUMENT_SUBTYPES.PAYMENT_PROOF
+    ) {
+      return false;
+    }
     return true;
   }
 
