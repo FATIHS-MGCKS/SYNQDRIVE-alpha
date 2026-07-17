@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-technical-health-apply-executor-2026-07-17',
+    version: '4.9.616',
+    title: 'V4.9.616 — Document Intake V2 Idempotent Tire/Brake/Battery Apply via Action Executor',
+    summary: [
+      'TIRE, BRAKE und BATTERY migriert auf DocumentActionExecutor mit vereinheitlichtem documentExtractionId-Anker.',
+      'TireLifecycleService.applyMeasurementFromDocumentExtraction — Unique (vehicleId, documentExtractionId); BrakeLifecycleService.applyFromDocumentExtraction — transaktional Serviceevent + idempotente Evidence pro Achse.',
+      'BatteryHealthService.applyFromDocumentExtraction — Evidence-Dedup + optional LV-Snapshot ohne SOH-Override; Replacement via ServiceEventsService.',
+      'Executors: APPLY_TIRE_MEASUREMENT, APPLY_BRAKE_MEASUREMENT, APPLY_BATTERY_MEASUREMENT. Legacy applyTireReport/applyBrake/applyBattery entfernt.',
+    ],
+    reason:
+      'Prompt 41/84 — Technical-Health-Actions auf idempotente Executors mit vollständiger Messungs-Provenienz und Retry-sicherem Multi-Write.',
+    previousBehavior:
+      'TIRE/BRAKE/BATTERY liefen über DocumentExtractionApplyService mit direkten Domain-Calls ohne extraction-idempotency und ohne strukturierte Action-Execution-Audit.',
+    details:
+      'Backend: migration 20260717230000_technical_document_extraction_idempotency, tire/brake/battery domain apply methods, apply-technical-document-action.executor.ts, orchestrator TIRE/BRAKE/BATTERY wiring. Tests je Health-Domain. Architektur: architecture/DOCUMENT_TECHNICAL_HEALTH_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'document-damage-apply-executor-2026-07-17',
     version: '4.9.615',
     title: 'V4.9.615 — Document Intake V2 Idempotent Damage & Accident Apply via Action Executor',

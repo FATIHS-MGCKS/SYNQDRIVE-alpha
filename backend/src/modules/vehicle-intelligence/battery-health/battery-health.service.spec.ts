@@ -16,7 +16,9 @@ describe('BatteryHealthService', () => {
       recordMany: evidenceRecordMany,
     } as any;
 
-    const svc = new BatteryHealthService(prisma, evidence);
+    const serviceEvents = {} as any;
+
+    const svc = new BatteryHealthService(prisma, evidence, serviceEvents);
     const observedAt = new Date('2026-04-01T08:30:00.000Z');
 
     await svc.recordSnapshot({

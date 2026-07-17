@@ -66,6 +66,8 @@ export interface RecordTireMeasurementCommand {
   source?: string;
   workshopName?: string;
   userId?: string;
+  documentExtractionId?: string;
+  /** @deprecated Prefer documentExtractionId */
   linkedExtractionId?: string;
   linkedDocumentUrl?: string;
   notes?: string;
@@ -279,6 +281,7 @@ export class TireLifecycleService {
       data: {
         vehicleId: command.vehicleId,
         tireSetupId: setup.id,
+        documentExtractionId: command.documentExtractionId ?? command.linkedExtractionId ?? null,
         frontLeftMm: values.frontLeftMm,
         frontRightMm: values.frontRightMm,
         rearLeftMm: values.rearLeftMm,
@@ -342,7 +345,9 @@ export class TireLifecycleService {
             RR: values.rearRightMm,
           },
           workshopName: command.workshopName ?? null,
-          linkedExtractionId: command.linkedExtractionId ?? null,
+          linkedExtractionId:
+            command.documentExtractionId ?? command.linkedExtractionId ?? null,
+          documentExtractionId: command.documentExtractionId ?? command.linkedExtractionId ?? null,
           linkedDocumentUrl: command.linkedDocumentUrl ?? null,
           notes: command.notes ?? null,
           calibrationApplied: shouldCalibrate,
@@ -359,6 +364,85 @@ export class TireLifecycleService {
     this.observability?.recordMeasurement({ source });
 
     return { measurement, kFactors, source };
+  }
+
+  async findMeasurementByDocumentExtractionId(vehicleId: string, documentExtractionId: string) {
+    return this.prisma.vehicleTireTreadMeasurement.findUnique({
+      where: {
+        vehicleId_documentExtractionId: {
+          vehicleId,
+          documentExtractionId,
+        },
+      },
+    });
+  }
+
+  async applyMeasurementFromDocumentExtraction(input: {
+    vehicleId: string;
+    documentExtractionId: string;
+    documentActionIdempotencyKey?: string | null;
+    measurementDate: Date;
+    treadDepthUnit: 'mm';
+    pressureUnit?: string | null;
+    odometerKm?: number | null;
+    workshopName?: string | null;
+    frontLeftMm?: number | null;
+    frontRightMm?: number | null;
+    rearLeftMm?: number | null;
+    rearRightMm?: number | null;
+    documentUrl?: string | null;
+  }) {
+    if (!input.documentExtractionId) {
+      throw new BadRequestException('documentExtractionId is required for extraction apply');
+    }
+
+    const existing = await this.findMeasurementByDocumentExtractionId(
+      input.vehicleId,
+      input.documentExtractionId,
+    );
+    if (existing) {
+      return { measurementId: existing.id, reused: true as const };
+    }
+
+    try {
+      const result = await this.recordMeasurement({
+        vehicleId: input.vehicleId,
+        frontLeftMm: input.frontLeftMm ?? undefined,
+        frontRightMm: input.frontRightMm ?? undefined,
+        rearLeftMm: input.rearLeftMm ?? undefined,
+        rearRightMm: input.rearRightMm ?? undefined,
+        odometerKm: input.odometerKm ?? undefined,
+        measuredAt: input.measurementDate,
+        workshopName: input.workshopName ?? undefined,
+        source: 'ai_confirmed',
+        documentExtractionId: input.documentExtractionId,
+        linkedDocumentUrl: input.documentUrl ?? undefined,
+        quality: 'measured',
+        shouldCalibrate: true,
+        triggerRecalculate: true,
+      });
+
+      return {
+        measurementId: result.measurement.id,
+        reused: false as const,
+        treadDepthUnit: input.treadDepthUnit,
+        pressureUnit: input.pressureUnit ?? null,
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findMeasurementByDocumentExtractionId(
+          input.vehicleId,
+          input.documentExtractionId,
+        );
+        if (raced) {
+          return { measurementId: raced.id, reused: true as const };
+        }
+      }
+      throw error;
+    }
   }
 
   async installTireSet(
