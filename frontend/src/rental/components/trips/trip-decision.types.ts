@@ -1,5 +1,3 @@
-import type { DrivingDecisionRecommendation } from './trip-decision.types';
-
 export type DataBasisLevel =
   | 'BELASTBAR'
   | 'EINGESCHRAENKT'

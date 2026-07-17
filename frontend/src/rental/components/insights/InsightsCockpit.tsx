@@ -4,7 +4,7 @@ import { Icon } from '../ui/Icon';
 import { useDashboardInsights, type DashboardInsight } from '../../DashboardInsightsContext';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
-import { api } from '../../../lib/api';
+import { api, type MisuseCaseRecord } from '../../../lib/api';
 import {
   financialImpactEur,
   insightRecommendation,
@@ -180,7 +180,7 @@ function RunStateBanner({
 }
 
 function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: boolean }) {
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
+  const [rows, setRows] = useState<MisuseCaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
 

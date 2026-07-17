@@ -1672,6 +1672,8 @@ export interface MisuseCaseRecord {
   evidenceSummary?: Record<string, unknown> | null;
   evidenceCase?: TripEvidenceCase | null;
   lifecycle?: MisuseCaseLifecycle;
+  /** Legacy top-level status when lifecycle block is absent. */
+  status?: string;
 }
 
 export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
