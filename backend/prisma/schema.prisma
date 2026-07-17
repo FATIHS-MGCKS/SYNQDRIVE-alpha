@@ -435,6 +435,27 @@ enum BrakeComponentInstallationAnchorSource {
   UNKNOWN
 }
 
+enum BrakeServiceApplicationStatus {
+  PENDING
+  PROCESSING
+  APPLIED
+  HISTORY_ONLY
+  FAILED
+}
+
+enum BrakeServiceOutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BrakeServiceOutboxEventType {
+  RECALCULATE
+  RESOLVE_ALERTS
+  NOTIFY
+}
+
 enum DocumentExtractionStatus {
   PENDING
   QUEUED
@@ -1316,6 +1337,8 @@ model Organization {
   stations                          Station[]
   vehicles                          Vehicle[]
   brakeComponentInstallations       BrakeComponentInstallation[]
+  brakeServiceApplications          BrakeServiceApplication[]
+  brakeServiceOutbox                BrakeServiceOutbox[]
   vehicleComplaints                 VehicleComplaint[]
   vehicleDrivingAssessmentQualities VehicleDrivingAssessmentQuality[]
   orgIntegrations                   OrganizationIntegration[]
@@ -1809,6 +1832,8 @@ model Vehicle {
   tireTripUsageLedgers              TireTripUsageLedger[]
   brakeSpecs                        VehicleBrakeReferenceSpec[]
   brakeComponentInstallations       BrakeComponentInstallation[]
+  brakeServiceApplications          BrakeServiceApplication[]
+  brakeServiceOutbox                BrakeServiceOutbox[]
   serviceEvents                     VehicleServiceEvent[]
   enrichmentJobs                    VehicleEnrichmentJob[]
   latestState                       VehicleLatestState?
@@ -2624,6 +2649,65 @@ model BrakeComponentInstallation {
   @@map("brake_component_installations")
 }
 
+model BrakeServiceApplication {
+  id                 String                        @id @default(uuid())
+  organizationId     String                        @map("organization_id")
+  vehicleId          String                        @map("vehicle_id")
+  idempotencyKey     String                        @map("idempotency_key")
+  clientRequestId    String?                       @map("client_request_id")
+  externalDocumentId String?                       @map("external_document_id")
+  requestHash        String                        @map("request_hash")
+  requestPayload     Json                          @map("request_payload")
+  status             BrakeServiceApplicationStatus @default(PENDING)
+  serviceEventId     String?                       @unique @map("service_event_id")
+  resultJson         Json?                         @map("result_json")
+  auditLog           Json?                         @map("audit_log")
+  errorCode          String?                       @map("error_code")
+  errorMessage       String?                       @map("error_message")
+  actorUserId        String?                       @map("actor_user_id")
+  createdAt          DateTime                      @default(now()) @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
+  appliedAt          DateTime?                     @map("applied_at")
+  failedAt           DateTime?                     @map("failed_at")
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  serviceEvent VehicleServiceEvent?  @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+  outbox       BrakeServiceOutbox[]
+
+  @@unique([organizationId, vehicleId, idempotencyKey])
+  @@index([vehicleId, createdAt])
+  @@index([status, createdAt])
+  @@map("brake_service_applications")
+}
+
+model BrakeServiceOutbox {
+  id             String                     @id @default(uuid())
+  organizationId String                     @map("organization_id")
+  vehicleId      String                     @map("vehicle_id")
+  applicationId  String                     @map("application_id")
+  serviceEventId String                     @map("service_event_id")
+  eventType      BrakeServiceOutboxEventType @map("event_type")
+  idempotencyKey String                     @unique @map("idempotency_key")
+  payload        Json
+  status         BrakeServiceOutboxStatus   @default(PENDING)
+  attempts       Int                        @default(0)
+  availableAt    DateTime                   @default(now()) @map("available_at")
+  lastError      String?                    @map("last_error")
+  processedAt    DateTime?                  @map("processed_at")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  updatedAt      DateTime                   @updatedAt @map("updated_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  application  BrakeServiceApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  serviceEvent VehicleServiceEvent     @relation(fields: [serviceEventId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt])
+  @@index([applicationId])
+  @@map("brake_service_outbox")
+}
+
 // ------------------------------------------------
 // VEHICLE INTELLIGENCE — SERVICE EVENTS
 // ------------------------------------------------
@@ -2648,6 +2732,7 @@ model VehicleServiceEvent {
   brakeMeasuredSnapshot Json?               @map("brake_measured_snapshot")
   brakeLifecycleApplied Boolean?            @map("brake_lifecycle_applied")
   brakeLifecycleNote    String?             @map("brake_lifecycle_note")
+  brakeApplicationStatus BrakeServiceApplicationStatus? @map("brake_application_status")
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
 
@@ -2655,6 +2740,8 @@ model VehicleServiceEvent {
   batteryEvidence BatteryEvidence[]
   brakeEvidence   BrakeEvidence[]
   brakeComponentInstallations BrakeComponentInstallation[]
+  brakeServiceApplication   BrakeServiceApplication?
+  brakeServiceOutbox        BrakeServiceOutbox[]
 
   @@index([vehicleId])
   @@index([eventDate])

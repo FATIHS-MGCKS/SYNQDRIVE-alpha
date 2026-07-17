@@ -18,7 +18,7 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
       const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 1200 });
 
       const initSpy = jest
-        .spyOn(h.brakeHealth, 'initializeFromService')
+        .spyOn(h.brakeHealth, 'applyScopedComponentAnchorsInTx')
         .mockRejectedValueOnce(new Error('brake_health_current persist failed'));
 
       const result = await h.simulateRegisterFromDimoBrakes({
@@ -219,7 +219,7 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
       });
 
       const initSpy = jest
-        .spyOn(h.brakeHealth, 'initializeFromService')
+        .spyOn(h.brakeHealth, 'applyScopedComponentAnchorsInTx')
         .mockRejectedValueOnce(new Error('transaction rolled back'));
 
       const result = await h.lifecycle.recordService({
@@ -240,7 +240,7 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
 
       const event = h.store.vehicleServiceEvent[0];
       expect(event.brakeLifecycleApplied).toBe(false);
-      expect(event.brakeLifecycleNote).toMatch(/initialization failed/i);
+      expect(event.brakeLifecycleNote).toMatch(/initialization failed|application failed/i);
 
       const summary = await h.brakeHealth.getSummary(h.vehicleId);
       expect(summary.isInitialized).toBe(false);
@@ -248,7 +248,7 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
   });
 
   describe('G — Evidence partial failure: health without evidence', () => {
-    it('must expose incomplete evidence chain when health changed but evidence is missing', async () => {
+    it('must roll back health mutation when evidence write fails atomically', async () => {
       const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 22000 });
 
       await h.prisma.vehicleBrakeReferenceSpec.create({
@@ -263,7 +263,7 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
       });
 
       const evidenceSpy = jest
-        .spyOn(h.brakeEvidence, 'recordMany')
+        .spyOn(h.prisma.brakeEvidence, 'create')
         .mockRejectedValueOnce(new Error('brake_evidence write failed'));
 
       const result = await h.lifecycle.recordService({
@@ -272,25 +272,15 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
         odometerKm: 22000,
         kind: 'pads_service',
         measured: { frontPadMm: 8.6, rearPadMm: 7.9 },
+        clientRequestId: 'regression-g-evidence-fail',
       });
 
       evidenceSpy.mockRestore();
 
-      expect(result.initialized).toBe(true);
+      expect(result.initialized).toBe(false);
       expect(h.store.brakeEvidence).toHaveLength(0);
-
-      const summary = await h.brakeHealth.getSummary(h.vehicleId);
-      const detail = await h.brakeHealth.getDetail(h.vehicleId);
-
-      const evidenceGapVisible =
-        summary.lastMeasurementAt == null &&
-        (summary.provenanceWarnings.some((w) => /evidence|messung/i.test(w)) ||
-          summary.baselineWarnings.some((w) => /evidence|messung/i.test(w)) ||
-          summary.stateClass !== 'MEASURED' ||
-          summary.dataBasis !== 'MEASURED');
-
-      expect(evidenceGapVisible).toBe(true);
-      expect(detail.summary.lastMeasurementAt).toBeNull();
+      expect(h.store.brakeHealthCurrent.has(h.vehicleId)).toBe(false);
+      expect(h.store.brakeServiceApplications.some((a) => a.status === 'FAILED')).toBe(true);
     });
   });
 

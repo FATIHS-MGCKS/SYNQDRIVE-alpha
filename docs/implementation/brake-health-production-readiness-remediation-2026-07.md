@@ -659,6 +659,83 @@ npm test -- --testPathPattern='brake-lifecycle|brake-service-scope|brake-health.
 
 ---
 
+## Atomic Brake Service Application (Prompt 9) — 2026-07-17
+
+### Ziel
+
+P0-Fix: Keine inkonsistenten Teilzustände zwischen Service Event, Component Installation, Evidence und `BrakeHealthCurrent`. Eine erfolgreiche Service-Anwendung ist atomar; Nebenwirkungen (Recalc, Alerts, Notifications) erst nach Commit.
+
+### Transaktionsgrenzen (vorher)
+
+| Schritt | bisherige Grenze | Risiko |
+|---------|------------------|--------|
+| Service Event | eigener Persist | Event ohne Application |
+| Installation supersede/create | teils außerhalb TX | halbe Installation |
+| Evidence | eigener Write | Health ohne Evidence |
+| `BrakeHealthCurrent` | separater Upsert + Recalc | Reset ohne Vorgang |
+| Recalc / Alerts | inline | vor Commit sichtbar |
+
+### Zentraler Orchestrator
+
+`BrakeServiceApplicationService.apply()` — einziger Mutation-Owner für API/AI-Service-Pfad:
+
+```
+BrakeLifecycleService.recordService()
+  → BrakeServiceApplicationService.apply()
+       ├─ Tenant-Check (organizationId + vehicleId)
+       ├─ Idempotency-Claim (brake_service_applications)
+       ├─ $transaction:
+       │    Service Event (PENDING → APPLIED | HISTORY_ONLY)
+       │    alte Installationen schließen + neue anlegen (scoped)
+       │    BrakeEvidence
+       │    BrakeHealthCurrent (applyScopedComponentAnchorsInTx)
+       │    Application-Status + resultJson
+       │    Outbox enqueue (RECALCULATE, RESOLVE_ALERTS, NOTIFY)
+       └─ post-commit: BrakeServiceOutboxService.processForApplication()
+```
+
+Bei TX-Fehler: vollständiger Rollback; Compliance-`vehicle_service_events` mit `brakeApplicationStatus=FAILED` und `brake_service_applications.status=FAILED` (nachvollziehbarer Fehler, idempotenter Retry).
+
+### Schema (Migration `20260717150000_brake_service_application_atomic`)
+
+- **`brake_service_applications`**: Idempotency-Inbox, unique `(organization_id, vehicle_id, idempotency_key)`
+- **`brake_service_outbox`**: Post-Commit-Nebenwirkungen (`RECALCULATE`, `RESOLVE_ALERTS`, `NOTIFY`)
+- **`vehicle_service_events.brake_application_status`**: `PENDING | PROCESSING | APPLIED | HISTORY_ONLY | FAILED`
+
+### Idempotency Key
+
+`brake:{organizationId}:{vehicleId}:{clientRequestId|externalDocumentId|explicitKey}` — Request-Hash verhindert Key-Reuse mit abweichendem Payload (`ConflictException`).
+
+### Fehlerverhalten
+
+| Fehlerszenario | Verhalten |
+|----------------|-----------|
+| Evidence / Health / Installation in TX | Rollback aller fachlichen Writes |
+| Compliance | FAILED-Event + FAILED-Application bleiben |
+| Retry gleicher Key | idempotent, keine doppelten Installationen |
+| Outbox nach Commit | Recalc asynchron; NOTIFY bewusst No-Op (Queue später) |
+
+### Betroffene Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `brake-service-application.service.ts` | Atomarer Orchestrator |
+| `brake-service-outbox.service.ts` | Post-Commit Recalc/Alerts |
+| `brake-service-application.domain.ts` | Idempotency + Request-Hash |
+| `brake-lifecycle.service.ts` | Dünner Delegate |
+| `brake-health.service.ts` | `applyScopedComponentAnchorsInTx()` |
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-lifecycle|brake-service-application|brake-service-scope|brake-health.spec'
+# 92 passed
+```
+
+Abgedeckt: voller Erfolg, Cross-Tenant, Doppelrequest, Payload-Mismatch, Evidence-Rollback, Health-Retry, Outbox-Recalc, keine doppelten Installationen bei Replay.
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -670,6 +747,8 @@ npm test -- --testPathPattern='brake-lifecycle|brake-service-scope|brake-health.
 | 5 | `a30ea31d943ba49e279d43912265684678cd7fd4` | `feat(brakes): add read-only brake baseline backfill audit` |
 | 6 | `39c7e176226328be215dc1046f6e34fa56460d42` | `feat(brakes): add brake component installation lifecycle` |
 | 7 | `7617ba59b296ef2db27b413f56534fea7ce2f9f4` | `feat(brakes): centralize brake component lifecycle mutations` |
+| 8 | `43fbb3e6` | `fix(brakes): enforce component-specific brake service scope` |
+| 9 | *(dieser Commit)* | `fix(brakes): apply brake service lifecycle atomically` |
 
 ---
 

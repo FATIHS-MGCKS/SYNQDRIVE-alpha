@@ -3,6 +3,7 @@ import {
   BrakeComponentInstallationAnchorSource,
   BrakeComponentInstallationType,
   BrakeHealthCurrent,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -738,6 +739,78 @@ export class BrakeHealthService {
     if (!vehicle) throw new BadRequestException('Vehicle not found');
 
     const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    const { merged, anyAnchor } = this.buildScopedAnchorMerge(
+      vehicleId,
+      vehicle.organizationId,
+      current,
+      input,
+    );
+
+    await this.prisma.brakeHealthCurrent.upsert({
+      where: { vehicleId },
+      create: merged as any,
+      update: merged as any,
+    });
+
+    const shouldRecalc =
+      input.scheduleRecalculation !== false &&
+      (anyAnchor.canInitialize || current?.isInitialized === true);
+    if (shouldRecalc) {
+      await this.recalculate(vehicleId);
+    }
+
+    return { updated: anyAnchor.anyAnchor, recalculated: shouldRecalc };
+  }
+
+  async applyScopedComponentAnchorsInTx(
+    tx: Prisma.TransactionClient,
+    vehicleId: string,
+    organizationId: string,
+    input: {
+      serviceDate: Date;
+      odometerKm: number | null;
+      components: Array<{
+        componentType: BrakeComponentInstallationType;
+        anchorThicknessMm: number | null;
+        anchorSource: BrakeComponentInstallationAnchorSource;
+      }>;
+      resetWearCalibration?: boolean;
+      baselineWarnings?: string[];
+    },
+  ): Promise<{ updated: boolean }> {
+    const current = await tx.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    const { merged, anyAnchor } = this.buildScopedAnchorMerge(
+      vehicleId,
+      organizationId,
+      current,
+      input,
+    );
+
+    await tx.brakeHealthCurrent.upsert({
+      where: { vehicleId },
+      create: merged as any,
+      update: merged as any,
+    });
+
+    return { updated: anyAnchor.anyAnchor };
+  }
+
+  private buildScopedAnchorMerge(
+    vehicleId: string,
+    organizationId: string,
+    current: BrakeHealthCurrent | null,
+    input: {
+      serviceDate: Date;
+      odometerKm: number | null;
+      components: Array<{
+        componentType: BrakeComponentInstallationType;
+        anchorThicknessMm: number | null;
+        anchorSource: BrakeComponentInstallationAnchorSource;
+      }>;
+      resetWearCalibration?: boolean;
+      baselineWarnings?: string[];
+    },
+  ) {
     const scoped = new Set(input.components.map((c) => c.componentType));
     const resetWear = input.resetWearCalibration === true;
     const update: Partial<BrakeHealthCurrent> = {};
@@ -798,7 +871,7 @@ export class BrakeHealthService {
     const canInitialize = anyAnchor && odo != null;
     const merged = {
       vehicleId,
-      organizationId: vehicle.organizationId,
+      organizationId,
       isInitialized: canInitialize || current?.isInitialized === true,
       anchorServiceDate: canInitialize ? input.serviceDate : current?.anchorServiceDate ?? null,
       anchorOdometerKm: canInitialize ? odo : current?.anchorOdometerKm ?? null,
@@ -881,19 +954,7 @@ export class BrakeHealthService {
       lastRecalculatedAt: canInitialize ? new Date() : current?.lastRecalculatedAt ?? null,
     };
 
-    await this.prisma.brakeHealthCurrent.upsert({
-      where: { vehicleId },
-      create: merged as any,
-      update: merged as any,
-    });
-
-    const shouldRecalc =
-      input.scheduleRecalculation !== false && (canInitialize || current?.isInitialized === true);
-    if (shouldRecalc) {
-      await this.recalculate(vehicleId);
-    }
-
-    return { updated: anyAnchor, recalculated: shouldRecalc };
+    return { merged, anyAnchor: { anyAnchor, canInitialize } };
   }
 
   async recalculate(vehicleId: string) {

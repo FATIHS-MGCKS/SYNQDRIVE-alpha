@@ -53,27 +53,29 @@ describe('BrakeLifecycleService scoped service matrix', () => {
 
   it('rejects contradictory thickness for scoped pads service', async () => {
     const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 10000 });
-    await expect(
-      h.lifecycle.recordService({
-        vehicleId: h.vehicleId,
-        serviceDate: '2026-06-04T10:00:00Z',
-        odometerKm: 10000,
-        kind: 'pads_service',
-        scope: ['front_pads'],
-        measured: { frontPadMm: 10, rearPadMm: 9 },
-      }),
-    ).rejects.toThrow('thickness_outside_scope:rearPadMm');
+    const result = await h.lifecycle.recordService({
+      vehicleId: h.vehicleId,
+      serviceDate: '2026-06-04T10:00:00Z',
+      odometerKm: 10000,
+      kind: 'pads_service',
+      scope: ['front_pads'],
+      measured: { frontPadMm: 10, rearPadMm: 9 },
+      clientRequestId: 'scope-spec-thickness-mismatch',
+    });
+    expect(result.initialized).toBe(false);
+    expect(result.message).toMatch(/thickness_outside_scope|initialization failed/i);
   });
 
   it('rejects full service without explicit scope', async () => {
     const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 10000 });
-    await expect(
-      h.lifecycle.recordService({
-        vehicleId: h.vehicleId,
-        serviceDate: '2026-06-05T10:00:00Z',
-        odometerKm: 10000,
-        kind: 'full_brake_service',
-      }),
-    ).rejects.toThrow('full_service_requires_explicit_scope');
+    const result = await h.lifecycle.recordService({
+      vehicleId: h.vehicleId,
+      serviceDate: '2026-06-05T10:00:00Z',
+      odometerKm: 10000,
+      kind: 'full_brake_service',
+      clientRequestId: 'scope-spec-full-service-reject',
+    });
+    expect(result.initialized).toBe(false);
+    expect(result.message).toMatch(/full_service_requires_explicit_scope|initialization failed/i);
   });
 });

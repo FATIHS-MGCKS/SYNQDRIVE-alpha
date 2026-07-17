@@ -2,6 +2,8 @@ import { RentalHealthService } from '../../rental-health/rental-health.service';
 import { BrakeEvidenceService } from './brake-evidence.service';
 import { BrakeHealthService } from './brake-health.service';
 import { BrakeLifecycleService } from './brake-lifecycle.service';
+import { BrakeServiceApplicationService } from './brake-service-application.service';
+import { BrakeServiceOutboxService } from './brake-service-outbox.service';
 import {
   applyNewBrakeDefaults,
   hasRegistrationBrakeSpecValues,
@@ -16,6 +18,9 @@ export type InMemoryStore = {
   vehicleBrakeReferenceSpec: Array<Record<string, unknown>>;
   vehicleServiceEvent: Array<Record<string, unknown>>;
   brakeEvidence: Array<Record<string, unknown>>;
+  brakeServiceApplications: Array<Record<string, unknown>>;
+  brakeComponentInstallations: Array<Record<string, unknown>>;
+  brakeServiceOutbox: Array<Record<string, unknown>>;
   vehicleLatestState: Map<string, Record<string, unknown>>;
   tripDrivingImpact: Array<Record<string, unknown>>;
 };
@@ -24,8 +29,11 @@ export function createInMemoryPrisma(store: InMemoryStore) {
   let eventSeq = 0;
   let evidenceSeq = 0;
   let specSeq = 0;
+  let applicationSeq = 0;
+  let installationSeq = 0;
+  let outboxSeq = 0;
 
-  return {
+  const api: any = {
     vehicle: {
       findUnique: jest.fn(async ({ where, select }: { where: { id: string }; select?: Record<string, boolean> }) => {
         const row = store.vehicles.get(where.id);
@@ -37,6 +45,26 @@ export function createInMemoryPrisma(store: InMemoryStore) {
         }
         return out;
       }),
+      findFirst: jest.fn(
+        async ({
+          where,
+          select,
+        }: {
+          where: { id?: string; organizationId?: string };
+          select?: Record<string, boolean>;
+        }) => {
+          let row: Record<string, unknown> | undefined;
+          if (where.id) row = store.vehicles.get(where.id);
+          if (!row) return null;
+          if (where.organizationId && row.organizationId !== where.organizationId) return null;
+          if (!select) return row;
+          const out: Record<string, unknown> = {};
+          for (const key of Object.keys(select)) {
+            if (select[key]) out[key] = row![key];
+          }
+          return out;
+        },
+      ),
     },
     vehicleLatestState: {
       findUnique: jest.fn(
@@ -305,7 +333,145 @@ export function createInMemoryPrisma(store: InMemoryStore) {
         },
       ),
     },
+    brakeServiceApplication: {
+      findUnique: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        if (where.id) {
+          return store.brakeServiceApplications.find((a) => a.id === where.id) ?? null;
+        }
+        const compound = where.organizationId_vehicleId_idempotencyKey as
+          | { organizationId: string; vehicleId: string; idempotencyKey: string }
+          | undefined;
+        if (compound) {
+          return (
+            store.brakeServiceApplications.find(
+              (a) =>
+                a.organizationId === compound.organizationId &&
+                a.vehicleId === compound.vehicleId &&
+                a.idempotencyKey === compound.idempotencyKey,
+            ) ?? null
+          );
+        }
+        return null;
+      }),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row = { id: `app-${++applicationSeq}`, updatedAt: new Date(), ...data };
+        store.brakeServiceApplications.push(row);
+        return row;
+      }),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const idx = store.brakeServiceApplications.findIndex((a) => a.id === where.id);
+        if (idx < 0) throw new Error('application not found');
+        store.brakeServiceApplications[idx] = {
+          ...store.brakeServiceApplications[idx],
+          ...data,
+          updatedAt: new Date(),
+        };
+        return store.brakeServiceApplications[idx];
+      }),
+    },
+    brakeComponentInstallation: {
+      findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        return (
+          store.brakeComponentInstallations.find((row) => {
+            if (where.vehicleId && row.vehicleId !== where.vehicleId) return false;
+            if (where.componentType && row.componentType !== where.componentType) return false;
+            if (where.status && row.status !== where.status) return false;
+            if (where.removedAt === null && row.removedAt != null) return false;
+            return true;
+          }) ?? null
+        );
+      }),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const active = store.brakeComponentInstallations.find(
+          (row) =>
+            row.vehicleId === data.vehicleId &&
+            row.componentType === data.componentType &&
+            row.status === 'ACTIVE' &&
+            row.removedAt == null,
+        );
+        if (active) {
+          const err = new Error('unique') as Error & { code?: string; meta?: { target?: string } };
+          err.code = 'P2002';
+          err.meta = { target: 'brake_component_installations_one_active_per_vehicle_component' };
+          throw err;
+        }
+        const row = { id: `inst-${++installationSeq}`, updatedAt: new Date(), ...data };
+        store.brakeComponentInstallations.push(row);
+        return row;
+      }),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const idx = store.brakeComponentInstallations.findIndex((row) => row.id === where.id);
+        if (idx < 0) throw new Error('installation not found');
+        store.brakeComponentInstallations[idx] = {
+          ...store.brakeComponentInstallations[idx],
+          ...data,
+          updatedAt: new Date(),
+        };
+        return store.brakeComponentInstallations[idx];
+      }),
+    },
+    brakeServiceOutbox: {
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row = { id: `outbox-${++outboxSeq}`, updatedAt: new Date(), ...data };
+        store.brakeServiceOutbox.push(row);
+        return row;
+      }),
+      findMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        return store.brakeServiceOutbox.filter((row) => {
+          if (where.applicationId && row.applicationId !== where.applicationId) return false;
+          const statusFilter = where.status as { in?: string[] } | undefined;
+          if (statusFilter?.in) {
+            return statusFilter.in.includes(String(row.status));
+          }
+          return true;
+        });
+      }),
+      updateMany: jest.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        let count = 0;
+        const statusFilter = where.status as { in?: string[] } | undefined;
+        const attemptsInc = data.attempts as { increment?: number } | undefined;
+        for (const row of store.brakeServiceOutbox) {
+          if (where.id && row.id !== where.id) continue;
+          if (statusFilter?.in && !statusFilter.in.includes(String(row.status))) continue;
+          Object.assign(row, data);
+          if (attemptsInc?.increment) {
+            row.attempts = Number(row.attempts ?? 0) + attemptsInc.increment;
+          }
+          count += 1;
+        }
+        return { count };
+      }),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const idx = store.brakeServiceOutbox.findIndex((row) => row.id === where.id);
+        if (idx < 0) throw new Error('outbox not found');
+        store.brakeServiceOutbox[idx] = { ...store.brakeServiceOutbox[idx], ...data, updatedAt: new Date() };
+        return store.brakeServiceOutbox[idx];
+      }),
+    },
+    $transaction: jest.fn(async (fn: (tx: any) => Promise<unknown>) => {
+      const snapshot = {
+        vehicleServiceEvent: [...store.vehicleServiceEvent],
+        brakeHealthCurrent: new Map(store.brakeHealthCurrent),
+        brakeEvidence: [...store.brakeEvidence],
+        brakeComponentInstallations: [...store.brakeComponentInstallations],
+        brakeServiceApplications: store.brakeServiceApplications.map((row) => ({ ...row })),
+        brakeServiceOutbox: [...store.brakeServiceOutbox],
+      };
+      try {
+        return await fn(api);
+      } catch (error) {
+        store.vehicleServiceEvent = snapshot.vehicleServiceEvent;
+        store.brakeHealthCurrent = snapshot.brakeHealthCurrent;
+        store.brakeEvidence = snapshot.brakeEvidence;
+        store.brakeComponentInstallations = snapshot.brakeComponentInstallations;
+        store.brakeServiceApplications = snapshot.brakeServiceApplications;
+        store.brakeServiceOutbox = snapshot.brakeServiceOutbox;
+        throw error;
+      }
+    }),
   };
+
+  return api;
 }
 
 export type BrakeLifecycleHarness = ReturnType<typeof createBrakeLifecycleHarness>;
@@ -333,6 +499,9 @@ export function createBrakeLifecycleHarness(input?: {
     vehicleBrakeReferenceSpec: [],
     vehicleServiceEvent: [],
     brakeEvidence: [],
+    brakeServiceApplications: [],
+    brakeComponentInstallations: [],
+    brakeServiceOutbox: [],
     vehicleLatestState: new Map(
       input?.latestStateOdometerKm != null
         ? [[vehicleId, { vehicleId, odometerKm: input.latestStateOdometerKm }]]
@@ -358,7 +527,9 @@ export function createBrakeLifecycleHarness(input?: {
   };
   const brakeEvidence = new BrakeEvidenceService(prisma as never);
   const brakeHealth = new BrakeHealthService(prisma as never, drivingImpact as never, brakeEvidence);
-  const lifecycle = new BrakeLifecycleService(prisma as never, brakeHealth, brakeEvidence);
+  const outbox = new BrakeServiceOutboxService(prisma as never, brakeHealth);
+  const application = new BrakeServiceApplicationService(prisma as never, brakeHealth, outbox);
+  const lifecycle = new BrakeLifecycleService(prisma as never, application);
 
   const rentalHealth = new RentalHealthService(
     prisma as never,
