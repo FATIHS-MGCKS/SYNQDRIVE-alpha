@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'remove-apply-invented-defaults-2026-07-17',
+    version: '4.9.588',
+    title: 'V4.9.588 — Keine erfundenen Apply-Defaults im Document-Apply-Service',
+    summary: [
+      'Entfernt/blockiert: eventDate/invoiceDate ?? now, offenseType ?? Parkverstoß, amountCents ?? 0, damageType ?? SCRATCH, severity ?? MODERATE, taxRate=19-Synthese, TÜV/BOKraft-Jahresverlängerung ohne validUntil, full_brake_service-Fallback.',
+      'Fehlende Pflichtwerte → BLOCKED/DRAFT_ONLY via Safety Policy + defensive Apply-Failures; `applySafety.missingFields` für UI-Highlighting.',
+      'Keine Migration bestehender Datensätze; Anzeige-Defaults gelangen nicht in DB-Felder.',
+      'Tests sichern jeden entfernten Default ab (`document-extraction-apply-no-defaults.spec.ts`).',
+    ],
+    reason: 'Prompt 12/84: Apply darf keine fachlich erfundenen Ersatzwerte mehr in Downstream-Module schreiben.',
+    previousBehavior: 'Apply-Service nutzte still Defaults (now-Daten, Parkverstoß, SCRATCH/MODERATE, 19%-Steuerzeilen, +2/+1 Jahr TÜV/BOKraft).',
+    details:
+      'document-extraction-apply-field.util, document-apply-safety-fields.util, apply.service, safety.policy (+ missingFields), public DTO, Specs.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
     id: 'plausibility-blocker-apply-gate-2026-07-17',
     version: '4.9.587',
     title: 'V4.9.587 — Plausibilitäts-BLOCKER als serverseitige Apply-Sperre',

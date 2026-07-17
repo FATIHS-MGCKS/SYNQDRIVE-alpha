@@ -1226,6 +1226,7 @@ export class DocumentExtractionService implements OnModuleInit {
     return {
       decision: result.decision,
       reasons: result.reasons,
+      missingFields: result.missingFields,
       allowsDownstreamApply: result.allowsDownstreamApply,
       implementationStatus: result.implementationStatus,
       downstreamIdempotency: result.downstreamIdempotency,

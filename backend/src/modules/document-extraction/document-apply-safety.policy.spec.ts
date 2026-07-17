@@ -85,14 +85,26 @@ describe('evaluateDocumentApplySafety', () => {
   });
 
   describe('BRAKE', () => {
-    it('APPLY_ALLOWED with service date', () => {
+    it('APPLY_ALLOWED with service date and explicit serviceKind', () => {
+      const result = evaluateDocumentApplySafety(
+        baseInput({
+          documentType: 'BRAKE',
+          confirmedData: { eventDate: '2026-01-15', frontPadMm: 8, serviceKind: 'pads_service' },
+        }),
+      );
+      expect(result.decision).toBe('APPLY_ALLOWED');
+    });
+
+    it('DRAFT_ONLY without serviceKind', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'BRAKE',
           confirmedData: { eventDate: '2026-01-15', frontPadMm: 8 },
         }),
       );
-      expect(result.decision).toBe('APPLY_ALLOWED');
+      expect(result.decision).toBe('DRAFT_ONLY');
+      expect(result.reasons).toContain('BRAKE_SERVICE_KIND_REQUIRED');
+      expect(result.missingFields).toContain('serviceKind');
     });
 
     it('DRAFT_ONLY without service date', () => {
@@ -149,26 +161,49 @@ describe('evaluateDocumentApplySafety', () => {
   });
 
   describe('TUV_REPORT', () => {
-    it('APPLY_ALLOWED with inspection date', () => {
+    it('APPLY_ALLOWED with inspection date and validUntil', () => {
+      const result = evaluateDocumentApplySafety(
+        baseInput({
+          documentType: 'TUV_REPORT',
+          confirmedData: { eventDate: '2026-01-15', validUntil: '2028-01-15', result: 'PASSED' },
+        }),
+      );
+      expect(result.decision).toBe('APPLY_ALLOWED');
+    });
+
+    it('DRAFT_ONLY without validUntil', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'TUV_REPORT',
           confirmedData: { eventDate: '2026-01-15', result: 'PASSED' },
         }),
       );
-      expect(result.decision).toBe('APPLY_ALLOWED');
+      expect(result.decision).toBe('DRAFT_ONLY');
+      expect(result.reasons).toContain('TUV_VALID_UNTIL_REQUIRED');
+      expect(result.missingFields).toContain('validUntil');
     });
   });
 
   describe('BOKRAFT_REPORT', () => {
-    it('APPLY_ALLOWED with inspection date', () => {
+    it('APPLY_ALLOWED with inspection date and validUntil', () => {
+      const result = evaluateDocumentApplySafety(
+        baseInput({
+          documentType: 'BOKRAFT_REPORT',
+          confirmedData: { eventDate: '2026-01-15', validUntil: '2027-01-15' },
+        }),
+      );
+      expect(result.decision).toBe('APPLY_ALLOWED');
+    });
+
+    it('DRAFT_ONLY without validUntil', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'BOKRAFT_REPORT',
           confirmedData: { eventDate: '2026-01-15' },
         }),
       );
-      expect(result.decision).toBe('APPLY_ALLOWED');
+      expect(result.decision).toBe('DRAFT_ONLY');
+      expect(result.reasons).toContain('BOKRAFT_VALID_UNTIL_REQUIRED');
     });
   });
 
@@ -187,14 +222,16 @@ describe('evaluateDocumentApplySafety', () => {
   });
 
   describe('INVOICE', () => {
-    it('APPLY_ALLOWED with clear tax semantics via taxRate', () => {
+    it('APPLY_ALLOWED with explicit line items and tax semantics', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'INVOICE',
           confirmedData: {
-            eventDate: '2026-01-15',
+            invoiceDate: '2026-01-15',
             totalCents: 11900,
-            taxRate: 19,
+            lineItems: [
+              { description: 'Service', quantity: 1, unitPriceNetCents: 10000, taxRate: 19 },
+            ],
           },
         }),
       );
@@ -202,18 +239,19 @@ describe('evaluateDocumentApplySafety', () => {
       expect(result.downstreamIdempotency).toBe('strong');
     });
 
-    it('DRAFT_ONLY when tax/gross/net semantics unclear', () => {
+    it('DRAFT_ONLY without line items', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'INVOICE',
           confirmedData: {
-            eventDate: '2026-01-15',
+            invoiceDate: '2026-01-15',
             totalCents: 11900,
+            taxRate: 19,
           },
         }),
       );
       expect(result.decision).toBe('DRAFT_ONLY');
-      expect(result.reasons).toContain('INVOICE_TAX_SEMANTICS_UNCLEAR');
+      expect(result.reasons).toContain('INVOICE_LINE_ITEMS_REQUIRED');
     });
 
     it('DRAFT_ONLY without positive total', () => {
@@ -229,13 +267,14 @@ describe('evaluateDocumentApplySafety', () => {
   });
 
   describe('ACCIDENT', () => {
-    it('APPLY_ALLOWED with description and severity', () => {
+    it('APPLY_ALLOWED with description, damageType and severity', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'ACCIDENT',
           confirmedData: {
             eventDate: '2026-01-15',
             description: 'Rear collision',
+            damageType: 'DENT',
             severity: 'MODERATE',
           },
         }),
@@ -250,6 +289,7 @@ describe('evaluateDocumentApplySafety', () => {
           confirmedData: {
             eventDate: '2026-01-15',
             description: 'Rear collision',
+            damageType: 'DENT',
           },
         }),
       );
@@ -259,19 +299,35 @@ describe('evaluateDocumentApplySafety', () => {
   });
 
   describe('DAMAGE', () => {
-    it('APPLY_ALLOWED with confirmed description and severity', () => {
+    it('APPLY_ALLOWED with confirmed description, damageType and severity', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'DAMAGE',
           confirmedData: {
             eventDate: '2026-01-15',
             damageArea: 'Front bumper',
+            damageType: 'SCRATCH',
             severity: 'MODERATE',
             description: 'Scratch on door',
           },
         }),
       );
       expect(result.decision).toBe('APPLY_ALLOWED');
+    });
+
+    it('DRAFT_ONLY without damageType', () => {
+      const result = evaluateDocumentApplySafety(
+        baseInput({
+          documentType: 'DAMAGE',
+          confirmedData: {
+            eventDate: '2026-01-15',
+            description: 'Some damage',
+            severity: 'MODERATE',
+          },
+        }),
+      );
+      expect(result.decision).toBe('DRAFT_ONLY');
+      expect(result.reasons).toContain('DAMAGE_TYPE_REQUIRED');
     });
 
     it('DRAFT_ONLY without severity', () => {
@@ -281,6 +337,7 @@ describe('evaluateDocumentApplySafety', () => {
           confirmedData: {
             eventDate: '2026-01-15',
             description: 'Some damage',
+            damageType: 'SCRATCH',
           },
         }),
       );
@@ -318,6 +375,18 @@ describe('evaluateDocumentApplySafety', () => {
       expect(result.decision).toBe('APPLY_ALLOWED');
     });
 
+    it('BLOCKED without offense type', () => {
+      const result = evaluateDocumentApplySafety(
+        baseInput({
+          documentType: 'FINE',
+          confirmedData: { eventDate: '2026-01-15', totalCents: 5000 },
+        }),
+      );
+      expect(result.decision).toBe('BLOCKED');
+      expect(result.reasons).toContain('FINE_OFFENSE_TYPE_REQUIRED');
+      expect(result.missingFields).toContain('offenseType');
+    });
+
     it('BLOCKED without offense date', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
@@ -333,7 +402,11 @@ describe('evaluateDocumentApplySafety', () => {
       const result = evaluateDocumentApplySafety(
         baseInput({
           documentType: 'FINE',
-          confirmedData: { eventDate: '2026-01-15', totalCents: 0 },
+          confirmedData: {
+            eventDate: '2026-01-15',
+            offenseType: 'Parkverstoß',
+            totalCents: 0,
+          },
         }),
       );
       expect(result.decision).toBe('BLOCKED');

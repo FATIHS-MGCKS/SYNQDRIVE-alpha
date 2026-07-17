@@ -139,6 +139,7 @@ describe('DocumentExtractionService plausibility BLOCKER apply gate', () => {
     await svc.confirm('v1', 'e1', {
       eventDate: '2026-01-15',
       totalCents: 1750,
+      offenseType: 'Parkverstoß',
       licensePlate: 'B-AB-1234',
     });
 

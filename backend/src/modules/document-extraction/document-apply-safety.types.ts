@@ -29,6 +29,8 @@ export interface DocumentApplySafetyInput {
 export interface DocumentApplySafetyResult {
   decision: DocumentApplySafetyDecision;
   reasons: string[];
+  /** Confirmed field keys still missing for apply — for UI highlighting. */
+  missingFields: string[];
   allowsDownstreamApply: boolean;
   implementationStatus: DocumentApplyImplementationStatus;
   downstreamIdempotency: 'strong' | 'weak' | 'none';
@@ -37,6 +39,7 @@ export interface DocumentApplySafetyResult {
 export interface PublicDocumentApplySafetyDto {
   decision: DocumentApplySafetyDecision;
   reasons: string[];
+  missingFields: string[];
   allowsDownstreamApply: boolean;
   implementationStatus: DocumentApplyImplementationStatus;
   downstreamIdempotency: 'strong' | 'weak' | 'none';

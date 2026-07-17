@@ -33,6 +33,7 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
       sourceFileUrl: 'https://example.com/report.pdf',
       confirmedData: {
         eventDate: '2026-06-01',
+        serviceKind: 'full_brake_service',
         odometerKm: 45000,
         frontPadMm: 6.5,
         rearPadMm: 6.0,
@@ -53,6 +54,42 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
     expect(result.downstreamEntityType).toBe('brake_service');
     expect(result.downstreamEntityId).toBe('evt-1');
     expect(result.actionCount).toBe(2);
+  });
+
+  it('returns typed failure for FINE when offenseType is missing', async () => {
+    const finesSvc = {
+      create: jest.fn(),
+    };
+    const fineApplySvc = new DocumentExtractionApplyService(
+      {
+        vehicle: {
+          findUnique: jest.fn().mockResolvedValue({ organizationId: 'org-1' }),
+        },
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      finesSvc as any,
+    );
+
+    const result = await fineApplySvc.apply({
+      extractionId: 'ext-fine',
+      vehicleId: 'veh-1',
+      documentType: 'FINE',
+      sourceFileUrl: null,
+      confirmedData: {
+        eventDate: '2026-01-15',
+        totalCents: 5000,
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toContain('FINE_OFFENSE_TYPE_REQUIRED');
+    expect(finesSvc.create).not.toHaveBeenCalled();
   });
 
   it('returns typed failure for FINE no-op when organization is missing', async () => {
@@ -83,6 +120,7 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
       confirmedData: {
         eventDate: '2026-01-15',
         totalCents: 5000,
+        offenseType: 'Parkverstoß',
       },
     });
 

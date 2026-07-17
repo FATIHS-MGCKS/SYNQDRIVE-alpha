@@ -9,6 +9,7 @@ import type {
   DocumentApplySafetyInput,
   DocumentApplySafetyResult,
 } from './document-apply-safety.types';
+import { missingFieldsFromApplyReasons } from './document-apply-safety-fields.util';
 
 const DEFAULT_FEATURE_FLAGS: DocumentApplyFeatureFlags = {
   masterApplyEnabled: true,
@@ -81,7 +82,7 @@ function hasInvoiceTaxSemanticsClear(data: Record<string, unknown>): boolean {
     return data.lineItems.every((item) => {
       if (!item || typeof item !== 'object') return false;
       const row = item as Record<string, unknown>;
-      return num(row.unitPriceNetCents) != null || num(row.taxRate) != null;
+      return num(row.unitPriceNetCents) != null && num(row.taxRate) != null;
     });
   }
   if (num(data.taxRate) != null) return true;
@@ -132,6 +133,7 @@ function finalize(
   return {
     decision,
     reasons,
+    missingFields: missingFieldsFromApplyReasons(reasons),
     allowsDownstreamApply,
     implementationStatus,
     downstreamIdempotency,
@@ -186,9 +188,13 @@ export function evaluateDocumentApplySafety(
   switch (documentType) {
     case 'FINE': {
       const offenseDate = str(data.eventDate);
+      const offenseType = str(data.offenseType);
       const totalCents = num(data.totalCents);
       if (!offenseDate) {
         return finalize('BLOCKED', ['FINE_OFFENSE_DATE_REQUIRED'], documentType);
+      }
+      if (!offenseType) {
+        return finalize('BLOCKED', ['FINE_OFFENSE_TYPE_REQUIRED'], documentType);
       }
       if (totalCents == null || totalCents <= 0) {
         return finalize('BLOCKED', ['FINE_POSITIVE_AMOUNT_REQUIRED'], documentType);
@@ -198,6 +204,10 @@ export function evaluateDocumentApplySafety(
 
     case 'INVOICE': {
       const totalCents = num(data.totalCents) ?? num(data.costCents);
+      const invoiceDate = str(data.invoiceDate) ?? str(data.eventDate);
+      if (!invoiceDate) {
+        return finalize('DRAFT_ONLY', ['INVOICE_DATE_REQUIRED'], documentType);
+      }
       if (totalCents == null || totalCents <= 0) {
         return finalize('DRAFT_ONLY', ['INVOICE_TOTAL_REQUIRED'], documentType);
       }
@@ -208,6 +218,9 @@ export function evaluateDocumentApplySafety(
           documentType,
         );
       }
+      if (!Array.isArray(data.lineItems) || data.lineItems.length === 0) {
+        return finalize('DRAFT_ONLY', ['INVOICE_LINE_ITEMS_REQUIRED'], documentType);
+      }
       return finalize('APPLY_ALLOWED', reasons, documentType);
     }
 
@@ -216,12 +229,16 @@ export function evaluateDocumentApplySafety(
       const description = str(data.description);
       const severity = str(data.severity);
       const damageArea = str(data.damageArea);
+      const damageType = str(data.damageType);
       if (!description && !damageArea) {
         return finalize(
           'BLOCKED',
           ['DAMAGE_DESCRIPTION_OR_AREA_REQUIRED'],
           documentType,
         );
+      }
+      if (!damageType) {
+        return finalize('DRAFT_ONLY', ['DAMAGE_TYPE_REQUIRED'], documentType);
       }
       if (!severity) {
         return finalize(
@@ -256,16 +273,46 @@ export function evaluateDocumentApplySafety(
       if (!serviceDate) {
         return finalize('DRAFT_ONLY', ['BRAKE_SERVICE_DATE_REQUIRED'], documentType);
       }
+      const serviceKind = str(data.serviceKind);
+      const validKinds = new Set([
+        'inspection_only',
+        'pads_service',
+        'discs_service',
+        'brake_fluid_service',
+        'full_brake_service',
+      ]);
+      if (!serviceKind || !validKinds.has(serviceKind)) {
+        return finalize('DRAFT_ONLY', ['BRAKE_SERVICE_KIND_REQUIRED'], documentType);
+      }
       return finalize('APPLY_ALLOWED', reasons, documentType);
     }
 
     case 'SERVICE':
-    case 'OIL_CHANGE':
+    case 'OIL_CHANGE': {
+      const eventDate = str(data.eventDate);
+      if (!eventDate) {
+        return finalize('DRAFT_ONLY', ['EVENT_DATE_REQUIRED'], documentType);
+      }
+      return finalize('APPLY_ALLOWED', reasons, documentType);
+    }
+
     case 'TUV_REPORT':
     case 'BOKRAFT_REPORT': {
       const eventDate = str(data.eventDate);
       if (!eventDate) {
         return finalize('DRAFT_ONLY', ['EVENT_DATE_REQUIRED'], documentType);
+      }
+      const validUntil = str(data.validUntil);
+      if (!validUntil) {
+        return finalize(
+          'DRAFT_ONLY',
+          [
+            documentType === 'TUV_REPORT'
+              ? 'TUV_VALID_UNTIL_REQUIRED'
+              : 'BOKRAFT_VALID_UNTIL_REQUIRED',
+          ],
+          documentType,
+        );
       }
       return finalize('APPLY_ALLOWED', reasons, documentType);
     }
