@@ -57,6 +57,13 @@ import {
   resolveOverallLevelFromMetrics,
   type RentalDrivingNormalizedMetrics,
 } from './rental-driving-analysis.metrics';
+import {
+  buildRentalPatternHistoryEntry,
+  resolveRentalPatternSummaries,
+  type RentalPatternHistoryEntry,
+  type RentalPatternSummaryResult,
+} from './rental-driving-analysis.pattern-summary';
+import { RENTAL_PATTERN_SUMMARY_CONFIG } from './rental-driving-analysis.pattern-summary.config';
 import type {
   RentalDrivingAnalysisPayload,
   RentalDrivingAttributionSummary,
@@ -249,6 +256,12 @@ export class RentalDrivingAnalysisService {
         ? options?.recomputeReason ?? 'INPUT_OR_MODEL_CHANGED'
         : options?.recomputeReason ?? null;
 
+      const patternSummary = await this.resolvePatternSummariesForRecompute(
+        orgId,
+        booking.id,
+        computed,
+      );
+
       const payload = this.generatePayload({
         ...computed.payloadCtx,
         calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
@@ -263,6 +276,7 @@ export class RentalDrivingAnalysisService {
         recomputeReason,
         attributionSummary: computed.attributionSummary,
         normalizedMetrics: computed.normalizedMetrics,
+        patternSummary,
       });
 
       const record = await tx.rentalDrivingAnalysis.create({
@@ -850,6 +864,10 @@ export class RentalDrivingAnalysisService {
     recomputeReason: string | null;
     attributionSummary: RentalDrivingAttributionSummary;
     normalizedMetrics: RentalDrivingNormalizedMetrics;
+    patternSummary: {
+      bookingCustomer: RentalPatternSummaryResult;
+      driverConduct: RentalPatternSummaryResult | null;
+    };
   }): RentalDrivingAnalysisPayload {
     const stress = ctx.drivingStressScore;
     const { level, wearImpact } = resolveOverallLevelFromMetrics(ctx.normalizedMetrics);
@@ -1031,7 +1049,125 @@ export class RentalDrivingAnalysisService {
       },
       watchpoints,
       recommendations,
+      patternSummary: ctx.patternSummary,
     };
+  }
+
+  private async resolvePatternSummariesForRecompute(
+    orgId: string,
+    bookingId: string,
+    computed: Awaited<ReturnType<typeof this.computeAnalysisContext>>,
+  ): Promise<{
+    bookingCustomer: RentalPatternSummaryResult;
+    driverConduct: RentalPatternSummaryResult | null;
+  }> {
+    const customerId = computed.roles.bookingCustomerId;
+    const driverId = computed.roles.actualDriverId ?? computed.roles.assignedDriverId;
+
+    const history = await this.loadPatternHistoryEntries(orgId, {
+      bookingCustomerId: customerId,
+      driverId,
+    });
+    const currentEntry = this.buildPatternEntryFromComputed(bookingId, computed);
+    const rentals = this.mergeCurrentPatternEntry(history, currentEntry, bookingId);
+
+    return resolveRentalPatternSummaries({
+      bookingCustomerId: customerId,
+      assignedDriverId: computed.roles.assignedDriverId,
+      actualDriverId: computed.roles.actualDriverId,
+      rentals,
+    });
+  }
+
+  private async loadPatternHistoryEntries(
+    orgId: string,
+    filters: { bookingCustomerId?: string | null; driverId?: string | null },
+  ): Promise<RentalPatternHistoryEntry[]> {
+    const or: Array<Record<string, unknown>> = [];
+    if (filters.bookingCustomerId) {
+      or.push({ bookingCustomerId: filters.bookingCustomerId });
+    }
+    if (filters.driverId) {
+      or.push(
+        { actualDriverId: filters.driverId },
+        { assignedDriverId: filters.driverId, actualDriverId: null },
+      );
+    }
+    if (or.length === 0) return [];
+
+    const records = await this.prisma.rentalDrivingAnalysis.findMany({
+      where: {
+        organizationId: orgId,
+        supersededAt: null,
+        OR: or,
+      },
+      orderBy: { periodEnd: 'desc' },
+      take: RENTAL_PATTERN_SUMMARY_CONFIG.LOOKBACK_RENTALS + 5,
+    });
+
+    return records.map((record) => this.mapRecordToPatternHistoryEntry(record));
+  }
+
+  private mapRecordToPatternHistoryEntry(
+    record: RentalDrivingAnalysis,
+  ): RentalPatternHistoryEntry {
+    const payload = record.payload as RentalDrivingAnalysisPayload | null;
+    const attributionSummary = record.attributionSummary as RentalDrivingAttributionSummary | null;
+
+    return buildRentalPatternHistoryEntry({
+      rentalAnalysisId: record.id,
+      bookingId: record.bookingId,
+      periodEnd: record.periodEnd,
+      bookingCustomerId: record.bookingCustomerId,
+      assignedDriverId: record.assignedDriverId,
+      actualDriverId: record.actualDriverId,
+      attributionType:
+        attributionSummary?.attributionType ?? payload?.analysisMeta?.attributionType ?? null,
+      analysisSource:
+        attributionSummary?.analysisSource ?? payload?.analysisMeta?.analysisSource ?? 'none',
+      customerDecisionEligible:
+        attributionSummary?.customerDecisionEligible ??
+        payload?.analysisMeta?.customerDecisionEligible ??
+        false,
+      calculationVersion: record.calculationVersion,
+      assessmentStatus: record.assessmentStatus,
+      analysisCompleteness: record.analysisCompleteness,
+      assessmentSummary: record.assessmentSummary as RentalDrivingAssessmentSummary | null,
+      rentalMetrics: payload?.rentalMetrics ?? null,
+      overallLevel: record.overallLevel,
+    });
+  }
+
+  private buildPatternEntryFromComputed(
+    bookingId: string,
+    computed: Awaited<ReturnType<typeof this.computeAnalysisContext>>,
+  ): RentalPatternHistoryEntry {
+    return buildRentalPatternHistoryEntry({
+      rentalAnalysisId: `pending:${bookingId}`,
+      bookingId,
+      periodEnd: computed.payloadCtx.periodEnd,
+      bookingCustomerId: computed.roles.bookingCustomerId,
+      assignedDriverId: computed.roles.assignedDriverId,
+      actualDriverId: computed.roles.actualDriverId,
+      attributionType: computed.roles.attributionType ?? null,
+      analysisSource: computed.analysisSource,
+      customerDecisionEligible: computed.roles.customerDecisionEligible,
+      calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
+      assessmentStatus: computed.assessmentSummary.status,
+      analysisCompleteness: computed.analysisCompleteness,
+      assessmentSummary: computed.assessmentSummary,
+      rentalMetrics: computed.normalizedMetrics,
+      overallLevel: resolveOverallLevelFromMetrics(computed.normalizedMetrics).level,
+    });
+  }
+
+  private mergeCurrentPatternEntry(
+    history: RentalPatternHistoryEntry[],
+    current: RentalPatternHistoryEntry,
+    bookingId: string,
+  ): RentalPatternHistoryEntry[] {
+    const withoutCurrent = history.filter((entry) => entry.bookingId !== bookingId);
+    return [current, ...withoutCurrent];
   }
 
   private levelTitle(

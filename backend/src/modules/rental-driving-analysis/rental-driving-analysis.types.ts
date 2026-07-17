@@ -2,6 +2,7 @@ import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-
 import type { DrivingAttributionType } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.types';
 import type { RentalDrivingNormalizedMetrics } from './rental-driving-analysis.metrics';
 import type { RentalRoadDistributionResult } from './rental-driving-analysis.road-distribution';
+import type { RentalPatternSummaryResult } from './rental-driving-analysis.pattern-summary';
 
 export type RentalDrivingAttributionSummary = {
   analysisSource: 'booking_assignment' | 'time_window_fallback' | 'none';
@@ -117,4 +118,8 @@ export interface RentalDrivingAnalysisPayload {
   };
   watchpoints: string[];
   recommendations: string[];
+  patternSummary?: {
+    bookingCustomer: RentalPatternSummaryResult;
+    driverConduct: RentalPatternSummaryResult | null;
+  };
 }
