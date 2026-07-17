@@ -1542,6 +1542,9 @@ export const de: Record<TranslationKey, string> = {
 
   'docUpload.vehicle': 'Fahrzeug',
   'docUpload.selectVehicleFirst': 'Bitte waehlen Sie zuerst ein Fahrzeug',
+  'docUpload.initialUploadHint': 'Laden Sie zuerst eine Datei hoch. Fahrzeug, Dokumenttyp und Felder werden nach der KI-Analyse zur Pruefung angeboten.',
+  'docUpload.assignVehiclePlaceholder': 'Fahrzeug zuordnen',
+  'docUpload.assignVehicleBeforeConfirm': 'Bitte ordnen Sie zuerst ein Fahrzeug zu',
   'docUpload.reviewHint': 'Bitte pruefen und bestaetigen — erst nach Bestaetigung wird angewendet.',
   'docUpload.editFields': 'Felder bearbeiten',
   'docUpload.doneEditing': 'Bearbeitung abgeschlossen',

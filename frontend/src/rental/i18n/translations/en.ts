@@ -1469,6 +1469,9 @@ export const en = {
 
   'docUpload.vehicle': 'Vehicle',
   'docUpload.selectVehicleFirst': 'Please select a vehicle first',
+  'docUpload.initialUploadHint': 'Upload a file first. Vehicle, document type, and fields are offered for review after AI analysis.',
+  'docUpload.assignVehiclePlaceholder': 'Assign vehicle',
+  'docUpload.assignVehicleBeforeConfirm': 'Please assign a vehicle before confirming',
   'docUpload.reviewHint': 'Review and confirm — nothing is applied until you confirm.',
   'docUpload.editFields': 'Edit fields',
   'docUpload.doneEditing': 'Done editing',

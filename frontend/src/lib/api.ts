@@ -5396,6 +5396,62 @@ export const api = {
         `/organizations/${orgId}/document-extractions/${extractionId}/vehicle`,
         { vehicleId },
       ),
+    upload: async (
+      orgId: string,
+      file: File,
+      options?: {
+        requestedDocumentType?: string;
+        optionalContextType?: string;
+        optionalContextId?: string;
+        sourceSurface?: string;
+        source?: string;
+        reuploadReason?: string;
+        relatedExtractionId?: string;
+        invoiceNumberHint?: string;
+        referenceNumberHint?: string;
+      },
+    ) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('requestedDocumentType', options?.requestedDocumentType ?? 'AUTO');
+      if (options?.optionalContextType) form.append('optionalContextType', options.optionalContextType);
+      if (options?.optionalContextId) form.append('optionalContextId', options.optionalContextId);
+      if (options?.sourceSurface) form.append('sourceSurface', options.sourceSurface);
+      if (options?.source) form.append('source', options.source);
+      if (options?.reuploadReason) form.append('reuploadReason', options.reuploadReason);
+      if (options?.relatedExtractionId) form.append('relatedExtractionId', options.relatedExtractionId);
+      if (options?.invoiceNumberHint) form.append('invoiceNumberHint', options.invoiceNumberHint);
+      if (options?.referenceNumberHint) form.append('referenceNumberHint', options.referenceNumberHint);
+      const token = localStorage.getItem('synqdrive_token');
+      const res = await fetch(`${BASE_URL}/organizations/${orgId}/document-extractions/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        let body: unknown = null;
+        try {
+          body = await res.json();
+        } catch {
+          /* keep null body */
+        }
+        const { parseUploadDuplicateError } = await import('./document-upload-duplicate');
+        const duplicateError = parseUploadDuplicateError(body);
+        if (duplicateError) throw duplicateError;
+        const { parseUploadRateLimitError } = await import('./document-upload-rate-limit');
+        const rateLimitError = parseUploadRateLimitError(body);
+        if (rateLimitError) throw rateLimitError;
+        const { parseUploadIdentificationError, parseNestedUploadErrorMessage } = await import(
+          './document-upload-identification'
+        );
+        const identificationError = parseUploadIdentificationError(body);
+        if (identificationError) throw identificationError;
+        const message =
+          parseNestedUploadErrorMessage(body) ?? `Upload failed (${res.status})`;
+        throw new Error(message);
+      }
+      return (await res.json()) as import('../rental/lib/document-extraction.types').PublicDocumentExtraction;
+    },
   },
   partsAccessories: {
     providers: () => get<PartsProviderSummary[]>('/parts-accessories/providers'),

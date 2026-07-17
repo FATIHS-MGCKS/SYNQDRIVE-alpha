@@ -556,6 +556,9 @@ export const fr: Record<TranslationKey, string> = {
 
   'docUpload.vehicle': 'Vehicule',
   'docUpload.selectVehicleFirst': 'Veuillez d\'abord selectionner un vehicule',
+  'docUpload.initialUploadHint': 'Televersez d\'abord un fichier. Vehicule, type et champs sont proposes apres l\'analyse IA.',
+  'docUpload.assignVehiclePlaceholder': 'Attribuer un vehicule',
+  'docUpload.assignVehicleBeforeConfirm': 'Veuillez attribuer un vehicule avant de confirmer',
   'docUpload.reviewHint': 'Verifiez et confirmez — rien n\'est applique avant confirmation.',
   'docUpload.editFields': 'Modifier les champs',
   'docUpload.doneEditing': 'Modification terminee',

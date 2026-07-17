@@ -206,9 +206,9 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
 
   const handleFile = useCallback(
     async (file: File, fileCount = 1) => {
-      if (!selectedVehicleId) return;
       const result = validateUploadFile(file, metadata, {
-        vehicleSelected: Boolean(selectedVehicleId),
+        vehicleSelected: Boolean(selectedVehicleId) || Boolean(orgId),
+        requireVehicle: false,
         fileCount,
       });
       if (!result.ok && result.code) {
@@ -219,7 +219,7 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
       await intake.handleFile(file);
       void reloadHistory();
     },
-    [intake, metadata, reloadHistory, selectedVehicleId, t],
+    [intake, metadata, orgId, reloadHistory, selectedVehicleId, t],
   );
 
   const handleDropFiles = useCallback(
@@ -237,17 +237,18 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
 
   const handleSetDocumentType = useCallback(
     async (type: string, reextract = false) => {
-      if (!selectedVehicleId || !intake.extractionId) return;
+      const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
+      if (!mutationVehicleId || !intake.extractionId) return;
       intake.setDocumentType(type);
       if (reextract) {
         await intake.handleReextract();
       } else {
         try {
-          await api.vehicleIntelligence.setDocumentType(selectedVehicleId, intake.extractionId, {
+          await api.vehicleIntelligence.setDocumentType(mutationVehicleId, intake.extractionId, {
             documentType: type,
             reextract: false,
           });
-          intake.startPolling(intake.extractionId, selectedVehicleId);
+          intake.startPolling(intake.extractionId, mutationVehicleId);
         } catch {
           /* keep current record */
         }
@@ -258,12 +259,13 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   );
 
   const handleCancel = useCallback(async () => {
-    if (!selectedVehicleId || !intake.extractionId || !intake.record?.allowedActions?.includes('cancel')) {
+    const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
+    if (!mutationVehicleId || !intake.extractionId || !intake.record?.allowedActions?.includes('cancel')) {
       handleReset();
       return;
     }
     try {
-      await api.vehicleIntelligence.cancelDocumentExtraction(selectedVehicleId, intake.extractionId);
+      await api.vehicleIntelligence.cancelDocumentExtraction(mutationVehicleId, intake.extractionId);
       intake.stopPolling();
       void reloadHistory();
       handleReset();
@@ -273,11 +275,12 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   }, [handleReset, intake, reloadHistory, selectedVehicleId]);
 
   const handleConfirm = useCallback(async () => {
-    if (!selectedVehicleId || !intake.extractionId) return;
+    const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
+    if (!mutationVehicleId || !intake.extractionId) return;
     await withBatteryHealthCacheRollback(
       [
-        serializeBatteryHealthQueryKey(batteryHealthQueryKeys.summary(orgId, selectedVehicleId)),
-        serializeBatteryHealthQueryKey(batteryHealthQueryKeys.detail(orgId, selectedVehicleId)),
+        serializeBatteryHealthQueryKey(batteryHealthQueryKeys.summary(orgId, mutationVehicleId)),
+        serializeBatteryHealthQueryKey(batteryHealthQueryKeys.detail(orgId, mutationVehicleId)),
       ],
       async () => {
         await intake.handleConfirm();
@@ -303,11 +306,14 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   );
 
   const handleDownload = useCallback(async () => {
-    if (!selectedVehicleId || !intake.extractionId || !intake.record?.hasStoredFile) {
+    if (!intake.extractionId || !intake.record?.hasStoredFile) {
       return null;
     }
+    const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
     try {
-      const blob = await api.vehicleIntelligence.downloadDocumentExtraction(selectedVehicleId, intake.extractionId);
+      const blob = mutationVehicleId
+        ? await api.vehicleIntelligence.downloadDocumentExtraction(mutationVehicleId, intake.extractionId)
+        : await api.documentExtraction.downloadByOrg(orgId, intake.extractionId);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
@@ -315,12 +321,12 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     } catch {
       return null;
     }
-  }, [intake.extractionId, intake.record?.hasStoredFile, previewUrl, selectedVehicleId]);
+  }, [intake.extractionId, intake.record?.hasStoredFile, intake.record?.vehicleId, orgId, previewUrl, selectedVehicleId]);
 
   const handleOpenHistoryItem = useCallback(
     (item: PublicDocumentExtractionSummary) => {
       setSelectedVehicleId(item.vehicleId ?? '');
-      void intake.openExtraction(item.id, item.sourceFileName, item.vehicleId ?? undefined);
+      void intake.openExtraction(item.id, item.sourceFileName, item.vehicleId ?? null);
     },
     [intake],
   );
@@ -353,7 +359,8 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   const validateAndSetError = useCallback(
     (file: File | null | undefined, fileCount = 1) => {
       const result = validateUploadFile(file, metadata, {
-        vehicleSelected: Boolean(selectedVehicleId),
+        vehicleSelected: Boolean(selectedVehicleId) || Boolean(orgId),
+        requireVehicle: false,
         fileCount,
       });
       if (!result.ok && result.code) {
@@ -363,8 +370,11 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
       setPageValidationError(null);
       return true;
     },
-    [metadata, selectedVehicleId, t],
+    [metadata, orgId, selectedVehicleId, t],
   );
+
+  const assignedVehicleId = selectedVehicleId || intake.record?.vehicleId || '';
+  const canConfirm = Boolean(assignedVehicleId) && !intake.blockerPresent;
 
   const confirmedDocType = intake.record ? resolveEffectiveType(intake.record) : documentType;
   const stepperIndex = getStepperIndex(intake.flow);
@@ -428,5 +438,7 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     handleOpenHistoryItem,
     handleAuthorizedReupload: intake.handleAuthorizedReupload,
     validateAndSetError,
+    assignedVehicleId,
+    canConfirm,
   };
 }

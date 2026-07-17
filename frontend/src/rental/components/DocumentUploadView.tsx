@@ -1,6 +1,5 @@
 import { CheckCircle, Eye, Sparkles, Upload } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useRef, useState } from 'react';
 
 import { formatUploadContextBanner, hasUploadContextConflict } from '../../lib/document-upload-context';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -10,6 +9,7 @@ import type { PlausibilityStatus } from './documents/document-extraction.shared'
 import type { PublicDocumentExtractionSummary } from '../lib/document-extraction.types';
 import { DocumentExtractionReviewPanel } from './documents/DocumentExtractionReviewPanel';
 import { DocumentExtractionFlowStatus } from './documents/DocumentExtractionFlowStatus';
+import { DocumentIntakeUploadZone } from './documents/DocumentIntakeUploadZone';
 
 interface DocumentUploadViewProps {
   isDarkMode: boolean;
@@ -33,8 +33,6 @@ function formatHistoryDate(iso: string) {
 export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragActive, setDragActive] = useState(false);
 
   const page = useDocumentUploadPage({ orgId, locale, t });
 
@@ -171,73 +169,24 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 min-w-0">
         <div className="lg:col-span-2 min-w-0">
           {showMainIdle && (
-            <div className="space-y-3">
-              <div className={`rounded-lg p-4 ${isDarkMode ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200'}`}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
-                  <div className="min-w-0">
-                    <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.vehicle')}</label>
-                    <select value={page.selectedVehicleId} onChange={(e) => page.setSelectedVehicleId(e.target.value)} className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'surface-premium text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
-                      {page.vehicles.length === 0 && <option value="">{t('docUpload.validation.noVehicle')}</option>}
-                      {page.vehicles.map((v) => <option key={v.id} value={v.id}>{v.name}{v.licensePlate ? ` · ${v.licensePlate}` : ''}</option>)}
-                    </select>
-                  </div>
-                  <div className="min-w-0">
-                    <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.documentType')}</label>
-                    <select value={page.documentType} onChange={(e) => page.setDocumentType(e.target.value)} disabled={page.metadataLoading} className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'surface-premium text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
-                      {page.docTypeOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{page.typeLabel(opt.labelKey)}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {page.validationError && (
-                <div className={`px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-amber-500/10 text-amber-300' : 'bg-amber-50 text-amber-800'}`}>
-                  {page.validationError}
-                </div>
-              )}
-
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragActive(false);
-                  if (e.dataTransfer.files?.length) page.handleDropFiles(e.dataTransfer.files);
-                }}
-                onClick={() => (page.selectedVehicleId ? fileInputRef.current?.click() : undefined)}
-                className={`rounded-lg p-6 sm:p-10 lg:p-12 text-center cursor-pointer transition-all duration-300 border-2 border-dashed min-w-0 ${
-                  !page.selectedVehicleId ? (isDarkMode ? 'border-neutral-800 bg-neutral-900/30 opacity-60' : 'border-gray-200 bg-gray-50 opacity-60') :
-                  dragActive
-                    ? isDarkMode ? 'border-brand bg-brand-soft' : 'border-brand bg-brand-soft'
-                    : isDarkMode ? 'border-neutral-700 bg-neutral-900/60 hover:border-neutral-600 hover:bg-neutral-900/80' : 'border-gray-300 bg-white/60 hover:border-gray-400 hover:bg-white/80'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept={page.acceptAttr}
-                  onChange={(e) => {
-                    if (e.target.files?.length) page.handleDropFiles(e.target.files);
-                    e.target.value = '';
-                  }}
-                />
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-brand-soft' : 'bg-brand-soft'}`}>
-                  <Icon name="upload" className={`w-6 h-6 sm:w-7 sm:h-7 ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
-                </div>
-                <p className={`text-xs font-semibold mb-2 break-words px-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {dragActive ? t('docUpload.dropzoneActive') : t('docUpload.dropzone')}
-                </p>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{page.supportedFormatsLabel}</p>
-                {!page.selectedVehicleId && <p className={`mt-3 text-xs font-semibold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>{t('docUpload.selectVehicleFirst')}</p>}
-                <button type="button" disabled={!page.selectedVehicleId} className={`mt-5 w-full sm:w-auto min-h-11 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                  isDarkMode ? 'bg-primary text-primary-foreground hover:opacity-90' : 'bg-brand text-brand-foreground hover:bg-brand-hover'
-                } ${!page.selectedVehicleId ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  {t('docUpload.browse')}
-                </button>
-              </div>
+            <div className={`rounded-lg p-4 min-w-0 ${isDarkMode ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200'}`}>
+              <DocumentIntakeUploadZone
+                acceptAttr={page.acceptAttr}
+                supportedFormatsLabel={page.supportedFormatsLabel}
+                onFilesSelected={page.handleDropFiles}
+                dropzoneLabel={t('docUpload.dropzone')}
+                dropzoneActiveLabel={t('docUpload.dropzoneActive')}
+                browseLabel={t('docUpload.browse')}
+                validationError={page.validationError}
+                contextHint={uploadContextBanner}
+                contextConflict={uploadContextConflict}
+                isDarkMode={isDarkMode}
+                headerSlot={
+                  <p className={`text-xs break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                    {t('docUpload.initialUploadHint')}
+                  </p>
+                }
+              />
             </div>
           )}
 
@@ -403,10 +352,11 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.assignedTo')}</label>
                     {page.flow === 'ready' && page.record?.allowedActions?.includes('confirm') ? (
                       <select
-                        value={page.selectedVehicleId}
+                        value={page.assignedVehicleId}
                         onChange={(e) => void page.handleReassignVehicle(e.target.value)}
                         className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-semibold border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                       >
+                        <option value="">{t('docUpload.assignVehiclePlaceholder')}</option>
                         {page.vehicles.map((v) => (
                           <option key={v.id} value={v.id}>
                             {v.name}{v.licensePlate ? ` · ${v.licensePlate}` : ''}
@@ -415,7 +365,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                       </select>
                     ) : (
                       <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words ${isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
-                        {page.vehicles.find((v) => v.id === page.selectedVehicleId)?.name || ''}
+                        {page.vehicles.find((v) => v.id === page.assignedVehicleId)?.name || t('docUpload.assignVehiclePlaceholder')}
                       </div>
                     )}
                   </div>
@@ -445,6 +395,8 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   editingFields={page.editingFields}
                   readOnly={page.flow !== 'ready'}
                   canEdit={false}
+                  showEntityResolution
+                  showActionPreview
                   onFieldChange={(index, value) => {
                     const updated = [...page.editedFields];
                     updated[index] = { ...updated[index], value };
@@ -459,9 +411,9 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   <button
                     type="button"
                     onClick={() => void page.handleConfirm()}
-                    disabled={page.flow === 'applying' || page.blockerPresent || !page.record?.allowedActions?.includes('confirm')}
-                    title={page.blockerPresent ? t('docUpload.blockerHint') : undefined}
-                    className={`w-full sm:flex-1 min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-green-600 hover:bg-green-500 text-white transition-all shadow-sm ${(page.flow === 'applying' || page.blockerPresent) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    disabled={page.flow === 'applying' || !page.canConfirm || !page.record?.allowedActions?.includes('confirm')}
+                    title={!page.canConfirm ? t('docUpload.assignVehicleBeforeConfirm') : page.blockerPresent ? t('docUpload.blockerHint') : undefined}
+                    className={`w-full sm:flex-1 min-h-11 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-green-600 hover:bg-green-500 text-white transition-all shadow-sm ${(page.flow === 'applying' || !page.canConfirm) ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
                     {page.flow === 'applying' ? <Icon name="loader-2" className="w-5 h-5 animate-spin" /> : <Icon name="check-circle" className="w-5 h-5" />}
                     {page.flow === 'applying' ? page.flowStatusLabel('applying') : t('docUpload.confirmAndFile')}

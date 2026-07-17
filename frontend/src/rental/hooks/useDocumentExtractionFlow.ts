@@ -7,9 +7,10 @@ export type { UseDocumentExtractionFlowOptions };
 export function useDocumentExtractionFlow(options: UseDocumentExtractionFlowOptions) {
   return useDocumentIntakeFlow({
     vehicleId: options.vehicleId,
-    initialDocType: options.initialDocType,
+    initialDocType: options.initialDocType ?? 'AUTO',
     locale: options.locale,
     uploadSource: options.uploadSource,
+    sourceSurface: options.sourceSurface ?? 'vehicle_detail',
     onComplete: options.onComplete,
     mode: 'embedded',
     pollThroughApply: false,
