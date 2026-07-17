@@ -19,6 +19,7 @@ import {
   DOCUMENT_SUBTYPES,
   DOCUMENT_TAXONOMY_VERSION,
 } from './document-taxonomy.types';
+import { DOCUMENT_SCHEMA_REGISTRY_VERSION } from './document-schema-registry.types';
 
 const PUBLIC_STATUSES: DocumentExtractionStatus[] = [
   'PENDING',
@@ -79,6 +80,7 @@ export class DocumentExtractionMetadataService {
         labelKey: `documentExtraction.subtype.${value}`,
       })),
       taxonomyVersion: DOCUMENT_TAXONOMY_VERSION,
+      schemaRegistryVersion: DOCUMENT_SCHEMA_REGISTRY_VERSION,
       classificationOptions: [
         {
           value: AUTO_CLASSIFICATION_REQUEST,

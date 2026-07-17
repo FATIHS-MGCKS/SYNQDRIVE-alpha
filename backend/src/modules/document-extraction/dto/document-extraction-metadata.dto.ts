@@ -8,6 +8,7 @@ export interface DocumentExtractionMetadataDto {
   documentCategories: DocumentExtractionMetadataOptionDto[];
   documentSubtypes: DocumentExtractionMetadataOptionDto[];
   taxonomyVersion: string;
+  schemaRegistryVersion: string;
   classificationOptions: DocumentExtractionMetadataOptionDto[];
   mimeTypes: string[];
   extensions: string[];

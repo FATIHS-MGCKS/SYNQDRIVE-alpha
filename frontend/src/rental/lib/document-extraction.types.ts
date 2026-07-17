@@ -104,6 +104,7 @@ export interface DocumentExtractionMetadata {
   documentCategories: DocumentExtractionMetadataOption[];
   documentSubtypes: DocumentExtractionMetadataOption[];
   taxonomyVersion: string;
+  schemaRegistryVersion: string;
   classificationOptions: DocumentExtractionMetadataOption[];
   mimeTypes: string[];
   extensions: string[];
@@ -113,6 +114,42 @@ export interface DocumentExtractionMetadata {
   stages: DocumentExtractionMetadataOption[];
   errorPhases: DocumentExtractionMetadataOption[];
   uploadDuplicateStatuses?: DocumentExtractionMetadataOption[];
+}
+
+export interface PublicDocumentSchemaField {
+  key: string;
+  label: string;
+  type: string;
+  enumValues?: string[];
+  hint?: string;
+  required?: boolean;
+  sensitive?: boolean;
+  uiGroup?: string;
+  order?: number;
+  labelKey?: string;
+}
+
+export interface PublicDocumentSubtypeSchema {
+  subtype: string;
+  category: string;
+  schemaVersion: string;
+  legacyDocumentTypes: string[];
+  requiredFields: string[];
+  plausibilityRules: string[];
+  entityResolvers: string[];
+  allowedActions: Array<{ semanticAction: string; requirement: string }>;
+  followUpSuggestionRules: Array<{
+    code: string;
+    message: string;
+    trigger: string;
+    severity: string;
+  }>;
+  fields: PublicDocumentSchemaField[];
+}
+
+export interface DocumentSchemaRegistryResponse {
+  registryVersion: string;
+  subtypes: PublicDocumentSubtypeSchema[];
 }
 
 export interface PublicVehicleDisplay {
