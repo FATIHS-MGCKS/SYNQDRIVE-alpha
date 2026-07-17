@@ -81,7 +81,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
   }
 
   async process(job: Job<DocumentExtractionJobData>): Promise<void> {
-    const { extractionId, vehicleId } = job.data;
+    const { extractionId } = job.data;
 
     const record = await this.prisma.vehicleDocumentExtraction.findUnique({
       where: { id: extractionId },
@@ -270,7 +270,13 @@ export class DocumentExtractionProcessor extends WorkerHost {
         return;
       }
 
-      await this.runExtraction(extractionId, vehicleId, applyDocumentType, content, record.plausibility);
+      await this.runExtraction(
+        extractionId,
+        record.vehicleId ?? job.data.vehicleId ?? null,
+        applyDocumentType,
+        content,
+        record.plausibility,
+      );
       this.observability.recordJobOutcome('READY_FOR_REVIEW', 'REVIEW');
     } catch (err) {
       await this.handleProcessingError(job, extractionId, err);
@@ -342,7 +348,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
 
   private async runExtraction(
     extractionId: string,
-    vehicleId: string,
+    vehicleId: string | null,
     applyDocumentType: NonNullable<ReturnType<typeof resolveEffectiveDocumentType>>,
     content: DocumentStructuredContent,
     existingPlausibility: unknown,
@@ -352,22 +358,26 @@ export class DocumentExtractionProcessor extends WorkerHost {
       data: { processingStage: 'EXTRACTION' },
     });
 
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: {
-        vin: true,
-        licensePlate: true,
-        make: true,
-        model: true,
-        year: true,
-        fuelType: true,
-        mileageKm: true,
-      },
-    });
-    const latest = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { odometerKm: true, dimoTokenId: true },
-    });
+    const vehicle = vehicleId
+      ? await this.prisma.vehicle.findUnique({
+          where: { id: vehicleId },
+          select: {
+            vin: true,
+            licensePlate: true,
+            make: true,
+            model: true,
+            year: true,
+            fuelType: true,
+            mileageKm: true,
+          },
+        })
+      : null;
+    const latest = vehicleId
+      ? await this.prisma.vehicleLatestState.findUnique({
+          where: { vehicleId },
+          select: { odometerKm: true, dimoTokenId: true },
+        })
+      : null;
     const lastKnownOdometerKm = latest?.odometerKm ?? vehicle?.mileageKm ?? null;
     const dimoTokenId = latest?.dimoTokenId ?? undefined;
 

@@ -36,6 +36,7 @@ import { DocumentMalwareScanService } from './document-malware-scan.service';
 import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentRetentionService } from './document-retention.service';
 import { DocumentRetentionRunOptions } from './document-retention.types';
+import { DocumentUploadContextService } from './document-upload-context.service';
 import {
   DocumentMalwareDetectedError,
   DocumentMalwareDownloadBlockedError,
@@ -44,6 +45,7 @@ import {
 import { DocumentExtractionPipelineError } from './document-extraction.errors';
 import {
   ApplyDocumentExtractionType,
+  AUTO_CLASSIFICATION_REQUEST,
   getFieldSchema,
   isAllowedMimeType,
   isApplyDocumentType,
@@ -248,6 +250,26 @@ const TERMINAL_SKIP_STATUSES = new Set([
   'CANCELLED',
 ]);
 
+export interface CreateFromOrgUploadInput {
+  organizationId: string;
+  vehicleId?: string | null;
+  requestedDocumentType?: string;
+  optionalContextType?: string | null;
+  optionalContextId?: string | null;
+  originalName: string;
+  mimeType: string;
+  buffer: Buffer;
+  userId?: string | null;
+  reuploadReason?: string | null;
+  relatedExtractionId?: string | null;
+  invoiceNumberHint?: string | null;
+  referenceNumberHint?: string | null;
+  clientIp?: string | null;
+  uploadSource?: string | null;
+  platformRole?: string | null;
+}
+
+/** Vehicle-scoped upload input — compatibility wrapper over {@link CreateFromOrgUploadInput}. */
 export interface CreateFromUploadInput {
   vehicleId: string;
   documentType: string;
@@ -311,6 +333,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly malwareScan: DocumentMalwareScanService,
     private readonly lifecycle: DocumentLifecycleService,
     private readonly retention: DocumentRetentionService,
+    private readonly uploadContext: DocumentUploadContextService,
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
@@ -324,23 +347,8 @@ export class DocumentExtractionService implements OnModuleInit {
 
   // ── create (real upload) ──────────────────────────────────────────────
 
+  /** Vehicle-scoped compatibility wrapper — delegates to {@link createFromOrgUpload}. */
   async createFromUpload(input: CreateFromUploadInput) {
-    this.assertQueueAcceptingUploads();
-
-    if (!isRequestDocumentType(input.documentType)) {
-      throw new BadRequestException(`Unsupported document type: ${input.documentType}`);
-    }
-    if (!isAllowedMimeType(input.mimeType)) {
-      throw new BadRequestException(`Unsupported file type: ${input.mimeType}`);
-    }
-
-    const requestedType = input.documentType as DocumentExtractionType;
-    const classificationMode = deriveClassificationMode(requestedType);
-    const isAuto = isAutoClassificationRequest(requestedType);
-    const effectiveType: ApplyDocumentExtractionType | null = isAuto
-      ? null
-      : (requestedType as ApplyDocumentExtractionType);
-
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: input.vehicleId },
       select: { organizationId: true },
@@ -348,7 +356,51 @@ export class DocumentExtractionService implements OnModuleInit {
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
     }
-    const organizationId = vehicle.organizationId;
+
+    return this.createFromOrgUpload({
+      organizationId: vehicle.organizationId,
+      vehicleId: input.vehicleId,
+      requestedDocumentType: input.documentType,
+      originalName: input.originalName,
+      mimeType: input.mimeType,
+      buffer: input.buffer,
+      userId: input.userId,
+      reuploadReason: input.reuploadReason,
+      relatedExtractionId: input.relatedExtractionId,
+      invoiceNumberHint: input.invoiceNumberHint,
+      referenceNumberHint: input.referenceNumberHint,
+      clientIp: input.clientIp,
+      uploadSource: input.uploadSource,
+      platformRole: input.platformRole,
+    });
+  }
+
+  async createFromOrgUpload(input: CreateFromOrgUploadInput) {
+    this.assertQueueAcceptingUploads();
+
+    const requestedDocumentType = input.requestedDocumentType ?? AUTO_CLASSIFICATION_REQUEST;
+    if (!isRequestDocumentType(requestedDocumentType)) {
+      throw new BadRequestException(`Unsupported document type: ${requestedDocumentType}`);
+    }
+    if (!isAllowedMimeType(input.mimeType)) {
+      throw new BadRequestException(`Unsupported file type: ${input.mimeType}`);
+    }
+
+    const uploadTarget = await this.uploadContext.resolveUploadTarget({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId ?? null,
+      optionalContextType: input.optionalContextType,
+      optionalContextId: input.optionalContextId,
+    });
+    const organizationId = uploadTarget.organizationId;
+    const resolvedVehicleId = uploadTarget.vehicleId;
+
+    const requestedType = requestedDocumentType as DocumentExtractionType;
+    const classificationMode = deriveClassificationMode(requestedType);
+    const isAuto = isAutoClassificationRequest(requestedType);
+    const effectiveType: ApplyDocumentExtractionType | null = isAuto
+      ? null
+      : (requestedType as ApplyDocumentExtractionType);
 
     await this.uploadRateLimit.assertAllowed({
       organizationId,
@@ -430,8 +482,10 @@ export class DocumentExtractionService implements OnModuleInit {
 
     let record = await this.prisma.vehicleDocumentExtraction.create({
       data: {
-        vehicleId: input.vehicleId,
+        vehicleId: resolvedVehicleId,
         organizationId,
+        uploadContextType: uploadTarget.uploadContextType,
+        uploadContextId: uploadTarget.uploadContextId,
         requestedDocumentType: requestedType,
         effectiveDocumentType: effectiveType,
         documentType: effectiveType,
@@ -475,7 +529,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const stored = await this.malwareScan.storeScannedUpload({
       organizationId,
-      vehicleId: input.vehicleId,
+      vehicleId: resolvedVehicleId,
       originalName: identified.displayFileName,
       buffer: input.buffer,
       mimeType: identified.detectedMime,
@@ -551,7 +605,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(record.id, {
       extractionId: record.id,
-      vehicleId: record.vehicleId,
+      vehicleId: record.vehicleId ?? null,
       organizationId: record.organizationId,
       documentType: effectiveType,
       objectKey: stored.objectKey,
@@ -892,7 +946,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(extractionId, {
       extractionId,
-      vehicleId: record.vehicleId,
+      vehicleId: record.vehicleId ?? null,
       organizationId: record.organizationId,
       documentType: applyType,
       objectKey: record.objectKey,
@@ -970,7 +1024,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(extractionId, {
       extractionId,
-      vehicleId: record.vehicleId,
+      vehicleId: record.vehicleId ?? null,
       organizationId: record.organizationId,
       documentType: applyType,
       objectKey: record.objectKey,
@@ -1177,9 +1231,11 @@ export class DocumentExtractionService implements OnModuleInit {
       return false;
     }
     const applyDocumentType = resolveEffectiveDocumentType(record);
-    if (!applyDocumentType || !record.confirmedData) {
+    if (!applyDocumentType || !record.confirmedData || !record.vehicleId) {
       return false;
     }
+
+    const vehicleId = record.vehicleId;
 
     const sourceFileUrl =
       record.sourceFileUrl ??
@@ -1191,7 +1247,7 @@ export class DocumentExtractionService implements OnModuleInit {
         ? await this.actionOrchestrator.executeConfirmedPlan({
             extractionId,
             organizationId: record.organizationId ?? null,
-            vehicleId: record.vehicleId,
+            vehicleId,
             documentType: applyDocumentType,
             sourceFileUrl,
             confirmedData,
@@ -1199,7 +1255,7 @@ export class DocumentExtractionService implements OnModuleInit {
           })
         : await this.applyService.apply({
             extractionId,
-            vehicleId: record.vehicleId,
+            vehicleId,
             documentType: applyDocumentType,
             sourceFileUrl,
             confirmedData,

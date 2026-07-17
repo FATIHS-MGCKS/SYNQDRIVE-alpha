@@ -32,8 +32,10 @@ type UserJoin = {
 
 type ExtractionRecord = {
   id: string;
-  vehicleId: string;
+  vehicleId: string | null;
   organizationId?: string | null;
+  uploadContextType?: string | null;
+  uploadContextId?: string | null;
   status: PublicDocumentExtractionDto['status'];
   processingStage: PublicDocumentExtractionDto['processingStage'];
   sourceFileName?: string | null;
@@ -109,8 +111,11 @@ function toActor(user: UserJoin | null | undefined): PublicActorDto | null {
   return { id: user.id, displayName };
 }
 
-function toVehicleDisplay(vehicle: VehicleJoin | null | undefined, vehicleId: string): PublicVehicleDisplayDto | null {
-  if (!vehicle) return null;
+function toVehicleDisplay(
+  vehicle: VehicleJoin | null | undefined,
+  vehicleId: string | null,
+): PublicVehicleDisplayDto | null {
+  if (!vehicle || !vehicleId) return null;
   return {
     id: vehicle.id ?? vehicleId,
     licensePlate: vehicle.licensePlate ?? null,
@@ -159,6 +164,8 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     id: record.id,
     vehicleId: record.vehicleId,
     organizationId: record.organizationId ?? null,
+    uploadContextType: record.uploadContextType ?? null,
+    uploadContextId: record.uploadContextId ?? null,
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,

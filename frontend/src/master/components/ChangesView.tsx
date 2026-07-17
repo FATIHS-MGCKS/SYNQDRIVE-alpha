@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-org-upload-endpoint-2026-07-17',
+    version: '4.9.625',
+    title: 'V4.9.625 — Document Intake V2 Org-Wide Upload Endpoint',
+    summary: [
+      'Kanonischer Upload POST /organizations/:orgId/document-extractions/upload ohne Pflicht-Fahrzeug.',
+      'requestedDocumentType default AUTO; optionalContextType/Id mit Berechtigungsprüfung (VEHICLE → org-scoped).',
+      'Storage inbox-Pfad organizations/{org}/inbox/documents ohne erfundene vehicleId; vehicleId nullable in DB und Queue.',
+      'Vehicle-Upload bleibt Kompatibilitätswrapper über createFromOrgUpload; keine automatische Entity-Bestätigung.',
+    ],
+    reason:
+      'Organisationsweite Dokumenten-Inbox ermöglichen, bevor ein Fahrzeug zugeordnet wird — tenant-sicher und storage-korrekt.',
+    previousBehavior:
+      'Upload nur über vehicles/:vehicleId/.../upload; vehicleId NOT NULL; kein org-scoped Upload-Endpunkt.',
+    details: 'architecture/DOCUMENT_ORG_UPLOAD_ENDPOINT_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T19:30:00.000Z',
+  },
+  {
     id: 'document-storage-lifecycle-2026-07-17',
     version: '4.9.624',
     title: 'V4.9.624 — Document Intake V2 Storage & Lifecycle Hardening',

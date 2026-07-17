@@ -19,6 +19,43 @@ export function makeMalwareScanMock(storage?: {
   };
 }
 
+export function makeUploadContextMock() {
+  return {
+    resolveUploadTarget: jest.fn(async (params: {
+      organizationId: string;
+      vehicleId?: string | null;
+      optionalContextType?: string | null;
+      optionalContextId?: string | null;
+    }) => {
+      if (params.vehicleId) {
+        return {
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+          uploadContextType: 'VEHICLE',
+          uploadContextId: params.vehicleId,
+        };
+      }
+      const type = params.optionalContextType?.toUpperCase() || null;
+      const id = params.optionalContextId || null;
+      if (type === 'VEHICLE' && id) {
+        return {
+          organizationId: params.organizationId,
+          vehicleId: id,
+          uploadContextType: 'VEHICLE',
+          uploadContextId: id,
+        };
+      }
+      return {
+        organizationId: params.organizationId,
+        vehicleId: null,
+        uploadContextType: null,
+        uploadContextId: null,
+      };
+    }),
+    assertVehicleInOrganization: jest.fn(),
+  };
+}
+
 export function makeLifecycleMock() {
   return {
     buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({

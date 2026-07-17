@@ -46,8 +46,10 @@ export interface PublicDocumentExtractionAuditDto {
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
-  vehicleId: string;
+  vehicleId: string | null;
   organizationId: string | null;
+  uploadContextType: string | null;
+  uploadContextId: string | null;
   vehicle: PublicVehicleDisplayDto | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

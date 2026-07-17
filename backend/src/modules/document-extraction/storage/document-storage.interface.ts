@@ -18,7 +18,8 @@ export const DOCUMENT_STORAGE = Symbol('DOCUMENT_STORAGE');
 
 export interface PutObjectInput {
   organizationId: string;
-  vehicleId: string;
+  /** When omitted, object is stored under the org inbox prefix (no invented vehicle id). */
+  vehicleId?: string | null;
   /** Untrusted original filename — only used for the human-readable suffix. */
   originalName: string;
   buffer: Buffer;
@@ -41,7 +42,7 @@ export interface DocumentStoragePort {
   promoteQuarantineToClean(input: {
     quarantineObjectKey: string;
     organizationId: string;
-    vehicleId: string;
+    vehicleId?: string | null;
     originalName: string;
     mimeType: string;
   }): Promise<PutObjectResult>;

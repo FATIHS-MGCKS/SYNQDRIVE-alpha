@@ -8,7 +8,7 @@ jest.mock('@shared/queue/queue-producer.util', () => ({
 }));
 
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock } from './document-extraction-test.helpers';
+import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock } from './document-extraction-test.helpers';
 
 function mockFailedRecord(id = 'e1') {
   const now = new Date();
@@ -137,6 +137,7 @@ function makeService(overrides: {
     makeMalwareScanMock(storage) as any,
     makeLifecycleMock() as any,
     makeRetentionMock() as any,
+    makeUploadContextMock() as any,
     observability as any,
   );
   return { svc, prisma, storage, queue, applyService, docConfig };

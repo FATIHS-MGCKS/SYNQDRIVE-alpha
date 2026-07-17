@@ -151,25 +151,29 @@ export class LocalDocumentStorageService implements DocumentStoragePort {
     keyPrefix: string,
   ): Promise<PutObjectResult> {
     const orgSeg = this.safeSegment(input.organizationId);
-    const vehSeg = this.safeSegment(input.vehicleId);
-    if (!orgSeg || !vehSeg) {
-      throw new BadRequestException('organizationId and vehicleId are required for storage');
+    if (!orgSeg) {
+      throw new BadRequestException('organizationId is required for storage');
     }
 
     const now = new Date();
     const yyyy = String(now.getUTCFullYear());
     const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
     const safeName = this.sanitizeFileName(input.originalName);
-    const objectKey = [
-      keyPrefix,
-      orgSeg,
-      'vehicles',
-      vehSeg,
-      'documents',
-      yyyy,
-      mm,
-      `${randomUUID()}-${safeName}`,
-    ].join('/');
+
+    const vehSeg = input.vehicleId ? this.safeSegment(input.vehicleId) : null;
+    const objectKey = vehSeg
+      ? [keyPrefix, orgSeg, 'vehicles', vehSeg, 'documents', yyyy, mm, `${randomUUID()}-${safeName}`].join(
+          '/',
+        )
+      : [
+          keyPrefix,
+          orgSeg,
+          'inbox',
+          'documents',
+          yyyy,
+          mm,
+          `${randomUUID()}-${safeName}`,
+        ].join('/');
 
     const absPath = this.resolveKeyInBase(baseDir, objectKey);
     await mkdir(dirname(absPath), { recursive: true });

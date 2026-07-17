@@ -2671,8 +2671,10 @@ model VehicleServiceEvent {
 
 model VehicleDocumentExtraction {
   id                        String                               @id @default(uuid())
-  vehicleId                 String                               @map("vehicle_id")
+  vehicleId                 String?                              @map("vehicle_id")
   organizationId            String?                              @map("organization_id")
+  uploadContextType         String?                              @map("upload_context_type")
+  uploadContextId           String?                              @map("upload_context_id")
   // Legacy field — mirrors effectiveDocumentType for backward compatibility.
   documentType              DocumentExtractionType?              @map("document_type")
   requestedDocumentType     DocumentExtractionType?              @map("requested_document_type")
@@ -2727,7 +2729,7 @@ model VehicleDocumentExtraction {
   createdAt                 DateTime                             @default(now()) @map("created_at")
   updatedAt                 DateTime                             @updatedAt @map("updated_at")
 
-  vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle                           Vehicle?                          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   relatedExtraction                 VehicleDocumentExtraction?        @relation("UploadDuplicateRelated", fields: [relatedExtractionId], references: [id], onDelete: SetNull)
   relatedReuploads                  VehicleDocumentExtraction[]       @relation("UploadDuplicateRelated")
   contentAnchor                     DocumentExtractionContentAnchor?  @relation("ContentAnchorCanonical")
@@ -2741,6 +2743,7 @@ model VehicleDocumentExtraction {
   tireTreadMeasurements             VehicleTireTreadMeasurement[]
 
   @@index([vehicleId])
+  @@index([organizationId, uploadContextType, uploadContextId])
   @@index([status])
   @@index([organizationId, createdAt])
   @@index([organizationId, contentSha256])
