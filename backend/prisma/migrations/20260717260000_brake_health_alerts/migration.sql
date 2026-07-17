@@ -38,7 +38,7 @@ CREATE TABLE brake_health_alerts (
   last_notified_fingerprint TEXT,
   template_params_json JSONB,
   CONSTRAINT brake_health_alerts_vehicle_fkey
-    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX brake_health_alerts_dedupe_open_uniq

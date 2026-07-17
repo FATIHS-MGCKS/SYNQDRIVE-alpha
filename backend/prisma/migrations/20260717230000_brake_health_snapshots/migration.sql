@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS brake_health_snapshots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id TEXT,
-  vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  vehicle_id TEXT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   generated_at TIMESTAMPTZ NOT NULL,
   model_version TEXT NOT NULL,
   model_config_hash TEXT NOT NULL,
