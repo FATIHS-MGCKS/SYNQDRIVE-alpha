@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-v2-shadow-canary-t0-2026-07-17',
+    version: '4.9.587',
+    title: 'V4.9.587 — Driving Intelligence V2 Shadow Canary gestartet',
+    summary: [
+      'Prod: `DRIVING_INTELLIGENCE_V2_ENABLED=true` + Engine/HF Shadow-Detektoren für Canary-Org F.S Mobility (`faa710c9`).',
+      'Segment-Validation und Customer Decision bleiben aus — nur Shadow-Evidence, keine Auto-Blocks.',
+      'Runbook §4.0 + `docs/runbooks/driving-intelligence-v2-shadow-canary-faa710c9.md`; T+7 Review 24.07. gemeinsam mit Battery.',
+    ],
+    reason: 'DI V2 Shadow-Detektoren parallel zu Battery REST Shadow validieren — gleicher Canary, gleicher Audit-Kalender.',
+    previousBehavior: 'Master-Flag aus — Shadow-Detector-Framework skipped (`flags_disabled`).',
+    details:
+      'VPS backend.env; driving-intelligence-v2-shadow-canary-faa710c9.md; driving-intelligence-v2-shadow-validation.md §4.0',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T18:15:00.000Z',
+  },
+  {
     id: 'twilio-vps-env-sync-v49586-2026-07-17',
     version: '4.9.586',
     title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',
