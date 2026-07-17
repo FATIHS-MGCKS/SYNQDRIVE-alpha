@@ -23,6 +23,7 @@ import {
   resolveEffectiveDocumentType,
 } from './document-extraction-lifecycle.util';
 import { evaluateClassificationDecision } from './document-classification-decision.util';
+import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomy } from './document-taxonomy.util';
 import {
   buildContentCacheEntry,
   mergePipelinePlausibility,
@@ -226,6 +227,16 @@ export class DocumentExtractionProcessor extends WorkerHost {
 
         const classificationCompletedAt = new Date();
         const detectedForDb = decision.detectedType;
+        const classificationTaxonomy = resolveDocumentTaxonomy({
+          legacyDocumentType: detectedForDb ?? classificationResult.detectedDocumentType ?? 'OTHER',
+          source: 'classification',
+        });
+        const plausibilityWithTaxonomy = mergeDocumentTaxonomyPipeline(
+          mergePipelinePlausibility(record.plausibility, {
+            contentCache: buildContentCacheEntry(content, record.objectKey),
+          }),
+          classificationTaxonomy,
+        );
 
         if (decision.action === 'AWAIT_USER') {
           this.observability.recordClassification(
@@ -247,9 +258,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
               errorCode: null,
               errorPhase: null,
               plausibility: {
-                ...mergePipelinePlausibility(record.plausibility, {
-                  contentCache: buildContentCacheEntry(content, record.objectKey),
-                }),
+                ...plausibilityWithTaxonomy,
                 classification: {
                   rationale: classificationResult.rationale,
                   sourcePages: classificationResult.sourcePages,
@@ -257,6 +266,9 @@ export class DocumentExtractionProcessor extends WorkerHost {
                   model: classificationResult.model,
                   hasSuggestion: decision.hasSuggestion,
                   processingDurationMs: classificationResult.processingDurationMs,
+                  documentCategory: classificationResult.documentCategory,
+                  documentSubtype: classificationResult.documentSubtype,
+                  taxonomyVersion: classificationResult.taxonomyVersion,
                 },
               } as unknown as Prisma.InputJsonValue,
             },
@@ -275,6 +287,20 @@ export class DocumentExtractionProcessor extends WorkerHost {
             effectiveDocumentType: applyDocumentType,
             documentType: applyDocumentType,
             processingStage: 'EXTRACTION',
+            plausibility: {
+              ...plausibilityWithTaxonomy,
+              classification: {
+                rationale: classificationResult.rationale,
+                sourcePages: classificationResult.sourcePages,
+                provider: classificationResult.provider,
+                model: classificationResult.model,
+                hasSuggestion: true,
+                processingDurationMs: classificationResult.processingDurationMs,
+                documentCategory: classificationResult.documentCategory,
+                documentSubtype: classificationResult.documentSubtype,
+                taxonomyVersion: classificationResult.taxonomyVersion,
+              },
+            } as unknown as Prisma.InputJsonValue,
           },
         });
       } else if (!applyDocumentType) {

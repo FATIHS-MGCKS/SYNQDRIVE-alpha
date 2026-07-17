@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-two-stage-taxonomy-2026-07-17',
+    version: '4.9.634',
+    title: 'V4.9.634 — Document Intake V2 Two-Stage Taxonomy',
+    summary: [
+      'Zweistufige Taxonomie: Kategorie (FINANCE, AUTHORITY, TECHNICAL, …) + Untertyp (INVOICE, FINE_NOTICE, SERVICE_REPORT, …).',
+      'Legacy DocumentExtractionType bleibt Apply-Vertrag; kompatibles Mapping ohne Bestandsdaten-Löschung.',
+      'Klassifikationsresultat enthält documentCategory, documentSubtype, taxonomyVersion 1.0.0.',
+      'Unbekannte Untertypen → GENERAL/OTHER mit archiveRecommended; Metadata-Endpoint liefert Kategorien/Subtypen.',
+    ],
+    reason:
+      'Einheitliche fachliche Kategorisierung über alle Dokumenttypen — rückwärtskompatibel zum bestehenden Apply-Flow.',
+    previousBehavior:
+      'Nur flacher DocumentExtractionType; documentCategory/documentSubtype fragmentiert in Finance/Archive-Regeln.',
+    details: 'architecture/DOCUMENT_TWO_STAGE_TAXONOMY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T03:00:00.000Z',
+  },
+  {
     id: 'document-entity-links-api-2026-07-17',
     version: '4.9.633',
     title: 'V4.9.633 — Document Intake V2 Entity Links API',
