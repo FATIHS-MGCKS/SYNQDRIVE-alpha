@@ -18,6 +18,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TwilioTelephonyService } from '@modules/twilio/twilio-telephony.service';
+import { TwilioControlPlaneTelephonyService } from '@modules/twilio/twilio-control-plane.telephony.service';
 import { ElevenLabsService } from './elevenlabs.service';
 import {
   UpdateVoiceAssistantDto,
@@ -99,28 +100,29 @@ export class VoiceAssistantService {
     private readonly prisma: PrismaService,
     private readonly elevenLabs: ElevenLabsService,
     private readonly twilioTelephony: TwilioTelephonyService,
+    private readonly twilioControlPlaneTelephony: TwilioControlPlaneTelephonyService,
   ) {}
 
   async getOrCreateAssistantForOrg(organizationId: string) {
     const existing = await this.prisma.voiceAssistant.findUnique({
       where: { organizationId },
     });
-    if (existing) return this.formatAssistant(existing);
+    if (existing) return await this.formatAssistant(existing);
 
     const created = await this.prisma.voiceAssistant.create({
       data: {
         organizationId,
-        connectionStatus: this.deriveConnectionStatus(),
+        connectionStatus: await this.deriveConnectionStatus(organizationId),
       },
     });
-    return this.formatAssistant(created);
+    return await this.formatAssistant(created);
   }
 
   async getAssistantForOrg(organizationId: string) {
     const assistant = await this.prisma.voiceAssistant.findUnique({
       where: { organizationId },
     });
-    return assistant ? this.formatAssistant(assistant) : null;
+    return assistant ? await this.formatAssistant(assistant) : null;
   }
 
   async updateAssistant(organizationId: string, dto: UpdateVoiceAssistantDto) {
@@ -131,12 +133,12 @@ export class VoiceAssistantService {
       where: { id: assistant.id },
       data,
     });
-    return this.formatAssistant(updated);
+    return await this.formatAssistant(updated);
   }
 
   async activateAssistant(organizationId: string) {
     const assistant = await this.requireAssistantRow(organizationId);
-    const readiness = this.computeReadiness(assistant, { forActivation: true });
+    const readiness = await this.computeReadiness(assistant, { forActivation: true });
 
     if (!readiness.ready) {
       throw new BadRequestException({
@@ -174,7 +176,7 @@ export class VoiceAssistantService {
       data: {
         status: VoiceAssistantStatus.ACTIVE,
         elevenLabsAgentId: agentId,
-        connectionStatus: this.deriveConnectionStatus({
+        connectionStatus: await this.deriveConnectionStatus(organizationId, {
           ...assistant,
           elevenLabsAgentId: agentId,
           status: VoiceAssistantStatus.ACTIVE,
@@ -185,7 +187,7 @@ export class VoiceAssistantService {
       },
     });
 
-    return this.formatAssistant(activated);
+    return await this.formatAssistant(activated);
   }
 
   async deactivateAssistant(organizationId: string) {
@@ -197,12 +199,12 @@ export class VoiceAssistantService {
         deactivatedAt: new Date(),
       },
     });
-    return this.formatAssistant(deactivated);
+    return await this.formatAssistant(deactivated);
   }
 
   async getTestSession(organizationId: string): Promise<VoiceTestSessionResponse> {
     const assistant = await this.requireAssistantRow(organizationId);
-    const readiness = this.computeReadiness(assistant, { forActivation: false });
+    const readiness = await this.computeReadiness(assistant, { forActivation: false });
     const warnings = buildTestSessionWarnings(assistant);
 
     if (!this.elevenLabs.isConfigured()) {
@@ -521,7 +523,7 @@ export class VoiceAssistantService {
         phoneNumber: selected.phone_number ?? assistant.phoneNumber,
         twilioPhoneNumberSid: null,
         telephonyEnabled: true,
-        connectionStatus: this.deriveConnectionStatus({
+        connectionStatus: await this.deriveConnectionStatus(organizationId, {
           ...assistant,
           pstnProvider: VoicePstnProvider.ELEVENLABS,
           elevenLabsPhoneNumberId: phoneNumberId,
@@ -533,7 +535,7 @@ export class VoiceAssistantService {
       },
     });
 
-    return this.formatAssistant(updated);
+    return await this.formatAssistant(updated);
   }
 
   private async assignTwilioPhoneNumber(
@@ -546,17 +548,19 @@ export class VoiceAssistantService {
         'Agent not provisioned. Activate the assistant before assigning a phone number.',
       );
     }
-    if (!this.twilioTelephony.isConfigured()) {
-      throw new ServiceUnavailableException('Twilio is not configured on the server.');
+    if (!(await this.twilioTelephony.isConfiguredForOrganization(organizationId))) {
+      throw new ServiceUnavailableException(
+        'Twilio subaccount is not configured for this organization.',
+      );
     }
 
-    const numbers = await this.twilioTelephony.listPhoneNumbers();
+    const numbers = await this.twilioTelephony.listPhoneNumbers(organizationId);
     const selected = numbers.find((n) => n.phoneNumberSid === phoneNumberSid);
     if (!selected) {
-      throw new BadRequestException('Phone number not found in Twilio account.');
+      throw new BadRequestException('Phone number not found in organization Twilio subaccount.');
     }
 
-    await this.twilioTelephony.configureInboundWebhooks(phoneNumberSid);
+    await this.twilioTelephony.configureInboundWebhooks(organizationId, phoneNumberSid);
 
     const updated = await this.prisma.voiceAssistant.update({
       where: { id: assistant.id },
@@ -567,7 +571,7 @@ export class VoiceAssistantService {
         phoneNumber: selected.phoneNumber ?? assistant.phoneNumber,
         elevenLabsPhoneNumberId: null,
         telephonyEnabled: true,
-        connectionStatus: this.deriveConnectionStatus({
+        connectionStatus: await this.deriveConnectionStatus(organizationId, {
           ...assistant,
           pstnProvider: VoicePstnProvider.TWILIO,
           twilioPhoneNumberSid: phoneNumberSid,
@@ -579,7 +583,7 @@ export class VoiceAssistantService {
       },
     });
 
-    return this.formatAssistant(updated);
+    return await this.formatAssistant(updated);
   }
 
   async unassignPhoneNumber(organizationId: string) {
@@ -612,7 +616,7 @@ export class VoiceAssistantService {
       },
     });
 
-    return this.formatAssistant(updated);
+    return await this.formatAssistant(updated);
   }
 
   private async unassignTwilioPhoneNumber(assistant: VoiceAssistant) {
@@ -620,11 +624,13 @@ export class VoiceAssistantService {
     if (!phoneNumberSid) {
       throw new BadRequestException('No phone number is assigned to this assistant.');
     }
-    if (!this.twilioTelephony.isConfigured()) {
-      throw new ServiceUnavailableException('Twilio is not configured on the server.');
+    if (!(await this.twilioTelephony.isConfiguredForOrganization(assistant.organizationId))) {
+      throw new ServiceUnavailableException(
+        'Twilio subaccount is not configured for this organization.',
+      );
     }
 
-    await this.twilioTelephony.clearInboundWebhooks(phoneNumberSid);
+    await this.twilioTelephony.clearInboundWebhooks(assistant.organizationId, phoneNumberSid);
 
     const updated = await this.prisma.voiceAssistant.update({
       where: { id: assistant.id },
@@ -636,7 +642,7 @@ export class VoiceAssistantService {
       },
     });
 
-    return this.formatAssistant(updated);
+    return await this.formatAssistant(updated);
   }
 
   async refreshTelephonyStatus(organizationId: string) {
@@ -644,7 +650,7 @@ export class VoiceAssistantService {
     const phoneNumbers = await this.buildPhoneNumberList(organizationId);
 
     let next = assistant;
-    const providerConfig = this.getTelephonyProviderConfig();
+    const providerConfig = await this.getTelephonyProviderConfig(organizationId);
     const assigned = phoneNumbers.find(
       (n) => n.assignedToThisAssistant && n.provider === (assistant.pstnProvider === VoicePstnProvider.TWILIO ? 'twilio' : 'elevenlabs'),
     );
@@ -672,7 +678,7 @@ export class VoiceAssistantService {
 
     const telephonyStatus = computeTelephonyStatus(next, providerConfig);
     return {
-      assistant: this.formatAssistant(next),
+      assistant: await this.formatAssistant(next),
       phoneNumbers,
       telephonyStatus,
     };
@@ -692,7 +698,7 @@ export class VoiceAssistantService {
     }
 
     if (outboundEnabled) {
-      const providerConfig = this.getTelephonyProviderConfig();
+      const providerConfig = await this.getTelephonyProviderConfig(organizationId);
       if (!isPstnProviderConfigured(assistant, providerConfig)) {
         throw new BadRequestException(
           'Telephony provider must be configured before enabling outbound calls.',
@@ -714,7 +720,7 @@ export class VoiceAssistantService {
       },
     });
 
-    return this.formatAssistant(updated);
+    return await this.formatAssistant(updated);
   }
 
   async initiateTwilioOutboundCall(organizationId: string, to: string) {
@@ -730,11 +736,13 @@ export class VoiceAssistantService {
     if (!assistant.phoneNumber?.trim()) {
       throw new BadRequestException('No Twilio caller ID is assigned to this assistant.');
     }
-    if (!this.twilioTelephony.isConfigured()) {
-      throw new ServiceUnavailableException('Twilio is not configured on the server.');
+    if (!(await this.twilioTelephony.isConfiguredForOrganization(organizationId))) {
+      throw new ServiceUnavailableException(
+        'Twilio subaccount is not configured for this organization.',
+      );
     }
 
-    const result = await this.twilioTelephony.initiateOutboundCall({
+    const result = await this.twilioTelephony.initiateOutboundCall(organizationId, {
       from: assistant.phoneNumber,
       to: to.trim(),
       twimlMessage: assistant.greetingMessage?.trim() || 'Hello from SynqDrive.',
@@ -766,7 +774,7 @@ export class VoiceAssistantService {
   getReadiness(organizationId: string): Promise<ReadinessResult> {
     return this.prisma.voiceAssistant
       .findUnique({ where: { organizationId } })
-      .then((assistant) => {
+      .then(async (assistant) => {
         if (!assistant) {
           return {
             ready: false,
@@ -774,12 +782,13 @@ export class VoiceAssistantService {
             missing: ['Voice assistant not configured'],
           };
         }
-        return this.computeReadiness(assistant, { forActivation: true });
+        return await this.computeReadiness(assistant, { forActivation: true });
       });
   }
 
   async getAdminOverview() {
-    const providerConfig = this.getTelephonyProviderConfig();
+    const elevenLabsConfigured = this.elevenLabs.isConfigured();
+    const platformTwilioConfigured = this.twilioControlPlaneTelephony.isConfigured();
     const todayStart = startOfToday();
 
     const [organizations, assistants, callsTodayGroups, lastCallGroups] = await Promise.all([
@@ -807,74 +816,73 @@ export class VoiceAssistantService {
       lastCallGroups.map((g) => [g.organizationId, g._max.startedAt]),
     );
 
-    const rows = organizations.map((org) => {
-      const assistant = assistantByOrg.get(org.id);
-      if (!assistant) {
+    const rows = await Promise.all(
+      organizations.map(async (org) => {
+        const twilioConnected = await this.twilioTelephony.isConfiguredForOrganization(org.id);
+        const providerConfig = {
+          elevenLabsConfigured,
+          twilioConfigured: twilioConnected,
+        };
+        const assistant = assistantByOrg.get(org.id);
+        if (!assistant) {
+          return {
+            organizationId: org.id,
+            organizationName: org.companyName,
+            assistantStatus: 'NOT_CONFIGURED',
+            readinessPercent: 0,
+            missingReadinessItemsCount: 0,
+            elevenLabsConnected: elevenLabsConfigured,
+            twilioConnected,
+            agentProvisioned: false,
+            telephonyEnabled: false,
+            phoneNumber: null,
+            inboundEnabled: false,
+            outboundEnabled: false,
+            totalCalls: 0,
+            callsToday: callsTodayMap.get(org.id) ?? 0,
+            escalatedCalls: 0,
+            missedCalls: 0,
+            lastCallAt: lastCallMap.get(org.id)?.toISOString() ?? null,
+            lastSyncedAt: null,
+            providerWarning: resolveProviderWarning(elevenLabsConfigured, null, null),
+            lastError: null,
+            connectionStatus: null,
+            telephonyLabel: 'Not configured',
+          };
+        }
+
+        const readiness = await this.computeReadiness(assistant, { forActivation: false });
+        const telephony = computeTelephonyStatus(assistant, providerConfig);
+
         return {
           organizationId: org.id,
           organizationName: org.companyName,
-          assistantStatus: 'NOT_CONFIGURED',
-          readinessPercent: 0,
-          missingReadinessItemsCount: 0,
-          elevenLabsConnected: providerConfig.elevenLabsConfigured,
-          twilioConnected: providerConfig.twilioConfigured,
-          agentProvisioned: false,
-          telephonyEnabled: false,
-          phoneNumber: null,
-          inboundEnabled: false,
-          outboundEnabled: false,
-          totalCalls: 0,
+          assistantStatus: assistant.status,
+          readinessPercent: readinessPercent(readiness),
+          missingReadinessItemsCount: readiness.missing.length,
+          elevenLabsConnected: elevenLabsConfigured,
+          twilioConnected,
+          agentProvisioned: Boolean(assistant.elevenLabsAgentId),
+          telephonyEnabled: assistant.telephonyEnabled,
+          phoneNumber: assistant.phoneNumber,
+          inboundEnabled: assistant.inboundEnabled,
+          outboundEnabled: assistant.outboundEnabled,
+          totalCalls: assistant.totalCalls,
           callsToday: callsTodayMap.get(org.id) ?? 0,
-          escalatedCalls: 0,
-          missedCalls: 0,
+          escalatedCalls: assistant.escalatedCalls,
+          missedCalls: assistant.missedCalls,
           lastCallAt: lastCallMap.get(org.id)?.toISOString() ?? null,
-          lastSyncedAt: null,
-          providerWarning: resolveProviderWarning(
-            providerConfig.elevenLabsConfigured,
-            null,
-            null,
-          ),
-          lastError: null,
-          connectionStatus: null,
-          telephonyLabel: 'Not configured',
+          lastSyncedAt: assistant.lastSyncedAt?.toISOString() ?? null,
+          providerWarning: resolveProviderWarning(elevenLabsConfigured, assistant, telephony),
+          lastError:
+            assistant.connectionStatus === VoiceConnectionStatus.ERROR
+              ? 'Connection status: ERROR'
+              : null,
+          connectionStatus: assistant.connectionStatus,
+          telephonyLabel: telephony.label,
         };
-      }
-
-      const readiness = this.computeReadiness(assistant, { forActivation: false });
-      const telephony = computeTelephonyStatus(assistant, providerConfig);
-
-      return {
-        organizationId: org.id,
-        organizationName: org.companyName,
-        assistantStatus: assistant.status,
-        readinessPercent: readinessPercent(readiness),
-        missingReadinessItemsCount: readiness.missing.length,
-        elevenLabsConnected: providerConfig.elevenLabsConfigured,
-        twilioConnected: providerConfig.twilioConfigured,
-        agentProvisioned: Boolean(assistant.elevenLabsAgentId),
-        telephonyEnabled: assistant.telephonyEnabled,
-        phoneNumber: assistant.phoneNumber,
-        inboundEnabled: assistant.inboundEnabled,
-        outboundEnabled: assistant.outboundEnabled,
-        totalCalls: assistant.totalCalls,
-        callsToday: callsTodayMap.get(org.id) ?? 0,
-        escalatedCalls: assistant.escalatedCalls,
-        missedCalls: assistant.missedCalls,
-        lastCallAt: lastCallMap.get(org.id)?.toISOString() ?? null,
-        lastSyncedAt: assistant.lastSyncedAt?.toISOString() ?? null,
-        providerWarning: resolveProviderWarning(
-          providerConfig.elevenLabsConfigured,
-          assistant,
-          telephony,
-        ),
-        lastError:
-          assistant.connectionStatus === VoiceConnectionStatus.ERROR
-            ? 'Connection status: ERROR'
-            : null,
-        connectionStatus: assistant.connectionStatus,
-        telephonyLabel: telephony.label,
-      };
-    });
+      }),
+    );
 
     const configuredRows = rows.filter((r) => r.assistantStatus !== 'NOT_CONFIGURED');
     const activeCount = configuredRows.filter((r) => r.assistantStatus === VoiceAssistantStatus.ACTIVE).length;
@@ -893,9 +901,9 @@ export class VoiceAssistantService {
         costTrackingConnected: false,
         costTrackingMessage: 'Cost tracking not connected yet',
       },
-      providerConfigured: providerConfig.elevenLabsConfigured || providerConfig.twilioConfigured,
-      elevenLabsConfigured: providerConfig.elevenLabsConfigured,
-      twilioConfigured: providerConfig.twilioConfigured,
+      providerConfigured: elevenLabsConfigured || platformTwilioConfigured,
+      elevenLabsConfigured,
+      twilioConfigured: platformTwilioConfigured,
     };
   }
 
@@ -934,8 +942,8 @@ export class VoiceAssistantService {
       };
     }
 
-    const providerConfig = this.getTelephonyProviderConfig();
-    const readiness = this.computeReadiness(assistant, { forActivation: false });
+    const providerConfig = await this.getTelephonyProviderConfig(orgId);
+    const readiness = await this.computeReadiness(assistant, { forActivation: false });
     const telephonyStatus = computeTelephonyStatus(assistant, providerConfig);
     const conversations = await this.listConversations(orgId, { limit: 10 });
     const providerConfigured =
@@ -972,15 +980,18 @@ export class VoiceAssistantService {
       return this.prisma.voiceAssistant.create({
         data: {
           organizationId,
-          connectionStatus: this.deriveConnectionStatus(),
+          connectionStatus: await this.deriveConnectionStatus(organizationId),
         },
       });
     }
     return assistant;
   }
 
-  private deriveConnectionStatus(assistant?: VoiceAssistant | null): VoiceConnectionStatus {
-    const config = this.getTelephonyProviderConfig();
+  private async deriveConnectionStatus(
+    organizationId: string,
+    assistant?: VoiceAssistant | null,
+  ): Promise<VoiceConnectionStatus> {
+    const config = await this.getTelephonyProviderConfig(organizationId);
     if (!config.elevenLabsConfigured) {
       return VoiceConnectionStatus.NOT_CONFIGURED;
     }
@@ -993,10 +1004,10 @@ export class VoiceAssistantService {
     return VoiceConnectionStatus.CONNECTED;
   }
 
-  private getTelephonyProviderConfig(): TelephonyProviderConfig {
+  private async getTelephonyProviderConfig(organizationId: string): Promise<TelephonyProviderConfig> {
     return {
       elevenLabsConfigured: this.elevenLabs.isConfigured(),
-      twilioConfigured: this.twilioTelephony.isConfigured(),
+      twilioConfigured: await this.twilioTelephony.isConfiguredForOrganization(organizationId),
     };
   }
 
@@ -1005,14 +1016,14 @@ export class VoiceAssistantService {
     return Boolean(assistant.fallbackMessage?.trim());
   }
 
-  private computeReadiness(
+  private async computeReadiness(
     assistant: VoiceAssistant,
     options: { forActivation: boolean },
-  ): ReadinessResult {
+  ): Promise<ReadinessResult> {
     const telephonyRequired =
       options.forActivation && isTelephonyLiveModeRequested(assistant);
 
-    const providerConfig = this.getTelephonyProviderConfig();
+    const providerConfig = await this.getTelephonyProviderConfig(assistant.organizationId);
     const elevenLabsHealth = evaluateConfiguredProviderHealth(
       providerConfig.elevenLabsConfigured,
       'ElevenLabs',
@@ -1117,12 +1128,12 @@ export class VoiceAssistantService {
     return data;
   }
 
-  private formatAssistant(assistant: VoiceAssistant) {
+  private async formatAssistant(assistant: VoiceAssistant) {
     const toolPermissions = resolveToolPermissions(assistant);
     const toolPolicy = buildToolPolicyForAssistant(assistant);
     const telephonyStatus = computeTelephonyStatus(
       assistant,
-      this.getTelephonyProviderConfig(),
+      await this.getTelephonyProviderConfig(assistant.organizationId),
     );
     return {
       ...assistant,
@@ -1145,13 +1156,13 @@ export class VoiceAssistantService {
       results.push(...mapProviderPhoneNumbers(numbers, assistant.elevenLabsAgentId));
     }
 
-    if (this.twilioTelephony.isConfigured()) {
+    if (await this.twilioTelephony.isConfiguredForOrganization(organizationId)) {
       try {
-        const twilioNumbers = await this.twilioTelephony.listPhoneNumbers();
+        const twilioNumbers = await this.twilioTelephony.listPhoneNumbers(organizationId);
         results.push(...mapTwilioProviderPhoneNumbers(twilioNumbers, assistant));
       } catch (err) {
         this.logger.warn(
-          `Twilio phone number list skipped: ${err instanceof Error ? err.message : 'unknown'}`,
+          `Twilio subaccount phone number list skipped: ${err instanceof Error ? err.message : 'unknown'}`,
         );
       }
     }

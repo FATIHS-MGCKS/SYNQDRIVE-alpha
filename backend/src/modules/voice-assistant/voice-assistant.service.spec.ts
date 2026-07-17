@@ -6,7 +6,7 @@ import {
 } from '@prisma/client';
 import { VoiceAssistantService } from './voice-assistant.service';
 import { ElevenLabsService } from './elevenlabs.service';
-import { TwilioTelephonyService } from '@modules/twilio/twilio-telephony.service';
+import { TwilioControlPlaneTelephonyService } from '@modules/twilio/twilio-control-plane.telephony.service';
 
 describe('VoiceAssistantService', () => {
   const prisma = {
@@ -40,12 +40,17 @@ describe('VoiceAssistantService', () => {
   };
 
   const twilioTelephony = {
-    isConfigured: jest.fn(),
+    isConfiguredForOrganization: jest.fn(),
     listPhoneNumbers: jest.fn(),
     configureInboundWebhooks: jest.fn(),
     clearInboundWebhooks: jest.fn(),
     initiateOutboundCall: jest.fn(),
     resolveVoiceWebhookUrls: jest.fn(),
+  };
+
+  const twilioControlPlaneTelephony = {
+    isConfigured: jest.fn(),
+    listParentPhoneNumbers: jest.fn(),
   };
 
   let service: VoiceAssistantService;
@@ -120,11 +125,13 @@ describe('VoiceAssistantService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     elevenLabs.isConfigured.mockReturnValue(true);
-    twilioTelephony.isConfigured.mockReturnValue(false);
+    twilioTelephony.isConfiguredForOrganization.mockResolvedValue(false);
+    twilioControlPlaneTelephony.isConfigured.mockReturnValue(false);
     service = new VoiceAssistantService(
       prisma as any,
       elevenLabs as any,
       twilioTelephony as any,
+      twilioControlPlaneTelephony as any,
     );
   });
 

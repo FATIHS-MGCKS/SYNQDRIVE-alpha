@@ -38,10 +38,14 @@ describe('VoiceAssistantService characterization', () => {
   };
 
   const twilioTelephony = {
-    isConfigured: jest.fn(),
+    isConfiguredForOrganization: jest.fn(),
     listPhoneNumbers: jest.fn(),
     initiateOutboundCall: jest.fn(),
     configureInboundWebhooks: jest.fn(),
+  };
+
+  const twilioControlPlaneTelephony = {
+    isConfigured: jest.fn(),
   };
 
   let service: VoiceAssistantService;
@@ -116,11 +120,13 @@ describe('VoiceAssistantService characterization', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     elevenLabs.isConfigured.mockReturnValue(true);
-    twilioTelephony.isConfigured.mockReturnValue(false);
+    twilioTelephony.isConfiguredForOrganization.mockResolvedValue(false);
+    twilioControlPlaneTelephony.isConfigured.mockReturnValue(false);
     service = new VoiceAssistantService(
       prisma as never,
       elevenLabs as never,
       twilioTelephony as never,
+      twilioControlPlaneTelephony as never,
     );
   });
 
@@ -131,7 +137,7 @@ describe('VoiceAssistantService characterization', () => {
         pstnProvider: VoicePstnProvider.TWILIO,
       });
       elevenLabs.isConfigured.mockReturnValue(true);
-      twilioTelephony.isConfigured.mockReturnValue(false);
+      twilioTelephony.isConfiguredForOrganization.mockResolvedValue(false);
 
       const readiness = await service.getReadiness('org-1');
       const elevenCheck = readiness.checks.find((c) => c.key === 'elevenlabs');
@@ -160,7 +166,7 @@ describe('VoiceAssistantService characterization', () => {
         connectionStatus: VoiceConnectionStatus.NOT_CONFIGURED,
       }));
       elevenLabs.isConfigured.mockReturnValue(false);
-      twilioTelephony.isConfigured.mockReturnValue(false);
+      twilioTelephony.isConfiguredForOrganization.mockResolvedValue(false);
 
       const assistant = await service.getOrCreateAssistantForOrg('org-1');
       expect(assistant.connectionStatus).toBe('NOT_CONFIGURED');
@@ -176,7 +182,7 @@ describe('VoiceAssistantService characterization', () => {
 
     it('swallows Twilio list failure and still returns ElevenLabs numbers (current behavior)', async () => {
       prisma.voiceAssistant.findUnique.mockResolvedValue(baseAssistant);
-      twilioTelephony.isConfigured.mockReturnValue(true);
+      twilioTelephony.isConfiguredForOrganization.mockResolvedValue(true);
       twilioTelephony.listPhoneNumbers.mockRejectedValue(new BadGatewayException('Twilio down'));
       elevenLabs.listPhoneNumbers.mockResolvedValue([
         { phone_number_id: 'pn-1', phone_number: '+49111', label: 'EL' },
@@ -277,7 +283,7 @@ describe('VoiceAssistantService characterization', () => {
         outboundEnabled: true,
         phoneNumber: '+49111111111',
       });
-      twilioTelephony.isConfigured.mockReturnValue(true);
+      twilioTelephony.isConfiguredForOrganization.mockResolvedValue(true);
       twilioTelephony.initiateOutboundCall.mockResolvedValue({ callSid: 'CA-out-1' });
       prisma.voiceConversation.create.mockResolvedValue({ id: 'conv-out-1' });
 

@@ -5,22 +5,33 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { HttpException } from '@nestjs/common/exceptions/http.exception';
 import { VoicePstnProvider } from '@prisma/client';
-import { TwilioService } from './twilio.service';
+import { TwilioTenantClientFactory } from './twilio-tenant-client.factory';
+import { TwilioProviderError, TwilioProviderErrorCode } from './errors/twilio-provider.errors';
+import {
+  mapTwilioSdkError,
+  sanitizeTwilioLogMessage,
+  toHttpSafeProviderMessage,
+} from './errors/twilio-provider-error.mapper';
 import { TwilioPhoneNumberRecord } from './twilio.types';
 import {
   buildTwilioWebhookUrl,
 } from './twilio-signature.util';
 import { buildOutboundVoiceTwiml } from './twilio-voice-twiml.util';
+import { TwilioService } from './twilio.service';
 
 @Injectable()
 export class TwilioTelephonyService {
   private readonly logger = new Logger(TwilioTelephonyService.name);
 
-  constructor(private readonly twilio: TwilioService) {}
+  constructor(
+    private readonly tenantClientFactory: TwilioTenantClientFactory,
+    private readonly twilio: TwilioService,
+  ) {}
 
-  isConfigured(): boolean {
-    return this.twilio.isConfigured();
+  async isConfiguredForOrganization(organizationId: string): Promise<boolean> {
+    return this.tenantClientFactory.isConfiguredForOrganization(organizationId);
   }
 
   resolveVoiceWebhookUrls(): { voiceUrl: string; statusUrl: string } | null {
@@ -34,12 +45,8 @@ export class TwilioTelephonyService {
     };
   }
 
-  async listPhoneNumbers(): Promise<TwilioPhoneNumberRecord[]> {
-    const client = this.twilio.getClient();
-    if (!client) {
-      return [];
-    }
-
+  async listPhoneNumbers(organizationId: string): Promise<TwilioPhoneNumberRecord[]> {
+    const client = await this.tenantClientFactory.getClientForOrganization(organizationId);
     try {
       const rows = await client.incomingPhoneNumbers.list({ limit: 100 });
       return rows.map((row) => ({
@@ -50,18 +57,13 @@ export class TwilioTelephonyService {
         statusCallback: row.statusCallback ?? null,
       }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown Twilio error';
-      this.logger.warn(`Twilio listPhoneNumbers failed: ${message}`);
-      throw new BadGatewayException(`Twilio phone number list failed: ${message}`);
+      return this.handleProviderError(organizationId, 'listPhoneNumbers', err);
     }
   }
 
-  async configureInboundWebhooks(phoneNumberSid: string): Promise<void> {
-    const client = this.twilio.getClient();
+  async configureInboundWebhooks(organizationId: string, phoneNumberSid: string): Promise<void> {
+    const client = await this.tenantClientFactory.getClientForOrganization(organizationId);
     const urls = this.resolveVoiceWebhookUrls();
-    if (!client) {
-      throw new ServiceUnavailableException('Twilio is not configured on the server.');
-    }
     if (!urls) {
       throw new BadRequestException(
         'TWILIO_VOICE_WEBHOOK_BASE_URL is not configured. Set the public app base URL for voice webhooks.',
@@ -76,40 +78,32 @@ export class TwilioTelephonyService {
         statusCallbackMethod: 'POST',
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown Twilio error';
-      this.logger.warn(`Twilio configureInboundWebhooks failed: ${message}`);
-      throw new BadGatewayException(`Twilio webhook configuration failed: ${message}`);
+      return this.handleProviderError(organizationId, 'configureInboundWebhooks', err);
     }
   }
 
-  async clearInboundWebhooks(phoneNumberSid: string): Promise<void> {
-    const client = this.twilio.getClient();
-    if (!client) {
-      throw new ServiceUnavailableException('Twilio is not configured on the server.');
-    }
-
+  async clearInboundWebhooks(organizationId: string, phoneNumberSid: string): Promise<void> {
+    const client = await this.tenantClientFactory.getClientForOrganization(organizationId);
     try {
       await client.incomingPhoneNumbers(phoneNumberSid).update({
         voiceUrl: '',
         statusCallback: '',
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown Twilio error';
-      this.logger.warn(`Twilio clearInboundWebhooks failed: ${message}`);
-      throw new BadGatewayException(`Twilio webhook clear failed: ${message}`);
+      return this.handleProviderError(organizationId, 'clearInboundWebhooks', err);
     }
   }
 
-  async initiateOutboundCall(params: {
-    from: string;
-    to: string;
-    twimlMessage: string;
-  }): Promise<{ callSid: string }> {
-    const client = this.twilio.getClient();
+  async initiateOutboundCall(
+    organizationId: string,
+    params: {
+      from: string;
+      to: string;
+      twimlMessage: string;
+    },
+  ): Promise<{ callSid: string }> {
+    const client = await this.tenantClientFactory.getClientForOrganization(organizationId);
     const urls = this.resolveVoiceWebhookUrls();
-    if (!client) {
-      throw new ServiceUnavailableException('Twilio is not configured on the server.');
-    }
     if (!urls) {
       throw new BadRequestException('TWILIO_VOICE_WEBHOOK_BASE_URL is not configured.');
     }
@@ -124,13 +118,27 @@ export class TwilioTelephonyService {
       });
       return { callSid: call.sid };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown Twilio error';
-      this.logger.warn(`Twilio initiateOutboundCall failed: ${message}`);
-      throw new BadGatewayException(`Twilio outbound call failed: ${message}`);
+      return this.handleProviderError(organizationId, 'initiateOutboundCall', err);
     }
   }
 
   static pstnProviderLabel(provider: VoicePstnProvider): 'elevenlabs' | 'twilio' {
     return provider === VoicePstnProvider.TWILIO ? 'twilio' : 'elevenlabs';
+  }
+
+  private handleProviderError(organizationId: string, operation: string, err: unknown): never {
+    if (err instanceof HttpException) {
+      throw err;
+    }
+    const mapped = err instanceof TwilioProviderError ? err : mapTwilioSdkError(err);
+    const safeMessage = sanitizeTwilioLogMessage(mapped.message);
+    this.tenantClientFactory.logProviderFailure(organizationId, operation, mapped);
+    this.logger.warn(
+      `Twilio tenant ${operation} failed for org ${organizationId}: ${safeMessage}`,
+    );
+    if (mapped.code === TwilioProviderErrorCode.INVALID_CONFIGURATION) {
+      throw new ServiceUnavailableException(toHttpSafeProviderMessage(mapped));
+    }
+    throw new BadGatewayException(toHttpSafeProviderMessage(mapped));
   }
 }

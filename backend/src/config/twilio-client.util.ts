@@ -6,8 +6,6 @@ import {
   TWILIO_DEFAULT_REGION,
 } from './twilio.config';
 
-let twilioSingleton: Twilio | null = null;
-
 export interface TwilioClientOptions {
   accountSid?: string;
   apiKeySid?: string;
@@ -17,11 +15,32 @@ export interface TwilioClientOptions {
 }
 
 /**
- * Lazy Twilio REST client factory. Does not perform network I/O until an API
- * method is invoked. Returns null when credentials are incomplete.
- *
- * SynqDrive EU routing: region `ie1` requires edge `dublin`; API keys must be
- * created in the IE1 region. Do not configure region and edge independently.
+ * Creates an isolated Twilio REST client instance. Does not perform network I/O
+ * until an API method is invoked.
+ */
+export function createTwilioClient(options: TwilioClientOptions): Twilio | null {
+  const accountSid = options.accountSid?.trim();
+  const apiKeySid = options.apiKeySid?.trim();
+  const apiKeySecret = options.apiKeySecret?.trim();
+  const region = options.region?.trim() || TWILIO_DEFAULT_REGION;
+  const edge = options.edge?.trim() || TWILIO_DEFAULT_EDGE;
+
+  if (!accountSid || !apiKeySid || !apiKeySecret) {
+    return null;
+  }
+
+  return twilio(apiKeySid, apiKeySecret, {
+    accountSid,
+    region,
+    edge,
+  });
+}
+
+let legacyControlPlaneSingleton: Twilio | null = null;
+
+/**
+ * @deprecated Prefer TwilioControlPlaneClient or TwilioTenantClientFactory.
+ * Retained for backward-compatible import tests; uses a control-plane singleton.
  */
 export function getTwilioClient(options?: TwilioClientOptions): Twilio | null {
   const accountSid =
@@ -43,17 +62,19 @@ export function getTwilioClient(options?: TwilioClientOptions): Twilio | null {
     return null;
   }
 
-  if (!twilioSingleton) {
-    twilioSingleton = twilio(apiKeySid, apiKeySecret, {
+  if (!legacyControlPlaneSingleton) {
+    legacyControlPlaneSingleton = createTwilioClient({
       accountSid,
+      apiKeySid,
+      apiKeySecret,
       region,
       edge,
     });
   }
 
-  return twilioSingleton;
+  return legacyControlPlaneSingleton;
 }
 
 export function resetTwilioClientForTests(): void {
-  twilioSingleton = null;
+  legacyControlPlaneSingleton = null;
 }

@@ -37,10 +37,14 @@ describe('VoiceAssistant admin characterization', () => {
   };
 
   const twilioTelephony = {
-    isConfigured: jest.fn(),
+    isConfiguredForOrganization: jest.fn(),
     listPhoneNumbers: jest.fn(),
     initiateOutboundCall: jest.fn(),
     configureInboundWebhooks: jest.fn(),
+  };
+
+  const twilioControlPlaneTelephony = {
+    isConfigured: jest.fn(),
   };
 
   let service: VoiceAssistantService;
@@ -115,11 +119,13 @@ describe('VoiceAssistant admin characterization', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     elevenLabs.isConfigured.mockReturnValue(true);
-    twilioTelephony.isConfigured.mockReturnValue(false);
+    twilioTelephony.isConfiguredForOrganization.mockResolvedValue(false);
+    twilioControlPlaneTelephony.isConfigured.mockReturnValue(false);
     service = new VoiceAssistantService(
       prisma as never,
       elevenLabs as never,
       twilioTelephony as never,
+      twilioControlPlaneTelephony as never,
     );
   });
 
@@ -228,12 +234,12 @@ describe('VoiceAssistant admin characterization', () => {
       prisma.voiceAssistant.findMany.mockResolvedValue([]);
       prisma.voiceConversation.groupBy.mockResolvedValue([]);
       elevenLabs.isConfigured.mockReturnValue(false);
-      twilioTelephony.isConfigured.mockReturnValue(true);
+      twilioTelephony.isConfiguredForOrganization.mockResolvedValue(true);
 
       const overview = await service.getAdminOverview();
 
       expect(overview.elevenLabsConfigured).toBe(false);
-      expect(overview.twilioConfigured).toBe(true);
+      expect(overview.twilioConfigured).toBe(false);
       expect(overview.assistants[0].elevenLabsConnected).toBe(false);
       expect(overview.assistants[0].twilioConnected).toBe(true);
     });

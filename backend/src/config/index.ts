@@ -17,7 +17,7 @@ export {
   TWILIO_DEFAULT_EDGE,
   TWILIO_DEFAULT_REGION,
 } from './twilio.config';
-export { getTwilioClient, resetTwilioClientForTests } from './twilio-client.util';
+export { createTwilioClient, getTwilioClient, resetTwilioClientForTests } from './twilio-client.util';
 export type { TwilioClientOptions } from './twilio-client.util';
 export { default as aiConfig } from './ai.config';
 export type { AiProviderId } from './ai.config';
