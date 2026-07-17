@@ -20,6 +20,8 @@ import {
   DocumentStoragePort,
 } from './storage/document-storage.interface';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
+import { DocumentActionOrchestratorService } from './document-action-orchestrator.service';
+import { isArchiveDocumentType } from './document-archive-extraction.rules';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import {
   ApplyDocumentExtractionType,
@@ -152,6 +154,7 @@ const APPLY_ALIAS_KEYS = new Set<string>([
   'applyConfirmed',
   'documentKind',
   'linkedDamageId',
+  'acceptedEntityLinks',
   'locationLabel',
   'locationView',
   'measurementDate',
@@ -271,6 +274,7 @@ export class DocumentExtractionService implements OnModuleInit {
     @Inject(DOCUMENT_STORAGE) private readonly storage: DocumentStoragePort,
     @InjectQueue(QUEUE_NAMES.DOCUMENT_EXTRACTION) private readonly queue: Queue,
     private readonly applyService: DocumentExtractionApplyService,
+    private readonly actionOrchestrator: DocumentActionOrchestratorService,
     private readonly plausibilityService: DocumentExtractionPlausibilityService,
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
@@ -855,13 +859,27 @@ export class DocumentExtractionService implements OnModuleInit {
 
     let applyResult: Awaited<ReturnType<DocumentExtractionApplyService['apply']>>;
     try {
-      applyResult = await this.applyService.apply({
-        extractionId,
-        vehicleId,
-        documentType: applyDocumentType,
-        sourceFileUrl,
-        confirmedData,
-      });
+      if (this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
+        applyResult = await this.actionOrchestrator.executeConfirmedPlan({
+          extractionId,
+          organizationId: existing.organizationId ?? null,
+          vehicleId,
+          documentType: applyDocumentType,
+          sourceFileUrl,
+          confirmedData,
+          confirmedById: userId ?? null,
+          plausibilityChecks: plausibility.checks,
+          plausibility: plausibilityWithConfirmAudit,
+        });
+      } else {
+        applyResult = await this.applyService.apply({
+          extractionId,
+          vehicleId,
+          documentType: applyDocumentType,
+          sourceFileUrl,
+          confirmedData,
+        });
+      }
       this.observability.recordApply('success');
       this.observability.logEvent({
         extractionId,
@@ -934,13 +952,24 @@ export class DocumentExtractionService implements OnModuleInit {
       (record.objectKey ? `storage://${record.objectKey}` : null);
 
     try {
-      const applyResult = await this.applyService.apply({
-        extractionId,
-        vehicleId: record.vehicleId,
-        documentType: applyDocumentType,
-        sourceFileUrl,
-        confirmedData: record.confirmedData as Record<string, unknown>,
-      });
+      const confirmedData = record.confirmedData as Record<string, unknown>;
+      const applyResult = this.actionOrchestrator.supportsExecutorPath(applyDocumentType)
+        ? await this.actionOrchestrator.executeConfirmedPlan({
+            extractionId,
+            organizationId: record.organizationId ?? null,
+            vehicleId: record.vehicleId,
+            documentType: applyDocumentType,
+            sourceFileUrl,
+            confirmedData,
+            plausibility: record.plausibility,
+          })
+        : await this.applyService.apply({
+            extractionId,
+            vehicleId: record.vehicleId,
+            documentType: applyDocumentType,
+            sourceFileUrl,
+            confirmedData,
+          });
       await this.prisma.vehicleDocumentExtraction.updateMany({
         where: { id: extractionId, status: 'CONFIRMED' },
         data: {

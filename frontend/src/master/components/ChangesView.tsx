@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-action-executor-2026-07-17',
+    version: '4.9.611',
+    title: 'V4.9.611 — Document Intake V2 Action Executor Framework (ARCHIVE + LINK)',
+    summary: [
+      'Gemeinsames DocumentActionExecutor-Framework: je Executor genau ein Action-Typ, Registry statt monolithischer apply()-Verzweigung.',
+      'Orchestrator validiert Planversion + Fingerprint, prüft Idempotency Key, führt REQUIRED/OPTIONAL/INFORMATIONAL getrennt aus, speichert Result Entity ID und Actionstatus auditierbar in plausibility._pipeline.',
+      'ArchiveDocumentActionExecutor (ARCHIVE_DOCUMENT) und LinkEntityDocumentActionExecutor (SUGGEST_ENTITY_LINK) als erste Implementierungen.',
+      'Confirm/Apply für OTHER und VEHICLE_CONDITION läuft über DocumentActionOrchestratorService; andere Typen weiterhin über DocumentExtractionApplyService.',
+      'Strukturierte Fehler: DocumentActionBusinessError, DocumentActionTechnicalError, DocumentActionPlanError.',
+    ],
+    reason: 'Prompt 36/84: Action-Plan-Ausführung von monolithischem Apply entkoppeln und idempotent auditierbar machen.',
+    previousBehavior:
+      'Archive-Apply lief direkt über applyArchiveDocument() ohne Action-Plan-Validierung, Idempotency pro Action oder Executor-Registry.',
+    details:
+      'Backend: document-action.types.ts, document-action-plan.*, document-action-executor.*, document-action-orchestrator.service.ts, executors/archive + link. Architektur: DOCUMENT_ACTION_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T17:10:00.000Z',
+  },
+  {
     id: 'document-plausibility-consistency-2026-07-17',
     version: '4.9.610',
     title: 'V4.9.610 — Document Intake V2 Cross-Type Plausibility Consistency & Action Plan Gating',

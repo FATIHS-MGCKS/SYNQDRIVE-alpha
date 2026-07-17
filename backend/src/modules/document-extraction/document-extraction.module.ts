@@ -11,6 +11,10 @@ import { DocumentExtractionMetadataController } from './document-extraction-meta
 import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentExtractionMetadataService } from './document-extraction-metadata.service';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
+import { DocumentActionOrchestratorService } from './document-action-orchestrator.service';
+import { DocumentActionExecutorRegistry } from './document-action-executor.registry';
+import { ArchiveDocumentActionExecutor } from './executors/archive-document-action.executor';
+import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentContentExtractorService } from './document-content-extractor.service';
 import { DocumentFileIdentificationService } from './document-file-identification.service';
@@ -47,6 +51,10 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     DocumentExtractionService,
     DocumentExtractionMetadataService,
     DocumentExtractionApplyService,
+    DocumentActionOrchestratorService,
+    DocumentActionExecutorRegistry,
+    ArchiveDocumentActionExecutor,
+    LinkEntityDocumentActionExecutor,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,
