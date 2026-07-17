@@ -4,5 +4,6 @@ export interface UseDocumentExtractionFlowOptions {
   locale?: string;
   /** Form field `source` on multipart upload (e.g. operator_app, documents_tab). */
   uploadSource?: string;
+  sourceSurface?: string;
   onComplete?: () => void;
 }

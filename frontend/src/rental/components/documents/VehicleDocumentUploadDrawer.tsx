@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
+import { buildOriginContextHint } from '../../../lib/document-upload-context';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
 import {
   DOC_TYPE_LABELS,
-  EXTRACTION_TEMPLATES,
   FLOW_STATUS_LABEL_DE,
 } from './document-extraction.shared';
 import { DocumentExtractionFlowStatus } from './DocumentExtractionFlowStatus';
 import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
+import { DocumentIntakeUploadZone } from './DocumentIntakeUploadZone';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
-import { CATEGORY_TO_DOC_TYPE } from './vehicle-file.constants';
 
 export type DocumentDrawerMode = 'upload' | 'review' | 'view';
 
@@ -32,24 +32,27 @@ export function VehicleDocumentUploadDrawer({
   onOpenChange,
   vehicleId,
   vehicleLabel,
-  categoryId,
   mode = 'upload',
   extractionId: initialExtractionId,
   fileName,
   onComplete,
 }: VehicleDocumentUploadDrawerProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const initialDocType = categoryId ? CATEGORY_TO_DOC_TYPE[categoryId] : 'SERVICE';
-
   const handleComplete = useCallback(() => {
     onComplete?.();
   }, [onComplete]);
 
   const flow = useDocumentExtractionFlow({
     vehicleId,
-    initialDocType,
+    initialDocType: 'AUTO',
+    uploadSource: 'documents_tab',
+    sourceSurface: 'vehicle_detail',
     onComplete: handleComplete,
   });
+
+  const originContextHint = useMemo(
+    () => buildOriginContextHint(vehicleLabel, 'Fahrzeugdetail'),
+    [vehicleLabel],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -60,10 +63,9 @@ export function VehicleDocumentUploadDrawer({
       void flow.openReview(initialExtractionId, fileName);
     } else {
       flow.handleReset();
-      flow.setDocumentType(initialDocType);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open/mode driven
-  }, [open, mode, initialExtractionId, initialDocType, fileName]);
+  }, [open, mode, initialExtractionId, fileName]);
 
   const close = () => onOpenChange(false);
 
@@ -111,7 +113,7 @@ export function VehicleDocumentUploadDrawer({
       onOpenChange={onOpenChange}
       eyebrow="AI Document Upload"
       title={mode === 'review' ? 'Dokument prüfen' : mode === 'view' ? 'Dokument ansehen' : 'Dokument hochladen'}
-      description={vehicleLabel}
+      description="KI-gestützter Dokumenten-Upload"
       widthClassName="sm:max-w-xl"
       status={
         <StatusChip tone={flow.flow === 'failed' ? 'critical' : flow.flow === 'duplicate_blocked' ? 'watch' : flow.flow === 'ready' ? 'watch' : 'info'}>
@@ -122,52 +124,24 @@ export function VehicleDocumentUploadDrawer({
     >
       <div className="space-y-4">
         {mode === 'upload' && flow.flow === 'idle' && (
-          <>
-            <div>
-              <label className="sq-section-label mb-1.5 block">Dokumenttyp</label>
-              <select
-                value={flow.documentType}
-                onChange={(e) => flow.setDocumentType(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-[12px] font-medium text-foreground"
-              >
-                {Object.keys(EXTRACTION_TEMPLATES).map((k) => (
-                  <option key={k} value={k}>
-                    {DOC_TYPE_LABELS[k] || k}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const f = e.dataTransfer.files?.[0];
-                if (f) void flow.handleFile(f);
-              }}
-              className="surface-elevated cursor-pointer rounded-xl border-2 border-dashed border-border/80 bg-muted/20 p-8 text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept={flow.acceptAttr}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void flow.handleFile(f);
-                }}
-              />
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl sq-tone-brand">
-                <Icon name="upload" className="w-5 h-5" />
-              </div>
-              <p className="text-[13px] font-semibold text-foreground">Datei hier ablegen oder klicken</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">PDF, JPG, PNG, WebP, TXT · max. 10 MB</p>
-            </div>
-          </>
+          <DocumentIntakeUploadZone
+            acceptAttr={flow.acceptAttr}
+            supportedFormatsLabel={
+              flow.metadata
+                ? `${(flow.metadata.extensions ?? []).map((e) => e.replace(/^\./, '').toUpperCase()).join(', ')} · max. ${flow.metadata.maxUploadMb ?? 10} MB`
+                : 'PDF, JPG, PNG, WebP, TXT · max. 10 MB'
+            }
+            onFilesSelected={(files) => {
+              const file = Array.from(files)[0];
+              if (file) void flow.handleFile(file);
+            }}
+            dropzoneLabel="Datei hier ablegen oder klicken"
+            dropzoneActiveLabel="Datei hier ablegen..."
+            browseLabel="Datei auswählen"
+            validationError={flow.validationError}
+            contextHint={originContextHint}
+            compact
+          />
         )}
 
         <DocumentExtractionFlowStatus

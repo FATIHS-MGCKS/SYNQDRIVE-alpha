@@ -4,11 +4,17 @@ import type { FlowStatus, Plausibility, ReviewField } from '../components/docume
 export type DocumentIntakeFlowMode = 'embedded' | 'page';
 
 export interface UseDocumentIntakeFlowOptions {
-  vehicleId: string;
+  /** Empty for org inbox upload (page mode); required for embedded vehicle flows. */
+  vehicleId?: string;
   orgId?: string | null;
+  /** Internal default AUTO — not shown as a required pre-upload field. */
   initialDocType?: string;
   locale?: string;
   uploadSource?: string;
+  /** Optional origin context for org upload (unconfirmed hint only). */
+  optionalContextType?: string;
+  optionalContextId?: string;
+  sourceSurface?: string;
   mode?: DocumentIntakeFlowMode;
   /** Keep polling after confirm until APPLIED / terminal failure */
   pollThroughApply?: boolean;

@@ -23,9 +23,15 @@ function fileExtension(name: string): string {
 export function validateUploadFile(
   file: File | null | undefined,
   metadata: Pick<DocumentExtractionMetadata, 'extensions' | 'mimeTypes' | 'maxUploadBytes'> | null,
-  opts?: { vehicleSelected?: boolean; allowMultiple?: boolean; fileCount?: number },
+  opts?: {
+    vehicleSelected?: boolean;
+    requireVehicle?: boolean;
+    allowMultiple?: boolean;
+    fileCount?: number;
+  },
 ): UploadValidationResult {
-  if (!opts?.vehicleSelected) return { ok: false, code: 'NO_VEHICLE' };
+  const requireVehicle = opts?.requireVehicle ?? true;
+  if (requireVehicle && !opts?.vehicleSelected) return { ok: false, code: 'NO_VEHICLE' };
   if (!file) return { ok: false, code: 'NO_FILE' };
   if ((opts.fileCount ?? 1) > 1 && !opts.allowMultiple) return { ok: false, code: 'MULTIPLE_FILES' };
   if (file.size === 0) return { ok: false, code: 'EMPTY_FILE' };

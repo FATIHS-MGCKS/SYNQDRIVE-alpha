@@ -32,3 +32,8 @@ export function hasUploadContextConflict(
 ): boolean {
   return uploadContext?.resolverStatus === 'CONFLICT';
 }
+
+/** Static drawer/page hint before OCR — never presented as confirmed assignment. */
+export function buildOriginContextHint(entityLabel: string, surfaceLabel: string): string {
+  return `Aufgerufen aus ${entityLabel} (${surfaceLabel}) – noch nicht bestätigt`;
+}

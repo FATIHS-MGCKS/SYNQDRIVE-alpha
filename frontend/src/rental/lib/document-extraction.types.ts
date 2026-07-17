@@ -350,7 +350,8 @@ export interface DocumentExtractionListResponse {
 }
 
 export interface ActiveExtractionPointer {
-  vehicleId: string;
+  orgId: string;
   extractionId: string;
+  vehicleId?: string | null;
   updatedAt: string;
 }

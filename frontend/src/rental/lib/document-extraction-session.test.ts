@@ -18,12 +18,17 @@ describe('document-extraction session recovery', () => {
   });
 
   it('round-trips active extraction pointer', () => {
-    writeActiveExtractionPointer({ vehicleId: 'v1', extractionId: 'ext-1' });
-    expect(readActiveExtractionPointer()).toEqual({ vehicleId: 'v1', extractionId: 'ext-1' });
+    writeActiveExtractionPointer({ orgId: 'org-1', vehicleId: 'v1', extractionId: 'ext-1', updatedAt: '2026-07-17T00:00:00.000Z' });
+    expect(readActiveExtractionPointer()).toEqual({
+      orgId: 'org-1',
+      vehicleId: 'v1',
+      extractionId: 'ext-1',
+      updatedAt: '2026-07-17T00:00:00.000Z',
+    });
   });
 
   it('clears pointer when null', () => {
-    writeActiveExtractionPointer({ vehicleId: 'v1', extractionId: 'ext-1' });
+    writeActiveExtractionPointer({ orgId: 'org-1', vehicleId: 'v1', extractionId: 'ext-1', updatedAt: '2026-07-17T00:00:00.000Z' });
     writeActiveExtractionPointer(null);
     expect(readActiveExtractionPointer()).toBeNull();
   });

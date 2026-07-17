@@ -49,6 +49,7 @@ describe('canonical intake wiring', () => {
     expect(src).toContain('useDocumentExtractionFlow');
     expect(src).toContain('DocumentExtractionReviewPanel');
     expect(src).toContain('DocumentExtractionFlowStatus');
+    expect(src).toContain('DocumentIntakeUploadZone');
   });
 
   it('page delegates to useDocumentUploadPage and shared review panel', () => {

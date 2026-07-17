@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatUploadContextBanner, hasUploadContextConflict } from './document-upload-context';
+import { buildOriginContextHint, formatUploadContextBanner, hasUploadContextConflict } from './document-upload-context';
 
 describe('document-upload-context', () => {
   const base = {
@@ -23,5 +23,11 @@ describe('document-upload-context', () => {
   it('detects resolver conflict state', () => {
     expect(hasUploadContextConflict({ ...base, resolverStatus: 'CONFLICT' })).toBe(true);
     expect(hasUploadContextConflict({ ...base, resolverStatus: 'ALIGNED' })).toBe(false);
+  });
+
+  it('builds static origin hint with unconfirmed suffix', () => {
+    expect(buildOriginContextHint('BMW 320d', 'Fahrzeugdetail')).toBe(
+      'Aufgerufen aus BMW 320d (Fahrzeugdetail) – noch nicht bestätigt',
+    );
   });
 });

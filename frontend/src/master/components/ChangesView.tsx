@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-initial-ux-2026-07-17',
+    version: '4.9.641',
+    title: 'V4.9.641 — Document Intake Initial UX (upload-first)',
+    summary: [
+      'Initialzustand upload-first: Uploadzone, Dateiauswahl und Formathinweise sofort aktiv.',
+      'Dokumenttyp, Fahrzeug, Buchung, Kunde, Fahrer, extrahierte Felder und Actions erst nach OCR sichtbar.',
+      'AUTO intern als Standard; kein Auto-Select des ersten Fahrzeugs; Drawer-Kontext nur als unbestätigter Hinweis.',
+      'Org-Upload API im Frontend verdrahtet; Page pollt ohne Pflicht-Fahrzeug vor Upload.',
+      'DocumentIntakeUploadZone + Frontend-Tests für Initialzustände.',
+    ],
+    reason:
+      'Nutzer sollen sofort hochladen können, ohne leere Formulare oder vorab bestätigte Zuordnungen.',
+    previousBehavior:
+      'DocumentUploadView verlangte Fahrzeugwahl vor Upload; Drawer zeigte Dokumenttyp-Dropdown im Idle-Zustand.',
+    details: 'architecture/DOCUMENT_INTAKE_INITIAL_UX_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T10:00:00.000Z',
+  },
+  {
     id: 'document-intake-unified-flow-2026-07-17',
     version: '4.9.640',
     title: 'V4.9.640 — Document Intake Unified Flow (canonical hook)',
