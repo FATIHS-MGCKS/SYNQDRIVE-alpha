@@ -196,6 +196,46 @@ enum StationType {
   TEMPORARY
 }
 
+enum StationCoordinatesSource {
+  MANUAL
+  FORWARD_GEOCODE
+  MAPBOX_RETRIEVE
+
+  @@map("station_coordinates_source")
+}
+
+enum StationCalendarExceptionType {
+  STATION_CLOSURE
+  SPECIAL_OPENING
+  MODIFIED_HOURS
+  REGIONAL_HOLIDAY
+  OPERATIONAL_EXCEPTION
+
+  @@map("station_calendar_exception_type")
+}
+
+enum StationCalendarRecurrenceKind {
+  NONE
+  YEARLY
+
+  @@map("station_calendar_recurrence_kind")
+}
+
+enum StationCalendarExceptionSource {
+  MANUAL
+  LEGACY_HOLIDAY_RULES
+  IMPORT
+
+  @@map("station_calendar_exception_source")
+}
+
+enum StationCalendarExceptionStatus {
+  ACTIVE
+  CANCELLED
+
+  @@map("station_calendar_exception_status")
+}
+
 enum ProductSlug {
   RENTAL
   FLEET
@@ -1393,6 +1433,7 @@ model Organization {
   memberships                       OrganizationMembership[]
   organizationProducts              OrganizationProduct[]
   stations                          Station[]
+  stationCalendarExceptions         StationCalendarException[]
   vehicles                          Vehicle[]
   brakeComponentInstallations       BrakeComponentInstallation[]
   brakeServiceApplications          BrakeServiceApplication[]
@@ -1761,6 +1802,8 @@ model Station {
   country                 String?
   latitude                Float?
   longitude               Float?
+  coordinatesSource       StationCoordinatesSource? @map("coordinates_source")
+  coordinatesConfirmedAt  DateTime?     @map("coordinates_confirmed_at")
   timezone                String?       @default("Europe/Berlin")
   radiusMeters            Int?          @default(100) @map("radius_meters")
   phone                   String?
@@ -1779,6 +1822,8 @@ model Station {
   internalNotes           String?       @map("internal_notes")
   googlePlaceId           String?       @map("google_place_id")
   archivedAt              DateTime?     @map("archived_at")
+  archivedCapabilitiesSnapshot Json?      @map("archived_capabilities_snapshot")
+  lifecycleMetadata       Json?         @map("lifecycle_metadata")
   createdAt               DateTime      @default(now()) @map("created_at")
   updatedAt               DateTime      @updatedAt @map("updated_at")
 
@@ -1791,11 +1836,44 @@ model Station {
   actualPickupBookings   Booking[]               @relation("BookingActualPickupStation")
   actualReturnBookings   Booking[]               @relation("BookingActualReturnStation")
   userAccountPreferences UserAccountPreference[]
+  calendarExceptions     StationCalendarException[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
   @@index([organizationId, status])
   @@map("stations")
+}
+
+model StationCalendarException {
+  id                String                         @id @default(uuid())
+  organizationId    String                         @map("organization_id")
+  stationId         String                         @map("station_id")
+  type              StationCalendarExceptionType
+  status            StationCalendarExceptionStatus @default(ACTIVE)
+  title             String
+  description       String?
+  recurrenceKind    StationCalendarRecurrenceKind  @default(NONE) @map("recurrence_kind")
+  calendarDate      DateTime?                      @db.Date @map("calendar_date")
+  monthDay          String?                        @map("month_day")
+  closedAllDay      Boolean                        @default(false) @map("closed_all_day")
+  slots             Json?
+  regionCode        String?                        @map("region_code")
+  priority          Int                            @default(0)
+  source            StationCalendarExceptionSource @default(MANUAL)
+  legacyImportKey   String?                        @unique @map("legacy_import_key")
+  createdByUserId   String?                        @map("created_by_user_id")
+  updatedByUserId   String?                        @map("updated_by_user_id")
+  cancelledAt       DateTime?                      @map("cancelled_at")
+  cancelledByUserId String?                        @map("cancelled_by_user_id")
+  createdAt         DateTime                       @default(now()) @map("created_at")
+  updatedAt         DateTime                       @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  station      Station      @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, stationId, status])
+  @@index([stationId, calendarDate])
+  @@map("station_calendar_exceptions")
 }
 
 // ------------------------------------------------

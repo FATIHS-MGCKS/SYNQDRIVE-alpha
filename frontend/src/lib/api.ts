@@ -3879,23 +3879,90 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations`, data),
     update: (orgId: string, id: string, data: Partial<StationUpsertPayload>) =>
       patch<Station>(`/organizations/${orgId}/stations/${id}`, data),
+    /**
+     * @deprecated Stations cannot be hard-deleted. Use `archive()` instead.
+     * The backend returns HTTP 410 with code `STATION_DELETE_DEPRECATED`.
+     */
     delete: (orgId: string, id: string) =>
-      del<{ id: string; unassignedVehicles: number; archived?: boolean }>(
-        `/organizations/${orgId}/stations/${id}`,
-      ),
+      del<never>(`/organizations/${orgId}/stations/${id}`),
     archive: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
     restore: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/restore`, {}),
-    setPrimary: (orgId: string, id: string) =>
-      post<Station>(`/organizations/${orgId}/stations/${id}/set-primary`, {}),
+    setPrimary: async (orgId: string, id: string) => {
+      const result = await post<{
+        outcome: string;
+        station: Station;
+      }>(`/organizations/${orgId}/stations/${id}/set-primary`, {});
+      return result.station;
+    },
     overviewStats: (orgId: string, stationId: string) =>
       get<StationOverviewStats>(`/organizations/${orgId}/stations/${stationId}/overview-stats`),
     fleet: (orgId: string, stationId: string) =>
       get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
+    activity: (orgId: string, stationId: string) =>
+      get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
+    openingHoursContract: (orgId: string) =>
+      get<StationOpeningHoursContractMetadata>(
+        `/organizations/${orgId}/stations/opening-hours/contract`,
+      ),
+    calendarExceptionsContract: (orgId: string) =>
+      get<StationCalendarExceptionContractMetadata>(
+        `/organizations/${orgId}/stations/calendar-exceptions/contract`,
+      ),
+    operationalCapabilityContract: (orgId: string) =>
+      get<StationOperationalCapabilityContractMetadata>(
+        `/organizations/${orgId}/stations/operational-capability/contract`,
+      ),
+    calendarExceptions: (orgId: string, stationId: string) =>
+      get<StationCalendarExceptionList>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions`,
+      ),
+    createCalendarException: (
+      orgId: string,
+      stationId: string,
+      data: StationCalendarExceptionInput,
+    ) =>
+      post<StationCalendarException>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions`,
+        data,
+      ),
+    updateCalendarException: (
+      orgId: string,
+      stationId: string,
+      exceptionId: string,
+      data: Partial<StationCalendarExceptionInput>,
+    ) =>
+      patch<StationCalendarException>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions/${exceptionId}`,
+        data,
+      ),
+    cancelCalendarException: (orgId: string, stationId: string, exceptionId: string) =>
+      post<StationCalendarException>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions/${exceptionId}/cancel`,
+        {},
+      ),
+    importLegacyCalendarExceptions: (orgId: string, stationId: string) =>
+      post<StationCalendarExceptionImportResult>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions/import-legacy`,
+        {},
+      ),
+    operationalCapability: (
+      orgId: string,
+      stationId: string,
+      opts?: { at?: string; purpose?: 'pickup' | 'return' },
+    ) => {
+      const q = new URLSearchParams();
+      if (opts?.at) q.set('at', opts.at);
+      if (opts?.purpose) q.set('purpose', opts.purpose);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<StationOperationalCapabilityEvaluation | StationOperationalCapabilityResult>(
+        `/organizations/${orgId}/stations/${stationId}/operational-capability${suffix}`,
+      );
+    },
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
       if (opts?.country) q.set('country', opts.country);
@@ -8914,6 +8981,9 @@ export interface Station {
   country: string | null;
   latitude: number | null;
   longitude: number | null;
+  coordinatesSource: 'MANUAL' | 'FORWARD_GEOCODE' | 'MAPBOX_RETRIEVE' | null;
+  coordinatesConfirmedAt: string | null;
+  hasMissingCoordinates: boolean;
   timezone: string | null;
   radiusMeters: number | null;
   geofenceRadiusMeters: number | null;
@@ -8927,6 +8997,7 @@ export interface Station {
   keyBoxAvailable: boolean;
   capacity: number | null;
   openingHours: StationOpeningHours | string | null;
+  openingHoursContractVersion: number;
   holidayRules: Record<string, unknown> | null;
   handoverInstructions: string | null;
   returnInstructions: string | null;
@@ -8937,6 +9008,159 @@ export interface Station {
   vehicleCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StationOpeningHoursContractMetadata {
+  version: number;
+  weekdays: string[];
+  missingDayPolicy: 'closed';
+  timeFormat: 'HH:mm';
+  timezoneSource: 'station.timezone';
+  supports: {
+    closedDays: true;
+    multipleSlots: true;
+    breaksViaSlotGaps: true;
+    open24h: true;
+    midnightSpanningSlots: true;
+    legacyText: true;
+    legacySingleOpenClose: true;
+  };
+  notes: string[];
+}
+
+export type StationCalendarExceptionType =
+  | 'STATION_CLOSURE'
+  | 'SPECIAL_OPENING'
+  | 'MODIFIED_HOURS'
+  | 'REGIONAL_HOLIDAY'
+  | 'OPERATIONAL_EXCEPTION';
+
+export type StationCalendarRecurrenceKind = 'NONE' | 'YEARLY';
+
+export type StationCalendarExceptionSource = 'MANUAL' | 'LEGACY_HOLIDAY_RULES' | 'IMPORT';
+
+export type StationCalendarExceptionStatus = 'ACTIVE' | 'CANCELLED';
+
+export interface StationCalendarExceptionSlot {
+  open: string;
+  close: string;
+}
+
+export interface StationCalendarExceptionInput {
+  type: StationCalendarExceptionType;
+  title: string;
+  description?: string | null;
+  recurrenceKind?: StationCalendarRecurrenceKind;
+  calendarDate?: string | null;
+  monthDay?: string | null;
+  closedAllDay?: boolean;
+  slots?: StationCalendarExceptionSlot[] | null;
+  regionCode?: string | null;
+}
+
+export interface StationCalendarException extends StationCalendarExceptionInput {
+  id: string;
+  stationId: string;
+  status: StationCalendarExceptionStatus;
+  recurrenceKind: StationCalendarRecurrenceKind;
+  closedAllDay: boolean;
+  priority: number;
+  source: StationCalendarExceptionSource;
+  readOnly: boolean;
+  timezone: string;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StationCalendarExceptionList {
+  contractVersion: number;
+  timezone: string;
+  items: StationCalendarException[];
+  legacyHolidayRulesPresent: boolean;
+}
+
+export interface StationCalendarExceptionContractMetadata {
+  version: number;
+  timezoneSource: 'station.timezone';
+  supportedTypes: StationCalendarExceptionType[];
+  recurrenceKinds: StationCalendarRecurrenceKind[];
+  overrideRule: string;
+  externalHolidayDependency: false;
+  legacyHolidayRules: {
+    readCompatible: true;
+    writePath: 'station_calendar_exceptions';
+  };
+}
+
+export interface StationCalendarExceptionImportResult {
+  imported: number;
+  skipped: number;
+}
+
+export type StationOperationalCapabilityKind =
+  | 'PICKUP_AVAILABLE'
+  | 'RETURN_AVAILABLE'
+  | 'AFTER_HOURS_RETURN_AVAILABLE'
+  | 'CLOSED'
+  | 'INACTIVE'
+  | 'ARCHIVED'
+  | 'MANUAL_CONFIRMATION_REQUIRED'
+  | 'CONFIGURATION_INCOMPLETE';
+
+export interface StationOperationalCapabilityReason {
+  code: string;
+  message: string;
+}
+
+export interface StationOperationalEffectiveRule {
+  ruleId: string;
+  source: string;
+  description: string;
+}
+
+export interface StationOperationalOpeningWindow {
+  opensAt: string;
+  closesAt: string;
+}
+
+export interface StationOperationalCapabilityEvaluation {
+  purpose: 'pickup' | 'return';
+  kind: StationOperationalCapabilityKind;
+  evaluatedAt: string;
+  capabilityVersion: number;
+  timezone: string;
+  reasons: StationOperationalCapabilityReason[];
+  effectiveRule: StationOperationalEffectiveRule | null;
+  nextOpeningWindow: StationOperationalOpeningWindow | null;
+  effectiveCapabilities: {
+    pickupEnabled: boolean;
+    returnEnabled: boolean;
+    afterHoursReturnEnabled: boolean;
+    keyBoxAvailable: boolean;
+  };
+}
+
+export interface StationOperationalCapabilityResult {
+  evaluatedAt: string;
+  capabilityVersion: number;
+  timezone: string;
+  pickup: StationOperationalCapabilityEvaluation;
+  return: StationOperationalCapabilityEvaluation;
+}
+
+export interface StationOperationalCapabilityContractMetadata {
+  version: number;
+  timezoneSource: 'station.timezone';
+  defaultTimezone: 'Europe/Berlin';
+  supportedKinds: StationOperationalCapabilityKind[];
+  purposes: Array<'pickup' | 'return'>;
+  inputs: string[];
+  outputs: string[];
+  bookingIntegration: false;
 }
 
 export interface StationOverviewStats {
@@ -8979,6 +9203,14 @@ export interface StationBookingRow {
   isOneWayRental: boolean;
   customerName: string;
   vehicleLabel: string;
+}
+
+export interface StationActivityEntry {
+  id: string;
+  action: string;
+  description: string | null;
+  userName: string;
+  createdAt: string;
 }
 
 export interface StationUpsertPayload {
@@ -9079,6 +9311,7 @@ export interface StationMapboxPrefill {
   phone: string | null;
   externalPlaceId: string | null;
   source: 'MAPBOX';
+  coordinatesAccepted: boolean;
 }
 
 /** @deprecated Legacy Google Places shape — use StationMapboxSuggestion */

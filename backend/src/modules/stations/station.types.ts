@@ -1,4 +1,5 @@
 import { Prisma, Station, StationStatus, StationType } from '@prisma/client';
+import { stationOpeningHoursIsMissing } from '@shared/stations/station-opening-hours.validation';
 
 export type StationRow = Station & { _count?: { vehiclesHome: number } };
 
@@ -78,12 +79,5 @@ export function formatStationAddress(station: StationDocumentInfo | Station): st
 }
 
 export function openingHoursIsMissing(openingHours: Prisma.JsonValue | null | undefined): boolean {
-  if (openingHours == null) return true;
-  if (typeof openingHours === 'string') return openingHours.trim().length === 0;
-  if (typeof openingHours === 'object' && !Array.isArray(openingHours)) {
-    const legacy = (openingHours as Record<string, unknown>).legacyText;
-    if (typeof legacy === 'string' && legacy.trim().length > 0) return false;
-    return Object.keys(openingHours as object).length === 0;
-  }
-  return false;
+  return stationOpeningHoursIsMissing(openingHours);
 }

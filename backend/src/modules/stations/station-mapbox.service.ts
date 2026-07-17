@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { isAcceptableMapboxSearchboxMatchType } from './station-location-masterdata.util';
 
 /** Normalized suggestion returned to the client (suggest step). */
 export interface StationMapboxSuggestion {
@@ -21,6 +22,7 @@ export interface StationMapboxSearchResult {
 
 /** Prefill payload returned to the client (retrieve step). */
 export interface StationMapboxPrefill {
+  /** Suggested POI label — never overwrites an existing station name on save. */
   name: string | null;
   formattedAddress: string | null;
   street: string | null;
@@ -32,6 +34,8 @@ export interface StationMapboxPrefill {
   phone: string | null;
   externalPlaceId: string | null;
   source: 'MAPBOX';
+  /** False when Mapbox match confidence is too low to auto-apply coordinates. */
+  coordinatesAccepted: boolean;
 }
 
 const SEARCHBOX_BASE = 'https://api.mapbox.com/search/searchbox/v1';
@@ -137,6 +141,18 @@ export class StationMapboxService {
       p.coordinates?.longitude ?? (Array.isArray(coords) ? coords[0] : null) ?? null;
     const street = p.address ?? null;
     const formattedAddress = p.full_address ?? p.place_formatted ?? street;
+    const matchType = p.match_type;
+    const coordinatesAccepted = isAcceptableMapboxSearchboxMatchType(matchType);
+    const resolvedLatitude =
+      typeof latitude === 'number' ? latitude : null;
+    const resolvedLongitude =
+      typeof longitude === 'number' ? longitude : null;
+
+    if (!coordinatesAccepted) {
+      this.logger.warn(
+        `Mapbox retrieve: rejected low-confidence match (${matchType ?? 'unknown'}) for ${mapboxId}`,
+      );
+    }
 
     return {
       name: p.name ?? null,
@@ -145,11 +161,12 @@ export class StationMapboxService {
       postalCode: ctx.postcode?.name ?? null,
       city: ctx.place?.name ?? ctx.locality?.name ?? null,
       country: ctx.country?.name ?? null,
-      latitude: typeof latitude === 'number' ? latitude : null,
-      longitude: typeof longitude === 'number' ? longitude : null,
+      latitude: coordinatesAccepted ? resolvedLatitude : null,
+      longitude: coordinatesAccepted ? resolvedLongitude : null,
       phone: p.metadata?.phone ?? null,
       externalPlaceId: p.mapbox_id ?? mapboxId,
       source: 'MAPBOX',
+      coordinatesAccepted,
     };
   }
 }
@@ -175,6 +192,7 @@ interface MapboxFeature {
     full_address?: string;
     place_formatted?: string;
     coordinates?: { latitude?: number; longitude?: number };
+    match_type?: string;
     metadata?: { phone?: string };
     context?: {
       postcode?: MapboxContextEntry;
