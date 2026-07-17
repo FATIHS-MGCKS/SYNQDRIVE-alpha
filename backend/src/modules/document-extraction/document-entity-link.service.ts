@@ -22,6 +22,7 @@ import {
   resolveVehicleIdFromEntityLinks,
 } from './document-entity-link.util';
 import { DocumentEntityLinkValidationService } from './document-entity-link.validation';
+import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
 import { toPublicDocumentExtraction } from './document-extraction-public.mapper';
 
 const EDITABLE_EXTRACTION_STATUSES = new Set(['READY_FOR_REVIEW', 'CONFIRMED']);
@@ -30,7 +31,10 @@ const EDITABLE_EXTRACTION_STATUSES = new Set(['READY_FOR_REVIEW', 'CONFIRMED']);
 export class DocumentEntityLinkService {
   private readonly validation = new DocumentEntityLinkValidationService(this.prisma);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly followUpResyncService: DocumentFollowUpResyncService,
+  ) {}
 
   async updateForVehicle(
     vehicleId: string,
@@ -186,6 +190,8 @@ export class DocumentEntityLinkService {
         ...(input.scope === 'org' ? { vehicleId: nextVehicleId } : {}),
       },
     });
+
+    await this.followUpResyncService.resyncAfterPlanChange(updated);
 
     return toPublicDocumentExtraction(updated);
   }

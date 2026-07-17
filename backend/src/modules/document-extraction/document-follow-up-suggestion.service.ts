@@ -12,6 +12,7 @@ import {
 import type { DocumentActionPlan } from './document-action-plan.types';
 import { DocumentSchemaRegistryService } from './document-schema-registry.service';
 import { resolveDocumentTaxonomy } from './document-taxonomy.util';
+import { resolveVersionedFollowUpRules } from './document-follow-up-subtype-rules.catalog';
 import { resolveDocumentFollowUpActionResultIds } from './document-follow-up-action-results.util';
 import {
   buildFollowUpSuggestions,
@@ -77,9 +78,11 @@ export class DocumentFollowUpSuggestionService {
         legacyDocumentType: documentType,
         documentSubtype: taxonomy.documentSubtype,
       });
-      registryRules = schema.followUpSuggestionRules;
+      const versionedRules = resolveVersionedFollowUpRules(taxonomy.documentSubtype);
+      registryRules =
+        versionedRules.length > 0 ? versionedRules : schema.followUpSuggestionRules;
     } catch {
-      registryRules = [];
+      registryRules = resolveVersionedFollowUpRules(taxonomy.documentSubtype);
     }
 
     return buildFollowUpSuggestions({

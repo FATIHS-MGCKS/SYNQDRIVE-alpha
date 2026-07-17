@@ -5,6 +5,7 @@ import {
   isFollowUpSuggestionAcceptable,
   mergeFollowUpSuggestionsIdempotent,
 } from './document-follow-up-suggestion.generator';
+import { FINE_NOTICE_FOLLOW_UP_RULES } from './document-follow-up-subtype-rules';
 import {
   DOCUMENT_FOLLOW_UP_SUGGESTION_STATUSES,
   DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES,
@@ -15,9 +16,7 @@ describe('document-follow-up-suggestion.generator', () => {
     title: 'Parkverstoss',
     offenseDate: '2026-06-01',
     amountCents: 5500,
-    entityLinks: {
-      accepted: [{ entityType: 'vehicle', entityId: 'veh-1' }],
-    },
+    acceptedEntityLinks: [{ entityType: 'vehicle', entityId: 'veh-1' }],
   };
 
   it('maps fine driver assignment semantic action to prepare driver contact', () => {
@@ -39,14 +38,7 @@ describe('document-follow-up-suggestion.generator', () => {
       extractionId: 'ext-fine-1',
       plan,
       confirmedData: fineConfirmedData,
-      registryRules: [
-        {
-          code: 'MISSING_DRIVER_ASSIGNMENT',
-          message: 'Fahrerzuordnung prüfen',
-          trigger: 'missing_driver',
-          severity: 'WARNING',
-        },
-      ],
+      registryRules: FINE_NOTICE_FOLLOW_UP_RULES,
     });
 
     const driverSuggestion = suggestions.find(
@@ -57,7 +49,7 @@ describe('document-follow-up-suggestion.generator', () => {
       suggestions.some(
         (row) =>
           row.generatedByRule.includes('SUGGEST_DRIVER_ASSIGNMENT') ||
-          row.generatedByRule.includes('MISSING_DRIVER_ASSIGNMENT'),
+          row.generatedByRule.includes('FINE_DRIVER_ASSIGNMENT'),
       ),
     ).toBe(true);
     expect(driverSuggestion?.status).toBe(DOCUMENT_FOLLOW_UP_SUGGESTION_STATUSES.SUGGESTED);
