@@ -8761,6 +8761,21 @@ model TripDrivingImpact {
   modelVersion      String @map("model_version")
   sourceSummaryJson Json?  @map("source_summary_json")
 
+  /// Canonical distance used by brake/tire wear models (from finalized VehicleTrip.distanceKm).
+  authoritativeDistanceKm Float? @map("authoritative_distance_km")
+  /// Model version + distance policy version fingerprinted together.
+  sourceVersion           String? @map("source_version")
+  /// Deterministic hash of trip inputs — idempotent recompute guard.
+  sourceFingerprint       String? @map("source_fingerprint")
+  analysisStatus          TripDrivingImpactAnalysisStatus @default(PENDING) @map("analysis_status")
+  calculatedAt            DateTime? @map("calculated_at")
+  /// 0–1 score of input completeness (behavior events, usage split, etc.).
+  sourceCompleteness      Float? @map("source_completeness")
+  /// Snapshot of VehicleTrip.distanceKm at compute time for drift detection.
+  tripDistanceKmAtSource  Float? @map("trip_distance_km_at_source")
+  /// |trip.distanceKm − authoritativeDistanceKm| when stale.
+  distanceDiscrepancyKm   Float? @map("distance_discrepancy_km")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -8768,7 +8783,19 @@ model TripDrivingImpact {
 
   @@index([vehicleId, tripStartedAt])
   @@index([organizationId, vehicleId])
+  @@index([analysisStatus])
+  @@index([sourceFingerprint])
   @@map("trip_driving_impact")
+}
+
+/// Unified analysis status for TripDrivingImpact coverage (Prompt 13).
+enum TripDrivingImpactAnalysisStatus {
+  PENDING
+  COMPLETE
+  PARTIAL
+  UNSUPPORTED
+  FAILED
+  STALE
 }
 
 /// Rolling 30-day aggregate per vehicle. One row, upserted after each trip impact row.

@@ -1044,11 +1044,15 @@ export class BrakeHealthService {
       where: {
         vehicleId,
         tripStartedAt: { gte: current.anchorServiceDate },
+        analysisStatus: { in: ['COMPLETE', 'PARTIAL'] },
       },
       orderBy: { tripStartedAt: 'asc' },
       select: {
         tripId: true,
         distanceKm: true,
+        authoritativeDistanceKm: true,
+        analysisStatus: true,
+        distanceDiscrepancyKm: true,
         citySharePct: true,
         highwaySharePct: true,
         countryRoadSharePct: true,
@@ -1069,7 +1073,7 @@ export class BrakeHealthService {
     let rearDiscWorn = 0;
 
     for (const trip of tripImpacts) {
-      const tripDistance = trip.distanceKm ?? 0;
+      const tripDistance = trip.authoritativeDistanceKm ?? trip.distanceKm ?? 0;
       if (!(tripDistance > 0)) continue;
       modeledTripCount += 1;
       modeledDistanceFromTrips += tripDistance;

@@ -379,6 +379,10 @@ function makeBaseTripRow(overrides: Partial<any> = {}) {
   return {
     id: 'trip-1',
     vehicleId: 'vehicle-1',
+    tripStatus: 'COMPLETED',
+    updatedAt: new Date('2026-03-01T09:05:00.000Z'),
+    createdAt: new Date('2026-03-01T08:00:00.000Z'),
+    behaviorEnrichmentStatus: 'COMPLETED',
     vehicle: { organizationId: 'org-1', hardwareType: 'UNKNOWN' },
     startTime: new Date('2026-03-01T08:00:00Z'),
     endTime: new Date('2026-03-01T09:00:00Z'),
@@ -405,6 +409,7 @@ describe('DrivingImpactService.computeForTrip', () => {
     metrics = makeMockMetrics();
     prisma.drivingEvent.findMany.mockResolvedValue([]);
     prisma.vehicleTrip.update.mockResolvedValue({});
+    prisma.tripDrivingImpact.findUnique.mockResolvedValue(null);
     service = new DrivingImpactService(prisma, metrics);
   });
 
@@ -413,7 +418,8 @@ describe('DrivingImpactService.computeForTrip', () => {
 
     const result = await service.computeForTrip('trip-1', 'vehicle-1');
 
-    expect(result).toBe(false);
+    expect(result.processed).toBe(false);
+    expect(result.action).toBe('skipped');
     expect(prisma.tripDrivingImpact.upsert).not.toHaveBeenCalled();
   });
 
@@ -422,7 +428,8 @@ describe('DrivingImpactService.computeForTrip', () => {
 
     const result = await service.computeForTrip('trip-1', 'vehicle-1');
 
-    expect(result).toBe(false);
+    expect(result.processed).toBe(false);
+    expect(result.action).toBe('skipped');
   });
 
   it('persists TripDrivingImpact for a valid urban trip', async () => {
@@ -438,12 +445,16 @@ describe('DrivingImpactService.computeForTrip', () => {
 
     const result = await service.computeForTrip('trip-1', 'vehicle-1');
 
-    expect(result).toBe(true);
+    expect(result.processed).toBe(true);
+    expect(result.action).toBe('created');
+    expect(result.shouldRecalculateBrake).toBe(true);
     expect(prisma.tripDrivingImpact.upsert).toHaveBeenCalledTimes(1);
 
     const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
     expect(createArg.vehicleId).toBe('vehicle-1');
     expect(createArg.distanceKm).toBe(50);
+    expect(createArg.authoritativeDistanceKm).toBe(50);
+    expect(createArg.sourceFingerprint).toBeTruthy();
     expect(createArg.citySharePct).toBe(30);
     expect(createArg.highwaySharePct).toBe(60);
     expect(typeof createArg.longitudinalStressScore).toBe('number');
@@ -526,6 +537,51 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(createArg.stopDensity).toBeCloseTo(0.04, 2);
   });
 
+  it('returns unchanged without upsert when source fingerprint matches', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
+    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+      { startSpeedKmh: 90, endSpeedKmh: 10, peakValue: 6.5 },
+    ]);
+    prisma.tripDrivingImpact.findUnique.mockResolvedValue({
+      sourceFingerprint: 'existing-fp',
+      analysisStatus: 'COMPLETE',
+      authoritativeDistanceKm: 50,
+      tripDistanceKmAtSource: 50,
+    });
+
+    const { buildTripDrivingImpactSourceFingerprint } = await import(
+      './trip-driving-impact-coverage.domain'
+    );
+    const fp = buildTripDrivingImpactSourceFingerprint({
+      tripId: 'trip-1',
+      vehicleId: 'vehicle-1',
+      authoritativeDistanceKm: 50,
+      sourceVersion: 'v1.1.0:trip-distance-km-v1',
+      hardAccelerationCount: 4,
+      hardBrakingCount: 6,
+      fullBrakingCount: 2,
+      brakingEventCount: 12,
+      citySharePct: 30,
+      highwaySharePct: 60,
+      countryRoadSharePct: 10,
+      behaviorEnrichmentStatus: 'COMPLETED',
+      telemetryInput: 'HF_DERIVED',
+      tripUpdatedAt: new Date('2026-03-01T09:00:00.000Z').toISOString(),
+    });
+    prisma.tripDrivingImpact.findUnique.mockResolvedValue({
+      sourceFingerprint: fp,
+      analysisStatus: 'COMPLETE',
+      authoritativeDistanceKm: 50,
+      tripDistanceKmAtSource: 50,
+    });
+
+    const result = await service.computeForTrip('trip-1', 'vehicle-1');
+    expect(result.action).toBe('unchanged');
+    expect(result.shouldRecalculateBrake).toBe(false);
+    expect(prisma.tripDrivingImpact.upsert).not.toHaveBeenCalled();
+  });
+
   it('handles zero braking events gracefully', async () => {
     prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow({ brakingEventCount: 0, hardBrakingCount: 0, fullBrakingCount: 0 }));
     prisma.tripBehaviorEvent.count.mockResolvedValue(0);
@@ -536,7 +592,8 @@ describe('DrivingImpactService.computeForTrip', () => {
 
     const result = await service.computeForTrip('trip-1', 'vehicle-1');
 
-    expect(result).toBe(true);
+    expect(result.processed).toBe(true);
+    expect(result.action).toBe('created');
     const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
     expect(createArg.p95NegativeDecel).toBe(0);
     expect(createArg.highSpeedBrakeShare).toBe(0);
@@ -760,7 +817,8 @@ describe('Fixture: Short trip below threshold', () => {
     prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow({ distanceKm: 1 }));
 
     const result = await service.computeForTrip('trip-short', 'vehicle-1');
-    expect(result).toBe(false);
+    expect(result.processed).toBe(false);
+    expect(result.action).toBe('skipped');
     expect(prisma.tripDrivingImpact.upsert).not.toHaveBeenCalled();
   });
 });

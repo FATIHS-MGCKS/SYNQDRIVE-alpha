@@ -876,7 +876,62 @@ npm test -- --testPathPattern='brake-baseline-backfill|brake-baseline-candidate-
 | 9 | `8ef69289` | `fix(brakes): apply brake service lifecycle atomically` |
 | 10 | `0de2caa3` | `feat(brakes): add brake reference spec provenance and thickness semantics` |
 | 11 | `f3fc1faf` | `fix(brakes): use component-specific brake wear thresholds` |
-| 12 | *(dieser Commit)* | `feat(brakes): add controlled brake component baseline backfill` |
+| 12 | `10faa38b` | `feat(brakes): add controlled brake component baseline backfill` |
+
+---
+
+## Authoritative TripDrivingImpact Coverage (Prompt 13) — 2026-07-17
+
+### Ziel
+
+Brake Health rechnet auf vollständiger, konsistenter `TripDrivingImpact`-Datenbasis mit kanonischer Distanz, Fingerprint-Idempotenz und sichtbarer Coverage-Klassifikation.
+
+### Kanonische Distanzquelle
+
+`VehicleTrip.distanceKm` zum Compute-Zeitpunkt → `authoritativeDistanceKm` (Policy `trip-distance-km-v1`).
+
+### Neue TDI-Felder (Migration `20260717180000_trip_driving_impact_authoritative_coverage`)
+
+- `authoritativeDistanceKm`, `sourceVersion`, `sourceFingerprint`
+- `analysisStatus` (`PENDING|COMPLETE|PARTIAL|UNSUPPORTED|FAILED|STALE`)
+- `calculatedAt`, `sourceCompleteness`, `tripDistanceKmAtSource`, `distanceDiscrepancyKm`
+
+### Idempotenz
+
+- Gleicher `sourceFingerprint` → No-op, keine Brake-Recalculation
+- Geänderte Trip-Distanz → `STALE`, Update statt Doppelzählung
+
+### Backfill-Audit (DRY RUN)
+
+- Domain: `trip-driving-impact-coverage.domain.ts`
+- Service: `trip-driving-impact-backfill.service.ts`
+- Ops: `scripts/ops/audit-trip-driving-impact-coverage.ts`
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='trip-driving-impact-coverage|driving-impact.service'
+```
+
+---
+
+## Commit-Log (Remediation)
+
+| Prompt | Commit | Message |
+|--------|--------|---------|
+| 1 | `b12599f5da380f9740a8e44dc6d43f88351bdaa6` | `docs(brakes): establish production readiness remediation baseline` |
+| 2 | `b1246a886d62892abd605617f39e007871663994` | `test(brakes): capture brake health lifecycle regressions` |
+| 3 | `b892b605d2380f99c1c2e8972f7ec7d4643a1bb2` | `fix(brakes): establish canonical brake initialization workflow` |
+| 4 | `e8e62310775a10b06c0846f8b293393ddd8ce1e5` | `fix(brakes): materialize brake health during vehicle registration` |
+| 5 | `a30ea31d943ba49e279d43912265684678cd7fd4` | `feat(brakes): add read-only brake baseline backfill audit` |
+| 6 | `39c7e176226328be215dc1046f6e34fa56460d42` | `feat(brakes): add brake component installation lifecycle` |
+| 7 | `7617ba59b296ef2db27b413f56534fea7ce2f9f4` | `feat(brakes): centralize brake component lifecycle mutations` |
+| 8 | `43fbb3e6` | `fix(brakes): enforce component-specific brake service scope` |
+| 9 | `8ef69289` | `fix(brakes): apply brake service lifecycle atomically` |
+| 10 | `0de2caa3` | `feat(brakes): add brake reference spec provenance and thickness semantics` |
+| 11 | `f3fc1faf` | `fix(brakes): use component-specific brake wear thresholds` |
+| 12 | `10faa38b` | `feat(brakes): add controlled brake component baseline backfill` |
+| 13 | *(dieser Commit)* | `fix(brakes): make trip driving impact coverage authoritative` |
 
 ---
 
