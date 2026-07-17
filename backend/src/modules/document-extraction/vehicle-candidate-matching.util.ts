@@ -40,10 +40,6 @@ function toStr(value: unknown): string | null {
   return null;
 }
 
-function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  return [...new Set(values.filter((v): v is string => Boolean(v)))];
-}
-
 export function buildVehicleResolverHints(
   input: VehicleCandidateResolverInput,
 ): VehicleResolverHints {
