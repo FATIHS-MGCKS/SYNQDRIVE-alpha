@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner';
 import { api, type Station, type StationOverviewStats, type StationsStats } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
+import { useStationsV2Permissions } from '../../hooks/useStationsV2Permissions';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
@@ -36,6 +37,7 @@ import {
   stationStatusTone,
   stationTypeTone,
 } from '../../lib/stationUtils';
+import type { StationsUiCapabilities } from '../../lib/stations-v2-ui-capabilities';
 import { StationFormModal } from './StationFormModal';
 import { StationAssignVehicleModal } from './StationAssignVehicleModal';
 
@@ -129,6 +131,7 @@ function StationKpiCard({
 export function StationsView({ onOpenStation }: StationsViewProps) {
   const { orgId } = useRentalOrg();
   const { t } = useLanguage();
+  const { status: permStatus, capabilities, forStation, formCapabilities, isReadOnly } = useStationsV2Permissions();
 
   const [stations, setStations] = useState<Station[]>([]);
   const [stats, setStats] = useState<StationsStats | null>(null);
@@ -242,11 +245,14 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   }, [stats, stations, overviewById]);
 
   const handleCreate = () => {
+    if (!capabilities.canCreate) return;
     setEditing(null);
     setFormOpen(true);
   };
 
   const handleEdit = (station: Station) => {
+    const caps = forStation(station);
+    if (!caps.canEditMasterData && !caps.canManageOperations) return;
     setEditing(station);
     setFormOpen(true);
     setMenuId(null);
@@ -265,7 +271,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   };
 
   const handleArchive = async (station: Station) => {
-    if (!orgId) return;
+    if (!orgId || !forStation(station).canArchive) return;
     setMenuId(null);
     try {
       await api.stations.archive(orgId, station.id);
@@ -276,8 +282,20 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     }
   };
 
+  const handleRestore = async (station: Station) => {
+    if (!orgId || !forStation(station).canRestore) return;
+    setMenuId(null);
+    try {
+      await api.stations.restore(orgId, station.id);
+      toast.success(t('stations.restored'));
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   const handleSetPrimary = async (station: Station) => {
-    if (!orgId) return;
+    if (!orgId || !forStation(station).canSetPrimary) return;
     setMenuId(null);
     try {
       await api.stations.setPrimary(orgId, station.id);
@@ -316,14 +334,42 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     filters.primaryOnly,
   ].filter(Boolean).length;
 
+  if (permStatus === 'loading') {
+    return (
+      <div className="space-y-4 pb-8">
+        <SkeletonMetricGrid count={6} />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!capabilities.canRead) {
+    return (
+      <EmptyState
+        icon={<MapPin className="w-8 h-8" />}
+        title={t('stations.permissions.noAccessTitle')}
+        description={t('stations.permissions.noAccessDescription')}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4 pb-8 animate-fade-up">
+      {isReadOnly && (
+        <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          {t('stations.permissions.readOnlyBanner')}
+        </div>
+      )}
       <PageHeader
         title={t('stations.pageTitle')}
         className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {missingCoords > 0 && (
+            {missingCoords > 0 && capabilities.canGeocode && (
               <Button
                 type="button"
                 onClick={() => void runBackfill()}
@@ -348,6 +394,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                 {viewMode === 'cards' ? t('stations.viewList') : t('stations.viewCards')}
               </span>
             </Button>
+            {capabilities.canCreate && (
             <Button
               type="button"
               onClick={handleCreate}
@@ -358,6 +405,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
               <span className="hidden min-[400px]:inline">{t('stations.newStation')}</span>
               <span className="min-[400px]:hidden">{t('stations.newStation').split(' ')[0]}</span>
             </Button>
+            )}
           </div>
         )}
       />
@@ -502,11 +550,11 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
               icon={<MapPin className="w-8 h-8" />}
               title={t('stations.empty.title')}
               description={t('stations.empty.description')}
-              action={(
+              action={capabilities.canCreate ? (
                 <Button type="button" onClick={handleCreate} size="sm">
                   {t('stations.empty.action')}
                 </Button>
-              )}
+              ) : undefined}
             />
           ) : filtered.length === 0 ? (
             <EmptyState
@@ -526,8 +574,10 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                   onOpen={() => onOpenStation?.(station)}
                   onEdit={() => handleEdit(station)}
                   onArchive={() => void handleArchive(station)}
+                  onRestore={() => void handleRestore(station)}
                   onSetPrimary={() => void handleSetPrimary(station)}
                   onAssign={() => setAssignStation(station)}
+                  stationCaps={forStation(station)}
                   t={t}
                 />
               ))}
@@ -541,6 +591,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
         station={editing}
         saving={saving}
         orgId={orgId}
+        formCapabilities={formCapabilities(editing, !editing)}
         onClose={() => setFormOpen(false)}
         onSubmit={handleSave}
       />
@@ -562,8 +613,10 @@ function StationCard({
   onOpen,
   onEdit,
   onArchive,
+  onRestore,
   onSetPrimary,
   onAssign,
+  stationCaps,
   t,
 }: {
   station: Station;
@@ -574,8 +627,10 @@ function StationCard({
   onOpen: () => void;
   onEdit: () => void;
   onArchive: () => void;
+  onRestore: () => void;
   onSetPrimary: () => void;
   onAssign: () => void;
+  stationCaps: StationsUiCapabilities;
   t: (k: TranslationKey) => string;
 }) {
   const warnings = getStationWarnings(station, overview);
@@ -600,7 +655,15 @@ function StationCard({
     </div>
   );
 
-  const actions = (
+  const canEdit = stationCaps.canEditMasterData || stationCaps.canManageOperations;
+  const hasMenuActions =
+    canEdit ||
+    stationCaps.canManageHomeFleet ||
+    stationCaps.canSetPrimary ||
+    stationCaps.canArchive ||
+    stationCaps.canRestore;
+
+  const actions = hasMenuActions ? (
     <div className="relative">
       <button type="button" onClick={onToggleMenu} className="p-2 rounded-lg hover:bg-muted/60">
         <MoreHorizontal className="w-4 h-4" />
@@ -608,20 +671,27 @@ function StationCard({
       {menuOpen && (
         <div className="absolute right-0 top-full mt-1 z-20 min-w-[180px] surface-premium rounded-lg border border-border shadow-lg py-1 text-sm">
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onOpen}>{t('stations.action.open')}</button>
-          <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onEdit}>{t('stations.action.edit')}</button>
-          <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onAssign}>{t('stations.action.assignVehicle')}</button>
-          {!station.isPrimary && (
+          {canEdit && (
+            <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onEdit}>{t('stations.action.edit')}</button>
+          )}
+          {stationCaps.canManageHomeFleet && (
+            <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onAssign}>{t('stations.action.assignVehicle')}</button>
+          )}
+          {stationCaps.canSetPrimary && !station.isPrimary && (
             <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onSetPrimary}>{t('stations.action.setPrimary')}</button>
           )}
-          {station.status !== 'ARCHIVED' && (
+          {stationCaps.canArchive && station.status !== 'ARCHIVED' && (
             <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50 text-[color:var(--status-critical)]" onClick={onArchive}>
               <span className="inline-flex items-center gap-1.5"><Archive className="w-3.5 h-3.5" />{t('stations.action.archive')}</span>
             </button>
           )}
+          {stationCaps.canRestore && station.status === 'ARCHIVED' && (
+            <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onRestore}>{t('stations.action.restore')}</button>
+          )}
         </div>
       )}
     </div>
-  );
+  ) : null;
 
   if (viewMode === 'list') {
     return (
@@ -679,9 +749,11 @@ function StationCard({
         <Button type="button" onClick={onOpen} variant="neutral" size="sm" className="flex-1">
           {t('stations.action.open')}
         </Button>
-        <Button type="button" onClick={onEdit} size="sm" className="flex-1">
-          {t('stations.action.edit')}
-        </Button>
+        {canEdit && (
+          <Button type="button" onClick={onEdit} size="sm" className="flex-1">
+            {t('stations.action.edit')}
+          </Button>
+        )}
       </div>
     </div>
   );

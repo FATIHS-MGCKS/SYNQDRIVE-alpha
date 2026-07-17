@@ -1,4 +1,4 @@
-import { resolveGeocodeCountryFilter } from './station-geocode.util';
+import { resolveGeocodeCountryFilter, parseMapboxForwardGeocodeFeature } from './station-geocode.util';
 
 describe('station-geocode.util', () => {
   it('defaults empty country to de', () => {
@@ -20,5 +20,11 @@ describe('station-geocode.util', () => {
   it('returns null for unknown country names (no wrong filter)', () => {
     expect(resolveGeocodeCountryFilter('France')).toBeNull();
     expect(resolveGeocodeCountryFilter('Türkei')).toBeNull();
+  });
+
+  it('parseMapboxForwardGeocodeFeature rejects low relevance', () => {
+    expect(
+      parseMapboxForwardGeocodeFeature({ center: [13.4, 52.5], relevance: 0.2 }),
+    ).toBeNull();
   });
 });
