@@ -83,6 +83,8 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Runtime Secret | As needed for email deploy | As needed |
 | `HOSTINGER_API_TOKEN` | Runtime Secret | For `sync-resend-dns-to-hostinger.sh` (DNS) | Optional |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Runtime Secret | As needed | As needed |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET`, `TWILIO_AUTH_TOKEN` | Runtime Secret | Voice Assistant PSTN | As needed |
+| `TWILIO_VOICE_WEBHOOK_BASE_URL` | Environment Variable | `https://app.synqdrive.eu` (prod webhook base) | As needed |
 | Other keys from `backend/.env.example` | Runtime Secret | As needed | As needed |
 
 #### MCP servers (Cursor agent tooling)

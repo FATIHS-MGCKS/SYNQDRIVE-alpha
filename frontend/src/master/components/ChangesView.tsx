@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'twilio-webhook-base-url-v49585-2026-07-17',
+    version: '4.9.585',
+    title: 'V4.9.585 — Twilio: Production Webhook Base URL + Reachability Script',
+    summary: [
+      '`.env.example` — `TWILIO_VOICE_WEBHOOK_BASE_URL=https://app.synqdrive.eu` als Production-Default dokumentiert.',
+      'Neues Ops-Skript `twilio-webhook-reachability.sh` — POST-Probe für voice/status Webhooks nach Deploy.',
+      '`twilio-setup.md` — VPS-`backend.env` Anleitung + erwartete Webhook-URLs.',
+    ],
+    reason: 'Webhook-Base-URL war leer; Twilio-Nummern-Zuweisung und Signaturprüfung brauchen die öffentliche App-URL.',
+    previousBehavior: 'TWILIO_VOICE_WEBHOOK_BASE_URL leer; kein dokumentierter Reachability-Check.',
+    details: 'backend/.env.example, docs/twilio-setup.md, scripts/ops/twilio-webhook-reachability.sh, scripts/ops/README.md.',
+    affectsArchitecture: false,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:10:00.000Z',
+  },
+  {
     id: 'twilio-voice-integration-v49584-2026-07-17',
     version: '4.9.584',
     title: 'V4.9.584 — Twilio Voice: Module, Webhooks, PSTN↔ElevenLabs Bridge',

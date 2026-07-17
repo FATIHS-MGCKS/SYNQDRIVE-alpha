@@ -22,9 +22,31 @@ When `pstnProvider=TWILIO`, inbound calls hit `/api/v1/webhooks/twilio/voice` an
 | `TWILIO_AUTH_TOKEN` | **Webhook signature validation only** — not used for REST client |
 | `TWILIO_REGION` | Default `ie1` |
 | `TWILIO_EDGE` | Default `dublin` — fixed pair with `ie1` |
-| `TWILIO_VOICE_WEBHOOK_BASE_URL` | Public app base (e.g. `https://app.synqdrive.eu`); falls back to `APP_URL` |
+| `TWILIO_VOICE_WEBHOOK_BASE_URL` | Public app base (production: `https://app.synqdrive.eu`); falls back to `APP_URL` |
 
 All variables are optional until telephony is enabled. Missing values must not fail application bootstrap.
+
+### Production VPS (`backend.env`)
+
+```bash
+TWILIO_VOICE_WEBHOOK_BASE_URL=https://app.synqdrive.eu
+TWILIO_AUTH_TOKEN=<webhook-signing-only>
+```
+
+Resolved webhook targets (auto-configured on Twilio number assign):
+
+- `https://app.synqdrive.eu/api/v1/webhooks/twilio/voice`
+- `https://app.synqdrive.eu/api/v1/webhooks/twilio/status`
+
+### Reachability check (after deploy)
+
+```bash
+bash backend/scripts/ops/twilio-webhook-reachability.sh
+# or override base:
+TWILIO_VOICE_WEBHOOK_BASE_URL=https://app.synqdrive.eu bash backend/scripts/ops/twilio-webhook-reachability.sh
+```
+
+Expected: HTTP 200 on health + both webhook POSTs. HTTP 404 means the Twilio module is not deployed on that environment yet.
 
 ## Ireland (IE1) routing
 
