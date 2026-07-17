@@ -234,4 +234,45 @@ export class DocumentExtractionOrgController {
   ) {
     return this.service.retryFailedActionsForOrg(orgId, extractionId, userId ?? null);
   }
+
+  @Get(':extractionId/follow-up-suggestions')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  listFollowUpSuggestions(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.listFollowUpSuggestionsForOrg(orgId, extractionId);
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/accept')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  acceptFollowUpSuggestion(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.acceptFollowUpSuggestionForOrg(
+      orgId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/dismiss')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  dismissFollowUpSuggestion(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.dismissFollowUpSuggestionForOrg(
+      orgId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
 }

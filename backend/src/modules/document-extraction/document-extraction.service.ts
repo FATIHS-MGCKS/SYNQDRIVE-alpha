@@ -103,6 +103,7 @@ import { DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS } from './document-action-pla
 import { readConfirmedDataObject } from './document-entity-link.util';
 import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
 import { DocumentApplyResultService } from './document-apply-result.service';
+import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
 import {
   mergeActionPlanPreferences,
   type DocumentActionPlanPreferences,
@@ -360,6 +361,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly observability: DocumentExtractionObservabilityService,
     private readonly actionPlanPreview: DocumentActionPlanPreviewService,
     private readonly applyResultService: DocumentApplyResultService,
+    private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
   ) {}
 
   onModuleInit(): void {
@@ -1555,6 +1557,72 @@ export class DocumentExtractionService implements OnModuleInit {
   async getApplyResultForOrg(orgId: string, extractionId: string) {
     const existing = await this.getForOrg(orgId, extractionId);
     return this.applyResultService.buildForRecord(existing);
+  }
+
+  async listFollowUpSuggestionsForVehicle(vehicleId: string, extractionId: string) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.followUpSuggestionService.listForRecord(existing);
+  }
+
+  async listFollowUpSuggestionsForOrg(orgId: string, extractionId: string) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpSuggestionService.listForRecord(existing);
+  }
+
+  async acceptFollowUpSuggestionForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.followUpSuggestionService.acceptSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+  }
+
+  async acceptFollowUpSuggestionForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpSuggestionService.acceptSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+  }
+
+  async dismissFollowUpSuggestionForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.followUpSuggestionService.dismissSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+  }
+
+  async dismissFollowUpSuggestionForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpSuggestionService.dismissSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
   }
 
   async retryFailedActionsForVehicle(
