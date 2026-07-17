@@ -324,3 +324,43 @@ export function buildInspectionServiceEventNotes(
   ].filter(Boolean);
   return parts.length > 0 ? parts.join('\n\n') : undefined;
 }
+
+export type InspectionApplyPayload = {
+  eventType: 'TUV_INSPECTION' | 'BOKRAFT_INSPECTION';
+  eventDate: string;
+  odometerKm: number | null;
+  workshopName: string | null;
+  notes: string | null;
+  complianceUpdate: InspectionVehicleComplianceUpdate | null;
+  canUpdateVehicleMasterData: boolean;
+};
+
+export function buildInspectionApplyPayload(
+  documentType: InspectionDocumentType,
+  fields: Record<string, unknown>,
+  options?: { complianceReadinessBlocked?: boolean },
+): InspectionApplyPayload | null {
+  const gate = assessInspectionApplyGate({
+    documentType,
+    fields,
+    complianceReadinessBlocked: options?.complianceReadinessBlocked,
+  });
+  const eventDate = readInspectionDate(fields);
+  if (!gate.canArchive || !eventDate) {
+    return null;
+  }
+
+  const eventType =
+    documentType === INSPECTION_DOCUMENT_TYPES.TUV ? 'TUV_INSPECTION' : 'BOKRAFT_INSPECTION';
+  const complianceUpdate = buildInspectionVehicleComplianceUpdate(documentType, fields);
+
+  return {
+    eventType,
+    eventDate,
+    odometerKm: readMileageKm(fields),
+    workshopName: readIssuingOrganization(fields),
+    notes: buildInspectionServiceEventNotes(fields) ?? null,
+    complianceUpdate,
+    canUpdateVehicleMasterData: gate.canUpdateVehicleMasterData && complianceUpdate != null,
+  };
+}

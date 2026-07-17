@@ -9,7 +9,6 @@ import {
   BrakeEvidenceSource,
   BrakeWheelPosition,
   DocumentExtractionType,
-  ServiceEventOrigin,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeLifecycleService } from '@modules/vehicle-intelligence/brakes/brake-lifecycle.service';
@@ -25,16 +24,6 @@ import {
 import { BatteryHealthService } from '@modules/vehicle-intelligence/battery-health/battery-health.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
-import {
-  assessInspectionApplyGate,
-  buildInspectionServiceEventNotes,
-  buildInspectionVehicleComplianceUpdate,
-  INSPECTION_DOCUMENT_TYPES,
-  readInspectionDate,
-  readIssuingOrganization,
-  readMileageKm,
-  type InspectionDocumentType,
-} from './document-inspection-extraction.rules';
 import {
   assessDamageApplyGate,
   buildDamageCreatePayload,
@@ -109,11 +98,15 @@ export class DocumentExtractionApplyService {
     }
 
     if (['SERVICE', 'OIL_CHANGE'].includes(docType)) {
-      return this.applyServiceEvent(input, d);
+      throw new BadRequestException(
+        'Service apply must run through DocumentActionOrchestratorService',
+      );
     }
 
     if (docType === 'TUV_REPORT' || docType === 'BOKRAFT_REPORT') {
-      return this.applyInspectionReport(input, d, docType);
+      throw new BadRequestException(
+        'Inspection apply must run through DocumentActionOrchestratorService',
+      );
     }
 
     if (docType === 'BATTERY') {
@@ -338,112 +331,6 @@ export class DocumentExtractionApplyService {
       return Number.isNaN(d.getTime()) ? null : d;
     }
     return null;
-  }
-
-  private async applyServiceEvent(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
-    const { vehicleId, sourceFileUrl, documentType: docType } = input;
-    const typeMap: Record<string, string> = {
-      SERVICE: 'FULL_SERVICE',
-      OIL_CHANGE: 'OIL_CHANGE',
-      TUV_REPORT: 'TUV_INSPECTION',
-      BOKRAFT_REPORT: 'BOKRAFT_INSPECTION',
-    };
-    const eventType = typeMap[docType] ?? 'OTHER';
-    const odometerKmParsed = this.toInt(d?.odometerKm);
-    const costCentsParsed = this.toInt(d?.costCents);
-    const eventDate = this.dateFrom(d.eventDate);
-    const svcEvent = await this.prisma.vehicleServiceEvent.create({
-      data: {
-        vehicleId,
-        eventType: eventType as any,
-        eventDate: eventDate ?? new Date(),
-        odometerKm: odometerKmParsed,
-        workshopName: this.str(d.workshopName),
-        notes: this.str(d.notes) ?? this.str(d.description),
-        costCents: costCentsParsed,
-        documentUrl: sourceFileUrl,
-        origin: ServiceEventOrigin.AI_UPLOAD,
-      },
-    });
-
-    if (docType === 'OIL_CHANGE' && eventDate) {
-      await this.prisma.vehicle.update({
-        where: { id: vehicleId },
-        data: {
-          lastOilChangeDate: eventDate,
-          ...(odometerKmParsed != null ? { lastOilChangeOdometerKm: odometerKmParsed } : {}),
-        },
-      });
-    }
-    if (docType === 'SERVICE' && eventDate) {
-      await this.prisma.vehicle.update({
-        where: { id: vehicleId },
-        data: {
-          lastServiceDate: eventDate,
-          ...(odometerKmParsed != null ? { lastServiceOdometerKm: odometerKmParsed } : {}),
-        },
-      });
-    }
-
-    return { serviceEventId: svcEvent.id };
-  }
-
-  private async applyInspectionReport(
-    input: ApplyInput,
-    d: Record<string, unknown>,
-    docType: InspectionDocumentType,
-  ): Promise<ApplyResult> {
-    const gate = assessInspectionApplyGate({
-      documentType: docType,
-      fields: d,
-    });
-    if (!gate.canArchive) {
-      throw new BadRequestException({
-        message: 'Inspection apply gate blocked — invalid confirmed fields',
-        blockers: gate.blockers,
-      });
-    }
-
-    const { vehicleId, sourceFileUrl } = input;
-    const eventType =
-      docType === INSPECTION_DOCUMENT_TYPES.TUV ? 'TUV_INSPECTION' : 'BOKRAFT_INSPECTION';
-    const eventDate = this.dateFrom(readInspectionDate(d));
-    const odometerKmParsed = this.toInt(readMileageKm(d));
-    const svcEvent = await this.prisma.vehicleServiceEvent.create({
-      data: {
-        vehicleId,
-        eventType: eventType as any,
-        eventDate: eventDate ?? new Date(),
-        odometerKm: odometerKmParsed,
-        workshopName: readIssuingOrganization(d) ?? undefined,
-        notes: buildInspectionServiceEventNotes(d),
-        documentUrl: sourceFileUrl,
-        origin: ServiceEventOrigin.AI_UPLOAD,
-      },
-    });
-
-    const complianceUpdate = buildInspectionVehicleComplianceUpdate(docType, d);
-    if (gate.canUpdateVehicleMasterData && complianceUpdate) {
-      if (docType === INSPECTION_DOCUMENT_TYPES.TUV) {
-        await this.prisma.vehicle.update({
-          where: { id: vehicleId },
-          data: {
-            lastTuvDate: complianceUpdate.lastInspectionDate,
-            nextTuvDate: complianceUpdate.nextValidUntilDate,
-          },
-        });
-      } else {
-        await this.prisma.vehicle.update({
-          where: { id: vehicleId },
-          data: {
-            lastBokraftDate: complianceUpdate.lastInspectionDate,
-            nextBokraftDate: complianceUpdate.nextValidUntilDate,
-          },
-        });
-      }
-    }
-
-    return { serviceEventId: svcEvent.id };
   }
 
   private async applyBattery(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {

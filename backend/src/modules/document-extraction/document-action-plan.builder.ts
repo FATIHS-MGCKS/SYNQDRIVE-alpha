@@ -8,6 +8,7 @@ import {
 } from './document-action-planner.invoice-rules';
 import { assessTechnicalPlan, isTechnicalDocumentProfile } from './document-action-planner.technical-rules';
 import { assessFinePlan, isFineDocumentProfile } from './document-action-planner.fine-rules';
+import { assessServicePlan, isServiceDocumentProfile } from './document-action-planner.service-rules';
 import {
   DOCUMENT_ACTION_PLAN_VERSION,
   computeActionPlanFingerprint,
@@ -73,6 +74,20 @@ function assessPlanForDocumentType(input: BuildDocumentActionPlanInput): Planner
       planOutcome: assessment.planOutcome,
       actions: assessment.actions,
       metadata: {
+        documentType: assessment.documentType,
+        canUpdateVehicleMasterData: assessment.canUpdateVehicleMasterData,
+        missingRequirements: assessment.missingRequirements,
+      },
+    };
+  }
+
+  if (isServiceDocumentProfile(plannerInput)) {
+    const assessment = assessServicePlan(plannerInput);
+    return {
+      planOutcome: assessment.planOutcome,
+      actions: assessment.actions,
+      metadata: {
+        documentType: assessment.documentType,
         missingRequirements: assessment.missingRequirements,
       },
     };

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-service-inspection-apply-executor-2026-07-17',
+    version: '4.9.614',
+    title: 'V4.9.614 — Document Intake V2 Idempotent Service & Inspection Apply via Action Executor',
+    summary: [
+      'SERVICE, OIL_CHANGE, TÜV und BOKraft migriert auf DocumentActionExecutor mit idempotentem VehicleServiceEvent.documentExtractionId + Unique (organizationId, documentExtractionId).',
+      'ServiceEventsService.createFromDocumentExtraction — explizites eventDate ohne Default-Rückdatierung; getrennte Actions für Serviceevent und Fahrzeugupdate (Compliance/Historie).',
+      'bestätigtes validUntil erforderlich für UPDATE_VEHICLE_COMPLIANCE_DATES; fehlende Gültigkeit → ARCHIVE_ONLY ohne Compliance-Update. Retry erzeugt kein zweites Serviceevent.',
+      'Executors: CREATE_SERVICE_EVENT, CREATE_COMPLIANCE_SERVICE_EVENT, UPDATE_VEHICLE_COMPLIANCE_DATES, REFRESH_VEHICLE_SERVICE_HISTORY. Legacy applyServiceEvent/applyInspectionReport entfernt.',
+    ],
+    reason:
+      'Prompt 39/84 — Service- und Inspektions-Apply auf idempotente Executors mit kontrolliertem Zwei-Phasen-Fahrzeugupdate.',
+    previousBehavior:
+      'SERVICE/OIL/TÜV/BOKraft liefen über DocumentExtractionApplyService mit direktem Prisma-Create, eventDate ?? new Date() Fallback und nicht-idempotenten Doppel-Events bei Retry.',
+    details:
+      'Backend: migration 20260717210000_service_event_document_extraction_idempotency, document-service-extraction.rules, document-action-planner.service-rules, service-events.service createFromDocumentExtraction + applyComplianceVehicleUpdateFromExtraction, service/inspection executors, orchestrator wiring. Tests: partial failure zwischen Event und Fahrzeugupdate. Architektur: architecture/DOCUMENT_SERVICE_INSPECTION_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'document-invoice-apply-executor-2026-07-17',
     version: '4.9.613',
     title: 'V4.9.613 — Document Intake V2 Idempotent Invoice Apply via Action Executor',
