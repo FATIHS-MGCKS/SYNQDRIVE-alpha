@@ -5637,6 +5637,109 @@ export const api = {
         get<VoiceAssistantAdminOrgDetail>(`/admin/voice-assistant/organizations/${orgId}`),
       syncOrganization: (orgId: string) =>
         post<VoiceSyncConversationsResult>(`/admin/voice-assistant/organizations/${orgId}/sync`, {}),
+      billing: {
+        plans: () => get<VoicePlanCatalogEntry[]>('/admin/voice-assistant/billing/plans'),
+        orgBilling: (orgId: string) =>
+          get<VoiceMasterAdminOrgBilling>(`/admin/voice-assistant/billing/organizations/${orgId}`),
+      },
+      controlPlane: {
+        platformStatus: () =>
+          get<VoiceControlPlanePlatformStatus>('/admin/voice-assistant/control-plane/platform-status'),
+        organizations: () =>
+          get<VoiceControlPlaneOrganizationsResponse>('/admin/voice-assistant/control-plane/organizations'),
+        organizationWorkspace: (orgId: string) =>
+          get<VoiceControlPlaneOrgWorkspace>(
+            `/admin/voice-assistant/control-plane/organizations/${orgId}/workspace`,
+          ),
+        phoneNumbers: () =>
+          get<VoiceControlPlanePhoneNumberRow[]>('/admin/voice-assistant/control-plane/phone-numbers'),
+        webhookEvents: (params?: { organizationId?: string; status?: string; limit?: number; offset?: number }) =>
+          get<VoiceControlPlaneWebhookEventsResponse>(
+            `/admin/voice-assistant/control-plane/webhook-events${buildQuery(params)}`,
+          ),
+        auditEvents: (params?: { organizationId?: string; limit?: number }) =>
+          get<VoiceControlPlaneAuditEventsResponse>(
+            `/admin/voice-assistant/control-plane/audit-events${buildQuery(params)}`,
+          ),
+        suspendOrganization: (
+          orgId: string,
+          body: { reason: string; confirm: boolean },
+          idempotencyKey?: string,
+        ) =>
+          request<{ suspended: boolean; subscriptionId: string }>(
+            `/admin/voice-assistant/control-plane/organizations/${orgId}/suspend`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+              headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+            },
+          ),
+        replayWebhookEvent: (
+          eventId: string,
+          body: { reason: string; confirm: boolean },
+          idempotencyKey?: string,
+        ) =>
+          request<Record<string, unknown>>(
+            `/admin/voice-assistant/control-plane/webhook-events/${eventId}/replay`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+              headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+            },
+          ),
+        deployAgent: (
+          orgId: string,
+          body: { confirm?: boolean },
+          idempotencyKey?: string,
+        ) =>
+          request<Record<string, unknown>>(
+            `/admin/voice-assistant/control-plane/organizations/${orgId}/agent-deployment/deploy`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+              headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+            },
+          ),
+        rollbackAgent: (orgId: string, body: { confirm?: boolean }) =>
+          request<Record<string, unknown>>(
+            `/admin/voice-assistant/control-plane/organizations/${orgId}/agent-deployment/rollback`,
+            { method: 'POST', body: JSON.stringify(body) },
+          ),
+      },
+      provisioning: {
+        twilioPreview: (orgId: string, body: { numberType?: string }) =>
+          post<Record<string, unknown>>(
+            `/admin/voice-assistant/organizations/${orgId}/twilio/provisioning/preview`,
+            body,
+          ),
+        twilioProvisionSubaccount: (
+          orgId: string,
+          body: { friendlyName?: string; confirm?: boolean; dryRun?: boolean },
+          idempotencyKey: string,
+        ) =>
+          request<Record<string, unknown>>(
+            `/admin/voice-assistant/organizations/${orgId}/twilio/subaccount/provision`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+              headers: { 'Idempotency-Key': idempotencyKey },
+            },
+          ),
+        elevenLabsImport: (
+          orgId: string,
+          phoneNumberId: string,
+          body: { confirm?: boolean },
+          idempotencyKey: string,
+        ) =>
+          request<Record<string, unknown>>(
+            `/admin/voice-assistant/organizations/${orgId}/elevenlabs/phone-numbers/${phoneNumberId}/import-and-assign`,
+            {
+              method: 'POST',
+              body: JSON.stringify(body),
+              headers: { 'Idempotency-Key': idempotencyKey },
+            },
+          ),
+      },
     },
   },
 
@@ -10309,6 +10412,152 @@ export interface VoiceAssistantAdminOrgDetail {
   costTracking?: {
     connected: boolean;
     message: string;
+  };
+}
+
+export interface VoiceMasterAdminOrgBilling {
+  organizationId: string;
+  periodStart: string;
+  periodEnd: string;
+  planCode: string | null;
+  planCatalogVersion: string | null;
+  includedMinutes: number;
+  consumedMinutes: number;
+  inboundMinutes: number;
+  outboundMinutes: number;
+  remainingIncludedMinutes: number;
+  overageMinutes: number;
+  currency: string;
+  estimatedUsageRevenueCents: number;
+  monthlyBaseFeeCents: number;
+  providerCostCents: number;
+  revenueCents: number;
+  marginCents: number;
+  marginPercent: number | null;
+  setupFeeOutstandingCents: number;
+  estimatedCostCents: number;
+  finalCostCents: number;
+}
+
+export interface VoiceControlPlanePlatformStatus {
+  checkedAt: string;
+  providers: {
+    elevenLabs: { ok: boolean; label: string };
+    twilioIe1: { ok: boolean; label: string };
+    mcpGateway: { ok: boolean; label: string };
+    webhookIngestion: { ok: boolean; label: string };
+  };
+  queues: {
+    waiting: number;
+    active: number;
+    failed: number;
+    webhookBacklog: number;
+  };
+  webhooks: {
+    byStatus: Record<string, number>;
+    dlqCount24h: number;
+    avgProcessingDelayMs: number | null;
+  };
+  activeIncidents: Array<{ id: string; severity: 'critical' | 'warning'; message: string }>;
+}
+
+export type VoiceControlPlaneOrganizationRow = VoiceAssistantAdminOverviewRow & {
+  planCode: string | null;
+  subscriptionStatus: string | null;
+  subaccountStatus: string | null;
+  consumedMinutes: number;
+  remainingMinutes: number;
+  monthlyBudgetCents: number | null;
+  maxConcurrentCalls: number | null;
+  openErrors: number;
+};
+
+export interface VoiceControlPlaneOrganizationsResponse {
+  summary: VoiceAssistantAdminOverview['summary'];
+  organizations: VoiceControlPlaneOrganizationRow[];
+}
+
+export interface VoiceControlPlanePhoneNumberRow {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  maskedPhoneNumber: string;
+  status: string;
+  region: string | null;
+  regulatoryStatus: string | null;
+  elevenLabsAssigned: boolean;
+  updatedAt: string;
+}
+
+export interface VoiceControlPlaneWebhookEventRow {
+  id: string;
+  organizationId: string | null;
+  organizationName: string | null;
+  provider: string;
+  eventType: string | null;
+  status: string;
+  receivedAt: string;
+  processedAt: string | null;
+  retryCount: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+  diagnosticSummary: string | null;
+}
+
+export interface VoiceControlPlaneWebhookEventsResponse {
+  total: number;
+  items: VoiceControlPlaneWebhookEventRow[];
+}
+
+export interface VoiceControlPlaneAuditEventRow {
+  id: string;
+  category: 'protection' | 'tool_approval' | 'tool_execution';
+  organizationId: string;
+  organizationName: string;
+  action: string;
+  reasonCode: string | null;
+  message: string | null;
+  actorUserId: string | null;
+  createdAt: string;
+}
+
+export interface VoiceControlPlaneAuditEventsResponse {
+  items: VoiceControlPlaneAuditEventRow[];
+}
+
+export interface VoiceControlPlaneOrgWorkspace {
+  detail: VoiceAssistantAdminOrgDetail;
+  subscription: Record<string, unknown> | null;
+  billing: VoiceMasterAdminOrgBilling | null;
+  protectionAudit: Array<Record<string, unknown>>;
+  providerAccounts: Array<{
+    id: string;
+    provider: string;
+    status: string;
+    maskedExternalRef: string | null;
+    region: string | null;
+    updatedAt: string;
+  }>;
+  phoneNumbers: Array<{
+    id: string;
+    maskedPhoneNumber: string;
+    status: string;
+    region: string | null;
+    regulatoryStatus: string | null;
+    elevenLabsAssigned: boolean;
+  }>;
+  provisioningJobs: Array<{
+    id: string;
+    jobType: string;
+    status: string;
+    currentStep: string | null;
+    resumeStep: string | null;
+    lastError: string | null;
+    updatedAt: string;
+  }>;
+  agentDeployment: {
+    draft: Record<string, unknown> | null;
+    diff: Record<string, unknown> | null;
   };
 }
 
