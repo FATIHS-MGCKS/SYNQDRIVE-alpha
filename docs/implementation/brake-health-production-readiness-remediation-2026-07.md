@@ -162,9 +162,10 @@ Read path
 | **2** | Safety net | Regressionstests für kritische Brake-Health-Schreibpfade (A–I) | ✅ **Done** | `b1246a88` | — | 6 rot / 4 grün | — |
 | **3** | Architektur | Kanonischer Brake-Initialisierungspfad (Variante A) | ✅ **Done** | `b892b605` | — | 19 neu grün | read-only diag |
 | **4** | Registration | Brake-Health-Ausgangszustand bei Fahrzeugregistrierung | ✅ **Done** | `e8e62310` | — | 39 grün | — |
-| **5** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
-| **6** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
-| **7** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
+| **5** | A — Fleet | Read-only Baseline-Backfill-Kandidaten-Audit | ✅ **Done** | *(nach Commit)* | — | 13 grün | read-only |
+| **6** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
+| **7** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
+| **8** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
 | **8** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
 | **9** | B — Lifecycle | Scope-aware Tests (front/rear pads/discs only) | ⏳ Pending | — | — | lifecycle spec | — |
 | **10** | B — Lifecycle | Service + Evidence atomarer (Transaktion) | ⏳ Pending | — | evtl. | integration | — |
@@ -461,6 +462,59 @@ npm test -- --testPathPattern='brake-registration|registration-brake-outcome|reg
 # 5 suites, 39 passed
 npm run build  # OK
 ```
+
+---
+
+## Read-only Baseline-Backfill-Audit (Prompt 5) — 2026-07-17
+
+### Ziel
+
+Bestandsfahrzeuge **ohne** `BrakeHealthCurrent` oder **ohne belastbare Baseline** komponentenweise klassifizieren — **keine Produktionsdaten ändern**.
+
+### Artefakte
+
+| Datei | Rolle |
+|-------|-------|
+| `scripts/ops/audit-brake-health-baseline-candidates.ts` | Thin CLI (read-only) |
+| `brake-baseline-candidate-audit.ts` | Pure Klassifikation + Markdown |
+| `brake-baseline-candidate-audit.loader.ts` | Rohdaten → Audit-Input |
+| `brake-baseline-candidate-audit.service.ts` | Prisma-Loader (read-only) |
+| `brake-baseline-candidate-audit.safety.ts` | Prod/Remote-DB-Guard |
+| `docs/audits/brake-health-baseline-backfill-candidates-2026-07.md` | Anonymisierter Bericht (Fixture-Lauf) |
+| `docs/audits/data/brake-health-baseline-backfill-candidates-2026-07.json` | JSON-Artefakt |
+
+### Kandidaten-Klassen (pro Komponente)
+
+`EXACT_MEASURED` · `CONFIRMED_REPLACEMENT` · `HIGH_CONFIDENCE_DOCUMENTED` · `SPEC_ONLY` · `REGISTRATION_ASSERTION_ONLY` · `CONFLICTING_DATA` · `NO_SAFE_BASELINE`
+
+Komponenten: `FRONT_PADS`, `REAR_PADS`, `FRONT_DISCS`, `REAR_DISCS` — **keine** Vollbaseline aus Teilsignal.
+
+### Analysierte Signale pro Fahrzeug
+
+BHC · Reference Spec · Registration State · Odometer-Historie · Service Events · bestätigte Dokumente · Brake Evidence · PENDING BRAKE Jobs · Trips · DTCs · Alerts
+
+### Odometer-Anker
+
+Exakter Wert am Baseline-Zeitpunkt · nächster Provider-Wert · Registration/Service-Odometer · Konflikte · Rücksprünge
+
+### Ausführung
+
+```bash
+# Fixture-Bericht (CI / ohne DB)
+npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts --fixtures-only
+
+# Datenbank (supervised, read-only)
+BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1 npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts --allow-remote-db
+```
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-baseline-candidate-audit'
+# 13 passed
+```
+
+Szenarien: echte Messung · bestätigter Austausch · Spec-only · unklare Registration · Teilservice · widersprüchliche Daten · kein Odometer · PENDING Job · kein sicherer Kandidat.
 
 ---
 

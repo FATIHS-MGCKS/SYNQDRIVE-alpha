@@ -1,0 +1,1334 @@
+{
+  "auditId": "brake-health-baseline-backfill-candidates-2026-07",
+  "generatedAt": "2026-07-17T13:45:15.511Z",
+  "mode": "fixtures",
+  "readOnly": true,
+  "summary": {
+    "vehiclesAudited": 9,
+    "byCandidateClass": {
+      "EXACT_MEASURED": 3,
+      "CONFIRMED_REPLACEMENT": 1,
+      "HIGH_CONFIDENCE_DOCUMENTED": 0,
+      "SPEC_ONLY": 6,
+      "REGISTRATION_ASSERTION_ONLY": 1,
+      "CONFLICTING_DATA": 1,
+      "NO_SAFE_BASELINE": 24
+    },
+    "autoApplicableComponents": 4,
+    "manualReviewComponents": 8,
+    "noSafeBaselineComponents": 24,
+    "conflictingComponents": 1,
+    "specOnlyComponents": 6,
+    "vehiclesWithPendingJobs": 1
+  },
+  "vehicles": [
+    {
+      "anonymizedVehicleId": "VEHICLE_329",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": false,
+      "registrationBrakeCondition": "UNKNOWN",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": 45000,
+        "nearestHistoricalProvider": {
+          "odometerKm": 45000,
+          "observedAt": "2026-03-01T10:00:00.000Z",
+          "source": "REGISTRATION_MILEAGE",
+          "evidenceRef": "reg_9deb61727a"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [
+          {
+            "odometerKm": 45200,
+            "observedAt": "2026-03-10T14:00:00.000Z",
+            "evidenceRef": "svc_e80e877982"
+          }
+        ],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 45000
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "EXACT_MEASURED",
+          "source": "BRAKE_EVIDENCE_MEASUREMENT",
+          "thicknessMm": 9.2,
+          "timestamp": "2026-03-10T14:00:00.000Z",
+          "odometerKm": 45200,
+          "confidence": "HIGH",
+          "conflicts": [],
+          "recommendedAction": "auto_backfill_eligible",
+          "autoApplicable": true,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "EXACT_MEASURED",
+          "source": "SERVICE_EVENT_MEASUREMENT",
+          "thicknessMm": 8.8,
+          "timestamp": "2026-03-10T14:00:00.000Z",
+          "odometerKm": 45200,
+          "confidence": "HIGH",
+          "conflicts": [],
+          "recommendedAction": "auto_backfill_eligible",
+          "autoApplicable": true,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [],
+      "requiresManualReview": false,
+      "anyAutoApplicable": true
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_706",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": false,
+      "registrationBrakeCondition": "NEW",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": null,
+        "nearestHistoricalProvider": {
+          "odometerKm": 44800,
+          "observedAt": "2026-03-05T09:00:00.000Z",
+          "source": "SERVICE_EVENT",
+          "evidenceRef": "svc_cd6398c2a3"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [
+          {
+            "odometerKm": 44800,
+            "observedAt": "2026-03-05T09:00:00.000Z",
+            "evidenceRef": "svc_cd6398c2a3"
+          }
+        ],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 44800
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "CONFIRMED_REPLACEMENT",
+          "source": "SERVICE_EVENT_REPLACEMENT",
+          "thicknessMm": 10,
+          "timestamp": "2026-03-05T09:00:00.000Z",
+          "odometerKm": 44800,
+          "confidence": "MEDIUM",
+          "conflicts": [],
+          "recommendedAction": "auto_backfill_eligible",
+          "autoApplicable": true,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 44800,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 44800,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 44800,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [],
+      "requiresManualReview": false,
+      "anyAutoApplicable": true
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_804",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": true,
+      "registrationBrakeCondition": "NEW",
+      "registrationTimestamp": "2026-03-01T10:05:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:05:00.000Z",
+        "exactAtBaselineKm": 45000,
+        "nearestHistoricalProvider": {
+          "odometerKm": 45000,
+          "observedAt": "2026-03-01T10:00:00.000Z",
+          "source": "REGISTRATION_MILEAGE",
+          "evidenceRef": "reg_1639a6e8e5"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 45000
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "SPEC_ONLY",
+          "source": "REFERENCE_SPEC_NOMINAL",
+          "thicknessMm": 10,
+          "timestamp": "2026-03-01T10:05:00.000Z",
+          "odometerKm": 45000,
+          "confidence": "LOW",
+          "conflicts": [
+            "nominal_spec_not_measurement"
+          ],
+          "recommendedAction": "measurement_or_replacement_confirmation_required",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "SPEC_ONLY",
+          "source": "REFERENCE_SPEC_NOMINAL",
+          "thicknessMm": 10,
+          "timestamp": "2026-03-01T10:05:00.000Z",
+          "odometerKm": 45000,
+          "confidence": "LOW",
+          "conflicts": [
+            "nominal_spec_not_measurement"
+          ],
+          "recommendedAction": "measurement_or_replacement_confirmation_required",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "SPEC_ONLY",
+          "source": "REFERENCE_SPEC_NOMINAL",
+          "thicknessMm": 28,
+          "timestamp": "2026-03-01T10:05:00.000Z",
+          "odometerKm": 45000,
+          "confidence": "LOW",
+          "conflicts": [
+            "nominal_spec_not_measurement"
+          ],
+          "recommendedAction": "measurement_or_replacement_confirmation_required",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "SPEC_ONLY",
+          "source": "REFERENCE_SPEC_NOMINAL",
+          "thicknessMm": 10,
+          "timestamp": "2026-03-01T10:05:00.000Z",
+          "odometerKm": 45000,
+          "confidence": "LOW",
+          "conflicts": [
+            "nominal_spec_not_measurement"
+          ],
+          "recommendedAction": "measurement_or_replacement_confirmation_required",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        }
+      ],
+      "vehicleConflicts": [],
+      "requiresManualReview": true,
+      "anyAutoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_362",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": false,
+      "registrationBrakeCondition": "UNKNOWN",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": 45000,
+        "nearestHistoricalProvider": {
+          "odometerKm": 45000,
+          "observedAt": "2026-03-01T10:00:00.000Z",
+          "source": "REGISTRATION_MILEAGE",
+          "evidenceRef": "reg_9707b0e481"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 45000
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "REGISTRATION_ASSERTION_ONLY",
+          "source": "REGISTRATION_ASSERTION",
+          "thicknessMm": null,
+          "timestamp": "2026-03-01T10:00:00.000Z",
+          "odometerKm": 45000,
+          "confidence": "LOW",
+          "conflicts": [],
+          "recommendedAction": "confirm_registration_state_or_measure",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [],
+      "requiresManualReview": true,
+      "anyAutoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_611",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": false,
+      "registrationBrakeCondition": "UNKNOWN",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": 45000,
+        "nearestHistoricalProvider": {
+          "odometerKm": 45000,
+          "observedAt": "2026-03-01T10:00:00.000Z",
+          "source": "REGISTRATION_MILEAGE",
+          "evidenceRef": "reg_cf334e5e80"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 45000
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "EXACT_MEASURED",
+          "source": "SERVICE_EVENT_MEASUREMENT",
+          "thicknessMm": 7.5,
+          "timestamp": "2026-02-20T11:00:00.000Z",
+          "odometerKm": 44100,
+          "confidence": "HIGH",
+          "conflicts": [],
+          "recommendedAction": "auto_backfill_eligible",
+          "autoApplicable": true,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [],
+      "requiresManualReview": false,
+      "anyAutoApplicable": true
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_674",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": false,
+      "registrationBrakeCondition": "UNKNOWN",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": 45000,
+        "nearestHistoricalProvider": {
+          "odometerKm": 45000,
+          "observedAt": "2026-03-01T10:00:00.000Z",
+          "source": "REGISTRATION_MILEAGE",
+          "evidenceRef": "reg_c7868f90a1"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 45000
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "CONFLICTING_DATA",
+          "source": "SERVICE_EVENT_MEASUREMENT",
+          "thicknessMm": 5.5,
+          "timestamp": "2026-03-02T12:00:00.000Z",
+          "odometerKm": 45000,
+          "confidence": "HIGH",
+          "conflicts": [
+            "component_measurement_spread_5.5_9.0_mm"
+          ],
+          "recommendedAction": "manual_reconciliation_required",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 2
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [],
+      "requiresManualReview": true,
+      "anyAutoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_962",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": true,
+      "registrationBrakeCondition": "UNKNOWN",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": null,
+        "nearestHistoricalProvider": null,
+        "registrationOdometerKm": null,
+        "serviceOdometers": [],
+        "conflicts": [
+          "missing_odometer_anchor"
+        ],
+        "rollbacks": [],
+        "resolvedAnchorKm": null
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "SPEC_ONLY",
+          "source": "REFERENCE_SPEC_NOMINAL",
+          "thicknessMm": 10,
+          "timestamp": "2026-03-01T10:00:00.000Z",
+          "odometerKm": null,
+          "confidence": "LOW",
+          "conflicts": [
+            "missing_odometer_anchor",
+            "nominal_spec_not_measurement"
+          ],
+          "recommendedAction": "measurement_or_replacement_confirmation_required",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": null,
+          "confidence": "UNKNOWN",
+          "conflicts": [
+            "missing_odometer_anchor"
+          ],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": null,
+          "confidence": "UNKNOWN",
+          "conflicts": [
+            "missing_odometer_anchor"
+          ],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": null,
+          "confidence": "UNKNOWN",
+          "conflicts": [
+            "missing_odometer_anchor"
+          ],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [
+        "missing_odometer_anchor"
+      ],
+      "requiresManualReview": true,
+      "anyAutoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_514",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": false,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": true,
+      "registrationBrakeCondition": "UNKNOWN",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 1,
+      "legacyJobClassification": "ORPHAN_LEGACY_NO_PROCESSOR",
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": 45000,
+        "nearestHistoricalProvider": {
+          "odometerKm": 45000,
+          "observedAt": "2026-03-01T10:00:00.000Z",
+          "source": "REGISTRATION_MILEAGE",
+          "evidenceRef": "reg_59dd182828"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 45000
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "SPEC_ONLY",
+          "source": "REFERENCE_SPEC_NOMINAL",
+          "thicknessMm": 10,
+          "timestamp": "2026-03-01T10:00:00.000Z",
+          "odometerKm": 45000,
+          "confidence": "LOW",
+          "conflicts": [
+            "nominal_spec_not_measurement"
+          ],
+          "recommendedAction": "measurement_or_replacement_confirmation_required",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 1
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [
+        "pending_brake_enrichment_job"
+      ],
+      "requiresManualReview": true,
+      "anyAutoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_311",
+      "organizationSlot": "ORG_4a1bc310",
+      "registeredAt": "2026-03-01T10:00:00.000Z",
+      "brakeHealthCurrentPresent": true,
+      "brakeHealthInitialized": false,
+      "referenceSpecPresent": false,
+      "registrationBrakeCondition": "UNKNOWN",
+      "registrationTimestamp": "2026-03-01T10:00:00.000Z",
+      "pendingEnrichmentJobs": 0,
+      "legacyJobClassification": null,
+      "tripCountSinceRegistration": 12,
+      "activeDtcCount": 0,
+      "hasAlert": false,
+      "odometerAnchor": {
+        "baselineTimestamp": "2026-03-01T10:00:00.000Z",
+        "exactAtBaselineKm": 45000,
+        "nearestHistoricalProvider": {
+          "odometerKm": 45000,
+          "observedAt": "2026-03-01T10:00:00.000Z",
+          "source": "REGISTRATION_MILEAGE",
+          "evidenceRef": "reg_ebaa5117fe"
+        },
+        "registrationOdometerKm": 45000,
+        "serviceOdometers": [],
+        "conflicts": [],
+        "rollbacks": [],
+        "resolvedAnchorKm": 45000
+      },
+      "components": [
+        {
+          "component": "FRONT_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_PADS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "FRONT_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        },
+        {
+          "component": "REAR_DISCS",
+          "candidateClass": "NO_SAFE_BASELINE",
+          "source": null,
+          "thicknessMm": null,
+          "timestamp": null,
+          "odometerKm": 45000,
+          "confidence": "UNKNOWN",
+          "conflicts": [],
+          "recommendedAction": "no_safe_baseline_collect_evidence",
+          "autoApplicable": false,
+          "partialBaselineOnly": true,
+          "signalsReviewed": 0
+        }
+      ],
+      "vehicleConflicts": [],
+      "requiresManualReview": false,
+      "anyAutoApplicable": false
+    }
+  ],
+  "componentRows": [
+    {
+      "anonymizedVehicleId": "VEHICLE_329",
+      "component": "FRONT_PADS",
+      "candidateClass": "EXACT_MEASURED",
+      "source": "BRAKE_EVIDENCE_MEASUREMENT",
+      "timestamp": "2026-03-10T14:00:00.000Z",
+      "odometerKm": 45200,
+      "confidence": "HIGH",
+      "conflicts": [],
+      "recommendedAction": "auto_backfill_eligible",
+      "autoApplicable": true
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_329",
+      "component": "REAR_PADS",
+      "candidateClass": "EXACT_MEASURED",
+      "source": "SERVICE_EVENT_MEASUREMENT",
+      "timestamp": "2026-03-10T14:00:00.000Z",
+      "odometerKm": 45200,
+      "confidence": "HIGH",
+      "conflicts": [],
+      "recommendedAction": "auto_backfill_eligible",
+      "autoApplicable": true
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_329",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_329",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_706",
+      "component": "FRONT_PADS",
+      "candidateClass": "CONFIRMED_REPLACEMENT",
+      "source": "SERVICE_EVENT_REPLACEMENT",
+      "timestamp": "2026-03-05T09:00:00.000Z",
+      "odometerKm": 44800,
+      "confidence": "MEDIUM",
+      "conflicts": [],
+      "recommendedAction": "auto_backfill_eligible",
+      "autoApplicable": true
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_706",
+      "component": "REAR_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 44800,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_706",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 44800,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_706",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 44800,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_804",
+      "component": "FRONT_PADS",
+      "candidateClass": "SPEC_ONLY",
+      "source": "REFERENCE_SPEC_NOMINAL",
+      "timestamp": "2026-03-01T10:05:00.000Z",
+      "odometerKm": 45000,
+      "confidence": "LOW",
+      "conflicts": [
+        "nominal_spec_not_measurement"
+      ],
+      "recommendedAction": "measurement_or_replacement_confirmation_required",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_804",
+      "component": "REAR_PADS",
+      "candidateClass": "SPEC_ONLY",
+      "source": "REFERENCE_SPEC_NOMINAL",
+      "timestamp": "2026-03-01T10:05:00.000Z",
+      "odometerKm": 45000,
+      "confidence": "LOW",
+      "conflicts": [
+        "nominal_spec_not_measurement"
+      ],
+      "recommendedAction": "measurement_or_replacement_confirmation_required",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_804",
+      "component": "FRONT_DISCS",
+      "candidateClass": "SPEC_ONLY",
+      "source": "REFERENCE_SPEC_NOMINAL",
+      "timestamp": "2026-03-01T10:05:00.000Z",
+      "odometerKm": 45000,
+      "confidence": "LOW",
+      "conflicts": [
+        "nominal_spec_not_measurement"
+      ],
+      "recommendedAction": "measurement_or_replacement_confirmation_required",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_804",
+      "component": "REAR_DISCS",
+      "candidateClass": "SPEC_ONLY",
+      "source": "REFERENCE_SPEC_NOMINAL",
+      "timestamp": "2026-03-01T10:05:00.000Z",
+      "odometerKm": 45000,
+      "confidence": "LOW",
+      "conflicts": [
+        "nominal_spec_not_measurement"
+      ],
+      "recommendedAction": "measurement_or_replacement_confirmation_required",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_362",
+      "component": "FRONT_PADS",
+      "candidateClass": "REGISTRATION_ASSERTION_ONLY",
+      "source": "REGISTRATION_ASSERTION",
+      "timestamp": "2026-03-01T10:00:00.000Z",
+      "odometerKm": 45000,
+      "confidence": "LOW",
+      "conflicts": [],
+      "recommendedAction": "confirm_registration_state_or_measure",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_362",
+      "component": "REAR_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_362",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_362",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_611",
+      "component": "FRONT_PADS",
+      "candidateClass": "EXACT_MEASURED",
+      "source": "SERVICE_EVENT_MEASUREMENT",
+      "timestamp": "2026-02-20T11:00:00.000Z",
+      "odometerKm": 44100,
+      "confidence": "HIGH",
+      "conflicts": [],
+      "recommendedAction": "auto_backfill_eligible",
+      "autoApplicable": true
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_611",
+      "component": "REAR_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_611",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_611",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_674",
+      "component": "FRONT_PADS",
+      "candidateClass": "CONFLICTING_DATA",
+      "source": "SERVICE_EVENT_MEASUREMENT",
+      "timestamp": "2026-03-02T12:00:00.000Z",
+      "odometerKm": 45000,
+      "confidence": "HIGH",
+      "conflicts": [
+        "component_measurement_spread_5.5_9.0_mm"
+      ],
+      "recommendedAction": "manual_reconciliation_required",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_674",
+      "component": "REAR_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_674",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_674",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_962",
+      "component": "FRONT_PADS",
+      "candidateClass": "SPEC_ONLY",
+      "source": "REFERENCE_SPEC_NOMINAL",
+      "timestamp": "2026-03-01T10:00:00.000Z",
+      "odometerKm": null,
+      "confidence": "LOW",
+      "conflicts": [
+        "missing_odometer_anchor",
+        "nominal_spec_not_measurement"
+      ],
+      "recommendedAction": "measurement_or_replacement_confirmation_required",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_962",
+      "component": "REAR_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": null,
+      "confidence": "UNKNOWN",
+      "conflicts": [
+        "missing_odometer_anchor"
+      ],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_962",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": null,
+      "confidence": "UNKNOWN",
+      "conflicts": [
+        "missing_odometer_anchor"
+      ],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_962",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": null,
+      "confidence": "UNKNOWN",
+      "conflicts": [
+        "missing_odometer_anchor"
+      ],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_514",
+      "component": "FRONT_PADS",
+      "candidateClass": "SPEC_ONLY",
+      "source": "REFERENCE_SPEC_NOMINAL",
+      "timestamp": "2026-03-01T10:00:00.000Z",
+      "odometerKm": 45000,
+      "confidence": "LOW",
+      "conflicts": [
+        "nominal_spec_not_measurement"
+      ],
+      "recommendedAction": "measurement_or_replacement_confirmation_required",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_514",
+      "component": "REAR_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_514",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_514",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_311",
+      "component": "FRONT_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_311",
+      "component": "REAR_PADS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_311",
+      "component": "FRONT_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    },
+    {
+      "anonymizedVehicleId": "VEHICLE_311",
+      "component": "REAR_DISCS",
+      "candidateClass": "NO_SAFE_BASELINE",
+      "source": null,
+      "timestamp": null,
+      "odometerKm": 45000,
+      "confidence": "UNKNOWN",
+      "conflicts": [],
+      "recommendedAction": "no_safe_baseline_collect_evidence",
+      "autoApplicable": false
+    }
+  ]
+}

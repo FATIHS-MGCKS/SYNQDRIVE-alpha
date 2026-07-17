@@ -40,6 +40,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `partition-time-series.sql` | Reviewed template to RANGE-partition time-series tables | NEEDS APPROVAL — backup + maintenance window |
 | `cleanup-dimo-device-connection-duplicates.ts` | Remove historical OBD plug/unplug duplicate rows (canonical state transitions only) | mutating — run `--dry-run` first |
 | `backfill-brake-health-from-registration-specs.ts` | Initialize `BrakeHealthCurrent` for vehicles with registration/manual brake specs but no baseline | mutating — run `--dry-run` first |
+| `audit-brake-health-baseline-candidates.ts` | Read-only per-component brake baseline backfill candidate audit (missing/unreliable BHC) | read-only — `--fixtures-only` or DB; writes anonymized report under `docs/audits/` |
 | `backfill-billing-legacy.ts` | Controlled legacy SaaS billing migration (catalog, price books, subscription items, quantity ledger) | mutating — run `--dry-run` first; supports `--checkpoint-file` |
 | `audit-pricing-integrity.ts` | Read-only pricing data integrity audit (tariff versions, assignments, snapshots, quotes) | read-only — JSON report, exit code 1/2 on warnings/errors |
 | `audit-task-data.ts` | Read-only OrgTask integrity diagnostic (DONE gaps, duplicates, links, timing, audit trail, legacy automation) | read-only — `--organization-id`, `--format`, `--output`, `--limit`; exit 1 only on runtime errors |
