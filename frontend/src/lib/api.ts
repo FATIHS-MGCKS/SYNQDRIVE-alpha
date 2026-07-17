@@ -3913,6 +3913,10 @@ export const api = {
       get<StationCalendarExceptionContractMetadata>(
         `/organizations/${orgId}/stations/calendar-exceptions/contract`,
       ),
+    operationalCapabilityContract: (orgId: string) =>
+      get<StationOperationalCapabilityContractMetadata>(
+        `/organizations/${orgId}/stations/operational-capability/contract`,
+      ),
     calendarExceptions: (orgId: string, stationId: string) =>
       get<StationCalendarExceptionList>(
         `/organizations/${orgId}/stations/${stationId}/calendar-exceptions`,
@@ -3946,6 +3950,19 @@ export const api = {
         `/organizations/${orgId}/stations/${stationId}/calendar-exceptions/import-legacy`,
         {},
       ),
+    operationalCapability: (
+      orgId: string,
+      stationId: string,
+      opts?: { at?: string; purpose?: 'pickup' | 'return' },
+    ) => {
+      const q = new URLSearchParams();
+      if (opts?.at) q.set('at', opts.at);
+      if (opts?.purpose) q.set('purpose', opts.purpose);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<StationOperationalCapabilityEvaluation | StationOperationalCapabilityResult>(
+        `/organizations/${orgId}/stations/${stationId}/operational-capability${suffix}`,
+      );
+    },
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
       if (opts?.country) q.set('country', opts.country);
@@ -9082,6 +9099,68 @@ export interface StationCalendarExceptionContractMetadata {
 export interface StationCalendarExceptionImportResult {
   imported: number;
   skipped: number;
+}
+
+export type StationOperationalCapabilityKind =
+  | 'PICKUP_AVAILABLE'
+  | 'RETURN_AVAILABLE'
+  | 'AFTER_HOURS_RETURN_AVAILABLE'
+  | 'CLOSED'
+  | 'INACTIVE'
+  | 'ARCHIVED'
+  | 'MANUAL_CONFIRMATION_REQUIRED'
+  | 'CONFIGURATION_INCOMPLETE';
+
+export interface StationOperationalCapabilityReason {
+  code: string;
+  message: string;
+}
+
+export interface StationOperationalEffectiveRule {
+  ruleId: string;
+  source: string;
+  description: string;
+}
+
+export interface StationOperationalOpeningWindow {
+  opensAt: string;
+  closesAt: string;
+}
+
+export interface StationOperationalCapabilityEvaluation {
+  purpose: 'pickup' | 'return';
+  kind: StationOperationalCapabilityKind;
+  evaluatedAt: string;
+  capabilityVersion: number;
+  timezone: string;
+  reasons: StationOperationalCapabilityReason[];
+  effectiveRule: StationOperationalEffectiveRule | null;
+  nextOpeningWindow: StationOperationalOpeningWindow | null;
+  effectiveCapabilities: {
+    pickupEnabled: boolean;
+    returnEnabled: boolean;
+    afterHoursReturnEnabled: boolean;
+    keyBoxAvailable: boolean;
+  };
+}
+
+export interface StationOperationalCapabilityResult {
+  evaluatedAt: string;
+  capabilityVersion: number;
+  timezone: string;
+  pickup: StationOperationalCapabilityEvaluation;
+  return: StationOperationalCapabilityEvaluation;
+}
+
+export interface StationOperationalCapabilityContractMetadata {
+  version: number;
+  timezoneSource: 'station.timezone';
+  defaultTimezone: 'Europe/Berlin';
+  supportedKinds: StationOperationalCapabilityKind[];
+  purposes: Array<'pickup' | 'return'>;
+  inputs: string[];
+  outputs: string[];
+  bookingIntegration: false;
 }
 
 export interface StationOverviewStats {

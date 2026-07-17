@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-operational-capability-resolver-v49607-2026-07-18',
+    version: '4.9.607',
+    title: 'V4.9.607 — Stations V2: StationOperationalCapabilityResolver (Prompt 27/78)',
+    summary: [
+      'Zentraler `StationOperationalCapabilityResolver` für Pickup/Return zum konkreten Zeitpunkt.',
+      'Inputs: Status, Capabilities, Öffnungszeiten, Kalenderausnahmen, After-hours, Keybox, TZ, temporäre Regeln.',
+      'Outputs: PICKUP/RETURN_AVAILABLE, AFTER_HOURS_RETURN_AVAILABLE, CLOSED, INACTIVE, ARCHIVED, MANUAL_CONFIRMATION_REQUIRED, CONFIGURATION_INCOMPLETE.',
+      'Jedes Ergebnis mit Gründen, wirksamer Regel, nächstem Öffnungsfenster, Capability-Version; DST-Tests; keine Booking-Integration.',
+    ],
+    reason:
+      'Operative Verfügbarkeit war nicht zentral aus Öffnungskalender, Capabilities und Ausnahmen ableitbar — Booking-Regeln fehlten eine reine Domain-Basis.',
+    previousBehavior:
+      'Nur Lifecycle-Flags (pickup/return enabled) und BLOCK-only Validation; keine zeitbasierte Capability-Auflösung mit Reasons/Next-Window.',
+    details:
+      'station-operational-capability.{contract,resolver}.ts, station-opening-calendar.util.ts, StationOperationalCapabilityService, stations.controller, api.ts, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T09:00:00.000Z',
+  },
+  {
     id: 'stations-v2-calendar-exception-v49606-2026-07-18',
     version: '4.9.606',
     title: 'V4.9.606 — Stations V2: StationCalendarException Model (Prompt 26/78)',

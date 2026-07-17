@@ -43,6 +43,7 @@ import {
   CreateStationCalendarExceptionDto,
   UpdateStationCalendarExceptionDto,
 } from './dto/station-calendar-exception.dto';
+import { StationOperationalCapabilityService } from './station-operational-capability.service';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -51,6 +52,7 @@ export class StationsController {
     private readonly stationsService: StationsService,
     private readonly stationMapbox: StationMapboxService,
     private readonly stationCalendarExceptions: StationCalendarExceptionService,
+    private readonly stationOperationalCapability: StationOperationalCapabilityService,
   ) {}
 
   @Get()
@@ -126,6 +128,13 @@ export class StationsController {
   @RequireStationScope({ resource: 'none' })
   getCalendarExceptionsContract() {
     return this.stationCalendarExceptions.getContractMetadata();
+  }
+
+  @Get('operational-capability/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getOperationalCapabilityContract() {
+    return this.stationOperationalCapability.getContractMetadata();
   }
 
   @Get(':id')
@@ -214,6 +223,23 @@ export class StationsController {
   @RequireStationScope({ resource: 'station' })
   async listCalendarExceptions(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationCalendarExceptions.listForStation(orgId, id);
+  }
+
+  @Get(':id/operational-capability')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async resolveOperationalCapability(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query('at') at?: string,
+    @Query('purpose') purpose?: 'pickup' | 'return',
+  ) {
+    if (purpose === 'pickup' || purpose === 'return') {
+      return this.stationOperationalCapability.resolvePurposeForStation(orgId, id, purpose, {
+        at,
+      });
+    }
+    return this.stationOperationalCapability.resolveForStation(orgId, id, { at });
   }
 
   @Post(':id/calendar-exceptions')
