@@ -24,6 +24,10 @@ import { readCustomerCandidatePipelineState } from './customer-candidate-matchin
 import { readDriverCandidatePipelineState } from './driver-candidate-matching.util';
 import { readPartnerCandidatePipelineState } from './partner-candidate-matching.util';
 import { readEntityCandidateRankingPipelineState } from './entity-candidate-ranking.policy';
+import {
+  readDocumentTaxonomyPipelineState,
+  resolveDocumentTaxonomy,
+} from './document-taxonomy.util';
 import type {
   PublicUploadContextDisplayDto,
   PublicVehicleCandidateDto,
@@ -336,9 +340,50 @@ function buildEntityCandidateRankingDisplay(
   };
 }
 
+function buildDocumentTaxonomyDisplay(record: ExtractionRecord) {
+  const pipelineTaxonomy = readDocumentTaxonomyPipelineState(record.plausibility);
+  if (pipelineTaxonomy) {
+    return {
+      documentCategory: pipelineTaxonomy.documentCategory,
+      documentSubtype: pipelineTaxonomy.documentSubtype,
+      documentTaxonomyVersion: pipelineTaxonomy.taxonomyVersion,
+      archiveRecommended: pipelineTaxonomy.archiveRecommended,
+    };
+  }
+
+  const effective = resolveEffectiveDocumentType(record);
+  const extracted =
+    record.extractedData && typeof record.extractedData === 'object' && !Array.isArray(record.extractedData)
+      ? (record.extractedData as Record<string, unknown>)
+      : {};
+  const confirmed =
+    record.confirmedData && typeof record.confirmedData === 'object' && !Array.isArray(record.confirmedData)
+      ? (record.confirmedData as Record<string, unknown>)
+      : {};
+
+  const taxonomy = resolveDocumentTaxonomy({
+    legacyDocumentType: effective,
+    documentSubtype:
+      (typeof confirmed.documentSubtype === 'string' ? confirmed.documentSubtype : null) ??
+      (typeof extracted.documentSubtype === 'string' ? extracted.documentSubtype : null) ??
+      (typeof extracted.archiveSubtype === 'string' ? extracted.archiveSubtype : null),
+    archiveSubtype:
+      typeof extracted.archiveSubtype === 'string' ? extracted.archiveSubtype : null,
+    source: effective ? 'legacy_mapping' : 'unknown_subtype_archive',
+  });
+
+  return {
+    documentCategory: taxonomy.documentCategory,
+    documentSubtype: taxonomy.documentSubtype,
+    documentTaxonomyVersion: taxonomy.taxonomyVersion,
+    archiveRecommended: taxonomy.archiveRecommended,
+  };
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
+  const taxonomy = buildDocumentTaxonomyDisplay(record);
 
   return {
     id: record.id,
@@ -366,6 +411,10 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     documentType: effective,
     classificationMode: record.classificationMode,
     classificationConfidence: toConfidenceNumber(record.classificationConfidence),
+    documentCategory: taxonomy.documentCategory,
+    documentSubtype: taxonomy.documentSubtype,
+    documentTaxonomyVersion: taxonomy.documentTaxonomyVersion,
+    archiveRecommended: taxonomy.archiveRecommended,
     errorPhase: record.errorPhase ?? null,
     errorCode: record.errorCode ?? null,
     errorMessage: record.errorMessage ?? null,

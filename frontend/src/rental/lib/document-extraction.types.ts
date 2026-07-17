@@ -101,6 +101,9 @@ export interface DocumentExtractionMetadataOption {
 
 export interface DocumentExtractionMetadata {
   documentTypes: DocumentExtractionMetadataOption[];
+  documentCategories: DocumentExtractionMetadataOption[];
+  documentSubtypes: DocumentExtractionMetadataOption[];
+  taxonomyVersion: string;
   classificationOptions: DocumentExtractionMetadataOption[];
   mimeTypes: string[];
   extensions: string[];
@@ -272,6 +275,10 @@ export interface PublicDocumentExtraction {
   documentType: string | null;
   classificationMode: 'MANUAL' | 'AUTO';
   classificationConfidence: number | null;
+  documentCategory: string | null;
+  documentSubtype: string | null;
+  documentTaxonomyVersion: string | null;
+  archiveRecommended: boolean;
   errorPhase: DocumentExtractionErrorPhase | null;
   errorCode: string | null;
   errorMessage: string | null;

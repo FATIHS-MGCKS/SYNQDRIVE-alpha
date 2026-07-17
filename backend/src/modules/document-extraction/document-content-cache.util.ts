@@ -28,6 +28,7 @@ export interface PipelinePlausibilityPayload {
   partnerCandidates?: import('./partner-candidate-resolver.types').PartnerCandidatePipelineState;
   entityCandidateRanking?: import('./entity-candidate-ranking.types').EntityCandidateRankingPipelineState;
   supersededEntityLinks?: import('./document-entity-link.types').SupersededEntityLink[];
+  documentTaxonomy?: import('./document-taxonomy.types').DocumentTaxonomyPipelineState;
 }
 
 export interface DocumentTypeAuditEntry {
@@ -108,6 +109,7 @@ export function mergePipelinePlausibility(
     uploadContext: patch.uploadContext ?? current.uploadContext,
     entityCandidateRanking: patch.entityCandidateRanking ?? current.entityCandidateRanking,
     supersededEntityLinks: patch.supersededEntityLinks ?? current.supersededEntityLinks,
+    documentTaxonomy: patch.documentTaxonomy ?? current.documentTaxonomy,
   };
   return base;
 }

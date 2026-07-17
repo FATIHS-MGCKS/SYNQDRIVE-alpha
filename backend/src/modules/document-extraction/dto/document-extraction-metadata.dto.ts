@@ -5,6 +5,9 @@ export interface DocumentExtractionMetadataOptionDto {
 
 export interface DocumentExtractionMetadataDto {
   documentTypes: DocumentExtractionMetadataOptionDto[];
+  documentCategories: DocumentExtractionMetadataOptionDto[];
+  documentSubtypes: DocumentExtractionMetadataOptionDto[];
+  taxonomyVersion: string;
   classificationOptions: DocumentExtractionMetadataOptionDto[];
   mimeTypes: string[];
   extensions: string[];

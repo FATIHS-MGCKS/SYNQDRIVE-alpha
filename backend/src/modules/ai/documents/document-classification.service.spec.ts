@@ -58,6 +58,9 @@ describe('DocumentClassificationService', () => {
     expect(result.success).toBe(true);
     expect(result.detectedDocumentType).toBe('SERVICE');
     expect(result.confidence).toBe(0.92);
+    expect(result.documentCategory).toBe('TECHNICAL');
+    expect(result.documentSubtype).toBe('SERVICE_REPORT');
+    expect(result.taxonomyVersion).toBe('1.0.0');
     expect(result.provider).toBe('mistral');
     expect(llm.completeJson).toHaveBeenCalledWith(
       expect.objectContaining({

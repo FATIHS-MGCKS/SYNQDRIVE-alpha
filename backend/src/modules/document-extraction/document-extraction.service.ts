@@ -79,6 +79,7 @@ import {
   appendExtractionActionAudit,
   readContentCache,
 } from './document-content-cache.util';
+import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomyFromLegacyType } from './document-taxonomy.util';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import {
   buildDocumentExtractionPaginatedResult,
@@ -908,17 +909,20 @@ export class DocumentExtractionService implements OnModuleInit {
     }
 
     const previousType = resolveEffectiveDocumentType(record);
-    const auditPlausibility = appendDocumentTypeAudit(record.plausibility, {
-      from: previousType ?? record.detectedDocumentType ?? record.requestedDocumentType ?? null,
-      to: applyType,
-      at: new Date().toISOString(),
-      userId: options?.userId ?? null,
-      reason: awaiting
-        ? 'user_selected_document_type'
-        : reviewCorrection
-          ? 'user_corrected_document_type_reextract'
-          : 'user_set_document_type_retry',
-    });
+    const auditPlausibility = mergeDocumentTaxonomyPipeline(
+      appendDocumentTypeAudit(record.plausibility, {
+        from: previousType ?? record.detectedDocumentType ?? record.requestedDocumentType ?? null,
+        to: applyType,
+        at: new Date().toISOString(),
+        userId: options?.userId ?? null,
+        reason: awaiting
+          ? 'user_selected_document_type'
+          : reviewCorrection
+            ? 'user_corrected_document_type_reextract'
+            : 'user_set_document_type_retry',
+      }),
+      resolveDocumentTaxonomyFromLegacyType(applyType, 'manual_type'),
+    );
 
     const cleared = await this.prisma.vehicleDocumentExtraction.update({
       where: { id: extractionId },

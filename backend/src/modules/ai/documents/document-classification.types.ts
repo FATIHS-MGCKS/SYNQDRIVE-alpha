@@ -1,4 +1,5 @@
 import { ApplyDocumentExtractionType } from '@modules/document-extraction/document-extraction.schemas';
+import type { DocumentCategory, DocumentSubtype } from '@modules/document-extraction/document-taxonomy.types';
 
 /** Classification sentinel when the model cannot map to a supported type. */
 export const CLASSIFICATION_UNKNOWN = 'UNKNOWN' as const;
@@ -38,5 +39,8 @@ export interface DocumentClassificationResult {
   provider: string;
   model: string;
   processingDurationMs: number;
+  documentCategory: DocumentCategory | null;
+  documentSubtype: DocumentSubtype | null;
+  taxonomyVersion: string | null;
   error?: string;
 }

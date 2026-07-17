@@ -204,6 +204,12 @@ export interface PublicDocumentExtractionDto {
   documentType: DocumentExtractionType | null;
   classificationMode: DocumentExtractionClassificationMode;
   classificationConfidence: number | null;
+  /** Two-stage taxonomy category (V4.9.634). */
+  documentCategory: string | null;
+  /** Two-stage taxonomy subtype (V4.9.634). */
+  documentSubtype: string | null;
+  documentTaxonomyVersion: string | null;
+  archiveRecommended: boolean;
   errorPhase: DocumentExtractionErrorPhase | null;
   errorCode: string | null;
   errorMessage: string | null;

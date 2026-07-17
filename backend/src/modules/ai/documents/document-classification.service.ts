@@ -20,6 +20,29 @@ import {
 } from './document-classification.schema.util';
 import { mapClassificationFailure } from '@modules/document-extraction/document-extraction.errors';
 import { buildClassificationDocumentText } from './document-classification-text.util';
+import { resolveDocumentTaxonomy } from '@modules/document-extraction/document-taxonomy.util';
+import { DOCUMENT_TAXONOMY_VERSION } from '@modules/document-extraction/document-taxonomy.types';
+
+function attachTaxonomyToClassificationResult(
+  result: Omit<
+    DocumentClassificationResult,
+    'documentCategory' | 'documentSubtype' | 'taxonomyVersion'
+  >,
+): DocumentClassificationResult {
+  const taxonomy = resolveDocumentTaxonomy({
+    legacyDocumentType:
+      result.detectedDocumentType === CLASSIFICATION_UNKNOWN
+        ? 'OTHER'
+        : result.detectedDocumentType,
+    source: 'classification',
+  });
+  return {
+    ...result,
+    documentCategory: taxonomy.documentCategory,
+    documentSubtype: taxonomy.documentSubtype,
+    taxonomyVersion: DOCUMENT_TAXONOMY_VERSION,
+  };
+}
 
 @Injectable()
 export class DocumentClassificationService {
@@ -45,7 +68,7 @@ export class DocumentClassificationService {
         : [...SUPPORTED_DOCUMENT_TYPES];
 
     if (!this.isEnabled()) {
-      return {
+      return attachTaxonomyToClassificationResult({
         success: false,
         detectedDocumentType: CLASSIFICATION_UNKNOWN,
         confidence: 0,
@@ -56,7 +79,7 @@ export class DocumentClassificationService {
         processingDurationMs: Date.now() - startedAt,
         error:
           'Document classification is not configured (MISTRAL_API_KEY missing or DOCUMENT_CLASSIFICATION_ENABLED=false)',
-      };
+      });
     }
 
     const maxChars = this.conf?.classificationMaxChars ?? 24_000;
@@ -100,19 +123,19 @@ export class DocumentClassificationService {
       });
 
       const normalized = this.normalizeResponse(result.data, allowed, maxPage);
-      return {
+      return attachTaxonomyToClassificationResult({
         success: true,
         ...normalized,
         provider: this.llm.activeProviderId,
         model: result.model,
         processingDurationMs: Date.now() - startedAt,
-      };
+      });
     } catch (err: unknown) {
       const mapped = mapClassificationFailure(this.sanitizeError(err));
       this.logger.warn(
         `[DocClassify] failed provider=${this.llm.activeProviderId} code=${mapped.code}`,
       );
-      return {
+      return attachTaxonomyToClassificationResult({
         success: false,
         detectedDocumentType: CLASSIFICATION_UNKNOWN,
         confidence: 0,
@@ -122,7 +145,7 @@ export class DocumentClassificationService {
         model: 'error',
         processingDurationMs: Date.now() - startedAt,
         error: mapped.safeMessage,
-      };
+      });
     }
   }
 
