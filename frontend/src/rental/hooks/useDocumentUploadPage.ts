@@ -6,6 +6,7 @@ import {
   getStepperIndex,
   resolveEffectiveType,
 } from '../lib/document-extraction-lifecycle';
+import type { IntakeProcessingStepId } from '../lib/document-intake-processing-steps';
 import {
   buildAcceptAttribute,
   buildSupportedFormatsLabel,

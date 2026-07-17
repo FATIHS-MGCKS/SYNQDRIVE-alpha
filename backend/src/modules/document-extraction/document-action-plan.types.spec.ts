@@ -35,6 +35,25 @@ describe('document-action-plan.types', () => {
     expect(computeActionPlanFingerprint(base)).not.toBe(computeActionPlanFingerprint(changed));
   });
 
+  it('changes fingerprint when planContext changes', () => {
+    const base = {
+      planVersion: 1,
+      extractionId: 'ext-1',
+      documentType: 'DAMAGE',
+      planOutcome: 'CREATE_DAMAGE',
+      actions: [{ semanticAction: 'CREATE_DAMAGE_DRAFT', requirement: 'REQUIRED', sequence: 1 }],
+      confirmedData: { summary: 'Kratzer' },
+      planContext: { duplicateDamageId: null },
+    };
+
+    const changed = {
+      ...base,
+      planContext: { duplicateDamageId: 'damage-2' },
+    };
+
+    expect(computeActionPlanFingerprint(base)).not.toBe(computeActionPlanFingerprint(changed));
+  });
+
   it('builds deterministic idempotency keys', () => {
     const key = buildActionIdempotencyKey({
       extractionId: 'ext-1',

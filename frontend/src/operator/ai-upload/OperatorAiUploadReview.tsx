@@ -63,7 +63,7 @@ export function OperatorAiUploadReview({
         <p className="text-[10px] text-muted-foreground">
           Kritische Felder:{' '}
           {editedFields
-            .filter((field) => isCriticalReviewField(confirmedDocType, field.key))
+            .filter((field) => isCriticalReviewField(field.key))
             .map((field) => field.label)
             .join(', ') || '—'}
         </p>

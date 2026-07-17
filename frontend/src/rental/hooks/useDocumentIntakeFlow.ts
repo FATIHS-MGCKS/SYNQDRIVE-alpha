@@ -280,6 +280,7 @@ export function useDocumentIntakeFlow({
 
       const poller = createExtractionPoller({
         signal: controller.signal,
+        pollThroughApply,
         fetchRecord: () => fetchExtractionRecord(id, effectiveVehicleId),
         onRecord: (r) => {
           applyRecord(r);
@@ -293,7 +294,7 @@ export function useDocumentIntakeFlow({
       });
       pollerStopRef.current = poller.stop;
     },
-    [applyRecord, canUseOrgScope, fetchExtractionRecord, stopPolling, vehicleId],
+    [applyRecord, canUseOrgScope, fetchExtractionRecord, pollThroughApply, stopPolling, vehicleId],
   );
 
   const handleRetryFailedActions = useCallback(async () => {

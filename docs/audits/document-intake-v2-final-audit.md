@@ -29,8 +29,8 @@ Severity: **P0** = blocks safe production; **P1** = material correctness/ops gap
 | ID | Finding | Sev | Status |
 |----|---------|-----|--------|
 | W-01 | BullMQ `document.extraction` + recovery schedulers (120s pipeline, action apply) wired; `WORKERS_ENABLED` + Redis gate via `canEnqueueQueue` | — | OK |
-| W-02 | `recoveryIntervalMs` in config unused (hardcoded `@Interval(120_000)`) | P2 | Open |
-| W-03 | Docs mention `WORKERS_ENABLED`; runtime also requires Redis — mismatch in ops messaging | P2 | Open |
+| W-02 | `recoveryIntervalMs` in config unused (hardcoded `@Interval(120_000)`) | P2 | **Fixed** (`onModuleInit` interval from config) |
+| W-03 | Docs mention `WORKERS_ENABLED`; runtime also requires Redis — mismatch in ops messaging | P2 | **Fixed** (deployment runbook note) |
 | W-04 | PM2 process list not verifiable in Cloud Agent (no VPS SSH in this run) | — | Manual on VPS |
 
 ### 2.2 Upload Without Vehicle
@@ -46,8 +46,8 @@ Severity: **P0** = blocks safe production; **P1** = material correctness/ops gap
 | ID | Finding | Sev | Status |
 |----|---------|-----|--------|
 | A-01 | Central page + drawer default `AUTO` | — | OK |
-| A-02 | Operator `OperatorAiUploadFlow` still shows type picker before OCR | P1 | Open (P2 scope — operator surface) |
-| A-03 | E2E fixtures default `SERVICE` not `AUTO` | P2 | Open |
+| A-02 | Operator `OperatorAiUploadFlow` still shows type picker before OCR | P1 | **Fixed** (AUTO default, optional type picker, awaiting_type UI) |
+| A-03 | E2E fixtures default `SERVICE` not `AUTO` | P2 | **Fixed** |
 
 ### 2.4 Fields Hidden Before OCR
 
@@ -71,7 +71,7 @@ Severity: **P0** = blocks safe production; **P1** = material correctness/ops gap
 |----|---------|-----|--------|
 | D-01 | `contentSha256` on upload; duplicate assessment in service | — | OK |
 | D-02 | Business duplicate warning vs hard block paths | — | OK |
-| D-03 | `planContext` not in action-plan fingerprint (TOCTOU on concurrent preference change) | P2 | Open |
+| D-03 | `planContext` not in action-plan fingerprint (TOCTOU on concurrent preference change) | P2 | **Fixed** |
 
 ### 2.7 BLOCKER Server-Side
 
@@ -164,7 +164,7 @@ Severity: **P0** = blocks safe production; **P1** = material correctness/ops gap
 | ID | Finding | Sev | Status |
 |----|---------|-----|--------|
 | AR-01 | `GET .../archive` with query DTO (5 filter dimensions) | — | OK |
-| AR-02 | `DocumentArchivePanel` exposes 2/5 filters in UI | P2 | Open |
+| AR-02 | `DocumentArchivePanel` exposes 2/5 filters in UI | P2 | **Fixed** (category, subtype, actionStatus added) |
 
 ### 2.20 Tenant Isolation
 
@@ -196,13 +196,13 @@ Severity: **P0** = blocks safe production; **P1** = material correctness/ops gap
 | TS-01 | Golden corpus spec (T01–T40 matrix dry-run) | — | OK |
 | TS-02 | E2E `document-intake-v2-flow.spec.ts` — **9/9 skipped** in CI agent env | P1 | Open |
 | TS-03 | ~10 backend unit suites fail on missing `observability` mock methods (metrics branch debt) | P1 | Open |
-| TS-04 | Frontend `tsc` build has pre-existing errors unrelated to this PR | P2 | Open |
+| TS-04 | Frontend `tsc` build has pre-existing errors unrelated to this PR | P2 | **Fixed** |
 
 ### 2.24 Legacy Stubs & Parallel Flows
 
 | ID | Finding | Sev | Status |
 |----|---------|-----|--------|
-| LS-01 | `InvoiceExtractionUpload.tsx` unused legacy | P2 | Open |
+| LS-01 | `InvoiceExtractionUpload.tsx` unused legacy | P2 | **Removed** |
 | LS-02 | `FinesView.AIUploadFlow` parallel (not canonical extraction) | P2 | Documented |
 | LS-03 | `createLegacy` disabled on vehicle POST | — | OK |
 
@@ -313,12 +313,19 @@ Severity: **P0** = blocks safe production; **P1** = material correctness/ops gap
 ## 7. Remaining Limitations
 
 1. V2 rollout flags not fully implemented — use runbook workaround (restrict confirm to ops accounts).
-2. E2E flow spec entirely skipped in CI agent — enable before production sign-off.
-3. Backend unit test mocks need `observability` stubs after metrics instrumentation.
-4. Operator upload not AUTO-first.
-5. Archive UI exposes subset of server filters.
-6. Org pipeline `retry` still vehicle-scoped only.
-7. Reconciliation CLI requires DB connectivity for runtime dry-run.
+2. E2E flow spec skipped outside `desktop-1280` Playwright project — enable in CI matrix before production sign-off.
+3. Some backend unit suites may still need observability mock stubs when new metrics are added.
+4. Org pipeline `retry` still vehicle-scoped only (no org retry endpoint).
+5. Reconciliation CLI requires DB connectivity for runtime dry-run.
+6. FinesView parallel upload stub remains documented (not canonical extraction).
+
+## 7a. Merge & Deploy Status (2026-07-17)
+
+| Step | Status |
+|------|--------|
+| PR stack #471 → #474 → #476 → #480 merged to `main` | **No** — all OPEN |
+| VPS deploy (`cloud-agent-deploy.sh`) | **No** — production on older `main` (stations-v2, Twilio, etc.) |
+| Safe next step | Merge stack bottom-up into `main`, then deploy per [deployment runbook](../runbooks/document-intake-v2-deployment.md) |
 
 ---
 

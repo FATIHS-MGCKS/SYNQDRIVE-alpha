@@ -2,6 +2,7 @@ import { Archive, Download, Eye, History, Link2, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import type { TranslationKey } from '../../i18n/translations/en';
+import { useDocumentExtractionMetadata } from '../../hooks/useDocumentExtractionMetadata';
 import {
   EMPTY_ARCHIVE_FILTERS,
   useDocumentArchiveList,
@@ -45,6 +46,7 @@ export function DocumentArchivePanel({
   }));
   const [searchDraft, setSearchDraft] = useState(filters.q);
 
+  const { metadata } = useDocumentExtractionMetadata();
   const archive = useDocumentArchiveList(orgId, filters, page);
 
   useEffect(() => {
@@ -57,6 +59,22 @@ export function DocumentArchivePanel({
 
   const statusOptions = useMemo(
     () => ['', 'READY_FOR_REVIEW', 'APPLIED', 'PARTIALLY_APPLIED', 'FAILED', 'AWAITING_DOCUMENT_TYPE'],
+    [],
+  );
+
+  const categoryOptions = useMemo(
+    () => metadata?.documentCategories ?? [],
+    [metadata?.documentCategories],
+  );
+
+  const subtypeOptions = useMemo(() => {
+    const all = metadata?.documentSubtypes ?? [];
+    if (!filters.documentCategory) return all;
+    return all.filter((option) => option.value.startsWith(`${filters.documentCategory}.`));
+  }, [filters.documentCategory, metadata?.documentSubtypes]);
+
+  const actionStatusOptions = useMemo(
+    () => ['', 'NONE', 'READY', 'APPLYING', 'SUCCEEDED', 'PARTIAL', 'FAILED'] as const,
     [],
   );
 
@@ -82,7 +100,7 @@ export function DocumentArchivePanel({
           {archive.loading ? <Icon name="loader-2" className="w-4 h-4 animate-spin text-muted-foreground" /> : null}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 min-w-0">
           <label className="md:col-span-2 min-w-0">
             <span className="sr-only">{t('docUpload.archive.search')}</span>
             <div className="flex gap-2 min-w-0">
@@ -143,6 +161,67 @@ export function DocumentArchivePanel({
             {['OPEN', 'ACCEPTED', 'DISMISSED', 'MIXED'].map((status) => (
               <option key={status} value={status}>
                 {t(`docUpload.archive.followUp.${status}` as TranslationKey)}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.documentCategory}
+            onChange={(e) => {
+              setFilters((prev) => ({
+                ...prev,
+                documentCategory: e.target.value,
+                documentSubtype: '',
+              }));
+              setPage(1);
+            }}
+            className={`rounded-lg border px-3 py-2 text-xs ${
+              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
+            }`}
+          >
+            <option value="">{t('docUpload.archive.filter.categoryAll')}</option>
+            {categoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {typeLabel(option.labelKey, option.value)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filters.documentSubtype}
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, documentSubtype: e.target.value }));
+              setPage(1);
+            }}
+            disabled={categoryOptions.length > 0 && !filters.documentCategory}
+            className={`rounded-lg border px-3 py-2 text-xs ${
+              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
+            }`}
+          >
+            <option value="">{t('docUpload.archive.filter.subtypeAll')}</option>
+            {subtypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {typeLabel(option.labelKey, option.value)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filters.actionStatus}
+            onChange={(e) => {
+              setFilters((prev) => ({
+                ...prev,
+                actionStatus: e.target.value as DocumentArchiveFilters['actionStatus'],
+              }));
+              setPage(1);
+            }}
+            className={`rounded-lg border px-3 py-2 text-xs ${
+              isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'
+            }`}
+          >
+            <option value="">{t('docUpload.archive.filter.actionAll')}</option>
+            {actionStatusOptions.filter(Boolean).map((status) => (
+              <option key={status} value={status}>
+                {t(`docUpload.archive.action.${status}` as TranslationKey)}
               </option>
             ))}
           </select>

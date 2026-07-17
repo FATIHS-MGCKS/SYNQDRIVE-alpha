@@ -1,4 +1,4 @@
-import type { PublicUploadContextDisplayDto } from '../rental/lib/document-extraction.types';
+import type { PublicUploadContextDisplay } from '../rental/lib/document-extraction.types';
 
 const ENTITY_LABELS: Record<string, string> = {
   VEHICLE: 'Fahrzeug',
@@ -18,7 +18,7 @@ const SURFACE_LABELS: Record<string, string> = {
 };
 
 export function formatUploadContextBanner(
-  uploadContext: PublicUploadContextDisplayDto | null | undefined,
+  uploadContext: PublicUploadContextDisplay | null | undefined,
 ): string | null {
   if (!uploadContext) return null;
   if (uploadContext.label) return uploadContext.label;
@@ -28,7 +28,7 @@ export function formatUploadContextBanner(
 }
 
 export function hasUploadContextConflict(
-  uploadContext: PublicUploadContextDisplayDto | null | undefined,
+  uploadContext: PublicUploadContextDisplay | null | undefined,
 ): boolean {
   return uploadContext?.resolverStatus === 'CONFLICT';
 }

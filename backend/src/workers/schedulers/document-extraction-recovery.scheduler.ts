@@ -1,7 +1,6 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Interval } from '@nestjs/schedule';
 import { ConfigType } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import documentExtractionConfig from '@config/document-extraction.config';
@@ -21,9 +20,10 @@ import { DocumentExtractionObservabilityService } from '@modules/document-extrac
  * Conservative recovery scheduler for document.extraction jobs.
  */
 @Injectable()
-export class DocumentExtractionRecoveryScheduler {
+export class DocumentExtractionRecoveryScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DocumentExtractionRecoveryScheduler.name);
   private recoveryInProgress = false;
+  private recoveryTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     @InjectQueue(QUEUE_NAMES.DOCUMENT_EXTRACTION) private readonly queue: Queue,
@@ -34,7 +34,21 @@ export class DocumentExtractionRecoveryScheduler {
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
-  @Interval(120_000)
+  onModuleInit(): void {
+    const intervalMs = Math.max(30_000, this.config.recoveryIntervalMs);
+    this.recoveryTimer = setInterval(() => {
+      void this.recoverStaleExtractions();
+    }, intervalMs);
+    this.logger.log(`Document extraction recovery interval: ${intervalMs}ms`);
+  }
+
+  onModuleDestroy(): void {
+    if (this.recoveryTimer) {
+      clearInterval(this.recoveryTimer);
+      this.recoveryTimer = null;
+    }
+  }
+
   async recoverStaleExtractions(): Promise<void> {
     if (!this.config.queueEnabled) return;
     if (!canEnqueueQueue(this.logger, 'document-extraction-recovery')) return;

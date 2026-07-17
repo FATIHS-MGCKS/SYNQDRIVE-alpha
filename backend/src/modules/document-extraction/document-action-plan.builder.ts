@@ -156,6 +156,7 @@ export function buildDocumentActionPlan(input: BuildDocumentActionPlanInput): Do
     planOutcome: assessment.planOutcome,
     actions,
     confirmedData: input.confirmedData,
+    planContext: input.planContext ?? null,
   });
 
   return {

@@ -66,7 +66,7 @@ export function parseUploadIdentificationError(body: unknown): DocumentIdentific
       nested.identificationStatus ?? 'REJECTED_CORRUPT',
     ) as DocumentFileIdentificationStatus,
     stage: String(nested.stage ?? 'UPLOAD'),
-    message: resolveIdentificationErrorMessage(errorCode, fallbackMessage),
+    message: resolveIdentificationErrorMessage(errorCode as DocumentIdentificationErrorCode, fallbackMessage),
   });
 }
 

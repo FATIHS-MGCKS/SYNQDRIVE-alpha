@@ -113,8 +113,7 @@ export function VehicleDocumentUploadDrawer({
     !!flow.extractionId &&
     flow.flow !== 'idle' &&
     flow.flow !== 'uploading' &&
-    flow.flow !== 'processing' &&
-    flow.flow !== 'analyzing';
+    flow.flow !== 'processing';
   const followUp = useDocumentFollowUpSuggestions({
     orgId: orgId || null,
     vehicleId,
@@ -141,7 +140,7 @@ export function VehicleDocumentUploadDrawer({
             className="sq-press ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--status-success)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
           >
             <Icon name="check-circle" className="w-3.5 h-3.5" />
-            Bestätigen & anwenden
+            {t('docUpload.confirmAndFile')}
           </button>
         ) : null}
       </div>

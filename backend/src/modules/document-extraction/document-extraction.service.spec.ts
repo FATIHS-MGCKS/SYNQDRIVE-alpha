@@ -1,7 +1,13 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { DocumentExtractionService } from './document-extraction.service';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock } from './document-extraction-test.helpers';
+import {
+  makeDocumentExtractionObservabilityMock,
+  makeLifecycleMock,
+  makeMalwareScanMock,
+  makeRetentionMock,
+  makeUploadContextMock,
+} from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -77,19 +83,7 @@ describe('DocumentExtractionService', () => {
       acceptSuggestion: jest.fn(),
       dismissSuggestion: jest.fn(),
     };
-    const observability = {
-      logEvent: jest.fn(),
-      recordApply: jest.fn(),
-      recordJobOutcome: jest.fn(),
-      recordFailure: jest.fn(),
-      recordStageDuration: jest.fn(),
-      recordPages: jest.fn(),
-      recordRetry: jest.fn(),
-      recordClassification: jest.fn(),
-      setQueueAgeSeconds: jest.fn(),
-      setActiveJobs: jest.fn(),
-      observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
-    };
+    const observability = makeDocumentExtractionObservabilityMock();
     const uploadDuplicate = {
       assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
       claimContentAnchor: jest.fn().mockResolvedValue('claimed'),

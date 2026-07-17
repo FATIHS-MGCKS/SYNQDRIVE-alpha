@@ -351,7 +351,9 @@ export async function installDocumentIntakeV2Mocks(
         body: JSON.stringify({
           id: TEST_EXTRACTION_ID,
           status: profile === 'awaiting-type' ? 'AWAITING_DOCUMENT_TYPE' : 'QUEUED',
-          documentType: profile === 'awaiting-type' ? null : 'SERVICE',
+          documentType: profile === 'awaiting-type' ? null : 'AUTO',
+          requestedDocumentType: 'AUTO',
+          classificationMode: 'AUTO',
         }),
       });
     }

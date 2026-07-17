@@ -180,7 +180,7 @@ export function DocumentExtractionFlowStatus({
             </button>
           ) : null}
         </div>
-      ) : flow !== 'failed' && record?.allowedActions?.includes('cancel') && onCancel ? (
+      ) : record?.allowedActions?.includes('cancel') && onCancel ? (
         <button
           type="button"
           onClick={() => void onCancel()}
