@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-create-hardening-v49596-2026-07-17',
+    version: '4.9.596',
+    title: 'V4.9.596 — Stations V2: Create-Station gehärtet (Prompt 16/78)',
+    summary: [
+      '`station-create-validation.util.ts` + DTO-Validatoren für Create: ARCHIVED verboten, Koordinaten-Paar, IANA-TZ, Kapazität ≥1/null.',
+      'Code-Eindeutigkeit pro Org, Pickup/Return-Konsistenz, Primary nur ACTIVE, organizationId-Override blockiert.',
+      'Semantische `openingHours`-Validierung (Wochentage, Intervalle, legacyText); Service ruft `validateStationCreatePayload` vor Persistenz.',
+      'DTO-, Util- und Integrationstests (42 neue/gehärtete Create-Tests).',
+    ],
+    reason:
+      'Station-Create akzeptierte ARCHIVED, partielle Koordinaten, ungültige TZ/Kapazität und Client-organizationId — Risiko für inkonsistente Stammdaten.',
+    previousBehavior:
+      'Minimale Prüfung (Name + Code-Duplikat); DTO ohne Koordinaten-Paar, ARCHIVED-Block oder Opening-Hours-Semantik.',
+    details:
+      'station-create-validation.util.ts, dto/station-create.dto.validators.ts, create-station.dto.ts, stations.service.ts create(), *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T00:25:00.000Z',
+  },
+  {
     id: 'stations-v2-lifecycle-policy-v49595-2026-07-17',
     version: '4.9.595',
     title: 'V4.9.595 — Stations V2: zentrale StationLifecyclePolicy (Prompt 15/78)',

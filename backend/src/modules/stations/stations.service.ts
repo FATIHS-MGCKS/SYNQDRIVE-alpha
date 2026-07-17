@@ -10,6 +10,9 @@ import {
   SELECTABLE_STATION_STATUSES,
 } from './station.types';
 import { CreateStationDto } from './dto/create-station.dto';
+import {
+  validateStationCreatePayload,
+} from './station-create-validation.util';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
 import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
@@ -222,17 +225,20 @@ export class StationsService {
   }
 
   async create(organizationId: string, payload: StationUpsertPayload): Promise<StationDto> {
+    validateStationCreatePayload(payload);
     const name = payload.name?.trim();
     if (!name) throw new BadRequestException('Station name is required');
 
-    if (payload.code) {
+    const normalizedCode = payload.code?.trim();
+    if (normalizedCode) {
       const dup = await this.prisma.station.findFirst({
-        where: { organizationId, code: payload.code.trim() },
+        where: { organizationId, code: normalizedCode },
       });
-      if (dup) throw new ConflictException(`Station code "${payload.code}" already exists`);
+      if (dup) throw new ConflictException(`Station code "${normalizedCode}" already exists`);
     }
 
     const writable = this.buildWriteData(payload);
+    if (normalizedCode) writable.code = normalizedCode;
 
     const explicitLat = payload.latitude !== undefined && payload.latitude !== null;
     const explicitLng = payload.longitude !== undefined && payload.longitude !== null;
