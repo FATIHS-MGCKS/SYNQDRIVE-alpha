@@ -6,6 +6,7 @@ import {
   registrationBrakeMeasuredSnapshot,
   resolveRegistrationBrakeOdometerKm,
   shouldInitializeBrakesFromRegistration,
+  validateRegistrationBrakeInput,
 } from './register-brake-baseline';
 
 describe('register-brake-baseline', () => {
@@ -79,6 +80,24 @@ describe('register-brake-baseline', () => {
           condition: 'NEW',
         }),
       ).toBe(0);
+    });
+  });
+
+  describe('validateRegistrationBrakeInput', () => {
+    it('rejects implausible pad thickness', () => {
+      const result = validateRegistrationBrakeInput({ frontPadThickness: 40 });
+      expect(result.valid).toBe(false);
+      expect(result.errors.join(' ')).toMatch(/plausible maximum/i);
+    });
+
+    it('accepts realistic registration values', () => {
+      const result = validateRegistrationBrakeInput({
+        condition: 'NEW',
+        frontPadThickness: 10.5,
+        rearPadThickness: 10.2,
+        odometerKm: 1200,
+      });
+      expect(result.valid).toBe(true);
     });
   });
 

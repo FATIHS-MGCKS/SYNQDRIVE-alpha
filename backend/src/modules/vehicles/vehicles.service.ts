@@ -48,14 +48,9 @@ import {
 } from './fleet-connectivity.util';
 import type { FleetConnectivityResponseDto } from './fleet-connectivity.types';
 import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
-import { BrakeInitializationWorkflowService } from '@modules/vehicle-intelligence/brakes/brake-initialization-workflow.service';
-import {
-  applyNewBrakeDefaults,
-  hasRegistrationBrakeSpecValues,
-  normalizeRegistrationBrakeCondition,
-  shouldInitializeBrakesFromRegistration,
-  type RegistrationBrakeManualSpec,
-} from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
+import { BrakeRegistrationService } from '@modules/vehicle-intelligence/brakes/brake-registration.service';
+import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
+import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
@@ -278,8 +273,8 @@ export class VehiclesService {
     private readonly providerConsent: VehicleProviderConsentService,
     @Inject(forwardRef(() => TireLifecycleService))
     private readonly tireLifecycleService: TireLifecycleService,
-    @Inject(forwardRef(() => BrakeInitializationWorkflowService))
-    private readonly brakeInitializationWorkflow: BrakeInitializationWorkflowService,
+    @Inject(forwardRef(() => BrakeRegistrationService))
+    private readonly brakeRegistrationService: BrakeRegistrationService,
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
@@ -2042,7 +2037,7 @@ export class VehiclesService {
       };
     },
     createdByUserId?: string | null,
-  ): Promise<Vehicle> {
+  ): Promise<RegisterFromDimoResult> {
     const dimoVehicle = await this.prisma.dimoVehicle.findUniqueOrThrow({
       where: { id: dimoVehicleId },
     });
@@ -2113,45 +2108,23 @@ export class VehiclesService {
       }
     }
 
+    let brakeRegistration = this.brakeRegistrationService.noBrakePayloadResult();
     if (manualSpecs?.brakes) {
-      const rawBrakes = manualSpecs.brakes;
-      const condition = normalizeRegistrationBrakeCondition(rawBrakes.condition);
-      const brakesForSpec = applyNewBrakeDefaults(rawBrakes, condition);
-      const shouldCreateSpec =
-        condition === 'NEW' || hasRegistrationBrakeSpecValues(brakesForSpec);
-
-      if (shouldCreateSpec) {
-        await this.prisma.vehicleBrakeReferenceSpec.create({
-          data: {
-            vehicleId: vehicle.id,
-            frontRotorDiameter: brakesForSpec.frontRotorDiameter ?? null,
-            frontRotorWidth: brakesForSpec.frontRotorWidth ?? null,
-            frontPadThickness: brakesForSpec.frontPadThickness ?? null,
-            rearRotorDiameter: brakesForSpec.rearRotorDiameter ?? null,
-            rearRotorWidth: brakesForSpec.rearRotorWidth ?? null,
-            rearPadThickness: brakesForSpec.rearPadThickness ?? null,
-            sourceType: rawBrakes.source?.trim() || 'manual_registration',
-          },
-        });
-      }
-
-      if (shouldInitializeBrakesFromRegistration(rawBrakes)) {
-        const latestState = await this.prisma.vehicleLatestState.findUnique({
-          where: { vehicleId: vehicle.id },
-          select: { odometerKm: true },
-        });
-        const init = await this.brakeInitializationWorkflow.initializeFromRegistration({
-          vehicleId: vehicle.id,
-          organizationId: orgId,
-          brakes: rawBrakes,
-          registrationMileageKm: vehicle.mileageKm,
-          latestStateOdometerKm: latestState?.odometerKm ?? null,
-        });
-        if (init.outcome === 'failed') {
-          this.logger.warn(
-            `Brake registration baseline init failed for vehicle ${vehicle.id}: ${init.message}`,
-          );
-        }
+      const latestState = await this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId: vehicle.id },
+        select: { odometerKm: true },
+      });
+      brakeRegistration = await this.brakeRegistrationService.processRegistrationBrakes({
+        vehicleId: vehicle.id,
+        organizationId: orgId,
+        brakes: manualSpecs.brakes,
+        registrationMileageKm: vehicle.mileageKm,
+        latestStateOdometerKm: latestState?.odometerKm ?? null,
+      });
+      if (brakeRegistration.initializationError) {
+        this.logger.warn(
+          `Brake registration outcome for vehicle ${vehicle.id}: ${brakeRegistration.brakeBaselineStatus} — ${brakeRegistration.initializationError}`,
+        );
       }
     }
 
@@ -2248,7 +2221,7 @@ export class VehiclesService {
         });
       });
 
-    return vehicle;
+    return { vehicle, brakeRegistration };
   }
 
   async getFleetConnectivity(

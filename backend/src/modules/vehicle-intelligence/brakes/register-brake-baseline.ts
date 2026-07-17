@@ -25,6 +25,67 @@ const NUMERIC_BRAKE_FIELDS = [
   'rearPadThickness',
 ] as const satisfies ReadonlyArray<keyof RegistrationBrakeManualSpec>;
 
+const PAD_MM_MAX = 25;
+const DISC_MM_MAX = 50;
+const ROTOR_DIAMETER_MAX = 500;
+const ODO_MAX = 5_000_000;
+
+export interface RegistrationBrakeValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+function checkPositiveMm(
+  errors: string[],
+  label: string,
+  value: unknown,
+  max: number,
+): void {
+  if (value == null) return;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    errors.push(`${label} must be a positive number`);
+    return;
+  }
+  if (value > max) {
+    errors.push(`${label} exceeds plausible maximum (${max} mm)`);
+  }
+}
+
+function checkOdometer(errors: string[], value: unknown): void {
+  if (value == null) return;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    errors.push('odometerKm must be a non-negative number');
+    return;
+  }
+  if (value > ODO_MAX) {
+    errors.push(`odometerKm exceeds plausible maximum (${ODO_MAX} km)`);
+  }
+}
+
+/** Server-side plausibility checks for registration brake payloads. */
+export function validateRegistrationBrakeInput(
+  brakes: RegistrationBrakeManualSpec,
+): RegistrationBrakeValidationResult {
+  const errors: string[] = [];
+
+  checkPositiveMm(errors, 'frontPadThickness', brakes.frontPadThickness, PAD_MM_MAX);
+  checkPositiveMm(errors, 'rearPadThickness', brakes.rearPadThickness, PAD_MM_MAX);
+  checkPositiveMm(errors, 'frontRotorWidth', brakes.frontRotorWidth, DISC_MM_MAX);
+  checkPositiveMm(errors, 'rearRotorWidth', brakes.rearRotorWidth, DISC_MM_MAX);
+  checkPositiveMm(errors, 'frontRotorDiameter', brakes.frontRotorDiameter, ROTOR_DIAMETER_MAX);
+  checkPositiveMm(errors, 'rearRotorDiameter', brakes.rearRotorDiameter, ROTOR_DIAMETER_MAX);
+  checkOdometer(errors, brakes.odometerKm);
+
+  if (brakes.serviceDate != null && String(brakes.serviceDate).trim() !== '') {
+    const parsed = new Date(brakes.serviceDate);
+    if (Number.isNaN(parsed.getTime())) {
+      errors.push('serviceDate must be a valid ISO-8601 date');
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
 function toPositiveNumber(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
   return Math.round(value * 100) / 100;

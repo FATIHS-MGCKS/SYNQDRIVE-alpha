@@ -160,14 +160,15 @@ Read path
 |--------|-------|------|--------|--------|-----------|-------|-------------|
 | **1** | Baseline | Implementierungsbaseline, Builds, Tests dokumentieren | ✅ **Done** | *(nach Commit)* | — | siehe unten | — |
 | **2** | Safety net | Regressionstests für kritische Brake-Health-Schreibpfade (A–I) | ✅ **Done** | `b1246a88` | — | 6 rot / 4 grün | — |
-| **3** | Architektur | Kanonischer Brake-Initialisierungspfad (Variante A) | ✅ **Done** | `ff9ac7a1` | — | 19 neu grün | read-only diag |
-| **4** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
-| **5** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
-| **6** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
-| **7** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
-| **8** | B — Lifecycle | Scope-aware Tests (front/rear pads/discs only) | ⏳ Pending | — | — | lifecycle spec | — |
-| **9** | B — Lifecycle | Service + Evidence atomarer (Transaktion) | ⏳ Pending | — | evtl. | integration | — |
-| **10** | C — Anchors | Rotor-Breite ≠ Scheiben-Dicke trennen | ⏳ Pending | — | evtl. | anchor plausibility | — |
+| **3** | Architektur | Kanonischer Brake-Initialisierungspfad (Variante A) | ✅ **Done** | `b892b605` | — | 19 neu grün | read-only diag |
+| **4** | Registration | Brake-Health-Ausgangszustand bei Fahrzeugregistrierung | ✅ **Done** | `e8e62310` | — | 39 grün | — |
+| **5** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
+| **6** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
+| **7** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
+| **8** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
+| **9** | B — Lifecycle | Scope-aware Tests (front/rear pads/discs only) | ⏳ Pending | — | — | lifecycle spec | — |
+| **10** | B — Lifecycle | Service + Evidence atomarer (Transaktion) | ⏳ Pending | — | evtl. | integration | — |
+| **11** | C — Anchors | Rotor-Breite ≠ Scheiben-Dicke trennen | ⏳ Pending | — | evtl. | anchor plausibility | — |
 | **11** | C — Anchors | Disc-Anker-Validierung + Spec-Semantik | ⏳ Pending | — | — | spec regression | — |
 | **12** | D — Safety | DTC Poll → `BrakeEvidence` Producer | ⏳ Pending | — | — | DTC spec | VPS read |
 | **13** | D — Safety | DTC Clearance → Alert Resolution | ⏳ Pending | — | — | active/cleared | — |
@@ -378,13 +379,99 @@ npm run build  # OK
 
 ---
 
+## Brake-Health bei Registration (Prompt 4) — 2026-07-17
+
+### Ziel
+
+Gültige Fahrzeugregistrierung erzeugt einen **nachvollziehbaren Brake-Ausgangszustand**. „Bremsen neu“ ≠ gemessene Dicke; fehlende Baseline bleibt sichtbar; kein stiller Teilfehler.
+
+### Architektur
+
+```
+registerFromDimo (VehiclesService)
+  → BrakeRegistrationService.processRegistrationBrakes()
+    → validateRegistrationBrakeInput() — Odometer, mm, Datum, Plausibilität
+    → VehicleBrakeReferenceSpec.create (wenn eligible)
+    → BrakeInitializationWorkflowService.initializeFromRegistration()
+      → BrakeLifecycleService → BrakeHealthCurrent (+ optional BrakeEvidence)
+  → { vehicle, brakeRegistration }  (RegisterFromDimoResult)
+```
+
+**Teilfehler-Policy:** Fahrzeugregistrierung **läuft weiter**; Brake-Init-Fehler werden revisionssicher markiert (`brakeBaselineStatus: FAILED` / `INITIALIZATION_REQUIRED`, `BrakeHealthCurrent.isInitialized: false`, `baselineWarnings`).
+
+### Registration-Ausgänge (A–D)
+
+| Status | Bedeutung | `evidenceSource` | BHC |
+|--------|-----------|-------------------|-----|
+| **A** `DOCUMENTED_REPLACEMENT` | Neue Bremsen dokumentiert/bestätigt | `DOCUMENTED_REPLACEMENT` | materialisiert; nominale Neudicke aus Spec, **nicht** als Messung |
+| **B** `MEASURED` | Echte Dicke gemessen | `MEASURED` | materialisiert; Mess-Evidence verknüpft |
+| **C** `NO_BASELINE` / `INITIALIZATION_REQUIRED` | Zustand unbekannt / Spec ohne Odometer | `NONE` / `SPEC_ONLY` | kein 100-%-Wear; keine erfundene aktuelle Dicke |
+| **D** `SPEC_ONLY` | Nur Reference Spec | `SPEC_ONLY` | operative Verschleißbaseline fehlt; Messung/Bestätigung erforderlich |
+
+### API-Antwort (`RegisterFromDimoResult`)
+
+```typescript
+{
+  vehicle: Vehicle;
+  brakeRegistration: {
+    brakeHealthInitialized: boolean;
+    brakeBaselineStatus: RegistrationBrakeBaselineStatus;
+    evidenceSource: 'MEASURED' | 'DOCUMENTED_REPLACEMENT' | 'SPEC_ONLY' | 'NONE';
+    requiresMeasurement: boolean;
+    requiresSpecConfirmation: boolean;
+    initializationError: string | null;
+    specCreated: boolean;
+    message: string;
+  };
+}
+```
+
+### Neue / geänderte Artefakte
+
+| Datei | Rolle |
+|-------|-------|
+| `brake-registration.service.ts` | Kanonischer Registration-Brake-Orchestrator |
+| `registration-brake-outcome.ts` | Outcome-Typen A–D + `deriveRegistrationBrakeResult()` |
+| `register-brake-baseline.ts` | `validateRegistrationBrakeInput()` (Server-Validierung) |
+| `register-from-dimo-result.dto.ts` | Explizites Response-DTO |
+| `vehicles.service.ts` | Brake-Logik delegiert; Rückgabe `{ vehicle, brakeRegistration }` |
+
+### Abgedeckte Registration-Pfade
+
+| Pfad | Status |
+|------|--------|
+| `POST …/register-from-dimo` (Web, Operator, API) | ✅ vollständig |
+| Import / Non-registered → Registered (über register-from-dimo) | ✅ |
+| Manuelle Bestätigung / NEW ohne mm | ✅ `DOCUMENTED_REPLACEMENT` |
+| AI/OCR (`applyBrake` / `recordService`) | unverändert — eigener Lifecycle-Pfad |
+| `VehiclesService.create()` / HM_ONLY | kein Brake-Init (unverändert) |
+
+### Tests (Prompt 4)
+
+| Suite | Szenarien |
+|-------|-----------|
+| `registration-brake-outcome.spec.ts` | dokumentiert neu, gemessen, unbekannt, spec-only, failed |
+| `brake-registration.service.spec.ts` | fehlender Odometer, ungültige mm, fehlende Spec, Retry, Teilfehler, Cross-Tenant |
+| `register-brake-baseline.spec.ts` | Validierung mm/Odometer/Datum |
+| `brake-registration-regression.spec.ts` | Regression Harness (grün) |
+| `brake-registration-backfill.service.spec.ts` | Backfill unverändert grün |
+
+```bash
+npm test -- --testPathPattern='brake-registration|registration-brake-outcome|register-brake-baseline|brake-registration-regression'
+# 5 suites, 39 passed
+npm run build  # OK
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
 |--------|--------|---------|
 | 1 | `b12599f5da380f9740a8e44dc6d43f88351bdaa6` | `docs(brakes): establish production readiness remediation baseline` |
 | 2 | `b1246a886d62892abd605617f39e007871663994` | `test(brakes): capture brake health lifecycle regressions` |
-| 3 | `ff9ac7a1350912e25005de314dfb1eb985c33f69` | `fix(brakes): establish canonical brake initialization workflow` |
+| 3 | `b892b605d2380f99c1c2e8972f7ec7d4643a1bb2` | `fix(brakes): establish canonical brake initialization workflow` |
+| 4 | `e8e62310775a10b06c0846f8b293393ddd8ce1e5` | `fix(brakes): materialize brake health during vehicle registration` |
 
 ---
 
