@@ -1,0 +1,13 @@
+anonymizedVehicleId,component,axle,anchorTimestamp,anchorSource,anchorMm,targetMeasurementTimestamp,targetSource,predictedMm,measuredMm,signedErrorMm,absoluteErrorMm,predictedCondition,actualCondition,confidence,coverage,modelingSource,kFactor,modelVersion,reproducible,exclusionReason,powertrain,brakeBiasSource,calibrationCount,tripCountBeforeTarget,distanceKmModeled
+FLEET_SUMMARY,fleet,verdict,,,,,,,,,,,,,,,,1.0.0,false,ground_truth_measurements=0; spec_only=20; confirmed_replacements=0,,,0,,NOT_ENOUGH_DATA
+FLEET_SUMMARY,all_reproducible,MAE_mm,,,,,,,,,,,,,,,,1.0.0,false,signed error = measured - predicted,,,0,,
+FLEET_SUMMARY,all_reproducible,RMSE_mm,,,,,,,,,,,,,,,,1.0.0,false,,,,0,,
+FLEET_SUMMARY,all_reproducible,bias_mm,,,,,,,,,,,,,,,,1.0.0,false,positive = underprediction (measured > predicted),,,0,,
+FLEET_SUMMARY,pad_front,MAE_pad_front,,,,,,,,,,,,,,,,1.0.0,false,,,,0,,
+FLEET_SUMMARY,pad_rear,MAE_pad_rear,,,,,,,,,,,,,,,,1.0.0,false,,,,0,,
+FLEET_SUMMARY,disc_front,MAE_disc_front,,,,,,,,,,,,,,,,1.0.0,false,,,,0,,
+FLEET_SUMMARY,disc_rear,MAE_disc_rear,,,,,,,,,,,,,,,,1.0.0,false,,,,0,,
+FLEET_SUMMARY,all_reproducible,within_0.5mm_pct,,,,,,,,,,,,,,,,1.0.0,false,,,,0,,
+FLEET_SUMMARY,all_reproducible,within_1.0mm_pct,,,,,,,,,,,,,,,,1.0.0,false,,,,0,,
+FLEET_SUMMARY,fleet,k_factor_calibrations_fleet,,,,,,,,,,,,,,,,1.0.0,false,calibrateFromMeasurement not implemented; calibrationCount always 0,,,0,,0
+FLEET_SUMMARY,config,model_version,,,,,,,,,,,,,,,,1.0.0,false,not persisted in brake_health_current (0 rows),,,1,,1.0.0

@@ -5,8 +5,8 @@
 | **Audit ID** | `brake-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/brake-health-production-readiness-2026-07` |
-| **Phase** | **4 of 7 — DIMO Brake Signal Timeseries Analysis** |
-| **Status** | Phases 1–4 complete; Phases 5–7 pending |
+| **Phase** | **5 of 7 — Historical Wear-Model Backtest** |
+| **Status** | Phases 1–5 complete; Phases 6–7 pending |
 | **Production-Readiness verdict (preliminary)** | **`NOT_READY`** — fleet has zero initialized brake baselines |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | 60 days ending 2026-07-17 UTC |
@@ -74,7 +74,10 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | DIMO timeseries coverage CSV | `docs/audits/data/brake-health-dimo-timeseries-coverage-2026-07.csv` | 4 |
 | DIMO braking correlation CSV | `docs/audits/data/brake-health-dimo-braking-correlation-2026-07.csv` | 4 |
 | DIMO audit script | `scripts/audits/audit-brake-health-dimo-signals.ts` | 4 |
-| Backtest summary CSV | `docs/audits/data/brake-health-backtest-summary-2026-07.csv` | 5 (pending) |
+| Backtest summary CSV | `docs/audits/data/brake-health-backtest-summary-2026-07.csv` | 5 |
+| Ground-truth classification CSV | `docs/audits/data/brake-health-ground-truth-classification-2026-07.csv` | 5 |
+| Confidence calibration CSV | `docs/audits/data/brake-health-confidence-calibration-2026-07.csv` | 5 |
+| Backtest script | `scripts/audits/audit-brake-health-backtest.ts` | 5 |
 | Consumer wiring CSV | `docs/audits/data/brake-health-consumer-wiring-2026-07.csv` | 6 (pending) |
 | Test coverage CSV | `docs/audits/data/brake-health-test-coverage-2026-07.csv` | 6 (pending) |
 
@@ -88,7 +91,7 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | **2** | Data model & formula audit | Prisma models, lifecycle scope, reference-spec, evidence, formulas, versioning | ✅ **Complete** |
 | **3** | VPS integrity & fleet coverage | Read-only SQL, anchors, scope replay, trip coverage, evidence | ✅ **Complete** |
 | **4** | DIMO & telemetry signal audit | `availableSignals`, brake sensors, DTC, native events, timeseries, SynqDrive persistence | ✅ **Complete** |
-| **5** | Historical replay & backtest | As-of replay against measured evidence; MAE/coverage; isolated pure mode | ⏳ Pending |
+| **5** | Historical replay & backtest | As-of replay against measured evidence; MAE/coverage; isolated pure mode | ✅ **Complete** |
 | **6** | Consumer wiring & ops | Rental health, alerts, blocking, frontend, notifications, performance, test matrix | ⏳ Pending |
 | **7** | Final synthesis | Go/no-go verdict, findings register, remediation roadmap | ⏳ Pending |
 
@@ -955,12 +958,124 @@ Events are **capability-gated** — only 2/6 vehicles produced any `behavior.*` 
 
 ---
 
-## 9. Phase 5 preview (not executed)
+# Phase 5 — Historical wear-model backtest
 
-- Isolated pure replay of `computePadWear`/`computeDiscWear` against ground-truth mm
-- No `recalculate()` against production
+**Audit ID:** `brake-health-backtest-2026-07`  
+**Completed (UTC):** 2026-07-17T10:59:40Z  
+**Method:** Read-only PostgreSQL + isolated `BRAKE_HEALTH` V1.0.0 formula replay via `scripts/audits/audit-brake-health-backtest.ts`. **No** `BrakeHealthService.recalculate()`, **no** calibration writes, **no** today's rolling `vehicle_driving_impact_current` for historical gap fill.
 
-## 10. Phase 6 preview (not executed)
+**Model version:** `1.0.0` (`brake-health.config.ts`) — **not persisted** in DB (`brake_health_current = 0` rows).
+
+**Reproducibility:**
+
+```bash
+cd backend && BRAKE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-brake-health-backtest.ts \
+  --output-dir=../docs/audits/data
+```
+
+| Artifact | Rows | Purpose |
+|----------|------|---------|
+| `docs/audits/data/brake-health-ground-truth-classification-2026-07.csv` | 20 | All candidate anchors classified (SPEC_ONLY only) |
+| `docs/audits/data/brake-health-backtest-summary-2026-07.csv` | 12 | Per-comparison rows (0) + fleet metric summary |
+| `docs/audits/data/brake-health-confidence-calibration-2026-07.csv` | 6 | Code-based confidence calibration matrix |
+
+## 5.1 Ground truth inventory (Teil 1)
+
+| Source | Count | Classification | Backtest-eligible |
+|--------|-------|----------------|-------------------|
+| `brake_evidence` | **0** | — | 0 |
+| `vehicle_service_events` (BRAKE_SERVICE) | **0** | — | 0 |
+| `vehicle_brake_reference_specs` | **5 vehicles → 20 rows** | **SPEC_ONLY** | **0** |
+| `vehicle_document_extractions` (brake) | **0** | — | 0 |
+| `vehicle_latest_states.brake_pad_percent` | **0 non-null** | — | 0 |
+
+**True measurements (TRUE_PAD / TRUE_DISC / CONFIRMED_REPLACEMENT):** **0**  
+**Component replacements documented:** **0**
+
+All 20 classified rows are registration **reference specs** (pad thickness + rotor width per axle). These are explicitly **excluded** — spec fallback is not ground truth. Rotor **width** values (e.g. 36 mm VEHICLE_004 front) carry semantic mismatch risk if used as disc thickness anchor (Phase 2 finding P0-BH-13).
+
+## 5.2 As-of replay (Teil 2)
+
+With zero sequential true measurements, **no as-of replay pairs** could be constructed.
+
+| Exclusion code | Count | Reason |
+|----------------|-------|--------|
+| `spec_fallback_not_ground_truth` | 20 | Reference spec only |
+| `NOT_REPRODUCIBLE_ANCHOR` | N/A | No prior confirmed anchor exists |
+
+**Replay semantics implemented (script):** prior anchor → trips with `trip_driving_impact` before target only → historical gap proxy from trip-average factors (not today's rolling VDI) → `kFactor=1.0` as-of (no future calibration) → compare predicted mm to measured mm.
+
+## 5.3 Accuracy metrics (Teil 3)
+
+| Metric | Pads Front | Pads Rear | Discs Front | Discs Rear | All |
+|--------|------------|-----------|-------------|------------|-----|
+| **n** | 0 | 0 | 0 | 0 | **0** |
+| MAE (mm) | — | — | — | — | — |
+| RMSE (mm) | — | — | — | — | — |
+| Bias (mm) | — | — | — | — | — |
+| Median abs error | — | — | — | — | — |
+| P90 abs error | — | — | — | — | — |
+| Within ±0.5 mm | — | — | — | — | — |
+| Within ±1.0 mm | — | — | — | — | — |
+
+**Condition classification errors:** not computable (n=0).  
+**Remaining-km validation:** not applicable — no permissible ground truth.
+
+## 5.4 Segmentation (Teil 4)
+
+No segment produced n≥1. Fleet has **5 ICE + 1 EV** but zero measured anchors; **892 `trip_driving_impact` rows** exist but cannot validate wear formula without anchor pairs.
+
+## 5.5 Confidence calibration (Teil 5)
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | High more accurate than Medium/Low? | **Not empirically testable** (n=0) |
+| 2 | Spec-fallback can reach High? | **Yes in code** — padAnchors(20)+rotorAnchors(10)+serviceEvents(12)+full DI(33)+odo(10)+coverage(6) = **91** without measurement |
+| 3 | Coverage sufficiently weighted? | Low coverage **−16**; but High still reachable with spec anchor |
+| 4 | Rolling-gap-only over-rated? | Penalized (−12) but not blocked |
+| 5 | Safety evidence inflates model confidence? | **No** — DTC/fluid affect canonical condition separately |
+| 6 | Measurement count vs quality separated? | **No** — `measurementExists(8)` in config **unused** in `computeConfidence()` |
+| 7 | Manual unverified input over-rated? | Risk if init runs without odometer+measurement gate |
+| 8 | AI upload over-rated? | Fleet: 0 brake AI rows |
+| 9 | Estimated caps at WARNING? | **Yes** — code + unit tests |
+| 10 | Low-confidence remaining-km too precise? | Range spread configured; not fleet-tested |
+
+**New finding P1-BH-50:** Spec-only anchor can score **HIGH** confidence without any true measurement.
+
+## 5.6 K-factor calibration (Teil 6)
+
+| Check | Fleet result |
+|-------|--------------|
+| `calibrateFromMeasurement()` runtime | **Not implemented** |
+| Fleet calibrations | **0** |
+| k-factor distribution | All default **1.0** (no `brake_health_current` rows) |
+| Values at clamps (0.70–1.35 pad) | N/A |
+| Target leakage | N/A |
+| Partial-service reset | Code risk latent (scope not passed to init — Phase 2) |
+
+**New finding P1-BH-51:** Calibration schema + config exist; **no writer** updates `frontPadKFactor` et al.
+
+## 5.7 Model verdict (Teil 9)
+
+| Verdict | **`NOT_ENOUGH_DATA`** |
+|---------|----------------------|
+
+**Rationale:** Zero confirmed thickness measurements and zero component replacements. Cannot claim VALIDATED, PARTIALLY_VALIDATED, or any accuracy figure. Reference specs are **SPEC_ONLY** and must not be used as backtest ground truth.
+
+**Code readiness:** Pure replay script reproduces trip-based wear math with as-of semantics; awaiting measurement campaign (manual/workshop/confirmed invoice) before re-run.
+
+## 5.8 Phase-5 findings (new)
+
+| ID | Sev | Finding | Confidence |
+|----|-----|---------|------------|
+| **P1-BH-50** | P1 | Spec-only anchor can reach HIGH confidence without measurement | CONFIRMED (code) |
+| **P1-BH-51** | P1 | K-factor calibration not implemented at runtime | CONFIRMED |
+| **P2-BH-52** | P2 | 20 SPEC_ONLY rows mistaken for GT if reference specs trusted | CONFIRMED |
+
+---
+
+## 9. Phase 6 preview (not executed)
 
 - Full consumer matrix CSV
 - Rental blocking policy vs canonical CRITICAL rules
@@ -991,6 +1106,11 @@ BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1 BRAKE_HEALTH_AUDIT_ALLOW_PROD=1 \
 cd backend && BRAKE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
   npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-brake-health-dimo-signals.ts \
   --days=60 --output-dir=../docs/audits/data
+
+# Phase 5 — Historical wear backtest (read-only, no recalculate)
+cd backend && BRAKE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-brake-health-backtest.ts \
+  --output-dir=../docs/audits/data
 ```
 
 **Ops backfill (NOT run during audit — writes):**
@@ -1009,17 +1129,18 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-brake-health-from-re
 | 2026-07-17 | 1 | Initial architecture map, VPS read-only probe, code-map CSV, fleet coverage CSV, audit script scaffold |
 | 2026-07-17 | 3 | VPS 60d integrity: fleet coverage, anchor/scope/trip/evidence CSVs, findings JSON (12 findings) |
 | 2026-07-17 | 4 | DIMO brake signal audit: 156 GraphQL queries, 3 CSV artifacts, `audit-brake-health-dimo-signals.ts` |
+| 2026-07-17 | 5 | Historical backtest: 0 GT measurements, NOT_ENOUGH_DATA verdict, 3 CSV artifacts, `audit-brake-health-backtest.ts` |
 
 ---
 
-## Confirmation (Phases 1–4)
+## Confirmation (Phases 1–5)
 
-- ✅ No production data was modified during Phases 1–4.
+- ✅ No production data was modified during Phases 1–5.
 - ✅ No brake recalculation, evidence creation, or anchor mutations were triggered.
 - ✅ No DIMO triggers or subscriptions were created.
 - ✅ No infrastructure was changed (PM2, Redis, PostgreSQL, ClickHouse, Docker, workers).
 - ✅ No secrets, VINs, license plates, token IDs, GPS coordinates, customer PII, or raw telemetry are stored in committed audit artifacts.
-- ✅ Phase 3–4 VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
-- ✅ Phase 4 DIMO Telemetry API access was **read-only** (no GPS signals queried).
+- ✅ Phase 3–5 VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
+- ✅ Phase 5 backtest used **isolated formula replay** — no `recalculate()` or calibration writes.
 - ✅ Phase 2 was **code-only** static analysis.
-- ⏳ Phases 5–7 **not started** per audit plan.
+- ⏳ Phases 6–7 **not started** per audit plan.
