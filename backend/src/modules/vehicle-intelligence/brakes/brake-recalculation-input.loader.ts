@@ -4,13 +4,16 @@ import {
   BRAKE_WEAR_MODEL_VERSION,
   type BrakeRecalculationInputContext,
 } from './brake-recalculation-fingerprint';
+import {
+  classifyBrakeDtc,
+  isBrakeDtcEvidenceRelevant,
+} from './brake-dtc-classification';
 
 const GAP_POLICY_VERSION = 'brake-coverage-gap-v1';
-const BRAKE_DTC_PREFIXES = ['C0', 'C1', 'B1'];
 
 function isBrakeRelatedDtcCode(code: string): boolean {
-  const upper = code.toUpperCase();
-  return BRAKE_DTC_PREFIXES.some((prefix) => upper.startsWith(prefix));
+  const classification = classifyBrakeDtc(code);
+  return classification != null && isBrakeDtcEvidenceRelevant(classification.category);
 }
 
 @Injectable()

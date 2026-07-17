@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcSeverity } from '@prisma/client';
+import {
+  BrakeDtcEvidenceProducerService,
+  type BrakeDtcProducerContext,
+} from '../brakes/brake-dtc-evidence.producer';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +47,10 @@ function isDataStale(lastSuccessfulCheckAt: Date | null | undefined): boolean {
 
 @Injectable()
 export class DtcService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly brakeDtcProducer?: BrakeDtcEvidenceProducerService,
+  ) {}
 
   // ── Basic reads ─────────────────────────────────────────────────────────────
 
@@ -287,43 +294,70 @@ export class DtcService {
   async upsertDtc(
     vehicleId: string,
     dtcCode: string,
-    description?: string,
-    severity?: DtcSeverity,
+    options?: {
+      description?: string;
+      severity?: DtcSeverity;
+      producerContext?: BrakeDtcProducerContext;
+    },
   ) {
     const now = new Date();
     const existing = await this.prisma.vehicleDtcEvent.findFirst({
       where: { vehicleId, dtcCode, isActive: true },
     });
 
+    let event;
     if (existing) {
-      return this.prisma.vehicleDtcEvent.update({
+      event = await this.prisma.vehicleDtcEvent.update({
         where: { id: existing.id },
         data: {
           lastSeenAt: now,
           occurrenceCount: { increment: 1 },
-          ...(description ? { description } : {}),
+          ...(options?.description ? { description: options.description } : {}),
+          ...(options?.severity ? { severity: options.severity } : {}),
+        },
+      });
+    } else {
+      event = await this.prisma.vehicleDtcEvent.create({
+        data: {
+          vehicle: { connect: { id: vehicleId } },
+          dtcCode,
+          description: options?.description ?? null,
+          severity: options?.severity ?? 'WARNING',
+          firstSeenAt: now,
+          lastSeenAt: now,
+          occurrenceCount: 1,
         },
       });
     }
 
-    return this.prisma.vehicleDtcEvent.create({
-      data: {
-        vehicle: { connect: { id: vehicleId } },
-        dtcCode,
-        description: description ?? null,
-        severity: severity ?? 'WARNING',
-        firstSeenAt: now,
-        lastSeenAt: now,
-        occurrenceCount: 1,
-      },
-    });
+    if (options?.producerContext) {
+      await this.brakeDtcProducer?.onDtcUpserted(vehicleId, event, options.producerContext);
+    }
+
+    return event;
   }
 
-  async clearDtc(vehicleId: string, dtcCode: string) {
-    return this.prisma.vehicleDtcEvent.updateMany({
+  async clearDtc(
+    vehicleId: string,
+    dtcCode: string,
+    options?: { producerContext?: BrakeDtcProducerContext },
+  ) {
+    const clearedAt = new Date();
+    const result = await this.prisma.vehicleDtcEvent.updateMany({
       where: { vehicleId, dtcCode, isActive: true },
-      data: { isActive: false, clearedAt: new Date() },
+      data: { isActive: false, clearedAt },
     });
+
+    if (result.count > 0 && options?.producerContext) {
+      await this.brakeDtcProducer?.onDtcCleared(
+        vehicleId,
+        dtcCode,
+        clearedAt,
+        options.producerContext,
+      );
+    }
+
+    return result;
   }
 
   async clearAllActive(vehicleId: string) {

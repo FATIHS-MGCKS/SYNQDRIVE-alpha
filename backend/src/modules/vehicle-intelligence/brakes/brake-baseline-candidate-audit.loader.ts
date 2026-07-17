@@ -15,7 +15,10 @@ import {
   resolveNominalThickness,
 } from './brake-reference-spec.domain';
 
-const BRAKE_DTC_PREFIXES = ['C0', 'C1', 'B1'];
+import {
+  classifyBrakeDtc,
+  isBrakeDtcEvidenceRelevant,
+} from './brake-dtc-classification';
 
 export interface RawBrakeEvidenceRow {
   id: string;
@@ -375,8 +378,8 @@ export function buildVehicleBrakeBaselineAuditInput(
 }
 
 export function isBrakeRelatedDtcCode(code: string): boolean {
-  const upper = code.toUpperCase();
-  return BRAKE_DTC_PREFIXES.some((prefix) => upper.startsWith(prefix));
+  const classification = classifyBrakeDtc(code);
+  return classification != null && isBrakeDtcEvidenceRelevant(classification.category);
 }
 
 export function mapEvidenceAxle(axle: BrakeAxle | string): BrakeBaselineComponent | null {

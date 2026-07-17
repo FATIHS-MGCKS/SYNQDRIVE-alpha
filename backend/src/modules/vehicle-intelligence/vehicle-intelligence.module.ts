@@ -31,6 +31,7 @@ import { BrakeRecalculationInputLoader } from './brakes/brake-recalculation-inpu
 import { BrakeHealthObservabilityService } from './brakes/brake-health-observability.service';
 import { BrakePredictionValidationService } from './brakes/brake-prediction-validation.service';
 import { BrakeHealthReplayService } from './brakes/brake-health-replay.service';
+import { BrakeDtcEvidenceProducerService } from './brakes/brake-dtc-evidence.producer';
 import { BrakeMetricsService } from './brakes/brake-metrics.service';
 import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-backfill.service';
 import { TireTripUsageBackfillService } from './tires/tire-trip-usage-backfill.service';
@@ -167,6 +168,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeHealthObservabilityService,
     BrakePredictionValidationService,
     BrakeHealthReplayService,
+    BrakeDtcEvidenceProducerService,
     BrakeMetricsService,
     TireOdometerAnchorBackfillService,
     TireTripUsageBackfillService,
@@ -273,6 +275,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeHealthObservabilityService,
     BrakePredictionValidationService,
     BrakeHealthReplayService,
+    BrakeDtcEvidenceProducerService,
     BrakeMetricsService,
     TireOdometerAnchorBackfillService,
     TireTripUsageBackfillService,

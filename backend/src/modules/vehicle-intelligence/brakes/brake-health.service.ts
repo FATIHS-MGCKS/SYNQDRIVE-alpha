@@ -57,6 +57,7 @@ import {
 import { BrakeRecalculationInputLoader } from './brake-recalculation-input.loader';
 import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
+import { isActiveBrakeDtcEvidenceRow } from './brake-dtc-classification';
 import { BrakePredictionValidationService } from './brake-prediction-validation.service';
 import {
   buildAnchorEvidenceSummary,
@@ -2950,6 +2951,7 @@ export class BrakeHealthService {
     // Ignore evidence captured before the current baseline anchor (a later
     // service may have replaced the worn component).
     const freshEvidence = evidence.filter((e) => {
+      if (!isActiveBrakeDtcEvidenceRow(e)) return false;
       const t = e.measuredAt
         ? new Date(e.measuredAt).getTime()
         : new Date(e.createdAt).getTime();

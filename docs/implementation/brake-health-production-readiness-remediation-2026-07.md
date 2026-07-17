@@ -1096,6 +1096,52 @@ npm test -- --testPathPattern='brake-health-snapshot|brake-health-replay|brake-w
 
 ---
 
+## Structured Brake Safety Evidence from DTCs (Prompt 19) — 2026-07-17
+
+### Ziel
+
+Produktiver Producer für sicherheitsrelevante Brake-/ABS-/ESC-DTCs. Nicht jeder DTC wird zu `BrakeEvidence`.
+
+### Klassifikation (`brake-dtc-classification.ts`)
+
+| Kategorie | Beispiel |
+|-----------|----------|
+| `ABS` | C0035, C0265 |
+| `ESC` | C0455, C0561 |
+| `BRAKE_SYSTEM` | C1220, P0571 |
+| `PARKING_BRAKE` | C1242, P0826 |
+| `BRAKE_SENSOR` | C1101 |
+| `BRAKE_FLUID` | C1241 |
+| `COMMUNICATION_RELATED` | U0121, U0415 |
+| `NOT_BRAKE_RELATED` | P0675 (Glühkerze), P0420 |
+
+- Normierte Codes via `normalizeDtcCode()`
+- Exact + Prefix Registry + System-Family Heuristik
+- Keine freie Textsuche als alleinige Wahrheit
+- Unbekannte Chassis-Codes → `REVIEW_REQUIRED`, Severity max WARNING
+
+### Producer (`BrakeDtcEvidenceProducerService`)
+
+- Hook in `DtcService.upsertDtc()` / `clearDtc()` mit `producerContext`
+- DIMO Poll + Webhook liefern `sourceProvider`, `sourceTimestamp`, `organizationId`
+- Evidence-Felder: DTC Event ID, Code, Kategorie, Severity, active, first/last seen, resolvedAt, provider, freshness, dedupeKey
+- Dedupe via `(vehicle_id, dedupe_key)` unique
+- Clearance: `dtcActive=false`, Historie bleibt, `BRAKE_CRITICAL` Notification cleared
+- Recalculation trigger `dtc`
+
+### Consumer-Updates
+
+- `BrakeHealthService` / `BrakeCriticalDetector`: nur aktive, nicht-stale DTC Evidence
+- `brake-recalculation-input.loader`: shared classification statt Prefix-Heuristik
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-dtc|dtc\.service'
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -1118,6 +1164,7 @@ npm test -- --testPathPattern='brake-health-snapshot|brake-health-replay|brake-w
 | 16 | *(dieser Commit)* | `fix(brakes): remove temporal leakage from brake coverage gaps` |
 | 17 | *(dieser Commit)* | `fix(brakes): make brake recalculation idempotent and concurrency safe` |
 | 18 | *(dieser Commit)* | `feat(brakes): add versioned brake health prediction snapshots` |
+| 19 | *(dieser Commit)* | `feat(brakes): create structured brake safety evidence from DTCs` |
 
 ---
 

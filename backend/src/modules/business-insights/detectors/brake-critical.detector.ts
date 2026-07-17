@@ -10,6 +10,7 @@ import {
   isAlertableCondition,
   type BrakeCondition,
 } from '../../vehicle-intelligence/brakes/brake-status';
+import { isActiveBrakeDtcEvidenceRow } from '../../vehicle-intelligence/brakes/brake-dtc-classification';
 import { BRAKE_HEALTH_CONFIG } from '../../vehicle-intelligence/brakes/brake-health.config';
 import {
   DetectorContext,
@@ -85,6 +86,8 @@ export class BrakeCriticalDetector implements InsightDetector {
         discCondition: true,
         brakeFluidStatus: true,
         dtcSeverity: true,
+        dtcActive: true,
+        dtcFreshness: true,
         immediateReplacement: true,
         measuredAt: true,
         createdAt: true,
@@ -106,6 +109,7 @@ export class BrakeCriticalDetector implements InsightDetector {
         ? new Date(current.anchorServiceDate).getTime()
         : 0;
       const fresh = rows.filter((e) => {
+        if (!isActiveBrakeDtcEvidenceRow(e)) return false;
         const t = e.measuredAt ? new Date(e.measuredAt).getTime() : new Date(e.createdAt).getTime();
         return t >= anchorMs;
       });

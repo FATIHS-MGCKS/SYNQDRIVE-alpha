@@ -6317,6 +6317,23 @@ enum BrakeEvidenceConfidence {
   UNKNOWN
 }
 
+enum BrakeDtcCategory {
+  BRAKE_SYSTEM
+  ABS
+  ESC
+  PARKING_BRAKE
+  BRAKE_SENSOR
+  BRAKE_FLUID
+  COMMUNICATION_RELATED
+  NOT_BRAKE_RELATED
+}
+
+enum BrakeDtcFreshness {
+  FRESH
+  STALE
+  UNKNOWN
+}
+
 model BrakeEvidence {
   id                     String                  @id @default(uuid())
   vehicleId              String                  @map("vehicle_id")
@@ -6331,6 +6348,18 @@ model BrakeEvidence {
   immediateReplacement   Boolean?                @map("immediate_replacement")
   /// Optional DTC severity when source = DTC_SIGNAL (INFO/WARNING/CRITICAL).
   dtcSeverity            String?                 @map("dtc_severity")
+  vehicleDtcEventId      String?                 @map("vehicle_dtc_event_id")
+  dtcCode                String?                 @map("dtc_code")
+  dtcCategory            BrakeDtcCategory?       @map("dtc_category")
+  dtcActive              Boolean?                @map("dtc_active")
+  dtcFirstSeenAt         DateTime?               @map("dtc_first_seen_at")
+  dtcLastSeenAt          DateTime?               @map("dtc_last_seen_at")
+  dtcResolvedAt          DateTime?               @map("dtc_resolved_at")
+  sourceProvider         String?                 @map("source_provider")
+  sourceTimestamp        DateTime?               @map("source_timestamp")
+  dtcFreshness           BrakeDtcFreshness?      @map("dtc_freshness")
+  dedupeKey              String?                 @map("dedupe_key")
+  dtcReviewRequired      Boolean?                @map("dtc_review_required")
   mileageAtMeasurementKm Int?                    @map("mileage_at_measurement_km")
   measuredAt             DateTime?               @map("measured_at")
   confidence             BrakeEvidenceConfidence @default(UNKNOWN)
@@ -6345,6 +6374,7 @@ model BrakeEvidence {
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
   predictionSnapshot BrakeHealthSnapshot?       @relation("BrakeEvidencePredictionSnapshot", fields: [predictionSnapshotId], references: [id], onDelete: SetNull)
+  vehicleDtcEvent    VehicleDtcEvent?           @relation(fields: [vehicleDtcEventId], references: [id], onDelete: SetNull)
   componentInstallations BrakeComponentInstallation[]
 
   @@index([vehicleId, axle, measuredAt])
@@ -6352,6 +6382,8 @@ model BrakeEvidence {
   @@index([documentExtractionId])
   @@index([serviceEventId])
   @@index([predictionSnapshotId])
+  @@index([vehicleId, dtcCode, dtcActive])
+  @@index([vehicleId, dedupeKey])
   @@map("brake_evidence")
 }
 
@@ -6537,7 +6569,8 @@ model VehicleDtcEvent {
   rawPayload      Json?       @map("raw_payload")
   createdAt       DateTime    @default(now()) @map("created_at")
 
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  brakeEvidence BrakeEvidence[]
 
   @@index([vehicleId])
   @@index([dtcCode])
