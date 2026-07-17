@@ -94,3 +94,50 @@ export function assertSafeBatteryRepairDatabaseTarget(options?: {
     );
   }
 }
+
+export function assertSafeBatterySnapshotRestBackfillTarget(options?: {
+  databaseUrl?: string;
+  allowRemote?: boolean;
+  apply?: boolean;
+}): void {
+  const databaseUrl = options?.databaseUrl ?? process.env.DATABASE_URL ?? '';
+  const allowRemote = options?.allowRemote;
+  const apply = options?.apply === true;
+
+  if (!databaseUrl.trim()) {
+    throw new Error('DATABASE_URL is not set — configure a local or test database first.');
+  }
+
+  if (
+    apply &&
+    process.env.NODE_ENV === 'production' &&
+    process.env.BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD !== '1'
+  ) {
+    throw new Error(
+      'Refusing to apply battery snapshot rest backfill with NODE_ENV=production. Set BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD=1 only when explicitly intended.',
+    );
+  }
+
+  const looksProduction = PRODUCTION_DB_PATTERNS.some((pattern) => pattern.test(databaseUrl));
+  const looksLocal = LOCAL_DB_PATTERNS.some((pattern) => pattern.test(databaseUrl));
+
+  if (
+    apply &&
+    looksProduction &&
+    process.env.BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD !== '1'
+  ) {
+    throw new Error(
+      'DATABASE_URL looks like production. Snapshot rest backfill apply must only run with explicit override. Set BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD=1 (not recommended).',
+    );
+  }
+
+  if (
+    !looksLocal &&
+    !allowRemote &&
+    process.env.BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_REMOTE !== '1'
+  ) {
+    throw new Error(
+      'DATABASE_URL does not look local/test. Pass --allow-remote-db or set BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_REMOTE=1 after confirming this is not production.',
+    );
+  }
+}

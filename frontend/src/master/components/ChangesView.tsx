@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
+    version: '4.9.581',
+    title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',
+    summary: [
+      'Ops-Pipeline: `battery_health_snapshots.restingVoltage` → `battery_measurements` (`REST_60M`) mit Wake-/Kontaminations-Gates.',
+      'Assessment-Replay (`recomputeLvEstimatedHealth`) und optional Publication-Replay nur im Script-Prozess (`--enable-publication-replay`).',
+      'Safety-Guards: `BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_REMOTE/PROD`; Runbook §18.1c.',
+    ],
+    reason: 'Option B: 60-Tage-Historie materialisieren, damit LV Estimated Health nicht dauerhaft UNKNOWN bleibt, ohne globale Publication-Flags zu aktivieren.',
+    previousBehavior: 'Kein historischer Snapshot→Measurement-Backfill; Assessment/Publication nur über Live-V2-Pipeline.',
+    details:
+      'battery-snapshot-rest-backfill.policy.ts, battery-snapshot-rest-backfill.service.ts, backfill-battery-snapshot-rest-measurements.ts, battery-data-diagnostic.safety.util.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T13:30:00.000Z',
+  },
+  {
     id: 'di-v2-prod-ops-ch-grafana-smoke-2026-07-17',
     version: '4.9.580',
     title: 'Prod Ops — ClickHouse recovery, DI V2 Grafana, trip_analysis_status backfill',
@@ -55,6 +72,22 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-07-17T12:20:00.000Z',
+  },
+  {
+    id: 'battery-v2-deploy-hotfix-v49579-2026-07-16',
+    version: '4.9.579',
+    title: 'V4.9.579 — Battery V2 Worker DI Hotfix (Post-Deploy)',
+    summary: [
+      '`BatteryV2JobsModule` importiert `DimoModule` — `BatteryStartProxyExtractService` löst `DimoSegmentsService` im Worker-Kontext auf.',
+      '`BatteryV2JobObservabilityService` im Producer-Modul — `HvChargeSessionPersistService` im API-Kontext.',
+      'Folgt auf Merge-Hotfixes: `BatteryCapabilityRefreshService` im Producer-Modul, `extractSignalTimestamp` in DIMO-Snapshot-Processor.',
+    ],
+    reason: 'Produktion crash-loop nach Battery-V2-Merge: NestJS konnte Worker-Dependencies nicht auflösen (502 Bad Gateway).',
+    previousBehavior: 'Worker-Bootstrap scheiterte mit `DimoSegmentsService` nicht verfügbar in `BatteryV2JobsModule`.',
+    details: 'battery-v2-jobs.module.ts, battery-v2-jobs.module.spec.ts',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:45:00.000Z',
   },
   {
     id: 'driving-intelligence-v2-p77-remaining-p0-p1-2026-07-17',

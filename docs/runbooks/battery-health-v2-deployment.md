@@ -779,6 +779,32 @@ npx ts-node -r tsconfig-paths/register scripts/ops/repair-battery-data.ts \
   --organization-id=<canary-org> --apply --batch-size=20
 ```
 
+### 18.1c Option B — Historical Snapshot REST Backfill (60d)
+
+Kontrollierter Backfill: `battery_health_snapshots.restingVoltage` → `battery_measurements` (`REST_60M`) mit Wake-/Kontaminations-Gates, anschließend Assessment-Replay und optional Publication-Replay **nur im Script-Prozess**.
+
+```bash
+cd backend
+# 1) Dry-run
+npx ts-node -r tsconfig-paths/register scripts/ops/backfill-battery-snapshot-rest-measurements.ts \
+  --organization-id=<canary-org> --days=60 --output=./tmp/battery-snapshot-rest-backfill-dry.json
+
+# 2) Apply + Assessment replay
+BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_REMOTE=1 \
+  npx ts-node -r tsconfig-paths/register scripts/ops/backfill-battery-snapshot-rest-measurements.ts \
+  --organization-id=<canary-org> --days=60 --apply \
+  --operator=ops@example --reason=option-b-backfill
+
+# 3) Publication replay (scoped — setzt BATTERY_V2_PUBLICATION_ENABLED nur im Prozess)
+BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_REMOTE=1 \
+BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register scripts/ops/backfill-battery-snapshot-rest-measurements.ts \
+  --organization-id=<canary-org> --vehicle-id=<canary-vehicle> --days=60 --apply \
+  --enable-publication-replay --operator=ops@example --reason=option-b-publication-replay
+```
+
+**Guards:** `BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_REMOTE=1`, für Produktion zusätzlich `BATTERY_SNAPSHOT_REST_BACKFILL_ALLOW_PROD=1`. Globale PM2-Flags (`BATTERY_V2_PUBLICATION_ENABLED`) **nicht** dauerhaft aktivieren.
+
 ### 18.2 Produktions-Smoke nach jeder Phase
 
 | # | Test | Erwartung |

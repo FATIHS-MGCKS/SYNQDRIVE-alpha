@@ -187,6 +187,7 @@ import { BatteryV2RetentionAggregateService } from './battery-health/retention/b
 import { BatteryV2RetentionService } from './battery-health/retention/battery-v2-retention.service';
 import { BatteryDataDiagnosticService } from './battery-health/diagnostic/battery-data-diagnostic.service';
 import { BatteryDataRepairService } from './battery-health/diagnostic/battery-data-repair.service';
+import { BatterySnapshotRestBackfillService } from './battery-health/backfill/battery-snapshot-rest-backfill.service';
 import {
   BatteryShadowValidationController,
   BatteryShadowValidationService,
@@ -318,6 +319,7 @@ import {
     BatteryV2RetentionService,
     BatteryDataDiagnosticService,
     BatteryDataRepairService,
+    BatterySnapshotRestBackfillService,
     BatteryShadowValidationService,
     HealthSummaryService,
     AiHealthCareAggregationService,
@@ -475,6 +477,7 @@ import {
     BatteryV2RetentionService,
     BatteryDataDiagnosticService,
     BatteryDataRepairService,
+    BatterySnapshotRestBackfillService,
     BatteryShadowValidationService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
