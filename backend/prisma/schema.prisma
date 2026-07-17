@@ -1899,6 +1899,7 @@ model Vehicle {
   brakeEvidence                     BrakeEvidence[]
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
+  brakeHealthSnapshots              BrakeHealthSnapshot[]
   brakeRecalculationAudits          BrakeRecalculationAudit[]
   dtcEvents                         VehicleDtcEvent[]
   tripDrivingImpacts                TripDrivingImpact[]
@@ -6336,18 +6337,21 @@ model BrakeEvidence {
   notes                  String?
   documentExtractionId   String?                 @map("document_extraction_id")
   serviceEventId         String?                 @map("service_event_id")
+  predictionSnapshotId   String?                 @map("prediction_snapshot_id")
   createdById            String?                 @map("created_by_id")
   createdAt              DateTime                @default(now()) @map("created_at")
 
   vehicle            Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+  predictionSnapshot BrakeHealthSnapshot?       @relation("BrakeEvidencePredictionSnapshot", fields: [predictionSnapshotId], references: [id], onDelete: SetNull)
   componentInstallations BrakeComponentInstallation[]
 
   @@index([vehicleId, axle, measuredAt])
   @@index([vehicleId, source, measuredAt])
   @@index([documentExtractionId])
   @@index([serviceEventId])
+  @@index([predictionSnapshotId])
   @@map("brake_evidence")
 }
 
@@ -6459,6 +6463,39 @@ model BrakeHealthCurrent {
 
   @@index([organizationId, vehicleId])
   @@map("brake_health_current")
+}
+
+model BrakeHealthSnapshot {
+  id                       String   @id @default(uuid())
+  organizationId           String?  @map("organization_id")
+  vehicleId                String   @map("vehicle_id")
+  generatedAt              DateTime @map("generated_at")
+  modelVersion             String   @map("model_version")
+  modelConfigHash          String   @map("model_config_hash")
+  inputFingerprint         String   @map("input_fingerprint")
+  componentInstallationIds Json     @default("[]") @map("component_installation_ids")
+  anchorEvidenceSummary    Json?    @map("anchor_evidence_summary")
+  modeledDistanceKm        Float?   @map("modeled_distance_km")
+  observedDistanceKm       Float?   @map("observed_distance_km")
+  neutralGapDistanceKm     Float?   @map("neutral_gap_distance_km")
+  coverageRatio            Float?   @map("coverage_ratio")
+  modelingSource           String?  @map("modeling_source")
+  frontPadEstimateMm       Float?   @map("front_pad_estimate_mm")
+  rearPadEstimateMm        Float?   @map("rear_pad_estimate_mm")
+  frontDiscEstimateMm      Float?   @map("front_disc_estimate_mm")
+  rearDiscEstimateMm       Float?   @map("rear_disc_estimate_mm")
+  condition                String?  @map("condition")
+  confidence               Json?    @map("confidence")
+  remainingRange           Json?    @map("remaining_range")
+  alertsSummary            Json?    @map("alerts_summary")
+  createdAt                DateTime @default(now()) @map("created_at")
+
+  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  linkedEvidence BrakeEvidence[] @relation("BrakeEvidencePredictionSnapshot")
+
+  @@index([vehicleId, generatedAt(sort: Desc)])
+  @@index([vehicleId, modelVersion, inputFingerprint], map: "brake_health_snapshots_vehicle_model_fingerprint_idx")
+  @@map("brake_health_snapshots")
 }
 
 model BrakeRecalculationAudit {

@@ -21,6 +21,7 @@ export type InMemoryStore = {
   brakeServiceApplications: Array<Record<string, unknown>>;
   brakeComponentInstallations: Array<Record<string, unknown>>;
   brakeServiceOutbox: Array<Record<string, unknown>>;
+  brakeHealthSnapshots: Array<Record<string, unknown>>;
   vehicleLatestState: Map<string, Record<string, unknown>>;
   tripDrivingImpact: Array<Record<string, unknown>>;
 };
@@ -28,6 +29,7 @@ export type InMemoryStore = {
 export function createInMemoryPrisma(store: InMemoryStore) {
   let eventSeq = 0;
   let evidenceSeq = 0;
+  let snapshotSeq = 0;
   let specSeq = 0;
   let applicationSeq = 0;
   let installationSeq = 0;
@@ -124,6 +126,60 @@ export function createInMemoryPrisma(store: InMemoryStore) {
         id: `audit-${Date.now()}`,
         ...data,
       })),
+    },
+    brakeHealthSnapshot: {
+      findFirst: jest.fn(
+        async ({
+          where,
+          orderBy,
+        }: {
+          where: {
+            vehicleId?: string;
+            modelVersion?: string;
+            inputFingerprint?: string;
+            generatedAt?: { lte?: Date; lt?: Date };
+          };
+          orderBy?: { generatedAt?: 'asc' | 'desc' };
+        }) => {
+          let rows = [...store.brakeHealthSnapshots];
+          if (where.vehicleId) {
+            rows = rows.filter((row) => row.vehicleId === where.vehicleId);
+          }
+          if (where.modelVersion) {
+            rows = rows.filter((row) => row.modelVersion === where.modelVersion);
+          }
+          if (where.inputFingerprint) {
+            rows = rows.filter((row) => row.inputFingerprint === where.inputFingerprint);
+          }
+          if (where.generatedAt?.lte) {
+            const lteMs = where.generatedAt.lte.getTime();
+            rows = rows.filter(
+              (row) => new Date(String(row.generatedAt)).getTime() <= lteMs,
+            );
+          }
+          if (where.generatedAt?.lt) {
+            const ltMs = where.generatedAt.lt.getTime();
+            rows = rows.filter((row) => new Date(String(row.generatedAt)).getTime() < ltMs);
+          }
+          if (orderBy?.generatedAt === 'desc') {
+            rows.sort(
+              (a, b) =>
+                new Date(String(b.generatedAt)).getTime() -
+                new Date(String(a.generatedAt)).getTime(),
+            );
+          }
+          return rows[0] ?? null;
+        },
+      ),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row = {
+          id: `snap-${++snapshotSeq}`,
+          createdAt: new Date(),
+          ...data,
+        };
+        store.brakeHealthSnapshots.push(row);
+        return row;
+      }),
     },
     brakeHealthCurrent: {
       findUnique: jest.fn(async ({ where }: { where: { vehicleId: string } }) =>
@@ -508,6 +564,7 @@ export function createBrakeLifecycleHarness(input?: {
     brakeServiceApplications: [],
     brakeComponentInstallations: [],
     brakeServiceOutbox: [],
+    brakeHealthSnapshots: [],
     vehicleLatestState: new Map(
       input?.latestStateOdometerKm != null
         ? [[vehicleId, { vehicleId, odometerKm: input.latestStateOdometerKm }]]

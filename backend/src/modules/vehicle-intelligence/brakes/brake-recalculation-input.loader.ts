@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
-  BRAKE_RECALCULATION_MODEL_VERSION,
+  BRAKE_WEAR_MODEL_VERSION,
   type BrakeRecalculationInputContext,
 } from './brake-recalculation-fingerprint';
 
@@ -18,8 +18,29 @@ export class BrakeRecalculationInputLoader {
   constructor(private readonly prisma: PrismaService) {}
 
   async load(vehicleId: string): Promise<BrakeRecalculationInputContext | null> {
+    return this.loadAsOf(vehicleId, new Date());
+  }
+
+  /**
+   * Historical input loader for as-of replay. Excludes trips, evidence, ledger rows,
+   * DTC events, specs, and installations that did not exist yet at `asOf`.
+   */
+  async loadAsOf(
+    vehicleId: string,
+    asOf: Date,
+  ): Promise<BrakeRecalculationInputContext | null> {
     const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
     if (!current) return null;
+    if (
+      !current.isInitialized ||
+      current.anchorServiceDate == null ||
+      current.anchorOdometerKm == null
+    ) {
+      return null;
+    }
+    if (current.anchorServiceDate > asOf) {
+      return null;
+    }
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -38,7 +59,11 @@ export class BrakeRecalculationInputLoader {
 
     const anchorDate = current.anchorServiceDate;
     const installations = await this.prisma.brakeComponentInstallation.findMany({
-      where: { vehicleId, status: 'ACTIVE' },
+      where: {
+        vehicleId,
+        installedAt: { lte: asOf },
+        OR: [{ removedAt: null }, { removedAt: { gt: asOf } }],
+      },
       select: {
         id: true,
         componentType: true,
@@ -51,7 +76,10 @@ export class BrakeRecalculationInputLoader {
     });
 
     const referenceSpecs = await this.prisma.vehicleBrakeReferenceSpec.findMany({
-      where: { vehicleId },
+      where: {
+        vehicleId,
+        updatedAt: { lte: asOf },
+      },
       select: {
         id: true,
         updatedAt: true,
@@ -69,7 +97,14 @@ export class BrakeRecalculationInputLoader {
     const evidence = await this.prisma.brakeEvidence.findMany({
       where: {
         vehicleId,
-        ...(anchorDate ? { OR: [{ measuredAt: { gte: anchorDate } }, { createdAt: { gte: anchorDate } }] } : {}),
+        ...(anchorDate
+          ? {
+              OR: [
+                { measuredAt: { gte: anchorDate, lte: asOf } },
+                { measuredAt: null, createdAt: { gte: anchorDate, lte: asOf } },
+              ],
+            }
+          : { createdAt: { lte: asOf } }),
       },
       select: {
         id: true,
@@ -91,7 +126,9 @@ export class BrakeRecalculationInputLoader {
     const tripImpacts = await this.prisma.tripDrivingImpact.findMany({
       where: {
         vehicleId,
-        ...(anchorDate ? { tripStartedAt: { gte: anchorDate } } : {}),
+        ...(anchorDate
+          ? { tripStartedAt: { gte: anchorDate, lte: asOf } }
+          : { tripStartedAt: { lte: asOf } }),
         analysisStatus: { in: ['COMPLETE', 'PARTIAL'] },
       },
       select: {
@@ -129,7 +166,10 @@ export class BrakeRecalculationInputLoader {
       where: {
         vehicleId,
         invalidatedAt: null,
-        ...(anchorDate ? { occurredAt: { gte: anchorDate } } : {}),
+        occurredAt: {
+          ...(anchorDate ? { gte: anchorDate } : {}),
+          lte: asOf,
+        },
       },
       select: {
         canonicalType: true,
@@ -164,7 +204,11 @@ export class BrakeRecalculationInputLoader {
     }
 
     const dtcEvents = await this.prisma.vehicleDtcEvent.findMany({
-      where: { vehicleId, isActive: true },
+      where: {
+        vehicleId,
+        isActive: true,
+        lastSeenAt: { lte: asOf },
+      },
       select: {
         dtcCode: true,
         severity: true,
@@ -172,6 +216,9 @@ export class BrakeRecalculationInputLoader {
         lastSeenAt: true,
       },
     });
+
+    const useLaterCalibration =
+      current.lastRecalculatedAt != null && current.lastRecalculatedAt > asOf;
 
     return {
       vehicleId,
@@ -181,15 +228,15 @@ export class BrakeRecalculationInputLoader {
         anchorServiceDate: current.anchorServiceDate?.toISOString() ?? null,
         anchorOdometerKm: current.anchorOdometerKm,
         anchorValidationStatus: current.anchorValidationStatus,
-        calibrationCount: current.calibrationCount,
+        calibrationCount: useLaterCalibration ? 0 : current.calibrationCount,
         frontPadAnchorMm: current.frontPadAnchorMm,
         rearPadAnchorMm: current.rearPadAnchorMm,
         frontDiscAnchorMm: current.frontDiscAnchorMm,
         rearDiscAnchorMm: current.rearDiscAnchorMm,
-        frontPadKFactor: current.frontPadKFactor,
-        rearPadKFactor: current.rearPadKFactor,
-        frontDiscKFactor: current.frontDiscKFactor,
-        rearDiscKFactor: current.rearDiscKFactor,
+        frontPadKFactor: useLaterCalibration ? 1 : current.frontPadKFactor,
+        rearPadKFactor: useLaterCalibration ? 1 : current.rearPadKFactor,
+        frontDiscKFactor: useLaterCalibration ? 1 : current.frontDiscKFactor,
+        rearDiscKFactor: useLaterCalibration ? 1 : current.rearDiscKFactor,
         updatedAt: current.updatedAt.toISOString(),
       },
       vehicle: {
@@ -259,6 +306,6 @@ export class BrakeRecalculationInputLoader {
   }
 
   modelVersion(): string {
-    return BRAKE_RECALCULATION_MODEL_VERSION;
+    return BRAKE_WEAR_MODEL_VERSION;
   }
 }

@@ -5,15 +5,19 @@ import {
 } from './brake-lifecycle-test.harness';
 import { BrakeServiceApplicationService } from './brake-service-application.service';
 import { BrakeServiceOutboxService } from './brake-service-outbox.service';
-import { BrakeHealthService } from './brake-health.service';
 
 describe('BrakeServiceApplicationService', () => {
   function createApplicationHarness() {
     const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 30000 });
+    const recalcOrchestrator = {
+      enqueue: jest.fn().mockImplementation(async (input: { vehicleId: string }) =>
+        h.brakeHealth.recalculate(input.vehicleId),
+      ),
+    };
     const application = new BrakeServiceApplicationService(
       h.prisma as never,
       h.brakeHealth,
-      new BrakeServiceOutboxService(h.prisma as never, h.brakeHealth),
+      new BrakeServiceOutboxService(h.prisma as never, recalcOrchestrator as never),
     );
     return { ...h, application };
   }

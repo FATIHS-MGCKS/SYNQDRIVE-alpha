@@ -1050,6 +1050,52 @@ npm test -- --testPathPattern='brake-recalculation|brake-health.spec|brake-lifec
 
 ---
 
+## Versioned Brake Health Prediction Snapshots (Prompt 18) — 2026-07-17
+
+### Ziel
+
+Historisch nachvollziehbare Prediction-Historie und Modellversionierung. `BrakeHealthCurrent` bleibt das aktuelle Read Model; jede neue Prediction wird als unveränderlicher Snapshot gespeichert.
+
+### Schema
+
+| Tabelle / Feld | Rolle |
+|----------------|-------|
+| `brake_health_snapshots` | Immutable prediction history per vehicle |
+| Unique `(vehicle_id, model_version, input_fingerprint)` | Dedupe — kein Snapshot-Overwrite |
+| `brake_evidence.prediction_snapshot_id` | Messung verweist auf letzten zulässigen Pre-Measurement-Snapshot |
+
+### Modellversion
+
+| Konstante | Wert |
+|-----------|------|
+| `BRAKE_WEAR_MODEL_VERSION` | `brake-wear-v2` |
+| `computeBrakeWearModelConfigHash()` | Sectioned deterministic config hash |
+| `BRAKE_WEAR_MODEL_CONFIG_REGISTRY` | Reproduzierbare Model+Config-Kombinationen |
+
+### Services
+
+| Service | Rolle |
+|---------|-------|
+| `BrakeHealthService.persistHealthSnapshot()` | Snapshot nach erfolgreicher Recalculation |
+| `BrakePredictionValidationService` | `findPreMeasurementSnapshot()` + Evidence-Link |
+| `BrakeHealthReplayService` | Read-only As-of-Replay (`REPRODUCED_FROM_SNAPSHOT` / `RECOMPUTED` / `NOT_REPRODUCIBLE` / `NO_DATA`) |
+| `BrakeRecalculationInputLoader.loadAsOf()` | Historische Inputs ohne Future Leakage |
+
+### Replay-Policy
+
+- Damalige Installationen, Specs, Thresholds, Trips/TDI, Events, Evidence
+- Keine spätere Kalibrierung (`kFactor`/`calibrationCount` vor `lastRecalculatedAt`)
+- Keine aktuelle Rolling Summary im Preview-Pfad
+- Unbekannte historische Config → `NOT_REPRODUCIBLE` (keine heutige Formel als historische Wahrheit)
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-health-snapshot|brake-health-replay|brake-wear-model-version|brake-prediction-validation|brake-recalculation-input.loader'
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -1071,6 +1117,7 @@ npm test -- --testPathPattern='brake-recalculation|brake-health.spec|brake-lifec
 | 15 | *(dieser Commit)* | `feat(brakes): add canonical braking event ledger and deduplication` |
 | 16 | *(dieser Commit)* | `fix(brakes): remove temporal leakage from brake coverage gaps` |
 | 17 | *(dieser Commit)* | `fix(brakes): make brake recalculation idempotent and concurrency safe` |
+| 18 | *(dieser Commit)* | `feat(brakes): add versioned brake health prediction snapshots` |
 
 ---
 

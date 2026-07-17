@@ -25,6 +25,7 @@ const confirmedDiscThreshold = (anchor = 28, minimum = 26) =>
 
 const mockPrisma = {
   brakeHealthCurrent: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+  brakeHealthSnapshot: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'snap-1' }) },
   brakeRecalculationAudit: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
   tripDrivingImpact: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleBrakeReferenceSpec: { findMany: jest.fn().mockResolvedValue([]) },
@@ -945,6 +946,7 @@ describe('recalculate temporal coverage', () => {
 
   it('skips wear recompute when input fingerprint is unchanged', async () => {
     const fingerprint = computeBrakeRecalculationInputFingerprint(buildRecalcContext());
+    mockPrisma.brakeHealthSnapshot.findFirst.mockResolvedValueOnce({ id: 'snap-deduped' });
     mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
       vehicleId: 'v1',
       isInitialized: true,
@@ -982,6 +984,7 @@ describe('recalculate temporal coverage', () => {
 
     expect(result?.skipped).toBe(true);
     expect(result?.skipReason).toBe('identical_input_fingerprint');
+    expect(result?.snapshotId).toBe('snap-deduped');
     expect(mockPrisma.brakeHealthCurrent.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { vehicleId: 'v1' },

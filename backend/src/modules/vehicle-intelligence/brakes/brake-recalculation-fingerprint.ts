@@ -1,7 +1,15 @@
 import { createHash } from 'crypto';
-import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
+import {
+  BRAKE_WEAR_MODEL_VERSION,
+  computeBrakeWearModelConfigHash,
+} from './brake-wear-model-version';
 
-export const BRAKE_RECALCULATION_MODEL_VERSION = BRAKE_HEALTH_CONFIG.MODEL_VERSION;
+export {
+  BRAKE_WEAR_MODEL_VERSION,
+  BRAKE_RECALCULATION_MODEL_VERSION,
+  computeBrakeHealthConfigHash,
+  computeBrakeWearModelConfigHash,
+} from './brake-wear-model-version';
 
 export type BrakeRecalculationTrigger =
   | 'scheduler'
@@ -143,11 +151,6 @@ function round3(n: number): number {
   return Math.round(n * 1000) / 1000;
 }
 
-/** Deterministic hash of brake wear model configuration. */
-export function computeBrakeHealthConfigHash(): string {
-  return createHash('sha256').update(canonicalJson(BRAKE_HEALTH_CONFIG)).digest('hex');
-}
-
 export function buildBrakeRecalculationInputPayload(
   ctx: BrakeRecalculationInputContext,
 ): Record<string, unknown> {
@@ -238,8 +241,8 @@ export function computeBrakeRecalculationInputFingerprint(
     modelConfigHash?: string;
   },
 ): BrakeRecalculationFingerprint {
-  const modelVersion = options?.modelVersion ?? BRAKE_RECALCULATION_MODEL_VERSION;
-  const modelConfigHash = options?.modelConfigHash ?? computeBrakeHealthConfigHash();
+  const modelVersion = options?.modelVersion ?? BRAKE_WEAR_MODEL_VERSION;
+  const modelConfigHash = options?.modelConfigHash ?? computeBrakeWearModelConfigHash();
   const payload = buildBrakeRecalculationInputPayload(ctx);
   const inputFingerprint = createHash('sha256')
     .update(
