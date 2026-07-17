@@ -80,8 +80,11 @@ describe('TripAssignmentService', () => {
   it('prefers overlapping booking customer assignment', async () => {
     prisma.booking.findFirst.mockResolvedValue({
       id: 'booking-9',
+      vehicleId: 'vehicle-1',
       customerId: 'customer-99',
       assignedDriverId: null,
+      startDate: new Date('2026-03-01T07:00:00Z'),
+      endDate: new Date('2026-03-01T10:00:00Z'),
       customer: { customerType: 'INDIVIDUAL' },
     });
     const result = await service.resolveForTrip({
@@ -126,8 +129,11 @@ describe('TripAssignmentService', () => {
     });
     prisma.booking.findFirst.mockResolvedValue({
       id: 'booking-11',
+      vehicleId: 'vehicle-1',
       customerId: 'cust-11',
       assignedDriverId: null,
+      startDate: new Date('2026-03-01T07:00:00Z'),
+      endDate: new Date('2026-03-01T10:00:00Z'),
       customer: { customerType: 'INDIVIDUAL' },
     });
     prisma.vehicleTrip.update.mockResolvedValue({});

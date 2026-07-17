@@ -1,5 +1,7 @@
 import { TripAssignmentStatus, TripAssignmentSubjectType } from '@prisma/client';
 import { TripAnalyticsCanonicalService } from './trip-analytics-canonical.service';
+import { TripAssignmentService } from './trip-assignment.service';
+import { TripAttributionService } from './trip-attribution.service';
 
 function makeMockPrisma() {
   return {
@@ -7,6 +9,13 @@ function makeMockPrisma() {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       aggregate: jest.fn(),
+    },
+    booking: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    driverAttribution: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     vehicleTrip: {
       aggregate: jest.fn(),
@@ -18,53 +27,23 @@ function makeMockPrisma() {
   } as any;
 }
 
-function makeMockAssignmentService() {
-  return {
-    resolveForTrip: jest.fn(),
-  } as any;
-}
-
-function makeMockAttributionService() {
-  return {
-    resolveAttributionForTrip: jest.fn().mockResolvedValue({
-      scope: 'UNASSIGNED',
-      confidence: 'LOW',
-      customerRelevant: false,
-      bookingRelevant: false,
-      customerChargeable: false,
-      bookingId: null,
-      customerId: null,
-      reason: 'Keine Buchung verknüpft',
-    }),
-  } as any;
-}
-
 describe('TripAnalyticsCanonicalService', () => {
   let prisma: ReturnType<typeof makeMockPrisma>;
-  let assignmentService: ReturnType<typeof makeMockAssignmentService>;
-  let attributionService: ReturnType<typeof makeMockAttributionService>;
   let service: TripAnalyticsCanonicalService;
 
   beforeEach(() => {
     prisma = makeMockPrisma();
-    assignmentService = makeMockAssignmentService();
-    attributionService = makeMockAttributionService();
-    service = new TripAnalyticsCanonicalService(prisma, assignmentService, attributionService);
+    service = new TripAnalyticsCanonicalService(
+      prisma,
+      new TripAssignmentService(prisma),
+      new TripAttributionService(prisma),
+    );
   });
 
   it('hydrates trip list with canonical stress score + event summary', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      { tripId: 'trip-1', drivingStressScore: 82 },
+      { tripId: 'trip-1', drivingStressScore: 82, sourceSummaryJson: null },
     ]);
-    assignmentService.resolveForTrip.mockResolvedValue({
-      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
-      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
-      assignmentSubjectId: 'cust-1',
-      assignedBookingId: 'booking-1',
-      bookingLinkSource: 'EXPLICIT',
-      isPrivateTrip: false,
-      scoreEligible: true,
-    });
 
     const result = await service.hydrateTrips('org-1', [
       {
@@ -93,10 +72,11 @@ describe('TripAnalyticsCanonicalService', () => {
         corneringEvents: 0,
         abuseEvents: 2,
         speedingEvents: 3,
-        assignmentStatus: null,
-        assignmentSubjectType: null,
-        assignmentSubjectId: null,
-        assignedBookingId: null,
+        assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+        assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+        assignmentSubjectId: 'cust-1',
+        assignedBookingId: 'booking-1',
+        bookingLinkSource: 'EXPLICIT',
         isPrivateTrip: false,
       },
     ] as any);
@@ -109,15 +89,6 @@ describe('TripAnalyticsCanonicalService', () => {
 
   it('falls back to legacy drivingScore when impact row is missing', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
-    assignmentService.resolveForTrip.mockResolvedValue({
-      assignmentStatus: TripAssignmentStatus.PRIVATE_UNASSIGNED,
-      assignmentSubjectType: null,
-      assignmentSubjectId: null,
-      assignedBookingId: null,
-      bookingLinkSource: null,
-      isPrivateTrip: true,
-      scoreEligible: false,
-    });
 
     const result = await service.hydrateTrips('org-1', [
       {
@@ -146,10 +117,11 @@ describe('TripAnalyticsCanonicalService', () => {
         corneringEvents: 0,
         abuseEvents: 0,
         speedingEvents: 0,
-        assignmentStatus: null,
+        assignmentStatus: TripAssignmentStatus.PRIVATE_UNASSIGNED,
         assignmentSubjectType: null,
         assignmentSubjectId: null,
         assignedBookingId: null,
+        bookingLinkSource: null,
         isPrivateTrip: true,
       },
     ] as any);
@@ -161,17 +133,8 @@ describe('TripAnalyticsCanonicalService', () => {
 
   it('does not expose safety score fields', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      { tripId: 'trip-1', drivingStressScore: 30 },
+      { tripId: 'trip-1', drivingStressScore: 30, sourceSummaryJson: null },
     ]);
-    assignmentService.resolveForTrip.mockResolvedValue({
-      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
-      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
-      assignmentSubjectId: 'cust-1',
-      assignedBookingId: 'booking-1',
-      bookingLinkSource: 'EXPLICIT',
-      isPrivateTrip: false,
-      scoreEligible: true,
-    });
 
     const result = await service.hydrateTrips('org-1', [
       {
@@ -201,10 +164,11 @@ describe('TripAnalyticsCanonicalService', () => {
         corneringEvents: 0,
         abuseEvents: 0,
         speedingEvents: 0,
-        assignmentStatus: null,
-        assignmentSubjectType: null,
-        assignmentSubjectId: null,
-        assignedBookingId: null,
+        assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+        assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+        assignmentSubjectId: 'cust-1',
+        assignedBookingId: 'booking-1',
+        bookingLinkSource: 'EXPLICIT',
         isPrivateTrip: false,
       },
     ] as any);
