@@ -212,6 +212,35 @@ describe('document-extraction.schemas', () => {
       expect(scopeField?.hint).toMatch(/no lv default/i);
     });
 
+    it('declares archive-only fields for OTHER and VEHICLE_CONDITION', () => {
+      for (const docType of ['OTHER', 'VEHICLE_CONDITION'] as const) {
+        const keys = getFieldSchema(docType).map((field) => field.key);
+        expect(keys).toEqual(
+          expect.arrayContaining([
+            'archiveSubtype',
+            'sender',
+            'recipient',
+            'documentDate',
+            'referenceNumber',
+            'subject',
+            'deadlines',
+            'mentionedEntities',
+            'summary',
+            'actionRequired',
+          ]),
+        );
+      }
+
+      const subtypeField = getFieldSchema('OTHER').find((field) => field.key === 'archiveSubtype');
+      expect(subtypeField?.enumValues).toEqual(
+        expect.arrayContaining(['AUTHORITY_LETTER', 'UNKNOWN', 'CONTRACT_DOCUMENT']),
+      );
+      expect(subtypeField?.hint).toMatch(/UNKNOWN/i);
+      expect(
+        getFieldSchema('OTHER').find((field) => field.key === 'actionRequired')?.hint,
+      ).toMatch(/no automatic/i);
+    });
+
     it('declares schemas for every DocumentExtractionType', () => {
       for (const t of SUPPORTED_DOCUMENT_TYPES) {
         expect(Array.isArray(DOCUMENT_FIELD_SCHEMAS[t])).toBe(true);

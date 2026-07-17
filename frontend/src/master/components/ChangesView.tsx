@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-archive-hardening-2026-07-17',
+    version: '4.9.609',
+    title: 'V4.9.609 — Document Intake V2 Archive / Correspondence Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrale Module document-archive-extraction.rules und document-action-planner.archive-rules für nicht automatisch anwendbare Dokumente (OTHER, VEHICLE_CONDITION).',
+      'Untertypen: AUTHORITY_LETTER, INSURANCE_LETTER, CUSTOMER_CORRESPONDENCE, DRIVER_DOCUMENT, PAYMENT_PROOF, WORKSHOP_REPORT, EXPERT_REPORT, GENERAL_EVIDENCE, CONTRACT_DOCUMENT, UNKNOWN.',
+      'Gemeinsame Felder: sender, recipient, documentDate, referenceNumber, subject, deadlines, mentionedEntities, summary, actionRequired.',
+      'Primär Archiv + Entity-Link-Vorschläge; keine erfundenen Domainobjekte; Fristen nur als Vorschläge; PII minimieren; kein automatischer Kontakt.',
+      'Fixtures/Tests pro Untertyp.',
+    ],
+    reason: 'Prompt 34/84: Sichere Extraktionsschemas für nicht automatisch anwendbare Dokumente.',
+    previousBehavior:
+      'OTHER/VEHICLE_CONDITION hatten nur eventDate/description; keine strukturierten Archiv-Untertypen, keine Entity-Link- oder Frist-Vorschläge, kein explizites Archive-Only-Gate.',
+    details:
+      'Backend: document-archive-extraction.rules.ts, document-action-planner.archive-rules.ts, applyArchiveDocument(), Schema/Plausibility/Alias/Frontend-Updates. Architektur: DOCUMENT_ARCHIVE_EXTRACTION_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T16:30:00.000Z',
+  },
+  {
     id: 'document-technical-hardening-2026-07-17',
     version: '4.9.608',
     title: 'V4.9.608 — Document Intake V2 TIRE / BRAKE / BATTERY Technical Extraction, Plausibility & Action Planning',

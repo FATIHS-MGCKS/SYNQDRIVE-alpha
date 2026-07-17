@@ -39,6 +39,66 @@ const COMMON_EVENT: FieldDef[] = [
   { key: 'workshopName', label: 'Workshop / Vendor', type: 'string' },
 ];
 
+const ARCHIVE_SUBTYPE_ENUM = [
+  'AUTHORITY_LETTER',
+  'INSURANCE_LETTER',
+  'CUSTOMER_CORRESPONDENCE',
+  'DRIVER_DOCUMENT',
+  'PAYMENT_PROOF',
+  'WORKSHOP_REPORT',
+  'EXPERT_REPORT',
+  'GENERAL_EVIDENCE',
+  'CONTRACT_DOCUMENT',
+  'UNKNOWN',
+] as const;
+
+/** Shared archive / correspondence fields — archive-only, no domain auto-apply. */
+const ARCHIVE_COMMON_FIELDS: FieldDef[] = [
+  {
+    key: 'archiveSubtype',
+    label: 'Archive subtype',
+    type: 'enum',
+    enumValues: [...ARCHIVE_SUBTYPE_ENUM],
+    hint: 'Use UNKNOWN when document kind is unclear — never invent a subtype',
+  },
+  {
+    key: 'sender',
+    label: 'Sender',
+    type: 'string',
+    hint: 'Organization or department preferred over personal names',
+  },
+  {
+    key: 'recipient',
+    label: 'Recipient',
+    type: 'string',
+    hint: 'Organization when possible — minimize personal data',
+  },
+  { key: 'documentDate', label: 'Document date', type: 'date', hint: 'ISO date YYYY-MM-DD' },
+  { key: 'referenceNumber', label: 'Reference number', type: 'string' },
+  { key: 'subject', label: 'Subject', type: 'string' },
+  {
+    key: 'deadlines',
+    label: 'Deadlines',
+    type: 'string',
+    hint: 'JSON array: [{ label, date }] — suggestion only, no automatic tasks',
+  },
+  {
+    key: 'mentionedEntities',
+    label: 'Mentioned entities',
+    type: 'string',
+    hint: 'JSON array: [{ entityType, label?, id? }] — explicit mentions only, no invented links',
+  },
+  { key: 'summary', label: 'Summary', type: 'string' },
+  {
+    key: 'actionRequired',
+    label: 'Action required',
+    type: 'string',
+    hint: 'Human follow-up note — no automatic customer or authority outreach',
+  },
+  { key: 'description', label: 'Summary (alias)', type: 'string' },
+  { key: 'reportNumber', label: 'Reference number (alias)', type: 'string' },
+];
+
 export const DOCUMENT_FIELD_SCHEMAS: Record<ApplyDocumentExtractionType, FieldDef[]> = {
   SERVICE: [
     ...COMMON_EVENT,
@@ -263,9 +323,9 @@ export const DOCUMENT_FIELD_SCHEMAS: Record<ApplyDocumentExtractionType, FieldDe
     { key: 'notes', label: 'Notes', type: 'string' },
   ],
   VEHICLE_CONDITION: [
-    { key: 'eventDate', label: 'Report date', type: 'date' },
+    ...ARCHIVE_COMMON_FIELDS,
+    { key: 'eventDate', label: 'Document date (alias)', type: 'date' },
     { key: 'odometerKm', label: 'Mileage (km)', type: 'number' },
-    { key: 'description', label: 'Condition summary', type: 'string' },
   ],
   INVOICE: [
     { key: 'invoiceNumber', label: 'Invoice number', type: 'string' },
@@ -514,8 +574,8 @@ export const DOCUMENT_FIELD_SCHEMAS: Record<ApplyDocumentExtractionType, FieldDe
     { key: 'reportNumber', label: 'Reference number', type: 'string' },
   ],
   OTHER: [
-    { key: 'eventDate', label: 'Date', type: 'date' },
-    { key: 'description', label: 'Description', type: 'string' },
+    ...ARCHIVE_COMMON_FIELDS,
+    { key: 'eventDate', label: 'Document date (alias)', type: 'date' },
   ],
 };
 

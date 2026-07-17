@@ -153,4 +153,20 @@ describe('DocumentExtractionPlausibilityService', () => {
     expect(result.checks.some((check) => check.code === 'DAMAGE_TYPE_UNKNOWN')).toBe(true);
     expect(result.checks.some((check) => check.code === 'DAMAGE_SEVERITY_UNKNOWN')).toBe(true);
   });
+
+  it('runs archive plausibility checks for OTHER without domain apply', () => {
+    const result = svc.runChecks(
+      'OTHER',
+      {
+        archiveSubtype: 'INSURANCE_LETTER',
+        summary: 'Versicherungsschreiben',
+        referenceNumber: 'SCH-1',
+      },
+      baseCtx,
+    );
+    expect(result.checks.some((check) => check.code === 'ARCHIVE_NO_DOMAIN_APPLY')).toBe(true);
+    expect(result.checks.some((check) => check.code === 'ARCHIVE_NO_AUTOMATIC_OUTREACH')).toBe(
+      true,
+    );
+  });
 });

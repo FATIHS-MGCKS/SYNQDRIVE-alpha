@@ -13,6 +13,10 @@ import {
 import { collectTirePlausibilityChecks } from './document-tire-extraction.rules';
 import { collectBrakePlausibilityChecks } from './document-brake-extraction.rules';
 import { collectBatteryPlausibilityChecks } from './document-battery-extraction.rules';
+import {
+  collectArchivePlausibilityChecks,
+  isArchiveDocumentType,
+} from './document-archive-extraction.rules';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 export type PlausibilitySource = 'DOCUMENT' | 'SYNQDRIVE_DB' | 'DIMO' | 'SYSTEM';
@@ -104,6 +108,8 @@ export class DocumentExtractionPlausibilityService {
       checks.push(...collectBrakePlausibilityChecks(fields));
     } else if (documentType === 'BATTERY') {
       checks.push(...collectBatteryPlausibilityChecks(fields));
+    } else if (isArchiveDocumentType(documentType)) {
+      checks.push(...collectArchivePlausibilityChecks(documentType, fields));
     } else if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
       const isFine = documentType === 'FINE';
       checks.push({

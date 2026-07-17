@@ -63,6 +63,12 @@ import {
   assessBatteryApplyGate,
   buildBatteryApplyPayload,
 } from './document-battery-extraction.rules';
+import {
+  assessArchiveApplyGate,
+  buildArchiveApplyPayload,
+  isArchiveDocumentType,
+  type ArchiveDocumentType,
+} from './document-archive-extraction.rules';
 
 export interface ApplyInput {
   extractionId: string;
@@ -142,9 +148,39 @@ export class DocumentExtractionApplyService {
       return this.applyFine(input, d);
     }
 
-    // VEHICLE_CONDITION / OTHER: no downstream domain record is created.
-    // confirmedData is preserved on the extraction itself for audit/history.
+    if (isArchiveDocumentType(docType)) {
+      return this.applyArchiveDocument(input, d, docType);
+    }
+
     return {};
+  }
+
+  private async applyArchiveDocument(
+    input: ApplyInput,
+    d: Record<string, unknown>,
+    docType: ArchiveDocumentType,
+  ): Promise<ApplyResult> {
+    const gate = assessArchiveApplyGate({ documentType: docType, fields: d });
+    const payload = buildArchiveApplyPayload(d);
+    if (!gate.canArchive || !payload) {
+      throw new BadRequestException({
+        message: 'Archive apply gate blocked — minimal metadata required',
+        blockers: gate.blockers,
+        archiveSubtype: gate.archiveSubtype,
+      });
+    }
+
+    return {
+      detail: {
+        archived: true,
+        archiveSubtype: payload.archiveSubtype,
+        documentType: docType,
+        entityLinkSuggestions: payload.entityLinkSuggestions,
+        deadlineSuggestions: payload.deadlineSuggestions,
+        referenceNumber: payload.referenceNumber,
+        extractionId: input.extractionId,
+      },
+    };
   }
 
   // ── per-type apply (mirrors prior controller behaviour) ───────────────────
