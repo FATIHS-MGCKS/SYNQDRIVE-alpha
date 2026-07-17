@@ -26,6 +26,7 @@ import {
 } from '../lib/service-info-display';
 import { ComplianceTaskActions } from './ComplianceTaskActions';
 import type { ConditionCategory } from './FleetConditionView';
+import { BrakeEvidencePanel } from './health/BrakeEvidencePanel';
 
 interface FleetConditionDetailViewProps {
   isDarkMode: boolean;
@@ -623,25 +624,8 @@ function BrakesDetail({
       </div>
 
       <div className={`${p.cardClass} p-5`}>
-        <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Axle Condition</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className={`rounded-xl p-4 ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
-            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${p.textMuted}`}>Front Axle</p>
-            <p className={`text-lg font-bold ${p.textPrimary}`}>{axleCondLabel(frontAxle?.condition)}</p>
-            <p className={`text-[10px] mt-1 ${p.textSecondary}`}>
-              {BASIS_LABEL[frontAxle?.dataBasis ?? 'UNKNOWN'] ?? 'Unknown'} · {CONF_LABEL[frontAxle?.confidence ?? 'UNKNOWN'] ?? 'Unknown'} confidence
-            </p>
-            <p className={`text-xs mt-2 ${p.textSecondary}`}>Remaining life: <span className={`font-semibold ${p.textPrimary}`}>{frontRange}</span></p>
-          </div>
-          <div className={`rounded-xl p-4 ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
-            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${p.textMuted}`}>Rear Axle</p>
-            <p className={`text-lg font-bold ${p.textPrimary}`}>{axleCondLabel(rearAxle?.condition)}</p>
-            <p className={`text-[10px] mt-1 ${p.textSecondary}`}>
-              {BASIS_LABEL[rearAxle?.dataBasis ?? 'UNKNOWN'] ?? 'Unknown'} · {CONF_LABEL[rearAxle?.confidence ?? 'UNKNOWN'] ?? 'Unknown'} confidence
-            </p>
-            <p className={`text-xs mt-2 ${p.textSecondary}`}>Remaining life: <span className={`font-semibold ${p.textPrimary}`}>{rearRange}</span></p>
-          </div>
-        </div>
+        <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Component Evidence</h3>
+        <BrakeEvidencePanel summary={summary} locale="en" showActions={false} compact />
       </div>
 
       {(summary?.openAlerts?.length ?? 0) > 0 && (

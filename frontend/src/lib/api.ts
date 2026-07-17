@@ -6693,6 +6693,124 @@ export interface BrakeHealthSummary {
   lastServiceMileageKm: number | null;
   updatedAt: string | null;
   legacy: BrakeHealthLegacy;
+  componentThresholds?: BrakeComponentThreshold[];
+  evidencePresentation?: BrakeEvidencePresentation;
+}
+
+export type BrakeComponentEvidenceClass =
+  | 'MEASURED'
+  | 'DOCUMENTED_REPLACEMENT'
+  | 'SPEC_ESTIMATE'
+  | 'MODEL_ESTIMATED'
+  | 'UNKNOWN';
+
+export type BrakeComponentKey = 'FRONT_PADS' | 'REAR_PADS' | 'FRONT_DISCS' | 'REAR_DISCS';
+
+export interface BrakeComponentThreshold {
+  component: BrakeComponentKey;
+  warningThresholdMm: number | null;
+  criticalThresholdMm: number | null;
+  source: string | null;
+  confirmed: boolean;
+  thresholdMissing: boolean;
+}
+
+export interface BrakeRemainingKmPresentation {
+  reliable: boolean;
+  displayDe: string;
+  displayEn: string;
+  exactKm: number | null;
+  bandMinKm: number | null;
+  bandMaxKm: number | null;
+  reasonDe: string | null;
+  reasonEn: string | null;
+}
+
+export interface BrakeComponentEvidenceLine {
+  component: BrakeComponentKey;
+  labelDe: string;
+  labelEn: string;
+  condition: BrakeCondition;
+  valueMm: number | null;
+  valueLabelDe: string;
+  valueLabelEn: string;
+  evidenceClass: BrakeComponentEvidenceClass;
+  evidenceClassLabelDe: string;
+  evidenceClassLabelEn: string;
+  sourceCode: string | null;
+  sourceLabelDe: string;
+  sourceLabelEn: string;
+  evidenceAt: string | null;
+  odometerKm: number | null;
+  confidence: BrakeConfidenceLevel;
+  minimumThicknessMm: number | null;
+  minimumThicknessSource: string | null;
+  minimumThicknessSourceLabelDe: string;
+  minimumThicknessSourceLabelEn: string;
+  lastMeasurementAt: string | null;
+  lastMeasurementMm: number | null;
+  lastInstallationAt: string | null;
+  modelVersion: string | null;
+  isLimiting: boolean;
+  isModeled: boolean;
+  remainingKm: BrakeRemainingKmPresentation;
+}
+
+export type BrakeDataQualityCode =
+  | 'MISSING_BASELINE'
+  | 'SPEC_UNCONFIRMED'
+  | 'COVERAGE_GAP'
+  | 'DISTANCE_CONFLICT'
+  | 'STALE_EVIDENCE';
+
+export interface BrakeDataQualityItem {
+  code: BrakeDataQualityCode;
+  labelDe: string;
+  labelEn: string;
+  detailDe: string | null;
+  detailEn: string | null;
+  active: boolean;
+}
+
+export type BrakeSafetyCode = 'ABS' | 'DTC' | 'WEAR_SENSOR' | 'IMMEDIATE_REPLACEMENT';
+
+export interface BrakeSafetyItem {
+  code: BrakeSafetyCode;
+  labelDe: string;
+  labelEn: string;
+  active: boolean;
+  detailDe: string | null;
+  detailEn: string | null;
+  severity: 'info' | 'warning' | 'critical' | null;
+}
+
+export type BrakeStructuredActionCode =
+  | 'MEASURE_THICKNESS'
+  | 'RECORD_SERVICE'
+  | 'CONFIRM_REFERENCE_SPEC'
+  | 'ADD_ODOMETER'
+  | 'REVIEW_SAFETY_EVIDENCE'
+  | 'PERFORM_REVIEW';
+
+export interface BrakeStructuredAction {
+  code: BrakeStructuredActionCode;
+  labelDe: string;
+  labelEn: string;
+  priority: number;
+}
+
+export interface BrakeEvidencePresentation {
+  overviewLabelDe: string;
+  overviewLabelEn: string;
+  uiStatusLabelDe: string;
+  uiStatusLabelEn: string;
+  components: BrakeComponentEvidenceLine[];
+  overallRemainingKm: BrakeRemainingKmPresentation;
+  dataQuality: BrakeDataQualityItem[];
+  safety: BrakeSafetyItem[];
+  structuredActions: BrakeStructuredAction[];
+  modelVersion: string;
+  modelCalculatedAt: string | null;
 }
 
 /** Legacy wear-model detail estimates — not for UI display. */

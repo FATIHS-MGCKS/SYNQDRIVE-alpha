@@ -84,6 +84,12 @@ import {
   type BrakeCoverageStatus,
   type BrakeModelingSource,
 } from './brake-coverage-gap.domain';
+import {
+  buildBrakeEvidencePresentation,
+  resolveComponentEvidenceClass,
+  type BrakeComponentBuildState,
+  type BrakeEvidencePresentation,
+} from './brake-health-presentation';
 
 export interface BrakeRecalculateOptions {
   force?: boolean;
@@ -292,6 +298,8 @@ export interface BrakeHealthSummaryDto {
   updatedAt: string | null;
   legacy: BrakeHealthLegacyDto;
   componentThresholds: BrakeComponentThresholdDto[];
+  /** Honest per-component evidence presentation for UI consumers. */
+  evidencePresentation?: BrakeEvidencePresentation;
 }
 
 export type BrakeCanonicalReadModel = Pick<
@@ -320,6 +328,30 @@ export type BrakeCanonicalReadModel = Pick<
   | 'lastServiceMileageKm'
   | 'updatedAt'
 >;
+
+/** Extended canonical build output — includes per-component state for presentation. */
+export interface BrakeCanonicalBuildResult extends BrakeCanonicalReadModel {
+  componentStates: BrakeComponentBuildState[];
+  dataQualityFlags: {
+    missingBaseline: boolean;
+    specUnconfirmed: boolean;
+    coverageGap: boolean;
+    distanceConflict: boolean;
+    staleEvidence: boolean;
+  };
+  safetyFlags: {
+    abs: boolean;
+    dtc: boolean;
+    dtcCode: string | null;
+    wearSensor: boolean;
+    immediateReplacement: boolean;
+  };
+  predictionCapable: boolean;
+  overallRemainingKmPoint: number | null;
+  anchorValidationStatus: string | null;
+  initialized: boolean;
+  hasOdometerGap: boolean;
+}
 
 /** Wear-model axle estimates — backward compatibility only; UI must not read these. */
 export interface BrakeHealthDetailLegacyDto {
@@ -2888,7 +2920,7 @@ export class BrakeHealthService {
     baselineWarnings: string[];
     provenanceWarnings: string[];
     legacyHeuristic?: { available: boolean; note: string };
-    canonical: BrakeCanonicalReadModel;
+    canonical: BrakeCanonicalBuildResult;
     legacy: BrakeHealthLegacyDto;
     componentThresholds: BrakeComponentThresholdDto[];
   }): BrakeHealthSummaryDto {
@@ -2953,6 +2985,32 @@ export class BrakeHealthService {
       updatedAt: canonical.updatedAt,
       legacy,
       componentThresholds: input.componentThresholds,
+      evidencePresentation: buildBrakeEvidencePresentation({
+        isInitialized: input.isInitialized,
+        stateClass: input.stateClass,
+        overallCondition: canonical.overallCondition,
+        modeledComponents: input.modeledComponents,
+        modelCoverage: input.modelCoverage,
+        componentThresholds: input.componentThresholds,
+        limitingComponent: input.limitingComponent ?? null,
+        openAlerts: openAlerts,
+        componentStates: canonical.componentStates,
+        dataQualityFlags: canonical.dataQualityFlags,
+        safetyFlags: canonical.safetyFlags,
+        predictionCapable: canonical.predictionCapable,
+        overallRemainingKmMin: canonical.estimatedFrontRemainingKmMin != null &&
+          canonical.estimatedRearRemainingKmMin != null
+          ? Math.min(canonical.estimatedFrontRemainingKmMin, canonical.estimatedRearRemainingKmMin)
+          : canonical.estimatedFrontRemainingKmMin ?? canonical.estimatedRearRemainingKmMin,
+        overallRemainingKmMax: canonical.estimatedFrontRemainingKmMax != null &&
+          canonical.estimatedRearRemainingKmMax != null
+          ? Math.min(canonical.estimatedFrontRemainingKmMax, canonical.estimatedRearRemainingKmMax)
+          : canonical.estimatedFrontRemainingKmMax ?? canonical.estimatedRearRemainingKmMax,
+        overallRemainingKmPoint: canonical.overallRemainingKmPoint,
+        overallConfidence: canonical.confidenceLevel,
+        modelCalculatedAt: canonical.updatedAt,
+        hasOdometerGap: canonical.hasOdometerGap,
+      }),
     };
   }
 
@@ -2968,7 +3026,7 @@ export class BrakeHealthService {
     current: BrakeHealthCurrent | null,
     modeledComponents: BrakeModeledComponentsDto,
     options?: { modelSnapshotId?: string | null; emitNotifications?: boolean },
-  ): Promise<BrakeCanonicalReadModel> {
+  ): Promise<BrakeCanonicalBuildResult> {
     const c = this.cfg;
     const initialized = !!current?.isInitialized && modeledComponents.hasAnyModeled;
     const wearThresholds = await this.loadWearThresholds(vehicleId, current);
@@ -3318,6 +3376,168 @@ export class BrakeHealthService {
       recommendations.push('Gemessene Belag-/Scheibenstärken erfassen, um die Schätzung zu verbessern');
     }
 
+    const anchorValidationStatus = current?.anchorValidationStatus ?? null;
+    const anchorOdometerKm = current?.anchorOdometerKm ?? null;
+    const anchorIso = anchorDate ? anchorDate.toISOString() : null;
+
+    const latestComponentMeasurement = (
+      component: 'pad' | 'disc',
+      axle: 'FRONT' | 'REAR',
+    ): { at: string | null; mm: number | null; source: string | null; odometer: number | null } => {
+      for (const row of freshEvidence) {
+        if (row.axle !== axle && row.axle !== 'UNKNOWN') continue;
+        const mm =
+          component === 'pad' ? row.measuredPadMm : row.measuredDiscMm;
+        if (mm == null || !Number.isFinite(mm)) continue;
+        return {
+          at: row.measuredAt ? new Date(row.measuredAt).toISOString() : null,
+          mm,
+          source: row.source ?? null,
+          odometer: row.mileageAtMeasurementKm ?? null,
+        };
+      }
+      return { at: null, mm: null, source: null, odometer: null };
+    };
+
+    const componentRange = (
+      remaining: number | null,
+      confidence: BrakeConfidenceLevel,
+    ) => buildRemainingKmRange(remaining, confidence, gapSpreadMultiplier);
+
+    const makeComponentState = (args: {
+      component: BrakeReferenceSpecComponent;
+      condition: BrakeCondition;
+      basis: BrakeDataBasis;
+      confidence: BrakeConfidenceLevel;
+      measuredMm: number | null;
+      estimatedMm: number | null;
+      anchorMm: number | null;
+      remainingKm: number | null;
+      measurement: ReturnType<typeof latestComponentMeasurement>;
+      installAt: string | null;
+      sourceCode: string | null;
+      evidenceAt: string | null;
+      odometerKm: number | null;
+      isModeled: boolean;
+    }): BrakeComponentBuildState => {
+      const range = componentRange(args.remainingKm, args.confidence);
+      const evidenceClass = resolveComponentEvidenceClass({
+        dataBasis: args.basis,
+        anchorValidationStatus,
+        measuredMm: args.measuredMm,
+        estimatedMm: args.estimatedMm,
+        isModeled: args.isModeled,
+      });
+      return {
+        component: args.component,
+        condition: args.condition,
+        dataBasis: args.basis,
+        confidence: args.confidence,
+        measuredMm: args.measuredMm,
+        estimatedMm: args.estimatedMm,
+        anchorMm: args.anchorMm,
+        remainingKm: args.remainingKm,
+        remainingKmMin: range?.min ?? null,
+        remainingKmMax: range?.max ?? null,
+        evidenceClass,
+        sourceCode: args.sourceCode,
+        evidenceAt: args.evidenceAt,
+        odometerKm: args.odometerKm,
+        lastMeasurementAt: args.measurement.at,
+        lastMeasurementMm: args.measurement.mm,
+        lastInstallationAt: args.installAt,
+      };
+    };
+
+    const frontPadMeas = latestComponentMeasurement('pad', 'FRONT');
+    const rearPadMeas = latestComponentMeasurement('pad', 'REAR');
+    const frontDiscMeas = latestComponentMeasurement('disc', 'FRONT');
+    const rearDiscMeas = latestComponentMeasurement('disc', 'REAR');
+
+    const installAtFor = (basis: BrakeDataBasis, modeled: boolean) =>
+      modeled && (basis === 'DOCUMENTED' || basis === 'MEASURED') ? anchorIso : null;
+
+    const sourceFor = (
+      basis: BrakeDataBasis,
+      measurement: ReturnType<typeof latestComponentMeasurement>,
+    ): string | null => {
+      if (measurement.source) return measurement.source;
+      const status = String(anchorValidationStatus ?? '').toLowerCase();
+      if (status.includes('spec_fallback')) return 'spec_fallback';
+      if (basis === 'DOCUMENTED' || basis === 'MEASURED') return 'anchor_service';
+      return null;
+    };
+
+    const componentStates: BrakeComponentBuildState[] = [
+      makeComponentState({
+        component: 'FRONT_PADS',
+        condition: frontPadCond,
+        basis: frontPadBasis,
+        confidence: frontConfidence,
+        measuredMm: frontPadMeas.mm,
+        estimatedMm: initialized ? current?.frontPadEstimatedMm ?? null : null,
+        anchorMm: initialized ? current?.frontPadAnchorMm ?? null : null,
+        remainingKm: frontPadRemaining,
+        measurement: frontPadMeas,
+        installAt: installAtFor(frontPadBasis, modeledComponents.frontPads),
+        sourceCode: sourceFor(frontPadBasis, frontPadMeas),
+        evidenceAt: frontPadMeas.at ?? anchorIso,
+        odometerKm: frontPadMeas.odometer ?? anchorOdometerKm,
+        isModeled: modeledComponents.frontPads,
+      }),
+      makeComponentState({
+        component: 'REAR_PADS',
+        condition: rearPadCond,
+        basis: rearPadBasis,
+        confidence: rearConfidence,
+        measuredMm: rearPadMeas.mm,
+        estimatedMm: initialized ? current?.rearPadEstimatedMm ?? null : null,
+        anchorMm: initialized ? current?.rearPadAnchorMm ?? null : null,
+        remainingKm: rearPadRemaining,
+        measurement: rearPadMeas,
+        installAt: installAtFor(rearPadBasis, modeledComponents.rearPads),
+        sourceCode: sourceFor(rearPadBasis, rearPadMeas),
+        evidenceAt: rearPadMeas.at ?? anchorIso,
+        odometerKm: rearPadMeas.odometer ?? anchorOdometerKm,
+        isModeled: modeledComponents.rearPads,
+      }),
+      makeComponentState({
+        component: 'FRONT_DISCS',
+        condition: frontDiscCond,
+        basis: frontDiscBasis,
+        confidence: frontConfidence,
+        measuredMm: frontDiscMeas.mm,
+        estimatedMm: initialized ? current?.frontDiscEstimatedMm ?? null : null,
+        anchorMm: initialized ? current?.frontDiscAnchorMm ?? null : null,
+        remainingKm: frontDiscRemaining,
+        measurement: frontDiscMeas,
+        installAt: installAtFor(frontDiscBasis, modeledComponents.frontDiscs),
+        sourceCode: sourceFor(frontDiscBasis, frontDiscMeas),
+        evidenceAt: frontDiscMeas.at ?? anchorIso,
+        odometerKm: frontDiscMeas.odometer ?? anchorOdometerKm,
+        isModeled: modeledComponents.frontDiscs,
+      }),
+      makeComponentState({
+        component: 'REAR_DISCS',
+        condition: rearDiscCond,
+        basis: rearDiscBasis,
+        confidence: rearConfidence,
+        measuredMm: rearDiscMeas.mm,
+        estimatedMm: initialized ? current?.rearDiscEstimatedMm ?? null : null,
+        anchorMm: initialized ? current?.rearDiscAnchorMm ?? null : null,
+        remainingKm: rearDiscRemaining,
+        measurement: rearDiscMeas,
+        installAt: installAtFor(rearDiscBasis, modeledComponents.rearDiscs),
+        sourceCode: sourceFor(rearDiscBasis, rearDiscMeas),
+        evidenceAt: rearDiscMeas.at ?? anchorIso,
+        odometerKm: rearDiscMeas.odometer ?? anchorOdometerKm,
+        isModeled: modeledComponents.rearDiscs,
+      }),
+    ];
+
+    const absActive =
+      (dtcCategory ?? '').toUpperCase() === 'ABS' && dtcCondition !== 'UNKNOWN';
+
     return {
       overallCondition,
       dataBasis: overallBasis,
@@ -3344,6 +3564,30 @@ export class BrakeHealthService {
       lastServiceAt: lastService?.eventDate ? new Date(lastService.eventDate).toISOString() : null,
       lastServiceMileageKm: lastService?.odometerKm ?? null,
       updatedAt: current?.updatedAt ? new Date(current.updatedAt).toISOString() : null,
+      componentStates,
+      dataQualityFlags: {
+        missingBaseline: !initialized,
+        specUnconfirmed,
+        coverageGap,
+        distanceConflict,
+        staleEvidence,
+      },
+      safetyFlags: {
+        abs: absActive,
+        dtc: dtcCondition !== 'UNKNOWN',
+        dtcCode,
+        wearSensor: wearSensorActive,
+        immediateReplacement,
+      },
+      predictionCapable:
+        initialized &&
+        anchorOdometerKm != null &&
+        !coverageGap &&
+        (current?.modeledTripCount ?? 0) > 0,
+      overallRemainingKmPoint: minRemaining != null ? Math.round(minRemaining) : null,
+      anchorValidationStatus,
+      initialized,
+      hasOdometerGap: anchorOdometerKm == null,
     };
   }
 
