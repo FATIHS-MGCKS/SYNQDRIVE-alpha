@@ -3879,10 +3879,12 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations`, data),
     update: (orgId: string, id: string, data: Partial<StationUpsertPayload>) =>
       patch<Station>(`/organizations/${orgId}/stations/${id}`, data),
+    /**
+     * @deprecated Stations cannot be hard-deleted. Use `archive()` instead.
+     * The backend returns HTTP 410 with code `STATION_DELETE_DEPRECATED`.
+     */
     delete: (orgId: string, id: string) =>
-      del<{ id: string; unassignedVehicles: number; archived?: boolean }>(
-        `/organizations/${orgId}/stations/${id}`,
-      ),
+      del<never>(`/organizations/${orgId}/stations/${id}`),
     archive: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
     restore: (orgId: string, id: string) =>

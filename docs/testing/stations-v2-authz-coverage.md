@@ -74,7 +74,7 @@ npm run build
 | `POST /stations/:id/assign-vehicle` | target-dependent | `station` | ✅ home / expected |
 | `PATCH /stations/vehicles/current-station` | `stations.manage_current_location` | `vehicle_location` | ✅ Worker allow |
 | `POST /stations/backfill-coordinates` | `stations.geocode` | `list` | ✅ Manager allow |
-| `DELETE /stations/:id` | `stations.archive` | `station` | ✅ |
+| `DELETE /stations/:id` | `stations.archive` | `station` | ✅ Returns **410 Gone** (`STATION_DELETE_DEPRECATED`) — use `POST .../archive` |
 
 ### C. Scope-Modi
 

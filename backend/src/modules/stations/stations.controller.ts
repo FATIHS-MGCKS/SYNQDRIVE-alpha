@@ -323,6 +323,9 @@ export class StationsController {
     );
   }
 
+  /**
+   * @deprecated Returns HTTP 410 — use POST /stations/:id/archive instead.
+   */
   @Delete(':id')
   @RequireStationsPermission('stations.archive')
   @RequireStationScope({ resource: 'station' })

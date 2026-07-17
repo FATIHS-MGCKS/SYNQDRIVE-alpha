@@ -54,6 +54,7 @@ import {
 } from './station-archive-command.types';
 import { ArchiveStationDto } from './dto/archive-station.dto';
 import { RestoreStationDto } from './dto/restore-station.dto';
+import { throwStationDeleteDeprecated } from './station-delete-deprecation.util';
 import {
   buildStationRestoreCommandAudit,
   evaluateStationRestoreCommand,
@@ -1065,15 +1066,18 @@ export class StationsService {
     return this.toDto(updated, updated._count.vehiclesHome);
   }
 
-  /** @deprecated Prefer archiveStation() — kept for backward compatibility */
-  async delete(organizationId: string, id: string): Promise<{ id: string; unassignedVehicles: number; archived: boolean }> {
+  /**
+   * @deprecated Hard delete is not a product operation. Returns HTTP 410 with
+   * `STATION_DELETE_DEPRECATED` — use `archiveStation()` instead.
+   * Physical deletes remain limited to internal platform-admin prune tooling.
+   */
+  async delete(organizationId: string, id: string): Promise<never> {
     const station = await this.prisma.station.findFirst({
       where: { id, organizationId },
+      select: { id: true },
     });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
-
-    await this.archiveStation(organizationId, id, { acknowledgeFutureBookings: true });
-    return { id, unassignedVehicles: 0, archived: true };
+    throwStationDeleteDeprecated();
   }
 
   // ─────────────────────────────────────────────────────────────

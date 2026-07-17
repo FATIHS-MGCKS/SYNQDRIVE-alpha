@@ -282,13 +282,15 @@ describe('StationsService archive command', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('deprecated delete always archives without hard delete', async () => {
-    (prisma.station.findFirst as jest.Mock).mockResolvedValue(stationRow);
+  it('DELETE is deprecated with 410 Gone and does not mutate station', async () => {
+    (prisma.station.findFirst as jest.Mock).mockResolvedValue({ id: STATION_ID });
 
-    const result = await service.delete(ORG, STATION_ID);
-
-    expect(result.archived).toBe(true);
-    expect(prisma.station.delete).toBeUndefined();
-    expect(prisma.$transaction).toHaveBeenCalled();
+    await expect(service.delete(ORG, STATION_ID)).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'STATION_DELETE_DEPRECATED',
+        replacement: expect.objectContaining({ command: 'ArchiveStation' }),
+      }),
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

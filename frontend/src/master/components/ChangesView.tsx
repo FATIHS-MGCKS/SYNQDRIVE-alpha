@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-no-hard-delete-v49602-2026-07-18',
+    version: '4.9.602',
+    title: 'V4.9.602 — Stations V2: Hard Delete entfernt (Prompt 22/78)',
+    summary: [
+      '`DELETE /stations/:id` liefert HTTP 410 mit `STATION_DELETE_DEPRECATED` — kein Hard Delete, keine stille Archivierung.',
+      'Fachlicher Standard bleibt `POST /stations/:id/archive`; historische Relationen unverändert.',
+      'Frontend: Löschen-UI aus legacy `SettingsView.StationsTab` entfernt; `api.stations.delete` als deprecated markiert.',
+      'Dokumentation in `docs/api/stations-delete-deprecation.md`; Unit- + Integrationstests.',
+    ],
+    reason:
+      'Hard Delete widerspricht Stations-V2-Vertrag (R10/S4): Archive muss der einzige destruktive Produktpfad sein, ohne Datenverlust bei Buchungen/Links.',
+    previousBehavior:
+      '`DELETE` archivierte still oder löschte unlinkte Stationen physisch; Settings-Tab bot „Löschen“ an.',
+    details:
+      'station-delete-deprecation.{constants,util}.ts, stations.service/controller delete, SettingsView, api.ts, docs, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T04:00:00.000Z',
+  },
+  {
     id: 'stations-v2-restore-command-v49601-2026-07-18',
     version: '4.9.601',
     title: 'V4.9.601 — Stations V2: Secure Restore Command + Preview (Prompt 21/78)',

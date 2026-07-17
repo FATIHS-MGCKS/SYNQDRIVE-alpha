@@ -343,36 +343,16 @@ describe('StationsService', () => {
     expect(rows).toEqual([]);
   });
 
-  it('archives instead of hard-deleting stations', async () => {
-    (prisma.station.findFirst as jest.Mock).mockResolvedValue({
-      ...stationRow,
-      isPrimary: false,
-    });
-    (prisma.station.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.vehicle.count as jest.Mock).mockResolvedValue(0);
-    (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.booking.count as jest.Mock).mockResolvedValue(0);
-    (prisma.booking.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.orgTask.count as jest.Mock).mockResolvedValue(0);
-    (prisma.orgTask.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: unknown) => unknown) =>
-      fn({
-        station: {
-          updateMany: jest.fn(),
-          update: jest.fn().mockResolvedValue({
-            ...stationRow,
-            status: 'ARCHIVED',
-            pickupEnabled: false,
-            returnEnabled: false,
-            archivedAt: new Date(),
-          }),
-        },
-      }),
-    );
+  it('DELETE is deprecated and does not hard-delete or archive', async () => {
+    (prisma.station.findFirst as jest.Mock).mockResolvedValue({ id: STATION_A });
 
-    const result = await service.delete('org1', STATION_A);
-    expect(result.archived).toBe(true);
+    await expect(service.delete('org1', STATION_A)).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'STATION_DELETE_DEPRECATED',
+      }),
+    });
     expect(prisma.station.delete).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('returns honest overview stats without fabricating health warnings', async () => {
