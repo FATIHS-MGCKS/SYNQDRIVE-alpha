@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-follow-up-task-v2-2026-07-17',
+    version: '4.9.649',
+    title: 'V4.9.649 — Document Follow-Up → Task Domain V2',
+    summary: [
+      'Accept materialisiert bestätigte Follow-up-Vorschläge in Task Domain V2.',
+      'checklistForType-Templates, Entity-Links (Document/Vehicle/Booking/Customer/Driver/Vendor), fineId/invoiceId aus Apply-Results.',
+      'Dedup mit invoice:payment-check und document-extraction:fine; Due Date nur bei dueDateConfirmed; Outbox bei Fehler.',
+    ],
+    reason:
+      'Prompt 74/84 — Follow-up-Accept an bestehende Task-Templates, Dedup und Outbox anbinden.',
+    previousBehavior:
+      'Accept rief TasksService.upsertByDedup direkt ohne Templates, Action-Result-IDs oder kanonische Dedup-Keys.',
+    details:
+      'Backend: document-follow-up-action-results.util, document-follow-up-task.materializer, Service-Upgrade, generator titles + dueDateConfirmed. Architektur: architecture/DOCUMENT_FOLLOW_UP_TASK_V2_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T23:30:00.000Z',
+  },
+  {
     id: 'document-follow-up-suggestion-2026-07-17',
     version: '4.9.648',
     title: 'V4.9.648 — Document Follow-Up Suggestion Domain',

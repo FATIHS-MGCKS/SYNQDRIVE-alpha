@@ -1,11 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { TaskType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { TaskAutomationOutboxEnqueueService } from '@modules/tasks/outbox/task-automation-outbox-enqueue.service';
+import { TaskAutomationOutboxExecutionContext } from '@modules/tasks/outbox/task-automation-outbox-execution.context';
+import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-meta.util';
+import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
+import {
+  automationOutboxIdentity,
+} from '@modules/tasks/automation/task-automation-rule.util';
 import type { DocumentActionPlan } from './document-action-plan.types';
 import { DocumentSchemaRegistryService } from './document-schema-registry.service';
 import { resolveDocumentTaxonomy } from './document-taxonomy.util';
+import { resolveDocumentFollowUpActionResultIds } from './document-follow-up-action-results.util';
 import {
   buildFollowUpSuggestions,
   isFollowUpSuggestionAcceptable,
@@ -16,6 +23,7 @@ import {
   storeFollowUpSuggestions,
   supersedeFollowUpSuggestions,
 } from './document-follow-up-suggestion.store';
+import { buildDocumentFollowUpTaskMaterialization } from './document-follow-up-task.materializer';
 import {
   DOCUMENT_FOLLOW_UP_SUGGESTION_STATUSES,
   DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES,
@@ -23,7 +31,6 @@ import {
   type PublicDocumentFollowUpSuggestionDto,
   toPublicFollowUpSuggestion,
 } from './document-follow-up-suggestion.types';
-import { readAcceptedEntityLinks } from './document-fine-extraction.rules';
 
 type ExtractionRecord = {
   id: string;
@@ -38,10 +45,14 @@ type ExtractionRecord = {
 
 @Injectable()
 export class DocumentFollowUpSuggestionService {
+  private readonly logger = new Logger(DocumentFollowUpSuggestionService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
     private readonly schemaRegistry: DocumentSchemaRegistryService,
+    private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
+    private readonly outboxContext: TaskAutomationOutboxExecutionContext,
   ) {}
 
   listForRecord(record: ExtractionRecord): PublicDocumentFollowUpSuggestionDto[] {
@@ -189,69 +200,87 @@ export class DocumentFollowUpSuggestionService {
     suggestion: DocumentFollowUpSuggestion;
     userId: string | null;
   }): Promise<string> {
-    const links = readAcceptedEntityLinks(
-      (input.record.confirmedData ?? {}) as Record<string, unknown>,
-    );
-    const byType = new Map(links.map((link) => [link.entityType, link.entityId]));
-    const vehicleId = input.record.vehicleId ?? byType.get('vehicle') ?? null;
-    const customerId = byType.get('customer') ?? null;
-    const bookingId = byType.get('booking') ?? null;
-    const driverId = byType.get('driver') ?? byType.get('driver_customer') ?? null;
-    const vendorId = byType.get('vendor') ?? byType.get('partner') ?? null;
-
-    const dedupKey = `document-follow-up:${input.record.id}:${input.suggestion.suggestionId}`;
-    const taskType = this.resolveTaskType(input.suggestion.type);
-    const preparedOnly = this.isContactPrepareType(input.suggestion.type);
-
-    const task = await this.tasksService.upsertByDedup(input.orgId, dedupKey, {
-      title: input.suggestion.title,
-      description: input.suggestion.rationale,
-      category: 'document_follow_up',
-      type: taskType,
-      source: 'DOCUMENT_FOLLOW_UP',
-      sourceType: 'DOCUMENT',
-      priority: 'NORMAL',
-      vehicleId,
-      bookingId,
-      customerId: customerId ?? driverId ?? undefined,
-      vendorId: vendorId ?? undefined,
-      documentId: input.record.id,
-      dueDate: input.suggestion.suggestedDueAt ? new Date(input.suggestion.suggestedDueAt) : null,
-      metadata: {
-        followUpSuggestionId: input.suggestion.suggestionId,
-        followUpSuggestionType: input.suggestion.type,
-        generatedByRule: input.suggestion.generatedByRule,
-        actionPlanId: input.suggestion.actionPlanId,
-        preparedOnly,
-        acceptedByUserId: input.userId,
-        noAutomaticContact: preparedOnly,
-      } as Prisma.InputJsonValue,
+    const confirmedData = (input.record.confirmedData ?? {}) as Record<string, unknown>;
+    const actionResults = resolveDocumentFollowUpActionResultIds(input.record.plausibility);
+    const materialization = buildDocumentFollowUpTaskMaterialization({
+      extractionId: input.record.id,
+      vehicleId: input.record.vehicleId,
+      confirmedData,
+      suggestion: input.suggestion,
+      userId: input.userId,
+      actionResults,
     });
 
-    return task.id;
-  }
+    const customerId =
+      input.suggestion.type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PREPARE_DRIVER_CONTACT
+        ? materialization.links.driverId ?? materialization.links.customerId
+        : materialization.links.customerId ?? materialization.links.driverId;
 
-  private resolveTaskType(type: DocumentFollowUpSuggestion['type']): TaskType {
-    switch (type) {
-      case DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.VEHICLE_INSPECTION:
-        return 'VEHICLE_INSPECTION';
-      case DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PAYMENT_REVIEW:
-        return 'INVOICE_REQUIRED';
-      case DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PREPARE_CUSTOMER_CONTACT:
-      case DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PREPARE_DRIVER_CONTACT:
-        return 'CUSTOMER_FOLLOWUP';
-      case DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.INSURANCE_REVIEW:
-      case DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.WORKSHOP_APPOINTMENT:
-        return 'REPAIR';
-      default:
-        return 'DOCUMENT_REVIEW';
+    try {
+      const task = await this.tasksService.upsertByDedup(input.orgId, materialization.dedupKey, {
+        title: materialization.title,
+        description: materialization.description,
+        category: materialization.category,
+        type: materialization.type,
+        source: materialization.source,
+        sourceType: materialization.sourceType,
+        priority: materialization.priority,
+        vehicleId: materialization.links.vehicleId,
+        bookingId: materialization.links.bookingId,
+        customerId: customerId ?? undefined,
+        vendorId: materialization.links.vendorId ?? undefined,
+        documentId: materialization.links.documentId,
+        fineId: materialization.links.fineId ?? undefined,
+        invoiceId: materialization.links.invoiceId ?? undefined,
+        dueDate: materialization.dueDate,
+        checklist: materialization.checklist,
+        metadata: materialization.metadata,
+      });
+      return task.id;
+    } catch (err: unknown) {
+      await this.enqueueMaterializationFailure({
+        orgId: input.orgId,
+        extractionId: input.record.id,
+        suggestion: input.suggestion,
+        materialization,
+        err,
+      });
+      throw err;
     }
   }
 
-  private isContactPrepareType(type: DocumentFollowUpSuggestion['type']): boolean {
-    return (
-      type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PREPARE_CUSTOMER_CONTACT ||
-      type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PREPARE_DRIVER_CONTACT
+  private async enqueueMaterializationFailure(input: {
+    orgId: string;
+    extractionId: string;
+    suggestion: DocumentFollowUpSuggestion;
+    materialization: ReturnType<typeof buildDocumentFollowUpTaskMaterialization>;
+    err: unknown;
+  }): Promise<void> {
+    if (this.outboxContext.fromOutbox) {
+      return;
+    }
+
+    const catalogKey = input.materialization.automationCatalogKey ?? 'DOCUMENT_PACKAGE_INCOMPLETE';
+
+    await this.outboxEnqueue.enqueueFailure(
+      buildOutboxMeta({
+        organizationId: input.orgId,
+        ...automationOutboxIdentity(catalogKey),
+        entityType: 'DOCUMENT',
+        entityId: input.extractionId,
+        operation: 'MATERIALIZE_INSIGHT_TASK',
+        payload: {
+          operation: 'MATERIALIZE_INSIGHT_TASK',
+          vehicleId: input.materialization.links.vehicleId ?? undefined,
+          dedupKey: input.materialization.dedupKey,
+          insightDedupKey: input.materialization.dedupKey,
+          insightType: `DOCUMENT_FOLLOW_UP:${input.suggestion.type}`,
+        },
+      }),
+      input.err,
+    );
+    this.logger.warn(
+      `materializeAcceptedSuggestion(${input.extractionId}/${input.suggestion.suggestionId}) failed: ${sanitizeAutomationError(input.err)}`,
     );
   }
 }

@@ -38,6 +38,8 @@ export type DocumentFollowUpSuggestion = {
   title: string;
   rationale: string;
   suggestedDueAt: string | null;
+  /** True only when suggestedDueAt comes from user-confirmed extraction data. */
+  dueDateConfirmed?: boolean;
   targetEntity: DocumentFollowUpTargetEntity | null;
   status: DocumentFollowUpSuggestionStatus;
   generatedByRule: string;
@@ -55,6 +57,7 @@ export type PublicDocumentFollowUpSuggestionDto = {
   title: string;
   rationale: string;
   suggestedDueAt: string | null;
+  dueDateConfirmed?: boolean;
   targetEntity: DocumentFollowUpTargetEntity | null;
   status: DocumentFollowUpSuggestionStatus;
   generatedByRule: string;
@@ -73,6 +76,7 @@ export function toPublicFollowUpSuggestion(
     title: row.title,
     rationale: row.rationale,
     suggestedDueAt: row.suggestedDueAt,
+    dueDateConfirmed: row.dueDateConfirmed,
     targetEntity: row.targetEntity,
     status: row.status,
     generatedByRule: row.generatedByRule,

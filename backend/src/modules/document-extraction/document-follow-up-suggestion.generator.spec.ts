@@ -64,6 +64,75 @@ describe('document-follow-up-suggestion.generator', () => {
     expect(driverSuggestion?.resultingEntityId).toBeNull();
   });
 
+  it('uses German titles for semantic follow-up actions', () => {
+    const assessment = assessFinePlan({
+      effectiveDocumentType: 'FINE',
+      confirmedData: { ...fineConfirmedData, dueDate: '2026-08-15' },
+    });
+    const plan = {
+      ...buildDocumentActionPlan({
+        extractionId: 'ext-fine-1',
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        documentType: 'FINE',
+        confirmedData: { ...fineConfirmedData, dueDate: '2026-08-15' },
+        plausibilityChecks: [],
+        planContext: assessment,
+      }),
+      metadata: {
+        deadlineSuggestions: [{ label: 'Zahlungsfrist', date: '2026-08-15' }],
+      },
+    };
+
+    const suggestions = buildFollowUpSuggestions({
+      extractionId: 'ext-fine-1',
+      plan,
+      confirmedData: { ...fineConfirmedData, dueDate: '2026-08-15' },
+    });
+
+    const deadlineSuggestion = suggestions.find(
+      (row) =>
+        row.type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.REVIEW_DEADLINE &&
+        row.dueDateConfirmed === true,
+    );
+    expect(deadlineSuggestion?.title).toBe('Zahlungsfrist');
+    expect(deadlineSuggestion?.dueDateConfirmed).toBe(true);
+    expect(deadlineSuggestion?.suggestedDueAt).toBe('2026-08-15');
+  });
+
+  it('marks metadata-only deadlines as not confirmed for task due date', () => {
+    const assessment = assessFinePlan({
+      effectiveDocumentType: 'FINE',
+      confirmedData: fineConfirmedData,
+    });
+    const plan = {
+      ...buildDocumentActionPlan({
+        extractionId: 'ext-fine-1',
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        documentType: 'FINE',
+        confirmedData: fineConfirmedData,
+        plausibilityChecks: [],
+        planContext: assessment,
+      }),
+      metadata: {
+        deadlineSuggestions: [{ label: 'Zahlungsfrist', date: '2026-08-15' }],
+      },
+    };
+
+    const suggestions = buildFollowUpSuggestions({
+      extractionId: 'ext-fine-1',
+      plan,
+      confirmedData: fineConfirmedData,
+    });
+
+    const metadataDeadline = suggestions.find(
+      (row) => row.generatedByRule === 'metadata:deadline:0',
+    );
+    expect(metadataDeadline?.suggestedDueAt).toBe('2026-08-15');
+    expect(metadataDeadline?.dueDateConfirmed).toBe(false);
+  });
+
   it('is idempotent by actionPlanId and generatedByRule', () => {
     const assessment = assessFinePlan({
       effectiveDocumentType: 'FINE',

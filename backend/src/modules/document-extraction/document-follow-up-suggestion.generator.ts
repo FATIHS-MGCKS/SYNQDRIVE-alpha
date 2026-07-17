@@ -107,17 +107,21 @@ function readSuggestedDueAt(
   confirmedData: Record<string, unknown>,
   metadata: Record<string, unknown> | undefined,
   type: DocumentFollowUpSuggestionType,
-): string | null {
-  if (type !== DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.REVIEW_DEADLINE) return null;
+): { suggestedDueAt: string | null; dueDateConfirmed: boolean } {
+  if (type !== DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.REVIEW_DEADLINE) {
+    return { suggestedDueAt: null, dueDateConfirmed: false };
+  }
+  if (typeof confirmedData.dueDate === 'string' && confirmedData.dueDate.trim()) {
+    return { suggestedDueAt: confirmedData.dueDate.trim(), dueDateConfirmed: true };
+  }
   const deadlineRows = metadata?.deadlineSuggestions;
   if (Array.isArray(deadlineRows) && deadlineRows.length > 0) {
     const first = deadlineRows[0] as { date?: string };
-    if (typeof first.date === 'string' && first.date.trim()) return first.date.trim();
+    if (typeof first.date === 'string' && first.date.trim()) {
+      return { suggestedDueAt: first.date.trim(), dueDateConfirmed: false };
+    }
   }
-  if (typeof confirmedData.dueDate === 'string' && confirmedData.dueDate.trim()) {
-    return confirmedData.dueDate.trim();
-  }
-  return null;
+  return { suggestedDueAt: null, dueDateConfirmed: false };
 }
 
 function resolveTargetEntity(
@@ -156,11 +160,7 @@ function buildSuggestionRow(input: {
   confirmedData: Record<string, unknown>;
   now: string;
 }): DocumentFollowUpSuggestion {
-  const suggestedDueAt = readSuggestedDueAt(
-    input.confirmedData,
-    input.plan.metadata,
-    input.type,
-  );
+  const due = readSuggestedDueAt(input.confirmedData, input.plan.metadata, input.type);
   return {
     suggestionId: stableSuggestionId(input.plan.planId, input.generatedByRule),
     extractionId: input.extractionId,
@@ -168,7 +168,8 @@ function buildSuggestionRow(input: {
     type: input.type,
     title: input.title,
     rationale: input.rationale,
-    suggestedDueAt,
+    suggestedDueAt: due.suggestedDueAt,
+    dueDateConfirmed: due.dueDateConfirmed,
     targetEntity: resolveTargetEntity(input.type, input.confirmedData),
     status: DOCUMENT_FOLLOW_UP_SUGGESTION_STATUSES.SUGGESTED,
     generatedByRule: input.generatedByRule,
@@ -179,12 +180,31 @@ function buildSuggestionRow(input: {
   };
 }
 
+const SEMANTIC_ACTION_TITLES: Record<string, string> = {
+  SUGGEST_DEADLINE_REMINDER: 'Bußgeldfrist prüfen',
+  SUGGEST_DUE_DATE_TASK: 'Frist prüfen',
+  SUGGEST_PAYMENT_REVIEW: 'Rechnung freigeben',
+  SUGGEST_DEFECT_REMEDIATION: 'TÜV-Mangel beseitigen',
+  SUGGEST_REINSPECTION: 'Fahrzeug prüfen',
+  SUGGEST_VEHICLE_INSPECTION: 'Fahrzeug prüfen',
+  SUGGEST_INSURANCE_NOTIFICATION: 'Versicherung prüfen',
+  SUGGEST_TIRE_FOLLOWUP: 'Werkstatttermin vereinbaren',
+  SUGGEST_BRAKE_FOLLOWUP: 'Werkstatttermin vereinbaren',
+  SUGGEST_BATTERY_FOLLOWUP: 'Werkstatttermin vereinbaren',
+  SUGGEST_DRIVER_ASSIGNMENT: 'Fahrerzuordnung prüfen',
+  SUGGEST_ENTITY_LINK: 'Fehlende Dokumentdaten ergänzen',
+  NO_AUTOMATIC_OUTREACH: 'Kein automatischer Kontakt',
+};
+
 function semanticActionTitle(semanticAction: string): string {
-  return semanticAction
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+  return (
+    SEMANTIC_ACTION_TITLES[semanticAction] ??
+    semanticAction
+      .toLowerCase()
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+  );
 }
 
 export function buildFollowUpSuggestions(
@@ -208,7 +228,7 @@ export function buildFollowUpSuggestions(
         title:
           type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP
             ? 'Kein automatischer Kontakt'
-            : `Nachverfolgung: ${semanticActionTitle(action.semanticAction)}`,
+            : semanticActionTitle(action.semanticAction),
         rationale:
           type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP
             ? 'Es werden keine automatischen Kontakte oder Aufgaben erstellt.'
