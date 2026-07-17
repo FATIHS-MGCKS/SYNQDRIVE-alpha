@@ -3,6 +3,7 @@ import type { DrivingIntelligenceJob, DrivingIntelligenceJobType } from '@prisma
 import { DrivingEventContextEnrichJobHandler } from '../event-context/driving-event-context-enrich.handler';
 import { DimoTripSegmentValidateJobHandler } from '../dimo-trip-segment-validation/dimo-trip-segment-validation.handler';
 import { DrivingMisuseReconcileJobHandler } from '../misuse-cases/misuse-case-reconcile/driving-misuse-reconcile.handler';
+import { DrivingAttributionResolveJobHandler } from '../driver-attribution/driving-attribution-resolve.handler';
 import { DRIVING_INTELLIGENCE_JOB_TYPES } from './driving-intelligence-jobs.types';
 
 export type DrivingIntelligenceJobHandler = (
@@ -18,6 +19,7 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
     @Optional() private readonly eventContextHandler?: DrivingEventContextEnrichJobHandler,
     @Optional() private readonly segmentValidateHandler?: DimoTripSegmentValidateJobHandler,
     @Optional() private readonly misuseReconcileHandler?: DrivingMisuseReconcileJobHandler,
+    @Optional() private readonly attributionResolveHandler?: DrivingAttributionResolveJobHandler,
   ) {}
 
   onModuleInit(): void {
@@ -44,6 +46,12 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
     if (this.misuseReconcileHandler) {
       this.handlers.set('DRIVING_MISUSE_RECONCILE', (job) =>
         this.misuseReconcileHandler!.handle(job),
+      );
+    }
+
+    if (this.attributionResolveHandler) {
+      this.handlers.set('DRIVING_ATTRIBUTION_RESOLVE', (job) =>
+        this.attributionResolveHandler!.handle(job),
       );
     }
   }

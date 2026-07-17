@@ -1303,6 +1303,7 @@ model Organization {
   tripAssessabilities               TripAssessability[]
   drivingEvidence                   DrivingEvidence[]
   drivingAnalysisRuns               DrivingAnalysisRun[]
+  driverAttributions                DriverAttribution[]
   drivingAnalysisStages             DrivingAnalysisStage[]
   drivingIntelligenceJobs           DrivingIntelligenceJob[]
   orgInvoices                       OrgInvoice[]
@@ -1389,6 +1390,7 @@ model User {
   taskAutomationRuleOverridesCreated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
+  driverAttributionsResolved            DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
 
   @@map("users")
 }
@@ -1791,6 +1793,7 @@ model Vehicle {
   tripAssessabilities               TripAssessability[]
   drivingEvidence                   DrivingEvidence[]
   drivingAnalysisRuns               DrivingAnalysisRun[]
+  driverAttributions                DriverAttribution[]
   drivingIntelligenceJobs           DrivingIntelligenceJob[]
 
   @@unique([vin, organizationId])
@@ -3654,6 +3657,8 @@ model Customer {
   misuseCases            MisuseCase[]
   misuseCasesAsAssignedDriver MisuseCase[] @relation("MisuseCaseAssignedDriver")
   misuseCasesAsActualDriver   MisuseCase[] @relation("MisuseCaseActualDriver")
+  driverAttributionsAsBookingCustomer DriverAttribution[] @relation("DriverAttributionBookingCustomer")
+  driverAttributionsAsDriver          DriverAttribution[] @relation("DriverAttributionDriver")
   outboundEmails         OutboundEmail[]
   bookingPaymentRequests BookingPaymentRequest[]
 
@@ -3971,6 +3976,7 @@ model Booking {
   outboundEmails          OutboundEmail[]
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
+  driverAttributions      DriverAttribution[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -6355,6 +6361,7 @@ model VehicleTrip {
   drivingEvidence         DrivingEvidence[]
   drivingAnalysisRuns     DrivingAnalysisRun[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
+  driverAttributions      DriverAttribution[]
   repairs                 TripRepair[]
   rpmWebhookCandidates    RpmWebhookCandidate[]
 
@@ -6660,6 +6667,26 @@ enum DrivingAttributionConfidence {
   LOW
 }
 
+/// Materialized trip driver attribution type (P54) — distinct from legacy `DrivingAttributionType`.
+enum DriverAttributionType {
+  CONFIRMED_DRIVER
+  ASSIGNED_DRIVER
+  BOOKING_CUSTOMER_ONLY
+  VEHICLE_ONLY
+  TIME_WINDOW_MATCH
+  STAFF_MOVEMENT
+  PRIVATE
+  UNKNOWN
+}
+
+enum DriverAttributionSource {
+  PIPELINE_SNAPSHOT
+  TRIP_ASSIGNMENT
+  EXPLICIT_BOOKING_LINK
+  TIME_WINDOW_OVERLAP
+  MANUAL_RESOLUTION
+}
+
 /// Operator recommendation (Ebene 12) — no automatic sanction.
 enum DrivingDecisionRecommendation {
   KEINE_MASSNAHME
@@ -6838,6 +6865,7 @@ model DrivingAnalysisRun {
   supersededByRuns    DrivingAnalysisRun[]     @relation("DrivingAnalysisRunSupersedes")
   tripAssessabilities TripAssessability[]
   drivingEvidence     DrivingEvidence[]
+  driverAttributions  DriverAttribution[]
   intelligenceJobs    DrivingIntelligenceJob[]
   stages              DrivingAnalysisStage[]
   misuseCases         MisuseCase[]
@@ -6848,6 +6876,48 @@ model DrivingAnalysisRun {
   @@index([inputFingerprint])
   @@index([supersedesRunId])
   @@map("driving_analysis_runs")
+}
+
+/// Materialized driver attribution snapshot per trip (Driving Intelligence V2 P54).
+model DriverAttribution {
+  id               String                       @id @default(uuid())
+  organizationId   String                       @map("organization_id")
+  vehicleId        String                       @map("vehicle_id")
+  tripId           String                       @map("trip_id")
+  analysisRunId    String?                      @map("analysis_run_id")
+  bookingId        String?                      @map("booking_id")
+  customerId       String?                      @map("customer_id")
+  driverId         String?                      @map("driver_id")
+  attributionType  DriverAttributionType        @map("attribution_type")
+  confidence       DrivingAttributionConfidence
+  source           DriverAttributionSource
+  validFrom        DateTime                     @map("valid_from")
+  validUntil       DateTime?                    @map("valid_until")
+  evidence         Json                         @default("{}")
+  resolvedByUserId String?                      @map("resolved_by_user_id")
+  resolvedAt       DateTime?                    @map("resolved_at")
+  modelVersion     String                       @map("model_version")
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  analysisRun  DrivingAnalysisRun? @relation(fields: [analysisRunId], references: [id], onDelete: SetNull)
+  booking      Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer     Customer?           @relation("DriverAttributionBookingCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+  driver       Customer?           @relation("DriverAttributionDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  resolvedBy   User?               @relation("DriverAttributionResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, tripId, analysisRunId, modelVersion, source])
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([tripId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([driverId])
+  @@index([organizationId, tripId, attributionType])
+  @@map("driver_attributions")
 }
 
 /// Canonical V2 pipeline stage keys — one row per run×stage (P21).
