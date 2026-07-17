@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-ui-permissions-v49593-2026-07-17',
+    version: '4.9.593',
+    title: 'V4.9.593 — Stations V2: UI an kanonische Permissions verdrahtet (Prompt 13/78)',
+    summary: [
+      'Frontend-Resolver `resolveStationsV2Permissions` + Hook `useStationsV2Permissions` (deny-by-default, kein ORG_ADMIN-Bypass).',
+      '`getStationsUiCapabilities` steuert Sichtbarkeit/Aktivierung: Create, Edit, Lifecycle, Primary, Fleet, Activity, Geocode.',
+      'StationsView/Detail/Form/Assign + Sidebar gated; archivierte Stationen mit reduzierten Aktionen + Restore.',
+      'Read-only Banner; Activity-Tab bei `stations.view_activity`; i18n DE/EN; Rollen-Tests.',
+    ],
+    reason:
+      'Stations-UI zeigte alle Aktionen unabhängig von `stationsV2`-Permissions — Risiko für 403 und verwirrende UX für Read-only-Rollen.',
+    previousBehavior:
+      'Kein Frontend-Evaluator; `hasPermission(stations)` mit ORG_ADMIN-Bypass; ungeschützte Create/Edit/Archive/Assign-Buttons.',
+    details:
+      'frontend/src/lib/stations-v2-permissions.ts, rental/hooks/useStationsV2Permissions.ts, rental/lib/stations-v2-ui-capabilities.ts, stations/*.tsx, Sidebar.tsx, i18n.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T23:30:00.000Z',
+  },
+  {
+    id: 'stations-v2-nested-resources-v49592-2026-07-17',
+    version: '4.9.592',
+    title: 'V4.9.592 — Stations V2: Nested Resources abgesichert (Prompt 12/78)',
+    summary: [
+      'Fleet, Bookings, Overview-Stats (Pickup/Return/Tasks/Health-Summary), Operations, Team und Activity nutzen `StationAccessScopeService` einheitlich.',
+      'Zentraler `requireReadableStation` + Nested-Where-Builder (`buildStationFleetWhere`, `buildStationBookingsWhere`, …).',
+      'Out-of-scope/Cross-org → 404 ohne Count-Leaks; archivierte Stationen behalten historische Buchungsreads.',
+      'Activity-Endpunkt erfordert `stations.view_activity`; Security-Tests pro Nested-Resource-Gruppe.',
+    ],
+    reason:
+      'Nested Reads nutzten teils direkte Prisma-Queries ohne konsistenten Access-Scope — Risiko für Cross-Station-Leaks bei Fleet/Bookings/KPIs.',
+    previousBehavior:
+      'Fleet ohne `expectedStationId`; Overview-Stats/Tasks mit parallelen Filtern; Activity mit `stations.read` statt `view_activity`.',
+    details:
+      'station-access-scope.util.ts (nested builders), stations.service.ts, stations-nested-security.spec.ts, stations.controller.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T23:05:00.000Z',
+  },
+  {
     id: 'stations-v2-access-scope-service-v49591-2026-07-17',
     version: '4.9.591',
     title: 'V4.9.591 — Stations V2: zentraler StationAccessScopeService (Prompt 11/78)',
