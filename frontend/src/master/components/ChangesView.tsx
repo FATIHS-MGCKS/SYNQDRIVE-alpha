@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-booking-candidate-resolver-2026-07-17',
+    version: '4.9.628',
+    title: 'V4.9.628 — Document Intake V2 Booking Candidate Resolver',
+    summary: [
+      'BookingCandidateResolver aus Fahrzeug-Anker, Tatzeit/Dokumentdatum, Booking-UUID, Kundenname (nur unterstützend), Rechnungs-/Fine-Referenz und Dokumentkontext.',
+      'Kandidaten mit bookingId, confidence, matchReasons, conflicts, temporalOverlap, rank, confirmationRequired in _pipeline.bookingCandidates.',
+      'Tatzeit für Bußgelder entscheidend; fehlende Uhrzeit senkt Confidence; mehrere überlappende Bookings bleiben ambiguous.',
+      'ACTIVE/COMPLETED/CONFIRMED berücksichtigt; keine Auto-Zuordnung nur per Kundenname; tenant-scoped.',
+    ],
+    reason:
+      'Nach Fahrzeug-Vorschlag Buchungskandidaten für Fine/Invoice-Review vorschlagen — zeitlich korrekt, konflikt-sichtbar, ohne Auto-Link.',
+    previousBehavior:
+      'Kein Booking Candidate Resolver; Buchungszuordnung nur manuell über acceptedEntityLinks oder FinesService.matchBooking außerhalb des Extraction-Flows.',
+    details: 'architecture/DOCUMENT_BOOKING_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
     id: 'document-vehicle-candidate-resolver-2026-07-17',
     version: '4.9.627',
     title: 'V4.9.627 — Document Intake V2 Vehicle Candidate Resolver',

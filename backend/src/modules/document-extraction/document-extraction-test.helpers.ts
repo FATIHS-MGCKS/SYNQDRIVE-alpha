@@ -110,6 +110,19 @@ export function makeVehicleCandidateResolverMock() {
   };
 }
 
+export function makeBookingCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) => ['FINE', 'INVOICE', 'DAMAGE', 'ACCIDENT'].includes(type)),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: { eventTimePrecision: 'missing' },
+      candidates: [],
+      ambiguousOverlap: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
 export function makeLifecycleMock() {
   return {
     buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({

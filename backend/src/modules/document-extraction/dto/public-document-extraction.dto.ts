@@ -75,6 +75,21 @@ export interface PublicVehicleCandidateDto {
   confirmationRequired: boolean;
 }
 
+export interface PublicBookingCandidateDto {
+  bookingId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  temporalOverlap: boolean;
+  rank: number;
+  confirmationRequired: boolean;
+}
+
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
@@ -84,6 +99,7 @@ export interface PublicDocumentExtractionDto {
   uploadContextId: string | null;
   uploadContext: PublicUploadContextDisplayDto | null;
   vehicleCandidates: PublicVehicleCandidateDto[] | null;
+  bookingCandidates: PublicBookingCandidateDto[] | null;
   vehicle: PublicVehicleDisplayDto | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;
