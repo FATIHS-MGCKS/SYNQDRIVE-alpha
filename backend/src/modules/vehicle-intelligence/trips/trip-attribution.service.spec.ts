@@ -90,7 +90,7 @@ describe('TripAttributionService', () => {
       customer: { customerType: 'INDIVIDUAL' },
     });
 
-    const attribution = await service.resolveAttributionForTrip({
+    const attribution = await service.resolveAttributionForTrip('org-1', {
       isPrivateTrip: false,
       assignmentStatus: TripAssignmentStatus.UNKNOWN_ASSIGNMENT,
       assignedBookingId: null,

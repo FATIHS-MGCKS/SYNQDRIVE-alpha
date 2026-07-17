@@ -161,7 +161,7 @@ export class HealthSummaryService {
         hasMeasurements: false,
       })),
       this.serviceEventsService.findByVehicle(vehicleId, { page: 1, limit: 50 }).catch(() => ({ data: [] })),
-      this.tripsService.getStats(vehicleId).catch(() => ({
+      this.tripsService.getStats(vehicle.organizationId, vehicleId).catch(() => ({
         avgDrivingScore: null,
         avgSafetyScore: null,
         totalTrips: 0,

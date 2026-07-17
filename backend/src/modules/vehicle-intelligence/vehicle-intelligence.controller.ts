@@ -10,6 +10,7 @@ import {
   BadRequestException,
   Delete,
   NotImplementedException,
+  NotFoundException,
   Req,
   Header,
 } from '@nestjs/common';
@@ -102,6 +103,7 @@ import {
   DRIVING_EVENT_CATEGORY_MAP,
 } from './trips/unified-behavior-read-model';
 import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dto';
+import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -915,16 +917,22 @@ export class VehicleIntelligenceController {
   @Get('trips')
   async getTrips(
     @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('driver') driver?: string,
   ) {
-    const trips = await this.tripsService.findByVehicle(vehicleId, {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const driverFilter = resolveDriverFilterQuery(driver);
+    const trips = await this.tripsService.findByVehicle(organizationId, vehicleId, {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
-      driverName: driver,
+      ...driverFilter,
     });
-    const hydratedTrips = await this.tripAnalyticsCanonicalService.hydrateTrips(trips as any);
+    const hydratedTrips = await this.tripAnalyticsCanonicalService.hydrateTrips(
+      organizationId,
+      trips as any,
+    );
 
     const mapped = hydratedTrips.map((trip) => mapTripForVehicleApi(trip as any));
     return this.attachTripDeviceConnectionFlags(vehicleId, mapped as any);
@@ -932,8 +940,12 @@ export class VehicleIntelligenceController {
 
   @Header('Cache-Control', 'no-store')
   @Get('trips/stats')
-  async getTripStats(@Param('vehicleId') vehicleId: string) {
-    return this.tripAnalyticsCanonicalService.getVehicleStats(vehicleId);
+  async getTripStats(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    return this.tripAnalyticsCanonicalService.getVehicleStats(organizationId, vehicleId);
   }
 
   @Header('Cache-Control', 'no-store')
@@ -985,19 +997,23 @@ export class VehicleIntelligenceController {
   @Get('trips-timeline')
   async getTripsTimeline(
     @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('driver') driver?: string,
   ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
     const fromDate = from ? new Date(from) : undefined;
     const toDate = to ? new Date(to) : undefined;
+    const driverFilter = resolveDriverFilterQuery(driver);
 
-    const trips = await this.tripsService.findByVehicle(vehicleId, {
+    const trips = await this.tripsService.findByVehicle(organizationId, vehicleId, {
       from: fromDate,
       to: toDate,
-      driverName: driver,
+      ...driverFilter,
     });
     const hydratedTrips = await this.tripAnalyticsCanonicalService.hydrateTrips(
+      organizationId,
       trips as any,
     );
 
@@ -1017,6 +1033,7 @@ export class VehicleIntelligenceController {
   @Get('trips/driver-score')
   async getDriverScore(
     @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
     @Query('subjectType') subjectType?: string,
     @Query('subjectId') subjectId?: string,
     @Query('from') from?: string,
@@ -1031,7 +1048,9 @@ export class VehicleIntelligenceController {
       throw new BadRequestException('Invalid subjectType');
     }
 
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
     return this.driverScoreService.getScoreSummary(
+      organizationId,
       normalizedType as TripAssignmentSubjectType,
       subjectId,
       {
@@ -1046,12 +1065,17 @@ export class VehicleIntelligenceController {
   async getTripById(
     @Param('vehicleId') vehicleId: string,
     @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
   ) {
-    const trip = await this.tripsService.findById(tripId);
-    // Verify the trip belongs to the requested vehicle (prevents cross-vehicle IDOR)
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const trip = await this.tripsService.findById(organizationId, tripId);
     if (!trip || trip.vehicleId !== vehicleId) return null;
-    const hydratedTrip = await this.tripAnalyticsCanonicalService.hydrateTrip(trip as any);
+    const hydratedTrip = await this.tripAnalyticsCanonicalService.hydrateTrip(
+      organizationId,
+      trip as any,
+    );
     const tripAssessment = await this.tripAnalyticsCanonicalService.buildTripAssessmentForTrip(
+      organizationId,
       trip as any,
       hydratedTrip.canonicalTripSummary,
     );
@@ -1084,8 +1108,10 @@ export class VehicleIntelligenceController {
   async getTripRoute(
     @Param('vehicleId') vehicleId: string,
     @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
   ) {
-    return this.tripsService.getRouteForTrip(vehicleId, tripId);
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    return this.tripsService.getRouteForTrip(organizationId, vehicleId, tripId);
   }
 
   /**
@@ -1151,8 +1177,10 @@ export class VehicleIntelligenceController {
   async enrichTrip(
     @Param('vehicleId') vehicleId: string,
     @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
   ) {
-    const result = await this.tripsService.enrichTrip(vehicleId, tripId);
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const result = await this.tripsService.enrichTrip(organizationId, vehicleId, tripId);
     if (result) {
       const trip = await this.prisma.vehicleTrip.findUnique({ where: { id: tripId } });
       if (trip?.distanceKm) {
@@ -1836,6 +1864,25 @@ export class VehicleIntelligenceController {
       select: { id: true, hardwareType: true },
     });
     return { vehicleId: updated.id, hardwareType: updated.hardwareType };
+  }
+
+  /** Resolve tenant organization for vehicle-scoped trip/driving services. */
+  private async resolveOrganizationId(
+    req: { user?: { organizationId?: string; platformRole?: string } },
+    vehicleId: string,
+  ): Promise<string> {
+    if (req.user?.platformRole !== 'MASTER_ADMIN' && req.user?.organizationId) {
+      return req.user.organizationId;
+    }
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle?.organizationId) {
+      throw new NotFoundException('Vehicle not found');
+    }
+    return vehicle.organizationId;
   }
 
   /** Attach OBD plug/unplug flags for trip list, timeline, and detail surfaces. */

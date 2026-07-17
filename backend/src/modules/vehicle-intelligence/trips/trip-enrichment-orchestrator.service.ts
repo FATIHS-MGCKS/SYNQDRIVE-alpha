@@ -322,7 +322,15 @@ export class TripEnrichmentOrchestratorService {
       return;
     }
     try {
-      await this.tripsService.enrichTrip(vehicleId, tripId);
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { organizationId: true },
+      });
+      if (!vehicle?.organizationId) {
+        await this.analysisCoordinator?.markStage(tripId, 'route', 'skipped');
+        return;
+      }
+      await this.tripsService.enrichTrip(vehicle.organizationId, vehicleId, tripId);
       await this.analysisCoordinator?.markStage(tripId, 'route', 'done');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -8,6 +8,7 @@ import type {
 } from './trip-attribution.types';
 import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
 import { resolveBookingDriverPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
+import { assertBookingInOrganization } from '../tenant/vehicle-intelligence-tenant.scope';
 
 @Injectable()
 export class TripAttributionService {
@@ -135,7 +136,9 @@ export class TripAttributionService {
     };
   }
 
-  async resolveAttributionForTrip(trip: {
+  async resolveAttributionForTrip(
+    organizationId: string,
+    trip: {
     isPrivateTrip: boolean;
     assignmentStatus: TripAssignmentStatus | null;
     assignedBookingId: string | null;
@@ -152,11 +155,11 @@ export class TripAttributionService {
     const overlap =
       trip.assignedBookingId && trip.bookingLinkSource === 'EXPLICIT'
         ? null
-        : await this.findBookingOverlap(trip);
+        : await this.findBookingOverlap(organizationId, trip);
 
     const allowedDriverContext =
       trip.assignedBookingId != null
-        ? await this.loadBookingDriverPool(trip.assignedBookingId)
+        ? await this.loadBookingDriverPool(organizationId, trip.assignedBookingId)
         : null;
 
     return this.resolveAttribution({
@@ -175,9 +178,10 @@ export class TripAttributionService {
     });
   }
 
-  private async loadBookingDriverPool(bookingId: string) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
+  private async loadBookingDriverPool(organizationId: string, bookingId: string) {
+    await assertBookingInOrganization(this.prisma, organizationId, bookingId);
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId },
       select: {
         customerId: true,
         assignedDriverId: true,
@@ -192,14 +196,18 @@ export class TripAttributionService {
     });
   }
 
-  async findBookingOverlap(trip: {
-    vehicleId: string;
-    startTime: Date;
-    endTime: Date | null;
-    assignedBookingId?: string | null;
-  }): Promise<TripAttributionBookingOverlap | null> {
+  async findBookingOverlap(
+    organizationId: string,
+    trip: {
+      vehicleId: string;
+      startTime: Date;
+      endTime: Date | null;
+      assignedBookingId?: string | null;
+    },
+  ): Promise<TripAttributionBookingOverlap | null> {
     const tripEnd = trip.endTime ?? trip.startTime;
     const where: Prisma.BookingWhereInput = {
+      organizationId,
       vehicleId: trip.vehicleId,
       status: { in: [BookingStatus.ACTIVE, BookingStatus.COMPLETED] },
       startDate: { lte: tripEnd },
