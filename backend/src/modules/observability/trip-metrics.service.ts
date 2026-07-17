@@ -65,6 +65,26 @@ export class TripMetricsService implements OnModuleInit {
   readonly documentExtractionApply: Counter<string>;
   readonly documentExtractionUploadRateLimited: Counter<string>;
 
+  /** Document Intake V2 — low-cardinality labels only (Prompt 82). */
+  readonly documentUploadTotal: Counter<string>;
+  readonly documentUploadRejectedTotal: Counter<string>;
+  readonly documentDuplicateTotal: Counter<string>;
+  readonly documentOcrTotal: Counter<string>;
+  readonly documentOcrFailedTotal: Counter<string>;
+  readonly documentClassificationTotal: Counter<string>;
+  readonly documentAwaitingTypeTotal: Counter<string>;
+  readonly documentExtractionTotal: Counter<string>;
+  readonly documentPlausibilityBlockerTotal: Counter<string>;
+  readonly documentEntityCandidateTotal: Counter<string>;
+  readonly documentRequiredFieldTotal: Counter<string>;
+  readonly documentActionPlanTotal: Counter<string>;
+  readonly documentActionTotal: Counter<string>;
+  readonly documentActionFailedTotal: Counter<string>;
+  readonly documentPartialApplyTotal: Counter<string>;
+  readonly documentRecoveryTotal: Counter<string>;
+  readonly documentFollowUpTotal: Counter<string>;
+  readonly documentArchiveTotal: Counter<string>;
+
   /** Notification engine — low-cardinality labels only. */
   readonly notificationsCreated: Counter<string>;
   readonly notificationsUpdated: Counter<string>;
@@ -383,6 +403,132 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_document_extraction_upload_rate_limited_total',
       help: 'Document upload requests rejected by upload rate limits',
       labelNames: ['scope', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.documentUploadTotal = new Counter({
+      name: 'synqdrive_document_upload_total',
+      help: 'Document Intake V2 uploads accepted into the pipeline',
+      labelNames: ['scope', 'source_surface'],
+      registers: [this.registry],
+    });
+
+    this.documentUploadRejectedTotal = new Counter({
+      name: 'synqdrive_document_upload_rejected_total',
+      help: 'Document Intake V2 uploads rejected before queueing',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.documentDuplicateTotal = new Counter({
+      name: 'synqdrive_document_duplicate_total',
+      help: 'Document Intake V2 duplicate assessments',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.documentOcrTotal = new Counter({
+      name: 'synqdrive_document_ocr_total',
+      help: 'Document Intake V2 OCR/text extraction completions',
+      labelNames: ['method'],
+      registers: [this.registry],
+    });
+
+    this.documentOcrFailedTotal = new Counter({
+      name: 'synqdrive_document_ocr_failed_total',
+      help: 'Document Intake V2 OCR failures',
+      labelNames: ['error_code', 'retryable'],
+      registers: [this.registry],
+    });
+
+    this.documentClassificationTotal = new Counter({
+      name: 'synqdrive_document_classification_total',
+      help: 'Document Intake V2 classification decisions',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.documentAwaitingTypeTotal = new Counter({
+      name: 'synqdrive_document_awaiting_type_total',
+      help: 'Document Intake V2 extractions waiting for user document type',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionTotal = new Counter({
+      name: 'synqdrive_document_extraction_total',
+      help: 'Document Intake V2 structured extractions completed',
+      labelNames: ['document_category', 'overall_status'],
+      registers: [this.registry],
+    });
+
+    this.documentPlausibilityBlockerTotal = new Counter({
+      name: 'synqdrive_document_plausibility_blocker_total',
+      help: 'Document Intake V2 plausibility blocker checks',
+      labelNames: ['blocker_code'],
+      registers: [this.registry],
+    });
+
+    this.documentEntityCandidateTotal = new Counter({
+      name: 'synqdrive_document_entity_candidate_total',
+      help: 'Document Intake V2 ranked entity candidates by confidence band',
+      labelNames: ['entity_type', 'confidence'],
+      registers: [this.registry],
+    });
+
+    this.documentRequiredFieldTotal = new Counter({
+      name: 'synqdrive_document_required_field_total',
+      help: 'Document Intake V2 required/optional field presence at extraction',
+      labelNames: ['requirement', 'presence', 'document_category'],
+      registers: [this.registry],
+    });
+
+    this.documentActionPlanTotal = new Counter({
+      name: 'synqdrive_document_action_plan_total',
+      help: 'Document Intake V2 action plan lifecycle events',
+      labelNames: ['document_category', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.documentActionTotal = new Counter({
+      name: 'synqdrive_document_action_total',
+      help: 'Document Intake V2 action executions',
+      labelNames: ['semantic_action', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.documentActionFailedTotal = new Counter({
+      name: 'synqdrive_document_action_failed_total',
+      help: 'Document Intake V2 failed action executions',
+      labelNames: ['semantic_action', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.documentPartialApplyTotal = new Counter({
+      name: 'synqdrive_document_partial_apply_total',
+      help: 'Document Intake V2 partial apply outcomes',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.documentRecoveryTotal = new Counter({
+      name: 'synqdrive_document_recovery_total',
+      help: 'Document Intake V2 recovery scheduler actions',
+      labelNames: ['kind', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.documentFollowUpTotal = new Counter({
+      name: 'synqdrive_document_follow_up_total',
+      help: 'Document Intake V2 follow-up suggestion lifecycle events',
+      labelNames: ['follow_up_type', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.documentArchiveTotal = new Counter({
+      name: 'synqdrive_document_archive_total',
+      help: 'Document Intake V2 archive index and apply events',
+      labelNames: ['outcome'],
       registers: [this.registry],
     });
 

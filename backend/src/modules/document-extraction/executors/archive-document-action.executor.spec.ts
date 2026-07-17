@@ -42,7 +42,10 @@ function buildContext(confirmedData: Record<string, unknown>) {
 }
 
 describe('ArchiveDocumentActionExecutor', () => {
-  const executor = new ArchiveDocumentActionExecutor();
+  const observability = {
+    recordArchive: jest.fn(),
+  };
+  const executor = new ArchiveDocumentActionExecutor(observability as any);
 
   it('archives a valid authority letter', async () => {
     const result = await executor.execute(buildContext(AUTHORITY_LETTER));

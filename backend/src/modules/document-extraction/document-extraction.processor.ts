@@ -175,19 +175,16 @@ export class DocumentExtractionProcessor extends WorkerHost {
     const fileSizeBucket = bucketFileSizeBytes(record.sizeBytes);
 
     try {
-      const ocrStartedAt = Date.now();
-      const content = await this.resolveDocumentContent(record.objectKey, record, extractionId);
-      this.observability.recordPages(content.sourceMethod, content.pageCount ?? content.pages.length);
-      this.observability.logEvent({
+      const contentCacheHit = !!readContentCache(record.plausibility, record.objectKey);
+      const content = await this.observability.observeStage(
         extractionId,
-        stage: 'OCR',
-        status: 'completed',
-        mimeCategory,
-        fileSizeBucket,
-        pageCount: content.pageCount ?? content.pages.length,
-        provider: content.ocrProvider ?? null,
-        model: content.ocrModel ?? null,
-      });
+        'OCR',
+        () => this.resolveDocumentContent(record.objectKey, record, extractionId),
+        { mimeCategory, fileSizeBucket },
+      );
+      this.observability.recordOcrCompleted(contentCacheHit ? 'cached' : content.sourceMethod);
+      this.observability.recordPages(content.sourceMethod, content.pageCount ?? content.pages.length);
+      const ocrStartedAt = Date.now();
       const ocrCompletedAt = record.ocrCompletedAt ?? new Date();
       const plausibilityPatch =
         content.sourceMethod === 'OCR'
@@ -272,6 +269,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
           this.observability.recordClassification(
             decision.hasSuggestion ? 'await_user_with_suggestion' : 'await_user',
           );
+          this.observability.recordAwaitingDocumentType('classification');
           this.observability.recordJobOutcome('AWAITING_DOCUMENT_TYPE', 'CLASSIFICATION');
           await this.prisma.vehicleDocumentExtraction.updateMany({
             where: { id: extractionId, status: 'PROCESSING' },
@@ -315,6 +313,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
         });
       } else if (!applyDocumentType) {
         this.observability.recordClassification('unknown');
+        this.observability.recordAwaitingDocumentType('no_type');
         this.observability.recordJobOutcome('AWAITING_DOCUMENT_TYPE', 'CLASSIFICATION');
         await this.prisma.vehicleDocumentExtraction.updateMany({
           where: { id: extractionId, status: 'PROCESSING' },
@@ -748,7 +747,40 @@ export class DocumentExtractionProcessor extends WorkerHost {
     if (refreshed) {
       await this.archiveIndexService.upsertForRecord(refreshed);
     }
+
+    this.observability.recordExtractionCompleted({
+      documentType: applyDocumentType,
+      overallStatus,
+    });
+    this.observability.recordPlausibilityBlockers(finalChecks);
+    this.observability.recordEntityCandidateRanking(entityCandidateRanking);
+    this.recordRequiredFieldMetrics(
+      applyDocumentType,
+      resolvedSchema.requiredFields,
+      structuredExtraction.missingFields,
+      structuredExtraction.fields.map((field) => field.key),
+    );
   }
+
+  private recordRequiredFieldMetrics(
+    documentType: string,
+    requiredFields: readonly string[],
+    missingFields: string[],
+    extractedFieldKeys: string[],
+  ): void {
+    const requiredMissing = missingFields.length;
+    const requiredPresent = Math.max(0, requiredFields.length - requiredMissing);
+    const requiredSet = new Set(requiredFields);
+    const optionalKeys = extractedFieldKeys.filter((key) => !requiredSet.has(key));
+    const optionalPresent = optionalKeys.filter((key) => !missingFields.includes(key)).length;
+    const optionalMissing = Math.max(0, optionalKeys.length - optionalPresent);
+    this.observability.recordRequiredFieldCompleteness({
+      documentType,
+      requiredPresent,
+      requiredMissing,
+      optionalPresent,
+      optionalMissing,
+    });
 
   private async claimForProcessing(extractionId: string, job: Job): Promise<boolean> {
     const startedAt = new Date();

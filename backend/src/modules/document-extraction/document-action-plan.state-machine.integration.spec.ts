@@ -9,6 +9,8 @@ import {
 } from './document-action.types';
 import { DocumentActionTechnicalError } from './document-action.errors';
 import { ArchiveDocumentActionExecutor } from './executors/archive-document-action.executor';
+
+const archiveObservability = { recordArchive: jest.fn() } as any;
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
 import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
 import {
@@ -54,13 +56,13 @@ describe('Document action plan apply lifecycle (integration)', () => {
   };
 
   const registry = new DocumentActionExecutorRegistry();
-  registry.register(new ArchiveDocumentActionExecutor());
+  registry.register(new ArchiveDocumentActionExecutor(archiveObservability));
   registry.register(new LinkEntityDocumentActionExecutor());
 
   const orchestrator = new DocumentActionOrchestratorService(
     prisma as any,
     registry,
-    new ArchiveDocumentActionExecutor(),
+    new ArchiveDocumentActionExecutor(archiveObservability),
     new LinkEntityDocumentActionExecutor(),
     new CreateFineDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
     new CreateInvoiceDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
@@ -135,13 +137,13 @@ describe('Document action plan apply lifecycle (integration)', () => {
       }),
     };
     const localRegistry = new DocumentActionExecutorRegistry();
-    localRegistry.register(new ArchiveDocumentActionExecutor());
+    localRegistry.register(new ArchiveDocumentActionExecutor(archiveObservability));
     localRegistry.register(failingLinkExecutor as any);
 
     const localOrchestrator = new DocumentActionOrchestratorService(
       prisma as any,
       localRegistry,
-      new ArchiveDocumentActionExecutor(),
+      new ArchiveDocumentActionExecutor(archiveObservability),
       failingLinkExecutor as any,
       new CreateFineDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
       new CreateInvoiceDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),

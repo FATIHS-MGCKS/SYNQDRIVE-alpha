@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildDocumentExtractionArchiveIndexRow } from './document-extraction-archive-index.materializer';
+import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
 
 type ExtractionRecord = {
   id: string;
@@ -21,7 +22,10 @@ type ExtractionRecord = {
 
 @Injectable()
 export class DocumentExtractionArchiveIndexService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly observability: DocumentExtractionObservabilityService,
+  ) {}
 
   async upsertForRecord(record: ExtractionRecord): Promise<void> {
     const row = buildDocumentExtractionArchiveIndexRow(record);
@@ -53,6 +57,7 @@ export class DocumentExtractionArchiveIndexService {
         appliedAt: row.appliedAt,
       },
     });
+    this.observability.recordArchive('indexed');
   }
 
   async upsertMany(records: ExtractionRecord[]): Promise<void> {
