@@ -21,6 +21,11 @@ import { DocumentExtractionRecoveryScheduler } from '@workers/schedulers/documen
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentExtractionApplyPlanService } from './document-extraction-apply-plan.service';
+import { DocumentActionPlanRepository } from './document-action-plan.repository';
+import { DocumentActionRepository } from './document-action.repository';
+import { DocumentEntityCandidateRepository } from './document-entity-candidate.repository';
+import { DocumentEntityLinkRepository } from './document-entity-link.repository';
 
 /**
  * AI Document Upload feature module.
@@ -47,6 +52,7 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     DocumentExtractionService,
     DocumentExtractionMetadataService,
     DocumentExtractionApplyService,
+    DocumentExtractionApplyPlanService,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,
@@ -55,9 +61,22 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     DocumentExtractionHealthService,
     DocumentExtractionRecoveryScheduler,
     DocumentExtractionObservabilityService,
+    DocumentActionPlanRepository,
+    DocumentActionRepository,
+    DocumentEntityCandidateRepository,
+    DocumentEntityLinkRepository,
     LocalDocumentStorageService,
     { provide: DOCUMENT_STORAGE, useClass: LocalDocumentStorageService },
   ],
-  exports: [DocumentExtractionService, DocumentExtractionApplyService, DocumentExtractionHealthService],
+  exports: [
+    DocumentExtractionService,
+    DocumentExtractionApplyService,
+    DocumentExtractionApplyPlanService,
+    DocumentExtractionHealthService,
+    DocumentActionPlanRepository,
+    DocumentActionRepository,
+    DocumentEntityCandidateRepository,
+    DocumentEntityLinkRepository,
+  ],
 })
 export class DocumentExtractionModule {}

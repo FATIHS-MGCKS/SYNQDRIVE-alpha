@@ -2,6 +2,10 @@ import {
   DocumentExtractionPlausibilityService,
   PlausibilityVehicleContext,
 } from './document-extraction-plausibility.service';
+import {
+  FINE_PAYMENT_NOTICE_INVALID_DUE_DATE,
+  FINE_PAYMENT_NOTICE_PLATE_MISMATCH,
+} from './__fixtures__/document-fine-fixtures';
 
 describe('DocumentExtractionPlausibilityService', () => {
   const svc = new DocumentExtractionPlausibilityService();
@@ -60,11 +64,42 @@ describe('DocumentExtractionPlausibilityService', () => {
   it('blocks FINE when license plate does not match the selected vehicle', () => {
     const result = svc.runChecks(
       'FINE',
-      { licensePlate: 'KS-FH-660E', eventDate: '2025-10-24', totalCents: 1750 },
+      {
+        ...FINE_PAYMENT_NOTICE_PLATE_MISMATCH,
+        issuingAuthority: 'Stadt Kassel',
+        referenceNumber: 'REF-1',
+        offenseDescription: 'Parkverstoß',
+      },
       { ...baseCtx, licensePlate: 'B-AB-1234' },
     );
     expect(result.overallStatus).toBe('BLOCKER');
-    expect(codes(result)).toContain('PLATE_MISMATCH');
+    expect(result.checks.map((c) => c.code)).toContain('PLATE_MISMATCH');
+  });
+
+  it('blocks FINE when due date is before offense date', () => {
+    const result = svc.runChecks(
+      'FINE',
+      FINE_PAYMENT_NOTICE_INVALID_DUE_DATE,
+      baseCtx,
+    );
+    expect(result.overallStatus).toBe('BLOCKER');
+    expect(result.checks.map((c) => c.code)).toContain('DUE_DATE_BEFORE_OFFENSE');
+  });
+
+  it('blocks FINE payment notice without positive amount', () => {
+    const result = svc.runChecks(
+      'FINE',
+      {
+        noticeType: 'PAYMENT_NOTICE',
+        offenseDateTime: '2025-10-24T10:00:00',
+        issuingAuthority: 'Ordnungsamt',
+        referenceNumber: 'X-1',
+        offenseDescription: 'Parkverstoß',
+        amountCents: 0,
+      },
+      baseCtx,
+    );
+    expect(result.checks.map((c) => c.code)).toContain('FINE_AMOUNT_NON_POSITIVE');
   });
 
   it('warns when TUV validity is before the inspection date', () => {

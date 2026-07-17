@@ -503,7 +503,7 @@ export class TireOdometerAnchorBackfillService {
       const odometerKm = data?.odometerKm;
       const confirmedAt =
         d.appliedAt ?? d.processedAt ?? d.extractionCompletedAt ?? null;
-      if (odometerKm == null) continue;
+      if (odometerKm == null || !d.vehicleId) continue;
       workshopRows.push({
         vehicle_id: d.vehicleId,
         extraction_id: d.id,

@@ -63,6 +63,7 @@ import {
 } from './document-extraction-query.util';
 import { sanitizeDownloadFileName } from './document-extraction-download.util';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { requireExtractionVehicleId } from './document-extraction-vehicle.util';
 
 /** Extra confirmedData keys (beyond schema) that the apply layer understands. */
 const APPLY_ALIAS_KEYS = new Set<string>([
@@ -83,6 +84,19 @@ const APPLY_ALIAS_KEYS = new Set<string>([
   'vin',
   'licensePlate',
   'costCents',
+  'noticeType',
+  'offenseDateTime',
+  'eventDateTime',
+  'eventTime',
+  'referenceNumber',
+  'amountCents',
+  'offenseDescription',
+  'responseDeadline',
+  'reportNumber',
+  'caseNumber',
+  'fileNumber',
+  'documentKind',
+  'documentSubtype',
   'temperatureC',
   'crankingVoltage',
   'chargingVoltage',
@@ -227,7 +241,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(record.id, {
       extractionId: record.id,
-      vehicleId: record.vehicleId,
+      vehicleId: requireExtractionVehicleId(record),
       organizationId: record.organizationId,
       documentType: effectiveType,
       objectKey: stored.objectKey,
@@ -548,7 +562,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(extractionId, {
       extractionId,
-      vehicleId: record.vehicleId,
+      vehicleId: requireExtractionVehicleId(record),
       organizationId: record.organizationId,
       documentType: applyType,
       objectKey: record.objectKey,
@@ -626,7 +640,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(extractionId, {
       extractionId,
-      vehicleId: record.vehicleId,
+      vehicleId: requireExtractionVehicleId(record),
       organizationId: record.organizationId,
       documentType: applyType,
       objectKey: record.objectKey,
@@ -808,7 +822,7 @@ export class DocumentExtractionService implements OnModuleInit {
     try {
       const applyResult = await this.applyService.apply({
         extractionId,
-        vehicleId: record.vehicleId,
+        vehicleId: requireExtractionVehicleId(record),
         documentType: applyDocumentType,
         sourceFileUrl,
         confirmedData: record.confirmedData as Record<string, unknown>,
