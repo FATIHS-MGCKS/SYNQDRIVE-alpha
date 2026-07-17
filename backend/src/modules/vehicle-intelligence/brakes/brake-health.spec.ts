@@ -649,7 +649,8 @@ describe('canonical read model', () => {
       {
         id: 'e2',
         vehicleId: 'v1',
-        source: 'WORKSHOP_REPORT',
+        source: 'WORKSHOP_MEASUREMENT',
+        active: true,
         axle: 'UNKNOWN',
         measuredPadMm: null,
         measuredDiscMm: null,

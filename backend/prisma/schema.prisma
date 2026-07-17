@@ -6280,11 +6280,13 @@ model BatteryEvidence {
 
 enum BrakeEvidenceSource {
   MANUAL_MEASUREMENT
-  WORKSHOP_REPORT
-  AI_UPLOAD
-  SERVICE_INVOICE
+  WORKSHOP_MEASUREMENT
+  DOCUMENTED_REPLACEMENT
   INSPECTION_PROTOCOL
+  AI_UPLOAD_UNCONFIRMED
+  AI_UPLOAD_CONFIRMED
   DTC_SIGNAL
+  PROVIDER_WARNING
   BRAKE_WEAR_SENSOR
   TELEMATICS_ESTIMATION
 }
@@ -6317,6 +6319,19 @@ enum BrakeEvidenceConfidence {
   UNKNOWN
 }
 
+enum BrakeEvidenceConfirmationStatus {
+  UNCONFIRMED
+  CONFIRMED
+  NOT_APPLICABLE
+}
+
+enum BrakeEvidenceFreshnessStatus {
+  FRESH
+  STALE
+  EXPIRED
+  UNKNOWN
+}
+
 enum BrakeDtcCategory {
   BRAKE_SYSTEM
   ABS
@@ -6336,6 +6351,7 @@ enum BrakeDtcFreshness {
 
 model BrakeEvidence {
   id                     String                  @id @default(uuid())
+  organizationId         String?                 @map("organization_id")
   vehicleId              String                  @map("vehicle_id")
   source                 BrakeEvidenceSource
   axle                   BrakeAxle               @default(UNKNOWN)
@@ -6360,6 +6376,18 @@ model BrakeEvidence {
   dtcFreshness           BrakeDtcFreshness?      @map("dtc_freshness")
   dedupeKey              String?                 @map("dedupe_key")
   dtcReviewRequired      Boolean?                @map("dtc_review_required")
+  active                 Boolean                 @default(true) @map("active")
+  firstObservedAt        DateTime?               @map("first_observed_at")
+  lastObservedAt         DateTime?               @map("last_observed_at")
+  resolvedAt             DateTime?               @map("resolved_at")
+  expiresAt              DateTime?               @map("expires_at")
+  freshnessStatus        BrakeEvidenceFreshnessStatus @default(UNKNOWN) @map("freshness_status")
+  confirmationStatus     BrakeEvidenceConfirmationStatus @default(NOT_APPLICABLE) @map("confirmation_status")
+  confirmedBy            String?                 @map("confirmed_by")
+  confirmedAt            DateTime?               @map("confirmed_at")
+  supersededByEvidenceId String?                 @map("superseded_by_evidence_id")
+  externalSourceId       String?                 @map("external_source_id")
+  recalculationEnqueuedAt  DateTime?               @map("recalculation_enqueued_at")
   mileageAtMeasurementKm Int?                    @map("mileage_at_measurement_km")
   measuredAt             DateTime?               @map("measured_at")
   confidence             BrakeEvidenceConfidence @default(UNKNOWN)
@@ -6375,6 +6403,8 @@ model BrakeEvidence {
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
   predictionSnapshot BrakeHealthSnapshot?       @relation("BrakeEvidencePredictionSnapshot", fields: [predictionSnapshotId], references: [id], onDelete: SetNull)
   vehicleDtcEvent    VehicleDtcEvent?           @relation(fields: [vehicleDtcEventId], references: [id], onDelete: SetNull)
+  supersededBy       BrakeEvidence?             @relation("BrakeEvidenceSupersession", fields: [supersededByEvidenceId], references: [id], onDelete: SetNull)
+  supersedes         BrakeEvidence[]            @relation("BrakeEvidenceSupersession")
   componentInstallations BrakeComponentInstallation[]
 
   @@index([vehicleId, axle, measuredAt])
@@ -6384,6 +6414,8 @@ model BrakeEvidence {
   @@index([predictionSnapshotId])
   @@index([vehicleId, dtcCode, dtcActive])
   @@index([vehicleId, dedupeKey])
+  @@index([vehicleId, active, lastObservedAt(sort: Desc)])
+  @@index([organizationId, vehicleId, dedupeKey])
   @@map("brake_evidence")
 }
 

@@ -67,7 +67,14 @@ describe('BrakeCriticalDetector', () => {
         rearDiscRemainingKm: 20000,
       },
       // 1.5 mm ≤ critical (2.0 mm) → genuine CRITICAL.
-      evidence: [{ source: 'AI_UPLOAD', axle: 'FRONT', measuredPadMm: 1.5, measuredAt: fresh }],
+      evidence: [{
+        source: 'AI_UPLOAD_CONFIRMED',
+        axle: 'FRONT',
+        measuredPadMm: 1.5,
+        measuredAt: fresh,
+        active: true,
+        confirmationStatus: 'CONFIRMED',
+      }],
     });
     const result = await new BrakeCriticalDetector(prisma).detect(buildCtx());
     expect(result).toHaveLength(1);
@@ -88,7 +95,13 @@ describe('BrakeCriticalDetector', () => {
         rearPadRemainingKm: 12000,
         rearDiscRemainingKm: 20000,
       },
-      evidence: [{ source: 'WORKSHOP_REPORT', axle: 'UNKNOWN', brakeFluidStatus: 'CRITICAL', measuredAt: fresh }],
+      evidence: [{
+        source: 'WORKSHOP_MEASUREMENT',
+        axle: 'UNKNOWN',
+        brakeFluidStatus: 'CRITICAL',
+        measuredAt: fresh,
+        active: true,
+      }],
     });
     const result = await new BrakeCriticalDetector(prisma).detect(buildCtx());
     expect(result).toHaveLength(1);

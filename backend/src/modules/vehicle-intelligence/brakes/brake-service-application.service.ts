@@ -621,7 +621,7 @@ export class BrakeServiceApplicationService {
     source: BrakeServiceSource,
   ): Prisma.BrakeEvidenceUncheckedCreateInput[] {
     const evidenceSource =
-      source === BrakeServiceSource.API ? BrakeEvidenceSource.MANUAL_MEASUREMENT : BrakeEvidenceSource.WORKSHOP_REPORT;
+      source === BrakeServiceSource.API ? BrakeEvidenceSource.MANUAL_MEASUREMENT : BrakeEvidenceSource.WORKSHOP_MEASUREMENT;
     const base = {
       vehicleId,
       confidence: BrakeEvidenceConfidence.HIGH,

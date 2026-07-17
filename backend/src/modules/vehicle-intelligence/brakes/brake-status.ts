@@ -300,13 +300,16 @@ export function evidenceSourceToDataBasis(source: string | null | undefined): Br
   switch ((source ?? '').toUpperCase()) {
     case 'MANUAL_MEASUREMENT':
       return 'MEASURED';
-    case 'WORKSHOP_REPORT':
-    case 'SERVICE_INVOICE':
+    case 'WORKSHOP_MEASUREMENT':
+    case 'DOCUMENTED_REPLACEMENT':
     case 'INSPECTION_PROTOCOL':
-    case 'AI_UPLOAD':
+    case 'AI_UPLOAD_CONFIRMED':
       return 'DOCUMENTED';
+    case 'AI_UPLOAD_UNCONFIRMED':
+      return 'UNKNOWN';
     case 'DTC_SIGNAL':
     case 'BRAKE_WEAR_SENSOR':
+    case 'PROVIDER_WARNING':
       return 'SENSOR';
     case 'TELEMATICS_ESTIMATION':
       return 'ESTIMATED';

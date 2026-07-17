@@ -3,6 +3,8 @@ import {
   BrakeDtcCategory,
   BrakeDtcFreshness,
   BrakeEvidenceConfidence,
+  BrakeEvidenceConfirmationStatus,
+  BrakeEvidenceFreshnessStatus,
   BrakeEvidenceSource,
   Prisma,
   VehicleDtcEvent,
@@ -17,6 +19,7 @@ import {
   resolveBrakeDtcFreshness,
   type BrakeDtcClassification,
 } from './brake-dtc-classification';
+import { mapDtcFreshnessToEvidenceFreshness } from './brake-evidence.domain';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 
 export type BrakeDtcSourceProvider = 'DIMO' | 'HIGH_MOBILITY' | 'OBD' | 'MANUAL';
@@ -64,7 +67,12 @@ export class BrakeDtcEvidenceProducerService {
     const freshness = await this.resolveFreshness(vehicleId);
     const dedupeKey = buildBrakeDtcDedupeKey(classification.normalizedCode);
     const existing = await this.prisma.brakeEvidence.findFirst({
-      where: { vehicleId, dedupeKey },
+      where: {
+        vehicleId,
+        dedupeKey,
+        active: true,
+        supersededByEvidenceId: null,
+      },
       orderBy: [{ dtcLastSeenAt: 'desc' }, { createdAt: 'desc' }],
     });
 
@@ -75,6 +83,7 @@ export class BrakeDtcEvidenceProducerService {
       context,
       freshness,
       dedupeKey,
+      organizationId: context.organizationId ?? (await this.loadOrganizationId(vehicleId)),
       reactivated: existing?.dtcActive === false,
     });
 
@@ -126,9 +135,12 @@ export class BrakeDtcEvidenceProducerService {
       where: { id: existing.id },
       data: {
         dtcActive: false,
+        active: false,
         dtcResolvedAt: resolvedAt,
+        resolvedAt,
         sourceProvider: context.sourceProvider,
         sourceTimestamp: context.sourceTimestamp ?? resolvedAt,
+        lastObservedAt: resolvedAt,
       },
     });
 
@@ -169,6 +181,7 @@ export class BrakeDtcEvidenceProducerService {
     context: BrakeDtcProducerContext;
     freshness: BrakeDtcFreshness;
     dedupeKey: string;
+    organizationId?: string | null;
     reactivated: boolean;
   }): Prisma.BrakeEvidenceUncheckedCreateInput {
     const { event, classification, context, freshness, dedupeKey, reactivated } = args;
@@ -176,8 +189,11 @@ export class BrakeDtcEvidenceProducerService {
       classification.reviewRequired && classification.severity === 'CRITICAL'
         ? 'WARNING'
         : classification.severity;
+    const observedAt = context.sourceTimestamp ?? event.lastSeenAt;
+    const evidenceFreshness = mapDtcFreshnessToEvidenceFreshness(freshness);
 
     return {
+      organizationId: args.organizationId ?? undefined,
       vehicleId: args.vehicleId,
       source: BrakeEvidenceSource.DTC_SIGNAL,
       axle: 'UNKNOWN',
@@ -186,12 +202,19 @@ export class BrakeDtcEvidenceProducerService {
       dtcCode: classification.normalizedCode,
       dtcCategory: classification.category as BrakeDtcCategory,
       dtcActive: true,
+      active: true,
       dtcFirstSeenAt: event.firstSeenAt,
       dtcLastSeenAt: event.lastSeenAt,
       dtcResolvedAt: null,
+      resolvedAt: null,
+      firstObservedAt: event.firstSeenAt,
+      lastObservedAt: observedAt,
       sourceProvider: context.sourceProvider,
-      sourceTimestamp: context.sourceTimestamp ?? event.lastSeenAt,
+      sourceTimestamp: observedAt,
       dtcFreshness: freshness,
+      freshnessStatus: evidenceFreshness,
+      confirmationStatus: BrakeEvidenceConfirmationStatus.NOT_APPLICABLE,
+      externalSourceId: classification.normalizedCode,
       dedupeKey,
       dtcReviewRequired: classification.reviewRequired,
       measuredAt: event.lastSeenAt,
@@ -206,6 +229,14 @@ export class BrakeDtcEvidenceProducerService {
         occurrenceCount: event.occurrenceCount,
       }),
     };
+  }
+
+  private async loadOrganizationId(vehicleId: string): Promise<string | null> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    return vehicle?.organizationId ?? null;
   }
 
   private async resolveFreshness(vehicleId: string): Promise<BrakeDtcFreshness> {

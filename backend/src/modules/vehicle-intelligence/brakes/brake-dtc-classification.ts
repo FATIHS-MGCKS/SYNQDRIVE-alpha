@@ -1,6 +1,7 @@
 import { DtcSeverity } from '@prisma/client';
 import { normalizeDtcCode, getDtcSystemCategory } from '../dtc-knowledge/dtc-knowledge.util';
 import { normalizeDtcSeverityBand } from '../dtc/dtc-severity.util';
+import { isActiveEvidence, type BrakeEvidenceLifecycleRow } from './brake-evidence.domain';
 
 export type BrakeDtcCategory =
   | 'BRAKE_SYSTEM'
@@ -224,14 +225,8 @@ export function resolveBrakeDtcFreshness(args: {
   return ageMs > threshold ? 'STALE' : 'FRESH';
 }
 
-export function isActiveBrakeDtcEvidenceRow(row: {
-  source: string;
-  dtcActive?: boolean | null;
-  dtcFreshness?: string | null;
-  dtcSeverity?: string | null;
-}): boolean {
-  if (row.source !== 'DTC_SIGNAL') return true;
-  if (row.dtcActive === false) return false;
-  if (row.dtcFreshness === 'STALE') return false;
-  return typeof row.dtcSeverity === 'string' && row.dtcSeverity.trim().length > 0;
+export function isActiveBrakeDtcEvidenceRow(
+  row: BrakeEvidenceLifecycleRow,
+): boolean {
+  return isActiveEvidence(row);
 }

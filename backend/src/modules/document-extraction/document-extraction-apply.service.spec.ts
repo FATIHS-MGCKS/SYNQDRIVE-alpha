@@ -25,7 +25,7 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
     {} as any,
   );
 
-  it('creates BrakeEvidence with AI_UPLOAD after user-confirmed brake document apply', async () => {
+  it('creates BrakeEvidence with AI_UPLOAD_CONFIRMED after user-confirmed brake document apply', async () => {
     await svc.apply({
       extractionId: 'ext-1',
       vehicleId: 'veh-1',
@@ -46,7 +46,7 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
     expect(brakeEvidenceService.recordMany).toHaveBeenCalledTimes(1);
     const rows = brakeEvidenceService.recordMany.mock.calls[0][0];
     expect(rows).toHaveLength(2);
-    expect(rows[0].source).toBe(BrakeEvidenceSource.AI_UPLOAD);
+    expect(rows[0].source).toBe(BrakeEvidenceSource.AI_UPLOAD_CONFIRMED);
     expect(rows[0].measuredPadMm).toBe(6.5);
     expect(rows[1].measuredPadMm).toBe(6);
   });

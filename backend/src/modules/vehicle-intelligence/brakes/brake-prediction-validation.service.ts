@@ -104,7 +104,7 @@ export class BrakePredictionValidationService {
         vehicleId: args.vehicleId,
         predictionSnapshotId: null,
         measuredAt: { lte: asOf, not: null },
-        source: { in: ['MANUAL_MEASUREMENT', 'WORKSHOP_REPORT', 'AI_UPLOAD'] },
+        source: { in: ['MANUAL_MEASUREMENT', 'WORKSHOP_MEASUREMENT', 'AI_UPLOAD_CONFIRMED'] },
       },
       orderBy: { measuredAt: 'asc' },
       select: {

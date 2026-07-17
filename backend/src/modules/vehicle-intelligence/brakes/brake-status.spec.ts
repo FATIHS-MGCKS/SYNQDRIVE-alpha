@@ -200,8 +200,9 @@ describe('evidenceSourceToDataBasis', () => {
     expect(evidenceSourceToDataBasis('MANUAL_MEASUREMENT')).toBe('MEASURED');
   });
   it('documents → DOCUMENTED', () => {
-    expect(evidenceSourceToDataBasis('AI_UPLOAD')).toBe('DOCUMENTED');
-    expect(evidenceSourceToDataBasis('WORKSHOP_REPORT')).toBe('DOCUMENTED');
+    expect(evidenceSourceToDataBasis('AI_UPLOAD_CONFIRMED')).toBe('DOCUMENTED');
+    expect(evidenceSourceToDataBasis('WORKSHOP_MEASUREMENT')).toBe('DOCUMENTED');
+    expect(evidenceSourceToDataBasis('AI_UPLOAD_UNCONFIRMED')).toBe('UNKNOWN');
   });
   it('sensor / dtc → SENSOR', () => {
     expect(evidenceSourceToDataBasis('BRAKE_WEAR_SENSOR')).toBe('SENSOR');

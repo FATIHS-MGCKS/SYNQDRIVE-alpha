@@ -10,7 +10,7 @@ import {
   isAlertableCondition,
   type BrakeCondition,
 } from '../../vehicle-intelligence/brakes/brake-status';
-import { isActiveBrakeDtcEvidenceRow } from '../../vehicle-intelligence/brakes/brake-dtc-classification';
+import { isActiveEvidence, isMmGroundTruth } from '../../vehicle-intelligence/brakes/brake-evidence.domain';
 import { BRAKE_HEALTH_CONFIG } from '../../vehicle-intelligence/brakes/brake-health.config';
 import {
   DetectorContext,
@@ -88,6 +88,12 @@ export class BrakeCriticalDetector implements InsightDetector {
         dtcSeverity: true,
         dtcActive: true,
         dtcFreshness: true,
+        active: true,
+        resolvedAt: true,
+        supersededByEvidenceId: true,
+        freshnessStatus: true,
+        expiresAt: true,
+        confirmationStatus: true,
         immediateReplacement: true,
         measuredAt: true,
         createdAt: true,
@@ -109,7 +115,7 @@ export class BrakeCriticalDetector implements InsightDetector {
         ? new Date(current.anchorServiceDate).getTime()
         : 0;
       const fresh = rows.filter((e) => {
-        if (!isActiveBrakeDtcEvidenceRow(e)) return false;
+        if (!isActiveEvidence(e)) return false;
         const t = e.measuredAt ? new Date(e.measuredAt).getTime() : new Date(e.createdAt).getTime();
         return t >= anchorMs;
       });
@@ -136,7 +142,7 @@ export class BrakeCriticalDetector implements InsightDetector {
       // Fresh measured thickness can escalate to a real CRITICAL.
       let hasRealSignal = false;
       const frontMeas = fresh.find(
-        (e) => (e.axle === 'FRONT' || e.axle === 'UNKNOWN') && e.measuredPadMm != null,
+        (e) => (e.axle === 'FRONT' || e.axle === 'UNKNOWN') && isMmGroundTruth(e),
       );
       if (frontMeas?.measuredPadMm != null) {
         frontCond = aggregateBrakeCondition(
@@ -146,7 +152,7 @@ export class BrakeCriticalDetector implements InsightDetector {
         hasRealSignal = true;
       }
       const rearMeas = fresh.find(
-        (e) => (e.axle === 'REAR' || e.axle === 'UNKNOWN') && e.measuredPadMm != null,
+        (e) => (e.axle === 'REAR' || e.axle === 'UNKNOWN') && isMmGroundTruth(e),
       );
       if (rearMeas?.measuredPadMm != null) {
         rearCond = aggregateBrakeCondition(

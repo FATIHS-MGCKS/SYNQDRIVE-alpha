@@ -153,7 +153,9 @@ describe('BrakeDtcEvidenceProducerService', () => {
         where: { id: 'ev-active' },
         data: expect.objectContaining({
           dtcActive: false,
+          active: false,
           dtcResolvedAt: expect.any(Date),
+          resolvedAt: expect.any(Date),
         }),
       }),
     );

@@ -58,6 +58,7 @@ import { BrakeRecalculationInputLoader } from './brake-recalculation-input.loade
 import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 import { isActiveBrakeDtcEvidenceRow } from './brake-dtc-classification';
+import { isMmGroundTruth } from './brake-evidence.domain';
 import { BrakePredictionValidationService } from './brake-prediction-validation.service';
 import {
   buildAnchorEvidenceSummary,
@@ -2962,10 +2963,10 @@ export class BrakeHealthService {
       freshEvidence.find(
         (e) =>
           (e.axle === axle || e.axle === 'UNKNOWN') &&
-          (e.measuredPadMm != null || e.measuredDiscMm != null),
+          isMmGroundTruth(e),
       ) ?? null;
     const latestMeasurement =
-      freshEvidence.find((e) => e.measuredPadMm != null || e.measuredDiscMm != null) ?? null;
+      freshEvidence.find((e) => isMmGroundTruth(e)) ?? null;
 
     // ── Safety signals (system-level) ──
     let fluidCondition: BrakeCondition = 'UNKNOWN';
@@ -3042,9 +3043,7 @@ export class BrakeHealthService {
     let frontBasis: BrakeDataBasis = anchorBasis;
     let rearBasis: BrakeDataBasis = anchorBasis;
 
-    const hasThicknessEvidence = freshEvidence.some(
-      (e) => e.measuredPadMm != null || e.measuredDiscMm != null,
-    );
+    const hasThicknessEvidence = freshEvidence.some((e) => isMmGroundTruth(e));
     if (initialized && this.hasMeasuredAnchorStatus(current) && !hasThicknessEvidence) {
       if (frontBasis === 'MEASURED') frontBasis = 'ESTIMATED';
       if (rearBasis === 'MEASURED') rearBasis = 'ESTIMATED';
