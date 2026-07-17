@@ -77,6 +77,8 @@ vi.mock('../hooks/useDocumentUploadPage', () => ({
       ready_for_review: 'docUpload.processingStep.readyForReview',
     },
     processingStartedAt: null,
+    vehicleLookup: new Map(),
+    handleEntityLinksUpdated: vi.fn(),
   }),
 }));
 

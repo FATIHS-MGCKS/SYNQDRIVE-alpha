@@ -354,6 +354,12 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   canEdit={false}
                   showEntityResolution
                   showActionPreview
+                  entityReviewOrgId={orgId}
+                  entityReviewVehicleId={page.assignedVehicleId || null}
+                  entityReviewExtractionId={page.extractionId}
+                  entityReviewT={t}
+                  vehicleLookup={page.vehicleLookup}
+                  onEntityLinksUpdated={page.handleEntityLinksUpdated}
                   onFieldChange={(index, value) => {
                     const updated = [...page.editedFields];
                     updated[index] = { ...updated[index], value };

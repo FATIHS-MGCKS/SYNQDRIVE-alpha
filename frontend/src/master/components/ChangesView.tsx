@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-entity-review-2026-07-17',
+    version: '4.9.644',
+    title: 'V4.9.644 — Document Intake Shared Entity Review',
+    summary: [
+      'Gemeinsame DocumentEntityReview-Komponente fuer Fahrzeug, Buchung, Kunde, Fahrer, Anbieter/Behoerde und weitere Verknuepfungen.',
+      'Pro Abschnitt: bester Kandidat, Alternativen, Match-Gruende, Konflikte, Suche, Auswahl, „Nicht zuordnen“.',
+      'Nichts automatisch als bestaetigt; Herkunftskontext sichtbar; Fahrer-Unsicherheit verstaendlich; Kunde/Fahrer getrennt.',
+      'PATCH entity-links im Frontend angebunden; Plan-Invalidierungshinweis; Tests fuer 0/1/mehrere Kandidaten.',
+    ],
+    reason:
+      'Entity-Zuordnungen muessen im Review verstaendlich und explizit bestaetigt werden — ohne UUIDs oder falsche Sicherheit.',
+    previousBehavior:
+      'Read-only Entity-Vorschau-Liste in DocumentExtractionReviewPanel ohne Interaktion oder entity-links API.',
+    details:
+      'Frontend: document-entity-review.ts, DocumentEntityReview.tsx, useDocumentEntityLinks, api updateEntityLinks. Architektur: architecture/DOCUMENT_INTAKE_ENTITY_REVIEW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T19:57:00.000Z',
+  },
+  {
     id: 'document-intake-classification-result-2026-07-17',
     version: '4.9.643',
     title: 'V4.9.643 — Document Intake Classification Result UI',

@@ -7,6 +7,9 @@ import {
   type PlausibilityStatus,
   type ReviewField,
 } from './document-extraction.shared';
+import { DocumentEntityReview } from './DocumentEntityReview';
+import type { TranslationKey } from '../../i18n/translations/en';
+import type { VehicleLabelLookup } from '../../lib/document-entity-review';
 
 function plausClass(status: PlausibilityStatus): string {
   if (status === 'BLOCKER') return 'border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] text-[color:var(--status-critical)]';
@@ -28,39 +31,51 @@ export interface DocumentExtractionReviewPanelProps {
   plausibilityTitle?: string;
   showActionPreview?: boolean;
   showEntityResolution?: boolean;
+  entityReviewOrgId?: string | null;
+  entityReviewVehicleId?: string | null;
+  entityReviewExtractionId?: string | null;
+  entityReviewLocale?: string;
+  entityReviewT?: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  vehicleLookup?: VehicleLabelLookup;
+  onEntityLinksUpdated?: (record: PublicDocumentExtraction) => void;
   headerSlot?: ReactNode;
   footerSlot?: ReactNode;
   isDarkMode?: boolean;
 }
 
-function EntityResolutionSection({ record }: { record: PublicDocumentExtraction }) {
-  const groups = [
-    { label: 'Fahrzeug', items: record.vehicleCandidates },
-    { label: 'Buchung', items: record.bookingCandidates },
-    { label: 'Kunde', items: record.customerCandidates },
-    { label: 'Fahrer', items: record.driverCandidates },
-    { label: 'Partner', items: record.partnerCandidates },
-  ].filter((group) => Array.isArray(group.items) && group.items.length > 0);
-
-  if (groups.length === 0) return null;
-
+function EntityResolutionSection({
+  record,
+  orgId,
+  vehicleId,
+  extractionId,
+  t,
+  readOnly,
+  isDarkMode,
+  vehicleLookup,
+  onEntityLinksUpdated,
+}: {
+  record: PublicDocumentExtraction;
+  orgId: string;
+  vehicleId?: string | null;
+  extractionId?: string | null;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  readOnly?: boolean;
+  isDarkMode?: boolean;
+  vehicleLookup?: VehicleLabelLookup;
+  onEntityLinksUpdated?: (record: PublicDocumentExtraction) => void;
+}) {
   return (
-    <div className="space-y-2">
-      <p className="sq-section-label">Entity-Vorschläge (nur Vorschau)</p>
-      {groups.map((group) => (
-        <div key={group.label} className="rounded-lg border border-border bg-muted/10 px-3 py-2">
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground">{group.label}</p>
-          <ul className="mt-1 space-y-1">
-            {(group.items as Array<{ rank?: number; confidence?: number; displayLabel?: string; bookingId?: string; vehicleId?: string }>).slice(0, 3).map((item, index) => (
-              <li key={index} className="text-[11px] text-foreground">
-                #{item.rank ?? index + 1} · {Math.round((item.confidence ?? 0) * 100)}% ·{' '}
-                {item.displayLabel || item.bookingId || item.vehicleId || 'Kandidat'}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
+    <DocumentEntityReview
+      record={record}
+      orgId={orgId}
+      vehicleId={vehicleId}
+      extractionId={extractionId ?? record.id}
+      t={t}
+      readOnly={readOnly}
+      isDarkMode={isDarkMode}
+      vehicleLookup={vehicleLookup}
+      onRecordUpdated={onEntityLinksUpdated}
+    />
   );
 }
 
@@ -78,6 +93,12 @@ export function DocumentExtractionReviewPanel({
   plausibilityTitle = 'Plausibilität',
   showActionPreview = true,
   showEntityResolution = true,
+  entityReviewOrgId = null,
+  entityReviewVehicleId,
+  entityReviewExtractionId,
+  entityReviewT,
+  vehicleLookup,
+  onEntityLinksUpdated,
   headerSlot,
   footerSlot,
   isDarkMode = false,
@@ -112,7 +133,19 @@ export function DocumentExtractionReviewPanel({
         </div>
       ) : null}
 
-      {showEntityResolution && record ? <EntityResolutionSection record={record} /> : null}
+      {showEntityResolution && record && entityReviewOrgId && entityReviewT ? (
+        <EntityResolutionSection
+          record={record}
+          orgId={entityReviewOrgId}
+          vehicleId={entityReviewVehicleId}
+          extractionId={entityReviewExtractionId ?? record.id}
+          t={entityReviewT}
+          readOnly={readOnly}
+          isDarkMode={isDarkMode}
+          vehicleLookup={vehicleLookup}
+          onEntityLinksUpdated={onEntityLinksUpdated}
+        />
+      ) : null}
 
       {showActionPreview && actionPreview.length > 0 ? (
         <div>

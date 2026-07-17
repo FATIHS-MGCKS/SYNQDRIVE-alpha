@@ -14,6 +14,7 @@ import {
 } from '../lib/document-extraction-validation';
 import type {
   DocumentExtractionMetadata,
+  PublicDocumentExtraction,
   PublicDocumentExtractionSummary,
 } from '../lib/document-extraction.types';
 import type { TranslationKey } from '../i18n/translations/en';
@@ -398,6 +399,21 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   const stepperIndex = getStepperIndex(intake.flow);
   const classificationConfidence = formatConfidencePercent(intake.record?.classificationConfidence ?? null);
 
+  const vehicleLookup = useMemo(() => {
+    const map = new Map<string, { name: string; licensePlate?: string | null }>();
+    for (const vehicle of vehicles) {
+      map.set(vehicle.id, { name: vehicle.name, licensePlate: vehicle.licensePlate ?? null });
+    }
+    return map;
+  }, [vehicles]);
+
+  const handleEntityLinksUpdated = useCallback(
+    (updated: PublicDocumentExtraction) => {
+      intake.applyRecord(updated);
+    },
+    [intake],
+  );
+
   return {
     metadata,
     metadataLoading,
@@ -460,5 +476,7 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     canConfirm,
     processingStepLabels,
     processingStartedAt: intake.processingStartedAt,
+    vehicleLookup,
+    handleEntityLinksUpdated,
   };
 }

@@ -5323,6 +5323,15 @@ export const api = {
       extractionId: string,
       data: { documentType: string; reextract?: boolean },
     ) => post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/document-type`, data),
+    updateEntityLinks: (
+      vehicleId: string,
+      extractionId: string,
+      data: { operations: import('../rental/lib/document-entity-links').DocumentEntityLinkOperation[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/entity-links`,
+        data,
+      ),
     cancelDocumentExtraction: (vehicleId: string, extractionId: string) =>
       post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/cancel`, {}),
     downloadDocumentExtraction: async (vehicleId: string, extractionId: string) => {
@@ -5403,6 +5412,15 @@ export const api = {
     ) =>
       post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
         `/organizations/${orgId}/document-extractions/${extractionId}/document-type`,
+        data,
+      ),
+    updateEntityLinksByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { operations: import('../rental/lib/document-entity-links').DocumentEntityLinkOperation[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/entity-links`,
         data,
       ),
     upload: async (
