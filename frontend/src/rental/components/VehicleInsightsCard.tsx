@@ -2,6 +2,7 @@ import { Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Icon } from './ui/Icon';
 import { useEffectiveHealth } from '../FleetContext';
+import { useRentalOrg } from '../RentalContext';
 import {
   api,
   type TireHealthSummaryResponse,
@@ -10,6 +11,7 @@ import {
   type OilChangeStatus,
   type BrakeHealthSummary,
 } from '../../lib/api';
+import { useBatteryHealthQuery } from '../lib/battery-health-query';
 import {
   deriveInsights,
   type ReadinessLevel,
@@ -139,10 +141,17 @@ function StatusTile({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCardProps) {
+  const { orgId } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicleId);
+  const batteryQuery = useBatteryHealthQuery({
+    orgId,
+    vehicleId,
+    variant: 'summary',
+    enabled: Boolean(vehicleId && orgId),
+  });
   const [tires, setTires] = useState<TireHealthSummaryResponse | null>(null);
   const [brakes, setBrakes] = useState<BrakeHealthSummary | null>(null);
-  const [battery, setBattery] = useState<BatteryHealthSummary | null>(null);
+  const battery = batteryQuery.data;
   const [service, setService] = useState<ServiceInfoStatus | null>(null);
   const [oil, setOil] = useState<OilChangeStatus | null>(null);
   const [dtcCount, setDtcCount] = useState(0);
@@ -151,7 +160,7 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
 
   useEffect(() => {
     if (!vehicleId) {
-      setTires(null); setBrakes(null); setBattery(null); setService(null);
+      setTires(null); setBrakes(null); setService(null);
       setOil(null); setDtcCount(0); setFetchedAt(null);
       return;
     }
@@ -160,13 +169,12 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
     Promise.all([
       api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
       api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
-      api.vehicleIntelligence.batteryHealthSummary(vehicleId).catch(() => null),
       api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
       api.vehicleIntelligence.dtcActive(vehicleId).catch(() => []),
       api.vehicleIntelligence.oilChangeStatus(vehicleId).catch(() => null),
-    ]).then(([t, b, bat, svc, dtc, oilData]) => {
+    ]).then(([t, b, svc, dtc, oilData]) => {
       if (cancelled) return;
-      setTires(t); setBrakes(b); setBattery(bat); setService(svc);
+      setTires(t); setBrakes(b); setService(svc);
       setOil(oilData);
       setDtcCount(Array.isArray(dtc) ? dtc.length : 0);
       setFetchedAt(new Date());

@@ -43,9 +43,16 @@ import { buildModuleChips, formatRelativeTime } from '../../lib/fleet-health-con
 import { RENTAL_HEALTH_MODULE_LABELS } from '../../rental-health-ui';
 import { buildBokraftComplianceDisplay, buildNextServiceDisplay, buildTuvComplianceDisplay } from '../../lib/service-info-display';
 import { segmentFromHealthState } from '../../lib/health-segment-display';
+import { buildBatteryLvSummaryVm } from '../../lib/battery-lv-view-model';
+import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
+import { formatVolts } from '../../lib/battery-ui-formatters';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { DetailSection, HealthModuleCard } from './HealthModuleCard';
 import { HealthServiceActions } from './HealthServiceActions';
 import { SegmentedHealthIndicator } from './SegmentedHealthIndicator';
+import { useRentalOrg } from '../../RentalContext';
+import { BatteryHealthQueryErrorPanel } from '../battery/BatteryHealthQueryErrorPanel';
 import type { HealthActionModule } from '../../lib/health-task-bridge.utils';
 
 export interface HealthVehicleDetailPanelProps {
@@ -106,10 +113,17 @@ export function HealthVehicleDetailPanel({
   onOpenExistingTask,
   className,
 }: HealthVehicleDetailPanelProps) {
+  const { orgId } = useRentalOrg();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<HealthDetailTab>(initialTab);
   const { data, loading, aiLoading, triggerAiAnalysis } = useHealthVehicleDetailData(
     vehicle.id,
+    orgId,
     activeTab,
+  );
+  const batteryLvVm = useMemo(
+    () => buildBatteryLvSummaryVm(data.battery),
+    [data.battery],
   );
 
   useEffect(() => {
@@ -342,66 +356,44 @@ export function HealthVehicleDetailPanel({
     }
 
     if (activeTab === 'battery') {
-      const bat = data.battery;
-      const pub = bat?.lv?.publicationState ?? bat?.currentState?.publicationState;
-      const calibrating = pub === 'INITIAL_CALIBRATION';
-      const soh =
-        bat?.lv?.healthPercent ??
-        bat?.currentState?.publishedSohPct ??
-        bat?.currentState?.sohPercent ??
-        null;
-      const est = bat?.lv?.estimatedHealthPercent ?? bat?.currentState?.estimatedSohPct ?? null;
-      const isEstimated = est != null && soh == null;
-      const displayPct = calibrating ? null : (soh ?? est);
-      const batteryCondition = bat?.lv?.condition ?? bat?.condition ?? null;
-      const lvEstimatedStatus =
-        bat?.lv?.estimatedHealth?.status ??
-        (batteryCondition === 'good'
-          ? 'GOOD'
-          : batteryCondition === 'watch'
-            ? 'WATCH'
-            : batteryCondition === 'attention'
-              ? 'WARNING'
-              : 'UNKNOWN');
+      const batteryVm = batteryLvVm;
       const batterySegment = segmentFromHealthState(
-        lvEstimatedStatus,
-        displayPct,
-        bat?.lv?.estimatedHealth?.bars ?? null,
+        batteryVm.estimatedHealth.status,
+        null,
+        batteryVm.estimatedHealth.bars,
       );
       return (
         <div className="space-y-3">
+        {data.batteryError && (
+          <BatteryHealthQueryErrorPanel
+            error={data.batteryError}
+            onRetry={data.batteryRetry}
+            retrying={data.batteryLoading}
+          />
+        )}
         <HealthModuleCard
-          title="Battery"
+          title={t('health.battery.lv.title')}
           icon={Battery}
           rentalModule={health?.modules.battery}
           keyValues={[
             {
-              label: 'Voltage',
-              value:
-                bat?.lv?.telemetry?.voltageV != null
-                  ? `${bat.lv.telemetry.voltageV.toFixed(1)} V`
-                  : bat?.currentState?.voltageV != null
-                    ? `${bat.currentState.voltageV.toFixed(1)} V`
-                    : '—',
+              label: t('health.battery.lv.currentVoltage'),
+              value: formatVolts(batteryVm.voltage.currentV),
             },
             {
-              label: 'Resting voltage',
-              value:
-                bat?.lv?.restingVoltage?.valueV != null
-                  ? `${bat.lv.restingVoltage.valueV.toFixed(2)} V`
-                  : '—',
+              label: t('health.battery.lv.restingVoltage'),
+              value: batteryVm.resting.valueV != null ? formatVolts(batteryVm.resting.valueV) : '—',
             },
             {
-              label: 'SOH / health',
-              value: calibrating
-                ? 'Calibrating'
-                : soh != null
-                  ? `${Math.round(soh)}%`
-                  : est != null
-                    ? `~${Math.round(est)}% estimated`
-                    : 'No tracking',
+              label: batteryVm.estimatedHealth.label,
+              value: batteryVm.estimatedHealth.isCalibrating
+                ? t('health.battery.publication.calibrating')
+                : batterySegment.label,
             },
-            { label: 'Condition', value: batteryCondition ?? '—' },
+            {
+              label: t('health.battery.lv.confidence'),
+              value: batteryVm.estimatedHealth.confidence ?? '—',
+            },
           ]}
           indicator={(
             <SegmentedHealthIndicator
@@ -411,10 +403,22 @@ export function HealthVehicleDetailPanel({
               ariaLabel={`Battery: ${batterySegment.label}`}
             />
           )}
-          percent={displayPct}
-          percentLabel={isEstimated ? 'Estimated SOH' : 'SOH'}
-          showPercent={displayPct != null && !calibrating}
-        />
+          showPercent={false}
+        >
+          <div className="mt-3 flex flex-wrap gap-2">
+            <BatteryDataQualityBadge status={batteryVm.aggregateDataQuality} short={false} />
+            {batteryVm.resting.dataQualityStatus && (
+              <BatteryDataQualityBadge status={batteryVm.resting.dataQualityStatus} />
+            )}
+            {batteryVm.estimatedHealth.dataQualityStatus && (
+              <BatteryDataQualityBadge status={batteryVm.estimatedHealth.dataQualityStatus} />
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            {t(batteryVm.voltage.contextKey as TranslationKey)}
+            {batteryVm.voltage.ageLabel ? ` · ${batteryVm.voltage.ageLabel}` : ''}
+          </p>
+        </HealthModuleCard>
         <ModuleServiceFooter
           vehicleId={vehicle.id}
           module="battery"

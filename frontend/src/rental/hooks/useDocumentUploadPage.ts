@@ -33,6 +33,12 @@ import {
   type UploadValidationCode,
 } from '../lib/document-extraction-validation';
 import type { TranslationKey } from '../i18n/translations/en';
+import {
+  batteryHealthQueryKeys,
+  invalidateBatteryHealthQueries,
+  serializeBatteryHealthQueryKey,
+  withBatteryHealthCacheRollback,
+} from '../lib/battery-health-query';
 
 const AUTO_TYPE = 'AUTO';
 const UPLOAD_SOURCE = 'rental_ui';
@@ -173,6 +179,12 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
         stopPolling();
         writeActiveExtractionPointer(null);
         void reloadHistory();
+        invalidateBatteryHealthQueries({
+          orgId,
+          vehicleId: next.vehicleId,
+          reason: 'document-confirmed',
+          scopes: ['health', 'summary', 'detail'],
+        });
         return;
       }
 
@@ -478,7 +490,20 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     const confirmedData = parseReviewFieldsForConfirm(editedFields, { locale });
 
     try {
-      await api.vehicleIntelligence.confirmDocumentExtraction(selectedVehicleId, extractionId, { confirmedData });
+      await withBatteryHealthCacheRollback(
+        [
+          serializeBatteryHealthQueryKey(
+            batteryHealthQueryKeys.summary(orgId, selectedVehicleId),
+          ),
+          serializeBatteryHealthQueryKey(
+            batteryHealthQueryKeys.detail(orgId, selectedVehicleId),
+          ),
+        ],
+        () =>
+          api.vehicleIntelligence.confirmDocumentExtraction(selectedVehicleId, extractionId, {
+            confirmedData,
+          }),
+      );
       startPolling(selectedVehicleId, extractionId);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : t('docUpload.applyFailed'));

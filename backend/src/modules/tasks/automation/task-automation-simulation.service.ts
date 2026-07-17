@@ -88,7 +88,7 @@ const DEDUP_PREFIXES: Record<TaskAutomationCatalogKey, string[]> = {
   VEHICLE_INSPECTION_BOKRAFT_DUE: ['bokraft_overdue:'],
   TIRE_CRITICAL_HEALTH: ['tire_critical:'],
   BRAKE_CRITICAL_HEALTH: ['brake_critical:'],
-  BATTERY_CRITICAL_HEALTH: ['battery_critical:'],
+  BATTERY_CRITICAL_HEALTH: ['battery_task:', 'battery_critical:'],
   REPAIR_REQUIRED: ['vendor:repair:'],
 };
 

@@ -1,0 +1,224 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["synqdrive"],
+      "targetBlank": false,
+      "title": "SynqDrive Ops",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "rate(synqdrive_dimo_snapshot_poll_total{result=\"success\"}[30m]) / clamp_min(rate(synqdrive_dimo_snapshot_poll_total{result=\"success\"}[30m]) + rate(synqdrive_dimo_snapshot_poll_total{result=\"failure\"}[30m]), 0.001)", "refId": "A" }],
+      "title": "Snapshot poll success (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_battery_provider_observation_total{outcome=\"NEW_OBSERVATION\"}[5m]))", "refId": "A" }],
+      "title": "New provider observations/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_battery_provider_duplicate_total[30m])) / clamp_min(sum(rate(synqdrive_battery_provider_observation_total{outcome=\"NEW_OBSERVATION\"}[30m])) + sum(rate(synqdrive_battery_provider_duplicate_total[30m])), 0.001)", "refId": "A" }],
+      "title": "Duplicate rate (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "synqdrive_battery_v2_dead_letter_backlog", "refId": "A" }],
+      "title": "Dead-letter backlog",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "targets": [
+        { "expr": "sum(rate(synqdrive_dimo_snapshot_poll_total{result=\"success\"}[5m]))", "legendFormat": "snapshot polls success/s", "refId": "A" },
+        { "expr": "sum(rate(synqdrive_battery_provider_observation_total{outcome=\"NEW_OBSERVATION\"}[5m]))", "legendFormat": "new observations/s", "refId": "B" }
+      ],
+      "title": "Polls vs new provider observations (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "targets": [
+        { "expr": "sum by (signal) (rate(synqdrive_battery_provider_duplicate_total[5m])) / clamp_min(sum by (signal) (rate(synqdrive_battery_provider_observation_total{outcome=\"NEW_OBSERVATION\"}[5m])) + sum by (signal) (rate(synqdrive_battery_provider_duplicate_total[5m])), 0.001)", "legendFormat": "{{signal}}", "refId": "A" }
+      ],
+      "title": "Duplicate rate by signal (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 7,
+      "targets": [
+        { "expr": "sum by (job_type) (rate(synqdrive_battery_jobs_total{outcome=\"completed\"}[5m]))", "legendFormat": "{{job_type}} completed", "refId": "A" },
+        { "expr": "sum by (job_type) (rate(synqdrive_battery_jobs_failed_total[5m]))", "legendFormat": "{{job_type}} failed", "refId": "B" },
+        { "expr": "sum by (job_type) (rate(synqdrive_battery_v2_jobs_retry_total[5m]))", "legendFormat": "{{job_type}} retry", "refId": "C" },
+        { "expr": "sum by (job_type) (rate(synqdrive_battery_jobs_dead_letter_total[5m]))", "legendFormat": "{{job_type}} dead-letter", "refId": "D" }
+      ],
+      "title": "Battery queue success / retry / dead letter (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 8,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, job_type) (rate(synqdrive_battery_v2_job_processing_duration_seconds_bucket[10m])))", "legendFormat": "{{job_type}} p95", "refId": "A" }
+      ],
+      "title": "Battery job processing p95 (10m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "id": 9,
+      "targets": [
+        { "expr": "sum by (window, quality) (rate(synqdrive_battery_rest_measurements_total[5m]))", "legendFormat": "{{window}} {{quality}}", "refId": "A" },
+        { "expr": "sum by (window) (rate(synqdrive_battery_rest_missed_total[5m]))", "legendFormat": "{{window}} MISSED", "refId": "B" },
+        { "expr": "sum by (window) (rate(synqdrive_battery_rest_contaminated_total[5m]))", "legendFormat": "{{window}} contaminated", "refId": "C" }
+      ],
+      "title": "REST capture / MISSED / contamination (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "id": 10,
+      "targets": [
+        { "expr": "sum by (window, outcome) (rate(synqdrive_battery_rest_windows_total[5m]))", "legendFormat": "{{window}} {{outcome}}", "refId": "A" }
+      ],
+      "title": "REST window lifecycle (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "id": 11,
+      "targets": [
+        { "expr": "sum(rate(synqdrive_battery_start_proxy_total{outcome=\"persisted\"}[5m])) / clamp_min(sum(rate(synqdrive_battery_start_proxy_total[5m])), 0.001)", "legendFormat": "persisted ratio", "refId": "A" },
+        { "expr": "sum(rate(synqdrive_battery_start_insufficient_coverage_total[5m]))", "legendFormat": "insufficient coverage/s", "refId": "B" }
+      ],
+      "title": "Start proxy coverage (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "id": 12,
+      "targets": [
+        { "expr": "sum by (signal, status) (rate(synqdrive_battery_capability_signals_total[5m]))", "legendFormat": "{{signal}} {{status}}", "refId": "A" }
+      ],
+      "title": "Capability availability (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "id": 13,
+      "targets": [
+        { "expr": "sum by (trigger, outcome) (rate(synqdrive_hv_recharge_segments_total[5m]))", "legendFormat": "segments {{trigger}} {{outcome}}", "refId": "A" },
+        { "expr": "sum by (trigger, change) (rate(synqdrive_hv_charge_sessions_total[5m]))", "legendFormat": "sessions {{trigger}} {{change}}", "refId": "B" },
+        { "expr": "sum(rate(synqdrive_battery_v2_hv_recharge_reconcile_errors_total[5m]))", "legendFormat": "reconcile errors/s", "refId": "C" }
+      ],
+      "title": "Recharge segments & sessions (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "id": 14,
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(synqdrive_hv_capacity_m2_session_cv_bucket[1h])))", "legendFormat": "M2 CV p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(synqdrive_hv_capacity_m2_session_cv_bucket[1h])))", "legendFormat": "M2 CV p95", "refId": "B" },
+        { "expr": "sum(rate(synqdrive_hv_capacity_m2_session_cv_sum[1h])) / clamp_min(sum(rate(synqdrive_hv_capacity_m2_session_cv_count[1h])), 0.001)", "legendFormat": "M2 CV mean", "refId": "C" }
+      ],
+      "title": "M2 session dispersion (CV, 1h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "id": 15,
+      "targets": [
+        { "expr": "sum(rate(synqdrive_hv_capacity_method_conflict_total{outcome=\"agree\"}[5m]))", "legendFormat": "agree/s", "refId": "A" },
+        { "expr": "sum(rate(synqdrive_hv_capacity_method_conflict_total{outcome=\"conflict\"}[5m]))", "legendFormat": "conflict/s", "refId": "B" },
+        { "expr": "sum(rate(synqdrive_hv_capacity_method_conflict_total{outcome=\"conflict\"}[30m])) / clamp_min(sum(rate(synqdrive_hv_capacity_method_conflict_total[30m])), 0.001)", "legendFormat": "conflict ratio (30m)", "refId": "C" }
+      ],
+      "title": "M2/M3 method agreement (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+      "id": 16,
+      "targets": [
+        { "expr": "sum by (maturity, outcome) (rate(synqdrive_battery_publications_total[5m]))", "legendFormat": "pub {{maturity}} {{outcome}}", "refId": "A" },
+        { "expr": "sum by (scope, mode, outcome) (rate(synqdrive_battery_assessments_total[5m]))", "legendFormat": "assess {{scope}} {{mode}} {{outcome}}", "refId": "B" }
+      ],
+      "title": "Assessment maturity & publications (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 52 },
+      "id": 17,
+      "targets": [
+        { "expr": "synqdrive_battery_postgres_table_rows", "legendFormat": "pg {{table}}", "refId": "A" }
+      ],
+      "title": "Battery PostgreSQL table rows",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 52 },
+      "id": 18,
+      "targets": [
+        { "expr": "synqdrive_clickhouse_table_rows{table=~\"telemetry.*|battery.*\"}", "legendFormat": "ch {{table}}", "refId": "A" }
+      ],
+      "title": "ClickHouse telemetry/battery table rows",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "battery", "battery-v2"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "title": "SynqDrive Battery V2",
+  "uid": "synqdrive-battery-v2",
+  "version": 1
+}

@@ -53,6 +53,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripCounterAnomalies: Counter<string>;
   readonly clickHouseMigrationFailures: Counter<string>;
   readonly dimoSnapshotPollTotal: Counter<string>;
+  readonly hvSnapshotDuplicatesDiscarded: Counter<string>;
   readonly metricsEndpointRequests: Counter<string>;
 
   /** Document extraction pipeline — low-cardinality labels only. */
@@ -84,6 +85,36 @@ export class TripMetricsService implements OnModuleInit {
   readonly taskAutomationOutboxRetry: Counter<string>;
   readonly taskAutomationOutboxRefreshed: Counter<string>;
 
+  /** Battery V2 — low-cardinality labels only (Prompt 68). */
+  readonly batteryProviderObservationTotal: Counter<string>;
+  readonly batteryProviderDuplicateTotal: Counter<string>;
+  readonly batteryJobsTotal: Counter<string>;
+  readonly batteryJobsFailedTotal: Counter<string>;
+  readonly batteryJobsDeadLetterTotal: Counter<string>;
+  readonly batteryV2JobsRetry: Counter<string>;
+  readonly batteryV2JobProcessingDuration: Histogram<string>;
+  readonly batteryRestWindowsTotal: Counter<string>;
+  readonly batteryRestMeasurementsTotal: Counter<string>;
+  readonly batteryRestMissedTotal: Counter<string>;
+  readonly batteryRestContaminatedTotal: Counter<string>;
+  readonly batteryStartProxyTotal: Counter<string>;
+  readonly batteryStartInsufficientCoverageTotal: Counter<string>;
+  readonly hvRechargeSegmentsTotal: Counter<string>;
+  readonly hvChargeSessionsTotal: Counter<string>;
+  readonly hvCapacityObservationsTotal: Counter<string>;
+  readonly hvCapacitySessionsQualifiedTotal: Counter<string>;
+  readonly batteryAssessmentsTotal: Counter<string>;
+  readonly batteryPublicationsTotal: Counter<string>;
+  readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
+  readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
+  readonly batteryCapabilitySignalsTotal: Counter<string>;
+  readonly hvCapacityMethodConflictTotal: Counter<string>;
+  readonly hvCapacityM2SessionCv: Histogram<string>;
+  readonly batteryRetentionRunsTotal: Counter<string>;
+  readonly batteryRetentionRowsDeletedTotal: Counter<string>;
+  readonly batteryRetentionRowsAggregatedTotal: Counter<string>;
+  readonly batteryMeasurementDuplicateSkipTotal: Counter<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
@@ -102,6 +133,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly queueFailedJobs: Gauge<string>;
   readonly notificationQueueBacklog: Gauge<string>;
   readonly taskAutomationOutboxBacklog: Gauge<string>;
+  readonly batteryV2DeadLetterBacklog: Gauge<string>;
+  readonly batteryPostgresTableRows: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -269,6 +302,13 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_dimo_snapshot_poll_total',
       help: 'Total DIMO snapshot poll worker outcomes',
       labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.hvSnapshotDuplicatesDiscarded = new Counter({
+      name: 'synqdrive_hv_snapshot_duplicates_discarded_total',
+      help: 'HV battery health snapshots skipped by provider observation dedup policy',
+      labelNames: ['reason'],
       registers: [this.registry],
     });
 
@@ -597,6 +637,213 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_task_automation_outbox_processing_duration_seconds',
       help: 'Single task automation outbox processing duration',
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
+      registers: [this.registry],
+    });
+
+    this.batteryProviderObservationTotal = new Counter({
+      name: 'synqdrive_battery_provider_observation_total',
+      help: 'Battery provider observation classification outcomes',
+      labelNames: ['signal', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryProviderDuplicateTotal = new Counter({
+      name: 'synqdrive_battery_provider_duplicate_total',
+      help: 'Battery provider observations discarded as duplicates',
+      labelNames: ['signal', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.batteryJobsTotal = new Counter({
+      name: 'synqdrive_battery_jobs_total',
+      help: 'Battery V2 jobs enqueued or completed',
+      labelNames: ['job_type', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryJobsFailedTotal = new Counter({
+      name: 'synqdrive_battery_jobs_failed_total',
+      help: 'Failed Battery V2 job attempts',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryJobsDeadLetterTotal = new Counter({
+      name: 'synqdrive_battery_jobs_dead_letter_total',
+      help: 'Battery V2 jobs moved to dead-letter after exhausted retries',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobsRetry = new Counter({
+      name: 'synqdrive_battery_v2_jobs_retry_total',
+      help: 'Battery V2 job retries scheduled',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2DeadLetterBacklog = new Gauge({
+      name: 'synqdrive_battery_v2_dead_letter_backlog',
+      help: 'Battery V2 dead-letter rows awaiting operator review',
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobProcessingDuration = new Histogram({
+      name: 'synqdrive_battery_v2_job_processing_duration_seconds',
+      help: 'Battery V2 job handler processing duration',
+      labelNames: ['job_type'],
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30, 60],
+      registers: [this.registry],
+    });
+
+    this.batteryRestWindowsTotal = new Counter({
+      name: 'synqdrive_battery_rest_windows_total',
+      help: 'LV rest window lifecycle events',
+      labelNames: ['window', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryRestMeasurementsTotal = new Counter({
+      name: 'synqdrive_battery_rest_measurements_total',
+      help: 'LV REST target measurements by window and quality',
+      labelNames: ['window', 'quality'],
+      registers: [this.registry],
+    });
+
+    this.batteryRestMissedTotal = new Counter({
+      name: 'synqdrive_battery_rest_missed_total',
+      help: 'LV REST targets classified as MISSED',
+      labelNames: ['window'],
+      registers: [this.registry],
+    });
+
+    this.batteryRestContaminatedTotal = new Counter({
+      name: 'synqdrive_battery_rest_contaminated_total',
+      help: 'LV REST measurements classified as contaminated',
+      labelNames: ['window'],
+      registers: [this.registry],
+    });
+
+    this.batteryStartProxyTotal = new Counter({
+      name: 'synqdrive_battery_start_proxy_total',
+      help: 'ICE start proxy extraction outcomes',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryStartInsufficientCoverageTotal = new Counter({
+      name: 'synqdrive_battery_start_insufficient_coverage_total',
+      help: 'Start proxy extractions skipped due to insufficient crank coverage',
+      registers: [this.registry],
+    });
+
+    this.hvRechargeSegmentsTotal = new Counter({
+      name: 'synqdrive_hv_recharge_segments_total',
+      help: 'DIMO recharge segments fetched during HV reconcile',
+      labelNames: ['trigger', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.hvChargeSessionsTotal = new Counter({
+      name: 'synqdrive_hv_charge_sessions_total',
+      help: 'HV charge sessions persisted during reconcile',
+      labelNames: ['trigger', 'change'],
+      registers: [this.registry],
+    });
+
+    this.hvCapacityObservationsTotal = new Counter({
+      name: 'synqdrive_hv_capacity_observations_total',
+      help: 'HV capacity shadow observations persisted',
+      labelNames: ['quality'],
+      registers: [this.registry],
+    });
+
+    this.hvCapacitySessionsQualifiedTotal = new Counter({
+      name: 'synqdrive_hv_capacity_sessions_qualified_total',
+      help: 'HV charge sessions evaluated for capacity shadow qualification',
+      labelNames: ['qualified'],
+      registers: [this.registry],
+    });
+
+    this.batteryAssessmentsTotal = new Counter({
+      name: 'synqdrive_battery_assessments_total',
+      help: 'Battery health assessments persisted or skipped',
+      labelNames: ['scope', 'mode', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryPublicationsTotal = new Counter({
+      name: 'synqdrive_battery_publications_total',
+      help: 'Battery publication update outcomes',
+      labelNames: ['maturity', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2HvRechargeReconcileErrors = new Counter({
+      name: 'synqdrive_battery_v2_hv_recharge_reconcile_errors_total',
+      help: 'HV recharge reconcile provider errors',
+      labelNames: ['trigger', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2HvRechargeProviderDelay = new Histogram({
+      name: 'synqdrive_battery_v2_hv_recharge_provider_delay_seconds',
+      help: 'Delay between latest provider segment end and reconcile time',
+      labelNames: ['trigger'],
+      buckets: [60, 300, 900, 1800, 3600, 7200, 21600, 86400],
+      registers: [this.registry],
+    });
+
+    this.batteryCapabilitySignalsTotal = new Counter({
+      name: 'synqdrive_battery_capability_signals_total',
+      help: 'Battery capability preflight signal assessments',
+      labelNames: ['signal', 'status'],
+      registers: [this.registry],
+    });
+
+    this.hvCapacityMethodConflictTotal = new Counter({
+      name: 'synqdrive_hv_capacity_method_conflict_total',
+      help: 'HV M2/M3 capacity method agreement outcomes',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.hvCapacityM2SessionCv = new Histogram({
+      name: 'synqdrive_hv_capacity_m2_session_cv',
+      help: 'HV M2 intra-session capacity estimate coefficient of variation',
+      buckets: [0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5],
+      registers: [this.registry],
+    });
+
+    this.batteryPostgresTableRows = new Gauge({
+      name: 'synqdrive_battery_postgres_table_rows',
+      help: 'Battery V2 PostgreSQL table row counts',
+      labelNames: ['table'],
+      registers: [this.registry],
+    });
+
+    this.batteryRetentionRunsTotal = new Counter({
+      name: 'synqdrive_battery_retention_runs_total',
+      help: 'Battery V2 retention runs completed',
+      labelNames: ['dry_run'],
+      registers: [this.registry],
+    });
+
+    this.batteryRetentionRowsDeletedTotal = new Counter({
+      name: 'synqdrive_battery_retention_rows_deleted_total',
+      help: 'Battery V2 retention rows deleted',
+      registers: [this.registry],
+    });
+
+    this.batteryRetentionRowsAggregatedTotal = new Counter({
+      name: 'synqdrive_battery_retention_rows_aggregated_total',
+      help: 'Battery V2 retention aggregates created',
+      registers: [this.registry],
+    });
+
+    this.batteryMeasurementDuplicateSkipTotal = new Counter({
+      name: 'synqdrive_battery_measurement_duplicate_skip_total',
+      help: 'Battery measurement writes skipped as duplicates before insert',
       registers: [this.registry],
     });
   }

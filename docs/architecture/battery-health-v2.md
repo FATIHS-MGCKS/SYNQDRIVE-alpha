@@ -392,6 +392,17 @@ Auf Basis [`dimo-tesla-hv-signal-capability.md`](../audits/dimo-tesla-hv-signal-
 
 Erkennung: `fuelType` + `availableSignals` + `VehicleBatterySpec` — **kein** Raten.
 
+**Zentraler Resolver (V4.9.526, Prompt 25/78):** `resolveDriveProfile()` in `drive-profile/drive-profile-resolver.ts` — reine Domainfunktion, tenant-unabhängig.
+
+| Priorität | Quelle | `DriveProfileSource` | Confidence |
+|-----------|--------|----------------------|------------|
+| 1 | Bestätigte Fahrzeugstammdaten (`fuelType`, optional `confirmedDriveProfile`) | `VEHICLE_MASTER` | HIGH |
+| 2 | Verifizierte VIN-/Providerdaten (`DimoVehicle.fuelType` / `powertrainType`) | `PROVIDER_VIN` | HIGH |
+| 3 | Kanonische Powertrain-Spec (`hvBatteryCapacityKwh`, `tankCapacityLiters`) | `CANONICAL_SPEC` | MEDIUM |
+| 4 | Telemetrieheuristik (≥2 korroborierte Signalgruppen) | `TELEMETRY_HEURISTIC` | LOW (`telemetryFallback: true`) |
+
+Regeln: kein Profil aus einem einzelnen Signal; Widersprüche Master↔Provider → `UNKNOWN`; unbekannt bleibt `UNKNOWN`. Integration: `DriveProfileResolverService`, `deriveVehicleCapabilityProfile`, `BatteryMeasurementSessionService` (auto `driveProfile`), `BatteryMeasurementService` (BEV-LV-REST → `UNSUPPORTED_PROFILE`), `HvCapabilityRefreshHandler` (skip bei `!isHvMeasurementSupported`).
+
 ### 5.2 Batteriechemie (`BatteryChemistry`)
 
 | Profil | Ruhe-Schwellen | SOC-Kurve |
@@ -404,6 +415,16 @@ Erkennung: `fuelType` + `availableSignals` + `VehicleBatterySpec` — **kein** R
 
 **Regel B8:** AGM/EFB/LEAD_ACID-Schwellen **niemals** auf `LITHIUM` oder `UNKNOWN`.
 
+**Zentraler Resolver (V4.9.527, Prompt 26/78):** `resolveLvBatteryChemistry()` in `lv-battery-chemistry/lv-battery-chemistry-resolver.ts` — reine Domainfunktion, tenant-unabhängig.
+
+| Priorität | Quelle | `LvBatteryChemistrySource` | Confidence |
+|-----------|--------|----------------------------|------------|
+| 1 | Bestätigte `VehicleBatterySpec` (`batteryType`, `sourceConfidence`, `sourceType`) | `BATTERY_SPEC` | HIGH |
+| 2 | Werkstatt-/Dokumentevidence (`WORKSHOP_MEASUREMENT`, `DOCUMENT_CONFIRMED`) | `WORKSHOP_DOCUMENT` | HIGH |
+| 3 | Verifizierter manueller Eintrag (`MANUAL_REPORT` oder MANUAL-Spec) | `MANUAL_VERIFIED` | MEDIUM |
+
+Regeln: kein Raten aus Spannung allein; EFB bleibt EFB (nicht als AGM speichern); Policy darf AGM-ähnliche Schwellen für EFB nutzen; Lead-Acid-Kurven nur für LA/AGM/EFB (`isLeadAcidCurveApplicable`); Konflikte Spec↔Evidence → `UNKNOWN`. Integration: `LvBatteryChemistryResolverService`, `BatteryMeasurementSessionService` (auto `chemistry`).
+
 ### 5.3 Kombinierte Policy (`BatteryPolicyProfile`)
 
 | Policy | Drive + Chemistry |
@@ -412,9 +433,26 @@ Erkennung: `fuelType` + `availableSignals` + `VehicleBatterySpec` — **kein** R
 | `ICE_AGM` | ICE + AGM |
 | `ICE_EFB` | ICE + EFB |
 | `PHEV_AUX` | PHEV + beliebig mit LV |
-| `BEV_HV_ONLY` | BEV — nur HV-Pfad |
-| `UNKNOWN_PROFILE` | Spec fehlt |
+| `EV_AUX_LEAD_ACID` | BEV mit LV + LA-Aux |
+| `EV_AUX_LITHIUM` | BEV mit LV + Li-Aux |
+| `UNKNOWN_PROFILE` | Spec/Kontext fehlt |
 | `UNSUPPORTED_PROFILE` | BEV ohne LV |
+
+**Zentraler Policy-Resolver (V4.9.528, Prompt 27/78):** `resolveBatteryPolicy()` in `battery-policy-profile/` — reine Domainfunktion + Katalog `BATTERY_POLICY_CATALOG`.
+
+Jedes Policy Profile definiert zentral:
+
+| Attribut | Bedeutung |
+|----------|-----------|
+| `supportedMeasurementTypes` / `forbiddenMeasurementTypes` | Erlaubte/verbotene Messarten |
+| `restingBands` | Chemiespezifische Ruhebereiche (good/watch/warning) |
+| `startProxyAllowed` + `startProxyRequiresConfirmedIceStart` | Start-Proxy-Gate (PHEV: nur bei bestätigtem ICE-Start) |
+| `lvAssessmentAllowed` | LV-Assessment-Pfad |
+| `hvPipelineAllowed` | HV-Pipeline (inkl. HEV/PHEV/BEV Override) |
+| `chemicalSocEstimationAllowed` | SOC-Kurve aus Spannung — **verboten** für UNKNOWN/LITHIUM/EV-Aux |
+| `minimumContext` | Mindestkontext (engine-off REST, Provider-TS, HV-SOC-Signal, …) |
+
+Regeln: BEV ohne LV → `UNSUPPORTED_PROFILE`; PHEV Startproxy nur mit `confirmedIceStart`; UNKNOWN keine chemische SOC-Schätzung; Messungs-Gate über `guardMeasurementQualityForPolicy` (keine verteilten if-Abfragen). Integration: `BatteryPolicyProfileService`, `BatteryMeasurementService`.
 
 Policy wird bei jedem Assessment-Run materialisiert und in API exponiert (`batterySummary.policyProfile`).
 
@@ -454,14 +492,18 @@ Policy wird bei jedem Assessment-Run materialisiert und in API exponiert (`batte
 
 | State | Bedeutung |
 |-------|-----------|
-| `AVAILABLE` | In `availableSignals` + Daten in 31 Tagen |
-| `AVAILABLE_STALE` | Signal existiert, TS > Schwellwert |
-| `AVAILABLE_NULL` | Gelistet, Wert null |
-| `NOT_LISTED` | Provider liefert nicht |
-| `QUERY_ERROR` | Technischer Fehler |
-| `UNSUPPORTED` | Profilverbotsfall |
+| `AVAILABLE` | In `availableSignals` + frische Daten (`AVAILABLE_WITH_DATA` im Preflight) |
+| `AVAILABLE_STALE` | Signal existiert, TS > Schwellwert (Default 6 h vs. `lastSeen`) |
+| `AVAILABLE_NULL` | Gelistet, Wert null (`AVAILABLE_BUT_NULL`) |
+| `NOT_LISTED` | Provider liefert nicht in `availableSignals` |
+| `QUERY_ERROR` | Technischer Fehler — **nicht** als NOT_LISTED klassifizieren |
+| `UNSUPPORTED` | Profilverbotsfall (Policy-Layer, nicht Preflight) |
 
-Preflight über DIMO `availableSignals(tokenId)` — nicht dokumentationsbasiert raten.
+Preflight über DIMO `availableSignals(tokenId)` + `signalsLatest` — nicht dokumentationsbasiert raten.
+
+**Implementierung (Prompt 28):** `BatteryCapabilityPreflightService` führt read-only Abfrage je Fahrzeug aus (JWT nur im HTTP-Layer, nicht persistiert), klassifiziert 12 Telemetry-Signale + Recharge-Segments-Probe (`mechanism: recharge`, 31-Tage-Fenster), mappt auf `VehicleBatteryCapability` (`vehicleId` + `signalKey`, `checkedAt` = Fetch-Freshness). Job-Anbindung: `HV_CAPABILITY_REFRESH` → Handler für alle DIMO-tokenisierten Fahrzeuge (LV + HV). Keine Assessment-Berechnung in diesem Schritt.
+
+**Lifecycle & Refresh (Prompt 29):** `BatteryCapabilityRefreshService` enqueued `HV_CAPABILITY_REFRESH` bei Registrierung, Provider-Consent-Änderung, Reconciliation (periodisch 6 h, Signal-Loss 2 h), manuell via `POST /admin/vehicles/:vehicleId/battery-capability-refresh`. Signalverlust von operational → `DEGRADED` → `UNAVAILABLE` (3 Verlust-Refreshes oder 24 h Grace); `capabilityVersion` inkrement bei Statuswechsel; Audit in `vehicle_battery_capability_changes`. Alte Rows werden nicht gelöscht. `BatteryCapabilityMeasurementGateService` blockiert neue Assessments für deaktivierte Messarten, bestehende Evidence bleibt.
 
 ### 6.4 Reifezustände (`SohPublicationState`)
 
@@ -485,6 +527,8 @@ Preflight über DIMO `availableSignals(tokenId)` — nicht dokumentationsbasiert
 ---
 
 ## 7. Evidence-Priorität
+
+> **V4.9.564 (Prompt 64/78):** Zentrale Implementierung in `battery-evidence-strength.policy.ts` mit `BatteryEvidenceStrengthTier`-Hierarchie, Capability-Matrix und `resolveEvidenceConflict()`. Siehe [`battery-evidence-strength-policy.md`](./battery-evidence-strength-policy.md).
 
 ### 7.1 LV — Assessment-Input-Priorität
 
@@ -628,6 +672,8 @@ Backup-Tabellen vor jeder Migration.
 
 ### 9.4 Rental Readiness-Vertrag
 
+> **V4.9.565 (Prompt 65/78):** Implementierung in `battery-readiness.policy.ts`, aktiviert via `BATTERY_V2_READINESS_ENABLED`. Siehe [`battery-readiness-policy.md`](./battery-readiness-policy.md).
+
 | Evidenz | `battery.state` | `rental_blocked` |
 |---------|-----------------|------------------|
 | Keine LV-Daten | `unknown` / `n_a` | **false** |
@@ -642,10 +688,15 @@ Backup-Tabellen vor jeder Migration.
 
 ### 9.5 Alert/Task-Vertrag
 
-- `BatteryCriticalDetector` liest **nur** `publishedEstimatedHealth` (LV) und `publishedSohPct` (HV) mit `maturityConfidence ≥ medium`
-- Kein Alert aus Shadow, CONTAMINATED, `INITIAL_CALIBRATION`
-- Kein Rückgriff auf `battery_health_snapshots.sohPercent`
-- Task-Materialisierung: `BATTERY_CRITICAL_HEALTH` → `BATTERY_CHECK` (bestehend)
+> **V4.9.566 (Prompt 66/78):** Zentrale `BatteryAlertPolicy` in `battery-alert.policy.ts`. Siehe [`battery-alert-policy.md`](./battery-alert-policy.md).
+
+> **V4.9.567 (Prompt 67/78):** Automatische Battery-Tasks in `battery-task.policy.ts` / `battery-task.service.ts`. Siehe [`battery-task-policy.md`](./battery-task-policy.md).
+
+- `BatteryCriticalDetector` ruft `evaluateBatteryAlerts()` — ein Insight pro `ruleId` mit semantischem `dedupeKey` `battery_alert:{vehicleId}:{ruleId}`
+- `BatteryTaskService` materialisiert semantische Tasks `battery_task:{vehicleId}:{taskIntent}` (12V-Prüfung, Warnleuchte, BMS-Bericht, Referenzkapazität)
+- Belastbare Quellen: Warnleuchte, sicherheitsrelevanter DTC, stabile qualifizierte LV-Publikation, Werkstattbefund
+- Kein Task aus Shadow, experimentellen Messungen oder HV-Shadow-Kapazität allein
+- Auto-Resolve via `shouldAutoResolveBatteryTask()` + Referenzkapazität-Verify-Hook
 
 ---
 
@@ -745,6 +796,47 @@ flowchart TB
 ```
 
 **Änderung gegenüber Ist:** Battery-Ingestion **awaited** oder Outbox; HV-Sessions aus **Segment-Job** (rolling 31d), nicht aus Poll-Paaren; Canonical unverändert Single-Source-of-Truth.
+
+### 11.1 Battery V2 Job Queue (Prompt 21/78 — Scaffold)
+
+| Attribut | Wert |
+|----------|------|
+| **Queue** | `battery.v2` (`QUEUE_NAMES.BATTERY_V2`) |
+| **Dispatcher** | `BatteryV2Processor` — `job.name` = Jobtyp |
+| **Payload** | ID-only, `organizationId` + `vehicleId` + `idempotencyKey` + `correlationId` + `attemptContext` + `modelVersion` |
+| **Jobtypen** | `BATTERY_OBSERVATION_CLASSIFY`, `BATTERY_REST_TARGET_EVALUATE`, `BATTERY_START_PROXY_EXTRACT`, `BATTERY_ASSESSMENT_RECOMPUTE`, `BATTERY_PUBLICATION_UPDATE`, `HV_CAPABILITY_REFRESH`, `HV_RECHARGE_SESSION_RECONCILE`, `HV_CAPACITY_SHADOW_RECOMPUTE` |
+| **Status P21** | Typen, Validierung, Registry, leere Handler — **keine Migration** der inline `onSnapshot` / `recordSnapshot` / `onTripStart` Hooks |
+
+### 11.2 Producer-Migration (Prompt 22/78)
+
+| Pfad | Vorher | Nachher |
+|------|--------|---------|
+| `DimoSnapshotProcessor` | F&F `onSnapshot` + `recordSnapshot` | `await classifyAndEnqueue(BATTERY_OBSERVATION_CLASSIFY)` nach VLS-Upsert |
+| Trip-Bestätigung | F&F `onTripStart` | `await enqueueStartProxy(BATTERY_START_PROXY_EXTRACT)` mit Delay |
+| Duplikate | Kein Queue-Dedup | `jobId = battery-v2:{idempotencyKey}` |
+| Consumer | — | Brücke → bestehende Ingestion-Services (übergang) |
+
+### 11.3 Idempotenz & Concurrency (Prompt 23/78)
+
+| Attribut | Regel |
+|----------|-------|
+| **Job-Identitäten** | Observation: Fahrzeug+Signal+Provider+observedAt+Wert; Rest: Fahrzeug+Restfenster+Zieltyp; Start Proxy: Trip-ID+Modellversion; Assessment: Fahrzeug+Typ+Inputversion; Publication: Assessment-ID+Publicationversion; HV Session: Segment-Fingerprint; HV Capacity: Session-ID+Methode+Modellversion |
+| **BullMQ** | Deterministische `jobId` aus `idempotencyKey` (SHA-256-Hash bei Länge >128) |
+| **DB** | Prisma-Unique-Constraints (`vehicleId_idempotencyKey`, tenant-scoped keys) + `createOrFindByUnique` bei P2002 |
+| **Concurrency** | Redis-Fahrzeugsperre pro Scope (`ingest` / `assess` / `publish` / `hv`) — kein Lost Update |
+| **Worker** | `BatteryV2IdempotentExecutionService`: Pre-Check → Lock → Handler; Crash-Retry idempotent |
+| **Start Proxy** | `start-proxy:{modelVersion}:trip:{tripId}` |
+
+### 11.4 Pipeline-Härtung (Prompt 24/78)
+
+| Attribut | Regel |
+|----------|-------|
+| **Retry** | Per Jobtyp begrenzt (`battery-v2-job.retry-policy.ts`), exponentieller Backoff via BullMQ |
+| **Fehlercodes** | `BATTERY_V2_JOB_ERROR_CODES` — Provider/Infra/Lock/Validation/Config |
+| **Dead Letter** | Prisma `battery_v2_job_dead_letters` nach ausgeschöpften Versuchen; Metrik `synqdrive_battery_v2_jobs_dead_letter_total` |
+| **Provider** | Kein Silent-Drop — Providerfehler → retryable `PROVIDER_*`, nicht „keine Daten“ |
+| **Snapshot** | DIMO-Snapshot darf abschließen, sobald Battery-Folgejob durable enqueued |
+| **Reconciliation** | `BatteryV2ReconciliationScheduler` (5 min): fehlende Observations, Restziele, Tripstarts, Recharge-Segmente, Assessments — tenant-/fahrzeug-scoped, idempotent |
 
 ---
 

@@ -1,0 +1,437 @@
+{
+  "generatedAt": "2026-07-16T10:29:52.625Z",
+  "since": "2026-06-16T10:29:52.619Z",
+  "windowAggregates": {
+    "ice": {
+      "ge60m": 147,
+      "ge6h": 84,
+      "capture60m": 0,
+      "capture6h": 0,
+      "rate60m": 0,
+      "rate6h": 0,
+      "medianPollsPerWindow": 665
+    },
+    "bev": {
+      "ge60m": 51,
+      "ge6h": 27,
+      "capture60m": 0,
+      "capture6h": 0
+    }
+  },
+  "snapAnalysis": {
+    "total": 87,
+    "gt132": 27,
+    "chargingContaminated": 27,
+    "wakeContaminated": 0,
+    "valid": 3,
+    "misclassified": 57,
+    "classCounts": {
+      "CURRENT_IMPLEMENTATION_MISCLASSIFIED": 57,
+      "CHARGING_CONTAMINATED": 27,
+      "VALID_REST_SAMPLE": 3
+    },
+    "bucketCounts": {
+      "LATE_OR_MISALIGNED": 83,
+      "NEAR_60M": 1,
+      "NEAR_6H": 3
+    },
+    "highVoltageExamples": [
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-06-24T08:49:27.000Z",
+        "v": 14.705,
+        "restMin": 162.4,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1782290937000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-06-25T05:46:22.000Z",
+        "v": 14.363,
+        "restMin": 551.4,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1782366358000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-06-25T08:50:50.000Z",
+        "v": 14.356,
+        "restMin": 164.7,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1782377420000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-06-25T17:32:24.000Z",
+        "v": 14.051,
+        "restMin": 492.9,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1782408723000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-06-30T05:30:49.000Z",
+        "v": 14.454,
+        "restMin": 5268.4,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1782797420000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-06-30T09:01:09.000Z",
+        "v": 14.307,
+        "restMin": 188.2,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1782810050000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-06-30T13:43:33.000Z",
+        "v": 14.282,
+        "restMin": 239.3,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1782827000000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-03T07:54:31.000Z",
+        "v": 14.519,
+        "restMin": 126.9,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783065231000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-05T10:26:37.000Z",
+        "v": 14.449,
+        "restMin": 86.1,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "NEAR_60M",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": true,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783247160000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-05T19:54:37.000Z",
+        "v": 13.441,
+        "restMin": 547.3,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783281253000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-06T20:13:35.000Z",
+        "v": 14.421,
+        "restMin": 597.2,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783368804000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-08T05:27:20.000Z",
+        "v": 14.421,
+        "restMin": 1202.1,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783488407000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-08T08:47:38.000Z",
+        "v": 14.468,
+        "restMin": 176.7,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783500438000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-11T05:37:48.000Z",
+        "v": 14.52,
+        "restMin": 685.7,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783748243000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-15T05:34:43.000Z",
+        "v": 14.443,
+        "restMin": 1126.8,
+        "flags": [
+          "HIGH_VOLTAGE_GT_13_2"
+        ],
+        "bucket": "LATE_OR_MISALIGNED",
+        "cls": "CHARGING_CONTAMINATED",
+        "near60": false,
+        "near6h": false,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1784093651000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      }
+    ],
+    "validExamples": [
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-09T15:28:50.000Z",
+        "v": 12.624,
+        "restMin": 378.1,
+        "flags": [],
+        "bucket": "NEAR_6H",
+        "cls": "VALID_REST_SAMPLE",
+        "near60": false,
+        "near6h": true,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783610930000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-10T18:00:38.000Z",
+        "v": 12.602,
+        "restMin": 364.2,
+        "flags": [],
+        "bucket": "NEAR_6H",
+        "cls": "VALID_REST_SAMPLE",
+        "near60": false,
+        "near6h": true,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1783706410000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      },
+      {
+        "vehicle": "veh-c10351f8",
+        "ice": true,
+        "recordedAt": "2026-07-15T20:01:53.000Z",
+        "v": 12.586,
+        "restMin": 382.4,
+        "flags": [],
+        "bucket": "NEAR_6H",
+        "cls": "VALID_REST_SAMPLE",
+        "near60": false,
+        "near6h": true,
+        "engineRunning": false,
+        "chContext": {
+          "recordedAtMs": 1784145670000,
+          "speed": 0,
+          "ignition": false,
+          "traction": null,
+          "evSoc": null
+        }
+      }
+    ]
+  },
+  "identical60m6hPairs": 0,
+  "logCaptureCounts": {
+    "note": "from PM2 grep manual count"
+  }
+}

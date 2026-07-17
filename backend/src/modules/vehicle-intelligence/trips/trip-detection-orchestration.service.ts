@@ -8,7 +8,7 @@ import {
   DimoSegmentsService,
   type DimoTripSegment,
 } from '../../dimo/dimo-segments.service';
-import { BatteryV2Service } from '../battery-health/battery-v2.service';
+import { BatteryV2TripStartProducer } from '../battery-health/jobs/battery-v2-trip-start.producer';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
 import {
   TripDetectionState,
@@ -128,7 +128,7 @@ export class TripDetectionOrchestrationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
-    private readonly batteryV2: BatteryV2Service,
+    private readonly batteryTripStartProducer: BatteryV2TripStartProducer,
     private readonly configService: ConfigService,
     @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
     private readonly trackingQueue: Queue,
@@ -925,14 +925,20 @@ export class TripDetectionOrchestrationService {
             ),
           );
 
-          // Battery V2: extract crank features from LV battery time series
-          this.batteryV2
-            .onTripStart(vehicleId, dimoTokenId, trip.id, effectiveStartAt)
-            .catch((e) =>
-              this.logger.warn(
-                `Battery V2 crank capture failed for trip ${trip.id}: ${e}`,
-              ),
+          // Battery V2: delayed START_DIP_PROXY job (policy-gated in producer).
+          const orgId = det.organizationId;
+          if (orgId) {
+            await this.batteryTripStartProducer.enqueueStartProxy({
+              organizationId: orgId,
+              vehicleId,
+              tripId: trip.id,
+              tripStartedAt: effectiveStartAt,
+            });
+          } else {
+            this.logger.warn(
+              `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
             );
+          }
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
           this.logger.log(

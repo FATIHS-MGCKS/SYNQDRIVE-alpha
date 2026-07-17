@@ -1,6 +1,13 @@
 import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CanonicalBatteryHealthService } from '../vehicle-intelligence/battery-health/canonical-battery-health.service';
+import { mapRentalBatteryModule } from '../vehicle-intelligence/battery-health/canonical-battery';
+import {
+  buildBatteryReadinessInputFromSummary,
+  evaluateBatteryReadiness,
+  hasActiveBatterySafetyDtc,
+  isBatteryBlockWorthy,
+} from '../vehicle-intelligence/battery-health/battery-readiness.policy';
 import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
 import { TireHealthObservabilityService } from '../vehicle-intelligence/tires/tire-health-observability.service';
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
@@ -171,7 +178,7 @@ export class RentalHealthService {
         };
 
     const modules = {
-      battery: this.evaluateBattery(batterySummary, hmAi),
+      battery: this.evaluateBattery(batterySummary, hmAi, dtcSummary),
       tires: this.evaluateTires(tireSummary, tireReviewOverride),
       brakes: this.evaluateBrakes(brakeSummary),
       error_codes: this.evaluateErrorCodes(dtcSummary),
@@ -192,6 +199,7 @@ export class RentalHealthService {
       complianceEval,
       dtcSummary,
       brakeSummary,
+      batterySummary,
     );
 
     return {
@@ -265,100 +273,24 @@ export class RentalHealthService {
   private evaluateBattery(
     summary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
     hmAi: any | null,
+    dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
   ): ModuleHealth {
-    if (!summary) {
-      return {
-        state: 'unknown',
-        reason: 'Keine Batterie-Daten verfügbar',
-        last_updated_at: null,
-        data_stale: true,
-        source: 'canonical_battery',
-        evidence_type: 'unknown',
-      };
-    }
-
-    const lv = summary.lv;
-    const restingVoltage = lv?.restingVoltage?.valueV ?? null;
-    const observedAt =
-      lv?.freshness?.observedAt ??
-      summary.currentState?.lastChecked ??
-      summary.generatedAt ??
-      null;
-
-    // HM battery warning light (dashboard_lights.battery_low_warning).
-    // We parse it defensively — the field only exists on Mercedes fleet-
-    // clearance payloads today, most other OEMs don't stream it.
     const warningLightActive = readBatteryWarningLight(hmAi);
+    const batterySafetyDtcActive = hasActiveBatterySafetyDtc(
+      dtcSummary?.activeFaultPreview,
+    );
+    const readinessInput = buildBatteryReadinessInputFromSummary({
+      summary,
+      warningLightActive,
+      batterySafetyDtcActive,
+    });
+    const readiness = evaluateBatteryReadiness(readinessInput);
 
-    let state: HealthState;
-    let reason: string;
-
-    // The resting-voltage value carried here is guaranteed to be a genuine
-    // open-circuit reading (resting snapshot or engine-off) by the canonical
-    // service — a live/charging voltage lives in `lv.telemetry.voltageV` and is
-    // never relabeled as "Ruhespannung". `measurementContext === 'RESTING'`
-    // re-asserts that contract defensively.
-    const restingStatus = lv?.restingVoltage?.status ?? null;
-    const restingIsGenuine =
-      restingVoltage != null && lv?.restingVoltage?.measurementContext === 'RESTING';
-    // A genuine resting note is only attached when the resting voltage is itself
-    // the concern (WARNING/CRITICAL) or to confirm a healthy battery. It must
-    // never be glued onto an alert that came from the behaviour score / warning
-    // light — otherwise a good 12.84 V reading would read as the reason to watch.
-    const restingNote = restingIsGenuine
-      ? ` (Ruhespannung ${restingVoltage.toFixed(2)} V)`
-      : '';
-    const restingIsConcern = restingStatus === 'WARNING' || restingStatus === 'CRITICAL';
-
-    switch (lv?.healthStatus) {
-      case 'GOOD':
-        state = 'good';
-        reason = `Batteriezustand gut${restingNote}`;
-        break;
-      case 'WATCH':
-        // WATCH is a soft, non-alertable signal (battery-status#isAlertableStatus
-        // is false for WATCH). It must not surface as an operational battery
-        // warning: a mid-band behaviour score or a 12.84 V resting voltage stays
-        // "good" with a neutral note — no "Batterie beobachten" alert, no
-        // preventsReady, no dashboard health risk downstream.
-        state = 'good';
-        reason = `Batteriezustand unauffällig${restingNote}`;
-        break;
-      case 'WARNING':
-        state = 'warning';
-        reason = restingIsConcern
-          ? `Batterie auffällig — Nachladen/Prüfen empfohlen${restingNote}`
-          : 'Geschätzte Batteriegesundheit niedrig — Prüfen empfohlen';
-        break;
-      case 'CRITICAL':
-        state = 'critical';
-        reason = restingIsConcern
-          ? `Batterie kritisch${restingNote}`
-          : 'Geschätzte Batteriegesundheit kritisch — Austausch prüfen';
-        break;
-      default:
-        state = 'unknown';
-        reason = 'Keine belastbare Batteriebewertung verfügbar';
-    }
-
-    if (warningLightActive) {
-      state = maxSeverity(state, 'warning');
-      reason = 'Batterie-Warnleuchte aktiv';
-    }
-
-    return {
-      state,
-      reason,
-      last_updated_at: toIso(observedAt),
-      data_stale: isStale(observedAt),
-      source: warningLightActive ? 'hm_oem' : 'canonical_battery',
-      evidence_type:
-        lv?.estimatedHealth?.displayMode === 'BARS' && lv?.healthStatus
-          ? 'estimated'
-          : restingVoltage != null
-            ? 'measured'
-            : 'provider',
-    };
+    return mapRentalBatteryModule({
+      summary,
+      warningLightActive,
+      readiness,
+    });
   }
 
   /**
@@ -730,6 +662,23 @@ export class RentalHealthService {
     );
   }
 
+  private isBatteryRentalBlockWorthy(
+    summary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
+    hmAi: any | null,
+    dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
+  ): boolean {
+    const readiness = evaluateBatteryReadiness(
+      buildBatteryReadinessInputFromSummary({
+        summary,
+        warningLightActive: readBatteryWarningLight(hmAi),
+        batterySafetyDtcActive: hasActiveBatterySafetyDtc(
+          dtcSummary?.activeFaultPreview,
+        ),
+      }),
+    );
+    return isBatteryBlockWorthy(readiness);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   //  Rental-blocked reasons collector
   // ═══════════════════════════════════════════════════════════════════════════
@@ -746,6 +695,7 @@ export class RentalHealthService {
     complianceEval: ServiceComplianceEvaluation | null,
     dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
     brakeSummary: BrakeHealthSummaryDto | null,
+    batterySummary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
   ): string[] {
     const reasons: string[] = [];
 
@@ -786,6 +736,21 @@ export class RentalHealthService {
     ) {
       const evidence = tireModule.tire_read_model.rentalBlockingEvidence!;
       reasons.push(`Reifen: ${evidence.message}`);
+    }
+
+    if (
+      this.isBatteryRentalBlockWorthy(batterySummary, hmAi, dtcSummary)
+    ) {
+      const readiness = evaluateBatteryReadiness(
+        buildBatteryReadinessInputFromSummary({
+          summary: batterySummary,
+          warningLightActive: readBatteryWarningLight(hmAi),
+          batterySafetyDtcActive: hasActiveBatterySafetyDtc(
+            dtcSummary?.activeFaultPreview,
+          ),
+        }),
+      );
+      reasons.push(readiness.reason ?? `Batterie: ${modules.battery.reason}`);
     }
 
     const dtcBand = dtcSummary?.worstSeverityBand;

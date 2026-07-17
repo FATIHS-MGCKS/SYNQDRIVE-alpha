@@ -8,6 +8,7 @@ import { DimoTelemetryService } from './dimo-telemetry.service';
 import { DimoVehicleSyncService } from './dimo-vehicle-sync.service';
 import { DimoApiSyncService } from './dimo-api-sync.service';
 import { DimoSegmentsService } from './dimo-segments.service';
+import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-segments.client';
 import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
@@ -25,6 +26,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoVehicleSyncService,
     DimoApiSyncService,
     DimoSegmentsService,
+    DimoRechargeSegmentsClient,
     DimoTriggersService,
     DimoTriggersBootstrapService,
     DeviceConnectionWebhookService,
@@ -38,6 +40,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoVehicleSyncService,
     DimoApiSyncService,
     DimoSegmentsService,
+    DimoRechargeSegmentsClient,
     DimoTriggersService,
     DeviceConnectionQueryService,
     RpmWebhookQueryService,

@@ -56,7 +56,8 @@ import {
 } from '../lib/tire-health-detail-ui';
 import { segmentFromHealthState } from '../lib/health-segment-display';
 import { SegmentedHealthIndicator } from './health/SegmentedHealthIndicator';
-import { normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
+import { formatBatteryVoltage, normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
+import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from '../lib/battery-lv-semantics';
 import { useRentalOrg } from '../RentalContext';
 import { useEffectiveHealth } from '../FleetContext';
 import {
@@ -73,6 +74,16 @@ import {
   serviceCardBorderFromRentalState,
 } from '../rental-health-ui';
 import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
+import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
+import { useLanguage } from '../i18n/LanguageContext';
+import { useHealthTabBatteryData } from '../hooks/useHealthTabBatteryData';
+import { BatteryHealthQueryErrorPanel } from './battery/BatteryHealthQueryErrorPanel';
+import { BatteryLvSummaryCard } from './battery/BatteryLvSummaryCard';
+import { BatteryHvSummaryCard } from './battery/BatteryHvSummaryCard';
+import { BatteryLvDetailContent } from './battery/BatteryLvDetailContent';
+import { BatteryHvDetailContent } from './battery/BatteryHvDetailContent';
+import { buildBatteryLvDetailVm, buildBatteryLvSummaryVm } from '../lib/battery-lv-view-model';
+import { buildBatteryHvDetailVm, buildBatteryHvSummaryVm } from '../lib/battery-hv-view-model';
 import {
   SectionHeader,
   DataCard,
@@ -189,6 +200,22 @@ export function HealthErrorsView({
 }: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const { orgId, userRole } = useRentalOrg();
+  const batteryQueryState = useHealthTabBatteryData({
+    orgId,
+    vehicleId,
+    isEv,
+    enabled: Boolean(vehicleId && orgId),
+  });
+  const {
+    batterySummary,
+    batteryDetail,
+    batteryLatest,
+    hvBatteryStatus,
+    batteryError,
+    batteryLoading,
+    retryBattery,
+  } = batteryQueryState;
+  const { t } = useLanguage();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
   const { reloadHealth } = useFleetVehicles();
   const [showErrorCodes, setShowErrorCodes] = useState(false);
@@ -252,9 +279,6 @@ export function HealthErrorsView({
   const [dtcSummary, setDtcSummary] = useState<any>(null);
   const [dtcDetail, setDtcDetail] = useState<any>(null);
   const [dtcDetailLoading, setDtcDetailLoading] = useState(false);
-  const [batteryLatest, setBatteryLatest] = useState<any>(null);
-  const [batterySummary, setBatterySummary] = useState<BatteryHealthSummary | null>(null);
-  const [batteryDetail, setBatteryDetail] = useState<BatteryHealthDetail | null>(null);
   const [brakesData, setBrakesData] = useState<any>(null);
   const [brakeHealthSummary, setBrakeHealthSummary] = useState<BrakeHealthSummaryType | null>(null);
   const [brakeHealthDetail, setBrakeHealthDetail] = useState<BrakeHealthDetail | null>(null);
@@ -309,8 +333,6 @@ export function HealthErrorsView({
   const [serviceInfoError, setServiceInfoError] = useState(false);
   const [hmTirePressure, setHmTirePressure] = useState<import('../../lib/api').HmTirePressureSignals | null>(null);
 
-  const [hvBatteryStatus, setHvBatteryStatus] = useState<HvBatteryStatus | null>(null);
-
   useEffect(() => {
     if (!vehicleId) return;
     void loadHealthTabSummary();
@@ -327,62 +349,6 @@ export function HealthErrorsView({
       if (s?.lastChecked) setLastDtcChecked(s.lastChecked);
     }).catch(() => null);
     api.vehicleIntelligence.dtcSummary(vehicleId).then(setDtcSummary).catch(() => null);
-    api.vehicleIntelligence.batteryHealthDetail(vehicleId).then((detail) => {
-      if (!detail) {
-        setBatteryDetail(null);
-        setBatterySummary(null);
-        setBatteryLatest(null);
-        setHvBatteryStatus(null);
-        return;
-      }
-
-      setBatteryDetail(detail);
-      setBatterySummary(detail);
-      setBatteryLatest(detail.currentState ?? null);
-
-      if (detail.support?.hv && isEv) {
-        setHvBatteryStatus({
-          isEv: true,
-          nominalCapacityKwh: detail.hv?.telemetry?.grossCapacityKwh ?? null,
-          currentSocPercent: detail.hv?.telemetry?.socPercent ?? null,
-          estimatedRangeKm: detail.hv?.telemetry?.rangeKm ?? null,
-          sohPercent: detail.hv?.healthPercent ?? null,
-          rawSohPercent: detail.hv?.healthPercent ?? null,
-          publishedSohPercent: detail.hv?.healthPercent ?? null,
-          providerReportedSohPercent: detail.hv?.telemetry?.providerSohPercent ?? null,
-          sohMethod: detail.hv?.method ?? 'estimate_unavailable',
-          sohSourceType: detail.hv?.evidenceType ?? null,
-          publicationState: detail.hv?.publicationState ?? 'INITIAL_CALIBRATION',
-          publicationMethod: detail.hv?.method ?? 'estimate_unavailable',
-          maturityConfidence: detail.hv?.confidence ?? 'none',
-          validEstimateCount: 0,
-          sohInterpretation: detail.hv?.interpretation ?? {
-            label: 'Unknown',
-            color: 'gray',
-            description: 'Insufficient data.',
-          },
-          estimatedCurrentCapacityKwh: null,
-          snapshotCount: detail.hv?.snapshotCount ?? 0,
-          chargingSessions: detail.detail?.hv?.chargingSessions ?? [],
-          recentTrend: detail.detail?.hv?.recentTrend ?? [],
-          lastRecordedAt: detail.hv?.freshness?.observedAt ?? null,
-          telemetry: {
-            temperatureC: detail.hv?.telemetry?.temperatureC ?? null,
-            chargingPowerKw: detail.hv?.telemetry?.chargingPowerKw ?? null,
-            isCharging: detail.hv?.telemetry?.isCharging ?? null,
-            chargingCableConnected: detail.hv?.telemetry?.chargingCableConnected ?? null,
-            currentVoltageV: detail.hv?.telemetry?.currentVoltageV ?? null,
-            currentEnergyKwh: detail.hv?.telemetry?.currentEnergyKwh ?? null,
-            addedEnergyKwh: detail.hv?.telemetry?.addedEnergyKwh ?? null,
-          },
-          providerSohObservedAt: detail.hv?.freshness?.observedAt ?? null,
-          canonical: detail.hv,
-          currentTelemetry: detail.currentTelemetry,
-        });
-      } else {
-        setHvBatteryStatus(null);
-      }
-    }).catch(() => null);
     api.vehicleIntelligence.brakes(vehicleId).then(setBrakesData).catch(() => null);
     api.vehicleIntelligence.brakeHealthSummary(vehicleId).then(setBrakeHealthSummary).catch(() => null);
     api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
@@ -405,7 +371,7 @@ export function HealthErrorsView({
     api.vehicles.get(vehicleId).then((v: any) => {
       if (v?.year) setVehicleYear(v.year);
     }).catch(() => null);
-  }, [vehicleId, isEv, loadHealthTabSummary, loadDashboardLights]);
+  }, [vehicleId, loadHealthTabSummary, loadDashboardLights]);
 
   useEffect(() => {
     if (!showBattery || !vehicleId) {
@@ -1091,6 +1057,7 @@ export function HealthErrorsView({
     : [];
 
   const bSummary = batterySummary;
+  const lvStartProxy = bSummary?.lv?.telemetry?.startProxy;
   const lvPubState = bSummary?.lv?.publicationState ?? bSummary?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
   const lvStatus = bSummary?.lv?.status ?? (lvPubState === 'INITIAL_CALIBRATION' ? 'calibrating' : lvPubState === 'STABILIZING' ? 'stabilizing' : 'ready');
   // Backend marks `status: 'estimate_unavailable'` when neither an LV voltage
@@ -1112,7 +1079,7 @@ export function HealthErrorsView({
   })();
   const lvRestingValue: number | null = resolveCanonicalRestingVoltage(bSummary);
   const calibrationEstimate: number | null = lvIsCalibrating
-    ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedSohPct ?? null)
+    ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedLvHealthScore ?? null)
     : null;
   const batteryCondition = bSummary?.lv?.condition ?? bSummary?.condition ?? 'good';
   // LV "Estimated Battery Health" — behaviour-derived 3-bar indicator. The 12V
@@ -1146,7 +1113,7 @@ export function HealthErrorsView({
     ? lvResting.batteryType.replace(/_/g, ' ')
     : bSummary?.specs?.batteryType ?? null;
   const lvEstimatedTooltip =
-    'Estimated from resting voltage, crank drop, recovery and stability. This is not a workshop-verified SOH.';
+    'Aus Ruhespannung, Startdip, Erholung und Stabilität abgeleitet. Dies ist kein werkstattverifizierter SOH.';
   const batteryLastCheckedAgo = (() => {
     const lc = bSummary?.lv?.freshness?.observedAt ?? bSummary?.currentState?.lastChecked;
     if (!lc) return null;
@@ -1202,6 +1169,23 @@ export function HealthErrorsView({
   })();
   const exteriorAmbient = resolveExteriorAmbientTemperature(batteryRecentTrips, tripProfile);
   const exteriorAmbientDisplay = formatExteriorAmbientDisplay(exteriorAmbient);
+  const batteryLvSummaryVm = useMemo(
+    () => buildBatteryLvSummaryVm(bSummary, batteryLatest?.voltageV ?? null),
+    [bSummary, batteryLatest?.voltageV],
+  );
+  const batteryLvDetailVm = useMemo(
+    () =>
+      buildBatteryLvDetailVm(batteryDetail, bSummary, {
+        liveMapVoltage: batteryLatest?.voltageV ?? null,
+        exteriorAmbient: exteriorAmbientDisplay,
+      }),
+    [batteryDetail, bSummary, batteryLatest?.voltageV, exteriorAmbientDisplay],
+  );
+  const batteryHvSummaryVm = useMemo(() => buildBatteryHvSummaryVm(bSummary), [bSummary]);
+  const batteryHvDetailVm = useMemo(
+    () => buildBatteryHvDetailVm(batteryDetail, bSummary),
+    [batteryDetail, bSummary],
+  );
   const batteryMeasurementRows = buildBatteryMeasurementRows(batteryDetail, bSummary);
   const batteryRestingChartPoints = buildRestingVoltageTrendPoints(
     batteryDetail?.detail?.lv?.evidence ?? [],
@@ -1318,145 +1302,32 @@ export function HealthErrorsView({
           );
         })()}
 
-        {/* ─── Battery card (12V) — SOH bar + current voltage ─── */}
-        <div onClick={() => openModal(setShowBattery)} className={`${quickCardClass} order-4`}>
-          <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
-          {(() => {
-            const batteryAccent = quickCardAccentFromRentalState(rentalHealth?.modules.battery.state);
-            return (
-              <>
-          {/* Subtle gradient backdrop */}
-          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${batteryAccent.backdrop}`} />
-          <div className={`${quickCardHeaderClass} gap-2`}>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className={`p-1.5 rounded-lg shrink-0 ${batteryAccent.iconBox}`}>
-                <Icon name="battery" className="w-3.5 h-3.5" />
-              </div>
-              <h3 className={quickCardTitleClass}>Battery</h3>
-              {isBatteryTelltaleActive(
-                canonicalDashboardLights,
-                aiHealthCare?.indicators?.batteryWarningLight,
-              ) && (
-                <span
-                  title="Dashboard-Warnleuchte leuchtet — Lichtmaschine und Ladezustand prüfen"
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border animate-pulse ${
-                    'sq-chip-watch border border-border'
-                  }`}
-                >
-                  <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3 h-3 object-contain" />
-                  Warnleuchte
-                </span>
-              )}
-            </div>
-            <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform group-hover:translate-x-0.5`} />
-          </div>
-          <div className={`${quickCardBodyClass}`}>
-            {lvNoBatteryDetected ? (
-              <>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className={`text-sm font-bold tracking-tight text-foreground`}>
-                    No LV Battery detected
-                  </span>
-                </div>
-                <p className={`text-[10px] text-muted-foreground`}>
-                  Für dieses Fahrzeug wird kein 12V-Signal gemeldet. Entweder besitzt es keine separat überwachte LV-Batterie oder die Telemetrie ist nicht verfügbar.
-                </p>
-              </>
-            ) : lvIsCalibrating ? (
-              <>
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <span className={`text-xs font-medium ${'text-[color:var(--status-info)]'}`}>
-                    Sammelt Messwerte
-                  </span>
-                  <span className="inline-flex">
-                    {[0, 1, 2].map(i => <span key={i} className={`inline-block w-1 h-1 rounded-full mx-0.5 ${'bg-[color:var(--status-info)]'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
-                  </span>
-                </div>
-                {calibrationEstimate != null ? (
-                  <div className="flex items-center gap-1.5 mb-1.5" title={lvEstimatedTooltip}>
-                    <BatteryConditionBars
-                      status={calibrationEstimate >= 80 ? 'GOOD' : calibrationEstimate >= 60 ? 'WATCH' : calibrationEstimate >= 40 ? 'WARNING' : 'CRITICAL'}
-                      size="sm"
-                      showLabel={false}
-                    />
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-info border border-border'}`}>
-                      Schätzung
-                    </span>
-                  </div>
-                ) : null}
-                <p className={`text-[10px] text-muted-foreground/70`}>
-                  {calibrationStatusText}
-                </p>
-                {calibrationMetricsText && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>{calibrationMetricsText}</p>}
-                {calibrationFreshnessText && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>{calibrationFreshnessText}</p>}
-              </>
-            ) : (
-              <>
-                {/* Estimated Battery Health — 3-bar indicator (no SOH %). */}
-                <div className="mb-2" title={lvEstimatedTooltip}>
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Estimated Battery Health</p>
-                  <div className="flex items-center gap-2">
-                    <BatteryConditionBars
-                      status={lvEstimatedStatus}
-                      bars={lvEstimatedBars}
-                      size="md"
-                    />
-                    {lvIsStabilizing && (
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${'sq-chip-watch border border-border'}`}>Estimated</span>
-                    )}
-                  </div>
-                </div>
-                {/* Resting voltage — current rest/charge state, separate from health. */}
-                <div className="mb-2">
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>
-                    12V-Ruhespannung{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
-                  </p>
-                  {lvRestingValue != null ? (
-                    <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} />
-                  ) : (
-                    <p className={`text-[10px] font-medium text-muted-foreground`}>
-                      {voltageDisplay ? (
-                        <>Aktuelle Spannung: <span className={`font-bold text-foreground tabular-nums`}>{voltageDisplay} V</span></>
-                      ) : (
-                        '12V-Ruhespannung nicht verfügbar'
-                      )}
-                    </p>
-                  )}
-                </div>
-                {!lvIsStabilizing && (batteryCondition === 'watch' || batteryCondition === 'attention') && (
-                  <div className={`mt-2 rounded-lg px-2.5 py-2 border text-[9px] leading-snug font-medium ${
-                    batteryCondition === 'attention'
-                      ? ('sq-tone-critical border border-border')
-                      : ('sq-tone-watch border border-border')
-                  }`}>
-                    {batteryCondition === 'attention'
-                      ? 'Batteriespannung kritisch — Austausch empfohlen.'
-                      : 'Batteriespannung niedrig — beobachten.'}
-                  </div>
-                )}
-              </>
-            )}
-            {isBatteryTelltaleActive(
+        {/* ─── Battery card (12V) — canonical LV summary ─── */}
+        <BatteryLvSummaryCard
+          vm={batteryLvSummaryVm}
+          onOpenDetail={() => openModal(setShowBattery)}
+          quickCardClass={quickCardClass}
+          quickCardHeaderClass={quickCardHeaderClass}
+          quickCardTitleClass={quickCardTitleClass}
+          quickCardBodyClass={quickCardBodyClass}
+          quickCardFooterClass={quickCardFooterClass}
+          accentBackdrop={quickCardAccentFromRentalState(rentalHealth?.modules.battery.state).backdrop}
+          accentIconBox={quickCardAccentFromRentalState(rentalHealth?.modules.battery.state).iconBox}
+          telltaleSlot={
+            isBatteryTelltaleActive(
               canonicalDashboardLights,
               aiHealthCare?.indicators?.batteryWarningLight,
-            ) && (
-              <div className={`mt-2 rounded-md px-2 py-1.5 border text-[10px] leading-snug flex items-start gap-1.5 ${
-                'sq-tone-watch border border-border'
-              }`}>
-                <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 object-contain" />
-                <span><span className="font-semibold">Warnleuchte aktiv</span> — Dashboard meldet Batterie-Warnung. Lichtmaschine und Ladezustand prüfen.</span>
-              </div>
-            )}
-          </div>
-          {!lvNoBatteryDetected && batteryLastCheckedAgo && (
-            <div className={quickCardFooterClass}>
-              <p className={`text-[10px] text-muted-foreground/70`}>{batteryLastCheckedAgo}</p>
-            </div>
-          )}
-              </>
-            );
-          })()}
-        </div>
+            ) ? (
+              <span
+                title="Dashboard-Warnleuchte leuchtet — Lichtmaschine und Ladezustand prüfen"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border animate-pulse sq-chip-watch border-border"
+              >
+                <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3 h-3 object-contain" />
+                Warnleuchte
+              </span>
+            ) : undefined
+          }
+        />
 
         {/* ─── Nächster Service (HM/OEM) + TÜV/BOKraft ─── */}
         {(() => {
@@ -1768,82 +1639,22 @@ export function HealthErrorsView({
         })()}
 
         {/* ─── HV Battery (EV/PHEV) or Complaint List (ICE) ─── */}
-        {isEv ? (() => {
-          const hvPubState = hvBatteryStatus?.publicationState ?? 'INITIAL_CALIBRATION';
-          const hvCalibrating = hvPubState === 'INITIAL_CALIBRATION';
-          const hvStabilizing = hvPubState === 'STABILIZING';
-          const soh = hvCalibrating
-            ? (hvBatteryStatus?.rawSohPercent != null ? Math.round(hvBatteryStatus.rawSohPercent) : null)
-            : Math.round(hvBatteryStatus?.publishedSohPercent ?? hvBatteryStatus?.sohPercent ?? 0) || null;
-          const interp = hvBatteryStatus?.sohInterpretation;
-          // HV SOH bands (distinct from LV): ≥80 GOOD · 70–79 WATCH · 60–69 WARNING · <60 CRITICAL.
-          const hvStatus = bSummary?.hv?.healthStatus
-            ?? (soh == null ? 'UNKNOWN' : soh >= 80 ? 'GOOD' : soh >= 70 ? 'WATCH' : soh >= 60 ? 'WARNING' : 'CRITICAL');
-          const barColor =
-            hvStatus === 'GOOD' ? 'bg-green-500' :
-            hvStatus === 'WATCH' ? 'bg-amber-500' :
-            hvStatus === 'WARNING' ? 'bg-orange-500' :
-            hvStatus === 'CRITICAL' ? 'bg-red-500' : 'bg-gray-400';
-          return (
-            <div onClick={() => openModal(setShowHvBattery)} className={`${cardClass} order-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5`}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-semibold text-foreground">HV Battery</h3>
-                <div className="flex items-center gap-1">
-                  <Icon name="zap" className={`w-3.5 h-3.5 ${'text-[color:var(--status-positive)]'}`} />
-                  <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground`} />
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col justify-center py-2">
-                {hvCalibrating ? (
-                  <>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      {soh != null ? (
-                        <span className={`text-sm font-bold tracking-tight text-foreground`}>~{soh}% SOH</span>
-                      ) : (
-                        <span className={`text-sm font-semibold ${'text-[color:var(--status-info)]'}`}>Calibrating</span>
-                      )}
-                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-info border border-border'}`}>Schätzung</span>
-                    </div>
-                    {soh != null && (
-                      <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1 bg-muted`}>
-                        <div className={`h-full bg-status-info/60 rounded-full transition-all`} style={{ width: `${soh}%` }} />
-                      </div>
-                    )}
-                    <p className={`text-[10px] text-muted-foreground`}>Collecting charge and discharge data</p>
-                  </>
-                ) : soh == null ? (
-                  <>
-                    <span className={`text-sm font-bold tracking-tight text-foreground`}>Not available</span>
-                    <p className={`text-[10px] mt-1 text-muted-foreground`}>No reliable HV SOH data</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className={`text-sm font-bold tracking-tight text-foreground`}>{`${hvStabilizing ? '~' : ''}${soh}% SOH`}</span>
-                      {hvStabilizing && (
-                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-watch border border-border'}`}>Estimated</span>
-                      )}
-                    </div>
-                    <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2 bg-muted`}>
-                      <div className={`h-full ${hvStabilizing ? ('bg-[color:var(--status-watch)]') : barColor} rounded-full transition-all`} style={{ width: `${soh}%` }} />
-                    </div>
-                    <p className={`text-xs text-muted-foreground`}>{hvStabilizing ? 'Estimated SOH · Stabilizing' : (interp?.label ?? '—')}</p>
-                  </>
-                )}
-                {hvBatteryStatus?.currentSocPercent != null && (
-                  <p className={`text-[10px] mt-1 text-muted-foreground/70`}>Current SoC: {formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%</p>
-                )}
-              </div>
-            </div>
-          );
-        })() : (
+        {isEv ? (
+          <BatteryHvSummaryCard
+            vm={batteryHvSummaryVm}
+            onOpenDetail={() => openModal(setShowHvBattery)}
+            cardClass={cardClass}
+          />
+        ) : (
           <TechnicalObservationsHealthModule
             vehicleId={vehicleId}
             orgId={orgId}
             complaintsModule={rentalHealth?.modules.complaints}
             rentalHealthLoading={rentalHealthLoading}
             onOpenExistingTask={onOpenExistingTask}
-            onHealthRefetch={reloadHealth}
+            onHealthRefetch={async () => {
+              await Promise.all([reloadHealth(), retryBattery()]);
+            }}
             quickCardClass={quickCardClass}
             quickCardHeaderClass={quickCardHeaderClass}
             quickCardTitleClass={quickCardTitleClass}
@@ -2082,6 +1893,13 @@ export function HealthErrorsView({
             {/* Header + condition badge */}
             <div className="flex items-center gap-3 mb-5">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Battery Health</h2>
+              {batteryError ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider sq-chip-critical">
+                  Fehler
+                </span>
+              ) : bSummary?.dataQuality?.status ? (
+                <BatteryDataQualityBadge status={bSummary.dataQuality.status} />
+              ) : null}
               {lvNoBatteryDetected ? (
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${'sq-chip-neutral'}`}>Not detected</span>
               ) : lvIsCalibrating ? (
@@ -2107,165 +1925,19 @@ export function HealthErrorsView({
               )}
             </div>
 
-            {/* Current state cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              <div className={`rounded-lg px-4 py-3 ${'sq-tone-brand'}`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="battery-charging" className={`w-3 h-3 ${'text-[color:var(--brand)]'}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--brand)]'}`}>Aktuelle Spannung</span></div>
-                <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground tabular-nums`}>{voltageDisplay ?? 'Nicht verfügbar'}</span>{voltageDisplay && <span className={`text-xs text-muted-foreground`}>V</span>}</div>
-              </div>
-              <div className={`rounded-lg px-4 py-3 bg-muted`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="clock" className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Letzte Prüfung</span></div>
-                <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{batteryLastCheckedAgo || '—'}</span></div>
-              </div>
-              <div className={`rounded-lg px-4 py-3 bg-muted`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="thermometer" className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Außentemperatur</span></div>
-                <div>
-                  <span className={`text-sm font-bold text-foreground tabular-nums`}>{exteriorAmbientDisplay.value}</span>
-                  {exteriorAmbientDisplay.hint && (
-                    <p className={`text-[9px] mt-0.5 text-muted-foreground leading-snug`}>{exteriorAmbientDisplay.hint}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {(bSummary?.currentTelemetry?.socPercent != null ||
-              bSummary?.currentTelemetry?.rangeKm != null ||
-              bSummary?.currentTelemetry?.chargingPowerKw != null ||
-              bSummary?.currentTelemetry?.chargingState != null) && (
-              <div className={`rounded-lg p-4 mb-5 ${'sq-tone-success border border-border'}`}>
-                <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${'text-[color:var(--status-positive)]'}`}>
-                  Current Battery State (Not Health)
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">SoC</p>
-                    <p className="text-sm font-bold text-foreground">
-                      {bSummary?.currentTelemetry?.socPercent != null
-                        ? `${Math.round(bSummary.currentTelemetry.socPercent)}%`
-                        : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Range</p>
-                    <p className="text-sm font-bold text-foreground">
-                      {bSummary?.currentTelemetry?.rangeKm != null
-                        ? `${Math.round(bSummary.currentTelemetry.rangeKm)} km`
-                        : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Charging</p>
-                    <p className="text-sm font-bold text-foreground">
-                      {bSummary?.currentTelemetry?.chargingState === 'charging'
-                        ? 'Charging'
-                        : bSummary?.currentTelemetry?.chargingState === 'not_charging'
-                          ? 'Not charging'
-                          : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Charge Power</p>
-                    <p className="text-sm font-bold text-foreground">
-                      {bSummary?.currentTelemetry?.chargingPowerKw != null
-                        ? `${Math.round(bSummary.currentTelemetry.chargingPowerKw * 10) / 10} kW`
-                        : '—'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {batteryError && (
+              <BatteryHealthQueryErrorPanel
+                error={batteryError}
+                onRetry={retryBattery}
+                retrying={batteryLoading}
+                className="mb-4"
+              />
             )}
 
-            {/* Estimated Battery Health + Resting Voltage */}
-            {(() => {
-              if (lvNoBatteryDetected) {
-                return (
-                  <div className={`rounded-lg px-5 py-4 mb-5 ${'bg-muted/60'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
-                      <span className={`text-sm font-semibold text-foreground`}>No LV Battery detected</span>
-                    </div>
-                    <p className={`text-[11px] text-muted-foreground`}>
-                      Für dieses Fahrzeug wird kein 12V-Signal (<code className="px-1 py-0.5 rounded bg-muted text-[10px]">lowVoltageBatteryCurrentVoltage</code>) über die DIMO-Telemetrie gemeldet. Entweder besitzt das Fahrzeug keine separat überwachte LV-Batterie, oder der Hersteller/das Fahrzeug liefert dieses Signal nicht aus. Es werden keine Messwerte gesammelt.
-                    </p>
-                  </div>
-                );
-              }
-              if (lvIsCalibrating) {
-                return (
-                  <div className={`rounded-lg px-5 py-4 mb-5 ${'sq-tone-info'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--status-info)]'}`}>Estimated Battery Health</p>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-sm font-semibold ${'text-[color:var(--status-info)]'}`}>Calibrating</span>
-                        <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${'bg-[color:var(--status-info)]'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
-                      </div>
-                    </div>
-                    <p className={`text-[10px] ${'text-[color:var(--status-info)]'}`}>{calibrationStatusText}</p>
-                    {calibrationMetricsText && <p className={`text-[10px] mt-1 ${'text-[color:var(--status-info)]'}`}>{calibrationMetricsText}</p>}
-                    {calibrationFreshnessText && <p className={`text-[10px] mt-1 ${'text-[color:var(--status-watch)]'}`}>{calibrationFreshnessText}</p>}
-                    {lvCalibration && (
-                      <div className="grid grid-cols-2 gap-3 mt-3">
-                        <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
-                          <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Tage</p>
-                          <p className="text-sm font-bold text-foreground">{formatCalibrationDays(lvCalibration.daysSinceFirstMeasurement)}/{lvCalibration.minimumDaysForStabilizing}</p>
-                        </div>
-                        <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
-                          <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Events</p>
-                          <p className="text-sm font-bold text-foreground">{lvCalibration.qualifiedEventCount}/{lvCalibration.minimumQualifiedEventsForStabilizing}</p>
-                        </div>
-                        <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
-                          <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Ruhe</p>
-                          <p className="text-sm font-bold text-foreground">{lvCalibration.restObservationCount}/{lvCalibration.minimumRestObservationsForStabilizing}</p>
-                        </div>
-                        {lvCalibration.minimumCrankObservationsForStabilizing > 0 && (
-                          <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
-                            <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Starts</p>
-                            <p className="text-sm font-bold text-foreground">{lvCalibration.crankObservationCount}/{lvCalibration.minimumCrankObservationsForStabilizing}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-              const lvAggStatus = bSummary?.lv?.healthStatus
-                ?? (lvEstimatedStatus !== 'UNKNOWN' ? lvEstimatedStatus : 'UNKNOWN');
-              const bgCol =
-                lvAggStatus === 'GOOD' ? ('sq-tone-success') :
-                lvAggStatus === 'WATCH' ? ('sq-tone-watch') :
-                lvAggStatus === 'WARNING' ? ('sq-tone-warning') :
-                lvAggStatus === 'CRITICAL' ? ('sq-tone-critical') :
-                ('bg-muted/60');
-              return (
-                <div className={`rounded-lg px-5 py-4 mb-5 ${bgCol}`}>
-                  {/* Estimated Battery Health — behaviour-derived 3-bar indicator. */}
-                  <div className="flex items-center justify-between mb-2" title={lvEstimatedTooltip}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
-                    <BatteryConditionBars status={lvEstimatedStatus} bars={lvEstimatedBars} size="md" />
-                  </div>
-                  {/* 12V-Ruhespannung — separate from live voltage and estimated health */}
-                  <div className="pt-2 border-t border-border/40">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>
-                        12V-Ruhespannung{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
-                      </p>
-                      {lvRestingValue != null ? (
-                        <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} />
-                      ) : (
-                        <span className="text-xs font-bold text-muted-foreground">Nicht verfügbar</span>
-                      )}
-                    </div>
-                    <p className={`text-[9px] mt-1.5 leading-snug text-muted-foreground/80`}>
-                      {RESTING_VOLTAGE_EXPLANATION}
-                    </p>
-                  </div>
-                  <p className={`text-[9px] mt-2 leading-snug ${'text-muted-foreground/70'}`}>
-                    {lvEstimatedTooltip}
-                  </p>
-                  {lvIsStabilizing && <p className={`text-[9px] mt-1.5 ${'text-[color:var(--status-watch)]/60'}`}>Estimate is stabilizing — may refine over the next few days</p>}
-                </div>
-              );
-            })()}
+            <BatteryLvDetailContent
+              vm={batteryLvDetailVm}
+              measurementRows={batteryMeasurementRows}
+            />
 
             {/* 12V-Ruhespannung Verlauf */}
             <div className={`rounded-lg p-4 mb-4 bg-muted`}>
@@ -2368,6 +2040,11 @@ export function HealthErrorsView({
             {/* Detailed Readings */}
             <div className={`rounded-lg p-4 mb-4 bg-muted`}>
               <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Detailed Readings</p>
+              {lvStartProxy && lvStartProxy.availability !== 'SUPPORTED' && (
+                <p className="text-xs text-muted-foreground mb-3">
+                  {lvStartProxy.uiLabelDe}: {lvStartProxy.availabilityLabelDe}
+                </p>
+              )}
               <div className={`divide-y divide-border`}>
                 {[
                   {
@@ -2378,12 +2055,26 @@ export function HealthErrorsView({
                     l: 'Aktuelle Spannung',
                     v: voltageDisplay != null ? `${voltageDisplay} V` : 'Nicht verfügbar',
                   },
-                  normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage) != null
-                    ? { l: 'Startspannung / Crank Drop', v: `${normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage)!.toFixed(2)} V` }
-                    : null,
-                  normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage) != null
-                    ? { l: 'Ladespannung', v: `${normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage)!.toFixed(2)} V` }
-                    : null,
+                  ...(lvStartProxy?.availability === 'SUPPORTED'
+                    ? lvStartProxy.measurements
+                        .filter((m) => m.numericValue != null)
+                        .map((m) => ({
+                          l: m.displayLabelDe,
+                          v: `${formatBatteryVoltage(m.numericValue as number)} ${m.unit ?? 'V'} · ${m.classification}${m.offsetFromTargetMs != null ? ` · Δ ${m.offsetFromTargetMs} ms` : ''}${m.measurementAgeMs != null ? ` · ${Math.round(m.measurementAgeMs / 1000)} s alt` : ''}`,
+                        }))
+                    : []),
+                  (() => {
+                    const crankV = normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage);
+                    return !lvStartProxy && crankV != null
+                      ? { l: 'Startspannung / Crank Drop', v: `${formatBatteryVoltage(crankV)} V` }
+                      : null;
+                  })(),
+                  (() => {
+                    const chargingV = normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage);
+                    return chargingV != null
+                      ? { l: 'Ladespannung', v: `${formatBatteryVoltage(chargingV)} V` }
+                      : null;
+                  })(),
                   exteriorAmbient.valueC != null
                     ? { l: 'Außentemperatur', v: `${Math.round(exteriorAmbient.valueC * 10) / 10} °C` }
                     : { l: 'Außentemperatur', v: 'Nicht verfügbar' },
@@ -3942,173 +3633,32 @@ export function HealthErrorsView({
               </div>
             </div>
 
-            <div className="px-5 py-4 space-y-3">
-              {/* SOH Overview */}
-              <div className={`rounded-lg p-5 bg-muted`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={`text-sm font-semibold text-foreground`}>State of Health</h3>
-                  {hvBatteryStatus?.publicationState && (
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                      hvBatteryStatus.publicationState === 'INITIAL_CALIBRATION' ? 'bg-status-info-soft text-status-info' :
-                      hvBatteryStatus.publicationState === 'STABILIZING' ? 'bg-amber-100 text-amber-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>{hvBatteryStatus.publicationState === 'INITIAL_CALIBRATION' ? 'Calibrating' : hvBatteryStatus.publicationState === 'STABILIZING' ? 'Stabilizing' : 'Stable'}</span>
-                  )}
-                </div>
-                {hvBatteryStatus?.publicationState === 'INITIAL_CALIBRATION' ? (
-                  <div className={`rounded-xl p-4 ${'sq-tone-info'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-sm font-semibold ${'text-[color:var(--status-info)]'}`}>Initial calibration in progress</span>
-                      <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${'bg-[color:var(--status-info)]'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
-                    </div>
-                    <p className={`text-[10px] ${'text-[color:var(--status-info)]/60'}`}>Collecting charge and discharge data for accurate battery health estimation</p>
-                    <p className={`text-[9px] mt-1 ${'text-[color:var(--status-info)]'}`}>No reliable HV SOH data yet — SOH is only reported from provider, capacity measurement or a workshop report.</p>
-                    <div className="grid grid-cols-2 gap-3 mt-3">
-                      <div className="text-center">
-                        <div className={`text-2xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%` : '—'}</div>
-                        <p className={`text-xs mt-1 text-muted-foreground`}>Current SoC</p>
-                      </div>
-                      <div className="text-center">
-                        <div className={`text-2xl font-black text-foreground`}>{hvBatteryStatus?.estimatedRangeKm != null ? `${Math.round(hvBatteryStatus.estimatedRangeKm)}` : '—'}</div>
-                        <p className={`text-xs mt-1 text-muted-foreground`}>Est. Range (km)</p>
+            <div className="px-5 py-4">
+              <BatteryHvDetailContent
+                vm={batteryHvDetailVm}
+                trendChartSlot={
+                  (hvBatteryStatus?.recentTrend?.length ?? 0) > 0 ? (
+                    <div className={`rounded-lg p-5 bg-muted`}>
+                      <h3 className={`text-sm font-semibold mb-4 text-foreground`}>HV-Zustand Trend</h3>
+                      <div className="h-40">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={hvBatteryStatus?.recentTrend?.map((t: any) => ({
+                            date: new Date(t.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+                            soh: t.sohPercent,
+                            soc: t.socPercent,
+                          }))}>
+                            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
+                            <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
+                            <Tooltip contentStyle={{ background: 'var(--card)', border: 'none', borderRadius: 12, fontSize: 11 }} />
+                            <Line type="monotone" dataKey="soh" stroke="#10b981" strokeWidth={2} dot={false} name="Geschätzter HV-Zustand %" />
+                            <Line type="monotone" dataKey="soc" stroke="#6366f1" strokeWidth={1.5} dot={false} name="SoC %" strokeDasharray="4 2" />
+                          </LineChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center">
-                        <div className={`text-3xl font-black ${
-                          hvBatteryStatus?.sohPercent == null ? 'text-muted-foreground' :
-                          hvBatteryStatus.sohPercent >= 80 ? 'text-green-500' :
-                          hvBatteryStatus.sohPercent >= 70 ? 'text-amber-500' :
-                          hvBatteryStatus.sohPercent >= 60 ? 'text-orange-500' : 'text-red-500'
-                        }`}>{hvBatteryStatus?.sohPercent != null ? `${hvBatteryStatus.publicationState === 'STABILIZING' ? '~' : ''}${formatMaxDecimals(hvBatteryStatus.sohPercent)}%` : 'N/A'}</div>
-                        <p className={`text-xs mt-1 text-muted-foreground`}>{hvBatteryStatus?.sohPercent == null ? 'No reliable SOH' : hvBatteryStatus?.publicationState === 'STABILIZING' ? 'Estimated SOH' : 'SOH'}</p>
-                      </div>
-                      <div className="text-center">
-                        <div className={`text-3xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%` : '—'}</div>
-                        <p className={`text-xs mt-1 text-muted-foreground`}>Current SoC</p>
-                      </div>
-                      <div className="text-center">
-                        <div className={`text-3xl font-black text-foreground`}>{hvBatteryStatus?.estimatedRangeKm != null ? `${Math.round(hvBatteryStatus.estimatedRangeKm)}` : '—'}</div>
-                        <p className={`text-xs mt-1 text-muted-foreground`}>Est. Range (km)</p>
-                      </div>
-                    </div>
-                    {/* Maturity / method info */}
-                    {hvBatteryStatus?.publicationMethod && (
-                      <div className={`flex items-center gap-3 mt-3 text-muted-foreground`}>
-                        <span className="text-[10px]">Method: <strong className={'text-muted-foreground'}>{hvBatteryStatus.publicationMethod.replace(/_/g, ' ')}</strong></span>
-                        {hvBatteryStatus.maturityConfidence && <span className="text-[10px]">Confidence: <strong className={'text-muted-foreground'}>{hvBatteryStatus.maturityConfidence}</strong></span>}
-                        {hvBatteryStatus.validEstimateCount != null && <span className="text-[10px]">Estimates: <strong className={'text-muted-foreground'}>{hvBatteryStatus.validEstimateCount}</strong></span>}
-                      </div>
-                    )}
-                  </>
-                )}
-                {hvBatteryStatus?.publicationState !== 'INITIAL_CALIBRATION' && hvBatteryStatus?.sohInterpretation && (
-                  <div className={`mt-4 rounded-xl p-3 ${
-                    hvBatteryStatus.sohInterpretation.color === 'green' ? ('sq-tone-success') :
-                    hvBatteryStatus.sohInterpretation.color === 'amber' ? ('sq-tone-watch') :
-                    hvBatteryStatus.sohInterpretation.color === 'orange' ? ('sq-tone-warning') :
-                    hvBatteryStatus.sohInterpretation.color === 'red' ? ('sq-tone-critical') :
-                    ('bg-muted')
-                  }`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-bold ${
-                        hvBatteryStatus.sohInterpretation.color === 'green' ? 'text-green-500' :
-                        hvBatteryStatus.sohInterpretation.color === 'amber' ? 'text-amber-500' :
-                        hvBatteryStatus.sohInterpretation.color === 'orange' ? 'text-orange-500' :
-                        hvBatteryStatus.sohInterpretation.color === 'red' ? 'text-red-500' :
-                        ('text-muted-foreground')
-                      }`}>{hvBatteryStatus.sohInterpretation.label}</span>
-                      <span className={`text-[10px] text-muted-foreground/70`}>via {hvBatteryStatus.sohMethod?.replace(/_/g, ' ')}</span>
-                    </div>
-                    <p className={`text-xs ${'text-muted-foreground'}`}>{hvBatteryStatus.sohInterpretation.description}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Capacity */}
-              <div className={`rounded-lg p-5 bg-muted`}>
-                <h3 className={`text-sm font-semibold mb-3 text-foreground`}>Battery Capacity</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Nominal</p>
-                    <p className={`text-lg font-bold text-foreground`}>{hvBatteryStatus?.nominalCapacityKwh != null ? `${formatMaxDecimals(hvBatteryStatus.nominalCapacityKwh)} kWh` : '—'}</p>
-                  </div>
-                  <div>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Estimated Current</p>
-                    <p className={`text-lg font-bold text-foreground`}>{hvBatteryStatus?.estimatedCurrentCapacityKwh != null ? `${formatMaxDecimals(hvBatteryStatus.estimatedCurrentCapacityKwh)} kWh` : '—'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Charging Sessions */}
-              <div className={`rounded-lg p-5 bg-muted`}>
-                <h3 className={`text-sm font-semibold mb-4 text-foreground`}>Charging Sessions</h3>
-                {(hvBatteryStatus?.chargingSessions?.length ?? 0) > 0 ? (
-                  <div className="space-y-3">
-                    {hvBatteryStatus?.chargingSessions?.map((s: any, i: number) => (
-                      <div key={i} className={`rounded-xl p-3 bg-muted`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Icon name="battery-charging" className={`w-3.5 h-3.5 ${'text-[color:var(--status-positive)]'}`} />
-                            <span className={`text-xs font-semibold text-foreground`}>
-                              {new Date(s.startTime).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}
-                            </span>
-                            <span className={`text-[10px] text-muted-foreground`}>
-                              {new Date(s.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <span className={`text-xs font-bold ${'text-[color:var(--status-positive)]'}`}>
-                            {formatMaxDecimals(s.startSoc)}% → {formatMaxDecimals(s.endSoc)}%
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {s.energyChargedKwh != null && (
-                            <div><p className={`text-[10px] text-muted-foreground/70`}>Energy</p><p className={`text-xs font-semibold text-foreground`}>{s.energyChargedKwh.toFixed(1)} kWh</p></div>
-                          )}
-                          {s.maxChargingPowerKw != null && (
-                            <div><p className={`text-[10px] text-muted-foreground/70`}>Max Power</p><p className={`text-xs font-semibold text-foreground`}>{s.maxChargingPowerKw} kW</p></div>
-                          )}
-                          <div><p className={`text-[10px] text-muted-foreground/70`}>Duration</p><p className={`text-xs font-semibold text-foreground`}>{s.durationMinutes} min</p></div>
-                          {s.rangeGainedKm != null && (
-                            <div><p className={`text-[10px] text-muted-foreground/70`}>Range Gained</p><p className={`text-xs font-semibold text-foreground`}>+{s.rangeGainedKm} km</p></div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={`flex flex-col items-center justify-center py-10 text-muted-foreground/70`}>
-                    <Icon name="battery-charging" className="w-8 h-8 mb-3 opacity-40" />
-                    <p className="text-sm font-medium">No charging sessions recorded</p>
-                    <p className="text-xs mt-1 opacity-60">Charging data will appear as telemetry is collected</p>
-                  </div>
-                )}
-              </div>
-
-              {/* SOH Trend */}
-              {(hvBatteryStatus?.recentTrend?.length ?? 0) > 0 && (
-                <div className={`rounded-lg p-5 bg-muted`}>
-                  <h3 className={`text-sm font-semibold mb-4 text-foreground`}>SOH Trend</h3>
-                  <div className="h-40">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={hvBatteryStatus?.recentTrend?.map((t: any) => ({
-                        date: new Date(t.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
-                        soh: t.sohPercent,
-                        soc: t.socPercent,
-                      }))}>
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
-                        <Tooltip contentStyle={{ background: 'var(--card)', border: 'none', borderRadius: 12, fontSize: 11 }} />
-                        <Line type="monotone" dataKey="soh" stroke="#10b981" strokeWidth={2} dot={false} name="SOH %" />
-                        <Line type="monotone" dataKey="soc" stroke="#6366f1" strokeWidth={1.5} dot={false} name="SoC %" strokeDasharray="4 2" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
+                  ) : null
+                }
+              />
             </div>
           </div>
         </div>,

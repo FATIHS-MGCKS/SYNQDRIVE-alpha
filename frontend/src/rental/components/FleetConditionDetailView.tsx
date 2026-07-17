@@ -16,6 +16,8 @@ import {
   type ServiceInfoStatus,
   type AiHealthCareResponse,
 } from '../../lib/api';
+import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from '../lib/battery-lv-semantics';
+import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
 import {
   buildBokraftComplianceDisplay,
   buildNextServiceDisplay,
@@ -762,6 +764,11 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
 
   return (
     <>
+      {bat?.dataQuality?.status && (
+        <div className="mb-3">
+          <BatteryDataQualityBadge status={bat.dataQuality.status} short={false} />
+        </div>
+      )}
       {isCalib && (
         <div className={`${p.cardClass} p-5`}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
@@ -769,7 +776,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
             <span className={`text-sm font-semibold ${isDark ? 'text-status-info' : 'text-brand'}`}>Initial calibration in progress</span>
             <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDark ? 'bg-status-info' : 'bg-status-info'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
           </div>
-          <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-muted-foreground'}`}>Collecting rest and start-cycle measurements for accurate SOH estimation</p>
+          <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-muted-foreground'}`}>Sammelt Ruhe- und Startzyklen für den {ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
         </div>
       )}
 
@@ -777,7 +784,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
         <StatBox
           {...p}
           isDark={isDark}
-          label="Est. Health"
+          label="12V-Zustand"
           value={
             isCalib
               ? 'Calibrating'
@@ -795,7 +802,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
               ? 'collecting data'
               : lvStatus === 'no_recent_data'
                 ? 'no recent data'
-                : 'estimated battery health'
+                : ESTIMATED_LV_HEALTH_SCORE_LABEL_DE.toLowerCase()
           }
         />
         <StatBox

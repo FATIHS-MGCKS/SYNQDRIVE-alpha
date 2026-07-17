@@ -8,8 +8,7 @@ import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripDetectionOrchestrationService } from '../../modules/vehicle-intelligence/trips/trip-detection-orchestration.service';
-import { BatteryV2Service } from '../../modules/vehicle-intelligence/battery-health/battery-v2.service';
-import { HvBatteryHealthService } from '../../modules/vehicle-intelligence/battery-health/hv-battery-health.service';
+import { BatteryV2SnapshotObservationProducer } from '../../modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-observation.producer';
 import { ClickHouseTelemetryService } from '../../modules/clickhouse/clickhouse-telemetry.service';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
@@ -18,6 +17,11 @@ import {
   toSynqDriveTirePressureMeta,
 } from '@modules/dimo/dimo-tire-pressure.normalizer';
 import { capRawPayload } from '@shared/utils/json-payload.util';
+import {
+  mapDimoBatterySignals,
+  resolveLvBatteryObservedAt,
+  toVlsBatteryFields,
+} from '../../modules/dimo/mappers/dimo-battery-signal.mapper';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -46,8 +50,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly prisma: PrismaService,
     private readonly tripOrchestration: TripDetectionOrchestrationService,
-    private readonly batteryV2: BatteryV2Service,
-    private readonly hvBattery: HvBatteryHealthService,
+    private readonly batteryObservationProducer: BatteryV2SnapshotObservationProducer,
     @Optional() private readonly chTelemetry: ClickHouseTelemetryService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
@@ -58,6 +61,14 @@ export class DimoSnapshotProcessor extends WorkerHost {
     const { vehicleId, dimoTokenId } = job.data;
     const startedAt = new Date();
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.DIMO_SNAPSHOT, job);
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle?.organizationId) {
+      throw new Error(`Vehicle ${vehicleId} missing organizationId — cannot process snapshot`);
+    }
 
     try {
       const previousState =
@@ -78,9 +89,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
       }
 
       const normalized = this.normalizeSnapshot(signals);
-      const lvBatteryObservedAt =
-        this.extractSignalTimestamp(signals.lowVoltageBatteryCurrentVoltage) ??
-        normalized.lastSeenAt;
+      const batteryMap = mapDimoBatterySignals(signals);
+      const lvBatteryObservedAt = resolveLvBatteryObservedAt(batteryMap);
 
       // Track stale snapshots (data age > 5 min indicates vehicle is not actively sending)
       const STALE_THRESHOLD_MS = 5 * 60_000;
@@ -143,42 +153,38 @@ export class DimoSnapshotProcessor extends WorkerHost {
           );
       }
 
-      // Battery V2 (12V): evaluate rest window before trip-start detection changes state
-      this.batteryV2
-        .onSnapshot(vehicleId, normalized.lvBatteryVoltage, lvBatteryObservedAt)
-        .catch((err) =>
-          this.logger.warn(
-            `Battery V2 onSnapshot failed for ${vehicleId}: ${err instanceof Error ? err.message : err}`,
-          ),
-        );
+      // Battery V2: classify provider observations and enqueue durable job (awaited).
+      // Snapshot may complete once follow-up job is durably enqueued — handler failures are isolated.
+      const batteryFollowUpJobId = await this.batteryObservationProducer.classifyAndEnqueue({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        receivedAt: fetchedAt,
+        normalized: {
+          lvBatteryVoltage: normalized.lvBatteryVoltage,
+          evSoc: normalized.evSoc,
+          tractionBatteryCurrentEnergyKwh: normalized.tractionBatteryCurrentEnergyKwh,
+          tractionBatterySohPercent: normalized.tractionBatterySohPercent,
+          tractionBatteryPowerKw: normalized.tractionBatteryPowerKw,
+          tractionBatteryChargingPowerKw: normalized.tractionBatteryChargingPowerKw,
+          tractionBatteryAddedEnergyKwh: normalized.tractionBatteryAddedEnergyKwh,
+          tractionBatteryChargeLimitPercent: normalized.tractionBatteryChargeLimitPercent,
+          tractionBatteryIsCharging: normalized.tractionBatteryIsCharging,
+          tractionBatteryChargingCableConnected:
+            normalized.tractionBatteryChargingCableConnected,
+          tractionBatteryTemperatureC: normalized.tractionBatteryTemperatureC,
+          tractionBatteryGrossCapacityKwh: normalized.tractionBatteryGrossCapacityKwh,
+          rangeKm: normalized.rangeKm,
+          odometerKm: normalized.odometerKm,
+        },
+        batteryMap,
+        lvBatteryObservedAt,
+        correlationId: `snapshot:${vehicleId}:${fetchedAt.toISOString()}`,
+      });
 
-      // HV Battery: record traction battery snapshot for EV/PHEV vehicles
-      if (normalized.evSoc != null) {
-        this.hvBattery
-          .recordSnapshot({
-            vehicleId,
-            socPercent: normalized.evSoc,
-            energyUsedKwh: normalized.tractionBatteryCurrentEnergyKwh ?? undefined,
-            rangeKm: normalized.rangeKm ?? undefined,
-            chargingPowerKw:
-              normalized.tractionBatteryChargingPowerKw
-              ?? normalized.tractionBatteryPowerKw
-              ?? undefined,
-            isCharging: normalized.tractionBatteryIsCharging ?? undefined,
-            odometerKm: normalized.odometerKm ?? undefined,
-            temperatureC: normalized.tractionBatteryTemperatureC ?? undefined,
-            nominalCapacityKwh:
-              normalized.tractionBatteryGrossCapacityKwh ?? undefined,
-            providerReportedSohPercent:
-              normalized.tractionBatterySohPercent ?? undefined,
-            providerSource: 'DIMO',
-            observedAt: normalized.lastSeenAt ?? undefined,
-          })
-          .catch((err) =>
-            this.logger.warn(
-              `HV Battery snapshot failed for ${vehicleId}: ${err instanceof Error ? err.message : err}`,
-            ),
-          );
+      if (batteryFollowUpJobId) {
+        this.logger.debug(
+          `Battery V2 follow-up enqueued for vehicle ${vehicleId}: ${batteryFollowUpJobId}`,
+        );
       }
 
       // V2 Trip Detection: evaluate snapshot for possible trip start
@@ -286,16 +292,6 @@ export class DimoSnapshotProcessor extends WorkerHost {
     return null;
   }
 
-  private extractSignalTimestamp(field: unknown): Date | null {
-    if (!field || typeof field !== 'object') return null;
-    const ts = (field as Record<string, unknown>).timestamp;
-    if (typeof ts === 'number' || typeof ts === 'string') {
-      const parsed = new Date(ts);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
-  }
-
   private normalizeSnapshot(signals: Record<string, unknown>) {
     const numVal = (field: unknown): number | null => {
       if (field == null) return null;
@@ -313,6 +309,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
       if (typeof v === 'string') return new Date(v);
       return null;
     };
+
+    const batteryFields = toVlsBatteryFields(mapDimoBatterySignals(signals));
 
     const locCoords = signals.currentLocationCoordinates as
       | { value?: { latitude?: number; longitude?: number } }
@@ -347,43 +345,19 @@ export class DimoSnapshotProcessor extends WorkerHost {
       tirePressureFr: tirePressures.fr.normalizedValue,
       tirePressureRl: tirePressures.rl.normalizedValue,
       tirePressureRr: tirePressures.rr.normalizedValue,
-      evSoc: numVal(signals.powertrainTractionBatteryStateOfChargeCurrent),
-      tractionBatteryCurrentEnergyKwh: numVal(
-        signals.powertrainTractionBatteryStateOfChargeCurrentEnergy,
-      ),
-      tractionBatterySohPercent: numVal(
-        signals.powertrainTractionBatteryStateOfHealth,
-      ),
-      tractionBatteryPowerKw: (() => {
-        const w = numVal(signals.powertrainTractionBatteryCurrentPower);
-        return w != null ? w / 1000 : null;
-      })(),
-      tractionBatteryCurrentVoltage: numVal(
-        signals.powertrainTractionBatteryCurrentVoltage,
-      ),
-      tractionBatteryTemperatureC: numVal(
-        signals.powertrainTractionBatteryTemperatureAverage,
-      ),
-      tractionBatteryChargingPowerKw: (() => {
-        const w = numVal(signals.powertrainTractionBatteryChargingPower);
-        return w != null ? w / 1000 : null;
-      })(),
-      tractionBatteryAddedEnergyKwh: numVal(
-        signals.powertrainTractionBatteryChargingAddedEnergy,
-      ),
-      tractionBatteryIsCharging: (() => {
-        const v = numVal(signals.powertrainTractionBatteryChargingIsCharging);
-        return v != null ? v >= 0.5 : null;
-      })(),
-      tractionBatteryChargingCableConnected: (() => {
-        const v = numVal(
-          signals.powertrainTractionBatteryChargingIsChargingCableConnected,
-        );
-        return v != null ? v >= 0.5 : null;
-      })(),
-      tractionBatteryGrossCapacityKwh: numVal(
-        signals.powertrainTractionBatteryGrossCapacity,
-      ),
+      evSoc: batteryFields.evSoc,
+      tractionBatteryCurrentEnergyKwh: batteryFields.tractionBatteryCurrentEnergyKwh,
+      tractionBatterySohPercent: batteryFields.tractionBatterySohPercent,
+      tractionBatteryPowerKw: batteryFields.tractionBatteryPowerKw,
+      tractionBatteryCurrentVoltage: batteryFields.tractionBatteryCurrentVoltage,
+      tractionBatteryTemperatureC: batteryFields.tractionBatteryTemperatureC,
+      tractionBatteryChargingPowerKw: batteryFields.tractionBatteryChargingPowerKw,
+      tractionBatteryAddedEnergyKwh: batteryFields.tractionBatteryAddedEnergyKwh,
+      tractionBatteryChargeLimitPercent: batteryFields.tractionBatteryChargeLimitPercent,
+      tractionBatteryIsCharging: batteryFields.tractionBatteryIsCharging,
+      tractionBatteryChargingCableConnected:
+        batteryFields.tractionBatteryChargingCableConnected,
+      tractionBatteryGrossCapacityKwh: batteryFields.tractionBatteryGrossCapacityKwh,
       isIgnitionOn: (() => {
         const v = numVal(signals.isIgnitionOn);
         return v != null ? v >= 0.5 : null;
@@ -391,7 +365,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
       engineLoad: numVal(signals.obdEngineLoad),
       fuelLevelRelative: numVal(signals.powertrainFuelSystemRelativeLevel),
       fuelLevelAbsolute: numVal(signals.powertrainFuelSystemAbsoluteLevel),
-      lvBatteryVoltage: numVal(signals.lowVoltageBatteryCurrentVoltage),
+      lvBatteryVoltage: batteryFields.lvBatteryVoltage,
       coolantTempC: numVal(signals.powertrainCombustionEngineECT),
       speedKmh: numVal(signals.speed),
       rawPayloadJson: capRawPayload({

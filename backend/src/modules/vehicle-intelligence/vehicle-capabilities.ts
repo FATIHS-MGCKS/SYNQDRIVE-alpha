@@ -15,6 +15,8 @@
  */
 
 import type { HardwareType } from '@prisma/client';
+import { BatteryDriveProfile } from './battery-health/battery-v2-domain';
+import { resolveDriveProfile } from './drive-profile/drive-profile-resolver';
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -108,20 +110,6 @@ export interface DeriveCapabilityProfileInput {
   hasHfWaypoints?: boolean | null;
 }
 
-/** Returns true if the fuel type string denotes a battery-electric vehicle. */
-function isBatteryElectric(fuelType?: string | null): boolean {
-  if (!fuelType) return false;
-  const f = fuelType.trim().toLowerCase();
-  return (
-    f === 'electric' ||
-    f === 'ev' ||
-    f === 'bev' ||
-    f === 'battery_electric' ||
-    f === 'battery-electric' ||
-    f.includes('electric')
-  );
-}
-
 /**
  * Derive a read-only capability profile. Pure function, no side effects.
  * Does NOT alter any driving-event/abuse routing — diagnostics only.
@@ -131,10 +119,10 @@ export function deriveVehicleCapabilityProfile(
 ): VehicleCapabilityProfile {
   const hardwareType: HardwareType = input.hardwareType ?? 'UNKNOWN';
   const caps = getVehicleCapabilities(hardwareType);
-  const bev = isBatteryElectric(input.fuelType);
-  // Engine signals require a combustion engine. For UNKNOWN fuel we assume they
-  // *may* be available (conservative — do not pre-emptively disable detectors).
-  const engineSignalsAvailable = !bev;
+  const resolved = resolveDriveProfile({
+    master: { fuelType: input.fuelType },
+  });
+  const engineSignalsAvailable = resolved.profile !== BatteryDriveProfile.BEV;
   const snapshotOnly: boolean | 'unknown' =
     input.hasHfWaypoints === true
       ? false
@@ -144,7 +132,7 @@ export function deriveVehicleCapabilityProfile(
 
   const profileLabel = caps.nativeEventCapable
     ? 'LTE R1 (native events)'
-    : bev
+    : resolved.profile === BatteryDriveProfile.BEV
       ? 'Cloud/EV (HF speed-only)'
       : 'HF reconstruction';
 

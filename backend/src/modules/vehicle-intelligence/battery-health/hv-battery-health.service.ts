@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
   BatteryEvidenceValueType,
+  HvBatteryHealthSnapshot,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -14,23 +16,33 @@ import {
   type PublicationState,
 } from './soh-publication';
 import { BatteryEvidenceService } from './battery-evidence.service';
+import {
+  effectiveHvPublishedSohForDecisions,
+  isLegacyHvPairwiseCapacityMethod,
+  presentLegacyHvCapacity,
+} from './hv-capacity-policy';
+import { isLegacyHvPairwiseCapacityAssessmentEnabled } from '../../../config/battery-health-v2.config';
+import type { HvBatterySignalObservedAt } from '../../dimo/mappers/dimo-battery-signal.mapper';
+import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { recordBatteryProviderDuplicate } from './observability/battery-v2-prometheus.metrics';
+import {
+  evaluateHvSnapshotObservation,
+  type HvSnapshotSkipReason,
+} from './hv-snapshot-observation.policy';
+import {
+  BATTERY_FRESHNESS_THRESHOLDS_MS,
+  buildBatteryDomainFreshnessBundle,
+  buildFetchFreshness,
+  buildObservationFreshness,
+  observationFreshnessIsDecisionFresh,
+} from './battery-freshness.policy';
 
 /**
  * HV (High-Voltage) Battery Health Service for EV traction batteries.
  *
- * SOH Calculation (industry-standard capacity-based approach):
- *   SOH (%) = (Estimated Current Capacity / Nominal Capacity) × 100
- *
- * Current capacity is estimated from energy throughput between SoC readings:
- *   ΔEnergy = energy consumed/charged between two observations
- *   ΔSoC = change in state of charge
- *   Estimated Capacity = ΔEnergy / (|ΔSoC| / 100)
- *
- * V4.8 Battery overhaul — the previous age+mileage degradation fallback has
- * been removed. HV SOH is now only produced from a real data basis (provider
- * SOH, capacity/energy measurement, or a workshop/document report). When no
- * such basis exists the SOH is reported as unavailable (`insufficient_data`)
- * instead of a fabricated pseudo-precise percentage.
+ * V4.8+ — provider/workshop SOH only for operational decisions by default.
+ * Legacy pairwise ΔEnergy/ΔSOC capacity from ~30 s snapshots is disabled
+ * unless `BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED=true` (Prompt 8/78).
  */
 @Injectable()
 export class HvBatteryHealthService {
@@ -39,6 +51,7 @@ export class HvBatteryHealthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly batteryEvidence: BatteryEvidenceService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
   async getHvBatteryStatus(vehicleId: string) {
@@ -72,7 +85,10 @@ export class HvBatteryHealthService {
         tractionBatteryGrossCapacityKwh: true,
         tractionBatteryCurrentEnergyKwh: true,
         tractionBatteryAddedEnergyKwh: true,
+        tractionBatteryChargeLimitPercent: true,
         lastSeenAt: true,
+        providerFetchedAt: true,
+        sourceTimestamp: true,
       },
     });
 
@@ -82,9 +98,16 @@ export class HvBatteryHealthService {
       take: 100,
     });
 
-    const sohResult = this.calculateSoh(nominalCapacity, snapshots);
+    const legacyPairwiseEnabled = isLegacyHvPairwiseCapacityAssessmentEnabled();
+    const sohResult = legacyPairwiseEnabled
+      ? this.calculateSoh(nominalCapacity, snapshots)
+      : { sohPercent: null, estimatedCapacity: null, method: 'insufficient_data' as const };
 
     const chargingSessions = this.deriveChargingSessions(snapshots);
+
+    const diagnosticSnapshot = snapshots.find(
+      (s) => s.estimatedCapacityKwh != null || s.sohPercent != null,
+    );
 
     const recentTrend = snapshots
       .filter((s) => s.sohPercent != null)
@@ -105,16 +128,41 @@ export class HvBatteryHealthService {
     const legacyDegradationModel = isLegacyHvDegradationModel(
       pubCurrent?.publicationMethod ?? sohResult.method,
     );
-    const publishedSoh = legacyDegradationModel
+    const legacyPairwiseMethod = isLegacyHvPairwiseCapacityMethod(
+      pubCurrent?.publicationMethod ?? sohResult.method,
+    );
+    const publishedSohRaw = legacyDegradationModel
       ? null
       : (pubCurrent?.publishedSohPct ?? null);
-    const publicationState = legacyDegradationModel
-      ? 'INITIAL_CALIBRATION'
-      : (pubCurrent?.publicationState ?? 'INITIAL_CALIBRATION');
-    const publicationMethod = legacyDegradationModel
-      ? 'insufficient_data'
-      : (pubCurrent?.publicationMethod ?? sohResult.method);
+    const publishedSoh = effectiveHvPublishedSohForDecisions(
+      pubCurrent?.publicationMethod ?? sohResult.method,
+      publishedSohRaw,
+    );
+    const publicationState =
+      legacyDegradationModel || (!legacyPairwiseEnabled && legacyPairwiseMethod)
+        ? 'INITIAL_CALIBRATION'
+        : (pubCurrent?.publicationState ?? 'INITIAL_CALIBRATION');
+    const publicationMethod =
+      legacyDegradationModel || (!legacyPairwiseEnabled && legacyPairwiseMethod)
+        ? 'insufficient_data'
+        : (pubCurrent?.publicationMethod ?? sohResult.method);
     const maturityConfidence = pubCurrent?.maturityConfidence ?? 'none';
+
+    const decisionNow = new Date();
+    const telemetryFetchFreshness = buildFetchFreshness({
+      fetchedAt: latestState?.providerFetchedAt ?? latestState?.lastSeenAt ?? null,
+      now: decisionNow,
+    });
+    const telemetryObservationFreshness = buildObservationFreshness({
+      observedAt: latestState?.sourceTimestamp ?? null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.hvTelemetryObservation,
+      now: decisionNow,
+      hasValueCarrier: latestState?.evSoc != null,
+    });
+    const telemetryFreshnessBundle = buildBatteryDomainFreshnessBundle({
+      fetch: telemetryFetchFreshness,
+      observation: telemetryObservationFreshness,
+    });
 
     const latestProviderSohEvidence = await this.batteryEvidence.getLatest(
       vehicleId,
@@ -127,28 +175,45 @@ export class HvBatteryHealthService {
     const providerSohValue = latestProviderSohEvidence?.numericValue
       ?? latestState?.tractionBatterySohPercent
       ?? null;
-    const providerSohObservedAt = latestProviderSohEvidence?.observedAt
-      ?? latestState?.lastSeenAt
-      ?? null;
-    const providerSohAgeMs = providerSohObservedAt
-      ? Math.max(0, Date.now() - providerSohObservedAt.getTime())
-      : null;
-    const providerSohIsFresh = providerSohAgeMs != null && providerSohAgeMs <= 45 * 24 * 60 * 60 * 1000;
+    const providerSohObservedAt = latestProviderSohEvidence?.observedAt ?? null;
+    const providerSohObservationFreshness = buildObservationFreshness({
+      observedAt: providerSohObservedAt,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.providerSohObservation,
+      now: decisionNow,
+      hasValueCarrier: providerSohValue != null,
+    });
+    const providerSohIsFresh = observationFreshnessIsDecisionFresh(
+      providerSohObservationFreshness,
+    );
+    const providerSohFreshnessBundle = buildBatteryDomainFreshnessBundle({
+      fetch: telemetryFetchFreshness,
+      observation: providerSohObservationFreshness,
+      providerSohFreshness: providerSohObservationFreshness,
+    });
 
-    // User-facing SOH: published when maturity allows, otherwise null
     const userFacingSoh = publicationState === 'INITIAL_CALIBRATION' ? null : publishedSoh;
     const resolvedSoh =
       providerSohIsFresh && providerSohValue != null
         ? providerSohValue
-        : userFacingSoh ?? sohResult.sohPercent;
+        : userFacingSoh ?? (legacyPairwiseEnabled ? sohResult.sohPercent : null);
     const resolvedMethod =
       providerSohIsFresh && providerSohValue != null
         ? 'provider_reported_soh'
-        : sohResult.method;
+        : legacyPairwiseEnabled
+          ? sohResult.method
+          : 'insufficient_data';
     const sohSourceType =
       providerSohIsFresh && providerSohValue != null
         ? 'provider_reported'
         : 'telemetry_derived';
+
+    const legacyCapacity = presentLegacyHvCapacity({
+      estimatedCapacityKwh:
+        diagnosticSnapshot?.estimatedCapacityKwh ?? sohResult.estimatedCapacity,
+      sohPercent: diagnosticSnapshot?.sohPercent ?? sohResult.sohPercent,
+      publicationMethod: pubCurrent?.publicationMethod ?? sohResult.method,
+      publishedSohPct: pubCurrent?.publishedSohPct ?? publishedSohRaw,
+    });
 
     return {
       isEv: true,
@@ -169,7 +234,8 @@ export class HvBatteryHealthService {
       sohInterpretation: this.interpretSoh(
         publicationState !== 'INITIAL_CALIBRATION' ? resolvedSoh : null,
       ),
-      estimatedCurrentCapacityKwh: sohResult.estimatedCapacity,
+      estimatedCurrentCapacityKwh: legacyCapacity.operationalEstimatedCapacityKwh,
+      legacyCapacity,
       snapshotCount: snapshots.length,
       chargingSessions,
       recentTrend,
@@ -186,8 +252,14 @@ export class HvBatteryHealthService {
         currentVoltageV: latestState?.tractionBatteryCurrentVoltage ?? null,
         currentEnergyKwh: latestState?.tractionBatteryCurrentEnergyKwh ?? null,
         addedEnergyKwh: latestState?.tractionBatteryAddedEnergyKwh ?? null,
+        chargeLimitPercent: latestState?.tractionBatteryChargeLimitPercent ?? null,
+        fetchFreshness: telemetryFetchFreshness,
+        observationFreshness: telemetryObservationFreshness,
+        freshnessBundle: telemetryFreshnessBundle,
       },
       providerSohObservedAt: providerSohObservedAt?.toISOString() ?? null,
+      providerSohObservationFreshness,
+      providerSohFreshnessBundle,
     };
   }
 
@@ -319,6 +391,13 @@ export class HvBatteryHealthService {
    * Runs the three-layer pipeline: raw → stabilized → published.
    */
   private async upsertPublicationState(vehicleId: string): Promise<void> {
+    if (!isLegacyHvPairwiseCapacityAssessmentEnabled()) {
+      this.logger.debug(
+        `HV legacy pairwise publication suppressed: vehicle=${vehicleId} reason=legacy_pairwise_disabled`,
+      );
+      return;
+    }
+
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { hvBatteryCapacityKwh: true },
@@ -463,58 +542,151 @@ export class HvBatteryHealthService {
 
   async recordSnapshot(data: {
     vehicleId: string;
+    organizationId?: string;
     socPercent: number;
+    /** Remaining pack energy (kWh) — preferred over legacy `energyUsedKwh`. */
+    currentEnergyKwh?: number;
+    /** @deprecated Compatibility alias for remaining pack energy — not consumed energy. */
     energyUsedKwh?: number;
     rangeKm?: number;
     chargingPowerKw?: number;
+    addedEnergyKwh?: number;
+    chargeLimitPercent?: number;
     isCharging?: boolean;
+    cableConnected?: boolean;
     odometerKm?: number;
     temperatureC?: number;
     nominalCapacityKwh?: number;
     providerReportedSohPercent?: number;
     providerSource?: string;
+    /** Poll receive time — never used as provider observation timestamp. */
+    receivedAt?: Date;
+    /** Collection-level DIMO `lastSeen` — fallback only, never fetch time. */
+    collectionObservedAt?: Date;
+    signalObservedAt?: HvBatterySignalObservedAt;
+    /** @deprecated Prefer `signalObservedAt.soc` / `collectionObservedAt`. */
     observedAt?: Date;
-  }) {
+  }): Promise<HvBatteryHealthSnapshot | null> {
+    const receivedAt = data.receivedAt ?? new Date();
+    const providerSource = data.providerSource ?? 'DIMO';
+    const currentEnergyKwh = data.currentEnergyKwh ?? data.energyUsedKwh;
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: data.vehicleId },
+      select: { organizationId: true },
+    });
+    const organizationId = data.organizationId ?? vehicle?.organizationId;
+    if (!organizationId) {
+      this.logger.warn(
+        `HV snapshot skipped — missing organizationId for vehicle=${data.vehicleId}`,
+      );
+      return null;
+    }
+
+    const lastSnapshot = await this.prisma.hvBatteryHealthSnapshot.findFirst({
+      where: { vehicleId: data.vehicleId },
+      orderBy: { recordedAt: 'desc' },
+      select: {
+        socPercent: true,
+        energyUsedKwh: true,
+        energyObservedAt: true,
+        isCharging: true,
+        chargingCableConnected: true,
+        providerSohPercent: true,
+        recordedAt: true,
+        providerReceivedAt: true,
+        idempotencyKey: true,
+      },
+    });
+
+    const observationDecision = evaluateHvSnapshotObservation({
+      organizationId,
+      vehicleId: data.vehicleId,
+      providerSource,
+      receivedAt,
+      socPercent: data.socPercent,
+      currentEnergyKwh,
+      isCharging: data.isCharging,
+      cableConnected: data.cableConnected,
+      providerReportedSohPercent: data.providerReportedSohPercent,
+      signalObservedAt: data.signalObservedAt,
+      lastSnapshot,
+    });
+
+    if (!observationDecision.shouldPersist || !observationDecision.idempotencyKey) {
+      this.recordHvSnapshotDuplicateDiscarded(
+        observationDecision.skipReason ?? 'UNCHANGED_POLL',
+      );
+      this.logger.debug(
+        `HV snapshot dedup skip: vehicle=${data.vehicleId} reason=${observationDecision.skipReason ?? 'UNCHANGED_POLL'} outcomes=${JSON.stringify(observationDecision.signalOutcomes)}`,
+      );
+      return null;
+    }
+
+    const legacyPairwiseEnabled = isLegacyHvPairwiseCapacityAssessmentEnabled();
+    const resolveObservedAt = (
+      perSignal?: Date,
+      fallback?: Date,
+    ): Date | undefined => perSignal ?? fallback ?? data.collectionObservedAt ?? data.observedAt;
+    const snapshotRecordedAt =
+      observationDecision.anchorObservedAt
+      ?? resolveObservedAt(data.signalObservedAt?.soc, data.observedAt)
+      ?? receivedAt;
     let estimatedCapacity: number | null = null;
     let soh: number | null = null;
 
-    if (data.nominalCapacityKwh && data.energyUsedKwh != null) {
+    if (legacyPairwiseEnabled && data.nominalCapacityKwh && currentEnergyKwh != null) {
       const previous = await this.prisma.hvBatteryHealthSnapshot.findFirst({
         where: { vehicleId: data.vehicleId },
         orderBy: { recordedAt: 'desc' },
       });
       if (previous && previous.energyUsedKwh != null) {
         const deltaSoc = Math.abs(data.socPercent - previous.socPercent);
-        const deltaEnergy = Math.abs(data.energyUsedKwh - previous.energyUsedKwh);
+        const deltaEnergy = Math.abs(currentEnergyKwh - previous.energyUsedKwh);
         if (deltaSoc >= 5 && deltaEnergy > 0) {
           estimatedCapacity = Math.round(((deltaEnergy / deltaSoc) * 100) * 10) / 10;
-          if (estimatedCapacity > data.nominalCapacityKwh * 0.5 && estimatedCapacity < data.nominalCapacityKwh * 1.2) {
-            soh = Math.max(0, Math.min(100, Math.round((estimatedCapacity / data.nominalCapacityKwh) * 100)));
+          if (
+            estimatedCapacity > data.nominalCapacityKwh * 0.5 &&
+            estimatedCapacity < data.nominalCapacityKwh * 1.2
+          ) {
+            soh = Math.max(
+              0,
+              Math.min(
+                100,
+                Math.round((estimatedCapacity / data.nominalCapacityKwh) * 100),
+              ),
+            );
           } else {
             estimatedCapacity = null;
           }
         }
       }
+    } else if (!legacyPairwiseEnabled && data.nominalCapacityKwh && currentEnergyKwh != null) {
+      this.logger.debug(
+        `HV legacy pairwise capacity suppressed on snapshot: vehicle=${data.vehicleId} reason=legacy_pairwise_disabled`,
+      );
     }
 
-    const snapshot = await this.prisma.hvBatteryHealthSnapshot.create({
-      data: {
-        vehicle: { connect: { id: data.vehicleId } },
-        socPercent: data.socPercent,
-        energyUsedKwh: data.energyUsedKwh ?? null,
-        estimatedCapacityKwh: estimatedCapacity,
-        sohPercent: soh,
-        rangeKm: data.rangeKm ?? null,
-        chargingPowerKw: data.chargingPowerKw ?? null,
-        isCharging: data.isCharging ?? false,
-        odometerKm: data.odometerKm ?? null,
-        temperatureC: data.temperatureC ?? null,
-        recordedAt: data.observedAt ?? new Date(),
-      },
+    const snapshot = await this.createSnapshotIdempotent({
+      vehicleId: data.vehicleId,
+      idempotencyKey: observationDecision.idempotencyKey,
+      socPercent: data.socPercent,
+      energyUsedKwh: currentEnergyKwh ?? null,
+      estimatedCapacityKwh: estimatedCapacity,
+      sohPercent: soh,
+      rangeKm: data.rangeKm ?? null,
+      chargingPowerKw: data.chargingPowerKw ?? null,
+      isCharging: data.isCharging ?? false,
+      chargingCableConnected: data.cableConnected ?? null,
+      providerSohPercent: data.providerReportedSohPercent ?? null,
+      odometerKm: data.odometerKm ?? null,
+      temperatureC: data.temperatureC ?? null,
+      recordedAt: snapshotRecordedAt,
+      providerReceivedAt: receivedAt,
+      energyObservedAt: data.signalObservedAt?.currentEnergyKwh ?? null,
     });
 
-    const observedAt = data.observedAt ?? new Date();
-    await this.batteryEvidence.recordMany([
+    const evidenceRows = [
       {
         vehicleId: data.vehicleId,
         scope: BatteryEvidenceScope.HV,
@@ -522,7 +694,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.SOC_PERCENT,
         numericValue: data.socPercent,
         unit: 'percent',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.soc),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -532,7 +704,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.RANGE_KM,
         numericValue: data.rangeKm,
         unit: 'km',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.rangeKm),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -542,7 +714,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.BATTERY_TEMPERATURE_C,
         numericValue: data.temperatureC,
         unit: 'celsius',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.temperatureC),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -552,7 +724,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.CHARGING_POWER_KW,
         numericValue: data.chargingPowerKw,
         unit: 'kW',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.chargingPowerKw),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -560,21 +732,20 @@ export class HvBatteryHealthService {
         scope: BatteryEvidenceScope.HV,
         sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
         valueType: BatteryEvidenceValueType.CURRENT_ENERGY_KWH,
-        numericValue: data.energyUsedKwh,
+        numericValue: currentEnergyKwh,
         unit: 'kWh',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.currentEnergyKwh),
         provider: data.providerSource ?? 'DIMO',
       },
       {
         vehicleId: data.vehicleId,
         scope: BatteryEvidenceScope.HV,
-        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
-        valueType: BatteryEvidenceValueType.SOH_PERCENT,
-        numericValue: soh,
-        unit: 'percent',
-        observedAt,
-        provider: 'SynqDrive',
-        confidence: soh == null ? null : 'derived_from_energy',
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.ADDED_ENERGY_KWH,
+        numericValue: data.addedEnergyKwh,
+        unit: 'kWh',
+        observedAt: resolveObservedAt(data.signalObservedAt?.addedEnergyKwh),
+        provider: data.providerSource ?? 'DIMO',
       },
       {
         vehicleId: data.vehicleId,
@@ -583,16 +754,73 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.SOH_PERCENT,
         numericValue: data.providerReportedSohPercent,
         unit: 'percent',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.providerSoh),
         provider: data.providerSource ?? 'DIMO',
       },
-    ]);
+    ];
 
-    // Update publication pipeline after new data
-    this.upsertPublicationState(data.vehicleId).catch((err) =>
-      this.logger.warn(`HV publication state update failed for ${data.vehicleId}: ${err instanceof Error ? err.message : err}`),
-    );
+    if (legacyPairwiseEnabled && soh != null) {
+      evidenceRows.push({
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        numericValue: soh,
+        unit: 'percent',
+        observedAt: resolveObservedAt(data.signalObservedAt?.soc, data.observedAt),
+        provider: 'SynqDrive',
+        confidence: 'derived_from_energy',
+      } as any);
+    }
+
+    await this.batteryEvidence.recordMany(evidenceRows);
+
+    // Update publication pipeline after new pairwise data only.
+    if (legacyPairwiseEnabled) {
+      this.upsertPublicationState(data.vehicleId).catch((err) =>
+        this.logger.warn(`HV publication state update failed for ${data.vehicleId}: ${err instanceof Error ? err.message : err}`),
+      );
+    }
 
     return snapshot;
+  }
+
+  private recordHvSnapshotDuplicateDiscarded(reason: HvSnapshotSkipReason): void {
+    this.tripMetrics?.hvSnapshotDuplicatesDiscarded.inc({ reason });
+    if (this.tripMetrics) {
+      recordBatteryProviderDuplicate(this.tripMetrics, {
+        signal: 'hv',
+        reason,
+      });
+    }
+  }
+
+  private async createSnapshotIdempotent(
+    data: Prisma.HvBatteryHealthSnapshotUncheckedCreateInput,
+  ): Promise<HvBatteryHealthSnapshot> {
+    try {
+      return await this.prisma.hvBatteryHealthSnapshot.create({ data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        data.vehicleId &&
+        data.idempotencyKey
+      ) {
+        const existing = await this.prisma.hvBatteryHealthSnapshot.findUnique({
+          where: {
+            vehicleId_idempotencyKey: {
+              vehicleId: data.vehicleId,
+              idempotencyKey: data.idempotencyKey,
+            },
+          },
+        });
+        if (existing) {
+          this.recordHvSnapshotDuplicateDiscarded('DUPLICATE_OBSERVATION');
+          return existing;
+        }
+      }
+      throw error;
+    }
   }
 }

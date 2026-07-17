@@ -8,6 +8,10 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { TripEnrichmentOrchestratorService } from '../vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
+import { BatteryCapabilityRefreshService } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
+import { BatteryCapabilityPreflightRepository } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-preflight.repository';
+import { BatteryCapabilityRefreshTrigger } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
+import { BatteryShadowValidationService } from '../vehicle-intelligence/battery-health/shadow-validation/battery-shadow-validation.service';
 
 @Controller('admin')
 @UseGuards(RolesGuard)
@@ -20,6 +24,9 @@ export class PlatformAdminController {
     private readonly prisma: PrismaService,
     private readonly enrichmentOrchestrator: TripEnrichmentOrchestratorService,
     private readonly audit: AuditService,
+    private readonly batteryCapabilityRefresh: BatteryCapabilityRefreshService,
+    private readonly batteryCapabilityRepository: BatteryCapabilityPreflightRepository,
+    private readonly batteryShadowValidation: BatteryShadowValidationService,
   ) {}
 
   @Get('changelogs')
@@ -211,6 +218,56 @@ export class PlatformAdminController {
     return this.logbookService.getVehicleDetail(vehicleId);
   }
 
+  // POST /admin/vehicles/:vehicleId/battery-capability-refresh
+  @Post('vehicles/:vehicleId/battery-capability-refresh')
+  async refreshBatteryCapability(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: any,
+  ) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { id: true, organizationId: true },
+    });
+    if (!vehicle) {
+      return { enqueued: false, message: 'Vehicle not found' };
+    }
+
+    const jobId = await this.batteryCapabilityRefresh.enqueue({
+      organizationId: vehicle.organizationId,
+      vehicleId: vehicle.id,
+      trigger: BatteryCapabilityRefreshTrigger.MANUAL_ADMIN,
+    });
+
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.VEHICLE,
+      entityId: vehicleId,
+      description: `Admin triggered battery capability refresh for vehicle ${vehicleId}`,
+      metaJson: { jobId, trigger: BatteryCapabilityRefreshTrigger.MANUAL_ADMIN },
+    });
+
+    const capabilities = await this.batteryCapabilityRepository.listForVehicle(
+      vehicle.organizationId,
+      vehicle.id,
+    );
+    const changes = await this.batteryCapabilityRepository.listChangesForVehicle(
+      vehicle.organizationId,
+      vehicle.id,
+      20,
+    );
+
+    return {
+      enqueued: jobId != null,
+      jobId,
+      capabilityCount: capabilities.length,
+      recentChanges: changes.length,
+      message: jobId
+        ? 'Battery capability refresh enqueued'
+        : 'Refresh not enqueued (no DIMO token or queue unavailable)',
+    };
+  }
+
   // ── Trip Enrichment Backfill ────────────────────────────────────────────
   // POST /admin/trips/backfill-enrichment
   // Safe to call repeatedly — idempotent via status guards.
@@ -237,5 +294,43 @@ export class PlatformAdminController {
       ...result,
       message: `Backfill complete: ${result.enqueued} trips enqueued for enrichment`,
     };
+  }
+
+  // GET /admin/battery-shadow-validation-report
+  // Read-only internal shadow evaluation — never enables publication/readiness.
+  @Get('battery-shadow-validation-report')
+  async getBatteryShadowValidationReport(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('observationDays') observationDays?: string,
+    @Query('vehicleSampleLimit') vehicleSampleLimit?: string,
+    @Req() req?: any,
+  ) {
+    const days = observationDays ? Number(observationDays) : undefined;
+    const report = await this.batteryShadowValidation.runReport({
+      organizationId: organizationId || undefined,
+      vehicleId: vehicleId || undefined,
+      observationStartAt: from ? new Date(from) : undefined,
+      referenceNow: to ? new Date(to) : new Date(),
+      observationDays: Number.isFinite(days) ? days : undefined,
+      vehicleSampleLimit: vehicleSampleLimit ? Number(vehicleSampleLimit) : 10,
+    });
+
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Admin generated Battery V2 shadow validation report',
+      metaJson: {
+        organizationId: organizationId ?? null,
+        vehicleId: vehicleId ?? null,
+        recommendation: report.overallRecommendation,
+        observationDays: report.observationPeriod.durationDays,
+      },
+    });
+
+    return report;
   }
 }

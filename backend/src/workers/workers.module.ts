@@ -9,6 +9,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automation-outbox.module';
+import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
+import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -22,6 +24,7 @@ import { NotificationEvaluationProcessor } from './processors/notification-evalu
 import { NotificationDeliveryProcessor } from './processors/notification-delivery.processor';
 import { PaymentEmailProcessor } from './processors/payment-email.processor';
 import { TaskAutomationOutboxProcessor } from './processors/task-automation-outbox.processor';
+import { BatteryV2Processor } from './processors/battery-v2.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -36,6 +39,8 @@ import { BillingReconciliationScheduler } from './schedulers/billing-reconciliat
 import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.scheduler';
 import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
 import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
+import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.scheduler';
+import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
 
 @Module({
   imports: [
@@ -52,6 +57,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
       { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },
       { name: QUEUE_NAMES.PAYMENT_EMAIL },
       { name: QUEUE_NAMES.TASK_AUTOMATION },
+      { name: QUEUE_NAMES.BATTERY_V2 },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -60,6 +66,8 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     PaymentsModule,
     BillingModule,
     TaskAutomationOutboxModule,
+    BatteryV2JobsProducerModule,
+    BatteryV2JobsModule,
   ],
   providers: [
     // Processors
@@ -75,6 +83,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     NotificationDeliveryProcessor,
     PaymentEmailProcessor,
     TaskAutomationOutboxProcessor,
+    BatteryV2Processor,
 
     // Schedulers
     DimoSnapshotScheduler,
@@ -90,6 +99,8 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     HmHealthPollingScheduler,
     DataRetentionScheduler,
     StorageOrphanSweepScheduler,
+    BatteryV2ReconciliationScheduler,
+    BatteryV2RetentionScheduler,
   ],
 })
 export class WorkersModule {}

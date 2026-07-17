@@ -1,0 +1,420 @@
+{
+  "generatedAt": "2026-07-16T10:26:20.088Z",
+  "periodDays": 30,
+  "since": "2026-06-16T10:26:20.081Z",
+  "vehicles": [
+    {
+      "id": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "label": "veh-c10351f8",
+      "fuelType": "GASOLINE",
+      "makeModel": "Audi A4",
+      "connected": "CONNECTED",
+      "tripCount": 212,
+      "pollLogCount": 112200
+    },
+    {
+      "id": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "label": "KS FH 660E",
+      "fuelType": "ELECTRIC",
+      "makeModel": "Tesla Model 3",
+      "connected": "CONNECTED",
+      "tripCount": 970,
+      "pollLogCount": 83054
+    },
+    {
+      "id": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+      "label": "veh-a60c0749",
+      "fuelType": "GASOLINE",
+      "makeModel": "Mercedes-Benz C 63 AMG",
+      "connected": "CONNECTED",
+      "tripCount": 108,
+      "pollLogCount": 80052
+    },
+    {
+      "id": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "label": "veh-8c850ff1",
+      "fuelType": "GASOLINE",
+      "makeModel": "Volkswagen Arteon",
+      "connected": "CONNECTED",
+      "tripCount": 56,
+      "pollLogCount": 59433
+    },
+    {
+      "id": "c43c3b45-b911-498f-baf9-4376dd585588",
+      "label": "veh-c43c3b45",
+      "fuelType": "GASOLINE",
+      "makeModel": "Volkswagen Golf",
+      "connected": "CONNECTED",
+      "tripCount": 20,
+      "pollLogCount": 44554
+    },
+    {
+      "id": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "label": "veh-19fedd4b",
+      "fuelType": "GASOLINE",
+      "makeModel": "Volkswagen Tiguan",
+      "connected": "CONNECTED",
+      "tripCount": 49,
+      "pollLogCount": 35169
+    }
+  ],
+  "pollLogRange": {
+    "_min": {
+      "createdAt": "2026-06-21T21:18:06.826Z"
+    },
+    "_max": {
+      "createdAt": "2026-07-16T10:26:09.493Z"
+    },
+    "_count": 366354
+  },
+  "pollIntervals": {
+    "c10351f8-b6a2-4258-947f-631aeaa6d359": {
+      "label": "veh-c10351f8",
+      "fuelType": "GASOLINE",
+      "polls": 69495,
+      "success": 69342,
+      "failure": 153,
+      "gapMedianSec": 30,
+      "gapP95Sec": 30.013,
+      "gapMaxSec": 27626.452,
+      "durationMedianMs": 284,
+      "durationP95Ms": 730
+    },
+    "68868291-5478-42cd-b0c4-cc77b2a78e21": {
+      "label": "KS FH 660E",
+      "fuelType": "ELECTRIC",
+      "polls": 69457,
+      "success": 69315,
+      "failure": 142,
+      "gapMedianSec": 30,
+      "gapP95Sec": 30.076,
+      "gapMaxSec": 27626.205,
+      "durationMedianMs": 265,
+      "durationP95Ms": 711
+    },
+    "a60c0749-a7cd-494e-b5b9-dea3c6b97d63": {
+      "label": "veh-a60c0749",
+      "fuelType": "GASOLINE",
+      "polls": 69461,
+      "success": 69317,
+      "failure": 144,
+      "gapMedianSec": 30,
+      "gapP95Sec": 30.013,
+      "gapMaxSec": 27626.458,
+      "durationMedianMs": 284,
+      "durationP95Ms": 745
+    },
+    "8c850ff1-4201-432b-af2e-2711dbc7ca48": {
+      "label": "veh-8c850ff1",
+      "fuelType": "GASOLINE",
+      "polls": 44945,
+      "success": 44931,
+      "failure": 14,
+      "gapMedianSec": 30,
+      "gapP95Sec": 30.011,
+      "gapMaxSec": 2550.09,
+      "durationMedianMs": 288,
+      "durationP95Ms": 714
+    },
+    "c43c3b45-b911-498f-baf9-4376dd585588": {
+      "label": "veh-c43c3b45",
+      "fuelType": "GASOLINE",
+      "polls": 38934,
+      "success": 38926,
+      "failure": 8,
+      "gapMedianSec": 30,
+      "gapP95Sec": 30.009,
+      "gapMaxSec": 2550.088,
+      "durationMedianMs": 288,
+      "durationP95Ms": 692
+    },
+    "19fedd4b-c4e8-4de8-a125-dab293326e7e": {
+      "label": "veh-19fedd4b",
+      "fuelType": "GASOLINE",
+      "polls": 27599,
+      "success": 27592,
+      "failure": 7,
+      "gapMedianSec": 30,
+      "gapP95Sec": 30.009,
+      "gapMaxSec": 2550.087,
+      "durationMedianMs": 289,
+      "durationP95Ms": 675
+    }
+  },
+  "chRange": {
+    "min": "2026-06-22 18:29:25.000",
+    "max": "2026-07-16 09:28:13.000",
+    "count": 341354
+  },
+  "chPerVehicle": {
+    "c10351f8-b6a2-4258-947f-631aeaa6d359": {
+      "label": "veh-c10351f8",
+      "fuelType": "GASOLINE",
+      "rows": 65906,
+      "uniqueRecordedAt": 1602,
+      "repeatRecordedAtPct": 97.57074577042712,
+      "gapMedianSec": 0,
+      "gapP95Sec": 0,
+      "gapMaxSec": 277132,
+      "maxSameEvSocStreak": 0,
+      "socUnchangedBetweenPolls": 0,
+      "pctIgnition": 1,
+      "pctEvSoc": 0,
+      "pctSpeed": 1,
+      "pctTraction": 0
+    },
+    "a60c0749-a7cd-494e-b5b9-dea3c6b97d63": {
+      "label": "veh-a60c0749",
+      "fuelType": "GASOLINE",
+      "rows": 65880,
+      "uniqueRecordedAt": 410,
+      "repeatRecordedAtPct": 99.37916483249593,
+      "gapMedianSec": 0,
+      "gapP95Sec": 0,
+      "gapMaxSec": 339302,
+      "maxSameEvSocStreak": 0,
+      "socUnchangedBetweenPolls": 0,
+      "pctIgnition": 1,
+      "pctEvSoc": 0,
+      "pctSpeed": 1,
+      "pctTraction": 0
+    },
+    "68868291-5478-42cd-b0c4-cc77b2a78e21": {
+      "label": "KS FH 660E",
+      "fuelType": "ELECTRIC",
+      "rows": 65878,
+      "uniqueRecordedAt": 3656,
+      "repeatRecordedAtPct": 94.45178135009184,
+      "gapMedianSec": 0,
+      "gapP95Sec": 19.5,
+      "gapMaxSec": 661720.299,
+      "maxSameEvSocStreak": 22011,
+      "socUnchangedBetweenPolls": 63986,
+      "pctIgnition": 0,
+      "pctEvSoc": 1,
+      "pctSpeed": 1,
+      "pctTraction": 1
+    },
+    "8c850ff1-4201-432b-af2e-2711dbc7ca48": {
+      "label": "veh-8c850ff1",
+      "fuelType": "GASOLINE",
+      "rows": 39062,
+      "uniqueRecordedAt": 1267,
+      "repeatRecordedAtPct": 96.75891554235683,
+      "gapMedianSec": 0,
+      "gapP95Sec": 0,
+      "gapMaxSec": 86608,
+      "maxSameEvSocStreak": 0,
+      "socUnchangedBetweenPolls": 0,
+      "pctIgnition": 1,
+      "pctEvSoc": 0,
+      "pctSpeed": 1,
+      "pctTraction": 0
+    },
+    "c43c3b45-b911-498f-baf9-4376dd585588": {
+      "label": "veh-c43c3b45",
+      "fuelType": "GASOLINE",
+      "rows": 38782,
+      "uniqueRecordedAt": 543,
+      "repeatRecordedAtPct": 98.60240839586395,
+      "gapMedianSec": 0,
+      "gapP95Sec": 0,
+      "gapMaxSec": 86635,
+      "maxSameEvSocStreak": 0,
+      "socUnchangedBetweenPolls": 0,
+      "pctIgnition": 1,
+      "pctEvSoc": 0,
+      "pctSpeed": 1,
+      "pctTraction": 0
+    },
+    "be15ecb1-2210-4391-a921-f8f692a97cc1": {
+      "label": "veh-be15ecb1",
+      "rows": 38259,
+      "uniqueRecordedAt": 1229,
+      "repeatRecordedAtPct": 96.79021381149042,
+      "gapMedianSec": 0,
+      "gapP95Sec": 0,
+      "gapMaxSec": 86668,
+      "maxSameEvSocStreak": 0,
+      "socUnchangedBetweenPolls": 0,
+      "pctIgnition": 1,
+      "pctEvSoc": 0,
+      "pctSpeed": 1,
+      "pctTraction": 0
+    },
+    "19fedd4b-c4e8-4de8-a125-dab293326e7e": {
+      "label": "veh-19fedd4b",
+      "fuelType": "GASOLINE",
+      "rows": 27587,
+      "uniqueRecordedAt": 1219,
+      "repeatRecordedAtPct": 95.58471688537664,
+      "gapMedianSec": 0,
+      "gapP95Sec": 0,
+      "gapMaxSec": 76046,
+      "maxSameEvSocStreak": 0,
+      "socUnchangedBetweenPolls": 0,
+      "pctIgnition": 1,
+      "pctEvSoc": 0,
+      "pctSpeed": 1,
+      "pctTraction": 0
+    }
+  },
+  "pollVsPersist": {
+    "c10351f8-b6a2-4258-947f-631aeaa6d359": {
+      "label": "veh-c10351f8",
+      "requestPolls": 69495,
+      "chRows": 65906,
+      "ratioPct": 94.83559968343046
+    },
+    "68868291-5478-42cd-b0c4-cc77b2a78e21": {
+      "label": "KS FH 660E",
+      "requestPolls": 69457,
+      "chRows": 65878,
+      "ratioPct": 94.84717163136905
+    },
+    "a60c0749-a7cd-494e-b5b9-dea3c6b97d63": {
+      "label": "veh-a60c0749",
+      "requestPolls": 69461,
+      "chRows": 65880,
+      "ratioPct": 94.84458904997048
+    },
+    "8c850ff1-4201-432b-af2e-2711dbc7ca48": {
+      "label": "veh-8c850ff1",
+      "requestPolls": 44945,
+      "chRows": 39062,
+      "ratioPct": 86.91066859494939
+    },
+    "c43c3b45-b911-498f-baf9-4376dd585588": {
+      "label": "veh-c43c3b45",
+      "requestPolls": 38934,
+      "chRows": 38782,
+      "ratioPct": 99.60959572610058
+    },
+    "19fedd4b-c4e8-4de8-a125-dab293326e7e": {
+      "label": "veh-19fedd4b",
+      "requestPolls": 27599,
+      "chRows": 27587,
+      "ratioPct": 99.95652016377406
+    }
+  },
+  "batteryHealthSnapshots": [
+    {
+      "_count": 10,
+      "_min": {
+        "recordedAt": "2026-07-03T03:28:14.000Z"
+      },
+      "_max": {
+        "recordedAt": "2026-07-15T10:28:37.000Z"
+      },
+      "vehicleId": "c43c3b45-b911-498f-baf9-4376dd585588"
+    },
+    {
+      "_count": 39,
+      "_min": {
+        "recordedAt": "2026-06-24T05:43:58.000Z"
+      },
+      "_max": {
+        "recordedAt": "2026-07-16T08:49:35.000Z"
+      },
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359"
+    },
+    {
+      "_count": 11,
+      "_min": {
+        "recordedAt": "2026-07-03T19:17:13.000Z"
+      },
+      "_max": {
+        "recordedAt": "2026-07-15T15:28:43.000Z"
+      },
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48"
+    },
+    {
+      "_count": 11,
+      "_min": {
+        "recordedAt": "2026-06-22T11:36:17.000Z"
+      },
+      "_max": {
+        "recordedAt": "2026-07-14T21:04:50.000Z"
+      },
+      "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63"
+    },
+    {
+      "_count": 16,
+      "_min": {
+        "recordedAt": "2026-07-07T14:56:05.000Z"
+      },
+      "_max": {
+        "recordedAt": "2026-07-15T19:44:06.000Z"
+      },
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e"
+    }
+  ],
+  "hvSnapshots": [
+    {
+      "vehicle_id": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "cnt": 69778,
+      "unique_rec": 4396,
+      "min_at": "2026-06-16T12:15:50.227Z",
+      "max_at": "2026-07-15T04:07:06.376Z"
+    }
+  ],
+  "hvGaps": {
+    "68868291-5478-42cd-b0c4-cc77b2a78e21": {
+      "label": "KS FH 660E",
+      "rows": 10000,
+      "gapMedianSec": 0,
+      "gapP95Sec": 46,
+      "gapMaxSec": 251530.999,
+      "sameSocRows": 8978,
+      "uniqueSoc": 957
+    }
+  },
+  "ksFh660e": {
+    "fuelType": "ELECTRIC",
+    "state": "RESTING",
+    "lastSeenAt": "2026-07-15T04:07:06.376Z",
+    "sourceTimestamp": "2026-07-15T04:07:06.376Z",
+    "providerFetchedAt": "2026-07-16T10:26:09.480Z",
+    "fetchMinusSourceMs": 109143104,
+    "lv": null,
+    "evSoc": 76.06806661839246,
+    "speed": 0,
+    "ignition": null
+  },
+  "ksFh660ePolls": {
+    "label": "KS FH 660E",
+    "fuelType": "ELECTRIC",
+    "polls": 69457,
+    "success": 69315,
+    "failure": 142,
+    "gapMedianSec": 30,
+    "gapP95Sec": 30.076,
+    "gapMaxSec": 27626.205,
+    "durationMedianMs": 265,
+    "durationP95Ms": 711
+  },
+  "ksFh660eCh": {
+    "label": "KS FH 660E",
+    "fuelType": "ELECTRIC",
+    "rows": 65878,
+    "uniqueRecordedAt": 3656,
+    "repeatRecordedAtPct": 94.45178135009184,
+    "gapMedianSec": 0,
+    "gapP95Sec": 19.5,
+    "gapMaxSec": 661720.299,
+    "maxSameEvSocStreak": 22011,
+    "socUnchangedBetweenPolls": 63986,
+    "pctIgnition": 0,
+    "pctEvSoc": 1,
+    "pctSpeed": 1,
+    "pctTraction": 1
+  },
+  "ksFh660eMotion": {
+    "drivingRows": 1255,
+    "lowSpeedRows": 64623,
+    "total": 65878
+  },
+  "fleetPollGapMedianSec": 30,
+  "fleetChRecordedGapMedianSec": 0,
+  "fleetRepeatRecordedAtMedianPct": 96.79021381149042
+}
