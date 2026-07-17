@@ -309,7 +309,7 @@ describe('alert code mapping', () => {
     expect(alertTypeToCode('PAD_CRITICAL')).toBe('BRAKE_PAD_CRITICAL');
     expect(alertTypeToCode('PAD_WARNING')).toBe('BRAKE_PAD_WARNING');
     expect(alertTypeToCode('BRAKE_SYSTEM_DTC')).toBe('BRAKE_SYSTEM_DTC');
-    expect(alertTypeToCode('LOW_CONFIDENCE')).toBe('BRAKE_HEALTH_LOW_CONFIDENCE');
+    expect(alertTypeToCode('LOW_CONFIDENCE')).toBe('BRAKE_MEASUREMENT_REQUIRED');
     expect(alertTypeToCode('something_else')).toBe('BRAKE_GENERIC');
   });
 

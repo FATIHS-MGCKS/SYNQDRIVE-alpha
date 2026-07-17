@@ -6,11 +6,13 @@ import {
   BrakeEvidenceConfirmationStatus,
   BrakeEvidenceFreshnessStatus,
   BrakeEvidenceSource,
+  BrakeHealthAlertResolutionReason,
   Prisma,
   VehicleDtcEvent,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeEvidenceService } from './brake-evidence.service';
+import { BrakeHealthAlertService } from './brake-health-alert.service';
 import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 import {
   buildBrakeDtcDedupeKey,
@@ -46,6 +48,7 @@ export class BrakeDtcEvidenceProducerService {
     private readonly brakeEvidence: BrakeEvidenceService,
     @Optional() private readonly recalcOrchestrator?: BrakeRecalculationOrchestratorService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly brakeHealthAlerts?: BrakeHealthAlertService,
   ) {}
 
   async onDtcUpserted(
@@ -145,6 +148,12 @@ export class BrakeDtcEvidenceProducerService {
     });
 
     await this.enqueueRecalculation(vehicleId);
+    await this.brakeHealthAlerts?.resolveOpenAlerts(vehicleId, BrakeHealthAlertResolutionReason.DTC_CLEARED, {
+      alertType: 'BRAKE_DTC',
+    });
+    await this.brakeHealthAlerts?.resolveOpenAlerts(vehicleId, BrakeHealthAlertResolutionReason.DTC_CLEARED, {
+      alertType: 'ABS_WARNING',
+    });
     await this.emitBrakeSafetyNotification(vehicleId, classification, true, context);
     return 'cleared';
   }

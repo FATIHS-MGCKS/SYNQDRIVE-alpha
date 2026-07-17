@@ -438,7 +438,7 @@ export class RentalHealthService {
           : `Bremszustand: ${condition}`);
     }
 
-    // Pad pre-warning sensor (hasAlert) escalates to at least warning.
+    // Wear/safety alerts (not data-quality alone) escalate rental module state.
     if (summary.hasAlert) {
       state = maxSeverity(state, 'warning');
     }
@@ -726,7 +726,10 @@ export class RentalHealthService {
     const basis = summary.dataBasis ?? summary.frontDataBasis;
     if (basis === 'MEASURED') return true;
     return (
-      summary.openAlerts?.some((a) => a.severity === 'critical') ?? false
+      summary.openAlerts?.some(
+        (a) =>
+          (a.category === 'WEAR' || a.category === 'SAFETY') && a.severity === 'critical',
+      ) ?? false
     );
   }
 

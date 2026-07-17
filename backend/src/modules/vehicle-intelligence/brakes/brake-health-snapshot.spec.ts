@@ -58,13 +58,14 @@ describe('BrakeHealthService snapshots', () => {
     brakeRecalculationAudit: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
     tripDrivingImpact: { findMany: jest.fn().mockResolvedValue([]) },
     vehicleBrakeReferenceSpec: { findMany: jest.fn().mockResolvedValue([]) },
-    vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null }) },
+    vehicleServiceEvent: { findFirst: jest.fn().mockResolvedValue(null) },
+    vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null, organizationId: ORG_ID }) },
     vehicleLatestState: { findUnique: jest.fn().mockResolvedValue({ odometerKm: 11200 }) },
   } as any;
 
   const mockDI = { getVehicleImpactForBrake: jest.fn().mockResolvedValue(null) } as any;
   const mockBrakeEvidence = {
-    listRecent: jest.fn(),
+    listRecent: jest.fn().mockResolvedValue([]),
     getLatest: jest.fn(),
     getLatestMeasurement: jest.fn(),
     getLatestSafetySignal: jest.fn(),

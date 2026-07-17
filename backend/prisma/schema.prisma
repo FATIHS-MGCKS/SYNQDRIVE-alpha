@@ -1412,6 +1412,7 @@ model Organization {
   vehicleRentalRequirementOverrides VehicleRentalRequirementOverride[]
   tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
   tireHealthAlerts                  TireHealthAlert[]
+  brakeHealthAlerts                 BrakeHealthAlert[]
   bookings                          Booking[]
   bookingHandoverProtocols          BookingHandoverProtocol[]
   activityLogs                      ActivityLog[]
@@ -1900,6 +1901,7 @@ model Vehicle {
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
   brakeHealthSnapshots              BrakeHealthSnapshot[]
+  brakeHealthAlerts                 BrakeHealthAlert[]
   brakeRecalculationAudits          BrakeRecalculationAudit[]
   dtcEvents                         VehicleDtcEvent[]
   tripDrivingImpacts                TripDrivingImpact[]
@@ -6529,6 +6531,62 @@ model BrakeHealthCurrent {
   @@map("brake_health_current")
 }
 
+enum BrakeHealthAlertStatus {
+  OPEN
+  RESOLVED
+}
+
+enum BrakeHealthAlertCategory {
+  WEAR
+  SAFETY
+  DATA_QUALITY
+}
+
+enum BrakeHealthAlertResolutionReason {
+  COMPONENT_REPLACED
+  NEW_MEASUREMENT
+  DTC_CLEARED
+  EVIDENCE_RESOLVED
+  SPEC_CONFIRMED
+  COVERAGE_REPAIRED
+  EVIDENCE_CLEARED
+  SUPERSEDED
+}
+
+model BrakeHealthAlert {
+  id                      String                          @id @default(uuid())
+  organizationId          String                          @map("organization_id")
+  vehicleId               String                          @map("vehicle_id")
+  componentInstallationId String?                         @map("component_installation_id")
+  alertType               String                          @map("alert_type")
+  category                BrakeHealthAlertCategory
+  reasonCode              String                          @map("reason_code")
+  severity                String
+  axle                    String?
+  displayMode             String                          @map("display_mode")
+  evidenceFingerprint     String                          @map("evidence_fingerprint")
+  dedupeKey               String                          @map("dedupe_key")
+  modelSnapshotId         String?                         @map("model_snapshot_id")
+  status                  BrakeHealthAlertStatus          @default(OPEN)
+  resolutionReason        BrakeHealthAlertResolutionReason? @map("resolution_reason")
+  resolvedAt              DateTime?                       @map("resolved_at")
+  openedAt                DateTime                        @default(now()) @map("opened_at")
+  lastSeenAt              DateTime                        @default(now()) @map("last_seen_at")
+  inputFingerprint        String?                         @map("input_fingerprint")
+  lastNotifiedFingerprint String?                         @map("last_notified_fingerprint")
+  templateParamsJson      Json?                           @map("template_params_json")
+
+  vehicle         Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  modelSnapshot   BrakeHealthSnapshot? @relation(fields: [modelSnapshotId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([vehicleId, status])
+  @@index([vehicleId, category, status])
+  @@index([dedupeKey, status])
+  @@map("brake_health_alerts")
+}
+
 model BrakeHealthSnapshot {
   id                       String   @id @default(uuid())
   organizationId           String?  @map("organization_id")
@@ -6556,6 +6614,7 @@ model BrakeHealthSnapshot {
 
   vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   linkedEvidence BrakeEvidence[] @relation("BrakeEvidencePredictionSnapshot")
+  healthAlerts   BrakeHealthAlert[]
 
   @@index([vehicleId, generatedAt(sort: Desc)])
   @@index([vehicleId, modelVersion, inputFingerprint], map: "brake_health_snapshots_vehicle_model_fingerprint_idx")

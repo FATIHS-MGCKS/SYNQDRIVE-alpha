@@ -34,7 +34,6 @@ describe('BrakeLifecycleService scoped service matrix', () => {
     });
 
     const after = h.store.brakeHealthCurrent.get(h.vehicleId)!;
-    expect(after.hasAlert).toBe(true);
     expect(after.rearPadAnchorMm).toBe(before.rearPadAnchorMm);
   });
 

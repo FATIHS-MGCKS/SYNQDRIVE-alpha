@@ -33,7 +33,7 @@ const mockPrisma = {
     findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn().mockResolvedValue(null),
   },
-  vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null, organizationId: null }) },
+  vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null, organizationId: 'org-1' }) },
   vehicleLatestState: { findUnique: jest.fn().mockResolvedValue({ odometerKm: 50000, brakePadPercent: null, lastSeenAt: new Date('2026-04-13T10:00:00Z') }) },
 } as any;
 
@@ -533,6 +533,7 @@ describe('getDetail', () => {
 
 describe('canonical read model', () => {
   const baseCurrent = {
+    organizationId: 'org-1',
     isInitialized: true,
     stateClass: 'ESTIMATED',
     anchorOdometerKm: 40000,
@@ -731,6 +732,8 @@ describe('canonical read model', () => {
         discCondition: null,
         brakeFluidStatus: null,
         dtcSeverity: 'CRITICAL',
+        dtcActive: true,
+        active: true,
         immediateReplacement: null,
         mileageAtMeasurementKm: null,
         measuredAt: new Date('2026-05-27T00:00:00Z'),
@@ -858,7 +861,10 @@ describe('recalculate temporal coverage', () => {
     await svc.recalculate('v1');
 
     expect(mockPrisma.brakeHealthCurrent.update).toHaveBeenCalled();
-    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.at(-1)?.[0];
+    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.find(
+      (call: [{ data?: { modeledDistanceKm?: number } }]) =>
+        typeof call[0]?.data?.modeledDistanceKm === 'number',
+    )?.[0];
     expect(updateArg.data.modeledDistanceKm).toBe(200);
     expect(updateArg.data.modelingSource).toBe('MIXED_OBSERVED_NEUTRAL_GAP');
     expect(updateArg.data.coverageRatioRaw).toBe(0.17);
@@ -922,7 +928,10 @@ describe('recalculate temporal coverage', () => {
 
     await svc.recalculate('v1');
 
-    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.at(-1)?.[0];
+    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.find(
+      (call: [{ data?: { modeledDistanceKm?: number } }]) =>
+        typeof call[0]?.data?.modeledDistanceKm === 'number',
+    )?.[0];
     expect(updateArg.data.modeledDistanceKm).toBe(500);
     expect(updateArg.data.modelingSource).toBe('INCONSISTENT');
     expect(updateArg.data.overCoverageKm).toBe(200);
