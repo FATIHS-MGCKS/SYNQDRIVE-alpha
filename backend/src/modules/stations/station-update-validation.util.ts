@@ -6,6 +6,7 @@ import {
   assertValidStationCapacity,
   assertValidStationTimezone,
 } from './station-create-validation.util';
+import { assertValidGeofenceRadius } from './station-location-masterdata.util';
 
 export const STATION_PATCH_MASTER_DATA_FIELDS = [
   'name',
@@ -264,6 +265,7 @@ export function assertGenericStationUpdateAllowed(
   );
   assertValidStationTimezone(payload.timezone as string | null | undefined);
   assertValidStationCapacity(payload.capacity as number | null | undefined);
+  assertValidGeofenceRadius(payload.radiusMeters as number | null | undefined);
   if (payload.openingHours !== undefined) {
     assertValidOpeningHours(
       payload.openingHours as Record<string, unknown> | string | null | undefined,

@@ -196,6 +196,14 @@ enum StationType {
   TEMPORARY
 }
 
+enum StationCoordinatesSource {
+  MANUAL
+  FORWARD_GEOCODE
+  MAPBOX_RETRIEVE
+
+  @@map("station_coordinates_source")
+}
+
 enum ProductSlug {
   RENTAL
   FLEET
@@ -1761,6 +1769,8 @@ model Station {
   country                 String?
   latitude                Float?
   longitude               Float?
+  coordinatesSource       StationCoordinatesSource? @map("coordinates_source")
+  coordinatesConfirmedAt  DateTime?     @map("coordinates_confirmed_at")
   timezone                String?       @default("Europe/Berlin")
   radiusMeters            Int?          @default(100) @map("radius_meters")
   phone                   String?

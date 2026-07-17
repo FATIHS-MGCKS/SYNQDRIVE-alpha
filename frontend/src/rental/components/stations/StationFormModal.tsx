@@ -274,14 +274,21 @@ export function StationFormModal({ open, station, saving, orgId, formCapabilitie
     if (prefill) {
       setForm((prev) => ({
         ...prev,
-        name: prefill.name ?? sug.name ?? prev.name,
+        // Geocoding must not overwrite an existing station name — only seed empty name.
+        name: prev.name.trim() ? prev.name : sug.name || prev.name,
         address: prefill.street ?? prev.address,
         postalCode: prefill.postalCode ?? prev.postalCode,
         city: prefill.city ?? prev.city,
         country: prefill.country ?? prev.country,
         phone: prefill.phone ?? prev.phone,
-        latitude: prefill.latitude != null ? String(prefill.latitude) : prev.latitude,
-        longitude: prefill.longitude != null ? String(prefill.longitude) : prev.longitude,
+        latitude:
+          prefill.coordinatesAccepted !== false && prefill.latitude != null
+            ? String(prefill.latitude)
+            : prev.latitude,
+        longitude:
+          prefill.coordinatesAccepted !== false && prefill.longitude != null
+            ? String(prefill.longitude)
+            : prev.longitude,
       }));
       setPrefilledFromMapbox(true);
     } else {

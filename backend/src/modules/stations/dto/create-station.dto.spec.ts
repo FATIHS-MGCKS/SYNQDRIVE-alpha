@@ -40,6 +40,30 @@ describe('CreateStationDto validation', () => {
     expect(errors.some((e) => e.property === 'timezone')).toBe(true);
   });
 
+  it('rejects geofence radius below minimum', async () => {
+    const errors = await validateDto({
+      name: 'Radius',
+      radiusMeters: 10,
+    });
+    expect(errors.some((e) => e.property === 'radiusMeters')).toBe(true);
+  });
+
+  it('rejects geofence radius above maximum', async () => {
+    const errors = await validateDto({
+      name: 'Radius',
+      radiusMeters: 9000,
+    });
+    expect(errors.some((e) => e.property === 'radiusMeters')).toBe(true);
+  });
+
+  it('accepts geofence radius within bounds', async () => {
+    const errors = await validateDto({
+      name: 'Radius',
+      radiusMeters: 150,
+    });
+    expect(errors).toHaveLength(0);
+  });
+
   it('rejects zero capacity', async () => {
     const errors = await validateDto({
       name: 'Cap',

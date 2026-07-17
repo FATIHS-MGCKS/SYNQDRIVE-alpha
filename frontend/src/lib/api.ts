@@ -8923,6 +8923,9 @@ export interface Station {
   country: string | null;
   latitude: number | null;
   longitude: number | null;
+  coordinatesSource: 'MANUAL' | 'FORWARD_GEOCODE' | 'MAPBOX_RETRIEVE' | null;
+  coordinatesConfirmedAt: string | null;
+  hasMissingCoordinates: boolean;
   timezone: string | null;
   radiusMeters: number | null;
   geofenceRadiusMeters: number | null;
@@ -9096,6 +9099,7 @@ export interface StationMapboxPrefill {
   phone: string | null;
   externalPlaceId: string | null;
   source: 'MAPBOX';
+  coordinatesAccepted: boolean;
 }
 
 /** @deprecated Legacy Google Places shape — use StationMapboxSuggestion */

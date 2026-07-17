@@ -48,6 +48,8 @@ describe('StationsService create hardening', () => {
     country: null,
     latitude: null,
     longitude: null,
+    coordinatesSource: null,
+    coordinatesConfirmedAt: null,
     timezone: 'Europe/Berlin',
     radiusMeters: 100,
     phone: null,

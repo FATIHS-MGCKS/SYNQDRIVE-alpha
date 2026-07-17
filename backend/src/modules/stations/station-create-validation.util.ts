@@ -5,6 +5,7 @@ import {
   evaluateStationLifecycle,
   StationLifecycleCommand,
 } from '@shared/stations/station-lifecycle.policy';
+import { assertValidGeofenceRadius } from './station-location-masterdata.util';
 
 export const STATION_WEEKDAYS = [
   'monday',
@@ -44,6 +45,7 @@ export interface StationCreateInput {
   latitude?: number | null;
   longitude?: number | null;
   timezone?: string | null;
+  radiusMeters?: number | null;
   capacity?: number | null;
   pickupEnabled?: boolean;
   returnEnabled?: boolean;
@@ -279,6 +281,7 @@ export function validateStationCreatePayload(payload: StationCreateInput): void 
   assertValidStationCreateStatus(payload.status);
   assertValidCoordinatePair(payload.latitude, payload.longitude);
   assertValidStationTimezone(payload.timezone);
+  assertValidGeofenceRadius(payload.radiusMeters);
   assertValidStationCapacity(payload.capacity);
   assertPickupReturnCapabilitiesConsistent(payload);
   assertValidOpeningHours(payload.openingHours ?? undefined);

@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
-import { BookingStatus, Prisma, Station, StationStatus, StationType, VehicleStatus } from '@prisma/client';
+import { BookingStatus, Prisma, Station, StationCoordinatesSource, StationStatus, StationType, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationValidationService } from './station-validation.service';
 import {
@@ -20,7 +20,12 @@ import {
 } from './station-update-validation.util';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
-import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
+import { mapboxAccessToken, parseMapboxForwardGeocodeFeature, resolveGeocodeCountryFilter } from './station-geocode.util';
+import {
+  normalizeGeofenceRadius,
+  resolveStationCoordinatesProvenance,
+  stationHasMissingCoordinates,
+} from './station-location-masterdata.util';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
@@ -114,6 +119,9 @@ export interface StationDto {
   country: string | null;
   latitude: number | null;
   longitude: number | null;
+  coordinatesSource: StationCoordinatesSource | null;
+  coordinatesConfirmedAt: Date | null;
+  hasMissingCoordinates: boolean;
   timezone: string | null;
   radiusMeters: number | null;
   geofenceRadiusMeters: number | null;
@@ -310,7 +318,12 @@ export class StationsService {
 
     const explicitLat = payload.latitude !== undefined && payload.latitude !== null;
     const explicitLng = payload.longitude !== undefined && payload.longitude !== null;
-    if (!(explicitLat && explicitLng)) {
+    if (explicitLat && explicitLng) {
+      Object.assign(
+        writable,
+        resolveStationCoordinatesProvenance({ explicitCoordinates: true }),
+      );
+    } else if (!(explicitLat && explicitLng)) {
       const coords = await this.geocodeAddress({
         address: payload.address ?? null,
         city: payload.city ?? null,
@@ -320,6 +333,10 @@ export class StationsService {
       if (coords) {
         if (!explicitLat) writable.latitude = coords.latitude;
         if (!explicitLng) writable.longitude = coords.longitude;
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ geocodedCoordinates: true }),
+        );
       }
     }
 
@@ -363,16 +380,8 @@ export class StationsService {
       const r = payload.radiusMeters;
       if (r === null) {
         writable.radiusMeters = null;
-      } else if (typeof r !== 'number' || !Number.isFinite(r)) {
-        throw new BadRequestException('radiusMeters must be a finite number or null');
       } else {
-        const rounded = Math.round(r);
-        if (rounded < this.RADIUS_MIN_M || rounded > this.RADIUS_MAX_M) {
-          throw new BadRequestException(
-            `radiusMeters must be between ${this.RADIUS_MIN_M} and ${this.RADIUS_MAX_M} meters`,
-          );
-        }
-        writable.radiusMeters = rounded;
+        writable.radiusMeters = normalizeGeofenceRadius(r);
       }
     }
 
@@ -393,6 +402,22 @@ export class StationsService {
 
     const wantsLatChange = payload.latitude !== undefined;
     const wantsLngChange = payload.longitude !== undefined;
+    if (wantsLatChange || wantsLngChange) {
+      const nextLat = wantsLatChange ? payload.latitude : existing.latitude;
+      const nextLng = wantsLngChange ? payload.longitude : existing.longitude;
+      if (nextLat == null && nextLng == null) {
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ coordinatesCleared: true }),
+        );
+      } else if (wantsLatChange && wantsLngChange && nextLat != null && nextLng != null) {
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ explicitCoordinates: true }),
+        );
+      }
+    }
+
     const addressFieldsTouched =
       payload.address !== undefined ||
       payload.city !== undefined ||
@@ -409,6 +434,10 @@ export class StationsService {
       if (coords) {
         writable.latitude = coords.latitude;
         writable.longitude = coords.longitude;
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ geocodedCoordinates: true }),
+        );
       }
     }
 
@@ -2309,30 +2338,7 @@ export class StationsService {
       const json = (await res.json()) as {
         features?: Array<{ center?: [number, number]; relevance?: number }>;
       };
-      const feature = json.features?.[0];
-      if (!feature?.center || feature.center.length !== 2) {
-        this.logger.warn(`Mapbox geocoding: no result for "${query}"`);
-        return null;
-      }
-      // Mapbox confidence floor — anything below 0.5 means the geocoder
-      // had to guess heavily (e.g. fell back to the city centroid). That's
-      // actively harmful for a 100m geofence so we reject it.
-      if (typeof feature.relevance === 'number' && feature.relevance < 0.5) {
-        this.logger.warn(
-          `Mapbox geocoding: low-confidence result (${feature.relevance}) for "${query}"`,
-        );
-        return null;
-      }
-      const [lng, lat] = feature.center;
-      if (
-        typeof lat !== 'number' ||
-        typeof lng !== 'number' ||
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lng)
-      ) {
-        return null;
-      }
-      return { latitude: lat, longitude: lng };
+      return parseMapboxForwardGeocodeFeature(json.features?.[0]);
     } catch (err) {
       this.logger.warn(
         `Mapbox geocoding failed for "${query}": ${(err as Error).message}`,
@@ -2414,7 +2420,11 @@ export class StationsService {
 
       await this.prisma.station.update({
         where: { id: s.id },
-        data: { latitude: coords.latitude, longitude: coords.longitude },
+        data: {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          ...resolveStationCoordinatesProvenance({ geocodedCoordinates: true }),
+        },
       });
       result.totalGeocoded++;
       result.results.push({
@@ -2460,6 +2470,9 @@ export class StationsService {
       country: row.country,
       latitude: row.latitude,
       longitude: row.longitude,
+      coordinatesSource: row.coordinatesSource,
+      coordinatesConfirmedAt: row.coordinatesConfirmedAt,
+      hasMissingCoordinates: stationHasMissingCoordinates(row.latitude, row.longitude),
       timezone: row.timezone,
       radiusMeters: row.radiusMeters,
       geofenceRadiusMeters: row.radiusMeters,
@@ -2485,13 +2498,6 @@ export class StationsService {
       updatedAt: row.updatedAt,
     };
   }
-
-  // Geofence radius is bounded so we can't accidentally store a negative
-  // value (would invert the haversine check) or an absurd value (e.g.
-  // city-wide 50km — that defeats the "is this car parked at the depot?"
-  // intent and would always evaluate to true).
-  private readonly RADIUS_MIN_M = 25;
-  private readonly RADIUS_MAX_M = 5000;
 
   private buildWriteData(payload: StationPatchPayload): Record<string, unknown> {
     const data: Record<string, unknown> = {};
@@ -2532,16 +2538,8 @@ export class StationsService {
       const r = payload.radiusMeters;
       if (r === null) {
         data.radiusMeters = null;
-      } else if (typeof r !== 'number' || !Number.isFinite(r)) {
-        throw new BadRequestException('radiusMeters must be a finite number or null');
       } else {
-        const rounded = Math.round(r);
-        if (rounded < this.RADIUS_MIN_M || rounded > this.RADIUS_MAX_M) {
-          throw new BadRequestException(
-            `radiusMeters must be between ${this.RADIUS_MIN_M} and ${this.RADIUS_MAX_M} meters`,
-          );
-        }
-        data.radiusMeters = rounded;
+        data.radiusMeters = normalizeGeofenceRadius(r);
       }
     }
 

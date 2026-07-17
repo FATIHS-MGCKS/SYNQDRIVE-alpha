@@ -88,6 +88,12 @@ describe('station-update-validation.util', () => {
         assertGenericStationUpdateAllowed({ name: 'X', latitude: 52.5 }),
       ).toThrow(BadRequestException);
     });
+
+    it('validates geofence radius bounds on allowed patch', () => {
+      expect(() =>
+        assertGenericStationUpdateAllowed({ radiusMeters: 5 }),
+      ).toThrow(BadRequestException);
+    });
   });
 
   describe('buildStationPatchWriteData', () => {
