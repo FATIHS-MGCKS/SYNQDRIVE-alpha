@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { VehicleBrakeReferenceSpec } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
-import { BrakeLifecycleService } from './brake-lifecycle.service';
+import { BrakeInitializationWorkflowService } from './brake-initialization-workflow.service';
 import {
   applyNewBrakeDefaults,
   hasRegistrationBrakeMeasurements,
@@ -105,7 +105,7 @@ export class BrakeRegistrationBackfillService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly brakeLifecycle: BrakeLifecycleService,
+    private readonly brakeInitializationWorkflow: BrakeInitializationWorkflowService,
   ) {}
 
   async run(options: {
@@ -309,8 +309,9 @@ export class BrakeRegistrationBackfillService {
       };
     }
 
-    const init = await this.brakeLifecycle.initializeFromRegistration({
+    const init = await this.brakeInitializationWorkflow.initializeFromRegistration({
       vehicleId: vehicle.id,
+      organizationId: vehicle.organizationId,
       brakes: {
         ...brakes,
         serviceDate,
@@ -319,7 +320,7 @@ export class BrakeRegistrationBackfillService {
       latestStateOdometerKm: vehicle.latestState?.odometerKm ?? null,
     });
 
-    if (init?.initialized) {
+    if (init.initialized) {
       return {
         ...base,
         outcome: 'initialized',
@@ -331,7 +332,7 @@ export class BrakeRegistrationBackfillService {
     return {
       ...base,
       outcome: 'skipped_missing_anchor',
-      reason: init?.message ?? buildBackfillSkipReason('skipped_missing_anchor'),
+      reason: init.message ?? buildBackfillSkipReason('skipped_missing_anchor'),
       serviceDate,
       odometerKm,
     };

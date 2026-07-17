@@ -48,7 +48,7 @@ import {
 } from './fleet-connectivity.util';
 import type { FleetConnectivityResponseDto } from './fleet-connectivity.types';
 import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
-import { BrakeLifecycleService } from '@modules/vehicle-intelligence/brakes/brake-lifecycle.service';
+import { BrakeInitializationWorkflowService } from '@modules/vehicle-intelligence/brakes/brake-initialization-workflow.service';
 import {
   applyNewBrakeDefaults,
   hasRegistrationBrakeSpecValues,
@@ -278,8 +278,8 @@ export class VehiclesService {
     private readonly providerConsent: VehicleProviderConsentService,
     @Inject(forwardRef(() => TireLifecycleService))
     private readonly tireLifecycleService: TireLifecycleService,
-    @Inject(forwardRef(() => BrakeLifecycleService))
-    private readonly brakeLifecycleService: BrakeLifecycleService,
+    @Inject(forwardRef(() => BrakeInitializationWorkflowService))
+    private readonly brakeInitializationWorkflow: BrakeInitializationWorkflowService,
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
@@ -2140,17 +2140,16 @@ export class VehiclesService {
           where: { vehicleId: vehicle.id },
           select: { odometerKm: true },
         });
-        try {
-          await this.brakeLifecycleService.initializeFromRegistration({
-            vehicleId: vehicle.id,
-            brakes: rawBrakes,
-            registrationMileageKm: vehicle.mileageKm,
-            latestStateOdometerKm: latestState?.odometerKm ?? null,
-          });
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
+        const init = await this.brakeInitializationWorkflow.initializeFromRegistration({
+          vehicleId: vehicle.id,
+          organizationId: orgId,
+          brakes: rawBrakes,
+          registrationMileageKm: vehicle.mileageKm,
+          latestStateOdometerKm: latestState?.odometerKm ?? null,
+        });
+        if (init.outcome === 'failed') {
           this.logger.warn(
-            `Brake registration baseline init failed for vehicle ${vehicle.id}: ${msg}`,
+            `Brake registration baseline init failed for vehicle ${vehicle.id}: ${init.message}`,
           );
         }
       }
@@ -2224,22 +2223,13 @@ export class VehiclesService {
       }
     }
 
-    await Promise.all([
-      this.prisma.vehicleEnrichmentJob.create({
-        data: {
-          vehicle: { connect: { id: vehicle.id } },
-          jobType: EnrichmentJobType.BATTERY,
-          status: 'PENDING',
-        },
-      }),
-      this.prisma.vehicleEnrichmentJob.create({
-        data: {
-          vehicle: { connect: { id: vehicle.id } },
-          jobType: EnrichmentJobType.BRAKE,
-          status: 'PENDING',
-        },
-      }),
-    ]);
+    await this.prisma.vehicleEnrichmentJob.create({
+      data: {
+        vehicle: { connect: { id: vehicle.id } },
+        jobType: EnrichmentJobType.BATTERY,
+        status: 'PENDING',
+      },
+    });
 
     void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
 

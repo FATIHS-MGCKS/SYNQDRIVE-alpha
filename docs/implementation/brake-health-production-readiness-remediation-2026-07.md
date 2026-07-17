@@ -93,8 +93,9 @@ Der Brake-Health-Audit (7 Phasen, Juli 2026) bewertete Architektur, VPS-Integrit
 ```
 registerFromDimo / manual registration
   → VehicleBrakeReferenceSpec (MANUAL / manual_registration)
-  → VehiclesService → BrakeLifecycleService.initializeFromRegistration()
-  → BrakeHealthCurrent (anchors, isInitialized) + optional BrakeEvidence
+  → BrakeInitializationWorkflowService.initializeFromRegistration()  [Prompt 3: einziger Init-Owner]
+  → BrakeLifecycleService → BrakeHealthCurrent (anchors, isInitialized) + optional BrakeEvidence
+  → (kein vehicle_enrichment_jobs BRAKE mehr — Legacy-Jobs nur Diagnose/Runbook)
 
 recordBrakeService / POST brake-health/service
   → VehicleServiceEvent (BRAKE_SERVICE, scope[])
@@ -159,30 +160,31 @@ Read path
 |--------|-------|------|--------|--------|-----------|-------|-------------|
 | **1** | Baseline | Implementierungsbaseline, Builds, Tests dokumentieren | ✅ **Done** | *(nach Commit)* | — | siehe unten | — |
 | **2** | Safety net | Regressionstests für kritische Brake-Health-Schreibpfade (A–I) | ✅ **Done** | `b1246a88` | — | 6 rot / 4 grün | — |
-| **3** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
-| **4** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
-| **5** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
-| **6** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
-| **7** | B — Lifecycle | Scope-aware Tests (front/rear pads/discs only) | ⏳ Pending | — | — | lifecycle spec | — |
-| **8** | B — Lifecycle | Service + Evidence atomarer (Transaktion) | ⏳ Pending | — | evtl. | integration | — |
-| **9** | C — Anchors | Rotor-Breite ≠ Scheiben-Dicke trennen | ⏳ Pending | — | evtl. | anchor plausibility | — |
-| **10** | C — Anchors | Disc-Anker-Validierung + Spec-Semantik | ⏳ Pending | — | — | spec regression | — |
-| **11** | D — Safety | DTC Poll → `BrakeEvidence` Producer | ⏳ Pending | — | — | DTC spec | VPS read |
-| **12** | D — Safety | DTC Clearance → Alert Resolution | ⏳ Pending | — | — | active/cleared | — |
-| **13** | D — Safety | ABS Warning als Safety Evidence (kein Wear-%) | ⏳ Pending | — | — | ABS policy | DIMO when avail. |
-| **14** | E — Model | `harshBrakeWearMultiplier` in Recalc verdrahten | ⏳ Pending | — | — | harsh brake | — |
-| **15** | E — Model | Rolling-Gap Temporal Leakage mindern | ⏳ Pending | — | — | rolling gap | — |
-| **16** | E — Model | Disc OEM-Limit / generic 2mm Review | ⏳ Pending | — | config | disc limit | — |
-| **17** | F — Calibration | `calibrateFromMeasurement()` Runtime | ⏳ Pending | — | — | calibration | — |
-| **18** | F — Calibration | Target-Leakage + Preservation Tests | ⏳ Pending | — | — | leakage | — |
-| **19** | G — Consumers | `hasAlert` / `openAlerts` Semantik vereinheitlichen | ⏳ Pending | — | — | info no escalate | — |
-| **20** | G — Consumers | Legacy `/brake-status` + fleet `brakePadPercent` | ⏳ Pending | — | — | canonical guard | — |
-| **21** | H — Observability | `BrakeHealthObservabilityService` + Prometheus | ⏳ Pending | — | — | metrics spec | Grafana |
-| **22** | H — Observability | BullMQ Recalc-Queue + per-vehicle Lock | ⏳ Pending | — | — | concurrency | — |
-| **23** | I — Validation | Messkampagne-Vorbereitung (Workshop/Invoice GT) | ⏳ Pending | — | — | — | campaign |
-| **24** | I — Validation | Backtest mit echten Messungen re-run | ⏳ Pending | — | — | backtest script | read-only |
-| **25** | I — Validation | Confidence-Caps (Spec ≠ HIGH ohne mm) | ⏳ Pending | — | — | confidence | — |
-| **26** | J — DIMO | V003 Event-Ingestion + Capability Gating | ⏳ Pending | — | — | DIMO contract | DIMO read |
+| **3** | Architektur | Kanonischer Brake-Initialisierungspfad (Variante A) | ✅ **Done** | `ff9ac7a1` | — | 19 neu grün | read-only diag |
+| **4** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
+| **5** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
+| **6** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
+| **7** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
+| **8** | B — Lifecycle | Scope-aware Tests (front/rear pads/discs only) | ⏳ Pending | — | — | lifecycle spec | — |
+| **9** | B — Lifecycle | Service + Evidence atomarer (Transaktion) | ⏳ Pending | — | evtl. | integration | — |
+| **10** | C — Anchors | Rotor-Breite ≠ Scheiben-Dicke trennen | ⏳ Pending | — | evtl. | anchor plausibility | — |
+| **11** | C — Anchors | Disc-Anker-Validierung + Spec-Semantik | ⏳ Pending | — | — | spec regression | — |
+| **12** | D — Safety | DTC Poll → `BrakeEvidence` Producer | ⏳ Pending | — | — | DTC spec | VPS read |
+| **13** | D — Safety | DTC Clearance → Alert Resolution | ⏳ Pending | — | — | active/cleared | — |
+| **14** | D — Safety | ABS Warning als Safety Evidence (kein Wear-%) | ⏳ Pending | — | — | ABS policy | DIMO when avail. |
+| **15** | E — Model | `harshBrakeWearMultiplier` in Recalc verdrahten | ⏳ Pending | — | — | harsh brake | — |
+| **16** | E — Model | Rolling-Gap Temporal Leakage mindern | ⏳ Pending | — | — | rolling gap | — |
+| **17** | E — Model | Disc OEM-Limit / generic 2mm Review | ⏳ Pending | — | config | disc limit | — |
+| **18** | F — Calibration | `calibrateFromMeasurement()` Runtime | ⏳ Pending | — | — | calibration | — |
+| **19** | F — Calibration | Target-Leakage + Preservation Tests | ⏳ Pending | — | — | leakage | — |
+| **20** | G — Consumers | `hasAlert` / `openAlerts` Semantik vereinheitlichen | ⏳ Pending | — | — | info no escalate | — |
+| **21** | G — Consumers | Legacy `/brake-status` + fleet `brakePadPercent` | ⏳ Pending | — | — | canonical guard | — |
+| **22** | H — Observability | `BrakeHealthObservabilityService` + Prometheus | ⏳ Pending | — | — | metrics spec | Grafana |
+| **23** | H — Observability | BullMQ Recalc-Queue + per-vehicle Lock | ⏳ Pending | — | — | concurrency | — |
+| **24** | I — Validation | Messkampagne-Vorbereitung (Workshop/Invoice GT) | ⏳ Pending | — | — | — | campaign |
+| **25** | I — Validation | Backtest mit echten Messungen re-run | ⏳ Pending | — | — | backtest script | read-only |
+| **26** | I — Validation | Confidence-Caps (Spec ≠ HIGH ohne mm) | ⏳ Pending | — | — | confidence | — |
+| **27** | J — DIMO | V003 Event-Ingestion + Capability Gating | ⏳ Pending | — | — | DIMO contract | DIMO read |
 
 ---
 
@@ -313,12 +315,76 @@ Ziel: echte Ground-Truth (Workshop-mm, bestätigte Rechnungen) für ≥1 Fahrzeu
 
 ---
 
+## Kanonischer Initialisierungspfad (Prompt 3) — 2026-07-17
+
+### Architekturentscheidung: **Variante A — direkter Lifecycle-Pfad**
+
+| Kriterium | Variante A (gewählt) | Variante B (abgelehnt) |
+|-----------|----------------------|-------------------------|
+| Zuverlässigkeit | Init synchron im Registration-Request; kein verwaister DB-Job ohne Consumer | Neuer BullMQ-Processor nötig; doppelte Wahrheit während Migration |
+| Nutzererwartung | Brake-Baseline direkt nach Registrierung verfügbar (wenn Odometer/Spec vorhanden) | Asynchrones Delay; UI müsste Job-Status pollen |
+| Transaktionsgrenzen | `BrakeLifecycleService` schreibt Event + BHC im selben Request-Flow | Eventual consistency zwischen Job-Status und BHC |
+| Retry / Idempotenz | `BrakeInitializationWorkflowService` prüft `isInitialized` vor erneutem Init | Retry möglich, aber redundant zum bestehenden Lifecycle |
+| Betriebsarchitektur | Passt zu bestehendem Muster (Tire: eigene Recalc-Queue; Brake-Init: noch kein async Spec-Fetch) | `WORKER_BRAKE_ENRICHMENT_CONCURRENCY` existierte als Dead Config ohne Queue |
+| SynqDrive-Konvention | Wear-Recalc bereits über `trip.driving-impact.compute`; Init gehört in Domain-Lifecycle | Würde parallelen Init-Owner neben `initializeFromRegistration` einführen |
+
+**Audit-Finding P0-BH-03:** 6× `vehicle_enrichment_jobs` mit `jobType=BRAKE`, `status=PENDING`, **kein Processor**.
+
+### Implementierung
+
+| Komponente | Pfad | Rolle |
+|------------|------|-------|
+| **Autoritativer Init-Owner** | `BrakeInitializationWorkflowService` | Einziger Einstieg für Registration + Backfill-Init |
+| Domain-Umsetzung | `BrakeLifecycleService.initializeFromRegistration` | Unverändert; wird nur über Workflow aufgerufen |
+| Registration | `VehiclesService.registerFromDimo` | Ruft Workflow statt Lifecycle direkt; **kein neuer BRAKE-Job** |
+| Backfill | `BrakeRegistrationBackfillService` | Ruft Workflow (kontrolliert, supervised) |
+| Wear-Recalc | `DrivingImpactProcessor` + `BrakeRecalculationScheduler` | Unverändert; kein Init-Owner |
+
+### Entfernte / erhaltene Queue-Pfade
+
+| Pfad | Status nach Prompt 3 |
+|------|----------------------|
+| `vehicle_enrichment_jobs` `jobType=BRAKE` Producer in `registerFromDimo` | **Entfernt** (keine neuen Jobs) |
+| `POST …/enrichment-jobs` mit `jobType=BRAKE` | **Blockiert** (`400 Bad Request`) |
+| BullMQ `BRAKE_ENRICHMENT` Queue | **Existiert nicht** (bewusst nicht eingeführt) |
+| `trip.driving-impact.compute` → `recalculate()` | **Erhalten** (Wear, nicht Init) |
+| `dimo.tire.recalculation` | **Unverändert** (Tire-Analogie nur für Recalc) |
+| `vehicle_enrichment_jobs` Tabelle + Enum `BRAKE` | **Erhalten** (Bestandsjobs; keine Migration) |
+
+### Legacy PENDING-Jobs — Umgang
+
+| Aktion | Details |
+|--------|---------|
+| **Nicht auto-ausführen** | Kein Processor wird für Bestandsjobs gestartet |
+| **Read-only Diagnose** | `scripts/ops/diagnose-brake-enrichment-jobs.ts` |
+| Klassifikation | `ORPHAN_LEGACY_NO_PROCESSOR`, `SUPERSEDED_ALREADY_INITIALIZED`, `REPLAY_CANDIDATE_VIA_BACKFILL`, `STALE_INCOMPATIBLE`, `COMPLETED_OR_TERMINAL` |
+| Replay-kompatibel | Nur via kontrolliertem Ops-Backfill (`backfill-brake-health-from-registration-specs.ts --execute`) |
+| Runbook | Jobs mit `SUPERSEDED_ALREADY_INITIALIZED` → manuell `COMPLETED` markieren (separater supervised Prompt); `REPLAY_CANDIDATE` → Backfill dry-run zuerst |
+
+### Tests (Prompt 3)
+
+| Suite | Ergebnis |
+|-------|----------|
+| `brake-initialization-workflow.service.spec.ts` | **5 passed** — direkte Registration, Idempotenz, Retry, Skip-Pfade |
+| `brake-enrichment-job-diagnostics.service.spec.ts` | **5 passed** — Orphan, Superseded, Stale, Multi-Tenant, Dead Letter |
+| `enrichment-jobs.service.spec.ts` | **2 passed** — BRAKE-Producer blockiert, BATTERY erlaubt |
+| `brake-registration-backfill.service.spec.ts` | **6 passed** — Backfill über Workflow |
+
+```bash
+npm test -- --testPathPattern='brake-initialization-workflow|brake-enrichment-job-diagnostics|enrichment-jobs.service|brake-registration-backfill'
+# 4 suites, 19 passed
+npm run build  # OK
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
 |--------|--------|---------|
 | 1 | `b12599f5da380f9740a8e44dc6d43f88351bdaa6` | `docs(brakes): establish production readiness remediation baseline` |
 | 2 | `b1246a886d62892abd605617f39e007871663994` | `test(brakes): capture brake health lifecycle regressions` |
+| 3 | `ff9ac7a1350912e25005de314dfb1eb985c33f69` | `fix(brakes): establish canonical brake initialization workflow` |
 
 ---
 
