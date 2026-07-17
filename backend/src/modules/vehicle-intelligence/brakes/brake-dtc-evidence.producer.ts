@@ -23,6 +23,7 @@ import {
 } from './brake-dtc-classification';
 import { mapDtcFreshnessToEvidenceFreshness } from './brake-evidence.domain';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 export type BrakeDtcSourceProvider = 'DIMO' | 'HIGH_MOBILITY' | 'OBD' | 'MANUAL';
 
@@ -49,6 +50,7 @@ export class BrakeDtcEvidenceProducerService {
     @Optional() private readonly recalcOrchestrator?: BrakeRecalculationOrchestratorService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
     @Optional() private readonly brakeHealthAlerts?: BrakeHealthAlertService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
   ) {}
 
   async onDtcUpserted(
@@ -95,6 +97,12 @@ export class BrakeDtcEvidenceProducerService {
         where: { id: existing.id },
         data: payload,
       });
+      this.observability?.recordEvidence({
+        action: 'created',
+        source: 'DTC_SIGNAL',
+        category: classification.category,
+      });
+      this.observability?.recordTdiProcessing({ status: 'completed', reasonCode: 'dtc_updated' });
       await this.enqueueRecalculation(vehicleId);
       return 'updated';
     }
@@ -102,6 +110,12 @@ export class BrakeDtcEvidenceProducerService {
     await this.prisma.brakeEvidence.create({
       data: payload,
     });
+    this.observability?.recordEvidence({
+      action: 'created',
+      source: 'DTC_SIGNAL',
+      category: classification.category,
+    });
+    this.observability?.recordTdiProcessing({ status: 'completed', reasonCode: 'dtc_created' });
     await this.enqueueRecalculation(vehicleId);
     await this.emitBrakeSafetyNotification(vehicleId, classification, false, context);
     return 'created';
@@ -154,6 +168,12 @@ export class BrakeDtcEvidenceProducerService {
     await this.brakeHealthAlerts?.resolveOpenAlerts(vehicleId, BrakeHealthAlertResolutionReason.DTC_CLEARED, {
       alertType: 'ABS_WARNING',
     });
+    this.observability?.recordEvidence({
+      action: 'resolved',
+      source: 'DTC_SIGNAL',
+      category: classification.category,
+    });
+    this.observability?.recordTdiProcessing({ status: 'completed', reasonCode: 'dtc_cleared' });
     await this.emitBrakeSafetyNotification(vehicleId, classification, true, context);
     return 'cleared';
   }

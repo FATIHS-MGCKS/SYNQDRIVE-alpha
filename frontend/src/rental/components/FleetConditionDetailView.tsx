@@ -560,24 +560,6 @@ function BrakesDetail({
     MEASURED: 'Measured', DOCUMENTED: 'Documented', SENSOR: 'Sensor', ESTIMATED: 'Estimated', UNKNOWN: 'Unknown',
   };
   const CONF_LABEL: Record<string, string> = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low', UNKNOWN: 'Unknown' };
-  const fmtRange = (min: number | null | undefined, max: number | null | undefined): string => {
-    if (min == null && max == null) return '—';
-    const f = (n: number) => Math.round(n).toLocaleString('de-DE');
-    if (min != null && max != null) return min === max ? `${f(min)} km` : `${f(min)}–${f(max)} km`;
-    return `~${f((min ?? max) as number)} km`;
-  };
-  const frontAxle = summary?.frontAxle;
-  const rearAxle = summary?.rearAxle;
-  const frontRange = fmtRange(
-    frontAxle?.estimatedRemainingKmMin ?? summary?.estimatedFrontRemainingKmMin,
-    frontAxle?.estimatedRemainingKmMax ?? summary?.estimatedFrontRemainingKmMax,
-  );
-  const rearRange = fmtRange(
-    rearAxle?.estimatedRemainingKmMin ?? summary?.estimatedRearRemainingKmMin,
-    rearAxle?.estimatedRemainingKmMax ?? summary?.estimatedRearRemainingKmMax,
-  );
-  const axleCondLabel = (c: string | undefined) =>
-    c && c !== 'UNKNOWN' ? c.charAt(0) + c.slice(1).toLowerCase() : '—';
   const openAlertCount = summary?.openAlerts?.length ?? 0;
 
   return (

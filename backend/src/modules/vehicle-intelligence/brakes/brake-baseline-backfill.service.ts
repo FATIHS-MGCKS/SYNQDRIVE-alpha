@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { BrakeComponentInstallationAnchorSource } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -21,6 +21,7 @@ import type { VehicleBrakeBaselineAuditInput } from './brake-baseline-candidate-
 import { BrakeComponentLifecycleService } from './brake-component-lifecycle.service';
 import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 import { thicknessFieldForComponent } from './brake-component-lifecycle.scope';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 export interface BrakeBaselineBackfillRunOptions {
   request: BrakeBaselineBackfillApplyRequest;
@@ -39,6 +40,7 @@ export class BrakeBaselineBackfillService {
     private readonly prisma: PrismaService,
     private readonly lifecycle: BrakeComponentLifecycleService,
     private readonly recalcOrchestrator: BrakeRecalculationOrchestratorService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
   ) {}
 
   async run(options: BrakeBaselineBackfillRunOptions): Promise<{
@@ -95,6 +97,18 @@ export class BrakeBaselineBackfillService {
     });
 
     if (!options.request.apply) {
+      if (plan.manualReview.length > 0) {
+        this.observability?.recordBackfill({
+          mode: 'dry_run',
+          outcome: 'conflict',
+          reasonCode: 'manual_review_required',
+        });
+      } else {
+        this.observability?.recordBackfill({
+          mode: 'dry_run',
+          outcome: 'success',
+        });
+      }
       return {
         plan,
         auditRows,
@@ -113,6 +127,18 @@ export class BrakeBaselineBackfillService {
     }
 
     const result = await this.executeApply(plan, options.request);
+    if (plan.manualReview.length > 0 || result.failed > 0) {
+      this.observability?.recordBackfill({
+        mode: 'apply',
+        outcome: plan.manualReview.length > 0 ? 'conflict' : 'failed',
+        reasonCode: plan.manualReview.length > 0 ? 'manual_review_required' : 'apply_failures',
+      });
+    } else {
+      this.observability?.recordBackfill({
+        mode: 'apply',
+        outcome: 'success',
+      });
+    }
     return { plan, result, auditRows };
   }
 

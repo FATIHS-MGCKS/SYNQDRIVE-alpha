@@ -1195,12 +1195,7 @@ export class BrakeHealthService {
         skipReason: 'identical_input_fingerprint',
         durationMs: 0,
       });
-      this.observability?.recordRecalculation({
-        result: 'deduplicated',
-        skipReason: 'identical_input_fingerprint',
-        trigger,
-        vehicleId,
-      });
+      this.observability?.recordSnapshot({ result: 'deduplicated' });
       return {
         padsHealthPct: current.padsHealthPct,
         discsHealthPct: current.discsHealthPct,
@@ -1622,6 +1617,20 @@ export class BrakeHealthService {
       data: updatedData,
     });
 
+    this.observability?.recordCoverage({
+      coverageRatio: coverageRatioRaw,
+      coverageStatus: gapAssessment.coverageStatus,
+      underCoverageKm: gapAssessment.underCoverageKm,
+      overCoverageKm: gapAssessment.overCoverageKm,
+      missingImpact: modelingSource === 'NOT_ENOUGH_DATA',
+    });
+    if (
+      !this.hasMeasuredAnchorStatus(current) &&
+      String(current.anchorValidationStatus ?? '').toLowerCase().includes('spec_fallback')
+    ) {
+      this.observability?.recordSpecFallback('spec_fallback_anchor');
+    }
+
     const snapshot = await this.persistHealthSnapshot({
       organizationId: current.organizationId,
       vehicleId,
@@ -1804,10 +1813,12 @@ export class BrakeHealthService {
     };
 
     try {
-      return await this.prisma.brakeHealthSnapshot.create({
+      const created = await this.prisma.brakeHealthSnapshot.create({
         data: snapshotData,
         select: { id: true },
       });
+      this.observability?.recordSnapshot({ result: 'created' });
+      return created;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -1823,8 +1834,10 @@ export class BrakeHealthService {
           select: { id: true },
         });
         if (!existing) throw error;
+        this.observability?.recordSnapshot({ result: 'deduplicated' });
         return existing;
       }
+      this.observability?.recordSnapshot({ result: 'failed' });
       throw error;
     }
   }

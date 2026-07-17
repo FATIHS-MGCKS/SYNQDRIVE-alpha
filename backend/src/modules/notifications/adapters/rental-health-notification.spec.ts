@@ -50,18 +50,18 @@ describe('projectVehicleHealthWarnings', () => {
       VEHICLE_ID,
       LABEL,
       stubHealth({
-        tires: stubModule('warning', 'Reifendruck-Warnung'),
+        brakes: stubModule('warning', 'Bremsenprüfung empfohlen'),
         error_codes: stubModule('warning', '1 aktive Fehlercodes'),
       }),
       [{ dtcCode: 'P0675', description: 'Glow plug', severity: 'WARNING' }],
     );
 
     expect(sources).toHaveLength(2);
-    expect(sources.find((s) => s.eventType === 'TIRE_CRITICAL')).toMatchObject({
+    expect(sources.find((s) => s.eventType === 'BRAKE_CRITICAL')).toMatchObject({
       vehicleId: VEHICLE_ID,
       label: LABEL,
       severity: 'warning',
-      reason: 'Reifendruck-Warnung',
+      reason: 'Bremsenprüfung empfohlen',
     });
     expect(sources.find((s) => s.eventType === 'ACTIVE_DTC')).toMatchObject({
       code: 'P0675',

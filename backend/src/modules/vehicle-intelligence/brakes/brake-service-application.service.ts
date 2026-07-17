@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import {
   BrakeAxle,
@@ -54,6 +55,7 @@ import {
   pickPreferredReferenceSpec,
   resolveAnchorEligibleThicknessForInstallation,
 } from './brake-reference-spec.domain';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 @Injectable()
 export class BrakeServiceApplicationService {
@@ -63,6 +65,7 @@ export class BrakeServiceApplicationService {
     private readonly prisma: PrismaService,
     private readonly brakeHealth: BrakeHealthService,
     private readonly outbox: BrakeServiceOutboxService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
   ) {}
 
   async apply(input: ApplyBrakeServiceInput): Promise<ApplyBrakeServiceResult> {
@@ -119,6 +122,10 @@ export class BrakeServiceApplicationService {
           })
         )?.resultJson as ApplyBrakeServiceResult | null);
       if (replay) {
+        this.observability?.recordServiceApplication({
+          result: 'duplicate',
+          kind: String(kind),
+        });
         return { ...replay, replayed: true };
       }
     }
@@ -126,6 +133,11 @@ export class BrakeServiceApplicationService {
     let resolvedComponents: BrakeComponentInstallationType[] = [];
     if (serviceKindIsHistoryOnly(kind)) {
       if (scope.length > 0) {
+        this.observability?.recordServiceApplication({
+          result: 'failed',
+          kind: String(kind),
+          scopeMismatch: true,
+        });
         throw new BadRequestException(
           kind === BrakeServiceKind.INSPECTION_ONLY
             ? 'inspection_scope_not_allowed'
@@ -143,6 +155,11 @@ export class BrakeServiceApplicationService {
         resolvedComponents = resolved.components;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'invalid_service_scope';
+        this.observability?.recordServiceApplication({
+          result: 'failed',
+          kind: String(kind),
+          scopeMismatch: true,
+        });
         await this.markFailed(claim.applicationId, message);
         throw new BadRequestException(message);
       }
@@ -423,9 +440,19 @@ export class BrakeServiceApplicationService {
         },
       });
 
+      this.observability?.recordServiceApplication({
+        result:
+          txResult.applicationStatus === 'HISTORY_ONLY' ? 'history_only' : 'applied',
+        kind: String(kind),
+      });
+
       return txResult;
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
+      this.observability?.recordServiceApplication({
+        result: 'failed',
+        kind: String(kind),
+      });
       await this.recordComplianceFailure(input, claim.applicationId, serviceDate, kind, source, measured, scope, errMsg);
       if (isPrismaActiveComponentConflict(error)) {
         throw new ConflictException('Duplicate active component installation');

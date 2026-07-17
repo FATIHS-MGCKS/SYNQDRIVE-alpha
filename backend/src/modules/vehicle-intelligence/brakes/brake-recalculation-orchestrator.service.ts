@@ -106,6 +106,7 @@ export class BrakeRecalculationOrchestratorService {
       LOCK_TTL_MS,
     );
     if (!lock.acquired) {
+      this.observability?.recordRecalculationLockContended(job.trigger);
       const error = new Error('brake_recalc_lock_contended');
       (error as Error & { code?: string }).code = 'LOCK_CONTENTED';
       throw error;
@@ -126,14 +127,12 @@ export class BrakeRecalculationOrchestratorService {
           durationMs: Date.now() - startedAt,
           skipReason: result.skipReason ?? 'identical_input_fingerprint',
           trigger: job.trigger,
-          vehicleId: job.vehicleId,
         });
       } else if (result) {
         this.observability?.recordRecalculation({
           result: 'success',
           durationMs: Date.now() - startedAt,
           trigger: job.trigger,
-          vehicleId: job.vehicleId,
         });
       } else {
         this.observability?.recordRecalculation({
@@ -141,7 +140,6 @@ export class BrakeRecalculationOrchestratorService {
           durationMs: Date.now() - startedAt,
           skipReason: 'not_initialized_or_missing_odometer',
           trigger: job.trigger,
-          vehicleId: job.vehicleId,
         });
       }
 
@@ -152,7 +150,6 @@ export class BrakeRecalculationOrchestratorService {
         durationMs: Date.now() - startedAt,
         errorCode: err instanceof Error ? err.message : 'unknown',
         trigger: job.trigger,
-        vehicleId: job.vehicleId,
       });
       throw err;
     } finally {

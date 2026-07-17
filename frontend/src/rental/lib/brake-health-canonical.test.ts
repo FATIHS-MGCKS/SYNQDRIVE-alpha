@@ -26,8 +26,7 @@ describe('Brake health UI — canonical-only consumption', () => {
       expect(src).not.toMatch(pattern);
     }
     expect(src).toMatch(/overallCondition/);
-    expect(src).toMatch(/frontAxle/);
-    expect(src).toMatch(/rearAxle/);
+    expect(src).toMatch(/BrakeEvidencePanel/);
   });
 
   it('HealthErrorsView brake modal does not reference legacy detail pad/disc estimates', () => {

@@ -4,6 +4,7 @@ import { CanonicalBatteryHealthService } from '../vehicle-intelligence/battery-h
 import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
 import { TireHealthObservabilityService } from '../vehicle-intelligence/tires/tire-health-observability.service';
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
+import { BrakeHealthObservabilityService } from '../vehicle-intelligence/brakes/brake-health-observability.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
 import type { ServiceComplianceEvaluation } from '../vehicle-intelligence/service-compliance/service-compliance.types';
@@ -82,6 +83,7 @@ export class RentalHealthService {
     private readonly tireRentalReview: TireRentalHealthReviewService,
     private readonly brakeRentalReview: BrakeRentalHealthReviewService,
     @Optional() private readonly tireObservability?: TireHealthObservabilityService,
+    @Optional() private readonly brakeObservability?: BrakeHealthObservabilityService,
   ) {}
 
   /**
@@ -414,11 +416,19 @@ export class RentalHealthService {
       activeReviewOverride?: import('./brake-rental-health.types').BrakeRentalReviewOverrideSummary | null;
     },
   ): BrakeRentalHealthModuleHealth {
-    return buildBrakeModuleHealth({
+    const moduleHealth = buildBrakeModuleHealth({
       summary,
       moduleLoadError: options?.moduleLoadError ?? null,
       activeReviewOverride: options?.activeReviewOverride ?? null,
     });
+    const block = moduleHealth.brake_read_model?.rentalBlockingEvidence;
+    if (block) {
+      this.brakeObservability?.recordRentalBlock({
+        level: block.action,
+        reasonCode: block.reasonCode,
+      });
+    }
+    return moduleHealth;
   }
 
   /**

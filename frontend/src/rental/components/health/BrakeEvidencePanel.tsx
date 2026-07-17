@@ -1,5 +1,5 @@
-import type { BrakeHealthSummary } from '../../lib/api';
-import { StatusDot } from '../../components/patterns';
+import type { BrakeHealthSummary } from '../../../lib/api';
+import { StatusDot } from '../../../components/patterns';
 import {
   brakeActiveDataQuality,
   brakeActiveSafety,
@@ -13,8 +13,22 @@ import {
   brakeStructuredActions,
   brakeUiStatusLabel,
   type BrakeUiLocale,
-} from '../lib/brake-health-evidence-ui';
-import { segmentFromHealthState } from '../lib/health-segment-display';
+} from '../../lib/brake-health-evidence-ui';
+import type { StatusTone } from '../../../components/patterns';
+import { segmentFromHealthState, type SegmentTone } from '../../lib/health-segment-display';
+
+function segmentToneToStatusTone(tone: SegmentTone): StatusTone {
+  switch (tone) {
+    case 'good':
+      return 'success';
+    case 'warning':
+      return 'warning';
+    case 'critical':
+      return 'critical';
+    default:
+      return 'neutral';
+  }
+}
 
 export interface BrakeEvidencePanelProps {
   summary: BrakeHealthSummary | null | undefined;
@@ -65,7 +79,6 @@ export function BrakeEvidencePanel({
   const statusLabel = brakeUiStatusLabel(summary, locale);
   const remaining = brakeRemainingKmLabel(summary, locale);
   const cond = summary?.overallCondition ?? 'UNKNOWN';
-  const segment = segmentFromHealthState(cond);
 
   if (!summary) {
     return (
@@ -116,7 +129,10 @@ export function BrakeEvidencePanel({
                     </span>
                   )}
                 </p>
-                <StatusDot tone={segment.tone} aria-hidden />
+                <StatusDot
+                  tone={segmentToneToStatusTone(segmentFromHealthState(line.condition).tone)}
+                  aria-hidden
+                />
               </div>
               <p className="text-sm font-bold text-foreground">{brakeComponentValueLabel(line, locale)}</p>
               <p className="text-[10px] text-muted-foreground mt-1">

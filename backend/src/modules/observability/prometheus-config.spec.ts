@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TripMetricsService } from './trip-metrics.service';
 import { TireMetricsService } from '@modules/vehicle-intelligence/tires/tire-metrics.service';
+import { BrakeMetricsService } from '@modules/vehicle-intelligence/brakes/brake-metrics.service';
 
 const FORBIDDEN_LABELS = [
   'vehicle_id',
@@ -19,6 +20,7 @@ describe('TripMetricsService label cardinality', () => {
   beforeEach(() => {
     metrics = new TripMetricsService();
     new TireMetricsService(metrics);
+    new BrakeMetricsService(metrics);
   });
 
   it('does not register forbidden high-cardinality labels', async () => {
@@ -48,6 +50,26 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_tire_alert_total');
     expect(text).toContain('synqdrive_tire_rental_block_total');
     expect(text).toContain('synqdrive_tire_snapshot_created_total');
+    expect(text).toContain('synqdrive_brake_initialization_total');
+    expect(text).toContain('synqdrive_brake_recalculation_total');
+    expect(text).toContain('synqdrive_brake_recalculation_deduplicated_total');
+    expect(text).toContain('synqdrive_brake_recalculation_duration_seconds');
+    expect(text).toContain('synqdrive_brake_component_installation_total');
+    expect(text).toContain('synqdrive_brake_service_scope_mismatch_total');
+    expect(text).toContain('synqdrive_brake_spec_fallback_total');
+    expect(text).toContain('synqdrive_brake_trip_coverage_ratio');
+    expect(text).toContain('synqdrive_brake_trip_missing_impact_total');
+    expect(text).toContain('synqdrive_brake_trip_overcoverage_total');
+    expect(text).toContain('synqdrive_brake_neutral_gap_km');
+    expect(text).toContain('synqdrive_brake_event_ingested_total');
+    expect(text).toContain('synqdrive_brake_event_duplicate_prevented_total');
+    expect(text).toContain('synqdrive_brake_measurement_total');
+    expect(text).toContain('synqdrive_brake_prediction_error_mm');
+    expect(text).toContain('synqdrive_brake_evidence_active');
+    expect(text).toContain('synqdrive_brake_evidence_duplicate_total');
+    expect(text).toContain('synqdrive_brake_alert_total');
+    expect(text).toContain('synqdrive_brake_rental_block_total');
+    expect(text).toContain('synqdrive_brake_backfill_conflict_total');
   });
 });
 
@@ -70,5 +92,13 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('DocumentExtractionQueueAgeHigh');
     expect(yaml).not.toContain('vehicle_id');
     expect(yaml).not.toContain('trip_id');
+    expect(yaml).toContain('BrakeInitializationFailureRateHigh');
+    expect(yaml).toContain('BrakeRecalculationQueueBacklog');
+    expect(yaml).toContain('BrakeRecalculationFailureRateHigh');
+    expect(yaml).toContain('BrakeMissingTdiSpike');
+    expect(yaml).toContain('BrakeTripOvercoverage');
+    expect(yaml).toContain('BrakeEvidenceProcessingFailure');
+    expect(yaml).toContain('BrakeBackfillConflict');
+    expect(yaml).toContain('BrakeHealthCurrentMissingAfterRegistration');
   });
 });

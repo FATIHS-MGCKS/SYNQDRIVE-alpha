@@ -27,7 +27,10 @@ function createOrchestrator(deps?: {
       }),
     release: jest.fn().mockResolvedValue(true),
   };
-  const observability = { recordRecalculation: jest.fn() };
+  const observability = {
+    recordRecalculation: jest.fn(),
+    recordRecalculationLockContended: jest.fn(),
+  };
 
   const orchestrator = new BrakeRecalculationOrchestratorService(
     queue as never,

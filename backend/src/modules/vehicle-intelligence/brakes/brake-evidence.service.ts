@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 import {
   aggregateActiveSafetySignals,
   buildEvidenceDedupeKey,
@@ -66,6 +67,7 @@ export class BrakeEvidenceService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly recalcOrchestrator?: BrakeRecalculationOrchestratorService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
   ) {}
 
   private normalizeMm(v: number | null | undefined): number | null {
@@ -275,11 +277,24 @@ export class BrakeEvidenceService {
             resolveEffectiveFreshness({ ...existing, ...data, lastObservedAt: observedAt }),
         },
       });
+      this.observability?.recordEvidence({
+        action: 'duplicate_prevented',
+        source: String(row.source),
+        category: row.source === BrakeEvidenceSource.DTC_SIGNAL ? 'safety' : 'wear',
+      });
     } else {
       row = await this.prisma.brakeEvidence.create({ data });
+      this.observability?.recordEvidence({
+        action: 'created',
+        source: String(row.source),
+        category: row.source === BrakeEvidenceSource.DTC_SIGNAL ? 'safety' : 'wear',
+      });
     }
 
     const hasMeasurement = row.measuredPadMm != null || row.measuredDiscMm != null;
+    if (hasMeasurement) {
+      this.observability?.recordMeasurement(String(row.source));
+    }
     const trigger =
       row.source === BrakeEvidenceSource.DTC_SIGNAL
         ? 'dtc'

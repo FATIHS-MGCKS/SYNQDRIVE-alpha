@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeLifecycleService } from './brake-lifecycle.service';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 import {
   resolveRegistrationBrakeOdometerKm,
   shouldInitializeBrakesFromRegistration,
@@ -25,12 +26,18 @@ export class BrakeInitializationWorkflowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly brakeLifecycle: BrakeLifecycleService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
   ) {}
 
   async initializeFromRegistration(
     input: BrakeInitializationFromRegistrationInput,
   ): Promise<BrakeInitializationWorkflowResult> {
     if (!shouldInitializeBrakesFromRegistration(input.brakes)) {
+      this.observability?.recordInitialization({
+        result: 'skipped',
+        source: 'registration',
+        reasonCode: 'not_eligible',
+      });
       return {
         outcome: 'skipped_not_eligible',
         initialized: false,
@@ -48,6 +55,11 @@ export class BrakeInitializationWorkflowService {
     });
 
     if (odometerKm == null) {
+      this.observability?.recordInitialization({
+        result: 'skipped',
+        source: 'registration',
+        reasonCode: 'no_odometer',
+      });
       return {
         outcome: 'skipped_no_odometer',
         initialized: false,
@@ -62,6 +74,11 @@ export class BrakeInitializationWorkflowService {
     });
 
     if (existing?.isInitialized === true) {
+      this.observability?.recordInitialization({
+        result: 'skipped',
+        source: 'registration',
+        reasonCode: 'already_initialized',
+      });
       return {
         outcome: 'already_initialized',
         initialized: false,
@@ -79,6 +96,10 @@ export class BrakeInitializationWorkflowService {
       });
 
       if (lifecycleResult?.initialized === true) {
+        this.observability?.recordInitialization({
+          result: 'success',
+          source: 'registration',
+        });
         return {
           outcome: 'initialized',
           initialized: true,
@@ -89,6 +110,11 @@ export class BrakeInitializationWorkflowService {
         };
       }
 
+      this.observability?.recordInitialization({
+        result: 'skipped',
+        source: 'registration',
+        reasonCode: 'lifecycle_incomplete',
+      });
       return {
         outcome: 'skipped_not_eligible',
         initialized: false,
@@ -104,6 +130,11 @@ export class BrakeInitializationWorkflowService {
       this.logger.warn(
         `Brake initialization workflow failed for vehicle ${input.vehicleId}: ${message}`,
       );
+      this.observability?.recordInitialization({
+        result: 'failed',
+        source: 'registration',
+        errorCode: message.slice(0, 80),
+      });
       return {
         outcome: 'failed',
         initialized: false,

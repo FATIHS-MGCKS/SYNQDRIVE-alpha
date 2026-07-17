@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   BrakeComponentInstallationAnchorSource,
@@ -22,6 +23,7 @@ import {
   validateReferenceSpecReference,
   validateServiceEventReference,
 } from './brake-component-installation.invariants';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 export interface InstallBrakeComponentInput {
   organizationId: string;
@@ -54,7 +56,10 @@ export interface CloseBrakeComponentInstallationInput {
 
 @Injectable()
 export class BrakeComponentInstallationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
+  ) {}
 
   async listVehicleInstallations(vehicleId: string, organizationId?: string) {
     await this.assertVehicle(vehicleId, organizationId);
@@ -117,7 +122,7 @@ export class BrakeComponentInstallationService {
     });
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const created = await this.prisma.$transaction(async (tx) => {
         if (existingActive && input.supersedeActive) {
           await tx.brakeComponentInstallation.update({
             where: { id: existingActive.id },
@@ -150,6 +155,11 @@ export class BrakeComponentInstallationService {
           },
         });
       });
+      this.observability?.recordComponentInstallation({
+        component: input.componentType,
+        source: input.anchorSource ?? 'service',
+      });
+      return created;
     } catch (error) {
       if (isPrismaActiveComponentConflict(error)) {
         throw new ConflictException(

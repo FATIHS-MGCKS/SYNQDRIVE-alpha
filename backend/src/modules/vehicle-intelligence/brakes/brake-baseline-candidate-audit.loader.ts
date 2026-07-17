@@ -14,6 +14,7 @@ import {
   isAnchorEligibleCategory,
   resolveNominalThickness,
 } from './brake-reference-spec.domain';
+import type { BrakeReferenceSpecRecord } from './brake-reference-spec.types';
 
 import {
   classifyBrakeDtc,
@@ -154,24 +155,24 @@ function buildSpecSignals(
     'REAR_DISCS',
   ];
 
-  return components
-    .map((component) => {
-      const resolved = resolveNominalThickness(spec, component);
-      if (!resolved) return null;
-      return {
-        component,
-        thicknessMm: resolved.thicknessMm,
-        source: isRegistrationBrakeSpecSource(spec.sourceType)
-          ? ('REGISTRATION_SPEC' as const)
-          : ('REFERENCE_SPEC_NOMINAL' as const),
-        observedAt,
-        odometerKm,
-        evidenceRef: evidenceRef('spec', `${vehicleId}:${component}`, auditSalt),
-        isNominalSpec: true,
-        confidence: isAnchorEligibleCategory(resolved.evidenceCategory) ? 'LOW' : 'UNKNOWN',
-      } satisfies BrakeThicknessSignal;
-    })
-    .filter((row): row is BrakeThicknessSignal => row != null);
+  const rows: BrakeThicknessSignal[] = [];
+  for (const component of components) {
+    const resolved = resolveNominalThickness(spec as BrakeReferenceSpecRecord, component);
+    if (!resolved) continue;
+    rows.push({
+      component,
+      thicknessMm: resolved.thicknessMm,
+      source: isRegistrationBrakeSpecSource(spec.sourceType)
+        ? 'REGISTRATION_SPEC'
+        : 'REFERENCE_SPEC_NOMINAL',
+      observedAt,
+      odometerKm,
+      evidenceRef: evidenceRef('spec', `${vehicleId}:${component}`, auditSalt),
+      isNominalSpec: true,
+      confidence: isAnchorEligibleCategory(resolved.evidenceCategory) ? 'LOW' : 'UNKNOWN',
+    });
+  }
+  return rows;
 }
 
 export function buildVehicleBrakeBaselineAuditInput(

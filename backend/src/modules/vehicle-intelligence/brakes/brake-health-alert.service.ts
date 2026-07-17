@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BrakeHealthAlertResolutionReason,
   BrakeHealthAlertStatus,
@@ -11,12 +11,16 @@ import type {
   BrakeAlertSyncResult,
   StructuredBrakeAlertCandidate,
 } from './brake-health-alert.types';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 @Injectable()
 export class BrakeHealthAlertService {
   private readonly logger = new Logger(BrakeHealthAlertService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
+  ) {}
 
   async syncAlerts(args: {
     organizationId: string;
@@ -52,6 +56,10 @@ export class BrakeHealthAlertService {
           },
         });
         resolved.push(row.dedupeKey);
+        this.observability?.recordAlert({
+          action: 'resolved',
+          alertType: row.alertType,
+        });
       }
     }
 
@@ -113,6 +121,10 @@ export class BrakeHealthAlertService {
       }
 
       newlyOpened.push(candidate.dedupeKey);
+      this.observability?.recordAlert({
+        action: 'created',
+        alertType: candidate.alertType,
+      });
       if (args.emitNotifications !== false && candidate.notifyEligible) {
         notificationsToEmit.push(candidate);
       }

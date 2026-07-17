@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BehaviorEventCategory,
   BrakingEventPrimarySource,
@@ -19,6 +19,7 @@ import {
   type BrakingEventCanonicalTripSummary,
   type BrakingEventLedgerIncident,
 } from './braking-event-ledger.domain';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 export type BrakingLedgerReconcileAction = 'created' | 'updated' | 'unchanged';
 
@@ -46,7 +47,10 @@ export interface BrakingLedgerBackfillPlanItem {
 export class BrakingEventLedgerService {
   private readonly logger = new Logger(BrakingEventLedgerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
+  ) {}
 
   async loadCandidatesForTrip(tripId: string): Promise<BrakingEventCandidate[]> {
     const trip = await this.prisma.vehicleTrip.findUnique({
@@ -216,9 +220,16 @@ export class BrakingEventLedgerService {
     for (const incident of incidents) {
       const action = await this.upsertIncident(incident, dedupeWindowMs);
       activeFingerprints.add(incident.sourceFingerprint);
-      if (action === 'created') created += 1;
-      else if (action === 'updated') updated += 1;
-      else unchanged += 1;
+      if (action === 'created') {
+        created += 1;
+        this.observability?.recordEventIntake({ source: 'ledger', outcome: 'created' });
+      } else if (action === 'updated') {
+        updated += 1;
+        this.observability?.recordEventIntake({ source: 'ledger', outcome: 'created' });
+      } else {
+        unchanged += 1;
+        this.observability?.recordEventIntake({ source: 'ledger', outcome: 'duplicate' });
+      }
     }
 
     const invalidated = await this.invalidateStaleTripRows(tripId, activeFingerprints);
@@ -227,6 +238,11 @@ export class BrakingEventLedgerService {
       `Braking ledger reconcile trip ${tripId}: incidents=${incidents.length} ` +
         `created=${created} updated=${updated} unchanged=${unchanged} invalidated=${invalidated}`,
     );
+
+    this.observability?.recordReconciliation({
+      action: 'ledger_reconcile',
+      result: `created:${created},updated:${updated},unchanged:${unchanged}`,
+    });
 
     return {
       tripId,

@@ -102,6 +102,9 @@ const mockRecalcInputLoader = {
 
 const mockObservability = {
   recordRecalculation: jest.fn(),
+  recordSnapshot: jest.fn(),
+  recordCoverage: jest.fn(),
+  recordSpecFallback: jest.fn(),
 };
 
 const mockRecalcOrchestrator = {
@@ -1001,7 +1004,7 @@ describe('recalculate temporal coverage', () => {
         data: expect.objectContaining({ lastRecalculatedAt: expect.any(Date) }),
       }),
     );
-    expect(mockObservability.recordRecalculation).toHaveBeenCalledWith(
+    expect(mockObservability.recordSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ result: 'deduplicated' }),
     );
   });

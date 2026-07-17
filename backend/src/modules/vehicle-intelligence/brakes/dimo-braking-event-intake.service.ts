@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DimoBrakingEventIntakeStatus,
   DrivingEventSource,
@@ -19,6 +19,7 @@ import {
   type DimoEventDataSummaryRow,
   type ParsedDimoBrakingSample,
 } from './dimo-braking-event-intake.domain';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 export type DimoBrakingIntakeOutcome =
   | 'created'
@@ -60,6 +61,7 @@ export class DimoBrakingEventIntakeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
   ) {}
 
   assessCapability(input: {
@@ -142,8 +144,13 @@ export class DimoBrakingEventIntakeService {
       });
 
       const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
+      const outcome = isNew ? 'created' : 'duplicate';
+      this.observability?.recordEventIntake({
+        source: 'dimo',
+        outcome: outcome as 'created' | 'duplicate',
+      });
       return {
-        outcome: isNew ? 'created' : 'duplicate',
+        outcome,
         intakeId: row.id,
       };
     } catch (err: unknown) {
@@ -152,6 +159,7 @@ export class DimoBrakingEventIntakeService {
           err instanceof Error ? err.message : String(err)
         }`,
       );
+      this.observability?.recordEventIntake({ source: 'dimo', outcome: 'failed' });
       return { outcome: 'failed' };
     }
   }

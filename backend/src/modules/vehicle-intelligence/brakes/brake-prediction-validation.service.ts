@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { readSnapshotPredictionPayload } from './brake-wear-model-version';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 
 export interface BrakeMeasurementLinkResult {
   evidenceId: string;
@@ -17,7 +18,10 @@ export interface BrakeMeasurementLinkResult {
 export class BrakePredictionValidationService {
   private readonly logger = new Logger(BrakePredictionValidationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
+  ) {}
 
   /**
    * Find the latest prediction snapshot strictly before `measuredAt`.
@@ -139,6 +143,7 @@ export class BrakePredictionValidationService {
           skipped: true,
           skipReason: 'no_pre_measurement_snapshot',
         });
+        this.observability?.recordPredictionValidation({ errorMm: 0, linked: false });
         continue;
       }
 
@@ -166,6 +171,22 @@ export class BrakePredictionValidationService {
             `Brake evidence snapshot link failed evidence=${evidence.id}: ${error.message}`,
           ),
         );
+
+      const predictedPad =
+        evidence.axle === 'FRONT'
+          ? this.resolvePredictedPadMm(snapshot, 'FRONT')
+          : evidence.axle === 'REAR'
+            ? this.resolvePredictedPadMm(snapshot, 'REAR')
+            : null;
+      const actualMm = evidence.measuredPadMm ?? evidence.measuredDiscMm;
+      if (predictedPad != null && actualMm != null) {
+        this.observability?.recordPredictionValidation({
+          errorMm: actualMm - predictedPad,
+          linked: true,
+        });
+      } else {
+        this.observability?.recordPredictionValidation({ errorMm: 0, linked: true });
+      }
 
       results.push({
         evidenceId: evidence.id,

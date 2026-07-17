@@ -87,7 +87,7 @@ import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.s
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
-import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
+import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';

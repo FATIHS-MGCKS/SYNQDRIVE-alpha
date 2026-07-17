@@ -307,3 +307,100 @@ groups:
         annotations:
           summary: Connect webhooks with unresolved accounts
           description: Webhooks arrived for unknown connected accounts — verify Stripe Connect webhook endpoint and account mapping.
+
+  - name: synqdrive_brakes
+    rules:
+      - alert: BrakeInitializationFailureRateHigh
+        expr: |
+          (
+            rate(synqdrive_brake_initialization_failed_total[30m])
+            /
+            clamp_min(rate(synqdrive_brake_initialization_total[30m]), 0.001)
+          ) > 0.2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Brake baseline initialization failure rate elevated
+          description: More than 20% of brake registration initializations are failing.
+
+      - alert: BrakeRecalculationQueueBacklog
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(synqdrive_queue_lag_seconds_bucket{queue="dimo.brake.recalculation"}[10m])
+            )
+          ) > 600
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Brake recalculation queue backlog is high
+          description: P95 brake recalculation queue lag exceeds 10 minutes.
+
+      - alert: BrakeRecalculationFailureRateHigh
+        expr: |
+          (
+            rate(synqdrive_brake_recalculation_failed_total[30m])
+            /
+            clamp_min(rate(synqdrive_brake_recalculation_total[30m]), 0.001)
+          ) > 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Brake recalculation failure rate elevated
+          description: More than 15% of brake recalculations are failing.
+
+      - alert: BrakeMissingTdiSpike
+        expr: increase(synqdrive_brake_trip_missing_impact_total[1h]) > 50
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: Spike in trips missing driving-impact data for brake modeling
+          description: Many brake recalculations are missing TDI attribution — check driving-impact pipeline.
+
+      - alert: BrakeTripOvercoverage
+        expr: increase(synqdrive_brake_trip_overcoverage_total[1h]) > 10
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: Brake modeling overcoverage incidents detected
+          description: Trip distance exceeds odometer budget for brake wear modeling.
+
+      - alert: BrakeEvidenceProcessingFailure
+        expr: |
+          rate(synqdrive_brake_evidence_duplicate_total[30m]) == 0
+          and rate(synqdrive_brake_measurement_total[30m]) > 0
+          and rate(synqdrive_brake_alert_total{action="created"}[30m]) == 0
+          and increase(synqdrive_brake_recalculation_failed_total[30m]) > 0
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: Brake evidence pipeline may be failing downstream
+          description: Measurements are recorded but recalculation failures persist without alert materialization.
+
+      - alert: BrakeBackfillConflict
+        expr: increase(synqdrive_brake_backfill_conflict_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Brake baseline backfill conflicts detected
+          description: Backfill operations reported manual-review or conflict outcomes.
+
+      - alert: BrakeHealthCurrentMissingAfterRegistration
+        expr: |
+          rate(synqdrive_brake_initialization_total{result="success"}[30m]) > 0
+          and rate(synqdrive_brake_initialization_failed_total[30m]) > 0
+          and rate(synqdrive_brake_recalculation_total{result="skipped"}[30m]) > 0
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: Brake registration may not materialize BrakeHealthCurrent
+          description: Initialization successes coexist with failures and skipped recalculations — audit registration pipeline.
