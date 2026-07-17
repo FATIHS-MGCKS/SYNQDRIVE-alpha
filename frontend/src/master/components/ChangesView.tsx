@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-action-planner-engine-2026-07-17',
+    version: '4.9.596',
+    title: 'V4.9.596 — Document Intake V2 Action Planner Engine (rein deterministisch)',
+    summary: [
+      'Neue pure Domain-Engine `planDocumentActions()` — Input: Kategorie/Untertyp, confirmedData, Plausibilität, Entity Links/Candidates, Feature Flags, Downstream Capabilities, Planversion.',
+      'Output: DocumentActionPlanDraft, geplante Actions, Blocking Reasons, Missing Requirements, Follow-up Candidate Types.',
+      'SHA-256 inputFingerprint über vollständigen Planner-Input; gleicher Input → gleicher Fingerprint. Keine Prisma-Writes, keine Downstream-Services, keine Datums-Fallbacks.',
+      'BLOCKER-Pfade entfernen ausführbare REQUIRED/OPTIONAL Actions; ARCHIVE_ONLY nur INFORMATIONAL.',
+      '23 Unit-Tests (Engine + Fingerprint).',
+    ],
+    reason: 'Prompt 20/84: deterministische Action-Planung vor Dry-Run-API und Repository-Verdrahtung.',
+    previousBehavior: 'Nur Persistenz-Layer (DocumentActionPlan/Action Repositories) ohne Planner-Logik.',
+    details:
+      'document-action-planner.{types,capabilities,requirements,catalog,fingerprint,engine}.ts (+ specs, test-fixtures).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
     id: 'document-extraction-v2-control-fields-2026-07-17',
     version: '4.9.595',
     title: 'V4.9.595 — Document Intake V2 Extraction Control Fields (additiv)',
