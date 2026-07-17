@@ -1,4 +1,5 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { DocumentExtractionService } from './document-extraction.service';
 import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock } from './document-extraction-test.helpers';
 
@@ -388,6 +389,62 @@ describe('DocumentExtractionService', () => {
       await expect(svc.setDocumentType('v1', 'e1', 'SERVICE')).rejects.toBeInstanceOf(
         BadRequestException,
       );
+    });
+
+    it('archives prior structured extraction on re-extract type change', async () => {
+      const reviewRecord = {
+        ...awaitingRecord,
+        status: 'READY_FOR_REVIEW',
+        effectiveDocumentType: 'INVOICE',
+        documentType: 'INVOICE',
+        extractedData: { invoiceNumber: 'INV-OLD' },
+        plausibility: {
+          _pipeline: {
+            structuredExtraction: {
+              contractVersion: '1.0.0',
+              schemaVersion: '1.0.0',
+              documentSubtype: 'INVOICE',
+              legacyDocumentType: 'INVOICE',
+              fields: [],
+              missingFields: [],
+              conflicts: [],
+              normalizedFlat: { invoiceNumber: 'INV-OLD' },
+            },
+            structuredExtractionRun: {
+              runId: 'run-1',
+              contractVersion: '1.0.0',
+              schemaVersion: '1.0.0',
+              documentSubtype: 'INVOICE',
+              legacyDocumentType: 'INVOICE',
+              trigger: 'auto',
+              startedAt: '2026-07-17T10:00:00.000Z',
+              completedAt: '2026-07-17T10:00:01.000Z',
+              provider: 'mistral',
+              modelVersion: 'mistral-small',
+              fieldCount: 1,
+              missingFieldCount: 0,
+              conflictCount: 0,
+            },
+          },
+        },
+      };
+      const update = jest.fn().mockResolvedValue(reviewRecord);
+      const { svc } = makeService({
+        findFirst: jest.fn().mockResolvedValue(reviewRecord),
+        update,
+      });
+
+      await svc.setDocumentType('v1', 'e1', 'SERVICE', { reextract: true, userId: 'u1' });
+
+      const updateArg = update.mock.calls[0]?.[0];
+      const pipeline = (updateArg.data.plausibility as Record<string, unknown>)._pipeline as Record<
+        string,
+        unknown
+      >;
+      expect(Array.isArray(pipeline.supersededExtractionRuns)).toBe(true);
+      expect((pipeline.supersededExtractionRuns as unknown[]).length).toBe(1);
+      expect(pipeline.structuredExtraction).toBeNull();
+      expect(updateArg.data.extractedData).toBe(Prisma.DbNull);
     });
   });
 

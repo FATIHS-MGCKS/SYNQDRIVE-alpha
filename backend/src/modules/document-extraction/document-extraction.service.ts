@@ -79,6 +79,7 @@ import {
   appendExtractionActionAudit,
   readContentCache,
 } from './document-content-cache.util';
+import { archiveSupersededExtractionRun } from './document-structured-extraction.util';
 import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomyFromLegacyType } from './document-taxonomy.util';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import {
@@ -909,8 +910,16 @@ export class DocumentExtractionService implements OnModuleInit {
     }
 
     const previousType = resolveEffectiveDocumentType(record);
+    const supersedeReason: 'type_change' | 'reextract' = reviewCorrection ? 'reextract' : 'type_change';
+    const plausibilityWithSupersede = archiveSupersededExtractionRun({
+      plausibility: record.plausibility,
+      extractedData: record.extractedData,
+      supersededReason: supersedeReason,
+      previousDocumentType: previousType ?? record.detectedDocumentType ?? record.requestedDocumentType ?? null,
+      nextDocumentType: applyType,
+    });
     const auditPlausibility = mergeDocumentTaxonomyPipeline(
-      appendDocumentTypeAudit(record.plausibility, {
+      appendDocumentTypeAudit(plausibilityWithSupersede, {
         from: previousType ?? record.detectedDocumentType ?? record.requestedDocumentType ?? null,
         to: applyType,
         at: new Date().toISOString(),

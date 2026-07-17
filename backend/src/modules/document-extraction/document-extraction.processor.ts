@@ -14,7 +14,7 @@ import { DocumentContentExtractorService } from './document-content-extractor.se
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentAiExtractionService } from '@modules/ai/documents/document-ai-extraction.service';
 import { DocumentClassificationService } from '@modules/ai/documents/document-classification.service';
-import { getFieldSchema, buildEmptyExtractedData, SUPPORTED_DOCUMENT_TYPES } from './document-extraction.schemas';
+import { buildEmptyExtractedData, SUPPORTED_DOCUMENT_TYPES } from './document-extraction.schemas';
 import { DocumentExtractionJobData } from './document-extraction.types';
 import {
   DOCUMENT_EXTRACTION_ERROR_CODES,
@@ -27,6 +27,15 @@ import {
   buildClassificationPipelinePayload,
   buildStoredClassificationPayload,
 } from './document-classification-pipeline.util';
+import {
+  resolveExtractionSchema,
+  resolveExtractionTrigger,
+} from './document-extraction-schema-resolve.util';
+import {
+  buildStructuredExtractionPayload,
+  buildStructuredExtractionRun,
+  collectMissingFieldPlausibilityChecks,
+} from './document-structured-extraction.util';
 import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomy } from './document-taxonomy.util';
 import {
   buildContentCacheEntry,
@@ -67,7 +76,7 @@ import {
 } from './document-upload-context.util';
 import { mapFieldEvidence, readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
 import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
-import { makePlausibilityCheck } from './document-plausibility.types';
+import { makePlausibilityCheck, resolveOverallPlausibilityStatus } from './document-plausibility.types';
 
 const SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
@@ -188,6 +197,10 @@ export class DocumentExtractionProcessor extends WorkerHost {
             })
           : record.plausibility;
 
+      let workingPlausibility = mergePipelinePlausibility(plausibilityPatch, {
+        contentCache: buildContentCacheEntry(content, record.objectKey),
+      });
+
       await this.prisma.vehicleDocumentExtraction.update({
         where: { id: extractionId },
         data: {
@@ -200,9 +213,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
                 ocrPageCount: content.pageCount ?? null,
               }
             : {}),
-          plausibility: mergePipelinePlausibility(plausibilityPatch, {
-            contentCache: buildContentCacheEntry(content, record.objectKey),
-          }) as unknown as Prisma.InputJsonValue,
+          plausibility: workingPlausibility as unknown as Prisma.InputJsonValue,
         },
       });
 
@@ -244,11 +255,12 @@ export class DocumentExtractionProcessor extends WorkerHost {
           buildClassificationPipelinePayload({ classificationResult, decision }),
         );
         const plausibilityWithTaxonomy = mergeDocumentTaxonomyPipeline(
-          mergePipelinePlausibility(record.plausibility, {
+          mergePipelinePlausibility(workingPlausibility, {
             contentCache: buildContentCacheEntry(content, record.objectKey),
           }),
           classificationTaxonomy,
         );
+        workingPlausibility = plausibilityWithTaxonomy;
 
         if (decision.action === 'AWAIT_USER') {
           this.observability.recordClassification(
@@ -317,7 +329,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
         job.data.organizationId ?? record.organizationId ?? null,
         applyDocumentType,
         content,
-        record.plausibility,
+        workingPlausibility,
       );
       this.observability.recordJobOutcome('READY_FOR_REVIEW', 'REVIEW');
     } catch (err) {
@@ -396,10 +408,18 @@ export class DocumentExtractionProcessor extends WorkerHost {
     content: DocumentStructuredContent,
     existingPlausibility: unknown,
   ): Promise<void> {
+    const extractionStartedAt = new Date();
     await this.prisma.vehicleDocumentExtraction.update({
       where: { id: extractionId },
       data: { processingStage: 'EXTRACTION' },
     });
+
+    const resolvedSchema = resolveExtractionSchema({
+      legacyDocumentType: applyDocumentType,
+      plausibility: existingPlausibility,
+    });
+    const extractionTrigger = resolveExtractionTrigger(existingPlausibility);
+    const schema = resolvedSchema.fields;
 
     const vehicle = vehicleId
       ? await this.prisma.vehicle.findUnique({
@@ -424,7 +444,6 @@ export class DocumentExtractionProcessor extends WorkerHost {
     const lastKnownOdometerKm = latest?.odometerKm ?? vehicle?.mileageKm ?? null;
     const dimoTokenId = latest?.dimoTokenId ?? undefined;
 
-    const schema = getFieldSchema(applyDocumentType);
     const agentResult = await this.aiExtraction.extract({
       documentType: applyDocumentType,
       fields: schema.map((f) => ({
@@ -454,10 +473,14 @@ export class DocumentExtractionProcessor extends WorkerHost {
       throw mapAiExtractionFailure(agentResult.error);
     }
 
+    const structuredExtraction = buildStructuredExtractionPayload({
+      resolvedSchema,
+      agentResult,
+    });
     const fields =
-      agentResult.fields && Object.keys(agentResult.fields).length > 0
-        ? agentResult.fields
-        : buildEmptyExtractedData(applyDocumentType);
+      Object.keys(structuredExtraction.normalizedFlat).length > 0
+        ? structuredExtraction.normalizedFlat
+        : buildEmptyExtractedData(applyDocumentType, resolvedSchema.documentSubtype);
 
     const plausibilityChecks = this.plausibility.runChecks(
       applyDocumentType,
@@ -469,6 +492,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
         dimoContextAvailable: agentResult.dimoContextAvailable,
       },
       {
+        documentSubtype: resolvedSchema.documentSubtype,
         extractionConflicts: agentResult.extractionConflicts,
         chunkingWarnings: agentResult.chunking?.limitExceeded
           ? [
@@ -477,6 +501,10 @@ export class DocumentExtractionProcessor extends WorkerHost {
           : undefined,
       },
     );
+    const missingFieldChecks = collectMissingFieldPlausibilityChecks(
+      structuredExtraction.missingFields,
+    );
+    const finalChecksBase = [...plausibilityChecks.checks, ...missingFieldChecks];
     const mergedNotes = Array.from(
       new Set([...(plausibilityChecks.recommendedHumanReviewNotes ?? []), ...agentResult.recommendedHumanReviewNotes]),
     );
@@ -502,8 +530,8 @@ export class DocumentExtractionProcessor extends WorkerHost {
       });
     }
 
-    let finalChecks = plausibilityChecks.checks;
-    let overallStatus = plausibilityChecks.overallStatus;
+    let finalChecks = finalChecksBase;
+    let overallStatus = resolveOverallPlausibilityStatus(finalChecks);
 
     if (organizationId && !vehicleId) {
       const uploadContextVehicleId =
@@ -650,6 +678,19 @@ export class DocumentExtractionProcessor extends WorkerHost {
         : {};
 
     const completedAt = new Date();
+    const structuredExtractionRun = buildStructuredExtractionRun({
+      resolvedSchema,
+      structured: structuredExtraction,
+      trigger: extractionTrigger,
+      startedAt: extractionStartedAt,
+      completedAt,
+      provider: agentResult.providerId ?? null,
+      modelVersion: agentResult.modelId ?? null,
+    });
+    pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+      structuredExtraction,
+      structuredExtractionRun,
+    });
     const pipelinePayload = readPipelinePayload(pipelineWithContext);
     await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'PROCESSING' },
@@ -668,6 +709,10 @@ export class DocumentExtractionProcessor extends WorkerHost {
           contentPageCount: content.pageCount ?? null,
           extractionEvidence: agentResult.fieldEvidence ?? null,
           extractionConflicts: agentResult.extractionConflicts ?? null,
+          structuredExtraction,
+          structuredExtractionRun,
+          missingFields: structuredExtraction.missingFields,
+          extractionFieldConflicts: structuredExtraction.conflicts,
           chunking: agentResult.chunking ?? null,
           [PIPELINE_PLAUSIBILITY_KEY]: pipelinePayload,
         } as unknown as Prisma.InputJsonValue,

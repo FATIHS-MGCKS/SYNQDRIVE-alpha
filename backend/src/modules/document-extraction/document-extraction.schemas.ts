@@ -1,4 +1,5 @@
 import { DocumentExtractionType } from '@prisma/client';
+import { getRegistryExtractionFields } from './document-schema-registry';
 
 /**
  * Central document-type field schemas — the single source of truth for which
@@ -606,16 +607,20 @@ export function isApplyDocumentType(value: unknown): value is ApplyDocumentExtra
   return isSupportedDocumentType(value);
 }
 
-export function getFieldSchema(documentType: ApplyDocumentExtractionType): FieldDef[] {
-  return DOCUMENT_FIELD_SCHEMAS[documentType] ?? DOCUMENT_FIELD_SCHEMAS.OTHER;
+export function getFieldSchema(
+  documentType: ApplyDocumentExtractionType,
+  documentSubtype?: string | null,
+): FieldDef[] {
+  return getRegistryExtractionFields(documentType, documentSubtype);
 }
 
 /** Builds an empty extractedData object (flat keys, nested for `treadDepthMm`). */
 export function buildEmptyExtractedData(
   documentType: ApplyDocumentExtractionType,
+  documentSubtype?: string | null,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const f of getFieldSchema(documentType)) {
+  for (const f of getFieldSchema(documentType, documentSubtype)) {
     if (f.key.includes('.')) {
       const [parent, child] = f.key.split('.');
       const obj = (out[parent] as Record<string, unknown>) ?? {};
