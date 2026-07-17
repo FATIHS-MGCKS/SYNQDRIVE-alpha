@@ -1,6 +1,7 @@
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
 import type { DrivingAttributionType } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.types';
 import type { RentalDrivingNormalizedMetrics } from './rental-driving-analysis.metrics';
+import type { RentalRoadDistributionResult } from './rental-driving-analysis.road-distribution';
 
 export type RentalDrivingAttributionSummary = {
   analysisSource: 'booking_assignment' | 'time_window_fallback' | 'none';
@@ -89,7 +90,12 @@ export interface RentalDrivingAnalysisPayload {
   };
   usagePattern: {
     tripType: 'mostly_short_distance' | 'mostly_long_distance' | 'mixed';
-    roadDistribution: { cityPercent: number; highwayPercent: number; countryRoadPercent: number };
+    roadDistribution: {
+      cityPercent: number;
+      highwayPercent: number;
+      countryRoadPercent: number;
+      routeCoverage: RentalRoadDistributionResult['routeCoverage'];
+    };
     temperatureContext: { avgTemperatureC: number | null; climateNote: string };
   };
   eventSummary: {
