@@ -157,7 +157,17 @@ describe('Document extraction pipeline (integration wiring)', () => {
       storage as any,
       queue as any,
       applyService as any,
+      { supportsExecutorPath: jest.fn(), executeConfirmedPlan: jest.fn() } as any,
       plausibility as any,
+      {
+        identify: jest.fn().mockResolvedValue({
+          detectedKind: 'pdf',
+          detectedMime: 'application/pdf',
+          clientMime: 'application/pdf',
+          displayFileName: 'invoice.pdf',
+          sizeBytes: 120_000,
+        }),
+      } as any,
       observability,
     );
   });

@@ -24,6 +24,11 @@ import { DocumentActionOrchestratorService } from './document-action-orchestrato
 import { mapApplyLifecycleToExtractionStatus } from './document-action-plan.state-machine';
 import { isArchiveDocumentType } from './document-archive-extraction.rules';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
+import { DocumentFileIdentificationService } from './document-file-identification.service';
+import { computeDocumentContentSha256 } from './document-content-hash.util';
+import { buildDocumentExtractionFileFingerprint } from './document-extraction-fingerprint.types';
+import { mergePipelinePlausibility } from './document-content-cache.util';
+import { DocumentExtractionPipelineError } from './document-extraction.errors';
 import {
   ApplyDocumentExtractionType,
   getFieldSchema,
@@ -280,6 +285,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly applyService: DocumentExtractionApplyService,
     private readonly actionOrchestrator: DocumentActionOrchestratorService,
     private readonly plausibilityService: DocumentExtractionPlausibilityService,
+    private readonly fileIdentification: DocumentFileIdentificationService,
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
@@ -319,17 +325,45 @@ export class DocumentExtractionService implements OnModuleInit {
     }
     const organizationId = vehicle.organizationId;
 
+    let identified;
+    let contentSha256: string;
+    try {
+      identified = await this.fileIdentification.identify({
+        buffer: input.buffer,
+        clientMimeType: input.mimeType,
+        originalName: input.originalName,
+      });
+      contentSha256 = await computeDocumentContentSha256(input.buffer);
+    } catch (error) {
+      if (error instanceof DocumentExtractionPipelineError) {
+        throw new BadRequestException({
+          message: error.safeMessage,
+          errorCode: error.code,
+          stage: error.stage,
+        });
+      }
+      throw error;
+    }
+
     const stored = await this.storage.putObject({
       organizationId,
       vehicleId: input.vehicleId,
-      originalName: input.originalName,
+      originalName: identified.displayFileName,
       buffer: input.buffer,
-      mimeType: input.mimeType,
+      mimeType: identified.detectedMime,
+    });
+
+    const fileFingerprint = buildDocumentExtractionFileFingerprint({
+      contentSha256,
+      organizationId,
+      sizeBytes: identified.sizeBytes,
+      detectedMime: identified.detectedMime,
+      displayFileName: identified.displayFileName,
     });
 
     const queueEnabled = this.docConfig.queueEnabled;
 
-    // Pre-queue state: file stored, job not yet enqueued.
+    // Pre-queue state: file identified + stored, job not yet enqueued.
     const record = await this.prisma.vehicleDocumentExtraction.create({
       data: {
         vehicleId: input.vehicleId,
@@ -340,11 +374,13 @@ export class DocumentExtractionService implements OnModuleInit {
         classificationMode,
         status: 'PENDING',
         processingStage: 'STORAGE',
-        sourceFileName: input.originalName?.slice(0, 255),
+        sourceFileName: identified.displayFileName,
         objectKey: stored.objectKey,
         storageProvider: stored.storageProvider,
-        mimeType: stored.mimeType,
-        sizeBytes: stored.sizeBytes,
+        mimeType: identified.detectedMime,
+        sizeBytes: identified.sizeBytes,
+        contentSha256,
+        plausibility: mergePipelinePlausibility(null, { fileFingerprint }) as Prisma.InputJsonValue,
         createdById: input.userId ?? null,
         processingAttempts: 0,
       },
@@ -995,10 +1031,12 @@ export class DocumentExtractionService implements OnModuleInit {
             sourceFileUrl,
             confirmedData,
           });
-      const extractionStatus =
-        'applyLifecycle' in applyResult && applyResult.applyLifecycle
-          ? mapApplyLifecycleToExtractionStatus(applyResult.applyLifecycle.status)
-          : 'APPLIED';
+      const lifecycle = (applyResult as { applyLifecycle?: { status: string } }).applyLifecycle;
+      const extractionStatus = lifecycle
+        ? mapApplyLifecycleToExtractionStatus(
+            lifecycle.status as Parameters<typeof mapApplyLifecycleToExtractionStatus>[0],
+          )
+        : 'APPLIED';
       await this.prisma.vehicleDocumentExtraction.updateMany({
         where: { id: extractionId, status: 'CONFIRMED' },
         data: {

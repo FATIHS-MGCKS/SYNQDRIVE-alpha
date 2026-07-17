@@ -78,6 +78,19 @@ function makeService(overrides: {
     ...(overrides.queue ?? {}),
   };
   const applyService = { apply: jest.fn().mockResolvedValue({}) };
+  const actionOrchestrator = {
+    supportsExecutorPath: jest.fn().mockReturnValue(false),
+    executeConfirmedPlan: jest.fn(),
+  };
+  const fileIdentification = {
+    identify: jest.fn().mockResolvedValue({
+      detectedKind: 'pdf',
+      detectedMime: 'application/pdf',
+      clientMime: 'application/pdf',
+      displayFileName: 'invoice.pdf',
+      sizeBytes: 100,
+    }),
+  };
   const plausibility = {
     runChecks: jest.fn().mockReturnValue({
       overallStatus: 'OK',
@@ -106,7 +119,9 @@ function makeService(overrides: {
     storage as any,
     queue as any,
     applyService as any,
+    actionOrchestrator as any,
     plausibility as any,
+    fileIdentification as any,
     observability as any,
   );
   return { svc, prisma, storage, queue, applyService, docConfig };

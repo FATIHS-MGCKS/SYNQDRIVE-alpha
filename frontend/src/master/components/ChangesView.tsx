@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-extraction-content-hash-2026-07-17',
+    version: '4.9.619',
+    title: 'V4.9.619 — Document Intake V2 Upload Content Hash (SHA-256)',
+    summary: [
+      'Stream-basierter SHA-256-Hash der Originaldatei beim Upload — vor OCR und Queue, org-scoped für Deduplizierung.',
+      'createFromUpload: Dateiidentifikation → Content-Hash → Storage → DB → Queue; bei Identifikationsfehler kein Storage/Enqueue.',
+      'contentSha256-Spalte + plausibility._pipeline.fileFingerprint im Extraction-/Fingerprint-Modell; keine Rohdatei-Inhalte in Logs.',
+      'Legacy-Uploads ohne Hash bleiben lesbar (nullable Spalte). Tests: gleiche Bytes/Name, gleiche Bytes/anderer Name, anderer Inhalt/gleicher Name, parallele Uploads.',
+    ],
+    reason:
+      'Prompt 44/84 — Sichere Dateiidentifikation per Content-Hash für org-scoped Deduplizierung und Audit vor der Extraktionspipeline.',
+    previousBehavior:
+      'Upload speicherte Datei und enqueued ohne Content-Hash; keine Fingerprint-Metadaten in plausibility._pipeline.',
+    details: 'architecture/DOCUMENT_EXTRACTION_CONTENT_HASH_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T19:30:00.000Z',
+  },
+  {
     id: 'document-intake-recovery-reconcile-2026-07-17',
     version: '4.9.618',
     title: 'V4.9.618 — Document Intake V2 Action Recovery Scheduler & Inventory Reconciliation',

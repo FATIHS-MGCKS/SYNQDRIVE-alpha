@@ -21,7 +21,7 @@ describe('DocumentExtractionService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
         create: jest.fn(),
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         ...prismaOverrides,
@@ -49,6 +49,19 @@ describe('DocumentExtractionService', () => {
     };
     const queue = { add: jest.fn().mockResolvedValue({}), getJob: jest.fn().mockResolvedValue(null) };
     const plausibility = { runChecks: jest.fn().mockReturnValue({ overallStatus: 'OK', checks: [], recommendedHumanReviewNotes: [] }) };
+    const fileIdentification = {
+      identify: jest.fn().mockResolvedValue({
+        detectedKind: 'pdf',
+        detectedMime: 'application/pdf',
+        clientMime: 'application/pdf',
+        displayFileName: 'invoice.pdf',
+        sizeBytes: 100,
+      }),
+    };
+    const actionOrchestrator = {
+      supportsExecutorPath: jest.fn().mockReturnValue(false),
+      executeConfirmedPlan: jest.fn(),
+    };
     const observability = {
       logEvent: jest.fn(),
       recordApply: jest.fn(),
@@ -69,10 +82,12 @@ describe('DocumentExtractionService', () => {
       storage as any,
       queue as any,
       applyService as any,
+      actionOrchestrator as any,
       plausibility as any,
+      fileIdentification as any,
       observability as any,
     );
-    return { svc, prisma, applyService, storage, queue, observability };
+    return { svc, prisma, applyService, storage, queue, observability, fileIdentification };
   }
 
   describe('sanitizeConfirmedData', () => {
