@@ -21,6 +21,7 @@ export interface PipelinePlausibilityPayload {
   malwareScan?: import('./document-malware-scan-status.types').DocumentMalwareScanPipelineState;
   lifecycle?: import('./document-storage-lifecycle.types').DocumentPipelineLifecyclePayload;
   uploadContext?: import('./document-upload-context.types').DocumentUploadContextPipelineState;
+  vehicleCandidates?: import('./vehicle-candidate-resolver.types').VehicleCandidatePipelineState;
 }
 
 export interface DocumentTypeAuditEntry {

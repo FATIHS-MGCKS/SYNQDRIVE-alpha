@@ -98,6 +98,18 @@ export function makeUploadContextMock() {
   };
 }
 
+export function makeVehicleCandidateResolverMock() {
+  return {
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {},
+      candidates: [],
+      blockerPresent: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
 export function makeLifecycleMock() {
   return {
     buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({

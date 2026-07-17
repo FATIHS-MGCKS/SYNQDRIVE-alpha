@@ -110,6 +110,7 @@ import { ConfigType } from '@nestjs/config';
     DocumentUploadDuplicateService,
     DocumentUploadRateLimitService,
     DocumentUploadContextService,
+    VehicleCandidateResolverService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-vehicle-candidate-resolver-2026-07-17',
+    version: '4.9.627',
+    title: 'V4.9.627 — Document Intake V2 Vehicle Candidate Resolver',
+    summary: [
+      'Tenant-sicherer VehicleCandidateResolver aus OCR-Signalen: Kennzeichen, VIN, Marke/Modell, Flottennummer (vehicleName), Dokumentkontext, Buchungsreferenz.',
+      'Kandidaten mit vehicleId, confidence, matchReasons, conflicts, rank, confirmationRequired in plausibility._pipeline.vehicleCandidates.',
+      'VIN-Exact > Kennzeichen; normalisierte Vergleiche; OCR-Unsicherheit senkt Confidence; widersprüchliches VIN/Kennzeichen → BLOCKER.',
+      'Keine Auto-Bestätigung bei mehreren plausiblen Kandidaten; kein Treffer ist valider Zustand.',
+    ],
+    reason:
+      'Org-Inbox-Uploads brauchen rangierte Fahrzeugvorschläge aus OCR ohne automatische Zuordnung — tenant-sicher und konflikt-sichtbar.',
+    previousBehavior:
+      'Kein DB-basierter Vehicle Candidate Resolver; nur manuelle Reassign oder Upload-Kontext-Konfliktprüfung.',
+    details: 'architecture/DOCUMENT_VEHICLE_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
     id: 'document-optional-context-contract-2026-07-17',
     version: '4.9.626',
     title: 'V4.9.626 — Document Intake V2 OptionalContext Contract',
