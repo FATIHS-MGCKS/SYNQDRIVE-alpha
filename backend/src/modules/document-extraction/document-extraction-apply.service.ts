@@ -22,15 +22,7 @@ import {
   BatteryEvidenceWriteInput,
 } from '@modules/vehicle-intelligence/battery-health/battery-evidence.service';
 import { BatteryHealthService } from '@modules/vehicle-intelligence/battery-health/battery-health.service';
-import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
-import {
-  assessDamageApplyGate,
-  buildDamageCreatePayload,
-  findDuplicateDamageCandidate,
-  readDamageAreas,
-  type DamageDocumentType,
-} from './document-damage-extraction.rules';
 import {
   assessTireApplyGate,
   buildTireMeasurementApplyPayload,
@@ -68,8 +60,7 @@ export interface ApplyResult {
  *
  * This is the previously-inline confirm/apply logic from
  * VehicleIntelligenceController, extracted verbatim (behaviour preserved) into a
- * testable service, with two product-required improvements:
- *   - damage/accident now flow through DamagesService.create() (was raw Prisma)
+ * testable service, with product-required improvements:
  *   - apply is invoked exactly once per extraction (idempotency is enforced by
  *     DocumentExtractionService before this service is called)
  *
@@ -86,7 +77,6 @@ export class DocumentExtractionApplyService {
     private readonly tireLifecycleService: TireLifecycleService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
     private readonly batteryHealthService: BatteryHealthService,
-    private readonly damagesService: DamagesService,
   ) {}
 
   async apply(input: ApplyInput): Promise<ApplyResult> {
@@ -118,7 +108,9 @@ export class DocumentExtractionApplyService {
     }
 
     if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
-      return this.applyDamageReport(input, d, docType);
+      throw new BadRequestException(
+        'Damage apply must run through DocumentActionOrchestratorService',
+      );
     }
 
     if (docType === 'INVOICE') {
@@ -426,60 +418,6 @@ export class DocumentExtractionApplyService {
     }
 
     return { serviceEventId };
-  }
-
-  private async applyDamageReport(
-    input: ApplyInput,
-    d: Record<string, unknown>,
-    docType: DamageDocumentType,
-  ): Promise<ApplyResult> {
-    const { vehicleId } = input;
-    const candidateAreas = readDamageAreas(d);
-    const payload = buildDamageCreatePayload(d);
-
-    const existingDamages = await this.prisma.vehicleDamage.findMany({
-      where: { vehicleId },
-      select: {
-        id: true,
-        damageType: true,
-        severity: true,
-        description: true,
-        locationLabel: true,
-        createdAt: true,
-      },
-    });
-
-    const duplicate =
-      payload != null
-        ? findDuplicateDamageCandidate(existingDamages, payload, candidateAreas)
-        : null;
-
-    const gate = assessDamageApplyGate({
-      documentType: docType,
-      fields: d,
-      duplicateDamageId: duplicate?.id ?? null,
-    });
-
-    if (!gate.canApply || !payload) {
-      throw new BadRequestException({
-        message: 'Damage apply gate blocked — missing or invalid confirmed fields',
-        blockers: gate.blockers,
-        documentMode: gate.documentMode,
-      });
-    }
-
-    const damage = await this.damagesService.create(vehicleId, {
-      damageType: payload.damageType,
-      severity: payload.severity,
-      description: payload.description,
-      locationLabel: payload.locationLabel ?? undefined,
-      estimatedCostCents: payload.estimatedCostCents ?? undefined,
-      bookingId: payload.bookingId ?? undefined,
-      liabilityNote: payload.liabilityNote ?? undefined,
-      source: 'AI_UPLOAD',
-    });
-
-    return { detail: { damageId: damage.id } };
   }
 
   // ── locale-aware numeric parsing (matches prior controller helpers) ───────

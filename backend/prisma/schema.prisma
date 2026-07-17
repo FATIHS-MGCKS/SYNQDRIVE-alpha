@@ -2725,6 +2725,7 @@ model VehicleDocumentExtraction {
   fines                             Fine[]
   orgInvoices                       OrgInvoice[]
   serviceEvents                     VehicleServiceEvent[]
+  damages                           VehicleDamage[]
 
   @@index([vehicleId])
   @@index([status])
@@ -7035,6 +7036,8 @@ model DtcVehicleKnowledge {
 model VehicleDamage {
   id                     String                @id @default(uuid())
   vehicleId              String                @map("vehicle_id")
+  organizationId         String?               @map("organization_id")
+  documentExtractionId   String?               @map("document_extraction_id")
   damageType             DamageType            @map("damage_type")
   severity               DamageSeverity        @default(MINOR)
   status                 DamageStatus          @default(OPEN)
@@ -7063,12 +7066,14 @@ model VehicleDamage {
   updatedAt              DateTime              @updatedAt @map("updated_at")
 
   vehicle          Vehicle                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   booking          Booking?                 @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   customer         Customer?                @relation(fields: [customerId], references: [id], onDelete: SetNull)
   handoverProtocol BookingHandoverProtocol? @relation(fields: [handoverProtocolId], references: [id], onDelete: SetNull)
   task             OrgTask?                 @relation(fields: [taskId], references: [id], onDelete: SetNull)
   images           VehicleDamageImage[]
 
+  @@unique([organizationId, documentExtractionId])
   @@index([vehicleId])
   @@index([damageType])
   @@index([status])
@@ -7076,6 +7081,8 @@ model VehicleDamage {
   @@index([customerId])
   @@index([handoverProtocolId])
   @@index([taskId])
+  @@index([documentExtractionId])
+  @@index([organizationId])
   @@map("vehicle_damages")
 }
 

@@ -61,6 +61,16 @@ export type DamageCreatePayload = {
   liabilityNote: string | null;
 };
 
+export type DamageDraftPayload = {
+  damageType: ExtractionDamageType;
+  severity: ExtractionDamageSeverity;
+  description: string;
+  locationLabel: string | null;
+  estimatedCostCents: number | null;
+  bookingId: string | null;
+  liabilityNote: string | null;
+};
+
 export type ExistingDamageCandidate = {
   id: string;
   damageType: string;
@@ -274,6 +284,25 @@ export function buildDamageCreatePayload(
   return {
     damageType,
     severity,
+    description,
+    locationLabel: buildDamageLocationLabel(data),
+    estimatedCostCents: readEstimatedCostCents(data),
+    bookingId: toStr(data.bookingId),
+    liabilityNote: buildDamageLiabilityNote(data),
+  };
+}
+
+export function buildDamageDraftPayload(
+  data: Record<string, unknown>,
+): DamageDraftPayload | null {
+  const description = readDamageDescription(data);
+  if (!description || !hasTraceableDamageArea(data)) {
+    return null;
+  }
+
+  return {
+    damageType: readDamageType(data) ?? 'UNKNOWN',
+    severity: readDamageSeverity(data) ?? 'UNKNOWN',
     description,
     locationLabel: buildDamageLocationLabel(data),
     estimatedCostCents: readEstimatedCostCents(data),

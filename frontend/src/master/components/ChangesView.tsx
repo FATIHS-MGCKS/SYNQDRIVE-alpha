@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-damage-apply-executor-2026-07-17',
+    version: '4.9.615',
+    title: 'V4.9.615 — Document Intake V2 Idempotent Damage & Accident Apply via Action Executor',
+    summary: [
+      'DAMAGE und ACCIDENT migriert auf DocumentActionExecutor mit idempotentem VehicleDamage.documentExtractionId + Unique (organizationId, documentExtractionId).',
+      'DamagesService.createDraftFromDocumentExtraction / applyRecordFromDocumentExtraction / linkExistingDamageFromDocumentExtraction — bestätigte Werte unverändert; UNKNOWN bleibt UNKNOWN (locationView + extraction-uncertain note).',
+      'Accident Report nur als Draft bis accidentApplyConfirmed; Gutachten verknüpft bestehenden Case via linkCandidateId statt Duplikat.',
+      'Executors: CREATE_DAMAGE_DRAFT, CREATE_DAMAGE_RECORD, LINK_EXISTING_DAMAGE. Legacy applyDamageReport entfernt.',
+    ],
+    reason:
+      'Prompt 40/84 — Damage-/Accident-Actions auf idempotenten Executor mit documentExtractionId-Anker und Retry-sicherem Parallel-Create.',
+    previousBehavior:
+      'DAMAGE/ACCIDENT liefen über DocumentExtractionApplyService.applyDamageReport mit direktem DamagesService.create ohne extraction-idempotency und ohne strukturierte Action-Execution-Audit.',
+    details:
+      'Backend: migration 20260717220000_damage_document_extraction_idempotency, document-damage-extraction.rules buildDamageDraftPayload, damages.service idempotent draft/record/link, executors/create-damage-document-action.executor.ts, orchestrator DAMAGE/ACCIDENT wiring. Tests: parallel create, retry, existing case link. Architektur: architecture/DOCUMENT_DAMAGE_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'document-service-inspection-apply-executor-2026-07-17',
     version: '4.9.614',
     title: 'V4.9.614 — Document Intake V2 Idempotent Service & Inspection Apply via Action Executor',
