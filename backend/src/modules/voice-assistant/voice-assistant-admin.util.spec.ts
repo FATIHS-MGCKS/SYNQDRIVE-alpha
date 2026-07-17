@@ -20,7 +20,7 @@ describe('voice-assistant-admin.util', () => {
   });
 
   it('warns when provider is not configured', () => {
-    expect(resolveProviderWarning(false, null, null)).toContain('ElevenLabs');
+    expect(resolveProviderWarning(false, null, null)).toContain('telephony provider');
   });
 
   it('builds admin warnings for incomplete readiness', () => {
@@ -40,6 +40,7 @@ describe('voice-assistant-admin.util', () => {
       label: 'No phone number',
       detail: 'Assign a phone number.',
       providerConfigured: true,
+      pstnProvider: 'elevenlabs' as const,
       agentProvisioned: true,
       phoneAssigned: false,
       inboundReady: false,

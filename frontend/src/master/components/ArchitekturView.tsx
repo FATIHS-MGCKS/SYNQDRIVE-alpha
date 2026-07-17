@@ -770,6 +770,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Twilio Programmable Voice — PSTN + ElevenLabs bridge (V4.9.584)',
+    icon: Radio,
+    color: 'text-[color:var(--brand)]',
+    apis: [
+      { label: 'Module', detail: 'TwilioModule — TwilioService, TwilioTelephonyService, TwilioWebhookController/Service, TwilioVoiceBridgeService' },
+      { label: 'Webhooks', detail: 'POST /api/v1/webhooks/twilio/voice (TwiML) + /status — X-Twilio-Signature via TWILIO_AUTH_TOKEN' },
+      { label: 'Voice bridge', detail: 'pstnProvider TWILIO on VoiceAssistant; ElevenLabs agent remains AI layer; inbound TwiML + VoiceConversation.twilioCallSid' },
+      { label: 'Org API', detail: 'phone-number/assign {provider:twilio|elevenlabs}, POST twilio/outbound-call, merged GET phone-numbers' },
+      { label: 'EU routing', detail: 'ie1 + dublin; API Key REST auth; webhook auth token separate — backend/docs/twilio-setup.md' },
+    ],
+  },
+  {
     name: 'Twilio Programmable Voice — SDK groundwork (V4.9.583)',
     icon: Radio,
     color: 'text-[color:var(--brand)]',

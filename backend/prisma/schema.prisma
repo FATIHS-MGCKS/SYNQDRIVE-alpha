@@ -1358,6 +1358,7 @@ model Organization {
   paymentEmailOutbox                PaymentEmailOutbox[]
   paymentTransactions               PaymentTransaction[]
   stripeConnectWebhookEvents        StripeConnectWebhookEvent[]
+  twilioWebhookEvents             TwilioWebhookEvent[]
   rentalContracts                   RentalContract[]
   misuseCases                       MisuseCase[]
   vehicleDrivingCapabilities        VehicleDrivingCapability[]
@@ -9567,6 +9568,11 @@ enum VoiceAssistantStatus {
   INACTIVE
 }
 
+enum VoicePstnProvider {
+  ELEVENLABS
+  TWILIO
+}
+
 enum VoiceConnectionStatus {
   NOT_CONFIGURED
   DEGRADED
@@ -9612,8 +9618,10 @@ model VoiceAssistant {
   knowledgeSnippets String? @map("knowledge_snippets") @db.Text
 
   provider                String                @default("elevenlabs")
+  pstnProvider            VoicePstnProvider     @default(ELEVENLABS) @map("pstn_provider")
   elevenLabsAgentId       String?               @map("elevenlabs_agent_id")
   elevenLabsPhoneNumberId String?               @map("elevenlabs_phone_number_id")
+  twilioPhoneNumberSid    String?               @map("twilio_phone_number_sid")
   phoneNumberId           String?               @map("phone_number_id")
   phoneNumber             String?               @map("phone_number")
   connectionStatus        VoiceConnectionStatus @default(NOT_CONFIGURED) @map("connection_status")
@@ -9682,6 +9690,7 @@ model VoiceConversation {
 
   providerConversationId String?                    @map("provider_conversation_id")
   elevenLabsConvId       String?                    @map("elevenlabs_conv_id")
+  twilioCallSid          String?                    @map("twilio_call_sid")
   providerAgentId        String?                    @map("provider_agent_id")
   callerNumber           String?                    @map("caller_number")
   direction              VoiceConversationDirection @default(INBOUND)
@@ -9705,7 +9714,29 @@ model VoiceConversation {
   @@index([outcome])
   @@index([providerConversationId])
   @@index([elevenLabsConvId])
+  @@index([twilioCallSid])
   @@map("voice_conversations")
+}
+
+model TwilioWebhookEvent {
+  id              String    @id @default(uuid())
+  organizationId  String?   @map("organization_id")
+  callSid         String?   @map("call_sid")
+  externalEventId String    @map("external_event_id")
+  eventType       String?   @map("event_type")
+  payload         Json
+  headers         Json?
+  signatureValid  Boolean?  @map("signature_valid")
+  processedAt     DateTime? @map("processed_at")
+  processingError String?   @map("processing_error")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([externalEventId])
+  @@index([organizationId, createdAt])
+  @@index([callSid])
+  @@map("twilio_webhook_events")
 }
 
 // ── V2 Trip Detection State Machine ──

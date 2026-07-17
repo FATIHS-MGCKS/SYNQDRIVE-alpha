@@ -1,4 +1,9 @@
-import { VoiceAssistant } from '@prisma/client';
+import { VoiceAssistant, VoicePstnProvider } from '@prisma/client';
+
+export type TelephonyProviderConfig = {
+  elevenLabsConfigured: boolean;
+  twilioConfigured: boolean;
+};
 
 export type TelephonyOperationalStatus =
   | 'provider_not_connected'
@@ -13,6 +18,7 @@ export interface TelephonyStatusSnapshot {
   label: string;
   detail: string;
   providerConfigured: boolean;
+  pstnProvider: 'elevenlabs' | 'twilio';
   agentProvisioned: boolean;
   phoneAssigned: boolean;
   inboundReady: boolean;
@@ -20,6 +26,7 @@ export interface TelephonyStatusSnapshot {
 }
 
 export interface ProviderPhoneNumberView {
+  provider: 'elevenlabs' | 'twilio';
   phoneNumberId: string;
   phoneNumber: string | null;
   assignedAgentId: string | null;
@@ -27,10 +34,32 @@ export interface ProviderPhoneNumberView {
   assignedToOther: boolean;
 }
 
+export function resolvePstnProviderLabel(
+  provider: VoicePstnProvider,
+): 'elevenlabs' | 'twilio' {
+  return provider === VoicePstnProvider.TWILIO ? 'twilio' : 'elevenlabs';
+}
+
+export function isPstnProviderConfigured(
+  assistant: Pick<VoiceAssistant, 'pstnProvider'>,
+  config: TelephonyProviderConfig,
+): boolean {
+  if (assistant.pstnProvider === VoicePstnProvider.TWILIO) {
+    return config.twilioConfigured;
+  }
+  return config.elevenLabsConfigured;
+}
+
 export function hasPhoneNumberAssigned(assistant: Pick<
   VoiceAssistant,
-  'phoneNumber' | 'elevenLabsPhoneNumberId' | 'phoneNumberId'
+  'phoneNumber' | 'elevenLabsPhoneNumberId' | 'phoneNumberId' | 'twilioPhoneNumberSid' | 'pstnProvider'
 >): boolean {
+  if (assistant.pstnProvider === VoicePstnProvider.TWILIO) {
+    return Boolean(
+      assistant.twilioPhoneNumberSid?.trim() ||
+        assistant.phoneNumber?.trim(),
+    );
+  }
   return Boolean(
     assistant.elevenLabsPhoneNumberId?.trim() ||
       assistant.phoneNumberId?.trim() ||
@@ -47,19 +76,24 @@ export function isTelephonyLiveModeRequested(assistant: Pick<
 
 export function computeTelephonyStatus(
   assistant: VoiceAssistant,
-  providerConfigured: boolean,
+  config: TelephonyProviderConfig,
 ): TelephonyStatusSnapshot {
+  const pstnProvider = resolvePstnProviderLabel(assistant.pstnProvider);
+  const providerConfigured = isPstnProviderConfigured(assistant, config);
   const agentProvisioned = Boolean(assistant.elevenLabsAgentId);
   const phoneAssigned = hasPhoneNumberAssigned(assistant);
   const telephonyActive =
     assistant.telephonyEnabled || assistant.inboundEnabled || assistant.outboundEnabled;
 
   if (!providerConfigured) {
+    const providerLabel =
+      pstnProvider === 'twilio' ? 'Twilio' : 'ElevenLabs';
     return {
       status: 'provider_not_connected',
       label: 'Provider not connected',
-      detail: 'ElevenLabs API key is missing on the server.',
+      detail: `${providerLabel} is not configured on the server.`,
       providerConfigured: false,
+      pstnProvider,
       agentProvisioned,
       phoneAssigned,
       inboundReady: false,
@@ -73,6 +107,7 @@ export function computeTelephonyStatus(
       label: 'Agent not provisioned',
       detail: 'Activate the assistant to create an ElevenLabs agent before assigning a phone number.',
       providerConfigured: true,
+      pstnProvider,
       agentProvisioned: false,
       phoneAssigned,
       inboundReady: false,
@@ -86,6 +121,7 @@ export function computeTelephonyStatus(
       label: 'Telephony disabled',
       detail: 'Enable telephony or inbound calls when you are ready for phone live mode.',
       providerConfigured: true,
+      pstnProvider,
       agentProvisioned: true,
       phoneAssigned,
       inboundReady: false,
@@ -99,6 +135,7 @@ export function computeTelephonyStatus(
       label: 'No phone number assigned',
       detail: 'Select a provider number and assign it to this assistant.',
       providerConfigured: true,
+      pstnProvider,
       agentProvisioned: true,
       phoneAssigned: false,
       inboundReady: false,
@@ -112,6 +149,7 @@ export function computeTelephonyStatus(
       label: 'Assigned but inactive',
       detail: 'A number is linked but inbound telephony is disabled.',
       providerConfigured: true,
+      pstnProvider,
       agentProvisioned: true,
       phoneAssigned: true,
       inboundReady: false,
@@ -126,6 +164,7 @@ export function computeTelephonyStatus(
       ? `Inbound number ${assistant.phoneNumber} is assigned to this agent.`
       : 'Inbound number is assigned to this agent.',
     providerConfigured: true,
+    pstnProvider,
     agentProvisioned: true,
     phoneAssigned: true,
     inboundReady: true,
@@ -148,11 +187,37 @@ export function mapProviderPhoneNumbers(
       assistantAgentId && assignedAgentId === assistantAgentId,
     );
     return {
+      provider: 'elevenlabs',
       phoneNumberId,
       phoneNumber: row.phone_number ? String(row.phone_number) : null,
       assignedAgentId,
       assignedToThisAssistant,
       assignedToOther: Boolean(assignedAgentId && !assignedToThisAssistant),
+    };
+  });
+}
+
+export function mapTwilioProviderPhoneNumbers(
+  numbers: Array<{
+    phoneNumberSid: string;
+    phoneNumber: string | null;
+  }>,
+  assistant: Pick<VoiceAssistant, 'twilioPhoneNumberSid' | 'phoneNumber'>,
+): ProviderPhoneNumberView[] {
+  return numbers.map((row) => {
+    const assignedToThisAssistant = Boolean(
+      assistant.twilioPhoneNumberSid &&
+        assistant.twilioPhoneNumberSid === row.phoneNumberSid,
+    );
+    return {
+      provider: 'twilio',
+      phoneNumberId: row.phoneNumberSid,
+      phoneNumber: row.phoneNumber,
+      assignedAgentId: assignedToThisAssistant
+        ? assistant.twilioPhoneNumberSid
+        : null,
+      assignedToThisAssistant,
+      assignedToOther: false,
     };
   });
 }

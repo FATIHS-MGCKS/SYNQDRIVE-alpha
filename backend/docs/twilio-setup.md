@@ -1,50 +1,81 @@
-# Twilio — server-side SDK setup (SynqDrive)
+# Twilio — Voice Assistant PSTN integration (SynqDrive)
 
-Server-only integration groundwork for Twilio Programmable Voice / telephony. The official Node.js SDK (`twilio`) is installed in the NestJS backend workspace. **No live API calls are made during bootstrap** when credentials are unset.
+Server-only Twilio Programmable Voice layer for org-scoped Voice Assistant telephony. **ElevenLabs remains the AI agent provider**; Twilio handles PSTN numbers, inbound webhooks, outbound call initiation, and call-status tracking.
 
-## Required environment (API Key auth — not Account Auth Token)
+## Architecture
+
+| Layer | Provider | Responsibility |
+|-------|----------|----------------|
+| AI agent / voice / conversations | ElevenLabs | Agent provisioning, signed test URL, conversation sync |
+| PSTN numbers / call control | Twilio (optional) | Phone numbers, inbound TwiML, outbound calls, status callbacks |
+| Orchestration | `VoiceAssistantService` | Org-scoped assign/unassign, readiness, telephony settings |
+
+When `pstnProvider=TWILIO`, inbound calls hit `/api/v1/webhooks/twilio/voice` and receive TwiML built from the assistant greeting (ElevenLabs agent metadata preserved for future SIP/stream bridge).
+
+## Required environment
 
 | Variable | Description |
 |----------|-------------|
 | `TWILIO_ACCOUNT_SID` | Twilio Account SID |
-| `TWILIO_API_KEY_SID` | API Key SID (created in the **IE1** region) |
-| `TWILIO_API_KEY_SECRET` | API Key secret — server-only, never commit or log |
-| `TWILIO_REGION` | Regional processing target. Default: `ie1` (Ireland) |
-| `TWILIO_EDGE` | Edge location paired with region. Default: `dublin` |
+| `TWILIO_API_KEY_SID` | API Key SID (created in **IE1**) — REST SDK |
+| `TWILIO_API_KEY_SECRET` | API Key secret — REST SDK only, never log |
+| `TWILIO_AUTH_TOKEN` | **Webhook signature validation only** — not used for REST client |
+| `TWILIO_REGION` | Default `ie1` |
+| `TWILIO_EDGE` | Default `dublin` — fixed pair with `ie1` |
+| `TWILIO_VOICE_WEBHOOK_BASE_URL` | Public app base (e.g. `https://app.synqdrive.eu`); falls back to `APP_URL` |
 
-All credential variables are **optional** until telephony features are enabled. Missing values must not fail application startup.
+All variables are optional until telephony is enabled. Missing values must not fail application bootstrap.
 
 ## Ireland (IE1) routing
 
-SynqDrive targets European Twilio processing:
+- `region: 'ie1'` + `edge: 'dublin'` — always configure together
+- API Key credentials must be created in the IE1 region
+- Client factory: `getTwilioClient()` in `src/config/twilio-client.util.ts`
 
-- `region: 'ie1'`
-- `edge: 'dublin'` (required companion to `ie1`)
-- API Key credentials must be created in the **IE1** region in the Twilio Console
-- **Do not** set `region` and `edge` independently in production — they are a fixed pair
+## API surface
 
-Future client initialization (no network until an API method is called):
+### Org-scoped (JWT + `OrgScopingGuard`)
 
-```typescript
-import twilio = require('twilio');
+- Existing voice-assistant telephony routes unchanged
+- `POST .../phone-number/assign` — optional body `{ provider: 'elevenlabs' | 'twilio' }`
+- `POST .../twilio/outbound-call` — `{ to: '+49...' }` when Twilio PSTN + outbound enabled
 
-const client = twilio(apiKeySid, apiKeySecret, {
-  accountSid,
-  region: 'ie1',
-  edge: 'dublin',
-});
+### Public webhooks (signature validated when `TWILIO_AUTH_TOKEN` set)
+
+- `POST /api/v1/webhooks/twilio/voice` — inbound TwiML
+- `POST /api/v1/webhooks/twilio/status` — call status + conversation metrics
+
+## Module layout
+
+```
+backend/src/modules/twilio/
+  twilio.module.ts
+  twilio.service.ts
+  twilio-telephony.service.ts
+  twilio-webhook.controller.ts
+  twilio-webhook.service.ts
+  twilio-voice-bridge.service.ts
+  twilio-voice-twiml.util.ts
+  twilio-signature.util.ts
 ```
 
-The shared factory `getTwilioClient()` in `src/config/twilio-client.util.ts` applies the same defaults and returns `null` when credentials are incomplete.
+`VoiceAssistantModule` imports `TwilioModule`.
 
 ## Security
 
-- Never use the Twilio **Account Auth Token** in SynqDrive — API Key auth only
-- Never expose credentials to the frontend bundle
-- Never log `TWILIO_API_KEY_SECRET` or full API keys
-- Placeholders only in `.env.example`; real values in server `.env` / VPS `backend.env`
+- Never log `TWILIO_API_KEY_SECRET` or `TWILIO_AUTH_TOKEN`
+- Never expose Twilio credentials to the frontend
+- Webhook routes are public but HMAC-validated in production when auth token is configured
+- No Account Auth Token for REST — API Key auth only
 
-## Related modules
+## Prisma
 
-- **Voice Assistant** (`modules/voice-assistant`) — ElevenLabs agents/telephony today; Twilio may complement outbound/inbound PSTN in a later phase
-- **WhatsApp** (`modules/whatsapp`) — Meta Cloud API (separate from Twilio SMS/Voice)
+- `VoiceAssistant.pstnProvider` — `ELEVENLABS` (default) or `TWILIO`
+- `VoiceAssistant.twilioPhoneNumberSid`
+- `VoiceConversation.twilioCallSid`
+- `TwilioWebhookEvent` — idempotent webhook audit
+
+## Related
+
+- `modules/voice-assistant/README.md` — ElevenLabs activation & readiness
+- `modules/whatsapp` — separate Meta Cloud API channel

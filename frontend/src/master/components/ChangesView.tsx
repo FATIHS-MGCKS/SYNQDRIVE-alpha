@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'twilio-voice-integration-v49584-2026-07-17',
+    version: '4.9.584',
+    title: 'V4.9.584 — Twilio Voice: Module, Webhooks, PSTN↔ElevenLabs Bridge',
+    summary: [
+      '`TwilioModule` — REST telephony, inbound/status webhooks, signature validation, idempotent `TwilioWebhookEvent`.',
+      'Voice Assistant: `pstnProvider` ELEVENLABS|TWILIO, Twilio number assign/unassign, outbound call route, merged phone-number list.',
+      'Prisma: `twilio_phone_number_sid`, `twilio_call_sid`, `VoicePstnProvider` enum; public webhook paths whitelisted.',
+      'IE1/Dublin preserved; `TWILIO_AUTH_TOKEN` webhook-only; docs + mocked integration specs.',
+    ],
+    reason:
+      'Twilio SDK war installiert — vollständige serverseitige Integration für PSTN-Telefonie neben ElevenLabs AI-Agenten, ohne Frontend-Secrets.',
+    previousBehavior: 'Nur SDK + Config-Factory; keine Webhooks, kein TwilioModule, keine PSTN-Zuweisung.',
+    details:
+      'modules/twilio/*, voice-assistant.service/controller, voice-assistant-telephony.util, prisma migration, auth.guard, twilio-setup.md, api.ts, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
     id: 'twilio-sdk-backend-install-v49583-2026-07-17',
     version: '4.9.583',
     title: 'V4.9.583 — Twilio Node.js SDK: Backend-Installation + IE1-Config',
