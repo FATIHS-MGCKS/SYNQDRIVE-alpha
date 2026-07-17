@@ -88,6 +88,16 @@ import { DrivingAnalysisReconciliationService } from './driving-analysis-reconci
 import { DriverAttributionRepository } from './driver-attribution/driver-attribution.repository';
 import { DriverAttributionService } from './driver-attribution/driver-attribution.service';
 import { DrivingAttributionResolveJobHandler } from './driver-attribution/driving-attribution-resolve.handler';
+import { TripAssessabilityInputLoader } from './trip-assessability/trip-assessability-input.loader';
+import { TripDecisionSummaryService } from './trips/trip-decision-summary.service';
+import { DrivingNativeEventsIngestJobHandler } from './driving-intelligence-jobs/handlers/driving-native-events-ingest.handler';
+import { DrivingRouteEnrichJobHandler } from './driving-intelligence-jobs/handlers/driving-route-enrich.handler';
+import { DrivingImpactComputeJobHandler } from './driving-intelligence-jobs/handlers/driving-impact-compute.handler';
+import { DrivingAssessabilityComputeJobHandler } from './driving-intelligence-jobs/handlers/driving-assessability-compute.handler';
+import { DrivingDecisionSummaryComputeJobHandler } from './driving-intelligence-jobs/handlers/driving-decision-summary-compute.handler';
+import { DrivingHealthImpactPublishJobHandler } from './driving-intelligence-jobs/handlers/driving-health-impact-publish.handler';
+import { DrivingDecisionsService } from './driving-decisions/driving-decisions.service';
+import { DrivingDecisionsController } from './driving-decisions/driving-decisions.controller';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
@@ -137,7 +147,7 @@ import { RentalDrivingAnalysisModule } from '../rental-driving-analysis/rental-d
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController],
   providers: [
     BatteryService,
     TiresService,
@@ -209,6 +219,8 @@ import { RentalDrivingAnalysisModule } from '../rental-driving-analysis/rental-d
     DimoTripSegmentValidateJobHandler,
     TripAssessabilityRepository,
     TripAssessabilityService,
+    TripAssessabilityInputLoader,
+    TripDecisionSummaryService,
     DrivingEvidenceRepository,
     DrivingEvidenceService,
     DrivingAnalysisRunRepository,
@@ -227,6 +239,13 @@ import { RentalDrivingAnalysisModule } from '../rental-driving-analysis/rental-d
     DriverAttributionRepository,
     DriverAttributionService,
     DrivingAttributionResolveJobHandler,
+    DrivingNativeEventsIngestJobHandler,
+    DrivingRouteEnrichJobHandler,
+    DrivingImpactComputeJobHandler,
+    DrivingAssessabilityComputeJobHandler,
+    DrivingDecisionSummaryComputeJobHandler,
+    DrivingHealthImpactPublishJobHandler,
+    DrivingDecisionsService,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,

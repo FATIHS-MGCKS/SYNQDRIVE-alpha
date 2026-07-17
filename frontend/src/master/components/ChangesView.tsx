@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p77-remaining-p0-p1-2026-07-17',
+    version: '4.9.567',
+    title: 'Driving Intelligence V2 — Remaining P0/P1: V2 Job Handlers, Decision Summary, Audit Trail',
+    summary: [
+      '6/6 fehlende V2-Job-Handler verdrahtet (Native Events, Route, Impact, Assessability, Decision Summary, Health Impact Publish).',
+      'TripDecisionSummaryService + API-Feld `tripDecisionSummary` + TripDecisionSummaryPanel in Trip Detail.',
+      'DrivingDecisionAudit Prisma-Modell + `POST/GET /organizations/:orgId/driving-decisions` für manuelle Freigabe.',
+      'ManualRentalApprovalDialog (UI-Basis) + TripAssessabilityInputLoader.',
+      'DI V2 Prometheus-Metriken: decision_summary_computed, analysis_runs_total, health_impact_published.',
+      'Backfill-Script `scripts/backfill-trip-analysis-status.ts` für historische NULL-Status.',
+      'i18n/Copy: „Fahrbewertung“ → „Datenqualität“ / „Fahrzeugbelastung“ in Notifications und Device-Quality-Surfaces.',
+      'Fix: trip-reconciliation Import-Pfad für TripPostFinalizeAnalysisProducer.',
+    ],
+    reason:
+      'Restliche code-fixbare P0/P1 aus Final-Audit — V2-Pipeline-Stubs, dimensionales Entscheidungsmodell, Customer-Decision-Audit, Observability.',
+    previousBehavior:
+      '11/11 V2-Jobs hatten 6 Stub-Handler ohne Wirkung; kein TripDecisionSummary; kein DrivingDecisionAudit; dünne DI-Metriken; 84 % trip_analysis_status NULL in Prod.',
+    details:
+      'Handler unter `driving-intelligence-jobs/handlers/`; `trip-decision-summary.service.ts`; `driving-decisions/*`; `trip-metrics.service.ts`; `TripTimelineExpanded.tsx`; Migration `20260717120000_driving_decision_audits`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T10:55:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p76-final-audit-2026-07-17',
     version: '4.9.566',
     title: 'Driving Intelligence V2 P75/P76 — Test Coverage, Shadow Runbook, Final Audit + P0/P1 Fixes',

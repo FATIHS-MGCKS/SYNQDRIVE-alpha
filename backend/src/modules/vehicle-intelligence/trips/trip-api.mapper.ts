@@ -35,6 +35,7 @@ export function mapTripForVehicleApi(
       } | null;
     };
     tripAssessment?: TripAssessment | null;
+    tripDecisionSummary?: Record<string, unknown> | null;
     drivingScore?: number | null;
   },
 ) {
@@ -96,6 +97,7 @@ export function mapTripForVehicleApi(
         ? behaviorSummary.deviceQualityVehicleStatus
         : null,
     tripAssessment: trip.tripAssessment ?? null,
+    tripDecisionSummary: trip.tripDecisionSummary ?? null,
     drivingImpactModelProfile: summary?.drivingImpactModelProfile ?? null,
   };
 }

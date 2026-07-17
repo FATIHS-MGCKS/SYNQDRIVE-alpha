@@ -96,6 +96,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly shadowDetectorSkipped: Counter<string>;
   readonly shadowDetectorCandidates: Counter<string>;
   readonly shadowDetectorFrameworkSkipped: Counter<string>;
+  readonly drivingDecisionSummaryComputed: Counter<string>;
+  readonly drivingAnalysisRunsTotal: Counter<string>;
+  readonly drivingHealthImpactPublished: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -695,6 +698,27 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_shadow_detector_framework_skipped_total',
       help: 'Shadow detector framework skipped entirely',
       labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.drivingDecisionSummaryComputed = new Counter({
+      name: 'synqdrive_driving_decision_summary_computed_total',
+      help: 'Trip decision summaries computed and persisted',
+      labelNames: ['data_basis', 'recommendation'],
+      registers: [this.registry],
+    });
+
+    this.drivingAnalysisRunsTotal = new Counter({
+      name: 'synqdrive_driving_analysis_runs_total',
+      help: 'Driving analysis runs completed by type and status',
+      labelNames: ['analysis_type', 'status'],
+      registers: [this.registry],
+    });
+
+    this.drivingHealthImpactPublished = new Counter({
+      name: 'synqdrive_driving_health_impact_published_total',
+      help: 'Health impact publish jobs that recalculated brake/tire health',
+      labelNames: ['eligibility'],
       registers: [this.registry],
     });
   }

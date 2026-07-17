@@ -34,6 +34,7 @@ import { isTripAnalysisInProgress } from './trips/trip-analysis-status';
 import { TripReconciliationService } from './trips/reconciliation/trip-reconciliation.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { TripAnalyticsCanonicalService } from './trips/trip-analytics-canonical.service';
+import { TripDecisionSummaryService } from './trips/trip-decision-summary.service';
 import { DriverScoreService } from './trips/driver-score.service';
 import { DamagesService } from './damages/damages.service';
 import {
@@ -125,6 +126,7 @@ export class VehicleIntelligenceController {
     private readonly dtcKnowledgeService: DtcKnowledgeService,
     private readonly tripsService: TripsService,
     private readonly tripAnalyticsCanonicalService: TripAnalyticsCanonicalService,
+    private readonly tripDecisionSummaryService: TripDecisionSummaryService,
     private readonly energyEventsService: EnergyEventsService,
     private readonly driverScoreService: DriverScoreService,
     private readonly behaviorEnrichmentService: TripBehaviorEnrichmentService,
@@ -1080,9 +1082,18 @@ export class VehicleIntelligenceController {
       hydratedTrip.canonicalTripSummary,
     );
 
+    const persistedSummary = await this.tripDecisionSummaryService.findByTrip(
+      organizationId,
+      tripId,
+    );
+    const tripDecisionSummary =
+      persistedSummary ??
+      (await this.tripDecisionSummaryService.buildSummary(organizationId, vehicleId, tripId));
+
     const mapped = mapTripForVehicleApi({
       ...(hydratedTrip as any),
       tripAssessment,
+      tripDecisionSummary,
     });
     const [withFlags] = await this.attachTripDeviceConnectionFlags(vehicleId, [mapped as any]);
 

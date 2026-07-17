@@ -15,16 +15,16 @@ export function VehicleDrivingAssessmentQualityChip({
 
   const label = isRecovering
     ? compact
-      ? 'Fahrbew. erholt sich'
-      : 'Fahrbewertung normalisiert sich'
+      ? 'Daten erholt sich'
+      : 'Datenqualität normalisiert sich'
     : compact
-      ? 'Fahrbew. eingeschränkt'
-      : 'Fahrbewertung eingeschränkt';
+      ? 'Daten eingeschränkt'
+      : 'Datenqualität eingeschränkt';
 
   const title =
     status === 'RECOVERING'
-      ? 'Die native Event-Qualität verbessert sich — Fahrbewertung noch mit Vorsicht nutzen. Trips und Telematik bleiben verfügbar.'
-      : 'Das LTE-Gerät sendet ungewöhnlich viele native Fahrereignisse. Die automatische Fahrbewertung kann unzuverlässig sein (DIMO: Steckung/Kalibrierung prüfen).';
+      ? 'Die native Event-Qualität verbessert sich — Fahrzeugbelastung weiterhin mit Vorsicht nutzen.'
+      : 'Das LTE-Gerät sendet ungewöhnlich viele native Fahrereignisse. Die automatische Fahrzeugbelastung kann unzuverlässig sein (DIMO: Steckung/Kalibrierung prüfen).';
 
   return (
     <StatusChip
@@ -58,12 +58,12 @@ export function VehicleDrivingAssessmentQualityOverviewCard({
         />
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-semibold text-foreground">
-            {isRecovering ? 'Fahrbewertung normalisiert sich' : 'Fahrbewertung eingeschränkt'}
+            {isRecovering ? 'Datenqualität normalisiert sich' : 'Datenqualität eingeschränkt'}
           </p>
           <p className="text-xs leading-relaxed text-muted-foreground">
             {isRecovering
-              ? 'Die native Event-Qualität verbessert sich. Fahrbewertung und Fahr-Score weiterhin mit Vorsicht nutzen — Trips und Telematik bleiben verfügbar.'
-              : 'Das LTE-R1-Gerät sendet derzeit ungewöhnlich viele native Fahrereignisse. Laut DIMO kann die Ursache eine lose OBD-Steckung oder Fehlkalibrierung sein. Betroffen ist nur die automatische Fahrbewertung.'}
+              ? 'Die native Event-Qualität verbessert sich. Fahrzeugbelastung weiterhin mit Vorsicht nutzen — Trips und Telematik bleiben verfügbar.'
+              : 'Das LTE-R1-Gerät sendet derzeit ungewöhnlich viele native Fahrereignisse. Laut DIMO kann die Ursache eine lose OBD-Steckung oder Fehlkalibrierung sein. Betroffen ist die Datenqualität für Fahrverhaltens-Signale.'}
           </p>
           {data.orgBaseline?.sufficient ? (
             <p className="text-[11px] text-muted-foreground/80">

@@ -5,6 +5,12 @@ import { DimoTripSegmentValidateJobHandler } from '../dimo-trip-segment-validati
 import { DrivingMisuseReconcileJobHandler } from '../misuse-cases/misuse-case-reconcile/driving-misuse-reconcile.handler';
 import { DrivingAttributionResolveJobHandler } from '../driver-attribution/driving-attribution-resolve.handler';
 import { RentalDrivingAnalysisRecomputeJobHandler } from '../../rental-driving-analysis/rental-driving-analysis-recompute.handler';
+import { DrivingNativeEventsIngestJobHandler } from './handlers/driving-native-events-ingest.handler';
+import { DrivingRouteEnrichJobHandler } from './handlers/driving-route-enrich.handler';
+import { DrivingImpactComputeJobHandler } from './handlers/driving-impact-compute.handler';
+import { DrivingAssessabilityComputeJobHandler } from './handlers/driving-assessability-compute.handler';
+import { DrivingDecisionSummaryComputeJobHandler } from './handlers/driving-decision-summary-compute.handler';
+import { DrivingHealthImpactPublishJobHandler } from './handlers/driving-health-impact-publish.handler';
 import { DRIVING_INTELLIGENCE_JOB_TYPES } from './driving-intelligence-jobs.types';
 
 export type DrivingIntelligenceJobHandler = (
@@ -24,6 +30,12 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
     @Optional()
     @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeJobHandler))
     private readonly rentalRecomputeHandler?: RentalDrivingAnalysisRecomputeJobHandler,
+    @Optional() private readonly nativeEventsHandler?: DrivingNativeEventsIngestJobHandler,
+    @Optional() private readonly routeEnrichHandler?: DrivingRouteEnrichJobHandler,
+    @Optional() private readonly impactComputeHandler?: DrivingImpactComputeJobHandler,
+    @Optional() private readonly assessabilityComputeHandler?: DrivingAssessabilityComputeJobHandler,
+    @Optional() private readonly decisionSummaryHandler?: DrivingDecisionSummaryComputeJobHandler,
+    @Optional() private readonly healthImpactPublishHandler?: DrivingHealthImpactPublishJobHandler,
   ) {}
 
   onModuleInit(): void {
@@ -62,6 +74,38 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
     if (this.rentalRecomputeHandler) {
       this.handlers.set('RENTAL_DRIVING_ANALYSIS_RECOMPUTE', (job) =>
         this.rentalRecomputeHandler!.handle(job),
+      );
+    }
+
+    if (this.nativeEventsHandler) {
+      this.handlers.set('DRIVING_NATIVE_EVENTS_INGEST', (job) =>
+        this.nativeEventsHandler!.handle(job),
+      );
+    }
+
+    if (this.routeEnrichHandler) {
+      this.handlers.set('DRIVING_ROUTE_ENRICH', (job) => this.routeEnrichHandler!.handle(job));
+    }
+
+    if (this.impactComputeHandler) {
+      this.handlers.set('DRIVING_IMPACT_COMPUTE', (job) => this.impactComputeHandler!.handle(job));
+    }
+
+    if (this.assessabilityComputeHandler) {
+      this.handlers.set('DRIVING_ASSESSABILITY_COMPUTE', (job) =>
+        this.assessabilityComputeHandler!.handle(job),
+      );
+    }
+
+    if (this.decisionSummaryHandler) {
+      this.handlers.set('DRIVING_DECISION_SUMMARY_COMPUTE', (job) =>
+        this.decisionSummaryHandler!.handle(job),
+      );
+    }
+
+    if (this.healthImpactPublishHandler) {
+      this.handlers.set('DRIVING_HEALTH_IMPACT_PUBLISH', (job) =>
+        this.healthImpactPublishHandler!.handle(job),
       );
     }
   }

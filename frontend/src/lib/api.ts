@@ -1670,6 +1670,7 @@ export interface VehicleTripAnalytics {
   scoreEligible?: boolean;
   tripAttribution?: TripAttribution | null;
   tripAssessment?: TripAssessment | null;
+  tripDecisionSummary?: Record<string, unknown> | null;
   clickhouseEvidence?: TripClickHouseEvidence | null;
   drivingImpactModelProfile?: {
     version: string;

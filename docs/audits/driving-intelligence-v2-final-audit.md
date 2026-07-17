@@ -20,7 +20,9 @@ Driving Intelligence V2 hat eine **breite Backend-Testbasis** und **korrekte Sch
 | **P0-IMPACT-RECON** | `DrivingAnalysisReconciliationService` erkannte Impact-Status-Desync **invertiert** — jetzt `status_desync` (Row vorhanden, Status PENDING) vs. `missing_impact` (kein Row) mit direkter Status-Synchronisation |
 | **P1-I18N-SCORE** | i18n `trips.drivingScore`, `customerDetail.drivingScore`, `fleet.driverScore` → DE „Fahrbelastung“, EN „Vehicle load“ |
 
-**Nicht in diesem Lauf behoben (architektonisch / Ops / größere Prompts):** TripDecisionSummary, Health-Impact-Handler, Grafana-DI-Dashboards, Customer-Decision-Audit, V2-Job-Stub-Wiring, Prod-Backfills.
+**Nicht in diesem Lauf behoben (architektonisch / Ops / größere Prompts):** Grafana-Dashboards (nur Metriken), Prod-Backfill-Ausführung, ClickHouse-Infra.
+
+**In Folgelauf P77 behoben:** V2-Job-Handler (6/6), TripDecisionSummary, Health Impact Publish, DrivingDecisionAudit, DI-Metriken, Backfill-Script, i18n Datenqualität.
 
 ---
 

@@ -33,7 +33,7 @@ import {
   type DimoTripSegment,
 } from '../../../dimo/dimo-segments.service';
 import { TripEnrichmentOrchestratorService } from '../trip-enrichment-orchestrator.service';
-import { TripPostFinalizeAnalysisProducer } from '../driving-analysis-init/trip-post-finalize-analysis.producer';
+import { TripPostFinalizeAnalysisProducer } from '../../driving-analysis-init/trip-post-finalize-analysis.producer';
 import { EnergyEventsService } from '../../energy-events/energy-events.service';
 
 interface ReconciliationOptions {

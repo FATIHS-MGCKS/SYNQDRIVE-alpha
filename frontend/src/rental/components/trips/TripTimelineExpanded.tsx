@@ -12,6 +12,8 @@ import {
   deriveTripAssessability,
   hasNativeBehaviorEvents,
 } from './event-context-ui';
+import { TripDecisionSummaryPanel } from './TripDecisionSummary';
+import { mapApiTripDecisionSummary } from './trip-decision.mapper';
 import { resolveGesamtbewertungDisplay } from './behavior-ui.utils';
 import { resolveBehaviorEventCount } from './trip-assessment-copy';
 import { TripEvidencePanel } from './TripEvidencePanel';
@@ -129,6 +131,7 @@ export function TripTimelineExpanded({
   const gesamtbewertung = resolveGesamtbewertungDisplay(trip, behaviorEvents, {
     assessable: assessability.assessable,
   });
+  const decisionSummary = mapApiTripDecisionSummary(trip.tripDecisionSummary ?? null);
 
   return (
     <div className="px-4 pb-4 pt-0" onClick={(e) => e.stopPropagation()}>
@@ -154,21 +157,27 @@ export function TripTimelineExpanded({
           </p>
         )}
 
-        <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Gesamtbewertung
-          </p>
-          <p className="mt-1 text-[13px] font-semibold tracking-[-0.02em] text-foreground">
-            {gesamtbewertung.label}
-          </p>
-          {gesamtbewertung.primaryReason ? (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{gesamtbewertung.primaryReason}</p>
-          ) : !gesamtbewertung.fromBackend ? (
-            <p className="mt-0.5 text-[10px] text-muted-foreground/80">
-              Vorläufige Anzeige — Gesamtbewertung wird nach Detail-Laden aktualisiert.
+        {decisionSummary ? (
+          <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
+            <TripDecisionSummaryPanel summary={decisionSummary} />
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Gesamtbewertung
             </p>
-          ) : null}
-        </div>
+            <p className="mt-1 text-[13px] font-semibold tracking-[-0.02em] text-foreground">
+              {gesamtbewertung.label}
+            </p>
+            {gesamtbewertung.primaryReason ? (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{gesamtbewertung.primaryReason}</p>
+            ) : !gesamtbewertung.fromBackend ? (
+              <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+                Vorläufige Anzeige — Gesamtbewertung wird nach Detail-Laden aktualisiert.
+              </p>
+            ) : null}
+          </div>
+        )}
 
         {(canReloadRoute || canCenterRoute || canAnalyzeBehavior) && (
           <div className="flex flex-wrap gap-2">

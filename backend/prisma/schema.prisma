@@ -1305,6 +1305,7 @@ model Organization {
   drivingEvidence                   DrivingEvidence[]
   drivingAnalysisRuns               DrivingAnalysisRun[]
   driverAttributions                DriverAttribution[]
+  drivingDecisionAudits             DrivingDecisionAudit[]
   drivingAnalysisStages             DrivingAnalysisStage[]
   drivingIntelligenceJobs           DrivingIntelligenceJob[]
   orgInvoices                       OrgInvoice[]
@@ -1392,6 +1393,8 @@ model User {
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
   driverAttributionsResolved            DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
+  drivingDecisionsMade                  DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
+  drivingDecisionsRevoked               DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
   bookingAllowedDriversAdded            BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
 
   @@map("users")
@@ -6993,6 +6996,48 @@ model DriverAttribution {
   @@index([driverId])
   @@index([organizationId, tripId, attributionType])
   @@map("driver_attributions")
+}
+
+/// Manual operator decision audit trail (Driving Intelligence V2 P73).
+enum DrivingDecisionSubjectType {
+  CUSTOMER
+  BOOKING
+  TRIP
+  VEHICLE
+}
+
+enum DrivingDecisionAuditAction {
+  APPROVE
+  CONDITIONAL
+  REJECT
+  DISMISS
+  INSPECTION_REQUESTED
+}
+
+model DrivingDecisionAudit {
+  id                         String                       @id @default(uuid())
+  organizationId             String                       @map("organization_id")
+  subjectType                DrivingDecisionSubjectType @map("subject_type")
+  subjectId                  String                       @map("subject_id")
+  decision                   DrivingDecisionAuditAction
+  recommendationAtDecision   DrivingDecisionRecommendation @map("recommendation_at_decision")
+  dimensionsSnapshotJson     Json                         @map("dimensions_snapshot_json")
+  reason                     String
+  decidedByUserId            String                       @map("decided_by_user_id")
+  decidedAt                  DateTime                     @default(now()) @map("decided_at")
+  revokedAt                  DateTime?                    @map("revoked_at")
+  revokedByUserId            String?                      @map("revoked_by_user_id")
+  revokeReason               String?                      @map("revoke_reason")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  decidedBy    User         @relation("DrivingDecisionDecidedBy", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  revokedBy    User?        @relation("DrivingDecisionRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([organizationId, decidedAt])
+  @@map("driving_decision_audits")
 }
 
 /// Canonical V2 pipeline stage keys — one row per run×stage (P21).
