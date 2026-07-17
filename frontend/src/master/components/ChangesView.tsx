@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-v2-prod-ops-ch-grafana-smoke-2026-07-17',
+    version: '4.9.580',
+    title: 'Prod Ops — ClickHouse recovery, DI V2 Grafana, trip_analysis_status backfill',
+    summary: [
+      'ClickHouse Prod repariert: Container `synqdrive-clickhouse` hatte stale Bind-Mounts unter `/tmp/synqdrive-ch-fix/` → Exit 127; Recreate via `docker-compose` aus `/opt/synqdrive/current/backend`.',
+      'Readiness: `clickhouse.status=available`, 410k+ CH-Zeilen, Schema-Migrationen applied.',
+      'Neues Grafana-Dashboard `synqdrive-driving-intelligence-v2.json` (Jobs, Decision Summary, Reconciliation, Capability, Shadow Detectors).',
+      '`vps-clickhouse-log-hardening.sh` Fallback auf `docker-compose` wenn `docker compose` Plugin fehlt (Hostinger VPS).',
+      'Prod backfill: 1206 historische Trips `trip_analysis_status` + 745 `drivingImpactStatus` READY-Syncs.',
+      'Smoke: 230 TRIP_DECISION_SUMMARY Runs, 3431 DI-Jobs completed, API-Routen `/driving-decisions` + `/vehicles/:id/trips/:id` (401 ohne Token).',
+    ],
+    reason:
+      'Post-Deploy Ops: CH down trotz konfigurierter URL; P1-Observability Grafana-Lücke für DI V2; historische NULL trip_analysis_status aus Audit.',
+    previousBehavior:
+      'CH container Exited (127), `synqdrive_clickhouse_available=0`, HF-Mirror skipped; kein DI-Grafana-Dashboard; 84 % trip_analysis_status NULL.',
+    details:
+      'backend/monitoring/grafana/dashboards/synqdrive-driving-intelligence-v2.json, vps-setup-grafana.sh, vps-clickhouse-log-hardening.sh; Prod-Ops docker-compose recreate + scripts/backfill-trip-analysis-status.ts --apply.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T12:20:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p77-remaining-p0-p1-2026-07-17',
     version: '4.9.567',
     title: 'Driving Intelligence V2 — Remaining P0/P1: V2 Job Handlers, Decision Summary, Audit Trail',
