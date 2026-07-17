@@ -32,6 +32,7 @@ import { preprocessHighFrequency, type CleanHfPoint } from './hf-preprocessing';
 import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
 import { shouldRunIceEventContextEnrichment } from '../event-context/engine-context.guards';
 import { DimoBrakingEventIntakeService } from '../brakes/dimo-braking-event-intake.service';
+import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 import {
   assessDimoBrakingCapability,
   parseDimoBrakingSample,
@@ -150,6 +151,7 @@ export class LteR1BehaviorEnrichmentService {
     private readonly segments: DimoSegmentsService,
     private readonly eventContext: EventContextEnrichmentService,
     private readonly brakingIntake: DimoBrakingEventIntakeService,
+    private readonly brakingLedger: BrakingEventLedgerService,
   ) {}
 
   /**
@@ -320,6 +322,7 @@ export class LteR1BehaviorEnrichmentService {
     });
 
     await this.linkBrakingIntakeRows(tripId);
+    await this.brakingLedger.reconcileTrip(tripId);
 
     this.logger.log(
       `LTE_R1 enrich done for trip ${tripId}: ${normalized.length} events ` +

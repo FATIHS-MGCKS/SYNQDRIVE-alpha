@@ -32,6 +32,7 @@ import {
   computeThermalBrakeStressScore,
   computeDrivingStressScore,
 } from './driving-impact-scorer';
+import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 
 // ── Public consumer DTOs ──────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ export class DrivingImpactService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly brakingLedger?: BrakingEventLedgerService,
   ) {}
 
   // ── Main computation entry point ────────────────────────────────────────────
@@ -201,6 +203,16 @@ export class DrivingImpactService {
     const organizationId = trip.vehicle?.organizationId ?? null;
     const hardwareType = trip.vehicle?.hardwareType ?? HardwareType.UNKNOWN;
     const useTelemetryDrivingEvents = hardwareType === HardwareType.LTE_R1;
+
+    if (this.brakingLedger && organizationId) {
+      await this.brakingLedger.reconcileTrip(tripId, {
+        expectedOrganizationId: organizationId,
+      });
+    }
+    const ledgerSummary =
+      this.brakingLedger && organizationId
+        ? await this.brakingLedger.getCanonicalSummaryForTrip(tripId)
+        : null;
 
     // ── V3: LTE_R1 — normalized DrivingEvent rows (TELEMETRY_EVENTS source) ──
     // SMART5/UNKNOWN — HF-derived TripBehaviorEvent ACCELERATION/BRAKING rows.
@@ -296,10 +308,18 @@ export class DrivingImpactService {
     // ── Compute per-100 km rates ─────────────────────────────────────────────
 
     const hardAccelCount = trip.hardAccelerationCount ?? 0;
-    const hardBrakeCount = trip.hardBrakingCount ?? 0;
-    const fullBrakingCount = trip.fullBrakingCount ?? 0;
+    let hardBrakeCount = trip.hardBrakingCount ?? 0;
+    let fullBrakingCount = trip.fullBrakingCount ?? 0;
     const kickdownCount = trip.kickdownCount ?? 0;
-    const brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
+    let brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
+
+    if (ledgerSummary && ledgerSummary.totalCanonicalEvents > 0) {
+      hardBrakeCount = ledgerSummary.hardBrakeCount;
+      extremeBrakeCount = ledgerSummary.extremeBrakeCount;
+      fullBrakingCount = ledgerSummary.fullBrakingCount;
+      brakesTotal = ledgerSummary.totalBrakingEvents;
+      brakingEventRows = ledgerSummary.brakingEventRows;
+    }
 
     const hardAccelPer100Km = per100Km(hardAccelCount, distanceKm);
     const extremeAccelPer100Km = per100Km(extremeAccelCount, distanceKm);

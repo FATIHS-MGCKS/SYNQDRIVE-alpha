@@ -936,6 +936,45 @@ npm test -- --testPathPattern='dimo-braking-event-intake|dimo-driving-events.pag
 
 ---
 
+## Canonical Braking Event Ledger (Prompt 15) — 2026-07-17
+
+### Ziel
+
+Ein physisches Bremsereignis fließt höchstens einmal in Brake Load / TDI ein. Quellen (DIMO Provider, SynqDrive HF, abgeleitete Aggregation) bleiben korrelierbar, ohne Doppelzählung.
+
+### Schema (Migration `20260717200000_braking_event_ledger`)
+
+`BrakingEventLedger` mit `canonicalType`, `primarySource`, `providerEventId`, `sourceFingerprint`, `correlatedSourceIds`, `confidence`, `dedupeWindowMs` (default 2000ms).
+
+**Canonical Types:** `MODERATE_BRAKING`, `HARSH_BRAKING`, `EXTREME_BRAKING`, `FULL_BRAKING`, `HIGH_SPEED_BRAKING`, `ABS_INTERVENTION`, `UNKNOWN_BRAKING_EVENT`
+
+**Source Priority (Dedupe only):** `DIMO_PROVIDER` → `SYNQDRIVE_HF_BRAKING` → `SYNQDRIVE_HF_ABUSE` → `DERIVED_DECELERATION` → `TRIP_AGGREGATION`
+
+### Korrelation
+
+- Zeitfenster-Bucket (`dedupeWindowMs`)
+- Fahrzeug + Trip + Incident-Key
+- Severity / Peak-Decel / Provider-Event
+- Keine Zusammenführung weit auseinanderliegender Events (strikter Bucket)
+
+### Integration
+
+- `BrakingEventLedgerService.reconcileTrip()` nach LTE_R1 / HF Enrichment
+- `DrivingImpactService` nutzt Ledger-Summary für `hardBrakeCount`, `extremeBrakeCount`, `fullBrakingCount`, `brakingEventRows`
+- Backfill-Plan: `planBackfill()` (DRY RUN)
+
+### `harshBrakeWearMultiplier`
+
+**Nicht** in `recalculate()` angewendet. Aktive Formel: `lookupSteppedFactor(hardBrakePer100Km, padHardBrakeAnchors|discHardBrakeAnchors)` in `brake-health.service.ts`. Kein zusätzlicher Multiplier in Prompt 15.
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='braking-event-ledger'
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -954,6 +993,7 @@ npm test -- --testPathPattern='dimo-braking-event-intake|dimo-driving-events.pag
 | 12 | `10faa38b` | `feat(brakes): add controlled brake component baseline backfill` |
 | 13 | *(dieser Commit)* | `fix(brakes): make trip driving impact coverage authoritative` |
 | 14 | *(dieser Commit)* | `fix(brakes): ingest DIMO native braking events reliably` |
+| 15 | *(dieser Commit)* | `feat(brakes): add canonical braking event ledger and deduplication` |
 
 ---
 

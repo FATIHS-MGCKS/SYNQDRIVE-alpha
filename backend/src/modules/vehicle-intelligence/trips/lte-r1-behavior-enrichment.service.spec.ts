@@ -9,6 +9,7 @@ import {
   resolveNativeSeverity,
 } from './lte-r1-behavior-enrichment.service';
 import { DimoBrakingEventIntakeService } from '../brakes/dimo-braking-event-intake.service';
+import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 import type { DimoVehicleEventRecord } from '../../dimo/dimo-segments.service';
 
 describe('mapDimoEventName', () => {
@@ -90,11 +91,13 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
     fetchDrivingEventsPaginated: jest.fn(),
     ingestBrakingBatch: jest.fn(),
   };
+  const brakingLedger = { reconcileTrip: jest.fn(async () => null) };
   const service = new LteR1BehaviorEnrichmentService(
     {} as any,
     {} as any,
     {} as any,
     brakingIntake as any,
+    brakingLedger as any,
   );
 
   const sample = (name: string, metadata: string | null = '{"counterValue":1}'): DimoVehicleEventRecord => ({
@@ -151,6 +154,7 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
       {} as any,
       eventContext as any,
       { fetchEventDataSummary: jest.fn(), fetchDrivingEventsPaginated: jest.fn(), ingestBrakingBatch: jest.fn() } as any,
+      { reconcileTrip: jest.fn(async () => null) } as any,
     );
     return { service, prisma };
   }
@@ -211,6 +215,10 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
               fetchDrivingEventsPaginated: jest.fn(),
               ingestBrakingBatch: jest.fn(),
             },
+          },
+          {
+            provide: BrakingEventLedgerService,
+            useValue: { reconcileTrip: jest.fn(async () => null) },
           },
         ],
       }).compile(),
@@ -287,13 +295,15 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       if (opts?.contextThrows) throw new Error('context boom');
       return { status: opts?.contextStatus ?? 'COMPLETED' };
     });
+    const brakingLedger = { reconcileTrip: jest.fn(async () => null) };
     const service = new LteR1BehaviorEnrichmentService(
       prisma as any,
       segments as any,
       { enrichDrivingEventContext } as any,
       brakingIntake as any,
+      brakingLedger as any,
     );
-    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds, brakingIntake };
+    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds, brakingIntake, brakingLedger };
   }
 
   it('persists native events via createMany then reloads IDs for context enrichment', async () => {

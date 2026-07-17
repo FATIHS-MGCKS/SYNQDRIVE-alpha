@@ -1171,6 +1171,24 @@ enum DimoBrakingEventIntakeStatus {
   FAILED
 }
 
+enum BrakingEventCanonicalType {
+  MODERATE_BRAKING
+  HARSH_BRAKING
+  EXTREME_BRAKING
+  FULL_BRAKING
+  HIGH_SPEED_BRAKING
+  ABS_INTERVENTION
+  UNKNOWN_BRAKING_EVENT
+}
+
+enum BrakingEventPrimarySource {
+  DIMO_PROVIDER
+  SYNQDRIVE_HF_BRAKING
+  SYNQDRIVE_HF_ABUSE
+  DERIVED_DECELERATION
+  TRIP_AGGREGATION
+}
+
 // ── DIMO Device Connection webhook events (OBD plug/unplug) ───────────────────
 enum DimoDeviceConnectionEventType {
   OBD_DEVICE_UNPLUGGED
@@ -1890,6 +1908,7 @@ model Vehicle {
   trips                             VehicleTrip[]
   rpmWebhookCandidates              RpmWebhookCandidate[]
   dimoBrakingEventIntakes           DimoBrakingEventIntake[]
+  brakingEventLedgerEntries         BrakingEventLedger[]
   dimoDeviceConnectionEvents        DimoDeviceConnectionEvent[]
   tripDetectionState                VehicleTripDetectionState?
   tripTrackingRuns                  VehicleTripTrackingRun[]
@@ -5960,6 +5979,38 @@ model DimoBrakingEventIntake {
   @@map("dimo_braking_event_intakes")
 }
 
+// ── Canonical braking event ledger (deduplicated cross-source truth) ───────────
+model BrakingEventLedger {
+  id                  String                    @id @default(uuid())
+  organizationId      String                    @map("organization_id")
+  vehicleId           String                    @map("vehicle_id")
+  tripId              String?                   @map("trip_id")
+  occurredAt          DateTime                  @map("occurred_at")
+  canonicalType       BrakingEventCanonicalType @map("canonical_type")
+  severity            Float
+  primarySource       BrakingEventPrimarySource @map("primary_source")
+  providerEventId     String?                   @map("provider_event_id")
+  sourceFingerprint   String                    @map("source_fingerprint")
+  correlatedSourceIds Json                      @default("[]") @map("correlated_source_ids")
+  confidence          Float                     @default(1.0)
+  dedupeWindowMs      Int                       @default(2000) @map("dedupe_window_ms")
+  peakDecelerationMs2 Float?                    @map("peak_deceleration_ms2")
+  startSpeedKmh       Float?                    @map("start_speed_kmh")
+  invalidatedAt       DateTime?                 @map("invalidated_at")
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+
+  vehicle Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip    VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, sourceFingerprint])
+  @@index([vehicleId, occurredAt])
+  @@index([tripId])
+  @@index([organizationId])
+  @@index([canonicalType])
+  @@map("braking_event_ledger")
+}
+
 // ── RPM webhook candidate intake (re-enabled V4.9.197) ────────────────────────
 // DIMO Developer Console supports vss.powertrainCombustionEngineSpeed triggers.
 model RpmWebhookCandidate {
@@ -6815,6 +6866,7 @@ model VehicleTrip {
   repairs              TripRepair[]
   rpmWebhookCandidates      RpmWebhookCandidate[]
   dimoBrakingEventIntakes   DimoBrakingEventIntake[]
+  brakingEventLedgerEntries BrakingEventLedger[]
 
   @@index([vehicleId])
   @@index([startTime])
