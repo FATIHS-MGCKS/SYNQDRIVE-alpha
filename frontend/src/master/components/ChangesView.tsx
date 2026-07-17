@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-classification-taxonomy-contract-2026-07-17',
+    version: '4.9.636',
+    title: 'V4.9.636 — Document Intake V2 Classification Taxonomy Contract',
+    summary: [
+      'Klassifikationsvertrag 2.0.0: category, subtype, confidence, alternatives, rationale, evidencePages, detectedIdentifiers, modelVersion.',
+      'LLM-Schema und Prompt um Two-Stage-Taxonomie, Alternativen und Identifier erweitert; PII-Sanitisierung in detectedIdentifiers.',
+      'Decision-Util: unklarer Untertyp, konkurrierende High-Confidence-Alternativen und erzwungenes SERVICE bei Schreiben → AWAITING_DOCUMENT_TYPE.',
+      'Processor speichert vollständigen Vertrag in plausibility.classification; AUTO bleibt Standard; Legacy DocumentExtractionType kompatibel.',
+    ],
+    reason:
+      'Transparenz bei Klassifikationsentscheidungen — falsche High-Confidence-Treffer über Alternativen sichtbar machen, ohne Apply-Flow zu ändern.',
+    previousBehavior:
+      'Klassifikation lieferte nur detectedDocumentType, confidence, rationale, sourcePages; Taxonomie wurde nachträglich aus Legacy-Type abgeleitet.',
+    details: 'architecture/DOCUMENT_CLASSIFICATION_TAXONOMY_CONTRACT_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T05:00:00.000Z',
+  },
+  {
+    id: 'document-schema-registry-2026-07-17',
+    version: '4.9.635',
+    title: 'V4.9.635 — Document Intake V2 Schema Registry',
+    summary: [
+      'Zentrale DocumentSchemaRegistry pro Taxonomy-Untertyp mit Extraction Schema, Required Fields, Plausibilität, Entity Resolvern, Actions und Follow-up Rules.',
+      'UI-Feldmetadata inkl. sensitive-Flags; schemaVersion 1.0.0; Legacy DocumentType-Mapping über Taxonomy.',
+      'GET /document-extractions/schemas für Frontend-Felddefinitionen; PlausibilityService delegiert an Registry statt Switch.',
+      'Modulare Einträge in document-schema-registry.entries.ts — Vollständigkeitstest für alle 15 Untertypen.',
+    ],
+    reason:
+      'Ein zentraler Backend-Source-of-Truth für Dokumentschemas — erweiterbar pro Untertyp ohne verteilte Switch-Logik.',
+    previousBehavior:
+      'Field schemas in DOCUMENT_FIELD_SCHEMAS; Plausibilität per documentType-Switch; keine einheitliche Subtype-Metadaten-API.',
+    details: 'architecture/DOCUMENT_SCHEMA_REGISTRY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T04:00:00.000Z',
+  },
+  {
     id: 'document-two-stage-taxonomy-2026-07-17',
     version: '4.9.634',
     title: 'V4.9.634 — Document Intake V2 Two-Stage Taxonomy',

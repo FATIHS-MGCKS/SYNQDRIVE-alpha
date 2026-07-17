@@ -1,5 +1,12 @@
 import { ApplyDocumentExtractionType, isApplyDocumentType } from './document-extraction.schemas';
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
+import type { ClassificationAlternativeCandidate } from './document-classification-contract.types';
+import type { DocumentCategory, DocumentSubtype } from './document-taxonomy.types';
+import {
+  hasCompetingAlternativeCandidates,
+  isGeneralCorrespondenceForcedAsService,
+  isUnclearClassificationSubtype,
+} from './document-classification-taxonomy.util';
 
 export interface ClassificationThresholds {
   autoContinueMinConfidence: number;
@@ -28,6 +35,10 @@ export interface ClassificationDecisionInput {
   rationale: string;
   allowedDocumentTypes: readonly ApplyDocumentExtractionType[];
   thresholds: ClassificationThresholds;
+  category?: DocumentCategory | null;
+  subtype?: DocumentSubtype | null;
+  legacyDocumentType?: ApplyDocumentExtractionType | null;
+  alternatives?: ClassificationAlternativeCandidate[];
 }
 
 function hasEvidenceRationale(rationale: string): boolean {
@@ -43,11 +54,11 @@ function clampConfidence(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
-export function evaluateClassificationDecision(
+function evaluateLegacyDecision(
   input: ClassificationDecisionInput,
+  confidence: number,
+  rationaleOk: boolean,
 ): ClassificationDecision {
-  const confidence = clampConfidence(input.confidence);
-  const rationaleOk = hasEvidenceRationale(input.rationale);
   const allowed = new Set(input.allowedDocumentTypes);
 
   const isUnknown =
@@ -94,4 +105,56 @@ export function evaluateClassificationDecision(
     confidence: null,
     hasSuggestion: false,
   };
+}
+
+export function evaluateClassificationDecision(
+  input: ClassificationDecisionInput,
+): ClassificationDecision {
+  const confidence = clampConfidence(input.confidence);
+  const rationaleOk = hasEvidenceRationale(input.rationale);
+  const alternatives = input.alternatives ?? [];
+  const subtype = input.subtype ?? null;
+  const category = input.category ?? null;
+  const legacyDocumentType = input.legacyDocumentType ?? null;
+
+  const legacyDecision = evaluateLegacyDecision(input, confidence, rationaleOk);
+
+  const hasTaxonomyContext =
+    category != null || subtype != null || alternatives.length > 0;
+
+  if (!hasTaxonomyContext) {
+    return legacyDecision;
+  }
+
+  const taxonomyAwaitReason =
+    isUnclearClassificationSubtype(
+      subtype,
+      confidence,
+      input.thresholds.suggestionMinConfidence,
+    ) ||
+    isGeneralCorrespondenceForcedAsService({
+      category,
+      subtype,
+      legacyDocumentType,
+      rationale: input.rationale,
+      alternatives,
+    }) ||
+    (legacyDecision.action === 'AUTO_CONTINUE' &&
+      hasCompetingAlternativeCandidates(confidence, alternatives, subtype));
+
+  if (taxonomyAwaitReason) {
+    const hasSuggestion =
+      legacyDecision.hasSuggestion ||
+      (subtype != null && confidence >= input.thresholds.suggestionMinConfidence && rationaleOk);
+
+    return {
+      action: 'AWAIT_USER',
+      effectiveType: null,
+      detectedType: legacyDecision.detectedType,
+      confidence: hasSuggestion ? confidence : legacyDecision.confidence,
+      hasSuggestion,
+    };
+  }
+
+  return legacyDecision;
 }
