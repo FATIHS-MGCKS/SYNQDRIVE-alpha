@@ -237,25 +237,31 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
 
   const handleSetDocumentType = useCallback(
     async (type: string, reextract = false) => {
-      const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
-      if (!mutationVehicleId || !intake.extractionId) return;
+      if (!intake.extractionId) return;
+      const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId || '';
       intake.setDocumentType(type);
-      if (reextract) {
-        await intake.handleReextract();
-      } else {
-        try {
+      try {
+        if (mutationVehicleId) {
           await api.vehicleIntelligence.setDocumentType(mutationVehicleId, intake.extractionId, {
             documentType: type,
-            reextract: false,
+            reextract,
           });
           intake.startPolling(intake.extractionId, mutationVehicleId);
-        } catch {
-          /* keep current record */
+        } else if (orgId) {
+          await api.documentExtraction.setDocumentTypeByOrg(orgId, intake.extractionId, {
+            documentType: type,
+            reextract,
+          });
+          intake.startPolling(intake.extractionId, null);
+        } else {
+          return;
         }
+      } catch {
+        /* keep current record */
       }
       setTypeCorrectionPending(false);
     },
-    [intake, selectedVehicleId],
+    [intake, orgId, selectedVehicleId],
   );
 
   const handleCancel = useCallback(async () => {
