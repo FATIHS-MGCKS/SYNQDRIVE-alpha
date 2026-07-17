@@ -3,7 +3,7 @@ import { assessArchivePlan, isArchiveDocumentProfile } from './document-action-p
 import { assessDamagePlan, isDamageDocumentProfile } from './document-action-planner.damage-rules';
 import { assessInspectionPlan, isInspectionDocumentProfile } from './document-action-planner.inspection-rules';
 import {
-  assessFinanceDraftRequirements,
+  assessFinancePlan,
   isFinanceDocumentProfile,
 } from './document-action-planner.invoice-rules';
 import { assessTechnicalPlan, isTechnicalDocumentProfile } from './document-action-planner.technical-rules';
@@ -79,13 +79,17 @@ function assessPlanForDocumentType(input: BuildDocumentActionPlanInput): Planner
   }
 
   if (isFinanceDocumentProfile(plannerInput)) {
-    const assessment = assessFinanceDraftRequirements(plannerInput);
+    const assessment = assessFinancePlan(plannerInput);
     return {
       planOutcome: assessment.planOutcome,
-      actions: [],
+      actions: assessment.actions,
       metadata: {
+        documentMode: assessment.documentMode,
+        duplicateVendorInvoiceId: assessment.duplicateVendorInvoiceId,
         missingRequirements: assessment.missingRequirements,
         amountTaxAssessment: assessment.amountTaxAssessment,
+        canCreateInvoiceDraft: assessment.canCreateInvoiceDraft,
+        canCreateCreditNoteDraft: assessment.canCreateCreditNoteDraft,
       },
     };
   }

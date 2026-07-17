@@ -6,6 +6,10 @@ import { ArchiveDocumentActionExecutor } from './executors/archive-document-acti
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
 import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
 import {
+  CreateCreditNoteDocumentActionExecutor,
+  CreateInvoiceDocumentActionExecutor,
+} from './executors/create-invoice-document-action.executor';
+import {
   assertExecutableActionPlan,
   buildDocumentActionPlan,
 } from './document-action-plan.builder';
@@ -36,6 +40,11 @@ import {
 import type { ApplyResult } from './document-extraction-apply.service';
 import { isArchiveDocumentType } from './document-archive-extraction.rules';
 import { isFineDocumentType, readFineReportNumber } from './document-fine-extraction.rules';
+import {
+  isInvoiceDocumentType,
+  readInvoiceNumber,
+  readSupplier,
+} from './document-invoice-extraction.rules';
 
 export type ExecuteDocumentActionPlanInput = {
   extractionId: string;
@@ -60,16 +69,24 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     private readonly archiveExecutor: ArchiveDocumentActionExecutor,
     private readonly linkExecutor: LinkEntityDocumentActionExecutor,
     private readonly createFineExecutor: CreateFineDocumentActionExecutor,
+    private readonly createInvoiceExecutor: CreateInvoiceDocumentActionExecutor,
+    private readonly createCreditNoteExecutor: CreateCreditNoteDocumentActionExecutor,
   ) {}
 
   onModuleInit(): void {
     this.registry.register(this.archiveExecutor);
     this.registry.register(this.linkExecutor);
     this.registry.register(this.createFineExecutor);
+    this.registry.register(this.createInvoiceExecutor);
+    this.registry.register(this.createCreditNoteExecutor);
   }
 
   supportsExecutorPath(documentType: string): boolean {
-    return isArchiveDocumentType(documentType) || isFineDocumentType(documentType);
+    return (
+      isArchiveDocumentType(documentType) ||
+      isFineDocumentType(documentType) ||
+      isInvoiceDocumentType(documentType)
+    );
   }
 
   async prepareConfirmedPlan(input: ExecuteDocumentActionPlanInput): Promise<DocumentActionPlan> {
@@ -363,6 +380,12 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     const fineAction = execution.actions.find(
       (row) => row.semanticAction === 'CREATE_FINE_DRAFT' && row.status === 'SUCCEEDED',
     );
+    const invoiceAction = execution.actions.find(
+      (row) =>
+        (row.semanticAction === 'CREATE_INVOICE_DRAFT' ||
+          row.semanticAction === 'CREATE_CREDIT_NOTE_DRAFT') &&
+        row.status === 'SUCCEEDED',
+    );
 
     return {
       detail: {
@@ -374,6 +397,10 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         archiveSubtype: archiveAction?.output?.archiveSubtype ?? plan.metadata?.archiveSubtype,
         fineId: fineAction?.resultEntityId ?? fineAction?.output?.fineId ?? null,
         fineStatus: fineAction?.output?.status ?? null,
+        invoiceId: invoiceAction?.resultEntityId ?? invoiceAction?.output?.invoiceId ?? null,
+        invoiceStatus: invoiceAction?.output?.status ?? null,
+        invoiceDraft: invoiceAction?.output?.draft ?? null,
+        isCreditNote: invoiceAction?.output?.isCreditNote ?? null,
         entityLinkSuggestions:
           linkAction?.output?.suggestions ?? plan.metadata?.entityLinkSuggestions ?? [],
         acceptedEntityLinks: linkAction?.output?.links ?? [],
@@ -389,19 +416,61 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     input: ExecuteDocumentActionPlanInput,
   ): Promise<Record<string, unknown>> {
     const base = input.planContext ?? {};
-    if (!isFineDocumentType(input.documentType) || !input.organizationId) {
+    if (!isFineDocumentType(input.documentType) && !isInvoiceDocumentType(input.documentType)) {
+      return base;
+    }
+    if (!input.organizationId) {
       return base;
     }
 
-    const reportNumber = readFineReportNumber(input.confirmedData);
-    if (!reportNumber) {
+    if (isFineDocumentType(input.documentType)) {
+      const reportNumber = readFineReportNumber(input.confirmedData);
+      if (!reportNumber) {
+        return base;
+      }
+
+      const duplicateFine = await this.prisma.fine.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          fineNumber: reportNumber,
+          documentExtractionId: { not: input.extractionId },
+        },
+        select: { id: true },
+      });
+
+      return {
+        ...base,
+        duplicateReferenceFineId: duplicateFine?.id ?? null,
+      };
+    }
+
+    const invoiceNumber = readInvoiceNumber(input.confirmedData);
+    const vendorName = readSupplier(input.confirmedData);
+    if (!invoiceNumber) {
       return base;
     }
 
-    const duplicate = await this.prisma.fine.findFirst({
+    let vendorId: string | null = null;
+    if (vendorName) {
+      const vendor = await this.prisma.vendor.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          name: { equals: vendorName, mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      vendorId = vendor?.id ?? null;
+    }
+
+    if (!vendorId) {
+      return base;
+    }
+
+    const duplicateInvoice = await this.prisma.orgInvoice.findFirst({
       where: {
         organizationId: input.organizationId,
-        fineNumber: reportNumber,
+        vendorId,
+        invoiceNumberDisplay: invoiceNumber,
         documentExtractionId: { not: input.extractionId },
       },
       select: { id: true },
@@ -409,7 +478,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
 
     return {
       ...base,
-      duplicateReferenceFineId: duplicate?.id ?? null,
+      duplicateVendorInvoiceId: duplicateInvoice?.id ?? null,
     };
   }
 }

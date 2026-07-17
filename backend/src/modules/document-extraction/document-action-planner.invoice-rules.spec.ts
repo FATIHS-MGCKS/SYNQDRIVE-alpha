@@ -7,9 +7,11 @@ import {
 } from './__fixtures__/document-invoice-fixtures';
 import {
   assessFinanceDraftRequirements,
+  assessFinancePlan,
   assessInvoiceAmountTaxSemantics,
   FINANCE_DOCUMENT_MODES,
   FINANCE_PLAN_OUTCOMES,
+  FINANCE_SEMANTIC_ACTIONS,
   isCreditNoteProfile,
   isFinanceDocumentProfile,
   resolveFinanceDocumentMode,
@@ -17,7 +19,9 @@ import {
 
 function financeInput(
   confirmedData: Record<string, unknown>,
-  overrides: Partial<Parameters<typeof assessFinanceDraftRequirements>[0]> = {},
+  overrides: Partial<Parameters<typeof assessFinanceDraftRequirements>[0]> & {
+    duplicateVendorInvoiceId?: string | null;
+  } = {},
 ) {
   return {
     effectiveDocumentType: 'INVOICE',
@@ -102,6 +106,36 @@ describe('document-action-planner.invoice-rules', () => {
         financeInput({ invoiceNumber: 'INV-NO-AMT', vendorName: 'Vendor A' }),
       );
       expect(assessment.planOutcome).toBe(FINANCE_PLAN_OUTCOMES.BLOCKED);
+    });
+  });
+
+  describe('assessFinancePlan', () => {
+    it('plans CREATE_INVOICE_DRAFT for complete incoming invoice', () => {
+      const assessment = assessFinancePlan(financeInput(INVOICE_COMPLETE_19));
+      expect(assessment.planOutcome).toBe(FINANCE_PLAN_OUTCOMES.READY);
+      expect(assessment.actions.map((action) => action.semanticAction)).toContain(
+        FINANCE_SEMANTIC_ACTIONS.CREATE_INVOICE_DRAFT,
+      );
+    });
+
+    it('plans CREATE_CREDIT_NOTE_DRAFT for credit notes', () => {
+      const assessment = assessFinancePlan(
+        financeInput(INVOICE_CREDIT_NOTE, { documentSubtype: 'CREDIT_NOTE' }),
+      );
+      expect(assessment.actions.map((action) => action.semanticAction)).toContain(
+        FINANCE_SEMANTIC_ACTIONS.CREATE_CREDIT_NOTE_DRAFT,
+      );
+    });
+
+    it('blocks when duplicate vendor invoice id is present', () => {
+      const assessment = assessFinancePlan(
+        financeInput(INVOICE_COMPLETE_19, { duplicateVendorInvoiceId: 'inv-dup' }),
+      );
+      expect(assessment.planOutcome).toBe(FINANCE_PLAN_OUTCOMES.BLOCKED);
+      expect(assessment.actions).toHaveLength(0);
+      expect(assessment.missingRequirements.some((row) => row.code === 'INVOICE_DUPLICATE_VENDOR_NUMBER')).toBe(
+        true,
+      );
     });
   });
 });

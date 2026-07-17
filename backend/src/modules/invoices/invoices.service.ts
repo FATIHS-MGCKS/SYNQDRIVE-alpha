@@ -38,6 +38,28 @@ import { invoiceBookingRef } from './utils/invoice-booking-ref.util';
 import { userDisplayName } from './invoice-documents.labels';
 import { presentInvoicePayment } from './invoice-payments.presentation';
 
+export type CreateInvoiceFromDocumentExtractionInput = {
+  organizationId: string;
+  vehicleId: string;
+  documentExtractionId: string;
+  documentActionIdempotencyKey?: string | null;
+  vendorInvoiceNumber: string;
+  vendorName?: string | null;
+  vendorId?: string | null;
+  title: string;
+  description?: string;
+  invoiceDate: string;
+  dueDate?: string | null;
+  currency: string;
+  lineItems?: InvoiceLineItemInput[];
+  totalCents: number;
+  isCreditNote: boolean;
+  draftOnly: boolean;
+  imageUrl?: string | null;
+  extractedData?: Record<string, unknown>;
+  notes?: string | null;
+};
+
 @Injectable()
 export class InvoicesService {
   private readonly logger = new Logger(InvoicesService.name);
@@ -194,6 +216,216 @@ export class InvoicesService {
     }));
     formatted.payments = await this.presentPayments(orgId, inv.payments || []);
     return formatted;
+  }
+
+  async findByDocumentExtractionId(orgId: string, documentExtractionId: string) {
+    return this.prisma.orgInvoice.findUnique({
+      where: {
+        organizationId_documentExtractionId: {
+          organizationId: orgId,
+          documentExtractionId,
+        },
+      },
+    });
+  }
+
+  async findDuplicateByVendorInvoiceNumber(
+    orgId: string,
+    vendorId: string,
+    vendorInvoiceNumber: string,
+    excludeDocumentExtractionId?: string | null,
+  ) {
+    return this.prisma.orgInvoice.findFirst({
+      where: {
+        organizationId: orgId,
+        vendorId,
+        invoiceNumberDisplay: vendorInvoiceNumber,
+        ...(excludeDocumentExtractionId
+          ? { documentExtractionId: { not: excludeDocumentExtractionId } }
+          : {}),
+      },
+      select: { id: true },
+    });
+  }
+
+  async resolveVendorIdByName(orgId: string, vendorName: string | null | undefined) {
+    if (!vendorName?.trim()) return null;
+    const match = await this.prisma.vendor.findFirst({
+      where: {
+        organizationId: orgId,
+        name: { equals: vendorName.trim(), mode: 'insensitive' },
+      },
+      select: { id: true },
+    });
+    return match?.id ?? null;
+  }
+
+  async createFromDocumentExtraction(input: CreateInvoiceFromDocumentExtractionInput) {
+    if (!input.documentExtractionId) {
+      throw new BadRequestException('documentExtractionId is required for extraction apply');
+    }
+    if (!input.vendorInvoiceNumber?.trim()) {
+      throw new BadRequestException('vendorInvoiceNumber is required for extraction apply');
+    }
+    if (!input.currency?.trim()) {
+      throw new BadRequestException('currency is required for extraction apply');
+    }
+
+    const existing = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+    if (existing) {
+      await this.syncExtractionPaymentTask(input.organizationId, existing.id, input);
+      return this.findById(existing.id, input.organizationId);
+    }
+
+    const vendorId =
+      input.vendorId ?? (await this.resolveVendorIdByName(input.organizationId, input.vendorName));
+    if (vendorId) {
+      const duplicate = await this.findDuplicateByVendorInvoiceNumber(
+        input.organizationId,
+        vendorId,
+        input.vendorInvoiceNumber,
+        input.documentExtractionId,
+      );
+      if (duplicate) {
+        throw new BadRequestException({
+          message: 'Invoice number already exists for this vendor',
+          code: 'INVOICE_DUPLICATE_VENDOR_NUMBER',
+          existingInvoiceId: duplicate.id,
+        });
+      }
+    }
+
+    const lineInputs: InvoiceLineItemInput[] = (input.lineItems ?? []).map((item) => ({
+      ...item,
+      taxRate: item.taxRate,
+    }));
+    let totals = computeInvoiceTotals(lineInputs, input.totalCents);
+    if (input.isCreditNote && totals.totalCents > 0) {
+      totals = {
+        ...totals,
+        subtotalCents: -Math.abs(totals.subtotalCents),
+        taxCents: -Math.abs(totals.taxCents),
+        totalCents: -Math.abs(totals.totalCents),
+      };
+    }
+
+    const status: OrgInvoiceStatus = input.draftOnly ? 'DRAFT' : 'NEEDS_REVIEW';
+    const vendorName = await this.resolveVendorName(
+      input.organizationId,
+      vendorId ?? undefined,
+      input.vendorName ?? undefined,
+    );
+
+    try {
+      const invoice = await this.prisma.orgInvoice.create({
+        data: {
+          organizationId: input.organizationId,
+          type: 'INCOMING_UPLOADED',
+          vehicleId: input.vehicleId,
+          vendorId: vendorId ?? undefined,
+          vendorName,
+          title: input.title,
+          description: input.description,
+          invoiceNumberDisplay: input.vendorInvoiceNumber,
+          lineItems: totals.lineItems.length
+            ? (totals.lineItems as unknown as Prisma.InputJsonValue)
+            : undefined,
+          subtotalCents: totals.subtotalCents,
+          taxCents: totals.taxCents,
+          totalCents: totals.totalCents,
+          paidCents: 0,
+          outstandingCents: totals.totalCents,
+          currency: input.currency,
+          invoiceDate: new Date(input.invoiceDate),
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+          status,
+          imageUrl: input.imageUrl ?? undefined,
+          extractedData: {
+            ...(input.extractedData ?? {}),
+            documentExtractionId: input.documentExtractionId,
+            documentActionIdempotencyKey: input.documentActionIdempotencyKey ?? null,
+            isCreditNote: input.isCreditNote,
+            draftOnly: input.draftOnly,
+          } as Prisma.InputJsonValue,
+          documentExtractionId: input.documentExtractionId,
+          notes: input.notes ?? undefined,
+        },
+      });
+
+      await this.syncExtractionPaymentTask(input.organizationId, invoice.id, input, {
+        status,
+        totalCents: totals.totalCents,
+      });
+      return this.findById(invoice.id, input.organizationId);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findByDocumentExtractionId(
+          input.organizationId,
+          input.documentExtractionId,
+        );
+        if (raced) {
+          await this.syncExtractionPaymentTask(input.organizationId, raced.id, input);
+          return this.findById(raced.id, input.organizationId);
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async syncExtractionPaymentTask(
+    orgId: string,
+    invoiceId: string,
+    input: CreateInvoiceFromDocumentExtractionInput,
+    created?: {
+      status: OrgInvoiceStatus;
+      totalCents: number;
+    },
+  ): Promise<void> {
+    const inv = created
+      ? null
+      : await this.prisma.orgInvoice.findFirst({
+          where: { id: invoiceId, organizationId: orgId },
+        });
+
+    const status = created?.status ?? inv?.status;
+    if (!status || status === 'DRAFT') {
+      return;
+    }
+
+    const type = (inv?.type ?? 'INCOMING_UPLOADED') as OrgInvoiceType;
+    if (
+      !isIncomingInvoiceType(type) ||
+      !['NEEDS_REVIEW', 'APPROVED', 'ISSUED', 'SENT'].includes(status)
+    ) {
+      return;
+    }
+
+    const totalCents = created?.totalCents ?? inv?.totalCents ?? input.totalCents;
+    const paidCents = inv?.paidCents ?? 0;
+
+    await this.invoicePaymentTasks.syncPaymentCheckTask(orgId, {
+      id: invoiceId,
+      organizationId: orgId,
+      type,
+      status,
+      title: inv?.title ?? input.title,
+      invoiceNumberDisplay: inv?.invoiceNumberDisplay ?? input.vendorInvoiceNumber,
+      totalCents,
+      paidCents,
+      outstandingCents: Math.max(0, totalCents - paidCents),
+      currency: inv?.currency ?? input.currency,
+      invoiceDate: inv?.invoiceDate ?? new Date(input.invoiceDate),
+      dueDate: inv?.dueDate ?? (input.dueDate ? new Date(input.dueDate) : null),
+      bookingId: inv?.bookingId ?? null,
+      customerId: inv?.customerId ?? null,
+      vehicleId: inv?.vehicleId ?? input.vehicleId,
+    });
   }
 
   async create(orgId: string, data: CreateInvoiceDto & { extractedData?: Record<string, unknown>; fromExtraction?: boolean }) {

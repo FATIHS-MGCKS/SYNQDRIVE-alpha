@@ -305,3 +305,69 @@ export function isCreditNoteProfile(
     isCreditNoteDocument(input.confirmedData, input.documentSubtype)
   );
 }
+
+export type FinancePlannedAction = {
+  semanticAction: FinanceSemanticAction;
+  requirement: 'REQUIRED' | 'OPTIONAL' | 'INFORMATIONAL';
+};
+
+export type FinancePlanAssessment = {
+  documentMode: FinanceDocumentMode;
+  planOutcome: FinancePlanOutcome;
+  actions: FinancePlannedAction[];
+  duplicateVendorInvoiceId: string | null;
+  missingRequirements: FinanceMissingRequirement[];
+  amountTaxAssessment: InvoiceAmountTaxAssessment;
+  canCreateInvoiceDraft: boolean;
+  canCreateCreditNoteDraft: boolean;
+};
+
+export function assessFinancePlan(
+  input: FinancePlannerInput & { duplicateVendorInvoiceId?: string | null },
+): FinancePlanAssessment {
+  const draft = assessFinanceDraftRequirements(input);
+  const mode = resolveFinanceDocumentMode(input);
+  const actions: FinancePlannedAction[] = [];
+  const missingRequirements = [...draft.missingRequirements];
+
+  if (input.duplicateVendorInvoiceId) {
+    missingRequirements.push({
+      code: 'INVOICE_DUPLICATE_VENDOR_NUMBER',
+      message: 'An invoice with the same number already exists for this vendor.',
+      fieldKeys: ['invoiceNumber', 'vendorName', 'supplier'],
+    });
+  }
+
+  let planOutcome = draft.planOutcome;
+  if (input.duplicateVendorInvoiceId) {
+    planOutcome = FINANCE_PLAN_OUTCOMES.BLOCKED;
+  }
+
+  if (planOutcome !== FINANCE_PLAN_OUTCOMES.BLOCKED) {
+    if (mode === FINANCE_DOCUMENT_MODES.CREDIT_NOTE) {
+      actions.push({
+        semanticAction: FINANCE_SEMANTIC_ACTIONS.CREATE_CREDIT_NOTE_DRAFT,
+        requirement: 'REQUIRED',
+      });
+    } else if (mode === FINANCE_DOCUMENT_MODES.INCOMING_INVOICE) {
+      actions.push({
+        semanticAction: FINANCE_SEMANTIC_ACTIONS.CREATE_INVOICE_DRAFT,
+        requirement: 'REQUIRED',
+      });
+    }
+  }
+
+  return gateActionPlanOnPlausibility(
+    {
+      documentMode: mode,
+      planOutcome,
+      actions,
+      duplicateVendorInvoiceId: input.duplicateVendorInvoiceId ?? null,
+      missingRequirements,
+      amountTaxAssessment: draft.amountTaxAssessment,
+      canCreateInvoiceDraft: draft.canCreateInvoiceDraft,
+      canCreateCreditNoteDraft: draft.canCreateCreditNoteDraft,
+    },
+    input.plausibilityChecks ?? [],
+  );
+}

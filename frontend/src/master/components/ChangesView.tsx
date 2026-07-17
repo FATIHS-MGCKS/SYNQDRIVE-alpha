@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-invoice-apply-executor-2026-07-17',
+    version: '4.9.613',
+    title: 'V4.9.613 — Document Intake V2 Idempotent Invoice Apply via Action Executor',
+    summary: [
+      'Invoice Apply migriert auf DocumentActionExecutor: Prisma OrgInvoice.documentExtractionId + tenant-sicherer Unique Constraint (organizationId, documentExtractionId).',
+      'InvoicesService.createFromDocumentExtraction — idempotent Lookup-before-Create, Vendor+Rechnungsnummer-Duplikatprüfung, explizite Steuergruppen/Positionen ohne pauschale 19 %, Gutschrift mit negativen Totals.',
+      'Unklare Semantik → DRAFT; klare Semantik → NEEDS_REVIEW. CreateInvoiceDocumentActionExecutor / CreateCreditNoteDocumentActionExecutor speichern resultEntityId; Payment-Task-Sync für non-draft Incoming.',
+      'assessFinancePlan plant CREATE_INVOICE_DRAFT / CREATE_CREDIT_NOTE_DRAFT; INVOICE confirm/retry über DocumentActionOrchestratorService. Legacy applyInvoice entfernt.',
+    ],
+    reason:
+      'Prompt 38/84 — Invoice Apply auf gemeinsames Action-Executor-Framework mit Idempotenzanker documentExtractionId/documentActionId.',
+    previousBehavior:
+      'INVOICE confirm lief über DocumentExtractionApplyService.applyInvoice mit direktem InvoicesService.create ohne extraction-idempotency, ohne Vendor-Duplikatprüfung und ohne strukturierte Action-Execution-Audit.',
+    details:
+      'Backend: migration 20260717200000_invoice_document_extraction_idempotency, document-invoice-extraction.rules buildInvoiceApplyPayload, document-action-planner.invoice-rules assessFinancePlan, executors/create-invoice-document-action.executor.ts, invoices.service createFromDocumentExtraction + syncExtractionPaymentTask, orchestrator INVOICE wiring. Tests: tax scenarios, retry, duplicate reference. Architektur: architecture/DOCUMENT_INVOICE_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'document-fine-apply-idempotency-2026-07-17',
     version: '4.9.612',
     title: 'V4.9.612 — Document Intake V2 Idempotent Fine Apply via Action Executor',
