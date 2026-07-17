@@ -13,6 +13,7 @@ import {
   buildTaskAutomationOutboxJobId,
   buildTaskAutomationOutboxJobOptions,
 } from './task-automation-outbox-queue.util';
+import { shouldRunColocatedSchedulers } from '@shared/runtime/process-role.util';
 
 @Injectable()
 export class TaskAutomationOutboxSchedulerService {
@@ -52,6 +53,7 @@ export class TaskAutomationOutboxSchedulerService {
 
   @Cron('*/30 * * * * *')
   async pollPendingOutbox(): Promise<void> {
+    if (!shouldRunColocatedSchedulers()) return;
     if (!this.enqueueService.isEnabled()) return;
 
     const staleBefore = new Date(Date.now() - this.config.processingStaleMs);
