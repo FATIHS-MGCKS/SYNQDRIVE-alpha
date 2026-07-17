@@ -28,6 +28,11 @@ import { normalizeBatteryDocumentConfirm } from '@modules/vehicle-intelligence/b
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { FinesService } from '@modules/fines/fines.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
+import type { DocumentApplyTypedResult } from './document-extraction-apply-result.types';
+import {
+  createApplyFailure,
+  createApplySuccess,
+} from './document-extraction-apply-result.util';
 
 export interface ApplyInput {
   extractionId: string;
@@ -37,10 +42,8 @@ export interface ApplyInput {
   confirmedData: ConfirmedExtractionData;
 }
 
-export interface ApplyResult {
-  serviceEventId?: string | null;
-  detail?: unknown;
-}
+/** @deprecated Use DocumentApplyTypedResult — kept as alias for transitional imports. */
+export type ApplyResult = DocumentApplyTypedResult;
 
 /**
  * Applies HUMAN-CONFIRMED document data to the correct vehicle domain modules.
@@ -71,7 +74,7 @@ export class DocumentExtractionApplyService {
     private readonly finesService: FinesService,
   ) {}
 
-  async apply(input: ApplyInput): Promise<ApplyResult> {
+  async apply(input: ApplyInput): Promise<DocumentApplyTypedResult> {
     const { vehicleId, extractionId, documentType: docType, sourceFileUrl } = input;
     const d = input.confirmedData ?? {};
 
@@ -87,9 +90,12 @@ export class DocumentExtractionApplyService {
       return this.applyBattery(input, d);
     }
 
-    if (docType === 'TIRE' && d?.treadDepthMm && typeof d.treadDepthMm === 'object') {
+    if (docType === 'TIRE') {
+      if (!d?.treadDepthMm || typeof d.treadDepthMm !== 'object') {
+        return createApplyFailure(['TIRE_MEASUREMENT_REQUIRED']);
+      }
       const tread = d.treadDepthMm as Record<string, unknown>;
-      await this.tireLifecycleService.recordMeasurement({
+      const { measurement } = await this.tireLifecycleService.recordMeasurement({
         vehicleId,
         frontLeftMm: this.toNum(tread.fl),
         frontRightMm: this.toNum(tread.fr),
@@ -103,17 +109,33 @@ export class DocumentExtractionApplyService {
         shouldCalibrate: true,
         triggerRecalculate: true,
       });
-      return {};
+      if (!measurement?.id) {
+        return createApplyFailure(['TIRE_MEASUREMENT_NOT_PERSISTED']);
+      }
+      return createApplySuccess({
+        downstreamEntityType: 'tire_measurement',
+        downstreamEntityId: measurement.id,
+        actionCount: 1,
+        detail: { measurementId: measurement.id },
+      });
     }
 
     if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
-      await this.damagesService.create(vehicleId, {
+      const damage = await this.damagesService.create(vehicleId, {
         damageType: (d.damageType as any) || 'SCRATCH',
         description: typeof d.description === 'string' ? d.description : `${docType} report`,
         severity: (d.severity as any) || 'MODERATE',
         source: 'AI_UPLOAD',
       });
-      return {};
+      if (!damage?.id) {
+        return createApplyFailure(['DAMAGE_NOT_PERSISTED']);
+      }
+      return createApplySuccess({
+        downstreamEntityType: 'damage',
+        downstreamEntityId: damage.id,
+        actionCount: 1,
+        detail: { damageId: damage.id },
+      });
     }
 
     if (docType === 'INVOICE') {
@@ -124,14 +146,13 @@ export class DocumentExtractionApplyService {
       return this.applyFine(input, d);
     }
 
-    // VEHICLE_CONDITION / OTHER: no downstream domain record is created.
-    // confirmedData is preserved on the extraction itself for audit/history.
-    return {};
+    // VEHICLE_CONDITION / OTHER: archive-only — apply must not be invoked directly.
+    return createApplyFailure(['ARCHIVE_ONLY_NO_DOWNSTREAM_APPLY']);
   }
 
   // ── per-type apply (mirrors prior controller behaviour) ───────────────────
 
-  private async applyBrake(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+  private async applyBrake(input: ApplyInput, d: Record<string, unknown>): Promise<DocumentApplyTypedResult> {
     const { vehicleId, sourceFileUrl, extractionId } = input;
     const serviceDateRaw =
       (typeof d?.eventDate === 'string' && d.eventDate) ||
@@ -229,7 +250,17 @@ export class DocumentExtractionApplyService {
 
     await this.brakeEvidenceService.recordMany(evidence);
 
-    return { serviceEventId: lifecycle.serviceEventId, detail: lifecycle };
+    if (!lifecycle.serviceEventId) {
+      return createApplyFailure(['BRAKE_SERVICE_EVENT_NOT_CREATED'], lifecycle);
+    }
+
+    return createApplySuccess({
+      downstreamEntityType: 'brake_service',
+      downstreamEntityId: lifecycle.serviceEventId,
+      actionCount: 2,
+      serviceEventId: lifecycle.serviceEventId,
+      detail: lifecycle,
+    });
   }
 
   private mapBrakeComponentStatus(
@@ -272,7 +303,7 @@ export class DocumentExtractionApplyService {
     return null;
   }
 
-  private async applyServiceEvent(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+  private async applyServiceEvent(input: ApplyInput, d: Record<string, unknown>): Promise<DocumentApplyTypedResult> {
     const { vehicleId, sourceFileUrl, documentType: docType } = input;
     const typeMap: Record<string, string> = {
       SERVICE: 'FULL_SERVICE',
@@ -327,10 +358,15 @@ export class DocumentExtractionApplyService {
       await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastBokraftDate: eventDate, nextBokraftDate: nextBk } });
     }
 
-    return { serviceEventId: svcEvent.id };
+    return createApplySuccess({
+      downstreamEntityType: 'service_event',
+      downstreamEntityId: svcEvent.id,
+      actionCount: 1,
+      serviceEventId: svcEvent.id,
+    });
   }
 
-  private async applyBattery(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+  private async applyBattery(input: ApplyInput, d: Record<string, unknown>): Promise<DocumentApplyTypedResult> {
     const { vehicleId, extractionId, sourceFileUrl } = input;
     const normalized = normalizeBatteryDocumentConfirm(d as Record<string, unknown>);
     const observedAt = normalized.observedAt;
@@ -391,6 +427,11 @@ export class DocumentExtractionApplyService {
       );
     }
 
+    const persistedEvidence = evidenceEntries.filter((entry) => entry.numericValue != null);
+    if (persistedEvidence.length === 0) {
+      return createApplyFailure(['BATTERY_EVIDENCE_NOT_PERSISTED']);
+    }
+
     await this.batteryEvidenceService.recordMany(evidenceEntries);
 
     if (isLv && (voltageV != null || restingVoltage != null)) {
@@ -413,16 +454,23 @@ export class DocumentExtractionApplyService {
       }
     }
 
-    return { serviceEventId };
+    return createApplySuccess({
+      downstreamEntityType: 'battery_evidence',
+      downstreamEntityId: serviceEventId ?? extractionId,
+      actionCount: persistedEvidence.length,
+      serviceEventId,
+    });
   }
 
-  private async applyFine(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+  private async applyFine(input: ApplyInput, d: Record<string, unknown>): Promise<DocumentApplyTypedResult> {
     const { vehicleId, sourceFileUrl, extractionId } = input;
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { organizationId: true },
     });
-    if (!vehicle?.organizationId) return {};
+    if (!vehicle?.organizationId) {
+      return createApplyFailure(['VEHICLE_ORGANIZATION_REQUIRED']);
+    }
 
     const offenseType = this.str(d.offenseType) ?? 'Parkverstoß';
     const summary = this.str(d.description);
@@ -447,59 +495,76 @@ export class DocumentExtractionApplyService {
       notes: breakdown ?? undefined,
     });
 
-    return { detail: { fineId: fine.id } };
+    return createApplySuccess({
+      downstreamEntityType: 'fine',
+      downstreamEntityId: String(fine.id),
+      actionCount: 1,
+      detail: { fineId: fine.id },
+    });
   }
 
-  private async applyInvoice(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+  private async applyInvoice(input: ApplyInput, d: Record<string, unknown>): Promise<DocumentApplyTypedResult> {
     const { vehicleId, sourceFileUrl } = input;
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { organizationId: true },
     });
-    if (vehicle?.organizationId) {
-      const orgId = vehicle.organizationId;
-      const totalCentsParsed = this.toInt(d?.totalCents) ?? this.toInt(d?.costCents) ?? 0;
-      const vendorNameRaw = this.str(d.vendorName) ?? this.str(d.workshopName) ?? '';
-      let vendorId: string | undefined;
-      if (vendorNameRaw) {
-        const match = await this.prisma.vendor.findFirst({
-          where: {
-            organizationId: orgId,
-            name: { equals: vendorNameRaw, mode: 'insensitive' },
-          },
-          select: { id: true },
-        });
-        vendorId = match?.id;
-      }
-      const invoiceDate =
-        this.str(d.invoiceDate) ?? this.str(d.eventDate) ?? new Date().toISOString();
-      await this.invoicesService.create(orgId, {
-        type: 'INCOMING_UPLOADED',
-        vehicleId,
-        title: this.str(d.title) ?? this.str(d.invoiceTitle) ?? 'Hochgeladene Rechnung',
-        description: this.str(d.description) ?? '',
-        vendorId,
-        vendorName: vendorNameRaw,
-        totalCents: totalCentsParsed,
-        invoiceDate,
-        dueDate: this.str(d.dueDate),
-        imageUrl: sourceFileUrl || undefined,
-        extractedData: d,
-        documentExtractionId: input.extractionId,
-        fromExtraction: true,
-        lineItems: totalCentsParsed > 0
-          ? [
-              {
-                description: this.str(d.title) ?? 'Eingangsrechnung',
-                quantity: 1,
-                unitPriceNetCents: Math.round(totalCentsParsed / 1.19),
-                taxRate: 19,
-              },
-            ]
-          : undefined,
-      });
+    if (!vehicle?.organizationId) {
+      return createApplyFailure(['VEHICLE_ORGANIZATION_REQUIRED']);
     }
-    return {};
+
+    const orgId = vehicle.organizationId;
+    const totalCentsParsed = this.toInt(d?.totalCents) ?? this.toInt(d?.costCents) ?? 0;
+    const vendorNameRaw = this.str(d.vendorName) ?? this.str(d.workshopName) ?? '';
+    let vendorId: string | undefined;
+    if (vendorNameRaw) {
+      const match = await this.prisma.vendor.findFirst({
+        where: {
+          organizationId: orgId,
+          name: { equals: vendorNameRaw, mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      vendorId = match?.id;
+    }
+    const invoiceDate =
+      this.str(d.invoiceDate) ?? this.str(d.eventDate) ?? new Date().toISOString();
+    const invoice = await this.invoicesService.create(orgId, {
+      type: 'INCOMING_UPLOADED',
+      vehicleId: input.vehicleId,
+      title: this.str(d.title) ?? this.str(d.invoiceTitle) ?? 'Hochgeladene Rechnung',
+      description: this.str(d.description) ?? '',
+      vendorId,
+      vendorName: vendorNameRaw,
+      totalCents: totalCentsParsed,
+      invoiceDate,
+      dueDate: this.str(d.dueDate),
+      imageUrl: input.sourceFileUrl || undefined,
+      extractedData: d,
+      documentExtractionId: input.extractionId,
+      fromExtraction: true,
+      lineItems: totalCentsParsed > 0
+        ? [
+            {
+              description: this.str(d.title) ?? 'Eingangsrechnung',
+              quantity: 1,
+              unitPriceNetCents: Math.round(totalCentsParsed / 1.19),
+              taxRate: 19,
+            },
+          ]
+        : undefined,
+    });
+
+    if (!invoice?.id) {
+      return createApplyFailure(['INVOICE_NOT_PERSISTED']);
+    }
+
+    return createApplySuccess({
+      downstreamEntityType: 'invoice',
+      downstreamEntityId: String(invoice.id),
+      actionCount: 1,
+      detail: { invoiceId: invoice.id },
+    });
   }
 
   // ── locale-aware numeric parsing (matches prior controller helpers) ───────

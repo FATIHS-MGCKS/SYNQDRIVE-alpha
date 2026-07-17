@@ -13,6 +13,11 @@ import {
 } from './document-content-cache.util';
 import { getAllowedDocumentExtractionActions } from './document-extraction-actions.util';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
+import type { PublicDocumentApplySafetyDto } from './document-apply-safety.types';
+
+type MapperOptions = {
+  applySafety?: PublicDocumentApplySafetyDto | null;
+};
 
 type VehicleJoin = {
   id: string;
@@ -147,9 +152,10 @@ function buildAudit(record: ExtractionRecord): PublicDocumentExtractionAuditDto 
   };
 }
 
-function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
+function mapBase(record: ExtractionRecord, options?: MapperOptions): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
-  const allowedActions = getAllowedDocumentExtractionActions(record);
+  const applySafety = options?.applySafety ?? null;
+  const allowedActions = getAllowedDocumentExtractionActions(record, { applySafety: applySafety?.decision });
 
   return {
     id: record.id,
@@ -194,19 +200,24 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     serviceEventId: record.serviceEventId ?? null,
     hasStoredFile: Boolean(record.objectKey),
     allowedActions,
+    applySafety,
     audit: buildAudit(record),
   };
 }
 
 /** Maps a DB record to the public API contract — strips storage internals. */
-export function toPublicDocumentExtraction(record: ExtractionRecord): PublicDocumentExtractionDto {
-  return mapBase(record);
+export function toPublicDocumentExtraction(
+  record: ExtractionRecord,
+  options?: MapperOptions,
+): PublicDocumentExtractionDto {
+  return mapBase(record, options);
 }
 
 export function toPublicDocumentExtractionSummary(
   record: ExtractionRecord,
+  options?: MapperOptions,
 ): PublicDocumentExtractionSummaryDto {
-  const full = mapBase(record);
+  const full = mapBase(record, options);
   return {
     ...full,
     extractedData: null,

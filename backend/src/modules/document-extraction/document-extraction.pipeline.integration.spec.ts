@@ -5,6 +5,7 @@ import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
 import { DocumentExtractionProcessor } from './document-extraction.processor';
 import {
   DocumentExtractionPipelineError,
@@ -13,6 +14,7 @@ import {
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
 import { DocumentExtractionEnqueueFailedException } from './document-extraction-enqueue.exception';
 import { DOCUMENT_EXTRACTION_ERROR_CODES } from './document-extraction-lifecycle.util';
+import { createApplySuccess } from './document-extraction-apply-result.util';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -134,7 +136,16 @@ describe('Document extraction pipeline (integration wiring)', () => {
         modelId: 'mistral-small',
       }),
     };
-    applyService = { apply: jest.fn().mockResolvedValue({ serviceEventId: 'evt-1' }) };
+    applyService = {
+      apply: jest.fn().mockResolvedValue(
+        createApplySuccess({
+          downstreamEntityType: 'service_event',
+          downstreamEntityId: 'evt-1',
+          actionCount: 1,
+          serviceEventId: 'evt-1',
+        }),
+      ),
+    };
 
     const metrics = new TripMetricsService();
     const observability = new DocumentExtractionObservabilityService(metrics);
@@ -159,6 +170,7 @@ describe('Document extraction pipeline (integration wiring)', () => {
       applyService as any,
       plausibility as any,
       observability,
+      new DocumentApplySafetyPolicy(),
     );
   });
 

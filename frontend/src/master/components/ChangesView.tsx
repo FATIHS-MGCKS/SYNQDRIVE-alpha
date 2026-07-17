@@ -35,6 +35,99 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-apply-provenance-gate-2026-07-17',
+    version: '4.9.586',
+    title: 'V4.9.586 — Apply-Provenance-Gate (kein APPLIED ohne Downstream-Beweis)',
+    summary: [
+      'Apply-Service liefert typisiertes `DocumentApplyTypedResult` (success, downstreamEntityType/Id, actionCount, errors).',
+      'APPLIED nur bei `isProvenApplySuccess` — leeres `{}`/No-op (z. B. FINE ohne Org) → FAILED/APPLY_FAILED.',
+      'ARCHIVE_ONLY explizit erfolgreich ohne Downstream-Entity; Audit speichert proven apply für idempotenten Recovery-Retry.',
+    ],
+    reason: 'Prompt 10/84: minimale Übergangslösung vor Document Action Plan V2 — verhindert scheinbar erfolgreiche Applies.',
+    previousBehavior: 'Confirm setzte APPLIED auch wenn Apply `{}` zurückgab oder Downstream-Write ausblieb.',
+    details:
+      'document-extraction-apply-result.types/util, document-extraction-apply.service.ts, document-extraction.service confirm/retry (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T17:00:00.000Z',
+  },
+  {
+    id: 'document-apply-safety-policy-2026-07-17',
+    version: '4.9.585',
+    title: 'V4.9.585 — DocumentApplySafetyPolicy (zentrale Apply-Sicherheit)',
+    summary: [
+      'Zentrale `DocumentApplySafetyPolicy` entscheidet je Dokumenttyp: APPLY_ALLOWED, DRAFT_ONLY, ARCHIVE_ONLY, BLOCKED, LEGACY_DISABLED.',
+      'Regeln: FINE ohne Tatdatum/positiven Betrag → BLOCKED; INVOICE ohne klare Steuersemantik → DRAFT_ONLY; DAMAGE ohne bestätigte Beschreibung/Severity → DRAFT_ONLY/BLOCKED; OTHER/VEHICLE_CONDITION → ARCHIVE_ONLY; BATTERY nur mit validen Messwerten.',
+      'Feature Flags: `DOCUMENT_APPLY_ENABLED`, `DOCUMENT_APPLY_DISABLED_TYPES`, `DOCUMENT_APPLY_STRICT_IDEMPOTENCY`.',
+      'Confirm-Flow und Recovery respektieren die Policy; `applySafety` wird auf READY_FOR_REVIEW/CONFIRMED in der Public API exponiert.',
+    ],
+    reason: 'Prompt 9/84: Server-seitiges Apply-Gate vor Downstream-Writes — kein stiller Legacy-Fallback mehr bei kritischen Lücken.',
+    previousBehavior: 'Confirm blockierte nur Plausibility-BLOCKER; Apply-Service nutzte still Defaults (z. B. DAMAGE severity).',
+    details:
+      'document-apply-safety.policy.ts, document-apply-safety.types.ts, document-apply-safety.config.util.ts, document-extraction.config.ts, document-extraction.service.ts, public DTO/mapper/actions (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T16:30:00.000Z',
+  },
+  {
+    id: 'document-extraction-health-runtime-2026-07-17',
+    version: '4.9.584',
+    title: 'V4.9.584 — Document Extraction Health: Runtime & Readiness',
+    summary: [
+      '`GET /document-extractions/health` liefert Process Role, Worker-Consumer-Status, Queue-Metriken, Recovery-Scheduler, Storage, Mistral (ohne Secret), Uptime.',
+      'Letzte erfolgreiche/fehlgeschlagene Verarbeitung (nur ID + Timestamp + Status/ErrorCode, keine PII).',
+      '`readiness` vs `status`: API kann READY bleiben, Document Extraction DEGRADED; Worker ohne Consumer → `not_ready`.',
+      'Prometheus-Gauges (`active_jobs`, `queue_age`) werden wiederverwendet; eine `getJobCounts`/`getWorkersCount`-Abfrage.',
+    ],
+    reason: 'Prompt 8/84: belastbare Runtime-Informationen für Ops/Monitoring ohne teure Mistral-Probe oder aggressive Redis-Last.',
+    previousBehavior: 'Health lieferte nur queueEnabled/workersEnabled und grobe Queue-Counts ohne Role/Consumer/Last-Event.',
+    details:
+      'document-extraction-health.service.ts, document-extraction-health.types.ts, prometheus-gauge-reader.util.ts, health.service.ts (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T15:00:00.000Z',
+  },
+  {
+    id: 'document-extraction-worker-pm2-split-2026-07-17',
+    version: '4.9.583',
+    title: 'V4.9.583 — Document Extraction Worker PM2 Split (opt-in)',
+    summary: [
+      'Opt-in `DOCUMENT_EXTRACTION_WORKER_SPLIT`: separater PM2-Prozess `synqdrive-document-worker` für `document.extraction` Consumer + Recovery Scheduler.',
+      'API-Prozess (`SYNQDRIVE_PROCESS_ROLE=api`): Enqueue/HTTP ohne Document-Processor — kein doppelter Queue-Consumer.',
+      '`DocumentWorkerAppModule` ohne HTTP/WorkersModule; Colocated-Scheduler-Guards auf Invoice/Task-Schedulern.',
+      'Rollback: Flag `false` + `pm2 reload ecosystem.config.cjs` → Monolith wie bisher.',
+    ],
+    reason:
+      'Prompt 7/84: Document-Worker vom API-Lifecycle entkoppeln ohne Docker — Worker-Ausfall beendet API nicht; genau ein Recovery Scheduler.',
+    previousBehavior:
+      'Single-fork `synqdrive`: API + DocumentExtractionProcessor + Recovery Scheduler + alle Fleet-Worker im selben Prozess.',
+    details:
+      'process-role.util.ts, document-worker-app.module.ts, main-document-worker.ts, document-extraction.module.ts, ecosystem.config.cjs, docs/audits/document-extraction-worker-pm2-split.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T14:45:00.000Z',
+  },
+  {
+    id: 'pm2-stability-bootstrap-fix-2026-07-17',
+    version: '4.9.582',
+    title: 'V4.9.582 — PM2 Bootstrap-Stabilität (Audit Prompt 6)',
+    summary: [
+      'Pre-Deploy `ops:bootstrap-smoke` bricht Deploy vor `pm2 reload` ab, wenn NestJS-DI scheitert (belegte Ursache: 517× exit code 1 Crash-Loops).',
+      '`ecosystem.config.cjs`: `min_uptime` 10s, `max_restarts` 5, `exp_backoff_restart_delay` 2s — begrenzt Autorestart-Schleifen.',
+      '`main.ts`: strukturierte `unhandledRejection`-Logs (kein Prozess-Exit); `BOOTSTRAP_FAILED` bei Startfehlern.',
+      'Battery V2: BullMQ-Job-IDs ohne `:` (`battery-v2-` + sanitized key) — behebt 7540+ Scheduler-Enqueue-Fehler.',
+    ],
+    reason:
+      'Prompt 6/84: Nur PROVEN/LIKELY Restart-Ursachen aus `docs/audits/document-worker-pm2-stability.md` — Deploy-Bootstrap-Fehler + PM2-Autorestart-Verstärkung + Battery-Job-ID-Kolon.',
+    previousBehavior:
+      'Deploy → `pm2 restart` auf kaputtem Build → ~2–3s Crash-Loop (517×); keine Bootstrap-Smoke; Battery-IDs mit `:` von BullMQ abgelehnt.',
+    details:
+      'main.ts, ecosystem.config.cjs, scripts/ops/bootstrap-smoke.ts, vps-deploy-release.sh, battery-v2-job-queue.util.ts (+ Specs), package.json ops:* scripts.',
+    affectsArchitecture: true,
+    module: 'Ops',
+    createdAt: '2026-07-17T14:30:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',

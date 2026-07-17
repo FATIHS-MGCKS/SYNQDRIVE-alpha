@@ -192,7 +192,8 @@ export class HealthService {
     }
     try {
       const health = await this.documentExtractionHealth.getHealth();
-      const depStatus: 'ok' | 'error' = health.status === 'error' ? 'error' : 'ok';
+      const depStatus: 'ok' | 'error' =
+        health.readiness === 'not_ready' ? 'error' : 'ok';
       return {
         status: depStatus,
         responseMs: Date.now() - start,
@@ -200,14 +201,26 @@ export class HealthService {
           ? { error: 'document_extraction_unavailable' }
           : {}),
         details: {
+          readiness: health.readiness,
+          status: health.status,
+          processRole: health.processRole,
+          workerSplitEnabled: health.workerSplitEnabled,
+          apiRoleActive: health.apiRoleActive,
+          workerRoleActive: health.workerRoleActive,
           queueEnabled: health.queueEnabled,
           workersEnabled: health.workersEnabled,
           queueReachable: health.queueReachable,
-          mistralOcrConfigured: health.mistralOcrConfigured,
+          workerConsumerPresent: health.workerConsumerPresent,
+          workerActive: health.workerActive,
+          recoverySchedulerActive: health.recoverySchedulerActive,
+          mistralConfigured: health.mistralConfigured,
           aiExtractionConfigured: health.aiExtractionConfigured,
-          storageAvailable: health.storageAvailable,
-          waitingJobs: health.waitingJobs,
-          activeJobs: health.activeJobs,
+          storageReachable: health.storageReachable,
+          processUptimeSeconds: health.processUptimeSeconds,
+          waitingJobs: health.queue?.waiting,
+          activeJobs: health.queue?.active,
+          failedJobs: health.queue?.failed,
+          queueAgeSeconds: health.queue?.ageSeconds,
         },
       };
     } catch (err: any) {
