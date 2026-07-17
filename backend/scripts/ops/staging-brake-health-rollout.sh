@@ -20,11 +20,18 @@ if [[ -f /opt/synqdrive/shared/backend.env ]]; then
   set -u
 fi
 
-if [[ -n "${DATABASE_URL:-}" ]]; then
-  export DATABASE_URL="$(echo "$DATABASE_URL" | sed -E "s#/[^/?]+\\?#/${STAGING_DB}?#; s#/[^/?]+$#/${STAGING_DB}#")"
-else
-  export DATABASE_URL="postgresql://synqdrive@localhost:5432/${STAGING_DB}?schema=public"
-fi
+rewrite_database_url() {
+  local base_url="$1"
+  local db_name="$2"
+  node -e '
+const u = new URL(process.argv[1]);
+u.pathname = "/" + process.argv[2];
+console.log(u.toString());
+' "$base_url" "$db_name"
+}
+
+PROD_DATABASE_URL="${DATABASE_URL:-postgresql://synqdrive@localhost:5432/${SOURCE_DB}?schema=public}"
+export DATABASE_URL="$(rewrite_database_url "$PROD_DATABASE_URL" "$STAGING_DB")"
 
 echo "==> 1. Backup source database: ${SOURCE_DB}"
 mkdir -p "$BACKUP_DIR"
@@ -35,7 +42,7 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS ${STAGING_D
 sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE ${STAGING_DB} OWNER synqdrive;"
 sudo -u postgres pg_dump "$SOURCE_DB" | sudo -u postgres psql -v ON_ERROR_STOP=1 "$STAGING_DB"
 
-export DATABASE_URL="postgresql://synqdrive@localhost:5432/${STAGING_DB}?schema=public"
+export DATABASE_URL="$(rewrite_database_url "$PROD_DATABASE_URL" "$STAGING_DB")"
 
 echo "==> 3. Migrate status"
 npx prisma migrate status
