@@ -40,6 +40,7 @@ export type DocumentIntakeRecoveryAction =
   | 'UNWIND_STALE_APPLYING'
   | 'DEAD_LETTER'
   | 'SKIPPED_DEAD_LETTER'
+  | 'SKIPPED_NO_VEHICLE'
   | 'SKIPPED_ATTEMPT_LIMIT'
   | 'NO_OP';
 

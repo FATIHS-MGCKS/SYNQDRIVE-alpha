@@ -43,7 +43,7 @@ import type { DocumentIntakeRecoveryResult } from './document-intake-reconciliat
 type RecoveryExtractionRow = {
   id: string;
   organizationId: string | null;
-  vehicleId: string;
+  vehicleId: string | null;
   status: string;
   effectiveDocumentType?: DocumentExtractionType | null;
   documentType?: DocumentExtractionType | null;
@@ -169,6 +169,16 @@ export class DocumentIntakeActionRecoveryService {
         dryRun,
         success: false,
         message: 'Missing document type or confirmed data',
+      };
+    }
+
+    if (!record.vehicleId) {
+      return {
+        extractionId,
+        action: 'SKIPPED_NO_VEHICLE',
+        dryRun,
+        success: false,
+        message: 'Vehicle assignment required for action recovery',
       };
     }
 

@@ -64,7 +64,7 @@ Die folgenden Variablen sind der **operative Vertrag** für schrittweises Rollou
 | `DOCUMENT_EXTRACTION_ACTION_RECOVERY_ENABLED` | `true` | 4 (Shadow: optional `false`) |
 | `DOCUMENT_RETENTION_ENABLED` | `false` | 13 |
 | `DOCUMENT_RETENTION_DRY_RUN` | `true` | 13 — **niemals** `false` ohne Freigabe |
-| `WORKERS_ENABLED` | `true` | 4 |
+| `WORKERS_ENABLED` | `true` | 4 — **requires reachable Redis** for BullMQ producers/consumers (`canEnqueueQueue`) |
 
 **Workaround bis Flags implementiert:** Confirm nur für interne Master-Admin-Testaccounts; Endnutzer dürfen Upload/Review, aber kein `POST .../confirm`. UI: Confirm-Button nur wenn explizites Ops-Flag gesetzt.
 

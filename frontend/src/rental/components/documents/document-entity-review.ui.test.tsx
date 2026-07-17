@@ -73,6 +73,8 @@ describe('DocumentEntityReview UI', () => {
           updatedAt: '2026-07-17T00:00:00.000Z',
           hasStoredFile: true,
           allowedActions: ['confirm'],
+          fieldProvenance: null,
+          fieldCorrectionCount: 0,
         }}
         orgId="org-1"
         extractionId="ext-1"
@@ -137,6 +139,8 @@ describe('DocumentEntityReview UI', () => {
           updatedAt: '2026-07-17T00:00:00.000Z',
           hasStoredFile: true,
           allowedActions: ['confirm'],
+          fieldProvenance: null,
+          fieldCorrectionCount: 0,
         }}
         orgId="org-1"
         extractionId="ext-1"

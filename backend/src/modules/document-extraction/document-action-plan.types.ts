@@ -60,6 +60,7 @@ export function computeActionPlanFingerprint(input: {
   planOutcome: string;
   actions: Array<{ semanticAction: string; requirement: string; sequence: number }>;
   confirmedData: Record<string, unknown>;
+  planContext?: Record<string, unknown> | null;
 }): string {
   const payload = stableStringify({
     planVersion: input.planVersion,
@@ -68,6 +69,7 @@ export function computeActionPlanFingerprint(input: {
     planOutcome: input.planOutcome,
     actions: input.actions,
     confirmedData: input.confirmedData,
+    planContext: input.planContext ?? null,
   });
   return createHash('sha256').update(payload).digest('hex').slice(0, 16);
 }

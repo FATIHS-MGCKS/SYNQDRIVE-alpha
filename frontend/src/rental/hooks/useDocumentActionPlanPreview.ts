@@ -68,7 +68,7 @@ export function useDocumentActionPlanPreview({
     try {
       const next = scope.useOrgRoute
         ? await api.documentExtraction.getActionPlanPreviewByOrg(orgId, extractionId)
-        : await api.documentExtraction.getActionPlanPreview(scope.vehicleId!, extractionId);
+        : await api.vehicleIntelligence.getActionPlanPreview(scope.vehicleId!, extractionId);
       applyPreview(next, false);
       return next;
     } catch (err: unknown) {
@@ -107,7 +107,7 @@ export function useDocumentActionPlanPreview({
           ? await api.documentExtraction.updateActionPlanPreferencesByOrg(orgId, extractionId, {
               disabledOptionalActions,
             })
-          : await api.documentExtraction.updateActionPlanPreferences(scope.vehicleId!, extractionId, {
+          : await api.vehicleIntelligence.updateActionPlanPreferences(scope.vehicleId!, extractionId, {
               disabledOptionalActions,
             });
         applyPreview(next, false);

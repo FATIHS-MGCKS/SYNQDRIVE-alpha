@@ -5570,6 +5570,15 @@ export const api = {
         `/organizations/${orgId}/document-extractions/${extractionId}/save-review`,
         data,
       ),
+    confirmByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { confirmedData: Record<string, unknown>; actionPlanFingerprint?: string },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/confirm`,
+        data,
+      ),
     getActionPlanPreviewByOrg: (orgId: string, extractionId: string) =>
       get<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
         `/organizations/${orgId}/document-extractions/${extractionId}/action-plan-preview`,

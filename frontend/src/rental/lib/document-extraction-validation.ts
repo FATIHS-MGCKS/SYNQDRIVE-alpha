@@ -33,7 +33,7 @@ export function validateUploadFile(
   const requireVehicle = opts?.requireVehicle ?? true;
   if (requireVehicle && !opts?.vehicleSelected) return { ok: false, code: 'NO_VEHICLE' };
   if (!file) return { ok: false, code: 'NO_FILE' };
-  if ((opts.fileCount ?? 1) > 1 && !opts.allowMultiple) return { ok: false, code: 'MULTIPLE_FILES' };
+  if ((opts?.fileCount ?? 1) > 1 && !opts?.allowMultiple) return { ok: false, code: 'MULTIPLE_FILES' };
   if (file.size === 0) return { ok: false, code: 'EMPTY_FILE' };
 
   const maxBytes = metadata?.maxUploadBytes ?? 10 * 1024 * 1024;

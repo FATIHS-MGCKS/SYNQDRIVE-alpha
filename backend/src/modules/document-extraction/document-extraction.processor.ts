@@ -148,6 +148,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
       );
       return;
     }
+    const objectKey = record.objectKey;
 
     if (!isMalwareScanReadyForProcessing(record.plausibility, this.docConfig.malwareScanEnabled)) {
       await this.failPermanent(
@@ -175,11 +176,11 @@ export class DocumentExtractionProcessor extends WorkerHost {
     const fileSizeBucket = bucketFileSizeBytes(record.sizeBytes);
 
     try {
-      const contentCacheHit = !!readContentCache(record.plausibility, record.objectKey);
+      const contentCacheHit = !!readContentCache(record.plausibility, objectKey);
       const content = await this.observability.observeStage(
         extractionId,
         'OCR',
-        () => this.resolveDocumentContent(record.objectKey, record, extractionId),
+        () => this.resolveDocumentContent(objectKey, record, extractionId),
         { mimeCategory, fileSizeBucket },
       );
       this.observability.recordOcrCompleted(contentCacheHit ? 'cached' : content.sourceMethod);
@@ -781,6 +782,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
       optionalPresent,
       optionalMissing,
     });
+  }
 
   private async claimForProcessing(extractionId: string, job: Job): Promise<boolean> {
     const startedAt = new Date();

@@ -42,12 +42,12 @@ export const CONTEXT_MODE_LABELS: Record<OperatorAiUploadContextMode, string> = 
 };
 
 export const CONTEXT_DEFAULT_DOC_TYPE: Record<OperatorAiUploadContextMode, string> = {
-  general: 'OTHER',
-  vehicle: 'VEHICLE_CONDITION',
-  booking: 'VEHICLE_CONDITION',
-  customer: 'OTHER',
-  damage: 'DAMAGE',
-  tire: 'TIRE',
+  general: 'AUTO',
+  vehicle: 'AUTO',
+  booking: 'AUTO',
+  customer: 'AUTO',
+  damage: 'AUTO',
+  tire: 'AUTO',
   service: 'AUTO',
 };
 

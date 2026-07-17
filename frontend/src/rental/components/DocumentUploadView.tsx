@@ -126,8 +126,7 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate, onReturnToOri
     !!page.extractionId &&
     page.flow !== 'idle' &&
     page.flow !== 'uploading' &&
-    page.flow !== 'processing' &&
-    page.flow !== 'analyzing';
+    page.flow !== 'processing';
   const followUp = useDocumentFollowUpSuggestions({
     orgId,
     vehicleId: page.assignedVehicleId || null,

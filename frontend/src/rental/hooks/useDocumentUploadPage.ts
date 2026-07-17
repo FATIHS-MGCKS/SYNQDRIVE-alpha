@@ -6,6 +6,7 @@ import {
   getStepperIndex,
   resolveEffectiveType,
 } from '../lib/document-extraction-lifecycle';
+import type { IntakeProcessingStepId } from '../lib/document-intake-processing-steps';
 import {
   buildAcceptAttribute,
   buildSupportedFormatsLabel,
@@ -303,13 +304,16 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   }, [handleReset, intake, reloadHistory, selectedVehicleId]);
 
   const handleConfirm = useCallback(async () => {
+    if (!intake.extractionId) return;
     const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
-    if (!mutationVehicleId || !intake.extractionId) return;
+    if (!mutationVehicleId && !orgId) return;
     await withBatteryHealthCacheRollback(
-      [
-        serializeBatteryHealthQueryKey(batteryHealthQueryKeys.summary(orgId, mutationVehicleId)),
-        serializeBatteryHealthQueryKey(batteryHealthQueryKeys.detail(orgId, mutationVehicleId)),
-      ],
+      mutationVehicleId
+        ? [
+            serializeBatteryHealthQueryKey(batteryHealthQueryKeys.summary(orgId, mutationVehicleId)),
+            serializeBatteryHealthQueryKey(batteryHealthQueryKeys.detail(orgId, mutationVehicleId)),
+          ]
+        : [],
       async () => {
         await intake.handleConfirm();
       },

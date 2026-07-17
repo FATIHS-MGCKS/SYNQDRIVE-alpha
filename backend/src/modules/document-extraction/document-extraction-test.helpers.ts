@@ -342,6 +342,22 @@ export function makeDocumentExtractionObservabilityMock() {
     setQueueAgeSeconds: jest.fn(),
     setActiveJobs: jest.fn(),
     observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
+    recordUploadAccepted: jest.fn(),
+    recordUploadRejected: jest.fn(),
+    recordUploadRateLimited: jest.fn(),
+    recordDuplicateOutcome: jest.fn(),
+    recordOcrCompleted: jest.fn(),
+    recordAwaitingDocumentType: jest.fn(),
+    recordExtractionCompleted: jest.fn(),
+    recordPlausibilityBlockers: jest.fn(),
+    recordEntityCandidateRanking: jest.fn(),
+    recordRequiredFieldCompleteness: jest.fn(),
+    recordActionPlan: jest.fn(),
+    recordActionExecution: jest.fn(),
+    recordPartialApply: jest.fn(),
+    recordRecovery: jest.fn(),
+    recordFollowUp: jest.fn(),
+    recordArchive: jest.fn(),
   };
 }
 

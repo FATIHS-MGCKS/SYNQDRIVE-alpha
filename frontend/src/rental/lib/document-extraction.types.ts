@@ -13,6 +13,22 @@ export type DocumentExtractionStatus =
   | 'REJECTED'
   | 'CANCELLED';
 
+export type DocumentExtractionType =
+  | 'AUTO'
+  | 'SERVICE'
+  | 'OIL_CHANGE'
+  | 'TIRE'
+  | 'BRAKE'
+  | 'BATTERY'
+  | 'VEHICLE_CONDITION'
+  | 'TUV_REPORT'
+  | 'BOKRAFT_REPORT'
+  | 'INVOICE'
+  | 'ACCIDENT'
+  | 'DAMAGE'
+  | 'FINE'
+  | 'OTHER';
+
 export type DocumentExtractionAction =
   | 'retry'
   | 'set_document_type'
