@@ -13,6 +13,34 @@ export type RentalDrivingAttributionSummary = {
   customerDecisionEligible: boolean;
 };
 
+export type RentalDrivingAnalysisAssessmentStatus =
+  | 'COMPLETE'
+  | 'PARTIAL'
+  | 'PROVISIONAL'
+  | 'NOT_ASSESSABLE'
+  | 'FAILED';
+
+export type RentalDrivingAssessmentSummary = {
+  status: RentalDrivingAnalysisAssessmentStatus;
+  missingComponents: string[];
+  technicalFailures: string[];
+  capabilityGaps: string[];
+  allowsStrongCustomerRecommendation: boolean;
+  tripBreakdown: {
+    assignedTripCount: number;
+    finalizedTripCount: number;
+    tripsWithCompletedAnalysis: number;
+    tripsNotAssessable: number;
+    tripsWithFailedAnalysis: number;
+    tripsWithAttribution: number;
+    tripsWithReconciledMisuse: number;
+    tripsWithReadyImpact: number;
+    tripsWithImpactUnavailable: number;
+    pendingCoreJobCount: number;
+    pendingRentalRecomputeJobCount: number;
+  };
+};
+
 /** Structured agent response for Rental Driving Analysis (vehicle stress focus). */
 export interface RentalDrivingAnalysisPayload {
   analysisMeta: {
@@ -37,6 +65,8 @@ export interface RentalDrivingAnalysisPayload {
     sourceTripsFinalizedAt?: string | null;
     analysisCompleteness?: 'FULL' | 'PARTIAL' | 'INSUFFICIENT';
     stabilityStatus?: 'PROVISIONAL' | 'STABLE';
+    assessmentStatus?: RentalDrivingAnalysisAssessmentStatus;
+    assessmentSummary?: RentalDrivingAssessmentSummary;
     maturity?: string;
     recomputeReason?: string | null;
     attributionSummary?: RentalDrivingAttributionSummary;

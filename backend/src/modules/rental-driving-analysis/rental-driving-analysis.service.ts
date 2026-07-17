@@ -22,6 +22,7 @@ import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-
 import type {
   RentalDrivingAnalysisPayload,
   RentalDrivingAttributionSummary,
+  RentalDrivingAssessmentSummary,
 } from './rental-driving-analysis.types';
 import { resolveDrivingAttributionRoles } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles';
 import { resolveLegacyDriverIdFilter } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.compat';
@@ -41,6 +42,15 @@ import type {
   RentalDrivingAnalysisRecomputeReason,
   RentalDrivingAnalysisRecomputeResult,
 } from './rental-driving-analysis.recompute.types';
+import {
+  assessRentalDrivingAnalysis,
+  buildRentalAssessmentTripSnapshot,
+} from './rental-driving-analysis.assessment';
+import {
+  deriveAnalysisAssessability,
+  parseAnalysisStagesJson,
+  type AnalysisStageState,
+} from '../vehicle-intelligence/trips/trip-analysis-status';
 
 type TripForAnalysis = {
   id: string;
@@ -161,6 +171,9 @@ export class RentalDrivingAnalysisService {
       pendingTripAnalysisJobCount: computed.gateSnapshot.pendingTripAnalysisJobCount,
     });
 
+    const assessmentSummary = computed.assessmentSummary;
+    const assessmentStatus = assessmentSummary.status;
+
     const existingExact = await this.prisma.rentalDrivingAnalysis.findFirst({
       where: {
         organizationId: orgId,
@@ -169,6 +182,7 @@ export class RentalDrivingAnalysisService {
         inputFingerprint,
         supersededAt: null,
         stabilityStatus,
+        assessmentStatus,
       },
     });
     if (existingExact) {
@@ -186,6 +200,7 @@ export class RentalDrivingAnalysisService {
           inputFingerprint,
           supersededAt: null,
           stabilityStatus,
+          assessmentStatus,
         },
       });
       if (existingInTx) {
@@ -201,7 +216,8 @@ export class RentalDrivingAnalysisService {
         current != null &&
         (current.calculationVersion !== RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION ||
           current.inputFingerprint !== inputFingerprint ||
-          current.stabilityStatus !== stabilityStatus);
+          current.stabilityStatus !== stabilityStatus ||
+          current.assessmentStatus !== assessmentStatus);
 
       let supersedesAnalysisId: string | null = null;
       if (needsSupersede && current) {
@@ -228,6 +244,8 @@ export class RentalDrivingAnalysisService {
         sourceTripsFinalizedAt: computed.sourceTripsFinalizedAt,
         analysisCompleteness: computed.analysisCompleteness,
         stabilityStatus,
+        assessmentStatus,
+        assessmentSummary,
         maturity: DrivingAnalysisMaturity.PUBLISHED,
         recomputeReason,
         attributionSummary: computed.attributionSummary,
@@ -258,6 +276,8 @@ export class RentalDrivingAnalysisService {
           sourceTripsFinalizedAt: computed.sourceTripsFinalizedAt,
           analysisCompleteness: computed.analysisCompleteness,
           stabilityStatus,
+          assessmentStatus,
+          assessmentSummary: assessmentSummary as object,
           maturity: DrivingAnalysisMaturity.PUBLISHED,
           recomputeReason,
           supersedesAnalysisId,
@@ -342,6 +362,11 @@ export class RentalDrivingAnalysisService {
           id: true,
           tripStatus: true,
           drivingImpactStatus: true,
+          tripAnalysisStatus: true,
+          analysisStagesJson: true,
+          behaviorSummaryJson: true,
+          behaviorEnrichmentStatus: true,
+          qualityStatus: true,
         },
       }),
       this.prisma.vehicleTrip.findMany({
@@ -390,6 +415,63 @@ export class RentalDrivingAnalysisService {
           ],
         },
       },
+    });
+    const pendingRentalRecomputeJobCount = await this.prisma.drivingIntelligenceJob.count({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        status: { in: ['PENDING', 'ENQUEUED', 'IN_PROGRESS'] },
+        jobType: 'RENTAL_DRIVING_ANALYSIS_RECOMPUTE',
+      },
+    });
+
+    const assignedTripIds = allAssignedTrips.map((trip) => trip.id);
+    const [attributionRows, analysisRuns] = await Promise.all([
+      assignedTripIds.length
+        ? this.prisma.driverAttribution.findMany({
+            where: { organizationId: orgId, tripId: { in: assignedTripIds } },
+            select: { tripId: true },
+            distinct: ['tripId'],
+          })
+        : Promise.resolve([]),
+      assignedTripIds.length
+        ? this.prisma.drivingAnalysisRun.findMany({
+            where: {
+              organizationId: orgId,
+              tripId: { in: assignedTripIds },
+              analysisType: 'TRIP_ENRICHMENT',
+            },
+            select: { tripId: true, status: true, startedAt: true },
+            orderBy: { startedAt: 'desc' },
+          })
+        : Promise.resolve([]),
+    ]);
+    const tripsWithAttribution = new Set(attributionRows.map((row) => row.tripId));
+    const latestRunByTrip = new Map<string, (typeof analysisRuns)[number]['status']>();
+    for (const run of analysisRuns) {
+      if (!latestRunByTrip.has(run.tripId)) {
+        latestRunByTrip.set(run.tripId, run.status);
+      }
+    }
+
+    const assessmentTrips = allAssignedTrips.map((trip) => {
+      const stages = parseAnalysisStagesJson(trip.analysisStagesJson);
+      const assessability = deriveAnalysisAssessability({
+        qualityStatus: trip.qualityStatus,
+        behaviorEnrichmentStatus: trip.behaviorEnrichmentStatus,
+        behaviorSummaryJson: trip.behaviorSummaryJson,
+        tripAnalysisStatus: trip.tripAnalysisStatus,
+      });
+      return buildRentalAssessmentTripSnapshot({
+        tripId: trip.id,
+        tripStatus: trip.tripStatus,
+        tripAnalysisStatus: trip.tripAnalysisStatus,
+        drivingImpactStatus: trip.drivingImpactStatus,
+        analysisAssessability: assessability.analysisAssessability,
+        analysisRunStatus: latestRunByTrip.get(trip.id) ?? 'MISSING',
+        hasAttribution: tripsWithAttribution.has(trip.id),
+        misuseStage: stages.misuse as AnalysisStageState | undefined,
+      });
     });
 
     const gateSnapshot = {
@@ -574,6 +656,15 @@ export class RentalDrivingAnalysisService {
       customerDecisionEligible: roles.customerDecisionEligible,
     };
 
+    const assessmentSummary: RentalDrivingAssessmentSummary = assessRentalDrivingAnalysis({
+      bookingStatus: booking.status,
+      analysisCompleteness,
+      assignedTripCount: gateSnapshot.assignedTripCount,
+      pendingCoreJobCount: pendingTripAnalysisJobCount,
+      pendingRentalRecomputeJobCount,
+      trips: assessmentTrips,
+    });
+
     return {
       roles,
       analysisSource,
@@ -592,6 +683,7 @@ export class RentalDrivingAnalysisService {
       sourceTripsFinalizedAt,
       analysisCompleteness,
       attributionSummary,
+      assessmentSummary,
       dtcCountInPeriod: dtcList.length,
       gateSnapshot,
       payloadCtx: {
@@ -680,6 +772,8 @@ export class RentalDrivingAnalysisService {
     sourceTripsFinalizedAt: Date | null;
     analysisCompleteness: import('@prisma/client').RentalDrivingAnalysisCompleteness;
     stabilityStatus: RentalDrivingAnalysisStability;
+    assessmentStatus: import('@prisma/client').RentalDrivingAnalysisAssessmentStatus;
+    assessmentSummary: RentalDrivingAssessmentSummary;
     maturity: DrivingAnalysisMaturity;
     recomputeReason: string | null;
     attributionSummary: RentalDrivingAttributionSummary;
@@ -721,13 +815,27 @@ export class RentalDrivingAnalysisService {
     if (ctx.errorCodeOccurred) watchpoints.push('At least one error code was recorded during the rental period.');
 
     if (wearImpact === 'high' || ctx.harshBraking > 15) {
-      recommendations.push('Inspect brake condition after this rental.');
+      if (ctx.assessmentSummary.allowsStrongCustomerRecommendation) {
+        recommendations.push('Inspect brake condition after this rental.');
+      } else {
+        watchpoints.push('Elevated braking stress — post-rental brake inspection may be warranted once analysis is complete.');
+      }
     }
     if (stress != null && stress >= 76) {
-      recommendations.push('Review tire wear — high overall vehicle stress.');
+      if (ctx.assessmentSummary.allowsStrongCustomerRecommendation) {
+        recommendations.push('Review tire wear — high overall vehicle stress.');
+      } else {
+        watchpoints.push('High overall vehicle stress — tire review recommended once analysis is complete.');
+      }
     }
     if (recommendations.length === 0) {
-      recommendations.push('Continue standard post-rental checks.');
+      if (ctx.assessmentSummary.allowsStrongCustomerRecommendation) {
+        recommendations.push('Continue standard post-rental checks.');
+      } else if (ctx.assessmentStatus === 'NOT_ASSESSABLE') {
+        recommendations.push('Insufficient telematics data for a driving assessment — use standard post-rental checks.');
+      } else {
+        recommendations.push('Preliminary analysis only — await complete trip analysis before operational decisions.');
+      }
     }
 
     const aggregateConfidence: 'low' | 'medium' | 'high' =
@@ -764,6 +872,8 @@ export class RentalDrivingAnalysisService {
         sourceTripsFinalizedAt: ctx.sourceTripsFinalizedAt?.toISOString() ?? null,
         analysisCompleteness: ctx.analysisCompleteness,
         stabilityStatus: ctx.stabilityStatus,
+        assessmentStatus: ctx.assessmentStatus,
+        assessmentSummary: ctx.assessmentSummary,
         maturity: ctx.maturity,
         recomputeReason: ctx.recomputeReason,
         attributionSummary: ctx.attributionSummary,
@@ -899,6 +1009,8 @@ export class RentalDrivingAnalysisService {
       sourceTripsFinalizedAt: r.sourceTripsFinalizedAt?.toISOString() ?? null,
       analysisCompleteness: r.analysisCompleteness,
       stabilityStatus: r.stabilityStatus,
+      assessmentStatus: r.assessmentStatus,
+      assessmentSummary: r.assessmentSummary,
       maturity: r.maturity,
       supersededAt: r.supersededAt?.toISOString() ?? null,
       supersedesAnalysisId: r.supersedesAnalysisId,
