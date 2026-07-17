@@ -17,6 +17,7 @@ import {
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireHealthService } from './tires/tire-health.service';
+import { TireTripUsageService } from './tires/tire-trip-usage.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
@@ -49,8 +50,11 @@ import {
 import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
+import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
+import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
+import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
 import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
@@ -78,6 +82,7 @@ import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessmen
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { VehicleDrivingCapabilityLifecycleService } from './driving-capability/vehicle-driving-capability-lifecycle.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
+import { buildSetupBaselineFields } from './tires/tire-evidence-provenance';
 import {
   CreateTireSetupDto,
   AddTireMeasurementDto,
@@ -86,7 +91,12 @@ import {
   RotateTiresDto,
   ChangeTiresDto,
   ActivateStoredSetDto,
+  StoreTireSetDto,
+  RemoveTireSetDto,
+  RetireTireDto,
   ApplyAiTireSpecDto,
+  TireRecalculateDto,
+  UpdateRecommendedPressureDto,
 } from './tires/dto/tire-mutation.dto';
 import {
   InitializeBrakeHealthDto,
@@ -116,6 +126,7 @@ export class VehicleIntelligenceController {
     private readonly batteryService: BatteryService,
     private readonly tiresService: TiresService,
     private readonly tireHealthService: TireHealthService,
+    private readonly tireTripUsageService: TireTripUsageService,
     private readonly tireLifecycleService: TireLifecycleService,
     private readonly brakesService: BrakesService,
     private readonly brakeHealthService: BrakeHealthService,
@@ -138,6 +149,8 @@ export class VehicleIntelligenceController {
     private readonly batteryV2Service: BatteryV2Service,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
+    private readonly lvRestShadowSummaryService: LvRestShadowSummaryService,
+    private readonly lvStartProxyDiagnosticService: LvStartProxyDiagnosticService,
     private readonly vehicleHealthTabSummaryService: VehicleHealthTabSummaryService,
     private readonly aiHealthCareAggregationService: AiHealthCareAggregationService,
     private readonly dashboardWarningLightsService: DashboardWarningLightsService,
@@ -261,8 +274,33 @@ export class VehicleIntelligenceController {
       initialTreadRearMm: body.initialTreadRearMm,
       tireCondition: body.tireCondition,
       odometerKm: body.installedOdometerKm,
+      manualConfirmOdometer: body.confirmOdometerKm,
       notes: body.notes,
+      recommendedPressureFrontBar: body.recommendedPressureFrontBar,
+      recommendedPressureRearBar: body.recommendedPressureRearBar,
+      recommendedPressureLoadedFrontBar: body.recommendedPressureLoadedFrontBar,
+      recommendedPressureLoadedRearBar: body.recommendedPressureLoadedRearBar,
+      pressureSpecSource: body.pressureSpecSource,
+      confirmPressureSpec: body.confirmPressureSpec,
       archiveCurrent: false,
+    });
+  }
+
+  @Patch('tires/:tireSetupId/recommended-pressure')
+  async updateRecommendedPressure(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tireSetupId') tireSetupId: string,
+    @Body() body: UpdateRecommendedPressureDto,
+  ) {
+    return this.tireLifecycleService.updateRecommendedPressure({
+      vehicleId,
+      tireSetupId,
+      recommendedPressureFrontBar: body.recommendedPressureFrontBar,
+      recommendedPressureRearBar: body.recommendedPressureRearBar,
+      recommendedPressureLoadedFrontBar: body.recommendedPressureLoadedFrontBar,
+      recommendedPressureLoadedRearBar: body.recommendedPressureLoadedRearBar,
+      pressureSpecSource: body.pressureSpecSource,
+      confirmPressureSpec: body.confirmPressureSpec,
     });
   }
 
@@ -349,11 +387,20 @@ export class VehicleIntelligenceController {
         confidenceScore: normalized.confidenceScore ?? null,
         completedAt: null,
         specSourceType: 'ai_agent',
+        userConfirmedSpec: body.userConfirmedSpec ?? false,
       });
 
       await this.prisma.vehicleTireSetup.update({
         where: { id: setup.id },
-        data: { aiTireSpec: persisted as any },
+        data: {
+          aiTireSpec: persisted as any,
+          ...buildSetupBaselineFields({
+            aiTireSpec: persisted,
+            userConfirmedSpec: persisted.userConfirmedSpec,
+            treadMm: normalized.newTreadDepthMm,
+            confirmedAt: persisted.userConfirmedSpec ? new Date() : null,
+          }),
+        },
       });
 
       try {
@@ -402,7 +449,11 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: ChangeTiresDto,
   ) {
-    return this.tireLifecycleService.replaceTires({ vehicleId, ...body });
+    return this.tireLifecycleService.replaceTires({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/activate-stored-set')
@@ -410,7 +461,47 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: ActivateStoredSetDto,
   ) {
-    return this.tireLifecycleService.activateStoredSet({ vehicleId, ...body });
+    return this.tireLifecycleService.activateStoredSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
+  }
+
+  @Post('tires/store-set')
+  async storeTireSet(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: StoreTireSetDto,
+  ) {
+    return this.tireLifecycleService.storeTireSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
+  }
+
+  @Post('tires/remove-set')
+  async removeTireSet(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: RemoveTireSetDto,
+  ) {
+    return this.tireLifecycleService.removeTireSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
+  }
+
+  @Post('tires/retire')
+  async retireTire(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: RetireTireDto,
+  ) {
+    return this.tireLifecycleService.retireTire({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/measurement')
@@ -433,8 +524,16 @@ export class VehicleIntelligenceController {
   }
 
   @Post('tires/recalculate')
-  async recalculateTireHealth(@Param('vehicleId') vehicleId: string) {
-    return this.tireHealthService.recalculate(vehicleId);
+  async recalculateTireHealth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: TireRecalculateDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.tireHealthService.recalculate(vehicleId, {
+      force: body.force,
+      reason: body.reason,
+      actorId: req.user?.id ?? null,
+    });
   }
 
   // --- Brakes ---
@@ -1193,19 +1292,16 @@ export class VehicleIntelligenceController {
     const organizationId = await this.resolveOrganizationId(req, vehicleId);
     const result = await this.tripsService.enrichTrip(organizationId, vehicleId, tripId);
     if (result) {
-      const trip = await this.prisma.vehicleTrip.findUnique({ where: { id: tripId } });
-      if (trip?.distanceKm) {
-        try {
-          await this.tireHealthService.updateTireUsageFromTrip(vehicleId, {
-            distanceKm: trip.distanceKm,
-            cityPercent: result.citySharePercent,
-            highwayPercent: result.highwaySharePercent,
-            ruralPercent: result.countrySharePercent,
-            harshBrakeCount: trip.harshBrakeCount ?? 0,
-            harshAccelCount: trip.harshAccelCount ?? 0,
-            harshCornerCount: trip.harshCornerCount ?? 0,
-          });
-        } catch { /* tire update is best-effort */ }
+      try {
+        await this.tireTripUsageService.processCanonicalTripFinalization(tripId, {
+          trigger: 'manual_route_enrich',
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Tire usage attribution after route enrich failed for trip ${tripId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
       }
     }
     return result;
@@ -1453,29 +1549,38 @@ export class VehicleIntelligenceController {
 
   @Get('battery-health/latest')
   async getLatestBatteryHealth(@Param('vehicleId') vehicleId: string) {
-    const [canonical, v2] = await Promise.all([
-      this.canonicalBatteryHealthService.getSummary(vehicleId),
-      this.batteryV2Service.getV2Health(vehicleId),
-    ]);
+    const summary = await this.canonicalBatteryHealthService.getSummary(vehicleId);
+    if (!summary) return null;
 
-    if (!canonical) return null;
+    const v2 = await this.batteryV2Service.getV2Health(vehicleId).catch(() => null);
 
     return {
-      voltageV: canonical.currentState?.voltageV ?? null,
-      sohPercent: canonical.currentState?.sohPercent ?? null,
-      temperatureC: canonical.currentState?.temperatureC ?? null,
-      recordedAt: canonical.currentState?.lastChecked ?? null,
-      restingVoltage: canonical.currentState?.restingVoltage ?? null,
-      crankingVoltage: canonical.currentState?.crankingVoltage ?? null,
-      chargingVoltage: canonical.currentState?.chargingVoltage ?? null,
+      _compat: true,
+      _canonical: 'Prefer battery-health-summary.canonical for new consumers.',
+      canonical: summary.canonical,
+      voltageV: summary.currentState?.voltageV ?? null,
+      sohPercent: summary.currentState?.sohPercent ?? null,
+      sohPercentSemantic: summary.currentState?.sohPercentSemantic ?? null,
+      estimatedLvHealthScore: summary.currentState?.estimatedLvHealthScore ?? null,
+      estimatedLvHealthScoreSemantic:
+        summary.currentState?.estimatedLvHealthScoreSemantic ?? null,
+      estimatedLvHealthScoreLabel:
+        summary.currentState?.estimatedLvHealthScoreLabel ?? null,
+      temperatureC: summary.currentState?.temperatureC ?? null,
+      recordedAt: summary.currentState?.lastChecked ?? null,
+      restingVoltage: summary.currentState?.restingVoltage ?? null,
+      crankingVoltage: summary.currentState?.crankingVoltage ?? null,
+      chargingVoltage: summary.currentState?.chargingVoltage ?? null,
       source: 'canonical',
-      lv: canonical.lv,
-      hv: canonical.hv,
-      currentTelemetry: canonical.currentTelemetry,
+      lv: summary.lv,
+      hv: summary.hv,
+      currentTelemetry: summary.currentTelemetry,
       v2: v2
         ? {
             estimatedSocPct: v2.estimatedSocPct,
+            /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
             estimatedSohPct: v2.estimatedSohPct,
+            estimatedLvHealthScore: v2.estimatedSohPct,
             confidence: v2.confidence,
             badge: v2.badge,
             scoredAt: v2.scoredAt,
@@ -1491,14 +1596,15 @@ export class VehicleIntelligenceController {
               rest60mCapturedAt: v2.rest60mCapturedAt,
               rest6hCapturedAt: v2.rest6hCapturedAt,
             },
-            crankFeatures: {
+            crankFeatures: presentLegacyCrankFeatures({
               vPreCrank: v2.vPreCrank,
               vMinCrank: v2.vMinCrank,
               crankDrop: v2.crankDrop,
               vRecovery5s: v2.vRecovery5s,
               vRecovery30s: v2.vRecovery30s,
               crankAt: v2.crankAt,
-            },
+              crankTripId: v2.crankTripId,
+            }),
           }
         : null,
     };
@@ -1514,16 +1620,30 @@ export class VehicleIntelligenceController {
       }),
     ]);
 
+    const crankPresentation = v2
+      ? presentLegacyCrankFeatures({
+          vPreCrank: v2.vPreCrank,
+          vMinCrank: v2.vMinCrank,
+          crankDrop: v2.crankDrop,
+          vRecovery5s: v2.vRecovery5s,
+          vRecovery30s: v2.vRecovery30s,
+          crankAt: v2.crankAt,
+          crankTripId: v2.crankTripId,
+        })
+      : null;
+
     return {
       latestVoltage: latestState?.lvBatteryVoltage ?? null,
       estimatedSocPct: v2?.estimatedSocPct ?? null,
+      /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
       estimatedSohPct: v2?.estimatedSohPct ?? null,
+      estimatedLvHealthScore: v2?.estimatedSohPct ?? null,
       confidence: v2?.confidence ?? 'insufficient_data',
       badge: v2?.badge ?? 'unknown',
       scoredAt: v2?.scoredAt ?? null,
       dataAvailability: {
         hasRestData: v2?.vOff60m != null || v2?.vOff6h != null,
-        hasCrankData: v2?.crankDrop != null,
+        hasCrankData: crankPresentation?.diagnosticCrankDrop != null,
         hasRecoveryData: v2?.vRecovery5s != null,
       },
       rest: v2
@@ -1536,18 +1656,30 @@ export class VehicleIntelligenceController {
             rest6hCapturedAt: v2.rest6hCapturedAt,
           }
         : null,
-      crank: v2
+      crank: crankPresentation
         ? {
-            vPreCrank: v2.vPreCrank,
-            vMinCrank: v2.vMinCrank,
-            crankDrop: v2.crankDrop,
-            vRecovery5s: v2.vRecovery5s,
-            vRecovery30s: v2.vRecovery30s,
-            crankAt: v2.crankAt,
-            tripId: v2.crankTripId,
+            ...crankPresentation,
+            vPreCrank: v2!.vPreCrank,
+            vMinCrank: v2!.vMinCrank,
+            vRecovery5s: v2!.vRecovery5s,
+            vRecovery30s: v2!.vRecovery30s,
+            crankAt: v2!.crankAt,
+            tripId: v2!.crankTripId,
           }
         : null,
     };
+  }
+
+  /** Internal diagnostic API — LV REST shadow capture summary (no user-facing health impact). */
+  @Get('battery-health/lv-rest-shadow-summary')
+  async getLvRestShadowSummary(@Param('vehicleId') vehicleId: string) {
+    return this.lvRestShadowSummaryService.getSummaryForVehicle(vehicleId);
+  }
+
+  /** Internal diagnostic API — LV start-proxy measurements (no operational health impact). */
+  @Get('battery-health/lv-start-proxy-diagnostic')
+  async getLvStartProxyDiagnostic(@Param('vehicleId') vehicleId: string) {
+    return this.lvStartProxyDiagnosticService.getForVehicle(vehicleId);
   }
 
   @Get('battery-health/trend')
@@ -1685,15 +1817,40 @@ export class VehicleIntelligenceController {
   // --- HV Battery Health (EV) ---
   @Get('hv-battery-status')
   async getHvBatteryStatus(@Param('vehicleId') vehicleId: string) {
-    const [summary, legacy] = await Promise.all([
-      this.canonicalBatteryHealthService.getSummary(vehicleId),
-      this.hvBatteryHealthService.getHvBatteryStatus(vehicleId),
-    ]);
-    if (!legacy) return null;
+    const summary = await this.canonicalBatteryHealthService.getSummary(vehicleId);
+    if (!summary?.support?.hv) return null;
+
+    const legacy = await this.hvBatteryHealthService
+      .getHvBatteryStatus(vehicleId)
+      .catch(() => null);
+
+    const hv = summary.hv;
+    const canonicalHv = summary.canonical?.hv ?? null;
+
     return {
-      ...legacy,
-      canonical: summary?.hv ?? null,
-      currentTelemetry: summary?.currentTelemetry ?? null,
+      _compat: true,
+      _canonical: 'Prefer battery-health-summary.canonical.hv for new consumers.',
+      isEv: true,
+      nominalCapacityKwh:
+        canonicalHv?.referenceCapacity?.capacityKwh ??
+        legacy?.nominalCapacityKwh ??
+        hv?.telemetry?.grossCapacityKwh ??
+        null,
+      currentSocPercent: hv?.telemetry?.socPercent ?? legacy?.currentSocPercent ?? null,
+      estimatedRangeKm: hv?.telemetry?.rangeKm ?? legacy?.estimatedRangeKm ?? null,
+      sohPercent: hv?.sohPct ?? legacy?.sohPercent ?? null,
+      publishedSohPercent: hv?.sohPct ?? legacy?.publishedSohPercent ?? null,
+      sohMethod: hv?.method ?? legacy?.sohMethod ?? 'canonical',
+      sohSourceType: hv?.sohSource ?? legacy?.sohSourceType ?? null,
+      publicationState: hv?.publicationState ?? legacy?.publicationState ?? null,
+      maturityConfidence: hv?.confidence ?? legacy?.maturityConfidence ?? null,
+      snapshotCount: hv?.snapshotCount ?? legacy?.snapshotCount ?? 0,
+      telemetry: hv?.telemetry ?? legacy?.telemetry ?? null,
+      lastRecordedAt: hv?.freshness?.observedAt ?? legacy?.lastRecordedAt ?? null,
+      canonical: canonicalHv,
+      canonicalSummary: hv,
+      currentTelemetry: summary.currentTelemetry ?? null,
+      legacy: legacy ?? undefined,
     };
   }
 

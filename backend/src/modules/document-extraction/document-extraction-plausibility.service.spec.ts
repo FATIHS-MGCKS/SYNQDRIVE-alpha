@@ -57,6 +57,16 @@ describe('DocumentExtractionPlausibilityService', () => {
     expect(codes(result)).toContain('VIN_MISMATCH');
   });
 
+  it('blocks FINE when license plate does not match the selected vehicle', () => {
+    const result = svc.runChecks(
+      'FINE',
+      { licensePlate: 'KS-FH-660E', eventDate: '2025-10-24', totalCents: 1750 },
+      { ...baseCtx, licensePlate: 'B-AB-1234' },
+    );
+    expect(result.overallStatus).toBe('BLOCKER');
+    expect(codes(result)).toContain('PLATE_MISMATCH');
+  });
+
   it('warns when TUV validity is before the inspection date', () => {
     const result = svc.runChecks(
       'TUV_REPORT',

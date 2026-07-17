@@ -17,6 +17,8 @@ import { RedisService } from '@shared/redis/redis.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
+import { BatteryCapabilityRefreshService } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
+import { BatteryCapabilityRefreshTrigger } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 import dimoConfig from '@config/dimo.config';
 import {
   parsePagination,
@@ -292,6 +294,8 @@ export class VehiclesService {
     @Optional()
     @Inject(forwardRef(() => VehicleDrivingCapabilityLifecycleService))
     private readonly capabilityLifecycle?: VehicleDrivingCapabilityLifecycleService,
+    @Optional()
+    private readonly batteryCapabilityRefresh?: BatteryCapabilityRefreshService,
   ) {}
 
   /** Invalidate cached fleet-map payload after booking/handover/status mutations. */
@@ -2098,6 +2102,11 @@ export class VehiclesService {
     });
 
     this.capabilityLifecycle?.refreshOnNewIntegration(orgId, vehicle.id);
+    void this.batteryCapabilityRefresh?.enqueueForDimoVehicle(
+      orgId,
+      vehicle.id,
+      BatteryCapabilityRefreshTrigger.VEHICLE_REGISTRATION,
+    );
 
     if (manualSpecs?.battery) {
       const b = manualSpecs.battery;

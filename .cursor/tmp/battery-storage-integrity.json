@@ -1,0 +1,470 @@
+{
+  "generatedAt": "2026-07-16T10:35:05.917Z",
+  "since": "2026-06-16T10:35:03.769Z",
+  "totals": {
+    "vehicles": 6,
+    "iceVehicles": 5,
+    "bevVehicles": 1,
+    "batteryFeatures": 5,
+    "healthSnapshots": 87,
+    "evidenceRows": 13724,
+    "hvSnapshots": 69795,
+    "hvCurrent": 1,
+    "batterySpecs": 5
+  },
+  "findingCounts": {
+    "VALID": 0,
+    "SUSPECT": 116,
+    "INVALID": 1,
+    "LEGACY_UNVERIFIABLE": 0,
+    "PARTIAL_WRITE": 0,
+    "SEMANTICALLY_MISLABELED": 362,
+    "DUPLICATE": 0,
+    "UNSUPPORTED_PROFILE": 0
+  },
+  "findingCountTotal": 479,
+  "categorySummary": {
+    "rest_60m_6h_identical_ts": 3,
+    "rest_gt_13_2_features": 1,
+    "rest_gt_13_2_snapshot": 27,
+    "rest_near_trip_start": 75,
+    "recovery_5s_eq_30s": 4,
+    "crank_drop_negligible": 1,
+    "lv_behavior_as_soh_evidence": 362,
+    "published_without_battery_spec": 1,
+    "hv_published_during_calibration": 1,
+    "published_with_stale_lv_source": 4
+  },
+  "restSnapshotStats": {
+    "restGt132": 27,
+    "restInvalid": 0,
+    "restValid": 60,
+    "total": 87
+  },
+  "crankStats": {
+    "crankLogs": 134,
+    "crankWithDrop": 12,
+    "unreliable": 122
+  },
+  "sohSemanticEvidenceRows": 362,
+  "duplicateEvidence": 0,
+  "pm2Errors": {
+    "snapshotFail": 0,
+    "crankFail": 0
+  },
+  "distributions": {
+    "restVoltage": {
+      "min": 12.088,
+      "max": 14.756,
+      "median": 12.648
+    },
+    "crankDrop": {
+      "min": 0.04800000000000004,
+      "max": 0.04800000000000004,
+      "values": [
+        0.04800000000000004
+      ]
+    },
+    "publishedSoh": [
+      71,
+      92,
+      93,
+      89,
+      89
+    ]
+  },
+  "features": [
+    {
+      "vehicle": "veh-a60c0749",
+      "ice": true,
+      "publicationState": "STABLE",
+      "publishedSohPct": 71,
+      "rawSohPct": 62,
+      "qualifiedEventCount": 30,
+      "restObservationCount": 27,
+      "crankObservationCount": 3,
+      "vOff60m": 12.267,
+      "vOff6h": 12.267,
+      "crankDrop": null,
+      "rest60mCapturedAt": "2026-07-14T21:04:50.000Z",
+      "rest6hCapturedAt": "2026-07-14T21:04:50.000Z",
+      "crankAt": "2026-07-13T20:34:00.000Z",
+      "scoredAt": "2026-07-14T21:04:55.747Z",
+      "batteryType": "AGM"
+    },
+    {
+      "vehicle": "veh-c10351f8",
+      "ice": true,
+      "publicationState": "STABLE",
+      "publishedSohPct": 92,
+      "rawSohPct": 100,
+      "qualifiedEventCount": 106,
+      "restObservationCount": 98,
+      "crankObservationCount": 8,
+      "vOff60m": 14.428,
+      "vOff6h": null,
+      "crankDrop": null,
+      "rest60mCapturedAt": "2026-07-16T08:49:35.000Z",
+      "rest6hCapturedAt": null,
+      "crankAt": "2026-07-16T05:39:00.000Z",
+      "scoredAt": "2026-07-16T08:49:39.067Z",
+      "batteryType": "AGM"
+    },
+    {
+      "vehicle": "veh-c43c3b45",
+      "ice": true,
+      "publicationState": "STABLE",
+      "publishedSohPct": 93,
+      "rawSohPct": 49,
+      "qualifiedEventCount": 12,
+      "restObservationCount": 10,
+      "crankObservationCount": 2,
+      "vOff60m": 12.088,
+      "vOff6h": 12.088,
+      "crankDrop": null,
+      "rest60mCapturedAt": "2026-07-15T10:28:37.000Z",
+      "rest6hCapturedAt": "2026-07-15T10:28:37.000Z",
+      "crankAt": "2026-07-14T10:10:00.000Z",
+      "scoredAt": "2026-07-15T10:29:00.565Z",
+      "batteryType": "Lead-Acid"
+    },
+    {
+      "vehicle": "veh-8c850ff1",
+      "ice": true,
+      "publicationState": "STABLE",
+      "publishedSohPct": 89,
+      "rawSohPct": 86,
+      "qualifiedEventCount": 13,
+      "restObservationCount": 11,
+      "crankObservationCount": 2,
+      "vOff60m": 12.574,
+      "vOff6h": 12.574,
+      "crankDrop": null,
+      "rest60mCapturedAt": "2026-07-15T15:28:43.000Z",
+      "rest6hCapturedAt": "2026-07-15T15:28:43.000Z",
+      "crankAt": "2026-07-14T15:16:00.000Z",
+      "scoredAt": "2026-07-15T15:29:00.555Z",
+      "batteryType": null
+    },
+    {
+      "vehicle": "veh-19fedd4b",
+      "ice": true,
+      "publicationState": "STABLE",
+      "publishedSohPct": 89,
+      "rawSohPct": 97,
+      "qualifiedEventCount": 21,
+      "restObservationCount": 16,
+      "crankObservationCount": 5,
+      "vOff60m": 12.658,
+      "vOff6h": null,
+      "crankDrop": 0.04800000000000004,
+      "rest60mCapturedAt": "2026-07-15T19:44:06.000Z",
+      "rest6hCapturedAt": null,
+      "crankAt": "2026-07-15T15:12:37.083Z",
+      "scoredAt": "2026-07-15T19:44:10.972Z",
+      "batteryType": "Lead-Acid"
+    }
+  ],
+  "hvCurrent": [
+    {
+      "vehicle": "KS FH 660E",
+      "publicationState": "INITIAL_CALIBRATION",
+      "publishedSohPct": 85,
+      "validEstimateCount": 2
+    }
+  ],
+  "examples": [
+    {
+      "cls": "SUSPECT",
+      "category": "rest_60m_6h_identical_ts",
+      "vehicle": "veh-a60c0749",
+      "at": "2026-07-14T21:04:50.000Z",
+      "v60": 12.267,
+      "v6h": 12.267
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_features",
+      "vehicle": "veh-c10351f8",
+      "field": "vOff60m",
+      "value": 14.428
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_60m_6h_identical_ts",
+      "vehicle": "veh-c43c3b45",
+      "at": "2026-07-15T10:28:37.000Z",
+      "v60": 12.088,
+      "v6h": 12.088
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_60m_6h_identical_ts",
+      "vehicle": "veh-8c850ff1",
+      "at": "2026-07-15T15:28:43.000Z",
+      "v60": 12.574,
+      "v6h": 12.574
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-24T08:49:27.000Z",
+      "v": 14.705
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-25T05:46:22.000Z",
+      "v": 14.363
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-25T08:50:50.000Z",
+      "v": 14.356
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-25T17:32:24.000Z",
+      "v": 14.051
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-30T05:30:49.000Z",
+      "v": 14.454
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-30T09:01:09.000Z",
+      "v": 14.307
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-30T13:43:33.000Z",
+      "v": 14.282
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-03T07:54:31.000Z",
+      "v": 14.519
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-a60c0749",
+      "recordedAt": "2026-07-05T09:55:12.000Z",
+      "v": 14.742
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-05T10:26:37.000Z",
+      "v": 14.449
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-05T19:54:37.000Z",
+      "v": 13.441
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c43c3b45",
+      "recordedAt": "2026-07-06T00:04:33.000Z",
+      "v": 14.284
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-8c850ff1",
+      "recordedAt": "2026-07-06T18:11:39.000Z",
+      "v": 13.423
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-06T20:13:35.000Z",
+      "v": 14.421
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-19fedd4b",
+      "recordedAt": "2026-07-07T19:39:34.000Z",
+      "v": 14.066
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-08T05:27:20.000Z",
+      "v": 14.421
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-08T08:47:38.000Z",
+      "v": 14.468
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-19fedd4b",
+      "recordedAt": "2026-07-08T19:40:27.000Z",
+      "v": 14.123
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-8c850ff1",
+      "recordedAt": "2026-07-10T12:14:41.000Z",
+      "v": 14.173
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-11T05:37:48.000Z",
+      "v": 14.52
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c43c3b45",
+      "recordedAt": "2026-07-11T17:58:43.000Z",
+      "v": 13.838
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-a60c0749",
+      "recordedAt": "2026-07-13T20:35:21.000Z",
+      "v": 14.756
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-15T05:34:43.000Z",
+      "v": 14.443
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-15T08:48:50.000Z",
+      "v": 14.289
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-19fedd4b",
+      "recordedAt": "2026-07-15T14:12:56.000Z",
+      "v": 14.283
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-16T05:40:00.000Z",
+      "v": 14.354
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_gt_13_2_snapshot",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-07-16T08:49:35.000Z",
+      "v": 14.428
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-a60c0749",
+      "recordedAt": "2026-06-22T11:36:17.000Z",
+      "tripStart": "2026-06-22T11:33:29.780Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-a60c0749",
+      "recordedAt": "2026-06-22T20:33:11.000Z",
+      "tripStart": "2026-06-22T20:39:16.599Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-a60c0749",
+      "recordedAt": "2026-06-23T11:37:34.000Z",
+      "tripStart": "2026-06-23T11:33:16.030Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-24T05:43:58.000Z",
+      "tripStart": "2026-06-24T05:40:52.994Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-24T08:49:27.000Z",
+      "tripStart": "2026-06-24T08:48:00.000Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-24T20:33:09.000Z",
+      "tripStart": "2026-06-24T20:32:00.000Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-25T05:46:22.000Z",
+      "tripStart": "2026-06-25T05:45:00.000Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-25T08:50:50.000Z",
+      "tripStart": "2026-06-25T08:49:00.000Z"
+    },
+    {
+      "cls": "SUSPECT",
+      "category": "rest_near_trip_start",
+      "vehicle": "veh-c10351f8",
+      "recordedAt": "2026-06-25T17:32:24.000Z",
+      "tripStart": "2026-06-25T17:31:00.000Z"
+    }
+  ],
+  "evidenceByType": {
+    "HV|SOC_PERCENT|TELEMETRY_DERIVED": 4396,
+    "HV|CHARGING_POWER_KW|TELEMETRY_DERIVED": 4396,
+    "HV|CURRENT_ENERGY_KWH|TELEMETRY_DERIVED": 4396,
+    "LV|SOH_PERCENT|MODEL_DERIVED": 197,
+    "LV|SOH_PERCENT|TELEMETRY_DERIVED": 165,
+    "LV|VOLTAGE_V|TELEMETRY_DERIVED": 87,
+    "LV|RESTING_VOLTAGE_V|TELEMETRY_DERIVED": 87
+  }
+}

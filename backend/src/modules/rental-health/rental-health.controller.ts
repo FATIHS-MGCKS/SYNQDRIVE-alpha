@@ -1,11 +1,18 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { RentalHealthService } from './rental-health.service';
+import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleHealth } from './rental-health.types';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+
+class CreateTireRentalReviewOverrideDto {
+  reason!: string;
+  expiresAt!: string;
+  tireSetupId?: string;
+}
 
 /**
  * Rental Health V1 — read-only endpoints.
@@ -28,6 +35,7 @@ export class RentalHealthController {
   constructor(
     private readonly rentalHealth: RentalHealthService,
     private readonly prisma: PrismaService,
+    private readonly tireRentalReview: TireRentalHealthReviewService,
   ) {}
 
   @Get('vehicles/:vehicleId/rental-health')
@@ -99,6 +107,48 @@ export class RentalHealthController {
     }
 
     return { vehicles: results };
+  }
+
+  @Post('vehicles/:vehicleId/tire-rental-health/review-override')
+  @RequirePermission('fleet', 'write')
+  async createTireRentalReviewOverride(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: CreateTireRentalReviewOverrideDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Authenticated user required');
+    }
+    return this.tireRentalReview.createOverride({
+      organizationId: orgId,
+      vehicleId,
+      tireSetupId: body.tireSetupId,
+      reason: body.reason,
+      grantedByUserId: userId,
+      expiresAt: new Date(body.expiresAt),
+    });
+  }
+
+  @Delete('vehicles/:vehicleId/tire-rental-health/review-override/:overrideId')
+  @RequirePermission('fleet', 'write')
+  async revokeTireRentalReviewOverride(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Param('overrideId') overrideId: string,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Authenticated user required');
+    }
+    return this.tireRentalReview.revokeOverride(
+      orgId,
+      vehicleId,
+      overrideId,
+      userId,
+    );
   }
 }
 

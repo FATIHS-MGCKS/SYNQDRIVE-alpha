@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TaskSource, TaskType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ServiceOverdueTaskService } from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.service';
+import { BatteryTaskService } from '@modules/vehicle-intelligence/battery-health/battery-task.service';
 import { TaskAutomationOutboxEnqueueService } from '@modules/tasks/outbox/task-automation-outbox-enqueue.service';
 import { TaskAutomationOutboxExecutionContext } from '@modules/tasks/outbox/task-automation-outbox-execution.context';
 import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-meta.util';
@@ -63,6 +64,7 @@ export class InsightTaskBridgeService {
     private readonly tasks: TasksService,
     private readonly prisma: PrismaService,
     private readonly serviceOverdueTasks: ServiceOverdueTaskService,
+    private readonly batteryTasks: BatteryTaskService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
     private readonly ruleResolver: TaskAutomationRuleResolverService,
@@ -121,7 +123,6 @@ export class InsightTaskBridgeService {
 
       const vehicleId = c.entityIds[0];
       const dedupKey = c.dedupeKey;
-      seenKeys.push(dedupKey);
 
       const alert = await this.prisma.dashboardInsight.findFirst({
         where: { organizationId, dedupeKey: dedupKey, isActive: true },
@@ -137,6 +138,7 @@ export class InsightTaskBridgeService {
           const ctx = metrics.serviceOverdue;
           if (!ctx) continue;
 
+          seenKeys.push(dedupKey);
           await this.serviceOverdueTasks.materializeFromContext(organizationId, {
             vehicleId,
             dedupKey,
@@ -147,7 +149,15 @@ export class InsightTaskBridgeService {
             dueDate: c.timeContext?.dueDate ? new Date(c.timeContext.dueDate) : null,
             priority: mapInsightSeverityToTaskPriority(c.severity),
           });
+        } else if (c.type === InsightType.BATTERY_CRITICAL) {
+          const { dedupeKeys } = await this.batteryTasks.materializeFromInsightCandidate(
+            organizationId,
+            c,
+            alert?.id ?? null,
+          );
+          seenKeys.push(...dedupeKeys);
         } else {
+          seenKeys.push(dedupKey);
           const priority = mapInsightSeverityToTaskPriority(c.severity);
           const dueRaw = c.timeContext?.dueDate;
           const dueDate = dueRaw ? new Date(dueRaw) : null;
@@ -203,6 +213,18 @@ export class InsightTaskBridgeService {
           `upsertByDedup failed for ${dedupKey} (org ${organizationId}): ${sanitizeAutomationError(err)}`,
         );
       }
+    }
+
+    try {
+      const refCapacityKeys =
+        await this.batteryTasks.syncReferenceCapacityTasksForOrganization(organizationId);
+      seenKeys.push(...refCapacityKeys);
+    } catch (err: unknown) {
+      this.logger.warn(
+        `Battery reference-capacity task sync failed for org ${organizationId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
     }
 
     let closed = 0;

@@ -28,12 +28,12 @@ function formatHistoryDate(iso: string) {
 }
 
 export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  const page = useDocumentUploadPage({ orgId, t });
+  const page = useDocumentUploadPage({ orgId, locale, t });
 
   const glass = isDarkMode
     ? 'bg-neutral-900 border border-neutral-800 shadow-sm'
@@ -172,7 +172,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.vehicle')}</label>
                     <select value={page.selectedVehicleId} onChange={(e) => page.setSelectedVehicleId(e.target.value)} className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'surface-premium text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
                       {page.vehicles.length === 0 && <option value="">{t('docUpload.validation.noVehicle')}</option>}
-                      {page.vehicles.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      {page.vehicles.map((v) => <option key={v.id} value={v.id}>{v.name}{v.licensePlate ? ` · ${v.licensePlate}` : ''}</option>)}
                     </select>
                   </div>
                   <div className="min-w-0">
@@ -380,9 +380,23 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   </div>
                   <div className="min-w-0">
                     <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.assignedTo')}</label>
-                    <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words ${isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
-                      {page.vehicles.find((v) => v.id === page.selectedVehicleId)?.name || ''}
-                    </div>
+                    {page.flow === 'ready' && page.record?.allowedActions?.includes('confirm') ? (
+                      <select
+                        value={page.selectedVehicleId}
+                        onChange={(e) => void page.handleReassignVehicle(e.target.value)}
+                        className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-semibold border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                      >
+                        {page.vehicles.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}{v.licensePlate ? ` · ${v.licensePlate}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className={`px-3 py-2 rounded-lg text-xs font-semibold break-words ${isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+                        {page.vehicles.find((v) => v.id === page.selectedVehicleId)?.name || ''}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -433,17 +447,30 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                       <div key={field.key} className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 px-3 py-2.5 min-w-0 ${i > 0 ? (isDarkMode ? 'border-t border-neutral-800' : 'border-t border-gray-200/40') : ''}`}>
                         <span className={`sm:w-44 text-xs font-semibold shrink-0 min-w-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{field.label}</span>
                         {page.editingFields ? (
-                          <input
-                            value={field.value}
-                            onChange={(e) => {
-                              const updated = [...page.editedFields];
-                              updated[i] = { ...updated[i], value: e.target.value };
-                              page.setEditedFields(updated);
-                            }}
-                            className={`w-full min-w-0 sm:flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
-                          />
+                          field.fieldType === 'multiline' ? (
+                            <textarea
+                              value={field.value}
+                              rows={3}
+                              onChange={(e) => {
+                                const updated = [...page.editedFields];
+                                updated[i] = { ...updated[i], value: e.target.value };
+                                page.setEditedFields(updated);
+                              }}
+                              className={`w-full min-w-0 sm:flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                            />
+                          ) : (
+                            <input
+                              value={field.value}
+                              onChange={(e) => {
+                                const updated = [...page.editedFields];
+                                updated[i] = { ...updated[i], value: e.target.value };
+                                page.setEditedFields(updated);
+                              }}
+                              className={`w-full min-w-0 sm:flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                            />
+                          )
                         ) : (
-                          <span className={`w-full min-w-0 break-words text-xs font-semibold ${field.value ? (isDarkMode ? 'text-white' : 'text-gray-900') : (isDarkMode ? 'text-gray-600' : 'text-muted-foreground')}`}>{field.value || '—'}</span>
+                          <span className={`w-full min-w-0 break-words text-xs font-semibold whitespace-pre-wrap ${field.value ? (isDarkMode ? 'text-white' : 'text-gray-900') : (isDarkMode ? 'text-gray-600' : 'text-muted-foreground')}`}>{field.value || '—'}</span>
                         )}
                       </div>
                     ))}

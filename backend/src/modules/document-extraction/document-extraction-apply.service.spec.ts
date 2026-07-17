@@ -22,6 +22,7 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
   );
 
   it('creates BrakeEvidence with AI_UPLOAD after user-confirmed brake document apply', async () => {

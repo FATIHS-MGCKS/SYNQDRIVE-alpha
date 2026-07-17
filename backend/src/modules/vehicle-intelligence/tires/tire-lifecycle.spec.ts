@@ -162,13 +162,27 @@ function buildMocks() {
         organizationId: ORG_ID,
         fuelType: 'Gasoline',
         driveType: 'FWD',
+        mileageKm: 24000,
       }),
+      findFirst: jest.fn(),
     },
     vehicleLatestState: {
-      findUnique: jest.fn().mockResolvedValue({ odometerKm: 25000 }),
+      findUnique: jest.fn().mockResolvedValue({
+        odometerKm: 25000,
+        providerSource: 'DIMO',
+        providerFetchedAt: new Date(),
+        sourceTimestamp: new Date(),
+        lastSeenAt: new Date(),
+        source: 'dimo',
+      }),
     },
     tireEvent: {
       create: jest.fn().mockResolvedValue({ id: 'event-1' }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    vehicleTireSetupMountPeriod: {
+      create: jest.fn().mockResolvedValue({ id: 'period-1' }),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     vehicleTireTreadMeasurement: {
       create: jest.fn().mockResolvedValue({ id: 'meas-1' }),
@@ -176,16 +190,27 @@ function buildMocks() {
     tire: {
       update: jest.fn().mockResolvedValue({}),
     },
+    $transaction: jest.fn(async (arg: unknown) => {
+      if (typeof arg === 'function') {
+        return (arg as (tx: typeof prisma) => Promise<unknown>)(prisma);
+      }
+      return Promise.all(arg as Promise<unknown>[]);
+    }),
   } as any;
+
+  const tireHealthAlertService = {
+    resolveOpenAlertsForSetup: jest.fn().mockResolvedValue(0),
+  };
 
   const svc = new TireLifecycleService(
     prisma,
     wearModel as unknown as TireWearModelService,
     tireHealthService as unknown as TireHealthService,
+    tireHealthAlertService as never,
     tireIdentity as unknown as TireIdentityService,
   );
 
-  return { svc, prisma, wearModel, tireHealthService, tireIdentity };
+  return { svc, prisma, wearModel, tireHealthService, tireIdentity, tireHealthAlertService };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

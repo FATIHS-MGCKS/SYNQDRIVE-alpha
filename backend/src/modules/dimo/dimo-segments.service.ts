@@ -18,6 +18,8 @@ import {
   type DimoDetectionMechanism,
 } from './queries/trip-segments.query';
 import { buildEnergyEventSegmentsQuery } from './queries/energy-event-segments.query';
+import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-segments.client';
+import { mapRechargeSegmentToEnergyEvent } from './recharge-segments/dimo-recharge-segments.mapper';
 
 // ── V3 LTE_R1: native DIMO driving event record ────────────────────────────
 // Re-exported for downstream consumers. Historically this interface was
@@ -212,6 +214,8 @@ export interface HighFrequencyReading {
   tractionBatteryTemperatureC?: number | null;
 }
 
+import { normalizeDimoTirePressureKpa } from './dimo-tire-pressure.normalizer';
+
 // ── Tire pressure reading from 3-minute buckets ──
 export interface TirePressureReading {
   timestamp: string;
@@ -238,6 +242,7 @@ export class DimoSegmentsService {
   constructor(
     private readonly auth: DimoAuthService,
     private readonly telemetry: DimoTelemetryService,
+    private readonly rechargeSegmentsClient: DimoRechargeSegmentsClient,
   ) {}
 
   // V1 trip detection (fetchAndDetectTrips, detectTrips, finalizeTrip) REMOVED.
@@ -315,6 +320,18 @@ export class DimoSegmentsService {
 
     const collected: DimoEnergyEventSegment[] = [];
     for (const mechanism of mechanisms) {
+      if (mechanism === 'recharge') {
+        const result = await this.rechargeSegmentsClient.fetchForToken(
+          tokenId,
+          from,
+          to,
+        );
+        collected.push(
+          ...result.segments.map(mapRechargeSegmentToEnergyEvent),
+        );
+        continue;
+      }
+
       const segments = await this.fetchEnergyEventSegmentsWithJwt(
         jwt,
         tokenId,
@@ -752,19 +769,27 @@ export class DimoSegmentsService {
           timestamp: s.timestamp,
           frontLeft:
             typeof s.chassisAxleRow1WheelLeftTirePressure === 'number'
-              ? s.chassisAxleRow1WheelLeftTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow1WheelLeftTirePressure,
+                ).normalizedValue
               : null,
           frontRight:
             typeof s.chassisAxleRow1WheelRightTirePressure === 'number'
-              ? s.chassisAxleRow1WheelRightTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow1WheelRightTirePressure,
+                ).normalizedValue
               : null,
           rearLeft:
             typeof s.chassisAxleRow2WheelLeftTirePressure === 'number'
-              ? s.chassisAxleRow2WheelLeftTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow2WheelLeftTirePressure,
+                ).normalizedValue
               : null,
           rearRight:
             typeof s.chassisAxleRow2WheelRightTirePressure === 'number'
-              ? s.chassisAxleRow2WheelRightTirePressure
+              ? normalizeDimoTirePressureKpa(
+                  s.chassisAxleRow2WheelRightTirePressure,
+                ).normalizedValue
               : null,
         }))
         .sort(
@@ -1232,7 +1257,7 @@ export class DimoSegmentsService {
       this.logger.warn(
         `Battery crank window fetch failed for tokenId=${tokenId}: ${err.message}`,
       );
-      return [];
+      throw err;
     }
   }
 }

@@ -1,0 +1,421 @@
+{
+  "generatedAt": "2026-07-16T10:32:29.946Z",
+  "since": "2026-06-16T10:32:29.343Z",
+  "crankLogEntries": 134,
+  "uniqueCrankTrips": 134,
+  "tripCounts": {
+    "total": 338,
+    "ice": 234,
+    "bev": 104
+  },
+  "crankCoverage": {
+    "iceTripsWithCrankLog": 127,
+    "iceCrankRatePct": 54.3,
+    "bevTripsWithCrankLog": 0
+  },
+  "classCounts": {
+    "PROFILE_UNSUPPORTED": 104,
+    "NO_DATA": 223,
+    "RECOVERY_ONLY": 9,
+    "USABLE_START_PROXY": 2
+  },
+  "iceClassCounts": {
+    "NO_DATA": 223,
+    "RECOVERY_ONLY": 9,
+    "USABLE_START_PROXY": 2
+  },
+  "bevClassCounts": {
+    "PROFILE_UNSUPPORTED": 104
+  },
+  "crankDropStats": {
+    "n": 11,
+    "median": 0.01,
+    "p95": 0.37,
+    "min": 0,
+    "max": 0.91
+  },
+  "logDelayStats": {
+    "median": null,
+    "p95": null,
+    "max": null
+  },
+  "snapshotCadenceSample": {
+    "n": 40,
+    "medianPointsBefore": 0,
+    "medianIn5s": 0,
+    "medianIn15s": 0,
+    "medianIn30s": 0,
+    "medianTo180s": 4,
+    "medianGapSec": 28,
+    "p95GapSec": 37,
+    "maxGapSec": 168,
+    "medianRpmPoints": 0,
+    "hfRpmMedianGap": null,
+    "hfRpmP95Gap": null
+  },
+  "batteryFeatures": [
+    {
+      "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+      "label": "veh-a60c0749",
+      "crankTripId": "fa861c82-ff8b-4cf3-bbc1-0e603e4dc045",
+      "vPreCrank": null,
+      "crankDrop": null,
+      "vRecovery5s": 12.261,
+      "vRecovery30s": 12.261,
+      "crankObservationCount": 3
+    },
+    {
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "label": "veh-c10351f8",
+      "crankTripId": "146bcb3b-3066-473c-b31c-e4f3dae86ad9",
+      "vPreCrank": null,
+      "crankDrop": null,
+      "vRecovery5s": 12.554,
+      "vRecovery30s": 12.554,
+      "crankObservationCount": 8
+    },
+    {
+      "vehicleId": "c43c3b45-b911-498f-baf9-4376dd585588",
+      "label": "veh-c43c3b45",
+      "crankTripId": "89d97a79-eea1-4907-b8e9-a480aa5c5e77",
+      "vPreCrank": null,
+      "crankDrop": null,
+      "vRecovery5s": 12.508,
+      "vRecovery30s": 12.508,
+      "crankObservationCount": 2
+    },
+    {
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "label": "veh-8c850ff1",
+      "crankTripId": "f42fad61-5ef2-40af-8987-89bb8aa9f1e5",
+      "vPreCrank": null,
+      "crankDrop": null,
+      "vRecovery5s": 12.875,
+      "vRecovery30s": 12.875,
+      "crankObservationCount": 2
+    },
+    {
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "label": "veh-19fedd4b",
+      "crankTripId": "47a70ac0-2470-4e3d-9c86-22369acb1cd7",
+      "vPreCrank": 13.889,
+      "crankDrop": 0.04800000000000004,
+      "vRecovery5s": 13.874,
+      "vRecovery30s": 13.853,
+      "crankObservationCount": 5
+    }
+  ],
+  "duplicateCrankTrips": 0,
+  "examples": {
+    "exactEnough": [],
+    "usableProxy": [
+      {
+        "tripId": "60d55df5-320e-4ae8-8325-b0fbb63ea2ef",
+        "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+        "label": "veh-8c850ff1",
+        "ice": true,
+        "startTime": "2026-07-03T17:12:49.489Z",
+        "possibleStartAt": null,
+        "firstActivityAt": null,
+        "createdAt": "2026-07-03T17:16:19.137Z",
+        "startDetectionMode": "IGNITION_PRIMARY",
+        "distanceKm": 17.8,
+        "crank": {
+          "tripId": "60d55df5-320e-4ae8-8325-b0fbb63ea2ef",
+          "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+          "logAt": null,
+          "vPre": 13.38,
+          "crankDrop": 0.91
+        },
+        "logDelaySec": null,
+        "feat": {
+          "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+          "crankTripId": "f42fad61-5ef2-40af-8987-89bb8aa9f1e5",
+          "crankAt": "2026-07-14T15:16:00.000Z",
+          "vPreCrank": null,
+          "vMinCrank": null,
+          "crankDrop": null,
+          "vRecovery5s": 12.875,
+          "vRecovery30s": 12.875,
+          "crankObservationCount": 2
+        },
+        "isLatestCrank": false,
+        "classification": "USABLE_START_PROXY"
+      },
+      {
+        "tripId": "dfdf8246-2574-4e38-8fa4-acd8b213262e",
+        "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+        "label": "veh-8c850ff1",
+        "ice": true,
+        "startTime": "2026-07-10T18:15:40.560Z",
+        "possibleStartAt": null,
+        "firstActivityAt": null,
+        "createdAt": "2026-07-10T18:20:34.353Z",
+        "startDetectionMode": "IGNITION_PRIMARY",
+        "distanceKm": 0.2,
+        "crank": {
+          "tripId": "dfdf8246-2574-4e38-8fa4-acd8b213262e",
+          "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+          "logAt": null,
+          "vPre": 13.21,
+          "crankDrop": 0.37
+        },
+        "logDelaySec": null,
+        "feat": {
+          "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+          "crankTripId": "f42fad61-5ef2-40af-8987-89bb8aa9f1e5",
+          "crankAt": "2026-07-14T15:16:00.000Z",
+          "vPreCrank": null,
+          "vMinCrank": null,
+          "crankDrop": null,
+          "vRecovery5s": 12.875,
+          "vRecovery30s": 12.875,
+          "crankObservationCount": 2
+        },
+        "isLatestCrank": false,
+        "classification": "USABLE_START_PROXY"
+      }
+    ],
+    "noData": [
+      {
+        "tripId": "e0b2ab5f-3e69-450d-948d-f69d466f587e",
+        "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+        "label": "veh-a60c0749",
+        "ice": true,
+        "startTime": "2026-06-16T17:40:00.000Z",
+        "possibleStartAt": null,
+        "firstActivityAt": null,
+        "createdAt": "2026-06-22T08:15:31.924Z",
+        "startDetectionMode": "DIMO_changePointDetection_REPAIR",
+        "distanceKm": 0,
+        "crank": null,
+        "logDelaySec": null,
+        "feat": {
+          "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+          "crankTripId": "fa861c82-ff8b-4cf3-bbc1-0e603e4dc045",
+          "crankAt": "2026-07-13T20:34:00.000Z",
+          "vPreCrank": null,
+          "vMinCrank": null,
+          "crankDrop": null,
+          "vRecovery5s": 12.261,
+          "vRecovery30s": 12.261,
+          "crankObservationCount": 3
+        },
+        "isLatestCrank": false,
+        "classification": "NO_DATA"
+      },
+      {
+        "tripId": "a8c1bf96-e57e-4859-90a7-0cfd28fad177",
+        "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+        "label": "veh-c10351f8",
+        "ice": true,
+        "startTime": "2026-06-16T18:56:00.000Z",
+        "possibleStartAt": null,
+        "firstActivityAt": null,
+        "createdAt": "2026-06-22T08:15:38.225Z",
+        "startDetectionMode": "DIMO_changePointDetection_REPAIR",
+        "distanceKm": 0,
+        "crank": null,
+        "logDelaySec": null,
+        "feat": {
+          "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+          "crankTripId": "146bcb3b-3066-473c-b31c-e4f3dae86ad9",
+          "crankAt": "2026-07-16T05:39:00.000Z",
+          "vPreCrank": null,
+          "vMinCrank": 12.554,
+          "crankDrop": null,
+          "vRecovery5s": 12.554,
+          "vRecovery30s": 12.554,
+          "crankObservationCount": 8
+        },
+        "isLatestCrank": false,
+        "classification": "NO_DATA"
+      },
+      {
+        "tripId": "d6b8b432-2bdd-45f8-8984-8f6740336c1c",
+        "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+        "label": "veh-c10351f8",
+        "ice": true,
+        "startTime": "2026-06-17T05:35:00.000Z",
+        "possibleStartAt": null,
+        "firstActivityAt": null,
+        "createdAt": "2026-06-22T08:15:38.317Z",
+        "startDetectionMode": "DIMO_changePointDetection_REPAIR",
+        "distanceKm": 9.4,
+        "crank": null,
+        "logDelaySec": null,
+        "feat": {
+          "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+          "crankTripId": "146bcb3b-3066-473c-b31c-e4f3dae86ad9",
+          "crankAt": "2026-07-16T05:39:00.000Z",
+          "vPreCrank": null,
+          "vMinCrank": 12.554,
+          "crankDrop": null,
+          "vRecovery5s": 12.554,
+          "vRecovery30s": 12.554,
+          "crankObservationCount": 8
+        },
+        "isLatestCrank": false,
+        "classification": "NO_DATA"
+      },
+      {
+        "tripId": "29b4ae59-42c8-4598-a3e6-6cbfd1ae3625",
+        "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+        "label": "veh-c10351f8",
+        "ice": true,
+        "startTime": "2026-06-17T08:49:00.000Z",
+        "possibleStartAt": null,
+        "firstActivityAt": null,
+        "createdAt": "2026-06-22T08:15:38.358Z",
+        "startDetectionMode": "DIMO_changePointDetection_REPAIR",
+        "distanceKm": 9,
+        "crank": null,
+        "logDelaySec": null,
+        "feat": {
+          "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+          "crankTripId": "146bcb3b-3066-473c-b31c-e4f3dae86ad9",
+          "crankAt": "2026-07-16T05:39:00.000Z",
+          "vPreCrank": null,
+          "vMinCrank": 12.554,
+          "crankDrop": null,
+          "vRecovery5s": 12.554,
+          "vRecovery30s": 12.554,
+          "crankObservationCount": 8
+        },
+        "isLatestCrank": false,
+        "classification": "NO_DATA"
+      },
+      {
+        "tripId": "7041e597-4800-40f6-88e4-94bb7e43e3cd",
+        "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+        "label": "veh-c10351f8",
+        "ice": true,
+        "startTime": "2026-06-17T19:43:00.000Z",
+        "possibleStartAt": null,
+        "firstActivityAt": null,
+        "createdAt": "2026-06-22T08:15:38.392Z",
+        "startDetectionMode": "DIMO_changePointDetection_REPAIR",
+        "distanceKm": 0,
+        "crank": null,
+        "logDelaySec": null,
+        "feat": {
+          "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+          "crankTripId": "146bcb3b-3066-473c-b31c-e4f3dae86ad9",
+          "crankAt": "2026-07-16T05:39:00.000Z",
+          "vPreCrank": null,
+          "vMinCrank": 12.554,
+          "crankDrop": null,
+          "vRecovery5s": 12.554,
+          "vRecovery30s": 12.554,
+          "crankObservationCount": 8
+        },
+        "isLatestCrank": false,
+        "classification": "NO_DATA"
+      }
+    ],
+    "highDrop": []
+  },
+  "chSample": [
+    {
+      "tripId": "b0df0bff-1614-40be-bf4a-972033b9aab4",
+      "snapshotPoints": 2,
+      "rpmPoints": 0,
+      "medianGapSec": 29,
+      "p95GapSec": 29,
+      "maxGapSec": 29,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "e977bd7f-2e20-4884-9eb2-0910d72295c6",
+      "snapshotPoints": 5,
+      "rpmPoints": 0,
+      "medianGapSec": 30,
+      "p95GapSec": 31,
+      "maxGapSec": 36,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "6a0cb85a-cf37-49a4-b037-72429857bd5a",
+      "snapshotPoints": 8,
+      "rpmPoints": 0,
+      "medianGapSec": 30,
+      "p95GapSec": 34,
+      "maxGapSec": 37,
+      "crankDrop": 0.01,
+      "vPre": 14.44
+    },
+    {
+      "tripId": "465992db-b37f-42b1-a015-75bcc236f3f9",
+      "snapshotPoints": 10,
+      "rpmPoints": 0,
+      "medianGapSec": 0,
+      "p95GapSec": 17,
+      "maxGapSec": 30,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "2dedf09e-bcad-4b8b-85ef-7325e25f7946",
+      "snapshotPoints": 5,
+      "rpmPoints": 0,
+      "medianGapSec": 30,
+      "p95GapSec": 33,
+      "maxGapSec": 40,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "905272c1-2473-42ab-8c77-3bb7d25a7891",
+      "snapshotPoints": 3,
+      "rpmPoints": 0,
+      "medianGapSec": 20,
+      "p95GapSec": 20,
+      "maxGapSec": 30,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "98ae10f6-973e-418e-9432-3d7ee806813f",
+      "snapshotPoints": 6,
+      "rpmPoints": 0,
+      "medianGapSec": 30,
+      "p95GapSec": 30,
+      "maxGapSec": 32,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "3b0a6500-41fe-4275-bca0-a3b7fd98d320",
+      "snapshotPoints": 5,
+      "rpmPoints": 0,
+      "medianGapSec": 28,
+      "p95GapSec": 32,
+      "maxGapSec": 37,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "3e7ac73e-ed7a-4865-93f8-bd84a4ee816e",
+      "snapshotPoints": 3,
+      "rpmPoints": 0,
+      "medianGapSec": 21,
+      "p95GapSec": 21,
+      "maxGapSec": 38,
+      "crankDrop": null,
+      "vPre": null
+    },
+    {
+      "tripId": "60d55df5-320e-4ae8-8325-b0fbb63ea2ef",
+      "snapshotPoints": 7,
+      "rpmPoints": 0,
+      "medianGapSec": 29,
+      "p95GapSec": 32,
+      "maxGapSec": 33,
+      "crankDrop": 0.91,
+      "vPre": 13.38
+    }
+  ],
+  "hfLvVoltageSignals30d": []
+}

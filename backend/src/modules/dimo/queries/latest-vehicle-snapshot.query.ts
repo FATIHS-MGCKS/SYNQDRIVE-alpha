@@ -26,6 +26,7 @@ export function buildLatestSnapshotQuery(tokenId: number): string {
         powertrainTractionBatteryChargingIsCharging { timestamp value }
         powertrainTractionBatteryChargingIsChargingCableConnected { timestamp value }
         powertrainTractionBatteryChargingPower { timestamp value }
+        powertrainTractionBatteryChargingChargeLimit { timestamp value }
         powertrainTractionBatteryChargingAddedEnergy { timestamp value }
         powertrainTractionBatteryRange { timestamp value }
         powertrainTractionBatteryGrossCapacity { timestamp value }
@@ -36,6 +37,7 @@ export function buildLatestSnapshotQuery(tokenId: number): string {
         chassisAxleRow1WheelRightTirePressure { timestamp value }
         chassisAxleRow2WheelLeftTirePressure { timestamp value }
         chassisAxleRow2WheelRightTirePressure { timestamp value }
+        chassisTireSystemIsWarningOn { timestamp value }
         isIgnitionOn { timestamp value }
         obdIsPluggedIn { timestamp value }
         connectivityCellularIsJammingDetected { timestamp value }

@@ -1,0 +1,31 @@
+testCaseId,testCaseName,unit,integration,database,historicalReplay,multiTenant,idempotency,concurrency,frontend,e2e,dimoContract,hmContract,regression,status,testFile
+TC01,four_real_measurements,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-lifecycle.spec.ts
+TC02,partial_wheel_measurement,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC03,no_measurement,partial,no,no,no,no,no,no,partial,no,no,no,no,PARTIAL,tire-critical.detector.spec.ts
+TC04,8mm_default_setup,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC05,ai_spec_wrong,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC06,ai_spec_confirmed,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-health.spec.ts
+TC07,staggered_setup,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-lifecycle.spec.ts
+TC08,season_summer_winter_allseason,yes,no,no,no,no,no,no,no,no,no,no,no,COVERED,tire-status.spec.ts
+TC09,ev_and_ice_powertrain,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-health.spec.ts
+TC10,front_rear_different_wear,yes,no,no,no,no,no,no,no,no,no,no,no,COVERED,tire-health.spec.ts
+TC11,partial_replacement,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-lifecycle.spec.ts
+TC12,rotation,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-lifecycle.spec.ts
+TC13,stored_set_reactivation,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC14,odometer_rollback,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC15,trip_double_apply,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC16,late_trip_enrich,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC17,recalculation_duplicate,no,no,no,no,no,no,partial,no,no,no,no,no,PARTIAL,audit script phase3 only
+TC18,kpa_bar_unit_mismatch,partial,no,no,no,no,no,no,no,no,partial,partial,no,PARTIAL,tire-health.spec.ts + audit-tire-health-dimo-signals.ts
+TC19,pressure_stale_gating,yes,no,no,no,no,no,no,no,no,no,no,no,COVERED,tire-health.spec.ts
+TC20,dimo_hm_conflict,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC21,tpms_without_numeric_pressure,no,no,no,no,no,no,no,no,no,partial,partial,no,PARTIAL,high-mobility-mqtt-payload.util.spec.ts
+TC22,estimated_critical_status,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-critical.detector.spec.ts
+TC23,rental_blocking,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,rental-health.service.spec.ts stubs tires
+TC24,measurement_correction,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC25,data_leakage_regression,no,no,no,partial,no,no,no,no,no,no,no,no,PARTIAL,audit-tire-health-backtest.ts
+TC26,confidence_calibration,partial,no,no,no,no,no,no,no,no,no,no,no,PARTIAL,tire-status.spec.ts
+TC27,alert_deduplication,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC28,multi_tenant_isolation,no,no,no,no,no,no,no,no,no,no,no,no,MISSING,
+TC29,historical_as_of_backtest,no,no,no,yes,no,no,no,no,no,no,no,no,PARTIAL,audit-tire-health-backtest.ts
+TC30,multi_worker_recalc,no,no,no,no,no,partial,partial,no,no,no,no,no,PARTIAL,scheduler code review only

@@ -1,5 +1,6 @@
 import { RentalHealthService } from './rental-health.service';
 import { computeOverallState } from './rental-health.types';
+import { BATTERY_V2_READINESS_ENABLED_ENV } from '@config/battery-health-v2.config';
 import { normalizeDtcSeverityBand } from '../vehicle-intelligence/dtc/dtc-severity.util';
 
 describe('RentalHealthService (unit)', () => {
@@ -17,6 +18,11 @@ describe('RentalHealthService (unit)', () => {
     evaluateCompliance: jest.fn(),
     toRentalModuleHealth: jest.fn(),
   };
+  const tireRentalReview = {
+    findActiveOverride: jest.fn().mockResolvedValue(null),
+    createOverride: jest.fn(),
+    revokeOverride: jest.fn(),
+  };
 
   const svc = new RentalHealthService(
     prisma as any,
@@ -26,25 +32,46 @@ describe('RentalHealthService (unit)', () => {
     dtc as any,
     hm as any,
     serviceCompliance as any,
+    tireRentalReview as any,
   );
 
-  const evaluateBattery = (summary: any, hmAi: any = null) =>
-    (svc as any).evaluateBattery(summary, hmAi);
+  const evaluateBattery = (summary: any, hmAi: any = null, dtcSummary: any = null) =>
+    (svc as any).evaluateBattery(summary, hmAi, dtcSummary);
   const evaluateErrorCodes = (summary: any) =>
     (svc as any).evaluateErrorCodes(summary);
   const evaluateBrakes = (summary: any) => (svc as any).evaluateBrakes(summary);
+  const evaluateTires = (summary: any, override?: any) =>
+    (svc as any).evaluateTires(summary, override ?? null);
 
   const batterySummary = (overrides: {
     healthStatus?: string;
     restingValueV?: number | null;
     restingStatus?: string;
     measurementContext?: string;
+    legacyPublicationUnsafe?: boolean;
   }) => ({
     generatedAt: '2026-06-24T12:00:00.000Z',
     lv: {
       healthStatus: overrides.healthStatus ?? 'GOOD',
       freshness: { observedAt: '2026-06-24T11:00:00.000Z' },
-      estimatedHealth: { displayMode: 'BARS', status: 'GOOD' },
+      estimatedHealth: {
+        displayMode: 'BARS',
+        status: 'GOOD',
+        decisionCapable: overrides.legacyPublicationUnsafe ? false : true,
+      },
+      legacyPublicationSafety: overrides.legacyPublicationUnsafe
+        ? {
+            decisionCapable: false,
+            displayMode: 'LEGACY_UNVERIFIED',
+            diagnosticLabelDe: 'Legacy / unverifiziert (nicht entscheidungsfähig)',
+            reasons: ['REST_LIKELY_CONTAMINATED'],
+          }
+        : {
+            decisionCapable: true,
+            displayMode: 'DECISION_CAPABLE',
+            diagnosticLabelDe: 'Geschätzter 12V-Zustand (entscheidungsfähig)',
+            reasons: [],
+          },
       restingVoltage: {
         valueV: overrides.restingValueV === undefined ? 12.84 : overrides.restingValueV,
         status: overrides.restingStatus ?? 'GOOD',
@@ -61,6 +88,7 @@ describe('RentalHealthService (unit)', () => {
     complianceEval: any,
     dtcSummary: any,
     brakeSummary: any,
+    batterySummary: any = null,
   ) =>
     (svc as any).collectBlockingReasons(
       modules,
@@ -69,9 +97,13 @@ describe('RentalHealthService (unit)', () => {
       complianceEval,
       dtcSummary,
       brakeSummary,
+      batterySummary,
     );
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env[BATTERY_V2_READINESS_ENABLED_ENV];
+  });
 
   it('unknown module prevents overall good', () => {
     expect(
@@ -127,6 +159,47 @@ describe('RentalHealthService (unit)', () => {
     expect(res.state).toBe('warning');
     expect(res.reason).toMatch(/Geschätzte Batteriegesundheit/i);
     expect(res.reason).not.toMatch(/Ruhespannung 12\.84/);
+  });
+
+  it('unsafe legacy CRITICAL aggregate does not escalate rental battery alone', () => {
+    const res = evaluateBattery(
+      batterySummary({
+        healthStatus: 'CRITICAL',
+        restingValueV: 12.84,
+        restingStatus: 'GOOD',
+        legacyPublicationUnsafe: true,
+      }),
+    );
+    expect(res.state).toBe('unknown');
+    expect(res.evidence_type).toBe('legacy_unverified');
+    expect(res.reason).not.toMatch(/kritisch/i);
+  });
+
+  it('unsafe legacy does not suppress genuine resting-voltage WARNING', () => {
+    const res = evaluateBattery(
+      batterySummary({
+        healthStatus: 'WARNING',
+        restingValueV: 12.05,
+        restingStatus: 'WARNING',
+        legacyPublicationUnsafe: true,
+      }),
+    );
+    expect(res.state).toBe('warning');
+    expect(res.reason).toMatch(/Ruhespannung 12\.05 V/);
+  });
+
+  it('HM warning light still escalates when legacy publication is unsafe', () => {
+    const res = evaluateBattery(
+      batterySummary({
+        healthStatus: 'CRITICAL',
+        restingValueV: 12.84,
+        restingStatus: 'GOOD',
+        legacyPublicationUnsafe: true,
+      }),
+      { dashboardLights: { battery_low_warning: 'on' } },
+    );
+    expect(res.state).toBe('warning');
+    expect(res.reason).toMatch(/Warnleuchte/i);
   });
 
   it('critical DTC with severity critical (not only high display) => critical module', () => {
@@ -283,6 +356,75 @@ describe('RentalHealthService (unit)', () => {
     expect(reasons).toHaveLength(0);
   });
 
+  it('battery readiness blocks on warning light when flag enabled', () => {
+    process.env[BATTERY_V2_READINESS_ENABLED_ENV] = 'true';
+    const summary = batterySummary({
+      healthStatus: 'GOOD',
+      restingValueV: 12.84,
+      restingStatus: 'GOOD',
+    });
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+      battery: { state: 'warning', reason: 'Batterie-Warnleuchte aktiv' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      { dashboardLights: { battery_low_warning: 'on' } },
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+      summary,
+    );
+    expect(reasons.some((r: string) => /Batterie:/i.test(r))).toBe(true);
+  });
+
+  it('battery readiness does not block shadow-only signals when flag enabled', () => {
+    process.env[BATTERY_V2_READINESS_ENABLED_ENV] = 'true';
+    const summary = {
+      ...batterySummary({
+        healthStatus: 'CRITICAL',
+        restingValueV: 11.0,
+        restingStatus: 'CRITICAL',
+        legacyPublicationUnsafe: true,
+      }),
+      canonical: {
+        lv: {
+          canonical: {
+            primaryTruth: { source: 'V2_SHADOW_DIAGNOSTIC', decisionCapable: false },
+          },
+          assessment: { assessmentMode: 'SHADOW', assessmentTrack: 'TELEMETRY' },
+          latestQualifiedRest: { quality: 'SHADOW' },
+        },
+        liveState: { lv: { values: { voltageV: null } } },
+        hv: {
+          providerSoh: { percent: null, decisionFresh: false },
+          capacityAssessment: { shadowGatePassed: true },
+        },
+      },
+    };
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+      battery: { state: 'unknown', reason: 'Keine belastbare Batteriebewertung verfügbar' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+      summary,
+    );
+    expect(reasons.some((r: string) => /Batterie:/i.test(r))).toBe(false);
+  });
+
   it('complaints load failure => unknown not good', () => {
     const res = evaluateComplaints([], false);
     expect(res.state).toBe('unknown');
@@ -385,5 +527,157 @@ describe('RentalHealthService (unit)', () => {
     expect(gate.healthGateStatus).toBe('UNAVAILABLE');
     expect(gate.blocked).toBe(true);
     expect(gate.manualReviewRequired).toBe(true);
+  });
+
+  it('estimated critical tire does not add rental blocking reason', () => {
+    const tireModule = evaluateTires({
+      overallStatus: 'CRITICAL',
+      displayMode: 'ESTIMATED',
+      confidence: 'HIGH',
+      lowestTreadMm: 1.4,
+      isDefaultAssumption: false,
+      measurementAgeDays: null,
+      lastMeasurementAt: null,
+      latestMeasurementAt: null,
+      alerts: [],
+      activeSetupId: 'setup-1',
+      recommendedPressure: {
+        pressureSpecSource: 'UNKNOWN',
+        pressureSpecConfidence: 0,
+        wearFactorEligible: false,
+        pressureSpecMissingLabel: 'Solldruck nicht hinterlegt',
+      },
+      pressureSpecMissingLabel: 'Solldruck nicht hinterlegt',
+      pressureContext: {
+        sourceType: 'NONE',
+        overallStatus: 'UNKNOWN',
+        overallFreshness: 'no_data',
+        tpmsWarning: null,
+        wheels: {
+          frontLeft: { statusIssue: false, sourceTimestamp: null },
+          frontRight: { statusIssue: false, sourceTimestamp: null },
+          rearLeft: { statusIssue: false, sourceTimestamp: null },
+          rearRight: { statusIssue: false, sourceTimestamp: null },
+        },
+        coverage: { periodEnd: null },
+      },
+    });
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: tireModule,
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+    );
+    expect(reasons.some((r: string) => /Reifen:/i.test(r))).toBe(false);
+    expect(tireModule.evidence_type).toBe('estimated');
+    expect(tireModule.tire_read_model.reviewRequirement).toBe('REVIEW_REQUIRED');
+  });
+
+  it('measured below legal minimum tire blocks rental', () => {
+    const tireModule = evaluateTires({
+      overallStatus: 'CRITICAL',
+      displayMode: 'MEASURED',
+      confidence: 'HIGH',
+      lowestTreadMm: 1.5,
+      isDefaultAssumption: false,
+      measurementAgeDays: 3,
+      lastMeasurementAt: '2026-07-10T10:00:00.000Z',
+      latestMeasurementAt: '2026-07-10T10:00:00.000Z',
+      alerts: [],
+      activeSetupId: 'setup-1',
+      recommendedPressure: {
+        pressureSpecSource: 'DOOR_PLACARD',
+        pressureSpecConfidence: 98,
+        wearFactorEligible: true,
+      },
+      pressureSpecMissingLabel: null,
+      pressureContext: {
+        sourceType: 'DIMO',
+        overallStatus: 'OK',
+        overallFreshness: 'fresh',
+        tpmsWarning: null,
+        wheels: {
+          frontLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          frontRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+        },
+        coverage: { periodEnd: '2026-07-16T13:00:00.000Z' },
+      },
+    });
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: tireModule,
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+    );
+    expect(reasons.some((r: string) => /Reifen:/i.test(r))).toBe(true);
+    expect(tireModule.evidence_type).toBe('measured');
+  });
+
+  it('TPMS warning blocks rental with dimo source label', () => {
+    const tireModule = evaluateTires({
+      overallStatus: 'GOOD',
+      displayMode: 'ESTIMATED',
+      confidence: 'MEDIUM',
+      lowestTreadMm: 5,
+      isDefaultAssumption: false,
+      measurementAgeDays: null,
+      lastMeasurementAt: null,
+      latestMeasurementAt: null,
+      alerts: [],
+      activeSetupId: 'setup-1',
+      recommendedPressure: {
+        pressureSpecSource: 'UNKNOWN',
+        pressureSpecConfidence: 0,
+        wearFactorEligible: false,
+      },
+      pressureSpecMissingLabel: 'Solldruck nicht hinterlegt',
+      pressureContext: {
+        sourceType: 'DIMO',
+        overallStatus: 'ISSUE',
+        overallFreshness: 'fresh',
+        tpmsWarning: true,
+        wheels: {
+          frontLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          frontRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+        },
+        coverage: { periodEnd: '2026-07-16T13:00:00.000Z' },
+      },
+    });
+    expect(tireModule.source).toBe('dimo');
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: tireModule,
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+    );
+    expect(reasons.some((r: string) => /TPMS/i.test(r))).toBe(true);
   });
 });

@@ -7,6 +7,12 @@ import { ServiceEventsService } from '../service-events/service-events.service';
 import { TripsService } from '../trips/trips.service';
 import { DrivingEventsService } from '../driving-events/driving-events.service';
 import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
+import {
+  mapHealthSummaryBatteryModule,
+  mapHealthSummaryBatteryNarrative,
+  type HealthSummaryBatteryModule,
+} from '../battery-health/canonical-battery';
+import { fetchCanonicalBatterySummarySafe } from '../battery-health/canonical-battery/canonical-battery-summary-fetch.util';
 import { ServiceComplianceService } from '../service-compliance/service-compliance.service';
 import { FULL_SERVICE_BASELINE_EVENT_TYPES } from '../service-events/service-events.constants';
 import {
@@ -26,7 +32,7 @@ export interface HealthSummaryAgentInput {
     fuelType?: string | null;
   };
   healthModules: {
-    battery: { status: string; sohPercent: number | null; voltageV: number | null; hasData: boolean } | null;
+    battery: HealthSummaryBatteryModule | null;
     errorCodes: { activeCount: number; totalRecent: number; lastCheckedAt: string | null; hasData: boolean } | null;
     brakes: {
       stateClass: string | null;
@@ -82,7 +88,7 @@ export interface HealthSummaryAgentInput {
   futureInputs: {
     driverFeedbackSummary: string | null;
   };
-  dataQuality: { available: string[]; missing: string[] };
+  dataQuality: { available: string[]; missing: string[]; transientErrors?: string[] };
 }
 
 /** Agent response contract (UI-ready). */
@@ -137,10 +143,20 @@ export class HealthSummaryService {
     const now = new Date();
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
+    const batteryFetch = await fetchCanonicalBatterySummarySafe(
+      this.canonicalBatteryHealthService,
+      vehicleId,
+      'health-summary.buildAgentInput',
+    );
+    const batterySummary = batteryFetch.ok ? batteryFetch.summary : null;
+    const transientErrors: string[] =
+      batteryFetch.ok === false && batteryFetch.reason === 'transient_error'
+        ? ['battery']
+        : [];
+
     const [
       dtcStats,
       dtcList,
-      batterySummary,
       brakeSummary,
       tireSummary,
       tireDataQuality,
@@ -151,7 +167,6 @@ export class HealthSummaryService {
     ] = await Promise.all([
       this.dtcService.getStats(vehicleId).catch(() => null),
       this.dtcService.findByVehicle(vehicleId).then((r) => (Array.isArray(r) ? r.slice(0, 50) : [])).catch(() => []),
-      this.canonicalBatteryHealthService.getSummary(vehicleId).catch(() => null),
       this.brakeHealthService.getSummary(vehicleId).catch(() => null),
       // Canonical tire truth — single source for tread status/percent and data-quality flags.
       this.tireHealthService.getSummary(vehicleId).catch(() => null),
@@ -237,8 +252,13 @@ export class HealthSummaryService {
 
     const available: string[] = [];
     const missing: string[] = [];
-    if (batterySummary?.lv?.status !== 'estimate_unavailable') available.push('battery');
-    else missing.push('battery');
+    if (!batteryFetch.ok && batteryFetch.reason === 'transient_error') {
+      transientErrors.push('battery');
+    } else if (batterySummary?.lv?.status !== 'estimate_unavailable') {
+      available.push('battery');
+    } else {
+      missing.push('battery');
+    }
     if (dtcStats != null) available.push('errorCodes'); else missing.push('errorCodes');
     if (brakeSummary != null) available.push('brakes'); else missing.push('brakes');
     if (tireHasSetups) available.push('tires'); else missing.push('tires');
@@ -258,21 +278,7 @@ export class HealthSummaryService {
         fuelType: vehicle.fuelType ?? undefined,
       },
       healthModules: {
-        battery: batterySummary
-          ? {
-              status:
-                batterySummary.lv?.condition === 'good'
-                  ? 'good'
-                  : batterySummary.lv?.condition === 'watch'
-                    ? 'fair'
-                    : batterySummary.lv?.condition === 'attention'
-                      ? 'poor'
-                      : 'unknown',
-              sohPercent: batterySummary.lv?.healthPercent ?? null,
-              voltageV: batterySummary.lv?.telemetry?.voltageV ?? null,
-              hasData: true,
-            }
-          : { status: 'unknown', sohPercent: null, voltageV: null, hasData: false },
+        battery: mapHealthSummaryBatteryModule(batterySummary),
         errorCodes: dtcStats != null
           ? {
               activeCount: (dtcStats as any).active ?? 0,
@@ -365,7 +371,11 @@ export class HealthSummaryService {
         roadDistribution: cityPct != null || highwayPct != null || countryPct != null ? { cityPercent: cityPct, highwayPercent: highwayPct, countryRoadPercent: countryPct } : null,
       },
       futureInputs: { driverFeedbackSummary: null },
-      dataQuality: { available, missing },
+      dataQuality: {
+        available,
+        missing,
+        ...(transientErrors.length > 0 ? { transientErrors } : {}),
+      },
     };
   }
 
@@ -379,14 +389,29 @@ export class HealthSummaryService {
     const preventive: string[] = [];
     const maintenanceFocus: Array<{ area: string; priority: 'low' | 'medium' | 'high'; reason: string }> = [];
 
-    if (m.battery?.hasData && (m.battery.sohPercent ?? 0) >= 75) {
-      positives.push(`Estimated 12V battery health is within normal range.`);
-    } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 50) {
-      watchpoints.push('Geschätzte 12V-Batteriegesundheit kritisch — Startschwierigkeiten wahrscheinlich, Austausch empfohlen.');
-      maintenanceFocus.push({ area: 'battery', priority: 'high', reason: 'Low estimated battery health' });
-    } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 75) {
-      watchpoints.push('Geschätzte 12V-Batteriegesundheit niedrig — Startschwierigkeiten möglich, beobachten.');
-      maintenanceFocus.push({ area: 'battery', priority: 'medium', reason: 'Declining estimated battery health' });
+    const batteryFallback: HealthSummaryBatteryModule = {
+      status: 'unknown',
+      sohPercent: null,
+      sohPercentSemantic: null,
+      estimatedLvHealthScore: null,
+      estimatedLvHealthScoreSemantic: null,
+      voltageV: null,
+      hasData: false,
+      aggregateHealthStatus: null,
+      hvHealthStatus: null,
+      hvSohPercent: null,
+    };
+    const batteryNarrative = mapHealthSummaryBatteryNarrative(m.battery ?? batteryFallback);
+    if (batteryNarrative.positive) positives.push(batteryNarrative.positive);
+    if (batteryNarrative.watchpoint) {
+      watchpoints.push(batteryNarrative.watchpoint);
+      if (batteryNarrative.maintenancePriority && batteryNarrative.maintenanceReason) {
+        maintenanceFocus.push({
+          area: 'battery',
+          priority: batteryNarrative.maintenancePriority,
+          reason: batteryNarrative.maintenanceReason,
+        });
+      }
     }
 
     if (m.errorCodes?.hasData && m.errorCodes.activeCount === 0) {
@@ -485,7 +510,11 @@ export class HealthSummaryService {
     if (m.tires?.hasData && (m.tires.treadPercentEstimate ?? 100) < 60 && (m.tires.treadPercentEstimate ?? 0) >= 30) {
       futureItems.push('Monitor tire tread; plan replacement before it falls below 25%.');
     }
-    if (m.battery?.hasData && (m.battery.sohPercent ?? 100) < 75 && (m.battery.sohPercent ?? 0) >= 50) {
+    if (
+      m.battery?.hasData &&
+      (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 100) < 75 &&
+      (m.battery.estimatedLvHealthScore ?? m.battery.sohPercent ?? 0) >= 50
+    ) {
       futureItems.push('Estimated 12V battery health is declining; recheck in a few months.');
     }
 

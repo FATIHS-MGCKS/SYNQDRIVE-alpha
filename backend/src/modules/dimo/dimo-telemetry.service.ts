@@ -1,8 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
+import { buildAvailableSignalsQuery } from './queries/available-signals.query';
 import { buildLatestSnapshotQuery } from './queries/latest-vehicle-snapshot.query';
 import { buildLastSeenLocationQuery } from './queries/last-seen-location.query';
+import {
+  buildBatteryCapabilityPreflightQuery,
+  buildRechargeSegmentsProbeQuery,
+} from './queries/battery-capability-preflight.query';
+
+export interface BatteryCapabilityPreflightSnapshot {
+  availableSignals: string[] | null;
+  signalsLatest: Record<string, unknown> | null;
+  queryError?: string | null;
+}
+
+export interface RechargeSegmentProbeRow {
+  start?: { timestamp?: string | null } | null;
+  end?: { timestamp?: string | null } | null;
+}
+
+export interface RechargeSegmentsProbeSnapshot {
+  segments: RechargeSegmentProbeRow[];
+  queryError?: string | null;
+}
 
 export interface VehicleSummary {
   odometerKm: number | null;
@@ -43,6 +64,93 @@ export class DimoTelemetryService {
     const query = buildLatestSnapshotQuery(tokenId);
     const result = await this.queryGraphQL(vehicleJwt, query);
     return result?.data ?? result;
+  }
+
+  async fetchAvailableSignals(
+    vehicleJwt: string,
+    tokenId: number,
+  ): Promise<string[]> {
+    const query = buildAvailableSignalsQuery(tokenId);
+    const result = await this.queryGraphQL(vehicleJwt, query);
+    const list = result?.data?.availableSignals;
+    return Array.isArray(list)
+      ? list.filter((entry): entry is string => typeof entry === 'string')
+      : [];
+  }
+
+  async fetchBatteryCapabilityPreflightSnapshot(
+    vehicleJwt: string,
+    tokenId: number,
+  ): Promise<BatteryCapabilityPreflightSnapshot> {
+    const query = buildBatteryCapabilityPreflightQuery(tokenId);
+    try {
+      const result = await this.queryGraphQL(vehicleJwt, query);
+      const available = result?.data?.availableSignals;
+      const availableSignals = Array.isArray(available)
+        ? available.filter((entry): entry is string => typeof entry === 'string')
+        : null;
+      const signalsLatest = (result?.data?.signalsLatest ?? null) as
+        | Record<string, unknown>
+        | null;
+
+      const gqlErrors = result?.errors;
+      const queryError =
+        Array.isArray(gqlErrors) && gqlErrors.length > 0
+          ? gqlErrors
+              .map((entry: { message?: string }) => entry?.message ?? 'GraphQL error')
+              .join('; ')
+          : null;
+
+      return {
+        availableSignals,
+        signalsLatest,
+        queryError,
+      };
+    } catch (error) {
+      return {
+        availableSignals: null,
+        signalsLatest: null,
+        queryError:
+          error instanceof Error
+            ? error.message
+            : 'DIMO battery capability preflight failed',
+      };
+    }
+  }
+
+  async probeRechargeSegments(
+    vehicleJwt: string,
+    tokenId: number,
+    from: Date,
+    to: Date,
+  ): Promise<RechargeSegmentsProbeSnapshot> {
+    const query = buildRechargeSegmentsProbeQuery(
+      tokenId,
+      from.toISOString(),
+      to.toISOString(),
+    );
+    try {
+      const result = await this.queryGraphQL(vehicleJwt, query);
+      const segments = Array.isArray(result?.data?.segments)
+        ? (result.data.segments as RechargeSegmentProbeRow[])
+        : [];
+      const gqlErrors = result?.errors;
+      const queryError =
+        Array.isArray(gqlErrors) && gqlErrors.length > 0
+          ? gqlErrors
+              .map((entry: { message?: string }) => entry?.message ?? 'GraphQL error')
+              .join('; ')
+          : null;
+      return { segments, queryError };
+    } catch (error) {
+      return {
+        segments: [],
+        queryError:
+          error instanceof Error
+            ? error.message
+            : 'DIMO recharge segments probe failed',
+      };
+    }
   }
 
   async fetchLastSeenLocation(

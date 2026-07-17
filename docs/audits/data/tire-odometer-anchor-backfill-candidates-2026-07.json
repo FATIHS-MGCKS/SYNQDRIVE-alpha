@@ -1,0 +1,167 @@
+{
+  "auditId": "tire-odometer-anchor-backfill-2026-07",
+  "generatedAt": "2026-07-16T17:41:09.696Z",
+  "mode": "fixtures",
+  "readOnly": true,
+  "summary": {
+    "setupsAudited": 8,
+    "byConfidence": {
+      "EXACT": 1,
+      "HIGH_CONFIDENCE": 2,
+      "MEDIUM_CONFIDENCE": 1,
+      "LOW_CONFIDENCE": 2,
+      "NO_SAFE_CANDIDATE": 1,
+      "CONFLICTING_DATA": 1
+    },
+    "withSafeCandidate": 4,
+    "conflicting": 1,
+    "noCandidate": 1
+  },
+  "setups": [
+    {
+      "anonymizedSetupId": "setup_617c25d50954",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": 45200,
+      "source": "DOCUMENTED_INSTALL_MEASUREMENT",
+      "timeDistanceToInstallationHours": 0.25,
+      "confidence": "EXACT",
+      "supportingSignals": [
+        "source=DOCUMENTED_INSTALL_MEASUREMENT",
+        "observedAt=2026-03-15T10:15:00.000Z",
+        "evidenceRef=meas_hash_exact"
+      ],
+      "conflicts": [],
+      "recommendedAction": "eligible_for_prompt_8_controlled_apply_with_human_review",
+      "candidatesReviewed": 1,
+      "rejectedRetroactiveInference": true
+    },
+    {
+      "anonymizedSetupId": "setup_fa8c76f5e432",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": 88120,
+      "source": "DIMO_HISTORICAL",
+      "timeDistanceToInstallationHours": 2.5,
+      "confidence": "HIGH_CONFIDENCE",
+      "supportingSignals": [
+        "source=DIMO_HISTORICAL",
+        "observedAt=2026-03-15T12:30:00.000Z",
+        "provider=DIMO",
+        "evidenceRef=snap_hash_dimo"
+      ],
+      "conflicts": [],
+      "recommendedAction": "eligible_for_prompt_8_controlled_apply_with_human_review",
+      "candidatesReviewed": 1,
+      "rejectedRetroactiveInference": true
+    },
+    {
+      "anonymizedSetupId": "setup_0d3b3a96207c",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": 12050,
+      "source": "HIGH_MOBILITY_HISTORICAL",
+      "timeDistanceToInstallationHours": 1,
+      "confidence": "HIGH_CONFIDENCE",
+      "supportingSignals": [
+        "source=HIGH_MOBILITY_HISTORICAL",
+        "observedAt=2026-03-15T11:00:00.000Z",
+        "provider=HIGH_MOBILITY",
+        "evidenceRef=hm_hash"
+      ],
+      "conflicts": [],
+      "recommendedAction": "eligible_for_prompt_8_controlled_apply_with_human_review",
+      "candidatesReviewed": 1,
+      "rejectedRetroactiveInference": true
+    },
+    {
+      "anonymizedSetupId": "setup_d375d0815b37",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": 67300,
+      "source": "HANDOVER_PROTOCOL",
+      "timeDistanceToInstallationHours": 23,
+      "confidence": "MEDIUM_CONFIDENCE",
+      "supportingSignals": [
+        "source=HANDOVER_PROTOCOL",
+        "observedAt=2026-03-16T09:00:00.000Z",
+        "evidenceRef=handover_hash"
+      ],
+      "conflicts": [],
+      "recommendedAction": "manual_review_then_optional_prompt_8_apply",
+      "candidatesReviewed": 1,
+      "rejectedRetroactiveInference": true
+    },
+    {
+      "anonymizedSetupId": "setup_2429ada08064",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": 15000,
+      "source": "TRIP_ODOMETER_BOUNDARY",
+      "timeDistanceToInstallationHours": 214,
+      "confidence": "LOW_CONFIDENCE",
+      "supportingSignals": [
+        "source=TRIP_ODOMETER_BOUNDARY",
+        "observedAt=2026-03-24T08:00:00.000Z",
+        "evidenceRef=trip_hash",
+        "explicit_trip_end_odometer_only"
+      ],
+      "conflicts": [
+        "trips_already_recorded_on_setup_after_delayed_anchor",
+        "delayed_telemetry_far_from_install"
+      ],
+      "recommendedAction": "require_workshop_or_telemetry_confirmation_before_apply",
+      "candidatesReviewed": 1,
+      "rejectedRetroactiveInference": true
+    },
+    {
+      "anonymizedSetupId": "setup_f2f05ba4b956",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": null,
+      "source": null,
+      "timeDistanceToInstallationHours": null,
+      "confidence": "NO_SAFE_CANDIDATE",
+      "supportingSignals": [
+        "no_historical_candidate_found"
+      ],
+      "conflicts": [],
+      "recommendedAction": "collect_measurement_or_wait_for_telemetry_anchor",
+      "candidatesReviewed": 0,
+      "rejectedRetroactiveInference": true
+    },
+    {
+      "anonymizedSetupId": "setup_fc0b26387af3",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": 50000,
+      "source": "DIMO_HISTORICAL",
+      "timeDistanceToInstallationHours": 1,
+      "confidence": "CONFLICTING_DATA",
+      "supportingSignals": [
+        "source=DIMO_HISTORICAL",
+        "observedAt=2026-03-15T11:00:00.000Z",
+        "provider=DIMO"
+      ],
+      "conflicts": [
+        "provider_switch:dimo_and_hm_disagree_near_install",
+        "candidate_spread_50000_62000_km_exceeds_500"
+      ],
+      "recommendedAction": "resolve_conflicts_manually_do_not_auto_apply",
+      "candidatesReviewed": 2,
+      "rejectedRetroactiveInference": true
+    },
+    {
+      "anonymizedSetupId": "setup_5a4baeb0eb58",
+      "installedAt": "2026-03-15T10:00:00.000Z",
+      "candidateOdometerKm": 55000,
+      "source": "DIMO_HISTORICAL",
+      "timeDistanceToInstallationHours": 1,
+      "confidence": "LOW_CONFIDENCE",
+      "supportingSignals": [
+        "source=DIMO_HISTORICAL",
+        "observedAt=2026-03-15T11:00:00.000Z",
+        "provider=DIMO"
+      ],
+      "conflicts": [
+        "odometer_rollback_vs_prior_vehicle_anchor"
+      ],
+      "recommendedAction": "require_workshop_or_telemetry_confirmation_before_apply",
+      "candidatesReviewed": 1,
+      "rejectedRetroactiveInference": true
+    }
+  ]
+}

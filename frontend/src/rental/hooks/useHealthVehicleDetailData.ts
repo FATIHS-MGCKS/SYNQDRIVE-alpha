@@ -9,6 +9,7 @@ import {
   type TireHealthDetailResponse,
   type TireHealthSummaryResponse,
 } from '../../lib/api';
+import { useBatteryHealthQuery } from '../lib/battery-health-query';
 import type { HealthDetailTab } from '../lib/health-detail-utils';
 
 export interface HealthVehicleDetailData {
@@ -17,18 +18,20 @@ export interface HealthVehicleDetailData {
   brakeSummary: BrakeHealthSummary | null;
   brakeDetail: BrakeHealthDetail | null;
   battery: BatteryHealthSummary | null;
+  batteryError: string | null;
+  batteryRetry: () => Promise<void>;
+  batteryLoading: boolean;
   service: ServiceInfoStatus | null;
   dtcActive: unknown[];
   dtcAll: unknown[];
   aiResult: AiHealthCareResponse | null;
 }
 
-const EMPTY: HealthVehicleDetailData = {
+const EMPTY: Omit<HealthVehicleDetailData, 'battery' | 'batteryError' | 'batteryRetry' | 'batteryLoading'> = {
   tiresSummary: null,
   tiresDetail: null,
   brakeSummary: null,
   brakeDetail: null,
-  battery: null,
   service: null,
   dtcActive: [],
   dtcAll: [],
@@ -42,21 +45,47 @@ function tabsNeedingFetch(tab: HealthDetailTab): HealthDetailTab[] {
 
 export function useHealthVehicleDetailData(
   vehicleId: string | null | undefined,
+  orgId: string | null | undefined,
   activeTab: HealthDetailTab,
 ) {
-  const [data, setData] = useState<HealthVehicleDetailData>(EMPTY);
+  const batteryQuery = useBatteryHealthQuery({
+    orgId,
+    vehicleId,
+    variant: 'summary',
+    enabled: Boolean(vehicleId && orgId),
+    livePolling: activeTab === 'battery',
+  });
+
+  const [data, setData] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [loadedTabs, setLoadedTabs] = useState<Set<HealthDetailTab>>(new Set());
+  const [loadedAt, setLoadedAt] = useState<Partial<Record<HealthDetailTab, number>>>({});
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     setData(EMPTY);
     setLoadedTabs(new Set());
+    setLoadedAt({});
   }, [vehicleId]);
 
   const loadTab = useCallback(
-    async (tab: HealthDetailTab) => {
-      if (!vehicleId || loadedTabs.has(tab)) return;
+    async (tab: HealthDetailTab, options?: { force?: boolean }) => {
+      if (!vehicleId) return;
+      if (tab === 'battery') {
+        if (options?.force || batteryQuery.isHealthStale) {
+          await batteryQuery.reload('health');
+        }
+        setLoadedTabs((prev) => new Set(prev).add(tab));
+        setLoadedAt((prev) => ({ ...prev, [tab]: Date.now() }));
+        return;
+      }
+
+      const lastLoaded = loadedAt[tab];
+      const alreadyLoaded = loadedTabs.has(tab);
+      if (alreadyLoaded && !options?.force && lastLoaded != null) {
+        return;
+      }
+
       setLoading(true);
       try {
         if (tab === 'tires') {
@@ -71,11 +100,6 @@ export function useHealthVehicleDetailData(
             api.vehicleIntelligence.brakeHealthDetail(vehicleId).catch(() => null),
           ]);
           setData((prev) => ({ ...prev, brakeSummary, brakeDetail }));
-        } else if (tab === 'battery') {
-          const battery = await api.vehicleIntelligence
-            .batteryHealthSummary(vehicleId)
-            .catch(() => null);
-          setData((prev) => ({ ...prev, battery }));
         } else if (tab === 'dtc') {
           const [dtcActive, dtcAll] = await Promise.all([
             api.vehicleIntelligence.dtcActive(vehicleId).catch(() => []),
@@ -91,15 +115,14 @@ export function useHealthVehicleDetailData(
             .serviceInfoStatus(vehicleId)
             .catch(() => null);
           setData((prev) => ({ ...prev, service }));
-        } else if (tab === 'complaints' || tab === 'oem_alerts' || tab === 'evidence') {
-          /* RentalHealth modules only — no extra fetch required */
         }
         setLoadedTabs((prev) => new Set(prev).add(tab));
+        setLoadedAt((prev) => ({ ...prev, [tab]: Date.now() }));
       } finally {
         setLoading(false);
       }
     },
-    [vehicleId, loadedTabs],
+    [batteryQuery, loadedAt, loadedTabs, vehicleId],
   );
 
   useEffect(() => {
@@ -108,6 +131,11 @@ export function useHealthVehicleDetailData(
     if (tabs.length === 0) return;
     void loadTab(activeTab);
   }, [vehicleId, activeTab, loadTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'battery' || !batteryQuery.isHealthStale) return;
+    void loadTab('battery', { force: true });
+  }, [activeTab, batteryQuery.isHealthStale, loadTab]);
 
   const triggerAiAnalysis = useCallback(async () => {
     if (!vehicleId) return;
@@ -122,5 +150,18 @@ export function useHealthVehicleDetailData(
     }
   }, [vehicleId]);
 
-  return { data, loading, aiLoading, triggerAiAnalysis, loadTab };
+  return {
+    data: {
+      ...data,
+      battery: batteryQuery.data,
+      batteryError: batteryQuery.error,
+      batteryRetry: batteryQuery.retry,
+      batteryLoading: batteryQuery.loading,
+    },
+    loading: loading || (activeTab === 'battery' && batteryQuery.loading),
+    aiLoading,
+    triggerAiAnalysis,
+    loadTab,
+    batteryIsHealthStale: batteryQuery.isHealthStale,
+  };
 }

@@ -1,0 +1,5 @@
+classification,pointCount60d,pointCountAllTime,percentOfFleetPoints,distinguishableByMeasurementId,distinguishableByTimestamp,residualZeroCount,usedInCalibration,usedInRegression,usedInConfidence,usedInAccuracyMetrics,retroactiveClassificationPossible,notes
+TRUE_GROUND_TRUTH,0,0,0,yes_if_measurement_exists,yes_per_recalc_batch,0,yes_via_calibrateFromMeasurement,no_points_in_db,no_direct,no_points_in_db,yes_when_points_exist,No TireWearDataPoint rows exist in production DB as of 2026-07-16
+SYNTHETIC_PREDICTION_AS_ACTUAL,0,0,0,no_measurement_id_on_row,yes_created_at_cluster,0,yes_code_path_in_recalculate,yes_filterRegressionDataPoints_would_use,yes_indirect_via_k_factor,no,yes_abs_predicted_minus_actual_lt_0_001,Code confirmed tire-health.service.ts:428-459 falls back actual*=predicted when no measurement
+INFERRED_BUT_UNCONFIRMED,0,0,0,partial_via_setup_measurement_join,no,0,no,no,yes_via_currentTreadSource,partial_display_only,partial,initial_manual_plus_wear and calibration_projection tread sources without fresh measurement
+UNKNOWN,0,0,0,no,no,0,no,no,no,no,no,Regression table empty; cannot validate fleet-level accuracy claims

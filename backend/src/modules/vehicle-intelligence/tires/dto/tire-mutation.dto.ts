@@ -44,6 +44,19 @@ export const TIRE_MEASUREMENT_SOURCES = [
   'workshop', 'ai_upload', 'ai_confirmed', 'calibration', 'api', 'dimo', 'oem',
 ] as const;
 
+export const TIRE_PRESSURE_SPEC_SOURCES = [
+  'VEHICLE_MANUFACTURER',
+  'DOOR_PLACARD',
+  'OWNER_MANUAL',
+  'WORKSHOP',
+  'USER_CONFIRMED',
+  'AI_ESTIMATED',
+  'UNKNOWN',
+] as const;
+
+const PRESSURE_BAR_MIN = 1.0;
+const PRESSURE_BAR_MAX = 5.0;
+
 /** A 4-digit DOT WWYY production stamp (e.g. "1219"). */
 const DOT_REGEX = /^\d{4}$/;
 
@@ -83,6 +96,10 @@ export class CreateTireSetupDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   installedOdometerKm?: number;
 
+  /** Required when supplying installedOdometerKm — prevents silent client override. */
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
   @IsOptional() @Matches(DOT_REGEX, { message: 'dotCodeFront must be a 4-digit DOT WWYY code' })
   dotCodeFront?: string;
 
@@ -91,6 +108,24 @@ export class CreateTireSetupDto {
 
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureFrontBar?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureRearBar?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureLoadedFrontBar?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureLoadedRearBar?: number;
+
+  @IsOptional() @IsIn(TIRE_PRESSURE_SPEC_SOURCES as unknown as string[])
+  pressureSpecSource?: string;
+
+  @IsOptional() @IsBoolean()
+  confirmPressureSpec?: boolean;
 }
 
 // ── Measurement (calibration + manual + workshop) ───────────────────────────────
@@ -204,6 +239,9 @@ export class ChangeTiresDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
 
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;
 
@@ -220,6 +258,51 @@ export class ActivateStoredSetDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
 
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  notes?: string;
+}
+
+export class StoreTireSetDto {
+  @IsOptional() @IsString() @MaxLength(64)
+  tireSetupId?: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
+  odometerKm?: number;
+
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  notes?: string;
+}
+
+export class RemoveTireSetDto {
+  @IsOptional() @IsString() @MaxLength(64)
+  tireSetupId?: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
+  odometerKm?: number;
+
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  notes?: string;
+}
+
+export class RetireTireDto {
+  @IsString() @MaxLength(16)
+  position!: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
+  odometerKm?: number;
+
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;
 }
@@ -232,4 +315,37 @@ export class ApplyAiTireSpecDto {
 
   @IsOptional() @IsObject()
   aiTireSpec?: Record<string, unknown>;
+
+  @IsOptional() @IsBoolean()
+  userConfirmedSpec?: boolean;
+}
+
+export class TireRecalculateDto {
+  @IsOptional() @IsBoolean()
+  force?: boolean;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  reason?: string;
+}
+
+// ── Recommended tire pressure (evidence-based) ────────────────────────────────
+
+export class UpdateRecommendedPressureDto {
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureFrontBar?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureRearBar?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureLoadedFrontBar?: number;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(PRESSURE_BAR_MIN) @Max(PRESSURE_BAR_MAX)
+  recommendedPressureLoadedRearBar?: number;
+
+  @IsIn(TIRE_PRESSURE_SPEC_SOURCES as unknown as string[])
+  pressureSpecSource!: string;
+
+  @IsOptional() @IsBoolean()
+  confirmPressureSpec?: boolean;
 }

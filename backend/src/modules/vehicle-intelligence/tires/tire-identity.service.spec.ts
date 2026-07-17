@@ -2,8 +2,8 @@ import { TireIdentityService, wheelPosToDb, dbPosToWheel } from './tire-identity
 import { TirePosition } from '@prisma/client';
 
 describe('TireIdentityService', () => {
-  const buildPrisma = () =>
-    ({
+  const buildPrisma = () => {
+    const prisma = {
       tire: {
         findMany: jest.fn(),
         findFirst: jest.fn(),
@@ -11,10 +11,17 @@ describe('TireIdentityService', () => {
         update: jest.fn(),
         updateMany: jest.fn(),
       },
+      vehicleTireSetup: { update: jest.fn().mockResolvedValue({}) },
       tirePositionHistory: { create: jest.fn() },
       tireMeasurement: { create: jest.fn() },
-      $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
-    }) as any;
+      $transaction: jest.fn(),
+    } as any;
+    prisma.$transaction.mockImplementation(async (arg: unknown) => {
+      if (typeof arg === 'function') return (arg as (tx: unknown) => Promise<unknown>)(prisma);
+      return Promise.all(arg as Promise<unknown>[]);
+    });
+    return prisma;
+  };
 
   it('wheelPosToDb / dbPosToWheel round-trip', () => {
     expect(wheelPosToDb('FL')).toBe(TirePosition.FRONT_LEFT);

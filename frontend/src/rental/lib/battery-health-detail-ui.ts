@@ -7,6 +7,10 @@ import type {
   VehicleTripAnalytics,
 } from '../../lib/api';
 import { normalizeLvBatteryVoltage } from './battery-display.utils';
+import {
+  ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
+  LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC,
+} from './battery-lv-semantics';
 
 export const RESTING_VOLTAGE_EXPLANATION =
   'Spannung der 12V-Batterie im Ruhezustand. Dieser Wert eignet sich besser zur Batteriebewertung als ein einzelner Live-Wert.';
@@ -63,7 +67,14 @@ export function resolveCurrentLiveVoltage(
   );
 }
 
-export function labelBatteryMeasurementType(valueType: string | null | undefined): string {
+export function labelBatteryMeasurementType(
+  valueType: string | null | undefined,
+  options?: { scope?: 'LV' | 'HV'; semanticValueType?: string | null; displayLabel?: string | null },
+): string {
+  if (options?.displayLabel) return options.displayLabel;
+  if (options?.scope === 'LV' && valueType === 'SOH_PERCENT') {
+    return ESTIMATED_LV_HEALTH_SCORE_LABEL_DE;
+  }
   switch (valueType) {
     case 'RESTING_VOLTAGE_V':
       return '12V-Ruhespannung';
@@ -180,18 +191,32 @@ export function buildBatteryMeasurementRows(
 ): BatteryMeasurementRow[] {
   const evidence = detail?.detail?.lv?.evidence ?? [];
   const evidenceRows: BatteryMeasurementRow[] = evidence
-    .filter((e) => VOLTAGE_EVIDENCE_TYPES.has(e.valueType) && e.value != null)
+    .filter(
+      (e) =>
+        (VOLTAGE_EVIDENCE_TYPES.has(e.valueType) ||
+          (e.valueType === 'SOH_PERCENT' &&
+            e.semanticValueType === LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC)) &&
+        e.value != null,
+    )
     .map((e) => {
-      const valueV = normalizeLvBatteryVoltage(e.value) ?? e.value!;
-      const unit = e.unit ?? 'V';
+      const valueV = normalizeLvBatteryVoltage(e.value);
+      const isLegacyLvScore = e.valueType === 'SOH_PERCENT';
+      const unit = e.unit ?? (isLegacyLvScore ? '%' : 'V');
       const metaParts = [labelBatteryEvidenceSource(e.sourceType, e.provider)];
       if (e.confidence) metaParts.push(String(e.confidence));
       if (e.quality) metaParts.push(String(e.quality));
+      if (isLegacyLvScore) metaParts.push('Verhaltenswert (kein Werkstatt-SOH)');
       return {
         id: e.id,
         kind: 'evidence' as const,
-        label: labelBatteryMeasurementType(e.valueType),
-        valueText: `${valueV.toFixed(2)} ${unit}`,
+        label: labelBatteryMeasurementType(e.valueType, {
+          scope: 'LV',
+          semanticValueType: e.semanticValueType,
+          displayLabel: e.displayLabel,
+        }),
+        valueText: isLegacyLvScore
+          ? `${Math.round(e.value!)} Punkte`
+          : `${(valueV ?? e.value)!.toFixed(2)} ${unit}`,
         metaText: metaParts.join(' · '),
         dateText: formatEvidenceDate(e.observedAt),
       };
@@ -218,7 +243,14 @@ export function buildBatteryMeasurementRows(
     id: h.id,
     kind: 'legacy' as const,
     label: h.type === 'service' ? 'Batterie-Service' : 'Messung',
-    valueText: h.voltage != null ? `${h.voltage.toFixed(2)} V` : h.soh != null ? `SOH ${Math.round(h.soh)}%` : '—',
+    valueText:
+      h.voltage != null
+        ? `${h.voltage.toFixed(2)} V`
+        : h.estimatedLvHealthScore != null
+          ? `${Math.round(h.estimatedLvHealthScore)} Punkte`
+          : h.soh != null
+            ? `${Math.round(h.soh)} Punkte (Legacy)`
+            : '—',
     metaText: h.workshopName ?? h.notes ?? (h.type === 'service' ? 'Service' : 'Snapshot'),
     dateText: formatEvidenceDate(h.date),
   }));

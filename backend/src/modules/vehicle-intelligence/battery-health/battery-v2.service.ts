@@ -1,14 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  BatteryEvidenceScope,
-  BatteryEvidenceSourceType,
-  BatteryEvidenceValueType,
-  TripDetectionState,
-} from '@prisma/client';
+import { TripDetectionState } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { BatteryHealthService } from './battery-health.service';
-import { BatteryEvidenceService } from './battery-evidence.service';
 import {
   stabilize,
   shouldPublish,
@@ -18,27 +12,20 @@ import {
   daysBetween,
   type PublicationState,
 } from './soh-publication';
-
-// ── Voltage → SOC lookup (standard 12V lead-acid / AGM) ──
-const VOLTAGE_SOC: [number, number][] = [
-  [12.73, 100], [12.62, 90], [12.50, 80], [12.37, 70],
-  [12.24, 60], [12.10, 50], [11.96, 40], [11.81, 30],
-  [11.66, 20], [11.51, 10], [11.30, 0],
-];
-
-function voltageToSoc(v: number): number | null {
-  if (v >= 12.73) return 100;
-  if (v <= 11.30) return 0;
-  for (let i = 0; i < VOLTAGE_SOC.length - 1; i++) {
-    const [v1, s1] = VOLTAGE_SOC[i];
-    const [v2, s2] = VOLTAGE_SOC[i + 1];
-    if (v >= v2 && v <= v1) {
-      const ratio = (v - v2) / (v1 - v2);
-      return Math.round(s2 + ratio * (s1 - s2));
-    }
-  }
-  return null;
-}
+import {
+  effectiveCrankObservationCountForMaturity,
+  START_DIP_PROXY_MEASUREMENT_KIND,
+} from './battery-crank-policy';
+import {
+  isLegacyCrankAssessmentEnabled,
+  isStartWindowCollectionEnabled,
+} from '../../../config/battery-health-v2.config';
+import {
+  isLeadAcidCurveApplicable,
+  resolveLvBatteryChemistry,
+} from '../lv-battery-chemistry/lv-battery-chemistry-resolver';
+import { estimateLeadAcidSocPercent } from './lv-assessment/lv-assessment-thresholds';
+import { selectBestBatterySpec } from './battery-status';
 
 // Thresholds — configurable via env without code changes
 const REST_60M_MS = parseInt(
@@ -79,6 +66,18 @@ type BatteryFeaturesLike = {
   vRecovery30s: number | null;
 };
 
+export interface BatteryV2SnapshotCaptureResult {
+  restCaptured: boolean;
+  capturedAt?: Date;
+}
+
+const INSUFFICIENT_HEALTH: HealthResult = {
+  soc: null,
+  soh: null,
+  confidence: 'insufficient_data',
+  badge: 'unknown',
+};
+
 @Injectable()
 export class BatteryV2Service {
   private readonly logger = new Logger(BatteryV2Service.name);
@@ -87,7 +86,6 @@ export class BatteryV2Service {
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
     private readonly batteryHealth: BatteryHealthService,
-    private readonly batteryEvidence: BatteryEvidenceService,
   ) {}
 
   // ══════════════════════════════════════════════════════════
@@ -98,24 +96,26 @@ export class BatteryV2Service {
     vehicleId: string,
     lvBatteryVoltage: number | null,
     observedAt: Date | null = null,
-  ): Promise<void> {
-    if (!isPlausibleVoltage(lvBatteryVoltage)) return;
+  ): Promise<BatteryV2SnapshotCaptureResult> {
+    if (!isPlausibleVoltage(lvBatteryVoltage)) {
+      return { restCaptured: false };
+    }
     const now = new Date();
     const sampleAt = observedAt ?? now;
-    if (Number.isNaN(sampleAt.getTime())) return;
+    if (Number.isNaN(sampleAt.getTime())) return { restCaptured: false };
 
     const sampleAgeMs = now.getTime() - sampleAt.getTime();
     if (sampleAt.getTime() - now.getTime() > BATTERY_MAX_FUTURE_SKEW_MS) {
       this.logger.debug(
         `Skipping LV sample with future timestamp: vehicle=${vehicleId} sampleAt=${sampleAt.toISOString()}`,
       );
-      return;
+      return { restCaptured: false };
     }
     if (sampleAgeMs > BATTERY_MAX_SAMPLE_AGE_MS) {
       this.logger.debug(
         `Skipping stale LV sample: vehicle=${vehicleId} ageMs=${sampleAgeMs}`,
       );
-      return;
+      return { restCaptured: false };
     }
 
     // Load current V2 detection state to check rest window
@@ -130,14 +130,14 @@ export class BatteryV2Service {
       !detState.lastActivityAt
     ) {
       // Vehicle is active or state unknown — no rest capture needed
-      return;
+      return { restCaptured: false };
     }
 
     const restDurationMs =
       sampleAt.getTime() - detState.lastActivityAt.getTime();
 
     // Short-circuit: below first threshold
-    if (restDurationMs < REST_60M_MS) return;
+    if (restDurationMs < REST_60M_MS) return { restCaptured: false };
 
     const features = await this.prisma.batteryFeatures.findUnique({
       where: { vehicleId },
@@ -166,14 +166,14 @@ export class BatteryV2Service {
           deltaVRest: null,
         },
       });
-      return;
+      return { restCaptured: false };
     }
 
     // Ignore duplicate/out-of-order samples for already processed windows.
     const latestCapturedAt =
       (features?.rest6hCapturedAt ?? features?.rest60mCapturedAt) ?? null;
     if (latestCapturedAt && sampleAt.getTime() <= latestCapturedAt.getTime()) {
-      return;
+      return { restCaptured: false };
     }
 
     const needs60m =
@@ -181,7 +181,7 @@ export class BatteryV2Service {
     const needs6h =
       restDurationMs >= REST_6H_MS && !features?.rest6hCapturedAt;
 
-    if (!needs60m && !needs6h) return;
+    if (!needs60m && !needs6h) return { restCaptured: false };
 
     const updates: Record<string, unknown> = {};
 
@@ -204,19 +204,10 @@ export class BatteryV2Service {
       );
     }
 
-    const updated = await this.prisma.batteryFeatures.update({
+    await this.prisma.batteryFeatures.update({
       where: { vehicleId },
       data: updates,
     });
-
-    await this.recomputeHealth(
-      vehicleId,
-      updated as BatteryFeaturesLike,
-      {
-        newRestObservation: needs60m || needs6h,
-        observedAt: sampleAt,
-      },
-    );
 
     // Record a formal BatteryHealthSnapshot so existing trend/history APIs
     // stay populated.  BatteryHealthService.recordSnapshot already emits the
@@ -231,18 +222,31 @@ export class BatteryV2Service {
       engineRunning: false,
       observedAt: sampleAt,
     });
+
+    return { restCaptured: true, capturedAt: sampleAt };
   }
 
   // ══════════════════════════════════════════════════════════
-  //  TRIP-START HOOK — fire-and-forget crank feature extraction
+  //  TRIP-START HOOK — legacy direct path (superseded by BATTERY_START_PROXY_EXTRACT job)
   // ══════════════════════════════════════════════════════════
 
+  /** @deprecated Use {@link BatteryStartProxyExtractService} via BATTERY_START_PROXY_EXTRACT job. */
   async onTripStart(
     vehicleId: string,
     dimoTokenId: number,
     tripId: string,
     tripStartAt: Date,
   ): Promise<void> {
+    const legacyCrankAssessment = isLegacyCrankAssessmentEnabled();
+    const collectStartWindow = isStartWindowCollectionEnabled();
+
+    if (!legacyCrankAssessment && !collectStartWindow) {
+      this.logger.debug(
+        `Crank capture skipped (legacy assessment off, start-window collection off): vehicle=${vehicleId}`,
+      );
+      return;
+    }
+
     const from = new Date(tripStartAt.getTime() - 30_000);
     const to = new Date(tripStartAt.getTime() + 120_000);
 
@@ -256,7 +260,6 @@ export class BatteryV2Service {
 
     const startMs = tripStartAt.getTime();
 
-    // Pre-crank: last voltage reading before trip start
     const preCrankPoints = points.filter(
       (p) => new Date(p.timestamp).getTime() <= startMs,
     );
@@ -265,7 +268,6 @@ export class BatteryV2Service {
         ? preCrankPoints[preCrankPoints.length - 1].voltage
         : null;
 
-    // Min voltage in ±30 s window around crank
     const crankZonePoints = points.filter((p) => {
       const t = new Date(p.timestamp).getTime();
       return t >= startMs - 30_000 && t <= startMs + 30_000;
@@ -277,34 +279,45 @@ export class BatteryV2Service {
       crankVoltages.length > 0 ? Math.min(...crankVoltages) : null;
 
     const crankDrop =
-      vPreCrank != null && vMinCrank != null ? vPreCrank - vMinCrank : null;
+      legacyCrankAssessment &&
+      vPreCrank != null &&
+      vMinCrank != null
+        ? vPreCrank - vMinCrank
+        : null;
 
-    // 5 s recovery
     const t5 = startMs + 5_000;
-    const p5s = points.find(
-      (p) => new Date(p.timestamp).getTime() >= t5,
-    );
+    const p5s = points.find((p) => new Date(p.timestamp).getTime() >= t5);
     const vRecovery5s = p5s?.voltage ?? null;
 
-    // 30 s recovery
     const t30 = startMs + 30_000;
-    const p30s = points.find(
-      (p) => new Date(p.timestamp).getTime() >= t30,
-    );
+    const p30s = points.find((p) => new Date(p.timestamp).getTime() >= t30);
     const vRecovery30s = p30s?.voltage ?? null;
 
-    const crankUpdate = {
+    const crankUpdate: Record<string, unknown> = {
       crankTripId: tripId,
       crankAt: tripStartAt,
-      vPreCrank: isPlausibleVoltage(vPreCrank) ? vPreCrank : null,
-      vMinCrank: isPlausibleVoltage(vMinCrank) ? vMinCrank : null,
-      crankDrop:
-        crankDrop != null && crankDrop >= 0 && crankDrop <= 6.0
-          ? crankDrop
-          : null,
-      vRecovery5s: isPlausibleVoltage(vRecovery5s) ? vRecovery5s : null,
-      vRecovery30s: isPlausibleVoltage(vRecovery30s) ? vRecovery30s : null,
     };
+
+    if (legacyCrankAssessment) {
+      Object.assign(crankUpdate, {
+        vPreCrank: isPlausibleVoltage(vPreCrank) ? vPreCrank : null,
+        vMinCrank: isPlausibleVoltage(vMinCrank) ? vMinCrank : null,
+        crankDrop:
+          crankDrop != null && crankDrop >= 0 && crankDrop <= 6.0
+            ? crankDrop
+            : null,
+        vRecovery5s: isPlausibleVoltage(vRecovery5s) ? vRecovery5s : null,
+        vRecovery30s: isPlausibleVoltage(vRecovery30s) ? vRecovery30s : null,
+      });
+    } else if (collectStartWindow) {
+      // Diagnostic start-window capture only — never classify as CRANK_MIN.
+      Object.assign(crankUpdate, {
+        vPreCrank: isPlausibleVoltage(vPreCrank) ? vPreCrank : null,
+        vMinCrank: isPlausibleVoltage(vMinCrank) ? vMinCrank : null,
+        vRecovery5s: isPlausibleVoltage(vRecovery5s) ? vRecovery5s : null,
+        vRecovery30s: isPlausibleVoltage(vRecovery30s) ? vRecovery30s : null,
+      });
+    }
 
     const updated = await this.prisma.batteryFeatures.upsert({
       where: { vehicleId },
@@ -312,29 +325,38 @@ export class BatteryV2Service {
       update: crankUpdate,
     });
 
-    await this.recomputeHealth(
-      vehicleId,
-      updated as BatteryFeaturesLike,
-      {
-        newCrankObservation: crankUpdate.crankDrop != null,
-        observedAt: tripStartAt,
-      },
-    );
-
-    this.logger.log(
-      `Crank features captured: vehicle=${vehicleId} trip=${tripId}` +
-        ` vPre=${vPreCrank?.toFixed(2) ?? '—'} drop=${crankDrop?.toFixed(2) ?? '—'}V`,
-    );
+    if (legacyCrankAssessment) {
+      await this.recomputeHealth(
+        vehicleId,
+        updated as BatteryFeaturesLike,
+        {
+          newCrankObservation: crankUpdate.crankDrop != null,
+          observedAt: tripStartAt,
+        },
+      );
+    } else {
+      this.logger.log(
+        `Start window captured (diagnostic ${START_DIP_PROXY_MEASUREMENT_KIND}): vehicle=${vehicleId} trip=${tripId}` +
+          ` points=${points.length} vPre=${vPreCrank?.toFixed(2) ?? '—'} vMin=${vMinCrank?.toFixed(2) ?? '—'}`,
+      );
+    }
   }
 
   // ══════════════════════════════════════════════════════════
   //  SCORING
   // ══════════════════════════════════════════════════════════
 
-  private computeHealth(f: BatteryFeaturesLike): HealthResult {
+  private computeHealth(
+    f: BatteryFeaturesLike,
+    options: { leadAcidCurveAllowed: boolean },
+  ): HealthResult {
+    if (!options.leadAcidCurveAllowed) {
+      return INSUFFICIENT_HEALTH;
+    }
+
     // SOC from best available resting voltage (6 h preferred over 60 m)
     const restV = f.vOff6h ?? f.vOff60m;
-    const soc = restV != null ? voltageToSoc(restV) : null;
+    const soc = restV != null ? estimateLeadAcidSocPercent(restV) : null;
 
     let scoreSum = 0;
     let weightSum = 0;
@@ -344,22 +366,27 @@ export class BatteryV2Service {
     // the SOH rest-component semantically consistent (a 12.10 V resting
     // reading no longer yields 50 % SOC and 63 % rest-score simultaneously).
     if (restV != null) {
-      const rest = voltageToSoc(restV);
+      const rest = estimateLeadAcidSocPercent(restV);
       if (rest != null) {
         scoreSum += rest * 0.35;
         weightSum += 0.35;
       }
     }
 
-    // 35 % — Crank drop (0.3 V → 100, ≥ 2.5 V → 0)
-    if (f.crankDrop != null) {
+    // 35 % — Crank drop (legacy path only; disabled by default — Prompt 7/78)
+    if (isLegacyCrankAssessmentEnabled() && f.crankDrop != null) {
       const s = Math.min(100, Math.max(0, ((2.5 - f.crankDrop) / 2.2) * 100));
       scoreSum += s * 0.35;
       weightSum += 0.35;
     }
 
-    // 20 % — 5 s voltage recovery relative to pre-crank (80 % ratio → 0, 100 % → 100)
-    if (f.vRecovery5s != null && f.vPreCrank != null && f.vPreCrank > 0) {
+    // 20 % — 5 s voltage recovery relative to pre-crank (legacy crank path only)
+    if (
+      isLegacyCrankAssessmentEnabled() &&
+      f.vRecovery5s != null &&
+      f.vPreCrank != null &&
+      f.vPreCrank > 0
+    ) {
       const ratio = f.vRecovery5s / f.vPreCrank;
       const s = Math.min(100, Math.max(0, ((ratio - 0.80) / 0.20) * 100));
       scoreSum += s * 0.20;
@@ -397,6 +424,39 @@ export class BatteryV2Service {
     return { soc, soh, confidence, badge };
   }
 
+  private async resolveLeadAcidCurveAllowed(vehicleId: string): Promise<boolean> {
+    const specs = await this.prisma.vehicleBatterySpec.findMany({
+      where: { vehicleId },
+      select: {
+        batteryType: true,
+        batteryVolt: true,
+        sourceType: true,
+        sourceConfidence: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    const bestSpec = selectBestBatterySpec(specs);
+    const resolved = resolveLvBatteryChemistry({
+      specs: bestSpec
+        ? [
+            {
+              batteryType: bestSpec.batteryType,
+              batteryVolt: bestSpec.batteryVolt,
+              sourceType: bestSpec.sourceType,
+              sourceConfidence: bestSpec.sourceConfidence,
+              createdAt: bestSpec.createdAt,
+              updatedAt: bestSpec.updatedAt,
+            },
+          ]
+        : [],
+      workshopDocumentEvidence: [],
+      manualEvidence: [],
+      verifiedManual: null,
+    });
+    return isLeadAcidCurveApplicable(resolved.chemistry);
+  }
+
   private async recomputeHealth(
     vehicleId: string,
     features: BatteryFeaturesLike,
@@ -406,7 +466,8 @@ export class BatteryV2Service {
       observedAt?: Date;
     },
   ): Promise<void> {
-    const result = this.computeHealth(features);
+    const leadAcidCurveAllowed = await this.resolveLeadAcidCurveAllowed(vehicleId);
+    const result = this.computeHealth(features, { leadAcidCurveAllowed });
     const now = new Date();
 
     const current = await this.prisma.batteryFeatures.findUnique({
@@ -421,7 +482,8 @@ export class BatteryV2Service {
     let crankObservationCount = current.crankObservationCount;
     let firstUsable = current.firstUsableMeasurementAt;
     const hasNewRestObservation = observation?.newRestObservation === true;
-    const hasNewCrankObservation = observation?.newCrankObservation === true;
+    const hasNewCrankObservation =
+      isLegacyCrankAssessmentEnabled() && observation?.newCrankObservation === true;
     const hasNewQualifiedObservation =
       hasNewRestObservation || hasNewCrankObservation;
 
@@ -454,7 +516,9 @@ export class BatteryV2Service {
       qualifiedEventCount,
       daysSinceFirstMeasurement: days,
       restObservationCount,
-      crankObservationCount,
+      crankObservationCount: effectiveCrankObservationCountForMaturity(
+        crankObservationCount,
+      ),
     });
 
     // Combined confidence
@@ -506,32 +570,6 @@ export class BatteryV2Service {
         outlierSuppressedCount: outlierSuppressed,
       },
     });
-
-    const observedAt = observation?.observedAt ?? now;
-    await this.batteryEvidence.recordMany([
-      {
-        vehicleId,
-        scope: BatteryEvidenceScope.LV,
-        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
-        valueType: BatteryEvidenceValueType.SOH_PERCENT,
-        numericValue: rawSoh,
-        unit: 'percent',
-        observedAt,
-        provider: 'SynqDrive',
-        confidence: result.confidence,
-      },
-      {
-        vehicleId,
-        scope: BatteryEvidenceScope.LV,
-        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
-        valueType: BatteryEvidenceValueType.SOH_PERCENT,
-        numericValue: publishedSoh,
-        unit: 'percent',
-        observedAt,
-        provider: 'SynqDrive',
-        confidence: matConf,
-      },
-    ]);
   }
 
   // ══════════════════════════════════════════════════════════

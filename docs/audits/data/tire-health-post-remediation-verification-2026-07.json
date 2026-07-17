@@ -1,0 +1,131 @@
+{
+  "verificationId": "tire-health-post-remediation-verification-2026-07",
+  "branch": "fix/tire-health-production-readiness-2026-07",
+  "verifiedAtUtc": "2026-07-16T20:05:00Z",
+  "environment": "cursor-agent-ci",
+  "productionWritesPerformed": false,
+  "stagingApplyPerformed": false,
+  "prerequisites": {
+    "prismaValidate": "PASS",
+    "backendTypecheck": "PASS",
+    "backendBuild": "PASS",
+    "frontendTypecheck": "PASS",
+    "frontendBuild": "PASS",
+    "tireBackendTests": { "passed": 519, "failed": 0, "suites": 41 },
+    "frontendTests": { "passed": 1461, "failed": 0 },
+    "fullBackendTests": { "passed": 4408, "failed": 4, "note": "invoice-payment-task.integration — non-tire" },
+    "additiveMigrationsReviewed": 12,
+    "liveAuditScripts": "BLOCKED_NO_DATABASE"
+  },
+  "stagingMigration": {
+    "databaseBackup": "NOT_EXECUTED",
+    "migrateStatus": "NOT_EXECUTED",
+    "migrateDeploy": "NOT_EXECUTED",
+    "deployBackendWorkerFrontend": "NOT_EXECUTED",
+    "healthChecks": "NOT_EXECUTED"
+  },
+  "readOnlyPreAudits": {
+    "baselineSource": "docs/audits/data/tire-health-integrity-findings-2026-07.json",
+    "liveReAudit": "NOT_EXECUTED",
+    "codeSubstituteAudits": [
+      "tire-odometer-anchor-backfill-audit.spec.ts",
+      "tire-trip-usage-backfill-audit.spec.ts",
+      "tire-ground-truth.util.spec.ts",
+      "tire-health-regression-matrix.spec.ts",
+      "dimo-tire-pressure.normalizer.spec.ts"
+    ]
+  },
+  "controlledStagingApply": {
+    "executed": false,
+    "odometerAnchorApply": "NOT_EXECUTED",
+    "ledgerBackfillApply": "NOT_EXECUTED",
+    "reconciliation": "NOT_EXECUTED",
+    "targetedRecalculation": "NOT_EXECUTED"
+  },
+  "replayNegativeTests": {
+    "method": "automated_unit_regression",
+    "suitesRun": 5,
+    "testsPassed": 84,
+    "regressionMatrixScenarios": 36
+  },
+  "postFixBacktest": {
+    "liveReRun": "NOT_EXECUTED",
+    "verdict": "NOT_ENOUGH_DATA",
+    "archivedPreRemediation": {
+      "nVehicles": 1,
+      "nSetups": 1,
+      "nMeasurements": 2,
+      "nWheelValues": 4,
+      "maeMm": 0.213,
+      "rmseMm": 0.214,
+      "biasMm": -0.213,
+      "medianAbsErrorMm": 0.213,
+      "p90AbsErrorMm": 0.228,
+      "within0_5mm": 1.0,
+      "within1_0mm": 1.0,
+      "modelVersion": "TIRE_HEALTH_V2"
+    },
+    "postRemediationNote": "Code prevents synthetic GT; sample size unchanged until measurement campaign and staging apply"
+  },
+  "categoryVerdicts": {
+    "correctness": "CONDITIONALLY_READY",
+    "dataQuality": "CONDITIONALLY_READY",
+    "modelValidity": "NOT_ENOUGH_DATA",
+    "safety": "READY",
+    "reliability": "READY",
+    "observability": "READY",
+    "userExperience": "READY",
+    "dimoReadiness": "CONDITIONALLY_READY",
+    "testReadiness": "READY",
+    "overall": "CONDITIONALLY_READY"
+  },
+  "remainingFindings": {
+    "p0OpenUntilStagingApply": [],
+    "p0MitigatedInCode": ["P0-TH-01", "P0-TH-02", "P0-TH-03", "P0-TH-04", "P0-TH-21"],
+    "p1Open": ["P1-TH-13", "P1-TH-17", "P1-TH-18"],
+    "p2Open": ["P2-TH-14", "P2-TH-15", "P2-TH-24"],
+    "p3": 0
+  },
+  "commits": {
+    "prompt01": "08908ed",
+    "prompt02": "402b7e4",
+    "prompt03": "7b49bf1",
+    "prompt04": "b28f91a",
+    "prompt05": "3ae02f9",
+    "prompt06": "0c96083",
+    "prompt07": "d3d3327",
+    "prompt08": "af2e220",
+    "prompt09": "d58d6c6",
+    "prompt10": "850e230",
+    "prompt11": "df9f2ee",
+    "prompt12": "f065a08",
+    "prompt13": "97579b2",
+    "prompt14": "f9a27ac",
+    "prompt15": "4df2c2c",
+    "prompt16": "7bf7715",
+    "prompt17": "ea1c96d",
+    "prompt18": "09dc183",
+    "prompt19": "0482512",
+    "prompt20": "d501dac",
+    "prompt21": "d446b79",
+    "prompt22": "9ba78b4",
+    "prompt23": "06e4e4f",
+    "prompt24": "0ca9a39"
+  },
+  "tireMigrations": [
+    "20260716180000_tire_evidence_ground_truth_provenance",
+    "20260716183000_tire_lifecycle_invariants",
+    "20260716190000_tire_odometer_anchor",
+    "20260716200000_tire_odometer_anchor_backfill_event",
+    "20260716210000_tire_trip_usage_ledger",
+    "20260716220000_tire_trip_usage_attribution",
+    "20260716230000_tire_trip_usage_replay_safety",
+    "20260716240000_tire_recalculation_fingerprint_dedupe",
+    "20260716250000_tire_prediction_versioning",
+    "20260716260000_tire_recommended_pressure",
+    "20260716270000_tire_rental_health_review",
+    "20260716280000_tire_health_alerts"
+  ],
+  "runbook": "docs/runbooks/tire-health-production-rollout.md",
+  "openManualMeasurementCampaign": true
+}

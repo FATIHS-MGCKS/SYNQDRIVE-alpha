@@ -75,6 +75,87 @@ export interface RentalHealthModule {
     | 'sensor'
     | 'complaint'
     | 'unknown';
+  tire_read_model?: TireRentalHealthReadModel;
+}
+
+export type TireRentalReviewRequirement =
+  | 'NONE'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED';
+
+export type TireRentalReasonCode =
+  | 'TREAD_MEASURED_BELOW_LEGAL_MIN'
+  | 'TREAD_MEASURED_CRITICAL'
+  | 'TREAD_ESTIMATED_CRITICAL_HIGH_CONF'
+  | 'TREAD_ESTIMATED_CRITICAL_LOW_CONF'
+  | 'TREAD_DEFAULT_ASSUMPTION'
+  | 'TREAD_UNKNOWN'
+  | 'TREAD_STALE'
+  | 'PRESSURE_TPMS_CRITICAL'
+  | 'PRESSURE_PROVIDER_CRITICAL'
+  | 'PRESSURE_WARNING'
+  | 'PRESSURE_STALE'
+  | 'PRESSURE_UNKNOWN'
+  | 'NO_TIRE_DATA'
+  | 'DATA_STALE'
+  | 'REVIEW_OVERRIDE_ACTIVE';
+
+export interface TireRentalBlockingEvidence {
+  action: 'NONE' | 'HARD_BLOCK';
+  reasonCode: TireRentalReasonCode;
+  source: string;
+  value: number | string | null;
+  threshold: number | string | null;
+  timestamp: string | null;
+  setupId: string | null;
+  message: string;
+}
+
+export interface TireRentalHealthReadModel {
+  wearEvidence: {
+    displayMode: string;
+    lowestTreadMm: number | null;
+    lowestTreadPosition: string | null;
+    overallWearStatus: string;
+    measuredAt: string | null;
+    freshness: string;
+    isDefaultAssumption: boolean;
+    confidence: string;
+  };
+  pressureEvidence: {
+    sourceType: string;
+    sourceLabel: string;
+    overallPressureStatus: string;
+    tpmsWarning: boolean | null;
+    freshness: string;
+    lastUpdatedAt: string | null;
+    perWheelIssue: boolean;
+  };
+  specEvidence: {
+    pressureSpecSource: string;
+    pressureSpecConfidence: number;
+    wearFactorEligible: boolean;
+    pressureSpecMissingLabel: string | null;
+  };
+  measurementFreshness: string;
+  pressureFreshness: string;
+  overallStatus: RentalHealthState;
+  confidence: string;
+  reviewRequirement: TireRentalReviewRequirement;
+  rentalBlockingEvidence: TireRentalBlockingEvidence | null;
+  structuredReasonCodes: TireRentalReasonCode[];
+  activeReviewOverride: {
+    id: string;
+    reason: string;
+    grantedByUserId: string;
+    expiresAt: string;
+    createdAt: string;
+  } | null;
+  primaryReason: string;
+  lastUpdatedAt: string | null;
+  dataStale: boolean;
+  source: string;
+  evidenceType: string;
 }
 
 export interface VehicleHealthResponse {
@@ -5124,8 +5205,10 @@ export const api = {
     batteryHealthLatest: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery-health/latest`),
     batteryHealthTrend: (vehicleId: string, days?: number) =>
       get<any[]>(`/vehicles/${vehicleId}/battery-health/trend` + (days ? `?days=${days}` : '')),
-    batteryHealthSummary: (vehicleId: string) => get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`),
-    batteryHealthDetail: (vehicleId: string) => get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`),
+    batteryHealthSummary: (vehicleId: string, init?: RequestInit) =>
+      get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`, init),
+    batteryHealthDetail: (vehicleId: string, init?: RequestInit) =>
+      get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`, init),
     createServiceEvent: (vehicleId: string, data: CreateVehicleServiceEventInput) =>
       post<VehicleServiceEventRecord>(`/vehicles/${vehicleId}/service-events`, data),
     updateServiceEvent: (vehicleId: string, eventId: string, data: UpdateVehicleServiceEventInput) =>
@@ -5278,6 +5361,11 @@ export const api = {
       }
       return res.blob();
     },
+    reassignVehicle: (orgId: string, extractionId: string, vehicleId: string) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/vehicle`,
+        { vehicleId },
+      ),
   },
   partsAccessories: {
     providers: () => get<PartsProviderSummary[]>('/parts-accessories/providers'),
@@ -5695,6 +5783,9 @@ export interface TireAlert {
   message: string;
   position?: string;
   value?: number;
+  reasonCode?: string;
+  displayMode?: TireDisplayMode;
+  dedupeKey?: string;
 }
 
 export type TireActionState =
@@ -5709,18 +5800,195 @@ export type TirePressureFreshness =
   | 'stale'
   | 'no_data';
 
+export interface TirePressureWheelReading {
+  value: number | null;
+  normalizedUnit: 'BAR';
+  sourceProvider: 'DIMO' | 'HIGH_MOBILITY' | null;
+  sourceTimestamp: string | null;
+  freshness: TirePressureFreshness;
+  statusToken: string | null;
+  statusIssue: boolean;
+}
+
+export interface TirePressureCoverage {
+  wheelsAvailable: number;
+  wheelsFresh: number;
+  wheelsUsableForWear: number;
+  coveragePercent: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  signalSpanMinutes: number | null;
+  continuousExposureEligible: boolean;
+  minWheelsRequired: number;
+  meetsWearThreshold: boolean;
+}
+
+export interface TirePressureWearEligibility {
+  eligible: boolean;
+  reasons: string[];
+  confidencePenalty: number;
+  measurementHint: string | null;
+}
+
+export type TirePressureSpecSource =
+  | 'VEHICLE_MANUFACTURER'
+  | 'DOOR_PLACARD'
+  | 'OWNER_MANUAL'
+  | 'WORKSHOP'
+  | 'USER_CONFIRMED'
+  | 'AI_ESTIMATED'
+  | 'UNKNOWN';
+
+export interface RecommendedTirePressureSpec {
+  recommendedPressureFrontBar: number | null;
+  recommendedPressureRearBar: number | null;
+  recommendedPressureLoadedFrontBar: number | null;
+  recommendedPressureLoadedRearBar: number | null;
+  pressureSpecSource: TirePressureSpecSource;
+  pressureSpecConfirmedAt: string | null;
+  pressureSpecConfidence: number;
+  wearFactorEligible: boolean;
+  pressureSpecMissingLabel: string | null;
+}
+
 export interface TirePressureContext {
-  source: 'DIMO' | 'HM' | 'MIXED' | 'NONE';
+  frontLeft: number | null;
+  frontRight: number | null;
+  rearLeft: number | null;
+  rearRight: number | null;
+  wheels: {
+    frontLeft: TirePressureWheelReading;
+    frontRight: TirePressureWheelReading;
+    rearLeft: TirePressureWheelReading;
+    rearRight: TirePressureWheelReading;
+  };
+  normalizedUnit: 'BAR';
+  sourceType: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | 'NONE';
+  overallFreshness: TirePressureFreshness;
+  coverage: TirePressureCoverage;
+  tpmsWarning: boolean | null;
+  tpmsWarningSource: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | null;
+  recommendedPressure: RecommendedTirePressureSpec;
+  pressureSpecMissingLabel: string | null;
+  qualityWarnings: string[];
+  wearEligibility: TirePressureWearEligibility;
+  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
+  /** @deprecated use sourceType */
+  source: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | 'NONE';
   dimoFreshness: TirePressureFreshness;
   hmFreshness: TirePressureFreshness;
-  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
+  /** @deprecated use qualityWarnings */
   warningHints: string[];
 }
 
-/** Canonical tire status taxonomy (see backend tire-status.ts). */
 export type TireCanonicalStatus = 'GOOD' | 'WATCH' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
 export type TireDisplayMode = 'MEASURED' | 'ESTIMATED' | 'UNKNOWN';
 export type TireConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+
+export type TireUiStatus =
+  | 'GOOD'
+  | 'WATCH'
+  | 'WARNING'
+  | 'CRITICAL'
+  | 'UNKNOWN'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED'
+  | 'LIMITED_DATA';
+
+export type TireTreadProvenance =
+  | 'MEASURED'
+  | 'ESTIMATED'
+  | 'DEFAULT_ASSUMPTION'
+  | 'MODEL'
+  | 'DOCUMENTED'
+  | 'UNKNOWN';
+
+export type TireStructuredActionCode =
+  | 'MEASURE_TREAD'
+  | 'CAPTURE_ODOMETER_ANCHOR'
+  | 'CONFIRM_TIRE_SPEC'
+  | 'SET_RECOMMENDED_PRESSURE'
+  | 'CHECK_PRESSURE'
+  | 'REPLACE_TIRES'
+  | 'REVIEW_ROTATION';
+
+export interface TireTreadEvidenceLine {
+  position: string;
+  axle: 'front' | 'rear';
+  valueMm: number | null;
+  provenance: TireTreadProvenance;
+  sourceCode: string | null;
+  sourceLabelDe: string;
+  sourceLabelEn: string;
+  measuredAt: string | null;
+  confidence: TireConfidenceLevel;
+  isDefaultAssumption: boolean;
+  displayLabelDe: string;
+  displayLabelEn: string;
+}
+
+export interface TireRemainingKmPresentation {
+  reliable: boolean;
+  displayDe: string;
+  displayEn: string;
+  exactKm: number | null;
+  bandMinKm: number | null;
+  bandMaxKm: number | null;
+  reasonDe: string | null;
+  reasonEn: string | null;
+}
+
+export interface TireStructuredAction {
+  code: TireStructuredActionCode;
+  labelDe: string;
+  labelEn: string;
+  priority: number;
+}
+
+export interface TireEvidencePresentation {
+  uiStatus: TireUiStatus;
+  uiStatusLabelDe: string;
+  uiStatusLabelEn: string;
+  treadLines: TireTreadEvidenceLine[];
+  lowestTread: TireTreadEvidenceLine | null;
+  remainingKm: TireRemainingKmPresentation;
+  lastTreadMeasurementAt: string | null;
+  lastPressureValueBar: number | null;
+  lastPressureSource: string | null;
+  pressureFreshness: string;
+  modelVersion: string;
+  modelCalculatedAt: string | null;
+  tireSpecSource: string | null;
+  tireSpecSourceLabelDe: string;
+  tireSpecSourceLabelEn: string;
+  structuredActions: TireStructuredAction[];
+  defaultAssumptionWarningDe: string | null;
+  defaultAssumptionWarningEn: string | null;
+}
+
+export interface TireDimoContextResponse {
+  asOf: string;
+  ambient: {
+    usable: boolean;
+    weightedAvgTempC: number | null;
+    seasonBand: 'COLD' | 'MILD' | 'WARM' | null;
+    stale: boolean;
+    pressureContextHintEn: string | null;
+  };
+  odometer: {
+    usable: boolean;
+    valueKm: number | null;
+    source: 'DIMO' | 'HIGH_MOBILITY' | 'VEHICLE_LATEST_STATE' | null;
+    plausibilityOnly: boolean;
+  };
+  tpms: {
+    architecturePrepared: boolean;
+    usable: boolean;
+    signalPresent: boolean;
+    warningActive: boolean | null;
+  };
+  blockedWearDerivations: string[];
+}
 
 export interface TireHealthSummaryResponse {
   overallPercent: number;
@@ -5746,6 +6014,22 @@ export interface TireHealthSummaryResponse {
   referenceNewTreadSource?: string | null;
   replacementThresholdSource?: string | null;
   currentTreadSource?: string | null;
+  currentTreadValue?: number | null;
+  currentTreadEvidenceSource?: string | null;
+  isMeasured?: boolean;
+  isEstimated?: boolean;
+  isDefaultAssumption?: boolean;
+  lastActualMeasurementAt?: string | null;
+  baselineSource?: string | null;
+  predictionCapable?: boolean;
+  odometerAnchorStatus?: string | null;
+  odometerAnchorConfidence?: number | null;
+  installedOdometerSource?: string | null;
+  hasActiveSet?: boolean;
+  hasSetups?: boolean;
+  hasMeasurements?: boolean;
+  evidencePresentation?: TireEvidencePresentation;
+  dimoContext?: TireDimoContextResponse;
   operationalReplacementMm?: number | null;
   topWearDrivers?: string[];
   actionState?: TireActionState;
@@ -5753,6 +6037,8 @@ export interface TireHealthSummaryResponse {
   measurementState?: 'measured' | 'estimated' | 'mixed';
   dataQualityWarnings?: string[];
   pressureContext?: TirePressureContext;
+  recommendedPressure?: RecommendedTirePressureSpec;
+  pressureSpecMissingLabel?: string | null;
   latestMeasurementAt?: string | null;
   // ── Canonical read model (single source of truth, mm-based) ────────────────
   overallStatus?: TireCanonicalStatus;
@@ -5884,22 +6170,76 @@ export type BatteryRestingVoltageStatus = BatteryHealthStatus | 'UNSUPPORTED';
 export type BatteryAggregateStatus = BatteryHealthStatus | 'UNSUPPORTED';
 export type HvSohSource = 'PROVIDER' | 'CAPACITY_ESTIMATE' | 'DOCUMENT' | 'MANUAL';
 
+export type BatteryDataQualityStatus =
+  | 'VERIFIED'
+  | 'ESTIMATED'
+  | 'PROXY'
+  | 'EXPERIMENTAL'
+  | 'STALE'
+  | 'MISSED'
+  | 'UNAVAILABLE'
+  | 'UNSUPPORTED'
+  | 'LEGACY_UNVERIFIED';
+
+export interface BatteryDataQualityPresentation {
+  status: BatteryDataQualityStatus;
+  labelKey: string;
+  decisionCapable: boolean;
+  observedAt: string | null;
+}
+
+export interface BatteryDataQualitySection {
+  status: BatteryDataQualityStatus;
+  labelKey: string;
+  decisionCapable: boolean;
+  observedAt: string | null;
+  slices: {
+    lvEstimatedHealth: BatteryDataQualityPresentation;
+    lvRestingVoltage: BatteryDataQualityPresentation;
+    lvCrank: BatteryDataQualityPresentation;
+    hvSoh: BatteryDataQualityPresentation;
+    hvLegacyCapacity: BatteryDataQualityPresentation;
+  };
+}
+
 export interface BatteryFreshness {
   observedAt: string | null;
   ageMs: number | null;
   isFresh: boolean;
 }
 
+// LV behavioural score — never workshop SOH.
+export type LvHealthScoreSemantic =
+  | 'ESTIMATED_LV_HEALTH_SCORE'
+  | 'LEGACY_ESTIMATED_LV_HEALTH';
+
+export interface LvEstimatedHealthScoreRef {
+  value: number | null;
+  semanticType: 'ESTIMATED_LV_HEALTH_SCORE';
+  label: string;
+}
+
 // LV "Estimated Battery Health" — behaviour-derived, rendered as 3 bars, never
 // presented as a workshop-verified SOH percentage.
 export interface LvEstimatedHealth {
   status: BatteryHealthStatus;
+  diagnosticStatus?: BatteryHealthStatus;
   scorePct: number | null;
   displayMode: 'BARS';
   bars: 0 | 1 | 2 | 3;
+  semanticType: 'ESTIMATED_LV_HEALTH_SCORE';
   label: string;
   confidence: string | null;
   calibrationStatus: SohPublicationState | string | null;
+  decisionCapable?: boolean;
+  dataQualityStatus?: BatteryDataQualityStatus;
+  dataQuality?: BatteryDataQualityPresentation;
+  legacyPublicationSafety?: {
+    decisionCapable: boolean;
+    displayMode: 'DECISION_CAPABLE' | 'LEGACY_UNVERIFIED';
+    diagnosticLabelDe: string;
+    reasons: string[];
+  };
 }
 
 // LV resting-voltage state from battery-spec-aware thresholds.
@@ -5909,6 +6249,49 @@ export interface LvRestingVoltage {
   thresholdSource: 'BATTERY_SPEC' | 'DEFAULT' | 'UNSUPPORTED';
   batteryType: string | null;
   measurementContext: string | null;
+  dataQualityStatus?: BatteryDataQualityStatus;
+  dataQuality?: BatteryDataQualityPresentation;
+}
+
+export interface LvStartProxyMeasurementDiagnostic {
+  messart: string;
+  measurementType: string;
+  classification: 'PROXY' | 'EXPERIMENTAL';
+  displayLabelDe: string;
+  quality: string;
+  dataQualityStatus: BatteryDataQualityStatus;
+  numericValue: number | null;
+  unit: string | null;
+  observedAt: string;
+  measurementAgeMs: number | null;
+  offsetFromTargetMs: number | null;
+  targetOffsetFromStartMs: number | null;
+  medianIntervalMs: number | null;
+  coverageRatio: number | null;
+  dataQuality: BatteryDataQualityPresentation;
+}
+
+export interface LvStartProxyDiagnosticView {
+  vehicleId: string;
+  diagnosticOnly: true;
+  featureEnabled: boolean;
+  uiLabelDe: string;
+  scoreWeightPercent: 0;
+  availability: 'SUPPORTED' | 'UNSUPPORTED' | 'NOT_EVALUABLE';
+  availabilityLabelDe: string;
+  operationalEffect: false;
+  readinessEffect: false;
+  alertEligible: false;
+  taskEligible: false;
+  operationalStatus: 'UNKNOWN';
+  latestSession: {
+    id: string;
+    tripId: string | null;
+    startedAt: string;
+    status: string;
+    pointCount: number | null;
+  } | null;
+  measurements: LvStartProxyMeasurementDiagnostic[];
 }
 
 export interface CanonicalLvBatterySection {
@@ -5917,8 +6300,11 @@ export interface CanonicalLvBatterySection {
   healthStatus?: BatteryAggregateStatus;
   condition: BatteryRuntimeCondition;
   healthPercent: number | null;
+  healthPercentSemantic?: LvHealthScoreSemantic | null;
   estimatedHealthPercent: number | null;
+  estimatedHealthPercentSemantic?: LvHealthScoreSemantic | null;
   estimatedHealth?: LvEstimatedHealth;
+  estimatedLvHealthScore?: LvEstimatedHealthScoreRef;
   restingVoltage?: LvRestingVoltage;
   method: string | null;
   confidence: string | null;
@@ -5927,10 +6313,20 @@ export interface CanonicalLvBatterySection {
   publicationState: SohPublicationState;
   telemetry: {
     voltageV: number | null;
+    voltageSource?: string | null;
+    voltageObservedAt?: string | null;
     restingVoltage: number | null;
     crankingVoltage: number | null;
     chargingVoltage: number | null;
     temperatureC: number | null;
+    crank?: {
+      dataQualityStatus?: BatteryDataQualityStatus;
+      dataQuality?: BatteryDataQualityPresentation;
+      displayMode?: 'LEGACY_UNVERIFIED' | 'DECISION_CAPABLE';
+      diagnosticCrankDrop?: number | null;
+      measurementKind?: string;
+    };
+    startProxy?: LvStartProxyDiagnosticView;
   };
   calibrationProgress: BatteryCalibrationProgress;
 }
@@ -5950,6 +6346,16 @@ export interface CanonicalHvBatterySection {
   freshness: BatteryFreshness;
   evidenceType: string | null;
   publicationState: SohPublicationState;
+  dataQualityStatus?: BatteryDataQualityStatus;
+  dataQuality?: BatteryDataQualityPresentation;
+  legacyCapacity?: {
+    displayMode: 'LEGACY_UNVERIFIED' | 'DECISION_CAPABLE';
+    decisionCapable: boolean;
+    diagnosticEstimatedCapacityKwh: number | null;
+    diagnosticSohPercent: number | null;
+    dataQualityStatus?: BatteryDataQualityStatus;
+    dataQuality?: BatteryDataQualityPresentation;
+  };
   telemetry: {
     socPercent: number | null;
     rangeKm: number | null;
@@ -5977,9 +6383,77 @@ export interface BatteryCurrentTelemetrySection {
   genericEnergyPercent: number | null;
 }
 
+export interface CanonicalBatteryLiveValues {
+  voltageV: number | null;
+  restingVoltageV: number | null;
+  socPercent?: number | null;
+  providerSohPercent?: number | null;
+}
+
+export interface CanonicalBatteryHvReferenceCapacity {
+  id: string;
+  capacityKwh: number;
+  capacityType: string;
+  source: string;
+  verificationStatus: string;
+  verifiedAt: string | null;
+}
+
+export interface CanonicalBatteryHvSohAssessment {
+  estimatedSohPercent: number | null;
+  estimatedUsableCapacityKwh: number | null;
+  sohGatePassed: boolean;
+  confidence: string | null;
+  maturity: string | null;
+}
+
+export interface CanonicalBatteryHvProviderSoh {
+  percent: number | null;
+  source: HvSohSource | null;
+  decisionFresh: boolean;
+  observedAt?: string | null;
+}
+
+export interface CanonicalBatteryHvChargeSession {
+  sessionId: string;
+  source: string;
+  startAt: string;
+  endAt: string | null;
+  isOngoing: boolean;
+}
+
+export interface CanonicalBatteryDto {
+  resolverVersion: string;
+  organizationId?: string;
+  vehicleId: string;
+  resolvedAt: string;
+  isEv: boolean;
+  liveState: {
+    lv: { observedAt: string | null; values: CanonicalBatteryLiveValues };
+    hv?: { observedAt: string | null; values: CanonicalBatteryLiveValues };
+  };
+  lv: {
+    assessment?: { estimatedHealthScore: number | null } | null;
+    publication?: { maturity: string | null } | null;
+  };
+  hv?: {
+    supported: boolean;
+    providerSoh: CanonicalBatteryHvProviderSoh;
+    referenceCapacity?: CanonicalBatteryHvReferenceCapacity | null;
+    currentChargeSession?: CanonicalBatteryHvChargeSession | null;
+    lastChargeSession?: CanonicalBatteryHvChargeSession | null;
+    sohAssessment?: CanonicalBatteryHvSohAssessment | null;
+  } | null;
+  dataQuality?: {
+    aggregate: BatteryDataQualityPresentation;
+    errors?: Array<{ code: string; messageDe?: string }>;
+  };
+}
+
 export interface BatteryHealthSummary {
   vehicleId: string;
   generatedAt: string;
+  dataQuality?: BatteryDataQualitySection;
   support: {
     lv: boolean;
     hv: boolean;
@@ -5993,8 +6467,14 @@ export interface BatteryHealthSummary {
   // Compatibility fields for existing runtime consumers.
   currentState: {
     sohPercent: number | null;
+    sohPercentSemantic?: LvHealthScoreSemantic | null;
     publishedSohPct: number | null;
+    publishedSohPctSemantic?: LvHealthScoreSemantic | null;
     estimatedSohPct: number | null;
+    estimatedSohPctSemantic?: LvHealthScoreSemantic | null;
+    estimatedLvHealthScore?: number | null;
+    estimatedLvHealthScoreSemantic?: LvHealthScoreSemantic | null;
+    estimatedLvHealthScoreLabel?: string | null;
     publicationState: SohPublicationState;
     maturityConfidence: string;
     voltageV: number | null;
@@ -6008,19 +6488,23 @@ export interface BatteryHealthSummary {
   condition: 'good' | 'watch' | 'attention' | 'calibrating';
   trendDirection: 'stable' | 'declining' | 'improving' | 'unknown';
   specs: { batteryType: string | null; batteryAmpere: number | null; batteryVolt: number | null; sourceType: string } | null;
-  trend7: Array<{ date: string; soh: number | null; voltage: number | null }>;
-  trend30: Array<{ date: string; soh: number | null; voltage: number | null }>;
+  trend7: Array<{ date: string; soh: number | null; sohSemantic?: LvHealthScoreSemantic | null; estimatedLvHealthScore?: number | null; voltage: number | null }>;
+  trend30: Array<{ date: string; soh: number | null; sohSemantic?: LvHealthScoreSemantic | null; estimatedLvHealthScore?: number | null; voltage: number | null }>;
   history: Array<{
     id: string;
     type: 'measurement' | 'service';
     date: string;
     soh?: number | null;
+    sohSemantic?: LvHealthScoreSemantic | null;
+    estimatedLvHealthScore?: number | null;
     voltage?: number | null;
     temperature?: number | null;
     notes?: string | null;
     workshopName?: string | null;
     odometerKm?: number | null;
   }>;
+  /** Canonical resolver output — preferred read model for new consumers. */
+  canonical?: CanonicalBatteryDto | null;
 }
 
 export interface BatteryEvidenceItem {
@@ -6028,6 +6512,8 @@ export interface BatteryEvidenceItem {
   observedAt: string;
   sourceType: string | null;
   valueType: string;
+  semanticValueType?: LvHealthScoreSemantic | string | null;
+  displayLabel?: string | null;
   value: number | null;
   unit: string | null;
   provider: string | null;
