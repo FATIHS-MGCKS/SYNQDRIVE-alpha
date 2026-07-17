@@ -1779,6 +1779,8 @@ model Station {
   internalNotes           String?       @map("internal_notes")
   googlePlaceId           String?       @map("google_place_id")
   archivedAt              DateTime?     @map("archived_at")
+  archivedCapabilitiesSnapshot Json?      @map("archived_capabilities_snapshot")
+  lifecycleMetadata       Json?         @map("lifecycle_metadata")
   createdAt               DateTime      @default(now()) @map("created_at")
   updatedAt               DateTime      @updatedAt @map("updated_at")
 
