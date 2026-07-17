@@ -54,6 +54,22 @@ export default registerAs('documentExtraction', () => ({
     process.env.DOCUMENT_EXTRACTION_MAX_RECOVERY_ATTEMPTS,
     5,
   ),
+  /** Recovery: APPLYING lifecycle older than this may be reconciled/retried. */
+  staleApplyingThresholdMs: parsePositiveIntEnv(
+    process.env.DOCUMENT_EXTRACTION_STALE_APPLYING_MS,
+    10 * 60_000,
+  ),
+  /** Max automatic action-plan recovery attempts per extraction record. */
+  maxActionRecoveryAttempts: parsePositiveIntEnv(
+    process.env.DOCUMENT_EXTRACTION_MAX_ACTION_RECOVERY_ATTEMPTS,
+    5,
+  ),
+  actionRecoveryBatchSize: parsePositiveIntEnv(
+    process.env.DOCUMENT_EXTRACTION_ACTION_RECOVERY_BATCH_SIZE,
+    10,
+  ),
+  actionRecoveryEnabled:
+    (process.env.DOCUMENT_EXTRACTION_ACTION_RECOVERY_ENABLED ?? 'true') === 'true',
   recoveryIntervalMs: parsePositiveIntEnv(
     process.env.DOCUMENT_EXTRACTION_RECOVERY_INTERVAL_MS,
     120_000,

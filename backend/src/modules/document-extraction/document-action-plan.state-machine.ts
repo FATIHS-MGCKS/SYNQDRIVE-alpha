@@ -226,3 +226,18 @@ export function isSuccessfulApplyLifecycle(
     lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLIED_WITH_WARNINGS
   );
 }
+
+/** Recovery-only unwind for stale APPLYING rows (does not use normal transition table). */
+export function unwindStaleApplyingLifecycle(
+  lifecycle: DocumentActionPlanApplyLifecycle,
+  reason: string,
+): DocumentActionPlanApplyLifecycle {
+  return {
+    ...lifecycle,
+    status: DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED,
+    updatedAt: new Date().toISOString(),
+    applyOutcome: 'REQUIRED_FAILURE',
+    failedActionIndices: lifecycle.failedActionIndices ?? [],
+    warningActionIndices: lifecycle.warningActionIndices,
+  };
+}

@@ -45,6 +45,9 @@ import { DocumentTextExtractorService } from './document-text-extractor.service'
 import { DocumentExtractionProcessor } from './document-extraction.processor';
 import { DocumentExtractionHealthService } from './document-extraction-health.service';
 import { DocumentExtractionRecoveryScheduler } from '@workers/schedulers/document-extraction-recovery.scheduler';
+import { DocumentIntakeActionRecoveryScheduler } from '@workers/schedulers/document-intake-action-recovery.scheduler';
+import { DocumentIntakeActionRecoveryService } from './diagnostic/document-intake-action-recovery.service';
+import { DocumentIntakeReconciliationService } from './diagnostic/document-intake-reconciliation.service';
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
@@ -98,10 +101,19 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     DocumentExtractionProcessor,
     DocumentExtractionHealthService,
     DocumentExtractionRecoveryScheduler,
+    DocumentIntakeActionRecoveryScheduler,
+    DocumentIntakeActionRecoveryService,
+    DocumentIntakeReconciliationService,
     DocumentExtractionObservabilityService,
     LocalDocumentStorageService,
     { provide: DOCUMENT_STORAGE, useClass: LocalDocumentStorageService },
   ],
-  exports: [DocumentExtractionService, DocumentExtractionApplyService, DocumentExtractionHealthService],
+  exports: [
+    DocumentExtractionService,
+    DocumentExtractionApplyService,
+    DocumentExtractionHealthService,
+    DocumentIntakeReconciliationService,
+    DocumentIntakeActionRecoveryService,
+  ],
 })
 export class DocumentExtractionModule {}
