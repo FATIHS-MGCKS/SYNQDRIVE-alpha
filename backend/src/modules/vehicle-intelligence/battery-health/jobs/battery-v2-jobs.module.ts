@@ -26,6 +26,7 @@ import { BatteryAssessmentService } from '../battery-assessment.service';
 import { BatteryPublicationService } from '../battery-publication.service';
 import { HvCapacityObservationRepository } from '../hv-capacity-shadow/hv-capacity-observation.repository';
 import { VehicleIntelligenceModule } from '../../vehicle-intelligence.module';
+import { DimoModule } from '../../../dimo/dimo.module';
 
 const BATTERY_V2_JOB_HANDLERS = [
   BatteryObservationClassifyHandler,
@@ -40,7 +41,11 @@ const BATTERY_V2_JOB_HANDLERS = [
 
 /** Worker-side handlers — imported by WorkersModule only. */
 @Module({
-  imports: [BatteryV2JobsProducerModule, forwardRef(() => VehicleIntelligenceModule)],
+  imports: [
+    BatteryV2JobsProducerModule,
+    forwardRef(() => DimoModule),
+    forwardRef(() => VehicleIntelligenceModule),
+  ],
   providers: [
     ...BATTERY_V2_JOB_HANDLERS,
     BatteryV2VehicleLockService,

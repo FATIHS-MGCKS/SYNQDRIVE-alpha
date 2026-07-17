@@ -4,6 +4,7 @@ import {
   BatteryV2JobsModule,
 } from './battery-v2-jobs.module';
 import { BatteryV2JobsProducerModule } from './battery-v2-jobs-producer.module';
+import { DimoModule } from '../../../dimo/dimo.module';
 import { BATTERY_V2_JOB_TYPES, type BatteryV2JobType } from './battery-v2-job.types';
 import { BatteryV2IdempotentExecutionService } from './battery-v2-idempotent-execution.service';
 import { BatteryV2JobHandlerRegistry } from './battery-v2-job-handler.registry';
@@ -41,6 +42,17 @@ describe('BatteryV2JobsModule', () => {
       Reflect.getMetadata(MODULE_METADATA.PROVIDERS, BatteryV2JobsModule) ?? [];
     expect(providers).toContain(BatteryV2IdempotentExecutionService);
     expect(providers).toContain(BatteryV2VehicleLockService);
+  });
+
+  it('imports DimoModule so worker handlers can resolve DimoSegmentsService', () => {
+    const imports: unknown[] =
+      Reflect.getMetadata(MODULE_METADATA.IMPORTS, BatteryV2JobsModule) ?? [];
+    const hasDimoModule = imports.some((entry) => {
+      if (entry === DimoModule) return true;
+      const forwardRefFn = (entry as { forwardRef?: () => unknown })?.forwardRef;
+      return typeof forwardRefFn === 'function' && forwardRefFn() === DimoModule;
+    });
+    expect(hasDimoModule).toBe(true);
   });
 
   it('wires handler registry with all job types', () => {

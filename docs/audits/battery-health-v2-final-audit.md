@@ -663,7 +663,18 @@ flowchart LR
 | 1.0 | 2026-07-16 | Cloud Agent (Prompt 77/78) | Initialer Read-only-Abschlussaudit |
 | 1.1 | 2026-07-16 | Cloud Agent (Prompt 78/78) | P1-Remediation B-01/B-02; Validierung; Verdict `READY_FOR_SHADOW_ONLY` |
 | 1.2 | 2026-07-16 | Cloud Agent (Prompt 78/78) | P2-Remediation B-03–B-07/B-09/B-10; B-08 Ops-only; Deploy auf `main` |
+| 1.3 | 2026-07-16 | Cloud Agent (Deploy-Hotfix) | Post-Merge DI-Fixes: `BatteryCapabilityRefreshService`, `extractSignalTimestamp`, `DimoModule` in `BatteryV2JobsModule` |
+
+### Post-Deploy Hotfixes (2026-07-16)
+
+Nach Merge von Battery V2 P1/P2 auf `main` verhinderten NestJS-DI-Fehler den Worker-Bootstrap (502 Bad Gateway):
+
+| Fix | Datei | Ursache |
+|-----|-------|---------|
+| `BatteryCapabilityRefreshService` registriert | `battery-v2-jobs-producer.module.ts` | Fehlender Provider im Producer-Modul |
+| `extractSignalTimestamp()` wiederhergestellt | `dimo-snapshot.processor.ts` | Merge-Konflikt mit Tire Health V2 |
+| `DimoModule` importiert | `battery-v2-jobs.module.ts` | `BatteryStartProxyExtractService` benötigt `DimoSegmentsService` im Worker-Kontext |
 
 ---
 
-**Changes / Architektur:** Aktualisiert (V4.9.577 P1 + V4.9.578 P2-Remediation).
+**Changes / Architektur:** Aktualisiert (V4.9.577 P1 + V4.9.578 P2-Remediation + V4.9.579 Deploy-Hotfix).
