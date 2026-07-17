@@ -166,6 +166,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 18, 2026-07-17):** Migration `20260717220000_document_entity_candidates_links` — `DocumentEntityCandidate` + `DocumentEntityLink`; partial unique aktiver Link pro `(extraction_id, entity_type)`; Ranking/Bestätigung/Supersede-Repositories; Tenant-Entity-Scope-Validierung. Keine Resolver-Verdrahtung.
 
+**Implementierungsstand (Prompt 19, 2026-07-17):** Migration `20260717230000_document_extraction_v2_control_fields` — additive V2-Steuerfelder auf `vehicle_document_extractions`; `vehicle_id` nullable; `organization_id` FK (bleibt nullable bis Backfill); Backfill-Plan in `document-intake-v2-extraction-backfill-plan.md` (nicht ausgeführt).
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

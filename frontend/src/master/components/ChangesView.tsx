@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-extraction-v2-control-fields-2026-07-17',
+    version: '4.9.595',
+    title: 'V4.9.595 — Document Intake V2 Extraction Control Fields (additiv)',
+    summary: [
+      'VehicleDocumentExtraction erweitert: documentCategory, documentSubtype, classificationVersion, contentHash, duplicateStatus, currentActionPlanId, processingMaturity, applyStartedAt/CompletedAt, applyFailureCode, legacyApplyResult, archivedAt.',
+      'organizationId → verbindliche Organization-FK (nullable bis Backfill); vehicleId nullable für künftige org-only Uploads.',
+      'Migration nur ADD COLUMN + DROP NOT NULL vehicle_id — keine Datenlöschung, kein objectKey-Move.',
+      'Backfill-Plan dokumentiert (document-intake-v2-extraction-backfill-plan.md), nicht produktiv ausgeführt.',
+      'Legacy vehicle-scoped Endpunkte unverändert kompatibel via requireExtractionVehicleId.',
+    ],
+    reason: 'Prompt 19/84: Intake-Root-Steuerfelder vor Resolver/Org-Upload-Verdrahtung.',
+    previousBehavior: 'Nur Legacy-Lifecycle-Felder; vehicleId required; organizationId ohne FK.',
+    details:
+      'schema.prisma VehicleDocumentExtraction, migration 20260717230000_document_extraction_v2_control_fields, document-intake-v2-extraction-backfill-plan.md, document-extraction-vehicle.util.ts (+ schema spec).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T23:00:00.000Z',
+  },
+  {
     id: 'document-entity-candidate-link-2026-07-17',
     version: '4.9.594',
     title: 'V4.9.594 — Document Intake V2 Entity Candidate + Link (additiv)',
