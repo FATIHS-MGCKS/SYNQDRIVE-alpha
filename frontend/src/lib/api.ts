@@ -76,6 +76,7 @@ export interface RentalHealthModule {
     | 'complaint'
     | 'unknown';
   tire_read_model?: TireRentalHealthReadModel;
+  brake_read_model?: BrakeRentalHealthReadModel;
 }
 
 export type TireRentalReviewRequirement =
@@ -152,6 +153,94 @@ export interface TireRentalHealthReadModel {
     createdAt: string;
   } | null;
   primaryReason: string;
+  lastUpdatedAt: string | null;
+  dataStale: boolean;
+  source: string;
+  evidenceType: string;
+}
+
+export type BrakeRentalReviewRequirement =
+  | 'NONE'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED';
+
+export type BrakeRentalDecision =
+  | 'ALLOW'
+  | 'WARNING'
+  | 'MEASUREMENT_REQUIRED'
+  | 'DATA_QUALITY_WARNING'
+  | 'REVIEW_REQUIRED'
+  | 'HARD_BLOCK'
+  | 'UNAVAILABLE';
+
+export type BrakeRentalReasonCode =
+  | 'WEAR_MEASURED_CRITICAL'
+  | 'WEAR_MEASURED_BELOW_THRESHOLD'
+  | 'WEAR_ESTIMATED_CRITICAL'
+  | 'WEAR_ESTIMATED_WARNING'
+  | 'SAFETY_DTC_CRITICAL'
+  | 'SAFETY_DTC_REVIEW'
+  | 'SAFETY_ABS_CRITICAL'
+  | 'SAFETY_ABS_REVIEW'
+  | 'SAFETY_FLUID_CRITICAL'
+  | 'SAFETY_IMMEDIATE_REPLACEMENT'
+  | 'SAFETY_WEAR_SENSOR'
+  | 'DATA_NO_BASELINE'
+  | 'DATA_SPEC_ONLY'
+  | 'DATA_COVERAGE_GAP'
+  | 'DATA_DISTANCE_CONFLICT'
+  | 'DATA_MEASUREMENT_REQUIRED'
+  | 'DATA_STALE_EVIDENCE'
+  | 'UNKNOWN_STATE'
+  | 'MODULE_UNAVAILABLE'
+  | 'REVIEW_OVERRIDE_ACTIVE';
+
+export interface BrakeRentalBlockingEvidence {
+  action: 'NONE' | 'HARD_BLOCK';
+  reasonCode: BrakeRentalReasonCode;
+  source: string;
+  value: number | string | null;
+  threshold: number | string | null;
+  timestamp: string | null;
+  message: string;
+  messageEn: string;
+}
+
+export interface BrakeRentalHealthReadModel {
+  wearCondition: string;
+  safetyCondition: string;
+  dataQualityCondition: string;
+  measurementFreshness: string;
+  modelFreshness: string;
+  activeSafetyEvidence: Array<{
+    alertType: string;
+    reasonCode: string;
+    severity: string;
+    message: string;
+    messageEn: string;
+    displayMode: string;
+    axle?: string;
+  }>;
+  confidence: string;
+  reviewRequirement: BrakeRentalReviewRequirement;
+  rentalDecision: BrakeRentalDecision;
+  blockingReasons: string[];
+  rentalBlockingEvidence: BrakeRentalBlockingEvidence | null;
+  structuredReasonCodes: BrakeRentalReasonCode[];
+  activeReviewOverride: {
+    id: string;
+    reason: string;
+    grantedByUserId: string;
+    expiresAt: string;
+    createdAt: string;
+  } | null;
+  hasWearOrSafetyAlert: boolean;
+  primaryReason: string;
+  primaryReasonEn: string;
+  lastMeasurementAt: string | null;
+  lastSafetyEvidenceAt: string | null;
+  lastModelCalculatedAt: string | null;
+  lastDataReceivedAt: string | null;
   lastUpdatedAt: string | null;
   dataStale: boolean;
   source: string;

@@ -2923,7 +2923,7 @@ export class BrakeHealthService {
       confidence: input.confidence,
       baselineWarnings: input.baselineWarnings,
       provenanceWarnings: input.provenanceWarnings,
-      hasAlert: hasCanonicalAlert || input.hasAlertOverride === true,
+      hasAlert: hasCanonicalAlert,
       legacyHeuristic: input.legacyHeuristic,
       overallCondition: canonical.overallCondition,
       dataBasis: canonical.dataBasis,

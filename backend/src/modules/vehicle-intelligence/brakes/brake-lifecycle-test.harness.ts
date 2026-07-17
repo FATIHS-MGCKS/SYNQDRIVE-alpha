@@ -691,6 +691,7 @@ export function createBrakeLifecycleHarness(input?: {
     { getAiHealthCareSignals: jest.fn() } as never,
     { evaluateCompliance: jest.fn(), toRentalModuleHealth: jest.fn() } as never,
     { getActiveOverride: jest.fn().mockResolvedValue(null) } as never,
+    { findActiveOverride: jest.fn().mockResolvedValue(null) } as never,
   );
 
   const evaluateBrakes = (summary: Awaited<ReturnType<BrakeHealthService['getSummary']>>) =>

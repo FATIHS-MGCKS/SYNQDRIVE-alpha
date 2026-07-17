@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { RentalHealthService } from './rental-health.service';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
+import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleHealth } from './rental-health.types';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -12,6 +13,11 @@ class CreateTireRentalReviewOverrideDto {
   reason!: string;
   expiresAt!: string;
   tireSetupId?: string;
+}
+
+class CreateBrakeRentalReviewOverrideDto {
+  reason!: string;
+  expiresAt!: string;
 }
 
 /**
@@ -36,6 +42,7 @@ export class RentalHealthController {
     private readonly rentalHealth: RentalHealthService,
     private readonly prisma: PrismaService,
     private readonly tireRentalReview: TireRentalHealthReviewService,
+    private readonly brakeRentalReview: BrakeRentalHealthReviewService,
   ) {}
 
   @Get('vehicles/:vehicleId/rental-health')
@@ -144,6 +151,47 @@ export class RentalHealthController {
       throw new UnauthorizedException('Authenticated user required');
     }
     return this.tireRentalReview.revokeOverride(
+      orgId,
+      vehicleId,
+      overrideId,
+      userId,
+    );
+  }
+
+  @Post('vehicles/:vehicleId/brake-rental-health/review-override')
+  @RequirePermission('fleet', 'write')
+  async createBrakeRentalReviewOverride(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: CreateBrakeRentalReviewOverrideDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Authenticated user required');
+    }
+    return this.brakeRentalReview.createOverride({
+      organizationId: orgId,
+      vehicleId,
+      reason: body.reason,
+      grantedByUserId: userId,
+      expiresAt: new Date(body.expiresAt),
+    });
+  }
+
+  @Delete('vehicles/:vehicleId/brake-rental-health/review-override/:overrideId')
+  @RequirePermission('fleet', 'write')
+  async revokeBrakeRentalReviewOverride(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Param('overrideId') overrideId: string,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Authenticated user required');
+    }
+    return this.brakeRentalReview.revokeOverride(
       orgId,
       vehicleId,
       overrideId,

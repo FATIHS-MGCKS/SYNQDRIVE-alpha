@@ -1411,6 +1411,7 @@ model Organization {
   rentalVehicleCategories           RentalVehicleCategory[]
   vehicleRentalRequirementOverrides VehicleRentalRequirementOverride[]
   tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
+  brakeRentalHealthReviewOverrides  BrakeRentalHealthReviewOverride[]
   tireHealthAlerts                  TireHealthAlert[]
   brakeHealthAlerts                 BrakeHealthAlert[]
   bookings                          Booking[]
@@ -1529,6 +1530,7 @@ model User {
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
   tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
+  brakeRentalHealthReviewGrants       BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
 
   @@map("users")
 }
@@ -1934,6 +1936,7 @@ model Vehicle {
   rentalCategory                    RentalVehicleCategory?             @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
   rentalRequirementOverride         VehicleRentalRequirementOverride?
   tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
+  brakeRentalHealthReviewOverrides  BrakeRentalHealthReviewOverride[]
   tireHealthAlerts                  TireHealthAlert[]
   whatsappConversations             WhatsAppConversation[]
   billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
@@ -4329,6 +4332,27 @@ model TireRentalHealthReviewOverride {
   @@index([vehicleId])
   @@index([expiresAt])
   @@map("tire_rental_health_review_overrides")
+}
+
+model BrakeRentalHealthReviewOverride {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  vehicleId       String    @map("vehicle_id")
+  reason          String
+  grantedByUserId String    @map("granted_by_user_id")
+  expiresAt       DateTime  @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  grantedBy    User         @relation("BrakeRentalHealthReviewGrants", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([expiresAt])
+  @@map("brake_rental_health_review_overrides")
 }
 
 enum TireHealthAlertStatus {

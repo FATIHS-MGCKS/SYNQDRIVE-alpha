@@ -288,25 +288,48 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
     it('must not block rental on ESTIMATED CRITICAL without measured basis or safety alert', async () => {
       const h = createBrakeLifecycleHarness();
       const summary = {
+        isInitialized: true,
         overallCondition: 'CRITICAL' as const,
         dataBasis: 'ESTIMATED' as const,
+        frontDataBasis: 'ESTIMATED' as const,
+        rearDataBasis: 'ESTIMATED' as const,
+        frontAxleCondition: 'CRITICAL' as const,
+        rearAxleCondition: 'CRITICAL' as const,
         stateClass: 'ESTIMATED' as const,
-        openAlerts: [] as Array<{ severity: string; code: string; message: string }>,
-        hasAlert: false,
+        openAlerts: [
+          {
+            alertType: 'PAD_CRITICAL',
+            category: 'WEAR',
+            severity: 'critical',
+            displayMode: 'ESTIMATED',
+            reasonCode: 'PAD_CRITICAL_ESTIMATED',
+            message: 'Geschätzt kritisch',
+            messageEn: 'Estimated critical',
+            code: 'BRAKE_PAD_CRITICAL',
+          },
+        ],
+        hasAlert: true,
+        lastMeasurementAt: new Date().toISOString(),
+        lastRecalculatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
+
+      const rental = h.evaluateBrakes(summary as never) as {
+        state: string;
+        brake_read_model: { rentalDecision: string };
+      };
+      expect(rental.state).toBe('warning');
+      expect(rental.brake_read_model.rentalDecision).toBe('MEASUREMENT_REQUIRED');
 
       const modules = {
         service_compliance: { state: 'good', reason: 'ok' },
-        brakes: { state: 'critical', reason: 'Geschätzter kritischer Verschleiß' },
+        brakes: rental,
         tires: { state: 'good', reason: 'ok' },
         error_codes: { state: 'good', reason: 'ok' },
       };
 
       const reasons = h.collectBlockingReasons(modules, summary as never);
       expect(reasons.some((r) => /Bremsen:/i.test(r))).toBe(false);
-
-      const rental = h.evaluateBrakes(summary as never) as { state: string };
-      expect(rental.state).toBe('critical');
     });
   });
 
@@ -361,7 +384,7 @@ describe('Brake lifecycle regression safety net (pre-remediation)', () => {
       const reasons = h.collectBlockingReasons(
         {
           service_compliance: { state: 'good', reason: 'ok' },
-          brakes: { state: rental.state, reason: 'ok' },
+          brakes: rental,
           tires: { state: 'good', reason: 'ok' },
           error_codes: { state: 'good', reason: 'ok' },
         },

@@ -25,7 +25,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     ActivityLogModule,
   ],
   controllers: [RentalHealthController],
-  providers: [RentalHealthService, TireRentalHealthReviewService],
-  exports: [RentalHealthService, TireRentalHealthReviewService],
+  providers: [RentalHealthService, TireRentalHealthReviewService, BrakeRentalHealthReviewService],
+  exports: [RentalHealthService, TireRentalHealthReviewService, BrakeRentalHealthReviewService],
 })
 export class RentalHealthModule {}
