@@ -3879,23 +3879,36 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations`, data),
     update: (orgId: string, id: string, data: Partial<StationUpsertPayload>) =>
       patch<Station>(`/organizations/${orgId}/stations/${id}`, data),
+    /**
+     * @deprecated Stations cannot be hard-deleted. Use `archive()` instead.
+     * The backend returns HTTP 410 with code `STATION_DELETE_DEPRECATED`.
+     */
     delete: (orgId: string, id: string) =>
-      del<{ id: string; unassignedVehicles: number; archived?: boolean }>(
-        `/organizations/${orgId}/stations/${id}`,
-      ),
+      del<never>(`/organizations/${orgId}/stations/${id}`),
     archive: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
     restore: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/restore`, {}),
-    setPrimary: (orgId: string, id: string) =>
-      post<Station>(`/organizations/${orgId}/stations/${id}/set-primary`, {}),
+    setPrimary: async (orgId: string, id: string) => {
+      const result = await post<{
+        outcome: string;
+        station: Station;
+      }>(`/organizations/${orgId}/stations/${id}/set-primary`, {});
+      return result.station;
+    },
     overviewStats: (orgId: string, stationId: string) =>
       get<StationOverviewStats>(`/organizations/${orgId}/stations/${stationId}/overview-stats`),
     fleet: (orgId: string, stationId: string) =>
       get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
+    activity: (orgId: string, stationId: string) =>
+      get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
+    openingHoursContract: (orgId: string) =>
+      get<StationOpeningHoursContractMetadata>(
+        `/organizations/${orgId}/stations/opening-hours/contract`,
+      ),
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
       if (opts?.country) q.set('country', opts.country);
@@ -8914,6 +8927,9 @@ export interface Station {
   country: string | null;
   latitude: number | null;
   longitude: number | null;
+  coordinatesSource: 'MANUAL' | 'FORWARD_GEOCODE' | 'MAPBOX_RETRIEVE' | null;
+  coordinatesConfirmedAt: string | null;
+  hasMissingCoordinates: boolean;
   timezone: string | null;
   radiusMeters: number | null;
   geofenceRadiusMeters: number | null;
@@ -8927,6 +8943,7 @@ export interface Station {
   keyBoxAvailable: boolean;
   capacity: number | null;
   openingHours: StationOpeningHours | string | null;
+  openingHoursContractVersion: number;
   holidayRules: Record<string, unknown> | null;
   handoverInstructions: string | null;
   returnInstructions: string | null;
@@ -8937,6 +8954,24 @@ export interface Station {
   vehicleCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StationOpeningHoursContractMetadata {
+  version: number;
+  weekdays: string[];
+  missingDayPolicy: 'closed';
+  timeFormat: 'HH:mm';
+  timezoneSource: 'station.timezone';
+  supports: {
+    closedDays: true;
+    multipleSlots: true;
+    breaksViaSlotGaps: true;
+    open24h: true;
+    midnightSpanningSlots: true;
+    legacyText: true;
+    legacySingleOpenClose: true;
+  };
+  notes: string[];
 }
 
 export interface StationOverviewStats {
@@ -8979,6 +9014,14 @@ export interface StationBookingRow {
   isOneWayRental: boolean;
   customerName: string;
   vehicleLabel: string;
+}
+
+export interface StationActivityEntry {
+  id: string;
+  action: string;
+  description: string | null;
+  userName: string;
+  createdAt: string;
 }
 
 export interface StationUpsertPayload {
@@ -9079,6 +9122,7 @@ export interface StationMapboxPrefill {
   phone: string | null;
   externalPlaceId: string | null;
   source: 'MAPBOX';
+  coordinatesAccepted: boolean;
 }
 
 /** @deprecated Legacy Google Places shape — use StationMapboxSuggestion */

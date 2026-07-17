@@ -429,7 +429,7 @@ enum StationEventType {
 
 ### 5.1 Primary-Station-Invariante
 
-**Partial Unique Index (PostgreSQL):**
+**Partial Unique Index (PostgreSQL)** — deployed in migration `20260718103000_station_one_primary_per_org`:
 
 ```sql
 CREATE UNIQUE INDEX stations_one_primary_per_org
@@ -437,7 +437,7 @@ CREATE UNIQUE INDEX stations_one_primary_per_org
   WHERE is_primary = true AND status != 'ARCHIVED';
 ```
 
-**Anwendung:** Zusätzlich zur Tx in `SetPrimaryStation` — verhindert Race (P2-1 Audit).
+**Anwendung:** Zusätzlich zur Tx + `pg_advisory_xact_lock` in `SetPrimaryStation` — verhindert Race (P2-1 Audit). Migration reconciliert bestehende Duplikate deterministisch vor Index-Erstellung. Read-only Diagnose: `scripts/ops/stations-v2-primary-diagnose.ts`.
 
 ### 5.2 Weitere Indizes
 
