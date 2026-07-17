@@ -31,6 +31,15 @@ import {
   resolveArchiveOnlyFollowUpCandidateTypes,
   resolveArchiveOnlySubtype,
 } from './document-action-planner.archive-rules';
+import {
+  assessFineDraftRequirements,
+  buildFinePlannerActions,
+  buildFinePlannerSummary,
+  FINE_DOCUMENT_MODES,
+  isFineDocumentProfile,
+  resolveFineDocumentMode,
+  resolveFineFollowUpCandidateTypes,
+} from './document-action-planner.fine-rules';
 
 const EXECUTABLE_REQUIREMENTS = new Set<DocumentActionRequirement>(['REQUIRED', 'OPTIONAL']);
 
@@ -160,6 +169,9 @@ export function planDocumentActions(input: DocumentActionPlannerInput): Document
   if (isArchiveOnlyDocumentProfile(input)) {
     return planArchiveOnlyDocument(input);
   }
+  if (isFineDocumentProfile(input)) {
+    return planFineDocument(input);
+  }
   return planDownstreamDocumentActions(input);
 }
 
@@ -240,6 +252,123 @@ function planArchiveOnlyDocument(input: DocumentActionPlannerInput): DocumentAct
     actions,
     blockingReasons,
     missingRequirements: [],
+    followUpCandidateTypes,
+  };
+}
+
+function planFineDocument(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
+  const plannerVersion = input.plannerVersion ?? DOCUMENT_ACTION_PLANNER_VERSION;
+  const routingType = resolvePlannerRoutingType(input);
+  const vehicleEntityId = findVehicleEntityId(input.entityLinks);
+  const fineMode = resolveFineDocumentMode(input);
+  const assessment = assessFineDraftRequirements(input);
+  const inputFingerprint = buildDocumentActionPlannerInputFingerprint({
+    ...input,
+    plannerVersion,
+  });
+
+  const blockingReasons: DocumentActionBlockingReason[] = [];
+  const missingRequirements =
+    fineMode === FINE_DOCUMENT_MODES.FINE_NOTICE ? assessment.missingRequirements : [];
+
+  if (fineMode === FINE_DOCUMENT_MODES.FINE_NOTICE) {
+    blockingReasons.push(
+      ...missingRequirements.map((missing) =>
+        toBlockingReasonFromMissing(
+          missing,
+          missing.entityType ? 'ENTITY' : 'REQUIREMENT',
+        ),
+      ),
+    );
+  }
+  blockingReasons.push(...collectPlausibilityBlockers(input));
+
+  if (!input.featureFlags.actionPreviewEnabled) {
+    blockingReasons.push({
+      code: 'ACTION_PREVIEW_DISABLED',
+      message: 'Action preview is disabled by feature flag.',
+      source: 'FEATURE_FLAG',
+      severity: 'BLOCKER',
+    });
+  }
+
+  if (
+    fineMode === FINE_DOCUMENT_MODES.FINE_NOTICE &&
+    assessment.canCreateFineDraft &&
+    !isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'fines')
+  ) {
+    blockingReasons.push({
+      code: 'CAPABILITY_DISABLED_FINES',
+      message: 'Downstream fines capability is disabled for fine draft creation.',
+      source: 'CAPABILITY',
+      severity: 'BLOCKER',
+    });
+  }
+
+  const ctx: DocumentActionPlannerBuildContext = {
+    input: { ...input, plannerVersion },
+    vehicleEntityId,
+    routingType,
+  };
+
+  let actions =
+    blockingReasons.some((reason) => reason.code === 'ACTION_PREVIEW_DISABLED')
+      ? []
+      : buildFinePlannerActions(ctx);
+
+  const isBlocked =
+    blockingReasons.length > 0 ||
+    (fineMode === FINE_DOCUMENT_MODES.FINE_NOTICE && !assessment.canCreateFineDraft);
+
+  if (isBlocked) {
+    actions = stripExecutableActions(actions);
+  }
+
+  const followUpCandidateTypes = resolveFineFollowUpCandidateTypes(
+    fineMode,
+    assessment.canCreateFineDraft,
+  );
+
+  const planDraft: DocumentActionPlanDraft = {
+    plannerVersion,
+    documentCategory: input.documentCategory,
+    documentSubtype: input.documentSubtype,
+    effectiveDocumentType: input.effectiveDocumentType,
+    inputFingerprint,
+    applyMode: input.applyMode,
+    isBlocked,
+    summary: buildFinePlannerSummary(fineMode, assessment.canCreateFineDraft, actions.length),
+    snapshot: {
+      plannerVersion,
+      inputFingerprint,
+      routingType,
+      planningMode: 'FINE',
+      fineDocumentMode: fineMode,
+      documentCategory: input.documentCategory,
+      documentSubtype: input.documentSubtype,
+      effectiveDocumentType: input.effectiveDocumentType,
+      applyMode: input.applyMode,
+      isBlocked,
+      canCreateFineDraft: assessment.canCreateFineDraft,
+      actionTypes: actions.map((action) => action.actionType),
+      semanticActions: actions
+        .map((action) => (action.previewPayload as Record<string, unknown> | undefined)?.semanticAction)
+        .filter(Boolean),
+      blockingReasonCodes: blockingReasons.map((reason) => reason.code),
+      missingRequirementCodes: missingRequirements.map((missing) => missing.code),
+      followUpCandidateTypes,
+      entityLinkCount: input.entityLinks.length,
+      entityCandidateCount: input.entityCandidates.length,
+      plausibilityOverallStatus: input.plausibility.overallStatus,
+      noAutomaticContact: true,
+    },
+  };
+
+  return {
+    planDraft,
+    actions,
+    blockingReasons,
+    missingRequirements,
     followUpCandidateTypes,
   };
 }

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-fine-planner-rules-2026-07-17',
+    version: '4.9.599',
+    title: 'V4.9.599 — Document Intake V2 Fine / Hearing / Driver-Inquiry Action Plan Rules',
+    summary: [
+      'Planner-Regeln für FINE (Bußgeld), Anhörungsbogen (HEARING_FORM) und Fahrerermittlung (DRIVER_INQUIRY).',
+      'Semantic Actions: CREATE_FINE_DRAFT, LINK_VEHICLE/BOOKING/CUSTOMER/DRIVER, SUGGEST_DRIVER_REVIEW, SUGGEST_DEADLINE_TASK, SUGGEST_CUSTOMER_CONTACT.',
+      'Pflichtfelder Fine Draft: Tatdatum, positiver Betrag, Behörde, Aktenzeichen/Referenz, bestätigtes Fahrzeug; fehlende Tatzeit blockiert Booking-/Driver-Attribution; mehrere Fahrer → keine Auto-Zuordnung; Kunde ≠ Fahrer; kein Parkverstoß-Default; Anhörungsbogen kein blindes Bußgeld.',
+      'Planner v3 (`document-action-planner-v3`); Tests für vollständige und unvollständige Fälle je Kategorie.',
+    ],
+    reason: 'Prompt 23/84: deterministischer Fine-Action-Planner vor Entity-Resolver- und Apply-Verdrahtung.',
+    previousBehavior: 'FINE nutzte generisches CREATE_FINE-Template ohne Mode-/Attributions-Regeln.',
+    details:
+      'document-action-planner.fine-rules.ts (+ spec), engine fine path, preview mapper fine semantics, catalog FINE removed.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T03:00:00.000Z',
+  },
+  {
     id: 'document-archive-only-plan-rules-2026-07-17',
     version: '4.9.598',
     title: 'V4.9.598 — Document Intake V2 Archive-Only Action Plan Rules',

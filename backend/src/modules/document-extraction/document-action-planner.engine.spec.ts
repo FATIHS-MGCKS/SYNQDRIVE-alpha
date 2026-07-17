@@ -77,43 +77,48 @@ describe('DocumentActionPlannerEngine', () => {
   });
 
   describe('finance documents', () => {
-    it('plans fine creation and optional task suggestion', () => {
+    it('plans fine draft for complete fine notice', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'FINE',
           documentCategory: 'FINANCE',
+          entityLinks: [
+            { role: 'PRIMARY_VEHICLE', entityType: 'VEHICLE', entityId: 'veh-1' },
+          ],
           confirmedData: {
             eventDate: '2026-03-01',
+            eventTime: '10:30',
             totalCents: 3500,
-            offenseType: 'Parkverstoß',
-            licensePlate: 'AB-CD-123',
+            issuingAuthority: 'Ordnungsamt',
+            reportNumber: 'REF-22',
           },
         }),
       );
 
       expect(result.planDraft.isBlocked).toBe(false);
-      expect(result.actions.map((a) => a.actionType)).toEqual(['CREATE_FINE', 'SUGGEST_TASK']);
-      expect(result.actions[0].requirement).toBe('REQUIRED');
-      expect(result.actions[1].requirement).toBe('OPTIONAL');
-      expect(result.followUpCandidateTypes).toContain('NOTIFY_DRIVER');
+      expect(result.planDraft.snapshot.planningMode).toBe('FINE');
+      expect(result.actions.some((a) => a.actionType === 'CREATE_FINE')).toBe(true);
+      expect(result.followUpCandidateTypes).not.toContain('NOTIFY_DRIVER');
     });
 
-    it('blocks fine apply when eventDate is missing', () => {
+    it('blocks fine draft when required fields are missing', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'FINE',
           confirmedData: {
             totalCents: 3500,
           },
+          entityLinks: [
+            { role: 'PRIMARY_VEHICLE', entityType: 'VEHICLE', entityId: 'veh-1' },
+          ],
         }),
       );
 
       expect(result.planDraft.isBlocked).toBe(true);
       expect(executableActions(result)).toHaveLength(0);
-      expect(result.missingRequirements.some((m) => m.code === 'MISSING_CONFIRMED_FIELDS')).toBe(
+      expect(result.missingRequirements.some((m) => m.code === 'MISSING_FINE_DRAFT_FIELDS')).toBe(
         true,
       );
-      expect(result.blockingReasons.some((b) => b.code === 'MISSING_CONFIRMED_FIELDS')).toBe(true);
     });
   });
 
@@ -288,28 +293,24 @@ describe('DocumentActionPlannerEngine', () => {
   });
 
   describe('follow-up candidate types', () => {
-    it('suggests driver follow-up when fine has no driver link', () => {
+    it('does not auto-suggest driver notify for fine documents', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'FINE',
+          entityLinks: [
+            { role: 'PRIMARY_VEHICLE', entityType: 'VEHICLE', entityId: 'veh-1' },
+          ],
           confirmedData: {
             eventDate: '2026-03-01',
+            eventTime: '09:00',
             totalCents: 1000,
+            issuingAuthority: 'Police',
+            reportNumber: 'P-1',
           },
-          entityCandidates: [
-            {
-              entityType: 'DRIVER',
-              entityId: null,
-              confidence: 0.42,
-              matchReasonCodes: ['NAME_PARTIAL'],
-            },
-          ],
         }),
       );
 
-      expect(result.followUpCandidateTypes).toEqual(
-        expect.arrayContaining(['NOTIFY_DRIVER', 'REQUEST_CUSTOMER_INFO']),
-      );
+      expect(result.followUpCandidateTypes).not.toContain('NOTIFY_DRIVER');
     });
 
     it('suggests vendor follow-up for invoice without vendor link', () => {

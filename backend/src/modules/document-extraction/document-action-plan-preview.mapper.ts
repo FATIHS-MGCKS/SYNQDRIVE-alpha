@@ -4,6 +4,10 @@ import {
   ARCHIVE_ONLY_SEMANTIC_ACTIONS,
   extractSemanticAction,
 } from './document-action-planner.archive-rules';
+import {
+  extractFineSemanticAction,
+  FINE_SEMANTIC_ACTIONS,
+} from './document-action-planner.fine-rules';
 import { listActionTemplatesForRoutingType } from './document-action-planner.catalog';
 import type {
   DocumentActionBlockingReason,
@@ -26,11 +30,13 @@ const PREVIEW_STATUS_BY_ACTION_TYPE: Record<DocumentActionType, DocumentActionPr
 
 const SEMANTIC_PREVIEW_ACTION_TYPES = new Set<string>([
   ...Object.values(ARCHIVE_ONLY_SEMANTIC_ACTIONS),
+  ...Object.values(FINE_SEMANTIC_ACTIONS),
 ]);
 
 export type DocumentActionPreviewActionType =
   | DocumentActionType
-  | (typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS)[keyof typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS];
+  | (typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS)[keyof typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS]
+  | (typeof FINE_SEMANTIC_ACTIONS)[keyof typeof FINE_SEMANTIC_ACTIONS];
 
 export type DocumentActionPreviewRow = {
   sequence: number;
@@ -45,6 +51,8 @@ export type DocumentActionPreviewRow = {
 
 function resolvePreviewActionType(action: PlannedDocumentActionInput): DocumentActionPreviewActionType {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const fineSemantic = extractFineSemanticAction(payload);
+  if (fineSemantic) return fineSemantic;
   const semantic = extractSemanticAction(payload);
   if (semantic) return semantic;
   return action.actionType;
@@ -55,6 +63,21 @@ function mapActionPreviewStatus(
   planBlocked: boolean,
 ): DocumentActionPreviewStatus {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const fineSemantic = extractFineSemanticAction(payload);
+  if (fineSemantic === FINE_SEMANTIC_ACTIONS.CREATE_FINE_DRAFT) {
+    return planBlocked ? 'BLOCKED' : 'WOULD_CREATE';
+  }
+  if (fineSemantic?.startsWith('LINK_')) {
+    return 'WOULD_LINK';
+  }
+  if (
+    fineSemantic === FINE_SEMANTIC_ACTIONS.SUGGEST_DRIVER_REVIEW ||
+    fineSemantic === FINE_SEMANTIC_ACTIONS.SUGGEST_DEADLINE_TASK ||
+    fineSemantic === FINE_SEMANTIC_ACTIONS.SUGGEST_CUSTOMER_CONTACT
+  ) {
+    return 'WOULD_SUGGEST';
+  }
+
   const semantic = extractSemanticAction(payload);
 
   if (semantic === ARCHIVE_ONLY_SEMANTIC_ACTIONS.ARCHIVE_DOCUMENT) {
@@ -142,9 +165,10 @@ export function buildDocumentActionPreviewRows(
 ): DocumentActionPreviewRow[] {
   const planBlocked = plannerResult.planDraft.isBlocked;
   const isArchiveOnlyPlan = plannerResult.planDraft.snapshot.planningMode === 'ARCHIVE_ONLY';
+  const isFinePlan = plannerResult.planDraft.snapshot.planningMode === 'FINE';
   const rows: DocumentActionPreviewRow[] = [];
 
-  if (!isArchiveOnlyPlan) {
+  if (!isArchiveOnlyPlan && !isFinePlan) {
     const linkPreview = buildVehicleLinkPreview(vehicleEntityId, 0);
     if (linkPreview) {
       rows.push({ ...linkPreview, sequence: 1 });

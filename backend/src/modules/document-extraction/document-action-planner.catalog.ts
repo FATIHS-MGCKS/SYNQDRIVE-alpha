@@ -91,17 +91,6 @@ function invoicePayload(ctx: DocumentActionPlannerBuildContext): Record<string, 
   };
 }
 
-function finePayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  const data = ctx.input.confirmedData;
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    eventDate: data.eventDate ?? null,
-    totalCents: data.totalCents ?? null,
-    offenseType: data.offenseType ?? null,
-    licensePlate: data.licensePlate ?? null,
-  };
-}
-
 const ACTION_TEMPLATES_BY_TYPE: Partial<
   Record<DocumentExtractionType, DocumentActionPlannerActionTemplate[]>
 > = {
@@ -219,32 +208,6 @@ const ACTION_TEMPLATES_BY_TYPE: Partial<
       buildPayload: invoicePayload,
     },
   ],
-  FINE: [
-    {
-      actionType: 'CREATE_FINE',
-      requirement: 'REQUIRED',
-      capabilityKey: 'fines',
-      targetEntityType: 'VEHICLE',
-      buildPayload: finePayload,
-    },
-    {
-      actionType: 'SUGGEST_TASK',
-      requirement: 'OPTIONAL',
-      capabilityKey: 'tasks',
-      buildPayload: (ctx) => ({
-        suggestion: 'fine_follow_up_task',
-        offenseType: ctx.input.confirmedData.offenseType ?? null,
-      }),
-    },
-  ],
-  VEHICLE_CONDITION: [
-    {
-      actionType: 'ARCHIVE_ONLY',
-      requirement: 'INFORMATIONAL',
-      capabilityKey: 'serviceEvents',
-      buildPayload: confirmedFieldSnapshot,
-    },
-  ],
   OTHER: [
     {
       actionType: 'ARCHIVE_ONLY',
@@ -263,7 +226,6 @@ export function listActionTemplatesForRoutingType(
 }
 
 const FOLLOW_UP_BY_TYPE: Partial<Record<DocumentExtractionType, DocumentFollowUpCandidateType[]>> = {
-  FINE: ['CREATE_TASK', 'NOTIFY_DRIVER', 'REQUEST_CUSTOMER_INFO'],
   INVOICE: ['CREATE_TASK', 'REQUEST_CUSTOMER_INFO'],
   TUV_REPORT: ['SCHEDULE_INSPECTION', 'CREATE_TASK'],
   BOKRAFT_REPORT: ['SCHEDULE_INSPECTION'],
@@ -302,13 +264,6 @@ export function resolveFollowUpCandidateTypes(
   }
 
   const base = [...(FOLLOW_UP_BY_TYPE[routingType] ?? [])];
-
-  if (routingType === 'FINE' && !hasConfirmedEntityLink(input.entityLinks, 'DRIVER')) {
-    if (!base.includes('NOTIFY_DRIVER')) base.push('NOTIFY_DRIVER');
-    if (!hasCandidate(input.entityCandidates, 'DRIVER') && !base.includes('REQUEST_CUSTOMER_INFO')) {
-      base.push('REQUEST_CUSTOMER_INFO');
-    }
-  }
 
   if (routingType === 'INVOICE' && !hasConfirmedEntityLink(input.entityLinks, 'VENDOR')) {
     if (!hasCandidate(input.entityCandidates, 'VENDOR') && !base.includes('REQUEST_CUSTOMER_INFO')) {

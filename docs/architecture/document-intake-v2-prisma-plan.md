@@ -174,6 +174,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 22, 2026-07-17):** `document-action-planner.archive-rules.ts` — Archive-Only-Profile (GENERAL, OTHER, bekannte Subtypes wie PAYMENT_PROOF, UNKNOWN_DOCUMENT_TYPE). Semantic planner actions ohne Downstream-Create; Archiv = valider Erfolg; LINK_* nur als unbestätigte Kandidaten-Vorschläge; kein Auto-Kontakt. Planner-Version `document-action-planner-v2`.
 
+**Implementierungsstand (Prompt 23, 2026-07-17):** `document-action-planner.fine-rules.ts` — FINE-Profile mit Modi FINE_NOTICE / HEARING_FORM / DRIVER_INQUIRY. Semantic Actions: CREATE_FINE_DRAFT, LINK_*, SUGGEST_DRIVER_REVIEW, SUGGEST_DEADLINE_TASK, SUGGEST_CUSTOMER_CONTACT. Pflichtfelder Fine Draft nur für FINE_NOTICE; fehlende Tatzeit blockiert Booking-/Driver-Attribution; mehrere Fahrer → keine Auto-Zuordnung; kein offenseType-Default; Anhörungsbogen kein blindes Bußgeld. Planner-Version `document-action-planner-v3`.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

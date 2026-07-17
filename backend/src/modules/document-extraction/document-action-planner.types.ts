@@ -21,7 +21,7 @@ export const DOCUMENT_FOLLOW_UP_CANDIDATE_TYPES = [
 export type DocumentFollowUpCandidateType =
   (typeof DOCUMENT_FOLLOW_UP_CANDIDATE_TYPES)[number];
 
-export const DOCUMENT_ACTION_PLANNER_VERSION = 'document-action-planner-v2';
+export const DOCUMENT_ACTION_PLANNER_VERSION = 'document-action-planner-v3';
 
 export type DocumentActionPlannerFeatureFlags = {
   /** Gate for V2 intake surfaces (preview, entity links, maturity). */
