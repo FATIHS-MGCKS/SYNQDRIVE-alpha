@@ -12,6 +12,7 @@ import {
   resolveMaxUploadBytes,
   SUPPORTED_DOCUMENT_TYPES,
 } from './document-extraction.schemas';
+import { DOCUMENT_UPLOAD_DUPLICATE_STATUSES } from './document-upload-duplicate.types';
 import { DocumentExtractionMetadataDto } from './dto/document-extraction-metadata.dto';
 
 const PUBLIC_STATUSES: DocumentExtractionStatus[] = [
@@ -85,6 +86,10 @@ export class DocumentExtractionMetadataService {
       errorPhases: PUBLIC_ERROR_PHASES.map((value) => ({
         value,
         labelKey: `documentExtraction.errorPhase.${value}`,
+      })),
+      uploadDuplicateStatuses: DOCUMENT_UPLOAD_DUPLICATE_STATUSES.map((value) => ({
+        value,
+        labelKey: `documentExtraction.uploadDuplicate.${value}`,
       })),
     };
   }

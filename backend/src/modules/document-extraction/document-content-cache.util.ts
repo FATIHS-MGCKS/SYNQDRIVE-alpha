@@ -17,6 +17,7 @@ export interface PipelinePlausibilityPayload {
   actionPlanExecution?: import('./document-action.types').DocumentActionPlanExecution;
   actionPlanApplyLifecycle?: import('./document-action-plan.state-machine').DocumentActionPlanApplyLifecycle;
   fileFingerprint?: import('./document-extraction-fingerprint.types').DocumentExtractionFileFingerprint;
+  uploadDuplicate?: import('./document-upload-duplicate.types').PipelineUploadDuplicatePayload;
 }
 
 export interface DocumentTypeAuditEntry {

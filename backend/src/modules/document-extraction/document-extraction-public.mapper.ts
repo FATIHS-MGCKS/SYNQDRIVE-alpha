@@ -13,6 +13,7 @@ import {
 } from './document-content-cache.util';
 import { getAllowedDocumentExtractionActions } from './document-extraction-actions.util';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
+import { buildPublicUploadDuplicateDto } from './dto/public-upload-duplicate.dto';
 
 type VehicleJoin = {
   id: string;
@@ -78,6 +79,9 @@ type ExtractionRecord = {
   appliedById?: string | null;
   cancelledById?: string | null;
   fileDeletedById?: string | null;
+  uploadDuplicateStatus?: string | null;
+  relatedExtractionId?: string | null;
+  reuploadReason?: string | null;
   vehicle?: VehicleJoin | null;
   createdBy?: UserJoin | null;
   confirmedBy?: UserJoin | null;
@@ -195,6 +199,15 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     hasStoredFile: Boolean(record.objectKey),
     allowedActions,
     audit: buildAudit(record),
+    uploadDuplicateStatus: record.uploadDuplicateStatus ?? null,
+    relatedExtractionId: record.relatedExtractionId ?? null,
+    reuploadReason: record.reuploadReason ?? null,
+    uploadDuplicate: buildPublicUploadDuplicateDto({
+      status: record.uploadDuplicateStatus,
+      relatedExtractionId: record.relatedExtractionId,
+      reuploadReason: record.reuploadReason,
+      plausibility: record.plausibility,
+    }),
   };
 }
 

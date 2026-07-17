@@ -42,9 +42,14 @@ function makeService(overrides: {
       ),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       create: jest.fn(),
+      delete: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
       ...(overrides.prisma ?? {}),
+    },
+    documentExtractionContentAnchor: {
+      create: jest.fn().mockResolvedValue({}),
+      findUnique: jest.fn(),
     },
     vehicle: {
       findUnique: jest.fn().mockResolvedValue({ organizationId: 'org-1' }),
@@ -122,6 +127,11 @@ function makeService(overrides: {
     actionOrchestrator as any,
     plausibility as any,
     fileIdentification as any,
+    {
+      assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
+      claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
+      loadBlockedAssessmentFromAnchor: jest.fn(),
+    } as any,
     observability as any,
   );
   return { svc, prisma, storage, queue, applyService, docConfig };
@@ -136,13 +146,15 @@ describe('DocumentExtractionService queue lifecycle', () => {
     (canEnqueueQueue as jest.Mock).mockReturnValue(true);
   });
 
-  it('creates PENDING/STORAGE first, then QUEUED after successful queue.add', async () => {
+  it('creates PENDING/UPLOAD first, stores file, then QUEUED after successful queue.add', async () => {
     const create = jest.fn().mockResolvedValue({ id: 'e1', vehicleId: 'v1', organizationId: 'org-1' });
-    const update = jest.fn().mockResolvedValue({
-      id: 'e1',
-      status: 'QUEUED',
-      processingStage: 'QUEUE',
-    });
+    const update = jest.fn()
+      .mockResolvedValueOnce({ id: 'e1', vehicleId: 'v1', organizationId: 'org-1', processingStage: 'STORAGE' })
+      .mockResolvedValueOnce({
+        id: 'e1',
+        status: 'QUEUED',
+        processingStage: 'QUEUE',
+      });
     const { svc, prisma, queue } = makeService({
       prisma: { create, update },
     });
@@ -159,8 +171,13 @@ describe('DocumentExtractionService queue lifecycle', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'PENDING',
-          processingStage: 'STORAGE',
+          processingStage: 'UPLOAD',
         }),
+      }),
+    );
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ processingStage: 'STORAGE' }),
       }),
     );
     expect(queue.add).toHaveBeenCalledWith(
@@ -246,12 +263,23 @@ describe('DocumentExtractionService queue lifecycle', () => {
     process.env.NODE_ENV = 'development';
     const create = jest.fn().mockResolvedValue({
       id: 'e1',
+      vehicleId: 'v1',
+      organizationId: 'org-1',
       status: 'PENDING',
-      processingStage: 'STORAGE',
+      processingStage: 'UPLOAD',
     });
+    const update = jest.fn().mockImplementation(({ where, data }) =>
+      Promise.resolve({
+        id: where.id,
+        vehicleId: 'v1',
+        organizationId: 'org-1',
+        status: 'PENDING',
+        ...data,
+      }),
+    );
     const { svc, queue } = makeService({
       docConfig: { queueEnabled: false, allowPendingWithoutQueue: true },
-      prisma: { create },
+      prisma: { create, update },
     });
 
     const result = await svc.createFromUpload({

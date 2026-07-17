@@ -9,6 +9,7 @@ import {
   FLOW_STATUS_LABEL_DE,
   type PlausibilityStatus,
 } from './document-extraction.shared';
+import { DocumentUploadDuplicatePanel } from './DocumentUploadDuplicatePanel';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
 import { CATEGORY_TO_DOC_TYPE } from './vehicle-file.constants';
 
@@ -116,7 +117,7 @@ export function VehicleDocumentUploadDrawer({
       description={vehicleLabel}
       widthClassName="sm:max-w-xl"
       status={
-        <StatusChip tone={flow.flow === 'failed' ? 'critical' : flow.flow === 'ready' ? 'watch' : 'info'}>
+        <StatusChip tone={flow.flow === 'failed' ? 'critical' : flow.flow === 'duplicate_blocked' ? 'watch' : flow.flow === 'ready' ? 'watch' : 'info'}>
           {FLOW_STATUS_LABEL_DE[flow.flow]}
         </StatusChip>
       }
@@ -185,6 +186,29 @@ export function VehicleDocumentUploadDrawer({
             ) : null}
           </div>
         )}
+
+        {flow.flow === 'duplicate_blocked' && flow.duplicateBlocked ? (
+          <DocumentUploadDuplicatePanel
+            payload={flow.duplicateBlocked.payload}
+            onCancel={flow.handleReset}
+            onReupload={(reason) => void flow.handleAuthorizedReupload(reason)}
+          />
+        ) : null}
+
+        {flow.uploadDuplicateWarning ? (
+          <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.05] p-4">
+            <p className="text-[12px] font-semibold text-foreground">Mögliches Business-Duplikat</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Rechnungs- oder Aktenzeichen-Hinweis passt zu einem bestehenden Dokument in dieser Organisation.
+              Der Upload wurde dennoch gestartet.
+            </p>
+            {flow.uploadDuplicateWarning.existingExtraction ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Referenz: {flow.uploadDuplicateWarning.existingExtraction.sourceFileName || flow.uploadDuplicateWarning.existingExtraction.id}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {flow.flow === 'failed' && (
           <div className="rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.05] p-5 text-center">

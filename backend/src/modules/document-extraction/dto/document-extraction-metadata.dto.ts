@@ -13,4 +13,5 @@ export interface DocumentExtractionMetadataDto {
   statuses: DocumentExtractionMetadataOptionDto[];
   stages: DocumentExtractionMetadataOptionDto[];
   errorPhases: DocumentExtractionMetadataOptionDto[];
+  uploadDuplicateStatuses: DocumentExtractionMetadataOptionDto[];
 }

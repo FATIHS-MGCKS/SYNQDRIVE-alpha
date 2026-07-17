@@ -5267,11 +5267,21 @@ export const api = {
       file: File,
       documentType: string,
       source?: string,
+      options?: {
+        reuploadReason?: string;
+        relatedExtractionId?: string;
+        invoiceNumberHint?: string;
+        referenceNumberHint?: string;
+      },
     ) => {
       const form = new FormData();
       form.append('file', file);
       form.append('documentType', documentType);
       if (source) form.append('source', source);
+      if (options?.reuploadReason) form.append('reuploadReason', options.reuploadReason);
+      if (options?.relatedExtractionId) form.append('relatedExtractionId', options.relatedExtractionId);
+      if (options?.invoiceNumberHint) form.append('invoiceNumberHint', options.invoiceNumberHint);
+      if (options?.referenceNumberHint) form.append('referenceNumberHint', options.referenceNumberHint);
       const token = localStorage.getItem('synqdrive_token');
       const res = await fetch(`${BASE_URL}/vehicles/${vehicleId}/document-extractions/upload`, {
         method: 'POST',
@@ -5279,16 +5289,28 @@ export const api = {
         body: form,
       });
       if (!res.ok) {
-        let message = `Upload failed (${res.status})`;
+        let body: unknown = null;
         try {
-          const body = (await res.json()) as { message?: string };
-          if (body?.message) message = body.message;
+          body = await res.json();
         } catch {
-          /* keep default message */
+          /* keep null body */
         }
+        const { parseUploadDuplicateError } = await import('./document-upload-duplicate');
+        const duplicateError = parseUploadDuplicateError(body);
+        if (duplicateError) throw duplicateError;
+        const message =
+          typeof body === 'object' && body && 'message' in body && typeof (body as { message?: unknown }).message === 'string'
+            ? (body as { message: string }).message
+            : `Upload failed (${res.status})`;
         throw new Error(message);
       }
-      return (await res.json()) as { id: string; status: string; documentType: string };
+      return (await res.json()) as {
+        id: string;
+        status: string;
+        documentType: string;
+        uploadDuplicateStatus?: string;
+        uploadDuplicate?: unknown;
+      };
     },
     setDocumentType: (
       vehicleId: string,

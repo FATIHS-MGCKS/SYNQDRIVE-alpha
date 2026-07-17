@@ -75,6 +75,11 @@ describe('DocumentExtractionService', () => {
       setActiveJobs: jest.fn(),
       observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
     };
+    const uploadDuplicate = {
+      assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
+      claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
+      loadBlockedAssessmentFromAnchor: jest.fn(),
+    };
     const svc = new DocumentExtractionService(
       prisma as any,
       config as any,
@@ -85,9 +90,10 @@ describe('DocumentExtractionService', () => {
       actionOrchestrator as any,
       plausibility as any,
       fileIdentification as any,
+      uploadDuplicate as any,
       observability as any,
     );
-    return { svc, prisma, applyService, storage, queue, observability, fileIdentification };
+    return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }
 
   describe('sanitizeConfirmedData', () => {

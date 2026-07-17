@@ -51,6 +51,7 @@ import { DocumentIntakeReconciliationService } from './diagnostic/document-intak
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
 
 /**
  * AI Document Upload feature module.
@@ -96,6 +97,7 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     ApplyBatteryMeasurementDocumentActionExecutor,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
+    DocumentUploadDuplicateService,
     DocumentTextExtractorService,
     DocumentContentExtractorService,
     DocumentExtractionProcessor,

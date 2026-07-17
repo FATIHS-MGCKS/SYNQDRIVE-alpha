@@ -64,7 +64,22 @@ describe('DocumentExtractionService lifecycle reads', () => {
       storage as any,
       queue as any,
       { apply: jest.fn() } as any,
+      { supportsExecutorPath: jest.fn(), executeConfirmedPlan: jest.fn() } as any,
       plausibility as any,
+      {
+        identify: jest.fn().mockResolvedValue({
+          detectedKind: 'pdf',
+          detectedMime: 'application/pdf',
+          clientMime: 'application/pdf',
+          displayFileName: 'invoice.pdf',
+          sizeBytes: 100,
+        }),
+      } as any,
+      {
+        assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
+        claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
+        loadBlockedAssessmentFromAnchor: jest.fn(),
+      } as any,
       observability as any,
     );
     return { svc, prisma, storage };

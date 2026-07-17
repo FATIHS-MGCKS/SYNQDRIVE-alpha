@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
+import { DocumentUploadDuplicateError } from '../../lib/document-upload-duplicate';
+import { shouldShowBusinessDuplicateWarning } from '../lib/document-upload-duplicate-flow';
+import type { PublicUploadDuplicate } from '../lib/document-extraction.types';
 import {
   buildReviewFields,
   parseReviewFieldsForConfirm,
@@ -34,6 +37,7 @@ export function useDocumentExtractionFlow({
 }: UseDocumentExtractionFlowOptions) {
   const abortRef = useRef<AbortController | null>(null);
   const pollerStopRef = useRef<(() => void) | null>(null);
+  const pendingFileRef = useRef<File | null>(null);
 
   const [metadata, setMetadata] = useState<DocumentExtractionMetadata | null>(null);
   const [flow, setFlow] = useState<FlowStatus>('idle');
@@ -41,6 +45,8 @@ export function useDocumentExtractionFlow({
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [duplicateBlocked, setDuplicateBlocked] = useState<DocumentUploadDuplicateError | null>(null);
+  const [uploadDuplicateWarning, setUploadDuplicateWarning] = useState<PublicUploadDuplicate | null>(null);
   const [editingFields, setEditingFields] = useState(false);
   const [editedFields, setEditedFields] = useState<ReviewField[]>([]);
   const [plausibility, setPlausibility] = useState<Plausibility | null>(null);
@@ -141,6 +147,9 @@ export function useDocumentExtractionFlow({
 
   const handleReset = useCallback(() => {
     stopPolling();
+    pendingFileRef.current = null;
+    setDuplicateBlocked(null);
+    setUploadDuplicateWarning(null);
     setFlow('idle');
     setUploadedFileName('');
     setEditingFields(false);
@@ -153,11 +162,50 @@ export function useDocumentExtractionFlow({
     setConfirmedDocType(initialDocType);
   }, [initialDocType, stopPolling]);
 
+  const performUpload = useCallback(
+    async (
+      file: File,
+      options?: {
+        reuploadReason?: string;
+        relatedExtractionId?: string | null;
+        invoiceNumberHint?: string;
+        referenceNumberHint?: string;
+      },
+    ) => {
+      const res = await api.vehicleIntelligence.uploadDocumentExtraction(
+        vehicleId,
+        file,
+        documentType,
+        uploadSource,
+        {
+          reuploadReason: options?.reuploadReason,
+          relatedExtractionId: options?.relatedExtractionId ?? undefined,
+          invoiceNumberHint: options?.invoiceNumberHint,
+          referenceNumberHint: options?.referenceNumberHint,
+        },
+      );
+
+      setDuplicateBlocked(null);
+      setUploadDuplicateWarning(
+        shouldShowBusinessDuplicateWarning(res.uploadDuplicateStatus)
+          ? ((res.uploadDuplicate as PublicUploadDuplicate | null) ?? null)
+          : null,
+      );
+      setExtractionId(res.id);
+      setConfirmedDocType(res.documentType || documentType);
+      setFlow(mapServerToFlowStatus(res.status as PublicDocumentExtraction['status']));
+      startPolling(res.id);
+    },
+    [documentType, startPolling, uploadSource, vehicleId],
+  );
+
   const handleFile = useCallback(
     async (file: File) => {
       if (!vehicleId) return;
       setValidationError(null);
       setErrorMessage(null);
+      setDuplicateBlocked(null);
+      setUploadDuplicateWarning(null);
       setEditingFields(false);
       setPlausibility(null);
       setEditedFields([]);
@@ -171,26 +219,47 @@ export function useDocumentExtractionFlow({
         return;
       }
 
+      pendingFileRef.current = file;
       setUploadedFileName(file.name);
       setFlow('uploading');
 
       try {
-        const res = await api.vehicleIntelligence.uploadDocumentExtraction(
-          vehicleId,
-          file,
-          documentType,
-          uploadSource,
-        );
-        setExtractionId(res.id);
-        setConfirmedDocType(res.documentType || documentType);
-        setFlow(mapServerToFlowStatus(res.status as PublicDocumentExtraction['status']));
-        startPolling(res.id);
+        await performUpload(file);
       } catch (err: unknown) {
+        if (err instanceof DocumentUploadDuplicateError) {
+          setDuplicateBlocked(err);
+          setFlow('duplicate_blocked');
+          return;
+        }
         setErrorMessage(err instanceof Error ? err.message : 'Upload fehlgeschlagen.');
         setFlow('failed');
       }
     },
-    [documentType, metadata, startPolling, uploadSource, validationMessage, vehicleId],
+    [metadata, performUpload, validationMessage, vehicleId],
+  );
+
+  const handleAuthorizedReupload = useCallback(
+    async (reason: string) => {
+      const file = pendingFileRef.current;
+      if (!file || !duplicateBlocked) return;
+      setFlow('uploading');
+      setErrorMessage(null);
+      try {
+        await performUpload(file, {
+          reuploadReason: reason,
+          relatedExtractionId: duplicateBlocked.payload.relatedExtractionId,
+        });
+      } catch (err: unknown) {
+        if (err instanceof DocumentUploadDuplicateError) {
+          setDuplicateBlocked(err);
+          setFlow('duplicate_blocked');
+          return;
+        }
+        setErrorMessage(err instanceof Error ? err.message : 'Upload fehlgeschlagen.');
+        setFlow('failed');
+      }
+    },
+    [duplicateBlocked, performUpload],
   );
 
   const handleRetry = useCallback(async () => {
@@ -285,11 +354,14 @@ export function useDocumentExtractionFlow({
     setEditedFields,
     plausibility,
     extractionId,
+    duplicateBlocked,
+    uploadDuplicateWarning,
     acceptAttr,
     metadata,
     isBusy,
     blockerPresent,
     handleFile,
+    handleAuthorizedReupload,
     handleRetry,
     handleConfirm,
     handleReset,

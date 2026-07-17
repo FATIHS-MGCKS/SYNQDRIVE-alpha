@@ -28,6 +28,8 @@ import { DocumentFileIdentificationService } from './document-file-identificatio
 import { computeDocumentContentSha256 } from './document-content-hash.util';
 import { buildDocumentExtractionFileFingerprint } from './document-extraction-fingerprint.types';
 import { mergePipelinePlausibility } from './document-content-cache.util';
+import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
+import { DocumentUploadDuplicateBlockedException } from './document-upload-duplicate.errors';
 import { DocumentExtractionPipelineError } from './document-extraction.errors';
 import {
   ApplyDocumentExtractionType,
@@ -242,6 +244,10 @@ export interface CreateFromUploadInput {
   mimeType: string;
   buffer: Buffer;
   userId?: string | null;
+  reuploadReason?: string | null;
+  relatedExtractionId?: string | null;
+  invoiceNumberHint?: string | null;
+  referenceNumberHint?: string | null;
 }
 
 export type EnqueueExtractionResult =
@@ -286,6 +292,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly actionOrchestrator: DocumentActionOrchestratorService,
     private readonly plausibilityService: DocumentExtractionPlausibilityService,
     private readonly fileIdentification: DocumentFileIdentificationService,
+    private readonly uploadDuplicate: DocumentUploadDuplicateService,
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
@@ -345,13 +352,21 @@ export class DocumentExtractionService implements OnModuleInit {
       throw error;
     }
 
-    const stored = await this.storage.putObject({
+    const duplicateAssessment = await this.uploadDuplicate.assess({
       organizationId,
-      vehicleId: input.vehicleId,
-      originalName: identified.displayFileName,
-      buffer: input.buffer,
-      mimeType: identified.detectedMime,
+      contentSha256,
+      reuploadReason: input.reuploadReason,
+      relatedExtractionId: input.relatedExtractionId,
+      invoiceNumberHint: input.invoiceNumberHint,
+      referenceNumberHint: input.referenceNumberHint,
     });
+    if (duplicateAssessment.blocked) {
+      throw new DocumentUploadDuplicateBlockedException(duplicateAssessment);
+    }
+
+    const uploadDuplicateStatus = duplicateAssessment.status;
+    const relatedExtractionId = duplicateAssessment.relatedExtractionId ?? null;
+    const reuploadReason = duplicateAssessment.reuploadReason ?? null;
 
     const fileFingerprint = buildDocumentExtractionFileFingerprint({
       contentSha256,
@@ -361,10 +376,25 @@ export class DocumentExtractionService implements OnModuleInit {
       displayFileName: identified.displayFileName,
     });
 
+    const pipelineDuplicate =
+      duplicateAssessment.status === 'POSSIBLE_BUSINESS_DUPLICATE'
+        ? {
+            status: duplicateAssessment.status,
+            relatedExtractionId,
+            businessMatch: duplicateAssessment.businessMatch ?? null,
+            existingExtraction: duplicateAssessment.existingExtraction ?? null,
+          }
+        : duplicateAssessment.status === 'REUPLOAD_ALLOWED'
+          ? {
+              status: duplicateAssessment.status,
+              relatedExtractionId,
+              existingExtraction: duplicateAssessment.existingExtraction ?? null,
+            }
+          : undefined;
+
     const queueEnabled = this.docConfig.queueEnabled;
 
-    // Pre-queue state: file identified + stored, job not yet enqueued.
-    const record = await this.prisma.vehicleDocumentExtraction.create({
+    let record = await this.prisma.vehicleDocumentExtraction.create({
       data: {
         vehicleId: input.vehicleId,
         organizationId,
@@ -373,18 +403,57 @@ export class DocumentExtractionService implements OnModuleInit {
         documentType: effectiveType,
         classificationMode,
         status: 'PENDING',
-        processingStage: 'STORAGE',
+        processingStage: 'UPLOAD',
         sourceFileName: identified.displayFileName,
-        objectKey: stored.objectKey,
-        storageProvider: stored.storageProvider,
         mimeType: identified.detectedMime,
         sizeBytes: identified.sizeBytes,
         contentSha256,
-        plausibility: mergePipelinePlausibility(null, { fileFingerprint }) as Prisma.InputJsonValue,
+        uploadDuplicateStatus,
+        relatedExtractionId,
+        reuploadReason,
+        plausibility: mergePipelinePlausibility(null, {
+          fileFingerprint,
+          uploadDuplicate: pipelineDuplicate,
+        }) as Prisma.InputJsonValue,
         createdById: input.userId ?? null,
         processingAttempts: 0,
       },
     });
+
+    if (uploadDuplicateStatus === 'UNIQUE') {
+      const anchorResult = await this.uploadDuplicate.claimContentAnchor({
+        organizationId,
+        contentSha256,
+        extractionId: record.id,
+      });
+      if (anchorResult === 'conflict') {
+        await this.prisma.vehicleDocumentExtraction.delete({ where: { id: record.id } });
+        const blocked = await this.uploadDuplicate.loadBlockedAssessmentFromAnchor({
+          organizationId,
+          contentSha256,
+        });
+        throw new DocumentUploadDuplicateBlockedException(blocked);
+      }
+    }
+
+    const stored = await this.storage.putObject({
+      organizationId,
+      vehicleId: input.vehicleId,
+      originalName: identified.displayFileName,
+      buffer: input.buffer,
+      mimeType: identified.detectedMime,
+    });
+
+    record = await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: record.id },
+      data: {
+        processingStage: 'STORAGE',
+        objectKey: stored.objectKey,
+        storageProvider: stored.storageProvider,
+      },
+    });
+
+    // Pre-queue state: file identified + stored, job not yet enqueued.
 
     if (!queueEnabled) {
       if (this.docConfig.allowPendingWithoutQueue) {
