@@ -1,6 +1,18 @@
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
 import type { DrivingAttributionType } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.types';
 
+export type RentalDrivingAttributionSummary = {
+  analysisSource: 'booking_assignment' | 'time_window_fallback' | 'none';
+  scoredTripCount: number;
+  hintTripCount: number;
+  explicitAssignedTripCount: number;
+  bookingCustomerId: string | null;
+  assignedDriverId: string | null;
+  actualDriverId: string | null;
+  attributionType: DrivingAttributionType | null;
+  customerDecisionEligible: boolean;
+};
+
 /** Structured agent response for Rental Driving Analysis (vehicle stress focus). */
 export interface RentalDrivingAnalysisPayload {
   analysisMeta: {
@@ -19,6 +31,14 @@ export interface RentalDrivingAnalysisPayload {
     analysisSource?: 'booking_assignment' | 'time_window_fallback' | 'none';
     scoredTripCount?: number;
     totalDistanceKm?: number;
+    calculationVersion?: string;
+    inputFingerprint?: string;
+    generatedAt?: string;
+    sourceTripsFinalizedAt?: string | null;
+    analysisCompleteness?: 'FULL' | 'PARTIAL' | 'INSUFFICIENT';
+    maturity?: string;
+    recomputeReason?: string | null;
+    attributionSummary?: RentalDrivingAttributionSummary;
   };
   overallAssessment: {
     level: 'low_stress' | 'moderate_stress' | 'elevated_stress' | 'high_stress';

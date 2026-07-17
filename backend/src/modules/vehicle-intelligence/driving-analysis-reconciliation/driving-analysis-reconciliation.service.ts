@@ -220,7 +220,7 @@ export class DrivingAnalysisReconciliationService {
         organizationId,
         status: BookingStatus.COMPLETED,
         endDate: { gte: lookbackFrom },
-        rentalDrivingAnalysis: null,
+        rentalDrivingAnalyses: { none: { supersededAt: null } },
       },
       select: { id: true, vehicleId: true },
       take: limit,

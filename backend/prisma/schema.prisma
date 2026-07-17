@@ -3968,7 +3968,7 @@ model Booking {
   returnStation           Station?                    @relation("BookingReturnStation", fields: [returnStationId], references: [id], onDelete: SetNull)
   actualPickupStation     Station?                    @relation("BookingActualPickupStation", fields: [actualPickupStationId], references: [id], onDelete: SetNull)
   actualReturnStation     Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
-  rentalDrivingAnalysis   RentalDrivingAnalysis?
+  rentalDrivingAnalyses   RentalDrivingAnalysis[]
   handoverProtocols       BookingHandoverProtocol[]
   verificationChecks      CustomerVerificationCheck[]
   misuseCases             MisuseCase[]
@@ -4383,41 +4383,61 @@ model BookingHandoverProtocol {
   @@map("booking_handover_protocols")
 }
 
+/// Rental-period analysis input coverage (P59).
+enum RentalDrivingAnalysisCompleteness {
+  FULL
+  PARTIAL
+  INSUFFICIENT
+}
+
 // ------------------------------------------------
 // RENTAL DRIVING ANALYSIS (stored per completed rental period)
 // ------------------------------------------------
 
 model RentalDrivingAnalysis {
-  id                  String   @id @default(uuid())
-  organizationId      String   @map("organization_id")
-  bookingId           String   @unique @map("booking_id")
-  vehicleId           String   @map("vehicle_id")
+  id                     String                            @id @default(uuid())
+  organizationId         String                            @map("organization_id")
+  bookingId              String                            @map("booking_id")
+  vehicleId              String                            @map("vehicle_id")
   /// Contract holder (Vertragspartner) — not automatically the driver.
-  bookingCustomerId   String   @map("booking_customer_id")
-  assignedDriverId    String?  @map("assigned_driver_id")
-  actualDriverId      String?  @map("actual_driver_id")
+  bookingCustomerId      String                            @map("booking_customer_id")
+  assignedDriverId       String?                           @map("assigned_driver_id")
+  actualDriverId         String?                           @map("actual_driver_id")
   /// @deprecated Legacy mirror of booking customer — read via readLegacyDriverId(); do not write customerId here.
-  driverId            String?  @map("driver_id")
-  periodStart         DateTime @map("period_start")
-  periodEnd           DateTime @map("period_end")
-  payload             Json     @map("payload")
-  overallLevel        String   @map("overall_level")
-  driverStyleCategory String   @map("driver_style_category")
-  riskLevel           String   @map("risk_level")
-  drivingScore        Float?   @map("driving_score")
-  drivingEventsCount  Int?     @map("driving_events_count")
-  abuseDetectionCount Int?     @map("abuse_detection_count")
-  wearImpact          String?  @map("wear_impact")
-  createdAt           DateTime @default(now()) @map("created_at")
+  driverId               String?                           @map("driver_id")
+  periodStart            DateTime                          @map("period_start")
+  periodEnd              DateTime                          @map("period_end")
+  payload                Json                              @map("payload")
+  overallLevel           String                            @map("overall_level")
+  driverStyleCategory    String                            @map("driver_style_category")
+  riskLevel              String                            @map("risk_level")
+  drivingScore           Float?                            @map("driving_score")
+  drivingEventsCount     Int?                              @map("driving_events_count")
+  abuseDetectionCount    Int?                              @map("abuse_detection_count")
+  wearImpact             String?                           @map("wear_impact")
+  calculationVersion     String                            @default("rental-driving-analysis-v1") @map("calculation_version")
+  inputFingerprint       String                            @map("input_fingerprint")
+  generatedAt            DateTime                          @default(now()) @map("generated_at")
+  sourceTripsFinalizedAt DateTime?                         @map("source_trips_finalized_at")
+  analysisCompleteness   RentalDrivingAnalysisCompleteness @default(PARTIAL) @map("analysis_completeness")
+  maturity               DrivingAnalysisMaturity           @default(PUBLISHED) @map("maturity")
+  supersededAt           DateTime?                         @map("superseded_at")
+  supersedesAnalysisId   String?                           @map("supersedes_analysis_id")
+  recomputeReason        String?                           @map("recompute_reason")
+  attributionSummary     Json                              @default("{}") @map("attribution_summary")
+  createdAt              DateTime                          @default(now()) @map("created_at")
 
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  booking         Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  vehicle         Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  bookingCustomer Customer     @relation("RentalAnalysisBookingCustomer", fields: [bookingCustomerId], references: [id], onDelete: Cascade)
-  assignedDriver  Customer?    @relation("RentalAnalysisAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
-  actualDriver    Customer?    @relation("RentalAnalysisActualDriver", fields: [actualDriverId], references: [id], onDelete: SetNull)
-  driver          Customer?    @relation("RentalAnalysisLegacyDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking            Booking                 @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle            Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  bookingCustomer    Customer                @relation("RentalAnalysisBookingCustomer", fields: [bookingCustomerId], references: [id], onDelete: Cascade)
+  assignedDriver     Customer?               @relation("RentalAnalysisAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  actualDriver       Customer?               @relation("RentalAnalysisActualDriver", fields: [actualDriverId], references: [id], onDelete: SetNull)
+  driver             Customer?               @relation("RentalAnalysisLegacyDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  supersedesAnalysis RentalDrivingAnalysis?  @relation("RentalAnalysisSupersedes", fields: [supersedesAnalysisId], references: [id], onDelete: SetNull)
+  supersededBy       RentalDrivingAnalysis[] @relation("RentalAnalysisSupersedes")
 
+  @@unique([bookingId, calculationVersion, inputFingerprint])
   @@index([organizationId])
   @@index([vehicleId])
   @@index([bookingCustomerId])
@@ -4425,6 +4445,9 @@ model RentalDrivingAnalysis {
   @@index([actualDriverId])
   @@index([driverId])
   @@index([periodStart, periodEnd])
+  @@index([bookingId, supersededAt])
+  @@index([inputFingerprint])
+  @@index([supersedesAnalysisId])
   @@map("rental_driving_analyses")
 }
 

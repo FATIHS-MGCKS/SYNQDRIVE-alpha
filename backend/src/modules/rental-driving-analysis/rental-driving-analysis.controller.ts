@@ -20,6 +20,7 @@ export class RentalDrivingAnalysisController {
     @Query('bookingId') bookingId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('includeSuperseded') includeSuperseded?: string,
   ) {
     // V4.6.95 — `bookingId` filter is required for the per-booking
     // "Booking Driving Analysis" card in BookingsView. The same endpoint
@@ -33,6 +34,7 @@ export class RentalDrivingAnalysisController {
       bookingId,
       from,
       to,
+      includeSuperseded: includeSuperseded === 'true' || includeSuperseded === '1',
     });
   }
 
