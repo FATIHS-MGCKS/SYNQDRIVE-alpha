@@ -72,6 +72,7 @@ import { BookingCandidateResolverService } from './booking-candidate-resolver.se
 import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
 import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
 import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
+import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
 import { buildEntityCandidateRankingFromPipeline } from './entity-candidate-ranking.util';
 import {
   evaluateUploadContextResolver,
@@ -117,6 +118,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     private readonly customerCandidateResolver: CustomerCandidateResolverService,
     private readonly driverCandidateResolver: DriverCandidateResolverService,
     private readonly partnerCandidateResolver: PartnerCandidateResolverService,
+    private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
   ) {
     super();
   }
@@ -739,6 +741,13 @@ export class DocumentExtractionProcessor extends WorkerHost {
         nextRetryAt: null,
       },
     });
+
+    const refreshed = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: extractionId },
+    });
+    if (refreshed) {
+      await this.archiveIndexService.upsertForRecord(refreshed);
+    }
   }
 
   private async claimForProcessing(extractionId: string, job: Job): Promise<boolean> {

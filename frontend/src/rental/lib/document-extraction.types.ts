@@ -550,6 +550,64 @@ export interface DocumentExtractionListResponse {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
+export type DocumentExtractionArchiveActionStatus =
+  | 'NONE'
+  | 'READY'
+  | 'APPLYING'
+  | 'SUCCEEDED'
+  | 'PARTIAL'
+  | 'FAILED';
+
+export type DocumentExtractionArchiveFollowUpStatus =
+  | 'NONE'
+  | 'OPEN'
+  | 'ACCEPTED'
+  | 'DISMISSED'
+  | 'MIXED';
+
+export interface PublicDocumentExtractionArchiveItem {
+  id: string;
+  organizationId: string;
+  vehicleId: string | null;
+  vehicle: PublicVehicleDisplay | null;
+  sourceFileName: string | null;
+  mimeType: string | null;
+  status: DocumentExtractionStatus;
+  documentCategory: string | null;
+  documentSubtype: string | null;
+  effectiveDocumentType: DocumentExtractionType | null;
+  acceptedEntityLinks: Array<{ entityType: string; entityId: string; label: string | null }>;
+  actionSummary: {
+    status: DocumentExtractionArchiveActionStatus;
+    lifecycleStatus: string | null;
+    summary: string | null;
+    succeededCount: number;
+    failedCount: number;
+    pendingCount: number;
+  };
+  followUpSummary: {
+    status: DocumentExtractionArchiveFollowUpStatus;
+    openCount: number;
+    acceptedCount: number;
+    dismissedCount: number;
+    primaryType: string | null;
+    primaryTitle: string | null;
+  };
+  uploader: { id: string; displayName: string | null } | null;
+  invoiceNumber: string | null;
+  caseReference: string | null;
+  documentDate: string | null;
+  uploadedAt: string;
+  appliedAt: string | null;
+  updatedAt: string;
+  canDownload: boolean;
+}
+
+export interface DocumentExtractionArchiveListResponse {
+  data: PublicDocumentExtractionArchiveItem[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
 export interface ActiveExtractionPointer {
   orgId: string;
   extractionId: string;

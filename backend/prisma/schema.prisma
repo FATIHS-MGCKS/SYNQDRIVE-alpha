@@ -2741,6 +2741,7 @@ model VehicleDocumentExtraction {
   serviceEvents                     VehicleServiceEvent[]
   damages                           VehicleDamage[]
   tireTreadMeasurements             VehicleTireTreadMeasurement[]
+  archiveIndex                      DocumentExtractionArchiveIndex?
 
   @@index([vehicleId])
   @@index([organizationId, uploadContextType, uploadContextId])
@@ -2752,6 +2753,51 @@ model VehicleDocumentExtraction {
   @@index([vehicleId, createdAt])
   @@index([status, updatedAt])
   @@map("vehicle_document_extractions")
+}
+
+model DocumentExtractionArchiveIndex {
+  id                    String                   @id @default(uuid())
+  extractionId          String                   @unique @map("extraction_id")
+  organizationId        String                   @map("organization_id")
+  status                DocumentExtractionStatus @map("status")
+  documentCategory      String?                  @map("document_category")
+  documentSubtype       String?                  @map("document_subtype")
+  effectiveDocumentType DocumentExtractionType?  @map("effective_document_type")
+  vehicleId             String?                  @map("vehicle_id")
+  bookingId             String?                  @map("booking_id")
+  customerId            String?                  @map("customer_id")
+  driverId              String?                  @map("driver_id")
+  vendorId              String?                  @map("vendor_id")
+  createdById           String?                  @map("created_by_id")
+  sourceFileName        String?                  @map("source_file_name")
+  invoiceNumber         String?                  @map("invoice_number")
+  caseReference         String?                  @map("case_reference")
+  actionStatus          String?                  @map("action_status")
+  followUpStatus        String?                  @map("follow_up_status")
+  documentDate          DateTime?                @map("document_date")
+  searchText            String                   @default("") @map("search_text") @db.Text
+  uploadedAt            DateTime                 @map("uploaded_at")
+  appliedAt             DateTime?                @map("applied_at")
+  indexedAt             DateTime                 @default(now()) @map("indexed_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+
+  extraction VehicleDocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, uploadedAt], map: "doc_ext_archive_org_uploaded_at_idx")
+  @@index([organizationId, status], map: "doc_ext_archive_org_status_idx")
+  @@index([organizationId, documentCategory, documentSubtype], map: "doc_ext_archive_org_category_subtype_idx")
+  @@index([organizationId, vehicleId], map: "doc_ext_archive_org_vehicle_idx")
+  @@index([organizationId, bookingId], map: "doc_ext_archive_org_booking_idx")
+  @@index([organizationId, customerId], map: "doc_ext_archive_org_customer_idx")
+  @@index([organizationId, driverId], map: "doc_ext_archive_org_driver_idx")
+  @@index([organizationId, vendorId], map: "doc_ext_archive_org_vendor_idx")
+  @@index([organizationId, createdById], map: "doc_ext_archive_org_uploader_idx")
+  @@index([organizationId, invoiceNumber], map: "doc_ext_archive_org_invoice_idx")
+  @@index([organizationId, caseReference], map: "doc_ext_archive_org_case_ref_idx")
+  @@index([organizationId, actionStatus], map: "doc_ext_archive_org_action_status_idx")
+  @@index([organizationId, followUpStatus], map: "doc_ext_archive_org_follow_up_status_idx")
+  @@index([organizationId, documentDate], map: "doc_ext_archive_org_document_date_idx")
+  @@map("document_extraction_archive_index")
 }
 
 model DocumentExtractionContentAnchor {

@@ -106,6 +106,13 @@ import { DocumentApplyResultService } from './document-apply-result.service';
 import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
 import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
 import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
+import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
+import {
+  buildDocumentExtractionArchiveWhere,
+  parseDocumentExtractionArchivePagination,
+} from './document-extraction-archive-query.util';
+import { toPublicDocumentExtractionArchiveItem } from './document-extraction-archive.mapper';
+import { ListDocumentExtractionArchiveQueryDto } from './dto/list-document-extraction-archive-query.dto';
 import {
   mergeActionPlanPreferences,
   type DocumentActionPlanPreferences,
@@ -366,6 +373,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
     private readonly followUpContactPrepareService: DocumentFollowUpContactPrepareService,
     private readonly followUpResyncService: DocumentFollowUpResyncService,
+    private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
   ) {}
 
   onModuleInit(): void {
@@ -794,6 +802,115 @@ export class DocumentExtractionService implements OnModuleInit {
       pagination.page,
       pagination.limit,
     );
+  }
+
+  async listArchiveForOrg(orgId: string, query: ListDocumentExtractionArchiveQueryDto) {
+    const pagination = parseDocumentExtractionArchivePagination(query);
+    const where = buildDocumentExtractionArchiveWhere({
+      organizationId: orgId,
+      status: query.status,
+      documentCategory: query.documentCategory,
+      documentSubtype: query.documentSubtype,
+      vehicleId: query.vehicleId,
+      bookingId: query.bookingId,
+      customerId: query.customerId,
+      driverId: query.driverId,
+      vendorId: query.vendorId,
+      uploadedBy: query.uploadedBy,
+      uploadedFrom: query.uploadedFrom,
+      uploadedTo: query.uploadedTo,
+      fileName: query.fileName,
+      invoiceNumber: query.invoiceNumber,
+      caseReference: query.caseReference,
+      actionStatus: query.actionStatus,
+      followUpStatus: query.followUpStatus,
+      q: query.q,
+    });
+
+    const [rows, total] = await Promise.all([
+      this.prisma.documentExtractionArchiveIndex.findMany({
+        where,
+        orderBy: { uploadedAt: 'desc' },
+        skip: pagination.skip,
+        take: pagination.take,
+        include: {
+          extraction: {
+            include: {
+              vehicle: { select: VEHICLE_SELECT },
+            },
+          },
+        },
+      }),
+      this.prisma.documentExtractionArchiveIndex.count({ where }),
+    ]);
+
+    const missingIds = rows
+      .filter((row) => !row.extraction)
+      .map((row) => row.extractionId);
+    if (missingIds.length > 0) {
+      await this.prisma.documentExtractionArchiveIndex.deleteMany({
+        where: { extractionId: { in: missingIds } },
+      });
+    }
+
+    const staleOrgRows = await this.prisma.vehicleDocumentExtraction.findMany({
+      where: {
+        organizationId: orgId,
+        archiveIndex: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: { id: true },
+    });
+    if (staleOrgRows.length > 0) {
+      await this.archiveIndexService.ensureIndexedForOrg(
+        orgId,
+        staleOrgRows.map((row) => row.id),
+      );
+    }
+
+    const uploaderIds = [
+      ...new Set(
+        rows
+          .map((row) => row.extraction?.createdById)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const uploaders =
+      uploaderIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: uploaderIds } },
+            select: USER_SELECT,
+          })
+        : [];
+    const uploaderById = new Map(uploaders.map((user) => [user.id, user]));
+
+    const items = rows
+      .filter((row) => row.extraction)
+      .map((row) =>
+        toPublicDocumentExtractionArchiveItem({
+          ...row,
+          extraction: {
+            ...row.extraction!,
+            createdBy: row.extraction!.createdById
+              ? uploaderById.get(row.extraction!.createdById) ?? null
+              : null,
+          },
+        }),
+      );
+
+    return buildDocumentExtractionPaginatedResult(
+      items,
+      total,
+      pagination.page,
+      pagination.limit,
+    );
+  }
+
+  async syncArchiveIndexForRecord(
+    record: Awaited<ReturnType<DocumentExtractionService['getForOrg']>>,
+  ): Promise<void> {
+    await this.archiveIndexService.upsertForRecord(record);
   }
 
   async listPublicForVehicle(vehicleId: string, query: ListDocumentExtractionsQueryDto = {}) {
@@ -1348,6 +1465,7 @@ export class DocumentExtractionService implements OnModuleInit {
     }
 
     const updated = await this.getForVehicle(vehicleId, extractionId);
+    await this.archiveIndexService.upsertForRecord(updated);
     return applyResult.detail ? { ...updated, applyResult: applyResult.detail } : updated;
   }
 
@@ -1470,8 +1588,12 @@ export class DocumentExtractionService implements OnModuleInit {
     });
 
     await this.followUpResyncService.resyncAfterPlanChange(updated);
+    const refreshed = await this.prisma.vehicleDocumentExtraction.findUniqueOrThrow({
+      where: { id: updated.id },
+    });
+    await this.archiveIndexService.upsertForRecord(refreshed);
 
-    return updated;
+    return refreshed;
   }
 
   async getActionPlanPreviewForVehicle(vehicleId: string, extractionId: string) {
@@ -1551,6 +1673,10 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const refreshed = { ...existing, confirmedData, plausibility: plausibilityPayload };
     await this.followUpResyncService.resyncAfterPlanChange(refreshed);
+    const latest = await this.prisma.vehicleDocumentExtraction.findUniqueOrThrow({
+      where: { id: existing.id },
+    });
+    await this.archiveIndexService.upsertForRecord(latest);
 
     return this.actionPlanPreview.buildForRecord(
       refreshed,
@@ -1585,11 +1711,15 @@ export class DocumentExtractionService implements OnModuleInit {
     userId?: string | null,
   ) {
     const existing = await this.getForVehicle(vehicleId, extractionId);
-    return this.followUpSuggestionService.acceptSuggestion({
+    const result = await this.followUpSuggestionService.acceptSuggestion({
       record: existing,
       suggestionId,
       userId: userId ?? null,
     });
+    await this.archiveIndexService.upsertForRecord(
+      await this.getForVehicle(vehicleId, extractionId),
+    );
+    return result;
   }
 
   async acceptFollowUpSuggestionForOrg(
@@ -1599,11 +1729,13 @@ export class DocumentExtractionService implements OnModuleInit {
     userId?: string | null,
   ) {
     const existing = await this.getForOrg(orgId, extractionId);
-    return this.followUpSuggestionService.acceptSuggestion({
+    const result = await this.followUpSuggestionService.acceptSuggestion({
       record: existing,
       suggestionId,
       userId: userId ?? null,
     });
+    await this.archiveIndexService.upsertForRecord(await this.getForOrg(orgId, extractionId));
+    return result;
   }
 
   async dismissFollowUpSuggestionForVehicle(
@@ -1613,11 +1745,15 @@ export class DocumentExtractionService implements OnModuleInit {
     userId?: string | null,
   ) {
     const existing = await this.getForVehicle(vehicleId, extractionId);
-    return this.followUpSuggestionService.dismissSuggestion({
+    const result = await this.followUpSuggestionService.dismissSuggestion({
       record: existing,
       suggestionId,
       userId: userId ?? null,
     });
+    await this.archiveIndexService.upsertForRecord(
+      await this.getForVehicle(vehicleId, extractionId),
+    );
+    return result;
   }
 
   async dismissFollowUpSuggestionForOrg(
@@ -1627,11 +1763,13 @@ export class DocumentExtractionService implements OnModuleInit {
     userId?: string | null,
   ) {
     const existing = await this.getForOrg(orgId, extractionId);
-    return this.followUpSuggestionService.dismissSuggestion({
+    const result = await this.followUpSuggestionService.dismissSuggestion({
       record: existing,
       suggestionId,
       userId: userId ?? null,
     });
+    await this.archiveIndexService.upsertForRecord(await this.getForOrg(orgId, extractionId));
+    return result;
   }
 
   async getFollowUpContactPrepareForVehicle(
@@ -1848,6 +1986,7 @@ export class DocumentExtractionService implements OnModuleInit {
     });
 
     const updated = await this.getForVehicle(vehicleId, existing.id);
+    await this.archiveIndexService.upsertForRecord(updated);
     return this.applyResultService.buildForRecord(updated);
   }
 

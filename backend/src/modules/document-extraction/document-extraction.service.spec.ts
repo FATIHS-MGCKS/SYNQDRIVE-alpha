@@ -26,6 +26,7 @@ describe('DocumentExtractionService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn(),
         ...prismaOverrides,
       },
       vehicle: {
@@ -117,6 +118,10 @@ describe('DocumentExtractionService', () => {
       followUpSuggestionService as any,
       { prepareContactPreview: jest.fn(), recordPrepareOpened: jest.fn(), sendPreparedContact: jest.fn() } as any,
       { resyncAfterPlanChange: jest.fn().mockResolvedValue(undefined) } as any,
+      {
+        upsertForRecord: jest.fn().mockResolvedValue(undefined),
+        ensureIndexedForOrg: jest.fn().mockResolvedValue(undefined),
+      } as any,
     );
     return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }
@@ -571,7 +576,14 @@ describe('DocumentExtractionService', () => {
         updatedAt: new Date(),
       };
       const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...record, ...data }));
-      const { svc } = makeService({ findFirst: jest.fn().mockResolvedValue(record), update });
+      const findUniqueOrThrow = jest
+        .fn()
+        .mockImplementation(async () => update.mock.results.at(-1)?.value ?? record);
+      const { svc } = makeService({
+        findFirst: jest.fn().mockResolvedValue(record),
+        update,
+        findUniqueOrThrow,
+      });
 
       const result = await svc.saveReview('v1', 'e1', {
         invoiceNumber: 'INV-9',

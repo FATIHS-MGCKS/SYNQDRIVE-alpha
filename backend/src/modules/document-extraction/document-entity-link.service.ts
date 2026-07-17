@@ -23,6 +23,7 @@ import {
 } from './document-entity-link.util';
 import { DocumentEntityLinkValidationService } from './document-entity-link.validation';
 import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
+import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
 import { toPublicDocumentExtraction } from './document-extraction-public.mapper';
 
 const EDITABLE_EXTRACTION_STATUSES = new Set(['READY_FOR_REVIEW', 'CONFIRMED']);
@@ -34,6 +35,7 @@ export class DocumentEntityLinkService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly followUpResyncService: DocumentFollowUpResyncService,
+    private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
   ) {}
 
   async updateForVehicle(
@@ -192,8 +194,12 @@ export class DocumentEntityLinkService {
     });
 
     await this.followUpResyncService.resyncAfterPlanChange(updated);
+    const refreshed = await this.prisma.vehicleDocumentExtraction.findUniqueOrThrow({
+      where: { id: updated.id },
+    });
+    await this.archiveIndexService.upsertForRecord(refreshed);
 
-    return toPublicDocumentExtraction(updated);
+    return toPublicDocumentExtraction(refreshed);
   }
 
   private resolveNextVehicleId(input: {

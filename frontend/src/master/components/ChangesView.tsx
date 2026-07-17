@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-extraction-archive-read-model-2026-07-17',
+    version: '4.9.652',
+    title: 'V4.9.652 — Document Extraction Archive Read Model',
+    summary: [
+      'Organisationsweites Archiv-Read-Model mit denormalisiertem DocumentExtractionArchiveIndex.',
+      'Filter: Status, Kategorie, Subtyp, Fahrzeug, Buchung, Kunde, Fahrer, Anbieter, Uploader, Zeitraum, Dateiname, Rechnungsnr., Aktenzeichen, Action-/Follow-up-Status, Volltext über kontrollierte Metadaten.',
+      'Antwort: Dokument, Typ, Status, bestätigte Entity Links, Action/Follow-up Summary, Uploader, Zeitpunkte, canDownload. Pagination + Tenant-Scope + Performance-Tests.',
+    ],
+    reason:
+      'Prompt 77/84 — Kanonisches Archiv für Document-Extraction-History ohne OCR-Rohtexte in der Suche.',
+    previousBehavior:
+      'GET /organizations/:orgId/document-extractions nur Basis-Filter auf Extraktionszeilen; keine Action/Follow-up-Filter, kein kontrolliertes Volltext-Archiv.',
+    details:
+      'Backend: DocumentExtractionArchiveIndex, materializer/query/mapper, GET .../archive, Sync nach Review/Apply/Entity-Links/Follow-up/Processor. Frontend: api.documentExtraction.listArchiveByOrg + Typen. Architektur: architecture/DOCUMENT_EXTRACTION_ARCHIVE_READ_MODEL_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T02:00:00.000Z',
+  },
+  {
     id: 'document-follow-up-subtype-rules-2026-07-17',
     version: '4.9.651',
     title: 'V4.9.651 — Document Follow-Up Subtype Rules',

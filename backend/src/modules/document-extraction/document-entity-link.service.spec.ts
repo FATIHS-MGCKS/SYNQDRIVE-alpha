@@ -48,6 +48,7 @@ describe('DocumentEntityLinkService', () => {
   }
 
   function makeService(prismaOverrides: Record<string, unknown> = {}) {
+    let currentRecord = makeRecord();
     const prisma = {
       vehicleDocumentExtraction: {
         findFirst: jest.fn(),
@@ -68,11 +69,22 @@ describe('DocumentEntityLinkService', () => {
       },
       ...prismaOverrides,
     };
+    prisma.vehicleDocumentExtraction.findFirst.mockImplementation(async () => currentRecord);
+    prisma.vehicleDocumentExtraction.update.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
+      currentRecord = { ...currentRecord, ...data };
+      return currentRecord;
+    });
+    prisma.vehicleDocumentExtraction.findUniqueOrThrow.mockImplementation(async () => currentRecord);
     return {
       service: new DocumentEntityLinkService(prisma as never, {
         resyncAfterPlanChange: jest.fn().mockResolvedValue(undefined),
+      } as never, {
+        upsertForRecord: jest.fn().mockResolvedValue(undefined),
       } as never),
       prisma,
+      setRecord: (record: ReturnType<typeof makeRecord>) => {
+        currentRecord = record;
+      },
     };
   }
 
@@ -120,18 +132,14 @@ describe('DocumentEntityLinkService', () => {
   });
 
   it('supersedes prior link and invalidates action plan on change', async () => {
-    const { service, prisma } = makeService();
+    const { service, prisma, setRecord } = makeService();
     const record = makeRecord({
       confirmedData: {
         acceptedEntityLinks: [{ entityType: 'customer', entityId: 'cust-old', label: 'Old' }],
       },
     });
-    prisma.vehicleDocumentExtraction.findFirst.mockResolvedValue(record);
+    setRecord(record);
     prisma.customer.findFirst.mockResolvedValue({ id: 'cust-new' });
-    prisma.vehicleDocumentExtraction.update.mockImplementation(async ({ data }) => ({
-      ...record,
-      ...data,
-    }));
 
     const result = await service.updateForVehicle(
       vehicleId,
@@ -177,18 +185,14 @@ describe('DocumentEntityLinkService', () => {
   });
 
   it('does not delete downstream entities when removing a link', async () => {
-    const { service, prisma } = makeService();
+    const { service, prisma, setRecord } = makeService();
     const record = makeRecord({
       confirmedData: {
         acceptedEntityLinks: [{ entityType: 'driver', entityId: 'driver-1' }],
       },
       plausibility: {},
     });
-    prisma.vehicleDocumentExtraction.findFirst.mockResolvedValue(record);
-    prisma.vehicleDocumentExtraction.update.mockImplementation(async ({ data }) => ({
-      ...record,
-      ...data,
-    }));
+    setRecord(record);
 
     await service.updateForVehicle(
       vehicleId,
@@ -229,14 +233,10 @@ describe('DocumentEntityLinkService', () => {
   });
 
   it('allows org-scoped general document without vehicle link', async () => {
-    const { service, prisma } = makeService();
+    const { service, prisma, setRecord } = makeService();
     const record = makeRecord({ vehicleId: null, plausibility: {} });
-    prisma.vehicleDocumentExtraction.findFirst.mockResolvedValue(record);
+    setRecord(record);
     prisma.customer.findFirst.mockResolvedValue({ id: 'cust-1' });
-    prisma.vehicleDocumentExtraction.update.mockImplementation(async ({ data }) => ({
-      ...record,
-      ...data,
-    }));
 
     await service.updateForOrg(
       orgId,
@@ -253,14 +253,10 @@ describe('DocumentEntityLinkService', () => {
   });
 
   it('does not invoke action orchestration on link-only update', async () => {
-    const { service, prisma } = makeService();
+    const { service, prisma, setRecord } = makeService();
     const record = makeRecord({ plausibility: {} });
-    prisma.vehicleDocumentExtraction.findFirst.mockResolvedValue(record);
+    setRecord(record);
     prisma.customer.findFirst.mockResolvedValue({ id: 'cust-1' });
-    prisma.vehicleDocumentExtraction.update.mockImplementation(async ({ data }) => ({
-      ...record,
-      ...data,
-    }));
 
     await service.updateForVehicle(
       vehicleId,

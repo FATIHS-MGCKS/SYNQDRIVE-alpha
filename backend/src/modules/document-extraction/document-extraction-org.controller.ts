@@ -26,6 +26,7 @@ import { RequirePermission } from '@shared/decorators/require-permission.decorat
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { DocumentExtractionService } from './document-extraction.service';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
+import { ListDocumentExtractionArchiveQueryDto } from './dto/list-document-extraction-archive-query.dto';
 import { ReassignExtractionVehicleDto } from './dto/reassign-extraction-vehicle.dto';
 import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { OrgUploadDocumentDto } from './dto/org-upload-document.dto';
@@ -65,6 +66,15 @@ export class DocumentExtractionOrgController {
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
   list(@Param('orgId') orgId: string, @Query() query: ListDocumentExtractionsQueryDto) {
     return this.service.listForOrg(orgId, query);
+  }
+
+  @Get('archive')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  listArchive(
+    @Param('orgId') orgId: string,
+    @Query() query: ListDocumentExtractionArchiveQueryDto,
+  ) {
+    return this.service.listArchiveForOrg(orgId, query);
   }
 
   @Post('upload')

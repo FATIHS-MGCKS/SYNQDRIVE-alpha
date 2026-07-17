@@ -5467,6 +5467,55 @@ export const api = {
         `/organizations/${orgId}/document-extractions${q}`,
       );
     },
+    listArchiveByOrg: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        status?: string;
+        documentCategory?: string;
+        documentSubtype?: string;
+        vehicleId?: string;
+        bookingId?: string;
+        customerId?: string;
+        driverId?: string;
+        vendorId?: string;
+        uploadedBy?: string;
+        uploadedFrom?: string;
+        uploadedTo?: string;
+        fileName?: string;
+        invoiceNumber?: string;
+        caseReference?: string;
+        actionStatus?: string;
+        followUpStatus?: string;
+        q?: string;
+      },
+    ) => {
+      const q = buildQuery({
+        page: params?.page,
+        limit: params?.limit,
+        status: params?.status,
+        documentCategory: params?.documentCategory,
+        documentSubtype: params?.documentSubtype,
+        vehicleId: params?.vehicleId,
+        bookingId: params?.bookingId,
+        customerId: params?.customerId,
+        driverId: params?.driverId,
+        vendorId: params?.vendorId,
+        uploadedBy: params?.uploadedBy,
+        uploadedFrom: params?.uploadedFrom,
+        uploadedTo: params?.uploadedTo,
+        fileName: params?.fileName,
+        invoiceNumber: params?.invoiceNumber,
+        caseReference: params?.caseReference,
+        actionStatus: params?.actionStatus,
+        followUpStatus: params?.followUpStatus,
+        q: params?.q,
+      });
+      return get<import('../rental/lib/document-extraction.types').DocumentExtractionArchiveListResponse>(
+        `/organizations/${orgId}/document-extractions/archive${q}`,
+      );
+    },
     getByOrg: (orgId: string, extractionId: string) =>
       get<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
         `/organizations/${orgId}/document-extractions/${extractionId}`,

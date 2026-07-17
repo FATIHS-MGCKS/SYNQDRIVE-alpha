@@ -8,13 +8,14 @@ import { makeClassificationResultMock } from './document-extraction-test.helpers
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
 
 function makeProcessor(overrides: Record<string, unknown> = {}) {
-  const prisma = {
-    vehicleDocumentExtraction: {
-      findUnique: jest.fn(),
-      update: jest.fn().mockResolvedValue({}),
-      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      ...(overrides.prisma as object),
-    },
+    const prisma = {
+      vehicleDocumentExtraction: {
+        findUnique: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        ...(overrides.prisma as object),
+      },
     vehicle: {
       findUnique: jest.fn().mockResolvedValue({ vin: null, licensePlate: null, mileageKm: null }),
     },
@@ -102,6 +103,7 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { customerNumberPresent: false, bookingLinkPresent: false, namePresent: false, emailPresent: false, phonePresent: false, addressPresent: false, documentReferencePresent: false }, candidates: [], ambiguousNameMatch: false, autoConfirmEligible: false }) } as any,
     { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { driverNamePresent: false, licensePresent: false, driverIdPresent: false, bookingLinkPresent: false, tripAssignmentPresent: false }, candidates: [], ambiguousDriverPool: false, unassignedDriver: false, autoConfirmEligible: false }) } as any,
     { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { organizationNamePresent: false, ibanPresent: false, vatIdPresent: false, taxIdPresent: false, emailPresent: false, addressPresent: false, vendorIdPresent: false, expectedPartnerKind: 'WORKSHOP' }, candidates: [], newPartnerSuggestion: null, ambiguousPartnerMatch: false, autoConfirmEligible: false }) } as any,
+    { upsertForRecord: jest.fn().mockResolvedValue(undefined) } as any,
   );
   return { processor, prisma, storage, contentExtractor, classification, aiExtraction, plausibility };
 }
