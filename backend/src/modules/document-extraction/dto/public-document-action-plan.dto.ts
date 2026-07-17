@@ -6,6 +6,7 @@ import type {
   DocumentExtractionType,
 } from '@prisma/client';
 import type { DocumentFollowUpCandidateType } from '../document-action-planner.types';
+import type { DocumentActionPreviewActionType } from '../document-action-plan-preview.mapper';
 
 export type DocumentActionPreviewStatus =
   | 'WOULD_CREATE'
@@ -17,7 +18,7 @@ export type DocumentActionPreviewStatus =
 
 export class PublicDocumentActionPreviewDto {
   sequence!: number;
-  actionType!: DocumentActionType | 'LINK_VEHICLE';
+  actionType!: DocumentActionPreviewActionType;
   previewStatus!: DocumentActionPreviewStatus;
   requirement!: DocumentActionRequirement;
   targetEntityType?: DocumentEntityType | null;

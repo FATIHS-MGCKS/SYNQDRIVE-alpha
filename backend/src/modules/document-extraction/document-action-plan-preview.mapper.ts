@@ -1,5 +1,9 @@
 import type { DocumentActionType, DocumentEntityType } from '@prisma/client';
 import type { PlannedDocumentActionInput } from './document-action.types';
+import {
+  ARCHIVE_ONLY_SEMANTIC_ACTIONS,
+  extractSemanticAction,
+} from './document-action-planner.archive-rules';
 import { listActionTemplatesForRoutingType } from './document-action-planner.catalog';
 import type {
   DocumentActionBlockingReason,
@@ -20,9 +24,17 @@ const PREVIEW_STATUS_BY_ACTION_TYPE: Record<DocumentActionType, DocumentActionPr
   SUGGEST_TASK: 'WOULD_SUGGEST',
 };
 
+const SEMANTIC_PREVIEW_ACTION_TYPES = new Set<string>([
+  ...Object.values(ARCHIVE_ONLY_SEMANTIC_ACTIONS),
+]);
+
+export type DocumentActionPreviewActionType =
+  | DocumentActionType
+  | (typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS)[keyof typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS];
+
 export type DocumentActionPreviewRow = {
   sequence: number;
-  actionType: DocumentActionType | 'LINK_VEHICLE';
+  actionType: DocumentActionPreviewActionType;
   previewStatus: DocumentActionPreviewStatus;
   requirement: PlannedDocumentActionInput['requirement'];
   targetEntityType?: DocumentEntityType | null;
@@ -31,10 +43,30 @@ export type DocumentActionPreviewRow = {
   blocked: boolean;
 };
 
+function resolvePreviewActionType(action: PlannedDocumentActionInput): DocumentActionPreviewActionType {
+  const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const semantic = extractSemanticAction(payload);
+  if (semantic) return semantic;
+  return action.actionType;
+}
+
 function mapActionPreviewStatus(
   action: PlannedDocumentActionInput,
   planBlocked: boolean,
 ): DocumentActionPreviewStatus {
+  const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const semantic = extractSemanticAction(payload);
+
+  if (semantic === ARCHIVE_ONLY_SEMANTIC_ACTIONS.ARCHIVE_DOCUMENT) {
+    return 'ARCHIVE_ONLY';
+  }
+  if (semantic?.startsWith('LINK_')) {
+    return 'WOULD_LINK';
+  }
+  if (semantic === ARCHIVE_ONLY_SEMANTIC_ACTIONS.SUGGEST_OWNER_REVIEW) {
+    return 'WOULD_SUGGEST';
+  }
+
   if (action.actionType === 'ARCHIVE_ONLY') {
     return 'ARCHIVE_ONLY';
   }
@@ -47,6 +79,10 @@ function mapActionPreviewStatus(
 function buildBlockedTemplatePreviews(
   plannerResult: DocumentActionPlannerResult,
 ): DocumentActionPreviewRow[] {
+  if (plannerResult.planDraft.snapshot.planningMode === 'ARCHIVE_ONLY') {
+    return [];
+  }
+
   const routingType = plannerResult.planDraft.snapshot.routingType as string | null | undefined;
   if (!routingType || !plannerResult.planDraft.isBlocked) {
     return [];
@@ -86,7 +122,7 @@ function buildVehicleLinkPreview(
   if (!vehicleEntityId) return null;
   return {
     sequence: startSequence,
-    actionType: 'LINK_VEHICLE',
+    actionType: ARCHIVE_ONLY_SEMANTIC_ACTIONS.LINK_VEHICLE,
     previewStatus: 'WOULD_LINK',
     requirement: 'INFORMATIONAL',
     targetEntityType: 'VEHICLE',
@@ -94,6 +130,7 @@ function buildVehicleLinkPreview(
     preview: {
       wouldLink: 'VEHICLE',
       entityId: vehicleEntityId,
+      confirmed: true,
     },
     blocked: false,
   };
@@ -104,18 +141,22 @@ export function buildDocumentActionPreviewRows(
   vehicleEntityId: string | null,
 ): DocumentActionPreviewRow[] {
   const planBlocked = plannerResult.planDraft.isBlocked;
+  const isArchiveOnlyPlan = plannerResult.planDraft.snapshot.planningMode === 'ARCHIVE_ONLY';
   const rows: DocumentActionPreviewRow[] = [];
 
-  const linkPreview = buildVehicleLinkPreview(vehicleEntityId, 0);
-  if (linkPreview) {
-    rows.push({ ...linkPreview, sequence: 1 });
+  if (!isArchiveOnlyPlan) {
+    const linkPreview = buildVehicleLinkPreview(vehicleEntityId, 0);
+    if (linkPreview) {
+      rows.push({ ...linkPreview, sequence: 1 });
+    }
   }
 
   const baseSequence = rows.length;
   plannerResult.actions.forEach((action, index) => {
+    const previewActionType = resolvePreviewActionType(action);
     rows.push({
       sequence: baseSequence + index + 1,
-      actionType: action.actionType,
+      actionType: previewActionType,
       previewStatus: mapActionPreviewStatus(action, planBlocked),
       requirement: action.requirement ?? 'REQUIRED',
       targetEntityType: action.targetEntityType ?? null,
@@ -124,6 +165,7 @@ export function buildDocumentActionPreviewRows(
       blocked:
         planBlocked &&
         action.actionType !== 'ARCHIVE_ONLY' &&
+        !SEMANTIC_PREVIEW_ACTION_TYPES.has(String(previewActionType)) &&
         (action.requirement === 'REQUIRED' || action.requirement === 'OPTIONAL'),
     });
   });

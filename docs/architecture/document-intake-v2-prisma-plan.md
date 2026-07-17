@@ -172,6 +172,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 21, 2026-07-17):** `POST /organizations/:orgId/document-extractions/:extractionId/action-plan` — `DocumentExtractionApplyPlanService.dryRunActionPlan` lädt confirmedData/Links, re-prüft Plausibilität, persistiert Plan+Actions (PREVIEW/WOULD_APPLY), keine Downstream-Writes. Planner-Fingerprint als `inputFingerprint` Override für Idempotenz.
 
+**Implementierungsstand (Prompt 22, 2026-07-17):** `document-action-planner.archive-rules.ts` — Archive-Only-Profile (GENERAL, OTHER, bekannte Subtypes wie PAYMENT_PROOF, UNKNOWN_DOCUMENT_TYPE). Semantic planner actions ohne Downstream-Create; Archiv = valider Erfolg; LINK_* nur als unbestätigte Kandidaten-Vorschläge; kein Auto-Kontakt. Planner-Version `document-action-planner-v2`.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

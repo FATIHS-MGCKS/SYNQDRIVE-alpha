@@ -24,6 +24,13 @@ import type {
   DocumentActionPlanDraft,
 } from './document-action-planner.types';
 import { DOCUMENT_ACTION_PLANNER_VERSION } from './document-action-planner.types';
+import {
+  buildArchiveOnlyPlannerActions,
+  buildArchiveOnlyPlannerSummary,
+  isArchiveOnlyDocumentProfile,
+  resolveArchiveOnlyFollowUpCandidateTypes,
+  resolveArchiveOnlySubtype,
+} from './document-action-planner.archive-rules';
 
 const EXECUTABLE_REQUIREMENTS = new Set<DocumentActionRequirement>(['REQUIRED', 'OPTIONAL']);
 
@@ -150,6 +157,94 @@ function hasExecutableRequiredAction(actions: PlannedDocumentActionInput[]): boo
  * No Prisma writes, no downstream service calls, no randomness, no date fallbacks.
  */
 export function planDocumentActions(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
+  if (isArchiveOnlyDocumentProfile(input)) {
+    return planArchiveOnlyDocument(input);
+  }
+  return planDownstreamDocumentActions(input);
+}
+
+function planArchiveOnlyDocument(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
+  const plannerVersion = input.plannerVersion ?? DOCUMENT_ACTION_PLANNER_VERSION;
+  const routingType = resolvePlannerRoutingType(input);
+  const vehicleEntityId = findVehicleEntityId(input.entityLinks);
+  const archiveSubtype = resolveArchiveOnlySubtype(input);
+  const inputFingerprint = buildDocumentActionPlannerInputFingerprint({
+    ...input,
+    plannerVersion,
+  });
+
+  const blockingReasons: DocumentActionBlockingReason[] = [];
+  if (!input.featureFlags.actionPreviewEnabled) {
+    blockingReasons.push({
+      code: 'ACTION_PREVIEW_DISABLED',
+      message: 'Action preview is disabled by feature flag.',
+      source: 'FEATURE_FLAG',
+      severity: 'BLOCKER',
+    });
+  }
+
+  const ctx: DocumentActionPlannerBuildContext = {
+    input: { ...input, plannerVersion },
+    vehicleEntityId,
+    routingType,
+  };
+
+  const actions =
+    blockingReasons.length > 0 ? [] : buildArchiveOnlyPlannerActions(ctx);
+  const isBlocked = blockingReasons.length > 0;
+
+  if (isBlocked && input.featureFlags.archiveOnlyFallback) {
+    actions.push(buildBlockedArchiveOnlyAction(ctx));
+  }
+
+  const followUpCandidateTypes = resolveArchiveOnlyFollowUpCandidateTypes(archiveSubtype);
+
+  const planDraft: DocumentActionPlanDraft = {
+    plannerVersion,
+    documentCategory: input.documentCategory,
+    documentSubtype: input.documentSubtype,
+    effectiveDocumentType: input.effectiveDocumentType,
+    inputFingerprint,
+    applyMode: input.applyMode,
+    isBlocked,
+    summary: isBlocked
+      ? 'Blocked archive-only action plan.'
+      : buildArchiveOnlyPlannerSummary(archiveSubtype, actions.length),
+    snapshot: {
+      plannerVersion,
+      inputFingerprint,
+      routingType,
+      archiveOnlyProfile: archiveSubtype,
+      planningMode: 'ARCHIVE_ONLY',
+      documentCategory: input.documentCategory,
+      documentSubtype: input.documentSubtype,
+      effectiveDocumentType: input.effectiveDocumentType,
+      applyMode: input.applyMode,
+      isBlocked,
+      actionTypes: actions.map((action) => action.actionType),
+      semanticActions: actions
+        .map((action) => (action.previewPayload as Record<string, unknown> | undefined)?.semanticAction)
+        .filter(Boolean),
+      blockingReasonCodes: blockingReasons.map((reason) => reason.code),
+      followUpCandidateTypes,
+      entityLinkCount: input.entityLinks.length,
+      entityCandidateCount: input.entityCandidates.length,
+      plausibilityOverallStatus: input.plausibility.overallStatus,
+      noDownstreamApply: true,
+      noAutomaticContact: true,
+    },
+  };
+
+  return {
+    planDraft,
+    actions,
+    blockingReasons,
+    missingRequirements: [],
+    followUpCandidateTypes,
+  };
+}
+
+function planDownstreamDocumentActions(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
   const plannerVersion = input.plannerVersion ?? DOCUMENT_ACTION_PLANNER_VERSION;
   const routingType = resolvePlannerRoutingType(input);
   const vehicleEntityId = findVehicleEntityId(input.entityLinks);
