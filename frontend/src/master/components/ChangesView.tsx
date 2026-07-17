@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-lifecycle-2026-07-17',
+    version: '4.9.589',
+    title: 'V4.9.589 — Document Intake V2 Lifecycle State Machine (Domain)',
+    summary: [
+      'Kanonisches 14-Status-Modell: PENDING … CANCELLED inkl. READY_FOR_ACTION_PREVIEW, READY_TO_APPLY, APPLYING, PARTIALLY_APPLIED, APPLY_FAILED.',
+      'Zentrale Transition-Tabelle + assert/canTransition; ungültige Sprünge werden abgelehnt.',
+      'Legacy-Read: CONFIRMED → APPLYING; FAILED+errorPhase APPLY → APPLY_FAILED. Pipeline- vs. Apply-Fehler getrennt.',
+      'PARTIALLY_APPLIED ist kein APPLIED. Frontend-Mapping unverändert — nur Domain + Unit-Tests in diesem Prompt.',
+    ],
+    reason: 'Prompt 13/84: Fundament für Document Intake V2 — Lifecycle vor Schema-/Service-Verdrahtung.',
+    previousBehavior: 'Statusübergänge verteilt in Service/Processor ohne zentrale FSM; CONFIRMED als persistierter Zwischenstatus.',
+    details:
+      'document-intake-lifecycle.types.ts, document-intake-lifecycle.transition.ts (+ 57 Spec-Tests). Keine Prisma-Migration.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T18:30:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',
