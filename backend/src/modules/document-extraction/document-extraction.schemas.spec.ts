@@ -88,6 +88,31 @@ describe('document-extraction.schemas', () => {
       expect(keys).toEqual(expect.arrayContaining(['eventDate', 'odometerKm', 'costCents']));
     });
 
+    it('declares production invoice fields', () => {
+      const keys = getFieldSchema('INVOICE').map((field) => field.key);
+      expect(keys).toEqual(
+        expect.arrayContaining([
+          'invoiceNumber',
+          'invoiceDate',
+          'dueDate',
+          'currency',
+          'supplier',
+          'customer',
+          'subtotalNet',
+          'totalTax',
+          'totalGross',
+          'taxExemptReason',
+          'reverseCharge',
+          'lineItems',
+          'taxLines',
+          'creditNoteReference',
+          'originalInvoiceReference',
+          'amountSemantics',
+          'taxSemantics',
+        ]),
+      );
+    });
+
     it('declares schemas for every DocumentExtractionType', () => {
       for (const t of SUPPORTED_DOCUMENT_TYPES) {
         expect(Array.isArray(DOCUMENT_FIELD_SCHEMAS[t])).toBe(true);

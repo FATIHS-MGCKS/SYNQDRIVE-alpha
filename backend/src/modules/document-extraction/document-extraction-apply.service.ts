@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, BadRequestException } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
@@ -28,6 +28,13 @@ import { normalizeBatteryDocumentConfirm } from '@modules/vehicle-intelligence/b
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { FinesService } from '@modules/fines/fines.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
+import {
+  assessInvoiceApplyGate,
+  buildInvoiceApplyLineItems,
+  readInvoiceDate,
+  readSupplier,
+  resolveInvoiceApplyTotals,
+} from './document-invoice-extraction.rules';
 
 export interface ApplyInput {
   extractionId: string;
@@ -451,6 +458,21 @@ export class DocumentExtractionApplyService {
   }
 
   private async applyInvoice(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+    const gate = assessInvoiceApplyGate({
+      fields: d,
+      documentSubtype:
+        this.str(d.documentSubtype) ??
+        this.str(d.documentKind) ??
+        null,
+    });
+    if (!gate.canApply) {
+      throw new BadRequestException({
+        message: 'Invoice apply gate blocked — missing or invalid confirmed fields',
+        blockers: gate.blockers,
+        isCreditNote: gate.isCreditNote,
+      });
+    }
+
     const { vehicleId, sourceFileUrl } = input;
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -458,8 +480,8 @@ export class DocumentExtractionApplyService {
     });
     if (vehicle?.organizationId) {
       const orgId = vehicle.organizationId;
-      const totalCentsParsed = this.toInt(d?.totalCents) ?? this.toInt(d?.costCents) ?? 0;
-      const vendorNameRaw = this.str(d.vendorName) ?? this.str(d.workshopName) ?? '';
+      const { totalCents: totalCentsParsed, currency } = resolveInvoiceApplyTotals(d);
+      const vendorNameRaw = readSupplier(d) ?? '';
       let vendorId: string | undefined;
       if (vendorNameRaw) {
         const match = await this.prisma.vendor.findFirst({
@@ -471,8 +493,8 @@ export class DocumentExtractionApplyService {
         });
         vendorId = match?.id;
       }
-      const invoiceDate =
-        this.str(d.invoiceDate) ?? this.str(d.eventDate) ?? new Date().toISOString();
+      const invoiceDate = readInvoiceDate(d) ?? new Date().toISOString();
+      const lineItems = buildInvoiceApplyLineItems(d);
       await this.invoicesService.create(orgId, {
         type: 'INCOMING_UPLOADED',
         vehicleId,
@@ -480,23 +502,15 @@ export class DocumentExtractionApplyService {
         description: this.str(d.description) ?? '',
         vendorId,
         vendorName: vendorNameRaw,
-        totalCents: totalCentsParsed,
+        totalCents: Math.abs(totalCentsParsed),
+        currency: currency ?? undefined,
         invoiceDate,
         dueDate: this.str(d.dueDate),
         imageUrl: sourceFileUrl || undefined,
         extractedData: d,
         documentExtractionId: input.extractionId,
         fromExtraction: true,
-        lineItems: totalCentsParsed > 0
-          ? [
-              {
-                description: this.str(d.title) ?? 'Eingangsrechnung',
-                quantity: 1,
-                unitPriceNetCents: Math.round(totalCentsParsed / 1.19),
-                taxRate: 19,
-              },
-            ]
-          : undefined,
+        lineItems,
       });
     }
     return {};

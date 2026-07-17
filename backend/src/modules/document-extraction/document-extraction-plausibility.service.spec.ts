@@ -67,6 +67,23 @@ describe('DocumentExtractionPlausibilityService', () => {
     expect(codes(result)).toContain('PLATE_MISMATCH');
   });
 
+  it('runs invoice plausibility checks for INVOICE documents', () => {
+    const result = svc.runChecks(
+      'INVOICE',
+      {
+        invoiceNumber: 'INV-BAD',
+        currency: 'EUR',
+        subtotalNet: 10000,
+        totalTax: 1900,
+        totalGross: 12500,
+        amountSemantics: 'EXPLICIT',
+        taxSemantics: 'EXPLICIT',
+      },
+      baseCtx,
+    );
+    expect(codes(result)).toContain('INVOICE_NET_GROSS_INCONSISTENT');
+  });
+
   it('warns when TUV validity is before the inspection date', () => {
     const result = svc.runChecks(
       'TUV_REPORT',

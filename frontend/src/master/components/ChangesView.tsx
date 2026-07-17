@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-invoice-schema-2026-07-17',
+    version: '4.9.605',
+    title: 'V4.9.605 — Document Intake V2 Production Invoice Schema, Plausibility & Apply Gates',
+    summary: [
+      'Zentrales Modul document-invoice-extraction.rules für production-taugliche Rechnungsfelder.',
+      'Felder: invoiceNumber, invoiceDate, dueDate, currency, supplier, customer, subtotalNet, totalTax, totalGross, taxExemptReason, reverseCharge, lineItems, taxLines, creditNoteReference, originalInvoiceReference.',
+      'Keine 19-%-Annahme; mehrere Steuersätze; steuerfrei und Reverse Charge; Netto/Brutto-Konsistenz mit Rundungs-Warnings.',
+      'Unklare Betragssemantik blockiert finalen Apply; Währungen werden nicht still in EUR umgewandelt; Gutschriften korrekt gekennzeichnet.',
+      'document-action-planner.invoice-rules für Finance-Draft-Bewertung; Fixtures + Schema/Plausibilitäts/Planner-Tests.',
+    ],
+    reason: 'Prompt 29/84: strukturiertes Rechnungsschema production-tauglich erweitern.',
+    previousBehavior: 'INVOICE-Schema minimal; Apply nutzte hardcoded 19% VAT (/1.19); keine Invoice-Plausibilität.',
+    details:
+      'document-invoice-extraction.rules.ts (+ spec, fixtures), document-action-planner.invoice-rules.ts (+ spec), schema/plausibility/apply/APPLY_ALIAS_KEYS/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T09:00:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',
