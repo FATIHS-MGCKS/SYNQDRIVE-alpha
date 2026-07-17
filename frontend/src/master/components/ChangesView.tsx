@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-vehicle-positioning-v49612-2026-07-18',
+    version: '4.9.612',
+    title: 'V4.9.612 — Stations V2: Vehicle Station Positioning V2 Spec (Prompt 32/78)',
+    summary: [
+      'Neues Architektur-Dokument `vehicle-station-positioning-v2.md` — verbindliche Trennung von Home, Current, Expected.',
+      '`homeStationId` = organisatorische Zuständigkeit; `currentStationId` = bestätigter physischer Standort; `expectedStationId` = erwartetes Ziel (Transfer/One-Way/geplante Rückgabe).',
+      'Writer: Home Assignment, Manual Current Correction, Pickup/Return Completion, Transfer Lifecycle, spätere Geofence Confirmation.',
+      'Verbote: Home≠Current, Home löscht nicht Current/Expected blind, Current≠Home, Expected braucht Source/Transferkontext.',
+    ],
+    reason:
+      'Die drei Positionierungsfelder waren fachlich verteilt dokumentiert — ohne einen verbindlichen Vehicle-Positioning-Vertrag mit Writer- und Verbots-Matrix.',
+    previousBehavior:
+      'Semantik nur in `stations-v2.md` Schichten 5–7 und Glossar — ohne dediziertes Positioning-V2-Dokument.',
+    details:
+      'docs/architecture/vehicle-station-positioning-v2.md — reine Dokumentation, keine Code-Änderung.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T14:00:00.000Z',
+  },
+  {
     id: 'stations-v2-operations-dto-v49611-2026-07-18',
     version: '4.9.611',
     title: 'V4.9.611 — Stations V2: Kanonisches StationOperationsDto (Prompt 31/78)',
