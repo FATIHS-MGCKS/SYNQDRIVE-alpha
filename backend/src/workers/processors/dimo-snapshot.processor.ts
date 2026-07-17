@@ -292,6 +292,16 @@ export class DimoSnapshotProcessor extends WorkerHost {
     return null;
   }
 
+  private extractSignalTimestamp(field: unknown): Date | null {
+    if (!field || typeof field !== 'object') return null;
+    const ts = (field as Record<string, unknown>).timestamp;
+    if (typeof ts === 'number' || typeof ts === 'string') {
+      const parsed = new Date(ts);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+  }
+
   private normalizeSnapshot(signals: Record<string, unknown>) {
     const numVal = (field: unknown): number | null => {
       if (field == null) return null;
