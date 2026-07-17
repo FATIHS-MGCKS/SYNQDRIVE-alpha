@@ -25,6 +25,7 @@ import {
 } from '../lib/document-extraction-session';
 import type {
   DocumentExtractionMetadata,
+  PublicDocumentActionPlanPreview,
   PublicDocumentExtraction,
   PublicUploadDuplicate,
   PublicUploadContextDisplay,
@@ -106,11 +107,27 @@ export function useDocumentIntakeFlow({
   const [pollNetworkWarning, setPollNetworkWarning] = useState(false);
   const [showLongRunningHint, setShowLongRunningHint] = useState(false);
   const [processingStartedAt, setProcessingStartedAt] = useState<number | null>(null);
+  const [actionPlanPreview, setActionPlanPreview] = useState<PublicDocumentActionPlanPreview | null>(null);
+  const [actionPlanPreviewLoading, setActionPlanPreviewLoading] = useState(false);
 
   const acceptAttr = useMemo(() => buildAcceptAttribute(metadata?.extensions), [metadata]);
   const isBusy = isBusyFlow(flow);
   const blockerPresent = plausibility?.overallStatus === 'BLOCKER';
   const canUseOrgScope = mode === 'page' && Boolean(orgId);
+  const savedFieldReviewReady = hasSavedFieldReview(record?.confirmedData);
+  const canConfirmActionPlan =
+    savedFieldReviewReady &&
+    !blockerPresent &&
+    !actionPlanPreviewLoading &&
+    (actionPlanPreview == null || actionPlanPreview.canConfirm);
+
+  const handleActionPlanPreviewState = useCallback(
+    (state: { preview: PublicDocumentActionPlanPreview | null; loading: boolean }) => {
+      setActionPlanPreview(state.preview);
+      setActionPlanPreviewLoading(state.loading);
+    },
+    [],
+  );
 
   const writePagePointer = useCallback(
     (extractionId: string, pointerVehicleId?: string | null) => {
@@ -484,6 +501,14 @@ export function useDocumentIntakeFlow({
       return;
     }
 
+    if (actionPlanPreview && !actionPlanPreview.canConfirm) {
+      setErrorMessage(
+        actionPlanPreview.confirmBlockedReason ??
+          'Der Aktionsplan ist blockiert — bitte offene Punkte beheben.',
+      );
+      return;
+    }
+
     setFlow('applying');
     setErrorMessage(null);
 
@@ -495,6 +520,7 @@ export function useDocumentIntakeFlow({
     try {
       await api.vehicleIntelligence.confirmDocumentExtraction(mutationVehicleId, extractionId, {
         confirmedData,
+        actionPlanFingerprint: actionPlanPreview?.fingerprint || undefined,
       });
       if (pollThroughApply) {
         startPolling(extractionId, mutationVehicleId);
@@ -516,6 +542,7 @@ export function useDocumentIntakeFlow({
     respectAllowedActions,
     resolveMutationVehicleId,
     startPolling,
+    actionPlanPreview,
   ]);
 
   const handleSchemaReviewUpdated = useCallback(
@@ -592,6 +619,10 @@ export function useDocumentIntakeFlow({
     acceptAttr,
     isBusy,
     blockerPresent,
+    canConfirmActionPlan,
+    actionPlanPreview,
+    actionPlanPreviewLoading,
+    handleActionPlanPreviewState,
     handleFile,
     handleAuthorizedReupload,
     handleRetry,

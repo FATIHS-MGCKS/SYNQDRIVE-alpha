@@ -29,6 +29,7 @@ import { DocumentExtractionService } from './document-extraction.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { ConfirmExtractionDto } from './dto/confirm-extraction.dto';
 import { SaveReviewExtractionDto } from './dto/save-review-extraction.dto';
+import { UpdateActionPlanPreferencesDto } from './dto/update-action-plan-preferences.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
 import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
@@ -205,6 +206,7 @@ export class DocumentExtractionController {
       extractionId,
       body.confirmedData,
       userId ?? null,
+      body.actionPlanFingerprint ?? null,
     );
     return this.service.toPublicExtraction(record);
   }
@@ -224,6 +226,31 @@ export class DocumentExtractionController {
       userId ?? null,
     );
     return this.service.toPublicExtraction(record);
+  }
+
+  @Get(':extractionId/action-plan-preview')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getActionPlanPreview(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.getActionPlanPreviewForVehicle(vehicleId, extractionId);
+  }
+
+  @Patch(':extractionId/action-plan-preferences')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  updateActionPlanPreferences(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: UpdateActionPlanPreferencesDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.updateActionPlanPreferencesForVehicle(
+      vehicleId,
+      extractionId,
+      { disabledOptionalActions: body.disabledOptionalActions },
+      userId ?? null,
+    );
   }
 
   @Post(':extractionId/cancel')

@@ -48,10 +48,14 @@ import {
   type DocumentActionPlanApplyLifecycle,
 } from './document-action-plan.state-machine';
 import {
+  isOptionalActionDisabled,
+  readActionPlanPreferences,
+} from './document-action-plan-preferences.util';
+import {
+  DOCUMENT_ACTION_ERROR_CODES,
   DocumentActionBusinessError,
   DocumentActionPlanError,
   DocumentActionTechnicalError,
-  DOCUMENT_ACTION_ERROR_CODES,
   isDocumentActionError,
 } from './document-action.errors';
 import type { ApplyResult } from './document-extraction-apply.service';
@@ -151,6 +155,20 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       isDamageDocumentType(documentType) ||
       isTechnicalDocumentType(documentType)
     );
+  }
+
+  async buildPreviewPlan(input: ExecuteDocumentActionPlanInput): Promise<DocumentActionPlan> {
+    const planContext = await this.buildPlanContext(input);
+    return buildDocumentActionPlan({
+      extractionId: input.extractionId,
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      documentType: input.documentType,
+      confirmedData: input.confirmedData,
+      plausibilityChecks: input.plausibilityChecks,
+      confirmedById: input.confirmedById,
+      planContext,
+    });
   }
 
   async prepareConfirmedPlan(input: ExecuteDocumentActionPlanInput): Promise<DocumentActionPlan> {
@@ -376,6 +394,20 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
 
       if (prior?.idempotencyKey === idempotencyKey && prior.status === DOCUMENT_ACTION_EXECUTION_STATUSES.SKIPPED) {
         records.push(prior);
+        continue;
+      }
+
+      const preferences = readActionPlanPreferences(input.confirmedData);
+      if (isOptionalActionDisabled(action.semanticAction, action.requirement, preferences)) {
+        records.push({
+          actionIndex,
+          semanticAction: action.semanticAction,
+          requirement: action.requirement,
+          idempotencyKey,
+          status: DOCUMENT_ACTION_EXECUTION_STATUSES.SKIPPED,
+          output: { disabledByUser: true },
+          completedAt: new Date().toISOString(),
+        });
         continue;
       }
 

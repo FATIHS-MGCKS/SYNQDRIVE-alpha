@@ -152,6 +152,56 @@ export interface DocumentSchemaRegistryResponse {
   subtypes: PublicDocumentSubtypeSchema[];
 }
 
+export type DocumentActionPreviewStatus =
+  | 'READY'
+  | 'BLOCKED'
+  | 'DISABLED'
+  | 'SUGGESTION'
+  | 'INFORMATIONAL';
+
+export interface PublicDocumentActionPreviewField {
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface PublicDocumentActionPreviewIssue {
+  code: string;
+  message: string;
+}
+
+export interface PublicDocumentActionPreviewCard {
+  semanticAction: string;
+  labelKey: string;
+  title: string;
+  targetModule: string;
+  targetModuleLabel: string;
+  targetEntityType: string | null;
+  targetEntityLabel: string | null;
+  requirement: 'REQUIRED' | 'OPTIONAL' | 'INFORMATIONAL';
+  status: DocumentActionPreviewStatus;
+  sequence: number;
+  writableFields: PublicDocumentActionPreviewField[];
+  missingPrerequisites: PublicDocumentActionPreviewIssue[];
+  conflicts: PublicDocumentActionPreviewIssue[];
+  toggleable: boolean;
+  enabled: boolean;
+}
+
+export interface PublicDocumentActionPlanPreview {
+  planId: string | null;
+  fingerprint: string;
+  planVersion: number;
+  planOutcome: string;
+  planStatus: 'PREVIEW' | 'INVALIDATED' | 'STALE';
+  summary: string;
+  blocked: boolean;
+  canConfirm: boolean;
+  confirmBlockedReason: string | null;
+  disabledOptionalActions: string[];
+  actions: PublicDocumentActionPreviewCard[];
+}
+
 export interface PublicFieldProvenance {
   fieldKey: string;
   rawValue: unknown;

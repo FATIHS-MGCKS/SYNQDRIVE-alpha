@@ -5267,6 +5267,19 @@ export const api = {
         `/vehicles/${vehicleId}/document-extractions/${extractionId}/save-review`,
         data,
       ),
+    getActionPlanPreview: (vehicleId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/action-plan-preview`,
+      ),
+    updateActionPlanPreferences: (
+      vehicleId: string,
+      extractionId: string,
+      data: { disabledOptionalActions: string[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/action-plan-preferences`,
+        data,
+      ),
     retryDocumentExtraction: (vehicleId: string, extractionId: string) =>
       post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/retry`, {}),
     // Real multipart upload → stores file, creates QUEUED record, enqueues the
@@ -5452,6 +5465,19 @@ export const api = {
     ) =>
       post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
         `/organizations/${orgId}/document-extractions/${extractionId}/save-review`,
+        data,
+      ),
+    getActionPlanPreviewByOrg: (orgId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/action-plan-preview`,
+      ),
+    updateActionPlanPreferencesByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { disabledOptionalActions: string[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/action-plan-preferences`,
         data,
       ),
     upload: async (

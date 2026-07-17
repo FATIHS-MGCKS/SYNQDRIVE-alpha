@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-action-plan-review-2026-07-17',
+    version: '4.9.646',
+    title: 'V4.9.646 — Document Intake Action Plan Review',
+    summary: [
+      'Zentraler Schritt „Was soll uebernommen werden?“ mit serverseitiger Aktionsvorschau.',
+      'Karten pro DocumentAction: Zielmodul, Aktion, Zielentitaet, Daten, Pflicht/optional, Status, Blocker, Konflikte.',
+      'Optionale Actions per Toggle deaktivierbar; Plan-Fingerprint Pflicht vor Confirm/Apply.',
+    ],
+    reason:
+      'Prompt 71/84 — Nutzer sollen vor Apply verstehen, was passiert, ohne clientseitige Action-Rekonstruktion.',
+    previousBehavior:
+      'Frontend baute Aktionsvorschau aus Schema-Registry (`buildDocumentActionPreview`) — nicht identisch mit Server-Plan.',
+    details:
+      'Backend: action-plan-preview + action-plan-preferences Endpoints, DocumentActionPlanPreviewService, fingerprint in confirm. Frontend: DocumentActionPlanReview, useDocumentActionPlanPreview, api hooks, intake confirm gate. Architektur: architecture/DOCUMENT_INTAKE_ACTION_PLAN_REVIEW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
     id: 'document-intake-schema-field-review-2026-07-17',
     version: '4.9.645',
     title: 'V4.9.645 — Document Intake Schema Field Review',

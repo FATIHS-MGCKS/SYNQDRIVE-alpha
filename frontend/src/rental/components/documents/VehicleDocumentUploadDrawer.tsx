@@ -85,7 +85,7 @@ export function VehicleDocumentUploadDrawer({
         <button
           type="button"
           onClick={() => void flow.handleConfirm()}
-          disabled={flow.flow === 'applying' || flow.blockerPresent}
+          disabled={flow.flow === 'applying' || !flow.canConfirmActionPlan}
           className="sq-press ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--status-success)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
         >
           {flow.flow === 'applying' ? (
@@ -208,6 +208,7 @@ export function VehicleDocumentUploadDrawer({
               entityReviewLocale={locale}
               entityReviewT={t}
               onSchemaReviewUpdated={flow.handleSchemaReviewUpdated}
+              onActionPlanPreviewStateChange={flow.handleActionPlanPreviewState}
               onFieldChange={(index, value) => {
                 const next = [...flow.editedFields];
                 next[index] = { ...next[index], value };

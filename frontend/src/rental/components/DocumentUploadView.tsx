@@ -361,6 +361,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   vehicleLookup={page.vehicleLookup}
                   onEntityLinksUpdated={page.handleEntityLinksUpdated}
                   onSchemaReviewUpdated={page.handleSchemaReviewUpdated}
+                  onActionPlanPreviewStateChange={page.handleActionPlanPreviewState}
                   onFieldChange={(index, value) => {
                     const updated = [...page.editedFields];
                     updated[index] = { ...updated[index], value };

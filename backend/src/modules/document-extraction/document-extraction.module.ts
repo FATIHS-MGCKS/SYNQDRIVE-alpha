@@ -70,7 +70,7 @@ import { CustomerCandidateResolverService } from './customer-candidate-resolver.
 import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
 import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
 import { DocumentEntityLinkService } from './document-entity-link.service';
-import { DocumentSchemaRegistryService } from './document-schema-registry.service';
+import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
 
 /**
  * AI Document Upload feature module.
@@ -127,6 +127,7 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     PartnerCandidateResolverService,
     DocumentEntityLinkService,
     DocumentSchemaRegistryService,
+    DocumentActionPlanPreviewService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,
