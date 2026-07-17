@@ -8,6 +8,11 @@ const viewSource = readFileSync(
   'utf8',
 );
 
+const uploadZoneSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), './DocumentIntakeUploadZone.tsx'),
+  'utf8',
+);
+
 const reviewPanelSource = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), './DocumentExtractionReviewPanel.tsx'),
   'utf8',
@@ -40,8 +45,8 @@ describe('DocumentUploadView responsive layout guards', () => {
   });
 
   it('keeps dropzone and side column within the viewport', () => {
-    expect(viewSource).toContain('p-6 sm:p-10 lg:p-12');
-    expect(viewSource).toContain('space-y-5 min-w-0 w-full');
+    expect(uploadZoneSource).toContain('p-6 sm:p-10 lg:p-12');
+    expect(viewSource).toContain('min-w-0 w-full');
     expect(viewSource).toContain('break-all');
   });
 });

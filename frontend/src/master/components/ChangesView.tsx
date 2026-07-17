@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-frontend-e2e-tests-2026-07-18',
+    version: '4.9.656',
+    title: 'V4.9.656 — Document Intake V2 Frontend & E2E Test Package',
+    summary: [
+      'Vollstaendiges Frontend- und E2E-Testpaket fuer Document Intake V2 mit verify-Skript und 25-Bereiche-Coverage-Matrix.',
+      'Neue Specs: document-intake-v2-surfaces/flow.contract/tenant-isolation, follow-up/archive UI tests, apply-polling.',
+      'E2E: document-intake-v2-flow + responsive mit Profil-Fixtures (applying-guard, partial-apply, archive, cross-tenant).',
+      'Apply-Truth-Vertrag: keine Mock-Anzeige von APPLIED-Erfolg ohne bestaetigtes applyResult.',
+      'Fix: useDocumentIntakeFlow startPolling TDZ (ReferenceError beim Oeffnen der Upload-View).',
+    ],
+    reason: 'Prompt 81/84 — Frontend- und E2E-Abdeckung des vollstaendigen Intake-Flows.',
+    previousBehavior:
+      'Einzelne Upload-Specs ohne einheitliches npm-Paket, ohne Apply-Truth-E2E-Guards und ohne Archiv/Follow-up UI-Tests.',
+    details:
+      'Frontend: document-intake-test-fixtures.ts, 6 neue Unit/UI-Specs, document-intake-v2-verify.sh, npm run test:document-intake:v2 / :e2e / :verify. E2E: document-intake-v2-fixtures.ts (Profile), flow + responsive specs. Fix: useDocumentIntakeFlow startPolling vor handleRetryFailedActions. Docs: docs/testing/document-intake-v2-frontend-e2e-coverage.md.',
+    affectsArchitecture: false,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
     id: 'document-intake-v2-backend-tests-2026-07-17',
     version: '4.9.655',
     title: 'V4.9.655 — Document Intake V2 Backend Test Package',

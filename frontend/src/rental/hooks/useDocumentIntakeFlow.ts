@@ -266,6 +266,36 @@ export function useDocumentIntakeFlow({
     [locale, mode, onComplete, onRecordApplied, stopPolling, vehicleId, writePagePointer],
   );
 
+  const startPolling = useCallback(
+    (id: string, pollVehicleId?: string | null) => {
+      const effectiveVehicleId = pollVehicleId ?? vehicleId ?? null;
+      if (!effectiveVehicleId && !canUseOrgScope) return;
+      stopPolling();
+      processingStartedRef.current = Date.now();
+      setPollNetworkWarning(false);
+      setShowLongRunningHint(false);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const poller = createExtractionPoller({
+        signal: controller.signal,
+        fetchRecord: () => fetchExtractionRecord(id, effectiveVehicleId),
+        onRecord: (r) => {
+          applyRecord(r);
+          if (processingStartedRef.current && Date.now() - processingStartedRef.current > LONG_RUNNING_MS) {
+            setShowLongRunningHint(true);
+          }
+        },
+        onError: (_err, failures) => {
+          if (failures >= NETWORK_WARN_THRESHOLD) setPollNetworkWarning(true);
+        },
+      });
+      pollerStopRef.current = poller.stop;
+    },
+    [applyRecord, canUseOrgScope, fetchExtractionRecord, stopPolling, vehicleId],
+  );
+
   const handleRetryFailedActions = useCallback(async () => {
     if (applyRetryPending) return;
     const mutationVehicleId = resolveMutationVehicleId();
@@ -306,36 +336,6 @@ export function useDocumentIntakeFlow({
     startPolling,
     vehicleId,
   ]);
-
-  const startPolling = useCallback(
-    (id: string, pollVehicleId?: string | null) => {
-      const effectiveVehicleId = pollVehicleId ?? vehicleId ?? null;
-      if (!effectiveVehicleId && !canUseOrgScope) return;
-      stopPolling();
-      processingStartedRef.current = Date.now();
-      setPollNetworkWarning(false);
-      setShowLongRunningHint(false);
-
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      const poller = createExtractionPoller({
-        signal: controller.signal,
-        fetchRecord: () => fetchExtractionRecord(id, effectiveVehicleId),
-        onRecord: (r) => {
-          applyRecord(r);
-          if (processingStartedRef.current && Date.now() - processingStartedRef.current > LONG_RUNNING_MS) {
-            setShowLongRunningHint(true);
-          }
-        },
-        onError: (_err, failures) => {
-          if (failures >= NETWORK_WARN_THRESHOLD) setPollNetworkWarning(true);
-        },
-      });
-      pollerStopRef.current = poller.stop;
-    },
-    [applyRecord, canUseOrgScope, fetchExtractionRecord, stopPolling, vehicleId],
-  );
 
   const handleReset = useCallback(() => {
     stopPolling();
