@@ -13,7 +13,7 @@ import {
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
 import { DocumentExtractionEnqueueFailedException } from './document-extraction-enqueue.exception';
 import { DOCUMENT_EXTRACTION_ERROR_CODES } from './document-extraction-lifecycle.util';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock } from './document-extraction-test.helpers';
+import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock } from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -178,6 +178,7 @@ describe('Document extraction pipeline (integration wiring)', () => {
       makeMalwareScanMock(storage as any) as any,
       makeLifecycleMock() as any,
       makeRetentionMock() as any,
+    makeUploadContextMock() as any,
       observability,
     );
   });

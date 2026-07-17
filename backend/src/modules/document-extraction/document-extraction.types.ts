@@ -4,7 +4,7 @@ import { ApplyDocumentExtractionType } from './document-extraction.schemas';
 /** Payload enqueued for the AI extraction worker. No file bytes — only the key. */
 export interface DocumentExtractionJobData {
   extractionId: string;
-  vehicleId: string;
+  vehicleId: string | null;
   organizationId: string | null;
   /** Optional hint — worker always reads the authoritative type from the DB record. */
   documentType?: ApplyDocumentExtractionType | null;
