@@ -88,6 +88,10 @@ export type PostCallConfigurationInput = {
   webhookUrl?: string | null;
   sendAudio?: boolean;
   analysisEnabled?: boolean;
+  enableTranscript?: boolean;
+  enableSummary?: boolean;
+  enableOutcome?: boolean;
+  configVersion?: number;
 };
 
 export type MaskedPostCallConfigView = {
@@ -95,6 +99,10 @@ export type MaskedPostCallConfigView = {
   webhookConfigured: boolean;
   sendAudio?: boolean;
   analysisEnabled?: boolean;
+  enableTranscript?: boolean;
+  enableSummary?: boolean;
+  enableOutcome?: boolean;
+  configVersion?: number;
 };
 
 export type ToolsConfigurationInput = {

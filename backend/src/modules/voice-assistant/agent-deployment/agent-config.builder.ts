@@ -1,11 +1,12 @@
 import type { VoiceAssistant } from '@prisma/client';
-import {
-  buildToolPolicyForAssistant,
-} from '../voice-assistant-permissions';
+import { buildToolPolicyForAssistant } from '../voice-assistant-permissions';
+import { buildDefaultPostCallConfig } from './agent-post-call.config';
 import type {
   AgentBusinessHours,
   AgentKnowledgeRef,
   AgentMcpToolRef,
+  AgentPostCallConfig,
+  AgentTransferConfig,
   CanonicalAgentConfig,
   CanonicalAgentConfigPatch,
 } from './agent-config.types';
@@ -64,6 +65,65 @@ function readMcpToolRefs(assistant: VoiceAssistant): AgentMcpToolRef[] {
   }));
 }
 
+function readTransferConfig(assistant: VoiceAssistant): AgentTransferConfig | null {
+  const rules = [];
+  if (assistant.escalationPhone?.trim()) {
+    rules.push({
+      ruleId: 'legacy-escalation-phone',
+      label: 'Legacy escalation phone',
+      condition: 'When escalation is required.',
+      target: {
+        type: 'PHONE' as const,
+        phoneE164: assistant.escalationPhone,
+      },
+      transferType: 'conference' as const,
+      respectBusinessHours: true,
+      maxWaitSeconds: 60,
+      enabled: true,
+    });
+  } else if (assistant.escalationUserId?.trim()) {
+    rules.push({
+      ruleId: 'legacy-escalation-user',
+      label: 'Legacy escalation user',
+      condition: 'When escalation is required.',
+      target: {
+        type: 'STAFF_USER' as const,
+        userId: assistant.escalationUserId,
+      },
+      transferType: 'conference' as const,
+      respectBusinessHours: true,
+      maxWaitSeconds: 60,
+      enabled: true,
+    });
+  }
+
+  if (!rules.length) {
+    return null;
+  }
+
+  return {
+    rules,
+    maxTransferHops: 2,
+    loopProtectionEnabled: true,
+  };
+}
+
+function defaultPrivacyRetention(): CanonicalAgentConfig['privacyRetention'] {
+  return {
+    recordAudio: false,
+    storeTranscripts: true,
+    retentionAudioDays: null,
+    retentionTranscriptDays: 90,
+    retentionSummaryDays: 90,
+    retentionProviderPayloadDays: 30,
+    retentionDays: 90,
+    redactPii: true,
+    redactPiiBeforeLogs: true,
+    consentNoticeText: null,
+    masterAdminContentAccess: false,
+  };
+}
+
 export function buildCanonicalAgentConfigFromAssistant(
   assistant: VoiceAssistant,
 ): CanonicalAgentConfig {
@@ -81,26 +141,35 @@ export function buildCanonicalAgentConfigFromAssistant(
       `Hello, this is ${assistant.name?.trim() || 'AI Assistant'}. How can I help you?`,
     dynamicVariables: [],
     businessHours: readBusinessHours(assistant),
+    transfer: readTransferConfig(assistant),
     fallback: {
       message: assistant.fallbackMessage,
+      standardAnnouncement:
+        assistant.fallbackMessage ||
+        'We cannot complete this request right now. We will follow up as soon as possible.',
       escalateOnRequest: assistant.escalateOnRequest,
       escalateOnLowConfidence: assistant.escalateOnLowConf,
       escalateOnSensitive: assistant.escalateOnSensitive,
       escalationDepartment: assistant.escalationDepartment,
+      recordCallback: true,
+      createSupportCase: true,
+      controlledEndCall: true,
+      avoidFalseSuccessStatus: true,
+      transferFailedMessage:
+        assistant.fallbackMessage ||
+        'Transfer is currently unavailable. We have recorded your request.',
     },
     mcpToolRefs: readMcpToolRefs(assistant),
     knowledgeRefs: readKnowledgeRefs(assistant),
-    privacyRetention: {
-      storeTranscripts: true,
-      retentionDays: null,
-      redactPii: true,
-    },
+    privacyRetention: defaultPrivacyRetention(),
+    postCall: buildDefaultPostCallConfig(assistant.organizationId),
   };
 }
 
 export function mergeCanonicalAgentConfig(
   base: CanonicalAgentConfig,
   patch: CanonicalAgentConfigPatch,
+  organizationId: string,
 ): CanonicalAgentConfig {
   return {
     ...base,
@@ -110,15 +179,38 @@ export function mergeCanonicalAgentConfig(
     knowledgeRefs: patch.knowledgeRefs ?? base.knowledgeRefs,
     businessHours:
       patch.businessHours === undefined ? base.businessHours : patch.businessHours,
+    transfer: patch.transfer === undefined ? base.transfer : patch.transfer,
     fallback: patch.fallback === undefined ? base.fallback : patch.fallback,
     privacyRetention: {
       ...base.privacyRetention,
       ...(patch.privacyRetention ?? {}),
     },
+    postCall: mergePostCallConfig(base.postCall, patch.postCall, organizationId),
   };
 }
 
-export function parseCanonicalAgentConfigSnapshot(value: unknown): CanonicalAgentConfig | null {
+function mergePostCallConfig(
+  base: AgentPostCallConfig,
+  patch: CanonicalAgentConfigPatch['postCall'],
+  organizationId: string,
+): AgentPostCallConfig {
+  const defaults = buildDefaultPostCallConfig(organizationId);
+  return {
+    ...defaults,
+    ...base,
+    ...(patch ?? {}),
+    version: defaults.version,
+    webhookPath: defaults.webhookPath,
+    signatureRequired: patch?.signatureRequired ?? base.signatureRequired ?? true,
+    webhookSecretConfigured: defaults.webhookSecretConfigured,
+    sendAudio: patch?.sendAudio ?? base.sendAudio ?? false,
+  };
+}
+
+export function parseCanonicalAgentConfigSnapshot(
+  value: unknown,
+  organizationId: string,
+): CanonicalAgentConfig | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -126,6 +218,12 @@ export function parseCanonicalAgentConfigSnapshot(value: unknown): CanonicalAgen
   if (!row.assistantName || !row.language) {
     return null;
   }
+
+  const privacy = {
+    ...defaultPrivacyRetention(),
+    ...(row.privacyRetention ?? {}),
+  };
+
   return {
     assistantName: String(row.assistantName),
     systemPrompt: String(row.systemPrompt ?? ''),
@@ -138,13 +236,16 @@ export function parseCanonicalAgentConfigSnapshot(value: unknown): CanonicalAgen
     greeting: String(row.greeting ?? ''),
     dynamicVariables: Array.isArray(row.dynamicVariables) ? row.dynamicVariables : [],
     businessHours: row.businessHours ?? null,
+    transfer: row.transfer ?? null,
     fallback: row.fallback ?? null,
     mcpToolRefs: Array.isArray(row.mcpToolRefs) ? row.mcpToolRefs : [],
     knowledgeRefs: Array.isArray(row.knowledgeRefs) ? row.knowledgeRefs : [],
-    privacyRetention: {
-      storeTranscripts: row.privacyRetention?.storeTranscripts ?? true,
-      retentionDays: row.privacyRetention?.retentionDays ?? null,
-      redactPii: row.privacyRetention?.redactPii ?? true,
+    privacyRetention: privacy,
+    postCall: {
+      ...buildDefaultPostCallConfig(organizationId),
+      ...(row.postCall ?? {}),
+      webhookPath: buildDefaultPostCallConfig(organizationId).webhookPath,
+      webhookSecretConfigured: buildDefaultPostCallConfig(organizationId).webhookSecretConfigured,
     },
   };
 }
@@ -178,9 +279,38 @@ export function buildProviderSystemPrompt(config: CanonicalAgentConfig): string 
     if (fallback.escalateOnLowConfidence) triggers.push('when you are not confident in your answer');
     if (fallback.escalateOnSensitive) triggers.push('for sensitive topics');
     parts.push(`\n\nEscalation: Transfer the call ${triggers.join(', ')}.`);
-    if (fallback.message) {
-      parts.push(`If no agent is available, say: "${fallback.message}"`);
+    const announcement = fallback.standardAnnouncement || fallback.message;
+    if (announcement) {
+      parts.push(`If no agent is available, say: "${announcement}"`);
     }
+    if (fallback.transferFailedMessage) {
+      parts.push(`If transfer fails, say: "${fallback.transferFailedMessage}"`);
+    }
+    if (fallback.recordCallback) {
+      parts.push('Offer to record a callback request when transfer is unavailable.');
+    }
+    if (fallback.createSupportCase) {
+      parts.push('Create an internal support case when transfer or resolution fails.');
+    }
+    if (fallback.controlledEndCall) {
+      parts.push('End the call only after confirming next steps with the caller.');
+    }
+    if (fallback.avoidFalseSuccessStatus !== false) {
+      parts.push('Never claim an action succeeded unless it was actually completed.');
+    }
+  }
+
+  if (config.privacyRetention.consentNoticeText?.trim()) {
+    parts.push(`\n\nPrivacy notice for callers:\n${config.privacyRetention.consentNoticeText}`);
+  }
+
+  const transferRules = config.transfer?.rules?.filter((rule) => rule.enabled !== false) ?? [];
+  if (transferRules.length > 0) {
+    parts.push(
+      `\n\nTransfer rules:\n${transferRules
+        .map((rule) => `- ${rule.label || rule.ruleId}: ${rule.condition}`)
+        .join('\n')}`,
+    );
   }
 
   return parts.join('');

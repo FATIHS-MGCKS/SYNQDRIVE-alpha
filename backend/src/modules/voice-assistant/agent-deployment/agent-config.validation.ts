@@ -55,11 +55,34 @@ export function validateCanonicalAgentConfig(
     }
   }
 
-  if (
-    config.privacyRetention.retentionDays != null &&
-    (config.privacyRetention.retentionDays < 1 || config.privacyRetention.retentionDays > 3650)
-  ) {
-    errors.push('Retention days must be between 1 and 3650.');
+  validateRetentionDays('audio', config.privacyRetention.retentionAudioDays, errors);
+  validateRetentionDays('transcript', config.privacyRetention.retentionTranscriptDays, errors);
+  validateRetentionDays('summary', config.privacyRetention.retentionSummaryDays, errors);
+  validateRetentionDays(
+    'provider payload',
+    config.privacyRetention.retentionProviderPayloadDays,
+    errors,
+  );
+  validateRetentionDays('legacy transcript', config.privacyRetention.retentionDays, errors);
+
+  if (config.privacyRetention.recordAudio && !config.privacyRetention.consentNoticeText?.trim()) {
+    errors.push('Audio recording requires a configured consent or privacy notice text.');
+  }
+
+  if (config.postCall.sendAudio && !config.privacyRetention.recordAudio) {
+    errors.push('Post-call audio delivery requires explicit audio recording consent in privacy settings.');
+  }
+
+  for (const rule of config.transfer?.rules ?? []) {
+    if (!rule.ruleId?.trim()) {
+      errors.push('Each transfer rule requires a rule id.');
+    }
+    if (!rule.condition?.trim()) {
+      errors.push(`Transfer rule ${rule.ruleId || '(unknown)'} requires a condition.`);
+    }
+    if (rule.transferType && !['conference', 'blind'].includes(rule.transferType)) {
+      errors.push(`Transfer rule ${rule.ruleId} has unsupported transfer type.`);
+    }
   }
 
   if (errors.length > 0) {
@@ -67,6 +90,17 @@ export function validateCanonicalAgentConfig(
       message: 'Voice agent configuration validation failed.',
       errors,
     });
+  }
+}
+
+function validateRetentionDays(
+  label: string,
+  value: number | null | undefined,
+  errors: string[],
+): void {
+  if (value == null) return;
+  if (value < 1 || value > 3650) {
+    errors.push(`${label} retention days must be between 1 and 3650.`);
   }
 }
 
@@ -80,10 +114,17 @@ export function rejectProviderPayloadKeys(patch: CanonicalAgentConfigPatch): voi
     'elevenlabs',
     'mcp_server_ids',
     'tools',
+    'webhookUrl',
+    'webhookSecret',
+    'webhook_secret',
   ];
   for (const key of Object.keys(patch as Record<string, unknown>)) {
     if (forbidden.includes(key)) {
       throw new BadRequestException('Provider payloads cannot be saved from the tenant API.');
     }
+  }
+
+  if (patch.postCall && ('webhookUrl' in patch.postCall || 'webhookSecret' in patch.postCall)) {
+    throw new BadRequestException('Post-call webhook URLs must be resolved server-side.');
   }
 }

@@ -32,18 +32,79 @@ export type AgentKnowledgeRef = {
   source: 'snippet' | 'document';
 };
 
+export type AgentTransferTargetType = 'PHONE' | 'STAFF_USER' | 'STAFF_GROUP' | 'STATION';
+
+/** ElevenLabs native Twilio: `conference` (warm) or `blind` only. */
+export type AgentTransferType = 'conference' | 'blind';
+
+export type AgentTransferTarget = {
+  type: AgentTransferTargetType;
+  phoneE164?: string | null;
+  userId?: string | null;
+  organizationRoleId?: string | null;
+  stationId?: string | null;
+};
+
+export type AgentTransferRule = {
+  ruleId: string;
+  label?: string | null;
+  condition: string;
+  target: AgentTransferTarget;
+  topicKey?: string | null;
+  routingStationId?: string | null;
+  respectBusinessHours?: boolean;
+  maxWaitSeconds?: number | null;
+  transferType?: AgentTransferType;
+  warmTransferMessage?: string | null;
+  failedTransferFallbackMessage?: string | null;
+  enabled?: boolean;
+};
+
+export type AgentTransferConfig = {
+  rules: AgentTransferRule[];
+  maxTransferHops?: number;
+  loopProtectionEnabled?: boolean;
+};
+
 export type AgentFallbackConfig = {
   message?: string | null;
+  standardAnnouncement?: string | null;
   escalateOnRequest?: boolean;
   escalateOnLowConfidence?: boolean;
   escalateOnSensitive?: boolean;
   escalationDepartment?: string | null;
+  recordCallback?: boolean;
+  createSupportCase?: boolean;
+  controlledEndCall?: boolean;
+  avoidFalseSuccessStatus?: boolean;
+  transferFailedMessage?: string | null;
 };
 
 export type AgentPrivacyRetention = {
+  recordAudio?: boolean;
   storeTranscripts?: boolean;
+  retentionAudioDays?: number | null;
+  retentionTranscriptDays?: number | null;
+  retentionSummaryDays?: number | null;
+  retentionProviderPayloadDays?: number | null;
+  /** @deprecated use retentionTranscriptDays */
   retentionDays?: number | null;
   redactPii?: boolean;
+  redactPiiBeforeLogs?: boolean;
+  consentNoticeText?: string | null;
+  masterAdminContentAccess?: boolean;
+};
+
+export type AgentPostCallConfig = {
+  version: number;
+  webhookPath: string;
+  signatureRequired: boolean;
+  webhookSecretConfigured: boolean;
+  enableTranscript: boolean;
+  enableSummary: boolean;
+  enableOutcome: boolean;
+  enableAnalysis: boolean;
+  sendAudio: boolean;
 };
 
 /**
@@ -61,18 +122,25 @@ export type CanonicalAgentConfig = {
   greeting: string;
   dynamicVariables: AgentDynamicVariable[];
   businessHours?: AgentBusinessHours | null;
+  transfer?: AgentTransferConfig | null;
   fallback?: AgentFallbackConfig | null;
   mcpToolRefs: AgentMcpToolRef[];
   knowledgeRefs: AgentKnowledgeRef[];
   privacyRetention: AgentPrivacyRetention;
+  postCall: AgentPostCallConfig;
 };
 
 export type CanonicalAgentConfigPatch = Partial<
-  Omit<CanonicalAgentConfig, 'dynamicVariables' | 'mcpToolRefs' | 'knowledgeRefs'>
+  Omit<
+    CanonicalAgentConfig,
+    'dynamicVariables' | 'mcpToolRefs' | 'knowledgeRefs' | 'transfer' | 'postCall'
+  >
 > & {
   dynamicVariables?: AgentDynamicVariable[];
   mcpToolRefs?: AgentMcpToolRef[];
   knowledgeRefs?: AgentKnowledgeRef[];
+  transfer?: AgentTransferConfig | null;
+  postCall?: Partial<AgentPostCallConfig>;
 };
 
 export type AgentDeploymentDraftView = {
@@ -115,4 +183,17 @@ export type AgentDeploymentRollbackView = {
   restoredFromVersion: number;
   status: string;
   maskedExternalRef: string | null;
+};
+
+export type AgentDeploymentReadinessItem = {
+  key: string;
+  label: string;
+  level: 'blocker' | 'warning';
+  message: string;
+};
+
+export type AgentDeploymentReadinessView = {
+  ready: boolean;
+  blockers: AgentDeploymentReadinessItem[];
+  warnings: AgentDeploymentReadinessItem[];
 };

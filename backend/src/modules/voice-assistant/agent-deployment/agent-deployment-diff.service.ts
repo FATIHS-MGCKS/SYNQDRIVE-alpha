@@ -49,14 +49,32 @@ function summarizeKnowledgeRefs(value: CanonicalAgentConfig['knowledgeRefs']): s
 
 function summarizePrivacy(value: CanonicalAgentConfig['privacyRetention']): string | null {
   const parts: string[] = [];
+  parts.push(value.recordAudio ? 'audio on' : 'audio off');
   parts.push(value.storeTranscripts ? 'store transcripts' : 'no transcript storage');
-  if (value.retentionDays != null) parts.push(`${value.retentionDays}d retention`);
-  parts.push(value.redactPii ? 'PII redaction on' : 'PII redaction off');
+  if (value.retentionTranscriptDays != null) parts.push(`tx ${value.retentionTranscriptDays}d`);
+  if (value.retentionSummaryDays != null) parts.push(`summary ${value.retentionSummaryDays}d`);
+  parts.push(value.redactPiiBeforeLogs ? 'PII redaction on' : 'PII redaction off');
+  return parts.join(', ');
+}
+
+function summarizeTransfer(value: CanonicalAgentConfig['transfer']): string | null {
+  const rules = value?.rules?.filter((rule) => rule.enabled !== false) ?? [];
+  if (!rules.length) return 'No transfer rules';
+  return `${rules.length} rule(s)`;
+}
+
+function summarizePostCall(value: CanonicalAgentConfig['postCall']): string | null {
+  const parts: string[] = [`v${value.version}`, value.webhookPath];
+  if (value.enableTranscript) parts.push('transcript');
+  if (value.enableSummary) parts.push('summary');
+  if (value.enableOutcome) parts.push('outcome');
+  if (value.enableAnalysis) parts.push('analysis');
+  if (value.sendAudio) parts.push('audio');
   return parts.join(', ');
 }
 
 const DIFF_FIELDS: Array<{
-  key: keyof CanonicalAgentConfig | 'businessHoursSummary' | 'toolSummary' | 'knowledgeSummary' | 'privacySummary';
+  key: keyof CanonicalAgentConfig | 'businessHoursSummary' | 'toolSummary' | 'knowledgeSummary' | 'privacySummary' | 'transferSummary' | 'postCallSummary';
   label: string;
   read: (config: CanonicalAgentConfig) => unknown;
 }> = [
@@ -89,9 +107,19 @@ const DIFF_FIELDS: Array<{
     read: (c) => summarizePrivacy(c.privacyRetention),
   },
   {
+    key: 'transferSummary',
+    label: 'Transfer rules',
+    read: (c) => summarizeTransfer(c.transfer),
+  },
+  {
+    key: 'postCallSummary',
+    label: 'Post-call handling',
+    read: (c) => summarizePostCall(c.postCall),
+  },
+  {
     key: 'fallback',
     label: 'Fallback / escalation',
-    read: (c) => c.fallback?.message ?? null,
+    read: (c) => c.fallback?.standardAnnouncement || c.fallback?.message || null,
   },
 ];
 

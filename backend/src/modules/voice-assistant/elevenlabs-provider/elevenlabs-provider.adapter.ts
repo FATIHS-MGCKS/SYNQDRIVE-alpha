@@ -504,6 +504,14 @@ export class ElevenLabsProviderAdapter implements ElevenLabsProviderPort {
       sendAudio: typeof postCall?.send_audio === 'boolean' ? postCall.send_audio : undefined,
       analysisEnabled:
         typeof postCall?.analysis_enabled === 'boolean' ? postCall.analysis_enabled : undefined,
+      enableTranscript:
+        typeof postCall?.enable_transcript === 'boolean' ? postCall.enable_transcript : undefined,
+      enableSummary:
+        typeof postCall?.enable_summary === 'boolean' ? postCall.enable_summary : undefined,
+      enableOutcome:
+        typeof postCall?.enable_outcome === 'boolean' ? postCall.enable_outcome : undefined,
+      configVersion:
+        typeof postCall?.config_version === 'number' ? postCall.config_version : undefined,
     };
   }
 
@@ -522,12 +530,25 @@ export class ElevenLabsProviderAdapter implements ElevenLabsProviderPort {
     if (params.webhookUrl !== undefined) {
       platformSettings.webhook = { url: params.webhookUrl };
     }
-    if (params.sendAudio !== undefined || params.analysisEnabled !== undefined) {
+    if (
+      params.sendAudio !== undefined ||
+      params.analysisEnabled !== undefined ||
+      params.enableTranscript !== undefined ||
+      params.enableSummary !== undefined ||
+      params.enableOutcome !== undefined ||
+      params.configVersion !== undefined
+    ) {
       platformSettings.post_call = {
         ...(params.sendAudio !== undefined ? { send_audio: params.sendAudio } : {}),
         ...(params.analysisEnabled !== undefined
           ? { analysis_enabled: params.analysisEnabled }
           : {}),
+        ...(params.enableTranscript !== undefined
+          ? { enable_transcript: params.enableTranscript }
+          : {}),
+        ...(params.enableSummary !== undefined ? { enable_summary: params.enableSummary } : {}),
+        ...(params.enableOutcome !== undefined ? { enable_outcome: params.enableOutcome } : {}),
+        ...(params.configVersion !== undefined ? { config_version: params.configVersion } : {}),
       };
     }
 

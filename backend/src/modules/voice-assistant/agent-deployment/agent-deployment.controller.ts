@@ -39,6 +39,11 @@ export class AgentDeploymentController {
     return this.deployments.saveDraft(orgId, body, { userId: req.user?.id });
   }
 
+  @Get('readiness')
+  async getReadiness(@Param('orgId') orgId: string) {
+    return this.deployments.getReadiness(orgId);
+  }
+
   @Get('diff')
   async getDiff(@Param('orgId') orgId: string) {
     return this.deployments.getDiff(orgId);

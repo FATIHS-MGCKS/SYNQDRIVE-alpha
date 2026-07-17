@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-agent-transfer-privacy-postcall-2026-07-17',
+    version: '4.9.589',
+    title: 'V4.9.589 — Voice AI: transfer, privacy & post-call agent configuration',
+    summary: [
+      'Canonical AgentConfig erweitert um Transferregeln (org-gebundene Ziele, Geschäftszeiten, Loop-Schutz), Fallback, Privacy/Retention und Post-Call-Version.',
+      'Signierte Post-Call-Webhook-URL wird serverseitig aus Public-API-Base abgeleitet — kein untrusted Frontend-URL-Input.',
+      'Deployment-Readiness blockiert fehlende Eskalationsziele/Webhook-Secret; warnt bei fehlendem Datenschutztext/Retention.',
+    ],
+    reason:
+      'Prompt 5B — sichere Übergabe-, Fallback-, Datenschutz- und Post-Call-Regeln für versionierte ElevenLabs-Agent-Deployments.',
+    previousBehavior:
+      '5A kanonische Config ohne Transfer-/Privacy-/Post-Call-Readiness und ohne org-gebundene Zielvalidierung.',
+    details:
+      'agent-deployment/*, elevenlabs-provider.adapter, .env.example, architecture/VOICE_AI_AGENT_TRANSFER_PRIVACY_POSTCALL_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
     id: 'voice-agent-deployment-workflow-2026-07-17',
     version: '4.9.588',
     title: 'V4.9.588 — Voice AI: versioned ElevenLabs agent deployment workflow',

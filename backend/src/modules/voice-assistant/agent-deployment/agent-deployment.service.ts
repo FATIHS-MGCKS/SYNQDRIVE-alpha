@@ -45,8 +45,12 @@ import type {
   CanonicalAgentConfigPatch,
 } from './agent-config.types';
 import { AgentDeploymentDiffService } from './agent-deployment-diff.service';
+import { AgentDeploymentReadinessService } from './agent-deployment-readiness.service';
 import { isAgentDeploymentStagingEnabled } from './agent-deployment.config';
+import { buildCanonicalElevenLabsPostCallWebhookUrl } from './agent-post-call.config';
+import { validateTransferConfig } from './agent-transfer.validation';
 import type { SaveAgentDeploymentDraftDto } from './dto/agent-deployment.dto';
+import type { AgentDeploymentReadinessView } from './agent-config.types';
 
 type ActorContext = {
   userId?: string;
@@ -64,6 +68,7 @@ export class AgentDeploymentService {
     private readonly provisioningJobRepository: VoiceProvisioningJobRepository,
     private readonly elevenLabs: ElevenLabsProviderAdapter,
     private readonly diffService: AgentDeploymentDiffService,
+    private readonly readinessService: AgentDeploymentReadinessService,
     private readonly audit: AuditService,
   ) {}
 
@@ -86,8 +91,9 @@ export class AgentDeploymentService {
 
     const patch = this.dtoToPatch(body);
     rejectProviderPayloadKeys(patch);
-    const merged = mergeCanonicalAgentConfig(currentConfig, patch);
+    const merged = mergeCanonicalAgentConfig(currentConfig, patch, organizationId);
     validateCanonicalAgentConfig(merged, { forDeploy: false });
+    await validateTransferConfig(this.prisma, organizationId, merged);
 
     const configHash = hashCanonicalAgentConfig(merged);
     const expectedUpdatedAt = body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined;
@@ -120,6 +126,13 @@ export class AgentDeploymentService {
       configHash,
       updated.updatedAt,
     );
+  }
+
+  async getReadiness(organizationId: string): Promise<AgentDeploymentReadinessView> {
+    const assistant = await this.requireAssistant(organizationId);
+    const draft = await this.ensureDraftDeployment(organizationId, assistant.id, assistant);
+    const config = this.readDeploymentConfig(draft.configSnapshot, assistant);
+    return this.readinessService.evaluate(organizationId, config, { forDeploy: true });
   }
 
   async getDiff(organizationId: string): Promise<AgentDeploymentDiffView> {
@@ -155,6 +168,17 @@ export class AgentDeploymentService {
     const draft = await this.ensureDraftDeployment(organizationId, assistant.id, assistant);
     const config = this.readDeploymentConfig(draft.configSnapshot, assistant);
     validateCanonicalAgentConfig(config, { forDeploy: true });
+    await validateTransferConfig(this.prisma, organizationId, config);
+    const readiness = await this.readinessService.evaluate(organizationId, config, {
+      forDeploy: true,
+    });
+    if (!readiness.ready) {
+      throw new BadRequestException({
+        message: 'Voice agent deployment is not ready.',
+        blockers: readiness.blockers,
+        warnings: readiness.warnings,
+      });
+    }
     const configHash = hashCanonicalAgentConfig(config);
 
     const idempotencyKey = `agent-deploy:${actor.idempotencyKey.trim()}`;
@@ -231,6 +255,7 @@ export class AgentDeploymentService {
       );
 
       const verified = await this.verifyProviderDeployment(organizationId, targetDeployment.id, config);
+      await this.applyPostCallConfiguration(organizationId, targetDeployment.id, config);
 
       const activated = await this.prisma.$transaction(async (tx) => {
         await tx.voiceAgentDeployment.updateMany({
@@ -374,7 +399,10 @@ export class AgentDeploymentService {
       throw new BadRequestException('Previous deployment snapshot is unavailable.');
     }
 
-    const restoreConfig = parseCanonicalAgentConfigSnapshot(restoreTarget.configSnapshot);
+    const restoreConfig = parseCanonicalAgentConfigSnapshot(
+      restoreTarget.configSnapshot,
+      organizationId,
+    );
     if (!restoreConfig) {
       throw new BadRequestException('Previous deployment snapshot is invalid.');
     }
@@ -409,6 +437,7 @@ export class AgentDeploymentService {
       );
 
       await this.verifyProviderDeployment(organizationId, rollbackDeployment.id, restoreConfig);
+      await this.applyPostCallConfiguration(organizationId, rollbackDeployment.id, restoreConfig);
 
       const activated = await this.prisma.$transaction(async (tx) => {
         await tx.voiceAgentDeployment.update({
@@ -555,6 +584,29 @@ export class AgentDeploymentService {
     };
   }
 
+  private async applyPostCallConfiguration(
+    organizationId: string,
+    deploymentId: string,
+    config: CanonicalAgentConfig,
+  ): Promise<void> {
+    const webhookUrl = buildCanonicalElevenLabsPostCallWebhookUrl(organizationId);
+    if (!webhookUrl) {
+      throw new BadRequestException('Canonical post-call webhook URL is not configured.');
+    }
+
+    await this.elevenLabs.updatePostCallConfiguration({
+      organizationId,
+      deploymentId,
+      webhookUrl,
+      sendAudio: config.postCall.sendAudio,
+      analysisEnabled: config.postCall.enableAnalysis,
+      enableTranscript: config.postCall.enableTranscript,
+      enableSummary: config.postCall.enableSummary,
+      enableOutcome: config.postCall.enableOutcome,
+      configVersion: config.postCall.version,
+    });
+  }
+
   private async verifyProviderDeployment(
     organizationId: string,
     deploymentId: string,
@@ -597,7 +649,7 @@ export class AgentDeploymentService {
     snapshot: unknown,
     assistant: Awaited<ReturnType<typeof this.requireAssistant>>,
   ): CanonicalAgentConfig {
-    const parsed = parseCanonicalAgentConfigSnapshot(snapshot);
+    const parsed = parseCanonicalAgentConfigSnapshot(snapshot, assistant.organizationId);
     if (parsed) {
       return parsed;
     }

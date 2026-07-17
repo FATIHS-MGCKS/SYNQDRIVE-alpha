@@ -20,6 +20,7 @@ import { ElevenLabsTwilioImportCredentialsResolver } from './provisioning/eleven
 import { ElevenLabsTwilioImportProvisioningService } from './provisioning/elevenlabs-twilio-import-provisioning.service';
 import { AgentDeploymentController } from './agent-deployment/agent-deployment.controller';
 import { AgentDeploymentDiffService } from './agent-deployment/agent-deployment-diff.service';
+import { AgentDeploymentReadinessService } from './agent-deployment/agent-deployment-readiness.service';
 import { AgentDeploymentService } from './agent-deployment/agent-deployment.service';
 
 @Module({
@@ -39,6 +40,7 @@ import { AgentDeploymentService } from './agent-deployment/agent-deployment.serv
     ElevenLabsTwilioImportCredentialsResolver,
     ElevenLabsTwilioImportProvisioningService,
     AgentDeploymentDiffService,
+    AgentDeploymentReadinessService,
     AgentDeploymentService,
     VoiceSubscriptionRepository,
     VoiceProviderAccountRepository,

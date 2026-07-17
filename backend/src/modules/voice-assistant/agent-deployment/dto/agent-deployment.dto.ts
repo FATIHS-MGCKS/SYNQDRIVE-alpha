@@ -93,6 +93,10 @@ export class AgentFallbackConfigDto {
   message?: string;
 
   @IsOptional()
+  @IsString()
+  standardAnnouncement?: string;
+
+  @IsOptional()
   @IsBoolean()
   escalateOnRequest?: boolean;
 
@@ -107,12 +111,142 @@ export class AgentFallbackConfigDto {
   @IsOptional()
   @IsString()
   escalationDepartment?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  recordCallback?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  createSupportCase?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  controlledEndCall?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  avoidFalseSuccessStatus?: boolean;
+
+  @IsOptional()
+  @IsString()
+  transferFailedMessage?: string;
+}
+
+export class AgentTransferTargetDto {
+  @IsString()
+  type!: 'PHONE' | 'STAFF_USER' | 'STAFF_GROUP' | 'STATION';
+
+  @IsOptional()
+  @IsString()
+  phoneE164?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @IsOptional()
+  @IsString()
+  organizationRoleId?: string;
+
+  @IsOptional()
+  @IsString()
+  stationId?: string;
+}
+
+export class AgentTransferRuleDto {
+  @IsString()
+  ruleId!: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
+
+  @IsString()
+  condition!: string;
+
+  @ValidateNested()
+  @Type(() => AgentTransferTargetDto)
+  target!: AgentTransferTargetDto;
+
+  @IsOptional()
+  @IsString()
+  topicKey?: string;
+
+  @IsOptional()
+  @IsString()
+  routingStationId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  respectBusinessHours?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  maxWaitSeconds?: number;
+
+  @IsOptional()
+  @IsString()
+  transferType?: 'conference' | 'blind';
+
+  @IsOptional()
+  @IsString()
+  warmTransferMessage?: string;
+
+  @IsOptional()
+  @IsString()
+  failedTransferFallbackMessage?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+}
+
+export class AgentTransferConfigDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AgentTransferRuleDto)
+  rules!: AgentTransferRuleDto[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxTransferHops?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  loopProtectionEnabled?: boolean;
 }
 
 export class AgentPrivacyRetentionDto {
   @IsOptional()
   @IsBoolean()
+  recordAudio?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   storeTranscripts?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  retentionAudioDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  retentionTranscriptDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  retentionSummaryDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  retentionProviderPayloadDays?: number;
 
   @IsOptional()
   @IsInt()
@@ -122,6 +256,44 @@ export class AgentPrivacyRetentionDto {
   @IsOptional()
   @IsBoolean()
   redactPii?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  redactPiiBeforeLogs?: boolean;
+
+  @IsOptional()
+  @IsString()
+  consentNoticeText?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  masterAdminContentAccess?: boolean;
+}
+
+export class AgentPostCallConfigDto {
+  @IsOptional()
+  @IsBoolean()
+  enableTranscript?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enableSummary?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enableOutcome?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enableAnalysis?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  sendAudio?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  signatureRequired?: boolean;
 }
 
 export class SaveAgentDeploymentDraftDto {
@@ -175,6 +347,11 @@ export class SaveAgentDeploymentDraftDto {
 
   @IsOptional()
   @ValidateNested()
+  @Type(() => AgentTransferConfigDto)
+  transfer?: AgentTransferConfigDto;
+
+  @IsOptional()
+  @ValidateNested()
   @Type(() => AgentFallbackConfigDto)
   fallback?: AgentFallbackConfigDto;
 
@@ -194,6 +371,11 @@ export class SaveAgentDeploymentDraftDto {
   @ValidateNested()
   @Type(() => AgentPrivacyRetentionDto)
   privacyRetention?: AgentPrivacyRetentionDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AgentPostCallConfigDto)
+  postCall?: AgentPostCallConfigDto;
 
   @IsOptional()
   @IsString()

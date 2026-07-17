@@ -20,6 +20,7 @@ import {
 import { buildCanonicalAgentConfigFromAssistant } from './agent-config.builder';
 import { hashCanonicalAgentConfig } from './agent-config.hash';
 import { AgentDeploymentDiffService } from './agent-deployment-diff.service';
+import { AgentDeploymentReadinessService } from './agent-deployment-readiness.service';
 import { AgentDeploymentService } from './agent-deployment.service';
 
 const ORG_ID = 'org-deploy-1';
@@ -50,6 +51,7 @@ function makeAssistant(overrides: Record<string, unknown> = {}) {
     escalateOnLowConf: true,
     escalateOnSensitive: false,
     escalationDepartment: 'Operations',
+    escalationPhone: '+491234567890',
     elevenLabsAgentId: null,
     toolPermissions: null,
     permAnswerQuestions: true,
@@ -71,10 +73,15 @@ function makeAssistant(overrides: Record<string, unknown> = {}) {
 
 describe('AgentDeploymentService', () => {
   let prisma: {
-    voiceAssistant: { findFirst: jest.Mock; update: jest.Mock };
+    voiceAssistant: { findFirst: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
     voiceAgentDeployment: { findFirst: jest.Mock; updateMany: jest.Mock; update: jest.Mock };
+    organizationMembership: { findFirst: jest.Mock };
+    organizationRole: { findFirst: jest.Mock };
+    station: { findFirst: jest.Mock };
+    voicePhoneNumber: { findFirst: jest.Mock; findMany: jest.Mock };
     $transaction: jest.Mock;
   };
+  let readinessService: AgentDeploymentReadinessService;
   let deploymentRepository: jest.Mocked<VoiceAgentDeploymentRepository>;
   let provisioningJobRepository: jest.Mocked<VoiceProvisioningJobRepository>;
   let elevenLabs: jest.Mocked<ElevenLabsProviderAdapter>;
@@ -85,10 +92,16 @@ describe('AgentDeploymentService', () => {
 
   beforeEach(() => {
     process.env.VOICE_AI_PROVISIONING_STAGING_ENABLED = 'true';
+    process.env.TWILIO_VOICE_WEBHOOK_BASE_URL = 'https://app.synqdrive.eu';
+    process.env.ELEVENLABS_WEBHOOK_SECRET = 'test-secret';
 
     prisma = {
       voiceAssistant: {
         findFirst: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({
+          escalationPhone: '+491234567890',
+          phoneNumber: null,
+        }),
         update: jest.fn(async ({ data }) => ({ id: ASSISTANT_ID, ...data })),
       },
       voiceAgentDeployment: {
@@ -96,8 +109,17 @@ describe('AgentDeploymentService', () => {
         updateMany: jest.fn(),
         update: jest.fn(),
       },
+      organizationMembership: { findFirst: jest.fn().mockResolvedValue(null) },
+      organizationRole: { findFirst: jest.fn().mockResolvedValue(null) },
+      station: { findFirst: jest.fn().mockResolvedValue(null) },
+      voicePhoneNumber: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       $transaction: jest.fn(async (cb) => cb(prisma)),
     };
+
+    readinessService = new AgentDeploymentReadinessService(prisma as any);
 
     deploymentRepository = {
       findDraftByAssistant: jest.fn(),
@@ -119,6 +141,7 @@ describe('AgentDeploymentService', () => {
       createAgent: jest.fn(),
       updateAgent: jest.fn(),
       getAgent: jest.fn(),
+      updatePostCallConfiguration: jest.fn(),
     } as unknown as jest.Mocked<ElevenLabsProviderAdapter>;
 
     service = new AgentDeploymentService(
@@ -127,12 +150,15 @@ describe('AgentDeploymentService', () => {
       provisioningJobRepository,
       elevenLabs,
       new AgentDeploymentDiffService(),
+      readinessService,
       { record: jest.fn() } as unknown as AuditService,
     );
   });
 
   afterEach(() => {
     delete process.env.VOICE_AI_PROVISIONING_STAGING_ENABLED;
+    delete process.env.TWILIO_VOICE_WEBHOOK_BASE_URL;
+    delete process.env.ELEVENLABS_WEBHOOK_SECRET;
   });
 
   function mockAssistantFound(assistant = makeAssistant()) {
@@ -266,6 +292,10 @@ describe('AgentDeploymentService', () => {
       name: baseConfig.assistantName,
       status: 'active',
     });
+    elevenLabs.updatePostCallConfiguration.mockResolvedValue({
+      deploymentId: 'dep-1',
+      webhookConfigured: true,
+    });
     prisma.voiceAgentDeployment.update.mockResolvedValue({
       id: 'dep-1',
       version: 1,
@@ -284,6 +314,7 @@ describe('AgentDeploymentService', () => {
     expect(result.status).toBe(VoiceAgentDeploymentStatus.ACTIVE);
     expect(result.maskedExternalRef).toBe('agen***ref1');
     expect(elevenLabs.createAgent).toHaveBeenCalled();
+    expect(elevenLabs.updatePostCallConfiguration).toHaveBeenCalled();
     expect(provisioningJobRepository.updateProgress).toHaveBeenCalledWith(
       ORG_ID,
       'job-1',
