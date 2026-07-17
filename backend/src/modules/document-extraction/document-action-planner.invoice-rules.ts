@@ -116,12 +116,11 @@ export function isFinanceDocumentProfile(
 
   const normalizedSubtype = normalizeFinanceDocumentSubtype(input.documentSubtype);
   if (normalizedSubtype) {
-    if (
-      CREDIT_NOTE_SUBTYPES.has(normalizedSubtype) ||
-      PAYMENT_REMINDER_SUBTYPES.has(normalizedSubtype) ||
-      PAYMENT_PROOF_SUBTYPES.has(normalizedSubtype)
-    ) {
+    if (CREDIT_NOTE_SUBTYPES.has(normalizedSubtype) || PAYMENT_REMINDER_SUBTYPES.has(normalizedSubtype)) {
       return true;
+    }
+    if (PAYMENT_PROOF_SUBTYPES.has(normalizedSubtype)) {
+      return input.documentCategory === 'FINANCE';
     }
     if (INCOMING_INVOICE_SUBTYPES.has(normalizedSubtype)) {
       return input.documentCategory === 'FINANCE';
@@ -132,12 +131,11 @@ export function isFinanceDocumentProfile(
     String(input.confirmedData.documentKind ?? ''),
   );
   if (documentKind) {
-    if (
-      CREDIT_NOTE_SUBTYPES.has(documentKind) ||
-      PAYMENT_REMINDER_SUBTYPES.has(documentKind) ||
-      PAYMENT_PROOF_SUBTYPES.has(documentKind)
-    ) {
+    if (CREDIT_NOTE_SUBTYPES.has(documentKind) || PAYMENT_REMINDER_SUBTYPES.has(documentKind)) {
       return true;
+    }
+    if (PAYMENT_PROOF_SUBTYPES.has(documentKind)) {
+      return input.documentCategory === 'FINANCE';
     }
     if (INCOMING_INVOICE_SUBTYPES.has(documentKind)) {
       return input.documentCategory === 'FINANCE';

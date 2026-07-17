@@ -14,29 +14,6 @@ function confirmedFieldSnapshot(ctx: DocumentActionPlannerBuildContext): Record<
   };
 }
 
-function serviceEventPayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  const data = ctx.input.confirmedData;
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    eventDate: data.eventDate ?? null,
-    odometerKm: data.odometerKm ?? null,
-    workshopName: data.workshopName ?? null,
-    description: data.description ?? null,
-    costCents: data.costCents ?? null,
-  };
-}
-
-function inspectionPayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  const data = ctx.input.confirmedData;
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    eventDate: data.eventDate ?? null,
-    validUntil: data.validUntil ?? null,
-    reportNumber: data.reportNumber ?? null,
-    result: data.result ?? null,
-  };
-}
-
 function tirePayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
   return {
     ...confirmedFieldSnapshot(ctx),
@@ -69,80 +46,9 @@ function batteryPayload(ctx: DocumentActionPlannerBuildContext): Record<string, 
   };
 }
 
-function damagePayload(ctx: DocumentActionPlannerBuildContext): Record<string, unknown> {
-  const data = ctx.input.confirmedData;
-  return {
-    ...confirmedFieldSnapshot(ctx),
-    description: data.description ?? null,
-    severity: data.severity ?? null,
-    damageType: data.damageType ?? null,
-    eventDate: data.eventDate ?? null,
-  };
-}
-
 const ACTION_TEMPLATES_BY_TYPE: Partial<
   Record<DocumentExtractionType, DocumentActionPlannerActionTemplate[]>
 > = {
-  SERVICE: [
-    {
-      actionType: 'CREATE_SERVICE_EVENT',
-      requirement: 'REQUIRED',
-      capabilityKey: 'serviceEvents',
-      targetEntityType: 'VEHICLE',
-      buildPayload: serviceEventPayload,
-      buildPreview: (ctx) => ({ wouldCreate: 'vehicle_service_event', ...serviceEventPayload(ctx) }),
-    },
-  ],
-  OIL_CHANGE: [
-    {
-      actionType: 'CREATE_SERVICE_EVENT',
-      requirement: 'REQUIRED',
-      capabilityKey: 'serviceEvents',
-      targetEntityType: 'VEHICLE',
-      buildPayload: serviceEventPayload,
-    },
-  ],
-  TUV_REPORT: [
-    {
-      actionType: 'CREATE_SERVICE_EVENT',
-      requirement: 'REQUIRED',
-      capabilityKey: 'serviceEvents',
-      targetEntityType: 'VEHICLE',
-      buildPayload: serviceEventPayload,
-    },
-    {
-      actionType: 'UPDATE_VEHICLE_INSPECTION',
-      requirement: 'REQUIRED',
-      capabilityKey: 'vehicleInspections',
-      targetEntityType: 'VEHICLE',
-      buildPayload: inspectionPayload,
-      buildPreview: (ctx) => ({
-        wouldUpdate: 'vehicle_tuv_dates',
-        note: 'validUntil on document is advisory; apply uses domain rules',
-        ...inspectionPayload(ctx),
-      }),
-    },
-  ],
-  BOKRAFT_REPORT: [
-    {
-      actionType: 'CREATE_SERVICE_EVENT',
-      requirement: 'REQUIRED',
-      capabilityKey: 'serviceEvents',
-      targetEntityType: 'VEHICLE',
-      buildPayload: serviceEventPayload,
-    },
-    {
-      actionType: 'UPDATE_VEHICLE_INSPECTION',
-      requirement: 'REQUIRED',
-      capabilityKey: 'vehicleInspections',
-      targetEntityType: 'VEHICLE',
-      buildPayload: inspectionPayload,
-      buildPreview: (ctx) => ({
-        wouldUpdate: 'vehicle_bokraft_dates',
-        ...inspectionPayload(ctx),
-      }),
-    },
-  ],
   BRAKE: [
     {
       actionType: 'RECORD_BRAKE_EVIDENCE',
@@ -170,24 +76,6 @@ const ACTION_TEMPLATES_BY_TYPE: Partial<
       buildPayload: batteryPayload,
     },
   ],
-  DAMAGE: [
-    {
-      actionType: 'CREATE_DAMAGE',
-      requirement: 'REQUIRED',
-      capabilityKey: 'damages',
-      targetEntityType: 'VEHICLE',
-      buildPayload: damagePayload,
-    },
-  ],
-  ACCIDENT: [
-    {
-      actionType: 'CREATE_DAMAGE',
-      requirement: 'REQUIRED',
-      capabilityKey: 'damages',
-      targetEntityType: 'VEHICLE',
-      buildPayload: damagePayload,
-    },
-  ],
   OTHER: [
     {
       actionType: 'ARCHIVE_ONLY',
@@ -206,11 +94,6 @@ export function listActionTemplatesForRoutingType(
 }
 
 const FOLLOW_UP_BY_TYPE: Partial<Record<DocumentExtractionType, DocumentFollowUpCandidateType[]>> = {
-  TUV_REPORT: ['SCHEDULE_INSPECTION', 'CREATE_TASK'],
-  BOKRAFT_REPORT: ['SCHEDULE_INSPECTION'],
-  SERVICE: ['CREATE_TASK'],
-  DAMAGE: ['CREATE_TASK', 'MANUAL_REVIEW'],
-  ACCIDENT: ['CREATE_TASK', 'MANUAL_REVIEW'],
   OTHER: ['MANUAL_REVIEW'],
 };
 

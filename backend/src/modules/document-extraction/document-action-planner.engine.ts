@@ -50,6 +50,15 @@ import {
   resolveFinanceFollowUpCandidateTypes,
   stripFinanceDraftActions,
 } from './document-action-planner.invoice-rules';
+import {
+  assessMaintenanceDraftRequirements,
+  buildMaintenancePlannerActions,
+  buildMaintenancePlannerSummary,
+  collectMaintenanceReadinessBlockers,
+  isMaintenanceDocumentProfile,
+  resolveMaintenanceFollowUpCandidateTypes,
+  stripMaintenanceExecutableActions,
+} from './document-action-planner.maintenance-rules';
 
 const EXECUTABLE_REQUIREMENTS = new Set<DocumentActionRequirement>(['REQUIRED', 'OPTIONAL']);
 
@@ -176,14 +185,17 @@ function hasExecutableRequiredAction(actions: PlannedDocumentActionInput[]): boo
  * No Prisma writes, no downstream service calls, no randomness, no date fallbacks.
  */
 export function planDocumentActions(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
-  if (isArchiveOnlyDocumentProfile(input)) {
-    return planArchiveOnlyDocument(input);
-  }
   if (isFineDocumentProfile(input)) {
     return planFineDocument(input);
   }
   if (isFinanceDocumentProfile(input)) {
     return planFinanceDocument(input);
+  }
+  if (isMaintenanceDocumentProfile(input)) {
+    return planMaintenanceDocument(input);
+  }
+  if (isArchiveOnlyDocumentProfile(input)) {
+    return planArchiveOnlyDocument(input);
   }
   return planDownstreamDocumentActions(input);
 }
@@ -508,6 +520,159 @@ function planFinanceDocument(input: DocumentActionPlannerInput): DocumentActionP
       entityCandidateCount: input.entityCandidates.length,
       plausibilityOverallStatus: input.plausibility.overallStatus,
       vendorRequiresConfirmation: true,
+    },
+  };
+
+  return {
+    planDraft,
+    actions,
+    blockingReasons,
+    missingRequirements,
+    followUpCandidateTypes,
+  };
+}
+
+function planMaintenanceDocument(input: DocumentActionPlannerInput): DocumentActionPlannerResult {
+  const plannerVersion = input.plannerVersion ?? DOCUMENT_ACTION_PLANNER_VERSION;
+  const routingType = resolvePlannerRoutingType(input);
+  const vehicleEntityId = findVehicleEntityId(input.entityLinks);
+  const assessment = assessMaintenanceDraftRequirements(input);
+  const inputFingerprint = buildDocumentActionPlannerInputFingerprint({
+    ...input,
+    plannerVersion,
+  });
+
+  const blockingReasons: DocumentActionBlockingReason[] = [];
+  const missingRequirements = assessment.missingRequirements;
+
+  blockingReasons.push(
+    ...missingRequirements.map((missing) =>
+      toBlockingReasonFromMissing(
+        missing,
+        missing.entityType ? 'ENTITY' : 'REQUIREMENT',
+      ),
+    ),
+  );
+  blockingReasons.push(...collectPlausibilityBlockers(input));
+  blockingReasons.push(...collectMaintenanceReadinessBlockers(input));
+
+  if (!input.featureFlags.actionPreviewEnabled) {
+    blockingReasons.push({
+      code: 'ACTION_PREVIEW_DISABLED',
+      message: 'Action preview is disabled by feature flag.',
+      source: 'FEATURE_FLAG',
+      severity: 'BLOCKER',
+    });
+  }
+
+  const ctx: DocumentActionPlannerBuildContext = {
+    input: { ...input, plannerVersion },
+    vehicleEntityId,
+    routingType,
+  };
+
+  let actions =
+    blockingReasons.some((reason) => reason.code === 'ACTION_PREVIEW_DISABLED')
+      ? []
+      : buildMaintenancePlannerActions(ctx);
+
+  const capabilitySensitiveActions = actions.filter((action) => action.requirement === 'REQUIRED');
+  for (const action of capabilitySensitiveActions) {
+    const semantic = (action.previewPayload as Record<string, unknown> | undefined)?.semanticAction;
+    if (
+      (action.actionType === 'CREATE_SERVICE_EVENT' || semantic === 'CREATE_INSPECTION_DRAFT') &&
+      !isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'serviceEvents')
+    ) {
+      blockingReasons.push({
+        code: 'CAPABILITY_DISABLED_SERVICEEVENTS',
+        message: 'Downstream service events capability is disabled.',
+        source: 'CAPABILITY',
+        severity: 'BLOCKER',
+      });
+    }
+    if (
+      action.actionType === 'UPDATE_VEHICLE_INSPECTION' &&
+      !isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'vehicleInspections')
+    ) {
+      blockingReasons.push({
+        code: 'CAPABILITY_DISABLED_VEHICLEINSPECTIONS',
+        message: 'Downstream vehicle inspections capability is disabled.',
+        source: 'CAPABILITY',
+        severity: 'BLOCKER',
+      });
+    }
+    if (
+      action.actionType === 'CREATE_DAMAGE' &&
+      !isDownstreamCapabilityEnabled(input.downstreamCapabilities, 'damages')
+    ) {
+      blockingReasons.push({
+        code: 'CAPABILITY_DISABLED_DAMAGES',
+        message: 'Downstream damages capability is disabled.',
+        source: 'CAPABILITY',
+        severity: 'BLOCKER',
+      });
+    }
+  }
+
+  const hardBlockCodes = new Set([
+    'PLAUSIBILITY_OVERALL_BLOCKER',
+    'ACTION_PREVIEW_DISABLED',
+    'APPLY_SAFETY_BLOCKED',
+    'READINESS_POLICY_BLOCKED',
+    'CONFIRMED_ACTION_REQUIRED',
+    'CAPABILITY_DISABLED_SERVICEEVENTS',
+    'CAPABILITY_DISABLED_VEHICLEINSPECTIONS',
+    'CAPABILITY_DISABLED_DAMAGES',
+  ]);
+
+  const isBlocked =
+    !assessment.isReady ||
+    blockingReasons.some((reason) => hardBlockCodes.has(reason.code));
+
+  if (isBlocked) {
+    actions = stripMaintenanceExecutableActions(actions);
+    if (blockingReasons.some((reason) => hardBlockCodes.has(reason.code))) {
+      actions = stripExecutableActions(actions);
+    }
+  }
+
+  const followUpCandidateTypes = resolveMaintenanceFollowUpCandidateTypes(
+    routingType,
+    input,
+    isBlocked,
+  );
+
+  const planDraft: DocumentActionPlanDraft = {
+    plannerVersion,
+    documentCategory: input.documentCategory,
+    documentSubtype: input.documentSubtype,
+    effectiveDocumentType: input.effectiveDocumentType,
+    inputFingerprint,
+    applyMode: input.applyMode,
+    isBlocked,
+    summary: buildMaintenancePlannerSummary(routingType, assessment.isReady, actions.length),
+    snapshot: {
+      plannerVersion,
+      inputFingerprint,
+      routingType,
+      planningMode: 'MAINTENANCE',
+      documentCategory: input.documentCategory,
+      documentSubtype: input.documentSubtype,
+      effectiveDocumentType: input.effectiveDocumentType,
+      applyMode: input.applyMode,
+      isBlocked,
+      maintenanceReady: assessment.isReady,
+      actionTypes: actions.map((action) => action.actionType),
+      semanticActions: actions
+        .map((action) => (action.previewPayload as Record<string, unknown> | undefined)?.semanticAction)
+        .filter(Boolean),
+      blockingReasonCodes: blockingReasons.map((reason) => reason.code),
+      missingRequirementCodes: missingRequirements.map((missing) => missing.code),
+      followUpCandidateTypes,
+      entityLinkCount: input.entityLinks.length,
+      entityCandidateCount: input.entityCandidates.length,
+      plausibilityOverallStatus: input.plausibility.overallStatus,
+      noCurrentDateFallback: true,
     },
   };
 

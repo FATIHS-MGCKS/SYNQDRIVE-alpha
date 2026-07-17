@@ -12,6 +12,10 @@ import {
   extractFinanceSemanticAction,
   FINANCE_SEMANTIC_ACTIONS,
 } from './document-action-planner.invoice-rules';
+import {
+  extractMaintenanceSemanticAction,
+  MAINTENANCE_SEMANTIC_ACTIONS,
+} from './document-action-planner.maintenance-rules';
 import { listActionTemplatesForRoutingType } from './document-action-planner.catalog';
 import type {
   DocumentActionBlockingReason,
@@ -36,13 +40,15 @@ const SEMANTIC_PREVIEW_ACTION_TYPES = new Set<string>([
   ...Object.values(ARCHIVE_ONLY_SEMANTIC_ACTIONS),
   ...Object.values(FINE_SEMANTIC_ACTIONS),
   ...Object.values(FINANCE_SEMANTIC_ACTIONS),
+  ...Object.values(MAINTENANCE_SEMANTIC_ACTIONS),
 ]);
 
 export type DocumentActionPreviewActionType =
   | DocumentActionType
   | (typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS)[keyof typeof ARCHIVE_ONLY_SEMANTIC_ACTIONS]
   | (typeof FINE_SEMANTIC_ACTIONS)[keyof typeof FINE_SEMANTIC_ACTIONS]
-  | (typeof FINANCE_SEMANTIC_ACTIONS)[keyof typeof FINANCE_SEMANTIC_ACTIONS];
+  | (typeof FINANCE_SEMANTIC_ACTIONS)[keyof typeof FINANCE_SEMANTIC_ACTIONS]
+  | (typeof MAINTENANCE_SEMANTIC_ACTIONS)[keyof typeof MAINTENANCE_SEMANTIC_ACTIONS];
 
 export type DocumentActionPreviewRow = {
   sequence: number;
@@ -57,6 +63,8 @@ export type DocumentActionPreviewRow = {
 
 function resolvePreviewActionType(action: PlannedDocumentActionInput): DocumentActionPreviewActionType {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const maintenanceSemantic = extractMaintenanceSemanticAction(payload);
+  if (maintenanceSemantic) return maintenanceSemantic;
   const financeSemantic = extractFinanceSemanticAction(payload);
   if (financeSemantic) return financeSemantic;
   const fineSemantic = extractFineSemanticAction(payload);
@@ -71,6 +79,31 @@ function mapActionPreviewStatus(
   planBlocked: boolean,
 ): DocumentActionPreviewStatus {
   const payload = (action.previewPayload ?? action.inputPayload) as Record<string, unknown>;
+  const maintenanceSemantic = extractMaintenanceSemanticAction(payload);
+  if (
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.CREATE_SERVICE_EVENT ||
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.CREATE_DAMAGE_DRAFT ||
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.CREATE_INSPECTION_DRAFT
+  ) {
+    return planBlocked ? 'BLOCKED' : 'WOULD_CREATE';
+  }
+  if (
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.UPDATE_TUV_COMPLIANCE ||
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.UPDATE_BOKRAFT_COMPLIANCE
+  ) {
+    return planBlocked ? 'BLOCKED' : 'WOULD_UPDATE';
+  }
+  if (maintenanceSemantic?.startsWith('LINK_')) {
+    return 'WOULD_LINK';
+  }
+  if (
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.SUGGEST_REPAIR_TASK ||
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.SUGGEST_VEHICLE_INSPECTION ||
+    maintenanceSemantic === MAINTENANCE_SEMANTIC_ACTIONS.SUGGEST_INSURANCE_REVIEW
+  ) {
+    return 'WOULD_SUGGEST';
+  }
+
   const financeSemantic = extractFinanceSemanticAction(payload);
   if (
     financeSemantic === FINANCE_SEMANTIC_ACTIONS.CREATE_INVOICE_DRAFT ||
@@ -131,6 +164,9 @@ function buildBlockedTemplatePreviews(
   plannerResult: DocumentActionPlannerResult,
 ): DocumentActionPreviewRow[] {
   if (plannerResult.planDraft.snapshot.planningMode === 'ARCHIVE_ONLY') {
+    return [];
+  }
+  if (plannerResult.planDraft.snapshot.planningMode === 'MAINTENANCE') {
     return [];
   }
 
@@ -195,9 +231,10 @@ export function buildDocumentActionPreviewRows(
   const isArchiveOnlyPlan = plannerResult.planDraft.snapshot.planningMode === 'ARCHIVE_ONLY';
   const isFinePlan = plannerResult.planDraft.snapshot.planningMode === 'FINE';
   const isFinancePlan = plannerResult.planDraft.snapshot.planningMode === 'FINANCE';
+  const isMaintenancePlan = plannerResult.planDraft.snapshot.planningMode === 'MAINTENANCE';
   const rows: DocumentActionPreviewRow[] = [];
 
-  if (!isArchiveOnlyPlan && !isFinePlan && !isFinancePlan) {
+  if (!isArchiveOnlyPlan && !isFinePlan && !isFinancePlan && !isMaintenancePlan) {
     const linkPreview = buildVehicleLinkPreview(vehicleEntityId, 0);
     if (linkPreview) {
       rows.push({ ...linkPreview, sequence: 1 });

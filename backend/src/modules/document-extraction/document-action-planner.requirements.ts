@@ -6,24 +6,13 @@ import type {
 import type { ApplyDocumentExtractionType } from './document-extraction.schemas';
 
 const VEHICLE_SCOPED_TYPES = new Set<DocumentExtractionType>([
-  'SERVICE',
-  'OIL_CHANGE',
-  'TUV_REPORT',
-  'BOKRAFT_REPORT',
   'BRAKE',
   'TIRE',
   'BATTERY',
-  'DAMAGE',
-  'ACCIDENT',
-  'VEHICLE_CONDITION',
 ]);
 
 const CRITICAL_FIELD_KEYS: Partial<Record<ApplyDocumentExtractionType, string[]>> = {
-  TUV_REPORT: ['eventDate', 'validUntil'],
-  BOKRAFT_REPORT: ['eventDate', 'validUntil'],
   TIRE: ['treadDepthMm.fl'],
-  DAMAGE: ['description'],
-  ACCIDENT: ['description', 'eventDate'],
 };
 
 export function resolvePlannerRoutingType(

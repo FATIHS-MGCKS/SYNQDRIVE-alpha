@@ -30,7 +30,7 @@ describe('DocumentActionPlannerEngine', () => {
   });
 
   describe('SERVICE maintenance planning', () => {
-    it('plans CREATE_SERVICE_EVENT as required action', () => {
+    it('plans CREATE_SERVICE_EVENT as required semantic action', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           documentCategory: 'SERVICE',
@@ -39,6 +39,7 @@ describe('DocumentActionPlannerEngine', () => {
       );
 
       expect(result.planDraft.isBlocked).toBe(false);
+      expect(result.planDraft.snapshot.planningMode).toBe('MAINTENANCE');
       expect(result.actions).toHaveLength(1);
       expect(result.actions[0]).toMatchObject({
         actionType: 'CREATE_SERVICE_EVENT',
@@ -47,13 +48,16 @@ describe('DocumentActionPlannerEngine', () => {
         targetEntityId: 'veh-1',
         sequence: 1,
       });
+      expect((result.actions[0].previewPayload as Record<string, unknown>).semanticAction).toBe(
+        'CREATE_SERVICE_EVENT',
+      );
       expect(result.blockingReasons).toHaveLength(0);
       expect(result.missingRequirements).toHaveLength(0);
     });
   });
 
   describe('inspection documents', () => {
-    it('plans service event plus vehicle inspection update for TUV', () => {
+    it('plans service event plus TUV compliance update', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'TUV_REPORT',
@@ -68,9 +72,10 @@ describe('DocumentActionPlannerEngine', () => {
       );
 
       expect(result.planDraft.isBlocked).toBe(false);
-      expect(result.actions.map((a) => a.actionType)).toEqual([
+      expect(result.planDraft.snapshot.planningMode).toBe('MAINTENANCE');
+      expect(result.actions.map((a) => (a.previewPayload as Record<string, unknown>).semanticAction)).toEqual([
         'CREATE_SERVICE_EVENT',
-        'UPDATE_VEHICLE_INSPECTION',
+        'UPDATE_TUV_COMPLIANCE',
       ]);
       expect(result.followUpCandidateTypes).toContain('SCHEDULE_INSPECTION');
     });
@@ -180,7 +185,8 @@ describe('DocumentActionPlannerEngine', () => {
       expect(executableActions(result)).toHaveLength(0);
       expect(result.blockingReasons.some((b) => b.code === 'ODOMETER_NEGATIVE')).toBe(true);
       expect(result.followUpCandidateTypes).toContain('MANUAL_REVIEW');
-      expect(result.actions.some((a) => a.actionType === 'ARCHIVE_ONLY')).toBe(true);
+      expect(result.planDraft.snapshot.planningMode).toBe('MAINTENANCE');
+      expect(result.actions).toHaveLength(0);
     });
 
     it('never assigns BLOCKER requirement to planned actions', () => {
@@ -205,7 +211,7 @@ describe('DocumentActionPlannerEngine', () => {
   });
 
   describe('entity links', () => {
-    it('blocks vehicle-scoped apply without confirmed vehicle link', () => {
+    it('blocks maintenance apply without confirmed vehicle link', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'BRAKE',
@@ -360,7 +366,7 @@ describe('DocumentActionPlannerEngine', () => {
   });
 
   describe('payload contracts', () => {
-    it('includes confirmed field keys in action payloads without OCR blobs', () => {
+    it('includes confirmed field keys in damage draft payloads without OCR blobs', () => {
       const result = planDocumentActions(
         buildPlannerTestInput({
           effectiveDocumentType: 'DAMAGE',
@@ -375,6 +381,7 @@ describe('DocumentActionPlannerEngine', () => {
       expect(payload.confirmedFieldKeys).toEqual(['description', 'severity']);
       expect(payload).not.toHaveProperty('ocrText');
       expect(payload).not.toHaveProperty('fullText');
+      expect(payload.damageType).toBeNull();
     });
   });
 });
