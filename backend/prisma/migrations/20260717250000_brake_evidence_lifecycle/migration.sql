@@ -1,33 +1,43 @@
 -- Prompt 20: revision-safe brake evidence lifecycle, dedupe, unified sources
 
-CREATE TYPE "BrakeEvidenceFreshnessStatus" AS ENUM ('FRESH', 'STALE', 'EXPIRED', 'UNKNOWN');
-CREATE TYPE "BrakeEvidenceConfirmationStatus" AS ENUM ('UNCONFIRMED', 'CONFIRMED', 'NOT_APPLICABLE');
+DO $$ BEGIN
+  CREATE TYPE "BrakeEvidenceFreshnessStatus" AS ENUM ('FRESH', 'STALE', 'EXPIRED', 'UNKNOWN');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE "BrakeEvidenceSource_new" AS ENUM (
-  'MANUAL_MEASUREMENT',
-  'WORKSHOP_MEASUREMENT',
-  'DOCUMENTED_REPLACEMENT',
-  'INSPECTION_PROTOCOL',
-  'AI_UPLOAD_UNCONFIRMED',
-  'AI_UPLOAD_CONFIRMED',
-  'DTC_SIGNAL',
-  'PROVIDER_WARNING',
-  'BRAKE_WEAR_SENSOR',
-  'TELEMATICS_ESTIMATION'
-);
+DO $$ BEGIN
+  CREATE TYPE "BrakeEvidenceConfirmationStatus" AS ENUM ('UNCONFIRMED', 'CONFIRMED', 'NOT_APPLICABLE');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "BrakeEvidenceSource_new" AS ENUM (
+    'MANUAL_MEASUREMENT',
+    'WORKSHOP_MEASUREMENT',
+    'DOCUMENTED_REPLACEMENT',
+    'INSPECTION_PROTOCOL',
+    'AI_UPLOAD_UNCONFIRMED',
+    'AI_UPLOAD_CONFIRMED',
+    'DTC_SIGNAL',
+    'PROVIDER_WARNING',
+    'BRAKE_WEAR_SENSOR',
+    'TELEMATICS_ESTIMATION'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE brake_evidence
   ALTER COLUMN source TYPE "BrakeEvidenceSource_new"
   USING (
     CASE source::text
-      WHEN 'WORKSHOP_REPORT' THEN 'WORKSHOP_MEASUREMENT'
-      WHEN 'SERVICE_INVOICE' THEN 'DOCUMENTED_REPLACEMENT'
-      WHEN 'AI_UPLOAD' THEN 'AI_UPLOAD_CONFIRMED'
-      ELSE source::text
-    END::"BrakeEvidenceSource_new"
+      WHEN 'WORKSHOP_REPORT' THEN 'WORKSHOP_MEASUREMENT'::"BrakeEvidenceSource_new"
+      WHEN 'SERVICE_INVOICE' THEN 'DOCUMENTED_REPLACEMENT'::"BrakeEvidenceSource_new"
+      WHEN 'AI_UPLOAD' THEN 'AI_UPLOAD_CONFIRMED'::"BrakeEvidenceSource_new"
+      ELSE source::text::"BrakeEvidenceSource_new"
+    END
   );
 
-DROP TYPE "BrakeEvidenceSource";
+DROP TYPE IF EXISTS "BrakeEvidenceSource";
 ALTER TYPE "BrakeEvidenceSource_new" RENAME TO "BrakeEvidenceSource";
 
 ALTER TABLE brake_evidence
@@ -69,6 +79,9 @@ SET organization_id = v.organization_id
 FROM vehicles v
 WHERE be.vehicle_id = v.id
   AND be.organization_id IS NULL;
+
+ALTER TABLE brake_evidence
+  DROP CONSTRAINT IF EXISTS brake_evidence_superseded_by_fkey;
 
 ALTER TABLE brake_evidence
   ADD CONSTRAINT brake_evidence_superseded_by_fkey
