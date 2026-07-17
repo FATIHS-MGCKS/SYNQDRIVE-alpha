@@ -81,6 +81,8 @@ describe('TripAssignmentService', () => {
     prisma.booking.findFirst.mockResolvedValue({
       id: 'booking-9',
       customerId: 'customer-99',
+      assignedDriverId: null,
+      customer: { customerType: 'INDIVIDUAL' },
     });
     const result = await service.resolveForTrip({
       id: 'trip-3',
@@ -102,6 +104,8 @@ describe('TripAssignmentService', () => {
       TripAssignmentSubjectType.BOOKING_CUSTOMER,
     );
     expect(result.assignmentSubjectId).toBe('customer-99');
+    expect(result.bookingCustomerId).toBe('customer-99');
+    expect(result.assignedDriverId).toBeNull();
     expect(result.assignedBookingId).toBe('booking-9');
     expect(result.bookingLinkSource).toBe('TIME_WINDOW');
     expect(result.scoreEligible).toBe(false);
@@ -123,6 +127,8 @@ describe('TripAssignmentService', () => {
     prisma.booking.findFirst.mockResolvedValue({
       id: 'booking-11',
       customerId: 'cust-11',
+      assignedDriverId: null,
+      customer: { customerType: 'INDIVIDUAL' },
     });
     prisma.vehicleTrip.update.mockResolvedValue({});
 

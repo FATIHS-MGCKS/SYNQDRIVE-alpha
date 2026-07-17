@@ -1851,7 +1851,11 @@ export interface RentalDrivingAnalysisItem {
   id: string;
   bookingId: string;
   vehicleId: string;
-  driverId: string;
+  bookingCustomerId: string;
+  assignedDriverId?: string | null;
+  actualDriverId?: string | null;
+  /** @deprecated Legacy — use bookingCustomerId for contract holder */
+  driverId?: string | null;
   periodStart: string;
   periodEnd: string;
   overallLevel: string;
@@ -3410,6 +3414,7 @@ export const api = {
         limit?: number;
         vehicleId?: string;
         driverId?: string;
+        bookingCustomerId?: string;
         bookingId?: string;
         from?: string;
         to?: string;
@@ -3420,6 +3425,7 @@ export const api = {
       if (params?.limit != null) q.set('limit', String(params.limit));
       if (params?.vehicleId) q.set('vehicleId', params.vehicleId);
       if (params?.driverId) q.set('driverId', params.driverId);
+      if (params?.bookingCustomerId) q.set('bookingCustomerId', params.bookingCustomerId);
       if (params?.bookingId) q.set('bookingId', params.bookingId);
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);

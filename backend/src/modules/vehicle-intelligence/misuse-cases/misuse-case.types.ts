@@ -11,6 +11,9 @@ import {
 import type { DimoVehicleEventRecord } from '../../dimo/dimo-segments.service';
 import type { TripBehaviorEvent, DrivingEvent, VehicleTrip, VehicleDtcEvent } from '@prisma/client';
 import type { EventContextAssessment } from '../event-context/event-context-assessment.types';
+import { resolveDrivingAttributionRoles } from '../trips/driving-attribution-roles/driving-attribution-roles';
+import type { DrivingAttributionType } from '../trips/driving-attribution-roles/driving-attribution-roles.types';
+import { DrivingAttributionType as DrivingAttributionTypeEnum } from '../trips/driving-attribution-roles/driving-attribution-roles.types';
 
 export type EvidenceCandidate = {
   sourceType: MisuseEvidenceSourceType;
@@ -65,6 +68,10 @@ export type TripEvaluationContext = {
     | 'assignmentSubjectType'
     | 'assignmentSubjectId'
     | 'assignedBookingId'
+    | 'bookingLinkSource'
+    | 'bookingCustomerId'
+    | 'assignedDriverId'
+    | 'actualDriverId'
     | 'isPrivateTrip'
     | 'kickdownCount'
     | 'possibleImpactCount'
@@ -88,7 +95,13 @@ export type TripEvaluationContext = {
 export type AttributionFields = {
   attributionScope: MisuseAttributionScope;
   bookingId: string | null;
+  /** Contract holder (Vertragspartner) — booking customer only, never mirrored driver ID. */
   customerId: string | null;
+  bookingCustomerId: string | null;
+  assignedDriverId: string | null;
+  actualDriverId: string | null;
+  customerDecisionEligible: boolean;
+  driverDecisionEligible: boolean;
   assignmentStatusSnapshot: TripAssignmentStatus | null;
   assignmentSubjectTypeSnapshot: TripAssignmentSubjectType | null;
   assignmentSubjectIdSnapshot: string | null;
@@ -158,56 +171,68 @@ export function buildCaseFingerprint(
 
 export function resolveAttribution(
   trip: TripEvaluationContext['trip'],
+  bookingContext?: {
+    bookingCustomerId?: string | null;
+    assignedDriverId?: string | null;
+    customerType?: import('@prisma/client').CustomerType | null;
+  },
 ): AttributionFields {
   const status = trip.assignmentStatus ?? TripAssignmentStatus.UNKNOWN_ASSIGNMENT;
 
-  if (status === TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER) {
-    return {
-      attributionScope: MisuseAttributionScope.BOOKING_CUSTOMER,
-      bookingId: trip.assignedBookingId ?? null,
-      customerId: trip.assignmentSubjectId ?? null,
-      assignmentStatusSnapshot: status,
-      assignmentSubjectTypeSnapshot: trip.assignmentSubjectType ?? null,
-      assignmentSubjectIdSnapshot: trip.assignmentSubjectId ?? null,
-      assignedBookingIdSnapshot: trip.assignedBookingId ?? null,
-      isPrivateTripSnapshot: false,
-    };
-  }
+  const roles = resolveDrivingAttributionRoles({
+    isPrivateTrip: trip.isPrivateTrip === true,
+    assignmentStatus: status,
+    assignmentSubjectType: trip.assignmentSubjectType,
+    assignmentSubjectId: trip.assignmentSubjectId,
+    assignedBookingId: trip.assignedBookingId,
+    bookingLinkSource: trip.bookingLinkSource ?? null,
+    bookingCustomerId: bookingContext?.bookingCustomerId,
+    bookingAssignedDriverId: bookingContext?.assignedDriverId,
+    bookingCustomerType: bookingContext?.customerType,
+    tripBookingCustomerId: trip.bookingCustomerId,
+    tripAssignedDriverId: trip.assignedDriverId,
+    tripActualDriverId: trip.actualDriverId,
+  });
 
-  if (status === TripAssignmentStatus.ASSIGNED_DRIVER) {
-    return {
-      attributionScope: MisuseAttributionScope.ASSIGNED_DRIVER,
-      bookingId: null,
-      customerId: null,
-      assignmentStatusSnapshot: status,
-      assignmentSubjectTypeSnapshot: trip.assignmentSubjectType ?? null,
-      assignmentSubjectIdSnapshot: trip.assignmentSubjectId ?? null,
-      assignedBookingIdSnapshot: null,
-      isPrivateTripSnapshot: false,
-    };
-  }
-
-  if (status === TripAssignmentStatus.PRIVATE_UNASSIGNED || trip.isPrivateTrip) {
-    return {
-      attributionScope: MisuseAttributionScope.PRIVATE_UNASSIGNED,
-      bookingId: null,
-      customerId: null,
-      assignmentStatusSnapshot: status,
-      assignmentSubjectTypeSnapshot: null,
-      assignmentSubjectIdSnapshot: null,
-      assignedBookingIdSnapshot: null,
-      isPrivateTripSnapshot: true,
-    };
-  }
+  const attributionScope = mapAttributionTypeToMisuseScope(roles.attributionType, status);
 
   return {
-    attributionScope: MisuseAttributionScope.UNKNOWN,
-    bookingId: null,
-    customerId: null,
+    attributionScope,
+    bookingId: trip.assignedBookingId ?? null,
+    customerId: roles.bookingCustomerId,
+    bookingCustomerId: roles.bookingCustomerId,
+    assignedDriverId: roles.assignedDriverId,
+    actualDriverId: roles.actualDriverId,
+    customerDecisionEligible: roles.customerDecisionEligible,
+    driverDecisionEligible: roles.driverDecisionEligible,
     assignmentStatusSnapshot: status,
-    assignmentSubjectTypeSnapshot: null,
-    assignmentSubjectIdSnapshot: null,
-    assignedBookingIdSnapshot: null,
-    isPrivateTripSnapshot: Boolean(trip.isPrivateTrip),
+    assignmentSubjectTypeSnapshot: trip.assignmentSubjectType ?? null,
+    assignmentSubjectIdSnapshot: trip.assignmentSubjectId ?? null,
+    assignedBookingIdSnapshot: trip.assignedBookingId ?? null,
+    isPrivateTripSnapshot: trip.isPrivateTrip === true,
   };
+}
+
+function mapAttributionTypeToMisuseScope(
+  type: DrivingAttributionType,
+  status: TripAssignmentStatus,
+): MisuseAttributionScope {
+  if (
+    status === TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER ||
+    type === DrivingAttributionTypeEnum.BOOKING_CUSTOMER ||
+    type === DrivingAttributionTypeEnum.CONFIRMED_DRIVER
+  ) {
+    return MisuseAttributionScope.BOOKING_CUSTOMER;
+  }
+  switch (type) {
+    case DrivingAttributionTypeEnum.ASSIGNED_DRIVER:
+      return MisuseAttributionScope.ASSIGNED_DRIVER;
+    case DrivingAttributionTypeEnum.PRIVATE_UNASSIGNED:
+      return MisuseAttributionScope.PRIVATE_UNASSIGNED;
+    case DrivingAttributionTypeEnum.VEHICLE_ONLY:
+      return MisuseAttributionScope.VEHICLE_ONLY;
+    case DrivingAttributionTypeEnum.UNKNOWN:
+    default:
+      return MisuseAttributionScope.UNKNOWN;
+  }
 }

@@ -20,6 +20,10 @@ const baseTrip = {
   assignmentSubjectType: 'BOOKING_CUSTOMER' as const,
   assignmentSubjectId: 'cust-1',
   assignedBookingId: 'book-1',
+  bookingLinkSource: 'EXPLICIT' as const,
+  bookingCustomerId: 'cust-1',
+  assignedDriverId: null,
+  actualDriverId: null,
   isPrivateTrip: false,
   kickdownCount: 0,
   possibleImpactCount: 0,
@@ -360,8 +364,13 @@ describe('resolveAttribution', () => {
     const attr = resolveAttribution({
       ...baseTrip,
       assignmentStatus: TripAssignmentStatus.PRIVATE_UNASSIGNED,
+      assignmentSubjectType: null,
       assignmentSubjectId: null,
       assignedBookingId: null,
+      bookingLinkSource: null,
+      bookingCustomerId: null,
+      assignedDriverId: null,
+      actualDriverId: null,
       isPrivateTrip: true,
     });
     expect(attr.attributionScope).toBe(MisuseAttributionScope.PRIVATE_UNASSIGNED);
@@ -369,10 +378,13 @@ describe('resolveAttribution', () => {
     expect(attr.bookingId).toBeNull();
   });
 
-  it('ASSIGNED_BOOKING_CUSTOMER sets booking and customer', () => {
+  it('ASSIGNED_BOOKING_CUSTOMER sets booking and contract customer without driver mirror', () => {
     const attr = resolveAttribution(baseTrip);
     expect(attr.attributionScope).toBe(MisuseAttributionScope.BOOKING_CUSTOMER);
     expect(attr.customerId).toBe('cust-1');
+    expect(attr.bookingCustomerId).toBe('cust-1');
+    expect(attr.assignedDriverId).toBeNull();
+    expect(attr.actualDriverId).toBeNull();
     expect(attr.bookingId).toBe('book-1');
   });
 });

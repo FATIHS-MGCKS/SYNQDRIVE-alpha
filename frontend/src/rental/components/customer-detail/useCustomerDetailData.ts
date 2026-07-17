@@ -201,7 +201,7 @@ export function useCustomerDrivingAggregate(
   useEffect(() => {
     if (!orgId || !customerId) return;
     api.rentalDrivingAnalyses
-      .list(orgId, { driverId: customerId, limit: 100 })
+      .list(orgId, { bookingCustomerId: customerId, limit: 100 })
       .then((res) => {
         const rows = Array.isArray(res?.data) ? res.data : [];
         let drivingEvents = 0;
@@ -247,7 +247,7 @@ export function useCustomerLatestRentalAnalysis(
     let cancelled = false;
     setLoading(true);
     api.rentalDrivingAnalyses
-      .list(orgId, { driverId: customerId, limit: 1 })
+      .list(orgId, { bookingCustomerId: customerId, limit: 1 })
       .then((res) => {
         if (cancelled) return;
         const rows = Array.isArray(res?.data) ? res.data : [];

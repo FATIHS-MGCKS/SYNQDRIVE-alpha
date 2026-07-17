@@ -11,6 +11,8 @@ import {
 import { TripAttributionService } from '../vehicle-intelligence/trips/trip-attribution.service';
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
 import type { RentalDrivingAnalysisPayload } from './rental-driving-analysis.types';
+import { resolveDrivingAttributionRoles } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles';
+import { resolveLegacyDriverIdFilter } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.compat';
 import {
   parsePagination,
   buildPaginatedResult,
@@ -64,14 +66,29 @@ export class RentalDrivingAnalysisService {
 
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId: orgId },
-      include: { vehicle: true, customer: true },
+      include: {
+        vehicle: true,
+        customer: true,
+        assignedDriver: { select: { id: true, firstName: true, lastName: true } },
+      },
     });
     if (!booking || booking.status !== BookingStatus.COMPLETED) return null;
 
     const periodStart = booking.startDate;
     const periodEnd = booking.endDate;
     const vehicleId = booking.vehicleId;
-    const driverId = booking.customerId;
+
+    const roles = resolveDrivingAttributionRoles({
+      isPrivateTrip: false,
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      assignmentSubjectId: booking.customerId,
+      assignedBookingId: booking.id,
+      bookingLinkSource: TripBookingLinkSource.EXPLICIT,
+      bookingCustomerId: booking.customerId,
+      bookingAssignedDriverId: booking.assignedDriverId,
+      bookingCustomerType: booking.customer.customerType,
+    });
 
     const [assignedTrips, dtcList] = await Promise.all([
       this.prisma.vehicleTrip.findMany({
@@ -238,7 +255,7 @@ export class RentalDrivingAnalysisService {
     const payload = this.generatePayload({
       bookingId,
       vehicleId,
-      driverId,
+      roles,
       periodStart,
       periodEnd,
       drivingStressScore: aggregate.drivingStressScore,
@@ -265,7 +282,10 @@ export class RentalDrivingAnalysisService {
         organizationId: orgId,
         bookingId,
         vehicleId,
-        driverId,
+        bookingCustomerId: roles.bookingCustomerId!,
+        assignedDriverId: roles.assignedDriverId,
+        actualDriverId: roles.actualDriverId,
+        driverId: null,
         periodStart,
         periodEnd,
         payload: payload as object,
@@ -308,7 +328,7 @@ export class RentalDrivingAnalysisService {
   private generatePayload(ctx: {
     bookingId: string;
     vehicleId: string;
-    driverId: string;
+    roles: ReturnType<typeof resolveDrivingAttributionRoles>;
     periodStart: Date;
     periodEnd: Date;
     drivingStressScore: number | null;
@@ -397,7 +417,11 @@ export class RentalDrivingAnalysisService {
     return {
       analysisMeta: {
         vehicleId: ctx.vehicleId,
-        driverId: ctx.driverId,
+        bookingCustomerId: ctx.roles.bookingCustomerId,
+        assignedDriverId: ctx.roles.assignedDriverId,
+        actualDriverId: ctx.roles.actualDriverId,
+        attributionType: ctx.roles.attributionType,
+        customerDecisionEligible: ctx.roles.customerDecisionEligible,
         rentalPeriodId: ctx.bookingId,
         periodStart: ctx.periodStart.toISOString(),
         periodEnd: ctx.periodEnd.toISOString(),
@@ -488,6 +512,7 @@ export class RentalDrivingAnalysisService {
     params?: PaginationParams & {
       vehicleId?: string;
       driverId?: string;
+      bookingCustomerId?: string;
       bookingId?: string;
       from?: string;
       to?: string;
@@ -496,7 +521,13 @@ export class RentalDrivingAnalysisService {
     const { skip, take } = parsePagination(params || {});
     const where: any = { organizationId: orgId };
     if (params?.vehicleId) where.vehicleId = params.vehicleId;
-    if (params?.driverId) where.driverId = params.driverId;
+    const legacyCustomerFilter = resolveLegacyDriverIdFilter({
+      driverId: params?.driverId,
+      bookingCustomerId: params?.bookingCustomerId,
+    });
+    if (legacyCustomerFilter.bookingCustomerId) {
+      where.bookingCustomerId = legacyCustomerFilter.bookingCustomerId;
+    }
     if (params?.bookingId) where.bookingId = params.bookingId;
     if (params?.from || params?.to) {
       if (params.from) {
@@ -517,6 +548,9 @@ export class RentalDrivingAnalysisService {
         orderBy: { periodEnd: 'desc' },
         include: {
           vehicle: { select: { id: true, make: true, model: true, licensePlate: true } },
+          bookingCustomer: { select: { id: true, firstName: true, lastName: true, customerType: true } },
+          assignedDriver: { select: { id: true, firstName: true, lastName: true } },
+          actualDriver: { select: { id: true, firstName: true, lastName: true } },
           driver: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
@@ -527,6 +561,9 @@ export class RentalDrivingAnalysisService {
       id: r.id,
       bookingId: r.bookingId,
       vehicleId: r.vehicleId,
+      bookingCustomerId: r.bookingCustomerId,
+      assignedDriverId: r.assignedDriverId,
+      actualDriverId: r.actualDriverId,
       driverId: r.driverId,
       periodStart: r.periodStart.toISOString(),
       periodEnd: r.periodEnd.toISOString(),
@@ -539,6 +576,9 @@ export class RentalDrivingAnalysisService {
       wearImpact: r.wearImpact,
       payload: r.payload,
       vehicle: r.vehicle,
+      bookingCustomer: r.bookingCustomer,
+      assignedDriver: r.assignedDriver,
+      actualDriver: r.actualDriver,
       driver: r.driver,
       createdAt: r.createdAt.toISOString(),
     }));
@@ -551,6 +591,9 @@ export class RentalDrivingAnalysisService {
       where: { id, organizationId: orgId },
       include: {
         vehicle: { select: { id: true, make: true, model: true, licensePlate: true } },
+        bookingCustomer: { select: { id: true, firstName: true, lastName: true, customerType: true } },
+        assignedDriver: { select: { id: true, firstName: true, lastName: true } },
+        actualDriver: { select: { id: true, firstName: true, lastName: true } },
         driver: { select: { id: true, firstName: true, lastName: true } },
       },
     });
