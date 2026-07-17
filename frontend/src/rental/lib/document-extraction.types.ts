@@ -120,10 +120,29 @@ export interface PublicVehicleDisplay {
   model: string | null;
 }
 
+export interface PublicUploadContextDisplay {
+  entityType: string;
+  entityId: string;
+  sourceSurface: string;
+  providedAt: string;
+  providedByUserId: string | null;
+  confirmationStatus: 'CANDIDATE';
+  label: string;
+  resolverStatus: 'PENDING' | 'ALIGNED' | 'CONFLICT' | 'NO_SIGNAL';
+  conflicts: Array<{
+    field: string;
+    message: string;
+    contextValue: string | null;
+    resolvedValue: string | null;
+    severity: 'INFO' | 'WARNING';
+  }>;
+}
+
 export interface PublicDocumentExtraction {
   id: string;
-  vehicleId: string;
+  vehicleId: string | null;
   organizationId: string | null;
+  uploadContext: PublicUploadContextDisplay | null;
   vehicle: PublicVehicleDisplay | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

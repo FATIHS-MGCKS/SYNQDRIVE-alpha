@@ -43,6 +43,24 @@ export interface PublicDocumentExtractionAuditDto {
   }>;
 }
 
+export interface PublicUploadContextDisplayDto {
+  entityType: string;
+  entityId: string;
+  sourceSurface: string;
+  providedAt: string;
+  providedByUserId: string | null;
+  confirmationStatus: 'CANDIDATE';
+  label: string;
+  resolverStatus: 'PENDING' | 'ALIGNED' | 'CONFLICT' | 'NO_SIGNAL';
+  conflicts: Array<{
+    field: string;
+    message: string;
+    contextValue: string | null;
+    resolvedValue: string | null;
+    severity: 'INFO' | 'WARNING';
+  }>;
+}
+
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
@@ -50,6 +68,7 @@ export interface PublicDocumentExtractionDto {
   organizationId: string | null;
   uploadContextType: string | null;
   uploadContextId: string | null;
+  uploadContext: PublicUploadContextDisplayDto | null;
   vehicle: PublicVehicleDisplayDto | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

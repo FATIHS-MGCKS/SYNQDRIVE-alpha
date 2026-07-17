@@ -128,6 +128,15 @@ describe('DocumentExtractionService org upload', () => {
     uploadContext.resolveUploadTarget.mockResolvedValue({
       organizationId: 'org-1',
       vehicleId: 'v1',
+      contextCandidate: {
+        entityType: 'VEHICLE',
+        entityId: 'v1',
+        sourceSurface: 'org_inbox',
+        providedAt: '2026-07-17T12:00:00.000Z',
+        providedByUserId: 'user-1',
+        confirmationStatus: 'CANDIDATE',
+      },
+      searchScope: { entityType: 'VEHICLE', entityId: 'v1', narrowsSearch: true },
       uploadContextType: 'VEHICLE',
       uploadContextId: 'v1',
     });

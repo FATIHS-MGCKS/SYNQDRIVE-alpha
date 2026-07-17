@@ -102,6 +102,9 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     plausibility as any,
     docConfig as any,
     observability as any,
+    {
+      loadEntitySnapshot: jest.fn().mockResolvedValue({ licensePlate: 'B-AB 123', vin: null }),
+    } as any,
   );
   return { processor, prisma, storage, contentExtractor, classification, aiExtraction, plausibility };
 }

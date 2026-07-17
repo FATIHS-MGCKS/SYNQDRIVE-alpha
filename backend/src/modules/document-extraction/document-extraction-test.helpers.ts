@@ -26,11 +26,23 @@ export function makeUploadContextMock() {
       vehicleId?: string | null;
       optionalContextType?: string | null;
       optionalContextId?: string | null;
+      sourceSurface?: string | null;
+      providedByUserId?: string | null;
     }) => {
+      const providedAt = new Date().toISOString();
       if (params.vehicleId) {
         return {
           organizationId: params.organizationId,
           vehicleId: params.vehicleId,
+          contextCandidate: {
+            entityType: 'VEHICLE',
+            entityId: params.vehicleId,
+            sourceSurface: params.sourceSurface ?? 'vehicle_detail',
+            providedAt,
+            providedByUserId: params.providedByUserId ?? null,
+            confirmationStatus: 'CANDIDATE',
+          },
+          searchScope: { entityType: 'VEHICLE', entityId: params.vehicleId, narrowsSearch: true },
           uploadContextType: 'VEHICLE',
           uploadContextId: params.vehicleId,
         };
@@ -41,18 +53,48 @@ export function makeUploadContextMock() {
         return {
           organizationId: params.organizationId,
           vehicleId: id,
+          contextCandidate: {
+            entityType: 'VEHICLE',
+            entityId: id,
+            sourceSurface: params.sourceSurface ?? 'org_inbox',
+            providedAt,
+            providedByUserId: params.providedByUserId ?? null,
+            confirmationStatus: 'CANDIDATE',
+          },
+          searchScope: { entityType: 'VEHICLE', entityId: id, narrowsSearch: true },
           uploadContextType: 'VEHICLE',
+          uploadContextId: id,
+        };
+      }
+      if (type && type !== 'NONE' && id) {
+        return {
+          organizationId: params.organizationId,
+          vehicleId: null,
+          contextCandidate: {
+            entityType: type,
+            entityId: id,
+            sourceSurface: params.sourceSurface ?? 'org_inbox',
+            providedAt,
+            providedByUserId: params.providedByUserId ?? null,
+            confirmationStatus: 'CANDIDATE',
+          },
+          searchScope: { entityType: type, entityId: id, narrowsSearch: true },
+          uploadContextType: type,
           uploadContextId: id,
         };
       }
       return {
         organizationId: params.organizationId,
         vehicleId: null,
+        contextCandidate: null,
+        searchScope: null,
         uploadContextType: null,
         uploadContextId: null,
       };
     }),
+    loadEntitySnapshot: jest.fn().mockResolvedValue(null),
     assertVehicleInOrganization: jest.fn(),
+    assertEntityInOrganization: jest.fn(),
   };
 }
 

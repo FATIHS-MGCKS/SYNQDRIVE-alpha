@@ -150,6 +150,7 @@ describe('Document extraction pipeline (integration wiring)', () => {
       plausibility as any,
       docConfig as any,
       observability,
+      makeUploadContextMock() as any,
     );
     service = new DocumentExtractionService(
       prisma as any,

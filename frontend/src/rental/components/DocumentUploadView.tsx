@@ -2,6 +2,7 @@ import { CheckCircle, Eye, Sparkles, Upload } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useRef, useState } from 'react';
 
+import { formatUploadContextBanner, hasUploadContextConflict } from '../../lib/document-upload-context';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useDocumentUploadPage } from '../hooks/useDocumentUploadPage';
@@ -130,6 +131,8 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
   const showReview = page.flow === 'ready' || page.flow === 'applying';
   const showDone = page.flow === 'done';
   const showCancelled = page.flow === 'cancelled';
+  const uploadContextBanner = formatUploadContextBanner(page.record?.uploadContext);
+  const uploadContextConflict = hasUploadContextConflict(page.record?.uploadContext);
 
   return (
     <div className="w-full max-w-[1200px] mx-auto min-w-0 overflow-x-clip">
@@ -237,6 +240,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
 
           {showBusy && (
             <div className={`rounded-lg p-6 sm:p-12 text-center min-w-0 ${glass}`}>
+              {uploadContextBanner && uploadContextBannerNode(uploadContextBanner, uploadContextConflict, page.record?.uploadContext?.conflicts, isDarkMode)}
               <div className="relative w-16 h-16 mx-auto mb-3">
                 <div className="w-16 h-16 rounded-lg flex items-center justify-center sq-tone-info">
                   <Icon name="sparkles" className="w-7 h-7" />
@@ -323,6 +327,11 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
 
           {showReview && (
             <div className={`rounded-lg overflow-hidden min-w-0 ${glass}`}>
+              {uploadContextBanner && (
+                <div className={`px-3 py-2 border-b min-w-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
+                  {uploadContextBannerNode(uploadContextBanner, uploadContextConflict, page.record?.uploadContext?.conflicts, isDarkMode)}
+                </div>
+              )}
               <div className={`px-3 py-3 border-b min-w-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
                   <div className="flex items-start gap-3 min-w-0">
@@ -601,6 +610,38 @@ function errorBanner(message: string | null, isDarkMode: boolean) {
   return (
     <div className={`px-3 py-2 text-xs font-medium ${isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-700'}`}>
       {message}
+    </div>
+  );
+}
+
+function uploadContextBannerNode(
+  label: string,
+  conflict: boolean,
+  conflicts: Array<{ message: string }> | undefined,
+  isDarkMode: boolean,
+) {
+  return (
+    <div
+      className={`mb-3 rounded-lg border px-3 py-2 text-left text-xs ${
+        conflict
+          ? isDarkMode
+            ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+            : 'border-amber-200 bg-amber-50 text-amber-900'
+          : isDarkMode
+            ? 'border-brand/30 bg-brand-soft/40 text-brand'
+            : 'border-status-info/30 bg-status-info-soft text-status-info'
+      }`}
+    >
+      <p className="font-semibold break-words">{label}</p>
+      {conflict && conflicts && conflicts.length > 0 ? (
+        <ul className="mt-1.5 space-y-1 text-[11px] opacity-90">
+          {conflicts.map((entry, index) => (
+            <li key={`${entry.message}-${index}`} className="break-words">
+              {entry.message}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

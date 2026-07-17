@@ -27,7 +27,9 @@ import {
   buildContentCacheEntry,
   mergePipelinePlausibility,
   readContentCache,
+  readPipelinePayload,
   stripPipelineFromPlausibility,
+  PIPELINE_PLAUSIBILITY_KEY,
 } from './document-content-cache.util';
 import { DocumentStructuredContent } from './document-page.types';
 import {
@@ -46,6 +48,12 @@ import {
 } from './document-extraction-observability.util';
 import { isMalwareScanReadyForProcessing } from './document-malware-scan.util';
 import { patchMistralTransferState } from './document-pipeline-lifecycle.util';
+import { DocumentUploadContextService } from './document-upload-context.service';
+import {
+  evaluateUploadContextResolver,
+  extractUploadResolverHints,
+  readUploadContextPipelineState,
+} from './document-upload-context.util';
 
 const SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
@@ -76,6 +84,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     @Inject(documentExtractionConfig.KEY)
     private readonly docConfig: ConfigType<typeof documentExtractionConfig>,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly uploadContext: DocumentUploadContextService,
   ) {
     super();
   }
@@ -273,6 +282,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
       await this.runExtraction(
         extractionId,
         record.vehicleId ?? job.data.vehicleId ?? null,
+        job.data.organizationId ?? record.organizationId ?? null,
         applyDocumentType,
         content,
         record.plausibility,
@@ -349,6 +359,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
   private async runExtraction(
     extractionId: string,
     vehicleId: string | null,
+    organizationId: string | null,
     applyDocumentType: NonNullable<ReturnType<typeof resolveEffectiveDocumentType>>,
     content: DocumentStructuredContent,
     existingPlausibility: unknown,
@@ -438,7 +449,28 @@ export class DocumentExtractionProcessor extends WorkerHost {
       new Set([...(plausibilityChecks.recommendedHumanReviewNotes ?? []), ...agentResult.recommendedHumanReviewNotes]),
     );
 
-    const existingPublic = stripPipelineFromPlausibility(existingPlausibility);
+    const uploadPipeline = readUploadContextPipelineState(existingPlausibility);
+    let pipelineWithContext = existingPlausibility;
+    if (uploadPipeline?.candidate && organizationId) {
+      const entitySnapshot = await this.uploadContext.loadEntitySnapshot(
+        uploadPipeline.candidate.entityType,
+        uploadPipeline.candidate.entityId,
+        organizationId,
+      );
+      const resolver = evaluateUploadContextResolver({
+        candidate: uploadPipeline.candidate,
+        hints: extractUploadResolverHints(fields),
+        entitySnapshot,
+      });
+      pipelineWithContext = mergePipelinePlausibility(existingPlausibility, {
+        uploadContext: {
+          ...uploadPipeline,
+          resolver,
+        },
+      });
+    }
+
+    const existingPublic = stripPipelineFromPlausibility(pipelineWithContext);
     const classificationMeta =
       existingPublic &&
       typeof existingPublic === 'object' &&
@@ -448,6 +480,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
         : {};
 
     const completedAt = new Date();
+    const pipelinePayload = readPipelinePayload(pipelineWithContext);
     await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'PROCESSING' },
       data: {
@@ -466,6 +499,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
           extractionEvidence: agentResult.fieldEvidence ?? null,
           extractionConflicts: agentResult.extractionConflicts ?? null,
           chunking: agentResult.chunking ?? null,
+          [PIPELINE_PLAUSIBILITY_KEY]: pipelinePayload,
         } as unknown as Prisma.InputJsonValue,
         status: 'READY_FOR_REVIEW',
         processingStage: 'REVIEW',

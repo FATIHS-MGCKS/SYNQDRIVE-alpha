@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
+import { formatUploadContextBanner, hasUploadContextConflict } from '../../../lib/document-upload-context';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
 import {
   DOC_TYPE_LABELS,
@@ -56,6 +57,8 @@ export function VehicleDocumentUploadDrawer({
     initialDocType,
     onComplete: handleComplete,
   });
+  const uploadContextLabel = formatUploadContextBanner(flow.uploadContext);
+  const uploadContextConflict = hasUploadContextConflict(flow.uploadContext);
 
   useEffect(() => {
     if (!open) {
@@ -179,6 +182,26 @@ export function VehicleDocumentUploadDrawer({
 
         {flow.isBusy && (
           <div className="surface-premium rounded-xl border border-border bg-muted/20 p-8 text-center">
+            {uploadContextLabel ? (
+              <div
+                className={`mb-4 rounded-lg border px-3 py-2 text-left text-[11px] ${
+                  uploadContextConflict
+                    ? 'border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.08] text-[color:var(--status-watch)]'
+                    : 'border-primary/30 bg-primary/[0.06] text-primary'
+                }`}
+              >
+                <p className="font-semibold break-words">{uploadContextLabel}</p>
+                {uploadContextConflict && flow.uploadContext?.conflicts?.length ? (
+                  <ul className="mt-1.5 space-y-1 opacity-90">
+                    {flow.uploadContext.conflicts.map((entry, index) => (
+                      <li key={`${entry.message}-${index}`} className="break-words">
+                        {entry.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
             <Icon name="loader-2" className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
             <p className="text-[13px] font-semibold text-foreground">{FLOW_STATUS_LABEL_DE[flow.flow]}</p>
             {flow.uploadedFileName ? (
@@ -237,6 +260,26 @@ export function VehicleDocumentUploadDrawer({
 
         {(flow.flow === 'ready' || flow.flow === 'applying' || (mode === 'view' && flow.flow === 'done')) && (
           <div className="space-y-3">
+            {uploadContextLabel ? (
+              <div
+                className={`rounded-lg border px-3 py-2 text-[11px] ${
+                  uploadContextConflict
+                    ? 'border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.08] text-[color:var(--status-watch)]'
+                    : 'border-primary/30 bg-primary/[0.06] text-primary'
+                }`}
+              >
+                <p className="font-semibold break-words">{uploadContextLabel}</p>
+                {uploadContextConflict && flow.uploadContext?.conflicts?.length ? (
+                  <ul className="mt-1.5 space-y-1 opacity-90">
+                    {flow.uploadContext.conflicts.map((entry, index) => (
+                      <li key={`${entry.message}-${index}`} className="break-words">
+                        {entry.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
               <Icon name="file-text" className="w-4 h-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 truncate text-[12px] font-medium text-foreground">
