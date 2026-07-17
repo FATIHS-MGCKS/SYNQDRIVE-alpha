@@ -158,6 +158,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 > **Migrationshinweis:** Jeder neue Enum in **eigener** Migration vor erster Spaltennutzung.
 
+**Implementierungsstand (Prompt 15, 2026-07-17):** Migration `20260717193000_document_intake_v2_enums` — 13 additive Enum-Typen in `schema.prisma` (keine Spalten/Modelle). Prisma-Namen gemäß Prompt 15: `DocumentCategory`, `DocumentSubtype`, `DocumentEntityType`, `DocumentCandidateStatus`, `DocumentLinkStatus`, `DocumentActionType`, `DocumentActionStatus`, `DocumentActionRequirement`, `DocumentFollowUpType`, `DocumentFollowUpStatus`, `DocumentProcessingMaturity`, `DocumentDuplicateStatus`, `DocumentApplyMode`. Bestehende `DocumentExtraction*` Enums unverändert.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.
@@ -178,12 +180,10 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 | Default | Unverändert `PENDING` auf Intake |
 | Rollback | Neue Enum-Werte bleiben in DB; Writer auf Legacy-Mapping zurück |
 
-### 3.2 `DocumentIntakeCategory`
-
-Oberkategorie für Routing/Archive — mapped 1:1 auf `DocumentExtractionType` minus `AUTO`.
+### 3.2 `DocumentCategory` (implementiert — ehem. Plan `DocumentIntakeCategory`)
 
 ```prisma
-enum DocumentIntakeCategory {
+enum DocumentCategory {
   SERVICE
   MAINTENANCE      // OIL_CHANGE, BRAKE, TIRE, BATTERY
   INSPECTION       // TUV_REPORT, BOKRAFT_REPORT
@@ -196,12 +196,29 @@ enum DocumentIntakeCategory {
 
 | Aspekt | Plan |
 |--------|------|
-| Prisma-Typ | Neuer Enum |
-| Nullability | Spalte `category` nullable bis Backfill |
+| Prisma-Typ | `DocumentCategory` (implementiert P15) |
+| Nullability | Spalte `category` nullable bis Backfill (folge-Prompt) |
 | Default | Abgeleitet aus `effectiveDocumentType` im Writer |
 | Legacy-Mapping | `effectiveDocumentType` bleibt Source of Truth bis Cutover |
 
-### 3.3 `DocumentEntityType`
+### 3.2b `DocumentSubtype` (implementiert)
+
+```prisma
+enum DocumentSubtype {
+  UNSPECIFIED
+  STANDARD
+  CREDIT_NOTE
+  PAYMENT_REMINDER
+  PARKING_FINE
+  SPEEDING_FINE
+  ROUTINE_MAINTENANCE
+  INSPECTION_PASS
+  INSPECTION_FAIL
+  OTHER
+}
+```
+
+### 3.3 `DocumentEntityType` (implementiert)
 
 ```prisma
 enum DocumentEntityType {

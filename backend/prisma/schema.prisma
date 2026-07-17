@@ -472,6 +472,135 @@ enum DocumentExtractionErrorPhase {
   UNKNOWN
 }
 
+// ------------------------------------------------
+// DOCUMENT INTAKE V2 — additive enums (Prompt 15)
+// No columns/models yet — types only for future migrations.
+// See docs/architecture/document-intake-v2-prisma-plan.md
+// ------------------------------------------------
+
+/// Coarse routing/archive category (maps from DocumentExtractionType).
+enum DocumentCategory {
+  SERVICE
+  MAINTENANCE
+  INSPECTION
+  FINANCE
+  DAMAGE
+  CONDITION
+  GENERAL
+}
+
+/// Finer document classification within a DocumentCategory.
+enum DocumentSubtype {
+  UNSPECIFIED
+  STANDARD
+  CREDIT_NOTE
+  PAYMENT_REMINDER
+  PARKING_FINE
+  SPEEDING_FINE
+  ROUTINE_MAINTENANCE
+  INSPECTION_PASS
+  INSPECTION_FAIL
+  OTHER
+}
+
+/// Target entity kinds for resolver candidates and confirmed links.
+enum DocumentEntityType {
+  VEHICLE
+  BOOKING
+  CUSTOMER
+  DRIVER
+  VENDOR
+  ORGANIZATION
+}
+
+/// Lifecycle of a proposed entity match before confirmation.
+enum DocumentCandidateStatus {
+  PROPOSED
+  CONFIRMED
+  REJECTED
+  SUPERSEDED
+}
+
+/// Operational status of a confirmed DocumentEntityLink row.
+enum DocumentLinkStatus {
+  ACTIVE
+  REVOKED
+  SUPERSEDED
+}
+
+/// Downstream apply action kinds (dry-run + apply).
+enum DocumentActionType {
+  CREATE_SERVICE_EVENT
+  UPDATE_VEHICLE_INSPECTION
+  CREATE_INVOICE
+  CREATE_FINE
+  CREATE_DAMAGE
+  RECORD_TIRE_MEASUREMENT
+  RECORD_BRAKE_EVIDENCE
+  RECORD_BATTERY_EVIDENCE
+  ARCHIVE_ONLY
+  SUGGEST_TASK
+}
+
+/// Per-action execution state within an action plan.
+enum DocumentActionStatus {
+  WOULD_APPLY
+  APPLIED
+  SKIPPED
+  FAILED
+  BLOCKED
+}
+
+/// Field/action requirement level for preview and apply gates.
+enum DocumentActionRequirement {
+  REQUIRED
+  OPTIONAL
+  BLOCKER
+  INFORMATIONAL
+}
+
+/// Non-destructive follow-up suggestion kinds.
+enum DocumentFollowUpType {
+  CREATE_TASK
+  REQUEST_CUSTOMER_INFO
+  SCHEDULE_INSPECTION
+  NOTIFY_DRIVER
+  LINK_TO_BOOKING
+  MANUAL_REVIEW
+}
+
+enum DocumentFollowUpStatus {
+  SUGGESTED
+  ACCEPTED
+  DISMISSED
+  COMPLETED
+}
+
+/// Processing-run / pipeline output maturity (shadow → published).
+enum DocumentProcessingMaturity {
+  SHADOW
+  CANDIDATE
+  PUBLISHED
+  SUPERSEDED
+  FAILED
+}
+
+/// Content fingerprint dedup evaluation result.
+enum DocumentDuplicateStatus {
+  UNIQUE
+  DUPLICATE_WARNING
+  DUPLICATE_BLOCKED
+  UNKNOWN
+}
+
+/// Apply execution mode for action plans.
+enum DocumentApplyMode {
+  DRY_RUN
+  PREVIEW
+  APPLY
+  ARCHIVE_ONLY
+}
+
 enum EnrichmentJobType {
   BATTERY
   BRAKE
@@ -1299,114 +1428,114 @@ model Organization {
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
 
-  memberships                       OrganizationMembership[]
-  organizationProducts              OrganizationProduct[]
-  stations                          Station[]
-  vehicles                          Vehicle[]
-  vehicleComplaints                 VehicleComplaint[]
-  vehicleDrivingAssessmentQualities VehicleDrivingAssessmentQuality[]
-  orgIntegrations                   OrganizationIntegration[]
-  subscriptions                     BillingSubscription[]
-  billingSubscriptionItems          BillingSubscriptionItem[]
-  billingUsageSnapshots             BillingUsageSnapshot[]
-  billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
-  billingQuantityEvents             BillingQuantityEvent[]
-  billingPaymentMethods             BillingPaymentMethod[]
-  billingDisputes                   BillingDispute[]
-  billingOrgPriceOverrides          BillingOrganizationPriceOverride[]
-  billingAuditLogs                  BillingAuditLog[]
-  billingCommands                   BillingCommand[]
-  billingReconciliationDrifts       BillingReconciliationDrift[]
-  billingReconciliationRuns         BillingReconciliationRun[]
-  customers                         Customer[]
-  customerDocuments                 CustomerDocument[]
-  customerVerificationChecks        CustomerVerificationCheck[]
-  customerTimelineEvents            CustomerTimelineEvent[]
-  customerEligibilityPolicy         CustomerEligibilityPolicy?
-  organizationRentalRules           OrganizationRentalRules?
-  rentalVehicleCategories           RentalVehicleCategory[]
-  vehicleRentalRequirementOverrides VehicleRentalRequirementOverride[]
-  tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
-  tireHealthAlerts                  TireHealthAlert[]
-  bookings                          Booking[]
-  bookingAllowedDrivers             BookingAllowedDriver[]
-  bookingHandoverProtocols          BookingHandoverProtocol[]
-  activityLogs                      ActivityLog[]
-  rentalDrivingAnalyses             RentalDrivingAnalysis[]
-  vendors                           Vendor[]
-  chatAgent                         OrganizationChatAgent?
-  chatMessages                      ChatMessage[]
-  whatsappConfig                    OrgWhatsAppConfig?
-  whatsappConversations             WhatsAppConversation[]
-  whatsappMessages                  WhatsAppMessage[]
-  whatsappWebhookEvents             WhatsAppWebhookEvent[]
-  whatsappConsents                  WhatsAppConsent[]
-  whatsappTemplates                 WhatsAppTemplate[]
-  whatsappAiSuggestions             WhatsAppAiSuggestion[]
-  voiceAssistant                    VoiceAssistant?
-  voiceConversations                VoiceConversation[]
-  insightPolicy                     TenantInsightPolicy?
-  insightRuns                       DashboardInsightRun[]
-  insights                          DashboardInsight[]
-  providerConsents                  VehicleProviderConsent[]
-  generatedDocuments                GeneratedDocument[]
-  legalDocuments                    OrganizationLegalDocument[]
-  bookingDocumentBundles            BookingDocumentBundle[]
-  bookingDeposits                   BookingDeposit[]
-  organizationPaymentAccounts       OrganizationPaymentAccount[]
-  bookingPaymentRequests            BookingPaymentRequest[]
-  paymentEmailOutbox                PaymentEmailOutbox[]
-  paymentTransactions               PaymentTransaction[]
-  stripeConnectWebhookEvents        StripeConnectWebhookEvent[]
-  rentalContracts                   RentalContract[]
-  misuseCases                       MisuseCase[]
-  vehicleDrivingCapabilities        VehicleDrivingCapability[]
-  tripAssessabilities               TripAssessability[]
-  drivingEvidence                   DrivingEvidence[]
-  drivingAnalysisRuns               DrivingAnalysisRun[]
-  driverAttributions                DriverAttribution[]
-  drivingDecisionAudits             DrivingDecisionAudit[]
-  drivingAnalysisStages             DrivingAnalysisStage[]
-  drivingIntelligenceJobs           DrivingIntelligenceJob[]
-  orgInvoices                       OrgInvoice[]
-  userAccountPreferences            UserAccountPreference[]
-  userNotificationPreferences       UserNotificationPreference[]
-  orgInvoiceSequences               OrgInvoiceSequence[]
-  priceBooks                        PriceBook[]
-  priceTariffGroups                 PriceTariffGroup[]
-  priceTariffVersions               PriceTariffVersion[]
-  tariffRates                       TariffRate[]
-  mileagePackages                   MileagePackage[]
-  insuranceOptions                  TariffInsuranceOption[]
-  tariffExtraOptions                TariffExtraOption[]
-  vehicleTariffAssignments          VehicleTariffAssignment[]
-  bookingPriceSnapshots             BookingPriceSnapshot[]
-  bookingPriceLineItems             BookingPriceLineItem[]
-  pricingQuotes                     PricingQuote[]
-  organizationRoles                 OrganizationRole[]
-  organizationUserInvites           OrganizationUserInvite[]
-  orgEmailSettings                  OrgEmailSettings?
-  orgEmailDomains                   OrgEmailDomain[]
-  outboundEmails                    OutboundEmail[]
-  billingEmailSuppressions          BillingEmailSuppression[]
-  notifications                     Notification[]
-  notificationOccurrences           NotificationOccurrence[]
-  notificationReceipts              NotificationReceipt[]
-  notificationDeliveryOutbox        NotificationDeliveryOutbox[]
-  taskAutomationOutbox              TaskAutomationOutbox[]
-  taskAutomationRuleOverrides       OrgTaskAutomationRuleOverride[]
-  batteryMeasurementSessions        BatteryMeasurementSession[]
-  batteryMeasurements               BatteryMeasurement[]
-  batteryAssessments                BatteryAssessment[]
-  batteryPublications               BatteryPublication[]
-  vehicleBatteryCapabilities        VehicleBatteryCapability[]
-  vehicleBatteryCapabilityChanges   VehicleBatteryCapabilityChange[]
-  vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  memberships                            OrganizationMembership[]
+  organizationProducts                   OrganizationProduct[]
+  stations                               Station[]
+  vehicles                               Vehicle[]
+  vehicleComplaints                      VehicleComplaint[]
+  vehicleDrivingAssessmentQualities      VehicleDrivingAssessmentQuality[]
+  orgIntegrations                        OrganizationIntegration[]
+  subscriptions                          BillingSubscription[]
+  billingSubscriptionItems               BillingSubscriptionItem[]
+  billingUsageSnapshots                  BillingUsageSnapshot[]
+  billingBillableVehicleAssignments      BillingBillableVehicleAssignment[]
+  billingQuantityEvents                  BillingQuantityEvent[]
+  billingPaymentMethods                  BillingPaymentMethod[]
+  billingDisputes                        BillingDispute[]
+  billingOrgPriceOverrides               BillingOrganizationPriceOverride[]
+  billingAuditLogs                       BillingAuditLog[]
+  billingCommands                        BillingCommand[]
+  billingReconciliationDrifts            BillingReconciliationDrift[]
+  billingReconciliationRuns              BillingReconciliationRun[]
+  customers                              Customer[]
+  customerDocuments                      CustomerDocument[]
+  customerVerificationChecks             CustomerVerificationCheck[]
+  customerTimelineEvents                 CustomerTimelineEvent[]
+  customerEligibilityPolicy              CustomerEligibilityPolicy?
+  organizationRentalRules                OrganizationRentalRules?
+  rentalVehicleCategories                RentalVehicleCategory[]
+  vehicleRentalRequirementOverrides      VehicleRentalRequirementOverride[]
+  tireRentalHealthReviewOverrides        TireRentalHealthReviewOverride[]
+  tireHealthAlerts                       TireHealthAlert[]
+  bookings                               Booking[]
+  bookingAllowedDrivers                  BookingAllowedDriver[]
+  bookingHandoverProtocols               BookingHandoverProtocol[]
+  activityLogs                           ActivityLog[]
+  rentalDrivingAnalyses                  RentalDrivingAnalysis[]
+  vendors                                Vendor[]
+  chatAgent                              OrganizationChatAgent?
+  chatMessages                           ChatMessage[]
+  whatsappConfig                         OrgWhatsAppConfig?
+  whatsappConversations                  WhatsAppConversation[]
+  whatsappMessages                       WhatsAppMessage[]
+  whatsappWebhookEvents                  WhatsAppWebhookEvent[]
+  whatsappConsents                       WhatsAppConsent[]
+  whatsappTemplates                      WhatsAppTemplate[]
+  whatsappAiSuggestions                  WhatsAppAiSuggestion[]
+  voiceAssistant                         VoiceAssistant?
+  voiceConversations                     VoiceConversation[]
+  insightPolicy                          TenantInsightPolicy?
+  insightRuns                            DashboardInsightRun[]
+  insights                               DashboardInsight[]
+  providerConsents                       VehicleProviderConsent[]
+  generatedDocuments                     GeneratedDocument[]
+  legalDocuments                         OrganizationLegalDocument[]
+  bookingDocumentBundles                 BookingDocumentBundle[]
+  bookingDeposits                        BookingDeposit[]
+  organizationPaymentAccounts            OrganizationPaymentAccount[]
+  bookingPaymentRequests                 BookingPaymentRequest[]
+  paymentEmailOutbox                     PaymentEmailOutbox[]
+  paymentTransactions                    PaymentTransaction[]
+  stripeConnectWebhookEvents             StripeConnectWebhookEvent[]
+  rentalContracts                        RentalContract[]
+  misuseCases                            MisuseCase[]
+  vehicleDrivingCapabilities             VehicleDrivingCapability[]
+  tripAssessabilities                    TripAssessability[]
+  drivingEvidence                        DrivingEvidence[]
+  drivingAnalysisRuns                    DrivingAnalysisRun[]
+  driverAttributions                     DriverAttribution[]
+  drivingDecisionAudits                  DrivingDecisionAudit[]
+  drivingAnalysisStages                  DrivingAnalysisStage[]
+  drivingIntelligenceJobs                DrivingIntelligenceJob[]
+  orgInvoices                            OrgInvoice[]
+  userAccountPreferences                 UserAccountPreference[]
+  userNotificationPreferences            UserNotificationPreference[]
+  orgInvoiceSequences                    OrgInvoiceSequence[]
+  priceBooks                             PriceBook[]
+  priceTariffGroups                      PriceTariffGroup[]
+  priceTariffVersions                    PriceTariffVersion[]
+  tariffRates                            TariffRate[]
+  mileagePackages                        MileagePackage[]
+  insuranceOptions                       TariffInsuranceOption[]
+  tariffExtraOptions                     TariffExtraOption[]
+  vehicleTariffAssignments               VehicleTariffAssignment[]
+  bookingPriceSnapshots                  BookingPriceSnapshot[]
+  bookingPriceLineItems                  BookingPriceLineItem[]
+  pricingQuotes                          PricingQuote[]
+  organizationRoles                      OrganizationRole[]
+  organizationUserInvites                OrganizationUserInvite[]
+  orgEmailSettings                       OrgEmailSettings?
+  orgEmailDomains                        OrgEmailDomain[]
+  outboundEmails                         OutboundEmail[]
+  billingEmailSuppressions               BillingEmailSuppression[]
+  notifications                          Notification[]
+  notificationOccurrences                NotificationOccurrence[]
+  notificationReceipts                   NotificationReceipt[]
+  notificationDeliveryOutbox             NotificationDeliveryOutbox[]
+  taskAutomationOutbox                   TaskAutomationOutbox[]
+  taskAutomationRuleOverrides            OrgTaskAutomationRuleOverride[]
+  batteryMeasurementSessions             BatteryMeasurementSession[]
+  batteryMeasurements                    BatteryMeasurement[]
+  batteryAssessments                     BatteryAssessment[]
+  batteryPublications                    BatteryPublication[]
+  vehicleBatteryCapabilities             VehicleBatteryCapability[]
+  vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
+  vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
   vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
-  hvChargeSessions                  HvChargeSession[]
-  hvCapacityObservations            HvCapacityObservation[]
-  batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
-  batteryRetentionAggregates        BatteryRetentionAggregate[]
+  hvChargeSessions                       HvChargeSession[]
+  hvCapacityObservations                 HvCapacityObservation[]
+  batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
+  batteryRetentionAggregates             BatteryRetentionAggregate[]
 
   @@index([status])
   @@map("organizations")
@@ -1464,13 +1593,13 @@ model User {
   taskAutomationRuleOverridesCreated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
-  driverAttributionsResolved            DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
-  drivingDecisionsMade                  DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
-  drivingDecisionsRevoked               DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
-  bookingAllowedDriversAdded            BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
+  driverAttributionsResolved          DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
+  drivingDecisionsMade                DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
+  drivingDecisionsRevoked             DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
+  bookingAllowedDriversAdded          BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
   tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
-  batteryReferenceCapacityChanges   VehicleBatteryReferenceCapacityChange[]
+  batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
 
   @@map("users")
 }
@@ -1808,88 +1937,88 @@ model Vehicle {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  organization                      Organization                       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  homeStation                       Station?                           @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
-  currentStation                    Station?                           @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
-  expectedStation                   Station?                           @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
-  dimoVehicle                       DimoVehicle?                       @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
-  batterySpecs                      VehicleBatterySpec[]
-  tireSetups                        VehicleTireSetup[]
-  tires                             Tire[]
-  tirePositionHistory               TirePositionHistory[]
-  tireEvents                        TireEvent[]
-  tireHealthSnapshots               TireHealthSnapshot[]
-  tireWearDataPoints                TireWearDataPoint[]
-  tireTripUsageLedgers              TireTripUsageLedger[]
-  brakeSpecs                        VehicleBrakeReferenceSpec[]
-  serviceEvents                     VehicleServiceEvent[]
-  enrichmentJobs                    VehicleEnrichmentJob[]
-  latestState                       VehicleLatestState?
-  positionUpdates                   VehiclePositionUpdate[]
-  analyticsCacheEntries             AnalyticsCache[]
-  pollLogs                          DimoPollLog[]
-  bookings                          Booking[]
-  handoverProtocols                 BookingHandoverProtocol[]
-  drivingEvents                     DrivingEvent[]
-  batterySnapshots                  BatteryHealthSnapshot[]
-  hvBatterySnapshots                HvBatteryHealthSnapshot[]
-  hvBatteryHealthCurrent            HvBatteryHealthCurrent?
-  batteryFeatures                   BatteryFeatures?
-  batteryEvidence                   BatteryEvidence[]
-  batteryMeasurementSessions        BatteryMeasurementSession[]
-  batteryMeasurements               BatteryMeasurement[]
-  batteryAssessments                BatteryAssessment[]
-  batteryPublications               BatteryPublication[]
-  vehicleBatteryCapabilities        VehicleBatteryCapability[]
-  vehicleBatteryCapabilityChanges   VehicleBatteryCapabilityChange[]
-  vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  organization                           Organization                            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  homeStation                            Station?                                @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
+  currentStation                         Station?                                @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
+  expectedStation                        Station?                                @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
+  dimoVehicle                            DimoVehicle?                            @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
+  batterySpecs                           VehicleBatterySpec[]
+  tireSetups                             VehicleTireSetup[]
+  tires                                  Tire[]
+  tirePositionHistory                    TirePositionHistory[]
+  tireEvents                             TireEvent[]
+  tireHealthSnapshots                    TireHealthSnapshot[]
+  tireWearDataPoints                     TireWearDataPoint[]
+  tireTripUsageLedgers                   TireTripUsageLedger[]
+  brakeSpecs                             VehicleBrakeReferenceSpec[]
+  serviceEvents                          VehicleServiceEvent[]
+  enrichmentJobs                         VehicleEnrichmentJob[]
+  latestState                            VehicleLatestState?
+  positionUpdates                        VehiclePositionUpdate[]
+  analyticsCacheEntries                  AnalyticsCache[]
+  pollLogs                               DimoPollLog[]
+  bookings                               Booking[]
+  handoverProtocols                      BookingHandoverProtocol[]
+  drivingEvents                          DrivingEvent[]
+  batterySnapshots                       BatteryHealthSnapshot[]
+  hvBatterySnapshots                     HvBatteryHealthSnapshot[]
+  hvBatteryHealthCurrent                 HvBatteryHealthCurrent?
+  batteryFeatures                        BatteryFeatures?
+  batteryEvidence                        BatteryEvidence[]
+  batteryMeasurementSessions             BatteryMeasurementSession[]
+  batteryMeasurements                    BatteryMeasurement[]
+  batteryAssessments                     BatteryAssessment[]
+  batteryPublications                    BatteryPublication[]
+  vehicleBatteryCapabilities             VehicleBatteryCapability[]
+  vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
+  vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
   vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
-  hvChargeSessions                  HvChargeSession[]
-  hvCapacityObservations            HvCapacityObservation[]
-  batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
-  batteryRetentionAggregates        BatteryRetentionAggregate[]
-  brakeEvidence                     BrakeEvidence[]
-  brakeTripMetrics                  BrakeTripMetric[]
-  brakeHealthCurrent                BrakeHealthCurrent?
-  dtcEvents                         VehicleDtcEvent[]
-  tripDrivingImpacts                TripDrivingImpact[]
-  drivingImpactCurrent              VehicleDrivingImpactCurrent?
-  damages                           VehicleDamage[]
-  exteriorImages                    VehicleExteriorImage[]
-  rentalDrivingAnalyses             RentalDrivingAnalysis[]
-  trips                             VehicleTrip[]
-  rpmWebhookCandidates              RpmWebhookCandidate[]
-  dimoDeviceConnectionEvents        DimoDeviceConnectionEvent[]
-  tripDetectionState                VehicleTripDetectionState?
-  tripTrackingRuns                  VehicleTripTrackingRun[]
-  tripBehaviorEvents                TripBehaviorEvent[]
-  misuseCases                       MisuseCase[]
-  tripRepairs                       TripRepair[]
-  energyEvents                      VehicleEnergyEvent[]
-  logbookConfig                     VehicleLogbookConfig?
-  documentExtractions               VehicleDocumentExtraction[]
-  vendorVehicles                    VendorVehicle[]
-  complaints                        VehicleComplaint[]
-  drivingAssessmentQuality          VehicleDrivingAssessmentQuality?
-  dataSourceLinks                   VehicleDataSourceLink[]
-  hmSignalGroupStates               HmSignalGroupState[]
-  providerConsents                  VehicleProviderConsent[]
-  tariffAssignments                 VehicleTariffAssignment[]
-  pricingQuotes                     PricingQuote[]
-  rentalCategoryId                  String?                            @map("rental_category_id")
-  rentalCategory                    RentalVehicleCategory?             @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
-  rentalRequirementOverride         VehicleRentalRequirementOverride?
-  tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
-  tireHealthAlerts                  TireHealthAlert[]
-  whatsappConversations             WhatsAppConversation[]
-  billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
-  billingQuantityEvents             BillingQuantityEvent[]
-  vehicleDrivingCapabilities        VehicleDrivingCapability[]
-  tripAssessabilities               TripAssessability[]
-  drivingEvidence                   DrivingEvidence[]
-  drivingAnalysisRuns               DrivingAnalysisRun[]
-  driverAttributions                DriverAttribution[]
-  drivingIntelligenceJobs           DrivingIntelligenceJob[]
+  hvChargeSessions                       HvChargeSession[]
+  hvCapacityObservations                 HvCapacityObservation[]
+  batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
+  batteryRetentionAggregates             BatteryRetentionAggregate[]
+  brakeEvidence                          BrakeEvidence[]
+  brakeTripMetrics                       BrakeTripMetric[]
+  brakeHealthCurrent                     BrakeHealthCurrent?
+  dtcEvents                              VehicleDtcEvent[]
+  tripDrivingImpacts                     TripDrivingImpact[]
+  drivingImpactCurrent                   VehicleDrivingImpactCurrent?
+  damages                                VehicleDamage[]
+  exteriorImages                         VehicleExteriorImage[]
+  rentalDrivingAnalyses                  RentalDrivingAnalysis[]
+  trips                                  VehicleTrip[]
+  rpmWebhookCandidates                   RpmWebhookCandidate[]
+  dimoDeviceConnectionEvents             DimoDeviceConnectionEvent[]
+  tripDetectionState                     VehicleTripDetectionState?
+  tripTrackingRuns                       VehicleTripTrackingRun[]
+  tripBehaviorEvents                     TripBehaviorEvent[]
+  misuseCases                            MisuseCase[]
+  tripRepairs                            TripRepair[]
+  energyEvents                           VehicleEnergyEvent[]
+  logbookConfig                          VehicleLogbookConfig?
+  documentExtractions                    VehicleDocumentExtraction[]
+  vendorVehicles                         VendorVehicle[]
+  complaints                             VehicleComplaint[]
+  drivingAssessmentQuality               VehicleDrivingAssessmentQuality?
+  dataSourceLinks                        VehicleDataSourceLink[]
+  hmSignalGroupStates                    HmSignalGroupState[]
+  providerConsents                       VehicleProviderConsent[]
+  tariffAssignments                      VehicleTariffAssignment[]
+  pricingQuotes                          PricingQuote[]
+  rentalCategoryId                       String?                                 @map("rental_category_id")
+  rentalCategory                         RentalVehicleCategory?                  @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
+  rentalRequirementOverride              VehicleRentalRequirementOverride?
+  tireRentalHealthReviewOverrides        TireRentalHealthReviewOverride[]
+  tireHealthAlerts                       TireHealthAlert[]
+  whatsappConversations                  WhatsAppConversation[]
+  billingBillableVehicleAssignments      BillingBillableVehicleAssignment[]
+  billingQuantityEvents                  BillingQuantityEvent[]
+  vehicleDrivingCapabilities             VehicleDrivingCapability[]
+  tripAssessabilities                    TripAssessability[]
+  drivingEvidence                        DrivingEvidence[]
+  drivingAnalysisRuns                    DrivingAnalysisRun[]
+  driverAttributions                     DriverAttribution[]
+  drivingIntelligenceJobs                DrivingIntelligenceJob[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -2159,43 +2288,43 @@ model VehicleBatterySpec {
 // ------------------------------------------------
 
 model VehicleTireSetup {
-  id                      String          @id @default(uuid())
-  organizationId          String?         @map("organization_id")
-  vehicleId               String          @map("vehicle_id")
-  name                    String?
-  frontDimension          String?         @map("front_dimension")
-  rearDimension           String?         @map("rear_dimension")
-  brandModelFront         String?         @map("brand_model_front")
-  brandModelRear          String?         @map("brand_model_rear")
-  tireSeason              TireSeason      @default(ALL_SEASON) @map("tire_season")
-  expectedLifeKm          Int?            @map("expected_life_km")
-  initialTreadDepthMm     Float?          @map("initial_tread_depth_mm")
-  isStaggered             Boolean         @default(false) @map("is_staggered")
-  kFactorFront            Float           @default(1.0) @map("k_factor_front")
-  kFactorRear             Float           @default(1.0) @map("k_factor_rear")
-  kFactorCalibrationCount Int             @default(0) @map("k_factor_calibration_count")
-  regenBrakingFactor      Float           @default(1.0) @map("regen_braking_factor")
-  regenBrakingFactorFront Float?          @map("regen_braking_factor_front")
-  regenBrakingFactorRear  Float?          @map("regen_braking_factor_rear")
-  initialTreadFrontMm     Float?          @map("initial_tread_front_mm")
-  initialTreadRearMm      Float?          @map("initial_tread_rear_mm")
-  expectedLifeKmFront     Int?            @map("expected_life_km_front")
-  expectedLifeKmRear      Int?            @map("expected_life_km_rear")
-  frontTireWidthMm        Int?            @map("front_tire_width_mm")
-  rearTireWidthMm         Int?            @map("rear_tire_width_mm")
-  installedAt             DateTime?       @map("installed_at")
-  removedAt               DateTime?       @map("removed_at")
-  installedOdometerKm     Float?          @map("installed_odometer_km")
-  installedOdometerSource TireOdometerAnchorSource? @map("installed_odometer_source")
-  installedOdometerCapturedAt DateTime?   @map("installed_odometer_captured_at")
-  installedOdometerEvidenceId String?     @map("installed_odometer_evidence_id")
-  odometerAnchorStatus    TireOdometerAnchorStatus? @map("odometer_anchor_status")
-  odometerAnchorConfidence Float?         @map("odometer_anchor_confidence")
-  removedOdometerKm       Float?          @map("removed_odometer_km")
-  status                  TireSetupStatus @default(ACTIVE)
-  notes                   String?
-  createdBy               String?         @map("created_by")
-  updatedBy               String?         @map("updated_by")
+  id                          String                    @id @default(uuid())
+  organizationId              String?                   @map("organization_id")
+  vehicleId                   String                    @map("vehicle_id")
+  name                        String?
+  frontDimension              String?                   @map("front_dimension")
+  rearDimension               String?                   @map("rear_dimension")
+  brandModelFront             String?                   @map("brand_model_front")
+  brandModelRear              String?                   @map("brand_model_rear")
+  tireSeason                  TireSeason                @default(ALL_SEASON) @map("tire_season")
+  expectedLifeKm              Int?                      @map("expected_life_km")
+  initialTreadDepthMm         Float?                    @map("initial_tread_depth_mm")
+  isStaggered                 Boolean                   @default(false) @map("is_staggered")
+  kFactorFront                Float                     @default(1.0) @map("k_factor_front")
+  kFactorRear                 Float                     @default(1.0) @map("k_factor_rear")
+  kFactorCalibrationCount     Int                       @default(0) @map("k_factor_calibration_count")
+  regenBrakingFactor          Float                     @default(1.0) @map("regen_braking_factor")
+  regenBrakingFactorFront     Float?                    @map("regen_braking_factor_front")
+  regenBrakingFactorRear      Float?                    @map("regen_braking_factor_rear")
+  initialTreadFrontMm         Float?                    @map("initial_tread_front_mm")
+  initialTreadRearMm          Float?                    @map("initial_tread_rear_mm")
+  expectedLifeKmFront         Int?                      @map("expected_life_km_front")
+  expectedLifeKmRear          Int?                      @map("expected_life_km_rear")
+  frontTireWidthMm            Int?                      @map("front_tire_width_mm")
+  rearTireWidthMm             Int?                      @map("rear_tire_width_mm")
+  installedAt                 DateTime?                 @map("installed_at")
+  removedAt                   DateTime?                 @map("removed_at")
+  installedOdometerKm         Float?                    @map("installed_odometer_km")
+  installedOdometerSource     TireOdometerAnchorSource? @map("installed_odometer_source")
+  installedOdometerCapturedAt DateTime?                 @map("installed_odometer_captured_at")
+  installedOdometerEvidenceId String?                   @map("installed_odometer_evidence_id")
+  odometerAnchorStatus        TireOdometerAnchorStatus? @map("odometer_anchor_status")
+  odometerAnchorConfidence    Float?                    @map("odometer_anchor_confidence")
+  removedOdometerKm           Float?                    @map("removed_odometer_km")
+  status                      TireSetupStatus           @default(ACTIVE)
+  notes                       String?
+  createdBy                   String?                   @map("created_by")
+  updatedBy                   String?                   @map("updated_by")
 
   totalKmOnSet      Float @default(0) @map("total_km_on_set")
   cityKm            Float @default(0) @map("city_km")
@@ -2229,13 +2358,13 @@ model VehicleTireSetup {
   aiTireSpec Json? @map("ai_tire_spec")
 
   // ── Evidence-based recommended cold tire pressure (bar) ─────────────────────
-  recommendedPressureFrontBar       Float?                  @map("recommended_pressure_front_bar")
-  recommendedPressureRearBar        Float?                  @map("recommended_pressure_rear_bar")
-  recommendedPressureLoadedFrontBar Float?                  @map("recommended_pressure_loaded_front_bar")
-  recommendedPressureLoadedRearBar  Float?                  @map("recommended_pressure_loaded_rear_bar")
-  pressureSpecSource                TirePressureSpecSource  @default(UNKNOWN) @map("pressure_spec_source")
-  pressureSpecConfirmedAt           DateTime?               @map("pressure_spec_confirmed_at")
-  pressureSpecConfidence            Float?                  @map("pressure_spec_confidence")
+  recommendedPressureFrontBar       Float?                 @map("recommended_pressure_front_bar")
+  recommendedPressureRearBar        Float?                 @map("recommended_pressure_rear_bar")
+  recommendedPressureLoadedFrontBar Float?                 @map("recommended_pressure_loaded_front_bar")
+  recommendedPressureLoadedRearBar  Float?                 @map("recommended_pressure_loaded_rear_bar")
+  pressureSpecSource                TirePressureSpecSource @default(UNKNOWN) @map("pressure_spec_source")
+  pressureSpecConfirmedAt           DateTime?              @map("pressure_spec_confirmed_at")
+  pressureSpecConfidence            Float?                 @map("pressure_spec_confidence")
 
   // ── Reference / threshold fields resolved from spec + manual ────────────────
   referenceNewTreadMm      Float? @map("reference_new_tread_mm")
@@ -2264,7 +2393,7 @@ model VehicleTireSetup {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vehicle              Vehicle                       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle              Vehicle                          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   measurements         VehicleTireTreadMeasurement[]
   tires                Tire[]
   positionHistory      TirePositionHistory[]
@@ -2275,7 +2404,7 @@ model VehicleTireSetup {
   mountPeriods         VehicleTireSetupMountPeriod[]
   rentalHealthReviews  TireRentalHealthReviewOverride[]
   healthAlerts         TireHealthAlert[]
-  initialTreadEvidence VehicleTireTreadMeasurement?  @relation("SetupInitialTreadEvidence", fields: [initialTreadEvidenceId], references: [id], onDelete: SetNull)
+  initialTreadEvidence VehicleTireTreadMeasurement?     @relation("SetupInitialTreadEvidence", fields: [initialTreadEvidenceId], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([organizationId, vehicleId])
@@ -2471,28 +2600,28 @@ model TireEvent {
 }
 
 model TireHealthSnapshot {
-  id                   String              @id @default(uuid())
-  organizationId       String              @map("organization_id")
-  vehicleId            String              @map("vehicle_id")
-  tireId               String?             @map("tire_id")
-  tireSetId            String?             @map("tire_set_id")
-  snapshotDate         DateTime            @map("snapshot_date")
-  odometerKm           Float?              @map("odometer_km")
-  estimatedTreadMm     Float?              @map("estimated_tread_mm")
-  estimatedWearPercent Float?              @map("estimated_wear_percent")
-  estimatedRemainingKm Int?                @map("estimated_remaining_km")
-  citySharePercent     Float?              @map("city_share_percent")
-  highwaySharePercent  Float?              @map("highway_share_percent")
-  ruralSharePercent    Float?              @map("rural_share_percent")
-  confidenceScore      Float?              @map("confidence_score")
-  wearRateMmPer1000km  Float?              @map("wear_rate_mm_per_1000km")
-  createdAt            DateTime            @default(now()) @map("created_at")
-  modelVersion         String?             @map("model_version")
-  modelConfigHash      String?             @map("model_config_hash")
-  inputFingerprint     String?             @map("input_fingerprint")
-  predictionGeneratedAt DateTime?          @map("prediction_generated_at")
-  baselineSource       TireEvidenceSource? @map("baseline_source")
-  evidenceSummary      Json?               @map("evidence_summary")
+  id                    String              @id @default(uuid())
+  organizationId        String              @map("organization_id")
+  vehicleId             String              @map("vehicle_id")
+  tireId                String?             @map("tire_id")
+  tireSetId             String?             @map("tire_set_id")
+  snapshotDate          DateTime            @map("snapshot_date")
+  odometerKm            Float?              @map("odometer_km")
+  estimatedTreadMm      Float?              @map("estimated_tread_mm")
+  estimatedWearPercent  Float?              @map("estimated_wear_percent")
+  estimatedRemainingKm  Int?                @map("estimated_remaining_km")
+  citySharePercent      Float?              @map("city_share_percent")
+  highwaySharePercent   Float?              @map("highway_share_percent")
+  ruralSharePercent     Float?              @map("rural_share_percent")
+  confidenceScore       Float?              @map("confidence_score")
+  wearRateMmPer1000km   Float?              @map("wear_rate_mm_per_1000km")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  modelVersion          String?             @map("model_version")
+  modelConfigHash       String?             @map("model_config_hash")
+  inputFingerprint      String?             @map("input_fingerprint")
+  predictionGeneratedAt DateTime?           @map("prediction_generated_at")
+  baselineSource        TireEvidenceSource? @map("baseline_source")
+  evidenceSummary       Json?               @map("evidence_summary")
 
   vehicle                    Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   tire                       Tire?               @relation(fields: [tireId], references: [id], onDelete: SetNull)
@@ -2554,31 +2683,31 @@ model TireWearDataPoint {
 /// One row per (trip, tire setup) pair. Updates only when `sourceFingerprint` changes.
 /// Not wired into trip finalization yet — Prompt 9 schema + repository only.
 model TireTripUsageLedger {
-  id                      String   @id @default(uuid())
-  organizationId          String   @map("organization_id")
-  vehicleId               String   @map("vehicle_id")
-  tripId                  String   @map("trip_id")
-  tireSetupId             String   @map("tire_setup_id")
-  tripStartedAt           DateTime @map("trip_started_at")
-  tripEndedAt             DateTime? @map("trip_ended_at")
-  distanceKm              Float    @map("distance_km")
-  cityKm                  Float    @default(0) @map("city_km")
-  ruralKm                 Float    @default(0) @map("rural_km")
-  highwayKm               Float    @default(0) @map("highway_km")
-  harshAccelerationCount  Int      @default(0) @map("harsh_acceleration_count")
-  harshBrakingCount       Int      @default(0) @map("harsh_braking_count")
-  harshCorneringCount     Int      @default(0) @map("harsh_cornering_count")
-  drivingImpactSummary    Json?    @map("driving_impact_summary")
-  sourceVersion           String   @map("source_version")
-  sourceFingerprint       String   @map("source_fingerprint")
-  previousFingerprint     String?  @map("previous_fingerprint")
-  revisionNumber          Int      @default(1) @map("revision_number")
-  invalidatedAt           DateTime? @map("invalidated_at")
-  invalidationReason      String?  @map("invalidation_reason")
-  supersededByTripId      String?  @map("superseded_by_trip_id")
-  processedAt             DateTime @map("processed_at")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  id                     String    @id @default(uuid())
+  organizationId         String    @map("organization_id")
+  vehicleId              String    @map("vehicle_id")
+  tripId                 String    @map("trip_id")
+  tireSetupId            String    @map("tire_setup_id")
+  tripStartedAt          DateTime  @map("trip_started_at")
+  tripEndedAt            DateTime? @map("trip_ended_at")
+  distanceKm             Float     @map("distance_km")
+  cityKm                 Float     @default(0) @map("city_km")
+  ruralKm                Float     @default(0) @map("rural_km")
+  highwayKm              Float     @default(0) @map("highway_km")
+  harshAccelerationCount Int       @default(0) @map("harsh_acceleration_count")
+  harshBrakingCount      Int       @default(0) @map("harsh_braking_count")
+  harshCorneringCount    Int       @default(0) @map("harsh_cornering_count")
+  drivingImpactSummary   Json?     @map("driving_impact_summary")
+  sourceVersion          String    @map("source_version")
+  sourceFingerprint      String    @map("source_fingerprint")
+  previousFingerprint    String?   @map("previous_fingerprint")
+  revisionNumber         Int       @default(1) @map("revision_number")
+  invalidatedAt          DateTime? @map("invalidated_at")
+  invalidationReason     String?   @map("invalidation_reason")
+  supersededByTripId     String?   @map("superseded_by_trip_id")
+  processedAt            DateTime  @map("processed_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   vehicle   Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   trip      VehicleTrip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
@@ -3872,24 +4001,24 @@ model Customer {
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
 
-  organization           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bookings               Booking[]
-  assignedDriverBookings Booking[]                 @relation("BookingAssignedDriver")
-  bookingAllowedDrivers  BookingAllowedDriver[]
-  rentalDrivingAnalysesAsBookingCustomer RentalDrivingAnalysis[] @relation("RentalAnalysisBookingCustomer")
-  rentalDrivingAnalysesAsAssignedDriver RentalDrivingAnalysis[] @relation("RentalAnalysisAssignedDriver")
-  rentalDrivingAnalysesAsActualDriver   RentalDrivingAnalysis[] @relation("RentalAnalysisActualDriver")
-  rentalDrivingAnalysesLegacyDriver     RentalDrivingAnalysis[] @relation("RentalAnalysisLegacyDriver")
-  documents              CustomerDocument[]
-  verificationChecks     CustomerVerificationCheck[]
-  timelineEvents         CustomerTimelineEvent[]
-  misuseCases            MisuseCase[]
-  misuseCasesAsAssignedDriver MisuseCase[] @relation("MisuseCaseAssignedDriver")
-  misuseCasesAsActualDriver   MisuseCase[] @relation("MisuseCaseActualDriver")
-  driverAttributionsAsBookingCustomer DriverAttribution[] @relation("DriverAttributionBookingCustomer")
-  driverAttributionsAsDriver          DriverAttribution[] @relation("DriverAttributionDriver")
-  outboundEmails         OutboundEmail[]
-  bookingPaymentRequests BookingPaymentRequest[]
+  organization                           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings                               Booking[]
+  assignedDriverBookings                 Booking[]                   @relation("BookingAssignedDriver")
+  bookingAllowedDrivers                  BookingAllowedDriver[]
+  rentalDrivingAnalysesAsBookingCustomer RentalDrivingAnalysis[]     @relation("RentalAnalysisBookingCustomer")
+  rentalDrivingAnalysesAsAssignedDriver  RentalDrivingAnalysis[]     @relation("RentalAnalysisAssignedDriver")
+  rentalDrivingAnalysesAsActualDriver    RentalDrivingAnalysis[]     @relation("RentalAnalysisActualDriver")
+  rentalDrivingAnalysesLegacyDriver      RentalDrivingAnalysis[]     @relation("RentalAnalysisLegacyDriver")
+  documents                              CustomerDocument[]
+  verificationChecks                     CustomerVerificationCheck[]
+  timelineEvents                         CustomerTimelineEvent[]
+  misuseCases                            MisuseCase[]
+  misuseCasesAsAssignedDriver            MisuseCase[]                @relation("MisuseCaseAssignedDriver")
+  misuseCasesAsActualDriver              MisuseCase[]                @relation("MisuseCaseActualDriver")
+  driverAttributionsAsBookingCustomer    DriverAttribution[]         @relation("DriverAttributionBookingCustomer")
+  driverAttributionsAsDriver             DriverAttribution[]         @relation("DriverAttributionDriver")
+  outboundEmails                         OutboundEmail[]
+  bookingPaymentRequests                 BookingPaymentRequest[]
 
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
@@ -4160,10 +4289,10 @@ model TireRentalHealthReviewOverride {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   tireSetup    VehicleTireSetup? @relation(fields: [tireSetupId], references: [id], onDelete: SetNull)
-  grantedBy    User         @relation("TireRentalHealthReviewGrants", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  grantedBy    User              @relation("TireRentalHealthReviewGrants", fields: [grantedByUserId], references: [id], onDelete: Restrict)
 
   @@index([organizationId])
   @@index([vehicleId])
@@ -4189,32 +4318,32 @@ enum TireHealthAlertResolutionReason {
 }
 
 model TireHealthAlert {
-  id                      String                          @id @default(uuid())
-  organizationId          String                          @map("organization_id")
-  vehicleId               String                          @map("vehicle_id")
-  tireSetupId             String                          @map("tire_setup_id")
-  alertType               String                          @map("alert_type")
-  reasonCode              String                          @map("reason_code")
+  id                      String                           @id @default(uuid())
+  organizationId          String                           @map("organization_id")
+  vehicleId               String                           @map("vehicle_id")
+  tireSetupId             String                           @map("tire_setup_id")
+  alertType               String                           @map("alert_type")
+  reasonCode              String                           @map("reason_code")
   severity                String
-  wheelPosition           String?                         @map("wheel_position")
-  displayMode             String                          @map("display_mode")
-  evidenceFingerprint     String                          @map("evidence_fingerprint")
-  dedupeKey               String                          @map("dedupe_key")
-  status                  TireHealthAlertStatus           @default(OPEN)
+  wheelPosition           String?                          @map("wheel_position")
+  displayMode             String                           @map("display_mode")
+  evidenceFingerprint     String                           @map("evidence_fingerprint")
+  dedupeKey               String                           @map("dedupe_key")
+  status                  TireHealthAlertStatus            @default(OPEN)
   resolutionReason        TireHealthAlertResolutionReason? @map("resolution_reason")
-  resolvedAt              DateTime?                       @map("resolved_at")
-  openedAt                DateTime                        @default(now()) @map("opened_at")
-  lastSeenAt              DateTime                        @default(now()) @map("last_seen_at")
-  inputFingerprint        String?                         @map("input_fingerprint")
-  lastNotifiedFingerprint String?                         @map("last_notified_fingerprint")
-  pressureSource          String?                         @map("pressure_source")
-  pressureTimestamp       DateTime?                       @map("pressure_timestamp")
-  pressureFreshness       String?                         @map("pressure_freshness")
-  templateParamsJson      Json?                           @map("template_params_json")
+  resolvedAt              DateTime?                        @map("resolved_at")
+  openedAt                DateTime                         @default(now()) @map("opened_at")
+  lastSeenAt              DateTime                         @default(now()) @map("last_seen_at")
+  inputFingerprint        String?                          @map("input_fingerprint")
+  lastNotifiedFingerprint String?                          @map("last_notified_fingerprint")
+  pressureSource          String?                          @map("pressure_source")
+  pressureTimestamp       DateTime?                        @map("pressure_timestamp")
+  pressureFreshness       String?                          @map("pressure_freshness")
+  templateParamsJson      Json?                            @map("template_params_json")
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  tireSetup    VehicleTireSetup  @relation(fields: [tireSetupId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tireSetup    VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, status])
   @@index([vehicleId, tireSetupId, status])
@@ -4710,40 +4839,40 @@ enum RentalDrivingAnalysisAssessmentStatus {
 // ------------------------------------------------
 
 model RentalDrivingAnalysis {
-  id                     String                            @id @default(uuid())
-  organizationId         String                            @map("organization_id")
-  bookingId              String                            @map("booking_id")
-  vehicleId              String                            @map("vehicle_id")
+  id                     String                                @id @default(uuid())
+  organizationId         String                                @map("organization_id")
+  bookingId              String                                @map("booking_id")
+  vehicleId              String                                @map("vehicle_id")
   /// Contract holder (Vertragspartner) — not automatically the driver.
-  bookingCustomerId      String                            @map("booking_customer_id")
-  assignedDriverId       String?                           @map("assigned_driver_id")
-  actualDriverId         String?                           @map("actual_driver_id")
+  bookingCustomerId      String                                @map("booking_customer_id")
+  assignedDriverId       String?                               @map("assigned_driver_id")
+  actualDriverId         String?                               @map("actual_driver_id")
   /// @deprecated Legacy mirror of booking customer — read via readLegacyDriverId(); do not write customerId here.
-  driverId               String?                           @map("driver_id")
-  periodStart            DateTime                          @map("period_start")
-  periodEnd              DateTime                          @map("period_end")
-  payload                Json                              @map("payload")
-  overallLevel           String                            @map("overall_level")
-  driverStyleCategory    String                            @map("driver_style_category")
-  riskLevel              String                            @map("risk_level")
-  drivingScore           Float?                            @map("driving_score")
-  drivingEventsCount     Int?                              @map("driving_events_count")
-  abuseDetectionCount    Int?                              @map("abuse_detection_count")
-  wearImpact             String?                           @map("wear_impact")
-  calculationVersion     String                            @default("rental-driving-analysis-v1") @map("calculation_version")
-  inputFingerprint       String                            @map("input_fingerprint")
-  generatedAt            DateTime                          @default(now()) @map("generated_at")
-  sourceTripsFinalizedAt DateTime?                         @map("source_trips_finalized_at")
-  analysisCompleteness   RentalDrivingAnalysisCompleteness @default(PARTIAL) @map("analysis_completeness")
-  stabilityStatus        RentalDrivingAnalysisStability           @default(PROVISIONAL) @map("stability_status")
-  assessmentStatus       RentalDrivingAnalysisAssessmentStatus    @default(PROVISIONAL) @map("assessment_status")
-  assessmentSummary      Json                                     @default("{}") @map("assessment_summary")
-  maturity               DrivingAnalysisMaturity                  @default(PUBLISHED) @map("maturity")
-  supersededAt           DateTime?                         @map("superseded_at")
-  supersedesAnalysisId   String?                           @map("supersedes_analysis_id")
-  recomputeReason        String?                           @map("recompute_reason")
-  attributionSummary     Json                              @default("{}") @map("attribution_summary")
-  createdAt              DateTime                          @default(now()) @map("created_at")
+  driverId               String?                               @map("driver_id")
+  periodStart            DateTime                              @map("period_start")
+  periodEnd              DateTime                              @map("period_end")
+  payload                Json                                  @map("payload")
+  overallLevel           String                                @map("overall_level")
+  driverStyleCategory    String                                @map("driver_style_category")
+  riskLevel              String                                @map("risk_level")
+  drivingScore           Float?                                @map("driving_score")
+  drivingEventsCount     Int?                                  @map("driving_events_count")
+  abuseDetectionCount    Int?                                  @map("abuse_detection_count")
+  wearImpact             String?                               @map("wear_impact")
+  calculationVersion     String                                @default("rental-driving-analysis-v1") @map("calculation_version")
+  inputFingerprint       String                                @map("input_fingerprint")
+  generatedAt            DateTime                              @default(now()) @map("generated_at")
+  sourceTripsFinalizedAt DateTime?                             @map("source_trips_finalized_at")
+  analysisCompleteness   RentalDrivingAnalysisCompleteness     @default(PARTIAL) @map("analysis_completeness")
+  stabilityStatus        RentalDrivingAnalysisStability        @default(PROVISIONAL) @map("stability_status")
+  assessmentStatus       RentalDrivingAnalysisAssessmentStatus @default(PROVISIONAL) @map("assessment_status")
+  assessmentSummary      Json                                  @default("{}") @map("assessment_summary")
+  maturity               DrivingAnalysisMaturity               @default(PUBLISHED) @map("maturity")
+  supersededAt           DateTime?                             @map("superseded_at")
+  supersedesAnalysisId   String?                               @map("supersedes_analysis_id")
+  recomputeReason        String?                               @map("recompute_reason")
+  attributionSummary     Json                                  @default("{}") @map("attribution_summary")
+  createdAt              DateTime                              @default(now()) @map("created_at")
 
   organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   booking            Booking                 @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -5839,30 +5968,30 @@ model RentalContract {
 // ------------------------------------------------
 
 model DrivingEvent {
-  id             String             @id @default(uuid())
-  vehicleId      String             @map("vehicle_id")
-  organizationId String?            @map("organization_id")
-  eventType      DrivingEventType   @map("event_type")
+  id                  String                     @id @default(uuid())
+  vehicleId           String                     @map("vehicle_id")
+  organizationId      String?                    @map("organization_id")
+  eventType           DrivingEventType           @map("event_type")
   // V3: which hardware/pipeline produced this event
-  source         DrivingEventSource @default(TELEMETRY_EVENTS) @map("source")
-  severity       Float              @default(0)
-  latitude       Float?
-  longitude      Float?
-  speedKmh       Float?             @map("speed_kmh")
-  deltaKmh       Float?             @map("delta_kmh")
-  durationMs     Int?               @map("duration_ms")
-  driverName     String?            @map("driver_name")
-  tripId         String?            @map("trip_id")
+  source              DrivingEventSource         @default(TELEMETRY_EVENTS) @map("source")
+  severity            Float                      @default(0)
+  latitude            Float?
+  longitude           Float?
+  speedKmh            Float?                     @map("speed_kmh")
+  deltaKmh            Float?                     @map("delta_kmh")
+  durationMs          Int?                       @map("duration_ms")
+  driverName          String?                    @map("driver_name")
+  tripId              String?                    @map("trip_id")
   /// Deterministic provider identity for native DIMO events (P24).
-  provider                 String?                     @map("provider")
-  providerEventName        String?                     @map("provider_event_name")
-  providerSourceId         String?                     @map("provider_source_id")
-  providerFingerprint      String?                     @map("provider_fingerprint")
-  tripAssignment           DrivingEventTripAssignment  @default(UNASSIGNED) @map("trip_assignment")
+  provider            String?                    @map("provider")
+  providerEventName   String?                    @map("provider_event_name")
+  providerSourceId    String?                    @map("provider_source_id")
+  providerFingerprint String?                    @map("provider_fingerprint")
+  tripAssignment      DrivingEventTripAssignment @default(UNASSIGNED) @map("trip_assignment")
   // V3: contextual enrichment (e.g. coldEngine badge from HF context on LTE_R1)
-  metadataJson   Json?              @map("metadata_json")
-  recordedAt     DateTime           @map("recorded_at")
-  createdAt      DateTime           @default(now()) @map("created_at")
+  metadataJson        Json?                      @map("metadata_json")
+  recordedAt          DateTime                   @map("recorded_at")
+  createdAt           DateTime                   @default(now()) @map("created_at")
 
   vehicle Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   trip    VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
@@ -6341,8 +6470,8 @@ model VehicleBatteryCapability {
   createdAt            DateTime                @default(now()) @map("created_at")
   updatedAt            DateTime                @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization Organization                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   changes      VehicleBatteryCapabilityChange[]
 
   @@unique([vehicleId, signalKey], map: "vehicle_battery_capabilities_signal_key")
@@ -6397,13 +6526,13 @@ model VehicleBatteryReferenceCapacity {
   notes              String?                             @map("notes")
   createdAt          DateTime                            @default(now()) @map("created_at")
 
-  organization   Organization                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle        Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  verifiedByUser User?                             @relation(fields: [verifiedByUserId], references: [id], onDelete: SetNull)
-  document       VehicleDocumentExtraction?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  serviceEvent   VehicleServiceEvent?              @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
-  supersededBy   VehicleBatteryReferenceCapacity?  @relation("VehicleBatteryReferenceCapacitySupersede", fields: [supersededById], references: [id], onDelete: SetNull)
-  supersedes     VehicleBatteryReferenceCapacity[] @relation("VehicleBatteryReferenceCapacitySupersede")
+  organization   Organization                            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle                                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  verifiedByUser User?                                   @relation(fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  document       VehicleDocumentExtraction?              @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  serviceEvent   VehicleServiceEvent?                    @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+  supersededBy   VehicleBatteryReferenceCapacity?        @relation("VehicleBatteryReferenceCapacitySupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes     VehicleBatteryReferenceCapacity[]       @relation("VehicleBatteryReferenceCapacitySupersede")
   changes        VehicleBatteryReferenceCapacityChange[]
 
   @@index([organizationId])
@@ -6417,16 +6546,16 @@ model VehicleBatteryReferenceCapacity {
 
 /// Append-only audit trail for reference capacity lifecycle.
 model VehicleBatteryReferenceCapacityChange {
-  id                   String   @id @default(uuid())
-  organizationId       String   @map("organization_id")
-  vehicleId            String   @map("vehicle_id")
-  referenceCapacityId  String?  @map("reference_capacity_id")
-  action               String   @map("action")
-  previousStatus       ReferenceCapacityVerificationStatus? @map("previous_status")
-  newStatus            ReferenceCapacityVerificationStatus? @map("new_status")
-  actorUserId          String?  @map("actor_user_id")
-  metadata             Json?    @map("metadata")
-  changedAt            DateTime @default(now()) @map("changed_at")
+  id                  String                               @id @default(uuid())
+  organizationId      String                               @map("organization_id")
+  vehicleId           String                               @map("vehicle_id")
+  referenceCapacityId String?                              @map("reference_capacity_id")
+  action              String                               @map("action")
+  previousStatus      ReferenceCapacityVerificationStatus? @map("previous_status")
+  newStatus           ReferenceCapacityVerificationStatus? @map("new_status")
+  actorUserId         String?                              @map("actor_user_id")
+  metadata            Json?                                @map("metadata")
+  changedAt           DateTime                             @default(now()) @map("changed_at")
 
   organization      Organization                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle           Vehicle                          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -6625,19 +6754,19 @@ model BatteryFeatures {
 // ------------------------------------------------
 
 model HvBatteryHealthSnapshot {
-  id                   String   @id @default(uuid())
-  vehicleId            String   @map("vehicle_id")
-  socPercent           Float    @map("soc_percent")
-  energyUsedKwh        Float?   @map("energy_used_kwh")
-  estimatedCapacityKwh Float?   @map("estimated_capacity_kwh")
-  sohPercent           Float?   @map("soh_percent")
-  rangeKm              Float?   @map("range_km")
-  chargingPowerKw      Float?   @map("charging_power_kw")
-  isCharging           Boolean  @default(false) @map("is_charging")
-  odometerKm           Float?   @map("odometer_km")
-  temperatureC         Float?   @map("temperature_c")
+  id                     String    @id @default(uuid())
+  vehicleId              String    @map("vehicle_id")
+  socPercent             Float     @map("soc_percent")
+  energyUsedKwh          Float?    @map("energy_used_kwh")
+  estimatedCapacityKwh   Float?    @map("estimated_capacity_kwh")
+  sohPercent             Float?    @map("soh_percent")
+  rangeKm                Float?    @map("range_km")
+  chargingPowerKw        Float?    @map("charging_power_kw")
+  isCharging             Boolean   @default(false) @map("is_charging")
+  odometerKm             Float?    @map("odometer_km")
+  temperatureC           Float?    @map("temperature_c")
   /// Provider SOC observation timestamp (anchor for dedup).
-  recordedAt           DateTime  @map("recorded_at")
+  recordedAt             DateTime  @map("recorded_at")
   /// Poll receive time when this snapshot row was accepted.
   providerReceivedAt     DateTime? @map("provider_received_at")
   /// Current-energy provider observation timestamp when distinct from SOC anchor.
@@ -7307,7 +7436,7 @@ model VehicleTrip {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  vehicle                    Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle                    Vehicle                     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   waypoints                  VehicleTripWaypoint[]
   tireTripUsageLedgers       TireTripUsageLedger[]
   events                     DrivingEvent[]
@@ -7895,21 +8024,21 @@ enum DrivingDecisionAuditAction {
 }
 
 model DrivingDecisionAudit {
-  id                         String                       @id @default(uuid())
-  organizationId             String                       @map("organization_id")
-  subjectType                DrivingDecisionSubjectType @map("subject_type")
-  subjectId                  String                       @map("subject_id")
-  decision                   DrivingDecisionAuditAction
-  recommendationAtDecision   DrivingDecisionRecommendation @map("recommendation_at_decision")
-  dimensionsSnapshotJson     Json                         @map("dimensions_snapshot_json")
-  reason                     String
-  decidedByUserId            String                       @map("decided_by_user_id")
-  decidedAt                  DateTime                     @default(now()) @map("decided_at")
-  revokedAt                  DateTime?                    @map("revoked_at")
-  revokedByUserId            String?                      @map("revoked_by_user_id")
-  revokeReason               String?                      @map("revoke_reason")
-  createdAt                  DateTime                     @default(now()) @map("created_at")
-  updatedAt                  DateTime                     @updatedAt @map("updated_at")
+  id                       String                        @id @default(uuid())
+  organizationId           String                        @map("organization_id")
+  subjectType              DrivingDecisionSubjectType    @map("subject_type")
+  subjectId                String                        @map("subject_id")
+  decision                 DrivingDecisionAuditAction
+  recommendationAtDecision DrivingDecisionRecommendation @map("recommendation_at_decision")
+  dimensionsSnapshotJson   Json                          @map("dimensions_snapshot_json")
+  reason                   String
+  decidedByUserId          String                        @map("decided_by_user_id")
+  decidedAt                DateTime                      @default(now()) @map("decided_at")
+  revokedAt                DateTime?                     @map("revoked_at")
+  revokedByUserId          String?                       @map("revoked_by_user_id")
+  revokeReason             String?                       @map("revoke_reason")
+  createdAt                DateTime                      @default(now()) @map("created_at")
+  updatedAt                DateTime                      @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   decidedBy    User         @relation("DrivingDecisionDecidedBy", fields: [decidedByUserId], references: [id], onDelete: Restrict)
@@ -7944,26 +8073,26 @@ enum DrivingAnalysisStageStatus {
 
 /// Per-stage lifecycle within an Analysis Run — fingerprint dedup + explicit deps (P21).
 model DrivingAnalysisStage {
-  id                 String                     @id @default(uuid())
-  organizationId     String                     @map("organization_id")
-  analysisRunId      String                     @map("analysis_run_id")
-  stageKey           DrivingAnalysisStageKey    @map("stage_key")
-  modelVersion       String                     @map("model_version")
-  inputFingerprint   String                     @map("input_fingerprint")
-  status             DrivingAnalysisStageStatus @default(PENDING)
-  attemptCount       Int                        @default(0) @map("attempt_count")
-  startedAt          DateTime?                  @map("started_at")
-  completedAt        DateTime?                  @map("completed_at")
-  errorCode          String?                    @map("error_code")
-  errorMessage       String?                    @map("error_message")
-  preservedFromStageId String?                  @map("preserved_from_stage_id")
-  createdAt          DateTime                   @default(now()) @map("created_at")
-  updatedAt          DateTime                   @updatedAt @map("updated_at")
+  id                   String                     @id @default(uuid())
+  organizationId       String                     @map("organization_id")
+  analysisRunId        String                     @map("analysis_run_id")
+  stageKey             DrivingAnalysisStageKey    @map("stage_key")
+  modelVersion         String                     @map("model_version")
+  inputFingerprint     String                     @map("input_fingerprint")
+  status               DrivingAnalysisStageStatus @default(PENDING)
+  attemptCount         Int                        @default(0) @map("attempt_count")
+  startedAt            DateTime?                  @map("started_at")
+  completedAt          DateTime?                  @map("completed_at")
+  errorCode            String?                    @map("error_code")
+  errorMessage         String?                    @map("error_message")
+  preservedFromStageId String?                    @map("preserved_from_stage_id")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  updatedAt            DateTime                   @updatedAt @map("updated_at")
 
-  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  analysisRun      DrivingAnalysisRun      @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
-  preservedFromStage DrivingAnalysisStage? @relation("DrivingAnalysisStagePreserved", fields: [preservedFromStageId], references: [id], onDelete: SetNull)
-  preservedStages    DrivingAnalysisStage[]  @relation("DrivingAnalysisStagePreserved")
+  organization       Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  analysisRun        DrivingAnalysisRun     @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
+  preservedFromStage DrivingAnalysisStage?  @relation("DrivingAnalysisStagePreserved", fields: [preservedFromStageId], references: [id], onDelete: SetNull)
+  preservedStages    DrivingAnalysisStage[] @relation("DrivingAnalysisStagePreserved")
 
   @@unique([analysisRunId, stageKey])
   @@index([organizationId, stageKey, status])
@@ -8088,12 +8217,12 @@ model DrivingEvidence {
 }
 
 model MisuseCase {
-  id             String  @id @default(uuid())
-  organizationId String  @map("organization_id")
-  vehicleId      String  @map("vehicle_id")
-  tripId         String? @map("trip_id")
-  bookingId      String? @map("booking_id")
-  customerId     String? @map("customer_id")
+  id               String  @id @default(uuid())
+  organizationId   String  @map("organization_id")
+  vehicleId        String  @map("vehicle_id")
+  tripId           String? @map("trip_id")
+  bookingId        String? @map("booking_id")
+  customerId       String? @map("customer_id")
   assignedDriverId String? @map("assigned_driver_id")
   actualDriverId   String? @map("actual_driver_id")
 
@@ -9881,15 +10010,15 @@ model TripDrivingImpact {
   launchLikePer100Km   Float? @map("launch_like_per_100km")
 
   // Braking behavior metrics (derived from TripBehaviorEvent rows)
-  brakesPer100Km       Float? @map("brakes_per_100km")
-  stopDensity          Float? @map("stop_density")
-  highSpeedBrakeShare  Float? @map("high_speed_brake_share")
-  meanBrakeEnergyPerKm Float? @map("mean_brake_energy_per_km")
-  p95NegativeDecel     Float? @map("p95_negative_decel")
+  brakesPer100Km            Float? @map("brakes_per_100km")
+  stopDensity               Float? @map("stop_density")
+  highSpeedBrakeShare       Float? @map("high_speed_brake_share")
+  meanBrakeEnergyPerKm      Float? @map("mean_brake_energy_per_km")
+  p95NegativeDecel          Float? @map("p95_negative_decel")
   // P42 — measured/reconstructed vs ESTIMATED_PROXY braking kinematics (nullable for legacy rows)
-  p95NegativeDecelMeasured   Float? @map("p95_negative_decel_measured")
-  p95NegativeDecelProxy      Float? @map("p95_negative_decel_proxy")
-  meanBrakeEnergyProxyPerKm  Float? @map("mean_brake_energy_proxy_per_km")
+  p95NegativeDecelMeasured  Float? @map("p95_negative_decel_measured")
+  p95NegativeDecelProxy     Float? @map("p95_negative_decel_proxy")
+  meanBrakeEnergyProxyPerKm Float? @map("mean_brake_energy_proxy_per_km")
 
   // Normalized stress scores 0–100
   longitudinalStressScore Float? @map("longitudinal_stress_score")
@@ -9913,20 +10042,20 @@ model TripDrivingImpact {
   sourceSummaryJson Json?  @map("source_summary_json")
 
   // P41 — source provenance (nullable for legacy rows; readers use driving-impact-provenance.reader)
-  primarySource            String? @map("primary_source")
-  measuredShare            Float?  @map("measured_share")
-  providerClassifiedShare  Float?  @map("provider_classified_share")
-  reconstructedShare       Float?  @map("reconstructed_share")
-  estimatedProxyShare      Float?  @map("estimated_proxy_share")
-  contextOnlyShare         Float?  @map("context_only_share")
-  nativeEventCount         Int?    @map("native_event_count")
-  hfEventCount             Int?    @map("hf_event_count")
-  measurementCoverage      Float?  @map("measurement_coverage")
-  hardwareProfile          String? @map("hardware_profile")
-  capabilityVersion        String? @map("capability_version")
-  healthEligibility        String? @map("health_eligibility")
-  provenanceMaturity       String? @map("provenance_maturity")
-  provenanceVersion        String? @map("provenance_version")
+  primarySource           String? @map("primary_source")
+  measuredShare           Float?  @map("measured_share")
+  providerClassifiedShare Float?  @map("provider_classified_share")
+  reconstructedShare      Float?  @map("reconstructed_share")
+  estimatedProxyShare     Float?  @map("estimated_proxy_share")
+  contextOnlyShare        Float?  @map("context_only_share")
+  nativeEventCount        Int?    @map("native_event_count")
+  hfEventCount            Int?    @map("hf_event_count")
+  measurementCoverage     Float?  @map("measurement_coverage")
+  hardwareProfile         String? @map("hardware_profile")
+  capabilityVersion       String? @map("capability_version")
+  healthEligibility       String? @map("health_eligibility")
+  provenanceMaturity      String? @map("provenance_maturity")
+  provenanceVersion       String? @map("provenance_version")
 
   // P43 — structured vehicle load components (nullable for legacy rows)
   loadComponentsJson Json? @map("load_components_json")
@@ -9967,15 +10096,15 @@ model VehicleDrivingImpactCurrent {
   launchLikePer100Km   Float? @map("launch_like_per_100km")
 
   // Rolling behavior metrics
-  brakesPer100Km       Float? @map("brakes_per_100km")
-  stopDensity          Float? @map("stop_density")
-  highSpeedBrakeShare  Float? @map("high_speed_brake_share")
-  meanBrakeEnergyPerKm Float? @map("mean_brake_energy_per_km")
-  p95NegativeDecel     Float? @map("p95_negative_decel")
+  brakesPer100Km            Float? @map("brakes_per_100km")
+  stopDensity               Float? @map("stop_density")
+  highSpeedBrakeShare       Float? @map("high_speed_brake_share")
+  meanBrakeEnergyPerKm      Float? @map("mean_brake_energy_per_km")
+  p95NegativeDecel          Float? @map("p95_negative_decel")
   // P42 — measured/reconstructed vs ESTIMATED_PROXY braking kinematics
-  p95NegativeDecelMeasured   Float? @map("p95_negative_decel_measured")
-  p95NegativeDecelProxy      Float? @map("p95_negative_decel_proxy")
-  meanBrakeEnergyProxyPerKm  Float? @map("mean_brake_energy_proxy_per_km")
+  p95NegativeDecelMeasured  Float? @map("p95_negative_decel_measured")
+  p95NegativeDecelProxy     Float? @map("p95_negative_decel_proxy")
+  meanBrakeEnergyProxyPerKm Float? @map("mean_brake_energy_proxy_per_km")
 
   // Rolling stress scores (distance-weighted)
   longitudinalStressScore Float? @map("longitudinal_stress_score")
@@ -9988,21 +10117,21 @@ model VehicleDrivingImpactCurrent {
   /// @deprecated No longer updated on recompute; historical values may remain.
   safetyScore             Float? @map("safety_score")
 
-  modelVersion String   @map("model_version")
+  modelVersion String @map("model_version")
 
   // P41 — rolling provenance aggregate (distance-weighted where applicable)
-  primarySource            String? @map("primary_source")
-  measuredShare            Float?  @map("measured_share")
-  providerClassifiedShare  Float?  @map("provider_classified_share")
-  reconstructedShare       Float?  @map("reconstructed_share")
-  estimatedProxyShare      Float?  @map("estimated_proxy_share")
-  contextOnlyShare         Float?  @map("context_only_share")
-  measurementCoverage      Float?  @map("measurement_coverage")
-  hardwareProfile          String? @map("hardware_profile")
-  capabilityVersion        String? @map("capability_version")
-  healthEligibility        String? @map("health_eligibility")
-  provenanceMaturity       String? @map("provenance_maturity")
-  provenanceVersion        String? @map("provenance_version")
+  primarySource           String? @map("primary_source")
+  measuredShare           Float?  @map("measured_share")
+  providerClassifiedShare Float?  @map("provider_classified_share")
+  reconstructedShare      Float?  @map("reconstructed_share")
+  estimatedProxyShare     Float?  @map("estimated_proxy_share")
+  contextOnlyShare        Float?  @map("context_only_share")
+  measurementCoverage     Float?  @map("measurement_coverage")
+  hardwareProfile         String? @map("hardware_profile")
+  capabilityVersion       String? @map("capability_version")
+  healthEligibility       String? @map("health_eligibility")
+  provenanceMaturity      String? @map("provenance_maturity")
+  provenanceVersion       String? @map("provenance_version")
 
   // P43 — rolling structured load components snapshot
   loadComponentsJson Json? @map("load_components_json")
@@ -10010,7 +10139,7 @@ model VehicleDrivingImpactCurrent {
   // P46 — rolling window manifest (trip count, distance, source quality, exclusions)
   rollingWindowJson Json? @map("rolling_window_json")
 
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
