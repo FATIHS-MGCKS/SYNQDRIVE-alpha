@@ -1,0 +1,25 @@
+consumer_id,surface,layer,overallCondition,dataBasis,confidenceLevel,frontAxle,rearAxle,legacy_status,padsHealthPct,discsHealthPct,padsRemainingKm,discsRemainingKm,hasAlert,openAlerts,canonical_primary,legacy_as_truth,frontend_recompute,notes
+rental_health_evaluate,Rental Health / modules.brakes,backend,Y,Y,N,Y,Y,N,N,N,N,N,Y,partial,Y,N,N,Maps overallCondition→state; hasAlert escalates to min warning (L441-444); last_updated_at=lastRecalculatedAt not measurement time
+rental_health_block,Rental Blocking / blocking_reasons,backend,Y,Y,N,N,N,N,N,N,N,N,N,partial,Y,N,N,isBrakeBlockWorthy: CRITICAL AND (MEASURED OR critical openAlert); ESTIMATED CRITICAL alone does not block
+rental_health_gate,Booking Gate / isRentalBlocked,backend,Y,Y,N,N,N,N,N,N,N,N,N,partial,Y,N,N,Reuses getVehicleHealth; fail-closed UNAVAILABLE+manualReviewRequired on aggregation error; UI and gate share same blocking_reasons
+dtc_module,Rental Health / error_codes,backend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,Separate DtcService; safety-critical DTC band blocks independently of brake summary; active DTC not ingested to BrakeEvidence (P0-BH-06)
+brake_critical_detector,Business Insights / BRAKE_CRITICAL,backend,Y,N,N,Y,Y,N,Y,N,Y,N,N,N,partial,Y,N,N,Reads BHC percent fields + evidence; honesty guard caps unbacked CRITICAL to WARNING; dedupeKey brake_critical:{vehicleId}
+health_summary,Health Tab Summary API,backend,Y,N,Y,N,N,N,N,N,N,N,Y,Y,partial,Y,N,N,remainingKm falls back to legacy.remainingKm; hasAlert from summary.hasAlert
+ai_health_care,AI Health Care aggregation,backend,Y,Y,Y,N,N,N,N,N,N,N,Y,Y,Y,N,N,Read-only consumer of getSummary canonical fields
+rental_health_notifier,Notifications / BRAKE_CRITICAL projector,backend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,Emits from modules.brakes.state warning/critical only; fingerprint org|BRAKE_CRITICAL|vehicle|brakes_critical|v1; not per openAlert code
+notification_registry,Notification registry brake-health-warning,backend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,Maps to eventType BRAKE_CRITICAL; DE/EN titleKey notification.title.brakeCritical; STATE resolution policy
+vehicle_health_box,Vehicle Detail Overview Brake segment,frontend,Y,N,N,N,N,N,N,N,N,N,N,N,Y,N,N,Uses rental-health brakes.overallCondition via vehicle-health-box.mapper; shows NO_BASELINE when stateClass=NO_BASELINE
+health_errors_view,Vehicle Detail Health Tab / Brake modal,frontend,Y,Y,Y,Y,Y,N,N,N,N,N,Y,Y,Y,N,N,Canonical condition/basis/confidence/alerts; recordBrakeService for mutations; source guard test bans legacy %
+health_vehicle_detail_panel,Vehicle Detail brakes tab,frontend,Y,Y,Y,Y,Y,N,N,N,N,N,N,Y,Y,N,N,brake-health-canonical.test.ts guards against padsHealthPct in brakes block
+fleet_condition,Fleet Condition list + detail,frontend,Y,Y,Y,Y,Y,N,N,N,N,N,Y,Y,Y,N,N,Rental-health batch for ampel; lazy brakeHealthSummary on expand; criticalAlerts uses cd.brakes.hasAlert
+dashboard,Dashboard runtime / operational slices,frontend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,hasAlert on pickup/return from healthRiskVehicleIds not brake-specific; brake via rental-health module state in alerts derivation
+vehicle_insights,Insights / readiness / forecast,frontend,Y,N,N,N,N,N,N,N,N,N,N,N,Y,N,N,brakeCanonicalLevel uses overallCondition only; no legacy % fallback
+registration,Registration register-from-dimo,backend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,Writes VehicleBrakeReferenceSpec then BrakeLifecycleService.initializeFromRegistration; NEW without mm → documented 100% nominal (spec)
+service_ui,Service event forms / HealthErrorsView,frontend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,POST brake-health/service with scope[]; backend BrakeLifecycleService writes evidence + recalc
+ai_upload,Document extraction applyBrake,backend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,Confirmed AI values → BrakeEvidence; triggers recalculate; tested in document-extraction-apply.service.spec
+deprecated_brake_status,GET /vehicles/:id/brake-status,backend,N,N,N,N,N,N,Y,N,N,N,N,N,N,Y,N,Legacy heuristic on brakePadPercent + kmSinceService; marked deprecated in controller
+vehicles_fleet_score,Vehicles list brakes field,backend,N,N,N,N,N,N,Y,N,N,N,N,N,N,Y,N,vehicles.service returns state.brakePadPercent as brakes score (legacy telemetry)
+data_analyse,Data Analyse brake panel,backend,N,N,N,N,N,N,N,N,N,N,N,N,N,N,N,Read-only references BrakeHealthService / brake_health_current when present
+compose_summary_dto,API brake-health/summary+detail,backend,Y,Y,Y,Y,Y,derived,N,N,N,N,Y,Y,Y,N,N,legacy.* populated for compat; hasAlert=warning/critical openAlerts OR hasAlertOverride (legacy pad<40 or stale DB hasAlert)
+db_has_alert,BrakeHealthCurrent.hasAlert persistence,backend,N,N,N,N,N,N,N,N,N,N,partial,N,N,N,N,computeAlerts sets hasAlert true for ANY alert including COVERAGE_GAP/LOW_CONFIDENCE info; diverges from API hasAlert
+build_canonical_read_model,Canonical openAlerts producer,backend,Y,Y,Y,Y,Y,N,N,N,N,N,N,Y,Y,N,N,No COVERAGE_GAP/LOW_REMAINING_KM in openAlerts; uses BRAKE_PAD_* BRAKE_FLUID BRAKE_SYSTEM_DTC BRAKE_INSPECTION_OVERDUE BRAKE_HEALTH_LOW_CONFIDENCE

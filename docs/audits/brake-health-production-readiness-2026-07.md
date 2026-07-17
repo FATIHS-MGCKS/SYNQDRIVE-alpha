@@ -5,8 +5,8 @@
 | **Audit ID** | `brake-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/brake-health-production-readiness-2026-07` |
-| **Phase** | **5 of 7 — Historical Wear-Model Backtest** |
-| **Status** | Phases 1–5 complete; Phases 6–7 pending |
+| **Phase** | **6 of 7 — Consumer Wiring, Safety Policy & Test Audit** |
+| **Status** | Phases 1–6 complete; Phase 7 pending |
 | **Production-Readiness verdict (preliminary)** | **`NOT_READY`** — fleet has zero initialized brake baselines |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | 60 days ending 2026-07-17 UTC |
@@ -78,6 +78,9 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Ground-truth classification CSV | `docs/audits/data/brake-health-ground-truth-classification-2026-07.csv` | 5 |
 | Confidence calibration CSV | `docs/audits/data/brake-health-confidence-calibration-2026-07.csv` | 5 |
 | Backtest script | `scripts/audits/audit-brake-health-backtest.ts` | 5 |
+| Consumer wiring CSV | `docs/audits/data/brake-health-consumer-wiring-2026-07.csv` | 6 |
+| Alert/blocking matrix CSV | `docs/audits/data/brake-health-alert-blocking-matrix-2026-07.csv` | 6 |
+| Test coverage matrix CSV | `docs/audits/data/brake-health-test-coverage-2026-07.csv` | 6 |
 | Consumer wiring CSV | `docs/audits/data/brake-health-consumer-wiring-2026-07.csv` | 6 (pending) |
 | Test coverage CSV | `docs/audits/data/brake-health-test-coverage-2026-07.csv` | 6 (pending) |
 
@@ -1075,14 +1078,150 @@ No segment produced n≥1. Fleet has **5 ICE + 1 EV** but zero measured anchors;
 
 ---
 
-## 9. Phase 6 preview (not executed)
+## 9. Phase 6 — Consumer wiring, safety policy & test audit
 
-- Full consumer matrix CSV
-- Rental blocking policy vs canonical CRITICAL rules
-- Frontend measured/estimated display audit
-- Prometheus metric gap analysis
+**Scope:** Read-only code + test audit of brake-health truth propagation to Rental Health, Rental Blocking, DTC, Alerts, Notifications, Vehicle Detail, Fleet, Dashboard, Registration, Service UI, AI Upload, Booking Gate; plus performance/scheduling/observability and a 36-scenario test matrix.
 
-## 11. Phase 7 preview (not executed)
+**Artifacts:** `brake-health-consumer-wiring-2026-07.csv`, `brake-health-alert-blocking-matrix-2026-07.csv`, `brake-health-test-coverage-2026-07.csv`; findings **P1-BH-52**–**P2-BH-59** appended to `brake-health-integrity-findings-2026-07.json`.
+
+**Tests executed (read-only):**
+
+| Suite | Result |
+|-------|--------|
+| Backend `jest --testPathPattern='brake\|rental-health.service.spec'` | **9 suites, 161 passed** |
+| Frontend `vitest brake-health-canonical` | **3 passed** |
+
+**VPS read-only (unchanged fleet state):** `brake_health_current` initialized **0**; `trip_driving_impact` 60d **356**; `vehicle_enrichment_jobs` BRAKE **PENDING 6**.
+
+### 9.1 Teil 1 — Canonical versus legacy
+
+| # | Question | Verdict |
+|---|----------|---------|
+| 1 | Nutzen alle produktiven Consumer `overallCondition`? | **Mostly yes** — Rental Health, Insights, Fleet/Detail UI, BrakeCriticalDetector, Health Summary (partial). **Exceptions:** deprecated `GET /brake-status`, `vehicles.service` fleet `brakes` score (`brakePadPercent`), legacy `computeAlerts` mm thresholds on DB recalc. |
+| 2 | Legacy-Prozente als Wahrheit? | **No** for primary rental/UI surfaces (canonical-first). **Yes** for deprecated `/brake-status`, fleet list score, and internal `BrakeHealthCurrent.padsHealthPct` wear math / legacy DTO `legacy.*` compat fields. |
+| 3 | Frontend-Eigenberechnungen? | **No condition re-derivation** — `brakeCanonicalLevel()` reads `overallCondition` only. Aggregation of fleet effective health uses rental-health module states client-side (not pad-% thresholds). |
+| 4 | Legacy vs canonical divergent states? | **Yes, possible** — uninitialized: `legacy.status` + `hasAlertOverride` from `brakePadPercent<40` or stale DB `hasAlert` while `overallCondition=UNKNOWN`. Initialized: legacy `padsHealthPct` in DTO can disagree with canonical condition bands. |
+| 5 | Geschätzt vs gemessen sichtbar? | **Yes** — API exposes `dataBasis`, `frontDataBasis`, `rearDataBasis`, `confidenceLevel`, `stateClass` (`MEASURED`/`ESTIMATED`/`NO_BASELINE`/`WARNING_ONLY`), `legacyHeuristic.note`. UI shows basis in HealthErrorsView / Fleet detail. |
+| 6 | Front-/Hinterachse getrennt? | **Yes** in canonical API (`frontAxle`/`rearAxle`, per-axle openAlerts). Legacy `computeAlerts` labels front/rear in messages but does not surface in `openAlerts`. |
+
+### 9.2 Teil 2 — Rental health & blocking
+
+| Function | Role | Finding |
+|----------|------|---------|
+| `evaluateBrakes` | Maps `overallCondition` → module state; `hasAlert` → min `warning` | **P1-BH-52** — can escalate GOOD→warning via `hasAlert` without warning/critical `openAlert` |
+| `brakeDataBasisToEvidenceType` | Stronger of overall/front/rear `dataBasis` | Correct mapping DOCUMENTED→document, MEASURED→measured |
+| `isBrakeBlockWorthy` | Hard block only if CRITICAL + (MEASURED or critical `openAlert`) | Aligns with policy A/C; ESTIMATED CRITICAL alone **does not block** (tested) |
+| `collectBlockingReasons` | Human `blocking_reasons[]` | Brake reason only when `isBrakeBlockWorthy` |
+| `isRentalBlocked` | Booking gate | **Identical** to UI — reuses `getVehicleHealth`; fail-closed `UNAVAILABLE` + `manualReviewRequired` |
+
+**Rental-health Q&A:**
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | COVERAGE_GAP sets `hasAlert=true`? | **DB yes** (`computeAlerts` any alert); **API `hasAlert` no** (filtered to warning/critical unless `hasAlertOverride`) |
+| 2 | GOOD→Warning via info? | **Possible** via `hasAlertOverride` (stale DB flag / legacy pad) — **not via COVERAGE_GAP on API path alone** |
+| 3 | Info/Warning/Critical separation? | **Canonical `openAlerts` yes**; **DB `hasAlert` no** (includes info) |
+| 4 | `last_updated_at` evidence time? | **No** — uses `lastRecalculatedAt` (recalc time), not `lastMeasurementAt` |
+| 5 | `data_stale` sensible? | **48h stale threshold** — marks recalc freshness, not measurement freshness |
+| 6 | Block only real safety evidence? | **Mostly** — requires MEASURED CRITICAL or critical `openAlert`; pure estimate blocked from hard gate |
+| 7 | ESTIMATED legacy-critical alert hard block? | **No** — without MEASURED basis or critical `openAlert` |
+| 8 | Old DTC evidence block? | **No live DTC path** — evidence-only; stale evidence not freshness-gated (gap) |
+| 9 | Booking gate = UI? | **Yes** — same `blocking_reasons` |
+| 10 | Module failure | **Gate:** blocked + manual review (`UNAVAILABLE`). **Brakes module:** unknown if summary null; aggregation failure fails whole health fetch |
+
+### 9.3 Teil 3 — Safety policy assessment
+
+| Policy | Requirement | Implementation | Gap |
+|--------|-------------|----------------|-----|
+| A | Measured under limit → HARD_BLOCK | `isBrakeBlockWorthy` MEASURED + CRITICAL | OK when initialized |
+| B | Active safety Brake/ABS/DTC evidence | Critical `openAlert` / evidence `dtcSeverity` | **P0-BH-06** live DTC not in BrakeEvidence |
+| C | Immediate replacement → HARD_BLOCK | `immediateReplacement` → CRITICAL condition | OK; no dedicated alert code |
+| D | Pure wear prediction critical → max WARNING | `classifyEstimatedCondition` cap + detector honesty | OK (tested) |
+| E | Spec-fallback never alone HARD_BLOCK | ESTIMATED/DOCUMENTED CRITICAL no block without openAlert | OK |
+| F | Stale/missing → UNKNOWN/REVIEW not GOOD | `evaluateBrakes` unknown for null/UNKNOWN | OK; stale recalc still may show last condition |
+| G | Coverage gap = data quality not wear | COVERAGE_GAP info in legacy only | **P1-BH-53** not in `openAlerts` |
+| H | ABS warning = safety not wear % | Not implemented | **P2-BH-58** |
+
+### 9.4 Teil 4 — Alerts & notifications
+
+- **Dual alert pipelines:** `computeAlerts()` (DB persistence, English messages, includes PAD_/DISC_/REMAINING_KM/COVERAGE_GAP) vs `buildCanonicalReadModel()` (`BRAKE_*` codes, DE messages, no coverage/remaining-km alerts).
+- **Dedupe:** Insights/notifications use `brake_critical:{vehicleId}` fingerprint; not per alert code.
+- **Resolution:** Notification registry `STATE_RESOLUTION` on `BRAKE_CRITICAL` event type.
+- **Rental-health notifications:** `projectVehicleHealthWarnings` emits one `BRAKE_CRITICAL` per vehicle from module state — not per `openAlert`.
+- **DE/EN:** Canonical reasons/recommendations DE; legacy `computeAlerts` EN; notification i18n keys `notification.title.brakeCritical`.
+- **Parallel recalc:** Trip-end fire-and-forget + hourly scheduler — no queue dedupe (**P2-BH-59**).
+
+### 9.5 Teil 5 — Frontend & API
+
+| Surface | Canonical? | Notes |
+|---------|------------|-------|
+| Vehicle Detail Overview | Yes | `vehicle-health-box.mapper` — NO_BASELINE label |
+| Health Tab / Brake modal | Yes | `HealthErrorsView`; service + AI actions |
+| Fleet / Dashboard | Yes (ampel) | Rental-health batch; lazy VI detail on expand |
+| Registration | N/A | Spec → lifecycle init; NEW → nominal documented basis |
+| Booking eligibility | Yes | `rental_blocked` / picker preflight |
+| New vehicle “100%” | Partial | Documented NEW nominal — **must explain spec basis in UI** (reasons array) |
+| Spec-fallback visible | Yes | `dataBasis=DOCUMENTED`, `confidenceLevel` may be HIGH (**P1-BH-50**) |
+| Measurement visible | Yes | `lastMeasurementAt`, `stateClass=MEASURED` |
+| Pads/discs separate | Detail only | `legacy.{frontPads,...}` in detail; summary uses axle aggregates |
+| Front/rear separate | Yes | `frontAxle`/`rearAxle` |
+| Last measurement/service | Yes | API fields present |
+| Coverage shown | Partial | `modelCoverage` DTO; COVERAGE_GAP not in `openAlerts` |
+| Low-confidence km precision | Mitigated | Range min/max fields; confidence shown |
+| UNKNOWN / NO_BASELINE / WARNING_ONLY | Yes | `stateClass` + condition UNKNOWN |
+| Add measurement / service scope | Yes | `recordBrakeService` / `initialize` with `scope[]` |
+| Partial repair recognition | Partial | Scope on service; no dedicated partial-repair UI test |
+| Loading/error/empty | Present | Standard VI loading; NO_BASELINE copy |
+| Mobile / theme / i18n / a11y | Partial | DE primary; no brake-specific a11y audit |
+
+### 9.6 Teil 6 — Performance & observability
+
+| Area | Finding |
+|------|---------|
+| Recalc frequency | Hourly `@Interval(3600000)` + post-trip `recalculate()` fire-and-forget |
+| TripImpact since anchor | Indexed `trip_driving_impact`; grows with service interval — no anchor-partition metric |
+| N+1 / query plans | Scheduler sequential per vehicle; rental-health parallel module fan-out |
+| Rolling impact | `getVehicleImpactForBrake` for uncovered gap — historical bias risk (**P1-BH-38**) |
+| Worker/queue | **No BullMQ** for brake recalc |
+| Race/retry | No per-vehicle lock; warn-log only on failure |
+| Prometheus | **All listed `brake_*` metrics absent** (**P1-BH-54**) — contrast `TireHealthObservabilityService` |
+| VPS ops | Cannot report recalc/day, durations, blocks — fleet uninitialized → zero recalc events |
+
+**Metric checklist:** `brake_recalculation_total`, `brake_recalculation_failed_total`, `brake_recalculation_duration`, `brake_anchor_created_total`, `brake_spec_fallback_total`, `brake_service_scope_mismatch_total`, `brake_trip_coverage_ratio`, `brake_trip_overcoverage_total`, `brake_rolling_gap_km`, `brake_measurement_total`, `brake_prediction_error_mm`, `brake_calibration_k_factor`, `brake_evidence_total`, `brake_evidence_duplicate_total`, `brake_safety_signal_active`, `brake_alert_total`, `brake_rental_block_total`, `brake_dimo_signal_coverage` — **all MISSING**.
+
+### 9.7 Teil 7 — Test audit summary
+
+| Coverage type | Brake-specific |
+|---------------|----------------|
+| Unit | **Strong** — wear math, canonical honesty, rental blocking rules |
+| Integration | **Weak** — no init→trip→recalc DB test |
+| Database | **None** dedicated |
+| Historical replay | Audit script only (Phase 5) |
+| Multi-tenant | **Gap** |
+| Idempotency | **Gap** (orphan `BrakeTripMetric`) |
+| Concurrency | **Gap** |
+| Frontend | **Minimal** — source guard test only |
+| E2E | **Gap** |
+| DIMO/HM contract | Audit scripts / Phase 4 only |
+
+**36-scenario matrix:** 12 COVERED, 10 PARTIAL, 14 GAP — see `brake-health-test-coverage-2026-07.csv`.
+
+### 9.8 Phase-6 findings (new)
+
+| ID | Sev | Finding |
+|----|-----|---------|
+| **P1-BH-52** | P1 | `hasAlert` dual semantics / rental escalation risk |
+| **P1-BH-53** | P1 | `COVERAGE_GAP` legacy-only, not in `openAlerts` |
+| **P1-BH-54** | P1 | No Prometheus brake metrics |
+| **P2-BH-55** | P2 | Deprecated `/brake-status` legacy heuristic |
+| **P2-BH-56** | P2 | Fleet list `brakePadPercent` score |
+| **P2-BH-57** | P2 | Health-summary `legacy.remainingKm` fallback |
+| **P2-BH-58** | P2 | Missing ABS / SPEC_UNCONFIRMED / MEASUREMENT_REQUIRED codes |
+| **P2-BH-59** | P2 | Scheduler without queue/locks/metrics |
+
+---
+
+## 10. Phase 7 preview (not executed)
 
 - Final `NOT_READY` / `READY` / `SHADOW_ONLY` verdict
 - Remediation sequence: backfill → fleet recalc → evidence wiring → calibration
@@ -1130,17 +1269,19 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-brake-health-from-re
 | 2026-07-17 | 3 | VPS 60d integrity: fleet coverage, anchor/scope/trip/evidence CSVs, findings JSON (12 findings) |
 | 2026-07-17 | 4 | DIMO brake signal audit: 156 GraphQL queries, 3 CSV artifacts, `audit-brake-health-dimo-signals.ts` |
 | 2026-07-17 | 5 | Historical backtest: 0 GT measurements, NOT_ENOUGH_DATA verdict, 3 CSV artifacts, `audit-brake-health-backtest.ts` |
+| 2026-07-17 | 6 | Consumer wiring + safety policy + test matrix; 3 CSV artifacts; 161+3 tests passed; findings P1-BH-52–P2-BH-59 |
 
 ---
 
-## Confirmation (Phases 1–5)
+## Confirmation (Phases 1–6)
 
-- ✅ No production data was modified during Phases 1–5.
+- ✅ No production data was modified during Phases 1–6.
 - ✅ No brake recalculation, evidence creation, or anchor mutations were triggered.
 - ✅ No DIMO triggers or subscriptions were created.
 - ✅ No infrastructure was changed (PM2, Redis, PostgreSQL, ClickHouse, Docker, workers).
 - ✅ No secrets, VINs, license plates, token IDs, GPS coordinates, customer PII, or raw telemetry are stored in committed audit artifacts.
 - ✅ Phase 3–5 VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
+- ✅ Phase 6 re-confirmed VPS read-only fleet state (0 initialized BHC).
 - ✅ Phase 5 backtest used **isolated formula replay** — no `recalculate()` or calibration writes.
-- ✅ Phase 2 was **code-only** static analysis.
-- ⏳ Phases 6–7 **not started** per audit plan.
+- ✅ Phase 2 & 6 were **code-only** static analysis plus test execution.
+- ⏳ Phase 7 **not started** per audit plan.

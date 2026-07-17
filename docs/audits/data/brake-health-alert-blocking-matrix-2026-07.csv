@@ -1,0 +1,20 @@
+alert_code,producer,severity_in_producer,in_openAlerts,in_legacy_computeAlerts,dedupe_key,resolution_path,service_scope_aware,component_specific,dtc_clearance,estimated_vs_measured,rental_health_state_effect,rental_hard_block,notification_emit,insight_emit,de_en_text,audit_notes
+PAD_WARNING,computeAlerts (legacy DB),warning,no,yes,N/A,N/A,no,yes (front/rear pads),N/A,measured mm thresholds,N/A,N,no,no,EN only in computeAlerts messages,Not in canonical openAlerts; DB hasAlert may still flip on recalc
+PAD_CRITICAL,computeAlerts (legacy DB),critical,no,yes,N/A,N/A,no,yes,N/A,measured mm,N/A,N,no,no,EN only,Legacy path only; canonical uses BRAKE_PAD_CRITICAL from condition bands
+DISC_WARNING,computeAlerts (legacy DB),warning,no,yes,N/A,N/A,no,yes (front/rear discs),N/A,anchor-based wear,N/A,N,no,no,EN only,Not in openAlerts
+DISC_CRITICAL,computeAlerts (legacy DB),critical,no,yes,N/A,N/A,no,yes,N/A,anchor-based wear,N/A,N,no,no,EN only,Not in openAlerts
+LOW_REMAINING_KM,computeAlerts (legacy DB),warning,no,yes,N/A,N/A,no,aggregate min pads/discs km,N/A,estimated remaining,N/A,N,no,no,EN only,Can fire on ESTIMATED remaining km; not in openAlerts
+CRITICAL_REMAINING_KM,computeAlerts (legacy DB),critical,no,yes,N/A,N/A,no,aggregate,N/A,estimated remaining,N/A,N,no,no,EN only,Does not alone trigger rental block (no openAlert path)
+COVERAGE_GAP,computeAlerts (legacy DB),info,no,yes,N/A,N/A,no,N/A,N/A,data quality,N/A,N,no,no,EN only,P1-BH-53: info alert sets DB hasAlert=true but API filters; can inflate hasAlertOverride on uninitialized path
+LOW_CONFIDENCE,computeAlerts (legacy DB),info,no,yes,N/A,N/A,no,N/A,N/A,data quality,N/A,N,no,no,EN only,Canonical equivalent BRAKE_HEALTH_LOW_CONFIDENCE in openAlerts
+ABS_WARNING,NOT_IMPLEMENTED,N/A,no,no,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N,no,no,N/A,No ABS-specific brake alert code; HM ABS would need evidence path
+BRAKE_PAD_WARNING,buildCanonicalReadModel,warning,yes,no,per vehicle condition,N/A,no,yes (axle),N/A,condition band (est caps WARNING),escalates module if overall WARNING+,N,no,yes (if WARNING+),DE+EN via reasons,Honesty: ESTIMATED never CRITICAL alone
+BRAKE_PAD_CRITICAL,buildCanonicalReadModel,critical,yes,no,per vehicle,N/A,no,yes,N/A,measured/evidence backed,CRITICAL module state,YES if MEASURED or critical openAlert,yes,yes,DE+EN,Rental block requires MEASURED basis or critical openAlert
+BRAKE_SYSTEM_DTC,buildCanonicalReadModel,warning/critical/info,yes,no,N/A,N/A,no,N/A,partial (evidence only),sensor/evidence,WARNING+/CRITICAL,YES if CRITICAL+MEASURED path,N,yes,DE+EN,Live VehicleDtcEvent not auto-ingested; evidence dtcSeverity only
+BRAKE_FLUID_WARNING,buildCanonicalReadModel,warning/critical,yes,no,N/A,N/A,no,fluid,N/A,documented,WARNING+/CRITICAL,YES if CRITICAL+real signal,yes,yes,DE+EN,
+BRAKE_INSPECTION_OVERDUE,buildCanonicalReadModel,warning,yes,no,N/A,N/A,no,N/A,N/A,time/km since service,WARNING if drives condition,N,no,yes,DE+EN,
+BRAKE_HEALTH_LOW_CONFIDENCE,buildCanonicalReadModel,info,yes,no,N/A,N/A,no,N/A,N/A,data quality,no state change alone,N,no,no,DE+EN,Info severity — does not set API hasAlert
+IMMEDIATE_REPLACEMENT,evidence immediateReplacement flag,N/A,no,no,N/A,N/A,no,component,N/A,documented,forces CRITICAL condition,YES if CRITICAL+openAlert critical,N,no,yes,DE via recommendations,No dedicated alert code; escalates safety condition
+MEASUREMENT_REQUIRED,NOT_IN_BRAKE,N/A,no,no,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N,no,no,N/A,Tire module pattern only; brake uses UNKNOWN/NO_BASELINE
+SPEC_UNCONFIRMED,NOT_IMPLEMENTED,N/A,no,no,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N,no,no,N/A,No spec-unconfirmed alert; spec fallback shows as DOCUMENTED/ESTIMATED basis
+BRAKE_CRITICAL insight,BrakeCriticalDetector,warning/critical,N/A,N/A,brake_critical:{vehicleId},STATE_RESOLUTION via insights,N/A,N/A,N/A,estimated capped,indirect via fleet alerts,N,no,yes (registry),DE+EN notification keys,WATCH emits INFO insight (may be noisy)

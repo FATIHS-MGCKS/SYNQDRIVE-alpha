@@ -1,0 +1,37 @@
+scenario_id,scenario,unit,integration,database,historical_replay,multi_tenant,idempotency,concurrency,frontend,e2e,dimo_contract,hm_contract,regression,verdict,primary_test_file,notes
+1,new_vehicle,Y,N,N,N,N,N,N,partial,N,N,N,Y,COVERED,brake-registration-regression.spec.ts; brake-health.spec.ts,NO_BASELINE / uninitialized summary
+2,measured_baseline,Y,N,N,N,N,N,N,N,N,N,N,Y,COVERED,brake-registration-regression.spec.ts; register-brake-baseline.spec.ts,NEW+mm → MEASURED evidence
+3,spec_fallback,Y,N,N,N,N,N,N,N,N,N,N,Y,COVERED,brake-registration-regression.spec.ts; brake-registration-backfill.service.spec.ts,DOCUMENTED not MEASURED; 0 fleet rows
+4,front_pads_only,partial,N,N,N,N,N,N,N,N,N,N,N,PARTIAL,brake-lifecycle.service.spec.ts,No explicit front-only scope isolation test
+5,rear_pads_only,partial,N,N,N,N,N,N,N,N,N,N,N,GAP,,No dedicated rear-only test
+6,front_discs_only,partial,N,N,N,N,N,N,N,N,N,N,N,GAP,,Disc modeling tested in wear math not scope-only
+7,inspection_only,partial,N,N,N,N,N,N,N,N,N,N,N,PARTIAL,brake-lifecycle.service.spec.ts,kind=inspection path lightly covered
+8,fluid_service,partial,N,N,N,N,N,N,N,N,N,N,N,PARTIAL,brake-health.spec.ts,BRAKE_FLUID_WARNING from evidence
+9,full_service,partial,N,N,N,N,N,N,N,N,N,N,N,PARTIAL,brake-lifecycle.service.spec.ts,initialize + service writes evidence
+10,service_scope_preservation,partial,N,N,N,N,N,N,N,N,N,N,N,GAP,,Phase 2 noted scope not passed to init on partial service
+11,k_factor_preservation,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,P1-BH-51 no calibrateFromMeasurement runtime
+12,service_partial_failure,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,No transaction rollback test for partial brake service
+13,duplicate_evidence,Y,N,N,N,N,N,N,N,N,N,N,N,COVERED,brake-evidence.spec.ts; backfill skips conflicting evidence,Fleet 0 rows
+14,ai_confirmation,partial,N,N,N,N,N,N,N,N,N,N,partial,PARTIAL,document-extraction-apply.service.spec.ts,applyBrake path exists; no full E2E
+15,no_odometer,Y,N,N,N,N,N,N,N,N,N,N,Y,COVERED,register-brake-baseline.spec.ts; backfill skips missing odometer,
+16,odometer_rollback,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,Tire has MEASUREMENT_REQUIRED; brake has no equivalent test
+17,trip_impact_missing,partial,N,N,N,N,N,N,N,N,N,N,N,PARTIAL,brake-health.spec.ts recalculate,Early return when not initialized
+18,overcoverage,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,No overcoverage unit test; metric brake_trip_overcoverage_total missing
+19,rolling_gap,Y,N,N,N,N,N,N,N,N,N,N,N,COVERED,brake-health.spec.ts trip_impacts_plus_rolling_gap,P1-BH-38 historical bias risk
+20,historical_replay_rolling,N,N,Y,N,N,N,N,N,N,N,N,N,GAP,,Phase 5 backtest NOT_ENOUGH_DATA; no replay with rolling
+21,ev_ice_hev_phev,Y,N,N,N,N,N,N,N,N,N,N,N,COVERED,brake-health.spec.ts reku factors,Config matrix not exhaustive per fuelType
+22,front_rear_bias,partial,N,N,N,N,N,N,N,N,N,N,N,PARTIAL,brake-health.spec.ts,Per-axle fields in canonical model
+23,generic_disc_wear_limit,Y,N,N,N,N,N,N,N,N,N,N,Y,COVERED,brake-status.spec.ts,maxWearMm generic limit
+24,calibration,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,Schema fields exist; no writer tests
+25,calibration_target_leakage,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,N/A without calibration runtime
+26,info_alert_no_warning_escalation,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,P1-BH-52: no test that COVERAGE_GAP/hasAlert does not escalate rental GOOD→warning
+27,estimated_never_critical,Y,N,N,N,N,N,N,N,N,N,N,Y,COVERED,brake-status.spec.ts; brake-health.spec.ts; brake-critical.detector.spec.ts,
+28,measured_critical,Y,N,N,N,N,N,N,N,N,N,N,Y,COVERED,brake-health.spec.ts; rental-health.service.spec.ts MEASURED CRITICAL blocks,
+29,dtc_active_cleared,partial,N,N,N,N,N,N,N,N,N,N,N,PARTIAL,brake-health.spec.ts evidence dtcSeverity,No live DTC→evidence ingestion test
+30,abs_warning,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,Alert code not implemented
+31,stale_safety_evidence,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,No freshness gate on evidence for blocking
+32,rental_blocking,Y,N,N,N,N,N,N,N,N,N,N,Y,COVERED,rental-health.service.spec.ts,ESTIMATED CRITICAL no block; MEASURED yes
+33,legacy_consumer_regression,partial,N,N,N,N,N,N,Y,N,N,N,partial,PARTIAL,brake-health-canonical.test.ts,Source guard only; deprecated /brake-status untested
+34,multi_tenant,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,Rental health org-scoped but no cross-tenant brake test
+35,concurrent_recalculation,N,N,N,N,N,N,N,N,N,N,N,N,GAP,,Hourly scheduler sequential; no lock/dedupe tests
+36,dimo_capability_gating,N,N,N,N,N,N,N,N,N,partial,N,N,PARTIAL,audit-brake-health-dimo-signals.ts (audit script),0/6 vehicles chassisBrake signals; not in jest suite
