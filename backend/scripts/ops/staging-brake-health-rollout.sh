@@ -45,7 +45,7 @@ sudo -u postgres pg_dump "$SOURCE_DB" | sudo -u postgres psql -v ON_ERROR_STOP=1
 export DATABASE_URL="$(rewrite_database_url "$PROD_DATABASE_URL" "$STAGING_DB")"
 
 echo "==> 3. Migrate status"
-npx prisma migrate status
+npx prisma migrate status || true
 
 echo "==> 4. Migrate deploy + generate"
 npm run prisma:migrate:deploy
