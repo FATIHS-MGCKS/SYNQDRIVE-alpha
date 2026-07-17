@@ -46,7 +46,8 @@
     "clickhouse:backup:local": "npm run clickhouse:backup:docker",
     "clickhouse:restore:local": "npm run clickhouse:restore:docker",
     "ops:bootstrap-smoke": "ts-node -r tsconfig-paths/register scripts/ops/bootstrap-smoke.ts",
-    "ops:pm2-config-validate": "node -e \"const c=require('./ecosystem.config.cjs'); if(!c.apps?.[0]?.name) throw new Error('invalid ecosystem'); console.log('PM2 ecosystem OK:', c.apps[0].name);\""
+    "ops:document-worker-smoke": "ts-node -r tsconfig-paths/register scripts/ops/document-worker-bootstrap-smoke.ts",
+    "ops:pm2-config-validate": "node -e \"const c=require('./ecosystem.config.cjs'); if(!c.apps?.[0]?.name) throw new Error('invalid ecosystem'); console.log('PM2 apps:', c.apps.map(a=>a.name).join(', '));\""
   },
   "dependencies": {
     "@clickhouse/client": "^1.18.2",

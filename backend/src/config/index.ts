@@ -25,6 +25,7 @@ export { default as taskAutomationOutboxConfig } from './task-automation-outbox.
 export { default as drivingIntelligenceV2Config } from './driving-intelligence-v2.config';
 export { default as batteryHealthV2Config } from './battery-health-v2.config';
 export { default as batteryV2RetentionConfig } from './battery-v2-retention.config';
+export { default as processRoleConfig } from './process-role.config';
 export {
   BATTERY_CRANK_SIGNAL_CADENCE_MS,
   BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV,

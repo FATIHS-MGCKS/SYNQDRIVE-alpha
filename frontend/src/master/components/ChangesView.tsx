@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-extraction-worker-pm2-split-2026-07-17',
+    version: '4.9.583',
+    title: 'V4.9.583 — Document Extraction Worker PM2 Split (opt-in)',
+    summary: [
+      'Opt-in `DOCUMENT_EXTRACTION_WORKER_SPLIT`: separater PM2-Prozess `synqdrive-document-worker` für `document.extraction` Consumer + Recovery Scheduler.',
+      'API-Prozess (`SYNQDRIVE_PROCESS_ROLE=api`): Enqueue/HTTP ohne Document-Processor — kein doppelter Queue-Consumer.',
+      '`DocumentWorkerAppModule` ohne HTTP/WorkersModule; Colocated-Scheduler-Guards auf Invoice/Task-Schedulern.',
+      'Rollback: Flag `false` + `pm2 reload ecosystem.config.cjs` → Monolith wie bisher.',
+    ],
+    reason:
+      'Prompt 7/84: Document-Worker vom API-Lifecycle entkoppeln ohne Docker — Worker-Ausfall beendet API nicht; genau ein Recovery Scheduler.',
+    previousBehavior:
+      'Single-fork `synqdrive`: API + DocumentExtractionProcessor + Recovery Scheduler + alle Fleet-Worker im selben Prozess.',
+    details:
+      'process-role.util.ts, document-worker-app.module.ts, main-document-worker.ts, document-extraction.module.ts, ecosystem.config.cjs, docs/audits/document-extraction-worker-pm2-split.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T14:45:00.000Z',
+  },
+  {
     id: 'pm2-stability-bootstrap-fix-2026-07-17',
     version: '4.9.582',
     title: 'V4.9.582 — PM2 Bootstrap-Stabilität (Audit Prompt 6)',

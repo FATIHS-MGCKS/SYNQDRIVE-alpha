@@ -50,6 +50,9 @@ sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
   -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
 npm run build
 npm run ops:bootstrap-smoke
+if grep -Eq '^DOCUMENT_EXTRACTION_WORKER_SPLIT=(true|1)' .env 2>/dev/null; then
+  npm run ops:document-worker-smoke
+fi
 
 echo "==> Frontend install/build"
 cd "$RELEASE_DIR/frontend"

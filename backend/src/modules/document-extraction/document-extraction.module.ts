@@ -21,6 +21,22 @@ import { DocumentExtractionRecoveryScheduler } from '@workers/schedulers/documen
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import {
+  shouldRegisterDocumentExtractionApi,
+  shouldRegisterDocumentExtractionConsumers,
+} from '@shared/runtime/process-role.util';
+
+const documentExtractionControllers = shouldRegisterDocumentExtractionApi()
+  ? [
+      DocumentExtractionController,
+      DocumentExtractionOrgController,
+      DocumentExtractionMetadataController,
+    ]
+  : [];
+
+const documentExtractionConsumers = shouldRegisterDocumentExtractionConsumers()
+  ? [DocumentExtractionProcessor, DocumentExtractionRecoveryScheduler]
+  : [];
 
 /**
  * AI Document Upload feature module.
@@ -38,11 +54,7 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     AiModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.DOCUMENT_EXTRACTION }),
   ],
-  controllers: [
-    DocumentExtractionController,
-    DocumentExtractionOrgController,
-    DocumentExtractionMetadataController,
-  ],
+  controllers: documentExtractionControllers,
   providers: [
     DocumentExtractionService,
     DocumentExtractionMetadataService,
@@ -51,12 +63,11 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     DocumentFileIdentificationService,
     DocumentTextExtractorService,
     DocumentContentExtractorService,
-    DocumentExtractionProcessor,
     DocumentExtractionHealthService,
-    DocumentExtractionRecoveryScheduler,
     DocumentExtractionObservabilityService,
     LocalDocumentStorageService,
     { provide: DOCUMENT_STORAGE, useClass: LocalDocumentStorageService },
+    ...documentExtractionConsumers,
   ],
   exports: [DocumentExtractionService, DocumentExtractionApplyService, DocumentExtractionHealthService],
 })
