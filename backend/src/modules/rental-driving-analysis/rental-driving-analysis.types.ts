@@ -1,5 +1,6 @@
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
 import type { DrivingAttributionType } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.types';
+import type { RentalDrivingNormalizedMetrics } from './rental-driving-analysis.metrics';
 
 export type RentalDrivingAttributionSummary = {
   analysisSource: 'booking_assignment' | 'time_window_fallback' | 'none';
@@ -98,6 +99,7 @@ export interface RentalDrivingAnalysisPayload {
     eventHighlights: string[];
     attributionHints?: Array<{ id: string; attributionReason: string }>;
   };
+  rentalMetrics?: RentalDrivingNormalizedMetrics;
   wearImpactAssessment: {
     overallWearImpact: 'low' | 'medium' | 'medium_to_high' | 'high';
     summary: string;

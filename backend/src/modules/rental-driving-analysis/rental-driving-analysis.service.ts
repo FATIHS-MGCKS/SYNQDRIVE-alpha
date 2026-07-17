@@ -19,11 +19,7 @@ import {
 } from '../vehicle-intelligence/trips/driver-score.service';
 import { TripAttributionService } from '../vehicle-intelligence/trips/trip-attribution.service';
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
-import type {
-  RentalDrivingAnalysisPayload,
-  RentalDrivingAttributionSummary,
-  RentalDrivingAssessmentSummary,
-} from './rental-driving-analysis.types';
+import type { RentalDrivingNormalizedMetrics } from './rental-driving-analysis.metrics';
 import { resolveDrivingAttributionRoles } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles';
 import { resolveLegacyDriverIdFilter } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.compat';
 import {
@@ -51,11 +47,24 @@ import {
   parseAnalysisStagesJson,
   type AnalysisStageState,
 } from '../vehicle-intelligence/trips/trip-analysis-status';
+import { readTripDrivingImpactProvenance } from '../vehicle-intelligence/driving-impact/driving-impact-provenance.reader';
+import {
+  buildRentalTripMetricInput,
+  computeRentalDrivingMetrics,
+  resolveOverallLevelFromMetrics,
+} from './rental-driving-analysis.metrics';
+import type {
+  RentalDrivingAnalysisPayload,
+  RentalDrivingAttributionSummary,
+  RentalDrivingAssessmentSummary,
+} from './rental-driving-analysis.types';
 
 type TripForAnalysis = {
   id: string;
   distanceKm?: number | null;
+  startTime?: Date | null;
   endTime?: Date | null;
+  durationMinutes?: number | null;
   citySharePercent?: number | null;
   highwaySharePercent?: number | null;
   countrySharePercent?: number | null;
@@ -249,6 +258,7 @@ export class RentalDrivingAnalysisService {
         maturity: DrivingAnalysisMaturity.PUBLISHED,
         recomputeReason,
         attributionSummary: computed.attributionSummary,
+        normalizedMetrics: computed.normalizedMetrics,
       });
 
       const record = await tx.rentalDrivingAnalysis.create({
@@ -557,6 +567,22 @@ export class RentalDrivingAnalysisService {
             highSpeedStressScore: true,
             thermalBrakeStressScore: true,
             distanceKm: true,
+            modelVersion: true,
+            sourceSummaryJson: true,
+            primarySource: true,
+            measuredShare: true,
+            providerClassifiedShare: true,
+            reconstructedShare: true,
+            estimatedProxyShare: true,
+            contextOnlyShare: true,
+            nativeEventCount: true,
+            hfEventCount: true,
+            measurementCoverage: true,
+            hardwareProfile: true,
+            capabilityVersion: true,
+            healthEligibility: true,
+            provenanceMaturity: true,
+            provenanceVersion: true,
           },
         })
       : [];
@@ -573,6 +599,9 @@ export class RentalDrivingAnalysisService {
           distanceKm: row.distanceKm ?? 0,
         } satisfies ImpactStressRow,
       ]),
+    );
+    const provenanceMap = new Map(
+      impactRows.map((row) => [row.tripId, readTripDrivingImpactProvenance(row)]),
     );
 
     const aggregationRows: AggregationRow[] = tripsWithMetrics.map((trip) => {
@@ -602,6 +631,36 @@ export class RentalDrivingAnalysisService {
     const harshBraking = tripsWithMetrics.reduce((sum, trip) => sum + (trip.hardBrakingEvents ?? 0), 0);
     const harshAccel = tripsWithMetrics.reduce((sum, trip) => sum + (trip.hardAccelerationEvents ?? 0), 0);
     const abuseCount = tripsWithMetrics.reduce((sum, trip) => sum + (trip.abuseEvents ?? 0), 0);
+
+    const rentalMetricTrips = tripsWithMetrics.map((trip) => {
+      const impact = impactMap.get(trip.id);
+      const provenance = provenanceMap.get(trip.id);
+      const assessability = deriveAnalysisAssessability({
+        behaviorSummaryJson: (trip as { behaviorSummaryJson?: unknown }).behaviorSummaryJson,
+        behaviorEnrichmentStatus: (trip as { behaviorEnrichmentStatus?: string | null })
+          .behaviorEnrichmentStatus,
+        qualityStatus: (trip as { qualityStatus?: string | null }).qualityStatus,
+        tripAnalysisStatus: (trip as { tripAnalysisStatus?: string | null }).tripAnalysisStatus,
+      });
+      return buildRentalTripMetricInput({
+        tripId: trip.id,
+        distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
+        startTime: trip.startTime ?? periodStart,
+        endTime: trip.endTime ?? null,
+        durationMinutes: trip.durationMinutes ?? null,
+        totalAccelerationEvents: trip.totalAccelerationEvents,
+        totalBrakingEvents: trip.totalBrakingEvents,
+        hardBrakingEvents: trip.hardBrakingEvents,
+        hardAccelerationEvents: trip.hardAccelerationEvents,
+        abuseEvents: trip.abuseEvents,
+        assessability: assessability.analysisAssessability,
+        nativeEventCount: provenance?.nativeEventCount,
+        hfEventCount: provenance?.hfEventCount,
+        estimatedProxyShare: provenance?.estimatedProxyShare,
+        vehicleStressScore: impact?.drivingStressScore ?? trip.drivingScore ?? null,
+      });
+    });
+    const normalizedMetrics = computeRentalDrivingMetrics(rentalMetricTrips);
 
     let cityPct = 0;
     let highwayPct = 0;
@@ -686,6 +745,7 @@ export class RentalDrivingAnalysisService {
       assessmentSummary,
       dtcCountInPeriod: dtcList.length,
       gateSnapshot,
+      normalizedMetrics,
       payloadCtx: {
         bookingId,
         vehicleId,
@@ -709,6 +769,7 @@ export class RentalDrivingAnalysisService {
         totalDistanceKm: aggregate.totalDistanceKm,
         aggregateConfidence: aggregate.dataConfidence,
         attributionHints: hintTrips,
+        normalizedMetrics,
       },
     };
   }
@@ -777,15 +838,11 @@ export class RentalDrivingAnalysisService {
     maturity: DrivingAnalysisMaturity;
     recomputeReason: string | null;
     attributionSummary: RentalDrivingAttributionSummary;
+    normalizedMetrics: RentalDrivingNormalizedMetrics;
   }): RentalDrivingAnalysisPayload {
     const stress = ctx.drivingStressScore;
-    const level = this.stressToOverallLevel(ctx.stressLevel, ctx.harshBraking, ctx.harshAcceleration);
-    const wearImpact =
-      (stress != null && stress >= 75) || ctx.harshBraking + ctx.harshAcceleration > 40
-        ? 'high'
-        : (stress != null && stress >= 50) || ctx.harshBraking + ctx.harshAcceleration > 15
-          ? 'medium'
-          : 'low';
+    const { level, wearImpact } = resolveOverallLevelFromMetrics(ctx.normalizedMetrics);
+    const metrics = ctx.normalizedMetrics;
 
     const watchpoints: string[] = [];
     const recommendations: string[] = [];
@@ -810,11 +867,30 @@ export class RentalDrivingAnalysisService {
     if (ctx.componentStress.longitudinalStressScore != null && ctx.componentStress.longitudinalStressScore >= 60) {
       watchpoints.push('High longitudinal/drivetrain stress detected.');
     }
-    if (ctx.harshBraking > 10) watchpoints.push('Elevated harsh braking events recorded.');
-    if (ctx.harshAcceleration > 10) watchpoints.push('Elevated harsh acceleration events recorded.');
+    if ((metrics.harshEvents.per100Km.value ?? 0) >= 8) {
+      watchpoints.push(
+        `Elevated harsh event rate (${metrics.harshEvents.per100Km.value} per 100 km).`,
+      );
+    }
+    if ((metrics.abuseEvents.per100Km.value ?? 0) > 0) {
+      watchpoints.push(
+        `Abuse indicators detected (${metrics.abuseEvents.per100Km.value} per 100 km).`,
+      );
+    }
+    if (metrics.strongEventClusters.clusterCount > 0) {
+      watchpoints.push(
+        `${metrics.strongEventClusters.clusterCount} strong event cluster(s) across rental trips.`,
+      );
+    }
+    if ((metrics.repeatedPatterns.patternTripCount ?? 0) >= 2) {
+      watchpoints.push('Repeated harsh-event patterns across multiple trips.');
+    }
+    if ((metrics.evidenceShares.proxyShare.value ?? 0) >= 50) {
+      watchpoints.push('Majority of rental distance relies on proxy/reconstructed evidence.');
+    }
     if (ctx.errorCodeOccurred) watchpoints.push('At least one error code was recorded during the rental period.');
 
-    if (wearImpact === 'high' || ctx.harshBraking > 15) {
+    if (wearImpact === 'high' || wearImpact === 'medium_to_high') {
       if (ctx.assessmentSummary.allowsStrongCustomerRecommendation) {
         recommendations.push('Inspect brake condition after this rental.');
       } else {
@@ -905,21 +981,33 @@ export class RentalDrivingAnalysisService {
         eventHighlights: watchpoints.slice(0, 5),
         attributionHints: ctx.attributionHints ?? [],
       },
+      rentalMetrics: metrics,
       wearImpactAssessment: {
-        overallWearImpact: wearImpact as 'low' | 'medium' | 'medium_to_high' | 'high',
+        overallWearImpact: wearImpact,
         summary:
           wearImpact === 'high'
-            ? 'Elevated wear impact from stress and harsh events.'
-            : wearImpact === 'medium'
+            ? 'Elevated wear impact from normalized vehicle load and driver conduct.'
+            : wearImpact === 'medium_to_high' || wearImpact === 'medium'
               ? 'Moderate wear impact.'
               : 'Low wear impact.',
         affectedAreas:
-          ctx.harshBraking > 10 || (ctx.componentStress.brakingStressScore ?? 0) >= 55
+          metrics.vehicleLoad.level !== 'low' ||
+          (metrics.harshEvents.per100Km.value ?? 0) >= 8
             ? [
                 {
-                  area: 'brakes' as const,
-                  impact: ctx.harshBraking > 20 ? ('high' as const) : ('medium' as const),
-                  reason: 'Braking stress and harsh brake events',
+                  area:
+                    metrics.vehicleLoad.level !== 'low'
+                      ? ('general_vehicle_stress' as const)
+                      : ('brakes' as const),
+                  impact:
+                    metrics.vehicleLoad.level === 'high' ||
+                    (metrics.harshEvents.per100Km.value ?? 0) >= 15
+                      ? ('high' as const)
+                      : ('medium' as const),
+                  reason:
+                    metrics.vehicleLoad.level !== 'low'
+                      ? 'Distance-weighted vehicle stress load'
+                      : 'Normalized harsh braking rate',
                 },
               ]
             : [],
@@ -927,17 +1015,6 @@ export class RentalDrivingAnalysisService {
       watchpoints,
       recommendations,
     };
-  }
-
-  private stressToOverallLevel(
-    stressLevel: StressLevel | null,
-    harshBraking: number,
-    harshAccel: number,
-  ): RentalDrivingAnalysisPayload['overallAssessment']['level'] {
-    if (stressLevel === 'critical' || harshBraking + harshAccel > 40) return 'high_stress';
-    if (stressLevel === 'high' || harshBraking + harshAccel > 25) return 'elevated_stress';
-    if (stressLevel === 'moderate') return 'moderate_stress';
-    return 'low_stress';
   }
 
   private levelTitle(
