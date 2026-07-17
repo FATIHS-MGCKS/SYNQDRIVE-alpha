@@ -4396,6 +4396,15 @@ enum RentalDrivingAnalysisStability {
   STABLE
 }
 
+/// Customer-facing completeness assessment for rental analysis (P61).
+enum RentalDrivingAnalysisAssessmentStatus {
+  COMPLETE
+  PARTIAL
+  PROVISIONAL
+  NOT_ASSESSABLE
+  FAILED
+}
+
 // ------------------------------------------------
 // RENTAL DRIVING ANALYSIS (stored per completed rental period)
 // ------------------------------------------------
@@ -4426,8 +4435,10 @@ model RentalDrivingAnalysis {
   generatedAt            DateTime                          @default(now()) @map("generated_at")
   sourceTripsFinalizedAt DateTime?                         @map("source_trips_finalized_at")
   analysisCompleteness   RentalDrivingAnalysisCompleteness @default(PARTIAL) @map("analysis_completeness")
-  stabilityStatus        RentalDrivingAnalysisStability    @default(PROVISIONAL) @map("stability_status")
-  maturity               DrivingAnalysisMaturity           @default(PUBLISHED) @map("maturity")
+  stabilityStatus        RentalDrivingAnalysisStability           @default(PROVISIONAL) @map("stability_status")
+  assessmentStatus       RentalDrivingAnalysisAssessmentStatus    @default(PROVISIONAL) @map("assessment_status")
+  assessmentSummary      Json                                     @default("{}") @map("assessment_summary")
+  maturity               DrivingAnalysisMaturity                  @default(PUBLISHED) @map("maturity")
   supersededAt           DateTime?                         @map("superseded_at")
   supersedesAnalysisId   String?                           @map("supersedes_analysis_id")
   recomputeReason        String?                           @map("recompute_reason")

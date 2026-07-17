@@ -35,6 +35,49 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p61-rental-driving-analysis-assessment-2026-07-17',
+    version: '4.9.562',
+    title: 'Driving Intelligence V2 P61 — Rental Driving Analysis Assessment Completeness',
+    summary: [
+      'Neues `assessmentStatus`: COMPLETE, PARTIAL, PROVISIONAL, NOT_ASSESSABLE, FAILED.',
+      '`assessRentalDrivingAnalysis` prüft Booking abgeschlossen, Trips finalisiert, TRIP_ENRICHMENT Runs, Attribution, Misuse-Reconcile, Driving Impact, pending Core-Jobs.',
+      '`assessmentSummary` mit `missingComponents`, `technicalFailures`, `capabilityGaps`, `allowsStrongCustomerRecommendation`.',
+      'PARTIAL/PROVISIONAL/NOT_ASSESSABLE/FAILED unterdrücken starke Kundenempfehlungen im Payload.',
+      'Technische Fehler (FAILED Runs/Impact) getrennt von geringer Capability (NOT_ASSESSABLE).',
+      'Tests: incomplete trips → PROVISIONAL, FAILED, NOT_ASSESSABLE, PARTIAL.',
+    ],
+    reason: 'Prompt 61/76 — definieren wann eine Rental Driving Analysis vollständig ist.',
+    previousBehavior:
+      'P60 `stabilityStatus` + `analysisCompleteness` deckten Pipeline-Stabilität ab, aber kein expliziter Assessment-Status mit Missing Components und Recommendation-Gate.',
+    details:
+      '`rental-driving-analysis.assessment.ts`, erweitertes `computeAnalysisContext` (DriverAttribution, DrivingAnalysisRun, analysisStages), Migration `20260716360000_rental_driving_analysis_assessment`, Payload/API `assessmentStatus` + `assessmentSummary`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p60-rental-driving-analysis-recompute-2026-07-17',
+    version: '4.9.561',
+    title: 'Driving Intelligence V2 P60 — Rental Driving Analysis Recompute',
+    summary: [
+      '`generateForBooking` durch deterministischen `recomputeForBooking`-Pfad ersetzt (Fingerprint + Job-Handler).',
+      'Neues `stabilityStatus`: ACTIVE → PROVISIONAL; COMPLETED + Input-Gate → STABLE.',
+      'Input-Gate: alle assigned Trips COMPLETED, Impact READY, keine pending Trip-Analysis-Jobs, `analysisCompleteness=FULL`.',
+      'Trigger via `RENTAL_DRIVING_ANALYSIS_RECOMPUTE`: Trip completed, Trip analysis completed, Attribution, Misuse reconcile, Booking assignment, Booking completed.',
+      'Parallel-Schutz: aktive DI-Jobs + `pg_advisory_xact_lock` + partial unique current row pro Booking.',
+      'Partieller Unique-Index `(booking_id) WHERE superseded_at IS NULL`.',
+      'Tests: PROVISIONAL/STABLE, spätere Trips, Modellwechsel-Supersede, Parallel-Skip.',
+    ],
+    reason: 'Prompt 60/76 — einmaliger Generate-Pfad durch deterministische, idempotente Recompute-Logik ersetzen.',
+    previousBehavior:
+      'Nur `generateForBooking` bei COMPLETED ohne Stabilitäts-Gate; `RENTAL_DRIVING_ANALYSIS_RECOMPUTE` ohne Handler.',
+    details:
+      '`rental-driving-analysis-recompute.trigger.ts`, `rental-driving-analysis-recompute.handler.ts`, `rental-driving-analysis.input-gate.ts`, `rental-driving-analysis.stability.ts`, Migration `20260716350000_rental_driving_analysis_stability`, Caller in bookings, trip-post-finalize, stage-orchestrator, misuse-reconcile, trip-assignment, driver-attribution.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T02:50:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p59-rental-driving-analysis-versioning-2026-07-17',
     version: '4.9.560',
     title: 'Driving Intelligence V2 P59 — Rental Driving Analysis Versioning',

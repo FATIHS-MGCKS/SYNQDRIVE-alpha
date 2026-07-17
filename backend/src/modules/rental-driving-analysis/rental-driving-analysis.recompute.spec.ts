@@ -45,6 +45,11 @@ const assignedTrips = [
     id: 'trip-1',
     tripStatus: 'COMPLETED',
     drivingImpactStatus: 'READY',
+    tripAnalysisStatus: 'COMPLETED',
+    analysisStagesJson: { misuse: 'done', drivingImpact: 'done' },
+    behaviorSummaryJson: { analysisAssessability: 'FULL' },
+    behaviorEnrichmentStatus: 'COMPLETED',
+    qualityStatus: 'OK',
     distanceKm: 12,
     endTime: new Date('2026-07-01T10:00:00.000Z'),
     drivingScore: 30,
@@ -61,6 +66,11 @@ const assignedTrips = [
     id: 'trip-2',
     tripStatus: 'COMPLETED',
     drivingImpactStatus: 'READY',
+    tripAnalysisStatus: 'COMPLETED',
+    analysisStagesJson: { misuse: 'done', drivingImpact: 'done' },
+    behaviorSummaryJson: { analysisAssessability: 'FULL' },
+    behaviorEnrichmentStatus: 'COMPLETED',
+    qualityStatus: 'OK',
     distanceKm: 20,
     endTime: new Date('2026-07-02T11:00:00.000Z'),
     drivingScore: 45,
@@ -75,22 +85,54 @@ const assignedTrips = [
   },
 ];
 
+function assessmentTripRow(trip: (typeof assignedTrips)[number]) {
+  return {
+    id: trip.id,
+    tripStatus: trip.tripStatus,
+    drivingImpactStatus: trip.drivingImpactStatus,
+    tripAnalysisStatus: trip.tripAnalysisStatus,
+    analysisStagesJson: trip.analysisStagesJson,
+    behaviorSummaryJson: trip.behaviorSummaryJson,
+    behaviorEnrichmentStatus: trip.behaviorEnrichmentStatus,
+    qualityStatus: trip.qualityStatus,
+  };
+}
+
+function withAssessmentPrisma(prisma: Record<string, any>) {
+  return {
+    ...prisma,
+    drivingIntelligenceJob: {
+      count: jest.fn().mockResolvedValue(0),
+      ...(prisma.drivingIntelligenceJob ?? {}),
+    },
+    driverAttribution: {
+      findMany: jest.fn().mockResolvedValue(
+        assignedTrips.map((trip) => ({ tripId: trip.id })),
+      ),
+      ...(prisma.driverAttribution ?? {}),
+    },
+    drivingAnalysisRun: {
+      findMany: jest.fn().mockResolvedValue(
+        assignedTrips.map((trip) => ({
+          tripId: trip.id,
+          status: 'COMPLETED',
+          startedAt: new Date('2026-07-01T09:00:00.000Z'),
+        })),
+      ),
+      ...(prisma.drivingAnalysisRun ?? {}),
+    },
+  };
+}
+
 describe('RentalDrivingAnalysisService recompute (P60)', () => {
   it('creates PROVISIONAL analysis for active booking', async () => {
     const created = { id: 'analysis-prov', stabilityStatus: 'PROVISIONAL' };
-    const prisma = {
+    const prisma = withAssessmentPrisma({
       booking: { findFirst: jest.fn().mockResolvedValue(activeBooking) },
-      drivingIntelligenceJob: { count: jest.fn().mockResolvedValue(0) },
       vehicleTrip: {
         findMany: jest
           .fn()
-          .mockResolvedValueOnce(
-            assignedTrips.map((trip) => ({
-              id: trip.id,
-              tripStatus: trip.tripStatus,
-              drivingImpactStatus: trip.drivingImpactStatus,
-            })),
-          )
+          .mockResolvedValueOnce(assignedTrips.map(assessmentTripRow))
           .mockResolvedValueOnce(assignedTrips),
       },
       tripDrivingImpact: {
@@ -120,7 +162,7 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
           },
         }),
       ),
-    };
+    });
 
     const service = makeService({ prisma });
     const result = await service.recomputeForBooking('org-1', 'booking-1', {
@@ -132,19 +174,12 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
   });
 
   it('promotes to STABLE when later trip completes on completed booking', async () => {
-    const prisma = {
+    const prisma = withAssessmentPrisma({
       booking: { findFirst: jest.fn().mockResolvedValue(completedBooking) },
-      drivingIntelligenceJob: { count: jest.fn().mockResolvedValue(0) },
       vehicleTrip: {
         findMany: jest
           .fn()
-          .mockResolvedValueOnce(
-            assignedTrips.map((trip) => ({
-              id: trip.id,
-              tripStatus: trip.tripStatus,
-              drivingImpactStatus: trip.drivingImpactStatus,
-            })),
-          )
+          .mockResolvedValueOnce(assignedTrips.map(assessmentTripRow))
           .mockResolvedValueOnce(assignedTrips),
       },
       tripDrivingImpact: {
@@ -178,7 +213,7 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
           },
         }),
       ),
-    };
+    });
 
     const service = makeService({
       prisma,
@@ -223,19 +258,12 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
       stabilityStatus: 'STABLE',
       supersededAt: null,
     };
-    const prisma = {
+    const prisma = withAssessmentPrisma({
       booking: { findFirst: jest.fn().mockResolvedValue(completedBooking) },
-      drivingIntelligenceJob: { count: jest.fn().mockResolvedValue(0) },
       vehicleTrip: {
         findMany: jest
           .fn()
-          .mockResolvedValueOnce(
-            assignedTrips.map((trip) => ({
-              id: trip.id,
-              tripStatus: trip.tripStatus,
-              drivingImpactStatus: trip.drivingImpactStatus,
-            })),
-          )
+          .mockResolvedValueOnce(assignedTrips.map(assessmentTripRow))
           .mockResolvedValueOnce(assignedTrips),
       },
       tripDrivingImpact: {
@@ -276,7 +304,7 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
           },
         }),
       ),
-    };
+    });
 
     const service = makeService({ prisma });
     const result = await service.recomputeForBooking('org-1', 'booking-1', {
