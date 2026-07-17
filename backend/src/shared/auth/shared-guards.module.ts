@@ -4,6 +4,8 @@ import { OrgScopingGuard } from './org-scoping.guard';
 import { VehicleOwnershipGuard } from './vehicle-ownership.guard';
 import { PermissionsGuard } from './permissions.guard';
 import { MasterBillingGuard } from './master-billing.guard';
+import { StationScopeGuard } from '@shared/guards/station-scope.guard';
+import { StationScopeService } from '@shared/stations/station-scope.service';
 
 /**
  * GlobalGuardsModule — provides all platform security guards globally.
@@ -15,7 +17,21 @@ import { MasterBillingGuard } from './master-billing.guard';
 @Global()
 @Module({
   imports: [PrismaModule],
-  providers: [OrgScopingGuard, VehicleOwnershipGuard, PermissionsGuard, MasterBillingGuard],
-  exports: [OrgScopingGuard, VehicleOwnershipGuard, PermissionsGuard, MasterBillingGuard],
+  providers: [
+    OrgScopingGuard,
+    VehicleOwnershipGuard,
+    PermissionsGuard,
+    MasterBillingGuard,
+    StationScopeGuard,
+    StationScopeService,
+  ],
+  exports: [
+    OrgScopingGuard,
+    VehicleOwnershipGuard,
+    PermissionsGuard,
+    MasterBillingGuard,
+    StationScopeGuard,
+    StationScopeService,
+  ],
 })
 export class SharedGuardsModule {}

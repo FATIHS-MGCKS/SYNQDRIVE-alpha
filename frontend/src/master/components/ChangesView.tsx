@@ -35,6 +35,86 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-mutation-endpoints-v49590-2026-07-17',
+    version: '4.9.590',
+    title: 'V4.9.590 — Stations V2: Mutations mit granularen Permissions + Scope (Prompt 10/78)',
+    summary: [
+      'Alle Schreib-Routen verdrahtet: create, update (dynamisch), archive/restore/delete, set-primary, home-fleet, current/expected location, geocode.',
+      'Gate 1: `StationsPermissionGuard` + spezialisierte Mutation-Guards (`StationsUpdatePermissionGuard`, Assign/SetPrimary/VehicleLocation).',
+      'Gate 2: `StationScopeGuard` — `create` ohne bestehende Station-ID; `vehicle_location` prüft Vehicle + Ziel-Stationen.',
+      'Worker/Driver dürfen Organisations-Hauptstation nicht setzen (`SET_PRIMARY_ROLE_FORBIDDEN`); strukturierte 403-Codes.',
+    ],
+    reason:
+      'Stations-Mutationen waren nur durch OrgScoping/RolesGuard geschützt — V2 verlangt Permission + Scope auf allen Write-Pfaden.',
+    previousBehavior:
+      'POST/PATCH/PUT/DELETE ohne `stations.*`-Checks; kein Scope-Gate auf Mutations; set-primary ohne Rollenpolicy.',
+    details:
+      'stations.controller.ts, stations-mutation-permission.util.ts, stations-access.service.ts, mutation guards, station-scope.service (create/vehicle_location).',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:35:00.000Z',
+  },
+  {
+    id: 'stations-v2-read-endpoints-v49589-2026-07-17',
+    version: '4.9.589',
+    title: 'V4.9.589 — Stations V2: lesende Endpunkte abgesichert (Prompt 9/78)',
+    summary: [
+      'Alle lesenden Stations-Routen erfordern `stations.read` via `StationsPermissionGuard` + `@RequireStationsPermission`.',
+      'Listen/Stats/KPIs serverseitig nach `StationScopeContext` gefiltert; Detail-Routen mit `StationScopeGuard`.',
+      'Neue Read-Endpunkte: `GET :id/operations`, `:id/team`, `:id/activity` (Activity aus `activity_logs`).',
+      'Controller-/Service-Tests für ALL/ASSIGNED/NO_STATIONS, Cross-Tenant und archivierte Station.',
+    ],
+    reason:
+      'Stations-Reads waren nur durch OrgScoping/RolesGuard geschützt — V2 verlangt Permission + Scope auf allen Read-Pfaden.',
+    previousBehavior:
+      'Kein `stations.read`-Check; keine serverseitige Scope-Filterung in `findAll`/`getStationStats`; keine operations/team/activity Reads.',
+    details:
+      'stations.controller.ts, stations.service.ts, stations-access.service.ts, stations-permission.guard.ts, stations-read-scope.util.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:20:00.000Z',
+  },
+  {
+    id: 'stations-v2-station-scope-v49588-2026-07-17',
+    version: '4.9.588',
+    title: 'V4.9.588 — Stations V2: StationScopeGuard + zentraler Scope-Resolver (Prompt 8/78)',
+    summary: [
+      '`StationScopeService` — Membership-first Scope-Auflösung für `ALL_STATIONS`, `ASSIGNED_STATIONS`, `NO_STATIONS` mit Legacy-Fallback (`stationScope`/`stationIds`).',
+      'Station-ID-Resolver: `params.id`, `params.stationId`, `body.stationId`, `query.stationId`; verschachtelte Vehicle/Booking-Auflösung serverseitig.',
+      'Strukturierte 403-Codes (`STATION_SCOPE_*`); archivierte Stationen nur für historische Reads bei `stations.read`.',
+      '`StationScopeGuard` + `@RequireStationScope()` — opt-in per Handler; noch nicht an alle Controller verdrahtet.',
+    ],
+    reason:
+      'Ist-Guard prüfte nur `params.stationId` und JWT-String — V2 verlangt zentralen Resolver mit Tenant-Validierung und Scope-Modi.',
+    previousBehavior:
+      '`station-scope.guard.ts` unwired; nur `user.stationScope` String-Vergleich ohne Membership/DB-Verifikation.',
+    details:
+      'backend/src/shared/stations/station-scope.*, station-scope.guard.ts, decorators/station-scope.decorator.ts, shared-guards.module.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:05:00.000Z',
+  },
+  {
+    id: 'stations-v2-permissions-v49587-2026-07-17',
+    version: '4.9.587',
+    title: 'V4.9.587 — Stations V2: kanonische Permissions (Prompt 7/78)',
+    summary: [
+      '15 granulare `stations.*` Actions als `membership.permissions.stationsV2` — Resolver mit Legacy-Fallback aus `stations.{read,write,manage}`.',
+      'Rollen-Templates (`organization-role.defaults.ts`) erhalten explizite `stationsV2`-Blöcke; Legacy-Modul `stations` bleibt unverändert.',
+      'Backend: `stations-v2-permission.constants.ts`, `stations-v2-permission.util.ts`, `stations-v2-role-permissions.ts` + Unit-Tests.',
+      'Frontend-Spiegel: `frontend/src/lib/stations-v2-permissions.ts`. Kein Controller-/Guard-Wiring in diesem Schritt.',
+    ],
+    reason:
+      'Stations V2 verlangt auditierbare granulare Permissions statt impliziter ORG_ADMIN-Bypasses — Grundlage für späteres PermissionsGuard-Wiring (Prompt 8+).',
+    previousBehavior:
+      'Nur grobes Modul `stations` mit read/write/manage; kein `stationsV2`-Evaluator; ORG_ADMIN-Bypass in `assertMembershipPermission`.',
+    details:
+      'docs/architecture/stations-v2-permissions.md, backend/src/shared/auth/stations-v2-*.ts, organization-role.defaults.ts, frontend/src/lib/stations-v2-permissions.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T21:50:00.000Z',
+  },
+  {
     id: 'twilio-vps-env-sync-v49586-2026-07-17',
     version: '4.9.586',
     title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',
