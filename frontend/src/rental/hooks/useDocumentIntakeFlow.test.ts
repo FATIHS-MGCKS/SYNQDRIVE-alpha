@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildDocumentActionPreview } from '../lib/document-extraction-action-preview';
 import { mapServerToFlowStatus, isBusyFlow } from '../lib/document-extraction-lifecycle';
 import { createExtractionPoller } from '../lib/document-extraction-polling';
 
@@ -20,14 +19,18 @@ describe('useDocumentIntakeFlow shared contract', () => {
     expect(isBusyFlow('duplicate_blocked')).toBe(false);
   });
 
-  it('builds read-only action preview per document type', () => {
-    const preview = buildDocumentActionPreview({
-      effectiveDocumentType: 'FINE',
-      documentType: 'FINE',
-      documentSubtype: 'FINE_NOTICE',
-      status: 'READY_FOR_REVIEW',
-    });
-    expect(preview.some((row) => row.semanticAction === 'CREATE_FINE_DRAFT')).toBe(true);
+  it('loads action plan preview from server wiring', () => {
+    const panel = readFileSync(
+      resolve(__dirname, '../components/documents/DocumentExtractionReviewPanel.tsx'),
+      'utf8',
+    );
+    expect(panel).toContain('DocumentActionPlanReview');
+    expect(panel).toContain('useDocumentActionPlanPreview');
+    expect(panel).not.toContain('buildDocumentActionPreview');
+
+    const intake = readFileSync(resolve(__dirname, './useDocumentIntakeFlow.ts'), 'utf8');
+    expect(intake).toContain('actionPlanFingerprint');
+    expect(intake).toContain('canConfirmActionPlan');
   });
 
   it('uses single-flight poller contract', async () => {

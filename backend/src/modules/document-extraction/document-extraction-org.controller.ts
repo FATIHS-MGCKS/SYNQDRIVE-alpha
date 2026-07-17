@@ -31,6 +31,7 @@ import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links
 import { OrgUploadDocumentDto } from './dto/org-upload-document.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
 import { SaveReviewExtractionDto } from './dto/save-review-extraction.dto';
+import { UpdateActionPlanPreferencesDto } from './dto/update-action-plan-preferences.dto';
 import { DocumentEntityLinkService } from './document-entity-link.service';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
@@ -188,5 +189,30 @@ export class DocumentExtractionOrgController {
       userId ?? null,
     );
     return this.service.toPublicExtraction(record);
+  }
+
+  @Get(':extractionId/action-plan-preview')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getActionPlanPreview(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.getActionPlanPreviewForOrg(orgId, extractionId);
+  }
+
+  @Patch(':extractionId/action-plan-preferences')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  updateActionPlanPreferences(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: UpdateActionPlanPreferencesDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.updateActionPlanPreferencesForOrg(
+      orgId,
+      extractionId,
+      { disabledOptionalActions: body.disabledOptionalActions },
+      userId ?? null,
+    );
   }
 }

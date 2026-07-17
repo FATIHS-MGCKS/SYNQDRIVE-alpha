@@ -101,6 +101,12 @@ import {
 } from './document-action-plan.store';
 import { DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS } from './document-action-plan.types';
 import { readConfirmedDataObject } from './document-entity-link.util';
+import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
+import {
+  mergeActionPlanPreferences,
+  type DocumentActionPlanPreferences,
+} from './document-action-plan-preferences.util';
+import { assertExecutableActionPlan } from './document-action-plan.builder';
 
 /** Extra confirmedData keys (beyond schema) that the apply layer understands. */
 const APPLY_ALIAS_KEYS = new Set<string>([
@@ -351,6 +357,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly retention: DocumentRetentionService,
     private readonly uploadContext: DocumentUploadContextService,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly actionPlanPreview: DocumentActionPlanPreviewService,
   ) {}
 
   onModuleInit(): void {
@@ -1106,6 +1113,7 @@ export class DocumentExtractionService implements OnModuleInit {
     extractionId: string,
     confirmedDataRaw: unknown,
     userId?: string | null,
+    actionPlanFingerprint?: string | null,
   ) {
     const existing = await this.getForVehicle(vehicleId, extractionId);
 
@@ -1147,6 +1155,43 @@ export class DocumentExtractionService implements OnModuleInit {
         message: 'Plausibility checks failed — cannot apply data with BLOCKER status',
         plausibility,
       });
+    }
+
+    if (this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
+      const preview = await this.actionPlanPreview.buildForRecord(existing);
+      if (!preview.canConfirm) {
+        throw new BadRequestException({
+          message:
+            preview.confirmBlockedReason ??
+            'Action plan is blocked — cannot confirm until issues are resolved',
+          actionPlanPreview: preview,
+        });
+      }
+      if (!actionPlanFingerprint?.trim()) {
+        throw new BadRequestException('actionPlanFingerprint is required before apply');
+      }
+      if (preview.fingerprint !== actionPlanFingerprint.trim()) {
+        throw new BadRequestException({
+          message:
+            'Der Aktionsplan hat sich geändert — bitte Vorschau erneut laden und prüfen.',
+          code: 'ACTION_PLAN_FINGERPRINT_MISMATCH',
+          expectedFingerprint: preview.fingerprint,
+          receivedFingerprint: actionPlanFingerprint.trim(),
+        });
+      }
+      const plan = await this.actionOrchestrator.buildPreviewPlan({
+        extractionId: existing.id,
+        organizationId: existing.organizationId ?? null,
+        vehicleId,
+        documentType: applyDocumentType,
+        sourceFileUrl:
+          existing.sourceFileUrl ??
+          (existing.objectKey ? `storage://${existing.objectKey}` : null),
+        confirmedData: actionPlanConfirmedData,
+        plausibilityChecks: plausibility.checks,
+        plausibility: existing.plausibility,
+      });
+      assertExecutableActionPlan(plan);
     }
 
     const sourceFileUrl =
@@ -1417,6 +1462,87 @@ export class DocumentExtractionService implements OnModuleInit {
     });
 
     return updated;
+  }
+
+  async getActionPlanPreviewForVehicle(vehicleId: string, extractionId: string) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.actionPlanPreview.buildForRecord(existing);
+  }
+
+  async getActionPlanPreviewForOrg(orgId: string, extractionId: string) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.actionPlanPreview.buildForRecord(existing);
+  }
+
+  async updateActionPlanPreferencesForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    preferences: DocumentActionPlanPreferences,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.persistActionPlanPreferences(existing, preferences, userId ?? null);
+  }
+
+  async updateActionPlanPreferencesForOrg(
+    orgId: string,
+    extractionId: string,
+    preferences: DocumentActionPlanPreferences,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.persistActionPlanPreferences(existing, preferences, userId ?? null);
+  }
+
+  private async persistActionPlanPreferences(
+    existing: Awaited<ReturnType<DocumentExtractionService['getForVehicle']>>,
+    preferences: DocumentActionPlanPreferences,
+    userId: string | null,
+  ) {
+    if (existing.status !== 'READY_FOR_REVIEW') {
+      throw new BadRequestException(
+        `Extraction must be READY_FOR_REVIEW before updating action preferences (current: ${existing.status})`,
+      );
+    }
+
+    const confirmedBase = readConfirmedDataObject(existing.confirmedData);
+    const confirmedData = mergeActionPlanPreferences(confirmedBase, preferences);
+    const confirmedAt = new Date().toISOString();
+
+    let plausibilityPayload =
+      typeof existing.plausibility === 'object' &&
+      existing.plausibility &&
+      !Array.isArray(existing.plausibility)
+        ? ({ ...(existing.plausibility as Record<string, unknown>) } as Record<string, unknown>)
+        : {};
+
+    const planState = readDocumentActionPlanState(plausibilityPayload);
+    if (planState.actionPlan && planState.actionPlan.status !== 'INVALIDATED') {
+      plausibilityPayload = invalidateDocumentActionPlan(
+        plausibilityPayload,
+        DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS.CONFIRMED_DATA_CHANGED,
+      );
+    }
+
+    plausibilityPayload = appendExtractionActionAudit(plausibilityPayload, {
+      action: 'update_action_plan_preferences',
+      at: confirmedAt,
+      userId,
+      details: { disabledOptionalActions: preferences.disabledOptionalActions },
+    });
+
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: existing.id },
+      data: {
+        confirmedData: confirmedData as Prisma.InputJsonValue,
+        plausibility: plausibilityPayload as Prisma.InputJsonValue,
+      },
+    });
+
+    return this.actionPlanPreview.buildForRecord(
+      { ...existing, confirmedData, plausibility: plausibilityPayload },
+      { preferencesOverride: preferences },
+    );
   }
 
   /** Used by recovery scheduler to retry apply for stuck CONFIRMED rows. */

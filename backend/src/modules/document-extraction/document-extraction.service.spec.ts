@@ -63,6 +63,10 @@ describe('DocumentExtractionService', () => {
     const actionOrchestrator = {
       supportsExecutorPath: jest.fn().mockReturnValue(false),
       executeConfirmedPlan: jest.fn(),
+      buildPreviewPlan: jest.fn(),
+    };
+    const actionPlanPreview = {
+      buildForRecord: jest.fn(),
     };
     const observability = {
       logEvent: jest.fn(),
@@ -100,6 +104,7 @@ describe('DocumentExtractionService', () => {
       makeRetentionMock() as any,
     makeUploadContextMock() as any,
       observability as any,
+      actionPlanPreview as any,
     );
     return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }

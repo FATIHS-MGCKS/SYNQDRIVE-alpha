@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import type { PublicDocumentExtraction } from '../../lib/document-extraction.types';
-import { buildDocumentActionPreview } from '../../lib/document-extraction-action-preview';
+import type { PublicDocumentExtraction, PublicDocumentActionPlanPreview } from '../../lib/document-extraction.types';
 import { useDocumentSchemaReview } from '../../hooks/useDocumentSchemaReview';
+import { useDocumentActionPlanPreview } from '../../hooks/useDocumentActionPlanPreview';
 import { hasSavedFieldReview } from '../../lib/document-schema-field-review';
 import {
   DOC_TYPE_LABELS,
@@ -11,6 +11,7 @@ import {
 } from './document-extraction.shared';
 import { DocumentEntityReview } from './DocumentEntityReview';
 import { DocumentSchemaFieldReview } from './DocumentSchemaFieldReview';
+import { DocumentActionPlanReview } from './DocumentActionPlanReview';
 import type { TranslationKey } from '../../i18n/translations/en';
 import type { VehicleLabelLookup } from '../../lib/document-entity-review';
 
@@ -42,6 +43,11 @@ export interface DocumentExtractionReviewPanelProps {
   vehicleLookup?: VehicleLabelLookup;
   onEntityLinksUpdated?: (record: PublicDocumentExtraction) => void;
   onSchemaReviewUpdated?: (record: PublicDocumentExtraction) => void;
+  onActionPlanPreviewChange?: (preview: PublicDocumentActionPlanPreview | null) => void;
+  onActionPlanPreviewStateChange?: (state: {
+    preview: PublicDocumentActionPlanPreview | null;
+    loading: boolean;
+  }) => void;
   headerSlot?: ReactNode;
   footerSlot?: ReactNode;
   isDarkMode?: boolean;
@@ -105,6 +111,8 @@ export function DocumentExtractionReviewPanel({
   vehicleLookup,
   onEntityLinksUpdated,
   onSchemaReviewUpdated,
+  onActionPlanPreviewChange,
+  onActionPlanPreviewStateChange,
   headerSlot,
   footerSlot,
   isDarkMode = false,
@@ -125,12 +133,16 @@ export function DocumentExtractionReviewPanel({
   });
 
   const savedFieldReview = hasSavedFieldReview(record?.confirmedData);
-  const actionPreview = showActionPreview && savedFieldReview
-    ? buildDocumentActionPreview(record, {
-        schemaRegistry: schemaReview.schema ? { subtypes: [schemaReview.schema] } : null,
-        blockerPresent: plausibility?.overallStatus === 'BLOCKER',
-      })
-    : [];
+
+  const actionPlanReview = useDocumentActionPlanPreview({
+    record,
+    orgId: schemaOrgId,
+    vehicleId: schemaVehicleId,
+    extractionId: schemaExtractionId,
+    enabled: useSchemaFieldReview && showActionPreview,
+    onPreviewChange: onActionPlanPreviewChange,
+    onStateChange: onActionPlanPreviewStateChange,
+  });
 
   return (
     <div className="space-y-3">
@@ -175,28 +187,19 @@ export function DocumentExtractionReviewPanel({
       ) : null}
 
       {showActionPreview ? (
-        savedFieldReview && actionPreview.length > 0 ? (
-          <div>
-            <p className="sq-section-label mb-1.5">
-              {entityReviewT?.('docUpload.fieldReview.actionPreviewTitle') ?? 'Geplante Aktionen (Vorschau)'}
-            </p>
-            <div className="space-y-1.5">
-              {actionPreview.map((action) => (
-                <div key={action.semanticAction} className="rounded-lg border border-border bg-muted/10 px-3 py-2 text-[11px]">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-foreground">{action.semanticAction}</span>
-                    <span className="text-muted-foreground">· {action.requirement}</span>
-                    <span className="text-muted-foreground">· {action.targetModule}</span>
-                  </div>
-                  {action.note ? <p className="mt-0.5 text-muted-foreground">{action.note}</p> : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : !savedFieldReview && entityReviewT ? (
-          <div className="rounded-lg border border-dashed border-border px-3 py-2 text-[10px] text-muted-foreground">
-            {entityReviewT('docUpload.fieldReview.actionPreviewLocked')}
-          </div>
+        useSchemaFieldReview && entityReviewT ? (
+          <DocumentActionPlanReview
+            preview={actionPlanReview.preview}
+            loading={actionPlanReview.loading}
+            error={actionPlanReview.error}
+            locked={!savedFieldReview}
+            readOnly={readOnly}
+            pendingToggle={actionPlanReview.pendingToggle}
+            t={entityReviewT}
+            onToggleOptional={(semanticAction, enabled) => {
+              void actionPlanReview.setOptionalActionEnabled(semanticAction, enabled);
+            }}
+          />
         ) : null
       ) : null}
 

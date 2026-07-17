@@ -274,7 +274,7 @@ export function parseSchemaReviewFieldsForSave(
   return confirmedData;
 }
 
-const META_CONFIRMED_KEYS = new Set(['acceptedEntityLinks']);
+const META_CONFIRMED_KEYS = new Set(['acceptedEntityLinks', 'actionPlanPreferences']);
 
 export function hasSavedFieldReview(confirmedData: unknown): boolean {
   if (!confirmedData || typeof confirmedData !== 'object' || Array.isArray(confirmedData)) {
