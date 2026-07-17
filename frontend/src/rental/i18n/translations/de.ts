@@ -787,7 +787,7 @@ export const de: Record<TranslationKey, string> = {
   'fleet.mileage': 'Kilometerstand',
   'fleet.fuelLevel': 'Tankfuellung',
   'fleet.vehicleHealth': 'Fahrzeugzustand',
-  'fleet.driverScore': 'Fahrbewertung',
+  'fleet.driverScore': 'Fahrbelastung',
   'fleet.noVehicles': 'Keine Fahrzeuge gefunden',
 
   // ─── Vehicle Detail ───
@@ -1349,7 +1349,7 @@ export const de: Record<TranslationKey, string> = {
   'trips.distance': 'Distanz',
   'trips.duration': 'Dauer',
   'trips.alerts': 'Warnungen',
-  'trips.drivingScore': 'Fahrbewertung',
+  'trips.drivingScore': 'Fahrbelastung',
   'trips.start': 'Start',
   'trips.destination': 'Ziel',
 
@@ -1395,7 +1395,7 @@ export const de: Record<TranslationKey, string> = {
   'customerDetail.customerDocuments': 'Kundendokumente',
   'customerDetail.customerAlerts': 'Kundenwarnungen',
   'customerDetail.customerNotes': 'Kundennotizen',
-  'customerDetail.drivingScore': 'Fahrbewertung',
+  'customerDetail.drivingScore': 'Fahrbelastung',
 
   // ─── Document Upload ───
   'docUpload.title': 'Dokumenten-Upload',

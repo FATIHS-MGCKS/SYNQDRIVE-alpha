@@ -29,6 +29,12 @@ export type DrivingAnalysisReconciliationResult = {
   actionsFailed: number;
 };
 
+/** Trip has `trip_driving_impact` but `drivingImpactStatus` is still PENDING/FAILED. */
+export const DRIVING_IMPACT_RECONCILE_DETAIL_STATUS_DESYNC = 'status_desync';
+
+/** Behavior enrichment done but no impact row / status never advanced. */
+export const DRIVING_IMPACT_RECONCILE_DETAIL_MISSING_IMPACT = 'missing_impact';
+
 export const DRIVING_ANALYSIS_RECONCILIATION_DEFAULTS = {
   MAX_ACTIONS_PER_RUN: 100,
   MAX_FINDINGS_PER_CHECK: 50,

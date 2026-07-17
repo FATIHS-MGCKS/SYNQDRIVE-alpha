@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { BookingStatus, TripStatus } from '@prisma/client';
+import { BookingStatus, Prisma, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ClickHouseAnalysisHealthService } from '@modules/clickhouse/clickhouse-analysis-health.service';
 import { isClickHouseReachableForAnalysis } from '@modules/clickhouse/clickhouse-analysis-degradation';
@@ -14,10 +14,13 @@ import { DRIVING_INTELLIGENCE_JOB_ERROR_CODES } from '../driving-intelligence-jo
 import {
   DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES,
   DRIVING_ANALYSIS_RECONCILIATION_DEFAULTS,
+  DRIVING_IMPACT_RECONCILE_DETAIL_MISSING_IMPACT,
+  DRIVING_IMPACT_RECONCILE_DETAIL_STATUS_DESYNC,
   buildReconciliationIdempotencyKey,
   type DrivingAnalysisReconciliationFinding,
   type DrivingAnalysisReconciliationResult,
 } from './driving-analysis-reconciliation.types';
+import { parseAnalysisStagesJson } from '../trips/trip-analysis-status';
 
 @Injectable()
 export class DrivingAnalysisReconciliationService {
@@ -153,12 +156,14 @@ export class DrivingAnalysisReconciliationService {
       });
       const impactTripIds = new Set(existingImpact.map((row) => row.tripId));
       for (const trip of impactCandidates) {
-        if (impactTripIds.has(trip.id)) continue;
         findings.push({
           checkType: DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.DRIVING_IMPACT_STATUS_MISMATCH,
           organizationId,
           entityType: 'trip',
           entityId: trip.id,
+          detail: impactTripIds.has(trip.id)
+            ? DRIVING_IMPACT_RECONCILE_DETAIL_STATUS_DESYNC
+            : DRIVING_IMPACT_RECONCILE_DETAIL_MISSING_IMPACT,
         });
       }
     }
@@ -444,59 +449,27 @@ export class DrivingAnalysisReconciliationService {
           return outcome;
         }
 
-        case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.DRIVING_IMPACT_STATUS_MISMATCH:
-        case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.NATIVE_EVENT_WITHOUT_CONTEXT:
-        case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.MISUSE_WITHOUT_RECONCILIATION: {
-          const trip = await this.prisma.vehicleTrip.findFirst({
-            where: { id: finding.entityId, vehicle: { organizationId: finding.organizationId } },
-            select: { vehicleId: true },
-          });
-          if (!trip) {
-            this.recordReconciliation(finding.checkType, 'skipped');
-            return 'skipped';
-          }
-          const jobType =
-            finding.checkType === DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.NATIVE_EVENT_WITHOUT_CONTEXT
-              ? 'DRIVING_EVENT_CONTEXT_ENRICH'
-              : finding.checkType === DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.MISUSE_WITHOUT_RECONCILIATION
-                ? 'DRIVING_MISUSE_RECONCILE'
-                : 'DRIVING_IMPACT_COMPUTE';
-
-          const run = await this.prisma.drivingAnalysisRun.findFirst({
-            where: {
-              organizationId: finding.organizationId,
-              tripId: finding.entityId,
-              analysisType: 'TRIP_ENRICHMENT',
-              modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
-            },
-            orderBy: { startedAt: 'desc' },
-          });
-          if (!run) {
-            const init = await this.analysisInit.initializeForCompletedTrip({
-              organizationId: finding.organizationId,
-              vehicleId: trip.vehicleId,
-              tripId: finding.entityId,
-              source: 'REPAIR_FINALIZE',
-            });
-            const outcome = init.jobs.some((j) => j.enqueued) ? 'enqueued' : 'skipped';
+        case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.DRIVING_IMPACT_STATUS_MISMATCH: {
+          if (finding.detail === DRIVING_IMPACT_RECONCILE_DETAIL_STATUS_DESYNC) {
+            const synced = await this.syncDrivingImpactStatusFromExistingRow(finding.entityId);
+            const outcome = synced ? 'enqueued' : 'skipped';
             this.recordReconciliation(finding.checkType, outcome);
             return outcome;
           }
-
-          const dispatched = await this.jobDispatcher.enqueue({
-            organizationId: finding.organizationId,
-            vehicleId: trip.vehicleId,
-            tripId: finding.entityId,
-            analysisRunId: run.id,
-            jobType,
-            modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+          return this.remediateTripAnalysisJobFinding(
+            finding,
+            'DRIVING_IMPACT_COMPUTE',
             idempotencyKey,
-            correlationId: `reconcile:${finding.entityId}`,
-            requestedAt: new Date(),
-          });
-          const outcome = dispatched.enqueued ? 'enqueued' : 'skipped';
-          this.recordReconciliation(finding.checkType, outcome);
-          return outcome;
+          );
+        }
+
+        case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.NATIVE_EVENT_WITHOUT_CONTEXT:
+        case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.MISUSE_WITHOUT_RECONCILIATION: {
+          const jobType =
+            finding.checkType === DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.NATIVE_EVENT_WITHOUT_CONTEXT
+              ? 'DRIVING_EVENT_CONTEXT_ENRICH'
+              : 'DRIVING_MISUSE_RECONCILE';
+          return this.remediateTripAnalysisJobFinding(finding, jobType, idempotencyKey);
         }
 
         case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.BOOKING_WITHOUT_RENTAL_ANALYSIS: {
@@ -561,18 +534,106 @@ export class DrivingAnalysisReconciliationService {
           return 'skipped';
         }
 
-        default:
-          this.recordReconciliation(finding.checkType, 'skipped');
-          return 'skipped';
+        default: {
+          break;
+        }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(
-        `Reconciliation remediate failed ${finding.checkType} ${finding.entityId}: ${message}`,
+        `Reconciliation remediation failed: ${finding.checkType} ${finding.entityId} ${
+          err instanceof Error ? err.message : String(err)
+        }`,
       );
       this.recordReconciliation(finding.checkType, 'failed');
       return 'failed';
     }
+
+    this.recordReconciliation(finding.checkType, 'skipped');
+    return 'skipped';
+  }
+
+  /**
+   * Impact row exists but trip readiness flag was never advanced — sync without recompute.
+   */
+  private async syncDrivingImpactStatusFromExistingRow(tripId: string): Promise<boolean> {
+    const [trip, impact] = await Promise.all([
+      this.prisma.vehicleTrip.findUnique({
+        where: { id: tripId },
+        select: { id: true, analysisStagesJson: true },
+      }),
+      this.prisma.tripDrivingImpact.findUnique({
+        where: { tripId },
+        select: { tripId: true },
+      }),
+    ]);
+    if (!trip || !impact) return false;
+
+    const stages = parseAnalysisStagesJson(trip.analysisStagesJson);
+    stages.drivingImpact = 'done';
+
+    await this.prisma.vehicleTrip.update({
+      where: { id: tripId },
+      data: {
+        drivingImpactStatus: 'READY',
+        drivingImpactComputedAt: new Date(),
+        analysisStagesJson: stages as Prisma.InputJsonValue,
+      },
+    });
+    return true;
+  }
+
+  private async remediateTripAnalysisJobFinding(
+    finding: DrivingAnalysisReconciliationFinding,
+    jobType:
+      | 'DRIVING_IMPACT_COMPUTE'
+      | 'DRIVING_EVENT_CONTEXT_ENRICH'
+      | 'DRIVING_MISUSE_RECONCILE',
+    idempotencyKey: string,
+  ): Promise<'enqueued' | 'skipped' | 'failed'> {
+    const trip = await this.prisma.vehicleTrip.findFirst({
+      where: { id: finding.entityId, vehicle: { organizationId: finding.organizationId } },
+      select: { vehicleId: true },
+    });
+    if (!trip) {
+      this.recordReconciliation(finding.checkType, 'skipped');
+      return 'skipped';
+    }
+
+    const run = await this.prisma.drivingAnalysisRun.findFirst({
+      where: {
+        organizationId: finding.organizationId,
+        tripId: finding.entityId,
+        analysisType: 'TRIP_ENRICHMENT',
+        modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (!run) {
+      const init = await this.analysisInit.initializeForCompletedTrip({
+        organizationId: finding.organizationId,
+        vehicleId: trip.vehicleId,
+        tripId: finding.entityId,
+        source: 'REPAIR_FINALIZE',
+      });
+      const outcome = init.jobs.some((j) => j.enqueued) ? 'enqueued' : 'skipped';
+      this.recordReconciliation(finding.checkType, outcome);
+      return outcome;
+    }
+
+    const dispatched = await this.jobDispatcher.enqueue({
+      organizationId: finding.organizationId,
+      vehicleId: trip.vehicleId,
+      tripId: finding.entityId,
+      analysisRunId: run.id,
+      jobType,
+      modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+      idempotencyKey,
+      correlationId: `reconcile:${finding.entityId}`,
+      requestedAt: new Date(),
+    });
+    const outcome = dispatched.enqueued ? 'enqueued' : 'skipped';
+    this.recordReconciliation(finding.checkType, outcome);
+    return outcome;
   }
 
   private recordReconciliation(

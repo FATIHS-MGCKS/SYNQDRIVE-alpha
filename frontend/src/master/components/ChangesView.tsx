@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p76-final-audit-2026-07-17',
+    version: '4.9.566',
+    title: 'Driving Intelligence V2 P75/P76 — Test Coverage, Shadow Runbook, Final Audit + P0/P1 Fixes',
+    summary: [
+      'Final-Audit-Dokument mit P0/P1/P2-Klassifikation und Readiness-Matrix (Prompt 76).',
+      'Test-Coverage-Dokument + Shadow-Validierungs-Runbook (Prompt 75).',
+      'P0-Fix: Driving-Analysis-Reconciliation erkennt Impact-Status-Desync korrekt (`status_desync` vs. `missing_impact`) und synchronisiert READY ohne Recompute.',
+      'P1-Fix: i18n Fahrbelastung statt Fahrbewertung für trips/customerDetail/fleet Score-Keys (DE/EN).',
+      'Keine Änderung an Trip-Detection-Dateien.',
+    ],
+    reason:
+      'Abschlussaudit DI V2 — belegte P0/P1-Mängel im Code beheben; Test- und Shadow-Paket dokumentieren.',
+    previousBehavior:
+      'Reconciliation übersprang Trips mit vorhandener trip_driving_impact-Row statt Status-Desync zu reparieren; Score-i18n sagte „Fahrbewertung“.',
+    details:
+      '`driving-analysis-reconciliation.service.ts` + Specs; `docs/audits/driving-intelligence-v2-final-audit.md`; `docs/testing/driving-intelligence-v2-coverage.md`; `docs/runbooks/driving-intelligence-v2-shadow-validation.md`; `de.ts`/`en.ts` Score-Labels.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T08:45:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p64-rental-pattern-summary-2026-07-17',
     version: '4.9.565',
     title: 'Driving Intelligence V2 P64 — Rental Pattern Summary',
