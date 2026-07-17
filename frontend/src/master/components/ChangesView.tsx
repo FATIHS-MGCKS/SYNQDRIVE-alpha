@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-rest-shadow-canary-t0-2026-07-17',
+    version: '4.9.582',
+    title: 'V4.9.582 — Battery REST Shadow Canary (Phase 3) gestartet',
+    summary: [
+      'Prod: `BATTERY_V2_REST_SHADOW_ENABLED=true` auf VPS für Canary-Org F.S Mobility Service (`faa710c9`).',
+      'Publication + Readiness bleiben `false` — nur interne REST-Fenster/Messungen (`quality=SHADOW`).',
+      'Runbook §18.1d + Canary-Tracking `docs/runbooks/battery-rest-shadow-canary-faa710c9.md`; T+7 Review 2026-07-24.',
+    ],
+    reason: 'Nach Option-B-Backfill live REST-Pipeline im Shadow-Modus aktivieren; 7-Tage-Beobachtung vor Gate-Review.',
+    previousBehavior: 'REST Shadow global `false` — keine live REST-Fenster, nur historischer Backfill.',
+    details:
+      'VPS backend.env Flags; docs/runbooks/battery-rest-shadow-canary-faa710c9.md; battery-health-v2-deployment.md §18.1d',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T14:35:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',
