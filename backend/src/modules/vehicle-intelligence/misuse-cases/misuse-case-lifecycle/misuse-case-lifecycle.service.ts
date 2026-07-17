@@ -8,9 +8,8 @@ import type { TripEvidenceLevel } from '../../trips/trip-evidence-level.types';
 import { MISUSE_CASE_LIFECYCLE_VERSION } from './misuse-case-lifecycle.config';
 import {
   applyManualLifecycleTransition,
-  type ManualTransitionAction,
 } from './misuse-case-lifecycle.transition';
-import type { MisuseCaseLifecycleSnapshot } from './misuse-case-lifecycle.types';
+import type { ManualTransitionAction, MisuseCaseLifecycleSnapshot } from './misuse-case-lifecycle.types';
 
 @Injectable()
 export class MisuseCaseLifecycleService {

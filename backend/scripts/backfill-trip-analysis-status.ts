@@ -52,6 +52,7 @@ async function main() {
         behaviorEnrichmentStatus: true,
         tripStatus: true,
         drivingImpactStatus: true,
+        tripAnalysisStatus: true,
       },
       take: limitArg,
       orderBy: { endTime: 'desc' },

@@ -216,6 +216,8 @@ const EVENT_SEVERITY: Record<DrivingEventType, number> = {
   HARSH_CORNERING: 0.5,
   SPEEDING: 0.4,
   IDLE_EXCESSIVE: 0.2,
+  UNMAPPED_PROVIDER_EVENT: 0.3,
+  SAFETY_COLLISION: 1.0,
 };
 
 // ── Fuel summary (mirror of DimoSegmentsService.fetchFuelSummary) ──────────

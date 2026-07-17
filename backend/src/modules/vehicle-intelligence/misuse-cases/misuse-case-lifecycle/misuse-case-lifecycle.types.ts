@@ -9,8 +9,6 @@ import type {
 } from '@prisma/client';
 import type { TripEvidenceLevel } from '../../trips/trip-evidence-level.types';
 
-import type { MisuseCaseType } from '@prisma/client';
-
 export type MisuseCaseInputIdentity = {
   organizationId: string;
   tripId: string;

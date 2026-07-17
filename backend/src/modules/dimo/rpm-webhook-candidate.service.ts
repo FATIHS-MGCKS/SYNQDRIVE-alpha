@@ -148,7 +148,7 @@ export class RpmWebhookCandidateService {
         data: {
           status,
           contextAssessmentJson: assessment as unknown as Prisma.InputJsonValue,
-          error: assessment.status === 'FAILED' ? assessment.error ?? null : null,
+          error: assessment.status === 'PROVIDER_ERROR' ? assessment.error ?? null : null,
         },
       });
 
