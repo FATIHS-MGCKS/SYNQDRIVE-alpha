@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-action-2026-07-17',
+    version: '4.9.593',
+    title: 'V4.9.593 — Document Intake V2 DocumentAction (additiv)',
+    summary: [
+      'Neues Prisma-Modell `DocumentAction` — einzelne geplante Downstream-Aktion pro Action-Plan.',
+      'Felder: actionType, status, requirement (REQUIRED/OPTIONAL/…), target/result entities, idempotencyKey, input/preview payloads, attempts, started/completed, errors.',
+      'Unique `(organizationId, idempotencyKey)` + `(actionPlanId, sequence)`; Payload-Sanitizer entfernt OCR-Texte und Secrets.',
+      'Repository `createPlannedActions` (Dedup, keine Ausführung); Pflicht-/Optional-Queries getrennt.',
+    ],
+    reason: 'Prompt 17/84: Action-Zeilen-Persistenz vor Apply-Worker.',
+    previousBehavior: 'Nur Legacy `actionAudit` JSON auf Extraction — keine normalisierten Action-Rows.',
+    details:
+      'schema.prisma DocumentAction, migration 20260717210000_document_actions, document-action.{types,idempotency,payload,repository}.ts (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
     id: 'document-action-plan-2026-07-17',
     version: '4.9.592',
     title: 'V4.9.592 — Document Intake V2 DocumentActionPlan (additiv)',
