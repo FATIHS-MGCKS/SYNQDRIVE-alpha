@@ -81,11 +81,17 @@ export type DocumentActionExecutionRecord = {
   completedAt?: string | null;
 };
 
+export type DocumentActionPlanExecutionStatus =
+  | 'EXECUTING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'PARTIALLY_COMPLETED';
+
 export type DocumentActionPlanExecution = {
   planId: string;
   planVersion: number;
   fingerprint: string;
-  status: 'EXECUTING' | 'COMPLETED' | 'FAILED';
+  status: DocumentActionPlanExecutionStatus;
   actions: DocumentActionExecutionRecord[];
   startedAt?: string;
   completedAt?: string;

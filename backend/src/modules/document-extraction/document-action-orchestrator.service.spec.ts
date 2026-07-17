@@ -18,6 +18,16 @@ import {
   UpdateVehicleComplianceDocumentActionExecutor,
 } from './executors/update-vehicle-from-extraction-document-action.executor';
 import {
+  CreateDamageDraftDocumentActionExecutor,
+  CreateDamageRecordDocumentActionExecutor,
+  LinkExistingDamageDocumentActionExecutor,
+} from './executors/create-damage-document-action.executor';
+import {
+  ApplyBatteryMeasurementDocumentActionExecutor,
+  ApplyBrakeMeasurementDocumentActionExecutor,
+  ApplyTireMeasurementDocumentActionExecutor,
+} from './executors/apply-technical-document-action.executor';
+import {
   DOCUMENT_ACTION_EXECUTION_STATUSES,
   DOCUMENT_ACTION_PLAN_STATUSES,
 } from './document-action.types';
@@ -51,6 +61,16 @@ describe('DocumentActionOrchestratorService', () => {
     new RefreshVehicleServiceHistoryDocumentActionExecutor({
       refreshVehicleServiceHistoryFromExtraction: jest.fn(),
     } as any),
+    new CreateDamageDraftDocumentActionExecutor({ createDraftFromDocumentExtraction: jest.fn() } as any),
+    new CreateDamageRecordDocumentActionExecutor({ applyRecordFromDocumentExtraction: jest.fn() } as any),
+    new LinkExistingDamageDocumentActionExecutor({
+      linkExistingDamageFromDocumentExtraction: jest.fn(),
+    } as any),
+    new ApplyTireMeasurementDocumentActionExecutor({
+      applyMeasurementFromDocumentExtraction: jest.fn(),
+    } as any),
+    new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
+    new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
   );
 
   const baseInput = {
@@ -90,6 +110,7 @@ describe('DocumentActionOrchestratorService', () => {
     const state = readDocumentActionPlanState(updatePayload.data.plausibility);
     expect(state.actionPlan?.status).toBe(DOCUMENT_ACTION_PLAN_STATUSES.COMPLETED);
     expect(state.actionPlanExecution?.status).toBe('COMPLETED');
+    expect(state.actionPlanApplyLifecycle?.status).toBe('APPLIED');
     expect(
       state.actionPlanExecution?.actions.some(
         (row) =>
