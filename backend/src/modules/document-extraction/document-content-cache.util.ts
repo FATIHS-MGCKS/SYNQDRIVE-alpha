@@ -26,6 +26,7 @@ export interface PipelinePlausibilityPayload {
   customerCandidates?: import('./customer-candidate-resolver.types').CustomerCandidatePipelineState;
   driverCandidates?: import('./driver-candidate-resolver.types').DriverCandidatePipelineState;
   partnerCandidates?: import('./partner-candidate-resolver.types').PartnerCandidatePipelineState;
+  entityCandidateRanking?: import('./entity-candidate-ranking.types').EntityCandidateRankingPipelineState;
 }
 
 export interface DocumentTypeAuditEntry {

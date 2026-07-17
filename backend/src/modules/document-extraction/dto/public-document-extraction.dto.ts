@@ -145,6 +145,32 @@ export interface PublicPartnerNewSuggestionDto {
   sourceField: string;
 }
 
+export interface PublicEntityCandidateRankDto {
+  entityType: string;
+  entityId: string;
+  score: number;
+  confidenceLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  positiveReasons: string[];
+  negativeReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  autoSelectEligibility: boolean;
+}
+
+export interface PublicEntityCandidateRankingDto {
+  rankingVersion: string;
+  evaluatedAt: string;
+  documentType: string;
+  preselectionBlocked: boolean;
+  preselectionBlockedReason: string | null;
+  candidates: PublicEntityCandidateRankDto[];
+}
+
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
@@ -159,6 +185,7 @@ export interface PublicDocumentExtractionDto {
   driverCandidates: PublicDriverCandidateDto[] | null;
   partnerCandidates: PublicPartnerCandidateDto[] | null;
   partnerNewSuggestion: PublicPartnerNewSuggestionDto | null;
+  entityCandidateRanking: PublicEntityCandidateRankingDto | null;
   vehicle: PublicVehicleDisplayDto | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;
