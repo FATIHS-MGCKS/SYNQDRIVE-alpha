@@ -125,15 +125,40 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
 
   const manualDocTypes = page.docTypeOptions.filter((o) => o.value !== 'AUTO');
   const showMainIdle = page.flow === 'idle';
-  const showBusy = page.isBusy;
   const showAwaitingType = page.flow === 'awaiting_type';
-  const showFailed = page.flow === 'failed';
+  const showProcessingStatus = (page.isBusy && !showAwaitingType) || page.flow === 'failed';
   const showDuplicate = page.flow === 'duplicate_blocked';
   const showReview = page.flow === 'ready' || page.flow === 'applying';
   const showDone = page.flow === 'done';
   const showCancelled = page.flow === 'cancelled';
   const uploadContextBanner = formatUploadContextBanner(page.record?.uploadContext);
   const uploadContextConflict = hasUploadContextConflict(page.record?.uploadContext);
+
+  const flowStatusProps = {
+    flow: page.flow,
+    uploadedFileName: page.uploadedFileName,
+    errorMessage: page.errorMessage,
+    validationError: page.validationError,
+    uploadContext: page.record?.uploadContext,
+    record: page.record,
+    duplicateBlocked: page.duplicateBlocked,
+    uploadDuplicateWarning: page.uploadDuplicateWarning,
+    pollNetworkWarning: page.pollNetworkWarning,
+    showLongRunningHint: page.showLongRunningHint,
+    processingStartedAt: page.processingStartedAt,
+    processingStepLabels: page.processingStepLabels,
+    awaitingTypeDetail: t('docUpload.awaitingTypeStepDetail'),
+    retryDetail: page.flow === 'retrying' ? t('docUpload.retryStepDetail') : t('docUpload.retryAtFailedStep'),
+    elapsedPrefix: t('docUpload.processingElapsed'),
+    longRunningHint: t('docUpload.longRunningHint'),
+    safeLeaveHint: t('docUpload.safeLeaveHint'),
+    networkWarning: t('docUpload.networkWarning'),
+    isDarkMode,
+    onRetry: page.handleRetry,
+    onReset: page.handleReset,
+    onCancel: page.handleCancel,
+    onAuthorizedReupload: page.handleAuthorizedReupload,
+  };
 
   return (
     <div className="w-full max-w-[1200px] mx-auto min-w-0 overflow-x-clip">
@@ -190,49 +215,18 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
             </div>
           )}
 
-          {showBusy && (
-            <div className={`rounded-lg p-6 sm:p-12 text-center min-w-0 ${glass}`}>
-              {uploadContextBanner && uploadContextBannerNode(uploadContextBanner, uploadContextConflict, page.record?.uploadContext?.conflicts, isDarkMode)}
-              <div className="relative w-16 h-16 mx-auto mb-3">
-                <div className="w-16 h-16 rounded-lg flex items-center justify-center sq-tone-info">
-                  <Icon name="sparkles" className="w-7 h-7" />
-                </div>
-                <div className="absolute -top-1 -right-1">
-                  <Icon name="loader-2" className="w-5 h-5 animate-spin" />
-                </div>
-              </div>
-              <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {page.flowStatusLabel(page.flow)}
-              </p>
-              {page.record?.processingStage && (
-                <p className={`text-[11px] mb-2 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
-                  {page.stageLabel(page.record.processingStage)}
-                </p>
-              )}
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'} break-all px-1`}>{page.uploadedFileName}</p>
-              <div className="mt-4 space-y-2">
-                <span className={`inline-block text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                  {page.record ? page.serverStatusLabel(page.record.status) : page.flowStatusLabel(page.flow)}
-                </span>
-                {page.showLongRunningHint && (
-                  <p className={`text-[11px] max-w-md mx-auto break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.longRunningHint')}</p>
-                )}
-                {page.pollNetworkWarning && (
-                  <p className={`text-[11px] max-w-md mx-auto break-words ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>{t('docUpload.networkWarning')}</p>
-                )}
-              </div>
-              {page.record?.allowedActions?.includes('cancel') && (
-                <button type="button" onClick={() => void page.handleCancel()} className={`mt-4 inline-flex items-center justify-center min-h-11 px-3 py-2 rounded-lg text-xs font-semibold ${isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                  {t('docUpload.cancel')}
-                </button>
-              )}
+          {showProcessingStatus && (
+            <div className={`rounded-lg min-w-0 ${glass}`}>
+              <DocumentExtractionFlowStatus {...flowStatusProps} />
             </div>
           )}
 
           {showAwaitingType && (
-            <div className={`rounded-lg p-4 sm:p-6 min-w-0 ${glass}`}>
-              <h3 className={`text-base font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.awaitingTypeTitle')}</h3>
-              <p className={`text-xs mb-4 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.awaitingTypeHint')}</p>
+            <div className={`rounded-lg p-4 sm:p-6 min-w-0 space-y-4 ${glass}`}>
+              <DocumentExtractionFlowStatus {...flowStatusProps} />
+              <div className="border-t pt-4 min-w-0" style={{ borderColor: isDarkMode ? 'var(--border)' : undefined }}>
+                <h3 className={`text-base font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.awaitingTypeTitle')}</h3>
+                <p className={`text-xs mb-4 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.awaitingTypeHint')}</p>
               {page.record?.detectedDocumentType && (
                 <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${isDarkMode ? 'bg-brand-soft text-brand' : 'bg-status-info-soft text-status-info'}`}>
                   {t('docUpload.detectedType')}: {page.typeLabel(`documentExtraction.type.${page.record.detectedDocumentType}`, page.record.detectedDocumentType)}
@@ -250,6 +244,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               <button type="button" onClick={() => void page.handleSetDocumentType(page.pendingTypeSelection, false)} className="w-full sm:w-auto min-h-11 px-3 py-2 rounded-lg text-xs font-semibold bg-brand text-brand-foreground">
                 {t('docUpload.selectTypeAndContinue')}
               </button>
+              </div>
             </div>
           )}
 
@@ -260,30 +255,6 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               onReset={page.handleReset}
               onAuthorizedReupload={(reason) => void page.handleAuthorizedReupload?.(reason)}
             />
-          )}
-
-          {showFailed && (
-            <div className={`rounded-lg p-6 sm:p-10 text-center min-w-0 ${glass}`}>
-              <div className={`w-16 h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-red-500/15' : 'bg-red-100/80'}`}>
-                <Icon name="alert-triangle" className={`w-7 h-7 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
-              </div>
-              <p className={`text-xs font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.extractionFailed')}</p>
-              {page.record?.errorPhase && (
-                <p className={`text-[11px] mb-2 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{page.errorPhaseLabel(page.record.errorPhase)}</p>
-              )}
-              <p className={`text-xs mb-4 max-w-md mx-auto break-words px-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{page.errorMessage || t('docUpload.extractionFailed')}</p>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 w-full max-w-sm mx-auto">
-                {page.record?.allowedActions?.includes('retry') && (
-                  <button type="button" onClick={() => void page.handleRetry()} className="inline-flex items-center justify-center gap-2 min-h-11 w-full sm:w-auto px-3 py-2 rounded-lg text-xs font-semibold bg-brand hover:bg-brand text-brand-foreground transition-all">
-                    <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
-                    {t('docUpload.retry')}
-                  </button>
-                )}
-                <button type="button" onClick={page.handleReset} className={`inline-flex items-center justify-center gap-2 min-h-11 w-full sm:w-auto px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
-                  {t('docUpload.cancel')}
-                </button>
-              </div>
-            </div>
           )}
 
           {showReview && (
@@ -465,23 +436,6 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
         </div>
 
         <div className="space-y-5 min-w-0 w-full">
-          <div className={`rounded-lg p-4 min-w-0 ${glass}`}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-5 h-5 rounded-lg flex items-center justify-center sq-tone-info">
-                <Icon name="sparkles" className="w-5 h-5" />
-              </div>
-              <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.aiPowered')}</h3>
-            </div>
-            <div className="space-y-2">
-              {(page.metadata?.documentTypes ?? []).map((type) => (
-                <div key={type.value} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg min-w-0 ${isDarkMode ? 'surface-premium' : 'bg-gray-50'}`}>
-                  <Icon name="file-text" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`} />
-                  <span className={`text-[11px] break-words min-w-0 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{page.typeLabel(type.labelKey)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className={`rounded-lg overflow-hidden min-w-0 ${glass}`}>
             <div className={`px-3 py-2 border-b flex items-center justify-between gap-2 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
               <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.recentUploads')}</h3>

@@ -66,6 +66,17 @@ vi.mock('../hooks/useDocumentUploadPage', () => ({
     handleOpenHistoryItem: vi.fn(),
     handleAuthorizedReupload: vi.fn(),
     validateAndSetError: () => true,
+    assignedVehicleId: 'v1',
+    canConfirm: true,
+    processingStepLabels: {
+      file_check: 'docUpload.processingStep.fileCheck',
+      file_stored: 'docUpload.processingStep.fileStored',
+      text_recognition: 'docUpload.processingStep.textRecognition',
+      classification: 'docUpload.processingStep.classification',
+      data_preparation: 'docUpload.processingStep.dataPreparation',
+      ready_for_review: 'docUpload.processingStep.readyForReview',
+    },
+    processingStartedAt: null,
   }),
 }));
 

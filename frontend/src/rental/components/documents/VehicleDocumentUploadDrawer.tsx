@@ -150,8 +150,26 @@ export function VehicleDocumentUploadDrawer({
           errorMessage={flow.errorMessage}
           validationError={flow.validationError}
           uploadContext={flow.uploadContext}
+          record={flow.record}
           duplicateBlocked={flow.duplicateBlocked}
           uploadDuplicateWarning={flow.uploadDuplicateWarning}
+          pollNetworkWarning={flow.pollNetworkWarning}
+          showLongRunningHint={flow.showLongRunningHint}
+          processingStartedAt={flow.processingStartedAt}
+          processingStepLabels={{
+            file_check: 'Datei wird geprüft',
+            file_stored: 'Datei wurde sicher gespeichert',
+            text_recognition: 'Text wird erkannt',
+            classification: 'Dokument wird eingeordnet',
+            data_preparation: 'Daten und Zuordnungen werden vorbereitet',
+            ready_for_review: 'Bereit zur Prüfung',
+          }}
+          awaitingTypeDetail="Dokumenttyp erforderlich — bitte auswählen, um fortzufahren."
+          retryDetail={flow.flow === 'retrying' ? 'Verarbeitung wird erneut gestartet…' : 'Fehler an diesem Schritt — erneut versuchen.'}
+          elapsedPrefix="Laufzeit"
+          longRunningHint="Die Analyse dauert länger als erwartet."
+          safeLeaveHint="Sie können die Seite sicher verlassen — die Verarbeitung läuft serverseitig weiter."
+          networkWarning="Vorübergehende Verbindungsprobleme beim Statusabruf."
           onRetry={() => void flow.handleRetry()}
           onReset={flow.handleReset}
           onAuthorizedReupload={(reason) => void flow.handleAuthorizedReupload(reason)}

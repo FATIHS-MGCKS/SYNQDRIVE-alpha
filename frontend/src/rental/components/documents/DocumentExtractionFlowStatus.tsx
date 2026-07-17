@@ -1,8 +1,15 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { formatUploadContextBanner, hasUploadContextConflict } from '../../../lib/document-upload-context';
 import type { DocumentUploadDuplicateError } from '../../../lib/document-upload-duplicate';
-import type { PublicUploadContextDisplay, PublicUploadDuplicate } from '../../lib/document-extraction.types';
+import type { PublicDocumentExtraction, PublicUploadContextDisplay, PublicUploadDuplicate } from '../../lib/document-extraction.types';
+import {
+  buildIntakeProcessingSteps,
+  formatProcessingElapsed,
+  shouldShowProcessingSteps,
+  type IntakeProcessingStepId,
+} from '../../lib/document-intake-processing-steps';
+import { DocumentIntakeProcessingSteps } from './DocumentIntakeProcessingSteps';
 import { FLOW_STATUS_LABEL_DE, type FlowStatus } from './document-extraction.shared';
 import { DocumentUploadDuplicatePanel } from './DocumentUploadDuplicatePanel';
 
@@ -12,13 +19,24 @@ interface Props {
   errorMessage?: string | null;
   validationError?: string | null;
   uploadContext?: PublicUploadContextDisplay | null;
+  record?: PublicDocumentExtraction | null;
   duplicateBlocked?: DocumentUploadDuplicateError | null;
   uploadDuplicateWarning?: PublicUploadDuplicate | null;
   pollNetworkWarning?: boolean;
   showLongRunningHint?: boolean;
+  processingStartedAt?: number | null;
+  processingStepLabels?: Record<IntakeProcessingStepId, string>;
+  awaitingTypeDetail?: string | null;
+  retryDetail?: string | null;
+  elapsedPrefix?: string;
+  longRunningHint?: string | null;
+  safeLeaveHint?: string | null;
+  networkWarning?: string | null;
+  isDarkMode?: boolean;
   flowStatusLabel?: (flow: FlowStatus) => string;
   onRetry?: () => void;
   onReset?: () => void;
+  onCancel?: () => void;
   onAuthorizedReupload?: (reason: string) => void;
   children?: ReactNode;
 }
@@ -29,13 +47,24 @@ export function DocumentExtractionFlowStatus({
   errorMessage,
   validationError,
   uploadContext,
+  record = null,
   duplicateBlocked,
   uploadDuplicateWarning,
   pollNetworkWarning,
   showLongRunningHint,
+  processingStartedAt = null,
+  processingStepLabels,
+  awaitingTypeDetail,
+  retryDetail,
+  elapsedPrefix = 'Laufzeit',
+  longRunningHint,
+  safeLeaveHint,
+  networkWarning,
+  isDarkMode = false,
   flowStatusLabel = (status) => FLOW_STATUS_LABEL_DE[status] ?? status,
   onRetry,
   onReset,
+  onCancel,
   onAuthorizedReupload,
   children,
 }: Props) {
@@ -62,6 +91,37 @@ export function DocumentExtractionFlowStatus({
       ) : null}
     </div>
   ) : null;
+
+  const processingSteps = useMemo(() => {
+    if (!processingStepLabels || !shouldShowProcessingSteps(flow)) return null;
+    return buildIntakeProcessingSteps({
+      flow,
+      status: record?.status,
+      processingStage: record?.processingStage,
+      errorPhase: record?.errorPhase,
+      labels: processingStepLabels,
+      awaitingTypeDetail,
+      retryDetail: flow === 'failed' ? retryDetail ?? errorMessage : retryDetail,
+    });
+  }, [
+    awaitingTypeDetail,
+    errorMessage,
+    flow,
+    processingStepLabels,
+    record?.errorPhase,
+    record?.processingStage,
+    record?.status,
+    retryDetail,
+  ]);
+
+  const elapsedLabel = useMemo(() => {
+    const started =
+      processingStartedAt ??
+      (record?.queuedAt ? Date.parse(record.queuedAt) : null) ??
+      (record?.createdAt ? Date.parse(record.createdAt) : null);
+    if (!started || Number.isNaN(started)) return null;
+    return `${elapsedPrefix}: ${formatProcessingElapsed(Date.now() - started)}`;
+  }, [elapsedPrefix, processingStartedAt, record?.createdAt, record?.queuedAt]);
 
   if (validationError && flow === 'idle') {
     return <p className="text-[11px] text-[color:var(--status-critical)]">{validationError}</p>;
@@ -93,35 +153,58 @@ export function DocumentExtractionFlowStatus({
     );
   }
 
-  const busy =
-    flow === 'validating' ||
-    flow === 'uploading' ||
-    flow === 'queued' ||
-    flow === 'retrying' ||
-    flow === 'processing' ||
-    flow === 'ocr' ||
-    flow === 'classifying' ||
-    flow === 'extracting' ||
-    flow === 'validating_plausibility' ||
-    flow === 'stored' ||
-    flow === 'awaiting_type' ||
-    flow === 'applying';
+  if (processingSteps) {
+    const failedStep = processingSteps.find((step) => step.state === 'failed');
+    const footerSlot =
+      flow === 'failed' ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+          {onRetry && record?.allowedActions?.includes('retry') !== false ? (
+            <button
+              type="button"
+              onClick={() => void onRetry()}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
+            >
+              <Icon name="rotate-ccw" className="h-4 w-4" />
+              {retryDetail && failedStep ? `Erneut ab „${failedStep.label}“` : 'Erneut versuchen'}
+            </button>
+          ) : null}
+          {onReset ? (
+            <button
+              type="button"
+              onClick={onReset}
+              className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold ${
+                isDarkMode ? 'border-neutral-700 text-gray-300' : 'border-gray-200 text-gray-600'
+              }`}
+            >
+              Abbrechen
+            </button>
+          ) : null}
+        </div>
+      ) : flow !== 'failed' && record?.allowedActions?.includes('cancel') && onCancel ? (
+        <button
+          type="button"
+          onClick={() => void onCancel()}
+          className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold ${
+            isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          Abbrechen
+        </button>
+      ) : null;
 
-  if (busy) {
     return (
-      <div className="surface-premium rounded-xl border border-border bg-muted/20 p-8 text-center">
-        {contextBanner ? <div className="mb-4 text-left">{contextBanner}</div> : null}
-        <Icon name="loader-2" className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
-        <p className="text-[13px] font-semibold text-foreground">{flowStatusLabel(flow)}</p>
-        {uploadedFileName ? (
-          <p className="mt-1 truncate text-[11px] text-muted-foreground">{uploadedFileName}</p>
-        ) : null}
-        {pollNetworkWarning ? (
-          <p className="mt-2 text-[11px] text-[color:var(--status-watch)]">Netzwerk instabil — Polling läuft weiter.</p>
-        ) : null}
-        {showLongRunningHint ? (
-          <p className="mt-1 text-[11px] text-muted-foreground">Die Verarbeitung dauert länger als üblich.</p>
-        ) : null}
+      <div className={`rounded-lg p-4 sm:p-6 min-w-0 ${isDarkMode ? '' : ''}`}>
+        {contextBanner ? <div className="mb-4">{contextBanner}</div> : null}
+        <DocumentIntakeProcessingSteps
+          steps={processingSteps}
+          uploadedFileName={uploadedFileName}
+          elapsedLabel={elapsedLabel}
+          longRunningHint={showLongRunningHint ? longRunningHint ?? undefined : undefined}
+          safeLeaveHint={showLongRunningHint ? safeLeaveHint ?? undefined : undefined}
+          networkWarning={pollNetworkWarning ? networkWarning ?? undefined : undefined}
+          isDarkMode={isDarkMode}
+          footerSlot={footerSlot}
+        />
       </div>
     );
   }
@@ -130,7 +213,7 @@ export function DocumentExtractionFlowStatus({
     return (
       <div className="rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.05] p-5 text-center">
         <Icon name="alert-triangle" className="mx-auto mb-2 h-7 w-7 text-[color:var(--status-critical)]" />
-        <p className="text-[13px] font-semibold text-foreground">Verarbeitung fehlgeschlagen</p>
+        <p className="text-[13px] font-semibold text-foreground">{flowStatusLabel(flow)}</p>
         <p className="mt-1 text-[11px] text-muted-foreground">{errorMessage}</p>
         <div className="mt-4 flex justify-center gap-2">
           {onRetry ? (
