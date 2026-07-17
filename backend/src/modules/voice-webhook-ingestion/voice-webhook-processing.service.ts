@@ -1,5 +1,7 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { VoiceWebhookErrorClass } from '@prisma/client';
+import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
+import { buildVoiceLogPayload } from '@modules/voice-assistant/security/voice-structured-log.util';
 import { VoiceProviderWebhookEventRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { VoiceConversationLifecycleService } from './voice-conversation-lifecycle.service';
 import { VoiceWebhookCorrelationService } from './voice-webhook-correlation.service';
@@ -17,6 +19,7 @@ export class VoiceWebhookProcessingService {
     private readonly lifecycle: VoiceConversationLifecycleService,
     private readonly correlation: VoiceWebhookCorrelationService,
     private readonly queue: VoiceWebhookQueueProducer,
+    @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
   async processEventId(eventId: string, replay = false): Promise<void> {
@@ -68,6 +71,17 @@ export class VoiceWebhookProcessingService {
       }
 
       await this.events.markProcessed(event.id);
+      this.voiceMetrics?.webhookProcessing.inc({
+        event_type: event.eventType ?? 'unknown',
+        outcome: 'processed',
+      });
+      if (event.receivedAt) {
+        this.voiceMetrics?.observeWebhookLag(
+          event.provider,
+          event.receivedAt,
+          new Date(),
+        );
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown processing error';
       const errorClass = this.classifyError(err);
@@ -79,9 +93,28 @@ export class VoiceWebhookProcessingService {
           errorCode: errorClass,
           errorMessage: message,
         });
-        this.logger.error(`Voice webhook event ${eventId} moved to dead letter: ${message}`);
+        this.voiceMetrics?.webhookDlq.inc({ error_class: errorClass });
+        this.voiceMetrics?.webhookProcessing.inc({
+          event_type: event.eventType ?? 'unknown',
+          outcome: 'dlq',
+        });
+        this.logger.error(
+          JSON.stringify(
+            buildVoiceLogPayload({
+              event: 'voice_webhook_dlq',
+              errorClass,
+              detail: message,
+              voiceConversationId: event.voiceConversationId ?? undefined,
+            }),
+          ),
+        );
         return;
       }
+
+      this.voiceMetrics?.webhookProcessing.inc({
+        event_type: event.eventType ?? 'unknown',
+        outcome: 'failed',
+      });
 
       await this.events.markFailed(event.id, {
         errorClass,

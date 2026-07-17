@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   VoiceBudgetOverflowBehavior,
   VoiceProtectionOverrideScope,
@@ -11,6 +11,7 @@ import { VoiceSubscriptionService } from '@modules/voice-billing/voice-subscript
 import { VoiceBillingService } from '@modules/voice-billing/voice-billing.service';
 import { currentBillingPeriodBounds } from '@modules/voice-billing/voice-billing-period.util';
 import { billableMinutesFromSeconds } from '@modules/voice-billing/voice-billing-minute.util';
+import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
 import { VoiceAbuseDetectionService } from './voice-abuse-detection.service';
 import { VoiceConcurrentCallReservationService } from './voice-concurrent-call.reservation.service';
 import { VoiceProtectionAuditService } from './voice-protection-audit.service';
@@ -62,6 +63,7 @@ export class VoiceBudgetEnforcementService {
     private readonly audit: VoiceProtectionAuditService,
     private readonly concurrent: VoiceConcurrentCallReservationService,
     private readonly abuse: VoiceAbuseDetectionService,
+    @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
   async assertOutboundAllowed(ctx: OutboundEnforcementContext): Promise<{ conversationSlotId: string }> {
@@ -411,6 +413,7 @@ export class VoiceBudgetEnforcementService {
     reasonCode: VoiceProtectionReasonCode,
     message: string,
   ) {
+    this.voiceMetrics?.protectionBlocks.inc({ reason_code: reasonCode });
     await this.audit.record({ organizationId, action, reasonCode, message });
   }
 }

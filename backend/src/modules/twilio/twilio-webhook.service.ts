@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   Prisma,
@@ -22,7 +18,9 @@ import {
   withCountersApplied,
 } from '@modules/voice-assistant/voice-conversation-lifecycle.util';
 import { sanitizeWebhookHeaders } from '@modules/voice-assistant/voice-conversation.util';
+import { redactTwilioFormPayload } from '@modules/voice-webhook-ingestion/voice-webhook-redaction.util';
 import { VoiceWebhookIngestService } from '@modules/voice-webhook-ingestion/voice-webhook-ingest.service';
+import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
 import { VOICE_WEBHOOK_EVENT_TYPES } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.constants';
 import { TwilioService } from './twilio.service';
 import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
@@ -46,6 +44,7 @@ export class TwilioWebhookService {
     private readonly config: ConfigService,
     private readonly bridge: TwilioVoiceBridgeService,
     private readonly voiceWebhookIngest: VoiceWebhookIngestService,
+    @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
   async handleInboundVoice(params: {
@@ -167,6 +166,7 @@ export class TwilioWebhookService {
     });
 
     if (!valid) {
+      this.voiceMetrics?.webhookSignatureInvalid.inc({ provider: 'TWILIO' });
       throw new UnauthorizedException('Invalid Twilio webhook signature');
     }
   }
@@ -319,7 +319,7 @@ export class TwilioWebhookService {
           callSid: params.callSid || null,
           externalEventId: params.externalEventId,
           eventType: params.eventType,
-          payload: params.payload as Prisma.InputJsonValue,
+          payload: redactTwilioFormPayload(params.payload) as Prisma.InputJsonValue,
           headers: sanitizeWebhookHeaders(params.headers) as Prisma.InputJsonValue,
           signatureValid: params.signatureValid,
           processedAt: new Date(),

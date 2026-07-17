@@ -2,8 +2,10 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@ne
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
+import { VoiceProviderWebhookProcessingStatus } from '@prisma/client';
 import { ClickHouseAnalyticsService } from '@modules/clickhouse/clickhouse-analytics.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VoiceMetricsService } from './voice-metrics.service';
 import { QUEUE_NAMES } from '../../workers/queues/queue-names';
 import { RuntimeStatusRegistry } from './runtime-status.registry';
 import { TripMetricsService } from './trip-metrics.service';
@@ -21,6 +23,7 @@ const MONITORED_QUEUES = [
   QUEUE_NAMES.TIRE_RECALCULATION,
   QUEUE_NAMES.BATTERY_V2,
   QUEUE_NAMES.BRAKE_RECALCULATION,
+  QUEUE_NAMES.VOICE_WEBHOOK_PROCESS,
 ] as const;
 
 const BATTERY_POSTGRES_TABLES = [
@@ -48,6 +51,7 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService,
     @Optional() private readonly chAnalytics?: ClickHouseAnalyticsService,
     @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
   onModuleInit(): void {
@@ -108,6 +112,33 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
         }
       }),
     );
+  }
+
+  @Cron('*/60 * * * * *')
+  async refreshVoiceWebhookGauges(): Promise<void> {
+    if (!this.prisma || !this.voiceMetrics) return;
+
+    try {
+      const counts = await this.prisma.voiceProviderWebhookEvent.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      });
+      for (const row of counts) {
+        this.voiceMetrics.webhookBacklog.set({ status: row.status }, row._count._all);
+      }
+
+      const dlq24h = await this.prisma.voiceProviderWebhookEvent.count({
+        where: {
+          status: VoiceProviderWebhookProcessingStatus.FAILED,
+          receivedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      });
+      this.voiceMetrics.webhookDlqGauge.set(dlq24h);
+    } catch (err: unknown) {
+      this.logger.debug(
+        `Voice webhook gauge refresh skipped: ${(err as Error).message}`,
+      );
+    }
   }
 
   @Cron('*/5 * * * *')

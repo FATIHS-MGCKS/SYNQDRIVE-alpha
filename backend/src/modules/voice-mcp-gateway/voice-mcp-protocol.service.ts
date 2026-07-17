@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
 import { resolveVoiceMcpToolTimeoutMs } from './voice-mcp-gateway.config';
 import {
   VOICE_MCP_CORRELATION_ID_HEADER,
@@ -46,6 +47,7 @@ export class VoiceMcpProtocolService {
     private readonly auditService: VoiceMcpAuditService,
     private readonly nonceStore: VoiceMcpNonceStore,
     private readonly rateLimitService: VoiceMcpRateLimitService,
+    @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
   resolveRequestIds(headers: Record<string, string | string[] | undefined>): {
@@ -67,6 +69,7 @@ export class VoiceMcpProtocolService {
 
     const requestIdFresh = await this.nonceStore.assertFreshRequestId(context.requestId);
     if (!requestIdFresh) {
+      this.voiceMetrics?.mcpRateLimited.inc({ reason: 'duplicate_request_id' });
       throw new VoiceMcpError('RateLimited', 'Duplicate MCP request detected.');
     }
 
@@ -97,6 +100,10 @@ export class VoiceMcpProtocolService {
       return { jsonrpc: '2.0', id, result };
     } catch (error) {
       if (isVoiceMcpError(error)) {
+        this.voiceMetrics?.mcpErrors.inc({ error_code: error.code });
+        if (error.code === 'RateLimited') {
+          this.voiceMetrics?.mcpRateLimited.inc({ reason: 'rate_limit' });
+        }
         return {
           jsonrpc: '2.0',
           id,

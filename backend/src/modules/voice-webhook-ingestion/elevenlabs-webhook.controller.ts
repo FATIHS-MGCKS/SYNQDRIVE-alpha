@@ -7,8 +7,10 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  Optional,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
 import { VoiceWebhookIngestService } from './voice-webhook-ingest.service';
 import { validateElevenLabsWebhookSignature } from './elevenlabs-signature.util';
 import { parseJsonPayload, VoiceWebhookPayloadError } from './voice-webhook-payload.util';
@@ -19,7 +21,10 @@ import { VOICE_WEBHOOK_EVENT_TYPES } from './voice-webhook-ingestion.constants';
 export class ElevenLabsWebhookController {
   private readonly logger = new Logger(ElevenLabsWebhookController.name);
 
-  constructor(private readonly ingest: VoiceWebhookIngestService) {}
+  constructor(
+    private readonly ingest: VoiceWebhookIngestService,
+    @Optional() private readonly voiceMetrics?: VoiceMetricsService,
+  ) {}
 
   @Post('post-call/:orgId')
   @HttpCode(200)
@@ -85,6 +90,7 @@ export class ElevenLabsWebhookController {
     });
 
     if (!valid) {
+      this.voiceMetrics?.webhookSignatureInvalid.inc({ provider: 'ELEVENLABS' });
       throw new UnauthorizedException('Invalid ElevenLabs webhook signature');
     }
   }
