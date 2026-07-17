@@ -5,8 +5,8 @@
 | **Audit ID** | `brake-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/brake-health-production-readiness-2026-07` |
-| **Phase** | **1 of 7 — Architecture & Runtime Map** |
-| **Status** | Phase 1 complete; Phases 2–7 pending |
+| **Phase** | **2 of 7 — Data Model, Lifecycle & Formula Audit** |
+| **Status** | Phases 1–2 complete; Phases 3–7 pending |
 | **Production-Readiness verdict (preliminary)** | **`NOT_READY`** — fleet has zero initialized brake baselines |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | 60 days ending 2026-07-17 UTC |
@@ -62,8 +62,9 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Code map CSV | `docs/audits/data/brake-health-code-map-2026-07.csv` | 1 |
 | Fleet coverage CSV | `docs/audits/data/brake-health-fleet-coverage-2026-07.csv` | 1 / 3 |
 | Audit script | `scripts/audits/audit-brake-health-production-readiness.ts` | 1+ |
-| Formula factor map CSV | `docs/audits/data/brake-health-formula-factor-map-2026-07.csv` | 2 (pending) |
-| Spec source map CSV | `docs/audits/data/brake-health-spec-source-map-2026-07.csv` | 2 (pending) |
+| Formula factor map CSV | `docs/audits/data/brake-health-formula-factor-map-2026-07.csv` | 2 |
+| Reference spec map CSV | `docs/audits/data/brake-health-reference-spec-map-2026-07.csv` | 2 |
+| Lifecycle & evidence map CSV | `docs/audits/data/brake-health-lifecycle-evidence-map-2026-07.csv` | 2 |
 | Integrity findings JSON | `docs/audits/data/brake-health-integrity-findings-2026-07.json` | 3 (pending) |
 | DIMO signal capability CSV | `docs/audits/data/brake-health-dimo-signal-capability-2026-07.csv` | 4 (pending) |
 | Backtest summary CSV | `docs/audits/data/brake-health-backtest-summary-2026-07.csv` | 5 (pending) |
@@ -77,7 +78,7 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Phase | Title | Scope | Status |
 |-------|-------|-------|--------|
 | **1** | Architecture & runtime map | Code landkarte, VPS topology, triggers, data-flow, preliminary P0/P1 | ✅ **Complete** |
-| **2** | Data model & formula audit | Prisma models, reference-spec priority, wear formulas, units, k-factor design vs implementation | ⏳ Pending |
+| **2** | Data model & formula audit | Prisma models, lifecycle scope, reference-spec, evidence, formulas, versioning | ✅ **Complete** |
 | **3** | VPS integrity & fleet coverage | Read-only SQL aggregates, anchor/evidence gaps, initialization eligibility, driving-impact linkage | ⏳ Pending |
 | **4** | DIMO & telemetry signal audit | `availableSignals`, brake wear sensors, fluid, DTC, harsh braking, HM overlap | ⏳ Pending |
 | **5** | Historical replay & backtest | As-of replay against measured evidence; MAE/coverage; isolated pure mode | ⏳ Pending |
@@ -297,13 +298,323 @@ Consumers
 
 ---
 
-## 7. Phase 2 preview (not executed)
+# Phase 2 — Data model, lifecycle, evidence & formula audit
 
-- Formal wear formula extraction from `brake-health.config.ts` + `recalculate` loop
-- Reference-spec fallback priority vs measured snapshot
-- Unit consistency (mm, km, %)
-- Compare documented `BrakeHealthSnapshot` (architecture) vs actual schema
-- Evidence hierarchy: MEASURED vs ESTIMATED vs DOCUMENTED
+## 1. Datenmodell — 17 Kernfragen
+
+### 1.1 Komponentenidentitäten
+
+| Komponente | Eigene Identität? | Speicherort | Revisionssicher? |
+|------------|-------------------|-------------|------------------|
+| Vordere Beläge | **Nein** — Skalar `frontPadAnchorMm` | `BrakeHealthCurrent` | Nein — überschrieben bei Re-Init |
+| Hintere Beläge | **Nein** — `rearPadAnchorMm` | `BrakeHealthCurrent` | Nein |
+| Vordere Scheiben | **Nein** — `frontDiscAnchorMm` | `BrakeHealthCurrent` | Nein |
+| Hintere Scheiben | **Nein** — `rearDiscAnchorMm` | `BrakeHealthCurrent` | Nein |
+
+Es gibt **keine** `BrakeComponent`-Entität, keine Part-IDs, keine Installationshistorie pro Komponente. `BrakeEvidence` speichert optional `wheelPosition`, wird aber in der Praxis nur auf **Achsenebene** (`FRONT`/`REAR`) geschrieben.
+
+**Finding:** **P0-BH-09** — Achs-Skalarmodell ohne Komponenten-Lifecycle.
+
+### 1.2 Teilreparatur revisionssicher?
+
+**Nein.** `VehicleServiceEvent` ist append-only (Historie), aber `BrakeHealthCurrent` ist **ein mutable Snapshot** pro Fahrzeug. Bei jedem `initializeFromService`-Upsert werden alle Anker, k-Faktoren, `calibrationCount`, `distanceSinceAnchorKm` und Prognosefelder **überschrieben**. Ältere Prognosen sind nicht reproduzierbar (kein `BrakeHealthSnapshot`).
+
+### 1.3 Front-Pads-Austausch ohne Reset der übrigen Komponenten?
+
+**Nein — bestätigt im Code.** `recordService` speichert `scope` im Service-Event, übergibt `kind`/`scope` aber **nicht** an `initializeFromService`. Init setzt immer alle vier Anker:
+
+```515:519:backend/src/modules/vehicle-intelligence/brakes/brake-health.service.ts
+    const frontPadAnchor = measured.frontPadMm ?? this.normalizePositive(spec?.frontPadThickness);
+    const rearPadAnchor = measured.rearPadMm ?? this.normalizePositive(spec?.rearPadThickness);
+    const frontDiscAnchor =
+      measured.frontDiscMm ?? this.normalizePositive(spec?.frontRotorWidth);
+    const rearDiscAnchor = measured.rearDiscMm ?? this.normalizePositive(spec?.rearRotorWidth);
+```
+
+Fehlende Messwerte werden aus `VehicleBrakeReferenceSpec` befüllt — auch für **nicht** im `scope` genannte Komponenten.
+
+**Finding:** **P0-BH-10**, **P0-BH-11**.
+
+### 1.4 Eigene Installationszeit / -km / Ausgangsstärke / Source / Modellversion / Service-Referenz?
+
+| Feld | Pro Komponente? | Vorhanden? |
+|------|-----------------|------------|
+| Installationszeit | Nein (global) | `anchorServiceDate` auf Set-Ebene |
+| Installations-km | Nein (global) | `anchorOdometerKm` |
+| Ausgangsstärke | Achs-Skalar | `*AnchorMm` je Achse/Komponententyp |
+| Source | Global | `anchorValidationStatus` (`measured_anchor` / `spec_fallback_anchor`) |
+| Modellversion | Global | `modelVersion` (nur bei Init gesetzt) |
+| Service-Referenz | Event-Historie | `VehicleServiceEvent.id`; **nicht** auf `BrakeHealthCurrent` |
+
+### 1.5 Verhalten nach Service-Art
+
+| Service-Art | `allowsSpecFallback` | Init ohne Messung? | Scope beachtet? |
+|-------------|---------------------|-------------------|-----------------|
+| **Nur vordere Beläge** (`pads_service` + `front_pads`) | Ja | Ja — Spec füllt fehlende Achsen | **Nein** |
+| **Nur hintere Beläge** | Ja | Ja | **Nein** |
+| **Nur eine Scheibe** (`discs_service` + scope) | Ja | Ja | **Nein** |
+| **Beläge + Scheiben gleiche Achse** | Ja | Ja | **Nein** |
+| **Brake Fluid** (`brake_fluid_service`) | **Nein** | Nur mit Messwerten | N/A |
+| **Inspection Only** (`inspection_only`) | **Nein** | Nur mit Messwerten | N/A |
+| **Full Brake Service** | Ja | Ja mit Spec-Fallback | **Nein** |
+
+### 1.6 Historische Nachvollziehbarkeit
+
+| Artefakt | Historie? |
+|----------|-----------|
+| `VehicleServiceEvent` | ✅ Append-only |
+| `BrakeEvidence` | ✅ Append-only; canonical filtert pre-anchor |
+| `BrakeHealthCurrent` | ❌ Überschreibt Zustand |
+| Wear-Prognose-Snapshots | ❌ Nicht vorhanden |
+| `TripDrivingImpact` | ✅ Immutable pro Trip |
+
+### 1.7 Kann späteres Service-Event frühere Evidence überschreiben?
+
+**Semantisch ja, physisch nein.** Evidence-Rows bleiben in DB; `buildCanonicalReadModel` ignoriert Evidence mit `measuredAt < anchorServiceDate`. Ein neuer Service-Anchor macht alte Messungen für die UI **wirkungslos**, ohne sie zu löschen oder als „resolved“ zu markieren.
+
+### 1.8 Organisation / Fahrzeug in Queries
+
+- API: `@Controller('vehicles/:vehicleId')` + `VehicleOwnershipGuard` → Org-Zugriff über Fahrzeug.
+- Interne Queries: **`vehicleId` only**; `organizationId` auf `BrakeHealthCurrent` wird bei Init gesetzt, aber nicht in WHERE-Klauseln geprüft.
+- Backfill-Service: optionaler `organizationId`-Filter.
+
+---
+
+## 2. Service-Scope — bestätigter Verdacht
+
+### 2.1 Antworten auf die 10 Prüffragen
+
+| # | Frage | Ergebnis | Evidenz |
+|---|-------|----------|---------|
+| 1 | Werden `kind`/`scope` an Init übergeben? | **Nein** | `recordService` L121-128: nur mm + odometer + date |
+| 2 | Nur ersetzte Komponenten neu verankert? | **Nein** | Immer alle vier Felder upserted |
+| 3 | Front-Pads-Service init alle vier? | **Ja, wenn Spec existiert** | Spec-Fallback für null-Messwerte |
+| 4 | Service ohne Messwerte → Spec für nicht ersetzte? | **Ja** | `allowsSpecFallback` für pads/discs/full |
+| 5 | Gemessene Anker durch Spec überschrieben? | **Nein pro Feld** — measured gewinnt | `measured ?? spec` Coalesce |
+| 6 | k-Faktoren nicht betroffener Komponenten reset? | **Ja — alle auf 1.0** | Update L615-618 |
+| 7 | `calibrationCount` bei Teilservice reset? | **Ja — immer 0** | Update L619 |
+| 8 | Reine Inspektion? | Historie only, kein Init ohne mm | `allowsSpecFallback=false` |
+| 9 | Brake Fluid Service? | Historie only, kein Init ohne mm | `allowsSpecFallback=false` |
+| 10 | Transaktional? | **Nein** | Event create → init → event update; Evidence separat |
+
+### 2.2 Code-Reproduktionsfälle (keine Prod-Mutation)
+
+**Fall A — Front-Pads only mit Spec:**
+
+```
+Input:  kind=pads_service, scope=[front_pads], measured={frontPadMm:12}
+Spec:   rearPadThickness=10, frontRotorWidth=25, rearRotorWidth=20
+Ergebnis: frontPadAnchor=12 (measured), rearPadAnchor=10 (spec!),
+          frontDiscAnchor=25 (spec!), rearDiscAnchor=20 (spec!)
+          kFactors alle 1.0, calibrationCount=0, distanceSinceAnchor=0
+```
+
+**Fall B — Re-Service nach Kalibrierung (hypothetisch):**
+
+```
+Vorher: frontPadKFactor=1.15, calibrationCount=5
+Input:  pads_service front_pads only
+Ergebnis: frontPadKFactor→1.0, calibrationCount→0 (auch wenn k-Calibration existierte)
+```
+
+**Fall C — Inspection only ohne mm:**
+
+```
+Input: kind=inspection_only, measured={}
+Ergebnis: Service-Event gespeichert, initializeIfPossible übersprungen
+          (allowsSpecFallback=false, hasMeasuredBaseline=false)
+```
+
+---
+
+## 3. Reference-Spec-Audit
+
+Vollständige Feldmatrix: `docs/audits/data/brake-health-reference-spec-map-2026-07.csv`.
+
+### 3.1 Konfliktauflösung
+
+1. **Gemessene mm** im Service-Input (höchste Priorität pro Feld)
+2. **`VehicleBrakeReferenceSpec`** für null-Felder
+3. **Registrierungs-Default** 10 mm Pads bei `NEW` (`applyNewBrakeDefaults`)
+4. **Globale Config** (`pad.criticalMm`, `disc.maxWearMm`)
+
+`sourceType` ist **freier String** (`manual_registration`, etc.) — kein Enum, keine Confidence.
+
+### 3.2 Kritische Spec-Lücken
+
+| Fehlend | Risiko |
+|---------|--------|
+| Min. Scheibendicke (OEM) | Generisches `maxWearMm=2.0` für alle |
+| `frontRotorWidth` als Disc-Anchor | **Breite ≠ Verschleißdicke** (**P0-BH-14**) |
+| Trommelbremse / EPB / Keramik | Alle als Scheibenmodell behandelt |
+| Part-Identität / Material | Kein Lifecycle möglich |
+| Gültigkeitszeitraum Spec | Alte Specs ewig gültig |
+
+### 3.3 Formelrelevante Spec-Felder
+
+| Feld | Formeleinfluss |
+|------|----------------|
+| `frontPadThickness` / `rearPadThickness` | Pad-Anker, usableMm, healthPct |
+| `frontRotorWidth` / `rearRotorWidth` | **Fälschlich** als Disc-Anker |
+| `frontRotorDiameter` / `rearRotorDiameter` | **Nicht verwendet** |
+| `Vehicle.brakeForceFrontPercent` | Bias-Aufteilung |
+| `Vehicle.fuelType` | Statischer Reku-Faktor |
+
+---
+
+## 4. Evidence-Audit
+
+### 4.1 Sources — Produktionsrealität
+
+| Source | mm erlaubt? | Producer in Code? | Bestätigung nötig? |
+|--------|-------------|-------------------|-------------------|
+| `MANUAL_MEASUREMENT` | Ja | Lifecycle manual/api/registration | Nein — auto HIGH |
+| `WORKSHOP_REPORT` | Ja | Lifecycle manual | Nein |
+| `AI_UPLOAD` | Ja | document-extraction-apply | **Ja** — User CONFIRMED/APPLIED |
+| `SERVICE_INVOICE` | Ja (trusted) | **Kein Producer** | — |
+| `INSPECTION_PROTOCOL` | Ja (trusted) | **Kein Producer** | — |
+| `DTC_SIGNAL` | Nein (severity only) | **Kein Producer** | — |
+| `BRAKE_WEAR_SENSOR` | Ja | **Kein Producer** | — |
+| `TELEMATICS_ESTIMATION` | **Nein** — mm gestrippt | **Kein Producer** | — |
+
+### 4.2 Evidence-Fragen (Kurzantworten)
+
+| # | Antwort |
+|---|---------|
+| 1 | mm nur aus `MM_TRUSTED_SOURCES`; TELEMATICS strippt mm |
+| 2 | AI: ja, nur nach User-Bestätigung (`applyBrake` nach CONFIRMED) |
+| 3 | Ungeprüftes OCR: nein im Apply-Pfad; Plausibility nicht blockierend vor Storage |
+| 4 | Manuelle Registrierung: **HIGH** Confidence automatisch |
+| 5 | Speicherung **pro Achse** (`FRONT`/`REAR`); `wheelPosition` optional ungenutzt |
+| 6 | Achsenwert kann wie Radmessung erscheinen — keine 4-Rad-Trennung |
+| 7 | **Keine Dedupe-Keys** |
+| 8 | Retries können **duplizieren** (`createMany` ohne Unique) |
+| 9 | **Kein** Active/Resolved/Expires/Stale auf Evidence |
+| 10 | DTC-Behebung: `VehicleDtcEvent.isActive=false` — **kein** BrakeEvidence-Update |
+| 11 | `getLatestSafetySignal()` ungenutzt; würde nur **einen** Datensatz liefern |
+| 12 | **Jeder nicht-leere** `dtcSeverity`-String zählt als Safety Signal |
+| 13 | `dtcSeverity` ist **freier Text** (`String?`), klassifiziert via `toUpperCase()` switch |
+| 14 | `immediateReplacement=true` bleibt **dauerhaft** bis post-anchor gefiltert |
+| 15 | Evidence + Service Event **nicht atomar** (separate Writes) |
+
+### 4.3 Empfohlene Evidence-Hierarchie (Audit-Empfehlung, nicht implementiert)
+
+```
+Stufe 1 — MEASURED:   Workshop/manual mm mit Odometer + Datum
+Stufe 2 — DOCUMENTED:  AI_UPLOAD / Invoice / Inspection (bestätigt)
+Stufe 3 — SENSOR:      BRAKE_WEAR_SENSOR / DTC_SIGNAL (severity, kein mm)
+Stufe 4 — ESTIMATED:   Wear-Modell (nie CRITICAL allein)
+Stufe 5 — UNKNOWN:     Kein Anchor
+```
+
+Auflösungsregeln: neuere post-anchor Evidence > ältere; cleared DTC → SENSOR resolved; `immediateReplacement` mit Expiry; TELEMATICS nie mm.
+
+---
+
+## 5. Formelaudit
+
+Vollständige Faktor-Tabelle: `docs/audits/data/brake-health-formula-factor-map-2026-07.csv` (42 Faktoren).
+
+### 5.1 Zentrale Formeln
+
+**Pad usable:** `usableMm = anchorMm - 2.0` (global `pad.criticalMm`)
+
+**Pad rate:** `effectiveWearPerKm = (usableMm/70000) × (biasShare/0.72) × Π(factors) × kFactor`
+
+**Disc rate:** `effectiveWearPerKm = (2.0/90000) × (biasShare/0.72) × Π(factors) × kFactor` — **nicht** ankerabhängige Max-Wear
+
+**Set health:** `0.6 × min(axlePcts) + 0.4 × avg(axlePcts)` — kann kritische Achse maskieren (**P1-BH-36**)
+
+### 5.2 Einheiten-Prüfung
+
+| Größe | Einheit im Code | Problem? |
+|-------|-----------------|----------|
+| mm (Pads/Discs) | mm | ✅ |
+| km | km | ✅ |
+| kPa/bar | — | Nicht in Brake-Modul |
+| m/s² | DI `p95NegativeDecel` | Nicht direkt in Brake-Formel |
+| Prozent health | 0–100 | ✅ (nicht 0–1) |
+| `highSpeedBrakeShare` | 0–1 in DB, ×100 für Anker | ✅ korrekt konvertiert |
+| `brakeForceFrontPercent` | 0–100 → /100 | ✅ |
+
+### 5.3 Spezialprüfungen (20 Punkte)
+
+| # | Thema | Ergebnis |
+|---|-------|----------|
+| 1 | mm/km/% | Konsistent |
+| 2 | Prozent 0–100 | Ja für healthPct |
+| 3 | Negative Distanz | `max(0, odo-anchor)` |
+| 4 | Odometer-Rücksprung | Kein expliziter Rollback-Guard; max(0) hilft teilweise |
+| 5 | distanceSinceAnchor=0 | Health 100% am Anchor — korrekt |
+| 6 | Trip km > Odometer delta | Gap=0 wenn trips>odo; sonst rolling fill |
+| 7 | Rear bias / defaultFront | Absichtliche Normalisierung |
+| 8 | baseLifeKm | **Gesamtfahrzeug-Life**, auf Achsen verteilt |
+| 9 | Generische 2mm Scheibe | **P1-BH-30** |
+| 10 | Warn/kritisch | Pad 3.0/2.0 mm; Disc relativ zu anchor-2.0 |
+| 11 | Disc-Minimum | `anchor - maxWear(2.0)` nicht OEM |
+| 12 | EV Reku | Statisch `fuelType` Map |
+| 13 | Statische Reku | Keine echte Rekuperationsmessung |
+| 14 | Doppelte Braking Events | DI berechnet pro Trip; kein doppeltes Zählen in Brake-Loop |
+| 15 | Rolling Gap | Aktueller 30d-Rollup für historische Lücken |
+| 16 | Confidence trotz Spec-Fallback | Anchor-Punkte (+20 Pad, +10 Disc) auch bei DOCUMENTED |
+| 17 | Set-Average | **P1-BH-36** |
+| 18 | Remaining-km Range | `buildRemainingKmRange` mit Spread — honest |
+| 19 | k-Factor Clamps | Config 0.70–1.35 — **nie angewendet** (kein calibrate) |
+| 20 | Calibration Future Leakage | N/A — nicht implementiert |
+
+---
+
+## 6. Modellversionierung
+
+| Mechanismus | Vorhanden? | Details |
+|-------------|------------|---------|
+| `modelVersion` | Teilweise | `BrakeHealthCurrent.modelVersion` + `TripDrivingImpact.modelVersion`; nur bei Init geschrieben |
+| Config-Version | Konstante | `BRAKE_HEALTH_CONFIG.MODEL_VERSION = '1.0.0'` |
+| Config Hash | **Nein** | — |
+| Input Fingerprint | **Nein** | (Tires haben `inputFingerprint` auf Snapshots) |
+| Snapshot-Historie | **Nein** | Kein `BrakeHealthSnapshot` |
+| Prediction Timestamp | `lastRecalculatedAt` | Nur letzter Lauf |
+| Trip IDs verwendet | **Nein** | Nicht persistiert |
+| Evidence IDs verwendet | **Nein** | — |
+| Calibration-Version | **Nein** | `calibrationCount` existiert, wird nie erhöht |
+
+**As-of-Replay:** **Nicht möglich** ohne manuelles Rekonstruieren aus `TripDrivingImpact` + Evidence + Config-Stand. **Finding P0-BH-13**.
+
+---
+
+## 7. Phase-2 Findings Register (neu / bestätigt)
+
+### P0 — bestätigt in Phase 2
+
+| ID | Finding | Status |
+|----|---------|--------|
+| **P0-BH-09** | Keine Komponentenidentitäten — 4 Achs-Skalare only | **CONFIRMED** |
+| **P0-BH-10** | `kind`/`scope` nicht an Init; Teilservice re-init aller Komponenten | **CONFIRMED** |
+| **P0-BH-11** | Spec-Fallback füllt nicht ersetzte Komponenten | **CONFIRMED** |
+| **P0-BH-12** | k-Factor + calibrationCount Reset bei jedem Init | **CONFIRMED** |
+| **P0-BH-13** | Keine Snapshot/Fingerprint-Historie; kein As-of-Replay | **CONFIRMED** |
+| **P0-BH-14** | `frontRotorWidth`/`rearRotorWidth` als Disc-Thickness-Anchor | **CONFIRMED** |
+| P0-BH-04 | k-Calibration nicht implementiert | **CONFIRMED** (Phase 1+2) |
+| P0-BH-05 | `harshBrakeWearMultiplier` unverdrahtet | **CONFIRMED** |
+| P0-BH-06 | Evidence-Producers fehlen (DTC/Sensor) | **CONFIRMED** |
+
+### P1 — neu in Phase 2
+
+| ID | Finding |
+|----|---------|
+| **P1-BH-29** | Statischer Reku-Faktor statt gemessener Regeneration |
+| **P1-BH-30** | Generisches 2mm Disc-Max-Wear; keine OEM-Mindestdicke |
+| **P1-BH-31** | Keramik/Stahl/Carbon nicht unterschieden |
+| **P1-BH-32** | Trommelbremse nicht modelliert |
+| **P1-BH-33** | Manuelle Registrierung auto HIGH Confidence |
+| **P1-BH-34** | `baseLifeKm` ist Gesamt-Lebensdauer nicht Achs-Lebensdauer |
+| **P1-BH-35** | Remaining-km lineare Extrapolation ohne Unsicherheitsmodell (teilweise durch Range abgefedert) |
+| **P1-BH-36** | Set-Level 60/40-Gewichtung kann kritische Achse verbergen |
+| **P1-BH-37** | Confidence-Punkte auch bei Spec-Fallback-Anchor |
+| **P1-BH-38** | Rolling 30d-DI für historische Coverage-Gaps |
+| **P1-BH-39** | Canonical measured thickness nur für Pads nicht Discs in Axle-Check |
+
+---
 
 ## 8. Phase 3 preview (not executed)
 
