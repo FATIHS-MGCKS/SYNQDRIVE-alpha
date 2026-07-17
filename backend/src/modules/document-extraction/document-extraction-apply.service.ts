@@ -24,7 +24,6 @@ import {
 } from '@modules/vehicle-intelligence/battery-health/battery-evidence.service';
 import { BatteryHealthService } from '@modules/vehicle-intelligence/battery-health/battery-health.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
-import { normalizeBatteryDocumentConfirm } from '@modules/vehicle-intelligence/battery-health/battery-document-confirmation.util';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { FinesService } from '@modules/fines/fines.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
@@ -52,6 +51,18 @@ import {
   readDamageAreas,
   type DamageDocumentType,
 } from './document-damage-extraction.rules';
+import {
+  assessTireApplyGate,
+  buildTireMeasurementApplyPayload,
+} from './document-tire-extraction.rules';
+import {
+  assessBrakeApplyGate,
+  buildBrakeApplyPayload,
+} from './document-brake-extraction.rules';
+import {
+  assessBatteryApplyGate,
+  buildBatteryApplyPayload,
+} from './document-battery-extraction.rules';
 
 export interface ApplyInput {
   extractionId: string;
@@ -115,23 +126,8 @@ export class DocumentExtractionApplyService {
       return this.applyBattery(input, d);
     }
 
-    if (docType === 'TIRE' && d?.treadDepthMm && typeof d.treadDepthMm === 'object') {
-      const tread = d.treadDepthMm as Record<string, unknown>;
-      await this.tireLifecycleService.recordMeasurement({
-        vehicleId,
-        frontLeftMm: this.toNum(tread.fl),
-        frontRightMm: this.toNum(tread.fr),
-        rearLeftMm: this.toNum(tread.rl),
-        rearRightMm: this.toNum(tread.rr),
-        odometerKm: this.toNum(d?.odometerKm),
-        source: 'ai_confirmed',
-        linkedExtractionId: extractionId,
-        linkedDocumentUrl: sourceFileUrl ?? undefined,
-        quality: 'measured',
-        shouldCalibrate: true,
-        triggerRecalculate: true,
-      });
-      return {};
+    if (docType === 'TIRE') {
+      return this.applyTireReport(input, d);
     }
 
     if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
@@ -153,52 +149,74 @@ export class DocumentExtractionApplyService {
 
   // ── per-type apply (mirrors prior controller behaviour) ───────────────────
 
-  private async applyBrake(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
-    const { vehicleId, sourceFileUrl, extractionId } = input;
-    const serviceDateRaw =
-      (typeof d?.eventDate === 'string' && d.eventDate) ||
-      (typeof d?.serviceDate === 'string' && d.serviceDate) ||
-      new Date().toISOString();
-    const notes =
-      (typeof d?.notes === 'string' && d.notes.trim()) ||
-      (typeof d?.description === 'string' && d.description.trim()) ||
-      undefined;
-    const kind =
-      d?.serviceKind === 'inspection_only' ||
-      d?.serviceKind === 'pads_service' ||
-      d?.serviceKind === 'discs_service' ||
-      d?.serviceKind === 'brake_fluid_service' ||
-      d?.serviceKind === 'full_brake_service'
-        ? d.serviceKind
-        : 'full_brake_service';
-    const rawScope = Array.isArray(d?.scope)
-      ? d.scope
-      : Array.isArray(d?.serviceScope)
-        ? d.serviceScope
-        : typeof d?.scopeCsv === 'string'
-          ? d.scopeCsv.split(',').map((s: string) => s.trim()).filter(Boolean)
-          : [];
-    const scope = rawScope.filter(
-      (s: unknown): s is 'front_pads' | 'rear_pads' | 'front_discs' | 'rear_discs' =>
-        s === 'front_pads' || s === 'rear_pads' || s === 'front_discs' || s === 'rear_discs',
-    );
+  private async applyTireReport(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+    const gate = assessTireApplyGate({ fields: d });
+    const payload = buildTireMeasurementApplyPayload(d);
+    if (!gate.canApply || !payload) {
+      throw new BadRequestException({
+        message: 'Tire apply gate blocked — missing or invalid confirmed fields',
+        blockers: gate.blockers,
+      });
+    }
 
-    const measured = (d.measured && typeof d.measured === 'object' ? d.measured : {}) as Record<string, unknown>;
+    const { vehicleId, extractionId, sourceFileUrl } = input;
+    const treadByPosition = Object.fromEntries(
+      payload.positions.map((row) => [row.position, row.treadDepthMm]),
+    ) as Record<string, number | null>;
+
+    await this.tireLifecycleService.recordMeasurement({
+      vehicleId,
+      frontLeftMm: treadByPosition.fl ?? undefined,
+      frontRightMm: treadByPosition.fr ?? undefined,
+      rearLeftMm: treadByPosition.rl ?? undefined,
+      rearRightMm: treadByPosition.rr ?? undefined,
+      odometerKm: payload.odometerKm ?? undefined,
+      measuredAt: payload.measurementDate,
+      workshopName: payload.workshopName ?? undefined,
+      source: 'ai_confirmed',
+      linkedExtractionId: extractionId,
+      linkedDocumentUrl: sourceFileUrl ?? undefined,
+      quality: 'measured',
+      shouldCalibrate: true,
+      triggerRecalculate: true,
+    });
+
+    return {};
+  }
+
+  private async applyBrake(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+    const gate = assessBrakeApplyGate({ fields: d });
+    const payload = buildBrakeApplyPayload(d);
+    if (!gate.canApply || !payload) {
+      throw new BadRequestException({
+        message: 'Brake apply gate blocked — missing or invalid confirmed fields',
+        blockers: gate.blockers,
+      });
+    }
+
+    const { vehicleId, sourceFileUrl, extractionId } = input;
+    const serviceDateRaw = payload.measurementDate.toISOString();
+    const notes = payload.notes ?? payload.workshopFinding ?? undefined;
+    const kind = payload.serviceKind ?? undefined;
+    const scope = payload.scope;
+
+    const frontAxle = payload.axles.find((row) => row.axle === 'front');
+    const rearAxle = payload.axles.find((row) => row.axle === 'rear');
 
     const lifecycle = await this.brakeLifecycleService.recordService({
       vehicleId,
       serviceDate: serviceDateRaw,
-      odometerKm: this.toNum(d?.odometerKm),
-      workshopName: (typeof d?.workshopName === 'string' && d.workshopName.trim()) || undefined,
+      odometerKm: payload.odometerKm ?? undefined,
+      workshopName: payload.workshopName ?? undefined,
       notes,
       source: 'ai_document',
       kind,
       scope,
       measured: {
-        frontPadMm: this.toNum(d.frontPadMm ?? measured.frontPadMm),
-        rearPadMm: this.toNum(d.rearPadMm ?? measured.rearPadMm),
-        frontDiscMm: this.toNum(d.frontDiscMm ?? d.frontRotorWidthMm ?? measured.frontDiscMm),
-        rearDiscMm: this.toNum(d.rearDiscMm ?? d.rearRotorWidthMm ?? measured.rearDiscMm),
+        frontPadMm: frontAxle?.padMm ?? undefined,
+        rearPadMm: rearAxle?.padMm ?? undefined,
+        frontDiscMm: frontAxle?.discMm ?? undefined,
+        rearDiscMm: rearAxle?.discMm ?? undefined,
       },
       initializeIfPossible: true,
       documentUrl: sourceFileUrl ?? undefined,
@@ -207,16 +225,16 @@ export class DocumentExtractionApplyService {
     // Persist confirmed brake observations as canonical evidence. AI_UPLOAD is
     // a trusted (post-confirmation) mm source, so measured pad/disc mm values
     // are allowed; the evidence service strips any value that lacks a signal.
-    const odometerKm = this.toNum(d?.odometerKm);
-    const measuredAt = this.parseDate(serviceDateRaw);
+    const odometerKm = payload.odometerKm;
+    const measuredAt = payload.measurementDate;
     const discCondition = this.mapBrakeComponentStatus(d?.discCondition ?? d?.brakeDiscCondition);
     const brakeFluidStatus = this.mapBrakeComponentStatus(d?.brakeFluidStatus ?? d?.brakeFluid);
     const immediateReplacement = this.toBoolean(d?.immediateReplacement ?? d?.replaceNow);
 
-    const frontPadMm = this.toNum(d.frontPadMm ?? measured.frontPadMm);
-    const rearPadMm = this.toNum(d.rearPadMm ?? measured.rearPadMm);
-    const frontDiscMm = this.toNum(d.frontDiscMm ?? d.frontRotorWidthMm ?? measured.frontDiscMm);
-    const rearDiscMm = this.toNum(d.rearDiscMm ?? d.rearRotorWidthMm ?? measured.rearDiscMm);
+    const frontPadMm = frontAxle?.padMm ?? null;
+    const rearPadMm = rearAxle?.padMm ?? null;
+    const frontDiscMm = frontAxle?.discMm ?? null;
+    const rearDiscMm = rearAxle?.discMm ?? null;
 
     const base = {
       vehicleId,
@@ -401,8 +419,16 @@ export class DocumentExtractionApplyService {
   }
 
   private async applyBattery(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
+    const gate = assessBatteryApplyGate({ fields: d });
+    const normalized = buildBatteryApplyPayload(d);
+    if (!gate.canApply || !normalized) {
+      throw new BadRequestException({
+        message: 'Battery apply gate blocked — missing or invalid confirmed fields',
+        blockers: gate.blockers,
+      });
+    }
+
     const { vehicleId, extractionId, sourceFileUrl } = input;
-    const normalized = normalizeBatteryDocumentConfirm(d as Record<string, unknown>);
     const observedAt = normalized.observedAt;
     const scope = normalized.scope;
     const isReplacement = normalized.isReplacement;
@@ -415,8 +441,8 @@ export class DocumentExtractionApplyService {
           eventType: 'BATTERY_REPLACEMENT',
           eventDate: observedAt,
           odometerKm: normalized.odometerKm != null ? Math.round(normalized.odometerKm) : undefined,
-          workshopName: this.str(d.workshopName),
-          notes: this.str(d.notes) ?? this.str(d.description),
+          workshopName: normalized.workshopName ?? this.str(d.workshopName),
+          notes: normalized.notes ?? this.str(d.notes) ?? this.str(d.description),
           costCents: this.toInt(d?.costCents),
           documentUrl: sourceFileUrl,
         },
@@ -428,7 +454,8 @@ export class DocumentExtractionApplyService {
       ? BatteryEvidenceSourceType.WORKSHOP_MEASUREMENT
       : BatteryEvidenceSourceType.DOCUMENT_CONFIRMED;
 
-    const { sohPercent, voltageV, restingVoltage, crankingVoltage, chargingVoltage, temperatureC } = normalized;
+    const { sohPercent, voltageV, restingVoltage, crankingVoltage, chargingVoltage, temperatureC } =
+      normalized;
     const isLv = scope === BatteryEvidenceScope.LV;
     const quality = isReplacement ? 'workshop_measurement' : 'document_confirmed';
 

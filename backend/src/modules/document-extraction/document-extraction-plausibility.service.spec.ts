@@ -104,24 +104,32 @@ describe('DocumentExtractionPlausibilityService', () => {
   });
 
   it('warns on an out-of-range 12V battery voltage', () => {
-    const result = svc.runChecks('BATTERY', { scope: 'lv', voltageV: 99 }, baseCtx);
+    const result = svc.runChecks(
+      'BATTERY',
+      { scope: 'lv', measurementDate: '2026-05-01', voltageV: 99 },
+      baseCtx,
+    );
     expect(codes(result)).toContain('LV_VOLTAGE_RANGE');
   });
 
   it('warns on an out-of-range state of health', () => {
-    const result = svc.runChecks('BATTERY', { scope: 'hv', sohPercent: 150 }, baseCtx);
+    const result = svc.runChecks(
+      'BATTERY',
+      { scope: 'hv', measurementDate: '2026-05-01', sohPercent: 150, sohSource: 'HV_BMS_REPORT' },
+      baseCtx,
+    );
     expect(codes(result)).toContain('SOH_RANGE');
   });
 
   it('blocks on a negative tread depth and warns on an implausibly high one', () => {
     const result = svc.runChecks(
       'TIRE',
-      { treadDepthMm: { fl: -1, fr: 20, rl: 5, rr: 5 } },
+      { treadDepthUnit: 'mm', treadDepthMm: { fl: -1, fr: 20, rl: 5, rr: 5 } },
       baseCtx,
     );
     expect(result.overallStatus).toBe('BLOCKER');
-    expect(codes(result)).toContain('TREAD_NEGATIVE_FL');
-    expect(codes(result)).toContain('TREAD_IMPLAUSIBLE_FR');
+    expect(codes(result)).toContain('TIRE_TREAD_NEGATIVE_FL');
+    expect(codes(result)).toContain('TIRE_TREAD_IMPLAUSIBLE_FR');
   });
 
   it('never asserts a crash for DAMAGE/ACCIDENT without structured blockers alone', () => {

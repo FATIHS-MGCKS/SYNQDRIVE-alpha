@@ -32,8 +32,11 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
       documentType: 'BRAKE',
       sourceFileUrl: 'https://example.com/report.pdf',
       confirmedData: {
+        measurementDate: '2026-06-01',
         eventDate: '2026-06-01',
         odometerKm: 45000,
+        padThicknessUnit: 'mm',
+        scopeCsv: 'front_pads,rear_pads',
         frontPadMm: 6.5,
         rearPadMm: 6.0,
         frontDiscMm: 24,

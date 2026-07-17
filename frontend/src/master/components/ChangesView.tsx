@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-technical-hardening-2026-07-17',
+    version: '4.9.608',
+    title: 'V4.9.608 — Document Intake V2 TIRE / BRAKE / BATTERY Technical Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrale Module document-tire-extraction.rules, document-brake-extraction.rules, document-battery-extraction.rules für technische Werkstattberichte.',
+      'TIRE: Position, Profiltiefe, Druck, Dimension, DOT, Messdatum, Einheit — nur bestätigte Positionen, keine erfundenen Räder.',
+      'BRAKE: Achse/Position, Belagstärke, Scheibendicke, Mindestmaß, Messdatum, Werkstattbefund — kein full_brake_service-/now()-Default mehr.',
+      'BATTERY: LV/HV, Messungsart, Spannung, Kapazität, SOH nur mit echter Quelle, Temperaturkontext, Messdatum, Gerät/Werkstatt — kein scope=lv-/observedAt=now-Default.',
+      'document-action-planner.technical-rules + Fixtures/Tests für TIRE, BRAKE, BATTERY.',
+    ],
+    reason: 'Prompt 33/84: Härtung technischer Extraktionsschemas und Planner.',
+    previousBehavior:
+      'Apply erfand fehlende Reifenpositionen, defaultete Bremsen auf full_brake_service + now(), Batterie auf scope=lv + observedAt=now; SOH ohne Quellenprüfung.',
+    details:
+      'document-tire/brake/battery-extraction.rules.ts (+ spec, fixtures), document-action-planner.technical-rules.ts (+ spec), schema/plausibility/apply/APPLY_ALIAS_KEYS/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T12:00:00.000Z',
+  },
+  {
     id: 'document-damage-hardening-2026-07-17',
     version: '4.9.607',
     title: 'V4.9.607 — Document Intake V2 Damage / Accident Extraction, Plausibility & Action Planning',

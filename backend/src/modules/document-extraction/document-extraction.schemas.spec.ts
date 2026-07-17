@@ -172,6 +172,46 @@ describe('document-extraction.schemas', () => {
       expect(damageTypeField?.hint).toMatch(/no SCRATCH default/i);
     });
 
+    it('declares production technical fields for tire, brake, and battery', () => {
+      const tireKeys = getFieldSchema('TIRE').map((field) => field.key);
+      expect(tireKeys).toEqual(
+        expect.arrayContaining([
+          'measurementDate',
+          'treadDepthUnit',
+          'pressureUnit',
+          'treadDepthMm.fl',
+          'pressureBar.fl',
+        ]),
+      );
+
+      const brakeKeys = getFieldSchema('BRAKE').map((field) => field.key);
+      expect(brakeKeys).toEqual(
+        expect.arrayContaining([
+          'measurementDate',
+          'padThicknessUnit',
+          'scopeCsv',
+          'workshopFinding',
+          'minimumPadMmFront',
+        ]),
+      );
+      const serviceKindField = getFieldSchema('BRAKE').find((field) => field.key === 'serviceKind');
+      expect(serviceKindField?.hint).toMatch(/no full_brake_service default/i);
+
+      const batteryKeys = getFieldSchema('BATTERY').map((field) => field.key);
+      expect(batteryKeys).toEqual(
+        expect.arrayContaining([
+          'measurementDate',
+          'scope',
+          'sohSource',
+          'capacityKwh',
+          'temperatureContext',
+          'deviceOrWorkshop',
+        ]),
+      );
+      const scopeField = getFieldSchema('BATTERY').find((field) => field.key === 'scope');
+      expect(scopeField?.hint).toMatch(/no lv default/i);
+    });
+
     it('declares schemas for every DocumentExtractionType', () => {
       for (const t of SUPPORTED_DOCUMENT_TYPES) {
         expect(Array.isArray(DOCUMENT_FIELD_SCHEMAS[t])).toBe(true);

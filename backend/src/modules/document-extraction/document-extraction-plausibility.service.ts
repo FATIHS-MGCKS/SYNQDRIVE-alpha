@@ -10,6 +10,9 @@ import {
   collectDamagePlausibilityChecks,
   isDamageDocumentType,
 } from './document-damage-extraction.rules';
+import { collectTirePlausibilityChecks } from './document-tire-extraction.rules';
+import { collectBrakePlausibilityChecks } from './document-brake-extraction.rules';
+import { collectBatteryPlausibilityChecks } from './document-battery-extraction.rules';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 export type PlausibilitySource = 'DOCUMENT' | 'SYNQDRIVE_DB' | 'DIMO' | 'SYSTEM';
@@ -95,6 +98,12 @@ export class DocumentExtractionPlausibilityService {
           ? 'DIMO telemetry is available for this vehicle but collision/harsh-braking corroboration is not automatically evaluated. Verify the incident manually.'
           : 'No DIMO telemetry context available to corroborate this incident. Verify the incident manually.',
       );
+    } else if (documentType === 'TIRE') {
+      checks.push(...collectTirePlausibilityChecks(fields));
+    } else if (documentType === 'BRAKE') {
+      checks.push(...collectBrakePlausibilityChecks(fields));
+    } else if (documentType === 'BATTERY') {
+      checks.push(...collectBatteryPlausibilityChecks(fields));
     } else if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
       const isFine = documentType === 'FINE';
       checks.push({
@@ -152,53 +161,6 @@ export class DocumentExtractionPlausibilityService {
         message: 'Document date is in the future.',
         source: 'DOCUMENT',
       });
-    }
-
-    // Battery plausibility
-    if (documentType === 'BATTERY') {
-      const scope = this.toStr(fields['scope'])?.toLowerCase();
-      const voltage = this.toNum(fields['voltageV']) ?? this.toNum(fields['restingVoltage']);
-      const soh = this.toNum(fields['sohPercent']);
-      if (scope === 'lv' && voltage != null && (voltage < 6 || voltage > 16)) {
-        checks.push({
-          code: 'LV_VOLTAGE_RANGE',
-          status: 'WARNING',
-          message: `12V battery voltage (${voltage} V) is outside the plausible 6–16 V range.`,
-          source: 'DOCUMENT',
-        });
-      }
-      if (soh != null && (soh < 0 || soh > 100)) {
-        checks.push({
-          code: 'SOH_RANGE',
-          status: 'WARNING',
-          message: `State of health (${soh}%) is outside 0–100%.`,
-          source: 'DOCUMENT',
-        });
-      }
-    }
-
-    // Tire tread plausibility
-    if (documentType === 'TIRE') {
-      const tread = (fields['treadDepthMm'] as Record<string, unknown>) ?? {};
-      for (const pos of ['fl', 'fr', 'rl', 'rr']) {
-        const v = this.toNum(tread[pos]);
-        if (v == null) continue;
-        if (v < 0) {
-          checks.push({
-            code: `TREAD_NEGATIVE_${pos.toUpperCase()}`,
-            status: 'BLOCKER',
-            message: `Tread depth (${pos.toUpperCase()}) is negative.`,
-            source: 'DOCUMENT',
-          });
-        } else if (v > 14) {
-          checks.push({
-            code: `TREAD_IMPLAUSIBLE_${pos.toUpperCase()}`,
-            status: 'WARNING',
-            message: `Tread depth ${pos.toUpperCase()} (${v} mm) is unrealistically high.`,
-            source: 'DOCUMENT',
-          });
-        }
-      }
     }
 
     if (options?.chunkingWarnings?.length) {
