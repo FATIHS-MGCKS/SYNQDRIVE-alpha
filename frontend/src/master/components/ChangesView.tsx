@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-action-plan-2026-07-17',
+    version: '4.9.592',
+    title: 'V4.9.592 — Document Intake V2 DocumentActionPlan (additiv)',
+    summary: [
+      'Neues Prisma-Modell `DocumentActionPlan` + Enum `DocumentActionPlanStatus` — immutable Snapshot der geplanten Auswirkungen.',
+      'Felder: planVersion, inputFingerprint, applyMode, snapshotJson, summary, blockingReasons, generated/confirmed/invalidated Audit.',
+      'Regeln: genau ein aktueller Plan pro (extractionId, inputFingerprint) via partial unique index; geänderte Inputs invalidieren + supersede.',
+      'Repository `resolveOrCreatePlan` (Dedup + Versionierung). Keine Action-Ausführung in diesem Prompt.',
+    ],
+    reason: 'Prompt 16/84: Action-Plan-Persistenz vor Dry-Run/Apply-Verdrahtung.',
+    previousBehavior: 'Kein persistierter Action-Plan; nur JSON `_pipeline.actionAudit` auf Extraction.',
+    details:
+      'schema.prisma DocumentActionPlan, migration 20260717200000_document_action_plans, document-action-plan.{types,fingerprint,versioning,repository}.ts (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T20:00:00.000Z',
+  },
+  {
     id: 'document-intake-v2-enums-2026-07-17',
     version: '4.9.591',
     title: 'V4.9.591 — Document Intake V2 Prisma-Enums (additiv)',
