@@ -77,9 +77,8 @@ describe('Stations V2 authorization package', () => {
   });
 
   describe('mutation endpoints — role matrix', () => {
-    it('allows org admin on mutation endpoints (except restore blocked on archived by scope policy)', async () => {
+    it('allows org admin on all mutation endpoints', async () => {
       for (const endpoint of AUTHZ_MUTATION_ENDPOINTS) {
-        if (endpoint.key === 'restore') continue;
         const persona = AUTHZ_PERSONAS.orgAdmin;
         await expect(harness.assertAllowed(endpoint, persona)).resolves.toBeUndefined();
       }
@@ -240,12 +239,22 @@ describe('Stations V2 authorization package', () => {
       harness.expectDeniedCode(error, StationScopeErrorCode.ARCHIVED_WRITE_FORBIDDEN);
     });
 
-    it('blocks restore POST on archived station at scope gate (historical-write policy)', async () => {
+    it('allows restore POST on archived station when allowArchivedLifecycleWrite is set', async () => {
       const restore = AUTHZ_MUTATION_ENDPOINTS.find((e) => e.key === 'restore')!;
-      const error = await harness.assertDenied(restore, AUTHZ_PERSONAS.orgAdmin, {
-        params: { orgId: AUTHZ_ORG_A, id: AUTHZ_STATION_ARCHIVED },
-      });
-      harness.expectDeniedCode(error, StationScopeErrorCode.ARCHIVED_WRITE_FORBIDDEN);
+      await expect(
+        harness.assertAllowed(restore, AUTHZ_PERSONAS.orgAdmin, {
+          params: { orgId: AUTHZ_ORG_A, id: AUTHZ_STATION_ARCHIVED },
+        }),
+      ).resolves.toBeUndefined();
+    });
+
+    it('allows restore-preview GET on archived station', async () => {
+      const restorePreview = AUTHZ_READ_ENDPOINTS.find((e) => e.key === 'restore-preview')!;
+      await expect(
+        harness.assertAllowed(restorePreview, AUTHZ_PERSONAS.orgAdmin, {
+          params: { orgId: AUTHZ_ORG_A, id: AUTHZ_STATION_ARCHIVED },
+        }),
+      ).resolves.toBeUndefined();
     });
   });
 

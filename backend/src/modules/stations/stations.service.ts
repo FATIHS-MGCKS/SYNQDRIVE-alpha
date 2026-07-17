@@ -53,6 +53,22 @@ import {
   type StationArchiveCommandResult,
 } from './station-archive-command.types';
 import { ArchiveStationDto } from './dto/archive-station.dto';
+import { RestoreStationDto } from './dto/restore-station.dto';
+import {
+  buildStationRestoreCommandAudit,
+  evaluateStationRestoreCommand,
+} from './station-restore-command.util';
+import {
+  StationRestoreCommandName,
+  StationRestoreCommandOutcome,
+  type StationRestoreCommandOptions,
+  type StationRestoreCommandResult,
+} from './station-restore-command.types';
+import {
+  evaluateStationRestorePreview,
+  parseArchivedCapabilitiesSnapshot,
+} from './station-restore-preview.util';
+import type { StationRestorePreviewResult } from './station-restore-preview.types';
 import { parseStationIds } from '@shared/stations/station-scope.util';
 import { isStationReadableInAccessScope } from '@shared/stations/station-access-scope.util';
 
@@ -797,21 +813,235 @@ export class StationsService {
     };
   }
 
-  async restore(organizationId: string, id: string): Promise<StationDto> {
-    const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
+  async restore(
+    organizationId: string,
+    id: string,
+    options: StationRestoreCommandOptions | RestoreStationDto,
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationRestoreCommandResult<StationDto>> {
+    return this.restoreStation(organizationId, id, options, scope, performedByUserId);
+  }
 
-    const updated = await this.prisma.station.update({
-      where: { id },
-      data: {
-        status: 'ACTIVE',
-        archivedAt: null,
+  async restoreStation(
+    organizationId: string,
+    id: string,
+    options: StationRestoreCommandOptions | RestoreStationDto,
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationRestoreCommandResult<StationDto>> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = (await this.stationAccessScope.requireReadableStation(access, id, {
+      include: this.stationIncludeCount(),
+    })) as Prisma.StationGetPayload<{ include: ReturnType<StationsService['stationIncludeCount']> }>;
+    const vehicleHomeCount = station._count.vehiclesHome;
+
+    const preflight = await this.loadStationRestorePreflight(access, station.id);
+    const archivedSnapshot = parseArchivedCapabilitiesSnapshot(
+      station.archivedCapabilitiesSnapshot,
+    );
+
+    const preview = evaluateStationRestorePreview({
+      station: {
+        id: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        archivedAt: station.archivedAt,
+        openingHours: station.openingHours,
+      },
+      archivedCapabilitiesSnapshot: archivedSnapshot,
+      counts: preflight.counts,
+    });
+
+    const evaluation = evaluateStationRestoreCommand({
+      preview,
+      options,
+      stationStatus: station.status,
+    });
+
+    const appliedCapabilities: StationRestoreCommandOptions = {
+      pickupEnabled: options.pickupEnabled,
+      returnEnabled: options.returnEnabled,
+      afterHoursReturnEnabled:
+        options.afterHoursReturnEnabled ??
+        preview.suggestedCapabilities.afterHoursReturnEnabled,
+      keyBoxAvailable:
+        options.keyBoxAvailable ?? preview.suggestedCapabilities.keyBoxAvailable,
+    };
+
+    const auditBase = {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      previousStatus: station.status,
+      nextStatus: 'ACTIVE' as const,
+      performedByUserId: performedByUserId ?? null,
+      idempotent: evaluation.idempotent,
+      appliedCapabilities,
+      suggestedCapabilities: preview.suggestedCapabilities,
+    };
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationRestoreCommandOutcome.IDEMPOTENT,
+        command: StationRestoreCommandName.RESTORE,
+        allowed: true,
+        station: this.toDto(station, vehicleHomeCount),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationRestoreCommandAudit(auditBase),
+      };
+    }
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          'Restore is not allowed for this station',
+        code: 'RESTORE_BLOCKED',
+        outcome: StationRestoreCommandOutcome.BLOCKED,
+        command: StationRestoreCommandName.RESTORE,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationRestoreCommandAudit(auditBase),
+      });
+    }
+
+    const restoredAt = new Date();
+    const existingLifecycle =
+      station.lifecycleMetadata &&
+      typeof station.lifecycleMetadata === 'object' &&
+      !Array.isArray(station.lifecycleMetadata)
+        ? (station.lifecycleMetadata as Record<string, unknown>)
+        : {};
+
+    const updated = (await this.prisma.$transaction(async (tx) =>
+      tx.station.update({
+        where: { id },
+        data: {
+          status: 'ACTIVE',
+          archivedAt: null,
+          isPrimary: false,
+          pickupEnabled: appliedCapabilities.pickupEnabled,
+          returnEnabled: appliedCapabilities.returnEnabled,
+          afterHoursReturnEnabled: appliedCapabilities.afterHoursReturnEnabled ?? false,
+          keyBoxAvailable: appliedCapabilities.keyBoxAvailable ?? false,
+          archivedCapabilitiesSnapshot: Prisma.JsonNull,
+          lifecycleMetadata: {
+            ...existingLifecycle,
+            lastRestoredAt: restoredAt.toISOString(),
+            lastRestoredByUserId: performedByUserId ?? null,
+            restoredFromSnapshot: archivedSnapshot,
+            restoredCapabilities: appliedCapabilities,
+          } as unknown as Prisma.InputJsonValue,
+        },
+        include: this.stationIncludeCount(),
+      }),
+    )) as Prisma.StationGetPayload<{ include: ReturnType<StationsService['stationIncludeCount']> }>;
+
+    return {
+      outcome: StationRestoreCommandOutcome.APPLIED,
+      command: StationRestoreCommandName.RESTORE,
+      allowed: true,
+      station: this.toDto(updated, updated._count.vehiclesHome),
+      blockingReasons: [],
+      warnings: evaluation.warnings,
+      requiredActions: evaluation.requiredActions,
+      audit: buildStationRestoreCommandAudit(auditBase),
+    };
+  }
+
+  async getStationRestorePreview(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationRestorePreviewResult> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        id: true,
+        organizationId: true,
+        status: true,
+        isPrimary: true,
+        archivedAt: true,
         pickupEnabled: true,
         returnEnabled: true,
+        afterHoursReturnEnabled: true,
+        keyBoxAvailable: true,
+        openingHours: true,
+        archivedCapabilitiesSnapshot: true,
       },
-      include: this.stationIncludeCount(),
     });
-    return this.toDto(updated, updated._count.vehiclesHome);
+
+    const preflight = await this.loadStationRestorePreflight(access, stationId);
+    const archivedSnapshot = parseArchivedCapabilitiesSnapshot(
+      station.archivedCapabilitiesSnapshot,
+    );
+
+    const preview = evaluateStationRestorePreview({
+      station: {
+        id: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        archivedAt: station.archivedAt,
+        openingHours: station.openingHours,
+      },
+      archivedCapabilitiesSnapshot: archivedSnapshot,
+      counts: preflight.counts,
+    });
+
+    return {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      status: station.status,
+      alreadyActive: station.status === 'ACTIVE',
+      openingHours: station.openingHours,
+      ...preview,
+    };
+  }
+
+  private async loadStationRestorePreflight(
+    access: StationAccessScope,
+    stationId: string,
+  ) {
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true, organizationId: true },
+    });
+
+    const homeWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'homeStationId');
+    const presentWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'currentStationId');
+    const expectedWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'expectedStationId');
+    const stationBookingWhere = this.stationAccessScope.buildStationBookingsWhere(access, stationId);
+
+    const [homeVehicles, presentVehicles, expectedVehicles, historicalBookings, scopedStaff] =
+      await Promise.all([
+        this.prisma.vehicle.count({ where: homeWhere }),
+        this.prisma.vehicle.count({ where: presentWhere }),
+        this.prisma.vehicle.count({ where: expectedWhere }),
+        this.prisma.booking.count({ where: stationBookingWhere }),
+        this.loadStationScopedStaff(station.organizationId, stationId, 1),
+      ]);
+
+    return {
+      counts: {
+        homeVehicles,
+        presentVehicles,
+        expectedVehicles,
+        historicalBookings,
+        scopedStaff: scopedStaff.totalCount,
+      },
+    };
   }
 
   async setPrimaryStation(organizationId: string, id: string): Promise<StationDto> {

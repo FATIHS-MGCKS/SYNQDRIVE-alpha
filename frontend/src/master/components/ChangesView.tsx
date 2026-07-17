@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-restore-command-v49601-2026-07-18',
+    version: '4.9.601',
+    title: 'V4.9.601 — Stations V2: Secure Restore Command + Preview (Prompt 21/78)',
+    summary: [
+      'Read-only `GET /stations/:id/restore-preview` und `POST /stations/:id/restore` mit `stations.restore` + archived lifecycle scope.',
+      'Restore setzt Pickup/Return nicht blind auf true — Vorschlag aus `archivedCapabilitiesSnapshot`, User bestätigt explizit.',
+      'Primary wird nicht automatisch wiederhergestellt; ungültige/fehlende Öffnungszeiten erzeugen Warnings.',
+      'Scoped Staff, Fahrzeug-Links und historische Buchungen bleiben unverändert; idempotent bei ACTIVE.',
+    ],
+    reason:
+      'Restore ohne Vorschau und ohne explizite Capability-Bestätigung war operativ riskant und widersprach der Archive-Snapshot-Architektur.',
+    previousBehavior:
+      '`restore()` setzte Status ACTIVE und reaktivierte Pickup/Return ohne Preflight, Snapshot oder User-Bestätigung.',
+    details:
+      'station-restore-{preview,command}.{types,util}.ts, RestoreStationDto, scope allowArchivedLifecycleWrite, stations.service restoreStation, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T03:00:00.000Z',
+  },
+  {
+    id: 'stations-v2-archive-command-v49600-2026-07-18',
+    version: '4.9.600',
+    title: 'V4.9.600 — Stations V2: Production-Safe Archive Command (Prompt 20/78)',
+    summary: [
+      '`POST /stations/:id/archive` nutzt Archive-Preview-Preflight + LifecyclePolicy + transaktionale Ausführung.',
+      'Blockiert Primary ohne `successorPrimaryStationId` und zukünftige Buchungen ohne `acknowledgeFutureBookings`.',
+      'Speichert `archivedCapabilitiesSnapshot` + `lifecycleMetadata` (Actor, archivedAt); keine Vehicle-Link-Mutation.',
+      'Idempotent bei ARCHIVED; deprecated `DELETE` archiviert immer (kein Hard Delete). Transaktions-Integrationstests.',
+    ],
+    reason:
+      'Archive war bisher ein einfaches Status-Update ohne Preflight, Snapshot oder geregelte Overrides — nicht produktionssicher.',
+    previousBehavior:
+      '`archive()` setzte nur Status/Flags; keine Booking-Blocker, kein Capability-Snapshot, Hard Delete bei unlinkter Station.',
+    details:
+      'station-archive-command.{types,util}.ts, ArchiveStationDto, Prisma snapshot fields, stations.service archiveStation, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T02:15:00.000Z',
+  },
+  {
     id: 'stations-v2-archive-preview-v49599-2026-07-18',
     version: '4.9.599',
     title: 'V4.9.599 — Stations V2: Archive Preview Endpoint (Prompt 19/78)',

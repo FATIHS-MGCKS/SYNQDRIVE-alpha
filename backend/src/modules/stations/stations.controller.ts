@@ -22,6 +22,7 @@ import {
   UpdateVehicleCurrentStationDto,
   StationMapboxSearchQueryDto,
   StationMapboxRetrieveQueryDto,
+  RestoreStationDto,
 } from './dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -254,11 +255,38 @@ export class StationsController {
     );
   }
 
+  @Get(':id/restore-preview')
+  @RequireStationsPermission('stations.restore')
+  @RequireStationScope({ resource: 'station', allowArchivedLifecycleWrite: true })
+  async getRestorePreview(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.getStationRestorePreview(
+      orgId,
+      id,
+      req[STATION_SCOPE_CONTEXT_KEY],
+    );
+  }
+
   @Post(':id/restore')
   @RequireStationsPermission('stations.restore')
-  @RequireStationScope({ resource: 'station' })
-  async restore(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.restore(orgId, id);
+  @RequireStationScope({ resource: 'station', allowArchivedLifecycleWrite: true })
+  async restore(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: RestoreStationDto,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.restoreStation(
+      orgId,
+      id,
+      body,
+      req[STATION_SCOPE_CONTEXT_KEY],
+      userId,
+    );
   }
 
   @Post(':id/set-primary')

@@ -163,6 +163,13 @@ export const AUTHZ_READ_ENDPOINTS: AuthzEndpointCase[] = [
     scope: { resource: 'station' },
     params: { id: AUTHZ_STATION_A },
   },
+  {
+    key: 'restore-preview',
+    method: 'GET',
+    permission: 'stations.restore',
+    scope: { resource: 'station', allowArchivedLifecycleWrite: true },
+    params: { id: AUTHZ_STATION_ARCHIVED },
+  },
 ];
 
 export const AUTHZ_MUTATION_ENDPOINTS: AuthzEndpointCase[] = [
@@ -200,8 +207,9 @@ export const AUTHZ_MUTATION_ENDPOINTS: AuthzEndpointCase[] = [
     key: 'restore',
     method: 'POST',
     permission: 'stations.restore',
-    scope: { resource: 'station' },
+    scope: { resource: 'station', allowArchivedLifecycleWrite: true },
     params: { id: AUTHZ_STATION_ARCHIVED },
+    body: { pickupEnabled: false, returnEnabled: false },
   },
   {
     key: 'set-primary',

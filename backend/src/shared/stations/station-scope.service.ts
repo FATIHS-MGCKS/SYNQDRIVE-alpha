@@ -183,6 +183,7 @@ export class StationScopeService {
         context,
         membership,
         httpMethod: request.method,
+        scopeOptions: options,
       });
     }
 
@@ -236,6 +237,7 @@ export class StationScopeService {
         httpMethod: request.method,
         permissionsRaw: null,
         hasScope: true,
+        allowArchivedLifecycleWrite: options.allowArchivedLifecycleWrite,
       });
     }
 
@@ -383,8 +385,9 @@ export class StationScopeService {
     context: StationScopeContext;
     membership: StationScopeMembershipRecord;
     httpMethod: string;
+    scopeOptions?: StationScopeOptions;
   }): Promise<void> {
-    const { orgId, stationId, context, membership, httpMethod } = args;
+    const { orgId, stationId, context, membership, httpMethod, scopeOptions } = args;
 
     if (!isUuidLike(stationId)) {
       throwStationScopeForbidden(
@@ -417,6 +420,7 @@ export class StationScopeService {
       permissionsRaw: membership.permissions,
       hasScope: true,
       stationStatus: station.status,
+      allowArchivedLifecycleWrite: scopeOptions?.allowArchivedLifecycleWrite,
     });
   }
 
@@ -460,6 +464,7 @@ export class StationScopeService {
     permissionsRaw: unknown;
     hasScope: boolean;
     stationStatus?: StationStatus;
+    allowArchivedLifecycleWrite?: boolean;
   }): Promise<void> {
     const status =
       args.stationStatus ??
@@ -480,6 +485,18 @@ export class StationScopeService {
         throwStationScopeForbidden(
           StationScopeErrorCode.ARCHIVED_READ_PERMISSION_REQUIRED,
           'Read permission required for archived station access',
+          { stationId: args.stationId },
+        );
+      }
+      return;
+    }
+
+    if (args.allowArchivedLifecycleWrite) {
+      const resolved = resolveStationsV2Permissions(args.permissionsRaw);
+      if (!evaluateStationsV2Permission(resolved, 'stations.restore')) {
+        throwStationScopeForbidden(
+          StationScopeErrorCode.ARCHIVED_RESTORE_PERMISSION_REQUIRED,
+          'Restore permission required for archived station lifecycle write',
           { stationId: args.stationId },
         );
       }

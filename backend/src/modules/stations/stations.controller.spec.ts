@@ -47,6 +47,7 @@ describe('StationsController read security', () => {
     expect(metadata(STATIONS_PERMISSION_KEY, 'getTeam')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getActivity')).toBe('stations.view_activity');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getArchivePreview')).toBe('stations.archive');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'getRestorePreview')).toBe('stations.restore');
   });
 
   it('uses list scope for collection reads and station scope for detail reads', () => {
@@ -58,6 +59,10 @@ describe('StationsController read security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'getTeam')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getActivity')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getArchivePreview')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'getRestorePreview')).toEqual({
+      resource: 'station',
+      allowArchivedLifecycleWrite: true,
+    });
   });
 });
 
@@ -84,7 +89,10 @@ describe('StationsController mutation security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'activate')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'deactivate')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'archive')).toEqual({ resource: 'station' });
-    expect(metadata(STATION_SCOPE_KEY, 'restore')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'restore')).toEqual({
+      resource: 'station',
+      allowArchivedLifecycleWrite: true,
+    });
     expect(metadata(STATION_SCOPE_KEY, 'setPrimary')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'setVehicles')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'assignVehicle')).toEqual({ resource: 'station' });

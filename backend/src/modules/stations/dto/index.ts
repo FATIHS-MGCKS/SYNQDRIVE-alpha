@@ -5,3 +5,4 @@ export * from './assign-vehicle-station.dto';
 export * from './set-station-vehicles.dto';
 export * from './station-mapbox-search.dto';
 export * from './archive-station.dto';
+export * from './restore-station.dto';

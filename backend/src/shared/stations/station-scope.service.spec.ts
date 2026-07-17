@@ -214,6 +214,36 @@ describe('StationScopeService', () => {
     });
   });
 
+  it('allows archived restore lifecycle write with stations.restore permission', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue(
+      workerMembership({ permissions: { stationsV2: { read: true, restore: true } } }),
+    );
+    prisma.station.findFirst.mockResolvedValue({ status: StationStatus.ARCHIVED });
+
+    await expect(
+      service.enforceRequestScope(request({ method: 'POST' }), {
+        resource: 'station',
+        allowArchivedLifecycleWrite: true,
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  it('denies archived restore lifecycle write without stations.restore permission', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue(workerMembership());
+    prisma.station.findFirst.mockResolvedValue({ status: StationStatus.ARCHIVED });
+
+    await expect(
+      service.enforceRequestScope(request({ method: 'POST' }), {
+        resource: 'station',
+        allowArchivedLifecycleWrite: true,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: StationScopeErrorCode.ARCHIVED_RESTORE_PERMISSION_REQUIRED,
+      }),
+    });
+  });
+
   it('allows nested vehicle when any linked station is in scope', async () => {
     prisma.organizationMembership.findFirst.mockResolvedValue(workerMembership());
     prisma.vehicle.findFirst.mockResolvedValue({

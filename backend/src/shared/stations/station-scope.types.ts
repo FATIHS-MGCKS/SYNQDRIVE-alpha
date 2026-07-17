@@ -21,6 +21,11 @@ export interface StationScopeOptions {
   resource?: StationScopeResourceHint;
   /** Override nested resource id field name (default: vehicleId / bookingId). */
   resourceIdField?: string;
+  /**
+   * Allow lifecycle writes (e.g. RestoreStation) on ARCHIVED stations when the
+   * caller holds the matching permission (e.g. stations.restore).
+   */
+  allowArchivedLifecycleWrite?: boolean;
 }
 
 export interface StationScopeMembershipRecord {
