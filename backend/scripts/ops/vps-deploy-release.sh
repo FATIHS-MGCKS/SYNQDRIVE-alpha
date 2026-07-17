@@ -49,16 +49,21 @@ npm run prisma:migrate:deploy
 sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
   -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
 npm run build
+npm run ops:bootstrap-smoke
 
 echo "==> Frontend install/build"
 cd "$RELEASE_DIR/frontend"
 npm ci
 npm run build
 
-echo "==> Switch current + restart pm2"
+echo "==> Switch current + reload pm2"
 ln -sfn "$RELEASE_DIR" /opt/synqdrive/current
 cd /opt/synqdrive/current/backend
-pm2 restart synqdrive --update-env
+if pm2 describe synqdrive >/dev/null 2>&1; then
+  pm2 reload ecosystem.config.cjs --update-env
+else
+  pm2 start ecosystem.config.cjs --update-env
+fi
 pm2 save
 
 echo "==> Health check"
