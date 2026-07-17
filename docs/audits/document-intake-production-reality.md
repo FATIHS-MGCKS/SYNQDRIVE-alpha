@@ -7,7 +7,7 @@
 | **Production host** | `app.synqdrive.eu` |
 | **Deployed commit (VPS)** | `f4f8808cb0d50c291642f3fd897d8a27f1c25785` (`fix(battery): scope wake flank to rest sessions in snapshot backfill`) |
 | **Release dir** | `/opt/synqdrive/releases/20260717131719_v4994` (symlink `current` at audit time) |
-| **Repository audit commit** | _(see git log after push)_ |
+| **Repository audit commit** | `39567061` (`docs(audit): document intake production reality audit 1 of 2`) |
 | **Sample size warning** | Production has **only 2** `vehicle_document_extractions` rows (both 2026-07-16). All quantitative production metrics are **low-n** and must be interpreted as **early-stage pilot data**, not fleet-scale statistics. |
 
 ---
