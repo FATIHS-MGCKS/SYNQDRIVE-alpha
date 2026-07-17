@@ -64,7 +64,9 @@ function assessPlanForDocumentType(input: BuildDocumentActionPlanInput): Planner
         documentMode: assessment.documentMode,
         linkCandidateId: assessment.linkCandidateId,
         duplicateDamageId:
-          typeof plannerInput.duplicateDamageId === 'string' ? plannerInput.duplicateDamageId : null,
+          typeof input.planContext?.duplicateDamageId === 'string'
+            ? input.planContext.duplicateDamageId
+            : null,
         missingRequirements: assessment.missingRequirements,
       },
     };
@@ -171,7 +173,18 @@ export function buildDocumentActionPlan(input: BuildDocumentActionPlanInput): Do
   };
 }
 
-export function assertExecutableActionPlan(plan: DocumentActionPlan): void {
+export function assertExecutableActionPlan(
+  plan: DocumentActionPlan,
+  applyLifecycle?: import('./document-action-plan.state-machine').DocumentActionPlanApplyLifecycle | null,
+): void {
+  if (applyLifecycle?.status === 'APPLYING') {
+    throw new DocumentActionPlanError(
+      DOCUMENT_ACTION_ERROR_CODES.PLAN_LOCKED,
+      'Action plan cannot be edited while apply is in progress',
+      { planId: plan.planId, lifecycleStatus: applyLifecycle.status },
+    );
+  }
+
   if (plan.status === DOCUMENT_ACTION_PLAN_STATUSES.INVALIDATED) {
     throw new DocumentActionPlanError(
       DOCUMENT_ACTION_ERROR_CODES.PLAN_INVALIDATED,
@@ -182,7 +195,14 @@ export function assertExecutableActionPlan(plan: DocumentActionPlan): void {
 
   if (
     plan.status !== DOCUMENT_ACTION_PLAN_STATUSES.CONFIRMED &&
-    plan.status !== DOCUMENT_ACTION_PLAN_STATUSES.COMPLETED
+    plan.status !== DOCUMENT_ACTION_PLAN_STATUSES.COMPLETED &&
+    !(
+      plan.status === DOCUMENT_ACTION_PLAN_STATUSES.FAILED &&
+      applyLifecycle &&
+      (applyLifecycle.status === 'APPLY_FAILED' ||
+        applyLifecycle.status === 'PARTIALLY_APPLIED' ||
+        applyLifecycle.status === 'APPLIED_WITH_WARNINGS')
+    )
   ) {
     throw new DocumentActionPlanError(
       DOCUMENT_ACTION_ERROR_CODES.PLAN_NOT_CONFIRMED,

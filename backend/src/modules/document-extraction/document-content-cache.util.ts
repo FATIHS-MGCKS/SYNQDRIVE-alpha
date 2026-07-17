@@ -15,6 +15,7 @@ export interface PipelinePlausibilityPayload {
   actionAudit?: ExtractionActionAuditEntry[];
   actionPlan?: import('./document-action-plan.types').DocumentActionPlan;
   actionPlanExecution?: import('./document-action.types').DocumentActionPlanExecution;
+  actionPlanApplyLifecycle?: import('./document-action-plan.state-machine').DocumentActionPlanApplyLifecycle;
 }
 
 export interface DocumentTypeAuditEntry {
@@ -87,6 +88,7 @@ export function mergePipelinePlausibility(
     contentCache: patch.contentCache ?? current.contentCache,
     actionPlan: patch.actionPlan ?? current.actionPlan,
     actionPlanExecution: patch.actionPlanExecution ?? current.actionPlanExecution,
+    actionPlanApplyLifecycle: patch.actionPlanApplyLifecycle ?? current.actionPlanApplyLifecycle,
   };
   return base;
 }

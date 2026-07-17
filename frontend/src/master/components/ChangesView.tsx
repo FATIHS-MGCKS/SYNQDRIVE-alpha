@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-action-plan-state-machine-2026-07-17',
+    version: '4.9.617',
+    title: 'V4.9.617 — Document Intake V2 Action Plan Apply Lifecycle State Machine',
+    summary: [
+      'Vollständige Apply-Lifecycle-State-Machine: READY_FOR_ACTION_PREVIEW → READY_TO_APPLY → APPLYING → APPLIED | PARTIALLY_APPLIED | APPLIED_WITH_WARNINGS | APPLY_FAILED.',
+      'document-action-plan.state-machine.ts — Transitionen, Outcome-Resolver (required vs optional vs suggestion), Plan-Lock während APPLYING, Retry nur für fehlgeschlagene Actions.',
+      'Orchestrator persistiert actionPlanApplyLifecycle transaktional in plausibility._pipeline; Extraction-Status PARTIALLY_APPLIED bei optionalen Apply-Fehlern.',
+      'Integrationstests für vollen Erfolg, APPLIED_WITH_WARNINGS bei Suggestion-Fehler und APPLY_FAILED-Retry ohne Re-Run erfolgreicher Actions.',
+    ],
+    reason:
+      'Prompt 42/84 — Explizite Apply-State-Machine mit partiellem Erfolg, Warnungen und gezieltem Action-Retry statt monolithischem CONFIRMED→APPLIED.',
+    previousBehavior:
+      'Plan-Execution nutzte EXECUTING/COMPLETED/FAILED ohne Apply-Lifecycle; optionale Fehler wurden nicht in Extraction-Status abgebildet; Retry-Logik ohne Lifecycle-Transitions.',
+    details: 'architecture/DOCUMENT_ACTION_PLAN_STATE_MACHINE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
     id: 'document-technical-health-apply-executor-2026-07-17',
     version: '4.9.616',
     title: 'V4.9.616 — Document Intake V2 Idempotent Tire/Brake/Battery Apply via Action Executor',

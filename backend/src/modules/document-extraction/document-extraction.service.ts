@@ -21,6 +21,7 @@ import {
 } from './storage/document-storage.interface';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
 import { DocumentActionOrchestratorService } from './document-action-orchestrator.service';
+import { mapApplyLifecycleToExtractionStatus } from './document-action-plan.state-machine';
 import { isArchiveDocumentType } from './document-archive-extraction.rules';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import {
@@ -218,10 +219,13 @@ const APPLY_ALIAS_KEYS = new Set<string>([
   'requiredAction',
 ]);
 
+const TERMINAL_APPLIED_STATUSES = new Set(['APPLIED', 'PARTIALLY_APPLIED']);
+
 const TERMINAL_SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
   'CONFIRMED',
   'APPLIED',
+  'PARTIALLY_APPLIED',
   'AWAITING_DOCUMENT_TYPE',
   'CANCELLED',
 ]);
@@ -609,7 +613,7 @@ export class DocumentExtractionService implements OnModuleInit {
     const record = await this.getForVehicle(vehicleId, extractionId);
     const applyType = documentType as ApplyDocumentExtractionType;
 
-    if (record.status === 'APPLIED') {
+    if (record.status === 'APPLIED' || record.status === 'PARTIALLY_APPLIED') {
       throw new BadRequestException('Cannot change document type after data has been applied');
     }
     if (record.status === 'CONFIRMED') {
@@ -709,7 +713,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
   async retry(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    if (record.status === 'APPLIED') {
+    if (TERMINAL_APPLIED_STATUSES.has(record.status)) {
       throw new BadRequestException('Cannot retry an already applied extraction');
     }
     if (record.status === 'CONFIRMED') {
@@ -792,7 +796,7 @@ export class DocumentExtractionService implements OnModuleInit {
   ) {
     const existing = await this.getForVehicle(vehicleId, extractionId);
 
-    if (existing.status === 'APPLIED') {
+    if (existing.status === 'APPLIED' || existing.status === 'PARTIALLY_APPLIED') {
       return existing;
     }
 
@@ -851,13 +855,15 @@ export class DocumentExtractionService implements OnModuleInit {
     });
     if (confirmUpdate.count === 0) {
       const latest = await this.getForVehicle(vehicleId, extractionId);
-      if (latest.status === 'APPLIED') return latest;
+      if (latest.status === 'APPLIED' || latest.status === 'PARTIALLY_APPLIED') return latest;
       throw new BadRequestException(
         `Extraction must be READY_FOR_REVIEW before confirmation (current: ${latest.status})`,
       );
     }
 
-    let applyResult: Awaited<ReturnType<DocumentExtractionApplyService['apply']>>;
+    let applyResult: Awaited<ReturnType<DocumentExtractionApplyService['apply']>> & {
+      applyLifecycle?: { status: string };
+    };
     try {
       if (this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
         applyResult = await this.actionOrchestrator.executeConfirmedPlan({
@@ -907,10 +913,23 @@ export class DocumentExtractionService implements OnModuleInit {
       throw new BadRequestException(`Failed to apply confirmed data: ${message}`);
     }
 
+    const extractionStatus = applyResult.applyLifecycle
+      ? mapApplyLifecycleToExtractionStatus(
+          applyResult.applyLifecycle.status as Parameters<
+            typeof mapApplyLifecycleToExtractionStatus
+          >[0],
+        )
+      : 'APPLIED';
+
+    const latestAfterApply = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: extractionId },
+      select: { plausibility: true },
+    });
+
     const appliedUpdate = await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'CONFIRMED' },
       data: {
-        status: 'APPLIED',
+        status: extractionStatus,
         processingStage: 'APPLY',
         appliedAt: new Date(),
         appliedById: userId ?? null,
@@ -918,11 +937,17 @@ export class DocumentExtractionService implements OnModuleInit {
         errorPhase: null,
         errorCode: null,
         errorMessage: null,
-        plausibility: appendExtractionActionAudit(plausibilityWithConfirmAudit, {
-          action: 'apply',
-          at: new Date().toISOString(),
-          userId: userId ?? null,
-        }) as Prisma.InputJsonValue,
+        plausibility: appendExtractionActionAudit(
+          latestAfterApply?.plausibility ?? plausibilityWithConfirmAudit,
+          {
+            action: 'apply',
+            at: new Date().toISOString(),
+            userId: userId ?? null,
+            details: applyResult.applyLifecycle
+              ? { applyLifecycleStatus: applyResult.applyLifecycle.status }
+              : undefined,
+          },
+        ) as Prisma.InputJsonValue,
         ...(applyResult.serviceEventId ? { serviceEventId: applyResult.serviceEventId } : {}),
       },
     });
@@ -970,10 +995,14 @@ export class DocumentExtractionService implements OnModuleInit {
             sourceFileUrl,
             confirmedData,
           });
+      const extractionStatus =
+        'applyLifecycle' in applyResult && applyResult.applyLifecycle
+          ? mapApplyLifecycleToExtractionStatus(applyResult.applyLifecycle.status)
+          : 'APPLIED';
       await this.prisma.vehicleDocumentExtraction.updateMany({
         where: { id: extractionId, status: 'CONFIRMED' },
         data: {
-          status: 'APPLIED',
+          status: extractionStatus,
           processingStage: 'APPLY',
           appliedAt: new Date(),
           processingCompletedAt: new Date(),
@@ -1071,7 +1100,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
   async cancel(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    if (['APPLIED', 'CONFIRMED', 'CANCELLED'].includes(record.status)) {
+    if (['APPLIED', 'PARTIALLY_APPLIED', 'CONFIRMED', 'CANCELLED'].includes(record.status)) {
       throw new BadRequestException(`Cannot cancel extraction in status ${record.status}`);
     }
 

@@ -77,6 +77,7 @@ export function deriveClassificationMode(
 export function mapStatusToDefaultStage(status: DocumentExtractionStatus): DocumentExtractionStage {
   switch (status) {
     case 'APPLIED':
+    case 'PARTIALLY_APPLIED':
       return 'APPLY';
     case 'CONFIRMED':
     case 'READY_FOR_REVIEW':

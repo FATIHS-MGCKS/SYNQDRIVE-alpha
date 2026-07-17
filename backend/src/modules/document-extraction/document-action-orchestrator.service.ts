@@ -29,6 +29,7 @@ import {
 import {
   readDocumentActionPlanState,
   storeDocumentActionPlan,
+  storeDocumentActionPlanApplyLifecycle,
   storeDocumentActionPlanExecution,
 } from './document-action-plan.store';
 import {
@@ -38,6 +39,14 @@ import {
   type DocumentActionExecutionRecord,
   type DocumentActionPlanExecution,
 } from './document-action.types';
+import {
+  DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES,
+  isSuccessfulApplyLifecycle,
+  mapApplyLifecycleToExtractionStatus,
+  resolveApplyLifecycleOutcome,
+  transitionApplyLifecycle,
+  type DocumentActionPlanApplyLifecycle,
+} from './document-action-plan.state-machine';
 import {
   DocumentActionBusinessError,
   DocumentActionPlanError,
@@ -84,6 +93,10 @@ export type ExecuteDocumentActionPlanInput = {
   plausibilityChecks?: BuildDocumentActionPlanInput['plausibilityChecks'];
   planContext?: Record<string, unknown>;
   plausibility?: unknown;
+};
+
+export type ExecuteDocumentActionPlanResult = ApplyResult & {
+  applyLifecycle?: DocumentActionPlanApplyLifecycle;
 };
 
 @Injectable()
@@ -155,7 +168,14 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
 
     assertExecutableActionPlan(plan);
 
-    const plausibilityWithPlan = storeDocumentActionPlan(input.plausibility, plan);
+    const lifecycle = transitionApplyLifecycle(
+      readDocumentActionPlanState(input.plausibility).actionPlanApplyLifecycle,
+      DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.READY_FOR_ACTION_PREVIEW,
+    );
+    const plausibilityWithPlan = storeDocumentActionPlanApplyLifecycle(
+      storeDocumentActionPlan(input.plausibility, plan),
+      lifecycle,
+    );
     await this.prisma.vehicleDocumentExtraction.update({
       where: { id: input.extractionId },
       data: {
@@ -166,34 +186,92 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     return plan;
   }
 
-  async executeConfirmedPlan(input: ExecuteDocumentActionPlanInput): Promise<ApplyResult> {
+  async executeConfirmedPlan(input: ExecuteDocumentActionPlanInput): Promise<ExecuteDocumentActionPlanResult> {
     const existingState = readDocumentActionPlanState(input.plausibility);
     let plan = existingState.actionPlan;
+    let lifecycle = existingState.actionPlanApplyLifecycle;
 
     if (!plan) {
       plan = await this.prepareConfirmedPlan(input);
+      lifecycle = transitionApplyLifecycle(
+        null,
+        DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.READY_FOR_ACTION_PREVIEW,
+      );
     } else {
       await this.validateStoredPlan(plan, input);
-      assertExecutableActionPlan(plan);
+      assertExecutableActionPlan(plan, lifecycle);
     }
 
     if (
+      lifecycle &&
+      isSuccessfulApplyLifecycle(lifecycle.status) &&
       existingState.actionPlanExecution?.status === 'COMPLETED' &&
       existingState.actionPlanExecution.fingerprint === plan.fingerprint
     ) {
-      return this.toApplyResult(plan, existingState.actionPlanExecution);
+      return {
+        ...this.toApplyResult(plan, existingState.actionPlanExecution),
+        applyLifecycle: lifecycle,
+      };
     }
 
-    const execution = await this.executePlanActions(input, plan, existingState.actionPlanExecution);
-    const plausibilityWithExecution = storeDocumentActionPlanExecution(
+    if (
+      lifecycle?.status === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.READY_FOR_ACTION_PREVIEW
+    ) {
+      lifecycle = transitionApplyLifecycle(
+        lifecycle,
+        DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.READY_TO_APPLY,
+      );
+    }
+
+    lifecycle = transitionApplyLifecycle(
+      lifecycle,
+      DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLYING,
+    );
+
+    const applyingPlausibility = storeDocumentActionPlanApplyLifecycle(
       storeDocumentActionPlan(input.plausibility, {
         ...plan,
-        status:
-          execution.status === 'COMPLETED'
-            ? DOCUMENT_ACTION_PLAN_STATUSES.COMPLETED
-            : DOCUMENT_ACTION_PLAN_STATUSES.FAILED,
+        status: DOCUMENT_ACTION_PLAN_STATUSES.EXECUTING,
       }),
-      execution,
+      lifecycle,
+    );
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: input.extractionId },
+      data: {
+        plausibility: applyingPlausibility as Prisma.InputJsonValue,
+      },
+    });
+
+    const execution = await this.executePlanActions(
+      input,
+      plan,
+      existingState.actionPlanExecution,
+    );
+    const outcome = resolveApplyLifecycleOutcome(execution);
+    lifecycle = transitionApplyLifecycle(lifecycle, outcome.lifecycleStatus, {
+      applyOutcome: outcome.applyOutcome,
+      failedActionIndices: outcome.failedActionIndices,
+      warningActionIndices: outcome.warningActionIndices,
+    });
+
+    const planStatus =
+      outcome.lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED
+        ? DOCUMENT_ACTION_PLAN_STATUSES.FAILED
+        : outcome.lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.PARTIALLY_APPLIED ||
+            outcome.lifecycleStatus ===
+              DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLIED_WITH_WARNINGS
+          ? DOCUMENT_ACTION_PLAN_STATUSES.COMPLETED
+          : DOCUMENT_ACTION_PLAN_STATUSES.COMPLETED;
+
+    const plausibilityWithExecution = storeDocumentActionPlanApplyLifecycle(
+      storeDocumentActionPlanExecution(
+        storeDocumentActionPlan(input.plausibility, {
+          ...plan,
+          status: planStatus,
+        }),
+        execution,
+      ),
+      lifecycle,
     );
 
     await this.prisma.vehicleDocumentExtraction.update({
@@ -203,7 +281,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       },
     });
 
-    if (execution.status === 'FAILED') {
+    if (outcome.lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED) {
       const failedRequired = execution.actions.find(
         (row) =>
           row.requirement === DOCUMENT_ACTION_REQUIREMENTS.REQUIRED &&
@@ -212,11 +290,14 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       throw new DocumentActionTechnicalError(
         DOCUMENT_ACTION_ERROR_CODES.REQUIRED_ACTION_FAILED,
         failedRequired?.errorMessage ?? 'Document action plan execution failed',
-        { execution },
+        { execution, applyLifecycle: lifecycle },
       );
     }
 
-    return this.toApplyResult(plan, execution);
+    return {
+      ...this.toApplyResult(plan, execution),
+      applyLifecycle: lifecycle,
+    };
   }
 
   private async validateStoredPlan(
@@ -414,11 +495,26 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       planId: plan.planId,
       planVersion: plan.planVersion,
       fingerprint: plan.fingerprint,
-      status: failed ? 'FAILED' : 'COMPLETED',
+      status: this.resolveExecutionStatus(records, failed),
       actions: records,
       startedAt,
       completedAt: new Date().toISOString(),
     };
+  }
+
+  private resolveExecutionStatus(
+    records: DocumentActionExecutionRecord[],
+    requiredFailed: boolean,
+  ): DocumentActionPlanExecution['status'] {
+    if (requiredFailed) {
+      return 'FAILED';
+    }
+    const optionalFailed = records.some(
+      (row) =>
+        row.requirement === DOCUMENT_ACTION_REQUIREMENTS.OPTIONAL &&
+        row.status === DOCUMENT_ACTION_EXECUTION_STATUSES.FAILED,
+    );
+    return optionalFailed ? 'PARTIALLY_COMPLETED' : 'COMPLETED';
   }
 
   private toApplyResult(plan: DocumentActionPlan, execution: DocumentActionPlanExecution): ApplyResult {
