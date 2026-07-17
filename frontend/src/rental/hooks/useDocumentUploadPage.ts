@@ -24,7 +24,7 @@ import {
   withBatteryHealthCacheRollback,
 } from '../lib/battery-health-query';
 import { useDocumentIntakeFlow } from './useDocumentIntakeFlow';
-import type { FlowStatus } from '../components/documents/document-extraction.shared';
+import type { IntakeProcessingStepId } from '../lib/document-intake-processing-steps';
 
 const AUTO_TYPE = 'AUTO';
 const UPLOAD_SOURCE = 'rental_ui';
@@ -376,6 +376,18 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   const assignedVehicleId = selectedVehicleId || intake.record?.vehicleId || '';
   const canConfirm = Boolean(assignedVehicleId) && !intake.blockerPresent;
 
+  const processingStepLabels = useMemo(
+    (): Record<IntakeProcessingStepId, string> => ({
+      file_check: t('docUpload.processingStep.fileCheck'),
+      file_stored: t('docUpload.processingStep.fileStored'),
+      text_recognition: t('docUpload.processingStep.textRecognition'),
+      classification: t('docUpload.processingStep.classification'),
+      data_preparation: t('docUpload.processingStep.dataPreparation'),
+      ready_for_review: t('docUpload.processingStep.readyForReview'),
+    }),
+    [t],
+  );
+
   const confirmedDocType = intake.record ? resolveEffectiveType(intake.record) : documentType;
   const stepperIndex = getStepperIndex(intake.flow);
   const classificationConfidence = formatConfidencePercent(intake.record?.classificationConfidence ?? null);
@@ -440,5 +452,7 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     validateAndSetError,
     assignedVehicleId,
     canConfirm,
+    processingStepLabels,
+    processingStartedAt: intake.processingStartedAt,
   };
 }

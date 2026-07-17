@@ -104,6 +104,7 @@ export function useDocumentIntakeFlow({
   const [confirmedDocType, setConfirmedDocType] = useState(initialDocType);
   const [pollNetworkWarning, setPollNetworkWarning] = useState(false);
   const [showLongRunningHint, setShowLongRunningHint] = useState(false);
+  const [processingStartedAt, setProcessingStartedAt] = useState<number | null>(null);
 
   const acceptAttr = useMemo(() => buildAcceptAttribute(metadata?.extensions), [metadata]);
   const isBusy = isBusyFlow(flow);
@@ -274,6 +275,7 @@ export function useDocumentIntakeFlow({
     setValidationError(null);
     setPollNetworkWarning(false);
     setShowLongRunningHint(false);
+    setProcessingStartedAt(null);
     setDocumentType(initialDocType);
     setConfirmedDocType(initialDocType);
     if (mode === 'page') writeActiveExtractionPointer(null);
@@ -378,6 +380,7 @@ export function useDocumentIntakeFlow({
       setExtractionId(null);
       setRecord(null);
       setFlow('validating');
+      setProcessingStartedAt(Date.now());
 
       const validation = validateUploadFile(file, metadata, {
         vehicleSelected: Boolean(vehicleId) || canUseOrgScope,
@@ -568,6 +571,7 @@ export function useDocumentIntakeFlow({
     extractionId,
     pollNetworkWarning,
     showLongRunningHint,
+    processingStartedAt,
     acceptAttr,
     isBusy,
     blockerPresent,

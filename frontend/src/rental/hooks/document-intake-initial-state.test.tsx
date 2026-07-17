@@ -46,8 +46,17 @@ const idlePageMock = {
   uploadContext: null,
   duplicateBlocked: null,
   uploadDuplicateWarning: null,
-  assignedVehicleId: '',
-  canConfirm: false,
+    assignedVehicleId: '',
+    canConfirm: false,
+    processingStepLabels: {
+      file_check: 'Datei wird geprüft',
+      file_stored: 'Datei wurde sicher gespeichert',
+      text_recognition: 'Text wird erkannt',
+      classification: 'Dokument wird eingeordnet',
+      data_preparation: 'Daten und Zuordnungen werden vorbereitet',
+      ready_for_review: 'Bereit zur Prüfung',
+    },
+    processingStartedAt: null,
   typeLabel: (k: string) => k,
   flowStatusLabel: (s: string) => s,
   serverStatusLabel: (s: string) => s,
@@ -106,6 +115,7 @@ describe('document intake initial UX', () => {
     expect(html).not.toContain('docUpload.documentType');
     expect(html).not.toContain('Geplante Aktionen');
     expect(html).not.toContain('docUpload.detectedFields');
+    expect(html).not.toContain('docUpload.aiPowered');
   });
 
   it('drawer idle source hides document type selector before OCR', () => {
