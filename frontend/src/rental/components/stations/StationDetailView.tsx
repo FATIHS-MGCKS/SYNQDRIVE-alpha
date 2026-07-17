@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import {
   api,
   type Station,
+  type StationActivityEntry,
   type StationBookingRow,
   type StationFleetVehicle,
   type StationOverviewStats,
@@ -23,6 +24,7 @@ import {
 import { MapboxMap } from '../../../components/MapboxMap';
 import type { FleetMapFeatureProperties } from '../../stores/useFleetMapStore';
 import { useRentalOrg } from '../../RentalContext';
+import { useStationsV2Permissions } from '../../hooks/useStationsV2Permissions';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
@@ -51,7 +53,7 @@ const EMPTY_FLEET_GEOJSON: FeatureCollection<Point, FleetMapFeatureProperties> =
   features: [],
 };
 
-type DetailTab = 'overview' | 'fleet' | 'bookings' | 'staff' | 'rules' | 'handover';
+type DetailTab = 'overview' | 'fleet' | 'bookings' | 'staff' | 'rules' | 'handover' | 'activity';
 
 interface StationDetailViewProps {
   stationId: string;
@@ -80,6 +82,7 @@ export function StationDetailView({
 }: StationDetailViewProps) {
   const { orgId } = useRentalOrg();
   const { t } = useLanguage();
+  const { status: permStatus, capabilities, forStation, formCapabilities, isReadOnly } = useStationsV2Permissions();
 
   const [station, setStation] = useState<Station | null>(initialStation ?? null);
   const [stats, setStats] = useState<StationOverviewStats | null>(null);
@@ -92,15 +95,24 @@ export function StationDetailView({
   const [formOpen, setFormOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activity, setActivity] = useState<StationActivityEntry[]>([]);
 
-  const tabs: { key: DetailTab; label: string }[] = [
-    { key: 'overview', label: t('stations.detail.tab.overview') },
-    { key: 'fleet', label: t('stations.detail.tab.fleet') },
-    { key: 'bookings', label: t('stations.detail.tab.bookings') },
-    { key: 'staff', label: t('stations.detail.tab.staff') },
-    { key: 'rules', label: t('stations.detail.tab.rules') },
-    { key: 'handover', label: t('stations.detail.tab.handover') },
-  ];
+  const stationCaps = useMemo(() => forStation(station), [forStation, station]);
+
+  const tabs: { key: DetailTab; label: string }[] = useMemo(() => {
+    const base: { key: DetailTab; label: string }[] = [
+      { key: 'overview', label: t('stations.detail.tab.overview') },
+      { key: 'fleet', label: t('stations.detail.tab.fleet') },
+      { key: 'bookings', label: t('stations.detail.tab.bookings') },
+      { key: 'staff', label: t('stations.detail.tab.staff') },
+      { key: 'rules', label: t('stations.detail.tab.rules') },
+      { key: 'handover', label: t('stations.detail.tab.handover') },
+    ];
+    if (stationCaps.canViewActivity) {
+      base.push({ key: 'activity', label: t('stations.detail.tab.activity') });
+    }
+    return base;
+  }, [stationCaps.canViewActivity, t]);
 
   const loadCore = useCallback(async () => {
     if (!orgId) return;
@@ -132,12 +144,16 @@ export function StationDetailView({
         const rows = await api.stations.bookings(orgId, stationId);
         setBookings(Array.isArray(rows) ? rows : []);
       }
+      if (activeTab === 'activity' && stationCaps.canViewActivity) {
+        const rows = await api.stations.activity(orgId, stationId);
+        setActivity(Array.isArray(rows) ? rows : []);
+      }
     } catch {
       /* tab-level errors shown inline */
     } finally {
       setTabLoading(false);
     }
-  }, [orgId, stationId, activeTab]);
+  }, [orgId, stationId, activeTab, stationCaps.canViewActivity]);
 
   useEffect(() => {
     void loadCore();
@@ -199,6 +215,16 @@ export function StationDetailView({
     }
   };
 
+  if (permStatus === 'ready' && !capabilities.canRead) {
+    return (
+      <EmptyState
+        icon={<MapPin className="w-8 h-8" />}
+        title={t('stations.permissions.noAccessTitle')}
+        description={t('stations.permissions.noAccessDescription')}
+      />
+    );
+  }
+
   if (loading && !station) {
     return (
       <div className="space-y-4 max-w-[1400px] mx-auto">
@@ -222,8 +248,20 @@ export function StationDetailView({
 
   if (!station) return null;
 
+  const canEdit = stationCaps.canEditMasterData || stationCaps.canManageOperations;
+
   return (
     <div className="space-y-4 max-w-[1400px] mx-auto">
+      {isReadOnly && (
+        <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          {t('stations.permissions.readOnlyBanner')}
+        </div>
+      )}
+      {station.status === 'ARCHIVED' && (
+        <div className="rounded-xl border border-[color:var(--status-watch)]/35 bg-[color:var(--status-watch)]/[0.04] px-4 py-3 text-sm text-muted-foreground">
+          {t('stations.detail.archivedBanner')}
+        </div>
+      )}
       <PageHeader
         variant="full"
         eyebrow={(
@@ -256,17 +294,21 @@ export function StationDetailView({
         )}
         actions={(
           <div className="flex flex-wrap gap-2">
+            {stationCaps.canManageHomeFleet && (
             <button type="button" onClick={() => setAssignOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
               {t('stations.action.assignVehicle')}
             </button>
-            {!station.isPrimary && (
+            )}
+            {stationCaps.canSetPrimary && !station.isPrimary && (
               <button type="button" onClick={() => void handleSetPrimary()} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
                 {t('stations.action.setPrimary')}
               </button>
             )}
+            {canEdit && (
             <button type="button" onClick={() => setFormOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold sq-tone-brand">
               {t('stations.action.edit')}
             </button>
+            )}
           </div>
         )}
       />
@@ -389,12 +431,26 @@ export function StationDetailView({
         <HandoverTab station={station} t={t} />
       )}
 
-      <StationFormModal open={formOpen} station={station} saving={saving} orgId={orgId} onClose={() => setFormOpen(false)} onSubmit={handleSave} />
+      {activeTab === 'activity' && stationCaps.canViewActivity && (
+        <ActivityTab activity={activity} loading={tabLoading} t={t} />
+      )}
+
+      <StationFormModal
+        open={formOpen}
+        station={station}
+        saving={saving}
+        orgId={orgId}
+        formCapabilities={formCapabilities(station, false)}
+        onClose={() => setFormOpen(false)}
+        onSubmit={handleSave}
+      />
+      {stationCaps.canManageHomeFleet && (
       <StationAssignVehicleModal
         station={assignOpen ? station : null}
         onClose={() => setAssignOpen(false)}
         onSaved={() => { void loadCore(); void loadTabData(); }}
       />
+      )}
     </div>
   );
 }
@@ -631,6 +687,47 @@ function RuleRow({ label, value }: { label: string; value: boolean }) {
       <span className="text-muted-foreground">{label}</span>
       <StatusChip tone={value ? 'success' : 'neutral'}>{value ? '✓' : '—'}</StatusChip>
     </li>
+  );
+}
+
+function ActivityTab({
+  activity,
+  loading,
+  t,
+}: {
+  activity: StationActivityEntry[];
+  loading: boolean;
+  t: (k: TranslationKey) => string;
+}) {
+  if (loading) return <SkeletonCard className="h-48 w-full" />;
+  if (activity.length === 0) {
+    return (
+      <EmptyState
+        icon={<Clock className="w-8 h-8" />}
+        title={t('stations.detail.activityEmptyTitle')}
+        description={t('stations.detail.activityEmptyDescription')}
+      />
+    );
+  }
+  return (
+    <div className="surface-premium overflow-hidden">
+      <ul className="divide-y divide-border">
+        {activity.map((entry) => (
+          <li key={entry.id} className="px-4 py-3 text-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <div>
+                <p className="font-medium">{entry.action}</p>
+                {entry.description ? <p className="text-xs text-muted-foreground mt-0.5">{entry.description}</p> : null}
+              </div>
+              <div className="text-xs text-muted-foreground shrink-0">
+                {entry.userName ? `${entry.userName} · ` : ''}
+                {new Date(entry.createdAt).toLocaleString()}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

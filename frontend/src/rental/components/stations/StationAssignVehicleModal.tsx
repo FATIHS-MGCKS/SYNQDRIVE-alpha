@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { api, type Station } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { useStationsV2Permissions } from '../../hooks/useStationsV2Permissions';
 type AssignVehicleRow = {
   id: string;
   license: string;
@@ -25,6 +26,8 @@ interface StationAssignVehicleModalProps {
 export function StationAssignVehicleModal({ station, onClose, onSaved }: StationAssignVehicleModalProps) {
   const { orgId } = useRentalOrg();
   const { t } = useLanguage();
+  const { forStation } = useStationsV2Permissions();
+  const canManage = station ? forStation(station).canManageHomeFleet : false;
   const [vehicles, setVehicles] = useState<AssignVehicleRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -96,7 +99,7 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
   };
 
   const submit = async () => {
-    if (!orgId || !station) return;
+    if (!orgId || !station || !canManage) return;
     setSaving(true);
     setError(null);
     try {
@@ -196,7 +199,7 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
             <button type="button" onClick={onClose} disabled={saving} className="px-3 py-2 rounded-xl text-xs font-semibold border border-border">
               {t('common.cancel')}
             </button>
-            <button type="button" onClick={() => void submit()} disabled={saving || loading} className="sq-3d-btn sq-3d-btn--primary px-3 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5">
+            <button type="button" onClick={() => void submit()} disabled={saving || loading || !canManage} className="sq-3d-btn sq-3d-btn--primary px-3 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5">
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {t('common.save')}
             </button>
