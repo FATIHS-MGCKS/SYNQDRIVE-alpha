@@ -41,6 +41,8 @@ export type CreateDocumentActionPlanInput = {
   generatedBy?: string | null;
   applyMode?: DocumentApplyMode;
   generatedAt?: Date;
+  /** When set, used for dedup/supersede instead of identity fingerprint (planner v1 contract). */
+  inputFingerprint?: string;
 };
 
 export type ResolveDocumentActionPlanResult = {

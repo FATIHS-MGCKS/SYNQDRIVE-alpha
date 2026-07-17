@@ -170,6 +170,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 20, 2026-07-17):** Pure Domain-Engine `planDocumentActions()` in `document-action-planner.engine.ts` — deterministischer Planner über Kategorie, confirmedData, Plausibilität, Entity Links/Candidates, Feature Flags und Downstream Capabilities. Output: `DocumentActionPlanDraft`, geplante `PlannedDocumentActionInput[]`, `blockingReasons`, `missingRequirements`, `followUpCandidateTypes`. Fingerprint via `buildDocumentActionPlannerInputFingerprint`. Keine Prisma-Writes, keine Ausführung.
 
+**Implementierungsstand (Prompt 21, 2026-07-17):** `POST /organizations/:orgId/document-extractions/:extractionId/action-plan` — `DocumentExtractionApplyPlanService.dryRunActionPlan` lädt confirmedData/Links, re-prüft Plausibilität, persistiert Plan+Actions (PREVIEW/WOULD_APPLY), keine Downstream-Writes. Planner-Fingerprint als `inputFingerprint` Override für Idempotenz.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

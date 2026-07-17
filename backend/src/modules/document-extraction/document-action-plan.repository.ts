@@ -93,7 +93,8 @@ export class DocumentActionPlanRepository {
       extractionId: input.extractionId,
       ...input.identity,
     };
-    const inputFingerprint = buildDocumentActionPlanInputFingerprint(identity);
+    const inputFingerprint =
+      input.inputFingerprint ?? buildDocumentActionPlanInputFingerprint(identity);
 
     const existing = await this.findCurrentByExtractionAndFingerprint(
       resolvedOrganizationId,

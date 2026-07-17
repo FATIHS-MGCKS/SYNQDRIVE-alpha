@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-action-plan-dry-run-api-2026-07-17',
+    version: '4.9.597',
+    title: 'V4.9.597 — Document Intake V2 Action Plan Dry-Run API',
+    summary: [
+      'POST /organizations/:orgId/document-extractions/:extractionId/action-plan — serverseitiger Apply Dry Run.',
+      'Lädt confirmedData + Entity Links, prüft Plausibilität erneut, führt DocumentActionPlanner aus, persistiert DocumentActionPlan + DocumentAction (WOULD_APPLY).',
+      'Keine Downstream-Writes; identischer Planner-Fingerprint → idempotente Plan-Rückgabe; geänderte Inputs → superseding Plan.',
+      'Antwort-Actions mit Preview-Status: WOULD_CREATE, WOULD_UPDATE, WOULD_LINK, WOULD_SUGGEST, ARCHIVE_ONLY, BLOCKED.',
+      'Tests: Tenant-Scope, Berechtigungen (read), Schreibfreiheit außerhalb Planmodelle.',
+    ],
+    reason: 'Prompt 21/84: echte Dry-Run-API vor Apply-Worker und Frontend ACTION_PREVIEW.',
+    previousBehavior: 'Planner rein in-memory (P20); keine HTTP-API für Action-Plan-Persistenz.',
+    details:
+      'document-extraction-apply-plan.service.ts, document-action-plan-preview.mapper.ts, public-document-action-plan.dto.ts, DocumentExtractionOrgController POST action-plan.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T01:00:00.000Z',
+  },
+  {
     id: 'document-action-planner-engine-2026-07-17',
     version: '4.9.596',
     title: 'V4.9.596 — Document Intake V2 Action Planner Engine (rein deterministisch)',
