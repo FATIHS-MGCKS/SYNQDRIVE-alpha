@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -9,6 +9,7 @@ import {
   AssignPhoneNumberDto,
   UpdateTelephonySettingsDto,
   InitiateTwilioOutboundCallDto,
+  InitiateOutboundCallDto,
 } from './dto';
 
 @Controller('organizations/:orgId/voice-assistant')
@@ -100,12 +101,37 @@ export class VoiceAssistantController {
     return this.service.updateTelephonySettings(orgId, body);
   }
 
+  @Get('calls/inbound-readiness')
+  inboundCallReadiness(@Param('orgId') orgId: string) {
+    return this.service.getInboundCallReadiness(orgId);
+  }
+
+  @Post('calls/outbound')
+  async outboundCall(
+    @Param('orgId') orgId: string,
+    @Body() body: InitiateOutboundCallDto,
+    @Req() request: { user?: { id?: string } },
+  ) {
+    return this.service.initiateOutboundCall(
+      orgId,
+      {
+        to: body.to,
+        idempotencyKey: body.idempotencyKey,
+        customerId: body.customerId,
+        bookingId: body.bookingId,
+      },
+      request.user?.id,
+    );
+  }
+
   @Post('twilio/outbound-call')
+  @Roles('ORG_ADMIN', 'SUB_ADMIN', 'MASTER_ADMIN')
   async twilioOutboundCall(
     @Param('orgId') orgId: string,
     @Body() body: InitiateTwilioOutboundCallDto,
+    @Req() request: { user?: { id?: string } },
   ) {
-    return this.service.initiateTwilioOutboundCall(orgId, body.to);
+    return this.service.initiateTwilioOutboundCall(orgId, body.to, request.user?.id);
   }
 }
 

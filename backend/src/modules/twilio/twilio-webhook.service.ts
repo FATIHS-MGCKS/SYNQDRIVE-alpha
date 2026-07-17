@@ -88,10 +88,13 @@ export class TwilioWebhookService {
       (assistant.telephonyEnabled || assistant.inboundEnabled) &&
       context.callSid
     ) {
-      await this.ensureInboundConversation(assistant, context);
+      const route = await this.bridge.describeBridge(assistant, assistant.organizationId);
+      if (!route.inboundReady) {
+        await this.ensureInboundConversation(assistant, context);
+      }
     }
 
-    return this.bridge.buildInboundTwiml(assistant);
+    return this.bridge.buildInboundTwiml(assistant, assistant?.organizationId ?? null);
   }
 
   async handleStatusCallback(params: {

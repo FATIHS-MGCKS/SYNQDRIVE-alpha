@@ -53,6 +53,12 @@ describe('VoiceAssistantService', () => {
     listParentPhoneNumbers: jest.fn(),
   };
 
+  const callOrchestration = {
+    evaluateInboundReadiness: jest.fn(),
+    orchestrateOutboundCall: jest.fn(),
+    assertLegacyDiagnosticCallAllowed: jest.fn(),
+  };
+
   let service: VoiceAssistantService;
 
   const baseAssistant = {
@@ -132,6 +138,7 @@ describe('VoiceAssistantService', () => {
       elevenLabs as any,
       twilioTelephony as any,
       twilioControlPlaneTelephony as any,
+      callOrchestration as any,
     );
   });
 

@@ -50,6 +50,7 @@ import { PartsAccessoriesModule } from '@modules/parts-accessories/parts-accesso
 import { InsurancesModule } from '@modules/insurances/insurances.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { VoiceMcpGatewayModule } from '@modules/voice-mcp-gateway/voice-mcp-gateway.module';
+import { VoiceCallOrchestrationModule } from '@modules/voice-call-orchestration/voice-call-orchestration.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
@@ -218,6 +219,7 @@ export class AppModule {
         VoiceAssistantModule,
         VoiceMcpGatewayModule,
         VoiceWebhookIngestionModule,
+        VoiceCallOrchestrationModule,
         WhatsAppModule,
         BusinessInsightsModule,
         HighMobilityModule,

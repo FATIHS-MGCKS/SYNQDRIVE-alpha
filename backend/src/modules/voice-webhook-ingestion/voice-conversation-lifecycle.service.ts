@@ -6,11 +6,7 @@ import {
   VoiceConversationStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  buildElevenLabsConversationMetadata,
-  preferDurationSeconds,
-  resolveElevenLabsSyncOutcome,
-} from '@modules/voice-assistant/voice-conversation-lifecycle.util';
+import { isLegacyTwimlConversation, buildElevenLabsConversationMetadata, preferDurationSeconds, resolveElevenLabsSyncOutcome } from '@modules/voice-assistant/voice-conversation-lifecycle.util';
 import { hasConversationTranscript } from '@modules/voice-assistant/voice-conversation.util';
 import {
   canAdvanceLifecycleState,
@@ -95,13 +91,30 @@ export class VoiceConversationLifecycleService {
     }
 
     const terminal = new Set(['completed', 'busy', 'failed', 'no-answer', 'canceled', 'cancelled']);
+    const nativeConversation = !isLegacyTwimlConversation(conversation.metadata);
+
     if (terminal.has(callStatus.toLowerCase())) {
-      update.status = VoiceConversationStatus.COMPLETED;
-      update.endedAt = new Date();
-      if (callStatus.toLowerCase() === 'failed') {
-        update.outcome = VoiceConversationOutcome.FAILED;
-      } else if (callStatus.toLowerCase() === 'no-answer' || callStatus.toLowerCase() === 'busy') {
-        update.outcome = VoiceConversationOutcome.ABANDONED;
+      if (nativeConversation) {
+        if (callStatus.toLowerCase() === 'failed') {
+          update.outcome = VoiceConversationOutcome.FAILED;
+        } else if (
+          callStatus.toLowerCase() === 'no-answer' ||
+          callStatus.toLowerCase() === 'busy'
+        ) {
+          update.outcome = VoiceConversationOutcome.ABANDONED;
+        }
+        if (callStatus.toLowerCase() === 'completed') {
+          update.status = VoiceConversationStatus.COMPLETED;
+          update.endedAt = new Date();
+        }
+      } else {
+        update.status = VoiceConversationStatus.COMPLETED;
+        update.endedAt = new Date();
+        if (callStatus.toLowerCase() === 'failed') {
+          update.outcome = VoiceConversationOutcome.FAILED;
+        } else if (callStatus.toLowerCase() === 'no-answer' || callStatus.toLowerCase() === 'busy') {
+          update.outcome = VoiceConversationOutcome.ABANDONED;
+        }
       }
     }
 

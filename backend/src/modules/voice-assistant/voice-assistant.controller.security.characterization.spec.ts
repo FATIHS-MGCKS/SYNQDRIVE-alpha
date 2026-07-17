@@ -43,11 +43,22 @@ describe('VoiceAssistantController security characterization', () => {
     'unassignPhoneNumber',
     'refreshTelephony',
     'telephonySettings',
-    'twilioOutboundCall',
+    'inboundCallReadiness',
+    'outboundCall',
   ] as const;
+
+  const tenantAdminOnlyHandlers = ['twilioOutboundCall'] as const;
 
   it.each(tenantHandlers)('tenant %s has no @Roles decorator (membership not restricted today)', (method) => {
     expect(rolesOf(VoiceAssistantController.prototype, method)).toBeUndefined();
+  });
+
+  it.each(tenantAdminOnlyHandlers)('tenant %s requires org admin roles', (method) => {
+    expect(rolesOf(VoiceAssistantController.prototype, method)).toEqual([
+      'ORG_ADMIN',
+      'SUB_ADMIN',
+      'MASTER_ADMIN',
+    ]);
   });
 
   describe('admin controller', () => {

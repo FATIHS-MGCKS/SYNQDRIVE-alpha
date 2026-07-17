@@ -32,6 +32,16 @@ export function buildOutboundVoiceTwiml(message: string, language = 'en-US'): st
   );
 }
 
+export function buildInboundFallbackTwiml(message: string, language = 'en-US'): string {
+  return wrapTwiml(`<Say language="${language}">${escapeXml(message)}</Say>`);
+}
+
+export function buildLegacyDiagnosticTwiml(message: string, language = 'en-US'): string {
+  return wrapTwiml(
+    `${LEGACY_TWIML_DIAGNOSTIC_COMMENT}<Say language="${language}">${escapeXml(message)}</Say>`,
+  );
+}
+
 function wrapTwiml(inner: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><Response>${inner}</Response>`;
 }

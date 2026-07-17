@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-native-twilio-call-orchestration-2026-07-17',
+    version: '4.9.593',
+    title: 'V4.9.593 — Voice AI: native ElevenLabs-Twilio call orchestration',
+    summary: [
+      'Produktiver PSTN-Pfad über ElevenLabs Outbound API und importierte Twilio-Nummern; Legacy Twilio Say nur noch expliziter Diagnosemodus.',
+      'Outbound-Policy: Entitlement, Budget, Länder-Allowlist, Sonderrufnummernsperre; Absender aus VoicePhoneNumber; Idempotency Key.',
+      'Feature Flags VOICE_NATIVE_TWILIO_INTEGRATION und VOICE_MCP_GATEWAY; Live-Provider-Calls nur mit Staging-Flag.',
+    ],
+    reason:
+      'Prompt 7B — echte native ElevenLabs-Twilio-Orchestrierung ohne unkontrollierten Produktionsanruf.',
+    previousBehavior:
+      'Inbound/Outbound nutzten LEGACY_TWIML_SAY (Twilio Say); ElevenLabs Outbound-Adapter war nicht an Tenant-API angebunden.',
+    details:
+      'Module voice-call-orchestration; Inbound-Readiness + Outbound-API; MCP-Token-Bindung; Agent-Deploy pusht MCP-URL.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
     id: 'voice-webhook-ingestion-correlation-2026-07-17',
     version: '4.9.592',
     title: 'V4.9.592 — Voice AI: unified webhook ingestion and correlation',

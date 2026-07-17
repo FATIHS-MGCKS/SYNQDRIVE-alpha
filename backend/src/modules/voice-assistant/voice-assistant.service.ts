@@ -74,6 +74,11 @@ import {
   isTestSessionBlocked,
   type VoiceTestSessionResponse,
 } from './voice-assistant-test.util';
+import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
+import {
+  isLegacyDiagnosticCallsEnabled,
+  isVoiceNativeTwilioIntegrationEnabled,
+} from '@modules/voice-call-orchestration/voice-feature-flags.config';
 
 export { buildToolPolicyForAssistant } from './voice-assistant-permissions';
 export type { VoiceToolPolicy, VoiceToolPermissionsMap } from './voice-assistant-permissions';
@@ -101,6 +106,7 @@ export class VoiceAssistantService {
     private readonly elevenLabs: ElevenLabsService,
     private readonly twilioTelephony: TwilioTelephonyService,
     private readonly twilioControlPlaneTelephony: TwilioControlPlaneTelephonyService,
+    private readonly callOrchestration: VoiceCallOrchestrationService,
   ) {}
 
   async getOrCreateAssistantForOrg(organizationId: string) {
@@ -723,8 +729,47 @@ export class VoiceAssistantService {
     return await this.formatAssistant(updated);
   }
 
-  async initiateTwilioOutboundCall(organizationId: string, to: string) {
+  async getInboundCallReadiness(organizationId: string) {
+    return this.callOrchestration.evaluateInboundReadiness(organizationId);
+  }
+
+  async initiateOutboundCall(
+    organizationId: string,
+    params: { to: string; idempotencyKey: string; customerId?: string; bookingId?: string },
+    initiatedByUserId?: string,
+  ) {
+    return this.callOrchestration.orchestrateOutboundCall({
+      organizationId,
+      toE164: params.to.trim(),
+      idempotencyKey: params.idempotencyKey,
+      customerId: params.customerId ?? null,
+      bookingId: params.bookingId ?? null,
+      initiatedByUserId: initiatedByUserId ?? null,
+    });
+  }
+
+  async initiateTwilioOutboundCall(organizationId: string, to: string, initiatedByUserId?: string) {
+    if (isVoiceNativeTwilioIntegrationEnabled()) {
+      throw new BadRequestException(
+        'Legacy Twilio Say outbound is disabled when native ElevenLabs-Twilio integration is enabled. Use POST .../calls/outbound.',
+      );
+    }
+
+    if (!isLegacyDiagnosticCallsEnabled()) {
+      throw new ForbiddenException(
+        'Legacy Twilio Say diagnostic calls are disabled. Set VOICE_LEGACY_DIAGNOSTIC_CALLS=true for explicit diagnostic use.',
+      );
+    }
+
     const assistant = await this.requireAssistantRow(organizationId);
+    if (initiatedByUserId) {
+      await this.callOrchestration.assertLegacyDiagnosticCallAllowed({
+        organizationId,
+        toE164: to.trim(),
+        initiatedByUserId,
+      });
+    }
+
     if (assistant.pstnProvider !== VoicePstnProvider.TWILIO) {
       throw new BadRequestException(
         'Outbound Twilio calls require a Twilio-assigned PSTN number.',

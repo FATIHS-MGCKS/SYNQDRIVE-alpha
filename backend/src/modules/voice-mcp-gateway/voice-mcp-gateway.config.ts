@@ -1,5 +1,8 @@
 export function isVoiceMcpGatewayEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.VOICE_AI_MCP_GATEWAY_ENABLED === 'true';
+  return (
+    env.VOICE_MCP_GATEWAY?.trim().toLowerCase() === 'true' ||
+    env.VOICE_AI_MCP_GATEWAY_ENABLED === 'true'
+  );
 }
 
 export function resolveVoiceMcpTokenSecret(env: NodeJS.ProcessEnv = process.env): string {

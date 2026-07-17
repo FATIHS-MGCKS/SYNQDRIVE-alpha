@@ -48,6 +48,8 @@ import { AgentDeploymentDiffService } from './agent-deployment-diff.service';
 import { AgentDeploymentReadinessService } from './agent-deployment-readiness.service';
 import { isAgentDeploymentStagingEnabled } from './agent-deployment.config';
 import { buildCanonicalElevenLabsPostCallWebhookUrl } from './agent-post-call.config';
+import { buildCanonicalVoiceMcpGatewayUrl } from '@modules/voice-mcp-gateway/voice-mcp-canonical-url';
+import { isVoiceMcpGatewayFeatureEnabled } from '@modules/voice-call-orchestration/voice-feature-flags.config';
 import { validateTransferConfig } from './agent-transfer.validation';
 import type { SaveAgentDeploymentDraftDto } from './dto/agent-deployment.dto';
 import type { AgentDeploymentReadinessView } from './agent-config.types';
@@ -256,6 +258,7 @@ export class AgentDeploymentService {
 
       const verified = await this.verifyProviderDeployment(organizationId, targetDeployment.id, config);
       await this.applyPostCallConfiguration(organizationId, targetDeployment.id, config);
+      await this.applyMcpGatewayConfiguration(organizationId, targetDeployment.id);
 
       const activated = await this.prisma.$transaction(async (tx) => {
         await tx.voiceAgentDeployment.updateMany({
@@ -438,6 +441,7 @@ export class AgentDeploymentService {
 
       await this.verifyProviderDeployment(organizationId, rollbackDeployment.id, restoreConfig);
       await this.applyPostCallConfiguration(organizationId, rollbackDeployment.id, restoreConfig);
+      await this.applyMcpGatewayConfiguration(organizationId, rollbackDeployment.id);
 
       const activated = await this.prisma.$transaction(async (tx) => {
         await tx.voiceAgentDeployment.update({
@@ -582,6 +586,24 @@ export class AgentDeploymentService {
       externalAgentId,
       maskedExternalRef: updated.maskedAgentRef ?? maskExternalId(externalAgentId, 'agent'),
     };
+  }
+
+  private async applyMcpGatewayConfiguration(
+    organizationId: string,
+    deploymentId: string,
+  ): Promise<void> {
+    if (!isVoiceMcpGatewayFeatureEnabled()) {
+      return;
+    }
+    const mcpUrl = buildCanonicalVoiceMcpGatewayUrl(organizationId);
+    if (!mcpUrl) {
+      return;
+    }
+    await this.elevenLabs.updateToolsConfiguration({
+      organizationId,
+      deploymentId,
+      mcpServerUrl: mcpUrl,
+    });
   }
 
   private async applyPostCallConfiguration(

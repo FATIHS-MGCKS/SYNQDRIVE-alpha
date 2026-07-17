@@ -48,6 +48,12 @@ describe('VoiceAssistantService characterization', () => {
     isConfigured: jest.fn(),
   };
 
+  const callOrchestration = {
+    evaluateInboundReadiness: jest.fn(),
+    orchestrateOutboundCall: jest.fn(),
+    assertLegacyDiagnosticCallAllowed: jest.fn(),
+  };
+
   let service: VoiceAssistantService;
 
   const baseAssistant = {
@@ -127,6 +133,7 @@ describe('VoiceAssistantService characterization', () => {
       elevenLabs as never,
       twilioTelephony as never,
       twilioControlPlaneTelephony as never,
+      callOrchestration as never,
     );
   });
 
@@ -277,6 +284,10 @@ describe('VoiceAssistantService characterization', () => {
     });
 
     it('creates local outbound conversation row when Twilio outbound is initiated', async () => {
+      process.env.VOICE_LEGACY_DIAGNOSTIC_CALLS = 'true';
+      process.env.VOICE_AI_PROVISIONING_STAGING_ENABLED = 'true';
+      process.env.VOICE_NATIVE_TWILIO_INTEGRATION = 'false';
+
       prisma.voiceAssistant.findUnique.mockResolvedValue({
         ...baseAssistant,
         pstnProvider: VoicePstnProvider.TWILIO,
@@ -286,8 +297,9 @@ describe('VoiceAssistantService characterization', () => {
       twilioTelephony.isConfiguredForOrganization.mockResolvedValue(true);
       twilioTelephony.initiateOutboundCall.mockResolvedValue({ callSid: 'CA-out-1' });
       prisma.voiceConversation.create.mockResolvedValue({ id: 'conv-out-1' });
+      callOrchestration.assertLegacyDiagnosticCallAllowed.mockResolvedValue(undefined);
 
-      await service.initiateTwilioOutboundCall('org-1', '+49222222222');
+      await service.initiateTwilioOutboundCall('org-1', '+49222222222', 'user-admin');
 
       expect(prisma.voiceConversation.create).toHaveBeenCalledWith(
         expect.objectContaining({

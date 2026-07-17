@@ -33,7 +33,8 @@ describe('TwilioWebhookService characterization', () => {
   };
 
   const bridge = {
-    buildInboundTwiml: jest.fn().mockReturnValue('<Response><Say>Hi</Say></Response>'),
+    buildInboundTwiml: jest.fn().mockResolvedValue('<Response><Say>Hi</Say></Response>'),
+    describeBridge: jest.fn().mockResolvedValue({ inboundReady: false }),
   };
 
   let service: TwilioWebhookService;

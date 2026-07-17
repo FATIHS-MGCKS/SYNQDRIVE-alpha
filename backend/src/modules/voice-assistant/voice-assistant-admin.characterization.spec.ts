@@ -47,6 +47,12 @@ describe('VoiceAssistant admin characterization', () => {
     isConfigured: jest.fn(),
   };
 
+  const callOrchestration = {
+    evaluateInboundReadiness: jest.fn(),
+    orchestrateOutboundCall: jest.fn(),
+    assertLegacyDiagnosticCallAllowed: jest.fn(),
+  };
+
   let service: VoiceAssistantService;
 
   const baseAssistant = {
@@ -126,6 +132,7 @@ describe('VoiceAssistant admin characterization', () => {
       elevenLabs as never,
       twilioTelephony as never,
       twilioControlPlaneTelephony as never,
+      callOrchestration as never,
     );
   });
 
