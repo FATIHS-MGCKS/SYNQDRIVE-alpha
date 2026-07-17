@@ -5,8 +5,8 @@
 | **Audit ID** | `brake-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/brake-health-production-readiness-2026-07` |
-| **Phase** | **2 of 7 — Data Model, Lifecycle & Formula Audit** |
-| **Status** | Phases 1–2 complete; Phases 3–7 pending |
+| **Phase** | **3 of 7 — VPS Integrity Analysis** |
+| **Status** | Phases 1–3 complete; Phases 4–7 pending |
 | **Production-Readiness verdict (preliminary)** | **`NOT_READY`** — fleet has zero initialized brake baselines |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | 60 days ending 2026-07-17 UTC |
@@ -61,7 +61,11 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Main report | `docs/audits/brake-health-production-readiness-2026-07.md` | 1–7 |
 | Code map CSV | `docs/audits/data/brake-health-code-map-2026-07.csv` | 1 |
 | Fleet coverage CSV | `docs/audits/data/brake-health-fleet-coverage-2026-07.csv` | 1 / 3 |
-| Audit script | `scripts/audits/audit-brake-health-production-readiness.ts` | 1+ |
+| Anchor integrity CSV | `docs/audits/data/brake-health-anchor-integrity-2026-07.csv` | 3 |
+| Service scope replay CSV | `docs/audits/data/brake-health-service-scope-replay-2026-07.csv` | 3 |
+| Trip model coverage CSV | `docs/audits/data/brake-health-trip-model-coverage-2026-07.csv` | 3 |
+| Evidence classification CSV | `docs/audits/data/brake-health-evidence-classification-2026-07.csv` | 3 |
+| Integrity findings JSON | `docs/audits/data/brake-health-integrity-findings-2026-07.json` | 3 |
 | Formula factor map CSV | `docs/audits/data/brake-health-formula-factor-map-2026-07.csv` | 2 |
 | Reference spec map CSV | `docs/audits/data/brake-health-reference-spec-map-2026-07.csv` | 2 |
 | Lifecycle & evidence map CSV | `docs/audits/data/brake-health-lifecycle-evidence-map-2026-07.csv` | 2 |
@@ -79,7 +83,7 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 |-------|-------|-------|--------|
 | **1** | Architecture & runtime map | Code landkarte, VPS topology, triggers, data-flow, preliminary P0/P1 | ✅ **Complete** |
 | **2** | Data model & formula audit | Prisma models, lifecycle scope, reference-spec, evidence, formulas, versioning | ✅ **Complete** |
-| **3** | VPS integrity & fleet coverage | Read-only SQL aggregates, anchor/evidence gaps, initialization eligibility, driving-impact linkage | ⏳ Pending |
+| **3** | VPS integrity & fleet coverage | Read-only SQL, anchors, scope replay, trip coverage, evidence | ✅ **Complete** |
 | **4** | DIMO & telemetry signal audit | `availableSignals`, brake wear sensors, fluid, DTC, harsh braking, HM overlap | ⏳ Pending |
 | **5** | Historical replay & backtest | As-of replay against measured evidence; MAE/coverage; isolated pure mode | ⏳ Pending |
 | **6** | Consumer wiring & ops | Rental health, alerts, blocking, frontend, notifications, performance, test matrix | ⏳ Pending |
@@ -618,9 +622,163 @@ Vollständige Faktor-Tabelle: `docs/audits/data/brake-health-formula-factor-map-
 
 ## 8. Phase 3 preview (not executed)
 
-- Run `audit-brake-health-production-readiness.ts --phase=3` against VPS (read-only)
-- Per-vehicle initialization eligibility via backfill dry-run semantics
-- Correlate `trip_driving_impact` volume with would-be modeled km post-backfill
+- Run DIMO MCP / Telemetry API signal audit
+- Map brake wear sensors and fluid signals
+
+---
+
+# Phase 3 — VPS integrity analysis (60 days)
+
+**Analysis window:** 2026-05-18 → 2026-07-17 UTC (60 days)  
+**Data sources:** PostgreSQL read-only (primary); ClickHouse **unreachable** at audit time  
+**Fleet:** 6 vehicles (`VEHICLE_001`–`006`), all DIMO-connected ICE/EV sedans
+
+## 3.1 Data source inventory
+
+| Source | Role in brake audit | 60d / total |
+|--------|---------------------|-------------|
+| `brake_health_current` | Wear state | **0 / 0** initialized |
+| `brake_evidence` | Canonical signals | **0** |
+| `vehicle_service_events` (BRAKE) | Anchor lineage | **0** |
+| `vehicle_brake_reference_specs` | Spec fallback | **5** vehicles |
+| `trip_driving_impact` | Per-trip wear inputs | **355** rows |
+| `vehicle_trips` (COMPLETED) | Distance ledger | **579** trips, **2996.0 km** |
+| `vehicle_driving_impact_current` | Rolling gap fallback | **6** rows (30d window) |
+| `vehicle_latest_states` | Odometer, legacy `brake_pad_percent` | 6 rows; **all `brake_pad_percent` null** |
+| `vehicle_dtc_events` | Safety signals (unwired) | **1** active (P0675 WARNING) |
+| `brake_trip_metrics` | Orphan schema | **0** |
+| `vehicle_enrichment_jobs` (BRAKE) | Registration pipeline | **6 PENDING** |
+| `driving_events` | Native harsh events | 454 events (60d); no HARSH_BRAKING type |
+| ClickHouse | HF telemetry mirror | **Down** |
+
+**Recalculation logs:** No dedicated brake recalc audit table. `BrakeHealthCurrent.lastRecalculatedAt` absent (no rows). Trip-triggered `recalculate()` returns `null` when uninitialized.
+
+## 3.2 Fleet coverage summary
+
+| Classification | Count | Vehicles |
+|----------------|-------|----------|
+| **C — SPEC_FALLBACK_ELIGIBLE** | 5 | VEHICLE_001, 002, 004, 005, 006 |
+| **D — NO_BASELINE** | 1 | VEHICLE_003 (no reference spec) |
+| A VALIDATION_READY | 0 | — |
+| B ESTIMATION_ONLY | 0 | — |
+| E DATA_INCONSISTENT | 0 | — (see TDI/trip distance note) |
+| F SAFETY_SIGNAL_ONLY | 0 | DTC exists but not in BrakeEvidence |
+
+**Key per-vehicle facts (60d):**
+
+| Vehicle | Powertrain | Odometer | Spec | TDI rows | Trips w/o TDI | Notes |
+|---------|------------|----------|------|----------|---------------|-------|
+| VEHICLE_001 | GASOLINE | 375 km | yes | 34 | 19 (36%) | Low mileage |
+| VEHICLE_002 | ELECTRIC | 179,374 km | yes | 156 | 114 (42%) | EV static reku would apply |
+| VEHICLE_003 | GASOLINE | 113,649 km | **no** | 43 | 17 (28%) | Backfill ineligible |
+| VEHICLE_004 | GASOLINE | 187,350 km | yes | 30 | 14 (32%) | — |
+| VEHICLE_005 | GASOLINE | 190,025 km | yes | 76 | 52 (41%) | Active DTC P0675 |
+| VEHICLE_006 | GASOLINE | 5,229 km | yes | 17 | 7 (29%) | — |
+
+Artifact: `docs/audits/data/brake-health-fleet-coverage-2026-07.csv`
+
+## 3.3 Anchor integrity
+
+**Result: NO_ANCHORS fleet-wide** — all 13 integrity questions are N/A until first init.
+
+| Check | Fleet result |
+|-------|--------------|
+| Anchor from measurement vs spec | N/A — no anchors |
+| Service scope matches reset | N/A — 0 service events |
+| k-factor / calibration preserved | N/A |
+| Lifecycle applied without evidence | N/A |
+| Evidence without service event | N/A |
+| Anchor odometer after current odometer | N/A |
+| Anchor date before trips | N/A |
+
+**Lineage:** 5 vehicles have registration `VehicleBrakeReferenceSpec` (manual source) but **zero** `BRAKE_SERVICE` events and **zero** `BrakeHealthCurrent` — registration init/backfill never executed in production.
+
+Artifact: `docs/audits/data/brake-health-anchor-integrity-2026-07.csv`
+
+## 3.4 Service scope replay
+
+**0 `BRAKE_SERVICE` events** — all replays marked **UNVERIFIABLE**.
+
+Code-confirmed risk (Phase 2) remains latent: when services are recorded, `scope` is **not** passed to `initializeFromService`, so **OVER_RESET** is expected for partial pad/disc services once fleet is initialized.
+
+Artifact: `docs/audits/data/brake-health-service-scope-replay-2026-07.csv`
+
+## 3.5 Distance & coverage audit
+
+| Metric | Fleet 60d |
+|--------|-----------|
+| Trip distance sum | 2,996.0 km |
+| TDI distance sum | 2,892.8 km |
+| TDI / trip ratio | 96.6% |
+| Trips without TDI | **223 (38.5%)** |
+| TDI without trip | 0 |
+| TDI vs trip km mismatch (>\|0.5 km\|) | **135 rows** |
+
+**Answers:**
+
+1. **TDI km > odometer delta?** N/A without anchor; per-vehicle TDI subset can exceed trip-sum when `trip_driving_impact.distance_km ≠ vehicle_trips.distance_km` (VEHICLE_003: 339 vs 314.7 km on 43 TDI trips).
+2. **Clamp 1.0 hides overcoverage?** Code clamps `coverageRatio` at 1.0 — would hide TDI>odo if it occurred post-init.
+3. **Wear on overcoverage?** Trip loop uses TDI rows; gap uses odometer delta minus trip sum.
+4. **Missing impact data?** **Yes** — 223 trips (38.5%).
+5. **Rolling aggregate on historical gaps?** **Yes** — `getVehicleImpactForBrake` reads current 30d `vehicle_driving_impact_current`.
+6. **VDI window vs anchor?** VDI is rolling 30d; would include pre-anchor behavior for gap fill.
+7. **Trip reprocessing?** TDI rows immutable; distance field drift observed (135 mismatches).
+8. **`BrakeTripMetric` in use?** **No** — 0 rows.
+9. **BrakeTripMetric retries?** N/A — no writer.
+10. **Double native/DIMO events?** `driving_events` has HARSH_ACCELERATION/CORNERING; `trip_behavior_events` BRAKING category **0** in 60d — DI uses behavior events path.
+
+Artifact: `docs/audits/data/brake-health-trip-model-coverage-2026-07.csv`
+
+## 3.6 Model plausibility replay
+
+**Not reproducible** — 0 initialized vehicles. `recalculate()` early-returns when `!isInitialized`.
+
+Observations for post-init risk:
+- VDI `hard_brake_per_100km = 0` all vehicles despite 454 harsh `driving_events` in 60d → gap-fill may under-weight harsh braking (**P1-BH-45**).
+- EV (VEHICLE_002) would get static `padRekuFactor=0.72` without measured regen.
+- Reference disc anchors use **rotor width** (e.g. 36 mm VEHICLE_004) — implausible as thickness.
+
+## 3.7 Evidence integrity
+
+| Check | Result |
+|-------|--------|
+| Duplicate evidence | 0 rows total |
+| TELEMATICS mm | 0 rows |
+| Unconfirmed AI | 0 applied |
+| DTC after clearance | 1 active DTC, 0 BrakeEvidence |
+| Immediate replacement stale | N/A |
+| HIGH confidence without source | N/A |
+
+**VEHICLE_005:** `VehicleDtcEvent` P0675 WARNING active — **not** mirrored to `BrakeEvidence` (**P0-BH-06**).
+
+Artifact: `docs/audits/data/brake-health-evidence-classification-2026-07.csv`
+
+## 3.8 Phase-3 findings (new / confirmed)
+
+| ID | Sev | Finding | Confidence |
+|----|-----|---------|------------|
+| **P0-BH-01** | P0 | Zero initialized brake health | CONFIRMED |
+| **P0-BH-02** | P0 | Specs without init/backfill | CONFIRMED |
+| **P0-BH-40** | P0 | 355 TDI rows but wear model no-op | CONFIRMED |
+| **P0-BH-06** | P0 | DTC not in BrakeEvidence | CONFIRMED |
+| **P1-BH-41** | P1 | 38.5% trips without TDI | CONFIRMED |
+| **P1-BH-42** | P1 | 135 TDI/trip km mismatches | CONFIRMED |
+| **P1-BH-43** | P1 | VEHICLE_003 no spec | CONFIRMED |
+| **P1-BH-44** | P1 | Legacy brakePadPercent null | CONFIRMED |
+| **P1-BH-45** | P1 | VDI hard-brake zero vs driving_events | LIKELY |
+
+Full register: `docs/audits/data/brake-health-integrity-findings-2026-07.json` (12 findings)
+
+## 3.9 P0/P1 Zwischenstand (nach Phase 3)
+
+| Severity | Open count | Production blockers |
+|----------|------------|---------------------|
+| **P0** | 10+ | BH-01, BH-02, BH-40, BH-06, BH-09–14, BH-04, BH-05, BH-07, BH-08 |
+| **P1** | 20+ | BH-41–45 new in Phase 3; BH-29–39 from Phase 2 |
+
+**Verdict after Phase 3:** Brake Health is **not operational** in production. Driving-impact pipeline is active but **disconnected** from wear output until baselines exist.
+
+---
 
 ## 9. Phase 4 preview (not executed)
 
@@ -658,7 +816,7 @@ npx ts-node scripts/audits/audit-brake-health-production-readiness.ts --phase=1
 # Phase 3 — read-only DB integrity (supervised production)
 BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1 BRAKE_HEALTH_AUDIT_ALLOW_PROD=1 \
   npx ts-node scripts/audits/audit-brake-health-production-readiness.ts --phase=3 --days=60 \
-  --output=docs/audits/data/brake-health-integrity-findings-2026-07.json
+  --output-dir=docs/audits/data
 ```
 
 **Ops backfill (NOT run during audit — writes):**
@@ -675,15 +833,17 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-brake-health-from-re
 | Date | Phase | Action |
 |------|-------|--------|
 | 2026-07-17 | 1 | Initial architecture map, VPS read-only probe, code-map CSV, fleet coverage CSV, audit script scaffold |
+| 2026-07-17 | 3 | VPS 60d integrity: fleet coverage, anchor/scope/trip/evidence CSVs, findings JSON (12 findings) |
 
 ---
 
-## Confirmation (Phase 1)
+## Confirmation (Phases 1–3)
 
-- ✅ No production data was modified during Phase 1.
+- ✅ No production data was modified during Phases 1–3.
 - ✅ No brake recalculation, evidence creation, or anchor mutations were triggered.
 - ✅ No DIMO triggers or subscriptions were created.
 - ✅ No infrastructure was changed (PM2, Redis, PostgreSQL, ClickHouse, Docker, workers).
 - ✅ No secrets, VINs, license plates, token IDs, GPS coordinates, customer PII, or raw telemetry are stored in committed audit artifacts.
-- ✅ VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
-- ⏳ Phases 2–7 **not started** per audit plan.
+- ✅ Phase 3 VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
+- ✅ Phase 2 was **code-only** static analysis.
+- ⏳ Phases 4–7 **not started** per audit plan.

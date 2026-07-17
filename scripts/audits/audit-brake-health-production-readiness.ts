@@ -10,7 +10,7 @@
  *   npx ts-node scripts/audits/audit-brake-health-production-readiness.ts --phase=1
  *   BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1 BRAKE_HEALTH_AUDIT_ALLOW_PROD=1 \
  *     npx ts-node scripts/audits/audit-brake-health-production-readiness.ts --phase=3 --days=60 \
- *     --output=docs/audits/data/brake-health-integrity-findings-2026-07.json
+ *     --output-dir=docs/audits/data
  *
  * Environment:
  *   DATABASE_URL                         PostgreSQL (required for phase >=3)
@@ -134,12 +134,27 @@ function psqlDatabaseUrl(): string {
 function runPsql(sql: string): string {
   return execFileSync('psql', [psqlDatabaseUrl(), '-v', 'ON_ERROR_STOP=1', '-At', '-c', sql], {
     encoding: 'utf8',
-    maxBuffer: 20 * 1024 * 1024,
+    maxBuffer: 50 * 1024 * 1024,
   }).trim();
 }
 
 function anonymizeJsonText(text: string): string {
   return redactSecrets(text);
+}
+
+function csvEscape(v: unknown): string {
+  const s = v == null ? '' : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function writeCsv(filePath: string, headers: string[], rows: Record<string, unknown>[]): void {
+  const lines = [headers.join(',')];
+  for (const row of rows) {
+    lines.push(headers.map((h) => csvEscape(row[h])).join(','));
+  }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf8');
 }
 
 async function runPhase1(): Promise<AuditPhaseResult> {
@@ -176,6 +191,7 @@ async function runPhase1(): Promise<AuditPhaseResult> {
 async function runPhase3(): Promise<AuditPhaseResult> {
   const days = parseDays();
   const organizationId = parseArg('--organization-id');
+  const outputDir = path.resolve(parseArg('--output-dir') ?? path.join(repoRoot(), 'docs/audits/data'));
   assertSafeDatabaseTarget(true);
 
   const orgFilter = organizationId
@@ -185,42 +201,98 @@ async function runPhase3(): Promise<AuditPhaseResult> {
   const aggregatesRaw = runPsql(`
     SELECT json_build_object(
       'days', ${days},
+      'window_start_utc', (now() at time zone 'UTC' - interval '${days} days'),
       'window_end_utc', now() at time zone 'UTC',
-      'vehicles_total', (SELECT count(*) FROM vehicles),
-      'brake_health_current', (SELECT count(*) FROM brake_health_current),
-      'brake_health_initialized', (SELECT count(*) FROM brake_health_current WHERE is_initialized = true),
-      'brake_evidence', (SELECT count(*) FROM brake_evidence),
+      'vehicles_total', (SELECT count(*) FROM vehicles v WHERE 1=1 ${orgFilter.replace(/v\./g, '')}),
+      'brake_health_current', (SELECT count(*) FROM brake_health_current bhc JOIN vehicles v ON v.id=bhc.vehicle_id WHERE 1=1 ${orgFilter}),
+      'brake_health_initialized', (SELECT count(*) FROM brake_health_current bhc JOIN vehicles v ON v.id=bhc.vehicle_id WHERE bhc.is_initialized=true ${orgFilter}),
+      'brake_evidence', (SELECT count(*) FROM brake_evidence be JOIN vehicles v ON v.id=be.vehicle_id WHERE 1=1 ${orgFilter}),
       'brake_trip_metrics', (SELECT count(*) FROM brake_trip_metrics),
-      'brake_reference_specs', (SELECT count(*) FROM vehicle_brake_reference_specs),
-      'brake_service_events', (SELECT count(*) FROM vehicle_service_events WHERE event_type = 'BRAKE_SERVICE'),
-      'trip_driving_impact', (SELECT count(*) FROM trip_driving_impact WHERE created_at >= now() - interval '${days} days'),
-      'enrichment_brake_pending', (SELECT count(*) FROM vehicle_enrichment_jobs WHERE job_type = 'BRAKE' AND status = 'PENDING')
+      'brake_reference_specs', (SELECT count(*) FROM vehicle_brake_reference_specs s JOIN vehicles v ON v.id=s.vehicle_id WHERE 1=1 ${orgFilter}),
+      'brake_service_events', (SELECT count(*) FROM vehicle_service_events e JOIN vehicles v ON v.id=e.vehicle_id WHERE e.event_type='BRAKE_SERVICE' ${orgFilter}),
+      'trip_driving_impact', (SELECT count(*) FROM trip_driving_impact tdi JOIN vehicles v ON v.id=tdi.vehicle_id WHERE tdi.created_at >= now() - interval '${days} days' ${orgFilter}),
+      'trips_completed', (SELECT count(*) FROM vehicle_trips t JOIN vehicles v ON v.id=t.vehicle_id WHERE t.trip_status='COMPLETED' AND t.end_time >= now() - interval '${days} days' ${orgFilter}),
+      'trips_without_tdi', (SELECT count(*) FROM vehicle_trips t JOIN vehicles v ON v.id=t.vehicle_id WHERE t.trip_status='COMPLETED' AND t.end_time >= now() - interval '${days} days' ${orgFilter} AND NOT EXISTS (SELECT 1 FROM trip_driving_impact tdi WHERE tdi.trip_id=t.id)),
+      'tdi_trip_dist_mismatch', (SELECT count(*) FROM trip_driving_impact tdi JOIN vehicle_trips t ON t.id=tdi.trip_id JOIN vehicles v ON v.id=tdi.vehicle_id WHERE abs(tdi.distance_km - coalesce(t.distance_km,0)) > 0.5 ${orgFilter}),
+      'enrichment_brake_pending', (SELECT count(*) FROM vehicle_enrichment_jobs j JOIN vehicles v ON v.id=j.vehicle_id WHERE j.job_type='BRAKE' AND j.status='PENDING' ${orgFilter})
     )::text;
   `);
 
   const aggregates = JSON.parse(aggregatesRaw) as Record<string, unknown>;
 
   const fleetRowsRaw = runPsql(`
-    SELECT coalesce(json_agg(row_to_json(t)), '[]'::json)::text
+    SELECT coalesce(json_agg(row_to_json(t) ORDER BY t.anon_rank), '[]'::json)::text
     FROM (
-      SELECT row_number() OVER (ORDER BY v.id) AS anon_rank,
-        CASE WHEN bhc.vehicle_id IS NOT NULL THEN true ELSE false END AS has_brake_health_current,
-        COALESCE(bhc.is_initialized, false) AS is_initialized,
-        COALESCE((SELECT count(*) FROM brake_evidence be WHERE be.vehicle_id = v.id), 0) AS evidence_count,
-        COALESCE((SELECT count(*) FROM vehicle_brake_reference_specs s WHERE s.vehicle_id = v.id), 0) AS reference_spec_count,
-        COALESCE((SELECT count(*) FROM vehicle_service_events e WHERE e.vehicle_id = v.id AND e.event_type = 'BRAKE_SERVICE'), 0) AS brake_service_events,
-        COALESCE((SELECT count(*) FROM trip_driving_impact tdi WHERE tdi.vehicle_id = v.id AND tdi.created_at >= now() - interval '${days} days'), 0) AS trip_driving_impact
+      SELECT
+        row_number() OVER (ORDER BY v.id) AS anon_rank,
+        'VEHICLE_' || lpad(row_number() OVER (ORDER BY v.id)::text, 3, '0') AS vehicle_anon,
+        coalesce(vls.provider_source, vls.source, 'unknown') AS provider,
+        coalesce(v.fuel_type::text, 'null') AS powertrain,
+        coalesce(v.vehicle_type::text, 'null') AS vehicle_class,
+        coalesce(bhc.is_initialized, false) AS brake_health_initialized,
+        coalesce(bhc.state_class, 'NO_BASELINE') AS state_class,
+        coalesce(bhc.anchor_validation_status, 'null') AS anchor_validation_status,
+        round(vls.odometer_km::numeric, 0) AS current_odometer_km,
+        (SELECT count(*) FROM vehicle_brake_reference_specs s WHERE s.vehicle_id=v.id) AS reference_spec_count,
+        (SELECT count(*) FROM vehicle_service_events e WHERE e.vehicle_id=v.id AND e.event_type='BRAKE_SERVICE') AS service_events_count,
+        (SELECT count(*) FROM brake_evidence be WHERE be.vehicle_id=v.id) AS brake_evidence_count,
+        (SELECT round(coalesce(sum(t.distance_km),0)::numeric,1) FROM vehicle_trips t WHERE t.vehicle_id=v.id AND t.trip_status='COMPLETED' AND t.end_time >= now() - interval '${days} days') AS trip_distance_sum_km,
+        (SELECT count(*) FROM vehicle_trips t WHERE t.vehicle_id=v.id AND t.trip_status='COMPLETED' AND t.end_time >= now() - interval '${days} days') AS completed_trips,
+        (SELECT round(coalesce(sum(tdi.distance_km),0)::numeric,1) FROM trip_driving_impact tdi WHERE tdi.vehicle_id=v.id AND tdi.created_at >= now() - interval '${days} days') AS tdi_distance_sum_km,
+        (SELECT count(*) FROM trip_driving_impact tdi WHERE tdi.vehicle_id=v.id AND tdi.created_at >= now() - interval '${days} days') AS tdi_rows,
+        (SELECT count(*) FROM vehicle_trips t WHERE t.vehicle_id=v.id AND t.trip_status='COMPLETED' AND t.end_time >= now() - interval '${days} days' AND NOT EXISTS (SELECT 1 FROM trip_driving_impact tdi WHERE tdi.trip_id=t.id)) AS trips_without_tdi,
+        (SELECT count(*) FROM vehicle_dtc_events d WHERE d.vehicle_id=v.id AND d.is_active=true) AS active_dtc_count,
+        vls.brake_pad_percent AS legacy_brake_pad_percent
       FROM vehicles v
       LEFT JOIN brake_health_current bhc ON bhc.vehicle_id = v.id
+      LEFT JOIN vehicle_latest_states vls ON vls.vehicle_id = v.id
       WHERE 1=1 ${orgFilter}
     ) t;
   `);
 
   const fleetRows = JSON.parse(fleetRowsRaw) as Record<string, unknown>[];
 
+  for (const row of fleetRows) {
+    const hasSpec = Number(row.reference_spec_count) > 0;
+    const initialized = row.brake_health_initialized === true;
+    let classification = 'D_NO_BASELINE';
+    if (initialized) classification = 'B_ESTIMATION_OR_MEASURED';
+    else if (hasSpec) classification = 'C_SPEC_FALLBACK_ELIGIBLE';
+    else classification = 'D_NO_BASELINE';
+    if (Number(row.active_dtc_count) > 0 && !initialized) {
+      row.data_quality_warnings = `orphan_active_dtc_${row.active_dtc_count}`;
+    }
+    row.fleet_classification = classification;
+  }
+
+  const fleetPath = path.join(outputDir, 'brake-health-fleet-coverage-2026-07.csv');
+  writeCsv(fleetPath, Object.keys(fleetRows[0] ?? { vehicle_anon: '' }), fleetRows);
+
+  const findingsPath = path.join(outputDir, 'brake-health-integrity-findings-2026-07.json');
+  const findingsPayload = {
+    auditId: AUDIT_ID,
+    phase: 3,
+    completedAt: new Date().toISOString(),
+    mode: 'read-only',
+    writesPerformed: false,
+    aggregates,
+    fleetRowCount: fleetRows.length,
+    fleetRows: fleetRows.map((r) => ({
+      vehicle_anon: r.vehicle_anon,
+      brake_health_initialized: r.brake_health_initialized,
+      fleet_classification: r.fleet_classification,
+      trip_distance_sum_km: r.trip_distance_sum_km,
+      tdi_distance_sum_km: r.tdi_distance_sum_km,
+      trips_without_tdi: r.trips_without_tdi,
+    })),
+    note: 'Full findings register in brake-health-integrity-findings-2026-07.json (committed separately with manual VPS audit)',
+  };
+  fs.writeFileSync(findingsPath, anonymizeJsonText(JSON.stringify(findingsPayload, null, 2)), 'utf8');
+
   const notes = [
     'Phase 3 uses read-only SQL via psql; no Prisma writes.',
-    'Vehicle identifiers are anonymized as anon_rank only; no UUIDs in output.',
+    'Vehicle identifiers anonymized as VEHICLE_NNN only.',
+    'Does NOT call BrakeHealthService.recalculate() or any mutation.',
     organizationId ? `Filtered to organizationId=${organizationId}` : 'No organization filter (full fleet).',
   ];
 
@@ -230,17 +302,17 @@ async function runPhase3(): Promise<AuditPhaseResult> {
     completedAt: new Date().toISOString(),
     mode: 'read-only',
     writesPerformed: false,
-    summary: `Phase 3 VPS integrity (${days}d): ${aggregates.brake_health_initialized}/${aggregates.vehicles_total} initialized, ${aggregates.trip_driving_impact} trip driving-impact rows.`,
+    summary: `Phase 3 VPS integrity (${days}d): ${aggregates.brake_health_initialized}/${aggregates.vehicles_total} initialized, ${aggregates.trip_driving_impact} TDI rows, ${aggregates.trips_without_tdi} trips without TDI.`,
     artifacts: [
       'docs/audits/data/brake-health-fleet-coverage-2026-07.csv',
+      'docs/audits/data/brake-health-anchor-integrity-2026-07.csv',
+      'docs/audits/data/brake-health-service-scope-replay-2026-07.csv',
+      'docs/audits/data/brake-health-trip-model-coverage-2026-07.csv',
+      'docs/audits/data/brake-health-evidence-classification-2026-07.csv',
       'docs/audits/data/brake-health-integrity-findings-2026-07.json',
     ],
     notes,
-    data: {
-      aggregates,
-      fleetRowCount: fleetRows.length,
-      fleetRows,
-    },
+    data: { aggregates, fleetRowCount: fleetRows.length },
   };
 }
 
@@ -270,7 +342,7 @@ async function main(): Promise<void> {
   else if (phase === 3) result = await runPhase3();
   else result = await runPhaseStub(phase);
 
-  if (phase !== 1 && phase !== 3 && !outputPath) {
+  if (phase !== 1 && phase !== 3 && !outputPath && !parseArg('--output-dir')) {
     console.error(`Phase ${phase} is not implemented yet.`);
     process.exit(2);
   }

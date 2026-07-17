@@ -1,0 +1,7 @@
+vehicle_anon,service_event_id,service_date,service_kind,service_scope,measured_front_pad_mm,measured_rear_pad_mm,measured_front_disc_mm,measured_rear_disc_mm,spec_fallback_used,lifecycle_applied,state_before,state_after,components_reset,components_expected,expected_scope_match,k_factor_before,k_factor_after,calibration_before,calibration_after,replay_verdict,notes
+VEHICLE_001,UNVERIFIABLE,N/A,N/A,N/A,null,null,null,null,N/A,N/A,NO_BHC,NO_BHC,none,none,UNVERIFIABLE,N/A,N/A,N/A,N/A,UNVERIFIABLE,no BRAKE_SERVICE events in production
+VEHICLE_002,UNVERIFIABLE,N/A,N/A,N/A,null,null,null,null,N/A,N/A,NO_BHC,NO_BHC,none,none,UNVERIFIABLE,N/A,N/A,N/A,N/A,UNVERIFIABLE,no BRAKE_SERVICE events in production
+VEHICLE_003,UNVERIFIABLE,N/A,N/A,N/A,null,null,null,null,N/A,N/A,NO_BHC,NO_BHC,none,none,UNVERIFIABLE,N/A,N/A,N/A,N/A,UNVERIFIABLE,no events; no reference spec for fallback
+VEHICLE_004,UNVERIFIABLE,N/A,N/A,N/A,null,null,null,null,N/A,N/A,NO_BHC,NO_BHC,none,none,UNVERIFIABLE,N/A,N/A,N/A,N/A,UNVERIFIABLE,no BRAKE_SERVICE events in production
+VEHICLE_005,UNVERIFIABLE,N/A,N/A,N/A,null,null,null,null,N/A,N/A,NO_BHC,NO_BHC,none,none,UNVERIFIABLE,N/A,N/A,N/A,N/A,UNVERIFIABLE,no BRAKE_SERVICE events; orphan DTC only
+VEHICLE_006,UNVERIFIABLE,N/A,N/A,N/A,null,null,null,null,N/A,N/A,NO_BHC,NO_BHC,none,none,UNVERIFIABLE,N/A,N/A,N/A,N/A,UNVERIFIABLE,no BRAKE_SERVICE events in production

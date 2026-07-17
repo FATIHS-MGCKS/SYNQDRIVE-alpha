@@ -1,0 +1,10 @@
+vehicle_anon,evidence_id,source,axle,wheel_position,measured_pad_mm,measured_disc_mm,confidence,service_event_id,document_extraction_id,measured_at,created_at,mileage_at_odometer_km,dtc_severity,immediate_replacement,classification,integrity_flags
+VEHICLE_001,NONE,N/A,N/A,N/A,null,null,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,NO_EVIDENCE,no_rows
+VEHICLE_002,NONE,N/A,N/A,N/A,null,null,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,NO_EVIDENCE,no_rows
+VEHICLE_003,NONE,N/A,N/A,N/A,null,null,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,NO_EVIDENCE,no_rows
+VEHICLE_004,NONE,N/A,N/A,N/A,null,null,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,NO_EVIDENCE,no_rows
+VEHICLE_005,NONE,N/A,N/A,N/A,null,null,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,ORPHAN_DTC_ONLY,active VehicleDtcEvent P0675 WARNING not in brake_evidence
+VEHICLE_006,NONE,N/A,N/A,N/A,null,null,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,NO_EVIDENCE,no_rows
+FLEET_CHECK,duplicate_scan,0 duplicate groups on (vehicle axle source measured_at measured_pad_mm),,,,,,,,,,,,CLEAN,no_evidence_rows
+FLEET_CHECK,telematics_mm_scan,0 rows TELEMATICS_ESTIMATION with mm,,,,,,,,,,,,CLEAN,
+FLEET_CHECK,ai_unconfirmed,0 AI_UPLOAD rows (no applied extractions),,,,,,,,,,,,,CLEAN,
