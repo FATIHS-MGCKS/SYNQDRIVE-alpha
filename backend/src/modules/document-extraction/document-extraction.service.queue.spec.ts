@@ -8,6 +8,7 @@ jest.mock('@shared/queue/queue-producer.util', () => ({
 }));
 
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { makeMalwareScanMock } from './document-extraction-test.helpers';
 
 function mockFailedRecord(id = 'e1') {
   const now = new Date();
@@ -133,6 +134,7 @@ function makeService(overrides: {
       loadBlockedAssessmentFromAnchor: jest.fn(),
     } as any,
     { assertAllowed: jest.fn().mockResolvedValue(undefined) } as any,
+    makeMalwareScanMock(storage) as any,
     observability as any,
   );
   return { svc, prisma, storage, queue, applyService, docConfig };

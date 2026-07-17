@@ -75,6 +75,7 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     jobBackoffMs: 5000,
     classificationAutoContinueMinConfidence: 0.85,
     classificationSuggestionMinConfidence: 0.55,
+    malwareScanEnabled: false,
     ...(overrides.docConfig as object),
   };
   const observability = {

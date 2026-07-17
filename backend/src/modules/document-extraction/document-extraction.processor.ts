@@ -44,6 +44,7 @@ import {
   bucketFileSizeBytes,
   mimeCategoryFromMime,
 } from './document-extraction-observability.util';
+import { isMalwareScanReadyForProcessing } from './document-malware-scan.util';
 
 const SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
@@ -100,6 +101,16 @@ export class DocumentExtractionProcessor extends WorkerHost {
         'No stored file to extract',
         'QUEUE',
         DOCUMENT_EXTRACTION_ERROR_CODES.NO_STORED_FILE,
+      );
+      return;
+    }
+
+    if (!isMalwareScanReadyForProcessing(record.plausibility, this.docConfig.malwareScanEnabled)) {
+      await this.failPermanent(
+        extractionId,
+        'Document is not cleared for processing',
+        'QUEUE',
+        DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_SCAN_PENDING,
       );
       return;
     }

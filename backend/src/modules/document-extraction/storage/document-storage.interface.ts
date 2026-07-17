@@ -34,6 +34,16 @@ export interface PutObjectResult {
 export interface DocumentStoragePort {
   /** Stores bytes under a safe generated key and returns storage metadata. */
   putObject(input: PutObjectInput): Promise<PutObjectResult>;
+  /** Stores bytes in the private quarantine zone before malware scanning. */
+  putQuarantineObject(input: PutObjectInput): Promise<PutObjectResult>;
+  /** Moves a quarantined object into the clean document zone. */
+  promoteQuarantineToClean(input: {
+    quarantineObjectKey: string;
+    organizationId: string;
+    vehicleId: string;
+    originalName: string;
+    mimeType: string;
+  }): Promise<PutObjectResult>;
   /** Reads the full object into memory. Throws if the key is invalid/missing. */
   getObject(objectKey: string): Promise<Buffer>;
   /** Streams the object (for authenticated downloads). */

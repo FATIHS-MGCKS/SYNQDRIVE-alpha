@@ -41,4 +41,19 @@ describe('getAllowedDocumentExtractionActions', () => {
     });
     expect(actions).toEqual(['download']);
   });
+
+  it('blocks download when malware scan status is infected', () => {
+    const actions = getAllowedDocumentExtractionActions({
+      status: 'REJECTED',
+      objectKey: 'k1',
+      effectiveDocumentType: 'SERVICE',
+      plausibility: {
+        _pipeline: {
+          malwareScan: { status: 'INFECTED' },
+        },
+      },
+    });
+    expect(actions).not.toContain('download');
+    expect(actions).toContain('delete_file');
+  });
 });

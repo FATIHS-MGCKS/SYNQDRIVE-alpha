@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-malware-scan-abstraction-2026-07-17',
+    version: '4.9.623',
+    title: 'V4.9.623 — Document Intake V2 Malware Scan Abstraction',
+    summary: [
+      'Provider-neutrale Malware-Scan-Abstraktion mit Quarantäne-Storage vor Clean-Promotion.',
+      'Status NOT_SCANNED, PENDING, CLEAN, INFECTED, SCAN_FAILED, UNSUPPORTED in plausibility._pipeline.malwareScan.',
+      'Feature Flag DOCUMENT_MALWARE_SCAN_ENABLED (default aus) — deaktiviert = bestehendes Verhalten als NOT_SCANNED.',
+      'INFECTED blockiert Enqueue/OCR/Mistral und Download; Mock-Scanner-Tests, kein automatisches ClamAV-Setup.',
+    ],
+    reason:
+      'Upload-Pipeline um optionalen Malware-Schutz erweitern, ohne externe Scanner-Infrastruktur automatisch zu installieren.',
+    previousBehavior:
+      'Uploads landeten direkt im Clean-Storage und wurden ohne Malware-Prüfung an OCR/Mistral übergeben.',
+    details: 'architecture/DOCUMENT_MALWARE_SCAN_ABSTRACTION_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T18:10:00.000Z',
+  },
+  {
     id: 'document-file-identification-hardening-2026-07-17',
     version: '4.9.622',
     title: 'V4.9.622 — Document Intake V2 File Identification Hardening',

@@ -1,5 +1,6 @@
 import { DocumentExtractionStatus, DocumentExtractionType } from '@prisma/client';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
+import { isMalwareScanDownloadAllowed } from './document-malware-scan.util';
 
 export type DocumentExtractionAction =
   | 'retry'
@@ -15,12 +16,13 @@ export function getAllowedDocumentExtractionActions(record: {
   objectKey?: string | null;
   effectiveDocumentType?: DocumentExtractionType | null;
   documentType?: DocumentExtractionType | null;
+  plausibility?: unknown;
 }): DocumentExtractionAction[] {
   const actions: DocumentExtractionAction[] = [];
   const hasFile = Boolean(record.objectKey);
   const effectiveType = resolveEffectiveDocumentType(record);
 
-  if (hasFile) {
+  if (hasFile && isMalwareScanDownloadAllowed(record.plausibility)) {
     actions.push('download');
   }
 

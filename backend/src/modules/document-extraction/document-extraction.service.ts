@@ -28,9 +28,16 @@ import { DocumentFileIdentificationService } from './document-file-identificatio
 import { computeDocumentContentSha256 } from './document-content-hash.util';
 import { buildDocumentExtractionFileFingerprint } from './document-extraction-fingerprint.types';
 import { mergePipelinePlausibility } from './document-content-cache.util';
+import { isMalwareScanDownloadAllowed } from './document-malware-scan.util';
 import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
 import { DocumentUploadDuplicateBlockedException } from './document-upload-duplicate.errors';
 import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
+import { DocumentMalwareScanService } from './document-malware-scan.service';
+import {
+  DocumentMalwareDetectedError,
+  DocumentMalwareDownloadBlockedError,
+  DocumentMalwareScanFailedError,
+} from './document-malware-scan.errors';
 import { DocumentExtractionPipelineError } from './document-extraction.errors';
 import {
   ApplyDocumentExtractionType,
@@ -298,6 +305,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly fileIdentification: DocumentFileIdentificationService,
     private readonly uploadDuplicate: DocumentUploadDuplicateService,
     private readonly uploadRateLimit: DocumentUploadRateLimitService,
+    private readonly malwareScan: DocumentMalwareScanService,
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
@@ -457,12 +465,56 @@ export class DocumentExtractionService implements OnModuleInit {
       }
     }
 
-    const stored = await this.storage.putObject({
+    const stored = await this.malwareScan.storeScannedUpload({
       organizationId,
       vehicleId: input.vehicleId,
       originalName: identified.displayFileName,
       buffer: input.buffer,
       mimeType: identified.detectedMime,
+    }).catch(async (error) => {
+      if (error instanceof DocumentMalwareDetectedError) {
+        await this.prisma.vehicleDocumentExtraction.update({
+          where: { id: record.id },
+          data: {
+            status: 'REJECTED',
+            processingStage: 'UPLOAD',
+            errorPhase: 'UPLOAD',
+            errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_DETECTED,
+            errorMessage: error.message,
+            plausibility: mergePipelinePlausibility(record.plausibility, {
+              malwareScan: error.scanState,
+            }) as Prisma.InputJsonValue,
+          },
+        });
+        throw new BadRequestException({
+          message: error.message,
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_DETECTED,
+          stage: 'UPLOAD',
+          malwareScanStatus: error.scanState.status,
+        });
+      }
+      if (error instanceof DocumentMalwareScanFailedError) {
+        await this.prisma.vehicleDocumentExtraction.update({
+          where: { id: record.id },
+          data: {
+            status: 'FAILED',
+            processingStage: 'UPLOAD',
+            errorPhase: 'UPLOAD',
+            errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_SCAN_FAILED,
+            errorMessage: error.message,
+            plausibility: mergePipelinePlausibility(record.plausibility, {
+              malwareScan: error.scanState,
+            }) as Prisma.InputJsonValue,
+          },
+        });
+        throw new BadRequestException({
+          message: error.message,
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_SCAN_FAILED,
+          stage: 'UPLOAD',
+          malwareScanStatus: error.scanState.status,
+        });
+      }
+      throw error;
     });
 
     record = await this.prisma.vehicleDocumentExtraction.update({
@@ -471,6 +523,9 @@ export class DocumentExtractionService implements OnModuleInit {
         processingStage: 'STORAGE',
         objectKey: stored.objectKey,
         storageProvider: stored.storageProvider,
+        plausibility: mergePipelinePlausibility(record.plausibility, {
+          malwareScan: stored.malwareScan,
+        }) as Prisma.InputJsonValue,
       },
     });
 
@@ -703,9 +758,13 @@ export class DocumentExtractionService implements OnModuleInit {
     sourceFileName?: string | null;
     mimeType?: string | null;
     sizeBytes?: number | null;
+    plausibility?: unknown;
   }): Promise<DocumentExtractionDownload> {
     if (!record.objectKey) {
       throw new NotFoundException('Document file is no longer available');
+    }
+    if (!isMalwareScanDownloadAllowed(record.plausibility)) {
+      throw new DocumentMalwareDownloadBlockedError();
     }
 
     try {

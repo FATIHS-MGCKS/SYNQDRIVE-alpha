@@ -125,6 +125,12 @@ export default registerAs('documentExtraction', () => ({
   ),
   identifyMaxPdfObjects: parsePositiveIntEnv(process.env.DOCUMENT_IDENTIFY_MAX_PDF_OBJECTS, 5_000),
   identifyMaxPdfStreams: parsePositiveIntEnv(process.env.DOCUMENT_IDENTIFY_MAX_PDF_STREAMS, 2_000),
+  malwareScanEnabled: (process.env.DOCUMENT_MALWARE_SCAN_ENABLED ?? 'false') === 'true',
+  malwareScannerProvider: (process.env.DOCUMENT_MALWARE_SCANNER_PROVIDER || 'unavailable').toLowerCase(),
+  malwareScanTimeoutMs: parsePositiveIntEnv(process.env.DOCUMENT_MALWARE_SCAN_TIMEOUT_MS, 15_000),
+  malwareScanFailOpen: (process.env.DOCUMENT_MALWARE_SCAN_FAIL_OPEN ?? 'false') === 'true',
+  localQuarantineStorageDir:
+    process.env.LOCAL_DOCUMENT_QUARANTINE_STORAGE_DIR || './storage/documents-quarantine',
   /** Chunking — conservative char budgets (≈ token estimate via chars/3.5). */
   chunkTargetChars: parsePositiveIntEnv(process.env.DOCUMENT_EXTRACTION_CHUNK_TARGET_CHARS, 6_000),
   chunkMaxChars: parsePositiveIntEnv(process.env.DOCUMENT_EXTRACTION_CHUNK_MAX_CHARS, 8_000),

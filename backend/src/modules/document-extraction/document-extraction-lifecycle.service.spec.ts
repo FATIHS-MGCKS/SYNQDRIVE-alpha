@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Readable } from 'stream';
 import { DocumentExtractionService } from './document-extraction.service';
+import { makeMalwareScanMock } from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -81,6 +82,7 @@ describe('DocumentExtractionService lifecycle reads', () => {
         loadBlockedAssessmentFromAnchor: jest.fn(),
       } as any,
       { assertAllowed: jest.fn().mockResolvedValue(undefined) } as any,
+      makeMalwareScanMock(storage) as any,
       observability as any,
     );
     return { svc, prisma, storage };
