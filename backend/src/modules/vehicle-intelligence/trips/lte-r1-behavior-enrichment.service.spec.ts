@@ -8,6 +8,7 @@ import {
   mapDimoEventName,
   resolveNativeSeverity,
 } from './lte-r1-behavior-enrichment.service';
+import { DimoBrakingEventIntakeService } from '../brakes/dimo-braking-event-intake.service';
 import type { DimoVehicleEventRecord } from '../../dimo/dimo-segments.service';
 
 describe('mapDimoEventName', () => {
@@ -84,7 +85,17 @@ describe('resolveNativeSeverity', () => {
 });
 
 describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
-  const service = new LteR1BehaviorEnrichmentService({} as any, {} as any, {} as any);
+  const brakingIntake = {
+    fetchEventDataSummary: jest.fn(),
+    fetchDrivingEventsPaginated: jest.fn(),
+    ingestBrakingBatch: jest.fn(),
+  };
+  const service = new LteR1BehaviorEnrichmentService(
+    {} as any,
+    {} as any,
+    {} as any,
+    brakingIntake as any,
+  );
 
   const sample = (name: string, metadata: string | null = '{"counterValue":1}'): DimoVehicleEventRecord => ({
     timestamp: '2026-01-01T12:00:00.000Z',
@@ -95,7 +106,7 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
   });
 
   function mapSamples(samples: DimoVehicleEventRecord[]): any[] {
-    return (service as any).mapToNormalizedEvents(samples, 'veh-1', 'org-1', 'trip-1', new Map());
+    return (service as any).mapToNormalizedEvents(samples, 'veh-1', 'org-1', 'trip-1', new Map(), 42);
   }
 
   it('preserves the original DIMO event name and tags extreme acceleration distinctly', () => {
@@ -139,6 +150,7 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
       prisma as any,
       {} as any,
       eventContext as any,
+      { fetchEventDataSummary: jest.fn(), fetchDrivingEventsPaginated: jest.fn(), ingestBrakingBatch: jest.fn() } as any,
     );
     return { service, prisma };
   }
@@ -192,6 +204,14 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
           LteR1BehaviorEnrichmentService,
           { provide: PrismaService, useValue: {} },
           { provide: DimoSegmentsService, useValue: {} },
+          {
+            provide: DimoBrakingEventIntakeService,
+            useValue: {
+              fetchEventDataSummary: jest.fn(),
+              fetchDrivingEventsPaginated: jest.fn(),
+              ingestBrakingBatch: jest.fn(),
+            },
+          },
         ],
       }).compile(),
     ).rejects.toThrow();
@@ -235,9 +255,18 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       drivingEvent: {
         findMany: jest.fn(async () => persistedIds.map((id) => ({ id }))),
       },
+      dimoBrakingEventIntake: {
+        updateMany: jest.fn(async () => ({ count: 0 })),
+      },
     };
     const segments = {
-      fetchDrivingEvents: jest.fn(async () => [
+      fetchHighFrequency: jest.fn(async () => []),
+    };
+    const brakingIntake = {
+      fetchEventDataSummary: jest.fn(async () => [
+        { name: 'behavior.harshBraking', numberOfEvents: 3 },
+      ]),
+      fetchDrivingEventsPaginated: jest.fn(async () => [
         {
           timestamp: eventTs,
           name: 'behavior.harshAcceleration',
@@ -246,7 +275,13 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
           metadata: '{"counterValue":2}',
         },
       ]),
-      fetchHighFrequency: jest.fn(async () => []),
+      ingestBrakingBatch: jest.fn(async () => ({
+        created: 0,
+        duplicate: 0,
+        skipped: 0,
+        failed: 0,
+        parsed: [],
+      })),
     };
     const enrichDrivingEventContext = jest.fn(async () => {
       if (opts?.contextThrows) throw new Error('context boom');
@@ -256,8 +291,9 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       prisma as any,
       segments as any,
       { enrichDrivingEventContext } as any,
+      brakingIntake as any,
     );
-    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds };
+    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds, brakingIntake };
   }
 
   it('persists native events via createMany then reloads IDs for context enrichment', async () => {

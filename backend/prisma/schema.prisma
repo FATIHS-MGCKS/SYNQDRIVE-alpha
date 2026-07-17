@@ -1162,6 +1162,15 @@ enum RpmWebhookCandidateStatus {
   FAILED
 }
 
+enum DimoBrakingEventIntakeStatus {
+  RECEIVED
+  PROCESSED
+  DUPLICATE
+  SKIPPED_UNSUPPORTED
+  SKIPPED_WRONG_VEHICLE
+  FAILED
+}
+
 // ── DIMO Device Connection webhook events (OBD plug/unplug) ───────────────────
 enum DimoDeviceConnectionEventType {
   OBD_DEVICE_UNPLUGGED
@@ -1880,6 +1889,7 @@ model Vehicle {
   rentalDrivingAnalyses             RentalDrivingAnalysis[]
   trips                             VehicleTrip[]
   rpmWebhookCandidates              RpmWebhookCandidate[]
+  dimoBrakingEventIntakes           DimoBrakingEventIntake[]
   dimoDeviceConnectionEvents        DimoDeviceConnectionEvent[]
   tripDetectionState                VehicleTripDetectionState?
   tripTrackingRuns                  VehicleTripTrackingRun[]
@@ -5897,8 +5907,9 @@ model DrivingEvent {
   recordedAt     DateTime           @map("recorded_at")
   createdAt      DateTime           @default(now()) @map("created_at")
 
-  vehicle Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  trip    VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  vehicle                 Vehicle                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip                    VehicleTrip?             @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  dimoBrakingEventIntake  DimoBrakingEventIntake?
 
   @@index([vehicleId])
   @@index([recordedAt])
@@ -5910,6 +5921,43 @@ model DrivingEvent {
   @@index([vehicleId, recordedAt])
   @@index([tripId, eventType])
   @@map("driving_events")
+}
+
+// ── DIMO native braking event intake (LTE_R1 capability-gated) ───────────────
+// Receipt log for provider-delivered behavior.* braking events. Idempotent on
+// providerEventId; does not store full raw payloads or location data.
+model DimoBrakingEventIntake {
+  id                String                       @id @default(uuid())
+  provider          String                       @default("DIMO")
+  providerEventId   String                       @map("provider_event_id")
+  vehicleId         String                       @map("vehicle_id")
+  organizationId    String                       @map("organization_id")
+  tokenId           Int                          @map("token_id")
+  eventType         DrivingEventType             @map("event_type")
+  eventTimestamp    DateTime                     @map("event_timestamp")
+  severity          Float
+  rawSourceVersion  String                       @map("raw_source_version")
+  sourceFingerprint String                       @map("source_fingerprint")
+  tripId            String?                      @map("trip_id")
+  dimoEventName     String                       @map("dimo_event_name")
+  counterValue      Int?                         @map("counter_value")
+  processingStatus  DimoBrakingEventIntakeStatus @default(RECEIVED) @map("processing_status")
+  drivingEventId    String?                      @unique @map("driving_event_id")
+  error             String?
+  createdAt         DateTime                     @default(now()) @map("created_at")
+  updatedAt         DateTime                     @updatedAt @map("updated_at")
+
+  vehicle      Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip?  @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  drivingEvent DrivingEvent? @relation(fields: [drivingEventId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@index([tripId])
+  @@index([eventTimestamp])
+  @@index([processingStatus])
+  @@map("dimo_braking_event_intakes")
 }
 
 // ── RPM webhook candidate intake (re-enabled V4.9.197) ────────────────────────
@@ -6765,7 +6813,8 @@ model VehicleTrip {
   behaviorEvents       TripBehaviorEvent[]
   misuseCases          MisuseCase[]
   repairs              TripRepair[]
-  rpmWebhookCandidates RpmWebhookCandidate[]
+  rpmWebhookCandidates      RpmWebhookCandidate[]
+  dimoBrakingEventIntakes   DimoBrakingEventIntake[]
 
   @@index([vehicleId])
   @@index([startTime])

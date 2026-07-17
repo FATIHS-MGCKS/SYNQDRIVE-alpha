@@ -1,4 +1,4 @@
-import { buildDrivingEventsQuery } from './driving-events.query';
+import { buildDrivingEventsQuery, buildEventDataSummaryQuery } from './driving-events.query';
 
 describe('buildDrivingEventsQuery', () => {
   const query = buildDrivingEventsQuery(189118, new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T01:00:00Z'));
@@ -23,5 +23,11 @@ describe('buildDrivingEventsQuery', () => {
     expect(query).toContain('tokenId: 189118');
     expect(query).toContain('2026-01-01T00:00:00.000Z');
     expect(query).toContain('2026-01-01T01:00:00.000Z');
+  });
+
+  it('builds event data summary query', () => {
+    const summaryQuery = buildEventDataSummaryQuery(189118);
+    expect(summaryQuery).toContain('eventDataSummary');
+    expect(summaryQuery).toContain('numberOfEvents');
   });
 });

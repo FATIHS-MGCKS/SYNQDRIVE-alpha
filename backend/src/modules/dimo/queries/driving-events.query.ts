@@ -111,3 +111,19 @@ function buildDimoEventsQuery(
     }
   `.trim();
 }
+
+/** Capability preflight via official DIMO dataSummary.eventDataSummary. */
+export function buildEventDataSummaryQuery(tokenId: number): string {
+  return `
+    query DimoEventDataSummary {
+      dataSummary(tokenId: ${tokenId}) {
+        eventDataSummary {
+          name
+          numberOfEvents
+          firstSeen
+          lastSeen
+        }
+      }
+    }
+  `.trim();
+}

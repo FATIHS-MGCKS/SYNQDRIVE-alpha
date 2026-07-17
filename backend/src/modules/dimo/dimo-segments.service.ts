@@ -10,9 +10,24 @@ import { buildHighFrequencyQuery } from './queries/high-frequency.query';
 import { buildBatteryCrankQuery } from './queries/battery-crank.query';
 import {
   buildDrivingEventsQuery,
+  buildEventDataSummaryQuery,
   buildSafetyEventsQuery,
   type DimoVehicleEventRecord,
 } from './queries/driving-events.query';
+import {
+  dedupeDimoEventSamples,
+  DIMO_DRIVING_EVENTS_MAX_RETRIES,
+  DIMO_DRIVING_EVENTS_RETRY_BASE_MS,
+  splitTimeWindowForPagination,
+  sleep,
+} from './dimo-driving-events.pagination';
+
+export interface DimoEventDataSummaryRow {
+  name: string;
+  numberOfEvents: number;
+  firstSeen?: string | null;
+  lastSeen?: string | null;
+}
 import {
   buildTripSegmentsQuery,
   type DimoDetectionMechanism,
@@ -829,6 +844,101 @@ export class DimoSegmentsService {
     from: Date,
     to: Date,
   ): Promise<DimoVehicleEventRecord[]> {
+    return this.fetchDrivingEventsPaginated(tokenId, from, to);
+  }
+
+  /**
+   * Paginated + retried DIMO `events(...)` fetch for LTE_R1 enrichment.
+   * Splits long trip windows into chunks and deduplicates by provider event id.
+   */
+  async fetchDrivingEventsPaginated(
+    tokenId: number,
+    from: Date,
+    to: Date,
+  ): Promise<DimoVehicleEventRecord[]> {
+    const jwt = await this.auth.getVehicleJwt(tokenId);
+    if (!jwt) return [];
+
+    const windows = splitTimeWindowForPagination(from, to);
+    const merged: DimoVehicleEventRecord[] = [];
+
+    for (const window of windows) {
+      const chunk = await this.fetchDrivingEventsChunkWithRetry(jwt, tokenId, window.from, window.to);
+      merged.push(...chunk);
+    }
+
+    return dedupeDimoEventSamples(merged, tokenId).sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+  }
+
+  async fetchEventDataSummary(tokenId: number): Promise<DimoEventDataSummaryRow[]> {
+    const jwt = await this.auth.getVehicleJwt(tokenId);
+    if (!jwt) return [];
+
+    const query = buildEventDataSummaryQuery(tokenId);
+    try {
+      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const rows: any[] = result?.data?.dataSummary?.eventDataSummary ?? [];
+      return rows
+        .filter((row) => typeof row?.name === 'string')
+        .map((row) => ({
+          name: row.name,
+          numberOfEvents: typeof row.numberOfEvents === 'number' ? row.numberOfEvents : 0,
+          firstSeen: typeof row.firstSeen === 'string' ? row.firstSeen : null,
+          lastSeen: typeof row.lastSeen === 'string' ? row.lastSeen : null,
+        }));
+    } catch (err: any) {
+      this.logger.warn(
+        `Event data summary fetch failed for tokenId=${tokenId}: ${err.message}`,
+      );
+      return [];
+    }
+  }
+
+  private async fetchDrivingEventsChunkWithRetry(
+    jwt: string,
+    tokenId: number,
+    from: Date,
+    to: Date,
+  ): Promise<DimoVehicleEventRecord[]> {
+    const query = buildDrivingEventsQuery(tokenId, from, to);
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < DIMO_DRIVING_EVENTS_MAX_RETRIES; attempt += 1) {
+      try {
+        const result = await this.telemetry.queryGraphQL(jwt, query);
+        const events: any[] = result?.data?.events ?? [];
+        return events
+          .filter((e: any) => typeof e?.timestamp === 'string' && typeof e?.name === 'string')
+          .map((e: any): DimoVehicleEventRecord => ({
+            timestamp: e.timestamp,
+            name: e.name,
+            source: typeof e.source === 'string' ? e.source : '',
+            durationNs: typeof e.durationNs === 'number' ? e.durationNs : 0,
+            metadata: typeof e.metadata === 'string' ? e.metadata : null,
+          }));
+      } catch (err: any) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < DIMO_DRIVING_EVENTS_MAX_RETRIES - 1) {
+          await sleep(DIMO_DRIVING_EVENTS_RETRY_BASE_MS * (attempt + 1));
+        }
+      }
+    }
+
+    this.logger.warn(
+      `Driving events fetch failed for tokenId=${tokenId} ` +
+        `(${from.toISOString()} → ${to.toISOString()}): ${lastError?.message ?? 'unknown'}`,
+    );
+    return [];
+  }
+
+  /** @deprecated Use fetchDrivingEventsPaginated — kept for direct callers/tests. */
+  async fetchDrivingEventsLegacySingleShot(
+    tokenId: number,
+    from: Date,
+    to: Date,
+  ): Promise<DimoVehicleEventRecord[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
     if (!jwt) return [];
 
@@ -850,9 +960,7 @@ export class DimoSegmentsService {
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
     } catch (err: any) {
-      this.logger.warn(
-        `Driving events fetch failed for tokenId=${tokenId}: ${err.message}`,
-      );
+      this.logger.warn(`Driving events fetch failed for tokenId=${tokenId}: ${err.message}`);
       return [];
     }
   }

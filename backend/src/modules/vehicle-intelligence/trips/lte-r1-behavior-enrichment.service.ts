@@ -27,10 +27,16 @@ import {
   DimoSegmentsService,
   type DimoVehicleEventRecord,
 } from '../../dimo/dimo-segments.service';
-import { DrivingEventType, DrivingEventSource } from '@prisma/client';
+import { DrivingEventType, DrivingEventSource, DimoBrakingEventIntakeStatus } from '@prisma/client';
 import { preprocessHighFrequency, type CleanHfPoint } from './hf-preprocessing';
 import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
 import { shouldRunIceEventContextEnrichment } from '../event-context/engine-context.guards';
+import { DimoBrakingEventIntakeService } from '../brakes/dimo-braking-event-intake.service';
+import {
+  assessDimoBrakingCapability,
+  parseDimoBrakingSample,
+} from '../brakes/dimo-braking-event-intake.domain';
+import { buildDimoProviderEventId, parseDimoCounterValue } from '../../dimo/dimo-event-identity';
 
 // ── Cold-engine badge threshold ────────────────────────────────────────────────
 // Events occurring when coolant < this value get a coldEngineContext badge.
@@ -143,6 +149,7 @@ export class LteR1BehaviorEnrichmentService {
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
     private readonly eventContext: EventContextEnrichmentService,
+    private readonly brakingIntake: DimoBrakingEventIntakeService,
   ) {}
 
   /**
@@ -188,16 +195,51 @@ export class LteR1BehaviorEnrichmentService {
     const tokenId = trip.vehicle.dimoVehicle.tokenId;
     const vehicleId = trip.vehicleId;
     const organizationId = trip.vehicle.organizationId;
+    const hardwareType = trip.vehicle.hardwareType ?? 'LTE_R1';
 
-    // ── 1. Fetch native DIMO driving event signals ───────────────────────────
-    const nativeSamples = await this.segments.fetchDrivingEvents(tokenId, trip.startTime, trip.endTime);
+    const eventDataSummary = await this.brakingIntake.fetchEventDataSummary(tokenId);
+    const capability = assessDimoBrakingCapability({
+      hardwareType,
+      provider: 'DIMO',
+      eventDataSummary,
+    });
+    if (!capability.allowed) {
+      this.logger.warn(
+        `LTE_R1 enrich: trip ${tripId} skipped native braking intake — ${capability.reason}`,
+      );
+      return null;
+    }
+
+    // ── 1. Fetch native DIMO driving event signals (paginated + retried) ─────
+    const nativeSamples = await this.brakingIntake.fetchDrivingEventsPaginated(
+      tokenId,
+      trip.startTime,
+      trip.endTime,
+    );
     this.logger.debug(`LTE_R1 enrich trip ${tripId}: ${nativeSamples.length} DIMO event samples`);
+
+    await this.brakingIntake.ingestBrakingBatch({
+      tokenId,
+      vehicleId,
+      organizationId,
+      hardwareType,
+      tripId,
+      samples: nativeSamples,
+      eventDataSummary,
+    });
 
     // ── 2. Fetch HF data for engine context enrichment ───────────────────────
     const hfContext = await this.buildHfContextMap(tokenId, trip.startTime, trip.endTime, tripId);
 
     // ── 3. Map to normalized driving events ─────────────────────────────────
-    const normalized = this.mapToNormalizedEvents(nativeSamples, vehicleId, organizationId, tripId, hfContext);
+    const normalized = this.mapToNormalizedEvents(
+      nativeSamples,
+      vehicleId,
+      organizationId,
+      tripId,
+      hfContext,
+      tokenId,
+    );
     const counters = this.countByType(normalized);
     const coldEngineAnnotations = normalized.filter((e) => e.coldEngineContext).length;
 
@@ -228,15 +270,12 @@ export class LteR1BehaviorEnrichmentService {
               rpm: e.contextRpm,
               throttlePct: e.contextThrottlePct,
               hardwareSource: 'LTE_R1',
-              // DIMO-native event provenance (replaces legacy safetySystem signal mapping)
               dimoEventName: e.rawName,
               dimoEventSource: e.dimoSource,
               dimoCounterValue: e.counterValue,
-              // Severity classification — distinguishes extreme acceleration
-              // (persisted as HARSH_ACCELERATION) from normal harsh acceleration.
               classification: e.classification,
-              // Explicit native provenance for the unified read-model.
               provider: 'DIMO',
+              providerEventId: e.providerEventId,
               detectionMethod: 'NATIVE_TELEMETRY_EVENT',
             },
           })),
@@ -279,6 +318,8 @@ export class LteR1BehaviorEnrichmentService {
         },
       });
     });
+
+    await this.linkBrakingIntakeRows(tripId);
 
     this.logger.log(
       `LTE_R1 enrich done for trip ${tripId}: ${normalized.length} events ` +
@@ -422,6 +463,7 @@ export class LteR1BehaviorEnrichmentService {
     organizationId: string,
     tripId: string,
     hfContext: Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }>,
+    tokenId: number,
   ): Array<{
     vehicleId: string;
     organizationId: string;
@@ -438,6 +480,7 @@ export class LteR1BehaviorEnrichmentService {
     counterValue: number | null;
     rawName: string;
     dimoSource: string;
+    providerEventId: string | null;
   }> {
     const events: ReturnType<typeof this.mapToNormalizedEvents> = [];
 
@@ -457,13 +500,20 @@ export class LteR1BehaviorEnrichmentService {
 
       let counterValue: number | null = null;
       if (s.metadata) {
-        try {
-          const meta = JSON.parse(s.metadata);
-          if (typeof meta?.counterValue === 'number') counterValue = meta.counterValue;
-        } catch {
-          // Metadata is occasionally sent as non-JSON free text — ignore.
-        }
+        counterValue = parseDimoCounterValue(s.metadata);
       }
+
+      const brakingParsed = parseDimoBrakingSample(s, tokenId, tripId);
+      const providerEventId =
+        brakingParsed?.providerEventId ??
+        buildDimoProviderEventId({
+          tokenId,
+          timestamp: s.timestamp,
+          name: s.name,
+          source: s.source,
+          durationNs: s.durationNs,
+          counterValue,
+        });
 
       events.push({
         vehicleId,
@@ -472,8 +522,6 @@ export class LteR1BehaviorEnrichmentService {
         eventType,
         classification,
         recordedAt: new Date(s.timestamp),
-        // DIMO events don't carry speed. HF context (1-s interval during the
-        // trip) is the best alignment we have; null when HF is sparse.
         speedKmh: ctx.speedKmh,
         severity: resolveNativeSeverity(eventType, classification),
         coldEngineContext: coldEngine,
@@ -483,10 +531,40 @@ export class LteR1BehaviorEnrichmentService {
         counterValue,
         rawName: s.name,
         dimoSource: s.source,
+        providerEventId,
       });
     }
 
     return events;
+  }
+
+  private async linkBrakingIntakeRows(tripId: string): Promise<void> {
+    const events = await this.prisma.drivingEvent.findMany({
+      where: {
+        tripId,
+        source: DrivingEventSource.TELEMETRY_EVENTS,
+        eventType: {
+          in: [DrivingEventType.HARSH_BRAKING, DrivingEventType.EXTREME_BRAKING],
+        },
+      },
+      select: { id: true, metadataJson: true },
+    });
+
+    for (const event of events) {
+      const metadata = (event.metadataJson ?? {}) as Record<string, unknown>;
+      const providerEventId =
+        typeof metadata.providerEventId === 'string' ? metadata.providerEventId : null;
+      if (!providerEventId) continue;
+
+      await this.prisma.dimoBrakingEventIntake.updateMany({
+        where: { provider: 'DIMO', providerEventId },
+        data: {
+          drivingEventId: event.id,
+          tripId,
+          processingStatus: DimoBrakingEventIntakeStatus.PROCESSED,
+        },
+      });
+    }
   }
 
   private findClosestHfContext(

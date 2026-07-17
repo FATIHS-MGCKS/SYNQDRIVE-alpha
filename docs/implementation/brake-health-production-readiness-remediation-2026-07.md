@@ -861,25 +861,6 @@ npm test -- --testPathPattern='brake-baseline-backfill|brake-baseline-candidate-
 
 ---
 
-## Commit-Log (Remediation)
-
-| Prompt | Commit | Message |
-|--------|--------|---------|
-| 1 | `b12599f5da380f9740a8e44dc6d43f88351bdaa6` | `docs(brakes): establish production readiness remediation baseline` |
-| 2 | `b1246a886d62892abd605617f39e007871663994` | `test(brakes): capture brake health lifecycle regressions` |
-| 3 | `b892b605d2380f99c1c2e8972f7ec7d4643a1bb2` | `fix(brakes): establish canonical brake initialization workflow` |
-| 4 | `e8e62310775a10b06c0846f8b293393ddd8ce1e5` | `fix(brakes): materialize brake health during vehicle registration` |
-| 5 | `a30ea31d943ba49e279d43912265684678cd7fd4` | `feat(brakes): add read-only brake baseline backfill audit` |
-| 6 | `39c7e176226328be215dc1046f6e34fa56460d42` | `feat(brakes): add brake component installation lifecycle` |
-| 7 | `7617ba59b296ef2db27b413f56534fea7ce2f9f4` | `feat(brakes): centralize brake component lifecycle mutations` |
-| 8 | `43fbb3e6` | `fix(brakes): enforce component-specific brake service scope` |
-| 9 | `8ef69289` | `fix(brakes): apply brake service lifecycle atomically` |
-| 10 | `0de2caa3` | `feat(brakes): add brake reference spec provenance and thickness semantics` |
-| 11 | `f3fc1faf` | `fix(brakes): use component-specific brake wear thresholds` |
-| 12 | `10faa38b` | `feat(brakes): add controlled brake component baseline backfill` |
-
----
-
 ## Authoritative TripDrivingImpact Coverage (Prompt 13) — 2026-07-17
 
 ### Ziel
@@ -915,6 +896,46 @@ npm test -- --testPathPattern='trip-driving-impact-coverage|driving-impact.servi
 
 ---
 
+## DIMO Native Braking Event Intake (Prompt 14) — 2026-07-17
+
+### Ziel
+
+Zuverlässige Übernahme real gelieferter DIMO `behavior.*`-Braking-Events für **LTE_R1**-Fahrzeuge mit idempotentem Provider-Intake, Capability-Gating und paginiertem Fetch — **ohne** Wear-Multiplikation.
+
+### Neues Schema (Migration `20260717190000_dimo_braking_event_intake`)
+
+`DimoBrakingEventIntake` mit:
+
+- `provider`, `providerEventId` (`@@unique([provider, providerEventId])`)
+- `vehicleId`, `organizationId`, `tokenId`
+- `eventType`, `eventTimestamp`, `severity`
+- `rawSourceVersion`, `sourceFingerprint`
+- `tripId` (optional), `processingStatus`
+- `dimoEventName`, `counterValue` — kein vollständiges Raw-Event, keine Standortdaten
+
+### Capability-Gating
+
+- Nur `LTE_R1` + `nativeEventCapable` + Provider `DIMO`
+- Optional `dataSummary.eventDataSummary` Preflight (historische Verfügbarkeit)
+- Offizielle Eventnamen: `behavior.harshBraking`, `behavior.extremeBraking`, `behavior.extremeEmergency`, `behavior.extremeEmergencyBraking`
+
+### Ingestion-Pfad
+
+`TripBehaviorEnrichmentService` → `LteR1BehaviorEnrichmentService` → `DimoBrakingEventIntakeService`:
+
+1. Paginierter + retried `events(...)`-Fetch (`DimoSegmentsService.fetchDrivingEventsPaginated`)
+2. Idempotenter Intake-Upsert pro `providerEventId`
+3. Persistenz in `driving_events` + Link `dimo_braking_event_intakes.driving_event_id`
+4. Read-only Audit bestehender Events gegen `mapDimoEventName`
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='dimo-braking-event-intake|dimo-driving-events.pagination|lte-r1-behavior-enrichment'
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -932,6 +953,7 @@ npm test -- --testPathPattern='trip-driving-impact-coverage|driving-impact.servi
 | 11 | `f3fc1faf` | `fix(brakes): use component-specific brake wear thresholds` |
 | 12 | `10faa38b` | `feat(brakes): add controlled brake component baseline backfill` |
 | 13 | *(dieser Commit)* | `fix(brakes): make trip driving impact coverage authoritative` |
+| 14 | *(dieser Commit)* | `fix(brakes): ingest DIMO native braking events reliably` |
 
 ---
 

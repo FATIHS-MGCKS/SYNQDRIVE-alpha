@@ -23,7 +23,7 @@ import { BrakeReferenceSpecService } from './brakes/brake-reference-spec.service
 import { BrakeRegistrationBackfillService } from './brakes/brake-registration-backfill.service';
 import { BrakeBaselineCandidateAuditService } from './brakes/brake-baseline-candidate-audit.service';
 import { BrakeBaselineBackfillService } from './brakes/brake-baseline-backfill.service';
-import { BrakeBaselineBackfillService } from './brakes/brake-baseline-backfill.service';
+import { DimoBrakingEventIntakeService } from './brakes/dimo-braking-event-intake.service';
 import { BrakeComponentInstallationService } from './brakes/brake-component-installation.service';
 import { BrakeComponentLifecycleService } from './brakes/brake-component-lifecycle.service';
 import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-backfill.service';
@@ -151,6 +151,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeRegistrationBackfillService,
     BrakeBaselineCandidateAuditService,
     BrakeBaselineBackfillService,
+    DimoBrakingEventIntakeService,
     BrakeComponentInstallationService,
     BrakeComponentLifecycleService,
     TireOdometerAnchorBackfillService,
@@ -249,6 +250,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeRegistrationBackfillService,
     BrakeBaselineCandidateAuditService,
     BrakeBaselineBackfillService,
+    DimoBrakingEventIntakeService,
     BrakeComponentInstallationService,
     BrakeComponentLifecycleService,
     TireOdometerAnchorBackfillService,
