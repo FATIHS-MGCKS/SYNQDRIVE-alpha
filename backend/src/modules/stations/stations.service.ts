@@ -13,6 +13,11 @@ import { CreateStationDto } from './dto/create-station.dto';
 import {
   validateStationCreatePayload,
 } from './station-create-validation.util';
+import {
+  assertGenericStationUpdateAllowed,
+  buildStationPatchWriteData,
+  type StationUpdatePayload,
+} from './station-update-validation.util';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
 import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
@@ -283,21 +288,45 @@ export class StationsService {
       where: { id, organizationId },
     });
 
-    const writable = this.buildWriteData(payload);
+    assertGenericStationUpdateAllowed(payload as StationUpdatePayload, {
+      status: existing.status,
+      pickupEnabled: existing.pickupEnabled,
+      returnEnabled: existing.returnEnabled,
+    });
+
+    const writable = buildStationPatchWriteData(payload as StationUpdatePayload);
+    if (payload.radiusMeters !== undefined) {
+      const r = payload.radiusMeters;
+      if (r === null) {
+        writable.radiusMeters = null;
+      } else if (typeof r !== 'number' || !Number.isFinite(r)) {
+        throw new BadRequestException('radiusMeters must be a finite number or null');
+      } else {
+        const rounded = Math.round(r);
+        if (rounded < this.RADIUS_MIN_M || rounded > this.RADIUS_MAX_M) {
+          throw new BadRequestException(
+            `radiusMeters must be between ${this.RADIUS_MIN_M} and ${this.RADIUS_MAX_M} meters`,
+          );
+        }
+        writable.radiusMeters = rounded;
+      }
+    }
+
     if (payload.name !== undefined) {
       const trimmed = payload.name?.trim();
       if (!trimmed) throw new BadRequestException('Station name cannot be empty');
       writable.name = trimmed;
     }
 
-    // V4.7.07 — Re-geocode on update when:
-    //   1) the caller did not explicitly set latitude/longitude in the
-    //      payload (undefined → leave alone, an explicit `null` is treated
-    //      as "user wants to clear coords" and is respected), AND
-    //   2) at least one address component is being changed by this PATCH.
-    // We resolve against the merged address (payload values shadow the
-    // existing record) so partial updates still work — e.g. only changing
-    // the postal code re-geocodes against the (existing street + new PLZ).
+    if (payload.code) {
+      const normalizedCode = payload.code.trim();
+      const dup = await this.prisma.station.findFirst({
+        where: { organizationId, code: normalizedCode, id: { not: id } },
+      });
+      if (dup) throw new ConflictException(`Station code "${normalizedCode}" already exists`);
+      writable.code = normalizedCode;
+    }
+
     const wantsLatChange = payload.latitude !== undefined;
     const wantsLngChange = payload.longitude !== undefined;
     const addressFieldsTouched =
@@ -319,18 +348,10 @@ export class StationsService {
       }
     }
 
-    const station = await this.prisma.$transaction(async (tx) => {
-      if (payload.isPrimary === true) {
-        await tx.station.updateMany({
-          where: { organizationId, isPrimary: true, id: { not: id } },
-          data: { isPrimary: false },
-        });
-      }
-      return tx.station.update({
-        where: { id },
-        data: writable,
-        include: this.stationIncludeCount(),
-      });
+    const station = await this.prisma.station.update({
+      where: { id },
+      data: writable,
+      include: this.stationIncludeCount(),
     });
     return this.toDto(station, station._count.vehiclesHome);
   }

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-update-restrict-v49597-2026-07-17',
+    version: '4.9.597',
+    title: 'V4.9.597 — Stations V2: Lifecycle aus generischem PATCH entfernt (Prompt 17/78)',
+    summary: [
+      '`station-update-validation.util.ts`: generisches PATCH nur Stammdaten/Operations/Team — keine still ignorierten Felder.',
+      'Verboten via PATCH: `status`, `archivedAt`, `isPrimary`, Vehicle-Assignment-Felder; klare Fehler mit Domain-Command/Endpoint-Hinweis.',
+      'Archivierte Stationen: kein Pickup/Return-PATCH; Guard + Service; Audit-Hints (`UpdateStationMasterData` etc.) vorbereitet.',
+      'Tests: Util-, Guard-, Service-Integration und Permission-Resolver angepasst.',
+    ],
+    reason:
+      'Generisches PATCH erlaubte Lifecycle/Primary-Änderungen — widerspricht R1 und erschwert Audit/Commands.',
+    previousBehavior:
+      '`buildWriteData` schrieb `status`/`isPrimary`; Update-Tx konnte Primary wechseln; verbotene Felder wurden teils ignoriert.',
+    details:
+      'station-update-validation.util.ts, stations.service update(), stations-update-permission.guard.ts, stations-mutation-permission.util.ts, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T00:40:00.000Z',
+  },
+  {
     id: 'stations-v2-create-hardening-v49596-2026-07-17',
     version: '4.9.596',
     title: 'V4.9.596 — Stations V2: Create-Station gehärtet (Prompt 16/78)',

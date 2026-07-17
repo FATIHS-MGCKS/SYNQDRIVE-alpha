@@ -44,6 +44,14 @@ describe('Stations mutation permission guards', () => {
     );
   });
 
+  it('StationsUpdatePermissionGuard rejects forbidden lifecycle fields', async () => {
+    const guard = new StationsUpdatePermissionGuard(stationsAccess);
+    await expect(
+      guard.canActivate(mockContext({ status: 'ARCHIVED' }) as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(stationsAccess.assertStationsAccessForActions).not.toHaveBeenCalled();
+  });
+
   it('StationsUpdatePermissionGuard rejects empty patch', async () => {
     const guard = new StationsUpdatePermissionGuard(stationsAccess);
     await expect(guard.canActivate(mockContext({}) as never)).rejects.toBeInstanceOf(

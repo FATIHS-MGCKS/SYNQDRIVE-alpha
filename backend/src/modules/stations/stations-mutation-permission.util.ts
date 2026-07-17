@@ -55,18 +55,6 @@ export function resolveUpdateStationPermissions(
     }
   }
 
-  if (body.isPrimary === true) {
-    permissions.add('stations.set_primary');
-  }
-
-  if (body.status === 'ACTIVE') {
-    permissions.add('stations.activate');
-  } else if (body.status === 'INACTIVE') {
-    permissions.add('stations.deactivate');
-  } else if (body.status === 'ARCHIVED') {
-    permissions.add('stations.archive');
-  }
-
   return [...permissions];
 }
 

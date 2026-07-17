@@ -24,32 +24,25 @@ describe('stations-mutation-permission.util', () => {
       ]);
     });
 
-    it('maps lifecycle status changes to activate/deactivate/archive', () => {
-      expect(resolveUpdateStationPermissions({ status: 'ACTIVE' })).toEqual(['stations.activate']);
-      expect(resolveUpdateStationPermissions({ status: 'INACTIVE' })).toEqual([
-        'stations.deactivate',
-      ]);
-      expect(resolveUpdateStationPermissions({ status: 'ARCHIVED' })).toEqual(['stations.archive']);
-    });
-
-    it('maps isPrimary to stations.set_primary', () => {
-      expect(resolveUpdateStationPermissions({ isPrimary: true })).toEqual(['stations.set_primary']);
-    });
-
-    it('returns multiple permissions for mixed patches', () => {
+    it('returns multiple permissions for mixed allowed patches', () => {
       expect(
         resolveUpdateStationPermissions({
           name: 'Updated',
           capacity: 8,
-          status: 'INACTIVE',
+          managerName: 'Sam',
         }),
       ).toEqual(
         expect.arrayContaining([
           'stations.update_master_data',
           'stations.manage_operations',
-          'stations.deactivate',
+          'stations.manage_team',
         ]),
       );
+    });
+
+    it('does not map lifecycle or primary fields (rejected before permission check)', () => {
+      expect(resolveUpdateStationPermissions({ status: 'INACTIVE' })).toEqual([]);
+      expect(resolveUpdateStationPermissions({ isPrimary: true })).toEqual([]);
     });
 
     it('ignores undefined fields', () => {
