@@ -17,7 +17,7 @@ CREATE TYPE brake_dtc_freshness AS ENUM (
 );
 
 ALTER TABLE brake_evidence
-  ADD COLUMN IF NOT EXISTS vehicle_dtc_event_id UUID,
+  ADD COLUMN IF NOT EXISTS vehicle_dtc_event_id TEXT,
   ADD COLUMN IF NOT EXISTS dtc_code TEXT,
   ADD COLUMN IF NOT EXISTS dtc_category brake_dtc_category,
   ADD COLUMN IF NOT EXISTS dtc_active BOOLEAN,

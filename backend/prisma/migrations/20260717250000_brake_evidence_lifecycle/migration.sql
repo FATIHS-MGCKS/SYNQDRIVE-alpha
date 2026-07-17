@@ -41,7 +41,7 @@ ALTER TABLE brake_evidence
   ADD COLUMN IF NOT EXISTS confirmation_status "BrakeEvidenceConfirmationStatus" NOT NULL DEFAULT 'NOT_APPLICABLE',
   ADD COLUMN IF NOT EXISTS confirmed_by TEXT,
   ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS superseded_by_evidence_id UUID,
+  ADD COLUMN IF NOT EXISTS superseded_by_evidence_id TEXT,
   ADD COLUMN IF NOT EXISTS external_source_id TEXT,
   ADD COLUMN IF NOT EXISTS recalculation_enqueued_at TIMESTAMPTZ;
 

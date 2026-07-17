@@ -19,7 +19,7 @@ CREATE TABLE brake_health_alerts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id TEXT NOT NULL,
   vehicle_id TEXT NOT NULL,
-  component_installation_id UUID,
+  component_installation_id TEXT,
   alert_type TEXT NOT NULL,
   category "BrakeHealthAlertCategory" NOT NULL,
   reason_code TEXT NOT NULL,
