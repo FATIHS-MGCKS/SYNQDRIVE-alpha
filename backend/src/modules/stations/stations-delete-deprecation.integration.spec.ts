@@ -1,6 +1,7 @@
 import { GoneException, NotFoundException } from '@nestjs/common';
 import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
+import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
@@ -22,6 +23,7 @@ describe('StationsService DELETE deprecation', () => {
     prisma,
     {} as StationValidationService,
     new StationAccessScopeService(prisma, new StationScopeService(prisma)),
+    stationOperationsServiceMock,
   );
 
   beforeEach(() => {

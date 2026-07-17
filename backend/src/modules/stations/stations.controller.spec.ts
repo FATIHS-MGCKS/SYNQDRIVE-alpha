@@ -10,6 +10,7 @@ import { StationsService } from './stations.service';
 import { StationMapboxService } from './station-mapbox.service';
 import { StationCalendarExceptionService } from './station-calendar-exception.service';
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
+import { StationOperationsService } from './station-operations.service';
 import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
 import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary-permission.guard';
@@ -136,11 +137,16 @@ describe('StationsController read handlers', () => {
     getStationActivity: jest.fn(),
   };
 
+  const stationOperations = {
+    resolveForStation: jest.fn(),
+  };
+
   const controller = new StationsController(
     stationsService as unknown as StationsService,
     {} as StationMapboxService,
     {} as StationCalendarExceptionService,
     {} as StationOperationalCapabilityService,
+    stationOperations as unknown as StationOperationsService,
   );
 
   beforeEach(() => {

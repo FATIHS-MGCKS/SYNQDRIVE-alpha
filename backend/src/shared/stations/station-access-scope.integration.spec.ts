@@ -3,6 +3,7 @@ import { StationValidationService } from '@modules/stations/station-validation.s
 import { StationAccessScopeService } from './station-access-scope.service';
 import { StationScopeService } from './station-scope.service';
 import { STATION_SCOPE_MODE } from './station-scope.constants';
+import { stationOperationsServiceMock } from '../../modules/stations/testing/station-operations.service.mock';
 
 const ORG = 'org-1';
 const STATION_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -23,6 +24,7 @@ describe('Station access scope integration (stations list + stats)', () => {
     prisma as never,
     {} as StationValidationService,
     stationAccessScope,
+    stationOperationsServiceMock,
   );
 
   const stationRow = {

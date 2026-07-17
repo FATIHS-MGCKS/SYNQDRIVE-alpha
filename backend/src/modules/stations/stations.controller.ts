@@ -44,6 +44,7 @@ import {
   UpdateStationCalendarExceptionDto,
 } from './dto/station-calendar-exception.dto';
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
+import { StationOperationsService } from './station-operations.service';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -53,6 +54,7 @@ export class StationsController {
     private readonly stationMapbox: StationMapboxService,
     private readonly stationCalendarExceptions: StationCalendarExceptionService,
     private readonly stationOperationalCapability: StationOperationalCapabilityService,
+    private readonly stationOperations: StationOperationsService,
   ) {}
 
   @Get()
@@ -137,6 +139,13 @@ export class StationsController {
     return this.stationOperationalCapability.getContractMetadata();
   }
 
+  @Get('operations/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getOperationsContract() {
+    return this.stationOperations.getContractMetadata();
+  }
+
   @Get(':id')
   @RequireStationsPermission('stations.read')
   @RequireStationScope({ resource: 'station' })
@@ -191,9 +200,12 @@ export class StationsController {
   async getOperations(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Query('at') at: string | undefined,
     @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
   ) {
-    return this.stationsService.getStationOperations(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+    return this.stationOperations.resolveForStation(orgId, id, req[STATION_SCOPE_CONTEXT_KEY], {
+      at,
+    });
   }
 
   @Get(':id/team')

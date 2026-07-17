@@ -3902,6 +3902,14 @@ export const api = {
       get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
+    operations: (orgId: string, stationId: string, params?: { at?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.at) q.set('at', params.at);
+      const qs = q.toString();
+      return get<StationOperationsDto>(
+        `/organizations/${orgId}/stations/${stationId}/operations${qs ? `?${qs}` : ''}`,
+      );
+    },
     activity: (orgId: string, stationId: string) =>
       get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
@@ -3916,6 +3924,10 @@ export const api = {
     operationalCapabilityContract: (orgId: string) =>
       get<StationOperationalCapabilityContractMetadata>(
         `/organizations/${orgId}/stations/operational-capability/contract`,
+      ),
+    operationsContract: (orgId: string) =>
+      get<StationOperationsContractMetadata>(
+        `/organizations/${orgId}/stations/operations/contract`,
       ),
     calendarExceptions: (orgId: string, stationId: string) =>
       get<StationCalendarExceptionList>(
@@ -9186,6 +9198,122 @@ export interface StationGeofenceCapability {
   allowsAutomaticLocationDetectionClaim: boolean;
   reasons: StationGeofenceCapabilityReason[];
   uiHint: string;
+}
+
+export type StationOpeningStatus = 'OPEN' | 'CLOSED' | 'UNKNOWN';
+
+export type StationKeyboxStatus = 'AVAILABLE' | 'UNAVAILABLE' | 'NOT_APPLICABLE' | 'UNKNOWN';
+
+export type StationAfterHoursCapabilityStatus =
+  | 'AVAILABLE'
+  | 'MANUAL_CONFIRMATION_REQUIRED'
+  | 'NOT_AVAILABLE'
+  | 'NOT_CONFIGURED'
+  | 'UNKNOWN';
+
+export type StationCapacityStatus =
+  | 'UNKNOWN'
+  | 'AVAILABLE'
+  | 'NEAR_CAPACITY'
+  | 'FULL'
+  | 'OVER_CAPACITY'
+  | 'PROJECTED_OVER_CAPACITY';
+
+export interface StationOperationsReason {
+  code: string;
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+}
+
+export interface StationOperationsLabeledStatus<TStatus extends string = string> {
+  status: TStatus;
+  label: string;
+  reasons: StationOperationsReason[];
+}
+
+export interface StationOperationsCurrentStationTime {
+  instantUtc: string;
+  localDate: string;
+  localTime: string;
+  timezone: string;
+  label: string;
+}
+
+export interface StationOperationsOpeningWindow {
+  opensAt: string;
+  closesAt: string;
+}
+
+export interface StationOperationsCapabilityView {
+  kind: StationOperationalCapabilityKind;
+  label: string;
+  available: boolean;
+  reasons: StationOperationsReason[];
+  nextOpeningWindow: StationOperationsOpeningWindow | null;
+}
+
+export interface StationOperationsCalendarExceptionView {
+  active: boolean;
+  exception: {
+    id?: string;
+    type: string;
+    title?: string;
+    closedAllDay?: boolean;
+    source?: string;
+  } | null;
+  label: string;
+  reasons: StationOperationsReason[];
+}
+
+export interface StationOperationsCapacityView {
+  status: StationCapacityStatus;
+  label: string;
+  configuredCapacity: number | null;
+  currentOnSiteCount: number;
+  availablePhysicalSlots: number | null;
+  projectedOccupancy: number | null;
+  reasons: StationOperationsReason[];
+}
+
+export interface StationOperationsGeofenceView {
+  status: StationGeofenceCapabilityStatus;
+  label: string;
+  geofenceConfigured: boolean;
+  automationActive: boolean;
+  writesCurrentStationId: boolean;
+  publishesConfirmedArrival: boolean;
+  allowsAutomaticLocationDetectionClaim: boolean;
+  uiHint: string;
+  reasons: StationOperationsReason[];
+}
+
+export interface StationOperationsDto {
+  stationId: string;
+  organizationId: string;
+  evaluatedAt: string;
+  operationsVersion: number;
+  currentStationTime: StationOperationsCurrentStationTime;
+  openingStatus: StationOperationsLabeledStatus<StationOpeningStatus>;
+  nextOpeningWindow: StationOperationsOpeningWindow | null;
+  pickupCapability: StationOperationsCapabilityView;
+  returnCapability: StationOperationsCapabilityView;
+  afterHoursCapability: StationOperationsLabeledStatus<StationAfterHoursCapabilityStatus>;
+  keyboxStatus: StationOperationsLabeledStatus<StationKeyboxStatus>;
+  calendarException: StationOperationsCalendarExceptionView;
+  capacityStatus: StationOperationsCapacityView;
+  geofenceCapability: StationOperationsGeofenceView;
+  configurationProblems: StationOperationsReason[];
+  operationalWarnings: StationOperationsReason[];
+}
+
+export interface StationOperationsContractMetadata {
+  version: number;
+  resolver: 'station-operations.resolver';
+  frontendRecomputation: false;
+  sections: string[];
+  openingStatuses: StationOpeningStatus[];
+  keyboxStatuses: StationKeyboxStatus[];
+  afterHoursStatuses: StationAfterHoursCapabilityStatus[];
 }
 
 export interface StationOverviewStats {

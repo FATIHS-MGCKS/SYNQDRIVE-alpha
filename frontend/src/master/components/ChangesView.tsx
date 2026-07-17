@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-operations-dto-v49611-2026-07-18',
+    version: '4.9.611',
+    title: 'V4.9.611 — Stations V2: Kanonisches StationOperationsDto (Prompt 31/78)',
+    summary: [
+      'Zentraler `StationOperationsResolver` + `GET :id/operations?at=` — kanonisches Operations-Read-Model.',
+      'Enthält Stationszeit, Öffnungsstatus, nächstes Fenster, Pickup/Return/After-hours/Keybox, Kalenderausnahme, Kapazität, Geofence, Konfigurationsprobleme, Betriebswarnungen.',
+      'Maschinenlesbare Reasons + verständliche Labels; Scope-/Tenant-sicher; fehlende Daten transparent.',
+      'Keine Frontend-Nachberechnung (`frontendRecomputation: false`).',
+    ],
+    reason:
+      'Operations-Status war über Rohfelder und Frontend-Logik verteilt — ohne ein kanonisches Backend-Read-Model.',
+    previousBehavior:
+      '`GET :id/operations` lieferte nur flache Capability-Felder ohne zentrale Auflösung.',
+    details:
+      'station-operations.{contract,resolver}.ts, StationOperationsService, operations/contract, Frontend-Typen + api.stations.operations.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T13:00:00.000Z',
+  },
+  {
     id: 'stations-v2-geofence-capability-v49610-2026-07-18',
     version: '4.9.610',
     title: 'V4.9.610 — Stations V2: Geofence Capability Status (Prompt 30/78)',

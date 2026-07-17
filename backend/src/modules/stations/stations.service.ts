@@ -38,6 +38,8 @@ import {
   evaluateStationGeofenceCapability,
   type StationGeofenceCapabilityResult,
 } from '@shared/stations/station-geofence-capability.policy';
+import type { StationOperationsDto } from '@shared/stations/station-operations.resolver';
+import { StationOperationsService } from './station-operations.service';
 import {
   buildStationLifecycleCommandAudit,
   evaluateStationLifecycleCommand,
@@ -222,20 +224,7 @@ export interface StationVehicleAssignmentResult {
   movedFromOtherStations: number;
 }
 
-export interface StationOperationsDto {
-  pickupEnabled: boolean;
-  returnEnabled: boolean;
-  afterHoursReturnEnabled: boolean;
-  keyBoxAvailable: boolean;
-  capacity: number | null;
-  radiusMeters: number | null;
-  geofenceRadiusMeters: number | null;
-  openingHours: Prisma.JsonValue | null;
-  holidayRules: Prisma.JsonValue | null;
-  handoverInstructions: string | null;
-  returnInstructions: string | null;
-  timezone: string | null;
-}
+export type { StationOperationsDto } from '@shared/stations/station-operations.resolver';
 
 export interface StationTeamDto {
   managerName: string | null;
@@ -261,6 +250,7 @@ export class StationsService {
     private readonly prisma: PrismaService,
     private readonly stationValidation: StationValidationService,
     private readonly stationAccessScope: StationAccessScopeService,
+    private readonly stationOperations: StationOperationsService,
   ) {}
 
   private stationIncludeCount() {
@@ -1520,38 +1510,9 @@ export class StationsService {
     organizationId: string,
     stationId: string,
     scope?: StationScopeContext,
+    options: { at?: string } = {},
   ): Promise<StationOperationsDto> {
-    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
-    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
-      select: {
-        pickupEnabled: true,
-        returnEnabled: true,
-        afterHoursReturnEnabled: true,
-        keyBoxAvailable: true,
-        capacity: true,
-        radiusMeters: true,
-        openingHours: true,
-        holidayRules: true,
-        handoverInstructions: true,
-        returnInstructions: true,
-        timezone: true,
-      },
-    });
-
-    return {
-      pickupEnabled: station.pickupEnabled,
-      returnEnabled: station.returnEnabled,
-      afterHoursReturnEnabled: station.afterHoursReturnEnabled,
-      keyBoxAvailable: station.keyBoxAvailable,
-      capacity: station.capacity,
-      radiusMeters: station.radiusMeters,
-      geofenceRadiusMeters: station.radiusMeters,
-      openingHours: station.openingHours,
-      holidayRules: station.holidayRules,
-      handoverInstructions: station.handoverInstructions,
-      returnInstructions: station.returnInstructions,
-      timezone: station.timezone,
-    };
+    return this.stationOperations.resolveForStation(organizationId, stationId, scope, options);
   }
 
   async getStationArchivePreview(

@@ -6,6 +6,7 @@ import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
+import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 import { resolveStationIdFromRequest } from '@shared/stations/station-scope.util';
 import {
   AUTHZ_MUTATION_ENDPOINTS,
@@ -315,6 +316,7 @@ describe('Stations V2 authorization package', () => {
         prisma as never,
         {} as StationValidationService,
         new StationAccessScopeService(prisma as never, new StationScopeService(prisma as never)),
+        stationOperationsServiceMock,
       );
 
       const scope = {
@@ -341,6 +343,7 @@ describe('Stations V2 authorization package', () => {
       prisma as never,
       {} as StationValidationService,
       new StationAccessScopeService(prisma as never, new StationScopeService({} as never)),
+      stationOperationsServiceMock,
     );
 
     beforeEach(() => jest.clearAllMocks());
@@ -389,6 +392,7 @@ describe('Stations V2 authorization package', () => {
     prisma as never,
     {} as StationValidationService,
     new StationAccessScopeService(prisma as never, new StationScopeService(prisma as never)),
+    stationOperationsServiceMock,
   );
 
   const assignedScope = {

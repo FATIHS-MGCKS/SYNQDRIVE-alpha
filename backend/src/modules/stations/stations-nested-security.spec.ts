@@ -6,6 +6,7 @@ import { STATION_SCOPE_MODE } from '@shared/stations/station-scope.constants';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
+import { StationOperationsService } from './station-operations.service';
 
 const ORG = 'org-1';
 const OTHER_ORG = 'org-2';
@@ -27,10 +28,13 @@ describe('Stations nested resource security', () => {
     new StationScopeService(prisma),
   );
 
+  const stationOperations = new StationOperationsService(prisma, stationAccessScope);
+
   const service = new StationsService(
     prisma,
     {} as StationValidationService,
     stationAccessScope,
+    stationOperations,
   );
 
   const assignedScope: StationScopeContext = {
@@ -207,6 +211,9 @@ describe('Stations nested resource security', () => {
     expect(team.managerName).toBe('Alex');
 
     (prisma.station.findFirst as jest.Mock).mockResolvedValue({
+      id: STATION_A,
+      organizationId: ORG,
+      status: 'ACTIVE',
       pickupEnabled: true,
       returnEnabled: false,
       afterHoursReturnEnabled: false,
@@ -215,13 +222,15 @@ describe('Stations nested resource security', () => {
       radiusMeters: 80,
       openingHours: null,
       holidayRules: null,
-      handoverInstructions: 'Ring',
-      returnInstructions: null,
       timezone: 'Europe/Berlin',
+      latitude: 52.5,
+      longitude: 13.4,
+      calendarExceptions: [],
     });
+    (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([]);
 
     const operations = await service.getStationOperations(ORG, STATION_A, assignedScope);
-    expect(operations.capacity).toBe(5);
+    expect(operations.capacityStatus.configuredCapacity).toBe(5);
   });
 
   it('scopes activity logs to station entity without cross-station leakage', async () => {

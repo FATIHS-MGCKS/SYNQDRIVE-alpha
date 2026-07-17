@@ -6,6 +6,7 @@ import { StationAccessScopeService } from '@shared/stations/station-access-scope
 import { StationScopeService } from '@shared/stations/station-scope.service';
 import { StationCoordinatesSource } from '@prisma/client';
 import { parseMapboxForwardGeocodeFeature } from './station-geocode.util';
+import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 
 const ORG = 'org-location';
 const STATION_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -34,6 +35,7 @@ describe('StationsService location master data', () => {
     prisma,
     {} as StationValidationService,
     new StationAccessScopeService(prisma, new StationScopeService(prisma)),
+    stationOperationsServiceMock,
   );
 
   const baseRow = {

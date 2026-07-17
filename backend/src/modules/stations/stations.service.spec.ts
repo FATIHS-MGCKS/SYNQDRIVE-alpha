@@ -6,6 +6,7 @@ import { STATION_SCOPE_MODE } from '@shared/stations/station-scope.constants';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
+import { StationOperationsService } from './station-operations.service';
 
 const ORG = 'org1';
 const STATION_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -123,7 +124,16 @@ describe('StationsService', () => {
     new StationScopeService(prisma),
   );
 
-  const service = new StationsService(prisma, stationValidation, stationAccessScope);
+  const stationOperations = {
+    resolveForStation: jest.fn(),
+  } as jest.Mocked<Pick<StationOperationsService, 'resolveForStation'>>;
+
+  const service = new StationsService(
+    prisma,
+    stationValidation,
+    stationAccessScope,
+    stationOperations as unknown as StationOperationsService,
+  );
 
   const stationRow = {
     id: STATION_A,
@@ -275,30 +285,37 @@ describe('StationsService', () => {
   });
 
   it('returns operations and team read models for scoped station', async () => {
-    (prisma.station.findFirst as jest.Mock)
-      .mockResolvedValueOnce({
-        pickupEnabled: true,
-        returnEnabled: false,
-        afterHoursReturnEnabled: false,
-        keyBoxAvailable: true,
-        capacity: 12,
-        radiusMeters: 80,
-        openingHours: null,
-        holidayRules: null,
-        handoverInstructions: 'Ring bell',
-        returnInstructions: null,
-        timezone: 'Europe/Berlin',
-      })
-      .mockResolvedValueOnce({
-        managerName: 'Alex',
-        phone: '+49123',
-        email: 'alex@example.com',
-      });
+    stationOperations.resolveForStation.mockResolvedValue({
+      stationId: STATION_A,
+      organizationId: ORG,
+      evaluatedAt: '2026-07-14T10:00:00.000Z',
+      operationsVersion: 1,
+      capacityStatus: {
+        configuredCapacity: 12,
+        status: 'AVAILABLE',
+        label: 'Kapazität verfügbar',
+        currentOnSiteCount: 0,
+        availablePhysicalSlots: 12,
+        projectedOccupancy: 0,
+        reasons: [],
+      },
+    } as never);
+    (prisma.station.findFirst as jest.Mock).mockResolvedValue({
+      managerName: 'Alex',
+      phone: '+49123',
+      email: 'alex@example.com',
+    });
 
     const operations = await service.getStationOperations(ORG, STATION_A, assignedScope);
     const team = await service.getStationTeam(ORG, STATION_A, assignedScope);
 
-    expect(operations.capacity).toBe(12);
+    expect(stationOperations.resolveForStation).toHaveBeenCalledWith(
+      ORG,
+      STATION_A,
+      assignedScope,
+      {},
+    );
+    expect(operations.capacityStatus.configuredCapacity).toBe(12);
     expect(team.managerName).toBe('Alex');
     expect(team.staff).toEqual([]);
   });
