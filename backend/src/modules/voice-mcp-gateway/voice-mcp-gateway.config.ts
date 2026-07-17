@@ -10,6 +10,9 @@ export function resolveVoiceMcpTokenSecret(env: NodeJS.ProcessEnv = process.env)
   if (dedicated) {
     return dedicated;
   }
+  if ((env.NODE_ENV ?? '').toLowerCase() === 'production') {
+    throw new Error('VOICE_MCP_TOKEN_SECRET must be configured in production for voice MCP gateway.');
+  }
   const jwt = env.JWT_SECRET?.trim();
   if (!jwt) {
     throw new Error('VOICE_MCP_TOKEN_SECRET or JWT_SECRET must be configured for voice MCP gateway.');

@@ -12,6 +12,7 @@ import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automatio
 import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
 import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
+import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -46,6 +47,7 @@ import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
 import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
 import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.scheduler';
 import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
+import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
 
 @Module({
   imports: [
@@ -77,6 +79,7 @@ import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconc
     BatteryV2JobsProducerModule,
     BatteryV2JobsModule,
     VoiceWebhookIngestionModule,
+    VoiceAssistantModule,
   ],
   providers: [
     // Processors
@@ -114,6 +117,7 @@ import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconc
     StorageOrphanSweepScheduler,
     BatteryV2ReconciliationScheduler,
     BatteryV2RetentionScheduler,
+    VoiceRetentionScheduler,
   ],
 })
 export class WorkersModule {}

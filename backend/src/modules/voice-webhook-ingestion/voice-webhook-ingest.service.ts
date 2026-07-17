@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Prisma, VoiceControlPlaneProvider } from '@prisma/client';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
 import { VoiceProviderWebhookEventRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { VoiceWebhookCorrelationService } from './voice-webhook-correlation.service';
 import { hashWebhookPayload } from './voice-webhook-payload.util';
@@ -52,6 +53,7 @@ export class VoiceWebhookIngestService {
     private readonly events: VoiceProviderWebhookEventRepository,
     private readonly correlation: VoiceWebhookCorrelationService,
     private readonly queue: VoiceWebhookQueueProducer,
+    @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
   async ingestTwilioEvent(params: {
@@ -186,11 +188,20 @@ export class VoiceWebhookIngestService {
     });
 
     if (!created) {
+      this.voiceMetrics?.webhookIngest.inc({
+        provider: params.provider,
+        result: 'duplicate',
+      });
       return { accepted: true, duplicate: true, eventId: event.id, queued: false };
     }
 
     await this.events.markQueued(event.id);
     await this.queue.enqueue(event.id);
+
+    this.voiceMetrics?.webhookIngest.inc({
+      provider: params.provider,
+      result: 'accepted',
+    });
 
     return { accepted: true, duplicate: false, eventId: event.id, queued: true };
   }

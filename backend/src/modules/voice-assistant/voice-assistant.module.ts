@@ -31,6 +31,8 @@ import { AgentDeploymentService } from './agent-deployment/agent-deployment.serv
 import { VoiceControlPlaneAdminController } from './admin/voice-control-plane-admin.controller';
 import { VoiceControlPlaneAdminService } from './admin/voice-control-plane-admin.service';
 import { VoiceProviderWebhookEventRepository } from './control-plane/voice-audit-persistence.repository';
+import { VoiceRetentionService } from './security/voice-retention.service';
+import { VoiceSecretsStartupService } from './security/voice-secrets-startup.service';
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { VoiceProviderWebhookEventRepository } from './control-plane/voice-audit
     VoiceProvisioningJobRepository,
     VoiceProviderWebhookEventRepository,
     VoiceControlPlaneAdminService,
+    VoiceRetentionService,
+    VoiceSecretsStartupService,
   ],
   exports: [
     VoiceAssistantService,
@@ -79,6 +83,7 @@ import { VoiceProviderWebhookEventRepository } from './control-plane/voice-audit
     VoiceProvisioningJobRepository,
     ElevenLabsTwilioImportProvisioningService,
     AgentDeploymentService,
+    VoiceRetentionService,
   ],
 })
 export class VoiceAssistantModule {}

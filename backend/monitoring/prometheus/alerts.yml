@@ -308,6 +308,66 @@ groups:
           summary: Connect webhooks with unresolved accounts
           description: Webhooks arrived for unknown connected accounts — verify Stripe Connect webhook endpoint and account mapping.
 
+  - name: synqdrive_voice
+    rules:
+      - alert: VoiceWebhookSignatureFailures
+        expr: increase(synqdrive_voice_webhook_signature_invalid_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Voice webhook signature validation failures
+          description: Twilio or ElevenLabs webhook signatures failed — check auth tokens, proxy headers, and public URL configuration.
+
+      - alert: VoiceWebhookDlqGrowing
+        expr: increase(synqdrive_voice_webhook_dlq_total[30m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Voice webhook events entering DLQ
+          description: Failed voice webhook processing is accumulating — inspect Master Control Plane webhooks tab and replay after root-cause fix.
+
+      - alert: VoiceWebhookBacklogHigh
+        expr: sum(synqdrive_voice_webhook_backlog{status=~"QUEUED|RECEIVED"}) > 50
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Voice webhook processing backlog elevated
+          description: Webhook queue backlog exceeds 50 events — check voice.webhook.process worker health and Redis connectivity.
+
+      - alert: VoiceMcpErrorRateHigh
+        expr: rate(synqdrive_voice_mcp_errors_total[15m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Voice MCP error rate elevated
+          description: MCP gateway errors are spiking — verify token secret, rate limits, and tool availability.
+
+      - alert: VoiceProtectionBlocksSpike
+        expr: increase(synqdrive_voice_protection_blocks_total[1h]) > 25
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: Elevated voice protection blocks
+          description: Budget, concurrency, or destination policy blocks increased — review org usage and abuse signals.
+
+      - alert: VoiceWebhookQueueLagHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(synqdrive_voice_webhook_lag_seconds_bucket[15m]))
+          ) > 120
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Voice webhook processing lag is high
+          description: P95 webhook processing delay exceeds 120 seconds.
+
   - name: synqdrive_battery_v2
     rules:
       - alert: BatteryJobsFailingDespiteSnapshotSuccess
