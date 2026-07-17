@@ -35,6 +35,186 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-lifecycle-policy-v49595-2026-07-17',
+    version: '4.9.595',
+    title: 'V4.9.595 — Stations V2: zentrale StationLifecyclePolicy (Prompt 15/78)',
+    summary: [
+      'Pure Policy `evaluateStationLifecycle` in `backend/src/shared/stations/station-lifecycle.policy.ts`.',
+      'Zustände ACTIVE/INACTIVE/ARCHIVED mit regulierten Übergängen; Output: allowed, blockingReasons, warnings, requiredActions.',
+      'R2-Invarianten (ARCHIVED ⇒ primary/pickup/return aus); Primary-Archiv nur mit Nachfolger; Restore ohne blindes Re-Enable.',
+      'R1: generisches Status-PATCH verboten; Buchungsauswahl und Capability-Updates abgedeckt; 47 Unit-Tests.',
+    ],
+    reason:
+      'Stations-Lifecycle-Regeln lagen implizit im Service — zentrale pure Policy für konsistente Commands und spätere Service-Anbindung.',
+    previousBehavior:
+      'Archive/Restore-Logik nur in StationsService; Restore setzte pickup/return blind true; kein Nachfolger-Gate für Primary-Archiv.',
+    details:
+      'backend/src/shared/stations/station-lifecycle.policy.{ts,types.ts,spec.ts}.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T00:10:00.000Z',
+  },
+  {
+    id: 'stations-v2-authz-tests-v49594-2026-07-17',
+    version: '4.9.594',
+    title: 'V4.9.594 — Stations V2: automatisiertes Authz-Testpaket (Prompt 14/78)',
+    summary: [
+      'Fixtures + Harness für Gate 1 (Permission) und Gate 2 (Station Scope) unter `backend/src/modules/stations/testing/`.',
+      '46 Matrix-Tests: alle Read-/Mutation-Endpunkte, ALL/ASSIGNED/NO_STATIONS, leere stationIds, archiviert, Cross-Tenant, Rollen.',
+      'Explizit: `:id` vs `stationId`, Listenfilter/KPI-Scope, Nested Fleet/Bookings, Set Primary, Vehicle Assignment, Archive/Restore.',
+      'Coverage-Doku `docs/testing/stations-v2-authz-coverage.md`; ergänzt bestehende Controller-/Scope-/Nested-Suites.',
+    ],
+    reason:
+      'Stations V2 Security Stack brauchte ein vollständiges, wiederholbares Authz-Testpaket für Regressionen bei Permissions und Scope.',
+    previousBehavior:
+      'Einzelne Controller-, Scope-Service- und Nested-Security-Tests ohne zentrale Persona-Matrix über alle Endpunkte und Scope-Modi.',
+    details:
+      'backend/src/modules/stations/stations-v2-authz.spec.ts, testing/stations-v2-authz.{fixtures,harness}.ts, docs/testing/stations-v2-authz-coverage.md.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T23:55:00.000Z',
+  },
+  {
+    id: 'stations-v2-ui-permissions-v49593-2026-07-17',
+    version: '4.9.593',
+    title: 'V4.9.593 — Stations V2: UI an kanonische Permissions verdrahtet (Prompt 13/78)',
+    summary: [
+      'Frontend-Resolver `resolveStationsV2Permissions` + Hook `useStationsV2Permissions` (deny-by-default, kein ORG_ADMIN-Bypass).',
+      '`getStationsUiCapabilities` steuert Sichtbarkeit/Aktivierung: Create, Edit, Lifecycle, Primary, Fleet, Activity, Geocode.',
+      'StationsView/Detail/Form/Assign + Sidebar gated; archivierte Stationen mit reduzierten Aktionen + Restore.',
+      'Read-only Banner; Activity-Tab bei `stations.view_activity`; i18n DE/EN; Rollen-Tests.',
+    ],
+    reason:
+      'Stations-UI zeigte alle Aktionen unabhängig von `stationsV2`-Permissions — Risiko für 403 und verwirrende UX für Read-only-Rollen.',
+    previousBehavior:
+      'Kein Frontend-Evaluator; `hasPermission(stations)` mit ORG_ADMIN-Bypass; ungeschützte Create/Edit/Archive/Assign-Buttons.',
+    details:
+      'frontend/src/lib/stations-v2-permissions.ts, rental/hooks/useStationsV2Permissions.ts, rental/lib/stations-v2-ui-capabilities.ts, stations/*.tsx, Sidebar.tsx, i18n.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T23:30:00.000Z',
+  },
+  {
+    id: 'stations-v2-nested-resources-v49592-2026-07-17',
+    version: '4.9.592',
+    title: 'V4.9.592 — Stations V2: Nested Resources abgesichert (Prompt 12/78)',
+    summary: [
+      'Fleet, Bookings, Overview-Stats (Pickup/Return/Tasks/Health-Summary), Operations, Team und Activity nutzen `StationAccessScopeService` einheitlich.',
+      'Zentraler `requireReadableStation` + Nested-Where-Builder (`buildStationFleetWhere`, `buildStationBookingsWhere`, …).',
+      'Out-of-scope/Cross-org → 404 ohne Count-Leaks; archivierte Stationen behalten historische Buchungsreads.',
+      'Activity-Endpunkt erfordert `stations.view_activity`; Security-Tests pro Nested-Resource-Gruppe.',
+    ],
+    reason:
+      'Nested Reads nutzten teils direkte Prisma-Queries ohne konsistenten Access-Scope — Risiko für Cross-Station-Leaks bei Fleet/Bookings/KPIs.',
+    previousBehavior:
+      'Fleet ohne `expectedStationId`; Overview-Stats/Tasks mit parallelen Filtern; Activity mit `stations.read` statt `view_activity`.',
+    details:
+      'station-access-scope.util.ts (nested builders), stations.service.ts, stations-nested-security.spec.ts, stations.controller.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T23:05:00.000Z',
+  },
+  {
+    id: 'stations-v2-access-scope-service-v49591-2026-07-17',
+    version: '4.9.591',
+    title: 'V4.9.591 — Stations V2: zentraler StationAccessScopeService (Prompt 11/78)',
+    summary: [
+      '`StationAccessScopeService` liefert erlaubte Station-IDs, Scope-Typ, lesbare/bearbeitbare Stationen sowie Fleet-/Booking-Ressourcen-Filter.',
+      'Keine `undefined = alles`-Semantik mehr — fehlender Scope → leere Ergebnismenge; `NO_STATIONS` → `id: { in: [] }`.',
+      'Listen (`findAll`) und globale Stats (`getStationStats`) nutzen denselben Access-Scope-Filter.',
+      'Unit- + Integrationstests für ALL/ASSIGNED/NO_STATIONS, Permissions und List/Stats-Konsistenz.',
+    ],
+    reason:
+      'Scope-Filter waren in `stations-read-scope.util` dupliziert und behandelten `undefined` als Org-Vollzugriff — V2 verlangt zentralen Membership-Scope.',
+    previousBehavior:
+      '`buildScopedStationWhere` ohne Scope → Org-weite Abfrage; List/Stats bauten Filter separat.',
+    details:
+      'backend/src/shared/stations/station-access-scope.*, stations.service.ts (findAll/getStationStats), stations-read-scope.util.ts delegiert.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:50:00.000Z',
+  },
+  {
+    id: 'stations-v2-mutation-endpoints-v49590-2026-07-17',
+    version: '4.9.590',
+    title: 'V4.9.590 — Stations V2: Mutations mit granularen Permissions + Scope (Prompt 10/78)',
+    summary: [
+      'Alle Schreib-Routen verdrahtet: create, update (dynamisch), archive/restore/delete, set-primary, home-fleet, current/expected location, geocode.',
+      'Gate 1: `StationsPermissionGuard` + spezialisierte Mutation-Guards (`StationsUpdatePermissionGuard`, Assign/SetPrimary/VehicleLocation).',
+      'Gate 2: `StationScopeGuard` — `create` ohne bestehende Station-ID; `vehicle_location` prüft Vehicle + Ziel-Stationen.',
+      'Worker/Driver dürfen Organisations-Hauptstation nicht setzen (`SET_PRIMARY_ROLE_FORBIDDEN`); strukturierte 403-Codes.',
+    ],
+    reason:
+      'Stations-Mutationen waren nur durch OrgScoping/RolesGuard geschützt — V2 verlangt Permission + Scope auf allen Write-Pfaden.',
+    previousBehavior:
+      'POST/PATCH/PUT/DELETE ohne `stations.*`-Checks; kein Scope-Gate auf Mutations; set-primary ohne Rollenpolicy.',
+    details:
+      'stations.controller.ts, stations-mutation-permission.util.ts, stations-access.service.ts, mutation guards, station-scope.service (create/vehicle_location).',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:35:00.000Z',
+  },
+  {
+    id: 'stations-v2-read-endpoints-v49589-2026-07-17',
+    version: '4.9.589',
+    title: 'V4.9.589 — Stations V2: lesende Endpunkte abgesichert (Prompt 9/78)',
+    summary: [
+      'Alle lesenden Stations-Routen erfordern `stations.read` via `StationsPermissionGuard` + `@RequireStationsPermission`.',
+      'Listen/Stats/KPIs serverseitig nach `StationScopeContext` gefiltert; Detail-Routen mit `StationScopeGuard`.',
+      'Neue Read-Endpunkte: `GET :id/operations`, `:id/team`, `:id/activity` (Activity aus `activity_logs`).',
+      'Controller-/Service-Tests für ALL/ASSIGNED/NO_STATIONS, Cross-Tenant und archivierte Station.',
+    ],
+    reason:
+      'Stations-Reads waren nur durch OrgScoping/RolesGuard geschützt — V2 verlangt Permission + Scope auf allen Read-Pfaden.',
+    previousBehavior:
+      'Kein `stations.read`-Check; keine serverseitige Scope-Filterung in `findAll`/`getStationStats`; keine operations/team/activity Reads.',
+    details:
+      'stations.controller.ts, stations.service.ts, stations-access.service.ts, stations-permission.guard.ts, stations-read-scope.util.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:20:00.000Z',
+  },
+  {
+    id: 'stations-v2-station-scope-v49588-2026-07-17',
+    version: '4.9.588',
+    title: 'V4.9.588 — Stations V2: StationScopeGuard + zentraler Scope-Resolver (Prompt 8/78)',
+    summary: [
+      '`StationScopeService` — Membership-first Scope-Auflösung für `ALL_STATIONS`, `ASSIGNED_STATIONS`, `NO_STATIONS` mit Legacy-Fallback (`stationScope`/`stationIds`).',
+      'Station-ID-Resolver: `params.id`, `params.stationId`, `body.stationId`, `query.stationId`; verschachtelte Vehicle/Booking-Auflösung serverseitig.',
+      'Strukturierte 403-Codes (`STATION_SCOPE_*`); archivierte Stationen nur für historische Reads bei `stations.read`.',
+      '`StationScopeGuard` + `@RequireStationScope()` — opt-in per Handler; noch nicht an alle Controller verdrahtet.',
+    ],
+    reason:
+      'Ist-Guard prüfte nur `params.stationId` und JWT-String — V2 verlangt zentralen Resolver mit Tenant-Validierung und Scope-Modi.',
+    previousBehavior:
+      '`station-scope.guard.ts` unwired; nur `user.stationScope` String-Vergleich ohne Membership/DB-Verifikation.',
+    details:
+      'backend/src/shared/stations/station-scope.*, station-scope.guard.ts, decorators/station-scope.decorator.ts, shared-guards.module.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:05:00.000Z',
+  },
+  {
+    id: 'stations-v2-permissions-v49587-2026-07-17',
+    version: '4.9.587',
+    title: 'V4.9.587 — Stations V2: kanonische Permissions (Prompt 7/78)',
+    summary: [
+      '15 granulare `stations.*` Actions als `membership.permissions.stationsV2` — Resolver mit Legacy-Fallback aus `stations.{read,write,manage}`.',
+      'Rollen-Templates (`organization-role.defaults.ts`) erhalten explizite `stationsV2`-Blöcke; Legacy-Modul `stations` bleibt unverändert.',
+      'Backend: `stations-v2-permission.constants.ts`, `stations-v2-permission.util.ts`, `stations-v2-role-permissions.ts` + Unit-Tests.',
+      'Frontend-Spiegel: `frontend/src/lib/stations-v2-permissions.ts`. Kein Controller-/Guard-Wiring in diesem Schritt.',
+    ],
+    reason:
+      'Stations V2 verlangt auditierbare granulare Permissions statt impliziter ORG_ADMIN-Bypasses — Grundlage für späteres PermissionsGuard-Wiring (Prompt 8+).',
+    previousBehavior:
+      'Nur grobes Modul `stations` mit read/write/manage; kein `stationsV2`-Evaluator; ORG_ADMIN-Bypass in `assertMembershipPermission`.',
+    details:
+      'docs/architecture/stations-v2-permissions.md, backend/src/shared/auth/stations-v2-*.ts, organization-role.defaults.ts, frontend/src/lib/stations-v2-permissions.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T21:50:00.000Z',
+  },
+  {
     id: 'twilio-vps-env-sync-v49586-2026-07-17',
     version: '4.9.586',
     title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',
