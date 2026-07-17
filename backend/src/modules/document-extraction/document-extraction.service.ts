@@ -1298,8 +1298,18 @@ export class DocumentExtractionService implements OnModuleInit {
       });
     }
 
+    const freshPlausibilityForPreview = {
+      ...(typeof existing.plausibility === 'object' &&
+      existing.plausibility &&
+      !Array.isArray(existing.plausibility)
+        ? (existing.plausibility as Record<string, unknown>)
+        : {}),
+      ...(plausibility as unknown as Record<string, unknown>),
+    };
+    const recordForPreview = { ...existing, plausibility: freshPlausibilityForPreview };
+
     if (this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
-      const preview = await this.actionPlanPreview.buildForRecord(existing);
+      const preview = await this.actionPlanPreview.buildForRecord(recordForPreview);
       if (!preview.canConfirm) {
         throw new BadRequestException({
           message:
@@ -1330,7 +1340,7 @@ export class DocumentExtractionService implements OnModuleInit {
           (existing.objectKey ? `storage://${existing.objectKey}` : null),
         confirmedData: actionPlanConfirmedData,
         plausibilityChecks: plausibility.checks,
-        plausibility: existing.plausibility,
+        plausibility: freshPlausibilityForPreview,
       });
       assertExecutableActionPlan(plan);
     }
@@ -1486,6 +1496,28 @@ export class DocumentExtractionService implements OnModuleInit {
       this.observability.recordPartialApply('partial_lifecycle');
     }
     return applyResult.detail ? { ...updated, applyResult: applyResult.detail } : updated;
+  }
+
+  async confirmForOrg(
+    orgId: string,
+    extractionId: string,
+    confirmedDataRaw: unknown,
+    userId?: string | null,
+    actionPlanFingerprint?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    if (!existing.vehicleId) {
+      throw new BadRequestException(
+        'Vehicle assignment is required before confirming and applying document data',
+      );
+    }
+    return this.confirm(
+      existing.vehicleId,
+      extractionId,
+      confirmedDataRaw,
+      userId ?? null,
+      actionPlanFingerprint ?? null,
+    );
   }
 
   // ── saveReview (persist reviewed fields, re-run plausibility, stay in review) ─

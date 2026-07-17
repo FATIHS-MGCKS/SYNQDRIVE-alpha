@@ -536,26 +536,67 @@ export function useDocumentIntakeFlow({
 
   const handleReextract = useCallback(async () => {
     const mutationVehicleId = resolveMutationVehicleId();
-    if (!mutationVehicleId || !extractionId || !record) return;
+    if (!extractionId || !record) return;
     if (respectAllowedActions && !record.allowedActions?.includes('reextract')) return;
     const type = resolveEffectiveType(record);
     setErrorMessage(null);
     setFlow('retrying');
     try {
-      await api.vehicleIntelligence.setDocumentType(mutationVehicleId, extractionId, {
-        documentType: type,
-        reextract: true,
-      });
-      startPolling(extractionId, mutationVehicleId);
+      if (mutationVehicleId) {
+        await api.vehicleIntelligence.setDocumentType(mutationVehicleId, extractionId, {
+          documentType: type,
+          reextract: true,
+        });
+        startPolling(extractionId, mutationVehicleId);
+      } else if (canUseOrgScope && orgId) {
+        await api.documentExtraction.setDocumentTypeByOrg(orgId, extractionId, {
+          documentType: type,
+          reextract: true,
+        });
+        startPolling(extractionId, null);
+      } else {
+        return;
+      }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Re-Extraktion fehlgeschlagen.');
       setFlow(record ? mapServerToFlowStatus(record.status, record.processingStage) : 'failed');
     }
-  }, [extractionId, record, respectAllowedActions, resolveMutationVehicleId, startPolling]);
+  }, [canUseOrgScope, extractionId, orgId, record, respectAllowedActions, resolveMutationVehicleId, startPolling]);
+
+  const handleSetDocumentType = useCallback(
+    async (type: string, reextract = false) => {
+      if (!extractionId) return;
+      const mutationVehicleId = resolveMutationVehicleId();
+      setDocumentType(type);
+      setErrorMessage(null);
+      setFlow('retrying');
+      try {
+        if (mutationVehicleId) {
+          await api.vehicleIntelligence.setDocumentType(mutationVehicleId, extractionId, {
+            documentType: type,
+            reextract,
+          });
+          startPolling(extractionId, mutationVehicleId);
+        } else if (canUseOrgScope && orgId) {
+          await api.documentExtraction.setDocumentTypeByOrg(orgId, extractionId, {
+            documentType: type,
+            reextract,
+          });
+          startPolling(extractionId, null);
+        } else {
+          return;
+        }
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : 'Dokumenttyp konnte nicht gesetzt werden.');
+        setFlow(record ? mapServerToFlowStatus(record.status, record.processingStage) : 'failed');
+      }
+    },
+    [canUseOrgScope, extractionId, orgId, record, resolveMutationVehicleId, startPolling],
+  );
 
   const handleConfirm = useCallback(async () => {
+    if (!extractionId) return;
     const mutationVehicleId = resolveMutationVehicleId();
-    if (!mutationVehicleId || !extractionId) return;
     if (respectAllowedActions && record && !record.allowedActions?.includes('confirm')) return;
 
     if (!hasSavedFieldReview(record?.confirmedData)) {
@@ -580,12 +621,27 @@ export function useDocumentIntakeFlow({
         : parseReviewFieldsForConfirm(editedFields, { locale });
 
     try {
-      const updated = await api.vehicleIntelligence.confirmDocumentExtraction(mutationVehicleId, extractionId, {
+      const confirmPayload = {
         confirmedData,
         actionPlanFingerprint: actionPlanPreview?.fingerprint || undefined,
-      });
+      };
+      const updated =
+        canUseOrgScope && orgId
+          ? await api.documentExtraction.confirmByOrg(orgId, extractionId, confirmPayload)
+          : mutationVehicleId
+            ? await api.vehicleIntelligence.confirmDocumentExtraction(
+                mutationVehicleId,
+                extractionId,
+                confirmPayload,
+              )
+            : null;
+      if (!updated) {
+        setErrorMessage('Fahrzeugzuordnung erforderlich, bevor die Übernahme bestätigt werden kann.');
+        setFlow('ready');
+        return;
+      }
       applyRecord(updated as PublicDocumentExtraction);
-      startPolling(extractionId, mutationVehicleId);
+      startPolling(extractionId, mutationVehicleId || updated.vehicleId || null);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Bestätigung fehlgeschlagen.');
       setFlow('ready');
@@ -602,7 +658,8 @@ export function useDocumentIntakeFlow({
     startPolling,
     actionPlanPreview,
     applyRecord,
-    startPolling,
+    canUseOrgScope,
+    orgId,
   ]);
 
   const handleSchemaReviewUpdated = useCallback(
@@ -686,6 +743,7 @@ export function useDocumentIntakeFlow({
     handleAuthorizedReupload,
     handleRetry,
     handleReextract,
+    handleSetDocumentType,
     handleConfirm,
     handleReset,
     handleSchemaReviewUpdated,

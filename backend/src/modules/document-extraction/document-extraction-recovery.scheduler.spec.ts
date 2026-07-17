@@ -34,6 +34,7 @@ describe('DocumentExtractionRecoveryScheduler', () => {
       prisma as any,
       extractionService as any,
       docConfig as any,
+      { recordRecovery: jest.fn() } as any,
     );
     return { scheduler, prisma, extractionService };
   }
@@ -94,6 +95,40 @@ describe('DocumentExtractionRecoveryScheduler', () => {
 
     await scheduler.recoverStaleExtractions();
     expect(extractionService.markQueuedAfterEnqueue).toHaveBeenCalledWith('e2');
+  });
+
+  it('re-enqueues stale QUEUED AUTO rows without resolved effective type', async () => {
+    const row = {
+      id: 'e-auto',
+      vehicleId: null,
+      organizationId: 'org-1',
+      status: 'QUEUED',
+      objectKey: 'k-auto',
+      effectiveDocumentType: null,
+      documentType: 'AUTO',
+      requestedDocumentType: 'AUTO',
+      classificationMode: 'AUTO',
+      plausibility: null,
+      queuedAt: new Date('2020-01-01'),
+    };
+    const findMany = jest
+      .fn()
+      .mockResolvedValueOnce([row])
+      .mockResolvedValue([])
+      .mockResolvedValue([]);
+    const { scheduler, extractionService } = makeScheduler({
+      prisma: { findMany },
+    });
+
+    await scheduler.recoverStaleExtractions();
+    expect(extractionService.enqueueExtraction).toHaveBeenCalledWith(
+      'e-auto',
+      expect.objectContaining({
+        extractionId: 'e-auto',
+        objectKey: 'k-auto',
+        documentType: null,
+      }),
+    );
   });
 
   it('respects recovery attempt limits', async () => {

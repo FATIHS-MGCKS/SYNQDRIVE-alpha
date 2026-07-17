@@ -66,14 +66,14 @@ export class DocumentExtractionRecoveryScheduler {
     for (const row of rows) {
       if (readQueueRecoveryCount(row.plausibility) >= this.config.maxRecoveryAttempts) continue;
       if (await this.extractionService.hasActiveExtractionJob(row.id)) continue;
-      const applyType = resolveEffectiveDocumentType(row);
-      if (!applyType || !row.objectKey) continue;
+      if (!row.objectKey) continue;
+      const jobDocumentType = resolveEffectiveDocumentType(row);
 
       const enqueue = await this.extractionService.enqueueExtraction(row.id, {
         extractionId: row.id,
         vehicleId: row.vehicleId,
         organizationId: row.organizationId,
-        documentType: applyType,
+        documentType: jobDocumentType,
         objectKey: row.objectKey,
       });
       if (!enqueue.ok) continue;
@@ -106,8 +106,8 @@ export class DocumentExtractionRecoveryScheduler {
     for (const row of rows) {
       if (readQueueRecoveryCount(row.plausibility) >= this.config.maxRecoveryAttempts) continue;
       if (await this.extractionService.hasActiveExtractionJob(row.id)) continue;
-      const applyType = resolveEffectiveDocumentType(row);
-      if (!applyType || !row.objectKey) continue;
+      if (!row.objectKey) continue;
+      const jobDocumentType = resolveEffectiveDocumentType(row);
 
       await this.prisma.vehicleDocumentExtraction.update({
         where: { id: row.id },
@@ -122,7 +122,7 @@ export class DocumentExtractionRecoveryScheduler {
         extractionId: row.id,
         vehicleId: row.vehicleId,
         organizationId: row.organizationId,
-        documentType: applyType,
+        documentType: jobDocumentType,
         objectKey: row.objectKey,
       });
       if (!enqueue.ok) continue;

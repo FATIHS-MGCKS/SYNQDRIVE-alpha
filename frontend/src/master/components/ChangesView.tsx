@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-final-audit-2026-07-18',
+    version: '4.9.659',
+    title: 'V4.9.659 — Document Intake V2 Final Audit & P0/P1 Fixes',
+    summary: [
+      'docs/audits/document-intake-v2-final-audit.md — 25+ Bereiche, P0/P1/P2-Klassifikation, Readiness-Gates, Validierung.',
+      'Fix: Queue-Recovery fuer AUTO/AWAITING ohne effectiveDocumentType; Confirm nutzt frische Plausibilitaet fuer Action-Plan-Preview.',
+      'Fix: POST organizations/.../confirm (confirmForOrg); Drawer AWAITING_DOCUMENT_TYPE UI; Action-Recovery skip ohne vehicleId.',
+      'Fix: Processor recordRequiredFieldMetrics Syntax; objectKey-Narrowing fuer OCR-Stage.',
+    ],
+    reason: 'Prompt 84/84 — Abschlussaudit mit belegten P0/P1-Korrekturen vor Shadow-Rollout.',
+    previousBehavior:
+      'AUTO-Uploads in QUEUED/PROCESSING wurden von Recovery uebersprungen; Confirm-Fingerprint konnte veraltete Plausibilitaet nutzen; Org-Confirm und Drawer-Awaiting-Type fehlten.',
+    details:
+      'docs/audits/document-intake-v2-final-audit.md. Backend: recovery scheduler, confirmForOrg, action-recovery guard, processor build. Frontend: VehicleDocumentUploadDrawer awaiting_type, useDocumentIntakeFlow org confirm/setDocumentType, api.confirmByOrg.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
     id: 'document-intake-v2-runbooks-2026-07-18',
     version: '4.9.658',
     title: 'V4.9.658 — Document Intake V2 Deployment & Shadow Runbooks',

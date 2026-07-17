@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
@@ -16,6 +16,7 @@ import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
 import { DocumentApplyResultPanel } from './DocumentApplyResultPanel';
 import { DocumentFollowUpSuggestionsPanel } from './DocumentFollowUpSuggestionsPanel';
 import { DocumentIntakeUploadZone } from './DocumentIntakeUploadZone';
+import { DocumentClassificationResultPanel } from './DocumentClassificationResultPanel';
 import { canShowApplyDone } from '../../lib/document-apply-result';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
 
@@ -47,6 +48,7 @@ export function VehicleDocumentUploadDrawer({
 }: VehicleDocumentUploadDrawerProps) {
   const { t, locale } = useLanguage();
   const { orgId: rentalOrgId } = useRentalOrg();
+  const [pendingTypeSelection, setPendingTypeSelection] = useState('AUTO');
   const handleComplete = useCallback(() => {
     onComplete?.();
   }, [onComplete]);
@@ -66,6 +68,28 @@ export function VehicleDocumentUploadDrawer({
     () => buildOriginContextHint(vehicleLabel, 'Fahrzeugdetail'),
     [vehicleLabel],
   );
+
+  const docTypeOptions = useMemo(() => {
+    const auto = flow.metadata?.classificationOptions ?? [
+      { value: 'AUTO', labelKey: 'documentExtraction.classification.AUTO' },
+    ];
+    const types = flow.metadata?.documentTypes ?? [];
+    return [...auto, ...types];
+  }, [flow.metadata]);
+
+  const typeLabel = useCallback(
+    (labelKey: string, fallback?: string) => {
+      const translated = t(labelKey as Parameters<typeof t>[0]);
+      return translated === labelKey ? (fallback ?? labelKey) : translated;
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    if (flow.flow === 'awaiting_type' && flow.record?.detectedDocumentType) {
+      setPendingTypeSelection(flow.record.detectedDocumentType);
+    }
+  }, [flow.flow, flow.record?.detectedDocumentType]);
 
   useEffect(() => {
     if (!open) {
@@ -138,6 +162,8 @@ export function VehicleDocumentUploadDrawer({
     flow.flow === 'partially_done' ||
     (mode === 'view' && flow.flow === 'done');
 
+  const showAwaitingType = flow.flow === 'awaiting_type';
+
   return (
     <DetailDrawer
       open={open}
@@ -205,6 +231,24 @@ export function VehicleDocumentUploadDrawer({
           onReset={flow.handleReset}
           onAuthorizedReupload={(reason) => void flow.handleAuthorizedReupload(reason)}
         />
+
+        {showAwaitingType && (
+          <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
+            <h3 className="text-[13px] font-semibold text-foreground">{t('docUpload.awaitingTypeTitle')}</h3>
+            <p className="text-[11px] text-muted-foreground">{t('docUpload.awaitingTypeHint')}</p>
+            <DocumentClassificationResultPanel
+              record={flow.record}
+              locale={locale}
+              t={t}
+              typeLabel={typeLabel}
+              mode="awaiting_type"
+              docTypeOptions={docTypeOptions}
+              pendingTypeSelection={pendingTypeSelection}
+              onPendingTypeChange={setPendingTypeSelection}
+              onSetDocumentType={(type, reextract) => void flow.handleSetDocumentType(type, reextract)}
+            />
+          </div>
+        )}
 
         {showReview && (
           <div className="space-y-3">

@@ -32,6 +32,7 @@ import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links
 import { OrgUploadDocumentDto } from './dto/org-upload-document.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
 import { SaveReviewExtractionDto } from './dto/save-review-extraction.dto';
+import { ConfirmExtractionDto } from './dto/confirm-extraction.dto';
 import { UpdateActionPlanPreferencesDto } from './dto/update-action-plan-preferences.dto';
 import { SendDocumentFollowUpContactDto } from './dto/send-document-follow-up-contact.dto';
 import { DocumentEntityLinkService } from './document-entity-link.service';
@@ -182,6 +183,24 @@ export class DocumentExtractionOrgController {
       reextract: body.reextract,
       userId: userId ?? null,
     });
+    return this.service.toPublicExtraction(record);
+  }
+
+  @Post(':extractionId/confirm')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async confirm(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: ConfirmExtractionDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const record = await this.service.confirmForOrg(
+      orgId,
+      extractionId,
+      body.confirmedData,
+      userId ?? null,
+      body.actionPlanFingerprint ?? null,
+    );
     return this.service.toPublicExtraction(record);
   }
 
