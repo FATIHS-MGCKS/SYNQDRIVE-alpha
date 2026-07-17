@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-lifecycle-policy-v49595-2026-07-17',
+    version: '4.9.595',
+    title: 'V4.9.595 — Stations V2: zentrale StationLifecyclePolicy (Prompt 15/78)',
+    summary: [
+      'Pure Policy `evaluateStationLifecycle` in `backend/src/shared/stations/station-lifecycle.policy.ts`.',
+      'Zustände ACTIVE/INACTIVE/ARCHIVED mit regulierten Übergängen; Output: allowed, blockingReasons, warnings, requiredActions.',
+      'R2-Invarianten (ARCHIVED ⇒ primary/pickup/return aus); Primary-Archiv nur mit Nachfolger; Restore ohne blindes Re-Enable.',
+      'R1: generisches Status-PATCH verboten; Buchungsauswahl und Capability-Updates abgedeckt; 47 Unit-Tests.',
+    ],
+    reason:
+      'Stations-Lifecycle-Regeln lagen implizit im Service — zentrale pure Policy für konsistente Commands und spätere Service-Anbindung.',
+    previousBehavior:
+      'Archive/Restore-Logik nur in StationsService; Restore setzte pickup/return blind true; kein Nachfolger-Gate für Primary-Archiv.',
+    details:
+      'backend/src/shared/stations/station-lifecycle.policy.{ts,types.ts,spec.ts}.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T00:10:00.000Z',
+  },
+  {
     id: 'stations-v2-authz-tests-v49594-2026-07-17',
     version: '4.9.594',
     title: 'V4.9.594 — Stations V2: automatisiertes Authz-Testpaket (Prompt 14/78)',
