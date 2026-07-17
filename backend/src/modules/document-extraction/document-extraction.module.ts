@@ -16,6 +16,10 @@ import { DocumentActionExecutorRegistry } from './document-action-executor.regis
 import { ArchiveDocumentActionExecutor } from './executors/archive-document-action.executor';
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
 import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
+import {
+  CreateCreditNoteDocumentActionExecutor,
+  CreateInvoiceDocumentActionExecutor,
+} from './executors/create-invoice-document-action.executor';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentContentExtractorService } from './document-content-extractor.service';
 import { DocumentFileIdentificationService } from './document-file-identification.service';
@@ -57,6 +61,8 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     ArchiveDocumentActionExecutor,
     LinkEntityDocumentActionExecutor,
     CreateFineDocumentActionExecutor,
+    CreateInvoiceDocumentActionExecutor,
+    CreateCreditNoteDocumentActionExecutor,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,

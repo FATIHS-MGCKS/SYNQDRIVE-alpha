@@ -6,6 +6,10 @@ import { ArchiveDocumentActionExecutor } from './executors/archive-document-acti
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
 import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
 import {
+  CreateCreditNoteDocumentActionExecutor,
+  CreateInvoiceDocumentActionExecutor,
+} from './executors/create-invoice-document-action.executor';
+import {
   DOCUMENT_ACTION_EXECUTION_STATUSES,
   DOCUMENT_ACTION_PLAN_STATUSES,
 } from './document-action.types';
@@ -29,6 +33,8 @@ describe('DocumentActionOrchestratorService', () => {
     new ArchiveDocumentActionExecutor(),
     new LinkEntityDocumentActionExecutor(),
     new CreateFineDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
+    new CreateInvoiceDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
+    new CreateCreditNoteDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
   );
 
   const baseInput = {

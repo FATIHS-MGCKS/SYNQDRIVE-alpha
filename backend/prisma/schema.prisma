@@ -2717,6 +2717,7 @@ model VehicleDocumentExtraction {
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   fines                             Fine[]
+  orgInvoices                       OrgInvoice[]
 
   @@index([vehicleId])
   @@index([status])
@@ -5652,6 +5653,7 @@ model OrgInvoice {
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
+  documentExtraction   VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   tasks                  OrgTask[]
   payments               OrgInvoicePayment[]
   bookingPaymentRequests BookingPaymentRequest[]
@@ -5662,6 +5664,7 @@ model OrgInvoice {
   outboundEmails         OutboundEmail[]
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
+  @@unique([organizationId, documentExtractionId])
   @@index([organizationId])
   @@index([customerId])
   @@index([vendorId])
@@ -5673,6 +5676,8 @@ model OrgInvoice {
   @@index([organizationId, invoiceDate])
   @@index([organizationId, dueDate])
   @@index([organizationId, type, status])
+  @@index([documentExtractionId])
+  @@index([organizationId, vendorId, invoiceNumberDisplay])
   @@map("org_invoices")
 }
 

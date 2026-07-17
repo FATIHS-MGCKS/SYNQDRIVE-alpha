@@ -13,6 +13,7 @@ import {
   assessInvoiceApplyGate,
   assessInvoiceAmountTaxSemantics,
   buildInvoiceApplyLineItems,
+  buildInvoiceApplyPayload,
   collectInvoicePlausibilityChecks,
   isCreditNoteDocument,
   readCurrency,
@@ -159,6 +160,42 @@ describe('document-invoice-extraction.rules', () => {
       const items = buildInvoiceApplyLineItems(INVOICE_REVERSE_CHARGE);
       expect(items?.[0]?.taxRate).toBe(0);
       expect(items?.[0]?.unitPriceNetCents).toBe(20000);
+    });
+  });
+
+  describe('buildInvoiceApplyPayload', () => {
+    it('builds explicit 19% payload with line items', () => {
+      const payload = buildInvoiceApplyPayload(INVOICE_COMPLETE_19);
+      expect(payload?.vendorInvoiceNumber).toBe('INV-2026-001');
+      expect(payload?.draftOnly).toBe(false);
+      expect(payload?.lineItems?.[0]?.taxRate).toBe(19);
+    });
+
+    it('builds multi-rate payload from taxLines', () => {
+      const payload = buildInvoiceApplyPayload(INVOICE_MULTI_RATE);
+      expect(payload?.lineItems).toHaveLength(2);
+      expect(payload?.lineItems?.map((item) => item.taxRate)).toEqual([19, 7]);
+    });
+
+    it('builds tax-free payload with zero tax rate', () => {
+      const payload = buildInvoiceApplyPayload(INVOICE_TAX_FREE);
+      expect(payload?.lineItems?.[0]?.taxRate).toBe(0);
+    });
+
+    it('builds credit note payload with negative total', () => {
+      const payload = buildInvoiceApplyPayload(INVOICE_CREDIT_NOTE, {
+        documentSubtype: 'CREDIT_NOTE',
+      });
+      expect(payload?.isCreditNote).toBe(true);
+      expect(payload?.totalCents).toBeLessThan(0);
+    });
+
+    it('marks unclear invoices as draftOnly', () => {
+      const payload = buildInvoiceApplyPayload({
+        ...INVOICE_UNCLEAR_SEMANTICS,
+        currency: 'EUR',
+      });
+      expect(payload?.draftOnly).toBe(true);
     });
   });
 });

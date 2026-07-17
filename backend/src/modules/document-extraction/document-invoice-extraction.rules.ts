@@ -168,6 +168,10 @@ function readExplicitTaxSemantics(data: Record<string, unknown>): TaxSemanticsSt
   return null;
 }
 
+export function isInvoiceDocumentType(documentType: string | null | undefined): boolean {
+  return documentType === 'INVOICE';
+}
+
 export function readInvoiceNumber(data: Record<string, unknown>): string | null {
   return (
     toStr(data.invoiceNumber) ??
@@ -739,5 +743,81 @@ export function resolveInvoiceApplyTotals(fields: Record<string, unknown>): {
   return {
     totalCents: Math.round(gross),
     currency: readCurrency(fields),
+  };
+}
+
+export type InvoiceApplyPayload = {
+  vendorInvoiceNumber: string;
+  vendorName: string | null;
+  title: string;
+  description: string;
+  invoiceDate: string;
+  dueDate: string | null;
+  currency: string;
+  lineItems: InvoiceApplyLineItem[] | undefined;
+  totalCents: number;
+  isCreditNote: boolean;
+  draftOnly: boolean;
+  documentSubtype: string | null;
+};
+
+export function buildInvoiceApplyPayload(
+  fields: Record<string, unknown>,
+  options?: {
+    documentSubtype?: string | null;
+    draftOnly?: boolean;
+  },
+): InvoiceApplyPayload | null {
+  const vendorInvoiceNumber = readInvoiceNumber(fields);
+  if (!vendorInvoiceNumber) return null;
+
+  const currency = readCurrency(fields);
+  const invoiceDate = readInvoiceDate(fields);
+  const assessment = assessInvoiceAmountTaxSemantics(fields);
+  const gate = assessInvoiceApplyGate({
+    fields,
+    documentSubtype: options?.documentSubtype ?? null,
+  });
+  const draftOnly =
+    options?.draftOnly === true ||
+    assessment.amountSemantics === 'UNCLEAR' ||
+    assessment.taxSemantics === 'UNCLEAR';
+
+  if (!currency) {
+    return null;
+  }
+
+  if (!draftOnly && !gate.canApply) {
+    return null;
+  }
+
+  if (draftOnly) {
+    const hardBlockers = gate.blockers.filter(
+      (blocker) =>
+        blocker.code !== 'UNCLEAR_AMOUNT_OR_TAX_SEMANTICS' &&
+        blocker.code !== 'MISSING_AMOUNT_OR_TAX_SEMANTICS',
+    );
+    if (hardBlockers.length > 0) {
+      return null;
+    }
+  }
+
+  const { totalCents } = resolveInvoiceApplyTotals(fields);
+  const lineItems = buildInvoiceApplyLineItems(fields);
+  const signedTotalCents = gate.isCreditNote ? -Math.abs(totalCents) : totalCents;
+
+  return {
+    vendorInvoiceNumber,
+    vendorName: readSupplier(fields),
+    title: toStr(fields.title) ?? toStr(fields.invoiceTitle) ?? 'Hochgeladene Rechnung',
+    description: toStr(fields.description) ?? '',
+    invoiceDate: invoiceDate ?? new Date().toISOString().slice(0, 10),
+    dueDate: readDueDate(fields),
+    currency,
+    lineItems,
+    totalCents: signedTotalCents,
+    isCreditNote: gate.isCreditNote,
+    draftOnly,
+    documentSubtype: options?.documentSubtype ?? null,
   };
 }

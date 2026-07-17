@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
@@ -24,7 +24,6 @@ import {
 } from '@modules/vehicle-intelligence/battery-health/battery-evidence.service';
 import { BatteryHealthService } from '@modules/vehicle-intelligence/battery-health/battery-health.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
-import { InvoicesService } from '@modules/invoices/invoices.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
 import {
   assessInspectionApplyGate,
@@ -36,13 +35,6 @@ import {
   readMileageKm,
   type InspectionDocumentType,
 } from './document-inspection-extraction.rules';
-import {
-  assessInvoiceApplyGate,
-  buildInvoiceApplyLineItems,
-  readInvoiceDate,
-  readSupplier,
-  resolveInvoiceApplyTotals,
-} from './document-invoice-extraction.rules';
 import {
   assessDamageApplyGate,
   buildDamageCreatePayload,
@@ -106,8 +98,6 @@ export class DocumentExtractionApplyService {
     private readonly batteryEvidenceService: BatteryEvidenceService,
     private readonly batteryHealthService: BatteryHealthService,
     private readonly damagesService: DamagesService,
-    @Inject(forwardRef(() => InvoicesService))
-    private readonly invoicesService: InvoicesService,
   ) {}
 
   async apply(input: ApplyInput): Promise<ApplyResult> {
@@ -139,7 +129,9 @@ export class DocumentExtractionApplyService {
     }
 
     if (docType === 'INVOICE') {
-      return this.applyInvoice(input, d);
+      throw new BadRequestException(
+        'Invoice apply must run through DocumentActionOrchestratorService',
+      );
     }
 
     if (docType === 'FINE') {
@@ -601,65 +593,6 @@ export class DocumentExtractionApplyService {
     });
 
     return { detail: { damageId: damage.id } };
-  }
-
-  private async applyInvoice(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
-    const gate = assessInvoiceApplyGate({
-      fields: d,
-      documentSubtype:
-        this.str(d.documentSubtype) ??
-        this.str(d.documentKind) ??
-        null,
-    });
-    if (!gate.canApply) {
-      throw new BadRequestException({
-        message: 'Invoice apply gate blocked — missing or invalid confirmed fields',
-        blockers: gate.blockers,
-        isCreditNote: gate.isCreditNote,
-      });
-    }
-
-    const { vehicleId, sourceFileUrl } = input;
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true },
-    });
-    if (vehicle?.organizationId) {
-      const orgId = vehicle.organizationId;
-      const { totalCents: totalCentsParsed, currency } = resolveInvoiceApplyTotals(d);
-      const vendorNameRaw = readSupplier(d) ?? '';
-      let vendorId: string | undefined;
-      if (vendorNameRaw) {
-        const match = await this.prisma.vendor.findFirst({
-          where: {
-            organizationId: orgId,
-            name: { equals: vendorNameRaw, mode: 'insensitive' },
-          },
-          select: { id: true },
-        });
-        vendorId = match?.id;
-      }
-      const invoiceDate = readInvoiceDate(d) ?? new Date().toISOString();
-      const lineItems = buildInvoiceApplyLineItems(d);
-      await this.invoicesService.create(orgId, {
-        type: 'INCOMING_UPLOADED',
-        vehicleId,
-        title: this.str(d.title) ?? this.str(d.invoiceTitle) ?? 'Hochgeladene Rechnung',
-        description: this.str(d.description) ?? '',
-        vendorId,
-        vendorName: vendorNameRaw,
-        totalCents: Math.abs(totalCentsParsed),
-        currency: currency ?? undefined,
-        invoiceDate,
-        dueDate: this.str(d.dueDate),
-        imageUrl: sourceFileUrl || undefined,
-        extractedData: d,
-        documentExtractionId: input.extractionId,
-        fromExtraction: true,
-        lineItems,
-      });
-    }
-    return {};
   }
 
   // ── locale-aware numeric parsing (matches prior controller helpers) ───────
