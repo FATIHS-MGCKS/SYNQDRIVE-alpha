@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p63-rental-road-distribution-aggregation-2026-07-17',
+    version: '4.9.564',
+    title: 'Driving Intelligence V2 P63 — Rental Road Distribution Aggregation',
+    summary: [
+      'City/Highway/Country-Anteile als distanzgewichtete Summe statt einfachem Trip-Mittel.',
+      'Trips ohne belastbare Route (fehlende Shares oder <2 km) fließen nicht gleichwertig ein.',
+      'Neues `routeCoverage` im Payload: Anteil der Mietdistanz mit Route-Daten.',
+      'Anteile auf plausiblen Gesamtwert (100 %) normalisiert.',
+      'Tests: 2-km-Trip darf 500-km-Trip bei Aggregation nicht dominieren.',
+    ],
+    reason: 'Prompt 63/76 — korrekte gewichtete Aggregation von Straßentyp-Anteilen in der Rental Driving Analysis.',
+    previousBehavior:
+      'P62 aggregierte city/highway/country als ungewichtetes Trip-Mittel — kurze Fahrten wogen gleich stark wie lange Mietfahrten.',
+    details:
+      '`rental-driving-analysis.road-distribution.ts`, Integration in `computeAnalysisContext` + Payload `usagePattern.roadDistribution.routeCoverage`. Keine Änderung am Route Enrichment.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p62-rental-driving-analysis-normalized-metrics-2026-07-17',
     version: '4.9.563',
     title: 'Driving Intelligence V2 P62 — Rental Normalized Metrics',

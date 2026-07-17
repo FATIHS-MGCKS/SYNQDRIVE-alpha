@@ -19,7 +19,10 @@ import {
 } from '../vehicle-intelligence/trips/driver-score.service';
 import { TripAttributionService } from '../vehicle-intelligence/trips/trip-attribution.service';
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
-import type { RentalDrivingNormalizedMetrics } from './rental-driving-analysis.metrics';
+import {
+  aggregateRentalRoadDistribution,
+  type RentalRoadDistributionResult,
+} from './rental-driving-analysis.road-distribution';
 import { resolveDrivingAttributionRoles } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles';
 import { resolveLegacyDriverIdFilter } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.compat';
 import {
@@ -52,6 +55,7 @@ import {
   buildRentalTripMetricInput,
   computeRentalDrivingMetrics,
   resolveOverallLevelFromMetrics,
+  type RentalDrivingNormalizedMetrics,
 } from './rental-driving-analysis.metrics';
 import type {
   RentalDrivingAnalysisPayload,
@@ -662,17 +666,21 @@ export class RentalDrivingAnalysisService {
     });
     const normalizedMetrics = computeRentalDrivingMetrics(rentalMetricTrips);
 
-    let cityPct = 0;
-    let highwayPct = 0;
-    let countryPct = 0;
-    if (tripsWithMetrics.length > 0) {
-      const withCity = tripsWithMetrics.filter((t) => t.citySharePercent != null);
-      const withHighway = tripsWithMetrics.filter((t) => t.highwaySharePercent != null);
-      const withCountry = tripsWithMetrics.filter((t) => t.countrySharePercent != null);
-      if (withCity.length) cityPct = Math.round(withCity.reduce((s, t) => s + (t.citySharePercent ?? 0), 0) / withCity.length);
-      if (withHighway.length) highwayPct = Math.round(withHighway.reduce((s, t) => s + (t.highwaySharePercent ?? 0), 0) / withHighway.length);
-      if (withCountry.length) countryPct = Math.round(withCountry.reduce((s, t) => s + (t.countrySharePercent ?? 0), 0) / withCountry.length);
-    }
+    const roadDistribution = aggregateRentalRoadDistribution(
+      tripsWithMetrics.map((trip) => {
+        const impact = impactMap.get(trip.id);
+        return {
+          tripId: trip.id,
+          distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
+          citySharePercent: trip.citySharePercent,
+          highwaySharePercent: trip.highwaySharePercent,
+          countrySharePercent: trip.countrySharePercent,
+        };
+      }),
+    );
+    const cityPct = roadDistribution.cityPercent ?? 0;
+    const highwayPct = roadDistribution.highwayPercent ?? 0;
+    const countryPct = roadDistribution.countryRoadPercent ?? 0;
 
     const avgTripKm =
       tripsWithMetrics.length > 0
@@ -736,6 +744,7 @@ export class RentalDrivingAnalysisService {
       cityPct,
       highwayPct,
       countryPct,
+      roadDistribution,
       tripType,
       hintTrips,
       tripFingerprints,
@@ -763,6 +772,7 @@ export class RentalDrivingAnalysisService {
         cityPct,
         highwayPct,
         countryPct,
+        roadDistribution,
         tripType,
         analysisSource,
         scoredTripCount: aggregate.scoredTripCount,
@@ -821,6 +831,7 @@ export class RentalDrivingAnalysisService {
     cityPct: number;
     highwayPct: number;
     countryPct: number;
+    roadDistribution: RentalRoadDistributionResult;
     tripType: 'mostly_short_distance' | 'mostly_long_distance' | 'mixed';
     analysisSource: AnalysisSource;
     scoredTripCount: number;
@@ -887,6 +898,11 @@ export class RentalDrivingAnalysisService {
     }
     if ((metrics.evidenceShares.proxyShare.value ?? 0) >= 50) {
       watchpoints.push('Majority of rental distance relies on proxy/reconstructed evidence.');
+    }
+    if ((ctx.roadDistribution.routeCoverage.coveragePercent ?? 100) < 80) {
+      watchpoints.push(
+        `Road distribution covers ${ctx.roadDistribution.routeCoverage.coveragePercent ?? 0}% of rental distance with route data.`,
+      );
     }
     if (ctx.errorCodeOccurred) watchpoints.push('At least one error code was recorded during the rental period.');
 
@@ -971,6 +987,7 @@ export class RentalDrivingAnalysisService {
           cityPercent: ctx.cityPct,
           highwayPercent: ctx.highwayPct,
           countryRoadPercent: ctx.countryPct,
+          routeCoverage: ctx.roadDistribution.routeCoverage,
         },
         temperatureContext: { avgTemperatureC: null, climateNote: '' },
       },
