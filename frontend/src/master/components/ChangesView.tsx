@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-timezone-utils-v49608-2026-07-18',
+    version: '4.9.608',
+    title: 'V4.9.608 — Stations V2: Central Station Timezone Utilities (Prompt 28/78)',
+    summary: [
+      'Zentrale Station-Timezone-Utilities: `stationLocalDate`, `stationDayBoundsUtc`, `isSameStationDay`, `stationNow`, `formatStationTime`, `resolveOpeningWindow`, `overdueRelativeToStation`.',
+      'UTC intern, Stations-IANA-TZ für Tagesgrenzen; keine Server-/Browser-Local-Time; DST-sicher via `tariff-instant` + `Intl`.',
+      'Ungültige Zeitzone → `StationTimezoneError`; Business-Consumer noch nicht migriert.',
+      'Tests für Europe/Berlin, UTC, America/New_York inkl. DST-Wechsel.',
+    ],
+    reason:
+      'Zeitbezogene Stationslogik war über Tarif-/Task-Utils verteilt — ohne einheitliche Stations-TZ-Schicht und klare Invalid-Timezone-Behandlung.',
+    previousBehavior:
+      'Keine zentrale Station-TZ-API; Tagesgrenzen/KPIs teils Server-local oder ad-hoc `zonedDateOnly`-Nutzung.',
+    details:
+      'station-timezone.{contract,util}.ts, reuse tariff-instant.util, *spec.ts; keine Consumer-Migration in diesem Prompt.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T10:00:00.000Z',
+  },
+  {
     id: 'stations-v2-operational-capability-resolver-v49607-2026-07-18',
     version: '4.9.607',
     title: 'V4.9.607 — Stations V2: StationOperationalCapabilityResolver (Prompt 27/78)',
