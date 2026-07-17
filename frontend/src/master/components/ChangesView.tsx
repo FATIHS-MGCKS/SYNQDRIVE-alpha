@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-extraction-health-runtime-2026-07-17',
+    version: '4.9.584',
+    title: 'V4.9.584 — Document Extraction Health: Runtime & Readiness',
+    summary: [
+      '`GET /document-extractions/health` liefert Process Role, Worker-Consumer-Status, Queue-Metriken, Recovery-Scheduler, Storage, Mistral (ohne Secret), Uptime.',
+      'Letzte erfolgreiche/fehlgeschlagene Verarbeitung (nur ID + Timestamp + Status/ErrorCode, keine PII).',
+      '`readiness` vs `status`: API kann READY bleiben, Document Extraction DEGRADED; Worker ohne Consumer → `not_ready`.',
+      'Prometheus-Gauges (`active_jobs`, `queue_age`) werden wiederverwendet; eine `getJobCounts`/`getWorkersCount`-Abfrage.',
+    ],
+    reason: 'Prompt 8/84: belastbare Runtime-Informationen für Ops/Monitoring ohne teure Mistral-Probe oder aggressive Redis-Last.',
+    previousBehavior: 'Health lieferte nur queueEnabled/workersEnabled und grobe Queue-Counts ohne Role/Consumer/Last-Event.',
+    details:
+      'document-extraction-health.service.ts, document-extraction-health.types.ts, prometheus-gauge-reader.util.ts, health.service.ts (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T15:00:00.000Z',
+  },
+  {
     id: 'document-extraction-worker-pm2-split-2026-07-17',
     version: '4.9.583',
     title: 'V4.9.583 — Document Extraction Worker PM2 Split (opt-in)',
