@@ -1795,6 +1795,17 @@ export const de: Record<TranslationKey, string> = {
   'stations.assign.errorLoad': 'Fahrzeuge konnten nicht geladen werden',
   'stations.assign.errorSave': 'Zuweisung fehlgeschlagen',
   'stations.assign.retry': 'Erneut versuchen',
+  'stations.permissions.noAccessTitle': 'Kein Zugriff auf Stationen',
+  'stations.permissions.noAccessDescription': 'Sie haben keine Berechtigung, Stationen in dieser Organisation einzusehen. Wenden Sie sich an einen Administrator, wenn Sie Zugriff benötigen.',
+  'stations.permissions.readOnlyBanner': 'Nur-Lesen-Zugriff — Sie können Stationen ansehen, aber keine Änderungen vornehmen.',
+  'stations.permissions.readOnlyHint': 'Nur Lesen',
+  'stations.permissions.actionDenied': 'Sie haben keine Berechtigung für diese Aktion.',
+  'stations.action.restore': 'Station wiederherstellen',
+  'stations.restored': 'Station wiederhergestellt',
+  'stations.detail.tab.activity': 'Aktivität',
+  'stations.detail.activityEmptyTitle': 'Noch keine Aktivität',
+  'stations.detail.activityEmptyDescription': 'Änderungen an dieser Station erscheinen hier.',
+  'stations.detail.archivedBanner': 'Diese Station ist archiviert. Die meisten Aktionen sind erst nach der Wiederherstellung verfügbar.',
 
   // ─── Rechnungszahlungen (Detail) ───
   'invoicePayment.section.title': 'Zahlungen',
