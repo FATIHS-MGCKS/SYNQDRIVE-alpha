@@ -35,6 +35,40 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-enums-2026-07-17',
+    version: '4.9.591',
+    title: 'V4.9.591 — Document Intake V2 Prisma-Enums (additiv)',
+    summary: [
+      '13 additive PostgreSQL-Enums: DocumentCategory, DocumentSubtype, DocumentEntityType, DocumentCandidateStatus, DocumentLinkStatus, DocumentActionType/Status/Requirement, DocumentFollowUpType/Status, DocumentProcessingMaturity, DocumentDuplicateStatus, DocumentApplyMode.',
+      'Migration 20260717193000_document_intake_v2_enums — nur CREATE TYPE, keine Spalten/Tabellen.',
+      'Bestehende DocumentExtraction* Enums unverändert; keine Businesslogik.',
+    ],
+    reason: 'Prompt 15/84: Enum-Fundament vor Tabellen-Migrationen (P1–P9).',
+    previousBehavior: 'Nur Legacy DocumentExtractionStatus/Type/Stage Enums.',
+    details: 'backend/prisma/schema.prisma, migrations/20260717193000_document_intake_v2_enums/',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T19:30:00.000Z',
+  },
+  {
+    id: 'document-intake-v2-lifecycle-2026-07-17',
+    version: '4.9.589',
+    title: 'V4.9.589 — Document Intake V2 Lifecycle State Machine (Domain)',
+    summary: [
+      'Kanonisches 14-Status-Modell: PENDING … CANCELLED inkl. READY_FOR_ACTION_PREVIEW, READY_TO_APPLY, APPLYING, PARTIALLY_APPLIED, APPLY_FAILED.',
+      'Zentrale Transition-Tabelle + assert/canTransition; ungültige Sprünge werden abgelehnt.',
+      'Legacy-Read: CONFIRMED → APPLYING; FAILED+errorPhase APPLY → APPLY_FAILED. Pipeline- vs. Apply-Fehler getrennt.',
+      'PARTIALLY_APPLIED ist kein APPLIED. Frontend-Mapping unverändert — nur Domain + Unit-Tests in diesem Prompt.',
+    ],
+    reason: 'Prompt 13/84: Fundament für Document Intake V2 — Lifecycle vor Schema-/Service-Verdrahtung.',
+    previousBehavior: 'Statusübergänge verteilt in Service/Processor ohne zentrale FSM; CONFIRMED als persistierter Zwischenstatus.',
+    details:
+      'document-intake-lifecycle.types.ts, document-intake-lifecycle.transition.ts (+ 57 Spec-Tests). Keine Prisma-Migration.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T18:30:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',
