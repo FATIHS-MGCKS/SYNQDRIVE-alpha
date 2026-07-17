@@ -29,6 +29,11 @@ import {
   UpdateVehicleComplianceDocumentActionExecutor,
 } from './executors/update-vehicle-from-extraction-document-action.executor';
 import {
+  ApplyBatteryMeasurementDocumentActionExecutor,
+  ApplyBrakeMeasurementDocumentActionExecutor,
+  ApplyTireMeasurementDocumentActionExecutor,
+} from './executors/apply-technical-document-action.executor';
+import {
   CreateDamageDraftDocumentActionExecutor,
   CreateDamageRecordDocumentActionExecutor,
   LinkExistingDamageDocumentActionExecutor,
@@ -83,6 +88,9 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     CreateDamageDraftDocumentActionExecutor,
     CreateDamageRecordDocumentActionExecutor,
     LinkExistingDamageDocumentActionExecutor,
+    ApplyTireMeasurementDocumentActionExecutor,
+    ApplyBrakeMeasurementDocumentActionExecutor,
+    ApplyBatteryMeasurementDocumentActionExecutor,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,

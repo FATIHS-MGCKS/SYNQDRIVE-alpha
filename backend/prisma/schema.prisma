@@ -2313,6 +2313,7 @@ model VehicleTireTreadMeasurement {
   id                    String              @id @default(uuid())
   vehicleId             String              @map("vehicle_id")
   tireSetupId           String              @map("tire_setup_id")
+  documentExtractionId  String?             @map("document_extraction_id")
   frontLeftMm           Float?              @map("front_left_mm")
   frontRightMm          Float?              @map("front_right_mm")
   rearLeftMm            Float?              @map("rear_left_mm")
@@ -2325,13 +2326,16 @@ model VehicleTireTreadMeasurement {
   createdAt             DateTime            @default(now()) @map("created_at")
   evidenceSource        TireEvidenceSource? @map("evidence_source")
 
-  tireSetup               VehicleTireSetup    @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
-  wearDataPointsAsActual  TireWearDataPoint[] @relation("WearDataPointActualMeasurement")
-  setupsAsInitialEvidence VehicleTireSetup[]  @relation("SetupInitialTreadEvidence")
+  tireSetup               VehicleTireSetup             @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
+  documentExtraction      VehicleDocumentExtraction?   @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  wearDataPointsAsActual  TireWearDataPoint[]          @relation("WearDataPointActualMeasurement")
+  setupsAsInitialEvidence VehicleTireSetup[]           @relation("SetupInitialTreadEvidence")
 
+  @@unique([vehicleId, documentExtractionId])
   @@index([vehicleId])
   @@index([tireSetupId])
   @@index([evidenceSource])
+  @@index([documentExtractionId])
   @@map("vehicle_tire_tread_measurements")
 }
 
@@ -2726,6 +2730,7 @@ model VehicleDocumentExtraction {
   orgInvoices                       OrgInvoice[]
   serviceEvents                     VehicleServiceEvent[]
   damages                           VehicleDamage[]
+  tireTreadMeasurements             VehicleTireTreadMeasurement[]
 
   @@index([vehicleId])
   @@index([status])
@@ -6808,6 +6813,7 @@ model BrakeEvidence {
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
 
+  @@unique([documentExtractionId, axle])
   @@index([vehicleId, axle, measuredAt])
   @@index([vehicleId, source, measuredAt])
   @@index([documentExtractionId])

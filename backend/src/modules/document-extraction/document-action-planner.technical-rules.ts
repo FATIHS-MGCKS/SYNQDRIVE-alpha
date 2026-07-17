@@ -71,6 +71,8 @@ function isTechnicalDocumentType(
   );
 }
 
+export { isTechnicalDocumentType };
+
 function assessGate(documentType: TechnicalDocumentType, fields: Record<string, unknown>) {
   if (documentType === TECHNICAL_DOCUMENT_TYPES.TIRE) {
     return assessTireApplyGate({ fields });

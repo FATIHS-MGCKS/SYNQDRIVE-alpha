@@ -61,11 +61,17 @@ import {
   isDamageDocumentType,
   readDamageAreas,
 } from './document-damage-extraction.rules';
+import { isTechnicalDocumentType } from './document-action-planner.technical-rules';
 import {
   CreateDamageDraftDocumentActionExecutor,
   CreateDamageRecordDocumentActionExecutor,
   LinkExistingDamageDocumentActionExecutor,
 } from './executors/create-damage-document-action.executor';
+import {
+  ApplyBatteryMeasurementDocumentActionExecutor,
+  ApplyBrakeMeasurementDocumentActionExecutor,
+  ApplyTireMeasurementDocumentActionExecutor,
+} from './executors/apply-technical-document-action.executor';
 
 export type ExecuteDocumentActionPlanInput = {
   extractionId: string;
@@ -99,6 +105,9 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     private readonly createDamageDraftExecutor: CreateDamageDraftDocumentActionExecutor,
     private readonly createDamageRecordExecutor: CreateDamageRecordDocumentActionExecutor,
     private readonly linkExistingDamageExecutor: LinkExistingDamageDocumentActionExecutor,
+    private readonly applyTireMeasurementExecutor: ApplyTireMeasurementDocumentActionExecutor,
+    private readonly applyBrakeMeasurementExecutor: ApplyBrakeMeasurementDocumentActionExecutor,
+    private readonly applyBatteryMeasurementExecutor: ApplyBatteryMeasurementDocumentActionExecutor,
   ) {}
 
   onModuleInit(): void {
@@ -114,6 +123,9 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     this.registry.register(this.createDamageDraftExecutor);
     this.registry.register(this.createDamageRecordExecutor);
     this.registry.register(this.linkExistingDamageExecutor);
+    this.registry.register(this.applyTireMeasurementExecutor);
+    this.registry.register(this.applyBrakeMeasurementExecutor);
+    this.registry.register(this.applyBatteryMeasurementExecutor);
   }
 
   supportsExecutorPath(documentType: string): boolean {
@@ -123,7 +135,8 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       isInvoiceDocumentType(documentType) ||
       isServiceDocumentType(documentType) ||
       isInspectionDocumentType(documentType) ||
-      isDamageDocumentType(documentType)
+      isDamageDocumentType(documentType) ||
+      isTechnicalDocumentType(documentType)
     );
   }
 
@@ -451,9 +464,28 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       (damageDraftAction?.resultEntityId as string | undefined) ??
       (damageDraftAction?.output?.damageId as string | undefined) ??
       null;
+    const tireAction = execution.actions.find(
+      (row) => row.semanticAction === 'APPLY_TIRE_MEASUREMENT' && row.status === 'SUCCEEDED',
+    );
+    const brakeAction = execution.actions.find(
+      (row) => row.semanticAction === 'APPLY_BRAKE_MEASUREMENT' && row.status === 'SUCCEEDED',
+    );
+    const batteryAction = execution.actions.find(
+      (row) => row.semanticAction === 'APPLY_BATTERY_MEASUREMENT' && row.status === 'SUCCEEDED',
+    );
+    const tireMeasurementId =
+      (tireAction?.resultEntityId as string | undefined) ??
+      (tireAction?.output?.tireMeasurementId as string | undefined) ??
+      null;
+    const brakeServiceEventId =
+      (brakeAction?.resultEntityId as string | undefined) ??
+      (brakeAction?.output?.serviceEventId as string | undefined) ??
+      null;
+    const batteryServiceEventId =
+      (batteryAction?.output?.serviceEventId as string | undefined) ?? null;
 
     return {
-      serviceEventId,
+      serviceEventId: serviceEventId ?? brakeServiceEventId ?? batteryServiceEventId ?? null,
       detail: {
         actionPlanId: plan.planId,
         planVersion: plan.planVersion,
@@ -476,6 +508,12 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
           linkDamageAction?.output?.status ??
           null,
         damageDraft: damageDraftAction?.output?.draft ?? null,
+        tireMeasurementId,
+        tireMeasurementReused: tireAction?.output?.reused ?? null,
+        brakeServiceEventId,
+        brakeEvidenceIds: brakeAction?.output?.brakeEvidenceIds ?? null,
+        batteryEvidenceIds: batteryAction?.output?.batteryEvidenceIds ?? null,
+        batterySnapshotId: batteryAction?.output?.snapshotId ?? null,
         vehicleComplianceApplied:
           execution.actions.find(
             (row) =>
