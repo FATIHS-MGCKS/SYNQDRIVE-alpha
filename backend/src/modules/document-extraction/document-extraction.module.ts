@@ -53,6 +53,12 @@ import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
 import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
 import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
+import { DocumentMalwareScanService } from './document-malware-scan.service';
+import { DOCUMENT_MALWARE_SCANNER } from './document-malware-scanner.interface';
+import { MockDocumentMalwareScannerService } from './scanners/mock-document-malware-scanner.service';
+import { UnavailableDocumentMalwareScannerService } from './scanners/unavailable-document-malware-scanner.service';
+import documentExtractionConfig from '@config/document-extraction.config';
+import { ConfigType } from '@nestjs/config';
 
 /**
  * AI Document Upload feature module.
@@ -100,6 +106,26 @@ import { DocumentUploadRateLimitService } from './document-upload-rate-limit.ser
     DocumentFileIdentificationService,
     DocumentUploadDuplicateService,
     DocumentUploadRateLimitService,
+    DocumentMalwareScanService,
+    MockDocumentMalwareScannerService,
+    UnavailableDocumentMalwareScannerService,
+    {
+      provide: DOCUMENT_MALWARE_SCANNER,
+      useFactory: (
+        config: ConfigType<typeof documentExtractionConfig>,
+        mockScanner: MockDocumentMalwareScannerService,
+        unavailableScanner: UnavailableDocumentMalwareScannerService,
+      ) => {
+        if (!config.malwareScanEnabled) return unavailableScanner;
+        if (config.malwareScannerProvider === 'mock') return mockScanner;
+        return unavailableScanner;
+      },
+      inject: [
+        documentExtractionConfig.KEY,
+        MockDocumentMalwareScannerService,
+        UnavailableDocumentMalwareScannerService,
+      ],
+    },
     DocumentTextExtractorService,
     DocumentContentExtractorService,
     DocumentExtractionProcessor,

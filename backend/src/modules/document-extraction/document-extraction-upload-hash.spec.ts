@@ -4,6 +4,7 @@ import { computeDocumentContentSha256 } from './document-content-hash.util';
 import { FIXTURE_SCANNED_PDF, FIXTURE_TXT } from './__fixtures__/document-fixtures';
 import { DocumentFileIdentificationService } from './document-file-identification.service';
 import { readDocumentExtractionFileFingerprint } from './document-extraction-fingerprint.types';
+import { makeMalwareScanMock } from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -97,6 +98,7 @@ function makeUploadService(overrides: {
     fileIdentification as any,
     uploadDuplicate as any,
     uploadRateLimit as any,
+    makeMalwareScanMock(storage) as any,
     { logEvent: jest.fn(), recordApply: jest.fn(), observeStage: jest.fn((_a, _b, fn) => fn()) } as any,
   );
 
