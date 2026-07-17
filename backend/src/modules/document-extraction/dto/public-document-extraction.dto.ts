@@ -6,6 +6,7 @@ import {
   DocumentExtractionType,
 } from '@prisma/client';
 import { DocumentExtractionAction } from '../document-extraction-actions.util';
+import type { PublicDocumentApplySafetyDto } from '../document-apply-safety.types';
 
 export interface PublicVehicleDisplayDto {
   id: string;
@@ -92,6 +93,12 @@ export interface PublicDocumentExtractionDto {
   serviceEventId: string | null;
   hasStoredFile: boolean;
   allowedActions: DocumentExtractionAction[];
+  /** Central apply safety gate — populated for review/confirm states. */
+  applySafety: PublicDocumentApplySafetyDto | null;
+  /** Machine-readable unresolved plausibility BLOCKER codes (fresh server checks). */
+  plausibilityBlockers: string[];
+  /** True when server-side plausibility BLOCKER prevents apply. */
+  applyBlockedByPlausibility: boolean;
   audit: PublicDocumentExtractionAuditDto;
 }
 

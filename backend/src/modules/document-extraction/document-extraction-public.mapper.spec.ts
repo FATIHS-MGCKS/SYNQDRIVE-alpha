@@ -39,6 +39,9 @@ describe('document-extraction-public.mapper', () => {
       extractionProvider: 'mistral',
       hasStoredFile: true,
       allowedActions: expect.any(Array),
+      applySafety: null,
+      plausibilityBlockers: [],
+      applyBlockedByPlausibility: false,
       audit: expect.objectContaining({
         createdBy: null,
         typeChanges: expect.any(Array),

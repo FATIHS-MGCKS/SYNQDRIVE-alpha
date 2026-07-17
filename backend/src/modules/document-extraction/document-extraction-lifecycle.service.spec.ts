@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Readable } from 'stream';
 import { DocumentExtractionService } from './document-extraction.service';
+import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -66,6 +67,7 @@ describe('DocumentExtractionService lifecycle reads', () => {
       { apply: jest.fn() } as any,
       plausibility as any,
       observability as any,
+      new DocumentApplySafetyPolicy(),
     );
     return { svc, prisma, storage };
   }

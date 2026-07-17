@@ -8,6 +8,7 @@ import documentExtractionConfig from '@config/document-extraction.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { shouldRegisterDocumentExtractionConsumers } from '@shared/runtime/process-role.util';
 import { DocumentExtractionService } from '@modules/document-extraction/document-extraction.service';
 import { resolveEffectiveDocumentType } from '@modules/document-extraction/document-extraction-lifecycle.util';
 import {
@@ -34,6 +35,7 @@ export class DocumentExtractionRecoveryScheduler {
 
   @Interval(120_000)
   async recoverStaleExtractions(): Promise<void> {
+    if (!shouldRegisterDocumentExtractionConsumers()) return;
     if (!this.config.queueEnabled) return;
     if (!canEnqueueQueue(this.logger, 'document-extraction-recovery')) return;
     if (this.recoveryInProgress) return;

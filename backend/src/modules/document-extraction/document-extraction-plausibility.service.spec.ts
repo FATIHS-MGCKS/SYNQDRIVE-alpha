@@ -31,7 +31,6 @@ describe('DocumentExtractionPlausibilityService', () => {
   });
 
   it('warns when odometer is far below last known mileage', () => {
-    // Needs to be >= 50_000 km below last known to trip the check.
     const result = svc.runChecks(
       'SERVICE',
       { odometerKm: 1_000 },
@@ -57,6 +56,16 @@ describe('DocumentExtractionPlausibilityService', () => {
     expect(codes(result)).toContain('VIN_MISMATCH');
   });
 
+  it('blocks FINE without offense date', () => {
+    const result = svc.runChecks(
+      'FINE',
+      { licensePlate: 'B-AB-1234', totalCents: 1750 },
+      baseCtx,
+    );
+    expect(result.overallStatus).toBe('BLOCKER');
+    expect(codes(result)).toContain('FINE_OFFENSE_DATE_REQUIRED');
+  });
+
   it('blocks FINE when license plate does not match the selected vehicle', () => {
     const result = svc.runChecks(
       'FINE',
@@ -65,6 +74,32 @@ describe('DocumentExtractionPlausibilityService', () => {
     );
     expect(result.overallStatus).toBe('BLOCKER');
     expect(codes(result)).toContain('PLATE_MISMATCH');
+  });
+
+  it('allows WARNING-level plate mismatch for non-FINE documents', () => {
+    const result = svc.runChecks(
+      'SERVICE',
+      { licensePlate: 'KS-FH-660E', eventDate: '2026-01-10' },
+      { ...baseCtx, licensePlate: 'B-AB-1234' },
+    );
+    expect(result.overallStatus).toBe('WARNING');
+    expect(codes(result)).toContain('PLATE_MISMATCH');
+  });
+
+  it('blocks on negative fine amount', () => {
+    const result = svc.runChecks(
+      'FINE',
+      { eventDate: '2026-01-15', totalCents: -100 },
+      baseCtx,
+    );
+    expect(result.overallStatus).toBe('BLOCKER');
+    expect(codes(result)).toContain('NEGATIVE_AMOUNT');
+  });
+
+  it('blocks TÜV without inspection date', () => {
+    const result = svc.runChecks('TUV_REPORT', { validUntil: '2028-01-01' }, baseCtx);
+    expect(result.overallStatus).toBe('BLOCKER');
+    expect(codes(result)).toContain('TUV_INSPECTION_DATE_REQUIRED');
   });
 
   it('warns when TUV validity is before the inspection date', () => {
@@ -76,14 +111,16 @@ describe('DocumentExtractionPlausibilityService', () => {
     expect(codes(result)).toContain('VALIDITY_BEFORE_INSPECTION');
   });
 
-  it('warns on an out-of-range 12V battery voltage', () => {
+  it('blocks on invalid 12V battery voltage measurement', () => {
     const result = svc.runChecks('BATTERY', { scope: 'lv', voltageV: 99 }, baseCtx);
-    expect(codes(result)).toContain('LV_VOLTAGE_RANGE');
+    expect(result.overallStatus).toBe('BLOCKER');
+    expect(codes(result)).toContain('LV_VOLTAGE_OUT_OF_RANGE');
   });
 
-  it('warns on an out-of-range state of health', () => {
+  it('blocks on invalid state of health measurement', () => {
     const result = svc.runChecks('BATTERY', { scope: 'hv', sohPercent: 150 }, baseCtx);
-    expect(codes(result)).toContain('SOH_RANGE');
+    expect(result.overallStatus).toBe('BLOCKER');
+    expect(codes(result)).toContain('SOH_OUT_OF_RANGE');
   });
 
   it('blocks on a negative tread depth and warns on an implausibly high one', () => {
@@ -100,7 +137,6 @@ describe('DocumentExtractionPlausibilityService', () => {
   it('never asserts a crash for DAMAGE/ACCIDENT, only adds a review note', () => {
     const result = svc.runChecks('ACCIDENT', { description: 'rear bumper' }, baseCtx);
     expect(result.recommendedHumanReviewNotes.length).toBeGreaterThan(0);
-    // No automatic collision claim → no BLOCKER from this alone.
     expect(result.overallStatus).not.toBe('BLOCKER');
   });
 });

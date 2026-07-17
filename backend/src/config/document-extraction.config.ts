@@ -1,4 +1,21 @@
 import { registerAs } from '@nestjs/config';
+import {
+  ApplyDocumentExtractionType,
+  isApplyDocumentType,
+} from '@modules/document-extraction/document-extraction.schemas';
+
+function parseDisabledApplyTypes(
+  value: string | undefined,
+): Partial<Record<ApplyDocumentExtractionType, boolean>> {
+  if (!value?.trim()) return {};
+  const disabled: Partial<Record<ApplyDocumentExtractionType, boolean>> = {};
+  for (const token of value.split(',').map((part) => part.trim()).filter(Boolean)) {
+    if (isApplyDocumentType(token)) {
+      disabled[token] = false;
+    }
+  }
+  return disabled;
+}
 
 function parsePositiveIntEnv(value: string | undefined, defaultValue: number): number {
   if (value == null || value.trim() === '') return defaultValue;
@@ -85,4 +102,14 @@ export default registerAs('documentExtraction', () => ({
     process.env.DOCUMENT_CLASSIFICATION_SUGGESTION_MIN,
     0.55,
   ),
+  /** Master gate for downstream document apply (confirm → domain modules). */
+  applyEnabled: (process.env.DOCUMENT_APPLY_ENABLED ?? 'true') === 'true',
+  /** Comma-separated ApplyDocumentExtractionType values with apply disabled. */
+  applyDisabledTypes: parseDisabledApplyTypes(process.env.DOCUMENT_APPLY_DISABLED_TYPES),
+  /**
+   * When true, document types with weak downstream idempotency downgrade to DRAFT_ONLY
+   * instead of APPLY_ALLOWED.
+   */
+  applyStrictIdempotency:
+    (process.env.DOCUMENT_APPLY_STRICT_IDEMPOTENCY ?? 'false') === 'true',
 }));
