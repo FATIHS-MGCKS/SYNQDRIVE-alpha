@@ -204,6 +204,20 @@ export class StationsController {
     return this.stationsService.update(orgId, id, body);
   }
 
+  @Post(':id/activate')
+  @RequireStationsPermission('stations.activate')
+  @RequireStationScope({ resource: 'station' })
+  async activate(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.activateStation(orgId, id);
+  }
+
+  @Post(':id/deactivate')
+  @RequireStationsPermission('stations.deactivate')
+  @RequireStationScope({ resource: 'station' })
+  async deactivate(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.deactivateStation(orgId, id);
+  }
+
   @Post(':id/archive')
   @RequireStationsPermission('stations.archive')
   @RequireStationScope({ resource: 'station' })

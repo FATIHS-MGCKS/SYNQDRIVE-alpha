@@ -24,8 +24,18 @@ import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocod
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
+import {
+  buildStationLifecycleCommandAudit,
+  evaluateStationLifecycleCommand,
+} from './station-lifecycle-command.util';
+import {
+  StationLifecycleCommandName,
+  StationLifecycleCommandOutcome,
+  type StationLifecycleCommandResult,
+} from './station-lifecycle-command.types';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
+const FUTURE_BOOKING_STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE'];
 
 // ---------- Input payload contracts (accepted by controller) ----------
 
@@ -373,6 +383,140 @@ export class StationsService {
       include: this.stationIncludeCount(),
     });
     return this.toDto(updated, updated._count.vehiclesHome);
+  }
+
+  async activateStation(
+    organizationId: string,
+    id: string,
+  ): Promise<StationLifecycleCommandResult<StationDto>> {
+    return this.runLifecycleStatusCommand(
+      organizationId,
+      id,
+      StationLifecycleCommandName.ACTIVATE,
+    );
+  }
+
+  async deactivateStation(
+    organizationId: string,
+    id: string,
+  ): Promise<StationLifecycleCommandResult<StationDto>> {
+    const preflight = await this.countFutureStationBookings(organizationId, id);
+    return this.runLifecycleStatusCommand(
+      organizationId,
+      id,
+      StationLifecycleCommandName.DEACTIVATE,
+      preflight,
+    );
+  }
+
+  private async countFutureStationBookings(
+    organizationId: string,
+    stationId: string,
+  ): Promise<{ futurePickupCount: number; futureReturnCount: number }> {
+    const now = new Date();
+    const [futurePickupCount, futureReturnCount] = await Promise.all([
+      this.prisma.booking.count({
+        where: {
+          organizationId,
+          pickupStationId: stationId,
+          status: { in: FUTURE_BOOKING_STATUSES },
+          startDate: { gt: now },
+        },
+      }),
+      this.prisma.booking.count({
+        where: {
+          organizationId,
+          returnStationId: stationId,
+          status: { in: FUTURE_BOOKING_STATUSES },
+          endDate: { gt: now },
+        },
+      }),
+    ]);
+    return { futurePickupCount, futureReturnCount };
+  }
+
+  private async runLifecycleStatusCommand(
+    organizationId: string,
+    id: string,
+    command: typeof StationLifecycleCommandName.ACTIVATE | typeof StationLifecycleCommandName.DEACTIVATE,
+    preflight?: { futurePickupCount: number; futureReturnCount: number },
+  ): Promise<StationLifecycleCommandResult<StationDto>> {
+    const station = await this.prisma.station.findFirst({
+      where: { id, organizationId },
+      include: this.stationIncludeCount(),
+    });
+    if (!station) throw new NotFoundException(`Station ${id} not found`);
+
+    const evaluation = evaluateStationLifecycleCommand({
+      command,
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        archivedAt: station.archivedAt,
+      },
+      preflight,
+    });
+
+    const nextStatus =
+      command === StationLifecycleCommandName.ACTIVATE ? 'ACTIVE' : 'INACTIVE';
+
+    const audit = buildStationLifecycleCommandAudit({
+      command,
+      stationId: station.id,
+      organizationId,
+      previousStatus: station.status,
+      nextStatus,
+      idempotent: evaluation.idempotent,
+      preflight,
+    });
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          `${command} is not allowed for this station`,
+        code: `${command}_BLOCKED`,
+        outcome: StationLifecycleCommandOutcome.BLOCKED,
+        command,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit,
+      });
+    }
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationLifecycleCommandOutcome.IDEMPOTENT,
+        command,
+        allowed: true,
+        station: this.toDto(station, station._count.vehiclesHome),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit,
+      };
+    }
+
+    const updated = await this.prisma.station.update({
+      where: { id },
+      data: { status: evaluation.enforcedMutations?.status ?? nextStatus },
+      include: this.stationIncludeCount(),
+    });
+
+    return {
+      outcome: StationLifecycleCommandOutcome.APPLIED,
+      command,
+      allowed: true,
+      station: this.toDto(updated, updated._count.vehiclesHome),
+      blockingReasons: [],
+      warnings: evaluation.warnings,
+      requiredActions: evaluation.requiredActions,
+      audit,
+    };
   }
 
   async restore(organizationId: string, id: string): Promise<StationDto> {

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-activate-deactivate-v49598-2026-07-17',
+    version: '4.9.598',
+    title: 'V4.9.598 — Stations V2: Activate/Deactivate Commands (Prompt 18/78)',
+    summary: [
+      'Explizite Endpunkte `POST /stations/:id/activate` und `POST /stations/:id/deactivate` mit LifecyclePolicy.',
+      'Strukturiertes Command-Result: outcome, warnings, blockingReasons, requiredActions, audit-Vorbereitung.',
+      'Deactivate blockiert bei zukünftigen Pickups/Returns; ändert keine Fahrzeugstandorte; Activate setzt pickup/return nicht blind true.',
+      'Idempotenz, Permission (`stations.activate`/`deactivate`) + Scope; Service/Controller/Integrationstests.',
+    ],
+    reason:
+      'Lifecycle-Status gehörte nicht ins generische PATCH — dedizierte Commands mit Preflight und Audit-Daten fehlten.',
+    previousBehavior:
+      'Nur implizites Status-Setzen via PATCH (jetzt verboten); kein Deactivate-Preflight für zukünftige Buchungen.',
+    details:
+      'station-lifecycle-command.{types,util}.ts, stations.service activate/deactivate, stations.controller.ts, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T00:50:00.000Z',
+  },
+  {
     id: 'stations-v2-update-restrict-v49597-2026-07-17',
     version: '4.9.597',
     title: 'V4.9.597 — Stations V2: Lifecycle aus generischem PATCH entfernt (Prompt 17/78)',

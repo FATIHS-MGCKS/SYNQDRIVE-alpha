@@ -62,16 +62,25 @@ describe('StationsController read security', () => {
 describe('StationsController mutation security', () => {
   it('requires explicit permissions on lifecycle and create mutations', () => {
     expect(metadata(STATIONS_PERMISSION_KEY, 'create')).toBe('stations.create');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'activate')).toBe('stations.activate');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'deactivate')).toBe('stations.deactivate');
     expect(metadata(STATIONS_PERMISSION_KEY, 'archive')).toBe('stations.archive');
     expect(metadata(STATIONS_PERMISSION_KEY, 'restore')).toBe('stations.restore');
     expect(metadata(STATIONS_PERMISSION_KEY, 'delete')).toBe('stations.archive');
     expect(metadata(STATIONS_PERMISSION_KEY, 'backfillCoordinates')).toBe('stations.geocode');
   });
 
+  it('uses station scope on activate/deactivate lifecycle commands', () => {
+    expect(metadata(STATION_SCOPE_KEY, 'activate')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'deactivate')).toEqual({ resource: 'station' });
+  });
+
   it('uses create/list/station/vehicle_location scope resources on mutations', () => {
     expect(metadata(STATION_SCOPE_KEY, 'create')).toEqual({ resource: 'create' });
     expect(metadata(STATION_SCOPE_KEY, 'backfillCoordinates')).toEqual({ resource: 'list' });
     expect(metadata(STATION_SCOPE_KEY, 'update')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'activate')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'deactivate')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'archive')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'restore')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'setPrimary')).toEqual({ resource: 'station' });
