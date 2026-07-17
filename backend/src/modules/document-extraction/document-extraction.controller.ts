@@ -67,9 +67,10 @@ export class DocumentExtractionController {
   async download(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const dl = await this.service.getDownloadForVehicle(vehicleId, extractionId);
+    const dl = await this.service.getDownloadForVehicle(vehicleId, extractionId, userId ?? null);
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDisposition(dl.fileName, true),
@@ -204,6 +205,27 @@ export class DocumentExtractionController {
     @CurrentUser('id') userId: string | undefined,
   ) {
     const record = await this.service.deleteFile(vehicleId, extractionId, userId ?? null);
-    return this.service.toPublicExtraction(record);
+    return record;
+  }
+
+  @Post(':extractionId/legal-hold')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async setLegalHold(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: { reason?: string },
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.setLegalHold(vehicleId, extractionId, userId ?? null, body?.reason);
+  }
+
+  @Delete(':extractionId/legal-hold')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async clearLegalHold(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.clearLegalHold(vehicleId, extractionId, userId ?? null);
   }
 }

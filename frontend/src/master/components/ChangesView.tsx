@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-storage-lifecycle-2026-07-17',
+    version: '4.9.624',
+    title: 'V4.9.624 — Document Intake V2 Storage & Lifecycle Hardening',
+    summary: [
+      'DocumentStoragePort um getCapabilities/resolveStorageZone erweitert — Quarantäne vs Clean, HTTPS-Transport, Encryption-at-rest- und Backup-Capability-Flags.',
+      'Lifecycle-Snapshot in plausibility._pipeline.lifecycle: retention, legalHold, mistralTransfer; Soft-Delete entfernt Datei + optional OCR-Cache.',
+      'DocumentRetentionService mit Dry-Run-Default, tenant-scoped Phasen (OCR-Cache, sensitive extractedData, Final-Row, REJECTED cleanup); Legal Hold blockiert Löschung.',
+      'Legal-Hold-API POST/DELETE; Audit download/delete_file/legal_hold; Runbook docs/runbooks/document-storage-retention.md.',
+    ],
+    reason:
+      'Storage und Dokumentenlebenszyklus für Compliance härten: minimierte OCR-Rohdaten, definierte Retention-Fristen, kein Auto-Delete ohne Policy.',
+    previousBehavior:
+      'Soft-Delete löschte nur objectKey ohne Lifecycle-Metadaten, Retention, Legal Hold oder Mistral-Transfer-Audit.',
+    details: 'architecture/DOCUMENT_STORAGE_LIFECYCLE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T19:00:00.000Z',
+  },
+  {
     id: 'document-malware-scan-abstraction-2026-07-17',
     version: '4.9.623',
     title: 'V4.9.623 — Document Intake V2 Malware Scan Abstraction',

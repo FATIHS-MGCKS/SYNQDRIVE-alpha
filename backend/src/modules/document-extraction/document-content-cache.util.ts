@@ -19,6 +19,7 @@ export interface PipelinePlausibilityPayload {
   fileFingerprint?: import('./document-extraction-fingerprint.types').DocumentExtractionFileFingerprint;
   uploadDuplicate?: import('./document-upload-duplicate.types').PipelineUploadDuplicatePayload;
   malwareScan?: import('./document-malware-scan-status.types').DocumentMalwareScanPipelineState;
+  lifecycle?: import('./document-storage-lifecycle.types').DocumentPipelineLifecyclePayload;
 }
 
 export interface DocumentTypeAuditEntry {
@@ -95,6 +96,7 @@ export function mergePipelinePlausibility(
     fileFingerprint: patch.fileFingerprint ?? current.fileFingerprint,
     uploadDuplicate: patch.uploadDuplicate ?? current.uploadDuplicate,
     malwareScan: patch.malwareScan ?? current.malwareScan,
+    lifecycle: patch.lifecycle ?? current.lifecycle,
   };
   return base;
 }

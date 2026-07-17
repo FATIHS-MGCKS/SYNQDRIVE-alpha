@@ -54,6 +54,9 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
 import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
 import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
 import { DocumentMalwareScanService } from './document-malware-scan.service';
+import { DocumentLifecycleService } from './document-lifecycle.service';
+import { DocumentRetentionService } from './document-retention.service';
+import { DocumentRetentionScheduler } from '@workers/schedulers/document-retention.scheduler';
 import { DOCUMENT_MALWARE_SCANNER } from './document-malware-scanner.interface';
 import { MockDocumentMalwareScannerService } from './scanners/mock-document-malware-scanner.service';
 import { UnavailableDocumentMalwareScannerService } from './scanners/unavailable-document-malware-scanner.service';
@@ -107,6 +110,9 @@ import { ConfigType } from '@nestjs/config';
     DocumentUploadDuplicateService,
     DocumentUploadRateLimitService,
     DocumentMalwareScanService,
+    DocumentLifecycleService,
+    DocumentRetentionService,
+    DocumentRetentionScheduler,
     MockDocumentMalwareScannerService,
     UnavailableDocumentMalwareScannerService,
     {

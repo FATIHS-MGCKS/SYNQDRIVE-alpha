@@ -1,4 +1,5 @@
 import { Readable } from 'stream';
+import type { DocumentStorageCapabilities, DocumentStorageZone } from '../document-storage-lifecycle.types';
 
 /**
  * Document storage port — a private storage abstraction for uploaded
@@ -50,6 +51,10 @@ export interface DocumentStoragePort {
   getObjectStream(objectKey: string): Promise<Readable>;
   /** Best-effort delete; never throws for a missing object. */
   deleteObject(objectKey: string): Promise<void>;
+  /** Declared storage/transport/encryption/backup capabilities for lifecycle audit. */
+  getCapabilities(): DocumentStorageCapabilities;
+  /** Resolve whether a key belongs to quarantine or clean storage. */
+  resolveStorageZone(objectKey: string): DocumentStorageZone;
   /** Local-only: absolute filesystem path for a key, or null for non-local providers. */
   getInternalPath(objectKey: string): string | null;
 }

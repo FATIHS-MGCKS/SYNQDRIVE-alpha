@@ -42,6 +42,24 @@ describe('getAllowedDocumentExtractionActions', () => {
     expect(actions).toEqual(['download']);
   });
 
+  it('blocks delete_file when legal hold is active', () => {
+    const actions = getAllowedDocumentExtractionActions({
+      status: 'READY_FOR_REVIEW',
+      objectKey: 'k1',
+      effectiveDocumentType: 'INVOICE',
+      plausibility: {
+        _pipeline: {
+          lifecycle: {
+            legalHold: { active: true },
+          },
+        },
+      },
+    });
+    expect(actions).not.toContain('delete_file');
+    expect(actions).toContain('download');
+    expect(actions).toContain('confirm');
+  });
+
   it('blocks download when malware scan status is infected', () => {
     const actions = getAllowedDocumentExtractionActions({
       status: 'REJECTED',

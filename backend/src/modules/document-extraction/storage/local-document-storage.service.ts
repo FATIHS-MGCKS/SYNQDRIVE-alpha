@@ -10,6 +10,12 @@ import {
   PutObjectInput,
   PutObjectResult,
 } from './document-storage.interface';
+import {
+  DOCUMENT_STORAGE_ZONES,
+  type DocumentStorageCapabilities,
+  type DocumentStorageZone,
+} from '../document-storage-lifecycle.types';
+import documentRetentionConfig from '@config/document-retention.config';
 
 const STORAGE_PROVIDER = 'local';
 
@@ -52,6 +58,35 @@ export class LocalDocumentStorageService implements DocumentStoragePort {
       './storage/documents-quarantine',
     );
     this.quarantineBaseDir = resolve(process.cwd(), quarantineConfigured);
+  }
+
+  getCapabilities(): DocumentStorageCapabilities {
+    const retention = this.config.get<ReturnType<typeof documentRetentionConfig>>('documentRetention');
+    const encryption = retention?.encryptionAtRest ?? {
+      declared: false,
+      provider: 'none' as const,
+      kmsKeyId: null,
+    };
+    const backup = retention?.backup ?? {
+      strategy: 'vps-pre-deploy-db' as const,
+      documentObjectsIncluded: false,
+      lastVerifiedAt: null,
+      note: null,
+    };
+    return {
+      provider: STORAGE_PROVIDER,
+      zones: [DOCUMENT_STORAGE_ZONES.QUARANTINE, DOCUMENT_STORAGE_ZONES.CLEAN],
+      transport: {
+        apiTransport: 'https',
+        providerTransport: 'local-filesystem',
+      },
+      encryptionAtRest: encryption,
+      backup,
+    };
+  }
+
+  resolveStorageZone(objectKey: string): DocumentStorageZone {
+    return objectKey.startsWith('quarantine/') ? DOCUMENT_STORAGE_ZONES.QUARANTINE : DOCUMENT_STORAGE_ZONES.CLEAN;
   }
 
   async putObject(input: PutObjectInput): Promise<PutObjectResult> {

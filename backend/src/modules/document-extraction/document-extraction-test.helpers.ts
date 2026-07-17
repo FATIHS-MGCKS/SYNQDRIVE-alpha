@@ -19,6 +19,42 @@ export function makeMalwareScanMock(storage?: {
   };
 }
 
+export function makeLifecycleMock() {
+  return {
+    buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({
+      provider: 'local',
+      zones: ['quarantine', 'clean'],
+      transport: { apiTransport: 'https', providerTransport: 'local-filesystem' },
+      encryptionAtRest: { declared: false, provider: 'none' },
+      backup: { strategy: 'none', documentObjectsIncluded: false },
+    }),
+    seedLifecycleOnCreate: jest.fn((plausibility: unknown) => plausibility),
+    softDeleteFile: jest.fn(async ({ record, userId }: { record: { id: string }; userId?: string | null }) => ({
+      ...record,
+      objectKey: null,
+      fileDeletedAt: new Date(),
+      fileDeletedById: userId ?? null,
+    })),
+    setLegalHold: jest.fn(),
+    clearLegalHold: jest.fn(),
+    recordDownloadAudit: jest.fn(),
+    assertNotOnLegalHold: jest.fn(),
+    hasDownstreamLinks: jest.fn().mockReturnValue(false),
+    redactSensitiveExtractedData: jest.fn().mockReturnValue(null),
+  };
+}
+
+export function makeRetentionMock() {
+  return {
+    runOnce: jest.fn().mockResolvedValue({
+      trigger: 'manual',
+      dryRun: true,
+      phases: [],
+      totals: { candidates: 0, affected: 0, skipped: 0 },
+    }),
+  };
+}
+
 export function makeStorageMock(overrides: Partial<Record<string, jest.Mock>> = {}) {
   return {
     putObject: jest.fn().mockResolvedValue({
@@ -43,6 +79,14 @@ export function makeStorageMock(overrides: Partial<Record<string, jest.Mock>> = 
     getObjectStream: jest.fn(),
     deleteObject: jest.fn(),
     getInternalPath: jest.fn().mockReturnValue(null),
+    getCapabilities: jest.fn().mockReturnValue({
+      provider: 'local',
+      zones: ['quarantine', 'clean'],
+      transport: { apiTransport: 'https', providerTransport: 'local-filesystem' },
+      encryptionAtRest: { declared: false, provider: 'none' },
+      backup: { strategy: 'none', documentObjectsIncluded: false },
+    }),
+    resolveStorageZone: jest.fn().mockReturnValue('clean'),
     ...overrides,
   };
 }

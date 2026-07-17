@@ -45,6 +45,7 @@ import {
   mimeCategoryFromMime,
 } from './document-extraction-observability.util';
 import { isMalwareScanReadyForProcessing } from './document-malware-scan.util';
+import { patchMistralTransferState } from './document-pipeline-lifecycle.util';
 
 const SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
@@ -131,6 +132,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     const fileSizeBucket = bucketFileSizeBytes(record.sizeBytes);
 
     try {
+      const ocrStartedAt = Date.now();
       const content = await this.resolveDocumentContent(record.objectKey, record, extractionId);
       this.observability.recordPages(content.sourceMethod, content.pageCount ?? content.pages.length);
       this.observability.logEvent({
@@ -144,6 +146,19 @@ export class DocumentExtractionProcessor extends WorkerHost {
         model: content.ocrModel ?? null,
       });
       const ocrCompletedAt = record.ocrCompletedAt ?? new Date();
+      const plausibilityPatch =
+        content.sourceMethod === 'OCR'
+          ? patchMistralTransferState(record.plausibility, {
+              provider: 'mistral',
+              status: 'completed',
+              sentAt: new Date(ocrStartedAt).toISOString(),
+              completedAt: ocrCompletedAt.toISOString(),
+              includesDocumentBytes: true,
+              includesImageBase64: false,
+              model: content.ocrModel ?? null,
+              pageCount: content.pageCount ?? content.pages.length,
+            })
+          : record.plausibility;
 
       await this.prisma.vehicleDocumentExtraction.update({
         where: { id: extractionId },
@@ -157,7 +172,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
                 ocrPageCount: content.pageCount ?? null,
               }
             : {}),
-          plausibility: mergePipelinePlausibility(record.plausibility, {
+          plausibility: mergePipelinePlausibility(plausibilityPatch, {
             contentCache: buildContentCacheEntry(content, record.objectKey),
           }) as unknown as Prisma.InputJsonValue,
         },
