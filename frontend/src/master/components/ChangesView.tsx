@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'elevenlabs-mcp-cloud-agent-v49582-2026-07-17',
+    version: '4.9.582',
+    title: 'V4.9.582 — ElevenLabs MCP: Cloud-Agent-Setup + uv/uvx',
+    summary: [
+      '`.cursor/mcp.json.example` — `elevenlabs` stdio-Server via `uvx elevenlabs-mcp` mit `${env:ELEVENLABS_API_KEY}`.',
+      'Cloud-Agent Dockerfile installiert `uv`/`uvx` nach `/usr/local/bin`; `cloud-agent-install.sh` hat Fallback-Installer.',
+      '`AGENTS.md` + ArchitekturView dokumentieren ElevenLabs MCP neben Voice-Assistant-Backend.',
+    ],
+    reason:
+      'ElevenLabs MCP war in Cloud-Agent-Sessions im Status error — Server fehlte im MCP-Template und `uvx` war im Image nicht installiert.',
+    previousBehavior: 'ElevenLabs MCP erkannt aber error; keine Tools; API-Key vorhanden aber MCP-Prozess startete nicht.',
+    details:
+      '.cursor/mcp.json.example, .cursor/Dockerfile, cloud-agent-install.sh, cloud-agent-start.sh, AGENTS.md, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Cloud Agents / MCP',
+    createdAt: '2026-07-17T17:15:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',

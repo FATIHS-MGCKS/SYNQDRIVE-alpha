@@ -767,6 +767,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Resend', detail: 'Hosted https://mcp.resend.com/mcp — Bearer ${env:RESEND_API_KEY}' },
       { label: 'Stripe', detail: 'Hosted MCP + STRIPE_SECRET_KEY header' },
       { label: 'Hostinger', detail: 'npx hostinger-api-mcp@1.5.5 — HOSTINGER_API_TOKEN for DNS/VPS ops scripts' },
+      { label: 'ElevenLabs', detail: 'uvx elevenlabs-mcp — ELEVENLABS_API_KEY (Voice Assistant TTS/STT/agents; uv/uvx in Cloud Agent Dockerfile + install fallback)' },
     ],
   },
   {

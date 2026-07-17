@@ -32,6 +32,12 @@ RUN install -m 0755 -d /etc/apt/keyrings \
     && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
+# uv / uvx — required for ElevenLabs MCP (`uvx elevenlabs-mcp`)
+ENV UV_INSTALL_DIR=/usr/local/bin
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && uv --version \
+    && uvx --version
+
 # Tailscale (userspace networking — required in Cursor Cloud Agent VMs)
 RUN curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg \
       | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null \

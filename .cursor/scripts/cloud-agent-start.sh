@@ -11,6 +11,10 @@ source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 
 mkdir -p "$STATE_DIR"
 
+if [[ -x "${HOME}/.local/bin/uvx" ]]; then
+  export PATH="${HOME}/.local/bin:${PATH}"
+fi
+
 ensure_tailscaled() {
   if [[ -S "$SOCKET" ]] && pgrep -f "tailscaled.*${STATE_DIR}/tailscaled.sock" >/dev/null 2>&1; then
     return 0
