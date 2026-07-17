@@ -54,6 +54,13 @@ export class BatterySnapshotRestBackfillService {
       pageSize,
     });
 
+    if (options.apply && options.purgeBackfillMeasurements) {
+      await this.purgeHistoricalBackfillMeasurements({
+        organizationId: options.organizationId,
+        vehicleId: options.vehicleId,
+      });
+    }
+
     const plan = await this.buildPlan({
       candidates,
       from,
@@ -84,6 +91,23 @@ export class BatterySnapshotRestBackfillService {
 
     const result = await this.applyPlan(plan, options);
     return { plan, result };
+  }
+
+  private async purgeHistoricalBackfillMeasurements(input: {
+    organizationId?: string;
+    vehicleId?: string;
+  }): Promise<number> {
+    const deleted = await this.prisma.batteryMeasurement.deleteMany({
+      where: {
+        idempotencyKey: { startsWith: 'hist-snap-rest:' },
+        ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+        ...(input.vehicleId ? { vehicleId: input.vehicleId } : {}),
+      },
+    });
+    this.logger.warn(
+      `Purged ${deleted.count} historical snapshot REST backfill measurements`,
+    );
+    return deleted.count;
   }
 
   private async loadAllCandidates(input: {

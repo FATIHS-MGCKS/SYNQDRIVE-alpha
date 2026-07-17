@@ -91,4 +91,5 @@ export interface SnapshotRestBackfillRunOptions {
   enablePublicationReplay?: boolean;
   operator?: string;
   reason?: string;
+  purgeBackfillMeasurements?: boolean;
 }

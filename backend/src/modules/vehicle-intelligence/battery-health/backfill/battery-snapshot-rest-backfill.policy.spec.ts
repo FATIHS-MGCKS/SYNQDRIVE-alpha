@@ -66,7 +66,7 @@ describe('battery-snapshot-rest-backfill.policy', () => {
     );
   });
 
-  it('detects wake flank across a vehicle batch', () => {
+  it('detects wake flank only within the same rest session group', () => {
     const rows = [
       candidate({
         snapshotId: 'snap-a',
@@ -80,11 +80,15 @@ describe('battery-snapshot-rest-backfill.policy', () => {
         restingVoltage: 14.1,
         voltageV: 14.1,
       }),
+      candidate({
+        snapshotId: 'snap-c',
+        observedAt: new Date('2026-07-03T08:00:00.000Z'),
+        restingVoltage: 12.5,
+        voltageV: 12.5,
+      }),
     ];
     const classified = classifySnapshotRestBackfillBatch({ candidates: rows });
     expect(classified.get('snap-b')?.wakeFlank).toBe(true);
-    expect(classified.get('snap-b')?.quality).toBe(
-      BatteryMeasurementQuality.CONTAMINATED_BY_WAKE,
-    );
+    expect(classified.get('snap-c')?.quality).toBe(BatteryMeasurementQuality.VALID);
   });
 });

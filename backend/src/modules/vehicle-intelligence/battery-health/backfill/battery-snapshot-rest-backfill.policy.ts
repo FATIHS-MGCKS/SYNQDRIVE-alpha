@@ -195,25 +195,61 @@ export function classifySnapshotRestBackfillCandidate(input: {
   );
 }
 
+export function groupSnapshotRestSessions(
+  candidates: SnapshotRestBackfillCandidate[],
+  gapMs = 6 * 60 * 60_000,
+): SnapshotRestBackfillCandidate[][] {
+  const sorted = [...candidates].sort(
+    (a, b) => a.observedAt.getTime() - b.observedAt.getTime(),
+  );
+  const groups: SnapshotRestBackfillCandidate[][] = [];
+  let current: SnapshotRestBackfillCandidate[] = [];
+
+  for (const row of sorted) {
+    if (current.length === 0) {
+      current.push(row);
+      continue;
+    }
+    const prev = current[current.length - 1];
+    if (row.observedAt.getTime() - prev.observedAt.getTime() > gapMs) {
+      groups.push(current);
+      current = [row];
+    } else {
+      current.push(row);
+    }
+  }
+
+  if (current.length > 0) {
+    groups.push(current);
+  }
+
+  return groups;
+}
+
 export function classifySnapshotRestBackfillBatch(input: {
   candidates: SnapshotRestBackfillCandidate[];
   policy?: SnapshotRestBackfillPolicyInput;
 }): Map<string, SnapshotRestBackfillClassification> {
-  const wakeFlankIds = detectWakeFlankMeasurementIds(
-    toWakeFlankObservationCandidates(input.candidates),
-    input.policy?.wakeVoltageThreshold ?? DEFAULT_WAKE_THRESHOLD_V,
-  );
-
   const result = new Map<string, SnapshotRestBackfillClassification>();
-  for (const candidate of input.candidates) {
-    result.set(
-      candidate.snapshotId,
-      classifySnapshotRestBackfillCandidate({
-        candidate,
-        policy: input.policy,
-        wakeFlankIds,
-      }),
+  const groups = groupSnapshotRestSessions(input.candidates);
+
+  for (const group of groups) {
+    const wakeFlankIds = detectWakeFlankMeasurementIds(
+      toWakeFlankObservationCandidates(group),
+      input.policy?.wakeVoltageThreshold ?? DEFAULT_WAKE_THRESHOLD_V,
     );
+
+    for (const candidate of group) {
+      result.set(
+        candidate.snapshotId,
+        classifySnapshotRestBackfillCandidate({
+          candidate,
+          policy: input.policy,
+          wakeFlankIds,
+        }),
+      );
+    }
   }
+
   return result;
 }

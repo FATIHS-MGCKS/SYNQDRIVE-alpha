@@ -54,6 +54,7 @@ async function main() {
   const allowRemote = process.argv.includes('--allow-remote-db');
   const enablePublicationReplay = process.argv.includes('--enable-publication-replay');
   const skipAssessmentReplay = process.argv.includes('--skip-assessment-replay');
+  const purgeBackfillMeasurements = process.argv.includes('--purge-backfill-measurements');
   const organizationId =
     parseArg('--organization-id') ?? process.env.ORG_ID?.trim() ?? undefined;
   const vehicleId = parseArg('--vehicle-id');
@@ -90,6 +91,7 @@ async function main() {
       enablePublicationReplay,
       operator,
       reason,
+      purgeBackfillMeasurements,
     });
 
     const report = { plan, result };
