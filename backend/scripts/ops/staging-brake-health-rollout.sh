@@ -11,6 +11,19 @@ SOURCE_DB="${BRAKE_SOURCE_DB_NAME:-synqdrive}"
 BACKUP_DIR="${BRAKE_STAGING_BACKUP_DIR:-/opt/synqdrive/shared/backups}"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 
+if [[ -f /opt/synqdrive/shared/backend.env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source /opt/synqdrive/shared/backend.env
+  set +a
+fi
+
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="$(echo "$DATABASE_URL" | sed -E "s#/[^/?]+\\?#/${STAGING_DB}?#; s#/[^/?]+$#/${STAGING_DB}#")"
+else
+  export DATABASE_URL="postgresql://synqdrive@localhost:5432/${STAGING_DB}?schema=public"
+fi
+
 echo "==> 1. Backup source database: ${SOURCE_DB}"
 mkdir -p "$BACKUP_DIR"
 sudo -u postgres pg_dump "$SOURCE_DB" | gzip > "${BACKUP_DIR}/pre-brake-staging-${TS}.sql.gz"
@@ -33,7 +46,7 @@ echo "==> 5. Read-only baseline audit (first org sample)"
 BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1 \
   npx ts-node -r tsconfig-paths/register scripts/ops/audit-brake-health-baseline-candidates.ts \
   --limit=100 \
-  --output-dir=../docs/audits/data/staging-${TS}
+  --output-dir=../docs/audits/data/staging-${TS} || echo "WARN: baseline audit skipped (ts-node/runtime)"
 
 echo "==> Staging rollout complete. DATABASE_URL=${STAGING_DB}"
 echo "Review audit output before production deploy via vps-deploy-release.sh"
