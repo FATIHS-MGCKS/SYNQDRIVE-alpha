@@ -13,6 +13,8 @@ export interface PipelinePlausibilityPayload {
   contentCache?: DocumentContentCacheEntry;
   documentTypeAudit?: DocumentTypeAuditEntry[];
   actionAudit?: ExtractionActionAuditEntry[];
+  actionPlan?: import('./document-action-plan.types').DocumentActionPlan;
+  actionPlanExecution?: import('./document-action.types').DocumentActionPlanExecution;
 }
 
 export interface DocumentTypeAuditEntry {
@@ -83,6 +85,8 @@ export function mergePipelinePlausibility(
     documentTypeAudit: patch.documentTypeAudit ?? current.documentTypeAudit,
     actionAudit: patch.actionAudit ?? current.actionAudit,
     contentCache: patch.contentCache ?? current.contentCache,
+    actionPlan: patch.actionPlan ?? current.actionPlan,
+    actionPlanExecution: patch.actionPlanExecution ?? current.actionPlanExecution,
   };
   return base;
 }
