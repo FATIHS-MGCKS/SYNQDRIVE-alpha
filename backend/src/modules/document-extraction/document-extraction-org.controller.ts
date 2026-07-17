@@ -32,6 +32,7 @@ import { OrgUploadDocumentDto } from './dto/org-upload-document.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
 import { SaveReviewExtractionDto } from './dto/save-review-extraction.dto';
 import { UpdateActionPlanPreferencesDto } from './dto/update-action-plan-preferences.dto';
+import { SendDocumentFollowUpContactDto } from './dto/send-document-follow-up-contact.dto';
 import { DocumentEntityLinkService } from './document-entity-link.service';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
@@ -273,6 +274,50 @@ export class DocumentExtractionOrgController {
       extractionId,
       suggestionId,
       userId ?? null,
+    );
+  }
+
+  @Get(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getFollowUpContactPrepare(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+  ) {
+    return this.service.getFollowUpContactPrepareForOrg(orgId, extractionId, suggestionId);
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare/opened')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  recordFollowUpContactPrepareOpened(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.recordFollowUpContactPrepareOpenedForOrg(
+      orgId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare/send')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  sendFollowUpContact(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @Body() body: SendDocumentFollowUpContactDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.sendFollowUpContactForOrg(
+      orgId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+      body,
     );
   }
 }

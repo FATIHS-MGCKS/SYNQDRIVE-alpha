@@ -104,6 +104,7 @@ import { readConfirmedDataObject } from './document-entity-link.util';
 import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
 import { DocumentApplyResultService } from './document-apply-result.service';
 import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
+import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
 import {
   mergeActionPlanPreferences,
   type DocumentActionPlanPreferences,
@@ -362,6 +363,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly actionPlanPreview: DocumentActionPlanPreviewService,
     private readonly applyResultService: DocumentApplyResultService,
     private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
+    private readonly followUpContactPrepareService: DocumentFollowUpContactPrepareService,
   ) {}
 
   onModuleInit(): void {
@@ -1622,6 +1624,110 @@ export class DocumentExtractionService implements OnModuleInit {
       record: existing,
       suggestionId,
       userId: userId ?? null,
+    });
+  }
+
+  async getFollowUpContactPrepareForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const orgId = existing.organizationId;
+    if (!orgId) {
+      throw new BadRequestException('Organization scope required for contact preparation');
+    }
+    return this.followUpContactPrepareService.buildPreparePreview({
+      orgId,
+      record: existing,
+      suggestionId,
+    });
+  }
+
+  async getFollowUpContactPrepareForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpContactPrepareService.buildPreparePreview({
+      orgId,
+      record: existing,
+      suggestionId,
+    });
+  }
+
+  async recordFollowUpContactPrepareOpenedForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const orgId = existing.organizationId;
+    if (!orgId) {
+      throw new BadRequestException('Organization scope required for contact preparation');
+    }
+    await this.followUpContactPrepareService.recordPrepareOpened({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    return { recorded: true };
+  }
+
+  async recordFollowUpContactPrepareOpenedForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    await this.followUpContactPrepareService.recordPrepareOpened({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    return { recorded: true };
+  }
+
+  async sendFollowUpContactForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId: string | null | undefined,
+    payload: import('./document-follow-up-contact.types').SendDocumentFollowUpContactInput,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const orgId = existing.organizationId;
+    if (!orgId) {
+      throw new BadRequestException('Organization scope required for contact preparation');
+    }
+    return this.followUpContactPrepareService.sendPreparedContact({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+      payload,
+    });
+  }
+
+  async sendFollowUpContactForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId: string | null | undefined,
+    payload: import('./document-follow-up-contact.types').SendDocumentFollowUpContactInput,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpContactPrepareService.sendPreparedContact({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+      payload,
     });
   }
 

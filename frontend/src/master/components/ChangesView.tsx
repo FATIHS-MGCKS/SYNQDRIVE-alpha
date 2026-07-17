@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-follow-up-contact-prepare-2026-07-17',
+    version: '4.9.650',
+    title: 'V4.9.650 — Document Follow-Up Kontakt vorbereiten',
+    summary: [
+      'Follow-up „Kontakt vorbereiten“ für Kunde, Fahrer, Anbieter und Versicherung.',
+      'Empfänger aus bestätigtem Entity Link; Betreff/Textentwurf ohne sensible Rohdaten; optionale Dokumentreferenz.',
+      'Vorschau + expliziter Versand über OutboundEmailPolicy/Provider — niemals automatisch; Audit Trail.',
+    ],
+    reason:
+      'Prompt 75/84 — Kontaktvorbereitung an bestehenden E-Mail-/Versandflow anbinden ohne Auto-Send.',
+    previousBehavior:
+      'Contact-Follow-ups (PREPARE_*_CONTACT, PAYMENT_REVIEW, INSURANCE_REVIEW) hatten preparedOnly-Metadaten ohne Versand-UI.',
+    details:
+      'Backend: document-follow-up-contact.{types,draft,recipient.util,prepare.service}, GET/POST contact-prepare API. Frontend: DocumentFollowUpSuggestionsPanel + DocumentFollowUpContactPrepareModal in DocumentUploadView und VehicleDocumentUploadDrawer. Architektur: architecture/DOCUMENT_FOLLOW_UP_CONTACT_PREPARE_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
     id: 'document-follow-up-task-v2-2026-07-17',
     version: '4.9.649',
     title: 'V4.9.649 — Document Follow-Up → Task Domain V2',
