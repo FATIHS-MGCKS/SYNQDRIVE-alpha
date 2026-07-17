@@ -13,15 +13,17 @@ describe('StationsService create hardening', () => {
     updateMany: jest.fn(),
     create: jest.fn(),
   };
+  const tx = {
+    station: txStation,
+    $executeRaw: jest.fn().mockResolvedValue(1),
+  };
 
   const prisma = {
     station: {
       findFirst: jest.fn(),
       create: jest.fn(),
     },
-    $transaction: jest.fn(async (fn: (tx: { station: typeof txStation }) => unknown) =>
-      fn({ station: txStation }),
-    ),
+    $transaction: jest.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
   } as unknown as PrismaService;
 
   const stationValidation = {} as StationValidationService;

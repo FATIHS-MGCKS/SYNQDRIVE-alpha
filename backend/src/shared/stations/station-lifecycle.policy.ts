@@ -430,6 +430,18 @@ function evaluateSetPrimary(
     );
   }
 
+  if (station.isPrimary && station.status === 'ACTIVE') {
+    return allowed({
+      warnings: [
+        warning(
+          StationLifecycleWarningCode.IDEMPOTENT_SET_PRIMARY,
+          'Station is already the primary station.',
+        ),
+      ],
+      enforcedMutations: { isPrimary: true, status: 'ACTIVE' },
+    });
+  }
+
   return allowed({
     enforcedMutations: { isPrimary: true, status: 'ACTIVE' },
   });

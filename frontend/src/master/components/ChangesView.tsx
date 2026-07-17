@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-primary-invariant-v49603-2026-07-18',
+    version: '4.9.603',
+    title: 'V4.9.603 — Stations V2: One Primary Per Org Invariant (Prompt 23/78)',
+    summary: [
+      'Partial unique index `stations_one_primary_per_org` (non-archived primary) + Migrations-Reconcile.',
+      '`SetPrimaryStation` als Domain-Command: LifecyclePolicy, org advisory lock, idempotent, Conflict bei Race.',
+      'Blockiert Primary auf ARCHIVED/INACTIVE; read-only Diagnose `stations-v2-primary-diagnose.ts`.',
+      'Race-/Concurrency-Tests + Prisma-Migrations-Validierung.',
+    ],
+    reason:
+      'Primary-Wechsel war nur per Tx abgesichert — konkurrierende Requests konnten mehrere Primary erzeugen (Audit P2-1).',
+    previousBehavior:
+      '`setPrimaryStation()` ohne DB-Invariante, ohne idempotenten Command-Contract und ohne strukturierte Conflict-Antwort.',
+    details:
+      'station-set-primary-command.{types,util}.ts, station-primary-lock.util.ts, migration 20260718103000, *spec.ts, diagnose script.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T05:00:00.000Z',
+  },
+  {
     id: 'stations-v2-no-hard-delete-v49602-2026-07-18',
     version: '4.9.602',
     title: 'V4.9.602 — Stations V2: Hard Delete entfernt (Prompt 22/78)',

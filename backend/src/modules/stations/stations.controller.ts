@@ -292,8 +292,12 @@ export class StationsController {
   @Post(':id/set-primary')
   @UseGuards(StationsSetPrimaryPermissionGuard)
   @RequireStationScope({ resource: 'station' })
-  async setPrimary(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.setPrimaryStation(orgId, id);
+  async setPrimary(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.stationsService.setPrimaryStation(orgId, id, userId);
   }
 
   @Put(':id/vehicles')

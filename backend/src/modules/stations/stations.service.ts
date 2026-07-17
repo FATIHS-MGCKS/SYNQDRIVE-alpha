@@ -55,6 +55,19 @@ import {
 import { ArchiveStationDto } from './dto/archive-station.dto';
 import { RestoreStationDto } from './dto/restore-station.dto';
 import { throwStationDeleteDeprecated } from './station-delete-deprecation.util';
+import { lockOrganizationPrimarySlot } from './station-primary-lock.util';
+import {
+  buildStationSetPrimaryCommandAudit,
+  buildStationSetPrimaryConflictIssue,
+  evaluateStationSetPrimaryCommand,
+  isStationPrimaryUniqueViolation,
+} from './station-set-primary-command.util';
+import {
+  StationSetPrimaryCommandName,
+  StationSetPrimaryCommandOutcome,
+  type StationSetPrimaryCommandResult,
+  type StationSetPrimaryPreflightSnapshot,
+} from './station-set-primary-command.types';
 import {
   buildStationRestoreCommandAudit,
   evaluateStationRestoreCommand,
@@ -312,6 +325,7 @@ export class StationsService {
 
     const station = await this.prisma.$transaction(async (tx) => {
       if (payload.isPrimary) {
+        await lockOrganizationPrimarySlot(tx, organizationId);
         await tx.station.updateMany({
           where: { organizationId, isPrimary: true },
           data: { isPrimary: false },
@@ -1045,25 +1059,172 @@ export class StationsService {
     };
   }
 
-  async setPrimaryStation(organizationId: string, id: string): Promise<StationDto> {
-    const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
+  async setPrimaryStation(
+    organizationId: string,
+    id: string,
+    performedByUserId?: string | null,
+  ): Promise<StationSetPrimaryCommandResult<StationDto>> {
+    const station = await this.prisma.station.findFirst({
+      where: { id, organizationId },
+      include: this.stationIncludeCount(),
+    });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
-    if (station.status === 'ARCHIVED') {
-      throw new BadRequestException('Archived stations cannot be set as primary');
+
+    const preflight = await this.loadSetPrimaryPreflight(organizationId, station.id);
+    const evaluation = evaluateStationSetPrimaryCommand({
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        archivedAt: station.archivedAt,
+      },
+      preflight,
+    });
+
+    const auditBase = {
+      stationId: station.id,
+      organizationId,
+      previousIsPrimary: station.isPrimary,
+      nextIsPrimary: true,
+      previousStatus: station.status,
+      nextStatus: 'ACTIVE' as const,
+      performedByUserId: performedByUserId ?? null,
+      idempotent: evaluation.idempotent,
+      demotedPrimaryStationIds: preflight.otherPrimaryStationIds,
+    };
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationSetPrimaryCommandOutcome.IDEMPOTENT,
+        command: StationSetPrimaryCommandName.SET_PRIMARY,
+        allowed: true,
+        station: this.toDto(station, station._count.vehiclesHome),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationSetPrimaryCommandAudit(auditBase),
+      };
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.station.updateMany({
-        where: { organizationId, isPrimary: true },
-        data: { isPrimary: false },
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          'SetPrimaryStation is not allowed for this station',
+        code: 'SET_PRIMARY_BLOCKED',
+        outcome: StationSetPrimaryCommandOutcome.BLOCKED,
+        command: StationSetPrimaryCommandName.SET_PRIMARY,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationSetPrimaryCommandAudit(auditBase),
       });
-      return tx.station.update({
-        where: { id },
-        data: { isPrimary: true, status: 'ACTIVE' },
-        include: this.stationIncludeCount(),
+    }
+
+    try {
+      const { updated, demotedPrimaryStationIds } = await this.prisma.$transaction(async (tx) => {
+        await lockOrganizationPrimarySlot(tx, organizationId);
+
+        const demoted = await tx.station.findMany({
+          where: {
+            organizationId,
+            isPrimary: true,
+            id: { not: station.id },
+            status: { not: 'ARCHIVED' },
+          },
+          select: { id: true },
+        });
+
+        if (demoted.length > 0) {
+          await tx.station.updateMany({
+            where: {
+              organizationId,
+              isPrimary: true,
+              id: { not: station.id },
+            },
+            data: { isPrimary: false },
+          });
+        }
+
+        const updatedStation = await tx.station.update({
+          where: { id },
+          data: { isPrimary: true, status: 'ACTIVE' },
+          include: this.stationIncludeCount(),
+        });
+
+        return {
+          updated: updatedStation,
+          demotedPrimaryStationIds: demoted.map((row) => row.id),
+        };
       });
-    });
-    return this.toDto(updated, updated._count.vehiclesHome);
+
+      return {
+        outcome: StationSetPrimaryCommandOutcome.APPLIED,
+        command: StationSetPrimaryCommandName.SET_PRIMARY,
+        allowed: true,
+        station: this.toDto(updated, updated._count.vehiclesHome),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationSetPrimaryCommandAudit({
+          ...auditBase,
+          demotedPrimaryStationIds,
+        }),
+      };
+    } catch (error) {
+      if (isStationPrimaryUniqueViolation(error)) {
+        const conflict = buildStationSetPrimaryConflictIssue();
+        throw new ConflictException({
+          message: conflict.message,
+          code: conflict.code,
+          outcome: StationSetPrimaryCommandOutcome.BLOCKED,
+          command: StationSetPrimaryCommandName.SET_PRIMARY,
+          blockingReasons: [conflict],
+          audit: buildStationSetPrimaryCommandAudit(auditBase),
+        });
+      }
+      throw error;
+    }
+  }
+
+  private async loadSetPrimaryPreflight(
+    organizationId: string,
+    stationId: string,
+  ): Promise<StationSetPrimaryPreflightSnapshot> {
+    const [station, primaries] = await Promise.all([
+      this.prisma.station.findFirst({
+        where: { id: stationId, organizationId },
+        select: { id: true, organizationId: true, status: true, isPrimary: true },
+      }),
+      this.prisma.station.findMany({
+        where: {
+          organizationId,
+          isPrimary: true,
+          status: { not: 'ARCHIVED' },
+        },
+        select: { id: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
+
+    if (!station) {
+      throw new NotFoundException(`Station ${stationId} not found`);
+    }
+
+    const otherPrimaryStationIds = primaries
+      .map((row) => row.id)
+      .filter((rowId) => rowId !== stationId);
+
+    return {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      status: station.status,
+      isPrimary: station.isPrimary,
+      nonArchivedPrimaryCount: primaries.length,
+      otherPrimaryStationIds,
+    };
   }
 
   /**

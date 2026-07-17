@@ -358,6 +358,15 @@ describe('station-lifecycle.policy', () => {
         StationLifecycleRequiredActionCode.ACTIVATE_STATION_FIRST,
       );
     });
+
+    it('returns idempotent set-primary when station is already primary', () => {
+      const result = evaluateStationLifecycle({
+        command: StationLifecycleCommand.SET_PRIMARY,
+        station: station({ isPrimary: true }),
+      });
+      expect(result.allowed).toBe(true);
+      expect(result.warnings[0]?.code).toBe(StationLifecycleWarningCode.IDEMPOTENT_SET_PRIMARY);
+    });
   });
 
   describe('UPDATE_CAPABILITIES', () => {

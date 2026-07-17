@@ -3889,8 +3889,13 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
     restore: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/restore`, {}),
-    setPrimary: (orgId: string, id: string) =>
-      post<Station>(`/organizations/${orgId}/stations/${id}/set-primary`, {}),
+    setPrimary: async (orgId: string, id: string) => {
+      const result = await post<{
+        outcome: string;
+        station: Station;
+      }>(`/organizations/${orgId}/stations/${id}/set-primary`, {});
+      return result.station;
+    },
     overviewStats: (orgId: string, stationId: string) =>
       get<StationOverviewStats>(`/organizations/${orgId}/stations/${stationId}/overview-stats`),
     fleet: (orgId: string, stationId: string) =>
