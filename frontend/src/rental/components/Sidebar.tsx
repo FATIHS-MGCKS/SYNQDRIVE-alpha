@@ -2,6 +2,7 @@ import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileTex
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
+import { useStationsV2Permissions } from '../hooks/useStationsV2Permissions';
 import type { FleetTab, FleetTabInput } from './fleet-health-service/fleet-health-service.types';
 import type { SettingsTab, SettingsTabInput } from './settings/settingsTypes';
 import {
@@ -34,6 +35,7 @@ interface SidebarProps {
 export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onViewChange, onFleetTabChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse, supportUnreadCount = 0 }: SidebarProps) {
   const { t } = useLanguage();
   const { hasPermission } = useRentalOrg();
+  const { canRead: canStations } = useStationsV2Permissions();
   const canDataAnalyse = hasPermission('data-analyse', 'read');
   const canWorkflowAutomation = hasPermission('workflow-automation', 'read');
   const canCustomerPayments = hasPermission('payments-connect', 'read');
@@ -141,9 +143,11 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
         <button onClick={() => handleViewChange('customers')} className={navBtnClass(currentView === 'customers' || currentView === 'customer-detail')}>
           <Users className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.customers')}</span>
         </button>
+        {canStations && (
         <button onClick={() => handleViewChange('stations')} className={navBtnClass(currentView === 'stations' || currentView === 'station-detail')}>
           <MapPin className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.stations')}</span>
         </button>
+        )}
         <button onClick={() => handleViewChange('tasks')} className={navBtnClass(currentView === 'tasks')}>
           <ListTodo className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.tasks')}</span>
         </button>
@@ -406,10 +410,12 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
                 <Users className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.customers')} />
               </button>
+              {canStations && (
               <button onClick={() => handleViewChange('stations')} className={collapsedBtnClass(currentView === 'stations' || currentView === 'station-detail')}>
                 <MapPin className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.stations')} />
               </button>
+              )}
               <button onClick={() => handleViewChange('tasks')} className={collapsedBtnClass(currentView === 'tasks')}>
                 <ListTodo className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.tasks')} />
