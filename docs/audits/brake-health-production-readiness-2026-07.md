@@ -5,8 +5,8 @@
 | **Audit ID** | `brake-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/brake-health-production-readiness-2026-07` |
-| **Phase** | **3 of 7 — VPS Integrity Analysis** |
-| **Status** | Phases 1–3 complete; Phases 4–7 pending |
+| **Phase** | **4 of 7 — DIMO Brake Signal Timeseries Analysis** |
+| **Status** | Phases 1–4 complete; Phases 5–7 pending |
 | **Production-Readiness verdict (preliminary)** | **`NOT_READY`** — fleet has zero initialized brake baselines |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | 60 days ending 2026-07-17 UTC |
@@ -66,11 +66,14 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Trip model coverage CSV | `docs/audits/data/brake-health-trip-model-coverage-2026-07.csv` | 3 |
 | Evidence classification CSV | `docs/audits/data/brake-health-evidence-classification-2026-07.csv` | 3 |
 | Integrity findings JSON | `docs/audits/data/brake-health-integrity-findings-2026-07.json` | 3 |
+| Audit script | `scripts/audits/audit-brake-health-production-readiness.ts` | 1+ |
 | Formula factor map CSV | `docs/audits/data/brake-health-formula-factor-map-2026-07.csv` | 2 |
 | Reference spec map CSV | `docs/audits/data/brake-health-reference-spec-map-2026-07.csv` | 2 |
 | Lifecycle & evidence map CSV | `docs/audits/data/brake-health-lifecycle-evidence-map-2026-07.csv` | 2 |
-| Integrity findings JSON | `docs/audits/data/brake-health-integrity-findings-2026-07.json` | 3 (pending) |
-| DIMO signal capability CSV | `docs/audits/data/brake-health-dimo-signal-capability-2026-07.csv` | 4 (pending) |
+| DIMO signal capability CSV | `docs/audits/data/brake-health-dimo-signal-capability-2026-07.csv` | 4 |
+| DIMO timeseries coverage CSV | `docs/audits/data/brake-health-dimo-timeseries-coverage-2026-07.csv` | 4 |
+| DIMO braking correlation CSV | `docs/audits/data/brake-health-dimo-braking-correlation-2026-07.csv` | 4 |
+| DIMO audit script | `scripts/audits/audit-brake-health-dimo-signals.ts` | 4 |
 | Backtest summary CSV | `docs/audits/data/brake-health-backtest-summary-2026-07.csv` | 5 (pending) |
 | Consumer wiring CSV | `docs/audits/data/brake-health-consumer-wiring-2026-07.csv` | 6 (pending) |
 | Test coverage CSV | `docs/audits/data/brake-health-test-coverage-2026-07.csv` | 6 (pending) |
@@ -84,7 +87,7 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | **1** | Architecture & runtime map | Code landkarte, VPS topology, triggers, data-flow, preliminary P0/P1 | ✅ **Complete** |
 | **2** | Data model & formula audit | Prisma models, lifecycle scope, reference-spec, evidence, formulas, versioning | ✅ **Complete** |
 | **3** | VPS integrity & fleet coverage | Read-only SQL, anchors, scope replay, trip coverage, evidence | ✅ **Complete** |
-| **4** | DIMO & telemetry signal audit | `availableSignals`, brake wear sensors, fluid, DTC, harsh braking, HM overlap | ⏳ Pending |
+| **4** | DIMO & telemetry signal audit | `availableSignals`, brake sensors, DTC, native events, timeseries, SynqDrive persistence | ✅ **Complete** |
 | **5** | Historical replay & backtest | As-of replay against measured evidence; MAE/coverage; isolated pure mode | ⏳ Pending |
 | **6** | Consumer wiring & ops | Rental health, alerts, blocking, frontend, notifications, performance, test matrix | ⏳ Pending |
 | **7** | Final synthesis | Go/no-go verdict, findings register, remediation roadmap | ⏳ Pending |
@@ -780,25 +783,191 @@ Full register: `docs/audits/data/brake-health-integrity-findings-2026-07.json` (
 
 ---
 
-## 9. Phase 4 preview (not executed)
+# Phase 4 — DIMO brake signal timeseries analysis (60 days)
 
-- DIMO MCP / Telemetry API: brake pad wear, brake fluid, ABS/DTC signals
-- Map to `BrakeEvidenceSource` enum vs actual producers
-- Harsh braking signal cadence for wear multiplier decision
+**Audit ID:** `brake-health-dimo-signals-2026-07`  
+**Completed (UTC):** 2026-07-17T10:52:02Z  
+**Method:** Read-only DIMO Telemetry API + PostgreSQL aggregates from production VPS (`BRAKE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1`). No triggers/subscriptions. No GPS/location signals queried. DIMO MCP server **not available** in audit runtime — signal names/units verified against [DIMO Telemetry API — Vehicle Signals](https://www.dimo.org/docs/api-references/telemetry-api/signals) (fetched 2026-07-17).
 
-## 10. Phase 5 preview (not executed)
+**Fleet:** 6 DIMO-connected vehicles → anonymized `VEHICLE_001`–`VEHICLE_006` (sorted internal UUID; mapping not in Git). All vehicles: `hardware_type=LTE_R1`.
+
+**Query volume:** **156** DIMO GraphQL queries (6 vehicles × `availableSignals`, `signalsLatest`, `dataSummary`, `events`, paginated historical `signals` in 7-day windows with backoff).
+
+**Reproducibility:**
+
+```bash
+cd backend && BRAKE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-brake-health-dimo-signals.ts \
+  --days=60 --output-dir=../docs/audits/data
+```
+
+| Artifact | Rows | Purpose |
+|----------|------|---------|
+| `docs/audits/data/brake-health-dimo-signal-capability-2026-07.csv` | 132 | Per-vehicle signal listing, latest, classification, SynqDrive persistence |
+| `docs/audits/data/brake-health-dimo-timeseries-coverage-2026-07.csv` | 132 | 60d/14d coverage, cadence, plausibility stats |
+| `docs/audits/data/brake-health-dimo-braking-correlation-2026-07.csv` | 6 | Pedal/pressure/regen/event correlation aggregates |
+
+## 4.1 DIMO documentation verification (Teil 1)
+
+| API surface | Documented | Verified in audit |
+|-------------|------------|-------------------|
+| `availableSignals(tokenId)` | ✅ | Root query; returns `[String!]!` |
+| `signalsLatest(tokenId)` | ✅ | Includes `lastSeen`; per-signal `{ value, timestamp }` |
+| `signals(tokenId, from, to, interval)` | ✅ | Historical aggregation with `agg` per field |
+| `segments(tokenId, …)` | ✅ | Not queried (trip boundaries already in SynqDrive) |
+| `events(tokenId, from, to, filter)` | ✅ | Native `behavior.*` braking events |
+| `dataSummary(tokenId)` | ✅ | Per-signal `firstSeen`, `lastSeen`, `numberOfSignals`; event summary |
+
+### Startliste — dokumentierte Signale (Schema-Namen)
+
+| Signal | DIMO unit | Semantik (DIMO docs) |
+|--------|-----------|----------------------|
+| `chassisBrakeIsPedalPressed` | 0/1 | Brake pedal pressed |
+| `chassisBrakePedalPosition` | % | Pedal travel 0–100% |
+| `chassisParkingBrakeIsEngaged` | 0/1 | Parking brake engaged |
+| `chassisBrakeABSIsWarningOn` | 0/1 | ABS warning telltale (not “ABS active”) |
+| `chassisBrakeCircuit1PressurePrimary` | kPa | Brake circuit 1 primary pressure |
+| `chassisBrakeCircuit2PressurePrimary` | kPa | Brake circuit 2 primary pressure |
+| `speed` | km/h | Vehicle speed |
+| `angularVelocityYaw` | deg/s | Yaw rate |
+| `powertrainTransmissionTravelledDistance` | km | Odometer |
+| `isIgnitionOn` | 0/1 | Ignition |
+| `powertrainType` | enum | Powertrain type |
+| `powertrainTractionBatteryCurrentPower` | W | +in (charge/regen), −out (drive) |
+| `obdDTCList` | list | Active DTC codes |
+| `obdStatusDTCCount` | count | DTC count |
+| `exteriorAirTemperature` | °C | Ambient |
+| `powertrainTransmissionRetarderActualTorque` | % | Retarder torque (HD) |
+| `powertrainTransmissionRetarderTorqueMode` | enum | Retarder mode |
+| `chassisAxleRow1WheelLeftSpeed` | km/h | Front-left wheel speed |
+| `chassisAxleRow1WheelRightSpeed` | km/h | Front-right wheel speed |
+
+### Explizit gesucht — NOT_DOCUMENTED (keine erfundenen Namen)
+
+| Concept | Status |
+|---------|--------|
+| Rear Wheel Speeds | **NOT_DOCUMENTED** (`chassisAxleRow2Wheel*Speed` absent from schema) |
+| Brake Pad Wear Sensor / Thickness / Disc Thickness | **NOT_DOCUMENTED** |
+| Brake Fluid Status / Pressure / Temperature | **NOT_DOCUMENTED** |
+| Brake Torque / Friction / Regenerative Torque | **NOT_DOCUMENTED** |
+| Master Cylinder Pressure | **NOT_DOCUMENTED** (circuit pressure documented instead) |
+| ABS Active / ESC Active / Traction Control Active | **NOT_DOCUMENTED** (only ABS warning telltale) |
+| Brake Warning Light / EPB Fault | **NOT_DOCUMENTED** |
+| Vehicle Mass (passenger) | **NOT_DOCUMENTED** (`chassisAxleRow3/4/5Weight` commercial only) |
+
+## 4.2 Per-vehicle capability (Teil 2)
+
+**Fleet-wide brake-signal result:** All documented `chassisBrake*` signals, wheel speeds, yaw rate, retarder, and axle weights are **`DOCUMENTED_NOT_AVAILABLE`** on every LTE_R1 vehicle — absent from `availableSignals`.
+
+| Vehicle | Powertrain | Pedal pressed | Pedal position | Circuit pressure | ABS warning | Wheel speeds | EV battery power |
+|---------|------------|---------------|----------------|------------------|-------------|--------------|------------------|
+| VEHICLE_001 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ❌ | N/A |
+| VEHICLE_002 | ELECTRIC | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ listed + history |
+| VEHICLE_003 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ❌ | N/A |
+| VEHICLE_004 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ❌ | N/A |
+| VEHICLE_005 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ❌ | N/A |
+| VEHICLE_006 | GASOLINE | ❌ | ❌ | ❌ | ❌ | ❌ | N/A |
+
+**Usable context signals (not brake-specific):** `speed` (all 6, SPORADIC 0.4–3.0% coverage), `isIgnitionOn` (5/5 ICE), `powertrainTransmissionTravelledDistance`, `obdStatusDTCCount` (where listed), `exteriorAirTemperature`. Tesla (VEHICLE_002) has richest speed series (342k samples, 55.6% coverage) and traction battery power (27.8k samples, 10.2%).
+
+**Classification legend:** `DOCUMENTED_NOT_AVAILABLE` | `AVAILABLE_NO_LATEST` | `AVAILABLE_NO_HISTORY` | `SPORADIC` (<5% coverage) | `USABLE` | `INVALID_OR_IMPLAUSIBLE`
+
+## 4.3 Timeseries coverage (Teil 3)
+
+| Window | Interval | Purpose |
+|--------|----------|---------|
+| 60 days | 1m (speed/brake), 3m (pressure), 15m (context) | `firstSeen`, `lastSeen`, `sampleCount`, coverage %, max gap |
+| 14 days | same | Freshness, current cadence |
+
+**Speed cadence (60d):** Median 60 s buckets; P95 gaps 36 min–25 d depending on vehicle; confirms prior finding that effective HF cadence is **not 1 Hz** despite `interval:"1m"`.
+
+**Brake-specific timeseries:** **Zero** retrievable history for any `chassisBrake*` or wheel-speed signal fleet-wide.
+
+## 4.4 Signal plausibility (Teil 5)
+
+| Check | Result |
+|-------|--------|
+| **A. Pedal pressed** | Not available — no transitions, duration, or decel correlation possible |
+| **B. Pedal position** | Not available |
+| **C. Circuit pressure** | Not available — cannot validate kPa semantics or EV brake-by-wire equivalence |
+| **D. ABS warning** | Not available — no telltale transitions; no wear inference possible |
+| **E. Parking brake** | Not available |
+| **F. EV battery power** | VEHICLE_002: during speed-decel samples (n=4989), positive inflow (regen proxy) rate **0.1%** — insufficient for friction/regen split |
+| **G. Wheel speeds** | Not available |
+| **H. DTC** | VEHICLE_005: `obdDTCList` listed; `obdStatusDTCCount` latest=1; SynqDrive DTC pipeline active but **not** mirrored to `BrakeEvidence` (P0-BH-06) |
+| **I. Retarder** | Not available (ICE passenger fleet) |
+
+## 4.5 DIMO native events (Teil 6)
+
+| Vehicle | DIMO harsh (60d) | DIMO extreme (60d) | SynqDrive `driving_events` HARSH | SynqDrive EXTREME | TripBehavior BRAKING |
+|---------|------------------|--------------------|----------------------------------|-------------------|----------------------|
+| VEHICLE_001 | 0 | 0 | 0 | 0 | 0 |
+| VEHICLE_002 | 0 | 0 | 0 | 0 | 0 |
+| VEHICLE_003 | **121** | **22** | **0** | **0** | 0 |
+| VEHICLE_004 | 0 | 1 | 0 | 0 | 0 |
+| VEHICLE_005 | 0 | 0 | 0 | 0 | 0 |
+| VEHICLE_006 | 0 | 0 | 0 | 0 | 0 |
+
+**Total DIMO native braking events (60d):** 144. **Duplicate timestamps:** 0.  
+**Critical gap:** VEHICLE_003 has **143 DIMO braking events** with **zero** corresponding `driving_events` rows — LTE_R1 behavior enrichment path not ingesting for this vehicle (**P1-BH-46** new).
+
+Events are **capability-gated** — only 2/6 vehicles produced any `behavior.*` braking events.
+
+## 4.6 Brake load / friction feasibility (Teil 7)
+
+| Signal combination | Classification |
+|--------------------|----------------|
+| Speed + negative Δv (proxy decel) | **Derived / approximated** — available but low cadence |
+| Brake pedal / circuit pressure | **Not determinable** — not delivered |
+| EV regen vs friction split | **Not determinable** — regen correlation <0.2% |
+| Vehicle/axle mass | **Not determinable** — no passenger mass signal |
+| Native DIMO braking events | **Direct** where emitted; **absent** on 4/6 vehicles |
+| `trip_driving_impact` harsh metrics | **Derived** from SynqDrive pipeline (when events ingested) |
+
+**Conclusion:** No fleet-wide mechanical brake-load index is supportable from DIMO telemetry today. Best available path remains **native `behavior.*` events** (vehicle-dependent) plus **trip driving impact** distance/harsh proxies — not hydraulic pedal/pressure signals.
+
+## 4.7 SynqDrive persistence matrix (Teil 8)
+
+| Category | Signals / data | DIMO delivers | SynqDrive stores | SynqDrive uses (Brake Health) |
+|----------|----------------|---------------|------------------|-------------------------------|
+| **A** Delivered + stored + used | `speed`, `odometer` | ✅ | `vehicle_latest_states` | Trip distance / gap fill |
+| **B** Delivered + stored, not used | `traction_battery_power_kw` (EV) | ✅ V002 | ✅ | ❌ (static `padRekuFactor` only) |
+| **B** Delivered + stored, not used | `obd_dtc_list` / DTC count | ✅ V005 | ✅ via DTC processor | ❌ not in `BrakeEvidence` |
+| **C** Delivered, discarded | Native `behavior.*` events | ✅ V003/V004 | ❌ not in `driving_events` | ❌ |
+| **D** Documented, not delivered | All `chassisBrake*`, wheel speeds | ❌ fleet-wide | — | — |
+| **E** Sporadic | `speed` (0.4–3% coverage ICE) | ✅ | ✅ | Context only |
+| **F** Mapping gap | `brake_pad_percent` | ❌ (no DIMO source) | Column exists, **all null** | Legacy WARNING_ONLY fallback only |
+
+**Code confirmation:** `buildLatestSnapshotQuery` and `DimoSnapshotProcessor.normalizeSnapshot` **do not request or persist** any `chassisBrake*` or wheel-speed fields. `brakePadPercent` is never populated from DIMO.
+
+## 4.8 Phase-4 findings (new / confirmed)
+
+| ID | Sev | Finding | Confidence |
+|----|-----|---------|------------|
+| **P0-BH-06** | P0 | DTC not mirrored to `BrakeEvidence` | CONFIRMED (V005 `obdStatusDTCCount`=1) |
+| **P1-BH-44** | P1 | Legacy `brakePadPercent` null fleet-wide | CONFIRMED |
+| **P1-BH-46** | P1 | DIMO native braking events not ingested (V003: 143 events, 0 `driving_events`) | CONFIRMED |
+| **P1-BH-47** | P1 | All `chassisBrake*` documented but NOT_LISTED on LTE_R1 fleet | CONFIRMED |
+| **P1-BH-48** | P1 | EV regen split not measurable from `powertrainTractionBatteryCurrentPower` alone | CONFIRMED |
+| **P2-BH-49** | P2 | Harsh-brake multiplier in config exists but needs event path, not pedal signals | LIKELY |
+
+**Verdict after Phase 4:** Brake Health cannot be improved by DIMO brake pedal/pressure/wheel-speed signals on the current fleet. Priority wiring gaps are **DIMO event ingestion** (V003) and **DTC→BrakeEvidence** — not new telemetry subscriptions.
+
+---
+
+## 9. Phase 5 preview (not executed)
 
 - Isolated pure replay of `computePadWear`/`computeDiscWear` against ground-truth mm
 - No `recalculate()` against production
 
-## 11. Phase 6 preview (not executed)
+## 10. Phase 6 preview (not executed)
 
 - Full consumer matrix CSV
 - Rental blocking policy vs canonical CRITICAL rules
 - Frontend measured/estimated display audit
 - Prometheus metric gap analysis
 
-## 12. Phase 7 preview (not executed)
+## 11. Phase 7 preview (not executed)
 
 - Final `NOT_READY` / `READY` / `SHADOW_ONLY` verdict
 - Remediation sequence: backfill → fleet recalc → evidence wiring → calibration
@@ -817,6 +986,11 @@ npx ts-node scripts/audits/audit-brake-health-production-readiness.ts --phase=1
 BRAKE_HEALTH_AUDIT_ALLOW_REMOTE=1 BRAKE_HEALTH_AUDIT_ALLOW_PROD=1 \
   npx ts-node scripts/audits/audit-brake-health-production-readiness.ts --phase=3 --days=60 \
   --output-dir=docs/audits/data
+
+# Phase 4 — DIMO brake signal timeseries (supervised production)
+cd backend && BRAKE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-brake-health-dimo-signals.ts \
+  --days=60 --output-dir=../docs/audits/data
 ```
 
 **Ops backfill (NOT run during audit — writes):**
@@ -834,16 +1008,18 @@ npx ts-node -r tsconfig-paths/register scripts/ops/backfill-brake-health-from-re
 |------|-------|--------|
 | 2026-07-17 | 1 | Initial architecture map, VPS read-only probe, code-map CSV, fleet coverage CSV, audit script scaffold |
 | 2026-07-17 | 3 | VPS 60d integrity: fleet coverage, anchor/scope/trip/evidence CSVs, findings JSON (12 findings) |
+| 2026-07-17 | 4 | DIMO brake signal audit: 156 GraphQL queries, 3 CSV artifacts, `audit-brake-health-dimo-signals.ts` |
 
 ---
 
-## Confirmation (Phases 1–3)
+## Confirmation (Phases 1–4)
 
-- ✅ No production data was modified during Phases 1–3.
+- ✅ No production data was modified during Phases 1–4.
 - ✅ No brake recalculation, evidence creation, or anchor mutations were triggered.
 - ✅ No DIMO triggers or subscriptions were created.
 - ✅ No infrastructure was changed (PM2, Redis, PostgreSQL, ClickHouse, Docker, workers).
 - ✅ No secrets, VINs, license plates, token IDs, GPS coordinates, customer PII, or raw telemetry are stored in committed audit artifacts.
-- ✅ Phase 3 VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
+- ✅ Phase 3–4 VPS PostgreSQL access was **read-only** (`SELECT` aggregates only).
+- ✅ Phase 4 DIMO Telemetry API access was **read-only** (no GPS signals queried).
 - ✅ Phase 2 was **code-only** static analysis.
-- ⏳ Phases 4–7 **not started** per audit plan.
+- ⏳ Phases 5–7 **not started** per audit plan.
