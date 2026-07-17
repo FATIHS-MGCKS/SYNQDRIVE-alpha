@@ -11,6 +11,7 @@ import {
   DamageSeverity,
   DamageSource,
   DamageStatus,
+  DamageType,
   Prisma,
   TaskPriority,
 } from '@prisma/client';
@@ -52,6 +53,72 @@ const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'im
 const DAMAGE_INCLUDE = { images: { orderBy: { createdAt: 'asc' as const } } };
 
 type DamageRow = Prisma.VehicleDamageGetPayload<{ include: typeof DAMAGE_INCLUDE }>;
+
+export type CreateDamageDraftFromDocumentExtractionInput = {
+  organizationId: string;
+  vehicleId: string;
+  documentExtractionId: string;
+  documentActionIdempotencyKey?: string | null;
+  damageType: string;
+  severity: string;
+  description: string;
+  locationLabel?: string | null;
+  estimatedCostCents?: number | null;
+  bookingId?: string | null;
+  liabilityNote?: string | null;
+  linkExistingDamageId?: string | null;
+};
+
+export type ApplyDamageRecordFromDocumentExtractionInput = {
+  organizationId: string;
+  vehicleId: string;
+  documentExtractionId: string;
+  documentActionIdempotencyKey?: string | null;
+  damageType: DamageType;
+  severity: DamageSeverity;
+  description: string;
+  locationLabel?: string | null;
+  estimatedCostCents?: number | null;
+  bookingId?: string | null;
+  liabilityNote?: string | null;
+};
+
+export type LinkDamageFromDocumentExtractionInput = {
+  organizationId: string;
+  vehicleId: string;
+  documentExtractionId: string;
+  documentActionIdempotencyKey?: string | null;
+  damageId: string;
+};
+
+function mapExtractionDamageTypeToPrisma(damageType: string): DamageType {
+  if (damageType === 'UNKNOWN') {
+    return DamageType.OTHER;
+  }
+  return damageType as DamageType;
+}
+
+function mapExtractionSeverityToPrisma(severity: string): DamageSeverity | undefined {
+  if (severity === 'UNKNOWN') {
+    return undefined;
+  }
+  return severity as DamageSeverity;
+}
+
+function appendExtractionUncertaintyNote(
+  liabilityNote: string | null | undefined,
+  damageType: string,
+  severity: string,
+): string | null {
+  const uncertain: string[] = [];
+  if (damageType === 'UNKNOWN') uncertain.push('damageType=UNKNOWN');
+  if (severity === 'UNKNOWN') uncertain.push('severity=UNKNOWN');
+  if (!uncertain.length) {
+    return liabilityNote?.trim() || null;
+  }
+  const prefix = `[extraction-uncertain:${uncertain.join(',')}]`;
+  return liabilityNote?.trim() ? `${prefix} ${liabilityNote.trim()}` : prefix;
+}
 
 @Injectable()
 export class DamagesService {
@@ -125,6 +192,227 @@ export class DamagesService {
   async findById(vehicleId: string, damageId: string): Promise<DamageResponseDto> {
     const row = await this.assertDamageBelongsToVehicle(vehicleId, damageId);
     return mapDamageToResponse(row);
+  }
+
+  async findByDocumentExtractionId(organizationId: string, documentExtractionId: string) {
+    return this.prisma.vehicleDamage.findUnique({
+      where: {
+        organizationId_documentExtractionId: {
+          organizationId,
+          documentExtractionId,
+        },
+      },
+      include: DAMAGE_INCLUDE,
+    });
+  }
+
+  async createDraftFromDocumentExtraction(
+    input: CreateDamageDraftFromDocumentExtractionInput,
+  ): Promise<DamageResponseDto> {
+    if (!input.documentExtractionId) {
+      throw new BadRequestException('documentExtractionId is required for extraction apply');
+    }
+
+    const existing = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+    if (existing) {
+      return mapDamageToResponse(existing);
+    }
+
+    if (input.linkExistingDamageId) {
+      return this.linkExistingDamageFromDocumentExtraction({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        documentExtractionId: input.documentExtractionId,
+        documentActionIdempotencyKey: input.documentActionIdempotencyKey,
+        damageId: input.linkExistingDamageId,
+      });
+    }
+
+    const prismaDamageType = mapExtractionDamageTypeToPrisma(input.damageType);
+    const prismaSeverity = mapExtractionSeverityToPrisma(input.severity);
+    const liabilityNote = appendExtractionUncertaintyNote(
+      input.liabilityNote,
+      input.damageType,
+      input.severity,
+    );
+
+    await this.validateForeignKeys(input.organizationId, input.vehicleId, {
+      bookingId: input.bookingId ?? undefined,
+    });
+
+    try {
+      const row = await this.prisma.vehicleDamage.create({
+        data: {
+          organizationId: input.organizationId,
+          documentExtractionId: input.documentExtractionId,
+          vehicleId: input.vehicleId,
+          damageType: prismaDamageType,
+          ...(prismaSeverity ? { severity: prismaSeverity } : {}),
+          status: DamageStatus.OPEN,
+          description: input.description,
+          locationView: DamageLocationView.UNKNOWN,
+          locationLabel: input.locationLabel ?? null,
+          estimatedCostCents: input.estimatedCostCents ?? null,
+          source: DamageSource.AI_UPLOAD,
+          liabilityNote,
+          bookingId: input.bookingId ?? null,
+        },
+        include: DAMAGE_INCLUDE,
+      });
+      return mapDamageToResponse(row);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findByDocumentExtractionId(
+          input.organizationId,
+          input.documentExtractionId,
+        );
+        if (raced) {
+          return mapDamageToResponse(raced);
+        }
+      }
+      throw error;
+    }
+  }
+
+  async applyRecordFromDocumentExtraction(
+    input: ApplyDamageRecordFromDocumentExtractionInput,
+  ): Promise<DamageResponseDto> {
+    const existing = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+
+    await this.validateForeignKeys(input.organizationId, input.vehicleId, {
+      bookingId: input.bookingId ?? undefined,
+    });
+
+    if (existing) {
+      const row = await this.prisma.vehicleDamage.update({
+        where: { id: existing.id },
+        data: {
+          damageType: input.damageType,
+          severity: input.severity,
+          description: input.description,
+          locationLabel: input.locationLabel ?? null,
+          estimatedCostCents: input.estimatedCostCents ?? null,
+          liabilityNote: input.liabilityNote ?? null,
+          source: DamageSource.AI_UPLOAD,
+          ...(input.bookingId
+            ? { booking: { connect: { id: input.bookingId } } }
+            : { booking: { disconnect: true } }),
+        },
+        include: DAMAGE_INCLUDE,
+      });
+      return mapDamageToResponse(row);
+    }
+
+    try {
+      const row = await this.prisma.vehicleDamage.create({
+        data: {
+          organizationId: input.organizationId,
+          documentExtractionId: input.documentExtractionId,
+          vehicleId: input.vehicleId,
+          damageType: input.damageType,
+          severity: input.severity,
+          status: DamageStatus.OPEN,
+          description: input.description,
+          locationView: DamageLocationView.UNKNOWN,
+          locationLabel: input.locationLabel ?? null,
+          estimatedCostCents: input.estimatedCostCents ?? null,
+          source: DamageSource.AI_UPLOAD,
+          liabilityNote: input.liabilityNote ?? null,
+          bookingId: input.bookingId ?? null,
+        },
+        include: DAMAGE_INCLUDE,
+      });
+      return mapDamageToResponse(row);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findByDocumentExtractionId(
+          input.organizationId,
+          input.documentExtractionId,
+        );
+        if (raced) {
+          return this.applyRecordFromDocumentExtraction(input);
+        }
+      }
+      throw error;
+    }
+  }
+
+  async linkExistingDamageFromDocumentExtraction(
+    input: LinkDamageFromDocumentExtractionInput,
+  ): Promise<DamageResponseDto> {
+    const existing = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+    if (existing) {
+      return mapDamageToResponse(existing);
+    }
+
+    const damage = await this.prisma.vehicleDamage.findFirst({
+      where: {
+        id: input.damageId,
+        vehicleId: input.vehicleId,
+        vehicle: { organizationId: input.organizationId },
+      },
+      include: DAMAGE_INCLUDE,
+    });
+    if (!damage) {
+      throw new NotFoundException('Damage case not found for vehicle');
+    }
+
+    if (
+      damage.documentExtractionId &&
+      damage.documentExtractionId !== input.documentExtractionId
+    ) {
+      throw new BadRequestException({
+        message: 'Damage case is already linked to a different document extraction',
+        code: 'DAMAGE_ALREADY_LINKED',
+        existingDocumentExtractionId: damage.documentExtractionId,
+      });
+    }
+
+    if (damage.documentExtractionId === input.documentExtractionId) {
+      return mapDamageToResponse(damage);
+    }
+
+    try {
+      const row = await this.prisma.vehicleDamage.update({
+        where: { id: damage.id },
+        data: {
+          organizationId: input.organizationId,
+          documentExtractionId: input.documentExtractionId,
+          source: DamageSource.AI_UPLOAD,
+        },
+        include: DAMAGE_INCLUDE,
+      });
+      return mapDamageToResponse(row);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findByDocumentExtractionId(
+          input.organizationId,
+          input.documentExtractionId,
+        );
+        if (raced) {
+          return mapDamageToResponse(raced);
+        }
+      }
+      throw error;
+    }
   }
 
   async getStats(vehicleId: string): Promise<DamageStatsDto> {

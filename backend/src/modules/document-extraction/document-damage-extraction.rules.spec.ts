@@ -9,6 +9,7 @@ import {
 import {
   assessDamageApplyGate,
   buildDamageCreatePayload,
+  buildDamageDraftPayload,
   buildDamageLocationLabel,
   collectDamagePlausibilityChecks,
   DAMAGE_DOCUMENT_MODES,
@@ -220,6 +221,24 @@ describe('document-damage-extraction.rules', () => {
     it('requires traceable damage area for draft/create payload', () => {
       expect(hasTraceableDamageArea({ damageDescription: 'ohne Bereich' })).toBe(false);
       expect(buildDamageCreatePayload({ damageDescription: 'ohne Bereich', damageType: 'DENT', severity: 'MINOR' })).toBeNull();
+    });
+  });
+
+  describe('draft payload', () => {
+    it('keeps UNKNOWN type and severity in draft payload', () => {
+      const payload = buildDamageDraftPayload(DAMAGE_UNKNOWN_TYPE);
+      expect(payload).toMatchObject({
+        damageType: 'UNKNOWN',
+        severity: 'UNKNOWN',
+        description: expect.any(String),
+      });
+    });
+
+    it('returns null when description or area is missing', () => {
+      expect(
+        buildDamageDraftPayload({ damageDescription: 'ohne Bereich', damageType: 'DENT' }),
+      ).toBeNull();
+      expect(buildDamageDraftPayload({ damageDescription: 'ohne Bereich' })).toBeNull();
     });
   });
 });

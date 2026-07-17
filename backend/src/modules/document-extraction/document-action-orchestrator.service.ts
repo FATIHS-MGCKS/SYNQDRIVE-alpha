@@ -55,6 +55,17 @@ import {
 } from './document-invoice-extraction.rules';
 import { isInspectionDocumentType } from './document-inspection-extraction.rules';
 import { isServiceDocumentType } from './document-service-extraction.rules';
+import {
+  buildDamageCreatePayload,
+  findDuplicateDamageCandidate,
+  isDamageDocumentType,
+  readDamageAreas,
+} from './document-damage-extraction.rules';
+import {
+  CreateDamageDraftDocumentActionExecutor,
+  CreateDamageRecordDocumentActionExecutor,
+  LinkExistingDamageDocumentActionExecutor,
+} from './executors/create-damage-document-action.executor';
 
 export type ExecuteDocumentActionPlanInput = {
   extractionId: string;
@@ -85,6 +96,9 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     private readonly createComplianceServiceEventExecutor: CreateComplianceServiceEventDocumentActionExecutor,
     private readonly updateVehicleComplianceExecutor: UpdateVehicleComplianceDocumentActionExecutor,
     private readonly refreshVehicleServiceHistoryExecutor: RefreshVehicleServiceHistoryDocumentActionExecutor,
+    private readonly createDamageDraftExecutor: CreateDamageDraftDocumentActionExecutor,
+    private readonly createDamageRecordExecutor: CreateDamageRecordDocumentActionExecutor,
+    private readonly linkExistingDamageExecutor: LinkExistingDamageDocumentActionExecutor,
   ) {}
 
   onModuleInit(): void {
@@ -97,6 +111,9 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     this.registry.register(this.createComplianceServiceEventExecutor);
     this.registry.register(this.updateVehicleComplianceExecutor);
     this.registry.register(this.refreshVehicleServiceHistoryExecutor);
+    this.registry.register(this.createDamageDraftExecutor);
+    this.registry.register(this.createDamageRecordExecutor);
+    this.registry.register(this.linkExistingDamageExecutor);
   }
 
   supportsExecutorPath(documentType: string): boolean {
@@ -105,7 +122,8 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       isFineDocumentType(documentType) ||
       isInvoiceDocumentType(documentType) ||
       isServiceDocumentType(documentType) ||
-      isInspectionDocumentType(documentType)
+      isInspectionDocumentType(documentType) ||
+      isDamageDocumentType(documentType)
     );
   }
 
@@ -416,6 +434,23 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       (serviceEventAction?.resultEntityId as string | undefined) ??
       (serviceEventAction?.output?.serviceEventId as string | undefined) ??
       null;
+    const damageRecordAction = execution.actions.find(
+      (row) => row.semanticAction === 'CREATE_DAMAGE_RECORD' && row.status === 'SUCCEEDED',
+    );
+    const damageDraftAction = execution.actions.find(
+      (row) => row.semanticAction === 'CREATE_DAMAGE_DRAFT' && row.status === 'SUCCEEDED',
+    );
+    const linkDamageAction = execution.actions.find(
+      (row) => row.semanticAction === 'LINK_EXISTING_DAMAGE' && row.status === 'SUCCEEDED',
+    );
+    const damageId =
+      (damageRecordAction?.resultEntityId as string | undefined) ??
+      (damageRecordAction?.output?.damageId as string | undefined) ??
+      (linkDamageAction?.resultEntityId as string | undefined) ??
+      (linkDamageAction?.output?.damageId as string | undefined) ??
+      (damageDraftAction?.resultEntityId as string | undefined) ??
+      (damageDraftAction?.output?.damageId as string | undefined) ??
+      null;
 
     return {
       serviceEventId,
@@ -434,6 +469,13 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         isCreditNote: invoiceAction?.output?.isCreditNote ?? null,
         serviceEventId,
         serviceEventType: serviceEventAction?.output?.eventType ?? null,
+        damageId,
+        damageStatus:
+          damageRecordAction?.output?.status ??
+          damageDraftAction?.output?.status ??
+          linkDamageAction?.output?.status ??
+          null,
+        damageDraft: damageDraftAction?.output?.draft ?? null,
         vehicleComplianceApplied:
           execution.actions.find(
             (row) =>
@@ -461,11 +503,35 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     input: ExecuteDocumentActionPlanInput,
   ): Promise<Record<string, unknown>> {
     const base = input.planContext ?? {};
-    if (!isFineDocumentType(input.documentType) && !isInvoiceDocumentType(input.documentType)) {
-      return base;
-    }
     if (!input.organizationId) {
       return base;
+    }
+
+    if (isDamageDocumentType(input.documentType)) {
+      const existingDamages = await this.prisma.vehicleDamage.findMany({
+        where: { vehicleId: input.vehicleId },
+        select: {
+          id: true,
+          damageType: true,
+          severity: true,
+          description: true,
+          locationLabel: true,
+          createdAt: true,
+        },
+      });
+
+      const candidateAreas = readDamageAreas(input.confirmedData);
+      const payload = buildDamageCreatePayload(input.confirmedData);
+      const duplicate =
+        payload != null
+          ? findDuplicateDamageCandidate(existingDamages, payload, candidateAreas)
+          : null;
+
+      return {
+        ...base,
+        existingDamages,
+        duplicateDamageId: duplicate?.id ?? null,
+      };
     }
 
     if (isFineDocumentType(input.documentType)) {
@@ -489,41 +555,45 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       };
     }
 
-    const invoiceNumber = readInvoiceNumber(input.confirmedData);
-    const vendorName = readSupplier(input.confirmedData);
-    if (!invoiceNumber) {
-      return base;
-    }
+    if (isInvoiceDocumentType(input.documentType)) {
+      const invoiceNumber = readInvoiceNumber(input.confirmedData);
+      const vendorName = readSupplier(input.confirmedData);
+      if (!invoiceNumber) {
+        return base;
+      }
 
-    let vendorId: string | null = null;
-    if (vendorName) {
-      const vendor = await this.prisma.vendor.findFirst({
+      let vendorId: string | null = null;
+      if (vendorName) {
+        const vendor = await this.prisma.vendor.findFirst({
+          where: {
+            organizationId: input.organizationId,
+            name: { equals: vendorName, mode: 'insensitive' },
+          },
+          select: { id: true },
+        });
+        vendorId = vendor?.id ?? null;
+      }
+
+      if (!vendorId) {
+        return base;
+      }
+
+      const duplicateInvoice = await this.prisma.orgInvoice.findFirst({
         where: {
           organizationId: input.organizationId,
-          name: { equals: vendorName, mode: 'insensitive' },
+          vendorId,
+          invoiceNumberDisplay: invoiceNumber,
+          documentExtractionId: { not: input.extractionId },
         },
         select: { id: true },
       });
-      vendorId = vendor?.id ?? null;
+
+      return {
+        ...base,
+        duplicateVendorInvoiceId: duplicateInvoice?.id ?? null,
+      };
     }
 
-    if (!vendorId) {
-      return base;
-    }
-
-    const duplicateInvoice = await this.prisma.orgInvoice.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        vendorId,
-        invoiceNumberDisplay: invoiceNumber,
-        documentExtractionId: { not: input.extractionId },
-      },
-      select: { id: true },
-    });
-
-    return {
-      ...base,
-      duplicateVendorInvoiceId: duplicateInvoice?.id ?? null,
-    };
+    return base;
   }
 }

@@ -63,6 +63,8 @@ function assessPlanForDocumentType(input: BuildDocumentActionPlanInput): Planner
       metadata: {
         documentMode: assessment.documentMode,
         linkCandidateId: assessment.linkCandidateId,
+        duplicateDamageId:
+          typeof plannerInput.duplicateDamageId === 'string' ? plannerInput.duplicateDamageId : null,
         missingRequirements: assessment.missingRequirements,
       },
     };

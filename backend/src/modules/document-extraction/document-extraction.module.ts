@@ -28,6 +28,11 @@ import {
   RefreshVehicleServiceHistoryDocumentActionExecutor,
   UpdateVehicleComplianceDocumentActionExecutor,
 } from './executors/update-vehicle-from-extraction-document-action.executor';
+import {
+  CreateDamageDraftDocumentActionExecutor,
+  CreateDamageRecordDocumentActionExecutor,
+  LinkExistingDamageDocumentActionExecutor,
+} from './executors/create-damage-document-action.executor';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentContentExtractorService } from './document-content-extractor.service';
 import { DocumentFileIdentificationService } from './document-file-identification.service';
@@ -75,6 +80,9 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     CreateComplianceServiceEventDocumentActionExecutor,
     UpdateVehicleComplianceDocumentActionExecutor,
     RefreshVehicleServiceHistoryDocumentActionExecutor,
+    CreateDamageDraftDocumentActionExecutor,
+    CreateDamageRecordDocumentActionExecutor,
+    LinkExistingDamageDocumentActionExecutor,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,
