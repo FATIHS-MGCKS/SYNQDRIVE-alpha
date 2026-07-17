@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-archive-only-plan-rules-2026-07-17',
+    version: '4.9.598',
+    title: 'V4.9.598 — Document Intake V2 Archive-Only Action Plan Rules',
+    summary: [
+      'Planner-Regeln für Dokumente ohne sichere Downstream-Anwendung (allgemeines Schreiben, Korrespondenz, Fahrerunterlage, Versicherung, Zahlungsnachweis, allgemeiner Nachweis, unbekannter Typ).',
+      'Semantic Actions: ARCHIVE_DOCUMENT, LINK_VEHICLE/BOOKING/CUSTOMER/DRIVER/VENDOR, SUGGEST_OWNER_REVIEW — kein CREATE_SERVICE_EVENT/INVOICE/FINE/DAMAGE.',
+      'Archivieren = valider Erfolg (isBlocked false); Entity-Link-Vorschläge nur für unbestätigte Kandidaten; keine automatische Kontaktaufnahme.',
+      'Planner v2 (`document-action-planner-v2`); Tests je Kategorie.',
+    ],
+    reason: 'Prompt 22/84: sichere Action-Plans für General/Archive-Dokumente vor Entity-Resolver-Verdrahtung.',
+    previousBehavior: 'OTHER/VEHICLE_CONDITION nur generisches ARCHIVE_ONLY ohne Link-/Review-Semantik.',
+    details:
+      'document-action-planner.archive-rules.ts (+ spec), engine archive path, preview mapper semantic actions.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T02:00:00.000Z',
+  },
+  {
     id: 'document-action-plan-dry-run-api-2026-07-17',
     version: '4.9.597',
     title: 'V4.9.597 — Document Intake V2 Action Plan Dry-Run API',
