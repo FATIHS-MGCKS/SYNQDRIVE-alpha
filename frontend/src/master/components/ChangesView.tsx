@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p54-driver-attribution-model-2026-07-17',
+    version: '4.9.555',
+    title: 'Driving Intelligence V2 P54 — DriverAttribution materialized model',
+    summary: [
+      'Neues Prisma-Modell `DriverAttribution` (`driver_attributions`) — additiver Snapshot, keine Trip-Erkennungsänderung.',
+      'Felder: organizationId, tripId, bookingId, customerId, driverId, attributionType, confidence, source, validFrom/validUntil, evidence, resolvedByUserId, resolvedAt, modelVersion.',
+      'Attribution Types: CONFIRMED_DRIVER, ASSIGNED_DRIVER, BOOKING_CUSTOMER_ONLY, VEHICLE_ONLY, TIME_WINDOW_MATCH, STAFF_MOVEMENT, PRIVATE, UNKNOWN.',
+      'Modul `driver-attribution`: Repository (Tenant-Scope), Service (read-only materialize), Priority-Resolver, Mapper.',
+      'Job `DRIVING_ATTRIBUTION_RESOLVE` Handler materialisiert Snapshot aus TripAssignment/TripAttribution.',
+      'Priorität: manuelle Resolution > Typ-Rang > Confidence; Tests für Tenant-Scope und Priorität.',
+    ],
+    reason: 'Prompt 54/76 — materialisierte Fahrer-Attribution pro Trip als V2-Artefakt.',
+    previousBehavior: 'Nur ephemerale TripAttribution/Rollen — kein persistiertes DriverAttribution-Modell.',
+    details:
+      '`driver-attribution/*`, migration `20260716320000_driver_attributions`, `driving-intelligence-jobs.handler.registry.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:25:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p53-driver-customer-roles-2026-07-16',
     version: '4.9.554',
     title: 'Driving Intelligence V2 P53 — Booking customer vs driver role separation',

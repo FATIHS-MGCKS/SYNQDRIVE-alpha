@@ -1,5 +1,6 @@
 import { DrivingEventContextEnrichJobHandler } from '../event-context/driving-event-context-enrich.handler';
 import { DrivingMisuseReconcileJobHandler } from '../misuse-cases/misuse-case-reconcile/driving-misuse-reconcile.handler';
+import { DrivingAttributionResolveJobHandler } from '../driver-attribution/driving-attribution-resolve.handler';
 import { DrivingIntelligenceJobHandlerRegistry } from './driving-intelligence-jobs.handler.registry';
 import { DRIVING_INTELLIGENCE_JOB_TYPES } from './driving-intelligence-jobs.types';
 
@@ -49,11 +50,37 @@ describe('DrivingIntelligenceJobHandlerRegistry', () => {
     expect(handle).toHaveBeenCalledTimes(1);
   });
 
+  it('dispatches DRIVING_ATTRIBUTION_RESOLVE to the real handler when wired', async () => {
+    const handle = jest.fn(async () => undefined);
+    const registry = new DrivingIntelligenceJobHandlerRegistry(
+      undefined,
+      undefined,
+      undefined,
+      { handle } as unknown as DrivingAttributionResolveJobHandler,
+    );
+    registry.onModuleInit();
+
+    await registry.dispatch({
+      id: 'job-attr',
+      jobType: 'DRIVING_ATTRIBUTION_RESOLVE',
+      organizationId: 'org-1',
+      vehicleId: 'vehicle-1',
+      tripId: 'trip-1',
+      analysisRunId: 'run-1',
+    } as any);
+
+    expect(handle).toHaveBeenCalledTimes(1);
+  });
+
   it('dispatches stub handlers for other job types', async () => {
     const registry = new DrivingIntelligenceJobHandlerRegistry();
     registry.onModuleInit();
     for (const jobType of DRIVING_INTELLIGENCE_JOB_TYPES) {
-      if (jobType === 'DRIVING_EVENT_CONTEXT_ENRICH' || jobType === 'DRIVING_MISUSE_RECONCILE') {
+      if (
+        jobType === 'DRIVING_EVENT_CONTEXT_ENRICH' ||
+        jobType === 'DRIVING_MISUSE_RECONCILE' ||
+        jobType === 'DRIVING_ATTRIBUTION_RESOLVE'
+      ) {
         continue;
       }
       await expect(

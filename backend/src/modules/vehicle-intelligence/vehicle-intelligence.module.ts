@@ -85,6 +85,9 @@ import { DrivingEventContextEnrichJobHandler } from './event-context/driving-eve
 import { DrivingAnalysisInitService } from './driving-analysis-init/driving-analysis-init.service';
 import { TripPostFinalizeAnalysisProducer } from './driving-analysis-init/trip-post-finalize-analysis.producer';
 import { DrivingAnalysisReconciliationService } from './driving-analysis-reconciliation/driving-analysis-reconciliation.service';
+import { DriverAttributionRepository } from './driver-attribution/driver-attribution.repository';
+import { DriverAttributionService } from './driver-attribution/driver-attribution.service';
+import { DrivingAttributionResolveJobHandler } from './driver-attribution/driving-attribution-resolve.handler';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
@@ -219,6 +222,9 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingAnalysisInitService,
     TripPostFinalizeAnalysisProducer,
     DrivingAnalysisReconciliationService,
+    DriverAttributionRepository,
+    DriverAttributionService,
+    DrivingAttributionResolveJobHandler,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,
@@ -302,7 +308,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingAnalysisInitService,
     TripPostFinalizeAnalysisProducer,
     DrivingAnalysisReconciliationService,
-    EnergyEventsService,
+    DriverAttributionRepository,
+    DriverAttributionService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,
     TripReconciliationService,
