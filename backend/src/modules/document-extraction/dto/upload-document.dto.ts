@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { REQUEST_DOCUMENT_TYPES } from '../document-extraction.schemas';
 
 /** Multipart form fields accompanying the uploaded `file`. */
@@ -16,4 +16,25 @@ export class UploadDocumentDto {
   @IsOptional()
   @IsString()
   organizationId?: string;
+
+  /** Required to authorize re-upload of an org-scoped exact duplicate (min 3 chars). */
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  reuploadReason?: string;
+
+  /** Optional link to the existing extraction being re-uploaded. */
+  @IsOptional()
+  @IsString()
+  relatedExtractionId?: string;
+
+  /** Optional invoice number hint for org-scoped business duplicate detection. */
+  @IsOptional()
+  @IsString()
+  invoiceNumberHint?: string;
+
+  /** Optional case/reference number hint (Aktenzeichen) for business duplicate detection. */
+  @IsOptional()
+  @IsString()
+  referenceNumberHint?: string;
 }

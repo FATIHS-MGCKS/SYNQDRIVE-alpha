@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-upload-duplicate-policy-2026-07-17',
+    version: '4.9.620',
+    title: 'V4.9.620 — Document Intake V2 Upload Duplicate Policy',
+    summary: [
+      'Fachliche Upload-Duplikatpolicy mit Status UNIQUE, EXACT_DUPLICATE, POSSIBLE_BUSINESS_DUPLICATE, REUPLOAD_ALLOWED, DUPLICATE_BLOCKED.',
+      'Org-scoped exakter Content-Hash-Check + Business-Duplikat via Rechnungsnummer/Aktenzeichen-Hints; kein Auto-Delete, bestehendes Dokument mit Status und Entity-Links in 409-Response.',
+      'Autorisierter Re-Upload mit reuploadReason + relatedExtractionId; Content-Anchor-Tabelle mit Unique Constraint für parallele Uploads.',
+      'Frontend DocumentUploadDuplicatePanel + API-Fehlerparser; Backend- und Frontend-Tests für Block, Re-Upload, Business-Warnung und Parallel-Race.',
+    ],
+    reason:
+      'Prompt 45/84 — Kontrollierte Duplikaterkennung beim Upload mit Nutzerentscheidung statt stillem Doppel-Import.',
+    previousBehavior:
+      'Gleicher Content-Hash wurde nur gespeichert; identische parallele Uploads erzeugten unbegrenzt neue Extraktionen ohne Policy oder UI.',
+    details: 'architecture/DOCUMENT_UPLOAD_DUPLICATE_POLICY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T20:00:00.000Z',
+  },
+  {
     id: 'document-extraction-content-hash-2026-07-17',
     version: '4.9.619',
     title: 'V4.9.619 — Document Intake V2 Upload Content Hash (SHA-256)',

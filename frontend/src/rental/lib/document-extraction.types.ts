@@ -43,6 +43,47 @@ export type DocumentExtractionAction =
   | 'download'
   | 'cancel';
 
+export type DocumentUploadDuplicateStatus =
+  | 'UNIQUE'
+  | 'EXACT_DUPLICATE'
+  | 'POSSIBLE_BUSINESS_DUPLICATE'
+  | 'REUPLOAD_ALLOWED'
+  | 'DUPLICATE_BLOCKED';
+
+export interface UploadDuplicateEntityLinks {
+  fineIds: string[];
+  invoiceIds: string[];
+  damageIds: string[];
+  serviceEventIds: string[];
+}
+
+export interface UploadDuplicateExistingExtraction {
+  id: string;
+  vehicleId: string;
+  organizationId: string | null;
+  status: string;
+  processingStage: string;
+  sourceFileName: string | null;
+  effectiveDocumentType: string | null;
+  requestedDocumentType: string | null;
+  contentSha256: string | null;
+  createdAt: string;
+  appliedAt: string | null;
+  entityLinks: UploadDuplicateEntityLinks;
+}
+
+export interface PublicUploadDuplicate {
+  status: DocumentUploadDuplicateStatus;
+  relatedExtractionId: string | null;
+  reuploadReason: string | null;
+  existingExtraction: UploadDuplicateExistingExtraction | null;
+  businessMatch: {
+    matchedExtractionId: string;
+    invoiceNumber?: string;
+    referenceNumber?: string;
+  } | null;
+}
+
 export interface DocumentExtractionMetadataOption {
   value: string;
   labelKey: string;
@@ -58,6 +99,7 @@ export interface DocumentExtractionMetadata {
   statuses: DocumentExtractionMetadataOption[];
   stages: DocumentExtractionMetadataOption[];
   errorPhases: DocumentExtractionMetadataOption[];
+  uploadDuplicateStatuses?: DocumentExtractionMetadataOption[];
 }
 
 export interface PublicVehicleDisplay {
@@ -97,6 +139,10 @@ export interface PublicDocumentExtraction {
   updatedAt: string;
   hasStoredFile: boolean;
   allowedActions: DocumentExtractionAction[];
+  uploadDuplicateStatus?: DocumentUploadDuplicateStatus | null;
+  relatedExtractionId?: string | null;
+  reuploadReason?: string | null;
+  uploadDuplicate?: PublicUploadDuplicate | null;
 }
 
 export type PublicDocumentExtractionSummary = Omit<

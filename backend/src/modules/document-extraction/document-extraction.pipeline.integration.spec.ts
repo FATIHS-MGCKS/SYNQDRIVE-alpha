@@ -168,6 +168,11 @@ describe('Document extraction pipeline (integration wiring)', () => {
           sizeBytes: 120_000,
         }),
       } as any,
+      {
+        assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
+        claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
+        loadBlockedAssessmentFromAnchor: jest.fn(),
+      } as any,
       observability,
     );
   });

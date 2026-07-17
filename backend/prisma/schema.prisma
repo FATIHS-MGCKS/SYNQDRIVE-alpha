@@ -2699,6 +2699,9 @@ model VehicleDocumentExtraction {
   mimeType                  String?                              @map("mime_type")
   sizeBytes                 Int?                                 @map("size_bytes")
   contentSha256             String?                              @map("content_sha256")
+  uploadDuplicateStatus     String?                              @map("upload_duplicate_status")
+  relatedExtractionId       String?                              @map("related_extraction_id")
+  reuploadReason            String?                              @map("reupload_reason")
   extractedData             Json?                                @map("extracted_data")
   // Plausibility result produced by the worker (informational; never blocks storage).
   plausibility              Json?                                @map("plausibility")
@@ -2725,6 +2728,9 @@ model VehicleDocumentExtraction {
   updatedAt                 DateTime                             @updatedAt @map("updated_at")
 
   vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  relatedExtraction                 VehicleDocumentExtraction?        @relation("UploadDuplicateRelated", fields: [relatedExtractionId], references: [id], onDelete: SetNull)
+  relatedReuploads                  VehicleDocumentExtraction[]       @relation("UploadDuplicateRelated")
+  contentAnchor                     DocumentExtractionContentAnchor?  @relation("ContentAnchorCanonical")
   batteryEvidence                   BatteryEvidence[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
@@ -2738,9 +2744,24 @@ model VehicleDocumentExtraction {
   @@index([status])
   @@index([organizationId, createdAt])
   @@index([organizationId, contentSha256])
+  @@index([organizationId, uploadDuplicateStatus])
+  @@index([relatedExtractionId])
   @@index([vehicleId, createdAt])
   @@index([status, updatedAt])
   @@map("vehicle_document_extractions")
+}
+
+model DocumentExtractionContentAnchor {
+  id                    String   @id @default(uuid())
+  organizationId        String   @map("organization_id")
+  contentSha256         String   @map("content_sha256")
+  canonicalExtractionId String   @unique @map("canonical_extraction_id")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  canonicalExtraction VehicleDocumentExtraction @relation("ContentAnchorCanonical", fields: [canonicalExtractionId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, contentSha256])
+  @@map("document_extraction_content_anchors")
 }
 
 // ------------------------------------------------

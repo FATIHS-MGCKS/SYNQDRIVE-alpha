@@ -9,6 +9,14 @@ jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
 }));
 
+function makeUploadDuplicateMock() {
+  return {
+    assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
+    claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
+    loadBlockedAssessmentFromAnchor: jest.fn(),
+  };
+}
+
 function makeUploadService(overrides: {
   identifyImpl?: jest.Mock;
   create?: jest.Mock;
@@ -27,13 +35,24 @@ function makeUploadService(overrides: {
   };
   const prisma = {
     vehicleDocumentExtraction: {
-      create: overrides.create ?? jest.fn().mockResolvedValue({ id: 'ext-1', vehicleId: 'v1', organizationId: 'org-1' }),
-      update: overrides.update ?? jest.fn().mockResolvedValue({ id: 'ext-1', status: 'QUEUED' }),
+      create: overrides.create ?? jest.fn().mockImplementation(({ data }) =>
+        Promise.resolve({ id: 'ext-1', vehicleId: 'v1', organizationId: 'org-1', ...data }),
+      ),
+      update:
+        overrides.update ??
+        jest.fn().mockImplementation(({ where, data }) =>
+          Promise.resolve({ id: where.id, vehicleId: 'v1', organizationId: 'org-1', ...data }),
+        ),
+      delete: jest.fn(),
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    documentExtractionContentAnchor: {
+      create: jest.fn().mockResolvedValue({}),
+      findUnique: jest.fn(),
     },
     vehicle: {
       findUnique: jest.fn().mockResolvedValue({ organizationId: 'org-1' }),
@@ -54,6 +73,7 @@ function makeUploadService(overrides: {
     deleteObject: jest.fn(),
   };
   const queue = { add: jest.fn().mockResolvedValue({}), getJob: jest.fn().mockResolvedValue(null) };
+  const uploadDuplicate = makeUploadDuplicateMock();
   const svc = new DocumentExtractionService(
     prisma as any,
     { get: jest.fn((_k: string, d?: unknown) => d) } as any,
@@ -70,10 +90,11 @@ function makeUploadService(overrides: {
     { supportsExecutorPath: jest.fn(), executeConfirmedPlan: jest.fn() } as any,
     { runChecks: jest.fn() } as any,
     fileIdentification as any,
+    uploadDuplicate as any,
     { logEvent: jest.fn(), recordApply: jest.fn(), observeStage: jest.fn((_a, _b, fn) => fn()) } as any,
   );
 
-  return { svc, prisma, storage, queue, fileIdentification };
+  return { svc, prisma, storage, queue, fileIdentification, uploadDuplicate };
 }
 
 describe('Document extraction upload content hash', () => {
@@ -105,12 +126,9 @@ describe('Document extraction upload content hash', () => {
 
   it('stores the same contentSha256 for identical bytes with different filenames', async () => {
     const create = jest.fn()
-      .mockResolvedValueOnce({ id: 'ext-a', vehicleId: 'v1', organizationId: 'org-1' })
-      .mockResolvedValueOnce({ id: 'ext-b', vehicleId: 'v1', organizationId: 'org-1' });
-    const update = jest.fn()
-      .mockResolvedValueOnce({ id: 'ext-a', status: 'QUEUED' })
-      .mockResolvedValueOnce({ id: 'ext-b', status: 'QUEUED' });
-    const { svc } = makeUploadService({ create, update });
+      .mockImplementationOnce(({ data }) => Promise.resolve({ id: 'ext-a', vehicleId: 'v1', organizationId: 'org-1', ...data }))
+      .mockImplementationOnce(({ data }) => Promise.resolve({ id: 'ext-b', vehicleId: 'v1', organizationId: 'org-1', ...data }));
+    const { svc } = makeUploadService({ create });
     const expectedHash = await computeDocumentContentSha256(FIXTURE_TXT);
 
     await svc.createFromUpload({
@@ -139,12 +157,9 @@ describe('Document extraction upload content hash', () => {
 
   it('stores different contentSha256 values for different content with the same filename', async () => {
     const create = jest.fn()
-      .mockResolvedValueOnce({ id: 'ext-a', vehicleId: 'v1', organizationId: 'org-1' })
-      .mockResolvedValueOnce({ id: 'ext-b', vehicleId: 'v1', organizationId: 'org-1' });
-    const update = jest.fn()
-      .mockResolvedValueOnce({ id: 'ext-a', status: 'QUEUED' })
-      .mockResolvedValueOnce({ id: 'ext-b', status: 'QUEUED' });
-    const { svc, fileIdentification } = makeUploadService({ create, update });
+      .mockImplementationOnce(({ data }) => Promise.resolve({ id: 'ext-a', vehicleId: 'v1', organizationId: 'org-1', ...data }))
+      .mockImplementationOnce(({ data }) => Promise.resolve({ id: 'ext-b', vehicleId: 'v1', organizationId: 'org-1', ...data }));
+    const { svc, fileIdentification } = makeUploadService({ create });
 
     const firstBuffer = FIXTURE_TXT;
     const secondBuffer = Buffer.from(`${FIXTURE_TXT.toString('utf8')}-changed`);
@@ -206,10 +221,14 @@ describe('Document extraction upload content hash', () => {
 
   it('supports parallel uploads hashing identical bytes consistently', async () => {
     const create = jest.fn().mockImplementation(({ data }) =>
-      Promise.resolve({ id: `ext-${data.contentSha256.slice(0, 8)}`, ...data }),
+      Promise.resolve({
+        id: `ext-${data.contentSha256.slice(0, 8)}`,
+        vehicleId: 'v1',
+        organizationId: 'org-1',
+        ...data,
+      }),
     );
-    const update = jest.fn().mockImplementation((args) => Promise.resolve(args.data));
-    const { svc } = makeUploadService({ create, update });
+    const { svc } = makeUploadService({ create });
     const buffer = Buffer.from(FIXTURE_TXT);
     const expectedHash = await computeDocumentContentSha256(buffer);
 

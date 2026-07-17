@@ -107,6 +107,10 @@ export class DocumentExtractionController {
       mimeType: file.mimetype,
       buffer: file.buffer,
       userId: userId ?? null,
+      reuploadReason: body.reuploadReason,
+      relatedExtractionId: body.relatedExtractionId,
+      invoiceNumberHint: body.invoiceNumberHint,
+      referenceNumberHint: body.referenceNumberHint,
     });
     return this.service.toPublicExtraction(record);
   }

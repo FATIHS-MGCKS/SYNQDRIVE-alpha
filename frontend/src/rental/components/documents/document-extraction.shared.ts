@@ -279,7 +279,8 @@ export type FlowStatus =
   | 'applying'
   | 'done'
   | 'failed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'duplicate_blocked';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 
@@ -430,4 +431,5 @@ export const FLOW_STATUS_LABEL_DE: Record<FlowStatus, string> = {
   done: 'Angewendet',
   failed: 'Fehler',
   cancelled: 'Abgebrochen',
+  duplicate_blocked: 'Duplikat erkannt',
 };

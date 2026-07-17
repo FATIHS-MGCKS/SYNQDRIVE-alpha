@@ -6,6 +6,7 @@ import {
   DocumentExtractionType,
 } from '@prisma/client';
 import { DocumentExtractionAction } from '../document-extraction-actions.util';
+import type { PublicUploadDuplicateDto } from './public-upload-duplicate.dto';
 
 export interface PublicVehicleDisplayDto {
   id: string;
@@ -93,6 +94,10 @@ export interface PublicDocumentExtractionDto {
   hasStoredFile: boolean;
   allowedActions: DocumentExtractionAction[];
   audit: PublicDocumentExtractionAuditDto;
+  uploadDuplicateStatus: string | null;
+  relatedExtractionId: string | null;
+  reuploadReason: string | null;
+  uploadDuplicate: PublicUploadDuplicateDto | null;
 }
 
 /** List projection — omits heavy extracted/confirmed payloads by default. */
