@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-mcp-gateway-readonly-2026-07-17',
+    version: '4.9.590',
+    title: 'V4.9.590 — Voice AI: tenant-safe read-only MCP gateway',
+    summary: [
+      'Öffentlicher MCP-Endpunkt POST /api/v1/mcp/voice/{orgId} mit JSON-RPC (initialize, tools/list, tools/call) und kurzlebigem Bearer-Token.',
+      'Acht Read-only-Tools (Kunde, Buchung, Fahrzeug, Rechnung, Standort, Geschäftszeiten) delegieren an bestehende Domain-Services mit Tenant-Bindung.',
+      'Middleware: Token/Nonce-Replay-Schutz, Abo- & Deployment-Status, Rate Limit, Tool-Allowlist, Timeout, redigiertes Audit.',
+    ],
+    reason:
+      'ElevenLabs-Agenten benötigen einen sicheren, mandantenfesten Datenzugriff ohne User-JWT, Schreibtools oder Cross-Tenant-Leaks.',
+    previousBehavior:
+      'Kein SynqDrive MCP-Gateway; Tool-Capabilities nur in Agent-Config/Permissions vorbereitet.',
+    details:
+      'backend/src/modules/voice-mcp-gateway/, architecture/VOICE_AI_MCP_GATEWAY_READONLY_2026-07-17.md. Feature-Flag VOICE_AI_MCP_GATEWAY_ENABLED.',
+    affectsArchitecture: true,
+    module: 'Voice AI',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
     id: 'voice-agent-transfer-privacy-postcall-2026-07-17',
     version: '4.9.589',
     title: 'V4.9.589 — Voice AI: transfer, privacy & post-call agent configuration',
