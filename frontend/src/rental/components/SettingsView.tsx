@@ -112,10 +112,6 @@ export function StationsTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Delete confirmation
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
   // Status toggle feedback
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -409,20 +405,6 @@ export function StationsTab() {
       /* no-op; UI remains */
     } finally {
       setTogglingId(null);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!orgId || !deletingId) return;
-    setDeleting(true);
-    try {
-      await api.stations.delete(orgId, deletingId);
-      await load();
-      setDeletingId(null);
-    } catch (e) {
-      setError((e as Error).message || 'LÃ¶schen fehlgeschlagen');
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -750,7 +732,6 @@ export function StationsTab() {
               key={station.id}
               station={station}
               onEdit={() => openEdit(station)}
-              onDelete={() => setDeletingId(station.id)}
               onToggleStatus={() => toggleStatus(station)}
               onAssign={() => openAssign(station)}
               toggling={togglingId === station.id}
@@ -1241,66 +1222,6 @@ export function StationsTab() {
         </div>
       )}
 
-      {/* Delete confirmation */}
-      {deletingId && (
-        <div
-          className="overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={() => !deleting && setDeletingId(null)}
-        >
-          <div
-            className={`w-full max-w-md rounded-2xl shadow-2xl p-5 ${
-              'surface-premium border border-border'
-            }`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <div className={`p-2.5 rounded-lg ${'sq-tone-critical'}`}>
-                <Icon name="alert-circle" className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <h3 className={`text-sm font-semibold ${textPrimary}`}>Standort lÃ¶schen?</h3>
-                <p className={`text-xs mt-1 ${textSecondary}`}>
-                  {(() => {
-                    const s = stations.find((x) => x.id === deletingId);
-                    return s
-                      ? s.vehicleCount > 0
-                        ? `${s.vehicleCount} Fahrzeug(e) sind diesem Standort zugewiesen und werden entkoppelt. Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.`
-                        : 'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.'
-                      : 'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.';
-                  })()}
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setDeletingId(null)}
-                disabled={deleting}
-                className={`px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                  'border border-border/60 surface-premium text-foreground hover:bg-muted'
-                }`}
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {deleting ? (
-                  <>
-                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> LÃ¶scheâ€¦
-                  </>
-                ) : (
-                  <>
-                    <Icon name="trash-2" className="w-4 h-4" /> LÃ¶schen
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Vehicle assignment modal */}
       {assignStation && (
         <div
@@ -1615,14 +1536,12 @@ function StationStatPill({
 function StationCard({
   station,
   onEdit,
-  onDelete,
   onToggleStatus,
   onAssign,
   toggling,
 }: {
   station: import('../../lib/api').Station;
   onEdit: () => void;
-  onDelete: () => void;
   onToggleStatus: () => void;
   onAssign: () => void;
   toggling: boolean;
@@ -1772,13 +1691,6 @@ function StationCard({
             className="p-2 rounded-lg transition-colors hover:bg-muted"
           >
             <Icon name="edit-3" className={`w-4 h-4 ${textSecondary}`} />
-          </button>
-          <button
-            onClick={onDelete}
-            title="LÃ¶schen"
-            className="p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors"
-          >
-            <Icon name="trash-2" className={`w-4 h-4 ${textSecondary}`} />
           </button>
         </div>
       </div>

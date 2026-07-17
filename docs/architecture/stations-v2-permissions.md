@@ -152,7 +152,7 @@ Permissions sind **punktnotierte Keys** im Modul `stations`. Sie werden in `memb
 | `PATCH .../managerName` | `stations.manage_team` |
 | `GET .../activity` (Ziel) | `stations.view_activity` |
 | `POST /stations/backfill-coordinates` | `stations.geocode` |
-| `DELETE /stations/:id` | **deprecated** → erfordert `stations.archive` |
+| `DELETE /stations/:id` | **deprecated (410 Gone)** — `STATION_DELETE_DEPRECATED`; Ersatz: `POST .../archive` |
 
 ---
 

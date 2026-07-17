@@ -1,20 +1,110 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
-import { BookingStatus, Prisma, Station, StationStatus, StationType, VehicleStatus } from '@prisma/client';
+import { BookingStatus, Prisma, Station, StationCoordinatesSource, StationStatus, StationType, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationValidationService } from './station-validation.service';
 import {
   STATION_STATUS_LABELS,
   STATION_TYPE_LABELS,
   StationOverviewStatsDto,
-  openingHoursIsMissing,
   SELECTABLE_STATION_STATUSES,
 } from './station.types';
+import {
+  stationOpeningHoursIsMissing,
+  normalizeStationOpeningHoursForRead,
+  STATION_OPENING_HOURS_CONTRACT_VERSION,
+  getStationOpeningHoursContractMetadataForApi,
+} from '@shared/stations/station-opening-hours.validation';
 import { CreateStationDto } from './dto/create-station.dto';
+import {
+  validateStationCreatePayload,
+} from './station-create-validation.util';
+import {
+  assertGenericStationUpdateAllowed,
+  buildStationPatchWriteData,
+  type StationUpdatePayload,
+} from './station-update-validation.util';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
-import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
+import { mapboxAccessToken, parseMapboxForwardGeocodeFeature, resolveGeocodeCountryFilter } from './station-geocode.util';
+import {
+  normalizeGeofenceRadius,
+  resolveStationCoordinatesProvenance,
+  stationHasMissingCoordinates,
+} from './station-location-masterdata.util';
+import type { StationScopeContext } from '@shared/stations/station-scope.types';
+import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
+import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
+import {
+  evaluateStationGeofenceCapability,
+  type StationGeofenceCapabilityResult,
+} from '@shared/stations/station-geofence-capability.policy';
+import type { StationOperationsDto } from '@shared/stations/station-operations.resolver';
+import { StationOperationsService } from './station-operations.service';
+import {
+  buildStationLifecycleCommandAudit,
+  evaluateStationLifecycleCommand,
+} from './station-lifecycle-command.util';
+import {
+  StationLifecycleCommandName,
+  StationLifecycleCommandOutcome,
+  type StationLifecycleCommandResult,
+} from './station-lifecycle-command.types';
+import {
+  buildArchivePreviewListSection,
+  evaluateStationArchivePreview,
+} from './station-archive-preview.util';
+import {
+  STATION_ARCHIVE_PREVIEW_LIST_LIMIT,
+  type StationArchivePreviewResult,
+} from './station-archive-preview.types';
+import {
+  buildArchivedCapabilitiesSnapshot,
+  buildStationArchiveCommandAudit,
+  evaluateStationArchiveCommand,
+} from './station-archive-command.util';
+import {
+  StationArchiveCommandName,
+  StationArchiveCommandOutcome,
+  type StationArchiveCommandOptions,
+  type StationArchiveCommandResult,
+} from './station-archive-command.types';
+import { ArchiveStationDto } from './dto/archive-station.dto';
+import { RestoreStationDto } from './dto/restore-station.dto';
+import { throwStationDeleteDeprecated } from './station-delete-deprecation.util';
+import { lockOrganizationPrimarySlot } from './station-primary-lock.util';
+import {
+  buildStationSetPrimaryCommandAudit,
+  buildStationSetPrimaryConflictIssue,
+  evaluateStationSetPrimaryCommand,
+  isStationPrimaryUniqueViolation,
+} from './station-set-primary-command.util';
+import {
+  StationSetPrimaryCommandName,
+  StationSetPrimaryCommandOutcome,
+  type StationSetPrimaryCommandResult,
+  type StationSetPrimaryPreflightSnapshot,
+} from './station-set-primary-command.types';
+import {
+  buildStationRestoreCommandAudit,
+  evaluateStationRestoreCommand,
+} from './station-restore-command.util';
+import {
+  StationRestoreCommandName,
+  StationRestoreCommandOutcome,
+  type StationRestoreCommandOptions,
+  type StationRestoreCommandResult,
+} from './station-restore-command.types';
+import {
+  evaluateStationRestorePreview,
+  parseArchivedCapabilitiesSnapshot,
+} from './station-restore-preview.util';
+import type { StationRestorePreviewResult } from './station-restore-preview.types';
+import { parseStationIds } from '@shared/stations/station-scope.util';
+import { isStationReadableInAccessScope } from '@shared/stations/station-access-scope.util';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
+const FUTURE_BOOKING_STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE'];
+const OPEN_HANDOVER_STATUSES: BookingStatus[] = ['CONFIRMED', 'ACTIVE'];
 
 // ---------- Input payload contracts (accepted by controller) ----------
 
@@ -40,6 +130,10 @@ export interface StationDto {
   country: string | null;
   latitude: number | null;
   longitude: number | null;
+  coordinatesSource: StationCoordinatesSource | null;
+  coordinatesConfirmedAt: Date | null;
+  hasMissingCoordinates: boolean;
+  geofenceCapability: StationGeofenceCapabilityResult;
   timezone: string | null;
   radiusMeters: number | null;
   geofenceRadiusMeters: number | null;
@@ -53,6 +147,7 @@ export interface StationDto {
   keyBoxAvailable: boolean;
   capacity: number | null;
   openingHours: Prisma.JsonValue | null;
+  openingHoursContractVersion: number;
   holidayRules: Prisma.JsonValue | null;
   handoverInstructions: string | null;
   returnInstructions: string | null;
@@ -129,6 +224,24 @@ export interface StationVehicleAssignmentResult {
   movedFromOtherStations: number;
 }
 
+export type { StationOperationsDto } from '@shared/stations/station-operations.resolver';
+
+export interface StationTeamDto {
+  managerName: string | null;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+  staff: Array<{ id: string; name: string; role: string | null }>;
+}
+
+export interface StationActivityEntryDto {
+  id: string;
+  action: string;
+  description: string;
+  userName: string;
+  createdAt: string;
+}
+
 @Injectable()
 export class StationsService {
   private readonly logger = new Logger(StationsService.name);
@@ -136,6 +249,8 @@ export class StationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stationValidation: StationValidationService,
+    private readonly stationAccessScope: StationAccessScopeService,
+    private readonly stationOperations: StationOperationsService,
   ) {}
 
   private stationIncludeCount() {
@@ -146,14 +261,21 @@ export class StationsService {
   // CRUD
   // ─────────────────────────────────────────────────────────────
 
-  async findAll(organizationId: string, query?: ListStationsQueryDto): Promise<StationDto[]> {
-    const where: Prisma.StationWhereInput = { organizationId };
-    if (query?.status) where.status = query.status;
-    if (query?.type) where.type = query.type;
+  async findAll(
+    organizationId: string,
+    query?: ListStationsQueryDto,
+    scope?: StationScopeContext,
+  ): Promise<StationDto[]> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const extra: Prisma.StationWhereInput = {};
+    if (query?.status) extra.status = query.status;
+    if (query?.type) extra.type = query.type;
     if (query?.selectableOnly === 'true') {
-      where.status = { in: SELECTABLE_STATION_STATUSES };
-      where.pickupEnabled = true;
+      extra.status = { in: SELECTABLE_STATION_STATUSES };
+      extra.pickupEnabled = true;
     }
+
+    const where = this.stationAccessScope.buildStationWhere(access, extra);
 
     const stations = await this.prisma.station.findMany({
       where,
@@ -163,31 +285,50 @@ export class StationsService {
     return stations.map((s) => this.toDto(s, s._count.vehiclesHome));
   }
 
-  async findOne(organizationId: string, id: string): Promise<StationDto> {
+  getOpeningHoursContract() {
+    return getStationOpeningHoursContractMetadataForApi();
+  }
+
+  async findOne(
+    organizationId: string,
+    id: string,
+    scope?: StationScopeContext,
+  ): Promise<StationDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
     const station = await this.prisma.station.findFirst({
-      where: { id, organizationId },
+      where: this.stationAccessScope.buildStationWhere(access, { id }),
       include: this.stationIncludeCount(),
     });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
+    if (!station) {
+      throw new NotFoundException(`Station ${id} not found`);
+    }
     return this.toDto(station, station._count.vehiclesHome);
   }
 
   async create(organizationId: string, payload: StationUpsertPayload): Promise<StationDto> {
+    validateStationCreatePayload(payload);
     const name = payload.name?.trim();
     if (!name) throw new BadRequestException('Station name is required');
 
-    if (payload.code) {
+    const normalizedCode = payload.code?.trim();
+    if (normalizedCode) {
       const dup = await this.prisma.station.findFirst({
-        where: { organizationId, code: payload.code.trim() },
+        where: { organizationId, code: normalizedCode },
       });
-      if (dup) throw new ConflictException(`Station code "${payload.code}" already exists`);
+      if (dup) throw new ConflictException(`Station code "${normalizedCode}" already exists`);
     }
 
     const writable = this.buildWriteData(payload);
+    if (normalizedCode) writable.code = normalizedCode;
 
     const explicitLat = payload.latitude !== undefined && payload.latitude !== null;
     const explicitLng = payload.longitude !== undefined && payload.longitude !== null;
-    if (!(explicitLat && explicitLng)) {
+    if (explicitLat && explicitLng) {
+      Object.assign(
+        writable,
+        resolveStationCoordinatesProvenance({ explicitCoordinates: true }),
+      );
+    } else if (!(explicitLat && explicitLng)) {
       const coords = await this.geocodeAddress({
         address: payload.address ?? null,
         city: payload.city ?? null,
@@ -197,11 +338,16 @@ export class StationsService {
       if (coords) {
         if (!explicitLat) writable.latitude = coords.latitude;
         if (!explicitLng) writable.longitude = coords.longitude;
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ geocodedCoordinates: true }),
+        );
       }
     }
 
     const station = await this.prisma.$transaction(async (tx) => {
       if (payload.isPrimary) {
+        await lockOrganizationPrimarySlot(tx, organizationId);
         await tx.station.updateMany({
           where: { organizationId, isPrimary: true },
           data: { isPrimary: false },
@@ -228,23 +374,55 @@ export class StationsService {
       where: { id, organizationId },
     });
 
-    const writable = this.buildWriteData(payload);
+    assertGenericStationUpdateAllowed(payload as StationUpdatePayload, {
+      status: existing.status,
+      pickupEnabled: existing.pickupEnabled,
+      returnEnabled: existing.returnEnabled,
+    });
+
+    const writable = buildStationPatchWriteData(payload as StationUpdatePayload);
+    if (payload.radiusMeters !== undefined) {
+      const r = payload.radiusMeters;
+      if (r === null) {
+        writable.radiusMeters = null;
+      } else {
+        writable.radiusMeters = normalizeGeofenceRadius(r);
+      }
+    }
+
     if (payload.name !== undefined) {
       const trimmed = payload.name?.trim();
       if (!trimmed) throw new BadRequestException('Station name cannot be empty');
       writable.name = trimmed;
     }
 
-    // V4.7.07 — Re-geocode on update when:
-    //   1) the caller did not explicitly set latitude/longitude in the
-    //      payload (undefined → leave alone, an explicit `null` is treated
-    //      as "user wants to clear coords" and is respected), AND
-    //   2) at least one address component is being changed by this PATCH.
-    // We resolve against the merged address (payload values shadow the
-    // existing record) so partial updates still work — e.g. only changing
-    // the postal code re-geocodes against the (existing street + new PLZ).
+    if (payload.code) {
+      const normalizedCode = payload.code.trim();
+      const dup = await this.prisma.station.findFirst({
+        where: { organizationId, code: normalizedCode, id: { not: id } },
+      });
+      if (dup) throw new ConflictException(`Station code "${normalizedCode}" already exists`);
+      writable.code = normalizedCode;
+    }
+
     const wantsLatChange = payload.latitude !== undefined;
     const wantsLngChange = payload.longitude !== undefined;
+    if (wantsLatChange || wantsLngChange) {
+      const nextLat = wantsLatChange ? payload.latitude : existing.latitude;
+      const nextLng = wantsLngChange ? payload.longitude : existing.longitude;
+      if (nextLat == null && nextLng == null) {
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ coordinatesCleared: true }),
+        );
+      } else if (wantsLatChange && wantsLngChange && nextLat != null && nextLng != null) {
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ explicitCoordinates: true }),
+        );
+      }
+    }
+
     const addressFieldsTouched =
       payload.address !== undefined ||
       payload.city !== undefined ||
@@ -261,118 +439,861 @@ export class StationsService {
       if (coords) {
         writable.latitude = coords.latitude;
         writable.longitude = coords.longitude;
+        Object.assign(
+          writable,
+          resolveStationCoordinatesProvenance({ geocodedCoordinates: true }),
+        );
       }
     }
 
-    const station = await this.prisma.$transaction(async (tx) => {
-      if (payload.isPrimary === true) {
-        await tx.station.updateMany({
-          where: { organizationId, isPrimary: true, id: { not: id } },
-          data: { isPrimary: false },
-        });
-      }
-      return tx.station.update({
-        where: { id },
-        data: writable,
-        include: this.stationIncludeCount(),
-      });
+    const station = await this.prisma.station.update({
+      where: { id },
+      data: writable,
+      include: this.stationIncludeCount(),
     });
     return this.toDto(station, station._count.vehiclesHome);
   }
 
-  async archive(organizationId: string, id: string): Promise<StationDto> {
-    const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
-    if (station.status === 'ARCHIVED') return this.findOne(organizationId, id);
-
-    const updated = await this.prisma.station.update({
-      where: { id },
-      data: {
-        status: 'ARCHIVED',
-        archivedAt: new Date(),
-        isPrimary: false,
-        pickupEnabled: false,
-        returnEnabled: false,
-      },
-      include: this.stationIncludeCount(),
-    });
-    return this.toDto(updated, updated._count.vehiclesHome);
+  async archive(
+    organizationId: string,
+    id: string,
+    options: StationArchiveCommandOptions | ArchiveStationDto = {},
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationArchiveCommandResult<StationDto>> {
+    return this.archiveStation(organizationId, id, options, scope, performedByUserId);
   }
 
-  async restore(organizationId: string, id: string): Promise<StationDto> {
-    const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
-
-    const updated = await this.prisma.station.update({
-      where: { id },
-      data: {
-        status: 'ACTIVE',
-        archivedAt: null,
-        pickupEnabled: true,
-        returnEnabled: true,
-      },
+  async archiveStation(
+    organizationId: string,
+    id: string,
+    options: StationArchiveCommandOptions | ArchiveStationDto = {},
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationArchiveCommandResult<StationDto>> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = (await this.stationAccessScope.requireReadableStation(access, id, {
       include: this.stationIncludeCount(),
-    });
-    return this.toDto(updated, updated._count.vehiclesHome);
-  }
+    })) as Prisma.StationGetPayload<{ include: ReturnType<StationsService['stationIncludeCount']> }>;
+    const vehicleHomeCount = station._count.vehiclesHome;
 
-  async setPrimaryStation(organizationId: string, id: string): Promise<StationDto> {
-    const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
-    if (station.status === 'ARCHIVED') {
-      throw new BadRequestException('Archived stations cannot be set as primary');
+    const preflight = await this.loadStationArchivePreflight(access, station.id);
+    const preview = evaluateStationArchivePreview({
+      snapshot: {
+        stationId: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        archivedAt: station.archivedAt,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        successorCandidates: preflight.successorCandidates,
+      },
+      counts: preflight.counts,
+    });
+
+    const successorId = options.successorPrimaryStationId?.trim() || null;
+    let successorPrimaryStationStatus: StationStatus | null = null;
+    if (successorId) {
+      const successor = await this.prisma.station.findFirst({
+        where: { id: successorId, organizationId },
+        select: { status: true },
+      });
+      successorPrimaryStationStatus = successor?.status ?? null;
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.station.updateMany({
-        where: { organizationId, isPrimary: true },
-        data: { isPrimary: false },
+    const evaluation = evaluateStationArchiveCommand({
+      preview,
+      options,
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
+      },
+      successorPrimaryStationStatus,
+    });
+
+    const auditBase = {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      previousStatus: station.status,
+      nextStatus: 'ARCHIVED' as const,
+      performedByUserId: performedByUserId ?? null,
+      idempotent: evaluation.idempotent,
+      successorPrimaryStationId: successorId,
+      acknowledgedFutureBookings: options.acknowledgeFutureBookings === true,
+      futurePickupCount: preflight.counts.futurePickupBookings,
+      futureReturnCount: preflight.counts.futureReturnBookings,
+    };
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationArchiveCommandOutcome.IDEMPOTENT,
+        command: StationArchiveCommandName.ARCHIVE,
+        allowed: true,
+        station: this.toDto(station, vehicleHomeCount),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationArchiveCommandAudit(auditBase),
+      };
+    }
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          'Archive is not allowed for this station',
+        code: 'ARCHIVE_BLOCKED',
+        outcome: StationArchiveCommandOutcome.BLOCKED,
+        command: StationArchiveCommandName.ARCHIVE,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationArchiveCommandAudit(auditBase),
       });
+    }
+
+    const archivedAt = new Date();
+    const archivedCapabilitiesSnapshot = buildArchivedCapabilitiesSnapshot({
+      pickupEnabled: station.pickupEnabled,
+      returnEnabled: station.returnEnabled,
+      afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+      keyBoxAvailable: station.keyBoxAvailable,
+      isPrimary: station.isPrimary,
+      archivedAt,
+      archivedByUserId: performedByUserId ?? null,
+      reason: options.reason ?? null,
+    });
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (station.isPrimary && successorId) {
+        await tx.station.updateMany({
+          where: { organizationId, isPrimary: true },
+          data: { isPrimary: false },
+        });
+        await tx.station.update({
+          where: { id: successorId },
+          data: { isPrimary: true, status: 'ACTIVE' },
+        });
+      }
+
       return tx.station.update({
         where: { id },
-        data: { isPrimary: true, status: 'ACTIVE' },
+        data: {
+          status: 'ARCHIVED',
+          archivedAt,
+          isPrimary: false,
+          pickupEnabled: false,
+          returnEnabled: false,
+          archivedCapabilitiesSnapshot,
+          lifecycleMetadata: {
+            lastArchiveReason: options.reason?.trim() || 'USER_REQUEST',
+            lastArchivedAt: archivedAt.toISOString(),
+            lastArchivedByUserId: performedByUserId ?? null,
+          },
+        },
         include: this.stationIncludeCount(),
       });
     });
-    return this.toDto(updated, updated._count.vehiclesHome);
+
+    const audit = buildStationArchiveCommandAudit({
+      ...auditBase,
+      archivedCapabilitiesSnapshot,
+    });
+
+    return {
+      outcome: StationArchiveCommandOutcome.APPLIED,
+      command: StationArchiveCommandName.ARCHIVE,
+      allowed: true,
+      station: this.toDto(updated, updated._count.vehiclesHome),
+      blockingReasons: [],
+      warnings: evaluation.warnings,
+      requiredActions: evaluation.requiredActions,
+      audit,
+    };
   }
 
-  /** @deprecated Prefer archive() — kept for backward compatibility */
-  async delete(organizationId: string, id: string): Promise<{ id: string; unassignedVehicles: number; archived: boolean }> {
+  private async loadStationArchivePreflight(
+    access: StationAccessScope,
+    stationId: string,
+  ) {
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        id: true,
+        organizationId: true,
+        isPrimary: true,
+      },
+    });
+
+    const now = new Date();
+    const futurePickupWhere = this.stationAccessScope.buildStationPickupBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        startDate: { gt: now },
+      },
+    );
+    const futureReturnWhere = this.stationAccessScope.buildStationReturnBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        endDate: { gt: now },
+      },
+    );
+    const homeWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'homeStationId');
+    const presentWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'currentStationId');
+    const expectedWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'expectedStationId');
+    const plannedTransferWhere: Prisma.VehicleWhereInput = {
+      ...expectedWhere,
+      OR: [{ currentStationId: null }, { currentStationId: { not: stationId } }],
+    };
+    const stationBookingWhere = this.stationAccessScope.buildStationBookingsWhere(access, stationId);
+    const stationVehicleWhere = this.stationAccessScope.buildStationLinkedVehicleWhere(
+      access,
+      stationId,
+    );
+    const openPickupHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId: access.orgId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ pickupStationId: stationId }, { actualPickupStationId: stationId }],
+      handoverProtocols: { none: { kind: 'PICKUP' } },
+    };
+    const openReturnHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId: access.orgId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ returnStationId: stationId }, { actualReturnStationId: stationId }],
+      handoverProtocols: { none: { kind: 'RETURN' } },
+    };
+
+    const successorCandidates = station.isPrimary
+      ? await this.prisma.station.findMany({
+          where: {
+            organizationId: station.organizationId,
+            status: 'ACTIVE',
+            id: { not: stationId },
+          },
+          select: { id: true, name: true, code: true },
+          orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }],
+          take: STATION_ARCHIVE_PREVIEW_LIST_LIMIT,
+        })
+      : [];
+
+    const [
+      homeVehicles,
+      presentVehicles,
+      expectedVehicles,
+      plannedTransfers,
+      futurePickupBookings,
+      futureReturnBookings,
+      openPickupHandovers,
+      openReturnHandovers,
+      activeBookings,
+      openTasks,
+      scopedStaff,
+    ] = await Promise.all([
+      this.prisma.vehicle.count({ where: homeWhere }),
+      this.prisma.vehicle.count({ where: presentWhere }),
+      this.prisma.vehicle.count({ where: expectedWhere }),
+      this.prisma.vehicle.count({ where: plannedTransferWhere }),
+      this.prisma.booking.count({ where: futurePickupWhere }),
+      this.prisma.booking.count({ where: futureReturnWhere }),
+      this.prisma.booking.count({ where: openPickupHandoverWhere }),
+      this.prisma.booking.count({ where: openReturnHandoverWhere }),
+      this.prisma.booking.count({
+        where: { ...stationBookingWhere, status: 'ACTIVE' },
+      }),
+      this.countStationOpenTasks(access, stationId, stationVehicleWhere, stationBookingWhere),
+      this.loadStationScopedStaff(station.organizationId, stationId, STATION_ARCHIVE_PREVIEW_LIST_LIMIT),
+    ]);
+
+    return {
+      successorCandidates,
+      counts: {
+        homeVehicles,
+        presentVehicles,
+        expectedVehicles,
+        futurePickupBookings,
+        futureReturnBookings,
+        openHandovers: openPickupHandovers + openReturnHandovers,
+        scopedStaff: scopedStaff.totalCount,
+        openTasks,
+        plannedTransfers,
+        activeBookings,
+      },
+    };
+  }
+
+  async activateStation(
+    organizationId: string,
+    id: string,
+  ): Promise<StationLifecycleCommandResult<StationDto>> {
+    return this.runLifecycleStatusCommand(
+      organizationId,
+      id,
+      StationLifecycleCommandName.ACTIVATE,
+    );
+  }
+
+  async deactivateStation(
+    organizationId: string,
+    id: string,
+  ): Promise<StationLifecycleCommandResult<StationDto>> {
+    const preflight = await this.countFutureStationBookings(organizationId, id);
+    return this.runLifecycleStatusCommand(
+      organizationId,
+      id,
+      StationLifecycleCommandName.DEACTIVATE,
+      preflight,
+    );
+  }
+
+  private async countFutureStationBookings(
+    organizationId: string,
+    stationId: string,
+  ): Promise<{ futurePickupCount: number; futureReturnCount: number }> {
+    const now = new Date();
+    const [futurePickupCount, futureReturnCount] = await Promise.all([
+      this.prisma.booking.count({
+        where: {
+          organizationId,
+          pickupStationId: stationId,
+          status: { in: FUTURE_BOOKING_STATUSES },
+          startDate: { gt: now },
+        },
+      }),
+      this.prisma.booking.count({
+        where: {
+          organizationId,
+          returnStationId: stationId,
+          status: { in: FUTURE_BOOKING_STATUSES },
+          endDate: { gt: now },
+        },
+      }),
+    ]);
+    return { futurePickupCount, futureReturnCount };
+  }
+
+  private async runLifecycleStatusCommand(
+    organizationId: string,
+    id: string,
+    command: typeof StationLifecycleCommandName.ACTIVATE | typeof StationLifecycleCommandName.DEACTIVATE,
+    preflight?: { futurePickupCount: number; futureReturnCount: number },
+  ): Promise<StationLifecycleCommandResult<StationDto>> {
     const station = await this.prisma.station.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { vehiclesHome: true, pickupBookings: true, returnBookings: true } } },
+      include: this.stationIncludeCount(),
     });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
 
-    const hasLinks =
-      station._count.vehiclesHome > 0 ||
-      station._count.pickupBookings > 0 ||
-      station._count.returnBookings > 0;
+    const evaluation = evaluateStationLifecycleCommand({
+      command,
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        archivedAt: station.archivedAt,
+      },
+      preflight,
+    });
 
-    if (hasLinks) {
-      await this.archive(organizationId, id);
-      return { id, unassignedVehicles: 0, archived: true };
+    const nextStatus =
+      command === StationLifecycleCommandName.ACTIVATE ? 'ACTIVE' : 'INACTIVE';
+
+    const audit = buildStationLifecycleCommandAudit({
+      command,
+      stationId: station.id,
+      organizationId,
+      previousStatus: station.status,
+      nextStatus,
+      idempotent: evaluation.idempotent,
+      preflight,
+    });
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          `${command} is not allowed for this station`,
+        code: `${command}_BLOCKED`,
+        outcome: StationLifecycleCommandOutcome.BLOCKED,
+        command,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit,
+      });
     }
 
-    await this.prisma.station.delete({ where: { id } });
-    return { id, unassignedVehicles: 0, archived: false };
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationLifecycleCommandOutcome.IDEMPOTENT,
+        command,
+        allowed: true,
+        station: this.toDto(station, station._count.vehiclesHome),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit,
+      };
+    }
+
+    const updated = await this.prisma.station.update({
+      where: { id },
+      data: { status: evaluation.enforcedMutations?.status ?? nextStatus },
+      include: this.stationIncludeCount(),
+    });
+
+    return {
+      outcome: StationLifecycleCommandOutcome.APPLIED,
+      command,
+      allowed: true,
+      station: this.toDto(updated, updated._count.vehiclesHome),
+      blockingReasons: [],
+      warnings: evaluation.warnings,
+      requiredActions: evaluation.requiredActions,
+      audit,
+    };
+  }
+
+  async restore(
+    organizationId: string,
+    id: string,
+    options: StationRestoreCommandOptions | RestoreStationDto,
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationRestoreCommandResult<StationDto>> {
+    return this.restoreStation(organizationId, id, options, scope, performedByUserId);
+  }
+
+  async restoreStation(
+    organizationId: string,
+    id: string,
+    options: StationRestoreCommandOptions | RestoreStationDto,
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationRestoreCommandResult<StationDto>> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = (await this.stationAccessScope.requireReadableStation(access, id, {
+      include: this.stationIncludeCount(),
+    })) as Prisma.StationGetPayload<{ include: ReturnType<StationsService['stationIncludeCount']> }>;
+    const vehicleHomeCount = station._count.vehiclesHome;
+
+    const preflight = await this.loadStationRestorePreflight(access, station.id);
+    const archivedSnapshot = parseArchivedCapabilitiesSnapshot(
+      station.archivedCapabilitiesSnapshot,
+    );
+
+    const preview = evaluateStationRestorePreview({
+      station: {
+        id: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        archivedAt: station.archivedAt,
+        openingHours: station.openingHours,
+      },
+      archivedCapabilitiesSnapshot: archivedSnapshot,
+      counts: preflight.counts,
+    });
+
+    const evaluation = evaluateStationRestoreCommand({
+      preview,
+      options,
+      stationStatus: station.status,
+    });
+
+    const appliedCapabilities: StationRestoreCommandOptions = {
+      pickupEnabled: options.pickupEnabled,
+      returnEnabled: options.returnEnabled,
+      afterHoursReturnEnabled:
+        options.afterHoursReturnEnabled ??
+        preview.suggestedCapabilities.afterHoursReturnEnabled,
+      keyBoxAvailable:
+        options.keyBoxAvailable ?? preview.suggestedCapabilities.keyBoxAvailable,
+    };
+
+    const auditBase = {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      previousStatus: station.status,
+      nextStatus: 'ACTIVE' as const,
+      performedByUserId: performedByUserId ?? null,
+      idempotent: evaluation.idempotent,
+      appliedCapabilities,
+      suggestedCapabilities: preview.suggestedCapabilities,
+    };
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationRestoreCommandOutcome.IDEMPOTENT,
+        command: StationRestoreCommandName.RESTORE,
+        allowed: true,
+        station: this.toDto(station, vehicleHomeCount),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationRestoreCommandAudit(auditBase),
+      };
+    }
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          'Restore is not allowed for this station',
+        code: 'RESTORE_BLOCKED',
+        outcome: StationRestoreCommandOutcome.BLOCKED,
+        command: StationRestoreCommandName.RESTORE,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationRestoreCommandAudit(auditBase),
+      });
+    }
+
+    const restoredAt = new Date();
+    const existingLifecycle =
+      station.lifecycleMetadata &&
+      typeof station.lifecycleMetadata === 'object' &&
+      !Array.isArray(station.lifecycleMetadata)
+        ? (station.lifecycleMetadata as Record<string, unknown>)
+        : {};
+
+    const updated = (await this.prisma.$transaction(async (tx) =>
+      tx.station.update({
+        where: { id },
+        data: {
+          status: 'ACTIVE',
+          archivedAt: null,
+          isPrimary: false,
+          pickupEnabled: appliedCapabilities.pickupEnabled,
+          returnEnabled: appliedCapabilities.returnEnabled,
+          afterHoursReturnEnabled: appliedCapabilities.afterHoursReturnEnabled ?? false,
+          keyBoxAvailable: appliedCapabilities.keyBoxAvailable ?? false,
+          archivedCapabilitiesSnapshot: Prisma.JsonNull,
+          lifecycleMetadata: {
+            ...existingLifecycle,
+            lastRestoredAt: restoredAt.toISOString(),
+            lastRestoredByUserId: performedByUserId ?? null,
+            restoredFromSnapshot: archivedSnapshot,
+            restoredCapabilities: appliedCapabilities,
+          } as unknown as Prisma.InputJsonValue,
+        },
+        include: this.stationIncludeCount(),
+      }),
+    )) as Prisma.StationGetPayload<{ include: ReturnType<StationsService['stationIncludeCount']> }>;
+
+    return {
+      outcome: StationRestoreCommandOutcome.APPLIED,
+      command: StationRestoreCommandName.RESTORE,
+      allowed: true,
+      station: this.toDto(updated, updated._count.vehiclesHome),
+      blockingReasons: [],
+      warnings: evaluation.warnings,
+      requiredActions: evaluation.requiredActions,
+      audit: buildStationRestoreCommandAudit(auditBase),
+    };
+  }
+
+  async getStationRestorePreview(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationRestorePreviewResult> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        id: true,
+        organizationId: true,
+        status: true,
+        isPrimary: true,
+        archivedAt: true,
+        pickupEnabled: true,
+        returnEnabled: true,
+        afterHoursReturnEnabled: true,
+        keyBoxAvailable: true,
+        openingHours: true,
+        archivedCapabilitiesSnapshot: true,
+      },
+    });
+
+    const preflight = await this.loadStationRestorePreflight(access, stationId);
+    const archivedSnapshot = parseArchivedCapabilitiesSnapshot(
+      station.archivedCapabilitiesSnapshot,
+    );
+
+    const preview = evaluateStationRestorePreview({
+      station: {
+        id: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        archivedAt: station.archivedAt,
+        openingHours: station.openingHours,
+      },
+      archivedCapabilitiesSnapshot: archivedSnapshot,
+      counts: preflight.counts,
+    });
+
+    return {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      status: station.status,
+      alreadyActive: station.status === 'ACTIVE',
+      openingHours: station.openingHours,
+      ...preview,
+    };
+  }
+
+  private async loadStationRestorePreflight(
+    access: StationAccessScope,
+    stationId: string,
+  ) {
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true, organizationId: true },
+    });
+
+    const homeWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'homeStationId');
+    const presentWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'currentStationId');
+    const expectedWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'expectedStationId');
+    const stationBookingWhere = this.stationAccessScope.buildStationBookingsWhere(access, stationId);
+
+    const [homeVehicles, presentVehicles, expectedVehicles, historicalBookings, scopedStaff] =
+      await Promise.all([
+        this.prisma.vehicle.count({ where: homeWhere }),
+        this.prisma.vehicle.count({ where: presentWhere }),
+        this.prisma.vehicle.count({ where: expectedWhere }),
+        this.prisma.booking.count({ where: stationBookingWhere }),
+        this.loadStationScopedStaff(station.organizationId, stationId, 1),
+      ]);
+
+    return {
+      counts: {
+        homeVehicles,
+        presentVehicles,
+        expectedVehicles,
+        historicalBookings,
+        scopedStaff: scopedStaff.totalCount,
+      },
+    };
+  }
+
+  async setPrimaryStation(
+    organizationId: string,
+    id: string,
+    performedByUserId?: string | null,
+  ): Promise<StationSetPrimaryCommandResult<StationDto>> {
+    const station = await this.prisma.station.findFirst({
+      where: { id, organizationId },
+      include: this.stationIncludeCount(),
+    });
+    if (!station) throw new NotFoundException(`Station ${id} not found`);
+
+    const preflight = await this.loadSetPrimaryPreflight(organizationId, station.id);
+    const evaluation = evaluateStationSetPrimaryCommand({
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        archivedAt: station.archivedAt,
+      },
+      preflight,
+    });
+
+    const auditBase = {
+      stationId: station.id,
+      organizationId,
+      previousIsPrimary: station.isPrimary,
+      nextIsPrimary: true,
+      previousStatus: station.status,
+      nextStatus: 'ACTIVE' as const,
+      performedByUserId: performedByUserId ?? null,
+      idempotent: evaluation.idempotent,
+      demotedPrimaryStationIds: preflight.otherPrimaryStationIds,
+    };
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationSetPrimaryCommandOutcome.IDEMPOTENT,
+        command: StationSetPrimaryCommandName.SET_PRIMARY,
+        allowed: true,
+        station: this.toDto(station, station._count.vehiclesHome),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationSetPrimaryCommandAudit(auditBase),
+      };
+    }
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          'SetPrimaryStation is not allowed for this station',
+        code: 'SET_PRIMARY_BLOCKED',
+        outcome: StationSetPrimaryCommandOutcome.BLOCKED,
+        command: StationSetPrimaryCommandName.SET_PRIMARY,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationSetPrimaryCommandAudit(auditBase),
+      });
+    }
+
+    try {
+      const { updated, demotedPrimaryStationIds } = await this.prisma.$transaction(async (tx) => {
+        await lockOrganizationPrimarySlot(tx, organizationId);
+
+        const demoted = await tx.station.findMany({
+          where: {
+            organizationId,
+            isPrimary: true,
+            id: { not: station.id },
+            status: { not: 'ARCHIVED' },
+          },
+          select: { id: true },
+        });
+
+        if (demoted.length > 0) {
+          await tx.station.updateMany({
+            where: {
+              organizationId,
+              isPrimary: true,
+              id: { not: station.id },
+            },
+            data: { isPrimary: false },
+          });
+        }
+
+        const updatedStation = await tx.station.update({
+          where: { id },
+          data: { isPrimary: true, status: 'ACTIVE' },
+          include: this.stationIncludeCount(),
+        });
+
+        return {
+          updated: updatedStation,
+          demotedPrimaryStationIds: demoted.map((row) => row.id),
+        };
+      });
+
+      return {
+        outcome: StationSetPrimaryCommandOutcome.APPLIED,
+        command: StationSetPrimaryCommandName.SET_PRIMARY,
+        allowed: true,
+        station: this.toDto(updated, updated._count.vehiclesHome),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationSetPrimaryCommandAudit({
+          ...auditBase,
+          demotedPrimaryStationIds,
+        }),
+      };
+    } catch (error) {
+      if (isStationPrimaryUniqueViolation(error)) {
+        const conflict = buildStationSetPrimaryConflictIssue();
+        throw new ConflictException({
+          message: conflict.message,
+          code: conflict.code,
+          outcome: StationSetPrimaryCommandOutcome.BLOCKED,
+          command: StationSetPrimaryCommandName.SET_PRIMARY,
+          blockingReasons: [conflict],
+          audit: buildStationSetPrimaryCommandAudit(auditBase),
+        });
+      }
+      throw error;
+    }
+  }
+
+  private async loadSetPrimaryPreflight(
+    organizationId: string,
+    stationId: string,
+  ): Promise<StationSetPrimaryPreflightSnapshot> {
+    const [station, primaries] = await Promise.all([
+      this.prisma.station.findFirst({
+        where: { id: stationId, organizationId },
+        select: { id: true, organizationId: true, status: true, isPrimary: true },
+      }),
+      this.prisma.station.findMany({
+        where: {
+          organizationId,
+          isPrimary: true,
+          status: { not: 'ARCHIVED' },
+        },
+        select: { id: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
+
+    if (!station) {
+      throw new NotFoundException(`Station ${stationId} not found`);
+    }
+
+    const otherPrimaryStationIds = primaries
+      .map((row) => row.id)
+      .filter((rowId) => rowId !== stationId);
+
+    return {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      status: station.status,
+      isPrimary: station.isPrimary,
+      nonArchivedPrimaryCount: primaries.length,
+      otherPrimaryStationIds,
+    };
+  }
+
+  /**
+   * @deprecated Hard delete is not a product operation. Returns HTTP 410 with
+   * `STATION_DELETE_DEPRECATED` — use `archiveStation()` instead.
+   * Physical deletes remain limited to internal platform-admin prune tooling.
+   */
+  async delete(organizationId: string, id: string): Promise<never> {
+    const station = await this.prisma.station.findFirst({
+      where: { id, organizationId },
+      select: { id: true },
+    });
+    if (!station) throw new NotFoundException(`Station ${id} not found`);
+    throwStationDeleteDeprecated();
   }
 
   // ─────────────────────────────────────────────────────────────
   // Stats for dashboard header / sidebar
   // ─────────────────────────────────────────────────────────────
 
-  async getStationStats(organizationId: string): Promise<StationsStatsDto> {
+  async getStationStats(
+    organizationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationsStatsDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+
     const [stations, unassignedVehicles] = await Promise.all([
       this.prisma.station.findMany({
-        where: { organizationId, status: { not: 'ARCHIVED' } },
+        where: this.stationAccessScope.buildStationWhere(access, {
+          status: { not: 'ARCHIVED' },
+        }),
         include: { _count: { select: { vehiclesHome: true } } },
         orderBy: [{ isPrimary: 'desc' }, { status: 'asc' }, { name: 'asc' }],
       }),
-      this.prisma.vehicle.count({
-        where: { organizationId, homeStationId: null },
-      }),
+      this.countUnassignedVehicles(access),
     ]);
 
     const totalVehicles = stations.reduce((sum, s) => sum + s._count.vehiclesHome, 0);
@@ -398,16 +1319,25 @@ export class StationsService {
   async getStationOverviewStats(
     organizationId: string,
     stationId: string,
+    scope?: StationScopeContext,
   ): Promise<StationOverviewStatsDto> {
-    const station = await this.prisma.station.findFirst({
-      where: { id: stationId, organizationId },
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        capacity: true,
+        latitude: true,
+        longitude: true,
+        openingHours: true,
+        pickupEnabled: true,
+        returnEnabled: true,
+        status: true,
+      },
     });
-    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
-    const stationVehicleWhere: Prisma.VehicleWhereInput = {
-      organizationId,
-      OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
-    };
+    const stationVehicleWhere = this.stationAccessScope.buildStationLinkedVehicleWhere(
+      access,
+      stationId,
+    );
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -425,12 +1355,8 @@ export class StationsService {
 
     const stationBookingIds = (
       await this.prisma.booking.findMany({
-        where: {
-          organizationId,
-          OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
-        },
+        where: this.stationAccessScope.buildStationBookingsWhere(access, stationId),
         select: { id: true },
-        take: 500,
       })
     ).map((b) => b.id);
 
@@ -458,56 +1384,39 @@ export class StationsService {
         },
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
+        where: this.stationAccessScope.buildStationPickupBookingsWhere(access, stationId, {
           startDate: { gte: startOfToday, lt: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
+        where: this.stationAccessScope.buildStationReturnBookingsWhere(access, stationId, {
           endDate: { gte: startOfToday, lt: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
+        where: this.stationAccessScope.buildStationPickupBookingsWhere(access, stationId, {
           startDate: { gte: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
+        where: this.stationAccessScope.buildStationReturnBookingsWhere(access, stationId, {
           endDate: { gte: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
     ]);
 
-    let openTasks = 0;
-    if (stationVehicleIds.length || stationBookingIds.length) {
-      openTasks = await this.prisma.orgTask.count({
-        where: {
-          organizationId,
-          status: { in: ['OPEN', 'IN_PROGRESS'] },
-          OR: [
-            ...(stationVehicleIds.length
-              ? [{ vehicleId: { in: stationVehicleIds } }]
-              : []),
-            ...(stationBookingIds.length
-              ? [{ bookingId: { in: stationBookingIds } }]
-              : []),
-          ],
-        },
-      });
-    }
+    const openTasks = await this.prisma.orgTask.count({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        stationVehicleIds,
+        stationBookingIds,
+      ),
+    });
 
     const capacity = station.capacity ?? null;
     const capacityUsagePercent =
@@ -529,18 +1438,23 @@ export class StationsService {
       capacity,
       capacityUsagePercent,
       hasMissingCoordinates: station.latitude == null || station.longitude == null,
-      hasMissingOpeningHours: openingHoursIsMissing(station.openingHours),
+      hasMissingOpeningHours: stationOpeningHoursIsMissing(station.openingHours),
       hasMissingPickupReturnRules: !station.pickupEnabled && !station.returnEnabled,
     };
   }
 
-  async getStationFleet(organizationId: string, stationId: string) {
-    await this.findOne(organizationId, stationId);
+  async getStationFleet(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ) {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true },
+    });
+
     return this.prisma.vehicle.findMany({
-      where: {
-        organizationId,
-        OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
-      },
+      where: this.stationAccessScope.buildStationFleetWhere(access, stationId),
       select: {
         id: true,
         vehicleName: true,
@@ -556,13 +1470,18 @@ export class StationsService {
     });
   }
 
-  async getStationBookings(organizationId: string, stationId: string) {
-    await this.findOne(organizationId, stationId);
+  async getStationBookings(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ) {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true, status: true },
+    });
+
     const bookings = await this.prisma.booking.findMany({
-      where: {
-        organizationId,
-        OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
-      },
+      where: this.stationAccessScope.buildStationBookingsWhere(access, stationId),
       include: {
         customer: { select: { firstName: true, lastName: true } },
         vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
@@ -585,6 +1504,570 @@ export class StationsService {
         b.vehicle.licensePlate ||
         '',
     }));
+  }
+
+  async getStationOperations(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+    options: { at?: string } = {},
+  ): Promise<StationOperationsDto> {
+    return this.stationOperations.resolveForStation(organizationId, stationId, scope, options);
+  }
+
+  async getStationArchivePreview(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationArchivePreviewResult> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        id: true,
+        organizationId: true,
+        name: true,
+        code: true,
+        status: true,
+        isPrimary: true,
+        archivedAt: true,
+        pickupEnabled: true,
+        returnEnabled: true,
+        afterHoursReturnEnabled: true,
+        keyBoxAvailable: true,
+      },
+    });
+
+    const limit = STATION_ARCHIVE_PREVIEW_LIST_LIMIT;
+    const now = new Date();
+    const successorCandidates = station.isPrimary
+      ? await this.prisma.station.findMany({
+          where: {
+            organizationId,
+            status: 'ACTIVE',
+            id: { not: stationId },
+          },
+          select: { id: true, name: true, code: true },
+          orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }],
+          take: limit,
+        })
+      : [];
+
+    const homeWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'homeStationId');
+    const presentWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'currentStationId');
+    const expectedWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'expectedStationId');
+    const plannedTransferWhere: Prisma.VehicleWhereInput = {
+      ...expectedWhere,
+      OR: [
+        { currentStationId: null },
+        { currentStationId: { not: stationId } },
+      ],
+    };
+
+    const futurePickupWhere = this.stationAccessScope.buildStationPickupBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        startDate: { gt: now },
+      },
+    );
+    const futureReturnWhere = this.stationAccessScope.buildStationReturnBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        endDate: { gt: now },
+      },
+    );
+
+    const openPickupHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ pickupStationId: stationId }, { actualPickupStationId: stationId }],
+      handoverProtocols: { none: { kind: 'PICKUP' } },
+    };
+    const openReturnHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ returnStationId: stationId }, { actualReturnStationId: stationId }],
+      handoverProtocols: { none: { kind: 'RETURN' } },
+    };
+
+    const stationVehicleWhere = this.stationAccessScope.buildStationLinkedVehicleWhere(
+      access,
+      stationId,
+    );
+    const stationBookingWhere = this.stationAccessScope.buildStationBookingsWhere(access, stationId);
+
+    const [
+      homeVehiclesCount,
+      presentVehiclesCount,
+      expectedVehiclesCount,
+      plannedTransfersCount,
+      futurePickupCount,
+      futureReturnCount,
+      openPickupHandoverCount,
+      openReturnHandoverCount,
+      activeBookingCount,
+      homeVehicles,
+      presentVehicles,
+      expectedVehicles,
+      plannedTransfers,
+      futurePickupBookings,
+      futureReturnBookings,
+      openPickupHandovers,
+      openReturnHandovers,
+      openTasksCount,
+      openTasks,
+    ] = await Promise.all([
+      this.prisma.vehicle.count({ where: homeWhere }),
+      this.prisma.vehicle.count({ where: presentWhere }),
+      this.prisma.vehicle.count({ where: expectedWhere }),
+      this.prisma.vehicle.count({ where: plannedTransferWhere }),
+      this.prisma.booking.count({ where: futurePickupWhere }),
+      this.prisma.booking.count({ where: futureReturnWhere }),
+      this.prisma.booking.count({ where: openPickupHandoverWhere }),
+      this.prisma.booking.count({ where: openReturnHandoverWhere }),
+      this.prisma.booking.count({
+        where: {
+          ...stationBookingWhere,
+          status: 'ACTIVE',
+        },
+      }),
+      this.prisma.vehicle.findMany({
+        where: homeWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.vehicle.findMany({
+        where: presentWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.vehicle.findMany({
+        where: expectedWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.vehicle.findMany({
+        where: plannedTransferWhere,
+        select: {
+          id: true,
+          vehicleName: true,
+          licensePlate: true,
+          status: true,
+        },
+        orderBy: [{ licensePlate: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: futurePickupWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { startDate: 'asc' },
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: futureReturnWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { endDate: 'asc' },
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: openPickupHandoverWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { startDate: 'asc' },
+        take: limit,
+      }),
+      this.prisma.booking.findMany({
+        where: openReturnHandoverWhere,
+        include: {
+          customer: { select: { firstName: true, lastName: true } },
+          vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
+        },
+        orderBy: { endDate: 'asc' },
+        take: limit,
+      }),
+      this.countStationOpenTasks(access, stationId, stationVehicleWhere, stationBookingWhere),
+      this.loadStationOpenTasks(access, stationId, stationVehicleWhere, stationBookingWhere, limit),
+    ]);
+
+    const scopedStaff = await this.loadStationScopedStaff(organizationId, stationId, limit);
+    const openHandoverCount = openPickupHandoverCount + openReturnHandoverCount;
+
+    const previewEvaluation = evaluateStationArchivePreview({
+      snapshot: {
+        stationId: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        archivedAt: station.archivedAt,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        successorCandidates,
+      },
+      counts: {
+        homeVehicles: homeVehiclesCount,
+        presentVehicles: presentVehiclesCount,
+        expectedVehicles: expectedVehiclesCount,
+        futurePickupBookings: futurePickupCount,
+        futureReturnBookings: futureReturnCount,
+        openHandovers: openHandoverCount,
+        scopedStaff: scopedStaff.totalCount,
+        openTasks: openTasksCount,
+        plannedTransfers: plannedTransfersCount,
+        activeBookings: activeBookingCount,
+      },
+    });
+
+    const commandEvaluation = evaluateStationArchiveCommand({
+      preview: previewEvaluation,
+      options: {},
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
+      },
+    });
+
+    const openHandoverItems = [
+      ...openPickupHandovers.map((booking) =>
+        this.mapArchivePreviewHandoverItem(booking, 'PICKUP', booking.startDate),
+      ),
+      ...openReturnHandovers.map((booking) =>
+        this.mapArchivePreviewHandoverItem(booking, 'RETURN', booking.endDate),
+      ),
+    ].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
+    const previewSections = {
+      homeVehicles: buildArchivePreviewListSection(homeVehicles, homeVehiclesCount, limit),
+      presentVehicles: buildArchivePreviewListSection(presentVehicles, presentVehiclesCount, limit),
+      expectedVehicles: buildArchivePreviewListSection(expectedVehicles, expectedVehiclesCount, limit),
+      futurePickupBookings: buildArchivePreviewListSection(
+        futurePickupBookings.map((booking) => this.mapArchivePreviewBookingItem(booking)),
+        futurePickupCount,
+        limit,
+      ),
+      futureReturnBookings: buildArchivePreviewListSection(
+        futureReturnBookings.map((booking) => this.mapArchivePreviewBookingItem(booking)),
+        futureReturnCount,
+        limit,
+      ),
+      openHandovers: buildArchivePreviewListSection(
+        openHandoverItems.slice(0, limit),
+        openHandoverCount,
+        limit,
+      ),
+      scopedStaff: buildArchivePreviewListSection(
+        scopedStaff.items,
+        scopedStaff.totalCount,
+        limit,
+      ),
+      openTasks: buildArchivePreviewListSection(openTasks, openTasksCount, limit),
+      plannedTransfers: buildArchivePreviewListSection(
+        plannedTransfers,
+        plannedTransfersCount,
+        limit,
+      ),
+    };
+
+    const partial = Object.values(previewSections).some((section) => section.truncated);
+
+    return {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      status: station.status,
+      alreadyArchived: station.status === 'ARCHIVED',
+      isPrimary: station.isPrimary,
+      primaryStatus: {
+        isPrimary: station.isPrimary,
+        successorCandidates,
+      },
+      capabilities: {
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+      },
+      partial,
+      preview: previewSections,
+      archiveAllowed: commandEvaluation.allowed,
+      idempotent: commandEvaluation.idempotent,
+      blockingReasons: commandEvaluation.blockingReasons,
+      warnings: commandEvaluation.warnings,
+      requiredFollowUpActions: commandEvaluation.requiredActions,
+      affectedCounts: previewEvaluation.affectedCounts,
+    };
+  }
+
+  private buildArchivePreviewVehicleWhere(
+    access: StationAccessScope,
+    stationId: string,
+    field: 'homeStationId' | 'currentStationId' | 'expectedStationId',
+  ): Prisma.VehicleWhereInput {
+    if (!isStationReadableInAccessScope(access, stationId)) {
+      return { organizationId: access.orgId, id: { in: [] } };
+    }
+
+    return {
+      organizationId: access.orgId,
+      [field]: stationId,
+    };
+  }
+
+  private async countStationOpenTasks(
+    access: StationAccessScope,
+    stationId: string,
+    stationVehicleWhere: Prisma.VehicleWhereInput,
+    stationBookingWhere: Prisma.BookingWhereInput,
+  ): Promise<number> {
+    const stationVehicleIds = (
+      await this.prisma.vehicle.findMany({
+        where: stationVehicleWhere,
+        select: { id: true },
+      })
+    ).map((vehicle) => vehicle.id);
+    const stationBookingIds = (
+      await this.prisma.booking.findMany({
+        where: stationBookingWhere,
+        select: { id: true },
+      })
+    ).map((booking) => booking.id);
+
+    return this.prisma.orgTask.count({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        stationVehicleIds,
+        stationBookingIds,
+      ),
+    });
+  }
+
+  private async loadStationOpenTasks(
+    access: StationAccessScope,
+    stationId: string,
+    stationVehicleWhere: Prisma.VehicleWhereInput,
+    stationBookingWhere: Prisma.BookingWhereInput,
+    limit: number,
+  ) {
+    const stationVehicleIds = (
+      await this.prisma.vehicle.findMany({
+        where: stationVehicleWhere,
+        select: { id: true },
+      })
+    ).map((vehicle) => vehicle.id);
+    const stationBookingIds = (
+      await this.prisma.booking.findMany({
+        where: stationBookingWhere,
+        select: { id: true },
+      })
+    ).map((booking) => booking.id);
+
+    return this.prisma.orgTask.findMany({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        stationVehicleIds,
+        stationBookingIds,
+      ),
+      select: {
+        id: true,
+        title: true,
+        status: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  private async loadStationScopedStaff(
+    organizationId: string,
+    stationId: string,
+    limit: number,
+  ) {
+    const memberships = await this.prisma.organizationMembership.findMany({
+      where: {
+        organizationId,
+        status: 'ACTIVE',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    const matched = memberships.filter((membership) => {
+      const assignedIds = parseStationIds(membership.stationIds);
+      if (assignedIds.includes(stationId)) return true;
+      const legacyScope = membership.stationScope?.trim();
+      return legacyScope === stationId;
+    });
+
+    const items = matched.slice(0, limit).map((membership) => ({
+      membershipId: membership.id,
+      userId: membership.user.id,
+      name:
+        `${membership.user.firstName ?? ''} ${membership.user.lastName ?? ''}`.trim() ||
+        membership.user.email ||
+        membership.user.id,
+      role: membership.role,
+    }));
+
+    return {
+      totalCount: matched.length,
+      items,
+    };
+  }
+
+  private mapArchivePreviewBookingItem(booking: {
+    id: string;
+    status: BookingStatus;
+    startDate: Date;
+    endDate: Date;
+    customer: { firstName: string | null; lastName: string | null };
+    vehicle: {
+      vehicleName: string | null;
+      make: string | null;
+      model: string | null;
+      licensePlate: string | null;
+    };
+  }) {
+    return {
+      id: booking.id,
+      status: booking.status,
+      startDate: booking.startDate.toISOString(),
+      endDate: booking.endDate.toISOString(),
+      customerName: `${booking.customer.firstName ?? ''} ${booking.customer.lastName ?? ''}`.trim(),
+      vehicleLabel:
+        booking.vehicle.vehicleName ||
+        `${booking.vehicle.make ?? ''} ${booking.vehicle.model ?? ''}`.trim() ||
+        booking.vehicle.licensePlate ||
+        '',
+    };
+  }
+
+  private mapArchivePreviewHandoverItem(
+    booking: {
+      id: string;
+      status: BookingStatus;
+      customer: { firstName: string | null; lastName: string | null };
+      vehicle: {
+        vehicleName: string | null;
+        make: string | null;
+        model: string | null;
+        licensePlate: string | null;
+      };
+    },
+    kind: 'PICKUP' | 'RETURN',
+    scheduledAt: Date,
+  ) {
+    return {
+      bookingId: booking.id,
+      kind,
+      status: booking.status,
+      scheduledAt: scheduledAt.toISOString(),
+      customerName: `${booking.customer.firstName ?? ''} ${booking.customer.lastName ?? ''}`.trim(),
+      vehicleLabel:
+        booking.vehicle.vehicleName ||
+        `${booking.vehicle.make ?? ''} ${booking.vehicle.model ?? ''}`.trim() ||
+        booking.vehicle.licensePlate ||
+        '',
+    };
+  }
+
+  async getStationTeam(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+  ): Promise<StationTeamDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        managerName: true,
+        phone: true,
+        email: true,
+      },
+    });
+
+    return {
+      managerName: station.managerName,
+      contactPerson: station.managerName,
+      phone: station.phone,
+      email: station.email,
+      staff: [],
+    };
+  }
+
+  async getStationActivity(
+    organizationId: string,
+    stationId: string,
+    scope?: StationScopeContext,
+    limit = 50,
+  ): Promise<StationActivityEntryDto[]> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true },
+    });
+
+    const entries = await this.prisma.activityLog.findMany({
+      where: this.stationAccessScope.buildStationActivityWhere(access, stationId),
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Math.max(limit, 1), 100),
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    return entries.map((entry) => ({
+      id: entry.id,
+      action: entry.action,
+      description: entry.description,
+      userName: entry.user?.name || entry.user?.email || '',
+      createdAt: entry.createdAt.toISOString(),
+    }));
+  }
+
+  private async countUnassignedVehicles(access: StationAccessScope): Promise<number> {
+    if (access.readableStationIds !== null) {
+      return 0;
+    }
+
+    return this.prisma.vehicle.count({
+      where: { organizationId: access.orgId, homeStationId: null },
+    });
   }
 
   async assignVehicleToStation(
@@ -831,30 +2314,7 @@ export class StationsService {
       const json = (await res.json()) as {
         features?: Array<{ center?: [number, number]; relevance?: number }>;
       };
-      const feature = json.features?.[0];
-      if (!feature?.center || feature.center.length !== 2) {
-        this.logger.warn(`Mapbox geocoding: no result for "${query}"`);
-        return null;
-      }
-      // Mapbox confidence floor — anything below 0.5 means the geocoder
-      // had to guess heavily (e.g. fell back to the city centroid). That's
-      // actively harmful for a 100m geofence so we reject it.
-      if (typeof feature.relevance === 'number' && feature.relevance < 0.5) {
-        this.logger.warn(
-          `Mapbox geocoding: low-confidence result (${feature.relevance}) for "${query}"`,
-        );
-        return null;
-      }
-      const [lng, lat] = feature.center;
-      if (
-        typeof lat !== 'number' ||
-        typeof lng !== 'number' ||
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lng)
-      ) {
-        return null;
-      }
-      return { latitude: lat, longitude: lng };
+      return parseMapboxForwardGeocodeFeature(json.features?.[0]);
     } catch (err) {
       this.logger.warn(
         `Mapbox geocoding failed for "${query}": ${(err as Error).message}`,
@@ -936,7 +2396,11 @@ export class StationsService {
 
       await this.prisma.station.update({
         where: { id: s.id },
-        data: { latitude: coords.latitude, longitude: coords.longitude },
+        data: {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          ...resolveStationCoordinatesProvenance({ geocodedCoordinates: true }),
+        },
       });
       result.totalGeocoded++;
       result.results.push({
@@ -982,6 +2446,14 @@ export class StationsService {
       country: row.country,
       latitude: row.latitude,
       longitude: row.longitude,
+      coordinatesSource: row.coordinatesSource,
+      coordinatesConfirmedAt: row.coordinatesConfirmedAt,
+      hasMissingCoordinates: stationHasMissingCoordinates(row.latitude, row.longitude),
+      geofenceCapability: evaluateStationGeofenceCapability({
+        latitude: row.latitude,
+        longitude: row.longitude,
+        radiusMeters: row.radiusMeters,
+      }),
       timezone: row.timezone,
       radiusMeters: row.radiusMeters,
       geofenceRadiusMeters: row.radiusMeters,
@@ -994,7 +2466,8 @@ export class StationsService {
       afterHoursReturnEnabled: row.afterHoursReturnEnabled,
       keyBoxAvailable: row.keyBoxAvailable,
       capacity: row.capacity,
-      openingHours: row.openingHours,
+      openingHours: normalizeStationOpeningHoursForRead(row.openingHours) as Prisma.JsonValue,
+      openingHoursContractVersion: STATION_OPENING_HOURS_CONTRACT_VERSION,
       holidayRules: row.holidayRules,
       handoverInstructions: row.handoverInstructions,
       returnInstructions: row.returnInstructions,
@@ -1007,13 +2480,6 @@ export class StationsService {
       updatedAt: row.updatedAt,
     };
   }
-
-  // Geofence radius is bounded so we can't accidentally store a negative
-  // value (would invert the haversine check) or an absurd value (e.g.
-  // city-wide 50km — that defeats the "is this car parked at the depot?"
-  // intent and would always evaluate to true).
-  private readonly RADIUS_MIN_M = 25;
-  private readonly RADIUS_MAX_M = 5000;
 
   private buildWriteData(payload: StationPatchPayload): Record<string, unknown> {
     const data: Record<string, unknown> = {};
@@ -1054,16 +2520,8 @@ export class StationsService {
       const r = payload.radiusMeters;
       if (r === null) {
         data.radiusMeters = null;
-      } else if (typeof r !== 'number' || !Number.isFinite(r)) {
-        throw new BadRequestException('radiusMeters must be a finite number or null');
       } else {
-        const rounded = Math.round(r);
-        if (rounded < this.RADIUS_MIN_M || rounded > this.RADIUS_MAX_M) {
-          throw new BadRequestException(
-            `radiusMeters must be between ${this.RADIUS_MIN_M} and ${this.RADIUS_MAX_M} meters`,
-          );
-        }
-        data.radiusMeters = rounded;
+        data.radiusMeters = normalizeGeofenceRadius(r);
       }
     }
 
