@@ -1,5 +1,11 @@
 import { buildDocumentClassificationContract } from './document-classification-taxonomy.util';
 import { SUPPORTED_DOCUMENT_TYPES } from './document-extraction.schemas';
+import {
+  getGoldenCorpusCase,
+  makeGoldenClassificationResult,
+  makeGoldenExtractionResult,
+  makeGoldenOcrResult,
+} from './document-intake-golden-corpus.util';
 
 export function makeMalwareScanMock(storage?: {
   putObject: jest.Mock | ((input: unknown) => Promise<unknown>);
@@ -307,5 +313,18 @@ export function makeClassificationResultMock(
     contractVersion: contract.contractVersion,
     contract,
     ...overrides,
+  };
+}
+
+export function makeGoldenCorpusPipelineMocks(caseId: string) {
+  const goldenCase = getGoldenCorpusCase(caseId);
+  if (!goldenCase) {
+    throw new Error(`Unknown golden corpus case: ${caseId}`);
+  }
+  return {
+    goldenCase,
+    ocr: makeGoldenOcrResult(goldenCase),
+    classification: makeGoldenClassificationResult(goldenCase),
+    extraction: makeGoldenExtractionResult(goldenCase),
   };
 }

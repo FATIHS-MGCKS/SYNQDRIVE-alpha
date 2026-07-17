@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-golden-corpus-2026-07-17',
+    version: '4.9.639',
+    title: 'V4.9.639 — Document Intake V2 Golden Fixture Corpus',
+    summary: [
+      'Datenschutzsicherer Golden-Fixture-Corpus (v1.0.0) für Classification und Extraction — 19 synthetische/anonymisierte Fälle.',
+      'Abdeckung: Service, Tire, Brake, Battery, TÜV, BOKraft, Invoice 19/7/steuerfrei/multi-rate, Credit Note, Reminder, Fine, Driver Identification, Damage, Accident, Insurance Letter, General Letter, Unknown.',
+      'Gespeicherte Mistral-Mockantworten (OCR, classify, extract) — Regression ohne API-Kosten, nur Text-Fixtures.',
+      'Loader-Utils + Testmatrix-Dry-Run erweitert; makeGoldenCorpusPipelineMocks für Pipeline-Tests.',
+    ],
+    reason:
+      'Kostenneutrale, datenschutzkonforme End-to-End-Regression für Document Intake ohne echte Kundendokumente.',
+    previousBehavior:
+      'Feld-Fixtures pro Typ und 5 Classification-Fixtures; kein einheitlicher Golden-Corpus mit OCR + Mistral-Mocks.',
+    details: 'architecture/DOCUMENT_INTAKE_GOLDEN_CORPUS_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T08:00:00.000Z',
+  },
+  {
     id: 'document-field-provenance-2026-07-17',
     version: '4.9.638',
     title: 'V4.9.638 — Document Intake V2 Field Provenance',

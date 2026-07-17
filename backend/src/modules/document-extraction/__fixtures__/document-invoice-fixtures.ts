@@ -29,6 +29,36 @@ export const INVOICE_COMPLETE_19 = {
   ],
 };
 
+export const INVOICE_COMPLETE_7 = {
+  invoiceNumber: 'INV-2026-007',
+  invoiceDate: '2026-03-11',
+  dueDate: '2026-04-10',
+  currency: 'EUR',
+  supplier: 'Buchhandlung Demo',
+  customer: 'SynqDrive Demo GmbH',
+  subtotalNet: 10000,
+  netCents: 10000,
+  totalTax: 700,
+  taxCents: 700,
+  totalGross: 10700,
+  grossCents: 10700,
+  totalCents: 10700,
+  taxRatePercent: 7,
+  amountSemantics: 'GROSS',
+  taxSemantics: 'EXPLICIT',
+  lineItems: [
+    {
+      description: 'Fachliteratur',
+      quantity: 1,
+      unitPriceNetCents: 10000,
+      taxRate: 7,
+      netCents: 10000,
+      taxCents: 700,
+      grossCents: 10700,
+    },
+  ],
+};
+
 export const INVOICE_MULTI_RATE = {
   invoiceNumber: 'INV-MIX-1',
   invoiceDate: '2026-03-11',
