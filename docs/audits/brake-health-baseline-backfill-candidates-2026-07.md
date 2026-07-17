@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Audit ID** | `brake-health-baseline-backfill-candidates-2026-07` |
-| **Generated** | 2026-07-17T13:45:15.511Z |
+| **Generated** | 2026-07-17T17:11:57.373Z |
 | **Mode** | fixtures |
 | **Production data modified** | **No** — read-only audit |
 | **Candidate version** | `brake-baseline-backfill-audit-2026-07-v1` |
@@ -12,12 +12,12 @@
 
 | Metric | Count |
 |--------|------:|
-| Vehicles audited | 9 |
-| Auto-applicable components | 4 |
+| Vehicles audited | 10 |
+| Auto-applicable components | 5 |
 | Manual review components | 8 |
 | Spec-only components | 6 |
 | Conflicting components | 1 |
-| No safe baseline components | 24 |
+| No safe baseline components | 27 |
 | Vehicles with pending BRAKE jobs | 1 |
 
 ### By candidate class
@@ -26,11 +26,11 @@
 |-------|----------:|
 | EXACT_MEASURED | 3 |
 | CONFIRMED_REPLACEMENT | 1 |
-| HIGH_CONFIDENCE_DOCUMENTED | 0 |
+| HIGH_CONFIDENCE_DOCUMENTED | 1 |
 | SPEC_ONLY | 6 |
 | REGISTRATION_ASSERTION_ONLY | 1 |
 | CONFLICTING_DATA | 1 |
-| NO_SAFE_BASELINE | 24 |
+| NO_SAFE_BASELINE | 27 |
 
 ## Component matrix (anonymized)
 
@@ -44,6 +44,10 @@
 | VEHICLE_706 | REAR_PADS | NO_SAFE_BASELINE | — | — | 44800 | UNKNOWN | — | no_safe_baseline_collect_evidence | no |
 | VEHICLE_706 | FRONT_DISCS | NO_SAFE_BASELINE | — | — | 44800 | UNKNOWN | — | no_safe_baseline_collect_evidence | no |
 | VEHICLE_706 | REAR_DISCS | NO_SAFE_BASELINE | — | — | 44800 | UNKNOWN | — | no_safe_baseline_collect_evidence | no |
+| VEHICLE_196 | FRONT_PADS | HIGH_CONFIDENCE_DOCUMENTED | WORKSHOP_DOCUMENT_CONFIRMED | 2026-03-08T10:00:00.000Z | 45100 | HIGH | — | auto_backfill_eligible | yes |
+| VEHICLE_196 | REAR_PADS | NO_SAFE_BASELINE | — | — | 45100 | UNKNOWN | — | no_safe_baseline_collect_evidence | no |
+| VEHICLE_196 | FRONT_DISCS | NO_SAFE_BASELINE | — | — | 45100 | UNKNOWN | — | no_safe_baseline_collect_evidence | no |
+| VEHICLE_196 | REAR_DISCS | NO_SAFE_BASELINE | — | — | 45100 | UNKNOWN | — | no_safe_baseline_collect_evidence | no |
 | VEHICLE_804 | FRONT_PADS | SPEC_ONLY | REFERENCE_SPEC_NOMINAL | 2026-03-01T10:05:00.000Z | 45000 | LOW | nominal_spec_not_measurement | measurement_or_replacement_confirmation_required | no |
 | VEHICLE_804 | REAR_PADS | SPEC_ONLY | REFERENCE_SPEC_NOMINAL | 2026-03-01T10:05:00.000Z | 45000 | LOW | nominal_spec_not_measurement | measurement_or_replacement_confirmation_required | no |
 | VEHICLE_804 | FRONT_DISCS | SPEC_ONLY | REFERENCE_SPEC_NOMINAL | 2026-03-01T10:05:00.000Z | 45000 | LOW | nominal_spec_not_measurement | measurement_or_replacement_confirmation_required | no |

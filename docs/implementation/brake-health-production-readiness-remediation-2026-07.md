@@ -156,39 +156,36 @@ Read path
 
 ## 26 Umsetzungsschritte — Fortschritt
 
-| Prompt | Phase | Ziel | Status | Commit | Migration | Tests | VPS/Staging |
-|--------|-------|------|--------|--------|-----------|-------|-------------|
-| **1** | Baseline | Implementierungsbaseline, Builds, Tests dokumentieren | ✅ **Done** | *(nach Commit)* | — | siehe unten | — |
-| **2** | Safety net | Regressionstests für kritische Brake-Health-Schreibpfade (A–I) | ✅ **Done** | `b1246a88` | — | 6 rot / 4 grün | — |
-| **3** | Architektur | Kanonischer Brake-Initialisierungspfad (Variante A) | ✅ **Done** | `b892b605` | — | 19 neu grün | read-only diag |
-| **4** | Registration | Brake-Health-Ausgangszustand bei Fahrzeugregistrierung | ✅ **Done** | `e8e62310` | — | 39 grün | — |
-| **5** | A — Fleet | Read-only Baseline-Backfill-Kandidaten-Audit | ✅ **Done** | `a30ea31d` | — | 13 grün | read-only |
-| **6** | B — Lifecycle | Komponenten-Installationsperioden (`BrakeComponentInstallation`) | ✅ **Done** | `39c7e176` | `20260717140000` | 18 grün | — |
-| **7** | B — Lifecycle | Zentraler `BrakeComponentLifecycleService` | ✅ **Done** | `7617ba59` | — | 36 grün | — |
-| **8** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
-| **8** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
-| **8** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
-| **8** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
-| **9** | B — Lifecycle | Scope-aware Tests (front/rear pads/discs only) | ⏳ Pending | — | — | lifecycle spec | — |
-| **10** | B — Lifecycle | Service + Evidence atomarer (Transaktion) | ⏳ Pending | — | evtl. | integration | — |
-| **11** | C — Anchors | Rotor-Breite ≠ Scheiben-Dicke trennen | ⏳ Pending | — | evtl. | anchor plausibility | — |
-| **11** | C — Anchors | Disc-Anker-Validierung + Spec-Semantik | ⏳ Pending | — | — | spec regression | — |
-| **12** | D — Safety | DTC Poll → `BrakeEvidence` Producer | ⏳ Pending | — | — | DTC spec | VPS read |
-| **13** | D — Safety | DTC Clearance → Alert Resolution | ⏳ Pending | — | — | active/cleared | — |
-| **14** | D — Safety | ABS Warning als Safety Evidence (kein Wear-%) | ⏳ Pending | — | — | ABS policy | DIMO when avail. |
-| **15** | E — Model | `harshBrakeWearMultiplier` in Recalc verdrahten | ⏳ Pending | — | — | harsh brake | — |
-| **16** | E — Model | Rolling-Gap Temporal Leakage mindern | ⏳ Pending | — | — | rolling gap | — |
-| **17** | E — Model | Disc OEM-Limit / generic 2mm Review | ⏳ Pending | — | config | disc limit | — |
-| **18** | F — Calibration | `calibrateFromMeasurement()` Runtime | ⏳ Pending | — | — | calibration | — |
-| **19** | F — Calibration | Target-Leakage + Preservation Tests | ⏳ Pending | — | — | leakage | — |
-| **20** | G — Consumers | `hasAlert` / `openAlerts` Semantik vereinheitlichen | ⏳ Pending | — | — | info no escalate | — |
-| **21** | G — Consumers | Legacy `/brake-status` + fleet `brakePadPercent` | ⏳ Pending | — | — | canonical guard | — |
-| **22** | H — Observability | `BrakeHealthObservabilityService` + Prometheus | ⏳ Pending | — | — | metrics spec | Grafana |
-| **23** | H — Observability | BullMQ Recalc-Queue + per-vehicle Lock | ⏳ Pending | — | — | concurrency | — |
-| **24** | I — Validation | Messkampagne-Vorbereitung (Workshop/Invoice GT) | ⏳ Pending | — | — | — | campaign |
-| **25** | I — Validation | Backtest mit echten Messungen re-run | ⏳ Pending | — | — | backtest script | read-only |
-| **26** | I — Validation | Confidence-Caps (Spec ≠ HIGH ohne mm) | ⏳ Pending | — | — | confidence | — |
-| **27** | J — DIMO | V003 Event-Ingestion + Capability Gating | ⏳ Pending | — | — | DIMO contract | DIMO read |
+| Prompt | Ziel | Status | Commit | Migration |
+|--------|------|--------|--------|-----------|
+| **1** | Implementierungsbaseline | ✅ Done | `cf53c103` | — |
+| **2** | Lifecycle-Regressionstests A–I | ✅ Done | `98fe1070` | — |
+| **3** | Kanonischer Init-Workflow | ✅ Done | `d4857b07` | — |
+| **4** | Registration materialisiert BHC | ✅ Done | `3336ee5c` | — |
+| **5** | Read-only Baseline-Audit | ✅ Done | `88997c83` | — |
+| **6** | Component Installation Lifecycle | ✅ Done | `56f0fd22` | `20260717140000` |
+| **7** | Zentraler Component Lifecycle | ✅ Done | `97762749` | — |
+| **8** | Scoped Brake Service | ✅ Done | `e960fc71` | — |
+| **9** | Atomare Service Application | ✅ Done | `8ef69289` | `20260717150000` |
+| **10** | Reference Spec Provenance | ✅ Done | `0de2caa3` | `20260717160000` |
+| **11** | Component Wear Thresholds | ✅ Done | `f3fc1faf` | `20260717170000` |
+| **12** | Controlled Baseline Backfill | ✅ Done | `10faa38b` | — |
+| **13** | Authoritative TDI Coverage | ✅ Done | `e14efca0` | `20260717180000` |
+| **14** | DIMO Braking Event Intake | ✅ Done | `af2fb811` | `20260717190000` |
+| **15** | Braking Event Ledger | ✅ Done | `b0f68346` | `20260717200000` |
+| **16** | Coverage Gap / No Temporal Leakage | ✅ Done | `9aa1feea` | `20260717210000` |
+| **17** | Idempotent Recalc Orchestrator | ✅ Done | `a2c49e45` | `20260717220000` |
+| **18** | Versioned Prediction Snapshots | ✅ Done | `0ece5859` | `20260717230000` |
+| **19** | DTC → BrakeEvidence Producer | ✅ Done | `c7e48d74` | `20260717240000` |
+| **20** | Evidence Lifecycle + Dedupe | ✅ Done | `66279f84` | `20260717250000` |
+| **21** | Unified Brake Alerts | ✅ Done | `1ed239fc` | `20260717260000` |
+| **22** | Rental Wear/Safety/DQ Separation | ✅ Done | `4fc7a3d2` | `20260717270000` |
+| **23** | Canonical Consumer Migration | ✅ Done | `02c5fc01` | — |
+| **24** | Honest UI Evidence Panel | ✅ Done | `996211b4` | — |
+| **25** | Observability + Regression Matrix | ✅ Done | `f11a70c5` | — |
+| **26** | Finale Verifikation + Runbooks | ✅ Done | *(dieser Commit)* | — |
+
+**Staging / VPS:** Kein kontrollierter Apply, kein Shadow Replay, kein Produktions-Deploy in Prompt 26 (kein `DATABASE_URL` in Agent-Umgebung).
 
 ---
 
@@ -1142,29 +1139,147 @@ npm test -- --testPathPattern='brake-dtc|dtc\.service'
 
 ---
 
-## Commit-Log (Remediation)
+## Evidence Lifecycle + Dedupe (Prompt 20) — 2026-07-17
 
-| Prompt | Commit | Message |
-|--------|--------|---------|
-| 1 | `b12599f5da380f9740a8e44dc6d43f88351bdaa6` | `docs(brakes): establish production readiness remediation baseline` |
-| 2 | `b1246a886d62892abd605617f39e007871663994` | `test(brakes): capture brake health lifecycle regressions` |
-| 3 | `b892b605d2380f99c1c2e8972f7ec7d4643a1bb2` | `fix(brakes): establish canonical brake initialization workflow` |
-| 4 | `e8e62310775a10b06c0846f8b293393ddd8ce1e5` | `fix(brakes): materialize brake health during vehicle registration` |
-| 5 | `a30ea31d943ba49e279d43912265684678cd7fd4` | `feat(brakes): add read-only brake baseline backfill audit` |
-| 6 | `39c7e176226328be215dc1046f6e34fa56460d42` | `feat(brakes): add brake component installation lifecycle` |
-| 7 | `7617ba59b296ef2db27b413f56534fea7ce2f9f4` | `feat(brakes): centralize brake component lifecycle mutations` |
-| 8 | `43fbb3e6` | `fix(brakes): enforce component-specific brake service scope` |
-| 9 | `8ef69289` | `fix(brakes): apply brake service lifecycle atomically` |
-| 10 | `0de2caa3` | `feat(brakes): add brake reference spec provenance and thickness semantics` |
-| 11 | `f3fc1faf` | `fix(brakes): use component-specific brake wear thresholds` |
-| 12 | `10faa38b` | `feat(brakes): add controlled brake component baseline backfill` |
-| 13 | *(dieser Commit)* | `fix(brakes): make trip driving impact coverage authoritative` |
-| 14 | *(dieser Commit)* | `fix(brakes): ingest DIMO native braking events reliably` |
-| 15 | *(dieser Commit)* | `feat(brakes): add canonical braking event ledger and deduplication` |
-| 16 | *(dieser Commit)* | `fix(brakes): remove temporal leakage from brake coverage gaps` |
-| 17 | *(dieser Commit)* | `fix(brakes): make brake recalculation idempotent and concurrency safe` |
-| 18 | *(dieser Commit)* | `feat(brakes): add versioned brake health prediction snapshots` |
-| 19 | *(dieser Commit)* | `feat(brakes): create structured brake safety evidence from DTCs` |
+- Evidence freshness, stale detection, dedupe buckets
+- AI-unconfirmed evidence cannot drive measured CRITICAL
+- Migration `20260717250000_brake_evidence_lifecycle`
+
+---
+
+## Unified Brake Alerts (Prompt 21) — 2026-07-17
+
+- `BrakeHealthAlertService` — wear / safety / data-quality taxonomy
+- `COVERAGE_GAP` → data quality, not wear escalation
+- Migration `20260717260000_brake_health_alerts`
+
+---
+
+## Rental Wear / Safety / Data Quality Separation (Prompt 22) — 2026-07-17
+
+- `BrakeRentalHealthReviewService` — `MEASUREMENT_REQUIRED` vs `HARD_BLOCK`
+- Estimated critical does not hard-block; measured critical may
+- Migration `20260717270000_brake_rental_health`
+
+---
+
+## Canonical Consumer Migration (Prompt 23) — 2026-07-17
+
+- Fleet UI, booking gate, notifications, insights → canonical read model
+- Legacy `/brake-status` and `brakePadPercent` removed as product truth
+
+---
+
+## Honest UI Evidence Panel (Prompt 24) — 2026-07-17
+
+- `BrakeEvidencePanel` — MEASURED / ESTIMATED / SPEC_ONLY labels
+- Frontend contract tests (`brake-health-evidence-ui.test.ts`)
+
+---
+
+## Observability + Regression Matrix (Prompt 25) — 2026-07-17
+
+- `BrakeHealthObservabilityService` + 22 `synqdrive_brake_*` metrics
+- Prometheus alerts (`synqdrive_brakes` group)
+- `brake-health-regression-matrix.spec.ts` — TC01–TC42
+- `BRAKE_RECALCULATION` queue monitored; concurrency=2, lock=120s
+
+---
+
+## Finale Verifikation (Prompt 26) — 2026-07-17
+
+### Lokale Gates (grün)
+
+| Gate | Ergebnis |
+|------|----------|
+| Prisma validate | ✅ |
+| Backend build | ✅ |
+| Frontend build | ✅ |
+| Backend brake + rental tests | ✅ 558 passed |
+| Frontend brake tests | ✅ 16 passed |
+| Baseline audit `--fixtures-only` | ✅ |
+
+### Nicht ausgeführt (Operator / Staging)
+
+- DB-Backup, `migrate deploy`, kontrollierter Backfill, Shadow Replay 60d
+- Read-only Audits auf echter DB-Kopie
+- Produktions-Deploy
+
+### Neue Runbooks
+
+- [`docs/runbooks/brake-health-measurement-campaign.md`](../runbooks/brake-health-measurement-campaign.md)
+- [`docs/runbooks/brake-health-production-rollout.md`](../runbooks/brake-health-production-rollout.md)
+
+### Post-Remediation Audit
+
+- [`docs/audits/brake-health-post-remediation-readiness-2026-07.md`](../audits/brake-health-post-remediation-readiness-2026-07.md)
+
+### Finales Urteil
+
+| Ebene | Urteil |
+|-------|--------|
+| Code | **CONDITIONALLY_READY** |
+| Modellvalidität | **NOT_ENOUGH_DATA** |
+| Go-Live | **SHADOW_ONLY** |
+
+---
+
+## Commit-Log (Remediation — alle 26 Prompts)
+
+| Prompt | Short hash | Full hash | Message |
+|--------|------------|-----------|---------|
+| 1 | `cf53c103` | `cf53c103729dc02f347d1e684d602fb91a012ee4` | `docs(brakes): establish production readiness remediation baseline` |
+| 2 | `98fe1070` | `98fe1070c3000d2af959a436d33bb86750c1aab3` | `test(brakes): capture brake health lifecycle regressions` |
+| 3 | `d4857b07` | `d4857b07c62766daf058da39974f0a039a5b106a` | `fix(brakes): establish canonical brake initialization workflow` |
+| 4 | `3336ee5c` | `3336ee5c6fac7f60515a9164f0a3eee553a1c887` | `fix(brakes): materialize brake health during vehicle registration` |
+| 5 | `88997c83` | `88997c834763b616cb643e44abd3fa6a891e71d4` | `feat(brakes): add read-only brake baseline backfill audit` |
+| 6 | `56f0fd22` | `56f0fd22ca5cdd52952e2d367bae4d4bae46dd2f` | `feat(brakes): add brake component installation lifecycle` |
+| 7 | `97762749` | `97762749e8eb71b3e5de5e59bd2dfb14e1427d99` | `feat(brakes): centralize brake component lifecycle mutations` |
+| 8 | `e960fc71` | `e960fc71279578f450830ad4c4193b2d2549b379` | `fix(brakes): enforce component-specific brake service scope` |
+| 9 | `8ef69289` | `8ef69289c1f4198cd28281d8416cf2d09b87e7d7` | `fix(brakes): apply brake service lifecycle atomically` |
+| 10 | `0de2caa3` | `0de2caa38b9cf1a008b1d5aa5b22cc501c03a232` | `feat(brakes): add brake reference spec provenance and thickness semantics` |
+| 11 | `f3fc1faf` | `f3fc1fafd3433454a2590c0b974304ed060b8b86` | `fix(brakes): use component-specific brake wear thresholds` |
+| 12 | `10faa38b` | `10faa38b75ff91f86341bda5066d406c6065b3f5` | `feat(brakes): add controlled brake component baseline backfill` |
+| 13 | `e14efca0` | `e14efca0f391dfff564de17a35337dc5da53cf1b` | `fix(brakes): make trip driving impact coverage authoritative` |
+| 14 | `af2fb811` | `af2fb811e676a359a6a95069f6319f975ef6784c` | `fix(brakes): ingest DIMO native braking events reliably` |
+| 15 | `b0f68346` | `b0f683463f828fc34dc6298616f6feee28e542fd` | `feat(brakes): add canonical braking event ledger and deduplication` |
+| 16 | `9aa1feea` | `9aa1feea886641705a471fa44f4dc4410597f0d8` | `fix(brakes): remove temporal leakage from brake coverage gaps` |
+| 17 | `a2c49e45` | `a2c49e454b11349066c196f2ad290e5b3686661a` | `fix(brakes): make brake recalculation idempotent and concurrency safe` |
+| 18 | `0ece5859` | `0ece58597ca90a4ec28660dfbad94ecb47d57960` | `feat(brakes): add versioned brake health prediction snapshots` |
+| 19 | `c7e48d74` | `c7e48d7475453dd484cf2bf3d309c92efcc57b87` | `feat(brakes): create structured brake safety evidence from DTCs` |
+| 20 | `66279f84` | `66279f84807f3a869de39db177cebbb31be7703d` | `fix(brakes): add lifecycle freshness and deduplication to brake evidence` |
+| 21 | `1ed239fc` | `1ed239fc81020f85bb35c7eb872c63ccb915ca61` | `fix(brakes): unify brake alerts and notifications by evidence type` |
+| 22 | `4fc7a3d2` | `4fc7a3d2f7315ea9db4d07d13174107aa3ae6cfd` | `fix(brakes): separate wear safety and data quality in rental decisions` |
+| 23 | `02c5fc01` | `02c5fc01ab7489456a0dbc392c6ca2870b69c4e2` | `refactor(brakes): migrate consumers to canonical brake health` |
+| 24 | `996211b4` | `996211b4cab43459d453ceaaac41f6650451721e` | `feat(brakes): expose honest brake health evidence in the UI` |
+| 25 | `f11a70c5` | `f11a70c5c9cc6b8656f4106ce33a622794a80a31` | `test(brakes): harden brake health observability queues and regression coverage` |
+| 26 | *(dieser Commit)* | *(dieser Commit)* | `docs(brakes): finalize brake health production readiness remediation` |
+
+---
+
+## Production-Readiness-Urteil (Final — Prompt 26)
+
+| Kategorie | Urteil |
+|-----------|--------|
+| **Gesamt (Go-Live)** | **`SHADOW_ONLY`** |
+| A Correctness | CONDITIONALLY_READY |
+| B Lifecycle Integrity | CONDITIONALLY_READY |
+| C Reference Spec Quality | CONDITIONALLY_READY |
+| D Evidence Quality | CONDITIONALLY_READY |
+| E Model Validity | NOT_ENOUGH_DATA |
+| F Safety | CONDITIONALLY_READY |
+| G Reliability | CONDITIONALLY_READY |
+| H Observability | READY |
+| I User Experience | CONDITIONALLY_READY |
+| J DIMO Signal Readiness | CONDITIONALLY_READY |
+| K Test Readiness | READY |
+
+### Verbleibende Blocker
+
+1. **P0-BH-04** — `calibrateFromMeasurement()` für Bremsen nicht implementiert (Messkampagne erforderlich)
+2. **P0-BH-01/02/40** — Fleet-Init/Backfill auf Staging noch nicht ausgeführt
+3. **P1-BH-47** — DIMO `chassisBrake*` auf LTE_R1 weiterhin nicht verfügbar
+4. **Backtest** — `NOT_ENOUGH_DATA` (0 Ground-Truth-Messungen)
 
 ---
 
