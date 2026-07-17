@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-entity-candidate-ranking-policy-2026-07-17',
+    version: '4.9.632',
+    title: 'V4.9.632 — Document Intake V2 Entity Candidate Ranking Policy',
+    summary: [
+      'Zentrale EntityCandidateRankingPolicy für Vehicle, Booking, Customer, Driver und Partner.',
+      'Pro Kandidat: score, confidenceLevel, positiveReasons, negativeReasons, conflicts, rank, autoSelectEligibility.',
+      'HIGH nur Vorauswahl; mehrere Kandidaten oberhalb Schwelle oder Kontextkonflikt blockieren Vorauswahl.',
+      'Dokumenttyp-Gewichtung, rankingVersion 1.0.0, maschinenlesbare Gründe in _pipeline.entityCandidateRanking.',
+    ],
+    reason:
+      'Einheitliches, erklärbares Ranking über alle Entity-Resolver — ohne Black-Box und ohne automatische Bestätigung.',
+    previousBehavior:
+      'Jeder Resolver rechnete confidence/rank isoliert ohne zentrale Policy, Vorauswahl-Regeln oder rankingVersion.',
+    details: 'architecture/DOCUMENT_ENTITY_CANDIDATE_RANKING_POLICY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T01:00:00.000Z',
+  },
+  {
     id: 'document-partner-candidate-resolver-2026-07-17',
     version: '4.9.631',
     title: 'V4.9.631 — Document Intake V2 Partner Candidate Resolver',
