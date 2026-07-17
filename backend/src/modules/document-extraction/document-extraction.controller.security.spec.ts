@@ -47,6 +47,7 @@ describe('DocumentExtractionController security', () => {
       'upload',
       'setDocumentType',
       'retry',
+      'updateEntityLinks',
       'confirm',
       'cancel',
       'deleteFile',
@@ -75,6 +76,15 @@ describe('DocumentExtractionOrgController security', () => {
       module: DOCUMENT_UPLOAD_MODULE,
       level: 'read',
     });
+  });
+
+  it('requires document-upload write for org entity link and vehicle reassignment', () => {
+    for (const method of ['updateEntityLinks', 'reassignVehicle'] as const) {
+      expect(permissionOf(DocumentExtractionOrgController.prototype, method)).toEqual({
+        module: DOCUMENT_UPLOAD_MODULE,
+        level: 'write',
+      });
+    }
   });
 });
 

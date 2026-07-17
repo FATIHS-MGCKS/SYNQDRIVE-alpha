@@ -27,7 +27,9 @@ import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { DocumentExtractionService } from './document-extraction.service';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import { ReassignExtractionVehicleDto } from './dto/reassign-extraction-vehicle.dto';
+import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { OrgUploadDocumentDto } from './dto/org-upload-document.dto';
+import { DocumentEntityLinkService } from './document-entity-link.service';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
 import { isAllowedMimeType, resolveMaxUploadBytes } from './document-extraction.schemas';
@@ -50,7 +52,10 @@ const UPLOAD_IP_THROTTLE_TTL_MS = parseInt(
 @Controller('organizations/:orgId/document-extractions')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class DocumentExtractionOrgController {
-  constructor(private readonly service: DocumentExtractionService) {}
+  constructor(
+    private readonly service: DocumentExtractionService,
+    private readonly entityLinkService: DocumentEntityLinkService,
+  ) {}
 
   @Get()
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
@@ -127,6 +132,17 @@ export class DocumentExtractionOrgController {
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
   getOne(@Param('orgId') orgId: string, @Param('extractionId') extractionId: string) {
     return this.service.getPublicForOrg(orgId, extractionId);
+  }
+
+  @Patch(':extractionId/entity-links')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  updateEntityLinks(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: UpdateDocumentEntityLinksDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.entityLinkService.updateForOrg(orgId, extractionId, body.operations, userId ?? null);
   }
 
   @Patch(':extractionId/vehicle')

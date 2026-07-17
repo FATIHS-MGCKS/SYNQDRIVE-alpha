@@ -27,6 +27,7 @@ export interface PipelinePlausibilityPayload {
   driverCandidates?: import('./driver-candidate-resolver.types').DriverCandidatePipelineState;
   partnerCandidates?: import('./partner-candidate-resolver.types').PartnerCandidatePipelineState;
   entityCandidateRanking?: import('./entity-candidate-ranking.types').EntityCandidateRankingPipelineState;
+  supersededEntityLinks?: import('./document-entity-link.types').SupersededEntityLink[];
 }
 
 export interface DocumentTypeAuditEntry {
@@ -105,6 +106,8 @@ export function mergePipelinePlausibility(
     malwareScan: patch.malwareScan ?? current.malwareScan,
     lifecycle: patch.lifecycle ?? current.lifecycle,
     uploadContext: patch.uploadContext ?? current.uploadContext,
+    entityCandidateRanking: patch.entityCandidateRanking ?? current.entityCandidateRanking,
+    supersededEntityLinks: patch.supersededEntityLinks ?? current.supersededEntityLinks,
   };
   return base;
 }

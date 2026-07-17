@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-entity-links-api-2026-07-17',
+    version: '4.9.633',
+    title: 'V4.9.633 — Document Intake V2 Entity Links API',
+    summary: [
+      'PATCH entity-links auf Vehicle- und Org-Scope: confirm, change, remove für vehicle, booking, customer, driver, vendor.',
+      'acceptedEntityLinks in confirmedData; supersededEntityLinks + actionAudit in _pipeline; keine Downstream-Löschung.',
+      'Linkänderung invalidiert Action Plan (CONFIRMED_DATA_CHANGED); kein Executor/Apply beim bloßen Linken.',
+      'Org-Allgemeinschreiben darf ohne Fahrzeug bleiben; tenant-scoped Validierung pro Entity-Typ.',
+    ],
+    reason:
+      'Bestätigte Entity-Links müssen sicher verwaltet werden — mit Audit, Supersede-Historie und Plan-Invalidierung, ohne ungeprüftes Löschen.',
+    previousBehavior:
+      'acceptedEntityLinks nur implizit über confirm/apply; kein dedizierter API-Endpunkt für Link-CRUD, Supersede oder Plan-Invalidierung.',
+    details: 'architecture/DOCUMENT_ENTITY_LINKS_API_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T02:00:00.000Z',
+  },
+  {
     id: 'document-entity-candidate-ranking-policy-2026-07-17',
     version: '4.9.632',
     title: 'V4.9.632 — Document Intake V2 Entity Candidate Ranking Policy',

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Patch,
   Param,
   Body,
   Query,
@@ -28,7 +29,9 @@ import { DocumentExtractionService } from './document-extraction.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { ConfirmExtractionDto } from './dto/confirm-extraction.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
+import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
+import { DocumentEntityLinkService } from './document-entity-link.service';
 import { isAllowedMimeType, resolveMaxUploadBytes } from './document-extraction.schemas';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
@@ -50,7 +53,10 @@ const UPLOAD_IP_THROTTLE_TTL_MS = parseInt(
 @Controller('vehicles/:vehicleId/document-extractions')
 @UseGuards(RolesGuard, VehicleOwnershipGuard, PermissionsGuard)
 export class DocumentExtractionController {
-  constructor(private readonly service: DocumentExtractionService) {}
+  constructor(
+    private readonly service: DocumentExtractionService,
+    private readonly entityLinkService: DocumentEntityLinkService,
+  ) {}
 
   @Get()
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
@@ -167,6 +173,22 @@ export class DocumentExtractionController {
   ) {
     const record = await this.service.retry(vehicleId, extractionId, userId ?? null);
     return this.service.toPublicExtraction(record);
+  }
+
+  @Patch(':extractionId/entity-links')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async updateEntityLinks(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: UpdateDocumentEntityLinksDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.entityLinkService.updateForVehicle(
+      vehicleId,
+      extractionId,
+      body.operations,
+      userId ?? null,
+    );
   }
 
   @Post(':extractionId/confirm')
