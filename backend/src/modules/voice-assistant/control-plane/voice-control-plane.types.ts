@@ -39,8 +39,10 @@ export type CreateVoicePhoneNumberInput = {
   maskedPhoneNumber: string;
   protectedE164?: string | null;
   protectedExternalRef?: string | null;
+  protectedElevenLabsRef?: string | null;
   e164Digest?: string | null;
   externalRefDigest?: string | null;
+  elevenLabsRefDigest?: string | null;
   region?: string | null;
   capabilities?: Prisma.InputJsonValue;
   lifecycle?: VoicePhoneNumberLifecycle;
@@ -92,4 +94,6 @@ export type UpdateVoiceProvisioningJobProgressInput = {
   cancelledAt?: Date | null;
   providerAccountId?: string | null;
   phoneNumberId?: string | null;
+  deploymentId?: string | null;
+  payload?: Prisma.InputJsonValue;
 };

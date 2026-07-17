@@ -46,6 +46,7 @@ import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
     TwilioTenantClientFactory,
     TwilioVoiceBridgeService,
     TwilioTenantProvisioningService,
+    SecretRefResolver,
   ],
 })
 export class TwilioModule {}

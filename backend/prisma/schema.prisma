@@ -10321,6 +10321,7 @@ enum VoiceElevenLabsImportStatus {
   NOT_IMPORTED
   IMPORTING
   IMPORTED
+  ASSIGNED
   FAILED
 }
 
@@ -10427,10 +10428,14 @@ model VoicePhoneNumber {
   protectedE164          String?                     @map("protected_e164")
   /// Protected Twilio Phone Number SID reference.
   protectedExternalRef   String?                     @map("protected_external_ref")
+  /// Protected ElevenLabs phone_number_id reference.
+  protectedElevenLabsRef String?                     @map("protected_elevenlabs_ref")
   /// SHA-256 digest of canonical E.164 for global uniqueness without storing plaintext.
   e164Digest             String?                     @unique @map("e164_digest")
   /// SHA-256 digest of provider phone SID for global uniqueness.
   externalRefDigest      String?                     @unique @map("external_ref_digest")
+  /// SHA-256 digest of ElevenLabs phone_number_id for global uniqueness.
+  elevenLabsRefDigest    String?                     @unique @map("elevenlabs_ref_digest")
   region                 String?
   capabilities           Json?
   lifecycle              VoicePhoneNumberLifecycle   @default(DRAFT)

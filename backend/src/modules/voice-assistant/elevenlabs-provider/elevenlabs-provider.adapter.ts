@@ -18,6 +18,7 @@ import type {
   ElevenLabsVoiceView,
   ElevenLabsWorkspaceValidation,
   ImportTwilioPhoneNumberInput,
+  ImportTwilioPhoneNumberResult,
   MaskedElevenLabsAgentView,
   MaskedElevenLabsConversationView,
   MaskedElevenLabsDeploymentView,
@@ -306,7 +307,7 @@ export class ElevenLabsProviderAdapter implements ElevenLabsProviderPort {
 
   async importTwilioPhoneNumber(
     input: ImportTwilioPhoneNumberInput,
-  ): Promise<MaskedElevenLabsPhoneNumberView> {
+  ): Promise<ImportTwilioPhoneNumberResult> {
     await this.tenantResolver.assertPhoneInOrg(input.organizationId, input.phoneNumberId);
 
     const body = redactProviderPayload({
@@ -334,7 +335,13 @@ export class ElevenLabsProviderAdapter implements ElevenLabsProviderPort {
       `Imported Twilio number for org ${input.organizationId}: ${JSON.stringify(body)}`,
     );
 
-    return this.toMaskedPhoneView(input.organizationId, raw, input.phoneNumberId);
+    const masked = this.toMaskedPhoneView(input.organizationId, raw, input.phoneNumberId);
+    return {
+      controlPlanePhoneNumberId: input.phoneNumberId,
+      elevenLabsPhoneId: raw.phone_number_id,
+      maskedPhoneRef: masked.maskedPhoneRef,
+      maskedE164: masked.maskedE164,
+    };
   }
 
   async assignPhoneNumberToAgent(params: {

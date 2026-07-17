@@ -119,7 +119,7 @@ export class ElevenLabsProviderTenantResolver {
     }
 
     const externalPhoneId =
-      phone.protectedExternalRef?.trim() ||
+      phone.protectedElevenLabsRef?.trim() ||
       phone.voiceAssistant?.elevenLabsPhoneNumberId?.trim() ||
       null;
 
@@ -138,6 +138,31 @@ export class ElevenLabsProviderTenantResolver {
     };
   }
 
+  async resolveActiveDeployment(organizationId: string) {
+    const deployment = await this.prisma.voiceAgentDeployment.findFirst({
+      where: {
+        organizationId,
+        archivedAt: null,
+        provider: VoiceControlPlaneProvider.ELEVENLABS,
+        status: 'ACTIVE',
+      },
+      orderBy: { version: 'desc' },
+      include: {
+        voiceAssistant: {
+          select: { id: true, elevenLabsAgentId: true },
+        },
+      },
+    });
+
+    if (!deployment) {
+      throw new ElevenLabsInvalidConfigurationError(
+        'No active ElevenLabs agent deployment found for organization.',
+      );
+    }
+
+    return deployment;
+  }
+
   async listOrganizationPhoneExternalIds(organizationId: string): Promise<Set<string>> {
     const rows = await this.prisma.voicePhoneNumber.findMany({
       where: { organizationId, archivedAt: null },
@@ -151,7 +176,7 @@ export class ElevenLabsProviderTenantResolver {
     const refs = new Set<string>();
     for (const row of rows) {
       const external =
-        row.protectedExternalRef?.trim() ||
+        row.protectedElevenLabsRef?.trim() ||
         row.voiceAssistant?.elevenLabsPhoneNumberId?.trim();
       if (external) {
         refs.add(external);

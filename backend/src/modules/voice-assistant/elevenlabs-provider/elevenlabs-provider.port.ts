@@ -4,6 +4,7 @@ import type {
   ElevenLabsVoiceView,
   ElevenLabsWorkspaceValidation,
   ImportTwilioPhoneNumberInput,
+  ImportTwilioPhoneNumberResult,
   MaskedElevenLabsAgentView,
   MaskedElevenLabsConversationView,
   MaskedElevenLabsDeploymentView,
@@ -44,7 +45,7 @@ export interface ElevenLabsProviderPort {
 
   importTwilioPhoneNumber(
     input: ImportTwilioPhoneNumberInput,
-  ): Promise<MaskedElevenLabsPhoneNumberView>;
+  ): Promise<ImportTwilioPhoneNumberResult>;
 
   assignPhoneNumberToAgent(params: {
     organizationId: string;

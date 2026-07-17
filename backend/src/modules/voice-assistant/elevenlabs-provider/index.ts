@@ -41,7 +41,7 @@ export type {
   ElevenLabsProviderHealth,
   ElevenLabsVoiceView,
   ElevenLabsWorkspaceValidation,
-  ImportTwilioPhoneNumberInput,
+  ImportTwilioPhoneNumberResult,
   MaskedElevenLabsAgentView,
   MaskedElevenLabsConversationView,
   MaskedElevenLabsDeploymentView,

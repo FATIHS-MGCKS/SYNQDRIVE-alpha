@@ -150,8 +150,10 @@ export class VoicePhoneNumberRepository {
         maskedPhoneNumber: input.maskedPhoneNumber,
         protectedE164: input.protectedE164 ?? null,
         protectedExternalRef: input.protectedExternalRef ?? null,
+        protectedElevenLabsRef: input.protectedElevenLabsRef ?? null,
         e164Digest: input.e164Digest ?? null,
         externalRefDigest: input.externalRefDigest ?? null,
+        elevenLabsRefDigest: input.elevenLabsRefDigest ?? null,
         region: input.region ?? null,
         capabilities: input.capabilities ?? Prisma.JsonNull,
         lifecycle: input.lifecycle ?? 'DRAFT',
@@ -171,6 +173,27 @@ export class VoicePhoneNumberRepository {
     return this.prisma.voicePhoneNumber.update({
       where: { id },
       data: { archivedAt: new Date(), lifecycle: 'ARCHIVED' },
+    });
+  }
+
+  async updateImportState(
+    organizationId: string,
+    id: string,
+    data: {
+      elevenLabsImportStatus?: CreateVoicePhoneNumberInput['elevenLabsImportStatus'];
+      protectedElevenLabsRef?: string | null;
+      elevenLabsRefDigest?: string | null;
+      voiceAssistantId?: string | null;
+      lifecycle?: CreateVoicePhoneNumberInput['lifecycle'];
+    },
+  ) {
+    const row = await this.findById(organizationId, id);
+    if (!row) {
+      throw new NotFoundException('Voice phone number not found for organization');
+    }
+    return this.prisma.voicePhoneNumber.update({
+      where: { id },
+      data,
     });
   }
 }

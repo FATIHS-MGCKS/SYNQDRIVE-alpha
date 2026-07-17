@@ -199,10 +199,10 @@ export class TwilioTenantProvisioningService {
         createdSubaccount.accountSid,
         'SynqDrive Runtime',
       );
-      const secretRef = this.secretStore.registerSubaccountCredentials(
-        input.organizationId,
-        credentials,
-      );
+      const secretRef = this.secretStore.registerSubaccountCredentials(input.organizationId, {
+        ...credentials,
+        authToken: createdSubaccount.authToken,
+      });
 
       workingJob = await this.provisioningJobRepository.updateProgress(input.organizationId, job.id, {
         currentStep: 'persist_provider_account',

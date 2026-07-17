@@ -51,6 +51,13 @@ export type MaskedElevenLabsPhoneNumberView = {
   maskedAssignedAgentRef?: string | null;
 };
 
+export type ImportTwilioPhoneNumberResult = {
+  controlPlanePhoneNumberId: string;
+  elevenLabsPhoneId: string;
+  maskedPhoneRef: string | null;
+  maskedE164?: string | null;
+};
+
 export type OutboundCallPreparation = {
   organizationId: string;
   deploymentId: string;
