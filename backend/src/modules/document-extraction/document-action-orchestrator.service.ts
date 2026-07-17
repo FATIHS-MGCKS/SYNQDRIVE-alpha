@@ -4,6 +4,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DocumentActionExecutorRegistry } from './document-action-executor.registry';
 import { ArchiveDocumentActionExecutor } from './executors/archive-document-action.executor';
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
+import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
 import {
   assertExecutableActionPlan,
   buildDocumentActionPlan,
@@ -34,6 +35,7 @@ import {
 } from './document-action.errors';
 import type { ApplyResult } from './document-extraction-apply.service';
 import { isArchiveDocumentType } from './document-archive-extraction.rules';
+import { isFineDocumentType, readFineReportNumber } from './document-fine-extraction.rules';
 
 export type ExecuteDocumentActionPlanInput = {
   extractionId: string;
@@ -57,18 +59,21 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     private readonly registry: DocumentActionExecutorRegistry,
     private readonly archiveExecutor: ArchiveDocumentActionExecutor,
     private readonly linkExecutor: LinkEntityDocumentActionExecutor,
+    private readonly createFineExecutor: CreateFineDocumentActionExecutor,
   ) {}
 
   onModuleInit(): void {
     this.registry.register(this.archiveExecutor);
     this.registry.register(this.linkExecutor);
+    this.registry.register(this.createFineExecutor);
   }
 
   supportsExecutorPath(documentType: string): boolean {
-    return isArchiveDocumentType(documentType);
+    return isArchiveDocumentType(documentType) || isFineDocumentType(documentType);
   }
 
   async prepareConfirmedPlan(input: ExecuteDocumentActionPlanInput): Promise<DocumentActionPlan> {
+    const planContext = await this.buildPlanContext(input);
     const plan = buildDocumentActionPlan({
       extractionId: input.extractionId,
       organizationId: input.organizationId,
@@ -77,7 +82,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       confirmedData: input.confirmedData,
       plausibilityChecks: input.plausibilityChecks,
       confirmedById: input.confirmedById,
-      planContext: input.planContext,
+      planContext,
     });
 
     assertExecutableActionPlan(plan);
@@ -100,7 +105,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     if (!plan) {
       plan = await this.prepareConfirmedPlan(input);
     } else {
-      this.validateStoredPlan(plan, input);
+      await this.validateStoredPlan(plan, input);
       assertExecutableActionPlan(plan);
     }
 
@@ -146,7 +151,10 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     return this.toApplyResult(plan, execution);
   }
 
-  private validateStoredPlan(plan: DocumentActionPlan, input: ExecuteDocumentActionPlanInput): void {
+  private async validateStoredPlan(
+    plan: DocumentActionPlan,
+    input: ExecuteDocumentActionPlanInput,
+  ): Promise<void> {
     if (plan.planVersion !== 1) {
       throw new DocumentActionPlanError(
         DOCUMENT_ACTION_ERROR_CODES.PLAN_VERSION_MISMATCH,
@@ -163,7 +171,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       confirmedData: input.confirmedData,
       plausibilityChecks: input.plausibilityChecks,
       confirmedById: input.confirmedById,
-      planContext: input.planContext,
+      planContext: await this.buildPlanContext(input),
     }).fingerprint;
 
     if (plan.fingerprint !== fingerprint) {
@@ -352,6 +360,9 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     const linkAction = execution.actions.find(
       (row) => row.semanticAction === 'SUGGEST_ENTITY_LINK' && row.status === 'SUCCEEDED',
     );
+    const fineAction = execution.actions.find(
+      (row) => row.semanticAction === 'CREATE_FINE_DRAFT' && row.status === 'SUCCEEDED',
+    );
 
     return {
       detail: {
@@ -361,6 +372,8 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         planOutcome: plan.planOutcome,
         archived: archiveAction?.output?.archived === true,
         archiveSubtype: archiveAction?.output?.archiveSubtype ?? plan.metadata?.archiveSubtype,
+        fineId: fineAction?.resultEntityId ?? fineAction?.output?.fineId ?? null,
+        fineStatus: fineAction?.output?.status ?? null,
         entityLinkSuggestions:
           linkAction?.output?.suggestions ?? plan.metadata?.entityLinkSuggestions ?? [],
         acceptedEntityLinks: linkAction?.output?.links ?? [],
@@ -369,6 +382,34 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         extractionId: plan.extractionId,
         execution,
       },
+    };
+  }
+
+  private async buildPlanContext(
+    input: ExecuteDocumentActionPlanInput,
+  ): Promise<Record<string, unknown>> {
+    const base = input.planContext ?? {};
+    if (!isFineDocumentType(input.documentType) || !input.organizationId) {
+      return base;
+    }
+
+    const reportNumber = readFineReportNumber(input.confirmedData);
+    if (!reportNumber) {
+      return base;
+    }
+
+    const duplicate = await this.prisma.fine.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        fineNumber: reportNumber,
+        documentExtractionId: { not: input.extractionId },
+      },
+      select: { id: true },
+    });
+
+    return {
+      ...base,
+      duplicateReferenceFineId: duplicate?.id ?? null,
     };
   }
 }

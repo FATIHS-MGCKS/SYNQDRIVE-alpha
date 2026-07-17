@@ -33,6 +33,7 @@ export type DocumentActionPlanStatus =
 export const DOCUMENT_EXECUTOR_ACTION_TYPES = {
   ARCHIVE_DOCUMENT: 'ARCHIVE_DOCUMENT',
   SUGGEST_ENTITY_LINK: 'SUGGEST_ENTITY_LINK',
+  CREATE_FINE_DRAFT: 'CREATE_FINE_DRAFT',
 } as const;
 
 export type DocumentExecutorActionType =

@@ -15,6 +15,7 @@ import { DocumentActionOrchestratorService } from './document-action-orchestrato
 import { DocumentActionExecutorRegistry } from './document-action-executor.registry';
 import { ArchiveDocumentActionExecutor } from './executors/archive-document-action.executor';
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
+import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentContentExtractorService } from './document-content-extractor.service';
 import { DocumentFileIdentificationService } from './document-file-identification.service';
@@ -55,6 +56,7 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     DocumentActionExecutorRegistry,
     ArchiveDocumentActionExecutor,
     LinkEntityDocumentActionExecutor,
+    CreateFineDocumentActionExecutor,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,

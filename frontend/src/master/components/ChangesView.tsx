@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-fine-apply-idempotency-2026-07-17',
+    version: '4.9.612',
+    title: 'V4.9.612 — Document Intake V2 Idempotent Fine Apply via Action Executor',
+    summary: [
+      'Fine Apply vollständig idempotent und extraction-bezogen: Prisma Fine.documentExtractionId + tenant-sicherer Unique Constraint (organizationId, documentExtractionId).',
+      'FinesService.createFromDocumentExtraction sucht bestehenden Fine vor Create, prüft Referenznummer-Duplikate, erstellt UNDER_REVIEW Drafts statt auto-final MATCHED.',
+      'Booking/Customer/Driver-Links nur aus confirmedData.acceptedEntityLinks — kein automatisches matchBooking beim Extraction-Apply.',
+      'CreateFineDocumentActionExecutor (CREATE_FINE_DRAFT) speichert resultEntityId am DocumentAction-Execution-Record; Task-Dedup via document-extraction:fine:{extractionId}.',
+      'Kein Betrag-0, kein Default-Offense-Type; bestehende Fines ohne Backfill.',
+      'Tests für Retry und Parallel-Race in fines.service.spec.ts.',
+    ],
+    reason: 'Prompt 37/84: Fine-Apply idempotent machen und an DocumentActionExecutor-Framework anbinden.',
+    previousBehavior:
+      'applyFine() rief finesService.create() mit Default offenseType Parkverstoß und amountCents=0 an; keine documentExtractionId, keine Idempotenz, auto matchBooking.',
+    details:
+      'Backend: document-fine-extraction.rules.ts, document-action-planner.fine-rules.ts, executors/create-fine-document-action.executor.ts, fines.service.ts, Migration 20260717190000_fine_document_extraction_idempotency. Architektur: DOCUMENT_FINE_APPLY_IDEMPOTENCY_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T17:30:00.000Z',
+  },
+  {
     id: 'document-action-executor-2026-07-17',
     version: '4.9.611',
     title: 'V4.9.611 — Document Intake V2 Action Executor Framework (ARCHIVE + LINK)',

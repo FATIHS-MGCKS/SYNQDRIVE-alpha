@@ -25,7 +25,6 @@ import {
 import { BatteryHealthService } from '@modules/vehicle-intelligence/battery-health/battery-health.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
-import { FinesService } from '@modules/fines/fines.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
 import {
   assessInspectionApplyGate,
@@ -109,7 +108,6 @@ export class DocumentExtractionApplyService {
     private readonly damagesService: DamagesService,
     @Inject(forwardRef(() => InvoicesService))
     private readonly invoicesService: InvoicesService,
-    private readonly finesService: FinesService,
   ) {}
 
   async apply(input: ApplyInput): Promise<ApplyResult> {
@@ -145,7 +143,9 @@ export class DocumentExtractionApplyService {
     }
 
     if (docType === 'FINE') {
-      return this.applyFine(input, d);
+      throw new BadRequestException(
+        'Fine apply must run through DocumentActionOrchestratorService',
+      );
     }
 
     if (isArchiveDocumentType(docType)) {
@@ -547,40 +547,6 @@ export class DocumentExtractionApplyService {
     }
 
     return { serviceEventId };
-  }
-
-  private async applyFine(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
-    const { vehicleId, sourceFileUrl, extractionId } = input;
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true },
-    });
-    if (!vehicle?.organizationId) return {};
-
-    const offenseType = this.str(d.offenseType) ?? 'Parkverstoß';
-    const summary = this.str(d.description);
-    const breakdown = this.str(d.feeBreakdown);
-    const descriptionParts = [summary, breakdown].filter(Boolean);
-    const totalCents = this.toInt(d.totalCents) ?? 0;
-
-    const fine = await this.finesService.create(vehicle.organizationId, {
-      fineNumber: this.str(d.reportNumber),
-      title: offenseType,
-      description: descriptionParts.join('\n\n') || 'Bußgeld aus Dokumenten-Upload',
-      offenseType,
-      issuingAuthority: this.str(d.issuingAuthority),
-      offenseDate: this.str(d.eventDate),
-      location: this.str(d.location),
-      amountCents: totalCents,
-      currency: 'EUR',
-      dueDate: this.str(d.dueDate),
-      vehicleId,
-      imageUrl: sourceFileUrl ?? undefined,
-      extractedData: { ...d, documentExtractionId: extractionId },
-      notes: breakdown ?? undefined,
-    });
-
-    return { detail: { fineId: fine.id } };
   }
 
   private async applyDamageReport(

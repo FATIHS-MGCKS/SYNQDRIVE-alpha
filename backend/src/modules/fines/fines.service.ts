@@ -1,7 +1,31 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+
+export type CreateFineFromDocumentExtractionInput = {
+  organizationId: string;
+  vehicleId: string;
+  documentExtractionId: string;
+  documentActionIdempotencyKey?: string | null;
+  fineNumber?: string | null;
+  title: string;
+  description?: string;
+  offenseType: string;
+  issuingAuthority?: string | null;
+  offenseDate: string;
+  receivedDate?: string | null;
+  location?: string | null;
+  amountCents: number;
+  currency?: string;
+  dueDate?: string | null;
+  imageUrl?: string | null;
+  extractedData?: Record<string, unknown>;
+  notes?: string | null;
+  bookingId?: string | null;
+  customerId?: string | null;
+  driverCustomerId?: string | null;
+};
 
 @Injectable()
 export class FinesService {
@@ -28,6 +52,7 @@ export class FinesService {
       vehicleId: f.vehicleId || null,
       bookingId: f.bookingId || null,
       customerId: f.customerId || null,
+      documentExtractionId: f.documentExtractionId || null,
       imageUrl: f.imageUrl || null,
       extractedData: f.extractedData || null,
       notes: f.notes || '',
@@ -77,6 +102,123 @@ export class FinesService {
       description: t.description,
     }));
     return formatted;
+  }
+
+  async findByDocumentExtractionId(orgId: string, documentExtractionId: string) {
+    return this.prisma.fine.findUnique({
+      where: {
+        organizationId_documentExtractionId: {
+          organizationId: orgId,
+          documentExtractionId,
+        },
+      },
+    });
+  }
+
+  async findDuplicateByReferenceNumber(
+    orgId: string,
+    fineNumber: string,
+    excludeDocumentExtractionId?: string | null,
+  ) {
+    return this.prisma.fine.findFirst({
+      where: {
+        organizationId: orgId,
+        fineNumber,
+        ...(excludeDocumentExtractionId
+          ? { documentExtractionId: { not: excludeDocumentExtractionId } }
+          : {}),
+      },
+      select: { id: true },
+    });
+  }
+
+  async createFromDocumentExtraction(input: CreateFineFromDocumentExtractionInput) {
+    if (!input.documentExtractionId) {
+      throw new BadRequestException('documentExtractionId is required for extraction apply');
+    }
+    if (!input.offenseType?.trim()) {
+      throw new BadRequestException('offenseType is required for extraction apply');
+    }
+    if (!Number.isFinite(input.amountCents) || input.amountCents <= 0) {
+      throw new BadRequestException('amountCents must be greater than zero for extraction apply');
+    }
+
+    const existing = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+    if (existing) {
+      await this.syncFineFollowUpTask(input.organizationId, existing.id, input);
+      return this.findById(existing.id);
+    }
+
+    if (input.fineNumber) {
+      const duplicate = await this.findDuplicateByReferenceNumber(
+        input.organizationId,
+        input.fineNumber,
+        input.documentExtractionId,
+      );
+      if (duplicate) {
+        throw new BadRequestException({
+          message: 'Fine reference number already exists for this organization',
+          code: 'FINE_DUPLICATE_REFERENCE_NUMBER',
+          existingFineId: duplicate.id,
+        });
+      }
+    }
+
+    const validatedLinks = await this.validateConfirmedEntityLinks(input);
+
+    try {
+      const fine = await this.prisma.fine.create({
+        data: {
+          organizationId: input.organizationId,
+          documentExtractionId: input.documentExtractionId,
+          fineNumber: input.fineNumber ?? undefined,
+          title: input.title,
+          description: input.description,
+          offenseType: input.offenseType,
+          issuingAuthority: input.issuingAuthority ?? undefined,
+          offenseDate: new Date(input.offenseDate),
+          receivedDate: input.receivedDate ? new Date(input.receivedDate) : null,
+          location: input.location ?? undefined,
+          amountCents: input.amountCents,
+          currency: input.currency || 'EUR',
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+          vehicleId: input.vehicleId,
+          bookingId: validatedLinks.bookingId,
+          customerId: validatedLinks.customerId,
+          status: 'UNDER_REVIEW',
+          imageUrl: input.imageUrl ?? undefined,
+          extractedData: {
+            ...(input.extractedData ?? {}),
+            documentExtractionId: input.documentExtractionId,
+            documentActionIdempotencyKey: input.documentActionIdempotencyKey ?? null,
+            linkedDriverCustomerId: validatedLinks.driverCustomerId,
+            confirmedEntityLinks: input.extractedData?.acceptedEntityLinks ?? undefined,
+          } as Prisma.InputJsonValue,
+          notes: input.notes ?? undefined,
+        },
+      });
+
+      await this.syncFineFollowUpTask(input.organizationId, fine.id, input);
+      return this.findById(fine.id);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findByDocumentExtractionId(
+          input.organizationId,
+          input.documentExtractionId,
+        );
+        if (raced) {
+          await this.syncFineFollowUpTask(input.organizationId, raced.id, input);
+          return this.findById(raced.id);
+        }
+      }
+      throw error;
+    }
   }
 
   async create(orgId: string, data: {
@@ -217,5 +359,79 @@ export class FinesService {
       resolved,
       totalAmountCents: totalAmount._sum.amountCents || 0,
     };
+  }
+
+  private async validateConfirmedEntityLinks(input: CreateFineFromDocumentExtractionInput) {
+    let bookingId: string | null = input.bookingId ?? null;
+    let customerId: string | null = input.customerId ?? null;
+    const driverCustomerId: string | null = input.driverCustomerId ?? null;
+
+    if (bookingId) {
+      const booking = await this.prisma.booking.findFirst({
+        where: {
+          id: bookingId,
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+        },
+        select: { id: true, customerId: true },
+      });
+      if (!booking) {
+        throw new BadRequestException('Confirmed booking link is invalid for this vehicle/organization');
+      }
+      if (!customerId) {
+        customerId = booking.customerId;
+      }
+    }
+
+    if (customerId) {
+      const customer = await this.prisma.customer.findFirst({
+        where: { id: customerId, organizationId: input.organizationId },
+        select: { id: true },
+      });
+      if (!customer) {
+        throw new BadRequestException('Confirmed customer link is invalid for this organization');
+      }
+    }
+
+    if (driverCustomerId) {
+      const driver = await this.prisma.customer.findFirst({
+        where: { id: driverCustomerId, organizationId: input.organizationId },
+        select: { id: true },
+      });
+      if (!driver) {
+        throw new BadRequestException('Confirmed driver link is invalid for this organization');
+      }
+    }
+
+    return { bookingId, customerId, driverCustomerId };
+  }
+
+  private async syncFineFollowUpTask(
+    orgId: string,
+    fineId: string,
+    input: CreateFineFromDocumentExtractionInput,
+  ) {
+    const dedupKey = `document-extraction:fine:${input.documentExtractionId}`;
+    const customerSuffix = input.customerId
+      ? ' Bestätigte Kundenzuordnung liegt vor.'
+      : ' Kundenzuordnung bitte manuell prüfen.';
+
+    await this.tasksService.upsertByDedup(orgId, dedupKey, {
+      title: `Bußgeld bearbeiten: ${input.title}`,
+      description: `Bußgeld "${input.title}" (${(input.amountCents / 100).toFixed(2)} ${input.currency || 'EUR'}) aus Dokumenten-Upload prüfen.${customerSuffix}`,
+      category: 'fine',
+      type: 'CUSTOMER_FOLLOWUP',
+      source: 'FINE',
+      sourceType: 'SYSTEM',
+      priority: input.amountCents >= 10000 ? 'HIGH' : 'NORMAL',
+      vehicleId: input.vehicleId,
+      customerId: input.customerId ?? undefined,
+      dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
+      fineId,
+      metadata: {
+        documentExtractionId: input.documentExtractionId,
+        documentActionIdempotencyKey: input.documentActionIdempotencyKey ?? null,
+      } as Prisma.InputJsonValue,
+    });
   }
 }
