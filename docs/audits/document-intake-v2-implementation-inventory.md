@@ -4,7 +4,7 @@
 |-------|-------|
 | **Inventory date (UTC)** | 2026-07-17 |
 | **Mode** | Read-only code + audit synthesis |
-| **Repository HEAD** | `614e1663` |
+| **Inventory commit** | `6370bf17` |
 | **Basis audits** | [document-intake-production-reality.md](./document-intake-production-reality.md) (Audit 1), [document-intake-test-matrix.md](./document-intake-test-matrix.md) (Audit 2) |
 | **Dry-run harness** | `backend/scripts/audit/document-intake-test-matrix-dry-run.ts` |
 | **Role of this document** | Prompt **1/84** — canonical Ist-Inventur before V2 implementation (Prompts 2–4: target contract / schema / test plan; **Prompts 5–84**: implementation blocks below) |
