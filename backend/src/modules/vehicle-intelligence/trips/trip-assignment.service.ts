@@ -1,7 +1,6 @@
 import { Injectable, Optional } from '@nestjs/common';
 import {
   BookingStatus,
-  Prisma,
   TripAssignmentStatus,
   TripAssignmentSubjectType,
   TripBookingLinkSource,
@@ -10,6 +9,8 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
+import type { BookingOverlapCandidate } from './trip-canonical-hydration.types';
+import { pickBookingForAssignment } from './trip-canonical-hydration.booking-match';
 
 export interface TripAssignmentResolution {
   assignmentStatus: TripAssignmentStatus;
@@ -24,7 +25,7 @@ export interface TripAssignmentResolution {
   scoreEligible: boolean;
 }
 
-type TripAssignmentInput = Pick<
+export type TripAssignmentInput = Pick<
   VehicleTrip,
   | 'id'
   | 'vehicleId'
@@ -262,28 +263,28 @@ export class TripAssignmentService {
     };
   }
 
-  private async findBookingAssignment(
+  resolveForTripWithCandidates(
     trip: TripAssignmentInput,
-  ): Promise<TripAssignmentResolution | null> {
-    const tripEnd = trip.endTime ?? trip.startTime;
+    candidates: BookingOverlapCandidate[],
+    options: { recordMetric?: boolean } = {},
+  ): TripAssignmentResolution {
+    const fallback = this.normalizeFallbackAssignment(trip);
+    const bookingAssignment = this.resolveBookingAssignmentFromCandidates(trip, candidates);
+    const resolution = bookingAssignment ?? fallback;
+    if (options.recordMetric) {
+      this.tripMetrics?.tripAssignmentResolutions.inc({
+        status: resolution.assignmentStatus,
+        score_eligible: resolution.scoreEligible ? 'yes' : 'no',
+      });
+    }
+    return resolution;
+  }
 
-    const overlapWhere: Prisma.BookingWhereInput = {
-      vehicleId: trip.vehicleId,
-      status: { in: [BookingStatus.ACTIVE, BookingStatus.COMPLETED] },
-      startDate: { lte: tripEnd },
-      endDate: { gte: trip.startTime },
-    };
-
-    const booking = await this.prisma.booking.findFirst({
-      where: overlapWhere,
-      orderBy: { startDate: 'desc' },
-      select: {
-        id: true,
-        customerId: true,
-        assignedDriverId: true,
-        customer: { select: { customerType: true } },
-      },
-    });
+  private resolveBookingAssignmentFromCandidates(
+    trip: TripAssignmentInput,
+    candidates: BookingOverlapCandidate[],
+  ): TripAssignmentResolution | null {
+    const booking = pickBookingForAssignment(trip, candidates);
     if (!booking) return null;
 
     const roles = resolveDrivingAttributionRoles({
@@ -310,6 +311,34 @@ export class TripAssignmentService {
       isPrivateTrip: false,
       scoreEligible: false,
     };
+  }
+
+  private async findBookingAssignment(
+    trip: TripAssignmentInput,
+  ): Promise<TripAssignmentResolution | null> {
+    const tripEnd = trip.endTime ?? trip.startTime;
+
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        vehicleId: trip.vehicleId,
+        status: { in: [BookingStatus.ACTIVE, BookingStatus.COMPLETED] },
+        startDate: { lte: tripEnd },
+        endDate: { gte: trip.startTime },
+      },
+      orderBy: { startDate: 'desc' },
+      select: {
+        id: true,
+        vehicleId: true,
+        customerId: true,
+        assignedDriverId: true,
+        startDate: true,
+        endDate: true,
+        customer: { select: { customerType: true } },
+      },
+    });
+    if (!booking) return null;
+
+    return this.resolveBookingAssignmentFromCandidates(trip, [booking]);
   }
 
   private normalizeSubjectId(value: string | null | undefined): string | null {

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p58-canonical-trip-hydration-batch-2026-07-17',
+    version: '4.9.559',
+    title: 'Driving Intelligence V2 P58 — Batch Canonical Trip Hydration',
+    summary: [
+      'Neuer `CanonicalTripHydrationBatchLoader` bündelt Impact-, Booking-, Driver-Pool- und Decision-Summary-Loads.',
+      'Query-Budget: pro Vehicle ein Booking-Prefetch + gechunkte Impact/Attribution-Queries (500 Trip-IDs).',
+      'Assignment/Attribution werden synchron aus Maps aufgelöst — keine N+1 `findFirst` pro Trip.',
+      '`hydrateTrip` nutzt denselben Batch-Pfad wie Listen (`hydrateTrips`).',
+      'API-Reihenfolge stabil; Tenant-Scope über `organizationId` in Booking-/Attribution-Prefetch.',
+      'Tests: Queryzahl-Budget, Single+List-Hydration, Semantik-Parität Batch vs. sequentiell.',
+    ],
+    reason: 'Prompt 58/76 — N+1 bei Canonical Trip Hydration, Attribution und Assignment entfernen.',
+    previousBehavior:
+      '`hydrateTrips` rief pro Trip `resolveForTrip` + `resolveAttributionForTrip` (je Booking-Query) auf.',
+    details:
+      '`trip-canonical-hydration.batch.ts`, `trip-canonical-hydration.booking-match.ts`, `trip-analytics-canonical.service.ts`, `trip-assignment.service.ts`, `trip-attribution.service.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T01:35:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p57-tenant-scope-driving-2026-07-17',
     version: '4.9.558',
     title: 'Driving Intelligence V2 P57 — Tenant-sichere Trip-/Event-/Attribution-Services',

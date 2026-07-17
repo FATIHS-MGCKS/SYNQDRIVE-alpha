@@ -9,6 +9,13 @@ import type {
 import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
 import { resolveBookingDriverPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
 import { assertBookingInOrganization } from '../tenant/vehicle-intelligence-tenant.scope';
+import { pickBookingOverlapCandidate } from './trip-canonical-hydration.booking-match';
+import type {
+  BookingDriverPoolContext,
+  BookingOverlapCandidate,
+} from './trip-canonical-hydration.types';
+import type { TripAssignmentResolution } from './trip-assignment.service';
+import type { TripHydrationTripInput } from './trip-canonical-hydration.types';
 
 @Injectable()
 export class TripAttributionService {
@@ -178,6 +185,82 @@ export class TripAttributionService {
     });
   }
 
+  resolveAttributionWithPrefetch(
+    trip: {
+      isPrivateTrip: boolean;
+      assignmentStatus: TripAssignmentStatus | null;
+      assignedBookingId: string | null;
+      assignmentSubjectId: string | null;
+      assignmentSubjectType: string | null;
+      bookingLinkSource: 'EXPLICIT' | 'TIME_WINDOW' | null;
+      bookingCustomerId?: string | null;
+      assignedDriverId?: string | null;
+      actualDriverId?: string | null;
+      vehicleId: string;
+      startTime: Date;
+      endTime: Date | null;
+    },
+    prefetch: {
+      bookingsByVehicle: Map<string, BookingOverlapCandidate[]>;
+      driverPoolByBookingId: Map<string, BookingDriverPoolContext>;
+    },
+  ): TripAttribution {
+    const overlap =
+      trip.assignedBookingId && trip.bookingLinkSource === 'EXPLICIT'
+        ? null
+        : pickBookingOverlapCandidate(
+            trip,
+            prefetch.bookingsByVehicle.get(trip.vehicleId) ?? [],
+          );
+
+    const allowedDriverContext =
+      trip.assignedBookingId != null
+        ? prefetch.driverPoolByBookingId.get(trip.assignedBookingId) ?? null
+        : null;
+
+    return this.resolveAttribution({
+      isPrivateTrip: trip.isPrivateTrip,
+      assignmentStatus: trip.assignmentStatus,
+      assignedBookingId: trip.assignedBookingId,
+      assignmentSubjectId: trip.assignmentSubjectId,
+      assignmentSubjectType: trip.assignmentSubjectType,
+      bookingLinkSource: trip.bookingLinkSource,
+      tripBookingCustomerId: trip.bookingCustomerId,
+      tripAssignedDriverId: trip.assignedDriverId,
+      tripActualDriverId: trip.actualDriverId,
+      bookingAllowedDriverIds: allowedDriverContext?.allowedDriverIds,
+      bookingPrimaryDriverId: allowedDriverContext?.primaryDriverId,
+      bookingOverlap: overlap,
+    });
+  }
+
+  resolveAttributionForHydratedTrip(
+    trip: TripHydrationTripInput,
+    assignment: TripAssignmentResolution,
+    prefetch: {
+      bookingsByVehicle: Map<string, BookingOverlapCandidate[]>;
+      driverPoolByBookingId: Map<string, BookingDriverPoolContext>;
+    },
+  ): TripAttribution {
+    return this.resolveAttributionWithPrefetch(
+      {
+        isPrivateTrip: assignment.isPrivateTrip,
+        assignmentStatus: assignment.assignmentStatus,
+        assignedBookingId: assignment.assignedBookingId,
+        assignmentSubjectId: assignment.assignmentSubjectId,
+        assignmentSubjectType: assignment.assignmentSubjectType,
+        bookingLinkSource: assignment.bookingLinkSource,
+        bookingCustomerId: assignment.bookingCustomerId,
+        assignedDriverId: assignment.assignedDriverId,
+        actualDriverId: assignment.actualDriverId,
+        vehicleId: trip.vehicleId,
+        startTime: trip.startTime,
+        endTime: trip.endTime,
+      },
+      prefetch,
+    );
+  }
+
   private async loadBookingDriverPool(organizationId: string, bookingId: string) {
     await assertBookingInOrganization(this.prisma, organizationId, bookingId);
     const booking = await this.prisma.booking.findFirst({
@@ -222,18 +305,16 @@ export class TripAttributionService {
       orderBy: { startDate: 'desc' },
       select: {
         id: true,
+        vehicleId: true,
         customerId: true,
         assignedDriverId: true,
+        startDate: true,
+        endDate: true,
         customer: { select: { customerType: true } },
       },
     });
     if (!booking) return null;
-    return {
-      bookingId: booking.id,
-      bookingCustomerId: booking.customerId,
-      assignedDriverId: booking.assignedDriverId,
-      customerType: booking.customer.customerType,
-    };
+    return pickBookingOverlapCandidate(trip, [booking]);
   }
 
   isCustomerAnalyticsEligible(attribution: TripAttribution): boolean {

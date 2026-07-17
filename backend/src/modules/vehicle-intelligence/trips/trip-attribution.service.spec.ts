@@ -85,8 +85,11 @@ describe('TripAttributionService', () => {
   it('overlap without assigned booking yields time-window hint', async () => {
     prisma.booking.findFirst.mockResolvedValue({
       id: 'book-3',
+      vehicleId: 'veh-1',
       customerId: 'cust-3',
       assignedDriverId: null,
+      startDate: new Date('2026-06-01T09:00:00Z'),
+      endDate: new Date('2026-06-01T12:00:00Z'),
       customer: { customerType: 'INDIVIDUAL' },
     });
 
