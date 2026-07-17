@@ -549,9 +549,10 @@ export class VehicleIntelligenceController {
     return this.brakesService.update(id, body);
   }
 
-  // --- Brake Status (legacy heuristic; deprecated) ---
+  // --- Brake Status (legacy compat; canonical condition from brake-health summary) ---
   @Get('brake-status')
   async getBrakeStatus(@Param('vehicleId') vehicleId: string) {
+    const canonical = await this.brakeHealthService.getSummary(vehicleId);
     const specs = await this.brakesService.findByVehicle(vehicleId);
     const spec = specs[0] ?? null;
 
@@ -619,17 +620,32 @@ export class VehicleIntelligenceController {
     const kmWatchThreshold = isEv ? 80000 : 40000;
 
     let condition: 'good' | 'watch' | 'attention' = 'good';
-    if (padPercent != null) {
-      if (padPercent < padAttentionThreshold) condition = 'attention';
-      else if (padPercent < padWatchThreshold) condition = 'watch';
-    } else if (kmSinceService != null) {
-      if (kmSinceService > kmAttentionThreshold) condition = 'attention';
-      else if (kmSinceService > kmWatchThreshold) condition = 'watch';
-    } else if (daysSinceService != null) {
-      if (daysSinceService > 730) condition = 'attention';
-      else if (daysSinceService > 365) condition = 'watch';
-    } else if (!lastService && !spec) {
-      condition = 'watch';
+    switch (canonical.overallCondition) {
+      case 'CRITICAL':
+        condition = 'attention';
+        break;
+      case 'WARNING':
+      case 'WATCH':
+        condition = 'watch';
+        break;
+      case 'GOOD':
+        condition = 'good';
+        break;
+      default:
+        condition = canonical.isInitialized ? 'watch' : 'watch';
+        break;
+    }
+
+    if (!canonical.isInitialized && canonical.stateClass === 'NO_BASELINE') {
+      if (kmSinceService != null) {
+        if (kmSinceService > kmAttentionThreshold) condition = 'attention';
+        else if (kmSinceService > kmWatchThreshold) condition = 'watch';
+      } else if (daysSinceService != null) {
+        if (daysSinceService > 730) condition = 'attention';
+        else if (daysSinceService > 365) condition = 'watch';
+      } else if (!lastService && !spec) {
+        condition = 'watch';
+      }
     }
 
     if (harshBrakesPer100km != null && harshBrakesPer100km > 8 && condition === 'good') {
@@ -703,6 +719,14 @@ export class VehicleIntelligenceController {
     return {
       _deprecated: true,
       _canonical: 'Use /brake-health/summary and /brake-health/detail for runtime truth.',
+      canonical: {
+        overallCondition: canonical.overallCondition,
+        dataBasis: canonical.dataBasis,
+        stateClass: canonical.stateClass,
+        confidenceLevel: canonical.confidenceLevel,
+        openAlertCount: canonical.openAlerts?.length ?? 0,
+        estimatedReplacementDueInKm: canonical.estimatedReplacementDueInKm,
+      },
       hasSpecs: spec != null,
       isEv,
       regenBrakingNote: isEv ? 'Regenerative braking active — mechanical brake wear is significantly reduced.' : null,

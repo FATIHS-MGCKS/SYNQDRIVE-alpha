@@ -228,7 +228,7 @@ export interface BrakeAxleSummaryDto {
   estimatedRemainingKmMax: number | null;
 }
 
-/** Legacy wear-model fields — not for UI; backward compatibility only. */
+/** Legacy wear-model fields — backward compatibility only; not for UI; removal planned P28. */
 export interface BrakeHealthLegacyDto {
   padsHealthPct: number | null;
   discsHealthPct: number | null;
@@ -251,7 +251,9 @@ export interface BrakeHealthSummaryDto {
   confidence?: { score: number; label: string };
   baselineWarnings: string[];
   provenanceWarnings: string[];
+  /** Wear or safety open alert present — derived from `openAlerts` only. */
   hasAlert?: boolean;
+  /** HM telemetry supplement when no modeled baseline — not operational truth. */
   legacyHeuristic?: { available: boolean; note: string };
 
   // ── Canonical evidence-based read model ────────────────────────────────────
@@ -2867,7 +2869,6 @@ export class BrakeHealthService {
         status: conditionToLegacyStatus(canonical.overallCondition, stateClass),
         remainingKm: null,
       },
-      hasAlertOverride: hasLegacyWarning || current?.hasAlert === true,
       componentThresholds: this.componentThresholdDtos(wearThresholds),
     });
   }
@@ -2889,7 +2890,6 @@ export class BrakeHealthService {
     legacyHeuristic?: { available: boolean; note: string };
     canonical: BrakeCanonicalReadModel;
     legacy: BrakeHealthLegacyDto;
-    hasAlertOverride?: boolean;
     componentThresholds: BrakeComponentThresholdDto[];
   }): BrakeHealthSummaryDto {
     const { canonical, legacy } = input;

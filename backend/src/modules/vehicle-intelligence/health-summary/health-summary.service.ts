@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../dtc/dtc.service';
 import { BrakeHealthService } from '../brakes/brake-health.service';
+import { hasWearOrSafetyAlert } from '../brakes/brake-health-alert.builder';
 import { TireHealthService } from '../tires/tire-health.service';
 import { ServiceEventsService } from '../service-events/service-events.service';
 import { TripsService } from '../trips/trips.service';
@@ -286,12 +287,9 @@ export class HealthSummaryService {
           overallCondition: brakeSummary?.overallCondition ?? null,
           hasBaseline:
             brakeSummary?.stateClass === 'MEASURED' || brakeSummary?.stateClass === 'ESTIMATED',
-          remainingKm:
-            brakeSummary?.estimatedReplacementDueInKm ??
-            brakeSummary?.legacy?.remainingKm ??
-            null,
+          remainingKm: brakeSummary?.estimatedReplacementDueInKm ?? null,
           confidenceLabel: brakeSummary?.confidenceLevel ?? brakeSummary?.confidence?.label ?? null,
-          hasAlert: brakeSummary?.hasAlert === true,
+          hasAlert: brakeSummary ? hasWearOrSafetyAlert(brakeSummary.openAlerts ?? []) : false,
           openAlertCount: brakeSummary?.openAlerts?.length ?? 0,
           hasData: brakeSummary != null || hasBrakeService,
         },

@@ -356,7 +356,7 @@ function buildBrakeItem(input: ForecastEngineInput, trend: MileageTrend): Planni
   ) {
     const kmUntil =
       input.brakeHealth.estimatedReplacementDueInKm ??
-      input.brakeHealth.legacy?.remainingKm ??
+      input.brakeHealth.estimatedFrontRemainingKmMin ??
       null;
     if (kmUntil == null) return null;
     if (!Number.isFinite(kmUntil)) return null;

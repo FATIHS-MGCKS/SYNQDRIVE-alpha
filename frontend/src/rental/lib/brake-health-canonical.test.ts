@@ -49,4 +49,22 @@ describe('Brake health UI — canonical-only consumption', () => {
     expect(brakesBlock).not.toMatch(/showPercent|percent=/);
     expect(brakesBlock).toMatch(/overallCondition/);
   });
+
+  it('vehicle-health-box.mapper does not use legacy remainingKm', () => {
+    const src = readComponent('components/vehicle-detail/vehicle-health-box.mapper.ts');
+    expect(src).not.toMatch(/legacy\?\.remainingKm/);
+    expect(src).toMatch(/estimatedReplacementDueInKm/);
+  });
+
+  it('vehicle-forecast-engine does not use legacy remainingKm', () => {
+    const src = readComponent('components/vehicle-forecast-engine.ts');
+    expect(src).not.toMatch(/legacy\?\.remainingKm/);
+    expect(src).toMatch(/estimatedReplacementDueInKm/);
+  });
+
+  it('brake-rental-health-ui reads brake_read_model only', () => {
+    const src = readFileSync(join(__dirname, 'brake-rental-health-ui.ts'), 'utf8');
+    expect(src).toMatch(/brake_read_model/);
+    expect(src).not.toMatch(/padsHealthPct|legacy\.remainingKm/);
+  });
 });

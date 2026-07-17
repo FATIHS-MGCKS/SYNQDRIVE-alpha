@@ -6628,7 +6628,7 @@ export interface BrakeAxleSummary {
   estimatedRemainingKmMax: number | null;
 }
 
-/** Legacy wear-model fields — backward compatibility only; do not display in UI. */
+/** @deprecated Wear-model compat only — removal planned P28. */
 export interface BrakeHealthLegacy {
   padsHealthPct: number | null;
   discsHealthPct: number | null;
@@ -6659,6 +6659,10 @@ export interface BrakeHealthSummary {
   baselineWarnings: string[];
   provenanceWarnings: string[];
   hasAlert?: boolean;
+  /**
+   * @deprecated Wear-model compat only — do not use for UI or decisions.
+   * Prefer `overallCondition`, axle summaries, and `openAlerts`.
+   */
   legacyHeuristic?: { available: boolean; note: string };
 
   // ── Canonical read model ─────────────────────────────────────────────────

@@ -344,6 +344,16 @@ export class BrakeRegistrationBackfillService {
   ): Promise<boolean> {
     if (hasUninitializedAlert) return true;
 
+    const openCanonicalAlert = await this.prisma.brakeHealthAlert.findFirst({
+      where: {
+        vehicleId,
+        status: 'OPEN',
+        category: { in: ['WEAR', 'SAFETY'] },
+      },
+      select: { id: true },
+    });
+    if (openCanonicalAlert) return true;
+
     const criticalMm = BRAKE_HEALTH_CONFIG.pad.criticalMm;
     const conflictingEvidence = await this.prisma.brakeEvidence.findFirst({
       where: {
@@ -359,14 +369,6 @@ export class BrakeRegistrationBackfillService {
       select: { id: true },
     });
     if (conflictingEvidence) return true;
-
-    const legacyState = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { brakePadPercent: true },
-    });
-    if (legacyState?.brakePadPercent != null && legacyState.brakePadPercent < 30) {
-      return true;
-    }
 
     return false;
   }

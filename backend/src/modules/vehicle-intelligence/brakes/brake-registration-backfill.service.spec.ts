@@ -8,6 +8,7 @@ import {
 const mockPrisma = {
   vehicleBrakeReferenceSpec: { findMany: jest.fn() },
   brakeEvidence: { findFirst: jest.fn() },
+  brakeHealthAlert: { findFirst: jest.fn() },
   vehicleLatestState: { findUnique: jest.fn() },
 } as any;
 
@@ -37,6 +38,7 @@ describe('BrakeRegistrationBackfillService.run', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma.brakeEvidence.findFirst.mockResolvedValue(null);
+    mockPrisma.brakeHealthAlert.findFirst.mockResolvedValue(null);
     mockPrisma.vehicleLatestState.findUnique.mockResolvedValue(null);
   });
 

@@ -74,6 +74,14 @@ export class BrakeBaselineCandidateAuditService {
         createdAt: true,
         mileageKm: true,
         brakeHealthCurrent: true,
+        brakeHealthAlerts: {
+          where: {
+            status: 'OPEN',
+            category: { in: ['WEAR', 'SAFETY'] },
+          },
+          select: { id: true },
+          take: 1,
+        },
         brakeSpecs: { orderBy: { createdAt: 'desc' }, take: 1 },
         brakeEvidence: {
           orderBy: { measuredAt: 'desc' },
@@ -184,7 +192,7 @@ export class BrakeBaselineCandidateAuditService {
               anchorValidationStatus: bhc.anchorValidationStatus,
               anchorServiceDate: bhc.anchorServiceDate?.toISOString() ?? null,
               anchorOdometerKm: bhc.anchorOdometerKm,
-              hasAlert: bhc.hasAlert,
+              hasAlert: vehicle.brakeHealthAlerts.length > 0,
               baselineWarnings,
               frontPadAnchorMm: bhc.frontPadAnchorMm,
               rearPadAnchorMm: bhc.rearPadAnchorMm,

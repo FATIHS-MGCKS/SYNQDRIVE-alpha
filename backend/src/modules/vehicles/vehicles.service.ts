@@ -867,6 +867,7 @@ export class VehiclesService {
       battery: fleetCtx.evSoc ?? 0,
       speed: state?.speedKmh ?? 0,
       coolant: state?.coolantTempC ?? 0,
+      /** @deprecated HM telemetry gauge only — not brake health truth. See rental-health / brake-health. */
       brakes: state?.brakePadPercent ?? 0,
       tires: state?.tireHealthPercent ?? 0,
       engineOil: state?.engineOilPercent ?? 0,
@@ -1682,6 +1683,7 @@ export class VehiclesService {
       fuel: this.resolveFuelPercent(state, vehicle.tankCapacityLiters),
       battery: state?.evSoc ?? 0,
       coolant: state?.coolantTempC ?? 0,
+      /** @deprecated HM telemetry gauge only — not brake health truth. */
       brakes: state?.brakePadPercent ?? 0,
       tires: state?.tireHealthPercent ?? 0,
       engineOil: state?.engineOilPercent ?? 0,

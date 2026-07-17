@@ -500,7 +500,7 @@ export function buildVehicleHealthBoxViewModel(params: {
   const dataCoverage = mapDataCoverageDisplay({ rentalHealth, trackedCount, untrackedCount });
 
   const brakesDetail = (() => {
-    const remKm = brakes?.estimatedReplacementDueInKm ?? brakes?.legacy?.remainingKm ?? null;
+    const remKm = brakes?.estimatedReplacementDueInKm ?? null;
     if (remKm != null) return `~${Math.round(remKm / 1000)}k km remaining`;
     const frontMin = brakes?.estimatedFrontRemainingKmMin;
     if (frontMin != null) return `Front ~${Math.round(frontMin / 1000)}k km`;
