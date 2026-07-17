@@ -108,6 +108,13 @@ export class StationsController {
     );
   }
 
+  @Get('opening-hours/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getOpeningHoursContract() {
+    return this.stationsService.getOpeningHoursContract();
+  }
+
   @Get(':id')
   @RequireStationsPermission('stations.read')
   @RequireStationScope({ resource: 'station' })

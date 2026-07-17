@@ -108,6 +108,26 @@ describe('CreateStationDto validation', () => {
     expect(errors.some((e) => e.property === 'openingHours')).toBe(true);
   });
 
+  it('rejects empty weekday objects', async () => {
+    const errors = await validateDto({
+      name: 'Hours',
+      openingHours: {
+        monday: {},
+      },
+    });
+    expect(errors.some((e) => e.property === 'openingHours')).toBe(true);
+  });
+
+  it('accepts midnight-spanning slots', async () => {
+    const errors = await validateDto({
+      name: 'Hours',
+      openingHours: {
+        friday: { open: '22:00', close: '06:00' },
+      },
+    });
+    expect(errors).toHaveLength(0);
+  });
+
   it('accepts structured opening hours', async () => {
     const errors = await validateDto({
       name: 'Hours',

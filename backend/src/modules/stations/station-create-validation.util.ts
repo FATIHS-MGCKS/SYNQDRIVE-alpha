@@ -6,18 +6,16 @@ import {
   StationLifecycleCommand,
 } from '@shared/stations/station-lifecycle.policy';
 import { assertValidGeofenceRadius } from './station-location-masterdata.util';
+import { assertValidStationOpeningHours } from '@shared/stations/station-opening-hours.validation';
 
-export const STATION_WEEKDAYS = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-] as const;
-
-export type StationWeekday = (typeof STATION_WEEKDAYS)[number];
+export {
+  assertValidStationOpeningHours,
+  assertValidStationOpeningHours as assertValidOpeningHours,
+  STATION_OPENING_HOURS_WEEKDAYS,
+  STATION_OPENING_HOURS_WEEKDAYS as STATION_WEEKDAYS,
+  type StationOpeningHoursWeekday,
+  type StationOpeningHoursWeekday as StationWeekday,
+} from '@shared/stations/station-opening-hours.validation';
 
 export const StationCreateValidationCode = {
   NAME_REQUIRED: 'STATION_NAME_REQUIRED',
@@ -52,12 +50,6 @@ export interface StationCreateInput {
   afterHoursReturnEnabled?: boolean;
   openingHours?: Record<string, unknown> | string | null;
   organizationId?: string;
-}
-
-const TIME_OF_DAY_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
 }
 
 export function assertValidCoordinatePair(
@@ -107,92 +99,6 @@ export function assertValidStationCapacity(capacity: number | null | undefined):
       message: 'capacity must be null or a positive integer',
       code: StationCreateValidationCode.INVALID_CAPACITY,
     });
-  }
-}
-
-function isValidTimeSlot(open: unknown, close: unknown): boolean {
-  if (typeof open !== 'string' || typeof close !== 'string') return false;
-  if (!TIME_OF_DAY_RE.test(open) || !TIME_OF_DAY_RE.test(close)) return false;
-  return open < close;
-}
-
-function validateOpeningHoursDay(dayValue: unknown): boolean {
-  if (dayValue == null || typeof dayValue !== 'object' || Array.isArray(dayValue)) {
-    return false;
-  }
-  const day = dayValue as Record<string, unknown>;
-  if (day.closed === true) {
-    return Object.keys(day).every((k) => k === 'closed');
-  }
-
-  if (Array.isArray(day.slots)) {
-    if (day.slots.length === 0) return false;
-    return day.slots.every((slot) => {
-      if (slot == null || typeof slot !== 'object' || Array.isArray(slot)) return false;
-      const s = slot as Record<string, unknown>;
-      return isValidTimeSlot(s.open, s.close);
-    });
-  }
-
-  return isValidTimeSlot(day.open, day.close);
-}
-
-export function assertValidOpeningHours(
-  openingHours: Record<string, unknown> | string | null | undefined,
-): void {
-  if (openingHours === undefined || openingHours === null) return;
-
-  if (typeof openingHours === 'string') {
-    const trimmed = openingHours.trim();
-    if (!trimmed) return;
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        assertValidOpeningHours(parsed as Record<string, unknown>);
-        return;
-      }
-    } catch {
-      // legacy free-text is allowed
-      return;
-    }
-    throw new BadRequestException({
-      message: 'openingHours string must be valid JSON or legacy text',
-      code: StationCreateValidationCode.INVALID_OPENING_HOURS,
-    });
-  }
-
-  if (typeof openingHours !== 'object' || Array.isArray(openingHours)) {
-    throw new BadRequestException({
-      message: 'openingHours must be an object',
-      code: StationCreateValidationCode.INVALID_OPENING_HOURS,
-    });
-  }
-
-  if ('legacyText' in openingHours) {
-    const legacy = openingHours.legacyText;
-    if (legacy === undefined || legacy === null || typeof legacy === 'string') return;
-    throw new BadRequestException({
-      message: 'openingHours.legacyText must be a string',
-      code: StationCreateValidationCode.INVALID_OPENING_HOURS,
-    });
-  }
-
-  const keys = Object.keys(openingHours);
-  if (keys.length === 0) return;
-
-  for (const key of keys) {
-    if (!STATION_WEEKDAYS.includes(key as StationWeekday)) {
-      throw new BadRequestException({
-        message: `openingHours contains unknown day key "${key}"`,
-        code: StationCreateValidationCode.INVALID_OPENING_HOURS,
-      });
-    }
-    if (!validateOpeningHoursDay(openingHours[key])) {
-      throw new BadRequestException({
-        message: `openingHours.${key} is invalid`,
-        code: StationCreateValidationCode.INVALID_OPENING_HOURS,
-      });
-    }
   }
 }
 
@@ -284,5 +190,5 @@ export function validateStationCreatePayload(payload: StationCreateInput): void 
   assertValidGeofenceRadius(payload.radiusMeters);
   assertValidStationCapacity(payload.capacity);
   assertPickupReturnCapabilitiesConsistent(payload);
-  assertValidOpeningHours(payload.openingHours ?? undefined);
+  assertValidStationOpeningHours(payload.openingHours ?? undefined);
 }

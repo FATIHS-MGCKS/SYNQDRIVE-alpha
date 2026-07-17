@@ -6,9 +6,14 @@ import {
   STATION_STATUS_LABELS,
   STATION_TYPE_LABELS,
   StationOverviewStatsDto,
-  openingHoursIsMissing,
   SELECTABLE_STATION_STATUSES,
 } from './station.types';
+import {
+  stationOpeningHoursIsMissing,
+  normalizeStationOpeningHoursForRead,
+  STATION_OPENING_HOURS_CONTRACT_VERSION,
+  getStationOpeningHoursContractMetadataForApi,
+} from '@shared/stations/station-opening-hours.validation';
 import { CreateStationDto } from './dto/create-station.dto';
 import {
   validateStationCreatePayload,
@@ -135,6 +140,7 @@ export interface StationDto {
   keyBoxAvailable: boolean;
   capacity: number | null;
   openingHours: Prisma.JsonValue | null;
+  openingHoursContractVersion: number;
   holidayRules: Prisma.JsonValue | null;
   handoverInstructions: string | null;
   returnInstructions: string | null;
@@ -282,6 +288,10 @@ export class StationsService {
       orderBy: [{ isPrimary: 'desc' }, { status: 'asc' }, { name: 'asc' }],
     });
     return stations.map((s) => this.toDto(s, s._count.vehiclesHome));
+  }
+
+  getOpeningHoursContract() {
+    return getStationOpeningHoursContractMetadataForApi();
   }
 
   async findOne(
@@ -1433,7 +1443,7 @@ export class StationsService {
       capacity,
       capacityUsagePercent,
       hasMissingCoordinates: station.latitude == null || station.longitude == null,
-      hasMissingOpeningHours: openingHoursIsMissing(station.openingHours),
+      hasMissingOpeningHours: stationOpeningHoursIsMissing(station.openingHours),
       hasMissingPickupReturnRules: !station.pickupEnabled && !station.returnEnabled,
     };
   }
@@ -2485,7 +2495,8 @@ export class StationsService {
       afterHoursReturnEnabled: row.afterHoursReturnEnabled,
       keyBoxAvailable: row.keyBoxAvailable,
       capacity: row.capacity,
-      openingHours: row.openingHours,
+      openingHours: normalizeStationOpeningHoursForRead(row.openingHours) as Prisma.JsonValue,
+      openingHoursContractVersion: STATION_OPENING_HOURS_CONTRACT_VERSION,
       holidayRules: row.holidayRules,
       handoverInstructions: row.handoverInstructions,
       returnInstructions: row.returnInstructions,

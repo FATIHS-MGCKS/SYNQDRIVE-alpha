@@ -2,10 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import { StationStatus } from '@prisma/client';
 import {
   assertValidCoordinatePair,
-  assertValidOpeningHours,
   assertValidStationCapacity,
   assertValidStationTimezone,
 } from './station-create-validation.util';
+import { assertValidStationOpeningHours } from '@shared/stations/station-opening-hours.validation';
 import { assertValidGeofenceRadius } from './station-location-masterdata.util';
 
 export const STATION_PATCH_MASTER_DATA_FIELDS = [
@@ -267,7 +267,7 @@ export function assertGenericStationUpdateAllowed(
   assertValidStationCapacity(payload.capacity as number | null | undefined);
   assertValidGeofenceRadius(payload.radiusMeters as number | null | undefined);
   if (payload.openingHours !== undefined) {
-    assertValidOpeningHours(
+    assertValidStationOpeningHours(
       payload.openingHours as Record<string, unknown> | string | null | undefined,
     );
   }

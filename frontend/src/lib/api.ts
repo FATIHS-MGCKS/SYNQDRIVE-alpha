@@ -3905,6 +3905,10 @@ export const api = {
     activity: (orgId: string, stationId: string) =>
       get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
+    openingHoursContract: (orgId: string) =>
+      get<StationOpeningHoursContractMetadata>(
+        `/organizations/${orgId}/stations/opening-hours/contract`,
+      ),
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
       if (opts?.country) q.set('country', opts.country);
@@ -8939,6 +8943,7 @@ export interface Station {
   keyBoxAvailable: boolean;
   capacity: number | null;
   openingHours: StationOpeningHours | string | null;
+  openingHoursContractVersion: number;
   holidayRules: Record<string, unknown> | null;
   handoverInstructions: string | null;
   returnInstructions: string | null;
@@ -8949,6 +8954,24 @@ export interface Station {
   vehicleCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StationOpeningHoursContractMetadata {
+  version: number;
+  weekdays: string[];
+  missingDayPolicy: 'closed';
+  timeFormat: 'HH:mm';
+  timezoneSource: 'station.timezone';
+  supports: {
+    closedDays: true;
+    multipleSlots: true;
+    breaksViaSlotGaps: true;
+    open24h: true;
+    midnightSpanningSlots: true;
+    legacyText: true;
+    legacySingleOpenClose: true;
+  };
+  notes: string[];
 }
 
 export interface StationOverviewStats {

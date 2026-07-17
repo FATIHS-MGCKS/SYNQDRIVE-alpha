@@ -86,7 +86,7 @@ describe('station-create-validation.util', () => {
       ).not.toThrow();
     });
 
-    it('accepts slot-based day hours', () => {
+    it('accepts slot-based day hours with breaks', () => {
       expect(() =>
         assertValidOpeningHours({
           friday: {
@@ -99,12 +99,19 @@ describe('station-create-validation.util', () => {
       ).not.toThrow();
     });
 
+    it('rejects empty weekday objects', () => {
+      expect(() => assertValidOpeningHours({ monday: {} })).toThrow(BadRequestException);
+    });
+
     it('rejects invalid day keys and malformed intervals', () => {
       expect(() => assertValidOpeningHours({ funday: { closed: true } })).toThrow(
         BadRequestException,
       );
       expect(() =>
         assertValidOpeningHours({ monday: { open: '18:00', close: '08:00' } }),
+      ).not.toThrow();
+      expect(() =>
+        assertValidOpeningHours({ monday: { open: '08:00', close: '08:00' } }),
       ).toThrow(BadRequestException);
     });
   });

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-location-masterdata-v49604-2026-07-18',
+    version: '4.9.604',
+    title: 'V4.9.604 — Stations V2: Location Master Data Hardening (Prompt 24/78)',
+    summary: [
+      'Koordinaten nur als Paar; IANA-Zeitzone + Geofence-Radius (25–5000 m) zentral validiert.',
+      'Prisma: `coordinatesSource` + `coordinatesConfirmedAt`; DTO `hasMissingCoordinates` als Konfigurationshinweis.',
+      'Mapbox Forward-Geocode + Searchbox-Retrieve lehnen niedrige Relevanz ab; Geocoding überschreibt Stationsnamen nicht.',
+      'DTO-, Service- und Integrationstests für Validierung, Provenance und Mapbox-Härtung.',
+    ],
+    reason:
+      'Standortstammdaten waren verteilt validiert; fehlende Koordinaten und unsichere Geocode-Treffer waren für Geofence-Konfiguration nicht transparent genug.',
+    previousBehavior:
+      'Koordinaten-Provenance fehlte; Mapbox-Retrieve konnte Name/Koordinaten ohne Relevanz-Gate prefilled; Radius-Checks nur im Service verstreut.',
+    details:
+      'station-location-masterdata.util.ts, migration 20260718120000, station-mapbox.service, stations.service provenance, StationFormModal name guard, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
     id: 'stations-v2-primary-invariant-v49603-2026-07-18',
     version: '4.9.603',
     title: 'V4.9.603 — Stations V2: One Primary Per Org Invariant (Prompt 23/78)',
