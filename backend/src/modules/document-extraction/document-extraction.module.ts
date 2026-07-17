@@ -21,6 +21,7 @@ import { DocumentExtractionRecoveryScheduler } from '@workers/schedulers/documen
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import { DocumentExtractionApplyPlanService } from './document-extraction-apply-plan.service';
 import { DocumentActionPlanRepository } from './document-action-plan.repository';
 import { DocumentActionRepository } from './document-action.repository';
 import { DocumentEntityCandidateRepository } from './document-entity-candidate.repository';
@@ -51,6 +52,7 @@ import { DocumentEntityLinkRepository } from './document-entity-link.repository'
     DocumentExtractionService,
     DocumentExtractionMetadataService,
     DocumentExtractionApplyService,
+    DocumentExtractionApplyPlanService,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,
@@ -69,6 +71,7 @@ import { DocumentEntityLinkRepository } from './document-entity-link.repository'
   exports: [
     DocumentExtractionService,
     DocumentExtractionApplyService,
+    DocumentExtractionApplyPlanService,
     DocumentExtractionHealthService,
     DocumentActionPlanRepository,
     DocumentActionRepository,

@@ -8,6 +8,46 @@ function makeRepository(prisma: Record<string, unknown>) {
 const extraction = { id: 'ext-1', organizationId: 'org-1' };
 
 describe('DocumentActionPlanRepository versioning', () => {
+  it('uses planner fingerprint override when provided', async () => {
+    const existingPlan = {
+      id: 'plan-1',
+      organizationId: 'org-1',
+      extractionId: 'ext-1',
+      planVersion: 1,
+      inputFingerprint: 'planner-fp-override',
+      status: 'DRAFT',
+      applyMode: 'PREVIEW',
+      supersedesPlanId: null,
+      invalidatedAt: null,
+    };
+
+    const prisma = {
+      vehicleDocumentExtraction: {
+        findFirst: jest.fn().mockResolvedValue(extraction),
+      },
+      documentActionPlan: {
+        findFirst: jest.fn().mockResolvedValue(existingPlan),
+      },
+      $transaction: jest.fn(),
+    };
+
+    const repository = makeRepository(prisma);
+    const result = await repository.resolveOrCreatePlan({
+      organizationId: 'org-1',
+      extractionId: 'ext-1',
+      inputFingerprint: 'planner-fp-override',
+      identity: {
+        effectiveDocumentType: 'INVOICE',
+        confirmedData: { invoiceNumber: 'INV-1' },
+        applyMode: 'PREVIEW',
+      },
+      snapshot: { actions: [] },
+    });
+
+    expect(result.deduplicated).toBe(true);
+    expect(result.plan.inputFingerprint).toBe('planner-fp-override');
+  });
+
   it('returns existing current plan when fingerprint matches (idempotent)', async () => {
     const existingPlan = {
       id: 'plan-1',

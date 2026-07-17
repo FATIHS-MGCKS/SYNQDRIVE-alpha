@@ -4,6 +4,7 @@ import {
   Header,
   Param,
   Patch,
+  Post,
   Body,
   Query,
   Res,
@@ -17,6 +18,7 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { DocumentExtractionService } from './document-extraction.service';
+import { DocumentExtractionApplyPlanService } from './document-extraction-apply-plan.service';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import { ReassignExtractionVehicleDto } from './dto/reassign-extraction-vehicle.dto';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
@@ -29,7 +31,10 @@ import { buildContentDisposition } from './document-extraction-download.util';
 @Controller('organizations/:orgId/document-extractions')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class DocumentExtractionOrgController {
-  constructor(private readonly service: DocumentExtractionService) {}
+  constructor(
+    private readonly service: DocumentExtractionService,
+    private readonly applyPlanService: DocumentExtractionApplyPlanService,
+  ) {}
 
   @Get()
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
@@ -58,6 +63,16 @@ export class DocumentExtractionOrgController {
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
   getOne(@Param('orgId') orgId: string, @Param('extractionId') extractionId: string) {
     return this.service.getPublicForOrg(orgId, extractionId);
+  }
+
+  @Post(':extractionId/action-plan')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  dryRunActionPlan(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.applyPlanService.dryRunActionPlan(orgId, extractionId, userId ?? null);
   }
 
   @Patch(':extractionId/vehicle')
