@@ -33,6 +33,8 @@ export type MaskedElevenLabsAgentView = {
   maskedAgentRef: string | null;
   name?: string;
   status?: string;
+  /** Server-side provisioning reference — never expose to tenant clients. */
+  externalAgentId?: string;
 };
 
 export type MaskedElevenLabsDeploymentView = {

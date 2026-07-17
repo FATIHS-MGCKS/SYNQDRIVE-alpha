@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
@@ -7,6 +7,7 @@ import type {
   CreateVoiceProviderAccountInput,
   CreateVoiceProvisioningJobInput,
   CreateVoiceSubscriptionInput,
+  UpdateVoiceAgentDeploymentInput,
   UpdateVoiceProvisioningJobProgressInput,
 } from './voice-control-plane.types';
 
@@ -237,10 +238,106 @@ export class VoiceAgentDeploymentRepository {
         version: input.version ?? 1,
         status: input.status ?? 'DRAFT',
         configHash: input.configHash ?? null,
+        configSnapshot: input.configSnapshot ?? Prisma.JsonNull,
         activatedVersion: input.activatedVersion ?? null,
         previousVersion: input.previousVersion ?? null,
         createdByUserId: input.createdByUserId ?? null,
       },
+    });
+  }
+
+  findDraftByAssistant(organizationId: string, voiceAssistantId: string) {
+    return this.prisma.voiceAgentDeployment.findFirst({
+      where: {
+        organizationId,
+        voiceAssistantId,
+        status: 'DRAFT',
+        ...ACTIVE_LIFECYCLE_FILTER,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  findActiveByAssistant(organizationId: string, voiceAssistantId: string) {
+    return this.prisma.voiceAgentDeployment.findFirst({
+      where: {
+        organizationId,
+        voiceAssistantId,
+        status: 'ACTIVE',
+        ...ACTIVE_LIFECYCLE_FILTER,
+      },
+      orderBy: { version: 'desc' },
+    });
+  }
+
+  findLastSuccessfulByAssistant(organizationId: string, voiceAssistantId: string) {
+    return this.prisma.voiceAgentDeployment.findFirst({
+      where: {
+        organizationId,
+        voiceAssistantId,
+        status: { in: ['ACTIVE', 'SUPERSEDED', 'ROLLED_BACK'] },
+        ...ACTIVE_LIFECYCLE_FILTER,
+      },
+      orderBy: { version: 'desc' },
+    });
+  }
+
+  findProvisioningForOrganization(organizationId: string) {
+    return this.prisma.voiceAgentDeployment.findFirst({
+      where: {
+        organizationId,
+        status: 'PROVISIONING',
+        ...ACTIVE_LIFECYCLE_FILTER,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getNextVersion(organizationId: string, voiceAssistantId: string): Promise<number> {
+    const latest = await this.prisma.voiceAgentDeployment.findFirst({
+      where: { organizationId, voiceAssistantId, ...ACTIVE_LIFECYCLE_FILTER },
+      orderBy: { version: 'desc' },
+      select: { version: true },
+    });
+    return (latest?.version ?? 0) + 1;
+  }
+
+  async update(
+    organizationId: string,
+    id: string,
+    input: UpdateVoiceAgentDeploymentInput,
+    options?: { expectedUpdatedAt?: Date },
+  ) {
+    const row = await this.findById(organizationId, id);
+    if (!row) {
+      throw new NotFoundException('Voice agent deployment not found for organization');
+    }
+    if (options?.expectedUpdatedAt) {
+      const expectedMs = options.expectedUpdatedAt.getTime();
+      if (row.updatedAt.getTime() !== expectedMs) {
+        throw new ConflictException('Draft was modified by another request. Refresh and retry.');
+      }
+    }
+    return this.prisma.voiceAgentDeployment.update({
+      where: { id },
+      data: input,
+    });
+  }
+
+  async supersedeActiveDeployments(
+    organizationId: string,
+    voiceAssistantId: string,
+    exceptId: string,
+  ) {
+    await this.prisma.voiceAgentDeployment.updateMany({
+      where: {
+        organizationId,
+        voiceAssistantId,
+        status: 'ACTIVE',
+        id: { not: exceptId },
+        ...ACTIVE_LIFECYCLE_FILTER,
+      },
+      data: { status: 'SUPERSEDED' },
     });
   }
 

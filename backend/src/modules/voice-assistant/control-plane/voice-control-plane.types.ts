@@ -61,9 +61,24 @@ export type CreateVoiceAgentDeploymentInput = {
   version?: number;
   status?: VoiceAgentDeploymentStatus;
   configHash?: string | null;
+  configSnapshot?: Prisma.InputJsonValue;
   activatedVersion?: number | null;
   previousVersion?: number | null;
   createdByUserId?: string | null;
+};
+
+export type UpdateVoiceAgentDeploymentInput = {
+  status?: VoiceAgentDeploymentStatus;
+  configHash?: string | null;
+  configSnapshot?: Prisma.InputJsonValue;
+  maskedExternalRef?: string | null;
+  protectedExternalRef?: string | null;
+  activatedVersion?: number | null;
+  previousVersion?: number | null;
+  provisionedAt?: Date | null;
+  failedAt?: Date | null;
+  rolledBackAt?: Date | null;
+  updatedByUserId?: string | null;
 };
 
 export type CreateVoiceProvisioningJobInput = {

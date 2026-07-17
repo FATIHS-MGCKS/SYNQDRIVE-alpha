@@ -10331,6 +10331,7 @@ enum VoiceAgentDeploymentStatus {
   ACTIVE
   FAILED
   ROLLED_BACK
+  SUPERSEDED
 }
 
 enum VoiceProvisioningJobType {
@@ -10471,6 +10472,7 @@ model VoiceAgentDeployment {
   version              Int                        @default(1)
   status               VoiceAgentDeploymentStatus @default(DRAFT)
   configHash           String?                    @map("config_hash")
+  configSnapshot       Json?                      @map("config_snapshot")
   activatedVersion     Int?                       @map("activated_version")
   previousVersion      Int?                       @map("previous_version")
   provisionedAt        DateTime?                  @map("provisioned_at")

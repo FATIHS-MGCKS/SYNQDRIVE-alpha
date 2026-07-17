@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-agent-deployment-workflow-2026-07-17',
+    version: '4.9.588',
+    title: 'V4.9.588 — Voice AI: versioned ElevenLabs agent deployment workflow',
+    summary: [
+      'Canonical `CanonicalAgentConfig` snapshot + `configHash` on `VoiceAgentDeployment.configSnapshot`.',
+      'Tenant routes: draft, diff (masked), deploy (idempotent), rollback — gated by `VOICE_AI_PROVISIONING_STAGING_ENABLED`.',
+      'Deploy via `ElevenLabsProviderAdapter`; single ACTIVE version; FAILED rows retained; org-level PROVISIONING lock.',
+    ],
+    reason:
+      'Prompt 5A — sichere Draft/Deploy/Diff/Rollback-Mechanik für ElevenLabs-Agenten ohne Provider-Payloads im Frontend.',
+    previousBehavior:
+      'VoiceAgentDeployment-Modell vorhanden, aber ohne Draft-Snapshot, Diff, Provider-Deploy oder Rollback zur Laufzeit.',
+    details:
+      'agent-deployment/*, voice-control-plane.repository, elevenlabs-provider.adapter, migration 20260717250000, architecture/VOICE_AI_AGENT_DEPLOYMENT_WORKFLOW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
     id: 'voice-ai-runtime-baseline-audit-2026-07-17',
     version: '4.9.587',
     title: 'V4.9.587 — Voice AI: Phase-0 Read-Only Runtime Baseline Audit',

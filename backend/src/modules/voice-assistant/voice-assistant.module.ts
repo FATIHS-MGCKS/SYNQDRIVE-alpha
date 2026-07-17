@@ -18,6 +18,9 @@ import { ElevenLabsProviderTenantResolver } from './elevenlabs-provider/elevenla
 import { ElevenLabsTwilioImportController } from './provisioning/elevenlabs-twilio-import.controller';
 import { ElevenLabsTwilioImportCredentialsResolver } from './provisioning/elevenlabs-twilio-import-credentials.resolver';
 import { ElevenLabsTwilioImportProvisioningService } from './provisioning/elevenlabs-twilio-import-provisioning.service';
+import { AgentDeploymentController } from './agent-deployment/agent-deployment.controller';
+import { AgentDeploymentDiffService } from './agent-deployment/agent-deployment-diff.service';
+import { AgentDeploymentService } from './agent-deployment/agent-deployment.service';
 
 @Module({
   imports: [PrismaModule, ConfigModule, TwilioModule],
@@ -25,6 +28,7 @@ import { ElevenLabsTwilioImportProvisioningService } from './provisioning/eleven
     VoiceAssistantController,
     VoiceAssistantAdminController,
     ElevenLabsTwilioImportController,
+    AgentDeploymentController,
   ],
   providers: [
     VoiceAssistantService,
@@ -34,6 +38,8 @@ import { ElevenLabsTwilioImportProvisioningService } from './provisioning/eleven
     ElevenLabsProviderAdapter,
     ElevenLabsTwilioImportCredentialsResolver,
     ElevenLabsTwilioImportProvisioningService,
+    AgentDeploymentDiffService,
+    AgentDeploymentService,
     VoiceSubscriptionRepository,
     VoiceProviderAccountRepository,
     VoicePhoneNumberRepository,
@@ -49,6 +55,7 @@ import { ElevenLabsTwilioImportProvisioningService } from './provisioning/eleven
     VoiceAgentDeploymentRepository,
     VoiceProvisioningJobRepository,
     ElevenLabsTwilioImportProvisioningService,
+    AgentDeploymentService,
   ],
 })
 export class VoiceAssistantModule {}

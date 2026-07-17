@@ -635,6 +635,7 @@ export class ElevenLabsProviderAdapter implements ElevenLabsProviderPort {
       maskedAgentRef,
       name: raw.name,
       status: raw.status,
+      externalAgentId: raw.agent_id?.trim() || undefined,
     };
   }
 
