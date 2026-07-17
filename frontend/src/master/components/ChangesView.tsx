@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-ai-runtime-baseline-audit-2026-07-17',
+    version: '4.9.587',
+    title: 'V4.9.587 — Voice AI: Phase-0 Read-Only Runtime Baseline Audit',
+    summary: [
+      'Neues Architektur-Audit `architecture/VOICE_AI_RUNTIME_BASELINE_2026-07-17.md` — vollständiger Ist-Stand KI-Sprachassistent (Repo, VPS, Twilio, ElevenLabs, Security, UI).',
+      'Kernbefund: Plattform breit implementiert, aber PSTN-Live-Pfad endet in TwiML Say ohne ElevenLabs-Bridge; 0 Provider-Ressourcen in Production.',
+    ],
+    reason:
+      'Prompt 0A — evidenzbasierter Ausgangspunkt vor Voice-AI-Implementierungsphase; keine Code-Änderungen im Audit selbst.',
+    previousBehavior: 'Kein konsolidierter Voice-AI-Runtime-Baseline-Bericht im Repo.',
+    details: 'architecture/VOICE_AI_RUNTIME_BASELINE_2026-07-17.md',
+    affectsArchitecture: false,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:45:00.000Z',
+  },
+  {
     id: 'twilio-vps-env-sync-v49586-2026-07-17',
     version: '4.9.586',
     title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',
