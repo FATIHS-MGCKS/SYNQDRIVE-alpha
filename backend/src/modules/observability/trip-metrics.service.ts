@@ -63,6 +63,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly documentExtractionPages: Counter<string>;
   readonly documentExtractionClassification: Counter<string>;
   readonly documentExtractionApply: Counter<string>;
+  readonly documentExtractionUploadRateLimited: Counter<string>;
 
   /** Notification engine — low-cardinality labels only. */
   readonly notificationsCreated: Counter<string>;
@@ -375,6 +376,13 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_document_extraction_apply_total',
       help: 'Document apply outcomes after human confirmation',
       labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionUploadRateLimited = new Counter({
+      name: 'synqdrive_document_extraction_upload_rate_limited_total',
+      help: 'Document upload requests rejected by upload rate limits',
+      labelNames: ['scope', 'reason'],
       registers: [this.registry],
     });
 

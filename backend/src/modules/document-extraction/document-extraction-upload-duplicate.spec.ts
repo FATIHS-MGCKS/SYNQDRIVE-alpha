@@ -148,6 +148,7 @@ function makeUploadService(shared = makeSharedPrisma()) {
     { runChecks: jest.fn() } as any,
     fileIdentification as any,
     uploadDuplicate,
+    { assertAllowed: jest.fn().mockResolvedValue(undefined) } as any,
     { logEvent: jest.fn(), recordApply: jest.fn(), observeStage: jest.fn((_a, _b, fn) => fn()) } as any,
   );
 

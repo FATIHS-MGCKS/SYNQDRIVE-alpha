@@ -59,6 +59,10 @@ export class DocumentExtractionObservabilityService {
     this.metrics.documentExtractionApply.inc({ result });
   }
 
+  recordUploadRateLimited(scope: string, reason: string): void {
+    this.metrics.documentExtractionUploadRateLimited.inc({ scope, reason });
+  }
+
   setQueueAgeSeconds(ageSeconds: number): void {
     this.metrics.documentExtractionQueueAge.set(ageSeconds);
   }

@@ -74,6 +74,44 @@ export default registerAs('documentExtraction', () => ({
     process.env.DOCUMENT_EXTRACTION_RECOVERY_INTERVAL_MS,
     120_000,
   ),
+  uploadRateLimitEnabled:
+    (process.env.DOCUMENT_UPLOAD_RATE_LIMIT_ENABLED ?? 'true') === 'true',
+  uploadRateLimitWindowMs: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_WINDOW_MS,
+    60_000,
+  ),
+  uploadRateLimitMaxUploadsPerOrg: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX_UPLOADS_PER_ORG,
+    40,
+  ),
+  uploadRateLimitMaxBytesPerOrg: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX_BYTES_PER_ORG,
+    200 * 1024 * 1024,
+  ),
+  uploadRateLimitMaxUploadsPerUser: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX_UPLOADS_PER_USER,
+    25,
+  ),
+  uploadRateLimitMaxBytesPerUser: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX_BYTES_PER_USER,
+    120 * 1024 * 1024,
+  ),
+  uploadRateLimitMaxUploadsPerIp: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX_UPLOADS_PER_IP,
+    30,
+  ),
+  uploadRateLimitMaxBytesPerIp: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_MAX_BYTES_PER_IP,
+    150 * 1024 * 1024,
+  ),
+  uploadRateLimitOperatorMultiplier: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_OPERATOR_MULTIPLIER,
+    2,
+  ),
+  uploadRateLimitAdminMultiplier: parsePositiveIntEnv(
+    process.env.DOCUMENT_UPLOAD_RATE_LIMIT_ADMIN_MULTIPLIER,
+    4,
+  ),
   /** Chunking — conservative char budgets (≈ token estimate via chars/3.5). */
   chunkTargetChars: parsePositiveIntEnv(process.env.DOCUMENT_EXTRACTION_CHUNK_TARGET_CHARS, 6_000),
   chunkMaxChars: parsePositiveIntEnv(process.env.DOCUMENT_EXTRACTION_CHUNK_MAX_CHARS, 8_000),

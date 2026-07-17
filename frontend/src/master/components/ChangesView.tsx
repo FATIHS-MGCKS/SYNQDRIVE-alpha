@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-upload-rate-limits-2026-07-17',
+    version: '4.9.621',
+    title: 'V4.9.621 — Document Intake V2 Upload Rate Limits',
+    summary: [
+      'Upload-Rate-Limits über bestehende Infrastruktur: Nest @Throttle (IP) + Redis-Fixed-Window (Org/User/IP) in DocumentUploadRateLimitService.',
+      'Begrenzung nach Dateianzahl und Gesamtbytes pro Zeitfenster; Hook vor Identify/Storage/Queue zum Schutz von Storage und BullMQ.',
+      'Klare 429-Antwort DOCUMENT_UPLOAD_RATE_LIMITED mit scope/reason/retryAfterSeconds; Operator- und Admin-Multiplikatoren.',
+      'Konfigurierbar via DOCUMENT_UPLOAD_RATE_LIMIT_*; Metrik synqdrive_document_extraction_upload_rate_limited_total (scope, reason). Tests für Limit, Reset, Org-Isolation.',
+    ],
+    reason:
+      'Prompt 46/84 — Missbrauchsschutz und faire Nutzung ohne neue parallele Throttling-Engine; normale Mehrfachuploads bleiben möglich.',
+    previousBehavior:
+      'Nur globales HTTP-Throttle (200/min/IP); keine org-/user-/byte-basierten Upload-Limits vor Storage/Queue.',
+    details: 'architecture/DOCUMENT_UPLOAD_RATE_LIMITS_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
     id: 'document-upload-duplicate-policy-2026-07-17',
     version: '4.9.620',
     title: 'V4.9.620 — Document Intake V2 Upload Duplicate Policy',
