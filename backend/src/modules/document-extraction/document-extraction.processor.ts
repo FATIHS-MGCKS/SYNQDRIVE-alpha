@@ -53,6 +53,7 @@ import { VehicleCandidateResolverService } from './vehicle-candidate-resolver.se
 import { BookingCandidateResolverService } from './booking-candidate-resolver.service';
 import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
 import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
+import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
 import {
   evaluateUploadContextResolver,
   extractUploadResolverHints,
@@ -96,6 +97,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     private readonly bookingCandidateResolver: BookingCandidateResolverService,
     private readonly customerCandidateResolver: CustomerCandidateResolverService,
     private readonly driverCandidateResolver: DriverCandidateResolverService,
+    private readonly partnerCandidateResolver: PartnerCandidateResolverService,
   ) {
     super();
   }
@@ -593,6 +595,19 @@ export class DocumentExtractionProcessor extends WorkerHost {
 
       pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
         driverCandidates,
+      });
+    }
+
+    if (organizationId && this.partnerCandidateResolver.supportsDocumentType(applyDocumentType)) {
+      const partnerCandidates = await this.partnerCandidateResolver.resolve({
+        organizationId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        resolvedVehicleId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        partnerCandidates,
       });
     }
 
