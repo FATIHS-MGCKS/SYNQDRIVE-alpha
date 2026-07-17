@@ -3879,10 +3879,12 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations`, data),
     update: (orgId: string, id: string, data: Partial<StationUpsertPayload>) =>
       patch<Station>(`/organizations/${orgId}/stations/${id}`, data),
+    /**
+     * @deprecated Stations cannot be hard-deleted. Use `archive()` instead.
+     * The backend returns HTTP 410 with code `STATION_DELETE_DEPRECATED`.
+     */
     delete: (orgId: string, id: string) =>
-      del<{ id: string; unassignedVehicles: number; archived?: boolean }>(
-        `/organizations/${orgId}/stations/${id}`,
-      ),
+      del<never>(`/organizations/${orgId}/stations/${id}`),
     archive: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
     restore: (orgId: string, id: string) =>
@@ -3895,6 +3897,8 @@ export const api = {
       get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
+    activity: (orgId: string, stationId: string) =>
+      get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
@@ -8979,6 +8983,14 @@ export interface StationBookingRow {
   isOneWayRental: boolean;
   customerName: string;
   vehicleLabel: string;
+}
+
+export interface StationActivityEntry {
+  id: string;
+  action: string;
+  description: string | null;
+  userName: string;
+  createdAt: string;
 }
 
 export interface StationUpsertPayload {

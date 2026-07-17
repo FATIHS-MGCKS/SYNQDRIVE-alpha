@@ -1794,6 +1794,17 @@ export const en = {
   'stations.assign.errorLoad': 'Could not load vehicles',
   'stations.assign.errorSave': 'Assignment failed',
   'stations.assign.retry': 'Try again',
+  'stations.permissions.noAccessTitle': 'No access to stations',
+  'stations.permissions.noAccessDescription': 'You do not have permission to view stations in this organization. Contact an administrator if you need access.',
+  'stations.permissions.readOnlyBanner': 'Read-only access — you can view stations but cannot make changes.',
+  'stations.permissions.readOnlyHint': 'Read-only',
+  'stations.permissions.actionDenied': 'You do not have permission for this action.',
+  'stations.action.restore': 'Restore station',
+  'stations.restored': 'Station restored',
+  'stations.detail.tab.activity': 'Activity',
+  'stations.detail.activityEmptyTitle': 'No activity yet',
+  'stations.detail.activityEmptyDescription': 'Changes to this station will appear here.',
+  'stations.detail.archivedBanner': 'This station is archived. Most actions are unavailable until it is restored.',
 
   // ─── Invoice payments (detail) ───
   'invoicePayment.section.title': 'Payments',

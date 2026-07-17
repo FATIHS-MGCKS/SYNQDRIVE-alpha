@@ -16,6 +16,7 @@ import {
 import { Button } from '../../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
+import type { StationsFormCapabilities } from '../../lib/stations-v2-ui-capabilities';
 
 const RADIUS_MIN = 25;
 const RADIUS_MAX = 5000;
@@ -182,11 +183,22 @@ type Props = {
   station?: Station | null;
   saving?: boolean;
   orgId: string;
+  formCapabilities?: StationsFormCapabilities;
   onClose: () => void;
   onSubmit: (payload: StationUpsertPayload) => Promise<void>;
 };
 
-export function StationFormModal({ open, station, saving, orgId, onClose, onSubmit }: Props) {
+const DEFAULT_FORM_CAPABILITIES: StationsFormCapabilities = {
+  canSubmit: true,
+  canEditMasterData: true,
+  canManageOperations: true,
+  canManageTeam: true,
+  canChangeStatus: true,
+  canUseMapboxSearch: true,
+  readOnly: false,
+};
+
+export function StationFormModal({ open, station, saving, orgId, formCapabilities = DEFAULT_FORM_CAPABILITIES, onClose, onSubmit }: Props) {
   const { t } = useLanguage();
   const [form, setForm] = useState<StationFormValues>(emptyForm);
   const [error, setError] = useState<string | null>(null);
@@ -308,9 +320,13 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
   };
 
   const inputClass =
-    'w-full px-3 py-2 rounded-lg border border-border/70 bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
+    'w-full px-3 py-2 rounded-lg border border-border/70 bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)] disabled:opacity-60 disabled:cursor-not-allowed';
   const labelClass = 'block text-[11px] font-semibold mb-1 uppercase tracking-wider text-muted-foreground';
   const sectionClass = 'surface-premium rounded-xl p-4 space-y-3';
+  const caps = formCapabilities;
+  const masterDisabled = !caps.canEditMasterData;
+  const opsDisabled = !caps.canManageOperations;
+  const teamDisabled = !caps.canManageTeam;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -335,6 +351,7 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
             </div>
           )}
 
+          {caps.canUseMapboxSearch && (
           <div className={sectionClass}>
             <label className={labelClass}>{t('stations.form.searchLabel')}</label>
             <div className="relative">
@@ -385,13 +402,14 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
               {prefilledFromMapbox ? t('stations.form.searchPrefilled') : t('stations.form.searchHint')}
             </p>
           </div>
+          )}
 
           <div className={sectionClass}>
             <h3 className="text-sm font-semibold">{t('stations.form.sectionBasic')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('stations.form.name')} *</label>
-                <input className={inputClass} value={form.name} onChange={(e) => set('name', e.target.value)} />
+                <input className={inputClass} disabled={masterDisabled} value={form.name} onChange={(e) => set('name', e.target.value)} />
               </div>
               <div>
                 <label className={labelClass}>{t('stations.form.code')}</label>
@@ -405,6 +423,7 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
                   ))}
                 </select>
               </div>
+              {caps.canChangeStatus && (
               <div>
                 <label className={labelClass}>{t('stations.form.status')}</label>
                 <select className={inputClass} value={form.status} onChange={(e) => set('status', e.target.value as Station['status'])}>
@@ -413,10 +432,7 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
                   {station ? <option value="ARCHIVED">{t('stations.status.ARCHIVED')}</option> : null}
                 </select>
               </div>
-              <label className="flex items-center gap-2 text-sm text-foreground sm:col-span-2">
-                <input type="checkbox" checked={form.isPrimary} onChange={(e) => set('isPrimary', e.target.checked)} />
-                {t('stations.form.isPrimary')}
-              </label>
+              )}
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('stations.form.address')} *</label>
                 <input className={inputClass} value={form.address} onChange={(e) => set('address', e.target.value)} />
@@ -447,7 +463,7 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
               </div>
               <div className="sm:col-span-2">
                 <label className={labelClass}>{t('stations.form.contact')}</label>
-                <input className={inputClass} value={form.managerName} onChange={(e) => set('managerName', e.target.value)} />
+                <input className={inputClass} disabled={teamDisabled} value={form.managerName} onChange={(e) => set('managerName', e.target.value)} />
               </div>
             </div>
           </div>
@@ -471,6 +487,7 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
                   max={RADIUS_MAX}
                   step={25}
                   value={form.radiusMeters ?? RADIUS_DEFAULT}
+                  disabled={opsDisabled}
                   onChange={(e) => set('radiusMeters', Number(e.target.value))}
                   className="w-full"
                 />
@@ -575,7 +592,7 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
           </Button>
           <Button
             type="button"
-            disabled={saving}
+            disabled={saving || !caps.canSubmit}
             onClick={() => void handleSave()}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
