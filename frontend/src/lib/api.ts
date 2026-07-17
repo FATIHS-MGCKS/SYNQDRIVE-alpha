@@ -5301,10 +5301,13 @@ export const api = {
         const { parseUploadRateLimitError } = await import('./document-upload-rate-limit');
         const rateLimitError = parseUploadRateLimitError(body);
         if (rateLimitError) throw rateLimitError;
+        const { parseUploadIdentificationError, parseNestedUploadErrorMessage } = await import(
+          './document-upload-identification'
+        );
+        const identificationError = parseUploadIdentificationError(body);
+        if (identificationError) throw identificationError;
         const message =
-          typeof body === 'object' && body && 'message' in body && typeof (body as { message?: unknown }).message === 'string'
-            ? (body as { message: string }).message
-            : `Upload failed (${res.status})`;
+          parseNestedUploadErrorMessage(body) ?? `Upload failed (${res.status})`;
         throw new Error(message);
       }
       return (await res.json()) as {

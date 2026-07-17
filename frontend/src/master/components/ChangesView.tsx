@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-file-identification-hardening-2026-07-17',
+    version: '4.9.622',
+    title: 'V4.9.622 — Document Intake V2 File Identification Hardening',
+    summary: [
+      'Byte-Level-Preprocessing nach MIME/Magic-Prüfung: PDF-Strukturprobe ohne Ausführung/Entschlüsselung, Bild-Dimensionen + EXIF-Orientierung.',
+      'Status ACCEPTED, OCR_REQUIRED, REQUIRES_PASSWORD, REJECTED_CORRUPT, REJECTED_TOO_COMPLEX, REJECTED_TOO_MANY_PAGES mit klaren 400-Fehlercodes.',
+      'Limits für Seitenzahl, Pixelzahl, dekomprimierte PDF-Komplexität, Objekte/Streams und Identify-Timeout; Fingerprint speichert identificationStatus.',
+      'Frontend parst verschachtelte Nest-400-Antworten mit deutschen Meldungen; Security- und Fixture-Tests für Passwort-PDF und Rotation.',
+    ],
+    reason:
+      'Upload-Pipeline gegen beschädigte, passwortgeschützte und resource-intensive Dateien härten, ohne MIME/Magic-Prüfung zu ersetzen.',
+    previousBehavior:
+      'DocumentFileIdentificationService prüfte nur Größe, MIME-Whitelist und Magic Bytes — keine PDF-Passwort-, Seiten- oder Bildkomplexitäts-Gates.',
+    details:
+      'architecture/DOCUMENT_FILE_IDENTIFICATION_HARDENING_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
     id: 'document-upload-rate-limits-2026-07-17',
     version: '4.9.621',
     title: 'V4.9.621 — Document Intake V2 Upload Rate Limits',

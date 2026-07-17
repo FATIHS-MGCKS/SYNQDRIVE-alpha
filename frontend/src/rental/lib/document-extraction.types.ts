@@ -52,6 +52,14 @@ export type DocumentUploadDuplicateStatus =
 
 export type DocumentUploadRateLimitScope = 'organization' | 'user' | 'ip';
 
+export type DocumentFileIdentificationStatus =
+  | 'ACCEPTED'
+  | 'REQUIRES_PASSWORD'
+  | 'REJECTED_CORRUPT'
+  | 'REJECTED_TOO_COMPLEX'
+  | 'REJECTED_TOO_MANY_PAGES'
+  | 'OCR_REQUIRED';
+
 export interface UploadDuplicateEntityLinks {
   fineIds: string[];
   invoiceIds: string[];

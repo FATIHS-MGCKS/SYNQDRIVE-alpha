@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import { DocumentUploadDuplicateError } from '../../lib/document-upload-duplicate';
 import { DocumentUploadRateLimitedError } from '../../lib/document-upload-rate-limit';
+import { DocumentIdentificationRejectedError } from '../../lib/document-upload-identification';
 import { shouldShowBusinessDuplicateWarning } from '../lib/document-upload-duplicate-flow';
 import type { PublicUploadDuplicate } from '../lib/document-extraction.types';
 import {
@@ -239,6 +240,11 @@ export function useDocumentExtractionFlow({
           setFlow('failed');
           return;
         }
+        if (err instanceof DocumentIdentificationRejectedError) {
+          setErrorMessage(err.payload.message);
+          setFlow('failed');
+          return;
+        }
         setErrorMessage(err instanceof Error ? err.message : 'Upload fehlgeschlagen.');
         setFlow('failed');
       }
@@ -267,6 +273,11 @@ export function useDocumentExtractionFlow({
           setErrorMessage(
             `${err.payload.message} (${err.payload.scope}, Retry in ${err.payload.retryAfterSeconds}s)`,
           );
+          setFlow('failed');
+          return;
+        }
+        if (err instanceof DocumentIdentificationRejectedError) {
+          setErrorMessage(err.payload.message);
           setFlow('failed');
           return;
         }
