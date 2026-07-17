@@ -75,6 +75,10 @@ describe('DocumentExtractionOrgController security', () => {
       module: DOCUMENT_UPLOAD_MODULE,
       level: 'read',
     });
+    expect(permissionOf(DocumentExtractionOrgController.prototype, 'dryRunActionPlan')).toEqual({
+      module: DOCUMENT_UPLOAD_MODULE,
+      level: 'read',
+    });
   });
 });
 
