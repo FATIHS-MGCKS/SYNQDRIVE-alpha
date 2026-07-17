@@ -1,4 +1,5 @@
 import { VoiceAssistant, VoicePstnProvider } from '@prisma/client';
+import { isVoiceNativeTwilioIntegrationEnabled } from '@modules/voice-call-orchestration/voice-feature-flags.config';
 
 export type TelephonyProviderConfig = {
   elevenLabsConfigured: boolean;
@@ -10,6 +11,8 @@ export type TelephonyOperationalStatus =
   | 'agent_not_provisioned'
   | 'no_phone_number'
   | 'assigned_inactive'
+  | 'legacy_diagnostic_only'
+  | 'native_ready'
   | 'ready_for_inbound'
   | 'telephony_disabled';
 
@@ -148,6 +151,35 @@ export function computeTelephonyStatus(
       status: 'assigned_inactive',
       label: 'Assigned but inactive',
       detail: 'A number is linked but inbound telephony is disabled.',
+      providerConfigured: true,
+      pstnProvider,
+      agentProvisioned: true,
+      phoneAssigned: true,
+      inboundReady: false,
+      outboundEnabled: assistant.outboundEnabled,
+    };
+  }
+
+  if (pstnProvider === 'twilio') {
+    if (isVoiceNativeTwilioIntegrationEnabled()) {
+      return {
+        status: 'native_ready',
+        label: 'Native ElevenLabs routing',
+        detail:
+          'Twilio number should be imported in ElevenLabs. Inbound PSTN is handled by ElevenLabs when import and agent assignment are complete.',
+        providerConfigured: true,
+        pstnProvider,
+        agentProvisioned: true,
+        phoneAssigned: true,
+        inboundReady: true,
+        outboundEnabled: assistant.outboundEnabled,
+      };
+    }
+    return {
+      status: 'legacy_diagnostic_only',
+      label: 'Diagnostic PSTN only',
+      detail:
+        'Twilio currently plays a static Say message for connectivity testing. Native ElevenLabs integration is required for productive AI inbound calls.',
       providerConfigured: true,
       pstnProvider,
       agentProvisioned: true,

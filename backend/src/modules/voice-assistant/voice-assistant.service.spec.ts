@@ -6,7 +6,7 @@ import {
 } from '@prisma/client';
 import { VoiceAssistantService } from './voice-assistant.service';
 import { ElevenLabsService } from './elevenlabs.service';
-import { TwilioTelephonyService } from '@modules/twilio/twilio-telephony.service';
+import { TwilioControlPlaneTelephonyService } from '@modules/twilio/twilio-control-plane.telephony.service';
 
 describe('VoiceAssistantService', () => {
   const prisma = {
@@ -40,13 +40,25 @@ describe('VoiceAssistantService', () => {
   };
 
   const twilioTelephony = {
-    isConfigured: jest.fn(),
+    isConfiguredForOrganization: jest.fn(),
     listPhoneNumbers: jest.fn(),
     configureInboundWebhooks: jest.fn(),
     clearInboundWebhooks: jest.fn(),
     initiateOutboundCall: jest.fn(),
     resolveVoiceWebhookUrls: jest.fn(),
   };
+
+  const twilioControlPlaneTelephony = {
+    isConfigured: jest.fn(),
+    listParentPhoneNumbers: jest.fn(),
+  };
+
+  const callOrchestration = {
+    evaluateInboundReadiness: jest.fn(),
+    orchestrateOutboundCall: jest.fn(),
+    assertLegacyDiagnosticCallAllowed: jest.fn(),
+  };
+  const protection = { assertActivationAllowed: jest.fn().mockResolvedValue(undefined) };
 
   let service: VoiceAssistantService;
 
@@ -120,11 +132,15 @@ describe('VoiceAssistantService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     elevenLabs.isConfigured.mockReturnValue(true);
-    twilioTelephony.isConfigured.mockReturnValue(false);
+    twilioTelephony.isConfiguredForOrganization.mockResolvedValue(false);
+    twilioControlPlaneTelephony.isConfigured.mockReturnValue(false);
     service = new VoiceAssistantService(
       prisma as any,
       elevenLabs as any,
       twilioTelephony as any,
+      twilioControlPlaneTelephony as any,
+      callOrchestration as any,
+      protection as any,
     );
   });
 
@@ -237,24 +253,40 @@ describe('VoiceAssistantService', () => {
         status: 'COMPLETED',
         durationSeconds: 120,
         escalationReason: null,
+        metadata: { productiveAiCall: true },
+        transcript: 'Booking confirmed.',
       },
       {
         outcome: 'ESCALATED',
         status: 'COMPLETED',
         durationSeconds: 60,
         escalationReason: 'Low confidence',
+        metadata: { productiveAiCall: true },
+        transcript: null,
       },
       {
         outcome: 'ESCALATED',
         status: 'COMPLETED',
         durationSeconds: 45,
         escalationReason: 'Low confidence',
+        metadata: { productiveAiCall: true },
+        transcript: null,
       },
       {
         outcome: 'ABANDONED',
         status: 'FAILED',
         durationSeconds: null,
         escalationReason: null,
+        metadata: { telephonyMode: 'LEGACY_TWIML_SAY', productiveAiCall: false },
+        transcript: null,
+      },
+      {
+        outcome: 'RESOLVED',
+        status: 'COMPLETED',
+        durationSeconds: 30,
+        escalationReason: null,
+        metadata: { telephonyMode: 'LEGACY_TWIML_SAY', productiveAiCall: false },
+        transcript: null,
       },
     ]);
 
@@ -263,7 +295,8 @@ describe('VoiceAssistantService', () => {
     expect(prisma.voiceConversation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { organizationId: 'org-1' } }),
     );
-    expect(analytics.totalCalls).toBe(4);
+    expect(analytics.totalCalls).toBe(5);
+    expect(analytics.answeredCalls).toBe(3);
     expect(analytics.escalatedCalls).toBe(2);
     expect(analytics.missedCalls).toBe(1);
     expect(analytics.topEscalationReasons[0]).toEqual({
@@ -336,7 +369,7 @@ describe('VoiceAssistantService', () => {
     expect(overview.assistants[0].readinessPercent).toBeGreaterThanOrEqual(0);
     expect(overview.assistants[1].assistantStatus).toBe('NOT_CONFIGURED');
     expect(overview.summary.configuredOrgs).toBe(1);
-    expect(overview.summary.costTrackingConnected).toBe(false);
+    expect(overview.summary.costTrackingConnected).toBe(true);
   });
 
   it('rejects admin sync for unknown organization', async () => {

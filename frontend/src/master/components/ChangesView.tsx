@@ -35,6 +35,191 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-ui-onboarding-ops-2026-07-17',
+    version: '4.9.596',
+    title: 'V4.9.596 — Voice AI: organization onboarding and operations UI',
+    summary: [
+      '8-step first-time wizard: plan, assistant, knowledge, access rights, phone, availability, tests, activation with resume in localStorage.',
+      'Post-activation ops navigation: overview, conversations, automations, analytics & usage, settings — wired to billing, protection, and existing voice APIs.',
+      'DE/EN i18n for all operator-facing voice copy; business permission groups; no technical IDs in standard UI.',
+    ],
+    reason: 'Prompt 9A — production-ready organization UI for voice AI onboarding and day-2 operations.',
+    previousBehavior:
+      'Tab-based technical setup view without tariff wizard, grouped permissions, or post-activation operations overview.',
+    details:
+      'frontend VoiceOnboardingWizard, VoiceOpsSectionNav, billing/protection API client; PUT billing/subscription for plan selection; characterization tests.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T23:30:00.000Z',
+  },
+  {
+    id: 'voice-budget-abuse-protection-2026-07-17',
+    version: '4.9.595',
+    title: 'V4.9.595 — Voice AI: budget limits and abuse protection',
+    summary: [
+      'Server-seitige Limits: Gesprächsdauer-Flag, tägliche Outbound-Minuten, Monatsbudget, Parallelität, Ziel-Wiederholungen/Cooldown, Plan-Entitlements.',
+      'Destination Policy DE/EEA, Sonderrufnummernblock, E.164-Normalisierung; Inbound degradiert sicher bei Budget-Hard-Limit.',
+      'Warnungen 70/85/100 %, Forecast, Org-Admin-Audit, Master-Override mit Ablauf; Abuse-Signale und vollständiges Protection-Audit.',
+    ],
+    reason:
+      'Prompt 8B — Schutz vor unkontrollierten Telefoniekosten, Betrug und missbräuchlichen Outbound-Aktionen.',
+    previousBehavior:
+      'Basis-Policy nur Subscription/Budget/Allowlist in VoiceCallPolicyService; keine Concurrency-Reservation, Abuse-Detection oder Override-Audit.',
+    details:
+      'Module voice-protection; Migration 20260717290000; Redis-Lua Parallelitätsreservierung; architecture/VOICE_AI_BUDGET_ABUSE_PROTECTION_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T22:45:00.000Z',
+  },
+  {
+    id: 'voice-plans-entitlements-usage-ledger-2026-07-17',
+    version: '4.9.594',
+    title: 'V4.9.594 — Voice AI: plans, entitlements, and usage ledger',
+    summary: [
+      'Versionierter Plan-Katalog START/PRO/BUSINESS (EUR netto) mit Entitlements für Minuten, Nummern, Niederlassungen, Sprachen und Parallelität.',
+      'Subscription-Lifecycle TRIAL/ACTIVE/PAST_DUE/SUSPENDED/CANCELLED, Planwechsel mit Periodenwirkung, Setup-Fee getrennt.',
+      'Usage-Ledger: Sekunden-Rohwert, 6s-Grace-Minutenregel, Dedup, ESTIMATED/FINAL, Provider-Kostensplits, APIs für Verbrauch/Forecast und Master-Admin-Marge.',
+    ],
+    reason:
+      'Prompt 8A — verbindliche Voice-AI-Tarife, Entitlements, Usage-Aggregation und Kosten-/Umsatzberechnung ohne Vermischung mit Fahrzeugpreislogik.',
+    previousBehavior:
+      'VoiceSubscription/UsageEvent/BillingPeriod nur als Schema/Repos; costTrackingConnected stub; keine Metering-Pipeline.',
+    details:
+      'Module voice-billing; Migration 20260717280000; Lifecycle-Hook nach COMPLETED; architecture/VOICE_AI_PLANS_ENTITLEMENTS_USAGE_LEDGER_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T22:30:00.000Z',
+  },
+  {
+    id: 'voice-native-twilio-call-orchestration-2026-07-17',
+    version: '4.9.593',
+    title: 'V4.9.593 — Voice AI: native ElevenLabs-Twilio call orchestration',
+    summary: [
+      'Produktiver PSTN-Pfad über ElevenLabs Outbound API und importierte Twilio-Nummern; Legacy Twilio Say nur noch expliziter Diagnosemodus.',
+      'Outbound-Policy: Entitlement, Budget, Länder-Allowlist, Sonderrufnummernsperre; Absender aus VoicePhoneNumber; Idempotency Key.',
+      'Feature Flags VOICE_NATIVE_TWILIO_INTEGRATION und VOICE_MCP_GATEWAY; Live-Provider-Calls nur mit Staging-Flag.',
+    ],
+    reason:
+      'Prompt 7B — echte native ElevenLabs-Twilio-Orchestrierung ohne unkontrollierten Produktionsanruf.',
+    previousBehavior:
+      'Inbound/Outbound nutzten LEGACY_TWIML_SAY (Twilio Say); ElevenLabs Outbound-Adapter war nicht an Tenant-API angebunden.',
+    details:
+      'Module voice-call-orchestration; Inbound-Readiness + Outbound-API; MCP-Token-Bindung; Agent-Deploy pusht MCP-URL.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
+    id: 'voice-webhook-ingestion-correlation-2026-07-17',
+    version: '4.9.592',
+    title: 'V4.9.592 — Voice AI: unified webhook ingestion and correlation',
+    summary: [
+      'Kanonicaler Ingress für Twilio, ElevenLabs post-call/conversation, MCP-Tool-Events und interne Lifecycle-Events.',
+      'VoiceProviderWebhookEvent mit Korrelationsschlüsseln, BullMQ-Queue, Retry/DLQ und privilegiertem Replay.',
+      'Monotone Lifecycle-State-Machine auf VoiceConversation (CREATED … FINALIZED); Outcomes bleiben separat.',
+    ],
+    reason:
+      'Prompt 7A — robuste gemeinsame Event-Ingestion mit Signaturprüfung, Idempotenz und asynchroner Verarbeitung.',
+    previousBehavior:
+      'Twilio schrieb nur TwilioWebhookEvent; ElevenLabs-Webhook-URL war konfiguriert aber ohne Empfänger; keine vereinheitlichte Korrelation.',
+    details:
+      'Module voice-webhook-ingestion; Migration 20260717230000; Queue voice.webhook.process; ElevenLabs HMAC; Twilio-Brücke additive.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T20:50:00.000Z',
+  },
+  {
+    id: 'voice-mcp-controlled-write-tools-2026-07-17',
+    version: '4.9.591',
+    title: 'V4.9.591 — Voice AI: controlled MCP write tools and approvals',
+    summary: [
+      'Sechs kontrollierte Write-Tools: Callback, Supportfall, Task, Kundennotiz, Buchungsänderungsanfrage, Dokumenten-Neuversand.',
+      'Kundenbestätigung via kurzlebigem Redis-Token mit Parameter-Hash; Mitarbeiterfreigabe über VoiceApprovalRequest + Tenant-API.',
+      'Idempotenz über VoiceToolExecution; verbotene destruktive Tools explizit blockiert.',
+    ],
+    reason:
+      'Voice-Agenten sollen risikoarme Aktionen auslösen können, ohne Buchungen zu stornieren, Zahlungen zu erstatten oder Cross-Tenant-Daten zu verändern.',
+    previousBehavior: 'MCP-Gateway war read-only (Prompt 6A).',
+    details:
+      'backend/src/modules/voice-mcp-gateway/*, architecture/VOICE_AI_MCP_CONTROLLED_WRITE_TOOLS_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Voice AI',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
+    id: 'voice-mcp-gateway-readonly-2026-07-17',
+    version: '4.9.590',
+    title: 'V4.9.590 — Voice AI: tenant-safe read-only MCP gateway',
+    summary: [
+      'Öffentlicher MCP-Endpunkt POST /api/v1/mcp/voice/{orgId} mit JSON-RPC (initialize, tools/list, tools/call) und kurzlebigem Bearer-Token.',
+      'Acht Read-only-Tools (Kunde, Buchung, Fahrzeug, Rechnung, Standort, Geschäftszeiten) delegieren an bestehende Domain-Services mit Tenant-Bindung.',
+      'Middleware: Token/Nonce-Replay-Schutz, Abo- & Deployment-Status, Rate Limit, Tool-Allowlist, Timeout, redigiertes Audit.',
+    ],
+    reason:
+      'ElevenLabs-Agenten benötigen einen sicheren, mandantenfesten Datenzugriff ohne User-JWT, Schreibtools oder Cross-Tenant-Leaks.',
+    previousBehavior:
+      'Kein SynqDrive MCP-Gateway; Tool-Capabilities nur in Agent-Config/Permissions vorbereitet.',
+    details:
+      'backend/src/modules/voice-mcp-gateway/, architecture/VOICE_AI_MCP_GATEWAY_READONLY_2026-07-17.md. Feature-Flag VOICE_AI_MCP_GATEWAY_ENABLED.',
+    affectsArchitecture: true,
+    module: 'Voice AI',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
+    id: 'voice-agent-transfer-privacy-postcall-2026-07-17',
+    version: '4.9.589',
+    title: 'V4.9.589 — Voice AI: transfer, privacy & post-call agent configuration',
+    summary: [
+      'Canonical AgentConfig erweitert um Transferregeln (org-gebundene Ziele, Geschäftszeiten, Loop-Schutz), Fallback, Privacy/Retention und Post-Call-Version.',
+      'Signierte Post-Call-Webhook-URL wird serverseitig aus Public-API-Base abgeleitet — kein untrusted Frontend-URL-Input.',
+      'Deployment-Readiness blockiert fehlende Eskalationsziele/Webhook-Secret; warnt bei fehlendem Datenschutztext/Retention.',
+    ],
+    reason:
+      'Prompt 5B — sichere Übergabe-, Fallback-, Datenschutz- und Post-Call-Regeln für versionierte ElevenLabs-Agent-Deployments.',
+    previousBehavior:
+      '5A kanonische Config ohne Transfer-/Privacy-/Post-Call-Readiness und ohne org-gebundene Zielvalidierung.',
+    details:
+      'agent-deployment/*, elevenlabs-provider.adapter, .env.example, architecture/VOICE_AI_AGENT_TRANSFER_PRIVACY_POSTCALL_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
+    id: 'voice-agent-deployment-workflow-2026-07-17',
+    version: '4.9.588',
+    title: 'V4.9.588 — Voice AI: versioned ElevenLabs agent deployment workflow',
+    summary: [
+      'Canonical `CanonicalAgentConfig` snapshot + `configHash` on `VoiceAgentDeployment.configSnapshot`.',
+      'Tenant routes: draft, diff (masked), deploy (idempotent), rollback — gated by `VOICE_AI_PROVISIONING_STAGING_ENABLED`.',
+      'Deploy via `ElevenLabsProviderAdapter`; single ACTIVE version; FAILED rows retained; org-level PROVISIONING lock.',
+    ],
+    reason:
+      'Prompt 5A — sichere Draft/Deploy/Diff/Rollback-Mechanik für ElevenLabs-Agenten ohne Provider-Payloads im Frontend.',
+    previousBehavior:
+      'VoiceAgentDeployment-Modell vorhanden, aber ohne Draft-Snapshot, Diff, Provider-Deploy oder Rollback zur Laufzeit.',
+    details:
+      'agent-deployment/*, voice-control-plane.repository, elevenlabs-provider.adapter, migration 20260717250000, architecture/VOICE_AI_AGENT_DEPLOYMENT_WORKFLOW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
+    id: 'voice-ai-runtime-baseline-audit-2026-07-17',
+    version: '4.9.587',
+    title: 'V4.9.587 — Voice AI: Phase-0 Read-Only Runtime Baseline Audit',
+    summary: [
+      'Neues Architektur-Audit `architecture/VOICE_AI_RUNTIME_BASELINE_2026-07-17.md` — vollständiger Ist-Stand KI-Sprachassistent (Repo, VPS, Twilio, ElevenLabs, Security, UI).',
+      'Kernbefund: Plattform breit implementiert, aber PSTN-Live-Pfad endet in TwiML Say ohne ElevenLabs-Bridge; 0 Provider-Ressourcen in Production.',
+    ],
+    reason:
+      'Prompt 0A — evidenzbasierter Ausgangspunkt vor Voice-AI-Implementierungsphase; keine Code-Änderungen im Audit selbst.',
+    previousBehavior: 'Kein konsolidierter Voice-AI-Runtime-Baseline-Bericht im Repo.',
+    details: 'architecture/VOICE_AI_RUNTIME_BASELINE_2026-07-17.md',
+    affectsArchitecture: false,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:45:00.000Z',
+  },
+  {
     id: 'twilio-vps-env-sync-v49586-2026-07-17',
     version: '4.9.586',
     title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',

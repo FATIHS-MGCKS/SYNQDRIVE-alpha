@@ -11,6 +11,7 @@ import { BillingModule } from '@modules/billing/billing.module';
 import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automation-outbox.module';
 import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
 import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
+import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -27,6 +28,7 @@ import { NotificationDeliveryProcessor } from './processors/notification-deliver
 import { PaymentEmailProcessor } from './processors/payment-email.processor';
 import { TaskAutomationOutboxProcessor } from './processors/task-automation-outbox.processor';
 import { BatteryV2Processor } from './processors/battery-v2.processor';
+import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -63,6 +65,7 @@ import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconc
       { name: QUEUE_NAMES.PAYMENT_EMAIL },
       { name: QUEUE_NAMES.TASK_AUTOMATION },
       { name: QUEUE_NAMES.BATTERY_V2 },
+      { name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -73,6 +76,7 @@ import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconc
     TaskAutomationOutboxModule,
     BatteryV2JobsProducerModule,
     BatteryV2JobsModule,
+    VoiceWebhookIngestionModule,
   ],
   providers: [
     // Processors
@@ -91,6 +95,7 @@ import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconc
     PaymentEmailProcessor,
     TaskAutomationOutboxProcessor,
     BatteryV2Processor,
+    VoiceWebhookProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

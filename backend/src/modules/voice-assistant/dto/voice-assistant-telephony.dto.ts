@@ -29,3 +29,21 @@ export class InitiateTwilioOutboundCallDto {
   @MinLength(3)
   to!: string;
 }
+
+export class InitiateOutboundCallDto {
+  @IsString()
+  @MinLength(3)
+  to!: string;
+
+  @IsString()
+  @MinLength(8)
+  idempotencyKey!: string;
+
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  bookingId?: string;
+}

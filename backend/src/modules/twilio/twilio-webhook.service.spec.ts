@@ -31,7 +31,12 @@ describe('TwilioWebhookService', () => {
   };
 
   const bridge = {
-    buildInboundTwiml: jest.fn().mockReturnValue('<Response><Say>Hi</Say></Response>'),
+    buildInboundTwiml: jest.fn().mockResolvedValue('<Response><Say>Hi</Say></Response>'),
+    describeBridge: jest.fn().mockResolvedValue({ inboundReady: false }),
+  };
+
+  const voiceWebhookIngest = {
+    ingestTwilioEvent: jest.fn().mockResolvedValue({ accepted: true, duplicate: false, eventId: 'evt-1', queued: true }),
   };
 
   let service: TwilioWebhookService;
@@ -61,6 +66,7 @@ describe('TwilioWebhookService', () => {
       twilio as never,
       config as never,
       bridge as never,
+      voiceWebhookIngest as never,
     );
   });
 

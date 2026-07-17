@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   AlertTriangle,
   Bot,
-  Building2,
-  CheckCircle2,
-  ExternalLink,
   Phone,
-  PhoneCall,
   RefreshCw,
   Search,
-  XCircle,
+  Shield,
+  Webhook,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  chromeTabBarClass,
+  chromeTabTriggerClass,
+  CHROME_TAB_BAR_SCROLL_CLASS,
+} from '../../components/patterns/chrome-tab-bar';
 import {
   DataTable,
   DetailDrawer,
@@ -22,15 +25,31 @@ import {
   StatusChip,
   type DataTableColumn,
 } from '../../components/patterns';
+import { Button } from '../../components/ui/button';
 import { cn } from '../../components/ui/utils';
-import { api, getErrorMessage } from '../../lib/api';
-import type {
-  VoiceAssistantAdminOrgDetail,
-  VoiceAssistantAdminOverview,
-  VoiceAssistantAdminOverviewRow,
+import { isMasterAdmin } from '../../lib/auth';
+import {
+  api,
+  getErrorMessage,
+  type VoiceControlPlaneAuditEventRow,
+  type VoiceControlPlaneOrganizationRow,
+  type VoiceControlPlaneOrgWorkspace,
+  type VoiceControlPlanePhoneNumberRow,
+  type VoiceControlPlanePlatformStatus,
+  type VoiceControlPlaneWebhookEventRow,
+  type VoiceMasterAdminOrgBilling,
 } from '../../lib/api';
-
-type FilterMode = 'all' | 'configured' | 'issues';
+import {
+  buildVoiceControlPlaneSearch,
+  readVoiceControlPlaneSection,
+  VOICE_CONTROL_PLANE_SECTIONS,
+  type VoiceControlPlaneSection,
+} from './voice-control-plane/voice-control-plane-navigation';
+import {
+  createIdempotencyKey,
+  VoiceSecureActionDialog,
+  type VoiceSecureActionRequest,
+} from './voice-control-plane/VoiceSecureActionDialog';
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '—';
@@ -44,46 +63,107 @@ function timeAgo(iso: string | null): string {
 }
 
 function statusTone(status: string): 'success' | 'warning' | 'critical' | 'neutral' | 'noData' {
-  if (status === 'ACTIVE') return 'success';
-  if (status === 'INACTIVE') return 'critical';
+  if (['ACTIVE', 'PROCESSED', 'CONNECTED', 'IMPORTED', 'ASSIGNED'].includes(status)) return 'success';
+  if (['FAILED', 'INACTIVE', 'SUSPENDED', 'BLOCKED'].includes(status)) return 'critical';
+  if (['QUEUED', 'RECEIVED', 'PENDING', 'WARNING', 'DRAFT'].includes(status)) return 'warning';
   if (status === 'NOT_CONFIGURED') return 'noData';
-  return 'warning';
+  return 'neutral';
 }
 
-function ReadinessBar({ percent }: { percent: number }) {
+function centsToEuros(cents: number | null | undefined): string {
+  if (cents == null) return '—';
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+}
+
+function SectionTabBar({
+  activeSection,
+  onSectionChange,
+}: {
+  activeSection: VoiceControlPlaneSection;
+  onSectionChange: (section: VoiceControlPlaneSection) => void;
+}) {
   return (
-    <div className="flex items-center gap-2 min-w-[88px]">
-      <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all',
-            percent >= 100 ? 'bg-emerald-500' : percent >= 60 ? 'bg-amber-500' : 'bg-red-400',
-          )}
-          style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-        />
+    <div
+      className={chromeTabBarClass('p-1')}
+      role="tablist"
+      aria-label="Voice AI Control Plane"
+      data-testid="voice-control-plane-tabbar"
+    >
+      <div className={CHROME_TAB_BAR_SCROLL_CLASS}>
+        {VOICE_CONTROL_PLANE_SECTIONS.map((section) => {
+          const isActive = activeSection === section.id;
+          return (
+            <button
+              key={section.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              data-testid={`voice-control-plane-section-${section.id}`}
+              onClick={() => onSectionChange(section.id)}
+              className={chromeTabTriggerClass(isActive, 'max-sm:px-3')}
+            >
+              <span className="truncate">{section.label}</span>
+            </button>
+          );
+        })}
       </div>
-      <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{percent}%</span>
     </div>
   );
 }
 
 export function VoiceAssistantAdminView() {
-  const [overview, setOverview] = useState<VoiceAssistantAdminOverview | null>(null);
+  const canAccess = isMasterAdmin();
+  const [activeSection, setActiveSection] = useState<VoiceControlPlaneSection>(
+    readVoiceControlPlaneSection(window.location.search),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [platformStatus, setPlatformStatus] = useState<VoiceControlPlanePlatformStatus | null>(null);
+  const [organizations, setOrganizations] = useState<VoiceControlPlaneOrganizationRow[]>([]);
+  const [phoneNumbers, setPhoneNumbers] = useState<VoiceControlPlanePhoneNumberRow[]>([]);
+  const [webhookEvents, setWebhookEvents] = useState<VoiceControlPlaneWebhookEventRow[]>([]);
+  const [auditEvents, setAuditEvents] = useState<VoiceControlPlaneAuditEventRow[]>([]);
   const [search, setSearch] = useState('');
-  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [orgDetail, setOrgDetail] = useState<VoiceAssistantAdminOrgDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [syncingOrgId, setSyncingOrgId] = useState<string | null>(null);
+  const [workspace, setWorkspace] = useState<VoiceControlPlaneOrgWorkspace | null>(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [usageBilling, setUsageBilling] = useState<VoiceMasterAdminOrgBilling[]>([]);
+  const [secureAction, setSecureAction] = useState<VoiceSecureActionRequest | null>(null);
+  const [provisioningOrgId, setProvisioningOrgId] = useState('');
 
-  const load = useCallback(async () => {
+  const navigateSection = (section: VoiceControlPlaneSection) => {
+    setActiveSection(section);
+    const nextUrl = `${window.location.pathname}${buildVoiceControlPlaneSearch(section)}`;
+    window.history.pushState(null, '', nextUrl);
+  };
+
+  const loadCore = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.voiceAssistant.admin.overview();
-      setOverview(data);
+      const [status, orgs, numbers, events, audit] = await Promise.all([
+        api.voiceAssistant.admin.controlPlane.platformStatus(),
+        api.voiceAssistant.admin.controlPlane.organizations(),
+        api.voiceAssistant.admin.controlPlane.phoneNumbers(),
+        api.voiceAssistant.admin.controlPlane.webhookEvents({ limit: 100 }),
+        api.voiceAssistant.admin.controlPlane.auditEvents({ limit: 100 }),
+      ]);
+      setPlatformStatus(status);
+      setOrganizations(orgs.organizations);
+      setPhoneNumbers(numbers);
+      setWebhookEvents(events.items);
+      setAuditEvents(audit.items);
+
+      const billingRows = await Promise.all(
+        orgs.organizations.slice(0, 20).map(async (org) => {
+          try {
+            return await api.voiceAssistant.admin.billing.orgBilling(org.organizationId);
+          } catch {
+            return null;
+          }
+        }),
+      );
+      setUsageBilling(billingRows.filter((row): row is VoiceMasterAdminOrgBilling => row != null));
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -91,273 +171,515 @@ export function VoiceAssistantAdminView() {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const loadDetail = useCallback(async (orgId: string) => {
+  const loadWorkspace = useCallback(async (orgId: string) => {
     setSelectedOrgId(orgId);
-    setDetailLoading(true);
+    setWorkspaceLoading(true);
     try {
-      const detail = await api.voiceAssistant.admin.orgDetail(orgId);
-      setOrgDetail(detail);
+      const data = await api.voiceAssistant.admin.controlPlane.organizationWorkspace(orgId);
+      setWorkspace(data);
     } catch (err) {
-      toast.error('Could not load organization detail', { description: getErrorMessage(err) });
-      setOrgDetail(null);
+      toast.error('Workspace konnte nicht geladen werden', { description: getErrorMessage(err) });
+      setWorkspace(null);
     } finally {
-      setDetailLoading(false);
+      setWorkspaceLoading(false);
     }
   }, []);
 
-  const syncOrganization = async (orgId: string) => {
-    setSyncingOrgId(orgId);
-    try {
-      const result = await api.voiceAssistant.admin.syncOrganization(orgId);
-      toast.success('Sync completed', {
-        description: result.message ?? `${result.synced} new conversation(s)`,
-      });
-      await load();
-      if (selectedOrgId === orgId) {
-        await loadDetail(orgId);
-      }
-    } catch (err) {
-      toast.error('Sync failed', { description: getErrorMessage(err) });
-    } finally {
-      setSyncingOrgId(null);
-    }
-  };
+  useEffect(() => {
+    if (!canAccess) return;
+    void loadCore();
+  }, [canAccess, loadCore]);
 
-  const filteredRows = useMemo(() => {
-    const rows = overview?.assistants ?? [];
+  useEffect(() => {
+    const onPopState = () => {
+      setActiveSection(readVoiceControlPlaneSection(window.location.search));
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const filteredOrganizations = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return rows.filter((row) => {
-      if (filterMode === 'configured' && row.assistantStatus === 'NOT_CONFIGURED') return false;
-      if (
-        filterMode === 'issues' &&
-        !row.providerWarning &&
-        !row.lastError &&
-        row.readinessPercent >= 100 &&
-        row.assistantStatus !== 'NOT_CONFIGURED'
-      ) {
-        return false;
-      }
-      if (!term) return true;
-      return (
+    if (!term) return organizations;
+    return organizations.filter(
+      (row) =>
         row.organizationName.toLowerCase().includes(term) ||
         row.organizationId.toLowerCase().includes(term) ||
-        (row.phoneNumber?.toLowerCase().includes(term) ?? false)
-      );
-    });
-  }, [overview?.assistants, search, filterMode]);
+        (row.planCode?.toLowerCase().includes(term) ?? false),
+    );
+  }, [organizations, search]);
 
-  const configuredCount = overview?.summary.configuredOrgs ?? 0;
-
-  const columns: DataTableColumn<VoiceAssistantAdminOverviewRow>[] = [
+  const orgColumns: DataTableColumn<VoiceControlPlaneOrganizationRow>[] = [
     {
       key: 'org',
-      header: 'Organization',
+      header: 'Organisation',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{row.organizationName}</p>
-          {row.providerWarning && (
-            <p className="text-[10px] text-amber-600 dark:text-amber-400 truncate">{row.providerWarning}</p>
-          )}
+          <p className="text-sm font-semibold truncate">{row.organizationName}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{row.planCode ?? 'Kein Tarif'}</p>
         </div>
       ),
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: 'voice',
+      header: 'Voice Status',
       cell: (row) => <StatusChip tone={statusTone(row.assistantStatus)}>{row.assistantStatus}</StatusChip>,
     },
     {
-      key: 'readiness',
-      header: 'Readiness',
-      cell: (row) =>
-        row.assistantStatus === 'NOT_CONFIGURED' ? (
-          <span className="text-xs text-muted-foreground">—</span>
-        ) : (
-          <ReadinessBar percent={row.readinessPercent} />
-        ),
-    },
-    {
-      key: 'provider',
-      header: 'Provider',
-      cell: (row) => (
-        <div className="text-xs">
-          <StatusChip tone={row.elevenLabsConnected ? 'success' : 'critical'}>
-            {row.elevenLabsConnected ? 'Connected' : 'Not configured'}
-          </StatusChip>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Agent {row.agentProvisioned ? 'yes' : 'no'}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: 'telephony',
-      header: 'Telephony',
-      cell: (row) => (
-        <div className="text-xs text-muted-foreground">
-          <p>{row.telephonyLabel ?? (row.telephonyEnabled ? 'Enabled' : 'Off')}</p>
-          <p className="text-[10px] truncate max-w-[120px]">{row.phoneNumber ?? '—'}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'calls',
-      header: 'Calls',
+      key: 'minutes',
+      header: 'Minuten',
       numeric: true,
       cell: (row) => (
-        <div className="text-xs tabular-nums">
-          <p className="font-semibold text-foreground">{row.totalCalls}</p>
-          <p className="text-[10px] text-muted-foreground">today {row.callsToday}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'escalated',
-      header: 'Escalated',
-      numeric: true,
-      align: 'right',
-      cell: (row) => (
-        <span className={row.escalatedCalls > 0 ? 'text-amber-600 font-semibold' : ''}>
-          {row.escalatedCalls}
+        <span className="tabular-nums text-xs">
+          {row.consumedMinutes.toFixed(1)} / {row.remainingMinutes.toFixed(1)} übrig
         </span>
       ),
     },
     {
-      key: 'sync',
-      header: 'Last sync',
+      key: 'budget',
+      header: 'Budget',
       cell: (row) => (
-        <span className="text-[10px] text-muted-foreground">{timeAgo(row.lastSyncedAt)}</span>
+        <span className="text-xs tabular-nums">{centsToEuros(row.monthlyBudgetCents)}</span>
+      ),
+    },
+    {
+      key: 'concurrency',
+      header: 'Parallelität',
+      numeric: true,
+      cell: (row) => <span className="tabular-nums text-xs">{row.maxConcurrentCalls ?? '—'}</span>,
+    },
+    {
+      key: 'activity',
+      header: 'Letzte Aktivität',
+      cell: (row) => <span className="text-[10px] text-muted-foreground">{timeAgo(row.lastCallAt)}</span>,
+    },
+    {
+      key: 'errors',
+      header: 'Fehler',
+      numeric: true,
+      align: 'right',
+      cell: (row) => (
+        <span className={row.openErrors > 0 ? 'text-amber-600 font-semibold tabular-nums' : 'tabular-nums'}>
+          {row.openErrors}
+        </span>
       ),
     },
   ];
 
-  const selectedRow = overview?.assistants.find((a) => a.organizationId === selectedOrgId);
+  const phoneColumns: DataTableColumn<VoiceControlPlanePhoneNumberRow>[] = [
+    {
+      key: 'number',
+      header: 'Nummer',
+      cell: (row) => <span className="font-mono text-xs">{row.maskedPhoneNumber}</span>,
+    },
+    { key: 'org', header: 'Organisation', cell: (row) => row.organizationName },
+    { key: 'status', header: 'Status', cell: (row) => <StatusChip tone={statusTone(row.status)}>{row.status}</StatusChip> },
+    { key: 'region', header: 'Region', cell: (row) => row.region ?? '—' },
+    { key: 'regulatory', header: 'Regulatory', cell: (row) => row.regulatoryStatus ?? '—' },
+    {
+      key: 'el',
+      header: 'ElevenLabs',
+      cell: (row) => (
+        <StatusChip tone={row.elevenLabsAssigned ? 'success' : 'warning'}>
+          {row.elevenLabsAssigned ? 'Zugeordnet' : 'Offen'}
+        </StatusChip>
+      ),
+    },
+  ];
+
+  const webhookColumns: DataTableColumn<VoiceControlPlaneWebhookEventRow>[] = [
+    { key: 'provider', header: 'Provider', cell: (row) => row.provider },
+    { key: 'type', header: 'Event', cell: (row) => row.eventType ?? '—' },
+    { key: 'status', header: 'Status', cell: (row) => <StatusChip tone={statusTone(row.status)}>{row.status}</StatusChip> },
+    { key: 'org', header: 'Organisation', cell: (row) => row.organizationName ?? '—' },
+    { key: 'retries', header: 'Retries', numeric: true, cell: (row) => row.retryCount },
+    {
+      key: 'diag',
+      header: 'Diagnose',
+      cell: (row) => (
+        <span className="text-[10px] text-muted-foreground line-clamp-2 max-w-[200px]">
+          {row.diagnosticSummary ?? row.errorMessage ?? '—'}
+        </span>
+      ),
+    },
+  ];
+
+  const auditColumns: DataTableColumn<VoiceControlPlaneAuditEventRow>[] = [
+    { key: 'time', header: 'Zeit', cell: (row) => new Date(row.createdAt).toLocaleString('de-DE') },
+    { key: 'category', header: 'Kategorie', cell: (row) => row.category },
+    { key: 'org', header: 'Organisation', cell: (row) => row.organizationName },
+    { key: 'action', header: 'Aktion', cell: (row) => row.action },
+    { key: 'reason', header: 'Grund', cell: (row) => row.reasonCode ?? row.message ?? '—' },
+  ];
+
+  const usageColumns: DataTableColumn<VoiceMasterAdminOrgBilling>[] = [
+    { key: 'org', header: 'Org ID', cell: (row) => <span className="font-mono text-[10px]">{row.organizationId}</span> },
+    { key: 'minutes', header: 'Minuten', numeric: true, cell: (row) => row.consumedMinutes.toFixed(1) },
+    { key: 'twilio', header: 'Provider-Kosten', cell: (row) => centsToEuros(row.providerCostCents) },
+    { key: 'revenue', header: 'Umsatz', cell: (row) => centsToEuros(row.revenueCents) },
+    { key: 'margin', header: 'Marge', cell: (row) => `${centsToEuros(row.marginCents)} (${row.marginPercent ?? 0}%)` },
+  ];
+
+  const openSuspend = (orgId: string, orgName: string) => {
+    setSecureAction({
+      title: 'Organisation suspendieren',
+      description: `Voice-Dienste für ${orgName} werden gesperrt.`,
+      confirmLabel: 'Suspendieren',
+      tone: 'critical',
+      onConfirm: async (reason) => {
+        await api.voiceAssistant.admin.controlPlane.suspendOrganization(
+          orgId,
+          { reason, confirm: true },
+          createIdempotencyKey('suspend'),
+        );
+        toast.success('Organisation suspendiert');
+        await loadCore();
+      },
+    });
+  };
+
+  const openReplay = (eventId: string) => {
+    setSecureAction({
+      title: 'Event replayen',
+      description: 'Das Webhook-Event wird erneut in die Verarbeitung eingestellt. Keine vollständigen Transkripte werden angezeigt.',
+      confirmLabel: 'Replay starten',
+      onConfirm: async (reason) => {
+        await api.voiceAssistant.admin.controlPlane.replayWebhookEvent(
+          eventId,
+          { reason, confirm: true },
+          createIdempotencyKey('replay'),
+        );
+        toast.success('Replay gestartet');
+        await loadCore();
+      },
+    });
+  };
+
+  const openDeploy = (orgId: string) => {
+    setSecureAction({
+      title: 'Agent neu deployen',
+      description: 'Der aktuelle Draft wird als neue aktive Version ausgerollt.',
+      confirmLabel: 'Deploy',
+      onConfirm: async (reason) => {
+        await api.voiceAssistant.admin.controlPlane.deployAgent(
+          orgId,
+          { confirm: true },
+          createIdempotencyKey('deploy'),
+        );
+        toast.success('Deployment gestartet');
+        await loadWorkspace(orgId);
+      },
+    });
+  };
+
+  const openRollback = (orgId: string) => {
+    setSecureAction({
+      title: 'Rollback',
+      description: 'Rollback auf die zuletzt aktive Agent-Version.',
+      confirmLabel: 'Rollback',
+      tone: 'critical',
+      onConfirm: async () => {
+        await api.voiceAssistant.admin.controlPlane.rollbackAgent(orgId, { confirm: true });
+        toast.success('Rollback ausgeführt');
+        await loadWorkspace(orgId);
+      },
+    });
+  };
+
+  const openProvisionResume = (orgId: string) => {
+    setSecureAction({
+      title: 'Provisionierung fortsetzen',
+      description: 'Subaccount-Provisionierung wird mit Bestätigung fortgesetzt.',
+      confirmLabel: 'Fortsetzen',
+      onConfirm: async (reason) => {
+        await api.voiceAssistant.admin.provisioning.twilioProvisionSubaccount(
+          orgId,
+          { confirm: true, friendlyName: reason.slice(0, 40) },
+          createIdempotencyKey('provision'),
+        );
+        toast.success('Provisionierung fortgesetzt');
+        await loadWorkspace(orgId);
+      },
+    });
+  };
+
+  const openReconnectNumber = (orgId: string, phoneNumberId: string) => {
+    setSecureAction({
+      title: 'Nummer neu verbinden',
+      description: 'ElevenLabs-Import und Agent-Zuordnung werden erneut ausgeführt.',
+      confirmLabel: 'Neu verbinden',
+      onConfirm: async () => {
+        await api.voiceAssistant.admin.provisioning.elevenLabsImport(
+          orgId,
+          phoneNumberId,
+          { confirm: true },
+          createIdempotencyKey('reconnect'),
+        );
+        toast.success('Nummer wird neu verbunden');
+        await loadCore();
+        if (selectedOrgId === orgId) await loadWorkspace(orgId);
+      },
+    });
+  };
+
+  if (!canAccess) {
+    return (
+      <div className="p-6" data-testid="voice-control-plane-denied">
+        <EmptyState
+          title="Kein Zugriff"
+          description="Die Voice AI Control Plane ist nur für Master Admins verfügbar."
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-4 p-1">
+    <div className="mx-auto max-w-[1600px] space-y-4 p-1" data-testid="voice-control-plane">
       <PageHeader
-        title="Voice Assistant Overview"
+        title="Voice AI Control Plane"
         actions={
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="sq-press inline-flex items-center gap-2 rounded-xl border border-border surface-premium px-3 py-2 text-xs font-semibold"
-          >
-            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-            Refresh
-          </button>
+          <Button type="button" size="sm" variant="outline" onClick={() => void loadCore()} disabled={loading}>
+            <RefreshCw className={cn('mr-2 h-3.5 w-3.5', loading && 'animate-spin')} />
+            Aktualisieren
+          </Button>
         }
       />
 
-      {!overview?.providerConfigured && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
-          <div className="flex items-center gap-2 font-semibold">
-            <AlertTriangle className="h-4 w-4" />
-            ElevenLabs provider is not configured on the server.
+      <SectionTabBar activeSection={activeSection} onSectionChange={navigateSection} />
+
+      {error && <ErrorState title="Control Plane konnte nicht geladen werden" description={error} onRetry={() => void loadCore()} />}
+
+      {!error && activeSection === 'platform' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <MetricCard
+              label="ElevenLabs"
+              value={platformStatus?.providers.elevenLabs.label ?? '—'}
+              icon={<Bot className="h-4 w-4" />}
+            />
+            <MetricCard
+              label="Twilio IE1"
+              value={platformStatus?.providers.twilioIe1.label ?? '—'}
+              icon={<Phone className="h-4 w-4" />}
+            />
+            <MetricCard
+              label="MCP Gateway"
+              value={platformStatus?.providers.mcpGateway.label ?? '—'}
+              icon={<Activity className="h-4 w-4" />}
+            />
+            <MetricCard
+              label="Queue Backlog"
+              value={platformStatus?.queues.webhookBacklog ?? 0}
+              icon={<Webhook className="h-4 w-4" />}
+            />
           </div>
-          <p className="mt-1 text-muted-foreground">
-            Organizations can configure assistants, but provisioning and sync will remain degraded until the provider is connected.
-          </p>
+
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <MetricCard label="DLQ (24h)" value={platformStatus?.webhooks.dlqCount24h ?? 0} />
+            <MetricCard
+              label="Eventverzögerung"
+              value={
+                platformStatus?.webhooks.avgProcessingDelayMs != null
+                  ? `${platformStatus.webhooks.avgProcessingDelayMs} ms`
+                  : '—'
+              }
+            />
+            <MetricCard label="Queue waiting" value={platformStatus?.queues.waiting ?? 0} />
+            <MetricCard label="Queue failed" value={platformStatus?.queues.failed ?? 0} />
+          </div>
+
+          {(platformStatus?.activeIncidents.length ?? 0) > 0 ? (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
+              <p className="text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Aktive Incidents
+              </p>
+              {platformStatus?.activeIncidents.map((incident) => (
+                <p key={incident.id} className="text-xs text-muted-foreground">
+                  [{incident.severity}] {incident.message}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <EmptyState compact title="Keine aktiven Incidents" description="Alle Provider und Queues im Normalbetrieb." />
+          )}
         </div>
       )}
 
-      {error && <ErrorState title="Could not load overview" description={error} onRetry={() => void load()} />}
-
-      {!error && (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MetricCard label="Organizations" value={overview?.summary.totalOrgs ?? 0} icon={<Building2 className="h-4 w-4" />} />
-            <MetricCard
-              label="Configured"
-              value={configuredCount}
-              icon={<Bot className="h-4 w-4" />}
-              hint={`${overview?.summary.activeOrgs ?? 0} active`}
-            />
-            <MetricCard label="Total calls" value={overview?.summary.totalCalls ?? 0} icon={<PhoneCall className="h-4 w-4" />} />
-            <MetricCard
-              label="Talk minutes"
-              value={(overview?.summary.totalMinutes ?? 0).toFixed(1)}
-              icon={<Phone className="h-4 w-4" />}
+      {!error && activeSection === 'organizations' && (
+        <div className="space-y-3">
+          <div className="relative max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Organisationen suchen…"
+              className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-[color:var(--brand)]"
             />
           </div>
-
-          <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-            {overview?.summary.costTrackingMessage ?? 'Cost tracking not connected yet'}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[220px] flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search organizations…"
-                className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-[color:var(--brand)]"
-              />
-            </div>
-            {(['all', 'configured', 'issues'] as FilterMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setFilterMode(mode)}
-                className={cn(
-                  'rounded-xl px-3 py-2 text-xs font-semibold capitalize',
-                  filterMode === mode ? 'sq-tab-active' : 'sq-tab text-muted-foreground',
-                )}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-
           <DataTable
-            columns={columns}
-            rows={filteredRows}
+            columns={orgColumns}
+            rows={filteredOrganizations}
             getRowKey={(row) => row.organizationId}
             loading={loading}
-            onRowClick={(row) => void loadDetail(row.organizationId)}
-            empty={
-              configuredCount === 0 ? (
-                <EmptyState
-                  title="No voice assistants configured"
-                  description="Organizations will appear here once an assistant row exists or conversations are synced."
-                />
-              ) : (
-                <EmptyState title="No organizations match" description="Try adjusting search or filters." />
-              )
-            }
+            onRowClick={(row) => void loadWorkspace(row.organizationId)}
+            empty={<EmptyState title="Keine Organisationen" description="Noch keine Voice-Organisationen vorhanden." />}
             rowActions={(row) => (
-              <div className="flex items-center gap-1">
+              <div className="flex gap-1">
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void loadDetail(row.organizationId);
-                  }}
                   className="rounded-lg px-2 py-1 text-[10px] font-semibold hover:bg-muted"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void loadWorkspace(row.organizationId);
+                  }}
                 >
-                  View
+                  Workspace
                 </button>
                 <button
                   type="button"
-                  disabled={row.assistantStatus === 'NOT_CONFIGURED' || syncingOrgId === row.organizationId}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void syncOrganization(row.organizationId);
+                  className="rounded-lg px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-muted"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openSuspend(row.organizationId, row.organizationName);
                   }}
-                  className="rounded-lg px-2 py-1 text-[10px] font-semibold hover:bg-muted disabled:opacity-40"
                 >
-                  {syncingOrgId === row.organizationId ? 'Syncing…' : 'Sync'}
+                  Suspend
                 </button>
               </div>
             )}
           />
-        </>
+        </div>
+      )}
+
+      {!error && activeSection === 'provisioning' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs">
+              <span className="mb-1 block font-semibold">Organisation</span>
+              <select
+                value={provisioningOrgId}
+                onChange={(event) => setProvisioningOrgId(event.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-xs min-w-[240px]"
+              >
+                <option value="">Organisation wählen…</option>
+                {organizations.map((org) => (
+                  <option key={org.organizationId} value={org.organizationId}>
+                    {org.organizationName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!provisioningOrgId}
+              onClick={() => provisioningOrgId && void loadWorkspace(provisioningOrgId)}
+            >
+              Jobs laden
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!provisioningOrgId}
+              onClick={() => provisioningOrgId && openProvisionResume(provisioningOrgId)}
+            >
+              Provisionierung fortsetzen
+            </Button>
+          </div>
+          {workspace?.provisioningJobs?.length ? (
+            <DataTable
+              columns={[
+                { key: 'type', header: 'Job', cell: (row) => row.jobType },
+                { key: 'status', header: 'Status', cell: (row) => <StatusChip tone={statusTone(row.status)}>{row.status}</StatusChip> },
+                { key: 'step', header: 'Schritt', cell: (row) => row.currentStep ?? row.resumeStep ?? '—' },
+                { key: 'error', header: 'Fehler', cell: (row) => row.lastError ?? '—' },
+              ]}
+              rows={workspace.provisioningJobs}
+              getRowKey={(row) => row.id}
+              loading={workspaceLoading}
+            />
+          ) : (
+            <EmptyState title="Keine Provisioning-Jobs" description="Organisation wählen und Jobs laden." />
+          )}
+        </div>
+      )}
+
+      {!error && activeSection === 'phone-numbers' && (
+        <DataTable
+          columns={phoneColumns}
+          rows={phoneNumbers}
+          getRowKey={(row) => row.id}
+          loading={loading}
+          empty={<EmptyState title="Keine Nummern" description="Es sind noch keine maskierten Telefonnummern registriert." />}
+        />
+      )}
+
+      {!error && activeSection === 'deployments' && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Agent Deployments pro Organisation — wähle eine Organisation im Workspace-Drawer.
+          </p>
+          <DataTable
+            columns={orgColumns.filter((col) => ['org', 'voice', 'errors'].includes(col.key))}
+            rows={filteredOrganizations}
+            getRowKey={(row) => row.organizationId}
+            loading={loading}
+            onRowClick={(row) => void loadWorkspace(row.organizationId)}
+            rowActions={(row) => (
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-[10px] font-semibold hover:bg-muted"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openDeploy(row.organizationId);
+                }}
+              >
+                Deploy
+              </button>
+            )}
+          />
+        </div>
+      )}
+
+      {!error && activeSection === 'webhooks' && (
+        <DataTable
+          columns={webhookColumns}
+          rows={webhookEvents}
+          getRowKey={(row) => row.id}
+          loading={loading}
+          empty={<EmptyState title="Keine Events" description="Noch keine Webhook-Events erfasst." />}
+          rowActions={(row) => (
+            <button
+              type="button"
+              className="rounded-lg px-2 py-1 text-[10px] font-semibold hover:bg-muted"
+              onClick={() => openReplay(row.id)}
+            >
+              Replay
+            </button>
+          )}
+        />
+      )}
+
+      {!error && activeSection === 'usage' && (
+        <DataTable
+          columns={usageColumns}
+          rows={usageBilling}
+          getRowKey={(row) => row.organizationId}
+          loading={loading}
+          empty={<EmptyState title="Keine Usage-Daten" description="Billing-Daten werden geladen sobald Organisationen aktiv sind." />}
+        />
+      )}
+
+      {!error && activeSection === 'audit' && (
+        <DataTable
+          columns={auditColumns}
+          rows={auditEvents}
+          getRowKey={(row) => row.id}
+          loading={loading}
+          empty={<EmptyState title="Kein Audit-Trail" description="Noch keine sicheren Aktionen protokolliert." />}
+        />
       )}
 
       <DetailDrawer
@@ -365,169 +687,109 @@ export function VoiceAssistantAdminView() {
         onOpenChange={(open) => {
           if (!open) {
             setSelectedOrgId(null);
-            setOrgDetail(null);
+            setWorkspace(null);
           }
         }}
-        eyebrow="Organization voice assistant"
-        title={orgDetail?.organization?.companyName ?? selectedRow?.organizationName ?? 'Organization'}
+        eyebrow="Organisation Workspace"
+        title={workspace?.detail?.organization?.companyName ?? 'Organisation'}
         description={selectedOrgId ? `Org ID: ${selectedOrgId}` : undefined}
-        status={
-          selectedRow ? (
-            <StatusChip tone={statusTone(selectedRow.assistantStatus)}>{selectedRow.assistantStatus}</StatusChip>
-          ) : undefined
-        }
         widthClassName="sm:max-w-xl"
         footer={
           selectedOrgId ? (
             <div className="flex flex-wrap gap-2">
-              <button
+              <Button type="button" size="sm" onClick={() => openDeploy(selectedOrgId)}>
+                Agent deployen
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => openRollback(selectedOrgId)}>
+                Rollback
+              </Button>
+              <Button
                 type="button"
-                disabled={selectedRow?.assistantStatus === 'NOT_CONFIGURED' || syncingOrgId === selectedOrgId}
-                onClick={() => void syncOrganization(selectedOrgId)}
-                className="sq-press rounded-xl bg-[color:var(--brand)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                size="sm"
+                variant="destructive"
+                onClick={() =>
+                  openSuspend(selectedOrgId, workspace?.detail?.organization?.companyName ?? 'Organisation')
+                }
               >
-                {syncingOrgId === selectedOrgId ? 'Syncing…' : 'Sync conversations'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(selectedOrgId);
-                  toast.success('Organization ID copied');
-                }}
-                className="sq-press inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-xs font-semibold"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Copy org ID
-              </button>
+                Suspendieren
+              </Button>
             </div>
           ) : undefined
         }
       >
-        {detailLoading ? (
-          <div className="flex items-center justify-center py-16 text-xs text-muted-foreground">Loading…</div>
-        ) : !orgDetail ? (
-          <EmptyState title="No detail loaded" description="Select an organization from the table." />
-        ) : !orgDetail.exists ? (
-          <div className="space-y-4 p-5">
-            <EmptyState
-              title="No assistant configured"
-              description="This organization does not have a voice assistant row yet."
-            />
-            {orgDetail.warnings?.map((warning) => (
-              <p key={warning} className="text-xs text-amber-600 dark:text-amber-400">
-                {warning}
-              </p>
-            ))}
-          </div>
+        {workspaceLoading ? (
+          <div className="p-5 text-xs text-muted-foreground">Lade Workspace…</div>
+        ) : !workspace ? (
+          <EmptyState title="Kein Workspace" description="Organisation aus der Tabelle wählen." />
         ) : (
-          <div className="space-y-5 p-5">
-            {orgDetail.warnings && orgDetail.warnings.length > 0 && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1">
-                {orgDetail.warnings.map((warning) => (
-                  <p key={warning} className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                    {warning}
-                  </p>
-                ))}
-              </div>
-            )}
-
+          <div className="space-y-5 p-5 text-xs">
             <section>
-              <h4 className="sq-section-label mb-2">Configuration</h4>
-              <div className="grid gap-2 text-xs">
-                {[
-                  { label: 'Assistant', value: orgDetail.assistant?.name ?? '—' },
-                  { label: 'Voice', value: orgDetail.assistant?.voiceName ?? '—' },
-                  { label: 'Language', value: orgDetail.assistant?.language ?? '—' },
-                  { label: 'Phone', value: orgDetail.assistant?.phoneNumber ?? 'Not assigned' },
-                  { label: 'Inbound', value: orgDetail.assistant?.inboundEnabled ? 'On' : 'Off' },
-                  { label: 'Outbound', value: orgDetail.assistant?.outboundEnabled ? 'On' : 'Off' },
-                  {
-                    label: 'Agent',
-                    value: orgDetail.assistant?.hasAgent ? 'Provisioned' : 'Not provisioned',
-                  },
-                ].map((item) => (
-                  <div key={item.label} className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">{item.label}</span>
-                    <span className="font-semibold text-foreground text-right">{item.value}</span>
+              <h4 className="sq-section-label mb-2">Subaccounts</h4>
+              {workspace.providerAccounts.length === 0 ? (
+                <p className="text-muted-foreground">Keine Provider-Accounts</p>
+              ) : (
+                workspace.providerAccounts.map((account) => (
+                  <div key={account.id} className="flex justify-between gap-2 py-1">
+                    <span>{account.provider}</span>
+                    <span className="font-mono">{account.maskedExternalRef ?? '—'}</span>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </section>
 
-            {orgDetail.telephonyStatus && (
-              <section>
-                <h4 className="sq-section-label mb-2">Telephony</h4>
-                <StatusChip tone={orgDetail.telephonyStatus.inboundReady ? 'success' : 'warning'}>
-                  {orgDetail.telephonyStatus.label}
-                </StatusChip>
-                <p className="text-xs text-muted-foreground mt-2">{orgDetail.telephonyStatus.detail}</p>
-              </section>
-            )}
-
-            {orgDetail.readiness && (
-              <section>
-                <h4 className="sq-section-label mb-2">Readiness checklist</h4>
-                <div className="space-y-1.5">
-                  {orgDetail.readiness.checks.map((check) => (
-                    <div key={check.key} className="flex items-center gap-2 text-xs">
-                      {check.ok ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 text-red-400" />
-                      )}
-                      <span className={check.ok ? 'text-muted-foreground' : 'text-foreground'}>{check.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
             <section>
-              <h4 className="sq-section-label mb-2">Usage</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {[
-                  { label: 'Total calls', value: orgDetail.assistant?.totalCalls ?? 0 },
-                  { label: 'Answered', value: orgDetail.assistant?.answeredCalls ?? 0 },
-                  { label: 'Missed', value: orgDetail.assistant?.missedCalls ?? 0 },
-                  { label: 'Escalated', value: orgDetail.assistant?.escalatedCalls ?? 0 },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-lg bg-muted/40 px-3 py-2">
-                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
-                    <p className="text-lg font-bold tabular-nums">{item.value}</p>
-                  </div>
-                ))}
-              </div>
+              <h4 className="sq-section-label mb-2">Nummern (maskiert)</h4>
+              {workspace.phoneNumbers.map((number) => (
+                <div key={number.id} className="flex items-center justify-between gap-2 py-1">
+                  <span className="font-mono">{number.maskedPhoneNumber}</span>
+                  <button
+                    type="button"
+                    className="text-[10px] font-semibold text-[color:var(--brand)]"
+                    onClick={() => selectedOrgId && openReconnectNumber(selectedOrgId, number.id)}
+                  >
+                    Neu verbinden
+                  </button>
+                </div>
+              ))}
             </section>
 
-            {orgDetail.recentConversations && orgDetail.recentConversations.length > 0 ? (
-              <section>
-                <h4 className="sq-section-label mb-2">Recent conversations (summary)</h4>
-                <div className="space-y-2">
-                  {orgDetail.recentConversations.map((c) => (
-                    <div key={c.id} className="rounded-lg bg-muted/30 px-3 py-2 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold">{c.callerNumber ?? 'Unknown'}</span>
-                        <StatusChip tone={c.escalated ? 'warning' : 'neutral'}>{c.outcome}</StatusChip>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {new Date(c.startedAt).toLocaleString()} · {c.durationSeconds ? `${c.durationSeconds}s` : '—'}
-                      </p>
-                      {c.summary && <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{c.summary}</p>}
-                    </div>
-                  ))}
+            <section>
+              <h4 className="sq-section-label mb-2">Agent Deployment</h4>
+              <p className="text-muted-foreground">
+                Draft: {workspace.agentDeployment.draft ? 'vorhanden' : 'keiner'} · Diff:{' '}
+                {workspace.agentDeployment.diff ? 'verfügbar' : '—'}
+              </p>
+            </section>
+
+            <section>
+              <h4 className="sq-section-label mb-2 flex items-center gap-1">
+                <Shield className="h-3.5 w-3.5" />
+                Billing (Master)
+              </h4>
+              {workspace.billing ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-muted/40 px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">Minuten</p>
+                    <p className="font-bold tabular-nums">{workspace.billing.consumedMinutes.toFixed(1)}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/40 px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">Marge</p>
+                    <p className="font-bold tabular-nums">{centsToEuros(workspace.billing.marginCents)}</p>
+                  </div>
                 </div>
-              </section>
-            ) : (
-              <EmptyState compact title="No calls yet" description="Sync conversations after the assistant is active." />
-            )}
+              ) : (
+                <p className="text-muted-foreground">Keine Billing-Daten</p>
+              )}
+            </section>
 
             <p className="text-[10px] text-muted-foreground border-t border-border pt-3">
-              {orgDetail.costTracking?.message ?? 'Cost tracking not connected yet'}
+              Keine vollständigen Transkripte oder unmaskierten Telefonnummern in der Master-Ansicht.
             </p>
           </div>
         )}
       </DetailDrawer>
+
+      <VoiceSecureActionDialog request={secureAction} onClose={() => setSecureAction(null)} />
     </div>
   );
 }

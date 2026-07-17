@@ -34,7 +34,6 @@ export function VoiceTestCenter({
   const [phase, setPhase] = useState<SessionPhase>('idle');
   const [error, setError] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState<VoiceTestScenario | null>(null);
-  const [showDevDetails, setShowDevDetails] = useState(false);
   const [verdict, setVerdict] = useState<TestVerdict | null>(null);
   const [notes, setNotes] = useState('');
 
@@ -65,7 +64,6 @@ export function VoiceTestCenter({
     setSession(null);
     setPhase('idle');
     setError(null);
-    setShowDevDetails(false);
   };
 
   const startSession = async () => {
@@ -445,26 +443,7 @@ export function VoiceTestCenter({
         )}
       </section>
 
-      {/* Developer details */}
-      {session?.developerDetails?.signedUrl && (
-        <details
-          className="surface-premium rounded-2xl border border-border/40 shadow-[var(--shadow-1)]"
-          open={showDevDetails}
-          onToggle={e => setShowDevDetails((e.target as HTMLDetailsElement).open)}
-        >
-          <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold text-muted-foreground">
-            Developer details (signed WebSocket URL)
-          </summary>
-          <div className="border-t border-border/40 px-4 py-3">
-            <code className="block break-all rounded-lg bg-muted/30 p-2 font-mono text-[9px] text-muted-foreground">
-              {session.developerDetails.signedUrl}
-            </code>
-            <p className="mt-2 text-[9px] text-muted-foreground">
-              For engineering use with the ElevenLabs SDK. Operators should use Start test session above.
-            </p>
-          </div>
-        </details>
-      )}
+      {/* Signed provider URLs are not exposed to the browser for security. */}
     </div>
   );
 }
