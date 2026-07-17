@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-authz-tests-v49594-2026-07-17',
+    version: '4.9.594',
+    title: 'V4.9.594 — Stations V2: automatisiertes Authz-Testpaket (Prompt 14/78)',
+    summary: [
+      'Fixtures + Harness für Gate 1 (Permission) und Gate 2 (Station Scope) unter `backend/src/modules/stations/testing/`.',
+      '46 Matrix-Tests: alle Read-/Mutation-Endpunkte, ALL/ASSIGNED/NO_STATIONS, leere stationIds, archiviert, Cross-Tenant, Rollen.',
+      'Explizit: `:id` vs `stationId`, Listenfilter/KPI-Scope, Nested Fleet/Bookings, Set Primary, Vehicle Assignment, Archive/Restore.',
+      'Coverage-Doku `docs/testing/stations-v2-authz-coverage.md`; ergänzt bestehende Controller-/Scope-/Nested-Suites.',
+    ],
+    reason:
+      'Stations V2 Security Stack brauchte ein vollständiges, wiederholbares Authz-Testpaket für Regressionen bei Permissions und Scope.',
+    previousBehavior:
+      'Einzelne Controller-, Scope-Service- und Nested-Security-Tests ohne zentrale Persona-Matrix über alle Endpunkte und Scope-Modi.',
+    details:
+      'backend/src/modules/stations/stations-v2-authz.spec.ts, testing/stations-v2-authz.{fixtures,harness}.ts, docs/testing/stations-v2-authz-coverage.md.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T23:55:00.000Z',
+  },
+  {
     id: 'stations-v2-ui-permissions-v49593-2026-07-17',
     version: '4.9.593',
     title: 'V4.9.593 — Stations V2: UI an kanonische Permissions verdrahtet (Prompt 13/78)',
