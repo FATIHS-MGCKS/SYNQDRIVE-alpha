@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { VehicleEnrichmentJob, Prisma } from '@prisma/client';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { EnrichmentJobType, VehicleEnrichmentJob, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   parsePagination,
@@ -34,6 +34,11 @@ export class EnrichmentJobsService {
     vehicleId: string,
     data: Omit<Prisma.VehicleEnrichmentJobCreateInput, 'vehicle'>,
   ): Promise<VehicleEnrichmentJob> {
+    if (data.jobType === EnrichmentJobType.BRAKE) {
+      throw new BadRequestException(
+        'BRAKE enrichment jobs are deprecated. Use the canonical brake initialization workflow (direct lifecycle on registration or controlled backfill).',
+      );
+    }
     return this.prisma.vehicleEnrichmentJob.create({
       data: { ...data, vehicle: { connect: { id: vehicleId } } },
     });

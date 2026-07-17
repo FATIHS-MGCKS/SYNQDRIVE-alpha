@@ -1,100 +1,74 @@
 import { BrakeLifecycleService } from './brake-lifecycle.service';
+import { BrakeServiceApplicationService } from './brake-service-application.service';
+
+const mockApplication = {
+  apply: jest.fn(),
+} as unknown as BrakeServiceApplicationService;
 
 const mockPrisma = {
+  vehicle: {
+    findUnique: jest.fn().mockResolvedValue({ organizationId: 'org-1' }),
+  },
   vehicleServiceEvent: {
-    create: jest.fn(),
-    update: jest.fn(),
+    findFirst: jest.fn().mockResolvedValue(null),
   },
 } as any;
 
-const mockBrakeHealth = {
-  initializeFromService: jest.fn().mockResolvedValue({ initialized: true, message: 'ok' }),
-} as any;
-
-const mockBrakeEvidence = {
-  recordMany: jest.fn().mockResolvedValue({ count: 1 }),
-} as any;
-
-const svc = new BrakeLifecycleService(mockPrisma, mockBrakeHealth, mockBrakeEvidence);
+const svc = new BrakeLifecycleService(mockPrisma, mockApplication);
 
 describe('BrakeLifecycleService.recordService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPrisma.vehicleServiceEvent.create.mockResolvedValue({ id: 'evt-1' });
-    mockPrisma.vehicleServiceEvent.update.mockResolvedValue({});
+    (mockApplication.apply as jest.Mock).mockResolvedValue({
+      applicationId: 'app-1',
+      serviceEventId: 'evt-1',
+      replayed: false,
+      lifecycleApplied: true,
+      initialized: true,
+      status: 'initialized',
+      applicationStatus: 'APPLIED',
+      message: 'ok',
+      auditLog: [],
+      installationIds: [],
+      evidenceIds: [],
+      outboxProcessed: true,
+    });
   });
 
-  it('writes WORKSHOP_REPORT BrakeEvidence after manual service with measurements', async () => {
+  it('delegates to BrakeServiceApplicationService.apply', async () => {
     await svc.recordService({
       vehicleId: 'v1',
       serviceDate: '2026-06-01T10:00:00Z',
       odometerKm: 52000,
       source: 'manual',
+      kind: 'pads_service',
       measured: { frontPadMm: 8.5, rearPadMm: 7.2 },
+      clientRequestId: 'req-1',
     });
 
-    expect(mockBrakeEvidence.recordMany).toHaveBeenCalledTimes(1);
-    const rows = mockBrakeEvidence.recordMany.mock.calls[0][0];
-    expect(rows).toHaveLength(2);
-    expect(rows[0].source).toBe('WORKSHOP_REPORT');
-    expect(rows[0].measuredPadMm).toBe(8.5);
-    expect(rows[1].measuredPadMm).toBe(7.2);
+    expect(mockApplication.apply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org-1',
+        vehicleId: 'v1',
+        clientRequestId: 'req-1',
+      }),
+    );
   });
 
-  it('does not duplicate evidence for ai_document (handled by document extraction)', async () => {
-    await svc.recordService({
+  it('returns graceful failure when application throws', async () => {
+    (mockApplication.apply as jest.Mock).mockRejectedValueOnce(new Error('transaction rolled back'));
+    mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce({ id: 'evt-failed' });
+
+    const result = await svc.recordService({
       vehicleId: 'v1',
       serviceDate: '2026-06-01T10:00:00Z',
-      source: 'ai_document',
-      measured: { frontPadMm: 8.5 },
+      kind: 'pads_service',
+      measured: { frontPadMm: 8.8, rearPadMm: 8.1 },
+      clientRequestId: 'req-fail',
     });
 
-    expect(mockBrakeEvidence.recordMany).not.toHaveBeenCalled();
-  });
-
-  it('initializeFromRegistration uses manual_registration and spec fallback for NEW', async () => {
-    const result = await svc.initializeFromRegistration({
-      vehicleId: 'v1',
-      brakes: { condition: 'NEW' },
-      registrationMileageKm: null,
-      latestStateOdometerKm: null,
-    });
-
-    expect(result?.initialized).toBe(true);
-    expect(mockPrisma.vehicleServiceEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          brakeServiceSource: 'API',
-          brakeServiceKind: 'FULL_BRAKE_SERVICE',
-        }),
-      }),
-    );
-    expect(mockBrakeHealth.initializeFromService).toHaveBeenCalledWith(
-      'v1',
-      expect.objectContaining({ odometerKm: 0 }),
-    );
-    expect(mockBrakeEvidence.recordMany).not.toHaveBeenCalled();
-  });
-
-  it('initializeFromRegistration writes evidence for user-submitted measurements', async () => {
-    await svc.initializeFromRegistration({
-      vehicleId: 'v1',
-      brakes: {
-        condition: 'NEW',
-        frontPadThickness: 10.5,
-        rearPadThickness: 10.2,
-        odometerKm: 12,
-      },
-    });
-
-    expect(mockBrakeEvidence.recordMany).toHaveBeenCalledTimes(1);
-    expect(mockBrakeHealth.initializeFromService).toHaveBeenCalledWith(
-      'v1',
-      expect.objectContaining({
-        odometerKm: 12,
-        frontPadMm: 10.5,
-        rearPadMm: 10.2,
-      }),
-    );
+    expect(result.initialized).toBe(false);
+    expect(result.serviceEventId).toBe('evt-failed');
+    expect(result.message).toMatch(/initialization failed/i);
   });
 });

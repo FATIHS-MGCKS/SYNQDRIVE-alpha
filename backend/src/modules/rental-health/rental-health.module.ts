@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { RentalHealthController } from './rental-health.controller';
 import { RentalHealthService } from './rental-health.service';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
+import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { HighMobilityModule } from '../high-mobility/high-mobility.module';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
@@ -25,7 +26,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     ActivityLogModule,
   ],
   controllers: [RentalHealthController],
-  providers: [RentalHealthService, TireRentalHealthReviewService],
-  exports: [RentalHealthService, TireRentalHealthReviewService],
+  providers: [RentalHealthService, TireRentalHealthReviewService, BrakeRentalHealthReviewService],
+  exports: [RentalHealthService, TireRentalHealthReviewService, BrakeRentalHealthReviewService],
 })
 export class RentalHealthModule {}

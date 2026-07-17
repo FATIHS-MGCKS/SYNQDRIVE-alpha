@@ -13,7 +13,27 @@ import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
 import { BrakeEvidenceService } from './brakes/brake-evidence.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
+import { BrakeServiceApplicationService } from './brakes/brake-service-application.service';
+import { BrakeServiceOutboxService } from './brakes/brake-service-outbox.service';
+import { ValidateBrakeServiceScopePipe } from './brakes/brake-service-scope.validation';
+import { BrakeInitializationWorkflowService } from './brakes/brake-initialization-workflow.service';
+import { BrakeEnrichmentJobDiagnosticsService } from './brakes/brake-enrichment-job-diagnostics.service';
+import { BrakeRegistrationService } from './brakes/brake-registration.service';
+import { BrakeReferenceSpecService } from './brakes/brake-reference-spec.service';
 import { BrakeRegistrationBackfillService } from './brakes/brake-registration-backfill.service';
+import { BrakeBaselineCandidateAuditService } from './brakes/brake-baseline-candidate-audit.service';
+import { BrakeBaselineBackfillService } from './brakes/brake-baseline-backfill.service';
+import { DimoBrakingEventIntakeService } from './brakes/dimo-braking-event-intake.service';
+import { BrakeComponentInstallationService } from './brakes/brake-component-installation.service';
+import { BrakeComponentLifecycleService } from './brakes/brake-component-lifecycle.service';
+import { BrakeRecalculationOrchestratorService } from './brakes/brake-recalculation-orchestrator.service';
+import { BrakeRecalculationInputLoader } from './brakes/brake-recalculation-input.loader';
+import { BrakeHealthObservabilityService } from './brakes/brake-health-observability.service';
+import { BrakePredictionValidationService } from './brakes/brake-prediction-validation.service';
+import { BrakeHealthReplayService } from './brakes/brake-health-replay.service';
+import { BrakeDtcEvidenceProducerService } from './brakes/brake-dtc-evidence.producer';
+import { BrakeHealthAlertService } from './brakes/brake-health-alert.service';
+import { BrakeMetricsService } from './brakes/brake-metrics.service';
 import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-backfill.service';
 import { TireTripUsageBackfillService } from './tires/tire-trip-usage-backfill.service';
 import { TireTripUsageLedgerReconciliationService } from './tires/tire-trip-usage-ledger-reconciliation.service';
@@ -143,6 +163,8 @@ import { DrivingDecisionSummaryComputeJobHandler } from './driving-intelligence-
 import { DrivingHealthImpactPublishJobHandler } from './driving-intelligence-jobs/handlers/driving-health-impact-publish.handler';
 import { DrivingDecisionsService } from './driving-decisions/driving-decisions.service';
 import { DrivingDecisionsController } from './driving-decisions/driving-decisions.controller';
+import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
+import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
@@ -214,6 +236,7 @@ import {
       { name: QUEUE_NAMES.DRIVING_INTELLIGENCE },
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
       { name: QUEUE_NAMES.BATTERY_V2 },
+      { name: QUEUE_NAMES.BRAKE_RECALCULATION },
     ),
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController],
@@ -228,10 +251,31 @@ import {
     TireLifecycleService,
     TireIdentityService,
     BrakesService,
+    BrakeReferenceSpecService,
     BrakeHealthService,
     BrakeEvidenceService,
     BrakeLifecycleService,
+    BrakeServiceApplicationService,
+    BrakeServiceOutboxService,
+    ValidateBrakeServiceScopePipe,
+    BrakeInitializationWorkflowService,
+    BrakeEnrichmentJobDiagnosticsService,
+    BrakeRegistrationService,
     BrakeRegistrationBackfillService,
+    BrakeBaselineCandidateAuditService,
+    BrakeBaselineBackfillService,
+    DimoBrakingEventIntakeService,
+    BrakingEventLedgerService,
+    BrakeComponentInstallationService,
+    BrakeComponentLifecycleService,
+    BrakeRecalculationOrchestratorService,
+    BrakeRecalculationInputLoader,
+    BrakeHealthObservabilityService,
+    BrakePredictionValidationService,
+    BrakeHealthReplayService,
+    BrakeDtcEvidenceProducerService,
+    BrakeHealthAlertService,
+    BrakeMetricsService,
     TireOdometerAnchorBackfillService,
     TireTripUsageBackfillService,
     TireTripUsageLedgerReconciliationService,
@@ -370,6 +414,7 @@ import {
     DrivingDecisionSummaryComputeJobHandler,
     DrivingHealthImpactPublishJobHandler,
     DrivingDecisionsService,
+    TripDrivingImpactBackfillService,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,
@@ -400,10 +445,31 @@ import {
     TireLifecycleService,
     TireIdentityService,
     BrakesService,
+    BrakeReferenceSpecService,
     BrakeHealthService,
     BrakeEvidenceService,
     BrakeLifecycleService,
+    BrakeServiceApplicationService,
+    BrakeServiceOutboxService,
+    ValidateBrakeServiceScopePipe,
+    BrakeInitializationWorkflowService,
+    BrakeEnrichmentJobDiagnosticsService,
+    BrakeRegistrationService,
     BrakeRegistrationBackfillService,
+    BrakeBaselineCandidateAuditService,
+    BrakeBaselineBackfillService,
+    DimoBrakingEventIntakeService,
+    BrakingEventLedgerService,
+    BrakeComponentInstallationService,
+    BrakeComponentLifecycleService,
+    BrakeRecalculationOrchestratorService,
+    BrakeRecalculationInputLoader,
+    BrakeHealthObservabilityService,
+    BrakePredictionValidationService,
+    BrakeHealthReplayService,
+    BrakeDtcEvidenceProducerService,
+    BrakeHealthAlertService,
+    BrakeMetricsService,
     TireOdometerAnchorBackfillService,
     TireTripUsageBackfillService,
     TireTripUsageLedgerReconciliationService,
@@ -509,6 +575,8 @@ import {
     DrivingAnalysisReconciliationService,
     DriverAttributionRepository,
     DriverAttributionService,
+    TripDrivingImpactBackfillService,
+    EnergyEventsService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,
     TripReconciliationService,

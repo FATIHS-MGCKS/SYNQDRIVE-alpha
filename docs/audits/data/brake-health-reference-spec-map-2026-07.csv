@@ -1,0 +1,31 @@
+field,inSchema,schemaLocation,usedInWearFormula,conflictPriority,sourceTypeHandling,defaultOrFallback,plausibleRange,formulaImpact,confidenceImpact,missingFromSchema,risk,phase2FindingId
+frontRotorDiameter,yes,VehicleBrakeReferenceSpec.front_rotor_diameter,no,none,string sourceType only,none,vehicle-specific mm,none,none,not used in wear,Low,
+frontRotorWidth,yes,VehicleBrakeReferenceSpec.front_rotor_width,yes as disc anchor,3 after measured,sourceType string,spec value if no measured disc mm,typically 20-30 mm width NOT thickness,CRITICAL mislabeled as disc thickness anchor,spec_fallback_anchor DOCUMENTED basis,confused with disc wear depth,High,P0-BH-14
+frontPadThickness,yes,VehicleBrakeReferenceSpec.front_pad_thickness,yes as pad anchor,3 after measured,sourceType string,10mm NEW registration default,pads 8-14 mm new typical,direct pad anchor and usableMm calc,spec fallback not HIGH measured,none,High,P0-BH-11
+rearRotorDiameter,yes,VehicleBrakeReferenceSpec.rear_rotor_diameter,no,none,string,none,vehicle-specific,none,none,not used,Low,
+rearRotorWidth,yes,VehicleBrakeReferenceSpec.rear_rotor_width,yes as rear disc anchor,3 after measured,string,spec value,rear often thinner than front,same WIDTH-as-thickness bug,spec_fallback DOCUMENTED,confused with wear depth,High,P0-BH-14
+rearPadThickness,yes,VehicleBrakeReferenceSpec.rear_pad_thickness,yes as rear pad anchor,3 after measured,string,10mm NEW default,rear often 8-12 mm,direct anchor,spec fallback,none,High,P0-BH-11
+sourceType,yes,VehicleBrakeReferenceSpec.source_type,no,metadata only,free string manual_registration,manual_registration,unvalidated,none,none,no enum no confidence,Medium,P1-BH-28
+brakeForceFrontPercent,yes,Vehicle.brake_force_front_percent,yes brake bias,1 over EBD default,vehicle master,0.72 defaultFront if null,40-80 % typical,divides wear rate by defaultFront scales biasShare,indirect via confidence if missing,none,Medium,
+powertrain fuelType,yes,Vehicle.fuel_type,yes reku factor,2,enum mapped in config,ICE 1.0,ICE HEV PHEV EV keys,padRekuFactors discRekuFactors static not telematics,static factor only,real regen not measured,High,P1-BH-29
+vehicleType,yes,Vehicle.vehicle_type,no,none,N/A,N/A,N/A,none,none,not in brake model,Low,
+minDiscThicknessMm,no,N/A,no,N/A,N/A,generic maxWearMm 2.0 global,per OEM 18-22 mm typical,uses anchor minus fixed 2mm not OEM min,none,critical safety field missing,High,P1-BH-30
+minPadThicknessMm,no,N/A,partial via config pad.criticalMm 2.0,N/A,global constant,2.0 mm critical,legal ~2mm Germany,usableMm = anchor - 2.0,none,no per-material limit,Medium,
+manufacturerWearLimit,no,N/A,no,N/A,N/A,N/A,N/A,none,none,missing,Medium,
+wearSensorThreshold,no,N/A,no,N/A,N/A,N/A,N/A,none,none,BRAKE_WEAR_SENSOR unused,High,P0-BH-06
+partNumber,no,N/A,no,N/A,N/A,N/A,N/A,none,none,no component identity,High,P0-BH-09
+discType,no,N/A,no,N/A,N/A,N/A,vented solid ceramic,none,none,ceramic carbon steel not distinguished,High,P1-BH-31
+padMaterial,no,N/A,no,N/A,N/A,N/A,organic ceramic,none,none,missing,Medium,
+drumBrake,no,N/A,no,N/A,N/A,treated as disc model,drums not modeled,applies disc wear to wrong component,none,unsupported architecture,High,P1-BH-32
+electronicParkingBrake,no,N/A,no,N/A,N/A,N/A,N/A,none,none,missing,Low,
+regenSystemDetail,no,N/A,static fuelType map only,N/A,padRekuFactors,EV 0.72 pad,real regen varies,static discount not measured regen,overconfidence for EV,High,P1-BH-29
+sourceUrl,no,N/A,no,N/A,N/A,N/A,N/A,none,none,missing,Low,
+specConfidence,no,N/A,no,N/A,N/A,N/A,N/A,confidence points from anchor not spec meta,none,missing,Medium,
+userConfirmation,no,N/A,implicit on registration manual,N/A,registration form,auto HIGH evidence confidence,unvalidated user input,HIGH on manual measurement,none,Medium,P1-BH-33
+validityPeriod,no,N/A,no,N/A,N/A,N/A,N/A,none,none,stale spec never expires,Medium,P1-BH-04
+frontPartIdentity,no,N/A,no,N/A,N/A,scalar fields only,no UUID per pad set,partial service cannot target component,none,no lifecycle component row,High,P0-BH-09
+rearPartIdentity,no,N/A,no,N/A,N/A,scalar fields only,same,partial service bug,none,no component entity,High,P0-BH-09
+conflictResolution measured vs spec,logic,initializeFromService L515-519,measured wins per field then spec fills nulls,1 measured 2 spec 3 config default,inline code,per-field coalesce,measured mm overrides spec for that axle component,full row still written for all components,measured_anchor vs spec_fallback_anchor status,scope ignored,High,P0-BH-10
+AI spec treatment,logic,document-extraction-apply,AI_UPLOAD after CONFIRMED status,DOCUMENTED basis not auto-measured,user confirm required,OCR values trusted post-confirm,plausibility not blocking,can init via allowsSpecFallback kinds,documented HIGH confidence,OCR error risk,Medium,P1-BH-22
+nominal as measured risk,logic,registration NEW defaults,applyNewBrakeDefaults writes 10mm to spec NOT measured snapshot,spec only unless user typed mm,DOCUMENTED not MEASURED,10mm pads,appears as new pad thickness,ESTIMATED/DOCUMENTED stateClass,not HIGH unless user mm,design intentional,Medium,P1-BH-25
+disc max wear assumption,config,brake-health.config disc.maxWearMm,2.0 mm total wear for ALL discs,global not per anchor,config constant,2.0 mm,real discs vary 1-4 mm+,healthPct uses fixed maxWear not anchor-relative minimum,wrong remaining km,High,P1-BH-30

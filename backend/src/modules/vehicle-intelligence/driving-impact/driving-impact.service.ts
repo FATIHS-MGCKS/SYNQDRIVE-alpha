@@ -5,6 +5,7 @@ import {
   DrivingEventSource,
   DrivingEventType,
   HardwareType,
+  TripDrivingImpactAnalysisStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
@@ -51,6 +52,16 @@ import {
 import { readVehicleDrivingImpactRollingWindow } from '../driving-impact-rolling/driving-impact-rolling.reader';
 import type { DrivingImpactRollingWindowManifest } from '../driving-impact-rolling/driving-impact-rolling.types';
 import {
+  assessSourceCompleteness,
+  buildSourceVersion,
+  buildTripDrivingImpactSourceFingerprint,
+  computeDistanceDiscrepancyKm,
+  mapAnalysisStatusToDrivingImpactStatus,
+  resolveAnalysisStatus,
+  resolveCanonicalTripDistance,
+  type TripDrivingImpactComputeOutcome,
+} from './trip-driving-impact-coverage.domain';
+import {
   computeLongitudinalStressScore,
   computeBrakingStressScore,
   computeStopGoStressScore,
@@ -58,6 +69,7 @@ import {
   computeThermalBrakeStressScore,
   computeDrivingStressScore,
 } from './driving-impact-scorer';
+import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 
 // ── Public consumer DTOs ──────────────────────────────────────────────────────
 
@@ -137,6 +149,7 @@ export class DrivingImpactService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly brakingLedger?: BrakingEventLedgerService,
   ) {}
 
   // ── Main computation entry point ────────────────────────────────────────────
@@ -144,16 +157,29 @@ export class DrivingImpactService {
   /**
    * Compute and persist the Driving Impact snapshot for a finalized trip.
    * Should be called only after HF enrichment has completed for the trip.
-   *
-   * Returns true on success, false if the trip was skipped (too short,
-   * missing required data, etc).
    */
-  async computeForTrip(tripId: string, vehicleId: string): Promise<boolean> {
+  async computeForTrip(tripId: string, vehicleId: string): Promise<TripDrivingImpactComputeOutcome> {
+    const skipped = (skipReason: string): TripDrivingImpactComputeOutcome => ({
+      processed: false,
+      action: 'skipped',
+      analysisStatus: TripDrivingImpactAnalysisStatus.UNSUPPORTED,
+      shouldRecalculateBrake: false,
+      tripId,
+      sourceFingerprint: null,
+      authoritativeDistanceKm: null,
+      sourceCompleteness: null,
+      distanceDiscrepancyKm: null,
+      skipReason,
+    });
+
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
       select: {
         id: true,
         vehicleId: true,
+        tripStatus: true,
+        createdAt: true,
+        behaviorEnrichmentStatus: true,
         vehicle: { select: { organizationId: true, hardwareType: true, fuelType: true } },
         startTime: true,
         endTime: true,
@@ -183,23 +209,51 @@ export class DrivingImpactService {
 
     if (!trip) {
       this.logger.warn(`DrivingImpact: trip ${tripId} not found`);
-      return false;
+      return skipped('trip_not_found');
     }
 
-    const distanceKm = trip.distanceKm ?? 0;
+    const canonical = resolveCanonicalTripDistance({
+      distanceKm: trip.distanceKm,
+      tripStatus: trip.tripStatus,
+      endTime: trip.endTime,
+    });
+    if (!canonical) {
+      return skipped('trip_not_final_or_missing_distance');
+    }
 
-    // Guard: skip trips below the minimum reliable normalization threshold
+    const distanceKm = canonical.authoritativeDistanceKm;
+
     if (distanceKm < C.MINIMUM_RELIABLE_TRIP_KM) {
       this.logger.debug(
         `DrivingImpact: skipping trip ${tripId} — distance ${distanceKm.toFixed(2)} km < ` +
         `${C.MINIMUM_RELIABLE_TRIP_KM} km minimum`,
       );
-      return false;
+      return skipped('below_minimum_reliable_trip_km');
     }
+
+    const existingTdi = await this.prisma.tripDrivingImpact.findUnique({
+      where: { tripId },
+      select: {
+        sourceFingerprint: true,
+        analysisStatus: true,
+        authoritativeDistanceKm: true,
+        tripDistanceKmAtSource: true,
+      },
+    });
 
     const organizationId = trip.vehicle?.organizationId ?? null;
     const hardwareType = trip.vehicle?.hardwareType ?? HardwareType.UNKNOWN;
     const useTelemetryDrivingEvents = hardwareType === HardwareType.LTE_R1;
+
+    if (this.brakingLedger && organizationId) {
+      await this.brakingLedger.reconcileTrip(tripId, {
+        expectedOrganizationId: organizationId,
+      });
+    }
+    const ledgerSummary =
+      this.brakingLedger && organizationId
+        ? await this.brakingLedger.getCanonicalSummaryForTrip(tripId)
+        : null;
 
     const [
       nativeEventCount,
@@ -325,10 +379,22 @@ export class DrivingImpactService {
     const tripDurationHours = resolveTripDurationHours(trip.startTime, trip.endTime);
 
     const hardAccelCount = trip.hardAccelerationCount ?? 0;
-    const hardBrakeCount = trip.hardBrakingCount ?? 0;
-    const fullBrakingCount = trip.fullBrakingCount ?? 0;
+    let hardBrakeCount = trip.hardBrakingCount ?? 0;
+    let fullBrakingCount = trip.fullBrakingCount ?? 0;
     const kickdownCount = trip.kickdownCount ?? 0;
-    const brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
+    let brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
+
+    if (ledgerSummary && ledgerSummary.totalCanonicalEvents > 0) {
+      hardBrakeCount = ledgerSummary.hardBrakeCount;
+      extremeBrakeCount = ledgerSummary.extremeBrakeCount;
+      fullBrakingCount = ledgerSummary.fullBrakingCount;
+      brakesTotal = ledgerSummary.totalBrakingEvents;
+    }
+
+    const brakingEventCount =
+      ledgerSummary && ledgerSummary.totalCanonicalEvents > 0
+        ? ledgerSummary.brakingEventRows.length
+        : classifiedBrakingRows.length;
 
     const highSpeedBrakeCount = classifiedBrakingRows.filter(
       (e) => (e.startSpeedKmh ?? 0) >= C.HIGH_SPEED_BRAKE_THRESHOLD_KMH,
@@ -538,6 +604,81 @@ export class DrivingImpactService {
       profileGatedScores,
     );
 
+    const sourceCompleteness = assessSourceCompleteness({
+      useTelemetryDrivingEvents,
+      brakingEventCount,
+      citySharePct,
+      highwaySharePct,
+      hasTripCounts:
+        (trip.hardAccelerationCount ?? 0) > 0 ||
+        (trip.hardBrakingCount ?? 0) > 0 ||
+        brakesTotal > 0,
+    });
+
+    const sourceVersion = buildSourceVersion(C.MODEL_VERSION);
+    const sourceFingerprint = buildTripDrivingImpactSourceFingerprint({
+      tripId,
+      vehicleId,
+      authoritativeDistanceKm: distanceKm,
+      sourceVersion,
+      hardAccelerationCount: hardAccelCount,
+      hardBrakingCount: hardBrakeCount,
+      fullBrakingCount,
+      brakingEventCount: brakesTotal,
+      citySharePct,
+      highwaySharePct,
+      countryRoadSharePct,
+      behaviorEnrichmentStatus: trip.behaviorEnrichmentStatus,
+      telemetryInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
+      tripUpdatedAt: trip.endTime?.toISOString() ?? trip.createdAt.toISOString(),
+    });
+
+    const tripDistanceChanged =
+      existingTdi?.tripDistanceKmAtSource != null &&
+      computeDistanceDiscrepancyKm(trip.distanceKm, existingTdi.tripDistanceKmAtSource) >
+        0.001;
+
+    const analysisStatus = resolveAnalysisStatus({
+      canonicalDistance: canonical,
+      sourceCompleteness,
+      existingStatus: existingTdi?.analysisStatus ?? null,
+      tripDistanceChanged,
+    });
+
+    if (
+      existingTdi?.sourceFingerprint === sourceFingerprint &&
+      existingTdi.analysisStatus !== TripDrivingImpactAnalysisStatus.STALE
+    ) {
+      return {
+        processed: true,
+        action: 'unchanged',
+        analysisStatus: existingTdi.analysisStatus,
+        shouldRecalculateBrake: false,
+        tripId,
+        sourceFingerprint,
+        authoritativeDistanceKm: existingTdi.authoritativeDistanceKm ?? distanceKm,
+        sourceCompleteness: sourceCompleteness.score,
+        distanceDiscrepancyKm: 0,
+      };
+    }
+
+    const calculatedAt = new Date();
+    const distanceDiscrepancyKm = computeDistanceDiscrepancyKm(
+      trip.distanceKm,
+      distanceKm,
+    );
+
+    const coverageFields = {
+      authoritativeDistanceKm: distanceKm,
+      sourceVersion,
+      sourceFingerprint,
+      analysisStatus,
+      calculatedAt,
+      sourceCompleteness: sourceCompleteness.score,
+      tripDistanceKmAtSource: trip.distanceKm ?? distanceKm,
+      distanceDiscrepancyKm,
+    };
+
     // Speeding/Safety score retired from rental and new impact persistence (V4.8.24).
     // Trip-level speeding metrics remain on VehicleTrip for route enrichment traceability.
     const speedingExposurePct = trip.speedingExposurePct ?? 0;
@@ -630,12 +771,14 @@ export class DrivingImpactService {
             },
           },
           modelProfile: modelProfileManifest,
+          canonicalDistanceSource: 'vehicle_trip.distance_km',
+          sourceCompleteness: sourceCompleteness.score,
         },
         loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),
+        ...coverageFields,
       },
       update: {
-        // Re-run is idempotent: update all computed fields if impact is recomputed
         tripStartedAt: trip.startTime,
         tripEndedAt: trip.endTime ?? null,
         distanceKm,
@@ -702,16 +845,26 @@ export class DrivingImpactService {
             },
           },
           modelProfile: modelProfileManifest,
+          canonicalDistanceSource: 'vehicle_trip.distance_km',
+          sourceCompleteness: sourceCompleteness.score,
         },
         loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),
+        ...coverageFields,
       },
     });
 
-    // Compatibility mirror: VehicleTrip.drivingScore stores stress (higher = more load).
     await this.prisma.vehicleTrip.update({
       where: { id: tripId },
-      data: { drivingScore: gatedDrivingStress },
+      data: {
+        drivingScore: gatedDrivingStress,
+        drivingImpactStatus: mapAnalysisStatusToDrivingImpactStatus(analysisStatus),
+        drivingImpactComputedAt:
+          analysisStatus === TripDrivingImpactAnalysisStatus.COMPLETE ||
+          analysisStatus === TripDrivingImpactAnalysisStatus.PARTIAL
+            ? calculatedAt
+            : undefined,
+      },
     });
 
     if (trip.drivingScore != null && gatedDrivingStress != null) {
@@ -733,7 +886,17 @@ export class DrivingImpactService {
 
     await this.updateRollingCurrent(vehicleId, organizationId);
 
-    return true;
+    return {
+      processed: true,
+      action: existingTdi ? 'updated' : 'created',
+      analysisStatus,
+      shouldRecalculateBrake: true,
+      tripId,
+      sourceFingerprint,
+      authoritativeDistanceKm: distanceKm,
+      sourceCompleteness: sourceCompleteness.score,
+      distanceDiscrepancyKm,
+    };
   }
 
   // ── Rolling aggregate ───────────────────────────────────────────────────────

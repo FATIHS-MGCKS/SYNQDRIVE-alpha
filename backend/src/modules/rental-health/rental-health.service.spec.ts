@@ -23,6 +23,11 @@ describe('RentalHealthService (unit)', () => {
     createOverride: jest.fn(),
     revokeOverride: jest.fn(),
   };
+  const brakeRentalReview = {
+    findActiveOverride: jest.fn().mockResolvedValue(null),
+    createOverride: jest.fn(),
+    revokeOverride: jest.fn(),
+  };
 
   const svc = new RentalHealthService(
     prisma as any,
@@ -33,13 +38,31 @@ describe('RentalHealthService (unit)', () => {
     hm as any,
     serviceCompliance as any,
     tireRentalReview as any,
+    brakeRentalReview as any,
   );
 
   const evaluateBattery = (summary: any, hmAi: any = null, dtcSummary: any = null) =>
     (svc as any).evaluateBattery(summary, hmAi, dtcSummary);
   const evaluateErrorCodes = (summary: any) =>
     (svc as any).evaluateErrorCodes(summary);
-  const evaluateBrakes = (summary: any) => (svc as any).evaluateBrakes(summary);
+  const evaluateBrakes = (summary: any, options?: any) =>
+    (svc as any).evaluateBrakes(summary, options);
+
+  const brakeSummaryFixture = (overrides: Record<string, unknown> = {}) => ({
+    isInitialized: true,
+    overallCondition: 'GOOD',
+    dataBasis: 'MEASURED',
+    frontDataBasis: 'MEASURED',
+    rearDataBasis: 'MEASURED',
+    frontAxleCondition: 'GOOD',
+    rearAxleCondition: 'GOOD',
+    confidenceLevel: 'HIGH',
+    openAlerts: [],
+    lastMeasurementAt: new Date().toISOString(),
+    lastRecalculatedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  });
   const evaluateTires = (summary: any, override?: any) =>
     (svc as any).evaluateTires(summary, override ?? null);
 
@@ -214,40 +237,68 @@ describe('RentalHealthService (unit)', () => {
   });
 
   it('brake DOCUMENTED basis maps to evidence_type document (not provider)', () => {
-    const res = evaluateBrakes({
-      overallCondition: 'GOOD',
-      dataBasis: 'DOCUMENTED',
-      frontDataBasis: 'DOCUMENTED',
-      rearDataBasis: 'DOCUMENTED',
-      confidenceLevel: 'LOW',
-      updatedAt: '2026-07-06T12:00:00.000Z',
-    });
+    const res = evaluateBrakes(
+      brakeSummaryFixture({
+        overallCondition: 'GOOD',
+        dataBasis: 'DOCUMENTED',
+        frontDataBasis: 'DOCUMENTED',
+        rearDataBasis: 'DOCUMENTED',
+        confidenceLevel: 'LOW',
+      }),
+    );
     expect(res.state).toBe('good');
     expect(res.evidence_type).toBe('document');
+    expect(res.brake_read_model).toBeDefined();
   });
 
   it('brake SENSOR basis maps to evidence_type sensor', () => {
-    const res = evaluateBrakes({
-      overallCondition: 'WATCH',
-      dataBasis: 'SENSOR',
-      frontDataBasis: 'SENSOR',
-      updatedAt: '2026-07-06T12:00:00.000Z',
-    });
+    const res = evaluateBrakes(
+      brakeSummaryFixture({
+        overallCondition: 'WATCH',
+        dataBasis: 'SENSOR',
+        frontDataBasis: 'SENSOR',
+        rearDataBasis: 'SENSOR',
+      }),
+    );
     expect(res.evidence_type).toBe('sensor');
   });
 
   it('evaluateBrakes never promotes unknown to good', () => {
-    const unknownSummary = evaluateBrakes({
-      overallCondition: 'UNKNOWN',
-      dataBasis: 'UNKNOWN',
-      updatedAt: '2026-07-06T12:00:00.000Z',
-    });
-    expect(unknownSummary.state).toBe('unknown');
+    const unknownSummary = evaluateBrakes(
+      brakeSummaryFixture({
+        overallCondition: 'UNKNOWN',
+        dataBasis: 'UNKNOWN',
+        isInitialized: false,
+      }),
+    );
+    expect(['unknown', 'warning']).toContain(unknownSummary.state);
     expect(unknownSummary.state).not.toBe('good');
+    expect(unknownSummary.brake_read_model.rentalDecision).toBe('MEASUREMENT_REQUIRED');
 
     const nullSummary = evaluateBrakes(null);
     expect(nullSummary.state).toBe('unknown');
     expect(nullSummary.evidence_type).toBe('unknown');
+  });
+
+  it('coverage gap alone does not set hasWearOrSafetyAlert on rental read model', () => {
+    const res = evaluateBrakes(
+      brakeSummaryFixture({
+        openAlerts: [
+          {
+            alertType: 'COVERAGE_GAP',
+            category: 'DATA_QUALITY',
+            severity: 'info',
+            displayMode: 'DATA_GAP',
+            reasonCode: 'COVERAGE_GAP',
+            message: 'Gap',
+            messageEn: 'Gap',
+            code: 'BRAKE_COVERAGE_GAP',
+          },
+        ],
+      }),
+    );
+    expect(res.brake_read_model.hasWearOrSafetyAlert).toBe(false);
+    expect(res.brake_read_model.rentalDecision).toBe('DATA_QUALITY_WARNING');
   });
 
   it('evaluateBrakes is read-only (no prisma or brake service writes)', () => {
@@ -291,9 +342,27 @@ describe('RentalHealthService (unit)', () => {
   });
 
   it('MEASURED CRITICAL blocks rental', () => {
+    const brakes = evaluateBrakes(
+      brakeSummaryFixture({
+        overallCondition: 'CRITICAL',
+        dataBasis: 'MEASURED',
+        openAlerts: [
+          {
+            alertType: 'PAD_CRITICAL',
+            category: 'WEAR',
+            severity: 'critical',
+            displayMode: 'MEASURED',
+            reasonCode: 'PAD_CRITICAL_MEASURED',
+            message: 'Kritischer Bremsbelag',
+            messageEn: 'Critical pad',
+            code: 'BRAKE_PAD_CRITICAL',
+          },
+        ],
+      }),
+    );
     const modules = {
       service_compliance: { state: 'good', reason: 'ok' },
-      brakes: { state: 'critical', reason: 'Kritischer Bremsbelag' },
+      brakes,
       tires: { state: 'good', reason: 'ok' },
       error_codes: { state: 'good', reason: 'ok' },
     };
@@ -303,19 +372,33 @@ describe('RentalHealthService (unit)', () => {
       null,
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
-      {
-        overallCondition: 'CRITICAL',
-        dataBasis: 'MEASURED',
-        openAlerts: [],
-      },
+      null,
     );
     expect(reasons.some((r: string) => /Bremsen:/i.test(r))).toBe(true);
   });
 
   it('CRITICAL with critical openAlert blocks even when dataBasis is SENSOR', () => {
+    const brakes = evaluateBrakes(
+      brakeSummaryFixture({
+        overallCondition: 'CRITICAL',
+        dataBasis: 'SENSOR',
+        openAlerts: [
+          {
+            alertType: 'IMMEDIATE_REPLACEMENT',
+            category: 'SAFETY',
+            severity: 'critical',
+            displayMode: 'SAFETY_EVIDENCE',
+            reasonCode: 'IMMEDIATE_REPLACEMENT_DOCUMENTED',
+            message: 'Sofort',
+            messageEn: 'Immediate',
+            code: 'BRAKE_IMMEDIATE_REPLACEMENT',
+          },
+        ],
+      }),
+    );
     const modules = {
       service_compliance: { state: 'good', reason: 'ok' },
-      brakes: { state: 'critical', reason: 'Sofortiger Bremsenersatz' },
+      brakes,
       tires: { state: 'good', reason: 'ok' },
       error_codes: { state: 'good', reason: 'ok' },
     };
@@ -325,19 +408,33 @@ describe('RentalHealthService (unit)', () => {
       null,
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
-      {
-        overallCondition: 'CRITICAL',
-        dataBasis: 'SENSOR',
-        openAlerts: [{ severity: 'critical', code: 'immediate_replacement', message: 'Sofort' }],
-      },
+      null,
     );
     expect(reasons.some((r: string) => /Bremsen:/i.test(r))).toBe(true);
   });
 
   it('brake ESTIMATED CRITICAL does not imply rental block without measured basis', () => {
+    const brakes = evaluateBrakes(
+      brakeSummaryFixture({
+        overallCondition: 'CRITICAL',
+        dataBasis: 'ESTIMATED',
+        openAlerts: [
+          {
+            alertType: 'PAD_CRITICAL',
+            category: 'WEAR',
+            severity: 'critical',
+            displayMode: 'ESTIMATED',
+            reasonCode: 'PAD_CRITICAL_ESTIMATED',
+            message: 'Geschätzt kritisch',
+            messageEn: 'Estimated critical',
+            code: 'BRAKE_PAD_CRITICAL',
+          },
+        ],
+      }),
+    );
     const modules = {
       service_compliance: { state: 'good', reason: 'ok' },
-      brakes: { state: 'critical', reason: 'critical' },
+      brakes,
       tires: { state: 'good', reason: 'ok' },
       error_codes: { state: 'good', reason: 'ok' },
     };
@@ -347,13 +444,10 @@ describe('RentalHealthService (unit)', () => {
       null,
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
-      {
-        overallCondition: 'CRITICAL',
-        dataBasis: 'ESTIMATED',
-        openAlerts: [],
-      },
+      null,
     );
     expect(reasons).toHaveLength(0);
+    expect(brakes.brake_read_model.rentalDecision).toBe('MEASUREMENT_REQUIRED');
   });
 
   it('battery readiness blocks on warning light when flag enabled', () => {

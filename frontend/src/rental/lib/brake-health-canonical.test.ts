@@ -26,8 +26,7 @@ describe('Brake health UI — canonical-only consumption', () => {
       expect(src).not.toMatch(pattern);
     }
     expect(src).toMatch(/overallCondition/);
-    expect(src).toMatch(/frontAxle/);
-    expect(src).toMatch(/rearAxle/);
+    expect(src).toMatch(/BrakeEvidencePanel/);
   });
 
   it('HealthErrorsView brake modal does not reference legacy detail pad/disc estimates', () => {
@@ -36,8 +35,8 @@ describe('Brake health UI — canonical-only consumption', () => {
     expect(src).not.toMatch(/bhd\?\.rearPads/);
     expect(src).not.toMatch(/bhd\?\.frontDiscs/);
     expect(src).not.toMatch(/bhd\?\.rearDiscs/);
-    expect(src).toMatch(/overallCondition/);
-    expect(src).toMatch(/frontAxle/);
+    expect(src).toMatch(/BrakeEvidencePanel/);
+    expect(src).toMatch(/brakeOverviewLabel/);
   });
 
   it('HealthVehicleDetailPanel brakes tab does not show legacy health percent', () => {
@@ -48,5 +47,39 @@ describe('Brake health UI — canonical-only consumption', () => {
     expect(brakesBlock).not.toMatch(/padsHealthPct|discsHealthPct/);
     expect(brakesBlock).not.toMatch(/showPercent|percent=/);
     expect(brakesBlock).toMatch(/overallCondition/);
+  });
+
+  it('vehicle-health-box.mapper does not use legacy remainingKm', () => {
+    const src = readComponent('components/vehicle-detail/vehicle-health-box.mapper.ts');
+    expect(src).not.toMatch(/legacy\?\.remainingKm/);
+    expect(src).toMatch(/brakeOverviewLabel/);
+    expect(src).toMatch(/brakeRemainingKmLabel/);
+  });
+
+  it('vehicle-forecast-engine does not use legacy remainingKm', () => {
+    const src = readComponent('components/vehicle-forecast-engine.ts');
+    expect(src).not.toMatch(/legacy\?\.remainingKm/);
+    expect(src).toMatch(/estimatedReplacementDueInKm/);
+  });
+
+  it('brake-rental-health-ui reads brake_read_model only', () => {
+    const src = readFileSync(join(__dirname, 'brake-rental-health-ui.ts'), 'utf8');
+    expect(src).toMatch(/brake_read_model/);
+    expect(src).not.toMatch(/padsHealthPct|legacy\.remainingKm/);
+  });
+
+  it('HealthErrorsView uses brake evidence presentation helpers', () => {
+    const src = readComponent('components/HealthErrorsView.tsx');
+    expect(src).toMatch(/brakeOverviewLabel/);
+    expect(src).toMatch(/BrakeEvidencePanel/);
+    expect(src).toMatch(/BRAKE_SERVICE_KIND_OPTIONS/);
+    expect(src).not.toMatch(/bhd\?\.frontPads/);
+  });
+
+  it('brake-health-evidence-ui module exists with i18n labels', () => {
+    const src = readFileSync(join(__dirname, 'brake-health-evidence-ui.ts'), 'utf8');
+    expect(src).toMatch(/BrakeUiLocale/);
+    expect(src).toMatch(/labelDe/);
+    expect(src).toMatch(/labelEn/);
   });
 });

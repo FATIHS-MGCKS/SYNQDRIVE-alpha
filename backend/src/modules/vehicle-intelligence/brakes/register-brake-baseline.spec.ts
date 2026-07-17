@@ -6,6 +6,7 @@ import {
   registrationBrakeMeasuredSnapshot,
   resolveRegistrationBrakeOdometerKm,
   shouldInitializeBrakesFromRegistration,
+  validateRegistrationBrakeInput,
 } from './register-brake-baseline';
 
 describe('register-brake-baseline', () => {
@@ -82,12 +83,42 @@ describe('register-brake-baseline', () => {
     });
   });
 
+  describe('validateRegistrationBrakeInput', () => {
+    it('rejects implausible pad thickness', () => {
+      const result = validateRegistrationBrakeInput({ frontPadThickness: 40 });
+      expect(result.valid).toBe(false);
+      expect(result.errors.join(' ')).toMatch(/plausible maximum/i);
+    });
+
+    it('accepts realistic registration values', () => {
+      const result = validateRegistrationBrakeInput({
+        condition: 'NEW',
+        frontPadThickness: 10.5,
+        rearPadThickness: 10.2,
+        odometerKm: 1200,
+      });
+      expect(result.valid).toBe(true);
+    });
+  });
+
   describe('registrationBrakeMeasuredSnapshot', () => {
     it('returns undefined when no user measurements were submitted', () => {
       expect(registrationBrakeMeasuredSnapshot({ condition: 'NEW' })).toBeUndefined();
     });
 
-    it('maps pad and rotor width fields', () => {
+    it('maps confirmed pad and disc nominal fields only', () => {
+      expect(
+        registrationBrakeMeasuredSnapshot({
+          frontPadThickness: 10,
+          frontDiscNominalThicknessMm: 28,
+        }),
+      ).toEqual({
+        frontPadMm: 10,
+        frontDiscMm: 28,
+      });
+    });
+
+    it('does not treat legacy rotor width as measured disc thickness', () => {
       expect(
         registrationBrakeMeasuredSnapshot({
           frontPadThickness: 10,
@@ -95,7 +126,6 @@ describe('register-brake-baseline', () => {
         }),
       ).toEqual({
         frontPadMm: 10,
-        rearDiscMm: 28,
       });
     });
   });

@@ -96,6 +96,15 @@ import {
 import { HealthServiceActions } from './health/HealthServiceActions';
 import { TechnicalObservationsHealthModule } from './health/TechnicalObservationsHealthModule';
 import { useFleetVehicles } from '../FleetContext';
+import {
+  brakeOverviewLabel,
+  brakeRemainingKmLabel,
+  BRAKE_SERVICE_KIND_OPTIONS,
+  BRAKE_SERVICE_SCOPE_OPTIONS,
+  brakeServiceScopeResetsComponent,
+} from '../lib/brake-health-evidence-ui';
+import { BrakeEvidencePanel } from './health/BrakeEvidencePanel';
+import type { BrakeServiceKindInput, BrakeServiceScopeInput } from '../../lib/api';
 
 interface HealthErrorsViewProps {
   vehicleId?: string;
@@ -284,7 +293,18 @@ export function HealthErrorsView({
   const [brakeHealthDetail, setBrakeHealthDetail] = useState<BrakeHealthDetail | null>(null);
   const [showBrakeEntry, setShowBrakeEntry] = useState(false);
   const [brakeEntryMode, setBrakeEntryMode] = useState<'manual' | 'upload' | null>(null);
-  const [brakeForm, setBrakeForm] = useState({ date: '', odometerKm: '', workshopName: '', notes: '', frontPadMm: '', rearPadMm: '', frontRotorWidthMm: '', rearRotorWidthMm: '' });
+  const [brakeForm, setBrakeForm] = useState({
+    date: '',
+    odometerKm: '',
+    workshopName: '',
+    notes: '',
+    kind: 'full_brake_service' as BrakeServiceKindInput,
+    scope: ['front_pads', 'rear_pads', 'front_discs', 'rear_discs'] as BrakeServiceScopeInput[],
+    frontPadMm: '',
+    rearPadMm: '',
+    frontRotorWidthMm: '',
+    rearRotorWidthMm: '',
+  });
   const [submittingBrake, setSubmittingBrake] = useState(false);
   const [tripProfile, setTripProfile] = useState<TripProfile | null>(null);
   const [batteryRecentTrips, setBatteryRecentTrips] = useState<VehicleTripAnalytics[]>([]);
@@ -982,18 +1002,40 @@ export function HealthErrorsView({
         workshopName: brakeForm.workshopName || undefined,
         notes: brakeForm.notes || undefined,
         source: 'manual',
-        kind: 'full_brake_service',
-        measured: {
-          frontPadMm: brakeForm.frontPadMm ? parseFloat(brakeForm.frontPadMm) : undefined,
-          rearPadMm: brakeForm.rearPadMm ? parseFloat(brakeForm.rearPadMm) : undefined,
-          frontDiscMm: brakeForm.frontRotorWidthMm ? parseFloat(brakeForm.frontRotorWidthMm) : undefined,
-          rearDiscMm: brakeForm.rearRotorWidthMm ? parseFloat(brakeForm.rearRotorWidthMm) : undefined,
-        },
-        initializeIfPossible: true,
+        kind: brakeForm.kind,
+        scope: brakeForm.scope.length > 0 ? brakeForm.scope : undefined,
+        measured: brakeServiceScopeResetsComponent(brakeForm.kind)
+          ? {
+              frontPadMm: brakeForm.scope.includes('front_pads') && brakeForm.frontPadMm
+                ? parseFloat(brakeForm.frontPadMm)
+                : undefined,
+              rearPadMm: brakeForm.scope.includes('rear_pads') && brakeForm.rearPadMm
+                ? parseFloat(brakeForm.rearPadMm)
+                : undefined,
+              frontDiscMm: brakeForm.scope.includes('front_discs') && brakeForm.frontRotorWidthMm
+                ? parseFloat(brakeForm.frontRotorWidthMm)
+                : undefined,
+              rearDiscMm: brakeForm.scope.includes('rear_discs') && brakeForm.rearRotorWidthMm
+                ? parseFloat(brakeForm.rearRotorWidthMm)
+                : undefined,
+            }
+          : undefined,
+        initializeIfPossible: brakeServiceScopeResetsComponent(brakeForm.kind),
       });
       setShowBrakeEntry(false);
       setBrakeEntryMode(null);
-      setBrakeForm({ date: '', odometerKm: '', workshopName: '', notes: '', frontPadMm: '', rearPadMm: '', frontRotorWidthMm: '', rearRotorWidthMm: '' });
+      setBrakeForm({
+        date: '',
+        odometerKm: '',
+        workshopName: '',
+        notes: '',
+        kind: 'full_brake_service',
+        scope: ['front_pads', 'rear_pads', 'front_discs', 'rear_discs'],
+        frontPadMm: '',
+        rearPadMm: '',
+        frontRotorWidthMm: '',
+        rearRotorWidthMm: '',
+      });
       refreshBrakeHealth();
     } catch { /* error */ }
     setSubmittingBrake(false);
@@ -1474,8 +1516,8 @@ export function HealthErrorsView({
           const brakeAccent = quickCardAccentFromRentalState(rentalHealth?.modules.brakes.state);
           const basisLabel = bhs?.dataBasis ? BRAKE_BASIS_LABEL[bhs.dataBasis] : null;
           const confLabel = bhs?.confidenceLevel ? BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] : null;
-          const frontRange = formatBrakeKmRange(bhs?.estimatedFrontRemainingKmMin, bhs?.estimatedFrontRemainingKmMax);
-          const rearRange = formatBrakeKmRange(bhs?.estimatedRearRemainingKmMin, bhs?.estimatedRearRemainingKmMax);
+          const overview = brakeOverviewLabel(bhs, 'de');
+          const remainingLabel = brakeRemainingKmLabel(bhs, 'de');
           const nextInspection = bhs?.nextInspectionRecommendedInKm ?? null;
           const openAlerts = bhs?.openAlerts ?? [];
           const tintBg = brakeAccent.backdrop;
@@ -1506,11 +1548,10 @@ export function HealthErrorsView({
                 </div>
                 {hasData ? (
                   <div className="space-y-1">
+                    <p className="text-[10px] font-medium text-foreground">{overview}</p>
                     <p className="text-[10px] font-medium text-muted-foreground">
-                      Front: <span className="font-bold text-foreground tabular-nums">{frontRange ?? '—'}</span>
-                    </p>
-                    <p className="text-[10px] font-medium text-muted-foreground">
-                      Rear: <span className="font-bold text-foreground tabular-nums">{rearRange ?? '—'}</span>
+                      Restlaufzeit:{' '}
+                      <span className="font-bold text-foreground tabular-nums">{remainingLabel}</span>
                     </p>
                     {nextInspection != null && (
                       <p className="text-[10px] font-medium text-muted-foreground">
@@ -2307,94 +2348,20 @@ export function HealthErrorsView({
                         : 'Brake wear estimation starts after a documented baseline with odometer and thickness anchor.'}
                   </p>
 
-                  {/* ── Canonical condition (evidence-based read model — measured vs estimated honesty) ── */}
-                  {bhs && (bhs.overallCondition !== 'UNKNOWN' || bhs.reasons.length > 0 || bhs.openAlerts.length > 0) && (() => {
-                    const overall = bhs.overallCondition ?? 'UNKNOWN';
-                    const oStyle = brakeConditionStyle(overall);
-                    const axleRow = (
-                      title: string,
-                      cond: string,
-                      basis: string,
-                      conf: string,
-                      min: number | null,
-                      max: number | null,
-                    ) => {
-                      const s = brakeConditionStyle(cond);
-                      const range = formatBrakeKmRange(min, max);
-                      return (
-                        <div className={`rounded-xl p-3 ${cardBg}`}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <p className={lbl}>{title}</p>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${s.pill}`}><span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{s.label}</span>
-                          </div>
-                          <p className={sub}>{BRAKE_BASIS_LABEL[basis] ?? 'Unknown'}{conf ? ` · ${BRAKE_CONFIDENCE_LABEL[conf] ?? 'Unknown'} confidence` : ''}</p>
-                          <p className={`${val} mt-1`}>{range ? `${range} left` : 'Remaining life n/a'}</p>
-                        </div>
-                      );
-                    };
-                    return (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${oStyle.pill}`}><span className={`w-2 h-2 rounded-full ${oStyle.dot}`} />{oStyle.label}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold 'sq-chip-neutral'`}>{BRAKE_BASIS_LABEL[bhs.dataBasis] ?? 'Unknown'} basis</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold 'sq-chip-neutral'`}>{BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] ?? 'Unknown'} confidence</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          {axleRow('Front Axle', bhs.frontAxle?.condition ?? bhs.frontAxleCondition, bhs.frontAxle?.dataBasis ?? bhs.frontDataBasis, bhs.frontAxle?.confidence ?? bhs.frontConfidence, bhs.frontAxle?.estimatedRemainingKmMin ?? bhs.estimatedFrontRemainingKmMin, bhs.frontAxle?.estimatedRemainingKmMax ?? bhs.estimatedFrontRemainingKmMax)}
-                          {axleRow('Rear Axle', bhs.rearAxle?.condition ?? bhs.rearAxleCondition, bhs.rearAxle?.dataBasis ?? bhs.rearDataBasis, bhs.rearAxle?.confidence ?? bhs.rearConfidence, bhs.rearAxle?.estimatedRemainingKmMin ?? bhs.estimatedRearRemainingKmMin, bhs.rearAxle?.estimatedRemainingKmMax ?? bhs.estimatedRearRemainingKmMax)}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div className={`rounded-xl p-3 ${cardBg}`}>
-                            <p className={lbl}>Next inspection</p>
-                            <p className={`${val} mt-1`}>{bhs.nextInspectionRecommendedInKm != null ? `${Math.round(bhs.nextInspectionRecommendedInKm).toLocaleString('de-DE')} km` : '—'}</p>
-                          </div>
-                          <div className={`rounded-xl p-3 ${cardBg}`}>
-                            <p className={lbl}>Replacement due in</p>
-                            <p className={`${val} mt-1`}>{bhs.estimatedReplacementDueInKm != null ? `${Math.round(bhs.estimatedReplacementDueInKm).toLocaleString('de-DE')} km` : '—'}</p>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div className={`rounded-xl p-3 ${cardBg}`}>
-                            <p className={lbl}>Last measurement</p>
-                            <p className={`${val} mt-1`}>{bhs.lastMeasurementAt ? (formatMeasuredAgo(bhs.lastMeasurementAt) ?? new Date(bhs.lastMeasurementAt).toLocaleDateString('de-DE')) : '—'}</p>
-                            {bhs.lastMeasurementMileageKm != null && <p className={sub}>@ {bhs.lastMeasurementMileageKm.toLocaleString('de-DE')} km</p>}
-                          </div>
-                          <div className={`rounded-xl p-3 ${cardBg}`}>
-                            <p className={lbl}>Last service</p>
-                            <p className={`${val} mt-1`}>{bhs.lastServiceAt ? (formatMeasuredAgo(bhs.lastServiceAt) ?? new Date(bhs.lastServiceAt).toLocaleDateString('de-DE')) : '—'}</p>
-                            {bhs.lastServiceMileageKm != null && <p className={sub}>@ {bhs.lastServiceMileageKm.toLocaleString('de-DE')} km</p>}
-                          </div>
-                        </div>
-                        {bhs.openAlerts.length > 0 && (
-                          <div className="mb-3 space-y-1.5">
-                            <h3 className={hSec}>Open Alerts</h3>
-                            {bhs.openAlerts.map((a, i) => (
-                              <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-2 ${a.severity === 'critical' ? 'sq-tone-critical' : a.severity === 'warning' ? 'sq-tone-watch' : 'sq-tone-info'}`}>
-                                <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-status-info'}`} />
-                                <p className="text-[11px] text-foreground">{a.message}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {bhs.recommendations.length > 0 && (
-                          <div className="mb-3">
-                            <h3 className={hSec}>Recommendations</h3>
-                            <ul className="space-y-1">
-                              {bhs.recommendations.map((r, i) => (<li key={i} className={sub}>• {r}</li>))}
-                            </ul>
-                          </div>
-                        )}
-                        {bhs.reasons.length > 0 && (
-                          <div className="mb-4">
-                            <h3 className={hSec}>Why this status</h3>
-                            <ul className="space-y-1">
-                              {bhs.reasons.map((r, i) => (<li key={i} className={sub}>• {r}</li>))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  {/* ── Canonical evidence panel (per-component honesty) ── */}
+                  {bhs && (
+                    <BrakeEvidencePanel
+                      summary={bhs}
+                      locale="de"
+                      onAction={(code) => {
+                        if (code === 'RECORD_SERVICE' || code === 'MEASURE_THICKNESS') {
+                          setShowBrakeEntry(true);
+                          setBrakeEntryMode('manual');
+                        }
+                      }}
+                      className="mb-4"
+                    />
+                  )}
 
                   {/* ── NOT INITIALIZED STATE ── */}
                   {!v2 && (
@@ -2527,18 +2494,65 @@ export function HealthErrorsView({
                     {showBrakeEntry && brakeEntryMode === 'manual' && (
                       <div className={`rounded-xl p-4 ${cardBg}`}>
                         <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className={`block ${lbl} mb-1`}>Service type</label>
+                            <select
+                              value={brakeForm.kind}
+                              onChange={(e) => setBrakeForm((p) => ({
+                                ...p,
+                                kind: e.target.value as BrakeServiceKindInput,
+                              }))}
+                              className={`w-full px-3 py-2 rounded-lg text-xs border bg-background border-border text-foreground`}
+                            >
+                              {BRAKE_SERVICE_KIND_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.labelEn}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className={`block ${lbl} mb-1`}>Scope</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {BRAKE_SERVICE_SCOPE_OPTIONS.map((opt) => {
+                                const checked = brakeForm.scope.includes(opt.value);
+                                return (
+                                  <label key={opt.value} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] border ${checked ? 'border-violet-500 bg-violet-500/10' : 'border-border'}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => setBrakeForm((p) => ({
+                                        ...p,
+                                        scope: checked
+                                          ? p.scope.filter((s) => s !== opt.value)
+                                          : [...p.scope, opt.value],
+                                      }))}
+                                      className="sr-only"
+                                    />
+                                    {opt.labelEn}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
                           <div><label className={`block ${lbl} mb-1`}>Date *</label><input type="date" value={brakeForm.date} onChange={e => setBrakeForm(p => ({ ...p, date: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground'`} /></div>
                           <div><label className={`block ${lbl} mb-1`}>Odometer (km)</label><input type="number" value={brakeForm.odometerKm} onChange={e => setBrakeForm(p => ({ ...p, odometerKm: e.target.value }))} placeholder="Current mileage" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                           <div><label className={`block ${lbl} mb-1`}>Workshop</label><input type="text" value={brakeForm.workshopName} onChange={e => setBrakeForm(p => ({ ...p, workshopName: e.target.value }))} placeholder="Optional" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                           <div><label className={`block ${lbl} mb-1`}>Notes</label><input type="text" value={brakeForm.notes} onChange={e => setBrakeForm(p => ({ ...p, notes: e.target.value }))} placeholder="e.g. Front pads + discs" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                         </div>
-                        <p className={`${lbl} mt-2 mb-2`}>New Component Specs (optional — enables V2 tracking)</p>
+                        <p className={`${lbl} mt-2 mb-2`}>
+                          {brakeServiceScopeResetsComponent(brakeForm.kind)
+                            ? 'Measured thickness (optional — per scoped component)'
+                            : 'Inspection / fluid service — no component reset'}
+                        </p>
+                        {brakeServiceScopeResetsComponent(brakeForm.kind) && (
                         <div className="grid grid-cols-4 gap-3 mb-3">
                           <div><label className={`block ${lbl} mb-1`}>Front Pad mm</label><input type="number" step="0.1" value={brakeForm.frontPadMm} onChange={e => setBrakeForm(p => ({ ...p, frontPadMm: e.target.value }))} placeholder="12" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                           <div><label className={`block ${lbl} mb-1`}>Rear Pad mm</label><input type="number" step="0.1" value={brakeForm.rearPadMm} onChange={e => setBrakeForm(p => ({ ...p, rearPadMm: e.target.value }))} placeholder="10" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                           <div><label className={`block ${lbl} mb-1`}>Front Rotor W mm</label><input type="number" step="0.1" value={brakeForm.frontRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, frontRotorWidthMm: e.target.value }))} placeholder="28" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Rear Rotor W mm</label><input type="number" step="0.1" value={brakeForm.rearRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, rearRotorWidthMm: e.target.value }))} placeholder="22" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Rear Rotor W mm</label><input type="number" step="0.1" value={brakeForm.rearRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, rearRotorWidthMm: e.target.value }))} placeholder="22" disabled={!brakeForm.scope.includes('rear_discs')} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground disabled:opacity-50'`} /></div>
                         </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <button onClick={handleLogBrakeChange} disabled={submittingBrake || !brakeForm.date} className="px-4 py-2 rounded-lg text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors">{submittingBrake ? 'Saving...' : 'Save Brake Service'}</button>
                           <button onClick={() => { setShowBrakeEntry(false); setBrakeEntryMode(null); }} className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors 'text-muted-foreground hover:text-foreground'`}>Cancel</button>

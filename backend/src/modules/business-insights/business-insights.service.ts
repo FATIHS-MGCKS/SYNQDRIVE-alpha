@@ -5,6 +5,7 @@ import { projectVehicleHealthWarnings } from '@modules/notifications/adapters/re
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { DtcService } from '@modules/vehicle-intelligence/dtc/dtc.service';
 import { TireHealthAlertService } from '@modules/vehicle-intelligence/tires/tire-health-alert.service';
+import { BrakeHealthAlertService } from '@modules/vehicle-intelligence/brakes/brake-health-alert.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
@@ -66,6 +67,7 @@ export class BusinessInsightsService {
     @Optional() private readonly rentalHealth?: RentalHealthService,
     @Optional() private readonly dtcService?: DtcService,
     @Optional() private readonly tireHealthAlerts?: TireHealthAlertService,
+    @Optional() private readonly brakeHealthAlerts?: BrakeHealthAlertService,
   ) {
     this.detectors = [
       tightHandover,
@@ -394,7 +396,14 @@ export class BusinessInsightsService {
                   label,
                 })
               : [];
-            return [...rentalSources, ...tireSources];
+            const brakeSources = this.brakeHealthAlerts
+              ? await this.brakeHealthAlerts.listOpenAlertNotificationSources({
+                  organizationId,
+                  vehicleId: vehicle.id,
+                  label,
+                })
+              : [];
+            return [...rentalSources, ...tireSources, ...brakeSources];
           } catch (err) {
             this.logger.warn(
               `Vehicle health notification projection failed for ${vehicle.id}: ${(err as Error).message}`,

@@ -119,15 +119,25 @@ export class DimoDtcProcessor extends WorkerHost {
       const previousCodes = new Set(previousActive.map((e) => e.dtcCode));
       const newCodeSet = new Set(newCodes);
 
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { organizationId: true },
+      });
+      const producerContext = {
+        sourceProvider: 'DIMO' as const,
+        sourceTimestamp: dtcSignal?.timestamp ? new Date(dtcSignal.timestamp) : now,
+        organizationId: vehicle?.organizationId ?? null,
+      };
+
       // Upsert codes that are present in the new poll
       for (const code of newCodes) {
-        await this.dtcService.upsertDtc(vehicleId, code);
+        await this.dtcService.upsertDtc(vehicleId, code, { producerContext });
       }
 
       // Clear codes that were active but are no longer present
       for (const code of previousCodes) {
         if (!newCodeSet.has(code)) {
-          await this.dtcService.clearDtc(vehicleId, code);
+          await this.dtcService.clearDtc(vehicleId, code, { producerContext });
           this.logger.log(
             `DTC cleared: vehicleId=${vehicleId} code=${code}`,
           );

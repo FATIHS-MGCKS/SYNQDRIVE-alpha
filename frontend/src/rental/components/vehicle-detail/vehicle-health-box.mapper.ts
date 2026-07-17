@@ -53,6 +53,10 @@ import {
   tireUiStatusLabel,
 } from '../../lib/tire-health-detail-ui';
 import {
+  brakeOverviewLabel,
+  brakeRemainingKmLabel,
+} from '../../lib/brake-health-evidence-ui';
+import {
   mapDataCoverageDisplay,
   mapHealthSeverityDisplay,
   type HealthSeverityDisplay,
@@ -479,15 +483,14 @@ export function buildVehicleHealthBoxViewModel(params: {
   const dataCoverage = mapDataCoverageDisplay({ rentalHealth, trackedCount, untrackedCount });
 
   const brakesDetail = (() => {
-    const remKm = brakes?.estimatedReplacementDueInKm ?? brakes?.legacy?.remainingKm ?? null;
-    if (remKm != null) return `~${Math.round(remKm / 1000)}k km remaining`;
-    const frontMin = brakes?.estimatedFrontRemainingKmMin;
-    if (frontMin != null) return `Front ~${Math.round(frontMin / 1000)}k km`;
+    const overview = brakeOverviewLabel(brakes, 'en');
+    const rem = brakeRemainingKmLabel(brakes, 'en');
+    if (rem !== '—') return `${overview} · ${rem}`;
     if (brakes?.stateClass === 'WARNING_ONLY') return 'Warning-only telemetry';
-    if (brakes?.stateClass === 'NO_BASELINE') return 'No baseline';
-    if (brakeCond === 'GOOD') return 'Healthy';
-    if (brakeCond === 'WATCH' || brakeCond === 'WARNING') return 'Check soon';
-    return brakesTracked ? 'Service needed' : 'No tracking';
+    if (brakes?.stateClass === 'NO_BASELINE') return overview;
+    if (brakeCond === 'GOOD') return overview;
+    if (brakeCond === 'WATCH' || brakeCond === 'WARNING') return `${overview} · Check soon`;
+    return brakesTracked ? overview : 'No tracking';
   })();
 
   const tiresDetail = (() => {

@@ -182,7 +182,7 @@ export class DocumentExtractionApplyService {
       documentUrl: sourceFileUrl ?? undefined,
     });
 
-    // Persist confirmed brake observations as canonical evidence. AI_UPLOAD is
+    // Persist confirmed brake observations as canonical evidence. AI_UPLOAD_CONFIRMED is
     // a trusted (post-confirmation) mm source, so measured pad/disc mm values
     // are allowed; the evidence service strips any value that lacks a signal.
     const odometerKm = this.toNum(d?.odometerKm);
@@ -198,7 +198,7 @@ export class DocumentExtractionApplyService {
 
     const base = {
       vehicleId,
-      source: BrakeEvidenceSource.AI_UPLOAD,
+      source: BrakeEvidenceSource.AI_UPLOAD_CONFIRMED,
       confidence: BrakeEvidenceConfidence.HIGH,
       mileageAtMeasurementKm: odometerKm,
       measuredAt,

@@ -1,4 +1,9 @@
 import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
+import {
+  BRAKE_REFERENCE_SPEC_PLAUSIBILITY,
+  validateLegacyRotorWidthPlausibility,
+  validateThicknessPlausibility,
+} from './brake-reference-spec.domain';
 
 export type RegistrationBrakeCondition = 'NEW' | 'USED' | 'UNKNOWN';
 
@@ -10,20 +15,128 @@ export interface RegistrationBrakeManualSpec {
   frontRotorDiameter?: number | null;
   frontRotorWidth?: number | null;
   frontPadThickness?: number | null;
+  frontPadNominalThicknessMm?: number | null;
   rearRotorDiameter?: number | null;
   rearRotorWidth?: number | null;
   rearPadThickness?: number | null;
+  rearPadNominalThicknessMm?: number | null;
+  frontDiscNominalThicknessMm?: number | null;
+  rearDiscNominalThicknessMm?: number | null;
   source?: string | null;
+  sourceUrl?: string | null;
+  sourcePartNumber?: string | null;
+  sourceProvider?: string | null;
+  sourceConfidence?: number | null;
+  userConfirmedAt?: string | null;
+  userConfirmedBy?: string | null;
 }
 
 const NUMERIC_BRAKE_FIELDS = [
   'frontRotorDiameter',
   'frontRotorWidth',
   'frontPadThickness',
+  'frontPadNominalThicknessMm',
   'rearRotorDiameter',
   'rearRotorWidth',
   'rearPadThickness',
+  'rearPadNominalThicknessMm',
+  'frontDiscNominalThicknessMm',
+  'rearDiscNominalThicknessMm',
 ] as const satisfies ReadonlyArray<keyof RegistrationBrakeManualSpec>;
+
+const ODO_MAX = 5_000_000;
+
+export interface RegistrationBrakeValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+function checkPositiveMm(
+  errors: string[],
+  label: string,
+  value: unknown,
+  max: number,
+): void {
+  if (value == null) return;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    errors.push(`${label} must be a positive number`);
+    return;
+  }
+  if (value > max) {
+    errors.push(`${label} exceeds plausible maximum (${max} mm)`);
+  }
+}
+
+function checkOdometer(errors: string[], value: unknown): void {
+  if (value == null) return;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    errors.push('odometerKm must be a non-negative number');
+    return;
+  }
+  if (value > ODO_MAX) {
+    errors.push(`odometerKm exceeds plausible maximum (${ODO_MAX} km)`);
+  }
+}
+
+/** Server-side plausibility checks for registration brake payloads. */
+export function validateRegistrationBrakeInput(
+  brakes: RegistrationBrakeManualSpec,
+): RegistrationBrakeValidationResult {
+  const errors: string[] = [];
+
+  checkPositiveMm(errors, 'frontPadThickness', brakes.frontPadThickness, BRAKE_REFERENCE_SPEC_PLAUSIBILITY.pad.maxMm);
+  checkPositiveMm(errors, 'rearPadThickness', brakes.rearPadThickness, BRAKE_REFERENCE_SPEC_PLAUSIBILITY.pad.maxMm);
+  checkPositiveMm(
+    errors,
+    'frontPadNominalThicknessMm',
+    brakes.frontPadNominalThicknessMm,
+    BRAKE_REFERENCE_SPEC_PLAUSIBILITY.pad.maxMm,
+  );
+  checkPositiveMm(
+    errors,
+    'rearPadNominalThicknessMm',
+    brakes.rearPadNominalThicknessMm,
+    BRAKE_REFERENCE_SPEC_PLAUSIBILITY.pad.maxMm,
+  );
+  if (brakes.frontDiscNominalThicknessMm != null) {
+    const disc = validateThicknessPlausibility('FRONT_DISCS', brakes.frontDiscNominalThicknessMm);
+    if (!disc.valid) errors.push(...disc.errors);
+  }
+  if (brakes.rearDiscNominalThicknessMm != null) {
+    const disc = validateThicknessPlausibility('REAR_DISCS', brakes.rearDiscNominalThicknessMm);
+    if (!disc.valid) errors.push(...disc.errors);
+  }
+  if (brakes.frontRotorWidth != null) {
+    const rotor = validateLegacyRotorWidthPlausibility('front', brakes.frontRotorWidth);
+    if (!rotor.valid) errors.push(...rotor.errors);
+  }
+  if (brakes.rearRotorWidth != null) {
+    const rotor = validateLegacyRotorWidthPlausibility('rear', brakes.rearRotorWidth);
+    if (!rotor.valid) errors.push(...rotor.errors);
+  }
+  checkPositiveMm(
+    errors,
+    'frontRotorDiameter',
+    brakes.frontRotorDiameter,
+    BRAKE_REFERENCE_SPEC_PLAUSIBILITY.rotorDiameter.maxMm,
+  );
+  checkPositiveMm(
+    errors,
+    'rearRotorDiameter',
+    brakes.rearRotorDiameter,
+    BRAKE_REFERENCE_SPEC_PLAUSIBILITY.rotorDiameter.maxMm,
+  );
+  checkOdometer(errors, brakes.odometerKm);
+
+  if (brakes.serviceDate != null && String(brakes.serviceDate).trim() !== '') {
+    const parsed = new Date(brakes.serviceDate);
+    if (Number.isNaN(parsed.getTime())) {
+      errors.push('serviceDate must be a valid ISO-8601 date');
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
 
 function toPositiveNumber(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
@@ -50,9 +163,11 @@ export function normalizeRegistrationBrakeCondition(
 export function hasRegistrationBrakeMeasurements(brakes: RegistrationBrakeManualSpec): boolean {
   return (
     toPositiveNumber(brakes.frontPadThickness) != null ||
+    toPositiveNumber(brakes.frontPadNominalThicknessMm) != null ||
     toPositiveNumber(brakes.rearPadThickness) != null ||
-    toPositiveNumber(brakes.frontRotorWidth) != null ||
-    toPositiveNumber(brakes.rearRotorWidth) != null
+    toPositiveNumber(brakes.rearPadNominalThicknessMm) != null ||
+    toPositiveNumber(brakes.frontDiscNominalThicknessMm) != null ||
+    toPositiveNumber(brakes.rearDiscNominalThicknessMm) != null
   );
 }
 
@@ -110,10 +225,14 @@ export function registrationBrakeMeasuredSnapshot(
   frontDiscMm?: number;
   rearDiscMm?: number;
 } | undefined {
-  const frontPadMm = toPositiveNumber(brakes.frontPadThickness);
-  const rearPadMm = toPositiveNumber(brakes.rearPadThickness);
-  const frontDiscMm = toPositiveNumber(brakes.frontRotorWidth);
-  const rearDiscMm = toPositiveNumber(brakes.rearRotorWidth);
+  const frontPadMm =
+    toPositiveNumber(brakes.frontPadNominalThicknessMm) ??
+    toPositiveNumber(brakes.frontPadThickness);
+  const rearPadMm =
+    toPositiveNumber(brakes.rearPadNominalThicknessMm) ??
+    toPositiveNumber(brakes.rearPadThickness);
+  const frontDiscMm = toPositiveNumber(brakes.frontDiscNominalThicknessMm);
+  const rearDiscMm = toPositiveNumber(brakes.rearDiscNominalThicknessMm);
   if (frontPadMm == null && rearPadMm == null && frontDiscMm == null && rearDiscMm == null) {
     return undefined;
   }

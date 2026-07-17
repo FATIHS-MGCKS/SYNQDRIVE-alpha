@@ -267,6 +267,20 @@ export const BRAKE_HEALTH_CONFIG = {
     staleDays: 540,
   },
 
+  // ── Evidence lifecycle (revision-safe dedupe / freshness) ─────────────────────
+  evidenceLifecycle: {
+    /** Dedupe bucket width for producer retries and duplicate uploads. */
+    timestampBucketMs: 60 * 60_000,
+    /** Immediate-replacement evidence auto-expires after this many days. */
+    immediateReplacementTtlDays: 90,
+    /** Provider warning evidence auto-expires after this many days. */
+    providerWarningTtlDays: 30,
+    /** Evidence older than this is considered stale for safety aggregation. */
+    staleAfterDays: 540,
+    /** DTC poll staleness threshold (mirrors DTC producer). */
+    dtcStaleThresholdMs: 6 * 60 * 60_000,
+  },
+
   // ── Registration defaults (documented nominal baseline, not measured truth) ─
 
   registration: {

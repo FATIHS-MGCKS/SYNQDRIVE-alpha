@@ -34,8 +34,18 @@ export type BrakeAlertCode =
   | 'BRAKE_PAD_CRITICAL'
   | 'BRAKE_DISC_WARNING'
   | 'BRAKE_DISC_CRITICAL'
+  | 'BRAKE_LOW_REMAINING_KM'
+  | 'BRAKE_ABS_WARNING'
   | 'BRAKE_SYSTEM_DTC'
   | 'BRAKE_FLUID_WARNING'
+  | 'BRAKE_IMMEDIATE_REPLACEMENT'
+  | 'BRAKE_WEAR_SENSOR'
+  | 'BRAKE_NO_BASELINE'
+  | 'BRAKE_SPEC_UNCONFIRMED'
+  | 'BRAKE_COVERAGE_GAP'
+  | 'BRAKE_DISTANCE_CONFLICT'
+  | 'BRAKE_MEASUREMENT_REQUIRED'
+  | 'BRAKE_STALE_EVIDENCE'
   | 'BRAKE_INSPECTION_OVERDUE'
   | 'BRAKE_HEALTH_LOW_CONFIDENCE'
   | 'BRAKE_GENERIC';
@@ -177,6 +187,38 @@ export function classifyMeasuredThickness(
   return 'GOOD';
 }
 
+export interface MeasuredThicknessThresholdInput {
+  criticalThresholdMm: number | null;
+  warningThresholdMm: number | null;
+  confirmed: boolean;
+  thresholdMissing: boolean;
+  usesLegacyDefault?: boolean;
+}
+
+/**
+ * Measured thickness against component-specific confirmed minimums.
+ * Generic legacy defaults never produce a measured CRITICAL hard block.
+ */
+export function classifyMeasuredThicknessWithThresholds(
+  measuredMm: number | null | undefined,
+  thresholds: MeasuredThicknessThresholdInput,
+): BrakeCondition {
+  if (measuredMm == null || !Number.isFinite(measuredMm)) return 'UNKNOWN';
+  if (
+    thresholds.thresholdMissing ||
+    !thresholds.confirmed ||
+    thresholds.criticalThresholdMm == null ||
+    thresholds.usesLegacyDefault
+  ) {
+    return 'UNKNOWN';
+  }
+  const warning =
+    thresholds.warningThresholdMm != null
+      ? thresholds.warningThresholdMm
+      : thresholds.criticalThresholdMm + 1;
+  return classifyMeasuredThickness(measuredMm, thresholds.criticalThresholdMm, warning);
+}
+
 /** Brake-fluid status string → condition. */
 export function classifyFluidStatus(status: string | null | undefined): BrakeCondition {
   switch ((status ?? '').toUpperCase()) {
@@ -268,13 +310,16 @@ export function evidenceSourceToDataBasis(source: string | null | undefined): Br
   switch ((source ?? '').toUpperCase()) {
     case 'MANUAL_MEASUREMENT':
       return 'MEASURED';
-    case 'WORKSHOP_REPORT':
-    case 'SERVICE_INVOICE':
+    case 'WORKSHOP_MEASUREMENT':
+    case 'DOCUMENTED_REPLACEMENT':
     case 'INSPECTION_PROTOCOL':
-    case 'AI_UPLOAD':
+    case 'AI_UPLOAD_CONFIRMED':
       return 'DOCUMENTED';
+    case 'AI_UPLOAD_UNCONFIRMED':
+      return 'UNKNOWN';
     case 'DTC_SIGNAL':
     case 'BRAKE_WEAR_SENSOR':
+    case 'PROVIDER_WARNING':
       return 'SENSOR';
     case 'TELEMATICS_ESTIMATION':
       return 'ESTIMATED';
@@ -349,11 +394,13 @@ export function classifyConfidenceLevel(args: {
 export function buildRemainingKmRange(
   remainingKm: number | null | undefined,
   confidence: BrakeConfidenceLevel,
+  spreadMultiplier = 1,
 ): { min: number; max: number } | null {
   if (remainingKm == null || !Number.isFinite(remainingKm) || remainingKm < 0) return null;
-  const spread =
+  const baseSpread =
     cfg.remainingKmRange.spreadByConfidence[confidence] ??
     cfg.remainingKmRange.spreadByConfidence.UNKNOWN;
+  const spread = Math.min(0.95, baseSpread * Math.max(1, spreadMultiplier));
   const step = cfg.remainingKmRange.roundStepKm;
   const roundTo = (v: number) => Math.max(0, Math.round(v / step) * step);
   const min = roundTo(remainingKm * (1 - spread));
@@ -374,18 +421,33 @@ export function alertTypeToCode(type: string): BrakeAlertCode {
       return 'BRAKE_DISC_CRITICAL';
     case 'DISC_WARNING':
       return 'BRAKE_DISC_WARNING';
-    case 'CRITICAL_REMAINING_KM':
-      return 'BRAKE_PAD_CRITICAL';
     case 'LOW_REMAINING_KM':
-      return 'BRAKE_PAD_WARNING';
+      return 'BRAKE_LOW_REMAINING_KM';
+    case 'ABS_WARNING':
+      return 'BRAKE_ABS_WARNING';
+    case 'BRAKE_DTC':
     case 'BRAKE_SYSTEM_DTC':
       return 'BRAKE_SYSTEM_DTC';
+    case 'BRAKE_FLUID':
     case 'BRAKE_FLUID_WARNING':
       return 'BRAKE_FLUID_WARNING';
-    case 'INSPECTION_OVERDUE':
-      return 'BRAKE_INSPECTION_OVERDUE';
+    case 'IMMEDIATE_REPLACEMENT':
+      return 'BRAKE_IMMEDIATE_REPLACEMENT';
+    case 'WEAR_SENSOR':
+      return 'BRAKE_WEAR_SENSOR';
+    case 'NO_BASELINE':
+      return 'BRAKE_NO_BASELINE';
+    case 'SPEC_UNCONFIRMED':
+      return 'BRAKE_SPEC_UNCONFIRMED';
+    case 'COVERAGE_GAP':
+      return 'BRAKE_COVERAGE_GAP';
+    case 'DISTANCE_CONFLICT':
+      return 'BRAKE_DISTANCE_CONFLICT';
+    case 'MEASUREMENT_REQUIRED':
     case 'LOW_CONFIDENCE':
-      return 'BRAKE_HEALTH_LOW_CONFIDENCE';
+      return 'BRAKE_MEASUREMENT_REQUIRED';
+    case 'STALE_EVIDENCE':
+      return 'BRAKE_STALE_EVIDENCE';
     default:
       return 'BRAKE_GENERIC';
   }
@@ -396,13 +458,23 @@ export function alertCodeSeverity(code: BrakeAlertCode): 'info' | 'warning' | 'c
   switch (code) {
     case 'BRAKE_PAD_CRITICAL':
     case 'BRAKE_DISC_CRITICAL':
+    case 'BRAKE_IMMEDIATE_REPLACEMENT':
       return 'critical';
     case 'BRAKE_PAD_WARNING':
     case 'BRAKE_DISC_WARNING':
     case 'BRAKE_FLUID_WARNING':
     case 'BRAKE_INSPECTION_OVERDUE':
     case 'BRAKE_SYSTEM_DTC':
+    case 'BRAKE_ABS_WARNING':
+    case 'BRAKE_WEAR_SENSOR':
+    case 'BRAKE_LOW_REMAINING_KM':
       return 'warning';
+    case 'BRAKE_NO_BASELINE':
+    case 'BRAKE_SPEC_UNCONFIRMED':
+    case 'BRAKE_COVERAGE_GAP':
+    case 'BRAKE_DISTANCE_CONFLICT':
+    case 'BRAKE_MEASUREMENT_REQUIRED':
+    case 'BRAKE_STALE_EVIDENCE':
     case 'BRAKE_HEALTH_LOW_CONFIDENCE':
     case 'BRAKE_GENERIC':
     default:

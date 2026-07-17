@@ -1,4 +1,4 @@
-import { BrakeLifecycleService } from './brake-lifecycle.service';
+import { BrakeInitializationWorkflowService } from './brake-initialization-workflow.service';
 import {
   BrakeRegistrationBackfillService,
   inferBackfillBrakeCondition,
@@ -8,14 +8,15 @@ import {
 const mockPrisma = {
   vehicleBrakeReferenceSpec: { findMany: jest.fn() },
   brakeEvidence: { findFirst: jest.fn() },
+  brakeHealthAlert: { findFirst: jest.fn() },
   vehicleLatestState: { findUnique: jest.fn() },
 } as any;
 
-const mockLifecycle = {
+const mockWorkflow = {
   initializeFromRegistration: jest.fn(),
 } as any;
 
-const svc = new BrakeRegistrationBackfillService(mockPrisma, mockLifecycle);
+const svc = new BrakeRegistrationBackfillService(mockPrisma, mockWorkflow);
 
 describe('BrakeRegistrationBackfillService helpers', () => {
   it('treats manual_registration as explicit NEW condition', () => {
@@ -37,6 +38,7 @@ describe('BrakeRegistrationBackfillService.run', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma.brakeEvidence.findFirst.mockResolvedValue(null);
+    mockPrisma.brakeHealthAlert.findFirst.mockResolvedValue(null);
     mockPrisma.vehicleLatestState.findUnique.mockResolvedValue(null);
   });
 
@@ -71,23 +73,25 @@ describe('BrakeRegistrationBackfillService.run', () => {
     expect(report.mode).toBe('dry-run');
     expect(report.vehicles_scanned).toBe(1);
     expect(report.initialized).toBe(1);
-    expect(mockLifecycle.initializeFromRegistration).not.toHaveBeenCalled();
+    expect(mockWorkflow.initializeFromRegistration).not.toHaveBeenCalled();
   });
 
-  it('execute initializes through BrakeLifecycleService', async () => {
+  it('execute initializes through BrakeInitializationWorkflowService', async () => {
     mockPrisma.vehicleBrakeReferenceSpec.findMany.mockResolvedValue([baseSpec]);
-    mockLifecycle.initializeFromRegistration.mockResolvedValue({
+    mockWorkflow.initializeFromRegistration.mockResolvedValue({
+      outcome: 'initialized',
       initialized: true,
-      status: 'initialized',
+      skipped: false,
       message: 'ok',
     });
 
     const report = await svc.run({ dryRun: false });
 
     expect(report.initialized).toBe(1);
-    expect(mockLifecycle.initializeFromRegistration).toHaveBeenCalledWith(
+    expect(mockWorkflow.initializeFromRegistration).toHaveBeenCalledWith(
       expect.objectContaining({
         vehicleId: 'veh-1',
+        organizationId: 'org-1',
         registrationMileageKm: 1200,
       }),
     );

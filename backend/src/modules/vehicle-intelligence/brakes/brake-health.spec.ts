@@ -1,17 +1,39 @@
 import { BrakeHealthService } from './brake-health.service';
 import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
+import { resolveComponentWearThreshold } from './brake-wear-threshold.domain';
+import { computeBrakeRecalculationInputFingerprint } from './brake-recalculation-fingerprint';
 
 const cfg = BRAKE_HEALTH_CONFIG;
 
+const confirmedPadThreshold = (minimum = 2) =>
+  resolveComponentWearThreshold('FRONT_PADS', {
+    frontPadMinimumThicknessMm: minimum,
+    thresholdSource: 'MANUFACTURER_MINIMUM' as never,
+    thresholdConfirmedAt: '2026-06-01T10:00:00Z',
+  });
+
+const confirmedDiscThreshold = (anchor = 28, minimum = 26) =>
+  resolveComponentWearThreshold(
+    'FRONT_DISCS',
+    {
+      frontDiscMinimumThicknessMm: minimum,
+      thresholdSource: 'MANUFACTURER_MINIMUM' as never,
+      thresholdConfirmedAt: '2026-06-01T10:00:00Z',
+    },
+    { anchorMm: anchor },
+  );
+
 const mockPrisma = {
   brakeHealthCurrent: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+  brakeHealthSnapshot: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'snap-1' }) },
+  brakeRecalculationAudit: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
   tripDrivingImpact: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleBrakeReferenceSpec: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleServiceEvent: {
     findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn().mockResolvedValue(null),
   },
-  vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null, organizationId: null }) },
+  vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null, organizationId: 'org-1' }) },
   vehicleLatestState: { findUnique: jest.fn().mockResolvedValue({ odometerKm: 50000, brakePadPercent: null, lastSeenAt: new Date('2026-04-13T10:00:00Z') }) },
 } as any;
 
@@ -28,7 +50,75 @@ const mockBrakeEvidence = {
   recordMany: jest.fn().mockResolvedValue({ count: 0 }),
 } as any;
 
-const svc = new BrakeHealthService(mockPrisma, mockDI, mockBrakeEvidence);
+const buildRecalcContext = (overrides: Record<string, unknown> = {}) => ({
+  vehicleId: 'v1',
+  organizationId: 'org-1',
+  anchor: {
+    isInitialized: true,
+    anchorServiceDate: '2026-01-01T00:00:00.000Z',
+    anchorOdometerKm: 10000,
+    anchorValidationStatus: 'measured_anchor',
+    calibrationCount: 0,
+    frontPadAnchorMm: 12,
+    rearPadAnchorMm: 10,
+    frontDiscAnchorMm: 28,
+    rearDiscAnchorMm: 26,
+    frontPadKFactor: 1,
+    rearPadKFactor: 1,
+    frontDiscKFactor: 1,
+    rearDiscKFactor: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  },
+  vehicle: { fuelType: 'GASOLINE', brakeForceFrontPercent: null },
+  latestOdometerKm: 50000,
+  componentInstallations: [],
+  referenceSpecs: [],
+  evidence: [],
+  tdiAggregate: {
+    tripCount: 0,
+    rawDistanceKm: 0,
+    authoritativeDistanceKm: 0,
+    latestTripStartedAt: null,
+    latestUpdatedAt: null,
+    hardBrakePer100KmSum: 0,
+    fullBrakingPer100KmSum: 0,
+  },
+  ledgerAggregate: {
+    totalEvents: 0,
+    harshBraking: 0,
+    extremeBraking: 0,
+    fullBraking: 0,
+    highSpeedBraking: 0,
+    latestOccurredAt: null,
+  },
+  activeDtc: [],
+  gapPolicyVersion: 'brake-coverage-gap-v1',
+  ...overrides,
+});
+
+const mockRecalcInputLoader = {
+  load: jest.fn().mockImplementation(async () => buildRecalcContext()),
+};
+
+const mockObservability = {
+  recordRecalculation: jest.fn(),
+  recordSnapshot: jest.fn(),
+  recordCoverage: jest.fn(),
+  recordSpecFallback: jest.fn(),
+};
+
+const mockRecalcOrchestrator = {
+  enqueue: jest.fn().mockResolvedValue({ queued: true, jobId: 'brake-recalc:v1' }),
+};
+
+const svc = new BrakeHealthService(
+  mockPrisma,
+  mockDI,
+  mockBrakeEvidence,
+  mockRecalcInputLoader as any,
+  mockObservability as any,
+  mockRecalcOrchestrator as any,
+);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  PAD WEAR MODEL (spec §10)
@@ -84,7 +174,7 @@ describe('computePadWear', () => {
   });
 
   it('remaining km is 0 when pad is at critical', () => {
-    const r = svc.computePadWear(12, 80000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const r = svc.computePadWear(12, 80000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, confirmedPadThreshold());
     expect(r.remainingKm).toBe(0);
   });
 
@@ -101,7 +191,8 @@ describe('computePadWear', () => {
   });
 
   it('returns 0% health when anchor equals critical', () => {
-    const r = svc.computePadWear(2.0, 1000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedPadThreshold(2);
+    const r = svc.computePadWear(2.0, 1000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.healthPct).toBe(0);
     expect(r.remainingKm).toBe(0);
   });
@@ -118,49 +209,70 @@ describe('computeDiscWear', () => {
   });
 
   it('returns 100% health at 0 km', () => {
-    const r = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const r = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.estimatedMm).toBe(28);
     expect(r.healthPct).toBe(100);
   });
 
   it('reduces disc thickness over distance', () => {
-    const r = svc.computeDiscWear(28, 45000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const r = svc.computeDiscWear(28, 45000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.estimatedMm!).toBeLessThan(28);
     expect(r.healthPct!).toBeGreaterThan(0);
     expect(r.healthPct!).toBeLessThan(100);
   });
 
   it('disc reaches 0% at base life (ICE, balanced)', () => {
-    const r = svc.computeDiscWear(28, 90000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const r = svc.computeDiscWear(28, 90000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(r.healthPct!).toBeLessThanOrEqual(5);
   });
 
   it('EV reku is > ICE reku (discs last longer on EVs)', () => {
-    const ice = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-    const ev = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, cfg.discRekuFactors.ELECTRIC, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const ice = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
+    const ev = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, cfg.discRekuFactors.ELECTRIC, 1.0, threshold);
     expect(ev.estimatedMm!).toBeGreaterThan(ice.estimatedMm!);
   });
 
   it('thermal factor > 1 wears discs faster', () => {
-    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-    const hot = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.15, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
+    const hot = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.15, 1.0, 1.0, threshold);
     expect(hot.estimatedMm!).toBeLessThan(base.estimatedMm!);
   });
 
   it('highSpeedBrake factor > 1 accelerates disc wear', () => {
-    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-    const high = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.18, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const threshold = confirmedDiscThreshold();
+    const base = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
+    const high = svc.computeDiscWear(28, 30000, 0.72, 1.0, 1.18, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(high.estimatedMm!).toBeLessThan(base.estimatedMm!);
   });
 
-  it('disc health clamped between 0 and 100', () => {
-    const fresh = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+  it('disc health uses component-specific minimum when confirmed', () => {
+    const threshold = resolveComponentWearThreshold(
+      'FRONT_DISCS',
+      {
+        frontDiscMinimumThicknessMm: 26,
+        thresholdSource: 'MANUFACTURER_MINIMUM' as never,
+        thresholdConfirmedAt: '2026-06-01T10:00:00Z',
+      },
+      { anchorMm: 28 },
+    );
+    const fresh = svc.computeDiscWear(28, 0, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(fresh.healthPct).toBe(100);
-    const worn = svc.computeDiscWear(28, 200000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    const worn = svc.computeDiscWear(28, 200000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, threshold);
     expect(worn.healthPct).toBe(0);
   });
 
-  it('disc max wear is 2.0mm (health 0 at anchor-2.0)', () => {
+  it('disc without confirmed minimum does not project health or remaining km', () => {
+    const result = svc.computeDiscWear(28, 10000, 0.72, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    expect(result.healthPct).toBeNull();
+    expect(result.remainingKm).toBeNull();
+  });
+
+  it('legacy config disc maxWearMm is not used as safety truth', () => {
     expect(cfg.disc.maxWearMm).toBe(2.0);
   });
 });
@@ -424,6 +536,7 @@ describe('getDetail', () => {
 
 describe('canonical read model', () => {
   const baseCurrent = {
+    organizationId: 'org-1',
     isInitialized: true,
     stateClass: 'ESTIMATED',
     anchorOdometerKm: 40000,
@@ -487,6 +600,14 @@ describe('canonical read model', () => {
       rearDiscRemainingKm: 20000,
     });
     mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    mockPrisma.vehicleBrakeReferenceSpec.findMany.mockResolvedValueOnce([
+      {
+        frontPadMinimumThicknessMm: 2,
+        thresholdSource: 'MANUFACTURER_MINIMUM',
+        thresholdConfirmedAt: new Date('2026-01-01T00:00:00Z'),
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      },
+    ]);
     // … but a fresh manual measurement says the front pad is at 1.5 mm (≤ critical 2.0).
     mockBrakeEvidence.listRecent.mockResolvedValueOnce([
       {
@@ -532,7 +653,8 @@ describe('canonical read model', () => {
       {
         id: 'e2',
         vehicleId: 'v1',
-        source: 'WORKSHOP_REPORT',
+        source: 'WORKSHOP_MEASUREMENT',
+        active: true,
         axle: 'UNKNOWN',
         measuredPadMm: null,
         measuredDiscMm: null,
@@ -613,6 +735,8 @@ describe('canonical read model', () => {
         discCondition: null,
         brakeFluidStatus: null,
         dtcSeverity: 'CRITICAL',
+        dtcActive: true,
+        active: true,
         immediateReplacement: null,
         mileageAtMeasurementKm: null,
         measuredAt: new Date('2026-05-27T00:00:00Z'),
@@ -651,7 +775,18 @@ describe('canonical read model', () => {
 });
 
 describe('recalculate temporal coverage', () => {
-  it('uses per-trip modeled distance and applies rolling only to uncovered gap', async () => {
+  beforeEach(() => {
+    mockPrisma.brakeHealthCurrent.update.mockClear();
+    mockPrisma.brakeHealthCurrent.findUnique.mockReset();
+    mockPrisma.vehicle.findUnique.mockReset();
+    mockPrisma.vehicleLatestState.findUnique.mockReset();
+    mockPrisma.tripDrivingImpact.findMany.mockReset();
+    mockDI.getVehicleImpactForBrake.mockReset();
+    mockPrisma.vehicleBrakeReferenceSpec.findMany.mockResolvedValue([]);
+    mockRecalcInputLoader.load.mockReset();
+    mockRecalcInputLoader.load.mockImplementation(async () => buildRecalcContext());
+  });
+  it('uses per-trip modeled distance and neutral baseline for uncovered gap (no rolling leakage)', async () => {
     mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
       vehicleId: 'v1',
       isInitialized: true,
@@ -711,14 +846,166 @@ describe('recalculate temporal coverage', () => {
       thermalBrakeStressScore: 40,
       brakingStressScore: 58,
     });
+    mockRecalcInputLoader.load.mockResolvedValueOnce(
+      buildRecalcContext({
+        latestOdometerKm: 11200,
+        tdiAggregate: {
+          tripCount: 2,
+          rawDistanceKm: 200,
+          authoritativeDistanceKm: 200,
+          latestTripStartedAt: '2026-02-01T00:00:00.000Z',
+          latestUpdatedAt: '2026-02-01T01:00:00.000Z',
+          hardBrakePer100KmSum: 8,
+          fullBrakingPer100KmSum: 1.6,
+        },
+      }),
+    );
 
     await svc.recalculate('v1');
 
     expect(mockPrisma.brakeHealthCurrent.update).toHaveBeenCalled();
-    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.at(-1)?.[0];
+    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.find(
+      (call: [{ data?: { modeledDistanceKm?: number } }]) =>
+        typeof call[0]?.data?.modeledDistanceKm === 'number',
+    )?.[0];
     expect(updateArg.data.modeledDistanceKm).toBe(200);
-    expect(updateArg.data.modelingSource).toBe('trip_impacts_plus_rolling_gap');
-    expect(updateArg.data.modelCoverageRatio).toBeLessThan(0.2);
+    expect(updateArg.data.modelingSource).toBe('MIXED_OBSERVED_NEUTRAL_GAP');
+    expect(updateArg.data.coverageRatioRaw).toBe(0.17);
+    expect(updateArg.data.underCoverageKm).toBe(1000);
+    expect(updateArg.data.overCoverageKm).toBe(0);
+    expect(updateArg.data.coverageStatus).toBe('PARTIAL');
     expect(updateArg.data.distanceSinceAnchorKm).toBe(1200);
+    expect(mockDI.getVehicleImpactForBrake).toHaveBeenCalled();
+  });
+
+  it('marks distance conflict when trip sum exceeds odometer', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      vehicleId: 'v1',
+      isInitialized: true,
+      anchorServiceDate: new Date('2026-01-01T00:00:00Z'),
+      anchorOdometerKm: 10000,
+      frontPadAnchorMm: 12,
+      rearPadAnchorMm: 10,
+      frontDiscAnchorMm: 28,
+      rearDiscAnchorMm: 26,
+      frontPadKFactor: 1,
+      rearPadKFactor: 1,
+      frontDiscKFactor: 1,
+      rearDiscKFactor: 1,
+      calibrationCount: 0,
+      anchorValidationStatus: 'measured_anchor',
+      baselineWarnings: [],
+    });
+    mockPrisma.vehicle.findUnique.mockResolvedValueOnce({
+      fuelType: 'GASOLINE',
+      brakeForceFrontPercent: null,
+    });
+    mockPrisma.vehicleLatestState.findUnique.mockResolvedValueOnce({ odometerKm: 10500 });
+    mockPrisma.tripDrivingImpact.findMany.mockResolvedValueOnce([
+      {
+        tripId: 't1',
+        distanceKm: 400,
+        citySharePct: 50,
+        highwaySharePct: 30,
+        countryRoadSharePct: 20,
+        hardBrakePer100Km: 4,
+        fullBrakingPer100Km: 0.5,
+        stopDensity: 1,
+        highSpeedBrakeShare: 0.1,
+        thermalBrakeStressScore: 40,
+      },
+      {
+        tripId: 't2',
+        distanceKm: 300,
+        citySharePct: 50,
+        highwaySharePct: 30,
+        countryRoadSharePct: 20,
+        hardBrakePer100Km: 3,
+        fullBrakingPer100Km: 0.4,
+        stopDensity: 0.8,
+        highSpeedBrakeShare: 0.08,
+        thermalBrakeStressScore: 35,
+      },
+    ]);
+    mockDI.getVehicleImpactForBrake.mockResolvedValueOnce(null);
+
+    await svc.recalculate('v1');
+
+    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.find(
+      (call: [{ data?: { modeledDistanceKm?: number } }]) =>
+        typeof call[0]?.data?.modeledDistanceKm === 'number',
+    )?.[0];
+    expect(updateArg.data.modeledDistanceKm).toBe(500);
+    expect(updateArg.data.modelingSource).toBe('INCONSISTENT');
+    expect(updateArg.data.overCoverageKm).toBe(200);
+    expect(updateArg.data.coverageStatus).toBe('OVER');
+  });
+
+  it('returns null when odometer is missing', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      vehicleId: 'v1',
+      isInitialized: true,
+      anchorServiceDate: new Date('2026-01-01T00:00:00Z'),
+      anchorOdometerKm: 10000,
+      frontPadAnchorMm: 12,
+      baselineWarnings: [],
+    });
+    mockPrisma.vehicleLatestState.findUnique.mockResolvedValueOnce({ odometerKm: null });
+
+    const result = await svc.recalculate('v1');
+    expect(result).toBeNull();
+    expect(mockPrisma.brakeHealthCurrent.update).not.toHaveBeenCalled();
+  });
+
+  it('skips wear recompute when input fingerprint is unchanged', async () => {
+    const fingerprint = computeBrakeRecalculationInputFingerprint(buildRecalcContext());
+    mockPrisma.brakeHealthSnapshot.findFirst.mockResolvedValueOnce({ id: 'snap-deduped' });
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      vehicleId: 'v1',
+      isInitialized: true,
+      anchorServiceDate: new Date('2026-01-01T00:00:00Z'),
+      anchorOdometerKm: 10000,
+      frontPadAnchorMm: 12,
+      rearPadAnchorMm: 10,
+      frontDiscAnchorMm: 28,
+      rearDiscAnchorMm: 26,
+      frontPadKFactor: 1,
+      rearPadKFactor: 1,
+      frontDiscKFactor: 1,
+      rearDiscKFactor: 1,
+      calibrationCount: 0,
+      anchorValidationStatus: 'measured_anchor',
+      baselineWarnings: [],
+      padsHealthPct: 90,
+      discsHealthPct: 88,
+      padsRemainingKm: 10000,
+      discsRemainingKm: 12000,
+      confidenceScore: 70,
+      confidenceLabel: 'Medium',
+      hasAlert: false,
+      modeledDistanceKm: 200,
+      modelCoverageRatio: 0.17,
+      coverageRatioRaw: 0.17,
+      recalculationInputFingerprint: fingerprint.inputFingerprint,
+      recalculationConfigHash: fingerprint.modelConfigHash,
+      recalculationModelVersion: fingerprint.modelVersion,
+      organizationId: 'org-1',
+    });
+    mockRecalcInputLoader.load.mockResolvedValueOnce(buildRecalcContext());
+
+    const result = await svc.recalculate('v1', { trigger: 'scheduler' });
+
+    expect(result?.skipped).toBe(true);
+    expect(result?.skipReason).toBe('identical_input_fingerprint');
+    expect(result?.snapshotId).toBe('snap-deduped');
+    expect(mockPrisma.brakeHealthCurrent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { vehicleId: 'v1' },
+        data: expect.objectContaining({ lastRecalculatedAt: expect.any(Date) }),
+      }),
+    );
+    expect(mockObservability.recordSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ result: 'deduplicated' }),
+    );
   });
 });

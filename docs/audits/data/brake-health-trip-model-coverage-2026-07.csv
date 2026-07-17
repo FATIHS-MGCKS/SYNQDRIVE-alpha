@@ -1,0 +1,8 @@
+vehicle_anon,window_days,anchor_service_date,anchor_odometer_km,current_odometer_km,odometer_delta_km,trip_distance_sum_km,tdi_distance_sum_km,completed_trips_60d,tdi_rows_60d,trips_without_tdi,tdi_without_trip,tdi_before_anchor,tdi_dist_gt_trip_dist_rows,modeled_distance_km,coverage_ratio_stored,rolling_gap_km,modeling_source_stored,vdi_window_days,vdi_distance_km_window,vdi_hard_brake_per_100km,tdi_vs_trip_ratio,overcoverage_clamped,would_use_rolling_gap,audit_flags
+VEHICLE_001,60,null,null,375,null,273.2,252.2,53,34,19,0,n/a,0,null,null,null,null,30,252,0.00,0.923,no,N/A,no_anchor;38pct_trips_without_tdi
+VEHICLE_002,60,null,null,179374,null,1300.8,1248.3,270,156,114,0,n/a,0,null,null,null,null,30,365,0.00,0.960,no,N/A,no_anchor;42pct_trips_without_tdi;EV
+VEHICLE_003,60,null,null,113649,null,314.7,339.0,60,43,17,0,n/a,4,null,null,null,null,30,339,0.00,1.077,n/a,N/A,no_anchor;tdi_subset_sum_exceeds_trip_sum_due_distance_field_drift
+VEHICLE_004,60,null,null,187350,null,320.3,313.9,44,30,14,0,n/a,0,null,null,null,null,30,151,0.00,0.980,no,N/A,no_anchor;32pct_trips_without_tdi
+VEHICLE_005,60,null,null,190025,null,592.2,542.0,128,76,52,0,n/a,0,null,null,null,null,30,384,0.00,0.915,no,N/A,no_anchor;41pct_trips_without_tdi;orphan_dtc
+VEHICLE_006,60,null,null,5229,null,194.8,197.4,24,17,7,0,n/a,0,null,null,null,null,30,197,0.00,1.013,n/a,N/A,no_anchor;29pct_trips_without_tdi
+FLEET_TOTAL,60,null,null,null,null,2996.0,2892.8,579,356,223,0,0,135,null,null,null,null,null,null,null,0.966,n/a,code_would_clamp_at_1.0_if_init,223_trips_missing_tdi;135_tdi_trip_km_mismatch_rows

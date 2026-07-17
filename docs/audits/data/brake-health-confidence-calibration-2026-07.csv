@@ -1,0 +1,7 @@
+scenario,dataBasis,expectedConfidence,canReachHigh,codeEvidence,fleetValidated,finding
+spec_fallback_anchor_with_full_DI_and_high_coverage,ESTIMATED,High,true,computeConfidence adds padAnchors(20)+rotorAnchors(10) without checking anchorValidationStatus; measurementExists(8) unused,false,P1-BH-50: Spec-only anchor can score HIGH without any true measurement
+rolling_gap_only_modeling,ESTIMATED,Low,false,"rolling_gap_only −12, modeledTripCount=0 −8, low coverage −16",false,Gap-only path penalized in code but not blocked
+safety_dtc_evidence,DOCUMENTED,N/A wear accuracy,false,"DTC drives canonical CRITICAL via buildCanonicalReadModel, separate from wear confidence",false,Safety evidence can elevate condition without improving wear-model confidence
+ai_upload_unconfirmed,DOCUMENTED,Should be LOW,false,AI evidence only after apply confirmation; fleet has 0 brake AI rows,true,No unconfirmed AI brake ground truth in production
+calibration_stabilized_k_factor,MEASURED,Higher with calibrationCount>=4,true,calibrationStabilized +5 when count>=4,false,P1-BH-51: calibrateFromMeasurement() not implemented — fleet calibrationCount always 0
+estimated_condition_cap,ESTIMATED,Medium max for display,false,classifyEstimatedCondition caps at WARNING; CRITICAL requires measured safety signal,true,Code-enforced honesty rule confirmed in unit tests

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
+import { DrivingEventContextJobService } from '../event-context/driving-event-context-job.service';
 import { VehicleDrivingCapabilityResolverService } from '../driving-capability/vehicle-driving-capability-resolver.service';
 import { DimoNativeDrivingEventPersistenceService } from '../dimo-native-driving-events/dimo-native-driving-event-persistence.service';
 import {
@@ -10,6 +11,8 @@ import {
   mapDimoEventName,
   resolveNativeSeverity,
 } from './lte-r1-behavior-enrichment.service';
+import { DimoBrakingEventIntakeService } from '../brakes/dimo-braking-event-intake.service';
+import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 import type { DimoVehicleEventRecord } from '../../dimo/dimo-segments.service';
 
 describe('mapDimoEventName', () => {
@@ -90,6 +93,12 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
     upsertNativeEvents: jest.fn(),
     reconcileUnassignedEvents: jest.fn(),
   };
+  const brakingIntake = {
+    fetchEventDataSummary: jest.fn(),
+    fetchDrivingEventsPaginated: jest.fn(),
+    ingestBrakingBatch: jest.fn(),
+  };
+  const brakingLedger = { reconcileTrip: jest.fn(async () => null) };
   const service = new LteR1BehaviorEnrichmentService(
     {} as any,
     {} as any,
@@ -98,6 +107,8 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
       resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
     } as any,
     persistence as any,
+    brakingIntake as any,
+    brakingLedger as any,
   );
 
   const sample = (name: string, metadata: string | null = '{"counterValue":1}'): DimoVehicleEventRecord => ({
@@ -109,7 +120,7 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
   });
 
   function mapSamples(samples: DimoVehicleEventRecord[]): any[] {
-    return (service as any).mapToNormalizedEvents(samples, 'veh-1', 'org-1', new Map());
+    return (service as any).mapToNormalizedEvents(samples, 'veh-1', 'org-1', 'trip-1', new Map(), 42);
   }
 
   it('preserves the original DIMO event name and tags extreme acceleration distinctly', () => {
@@ -160,6 +171,8 @@ describe('LteR1BehaviorEnrichmentService.scheduleNativeEventContextJobs (P26 job
         resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
       } as any,
       { upsertNativeEvents: jest.fn(), reconcileUnassignedEvents: jest.fn() } as any,
+      { fetchEventDataSummary: jest.fn(), fetchDrivingEventsPaginated: jest.fn(), ingestBrakingBatch: jest.fn() } as any,
+      { reconcileTrip: jest.fn(async () => null) } as any,
     );
     return { service, prisma, contextJobs };
   }
@@ -193,6 +206,8 @@ describe('LteR1BehaviorEnrichmentService.scheduleNativeEventContextJobs (P26 job
       { scheduleContextEnrichmentForTrip } as any,
       { resolveForVehicle: jest.fn(async () => ({ capabilities: [] })) } as any,
       { upsertNativeEvents: jest.fn(), reconcileUnassignedEvents: jest.fn() } as any,
+      { fetchEventDataSummary: jest.fn(), fetchDrivingEventsPaginated: jest.fn(), ingestBrakingBatch: jest.fn() } as any,
+      { reconcileTrip: jest.fn(async () => null) } as any,
     );
     await (service as any).scheduleNativeEventContextJobs('trip-1', 'veh-1', 'org-1', 1);
     expect(scheduleContextEnrichmentForTrip).not.toHaveBeenCalled();
@@ -206,12 +221,28 @@ describe('LteR1BehaviorEnrichmentService.scheduleNativeEventContextJobs (P26 job
           { provide: PrismaService, useValue: {} },
           { provide: DimoSegmentsService, useValue: {} },
           {
+            provide: DrivingEventContextJobService,
+            useValue: { scheduleContextEnrichmentForTrip: jest.fn() },
+          },
+          {
             provide: VehicleDrivingCapabilityResolverService,
             useValue: { resolveForVehicle: jest.fn() },
           },
           {
             provide: DimoNativeDrivingEventPersistenceService,
             useValue: { upsertNativeEvents: jest.fn(), reconcileUnassignedEvents: jest.fn() },
+          },
+          {
+            provide: DimoBrakingEventIntakeService,
+            useValue: {
+              fetchEventDataSummary: jest.fn(),
+              fetchDrivingEventsPaginated: jest.fn(),
+              ingestBrakingBatch: jest.fn(),
+            },
+          },
+          {
+            provide: BrakingEventLedgerService,
+            useValue: { reconcileTrip: jest.fn(async () => null) },
           },
         ],
       }).compile(),
@@ -279,9 +310,18 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       drivingEvent: {
         findMany: jest.fn(async () => persistedIds.map((id) => ({ id }))),
       },
+      dimoBrakingEventIntake: {
+        updateMany: jest.fn(async () => ({ count: 0 })),
+      },
     };
     const segments = {
-      fetchDrivingEvents: jest.fn(async () => [
+      fetchHighFrequency: jest.fn(async () => []),
+    };
+    const brakingIntake = {
+      fetchEventDataSummary: jest.fn(async () => [
+        { name: 'behavior.harshBraking', numberOfEvents: 3 },
+      ]),
+      fetchDrivingEventsPaginated: jest.fn(async () => [
         {
           timestamp: eventTs,
           name: 'behavior.harshAcceleration',
@@ -290,8 +330,15 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
           metadata: '{"counterValue":2}',
         },
       ]),
-      fetchHighFrequency: jest.fn(async () => []),
+      ingestBrakingBatch: jest.fn(async () => ({
+        created: 0,
+        duplicate: 0,
+        skipped: 0,
+        failed: 0,
+        parsed: [],
+      })),
     };
+    const brakingLedger = { reconcileTrip: jest.fn(async () => null) };
     const service = new LteR1BehaviorEnrichmentService(
       prisma as any,
       segments as any,
@@ -300,6 +347,8 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
         resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
       } as any,
       nativeEventPersistence as any,
+      brakingIntake as any,
+      brakingLedger as any,
     );
     return {
       service,
@@ -309,6 +358,8 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       scheduleContextEnrichmentForTrip,
       persistedIds,
       nativeEventPersistence,
+      brakingIntake,
+      brakingLedger,
     };
   }
 
@@ -394,6 +445,8 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       { scheduleContextEnrichmentForTrip } as any,
       { resolveForVehicle: jest.fn(async () => ({ capabilities: [] })) } as any,
       harness.nativeEventPersistence as any,
+      harness.brakingIntake as any,
+      harness.brakingLedger as any,
     );
 
     await expect(service.enrichTrip('trip-1')).resolves.toMatchObject({

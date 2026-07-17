@@ -39,6 +39,7 @@ import {
 } from './hf-abuse';
 import { getVehicleCapabilities, deriveVehicleCapabilityProfile } from '../vehicle-capabilities';
 import { LteR1BehaviorEnrichmentService } from './lte-r1-behavior-enrichment.service';
+import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 import { HfMirrorService } from './hf-mirror.service';
 import { TripChEvidenceMirrorCoordinator } from './trip-ch-evidence-mirror.coordinator';
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
@@ -191,6 +192,7 @@ export class TripBehaviorEnrichmentService {
     private readonly chEvidenceMirror: TripChEvidenceMirrorCoordinator,
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly deviceQuality?: DrivingAssessmentDeviceQualityService,
+    @Optional() private readonly brakingLedger?: BrakingEventLedgerService,
   ) {}
 
   /**
@@ -665,6 +667,9 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
+    await this.brakingLedger?.reconcileTrip(tripId, {
+      expectedOrganizationId: organizationId,
+    });
 
     // Phase 2: best-effort HF analytics mirror (disabled by default).
     this.scheduleHfMirror({
@@ -996,6 +1001,9 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
+    await this.brakingLedger?.reconcileTrip(tripId, {
+      expectedOrganizationId: organizationId,
+    });
 
     const lteAssessability = buildAssessabilityForLteR1Completed({
       nativeEventCount,

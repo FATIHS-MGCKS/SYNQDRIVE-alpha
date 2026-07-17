@@ -48,6 +48,12 @@ import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
 import { formatVolts } from '../../lib/battery-ui-formatters';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
+import {
+  brakeOverviewLabel,
+  brakeRemainingKmLabel,
+  brakeUiStatusLabel,
+} from '../../lib/brake-health-evidence-ui';
+import { BrakeEvidencePanel } from './BrakeEvidencePanel';
 import { DetailSection, HealthModuleCard } from './HealthModuleCard';
 import { HealthServiceActions } from './HealthServiceActions';
 import { SegmentedHealthIndicator } from './SegmentedHealthIndicator';
@@ -316,10 +322,8 @@ export function HealthVehicleDetailPanel({
     if (activeTab === 'brakes') {
       const b = data.brakeSummary;
       const cond = b?.overallCondition ?? 'UNKNOWN';
-      const frontMin =
-        b?.frontAxle?.estimatedRemainingKmMin ?? b?.estimatedFrontRemainingKmMin;
-      const frontRange =
-        frontMin != null ? `~${Math.round(frontMin / 1000)}k km` : '—';
+      const remaining = brakeRemainingKmLabel(b, 'de');
+      const overview = brakeOverviewLabel(b, 'de');
       const brakeSegment = segmentFromHealthState(cond);
       return (
         <div className="space-y-3">
@@ -328,10 +332,10 @@ export function HealthVehicleDetailPanel({
           icon={Disc}
           rentalModule={health?.modules.brakes}
           keyValues={[
-            { label: 'Condition', value: cond },
+            { label: 'Status', value: brakeUiStatusLabel(b, 'de') },
+            { label: 'Overview', value: overview },
             { label: 'Data basis', value: b?.dataBasis ?? '—' },
-            { label: 'Confidence', value: b?.confidenceLevel ?? '—' },
-            { label: 'Front remaining', value: frontRange },
+            { label: 'Remaining', value: remaining },
             { label: 'Open alerts', value: String(b?.openAlerts?.length ?? 0) },
           ]}
           indicator={(
@@ -343,6 +347,7 @@ export function HealthVehicleDetailPanel({
             />
           )}
         />
+        <BrakeEvidencePanel summary={b} locale="de" compact showActions={false} />
         <ModuleServiceFooter
           vehicleId={vehicle.id}
           module="brakes"

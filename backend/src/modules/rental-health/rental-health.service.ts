@@ -11,7 +11,7 @@ import {
 import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
 import { TireHealthObservabilityService } from '../vehicle-intelligence/tires/tire-health-observability.service';
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
-import { strongerDataBasis, type BrakeDataBasis } from '../vehicle-intelligence/brakes/brake-status';
+import { BrakeHealthObservabilityService } from '../vehicle-intelligence/brakes/brake-health-observability.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
 import type { ServiceComplianceEvaluation } from '../vehicle-intelligence/service-compliance/service-compliance.types';
@@ -36,6 +36,12 @@ import {
 } from './tire-rental-health.policy';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
 import type { TireRentalHealthModuleHealth } from './tire-rental-health.types';
+import {
+  buildBrakeModuleHealth,
+  isBrakeRentalHardBlocked,
+} from './brake-rental-health.policy';
+import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
+import type { BrakeRentalHealthModuleHealth } from './brake-rental-health.types';
 
 export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
 
@@ -82,7 +88,9 @@ export class RentalHealthService {
     private readonly hm: HmSignalUsageService,
     private readonly serviceCompliance: ServiceComplianceService,
     private readonly tireRentalReview: TireRentalHealthReviewService,
+    private readonly brakeRentalReview: BrakeRentalHealthReviewService,
     @Optional() private readonly tireObservability?: TireHealthObservabilityService,
+    @Optional() private readonly brakeObservability?: BrakeHealthObservabilityService,
   ) {}
 
   /**
@@ -117,6 +125,7 @@ export class RentalHealthService {
       dtcRes,
       hmAiRes,
       tireReviewOverrideRes,
+      brakeReviewOverrideRes,
       currentOdoRes,
       complaintsRes,
       complianceRes,
@@ -129,6 +138,7 @@ export class RentalHealthService {
       this.dtc.getSummary(vehicleId),
       this.hm.getAiHealthCareSignals(vehicleId).catch(() => null),
       this.tireRentalReview.findActiveOverride(orgId, vehicleId),
+      this.brakeRentalReview.findActiveOverride(orgId, vehicleId),
       this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },
         select: { odometerKm: true },
@@ -153,7 +163,15 @@ export class RentalHealthService {
     const batterySummary = unwrap(batteryRes);
     const tireSummary = unwrap(tiresRes) as TireHealthSummary | null;
     const tireReviewOverride = unwrap(tireReviewOverrideRes);
-    const brakeSummary = unwrap(brakesRes) as BrakeHealthSummaryDto | null;
+    const brakeReviewOverride = unwrap(brakeReviewOverrideRes);
+    const brakesLoadError =
+      brakesRes.status === 'rejected'
+        ? (brakesRes.reason as Error)?.message ?? 'Brake health unavailable'
+        : null;
+    const brakeSummary =
+      brakesRes.status === 'fulfilled'
+        ? (brakesRes.value as BrakeHealthSummaryDto)
+        : null;
     const dtcSummary = unwrap(dtcRes);
     const hmAi = unwrap(hmAiRes);
     const complaintsLoaded = complaintsRes.status === 'fulfilled';
@@ -180,7 +198,10 @@ export class RentalHealthService {
     const modules = {
       battery: this.evaluateBattery(batterySummary, hmAi, dtcSummary),
       tires: this.evaluateTires(tireSummary, tireReviewOverride),
-      brakes: this.evaluateBrakes(brakeSummary),
+      brakes: this.evaluateBrakes(brakeSummary, {
+        moduleLoadError: brakesLoadError,
+        activeReviewOverride: brakeReviewOverride,
+      }),
       error_codes: this.evaluateErrorCodes(dtcSummary),
       service_compliance: {
         ...serviceComplianceModule,
@@ -316,97 +337,30 @@ export class RentalHealthService {
   }
 
   /**
-   * Brakes — reads {@link BrakeHealthService.getSummary}. Uses
-   * `overallCondition` as the single canonical truth (estimates cap at WARNING;
-   * CRITICAL only from real safety signals).
+   * Brakes — evidence-aware policy via {@link buildBrakeModuleHealth}.
+   * Wear, safety, and data quality are evaluated separately; hard blocks
+   * require measured wear or active safety evidence.
    */
-  private evaluateBrakes(summary: BrakeHealthSummaryDto | null): ModuleHealth {
-    const updatedAt = summary?.lastRecalculatedAt ?? summary?.updatedAt ?? null;
-
-    if (!summary) {
-      return {
-        state: 'unknown',
-        reason: 'Keine Bremsen-Baseline hinterlegt',
-        last_updated_at: toIso(updatedAt),
-        data_stale: isStale(updatedAt),
-        source: 'brake_health',
-        evidence_type: 'unknown',
-      };
+  private evaluateBrakes(
+    summary: BrakeHealthSummaryDto | null,
+    options?: {
+      moduleLoadError?: string | null;
+      activeReviewOverride?: import('./brake-rental-health.types').BrakeRentalReviewOverrideSummary | null;
+    },
+  ): BrakeRentalHealthModuleHealth {
+    const moduleHealth = buildBrakeModuleHealth({
+      summary,
+      moduleLoadError: options?.moduleLoadError ?? null,
+      activeReviewOverride: options?.activeReviewOverride ?? null,
+    });
+    const block = moduleHealth.brake_read_model?.rentalBlockingEvidence;
+    if (block) {
+      this.brakeObservability?.recordRentalBlock({
+        level: block.action,
+        reasonCode: block.reasonCode,
+      });
     }
-
-    // Single canonical truth: BrakeHealthService.overallCondition. A purely
-    // ESTIMATED condition caps at WARNING; only a real safety signal (measured
-    // critical pad, brake DTC, critical fluid, immediate-replacement) is
-    // CRITICAL. We never re-derive a parallel state from raw health-percent.
-    const condition = summary.overallCondition ?? 'UNKNOWN';
-    let state: HealthState;
-    switch (condition) {
-      case 'CRITICAL':
-        state = 'critical';
-        break;
-      case 'WARNING':
-      case 'WATCH':
-        state = 'warning';
-        break;
-      case 'GOOD':
-        state = 'good';
-        break;
-      default:
-        state = 'unknown';
-    }
-
-    // Build the human reason from the canonical read model.
-    let reason: string;
-    if (state === 'unknown') {
-      reason = summary.reasons?.[0] ?? summary.message ?? 'Keine belastbare Bremsen-Datenbasis';
-    } else {
-      const front = summary.estimatedFrontRemainingKmMin;
-      const rear = summary.estimatedRearRemainingKmMin;
-      const lowest = [front, rear].filter((v): v is number => v != null);
-      reason =
-        summary.recommendations?.[0] ??
-        (lowest.length > 0
-          ? `Geschätzte Restnutzung ab ~${Math.min(...lowest).toLocaleString('de-DE')} km`
-          : `Bremszustand: ${condition}`);
-    }
-
-    // Pad pre-warning sensor (hasAlert) escalates to at least warning.
-    if (summary.hasAlert) {
-      state = maxSeverity(state, 'warning');
-    }
-
-    return {
-      state,
-      reason,
-      last_updated_at: toIso(updatedAt),
-      data_stale: isStale(updatedAt),
-      source: 'brake_health',
-      evidence_type: this.brakeDataBasisToEvidenceType(summary),
-    };
-  }
-
-  private resolveBrakeDataBasis(summary: BrakeHealthSummaryDto): BrakeDataBasis {
-    return strongerDataBasis(
-      strongerDataBasis(summary.dataBasis ?? 'UNKNOWN', summary.frontDataBasis ?? 'UNKNOWN'),
-      summary.rearDataBasis ?? 'UNKNOWN',
-    );
-  }
-
-  private brakeDataBasisToEvidenceType(
-    summary: BrakeHealthSummaryDto,
-  ): ModuleHealth['evidence_type'] {
-    switch (this.resolveBrakeDataBasis(summary)) {
-      case 'MEASURED':
-        return 'measured';
-      case 'DOCUMENTED':
-        return 'document';
-      case 'SENSOR':
-        return 'sensor';
-      case 'ESTIMATED':
-        return 'estimated';
-      default:
-        return 'unknown';
-    }
+    return moduleHealth;
   }
 
   /**
@@ -653,12 +607,11 @@ export class RentalHealthService {
     return 'unknown';
   }
 
-  private isBrakeBlockWorthy(summary: BrakeHealthSummaryDto | null): boolean {
-    if (!summary || summary.overallCondition !== 'CRITICAL') return false;
-    const basis = summary.dataBasis ?? summary.frontDataBasis;
-    if (basis === 'MEASURED') return true;
+  private isBrakeBlockWorthy(modules: VehicleHealth['modules']): boolean {
+    const brakeModule = modules.brakes as BrakeRentalHealthModuleHealth;
     return (
-      summary.openAlerts?.some((a) => a.severity === 'critical') ?? false
+      !!brakeModule.brake_read_model &&
+      isBrakeRentalHardBlocked(brakeModule.brake_read_model)
     );
   }
 
@@ -725,8 +678,10 @@ export class RentalHealthService {
       reasons.push('Limp Mode aktiv');
     }
 
-    if (this.isBrakeBlockWorthy(brakeSummary)) {
-      reasons.push(`Bremsen: ${modules.brakes.reason}`);
+    if (this.isBrakeBlockWorthy(modules)) {
+      const brakeModule = modules.brakes as BrakeRentalHealthModuleHealth;
+      const evidence = brakeModule.brake_read_model.rentalBlockingEvidence!;
+      reasons.push(`Bremsen: ${evidence.message}`);
     }
 
     const tireModule = modules.tires as TireRentalHealthModuleHealth;

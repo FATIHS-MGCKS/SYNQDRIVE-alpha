@@ -3,6 +3,7 @@ import { HealthSummaryService, HealthSummaryAgentResponse } from './health-summa
 import { HmSignalUsageService, HmAiHealthCareSignals } from '../../high-mobility/high-mobility-signal-usage.service';
 import { DtcService } from '../dtc/dtc.service';
 import { BrakeHealthService } from '../brakes/brake-health.service';
+import { hasWearOrSafetyAlert } from '../brakes/brake-health-alert.builder';
 import { TireHealthService } from '../tires/tire-health.service';
 import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
 import { DashboardWarningLightsService } from '../dashboard-warning-lights/dashboard-warning-lights.service';
@@ -276,8 +277,8 @@ export class AiHealthCareAggregationService {
     }
     if (brakeHealth?.overallCondition === 'WARNING' || brakeHealth?.overallCondition === 'WATCH') {
       escalate('ATTENTION_NEEDED', brakeHealth.recommendations?.[0] ?? 'Bremsanlage benötigt Aufmerksamkeit');
-    } else if (brakeHealth?.hasAlert === true) {
-      escalate('ATTENTION_NEEDED', 'Bremsanlage benötigt Aufmerksamkeit');
+    } else if (brakeHealth && hasWearOrSafetyAlert(brakeHealth.openAlerts ?? [])) {
+      escalate('ATTENTION_NEEDED', brakeHealth.openAlerts?.[0]?.message ?? 'Bremsanlage benötigt Aufmerksamkeit');
     }
     const tireWarningAlerts = tireHealth?.alerts?.filter(a => a.severity === 'warning') ?? [];
     if (tireWarningAlerts.length > 0) {
@@ -301,7 +302,7 @@ export class AiHealthCareAggregationService {
       const hasGoodDtc = !dtcSummary || dtcSummary.status === 'clean';
       const hasGoodBrake =
         !brakeHealth ||
-        (!brakeHealth.hasAlert &&
+        (!hasWearOrSafetyAlert(brakeHealth.openAlerts ?? []) &&
           (brakeHealth.overallCondition === 'GOOD' || brakeHealth.overallCondition === 'UNKNOWN'));
       const hasGoodTire =
         !tireHealth ||

@@ -76,6 +76,7 @@ export interface RentalHealthModule {
     | 'complaint'
     | 'unknown';
   tire_read_model?: TireRentalHealthReadModel;
+  brake_read_model?: BrakeRentalHealthReadModel;
 }
 
 export type TireRentalReviewRequirement =
@@ -152,6 +153,94 @@ export interface TireRentalHealthReadModel {
     createdAt: string;
   } | null;
   primaryReason: string;
+  lastUpdatedAt: string | null;
+  dataStale: boolean;
+  source: string;
+  evidenceType: string;
+}
+
+export type BrakeRentalReviewRequirement =
+  | 'NONE'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED';
+
+export type BrakeRentalDecision =
+  | 'ALLOW'
+  | 'WARNING'
+  | 'MEASUREMENT_REQUIRED'
+  | 'DATA_QUALITY_WARNING'
+  | 'REVIEW_REQUIRED'
+  | 'HARD_BLOCK'
+  | 'UNAVAILABLE';
+
+export type BrakeRentalReasonCode =
+  | 'WEAR_MEASURED_CRITICAL'
+  | 'WEAR_MEASURED_BELOW_THRESHOLD'
+  | 'WEAR_ESTIMATED_CRITICAL'
+  | 'WEAR_ESTIMATED_WARNING'
+  | 'SAFETY_DTC_CRITICAL'
+  | 'SAFETY_DTC_REVIEW'
+  | 'SAFETY_ABS_CRITICAL'
+  | 'SAFETY_ABS_REVIEW'
+  | 'SAFETY_FLUID_CRITICAL'
+  | 'SAFETY_IMMEDIATE_REPLACEMENT'
+  | 'SAFETY_WEAR_SENSOR'
+  | 'DATA_NO_BASELINE'
+  | 'DATA_SPEC_ONLY'
+  | 'DATA_COVERAGE_GAP'
+  | 'DATA_DISTANCE_CONFLICT'
+  | 'DATA_MEASUREMENT_REQUIRED'
+  | 'DATA_STALE_EVIDENCE'
+  | 'UNKNOWN_STATE'
+  | 'MODULE_UNAVAILABLE'
+  | 'REVIEW_OVERRIDE_ACTIVE';
+
+export interface BrakeRentalBlockingEvidence {
+  action: 'NONE' | 'HARD_BLOCK';
+  reasonCode: BrakeRentalReasonCode;
+  source: string;
+  value: number | string | null;
+  threshold: number | string | null;
+  timestamp: string | null;
+  message: string;
+  messageEn: string;
+}
+
+export interface BrakeRentalHealthReadModel {
+  wearCondition: string;
+  safetyCondition: string;
+  dataQualityCondition: string;
+  measurementFreshness: string;
+  modelFreshness: string;
+  activeSafetyEvidence: Array<{
+    alertType: string;
+    reasonCode: string;
+    severity: string;
+    message: string;
+    messageEn: string;
+    displayMode: string;
+    axle?: string;
+  }>;
+  confidence: string;
+  reviewRequirement: BrakeRentalReviewRequirement;
+  rentalDecision: BrakeRentalDecision;
+  blockingReasons: string[];
+  rentalBlockingEvidence: BrakeRentalBlockingEvidence | null;
+  structuredReasonCodes: BrakeRentalReasonCode[];
+  activeReviewOverride: {
+    id: string;
+    reason: string;
+    grantedByUserId: string;
+    expiresAt: string;
+    createdAt: string;
+  } | null;
+  hasWearOrSafetyAlert: boolean;
+  primaryReason: string;
+  primaryReasonEn: string;
+  lastMeasurementAt: string | null;
+  lastSafetyEvidenceAt: string | null;
+  lastModelCalculatedAt: string | null;
+  lastDataReceivedAt: string | null;
   lastUpdatedAt: string | null;
   dataStale: boolean;
   source: string;
@@ -6820,12 +6909,18 @@ export interface BrakeModelCoverage {
   modeledDistanceKm: number | null;
   modeledTripCount: number;
   coverageRatio: number | null;
+  coverageRatioRaw: number | null;
+  underCoverageKm: number | null;
+  overCoverageKm: number | null;
+  coverageStatus: 'FULL' | 'PARTIAL' | 'ZERO' | 'OVER' | 'UNKNOWN' | null;
   hasGap: boolean;
+  reconciliationRequired: boolean;
   source:
-    | 'trip_impacts'
-    | 'trip_impacts_plus_rolling_gap'
-    | 'rolling_gap_only'
-    | 'none';
+    | 'OBSERVED'
+    | 'MIXED_OBSERVED_NEUTRAL_GAP'
+    | 'NEUTRAL_GAP_ONLY'
+    | 'INCONSISTENT'
+    | 'NOT_ENOUGH_DATA';
 }
 
 export interface BrakeServiceLifecycleResult {
@@ -6866,7 +6961,7 @@ export interface BrakeAxleSummary {
   estimatedRemainingKmMax: number | null;
 }
 
-/** Legacy wear-model fields — backward compatibility only; do not display in UI. */
+/** @deprecated Wear-model compat only — removal planned P28. */
 export interface BrakeHealthLegacy {
   padsHealthPct: number | null;
   discsHealthPct: number | null;
@@ -6897,6 +6992,10 @@ export interface BrakeHealthSummary {
   baselineWarnings: string[];
   provenanceWarnings: string[];
   hasAlert?: boolean;
+  /**
+   * @deprecated Wear-model compat only — do not use for UI or decisions.
+   * Prefer `overallCondition`, axle summaries, and `openAlerts`.
+   */
   legacyHeuristic?: { available: boolean; note: string };
 
   // ── Canonical read model ─────────────────────────────────────────────────
@@ -6927,6 +7026,124 @@ export interface BrakeHealthSummary {
   lastServiceMileageKm: number | null;
   updatedAt: string | null;
   legacy: BrakeHealthLegacy;
+  componentThresholds?: BrakeComponentThreshold[];
+  evidencePresentation?: BrakeEvidencePresentation;
+}
+
+export type BrakeComponentEvidenceClass =
+  | 'MEASURED'
+  | 'DOCUMENTED_REPLACEMENT'
+  | 'SPEC_ESTIMATE'
+  | 'MODEL_ESTIMATED'
+  | 'UNKNOWN';
+
+export type BrakeComponentKey = 'FRONT_PADS' | 'REAR_PADS' | 'FRONT_DISCS' | 'REAR_DISCS';
+
+export interface BrakeComponentThreshold {
+  component: BrakeComponentKey;
+  warningThresholdMm: number | null;
+  criticalThresholdMm: number | null;
+  source: string | null;
+  confirmed: boolean;
+  thresholdMissing: boolean;
+}
+
+export interface BrakeRemainingKmPresentation {
+  reliable: boolean;
+  displayDe: string;
+  displayEn: string;
+  exactKm: number | null;
+  bandMinKm: number | null;
+  bandMaxKm: number | null;
+  reasonDe: string | null;
+  reasonEn: string | null;
+}
+
+export interface BrakeComponentEvidenceLine {
+  component: BrakeComponentKey;
+  labelDe: string;
+  labelEn: string;
+  condition: BrakeCondition;
+  valueMm: number | null;
+  valueLabelDe: string;
+  valueLabelEn: string;
+  evidenceClass: BrakeComponentEvidenceClass;
+  evidenceClassLabelDe: string;
+  evidenceClassLabelEn: string;
+  sourceCode: string | null;
+  sourceLabelDe: string;
+  sourceLabelEn: string;
+  evidenceAt: string | null;
+  odometerKm: number | null;
+  confidence: BrakeConfidenceLevel;
+  minimumThicknessMm: number | null;
+  minimumThicknessSource: string | null;
+  minimumThicknessSourceLabelDe: string;
+  minimumThicknessSourceLabelEn: string;
+  lastMeasurementAt: string | null;
+  lastMeasurementMm: number | null;
+  lastInstallationAt: string | null;
+  modelVersion: string | null;
+  isLimiting: boolean;
+  isModeled: boolean;
+  remainingKm: BrakeRemainingKmPresentation;
+}
+
+export type BrakeDataQualityCode =
+  | 'MISSING_BASELINE'
+  | 'SPEC_UNCONFIRMED'
+  | 'COVERAGE_GAP'
+  | 'DISTANCE_CONFLICT'
+  | 'STALE_EVIDENCE';
+
+export interface BrakeDataQualityItem {
+  code: BrakeDataQualityCode;
+  labelDe: string;
+  labelEn: string;
+  detailDe: string | null;
+  detailEn: string | null;
+  active: boolean;
+}
+
+export type BrakeSafetyCode = 'ABS' | 'DTC' | 'WEAR_SENSOR' | 'IMMEDIATE_REPLACEMENT';
+
+export interface BrakeSafetyItem {
+  code: BrakeSafetyCode;
+  labelDe: string;
+  labelEn: string;
+  active: boolean;
+  detailDe: string | null;
+  detailEn: string | null;
+  severity: 'info' | 'warning' | 'critical' | null;
+}
+
+export type BrakeStructuredActionCode =
+  | 'MEASURE_THICKNESS'
+  | 'RECORD_SERVICE'
+  | 'CONFIRM_REFERENCE_SPEC'
+  | 'ADD_ODOMETER'
+  | 'REVIEW_SAFETY_EVIDENCE'
+  | 'PERFORM_REVIEW';
+
+export interface BrakeStructuredAction {
+  code: BrakeStructuredActionCode;
+  labelDe: string;
+  labelEn: string;
+  priority: number;
+}
+
+export interface BrakeEvidencePresentation {
+  overviewLabelDe: string;
+  overviewLabelEn: string;
+  uiStatusLabelDe: string;
+  uiStatusLabelEn: string;
+  components: BrakeComponentEvidenceLine[];
+  overallRemainingKm: BrakeRemainingKmPresentation;
+  dataQuality: BrakeDataQualityItem[];
+  safety: BrakeSafetyItem[];
+  structuredActions: BrakeStructuredAction[];
+  modelVersion: string;
+  modelCalculatedAt: string | null;
 }
 
 /** Legacy wear-model detail estimates — not for UI display. */

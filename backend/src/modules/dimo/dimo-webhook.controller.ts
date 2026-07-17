@@ -252,8 +252,18 @@ export class DimoWebhookController {
 
     this.logger.log(`DTC webhook for vehicle ${vehicleId}: ${codes.length} codes`);
 
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    const producerContext = {
+      sourceProvider: 'DIMO' as const,
+      sourceTimestamp: new Date(),
+      organizationId: vehicle?.organizationId ?? null,
+    };
+
     for (const code of codes) {
-      await this.dtcService.upsertDtc(vehicleId, code);
+      await this.dtcService.upsertDtc(vehicleId, code, { producerContext });
     }
 
     await this.prisma.vehicleLatestState.updateMany({

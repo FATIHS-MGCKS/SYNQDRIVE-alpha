@@ -1,0 +1,41 @@
+factor,functionOrLocation,mathematicalForm,inputUnit,outputUnit,default,clamp,minInfluence,maxInfluence,nullBehavior,assumption,risk,phase2FindingId
+Pad Usable Thickness,computePadWear L1066,usableMm = anchorMm - pad.criticalMm (2.0),mm,mm,N/A,usableMm<=0 → health 0,0,N/A,null anchor → null outputs,2mm legal minimum universal,P1-BH-30
+Pad Base Wear per km,computePadRatePerKm L1196,baseWearPerKm = usableMm / pad.baseLifeKm (70000),mm mm/km,mm/km,70000 km life,none,0.7× to 1.35× via k,1.0 at defaults,null anchor → 0 rate,baseLifeKm is total pad life not per-axle,P1-BH-34
+Pad Effective Wear Rate,computePadWear L1073-1080,effective = base×biasShare/defaultFront×usage×stop×hard×full×reku×k,mm/km,mm/km,bias 0.72 norm,implicit via factors,~0.5× rear ~1.0× front at default,~1.8× hard brake anchor,0 factors → 0 wear,defaultFront normalization intentional,Medium,
+Disc Max Wear,computeDiscWear L1124,disc maxWear = config 2.0 mm fixed NOT per anchor,mm,mm,2.0,N/A,N/A,N/A,null anchor → null,generic 2mm for all discs,P1-BH-30
+Disc Base Wear per km,computeDiscRatePerKm L1219,baseWearPerKm = maxWear(2.0) / disc.baseLifeKm (90000),mm/km,mm/km,90000 km,none,same pattern,same,null → 0,ignores actual disc minimum thickness,High,P1-BH-30
+Disc Critical Thickness,computeDiscWear L1125,criticalMm = anchorMm - maxWear(2.0),mm,mm,anchor-dependent,N/A,N/A,N/A,uses WIDTH anchor wrongly if spec,anchor may be rotor width not thickness,P0-BH-14
+Front Rear Bias,recalculate L678-682,biasFront = brakeForceFrontPercent/100 or 0.72; biasRear=1-bias,percent or ratio,ratio,0.72/0.28,0-1,~0.68-0.74 front,~1.0 rear relative, null vehicle → default,EBD fallback documented,Low,
+Bias Normalization,computePadWear L1074,divides biasShare by defaultFront 0.72,ratio,ratio,0.72,N/A,rear ~0.39 effective if biasRear 0.28,front 1.0 at 0.72,prevents double-count,base life is vehicle-level split by bias,P1-BH-34
+City Highway Country Pad,computePadUsageFactor,weighted avg padUsageFactors city 1.35 highway 0.78 country 1.0,percent shares,ratio,33/33/33 if null,none,0.78-1.35,1.0 balanced,null impact → 1.0,DI shares may not sum 100,Low,
+City Highway Country Disc,computeDiscUsageFactor,same with discUsageFactors 1.20 0.85 1.00,percent,ratio,33/33/33,none,0.85-1.20,1.0,null → 1.0,same,Low,
+Stop Density Pad,lookupSteppedFactor padStopDensityAnchors,step thresholds 0.08 0.16 0.24,stops/km factor,1.0-1.16,0,none,1.0,1.16,null → 0 threshold,from TripDrivingImpact,Low,
+Hard Braking Pad,lookupSteppedFactor padHardBrakeAnchors,hardBrakePer100Km stepped 1.0-1.18,events/100km,factor,0,none,1.0,1.18,null → 0,NOT harshBrakeWearMultiplier from brake-status,P0-BH-05
+Full Braking Pad,lookupSteppedFactor padFullBrakingAnchors,fullBrakingPer100Km 1.0-1.12,events/100km,factor,0,none,1.0,1.12,null → 0,from DI,Low,
+High Speed Braking Disc,lookupSteppedFactor discHighSpeedBrakeAnchors,highSpeedBrakeShare×100 thresholds 5 12 20,0-1 fraction ×100 → %,factor,0,none,1.0,1.18,null → 0,unit conversion correct in recalc,Low,
+Hard Braking Disc,discHardBrakeAnchors,same pattern as pad 1.0-1.14,events/100km,factor,0,none,1.0,1.14,null → 0,separate anchors from pad,Low,
+Full Braking Disc,discFullBrakingAnchors,1.0-1.15,events/100km,factor,0,none,1.0,1.15,null → 0,from DI,Low,
+Thermal Factor Disc,interpolateThermalFactor discThermalAnchors,linear interp thermalBrakeStressScore 0-100,score 0-100,factor 1.0-1.20,0,clamp score range,1.0,1.20,null → 0 score → 1.0,from DI thermalBrakeStressScore,Medium,
+Regeneration Pad,padRekuFactors[fuelType],static lookup ICE 1.0 EV 0.72 etc,fuelType enum,ratio,1.0 ICE,none,0.72 EV,1.0 ICE,null → 1.0,static not telemetered regen,P1-BH-29
+Regeneration Disc,discRekuFactors,similar EV 0.86,fuelType,ratio,1.0,none,0.86-1.0,1.0,static map,not measured regen,P1-BH-29
+Calibration K,backend/src,N/A NOT IMPLEMENTED,kFactors stored reset to 1.0 on init,ratio,ratio,1.0,config padMinK 0.70 padMaxK 1.35,N/A,never updated,calibration config dead code,P0-BH-04
+Estimated Thickness Pad,computePadFromWorn,estimatedMm = clamp(anchor - wornMm 0 anchor),mm,mm,N/A,0-anchor,decreases with km,null → null,trip accumulation,Low,
+Estimated Thickness Disc,computeDiscFromWorn,estimatedMm = clamp(anchor-worn criticalMm anchor),mm,mm,N/A,floor at critical,decreases,null → null,same,Low,
+Health Percentage Pad,computePadFromWorn,healthPct = (estimated-critical)/usable×100,%,0-100,N/A,clamp 0-100,N/A,N/A,usable<=0 → 0,percent 0-100 not 0-1,Low,
+Health Percentage Disc,computeDiscFromWorn,healthPct = (maxWear-discWornTotal)/maxWear×100,%,0-100,N/A,clamp 0-100,N/A,N/A,fixed 2mm denominator,P1-BH-30
+Remaining Kilometers,computePadFromWorn,remainingKm = round(remainingMm/wearRate),km,km integer,0 if no rate,N/A,N/A,N/A,wearRate 0 → 0,linear extrapolation,P1-BH-35
+Set Level Health,setLevel minWeight 0.6 avg 0.4,padsHealth = 0.6×min(pcts)+0.4×avg(pcts),%,0-100,weights fixed,clamp 0-100,hides one bad axle if other good,1.0 if equal,critical axle can be masked,P1-BH-36
+Set Level Remaining,min of axles,padsRemainingKm = min(front rear),km,km,N/A,N/A,limiting axle wins,N/A,Infinity if missing,conservative for remaining,Low,
+Confidence Score,computeConfidence,point sum padAnchors 20 rotor 10 service 12 DI 15 braking 10 usage 8 odo 10 calib 5 + coverage adjustments,points,0-100 score,thresholds 80/55,clamp 0-100,N/A,N/A,missing DI loses 15pts,spec fallback still gets anchor points,P1-BH-37
+Confidence Level,classifyConfidenceLevel,score→HIGH/MEDIUM/LOW; ESTIMATED capped MEDIUM; stale measured downgrades,score+basis,enum,N/A,caps,never HIGH on estimate,N/A,UNKNOWN basis → UNKNOWN,honest cap on estimates,Low,
+Coverage Ratio,recalculate L916-917,modeledDistance / distanceSinceAnchor (trip km only not gap),ratio,0-1,trip sum only,clamp 0-1,penalizes low coverage,N/A,distance 0 → 1,gap filled separately rolling,P1-BH-38
+Rolling Gap Fill,recalculate L809-908,uncoveredDistance × rate(rollingImpact),km,mm worn,rolling 30d DI,none,can dominate if no trips,null rolling → warning,uses current rolling for historical gap,P1-BH-38
+Remaining Km Range,buildRemainingKmRange,spread by confidence HIGH 15% MED 30% round 500km,km,km band,N/A,min 0,UNKNOWN 50% spread,N/A,null → null,mitigates false precision,Low,
+Condition Estimated,classifyEstimatedCondition,caps at WARNING never CRITICAL from estimate,health remaining,enum,N/A,CRITICAL→WARNING,estimate never critical,N/A,null → UNKNOWN,honest design,Low,
+Condition Measured,classifyMeasuredThickness,<=critical CRITICAL <=warning WARNING,mm,enum,2.0/3.0 pads,none,can CRITICAL,N/A,null → UNKNOWN,only pads in canonical axle check,P1-BH-39
+Alert Legacy,computeAlerts,pad/disc mm thresholds + remaining km on ESTIMATES,mm km,alert array,N/A,N/A,diverges from canonical,P1-BH-01,sets hasAlert on DB,Low,
+Harsh Brake Multiplier,harshBrakeWearMultiplier,NOT USED in recalculate,bands 1.0-1.6,N/A,N/A,N/A,N/A,N/A,dead code path,P0-BH-05
+Odometer Distance,recalculate L676,max(0 currentOdo - anchorOdo),km,km,N/A,floor 0,handles rollback partially,null odo → abort recalc,no explicit rollback event,P1-BH-40
+Trip vs Odometer,trip loop + gap,trip sum for wear; distanceSinceAnchor from odometer; gap = odometer - trip sum,km,mm,km,N/A,gap uses rolling factors,can exceed if trips overlap odo,none if no odo,trip km can be less than odo delta,Medium,
+Distance Since Anchor Zero,initializeFromService,distanceSinceAnchorKm=0 on init,km,0,N/A,N/A,N/A,N/A,health 100% at anchor,expected at service,Low,
+Model Version,initializeFromService,modelVersion=MODEL_VERSION 1.0.0 on init only,string,string,1.0.0,N/A,N/A,N/A,not updated on recalc,no replay fingerprint,P0-BH-13

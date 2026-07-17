@@ -1,12 +1,22 @@
 import { BrakeEvidenceService } from './brake-evidence.service';
+import { BrakeEvidenceConfirmationStatus, BrakeEvidenceSource } from '@prisma/client';
+import { isMmGroundTruth } from './brake-evidence.domain';
 
 type CreatedRow = Record<string, unknown>;
 
 function makeService() {
   const created: CreatedRow[] = [];
   const mockPrisma = {
+    vehicle: {
+      findUnique: jest.fn(async () => ({ organizationId: 'org-1' })),
+    },
     brakeEvidence: {
+      findFirst: jest.fn(async () => null),
       create: jest.fn(async ({ data }: { data: CreatedRow }) => {
+        created.push(data);
+        return { id: 'ev1', ...data };
+      }),
+      update: jest.fn(async ({ data }: { data: CreatedRow }) => {
         created.push(data);
         return { id: 'ev1', ...data };
       }),
@@ -30,7 +40,7 @@ describe('BrakeEvidenceService — mm trust rule', () => {
     // mm-only telemetry has no other signal → not worth persisting at all.
     const row = await svc.record({
       vehicleId: 'v1',
-      source: 'TELEMATICS_ESTIMATION' as any,
+      source: BrakeEvidenceSource.TELEMATICS_ESTIMATION,
       axle: 'FRONT' as any,
       measuredPadMm: 5.5,
     });
@@ -41,7 +51,7 @@ describe('BrakeEvidenceService — mm trust rule', () => {
     const { svc, mockPrisma } = makeService();
     await svc.record({
       vehicleId: 'v1',
-      source: 'TELEMATICS_ESTIMATION' as any,
+      source: BrakeEvidenceSource.TELEMATICS_ESTIMATION,
       axle: 'FRONT' as any,
       measuredPadMm: 5.5,
       dtcSeverity: 'WARNING',
@@ -55,7 +65,7 @@ describe('BrakeEvidenceService — mm trust rule', () => {
     const { svc, mockPrisma } = makeService();
     await svc.record({
       vehicleId: 'v1',
-      source: 'MANUAL_MEASUREMENT' as any,
+      source: BrakeEvidenceSource.MANUAL_MEASUREMENT,
       axle: 'FRONT' as any,
       measuredPadMm: 5.5,
       confidence: 'HIGH' as any,
@@ -64,11 +74,11 @@ describe('BrakeEvidenceService — mm trust rule', () => {
     expect(data.measuredPadMm).toBe(5.5);
   });
 
-  it('persists real mm from a confirmed AI_UPLOAD document', async () => {
+  it('persists real mm from a confirmed AI_UPLOAD_CONFIRMED document', async () => {
     const { svc, mockPrisma } = makeService();
     await svc.record({
       vehicleId: 'v1',
-      source: 'AI_UPLOAD' as any,
+      source: BrakeEvidenceSource.AI_UPLOAD_CONFIRMED,
       axle: 'REAR' as any,
       measuredPadMm: 3.2,
       confidence: 'HIGH' as any,
@@ -77,11 +87,32 @@ describe('BrakeEvidenceService — mm trust rule', () => {
     expect(data.measuredPadMm).toBe(3.2);
   });
 
+  it('strips mm from unconfirmed AI uploads for ground truth but persists the row', async () => {
+    const { svc, mockPrisma } = makeService();
+    await svc.record({
+      vehicleId: 'v1',
+      source: BrakeEvidenceSource.AI_UPLOAD_UNCONFIRMED,
+      axle: 'REAR' as any,
+      measuredPadMm: 3.2,
+    });
+    const data = mockPrisma.brakeEvidence.create.mock.calls.at(-1)?.[0]?.data;
+    expect(data.measuredPadMm).toBe(3.2);
+    expect(data.confirmationStatus).toBe(BrakeEvidenceConfirmationStatus.UNCONFIRMED);
+    expect(
+      isMmGroundTruth({
+        source: data.source,
+        active: true,
+        measuredPadMm: data.measuredPadMm,
+        confirmationStatus: data.confirmationStatus,
+      }),
+    ).toBe(false);
+  });
+
   it('drops rows that carry no meaningful signal', async () => {
     const { svc } = makeService();
     const row = await svc.record({
       vehicleId: 'v1',
-      source: 'WORKSHOP_REPORT' as any,
+      source: BrakeEvidenceSource.WORKSHOP_MEASUREMENT,
       axle: 'FRONT' as any,
     });
     expect(row).toBeNull();
@@ -90,8 +121,19 @@ describe('BrakeEvidenceService — mm trust rule', () => {
   it('recordMany skips no-signal rows and keeps signal-bearing rows', async () => {
     const { svc } = makeService();
     const res = await svc.recordMany([
-      { vehicleId: 'v1', source: 'AI_UPLOAD' as any, axle: 'FRONT' as any, measuredPadMm: 4 },
-      { vehicleId: 'v1', source: 'AI_UPLOAD' as any, axle: 'REAR' as any }, // no signal
+      {
+        vehicleId: 'v1',
+        source: BrakeEvidenceSource.AI_UPLOAD_CONFIRMED,
+        axle: 'FRONT' as any,
+        measuredPadMm: 4,
+        externalSourceId: 'front',
+      },
+      {
+        vehicleId: 'v1',
+        source: BrakeEvidenceSource.AI_UPLOAD_CONFIRMED,
+        axle: 'REAR' as any,
+        externalSourceId: 'rear',
+      },
     ]);
     expect(res.count).toBe(1);
   });

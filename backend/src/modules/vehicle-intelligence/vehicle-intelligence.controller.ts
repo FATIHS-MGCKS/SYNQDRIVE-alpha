@@ -21,6 +21,7 @@ import { TireTripUsageService } from './tires/tire-trip-usage.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
+import { BrakeRecalculationOrchestratorService } from './brakes/brake-recalculation-orchestrator.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
@@ -103,7 +104,9 @@ import {
   RecordBrakeServiceDto,
   CreateBrakeSpecDto,
   UpdateBrakeSpecDto,
+  BrakeRecalculateDto,
 } from './brakes/dto/brake-mutation.dto';
+import { ValidateBrakeServiceScopePipe } from './brakes/brake-service-scope.validation';
 import {
   CreateVehicleServiceEventDto,
   UpdateVehicleServiceEventDto,
@@ -130,6 +133,7 @@ export class VehicleIntelligenceController {
     private readonly tireLifecycleService: TireLifecycleService,
     private readonly brakesService: BrakesService,
     private readonly brakeHealthService: BrakeHealthService,
+    private readonly brakeRecalcOrchestrator: BrakeRecalculationOrchestratorService,
     private readonly brakeLifecycleService: BrakeLifecycleService,
     private readonly serviceEventsService: ServiceEventsService,
     private readonly enrichmentJobsService: EnrichmentJobsService,
@@ -558,9 +562,10 @@ export class VehicleIntelligenceController {
     return this.brakesService.update(id, body);
   }
 
-  // --- Brake Status (legacy heuristic; deprecated) ---
+  // --- Brake Status (legacy compat; canonical condition from brake-health summary) ---
   @Get('brake-status')
   async getBrakeStatus(@Param('vehicleId') vehicleId: string) {
+    const canonical = await this.brakeHealthService.getSummary(vehicleId);
     const specs = await this.brakesService.findByVehicle(vehicleId);
     const spec = specs[0] ?? null;
 
@@ -628,17 +633,32 @@ export class VehicleIntelligenceController {
     const kmWatchThreshold = isEv ? 80000 : 40000;
 
     let condition: 'good' | 'watch' | 'attention' = 'good';
-    if (padPercent != null) {
-      if (padPercent < padAttentionThreshold) condition = 'attention';
-      else if (padPercent < padWatchThreshold) condition = 'watch';
-    } else if (kmSinceService != null) {
-      if (kmSinceService > kmAttentionThreshold) condition = 'attention';
-      else if (kmSinceService > kmWatchThreshold) condition = 'watch';
-    } else if (daysSinceService != null) {
-      if (daysSinceService > 730) condition = 'attention';
-      else if (daysSinceService > 365) condition = 'watch';
-    } else if (!lastService && !spec) {
-      condition = 'watch';
+    switch (canonical.overallCondition) {
+      case 'CRITICAL':
+        condition = 'attention';
+        break;
+      case 'WARNING':
+      case 'WATCH':
+        condition = 'watch';
+        break;
+      case 'GOOD':
+        condition = 'good';
+        break;
+      default:
+        condition = canonical.isInitialized ? 'watch' : 'watch';
+        break;
+    }
+
+    if (!canonical.isInitialized && canonical.stateClass === 'NO_BASELINE') {
+      if (kmSinceService != null) {
+        if (kmSinceService > kmAttentionThreshold) condition = 'attention';
+        else if (kmSinceService > kmWatchThreshold) condition = 'watch';
+      } else if (daysSinceService != null) {
+        if (daysSinceService > 730) condition = 'attention';
+        else if (daysSinceService > 365) condition = 'watch';
+      } else if (!lastService && !spec) {
+        condition = 'watch';
+      }
     }
 
     if (harshBrakesPer100km != null && harshBrakesPer100km > 8 && condition === 'good') {
@@ -712,6 +732,14 @@ export class VehicleIntelligenceController {
     return {
       _deprecated: true,
       _canonical: 'Use /brake-health/summary and /brake-health/detail for runtime truth.',
+      canonical: {
+        overallCondition: canonical.overallCondition,
+        dataBasis: canonical.dataBasis,
+        stateClass: canonical.stateClass,
+        confidenceLevel: canonical.confidenceLevel,
+        openAlertCount: canonical.openAlerts?.length ?? 0,
+        estimatedReplacementDueInKm: canonical.estimatedReplacementDueInKm,
+      },
       hasSpecs: spec != null,
       isEv,
       regenBrakingNote: isEv ? 'Regenerative braking active — mechanical brake wear is significantly reduced.' : null,
@@ -764,7 +792,7 @@ export class VehicleIntelligenceController {
   @Post('brake-health/initialize')
   async initializeBrakeHealth(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: InitializeBrakeHealthDto,
+    @Body(ValidateBrakeServiceScopePipe) body: InitializeBrakeHealthDto,
   ) {
     return this.brakeLifecycleService.recordService({
       vehicleId,
@@ -788,7 +816,7 @@ export class VehicleIntelligenceController {
   @Post('brake-health/service')
   async recordBrakeLifecycleService(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: RecordBrakeServiceDto,
+    @Body(ValidateBrakeServiceScopePipe) body: RecordBrakeServiceDto,
   ) {
     return this.brakeLifecycleService.recordService({
       vehicleId,
@@ -806,8 +834,22 @@ export class VehicleIntelligenceController {
   }
 
   @Post('brake-health/recalculate')
-  async recalculateBrakeHealth(@Param('vehicleId') vehicleId: string) {
-    return this.brakeHealthService.recalculate(vehicleId);
+  async recalculateBrakeHealth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: BrakeRecalculateDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const result = await this.brakeRecalcOrchestrator.enqueue({
+      vehicleId,
+      trigger: 'manual',
+      force: body.force,
+      reason: body.reason,
+      actorId: req.user?.id ?? null,
+    });
+    if (result.executedInline) {
+      return result.result;
+    }
+    return { queued: result.queued, jobId: result.jobId };
   }
 
   // --- Trip Profile ---
