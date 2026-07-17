@@ -158,7 +158,7 @@ Read path
 | Prompt | Phase | Ziel | Status | Commit | Migration | Tests | VPS/Staging |
 |--------|-------|------|--------|--------|-----------|-------|-------------|
 | **1** | Baseline | Implementierungsbaseline, Builds, Tests dokumentieren | ✅ **Done** | *(nach Commit)* | — | siehe unten | — |
-| **2** | A — Fleet | Registration-Backfill **dry-run** (VPS/staging, supervised) | ⏳ Pending | — | — | backfill spec | dry-run |
+| **2** | Safety net | Regressionstests für kritische Brake-Health-Schreibpfade (A–I) | ✅ **Done** | `b1246a88` | — | 6 rot / 4 grün | — |
 | **3** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
 | **4** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
 | **5** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
@@ -274,11 +274,51 @@ Ziel: echte Ground-Truth (Workshop-mm, bestätigte Rechnungen) für ≥1 Fahrzeu
 
 ---
 
+## Safety-Net Regressionstests (Prompt 2) — 2026-07-17
+
+### Neue Artefakte
+
+| Datei | Zweck |
+|-------|-------|
+| `backend/src/modules/vehicle-intelligence/brakes/brake-lifecycle-test.harness.ts` | In-Memory-Prisma + echte Domain-Services (`BrakeLifecycleService`, `BrakeHealthService`, `BrakeEvidenceService`, `RentalHealthService`) |
+| `backend/src/modules/vehicle-intelligence/brakes/brake-lifecycle-regression.spec.ts` | Regressionstests Szenarien A–I (fachliche Invarianten) |
+| `backend/src/modules/vehicle-intelligence/brakes/brake-registration-regression.spec.ts` | Refactor: nutzt gemeinsame Harness (keine Verhaltensänderung) |
+
+### Ausgeführte Befehle
+
+| # | Befehl | Ergebnis |
+|---|--------|----------|
+| 1 | `npm test -- --testPathPattern='brake-lifecycle-regression\|brake-registration-regression'` | **7 passed, 6 failed** (neue Regressionen) |
+| 2 | `npm test -- --testPathPattern='brake\|rental-health.service.spec'` | **10 suites: 9 passed, 1 failed**; **171 tests: 165 passed, 6 failed** |
+
+**Hinweis:** Die 6 fehlschlagenden Tests sind **bewusst rot** — sie dokumentieren aktuelle Invarianten-Verletzungen vor Lifecycle-Reparatur. Bestehende Brake-Suites (inkl. `brake-registration-regression`, `rental-health.service.spec`) bleiben grün.
+
+### Szenario-Abdeckung
+
+| ID | Szenario | Tests | Ergebnis | Verletzte Finding(s) |
+|----|----------|-------|----------|----------------------|
+| **A** | Registrierung: Spec ohne materialisiertes BHC | 2 | ✅ grün | P0-BH-02 (Schutz gegen falsches Init-Signal) |
+| **B** | Teilservice `FRONT_PADS` only | 1 | ❌ rot | P0-BH-10, P0-BH-12 — Scope ignoriert; k-Faktoren reset |
+| **C** | `INSPECTION_ONLY` ohne Anker-Reset | 1 | ❌ rot | P0-BH-10 — Messung triggert `initializeFromService` |
+| **D** | `BRAKE_FLUID_SERVICE` ohne Pad/Disc-Reset | 1 | ❌ rot | P0-BH-10 |
+| **E** | Spec-Fallback ≠ reale Messung | 1 | ❌ rot | P1-BH-50 — Spec-only erreicht `confidenceLevel: HIGH` |
+| **F** | Service-Event ohne Health-Init | 1 | ✅ grün | Inkonsistenz sichtbar (`brakeLifecycleApplied: false`) |
+| **G** | Health ohne Evidence | 1 | ❌ rot | Evidence-Lücke nicht als unvollständig erkennbar |
+| **H** | ESTIMATED CRITICAL ohne Hard-Block | 1 | ✅ grün | Rental-Blocking korrekt eingeschränkt |
+| **I** | Coverage-Lücke ≠ Verschleiß | 1 | ❌ rot | P1-BH-52 — DB `hasAlert=true` bei info `COVERAGE_GAP` |
+
+### Produktionslogik
+
+**Keine Änderung** an Domain-Services, Migrationen oder VPS-Daten.
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
 |--------|--------|---------|
 | 1 | `b12599f5da380f9740a8e44dc6d43f88351bdaa6` | `docs(brakes): establish production readiness remediation baseline` |
+| 2 | `b1246a886d62892abd605617f39e007871663994` | `test(brakes): capture brake health lifecycle regressions` |
 
 ---
 
