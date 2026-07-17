@@ -674,6 +674,7 @@ Nach Merge von Battery V2 P1/P2 auf `main` verhinderten NestJS-DI-Fehler den Wor
 | `BatteryCapabilityRefreshService` registriert | `battery-v2-jobs-producer.module.ts` | Fehlender Provider im Producer-Modul |
 | `extractSignalTimestamp()` wiederhergestellt | `dimo-snapshot.processor.ts` | Merge-Konflikt mit Tire Health V2 |
 | `DimoModule` importiert | `battery-v2-jobs.module.ts` | `BatteryStartProxyExtractService` benötigt `DimoSegmentsService` im Worker-Kontext |
+| `BatteryV2JobObservabilityService` im Producer | `battery-v2-jobs-producer.module.ts` | `HvChargeSessionPersistService` benötigt Observability im API-Modul-Kontext |
 
 ---
 

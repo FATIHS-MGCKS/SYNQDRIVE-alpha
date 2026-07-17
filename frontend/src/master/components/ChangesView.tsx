@@ -40,6 +40,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.579 — Battery V2 Worker DI Hotfix (Post-Deploy)',
     summary: [
       '`BatteryV2JobsModule` importiert `DimoModule` — `BatteryStartProxyExtractService` löst `DimoSegmentsService` im Worker-Kontext auf.',
+      '`BatteryV2JobObservabilityService` im Producer-Modul — `HvChargeSessionPersistService` im API-Kontext.',
       'Folgt auf Merge-Hotfixes: `BatteryCapabilityRefreshService` im Producer-Modul, `extractSignalTimestamp` in DIMO-Snapshot-Processor.',
     ],
     reason: 'Produktion crash-loop nach Battery-V2-Merge: NestJS konnte Worker-Dependencies nicht auflösen (502 Bad Gateway).',
