@@ -28,6 +28,14 @@ All variables are optional until telephony is enabled. Missing values must not f
 
 ### Production VPS (`backend.env`)
 
+Sync from Cloud Agent (Cursor Runtime Secrets) or local `backend/.env`:
+
+```bash
+bash backend/scripts/ops/sync-twilio-env-to-vps.sh
+```
+
+Manual reference:
+
 ```bash
 TWILIO_VOICE_WEBHOOK_BASE_URL=https://app.synqdrive.eu
 TWILIO_AUTH_TOKEN=<webhook-signing-only>

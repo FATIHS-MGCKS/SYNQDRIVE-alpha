@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'twilio-vps-env-sync-v49586-2026-07-17',
+    version: '4.9.586',
+    title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',
+    summary: [
+      'Neues Ops-Skript `sync-twilio-env-to-vps.sh` — synchronisiert Twilio-Credentials + `TWILIO_VOICE_WEBHOOK_BASE_URL` nach `/opt/synqdrive/shared/backend.env`.',
+      'Pattern analog zu `sync-resend-env-to-vps.sh` (Cursor Secrets oder lokale `backend/.env`).',
+    ],
+    reason: 'Production-Deploy brauchte manuelles Setzen der Twilio-Env-Variablen auf dem VPS.',
+    previousBehavior: 'Kein automatisierter Twilio-Env-Sync; nur dokumentierte manuelle `backend.env`-Pflege.',
+    details: 'backend/scripts/ops/sync-twilio-env-to-vps.sh, docs/twilio-setup.md.',
+    affectsArchitecture: false,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:30:00.000Z',
+  },
+  {
     id: 'twilio-webhook-base-url-v49585-2026-07-17',
     version: '4.9.585',
     title: 'V4.9.585 — Twilio: Production Webhook Base URL + Reachability Script',
