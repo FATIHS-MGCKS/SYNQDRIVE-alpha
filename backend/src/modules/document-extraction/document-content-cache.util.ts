@@ -23,6 +23,7 @@ export interface PipelinePlausibilityPayload {
   uploadContext?: import('./document-upload-context.types').DocumentUploadContextPipelineState;
   vehicleCandidates?: import('./vehicle-candidate-resolver.types').VehicleCandidatePipelineState;
   bookingCandidates?: import('./booking-candidate-resolver.types').BookingCandidatePipelineState;
+  customerCandidates?: import('./customer-candidate-resolver.types').CustomerCandidatePipelineState;
 }
 
 export interface DocumentTypeAuditEntry {

@@ -20,10 +20,12 @@ import {
 } from './document-upload-context.util';
 import { readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
 import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
+import { readCustomerCandidatePipelineState } from './customer-candidate-matching.util';
 import type {
   PublicUploadContextDisplayDto,
   PublicVehicleCandidateDto,
   PublicBookingCandidateDto,
+  PublicCustomerCandidateDto,
 } from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
@@ -230,6 +232,25 @@ function buildBookingCandidatesDisplay(record: ExtractionRecord): PublicBookingC
   }));
 }
 
+function buildCustomerCandidatesDisplay(record: ExtractionRecord): PublicCustomerCandidateDto[] | null {
+  const pipeline = readCustomerCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    customerId: candidate.customerId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+    displayLabel: candidate.displayLabel,
+  }));
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
@@ -243,6 +264,7 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     uploadContext: buildUploadContextDisplay(record),
     vehicleCandidates: buildVehicleCandidatesDisplay(record),
     bookingCandidates: buildBookingCandidatesDisplay(record),
+    customerCandidates: buildCustomerCandidatesDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,

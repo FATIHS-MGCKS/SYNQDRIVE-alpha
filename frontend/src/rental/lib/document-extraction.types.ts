@@ -167,6 +167,21 @@ export interface PublicBookingCandidate {
   confirmationRequired: boolean;
 }
 
+export interface PublicCustomerCandidate {
+  customerId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  confirmationRequired: boolean;
+  displayLabel: string;
+}
+
 export interface PublicDocumentExtraction {
   id: string;
   vehicleId: string | null;
@@ -174,6 +189,7 @@ export interface PublicDocumentExtraction {
   uploadContext: PublicUploadContextDisplay | null;
   vehicleCandidates: PublicVehicleCandidate[] | null;
   bookingCandidates: PublicBookingCandidate[] | null;
+  customerCandidates: PublicCustomerCandidate[] | null;
   vehicle: PublicVehicleDisplay | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;
