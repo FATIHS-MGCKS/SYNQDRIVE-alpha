@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p62-rental-driving-analysis-normalized-metrics-2026-07-17',
+    version: '4.9.563',
+    title: 'Driving Intelligence V2 P62 — Rental Normalized Metrics',
+    summary: [
+      'Absolute Event-Schwellen durch normalisierte Rental-Metriken ersetzt (`rental-driving-analysis-v2`).',
+      'Berechnet: Events/100 km, Events/Fahrstunde, Anteil betroffener Trips, starke Eventcluster, wiederholte Muster, Distanz/Dauer.',
+      'Evidence Shares: Assessable Distance Share, Native Evidence Share, Proxy Share.',
+      'Getrennte Bewertung `vehicleLoad` (Stress) vs `driverConduct` (harsh/abuse per 100 km).',
+      'Mindestdistanz/-dauer-Regeln auf Mietebene; robuste Caps; lange Mieten nicht wegen absoluter Eventzahl bestraft.',
+      'Tests: 50-km vs 2.000-km-Miete mit gleicher absoluter Eventzahl.',
+    ],
+    reason: 'Prompt 62/76 — faire Rental-Bewertung über normalisierte Metriken statt absolute Eventcounts.',
+    previousBehavior:
+      'P61 nutzte absolute harshBraking/harshAccel-Schwellen (>10, >15, >40) für overallLevel und wearImpact — lange Mieten wurden unverhältnismäßig schlechter bewertet.',
+    details:
+      '`rental-driving-analysis.metrics.ts`, `rental-driving-analysis.metrics.config.ts`, Reuse P44 `driving-metric-normalization`, `calculationVersion=rental-driving-analysis-v2`, Payload `rentalMetrics`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p61-rental-driving-analysis-assessment-2026-07-17',
     version: '4.9.562',
     title: 'Driving Intelligence V2 P61 — Rental Driving Analysis Assessment Completeness',
