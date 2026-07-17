@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
+import { shouldRunColocatedSchedulers } from '@shared/runtime/process-role.util';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 
 /**
@@ -19,6 +20,7 @@ export class InvoiceOverdueSchedulerService {
   /** Daily at 01:15 UTC — transition open invoices past due date to OVERDUE. */
   @Cron('15 1 * * *')
   async markOverdueInvoices(): Promise<void> {
+    if (!shouldRunColocatedSchedulers()) return;
     const now = new Date();
     const result = await this.prisma.orgInvoice.updateMany({
       where: {
@@ -37,6 +39,7 @@ export class InvoiceOverdueSchedulerService {
   /** Revert OVERDUE when fully paid (safety net after manual payment sync). */
   @Cron('45 1 * * *')
   async reconcileStaleOverdue(): Promise<void> {
+    if (!shouldRunColocatedSchedulers()) return;
     const result = await this.prisma.orgInvoice.updateMany({
       where: {
         status: 'OVERDUE',
@@ -52,6 +55,7 @@ export class InvoiceOverdueSchedulerService {
   /** Hourly refresh of open payment-check task timing/priority (due-today escalation). */
   @Cron('15 * * * *')
   async refreshOpenPaymentCheckTasks(): Promise<void> {
+    if (!shouldRunColocatedSchedulers()) return;
     const count = await this.invoicePaymentTasks.refreshOpenPaymentCheckTasks();
     if (count > 0) {
       this.logger.log(`Refreshed ${count} invoice payment-check task(s)`);
