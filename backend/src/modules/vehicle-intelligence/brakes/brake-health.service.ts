@@ -48,6 +48,15 @@ import {
   type BrakeConfidenceLevel,
   type BrakeDataBasis,
 } from './brake-status';
+import {
+  allocateTripDistancesToOdometerBudget,
+  assessBrakeCoverageGap,
+  NEUTRAL_GAP_WEAR_FACTORS,
+  normalizeModelingSource,
+  type BrakeCoverageGapAssessment,
+  type BrakeCoverageStatus,
+  type BrakeModelingSource,
+} from './brake-coverage-gap.domain';
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -111,11 +120,7 @@ export type BrakeLimitingComponent =
   | 'PADS_SET'
   | 'DISCS_SET'
   | null;
-export type BrakeModelingSource =
-  | 'trip_impacts'
-  | 'trip_impacts_plus_rolling_gap'
-  | 'rolling_gap_only'
-  | 'none';
+export type { BrakeModelingSource, BrakeCoverageStatus } from './brake-coverage-gap.domain';
 
 export interface BrakeModeledComponentsDto {
   frontPads: boolean;
@@ -132,7 +137,12 @@ export interface BrakeModelCoverageDto {
   modeledDistanceKm: number | null;
   modeledTripCount: number;
   coverageRatio: number | null;
+  coverageRatioRaw: number | null;
+  underCoverageKm: number | null;
+  overCoverageKm: number | null;
+  coverageStatus: BrakeCoverageStatus | null;
   hasGap: boolean;
+  reconciliationRequired: boolean;
   source: BrakeModelingSource;
 }
 
@@ -359,11 +369,14 @@ export class BrakeHealthService {
     const limitingComponent = this.deriveLimitingComponent(current);
     const baselineWarnings = this.readWarningArray(current?.baselineWarnings);
     const coverageWarnings = this.computeCoverageWarnings(
-      current?.modelCoverageRatio,
+      current?.coverageRatioRaw ?? current?.modelCoverageRatio,
       current?.distanceSinceAnchorKm,
       current?.modeledDistanceKm,
       current?.modeledTripCount ?? 0,
-      (current?.modelingSource as BrakeModelingSource) ?? 'none',
+      normalizeModelingSource(current?.modelingSource),
+      current?.underCoverageKm,
+      current?.overCoverageKm,
+      (current?.coverageStatus as BrakeCoverageStatus | null) ?? null,
     );
     const remainingKm = Math.min(
       current.padsRemainingKm ?? Number.POSITIVE_INFINITY,
@@ -387,11 +400,27 @@ export class BrakeHealthService {
           current.modeledDistanceKm != null ? round2(current.modeledDistanceKm) : null,
         modeledTripCount: current.modeledTripCount ?? 0,
         coverageRatio:
-          current.modelCoverageRatio != null ? round2(current.modelCoverageRatio) : null,
+          current.coverageRatioRaw != null
+            ? round2(current.coverageRatioRaw)
+            : current.modelCoverageRatio != null
+              ? round2(current.modelCoverageRatio)
+              : null,
+        coverageRatioRaw:
+          current.coverageRatioRaw != null
+            ? round2(current.coverageRatioRaw)
+            : current.modelCoverageRatio != null
+              ? round2(current.modelCoverageRatio)
+              : null,
+        underCoverageKm:
+          current.underCoverageKm != null ? round2(current.underCoverageKm) : null,
+        overCoverageKm: current.overCoverageKm != null ? round2(current.overCoverageKm) : null,
+        coverageStatus: (current.coverageStatus as BrakeCoverageStatus | null) ?? null,
         hasGap:
-          (current.distanceSinceAnchorKm ?? 0) > 0 &&
-          (current.modeledDistanceKm ?? 0) + 1 < (current.distanceSinceAnchorKm ?? 0),
-        source: ((current.modelingSource as BrakeModelingSource) ?? 'none') as BrakeModelingSource,
+          (current.underCoverageKm ?? 0) > 0 ||
+          ((current.distanceSinceAnchorKm ?? 0) > 0 &&
+            (current.modeledDistanceKm ?? 0) + 1 < (current.distanceSinceAnchorKm ?? 0)),
+        reconciliationRequired: (current.overCoverageKm ?? 0) > 0,
+        source: normalizeModelingSource(current.modelingSource),
       },
       lastChangeAt: current.anchorServiceDate?.toISOString() ?? null,
       lastRecalculatedAt: current.lastRecalculatedAt?.toISOString() ?? null,
@@ -696,7 +725,7 @@ export class BrakeHealthService {
         modelCoverageRatio: canInitialize ? 0 : null,
         modeledDistanceKm: canInitialize ? 0 : null,
         modeledTripCount: 0,
-        modelingSource: 'none',
+        modelingSource: 'NOT_ENOUGH_DATA',
         baselineWarnings: baselineWarnings,
         modelVersion: this.cfg.MODEL_VERSION,
       },
@@ -740,7 +769,7 @@ export class BrakeHealthService {
         modelCoverageRatio: canInitialize ? 0 : null,
         modeledDistanceKm: canInitialize ? 0 : null,
         modeledTripCount: 0,
-        modelingSource: 'none',
+        modelingSource: 'NOT_ENOUGH_DATA',
         baselineWarnings: baselineWarnings,
         lastRecalculatedAt: canInitialize ? new Date() : null,
         modelVersion: this.cfg.MODEL_VERSION,
@@ -1072,11 +1101,21 @@ export class BrakeHealthService {
     let frontDiscWorn = 0;
     let rearDiscWorn = 0;
 
-    for (const trip of tripImpacts) {
-      const tripDistance = trip.authoritativeDistanceKm ?? trip.distanceKm ?? 0;
-      if (!(tripDistance > 0)) continue;
+    const { allocations } = allocateTripDistancesToOdometerBudget(
+      tripImpacts,
+      (trip) => trip.authoritativeDistanceKm ?? trip.distanceKm ?? 0,
+      distanceSinceAnchor,
+    );
+
+    let rawTripDistanceKm = 0;
+    for (const { tripDistanceKm } of allocations) {
+      if (tripDistanceKm > 0) rawTripDistanceKm += tripDistanceKm;
+    }
+
+    for (const { item: trip, allocatedKm } of allocations) {
+      if (!(allocatedKm > 0)) continue;
       modeledTripCount += 1;
-      modeledDistanceFromTrips += tripDistance;
+      modeledDistanceFromTrips += allocatedKm;
 
       const padUsage = this.computePadUsageFactor(trip);
       const padStopDensity = lookupSteppedFactor(
@@ -1105,7 +1144,7 @@ export class BrakeHealthService {
           current.frontPadKFactor,
           wearThresholds.FRONT_PADS,
         );
-        frontPadWorn += tripDistance * rate;
+        frontPadWorn += allocatedKm * rate;
       }
       if (current.rearPadAnchorMm != null) {
         const rate = this.computePadRatePerKm(
@@ -1119,7 +1158,7 @@ export class BrakeHealthService {
           current.rearPadKFactor,
           wearThresholds.REAR_PADS,
         );
-        rearPadWorn += tripDistance * rate;
+        rearPadWorn += allocatedKm * rate;
       }
 
       const discUsage = this.computeDiscUsageFactor(trip);
@@ -1154,7 +1193,7 @@ export class BrakeHealthService {
           current.frontDiscKFactor,
           wearThresholds.FRONT_DISCS,
         );
-        frontDiscWorn += tripDistance * rate;
+        frontDiscWorn += allocatedKm * rate;
       }
       if (current.rearDiscAnchorMm != null) {
         const rate = this.computeDiscRatePerKm(
@@ -1169,60 +1208,44 @@ export class BrakeHealthService {
           current.rearDiscKFactor,
           wearThresholds.REAR_DISCS,
         );
-        rearDiscWorn += tripDistance * rate;
+        rearDiscWorn += allocatedKm * rate;
       }
     }
 
-    const uncoveredDistance = Math.max(0, distanceSinceAnchor - modeledDistanceFromTrips);
-    const rollingImpact = await this.drivingImpactService.getVehicleImpactForBrake(vehicleId);
-    let modelingSource: BrakeModelingSource = modeledDistanceFromTrips > 0 ? 'trip_impacts' : 'none';
+    const gapAssessment = assessBrakeCoverageGap({
+      distanceSinceAnchorKm: distanceSinceAnchor,
+      observedDistanceKm: modeledDistanceFromTrips,
+      observedTripCount: modeledTripCount,
+      rawTripDistanceKm,
+    });
     const baselineWarnings = this.readWarningArray(current.baselineWarnings);
 
-    if (uncoveredDistance > 0 && rollingImpact) {
-      const padUsage = this.computePadUsageFactor(rollingImpact);
-      const padStopDensity = lookupSteppedFactor(
-        rollingImpact.stopDensity ?? 0,
-        this.cfg.padStopDensityAnchors,
+    if (gapAssessment.reconciliationRequired) {
+      baselineWarnings.push(
+        `Trip-impact distance exceeds odometer delta by ${Math.round(gapAssessment.overCoverageKm).toLocaleString()} km — reconciliation required; wear is not applied to the excess.`,
       );
-      const padHardBrake = lookupSteppedFactor(
-        rollingImpact.hardBrakePer100Km ?? 0,
-        this.cfg.padHardBrakeAnchors,
-      );
-      const padFullBraking = lookupSteppedFactor(
-        rollingImpact.fullBrakingPer100Km ?? 0,
-        this.cfg.padFullBrakingAnchors,
-      );
-      const padReku = this.cfg.padRekuFactors[fuelType] ?? 1.0;
+    }
 
-      const discUsage = this.computeDiscUsageFactor(rollingImpact);
-      const discHighSpeed = lookupSteppedFactor(
-        (rollingImpact.highSpeedBrakeShare ?? 0) * 100,
-        this.cfg.discHighSpeedBrakeAnchors,
-      );
-      const discHardBrake = lookupSteppedFactor(
-        rollingImpact.hardBrakePer100Km ?? 0,
-        this.cfg.discHardBrakeAnchors,
-      );
-      const discFullBraking = lookupSteppedFactor(
-        rollingImpact.fullBrakingPer100Km ?? 0,
-        this.cfg.discFullBrakingAnchors,
-      );
-      const discThermal = interpolateThermalFactor(
-        rollingImpact.thermalBrakeStressScore ?? 0,
-        this.cfg.discThermalAnchors,
-      );
-      const discReku = this.cfg.discRekuFactors[fuelType] ?? 1.0;
+    const neutralGapKm = gapAssessment.underCoverageKm;
+    if (
+      neutralGapKm > 0 &&
+      gapAssessment.modelingSource !== 'NOT_ENOUGH_DATA' &&
+      gapAssessment.modelingSource !== 'INCONSISTENT'
+    ) {
+      const n = NEUTRAL_GAP_WEAR_FACTORS;
+      const padReku = this.cfg.padRekuFactors[fuelType] ?? n.padReku;
+      const discReku = this.cfg.discRekuFactors[fuelType] ?? n.discReku;
 
       if (current.frontPadAnchorMm != null) {
         frontPadWorn +=
-          uncoveredDistance *
+          neutralGapKm *
           this.computePadRatePerKm(
             current.frontPadAnchorMm,
             brakeBiasFront,
-            padUsage,
-            padStopDensity,
-            padHardBrake,
-            padFullBraking,
+            n.padUsage,
+            n.padStopDensity,
+            n.padHardBrake,
+            n.padFullBraking,
             padReku,
             current.frontPadKFactor,
             wearThresholds.FRONT_PADS,
@@ -1230,14 +1253,14 @@ export class BrakeHealthService {
       }
       if (current.rearPadAnchorMm != null) {
         rearPadWorn +=
-          uncoveredDistance *
+          neutralGapKm *
           this.computePadRatePerKm(
             current.rearPadAnchorMm,
             brakeBiasRear,
-            padUsage,
-            padStopDensity,
-            padHardBrake,
-            padFullBraking,
+            n.padUsage,
+            n.padStopDensity,
+            n.padHardBrake,
+            n.padFullBraking,
             padReku,
             current.rearPadKFactor,
             wearThresholds.REAR_PADS,
@@ -1245,15 +1268,15 @@ export class BrakeHealthService {
       }
       if (current.frontDiscAnchorMm != null) {
         frontDiscWorn +=
-          uncoveredDistance *
+          neutralGapKm *
           this.computeDiscRatePerKm(
             current.frontDiscAnchorMm,
             brakeBiasFront,
-            discUsage,
-            discHighSpeed,
-            discHardBrake,
-            discFullBraking,
-            discThermal,
+            n.discUsage,
+            n.discHighSpeed,
+            n.discHardBrake,
+            n.discFullBraking,
+            n.discThermal,
             discReku,
             current.frontDiscKFactor,
             wearThresholds.FRONT_DISCS,
@@ -1261,31 +1284,33 @@ export class BrakeHealthService {
       }
       if (current.rearDiscAnchorMm != null) {
         rearDiscWorn +=
-          uncoveredDistance *
+          neutralGapKm *
           this.computeDiscRatePerKm(
             current.rearDiscAnchorMm,
             brakeBiasRear,
-            discUsage,
-            discHighSpeed,
-            discHardBrake,
-            discFullBraking,
-            discThermal,
+            n.discUsage,
+            n.discHighSpeed,
+            n.discHardBrake,
+            n.discFullBraking,
+            n.discThermal,
             discReku,
             current.rearDiscKFactor,
             wearThresholds.REAR_DISCS,
           );
       }
-      modelingSource =
-        modeledDistanceFromTrips > 0 ? 'trip_impacts_plus_rolling_gap' : 'rolling_gap_only';
-    } else if (uncoveredDistance > 0 && !rollingImpact) {
       baselineWarnings.push(
-        'Trip-impact coverage is incomplete and no rolling impact fallback is available for the uncovered distance.',
+        `Coverage gap: ${Math.round(neutralGapKm).toLocaleString()} km since anchor use neutral baseline wear (behavior unknown).`,
+      );
+    } else if (neutralGapKm > 0 && gapAssessment.modelingSource === 'NOT_ENOUGH_DATA') {
+      baselineWarnings.push(
+        'Distance since anchor is unknown — no precise wear prognosis for uncovered kilometers.',
       );
     }
 
+    const rollingImpact = await this.drivingImpactService.getVehicleImpactForBrake(vehicleId);
+    const modelingSource = gapAssessment.modelingSource;
     const modeledDistance = modeledDistanceFromTrips;
-    const coverageRatio =
-      distanceSinceAnchor > 0 ? clamp(modeledDistance / distanceSinceAnchor, 0, 1) : 1;
+    const coverageRatioRaw = gapAssessment.coverageRatioRaw;
 
     const frontPadResult = this.computePadFromWorn(
       current.frontPadAnchorMm,
@@ -1347,9 +1372,10 @@ export class BrakeHealthService {
     const confidence = this.computeConfidence(
       current,
       rollingImpact,
-      coverageRatio,
+      coverageRatioRaw,
       modeledTripCount,
       modelingSource,
+      gapAssessment,
     );
 
     const modeledComponents = this.deriveModeledComponents(current);
@@ -1390,7 +1416,11 @@ export class BrakeHealthService {
       confidenceScore: confidence.score,
       confidenceLabel: confidence.label,
       stateClass,
-      modelCoverageRatio: round2(coverageRatio),
+      modelCoverageRatio: coverageRatioRaw != null ? round2(coverageRatioRaw) : null,
+      coverageRatioRaw: coverageRatioRaw != null ? round2(coverageRatioRaw) : null,
+      underCoverageKm: round2(gapAssessment.underCoverageKm),
+      overCoverageKm: round2(gapAssessment.overCoverageKm),
+      coverageStatus: gapAssessment.coverageStatus,
       modeledDistanceKm: round2(modeledDistance),
       modeledTripCount,
       modelingSource,
@@ -1416,7 +1446,8 @@ export class BrakeHealthService {
       confidence,
       alertCount: alerts.length,
       modeledDistanceKm: round2(modeledDistance),
-      coverageRatio: round2(coverageRatio),
+      coverageRatio: coverageRatioRaw != null ? round2(coverageRatioRaw) : null,
+      gapAssessment,
     };
   }
 
@@ -1722,9 +1753,10 @@ export class BrakeHealthService {
   private computeConfidence(
     current: BrakeHealthCurrent,
     impact: VehicleImpactForBrake | null,
-    coverageRatio: number,
+    coverageRatioRaw: number | null,
     modeledTripCount: number,
     source: BrakeModelingSource,
+    gapAssessment: BrakeCoverageGapAssessment,
   ): { score: number; label: string } {
     const c = this.cfg.confidence;
     let score = 0;
@@ -1732,21 +1764,40 @@ export class BrakeHealthService {
     if (current.frontPadAnchorMm != null || current.rearPadAnchorMm != null) score += c.padAnchors;
     if (current.frontDiscAnchorMm != null || current.rearDiscAnchorMm != null) score += c.rotorAnchors;
     if (current.anchorServiceDate != null) score += c.serviceEvents;
-    if (impact) score += c.drivingImpactData;
-    if (impact?.brakingStressScore != null) score += c.brakingMetrics;
-    if (impact?.stopDensity != null) score += c.usageData;
+    if (
+      impact &&
+      source !== 'NEUTRAL_GAP_ONLY' &&
+      gapAssessment.gapShare < 0.7
+    ) {
+      score += c.drivingImpactData;
+    }
+    if (impact?.brakingStressScore != null && gapAssessment.gapShare < 0.5) {
+      score += c.brakingMetrics;
+    }
+    if (impact?.stopDensity != null && gapAssessment.gapShare < 0.5) {
+      score += c.usageData;
+    }
     if (current.anchorOdometerKm != null) score += c.odometerAvailable;
     if (current.calibrationCount >= (this.cfg.calibration.stabilizedThreshold ?? 4)) {
       score += c.calibrationStabilized;
     }
 
-    if (coverageRatio >= 0.85) score += 6;
-    else if (coverageRatio >= 0.6) score += 2;
-    else score -= 16;
+    const effectiveCoverage =
+      coverageRatioRaw != null ? Math.min(coverageRatioRaw, 1) : null;
+    if (effectiveCoverage != null && effectiveCoverage >= 0.85) score += 6;
+    else if (effectiveCoverage != null && effectiveCoverage >= 0.6) score += 2;
+    else if (effectiveCoverage != null) score -= 16;
+    else score -= 12;
 
     if (modeledTripCount === 0) score -= 8;
-    if (source === 'trip_impacts_plus_rolling_gap') score -= 6;
-    if (source === 'rolling_gap_only') score -= 12;
+    score += gapAssessment.confidenceAdjustment;
+
+    if (
+      (source === 'MIXED_OBSERVED_NEUTRAL_GAP' || source === 'NEUTRAL_GAP_ONLY') &&
+      gapAssessment.gapShare > 0.5
+    ) {
+      score = Math.min(score, this.cfg.confidenceThresholds.high - 1);
+    }
 
     score = clamp(score, 0, 100);
     let label: string;
@@ -1863,11 +1914,53 @@ export class BrakeHealthService {
       });
     }
 
-    if (current.modelCoverageRatio != null && current.modelCoverageRatio < 0.6) {
+    const underCoverage =
+      current.underCoverageKm ??
+      (current.distanceSinceAnchorKm != null && current.modeledDistanceKm != null
+        ? Math.max(0, current.distanceSinceAnchorKm - current.modeledDistanceKm)
+        : null);
+    const overCoverage = current.overCoverageKm ?? null;
+    const coverageStatus = (current.coverageStatus as BrakeCoverageStatus | null) ?? null;
+    const modelingSource = normalizeModelingSource(current.modelingSource);
+
+    if (underCoverage != null && underCoverage > 0) {
       alerts.push({
         type: 'COVERAGE_GAP',
         severity: 'info',
-        message: 'Trip-impact coverage is partial. Remaining wear is partly estimated from fallback context.',
+        message: `Trip-impact coverage gap: ${Math.round(underCoverage).toLocaleString()} km modeled with neutral baseline wear (behavior unknown).`,
+      });
+    }
+
+    if (overCoverage != null && overCoverage > 0) {
+      alerts.push({
+        type: 'COVERAGE_GAP',
+        severity: 'warning',
+        message: `Trip distance exceeds odometer by ${Math.round(overCoverage).toLocaleString()} km — reconciliation required.`,
+      });
+    }
+
+    if (
+      modelingSource === 'NOT_ENOUGH_DATA' ||
+      coverageStatus === 'UNKNOWN'
+    ) {
+      alerts.push({
+        type: 'COVERAGE_GAP',
+        severity: 'info',
+        message: 'Precise brake wear prognosis requires odometer distance since anchor.',
+      });
+    }
+
+    const effectiveCoverage =
+      current.coverageRatioRaw ?? current.modelCoverageRatio;
+    if (
+      effectiveCoverage != null &&
+      effectiveCoverage < 0.6 &&
+      (underCoverage ?? 0) > 0
+    ) {
+      alerts.push({
+        type: 'COVERAGE_GAP',
+        severity: 'info',
+        message: 'Trip-impact coverage is partial. Remaining wear uncertainty is elevated.',
       });
     }
 
@@ -1943,6 +2036,9 @@ export class BrakeHealthService {
     modeledDistance: number | null | undefined,
     modeledTripCount: number,
     source: BrakeModelingSource,
+    underCoverageKm?: number | null,
+    overCoverageKm?: number | null,
+    coverageStatus?: BrakeCoverageStatus | null,
   ): string[] {
     const warnings: string[] = [];
     const coverageRatio =
@@ -1951,27 +2047,45 @@ export class BrakeHealthService {
         : null;
     const dist = typeof distanceSinceAnchor === 'number' ? distanceSinceAnchor : null;
     const modeled = typeof modeledDistance === 'number' ? modeledDistance : null;
-    if (dist != null && dist > 0 && modeled != null && modeled + 1 < dist) {
-      const uncovered = Math.max(0, dist - modeled);
+    const under =
+      typeof underCoverageKm === 'number'
+        ? underCoverageKm
+        : dist != null && modeled != null
+          ? Math.max(0, dist - modeled)
+          : null;
+    const over = typeof overCoverageKm === 'number' ? overCoverageKm : null;
+
+    if (under != null && under > 0) {
       warnings.push(
-        `Coverage gap: ${Math.round(uncovered).toLocaleString()} km since anchor are not backed by trip impact rows.`,
+        `Coverage gap: ${Math.round(under).toLocaleString()} km since anchor use neutral baseline wear (behavior unknown).`,
       );
     }
-    if (coverageRatio != null && coverageRatio < 0.6) {
+    if (over != null && over > 0) {
       warnings.push(
-        `Low trip-impact coverage (${Math.round(coverageRatio * 100)}%). Estimate confidence is reduced.`,
+        `Trip-impact distance exceeds odometer by ${Math.round(over).toLocaleString()} km — reconciliation required.`,
       );
     }
-    if (modeledTripCount === 0) {
-      warnings.push('No trip impact rows available since anchor.');
-    }
-    if (source === 'trip_impacts_plus_rolling_gap') {
-      warnings.push('Uncovered distance is modeled using rolling fallback factors.');
-    }
-    if (source === 'rolling_gap_only') {
+    if (coverageRatio != null && coverageRatio < 0.6 && (under ?? 0) > 0) {
       warnings.push(
-        'Only rolling fallback factors were available after anchor; no per-trip impacts were found.',
+        `Low trip-impact coverage (${Math.round(Math.min(coverageRatio, 1) * 100)}%). Estimate confidence is reduced.`,
       );
+    }
+    if (modeledTripCount === 0 && dist != null && dist > 0) {
+      warnings.push('No trip impact rows available since anchor; neutral baseline wear applies.');
+    }
+    if (source === 'MIXED_OBSERVED_NEUTRAL_GAP') {
+      warnings.push('Uncovered distance uses neutral baseline wear — not current rolling behavior.');
+    }
+    if (source === 'NEUTRAL_GAP_ONLY') {
+      warnings.push(
+        'Only neutral baseline wear applies after anchor; no per-trip impacts were found.',
+      );
+    }
+    if (source === 'INCONSISTENT' || coverageStatus === 'OVER') {
+      warnings.push('Odometer and trip-impact distances conflict; wear is capped to odometer budget.');
+    }
+    if (source === 'NOT_ENOUGH_DATA' || coverageStatus === 'UNKNOWN') {
+      warnings.push('Precise wear prognosis requires distance since anchor (odometer).');
     }
     return warnings;
   }
@@ -2007,8 +2121,13 @@ export class BrakeHealthService {
         modeledDistanceKm: null,
         modeledTripCount: 0,
         coverageRatio: null,
+        coverageRatioRaw: null,
+        underCoverageKm: null,
+        overCoverageKm: null,
+        coverageStatus: 'UNKNOWN',
         hasGap: false,
-        source: 'none',
+        reconciliationRequired: false,
+        source: 'NOT_ENOUGH_DATA',
       },
       limitingComponent: null,
       lastChangeAt: null,
@@ -2315,8 +2434,14 @@ export class BrakeHealthService {
     });
     const overallConfidence = worstConfidence(frontConfidence, rearConfidence);
 
-    const frontRange = buildRemainingKmRange(frontRemaining, frontConfidence);
-    const rearRange = buildRemainingKmRange(rearRemaining, rearConfidence);
+    const gapSpreadMultiplier = assessBrakeCoverageGap({
+      distanceSinceAnchorKm: kmSinceAnchor,
+      observedDistanceKm: current?.modeledDistanceKm ?? 0,
+      observedTripCount: current?.modeledTripCount ?? 0,
+    }).remainingKmSpreadMultiplier;
+
+    const frontRange = buildRemainingKmRange(frontRemaining, frontConfidence, gapSpreadMultiplier);
+    const rearRange = buildRemainingKmRange(rearRemaining, rearConfidence, gapSpreadMultiplier);
 
     const overallCondition = aggregateBrakeCondition(frontCond, rearCond);
     const overallBasis = strongerDataBasis(frontBasis, rearBasis);

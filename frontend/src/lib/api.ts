@@ -6487,12 +6487,18 @@ export interface BrakeModelCoverage {
   modeledDistanceKm: number | null;
   modeledTripCount: number;
   coverageRatio: number | null;
+  coverageRatioRaw: number | null;
+  underCoverageKm: number | null;
+  overCoverageKm: number | null;
+  coverageStatus: 'FULL' | 'PARTIAL' | 'ZERO' | 'OVER' | 'UNKNOWN' | null;
   hasGap: boolean;
+  reconciliationRequired: boolean;
   source:
-    | 'trip_impacts'
-    | 'trip_impacts_plus_rolling_gap'
-    | 'rolling_gap_only'
-    | 'none';
+    | 'OBSERVED'
+    | 'MIXED_OBSERVED_NEUTRAL_GAP'
+    | 'NEUTRAL_GAP_ONLY'
+    | 'INCONSISTENT'
+    | 'NOT_ENOUGH_DATA';
 }
 
 export interface BrakeServiceLifecycleResult {

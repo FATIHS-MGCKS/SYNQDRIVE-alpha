@@ -381,11 +381,13 @@ export function classifyConfidenceLevel(args: {
 export function buildRemainingKmRange(
   remainingKm: number | null | undefined,
   confidence: BrakeConfidenceLevel,
+  spreadMultiplier = 1,
 ): { min: number; max: number } | null {
   if (remainingKm == null || !Number.isFinite(remainingKm) || remainingKm < 0) return null;
-  const spread =
+  const baseSpread =
     cfg.remainingKmRange.spreadByConfidence[confidence] ??
     cfg.remainingKmRange.spreadByConfidence.UNKNOWN;
+  const spread = Math.min(0.95, baseSpread * Math.max(1, spreadMultiplier));
   const step = cfg.remainingKmRange.roundStepKm;
   const roundTo = (v: number) => Math.max(0, Math.round(v / step) * step);
   const min = roundTo(remainingKm * (1 - spread));

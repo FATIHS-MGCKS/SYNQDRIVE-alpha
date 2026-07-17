@@ -6437,6 +6437,10 @@ model BrakeHealthCurrent {
   modeledDistanceKm      Float?  @map("modeled_distance_km")
   modeledTripCount       Int?    @map("modeled_trip_count")
   modelingSource         String? @map("modeling_source")
+  underCoverageKm        Float?  @map("under_coverage_km")
+  overCoverageKm         Float?  @map("over_coverage_km")
+  coverageRatioRaw       Float?  @map("coverage_ratio_raw")
+  coverageStatus         String? @map("coverage_status")
   baselineWarnings       Json?   @map("baseline_warnings")
 
   distanceSinceAnchorKm Float? @map("distance_since_anchor_km")

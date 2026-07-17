@@ -975,6 +975,48 @@ npm test -- --testPathPattern='braking-event-ledger'
 
 ---
 
+## Coverage Gap Policy — No Rolling Temporal Leakage (Prompt 16) — 2026-07-17
+
+### Ziel (P1-BH-38)
+
+Historische Kilometer ohne per-Trip TDI dürfen **nicht** mit dem aktuellen Rolling-30d-`VehicleDrivingImpactCurrent` aufgefüllt werden. Lücken bleiben als Unsicherheit sichtbar.
+
+### Gap-Policy
+
+| Situation | Verhalten |
+|-----------|-----------|
+| **A** Historische TDI vorhanden | Tatsächliche Trip-Faktoren |
+| **B** Distanz bekannt, Verhalten unbekannt | Neutraler Basisverschleiß (Faktoren 1.0), Confidence ↓, Remaining-km-Bandbreite ↑ |
+| **C** Distanz unbekannt | `NOT_ENOUGH_DATA` — kein präziser Wear-Forecast |
+| **D** Rolling Summary | Nur für aktuellen Zeitraum (Display/Confidence-Hint), **nie** rückwirkend auf Gap-km |
+
+### Neue Felder (`BrakeHealthCurrent`, Migration `20260717210000_brake_coverage_gap_policy`)
+
+- `underCoverageKm`, `overCoverageKm`, `coverageRatioRaw`, `coverageStatus`
+- `modelCoverageRatio` speichert jetzt das **ungeclampfte** Verhältnis
+
+### Modellierungsquellen
+
+`OBSERVED` · `MIXED_OBSERVED_NEUTRAL_GAP` · `NEUTRAL_GAP_ONLY` · `INCONSISTENT` · `NOT_ENOUGH_DATA`
+
+Legacy-Werte (`trip_impacts_plus_rolling_gap` etc.) werden beim Lesen via `normalizeModelingSource()` gemappt.
+
+### Overcoverage / Distanzkonflikt
+
+Chronologisches Trip-Capping auf Odometer-Budget; Wear nur auf `allocatedKm`. `overCoverageKm` aus uncapped Trip-Summe; `reconciliationRequired`.
+
+### Domain
+
+`brake-coverage-gap.domain.ts` — `assessBrakeCoverageGap()`, `allocateTripDistancesToOdometerBudget()`, Confidence-/Spread-Multiplier.
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-coverage-gap|brake-health.spec'
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -994,6 +1036,7 @@ npm test -- --testPathPattern='braking-event-ledger'
 | 13 | *(dieser Commit)* | `fix(brakes): make trip driving impact coverage authoritative` |
 | 14 | *(dieser Commit)* | `fix(brakes): ingest DIMO native braking events reliably` |
 | 15 | *(dieser Commit)* | `feat(brakes): add canonical braking event ledger and deduplication` |
+| 16 | *(dieser Commit)* | `fix(brakes): remove temporal leakage from brake coverage gaps` |
 
 ---
 
