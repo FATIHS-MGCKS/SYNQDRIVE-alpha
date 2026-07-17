@@ -43,9 +43,10 @@ export class DocumentExtractionOrgController {
   async download(
     @Param('orgId') orgId: string,
     @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const dl = await this.service.getDownloadForOrg(orgId, extractionId);
+    const dl = await this.service.getDownloadForOrg(orgId, extractionId, userId ?? null);
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDisposition(dl.fileName, true),

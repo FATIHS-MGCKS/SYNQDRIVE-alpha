@@ -33,6 +33,9 @@ import { DocumentUploadDuplicateService } from './document-upload-duplicate.serv
 import { DocumentUploadDuplicateBlockedException } from './document-upload-duplicate.errors';
 import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
 import { DocumentMalwareScanService } from './document-malware-scan.service';
+import { DocumentLifecycleService } from './document-lifecycle.service';
+import { DocumentRetentionService } from './document-retention.service';
+import { DocumentRetentionRunOptions } from './document-retention.types';
 import {
   DocumentMalwareDetectedError,
   DocumentMalwareDownloadBlockedError,
@@ -306,6 +309,8 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly uploadDuplicate: DocumentUploadDuplicateService,
     private readonly uploadRateLimit: DocumentUploadRateLimitService,
     private readonly malwareScan: DocumentMalwareScanService,
+    private readonly lifecycle: DocumentLifecycleService,
+    private readonly retention: DocumentRetentionService,
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
@@ -440,10 +445,13 @@ export class DocumentExtractionService implements OnModuleInit {
         uploadDuplicateStatus,
         relatedExtractionId,
         reuploadReason,
-        plausibility: mergePipelinePlausibility(null, {
-          fileFingerprint,
-          uploadDuplicate: pipelineDuplicate,
-        }) as Prisma.InputJsonValue,
+        plausibility: this.lifecycle.seedLifecycleOnCreate(
+          mergePipelinePlausibility(null, {
+            fileFingerprint,
+            uploadDuplicate: pipelineDuplicate,
+          }),
+          this.lifecycle.buildStorageCapabilitiesSnapshot(),
+        ) as Prisma.InputJsonValue,
         createdById: input.userId ?? null,
         processingAttempts: 0,
       },
@@ -743,14 +751,30 @@ export class DocumentExtractionService implements OnModuleInit {
     return this.listPublicForVehicle(vehicleId, query);
   }
 
-  async getDownloadForVehicle(vehicleId: string, extractionId: string): Promise<DocumentExtractionDownload> {
+  async getDownloadForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    userId?: string | null,
+  ): Promise<DocumentExtractionDownload> {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    return this.buildDownload(record);
+    const dl = await this.buildDownload(record);
+    if (userId) {
+      await this.lifecycle.recordDownloadAudit({ record, userId }).catch(() => undefined);
+    }
+    return dl;
   }
 
-  async getDownloadForOrg(orgId: string, extractionId: string): Promise<DocumentExtractionDownload> {
+  async getDownloadForOrg(
+    orgId: string,
+    extractionId: string,
+    userId?: string | null,
+  ): Promise<DocumentExtractionDownload> {
     const record = await this.getForOrg(orgId, extractionId);
-    return this.buildDownload(record);
+    const dl = await this.buildDownload(record);
+    if (userId) {
+      await this.lifecycle.recordDownloadAudit({ record, userId }).catch(() => undefined);
+    }
+    return dl;
   }
 
   private async buildDownload(record: {
@@ -1314,24 +1338,29 @@ export class DocumentExtractionService implements OnModuleInit {
 
   async deleteFile(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    if (record.objectKey) {
-      await this.storage.deleteObject(record.objectKey).catch(() => undefined);
-    }
-    return this.prisma.vehicleDocumentExtraction.update({
-      where: { id: extractionId },
-      data: {
-        objectKey: null,
-        sizeBytes: null,
-        mimeType: null,
-        fileDeletedAt: new Date(),
-        fileDeletedById: userId ?? null,
-        plausibility: appendExtractionActionAudit(record.plausibility, {
-          action: 'delete_file',
-          at: new Date().toISOString(),
-          userId: userId ?? null,
-        }) as Prisma.InputJsonValue,
-      },
-    });
+    await this.lifecycle.softDeleteFile({ record, userId });
+    return this.getPublicForVehicle(vehicleId, extractionId);
+  }
+
+  async setLegalHold(
+    vehicleId: string,
+    extractionId: string,
+    userId?: string | null,
+    reason?: string,
+  ) {
+    const record = await this.getForVehicle(vehicleId, extractionId);
+    await this.lifecycle.setLegalHold({ record, userId, reason });
+    return this.getPublicForVehicle(vehicleId, extractionId);
+  }
+
+  async clearLegalHold(vehicleId: string, extractionId: string, userId?: string | null) {
+    const record = await this.getForVehicle(vehicleId, extractionId);
+    await this.lifecycle.clearLegalHold({ record, userId });
+    return this.getPublicForVehicle(vehicleId, extractionId);
+  }
+
+  runDocumentRetention(options: DocumentRetentionRunOptions = {}) {
+    return this.retention.runOnce(options);
   }
 
   // ── queue helpers (also used by recovery scheduler) ───────────────────

@@ -1,6 +1,7 @@
 import { DocumentExtractionStatus, DocumentExtractionType } from '@prisma/client';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
 import { isMalwareScanDownloadAllowed } from './document-malware-scan.util';
+import { isDocumentLegalHoldActive } from './document-pipeline-lifecycle.util';
 
 export type DocumentExtractionAction =
   | 'retry'
@@ -21,6 +22,7 @@ export function getAllowedDocumentExtractionActions(record: {
   const actions: DocumentExtractionAction[] = [];
   const hasFile = Boolean(record.objectKey);
   const effectiveType = resolveEffectiveDocumentType(record);
+  const legalHoldActive = isDocumentLegalHoldActive(record.plausibility);
 
   if (hasFile && isMalwareScanDownloadAllowed(record.plausibility)) {
     actions.push('download');
@@ -30,16 +32,21 @@ export function getAllowedDocumentExtractionActions(record: {
     case 'FAILED':
       if (hasFile && effectiveType) actions.push('retry');
       if (!effectiveType && hasFile) actions.push('set_document_type');
-      if (hasFile) actions.push('delete_file', 'cancel');
+      if (hasFile && !legalHoldActive) actions.push('delete_file');
+      if (hasFile) actions.push('cancel');
       break;
     case 'AWAITING_DOCUMENT_TYPE':
       if (hasFile) {
-        actions.push('set_document_type', 'delete_file', 'cancel');
+        actions.push('set_document_type', 'cancel');
+        if (!legalHoldActive) actions.push('delete_file');
       }
       break;
     case 'READY_FOR_REVIEW':
       actions.push('set_document_type', 'reextract', 'confirm');
-      if (hasFile) actions.push('delete_file', 'cancel');
+      if (hasFile) {
+        actions.push('cancel');
+        if (!legalHoldActive) actions.push('delete_file');
+      }
       break;
     case 'PENDING':
     case 'QUEUED':
@@ -48,7 +55,10 @@ export function getAllowedDocumentExtractionActions(record: {
       break;
     case 'REJECTED':
       if (hasFile && effectiveType) actions.push('retry');
-      if (hasFile) actions.push('delete_file', 'cancel');
+      if (hasFile) {
+        actions.push('cancel');
+        if (!legalHoldActive) actions.push('delete_file');
+      }
       break;
     default:
       break;
