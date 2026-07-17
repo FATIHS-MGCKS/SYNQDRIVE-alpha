@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-follow-up-suggestion-2026-07-17',
+    version: '4.9.648',
+    title: 'V4.9.648 — Document Follow-Up Suggestion Domain',
+    summary: [
+      'Zentrale DocumentFollowUpSuggestion-Domain nach Aktionsplan-Generierung.',
+      'Typen: CREATE_TASK, PREPARE_CUSTOMER/DRIVER_CONTACT, REVIEW_DEADLINE, VEHICLE_INSPECTION, WORKSHOP_APPOINTMENT, INSURANCE_REVIEW, PAYMENT_REVIEW, ASSIGN_RESPONSIBLE_USER, NO_FOLLOW_UP.',
+      'Idempotent, keine automatischen Kontakte — Accept erstellt Task via TasksService.upsertByDedup.',
+    ],
+    reason:
+      'Prompt 73/84 — Nachverfolgungsvorschläge als eigene Domain, getrennt von ausgefuehrten Apply-Actions.',
+    previousBehavior:
+      'followUpSuggestionRules nur Registry-Metadaten ohne Runtime-Evaluator; Fine-Task teils auto nach Apply.',
+    details:
+      'Backend: document-follow-up-suggestion.{types,store,generator,service}, Pipeline followUpSuggestions, Hook in prepareConfirmedPlan, GET/accept/dismiss API. Architektur: architecture/DOCUMENT_FOLLOW_UP_SUGGESTION_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T23:00:00.000Z',
+  },
+  {
     id: 'document-intake-apply-result-2026-07-17',
     version: '4.9.647',
     title: 'V4.9.647 — Document Intake Apply Result',

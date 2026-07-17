@@ -272,6 +272,47 @@ export class DocumentExtractionController {
     return this.service.retryFailedActionsForVehicle(vehicleId, extractionId, userId ?? null);
   }
 
+  @Get(':extractionId/follow-up-suggestions')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  listFollowUpSuggestions(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.listFollowUpSuggestionsForVehicle(vehicleId, extractionId);
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/accept')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  acceptFollowUpSuggestion(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.acceptFollowUpSuggestionForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/dismiss')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  dismissFollowUpSuggestion(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.dismissFollowUpSuggestionForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
   @Post(':extractionId/cancel')
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
   async cancel(

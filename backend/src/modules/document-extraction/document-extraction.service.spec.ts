@@ -71,6 +71,11 @@ describe('DocumentExtractionService', () => {
     const applyResultService = {
       buildForRecord: jest.fn(),
     };
+    const followUpSuggestionService = {
+      listForRecord: jest.fn(),
+      acceptSuggestion: jest.fn(),
+      dismissSuggestion: jest.fn(),
+    };
     const observability = {
       logEvent: jest.fn(),
       recordApply: jest.fn(),
@@ -109,6 +114,7 @@ describe('DocumentExtractionService', () => {
       observability as any,
       actionPlanPreview as any,
       applyResultService as any,
+      followUpSuggestionService as any,
     );
     return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }

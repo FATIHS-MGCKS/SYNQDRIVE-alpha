@@ -2,6 +2,7 @@ import {
   mergePipelinePlausibility,
   readPipelinePayload,
 } from './document-content-cache.util';
+import { supersedeFollowUpSuggestions } from './document-follow-up-suggestion.store';
 import type { DocumentActionPlanExecution } from './document-action.types';
 import type { DocumentActionPlan, DocumentActionPlanInvalidationReason } from './document-action-plan.types';
 import {
@@ -74,10 +75,11 @@ export function invalidateDocumentActionPlan(
 ): Record<string, unknown> {
   assertActionPlanEditable(plausibility);
   const { actionPlan } = readDocumentActionPlanState(plausibility);
+  const superseded = supersedeFollowUpSuggestions(plausibility);
   if (!actionPlan) {
-    return mergePipelinePlausibility(plausibility, {});
+    return mergePipelinePlausibility(superseded, {});
   }
-  return mergePipelinePlausibility(plausibility, {
+  return mergePipelinePlausibility(superseded, {
     actionPlan: {
       ...actionPlan,
       status: 'INVALIDATED',
