@@ -880,6 +880,26 @@ export class DocumentExtractionService implements OnModuleInit {
     documentType: string,
     options?: { reextract?: boolean; userId?: string | null },
   ) {
+    const record = await this.getForVehicle(vehicleId, extractionId);
+    return this.applySetDocumentType(record, extractionId, documentType, options);
+  }
+
+  async setDocumentTypeForOrg(
+    orgId: string,
+    extractionId: string,
+    documentType: string,
+    options?: { reextract?: boolean; userId?: string | null },
+  ) {
+    const record = await this.getForOrg(orgId, extractionId);
+    return this.applySetDocumentType(record, extractionId, documentType, options);
+  }
+
+  private async applySetDocumentType(
+    record: Awaited<ReturnType<typeof this.getForVehicle>>,
+    extractionId: string,
+    documentType: string,
+    options?: { reextract?: boolean; userId?: string | null },
+  ) {
     if (!isApplyDocumentType(documentType)) {
       throw new BadRequestException(`Unsupported document type: ${documentType}`);
     }
@@ -887,7 +907,6 @@ export class DocumentExtractionService implements OnModuleInit {
       throw new BadRequestException('AUTO is not a valid effective document type');
     }
 
-    const record = await this.getForVehicle(vehicleId, extractionId);
     const applyType = documentType as ApplyDocumentExtractionType;
 
     if (record.status === 'APPLIED' || record.status === 'PARTIALLY_APPLIED') {

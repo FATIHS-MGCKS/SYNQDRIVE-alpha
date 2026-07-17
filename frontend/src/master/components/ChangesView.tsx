@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-classification-result-2026-07-17',
+    version: '4.9.643',
+    title: 'V4.9.643 — Document Intake Classification Result UI',
+    summary: [
+      'Statische Klassifikationsbox durch konkretes Ergebnis aus plausibility.classification ersetzt.',
+      'Kategorie, Untertyp, verstaendliche Confidence-Baender, Erkennungsgruende und Alternativen bei Unsicherheit.',
+      'Button „Dokumenttyp aendern“ mit Re-Extraction- und Aktionsplan-Hinweis; Modellnamen nur in Details.',
+      'AWAITING_DOCUMENT_TYPE vollstaendig per Org-Route document-type; Tests fuer Parser und Panel.',
+    ],
+    reason:
+      'Nutzer sollen das Klassifikationsergebnis des aktuellen Dokuments verstehen — ohne technische Labels oder falsche Sicherheit.',
+    previousBehavior:
+      'Generische AUTO-Banner mit Typ + Prozent; einfacher Erkannter-Typ-Chip bei AWAITING_DOCUMENT_TYPE; separater Typkorrektur-Block.',
+    details:
+      'Frontend: document-classification-result.ts, DocumentClassificationResultPanel, DocumentUploadView. Backend: applySetDocumentType + POST organizations/.../document-type. Architektur: architecture/DOCUMENT_INTAKE_CLASSIFICATION_RESULT_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T19:52:00.000Z',
+  },
+  {
+    id: 'document-intake-status-flow-2026-07-17',
+    version: '4.9.642',
+    title: 'V4.9.642 — Document Intake User-Facing Status Flow',
+    summary: [
+      'Sechs klare Verarbeitungsschritte statt technischer OCR/Queue/Stage-Labels in der UI.',
+      'Echte status/stage/errorPhase-Signale; kein erfundener Fortschrittsprozentsatz.',
+      'Fehler am richtigen Schritt (rot), Retry mit Schrittbezug, AWAITING_DOCUMENT_TYPE eindeutig.',
+      'Laufzeit + sicheres Verlassen bei langer Verarbeitung; Marketingbox „KI-gestützte Klassifikation“ entfernt.',
+      'Tests für Success, Failure und Retry.',
+    ],
+    reason:
+      'Nutzer sollen den Verarbeitungsstand verstehen, ohne interne Pipeline-Begriffe zu sehen.',
+    previousBehavior:
+      'Technische Flow-Labels (OCR läuft, processingStage ENUM) und Sparkles-Marketingbox in der Sidebar.',
+    details: 'architecture/DOCUMENT_INTAKE_STATUS_FLOW_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T11:00:00.000Z',
+  },
+  {
     id: 'document-intake-initial-ux-2026-07-17',
     version: '4.9.641',
     title: 'V4.9.641 — Document Intake Initial UX (upload-first)',

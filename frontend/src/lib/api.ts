@@ -5396,6 +5396,15 @@ export const api = {
         `/organizations/${orgId}/document-extractions/${extractionId}/vehicle`,
         { vehicleId },
       ),
+    setDocumentTypeByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { documentType: string; reextract?: boolean },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/document-type`,
+        data,
+      ),
     upload: async (
       orgId: string,
       file: File,

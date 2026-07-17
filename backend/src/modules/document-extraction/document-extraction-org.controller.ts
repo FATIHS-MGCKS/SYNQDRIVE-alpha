@@ -29,6 +29,7 @@ import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions
 import { ReassignExtractionVehicleDto } from './dto/reassign-extraction-vehicle.dto';
 import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { OrgUploadDocumentDto } from './dto/org-upload-document.dto';
+import { SetDocumentTypeDto } from './dto/set-document-type.dto';
 import { DocumentEntityLinkService } from './document-entity-link.service';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
@@ -154,5 +155,20 @@ export class DocumentExtractionOrgController {
     @CurrentUser('id') userId: string | undefined,
   ) {
     return this.service.reassignVehicleForOrg(orgId, extractionId, body.vehicleId, userId ?? null);
+  }
+
+  @Post(':extractionId/document-type')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async setDocumentType(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: SetDocumentTypeDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const record = await this.service.setDocumentTypeForOrg(orgId, extractionId, body.documentType, {
+      reextract: body.reextract,
+      userId: userId ?? null,
+    });
+    return this.service.toPublicExtraction(record);
   }
 }

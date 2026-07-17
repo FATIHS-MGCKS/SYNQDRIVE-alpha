@@ -10,6 +10,7 @@ import type { PublicDocumentExtractionSummary } from '../lib/document-extraction
 import { DocumentExtractionReviewPanel } from './documents/DocumentExtractionReviewPanel';
 import { DocumentExtractionFlowStatus } from './documents/DocumentExtractionFlowStatus';
 import { DocumentIntakeUploadZone } from './documents/DocumentIntakeUploadZone';
+import { DocumentClassificationResultPanel } from './documents/DocumentClassificationResultPanel';
 
 interface DocumentUploadViewProps {
   isDarkMode: boolean;
@@ -123,7 +124,6 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
     return nodes;
   };
 
-  const manualDocTypes = page.docTypeOptions.filter((o) => o.value !== 'AUTO');
   const showMainIdle = page.flow === 'idle';
   const showAwaitingType = page.flow === 'awaiting_type';
   const showProcessingStatus = (page.isBusy && !showAwaitingType) || page.flow === 'failed';
@@ -227,23 +227,18 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               <div className="border-t pt-4 min-w-0" style={{ borderColor: isDarkMode ? 'var(--border)' : undefined }}>
                 <h3 className={`text-base font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.awaitingTypeTitle')}</h3>
                 <p className={`text-xs mb-4 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.awaitingTypeHint')}</p>
-              {page.record?.detectedDocumentType && (
-                <div className={`mb-3 px-3 py-2 rounded-lg text-xs ${isDarkMode ? 'bg-brand-soft text-brand' : 'bg-status-info-soft text-status-info'}`}>
-                  {t('docUpload.detectedType')}: {page.typeLabel(`documentExtraction.type.${page.record.detectedDocumentType}`, page.record.detectedDocumentType)}
-                  {page.classificationConfidence ? ` · ${t('docUpload.confidence')}: ${page.classificationConfidence}` : ''}
-                </div>
-              )}
-              <div className="min-w-0 mb-4">
-                <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.documentType')}</label>
-                <select value={page.pendingTypeSelection} onChange={(e) => page.setPendingTypeSelection(e.target.value)} className={`w-full min-w-0 px-3 py-2 rounded-lg text-xs font-medium border ${isDarkMode ? 'surface-premium text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'}`}>
-                  {manualDocTypes.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{page.typeLabel(opt.labelKey)}</option>
-                  ))}
-                </select>
-              </div>
-              <button type="button" onClick={() => void page.handleSetDocumentType(page.pendingTypeSelection, false)} className="w-full sm:w-auto min-h-11 px-3 py-2 rounded-lg text-xs font-semibold bg-brand text-brand-foreground">
-                {t('docUpload.selectTypeAndContinue')}
-              </button>
+                <DocumentClassificationResultPanel
+                  record={page.record}
+                  locale={locale}
+                  t={t}
+                  typeLabel={page.typeLabel}
+                  isDarkMode={isDarkMode}
+                  mode="awaiting_type"
+                  docTypeOptions={page.docTypeOptions}
+                  pendingTypeSelection={page.pendingTypeSelection}
+                  onPendingTypeChange={page.setPendingTypeSelection}
+                  onSetDocumentType={(type, reextract) => void page.handleSetDocumentType(type, reextract)}
+                />
               </div>
             </div>
           )}
@@ -302,16 +297,23 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 )}
               </div>
 
-              {page.record?.classificationMode === 'AUTO' && page.classificationConfidence && (
-                <div className={`px-3 py-2 text-xs ${isDarkMode ? 'bg-brand-soft/40 text-brand' : 'bg-status-info-soft text-status-info'}`}>
-                  {page.typeLabel(`documentExtraction.type.${page.confirmedDocType}`, page.confirmedDocType)} · {t('docUpload.confidence')}: {page.classificationConfidence}
-                  <span className="block mt-0.5 opacity-80">{t('docUpload.autoReviewHint')}</span>
-                </div>
-              )}
-
               {errorBanner(page.errorMessage, isDarkMode)}
 
               <div className="p-4 space-y-4">
+                <DocumentClassificationResultPanel
+                  record={page.record}
+                  locale={locale}
+                  t={t}
+                  typeLabel={page.typeLabel}
+                  isDarkMode={isDarkMode}
+                  mode="review"
+                  docTypeOptions={page.docTypeOptions}
+                  pendingTypeSelection={page.pendingTypeSelection}
+                  onPendingTypeChange={page.setPendingTypeSelection}
+                  onSetDocumentType={(type, reextract) => void page.handleSetDocumentType(type, reextract)}
+                  disabled={page.flow === 'applying'}
+                />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
                   <div className="min-w-0">
                     <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.documentType')}</label>
@@ -341,22 +343,6 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     )}
                   </div>
                 </div>
-
-                {page.record?.allowedActions?.includes('set_document_type') && (
-                  <div className={`rounded-lg p-3 border min-w-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-                    <p className={`text-xs mb-2 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.typeCorrectionWarning')}</p>
-                    <div className="flex flex-col sm:flex-row gap-2 min-w-0">
-                      <select value={page.pendingTypeSelection} onChange={(e) => page.setPendingTypeSelection(e.target.value)} className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200'}`}>
-                        {manualDocTypes.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{page.typeLabel(opt.labelKey)}</option>
-                        ))}
-                      </select>
-                      <button type="button" onClick={() => void page.handleSetDocumentType(page.pendingTypeSelection, true)} className="min-h-11 px-3 py-2 rounded-lg text-xs font-semibold bg-brand text-brand-foreground">
-                        {t('docUpload.reextract')}
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <DocumentExtractionReviewPanel
                   confirmedDocType={page.confirmedDocType}
