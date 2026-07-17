@@ -46,6 +46,7 @@ mkdir -p "$GRAFANA_DIR/provisioning/datasources" "$GRAFANA_DIR/provisioning/dash
 cp -r "$SRC/provisioning/"* "$GRAFANA_DIR/provisioning/"
 cp "$SRC/dashboards/synqdrive-ops.json" "$GRAFANA_DIR/dashboards/"
 cp "$SRC/dashboards/synqdrive-battery-v2.json" "$GRAFANA_DIR/dashboards/"
+cp "$SRC/dashboards/synqdrive-driving-intelligence-v2.json" "$GRAFANA_DIR/dashboards/"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker not installed" >&2

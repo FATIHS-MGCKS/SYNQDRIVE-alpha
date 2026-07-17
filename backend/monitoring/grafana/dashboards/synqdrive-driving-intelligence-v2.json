@@ -1,0 +1,146 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["synqdrive"],
+      "targetBlank": false,
+      "title": "SynqDrive Ops",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "synqdrive_clickhouse_available", "refId": "A" }],
+      "title": "ClickHouse available",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_driving_intelligence_job_completed_total[5m]))", "refId": "A" }],
+      "title": "DI jobs completed/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_driving_decision_summary_computed_total[5m]))", "refId": "A" }],
+      "title": "Decision summaries/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_driving_analysis_reconciliation_actions_total[5m]))", "refId": "A" }],
+      "title": "Reconciliation actions/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "targets": [
+        { "expr": "sum by (job_type) (rate(synqdrive_driving_intelligence_job_completed_total[5m]))", "legendFormat": "{{job_type}} completed", "refId": "A" },
+        { "expr": "sum by (job_type) (rate(synqdrive_driving_intelligence_job_retry_total[5m]))", "legendFormat": "{{job_type}} retry", "refId": "B" },
+        { "expr": "sum by (job_type) (rate(synqdrive_driving_intelligence_job_dead_letter_total[5m]))", "legendFormat": "{{job_type}} dead-letter", "refId": "C" }
+      ],
+      "title": "Driving intelligence jobs (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "targets": [
+        { "expr": "sum by (analysis_type, status) (rate(synqdrive_driving_analysis_runs_total[5m]))", "legendFormat": "{{analysis_type}} {{status}}", "refId": "A" }
+      ],
+      "title": "Analysis runs by type/status (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 7,
+      "targets": [
+        { "expr": "sum by (data_basis, recommendation) (rate(synqdrive_driving_decision_summary_computed_total[5m]))", "legendFormat": "{{data_basis}} → {{recommendation}}", "refId": "A" }
+      ],
+      "title": "Decision summary outcomes (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 8,
+      "targets": [
+        { "expr": "sum by (eligibility) (rate(synqdrive_driving_health_impact_published_total[5m]))", "legendFormat": "{{eligibility}}", "refId": "A" }
+      ],
+      "title": "Health impact publish (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "id": 9,
+      "targets": [
+        { "expr": "sum by (check_type, result) (rate(synqdrive_driving_analysis_reconciliation_actions_total[5m]))", "legendFormat": "{{check_type}} {{result}}", "refId": "A" }
+      ],
+      "title": "Analysis reconciliation (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "id": 10,
+      "targets": [
+        { "expr": "sum by (trigger, result) (rate(synqdrive_driving_capability_refresh_total[5m]))", "legendFormat": "{{trigger}} {{result}}", "refId": "A" },
+        { "expr": "sum by (kind, trigger) (rate(synqdrive_driving_capability_transition_total[5m]))", "legendFormat": "transition {{kind}} {{trigger}}", "refId": "B" }
+      ],
+      "title": "Capability lifecycle (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "id": 11,
+      "targets": [
+        { "expr": "sum by (detector_id, result) (rate(synqdrive_shadow_detector_run_total[5m]))", "legendFormat": "{{detector_id}} {{result}}", "refId": "A" },
+        { "expr": "sum by (detector_id, reason) (rate(synqdrive_shadow_detector_skipped_total[5m]))", "legendFormat": "{{detector_id}} skip {{reason}}", "refId": "B" },
+        { "expr": "sum by (detector_id) (rate(synqdrive_shadow_detector_candidates_total[5m]))", "legendFormat": "{{detector_id}} candidates", "refId": "C" }
+      ],
+      "title": "Shadow detectors (5m)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "driving-intelligence", "vehicle-intelligence"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SynqDrive Driving Intelligence V2",
+  "uid": "synqdrive-driving-intelligence-v2",
+  "version": 1
+}

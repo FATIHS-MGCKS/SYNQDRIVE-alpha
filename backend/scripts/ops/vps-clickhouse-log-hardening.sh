@@ -32,7 +32,14 @@ done < <(find "$CONTAINER_ID_FILE" -name '*-json.log' 2>/dev/null || true)
 cd "$BACKEND_DIR"
 
 echo "==> Recreate ClickHouse with hardened logging config"
-docker compose up -d --force-recreate clickhouse
+if docker compose version >/dev/null 2>&1; then
+  docker compose up -d --force-recreate clickhouse
+elif command -v docker-compose >/dev/null 2>&1; then
+  docker-compose up -d --force-recreate clickhouse
+else
+  echo "ERROR: neither 'docker compose' nor 'docker-compose' found" >&2
+  exit 1
+fi
 
 echo "==> Wait for ClickHouse health"
 for _ in $(seq 1 30); do
