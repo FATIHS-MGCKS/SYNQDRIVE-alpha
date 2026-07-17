@@ -163,8 +163,9 @@ Read path
 | **3** | Architektur | Kanonischer Brake-Initialisierungspfad (Variante A) | ✅ **Done** | `b892b605` | — | 19 neu grün | read-only diag |
 | **4** | Registration | Brake-Health-Ausgangszustand bei Fahrzeugregistrierung | ✅ **Done** | `e8e62310` | — | 39 grün | — |
 | **5** | A — Fleet | Read-only Baseline-Backfill-Kandidaten-Audit | ✅ **Done** | `a30ea31d` | — | 13 grün | read-only |
-| **6** | B — Lifecycle | Komponenten-Installationsperioden (`BrakeComponentInstallation`) | ✅ **Done** | *(nach Commit)* | `20260717140000` | 18 grün | — |
-| **7** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
+| **6** | B — Lifecycle | Komponenten-Installationsperioden (`BrakeComponentInstallation`) | ✅ **Done** | `39c7e176` | `20260717140000` | 18 grün | — |
+| **7** | B — Lifecycle | Zentraler `BrakeComponentLifecycleService` | ✅ **Done** | *(nach Commit)* | — | 36 grün | — |
+| **8** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
 | **8** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
 | **8** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
 | **8** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
@@ -565,6 +566,58 @@ npm run build            # OK
 
 ---
 
+## Zentraler Komponenten-Lifecycle (Prompt 7) — 2026-07-17
+
+### Ziel
+
+Alle Brake-Komponenten-Mutationen laufen zentral über `BrakeComponentLifecycleService` — atomar, scope-bewusst, idempotent.
+
+### Operationen
+
+| Methode | Zweck |
+|---------|-------|
+| `installComponent` | Erstinstallation einer Komponente |
+| `replaceComponent` | Supersede + neue Installation im expliziten Scope |
+| `removeComponent` | Aktive Installation schließen (`REMOVED`) |
+| `registerMeasuredBaseline` | Gemessene Baseline + Evidence |
+| `registerDocumentedReplacement` | Dokumentierter Austausch (nicht als Messung) |
+| `correctInstallation` | Korrektur ohne Supersede |
+| `getActiveInstallation` | Read-Pfad |
+
+### Transaktionsinhalt
+
+1. Alte Installation schließen (bei Replace)
+2. Neue Installation anlegen
+3. `VehicleServiceEvent` verknüpfen
+4. `BrakeEvidence` verknüpfen (bei Messung)
+5. `BrakeHealthCurrent.applyScopedComponentAnchors()` — **nur** explizite Komponenten
+6. Audit-Log im Result (`auditLog[]`)
+
+### Scope-Regeln
+
+- `FULL_BRAKE_SERVICE` erfordert **expliziten** Scope — kein Auto-Expand auf alle 4
+- `FRONT_PADS` allein verändert nie `REAR_*` oder Discs
+- Front-Achse: `front_pads` + `front_discs` erlaubt
+- Alle 4 nur wenn explizit im Scope
+
+### Neue Artefakte
+
+| Datei | Rolle |
+|-------|-------|
+| `brake-component-lifecycle.service.ts` | Zentraler Mutation-Owner |
+| `brake-component-lifecycle.scope.ts` | Scope-Normalisierung + Validierung |
+| `brake-component-lifecycle.types.ts` | Commands / Results |
+| `brake-health.service.ts` | `applyScopedComponentAnchors()` |
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-component-lifecycle|brake-component-installation'
+# 36 passed
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -574,6 +627,7 @@ npm run build            # OK
 | 3 | `b892b605d2380f99c1c2e8972f7ec7d4643a1bb2` | `fix(brakes): establish canonical brake initialization workflow` |
 | 4 | `e8e62310775a10b06c0846f8b293393ddd8ce1e5` | `fix(brakes): materialize brake health during vehicle registration` |
 | 5 | `a30ea31d943ba49e279d43912265684678cd7fd4` | `feat(brakes): add read-only brake baseline backfill audit` |
+| 6 | `39c7e176226328be215dc1046f6e34fa56460d42` | `feat(brakes): add brake component installation lifecycle` |
 
 ---
 

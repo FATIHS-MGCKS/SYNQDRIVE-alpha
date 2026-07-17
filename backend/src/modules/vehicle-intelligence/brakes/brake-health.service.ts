@@ -1,5 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { BrakeHealthCurrent } from '@prisma/client';
+import {
+  BrakeComponentInstallationAnchorSource,
+  BrakeComponentInstallationType,
+  BrakeHealthCurrent,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DrivingImpactService,
@@ -654,6 +658,174 @@ export class BrakeHealthService {
         'Brake service history was recorded, but V2 wear tracking was not initialized due to missing baseline odometer and/or thickness anchors.',
       warnings: baselineWarnings,
     };
+  }
+
+  /**
+   * Scope-aware anchor mutation — only components explicitly listed are updated.
+   * Preserves non-scoped anchors, k-factors, and wear state on BrakeHealthCurrent.
+   */
+  async applyScopedComponentAnchors(
+    vehicleId: string,
+    input: {
+      serviceDate: Date;
+      odometerKm: number | null;
+      components: Array<{
+        componentType: BrakeComponentInstallationType;
+        anchorThicknessMm: number | null;
+        anchorSource: BrakeComponentInstallationAnchorSource;
+      }>;
+      scheduleRecalculation?: boolean;
+    },
+  ): Promise<{ updated: boolean; recalculated: boolean }> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) throw new BadRequestException('Vehicle not found');
+
+    const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    const scoped = new Set(input.components.map((c) => c.componentType));
+    const update: Partial<BrakeHealthCurrent> = {};
+    let anyAnchor = false;
+    let anyMeasured = false;
+
+    for (const row of input.components) {
+      const mm = this.normalizePositive(row.anchorThicknessMm);
+      if (mm == null) continue;
+      anyAnchor = true;
+      if (row.anchorSource === BrakeComponentInstallationAnchorSource.MEASURED) {
+        anyMeasured = true;
+      }
+
+      switch (row.componentType) {
+        case BrakeComponentInstallationType.FRONT_PADS:
+          update.frontPadAnchorMm = mm;
+          update.frontPadEstimatedMm = mm;
+          update.frontPadHealthPct = 100;
+          update.frontPadKFactor = 1;
+          update.frontPadWearRateMmPerKm = 0;
+          break;
+        case BrakeComponentInstallationType.REAR_PADS:
+          update.rearPadAnchorMm = mm;
+          update.rearPadEstimatedMm = mm;
+          update.rearPadHealthPct = 100;
+          update.rearPadKFactor = 1;
+          update.rearPadWearRateMmPerKm = 0;
+          break;
+        case BrakeComponentInstallationType.FRONT_DISCS:
+          update.frontDiscAnchorMm = mm;
+          update.frontDiscEstimatedMm = mm;
+          update.frontDiscHealthPct = 100;
+          update.frontDiscKFactor = 1;
+          update.frontDiscWearRateMmPerKm = 0;
+          break;
+        case BrakeComponentInstallationType.REAR_DISCS:
+          update.rearDiscAnchorMm = mm;
+          update.rearDiscEstimatedMm = mm;
+          update.rearDiscHealthPct = 100;
+          update.rearDiscKFactor = 1;
+          update.rearDiscWearRateMmPerKm = 0;
+          break;
+        default:
+          break;
+      }
+    }
+
+    const odo = input.odometerKm;
+    const canInitialize = anyAnchor && odo != null;
+    const merged = {
+      vehicleId,
+      organizationId: vehicle.organizationId,
+      isInitialized: canInitialize || current?.isInitialized === true,
+      anchorServiceDate: canInitialize ? input.serviceDate : current?.anchorServiceDate ?? null,
+      anchorOdometerKm: canInitialize ? odo : current?.anchorOdometerKm ?? null,
+      frontPadAnchorMm: scoped.has(BrakeComponentInstallationType.FRONT_PADS)
+        ? (update.frontPadAnchorMm ?? current?.frontPadAnchorMm ?? null)
+        : current?.frontPadAnchorMm ?? null,
+      rearPadAnchorMm: scoped.has(BrakeComponentInstallationType.REAR_PADS)
+        ? (update.rearPadAnchorMm ?? current?.rearPadAnchorMm ?? null)
+        : current?.rearPadAnchorMm ?? null,
+      frontDiscAnchorMm: scoped.has(BrakeComponentInstallationType.FRONT_DISCS)
+        ? (update.frontDiscAnchorMm ?? current?.frontDiscAnchorMm ?? null)
+        : current?.frontDiscAnchorMm ?? null,
+      rearDiscAnchorMm: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
+        ? (update.rearDiscAnchorMm ?? current?.rearDiscAnchorMm ?? null)
+        : current?.rearDiscAnchorMm ?? null,
+      frontPadEstimatedMm: scoped.has(BrakeComponentInstallationType.FRONT_PADS)
+        ? (update.frontPadEstimatedMm ?? current?.frontPadEstimatedMm ?? null)
+        : current?.frontPadEstimatedMm ?? null,
+      rearPadEstimatedMm: scoped.has(BrakeComponentInstallationType.REAR_PADS)
+        ? (update.rearPadEstimatedMm ?? current?.rearPadEstimatedMm ?? null)
+        : current?.rearPadEstimatedMm ?? null,
+      frontDiscEstimatedMm: scoped.has(BrakeComponentInstallationType.FRONT_DISCS)
+        ? (update.frontDiscEstimatedMm ?? current?.frontDiscEstimatedMm ?? null)
+        : current?.frontDiscEstimatedMm ?? null,
+      rearDiscEstimatedMm: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
+        ? (update.rearDiscEstimatedMm ?? current?.rearDiscEstimatedMm ?? null)
+        : current?.rearDiscEstimatedMm ?? null,
+      frontPadHealthPct: scoped.has(BrakeComponentInstallationType.FRONT_PADS)
+        ? update.frontPadHealthPct ?? current?.frontPadHealthPct ?? null
+        : current?.frontPadHealthPct ?? null,
+      rearPadHealthPct: scoped.has(BrakeComponentInstallationType.REAR_PADS)
+        ? update.rearPadHealthPct ?? current?.rearPadHealthPct ?? null
+        : current?.rearPadHealthPct ?? null,
+      frontDiscHealthPct: scoped.has(BrakeComponentInstallationType.FRONT_DISCS)
+        ? update.frontDiscHealthPct ?? current?.frontDiscHealthPct ?? null
+        : current?.frontDiscHealthPct ?? null,
+      rearDiscHealthPct: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
+        ? update.rearDiscHealthPct ?? current?.rearDiscHealthPct ?? null
+        : current?.rearDiscHealthPct ?? null,
+      frontPadKFactor: scoped.has(BrakeComponentInstallationType.FRONT_PADS)
+        ? 1
+        : current?.frontPadKFactor ?? 1,
+      rearPadKFactor: scoped.has(BrakeComponentInstallationType.REAR_PADS)
+        ? 1
+        : current?.rearPadKFactor ?? 1,
+      frontDiscKFactor: scoped.has(BrakeComponentInstallationType.FRONT_DISCS)
+        ? 1
+        : current?.frontDiscKFactor ?? 1,
+      rearDiscKFactor: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
+        ? 1
+        : current?.rearDiscKFactor ?? 1,
+      frontPadWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.FRONT_PADS)
+        ? 0
+        : current?.frontPadWearRateMmPerKm ?? null,
+      rearPadWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.REAR_PADS)
+        ? 0
+        : current?.rearPadWearRateMmPerKm ?? null,
+      frontDiscWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.FRONT_DISCS)
+        ? 0
+        : current?.frontDiscWearRateMmPerKm ?? null,
+      rearDiscWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
+        ? 0
+        : current?.rearDiscWearRateMmPerKm ?? null,
+      stateClass: canInitialize
+        ? anyMeasured
+          ? 'MEASURED'
+          : current?.stateClass ?? 'ESTIMATED'
+        : current?.stateClass ?? 'NO_BASELINE',
+      anchorValidationStatus: canInitialize
+        ? anyMeasured
+          ? 'measured_anchor'
+          : 'spec_fallback_anchor'
+        : current?.anchorValidationStatus ?? 'invalid',
+      modelVersion: this.cfg.MODEL_VERSION,
+      lastRecalculatedAt: canInitialize ? new Date() : current?.lastRecalculatedAt ?? null,
+    };
+
+    await this.prisma.brakeHealthCurrent.upsert({
+      where: { vehicleId },
+      create: merged as any,
+      update: merged as any,
+    });
+
+    const shouldRecalc =
+      input.scheduleRecalculation !== false && (canInitialize || current?.isInitialized === true);
+    if (shouldRecalc) {
+      await this.recalculate(vehicleId);
+    }
+
+    return { updated: anyAnchor, recalculated: shouldRecalc };
   }
 
   async recalculate(vehicleId: string) {
