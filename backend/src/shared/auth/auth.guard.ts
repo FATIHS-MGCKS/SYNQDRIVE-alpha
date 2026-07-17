@@ -39,6 +39,9 @@ const PUBLIC_PATH_PREFIXES: string[] = [
   '/api/v1/health',
   // Voice MCP gateway uses short-lived scoped bearer tokens (not user JWT)
   '/api/v1/mcp/voice',
+  // ElevenLabs post-call and conversation webhooks — org-scoped path, HMAC verified in controller
+  '/api/v1/webhooks/elevenlabs/post-call',
+  '/api/v1/webhooks/elevenlabs/conversation',
 ];
 
 @Injectable()

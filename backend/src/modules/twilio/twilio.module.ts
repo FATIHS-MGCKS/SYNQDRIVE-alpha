@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import {
@@ -6,6 +6,7 @@ import {
   VoiceProvisioningJobRepository,
   VoiceSubscriptionRepository,
 } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
+import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { SecretRefResolver } from './secrets/secret-ref.resolver';
 import { TwilioProvisioningProviderClient } from './provisioning/twilio-provisioning-provider.client';
 import { TwilioSecretStoreService } from './provisioning/twilio-secret-store.service';
@@ -21,7 +22,7 @@ import { TwilioWebhookService } from './twilio-webhook.service';
 import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [PrismaModule, ConfigModule, forwardRef(() => VoiceWebhookIngestionModule)],
   controllers: [TwilioWebhookController, TwilioTenantProvisioningController],
   providers: [
     SecretRefResolver,

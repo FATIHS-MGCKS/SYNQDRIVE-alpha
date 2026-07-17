@@ -10224,6 +10224,7 @@ model VoiceConversation {
   direction              VoiceConversationDirection @default(INBOUND)
   durationSeconds        Int?                       @map("duration_seconds")
   status                 VoiceConversationStatus    @default(COMPLETED)
+  lifecycleState         VoiceConversationLifecycleState @default(CREATED) @map("lifecycle_state")
   outcome                VoiceConversationOutcome   @default(PENDING)
   transcript             String?                    @db.Text
   summary                String?
@@ -10239,8 +10240,10 @@ model VoiceConversation {
 
   usageEvents    VoiceUsageEvent[]
   toolExecutions VoiceToolExecution[]
+  webhookEvents  VoiceProviderWebhookEvent[]
 
   @@index([organizationId, startedAt])
+  @@index([lifecycleState])
   @@index([voiceAssistantId])
   @@index([outcome])
   @@index([providerConversationId])
@@ -10282,6 +10285,8 @@ enum VoiceSubscriptionStatus {
 enum VoiceControlPlaneProvider {
   TWILIO
   ELEVENLABS
+  MCP
+  INTERNAL
 }
 
 enum VoiceProviderAccountType {
@@ -10536,8 +10541,36 @@ model VoiceProvisioningJob {
 
 enum VoiceProviderWebhookProcessingStatus {
   RECEIVED
+  QUEUED
   PROCESSED
   FAILED
+  DEAD_LETTER
+}
+
+enum VoiceWebhookErrorClass {
+  SIGNATURE_INVALID
+  PAYLOAD_INVALID
+  PAYLOAD_TOO_LARGE
+  CORRELATION_MISSING
+  TENANT_MISMATCH
+  DOMAIN_ERROR
+  POISON
+  UNKNOWN
+}
+
+enum VoiceConversationLifecycleState {
+  CREATED
+  QUEUED
+  INITIATED
+  RINGING
+  CONNECTED
+  AI_ACTIVE
+  TRANSFERRING
+  COMPLETED
+  PROCESSING
+  FINALIZED
+  FAILED
+  CANCELLED
 }
 
 enum VoiceUsageEventType {
@@ -10619,8 +10652,18 @@ model VoiceProviderWebhookEvent {
   processedAt     DateTime?                            @map("processed_at")
   failedAt        DateTime?                            @map("failed_at")
   retryCount      Int                                  @default(0) @map("retry_count")
+  errorClass      VoiceWebhookErrorClass?              @map("error_class")
   errorCode       String?                              @map("error_code")
   errorMessage    String?                              @map("error_message")
+
+  voiceConversationId      String?            @map("voice_conversation_id")
+  voiceConversation        VoiceConversation? @relation(fields: [voiceConversationId], references: [id], onDelete: SetNull)
+  twilioCallSid            String?            @map("twilio_call_sid")
+  elevenLabsConversationId String?            @map("elevenlabs_conversation_id")
+  agentDeploymentId        String?            @map("agent_deployment_id")
+  phoneNumberId            String?            @map("phone_number_id")
+  customerId               String?            @map("customer_id")
+  bookingId                String?            @map("booking_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -10629,6 +10672,9 @@ model VoiceProviderWebhookEvent {
   @@index([organizationId, receivedAt])
   @@index([status, receivedAt])
   @@index([provider, eventType])
+  @@index([voiceConversationId])
+  @@index([twilioCallSid])
+  @@index([elevenLabsConversationId])
   @@map("voice_provider_webhook_events")
 }
 

@@ -4,7 +4,18 @@ import type {
   VoiceControlPlaneProvider,
   VoiceToolRiskClass,
   VoiceUsageEventType,
+  VoiceWebhookErrorClass,
 } from '@prisma/client';
+
+export type VoiceWebhookCorrelationInput = {
+  voiceConversationId?: string | null;
+  twilioCallSid?: string | null;
+  elevenLabsConversationId?: string | null;
+  agentDeploymentId?: string | null;
+  phoneNumberId?: string | null;
+  customerId?: string | null;
+  bookingId?: string | null;
+};
 
 export type CreateVoiceProviderWebhookEventInput = {
   organizationId?: string | null;
@@ -13,6 +24,7 @@ export type CreateVoiceProviderWebhookEventInput = {
   eventType?: string | null;
   payloadHash: string;
   redactedPayload: Prisma.InputJsonValue;
+  correlation?: VoiceWebhookCorrelationInput;
 };
 
 export type CreateVoiceUsageEventInput = {

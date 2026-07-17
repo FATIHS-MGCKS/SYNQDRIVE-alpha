@@ -32,6 +32,7 @@ import {
   toBookingReference,
   toCustomerReference,
 } from './voice-mcp-privacy.util';
+import { VoiceInternalEventIngestService } from '@modules/voice-webhook-ingestion/voice-internal-event-ingest.service';
 import type { VoiceMcpToolName } from './voice-mcp-gateway.constants';
 
 @Injectable()
@@ -109,7 +110,10 @@ export class VoiceMcpGatewayMiddlewareService {
 export class VoiceMcpAuditService {
   private readonly logger = new Logger(VoiceMcpAuditService.name);
 
-  constructor(private readonly toolExecutions: VoiceToolExecutionRepository) {}
+  constructor(
+    private readonly toolExecutions: VoiceToolExecutionRepository,
+    private readonly internalEvents: VoiceInternalEventIngestService,
+  ) {}
 
   async recordToolInvocation(
     context: VoiceMcpRequestContext,
@@ -117,8 +121,9 @@ export class VoiceMcpAuditService {
     input: Record<string, unknown>,
     status: 'SUCCEEDED' | 'FAILED',
   ): Promise<void> {
+    let executionId: string | null = null;
     try {
-      await this.toolExecutions.persistOrGet({
+      const result = await this.toolExecutions.persistOrGet({
         organizationId: context.organizationId,
         voiceConversationId: context.conversationId,
         toolName,
@@ -127,8 +132,23 @@ export class VoiceMcpAuditService {
         idempotencyKey: `${context.conversationId}:${context.requestId}:${toolName}`,
         redactedInput: input as Prisma.InputJsonValue,
       });
+      executionId = result.execution.id;
     } catch (error) {
       this.logger.warn(`Failed to persist voice MCP audit for ${toolName}: ${(error as Error).message}`);
+    }
+
+    if (executionId) {
+      try {
+        await this.internalEvents.recordMcpToolExecution({
+          organizationId: context.organizationId,
+          voiceConversationId: context.conversationId,
+          toolExecutionId: executionId,
+          toolName,
+          status,
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to ingest MCP tool webhook event for ${toolName}: ${(error as Error).message}`);
+      }
     }
 
     this.logger.log(

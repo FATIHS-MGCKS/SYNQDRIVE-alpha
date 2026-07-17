@@ -22,6 +22,8 @@ import {
   withCountersApplied,
 } from '@modules/voice-assistant/voice-conversation-lifecycle.util';
 import { sanitizeWebhookHeaders } from '@modules/voice-assistant/voice-conversation.util';
+import { VoiceWebhookIngestService } from '@modules/voice-webhook-ingestion/voice-webhook-ingest.service';
+import { VOICE_WEBHOOK_EVENT_TYPES } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.constants';
 import { TwilioService } from './twilio.service';
 import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
 import {
@@ -43,6 +45,7 @@ export class TwilioWebhookService {
     private readonly twilio: TwilioService,
     private readonly config: ConfigService,
     private readonly bridge: TwilioVoiceBridgeService,
+    private readonly voiceWebhookIngest: VoiceWebhookIngestService,
   ) {}
 
   async handleInboundVoice(params: {
@@ -70,6 +73,13 @@ export class TwilioWebhookService {
       payload: form,
       headers: params.headers,
       signatureValid: true,
+    });
+
+    await this.voiceWebhookIngest.ingestTwilioEvent({
+      organizationId: assistant?.organizationId ?? null,
+      externalEventId: `${context.callSid}:voice`,
+      eventType: VOICE_WEBHOOK_EVENT_TYPES.TWILIO_VOICE_INBOUND,
+      form,
     });
 
     if (
@@ -113,6 +123,13 @@ export class TwilioWebhookService {
       payload: form,
       headers: params.headers,
       signatureValid: true,
+    });
+
+    await this.voiceWebhookIngest.ingestTwilioEvent({
+      organizationId: assistant?.organizationId ?? null,
+      externalEventId: `${context.callSid}:status:${context.callStatus}`,
+      eventType: VOICE_WEBHOOK_EVENT_TYPES.TWILIO_STATUS,
+      form,
     });
 
     if (!assistant || !context.callSid) {

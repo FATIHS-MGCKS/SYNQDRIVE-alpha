@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-webhook-ingestion-correlation-2026-07-17',
+    version: '4.9.592',
+    title: 'V4.9.592 — Voice AI: unified webhook ingestion and correlation',
+    summary: [
+      'Kanonicaler Ingress für Twilio, ElevenLabs post-call/conversation, MCP-Tool-Events und interne Lifecycle-Events.',
+      'VoiceProviderWebhookEvent mit Korrelationsschlüsseln, BullMQ-Queue, Retry/DLQ und privilegiertem Replay.',
+      'Monotone Lifecycle-State-Machine auf VoiceConversation (CREATED … FINALIZED); Outcomes bleiben separat.',
+    ],
+    reason:
+      'Prompt 7A — robuste gemeinsame Event-Ingestion mit Signaturprüfung, Idempotenz und asynchroner Verarbeitung.',
+    previousBehavior:
+      'Twilio schrieb nur TwilioWebhookEvent; ElevenLabs-Webhook-URL war konfiguriert aber ohne Empfänger; keine vereinheitlichte Korrelation.',
+    details:
+      'Module voice-webhook-ingestion; Migration 20260717230000; Queue voice.webhook.process; ElevenLabs HMAC; Twilio-Brücke additive.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T20:50:00.000Z',
+  },
+  {
     id: 'voice-mcp-controlled-write-tools-2026-07-17',
     version: '4.9.591',
     title: 'V4.9.591 — Voice AI: controlled MCP write tools and approvals',

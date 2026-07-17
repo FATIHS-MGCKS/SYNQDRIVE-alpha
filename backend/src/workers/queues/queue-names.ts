@@ -22,4 +22,6 @@ export const QUEUE_NAMES = {
   TASK_AUTOMATION: 'task.automation',
   /** Battery Health V2 — typed async jobs (observation, assessment, HV reconcile). */
   BATTERY_V2: 'battery.v2',
+  /** Voice provider webhook async processing — lifecycle correlation. */
+  VOICE_WEBHOOK_PROCESS: 'voice.webhook.process',
 } as const;

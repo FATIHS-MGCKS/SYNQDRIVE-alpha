@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, VoiceWebhookErrorClass } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
   CompleteVoiceToolExecutionInput,
@@ -11,6 +11,7 @@ import type {
   CreateVoiceUsageEventInput,
   DecideVoiceApprovalRequestInput,
   UpsertVoiceBudgetPolicyInput,
+  VoiceWebhookCorrelationInput,
 } from './voice-audit-persistence.types';
 
 @Injectable()
@@ -41,18 +42,127 @@ export class VoiceProviderWebhookEventRepository {
       return { event: existing, created: false };
     }
 
-    const event = await this.prisma.voiceProviderWebhookEvent.create({
+    const correlation = input.correlation ?? {};
+
+    try {
+      const event = await this.prisma.voiceProviderWebhookEvent.create({
+        data: {
+          organizationId: input.organizationId ?? null,
+          provider: input.provider,
+          externalEventId: input.externalEventId,
+          eventType: input.eventType ?? null,
+          payloadHash: input.payloadHash,
+          redactedPayload: input.redactedPayload,
+          voiceConversationId: correlation.voiceConversationId ?? null,
+          twilioCallSid: correlation.twilioCallSid ?? null,
+          elevenLabsConversationId: correlation.elevenLabsConversationId ?? null,
+          agentDeploymentId: correlation.agentDeploymentId ?? null,
+          phoneNumberId: correlation.phoneNumberId ?? null,
+          customerId: correlation.customerId ?? null,
+          bookingId: correlation.bookingId ?? null,
+        },
+      });
+
+      return { event, created: true };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const raced = await this.findByProviderEventId(input.provider, input.externalEventId);
+        if (raced) {
+          return { event: raced, created: false };
+        }
+      }
+      throw err;
+    }
+  }
+
+  findById(id: string) {
+    return this.prisma.voiceProviderWebhookEvent.findUnique({ where: { id } });
+  }
+
+  findByIdForOrganization(organizationId: string, id: string) {
+    return this.prisma.voiceProviderWebhookEvent.findFirst({
+      where: { id, organizationId },
+    });
+  }
+
+  markQueued(id: string) {
+    return this.prisma.voiceProviderWebhookEvent.update({
+      where: { id },
+      data: { status: 'QUEUED' },
+    });
+  }
+
+  markProcessed(id: string) {
+    return this.prisma.voiceProviderWebhookEvent.update({
+      where: { id },
       data: {
-        organizationId: input.organizationId ?? null,
-        provider: input.provider,
-        externalEventId: input.externalEventId,
-        eventType: input.eventType ?? null,
-        payloadHash: input.payloadHash,
-        redactedPayload: input.redactedPayload,
+        status: 'PROCESSED',
+        processedAt: new Date(),
+        errorClass: null,
+        errorCode: null,
+        errorMessage: null,
       },
     });
+  }
 
-    return { event, created: true };
+  markFailed(
+    id: string,
+    params: {
+      errorClass?: VoiceWebhookErrorClass | null;
+      errorCode?: string | null;
+      errorMessage?: string | null;
+      incrementRetry?: boolean;
+    },
+  ) {
+    return this.prisma.voiceProviderWebhookEvent.update({
+      where: { id },
+      data: {
+        status: 'FAILED',
+        failedAt: new Date(),
+        errorClass: params.errorClass ?? 'UNKNOWN',
+        errorCode: params.errorCode ?? null,
+        errorMessage: params.errorMessage ?? null,
+        retryCount: params.incrementRetry ? { increment: 1 } : undefined,
+      },
+    });
+  }
+
+  markDeadLetter(
+    id: string,
+    params: {
+      errorClass?: VoiceWebhookErrorClass | null;
+      errorCode?: string | null;
+      errorMessage?: string | null;
+    },
+  ) {
+    return this.prisma.voiceProviderWebhookEvent.update({
+      where: { id },
+      data: {
+        status: 'DEAD_LETTER',
+        failedAt: new Date(),
+        errorClass: params.errorClass ?? 'POISON',
+        errorCode: params.errorCode ?? null,
+        errorMessage: params.errorMessage ?? null,
+      },
+    });
+  }
+
+  updateCorrelation(id: string, correlation: VoiceWebhookCorrelationInput) {
+    return this.prisma.voiceProviderWebhookEvent.update({
+      where: { id },
+      data: {
+        voiceConversationId: correlation.voiceConversationId ?? null,
+        twilioCallSid: correlation.twilioCallSid ?? null,
+        elevenLabsConversationId: correlation.elevenLabsConversationId ?? null,
+        agentDeploymentId: correlation.agentDeploymentId ?? null,
+        phoneNumberId: correlation.phoneNumberId ?? null,
+        customerId: correlation.customerId ?? null,
+        bookingId: correlation.bookingId ?? null,
+      },
+    });
   }
 }
 

@@ -71,11 +71,16 @@ describe('TwilioWebhookService characterization', () => {
     prisma.voiceConversation.findFirst.mockResolvedValue(null);
     prisma.voiceConversation.create.mockResolvedValue({ id: 'conv-1' });
 
+    const voiceWebhookIngest = {
+      ingestTwilioEvent: jest.fn().mockResolvedValue({ accepted: true, duplicate: false, eventId: 'evt-1', queued: true }),
+    };
+
     service = new TwilioWebhookService(
       prisma as never,
       twilioService as never,
       config as never,
       bridge as never,
+      voiceWebhookIngest as never,
     );
   });
 
