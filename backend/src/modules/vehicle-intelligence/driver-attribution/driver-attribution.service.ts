@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DriverAttributionSource, HandoverKind } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { resolveBookingDriverPool, isDriverInBookingPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
 import { DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION } from '../driving-analysis-init/driving-analysis-init.types';
 import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { TripAttributionService } from '../trips/trip-attribution.service';
@@ -140,10 +141,18 @@ export class DriverAttributionService {
   }) {
     const trip = await this.prisma.vehicleTrip.findFirst({
       where: { id: input.tripId, vehicle: { organizationId: input.organizationId } },
-      select: { id: true },
+      select: { id: true, assignedBookingId: true },
     });
     if (!trip) {
       throw new NotFoundException('Trip not found for organization');
+    }
+
+    if (trip.assignedBookingId) {
+      await this.assertDriverAllowedForBooking({
+        organizationId: input.organizationId,
+        bookingId: trip.assignedBookingId,
+        driverId: input.driverId,
+      });
     }
 
     const resolvedAt = new Date();
@@ -386,6 +395,36 @@ export class DriverAttributionService {
         jobType: 'RENTAL_DRIVING_ANALYSIS_RECOMPUTE',
         idempotencyKey: `${input.bookingId}:rental-analysis:${analysisRunId}:attribution`,
       });
+    }
+  }
+
+  private async assertDriverAllowedForBooking(input: {
+    organizationId: string;
+    bookingId: string;
+    driverId: string;
+  }) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: input.bookingId, organizationId: input.organizationId },
+      select: {
+        customerId: true,
+        assignedDriverId: true,
+        allowedDrivers: { select: { customerId: true, role: true } },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException('Booking not found for organization');
+    }
+
+    const pool = resolveBookingDriverPool({
+      bookingCustomerId: booking.customerId,
+      assignedDriverId: booking.assignedDriverId,
+      allowedRows: booking.allowedDrivers,
+    });
+
+    if (!isDriverInBookingPool(input.driverId, pool)) {
+      throw new BadRequestException(
+        'Driver is not in the allowed driver pool for this booking',
+      );
     }
   }
 }

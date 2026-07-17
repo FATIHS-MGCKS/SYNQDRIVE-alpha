@@ -94,6 +94,28 @@ describe('resolveDrivingAttributionRoles', () => {
     expect(roles.attributionType).toBe(DrivingAttributionTypeEnum.PRIVATE_UNASSIGNED);
     expect(roles.customerDecisionEligible).toBe(false);
   });
+
+  it('exposes allowed driver pool without auto-selecting additional driver', () => {
+    const roles = resolveDrivingAttributionRoles({
+      isPrivateTrip: false,
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_DRIVER,
+      assignmentSubjectType: TripAssignmentSubjectType.DRIVER,
+      assignmentSubjectId: 'driver-main',
+      assignedBookingId: 'book-1',
+      bookingLinkSource: 'EXPLICIT',
+      bookingCustomerId: 'corp-contact',
+      bookingAssignedDriverId: 'driver-main',
+      bookingCustomerType: CustomerType.CORPORATE,
+      bookingAllowedDriverIds: ['driver-main', 'driver-extra'],
+      bookingPrimaryDriverId: 'driver-main',
+    });
+
+    expect(roles.allowedDriverIds).toEqual(['driver-main', 'driver-extra']);
+    expect(roles.primaryDriverId).toBe('driver-main');
+    expect(roles.additionalDriverIds).toEqual(['driver-extra']);
+    expect(roles.actualDriverId).toBe('driver-main');
+    expect(roles.bookingCustomerId).toBe('corp-contact');
+  });
 });
 
 describe('driving-attribution-roles.compat', () => {

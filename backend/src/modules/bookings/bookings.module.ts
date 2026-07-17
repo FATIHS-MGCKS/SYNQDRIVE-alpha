@@ -19,7 +19,9 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
+import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
 
 @Module({
   imports: [
@@ -37,11 +39,13 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
     OutboundEmailModule,
     forwardRef(() => PaymentsModule),
     VehiclesModule,
+    ActivityLogModule,
   ],
   controllers: [BookingsController],
   providers: [
     BookingsService,
     BookingsHandoverService,
+    BookingAllowedDriversService,
     BookingRentalEligibilityService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
@@ -52,6 +56,7 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
     BookingsHandoverService,
     BookingRentalEligibilityService,
     BookingWizardDraftService,
+    BookingAllowedDriversService,
   ],
 })
 export class BookingsModule {}

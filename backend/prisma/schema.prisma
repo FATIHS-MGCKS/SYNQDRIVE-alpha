@@ -1269,6 +1269,7 @@ model Organization {
   rentalVehicleCategories           RentalVehicleCategory[]
   vehicleRentalRequirementOverrides VehicleRentalRequirementOverride[]
   bookings                          Booking[]
+  bookingAllowedDrivers             BookingAllowedDriver[]
   bookingHandoverProtocols          BookingHandoverProtocol[]
   activityLogs                      ActivityLog[]
   rentalDrivingAnalyses             RentalDrivingAnalysis[]
@@ -1391,6 +1392,7 @@ model User {
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
   driverAttributionsResolved            DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
+  bookingAllowedDriversAdded            BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
 
   @@map("users")
 }
@@ -3647,6 +3649,7 @@ model Customer {
   organization           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookings               Booking[]
   assignedDriverBookings Booking[]                 @relation("BookingAssignedDriver")
+  bookingAllowedDrivers  BookingAllowedDriver[]
   rentalDrivingAnalysesAsBookingCustomer RentalDrivingAnalysis[] @relation("RentalAnalysisBookingCustomer")
   rentalDrivingAnalysesAsAssignedDriver RentalDrivingAnalysis[] @relation("RentalAnalysisAssignedDriver")
   rentalDrivingAnalysesAsActualDriver   RentalDrivingAnalysis[] @relation("RentalAnalysisActualDriver")
@@ -3977,6 +3980,7 @@ model Booking {
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
+  allowedDrivers          BookingAllowedDriver[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -3991,6 +3995,35 @@ model Booking {
   @@index([vehicleId, status, startDate])
   @@index([organizationId, status])
   @@map("bookings")
+}
+
+enum BookingDriverRole {
+  PRIMARY
+  ADDITIONAL
+}
+
+/// Allowed drivers for a booking — contract holder (`customerId`) remains separate.
+model BookingAllowedDriver {
+  id             String            @id @default(uuid())
+  organizationId String            @map("organization_id")
+  bookingId      String            @map("booking_id")
+  customerId     String            @map("customer_id")
+  role           BookingDriverRole @default(ADDITIONAL)
+  addedByUserId  String?           @map("added_by_user_id")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  addedBy      User?        @relation("BookingAllowedDriverAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([bookingId, customerId])
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([bookingId, role])
+  @@map("booking_allowed_drivers")
 }
 
 // ------------------------------------------------

@@ -1,5 +1,5 @@
 /** Version bump when role resolution semantics change. */
-export const DRIVING_ATTRIBUTION_ROLES_VERSION = 'driving-attribution-roles-v1';
+export const DRIVING_ATTRIBUTION_ROLES_VERSION = 'driving-attribution-roles-v2';
 
 /** UUID v4-ish pattern — distinguishes Customer IDs from free-text driver names. */
 export const CUSTOMER_UUID_PATTERN =
