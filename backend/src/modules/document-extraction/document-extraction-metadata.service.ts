@@ -13,6 +13,7 @@ import {
   SUPPORTED_DOCUMENT_TYPES,
 } from './document-extraction.schemas';
 import { DocumentExtractionMetadataDto } from './dto/document-extraction-metadata.dto';
+import { buildPublicRequiredFieldRegistryDto } from './document-required-field.registry.public';
 
 const PUBLIC_STATUSES: DocumentExtractionStatus[] = [
   'PENDING',
@@ -86,6 +87,7 @@ export class DocumentExtractionMetadataService {
         value,
         labelKey: `documentExtraction.errorPhase.${value}`,
       })),
+      requiredFieldRegistry: buildPublicRequiredFieldRegistryDto(),
     };
   }
 }
