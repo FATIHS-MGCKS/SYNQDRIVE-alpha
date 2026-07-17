@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-access-scope-service-v49591-2026-07-17',
+    version: '4.9.591',
+    title: 'V4.9.591 — Stations V2: zentraler StationAccessScopeService (Prompt 11/78)',
+    summary: [
+      '`StationAccessScopeService` liefert erlaubte Station-IDs, Scope-Typ, lesbare/bearbeitbare Stationen sowie Fleet-/Booking-Ressourcen-Filter.',
+      'Keine `undefined = alles`-Semantik mehr — fehlender Scope → leere Ergebnismenge; `NO_STATIONS` → `id: { in: [] }`.',
+      'Listen (`findAll`) und globale Stats (`getStationStats`) nutzen denselben Access-Scope-Filter.',
+      'Unit- + Integrationstests für ALL/ASSIGNED/NO_STATIONS, Permissions und List/Stats-Konsistenz.',
+    ],
+    reason:
+      'Scope-Filter waren in `stations-read-scope.util` dupliziert und behandelten `undefined` als Org-Vollzugriff — V2 verlangt zentralen Membership-Scope.',
+    previousBehavior:
+      '`buildScopedStationWhere` ohne Scope → Org-weite Abfrage; List/Stats bauten Filter separat.',
+    details:
+      'backend/src/shared/stations/station-access-scope.*, stations.service.ts (findAll/getStationStats), stations-read-scope.util.ts delegiert.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:50:00.000Z',
+  },
+  {
     id: 'stations-v2-mutation-endpoints-v49590-2026-07-17',
     version: '4.9.590',
     title: 'V4.9.590 — Stations V2: Mutations mit granularen Permissions + Scope (Prompt 10/78)',

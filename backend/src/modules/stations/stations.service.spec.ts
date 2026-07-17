@@ -4,6 +4,8 @@ import { StationValidationService } from './station-validation.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { STATION_SCOPE_MODE } from '@shared/stations/station-scope.constants';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
+import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
+import { StationScopeService } from '@shared/stations/station-scope.service';
 
 const ORG = 'org1';
 const STATION_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -115,7 +117,12 @@ describe('StationsService', () => {
     validateBookingStations: jest.fn(),
   } as unknown as StationValidationService;
 
-  const service = new StationsService(prisma, stationValidation);
+  const stationAccessScope = new StationAccessScopeService(
+    prisma,
+    new StationScopeService(prisma),
+  );
+
+  const service = new StationsService(prisma, stationValidation, stationAccessScope);
 
   const stationRow = {
     id: STATION_A,
@@ -323,15 +330,16 @@ describe('StationsService', () => {
     expect(activity).toHaveLength(1);
   });
 
-  it('lists stations scoped to organization without explicit scope', async () => {
-    (prisma.station.findMany as jest.Mock).mockResolvedValue([stationRow]);
+  it('returns empty list when scope context is missing (no undefined=all semantics)', async () => {
+    (prisma.station.findMany as jest.Mock).mockResolvedValue([]);
 
     const rows = await service.findAll(ORG);
     expect(prisma.station.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { organizationId: 'org1' } }),
+      expect.objectContaining({
+        where: { organizationId: 'org1', id: { in: [] } },
+      }),
     );
-    expect(rows[0].vehicleCount).toBe(2);
-    expect(rows[0].isPrimary).toBe(true);
+    expect(rows).toEqual([]);
   });
 
   it('archives instead of hard-deleting linked stations', async () => {

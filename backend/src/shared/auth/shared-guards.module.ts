@@ -6,6 +6,7 @@ import { PermissionsGuard } from './permissions.guard';
 import { MasterBillingGuard } from './master-billing.guard';
 import { StationScopeGuard } from '@shared/guards/station-scope.guard';
 import { StationScopeService } from '@shared/stations/station-scope.service';
+import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 
 /**
  * GlobalGuardsModule — provides all platform security guards globally.
@@ -24,6 +25,7 @@ import { StationScopeService } from '@shared/stations/station-scope.service';
     MasterBillingGuard,
     StationScopeGuard,
     StationScopeService,
+    StationAccessScopeService,
   ],
   exports: [
     OrgScopingGuard,
@@ -32,6 +34,7 @@ import { StationScopeService } from '@shared/stations/station-scope.service';
     MasterBillingGuard,
     StationScopeGuard,
     StationScopeService,
+    StationAccessScopeService,
   ],
 })
 export class SharedGuardsModule {}

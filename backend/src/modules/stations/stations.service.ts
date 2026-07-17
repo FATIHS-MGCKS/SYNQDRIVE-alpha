@@ -14,7 +14,8 @@ import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
 import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
-import { STATION_SCOPE_MODE } from '@shared/stations/station-scope.constants';
+import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
+import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import {
   buildScopedStationWhere,
   buildScopedVehicleHomeWhere,
@@ -173,6 +174,7 @@ export class StationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stationValidation: StationValidationService,
+    private readonly stationAccessScope: StationAccessScopeService,
   ) {}
 
   private stationIncludeCount() {
@@ -188,6 +190,7 @@ export class StationsService {
     query?: ListStationsQueryDto,
     scope?: StationScopeContext,
   ): Promise<StationDto[]> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
     const extra: Prisma.StationWhereInput = {};
     if (query?.status) extra.status = query.status;
     if (query?.type) extra.type = query.type;
@@ -196,7 +199,7 @@ export class StationsService {
       extra.pickupEnabled = true;
     }
 
-    const where = buildScopedStationWhere(organizationId, scope, extra);
+    const where = this.stationAccessScope.buildStationWhere(access, extra);
 
     const stations = await this.prisma.station.findMany({
       where,
@@ -415,15 +418,17 @@ export class StationsService {
     organizationId: string,
     scope?: StationScopeContext,
   ): Promise<StationsStatsDto> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+
     const [stations, unassignedVehicles] = await Promise.all([
       this.prisma.station.findMany({
-        where: buildScopedStationWhere(organizationId, scope, {
+        where: this.stationAccessScope.buildStationWhere(access, {
           status: { not: 'ARCHIVED' },
         }),
         include: { _count: { select: { vehiclesHome: true } } },
         orderBy: [{ isPrimary: 'desc' }, { status: 'asc' }, { name: 'asc' }],
       }),
-      this.countUnassignedVehicles(organizationId, scope),
+      this.countUnassignedVehicles(access),
     ]);
 
     const totalVehicles = stations.reduce((sum, s) => sum + s._count.vehiclesHome, 0);
@@ -738,16 +743,13 @@ export class StationsService {
     }));
   }
 
-  private async countUnassignedVehicles(
-    organizationId: string,
-    scope?: StationScopeContext,
-  ): Promise<number> {
-    if (scope && scope.mode !== STATION_SCOPE_MODE.ALL_STATIONS) {
+  private async countUnassignedVehicles(access: StationAccessScope): Promise<number> {
+    if (access.readableStationIds !== null) {
       return 0;
     }
 
     return this.prisma.vehicle.count({
-      where: { organizationId, homeStationId: null },
+      where: { organizationId: access.orgId, homeStationId: null },
     });
   }
 
