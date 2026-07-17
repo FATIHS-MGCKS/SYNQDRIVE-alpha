@@ -173,9 +173,23 @@ const STATUS_LABEL_TO_ENUM: Record<string, string> = {
   Active: 'ACTIVE', Trial: 'PENDING', Suspended: 'SUSPENDED', Churned: 'ARCHIVED',
 };
 
+const MASTER_VIEWS: MasterView[] = [
+  'dashboard', 'organizations', 'users', 'vehicles', 'prospects', 'billing',
+  'activity-log', 'platform-health', 'support', 'settings', 'fleet-connection',
+  'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility', 'hm-compatibility',
+  'architektur', 'changes', 'health-tracking', 'trip-detection-logic', 'performance-logic',
+  'vehicle-logbook',
+];
+
+function readInitialMasterView(): MasterView {
+  if (typeof window === 'undefined') return 'dashboard';
+  const view = new URLSearchParams(window.location.search).get('masterView');
+  return MASTER_VIEWS.includes(view as MasterView) ? (view as MasterView) : 'dashboard';
+}
+
 export default function App() {
   const { isDarkMode } = useAppTheme();
-  const [currentView, setCurrentView] = useState<MasterView>('dashboard');
+  const [currentView, setCurrentView] = useState<MasterView>(readInitialMasterView);
   const [settingsTab, setSettingsTab] = useState<string>('general');
   const [billingFocusOrgId, setBillingFocusOrgId] = useState<string | null>(null);
 

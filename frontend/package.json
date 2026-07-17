@@ -15,6 +15,7 @@
     "test:battery:v2:e2e": "playwright test -c e2e/playwright.config.ts battery-health-flow.spec.ts battery-health-responsive.spec.ts --project=desktop-1280",
     "test:battery:v2:verify": "bash scripts/test/battery-health-v2-verify.sh all",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
+    "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
     "check:surface": "bash scripts/check-surface-legacy.sh"
   },
   "dependencies": {
