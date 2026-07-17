@@ -178,6 +178,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 24, 2026-07-17):** `document-action-planner.invoice-rules.ts` — Finance-Profile (Eingangsrechnung, Gutschrift, Mahnung, Zahlungsnachweis). Semantic Actions: CREATE_INVOICE_DRAFT, CREATE_CREDIT_NOTE_DRAFT, LINK_*, LINK_EXISTING_INVOICE, SUGGEST_PAYMENT_REVIEW, SUGGEST_DUE_DATE_TASK, ARCHIVE_ONLY. Kein pauschales 19 %-VAT; explizite oder unklare Betrags-/Steuersemantik; taxLines für Mehrfachsätze; Plan-Outcomes READY/DRAFT_ONLY/BLOCKED. Planner-Version `document-action-planner-v4`.
 
+**Implementierungsstand (Prompt 25, 2026-07-17):** `document-action-planner.maintenance-rules.ts` — Maintenance-Profile (SERVICE, OIL_CHANGE, TUV, BOKRAFT, DAMAGE, ACCIDENT, VEHICLE_CONDITION). Semantic Actions: CREATE_SERVICE_EVENT, UPDATE_TUV/BOKRAFT_COMPLIANCE, CREATE_DAMAGE/INSPECTION_DRAFT, LINK_*, SUGGEST_REPAIR/INSPECTION/INSURANCE_REVIEW. Kein Datums-Fallback; validUntil nur bestätigt; Mangelstatus; Accident ≠ auto-Schaden; Readiness über applySafetyDecision. Planner-Version `document-action-planner-v5`.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

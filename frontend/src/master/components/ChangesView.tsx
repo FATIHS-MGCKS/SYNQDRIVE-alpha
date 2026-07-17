@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-maintenance-planner-rules-2026-07-17',
+    version: '4.9.601',
+    title: 'V4.9.601 — Document Intake V2 Maintenance / Inspection / Damage Action Plan Rules',
+    summary: [
+      'Planner-Regeln für SERVICE, OIL_CHANGE, TUV_REPORT, BOKRAFT, DAMAGE, ACCIDENT, VEHICLE_CONDITION.',
+      'Semantic Actions: CREATE_SERVICE_EVENT, UPDATE_TUV/BOKRAFT_COMPLIANCE, CREATE_DAMAGE_DRAFT, CREATE_INSPECTION_DRAFT, LINK_VEHICLE/BOOKING, SUGGEST_REPAIR_TASK, SUGGEST_VEHICLE_INSPECTION, SUGGEST_INSURANCE_REVIEW.',
+      'Kein aktuelles Datum als Ersatz; validUntil nur bei Bestätigung; Mangelstatus berücksichtigt; Damage-Type/Severity nicht erfunden; Accident kein auto-Schaden; Readiness-Policy-Sperren nur über applySafetyDecision.',
+      'Planner v5 (`document-action-planner-v5`); Tests für vollständige und fehlende Pflichtdaten.',
+    ],
+    reason: 'Prompt 25/84: deterministischer Maintenance-Action-Planner vor Apply-Verdrahtung.',
+    previousBehavior: 'SERVICE/TUV/DAMAGE nutzten generische Catalog-Templates ohne Mode-/Defekt-Regeln.',
+    details:
+      'document-action-planner.maintenance-rules.ts (+ spec), engine maintenance path, preview mapper, routing order fix.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T05:00:00.000Z',
+  },
+  {
     id: 'document-invoice-planner-rules-2026-07-17',
     version: '4.9.600',
     title: 'V4.9.600 — Document Intake V2 Invoice / Credit / Reminder / Payment-Proof Action Plan Rules',
