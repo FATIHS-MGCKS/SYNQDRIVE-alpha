@@ -3,6 +3,7 @@ import {
   BookingStatus,
   DrivingAnalysisMaturity,
   RentalDrivingAnalysis,
+  RentalDrivingAnalysisStability,
   TripAssignmentStatus,
   TripAssignmentSubjectType,
   TripBookingLinkSource,
@@ -35,6 +36,11 @@ import {
   resolveRentalDrivingAnalysisCompleteness,
 } from './rental-driving-analysis.fingerprint';
 import { RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION } from './rental-driving-analysis.versioning';
+import { resolveRentalDrivingAnalysisStability } from './rental-driving-analysis.stability';
+import type {
+  RentalDrivingAnalysisRecomputeReason,
+  RentalDrivingAnalysisRecomputeResult,
+} from './rental-driving-analysis.recompute.types';
 
 type TripForAnalysis = {
   id: string;
@@ -66,8 +72,11 @@ type ImpactStressRow = {
 };
 
 export type GenerateRentalDrivingAnalysisOptions = {
-  recomputeReason?: string;
+  recomputeReason?: RentalDrivingAnalysisRecomputeReason | string;
+  jobId?: string;
 };
+
+export type RecomputeRentalDrivingAnalysisOptions = GenerateRentalDrivingAnalysisOptions;
 
 @Injectable()
 export class RentalDrivingAnalysisService {
@@ -80,15 +89,30 @@ export class RentalDrivingAnalysisService {
   ) {}
 
   /**
-   * Resolve or materialize the current rental analysis for a completed booking.
-   * Same inputs + calculation version → idempotent return of existing row.
-   * Changed inputs or model version → new row; prior current row stays auditable via supersededAt.
+   * @deprecated Use {@link recomputeForBooking} — kept for backward-compatible call sites.
    */
   async generateForBooking(
     orgId: string,
     bookingId: string,
     options?: GenerateRentalDrivingAnalysisOptions,
   ) {
+    const result = await this.recomputeForBooking(orgId, bookingId, options);
+    if (result.status === 'skipped' || result.status === 'in_progress') {
+      return null;
+    }
+    return result.analysis as RentalDrivingAnalysis;
+  }
+
+  /**
+   * Deterministic rental analysis recompute (P60).
+   * Same inputs + calculation version → idempotent.
+   * Active bookings → PROVISIONAL; completed + input gate → STABLE.
+   */
+  async recomputeForBooking(
+    orgId: string,
+    bookingId: string,
+    options?: RecomputeRentalDrivingAnalysisOptions,
+  ): Promise<RentalDrivingAnalysisRecomputeResult> {
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId: orgId },
       include: {
@@ -97,7 +121,17 @@ export class RentalDrivingAnalysisService {
         assignedDriver: { select: { id: true, firstName: true, lastName: true } },
       },
     });
-    if (!booking || booking.status !== BookingStatus.COMPLETED) return null;
+    if (
+      !booking ||
+      (booking.status !== BookingStatus.COMPLETED && booking.status !== BookingStatus.ACTIVE)
+    ) {
+      return { status: 'skipped', reason: 'BOOKING_NOT_ELIGIBLE' };
+    }
+
+    const parallel = await this.hasParallelRecompute(orgId, bookingId, options?.jobId);
+    if (parallel) {
+      return { status: 'in_progress', reason: 'PARALLEL_RECOMPUTE_ACTIVE' };
+    }
 
     const computed = await this.computeAnalysisContext(orgId, booking);
     const inputFingerprint = buildRentalDrivingAnalysisInputFingerprint({
@@ -118,83 +152,142 @@ export class RentalDrivingAnalysisService {
       calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
     });
 
+    const stabilityStatus = resolveRentalDrivingAnalysisStability({
+      bookingStatus: booking.status,
+      analysisCompleteness: computed.analysisCompleteness,
+      assignedTripCount: computed.gateSnapshot.assignedTripCount,
+      completedAssignedTripCount: computed.gateSnapshot.completedAssignedTripCount,
+      tripsWithReadyImpact: computed.gateSnapshot.tripsWithReadyImpact,
+      pendingTripAnalysisJobCount: computed.gateSnapshot.pendingTripAnalysisJobCount,
+    });
+
     const existingExact = await this.prisma.rentalDrivingAnalysis.findFirst({
       where: {
         organizationId: orgId,
         bookingId,
         calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
         inputFingerprint,
+        supersededAt: null,
+        stabilityStatus,
       },
     });
     if (existingExact) {
-      return existingExact;
+      return { status: 'idempotent', analysis: existingExact };
     }
 
-    const current = await this.findCurrentByBookingId(orgId, bookingId);
-    const needsSupersede =
-      current != null &&
-      (current.calculationVersion !== RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION ||
-        current.inputFingerprint !== inputFingerprint);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${bookingId}))`;
 
-    let supersedesAnalysisId: string | null = null;
-    if (needsSupersede && current) {
-      supersedesAnalysisId = current.id;
-      await this.prisma.rentalDrivingAnalysis.update({
-        where: { id: current.id },
-        data: {
-          supersededAt: new Date(),
-          maturity: DrivingAnalysisMaturity.SUPERSEDED,
+      const existingInTx = await tx.rentalDrivingAnalysis.findFirst({
+        where: {
+          organizationId: orgId,
+          bookingId,
+          calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
+          inputFingerprint,
+          supersededAt: null,
+          stabilityStatus,
         },
       });
-    }
+      if (existingInTx) {
+        return { status: 'idempotent' as const, analysis: existingInTx };
+      }
 
-    const generatedAt = new Date();
-    const payload = this.generatePayload({
-      ...computed.payloadCtx,
-      calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
-      inputFingerprint,
-      generatedAt,
-      sourceTripsFinalizedAt: computed.sourceTripsFinalizedAt,
-      analysisCompleteness: computed.analysisCompleteness,
-      maturity: DrivingAnalysisMaturity.PUBLISHED,
-      recomputeReason: needsSupersede
+      const current = await tx.rentalDrivingAnalysis.findFirst({
+        where: { organizationId: orgId, bookingId, supersededAt: null },
+        orderBy: { generatedAt: 'desc' },
+      });
+
+      const needsSupersede =
+        current != null &&
+        (current.calculationVersion !== RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION ||
+          current.inputFingerprint !== inputFingerprint ||
+          current.stabilityStatus !== stabilityStatus);
+
+      let supersedesAnalysisId: string | null = null;
+      if (needsSupersede && current) {
+        supersedesAnalysisId = current.id;
+        await tx.rentalDrivingAnalysis.update({
+          where: { id: current.id },
+          data: {
+            supersededAt: new Date(),
+            maturity: DrivingAnalysisMaturity.SUPERSEDED,
+          },
+        });
+      }
+
+      const generatedAt = new Date();
+      const recomputeReason = needsSupersede
         ? options?.recomputeReason ?? 'INPUT_OR_MODEL_CHANGED'
-        : options?.recomputeReason ?? null,
-      attributionSummary: computed.attributionSummary,
-    });
+        : options?.recomputeReason ?? null;
 
-    return this.prisma.rentalDrivingAnalysis.create({
-      data: {
-        organizationId: orgId,
-        bookingId,
-        vehicleId: booking.vehicleId,
-        bookingCustomerId: computed.roles.bookingCustomerId!,
-        assignedDriverId: computed.roles.assignedDriverId,
-        actualDriverId: computed.roles.actualDriverId,
-        driverId: null,
-        periodStart: booking.startDate,
-        periodEnd: booking.endDate,
-        payload: payload as object,
-        overallLevel: payload.overallAssessment.level,
-        driverStyleCategory: payload.vehicleStressSummary.stressLevel ?? 'unknown',
-        riskLevel: payload.overallAssessment.level,
-        drivingScore: payload.vehicleStressSummary.drivingStressScore,
-        drivingEventsCount: payload.eventSummary.drivingEventsCount ?? undefined,
-        abuseDetectionCount: payload.eventSummary.abuseDetectionCount ?? undefined,
-        wearImpact: payload.wearImpactAssessment.overallWearImpact,
+      const payload = this.generatePayload({
+        ...computed.payloadCtx,
         calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
         inputFingerprint,
         generatedAt,
         sourceTripsFinalizedAt: computed.sourceTripsFinalizedAt,
         analysisCompleteness: computed.analysisCompleteness,
+        stabilityStatus,
         maturity: DrivingAnalysisMaturity.PUBLISHED,
-        recomputeReason: needsSupersede
-          ? options?.recomputeReason ?? 'INPUT_OR_MODEL_CHANGED'
-          : options?.recomputeReason ?? null,
-        supersedesAnalysisId,
-        attributionSummary: computed.attributionSummary as object,
+        recomputeReason,
+        attributionSummary: computed.attributionSummary,
+      });
+
+      const record = await tx.rentalDrivingAnalysis.create({
+        data: {
+          organizationId: orgId,
+          bookingId,
+          vehicleId: booking.vehicleId,
+          bookingCustomerId: computed.roles.bookingCustomerId!,
+          assignedDriverId: computed.roles.assignedDriverId,
+          actualDriverId: computed.roles.actualDriverId,
+          driverId: null,
+          periodStart: booking.startDate,
+          periodEnd: booking.endDate,
+          payload: payload as object,
+          overallLevel: payload.overallAssessment.level,
+          driverStyleCategory: payload.vehicleStressSummary.stressLevel ?? 'unknown',
+          riskLevel: payload.overallAssessment.level,
+          drivingScore: payload.vehicleStressSummary.drivingStressScore,
+          drivingEventsCount: payload.eventSummary.drivingEventsCount ?? undefined,
+          abuseDetectionCount: payload.eventSummary.abuseDetectionCount ?? undefined,
+          wearImpact: payload.wearImpactAssessment.overallWearImpact,
+          calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
+          inputFingerprint,
+          generatedAt,
+          sourceTripsFinalizedAt: computed.sourceTripsFinalizedAt,
+          analysisCompleteness: computed.analysisCompleteness,
+          stabilityStatus,
+          maturity: DrivingAnalysisMaturity.PUBLISHED,
+          recomputeReason,
+          supersedesAnalysisId,
+          attributionSummary: computed.attributionSummary as object,
+        },
+      });
+
+      return {
+        status: 'created' as const,
+        analysis: record,
+        supersededAnalysisId: supersedesAnalysisId,
+      };
+    });
+  }
+
+  private async hasParallelRecompute(
+    orgId: string,
+    bookingId: string,
+    excludeJobId?: string,
+  ): Promise<boolean> {
+    const count = await this.prisma.drivingIntelligenceJob.count({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        jobType: 'RENTAL_DRIVING_ANALYSIS_RECOMPUTE',
+        status: { in: ['PENDING', 'ENQUEUED', 'IN_PROGRESS'] },
+        ...(excludeJobId ? { NOT: { id: excludeJobId } } : {}),
       },
     });
+    return count > 0;
   }
 
   findCurrentByBookingId(orgId: string, bookingId: string) {
@@ -217,6 +310,7 @@ export class RentalDrivingAnalysisService {
       assignedDriverId: string | null;
       startDate: Date;
       endDate: Date;
+      status: BookingStatus;
       customer: { customerType: import('@prisma/client').CustomerType };
     },
   ) {
@@ -237,7 +331,19 @@ export class RentalDrivingAnalysisService {
       bookingCustomerType: booking.customer.customerType,
     });
 
-    const [assignedTrips, dtcList] = await Promise.all([
+    const [allAssignedTrips, assignedTrips, dtcList] = await Promise.all([
+      this.prisma.vehicleTrip.findMany({
+        where: {
+          assignedBookingId: bookingId,
+          bookingLinkSource: TripBookingLinkSource.EXPLICIT,
+          isPrivateTrip: false,
+        },
+        select: {
+          id: true,
+          tripStatus: true,
+          drivingImpactStatus: true,
+        },
+      }),
       this.prisma.vehicleTrip.findMany({
         where: {
           assignedBookingId: bookingId,
@@ -258,6 +364,40 @@ export class RentalDrivingAnalysisService {
         }),
       ),
     ]);
+
+    const completedAssignedTripCount = allAssignedTrips.filter(
+      (trip) => trip.tripStatus === TripStatus.COMPLETED,
+    ).length;
+    const tripsWithReadyImpact = allAssignedTrips.filter(
+      (trip) =>
+        trip.tripStatus === TripStatus.COMPLETED && trip.drivingImpactStatus === 'READY',
+    ).length;
+    const pendingTripAnalysisJobCount = await this.prisma.drivingIntelligenceJob.count({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        tripId: { in: allAssignedTrips.map((trip) => trip.id) },
+        status: { in: ['PENDING', 'ENQUEUED', 'IN_PROGRESS'] },
+        jobType: {
+          in: [
+            'DRIVING_NATIVE_EVENTS_INGEST',
+            'DRIVING_EVENT_CONTEXT_ENRICH',
+            'DRIVING_ROUTE_ENRICH',
+            'DRIVING_IMPACT_COMPUTE',
+            'DRIVING_MISUSE_RECONCILE',
+            'DRIVING_ASSESSABILITY_COMPUTE',
+            'DRIVING_ATTRIBUTION_RESOLVE',
+          ],
+        },
+      },
+    });
+
+    const gateSnapshot = {
+      assignedTripCount: allAssignedTrips.length,
+      completedAssignedTripCount,
+      tripsWithReadyImpact,
+      pendingTripAnalysisJobCount,
+    };
 
     let tripsInRange: TripForAnalysis[] = assignedTrips as TripForAnalysis[];
     let hintTrips: Array<{ id: string; attributionReason: string }> = [];
@@ -453,6 +593,7 @@ export class RentalDrivingAnalysisService {
       analysisCompleteness,
       attributionSummary,
       dtcCountInPeriod: dtcList.length,
+      gateSnapshot,
       payloadCtx: {
         bookingId,
         vehicleId,
@@ -538,6 +679,7 @@ export class RentalDrivingAnalysisService {
     generatedAt: Date;
     sourceTripsFinalizedAt: Date | null;
     analysisCompleteness: import('@prisma/client').RentalDrivingAnalysisCompleteness;
+    stabilityStatus: RentalDrivingAnalysisStability;
     maturity: DrivingAnalysisMaturity;
     recomputeReason: string | null;
     attributionSummary: RentalDrivingAttributionSummary;
@@ -621,6 +763,7 @@ export class RentalDrivingAnalysisService {
         generatedAt: ctx.generatedAt.toISOString(),
         sourceTripsFinalizedAt: ctx.sourceTripsFinalizedAt?.toISOString() ?? null,
         analysisCompleteness: ctx.analysisCompleteness,
+        stabilityStatus: ctx.stabilityStatus,
         maturity: ctx.maturity,
         recomputeReason: ctx.recomputeReason,
         attributionSummary: ctx.attributionSummary,
@@ -755,6 +898,7 @@ export class RentalDrivingAnalysisService {
       generatedAt: r.generatedAt.toISOString(),
       sourceTripsFinalizedAt: r.sourceTripsFinalizedAt?.toISOString() ?? null,
       analysisCompleteness: r.analysisCompleteness,
+      stabilityStatus: r.stabilityStatus,
       maturity: r.maturity,
       supersededAt: r.supersededAt?.toISOString() ?? null,
       supersedesAnalysisId: r.supersedesAnalysisId,

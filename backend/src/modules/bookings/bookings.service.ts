@@ -9,6 +9,8 @@ import {
 import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalDrivingAnalysisService } from '../rental-driving-analysis/rental-driving-analysis.service';
+import { RentalDrivingAnalysisRecomputeTriggerService } from '../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
+import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../rental-driving-analysis/rental-driving-analysis.recompute.types';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import {
@@ -70,6 +72,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentalDrivingAnalysisService: RentalDrivingAnalysisService,
+    private readonly rentalDrivingAnalysisRecomputeTrigger: RentalDrivingAnalysisRecomputeTriggerService,
     @Inject(forwardRef(() => InvoicesService))
     private readonly invoicesService: InvoicesService,
     // V4.6.76 Rental Health V1 — server-side rental_blocked gate. We
@@ -1726,7 +1729,15 @@ export class BookingsService {
       });
     }
     if (updated.status === 'COMPLETED') {
-      this.rentalDrivingAnalysisService.generateForBooking(orgId, id).catch(() => {});
+      void this.rentalDrivingAnalysisRecomputeTrigger
+        .enqueueForBooking({
+          organizationId: orgId,
+          vehicleId: updated.vehicleId,
+          bookingId: id,
+          reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED,
+          correlationId: `rental-recompute:${id}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED}`,
+        })
+        .catch(() => {});
     }
     // Generate the initial document bundle when a booking transitions INTO
     // CONFIRMED via update. Idempotent + fire-and-forget.

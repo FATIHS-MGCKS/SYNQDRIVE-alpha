@@ -114,6 +114,7 @@ import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessmen
 import { TechnicalObservationsModule } from '../technical-observations/technical-observations.module';
 import { BusinessInsightsModule } from '../business-insights/business-insights.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { RentalDrivingAnalysisModule } from '../rental-driving-analysis/rental-driving-analysis.module';
 
 @Module({
   imports: [
@@ -125,6 +126,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     forwardRef(() => RentalHealthModule),
     forwardRef(() => TechnicalObservationsModule),
     forwardRef(() => BusinessInsightsModule),
+    forwardRef(() => RentalDrivingAnalysisModule),
     NotificationsModule,
     TasksModule,
     BullModule.registerQueue(

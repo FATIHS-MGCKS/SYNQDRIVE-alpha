@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional, Inject, forwardRef } from '@nestjs/common';
 import type { DrivingIntelligenceJob, DrivingIntelligenceJobType } from '@prisma/client';
 import { DrivingEventContextEnrichJobHandler } from '../event-context/driving-event-context-enrich.handler';
 import { DimoTripSegmentValidateJobHandler } from '../dimo-trip-segment-validation/dimo-trip-segment-validation.handler';
 import { DrivingMisuseReconcileJobHandler } from '../misuse-cases/misuse-case-reconcile/driving-misuse-reconcile.handler';
 import { DrivingAttributionResolveJobHandler } from '../driver-attribution/driving-attribution-resolve.handler';
+import { RentalDrivingAnalysisRecomputeJobHandler } from '../../rental-driving-analysis/rental-driving-analysis-recompute.handler';
 import { DRIVING_INTELLIGENCE_JOB_TYPES } from './driving-intelligence-jobs.types';
 
 export type DrivingIntelligenceJobHandler = (
@@ -20,6 +21,9 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
     @Optional() private readonly segmentValidateHandler?: DimoTripSegmentValidateJobHandler,
     @Optional() private readonly misuseReconcileHandler?: DrivingMisuseReconcileJobHandler,
     @Optional() private readonly attributionResolveHandler?: DrivingAttributionResolveJobHandler,
+    @Optional()
+    @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeJobHandler))
+    private readonly rentalRecomputeHandler?: RentalDrivingAnalysisRecomputeJobHandler,
   ) {}
 
   onModuleInit(): void {
@@ -52,6 +56,12 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
     if (this.attributionResolveHandler) {
       this.handlers.set('DRIVING_ATTRIBUTION_RESOLVE', (job) =>
         this.attributionResolveHandler!.handle(job),
+      );
+    }
+
+    if (this.rentalRecomputeHandler) {
+      this.handlers.set('RENTAL_DRIVING_ANALYSIS_RECOMPUTE', (job) =>
+        this.rentalRecomputeHandler!.handle(job),
       );
     }
   }

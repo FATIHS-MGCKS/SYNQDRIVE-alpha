@@ -36,6 +36,7 @@ export interface RentalDrivingAnalysisPayload {
     generatedAt?: string;
     sourceTripsFinalizedAt?: string | null;
     analysisCompleteness?: 'FULL' | 'PARTIAL' | 'INSUFFICIENT';
+    stabilityStatus?: 'PROVISIONAL' | 'STABLE';
     maturity?: string;
     recomputeReason?: string | null;
     attributionSummary?: RentalDrivingAttributionSummary;
