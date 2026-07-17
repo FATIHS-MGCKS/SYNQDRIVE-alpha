@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, TripAssignmentStatus, TripAssignmentSubjectType, TripBookingLinkSource, TripStatus } from '@prisma/client';
+import {
+  BookingStatus,
+  DrivingAnalysisMaturity,
+  RentalDrivingAnalysis,
+  TripAssignmentStatus,
+  TripAssignmentSubjectType,
+  TripBookingLinkSource,
+  TripStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripsService } from '../vehicle-intelligence/trips/trips.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
@@ -10,7 +18,10 @@ import {
 } from '../vehicle-intelligence/trips/driver-score.service';
 import { TripAttributionService } from '../vehicle-intelligence/trips/trip-attribution.service';
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
-import type { RentalDrivingAnalysisPayload } from './rental-driving-analysis.types';
+import type {
+  RentalDrivingAnalysisPayload,
+  RentalDrivingAttributionSummary,
+} from './rental-driving-analysis.types';
 import { resolveDrivingAttributionRoles } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles';
 import { resolveLegacyDriverIdFilter } from '../vehicle-intelligence/trips/driving-attribution-roles/driving-attribution-roles.compat';
 import {
@@ -19,10 +30,16 @@ import {
   PaginationParams,
   PaginatedResult,
 } from '@shared/utils/pagination';
+import {
+  buildRentalDrivingAnalysisInputFingerprint,
+  resolveRentalDrivingAnalysisCompleteness,
+} from './rental-driving-analysis.fingerprint';
+import { RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION } from './rental-driving-analysis.versioning';
 
 type TripForAnalysis = {
   id: string;
   distanceKm?: number | null;
+  endTime?: Date | null;
   citySharePercent?: number | null;
   highwaySharePercent?: number | null;
   countrySharePercent?: number | null;
@@ -48,6 +65,10 @@ type ImpactStressRow = {
   distanceKm: number;
 };
 
+export type GenerateRentalDrivingAnalysisOptions = {
+  recomputeReason?: string;
+};
+
 @Injectable()
 export class RentalDrivingAnalysisService {
   constructor(
@@ -58,12 +79,16 @@ export class RentalDrivingAnalysisService {
     private readonly tripAttributionService: TripAttributionService,
   ) {}
 
-  async generateForBooking(orgId: string, bookingId: string) {
-    const existing = await this.prisma.rentalDrivingAnalysis.findUnique({
-      where: { bookingId },
-    });
-    if (existing) return existing;
-
+  /**
+   * Resolve or materialize the current rental analysis for a completed booking.
+   * Same inputs + calculation version → idempotent return of existing row.
+   * Changed inputs or model version → new row; prior current row stays auditable via supersededAt.
+   */
+  async generateForBooking(
+    orgId: string,
+    bookingId: string,
+    options?: GenerateRentalDrivingAnalysisOptions,
+  ) {
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId: orgId },
       include: {
@@ -74,9 +99,131 @@ export class RentalDrivingAnalysisService {
     });
     if (!booking || booking.status !== BookingStatus.COMPLETED) return null;
 
+    const computed = await this.computeAnalysisContext(orgId, booking);
+    const inputFingerprint = buildRentalDrivingAnalysisInputFingerprint({
+      organizationId: orgId,
+      bookingId,
+      vehicleId: booking.vehicleId,
+      periodStartIso: booking.startDate.toISOString(),
+      periodEndIso: booking.endDate.toISOString(),
+      bookingCustomerId: computed.roles.bookingCustomerId!,
+      assignedDriverId: computed.roles.assignedDriverId,
+      actualDriverId: computed.roles.actualDriverId,
+      attributionType: computed.roles.attributionType ?? null,
+      analysisSource: computed.analysisSource,
+      scoredTripCount: computed.aggregate.scoredTripCount,
+      dtcCountInPeriod: computed.dtcCountInPeriod,
+      hintTripIds: computed.hintTrips.map((trip) => trip.id),
+      trips: computed.tripFingerprints,
+      calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
+    });
+
+    const existingExact = await this.prisma.rentalDrivingAnalysis.findFirst({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
+        inputFingerprint,
+      },
+    });
+    if (existingExact) {
+      return existingExact;
+    }
+
+    const current = await this.findCurrentByBookingId(orgId, bookingId);
+    const needsSupersede =
+      current != null &&
+      (current.calculationVersion !== RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION ||
+        current.inputFingerprint !== inputFingerprint);
+
+    let supersedesAnalysisId: string | null = null;
+    if (needsSupersede && current) {
+      supersedesAnalysisId = current.id;
+      await this.prisma.rentalDrivingAnalysis.update({
+        where: { id: current.id },
+        data: {
+          supersededAt: new Date(),
+          maturity: DrivingAnalysisMaturity.SUPERSEDED,
+        },
+      });
+    }
+
+    const generatedAt = new Date();
+    const payload = this.generatePayload({
+      ...computed.payloadCtx,
+      calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
+      inputFingerprint,
+      generatedAt,
+      sourceTripsFinalizedAt: computed.sourceTripsFinalizedAt,
+      analysisCompleteness: computed.analysisCompleteness,
+      maturity: DrivingAnalysisMaturity.PUBLISHED,
+      recomputeReason: needsSupersede
+        ? options?.recomputeReason ?? 'INPUT_OR_MODEL_CHANGED'
+        : options?.recomputeReason ?? null,
+      attributionSummary: computed.attributionSummary,
+    });
+
+    return this.prisma.rentalDrivingAnalysis.create({
+      data: {
+        organizationId: orgId,
+        bookingId,
+        vehicleId: booking.vehicleId,
+        bookingCustomerId: computed.roles.bookingCustomerId!,
+        assignedDriverId: computed.roles.assignedDriverId,
+        actualDriverId: computed.roles.actualDriverId,
+        driverId: null,
+        periodStart: booking.startDate,
+        periodEnd: booking.endDate,
+        payload: payload as object,
+        overallLevel: payload.overallAssessment.level,
+        driverStyleCategory: payload.vehicleStressSummary.stressLevel ?? 'unknown',
+        riskLevel: payload.overallAssessment.level,
+        drivingScore: payload.vehicleStressSummary.drivingStressScore,
+        drivingEventsCount: payload.eventSummary.drivingEventsCount ?? undefined,
+        abuseDetectionCount: payload.eventSummary.abuseDetectionCount ?? undefined,
+        wearImpact: payload.wearImpactAssessment.overallWearImpact,
+        calculationVersion: RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION,
+        inputFingerprint,
+        generatedAt,
+        sourceTripsFinalizedAt: computed.sourceTripsFinalizedAt,
+        analysisCompleteness: computed.analysisCompleteness,
+        maturity: DrivingAnalysisMaturity.PUBLISHED,
+        recomputeReason: needsSupersede
+          ? options?.recomputeReason ?? 'INPUT_OR_MODEL_CHANGED'
+          : options?.recomputeReason ?? null,
+        supersedesAnalysisId,
+        attributionSummary: computed.attributionSummary as object,
+      },
+    });
+  }
+
+  findCurrentByBookingId(orgId: string, bookingId: string) {
+    return this.prisma.rentalDrivingAnalysis.findFirst({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        supersededAt: null,
+      },
+      orderBy: { generatedAt: 'desc' },
+    });
+  }
+
+  private async computeAnalysisContext(
+    orgId: string,
+    booking: {
+      id: string;
+      vehicleId: string;
+      customerId: string;
+      assignedDriverId: string | null;
+      startDate: Date;
+      endDate: Date;
+      customer: { customerType: import('@prisma/client').CustomerType };
+    },
+  ) {
     const periodStart = booking.startDate;
     const periodEnd = booking.endDate;
     const vehicleId = booking.vehicleId;
+    const bookingId = booking.id;
 
     const roles = resolveDrivingAttributionRoles({
       isPrivateTrip: false,
@@ -112,9 +259,10 @@ export class RentalDrivingAnalysisService {
       ),
     ]);
 
-    let tripsInRange: unknown[] = assignedTrips;
+    let tripsInRange: TripForAnalysis[] = assignedTrips as TripForAnalysis[];
     let hintTrips: Array<{ id: string; attributionReason: string }> = [];
     let analysisSource: AnalysisSource = 'booking_assignment';
+    const explicitAssignedTripCount = assignedTrips.length;
 
     if (assignedTrips.length === 0) {
       const fallbackTrips = await this.tripsService.findByVehicle(orgId, vehicleId, {
@@ -128,6 +276,7 @@ export class RentalDrivingAnalysisService {
         assignmentStatus?: string | null;
         assignedBookingId?: string | null;
         assignmentSubjectId?: string | null;
+        assignmentSubjectType?: string | null;
         bookingLinkSource?: 'EXPLICIT' | 'TIME_WINDOW' | null;
         vehicleId?: string;
         startTime?: Date;
@@ -140,6 +289,7 @@ export class RentalDrivingAnalysisService {
             assignmentStatus: (rawTrip.assignmentStatus as TripAssignmentStatus | null) ?? null,
             assignedBookingId: rawTrip.assignedBookingId ?? null,
             assignmentSubjectId: rawTrip.assignmentSubjectId ?? null,
+            assignmentSubjectType: rawTrip.assignmentSubjectType ?? null,
             bookingLinkSource: rawTrip.bookingLinkSource ?? null,
             vehicleId,
             startTime: rawTrip.startTime ?? periodStart,
@@ -171,7 +321,7 @@ export class RentalDrivingAnalysisService {
             : 'none';
     }
 
-    const tripsWithMetrics = tripsInRange as Array<TripForAnalysis>;
+    const tripsWithMetrics = tripsInRange;
     const tripIds = tripsWithMetrics.map((trip) => trip.id);
     const impactRows = tripIds.length
       ? await this.prisma.tripDrivingImpact.findMany({
@@ -234,15 +384,10 @@ export class RentalDrivingAnalysisService {
     let cityPct = 0;
     let highwayPct = 0;
     let countryPct = 0;
-    const tripsWithShare = tripsInRange as Array<{
-      citySharePercent?: number | null;
-      highwaySharePercent?: number | null;
-      countrySharePercent?: number | null;
-    }>;
-    if (tripsWithShare.length > 0) {
-      const withCity = tripsWithShare.filter((t) => t.citySharePercent != null);
-      const withHighway = tripsWithShare.filter((t) => t.highwaySharePercent != null);
-      const withCountry = tripsWithShare.filter((t) => t.countrySharePercent != null);
+    if (tripsWithMetrics.length > 0) {
+      const withCity = tripsWithMetrics.filter((t) => t.citySharePercent != null);
+      const withHighway = tripsWithMetrics.filter((t) => t.highwaySharePercent != null);
+      const withCountry = tripsWithMetrics.filter((t) => t.countrySharePercent != null);
       if (withCity.length) cityPct = Math.round(withCity.reduce((s, t) => s + (t.citySharePercent ?? 0), 0) / withCity.length);
       if (withHighway.length) highwayPct = Math.round(withHighway.reduce((s, t) => s + (t.highwaySharePercent ?? 0), 0) / withHighway.length);
       if (withCountry.length) countryPct = Math.round(withCountry.reduce((s, t) => s + (t.countrySharePercent ?? 0), 0) / withCountry.length);
@@ -252,56 +397,87 @@ export class RentalDrivingAnalysisService {
       tripsWithMetrics.length > 0
         ? tripsWithMetrics.reduce((s, t) => s + (t.distanceKm ?? 0), 0) / tripsWithMetrics.length
         : 0;
-    const tripType =
+    const tripType: 'mostly_short_distance' | 'mostly_long_distance' | 'mixed' =
       avgTripKm < 20 ? 'mostly_short_distance' : avgTripKm >= 50 ? 'mostly_long_distance' : 'mixed';
 
-    const payload = this.generatePayload({
-      bookingId,
-      vehicleId,
+    const tripFingerprints = tripsWithMetrics.map((trip) => {
+      const impact = impactMap.get(trip.id);
+      return {
+        tripId: trip.id,
+        distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
+        drivingStressScore: impact?.drivingStressScore ?? trip.drivingScore ?? null,
+        endTimeIso: trip.endTime?.toISOString() ?? null,
+      };
+    });
+
+    const sourceTripsFinalizedAt = tripsWithMetrics.reduce<Date | null>((latest, trip) => {
+      if (!trip.endTime) return latest;
+      if (!latest || trip.endTime > latest) return trip.endTime;
+      return latest;
+    }, null);
+
+    const analysisCompleteness = resolveRentalDrivingAnalysisCompleteness({
+      analysisSource,
+      scoredTripCount: aggregate.scoredTripCount,
+      aggregateConfidence: aggregate.dataConfidence,
+    });
+
+    const attributionSummary: RentalDrivingAttributionSummary = {
+      analysisSource,
+      scoredTripCount: aggregate.scoredTripCount,
+      hintTripCount: hintTrips.length,
+      explicitAssignedTripCount,
+      bookingCustomerId: roles.bookingCustomerId,
+      assignedDriverId: roles.assignedDriverId,
+      actualDriverId: roles.actualDriverId,
+      attributionType: roles.attributionType ?? null,
+      customerDecisionEligible: roles.customerDecisionEligible,
+    };
+
+    return {
       roles,
-      periodStart,
-      periodEnd,
-      drivingStressScore: aggregate.drivingStressScore,
-      stressLevel: aggregate.stressLevel,
+      analysisSource,
+      aggregate,
       componentStress,
-      drivingEventsCount: eventsCount,
-      abuseDetectionCount: abuseCount,
+      eventsCount,
       harshBraking,
-      harshAcceleration: harshAccel,
-      errorCodeOccurred: dtcList.length > 0,
+      harshAccel,
+      abuseCount,
       cityPct,
       highwayPct,
       countryPct,
       tripType,
-      analysisSource,
-      scoredTripCount: aggregate.scoredTripCount,
-      totalDistanceKm: aggregate.totalDistanceKm,
-      aggregateConfidence: aggregate.dataConfidence,
-      attributionHints: hintTrips,
-    });
-
-    const record = await this.prisma.rentalDrivingAnalysis.create({
-      data: {
-        organizationId: orgId,
+      hintTrips,
+      tripFingerprints,
+      sourceTripsFinalizedAt,
+      analysisCompleteness,
+      attributionSummary,
+      dtcCountInPeriod: dtcList.length,
+      payloadCtx: {
         bookingId,
         vehicleId,
-        bookingCustomerId: roles.bookingCustomerId!,
-        assignedDriverId: roles.assignedDriverId,
-        actualDriverId: roles.actualDriverId,
-        driverId: null,
+        roles,
         periodStart,
         periodEnd,
-        payload: payload as object,
-        overallLevel: payload.overallAssessment.level,
-        driverStyleCategory: payload.vehicleStressSummary.stressLevel ?? 'unknown',
-        riskLevel: payload.overallAssessment.level,
-        drivingScore: payload.vehicleStressSummary.drivingStressScore,
-        drivingEventsCount: payload.eventSummary.drivingEventsCount ?? undefined,
-        abuseDetectionCount: payload.eventSummary.abuseDetectionCount ?? undefined,
-        wearImpact: payload.wearImpactAssessment.overallWearImpact,
+        drivingStressScore: aggregate.drivingStressScore,
+        stressLevel: aggregate.stressLevel,
+        componentStress,
+        drivingEventsCount: eventsCount,
+        abuseDetectionCount: abuseCount,
+        harshBraking,
+        harshAcceleration: harshAccel,
+        errorCodeOccurred: dtcList.length > 0,
+        cityPct,
+        highwayPct,
+        countryPct,
+        tripType,
+        analysisSource,
+        scoredTripCount: aggregate.scoredTripCount,
+        totalDistanceKm: aggregate.totalDistanceKm,
+        aggregateConfidence: aggregate.dataConfidence,
+        attributionHints: hintTrips,
       },
-    });
-    return record;
+    };
   }
 
   private aggregateComponentStress(rows: ImpactStressRow[]): {
@@ -357,6 +533,14 @@ export class RentalDrivingAnalysisService {
     totalDistanceKm: number;
     aggregateConfidence: DataConfidence;
     attributionHints?: Array<{ id: string; attributionReason: string }>;
+    calculationVersion: string;
+    inputFingerprint: string;
+    generatedAt: Date;
+    sourceTripsFinalizedAt: Date | null;
+    analysisCompleteness: import('@prisma/client').RentalDrivingAnalysisCompleteness;
+    maturity: DrivingAnalysisMaturity;
+    recomputeReason: string | null;
+    attributionSummary: RentalDrivingAttributionSummary;
   }): RentalDrivingAnalysisPayload {
     const stress = ctx.drivingStressScore;
     const level = this.stressToOverallLevel(ctx.stressLevel, ctx.harshBraking, ctx.harshAcceleration);
@@ -432,6 +616,14 @@ export class RentalDrivingAnalysisService {
         analysisSource: ctx.analysisSource,
         scoredTripCount: ctx.scoredTripCount,
         totalDistanceKm: ctx.totalDistanceKm,
+        calculationVersion: ctx.calculationVersion,
+        inputFingerprint: ctx.inputFingerprint,
+        generatedAt: ctx.generatedAt.toISOString(),
+        sourceTripsFinalizedAt: ctx.sourceTripsFinalizedAt?.toISOString() ?? null,
+        analysisCompleteness: ctx.analysisCompleteness,
+        maturity: ctx.maturity,
+        recomputeReason: ctx.recomputeReason,
+        attributionSummary: ctx.attributionSummary,
       },
       overallAssessment: {
         level,
@@ -510,6 +702,74 @@ export class RentalDrivingAnalysisService {
     }
   }
 
+  private mapRecord(
+    r: RentalDrivingAnalysis & {
+      vehicle?: {
+        id: string;
+        make: string | null;
+        model: string | null;
+        licensePlate: string | null;
+      } | null;
+      bookingCustomer?: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        customerType?: import('@prisma/client').CustomerType;
+      } | null;
+      assignedDriver?: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+      } | null;
+      actualDriver?: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+      } | null;
+      driver?: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+      } | null;
+    },
+  ) {
+    return {
+      id: r.id,
+      bookingId: r.bookingId,
+      vehicleId: r.vehicleId,
+      bookingCustomerId: r.bookingCustomerId,
+      assignedDriverId: r.assignedDriverId,
+      actualDriverId: r.actualDriverId,
+      driverId: r.driverId,
+      periodStart: r.periodStart.toISOString(),
+      periodEnd: r.periodEnd.toISOString(),
+      overallLevel: r.overallLevel,
+      driverStyleCategory: r.driverStyleCategory,
+      riskLevel: r.riskLevel,
+      drivingStressScore: r.drivingScore,
+      drivingEventsCount: r.drivingEventsCount,
+      abuseDetectionCount: r.abuseDetectionCount,
+      wearImpact: r.wearImpact,
+      calculationVersion: r.calculationVersion,
+      inputFingerprint: r.inputFingerprint,
+      generatedAt: r.generatedAt.toISOString(),
+      sourceTripsFinalizedAt: r.sourceTripsFinalizedAt?.toISOString() ?? null,
+      analysisCompleteness: r.analysisCompleteness,
+      maturity: r.maturity,
+      supersededAt: r.supersededAt?.toISOString() ?? null,
+      supersedesAnalysisId: r.supersedesAnalysisId,
+      recomputeReason: r.recomputeReason,
+      attributionSummary: r.attributionSummary,
+      payload: r.payload,
+      vehicle: r.vehicle,
+      bookingCustomer: r.bookingCustomer,
+      assignedDriver: r.assignedDriver,
+      actualDriver: r.actualDriver,
+      driver: r.driver,
+      createdAt: r.createdAt.toISOString(),
+    };
+  }
+
   async findAll(
     orgId: string,
     params?: PaginationParams & {
@@ -519,10 +779,14 @@ export class RentalDrivingAnalysisService {
       bookingId?: string;
       from?: string;
       to?: string;
+      includeSuperseded?: boolean;
     },
   ): Promise<PaginatedResult<any>> {
     const { skip, take } = parsePagination(params || {});
     const where: any = { organizationId: orgId };
+    if (!params?.includeSuperseded) {
+      where.supersededAt = null;
+    }
     if (params?.vehicleId) where.vehicleId = params.vehicleId;
     const legacyCustomerFilter = resolveLegacyDriverIdFilter({
       driverId: params?.driverId,
@@ -560,33 +824,7 @@ export class RentalDrivingAnalysisService {
       this.prisma.rentalDrivingAnalysis.count({ where }),
     ]);
 
-    const items = data.map((r) => ({
-      id: r.id,
-      bookingId: r.bookingId,
-      vehicleId: r.vehicleId,
-      bookingCustomerId: r.bookingCustomerId,
-      assignedDriverId: r.assignedDriverId,
-      actualDriverId: r.actualDriverId,
-      driverId: r.driverId,
-      periodStart: r.periodStart.toISOString(),
-      periodEnd: r.periodEnd.toISOString(),
-      overallLevel: r.overallLevel,
-      driverStyleCategory: r.driverStyleCategory,
-      riskLevel: r.riskLevel,
-      drivingStressScore: r.drivingScore,
-      drivingEventsCount: r.drivingEventsCount,
-      abuseDetectionCount: r.abuseDetectionCount,
-      wearImpact: r.wearImpact,
-      payload: r.payload,
-      vehicle: r.vehicle,
-      bookingCustomer: r.bookingCustomer,
-      assignedDriver: r.assignedDriver,
-      actualDriver: r.actualDriver,
-      driver: r.driver,
-      createdAt: r.createdAt.toISOString(),
-    }));
-
-    return buildPaginatedResult(items, total, params || {});
+    return buildPaginatedResult(data.map((r) => this.mapRecord(r)), total, params || {});
   }
 
   async findById(orgId: string, id: string) {
@@ -601,11 +839,6 @@ export class RentalDrivingAnalysisService {
       },
     });
     if (!r) return null;
-    return {
-      ...r,
-      periodStart: r.periodStart.toISOString(),
-      periodEnd: r.periodEnd.toISOString(),
-      createdAt: r.createdAt.toISOString(),
-    };
+    return this.mapRecord(r);
   }
 }

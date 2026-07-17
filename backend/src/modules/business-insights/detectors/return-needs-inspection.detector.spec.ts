@@ -8,7 +8,7 @@ import { DEFAULT_POLICY, DetectorContext } from '../insight.types';
 function makeMockPrisma() {
   return {
     booking: { findMany: jest.fn() },
-    rentalDrivingAnalysis: { findUnique: jest.fn() },
+    rentalDrivingAnalysis: { findFirst: jest.fn() },
   } as any;
 }
 
@@ -41,7 +41,7 @@ describe('ReturnNeedsInspectionDetector', () => {
         kmIncluded: 500,
       },
     ]);
-    prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
+    prisma.rentalDrivingAnalysis.findFirst.mockResolvedValue({
       riskLevel: 'high_stress',
       abuseDetectionCount: 0,
       drivingScore: 40,
@@ -66,7 +66,7 @@ describe('ReturnNeedsInspectionDetector', () => {
         kmIncluded: 500,
       },
     ]);
-    prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
+    prisma.rentalDrivingAnalysis.findFirst.mockResolvedValue({
       riskLevel: 'low_stress',
       abuseDetectionCount: 0,
       drivingScore: 20,
@@ -89,7 +89,7 @@ describe('ReturnNeedsInspectionDetector', () => {
         kmIncluded: 500,
       },
     ]);
-    prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
+    prisma.rentalDrivingAnalysis.findFirst.mockResolvedValue({
       riskLevel: 'moderate_stress',
       abuseDetectionCount: 0,
       drivingScore: 80,
@@ -114,7 +114,7 @@ describe('ReturnNeedsInspectionDetector', () => {
         kmIncluded: 500,
       },
     ]);
-    prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue(null);
+    prisma.rentalDrivingAnalysis.findFirst.mockResolvedValue(null);
 
     const candidates = await detector.detect(ctx);
     expect(candidates).toEqual([]);

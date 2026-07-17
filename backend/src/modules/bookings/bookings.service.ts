@@ -895,9 +895,7 @@ export class BookingsService {
         this.prisma.misuseCase.count({
           where: { organizationId: orgId, bookingId: id },
         }),
-        this.prisma.rentalDrivingAnalysis.findUnique({
-          where: { bookingId: id },
-        }),
+        this.rentalDrivingAnalysisService.findCurrentByBookingId(orgId, id),
         this.prisma.activityLog.findMany({
           where: { organizationId: orgId, entity: 'BOOKING', entityId: id },
           orderBy: { createdAt: 'desc' },

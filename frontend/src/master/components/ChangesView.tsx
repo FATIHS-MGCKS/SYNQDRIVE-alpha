@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p59-rental-driving-analysis-versioning-2026-07-17',
+    version: '4.9.560',
+    title: 'Driving Intelligence V2 P59 — Rental Driving Analysis Versioning',
+    summary: [
+      'Additive Spalten auf `rental_driving_analyses`: calculationVersion, inputFingerprint, generatedAt, sourceTripsFinalizedAt, analysisCompleteness, maturity, supersededAt, supersedesAnalysisId, recomputeReason, attributionSummary.',
+      'Unique `bookingId` entfernt → versionierte Zeilen pro Buchung; `@@unique([bookingId, calculationVersion, inputFingerprint])` für Idempotenz.',
+      '`generateForBooking` berechnet Inputs + Fingerprint immer neu — kein blindes Early-Return.',
+      'Gleiche Inputs + calculationVersion → bestehende Zeile; geänderte Inputs/Version → neue Zeile, alte mit supersededAt + maturity SUPERSEDED.',
+      '`findCurrentByBookingId` / `findAll` (default) liefern nur aktuelle (nicht superseded) Analysen; `includeSuperseded` für Audit.',
+      'Keine automatische Kundenblockierung — maturity rein auditierbar.',
+      'Tests: Fingerprint-Stabilität, Idempotenz, Supersede-Kette, Completeness-Klassifikation.',
+    ],
+    reason: 'Prompt 59/76 — Rental Driving Analysis versionieren, idempotent recomputen, Audit-Trail für superseded Analysen.',
+    previousBehavior:
+      '`generateForBooking` gab bei vorhandenem `bookingId`-Unique sofort zurück ohne Input-Prüfung; nur eine Zeile pro Buchung.',
+    details:
+      '`rental-driving-analysis.fingerprint.ts`, `rental-driving-analysis.versioning.ts`, `rental-driving-analysis.service.ts`, Migration `20260716340000_rental_driving_analysis_versioning`, Caller bookings/return-needs-inspection/reconciliation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T02:10:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p58-canonical-trip-hydration-batch-2026-07-17',
     version: '4.9.559',
     title: 'Driving Intelligence V2 P58 — Batch Canonical Trip Hydration',

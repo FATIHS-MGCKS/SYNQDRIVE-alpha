@@ -31,8 +31,12 @@ export class ReturnNeedsInspectionDetector implements InsightDetector {
         reasons.push(`Km exceeded: ${b.kmDriven} driven vs ${b.kmIncluded} included`);
       }
 
-      const analysis = await this.prisma.rentalDrivingAnalysis.findUnique({
-        where: { bookingId: b.id },
+      const analysis = await this.prisma.rentalDrivingAnalysis.findFirst({
+        where: {
+          bookingId: b.id,
+          organizationId: ctx.organizationId,
+          supersededAt: null,
+        },
         select: { riskLevel: true, abuseDetectionCount: true, drivingScore: true, payload: true },
       });
 
