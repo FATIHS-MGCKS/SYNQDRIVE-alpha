@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p57-tenant-scope-driving-2026-07-17',
+    version: '4.9.558',
+    title: 'Driving Intelligence V2 P57 — Tenant-sichere Trip-/Event-/Attribution-Services',
+    summary: [
+      'Neues Modul `vehicle-intelligence/tenant/vehicle-intelligence-tenant.scope.ts` mit assertVehicle/Trip/Booking + scoped Where-Builder.',
+      'TripsService, DrivingEventsService, TripAttributionService, TripAnalyticsCanonicalService, DriverScoreService: `organizationId` explizit an Servicegrenzen.',
+      'Fahrzeugzugriff immer über `vehicle.organizationId`; Batch- und Detailabfragen gleichermaßen abgesichert.',
+      'Driver-Filter: UUID → `driverCustomerId` (actual/assigned/assignmentSubject); Freitext nur Legacy-Filter, keine Primär-Gruppierung.',
+      'DrivingEvents `getInsights().byDriver` gruppiert nach `driverCustomerId`, behält `name` für API-Kompatibilität.',
+      'Controller übergibt `organizationId` an Services (nicht nur VehicleOwnershipGuard); MASTER_ADMIN resolved Org via Vehicle-Lookup.',
+      'Security-Tests für Fremdorganisationen: tenant scope, driving-events, trips, driver-attribution.',
+    ],
+    reason: 'Prompt 57/76 — Defense-in-Depth gegen Cross-Tenant-Leaks bei Driving Events, Trips und Attribution.',
+    previousBehavior:
+      'Mehrere Services nutzten nur vehicleId/tripId ohne explizite organizationId-Prüfung; Driver-Gruppierung teils über freien driverName-Text.',
+    details:
+      '`tenant/vehicle-intelligence-tenant.scope.ts`, `trips.service.ts`, `driving-events.service.ts`, `trip-attribution.service.ts`, `trip-analytics-canonical.service.ts`, `driver-score.service.ts`, `vehicle-intelligence.controller.ts`, Caller in rental-driving-analysis, customers, health-summary, trip-enrichment-orchestrator.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T01:10:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p55-attribution-resolver-2026-07-17',
     version: '4.9.556',
     title: 'Driving Intelligence V2 P55 — Central Attribution Resolver',

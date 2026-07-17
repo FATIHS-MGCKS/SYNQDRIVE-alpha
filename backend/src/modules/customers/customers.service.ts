@@ -735,6 +735,7 @@ export class CustomersService {
     if (orgCustomerIds.length === 0) return map;
 
     const scores = await this.driverScoreService.getScoresForSubjects(
+      orgId,
       TripAssignmentSubjectType.BOOKING_CUSTOMER,
       orgCustomerIds,
     );

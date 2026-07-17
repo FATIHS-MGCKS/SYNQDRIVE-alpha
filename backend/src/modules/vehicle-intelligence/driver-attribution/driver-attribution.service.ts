@@ -229,20 +229,23 @@ export class DriverAttributionService {
           })
         : null;
 
-    const attribution = await this.tripAttributionService.resolveAttributionForTrip({
-      isPrivateTrip: trip.isPrivateTrip,
-      assignmentStatus: trip.assignmentStatus,
-      assignedBookingId: trip.assignedBookingId,
-      assignmentSubjectId: trip.assignmentSubjectId,
-      assignmentSubjectType: trip.assignmentSubjectType,
-      bookingLinkSource: trip.bookingLinkSource,
-      bookingCustomerId: booking?.customerId ?? trip.bookingCustomerId,
-      assignedDriverId: booking?.assignedDriverId ?? trip.assignedDriverId,
-      actualDriverId: trip.actualDriverId,
-      vehicleId: trip.vehicleId,
-      startTime: trip.startTime,
-      endTime: trip.endTime,
-    });
+    const attribution = await this.tripAttributionService.resolveAttributionForTrip(
+      organizationId,
+      {
+        isPrivateTrip: trip.isPrivateTrip,
+        assignmentStatus: trip.assignmentStatus,
+        assignedBookingId: trip.assignedBookingId,
+        assignmentSubjectId: trip.assignmentSubjectId,
+        assignmentSubjectType: trip.assignmentSubjectType,
+        bookingLinkSource: trip.bookingLinkSource,
+        bookingCustomerId: booking?.customerId ?? trip.bookingCustomerId,
+        assignedDriverId: booking?.assignedDriverId ?? trip.assignedDriverId,
+        actualDriverId: trip.actualDriverId,
+        vehicleId: trip.vehicleId,
+        startTime: trip.startTime,
+        endTime: trip.endTime,
+      },
+    );
 
     const handoverProof = await this.findHandoverProof({
       organizationId,

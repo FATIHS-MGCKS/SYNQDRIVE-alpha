@@ -3,6 +3,7 @@ import { Prisma, TripAssignmentSubjectType, TripBookingLinkSource, TripStatus } 
 import { PrismaService } from '@shared/database/prisma.service';
 import { classifyStressLevel } from '../driving-impact/stress-level.util';
 import type { StressLevel } from '../driving-impact/stress-level.util';
+import { assertVehicleInOrganization } from '../tenant/vehicle-intelligence-tenant.scope';
 
 /**
  * Distance-weighted vehicle stress row for subject/booking aggregation.
@@ -37,12 +38,17 @@ export class DriverScoreService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getScoreSummary(
+    organizationId: string,
     subjectType: TripAssignmentSubjectType,
     subjectId: string,
     options: { from?: Date; to?: Date; vehicleId?: string } = {},
   ): Promise<DriverScoreSummary> {
+    if (options.vehicleId) {
+      await assertVehicleInOrganization(this.prisma, organizationId, options.vehicleId);
+    }
+
     const trips = await this.prisma.vehicleTrip.findMany({
-      where: this.buildTripWhere(subjectType, [subjectId], options),
+      where: this.buildTripWhere(organizationId, subjectType, [subjectId], options),
       select: { id: true, distanceKm: true },
       orderBy: { startTime: 'desc' },
     });
@@ -60,10 +66,15 @@ export class DriverScoreService {
   }
 
   async getScoresForSubjects(
+    organizationId: string,
     subjectType: TripAssignmentSubjectType,
     subjectIds: string[],
     options: { from?: Date; to?: Date; vehicleId?: string } = {},
   ): Promise<Map<string, DriverScoreSummary>> {
+    if (options.vehicleId) {
+      await assertVehicleInOrganization(this.prisma, organizationId, options.vehicleId);
+    }
+
     const normalizedIds = Array.from(
       new Set(subjectIds.filter((v) => v.trim().length > 0)),
     );
@@ -71,7 +82,7 @@ export class DriverScoreService {
     if (normalizedIds.length === 0) return output;
 
     const trips = await this.prisma.vehicleTrip.findMany({
-      where: this.buildTripWhere(subjectType, normalizedIds, options),
+      where: this.buildTripWhere(organizationId, subjectType, normalizedIds, options),
       select: {
         id: true,
         assignmentSubjectId: true,
@@ -175,6 +186,7 @@ export class DriverScoreService {
   }
 
   private buildTripWhere(
+    organizationId: string,
     subjectType: TripAssignmentSubjectType,
     subjectIds: string[],
     options: { from?: Date; to?: Date; vehicleId?: string },
@@ -185,6 +197,7 @@ export class DriverScoreService {
       assignmentSubjectType: subjectType,
       assignmentSubjectId: { in: subjectIds },
       endTime: { not: null },
+      vehicle: { organizationId },
     };
 
     if (subjectType === TripAssignmentSubjectType.BOOKING_CUSTOMER) {

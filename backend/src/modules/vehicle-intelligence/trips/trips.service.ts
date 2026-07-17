@@ -8,6 +8,12 @@ import {
 } from '../../dimo/dimo-segments.service';
 import { MapboxService } from './mapbox.service';
 import { ROUTE_MAP_MATCHER, RouteMapMatcher } from './route-map-matcher.port';
+import {
+  assertTripInOrganization,
+  assertVehicleInOrganization,
+  buildTripDriverIdentityFilter,
+  scopedVehicleTripWhere,
+} from '../tenant/vehicle-intelligence-tenant.scope';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -61,28 +67,33 @@ export class TripsService {
   // ────────────────────────────────────────────────────────
 
   async findByVehicle(
+    organizationId: string,
     vehicleId: string,
     options?: {
       from?: Date;
       to?: Date;
+      driverCustomerId?: string;
+      /** @deprecated Prefer driverCustomerId — legacy display-name filter only. */
       driverName?: string;
       limit?: number;
     },
   ) {
-    const where: any = { vehicleId };
+    await assertVehicleInOrganization(this.prisma, organizationId, vehicleId);
+
+    const where = scopedVehicleTripWhere(organizationId, vehicleId);
     if (options?.from || options?.to) {
       where.startTime = {};
       if (options.from) where.startTime.gte = options.from;
       if (options.to) where.startTime.lte = options.to;
     }
-    if (options?.driverName) where.driverName = options.driverName;
+    const driverFilter = buildTripDriverIdentityFilter({
+      driverCustomerId: options?.driverCustomerId,
+      driverName: options?.driverName,
+    });
+    if (driverFilter) {
+      Object.assign(where, driverFilter);
+    }
 
-    // List view does NOT include per-trip `events` rows. The callers (trips list
-    // controller, rental-driving-analysis) operate exclusively on the aggregated
-    // counters on VehicleTrip + canonical summary. Inlining every event row made
-    // the payload grow linearly with trip count × events-per-trip and hit the
-    // DB with a large join for no UI benefit. Event details are fetched on
-    // demand via GET /trips/:tripId (findById still includes events).
     return this.prisma.vehicleTrip.findMany({
       where,
       orderBy: { startTime: 'desc' },
@@ -90,9 +101,10 @@ export class TripsService {
     });
   }
 
-  async findById(tripId: string) {
-    return this.prisma.vehicleTrip.findUnique({
-      where: { id: tripId },
+  async findById(organizationId: string, tripId: string) {
+    await assertTripInOrganization(this.prisma, organizationId, tripId);
+    return this.prisma.vehicleTrip.findFirst({
+      where: { id: tripId, vehicle: { organizationId } },
       include: {
         waypoints: { orderBy: { recordedAt: 'asc' } },
         events: { orderBy: { recordedAt: 'asc' } },
@@ -101,16 +113,27 @@ export class TripsService {
   }
 
   async getRouteForTrip(
+    organizationId: string,
     vehicleId: string,
     tripId: string,
   ): Promise<RoutePoint[]> {
-    const trip = await this.prisma.vehicleTrip.findUnique({
-      where: { id: tripId },
+    await assertVehicleInOrganization(this.prisma, organizationId, vehicleId);
+    const { vehicleId: scopedVehicleId } = await assertTripInOrganization(
+      this.prisma,
+      organizationId,
+      tripId,
+    );
+    if (scopedVehicleId !== vehicleId) {
+      return [];
+    }
+
+    const trip = await this.prisma.vehicleTrip.findFirst({
+      where: { id: tripId, vehicle: { organizationId } },
     });
     if (!trip) return [];
 
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
       include: { dimoVehicle: true },
     });
     const tokenId = vehicle?.dimoVehicle?.tokenId;
@@ -128,11 +151,15 @@ export class TripsService {
     return points.length > 0 ? points : this.getStoredWaypoints(tripId);
   }
 
-  async getStats(vehicleId: string) {
+  async getStats(organizationId: string, vehicleId: string) {
+    await assertVehicleInOrganization(this.prisma, organizationId, vehicleId);
+    const where = scopedVehicleTripWhere(organizationId, vehicleId);
+    const impactWhere = { vehicleId, vehicle: { organizationId } };
+
     const [totalTrips, tripAgg, impactAgg] = await Promise.all([
-      this.prisma.vehicleTrip.count({ where: { vehicleId } }),
+      this.prisma.vehicleTrip.count({ where }),
       this.prisma.vehicleTrip.aggregate({
-        where: { vehicleId },
+        where,
         _sum: {
           distanceKm: true,
           totalAccelerationEvents: true,
@@ -144,7 +171,7 @@ export class TripsService {
         },
       }),
       this.prisma.tripDrivingImpact.aggregate({
-        where: { vehicleId },
+        where: impactWhere,
         _avg: { drivingStressScore: true },
       }),
     ]);
@@ -210,16 +237,25 @@ export class TripsService {
    * HF enrichment pipeline (TripBehaviorEnrichmentService).
    */
   async enrichTrip(
+    organizationId: string,
     vehicleId: string,
     tripId: string,
   ): Promise<TripEnrichmentResult | null> {
-    const trip = await this.prisma.vehicleTrip.findUnique({
-      where: { id: tripId },
+    await assertVehicleInOrganization(this.prisma, organizationId, vehicleId);
+    const { vehicleId: scopedVehicleId } = await assertTripInOrganization(
+      this.prisma,
+      organizationId,
+      tripId,
+    );
+    if (scopedVehicleId !== vehicleId) return null;
+
+    const trip = await this.prisma.vehicleTrip.findFirst({
+      where: { id: tripId, vehicle: { organizationId } },
     });
     if (!trip) return null;
 
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
       include: { dimoVehicle: true },
     });
     const tokenId = vehicle?.dimoVehicle?.tokenId;

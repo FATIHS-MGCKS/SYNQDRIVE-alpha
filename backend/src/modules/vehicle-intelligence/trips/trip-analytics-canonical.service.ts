@@ -26,6 +26,10 @@ import {
   readTripDrivingImpactModelProfile,
 } from '../driving-impact-model-profile/driving-impact-model-profile.reader';
 import type { DrivingImpactModelProfileManifest } from '../driving-impact-model-profile/driving-impact-model-profile.types';
+import {
+  assertVehicleInOrganization,
+  scopedVehicleTripWhere,
+} from '../tenant/vehicle-intelligence-tenant.scope';
 
 export interface CanonicalTripEventSummary {
   totalAccelerationEvents: number;
@@ -110,6 +114,9 @@ type TripProjection = Pick<
   | 'assignmentSubjectId'
   | 'assignedBookingId'
   | 'bookingLinkSource'
+  | 'bookingCustomerId'
+  | 'assignedDriverId'
+  | 'actualDriverId'
   | 'isPrivateTrip'
   | 'distanceKm'
   | 'durationMinutes'
@@ -127,21 +134,31 @@ export class TripAnalyticsCanonicalService {
     private readonly tripAttributionService: TripAttributionService,
   ) {}
 
-  async hydrateTrips<T extends TripProjection>(trips: T[]): Promise<Array<T & { canonicalTripSummary: CanonicalTripSummary }>> {
+  async hydrateTrips<T extends TripProjection>(
+    organizationId: string,
+    trips: T[],
+  ): Promise<Array<T & { canonicalTripSummary: CanonicalTripSummary }>> {
     const impactMap = await this.loadImpactMap(trips.map((trip) => trip.id));
     const resolved: Array<T & { canonicalTripSummary: CanonicalTripSummary }> = [];
     for (const trip of trips) {
       const assignment = await this.tripAssignmentService.resolveForTrip(trip);
-      const attribution = await this.tripAttributionService.resolveAttributionForTrip({
-        isPrivateTrip: assignment.isPrivateTrip,
-        assignmentStatus: assignment.assignmentStatus,
-        assignedBookingId: assignment.assignedBookingId,
-        assignmentSubjectId: assignment.assignmentSubjectId,
-        bookingLinkSource: assignment.bookingLinkSource,
-        vehicleId: trip.vehicleId,
-        startTime: trip.startTime,
-        endTime: trip.endTime,
-      });
+      const attribution = await this.tripAttributionService.resolveAttributionForTrip(
+        organizationId,
+        {
+          isPrivateTrip: assignment.isPrivateTrip,
+          assignmentStatus: assignment.assignmentStatus,
+          assignedBookingId: assignment.assignedBookingId,
+          assignmentSubjectId: assignment.assignmentSubjectId,
+          assignmentSubjectType: assignment.assignmentSubjectType,
+          bookingLinkSource: assignment.bookingLinkSource,
+          bookingCustomerId: assignment.bookingCustomerId,
+          assignedDriverId: assignment.assignedDriverId,
+          actualDriverId: assignment.actualDriverId,
+          vehicleId: trip.vehicleId,
+          startTime: trip.startTime,
+          endTime: trip.endTime,
+        },
+      );
       resolved.push({
         ...trip,
         canonicalTripSummary: this.buildSummary(trip, impactMap.get(trip.id) ?? null, assignment, attribution),
@@ -150,22 +167,32 @@ export class TripAnalyticsCanonicalService {
     return resolved;
   }
 
-  async hydrateTrip<T extends TripProjection>(trip: T): Promise<T & { canonicalTripSummary: CanonicalTripSummary }> {
+  async hydrateTrip<T extends TripProjection>(
+    organizationId: string,
+    trip: T,
+  ): Promise<T & { canonicalTripSummary: CanonicalTripSummary }> {
     const impact = await this.prisma.tripDrivingImpact.findUnique({
       where: { tripId: trip.id },
       select: { drivingStressScore: true, sourceSummaryJson: true },
     });
     const assignment = await this.tripAssignmentService.resolveForTrip(trip);
-    const attribution = await this.tripAttributionService.resolveAttributionForTrip({
-      isPrivateTrip: assignment.isPrivateTrip,
-      assignmentStatus: assignment.assignmentStatus,
-      assignedBookingId: assignment.assignedBookingId,
-      assignmentSubjectId: assignment.assignmentSubjectId,
-      bookingLinkSource: assignment.bookingLinkSource,
-      vehicleId: trip.vehicleId,
-      startTime: trip.startTime,
-      endTime: trip.endTime,
-    });
+    const attribution = await this.tripAttributionService.resolveAttributionForTrip(
+      organizationId,
+      {
+        isPrivateTrip: assignment.isPrivateTrip,
+        assignmentStatus: assignment.assignmentStatus,
+        assignedBookingId: assignment.assignedBookingId,
+        assignmentSubjectId: assignment.assignmentSubjectId,
+        assignmentSubjectType: assignment.assignmentSubjectType,
+        bookingLinkSource: assignment.bookingLinkSource,
+        bookingCustomerId: assignment.bookingCustomerId,
+        assignedDriverId: assignment.assignedDriverId,
+        actualDriverId: assignment.actualDriverId,
+        vehicleId: trip.vehicleId,
+        startTime: trip.startTime,
+        endTime: trip.endTime,
+      },
+    );
     return {
       ...trip,
       canonicalTripSummary: this.buildSummary(trip, impact, assignment, attribution),
@@ -173,6 +200,7 @@ export class TripAnalyticsCanonicalService {
   }
 
   async buildTripAssessmentForTrip(
+    organizationId: string,
     trip: TripProjection & {
       distanceKm?: number | null;
       durationMinutes?: number | null;
@@ -186,15 +214,15 @@ export class TripAnalyticsCanonicalService {
   ): Promise<TripAssessment> {
     const [behaviorEvents, drivingEvents, misuseCases] = await Promise.all([
       this.prisma.tripBehaviorEvent.findMany({
-        where: { tripId: trip.id, vehicleId: trip.vehicleId },
+        where: { tripId: trip.id, vehicleId: trip.vehicleId, vehicle: { organizationId } },
         orderBy: { startedAt: 'asc' },
       }),
       this.prisma.drivingEvent.findMany({
-        where: { tripId: trip.id, vehicleId: trip.vehicleId },
+        where: { tripId: trip.id, vehicleId: trip.vehicleId, vehicle: { organizationId } },
         orderBy: { recordedAt: 'asc' },
       }),
       this.prisma.misuseCase.findMany({
-        where: { tripId: trip.id, vehicleId: trip.vehicleId },
+        where: { tripId: trip.id, vehicleId: trip.vehicleId, organizationId },
         select: { evidenceSummary: true },
       }),
     ]);
@@ -229,10 +257,14 @@ export class TripAnalyticsCanonicalService {
     });
   }
 
-  async getVehicleStats(vehicleId: string): Promise<CanonicalTripStats> {
+  async getVehicleStats(organizationId: string, vehicleId: string): Promise<CanonicalTripStats> {
+    await assertVehicleInOrganization(this.prisma, organizationId, vehicleId);
+    const where = scopedVehicleTripWhere(organizationId, vehicleId);
+    const impactWhere = { vehicleId, vehicle: { organizationId } };
+
     const [tripSummary, impactAvg] = await Promise.all([
       this.prisma.vehicleTrip.aggregate({
-        where: { vehicleId },
+        where,
         _count: { _all: true },
         _sum: {
           distanceKm: true,
@@ -245,18 +277,18 @@ export class TripAnalyticsCanonicalService {
         },
       }),
       this.prisma.tripDrivingImpact.aggregate({
-        where: { vehicleId },
+        where: impactWhere,
         _avg: { drivingStressScore: true },
       }),
     ]);
 
     const [privateTripCount, assignedTripCount] = await Promise.all([
       this.prisma.vehicleTrip.count({
-        where: { vehicleId, isPrivateTrip: true },
+        where: { ...where, isPrivateTrip: true },
       }),
       this.prisma.vehicleTrip.count({
         where: {
-          vehicleId,
+          ...where,
           isPrivateTrip: false,
           assignmentStatus: {
             in: [

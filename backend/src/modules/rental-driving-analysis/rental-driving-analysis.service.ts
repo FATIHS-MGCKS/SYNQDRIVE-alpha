@@ -117,7 +117,7 @@ export class RentalDrivingAnalysisService {
     let analysisSource: AnalysisSource = 'booking_assignment';
 
     if (assignedTrips.length === 0) {
-      const fallbackTrips = await this.tripsService.findByVehicle(vehicleId, {
+      const fallbackTrips = await this.tripsService.findByVehicle(orgId, vehicleId, {
         from: periodStart,
         to: periodEnd,
         limit: 200,
@@ -133,16 +133,19 @@ export class RentalDrivingAnalysisService {
         startTime?: Date;
         endTime?: Date | null;
       }>) {
-        const attribution = await this.tripAttributionService.resolveAttributionForTrip({
-          isPrivateTrip: rawTrip.isPrivateTrip === true,
-          assignmentStatus: (rawTrip.assignmentStatus as TripAssignmentStatus | null) ?? null,
-          assignedBookingId: rawTrip.assignedBookingId ?? null,
-          assignmentSubjectId: rawTrip.assignmentSubjectId ?? null,
-          bookingLinkSource: rawTrip.bookingLinkSource ?? null,
-          vehicleId,
-          startTime: rawTrip.startTime ?? periodStart,
-          endTime: rawTrip.endTime ?? null,
-        });
+        const attribution = await this.tripAttributionService.resolveAttributionForTrip(
+          orgId,
+          {
+            isPrivateTrip: rawTrip.isPrivateTrip === true,
+            assignmentStatus: (rawTrip.assignmentStatus as TripAssignmentStatus | null) ?? null,
+            assignedBookingId: rawTrip.assignedBookingId ?? null,
+            assignmentSubjectId: rawTrip.assignmentSubjectId ?? null,
+            bookingLinkSource: rawTrip.bookingLinkSource ?? null,
+            vehicleId,
+            startTime: rawTrip.startTime ?? periodStart,
+            endTime: rawTrip.endTime ?? null,
+          },
+        );
         if (attribution.scope === 'PRIVATE' || attribution.scope === 'UNASSIGNED') {
           continue;
         }

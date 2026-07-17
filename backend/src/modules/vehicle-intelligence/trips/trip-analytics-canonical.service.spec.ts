@@ -12,6 +12,9 @@ function makeMockPrisma() {
       aggregate: jest.fn(),
       count: jest.fn(),
     },
+    vehicle: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'vehicle-1' }),
+    },
   } as any;
 }
 
@@ -63,7 +66,7 @@ describe('TripAnalyticsCanonicalService', () => {
       scoreEligible: true,
     });
 
-    const result = await service.hydrateTrips([
+    const result = await service.hydrateTrips('org-1', [
       {
         id: 'trip-1',
         vehicleId: 'vehicle-1',
@@ -116,7 +119,7 @@ describe('TripAnalyticsCanonicalService', () => {
       scoreEligible: false,
     });
 
-    const result = await service.hydrateTrips([
+    const result = await service.hydrateTrips('org-1', [
       {
         id: 'trip-legacy',
         vehicleId: 'vehicle-1',
@@ -170,7 +173,7 @@ describe('TripAnalyticsCanonicalService', () => {
       scoreEligible: true,
     });
 
-    const result = await service.hydrateTrips([
+    const result = await service.hydrateTrips('org-1', [
       {
         id: 'trip-1',
         vehicleId: 'vehicle-1',
@@ -229,7 +232,7 @@ describe('TripAnalyticsCanonicalService', () => {
       .mockResolvedValueOnce(3)
       .mockResolvedValueOnce(9);
 
-    const stats = await service.getVehicleStats('vehicle-1');
+    const stats = await service.getVehicleStats('org-1', 'vehicle-1');
 
     expect(stats.totalTrips).toBe(12);
     expect(stats.avgDrivingStressScore).toBe(74.46);

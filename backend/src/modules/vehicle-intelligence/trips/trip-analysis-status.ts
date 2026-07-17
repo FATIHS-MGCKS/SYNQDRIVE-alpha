@@ -25,7 +25,8 @@ export type AnalysisLimitReason =
   | 'LOW_DATA'
   | 'CAPABILITY'
   | 'NO_END_TIME'
-  | 'DEVICE_NATIVE_EVENT_QUALITY';
+  | 'DEVICE_NATIVE_EVENT_QUALITY'
+  | 'CLICKHOUSE_UNAVAILABLE';
 
 export interface AnalysisAssessabilityContext {
   analysisAssessability: AnalysisAssessability;
@@ -171,7 +172,8 @@ function isValidLimitReason(v: string | undefined): v is AnalysisLimitReason {
     v === 'LOW_DATA' ||
     v === 'CAPABILITY' ||
     v === 'NO_END_TIME' ||
-    v === 'DEVICE_NATIVE_EVENT_QUALITY'
+    v === 'DEVICE_NATIVE_EVENT_QUALITY' ||
+    v === 'CLICKHOUSE_UNAVAILABLE'
   );
 }
 
