@@ -1,0 +1,7 @@
+vehicle_anon,has_brake_health_current,is_initialized,state_class,evidence_count,reference_spec_count,brake_service_events,trip_driving_impact_60d
+VEHICLE_001,no,null,null,0,1,0,34
+VEHICLE_002,no,null,null,0,1,0,155
+VEHICLE_003,no,null,null,0,0,0,43
+VEHICLE_004,no,null,null,0,1,0,30
+VEHICLE_005,no,null,null,0,1,0,76
+VEHICLE_006,no,null,null,0,1,0,17
