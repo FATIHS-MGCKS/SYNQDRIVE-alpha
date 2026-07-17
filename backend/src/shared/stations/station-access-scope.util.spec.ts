@@ -4,6 +4,10 @@ import {
   buildBookingAccessWhere,
   buildFleetVehicleAccessWhere,
   buildStationAccessWhere,
+  buildStationActivityWhere,
+  buildStationBookingsWhere,
+  buildStationFleetWhere,
+  buildStationOpenTasksWhere,
   buildVehicleHomeAccessWhere,
   hasAnyStationsWritePermission,
   isStationReadableInAccessScope,
@@ -192,22 +196,32 @@ describe('station-access-scope.util', () => {
     expect(access.fleetBooking.vehicleStationIds).toEqual([]);
   });
 
-  it('resolves membership-based permissions for worker read-only scope', () => {
-    const access = resolveStationAccessScopeFromPermissions(
-      {
-        orgId: ORG,
-        mode: STATION_SCOPE_MODE.ASSIGNED_STATIONS,
-        allowedStationIds: [STATION_A],
-        bypassScope: false,
-      },
-      {
-        role: MembershipRole.WORKER,
-        stationsV2: { read: true },
-      },
-    );
+  it('builds nested fleet/booking/task filters only for readable stations', () => {
+    const access = resolveStationAccessScope({
+      orgId: ORG,
+      mode: STATION_SCOPE_MODE.ASSIGNED_STATIONS,
+      allowedStationIds: [STATION_A],
+      bypassScope: false,
+    });
 
-    expect(access.canRead).toBe(true);
-    expect(access.canWrite).toBe(false);
-    expect(access.editableStationIds).toEqual([]);
+    expect(buildStationFleetWhere(access, STATION_A).OR).toHaveLength(3);
+    expect(buildStationBookingsWhere(access, STATION_B)).toEqual({
+      organizationId: ORG,
+      id: { in: [] },
+    });
+    expect(
+      buildStationOpenTasksWhere(access, STATION_A, ['v1'], ['b1']).OR,
+    ).toEqual(
+      expect.arrayContaining([
+        { metadata: { path: ['stationId'], equals: STATION_A } },
+        { vehicleId: { in: ['v1'] } },
+        { bookingId: { in: ['b1'] } },
+      ]),
+    );
+    expect(buildStationActivityWhere(access, STATION_A)).toEqual({
+      organizationId: ORG,
+      entity: 'STATION',
+      entityId: STATION_A,
+    });
   });
 });

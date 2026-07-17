@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationScopeService } from './station-scope.service';
@@ -15,6 +15,13 @@ import {
   buildEditableStationAccessWhere,
   buildFleetVehicleAccessWhere,
   buildStationAccessWhere,
+  buildStationActivityWhere,
+  buildStationBookingsWhere,
+  buildStationFleetWhere,
+  buildStationLinkedVehicleWhere,
+  buildStationOpenTasksWhere,
+  buildStationPickupBookingsWhere,
+  buildStationReturnBookingsWhere,
   buildVehicleHomeAccessWhere,
   isStationEditableInAccessScope,
   isStationReadableInAccessScope,
@@ -23,6 +30,9 @@ import {
   resolveStationAccessScopeFromContext,
   resolveStationAccessScopeFromPermissions,
 } from './station-access-scope.util';
+
+export const STATION_NOT_FOUND_MESSAGE = (stationId: string) =>
+  `Station ${stationId} not found`;
 
 @Injectable()
 export class StationAccessScopeService {
@@ -85,6 +95,82 @@ export class StationAccessScopeService {
     extra?: Prisma.BookingWhereInput,
   ): BookingAccessWhereInput {
     return buildBookingAccessWhere(access, extra);
+  }
+
+  buildStationFleetWhere(
+    access: StationAccessScope,
+    stationId: string,
+  ): VehicleAccessWhereInput {
+    return buildStationFleetWhere(access, stationId);
+  }
+
+  buildStationLinkedVehicleWhere(
+    access: StationAccessScope,
+    stationId: string,
+  ): VehicleAccessWhereInput {
+    return buildStationLinkedVehicleWhere(access, stationId);
+  }
+
+  buildStationBookingsWhere(
+    access: StationAccessScope,
+    stationId: string,
+    extra?: Prisma.BookingWhereInput,
+  ): BookingAccessWhereInput {
+    return buildStationBookingsWhere(access, stationId, extra);
+  }
+
+  buildStationPickupBookingsWhere(
+    access: StationAccessScope,
+    stationId: string,
+    extra?: Prisma.BookingWhereInput,
+  ): BookingAccessWhereInput {
+    return buildStationPickupBookingsWhere(access, stationId, extra);
+  }
+
+  buildStationReturnBookingsWhere(
+    access: StationAccessScope,
+    stationId: string,
+    extra?: Prisma.BookingWhereInput,
+  ): BookingAccessWhereInput {
+    return buildStationReturnBookingsWhere(access, stationId, extra);
+  }
+
+  buildStationOpenTasksWhere(
+    access: StationAccessScope,
+    stationId: string,
+    linkedVehicleIds: string[],
+    linkedBookingIds: string[],
+  ): Prisma.OrgTaskWhereInput {
+    return buildStationOpenTasksWhere(
+      access,
+      stationId,
+      linkedVehicleIds,
+      linkedBookingIds,
+    );
+  }
+
+  buildStationActivityWhere(
+    access: StationAccessScope,
+    stationId: string,
+  ): Prisma.ActivityLogWhereInput {
+    return buildStationActivityWhere(access, stationId);
+  }
+
+  async requireReadableStation<T extends Prisma.StationFindFirstArgs>(
+    access: StationAccessScope,
+    stationId: string,
+    args: Omit<T, 'where'> = {} as Omit<T, 'where'>,
+  ): Promise<Prisma.StationGetPayload<T>> {
+    const station = await this.prisma.station.findFirst({
+      ...args,
+      where: buildStationAccessWhere(access, { id: stationId }),
+    } as T);
+
+    if (!station) {
+      throw new NotFoundException(STATION_NOT_FOUND_MESSAGE(stationId));
+    }
+
+    return station as Prisma.StationGetPayload<T>;
   }
 
   isStationReadable(access: StationAccessScope, stationId: string): boolean {

@@ -45,7 +45,7 @@ describe('StationsController read security', () => {
     expect(metadata(STATIONS_PERMISSION_KEY, 'getBookings')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getOperations')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getTeam')).toBe('stations.read');
-    expect(metadata(STATIONS_PERMISSION_KEY, 'getActivity')).toBe('stations.read');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'getActivity')).toBe('stations.view_activity');
   });
 
   it('uses list scope for collection reads and station scope for detail reads', () => {

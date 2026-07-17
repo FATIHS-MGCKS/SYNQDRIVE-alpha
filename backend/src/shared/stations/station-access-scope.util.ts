@@ -283,3 +283,123 @@ function applyStationIdFilter(
     id: { in: stationIds },
   };
 }
+
+/** Vehicles linked to a specific station (home / current / expected). */
+export function buildStationLinkedVehicleWhere(
+  access: StationAccessScope,
+  stationId: string,
+): VehicleAccessWhereInput {
+  if (!isStationReadableInAccessScope(access, stationId)) {
+    return { organizationId: access.orgId, id: { in: [] } };
+  }
+
+  return {
+    organizationId: access.orgId,
+    OR: [
+      { homeStationId: stationId },
+      { currentStationId: stationId },
+      { expectedStationId: stationId },
+    ],
+  };
+}
+
+/** Fleet tab at `:id/fleet` — station must be readable; vehicles scoped to station linkage. */
+export function buildStationFleetWhere(
+  access: StationAccessScope,
+  stationId: string,
+): VehicleAccessWhereInput {
+  return buildStationLinkedVehicleWhere(access, stationId);
+}
+
+/** Bookings tab and pickup/return lists — includes historical rows for archived stations. */
+export function buildStationBookingsWhere(
+  access: StationAccessScope,
+  stationId: string,
+  extra?: Prisma.BookingWhereInput,
+): BookingAccessWhereInput {
+  if (!isStationReadableInAccessScope(access, stationId)) {
+    return { organizationId: access.orgId, id: { in: [] } };
+  }
+
+  return {
+    organizationId: access.orgId,
+    OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
+    ...extra,
+  };
+}
+
+export function buildStationPickupBookingsWhere(
+  access: StationAccessScope,
+  stationId: string,
+  extra?: Prisma.BookingWhereInput,
+): BookingAccessWhereInput {
+  if (!isStationReadableInAccessScope(access, stationId)) {
+    return { organizationId: access.orgId, id: { in: [] } };
+  }
+
+  return {
+    organizationId: access.orgId,
+    pickupStationId: stationId,
+    ...extra,
+  };
+}
+
+export function buildStationReturnBookingsWhere(
+  access: StationAccessScope,
+  stationId: string,
+  extra?: Prisma.BookingWhereInput,
+): BookingAccessWhereInput {
+  if (!isStationReadableInAccessScope(access, stationId)) {
+    return { organizationId: access.orgId, id: { in: [] } };
+  }
+
+  return {
+    organizationId: access.orgId,
+    returnStationId: stationId,
+    ...extra,
+  };
+}
+
+/** Open tasks linked to station vehicles, bookings, or metadata.stationId. */
+export function buildStationOpenTasksWhere(
+  access: StationAccessScope,
+  stationId: string,
+  linkedVehicleIds: string[],
+  linkedBookingIds: string[],
+): Prisma.OrgTaskWhereInput {
+  if (!isStationReadableInAccessScope(access, stationId)) {
+    return { organizationId: access.orgId, id: { in: [] } };
+  }
+
+  const orFilters: Prisma.OrgTaskWhereInput[] = [
+    { metadata: { path: ['stationId'], equals: stationId } },
+  ];
+
+  if (linkedVehicleIds.length > 0) {
+    orFilters.push({ vehicleId: { in: linkedVehicleIds } });
+  }
+  if (linkedBookingIds.length > 0) {
+    orFilters.push({ bookingId: { in: linkedBookingIds } });
+  }
+
+  return {
+    organizationId: access.orgId,
+    status: { in: ['OPEN', 'IN_PROGRESS'] },
+    OR: orFilters,
+  };
+}
+
+export function buildStationActivityWhere(
+  access: StationAccessScope,
+  stationId: string,
+): Prisma.ActivityLogWhereInput {
+  if (!isStationReadableInAccessScope(access, stationId)) {
+    return { organizationId: access.orgId, id: { in: [] } };
+  }
+
+  return {
+    organizationId: access.orgId,
+    entity: 'STATION',
+    entityId: stationId,
+  };
+}

@@ -16,10 +16,6 @@ import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocod
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
-import {
-  buildScopedStationWhere,
-  buildScopedVehicleHomeWhere,
-} from '@shared/stations/stations-read-scope.util';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 
@@ -214,12 +210,14 @@ export class StationsService {
     id: string,
     scope?: StationScopeContext,
   ): Promise<StationDto> {
-    const where = buildScopedStationWhere(organizationId, scope, { id });
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
     const station = await this.prisma.station.findFirst({
-      where,
+      where: this.stationAccessScope.buildStationWhere(access, { id }),
       include: this.stationIncludeCount(),
     });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
+    if (!station) {
+      throw new NotFoundException(`Station ${id} not found`);
+    }
     return this.toDto(station, station._count.vehiclesHome);
   }
 
@@ -456,15 +454,23 @@ export class StationsService {
     stationId: string,
     scope?: StationScopeContext,
   ): Promise<StationOverviewStatsDto> {
-    const station = await this.prisma.station.findFirst({
-      where: buildScopedStationWhere(organizationId, scope, { id: stationId }),
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        capacity: true,
+        latitude: true,
+        longitude: true,
+        openingHours: true,
+        pickupEnabled: true,
+        returnEnabled: true,
+        status: true,
+      },
     });
-    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
-    const stationVehicleWhere: Prisma.VehicleWhereInput = {
-      organizationId,
-      OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
-    };
+    const stationVehicleWhere = this.stationAccessScope.buildStationLinkedVehicleWhere(
+      access,
+      stationId,
+    );
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -482,12 +488,8 @@ export class StationsService {
 
     const stationBookingIds = (
       await this.prisma.booking.findMany({
-        where: {
-          organizationId,
-          OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
-        },
+        where: this.stationAccessScope.buildStationBookingsWhere(access, stationId),
         select: { id: true },
-        take: 500,
       })
     ).map((b) => b.id);
 
@@ -515,56 +517,39 @@ export class StationsService {
         },
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
+        where: this.stationAccessScope.buildStationPickupBookingsWhere(access, stationId, {
           startDate: { gte: startOfToday, lt: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
+        where: this.stationAccessScope.buildStationReturnBookingsWhere(access, stationId, {
           endDate: { gte: startOfToday, lt: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
+        where: this.stationAccessScope.buildStationPickupBookingsWhere(access, stationId, {
           startDate: { gte: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
       this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
+        where: this.stationAccessScope.buildStationReturnBookingsWhere(access, stationId, {
           endDate: { gte: endOfToday },
           status: { in: activeBookingStatuses },
-        },
+        }),
       }),
     ]);
 
-    let openTasks = 0;
-    if (stationVehicleIds.length || stationBookingIds.length) {
-      openTasks = await this.prisma.orgTask.count({
-        where: {
-          organizationId,
-          status: { in: ['OPEN', 'IN_PROGRESS'] },
-          OR: [
-            ...(stationVehicleIds.length
-              ? [{ vehicleId: { in: stationVehicleIds } }]
-              : []),
-            ...(stationBookingIds.length
-              ? [{ bookingId: { in: stationBookingIds } }]
-              : []),
-          ],
-        },
-      });
-    }
+    const openTasks = await this.prisma.orgTask.count({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        stationVehicleIds,
+        stationBookingIds,
+      ),
+    });
 
     const capacity = station.capacity ?? null;
     const capacityUsagePercent =
@@ -596,12 +581,13 @@ export class StationsService {
     stationId: string,
     scope?: StationScopeContext,
   ) {
-    await this.findOne(organizationId, stationId, scope);
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true },
+    });
+
     return this.prisma.vehicle.findMany({
-      where: {
-        organizationId,
-        OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
-      },
+      where: this.stationAccessScope.buildStationFleetWhere(access, stationId),
       select: {
         id: true,
         vehicleName: true,
@@ -622,12 +608,13 @@ export class StationsService {
     stationId: string,
     scope?: StationScopeContext,
   ) {
-    await this.findOne(organizationId, stationId, scope);
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true, status: true },
+    });
+
     const bookings = await this.prisma.booking.findMany({
-      where: {
-        organizationId,
-        OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
-      },
+      where: this.stationAccessScope.buildStationBookingsWhere(access, stationId),
       include: {
         customer: { select: { firstName: true, lastName: true } },
         vehicle: { select: { vehicleName: true, make: true, model: true, licensePlate: true } },
@@ -657,8 +644,8 @@ export class StationsService {
     stationId: string,
     scope?: StationScopeContext,
   ): Promise<StationOperationsDto> {
-    const station = await this.prisma.station.findFirst({
-      where: buildScopedStationWhere(organizationId, scope, { id: stationId }),
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
       select: {
         pickupEnabled: true,
         returnEnabled: true,
@@ -673,7 +660,6 @@ export class StationsService {
         timezone: true,
       },
     });
-    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
     return {
       pickupEnabled: station.pickupEnabled,
@@ -696,15 +682,14 @@ export class StationsService {
     stationId: string,
     scope?: StationScopeContext,
   ): Promise<StationTeamDto> {
-    const station = await this.prisma.station.findFirst({
-      where: buildScopedStationWhere(organizationId, scope, { id: stationId }),
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
       select: {
         managerName: true,
         phone: true,
         email: true,
       },
     });
-    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
     return {
       managerName: station.managerName,
@@ -721,14 +706,13 @@ export class StationsService {
     scope?: StationScopeContext,
     limit = 50,
   ): Promise<StationActivityEntryDto[]> {
-    await this.findOne(organizationId, stationId, scope);
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: { id: true },
+    });
 
     const entries = await this.prisma.activityLog.findMany({
-      where: {
-        organizationId,
-        entity: 'STATION',
-        entityId: stationId,
-      },
+      where: this.stationAccessScope.buildStationActivityWhere(access, stationId),
       orderBy: { createdAt: 'desc' },
       take: Math.min(Math.max(limit, 1), 100),
       include: { user: { select: { name: true, email: true } } },

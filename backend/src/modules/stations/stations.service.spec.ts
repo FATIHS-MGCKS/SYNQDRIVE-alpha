@@ -446,7 +446,7 @@ describe('StationsService', () => {
     (prisma.booking.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.orgTask.count as jest.Mock).mockResolvedValue(1);
 
-    const stats = await service.getStationOverviewStats('org1', 's1');
+    const stats = await service.getStationOverviewStats('org1', 's1', allScope);
     expect(stats.vehiclesWithHealthWarnings).toBeNull();
     expect(stats.totalVehicles).toBe(3);
     expect(stats.openTasks).toBe(1);
