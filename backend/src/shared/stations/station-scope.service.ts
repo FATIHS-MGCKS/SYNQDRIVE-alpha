@@ -157,9 +157,14 @@ export class StationScopeService {
       return context;
     }
 
+    if (resource === 'create') {
+      this.attachContext(request, context);
+      return context;
+    }
+
     const stationIds = await this.resolveTargetStationIds(request, orgId, resource, options);
 
-    if (resource === 'vehicle' || resource === 'booking') {
+    if (resource === 'vehicle' || resource === 'booking' || resource === 'vehicle_location') {
       await this.assertNestedResourceStationsInScope({
         orgId,
         stationIds,
@@ -218,7 +223,7 @@ export class StationScopeService {
   ): Promise<StationScopeContext> {
     const context = this.buildMasterAdminScopeContext(orgId);
 
-    if (resource === 'list' || resource === 'none') {
+    if (resource === 'list' || resource === 'none' || resource === 'create') {
       return context;
     }
 
@@ -243,11 +248,27 @@ export class StationScopeService {
     resource: NonNullable<StationScopeOptions['resource']>,
     options: StationScopeOptions,
   ): Promise<string[]> {
-    if (resource === 'vehicle') {
+    if (resource === 'vehicle' || resource === 'vehicle_location') {
       const field = options.resourceIdField ?? 'vehicleId';
       const vehicleId = resolveNestedResourceIdFromRequest(request, field);
-      if (!vehicleId) return [];
-      return this.resolveStationIdsForVehicle(orgId, vehicleId);
+      const stationIds = new Set<string>();
+
+      if (vehicleId) {
+        for (const id of await this.resolveStationIdsForVehicle(orgId, vehicleId)) {
+          stationIds.add(id);
+        }
+      }
+
+      if (resource === 'vehicle_location') {
+        for (const key of ['currentStationId', 'expectedStationId'] as const) {
+          const value = request.body?.[key];
+          if (typeof value === 'string' && value.trim()) {
+            stationIds.add(value.trim());
+          }
+        }
+      }
+
+      return [...stationIds];
     }
 
     if (resource === 'booking') {

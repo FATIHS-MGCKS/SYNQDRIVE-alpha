@@ -279,6 +279,60 @@ describe('StationScopeService', () => {
     expect(prisma.organizationMembership.findFirst).not.toHaveBeenCalled();
   });
 
+  it('allows create without existing station id but still blocks NO_STATIONS', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue(
+      workerMembership({
+        role: MembershipRole.DRIVER,
+        stationScope: null,
+        stationIds: null,
+      }),
+    );
+
+    await expect(
+      service.enforceRequestScope(
+        request({ method: 'POST', params: { orgId: ORG } }),
+        { resource: 'create' },
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: StationScopeErrorCode.NO_STATIONS,
+      }),
+    });
+  });
+
+  it('allows create for assigned memberships without station route id', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue(workerMembership());
+
+    const ctx = await service.enforceRequestScope(
+      request({ method: 'POST', params: { orgId: ORG } }),
+      { resource: 'create' },
+    );
+
+    expect(ctx.mode).toBe('ASSIGNED_STATIONS');
+    expect(prisma.station.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('scopes vehicle_location mutations by vehicle and target station ids', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue(workerMembership());
+    prisma.vehicle.findFirst.mockResolvedValue({
+      homeStationId: STATION_A,
+      currentStationId: STATION_B,
+      expectedStationId: null,
+    });
+    prisma.station.findFirst.mockResolvedValue({ status: StationStatus.ACTIVE });
+
+    await expect(
+      service.enforceRequestScope(
+        request({
+          method: 'PATCH',
+          params: { orgId: ORG },
+          body: { vehicleId: VEHICLE, currentStationId: STATION_A },
+        }),
+        { resource: 'vehicle_location' },
+      ),
+    ).resolves.toBeDefined();
+  });
+
   it('throws structured forbidden payloads', () => {
     try {
       throw new StationScopeForbiddenException({

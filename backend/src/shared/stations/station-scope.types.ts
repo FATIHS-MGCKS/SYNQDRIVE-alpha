@@ -4,8 +4,10 @@ import type { StationScopeMode } from './station-scope.constants';
 export type StationScopeResourceHint =
   | 'station'
   | 'vehicle'
+  | 'vehicle_location'
   | 'booking'
   | 'list'
+  | 'create'
   | 'none';
 
 export interface StationScopeOptions {

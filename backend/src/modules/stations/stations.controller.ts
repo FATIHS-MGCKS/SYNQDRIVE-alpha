@@ -29,7 +29,11 @@ import { StationScopeGuard } from '@shared/guards/station-scope.guard';
 import { RequireStationScope } from '@shared/decorators/station-scope.decorator';
 import { STATION_SCOPE_CONTEXT_KEY } from '@shared/stations/station-scope.constants';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
+import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
+import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary-permission.guard';
+import { StationsUpdatePermissionGuard } from './guards/stations-update-permission.guard';
+import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicle-location-permission.guard';
 import { RequireStationsPermission } from './decorators/require-stations-permission.decorator';
 
 @Controller('organizations/:orgId/stations')
@@ -80,11 +84,15 @@ export class StationsController {
   }
 
   @Post('backfill-coordinates')
+  @RequireStationsPermission('stations.geocode')
+  @RequireStationScope({ resource: 'list' })
   async backfillCoordinates(@Param('orgId') orgId: string) {
     return this.stationsService.backfillCoordinates(orgId);
   }
 
   @Patch('vehicles/current-station')
+  @UseGuards(StationsVehicleLocationPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
   async updateVehicleCurrentStation(
     @Param('orgId') orgId: string,
     @Body() body: UpdateVehicleCurrentStationDto,
@@ -179,11 +187,15 @@ export class StationsController {
   }
 
   @Post()
+  @RequireStationsPermission('stations.create')
+  @RequireStationScope({ resource: 'create' })
   async create(@Param('orgId') orgId: string, @Body() body: CreateStationDto) {
     return this.stationsService.create(orgId, body);
   }
 
   @Patch(':id')
+  @UseGuards(StationsUpdatePermissionGuard)
+  @RequireStationScope({ resource: 'station' })
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -193,21 +205,29 @@ export class StationsController {
   }
 
   @Post(':id/archive')
+  @RequireStationsPermission('stations.archive')
+  @RequireStationScope({ resource: 'station' })
   async archive(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.archive(orgId, id);
   }
 
   @Post(':id/restore')
+  @RequireStationsPermission('stations.restore')
+  @RequireStationScope({ resource: 'station' })
   async restore(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.restore(orgId, id);
   }
 
   @Post(':id/set-primary')
+  @UseGuards(StationsSetPrimaryPermissionGuard)
+  @RequireStationScope({ resource: 'station' })
   async setPrimary(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.setPrimaryStation(orgId, id);
   }
 
   @Put(':id/vehicles')
+  @UseGuards(StationsAssignVehiclePermissionGuard)
+  @RequireStationScope({ resource: 'station' })
   async setVehicles(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -217,6 +237,8 @@ export class StationsController {
   }
 
   @Post(':id/assign-vehicle')
+  @UseGuards(StationsAssignVehiclePermissionGuard)
+  @RequireStationScope({ resource: 'station' })
   async assignVehicle(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -231,6 +253,8 @@ export class StationsController {
   }
 
   @Delete(':id')
+  @RequireStationsPermission('stations.archive')
+  @RequireStationScope({ resource: 'station' })
   async delete(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.delete(orgId, id);
   }

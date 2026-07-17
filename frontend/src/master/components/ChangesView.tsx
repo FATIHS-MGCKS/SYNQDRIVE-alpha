@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-mutation-endpoints-v49590-2026-07-17',
+    version: '4.9.590',
+    title: 'V4.9.590 — Stations V2: Mutations mit granularen Permissions + Scope (Prompt 10/78)',
+    summary: [
+      'Alle Schreib-Routen verdrahtet: create, update (dynamisch), archive/restore/delete, set-primary, home-fleet, current/expected location, geocode.',
+      'Gate 1: `StationsPermissionGuard` + spezialisierte Mutation-Guards (`StationsUpdatePermissionGuard`, Assign/SetPrimary/VehicleLocation).',
+      'Gate 2: `StationScopeGuard` — `create` ohne bestehende Station-ID; `vehicle_location` prüft Vehicle + Ziel-Stationen.',
+      'Worker/Driver dürfen Organisations-Hauptstation nicht setzen (`SET_PRIMARY_ROLE_FORBIDDEN`); strukturierte 403-Codes.',
+    ],
+    reason:
+      'Stations-Mutationen waren nur durch OrgScoping/RolesGuard geschützt — V2 verlangt Permission + Scope auf allen Write-Pfaden.',
+    previousBehavior:
+      'POST/PATCH/PUT/DELETE ohne `stations.*`-Checks; kein Scope-Gate auf Mutations; set-primary ohne Rollenpolicy.',
+    details:
+      'stations.controller.ts, stations-mutation-permission.util.ts, stations-access.service.ts, mutation guards, station-scope.service (create/vehicle_location).',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-17T22:35:00.000Z',
+  },
+  {
     id: 'stations-v2-read-endpoints-v49589-2026-07-17',
     version: '4.9.589',
     title: 'V4.9.589 — Stations V2: lesende Endpunkte abgesichert (Prompt 9/78)',

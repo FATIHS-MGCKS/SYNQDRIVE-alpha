@@ -8,7 +8,11 @@ import { STATION_SCOPE_KEY } from '@shared/decorators/station-scope.decorator';
 import { StationsController } from './stations.controller';
 import { StationsService } from './stations.service';
 import { StationMapboxService } from './station-mapbox.service';
+import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
+import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary-permission.guard';
+import { StationsUpdatePermissionGuard } from './guards/stations-update-permission.guard';
+import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicle-location-permission.guard';
 import { STATIONS_PERMISSION_KEY } from './decorators/require-stations-permission.decorator';
 
 const ORG = 'org-1';
@@ -52,6 +56,49 @@ describe('StationsController read security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'getOperations')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getTeam')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getActivity')).toEqual({ resource: 'station' });
+  });
+});
+
+describe('StationsController mutation security', () => {
+  it('requires explicit permissions on lifecycle and create mutations', () => {
+    expect(metadata(STATIONS_PERMISSION_KEY, 'create')).toBe('stations.create');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'archive')).toBe('stations.archive');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'restore')).toBe('stations.restore');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'delete')).toBe('stations.archive');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'backfillCoordinates')).toBe('stations.geocode');
+  });
+
+  it('uses create/list/station/vehicle_location scope resources on mutations', () => {
+    expect(metadata(STATION_SCOPE_KEY, 'create')).toEqual({ resource: 'create' });
+    expect(metadata(STATION_SCOPE_KEY, 'backfillCoordinates')).toEqual({ resource: 'list' });
+    expect(metadata(STATION_SCOPE_KEY, 'update')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'archive')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'restore')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'setPrimary')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'setVehicles')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'assignVehicle')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'delete')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'updateVehicleCurrentStation')).toEqual({
+      resource: 'vehicle_location',
+    });
+  });
+
+  it('applies specialized mutation permission guards', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.update)).toEqual(
+      expect.arrayContaining([StationsUpdatePermissionGuard]),
+    );
+    expect(Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.setPrimary)).toEqual(
+      expect.arrayContaining([StationsSetPrimaryPermissionGuard]),
+    );
+    expect(Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.setVehicles)).toEqual(
+      expect.arrayContaining([StationsAssignVehiclePermissionGuard]),
+    );
+    expect(Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.assignVehicle)).toEqual(
+      expect.arrayContaining([StationsAssignVehiclePermissionGuard]),
+    );
+    expect(
+      Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.updateVehicleCurrentStation),
+    ).toEqual(expect.arrayContaining([StationsVehicleLocationPermissionGuard]));
   });
 });
 

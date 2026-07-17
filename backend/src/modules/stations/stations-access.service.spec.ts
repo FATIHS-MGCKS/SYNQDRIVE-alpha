@@ -59,4 +59,44 @@ describe('StationsAccessService', () => {
       }),
     });
   });
+
+  it('denies worker from setting primary even with permission flag', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      role: 'WORKER',
+      permissions: { stationsV2: { set_primary: true } },
+    });
+
+    await expect(service.assertCanSetPrimary('org-1', { id: 'u1' })).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: StationsPermissionErrorCode.SET_PRIMARY_ROLE_FORBIDDEN,
+      }),
+    });
+  });
+
+  it('allows manager to set primary when permission is granted', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      role: 'MANAGER',
+      permissions: { stationsV2: { set_primary: true } },
+    });
+
+    await expect(service.assertCanSetPrimary('org-1', { id: 'u1' })).resolves.toBeUndefined();
+  });
+
+  it('assertStationsPermissions checks all actions', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      permissions: { stationsV2: { update_master_data: true, manage_operations: false } },
+    });
+
+    await expect(
+      service.assertStationsPermissions('org-1', { id: 'u1' }, [
+        'stations.update_master_data',
+        'stations.manage_operations',
+      ]),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: StationsPermissionErrorCode.MISSING_PERMISSION,
+        permission: 'stations.manage_operations',
+      }),
+    });
+  });
 });
