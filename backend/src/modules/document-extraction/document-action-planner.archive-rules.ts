@@ -9,6 +9,7 @@ import {
   type ArchiveDocumentType,
   type ArchiveSubtype,
 } from './document-archive-extraction.rules';
+import { gateActionPlanOnPlausibility } from './document-plausibility-gate.util';
 
 export {
   ARCHIVE_DOCUMENT_TYPES,
@@ -38,6 +39,7 @@ export type ArchivePlanOutcome =
 export type ArchivePlannerInput = {
   effectiveDocumentType: string;
   confirmedData: Record<string, unknown>;
+  plausibilityChecks?: import('./document-plausibility.types').PlausibilityCheck[];
 };
 
 export type ArchivePlannedAction = {
@@ -116,15 +118,18 @@ export function assessArchivePlan(input: ArchivePlannerInput): ArchivePlanAssess
     ? ARCHIVE_PLAN_OUTCOMES.ARCHIVE_ONLY
     : ARCHIVE_PLAN_OUTCOMES.BLOCKED;
 
-  return {
-    documentType,
-    archiveSubtype,
-    planOutcome,
-    actions: actions.filter((action) => !OUTREACH_ACTIONS.has(action.semanticAction)),
-    entityLinkSuggestions: gate.entityLinkSuggestions,
-    deadlineSuggestions: gate.deadlineSuggestions,
-    missingRequirements,
-  };
+  return gateActionPlanOnPlausibility(
+    {
+      documentType,
+      archiveSubtype,
+      planOutcome,
+      actions: actions.filter((action) => !OUTREACH_ACTIONS.has(action.semanticAction)),
+      entityLinkSuggestions: gate.entityLinkSuggestions,
+      deadlineSuggestions: gate.deadlineSuggestions,
+      missingRequirements,
+    },
+    input.plausibilityChecks ?? [],
+  );
 }
 
 export function buildArchivePlannerSummary(assessment: ArchivePlanAssessment): string {

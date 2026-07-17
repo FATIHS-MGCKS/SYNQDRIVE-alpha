@@ -17,19 +17,35 @@ import {
   collectArchivePlausibilityChecks,
   isArchiveDocumentType,
 } from './document-archive-extraction.rules';
+import {
+  collectCrossDocumentConsistencyChecks,
+  type PlausibilityConsistencyContext,
+} from './document-plausibility-consistency.rules';
+import {
+  makePlausibilityCheck,
+  resolveOverallPlausibilityStatus,
+  type PlausibilityCheck,
+  type PlausibilityOverallStatus,
+  type PlausibilitySource,
+} from './document-plausibility.types';
 
-export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
-export type PlausibilitySource = 'DOCUMENT' | 'SYNQDRIVE_DB' | 'DIMO' | 'SYSTEM';
+export type {
+  PlausibilityCheck,
+  PlausibilityCheckStatus,
+  PlausibilityOverallStatus,
+  PlausibilitySource,
+} from './document-plausibility.types';
+export {
+  hasUnresolvedPlausibilityBlockers,
+  getUnresolvedPlausibilityBlockers,
+  resolveOverallPlausibilityStatus,
+} from './document-plausibility.types';
 
-export interface PlausibilityCheck {
-  code: string;
-  status: PlausibilityStatus;
-  message: string;
-  source: PlausibilitySource;
-}
+/** @deprecated Use PlausibilityOverallStatus */
+export type PlausibilityStatus = PlausibilityOverallStatus;
 
 export interface PlausibilityResult {
-  overallStatus: PlausibilityStatus;
+  overallStatus: PlausibilityOverallStatus;
   checks: PlausibilityCheck[];
   recommendedHumanReviewNotes: string[];
 }
@@ -37,27 +53,21 @@ export interface PlausibilityResult {
 export interface PlausibilityVehicleContext {
   vin?: string | null;
   licensePlate?: string | null;
-  /** Best known current odometer (DIMO latest state or stored mileage). */
   lastKnownOdometerKm?: number | null;
-  /** Whether DIMO telemetry context was available for this vehicle. */
   dimoContextAvailable?: boolean;
 }
 
-const NEGATIVE = -0.0001;
-
-/**
- * Server-side plausibility checks. These NEVER block storage of an extraction —
- * they only inform the human review step. The worst individual status becomes
- * the overall status.
- *
- * Checks are grounded in the SynqDrive vehicle record (and DIMO-derived odometer
- * where available). The AI agent's own plausibility output is not trusted here;
- * its advisory notes are merged separately by the worker.
- */
-export interface PlausibilityRunOptions {
+export interface PlausibilityRunOptions extends PlausibilityConsistencyContext {
   extractionConflicts?: FieldExtractionEvidence[];
   chunkingWarnings?: string[];
   documentSubtype?: string | null;
+}
+
+function enrichLegacyChecks(checks: Array<Omit<PlausibilityCheck, 'explanation'>>): PlausibilityCheck[] {
+  return checks.map((check) => ({
+    ...check,
+    explanation: check.message,
+  }));
 }
 
 @Injectable()
@@ -71,167 +81,66 @@ export class DocumentExtractionPlausibilityService {
     const checks: PlausibilityCheck[] = [];
     const notes: string[] = [];
 
-    const odometer = this.toNum(fields['odometerKm']);
-    const lastKnown = context.lastKnownOdometerKm ?? null;
-    const eventDate = this.toDate(fields['eventDate'] ?? fields['invoiceDate']);
-    const now = new Date();
-
-    // VIN / license plate cross-check (only when document carries an identifier)
-    const docVin = this.toStr(fields['vin']);
-    if (docVin && context.vin && this.normId(docVin) !== this.normId(context.vin)) {
-      checks.push({
-        code: 'VIN_MISMATCH',
-        status: 'WARNING',
-        message: 'VIN on the document does not match the selected vehicle.',
-        source: 'DOCUMENT',
-      });
-    }
-    const docPlate = this.toStr(fields['licensePlate']);
     if (documentType === 'INVOICE') {
       checks.push(
-        ...collectInvoicePlausibilityChecks(fields, {
-          documentSubtype: options?.documentSubtype,
-        }),
+        ...enrichLegacyChecks(
+          collectInvoicePlausibilityChecks(fields, {
+            documentSubtype: options?.documentSubtype,
+          }),
+        ),
       );
     } else if (isInspectionDocumentType(documentType)) {
-      checks.push(...collectInspectionPlausibilityChecks(documentType, fields));
+      checks.push(...enrichLegacyChecks(collectInspectionPlausibilityChecks(documentType, fields)));
     } else if (isDamageDocumentType(documentType)) {
-      checks.push(...collectDamagePlausibilityChecks(documentType, fields));
+      checks.push(...enrichLegacyChecks(collectDamagePlausibilityChecks(documentType, fields)));
       notes.push(
         context.dimoContextAvailable
           ? 'DIMO telemetry is available for this vehicle but collision/harsh-braking corroboration is not automatically evaluated. Verify the incident manually.'
           : 'No DIMO telemetry context available to corroborate this incident. Verify the incident manually.',
       );
     } else if (documentType === 'TIRE') {
-      checks.push(...collectTirePlausibilityChecks(fields));
+      checks.push(...enrichLegacyChecks(collectTirePlausibilityChecks(fields)));
     } else if (documentType === 'BRAKE') {
-      checks.push(...collectBrakePlausibilityChecks(fields));
+      checks.push(...enrichLegacyChecks(collectBrakePlausibilityChecks(fields)));
     } else if (documentType === 'BATTERY') {
-      checks.push(...collectBatteryPlausibilityChecks(fields));
+      checks.push(...enrichLegacyChecks(collectBatteryPlausibilityChecks(fields)));
     } else if (isArchiveDocumentType(documentType)) {
-      checks.push(...collectArchivePlausibilityChecks(documentType, fields));
-    } else if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
-      const isFine = documentType === 'FINE';
-      checks.push({
-        code: 'PLATE_MISMATCH',
-        status: isFine ? 'BLOCKER' : 'WARNING',
-        message: isFine
-          ? `Kennzeichen auf dem Dokument (${docPlate}) stimmt nicht mit dem zugeordneten Fahrzeug (${context.licensePlate}) überein.`
-          : 'License plate on the document does not match the selected vehicle.',
-        source: 'DOCUMENT',
-      });
+      checks.push(...enrichLegacyChecks(collectArchivePlausibilityChecks(documentType, fields)));
     }
 
-    // Odometer sanity
-    if (odometer != null) {
-      if (odometer < NEGATIVE) {
-        checks.push({
-          code: 'ODOMETER_NEGATIVE',
-          status: 'BLOCKER',
-          message: 'Extracted odometer reading is negative.',
-          source: 'DOCUMENT',
-        });
-      } else if (odometer > 2_000_000) {
-        checks.push({
-          code: 'ODOMETER_IMPLAUSIBLE_HIGH',
-          status: 'WARNING',
-          message: 'Extracted odometer reading is implausibly high.',
-          source: 'DOCUMENT',
-        });
-      }
-      if (lastKnown != null) {
-        if (odometer > lastKnown + 200_000) {
-          checks.push({
-            code: 'ODOMETER_FAR_ABOVE_KNOWN',
-            status: 'WARNING',
-            message: `Odometer (${Math.round(odometer)} km) is far above last known mileage (${Math.round(lastKnown)} km).`,
-            source: 'SYNQDRIVE_DB',
-          });
-        } else if (odometer < lastKnown - 50_000) {
-          checks.push({
-            code: 'ODOMETER_FAR_BELOW_KNOWN',
-            status: 'WARNING',
-            message: `Odometer (${Math.round(odometer)} km) is well below last known mileage (${Math.round(lastKnown)} km). Confirm this is a historical document.`,
-            source: context.dimoContextAvailable ? 'DIMO' : 'SYNQDRIVE_DB',
-          });
-        }
-      }
-    }
-
-    // Event date not in the future (for dated event documents)
-    const futureProofTypes: DocumentExtractionType[] = []; // none currently allow a future primary date
-    if (eventDate && eventDate.getTime() > now.getTime() + 24 * 3600 * 1000 && !futureProofTypes.includes(documentType)) {
-      checks.push({
-        code: 'EVENT_DATE_FUTURE',
-        status: 'WARNING',
-        message: 'Document date is in the future.',
-        source: 'DOCUMENT',
-      });
-    }
+    checks.push(
+      ...collectCrossDocumentConsistencyChecks(
+        documentType,
+        fields,
+        {
+          vehicle: context,
+          existingInvoiceNumbers: options?.existingInvoiceNumbers,
+          existingReferenceNumbers: options?.existingReferenceNumbers,
+          bookingStartDate: options?.bookingStartDate,
+          bookingEndDate: options?.bookingEndDate,
+          currentExtractionId: options?.currentExtractionId,
+        },
+        {
+          extractionConflicts: options?.extractionConflicts,
+        },
+      ),
+    );
 
     if (options?.chunkingWarnings?.length) {
       for (const warning of options.chunkingWarnings) {
         notes.push(warning);
-        checks.push({
-          code: 'DOCUMENT_CHUNK_LIMIT',
-          status: 'WARNING',
-          message: warning,
-          source: 'SYSTEM',
-        });
+        checks.push(
+          makePlausibilityCheck({
+            code: 'DOCUMENT_CHUNK_LIMIT',
+            status: 'WARNING',
+            explanation: warning,
+            source: 'SYSTEM',
+          }),
+        );
       }
     }
 
-    for (const conflict of options?.extractionConflicts ?? []) {
-      const leafKey = conflict.key.split('.').pop() ?? conflict.key;
-      const pages =
-        conflict.sourcePages.length > 0
-          ? ` (pages ${conflict.sourcePages.join(', ')})`
-          : '';
-      const isBlocker =
-        leafKey === 'odometerKm' || leafKey === 'vin' || leafKey === 'licensePlate';
-      checks.push({
-        code: `FIELD_CONFLICT_${leafKey.toUpperCase()}`,
-        status: isBlocker ? 'BLOCKER' : 'WARNING',
-        message: `Conflicting extracted values for ${leafKey}${pages} — manual review required`,
-        source: 'DOCUMENT',
-      });
-    }
-
-    const overallStatus = this.worst(checks);
+    const overallStatus = resolveOverallPlausibilityStatus(checks);
     return { overallStatus, checks, recommendedHumanReviewNotes: notes };
-  }
-
-  private worst(checks: PlausibilityCheck[]): PlausibilityStatus {
-    if (checks.some((c) => c.status === 'BLOCKER')) return 'BLOCKER';
-    if (checks.some((c) => c.status === 'WARNING')) return 'WARNING';
-    return 'OK';
-  }
-
-  private toNum(v: unknown): number | undefined {
-    if (typeof v === 'number' && Number.isFinite(v)) return v;
-    if (typeof v === 'string' && v.trim().length > 0) {
-      const n = Number(v.trim().replace(',', '.'));
-      if (Number.isFinite(n)) return n;
-    }
-    return undefined;
-  }
-
-  private toStr(v: unknown): string | undefined {
-    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
-    return undefined;
-  }
-
-  private toDate(v: unknown): Date | undefined {
-    if (typeof v !== 'string' || v.trim().length === 0) return undefined;
-    const d = new Date(v.trim());
-    return Number.isNaN(d.getTime()) ? undefined : d;
-  }
-
-  private normId(v: string): string {
-    return v.replace(/[\s-]/g, '').toUpperCase();
-  }
-
-  private normPlate(v: string): string {
-    return this.normId(v);
   }
 }

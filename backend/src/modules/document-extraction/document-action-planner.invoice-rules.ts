@@ -8,6 +8,7 @@ import {
   type InvoiceAmountTaxAssessment,
   type TaxSemanticsStatus,
 } from './document-invoice-extraction.rules';
+import { gateActionPlanOnPlausibility } from './document-plausibility-gate.util';
 
 export {
   assessInvoiceAmountTaxSemantics,
@@ -66,6 +67,7 @@ export type FinancePlannerInput = {
   documentSubtype?: string | null;
   documentCategory?: string | null;
   confirmedData: Record<string, unknown>;
+  plausibilityChecks?: import('./document-plausibility.types').PlausibilityCheck[];
 };
 
 export type FinanceMissingRequirement = {
@@ -260,13 +262,16 @@ export function assessFinanceDraftRequirements(
     });
   }
 
-  return {
-    missingRequirements,
-    amountTaxAssessment,
-    canCreateInvoiceDraft,
-    canCreateCreditNoteDraft,
-    planOutcome,
-  };
+  return gateActionPlanOnPlausibility(
+    {
+      missingRequirements,
+      amountTaxAssessment,
+      canCreateInvoiceDraft,
+      canCreateCreditNoteDraft,
+      planOutcome,
+    },
+    input.plausibilityChecks ?? [],
+  );
 }
 
 export function buildFinancePlannerSummary(

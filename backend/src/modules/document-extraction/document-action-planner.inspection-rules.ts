@@ -11,6 +11,7 @@ import {
   readReportNumber,
   type InspectionDocumentType,
 } from './document-inspection-extraction.rules';
+import { gateActionPlanOnPlausibility } from './document-plausibility-gate.util';
 
 export {
   INSPECTION_DOCUMENT_TYPES,
@@ -42,6 +43,7 @@ export type InspectionPlannerInput = {
   effectiveDocumentType: string;
   confirmedData: Record<string, unknown>;
   complianceReadinessBlocked?: boolean;
+  plausibilityChecks?: import('./document-plausibility.types').PlausibilityCheck[];
 };
 
 export type InspectionPlannedAction = {
@@ -147,13 +149,16 @@ export function assessInspectionPlan(input: InspectionPlannerInput): InspectionP
         : planOutcome;
   }
 
-  return {
-    documentType,
-    planOutcome,
-    actions,
-    canUpdateVehicleMasterData: gate.canUpdateVehicleMasterData,
-    missingRequirements,
-  };
+  return gateActionPlanOnPlausibility(
+    {
+      documentType,
+      planOutcome,
+      actions,
+      canUpdateVehicleMasterData: gate.canUpdateVehicleMasterData,
+      missingRequirements,
+    },
+    input.plausibilityChecks ?? [],
+  );
 }
 
 export function buildInspectionPlannerSummary(

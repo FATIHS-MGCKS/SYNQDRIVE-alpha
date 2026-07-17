@@ -805,6 +805,7 @@ export class DocumentExtractionService implements OnModuleInit {
       vehicleId,
       applyDocumentType,
       confirmedData,
+      extractionId,
     );
     if (plausibility.overallStatus === 'BLOCKER') {
       throw new BadRequestException({
@@ -1181,6 +1182,7 @@ export class DocumentExtractionService implements OnModuleInit {
     vehicleId: string,
     documentType: ApplyDocumentExtractionType,
     confirmedData: Record<string, unknown>,
+    extractionId?: string,
   ) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -1190,11 +1192,79 @@ export class DocumentExtractionService implements OnModuleInit {
       where: { vehicleId },
       select: { odometerKm: true },
     });
-    return this.plausibilityService.runChecks(documentType, confirmedData, {
-      vin: vehicle?.vin,
-      licensePlate: vehicle?.licensePlate,
-      lastKnownOdometerKm: latest?.odometerKm ?? vehicle?.mileageKm ?? null,
+    const consistencyContext = await this.buildPlausibilityConsistencyContext(
+      vehicleId,
+      confirmedData,
+      extractionId,
+    );
+    return this.plausibilityService.runChecks(
+      documentType,
+      confirmedData,
+      {
+        vin: vehicle?.vin,
+        licensePlate: vehicle?.licensePlate,
+        lastKnownOdometerKm: latest?.odometerKm ?? vehicle?.mileageKm ?? null,
+      },
+      consistencyContext,
+    );
+  }
+
+  private async buildPlausibilityConsistencyContext(
+    vehicleId: string,
+    confirmedData: Record<string, unknown>,
+    extractionId?: string,
+  ) {
+    const applied = await this.prisma.vehicleDocumentExtraction.findMany({
+      where: {
+        vehicleId,
+        status: { in: ['APPLIED', 'CONFIRMED'] },
+        ...(extractionId ? { id: { not: extractionId } } : {}),
+      },
+      select: { confirmedData: true },
     });
+
+    const existingInvoiceNumbers: string[] = [];
+    const existingReferenceNumbers: string[] = [];
+    for (const row of applied) {
+      const data =
+        row.confirmedData != null &&
+        typeof row.confirmedData === 'object' &&
+        !Array.isArray(row.confirmedData)
+          ? (row.confirmedData as Record<string, unknown>)
+          : null;
+      if (!data) continue;
+      if (typeof data.invoiceNumber === 'string') {
+        existingInvoiceNumbers.push(data.invoiceNumber);
+      }
+      const reference =
+        typeof data.referenceNumber === 'string'
+          ? data.referenceNumber
+          : typeof data.reportNumber === 'string'
+            ? data.reportNumber
+            : null;
+      if (reference) existingReferenceNumbers.push(reference);
+    }
+
+    let bookingStartDate: string | null = null;
+    let bookingEndDate: string | null = null;
+    const bookingId =
+      typeof confirmedData.bookingId === 'string' ? confirmedData.bookingId : null;
+    if (bookingId) {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: { startDate: true, endDate: true },
+      });
+      bookingStartDate = booking?.startDate?.toISOString() ?? null;
+      bookingEndDate = booking?.endDate?.toISOString() ?? null;
+    }
+
+    return {
+      existingInvoiceNumbers,
+      existingReferenceNumbers,
+      bookingStartDate,
+      bookingEndDate,
+      currentExtractionId: extractionId ?? null,
+    };
   }
 
   sanitizeConfirmedData(

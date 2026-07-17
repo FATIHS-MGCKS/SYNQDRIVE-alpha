@@ -27,7 +27,7 @@ describe('DocumentExtractionPlausibilityService', () => {
   it('flags a negative odometer as a BLOCKER', () => {
     const result = svc.runChecks('SERVICE', { odometerKm: -5 }, baseCtx);
     expect(result.overallStatus).toBe('BLOCKER');
-    expect(codes(result)).toContain('ODOMETER_NEGATIVE');
+    expect(codes(result)).toContain('CONSISTENCY_ODOMETER_NEGATIVE');
   });
 
   it('warns when odometer is far below last known mileage', () => {
@@ -38,23 +38,23 @@ describe('DocumentExtractionPlausibilityService', () => {
       { ...baseCtx, lastKnownOdometerKm: 120_000 },
     );
     expect(result.overallStatus).toBe('WARNING');
-    expect(codes(result)).toContain('ODOMETER_FAR_BELOW_KNOWN');
+    expect(codes(result)).toContain('CONSISTENCY_ODOMETER_FAR_BELOW_HISTORY');
   });
 
   it('warns when odometer is far above last known mileage', () => {
     const result = svc.runChecks('SERVICE', { odometerKm: 400_000 }, baseCtx);
-    expect(codes(result)).toContain('ODOMETER_FAR_ABOVE_KNOWN');
+    expect(codes(result)).toContain('CONSISTENCY_ODOMETER_FAR_ABOVE_HISTORY');
   });
 
   it('warns on a future event date', () => {
     const future = new Date(Date.now() + 1000 * 3600 * 24 * 30).toISOString().slice(0, 10);
     const result = svc.runChecks('SERVICE', { eventDate: future }, baseCtx);
-    expect(codes(result)).toContain('EVENT_DATE_FUTURE');
+    expect(codes(result)).toContain('CONSISTENCY_DOCUMENT_DATE_FUTURE');
   });
 
   it('warns when a document VIN does not match the selected vehicle', () => {
     const result = svc.runChecks('SERVICE', { vin: 'DIFFERENTVIN0000001' }, baseCtx);
-    expect(codes(result)).toContain('VIN_MISMATCH');
+    expect(codes(result)).toContain('CONSISTENCY_VIN_MISMATCH');
   });
 
   it('blocks FINE when license plate does not match the selected vehicle', () => {
@@ -64,7 +64,7 @@ describe('DocumentExtractionPlausibilityService', () => {
       { ...baseCtx, licensePlate: 'B-AB-1234' },
     );
     expect(result.overallStatus).toBe('BLOCKER');
-    expect(codes(result)).toContain('PLATE_MISMATCH');
+    expect(codes(result)).toContain('CONSISTENCY_PLATE_MISMATCH');
   });
 
   it('runs invoice plausibility checks for INVOICE documents', () => {

@@ -24,7 +24,7 @@ describe('DocumentExtractionPlausibilityService extraction conflicts', () => {
       },
     );
     expect(result.overallStatus).toBe('BLOCKER');
-    expect(result.checks.some((c) => c.code === 'FIELD_CONFLICT_ODOMETERKM')).toBe(true);
+    expect(result.checks.some((c) => c.code === 'CONSISTENCY_FIELD_CONFLICT_ODOMETERKM')).toBe(true);
   });
 
   it('adds WARNING for conflicting non-critical dates', () => {
@@ -47,7 +47,7 @@ describe('DocumentExtractionPlausibilityService extraction conflicts', () => {
         ],
       },
     );
-    expect(result.checks.some((c) => c.code === 'FIELD_CONFLICT_EVENTDATE' && c.status === 'WARNING')).toBe(
+    expect(result.checks.some((c) => c.code === 'CONSISTENCY_FIELD_CONFLICT_EVENTDATE' && c.status === 'WARNING')).toBe(
       true,
     );
   });

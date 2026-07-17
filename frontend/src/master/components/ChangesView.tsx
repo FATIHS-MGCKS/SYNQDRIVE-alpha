@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-plausibility-consistency-2026-07-17',
+    version: '4.9.610',
+    title: 'V4.9.610 — Document Intake V2 Cross-Type Plausibility Consistency & Action Plan Gating',
+    summary: [
+      'Neues Modul document-plausibility-consistency.rules für dokumenttypübergreifende Konsistenzprüfungen (Backend Source of Truth).',
+      'Strukturierte Ausgabe: INFO/WARNING/BLOCKER, code, fieldPaths, explanation, resolutionHint.',
+      'Prüfungen: Datumsreihenfolge, Betragssummen, Netto+Steuer=Brutto, VIN/Kennzeichen, Buchungszeitraum, Kilometerstand, Einheiten, Gültigkeit vs. Prüfdatum, Rechnungs-/Aktenzeichen-Duplikate, mehrere widersprüchliche Fahrzeuge.',
+      'document-plausibility-gate.util blockiert Action Plans bei ungelösten BLOCKERn — keine automatischen Datenkorrekturen.',
+      'Tests je Regel in document-plausibility-consistency.rules.spec.ts.',
+    ],
+    reason: 'Prompt 35/84: Erweiterung des Plausibilitätsservice um dokumenttypübergreifende Konsistenzprüfungen.',
+    previousBehavior:
+      'Plausibilität war typ-spezifisch fragmentiert; VIN/KM-Checks lagen inline im Service ohne fieldPaths/resolutionHint; Action Plans ignorierten globale BLOCKER.',
+    details:
+      'Backend: document-plausibility.types.ts, document-plausibility-consistency.rules.ts, document-plausibility-gate.util.ts, Service/Planner/Confirm-Context-Updates. Architektur: DOCUMENT_PLAUSIBILITY_CONSISTENCY_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T16:40:00.000Z',
+  },
+  {
     id: 'document-archive-hardening-2026-07-17',
     version: '4.9.609',
     title: 'V4.9.609 — Document Intake V2 Archive / Correspondence Extraction, Plausibility & Action Planning',

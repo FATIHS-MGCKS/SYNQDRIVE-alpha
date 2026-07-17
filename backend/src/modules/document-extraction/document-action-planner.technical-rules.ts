@@ -10,6 +10,7 @@ import {
   assessTireApplyGate,
   buildTireMeasurementApplyPayload,
 } from './document-tire-extraction.rules';
+import { gateActionPlanOnPlausibility } from './document-plausibility-gate.util';
 
 export const TECHNICAL_DOCUMENT_TYPES = {
   TIRE: 'TIRE',
@@ -45,6 +46,7 @@ export type TechnicalPlanOutcome =
 export type TechnicalPlannerInput = {
   effectiveDocumentType: string;
   confirmedData: Record<string, unknown>;
+  plausibilityChecks?: import('./document-plausibility.types').PlausibilityCheck[];
 };
 
 export type TechnicalPlannedAction = {
@@ -165,12 +167,15 @@ export function assessTechnicalPlan(input: TechnicalPlannerInput): TechnicalPlan
     planOutcome = TECHNICAL_PLAN_OUTCOMES.BLOCKED;
   }
 
-  return {
-    documentType,
-    planOutcome,
-    actions,
-    missingRequirements,
-  };
+  return gateActionPlanOnPlausibility(
+    {
+      documentType,
+      planOutcome,
+      actions,
+      missingRequirements,
+    },
+    input.plausibilityChecks ?? [],
+  );
 }
 
 export function buildTechnicalPlannerSummary(assessment: TechnicalPlanAssessment): string {

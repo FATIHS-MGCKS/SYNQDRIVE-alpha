@@ -16,6 +16,7 @@ import {
   type DamageDocumentType,
   type ExistingDamageCandidate,
 } from './document-damage-extraction.rules';
+import { gateActionPlanOnPlausibility } from './document-plausibility-gate.util';
 
 export {
   DAMAGE_DOCUMENT_MODES,
@@ -49,6 +50,7 @@ export type DamagePlannerInput = {
   confirmedData: Record<string, unknown>;
   existingDamages?: ExistingDamageCandidate[];
   duplicateDamageId?: string | null;
+  plausibilityChecks?: import('./document-plausibility.types').PlausibilityCheck[];
 };
 
 export type DamagePlannedAction = {
@@ -154,14 +156,17 @@ export function assessDamagePlan(input: DamagePlannerInput): DamagePlanAssessmen
     planOutcome = DAMAGE_PLAN_OUTCOMES.BLOCKED;
   }
 
-  return {
-    documentType,
-    documentMode,
-    planOutcome,
-    actions,
-    linkCandidateId: linkCandidate?.id ?? null,
-    missingRequirements,
-  };
+  return gateActionPlanOnPlausibility(
+    {
+      documentType,
+      documentMode,
+      planOutcome,
+      actions,
+      linkCandidateId: linkCandidate?.id ?? null,
+      missingRequirements,
+    },
+    input.plausibilityChecks ?? [],
+  );
 }
 
 export function buildDamagePlannerSummary(assessment: DamagePlanAssessment): string {
