@@ -528,10 +528,13 @@ type StationRuleEvaluation = {
 | Aspekt | Regel |
 |--------|-------|
 | Produkt-UI | **Kein** Delete-Button |
-| API `DELETE` | Deprecaten → intern `ArchiveStation` |
-| `prisma.station.delete` | Nur Platform-Admin-Prune, nicht Tenant-API |
+| API `DELETE /stations/:id` | **Deprecated** — HTTP **410 Gone**, Code `STATION_DELETE_DEPRECATED`, Ersatz: `POST /stations/:id/archive` |
+| Tenant-Mutation | **Kein** `prisma.station.delete` in Produktpfaden |
+| `prisma.station.delete` / `deleteMany` | Nur interne Platform-Admin-Prune- und Test-/Cleanup-Skripte |
 
-**Ist:** `delete()` hard-deleted unlinkte Stationen — Widerspruch §17.
+**Entscheidung (Prompt 22/78):** Archive ist der fachliche Standard. Historische Relationen (Buchungen, Fahrzeug-Links, scoped Staff) bleiben erhalten. Legacy-Clients, die noch `DELETE` aufrufen, erhalten einen strukturierten Deprecation-Fehler — keine stillschweigende Archivierung mehr.
+
+**Ist (vor V4.9.602):** `delete()` konnte unlinkte Stationen physisch löschen; später Zwischenstand „DELETE archiviert still“.
 
 ---
 
@@ -667,7 +670,7 @@ Das **Operational Read Model** ist die **einzige kanonische Lesefassade** für U
 | `POST .../confirm-presence` | 6 | `ConfirmPhysicalPresence` (Ziel) |
 | `POST .../expected` | 7 | `SetExpectedPosition` (Ziel) |
 | `PUT .../home-fleet` | 5 | `BulkSetHomeFleet` mit Server-Validation |
-| `DELETE /stations/:id` | — | **Deprecate** → Archive |
+| `DELETE /stations/:id` | — | **410 Gone** — deprecated; use `POST .../archive` |
 
 ### 16.2 UI-Vertrag (R11)
 
