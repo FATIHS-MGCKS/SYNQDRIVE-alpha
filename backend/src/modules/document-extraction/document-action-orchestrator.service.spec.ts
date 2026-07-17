@@ -4,6 +4,7 @@ import { buildDocumentActionPlan } from './document-action-plan.builder';
 import { DocumentActionOrchestratorService } from './document-action-orchestrator.service';
 import { ArchiveDocumentActionExecutor } from './executors/archive-document-action.executor';
 import { LinkEntityDocumentActionExecutor } from './executors/link-entity-document-action.executor';
+import { CreateFineDocumentActionExecutor } from './executors/create-fine-document-action.executor';
 import {
   DOCUMENT_ACTION_EXECUTION_STATUSES,
   DOCUMENT_ACTION_PLAN_STATUSES,
@@ -27,6 +28,7 @@ describe('DocumentActionOrchestratorService', () => {
     registry,
     new ArchiveDocumentActionExecutor(),
     new LinkEntityDocumentActionExecutor(),
+    new CreateFineDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
   );
 
   const baseInput = {

@@ -2716,6 +2716,7 @@ model VehicleDocumentExtraction {
   batteryEvidence                   BatteryEvidence[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  fines                             Fine[]
 
   @@index([vehicleId])
   @@index([status])
@@ -4903,16 +4904,20 @@ model Fine {
   imageUrl         String?    @map("image_url")
   extractedData    Json?      @map("extracted_data")
   notes            String?
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+  documentExtractionId String?                  @map("document_extraction_id")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
 
-  tasks OrgTask[]
+  documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  tasks              OrgTask[]
 
+  @@unique([organizationId, documentExtractionId])
   @@index([organizationId])
   @@index([vehicleId])
   @@index([customerId])
   @@index([status])
   @@index([offenseDate])
+  @@index([documentExtractionId])
   @@map("fines")
 }
 

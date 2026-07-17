@@ -7,6 +7,7 @@ import {
   isFinanceDocumentProfile,
 } from './document-action-planner.invoice-rules';
 import { assessTechnicalPlan, isTechnicalDocumentProfile } from './document-action-planner.technical-rules';
+import { assessFinePlan, isFineDocumentProfile } from './document-action-planner.fine-rules';
 import {
   DOCUMENT_ACTION_PLAN_VERSION,
   computeActionPlanFingerprint,
@@ -85,6 +86,18 @@ function assessPlanForDocumentType(input: BuildDocumentActionPlanInput): Planner
       metadata: {
         missingRequirements: assessment.missingRequirements,
         amountTaxAssessment: assessment.amountTaxAssessment,
+      },
+    };
+  }
+
+  if (isFineDocumentProfile(plannerInput)) {
+    const assessment = assessFinePlan(plannerInput);
+    return {
+      planOutcome: assessment.planOutcome,
+      actions: assessment.actions,
+      metadata: {
+        duplicateReferenceFineId: assessment.duplicateReferenceFineId,
+        missingRequirements: assessment.missingRequirements,
       },
     };
   }
