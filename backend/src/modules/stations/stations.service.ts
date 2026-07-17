@@ -41,6 +41,18 @@ import {
   STATION_ARCHIVE_PREVIEW_LIST_LIMIT,
   type StationArchivePreviewResult,
 } from './station-archive-preview.types';
+import {
+  buildArchivedCapabilitiesSnapshot,
+  buildStationArchiveCommandAudit,
+  evaluateStationArchiveCommand,
+} from './station-archive-command.util';
+import {
+  StationArchiveCommandName,
+  StationArchiveCommandOutcome,
+  type StationArchiveCommandOptions,
+  type StationArchiveCommandResult,
+} from './station-archive-command.types';
+import { ArchiveStationDto } from './dto/archive-station.dto';
 import { parseStationIds } from '@shared/stations/station-scope.util';
 import { isStationReadableInAccessScope } from '@shared/stations/station-access-scope.util';
 
@@ -377,23 +389,278 @@ export class StationsService {
     return this.toDto(station, station._count.vehiclesHome);
   }
 
-  async archive(organizationId: string, id: string): Promise<StationDto> {
-    const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
-    if (!station) throw new NotFoundException(`Station ${id} not found`);
-    if (station.status === 'ARCHIVED') return this.findOne(organizationId, id);
+  async archive(
+    organizationId: string,
+    id: string,
+    options: StationArchiveCommandOptions | ArchiveStationDto = {},
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationArchiveCommandResult<StationDto>> {
+    return this.archiveStation(organizationId, id, options, scope, performedByUserId);
+  }
 
-    const updated = await this.prisma.station.update({
-      where: { id },
-      data: {
-        status: 'ARCHIVED',
-        archivedAt: new Date(),
-        isPrimary: false,
-        pickupEnabled: false,
-        returnEnabled: false,
-      },
+  async archiveStation(
+    organizationId: string,
+    id: string,
+    options: StationArchiveCommandOptions | ArchiveStationDto = {},
+    scope?: StationScopeContext,
+    performedByUserId?: string | null,
+  ): Promise<StationArchiveCommandResult<StationDto>> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
+    const station = (await this.stationAccessScope.requireReadableStation(access, id, {
       include: this.stationIncludeCount(),
+    })) as Prisma.StationGetPayload<{ include: ReturnType<StationsService['stationIncludeCount']> }>;
+    const vehicleHomeCount = station._count.vehiclesHome;
+
+    const preflight = await this.loadStationArchivePreflight(access, station.id);
+    const preview = evaluateStationArchivePreview({
+      snapshot: {
+        stationId: station.id,
+        organizationId: station.organizationId,
+        status: station.status,
+        isPrimary: station.isPrimary,
+        archivedAt: station.archivedAt,
+        pickupEnabled: station.pickupEnabled,
+        returnEnabled: station.returnEnabled,
+        afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+        keyBoxAvailable: station.keyBoxAvailable,
+        successorCandidates: preflight.successorCandidates,
+      },
+      counts: preflight.counts,
     });
-    return this.toDto(updated, updated._count.vehiclesHome);
+
+    const successorId = options.successorPrimaryStationId?.trim() || null;
+    let successorPrimaryStationStatus: StationStatus | null = null;
+    if (successorId) {
+      const successor = await this.prisma.station.findFirst({
+        where: { id: successorId, organizationId },
+        select: { status: true },
+      });
+      successorPrimaryStationStatus = successor?.status ?? null;
+    }
+
+    const evaluation = evaluateStationArchiveCommand({
+      preview,
+      options,
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
+      },
+      successorPrimaryStationStatus,
+    });
+
+    const auditBase = {
+      stationId: station.id,
+      organizationId: station.organizationId,
+      previousStatus: station.status,
+      nextStatus: 'ARCHIVED' as const,
+      performedByUserId: performedByUserId ?? null,
+      idempotent: evaluation.idempotent,
+      successorPrimaryStationId: successorId,
+      acknowledgedFutureBookings: options.acknowledgeFutureBookings === true,
+      futurePickupCount: preflight.counts.futurePickupBookings,
+      futureReturnCount: preflight.counts.futureReturnBookings,
+    };
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: StationArchiveCommandOutcome.IDEMPOTENT,
+        command: StationArchiveCommandName.ARCHIVE,
+        allowed: true,
+        station: this.toDto(station, vehicleHomeCount),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationArchiveCommandAudit(auditBase),
+      };
+    }
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          'Archive is not allowed for this station',
+        code: 'ARCHIVE_BLOCKED',
+        outcome: StationArchiveCommandOutcome.BLOCKED,
+        command: StationArchiveCommandName.ARCHIVE,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        requiredActions: evaluation.requiredActions,
+        audit: buildStationArchiveCommandAudit(auditBase),
+      });
+    }
+
+    const archivedAt = new Date();
+    const archivedCapabilitiesSnapshot = buildArchivedCapabilitiesSnapshot({
+      pickupEnabled: station.pickupEnabled,
+      returnEnabled: station.returnEnabled,
+      afterHoursReturnEnabled: station.afterHoursReturnEnabled,
+      keyBoxAvailable: station.keyBoxAvailable,
+      isPrimary: station.isPrimary,
+      archivedAt,
+      archivedByUserId: performedByUserId ?? null,
+      reason: options.reason ?? null,
+    });
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (station.isPrimary && successorId) {
+        await tx.station.updateMany({
+          where: { organizationId, isPrimary: true },
+          data: { isPrimary: false },
+        });
+        await tx.station.update({
+          where: { id: successorId },
+          data: { isPrimary: true, status: 'ACTIVE' },
+        });
+      }
+
+      return tx.station.update({
+        where: { id },
+        data: {
+          status: 'ARCHIVED',
+          archivedAt,
+          isPrimary: false,
+          pickupEnabled: false,
+          returnEnabled: false,
+          archivedCapabilitiesSnapshot,
+          lifecycleMetadata: {
+            lastArchiveReason: options.reason?.trim() || 'USER_REQUEST',
+            lastArchivedAt: archivedAt.toISOString(),
+            lastArchivedByUserId: performedByUserId ?? null,
+          },
+        },
+        include: this.stationIncludeCount(),
+      });
+    });
+
+    const audit = buildStationArchiveCommandAudit({
+      ...auditBase,
+      archivedCapabilitiesSnapshot,
+    });
+
+    return {
+      outcome: StationArchiveCommandOutcome.APPLIED,
+      command: StationArchiveCommandName.ARCHIVE,
+      allowed: true,
+      station: this.toDto(updated, updated._count.vehiclesHome),
+      blockingReasons: [],
+      warnings: evaluation.warnings,
+      requiredActions: evaluation.requiredActions,
+      audit,
+    };
+  }
+
+  private async loadStationArchivePreflight(
+    access: StationAccessScope,
+    stationId: string,
+  ) {
+    const station = await this.stationAccessScope.requireReadableStation(access, stationId, {
+      select: {
+        id: true,
+        organizationId: true,
+        isPrimary: true,
+      },
+    });
+
+    const now = new Date();
+    const futurePickupWhere = this.stationAccessScope.buildStationPickupBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        startDate: { gt: now },
+      },
+    );
+    const futureReturnWhere = this.stationAccessScope.buildStationReturnBookingsWhere(
+      access,
+      stationId,
+      {
+        status: { in: FUTURE_BOOKING_STATUSES },
+        endDate: { gt: now },
+      },
+    );
+    const homeWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'homeStationId');
+    const presentWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'currentStationId');
+    const expectedWhere = this.buildArchivePreviewVehicleWhere(access, stationId, 'expectedStationId');
+    const plannedTransferWhere: Prisma.VehicleWhereInput = {
+      ...expectedWhere,
+      OR: [{ currentStationId: null }, { currentStationId: { not: stationId } }],
+    };
+    const stationBookingWhere = this.stationAccessScope.buildStationBookingsWhere(access, stationId);
+    const stationVehicleWhere = this.stationAccessScope.buildStationLinkedVehicleWhere(
+      access,
+      stationId,
+    );
+    const openPickupHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId: access.orgId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ pickupStationId: stationId }, { actualPickupStationId: stationId }],
+      handoverProtocols: { none: { kind: 'PICKUP' } },
+    };
+    const openReturnHandoverWhere: Prisma.BookingWhereInput = {
+      organizationId: access.orgId,
+      status: { in: OPEN_HANDOVER_STATUSES },
+      OR: [{ returnStationId: stationId }, { actualReturnStationId: stationId }],
+      handoverProtocols: { none: { kind: 'RETURN' } },
+    };
+
+    const successorCandidates = station.isPrimary
+      ? await this.prisma.station.findMany({
+          where: {
+            organizationId: station.organizationId,
+            status: 'ACTIVE',
+            id: { not: stationId },
+          },
+          select: { id: true, name: true, code: true },
+          orderBy: [{ isPrimary: 'desc' }, { name: 'asc' }],
+          take: STATION_ARCHIVE_PREVIEW_LIST_LIMIT,
+        })
+      : [];
+
+    const [
+      homeVehicles,
+      presentVehicles,
+      expectedVehicles,
+      plannedTransfers,
+      futurePickupBookings,
+      futureReturnBookings,
+      openPickupHandovers,
+      openReturnHandovers,
+      activeBookings,
+      openTasks,
+      scopedStaff,
+    ] = await Promise.all([
+      this.prisma.vehicle.count({ where: homeWhere }),
+      this.prisma.vehicle.count({ where: presentWhere }),
+      this.prisma.vehicle.count({ where: expectedWhere }),
+      this.prisma.vehicle.count({ where: plannedTransferWhere }),
+      this.prisma.booking.count({ where: futurePickupWhere }),
+      this.prisma.booking.count({ where: futureReturnWhere }),
+      this.prisma.booking.count({ where: openPickupHandoverWhere }),
+      this.prisma.booking.count({ where: openReturnHandoverWhere }),
+      this.prisma.booking.count({
+        where: { ...stationBookingWhere, status: 'ACTIVE' },
+      }),
+      this.countStationOpenTasks(access, stationId, stationVehicleWhere, stationBookingWhere),
+      this.loadStationScopedStaff(station.organizationId, stationId, STATION_ARCHIVE_PREVIEW_LIST_LIMIT),
+    ]);
+
+    return {
+      successorCandidates,
+      counts: {
+        homeVehicles,
+        presentVehicles,
+        expectedVehicles,
+        futurePickupBookings,
+        futureReturnBookings,
+        openHandovers: openPickupHandovers + openReturnHandovers,
+        scopedStaff: scopedStaff.totalCount,
+        openTasks,
+        plannedTransfers,
+        activeBookings,
+      },
+    };
   }
 
   async activateStation(
@@ -568,26 +835,15 @@ export class StationsService {
     return this.toDto(updated, updated._count.vehiclesHome);
   }
 
-  /** @deprecated Prefer archive() — kept for backward compatibility */
+  /** @deprecated Prefer archiveStation() — kept for backward compatibility */
   async delete(organizationId: string, id: string): Promise<{ id: string; unassignedVehicles: number; archived: boolean }> {
     const station = await this.prisma.station.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { vehiclesHome: true, pickupBookings: true, returnBookings: true } } },
     });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
 
-    const hasLinks =
-      station._count.vehiclesHome > 0 ||
-      station._count.pickupBookings > 0 ||
-      station._count.returnBookings > 0;
-
-    if (hasLinks) {
-      await this.archive(organizationId, id);
-      return { id, unassignedVehicles: 0, archived: true };
-    }
-
-    await this.prisma.station.delete({ where: { id } });
-    return { id, unassignedVehicles: 0, archived: false };
+    await this.archiveStation(organizationId, id, { acknowledgeFutureBookings: true });
+    return { id, unassignedVehicles: 0, archived: true };
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -1065,7 +1321,7 @@ export class StationsService {
     const scopedStaff = await this.loadStationScopedStaff(organizationId, stationId, limit);
     const openHandoverCount = openPickupHandoverCount + openReturnHandoverCount;
 
-    const evaluation = evaluateStationArchivePreview({
+    const previewEvaluation = evaluateStationArchivePreview({
       snapshot: {
         stationId: station.id,
         organizationId: station.organizationId,
@@ -1089,6 +1345,16 @@ export class StationsService {
         openTasks: openTasksCount,
         plannedTransfers: plannedTransfersCount,
         activeBookings: activeBookingCount,
+      },
+    });
+
+    const commandEvaluation = evaluateStationArchiveCommand({
+      preview: previewEvaluation,
+      options: {},
+      station: {
+        id: station.id,
+        status: station.status,
+        isPrimary: station.isPrimary,
       },
     });
 
@@ -1153,7 +1419,12 @@ export class StationsService {
       },
       partial,
       preview: previewSections,
-      ...evaluation,
+      archiveAllowed: commandEvaluation.allowed,
+      idempotent: commandEvaluation.idempotent,
+      blockingReasons: commandEvaluation.blockingReasons,
+      warnings: commandEvaluation.warnings,
+      requiredFollowUpActions: commandEvaluation.requiredActions,
+      affectedCounts: previewEvaluation.affectedCounts,
     };
   }
 

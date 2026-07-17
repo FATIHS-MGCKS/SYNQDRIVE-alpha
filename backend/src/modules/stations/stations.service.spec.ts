@@ -98,7 +98,8 @@ describe('StationsService', () => {
       updateMany: jest.fn(),
     },
     booking: { count: jest.fn(), findMany: jest.fn() },
-    orgTask: { count: jest.fn() },
+    orgTask: { count: jest.fn(), findMany: jest.fn() },
+    organizationMembership: { findMany: jest.fn().mockResolvedValue([]) },
     activityLog: { findMany: jest.fn() },
     $transaction: jest.fn((fn: (tx: unknown) => unknown) =>
       fn({
@@ -342,88 +343,34 @@ describe('StationsService', () => {
     expect(rows).toEqual([]);
   });
 
-  it('archives instead of hard-deleting linked stations', async () => {
-    (prisma.station.findFirst as jest.Mock)
-      .mockResolvedValueOnce({
-        id: 's1',
-        organizationId: 'org1',
-        _count: { vehiclesHome: 1, pickupBookings: 0, returnBookings: 0 },
-      })
-      .mockResolvedValueOnce({
-        id: 's1',
-        organizationId: 'org1',
-        name: 'Alt',
-        status: 'ACTIVE',
-        type: 'BRANCH',
-        isPrimary: false,
-        address: null,
-        addressLine2: null,
-        city: null,
-        postalCode: null,
-        country: null,
-        latitude: null,
-        longitude: null,
-        timezone: 'Europe/Berlin',
-        radiusMeters: 100,
-        phone: null,
-        email: null,
-        managerName: null,
-        pickupEnabled: true,
-        returnEnabled: true,
-        afterHoursReturnEnabled: false,
-        keyBoxAvailable: false,
-        capacity: null,
-        openingHours: null,
-        holidayRules: null,
-        handoverInstructions: null,
-        returnInstructions: null,
-        notes: null,
-        internalNotes: null,
-        googlePlaceId: null,
-        archivedAt: null,
-        code: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    (prisma.station.update as jest.Mock).mockResolvedValue({
-      id: 's1',
-      organizationId: 'org1',
-      name: 'Alt',
-      status: 'ARCHIVED',
-      type: 'BRANCH',
+  it('archives instead of hard-deleting stations', async () => {
+    (prisma.station.findFirst as jest.Mock).mockResolvedValue({
+      ...stationRow,
       isPrimary: false,
-      address: null,
-      addressLine2: null,
-      city: null,
-      postalCode: null,
-      country: null,
-      latitude: null,
-      longitude: null,
-      timezone: 'Europe/Berlin',
-      radiusMeters: 100,
-      phone: null,
-      email: null,
-      managerName: null,
-      pickupEnabled: false,
-      returnEnabled: false,
-      afterHoursReturnEnabled: false,
-      keyBoxAvailable: false,
-      capacity: null,
-      openingHours: null,
-      holidayRules: null,
-      handoverInstructions: null,
-      returnInstructions: null,
-      notes: null,
-      internalNotes: null,
-      googlePlaceId: null,
-      archivedAt: new Date(),
-      code: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      _count: { vehiclesHome: 1 },
     });
+    (prisma.station.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.vehicle.count as jest.Mock).mockResolvedValue(0);
+    (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.booking.count as jest.Mock).mockResolvedValue(0);
+    (prisma.booking.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.orgTask.count as jest.Mock).mockResolvedValue(0);
+    (prisma.orgTask.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: unknown) => unknown) =>
+      fn({
+        station: {
+          updateMany: jest.fn(),
+          update: jest.fn().mockResolvedValue({
+            ...stationRow,
+            status: 'ARCHIVED',
+            pickupEnabled: false,
+            returnEnabled: false,
+            archivedAt: new Date(),
+          }),
+        },
+      }),
+    );
 
-    const result = await service.delete('org1', 's1');
+    const result = await service.delete('org1', STATION_A);
     expect(result.archived).toBe(true);
     expect(prisma.station.delete).not.toHaveBeenCalled();
   });

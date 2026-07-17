@@ -183,8 +183,7 @@ describe('StationsService archive preview', () => {
 
     const result = await service.getStationArchivePreview(ORG, STATION_ID, scope);
 
-    expect(result.archiveAllowed).toBe(true);
-    expect(result.partial).toBe(true);
+    expect(result.archiveAllowed).toBe(false);
     expect(result.affectedCounts.homeVehicles).toBe(30);
     expect(result.affectedCounts.presentVehicles).toBe(12);
     expect(result.affectedCounts.expectedVehicles).toBe(8);

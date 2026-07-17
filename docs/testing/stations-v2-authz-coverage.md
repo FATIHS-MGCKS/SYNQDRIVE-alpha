@@ -58,6 +58,7 @@ npm run build
 | `GET /stations/:id/operations` | `stations.read` | `station` | ✅ |
 | `GET /stations/:id/team` | `stations.read` | `station` | ✅ |
 | `GET /stations/:id/activity` | `stations.view_activity` | `station` | ✅ Read-only allow |
+| `GET /stations/:id/archive-preview` | `stations.archive` | `station` | ✅ Read-only preflight |
 
 ### B. Mutation-Endpunkte
 

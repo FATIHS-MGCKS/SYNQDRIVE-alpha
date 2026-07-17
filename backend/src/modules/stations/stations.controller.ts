@@ -35,6 +35,8 @@ import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary
 import { StationsUpdatePermissionGuard } from './guards/stations-update-permission.guard';
 import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicle-location-permission.guard';
 import { RequireStationsPermission } from './decorators/require-stations-permission.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { ArchiveStationDto } from './dto/archive-station.dto';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -236,8 +238,20 @@ export class StationsController {
   @Post(':id/archive')
   @RequireStationsPermission('stations.archive')
   @RequireStationScope({ resource: 'station' })
-  async archive(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.archive(orgId, id);
+  async archive(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: ArchiveStationDto,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationsService.archiveStation(
+      orgId,
+      id,
+      body,
+      req[STATION_SCOPE_CONTEXT_KEY],
+      userId,
+    );
   }
 
   @Post(':id/restore')
