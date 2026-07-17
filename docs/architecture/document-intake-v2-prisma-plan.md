@@ -162,6 +162,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 16, 2026-07-17):** Migration `20260717200000_document_action_plans` — `DocumentActionPlan` + `DocumentActionPlanStatus`; partial unique current index auf `(extraction_id, input_fingerprint) WHERE invalidated_at IS NULL`; Repository `DocumentActionPlanRepository.resolveOrCreatePlan` (Dedup, Invalidierung, Supersede-Kette). Keine `DocumentAction`-Ausführung.
 
+**Implementierungsstand (Prompt 17, 2026-07-17):** Migration `20260717210000_document_actions` — `DocumentAction` mit `DocumentActionType/Status/Requirement`; unique `(organization_id, idempotency_key)`; Payload-Sanitizer; `DocumentActionRepository.createPlannedActions` (Dedup, Pflicht/Optional-Queries). Keine Ausführung.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.

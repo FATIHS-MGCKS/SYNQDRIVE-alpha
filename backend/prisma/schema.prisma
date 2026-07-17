@@ -1550,6 +1550,7 @@ model Organization {
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
   documentActionPlans                    DocumentActionPlan[]
+  documentActions                        DocumentAction[]
 
   @@index([status])
   @@map("organizations")
@@ -2861,6 +2862,7 @@ model VehicleDocumentExtraction {
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   documentActionPlans               DocumentActionPlan[]
+  documentActions                   DocumentAction[]
 
   @@index([vehicleId])
   @@index([status])
@@ -2897,6 +2899,7 @@ model DocumentActionPlan {
   confirmedByUser   User?                     @relation("DocumentActionPlanConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
   supersedesPlan    DocumentActionPlan?       @relation("DocumentActionPlanSupersedes", fields: [supersedesPlanId], references: [id], onDelete: SetNull)
   supersededByPlans DocumentActionPlan[]      @relation("DocumentActionPlanSupersedes")
+  actions           DocumentAction[]
 
   @@index([organizationId, createdAt])
   @@index([organizationId, extractionId])
@@ -2906,6 +2909,45 @@ model DocumentActionPlan {
   @@index([inputFingerprint])
   @@index([supersedesPlanId])
   @@map("document_action_plans")
+}
+
+/// Planned downstream action row within an action plan (Document Intake V2 P17).
+model DocumentAction {
+  id               String                    @id @default(uuid())
+  organizationId   String                    @map("organization_id")
+  extractionId     String                    @map("extraction_id")
+  actionPlanId     String                    @map("action_plan_id")
+  sequence         Int
+  actionType       DocumentActionType        @map("action_type")
+  status           DocumentActionStatus      @default(WOULD_APPLY)
+  requirement      DocumentActionRequirement @default(REQUIRED)
+  targetEntityType DocumentEntityType?       @map("target_entity_type")
+  targetEntityId   String?                   @map("target_entity_id")
+  idempotencyKey   String                    @map("idempotency_key")
+  inputPayload     Json                      @map("input_payload")
+  previewPayload   Json?                     @map("preview_payload")
+  resultEntityType DocumentEntityType?       @map("result_entity_type")
+  resultEntityId   String?                   @map("result_entity_id")
+  attempts         Int                       @default(0)
+  startedAt        DateTime?                 @map("started_at")
+  completedAt      DateTime?                 @map("completed_at")
+  errorCode        String?                   @map("error_code")
+  errorMessage     String?                   @map("error_message")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  extraction   VehicleDocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  actionPlan   DocumentActionPlan        @relation(fields: [actionPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@unique([actionPlanId, sequence])
+  @@index([organizationId, actionPlanId])
+  @@index([organizationId, extractionId])
+  @@index([actionPlanId, status])
+  @@index([extractionId, actionType])
+  @@index([targetEntityType, targetEntityId])
+  @@map("document_actions")
 }
 
 // ------------------------------------------------

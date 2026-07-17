@@ -22,6 +22,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
 import { DocumentActionPlanRepository } from './document-action-plan.repository';
+import { DocumentActionRepository } from './document-action.repository';
 
 /**
  * AI Document Upload feature module.
@@ -57,6 +58,7 @@ import { DocumentActionPlanRepository } from './document-action-plan.repository'
     DocumentExtractionRecoveryScheduler,
     DocumentExtractionObservabilityService,
     DocumentActionPlanRepository,
+    DocumentActionRepository,
     LocalDocumentStorageService,
     { provide: DOCUMENT_STORAGE, useClass: LocalDocumentStorageService },
   ],
@@ -65,6 +67,7 @@ import { DocumentActionPlanRepository } from './document-action-plan.repository'
     DocumentExtractionApplyService,
     DocumentExtractionHealthService,
     DocumentActionPlanRepository,
+    DocumentActionRepository,
   ],
 })
 export class DocumentExtractionModule {}
