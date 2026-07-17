@@ -26,6 +26,10 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- Indexes on `source` block enum replacement (partial WHERE + btree column).
+DROP INDEX IF EXISTS brake_evidence_vehicle_dtc_active_idx;
+DROP INDEX IF EXISTS brake_evidence_vehicle_id_source_measured_at_idx;
+
 ALTER TABLE brake_evidence
   ALTER COLUMN source TYPE "BrakeEvidenceSource_new"
   USING (
@@ -39,6 +43,13 @@ ALTER TABLE brake_evidence
 
 DROP TYPE IF EXISTS "BrakeEvidenceSource";
 ALTER TYPE "BrakeEvidenceSource_new" RENAME TO "BrakeEvidenceSource";
+
+CREATE INDEX IF NOT EXISTS brake_evidence_vehicle_id_source_measured_at_idx
+  ON brake_evidence (vehicle_id, source, measured_at);
+
+CREATE INDEX IF NOT EXISTS brake_evidence_vehicle_dtc_active_idx
+  ON brake_evidence (vehicle_id, dtc_code, dtc_active)
+  WHERE source = 'DTC_SIGNAL'::"BrakeEvidenceSource";
 
 ALTER TABLE brake_evidence
   ADD COLUMN IF NOT EXISTS organization_id TEXT,
