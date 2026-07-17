@@ -57,6 +57,7 @@ export class DocumentExtractionRecoveryScheduler {
         status: 'QUEUED',
         queuedAt: { lt: olderThan },
         objectKey: { not: null },
+        vehicleId: { not: null },
       },
       take: 25,
     });
@@ -65,7 +66,7 @@ export class DocumentExtractionRecoveryScheduler {
       if (readQueueRecoveryCount(row.plausibility) >= this.config.maxRecoveryAttempts) continue;
       if (await this.extractionService.hasActiveExtractionJob(row.id)) continue;
       const applyType = resolveEffectiveDocumentType(row);
-      if (!applyType || !row.objectKey) continue;
+      if (!applyType || !row.objectKey || !row.vehicleId) continue;
 
       const enqueue = await this.extractionService.enqueueExtraction(row.id, {
         extractionId: row.id,
@@ -96,6 +97,7 @@ export class DocumentExtractionRecoveryScheduler {
         status: 'PROCESSING',
         processingStartedAt: { lt: olderThan },
         objectKey: { not: null },
+        vehicleId: { not: null },
       },
       take: 25,
     });
@@ -104,7 +106,7 @@ export class DocumentExtractionRecoveryScheduler {
       if (readQueueRecoveryCount(row.plausibility) >= this.config.maxRecoveryAttempts) continue;
       if (await this.extractionService.hasActiveExtractionJob(row.id)) continue;
       const applyType = resolveEffectiveDocumentType(row);
-      if (!applyType || !row.objectKey) continue;
+      if (!applyType || !row.objectKey || !row.vehicleId) continue;
 
       await this.prisma.vehicleDocumentExtraction.update({
         where: { id: row.id },

@@ -1553,6 +1553,7 @@ model Organization {
   documentActions                        DocumentAction[]
   documentEntityCandidates               DocumentEntityCandidate[]
   documentEntityLinks                    DocumentEntityLink[]
+  vehicleDocumentExtractions             VehicleDocumentExtraction[]
 
   @@index([status])
   @@map("organizations")
@@ -2808,7 +2809,7 @@ model VehicleServiceEvent {
 
 model VehicleDocumentExtraction {
   id                        String                               @id @default(uuid())
-  vehicleId                 String                               @map("vehicle_id")
+  vehicleId                 String?                              @map("vehicle_id")
   organizationId            String?                              @map("organization_id")
   // Legacy field — mirrors effectiveDocumentType for backward compatibility.
   documentType              DocumentExtractionType?              @map("document_type")
@@ -2817,6 +2818,22 @@ model VehicleDocumentExtraction {
   classificationMode        DocumentExtractionClassificationMode @default(MANUAL) @map("classification_mode")
   detectedDocumentType      DocumentExtractionType?              @map("detected_document_type")
   classificationConfidence  Decimal?                             @map("classification_confidence") @db.Decimal(5, 4)
+  /// V2 classification pipeline version (e.g. document-classification-v2).
+  classificationVersion     String?                              @map("classification_version")
+  /// V2 document category (orthogonal to legacy DocumentExtractionType).
+  documentCategory          DocumentCategory?                    @map("document_category")
+  documentSubtype           String?                              @map("document_subtype")
+  /// Content fingerprint hash for dedup (SHA-256); not a storage key migration.
+  contentHash               String?                              @map("content_hash")
+  duplicateStatus           DocumentDuplicateStatus?             @map("duplicate_status")
+  currentActionPlanId       String?                              @map("current_action_plan_id")
+  processingMaturity        DocumentProcessingMaturity?          @map("processing_maturity")
+  applyStartedAt            DateTime?                            @map("apply_started_at")
+  applyCompletedAt          DateTime?                            @map("apply_completed_at")
+  applyFailureCode          String?                              @map("apply_failure_code")
+  /// Legacy single-pointer apply outcome mirror until DocumentAction rows own apply audit.
+  legacyApplyResult         Json?                                @map("legacy_apply_result")
+  archivedAt                DateTime?                            @map("archived_at")
   status                    DocumentExtractionStatus             @default(PENDING) @map("status")
   processingStage           DocumentExtractionStage              @default(UPLOAD) @map("processing_stage")
   errorPhase                DocumentExtractionErrorPhase?        @map("error_phase")
@@ -2860,7 +2877,9 @@ model VehicleDocumentExtraction {
   createdAt                 DateTime                             @default(now()) @map("created_at")
   updatedAt                 DateTime                             @updatedAt @map("updated_at")
 
-  vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization                      Organization?                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle                           Vehicle?                          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  currentActionPlan                 DocumentActionPlan?               @relation("ExtractionCurrentActionPlan", fields: [currentActionPlanId], references: [id], onDelete: SetNull)
   batteryEvidence                   BatteryEvidence[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
@@ -2872,8 +2891,14 @@ model VehicleDocumentExtraction {
   @@index([vehicleId])
   @@index([status])
   @@index([organizationId, createdAt])
+  @@index([organizationId, vehicleId])
+  @@index([organizationId, documentCategory])
   @@index([vehicleId, createdAt])
   @@index([status, updatedAt])
+  @@index([contentHash])
+  @@index([duplicateStatus])
+  @@index([currentActionPlanId])
+  @@index([archivedAt])
   @@map("vehicle_document_extractions")
 }
 
@@ -2899,12 +2924,13 @@ model DocumentActionPlan {
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
 
-  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  extraction        VehicleDocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
-  confirmedByUser   User?                     @relation("DocumentActionPlanConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
-  supersedesPlan    DocumentActionPlan?       @relation("DocumentActionPlanSupersedes", fields: [supersedesPlanId], references: [id], onDelete: SetNull)
-  supersededByPlans DocumentActionPlan[]      @relation("DocumentActionPlanSupersedes")
-  actions           DocumentAction[]
+  organization          Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  extraction            VehicleDocumentExtraction   @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  confirmedByUser       User?                       @relation("DocumentActionPlanConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  supersedesPlan        DocumentActionPlan?         @relation("DocumentActionPlanSupersedes", fields: [supersedesPlanId], references: [id], onDelete: SetNull)
+  supersededByPlans     DocumentActionPlan[]        @relation("DocumentActionPlanSupersedes")
+  actions               DocumentAction[]
+  currentForExtractions VehicleDocumentExtraction[] @relation("ExtractionCurrentActionPlan")
 
   @@index([organizationId, createdAt])
   @@index([organizationId, extractionId])
