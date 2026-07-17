@@ -9,6 +9,8 @@ import type { PlausibilityStatus } from './documents/document-extraction.shared'
 import type { PublicDocumentExtractionSummary } from '../lib/document-extraction.types';
 import { DocumentExtractionReviewPanel } from './documents/DocumentExtractionReviewPanel';
 import { DocumentApplyResultPanel } from './documents/DocumentApplyResultPanel';
+import { DocumentFollowUpSuggestionsPanel } from './documents/DocumentFollowUpSuggestionsPanel';
+import { useDocumentFollowUpSuggestions } from '../hooks/useDocumentFollowUpSuggestions';
 import { DocumentExtractionFlowStatus } from './documents/DocumentExtractionFlowStatus';
 import { DocumentIntakeUploadZone } from './documents/DocumentIntakeUploadZone';
 import { DocumentClassificationResultPanel } from './documents/DocumentClassificationResultPanel';
@@ -38,6 +40,19 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
   const { orgId } = useRentalOrg();
 
   const page = useDocumentUploadPage({ orgId, locale, t });
+
+  const followUpEnabled =
+    !!page.extractionId &&
+    page.flow !== 'idle' &&
+    page.flow !== 'uploading' &&
+    page.flow !== 'processing' &&
+    page.flow !== 'analyzing';
+  const followUp = useDocumentFollowUpSuggestions({
+    orgId,
+    vehicleId: page.assignedVehicleId || null,
+    extractionId: page.extractionId,
+    enabled: followUpEnabled,
+  });
 
   const glass = isDarkMode
     ? 'bg-neutral-900 border border-neutral-800 shadow-sm'
@@ -390,6 +405,16 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
                   onEntityNavigate={onEntityNavigate}
                 />
 
+                <DocumentFollowUpSuggestionsPanel
+                  orgId={orgId}
+                  vehicleId={page.assignedVehicleId || null}
+                  extractionId={page.extractionId}
+                  suggestions={followUp.suggestions}
+                  loading={followUp.loading}
+                  t={t}
+                  onRefresh={() => void followUp.reload()}
+                />
+
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 min-w-0">
                   <button
                     type="button"
@@ -424,12 +449,21 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
               <p className={`text-xs mb-3 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
                 {t('docUpload.appliedTo', { type: page.typeLabel(`documentExtraction.type.${page.confirmedDocType}`, page.confirmedDocType) })}
               </p>
-              <div className="mx-auto mb-4 max-w-lg text-left">
+              <div className="mx-auto mb-4 max-w-lg text-left space-y-3">
                 <DocumentApplyResultPanel
                   flow={page.flow}
                   applyResult={page.record?.applyResult ?? null}
                   t={t}
                   onEntityNavigate={onEntityNavigate}
+                />
+                <DocumentFollowUpSuggestionsPanel
+                  orgId={orgId}
+                  vehicleId={page.assignedVehicleId || null}
+                  extractionId={page.extractionId}
+                  suggestions={followUp.suggestions}
+                  loading={followUp.loading}
+                  t={t}
+                  onRefresh={() => void followUp.reload()}
                 />
               </div>
               <button type="button" onClick={page.handleReset} className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold bg-brand hover:bg-brand text-brand-foreground transition-all">
@@ -458,6 +492,17 @@ export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUpl
                 onRetryFailed={() => void page.handleRetryFailedActions()}
                 onEntityNavigate={onEntityNavigate}
               />
+              <div className="mt-3">
+                <DocumentFollowUpSuggestionsPanel
+                  orgId={orgId}
+                  vehicleId={page.assignedVehicleId || null}
+                  extractionId={page.extractionId}
+                  suggestions={followUp.suggestions}
+                  loading={followUp.loading}
+                  t={t}
+                  onRefresh={() => void followUp.reload()}
+                />
+              </div>
               <div className="mt-4 flex justify-center">
                 <button type="button" onClick={page.handleReset} className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold bg-brand text-brand-foreground">
                   {t('docUpload.uploadAnother')}

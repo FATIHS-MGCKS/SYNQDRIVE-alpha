@@ -252,6 +252,83 @@ export interface PublicDocumentApplyResult {
   actions: PublicDocumentApplyActionResult[];
 }
 
+export type DocumentFollowUpSuggestionType =
+  | 'CREATE_TASK'
+  | 'PREPARE_CUSTOMER_CONTACT'
+  | 'PREPARE_DRIVER_CONTACT'
+  | 'REVIEW_DEADLINE'
+  | 'VEHICLE_INSPECTION'
+  | 'WORKSHOP_APPOINTMENT'
+  | 'INSURANCE_REVIEW'
+  | 'PAYMENT_REVIEW'
+  | 'ASSIGN_RESPONSIBLE_USER'
+  | 'NO_FOLLOW_UP';
+
+export type DocumentFollowUpSuggestionStatus =
+  | 'SUGGESTED'
+  | 'ACCEPTED'
+  | 'DISMISSED'
+  | 'SUPERSEDED';
+
+export interface PublicDocumentFollowUpSuggestion {
+  suggestionId: string;
+  extractionId: string;
+  actionPlanId: string;
+  type: DocumentFollowUpSuggestionType;
+  title: string;
+  rationale: string;
+  suggestedDueAt: string | null;
+  dueDateConfirmed?: boolean;
+  targetEntity: { entityType: string; entityId?: string | null; label?: string | null } | null;
+  status: DocumentFollowUpSuggestionStatus;
+  generatedByRule: string;
+  acceptedByUserId: string | null;
+  resultingEntityId: string | null;
+}
+
+export type DocumentFollowUpContactTarget = 'CUSTOMER' | 'DRIVER' | 'VENDOR' | 'INSURANCE';
+
+export interface PublicDocumentFollowUpContactPrepare {
+  suggestionId: string;
+  extractionId: string;
+  contactTarget: DocumentFollowUpContactTarget;
+  recipient: {
+    entityType: string;
+    entityId: string | null;
+    displayName: string | null;
+    email: string | null;
+    emailSource: string;
+  };
+  sender: {
+    fromEmail: string;
+    fromName: string;
+    replyToEmail: string | null;
+  };
+  subject: string;
+  bodyText: string;
+  bodyHtml: string;
+  documentReference: {
+    extractionId: string;
+    fileName: string | null;
+    documentType: string | null;
+    documentSubtype: string | null;
+    displayLabel: string;
+    referenceHint: string | null;
+  };
+  attachmentOffer: {
+    extractionId: string;
+    fileName: string | null;
+    mimeType: string | null;
+    sizeBytes: number | null;
+    available: boolean;
+    defaultSelected: false;
+  };
+  excludedSensitiveFields: string[];
+  preparedOnly: true;
+  canSend: boolean;
+  sendBlockedReason: string | null;
+}
+
 export interface PublicFieldProvenance {
   fieldKey: string;
   rawValue: unknown;

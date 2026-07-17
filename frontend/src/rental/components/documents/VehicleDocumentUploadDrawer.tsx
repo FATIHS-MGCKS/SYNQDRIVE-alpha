@@ -4,7 +4,9 @@ import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
 import { buildOriginContextHint } from '../../../lib/document-upload-context';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
+import { useDocumentFollowUpSuggestions } from '../../hooks/useDocumentFollowUpSuggestions';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { useRentalOrg } from '../../RentalContext';
 import {
   DOC_TYPE_LABELS,
   FLOW_STATUS_LABEL_DE,
@@ -12,6 +14,7 @@ import {
 import { DocumentExtractionFlowStatus } from './DocumentExtractionFlowStatus';
 import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
 import { DocumentApplyResultPanel } from './DocumentApplyResultPanel';
+import { DocumentFollowUpSuggestionsPanel } from './DocumentFollowUpSuggestionsPanel';
 import { DocumentIntakeUploadZone } from './DocumentIntakeUploadZone';
 import { canShowApplyDone } from '../../lib/document-apply-result';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
@@ -43,6 +46,7 @@ export function VehicleDocumentUploadDrawer({
   onEntityNavigate,
 }: VehicleDocumentUploadDrawerProps) {
   const { t, locale } = useLanguage();
+  const { orgId: rentalOrgId } = useRentalOrg();
   const handleComplete = useCallback(() => {
     onComplete?.();
   }, [onComplete]);
@@ -76,6 +80,20 @@ export function VehicleDocumentUploadDrawer({
   const close = () => onOpenChange(false);
 
   const applyDone = canShowApplyDone(flow.record?.status, flow.record?.applyResult);
+
+  const orgId = flow.record?.organizationId ?? rentalOrgId ?? '';
+  const followUpEnabled =
+    !!flow.extractionId &&
+    flow.flow !== 'idle' &&
+    flow.flow !== 'uploading' &&
+    flow.flow !== 'processing' &&
+    flow.flow !== 'analyzing';
+  const followUp = useDocumentFollowUpSuggestions({
+    orgId: orgId || null,
+    vehicleId,
+    extractionId: flow.extractionId,
+    enabled: followUpEnabled && !!orgId,
+  });
 
   const footer =
     flow.flow === 'ready' || flow.flow === 'applying' || flow.flow === 'apply_failed' ? (
@@ -245,6 +263,18 @@ export function VehicleDocumentUploadDrawer({
               onRetryFailed={() => void flow.handleRetryFailedActions()}
               onEntityNavigate={onEntityNavigate}
             />
+
+            {orgId ? (
+              <DocumentFollowUpSuggestionsPanel
+                orgId={orgId}
+                vehicleId={vehicleId}
+                extractionId={flow.extractionId}
+                suggestions={followUp.suggestions}
+                loading={followUp.loading}
+                t={t}
+                onRefresh={() => void followUp.reload()}
+              />
+            ) : null}
           </div>
         )}
 
@@ -255,6 +285,19 @@ export function VehicleDocumentUploadDrawer({
             <p className="mt-1 text-[11px] text-muted-foreground">
               {DOC_TYPE_LABELS[flow.confirmedDocType] || flow.confirmedDocType}
             </p>
+            {orgId ? (
+              <div className="mt-4 text-left">
+                <DocumentFollowUpSuggestionsPanel
+                  orgId={orgId}
+                  vehicleId={vehicleId}
+                  extractionId={flow.extractionId}
+                  suggestions={followUp.suggestions}
+                  loading={followUp.loading}
+                  t={t}
+                  onRefresh={() => void followUp.reload()}
+                />
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -264,6 +307,19 @@ export function VehicleDocumentUploadDrawer({
             <p className="mt-1 text-[10px] text-muted-foreground">
               Pflichtaktionen sind erledigt. Optionale Schritte können erneut versucht werden.
             </p>
+            {orgId ? (
+              <div className="mt-3">
+                <DocumentFollowUpSuggestionsPanel
+                  orgId={orgId}
+                  vehicleId={vehicleId}
+                  extractionId={flow.extractionId}
+                  suggestions={followUp.suggestions}
+                  loading={followUp.loading}
+                  t={t}
+                  onRefresh={() => void followUp.reload()}
+                />
+              </div>
+            ) : null}
           </div>
         )}
       </div>

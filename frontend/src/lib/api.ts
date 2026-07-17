@@ -5280,6 +5280,51 @@ export const api = {
         `/vehicles/${vehicleId}/document-extractions/${extractionId}/retry-failed-actions`,
         {},
       ),
+    listFollowUpSuggestions: (vehicleId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion[]>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions`,
+      ),
+    getFollowUpContactPrepare: (vehicleId: string, extractionId: string, suggestionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpContactPrepare>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare`,
+      ),
+    recordFollowUpContactPrepareOpened: (
+      vehicleId: string,
+      extractionId: string,
+      suggestionId: string,
+    ) =>
+      post<{ recorded: boolean }>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/opened`,
+        {},
+      ),
+    sendFollowUpContact: (
+      vehicleId: string,
+      extractionId: string,
+      suggestionId: string,
+      data: {
+        toEmail: string;
+        ccEmails?: string[];
+        bccEmails?: string[];
+        subject: string;
+        bodyHtml: string;
+        bodyText?: string;
+        attachDocument?: boolean;
+      },
+    ) =>
+      post<unknown>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/send`,
+        data,
+      ),
+    acceptFollowUpSuggestion: (vehicleId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/accept`,
+        {},
+      ),
+    dismissFollowUpSuggestion: (vehicleId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/dismiss`,
+        {},
+      ),
     updateActionPlanPreferences: (
       vehicleId: string,
       extractionId: string,
@@ -5487,6 +5532,51 @@ export const api = {
     retryFailedActionsByOrg: (orgId: string, extractionId: string) =>
       post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
         `/organizations/${orgId}/document-extractions/${extractionId}/retry-failed-actions`,
+        {},
+      ),
+    listFollowUpSuggestions: (orgId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion[]>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions`,
+      ),
+    getFollowUpContactPrepare: (orgId: string, extractionId: string, suggestionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpContactPrepare>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare`,
+      ),
+    recordFollowUpContactPrepareOpened: (
+      orgId: string,
+      extractionId: string,
+      suggestionId: string,
+    ) =>
+      post<{ recorded: boolean }>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/opened`,
+        {},
+      ),
+    sendFollowUpContact: (
+      orgId: string,
+      extractionId: string,
+      suggestionId: string,
+      data: {
+        toEmail: string;
+        ccEmails?: string[];
+        bccEmails?: string[];
+        subject: string;
+        bodyHtml: string;
+        bodyText?: string;
+        attachDocument?: boolean;
+      },
+    ) =>
+      post<unknown>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/send`,
+        data,
+      ),
+    acceptFollowUpSuggestion: (orgId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/accept`,
+        {},
+      ),
+    dismissFollowUpSuggestion: (orgId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/dismiss`,
         {},
       ),
     updateActionPlanPreferencesByOrg: (

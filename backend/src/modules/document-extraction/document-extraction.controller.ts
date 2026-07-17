@@ -313,6 +313,50 @@ export class DocumentExtractionController {
     );
   }
 
+  @Get(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getFollowUpContactPrepare(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+  ) {
+    return this.service.getFollowUpContactPrepareForVehicle(vehicleId, extractionId, suggestionId);
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare/opened')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  recordFollowUpContactPrepareOpened(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.recordFollowUpContactPrepareOpenedForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare/send')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  sendFollowUpContact(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @Body() body: import('./dto/send-document-follow-up-contact.dto').SendDocumentFollowUpContactDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.sendFollowUpContactForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+      body,
+    );
+  }
+
   @Post(':extractionId/cancel')
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
   async cancel(

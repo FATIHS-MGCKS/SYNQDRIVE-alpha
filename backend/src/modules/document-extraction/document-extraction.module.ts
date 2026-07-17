@@ -5,6 +5,7 @@ import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { FinesModule } from '@modules/fines/fines.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { AiModule } from '@modules/ai/ai.module';
 import { DocumentExtractionController } from './document-extraction.controller';
 import { DocumentExtractionOrgController } from './document-extraction-org.controller';
@@ -74,6 +75,7 @@ import { DocumentEntityLinkService } from './document-entity-link.service';
 import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
 import { DocumentApplyResultService } from './document-apply-result.service';
 import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
+import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
 import { DocumentSchemaRegistryService } from './document-schema-registry.service';
 
 /**
@@ -90,6 +92,7 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     forwardRef(() => InvoicesModule),
     FinesModule,
     TasksModule,
+    OutboundEmailModule,
     AiModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.DOCUMENT_EXTRACTION }),
   ],
@@ -135,6 +138,7 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     DocumentActionPlanPreviewService,
     DocumentApplyResultService,
     DocumentFollowUpSuggestionService,
+    DocumentFollowUpContactPrepareService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,
