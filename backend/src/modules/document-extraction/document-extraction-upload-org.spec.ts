@@ -6,6 +6,7 @@ import {
   makeRetentionMock,
   makeStorageMock,
   makeUploadContextMock,
+  spreadDocumentExtractionExtendedServiceMocks,
 } from './document-extraction-test.helpers';
 import { AUTO_CLASSIFICATION_REQUEST } from './document-extraction.schemas';
 
@@ -88,6 +89,7 @@ describe('DocumentExtractionService org upload', () => {
         setActiveJobs: jest.fn(),
         observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
       } as any,
+      ...spreadDocumentExtractionExtendedServiceMocks(),
     );
     return { svc, prisma, storage, uploadContext };
   }

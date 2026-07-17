@@ -14,7 +14,7 @@ import { trimEmptyToUndefined } from '@modules/tasks/dto/task.dto';
 import {
   type DocumentExtractionArchiveActionStatus,
   type DocumentExtractionArchiveFollowUpStatus,
-} from './document-extraction-archive-index.materializer';
+} from '../document-extraction-archive-index.materializer';
 
 export const DOCUMENT_ARCHIVE_MAX_PAGE_SIZE = 50;
 

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-backend-tests-2026-07-17',
+    version: '4.9.655',
+    title: 'V4.9.655 — Document Intake V2 Backend Test Package',
+    summary: [
+      'Vollstaendiges Backend-Testpaket fuer Document Intake V2 mit verify-Skript und Coverage-Matrix.',
+      'Neue Specs: action-plan.builder, apply-result.service, follow-up-resync, update-vehicle executor, retry-failed-actions, tenant-isolation, race-conditions.',
+      'npm run test:document-intake:v2 / :integration / :verify; tsconfig.document-intake.json fuer modul-scoped Typecheck.',
+      'Test-Harness spreadDocumentExtractionExtendedServiceMocks; Upload/Processor-Specs an 22-arg Service angepasst.',
+    ],
+    reason: 'Prompt 80/84 — Backend-Abdeckung aller Intake-V2-Pfade mit automatisierter Verifikation.',
+    previousBehavior:
+      'Breite Einzel-Specs ohne einheitliches npm-Paket, ohne Coverage-Dokument und mit Luecken bei Builder/Resync/Retry/Tenant/Race.',
+    details:
+      'Backend: 7 neue Spec-Dateien, document-intake-v2-verify.sh, package.json scripts, tsconfig.document-intake.json, document-extraction-test.helpers Erweiterung, Schema-Registry lazy-init, org-null vehicleId in Duplicate/Reconciliation. Docs: docs/testing/document-intake-v2-backend-coverage.md.',
+    affectsArchitecture: false,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T05:00:00.000Z',
+  },
+  {
     id: 'document-intake-v2-entry-points-2026-07-17',
     version: '4.9.654',
     title: 'V4.9.654 — Document Intake V2 Entry Points',

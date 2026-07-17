@@ -30,7 +30,7 @@ export interface UploadDuplicateEntityLinks {
 
 export interface UploadDuplicateExistingExtraction {
   id: string;
-  vehicleId: string;
+  vehicleId: string | null;
   organizationId: string | null;
   status: DocumentExtractionStatus;
   processingStage: string;

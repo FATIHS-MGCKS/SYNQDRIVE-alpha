@@ -88,6 +88,7 @@ describe('CreateDamageDocumentActionExecutors', () => {
     const result = await draftExecutor.execute(buildContext(DAMAGE_UNKNOWN_TYPE));
 
     expect(result.status).toBe(DOCUMENT_ACTION_EXECUTION_STATUSES.SUCCEEDED);
+    if (result.status !== DOCUMENT_ACTION_EXECUTION_STATUSES.SUCCEEDED) return;
     expect(result.resultEntityType).toBe('damage');
     expect(result.resultEntityId).toBe('damage-1');
     expect(damagesService.createDraftFromDocumentExtraction).toHaveBeenCalledWith(

@@ -15,7 +15,6 @@ import {
   type PlausibilityConsistencyContext,
 } from './document-plausibility-consistency.rules';
 import type { PlausibilityVehicleContext, PlausibilityRunOptions } from './document-extraction-plausibility.service';
-import { DOCUMENT_SUBTYPE_SCHEMA_ENTRIES } from './document-schema-registry.entries';
 import type {
   DocumentPlausibilityCollector,
   DocumentPlausibilityRuleKey,
@@ -49,8 +48,23 @@ const PLAUSIBILITY_COLLECTORS: Record<
 export class DocumentSchemaRegistry {
   private readonly bySubtype = new Map<DocumentSubtype, DocumentSubtypeSchemaEntry>();
   private readonly byLegacyType = new Map<ApplyDocumentExtractionType, DocumentSubtypeSchemaEntry[]>();
+  private loaded = false;
 
-  constructor(entries: readonly DocumentSubtypeSchemaEntry[] = DOCUMENT_SUBTYPE_SCHEMA_ENTRIES) {
+  constructor(entries?: readonly DocumentSubtypeSchemaEntry[]) {
+    if (entries) {
+      this.loadEntries(entries);
+      this.loaded = true;
+    }
+  }
+
+  private ensureLoaded(): void {
+    if (this.loaded) return;
+    const { DOCUMENT_SUBTYPE_SCHEMA_ENTRIES } = require('./document-schema-registry.entries') as typeof import('./document-schema-registry.entries');
+    this.loadEntries(DOCUMENT_SUBTYPE_SCHEMA_ENTRIES);
+    this.loaded = true;
+  }
+
+  private loadEntries(entries: readonly DocumentSubtypeSchemaEntry[]): void {
     for (const entry of entries) {
       this.bySubtype.set(entry.subtype, entry);
       for (const legacy of entry.legacyDocumentTypes) {
@@ -62,20 +76,24 @@ export class DocumentSchemaRegistry {
   }
 
   listSubtypes(): DocumentSubtype[] {
+    this.ensureLoaded();
     return [...this.bySubtype.keys()];
   }
 
   getBySubtype(subtype: DocumentSubtype): DocumentSubtypeSchemaEntry | null {
+    this.ensureLoaded();
     return this.bySubtype.get(subtype) ?? null;
   }
 
   getByLegacyType(legacyDocumentType: ApplyDocumentExtractionType): DocumentSubtypeSchemaEntry | null {
+    this.ensureLoaded();
     const matches = this.byLegacyType.get(legacyDocumentType) ?? [];
     if (matches.length === 1) return matches[0];
     return matches[0] ?? null;
   }
 
   resolve(input: DocumentSchemaRegistryResolveInput): DocumentSubtypeSchemaEntry | null {
+    this.ensureLoaded();
     const normalizedSubtype = normalizeDocumentSubtype(input.documentSubtype);
     if (normalizedSubtype) {
       return this.bySubtype.get(normalizedSubtype) ?? null;
@@ -90,6 +108,7 @@ export class DocumentSchemaRegistry {
   }
 
   resolveLegacyDocumentType(input: DocumentSchemaRegistryResolveInput): ApplyDocumentExtractionType | null {
+    this.ensureLoaded();
     if (input.legacyDocumentType && isApplyDocumentType(input.legacyDocumentType)) {
       return input.legacyDocumentType;
     }
@@ -98,6 +117,7 @@ export class DocumentSchemaRegistry {
   }
 
   getExtractionFields(input: DocumentSchemaRegistryResolveInput) {
+    this.ensureLoaded();
     const legacy = this.resolveLegacyDocumentType(input);
     const entry = this.resolve(input);
     if (!entry || !legacy) {
@@ -164,6 +184,7 @@ export class DocumentSchemaRegistry {
   }
 
   listPublicSchemas(): PublicDocumentSubtypeSchemaDto[] {
+    this.ensureLoaded();
     return [...this.bySubtype.values()].map((entry) => this.toPublicSchema(entry));
   }
 }

@@ -14,7 +14,7 @@ export type DownstreamProbeResult = {
 type ExtractionRow = {
   id: string;
   organizationId: string | null;
-  vehicleId: string;
+  vehicleId: string | null;
   status: string;
   effectiveDocumentType?: DocumentExtractionType | null;
   documentType?: DocumentExtractionType | null;
@@ -101,6 +101,7 @@ export async function probeDownstreamForAction(
         : { found: false, idempotencyKey };
     }
     case DOCUMENT_EXECUTOR_ACTION_TYPES.APPLY_TIRE_MEASUREMENT: {
+      if (!record.vehicleId) return { found: false, idempotencyKey };
       const measurement = await prisma.vehicleTireTreadMeasurement.findFirst({
         where: { vehicleId: record.vehicleId, documentExtractionId: extractionId },
         select: { id: true },

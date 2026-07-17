@@ -328,3 +328,65 @@ export function makeGoldenCorpusPipelineMocks(caseId: string) {
     extraction: makeGoldenExtractionResult(goldenCase),
   };
 }
+
+export function makeDocumentExtractionObservabilityMock() {
+  return {
+    logEvent: jest.fn(),
+    recordApply: jest.fn(),
+    recordJobOutcome: jest.fn(),
+    recordFailure: jest.fn(),
+    recordStageDuration: jest.fn(),
+    recordPages: jest.fn(),
+    recordRetry: jest.fn(),
+    recordClassification: jest.fn(),
+    setQueueAgeSeconds: jest.fn(),
+    setActiveJobs: jest.fn(),
+    observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
+  };
+}
+
+/** Mocks for DocumentExtractionService deps added in V2 action-plan / follow-up / archive waves. */
+export function makeDocumentExtractionExtendedServiceMocks(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    actionPlanPreview: { buildForRecord: jest.fn(), ...(overrides.actionPlanPreview as object) },
+    applyResultService: { buildForRecord: jest.fn(), ...(overrides.applyResultService as object) },
+    followUpSuggestionService: {
+      listForRecord: jest.fn(),
+      acceptSuggestion: jest.fn(),
+      dismissSuggestion: jest.fn(),
+      syncForActionPlan: jest.fn().mockResolvedValue(undefined),
+      ...(overrides.followUpSuggestionService as object),
+    },
+    followUpContactPrepareService: {
+      prepareContactPreview: jest.fn(),
+      recordPrepareOpened: jest.fn(),
+      sendPreparedContact: jest.fn(),
+      ...(overrides.followUpContactPrepareService as object),
+    },
+    followUpResyncService: {
+      resyncAfterPlanChange: jest.fn().mockResolvedValue(undefined),
+      ...(overrides.followUpResyncService as object),
+    },
+    archiveIndexService: {
+      upsertForRecord: jest.fn().mockResolvedValue(undefined),
+      ensureIndexedForOrg: jest.fn().mockResolvedValue(undefined),
+      ...(overrides.archiveIndexService as object),
+    },
+  };
+}
+
+export function spreadDocumentExtractionExtendedServiceMocks(
+  overrides: Record<string, unknown> = {},
+): [any, any, any, any, any, any] {
+  const extended = makeDocumentExtractionExtendedServiceMocks(overrides);
+  return [
+    extended.actionPlanPreview,
+    extended.applyResultService,
+    extended.followUpSuggestionService,
+    extended.followUpContactPrepareService,
+    extended.followUpResyncService,
+    extended.archiveIndexService,
+  ] as [any, any, any, any, any, any];
+}

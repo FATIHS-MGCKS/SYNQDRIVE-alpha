@@ -38,6 +38,14 @@ describe('Document action plan apply lifecycle (integration)', () => {
   const prisma = {
     vehicleDocumentExtraction: {
       update: jest.fn().mockResolvedValue({}),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({
+        id: 'ext-lifecycle-1',
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        status: 'READY_FOR_REVIEW',
+        confirmedData: {},
+        plausibility: {},
+      }),
     },
     vehicleDamage: { findMany: jest.fn().mockResolvedValue([]) },
     fine: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -77,6 +85,7 @@ describe('Document action plan apply lifecycle (integration)', () => {
     } as any),
     new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
     new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
+    { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
   );
 
   const baseInput = {
@@ -161,6 +170,7 @@ describe('Document action plan apply lifecycle (integration)', () => {
       } as any),
       new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
       new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
+      { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
     );
 
     const confirmedData = {
@@ -241,6 +251,7 @@ describe('Document action plan apply lifecycle (integration)', () => {
       } as any),
       new ApplyBrakeMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
       new ApplyBatteryMeasurementDocumentActionExecutor({ applyFromDocumentExtraction: jest.fn() } as any),
+      { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
     );
 
     const input = { ...baseInput, extractionId: 'ext-lifecycle-retry' };

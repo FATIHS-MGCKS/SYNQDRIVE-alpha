@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Readable } from 'stream';
 import { DocumentExtractionService } from './document-extraction.service';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock } from './document-extraction-test.helpers';
+import {makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, spreadDocumentExtractionExtendedServiceMocks } from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -87,6 +87,7 @@ describe('DocumentExtractionService lifecycle reads', () => {
       makeRetentionMock() as any,
       makeUploadContextMock() as any,
       observability as any,
+      ...spreadDocumentExtractionExtendedServiceMocks(),
     );
     return { svc, prisma, storage };
   }

@@ -65,7 +65,7 @@ export type UploadDuplicateBusinessMatchRow = {
 export function toUploadDuplicateExistingExtraction(
   row: {
     id: string;
-    vehicleId: string;
+    vehicleId: string | null;
     organizationId: string | null;
     status: UploadDuplicateExistingExtraction['status'];
     processingStage: string;

@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/modules/document-extraction/**/*.ts"],
+  "exclude": ["**/*.spec.ts", "**/*.integration.spec.ts"]
+}

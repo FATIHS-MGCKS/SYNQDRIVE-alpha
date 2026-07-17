@@ -76,7 +76,7 @@ export class DocumentIntakeReconciliationService {
   private async diagnoseExtraction(row: {
     id: string;
     organizationId: string | null;
-    vehicleId: string;
+    vehicleId: string | null;
     status: string;
     effectiveDocumentType?: DocumentExtractionType | null;
     documentType?: DocumentExtractionType | null;
