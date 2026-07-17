@@ -46,6 +46,13 @@ import { BrakeBaselineBackfillService } from '../../src/modules/vehicle-intellig
 import { BrakeBaselineCandidateAuditService } from '../../src/modules/vehicle-intelligence/brakes/brake-baseline-candidate-audit.service';
 import { assertSafeBrakeBaselineAuditTarget } from '../../src/modules/vehicle-intelligence/brakes/brake-baseline-candidate-audit.safety';
 
+async function createAppContext() {
+  const appModule = await AppModule.forRootAsync();
+  return NestFactory.createApplicationContext(appModule, {
+    logger: ['error', 'warn', 'log'],
+  });
+}
+
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
   return arg?.split('=').slice(1).join('=').trim() || undefined;
@@ -157,9 +164,7 @@ async function loadAuditInputsForReport(options?: {
     allowProd: process.env.BRAKE_HEALTH_AUDIT_ALLOW_PROD === '1',
   });
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error', 'warn', 'log'],
-  });
+  const app = await createAppContext();
 
   try {
     const auditService = app.get(BrakeBaselineCandidateAuditService);
@@ -179,9 +184,7 @@ async function runBackfillWorkflow(
   auditInputs: ReturnType<typeof buildSyntheticBrakeBaselineFixtures>,
 ): Promise<void> {
   const request = buildApplyRequest();
-  const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error', 'warn', 'log'],
-  });
+  const app = await createAppContext();
 
   try {
     const service = app.get(BrakeBaselineBackfillService);
@@ -238,9 +241,7 @@ async function main(): Promise<void> {
         allowRemote: hasFlag('--allow-remote-db'),
         allowProd: process.env.BRAKE_HEALTH_AUDIT_ALLOW_PROD === '1',
       });
-      const app = await NestFactory.createApplicationContext(AppModule, {
-        logger: ['error', 'warn', 'log'],
-      });
+      const app = await createAppContext();
       try {
         const auditService = app.get(BrakeBaselineCandidateAuditService);
         auditInputs = await auditService.loadCandidates({

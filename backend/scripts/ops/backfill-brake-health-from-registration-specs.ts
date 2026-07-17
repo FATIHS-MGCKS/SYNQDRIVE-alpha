@@ -52,7 +52,8 @@ function parseArgs() {
 
 async function main() {
   const args = parseArgs();
-  const app = await NestFactory.createApplicationContext(AppModule, {
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, {
     logger: ['error', 'warn', 'log'],
   });
 
