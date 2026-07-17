@@ -83,6 +83,7 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Runtime Secret | As needed for email deploy | As needed |
 | `HOSTINGER_API_TOKEN` | Runtime Secret | For `sync-resend-dns-to-hostinger.sh` (DNS) | Optional |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Runtime Secret | As needed | As needed |
+| `ELEVENLABS_API_KEY` | Runtime Secret | As needed for Voice Assistant MCP | As needed |
 | Other keys from `backend/.env.example` | Runtime Secret | As needed | As needed |
 
 #### MCP servers (Cursor agent tooling)
@@ -96,6 +97,7 @@ Project template: `.cursor/mcp.json.example` (committed). Runtime config: `.curs
 | **resend** | Env | `RESEND_API_KEY` (Bearer to `https://mcp.resend.com/mcp`) |
 | **stripe** | Env | `STRIPE_SECRET_KEY` (Bearer to `https://mcp.stripe.com`) |
 | **hostinger-api** | Env | `HOSTINGER_API_TOKEN` |
+| **elevenlabs** | Env | `ELEVENLABS_API_KEY` — stdio via `uvx elevenlabs-mcp` (same key as Voice Assistant backend) |
 
 Cloud Agent bootstrap runs `cloud-agent-mcp-setup.sh` during install (writes `.cursor/mcp.json`). After adding secrets, restart the Cloud Agent. Didit still needs one-time OAuth in the MCP panel.
 

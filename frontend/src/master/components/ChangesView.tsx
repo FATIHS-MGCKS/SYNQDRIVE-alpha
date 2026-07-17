@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'elevenlabs-mcp-cursor-setup-2026-07-17',
+    version: '4.9.581',
+    title: 'Cursor MCP — ElevenLabs Server (TTS, Voice, Transcription)',
+    summary: [
+      '`.cursor/mcp.json.example` — neuer stdio-Server `elevenlabs` via `uvx elevenlabs-mcp` mit `${env:ELEVENLABS_API_KEY}`.',
+      'Cloud-Agent-Dockerfile installiert `uv`/`uvx` (PyPI-Runner für elevenlabs-mcp).',
+      '`AGENTS.md` + ArchitekturView: Secret-Hinweis — gleicher API-Key wie Voice-Assistant-Backend.',
+    ],
+    reason:
+      'ElevenLabs MCP für Agent-Workflows (Sprachsynthese, Voice-Design, Transkription) im Cursor-Kontext verfügbar machen.',
+    previousBehavior: 'Kein ElevenLabs MCP in Cursor/Cloud-Agent MCP-Template.',
+    details:
+      '.cursor/mcp.json.example, .cursor/Dockerfile, AGENTS.md, ArchitekturView Cursor MCP Tooling.',
+    affectsArchitecture: true,
+    module: 'Cloud Agents / MCP',
+    createdAt: '2026-07-17T16:45:00.000Z',
+  },
+  {
     id: 'di-v2-prod-ops-ch-grafana-smoke-2026-07-17',
     version: '4.9.580',
     title: 'Prod Ops — ClickHouse recovery, DI V2 Grafana, trip_analysis_status backfill',
