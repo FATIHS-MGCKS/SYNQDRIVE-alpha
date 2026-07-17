@@ -52,6 +52,7 @@ import { DocumentUploadContextService } from './document-upload-context.service'
 import { VehicleCandidateResolverService } from './vehicle-candidate-resolver.service';
 import { BookingCandidateResolverService } from './booking-candidate-resolver.service';
 import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
+import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
 import {
   evaluateUploadContextResolver,
   extractUploadResolverHints,
@@ -94,6 +95,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     private readonly vehicleCandidateResolver: VehicleCandidateResolverService,
     private readonly bookingCandidateResolver: BookingCandidateResolverService,
     private readonly customerCandidateResolver: CustomerCandidateResolverService,
+    private readonly driverCandidateResolver: DriverCandidateResolverService,
   ) {
     super();
   }
@@ -557,7 +559,10 @@ export class DocumentExtractionProcessor extends WorkerHost {
         ? uploadPipeline.candidate.entityId
         : bookingPipeline?.candidates?.find((candidate) => candidate.rank === 1)?.bookingId ?? null;
     const uploadContextCustomerId =
-      uploadPipeline?.candidate?.entityType === 'CUSTOMER' ||
+      uploadPipeline?.candidate?.entityType === 'CUSTOMER'
+        ? uploadPipeline.candidate.entityId
+        : null;
+    const uploadContextDriverId =
       uploadPipeline?.candidate?.entityType === 'DRIVER'
         ? uploadPipeline.candidate.entityId
         : null;
@@ -573,6 +578,21 @@ export class DocumentExtractionProcessor extends WorkerHost {
 
       pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
         customerCandidates,
+      });
+    }
+
+    if (organizationId && this.driverCandidateResolver.supportsDocumentType(applyDocumentType)) {
+      const driverCandidates = await this.driverCandidateResolver.resolve({
+        organizationId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        linkedBookingId,
+        uploadContextDriverId,
+        resolvedVehicleId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        driverCandidates,
       });
     }
 

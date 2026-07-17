@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-driver-candidate-resolver-2026-07-17',
+    version: '4.9.630',
+    title: 'V4.9.630 — Document Intake V2 Driver Candidate Resolver',
+    summary: [
+      'DriverCandidateResolver getrennt vom Customer Resolver: Booking-Primary/Additional, Führerschein (normalisiert), Name, Driver-ID, Trip-Zuordnung.',
+      'Kandidaten mit driverCustomerId, confidence, matchReasons, conflicts, driverRole, displayLabel in _pipeline.driverCandidates.',
+      'Buchungskunde ist nicht automatisch Fahrer; mehrere zugelassene Fahrer → ambiguousDriverPool; FINE ohne eindeutigen Fahrer → unassignedDriver.',
+      'Keine negative Fahrerhistorie; confirmationRequired immer; PII-freie Hints; CUSTOMER/DRIVER Upload-Kontext getrennt.',
+    ],
+    reason:
+      'Bußgeld- und Schadensdokumente brauchen Fahrer-Vorschläge unabhängig vom Vertragspartner — sicher, mehrdeutigkeits-sichtbar, ohne Auto-Link.',
+    previousBehavior:
+      'Kein Driver Candidate Resolver; Fahrerzuordnung nur manuell über acceptedEntityLinks (entityType driver) beim Fine-Apply.',
+    details: 'architecture/DOCUMENT_DRIVER_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T23:00:00.000Z',
+  },
+  {
     id: 'document-customer-candidate-resolver-2026-07-17',
     version: '4.9.629',
     title: 'V4.9.629 — Document Intake V2 Customer Candidate Resolver',

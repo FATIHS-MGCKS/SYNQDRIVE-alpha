@@ -146,6 +146,26 @@ export function makeCustomerCandidateResolverMock() {
   };
 }
 
+export function makeDriverCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) => ['FINE', 'ACCIDENT', 'DAMAGE'].includes(type)),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {
+        driverNamePresent: false,
+        licensePresent: false,
+        driverIdPresent: false,
+        bookingLinkPresent: false,
+        tripAssignmentPresent: false,
+      },
+      candidates: [],
+      ambiguousDriverPool: false,
+      unassignedDriver: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
 export function makeLifecycleMock() {
   return {
     buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({

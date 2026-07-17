@@ -108,6 +108,7 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     { resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: {}, candidates: [], blockerPresent: false, autoConfirmEligible: false }) } as any,
     { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { eventTimePrecision: 'missing' }, candidates: [], ambiguousOverlap: false, autoConfirmEligible: false }) } as any,
     { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { customerNumberPresent: false, bookingLinkPresent: false, namePresent: false, emailPresent: false, phonePresent: false, addressPresent: false, documentReferencePresent: false }, candidates: [], ambiguousNameMatch: false, autoConfirmEligible: false }) } as any,
+    { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { driverNamePresent: false, licensePresent: false, driverIdPresent: false, bookingLinkPresent: false, tripAssignmentPresent: false }, candidates: [], ambiguousDriverPool: false, unassignedDriver: false, autoConfirmEligible: false }) } as any,
   );
   return { processor, prisma, storage, contentExtractor, classification, aiExtraction, plausibility };
 }
