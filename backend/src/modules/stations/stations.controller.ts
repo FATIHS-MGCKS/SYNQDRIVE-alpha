@@ -38,6 +38,11 @@ import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicl
 import { RequireStationsPermission } from './decorators/require-stations-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { ArchiveStationDto } from './dto/archive-station.dto';
+import { StationCalendarExceptionService } from './station-calendar-exception.service';
+import {
+  CreateStationCalendarExceptionDto,
+  UpdateStationCalendarExceptionDto,
+} from './dto/station-calendar-exception.dto';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -45,6 +50,7 @@ export class StationsController {
   constructor(
     private readonly stationsService: StationsService,
     private readonly stationMapbox: StationMapboxService,
+    private readonly stationCalendarExceptions: StationCalendarExceptionService,
   ) {}
 
   @Get()
@@ -113,6 +119,13 @@ export class StationsController {
   @RequireStationScope({ resource: 'none' })
   getOpeningHoursContract() {
     return this.stationsService.getOpeningHoursContract();
+  }
+
+  @Get('calendar-exceptions/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getCalendarExceptionsContract() {
+    return this.stationCalendarExceptions.getContractMetadata();
   }
 
   @Get(':id')
@@ -194,6 +207,61 @@ export class StationsController {
     @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
   ) {
     return this.stationsService.getStationActivity(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+  }
+
+  @Get(':id/calendar-exceptions')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async listCalendarExceptions(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationCalendarExceptions.listForStation(orgId, id);
+  }
+
+  @Post(':id/calendar-exceptions')
+  @RequireStationsPermission('stations.manage_operations')
+  @RequireStationScope({ resource: 'station' })
+  async createCalendarException(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: CreateStationCalendarExceptionDto,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.stationCalendarExceptions.create(orgId, id, body, userId);
+  }
+
+  @Post(':id/calendar-exceptions/import-legacy')
+  @RequireStationsPermission('stations.manage_operations')
+  @RequireStationScope({ resource: 'station' })
+  async importLegacyCalendarExceptions(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.stationCalendarExceptions.importLegacyHolidayRules(orgId, id, userId);
+  }
+
+  @Patch(':id/calendar-exceptions/:exceptionId')
+  @RequireStationsPermission('stations.manage_operations')
+  @RequireStationScope({ resource: 'station' })
+  async updateCalendarException(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('exceptionId') exceptionId: string,
+    @Body() body: UpdateStationCalendarExceptionDto,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.stationCalendarExceptions.update(orgId, id, exceptionId, body, userId);
+  }
+
+  @Post(':id/calendar-exceptions/:exceptionId/cancel')
+  @RequireStationsPermission('stations.manage_operations')
+  @RequireStationScope({ resource: 'station' })
+  async cancelCalendarException(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('exceptionId') exceptionId: string,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.stationCalendarExceptions.cancel(orgId, id, exceptionId, userId);
   }
 
   @Post()

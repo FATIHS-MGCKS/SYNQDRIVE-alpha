@@ -3,6 +3,7 @@ import { StationsController } from './stations.controller';
 import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
 import { StationMapboxService } from './station-mapbox.service';
+import { StationCalendarExceptionService } from './station-calendar-exception.service';
 import { StationsAccessService } from './stations-access.service';
 import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
@@ -16,6 +17,7 @@ import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicl
     StationsService,
     StationValidationService,
     StationMapboxService,
+    StationCalendarExceptionService,
     StationsAccessService,
     StationsPermissionGuard,
     StationsUpdatePermissionGuard,
@@ -23,6 +25,6 @@ import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicl
     StationsSetPrimaryPermissionGuard,
     StationsVehicleLocationPermissionGuard,
   ],
-  exports: [StationsService, StationValidationService, StationsAccessService],
+  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService],
 })
 export class StationsModule {}

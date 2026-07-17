@@ -3909,6 +3909,43 @@ export const api = {
       get<StationOpeningHoursContractMetadata>(
         `/organizations/${orgId}/stations/opening-hours/contract`,
       ),
+    calendarExceptionsContract: (orgId: string) =>
+      get<StationCalendarExceptionContractMetadata>(
+        `/organizations/${orgId}/stations/calendar-exceptions/contract`,
+      ),
+    calendarExceptions: (orgId: string, stationId: string) =>
+      get<StationCalendarExceptionList>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions`,
+      ),
+    createCalendarException: (
+      orgId: string,
+      stationId: string,
+      data: StationCalendarExceptionInput,
+    ) =>
+      post<StationCalendarException>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions`,
+        data,
+      ),
+    updateCalendarException: (
+      orgId: string,
+      stationId: string,
+      exceptionId: string,
+      data: Partial<StationCalendarExceptionInput>,
+    ) =>
+      patch<StationCalendarException>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions/${exceptionId}`,
+        data,
+      ),
+    cancelCalendarException: (orgId: string, stationId: string, exceptionId: string) =>
+      post<StationCalendarException>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions/${exceptionId}/cancel`,
+        {},
+      ),
+    importLegacyCalendarExceptions: (orgId: string, stationId: string) =>
+      post<StationCalendarExceptionImportResult>(
+        `/organizations/${orgId}/stations/${stationId}/calendar-exceptions/import-legacy`,
+        {},
+      ),
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
       if (opts?.country) q.set('country', opts.country);
@@ -8972,6 +9009,79 @@ export interface StationOpeningHoursContractMetadata {
     legacySingleOpenClose: true;
   };
   notes: string[];
+}
+
+export type StationCalendarExceptionType =
+  | 'STATION_CLOSURE'
+  | 'SPECIAL_OPENING'
+  | 'MODIFIED_HOURS'
+  | 'REGIONAL_HOLIDAY'
+  | 'OPERATIONAL_EXCEPTION';
+
+export type StationCalendarRecurrenceKind = 'NONE' | 'YEARLY';
+
+export type StationCalendarExceptionSource = 'MANUAL' | 'LEGACY_HOLIDAY_RULES';
+
+export type StationCalendarExceptionStatus = 'ACTIVE' | 'CANCELLED';
+
+export interface StationCalendarExceptionSlot {
+  open: string;
+  close: string;
+}
+
+export interface StationCalendarExceptionInput {
+  type: StationCalendarExceptionType;
+  title: string;
+  description?: string | null;
+  recurrenceKind?: StationCalendarRecurrenceKind;
+  calendarDate?: string | null;
+  monthDay?: string | null;
+  closedAllDay?: boolean;
+  slots?: StationCalendarExceptionSlot[] | null;
+  regionCode?: string | null;
+}
+
+export interface StationCalendarException extends StationCalendarExceptionInput {
+  id: string;
+  stationId: string;
+  status: StationCalendarExceptionStatus;
+  recurrenceKind: StationCalendarRecurrenceKind;
+  closedAllDay: boolean;
+  priority: number;
+  source: StationCalendarExceptionSource;
+  readOnly: boolean;
+  timezone: string;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StationCalendarExceptionList {
+  contractVersion: number;
+  timezone: string;
+  items: StationCalendarException[];
+  legacyHolidayRulesPresent: boolean;
+}
+
+export interface StationCalendarExceptionContractMetadata {
+  version: number;
+  timezoneSource: 'station.timezone';
+  supportedTypes: StationCalendarExceptionType[];
+  recurrenceKinds: StationCalendarRecurrenceKind[];
+  overrideRule: string;
+  externalHolidayDependency: false;
+  legacyHolidayRules: {
+    readCompatible: true;
+    writePath: 'station_calendar_exceptions';
+  };
+}
+
+export interface StationCalendarExceptionImportResult {
+  imported: number;
+  skipped: number;
 }
 
 export interface StationOverviewStats {

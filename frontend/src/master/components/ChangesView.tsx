@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-calendar-exception-v49606-2026-07-18',
+    version: '4.9.606',
+    title: 'V4.9.606 — Stations V2: StationCalendarException Model (Prompt 26/78)',
+    summary: [
+      'Zentrales `StationCalendarException`-Modell: Schließtag, Sonderöffnung, geänderte Zeiten, regionaler Feiertag, betriebliche Ausnahme.',
+      'Wiederkehrend (YEARLY) oder datumsbezogen (NONE); Stationszeitzone; SPECIAL_OPENING überschreibt Schließung eindeutig.',
+      'Konfliktvalidierung, Audit-Felder, Soft-Cancel; Legacy `holidayRules` read-kompatibel + `import-legacy` idempotent.',
+      'Prisma-Migration, Domain-/Validierungs- und Integrationstests; keine externe Feiertags-API.',
+    ],
+    reason:
+      'Kalenderausnahmen lagen nur als unstrukturiertes `holidayRules`-JSON vor — ohne zentrale Validierung, Audit und Konfliktregeln.',
+    previousBehavior:
+      'Legacy-JSON auf `Station.holidayRules` ohne versionierten Contract, ohne CRUD-API und ohne SPECIAL_OPENING-Override-Semantik.',
+    details:
+      'station-calendar-exception.{contract,validation}.ts, station-holiday-rules.legacy.ts, migration 20260718140000, StationCalendarExceptionService, stations.controller, api.ts, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T08:00:00.000Z',
+  },
+  {
+    id: 'stations-v2-opening-hours-contract-v49605-2026-07-18',
+    version: '4.9.605',
+    title: 'V4.9.605 — Stations V2: Versioned OpeningHours Contract (Prompt 25/78)',
+    summary: [
+      'Zentraler OpeningHours-Vertrag v2: geschlossene Tage, Multi-Slots/Pausen, 24h, Mitternachts-Intervalle.',
+      'Validierung: Wochentage, HH:mm, keine Überlappungen, leere `{}`-Tage ungültig; fehlende Tage = geschlossen.',
+      'Backend Source of Truth: `GET .../stations/opening-hours/contract` + `openingHoursContractVersion` im Station-DTO.',
+      'Legacy-JSON/`legacyText` kompatibel lesen; kanonische Normalisierung auf Read; keine Buchungswirkung.',
+    ],
+    reason:
+      'Öffnungszeiten-Validierung war verteilt und erlaubte leere Tagesobjekte; Mitternachts- und Pausen-Modelle fehlten im verbindlichen Contract.',
+    previousBehavior:
+      'Einfache open/close-Prüfung ohne Überlappungslogik, ohne 24h/open24h, ohne versionierten Metadaten-Endpoint.',
+    details:
+      'station-opening-hours.{contract,validation}.ts, stations.controller/service, station-create/update validation, api.ts, *spec.ts.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T07:00:00.000Z',
+  },
+  {
     id: 'stations-v2-location-masterdata-v49604-2026-07-18',
     version: '4.9.604',
     title: 'V4.9.604 — Stations V2: Location Master Data Hardening (Prompt 24/78)',
