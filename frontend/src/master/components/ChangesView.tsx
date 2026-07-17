@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p55-attribution-resolver-2026-07-17',
+    version: '4.9.556',
+    title: 'Driving Intelligence V2 P55 — Central Attribution Resolver',
+    summary: [
+      'Neuer zentraler Resolver `resolveTripAttribution` (`attribution-resolver-v1`) mit Prioritätsstack.',
+      'Priorität: manuell bestätigt → zugewiesen → Handover-Nachweis → Buchungskunde (begrenzt) → Zeitfenster → Fahrzeug-only → Unknown.',
+      'Output: attributionType, confidence, customerEligibility, driverEligibility, reasons, conflicts.',
+      'TIME_WINDOW_MATCH allein nie HIGH; Privat- und Mitarbeiterfahrten nicht kundenbelastbar.',
+      'Konflikte sichtbar (PRIVATE vs Buchung, Corporate ohne Fahrer, Manual vs Pipeline, Staff vs Kunde).',
+      '`DriverAttributionService.resolveAndPersistTripAttribution` + `correctAttribution` für nachträgliche Korrektur.',
+      'Attributionsänderung enqueued `DRIVING_MISUSE_RECONCILE` + `RENTAL_DRIVING_ANALYSIS_RECOMPUTE`.',
+      'Handover-Lookup via `BookingHandoverProtocol` im Trip-Fenster; modelVersion `driver-attribution-v2`.',
+      'Tests: Priorität, Konflikte, TIME_WINDOW-Cap, Private/Staff/Corporate.',
+    ],
+    reason: 'Prompt 55/76 — zentrale Attribution mit Eligibility, Konflikttransparenz und Downstream-Reconciliation.',
+    previousBehavior:
+      'P54 materialisierte Snapshots per Mapper ohne zentralen Prioritätsresolver, Eligibility-Output oder Reconciliation-Trigger.',
+    details:
+      '`attribution-resolver.ts`, `driver-attribution.service.ts`, `driving-attribution-resolve.handler.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:35:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p54-driver-attribution-model-2026-07-17',
     version: '4.9.555',
     title: 'Driving Intelligence V2 P54 — DriverAttribution materialized model',

@@ -14,11 +14,18 @@ export class DrivingAttributionResolveJobHandler {
       return;
     }
 
-    await this.driverAttributionService.materializePipelineSnapshot({
+    const result = await this.driverAttributionService.resolveAndPersistTripAttribution({
       organizationId: job.organizationId,
       tripId: job.tripId,
       analysisRunId: job.analysisRunId,
       pipelineJobId: job.id,
+      correlationId: job.correlationId,
     });
+
+    this.logger.log(
+      `DRIVING_ATTRIBUTION_RESOLVE completed job=${job.id} trip=${job.tripId} ` +
+        `type=${result.resolved.attributionType} changed=${result.changed} ` +
+        `conflicts=${result.resolved.conflicts.length}`,
+    );
   }
 }

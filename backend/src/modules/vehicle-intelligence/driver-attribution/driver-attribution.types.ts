@@ -7,11 +7,21 @@ import type {
 export type DriverAttributionEvidence = {
   attributionScope?: string;
   reason?: string;
+  reasons?: string[];
   rolesModelVersion?: string;
+  resolverVersion?: string;
   bookingCustomerId?: string | null;
   assignedDriverId?: string | null;
   actualDriverId?: string | null;
   pipelineJobId?: string | null;
+  customerEligibility?: boolean;
+  driverEligibility?: boolean;
+  conflicts?: Array<{
+    code: string;
+    message: string;
+    competingTypes: string[];
+  }>;
+  handoverProtocolId?: string | null;
 };
 
 export type UpsertDriverAttributionInput = {
