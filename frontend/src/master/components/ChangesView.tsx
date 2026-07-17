@@ -35,6 +35,75 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'twilio-vps-env-sync-v49586-2026-07-17',
+    version: '4.9.586',
+    title: 'V4.9.586 — Twilio: VPS backend.env Sync-Skript',
+    summary: [
+      'Neues Ops-Skript `sync-twilio-env-to-vps.sh` — synchronisiert Twilio-Credentials + `TWILIO_VOICE_WEBHOOK_BASE_URL` nach `/opt/synqdrive/shared/backend.env`.',
+      'Pattern analog zu `sync-resend-env-to-vps.sh` (Cursor Secrets oder lokale `backend/.env`).',
+    ],
+    reason: 'Production-Deploy brauchte manuelles Setzen der Twilio-Env-Variablen auf dem VPS.',
+    previousBehavior: 'Kein automatisierter Twilio-Env-Sync; nur dokumentierte manuelle `backend.env`-Pflege.',
+    details: 'backend/scripts/ops/sync-twilio-env-to-vps.sh, docs/twilio-setup.md.',
+    affectsArchitecture: false,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:30:00.000Z',
+  },
+  {
+    id: 'twilio-webhook-base-url-v49585-2026-07-17',
+    version: '4.9.585',
+    title: 'V4.9.585 — Twilio: Production Webhook Base URL + Reachability Script',
+    summary: [
+      '`.env.example` — `TWILIO_VOICE_WEBHOOK_BASE_URL=https://app.synqdrive.eu` als Production-Default dokumentiert.',
+      'Neues Ops-Skript `twilio-webhook-reachability.sh` — POST-Probe für voice/status Webhooks nach Deploy.',
+      '`twilio-setup.md` — VPS-`backend.env` Anleitung + erwartete Webhook-URLs.',
+    ],
+    reason: 'Webhook-Base-URL war leer; Twilio-Nummern-Zuweisung und Signaturprüfung brauchen die öffentliche App-URL.',
+    previousBehavior: 'TWILIO_VOICE_WEBHOOK_BASE_URL leer; kein dokumentierter Reachability-Check.',
+    details: 'backend/.env.example, docs/twilio-setup.md, scripts/ops/twilio-webhook-reachability.sh, scripts/ops/README.md.',
+    affectsArchitecture: false,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:10:00.000Z',
+  },
+  {
+    id: 'twilio-voice-integration-v49584-2026-07-17',
+    version: '4.9.584',
+    title: 'V4.9.584 — Twilio Voice: Module, Webhooks, PSTN↔ElevenLabs Bridge',
+    summary: [
+      '`TwilioModule` — REST telephony, inbound/status webhooks, signature validation, idempotent `TwilioWebhookEvent`.',
+      'Voice Assistant: `pstnProvider` ELEVENLABS|TWILIO, Twilio number assign/unassign, outbound call route, merged phone-number list.',
+      'Prisma: `twilio_phone_number_sid`, `twilio_call_sid`, `VoicePstnProvider` enum; public webhook paths whitelisted.',
+      'IE1/Dublin preserved; `TWILIO_AUTH_TOKEN` webhook-only; docs + mocked integration specs.',
+    ],
+    reason:
+      'Twilio SDK war installiert — vollständige serverseitige Integration für PSTN-Telefonie neben ElevenLabs AI-Agenten, ohne Frontend-Secrets.',
+    previousBehavior: 'Nur SDK + Config-Factory; keine Webhooks, kein TwilioModule, keine PSTN-Zuweisung.',
+    details:
+      'modules/twilio/*, voice-assistant.service/controller, voice-assistant-telephony.util, prisma migration, auth.guard, twilio-setup.md, api.ts, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant / Telephony',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
+    id: 'twilio-sdk-backend-install-v49583-2026-07-17',
+    version: '4.9.583',
+    title: 'V4.9.583 — Twilio Node.js SDK: Backend-Installation + IE1-Config',
+    summary: [
+      'Offizielles `twilio` SDK (^6.0.2) als Production-Dependency im NestJS-Backend (`synqdrive-backend`).',
+      '`twilio.config.ts` + lazy `getTwilioClient()` — optionale Env-Variablen, kein Bootstrap-Fail ohne Credentials.',
+      '`.env.example` + `backend/docs/twilio-setup.md`: API-Key-Auth, region `ie1`, edge `dublin` (festes Paar).',
+      'Import-Compat-Spec (`twilio-import.compat.spec.ts`) — kein Live-API-Call.',
+    ],
+    reason:
+      'Twilio-Telefonie-Integration vorbereiten: SDK serverseitig installieren und EU-Routing (IE1/Dublin) dokumentieren, ohne Voice-Flows oder Live-Requests.',
+    previousBehavior: 'Kein Twilio-Paket, keine Twilio-Env-Variablen, keine Config-Factory im Backend.',
+    details:
+      'backend/package.json, package-lock.json, twilio.config.ts, twilio-client.util.ts, twilio-import.compat.spec.ts, app.module.ts, .env.example, docs/twilio-setup.md, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Cloud Agents / Telephony',
+    createdAt: '2026-07-17T17:30:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',

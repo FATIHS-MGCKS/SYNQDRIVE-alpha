@@ -770,6 +770,30 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Twilio Programmable Voice — PSTN + ElevenLabs bridge (V4.9.584)',
+    icon: Radio,
+    color: 'text-[color:var(--brand)]',
+    apis: [
+      { label: 'Module', detail: 'TwilioModule — TwilioService, TwilioTelephonyService, TwilioWebhookController/Service, TwilioVoiceBridgeService' },
+      { label: 'Webhooks', detail: 'POST /api/v1/webhooks/twilio/voice (TwiML) + /status — X-Twilio-Signature via TWILIO_AUTH_TOKEN' },
+      { label: 'Voice bridge', detail: 'pstnProvider TWILIO on VoiceAssistant; ElevenLabs agent remains AI layer; inbound TwiML + VoiceConversation.twilioCallSid' },
+      { label: 'Org API', detail: 'phone-number/assign {provider:twilio|elevenlabs}, POST twilio/outbound-call, merged GET phone-numbers' },
+      { label: 'EU routing', detail: 'ie1 + dublin; API Key REST auth; webhook auth token separate — backend/docs/twilio-setup.md' },
+    ],
+  },
+  {
+    name: 'Twilio Programmable Voice — SDK groundwork (V4.9.583)',
+    icon: Radio,
+    color: 'text-[color:var(--brand)]',
+    apis: [
+      { label: 'SDK', detail: 'Official twilio npm package in synqdrive-backend only — not bundled in frontend' },
+      { label: 'Auth', detail: 'API Key SID + Secret (not Account Auth Token); optional until telephony enabled' },
+      { label: 'EU routing', detail: 'region ie1 + edge dublin — fixed pair; IE1-region API keys required — backend/docs/twilio-setup.md' },
+      { label: 'Config', detail: 'twilio.config.ts + getTwilioClient() lazy factory — no network on import/bootstrap' },
+      { label: 'Related', detail: 'Voice Assistant (ElevenLabs) separate today; Twilio module/flows deferred' },
+    ],
+  },
+  {
     name: 'Meta WhatsApp Cloud API — V4.8.86',
     icon: Radio,
     color: 'text-[color:var(--status-positive)]',

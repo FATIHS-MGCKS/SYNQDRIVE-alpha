@@ -12,6 +12,13 @@ export { default as whatsappConfig } from './whatsapp.config';
 export { default as diditConfig, DIDIT_WORKFLOWS } from './didit.config';
 export type { DiditWorkflowKind } from './didit.config';
 export { default as stripeConfig } from './stripe.config';
+export { default as twilioConfig } from './twilio.config';
+export {
+  TWILIO_DEFAULT_EDGE,
+  TWILIO_DEFAULT_REGION,
+} from './twilio.config';
+export { getTwilioClient, resetTwilioClientForTests } from './twilio-client.util';
+export type { TwilioClientOptions } from './twilio-client.util';
 export { default as aiConfig } from './ai.config';
 export type { AiProviderId } from './ai.config';
 export { default as emailConfig } from './email.config';

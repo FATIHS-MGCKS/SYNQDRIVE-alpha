@@ -14,8 +14,10 @@ import {
   VoiceConversationDirection,
   VoiceConversationOutcome,
   VoiceConversationStatus,
+  VoicePstnProvider,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TwilioTelephonyService } from '@modules/twilio/twilio-telephony.service';
 import { ElevenLabsService } from './elevenlabs.service';
 import {
   UpdateVoiceAssistantDto,
@@ -46,9 +48,12 @@ import {
 import {
   computeTelephonyStatus,
   hasPhoneNumberAssigned,
+  isPstnProviderConfigured,
   isTelephonyLiveModeRequested,
   mapProviderPhoneNumbers,
+  mapTwilioProviderPhoneNumbers,
   type ProviderPhoneNumberView,
+  type TelephonyProviderConfig,
 } from './voice-assistant-telephony.util';
 import {
   buildTestSessionWarnings,
@@ -79,6 +84,7 @@ export class VoiceAssistantService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly elevenLabs: ElevenLabsService,
+    private readonly twilioTelephony: TwilioTelephonyService,
   ) {}
 
   async getOrCreateAssistantForOrg(organizationId: string) {
@@ -445,7 +451,21 @@ export class VoiceAssistantService {
     return this.buildPhoneNumberList(organizationId);
   }
 
-  async assignPhoneNumber(organizationId: string, phoneNumberId: string) {
+  async assignPhoneNumber(
+    organizationId: string,
+    phoneNumberId: string,
+    provider: 'elevenlabs' | 'twilio' = 'elevenlabs',
+  ) {
+    if (provider === 'twilio') {
+      return this.assignTwilioPhoneNumber(organizationId, phoneNumberId);
+    }
+    return this.assignElevenLabsPhoneNumber(organizationId, phoneNumberId);
+  }
+
+  private async assignElevenLabsPhoneNumber(
+    organizationId: string,
+    phoneNumberId: string,
+  ) {
     const assistant = await this.requireAssistantRow(organizationId);
     if (!assistant.elevenLabsAgentId) {
       throw new BadRequestException(
@@ -470,9 +490,49 @@ export class VoiceAssistantService {
     const updated = await this.prisma.voiceAssistant.update({
       where: { id: assistant.id },
       data: {
+        pstnProvider: VoicePstnProvider.ELEVENLABS,
         elevenLabsPhoneNumberId: phoneNumberId,
         phoneNumberId: phoneNumberId,
         phoneNumber: selected.phone_number ?? assistant.phoneNumber,
+        twilioPhoneNumberSid: null,
+        telephonyEnabled: true,
+        connectionStatus: VoiceConnectionStatus.CONNECTED,
+      },
+    });
+
+    return this.formatAssistant(updated);
+  }
+
+  private async assignTwilioPhoneNumber(
+    organizationId: string,
+    phoneNumberSid: string,
+  ) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    if (!assistant.elevenLabsAgentId) {
+      throw new BadRequestException(
+        'Agent not provisioned. Activate the assistant before assigning a phone number.',
+      );
+    }
+    if (!this.twilioTelephony.isConfigured()) {
+      throw new ServiceUnavailableException('Twilio is not configured on the server.');
+    }
+
+    const numbers = await this.twilioTelephony.listPhoneNumbers();
+    const selected = numbers.find((n) => n.phoneNumberSid === phoneNumberSid);
+    if (!selected) {
+      throw new BadRequestException('Phone number not found in Twilio account.');
+    }
+
+    await this.twilioTelephony.configureInboundWebhooks(phoneNumberSid);
+
+    const updated = await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: {
+        pstnProvider: VoicePstnProvider.TWILIO,
+        twilioPhoneNumberSid: phoneNumberSid,
+        phoneNumberId: phoneNumberSid,
+        phoneNumber: selected.phoneNumber ?? assistant.phoneNumber,
+        elevenLabsPhoneNumberId: null,
         telephonyEnabled: true,
         connectionStatus: VoiceConnectionStatus.CONNECTED,
       },
@@ -483,6 +543,13 @@ export class VoiceAssistantService {
 
   async unassignPhoneNumber(organizationId: string) {
     const assistant = await this.requireAssistantRow(organizationId);
+    if (assistant.pstnProvider === VoicePstnProvider.TWILIO) {
+      return this.unassignTwilioPhoneNumber(assistant);
+    }
+    return this.unassignElevenLabsPhoneNumber(assistant);
+  }
+
+  private async unassignElevenLabsPhoneNumber(assistant: VoiceAssistant) {
     const phoneNumberId =
       assistant.elevenLabsPhoneNumberId ?? assistant.phoneNumberId;
     if (!phoneNumberId) {
@@ -507,22 +574,54 @@ export class VoiceAssistantService {
     return this.formatAssistant(updated);
   }
 
+  private async unassignTwilioPhoneNumber(assistant: VoiceAssistant) {
+    const phoneNumberSid = assistant.twilioPhoneNumberSid ?? assistant.phoneNumberId;
+    if (!phoneNumberSid) {
+      throw new BadRequestException('No phone number is assigned to this assistant.');
+    }
+    if (!this.twilioTelephony.isConfigured()) {
+      throw new ServiceUnavailableException('Twilio is not configured on the server.');
+    }
+
+    await this.twilioTelephony.clearInboundWebhooks(phoneNumberSid);
+
+    const updated = await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: {
+        twilioPhoneNumberSid: null,
+        phoneNumberId: null,
+        phoneNumber: null,
+        inboundEnabled: false,
+      },
+    });
+
+    return this.formatAssistant(updated);
+  }
+
   async refreshTelephonyStatus(organizationId: string) {
     const assistant = await this.requireAssistantRow(organizationId);
     const phoneNumbers = await this.buildPhoneNumberList(organizationId);
 
     let next = assistant;
-    if (assistant.elevenLabsAgentId && this.elevenLabs.isConfigured()) {
-      const assigned = phoneNumbers.find((n) => n.assignedToThisAssistant);
+    const providerConfig = this.getTelephonyProviderConfig();
+    const assigned = phoneNumbers.find(
+      (n) => n.assignedToThisAssistant && n.provider === (assistant.pstnProvider === VoicePstnProvider.TWILIO ? 'twilio' : 'elevenlabs'),
+    );
+
+    if (assigned) {
       const patch: Prisma.VoiceAssistantUpdateInput = {
-        connectionStatus: this.elevenLabs.isConfigured()
+        connectionStatus: isPstnProviderConfigured(assistant, providerConfig)
           ? VoiceConnectionStatus.CONNECTED
           : VoiceConnectionStatus.NOT_CONFIGURED,
+        phoneNumberId: assigned.phoneNumberId,
+        phoneNumber: assigned.phoneNumber,
       };
-      if (assigned) {
+      if (assigned.provider === 'twilio') {
+        patch.twilioPhoneNumberSid = assigned.phoneNumberId;
+        patch.pstnProvider = VoicePstnProvider.TWILIO;
+      } else {
         patch.elevenLabsPhoneNumberId = assigned.phoneNumberId;
-        patch.phoneNumberId = assigned.phoneNumberId;
-        patch.phoneNumber = assigned.phoneNumber;
+        patch.pstnProvider = VoicePstnProvider.ELEVENLABS;
       }
       next = await this.prisma.voiceAssistant.update({
         where: { id: assistant.id },
@@ -530,7 +629,7 @@ export class VoiceAssistantService {
       });
     }
 
-    const telephonyStatus = computeTelephonyStatus(next, this.elevenLabs.isConfigured());
+    const telephonyStatus = computeTelephonyStatus(next, providerConfig);
     return {
       assistant: this.formatAssistant(next),
       phoneNumbers,
@@ -551,8 +650,18 @@ export class VoiceAssistantService {
       );
     }
 
-    if (outboundEnabled && !this.elevenLabs.isConfigured()) {
-      throw new BadRequestException('ElevenLabs must be configured before enabling outbound calls.');
+    if (outboundEnabled) {
+      const providerConfig = this.getTelephonyProviderConfig();
+      if (!isPstnProviderConfigured(assistant, providerConfig)) {
+        throw new BadRequestException(
+          'Telephony provider must be configured before enabling outbound calls.',
+        );
+      }
+      if (!this.elevenLabs.isConfigured()) {
+        throw new BadRequestException(
+          'ElevenLabs must be configured before enabling outbound calls.',
+        );
+      }
     }
 
     const updated = await this.prisma.voiceAssistant.update({
@@ -565,6 +674,55 @@ export class VoiceAssistantService {
     });
 
     return this.formatAssistant(updated);
+  }
+
+  async initiateTwilioOutboundCall(organizationId: string, to: string) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    if (assistant.pstnProvider !== VoicePstnProvider.TWILIO) {
+      throw new BadRequestException(
+        'Outbound Twilio calls require a Twilio-assigned PSTN number.',
+      );
+    }
+    if (!assistant.outboundEnabled) {
+      throw new BadRequestException('Outbound calls are disabled for this assistant.');
+    }
+    if (!assistant.phoneNumber?.trim()) {
+      throw new BadRequestException('No Twilio caller ID is assigned to this assistant.');
+    }
+    if (!this.twilioTelephony.isConfigured()) {
+      throw new ServiceUnavailableException('Twilio is not configured on the server.');
+    }
+
+    const result = await this.twilioTelephony.initiateOutboundCall({
+      from: assistant.phoneNumber,
+      to: to.trim(),
+      twimlMessage: assistant.greetingMessage?.trim() || 'Hello from SynqDrive.',
+    });
+
+    await this.prisma.voiceConversation.create({
+      data: {
+        organizationId,
+        voiceAssistantId: assistant.id,
+        twilioCallSid: result.callSid,
+        providerConversationId: result.callSid,
+        providerAgentId: assistant.elevenLabsAgentId,
+        callerNumber: to.trim(),
+        direction: VoiceConversationDirection.OUTBOUND,
+        status: VoiceConversationStatus.ACTIVE,
+        outcome: VoiceConversationOutcome.RESOLVED,
+        metadata: {
+          pstnProvider: 'twilio',
+          aiProvider: 'elevenlabs',
+        },
+      },
+    });
+
+    return {
+      callSid: result.callSid,
+      from: assistant.phoneNumber,
+      to: to.trim(),
+      status: 'queued',
+    };
   }
 
   getReadiness(organizationId: string): Promise<ReadinessResult> {
@@ -583,7 +741,9 @@ export class VoiceAssistantService {
   }
 
   async getAdminOverview() {
-    const providerConfigured = this.elevenLabs.isConfigured();
+    const providerConfig = this.getTelephonyProviderConfig();
+    const providerConfigured =
+      providerConfig.elevenLabsConfigured || providerConfig.twilioConfigured;
     const todayStart = startOfToday();
 
     const [organizations, assistants, callsTodayGroups, lastCallGroups] = await Promise.all([
@@ -640,7 +800,7 @@ export class VoiceAssistantService {
       }
 
       const readiness = this.computeReadiness(assistant, { forActivation: false });
-      const telephony = computeTelephonyStatus(assistant, providerConfigured);
+      const telephony = computeTelephonyStatus(assistant, providerConfig);
 
       return {
         organizationId: org.id,
@@ -726,10 +886,12 @@ export class VoiceAssistantService {
       };
     }
 
-    const providerConfigured = this.elevenLabs.isConfigured();
+    const providerConfig = this.getTelephonyProviderConfig();
     const readiness = this.computeReadiness(assistant, { forActivation: false });
-    const telephonyStatus = computeTelephonyStatus(assistant, providerConfigured);
+    const telephonyStatus = computeTelephonyStatus(assistant, providerConfig);
     const conversations = await this.listConversations(orgId, { limit: 10 });
+    const providerConfigured =
+      providerConfig.elevenLabsConfigured || providerConfig.twilioConfigured;
     const warnings = buildAdminWarnings(assistant, readiness, telephonyStatus, providerConfigured);
 
     return {
@@ -770,8 +932,18 @@ export class VoiceAssistantService {
   }
 
   private mapConnectionStatus(): VoiceConnectionStatus {
-    if (!this.elevenLabs.isConfigured()) return VoiceConnectionStatus.NOT_CONFIGURED;
+    const config = this.getTelephonyProviderConfig();
+    if (!config.elevenLabsConfigured && !config.twilioConfigured) {
+      return VoiceConnectionStatus.NOT_CONFIGURED;
+    }
     return VoiceConnectionStatus.CONNECTED;
+  }
+
+  private getTelephonyProviderConfig(): TelephonyProviderConfig {
+    return {
+      elevenLabsConfigured: this.elevenLabs.isConfigured(),
+      twilioConfigured: this.twilioTelephony.isConfigured(),
+    };
   }
 
   private hasEscalationConfigured(assistant: VoiceAssistant): boolean {
@@ -812,6 +984,14 @@ export class VoiceAssistantService {
         label: 'ElevenLabs connected',
         ok: this.elevenLabs.isConfigured(),
         required: true,
+      },
+      {
+        key: 'twilio',
+        label: 'Twilio connected',
+        ok:
+          assistant.pstnProvider !== VoicePstnProvider.TWILIO ||
+          this.twilioTelephony.isConfigured(),
+        required: assistant.pstnProvider === VoicePstnProvider.TWILIO,
       },
       {
         key: 'agentProvisioned',
@@ -871,7 +1051,10 @@ export class VoiceAssistantService {
   private formatAssistant(assistant: VoiceAssistant) {
     const toolPermissions = resolveToolPermissions(assistant);
     const toolPolicy = buildToolPolicyForAssistant(assistant);
-    const telephonyStatus = computeTelephonyStatus(assistant, this.elevenLabs.isConfigured());
+    const telephonyStatus = computeTelephonyStatus(
+      assistant,
+      this.getTelephonyProviderConfig(),
+    );
     return {
       ...assistant,
       toolPermissions,
@@ -886,11 +1069,25 @@ export class VoiceAssistantService {
 
   private async buildPhoneNumberList(organizationId: string): Promise<ProviderPhoneNumberView[]> {
     const assistant = await this.requireAssistantRow(organizationId);
-    if (!this.elevenLabs.isConfigured()) {
-      return [];
+    const results: ProviderPhoneNumberView[] = [];
+
+    if (this.elevenLabs.isConfigured()) {
+      const numbers = await this.elevenLabs.listPhoneNumbers();
+      results.push(...mapProviderPhoneNumbers(numbers, assistant.elevenLabsAgentId));
     }
-    const numbers = await this.elevenLabs.listPhoneNumbers();
-    return mapProviderPhoneNumbers(numbers, assistant.elevenLabsAgentId);
+
+    if (this.twilioTelephony.isConfigured()) {
+      try {
+        const twilioNumbers = await this.twilioTelephony.listPhoneNumbers();
+        results.push(...mapTwilioProviderPhoneNumbers(twilioNumbers, assistant));
+      } catch (err) {
+        this.logger.warn(
+          `Twilio phone number list skipped: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      }
+    }
+
+    return results;
   }
 
   private formatAssistantSummary(assistant: VoiceAssistant) {

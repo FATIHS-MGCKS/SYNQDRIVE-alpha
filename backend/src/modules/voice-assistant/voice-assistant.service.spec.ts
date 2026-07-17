@@ -2,9 +2,11 @@ import { BadRequestException } from '@nestjs/common';
 import {
   VoiceAssistantStatus,
   VoiceConnectionStatus,
+  VoicePstnProvider,
 } from '@prisma/client';
 import { VoiceAssistantService } from './voice-assistant.service';
 import { ElevenLabsService } from './elevenlabs.service';
+import { TwilioTelephonyService } from '@modules/twilio/twilio-telephony.service';
 
 describe('VoiceAssistantService', () => {
   const prisma = {
@@ -37,6 +39,15 @@ describe('VoiceAssistantService', () => {
     listVoices: jest.fn(),
   };
 
+  const twilioTelephony = {
+    isConfigured: jest.fn(),
+    listPhoneNumbers: jest.fn(),
+    configureInboundWebhooks: jest.fn(),
+    clearInboundWebhooks: jest.fn(),
+    initiateOutboundCall: jest.fn(),
+    resolveVoiceWebhookUrls: jest.fn(),
+  };
+
   let service: VoiceAssistantService;
 
   const baseAssistant = {
@@ -55,8 +66,10 @@ describe('VoiceAssistantService', () => {
     forbiddenActions: null,
     knowledgeSnippets: null,
     provider: 'elevenlabs',
+    pstnProvider: VoicePstnProvider.ELEVENLABS,
     elevenLabsAgentId: null,
     elevenLabsPhoneNumberId: null,
+    twilioPhoneNumberSid: null,
     phoneNumberId: null,
     phoneNumber: null,
     connectionStatus: VoiceConnectionStatus.NOT_CONFIGURED,
@@ -107,7 +120,12 @@ describe('VoiceAssistantService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     elevenLabs.isConfigured.mockReturnValue(true);
-    service = new VoiceAssistantService(prisma as any, elevenLabs as any);
+    twilioTelephony.isConfigured.mockReturnValue(false);
+    service = new VoiceAssistantService(
+      prisma as any,
+      elevenLabs as any,
+      twilioTelephony as any,
+    );
   });
 
   it('creates default assistant idempotently', async () => {

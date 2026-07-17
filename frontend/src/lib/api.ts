@@ -9949,6 +9949,7 @@ export interface VoiceTelephonyStatusSnapshot {
 }
 
 export interface VoiceProviderPhoneNumber {
+  provider?: 'elevenlabs' | 'twilio';
   phoneNumberId: string;
   phoneNumber: string | null;
   assignedAgentId: string | null;

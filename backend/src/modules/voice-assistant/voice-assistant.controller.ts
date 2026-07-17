@@ -8,6 +8,7 @@ import {
   ListVoiceConversationsQueryDto,
   AssignPhoneNumberDto,
   UpdateTelephonySettingsDto,
+  InitiateTwilioOutboundCallDto,
 } from './dto';
 
 @Controller('organizations/:orgId/voice-assistant')
@@ -78,7 +79,7 @@ export class VoiceAssistantController {
     @Param('orgId') orgId: string,
     @Body() body: AssignPhoneNumberDto,
   ) {
-    return this.service.assignPhoneNumber(orgId, body.phoneNumberId);
+    return this.service.assignPhoneNumber(orgId, body.phoneNumberId, body.provider ?? 'elevenlabs');
   }
 
   @Post('phone-number/unassign')
@@ -97,6 +98,14 @@ export class VoiceAssistantController {
     @Body() body: UpdateTelephonySettingsDto,
   ) {
     return this.service.updateTelephonySettings(orgId, body);
+  }
+
+  @Post('twilio/outbound-call')
+  async twilioOutboundCall(
+    @Param('orgId') orgId: string,
+    @Body() body: InitiateTwilioOutboundCallDto,
+  ) {
+    return this.service.initiateTwilioOutboundCall(orgId, body.to);
   }
 }
 
