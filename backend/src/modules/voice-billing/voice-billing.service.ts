@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { isVoicePlanCode, type VoicePlanCode } from './voice-plan-catalog';
 import {
   VoiceBillingPeriodRepository,
   VoiceUsageEventRepository,
@@ -55,6 +56,69 @@ export class VoiceBillingService {
     private readonly billingPeriods: VoiceBillingPeriodRepository,
     private readonly ledger: VoiceUsageLedgerService,
   ) {}
+
+  async getSubscription(organizationId: string) {
+    await this.subscriptions.applyPendingPlanChanges(organizationId);
+    const subscription = await this.subscriptions.getActiveSubscription(organizationId);
+    if (!subscription) {
+      return { subscription: null, plan: null };
+    }
+
+    const plan = this.subscriptions.resolvePlanForSubscription(subscription);
+    return {
+      subscription: {
+        id: subscription.id,
+        status: subscription.status,
+        planCode: subscription.planCode,
+        planCatalogVersion: subscription.planCatalogVersion,
+        setupFeeCents: subscription.setupFeeCents,
+        setupFeePaidAt: subscription.setupFeePaidAt?.toISOString() ?? null,
+        pendingPlanCode: subscription.pendingPlanCode,
+        pendingPlanEffectiveAt: subscription.pendingPlanEffectiveAt?.toISOString() ?? null,
+        trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
+        activatedAt: subscription.activatedAt?.toISOString() ?? null,
+        currentPeriodStart: subscription.currentPeriodStart?.toISOString() ?? null,
+        currentPeriodEnd: subscription.currentPeriodEnd?.toISOString() ?? null,
+      },
+      plan: {
+        code: plan.code,
+        catalogVersion: plan.catalogVersion,
+        currency: plan.currency,
+        monthlyFeeCents: plan.monthlyFeeCents,
+        setupFeeCents: plan.setupFeeCents,
+        entitlements: plan.entitlements,
+      },
+    };
+  }
+
+  async ensureSubscriptionPlan(organizationId: string, planCode: string) {
+    if (!isVoicePlanCode(planCode)) {
+      throw new BadRequestException(`Unknown voice plan: ${planCode}`);
+    }
+
+    const existing = await this.subscriptions.getActiveSubscription(organizationId);
+    if (existing) {
+      if (existing.planCode === planCode && !existing.pendingPlanCode) {
+        return this.getSubscription(organizationId);
+      }
+      await this.subscriptions.changePlan({
+        organizationId,
+        subscriptionId: existing.id,
+        newPlanCode: planCode as VoicePlanCode,
+        timing: 'IMMEDIATE',
+      });
+      return this.getSubscription(organizationId);
+    }
+
+    const created = await this.subscriptions.createSubscription({
+      organizationId,
+      planCode: planCode as VoicePlanCode,
+      status: 'TRIAL',
+      trialDays: 14,
+    });
+    await this.subscriptions.activateSubscription(organizationId, created.id);
+    return this.getSubscription(organizationId);
+  }
 
   listPlans() {
     return listVoicePlans().map((plan) => ({

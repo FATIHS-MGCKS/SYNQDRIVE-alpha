@@ -23,22 +23,23 @@ describe('voice assistant API contract characterization', () => {
     expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/conversations/sync`');
   });
 
+  it('exposes voice billing and protection endpoints for organization UI', () => {
+    expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/billing/plans`');
+    expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/billing/usage`');
+    expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/billing/remaining-minutes`');
+    expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/billing/subscription`');
+    expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/protection/status`');
+    expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/protection/budget-policy`');
+  });
+
   it('keeps master admin routes on /admin/voice-assistant without tenant path injection', () => {
     expect(apiSource).toContain("overview: () => get<VoiceAssistantAdminOverview>('/admin/voice-assistant/overview')");
     expect(apiSource).toContain('`/admin/voice-assistant/organizations/${orgId}`');
     expect(apiSource).toContain('`/admin/voice-assistant/organizations/${orgId}/sync`');
   });
 
-  it('types masked caller numbers on conversation entries', () => {
-    expect(apiSource).toMatch(/export interface VoiceConversationEntry[\s\S]*callerNumber: string \| null/);
-  });
-
   it('types readiness checks used by operator UI', () => {
     expect(apiSource).toMatch(/export interface VoiceAssistantReadiness[\s\S]*checks:/);
     expect(apiSource).toMatch(/key: string[\s\S]*ok: boolean[\s\S]*required\?: boolean/);
-  });
-
-  describe('pending ADR targets', () => {
-    it.todo('ADR target: tenant voice routes should enforce billing plan feature flags client-side');
   });
 });

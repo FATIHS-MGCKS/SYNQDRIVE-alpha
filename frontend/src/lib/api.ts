@@ -5607,6 +5607,30 @@ export const api = {
         payload,
       ),
 
+    billing: {
+      plans: (orgId: string) =>
+        get<VoicePlanCatalogEntry[]>(`/organizations/${orgId}/voice-assistant/billing/plans`),
+      subscription: (orgId: string) =>
+        get<VoiceSubscriptionResponse>(`/organizations/${orgId}/voice-assistant/billing/subscription`),
+      selectPlan: (orgId: string, planCode: VoicePlanCode) =>
+        put<VoiceSubscriptionResponse>(`/organizations/${orgId}/voice-assistant/billing/subscription`, {
+          planCode,
+        }),
+      usage: (orgId: string) =>
+        get<VoiceUsageSummary>(`/organizations/${orgId}/voice-assistant/billing/usage`),
+      remainingMinutes: (orgId: string) =>
+        get<VoiceRemainingMinutes>(`/organizations/${orgId}/voice-assistant/billing/remaining-minutes`),
+      forecast: (orgId: string) =>
+        get<VoiceUsageForecast>(`/organizations/${orgId}/voice-assistant/billing/forecast`),
+    },
+
+    protection: {
+      status: (orgId: string) =>
+        get<VoiceProtectionStatus>(`/organizations/${orgId}/voice-assistant/protection/status`),
+      updateBudgetPolicy: (orgId: string, payload: VoiceBudgetPolicyUpdate) =>
+        patch<VoiceBudgetPolicy>(`/organizations/${orgId}/voice-assistant/protection/budget-policy`, payload),
+    },
+
     admin: {
       overview: () => get<VoiceAssistantAdminOverview>('/admin/voice-assistant/overview'),
       orgDetail: (orgId: string) =>
@@ -10086,6 +10110,121 @@ export interface VoiceAssistantAnalytics {
     topEscalationInsight: string | null;
   };
 }
+
+export type VoicePlanCode = 'START' | 'PRO' | 'BUSINESS';
+
+export interface VoicePlanEntitlements {
+  includedMinutesPerMonth: number;
+  overageCentsPerMinute: number;
+  localPhoneNumbers: number;
+  maxBranches: number | null;
+  maxConcurrentCalls: number;
+  supportedLanguages: string[];
+}
+
+export interface VoicePlanCatalogEntry {
+  code: VoicePlanCode;
+  catalogVersion: string;
+  currency: string;
+  monthlyFeeCents: number;
+  monthlyFeeEuros: number;
+  setupFeeCents: number;
+  setupFeeEuros: number;
+  entitlements: VoicePlanEntitlements;
+}
+
+export interface VoiceSubscriptionRecord {
+  id: string;
+  status: string;
+  planCode: VoicePlanCode;
+  planCatalogVersion: string;
+  setupFeeCents: number;
+  setupFeePaidAt: string | null;
+  pendingPlanCode: string | null;
+  pendingPlanEffectiveAt: string | null;
+  trialEndsAt: string | null;
+  activatedAt: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+}
+
+export interface VoiceSubscriptionResponse {
+  subscription: VoiceSubscriptionRecord | null;
+  plan: Omit<VoicePlanCatalogEntry, 'monthlyFeeEuros' | 'setupFeeEuros'> | null;
+}
+
+export interface VoiceUsageSummary {
+  organizationId: string;
+  periodStart: string;
+  periodEnd: string;
+  planCode: VoicePlanCode | null;
+  planCatalogVersion: string | null;
+  includedMinutes: number;
+  consumedMinutes: number;
+  inboundMinutes: number;
+  outboundMinutes: number;
+  remainingIncludedMinutes: number;
+  overageMinutes: number;
+  currency: string;
+  estimatedUsageRevenueCents: number;
+  monthlyBaseFeeCents: number;
+}
+
+export interface VoiceRemainingMinutes {
+  organizationId: string;
+  periodStart: string;
+  periodEnd: string;
+  includedMinutes: number;
+  consumedMinutes: number;
+  remainingIncludedMinutes: number;
+  overageMinutes: number;
+}
+
+export interface VoiceUsageForecast {
+  organizationId: string;
+  periodStart: string;
+  periodEnd: string;
+  currency: string;
+  projectedMinutes: number;
+  projectedOverageMinutes: number;
+  projectedRevenueCents: number;
+  monthlyBaseFeeCents: number;
+  setupFeeOutstandingCents: number;
+}
+
+export interface VoiceBudgetPolicy {
+  id: string;
+  organizationId: string;
+  monthlyBudgetCents: number | null;
+  dailyLimitCents: number | null;
+  dailyOutboundMinutesLimit: number | null;
+  maxConversationDurationSeconds: number | null;
+  maxConcurrentCalls: number | null;
+  overflowBehavior: string | null;
+  destinationRegionPolicy: string | null;
+}
+
+export interface VoiceProtectionStatus {
+  snapshot: {
+    consumedMonthlyCents: number;
+    consumedDailyOutboundMinutes: number;
+    monthlyBudgetCents: number | null;
+    usagePct: number | null;
+    activeOverrides: number;
+  };
+  forecast: Record<string, unknown> | null;
+  policy: VoiceBudgetPolicy | null;
+}
+
+export type VoiceBudgetPolicyUpdate = Partial<{
+  monthlyBudgetCents: number;
+  dailyLimitCents: number;
+  dailyOutboundMinutesLimit: number;
+  maxConversationDurationSeconds: number;
+  maxConcurrentCalls: number;
+  overflowBehavior: 'WARN' | 'HARD_STOP' | 'ALLOW_OVERAGE';
+  destinationRegionPolicy: 'DE_ONLY' | 'DE_EEA' | 'CUSTOM';
+}>;
 
 export interface VoiceAssistantAdminOverviewRow {
   organizationId: string;

@@ -1,7 +1,7 @@
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
-import { EmptyState, ErrorState } from '../../components/patterns/states';
+import { ErrorState } from '../../components/patterns/states';
 
 import { useRentalOrg } from '../RentalContext';
 import { api, getErrorMessage } from '../../lib/api';
@@ -12,37 +12,44 @@ import type {
   VoiceConversationEntry,
   VoiceOption,
 } from '../../lib/api';
-import { VoiceAssistantBuilder } from './voice-assistant/VoiceAssistantBuilder';
 import type { VoiceTextField } from './voice-assistant/voice-assistant-builder.types';
 import { VoiceCommandHeader } from './voice-assistant/VoiceCommandHeader';
-import { VoiceLaunchChecklist } from './voice-assistant/VoiceLaunchChecklist';
-import { VoiceOpsKpiStrip } from './voice-assistant/VoiceOpsKpiStrip';
-import { VoiceSectionNav } from './voice-assistant/VoiceSectionNav';
-import { VoiceTelephonyWizard } from './voice-assistant/VoiceTelephonyWizard';
-import { VoiceTestCenter } from './voice-assistant/VoiceTestCenter';
+import { VoiceOnboardingWizard } from './voice-assistant/VoiceOnboardingWizard';
+import { VoiceOpsSectionNav } from './voice-assistant/VoiceOpsSectionNav';
+import { VoiceOperationsOverview } from './voice-assistant/VoiceOperationsOverview';
 import { VoiceConversationsPanel } from './voice-assistant/VoiceConversationsPanel';
-import { VoiceAnalyticsView } from './voice-assistant/VoiceAnalyticsView';
-import { VoicePermissionsMatrix } from './voice-assistant/VoicePermissionsMatrix';
-import type { VoicePermissionMode, VoiceToolCapabilityKey } from './voice-assistant/voice-assistant-permissions.ops';
+import { VoicePermissionGroupsPanel } from './voice-assistant/VoicePermissionGroupsPanel';
+import { VoiceUsageAnalyticsPanel } from './voice-assistant/VoiceUsageAnalyticsPanel';
+import { VoiceAssistantBuilder } from './voice-assistant/VoiceAssistantBuilder';
+import { VoiceTelephonyWizard } from './voice-assistant/VoiceTelephonyWizard';
+import type { VoiceToolCapabilityKey, VoicePermissionMode } from './voice-assistant/voice-assistant-permissions.ops';
 import {
   answerRatePercent,
-  buildLaunchChecklist,
   callsTodayFromConversations,
   lastCallLabel,
   openEscalationsCount,
   readinessPercent,
-  type VoiceTab,
 } from './voice-assistant/voice-assistant.ops';
+import {
+  clearWizardProgress,
+  loadWizardStep,
+  shouldShowOnboardingWizard,
+  type VoiceOpsTab,
+} from './voice-assistant/voice-wizard.ops';
+import { useLanguage } from '../i18n/LanguageContext';
 
-interface Props { isDarkMode: boolean; }
+interface Props {
+  isDarkMode: boolean;
+}
 
 type VoiceBoolField = Exclude<{
   [K in keyof VoiceAssistantUpdatePayload]: VoiceAssistantUpdatePayload[K] extends boolean | undefined ? K : never;
 }[keyof VoiceAssistantUpdatePayload], undefined>;
 
 export function VoiceAssistantView({ isDarkMode }: Props) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
-  const [tab, setTab] = useState<VoiceTab>('overview');
+  const [opsTab, setOpsTab] = useState<VoiceOpsTab>('overview');
   const [assistant, setAssistant] = useState<VoiceAssistantData | null>(null);
   const [readiness, setReadiness] = useState<VoiceAssistantReadiness | null>(null);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
@@ -61,6 +68,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const operationLock = useRef(false);
 
   const isBusy = saving || activating || syncing;
+  const card = 'surface-premium rounded-2xl shadow-[var(--shadow-1)]';
 
   const refreshReadiness = useCallback(async (targetOrgId: string) => {
     const r = await api.voiceAssistant.readiness(targetOrgId);
@@ -71,7 +79,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const load = useCallback(async () => {
     if (!orgId) {
       setLoading(false);
-      setLoadError('Organization context is missing.');
+      setLoadError(t('voice.common.missingOrg'));
       return;
     }
     setLoading(true);
@@ -86,15 +94,17 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
       setDraft({});
       setActionError(null);
     } catch (err) {
-      const message = getErrorMessage(err, 'Failed to load voice assistant');
+      const message = getErrorMessage(err, t('voice.common.loadError'));
       setLoadError(message);
-      toast.error('Could not load voice assistant', { description: message });
+      toast.error(t('voice.common.loadError'), { description: message });
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const loadVoices = useCallback(async () => {
     if (!orgId || voicesLoading) return;
@@ -103,16 +113,9 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
     try {
       const v = await api.voiceAssistant.voices(orgId);
       setVoices(v);
-      if (v.length === 0) {
-        setVoicesError('No voices returned — ElevenLabs may not be configured on the server.');
-        toast.message('No voices returned', {
-          description: 'ElevenLabs may not be configured on the server.',
-        });
-      }
     } catch (err) {
       const message = getErrorMessage(err);
       setVoicesError(message);
-      toast.error('Could not load voices', { description: message });
     } finally {
       setVoicesLoading(false);
     }
@@ -125,12 +128,26 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
       setConversations(result.items);
       setConversationsLoaded(true);
     } catch (err) {
-      toast.error('Could not load conversations', { description: getErrorMessage(err) });
+      toast.error(t('voice.ops.conversationsError'), { description: getErrorMessage(err) });
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
-  useEffect(() => { if (tab === 'config') void loadVoices(); }, [tab, loadVoices]);
-  useEffect(() => { if (tab === 'logs') loadConversations(); }, [tab, loadConversations]);
+  const isActive = assistant?.status === 'ACTIVE';
+  const showWizard = assistant ? shouldShowOnboardingWizard(assistant) : false;
+
+  useEffect(() => {
+    if (showWizard) void loadVoices();
+  }, [showWizard, loadVoices]);
+
+  useEffect(() => {
+    if (!showWizard && (opsTab === 'overview' || opsTab === 'conversations')) {
+      void loadConversations();
+    }
+  }, [showWizard, opsTab, loadConversations]);
+
+  useEffect(() => {
+    if (!showWizard && opsTab === 'settings') void loadVoices();
+  }, [showWizard, opsTab, loadVoices]);
 
   const save = async (patch?: VoiceAssistantUpdatePayload) => {
     if (!orgId || operationLock.current) return;
@@ -145,11 +162,11 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
       setAssistant(updated);
       setDraft({});
       await refreshReadiness(orgId);
-      toast.success('Voice assistant saved');
+      toast.success(t('voice.common.saved'));
     } catch (err) {
-      const message = getErrorMessage(err, 'Save failed');
+      const message = getErrorMessage(err, t('voice.common.saveError'));
       setActionError(message);
-      toast.error('Could not save voice assistant', { description: message });
+      toast.error(t('voice.common.saveError'), { description: message });
     } finally {
       setSaving(false);
       operationLock.current = false;
@@ -169,18 +186,20 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           : await api.voiceAssistant.activate(orgId);
       setAssistant(updated);
       await refreshReadiness(orgId);
-      toast.success(updated.status === 'ACTIVE' ? 'Voice assistant activated' : 'Voice assistant deactivated');
-    } catch (err) {
-      const message = getErrorMessage(err, 'Activation failed');
-      setActionError(message);
-      toast.error(
-        assistant.status === 'ACTIVE' ? 'Deactivation failed' : 'Activation failed',
-        { description: message },
+      if (updated.status === 'ACTIVE' && orgId) {
+        clearWizardProgress(orgId);
+      }
+      toast.success(
+        updated.status === 'ACTIVE' ? t('voice.activation.success') : t('voice.activation.deactivated'),
       );
+    } catch (err) {
+      const message = getErrorMessage(err, t('voice.activation.failed'));
+      setActionError(message);
+      toast.error(t('voice.activation.failed'), { description: message });
       try {
         await refreshReadiness(orgId);
       } catch {
-        // readiness refresh is best-effort after failure
+        // best effort
       }
     } finally {
       setActivating(false);
@@ -200,13 +219,13 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
         const refreshed = await api.voiceAssistant.get(orgId);
         setAssistant(refreshed);
       }
-      toast.success('Conversations synced', {
-        description: result.message ?? `${result.synced} new conversation(s)`,
+      toast.success(t('voice.ops.synced'), {
+        description: result.message ?? `${result.synced}`,
       });
     } catch (err) {
-      const message = getErrorMessage(err, 'Sync failed');
+      const message = getErrorMessage(err, t('voice.ops.syncError'));
       setActionError(message);
-      toast.error('Could not sync conversations', { description: message });
+      toast.error(t('voice.ops.syncError'), { description: message });
     } finally {
       setSyncing(false);
       operationLock.current = false;
@@ -239,58 +258,38 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
     setDraft(prev => ({ ...prev, voiceId, voiceName }));
   };
 
-  const setPermissionMode = (key: VoiceToolCapabilityKey, mode: VoicePermissionMode) => {
+  const setPermissionPatch = (patch: Partial<Record<VoiceToolCapabilityKey, VoicePermissionMode>>) => {
     setDraft(prev => ({
       ...prev,
       toolPermissions: {
         ...(prev.toolPermissions ?? assistant?.toolPermissions ?? {}),
-        [key]: mode,
+        ...patch,
       },
     }));
   };
 
-  const savePermissions = () => {
-    if (!draft.toolPermissions) return;
-    void save({ toolPermissions: draft.toolPermissions });
-  };
-
-  const hasPermissionDraft = Boolean(draft.toolPermissions && Object.keys(draft.toolPermissions).length > 0);
-
   const hasDraft = Object.keys(draft).length > 0;
-
-  const card = 'surface-premium rounded-2xl shadow-[var(--shadow-1)]';
-  const inputCls = `w-full px-3 py-2 rounded-lg text-xs outline-none transition-colors ${
-    isDarkMode
-      ? 'surface-premium border border-neutral-700 text-gray-200 focus:border-purple-500/50'
-      : 'bg-gray-50 border border-gray-200 text-gray-800 focus:border-purple-400'
-  }`;
-  const labelCls = `block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`;
-
-  const isActive = assistant?.status === 'ACTIVE';
   const canActivate = Boolean(readiness?.ready) || isActive;
   const callsToday = callsTodayFromConversations(conversations, conversationsLoaded);
   const openEscalations = openEscalationsCount(conversations, conversationsLoaded);
   const answerRate = answerRatePercent(assistant);
   const readinessPct = readinessPercent(readiness);
-  const launchItems = useMemo(
-    () => buildLaunchChecklist(assistant, readiness, testPassed),
-    [assistant, readiness, testPassed],
-  );
+  const lastCall = lastCallLabel(conversations, conversationsLoaded);
+
   const providerWarning = useMemo(() => {
     const el = readiness?.checks.find(c => c.key === 'elevenlabs');
-    if (el && !el.ok) return 'ElevenLabs not connected on server';
-    if (assistant?.connectionStatus === 'DEGRADED') return 'Provider connection degraded';
-    if (assistant?.connectionStatus === 'ERROR') return 'Provider error — check server logs';
+    if (el && !el.ok) return t('voice.ops.provider.elevenlabs');
+    if (assistant?.connectionStatus === 'DEGRADED') return t('voice.ops.provider.degraded');
+    if (assistant?.connectionStatus === 'ERROR') return t('voice.ops.provider.error');
     return null;
-  }, [assistant?.connectionStatus, readiness?.checks]);
-  const lastCall = lastCallLabel(conversations, conversationsLoaded);
+  }, [assistant?.connectionStatus, readiness?.checks, t]);
 
   if (loading) {
     return (
       <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
         <div className="surface-premium flex items-center gap-3 rounded-2xl px-5 py-4 shadow-[var(--shadow-1)]">
           <Icon name="loader-2" className="h-5 w-5 animate-spin text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground">Loading voice assistant...</span>
+          <span className="text-xs font-semibold text-muted-foreground">{t('voice.common.loading')}</span>
         </div>
       </div>
     );
@@ -300,22 +299,58 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
     return (
       <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
         <div className="surface-premium max-w-md rounded-2xl p-6 text-center shadow-[var(--shadow-1)]">
-          <p className="text-sm font-semibold text-foreground">Could not load voice assistant</p>
+          <p className="text-sm font-semibold text-foreground">{t('voice.common.loadError')}</p>
           <p className="mt-2 text-xs text-muted-foreground">{loadError}</p>
           <button
             type="button"
-            onClick={() => load()}
+            onClick={() => void load()}
             className="mt-4 rounded-lg border px-4 py-2 text-xs font-semibold"
           >
-            Retry
+            {t('voice.common.retry')}
           </button>
         </div>
       </div>
     );
   }
 
-  if (!assistant) {
+  if (!assistant || !orgId) {
     return null;
+  }
+
+  if (showWizard) {
+    return (
+      <div className="mx-auto max-w-[1600px] space-y-4 pb-8">
+        <VoiceOnboardingWizard
+          orgId={orgId}
+          assistant={assistant}
+          readiness={readiness}
+          voices={voices}
+          voicesLoading={voicesLoading}
+          voicesError={voicesError}
+          onLoadVoices={() => void loadVoices()}
+          isDarkMode={isDarkMode}
+          isBusy={isBusy}
+          saving={saving}
+          activating={activating}
+          draft={draft}
+          hasDraft={hasDraft}
+          testPassed={testPassed}
+          actionError={actionError}
+          initialStep={loadWizardStep(orgId)}
+          textField={textField}
+          setTextField={setTextField}
+          setVoiceSelection={setVoiceSelection}
+          boolField={boolField}
+          setBoolField={setBoolField}
+          onSave={save}
+          onPermissionChange={setPermissionPatch}
+          onActivate={toggleActive}
+          onAssistantUpdated={setAssistant}
+          onReadinessRefresh={() => refreshReadiness(orgId)}
+          onTestPassed={() => setTestPassed(true)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -337,234 +372,105 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
         isActive={isActive}
         hasDraft={hasDraft}
         onActivate={() => void toggleActive()}
-        onTest={() => setTab('test')}
-        onSync={() => { setTab('logs'); void syncLogs(); }}
+        onTest={() => setOpsTab('settings')}
+        onSync={() => {
+          setOpsTab('conversations');
+          void syncLogs();
+        }}
         onSave={() => void save()}
       />
 
       {actionError && (
         <ErrorState
           compact
-          title="Action failed"
+          title={t('voice.common.actionFailed')}
           error={actionError}
           className="surface-premium rounded-2xl border border-[color:var(--status-critical)]/20"
         />
       )}
 
-      <VoiceOpsKpiStrip
-        callsToday={callsToday}
-        missedCalls={assistant.missedCalls}
-        escalatedCalls={assistant.escalatedCalls}
-        answerRate={answerRate}
-        talkMinutes={assistant.totalTalkMinutes}
-        readinessPercent={readinessPct}
-        providerWarning={providerWarning}
-        onOpenAnalytics={() => setTab('analytics')}
-        onOpenOverview={() => setTab('overview')}
-      />
+      <VoiceOpsSectionNav activeTab={opsTab} onChange={setOpsTab} />
 
-      <VoiceSectionNav activeTab={tab} onChange={setTab} />
+      <div key={opsTab} className="animate-fade-up">
+        {opsTab === 'overview' && (
+          <VoiceOperationsOverview
+            orgId={orgId}
+            assistant={assistant}
+            readiness={readiness}
+            conversations={conversations}
+            conversationsLoaded={conversationsLoaded}
+            providerWarning={providerWarning}
+            onOpenConversations={() => setOpsTab('conversations')}
+            onOpenAnalytics={() => setOpsTab('analytics')}
+          />
+        )}
 
-      <div key={tab} className="animate-fade-up">
-      {tab === 'overview' && (
-        <div className="space-y-4">
-          <VoiceLaunchChecklist items={launchItems} onNavigate={setTab} />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className={`${card} p-4`}>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Lifetime usage</h3>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Total calls', value: assistant.totalCalls },
-                  { label: 'Answered', value: assistant.answeredCalls },
-                  { label: 'Missed', value: assistant.missedCalls },
-                  { label: 'Escalated', value: assistant.escalatedCalls },
-                ].map(row => (
-                  <div key={row.label} className="rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5">
-                    <p className="text-[10px] text-muted-foreground">{row.label}</p>
-                    <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{row.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className={`${card} p-4`}>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assistant snapshot</h3>
-              <dl className="mt-3 space-y-2">
-                {[
-                  { label: 'Voice', value: assistant.voiceName ?? 'Not set' },
-                  { label: 'Language', value: assistant.language },
-                  { label: 'Phone', value: assistant.phoneNumber ?? 'Not connected' },
-                  { label: 'Agent', value: assistant.elevenLabsAgentId ? 'Provisioned' : 'Not provisioned' },
-                ].map(row => (
-                  <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5">
-                    <dt className="text-[11px] text-muted-foreground">{row.label}</dt>
-                    <dd className="text-[11px] font-semibold text-foreground">{row.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
+        {opsTab === 'conversations' && (
+          <VoiceConversationsPanel
+            orgId={orgId}
+            isDarkMode={isDarkMode}
+            cardClassName={card}
+            onConversationsChange={items => {
+              setConversations(items);
+              setConversationsLoaded(true);
+            }}
+          />
+        )}
+
+        {opsTab === 'automations' && assistant.toolPermissions && (
+          <VoicePermissionGroupsPanel
+            assistant={assistant}
+            draft={draft}
+            saving={saving}
+            hasDraft={Boolean(draft.toolPermissions)}
+            onModeChange={setPermissionPatch}
+            onSave={() => void save({ toolPermissions: draft.toolPermissions })}
+          />
+        )}
+
+        {opsTab === 'analytics' && (
+          <VoiceUsageAnalyticsPanel
+            orgId={orgId}
+            isDarkMode={isDarkMode}
+            cardClassName={card}
+            onRequestSync={syncLogs}
+          />
+        )}
+
+        {opsTab === 'settings' && (
+          <div className="space-y-4">
+            <VoiceAssistantBuilder
+              orgId={orgId}
+              assistant={assistant}
+              readiness={readiness}
+              voices={voices}
+              voicesLoading={voicesLoading}
+              voicesError={voicesError}
+              onLoadVoices={() => void loadVoices()}
+              textField={textField}
+              setTextField={setTextField}
+              setVoiceSelection={setVoiceSelection}
+              hasDraft={hasDraft}
+              saving={saving}
+              onSave={() => void save()}
+              onNavigateTab={() => undefined}
+            />
+            <VoiceTelephonyWizard
+              orgId={orgId}
+              assistant={assistant}
+              readinessElevenLabsOk={readiness?.checks.find(c => c.key === 'elevenlabs')?.ok}
+              isBusy={isBusy}
+              onAssistantUpdated={setAssistant}
+              onNavigateTest={() => undefined}
+              onError={err => toast.error(t('voice.phone.error'), { description: getErrorMessage(err) })}
+              loadPhoneNumbers={() => api.voiceAssistant.phoneNumbers(orgId)}
+              assignPhoneNumber={phoneNumberId => api.voiceAssistant.assignPhoneNumber(orgId, phoneNumberId)}
+              unassignPhoneNumber={() => api.voiceAssistant.unassignPhoneNumber(orgId)}
+              refreshTelephony={() => api.voiceAssistant.refreshTelephony(orgId)}
+              updateTelephonySettings={payload => api.voiceAssistant.updateTelephonySettings(orgId, payload)}
+            />
           </div>
-        </div>
-      )}
-
-      {tab === 'config' && orgId && (
-        <VoiceAssistantBuilder
-          orgId={orgId}
-          assistant={assistant}
-          readiness={readiness}
-          voices={voices}
-          voicesLoading={voicesLoading}
-          voicesError={voicesError}
-          onLoadVoices={() => void loadVoices()}
-          textField={textField}
-          setTextField={setTextField}
-          setVoiceSelection={setVoiceSelection}
-          hasDraft={hasDraft}
-          saving={saving}
-          onSave={() => void save()}
-          onNavigateTab={setTab}
-        />
-      )}
-
-      {tab === 'permissions' && assistant.toolPermissions && (
-        <VoicePermissionsMatrix
-          assistant={assistant}
-          draft={draft}
-          saving={saving}
-          hasDraft={hasPermissionDraft}
-          onModeChange={setPermissionMode}
-          onSave={savePermissions}
-        />
-      )}
-
-      {tab === 'escalation' && (
-        <div className={`${card} p-5 space-y-4`}>
-          <div className="flex items-center justify-between">
-            <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Escalation & Handover</h3>
-            {hasDraft && (
-              <button onClick={() => save()} disabled={saving} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>
-                {saving ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="save" className="w-3 h-3" />} Save
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Escalation Phone Number</label>
-              <input className={inputCls} value={textField('escalationPhone')} onChange={e => setTextField('escalationPhone', e.target.value)} placeholder="+49 123 456789" />
-            </div>
-            <div>
-              <label className={labelCls}>Escalation Department</label>
-              <input className={inputCls} value={textField('escalationDepartment')} onChange={e => setTextField('escalationDepartment', e.target.value)} placeholder="Support, Sales..." />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls}>Fallback Message (when no agent available)</label>
-            <input className={inputCls} value={textField('fallbackMessage')} onChange={e => setTextField('fallbackMessage', e.target.value)}
-              placeholder="We're sorry, all agents are busy. Please call back later." />
-          </div>
-
-          <h4 className={`text-xs font-bold mt-4 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Escalation Triggers</h4>
-          <div className="space-y-2">
-            {([
-              { key: 'escalateOnRequest', label: 'Caller requests a human agent', desc: 'Transfer when caller explicitly asks for a human' },
-              { key: 'escalateOnLowConf', label: 'Low confidence answer', desc: 'Transfer when assistant is unsure about the answer' },
-              { key: 'escalateOnSensitive', label: 'Sensitive topic detected', desc: 'Transfer for legal, complaint, or accident topics' },
-            ] as const).map(t => (
-              <label key={t.key} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isDarkMode ? 'hover:surface-premium' : 'hover:bg-gray-50'}`}>
-                <input type="checkbox" checked={boolField(t.key)} onChange={e => setBoolField(t.key, e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
-                <div>
-                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{t.label}</div>
-                  <div className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t.desc}</div>
-                </div>
-              </label>
-            ))}
-          </div>
-
-          <h4 className={`text-xs font-bold mt-4 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Business Hours</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className={labelCls}>Start</label>
-              <input type="time" className={inputCls} value={textField('businessHoursStart')} onChange={e => setTextField('businessHoursStart', e.target.value)} />
-            </div>
-            <div>
-              <label className={labelCls}>End</label>
-              <input type="time" className={inputCls} value={textField('businessHoursEnd')} onChange={e => setTextField('businessHoursEnd', e.target.value)} />
-            </div>
-            <div>
-              <label className={labelCls}>Timezone</label>
-              <input className={inputCls} value={textField('businessHoursTimezone')} onChange={e => setTextField('businessHoursTimezone', e.target.value)} placeholder="Europe/Berlin" />
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>After-Hours Message</label>
-            <input className={inputCls} value={textField('afterHoursMessage')} onChange={e => setTextField('afterHoursMessage', e.target.value)}
-              placeholder="Our office is currently closed. Please call back during business hours." />
-          </div>
-        </div>
-      )}
-
-      {tab === 'telephony' && orgId && (
-        <VoiceTelephonyWizard
-          orgId={orgId}
-          assistant={assistant}
-          readinessElevenLabsOk={readiness?.checks.find(c => c.key === 'elevenlabs')?.ok}
-          isBusy={isBusy}
-          onAssistantUpdated={setAssistant}
-          onNavigateTest={() => setTab('test')}
-          onError={err => toast.error('Telephony error', { description: getErrorMessage(err) })}
-          loadPhoneNumbers={() => api.voiceAssistant.phoneNumbers(orgId)}
-          assignPhoneNumber={phoneNumberId => api.voiceAssistant.assignPhoneNumber(orgId, phoneNumberId)}
-          unassignPhoneNumber={() => api.voiceAssistant.unassignPhoneNumber(orgId)}
-          refreshTelephony={() => api.voiceAssistant.refreshTelephony(orgId)}
-          updateTelephonySettings={payload => api.voiceAssistant.updateTelephonySettings(orgId, payload)}
-        />
-      )}
-
-      {tab === 'test' && orgId && (
-        <VoiceTestCenter
-          orgId={orgId}
-          assistant={assistant}
-          readiness={readiness}
-          onTestPassed={() => setTestPassed(true)}
-          onNavigateTab={setTab}
-        />
-      )}
-
-      {tab === 'analytics' && orgId && (
-        <VoiceAnalyticsView
-          orgId={orgId}
-          isDarkMode={isDarkMode}
-          cardClassName={card}
-          onRequestSync={syncLogs}
-        />
-      )}
-
-      {tab === 'knowledge' && (
-        <EmptyState
-          icon={<Icon name="book-open" className="h-5 w-5" />}
-          title="Knowledge health"
-          description="Knowledge snippet coverage and FAQ freshness scoring will appear here once the backend health endpoint is available."
-          action={
-            <button type="button" onClick={() => setTab('config')} className="sq-press rounded-lg border border-border/60 surface-premium px-4 py-2 text-xs font-semibold">
-              Edit knowledge snippets
-            </button>
-          }
-        />
-      )}
-
-      {tab === 'logs' && orgId && (
-        <VoiceConversationsPanel
-          orgId={orgId}
-          isDarkMode={isDarkMode}
-          cardClassName={card}
-          onConversationsChange={items => {
-            setConversations(items);
-            setConversationsLoaded(true);
-          }}
-        />
-      )}
+        )}
       </div>
     </div>
   );

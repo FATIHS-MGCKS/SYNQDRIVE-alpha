@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-ui-onboarding-ops-2026-07-17',
+    version: '4.9.596',
+    title: 'V4.9.596 — Voice AI: organization onboarding and operations UI',
+    summary: [
+      '8-step first-time wizard: plan, assistant, knowledge, access rights, phone, availability, tests, activation with resume in localStorage.',
+      'Post-activation ops navigation: overview, conversations, automations, analytics & usage, settings — wired to billing, protection, and existing voice APIs.',
+      'DE/EN i18n for all operator-facing voice copy; business permission groups; no technical IDs in standard UI.',
+    ],
+    reason: 'Prompt 9A — production-ready organization UI for voice AI onboarding and day-2 operations.',
+    previousBehavior:
+      'Tab-based technical setup view without tariff wizard, grouped permissions, or post-activation operations overview.',
+    details:
+      'frontend VoiceOnboardingWizard, VoiceOpsSectionNav, billing/protection API client; PUT billing/subscription for plan selection; characterization tests.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-17T23:30:00.000Z',
+  },
+  {
     id: 'voice-budget-abuse-protection-2026-07-17',
     version: '4.9.595',
     title: 'V4.9.595 — Voice AI: budget limits and abuse protection',
