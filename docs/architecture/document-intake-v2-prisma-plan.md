@@ -168,6 +168,8 @@ Dieses Dokument definiert den **exakten additiven** Prisma-/PostgreSQL-Plan für
 
 **Implementierungsstand (Prompt 19, 2026-07-17):** Migration `20260717230000_document_extraction_v2_control_fields` — additive V2-Steuerfelder auf `vehicle_document_extractions`; `vehicle_id` nullable; `organization_id` FK (bleibt nullable bis Backfill); Backfill-Plan in `document-intake-v2-extraction-backfill-plan.md` (nicht ausgeführt).
 
+**Implementierungsstand (Prompt 20, 2026-07-17):** Pure Domain-Engine `planDocumentActions()` in `document-action-planner.engine.ts` — deterministischer Planner über Kategorie, confirmedData, Plausibilität, Entity Links/Candidates, Feature Flags und Downstream Capabilities. Output: `DocumentActionPlanDraft`, geplante `PlannedDocumentActionInput[]`, `blockingReasons`, `missingRequirements`, `followUpCandidateTypes`. Fingerprint via `buildDocumentActionPlannerInputFingerprint`. Keine Prisma-Writes, keine Ausführung.
+
 ### 3.1 `DocumentIntakeStatus` (Erweiterung `DocumentExtractionStatus`)
 
 **Strategie:** `DocumentExtractionStatus` **additiv erweitern** (kein neuer Enum-Typ), um bestehende Spalten nicht zu duplizieren.
