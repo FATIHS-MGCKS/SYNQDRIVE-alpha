@@ -2698,6 +2698,7 @@ model VehicleDocumentExtraction {
   storageProvider           String?                              @map("storage_provider")
   mimeType                  String?                              @map("mime_type")
   sizeBytes                 Int?                                 @map("size_bytes")
+  contentSha256             String?                              @map("content_sha256")
   extractedData             Json?                                @map("extracted_data")
   // Plausibility result produced by the worker (informational; never blocks storage).
   plausibility              Json?                                @map("plausibility")
@@ -2736,6 +2737,7 @@ model VehicleDocumentExtraction {
   @@index([vehicleId])
   @@index([status])
   @@index([organizationId, createdAt])
+  @@index([organizationId, contentSha256])
   @@index([vehicleId, createdAt])
   @@index([status, updatedAt])
   @@map("vehicle_document_extractions")

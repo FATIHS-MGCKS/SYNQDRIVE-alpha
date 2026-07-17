@@ -16,6 +16,7 @@ export interface PipelinePlausibilityPayload {
   actionPlan?: import('./document-action-plan.types').DocumentActionPlan;
   actionPlanExecution?: import('./document-action.types').DocumentActionPlanExecution;
   actionPlanApplyLifecycle?: import('./document-action-plan.state-machine').DocumentActionPlanApplyLifecycle;
+  fileFingerprint?: import('./document-extraction-fingerprint.types').DocumentExtractionFileFingerprint;
 }
 
 export interface DocumentTypeAuditEntry {
@@ -89,6 +90,7 @@ export function mergePipelinePlausibility(
     actionPlan: patch.actionPlan ?? current.actionPlan,
     actionPlanExecution: patch.actionPlanExecution ?? current.actionPlanExecution,
     actionPlanApplyLifecycle: patch.actionPlanApplyLifecycle ?? current.actionPlanApplyLifecycle,
+    fileFingerprint: patch.fileFingerprint ?? current.fileFingerprint,
   };
   return base;
 }
