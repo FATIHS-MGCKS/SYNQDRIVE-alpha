@@ -21,11 +21,13 @@ import {
 import { readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
 import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
 import { readCustomerCandidatePipelineState } from './customer-candidate-matching.util';
+import { readDriverCandidatePipelineState } from './driver-candidate-matching.util';
 import type {
   PublicUploadContextDisplayDto,
   PublicVehicleCandidateDto,
   PublicBookingCandidateDto,
   PublicCustomerCandidateDto,
+  PublicDriverCandidateDto,
 } from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
@@ -251,6 +253,26 @@ function buildCustomerCandidatesDisplay(record: ExtractionRecord): PublicCustome
   }));
 }
 
+function buildDriverCandidatesDisplay(record: ExtractionRecord): PublicDriverCandidateDto[] | null {
+  const pipeline = readDriverCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    driverCustomerId: candidate.driverCustomerId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+    displayLabel: candidate.displayLabel,
+    driverRole: candidate.driverRole,
+  }));
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
@@ -265,6 +287,7 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     vehicleCandidates: buildVehicleCandidatesDisplay(record),
     bookingCandidates: buildBookingCandidatesDisplay(record),
     customerCandidates: buildCustomerCandidatesDisplay(record),
+    driverCandidates: buildDriverCandidatesDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,

@@ -62,6 +62,11 @@ import { MockDocumentMalwareScannerService } from './scanners/mock-document-malw
 import { UnavailableDocumentMalwareScannerService } from './scanners/unavailable-document-malware-scanner.service';
 import documentExtractionConfig from '@config/document-extraction.config';
 import { ConfigType } from '@nestjs/config';
+import { DocumentUploadContextService } from './document-upload-context.service';
+import { VehicleCandidateResolverService } from './vehicle-candidate-resolver.service';
+import { BookingCandidateResolverService } from './booking-candidate-resolver.service';
+import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
+import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
 
 /**
  * AI Document Upload feature module.
@@ -113,6 +118,7 @@ import { ConfigType } from '@nestjs/config';
     VehicleCandidateResolverService,
     BookingCandidateResolverService,
     CustomerCandidateResolverService,
+    DriverCandidateResolverService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,

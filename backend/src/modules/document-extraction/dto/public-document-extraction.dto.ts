@@ -105,6 +105,22 @@ export interface PublicCustomerCandidateDto {
   displayLabel: string;
 }
 
+export interface PublicDriverCandidateDto {
+  driverCustomerId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  confirmationRequired: boolean;
+  displayLabel: string;
+  driverRole: 'PRIMARY' | 'ADDITIONAL' | 'UNKNOWN';
+}
+
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
@@ -116,6 +132,7 @@ export interface PublicDocumentExtractionDto {
   vehicleCandidates: PublicVehicleCandidateDto[] | null;
   bookingCandidates: PublicBookingCandidateDto[] | null;
   customerCandidates: PublicCustomerCandidateDto[] | null;
+  driverCandidates: PublicDriverCandidateDto[] | null;
   vehicle: PublicVehicleDisplayDto | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

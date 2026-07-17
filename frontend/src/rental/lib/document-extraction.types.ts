@@ -182,6 +182,22 @@ export interface PublicCustomerCandidate {
   displayLabel: string;
 }
 
+export interface PublicDriverCandidate {
+  driverCustomerId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  confirmationRequired: boolean;
+  displayLabel: string;
+  driverRole: 'PRIMARY' | 'ADDITIONAL' | 'UNKNOWN';
+}
+
 export interface PublicDocumentExtraction {
   id: string;
   vehicleId: string | null;
@@ -190,6 +206,7 @@ export interface PublicDocumentExtraction {
   vehicleCandidates: PublicVehicleCandidate[] | null;
   bookingCandidates: PublicBookingCandidate[] | null;
   customerCandidates: PublicCustomerCandidate[] | null;
+  driverCandidates: PublicDriverCandidate[] | null;
   vehicle: PublicVehicleDisplay | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;
