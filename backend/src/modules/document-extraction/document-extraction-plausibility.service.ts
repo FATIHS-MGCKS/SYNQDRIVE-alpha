@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DocumentExtractionType } from '@prisma/client';
 import type { FieldExtractionEvidence } from '@modules/ai/documents/document-extraction-merge.service';
+import { collectFinePlausibilityChecks } from './document-fine-extraction.rules';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 export type PlausibilitySource = 'DOCUMENT' | 'SYNQDRIVE_DB' | 'DIMO' | 'SYSTEM';
@@ -41,6 +42,7 @@ const NEGATIVE = -0.0001;
 export interface PlausibilityRunOptions {
   extractionConflicts?: FieldExtractionEvidence[];
   chunkingWarnings?: string[];
+  documentSubtype?: string | null;
 }
 
 @Injectable()
@@ -70,14 +72,18 @@ export class DocumentExtractionPlausibilityService {
       });
     }
     const docPlate = this.toStr(fields['licensePlate']);
-    if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
-      const isFine = documentType === 'FINE';
+    if (documentType === 'FINE') {
+      checks.push(
+        ...collectFinePlausibilityChecks(fields, {
+          documentSubtype: options?.documentSubtype,
+          vehicleLicensePlate: context.licensePlate ?? null,
+        }),
+      );
+    } else if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
       checks.push({
         code: 'PLATE_MISMATCH',
-        status: isFine ? 'BLOCKER' : 'WARNING',
-        message: isFine
-          ? `Kennzeichen auf dem Dokument (${docPlate}) stimmt nicht mit dem zugeordneten Fahrzeug (${context.licensePlate}) überein.`
-          : 'License plate on the document does not match the selected vehicle.',
+        status: 'WARNING',
+        message: 'License plate on the document does not match the selected vehicle.',
         source: 'DOCUMENT',
       });
     }

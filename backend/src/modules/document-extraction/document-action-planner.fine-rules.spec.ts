@@ -118,15 +118,15 @@ describe('document-action-planner.fine-rules', () => {
     it('blocks fine draft without authority or reference', () => {
       const assessment = assessFineDraftRequirements(
         fineInput({
-          eventDate: '2026-03-01',
-          totalCents: 1000,
+          offenseDateTime: '2026-03-01T10:00:00',
+          amountCents: 1000,
         }),
       );
       expect(assessment.canCreateFineDraft).toBe(false);
       expect(assessment.missingRequirements.some((m) => m.fieldKeys?.includes('issuingAuthority'))).toBe(
         true,
       );
-      expect(assessment.missingRequirements.some((m) => m.fieldKeys?.includes('reportNumber'))).toBe(
+      expect(assessment.missingRequirements.some((m) => m.fieldKeys?.includes('referenceNumber'))).toBe(
         true,
       );
     });

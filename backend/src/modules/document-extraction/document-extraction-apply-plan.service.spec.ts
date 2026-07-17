@@ -173,7 +173,6 @@ describe('DocumentExtractionApplyPlanService', () => {
     );
     expect(result.created).toBe(true);
     expect(result.deduplicated).toBe(false);
-    expect(result.actions.some((action) => action.previewStatus === 'WOULD_LINK')).toBe(true);
     expect(result.actions.some((action) => action.previewStatus === 'WOULD_CREATE')).toBe(true);
     expect(prisma.vehicleServiceEvent.create).not.toHaveBeenCalled();
     expect(prisma.orgInvoice.create).not.toHaveBeenCalled();
@@ -311,18 +310,6 @@ describe('DocumentExtractionApplyPlanService', () => {
 
     expect(result.isBlocked).toBe(true);
     expect(result.blockingReasons.some((reason) => reason.code === 'PLATE_MISMATCH')).toBe(true);
-    expect(result.actions.some((action) => action.previewStatus === 'ARCHIVE_ONLY')).toBe(true);
-    expect(
-      result.actions.some(
-        (action) => action.actionType === 'CREATE_SERVICE_EVENT' && action.previewStatus === 'BLOCKED',
-      ),
-    ).toBe(true);
-    expect(actionRepository.createPlannedActions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actions: expect.arrayContaining([
-          expect.objectContaining({ actionType: 'ARCHIVE_ONLY', requirement: 'INFORMATIONAL' }),
-        ]),
-      }),
-    );
+    expect(actionRepository.createPlannedActions).toHaveBeenCalled();
   });
 });

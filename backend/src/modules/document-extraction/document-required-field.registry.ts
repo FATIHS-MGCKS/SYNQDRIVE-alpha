@@ -160,10 +160,10 @@ export const DOCUMENT_REQUIRED_FIELD_PROFILES: DocumentRequiredFieldProfile[] = 
     documentSubtypes: ['PARKING_FINE', 'SPEEDING_FINE', 'STANDARD', 'UNSPECIFIED', null],
     planningMode: 'FINE',
     documentMode: 'FINE_NOTICE',
-    requiredForReview: ['eventDate'],
-    requiredForDraft: ['eventDate', 'totalCents', 'issuingAuthority'],
-    requiredForApply: ['eventDate', 'totalCents', 'issuingAuthority'],
-    optionalFields: ['offenseType', 'dueDate', 'location', 'eventTime'],
+    requiredForReview: ['offenseDateTime', 'issuingAuthority'],
+    requiredForDraft: ['offenseDateTime', 'issuingAuthority', 'amountCents'],
+    requiredForApply: ['offenseDateTime', 'issuingAuthority', 'amountCents'],
+    optionalFields: ['offenseType', 'offenseDescription', 'dueDate', 'location', 'feeBreakdown', 'licensePlate', 'eventTime'],
     conditionalFields: [
       {
         id: 'fine_reference_number',
@@ -186,8 +186,8 @@ export const DOCUMENT_REQUIRED_FIELD_PROFILES: DocumentRequiredFieldProfile[] = 
     ],
     blockingRules: [
       {
-        code: 'MISSING_OFFENSE_TIME',
-        message: 'Offense time is required before booking or driver attribution.',
+        code: 'MISSING_OFFENSE_DATETIME',
+        message: 'Offense date-time is required before booking or driver attribution.',
         stages: ['apply'],
       },
       {
@@ -203,10 +203,10 @@ export const DOCUMENT_REQUIRED_FIELD_PROFILES: DocumentRequiredFieldProfile[] = 
     documentSubtypes: ['HEARING_FORM', 'ANHOERUNGSBOGEN', 'ANHORUNGSBOGEN', 'HEARING_NOTICE'],
     planningMode: 'FINE',
     documentMode: 'HEARING_FORM',
-    requiredForReview: ['eventDate'],
-    requiredForDraft: ['eventDate', 'issuingAuthority'],
-    requiredForApply: ['eventDate', 'issuingAuthority'],
-    optionalFields: ['reportNumber', 'referenceNumber', 'dueDate'],
+    requiredForReview: ['offenseDateTime', 'issuingAuthority'],
+    requiredForDraft: ['offenseDateTime', 'issuingAuthority'],
+    requiredForApply: ['offenseDateTime', 'issuingAuthority'],
+    optionalFields: ['referenceNumber', 'responseDeadline', 'offenseDescription', 'location'],
     conditionalFields: [
       {
         id: 'hearing_reference_number',
@@ -231,10 +231,10 @@ export const DOCUMENT_REQUIRED_FIELD_PROFILES: DocumentRequiredFieldProfile[] = 
     documentSubtypes: ['DRIVER_INQUIRY', 'FAHRERERMITTLUNG', 'DRIVER_IDENTIFICATION'],
     planningMode: 'FINE',
     documentMode: 'DRIVER_INQUIRY',
-    requiredForReview: ['eventDate'],
-    requiredForDraft: ['eventDate', 'issuingAuthority'],
-    requiredForApply: ['eventDate', 'issuingAuthority'],
-    optionalFields: ['reportNumber', 'referenceNumber', 'dueDate'],
+    requiredForReview: ['offenseDateTime', 'issuingAuthority'],
+    requiredForDraft: ['offenseDateTime', 'issuingAuthority'],
+    requiredForApply: ['offenseDateTime', 'issuingAuthority'],
+    optionalFields: ['referenceNumber', 'responseDeadline', 'offenseDescription', 'location'],
     conditionalFields: [
       {
         id: 'driver_inquiry_reference',

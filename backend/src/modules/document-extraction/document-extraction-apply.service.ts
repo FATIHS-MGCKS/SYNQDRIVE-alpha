@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, BadRequestException } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
@@ -28,6 +28,16 @@ import { normalizeBatteryDocumentConfirm } from '@modules/vehicle-intelligence/b
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { FinesService } from '@modules/fines/fines.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
+import {
+  assessFineApplyGate,
+  readAmountCents,
+  readFeeBreakdown,
+  readIssuingAuthority,
+  readOffenseDateTimeRaw,
+  readOffenseDescription,
+  readOffenseType,
+  readReferenceNumber,
+} from './document-fine-extraction.rules';
 
 export interface ApplyInput {
   extractionId: string;
@@ -418,25 +428,41 @@ export class DocumentExtractionApplyService {
 
   private async applyFine(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
     const { vehicleId, sourceFileUrl, extractionId } = input;
+    const gate = assessFineApplyGate({
+      fields: d,
+      documentSubtype:
+        this.str(d.documentSubtype) ??
+        this.str(d.documentKind) ??
+        (typeof d.noticeType === 'string' ? d.noticeType : null),
+    });
+    if (!gate.canApply) {
+      throw new BadRequestException({
+        message: 'Fine apply gate blocked — missing or invalid confirmed fields',
+        blockers: gate.blockers,
+        noticeType: gate.noticeType,
+      });
+    }
+
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { organizationId: true },
     });
     if (!vehicle?.organizationId) return {};
 
-    const offenseType = this.str(d.offenseType) ?? 'Parkverstoß';
-    const summary = this.str(d.description);
-    const breakdown = this.str(d.feeBreakdown);
-    const descriptionParts = [summary, breakdown].filter(Boolean);
-    const totalCents = this.toInt(d.totalCents) ?? 0;
+    const offenseType = readOffenseType(d);
+    const offenseDescription = readOffenseDescription(d);
+    const breakdown = readFeeBreakdown(d);
+    const descriptionParts = [offenseDescription, breakdown].filter(Boolean);
+    const totalCents = readAmountCents(d) ?? 0;
+    const title = offenseType ?? offenseDescription ?? 'Bußgeld aus Dokumenten-Upload';
 
     const fine = await this.finesService.create(vehicle.organizationId, {
-      fineNumber: this.str(d.reportNumber),
-      title: offenseType,
-      description: descriptionParts.join('\n\n') || 'Bußgeld aus Dokumenten-Upload',
-      offenseType,
-      issuingAuthority: this.str(d.issuingAuthority),
-      offenseDate: this.str(d.eventDate),
+      fineNumber: readReferenceNumber(d) ?? undefined,
+      title,
+      description: descriptionParts.join('\n\n') || offenseDescription || 'Bußgeld aus Dokumenten-Upload',
+      offenseType: offenseType ?? undefined,
+      issuingAuthority: readIssuingAuthority(d) ?? undefined,
+      offenseDate: readOffenseDateTimeRaw(d) ?? undefined,
       location: this.str(d.location),
       amountCents: totalCents,
       currency: 'EUR',

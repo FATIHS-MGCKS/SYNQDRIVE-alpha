@@ -63,10 +63,11 @@ const PROFILE_FIXTURES: Record<
 > = {
   'fine.fine_notice': {
     confirmedData: {
-      eventDate: '2026-01-01',
-      totalCents: 8000,
+      offenseDateTime: '2026-01-01T10:00:00',
+      amountCents: 8000,
       issuingAuthority: 'Stadt München',
-      reportNumber: 'REF-1',
+      referenceNumber: 'REF-1',
+      offenseType: 'Parkverstoß',
     },
   },
   'evidence.tire': {

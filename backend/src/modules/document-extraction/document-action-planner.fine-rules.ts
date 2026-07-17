@@ -7,6 +7,14 @@ import type {
   DocumentActionPlannerInput,
   DocumentFollowUpCandidateType,
 } from './document-action-planner.types';
+import {
+  hasOffenseDate,
+  hasOffenseDateTimeForAttribution,
+  noticeTypeAllowsNoAmount,
+  readAmountCents,
+  readReferenceNumber,
+  resolveFineNoticeType,
+} from './document-fine-extraction.rules';
 
 export const FINE_SEMANTIC_ACTIONS = {
   CREATE_FINE_DRAFT: 'CREATE_FINE_DRAFT',
@@ -72,6 +80,17 @@ export function isFineDocumentProfile(
 export function resolveFineDocumentMode(
   input: Pick<DocumentActionPlannerInput, 'documentSubtype' | 'confirmedData'>,
 ): FineDocumentMode {
+  const noticeType = resolveFineNoticeType({
+    documentSubtype: input.documentSubtype,
+    fields: input.confirmedData,
+  });
+  if (noticeType === 'HEARING_FORM') {
+    return FINE_DOCUMENT_MODES.HEARING_FORM;
+  }
+  if (noticeType === 'DRIVER_INQUIRY') {
+    return FINE_DOCUMENT_MODES.DRIVER_INQUIRY;
+  }
+
   const normalized = normalizeFineDocumentSubtype(input.documentSubtype);
   if (normalized && HEARING_FORM_SUBTYPES.has(normalized)) {
     return FINE_DOCUMENT_MODES.HEARING_FORM;
@@ -97,39 +116,19 @@ function hasNonEmptyField(data: Record<string, unknown>, key: string): boolean {
 }
 
 function readPositiveCents(data: Record<string, unknown>): number | null {
-  const raw = data.totalCents;
-  if (raw == null || raw === '') return null;
-  const cents = typeof raw === 'number' ? raw : Number(raw);
-  if (!Number.isFinite(cents) || cents <= 0) return null;
+  const cents = readAmountCents(data);
+  if (cents == null || cents <= 0) return null;
   return cents;
 }
 
 function hasReferenceNumber(data: Record<string, unknown>): boolean {
-  return (
-    hasNonEmptyField(data, 'reportNumber') ||
-    hasNonEmptyField(data, 'referenceNumber') ||
-    hasNonEmptyField(data, 'caseNumber') ||
-    hasNonEmptyField(data, 'fileNumber')
-  );
+  return readReferenceNumber(data) != null;
 }
 
-export function hasOffenseDate(data: Record<string, unknown>): boolean {
-  return hasNonEmptyField(data, 'eventDate') || hasNonEmptyField(data, 'eventDateTime');
-}
+export { hasOffenseDate };
 
 export function hasOffenseTime(data: Record<string, unknown>): boolean {
-  if (hasNonEmptyField(data, 'eventTime')) return true;
-  const eventDateTime = data.eventDateTime;
-  if (typeof eventDateTime === 'string' && eventDateTime.includes('T')) {
-    const timePart = eventDateTime.split('T')[1] ?? '';
-    return Boolean(timePart && !/^00:00(?::00)?/.test(timePart));
-  }
-  const eventDate = data.eventDate;
-  if (typeof eventDate === 'string' && eventDate.includes('T')) {
-    const timePart = eventDate.split('T')[1] ?? '';
-    return Boolean(timePart && !/^00:00(?::00)?/.test(timePart));
-  }
-  return false;
+  return hasOffenseDateTimeForAttribution(data);
 }
 
 function hasConfirmedEntityLink(
@@ -192,11 +191,17 @@ export function assessFineDraftRequirements(
   const missingRequirements: DocumentActionMissingRequirement[] = [];
   const missingFieldKeys: string[] = [];
 
-  if (!hasOffenseDate(data)) missingFieldKeys.push('eventDate');
-  if (readPositiveCents(data) == null) missingFieldKeys.push('totalCents');
+  if (!hasOffenseDate(data)) missingFieldKeys.push('offenseDateTime');
+  const noticeType = resolveFineNoticeType({
+    documentSubtype: input.documentSubtype,
+    fields: data,
+  });
+  if (!noticeTypeAllowsNoAmount(noticeType) && readPositiveCents(data) == null) {
+    missingFieldKeys.push('amountCents');
+  }
   if (!hasNonEmptyField(data, 'issuingAuthority')) missingFieldKeys.push('issuingAuthority');
   if (!hasReferenceNumber(data)) {
-    missingFieldKeys.push('reportNumber');
+    missingFieldKeys.push('referenceNumber');
   }
   if (!hasConfirmedEntityLink(input.entityLinks, 'VEHICLE')) {
     missingRequirements.push({
@@ -214,12 +219,14 @@ export function assessFineDraftRequirements(
     });
   }
 
-  if (data.totalCents != null && readPositiveCents(data) == null) {
-    missingRequirements.push({
-      code: 'FINE_AMOUNT_NON_POSITIVE',
-      message: 'Fine amount must be greater than zero cents.',
-      fieldKeys: ['totalCents'],
-    });
+  if (data.amountCents != null || data.totalCents != null) {
+    if (readPositiveCents(data) == null && !noticeTypeAllowsNoAmount(noticeType)) {
+      missingRequirements.push({
+        code: 'FINE_AMOUNT_NON_POSITIVE',
+        message: 'Fine amount must be greater than zero cents.',
+        fieldKeys: ['amountCents'],
+      });
+    }
   }
 
   return {
@@ -261,11 +268,14 @@ function buildFineDraftPayload(ctx: DocumentActionPlannerBuildContext): Record<s
   const data = ctx.input.confirmedData;
   return {
     semanticAction: FINE_SEMANTIC_ACTIONS.CREATE_FINE_DRAFT,
-    eventDate: data.eventDate ?? data.eventDateTime ?? null,
+    eventDate: data.eventDate ?? data.offenseDateTime ?? data.eventDateTime ?? null,
     eventTime: data.eventTime ?? null,
-    totalCents: readPositiveCents(data),
+    offenseDateTime: data.offenseDateTime ?? data.eventDateTime ?? null,
+    amountCents: readAmountCents(data),
+    totalCents: readAmountCents(data),
     issuingAuthority: data.issuingAuthority ?? null,
-    reportNumber: data.reportNumber ?? data.referenceNumber ?? data.caseNumber ?? null,
+    referenceNumber: readReferenceNumber(data),
+    reportNumber: readReferenceNumber(data),
     offenseType: data.offenseType ?? null,
     dueDate: data.dueDate ?? null,
     location: data.location ?? null,
