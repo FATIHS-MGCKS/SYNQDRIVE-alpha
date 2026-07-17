@@ -132,6 +132,7 @@ function makeService(overrides: {
       claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
       loadBlockedAssessmentFromAnchor: jest.fn(),
     } as any,
+    { assertAllowed: jest.fn().mockResolvedValue(undefined) } as any,
     observability as any,
   );
   return { svc, prisma, storage, queue, applyService, docConfig };

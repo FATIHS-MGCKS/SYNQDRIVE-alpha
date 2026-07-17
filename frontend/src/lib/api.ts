@@ -5298,6 +5298,9 @@ export const api = {
         const { parseUploadDuplicateError } = await import('./document-upload-duplicate');
         const duplicateError = parseUploadDuplicateError(body);
         if (duplicateError) throw duplicateError;
+        const { parseUploadRateLimitError } = await import('./document-upload-rate-limit');
+        const rateLimitError = parseUploadRateLimitError(body);
+        if (rateLimitError) throw rateLimitError;
         const message =
           typeof body === 'object' && body && 'message' in body && typeof (body as { message?: unknown }).message === 'string'
             ? (body as { message: string }).message

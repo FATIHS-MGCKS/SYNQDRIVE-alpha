@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import { DocumentUploadDuplicateError } from '../../lib/document-upload-duplicate';
+import { DocumentUploadRateLimitedError } from '../../lib/document-upload-rate-limit';
 import { shouldShowBusinessDuplicateWarning } from '../lib/document-upload-duplicate-flow';
 import type { PublicUploadDuplicate } from '../lib/document-extraction.types';
 import {
@@ -231,6 +232,13 @@ export function useDocumentExtractionFlow({
           setFlow('duplicate_blocked');
           return;
         }
+        if (err instanceof DocumentUploadRateLimitedError) {
+          setErrorMessage(
+            `${err.payload.message} (${err.payload.scope}, Retry in ${err.payload.retryAfterSeconds}s)`,
+          );
+          setFlow('failed');
+          return;
+        }
         setErrorMessage(err instanceof Error ? err.message : 'Upload fehlgeschlagen.');
         setFlow('failed');
       }
@@ -253,6 +261,13 @@ export function useDocumentExtractionFlow({
         if (err instanceof DocumentUploadDuplicateError) {
           setDuplicateBlocked(err);
           setFlow('duplicate_blocked');
+          return;
+        }
+        if (err instanceof DocumentUploadRateLimitedError) {
+          setErrorMessage(
+            `${err.payload.message} (${err.payload.scope}, Retry in ${err.payload.retryAfterSeconds}s)`,
+          );
+          setFlow('failed');
           return;
         }
         setErrorMessage(err instanceof Error ? err.message : 'Upload fehlgeschlagen.');

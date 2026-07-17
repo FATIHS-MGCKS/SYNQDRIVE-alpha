@@ -52,6 +52,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
 import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
 import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
+import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
 
 /**
  * AI Document Upload feature module.
@@ -98,6 +99,7 @@ import { DocumentUploadDuplicateService } from './document-upload-duplicate.serv
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentUploadDuplicateService,
+    DocumentUploadRateLimitService,
     DocumentTextExtractorService,
     DocumentContentExtractorService,
     DocumentExtractionProcessor,

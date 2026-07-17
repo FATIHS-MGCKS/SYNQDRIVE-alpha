@@ -80,6 +80,7 @@ describe('DocumentExtractionService', () => {
       claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
       loadBlockedAssessmentFromAnchor: jest.fn(),
     };
+    const uploadRateLimit = { assertAllowed: jest.fn().mockResolvedValue(undefined) };
     const svc = new DocumentExtractionService(
       prisma as any,
       config as any,
@@ -91,6 +92,7 @@ describe('DocumentExtractionService', () => {
       plausibility as any,
       fileIdentification as any,
       uploadDuplicate as any,
+      uploadRateLimit as any,
       observability as any,
     );
     return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };

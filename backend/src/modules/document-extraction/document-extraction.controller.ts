@@ -13,10 +13,12 @@ import {
   Header,
   Res,
   StreamableFile,
+  Req,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { Throttle } from '@nestjs/throttler';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
@@ -30,8 +32,17 @@ import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions
 import { isAllowedMimeType, resolveMaxUploadBytes } from './document-extraction.schemas';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
+import { resolveRequestClientIp } from './document-upload-rate-limit.service';
 
 const MAX_UPLOAD_BYTES = resolveMaxUploadBytes();
+const UPLOAD_IP_THROTTLE_LIMIT = parseInt(
+  process.env.DOCUMENT_UPLOAD_THROTTLE_LIMIT_PER_IP || '40',
+  10,
+);
+const UPLOAD_IP_THROTTLE_TTL_MS = parseInt(
+  process.env.DOCUMENT_UPLOAD_THROTTLE_TTL_MS || '60000',
+  10,
+);
 
 /**
  * AI Document Upload endpoints (vehicle-scoped, tenant-isolated).
@@ -77,6 +88,7 @@ export class DocumentExtractionController {
   }
 
   @Post('upload')
+  @Throttle({ default: { ttl: UPLOAD_IP_THROTTLE_TTL_MS, limit: UPLOAD_IP_THROTTLE_LIMIT } })
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -95,7 +107,8 @@ export class DocumentExtractionController {
     @Param('vehicleId') vehicleId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() body: UploadDocumentDto,
-    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
+    @Req() req: Request,
   ) {
     if (!file) {
       throw new BadRequestException('file is required');
@@ -106,11 +119,14 @@ export class DocumentExtractionController {
       originalName: file.originalname,
       mimeType: file.mimetype,
       buffer: file.buffer,
-      userId: userId ?? null,
+      userId: user?.id ?? null,
       reuploadReason: body.reuploadReason,
       relatedExtractionId: body.relatedExtractionId,
       invoiceNumberHint: body.invoiceNumberHint,
       referenceNumberHint: body.referenceNumberHint,
+      clientIp: resolveRequestClientIp(req),
+      uploadSource: body.source ?? null,
+      platformRole: user?.platformRole ?? null,
     });
     return this.service.toPublicExtraction(record);
   }

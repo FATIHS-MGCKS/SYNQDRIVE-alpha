@@ -173,6 +173,7 @@ describe('Document extraction pipeline (integration wiring)', () => {
         claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
         loadBlockedAssessmentFromAnchor: jest.fn(),
       } as any,
+      { assertAllowed: jest.fn().mockResolvedValue(undefined) } as any,
       observability,
     );
   });

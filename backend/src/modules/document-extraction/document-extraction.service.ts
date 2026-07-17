@@ -30,6 +30,7 @@ import { buildDocumentExtractionFileFingerprint } from './document-extraction-fi
 import { mergePipelinePlausibility } from './document-content-cache.util';
 import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
 import { DocumentUploadDuplicateBlockedException } from './document-upload-duplicate.errors';
+import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
 import { DocumentExtractionPipelineError } from './document-extraction.errors';
 import {
   ApplyDocumentExtractionType,
@@ -248,6 +249,9 @@ export interface CreateFromUploadInput {
   relatedExtractionId?: string | null;
   invoiceNumberHint?: string | null;
   referenceNumberHint?: string | null;
+  clientIp?: string | null;
+  uploadSource?: string | null;
+  platformRole?: string | null;
 }
 
 export type EnqueueExtractionResult =
@@ -293,6 +297,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly plausibilityService: DocumentExtractionPlausibilityService,
     private readonly fileIdentification: DocumentFileIdentificationService,
     private readonly uploadDuplicate: DocumentUploadDuplicateService,
+    private readonly uploadRateLimit: DocumentUploadRateLimitService,
     private readonly observability: DocumentExtractionObservabilityService,
   ) {}
 
@@ -331,6 +336,15 @@ export class DocumentExtractionService implements OnModuleInit {
       throw new NotFoundException('Vehicle not found');
     }
     const organizationId = vehicle.organizationId;
+
+    await this.uploadRateLimit.assertAllowed({
+      organizationId,
+      userId: input.userId,
+      clientIp: input.clientIp,
+      uploadSource: input.uploadSource,
+      platformRole: input.platformRole,
+      sizeBytes: input.buffer.byteLength,
+    });
 
     let identified;
     let contentSha256: string;

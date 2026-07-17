@@ -9,6 +9,10 @@ jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
 }));
 
+function makeUploadRateLimitMock() {
+  return { assertAllowed: jest.fn().mockResolvedValue(undefined) };
+}
+
 function makeUploadDuplicateMock() {
   return {
     assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
@@ -74,6 +78,7 @@ function makeUploadService(overrides: {
   };
   const queue = { add: jest.fn().mockResolvedValue({}), getJob: jest.fn().mockResolvedValue(null) };
   const uploadDuplicate = makeUploadDuplicateMock();
+  const uploadRateLimit = makeUploadRateLimitMock();
   const svc = new DocumentExtractionService(
     prisma as any,
     { get: jest.fn((_k: string, d?: unknown) => d) } as any,
@@ -91,6 +96,7 @@ function makeUploadService(overrides: {
     { runChecks: jest.fn() } as any,
     fileIdentification as any,
     uploadDuplicate as any,
+    uploadRateLimit as any,
     { logEvent: jest.fn(), recordApply: jest.fn(), observeStage: jest.fn((_a, _b, fn) => fn()) } as any,
   );
 

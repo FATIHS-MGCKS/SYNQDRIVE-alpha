@@ -50,6 +50,8 @@ export type DocumentUploadDuplicateStatus =
   | 'REUPLOAD_ALLOWED'
   | 'DUPLICATE_BLOCKED';
 
+export type DocumentUploadRateLimitScope = 'organization' | 'user' | 'ip';
+
 export interface UploadDuplicateEntityLinks {
   fineIds: string[];
   invoiceIds: string[];
