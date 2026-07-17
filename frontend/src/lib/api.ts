@@ -5258,6 +5258,15 @@ export const api = {
       get<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}`),
     createDocumentExtraction: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/document-extractions`, data),
     confirmDocumentExtraction: (vehicleId: string, extractionId: string, data: any) => post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/confirm`, data),
+    saveDocumentReview: (
+      vehicleId: string,
+      extractionId: string,
+      data: { confirmedData: Record<string, unknown> },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/save-review`,
+        data,
+      ),
     retryDocumentExtraction: (vehicleId: string, extractionId: string) =>
       post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/retry`, {}),
     // Real multipart upload → stores file, creates QUEUED record, enqueues the
@@ -5357,6 +5366,19 @@ export const api = {
     metadata: () => get<import('../rental/lib/document-extraction.types').DocumentExtractionMetadata>(
       '/document-extractions/metadata',
     ),
+    listSchemas: () =>
+      get<import('../rental/lib/document-extraction.types').DocumentSchemaRegistryResponse>(
+        '/document-extractions/schemas',
+      ),
+    resolveSchema: (params: { legacyDocumentType: string; subtype?: string | null }) => {
+      const q = buildQuery({
+        legacyDocumentType: params.legacyDocumentType,
+        subtype: params.subtype ?? undefined,
+      });
+      return get<import('../rental/lib/document-extraction.types').PublicDocumentSubtypeSchema>(
+        `/document-extractions/schemas/resolve${q}`,
+      );
+    },
     listByOrg: (
       orgId: string,
       params?: {
@@ -5421,6 +5443,15 @@ export const api = {
     ) =>
       patch<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
         `/organizations/${orgId}/document-extractions/${extractionId}/entity-links`,
+        data,
+      ),
+    saveReviewByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { confirmedData: Record<string, unknown> },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/save-review`,
         data,
       ),
     upload: async (

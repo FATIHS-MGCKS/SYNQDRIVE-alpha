@@ -4,6 +4,7 @@ import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
 import { buildOriginContextHint } from '../../../lib/document-upload-context';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   DOC_TYPE_LABELS,
   FLOW_STATUS_LABEL_DE,
@@ -37,6 +38,7 @@ export function VehicleDocumentUploadDrawer({
   fileName,
   onComplete,
 }: VehicleDocumentUploadDrawerProps) {
+  const { t, locale } = useLanguage();
   const handleComplete = useCallback(() => {
     onComplete?.();
   }, [onComplete]);
@@ -200,6 +202,12 @@ export function VehicleDocumentUploadDrawer({
               readOnly={flow.flow !== 'ready'}
               canEdit={flow.flow === 'ready'}
               onToggleEdit={() => flow.setEditingFields(!flow.editingFields)}
+              entityReviewOrgId={flow.record?.organizationId ?? ''}
+              entityReviewVehicleId={vehicleId}
+              entityReviewExtractionId={flow.extractionId}
+              entityReviewLocale={locale}
+              entityReviewT={t}
+              onSchemaReviewUpdated={flow.handleSchemaReviewUpdated}
               onFieldChange={(index, value) => {
                 const next = [...flow.editedFields];
                 next[index] = { ...next[index], value };

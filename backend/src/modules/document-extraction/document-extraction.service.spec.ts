@@ -535,4 +535,38 @@ describe('DocumentExtractionService', () => {
       expect(result.status).toBe('APPLIED');
     });
   });
+
+  describe('saveReview', () => {
+    it('persists confirmedData and stays READY_FOR_REVIEW', async () => {
+      const record = {
+        id: 'e1',
+        vehicleId: 'v1',
+        organizationId: 'org-1',
+        documentType: 'INVOICE',
+        effectiveDocumentType: 'INVOICE',
+        status: 'READY_FOR_REVIEW',
+        classificationMode: 'MANUAL',
+        processingStage: 'REVIEW',
+        processingAttempts: 1,
+        confirmedData: null,
+        plausibility: { overallStatus: 'OK', checks: [] },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...record, ...data }));
+      const { svc } = makeService({ findFirst: jest.fn().mockResolvedValue(record), update });
+
+      const result = await svc.saveReview('v1', 'e1', {
+        invoiceNumber: 'INV-9',
+        invoiceDate: '2026-03-01',
+        totalGross: 10000,
+      });
+
+      expect(update).toHaveBeenCalledTimes(1);
+      const updateArg = update.mock.calls[0][0];
+      expect(updateArg.data.status).toBe('READY_FOR_REVIEW');
+      expect(updateArg.data.confirmedData).toMatchObject({ invoiceNumber: 'INV-9' });
+      expect(result.status).toBe('READY_FOR_REVIEW');
+    });
+  });
 });

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-schema-field-review-2026-07-17',
+    version: '4.9.645',
+    title: 'V4.9.645 — Document Intake Schema Field Review',
+    summary: [
+      'Schema-gesteuertes Feldreview ersetzt duplizierte EXTRACTION_TEMPLATES — Gruppen, Pflichtfelder, fehlende Felder, Blocker/Warnings pro Feld.',
+      'Confidence nur bei hilfreichem KI-Kontext; Quelle/Seite optional; sensible Werte maskiert; Datum/Waehrung lokalisiert.',
+      'POST save-review persistiert confirmedData, aktualisiert Provenance, prueft Plausibilitaet erneut — ohne Apply.',
+      'Kein stilles Autosave; „Speichern und erneut pruefen“; Aktionsplan und Confirm nur mit gespeicherten Werten.',
+      'Tests fuer INVOICE, FINE, SERVICE sowie Backend saveReview.',
+    ],
+    reason:
+      'Feldreview muss schema-gesteuert, explizit speicherbar und mit Provenance/Plausibilitaet konsistent sein — nicht ueber statische Frontend-Templates.',
+    previousBehavior:
+      'Flache EXTRACTION_TEMPLATES-Liste ohne Gruppen, Save-Review, Provenance-Anzeige oder gespeicherte Confirm-Pflicht.',
+    details:
+      'Backend: saveReview/saveReviewForOrg, SaveReviewExtractionDto. Frontend: document-schema-field-review.ts, DocumentSchemaFieldReview, useDocumentSchemaReview, api resolveSchema/saveReview. Architektur: architecture/DOCUMENT_INTAKE_SCHEMA_FIELD_REVIEW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
     id: 'document-intake-entity-review-2026-07-17',
     version: '4.9.644',
     title: 'V4.9.644 — Document Intake Shared Entity Review',

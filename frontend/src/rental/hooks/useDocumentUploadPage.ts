@@ -17,6 +17,7 @@ import type {
   PublicDocumentExtraction,
   PublicDocumentExtractionSummary,
 } from '../lib/document-extraction.types';
+import { hasSavedFieldReview } from '../lib/document-schema-field-review';
 import type { TranslationKey } from '../i18n/translations/en';
 import {
   batteryHealthQueryKeys,
@@ -381,7 +382,10 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   );
 
   const assignedVehicleId = selectedVehicleId || intake.record?.vehicleId || '';
-  const canConfirm = Boolean(assignedVehicleId) && !intake.blockerPresent;
+  const canConfirm =
+    Boolean(assignedVehicleId) &&
+    !intake.blockerPresent &&
+    hasSavedFieldReview(intake.record?.confirmedData);
 
   const processingStepLabels = useMemo(
     (): Record<IntakeProcessingStepId, string> => ({
@@ -408,6 +412,13 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   }, [vehicles]);
 
   const handleEntityLinksUpdated = useCallback(
+    (updated: PublicDocumentExtraction) => {
+      intake.applyRecord(updated);
+    },
+    [intake],
+  );
+
+  const handleSchemaReviewUpdated = useCallback(
     (updated: PublicDocumentExtraction) => {
       intake.applyRecord(updated);
     },
@@ -478,5 +489,6 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     processingStartedAt: intake.processingStartedAt,
     vehicleLookup,
     handleEntityLinksUpdated,
+    handleSchemaReviewUpdated,
   };
 }
