@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   BrakeAxle,
+  BrakeComponentInstallationAnchorSource,
+  BrakeComponentInstallationType,
   BrakeEvidenceConfidence,
   BrakeEvidenceSource,
   BrakeServiceKind,
@@ -10,6 +12,15 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeEvidenceService, BrakeEvidenceWriteInput } from './brake-evidence.service';
 import { BrakeHealthService } from './brake-health.service';
+import { thicknessFieldForComponent } from './brake-component-lifecycle.scope';
+import {
+  componentToScopeToken,
+  inferScopeFromMeasurements,
+  resolveServiceComponentScope,
+  serviceKindAllowsReplacement,
+  serviceKindIsHistoryOnly,
+  type BrakeMeasuredSnapshot,
+} from './brake-service-scope.matrix';
 import {
   applyNewBrakeDefaults,
   normalizeRegistrationBrakeCondition,
@@ -86,10 +97,33 @@ export class BrakeLifecycleService {
     const source = this.toSourceEnum(input.source);
     const kind = this.toKindEnum(input.kind);
     const scope = this.normalizeScope(input.scope);
-    const allowsSpecFallback =
-      kind === BrakeServiceKind.PADS_SERVICE ||
-      kind === BrakeServiceKind.DISCS_SERVICE ||
-      kind === BrakeServiceKind.FULL_BRAKE_SERVICE;
+
+    let resolvedComponents: BrakeComponentInstallationType[] = [];
+    let scopeProfile = 'INSPECTION_ONLY';
+
+    if (serviceKindIsHistoryOnly(kind)) {
+      if (scope.length > 0) {
+        throw new BadRequestException(
+          kind === BrakeServiceKind.INSPECTION_ONLY
+            ? 'inspection_scope_not_allowed'
+            : 'fluid_service_scope_not_allowed',
+        );
+      }
+    } else if (serviceKindAllowsReplacement(kind)) {
+      try {
+        const resolved = resolveServiceComponentScope({
+          kind,
+          scope,
+          measured,
+          allowMeasurementInference: true,
+        });
+        resolvedComponents = resolved.components;
+        scopeProfile = resolved.profile;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'invalid_service_scope';
+        throw new BadRequestException(message);
+      }
+    }
 
     const serviceEvent = await this.prisma.vehicleServiceEvent.create({
       data: {
@@ -105,7 +139,12 @@ export class BrakeLifecycleService {
         documentUrl: input.documentUrl || undefined,
         brakeServiceKind: kind,
         brakeServiceSource: source,
-        brakeServiceScope: scope.length > 0 ? scope : undefined,
+        brakeServiceScope:
+          resolvedComponents.length > 0
+            ? resolvedComponents.map(componentToScopeToken)
+            : scope.length > 0
+              ? scope
+              : undefined,
         brakeMeasuredSnapshot: hasMeasuredBaseline ? measured : undefined,
         origin: source === BrakeServiceSource.AI_DOCUMENT ? ServiceEventOrigin.AI_UPLOAD : ServiceEventOrigin.MANUAL,
       },
@@ -115,25 +154,41 @@ export class BrakeLifecycleService {
     let lifecycleApplied = false;
     let status: RecordBrakeServiceResult['status'] = 'history_only';
     let message = 'Brake service history logged. No measured thickness baseline was applied.';
+    let evidenceWarning: string | null = null;
 
-    if ((hasMeasuredBaseline || allowsSpecFallback) && input.initializeIfPossible !== false) {
+    const shouldApplyHealth =
+      input.initializeIfPossible !== false &&
+      (resolvedComponents.length > 0 || (hasMeasuredBaseline && serviceKindAllowsReplacement(kind)));
+
+    if (shouldApplyHealth) {
       try {
-        const init = await this.brakeHealth.initializeFromService(input.vehicleId, {
-          serviceDate: serviceDate.toISOString(),
-          odometerKm: input.odometerKm,
-          frontPadMm: measured.frontPadMm ?? undefined,
-          rearPadMm: measured.rearPadMm ?? undefined,
-          frontRotorWidthMm: measured.frontDiscMm ?? undefined,
-          rearRotorWidthMm: measured.rearDiscMm ?? undefined,
-        });
-        initialized = init?.initialized === true;
-        lifecycleApplied = init?.initialized === true;
-        status = init?.initialized === true ? 'initialized' : 'history_only';
-        message =
-          init?.message ??
-          (hasMeasuredBaseline
-            ? 'Brake health baseline initialized from measured service data.'
-            : 'Brake service history recorded. Baseline was not strong enough for initialization.');
+        if (resolvedComponents.length > 0) {
+          const init = await this.applyScopedReplacement(input.vehicleId, {
+            serviceDate,
+            odometerKm: input.odometerKm,
+            components: resolvedComponents,
+            measured,
+            profile: scopeProfile,
+          });
+          initialized = init.initialized;
+          lifecycleApplied = init.initialized;
+          status = init.initialized ? 'initialized' : 'history_only';
+          message = init.message;
+        } else if (hasMeasuredBaseline) {
+          const init = await this.brakeHealth.initializeFromService(input.vehicleId, {
+            serviceDate: serviceDate.toISOString(),
+            odometerKm: input.odometerKm,
+            frontPadMm: measured.frontPadMm ?? undefined,
+            rearPadMm: measured.rearPadMm ?? undefined,
+            frontRotorWidthMm: measured.frontDiscMm ?? undefined,
+            rearRotorWidthMm: measured.rearDiscMm ?? undefined,
+          });
+          initialized = init?.initialized === true;
+          lifecycleApplied = init?.initialized === true;
+          status = init?.initialized === true ? 'initialized' : 'history_only';
+          message =
+            init?.message ?? 'Brake health baseline initialized from measured service data.';
+        }
       } catch (err: any) {
         const errMsg = err?.message || 'Baseline initialization failed';
         this.logger.warn(
@@ -141,6 +196,11 @@ export class BrakeLifecycleService {
         );
         message = `Brake service history logged, but baseline initialization failed: ${errMsg}`;
       }
+    } else if (serviceKindIsHistoryOnly(kind)) {
+      message =
+        kind === BrakeServiceKind.INSPECTION_ONLY
+          ? 'Brake inspection recorded. Wear anchors were not changed.'
+          : 'Brake fluid service recorded. Pad/disc wear anchors were not changed.';
     }
 
     await this.prisma.vehicleServiceEvent.update({
@@ -151,15 +211,25 @@ export class BrakeLifecycleService {
       },
     });
 
-    // Manual/API services with confirmed measurements become canonical BrakeEvidence.
-    // AI document uploads record evidence in document-extraction-apply (post-confirmation).
     if (hasMeasuredBaseline && input.source !== 'ai_document') {
       try {
-        await this.recordMeasuredEvidence(input, serviceEvent.id, measured, serviceDate);
+        await this.recordMeasuredEvidence(
+          input,
+          serviceEvent.id,
+          measured,
+          serviceDate,
+          resolvedComponents,
+          kind,
+        );
       } catch (err: any) {
         this.logger.warn(
           `Brake evidence write failed for vehicle ${input.vehicleId}: ${err?.message ?? err}`,
         );
+        evidenceWarning =
+          'Messkette unvollständig: BrakeHealth wurde aktualisiert, aber BrakeEvidence konnte nicht geschrieben werden.';
+        if (initialized) {
+          await this.appendBaselineWarning(input.vehicleId, evidenceWarning);
+        }
       }
     }
 
@@ -168,13 +238,13 @@ export class BrakeLifecycleService {
       lifecycleApplied,
       initialized,
       status,
-      message,
+      message: evidenceWarning ? `${message} ${evidenceWarning}` : message,
     };
   }
 
   /**
    * Canonical registration write-path: records a BRAKE_SERVICE event and
-   * initializes BrakeHealthCurrent via initializeFromService — never writes
+   * initializes BrakeHealthCurrent via scoped replacement — never writes
    * brake health rows directly from VehiclesService.
    */
   async initializeFromRegistration(input: {
@@ -203,11 +273,12 @@ export class BrakeLifecycleService {
       return null;
     }
 
-    // Only user-submitted mm values become measured evidence — NEW defaults stay spec-only.
     const measured = registrationBrakeMeasuredSnapshot(input.brakes);
     const hasMeasured = measured != null;
     const kind: BrakeLifecycleKind =
       condition === 'NEW' || hasMeasured ? 'full_brake_service' : 'pads_service';
+
+    const registrationScope = this.registrationScopeFromSpec(brakesForInit, measured);
 
     return this.recordService({
       vehicleId: input.vehicleId,
@@ -215,22 +286,190 @@ export class BrakeLifecycleService {
       odometerKm,
       source: 'manual_registration',
       kind,
-      measured,
+      scope: registrationScope,
+      measured: measured ?? undefined,
       notes: 'Vehicle registration brake baseline (manual_registration)',
       initializeIfPossible: true,
     });
   }
 
+  private async applyScopedReplacement(
+    vehicleId: string,
+    input: {
+      serviceDate: Date;
+      odometerKm?: number;
+      components: BrakeComponentInstallationType[];
+      measured: BrakeMeasuredSnapshot;
+      profile: string;
+    },
+  ): Promise<{ initialized: boolean; message: string }> {
+    const specs = await this.prisma.vehicleBrakeReferenceSpec.findMany({
+      where: { vehicleId },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+    });
+    const spec = specs[0];
+
+    const latestState = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { odometerKm: true },
+    });
+    const odo =
+      typeof input.odometerKm === 'number' && Number.isFinite(input.odometerKm)
+        ? Math.round(input.odometerKm)
+        : latestState?.odometerKm ?? null;
+
+    const anchors = input.components
+      .map((componentType) => {
+        const field = thicknessFieldForComponent(componentType);
+        const measuredMm = input.measured[field];
+        const specMm = this.specThicknessForComponent(componentType, spec);
+        const anchorThicknessMm = measuredMm ?? specMm;
+        if (anchorThicknessMm == null) return null;
+        return {
+          componentType,
+          anchorThicknessMm,
+          anchorSource:
+            measuredMm != null
+              ? BrakeComponentInstallationAnchorSource.MEASURED
+              : BrakeComponentInstallationAnchorSource.SPEC_NOMINAL,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+
+    if (anchors.length === 0) {
+      return {
+        initialized: false,
+        message:
+          'Brake service history recorded. No scoped component baseline was available (missing measurement and reference spec).',
+      };
+    }
+
+    if (odo == null) {
+      return {
+        initialized: false,
+        message:
+          'Brake service history recorded. Scoped replacement requires an odometer anchor.',
+      };
+    }
+
+    const anyMeasured = anchors.some(
+      (a) => a.anchorSource === BrakeComponentInstallationAnchorSource.MEASURED,
+    );
+    const baselineWarnings: string[] = [];
+    if (!anyMeasured) {
+      baselineWarnings.push(
+        'Using nominal reference-spec baseline (estimated). Add measured thickness at next inspection to improve confidence.',
+      );
+    }
+
+    const existing = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    if (!existing) {
+      const init = await this.brakeHealth.initializeFromService(
+        vehicleId,
+        {
+          serviceDate: input.serviceDate.toISOString(),
+          odometerKm: odo,
+          frontPadMm: input.measured.frontPadMm ?? undefined,
+          rearPadMm: input.measured.rearPadMm ?? undefined,
+          frontRotorWidthMm: input.measured.frontDiscMm ?? undefined,
+          rearRotorWidthMm: input.measured.rearDiscMm ?? undefined,
+        },
+        { scopedComponents: input.components },
+      );
+      return {
+        initialized: init?.initialized === true,
+        message:
+          init?.message ?? 'Brake health baseline initialized from scoped service data.',
+      };
+    }
+
+    const result = await this.brakeHealth.applyScopedComponentAnchors(vehicleId, {
+      serviceDate: input.serviceDate,
+      odometerKm: odo,
+      components: anchors,
+      resetWearCalibration: false,
+      baselineWarnings: [
+        ...this.readWarningArray(existing.baselineWarnings),
+        ...baselineWarnings,
+      ],
+    });
+
+    return {
+      initialized: result.updated,
+      message: anyMeasured
+        ? 'Brake health updated for scoped component replacement (measured).'
+        : 'Brake health updated for scoped component replacement (reference-spec fallback).',
+    };
+  }
+
+  private specThicknessForComponent(
+    component: BrakeComponentInstallationType,
+    spec?: {
+      frontPadThickness?: number | null;
+      rearPadThickness?: number | null;
+      frontRotorWidth?: number | null;
+      rearRotorWidth?: number | null;
+    } | null,
+  ): number | null {
+    if (!spec) return null;
+    switch (component) {
+      case BrakeComponentInstallationType.FRONT_PADS:
+        return this.normalizePositive(spec.frontPadThickness);
+      case BrakeComponentInstallationType.REAR_PADS:
+        return this.normalizePositive(spec.rearPadThickness);
+      case BrakeComponentInstallationType.FRONT_DISCS:
+        return this.normalizePositive(spec.frontRotorWidth);
+      case BrakeComponentInstallationType.REAR_DISCS:
+        return this.normalizePositive(spec.rearRotorWidth);
+      default:
+        return null;
+    }
+  }
+
+  private registrationScopeFromSpec(
+    brakes: RegistrationBrakeManualSpec,
+    measured: ReturnType<typeof registrationBrakeMeasuredSnapshot>,
+  ): BrakeLifecycleScope[] {
+    if (measured) {
+      return inferScopeFromMeasurements({
+        frontPadMm: measured.frontPadMm ?? null,
+        rearPadMm: measured.rearPadMm ?? null,
+        frontDiscMm: measured.frontDiscMm ?? null,
+        rearDiscMm: measured.rearDiscMm ?? null,
+      }).map((c) => componentToScopeToken(c) as BrakeLifecycleScope);
+    }
+    const out: BrakeLifecycleScope[] = [];
+    if (brakes.frontPadThickness != null) out.push('front_pads');
+    if (brakes.rearPadThickness != null) out.push('rear_pads');
+    if (brakes.frontRotorWidth != null) out.push('front_discs');
+    if (brakes.rearRotorWidth != null) out.push('rear_discs');
+    return out;
+  }
+
+  private async appendBaselineWarning(vehicleId: string, warning: string): Promise<void> {
+    const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    if (!current) return;
+    const warnings = this.readWarningArray(current.baselineWarnings);
+    if (!warnings.includes(warning)) warnings.push(warning);
+    await this.prisma.brakeHealthCurrent.update({
+      where: { vehicleId },
+      data: { baselineWarnings: warnings },
+    });
+  }
+
+  private readWarningArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+  }
+
   private async recordMeasuredEvidence(
     input: RecordBrakeServiceInput,
     serviceEventId: string,
-    measured: {
-      frontPadMm: number | null;
-      rearPadMm: number | null;
-      frontDiscMm: number | null;
-      rearDiscMm: number | null;
-    },
+    measured: BrakeMeasuredSnapshot,
     serviceDate: Date,
+    scopedComponents: BrakeComponentInstallationType[],
+    kind: BrakeServiceKind,
   ): Promise<void> {
     const odometerKm =
       typeof input.odometerKm === 'number' && Number.isFinite(input.odometerKm)
@@ -251,8 +490,20 @@ export class BrakeLifecycleService {
       notes: input.notes?.trim() || null,
     } satisfies Partial<BrakeEvidenceWriteInput>;
 
+    const includeFront =
+      serviceKindIsHistoryOnly(kind) ||
+      scopedComponents.includes(BrakeComponentInstallationType.FRONT_PADS) ||
+      scopedComponents.includes(BrakeComponentInstallationType.FRONT_DISCS);
+    const includeRear =
+      serviceKindIsHistoryOnly(kind) ||
+      scopedComponents.includes(BrakeComponentInstallationType.REAR_PADS) ||
+      scopedComponents.includes(BrakeComponentInstallationType.REAR_DISCS);
+
     const rows: BrakeEvidenceWriteInput[] = [];
-    if (measured.frontPadMm != null || measured.frontDiscMm != null) {
+    if (
+      includeFront &&
+      (measured.frontPadMm != null || measured.frontDiscMm != null)
+    ) {
       rows.push({
         ...base,
         axle: BrakeAxle.FRONT,
@@ -260,7 +511,10 @@ export class BrakeLifecycleService {
         measuredDiscMm: measured.frontDiscMm,
       });
     }
-    if (measured.rearPadMm != null || measured.rearDiscMm != null) {
+    if (
+      includeRear &&
+      (measured.rearPadMm != null || measured.rearDiscMm != null)
+    ) {
       rows.push({
         ...base,
         axle: BrakeAxle.REAR,
@@ -291,12 +545,7 @@ export class BrakeLifecycleService {
 
   private normalizeMeasured(
     measured?: RecordBrakeServiceInput['measured'],
-  ): {
-    frontPadMm: number | null;
-    rearPadMm: number | null;
-    frontDiscMm: number | null;
-    rearDiscMm: number | null;
-  } {
+  ): BrakeMeasuredSnapshot {
     const toNum = (v: unknown): number | null => {
       if (typeof v !== 'number' || !Number.isFinite(v)) return null;
       if (v <= 0) return null;
@@ -310,12 +559,13 @@ export class BrakeLifecycleService {
     };
   }
 
-  private hasMeasuredBaseline(measured: {
-    frontPadMm: number | null;
-    rearPadMm: number | null;
-    frontDiscMm: number | null;
-    rearDiscMm: number | null;
-  }): boolean {
+  private normalizePositive(value: number | null | undefined): number | null {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    if (value <= 0) return null;
+    return Math.round(value * 100) / 100;
+  }
+
+  private hasMeasuredBaseline(measured: BrakeMeasuredSnapshot): boolean {
     return (
       measured.frontPadMm != null ||
       measured.rearPadMm != null ||

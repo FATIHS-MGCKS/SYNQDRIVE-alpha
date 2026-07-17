@@ -487,15 +487,16 @@ export class BrakeComponentLifecycleService {
       let brakeHealthUpdated = false;
       let recalculationScheduled = false;
       if (!args.closeOnly && args.anchors.length > 0) {
-        const health = await this.brakeHealth.applyScopedComponentAnchors(command.vehicleId, {
-          serviceDate,
-          odometerKm,
-          components: args.anchors.map((anchor) => ({
-            componentType: anchor.componentType,
-            anchorThicknessMm: anchor.anchorThicknessMm,
-            anchorSource: anchor.anchorSource,
-          })),
-        });
+      const health = await this.brakeHealth.applyScopedComponentAnchors(command.vehicleId, {
+        serviceDate,
+        odometerKm,
+        components: args.anchors.map((anchor) => ({
+          componentType: anchor.componentType,
+          anchorThicknessMm: anchor.anchorThicknessMm,
+          anchorSource: anchor.anchorSource,
+        })),
+        resetWearCalibration: args.operation === 'replace' || args.operation === 'register_measured',
+      });
         brakeHealthUpdated = health.updated;
         recalculationScheduled = health.recalculated;
         auditLog.push({

@@ -485,6 +485,9 @@ export class BrakeHealthService {
       frontRotorWidthMm?: number;
       rearRotorWidthMm?: number;
     },
+    options?: {
+      scopedComponents?: BrakeComponentInstallationType[];
+    },
   ) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -508,6 +511,8 @@ export class BrakeHealthService {
       take: 1,
     });
     const spec = specs[0];
+    const existing = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
+    const scoped = options?.scopedComponents ? new Set(options.scopedComponents) : null;
 
     const measured = {
       frontPadMm: this.normalizePositive(data.frontPadMm),
@@ -516,11 +521,45 @@ export class BrakeHealthService {
       rearDiscMm: this.normalizePositive(data.rearRotorWidthMm),
     };
 
-    const frontPadAnchor = measured.frontPadMm ?? this.normalizePositive(spec?.frontPadThickness);
-    const rearPadAnchor = measured.rearPadMm ?? this.normalizePositive(spec?.rearPadThickness);
-    const frontDiscAnchor =
-      measured.frontDiscMm ?? this.normalizePositive(spec?.frontRotorWidth);
-    const rearDiscAnchor = measured.rearDiscMm ?? this.normalizePositive(spec?.rearRotorWidth);
+    const resolveAnchor = (
+      component: BrakeComponentInstallationType,
+      measuredMm: number | null,
+      specMm: number | null,
+      existingMm: number | null | undefined,
+    ): number | null => {
+      if (scoped && !scoped.has(component)) {
+        return existingMm ?? null;
+      }
+      if (scoped) {
+        return measuredMm ?? (specMm != null ? this.normalizePositive(specMm) : null);
+      }
+      return measuredMm ?? this.normalizePositive(specMm);
+    };
+
+    const frontPadAnchor = resolveAnchor(
+      BrakeComponentInstallationType.FRONT_PADS,
+      measured.frontPadMm,
+      spec?.frontPadThickness ?? null,
+      existing?.frontPadAnchorMm,
+    );
+    const rearPadAnchor = resolveAnchor(
+      BrakeComponentInstallationType.REAR_PADS,
+      measured.rearPadMm,
+      spec?.rearPadThickness ?? null,
+      existing?.rearPadAnchorMm,
+    );
+    const frontDiscAnchor = resolveAnchor(
+      BrakeComponentInstallationType.FRONT_DISCS,
+      measured.frontDiscMm,
+      spec?.frontRotorWidth ?? null,
+      existing?.frontDiscAnchorMm,
+    );
+    const rearDiscAnchor = resolveAnchor(
+      BrakeComponentInstallationType.REAR_DISCS,
+      measured.rearDiscMm,
+      spec?.rearRotorWidth ?? null,
+      existing?.rearDiscAnchorMm,
+    );
 
     const hasAnyAnchor =
       frontPadAnchor != null ||
@@ -528,10 +567,18 @@ export class BrakeHealthService {
       frontDiscAnchor != null ||
       rearDiscAnchor != null;
     const hasMeasuredAnchor =
-      measured.frontPadMm != null ||
-      measured.rearPadMm != null ||
-      measured.frontDiscMm != null ||
-      measured.rearDiscMm != null;
+      (scoped
+        ? [
+            scoped.has(BrakeComponentInstallationType.FRONT_PADS) && measured.frontPadMm != null,
+            scoped.has(BrakeComponentInstallationType.REAR_PADS) && measured.rearPadMm != null,
+            scoped.has(BrakeComponentInstallationType.FRONT_DISCS) && measured.frontDiscMm != null,
+            scoped.has(BrakeComponentInstallationType.REAR_DISCS) && measured.rearDiscMm != null,
+          ].some(Boolean)
+        : null) ??
+      (measured.frontPadMm != null ||
+        measured.rearPadMm != null ||
+        measured.frontDiscMm != null ||
+        measured.rearDiscMm != null);
 
     const baselineWarnings: string[] = [];
     if (!hasAnyAnchor) {
@@ -616,12 +663,16 @@ export class BrakeHealthService {
         discsHealthPct: canInitialize ? 100 : null,
         discsRemainingKm: null,
         distanceSinceAnchorKm: canInitialize ? 0 : null,
-        frontPadKFactor: 1.0,
-        rearPadKFactor: 1.0,
-        frontDiscKFactor: 1.0,
-        rearDiscKFactor: 1.0,
-        calibrationCount: 0,
-        hasAlert: false,
+        ...(scoped
+          ? {}
+          : {
+              frontPadKFactor: 1.0,
+              rearPadKFactor: 1.0,
+              frontDiscKFactor: 1.0,
+              rearDiscKFactor: 1.0,
+              calibrationCount: 0,
+              hasAlert: false,
+            }),
         stateClass: stateClass,
         anchorValidationStatus: canInitialize
           ? hasMeasuredAnchor
@@ -675,6 +726,9 @@ export class BrakeHealthService {
         anchorSource: BrakeComponentInstallationAnchorSource;
       }>;
       scheduleRecalculation?: boolean;
+      /** When true (replacement install), scoped k-factors reset. Default preserves calibration. */
+      resetWearCalibration?: boolean;
+      baselineWarnings?: string[];
     },
   ): Promise<{ updated: boolean; recalculated: boolean }> {
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -685,6 +739,7 @@ export class BrakeHealthService {
 
     const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
     const scoped = new Set(input.components.map((c) => c.componentType));
+    const resetWear = input.resetWearCalibration === true;
     const update: Partial<BrakeHealthCurrent> = {};
     let anyAnchor = false;
     let anyMeasured = false;
@@ -702,29 +757,37 @@ export class BrakeHealthService {
           update.frontPadAnchorMm = mm;
           update.frontPadEstimatedMm = mm;
           update.frontPadHealthPct = 100;
-          update.frontPadKFactor = 1;
-          update.frontPadWearRateMmPerKm = 0;
+          if (resetWear) {
+            update.frontPadKFactor = 1;
+            update.frontPadWearRateMmPerKm = 0;
+          }
           break;
         case BrakeComponentInstallationType.REAR_PADS:
           update.rearPadAnchorMm = mm;
           update.rearPadEstimatedMm = mm;
           update.rearPadHealthPct = 100;
-          update.rearPadKFactor = 1;
-          update.rearPadWearRateMmPerKm = 0;
+          if (resetWear) {
+            update.rearPadKFactor = 1;
+            update.rearPadWearRateMmPerKm = 0;
+          }
           break;
         case BrakeComponentInstallationType.FRONT_DISCS:
           update.frontDiscAnchorMm = mm;
           update.frontDiscEstimatedMm = mm;
           update.frontDiscHealthPct = 100;
-          update.frontDiscKFactor = 1;
-          update.frontDiscWearRateMmPerKm = 0;
+          if (resetWear) {
+            update.frontDiscKFactor = 1;
+            update.frontDiscWearRateMmPerKm = 0;
+          }
           break;
         case BrakeComponentInstallationType.REAR_DISCS:
           update.rearDiscAnchorMm = mm;
           update.rearDiscEstimatedMm = mm;
           update.rearDiscHealthPct = 100;
-          update.rearDiscKFactor = 1;
-          update.rearDiscWearRateMmPerKm = 0;
+          if (resetWear) {
+            update.rearDiscKFactor = 1;
+            update.rearDiscWearRateMmPerKm = 0;
+          }
           break;
         default:
           break;
@@ -775,30 +838,35 @@ export class BrakeHealthService {
       rearDiscHealthPct: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
         ? update.rearDiscHealthPct ?? current?.rearDiscHealthPct ?? null
         : current?.rearDiscHealthPct ?? null,
-      frontPadKFactor: scoped.has(BrakeComponentInstallationType.FRONT_PADS)
+      frontPadKFactor: scoped.has(BrakeComponentInstallationType.FRONT_PADS) && resetWear
         ? 1
         : current?.frontPadKFactor ?? 1,
-      rearPadKFactor: scoped.has(BrakeComponentInstallationType.REAR_PADS)
+      rearPadKFactor: scoped.has(BrakeComponentInstallationType.REAR_PADS) && resetWear
         ? 1
         : current?.rearPadKFactor ?? 1,
-      frontDiscKFactor: scoped.has(BrakeComponentInstallationType.FRONT_DISCS)
+      frontDiscKFactor: scoped.has(BrakeComponentInstallationType.FRONT_DISCS) && resetWear
         ? 1
         : current?.frontDiscKFactor ?? 1,
-      rearDiscKFactor: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
+      rearDiscKFactor: scoped.has(BrakeComponentInstallationType.REAR_DISCS) && resetWear
         ? 1
         : current?.rearDiscKFactor ?? 1,
-      frontPadWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.FRONT_PADS)
+      frontPadWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.FRONT_PADS) && resetWear
         ? 0
         : current?.frontPadWearRateMmPerKm ?? null,
-      rearPadWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.REAR_PADS)
+      rearPadWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.REAR_PADS) && resetWear
         ? 0
         : current?.rearPadWearRateMmPerKm ?? null,
-      frontDiscWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.FRONT_DISCS)
+      frontDiscWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.FRONT_DISCS) && resetWear
         ? 0
         : current?.frontDiscWearRateMmPerKm ?? null,
-      rearDiscWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.REAR_DISCS)
+      rearDiscWearRateMmPerKm: scoped.has(BrakeComponentInstallationType.REAR_DISCS) && resetWear
         ? 0
         : current?.rearDiscWearRateMmPerKm ?? null,
+      calibrationCount: current?.calibrationCount ?? 0,
+      hasAlert: current?.hasAlert ?? false,
+      baselineWarnings:
+        input.baselineWarnings ??
+        this.readWarningArray(current?.baselineWarnings),
       stateClass: canInitialize
         ? anyMeasured
           ? 'MEASURED'
@@ -1196,7 +1264,9 @@ export class BrakeHealthService {
     };
 
     const alerts = this.computeAlerts({ ...current, ...updatedData } as any);
-    (updatedData as any).hasAlert = alerts.length > 0;
+    (updatedData as any).hasAlert = alerts.some(
+      (a) => a.severity === 'warning' || a.severity === 'critical',
+    );
 
     await this.prisma.brakeHealthCurrent.update({
       where: { vehicleId },
@@ -1933,6 +2003,14 @@ export class BrakeHealthService {
       : 'UNKNOWN';
     let frontBasis: BrakeDataBasis = anchorBasis;
     let rearBasis: BrakeDataBasis = anchorBasis;
+
+    const hasThicknessEvidence = freshEvidence.some(
+      (e) => e.measuredPadMm != null || e.measuredDiscMm != null,
+    );
+    if (initialized && this.hasMeasuredAnchorStatus(current) && !hasThicknessEvidence) {
+      if (frontBasis === 'MEASURED') frontBasis = 'ESTIMATED';
+      if (rearBasis === 'MEASURED') rearBasis = 'ESTIMATED';
+    }
 
     const frontMeas = latestMeasurementForAxle('FRONT');
     if (frontMeas?.measuredPadMm != null) {

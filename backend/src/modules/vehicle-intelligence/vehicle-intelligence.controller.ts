@@ -97,6 +97,7 @@ import {
   CreateBrakeSpecDto,
   UpdateBrakeSpecDto,
 } from './brakes/dto/brake-mutation.dto';
+import { ValidateBrakeServiceScopePipe } from './brakes/brake-service-scope.validation';
 import {
   CreateVehicleServiceEventDto,
   UpdateVehicleServiceEventDto,
@@ -751,7 +752,7 @@ export class VehicleIntelligenceController {
   @Post('brake-health/initialize')
   async initializeBrakeHealth(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: InitializeBrakeHealthDto,
+    @Body(ValidateBrakeServiceScopePipe) body: InitializeBrakeHealthDto,
   ) {
     return this.brakeLifecycleService.recordService({
       vehicleId,
@@ -775,7 +776,7 @@ export class VehicleIntelligenceController {
   @Post('brake-health/service')
   async recordBrakeLifecycleService(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: RecordBrakeServiceDto,
+    @Body(ValidateBrakeServiceScopePipe) body: RecordBrakeServiceDto,
   ) {
     return this.brakeLifecycleService.recordService({
       vehicleId,

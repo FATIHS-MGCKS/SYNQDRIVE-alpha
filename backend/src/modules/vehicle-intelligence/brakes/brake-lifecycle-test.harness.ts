@@ -492,6 +492,7 @@ export async function seedMeasuredBrakeBaseline(
     serviceDate: opts.serviceDate ?? '2026-01-15T10:00:00Z',
     odometerKm,
     kind: 'full_brake_service',
+    scope: ['front_pads', 'rear_pads', 'front_discs', 'rear_discs'],
     measured: { frontPadMm, rearPadMm, frontDiscMm, rearDiscMm },
   });
 

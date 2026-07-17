@@ -164,7 +164,7 @@ Read path
 | **4** | Registration | Brake-Health-Ausgangszustand bei Fahrzeugregistrierung | ✅ **Done** | `e8e62310` | — | 39 grün | — |
 | **5** | A — Fleet | Read-only Baseline-Backfill-Kandidaten-Audit | ✅ **Done** | `a30ea31d` | — | 13 grün | read-only |
 | **6** | B — Lifecycle | Komponenten-Installationsperioden (`BrakeComponentInstallation`) | ✅ **Done** | `39c7e176` | `20260717140000` | 18 grün | — |
-| **7** | B — Lifecycle | Zentraler `BrakeComponentLifecycleService` | ✅ **Done** | *(nach Commit)* | — | 36 grün | — |
+| **7** | B — Lifecycle | Zentraler `BrakeComponentLifecycleService` | ✅ **Done** | `7617ba59` | — | 36 grün | — |
 | **8** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
 | **8** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
 | **8** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
@@ -618,6 +618,47 @@ npm test -- --testPathPattern='brake-component-lifecycle|brake-component-install
 
 ---
 
+## Scoped Brake Service (Prompt 8) — 2026-07-17
+
+### Ziel
+
+P0-Fix: Teilservices dürfen `BrakeHealthCurrent` nicht global zurücksetzen. Scope ist serverseitig verpflichtend bei Austausch.
+
+### Scope-Matrix (`brake-service-scope.matrix.ts`)
+
+| Profil | Komponenten |
+|--------|-------------|
+| `INSPECTION_ONLY` | keine Installation |
+| `BRAKE_FLUID_SERVICE` | keine Pad-/Disc-Änderung |
+| `FRONT_PADS_REPLACED` | `FRONT_PADS` |
+| `REAR_PADS_REPLACED` | `REAR_PADS` |
+| `FRONT_DISCS_REPLACED` | `FRONT_DISCS` |
+| `REAR_DISCS_REPLACED` | `REAR_DISCS` |
+| `FRONT_PADS_AND_DISCS` | `FRONT_PADS` + `FRONT_DISCS` |
+| `REAR_PADS_AND_DISCS` | `REAR_PADS` + `REAR_DISCS` |
+| `FULL_BRAKE_SERVICE` | nur explizit übermittelte Komponenten |
+
+### Verhalten `BrakeLifecycleService.recordService`
+
+- **Inspection / Fluid:** nur Historie + optionale Evidence; keine Anchor-/Installationsänderung
+- **Austausch:** scoped `initializeFromService` / `applyScopedComponentAnchors` — Spec-Fallback nur für bestätigte Scope-Komponenten
+- **K-Faktoren / Alerts / Calibration:** unberührte Komponenten bleiben erhalten
+- **Evidence-Lücke:** fehlgeschlagener Evidence-Write → Baseline-Warning; `dataBasis` ohne Evidence nicht `MEASURED`
+- **Coverage-Gap:** `hasAlert` nur bei `warning`/`critical`, nicht bei `info`
+
+### API-Validierung
+
+- `ValidateBrakeServiceScopePipe` auf `POST brake-health/initialize` und `POST brake-health/service`
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-lifecycle|brake-service-scope|brake-health.spec'
+# 85 passed (Regression A–I grün)
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -628,6 +669,7 @@ npm test -- --testPathPattern='brake-component-lifecycle|brake-component-install
 | 4 | `e8e62310775a10b06c0846f8b293393ddd8ce1e5` | `fix(brakes): materialize brake health during vehicle registration` |
 | 5 | `a30ea31d943ba49e279d43912265684678cd7fd4` | `feat(brakes): add read-only brake baseline backfill audit` |
 | 6 | `39c7e176226328be215dc1046f6e34fa56460d42` | `feat(brakes): add brake component installation lifecycle` |
+| 7 | `7617ba59b296ef2db27b413f56534fea7ce2f9f4` | `feat(brakes): centralize brake component lifecycle mutations` |
 
 ---
 
