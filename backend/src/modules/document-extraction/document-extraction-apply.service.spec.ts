@@ -26,7 +26,7 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
   );
 
   it('creates BrakeEvidence with AI_UPLOAD after user-confirmed brake document apply', async () => {
-    await svc.apply({
+    const result = await svc.apply({
       extractionId: 'ext-1',
       vehicleId: 'veh-1',
       documentType: 'BRAKE',
@@ -49,5 +49,45 @@ describe('DocumentExtractionApplyService — brake AI upload', () => {
     expect(rows[0].source).toBe(BrakeEvidenceSource.AI_UPLOAD);
     expect(rows[0].measuredPadMm).toBe(6.5);
     expect(rows[1].measuredPadMm).toBe(6);
+    expect(result.success).toBe(true);
+    expect(result.downstreamEntityType).toBe('brake_service');
+    expect(result.downstreamEntityId).toBe('evt-1');
+    expect(result.actionCount).toBe(2);
+  });
+
+  it('returns typed failure for FINE no-op when organization is missing', async () => {
+    const finesSvc = {
+      create: jest.fn(),
+    };
+    const fineApplySvc = new DocumentExtractionApplyService(
+      {
+        vehicle: {
+          findUnique: jest.fn().mockResolvedValue({ organizationId: null }),
+        },
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      finesSvc as any,
+    );
+
+    const result = await fineApplySvc.apply({
+      extractionId: 'ext-fine',
+      vehicleId: 'veh-1',
+      documentType: 'FINE',
+      sourceFileUrl: null,
+      confirmedData: {
+        eventDate: '2026-01-15',
+        totalCents: 5000,
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toContain('VEHICLE_ORGANIZATION_REQUIRED');
+    expect(finesSvc.create).not.toHaveBeenCalled();
   });
 });

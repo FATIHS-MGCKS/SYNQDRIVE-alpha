@@ -1,6 +1,7 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentApplySafetyPolicy } from './document-apply-safety.policy';
+import { createApplySuccess } from './document-extraction-apply-result.util';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -422,7 +423,14 @@ describe('DocumentExtractionService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      const apply = jest.fn().mockResolvedValue({ serviceEventId: 'svc-1' });
+      const apply = jest.fn().mockResolvedValue(
+        createApplySuccess({
+          downstreamEntityType: 'service_event',
+          downstreamEntityId: 'svc-1',
+          actionCount: 1,
+          serviceEventId: 'svc-1',
+        }),
+      );
       const update = jest
         .fn()
         .mockImplementation(({ data }: any) => Promise.resolve({ ...record, ...data }));

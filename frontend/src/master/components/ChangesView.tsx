@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-apply-provenance-gate-2026-07-17',
+    version: '4.9.586',
+    title: 'V4.9.586 — Apply-Provenance-Gate (kein APPLIED ohne Downstream-Beweis)',
+    summary: [
+      'Apply-Service liefert typisiertes `DocumentApplyTypedResult` (success, downstreamEntityType/Id, actionCount, errors).',
+      'APPLIED nur bei `isProvenApplySuccess` — leeres `{}`/No-op (z. B. FINE ohne Org) → FAILED/APPLY_FAILED.',
+      'ARCHIVE_ONLY explizit erfolgreich ohne Downstream-Entity; Audit speichert proven apply für idempotenten Recovery-Retry.',
+    ],
+    reason: 'Prompt 10/84: minimale Übergangslösung vor Document Action Plan V2 — verhindert scheinbar erfolgreiche Applies.',
+    previousBehavior: 'Confirm setzte APPLIED auch wenn Apply `{}` zurückgab oder Downstream-Write ausblieb.',
+    details:
+      'document-extraction-apply-result.types/util, document-extraction-apply.service.ts, document-extraction.service confirm/retry (+ Specs).',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T17:00:00.000Z',
+  },
+  {
     id: 'document-apply-safety-policy-2026-07-17',
     version: '4.9.585',
     title: 'V4.9.585 — DocumentApplySafetyPolicy (zentrale Apply-Sicherheit)',
