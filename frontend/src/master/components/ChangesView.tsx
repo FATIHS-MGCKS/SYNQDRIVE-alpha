@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-v2-runbooks-2026-07-18',
+    version: '4.9.658',
+    title: 'V4.9.658 — Document Intake V2 Deployment & Shadow Runbooks',
+    summary: [
+      'docs/runbooks/document-intake-v2-deployment.md — 14-Schritte-Rollout (Backup, Migration, Apply aus, Org-Upload, Entity-Vorschlag, Action-Plan Dry Run, Executor-Allowlist, Follow-up, Archiv, Security, Legacy-Apply aus).',
+      'docs/runbooks/document-intake-v2-shadow-validation.md — Shadow-Metriken (OCR, Wrong-high-confidence, Required Fields, Entity Top-1/3, Blocker, Action-Plan, Duplikate, Partial Apply, Field Correction, Follow-up-Akzeptanz).',
+      'Pflicht-Stichprobe: repräsentative PDF-, Bild- und Dokumenttyp-Proben vor breiter Freigabe.',
+    ],
+    reason: 'Operative Runbooks für kontrolliertes Document-Intake-V2-Rollout analog Battery V2.',
+    previousBehavior: 'Keine dedizierten Document-Intake-V2-Deployment- und Shadow-Validierungs-Runbooks.',
+    details: 'docs/runbooks/document-intake-v2-deployment.md, docs/runbooks/document-intake-v2-shadow-validation.md — verknüpft mit document-intake-v2-grafana-prometheus-ops.md und Reconciliation-CLI.',
+    affectsArchitecture: false,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
     id: 'document-intake-v2-metrics-grafana-2026-07-18',
     version: '4.9.657',
     title: 'V4.9.657 — Document Intake V2 Metrics & Grafana',
