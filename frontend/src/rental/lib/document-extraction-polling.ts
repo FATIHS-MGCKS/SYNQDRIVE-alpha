@@ -1,4 +1,5 @@
 import type { PublicDocumentExtraction } from './document-extraction.types';
+import { isExtractionPollTerminal } from './document-extraction-apply-polling';
 import { isTerminalExtractionStatus } from './document-extraction-lifecycle';
 
 export interface ExtractionPollerOptions {
@@ -50,7 +51,7 @@ export function createExtractionPoller(options: ExtractionPollerOptions) {
       const record = await options.fetchRecord();
       consecutiveFailures = 0;
       options.onRecord(record);
-      if (isTerminalExtractionStatus(record.status) || options.signal?.aborted) {
+      if (isExtractionPollTerminal(record) || options.signal?.aborted) {
         stop();
         return;
       }

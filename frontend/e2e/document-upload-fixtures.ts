@@ -68,6 +68,7 @@ export const readyExtraction = {
 };
 
 let mockExtractionConfirmed = false;
+let mockApplyPollCount = 0;
 
 export function setMockExtractionConfirmed(confirmed: boolean) {
   mockExtractionConfirmed = confirmed;
@@ -75,7 +76,80 @@ export function setMockExtractionConfirmed(confirmed: boolean) {
 
 export function resetDocumentUploadMockState() {
   mockExtractionConfirmed = false;
+  mockApplyPollCount = 0;
 }
+
+const mockApplyResultApplying = {
+  lifecycleStatus: 'APPLYING',
+  extractionStatus: 'CONFIRMED',
+  summary: 'Uebernahme laeuft — Aktionen werden ausgefuehrt.',
+  detailSummary: 'Die Uebernahme kann waehrend der Ausfuehrung nicht abgebrochen werden.',
+  isTerminal: false,
+  applyingInProgress: true,
+  nonCancellable: true,
+  requiredActionsComplete: false,
+  canRetryFailedActions: false,
+  partiallyApplied: false,
+  applyFailed: false,
+  fingerprint: 'fp-test',
+  actions: [
+    {
+      actionIndex: 0,
+      semanticAction: 'ARCHIVE_DOCUMENT',
+      labelKey: 'documentAction.ARCHIVE_DOCUMENT',
+      title: 'Dokument archivieren',
+      requirement: 'REQUIRED',
+      status: 'RUNNING',
+      targetModule: 'documents',
+      targetModuleLabel: 'Dokumente',
+      resultEntityType: null,
+      resultEntityId: null,
+      entityLink: null,
+      errorCode: null,
+      errorMessage: null,
+      skippedReason: null,
+    },
+  ],
+};
+
+const mockApplyResultApplied = {
+  lifecycleStatus: 'APPLIED',
+  extractionStatus: 'APPLIED',
+  summary: 'Alle Pflichtaktionen wurden erfolgreich ausgefuehrt.',
+  detailSummary: null,
+  isTerminal: true,
+  applyingInProgress: false,
+  nonCancellable: false,
+  requiredActionsComplete: true,
+  canRetryFailedActions: false,
+  partiallyApplied: false,
+  applyFailed: false,
+  fingerprint: 'fp-test',
+  actions: [
+    {
+      actionIndex: 0,
+      semanticAction: 'ARCHIVE_DOCUMENT',
+      labelKey: 'documentAction.ARCHIVE_DOCUMENT',
+      title: 'Dokument archivieren',
+      requirement: 'REQUIRED',
+      status: 'SUCCEEDED',
+      targetModule: 'documents',
+      targetModuleLabel: 'Dokumente',
+      resultEntityType: 'vehicle',
+      resultEntityId: TEST_VEHICLE_ID,
+      entityLink: {
+        entityType: 'vehicle',
+        entityId: TEST_VEHICLE_ID,
+        label: 'Fahrzeug oeffnen',
+        targetModule: 'documents',
+        targetModuleLabel: 'Dokumente',
+      },
+      errorCode: null,
+      errorMessage: null,
+      skippedReason: null,
+    },
+  ],
+};
 
 export async function installDocumentUploadMocks(
   page: Page,
@@ -138,23 +212,53 @@ export async function installDocumentUploadMocks(
     }
 
     if (url.includes(`/document-extractions/${TEST_EXTRACTION_ID}`) && method === 'GET') {
+      if (mockExtractionConfirmed) {
+        mockApplyPollCount += 1;
+        if (mockApplyPollCount < 2) {
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              ...readyExtraction,
+              status: 'CONFIRMED',
+              processingStage: 'APPLY',
+              allowedActions: [],
+              applyResult: mockApplyResultApplying,
+            }),
+          });
+        }
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ...readyExtraction,
+            status: 'APPLIED',
+            processingStage: 'APPLY',
+            allowedActions: ['download'],
+            applyResult: mockApplyResultApplied,
+          }),
+        });
+      }
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(
-          mockExtractionConfirmed
-            ? { ...readyExtraction, status: 'APPLIED', processingStage: 'APPLY', allowedActions: ['download'] }
-            : readyExtraction,
-        ),
+        body: JSON.stringify(readyExtraction),
       });
     }
 
     if (url.includes(`/document-extractions/${TEST_EXTRACTION_ID}/confirm`) && method === 'POST') {
       mockExtractionConfirmed = true;
+      mockApplyPollCount = 0;
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ...readyExtraction, status: 'CONFIRMED', processingStage: 'APPLY' }),
+        body: JSON.stringify({
+          ...readyExtraction,
+          status: 'CONFIRMED',
+          processingStage: 'APPLY',
+          allowedActions: [],
+          applyResult: mockApplyResultApplying,
+        }),
       });
     }
     if (url.includes(`/document-extractions/${TEST_EXTRACTION_ID}/retry`) && method === 'POST') {

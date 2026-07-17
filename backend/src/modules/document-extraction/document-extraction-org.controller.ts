@@ -215,4 +215,23 @@ export class DocumentExtractionOrgController {
       userId ?? null,
     );
   }
+
+  @Get(':extractionId/apply-result')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getApplyResult(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.getApplyResultForOrg(orgId, extractionId);
+  }
+
+  @Post(':extractionId/retry-failed-actions')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  retryFailedActions(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.retryFailedActionsForOrg(orgId, extractionId, userId ?? null);
+  }
 }

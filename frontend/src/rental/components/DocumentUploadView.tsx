@@ -8,12 +8,14 @@ import { useDocumentUploadPage } from '../hooks/useDocumentUploadPage';
 import type { PlausibilityStatus } from './documents/document-extraction.shared';
 import type { PublicDocumentExtractionSummary } from '../lib/document-extraction.types';
 import { DocumentExtractionReviewPanel } from './documents/DocumentExtractionReviewPanel';
+import { DocumentApplyResultPanel } from './documents/DocumentApplyResultPanel';
 import { DocumentExtractionFlowStatus } from './documents/DocumentExtractionFlowStatus';
 import { DocumentIntakeUploadZone } from './documents/DocumentIntakeUploadZone';
 import { DocumentClassificationResultPanel } from './documents/DocumentClassificationResultPanel';
 
 interface DocumentUploadViewProps {
   isDarkMode: boolean;
+  onEntityNavigate?: (target: { view: string; tab?: string; entityId: string }) => void;
 }
 
 function getFileIcon(name: string) {
@@ -31,7 +33,7 @@ function formatHistoryDate(iso: string) {
   }
 }
 
-export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
+export function DocumentUploadView({ isDarkMode, onEntityNavigate }: DocumentUploadViewProps) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
 
@@ -128,8 +130,13 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
   const showAwaitingType = page.flow === 'awaiting_type';
   const showProcessingStatus = (page.isBusy && !showAwaitingType) || page.flow === 'failed';
   const showDuplicate = page.flow === 'duplicate_blocked';
-  const showReview = page.flow === 'ready' || page.flow === 'applying';
-  const showDone = page.flow === 'done';
+  const showDone = page.flow === 'done' && page.canShowApplyDone;
+  const showPartiallyDone = page.flow === 'partially_done' && page.canShowApplyDone;
+  const showReview =
+    page.flow === 'ready' ||
+    page.flow === 'applying' ||
+    page.flow === 'apply_failed' ||
+    (page.flow === 'partially_done' && !page.canShowApplyDone);
   const showCancelled = page.flow === 'cancelled';
   const uploadContextBanner = formatUploadContextBanner(page.record?.uploadContext);
   const uploadContextConflict = hasUploadContextConflict(page.record?.uploadContext);
@@ -372,6 +379,17 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   isDarkMode={isDarkMode}
                 />
 
+                <DocumentApplyResultPanel
+                  flow={page.flow}
+                  applyResult={page.record?.applyResult ?? null}
+                  actionPlanPreview={page.actionPlanPreview}
+                  pending={page.flow === 'applying'}
+                  retryPending={page.applyRetryPending}
+                  t={t}
+                  onRetryFailed={() => void page.handleRetryFailedActions()}
+                  onEntityNavigate={onEntityNavigate}
+                />
+
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 min-w-0">
                   <button
                     type="button"
@@ -406,10 +424,45 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               <p className={`text-xs mb-3 break-words ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
                 {t('docUpload.appliedTo', { type: page.typeLabel(`documentExtraction.type.${page.confirmedDocType}`, page.confirmedDocType) })}
               </p>
+              <div className="mx-auto mb-4 max-w-lg text-left">
+                <DocumentApplyResultPanel
+                  flow={page.flow}
+                  applyResult={page.record?.applyResult ?? null}
+                  t={t}
+                  onEntityNavigate={onEntityNavigate}
+                />
+              </div>
               <button type="button" onClick={page.handleReset} className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold bg-brand hover:bg-brand text-brand-foreground transition-all">
                 <Icon name="upload" className="w-3.5 h-3.5" />
                 {t('docUpload.uploadAnother')}
               </button>
+            </div>
+          )}
+
+          {showPartiallyDone && (
+            <div className={`rounded-lg p-6 sm:p-10 min-w-0 ${glass}`}>
+              <div className="text-center mb-4">
+                <Icon name="alert-triangle" className={`mx-auto mb-2 h-8 w-8 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+                <p className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {t('docUpload.applyResult.partialSuccessTitle')}
+                </p>
+                <p className={`text-xs mt-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                  {t('docUpload.applyResult.partialSuccessHint')}
+                </p>
+              </div>
+              <DocumentApplyResultPanel
+                flow={page.flow}
+                applyResult={page.record?.applyResult ?? null}
+                retryPending={page.applyRetryPending}
+                t={t}
+                onRetryFailed={() => void page.handleRetryFailedActions()}
+                onEntityNavigate={onEntityNavigate}
+              />
+              <div className="mt-4 flex justify-center">
+                <button type="button" onClick={page.handleReset} className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold bg-brand text-brand-foreground">
+                  {t('docUpload.uploadAnother')}
+                </button>
+              </div>
             </div>
           )}
 

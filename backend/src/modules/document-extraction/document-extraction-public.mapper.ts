@@ -32,6 +32,7 @@ import {
   readFieldProvenanceRegistry,
   toPublicFieldProvenance,
 } from './document-field-provenance.util';
+import { buildPublicDocumentApplyResult } from './document-apply-result.mapper';
 import type {
   PublicUploadContextDisplayDto,
   PublicVehicleCandidateDto,
@@ -459,7 +460,18 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
       reuploadReason: record.reuploadReason,
       plausibility: record.plausibility,
     }),
+    applyResult: shouldIncludeApplyResult(record.status)
+      ? buildPublicDocumentApplyResult(record)
+      : null,
   };
+}
+
+function shouldIncludeApplyResult(status: string): boolean {
+  return (
+    status === 'CONFIRMED' ||
+    status === 'APPLIED' ||
+    status === 'PARTIALLY_APPLIED'
+  );
 }
 
 /** Maps a DB record to the public API contract — strips storage internals. */

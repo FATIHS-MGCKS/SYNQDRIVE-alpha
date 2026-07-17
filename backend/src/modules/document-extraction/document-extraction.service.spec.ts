@@ -68,6 +68,9 @@ describe('DocumentExtractionService', () => {
     const actionPlanPreview = {
       buildForRecord: jest.fn(),
     };
+    const applyResultService = {
+      buildForRecord: jest.fn(),
+    };
     const observability = {
       logEvent: jest.fn(),
       recordApply: jest.fn(),
@@ -105,6 +108,7 @@ describe('DocumentExtractionService', () => {
     makeUploadContextMock() as any,
       observability as any,
       actionPlanPreview as any,
+      applyResultService as any,
     );
     return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }

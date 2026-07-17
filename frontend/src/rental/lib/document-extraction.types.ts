@@ -8,9 +8,20 @@ export type DocumentExtractionStatus =
   | 'READY_FOR_REVIEW'
   | 'CONFIRMED'
   | 'APPLIED'
+  | 'PARTIALLY_APPLIED'
   | 'FAILED'
   | 'REJECTED'
   | 'CANCELLED';
+
+export type DocumentExtractionAction =
+  | 'retry'
+  | 'set_document_type'
+  | 'reextract'
+  | 'confirm'
+  | 'retry_failed_actions'
+  | 'delete_file'
+  | 'download'
+  | 'cancel';
 
 export type DocumentExtractionStage =
   | 'UPLOAD'
@@ -33,15 +44,6 @@ export type DocumentExtractionErrorPhase =
   | 'VALIDATION'
   | 'APPLY'
   | 'UNKNOWN';
-
-export type DocumentExtractionAction =
-  | 'retry'
-  | 'set_document_type'
-  | 'reextract'
-  | 'confirm'
-  | 'delete_file'
-  | 'download'
-  | 'cancel';
 
 export type DocumentUploadDuplicateStatus =
   | 'UNIQUE'
@@ -200,6 +202,54 @@ export interface PublicDocumentActionPlanPreview {
   confirmBlockedReason: string | null;
   disabledOptionalActions: string[];
   actions: PublicDocumentActionPreviewCard[];
+}
+
+export type PublicDocumentApplyActionStatus =
+  | 'PENDING'
+  | 'RUNNING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'SKIPPED';
+
+export interface PublicDocumentApplyEntityLink {
+  entityType: string;
+  entityId: string;
+  label: string;
+  targetModule: string;
+  targetModuleLabel: string;
+}
+
+export interface PublicDocumentApplyActionResult {
+  actionIndex: number;
+  semanticAction: string;
+  labelKey: string;
+  title: string;
+  requirement: 'REQUIRED' | 'OPTIONAL' | 'INFORMATIONAL';
+  status: PublicDocumentApplyActionStatus;
+  targetModule: string;
+  targetModuleLabel: string;
+  resultEntityType: string | null;
+  resultEntityId: string | null;
+  entityLink: PublicDocumentApplyEntityLink | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  skippedReason: string | null;
+}
+
+export interface PublicDocumentApplyResult {
+  lifecycleStatus: string;
+  extractionStatus: string;
+  summary: string;
+  detailSummary: string | null;
+  isTerminal: boolean;
+  applyingInProgress: boolean;
+  nonCancellable: boolean;
+  requiredActionsComplete: boolean;
+  canRetryFailedActions: boolean;
+  partiallyApplied: boolean;
+  applyFailed: boolean;
+  fingerprint: string | null;
+  actions: PublicDocumentApplyActionResult[];
 }
 
 export interface PublicFieldProvenance {
@@ -405,6 +455,7 @@ export interface PublicDocumentExtraction {
   relatedExtractionId?: string | null;
   reuploadReason?: string | null;
   uploadDuplicate?: PublicUploadDuplicate | null;
+  applyResult?: PublicDocumentApplyResult | null;
 }
 
 export type PublicDocumentExtractionSummary = Omit<

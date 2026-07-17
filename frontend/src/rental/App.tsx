@@ -1111,7 +1111,28 @@ function RentalAppContent() {
             onHighlightConsumed={() => setHighlightedTaskId(null)}
           />
         ) : currentView === 'document-upload' ? (
-          <DocumentUploadView isDarkMode={isDarkMode} />
+          <DocumentUploadView
+            isDarkMode={isDarkMode}
+            onEntityNavigate={(target) => {
+              if (target.view === 'invoices') {
+                setPendingInvoiceDetailId(target.entityId);
+                setFinanceTab('invoices');
+                setCurrentView('invoices');
+                return;
+              }
+              if (target.view === 'financial-insights') {
+                setCurrentView('financial-insights');
+                return;
+              }
+              if (target.view === 'damages') {
+                setCurrentView('damages');
+                return;
+              }
+              if (target.view === 'health-errors') {
+                setCurrentView('health-errors');
+              }
+            }}
+          />
         ) : currentView === 'ai-assistant' ? (
           <AIAssistantView isDarkMode={isDarkMode} />
         ) : currentView === 'support' ? (

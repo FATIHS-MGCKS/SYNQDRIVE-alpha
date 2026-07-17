@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-intake-apply-result-2026-07-17',
+    version: '4.9.647',
+    title: 'V4.9.647 — Document Intake Apply Result',
+    summary: [
+      'Klare Apply-Ergebnisdarstellung: pro Action Status waehrend und nach Apply, Polling bis Finalstatus.',
+      'Erfolgreiche Entitaeten mit Deep-Links; Retry nur fuer fehlgeschlagene Actions; PARTIALLY_APPLIED deutlich.',
+      'Kein „Erledigt“ vor nachgewiesenen Pflichtaktionen; Drawer pollt durch Apply; Reload setzt Flow fort.',
+    ],
+    reason:
+      'Prompt 72/84 — Nutzer muessen Apply-Fortschritt und -Ergebnis verstehen, ohne vorzeitigen Erfolg oder doppelte Ausfuehrung.',
+    previousBehavior:
+      'Confirm zeigte sofort Erfolg; kein Action-Status; kein Retry fuer fehlgeschlagene Apply-Schritte; Drawer stoppte Polling nach Confirm.',
+    details:
+      'Backend: PublicDocumentApplyResultDto, apply-result + retry-failed-actions Endpoints, document-apply-result.mapper/messages. Frontend: DocumentApplyResultPanel, pollThroughApply, canShowApplyDone, isExtractionPollTerminal, i18n error codes. Architektur: architecture/DOCUMENT_INTAKE_APPLY_RESULT_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T22:30:00.000Z',
+  },
+  {
     id: 'document-intake-action-plan-review-2026-07-17',
     version: '4.9.646',
     title: 'V4.9.646 — Document Intake Action Plan Review',

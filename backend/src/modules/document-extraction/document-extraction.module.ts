@@ -71,6 +71,7 @@ import { DriverCandidateResolverService } from './driver-candidate-resolver.serv
 import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
 import { DocumentEntityLinkService } from './document-entity-link.service';
 import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
+import { DocumentApplyResultService } from './document-apply-result.service';
 
 /**
  * AI Document Upload feature module.
@@ -128,6 +129,7 @@ import { DocumentActionPlanPreviewService } from './document-action-plan-preview
     DocumentEntityLinkService,
     DocumentSchemaRegistryService,
     DocumentActionPlanPreviewService,
+    DocumentApplyResultService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,

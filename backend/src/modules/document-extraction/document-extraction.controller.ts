@@ -253,6 +253,25 @@ export class DocumentExtractionController {
     );
   }
 
+  @Get(':extractionId/apply-result')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getApplyResult(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.getApplyResultForVehicle(vehicleId, extractionId);
+  }
+
+  @Post(':extractionId/retry-failed-actions')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async retryFailedActions(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.retryFailedActionsForVehicle(vehicleId, extractionId, userId ?? null);
+  }
+
   @Post(':extractionId/cancel')
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
   async cancel(

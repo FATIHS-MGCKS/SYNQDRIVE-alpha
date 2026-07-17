@@ -25,7 +25,8 @@ import {
   withBatteryHealthCacheRollback,
 } from '../lib/battery-health-query';
 import { useDocumentIntakeFlow } from './useDocumentIntakeFlow';
-import type { IntakeProcessingStepId } from '../lib/document-intake-processing-steps';
+import type { FlowStatus } from '../components/documents/document-extraction.shared';
+import { canShowApplyDone } from '../lib/document-apply-result';
 
 const AUTO_TYPE = 'AUTO';
 const UPLOAD_SOURCE = 'rental_ui';
@@ -489,5 +490,9 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     handleEntityLinksUpdated,
     handleSchemaReviewUpdated,
     handleActionPlanPreviewState: intake.handleActionPlanPreviewState,
+    actionPlanPreview: intake.actionPlanPreview,
+    applyRetryPending: intake.applyRetryPending,
+    handleRetryFailedActions: intake.handleRetryFailedActions,
+    canShowApplyDone: canShowApplyDone(intake.record?.status, intake.record?.applyResult),
   };
 }

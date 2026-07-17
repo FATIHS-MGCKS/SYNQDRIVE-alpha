@@ -11,6 +11,7 @@ describe('useDocumentIntakeFlow shared contract', () => {
     expect(mapServerToFlowStatus('AWAITING_DOCUMENT_TYPE')).toBe('awaiting_type');
     expect(mapServerToFlowStatus('CONFIRMED')).toBe('applying');
     expect(mapServerToFlowStatus('APPLIED')).toBe('done');
+    expect(mapServerToFlowStatus('PARTIALLY_APPLIED')).toBe('partially_done');
   });
 
   it('treats processing substates as busy', () => {
@@ -31,6 +32,9 @@ describe('useDocumentIntakeFlow shared contract', () => {
     const intake = readFileSync(resolve(__dirname, './useDocumentIntakeFlow.ts'), 'utf8');
     expect(intake).toContain('actionPlanFingerprint');
     expect(intake).toContain('canConfirmActionPlan');
+    expect(intake).toContain('handleRetryFailedActions');
+    expect(intake).toContain('mapApplyAwareFlowStatus');
+    expect(intake).toContain('canShowApplyDone');
   });
 
   it('uses single-flight poller contract', async () => {
@@ -51,14 +55,18 @@ describe('canonical intake wiring', () => {
     const src = readFileSync(resolve(__dirname, '../components/documents/VehicleDocumentUploadDrawer.tsx'), 'utf8');
     expect(src).toContain('useDocumentExtractionFlow');
     expect(src).toContain('DocumentExtractionReviewPanel');
+    expect(src).toContain('DocumentApplyResultPanel');
     expect(src).toContain('DocumentExtractionFlowStatus');
     expect(src).toContain('DocumentIntakeUploadZone');
+    expect(src).toContain('canShowApplyDone');
   });
 
   it('page delegates to useDocumentUploadPage and shared review panel', () => {
     const src = readFileSync(resolve(__dirname, '../components/DocumentUploadView.tsx'), 'utf8');
     expect(src).toContain('useDocumentUploadPage');
     expect(src).toContain('DocumentExtractionReviewPanel');
+    expect(src).toContain('DocumentApplyResultPanel');
+    expect(src).toContain('canShowApplyDone');
   });
 
   it('operator review delegates to shared review panel', () => {
@@ -69,6 +77,7 @@ describe('canonical intake wiring', () => {
   it('embedded flow wraps canonical intake hook', () => {
     const src = readFileSync(resolve(__dirname, './useDocumentExtractionFlow.ts'), 'utf8');
     expect(src).toContain('useDocumentIntakeFlow');
+    expect(src).toContain('pollThroughApply: true');
   });
 
   it('upload page wraps canonical intake hook', () => {

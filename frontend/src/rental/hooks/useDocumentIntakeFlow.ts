@@ -11,7 +11,9 @@ import {
   type Plausibility,
   type ReviewField,
 } from '../components/documents/document-extraction.shared';
+import { canShowApplyDone, mapApplyAwareFlowStatus } from '../lib/document-apply-result';
 import { hasSavedFieldReview } from '../lib/document-schema-field-review';
+import { isExtractionPollTerminal } from '../lib/document-extraction-apply-polling';
 import {
   isActiveExtractionStatus,
   isBusyFlow,
@@ -109,6 +111,7 @@ export function useDocumentIntakeFlow({
   const [processingStartedAt, setProcessingStartedAt] = useState<number | null>(null);
   const [actionPlanPreview, setActionPlanPreview] = useState<PublicDocumentActionPlanPreview | null>(null);
   const [actionPlanPreviewLoading, setActionPlanPreviewLoading] = useState(false);
+  const [applyRetryPending, setApplyRetryPending] = useState(false);
 
   const acceptAttr = useMemo(() => buildAcceptAttribute(metadata?.extensions), [metadata]);
   const isBusy = isBusyFlow(flow);
@@ -195,7 +198,15 @@ export function useDocumentIntakeFlow({
     (next: PublicDocumentExtraction) => {
       setRecord(next);
       const effectiveType = resolveEffectiveType(next);
-      const mapped = mapServerToFlowStatus(next.status, next.processingStage);
+      let mapped = mapApplyAwareFlowStatus(next.status, next.processingStage, next.applyResult);
+      if (mapped === 'done' && !canShowApplyDone(next.status, next.applyResult)) {
+        mapped =
+          next.status === 'PARTIALLY_APPLIED' || next.applyResult?.partiallyApplied
+            ? 'partially_done'
+            : next.applyResult?.applyFailed
+              ? 'apply_failed'
+              : 'applying';
+      }
       setConfirmedDocType(effectiveType);
       if (next.sourceFileName) setUploadedFileName(next.sourceFileName);
       setUploadContext(next.uploadContext ?? null);
@@ -229,22 +240,66 @@ export function useDocumentIntakeFlow({
         return;
       }
 
-      if (mapped === 'done') {
-        setFlow('done');
+      if (mapped === 'done' || mapped === 'partially_done') {
+        setFlow(mapped);
         stopPolling();
         if (mode === 'page') writeActiveExtractionPointer(null);
         onRecordApplied?.(next);
-        onComplete?.();
+        if (mapped === 'done') onComplete?.();
+        return;
+      }
+
+      if (mapped === 'apply_failed') {
+        setFlow('apply_failed');
+        stopPolling();
         return;
       }
 
       setFlow(mapped);
-      if (!pollThroughApply && mapped === 'applying') {
-        /* embedded mode stops at confirm response */
-      }
     },
     [locale, mode, onComplete, onRecordApplied, stopPolling, vehicleId, writePagePointer],
   );
+
+  const handleRetryFailedActions = useCallback(async () => {
+    if (applyRetryPending) return;
+    const mutationVehicleId = resolveMutationVehicleId();
+    if (!mutationVehicleId || !extractionId) return;
+    if (respectAllowedActions && record && !record.allowedActions?.includes('retry_failed_actions')) {
+      return;
+    }
+
+    setApplyRetryPending(true);
+    setFlow('applying');
+    setErrorMessage(null);
+
+    try {
+      const updated = mutationVehicleId
+        ? await api.vehicleIntelligence.retryFailedDocumentActions(mutationVehicleId, extractionId)
+        : canUseOrgScope && orgId
+          ? await api.documentExtraction.retryFailedActionsByOrg(orgId, extractionId)
+          : (() => {
+              throw new Error('Vehicle scope required for retry');
+            })();
+      applyRecord(updated as PublicDocumentExtraction);
+      startPolling(extractionId, mutationVehicleId);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Erneuter Versuch fehlgeschlagen.');
+      setFlow('apply_failed');
+    } finally {
+      setApplyRetryPending(false);
+    }
+  }, [
+    applyRetryPending,
+    applyRecord,
+    canUseOrgScope,
+    extractionId,
+    orgId,
+    record,
+    respectAllowedActions,
+    resolveMutationVehicleId,
+    startPolling,
+    vehicleId,
+  ]);
 
   const startPolling = useCallback(
     (id: string, pollVehicleId?: string | null) => {
@@ -518,16 +573,12 @@ export function useDocumentIntakeFlow({
         : parseReviewFieldsForConfirm(editedFields, { locale });
 
     try {
-      await api.vehicleIntelligence.confirmDocumentExtraction(mutationVehicleId, extractionId, {
+      const updated = await api.vehicleIntelligence.confirmDocumentExtraction(mutationVehicleId, extractionId, {
         confirmedData,
         actionPlanFingerprint: actionPlanPreview?.fingerprint || undefined,
       });
-      if (pollThroughApply) {
-        startPolling(extractionId, mutationVehicleId);
-      } else {
-        setFlow('done');
-        onComplete?.();
-      }
+      applyRecord(updated as PublicDocumentExtraction);
+      startPolling(extractionId, mutationVehicleId);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Bestätigung fehlgeschlagen.');
       setFlow('ready');
@@ -543,6 +594,8 @@ export function useDocumentIntakeFlow({
     resolveMutationVehicleId,
     startPolling,
     actionPlanPreview,
+    applyRecord,
+    startPolling,
   ]);
 
   const handleSchemaReviewUpdated = useCallback(
@@ -566,8 +619,7 @@ export function useDocumentIntakeFlow({
       try {
         const detail = await fetchExtractionRecord(id, effectiveVehicleId);
         applyRecord(detail);
-        const mapped = mapServerToFlowStatus(detail.status, detail.processingStage);
-        if (isActiveExtractionStatus(detail.status) || (pollThroughApply && mapped === 'applying')) {
+        if (!isExtractionPollTerminal(detail)) {
           startPolling(id, detail.vehicleId ?? effectiveVehicleId);
         }
       } catch {
@@ -630,6 +682,8 @@ export function useDocumentIntakeFlow({
     handleConfirm,
     handleReset,
     handleSchemaReviewUpdated,
+    handleRetryFailedActions,
+    applyRetryPending,
     openExtraction,
     openReview: openExtraction,
     openView: openExtraction,

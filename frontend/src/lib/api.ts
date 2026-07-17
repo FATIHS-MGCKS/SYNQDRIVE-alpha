@@ -5271,6 +5271,15 @@ export const api = {
       get<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
         `/vehicles/${vehicleId}/document-extractions/${extractionId}/action-plan-preview`,
       ),
+    getApplyResult: (vehicleId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentApplyResult>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/apply-result`,
+      ),
+    retryFailedDocumentActions: (vehicleId: string, extractionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/retry-failed-actions`,
+        {},
+      ),
     updateActionPlanPreferences: (
       vehicleId: string,
       extractionId: string,
@@ -5470,6 +5479,15 @@ export const api = {
     getActionPlanPreviewByOrg: (orgId: string, extractionId: string) =>
       get<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
         `/organizations/${orgId}/document-extractions/${extractionId}/action-plan-preview`,
+      ),
+    getApplyResultByOrg: (orgId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentApplyResult>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/apply-result`,
+      ),
+    retryFailedActionsByOrg: (orgId: string, extractionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/retry-failed-actions`,
+        {},
       ),
     updateActionPlanPreferencesByOrg: (
       orgId: string,

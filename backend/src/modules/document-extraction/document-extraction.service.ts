@@ -102,6 +102,7 @@ import {
 import { DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS } from './document-action-plan.types';
 import { readConfirmedDataObject } from './document-entity-link.util';
 import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
+import { DocumentApplyResultService } from './document-apply-result.service';
 import {
   mergeActionPlanPreferences,
   type DocumentActionPlanPreferences,
@@ -358,6 +359,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly uploadContext: DocumentUploadContextService,
     private readonly observability: DocumentExtractionObservabilityService,
     private readonly actionPlanPreview: DocumentActionPlanPreviewService,
+    private readonly applyResultService: DocumentApplyResultService,
   ) {}
 
   onModuleInit(): void {
@@ -1543,6 +1545,129 @@ export class DocumentExtractionService implements OnModuleInit {
       { ...existing, confirmedData, plausibility: plausibilityPayload },
       { preferencesOverride: preferences },
     );
+  }
+
+  async getApplyResultForVehicle(vehicleId: string, extractionId: string) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.applyResultService.buildForRecord(existing);
+  }
+
+  async getApplyResultForOrg(orgId: string, extractionId: string) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.applyResultService.buildForRecord(existing);
+  }
+
+  async retryFailedActionsForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.retryFailedActions(existing, vehicleId, userId ?? null);
+  }
+
+  async retryFailedActionsForOrg(
+    orgId: string,
+    extractionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    if (!existing.vehicleId) {
+      throw new BadRequestException('Vehicle assignment required before retrying failed actions');
+    }
+    return this.retryFailedActions(existing, existing.vehicleId, userId ?? null);
+  }
+
+  private async retryFailedActions(
+    existing: Awaited<ReturnType<DocumentExtractionService['getForVehicle']>>,
+    vehicleId: string,
+    userId: string | null,
+  ) {
+    if (existing.status !== 'PARTIALLY_APPLIED' && existing.status !== 'CONFIRMED') {
+      throw new BadRequestException(
+        `Retry failed actions requires PARTIALLY_APPLIED or CONFIRMED (current: ${existing.status})`,
+      );
+    }
+
+    const applyDocumentType = requireApplyDocumentType(existing);
+    if (!this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
+      throw new BadRequestException('This document type does not support action plan retry');
+    }
+
+    const confirmedBase = readConfirmedDataObject(existing.confirmedData);
+    const actionPlanConfirmedData = resolveConfirmedValuesForActionPlan(confirmedBase);
+    const sourceFileUrl =
+      existing.sourceFileUrl ??
+      (existing.objectKey ? `storage://${existing.objectKey}` : null);
+
+    let applyResult: Awaited<ReturnType<DocumentActionOrchestratorService['retryFailedApplyActions']>>;
+    try {
+      applyResult = await this.actionOrchestrator.retryFailedApplyActions({
+        extractionId: existing.id,
+        organizationId: existing.organizationId ?? null,
+        vehicleId,
+        documentType: applyDocumentType,
+        sourceFileUrl,
+        confirmedData: actionPlanConfirmedData,
+        plausibility: existing.plausibility,
+        confirmedById: userId,
+      });
+    } catch (err) {
+      const message = (err as Error).message?.slice(0, 500) ?? 'Retry failed';
+      await this.prisma.vehicleDocumentExtraction.update({
+        where: { id: existing.id },
+        data: {
+          errorPhase: 'APPLY',
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
+          errorMessage: message,
+        },
+      });
+      throw new BadRequestException(`Failed to retry document actions: ${message}`);
+    }
+
+    const extractionStatus = applyResult.applyLifecycle
+      ? mapApplyLifecycleToExtractionStatus(
+          applyResult.applyLifecycle.status as Parameters<
+            typeof mapApplyLifecycleToExtractionStatus
+          >[0],
+        )
+      : 'APPLIED';
+
+    const latestAfterApply = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: existing.id },
+      select: { plausibility: true },
+    });
+
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: existing.id },
+      data: {
+        status: extractionStatus,
+        processingStage: 'APPLY',
+        appliedAt: extractionStatus === 'APPLIED' || extractionStatus === 'PARTIALLY_APPLIED'
+          ? new Date()
+          : existing.appliedAt,
+        appliedById: userId,
+        processingCompletedAt: new Date(),
+        errorPhase: null,
+        errorCode: null,
+        errorMessage: null,
+        plausibility: appendExtractionActionAudit(
+          latestAfterApply?.plausibility ?? existing.plausibility,
+          {
+            action: 'retry_failed_actions',
+            at: new Date().toISOString(),
+            userId,
+            details: applyResult.applyLifecycle
+              ? { applyLifecycleStatus: applyResult.applyLifecycle.status }
+              : undefined,
+          },
+        ) as Prisma.InputJsonValue,
+        ...(applyResult.serviceEventId ? { serviceEventId: applyResult.serviceEventId } : {}),
+      },
+    });
+
+    const updated = await this.getForVehicle(vehicleId, existing.id);
+    return this.applyResultService.buildForRecord(updated);
   }
 
   /** Used by recovery scheduler to retry apply for stuck CONFIRMED rows. */

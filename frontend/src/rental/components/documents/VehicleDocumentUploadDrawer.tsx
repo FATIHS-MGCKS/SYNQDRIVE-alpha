@@ -11,7 +11,9 @@ import {
 } from './document-extraction.shared';
 import { DocumentExtractionFlowStatus } from './DocumentExtractionFlowStatus';
 import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
+import { DocumentApplyResultPanel } from './DocumentApplyResultPanel';
 import { DocumentIntakeUploadZone } from './DocumentIntakeUploadZone';
+import { canShowApplyDone } from '../../lib/document-apply-result';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
 
 export type DocumentDrawerMode = 'upload' | 'review' | 'view';
@@ -26,6 +28,7 @@ export interface VehicleDocumentUploadDrawerProps {
   extractionId?: string | null;
   fileName?: string | null;
   onComplete?: () => void;
+  onEntityNavigate?: (target: { view: string; tab?: string; entityId: string }) => void;
 }
 
 export function VehicleDocumentUploadDrawer({
@@ -37,6 +40,7 @@ export function VehicleDocumentUploadDrawer({
   extractionId: initialExtractionId,
   fileName,
   onComplete,
+  onEntityNavigate,
 }: VehicleDocumentUploadDrawerProps) {
   const { t, locale } = useLanguage();
   const handleComplete = useCallback(() => {
@@ -71,8 +75,10 @@ export function VehicleDocumentUploadDrawer({
 
   const close = () => onOpenChange(false);
 
+  const applyDone = canShowApplyDone(flow.record?.status, flow.record?.applyResult);
+
   const footer =
-    flow.flow === 'ready' || flow.flow === 'applying' ? (
+    flow.flow === 'ready' || flow.flow === 'applying' || flow.flow === 'apply_failed' ? (
       <div className="flex w-full items-center gap-2">
         <button
           type="button"
@@ -82,21 +88,19 @@ export function VehicleDocumentUploadDrawer({
         >
           Schließen
         </button>
-        <button
-          type="button"
-          onClick={() => void flow.handleConfirm()}
-          disabled={flow.flow === 'applying' || !flow.canConfirmActionPlan}
-          className="sq-press ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--status-success)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
-        >
-          {flow.flow === 'applying' ? (
-            <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
-          ) : (
+        {flow.flow === 'ready' ? (
+          <button
+            type="button"
+            onClick={() => void flow.handleConfirm()}
+            disabled={!flow.canConfirmActionPlan}
+            className="sq-press ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--status-success)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+          >
             <Icon name="check-circle" className="w-3.5 h-3.5" />
-          )}
-          Bestätigen & anwenden
-        </button>
+            Bestätigen & anwenden
+          </button>
+        ) : null}
       </div>
-    ) : flow.flow === 'done' ? (
+    ) : (flow.flow === 'done' || flow.flow === 'partially_done') && applyDone ? (
       <button
         type="button"
         onClick={close}
@@ -107,7 +111,11 @@ export function VehicleDocumentUploadDrawer({
     ) : undefined;
 
   const showReview =
-    flow.flow === 'ready' || flow.flow === 'applying' || (mode === 'view' && flow.flow === 'done');
+    flow.flow === 'ready' ||
+    flow.flow === 'applying' ||
+    flow.flow === 'apply_failed' ||
+    flow.flow === 'partially_done' ||
+    (mode === 'view' && flow.flow === 'done');
 
   return (
     <DetailDrawer
@@ -226,15 +234,35 @@ export function VehicleDocumentUploadDrawer({
                 ) : null
               }
             />
+
+            <DocumentApplyResultPanel
+              flow={flow.flow}
+              applyResult={flow.record?.applyResult ?? null}
+              actionPlanPreview={flow.actionPlanPreview}
+              pending={flow.flow === 'applying'}
+              retryPending={flow.applyRetryPending}
+              t={t}
+              onRetryFailed={() => void flow.handleRetryFailedActions()}
+              onEntityNavigate={onEntityNavigate}
+            />
           </div>
         )}
 
-        {flow.flow === 'done' && mode === 'upload' && (
+        {flow.flow === 'done' && mode === 'upload' && applyDone && (
           <div className="rounded-xl border border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.06] p-6 text-center">
             <Icon name="check-circle" className="mx-auto mb-2 h-8 w-8 text-[color:var(--status-success)]" />
             <p className="text-[13px] font-semibold text-foreground">Dokument angewendet</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {DOC_TYPE_LABELS[flow.confirmedDocType] || flow.confirmedDocType}
+            </p>
+          </div>
+        )}
+
+        {flow.flow === 'partially_done' && applyDone && (
+          <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] p-4">
+            <p className="text-[12px] font-semibold text-foreground">Teilweise übernommen</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Pflichtaktionen sind erledigt. Optionale Schritte können erneut versucht werden.
             </p>
           </div>
         )}

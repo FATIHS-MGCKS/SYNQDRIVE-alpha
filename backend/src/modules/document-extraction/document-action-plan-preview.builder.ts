@@ -181,6 +181,18 @@ const ACTION_CATALOG: Record<string, ActionCatalogEntry> = {
   },
 };
 
+export function resolveActionCatalogEntry(semanticAction: string): ActionCatalogEntry {
+  return (
+    ACTION_CATALOG[semanticAction] ?? {
+      labelKey: `documentAction.${semanticAction}`,
+      title: semanticAction.replace(/_/g, ' '),
+      targetModule: 'document-extraction',
+      targetModuleLabel: 'Dokument',
+      targetEntityType: null,
+    }
+  );
+}
+
 function formatCents(cents: unknown): string {
   if (cents == null || cents === '') return '';
   const value = typeof cents === 'number' ? cents : Number(cents);
@@ -363,13 +375,7 @@ export function buildActionPreviewCards(input: {
   vehicleLabel?: string | null;
 }): PublicDocumentActionPreviewCardDto[] {
   return input.plan.actions.map((action) => {
-    const catalog = ACTION_CATALOG[action.semanticAction] ?? {
-      labelKey: `documentAction.${action.semanticAction}`,
-      title: action.semanticAction.replace(/_/g, ' '),
-      targetModule: 'document-extraction',
-      targetModuleLabel: 'Dokument',
-      targetEntityType: null,
-    };
+    const catalog = resolveActionCatalogEntry(action.semanticAction);
     const { missingPrerequisites, conflicts } = resolveActionIssues(action, input.plan);
     const entity = resolveTargetEntityLabel(action.semanticAction, input.confirmedData, input.vehicleLabel);
     const enabled = !isOptionalActionDisabled(action.semanticAction, action.requirement, input.preferences);

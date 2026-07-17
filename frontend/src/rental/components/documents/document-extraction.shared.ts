@@ -277,6 +277,8 @@ export type FlowStatus =
   | 'awaiting_type'
   | 'ready'
   | 'applying'
+  | 'partially_done'
+  | 'apply_failed'
   | 'done'
   | 'failed'
   | 'cancelled'
@@ -428,6 +430,8 @@ export const FLOW_STATUS_LABEL_DE: Record<FlowStatus, string> = {
   awaiting_type: 'Typauswahl erforderlich',
   ready: 'Zur Prüfung',
   applying: 'Wird angewendet…',
+  partially_done: 'Teilweise übernommen',
+  apply_failed: 'Übernahme fehlgeschlagen',
   done: 'Angewendet',
   failed: 'Fehler',
   cancelled: 'Abgebrochen',

@@ -42,6 +42,7 @@ import {
 import {
   DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES,
   isSuccessfulApplyLifecycle,
+  listRetryableFailedActionIndices,
   mapApplyLifecycleToExtractionStatus,
   resolveApplyLifecycleOutcome,
   transitionApplyLifecycle,
@@ -308,6 +309,101 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       throw new DocumentActionTechnicalError(
         DOCUMENT_ACTION_ERROR_CODES.REQUIRED_ACTION_FAILED,
         failedRequired?.errorMessage ?? 'Document action plan execution failed',
+        { execution, applyLifecycle: lifecycle },
+      );
+    }
+
+    return {
+      ...this.toApplyResult(plan, execution),
+      applyLifecycle: lifecycle,
+    };
+  }
+
+  async retryFailedApplyActions(
+    input: ExecuteDocumentActionPlanInput,
+  ): Promise<ExecuteDocumentActionPlanResult> {
+    const existingState = readDocumentActionPlanState(input.plausibility);
+    const plan = existingState.actionPlan;
+    const priorExecution = existingState.actionPlanExecution;
+    let lifecycle = existingState.actionPlanApplyLifecycle;
+
+    if (!plan || !priorExecution) {
+      throw new DocumentActionPlanError(
+        DOCUMENT_ACTION_ERROR_CODES.PLAN_NOT_CONFIRMED,
+        'No stored action plan execution available for retry',
+      );
+    }
+
+    const retryable = listRetryableFailedActionIndices(priorExecution.actions);
+    if (retryable.length === 0) {
+      throw new DocumentActionBusinessError(
+        DOCUMENT_ACTION_ERROR_CODES.BUSINESS_RULE_VIOLATION,
+        'No failed actions are eligible for retry',
+      );
+    }
+
+    await this.validateStoredPlan(plan, input);
+    assertExecutableActionPlan(plan, lifecycle);
+
+    lifecycle = transitionApplyLifecycle(
+      lifecycle,
+      DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLYING,
+    );
+
+    const applyingPlausibility = storeDocumentActionPlanApplyLifecycle(
+      storeDocumentActionPlan(input.plausibility, {
+        ...plan,
+        status: DOCUMENT_ACTION_PLAN_STATUSES.EXECUTING,
+      }),
+      lifecycle,
+    );
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: input.extractionId },
+      data: {
+        plausibility: applyingPlausibility as Prisma.InputJsonValue,
+      },
+    });
+
+    const execution = await this.executePlanActions(input, plan, priorExecution);
+    const outcome = resolveApplyLifecycleOutcome(execution);
+    lifecycle = transitionApplyLifecycle(lifecycle, outcome.lifecycleStatus, {
+      applyOutcome: outcome.applyOutcome,
+      failedActionIndices: outcome.failedActionIndices,
+      warningActionIndices: outcome.warningActionIndices,
+    });
+
+    const planStatus =
+      outcome.lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED
+        ? DOCUMENT_ACTION_PLAN_STATUSES.FAILED
+        : DOCUMENT_ACTION_PLAN_STATUSES.COMPLETED;
+
+    const plausibilityWithExecution = storeDocumentActionPlanApplyLifecycle(
+      storeDocumentActionPlanExecution(
+        storeDocumentActionPlan(input.plausibility, {
+          ...plan,
+          status: planStatus,
+        }),
+        execution,
+      ),
+      lifecycle,
+    );
+
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: input.extractionId },
+      data: {
+        plausibility: plausibilityWithExecution as Prisma.InputJsonValue,
+      },
+    });
+
+    if (outcome.lifecycleStatus === DOCUMENT_ACTION_PLAN_APPLY_LIFECYCLE_STATUSES.APPLY_FAILED) {
+      const failedRequired = execution.actions.find(
+        (row) =>
+          row.requirement === DOCUMENT_ACTION_REQUIREMENTS.REQUIRED &&
+          row.status === DOCUMENT_ACTION_EXECUTION_STATUSES.FAILED,
+      );
+      throw new DocumentActionTechnicalError(
+        DOCUMENT_ACTION_ERROR_CODES.REQUIRED_ACTION_FAILED,
+        failedRequired?.errorMessage ?? 'Document action plan retry failed',
         { execution, applyLifecycle: lifecycle },
       );
     }

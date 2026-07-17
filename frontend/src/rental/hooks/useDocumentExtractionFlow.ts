@@ -13,7 +13,7 @@ export function useDocumentExtractionFlow(options: UseDocumentExtractionFlowOpti
     sourceSurface: options.sourceSurface ?? 'vehicle_detail',
     onComplete: options.onComplete,
     mode: 'embedded',
-    pollThroughApply: false,
+    pollThroughApply: true,
     respectAllowedActions: false,
   });
 }
