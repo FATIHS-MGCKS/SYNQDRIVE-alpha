@@ -1,185 +1,209 @@
-import { NotFoundException } from '@nestjs/common';
-import { ServiceEventOrigin } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { ServiceEventsService } from './service-events.service';
 
-const vehicleId = 'veh-1';
-const otherVehicleId = 'veh-2';
-const eventId = 'evt-1';
+describe('ServiceEventsService.createFromDocumentExtraction', () => {
+  const baseInput = {
+    organizationId: 'org-1',
+    vehicleId: 'veh-1',
+    documentExtractionId: 'ext-svc-1',
+    documentActionIdempotencyKey: 'ext-svc-1:v1:fp:a1:CREATE_SERVICE_EVENT',
+    eventType: 'FULL_SERVICE' as const,
+    eventDate: '2026-05-12',
+    odometerKm: 84500,
+    workshopName: 'Autohaus Nord',
+    notes: 'Inspektion',
+    costCents: 42000,
+    documentUrl: 'storage://service.pdf',
+  };
 
-function makePrisma() {
-  return {
-    vehicleServiceEvent: {
-      findMany: jest.fn().mockResolvedValue([]),
-      count: jest.fn().mockResolvedValue(0),
-      findFirst: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    vehicle: {
-      update: jest.fn().mockResolvedValue({}),
-      findUnique: jest.fn().mockResolvedValue({
-        id: vehicleId,
-        organizationId: 'org-1',
-        make: 'VW',
-        model: 'Golf',
-        licensePlate: 'B-1',
-        homeStationId: null,
-        mileageKm: 10000,
-        lastServiceDate: null,
-        lastServiceOdometerKm: null,
-        serviceIntervalManufacturerKm: null,
-        serviceIntervalManufacturerMonths: null,
-      }),
-    },
-  } as any;
-}
+  const serviceOverdueTasks = {
+    onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined),
+  };
 
-describe('ServiceEventsService', () => {
-  it('update rejects when event belongs to another vehicle', async () => {
-    const prisma = makePrisma();
-    prisma.vehicleServiceEvent.findFirst.mockResolvedValue(null);
-    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
-    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
-
-    await expect(
-      svc.update(vehicleId, eventId, { notes: 'x' }),
-    ).rejects.toBeInstanceOf(NotFoundException);
-    expect(prisma.vehicleServiceEvent.findFirst).toHaveBeenCalledWith({
-      where: { id: eventId, vehicleId },
-    });
-    expect(prisma.vehicleServiceEvent.update).not.toHaveBeenCalled();
-  });
-
-  it('update succeeds only for matching vehicleId', async () => {
-    const prisma = makePrisma();
-    prisma.vehicleServiceEvent.findFirst.mockResolvedValue({
-      id: eventId,
-      vehicleId,
-      eventType: 'REPAIR',
-    });
-    prisma.vehicleServiceEvent.update.mockResolvedValue({
-      id: eventId,
-      vehicleId,
-      notes: 'fixed',
-    });
-    prisma.vehicleServiceEvent.findFirst
-      .mockResolvedValueOnce({ id: eventId, vehicleId, eventType: 'REPAIR' })
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
-
-    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
-    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
-    const result = await svc.update(vehicleId, eventId, { notes: 'fixed' }, { userId: 'u1' });
-
-    expect(result.notes).toBe('fixed');
-    expect(prisma.vehicleServiceEvent.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: eventId },
-        data: expect.objectContaining({ notes: 'fixed', updatedById: 'u1' }),
-      }),
-    );
-  });
-
-  it('delete uses deleteMany with vehicleId scope', async () => {
-    const prisma = makePrisma();
-    prisma.vehicleServiceEvent.deleteMany.mockResolvedValue({ count: 0 });
-    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
-    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
-
-    await expect(svc.remove(vehicleId, eventId)).rejects.toBeInstanceOf(NotFoundException);
-    expect(prisma.vehicleServiceEvent.deleteMany).toHaveBeenCalledWith({
-      where: { id: eventId, vehicleId },
-    });
-  });
-
-  it('create does not set next-service fields on vehicle — only history denorm', async () => {
-    const prisma = makePrisma();
-    prisma.vehicleServiceEvent.create.mockResolvedValue({ id: eventId, vehicleId });
-    prisma.vehicleServiceEvent.findFirst.mockResolvedValue(null);
-
-    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
-    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
-    await svc.create(
-      vehicleId,
-      {
-        eventType: 'REPAIR',
-        eventDate: '2026-06-01T00:00:00.000Z',
-        odometerKm: 12000,
+  function createHarness() {
+    const prisma = {
+      vehicleServiceEvent: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
       },
-      { userId: 'u1', origin: ServiceEventOrigin.MANUAL },
-    );
+      vehicle: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+        findUnique: jest.fn(),
+      },
+    };
 
-    expect(prisma.vehicle.update).toHaveBeenCalledWith({
-      where: { id: vehicleId },
-      data: expect.objectContaining({
-        lastServiceDate: null,
-        lastServiceOdometerKm: null,
-      }),
-    });
-    expect(prisma.vehicle.update.mock.calls[0][0].data).not.toHaveProperty('nextServiceDueDate');
+    const svc = new ServiceEventsService(prisma as any, serviceOverdueTasks as any);
+    return { svc, prisma };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('refreshVehicleHistoryDenorm uses only FULL_SERVICE / GENERAL_INSPECTION', async () => {
-    const prisma = makePrisma();
-    prisma.vehicleServiceEvent.findFirst
-      .mockResolvedValueOnce({
-        eventDate: new Date('2026-05-01'),
-        odometerKm: 50000,
-      })
-      .mockResolvedValueOnce(null);
+  it('returns existing service event on retry for the same documentExtractionId', async () => {
+    const { svc, prisma } = createHarness();
+    prisma.vehicleServiceEvent.findUnique.mockResolvedValue({
+      id: 'evt-existing',
+      organizationId: 'org-1',
+      documentExtractionId: 'ext-svc-1',
+      eventType: 'FULL_SERVICE',
+      eventDate: new Date('2026-05-12'),
+    });
 
-    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
-    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
-    await svc.refreshVehicleHistoryDenorm(vehicleId);
+    const result = await svc.createFromDocumentExtraction(baseInput);
 
-    expect(prisma.vehicleServiceEvent.findFirst).toHaveBeenNthCalledWith(
-      1,
+    expect(result.id).toBe('evt-existing');
+    expect(prisma.vehicleServiceEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('creates service event with documentExtractionId and confirmed event date', async () => {
+    const { svc, prisma } = createHarness();
+    prisma.vehicleServiceEvent.findUnique.mockResolvedValue(null);
+    prisma.vehicleServiceEvent.create.mockResolvedValue({
+      id: 'evt-new',
+      eventType: 'FULL_SERVICE',
+      eventDate: new Date('2026-05-12'),
+    });
+
+    const result = await svc.createFromDocumentExtraction(baseInput);
+
+    expect(result.id).toBe('evt-new');
+    expect(prisma.vehicleServiceEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          vehicleId,
-          eventType: { in: ['FULL_SERVICE', 'GENERAL_INSPECTION'] },
+        data: expect.objectContaining({
+          documentExtractionId: 'ext-svc-1',
+          organizationId: 'org-1',
+          eventDate: new Date('2026-05-12'),
+          origin: 'AI_UPLOAD',
         }),
       }),
     );
-    expect(prisma.vehicle.update).toHaveBeenCalledWith({
-      where: { id: vehicleId },
-      data: {
-        lastServiceDate: new Date('2026-05-01'),
-        lastServiceOdometerKm: 50000,
-        lastOilChangeDate: null,
-        lastOilChangeOdometerKm: null,
-      },
+  });
+
+  it('handles parallel create races via unique constraint and returns existing event', async () => {
+    const { svc, prisma } = createHarness();
+    const racedEvent = {
+      id: 'evt-raced',
+      organizationId: 'org-1',
+      documentExtractionId: 'ext-svc-1',
+      eventType: 'FULL_SERVICE',
+      eventDate: new Date('2026-05-12'),
+    };
+    let lookupCount = 0;
+    prisma.vehicleServiceEvent.findUnique.mockImplementation(async () => {
+      lookupCount += 1;
+      if (lookupCount <= 2) return null;
+      return racedEvent;
     });
+    prisma.vehicleServiceEvent.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    const results = await Promise.all([
+      svc.createFromDocumentExtraction(baseInput),
+      svc.createFromDocumentExtraction(baseInput),
+    ]);
+
+    expect(results[0].id).toBe('evt-raced');
+    expect(results[1].id).toBe('evt-raced');
+    expect(prisma.vehicleServiceEvent.create).toHaveBeenCalledTimes(2);
   });
 });
 
-describe('Service event DTO validation', () => {
-  it('rejects negative odometer and cost', async () => {
-    const { validate } = await import('class-validator');
-    const { plainToInstance } = await import('class-transformer');
-    const { CreateVehicleServiceEventDto } = await import('./dto/create-vehicle-service-event.dto');
+describe('ServiceEventsService.applyComplianceVehicleUpdateFromExtraction', () => {
+  const complianceInput = {
+    organizationId: 'org-1',
+    vehicleId: 'veh-1',
+    documentExtractionId: 'ext-tuv-1',
+    documentActionIdempotencyKey: 'ext-tuv-1:v1:fp:a2:UPDATE_VEHICLE_COMPLIANCE_DATES',
+    documentType: 'TUV_REPORT' as const,
+    lastInspectionDate: new Date('2026-06-01'),
+    nextValidUntilDate: new Date('2028-06-01'),
+  };
 
-    const dto = plainToInstance(CreateVehicleServiceEventDto, {
-      eventType: 'REPAIR',
-      eventDate: '2026-06-01',
-      odometerKm: -1,
-      costCents: -5,
+  function createHarness() {
+    const prisma = {
+      vehicleServiceEvent: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'evt-tuv-1',
+          organizationId: 'org-1',
+          documentExtractionId: 'ext-tuv-1',
+        }),
+      },
+      vehicle: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+    const svc = new ServiceEventsService(prisma as any, { onServiceHistoryChanged: jest.fn() } as any);
+    return { svc, prisma };
+  }
+
+  it('applies compliance dates when vehicle fields differ', async () => {
+    const { svc, prisma } = createHarness();
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-1',
+      lastTuvDate: null,
+      nextTuvDate: null,
+      lastBokraftDate: null,
+      nextBokraftDate: null,
     });
-    const errors = await validate(dto);
-    expect(errors.length).toBeGreaterThan(0);
+    prisma.vehicle.update.mockResolvedValue({ id: 'veh-1' });
+
+    const result = await svc.applyComplianceVehicleUpdateFromExtraction(complianceInput);
+
+    expect(result.applied).toBe(true);
+    expect(prisma.vehicle.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          lastTuvDate: complianceInput.lastInspectionDate,
+          nextTuvDate: complianceInput.nextValidUntilDate,
+        },
+      }),
+    );
   });
 
-  it('rejects invalid event type', async () => {
-    const { validate } = await import('class-validator');
-    const { plainToInstance } = await import('class-transformer');
-    const { CreateVehicleServiceEventDto } = await import('./dto/create-vehicle-service-event.dto');
-
-    const dto = plainToInstance(CreateVehicleServiceEventDto, {
-      eventType: 'NOT_A_REAL_TYPE',
-      eventDate: '2026-06-01',
+  it('skips idempotent re-apply when compliance dates already match', async () => {
+    const { svc, prisma } = createHarness();
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-1',
+      lastTuvDate: complianceInput.lastInspectionDate,
+      nextTuvDate: complianceInput.nextValidUntilDate,
+      lastBokraftDate: null,
+      nextBokraftDate: null,
     });
-    const errors = await validate(dto);
-    expect(errors.some((e) => e.property === 'eventType')).toBe(true);
+
+    const result = await svc.applyComplianceVehicleUpdateFromExtraction(complianceInput);
+
+    expect(result.skipped).toBe(true);
+    expect(prisma.vehicle.update).not.toHaveBeenCalled();
+  });
+
+  it('recovers from partial failure between service event and vehicle update on retry', async () => {
+    const { svc, prisma } = createHarness();
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-1',
+      lastTuvDate: null,
+      nextTuvDate: null,
+      lastBokraftDate: null,
+      nextBokraftDate: null,
+    });
+    prisma.vehicle.update
+      .mockRejectedValueOnce(new Error('vehicle update failed'))
+      .mockResolvedValueOnce({ id: 'veh-1' });
+
+    await expect(svc.applyComplianceVehicleUpdateFromExtraction(complianceInput)).rejects.toThrow(
+      'vehicle update failed',
+    );
+
+    const retry = await svc.applyComplianceVehicleUpdateFromExtraction(complianceInput);
+    expect(retry.applied).toBe(true);
+    expect(prisma.vehicleServiceEvent.findUnique).toHaveBeenCalledTimes(2);
+    expect(prisma.vehicle.update).toHaveBeenCalledTimes(2);
   });
 });

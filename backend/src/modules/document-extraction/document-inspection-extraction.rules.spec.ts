@@ -9,6 +9,7 @@ import {
 } from './__fixtures__/document-inspection-fixtures';
 import {
   assessInspectionApplyGate,
+  buildInspectionApplyPayload,
   buildInspectionVehicleComplianceUpdate,
   collectInspectionPlausibilityChecks,
   hasDefects,
@@ -140,6 +141,23 @@ describe('document-inspection-extraction.rules', () => {
         fields: TUV_WITH_DEFECT,
       });
       expect(gate.canArchive).toBe(true);
+    });
+  });
+
+  describe('buildInspectionApplyPayload', () => {
+    it('includes compliance update only with confirmed validUntil', () => {
+      const payload = buildInspectionApplyPayload(INSPECTION_DOCUMENT_TYPES.TUV, TUV_NO_DEFECT);
+      expect(payload?.canUpdateVehicleMasterData).toBe(true);
+      expect(payload?.complianceUpdate?.nextValidUntilDate).toEqual(new Date('2028-06-01'));
+    });
+
+    it('blocks vehicle compliance update when validUntil is missing', () => {
+      const payload = buildInspectionApplyPayload(
+        INSPECTION_DOCUMENT_TYPES.TUV,
+        TUV_MISSING_VALIDITY,
+      );
+      expect(payload?.canUpdateVehicleMasterData).toBe(false);
+      expect(payload?.complianceUpdate).toBeNull();
     });
   });
 });

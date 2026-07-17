@@ -10,6 +10,14 @@ import {
   CreateInvoiceDocumentActionExecutor,
 } from './executors/create-invoice-document-action.executor';
 import {
+  CreateComplianceServiceEventDocumentActionExecutor,
+  CreateServiceEventDocumentActionExecutor,
+} from './executors/create-service-document-action.executor';
+import {
+  RefreshVehicleServiceHistoryDocumentActionExecutor,
+  UpdateVehicleComplianceDocumentActionExecutor,
+} from './executors/update-vehicle-from-extraction-document-action.executor';
+import {
   DOCUMENT_ACTION_EXECUTION_STATUSES,
   DOCUMENT_ACTION_PLAN_STATUSES,
 } from './document-action.types';
@@ -35,6 +43,14 @@ describe('DocumentActionOrchestratorService', () => {
     new CreateFineDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
     new CreateInvoiceDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
     new CreateCreditNoteDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
+    new CreateServiceEventDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
+    new CreateComplianceServiceEventDocumentActionExecutor({ createFromDocumentExtraction: jest.fn() } as any),
+    new UpdateVehicleComplianceDocumentActionExecutor({
+      applyComplianceVehicleUpdateFromExtraction: jest.fn(),
+    } as any),
+    new RefreshVehicleServiceHistoryDocumentActionExecutor({
+      refreshVehicleServiceHistoryFromExtraction: jest.fn(),
+    } as any),
   );
 
   const baseInput = {

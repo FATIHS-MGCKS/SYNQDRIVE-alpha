@@ -20,6 +20,14 @@ import {
   CreateCreditNoteDocumentActionExecutor,
   CreateInvoiceDocumentActionExecutor,
 } from './executors/create-invoice-document-action.executor';
+import {
+  CreateComplianceServiceEventDocumentActionExecutor,
+  CreateServiceEventDocumentActionExecutor,
+} from './executors/create-service-document-action.executor';
+import {
+  RefreshVehicleServiceHistoryDocumentActionExecutor,
+  UpdateVehicleComplianceDocumentActionExecutor,
+} from './executors/update-vehicle-from-extraction-document-action.executor';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentContentExtractorService } from './document-content-extractor.service';
 import { DocumentFileIdentificationService } from './document-file-identification.service';
@@ -63,6 +71,10 @@ import { DocumentExtractionObservabilityService } from './document-extraction-ob
     CreateFineDocumentActionExecutor,
     CreateInvoiceDocumentActionExecutor,
     CreateCreditNoteDocumentActionExecutor,
+    CreateServiceEventDocumentActionExecutor,
+    CreateComplianceServiceEventDocumentActionExecutor,
+    UpdateVehicleComplianceDocumentActionExecutor,
+    RefreshVehicleServiceHistoryDocumentActionExecutor,
     DocumentExtractionPlausibilityService,
     DocumentFileIdentificationService,
     DocumentTextExtractorService,

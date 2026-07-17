@@ -10,6 +10,14 @@ import {
   CreateInvoiceDocumentActionExecutor,
 } from './executors/create-invoice-document-action.executor';
 import {
+  CreateComplianceServiceEventDocumentActionExecutor,
+  CreateServiceEventDocumentActionExecutor,
+} from './executors/create-service-document-action.executor';
+import {
+  RefreshVehicleServiceHistoryDocumentActionExecutor,
+  UpdateVehicleComplianceDocumentActionExecutor,
+} from './executors/update-vehicle-from-extraction-document-action.executor';
+import {
   assertExecutableActionPlan,
   buildDocumentActionPlan,
 } from './document-action-plan.builder';
@@ -45,6 +53,8 @@ import {
   readInvoiceNumber,
   readSupplier,
 } from './document-invoice-extraction.rules';
+import { isInspectionDocumentType } from './document-inspection-extraction.rules';
+import { isServiceDocumentType } from './document-service-extraction.rules';
 
 export type ExecuteDocumentActionPlanInput = {
   extractionId: string;
@@ -71,6 +81,10 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     private readonly createFineExecutor: CreateFineDocumentActionExecutor,
     private readonly createInvoiceExecutor: CreateInvoiceDocumentActionExecutor,
     private readonly createCreditNoteExecutor: CreateCreditNoteDocumentActionExecutor,
+    private readonly createServiceEventExecutor: CreateServiceEventDocumentActionExecutor,
+    private readonly createComplianceServiceEventExecutor: CreateComplianceServiceEventDocumentActionExecutor,
+    private readonly updateVehicleComplianceExecutor: UpdateVehicleComplianceDocumentActionExecutor,
+    private readonly refreshVehicleServiceHistoryExecutor: RefreshVehicleServiceHistoryDocumentActionExecutor,
   ) {}
 
   onModuleInit(): void {
@@ -79,13 +93,19 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     this.registry.register(this.createFineExecutor);
     this.registry.register(this.createInvoiceExecutor);
     this.registry.register(this.createCreditNoteExecutor);
+    this.registry.register(this.createServiceEventExecutor);
+    this.registry.register(this.createComplianceServiceEventExecutor);
+    this.registry.register(this.updateVehicleComplianceExecutor);
+    this.registry.register(this.refreshVehicleServiceHistoryExecutor);
   }
 
   supportsExecutorPath(documentType: string): boolean {
     return (
       isArchiveDocumentType(documentType) ||
       isFineDocumentType(documentType) ||
-      isInvoiceDocumentType(documentType)
+      isInvoiceDocumentType(documentType) ||
+      isServiceDocumentType(documentType) ||
+      isInspectionDocumentType(documentType)
     );
   }
 
@@ -386,8 +406,19 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
           row.semanticAction === 'CREATE_CREDIT_NOTE_DRAFT') &&
         row.status === 'SUCCEEDED',
     );
+    const serviceEventAction = execution.actions.find(
+      (row) =>
+        (row.semanticAction === 'CREATE_SERVICE_EVENT' ||
+          row.semanticAction === 'CREATE_COMPLIANCE_SERVICE_EVENT') &&
+        row.status === 'SUCCEEDED',
+    );
+    const serviceEventId =
+      (serviceEventAction?.resultEntityId as string | undefined) ??
+      (serviceEventAction?.output?.serviceEventId as string | undefined) ??
+      null;
 
     return {
+      serviceEventId,
       detail: {
         actionPlanId: plan.planId,
         planVersion: plan.planVersion,
@@ -401,6 +432,20 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         invoiceStatus: invoiceAction?.output?.status ?? null,
         invoiceDraft: invoiceAction?.output?.draft ?? null,
         isCreditNote: invoiceAction?.output?.isCreditNote ?? null,
+        serviceEventId,
+        serviceEventType: serviceEventAction?.output?.eventType ?? null,
+        vehicleComplianceApplied:
+          execution.actions.find(
+            (row) =>
+              row.semanticAction === 'UPDATE_VEHICLE_COMPLIANCE_DATES' &&
+              row.status === 'SUCCEEDED',
+          )?.output?.applied ?? null,
+        vehicleServiceHistoryRefreshed:
+          execution.actions.find(
+            (row) =>
+              row.semanticAction === 'REFRESH_VEHICLE_SERVICE_HISTORY' &&
+              row.status === 'SUCCEEDED',
+          )?.output?.applied ?? null,
         entityLinkSuggestions:
           linkAction?.output?.suggestions ?? plan.metadata?.entityLinkSuggestions ?? [],
         acceptedEntityLinks: linkAction?.output?.links ?? [],

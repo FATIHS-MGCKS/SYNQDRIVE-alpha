@@ -2624,6 +2624,8 @@ model VehicleBrakeReferenceSpec {
 model VehicleServiceEvent {
   id                    String              @id @default(uuid())
   vehicleId             String              @map("vehicle_id")
+  organizationId        String?             @map("organization_id")
+  documentExtractionId  String?             @map("document_extraction_id")
   eventType             ServiceEventType    @map("event_type")
   eventDate             DateTime            @map("event_date")
   odometerKm            Int?                @map("odometer_km")
@@ -2645,12 +2647,16 @@ model VehicleServiceEvent {
   updatedAt             DateTime            @updatedAt @map("updated_at")
 
   vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentExtraction                VehicleDocumentExtraction?        @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   batteryEvidence                   BatteryEvidence[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
 
+  @@unique([organizationId, documentExtractionId])
   @@index([vehicleId])
   @@index([eventDate])
+  @@index([documentExtractionId])
+  @@index([organizationId])
   @@map("vehicle_service_events")
 }
 
@@ -2718,6 +2724,7 @@ model VehicleDocumentExtraction {
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   fines                             Fine[]
   orgInvoices                       OrgInvoice[]
+  serviceEvents                     VehicleServiceEvent[]
 
   @@index([vehicleId])
   @@index([status])
