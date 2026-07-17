@@ -1,25 +1,34 @@
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { STATION_SCOPE_KEY } from '@shared/decorators/station-scope.decorator';
+import type { StationScopeOptions } from '@shared/stations/station-scope.types';
+import { StationScopeService } from '@shared/stations/station-scope.service';
 
 /**
- * Restricts Sub Admin and Worker access to their assigned station scope.
- * Part of the Phase 3 access evaluation chain (step 6).
+ * Gate 2 — Station scope enforcement for Stations V2.
+ *
+ * Must run AFTER `OrgScopingGuard` (membership + tenant context).
+ * Permission checks (Gate 1) are handled separately.
+ *
+ * Handlers without `@RequireStationScope()` pass through until explicitly wired.
  */
 @Injectable()
 export class StationScopeGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly stationScopeService: StationScopeService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const options = this.reflector.getAllAndOverride<StationScopeOptions | undefined>(
+      STATION_SCOPE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!options) return true;
+
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
-
-    if (!user?.stationScope) {
-      return true;
-    }
-
-    const stationId = request.params.stationId || request.body?.stationId;
-
-    if (stationId && user.stationScope !== stationId) {
-      throw new ForbiddenException('Access restricted by station scope');
-    }
-
+    await this.stationScopeService.enforceRequestScope(request, options);
     return true;
   }
 }
