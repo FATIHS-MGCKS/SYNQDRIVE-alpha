@@ -138,11 +138,26 @@ export interface PublicUploadContextDisplay {
   }>;
 }
 
+export interface PublicVehicleCandidate {
+  vehicleId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  confirmationRequired: boolean;
+}
+
 export interface PublicDocumentExtraction {
   id: string;
   vehicleId: string | null;
   organizationId: string | null;
   uploadContext: PublicUploadContextDisplay | null;
+  vehicleCandidates: PublicVehicleCandidate[] | null;
   vehicle: PublicVehicleDisplay | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

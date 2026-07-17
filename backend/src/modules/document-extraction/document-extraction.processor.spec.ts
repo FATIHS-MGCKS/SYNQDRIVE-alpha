@@ -105,6 +105,7 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     {
       loadEntitySnapshot: jest.fn().mockResolvedValue({ licensePlate: 'B-AB 123', vin: null }),
     } as any,
+    { resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: {}, candidates: [], blockerPresent: false, autoConfirmEligible: false }) } as any,
   );
   return { processor, prisma, storage, contentExtractor, classification, aiExtraction, plausibility };
 }

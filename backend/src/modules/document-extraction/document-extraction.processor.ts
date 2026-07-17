@@ -49,11 +49,14 @@ import {
 import { isMalwareScanReadyForProcessing } from './document-malware-scan.util';
 import { patchMistralTransferState } from './document-pipeline-lifecycle.util';
 import { DocumentUploadContextService } from './document-upload-context.service';
+import { VehicleCandidateResolverService } from './vehicle-candidate-resolver.service';
 import {
   evaluateUploadContextResolver,
   extractUploadResolverHints,
   readUploadContextPipelineState,
 } from './document-upload-context.util';
+import { mapFieldEvidence } from './vehicle-candidate-matching.util';
+import { makePlausibilityCheck } from './document-plausibility.types';
 
 const SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
@@ -85,6 +88,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     private readonly docConfig: ConfigType<typeof documentExtractionConfig>,
     private readonly observability: DocumentExtractionObservabilityService,
     private readonly uploadContext: DocumentUploadContextService,
+    private readonly vehicleCandidateResolver: VehicleCandidateResolverService,
   ) {
     super();
   }
@@ -470,6 +474,50 @@ export class DocumentExtractionProcessor extends WorkerHost {
       });
     }
 
+    let finalChecks = plausibilityChecks.checks;
+    let overallStatus = plausibilityChecks.overallStatus;
+
+    if (organizationId && !vehicleId) {
+      const uploadContextVehicleId =
+        uploadPipeline?.candidate?.entityType === 'VEHICLE'
+          ? uploadPipeline.candidate.entityId
+          : null;
+      const uploadContextBookingId =
+        uploadPipeline?.candidate?.entityType === 'BOOKING'
+          ? uploadPipeline.candidate.entityId
+          : null;
+
+      const vehicleCandidates = await this.vehicleCandidateResolver.resolve({
+        organizationId,
+        extractedData: fields as Record<string, unknown>,
+        uploadContextVehicleId,
+        uploadContextBookingId,
+        fieldEvidence: mapFieldEvidence(agentResult.fieldEvidence),
+        assignedVehicleId: vehicleId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        vehicleCandidates,
+      });
+
+      if (vehicleCandidates.blockerPresent) {
+        finalChecks = [
+          ...finalChecks,
+          makePlausibilityCheck({
+            code: 'VEHICLE_CANDIDATE_VIN_PLATE_MISMATCH',
+            status: 'BLOCKER',
+            explanation:
+              'OCR-VIN und OCR-Kennzeichen verweisen auf unterschiedliche Fahrzeuge in der Organisation.',
+            fieldPaths: ['vin', 'licensePlate'],
+            resolutionHint:
+              'Kennzeichen oder VIN manuell prüfen und das richtige Fahrzeug zuordnen.',
+            source: 'SYNQDRIVE_DB',
+          }),
+        ];
+        overallStatus = 'BLOCKER';
+      }
+    }
+
     const existingPublic = stripPipelineFromPlausibility(pipelineWithContext);
     const classificationMeta =
       existingPublic &&
@@ -490,8 +538,8 @@ export class DocumentExtractionProcessor extends WorkerHost {
             ? existingPublic
             : {}),
           ...classificationMeta,
-          overallStatus: plausibilityChecks.overallStatus,
-          checks: plausibilityChecks.checks,
+          overallStatus,
+          checks: finalChecks,
           recommendedHumanReviewNotes: mergedNotes,
           dimoContextAvailable: agentResult.dimoContextAvailable,
           sourceMethod: content.sourceMethod,

@@ -18,7 +18,8 @@ import {
   buildUploadContextDisplayLabel,
   readUploadContextPipelineState,
 } from './document-upload-context.util';
-import type { PublicUploadContextDisplayDto } from './dto/public-document-extraction.dto';
+import { readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
+import type { PublicUploadContextDisplayDto, PublicVehicleCandidateDto } from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
   id: string;
@@ -187,6 +188,24 @@ function buildUploadContextDisplay(
   };
 }
 
+function buildVehicleCandidatesDisplay(record: ExtractionRecord): PublicVehicleCandidateDto[] | null {
+  const pipeline = readVehicleCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    vehicleId: candidate.vehicleId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+  }));
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
@@ -198,6 +217,7 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     uploadContextType: record.uploadContextType ?? null,
     uploadContextId: record.uploadContextId ?? null,
     uploadContext: buildUploadContextDisplay(record),
+    vehicleCandidates: buildVehicleCandidatesDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,
