@@ -9020,7 +9020,7 @@ export type StationCalendarExceptionType =
 
 export type StationCalendarRecurrenceKind = 'NONE' | 'YEARLY';
 
-export type StationCalendarExceptionSource = 'MANUAL' | 'LEGACY_HOLIDAY_RULES';
+export type StationCalendarExceptionSource = 'MANUAL' | 'LEGACY_HOLIDAY_RULES' | 'IMPORT';
 
 export type StationCalendarExceptionStatus = 'ACTIVE' | 'CANCELLED';
 
