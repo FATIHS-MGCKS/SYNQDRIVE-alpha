@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import type { PublicDocumentExtraction } from '../../lib/document-extraction.types';
 import { buildDocumentActionPreview } from '../../lib/document-extraction-action-preview';
+import { useDocumentSchemaReview } from '../../hooks/useDocumentSchemaReview';
+import { hasSavedFieldReview } from '../../lib/document-schema-field-review';
 import {
   DOC_TYPE_LABELS,
   type Plausibility,
@@ -8,6 +10,7 @@ import {
   type ReviewField,
 } from './document-extraction.shared';
 import { DocumentEntityReview } from './DocumentEntityReview';
+import { DocumentSchemaFieldReview } from './DocumentSchemaFieldReview';
 import type { TranslationKey } from '../../i18n/translations/en';
 import type { VehicleLabelLookup } from '../../lib/document-entity-review';
 
@@ -38,6 +41,7 @@ export interface DocumentExtractionReviewPanelProps {
   entityReviewT?: (key: TranslationKey, vars?: Record<string, string | number>) => string;
   vehicleLookup?: VehicleLabelLookup;
   onEntityLinksUpdated?: (record: PublicDocumentExtraction) => void;
+  onSchemaReviewUpdated?: (record: PublicDocumentExtraction) => void;
   headerSlot?: ReactNode;
   footerSlot?: ReactNode;
   isDarkMode?: boolean;
@@ -96,15 +100,36 @@ export function DocumentExtractionReviewPanel({
   entityReviewOrgId = null,
   entityReviewVehicleId,
   entityReviewExtractionId,
+  entityReviewLocale = 'de',
   entityReviewT,
   vehicleLookup,
   onEntityLinksUpdated,
+  onSchemaReviewUpdated,
   headerSlot,
   footerSlot,
   isDarkMode = false,
 }: DocumentExtractionReviewPanelProps) {
-  const actionPreview = showActionPreview
-    ? buildDocumentActionPreview(record, { blockerPresent: plausibility?.overallStatus === 'BLOCKER' })
+  const schemaOrgId = entityReviewOrgId ?? record?.organizationId ?? '';
+  const schemaVehicleId = entityReviewVehicleId ?? record?.vehicleId ?? null;
+  const schemaExtractionId = entityReviewExtractionId ?? record?.id ?? null;
+  const useSchemaFieldReview = Boolean(record && entityReviewT && (schemaOrgId || schemaVehicleId));
+
+  const schemaReview = useDocumentSchemaReview({
+    record,
+    orgId: schemaOrgId,
+    vehicleId: schemaVehicleId,
+    extractionId: schemaExtractionId,
+    locale: entityReviewLocale,
+    enabled: useSchemaFieldReview,
+    onRecordUpdated: onSchemaReviewUpdated,
+  });
+
+  const savedFieldReview = hasSavedFieldReview(record?.confirmedData);
+  const actionPreview = showActionPreview && savedFieldReview
+    ? buildDocumentActionPreview(record, {
+        schemaRegistry: schemaReview.schema ? { subtypes: [schemaReview.schema] } : null,
+        blockerPresent: plausibility?.overallStatus === 'BLOCKER',
+      })
     : [];
 
   return (
@@ -120,7 +145,9 @@ export function DocumentExtractionReviewPanel({
             </span>
           </div>
           {plausibility.checks.length === 0 ? (
-            <div className={`rounded-lg border px-3 py-2 text-[11px] ${plausClass('OK')}`}>Keine Auffälligkeiten</div>
+            <div className={`rounded-lg border px-3 py-2 text-[11px] ${plausClass('OK')}`}>
+              {entityReviewT?.('docUpload.plausibilityOk') ?? 'Keine Auffälligkeiten'}
+            </div>
           ) : (
             <div className="space-y-1.5">
               {plausibility.checks.map((check, index) => (
@@ -147,61 +174,94 @@ export function DocumentExtractionReviewPanel({
         />
       ) : null}
 
-      {showActionPreview && actionPreview.length > 0 ? (
-        <div>
-          <p className="sq-section-label mb-1.5">Geplante Aktionen (Vorschau)</p>
-          <div className="space-y-1.5">
-            {actionPreview.map((action) => (
-              <div key={action.semanticAction} className="rounded-lg border border-border bg-muted/10 px-3 py-2 text-[11px]">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-foreground">{action.semanticAction}</span>
-                  <span className="text-muted-foreground">· {action.requirement}</span>
-                  <span className="text-muted-foreground">· {action.targetModule}</span>
+      {showActionPreview ? (
+        savedFieldReview && actionPreview.length > 0 ? (
+          <div>
+            <p className="sq-section-label mb-1.5">
+              {entityReviewT?.('docUpload.fieldReview.actionPreviewTitle') ?? 'Geplante Aktionen (Vorschau)'}
+            </p>
+            <div className="space-y-1.5">
+              {actionPreview.map((action) => (
+                <div key={action.semanticAction} className="rounded-lg border border-border bg-muted/10 px-3 py-2 text-[11px]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-foreground">{action.semanticAction}</span>
+                    <span className="text-muted-foreground">· {action.requirement}</span>
+                    <span className="text-muted-foreground">· {action.targetModule}</span>
+                  </div>
+                  {action.note ? <p className="mt-0.5 text-muted-foreground">{action.note}</p> : null}
                 </div>
-                {action.note ? <p className="mt-0.5 text-muted-foreground">{action.note}</p> : null}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        ) : !savedFieldReview && entityReviewT ? (
+          <div className="rounded-lg border border-dashed border-border px-3 py-2 text-[10px] text-muted-foreground">
+            {entityReviewT('docUpload.fieldReview.actionPreviewLocked')}
+          </div>
+        ) : null
       ) : null}
 
       <div>
         <div className="mb-2 flex items-center justify-between">
           <span className="sq-section-label">{fieldsTitle}</span>
-          {canEdit && !readOnly && onToggleEdit ? (
+          {!useSchemaFieldReview && canEdit && !readOnly && onToggleEdit ? (
             <button type="button" onClick={onToggleEdit} className="text-[10px] font-semibold text-primary">
               {editingFields ? 'Fertig' : 'Bearbeiten'}
             </button>
           ) : null}
         </div>
-        <div className={`overflow-hidden rounded-xl border ${isDarkMode ? 'border-neutral-800' : 'border-border'}`}>
-          {editedFields.map((field, index) => (
-            <div
-              key={field.key}
-              className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 px-3 py-2.5 min-w-0 ${index > 0 ? 'border-t border-border' : ''} bg-muted/10`}
-            >
-              <span className={`sm:w-44 shrink-0 text-[10px] font-medium text-muted-foreground`}>{field.label}</span>
-              {editingFields && !readOnly ? (
-                field.fieldType === 'multiline' ? (
-                  <textarea
-                    value={field.value}
-                    rows={3}
-                    onChange={(e) => onFieldChange(index, e.target.value)}
-                    className="w-full min-w-0 sm:flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
-                  />
+
+        {useSchemaFieldReview && entityReviewT ? (
+          <>
+            {schemaReview.schemaError ? (
+              <p className="mb-2 text-[10px] text-[color:var(--status-critical)]">{schemaReview.schemaError}</p>
+            ) : null}
+            <DocumentSchemaFieldReview
+              groups={schemaReview.groups}
+              readOnly={readOnly}
+              pending={schemaReview.pending}
+              isDirty={schemaReview.isDirty}
+              hasSavedReview={schemaReview.hasSavedReview}
+              saveError={schemaReview.saveError}
+              planInvalidatedHint={schemaReview.planInvalidatedHint}
+              showSource={schemaReview.showSource}
+              isDarkMode={isDarkMode}
+              t={entityReviewT}
+              onFieldChange={schemaReview.updateFieldValue}
+              onSaveReview={() => void schemaReview.saveReview()}
+              onToggleSource={schemaReview.toggleSource}
+            />
+          </>
+        ) : (
+          <div className={`overflow-hidden rounded-xl border ${isDarkMode ? 'border-neutral-800' : 'border-border'}`}>
+            {editedFields.map((field, index) => (
+              <div
+                key={field.key}
+                className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 px-3 py-2.5 min-w-0 ${index > 0 ? 'border-t border-border' : ''} bg-muted/10`}
+              >
+                <span className="sm:w-44 shrink-0 text-[10px] font-medium text-muted-foreground">{field.label}</span>
+                {editingFields && !readOnly ? (
+                  field.fieldType === 'multiline' ? (
+                    <textarea
+                      value={field.value}
+                      rows={3}
+                      onChange={(e) => onFieldChange(index, e.target.value)}
+                      className="w-full min-w-0 sm:flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
+                    />
+                  ) : (
+                    <input
+                      value={field.value}
+                      onChange={(e) => onFieldChange(index, e.target.value)}
+                      className="w-full min-w-0 sm:flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
+                    />
+                  )
                 ) : (
-                  <input
-                    value={field.value}
-                    onChange={(e) => onFieldChange(index, e.target.value)}
-                    className="w-full min-w-0 sm:flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
-                  />
-                )
-              ) : (
-                <span className="w-full min-w-0 break-words text-[11px] font-medium text-foreground whitespace-pre-wrap">{field.value || '—'}</span>
-              )}
-            </div>
-          ))}
-        </div>
+                  <span className="w-full min-w-0 break-words text-[11px] font-medium text-foreground whitespace-pre-wrap">{field.value || '—'}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <p className="mt-1 text-[10px] text-muted-foreground">
           {DOC_TYPE_LABELS[confirmedDocType] || confirmedDocType}
         </p>

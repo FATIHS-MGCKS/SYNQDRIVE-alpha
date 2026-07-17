@@ -152,6 +152,26 @@ export interface DocumentSchemaRegistryResponse {
   subtypes: PublicDocumentSubtypeSchema[];
 }
 
+export interface PublicFieldProvenance {
+  fieldKey: string;
+  rawValue: unknown;
+  normalizedValue: unknown;
+  confidence: number | null;
+  page: number | null;
+  textEvidence: string | null;
+  sourceType:
+    | 'ai_extraction'
+    | 'ai_merged'
+    | 'ai_conflict'
+    | 'missing'
+    | 'user_correction'
+    | 'user_confirmed';
+  manuallyEdited: boolean;
+  confirmedValue: unknown;
+  confirmedBy: string | null;
+  confirmedAt: string | null;
+}
+
 export interface PublicVehicleDisplay {
   id: string;
   licensePlate: string | null;
@@ -323,6 +343,8 @@ export interface PublicDocumentExtraction {
   extractedData: Record<string, unknown> | null;
   plausibility: unknown;
   confirmedData: unknown;
+  fieldProvenance: PublicFieldProvenance[] | null;
+  fieldCorrectionCount: number | null;
   queuedAt: string | null;
   appliedAt: string | null;
   createdAt: string;
@@ -337,11 +359,12 @@ export interface PublicDocumentExtraction {
 
 export type PublicDocumentExtractionSummary = Omit<
   PublicDocumentExtraction,
-  'extractedData' | 'confirmedData' | 'plausibility'
+  'extractedData' | 'confirmedData' | 'plausibility' | 'fieldProvenance'
 > & {
   extractedData: null;
   confirmedData: null;
   plausibility: null;
+  fieldProvenance: null;
 };
 
 export interface DocumentExtractionListResponse {

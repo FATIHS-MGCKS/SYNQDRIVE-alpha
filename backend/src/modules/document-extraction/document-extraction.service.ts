@@ -95,6 +95,12 @@ import {
 } from './document-extraction-query.util';
 import { sanitizeDownloadFileName } from './document-extraction-download.util';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import {
+  invalidateDocumentActionPlan,
+  readDocumentActionPlanState,
+} from './document-action-plan.store';
+import { DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS } from './document-action-plan.types';
+import { readConfirmedDataObject } from './document-entity-link.util';
 
 /** Extra confirmedData keys (beyond schema) that the apply layer understands. */
 const APPLY_ALIAS_KEYS = new Set<string>([
@@ -1290,6 +1296,127 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const updated = await this.getForVehicle(vehicleId, extractionId);
     return applyResult.detail ? { ...updated, applyResult: applyResult.detail } : updated;
+  }
+
+  // ── saveReview (persist reviewed fields, re-run plausibility, stay in review) ─
+
+  async saveReview(
+    vehicleId: string,
+    extractionId: string,
+    confirmedDataRaw: unknown,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.persistReview(existing, confirmedDataRaw, userId ?? null);
+  }
+
+  async saveReviewForOrg(
+    orgId: string,
+    extractionId: string,
+    confirmedDataRaw: unknown,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.persistReview(existing, confirmedDataRaw, userId ?? null);
+  }
+
+  private async persistReview(
+    existing: Awaited<ReturnType<DocumentExtractionService['getForVehicle']>>,
+    confirmedDataRaw: unknown,
+    userId: string | null,
+  ) {
+    if (existing.status !== 'READY_FOR_REVIEW') {
+      throw new BadRequestException(
+        `Extraction must be READY_FOR_REVIEW before saving review (current: ${existing.status})`,
+      );
+    }
+
+    const applyDocumentType = requireApplyDocumentType(existing);
+    const sanitizedFields = this.sanitizeConfirmedData(applyDocumentType, confirmedDataRaw);
+    const confirmedBase = readConfirmedDataObject(existing.confirmedData);
+    const confirmedData = { ...confirmedBase, ...sanitizedFields };
+    const confirmedAt = new Date().toISOString();
+    const taxonomySubtype =
+      readDocumentTaxonomyPipelineState(existing.plausibility)?.documentSubtype ?? null;
+    const existingFieldProvenance = readFieldProvenanceRegistry(existing.plausibility);
+    const fieldProvenanceAfterSave = existingFieldProvenance
+      ? applyFieldProvenanceConfirmations({
+          registry: existingFieldProvenance,
+          confirmedData,
+          confirmedBy: userId,
+          confirmedAt,
+          schemaFieldKeys: getFieldSchema(applyDocumentType, taxonomySubtype).map((field) => field.key),
+        })
+      : null;
+    const actionPlanConfirmedData = resolveConfirmedValuesForActionPlan(confirmedData);
+
+    const plausibility = existing.vehicleId
+      ? await this.runConfirmPlausibility(
+          existing.vehicleId,
+          applyDocumentType,
+          actionPlanConfirmedData,
+          existing.id,
+        )
+      : this.plausibilityService.runChecks(
+          applyDocumentType,
+          actionPlanConfirmedData,
+          {},
+          {
+            existingInvoiceNumbers: [],
+            existingReferenceNumbers: [],
+            bookingStartDate: null,
+            bookingEndDate: null,
+            currentExtractionId: existing.id,
+            documentSubtype: taxonomySubtype,
+          },
+        );
+
+    let plausibilityPayload: Record<string, unknown> = fieldProvenanceAfterSave
+      ? mergeFieldProvenancePipeline(
+          {
+            ...(typeof existing.plausibility === 'object' &&
+            existing.plausibility &&
+            !Array.isArray(existing.plausibility)
+              ? (existing.plausibility as Record<string, unknown>)
+              : {}),
+            ...(plausibility as unknown as Record<string, unknown>),
+          },
+          fieldProvenanceAfterSave,
+        )
+      : {
+          ...(typeof existing.plausibility === 'object' &&
+          existing.plausibility &&
+          !Array.isArray(existing.plausibility)
+            ? (existing.plausibility as Record<string, unknown>)
+            : {}),
+          ...(plausibility as unknown as Record<string, unknown>),
+        };
+
+    const planState = readDocumentActionPlanState(plausibilityPayload);
+    if (planState.actionPlan && planState.actionPlan.status !== 'INVALIDATED') {
+      plausibilityPayload = invalidateDocumentActionPlan(
+        plausibilityPayload,
+        DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS.CONFIRMED_DATA_CHANGED,
+      );
+    }
+
+    plausibilityPayload = appendExtractionActionAudit(plausibilityPayload, {
+      action: 'save_review',
+      at: confirmedAt,
+      userId,
+    });
+
+    const updated = await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: existing.id },
+      data: {
+        confirmedData: confirmedData as Prisma.InputJsonValue,
+        plausibility: plausibilityPayload as Prisma.InputJsonValue,
+        processingStage: 'REVIEW',
+        status: 'READY_FOR_REVIEW',
+      },
+    });
+
+    return updated;
   }
 
   /** Used by recovery scheduler to retry apply for stuck CONFIRMED rows. */

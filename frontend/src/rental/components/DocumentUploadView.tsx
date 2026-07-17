@@ -360,6 +360,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   entityReviewT={t}
                   vehicleLookup={page.vehicleLookup}
                   onEntityLinksUpdated={page.handleEntityLinksUpdated}
+                  onSchemaReviewUpdated={page.handleSchemaReviewUpdated}
                   onFieldChange={(index, value) => {
                     const updated = [...page.editedFields];
                     updated[index] = { ...updated[index], value };

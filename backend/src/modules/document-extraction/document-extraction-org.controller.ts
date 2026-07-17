@@ -30,6 +30,7 @@ import { ReassignExtractionVehicleDto } from './dto/reassign-extraction-vehicle.
 import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { OrgUploadDocumentDto } from './dto/org-upload-document.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
+import { SaveReviewExtractionDto } from './dto/save-review-extraction.dto';
 import { DocumentEntityLinkService } from './document-entity-link.service';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
@@ -169,6 +170,23 @@ export class DocumentExtractionOrgController {
       reextract: body.reextract,
       userId: userId ?? null,
     });
+    return this.service.toPublicExtraction(record);
+  }
+
+  @Post(':extractionId/save-review')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async saveReview(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: SaveReviewExtractionDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const record = await this.service.saveReviewForOrg(
+      orgId,
+      extractionId,
+      body.confirmedData,
+      userId ?? null,
+    );
     return this.service.toPublicExtraction(record);
   }
 }

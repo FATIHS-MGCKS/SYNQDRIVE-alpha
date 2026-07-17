@@ -11,6 +11,7 @@ import {
   type Plausibility,
   type ReviewField,
 } from '../components/documents/document-extraction.shared';
+import { hasSavedFieldReview } from '../lib/document-schema-field-review';
 import {
   isActiveExtractionStatus,
   isBusyFlow,
@@ -477,10 +478,19 @@ export function useDocumentIntakeFlow({
     const mutationVehicleId = resolveMutationVehicleId();
     if (!mutationVehicleId || !extractionId) return;
     if (respectAllowedActions && record && !record.allowedActions?.includes('confirm')) return;
+
+    if (!hasSavedFieldReview(record?.confirmedData)) {
+      setErrorMessage('Bitte Felder speichern und erneut prüfen, bevor Sie bestätigen.');
+      return;
+    }
+
     setFlow('applying');
     setErrorMessage(null);
 
-    const confirmedData = parseReviewFieldsForConfirm(editedFields, { locale });
+    const confirmedData =
+      record?.confirmedData && typeof record.confirmedData === 'object' && !Array.isArray(record.confirmedData)
+        ? (record.confirmedData as Record<string, unknown>)
+        : parseReviewFieldsForConfirm(editedFields, { locale });
 
     try {
       await api.vehicleIntelligence.confirmDocumentExtraction(mutationVehicleId, extractionId, {
@@ -507,6 +517,13 @@ export function useDocumentIntakeFlow({
     resolveMutationVehicleId,
     startPolling,
   ]);
+
+  const handleSchemaReviewUpdated = useCallback(
+    (next: PublicDocumentExtraction) => {
+      applyRecord(next);
+    },
+    [applyRecord],
+  );
 
   const openExtraction = useCallback(
     async (id: string, fileName?: string | null, pollVehicleId?: string | null) => {
@@ -581,6 +598,7 @@ export function useDocumentIntakeFlow({
     handleReextract,
     handleConfirm,
     handleReset,
+    handleSchemaReviewUpdated,
     openExtraction,
     openReview: openExtraction,
     openView: openExtraction,

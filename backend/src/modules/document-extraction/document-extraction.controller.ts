@@ -28,6 +28,7 @@ import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { DocumentExtractionService } from './document-extraction.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { ConfirmExtractionDto } from './dto/confirm-extraction.dto';
+import { SaveReviewExtractionDto } from './dto/save-review-extraction.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
 import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
@@ -200,6 +201,23 @@ export class DocumentExtractionController {
     @CurrentUser('id') userId: string | undefined,
   ) {
     const record = await this.service.confirm(
+      vehicleId,
+      extractionId,
+      body.confirmedData,
+      userId ?? null,
+    );
+    return this.service.toPublicExtraction(record);
+  }
+
+  @Post(':extractionId/save-review')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async saveReview(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: SaveReviewExtractionDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const record = await this.service.saveReview(
       vehicleId,
       extractionId,
       body.confirmedData,

@@ -39,6 +39,8 @@ function baseRecord(overrides: Partial<PublicDocumentExtraction> = {}): PublicDo
     extractedData: {},
     plausibility: {},
     confirmedData: {},
+    fieldProvenance: null,
+    fieldCorrectionCount: null,
     queuedAt: null,
     appliedAt: null,
     createdAt: '2026-07-17T00:00:00.000Z',
