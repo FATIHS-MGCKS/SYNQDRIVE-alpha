@@ -75,7 +75,9 @@ import {
   isDamageDocumentType,
   readDamageAreas,
 } from './document-damage-extraction.rules';
+import { resolveConfirmedValuesForActionPlan } from './document-field-provenance.util';
 import { isTechnicalDocumentType } from './document-action-planner.technical-rules';
+import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
 import {
   CreateDamageDraftDocumentActionExecutor,
   CreateDamageRecordDocumentActionExecutor,
@@ -126,6 +128,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
     private readonly applyTireMeasurementExecutor: ApplyTireMeasurementDocumentActionExecutor,
     private readonly applyBrakeMeasurementExecutor: ApplyBrakeMeasurementDocumentActionExecutor,
     private readonly applyBatteryMeasurementExecutor: ApplyBatteryMeasurementDocumentActionExecutor,
+    private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
   ) {}
 
   onModuleInit(): void {
@@ -200,6 +203,15 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
       data: {
         plausibility: plausibilityWithPlan as Prisma.InputJsonValue,
       },
+    });
+
+    const record = await this.prisma.vehicleDocumentExtraction.findUniqueOrThrow({
+      where: { id: input.extractionId },
+    });
+    await this.followUpSuggestionService.syncForActionPlan({
+      record,
+      plan,
+      confirmedData: resolveConfirmedValuesForActionPlan(input.confirmedData),
     });
 
     return plan;

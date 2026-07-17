@@ -33,6 +33,7 @@ export interface PipelinePlausibilityPayload {
   structuredExtractionRun?: import('./document-structured-extraction.types').StructuredExtractionRun | null;
   supersededExtractionRuns?: import('./document-structured-extraction.types').SupersededStructuredExtractionRun[];
   fieldProvenance?: import('./document-field-provenance.types').DocumentFieldProvenanceRegistry | null;
+  followUpSuggestions?: import('./document-follow-up-suggestion.types').DocumentFollowUpSuggestion[];
 }
 
 export interface DocumentTypeAuditEntry {
