@@ -413,6 +413,28 @@ enum BrakeServiceSource {
   API
 }
 
+enum BrakeComponentInstallationType {
+  FRONT_PADS
+  REAR_PADS
+  FRONT_DISCS
+  REAR_DISCS
+}
+
+enum BrakeComponentInstallationStatus {
+  ACTIVE
+  REMOVED
+  UNKNOWN_HISTORY
+  RETIRED
+}
+
+enum BrakeComponentInstallationAnchorSource {
+  MEASURED
+  DOCUMENTED_REPLACEMENT
+  SPEC_NOMINAL
+  REGISTRATION_ASSERTION
+  UNKNOWN
+}
+
 enum DocumentExtractionStatus {
   PENDING
   QUEUED
@@ -1293,6 +1315,7 @@ model Organization {
   organizationProducts              OrganizationProduct[]
   stations                          Station[]
   vehicles                          Vehicle[]
+  brakeComponentInstallations       BrakeComponentInstallation[]
   vehicleComplaints                 VehicleComplaint[]
   vehicleDrivingAssessmentQualities VehicleDrivingAssessmentQuality[]
   orgIntegrations                   OrganizationIntegration[]
@@ -1785,6 +1808,7 @@ model Vehicle {
   tireWearDataPoints                TireWearDataPoint[]
   tireTripUsageLedgers              TireTripUsageLedger[]
   brakeSpecs                        VehicleBrakeReferenceSpec[]
+  brakeComponentInstallations       BrakeComponentInstallation[]
   serviceEvents                     VehicleServiceEvent[]
   enrichmentJobs                    VehicleEnrichmentJob[]
   latestState                       VehicleLatestState?
@@ -2557,9 +2581,47 @@ model VehicleBrakeReferenceSpec {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  componentInstallations BrakeComponentInstallation[]
 
   @@index([vehicleId])
   @@map("vehicle_brake_reference_specs")
+}
+
+model BrakeComponentInstallation {
+  id                         String                               @id @default(uuid())
+  organizationId             String                               @map("organization_id")
+  vehicleId                  String                               @map("vehicle_id")
+  componentType              BrakeComponentInstallationType       @map("component_type")
+  installedAt                DateTime                             @map("installed_at")
+  installedOdometerKm        Float?                               @map("installed_odometer_km")
+  removedAt                  DateTime?                            @map("removed_at")
+  removedOdometerKm          Float?                               @map("removed_odometer_km")
+  status                     BrakeComponentInstallationStatus     @default(ACTIVE)
+  anchorThicknessMm          Float?                               @map("anchor_thickness_mm")
+  anchorSource               BrakeComponentInstallationAnchorSource? @map("anchor_source")
+  anchorMeasuredAt           DateTime?                            @map("anchor_measured_at")
+  nominalThicknessMm         Float?                               @map("nominal_thickness_mm")
+  minimumThicknessMm         Float?                               @map("minimum_thickness_mm")
+  referenceSpecId            String?                              @map("reference_spec_id")
+  serviceEventId             String?                              @map("service_event_id")
+  sourceEvidenceId           String?                              @map("source_evidence_id")
+  modelVersionAtInstallation String                               @map("model_version_at_installation")
+  createdAt                  DateTime                             @default(now()) @map("created_at")
+  updatedAt                  DateTime                             @updatedAt @map("updated_at")
+
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  vehicle        Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  referenceSpec  VehicleBrakeReferenceSpec? @relation(fields: [referenceSpecId], references: [id], onDelete: Restrict)
+  serviceEvent   VehicleServiceEvent?      @relation(fields: [serviceEventId], references: [id], onDelete: Restrict)
+  sourceEvidence BrakeEvidence?            @relation(fields: [sourceEvidenceId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, vehicleId])
+  @@index([vehicleId, componentType, installedAt])
+  @@index([vehicleId, status])
+  @@index([serviceEventId])
+  @@index([sourceEvidenceId])
+  @@index([referenceSpecId])
+  @@map("brake_component_installations")
 }
 
 // ------------------------------------------------
@@ -2592,6 +2654,7 @@ model VehicleServiceEvent {
   vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   batteryEvidence BatteryEvidence[]
   brakeEvidence   BrakeEvidence[]
+  brakeComponentInstallations BrakeComponentInstallation[]
 
   @@index([vehicleId])
   @@index([eventDate])
@@ -6047,6 +6110,7 @@ model BrakeEvidence {
   vehicle            Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+  componentInstallations BrakeComponentInstallation[]
 
   @@index([vehicleId, axle, measuredAt])
   @@index([vehicleId, source, measuredAt])

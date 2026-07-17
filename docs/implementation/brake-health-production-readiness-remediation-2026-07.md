@@ -162,9 +162,10 @@ Read path
 | **2** | Safety net | Regressionstests für kritische Brake-Health-Schreibpfade (A–I) | ✅ **Done** | `b1246a88` | — | 6 rot / 4 grün | — |
 | **3** | Architektur | Kanonischer Brake-Initialisierungspfad (Variante A) | ✅ **Done** | `b892b605` | — | 19 neu grün | read-only diag |
 | **4** | Registration | Brake-Health-Ausgangszustand bei Fahrzeugregistrierung | ✅ **Done** | `e8e62310` | — | 39 grün | — |
-| **5** | A — Fleet | Read-only Baseline-Backfill-Kandidaten-Audit | ✅ **Done** | *(nach Commit)* | — | 13 grün | read-only |
-| **6** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
-| **7** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
+| **5** | A — Fleet | Read-only Baseline-Backfill-Kandidaten-Audit | ✅ **Done** | `a30ea31d` | — | 13 grün | read-only |
+| **6** | B — Lifecycle | Komponenten-Installationsperioden (`BrakeComponentInstallation`) | ✅ **Done** | *(nach Commit)* | `20260717140000` | 18 grün | — |
+| **7** | A — Fleet | Backfill **execute** + Smoke-Recalc | ⏳ Pending | — | — | regression | execute |
+| **8** | A — Fleet | Integration: init → trip → recalc → BHC | ⏳ Pending | — | — | integration | optional |
 | **8** | B — Lifecycle | Service-`scope[]` an Init/Re-Anchor durchreichen | ⏳ Pending | — | evtl. | scope unit | — |
 | **8** | B — Lifecycle | k-Faktoren bei Teilservice erhalten | ⏳ Pending | — | — | k preservation | — |
 | **9** | B — Lifecycle | Scope-aware Tests (front/rear pads/discs only) | ⏳ Pending | — | — | lifecycle spec | — |
@@ -518,6 +519,52 @@ Szenarien: echte Messung · bestätigter Austausch · Spec-only · unklare Regis
 
 ---
 
+## Komponenten-Installationsperioden (Prompt 6) — 2026-07-17
+
+### Ziel
+
+Skalare Brake-Lifecycle-Semantik um **nachvollziehbare Komponenten-Installationsperioden** ergänzen. `BrakeHealthCurrent` bleibt unverändert als Read Model.
+
+### Neues additives Modell
+
+| Artefakt | Rolle |
+|----------|-------|
+| `BrakeComponentInstallation` | Historische Installationsperioden pro Komponente |
+| `BrakeComponentInstallationService` | Install / Remove / Retire mit Invarianten |
+| `brake-component-installation.invariants.ts` | Pure Validierung (Tenant, Odometer, Active-Unique) |
+| Migration `20260717140000_brake_component_installation_lifecycle` | Additive Tabelle + Partial-Unique-Index |
+
+### Komponenten & Status
+
+- **Types:** `FRONT_PADS`, `REAR_PADS`, `FRONT_DISCS`, `REAR_DISCS`
+- **Status:** `ACTIVE`, `REMOVED`, `UNKNOWN_HISTORY`, `RETIRED`
+- **Anchor Source:** `MEASURED`, `DOCUMENTED_REPLACEMENT`, `SPEC_NOMINAL`, `REGISTRATION_ASSERTION`, `UNKNOWN`
+
+### Invarianten
+
+- Max. eine `ACTIVE` Installation je `vehicleId` + `componentType` (Partial Unique Index)
+- `removedAt` ≥ `installedAt`
+- `removedOdometerKm` ≥ `installedOdometerKm` (außer dokumentiertem Reset)
+- `organizationId` konsistent mit Fahrzeug
+- Service/Evidence/Spec-Referenzen: `onDelete: Restrict` (revisionssicher)
+
+### Bewusst nicht enthalten
+
+- Kein Backfill bestehender `BrakeHealthCurrent`-Daten in Installationen
+- Keine Entfernung skalarer BHC-Felder
+- `REAR_DRUMS` / `PARKING_BRAKE_COMPONENT` (keine bestehende Domain-Unterstützung)
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-component-installation'
+# 18 passed
+npm run prisma:validate  # OK
+npm run build            # OK
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -526,6 +573,7 @@ Szenarien: echte Messung · bestätigter Austausch · Spec-only · unklare Regis
 | 2 | `b1246a886d62892abd605617f39e007871663994` | `test(brakes): capture brake health lifecycle regressions` |
 | 3 | `b892b605d2380f99c1c2e8972f7ec7d4643a1bb2` | `fix(brakes): establish canonical brake initialization workflow` |
 | 4 | `e8e62310775a10b06c0846f8b293393ddd8ce1e5` | `fix(brakes): materialize brake health during vehicle registration` |
+| 5 | `a30ea31d943ba49e279d43912265684678cd7fd4` | `feat(brakes): add read-only brake baseline backfill audit` |
 
 ---
 
