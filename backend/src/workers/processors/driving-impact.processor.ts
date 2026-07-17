@@ -5,7 +5,7 @@ import { Job } from 'bullmq';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { DrivingImpactService } from '../../modules/vehicle-intelligence/driving-impact/driving-impact.service';
 import { TripEnrichmentOrchestratorService } from '../../modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
-import { BrakeHealthService } from '../../modules/vehicle-intelligence/brakes/brake-health.service';
+import { BrakeRecalculationOrchestratorService } from '../../modules/vehicle-intelligence/brakes/brake-recalculation-orchestrator.service';
 import { TripDrivingImpactAnalysisStatus } from '@prisma/client';
 
 export interface DrivingImpactJobData {
@@ -23,7 +23,7 @@ export class DrivingImpactProcessor extends WorkerHost {
   constructor(
     private readonly drivingImpactService: DrivingImpactService,
     private readonly orchestrator: TripEnrichmentOrchestratorService,
-    private readonly brakeHealthService: BrakeHealthService,
+    private readonly brakeRecalcOrchestrator: BrakeRecalculationOrchestratorService,
   ) {
     super();
   }
@@ -53,7 +53,11 @@ export class DrivingImpactProcessor extends WorkerHost {
 
       if (outcome.shouldRecalculateBrake) {
         try {
-          await this.brakeHealthService.recalculate(vehicleId);
+          await this.brakeRecalcOrchestrator.enqueue({
+            vehicleId,
+            organizationId: job.data.organizationId,
+            trigger: 'post_trip',
+          });
         } catch (err: any) {
           this.logger.warn(
             `Brake health refresh after driving-impact failed: vehicle=${vehicleId} ${err?.message ?? 'unknown error'}`,

@@ -13,7 +13,7 @@ import {
 import { assertSafeBrakeBaselineBackfillApplyTarget } from './brake-baseline-backfill-apply.safety';
 import { BrakeBaselineBackfillService } from './brake-baseline-backfill.service';
 import { BrakeComponentLifecycleService } from './brake-component-lifecycle.service';
-import { BrakeHealthService } from './brake-health.service';
+import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 
 function baseApplyRequest(
   overrides: Partial<BrakeBaselineBackfillApplyRequest> = {},
@@ -256,7 +256,7 @@ describe('brake-baseline-backfill service', () => {
     registerMeasuredBaseline: jest.fn(),
     registerDocumentedReplacement: jest.fn(),
   };
-  const brakeHealth = { recalculate: jest.fn() };
+  const recalcOrchestrator = { enqueue: jest.fn().mockResolvedValue({ queued: true }) };
   const mockPrisma = {
     vehicleServiceEvent: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -269,7 +269,7 @@ describe('brake-baseline-backfill service', () => {
   const svc = new BrakeBaselineBackfillService(
     mockPrisma,
     lifecycle as unknown as BrakeComponentLifecycleService,
-    brakeHealth as unknown as BrakeHealthService,
+    recalcOrchestrator as unknown as BrakeRecalculationOrchestratorService,
   );
 
   beforeEach(() => {
@@ -375,7 +375,7 @@ describe('brake-baseline-backfill service', () => {
       }),
       allowRemote: true,
     });
-    expect(brakeHealth.recalculate).toHaveBeenCalledTimes(1);
+    expect(recalcOrchestrator.enqueue).toHaveBeenCalledTimes(1);
     expect(result.recalculatedVehicleIds.length).toBe(1);
   });
 });

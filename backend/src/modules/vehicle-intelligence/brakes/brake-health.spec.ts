@@ -1,6 +1,7 @@
 import { BrakeHealthService } from './brake-health.service';
 import { BRAKE_HEALTH_CONFIG } from './brake-health.config';
 import { resolveComponentWearThreshold } from './brake-wear-threshold.domain';
+import { computeBrakeRecalculationInputFingerprint } from './brake-recalculation-fingerprint';
 
 const cfg = BRAKE_HEALTH_CONFIG;
 
@@ -24,6 +25,7 @@ const confirmedDiscThreshold = (anchor = 28, minimum = 26) =>
 
 const mockPrisma = {
   brakeHealthCurrent: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+  brakeRecalculationAudit: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
   tripDrivingImpact: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleBrakeReferenceSpec: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleServiceEvent: {
@@ -47,7 +49,72 @@ const mockBrakeEvidence = {
   recordMany: jest.fn().mockResolvedValue({ count: 0 }),
 } as any;
 
-const svc = new BrakeHealthService(mockPrisma, mockDI, mockBrakeEvidence);
+const buildRecalcContext = (overrides: Record<string, unknown> = {}) => ({
+  vehicleId: 'v1',
+  organizationId: 'org-1',
+  anchor: {
+    isInitialized: true,
+    anchorServiceDate: '2026-01-01T00:00:00.000Z',
+    anchorOdometerKm: 10000,
+    anchorValidationStatus: 'measured_anchor',
+    calibrationCount: 0,
+    frontPadAnchorMm: 12,
+    rearPadAnchorMm: 10,
+    frontDiscAnchorMm: 28,
+    rearDiscAnchorMm: 26,
+    frontPadKFactor: 1,
+    rearPadKFactor: 1,
+    frontDiscKFactor: 1,
+    rearDiscKFactor: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  },
+  vehicle: { fuelType: 'GASOLINE', brakeForceFrontPercent: null },
+  latestOdometerKm: 50000,
+  componentInstallations: [],
+  referenceSpecs: [],
+  evidence: [],
+  tdiAggregate: {
+    tripCount: 0,
+    rawDistanceKm: 0,
+    authoritativeDistanceKm: 0,
+    latestTripStartedAt: null,
+    latestUpdatedAt: null,
+    hardBrakePer100KmSum: 0,
+    fullBrakingPer100KmSum: 0,
+  },
+  ledgerAggregate: {
+    totalEvents: 0,
+    harshBraking: 0,
+    extremeBraking: 0,
+    fullBraking: 0,
+    highSpeedBraking: 0,
+    latestOccurredAt: null,
+  },
+  activeDtc: [],
+  gapPolicyVersion: 'brake-coverage-gap-v1',
+  ...overrides,
+});
+
+const mockRecalcInputLoader = {
+  load: jest.fn().mockImplementation(async () => buildRecalcContext()),
+};
+
+const mockObservability = {
+  recordRecalculation: jest.fn(),
+};
+
+const mockRecalcOrchestrator = {
+  enqueue: jest.fn().mockResolvedValue({ queued: true, jobId: 'brake-recalc:v1' }),
+};
+
+const svc = new BrakeHealthService(
+  mockPrisma,
+  mockDI,
+  mockBrakeEvidence,
+  mockRecalcInputLoader as any,
+  mockObservability as any,
+  mockRecalcOrchestrator as any,
+);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  PAD WEAR MODEL (spec §10)
@@ -708,6 +775,8 @@ describe('recalculate temporal coverage', () => {
     mockPrisma.tripDrivingImpact.findMany.mockReset();
     mockDI.getVehicleImpactForBrake.mockReset();
     mockPrisma.vehicleBrakeReferenceSpec.findMany.mockResolvedValue([]);
+    mockRecalcInputLoader.load.mockReset();
+    mockRecalcInputLoader.load.mockImplementation(async () => buildRecalcContext());
   });
   it('uses per-trip modeled distance and neutral baseline for uncovered gap (no rolling leakage)', async () => {
     mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
@@ -769,6 +838,20 @@ describe('recalculate temporal coverage', () => {
       thermalBrakeStressScore: 40,
       brakingStressScore: 58,
     });
+    mockRecalcInputLoader.load.mockResolvedValueOnce(
+      buildRecalcContext({
+        latestOdometerKm: 11200,
+        tdiAggregate: {
+          tripCount: 2,
+          rawDistanceKm: 200,
+          authoritativeDistanceKm: 200,
+          latestTripStartedAt: '2026-02-01T00:00:00.000Z',
+          latestUpdatedAt: '2026-02-01T01:00:00.000Z',
+          hardBrakePer100KmSum: 8,
+          fullBrakingPer100KmSum: 1.6,
+        },
+      }),
+    );
 
     await svc.recalculate('v1');
 
@@ -858,5 +941,55 @@ describe('recalculate temporal coverage', () => {
     const result = await svc.recalculate('v1');
     expect(result).toBeNull();
     expect(mockPrisma.brakeHealthCurrent.update).not.toHaveBeenCalled();
+  });
+
+  it('skips wear recompute when input fingerprint is unchanged', async () => {
+    const fingerprint = computeBrakeRecalculationInputFingerprint(buildRecalcContext());
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      vehicleId: 'v1',
+      isInitialized: true,
+      anchorServiceDate: new Date('2026-01-01T00:00:00Z'),
+      anchorOdometerKm: 10000,
+      frontPadAnchorMm: 12,
+      rearPadAnchorMm: 10,
+      frontDiscAnchorMm: 28,
+      rearDiscAnchorMm: 26,
+      frontPadKFactor: 1,
+      rearPadKFactor: 1,
+      frontDiscKFactor: 1,
+      rearDiscKFactor: 1,
+      calibrationCount: 0,
+      anchorValidationStatus: 'measured_anchor',
+      baselineWarnings: [],
+      padsHealthPct: 90,
+      discsHealthPct: 88,
+      padsRemainingKm: 10000,
+      discsRemainingKm: 12000,
+      confidenceScore: 70,
+      confidenceLabel: 'Medium',
+      hasAlert: false,
+      modeledDistanceKm: 200,
+      modelCoverageRatio: 0.17,
+      coverageRatioRaw: 0.17,
+      recalculationInputFingerprint: fingerprint.inputFingerprint,
+      recalculationConfigHash: fingerprint.modelConfigHash,
+      recalculationModelVersion: fingerprint.modelVersion,
+      organizationId: 'org-1',
+    });
+    mockRecalcInputLoader.load.mockResolvedValueOnce(buildRecalcContext());
+
+    const result = await svc.recalculate('v1', { trigger: 'scheduler' });
+
+    expect(result?.skipped).toBe(true);
+    expect(result?.skipReason).toBe('identical_input_fingerprint');
+    expect(mockPrisma.brakeHealthCurrent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { vehicleId: 'v1' },
+        data: expect.objectContaining({ lastRecalculatedAt: expect.any(Date) }),
+      }),
+    );
+    expect(mockObservability.recordRecalculation).toHaveBeenCalledWith(
+      expect.objectContaining({ result: 'deduplicated' }),
+    );
   });
 });

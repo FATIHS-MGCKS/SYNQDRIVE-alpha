@@ -26,6 +26,10 @@ import { BrakeBaselineBackfillService } from './brakes/brake-baseline-backfill.s
 import { DimoBrakingEventIntakeService } from './brakes/dimo-braking-event-intake.service';
 import { BrakeComponentInstallationService } from './brakes/brake-component-installation.service';
 import { BrakeComponentLifecycleService } from './brakes/brake-component-lifecycle.service';
+import { BrakeRecalculationOrchestratorService } from './brakes/brake-recalculation-orchestrator.service';
+import { BrakeRecalculationInputLoader } from './brakes/brake-recalculation-input.loader';
+import { BrakeHealthObservabilityService } from './brakes/brake-health-observability.service';
+import { BrakeMetricsService } from './brakes/brake-metrics.service';
 import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-backfill.service';
 import { TireTripUsageBackfillService } from './tires/tire-trip-usage-backfill.service';
 import { TireTripUsageLedgerReconciliationService } from './tires/tire-trip-usage-ledger-reconciliation.service';
@@ -124,6 +128,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
+      { name: QUEUE_NAMES.BRAKE_RECALCULATION },
     ),
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController],
@@ -155,6 +160,10 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakingEventLedgerService,
     BrakeComponentInstallationService,
     BrakeComponentLifecycleService,
+    BrakeRecalculationOrchestratorService,
+    BrakeRecalculationInputLoader,
+    BrakeHealthObservabilityService,
+    BrakeMetricsService,
     TireOdometerAnchorBackfillService,
     TireTripUsageBackfillService,
     TireTripUsageLedgerReconciliationService,
@@ -255,6 +264,10 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakingEventLedgerService,
     BrakeComponentInstallationService,
     BrakeComponentLifecycleService,
+    BrakeRecalculationOrchestratorService,
+    BrakeRecalculationInputLoader,
+    BrakeHealthObservabilityService,
+    BrakeMetricsService,
     TireOdometerAnchorBackfillService,
     TireTripUsageBackfillService,
     TireTripUsageLedgerReconciliationService,

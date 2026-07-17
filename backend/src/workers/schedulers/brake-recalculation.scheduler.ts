@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BrakeHealthService } from '../../modules/vehicle-intelligence/brakes/brake-health.service';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import { BrakeRecalculationOrchestratorService } from '../../modules/vehicle-intelligence/brakes/brake-recalculation-orchestrator.service';
 
 @Injectable()
 export class BrakeRecalculationScheduler {
@@ -9,28 +10,36 @@ export class BrakeRecalculationScheduler {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly brakeHealth: BrakeHealthService,
+    private readonly orchestrator: BrakeRecalculationOrchestratorService,
   ) {}
 
   @Interval(3600000)
-  async recalculateAll(): Promise<void> {
+  async enqueueBrakeRecalculationJobs(): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'brake-recalculation')) return;
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const vehicles = await this.prisma.brakeHealthCurrent.findMany({
-      where: { isInitialized: true },
-      select: { vehicleId: true },
+      where: {
+        isInitialized: true,
+        OR: [{ lastRecalculatedAt: null }, { lastRecalculatedAt: { lt: oneHourAgo } }],
+      },
+      select: { vehicleId: true, organizationId: true },
     });
 
-    let count = 0;
+    const hourBucket = Math.floor(Date.now() / 3_600_000);
     for (const v of vehicles) {
-      try {
-        await this.brakeHealth.recalculate(v.vehicleId);
-        count++;
-      } catch (err: any) {
-        this.logger.warn(`Brake recalc failed for ${v.vehicleId}: ${err.message}`);
-      }
+      await this.orchestrator.enqueue({
+        vehicleId: v.vehicleId,
+        organizationId: v.organizationId,
+        trigger: 'scheduler',
+        hourBucket,
+      });
     }
 
-    if (count > 0) {
-      this.logger.debug(`Brake health recalculated for ${count}/${vehicles.length} vehicles`);
+    if (vehicles.length > 0) {
+      this.logger.debug(
+        `Enqueued ${vehicles.length} brake recalculation jobs (hourBucket=${hourBucket})`,
+      );
     }
   }
 }

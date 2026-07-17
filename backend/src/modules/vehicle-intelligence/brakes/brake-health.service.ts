@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, Optional, forwardRef } from '@nestjs/common';
 import {
   BrakeComponentInstallationAnchorSource,
   BrakeComponentInstallationType,
@@ -49,6 +49,14 @@ import {
   type BrakeDataBasis,
 } from './brake-status';
 import {
+  computeBrakeHealthConfigHash,
+  computeBrakeRecalculationInputFingerprint,
+  type BrakeRecalculationTrigger,
+} from './brake-recalculation-fingerprint';
+import { BrakeRecalculationInputLoader } from './brake-recalculation-input.loader';
+import { BrakeHealthObservabilityService } from './brake-health-observability.service';
+import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
+import {
   allocateTripDistancesToOdometerBudget,
   assessBrakeCoverageGap,
   NEUTRAL_GAP_WEAR_FACTORS,
@@ -57,6 +65,29 @@ import {
   type BrakeCoverageStatus,
   type BrakeModelingSource,
 } from './brake-coverage-gap.domain';
+
+export interface BrakeRecalculateOptions {
+  force?: boolean;
+  reason?: string;
+  actorId?: string | null;
+  trigger?: BrakeRecalculationTrigger;
+}
+
+export interface BrakeRecalculationResult {
+  padsHealthPct: number | null;
+  discsHealthPct: number | null;
+  padsRemainingKm: number | null;
+  discsRemainingKm: number | null;
+  confidence: { score: number; label: string };
+  alertCount: number;
+  modeledDistanceKm: number | null;
+  coverageRatio: number | null;
+  gapAssessment?: BrakeCoverageGapAssessment;
+  skipped?: boolean;
+  skipReason?: 'identical_input_fingerprint' | 'not_initialized_or_missing_odometer';
+  forced?: boolean;
+  inputFingerprint?: string;
+}
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -317,6 +348,11 @@ export class BrakeHealthService {
     private readonly prisma: PrismaService,
     private readonly drivingImpactService: DrivingImpactService,
     private readonly brakeEvidence: BrakeEvidenceService,
+    private readonly recalcInputLoader: BrakeRecalculationInputLoader,
+    @Optional() private readonly observability?: BrakeHealthObservabilityService,
+    @Optional()
+    @Inject(forwardRef(() => BrakeRecalculationOrchestratorService))
+    private readonly recalcOrchestrator?: BrakeRecalculationOrchestratorService,
   ) {}
 
   private async loadWearThresholds(
@@ -777,7 +813,7 @@ export class BrakeHealthService {
     });
 
     if (canInitialize) {
-      await this.recalculate(vehicleId);
+      await this.requestRecalculation(vehicleId, 'initialization');
       return {
         success: true,
         initialized: true,
@@ -842,7 +878,7 @@ export class BrakeHealthService {
       input.scheduleRecalculation !== false &&
       (anyAnchor.canInitialize || current?.isInitialized === true);
     if (shouldRecalc) {
-      await this.recalculate(vehicleId);
+      await this.requestRecalculation(vehicleId, 'component_lifecycle');
     }
 
     return { updated: anyAnchor.anyAnchor, recalculated: shouldRecalc };
@@ -1043,10 +1079,74 @@ export class BrakeHealthService {
     return { merged, anyAnchor: { anyAnchor, canInitialize } };
   }
 
-  async recalculate(vehicleId: string) {
+  async recalculate(
+    vehicleId: string,
+    options: BrakeRecalculateOptions = {},
+  ): Promise<BrakeRecalculationResult | null> {
+    if (options.force && !options.reason?.trim()) {
+      throw new BadRequestException('Force brake recalculation requires a non-empty reason.');
+    }
+
     const current = await this.prisma.brakeHealthCurrent.findUnique({ where: { vehicleId } });
     if (!current?.isInitialized || current.anchorOdometerKm == null || !current.anchorServiceDate) {
       return null;
+    }
+
+    const inputContext = await this.recalcInputLoader.load(vehicleId);
+    if (!inputContext) return null;
+
+    const modelConfigHash = computeBrakeHealthConfigHash();
+    const fingerprint = computeBrakeRecalculationInputFingerprint(inputContext, {
+      modelConfigHash,
+    });
+
+    const trigger = options.trigger ?? 'manual';
+    const recalcAsOf = new Date();
+
+    if (
+      !options.force &&
+      current.recalculationInputFingerprint === fingerprint.inputFingerprint &&
+      current.recalculationConfigHash === fingerprint.modelConfigHash &&
+      current.recalculationModelVersion === fingerprint.modelVersion
+    ) {
+      await this.prisma.brakeHealthCurrent.update({
+        where: { vehicleId },
+        data: { lastRecalculatedAt: recalcAsOf },
+      });
+      await this.writeRecalculationAudit({
+        organizationId: current.organizationId,
+        vehicleId,
+        trigger,
+        forced: false,
+        forceReason: null,
+        actorId: options.actorId ?? null,
+        inputFingerprint: fingerprint.inputFingerprint,
+        result: 'deduplicated',
+        skipReason: 'identical_input_fingerprint',
+        durationMs: 0,
+      });
+      this.observability?.recordRecalculation({
+        result: 'deduplicated',
+        skipReason: 'identical_input_fingerprint',
+        trigger,
+        vehicleId,
+      });
+      return {
+        padsHealthPct: current.padsHealthPct,
+        discsHealthPct: current.discsHealthPct,
+        padsRemainingKm: current.padsRemainingKm,
+        discsRemainingKm: current.discsRemainingKm,
+        confidence: {
+          score: Math.round(current.confidenceScore ?? 0),
+          label: current.confidenceLabel ?? 'Low',
+        },
+        alertCount: current.hasAlert ? 1 : 0,
+        modeledDistanceKm: current.modeledDistanceKm,
+        coverageRatio: current.coverageRatioRaw ?? current.modelCoverageRatio,
+        skipped: true,
+        skipReason: 'identical_input_fingerprint',
+        inputFingerprint: fingerprint.inputFingerprint,
+      };
     }
 
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -1426,6 +1526,9 @@ export class BrakeHealthService {
       modelingSource,
       baselineWarnings,
       lastRecalculatedAt: new Date(),
+      recalculationInputFingerprint: fingerprint.inputFingerprint,
+      recalculationConfigHash: fingerprint.modelConfigHash,
+      recalculationModelVersion: fingerprint.modelVersion,
     };
 
     const alerts = this.computeAlerts({ ...current, ...updatedData } as any, wearThresholds);
@@ -1438,6 +1541,19 @@ export class BrakeHealthService {
       data: updatedData,
     });
 
+    await this.writeRecalculationAudit({
+      organizationId: current.organizationId,
+      vehicleId,
+      trigger,
+      forced: options.force ?? false,
+      forceReason: options.force ? options.reason?.trim() ?? null : null,
+      actorId: options.actorId ?? null,
+      inputFingerprint: fingerprint.inputFingerprint,
+      result: 'success',
+      skipReason: null,
+      durationMs: null,
+    });
+
     return {
       padsHealthPct,
       discsHealthPct,
@@ -1448,7 +1564,48 @@ export class BrakeHealthService {
       modeledDistanceKm: round2(modeledDistance),
       coverageRatio: coverageRatioRaw != null ? round2(coverageRatioRaw) : null,
       gapAssessment,
+      forced: options.force ?? false,
+      inputFingerprint: fingerprint.inputFingerprint,
     };
+  }
+
+  private async requestRecalculation(
+    vehicleId: string,
+    trigger: BrakeRecalculationTrigger,
+  ): Promise<void> {
+    if (this.recalcOrchestrator) {
+      await this.recalcOrchestrator.enqueue({ vehicleId, trigger });
+      return;
+    }
+    await this.recalculate(vehicleId, { trigger });
+  }
+
+  private async writeRecalculationAudit(input: {
+    organizationId: string | null | undefined;
+    vehicleId: string;
+    trigger: BrakeRecalculationTrigger;
+    forced: boolean;
+    forceReason: string | null;
+    actorId: string | null;
+    inputFingerprint: string | null;
+    result: string;
+    skipReason: string | null;
+    durationMs: number | null;
+  }): Promise<void> {
+    await this.prisma.brakeRecalculationAudit.create({
+      data: {
+        organizationId: input.organizationId ?? undefined,
+        vehicleId: input.vehicleId,
+        trigger: input.trigger,
+        forced: input.forced,
+        forceReason: input.forceReason,
+        actorId: input.actorId ?? undefined,
+        inputFingerprint: input.inputFingerprint,
+        result: input.result,
+        skipReason: input.skipReason,
+        durationMs: input.durationMs,
+      },
+    });
   }
 
   computePadWear(

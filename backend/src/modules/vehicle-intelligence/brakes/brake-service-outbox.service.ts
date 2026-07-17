@@ -5,14 +5,14 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BrakeHealthService } from './brake-health.service';
+import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 import { buildBrakeOutboxIdempotencyKey } from './brake-service-application.domain';
 
 @Injectable()
 export class BrakeServiceOutboxService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly brakeHealth: BrakeHealthService,
+    private readonly recalcOrchestrator: BrakeRecalculationOrchestratorService,
   ) {}
 
   async enqueueInTransaction(
@@ -73,7 +73,11 @@ export class BrakeServiceOutboxService {
           entry.eventType === BrakeServiceOutboxEventType.RECALCULATE ||
           entry.eventType === BrakeServiceOutboxEventType.RESOLVE_ALERTS
         ) {
-          await this.brakeHealth.recalculate(entry.vehicleId);
+          await this.recalcOrchestrator.enqueue({
+            vehicleId: entry.vehicleId,
+            organizationId: entry.organizationId,
+            trigger: 'service',
+          });
         }
 
         await this.prisma.brakeServiceOutbox.update({

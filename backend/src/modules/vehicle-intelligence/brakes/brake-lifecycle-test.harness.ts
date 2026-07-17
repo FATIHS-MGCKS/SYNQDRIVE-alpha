@@ -117,7 +117,13 @@ export function createInMemoryPrisma(store: InMemoryStore) {
         };
         store.vehicleBrakeReferenceSpec.push(row);
         return row;
-      }),
+      }      ),
+    },
+    brakeRecalculationAudit: {
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        id: `audit-${Date.now()}`,
+        ...data,
+      })),
     },
     brakeHealthCurrent: {
       findUnique: jest.fn(async ({ where }: { where: { vehicleId: string } }) =>
@@ -526,8 +532,96 @@ export function createBrakeLifecycleHarness(input?: {
     getVehicleImpactForBrake: jest.fn().mockResolvedValue(defaultRollingImpact),
   };
   const brakeEvidence = new BrakeEvidenceService(prisma as never);
-  const brakeHealth = new BrakeHealthService(prisma as never, drivingImpact as never, brakeEvidence);
-  const outbox = new BrakeServiceOutboxService(prisma as never, brakeHealth);
+  const recalcInputLoader = {
+    load: jest.fn(async (vehicleId: string) => {
+      const current = store.brakeHealthCurrent.get(vehicleId);
+      if (!current?.isInitialized) return null;
+      const vehicle = store.vehicles.get(vehicleId);
+      const latest = store.vehicleLatestState.get(vehicleId);
+      const anchorDate = current.anchorServiceDate
+        ? new Date(String(current.anchorServiceDate))
+        : null;
+      const trips = store.tripDrivingImpact.filter((trip) => {
+        if (trip.vehicleId !== vehicleId) return false;
+        if (!anchorDate || !trip.tripStartedAt) return true;
+        return new Date(String(trip.tripStartedAt)).getTime() >= anchorDate.getTime();
+      });
+      let rawDistanceKm = 0;
+      let authoritativeDistanceKm = 0;
+      for (const trip of trips) {
+        const raw = Number(trip.distanceKm ?? 0);
+        rawDistanceKm += raw;
+        authoritativeDistanceKm += Number(trip.authoritativeDistanceKm ?? raw);
+      }
+      return {
+        vehicleId,
+        organizationId: vehicle?.organizationId ?? null,
+        anchor: {
+          isInitialized: true,
+          anchorServiceDate: anchorDate?.toISOString() ?? null,
+          anchorOdometerKm: Number(current.anchorOdometerKm ?? 0),
+          anchorValidationStatus: String(current.anchorValidationStatus ?? ''),
+          calibrationCount: Number(current.calibrationCount ?? 0),
+          frontPadAnchorMm: current.frontPadAnchorMm ?? null,
+          rearPadAnchorMm: current.rearPadAnchorMm ?? null,
+          frontDiscAnchorMm: current.frontDiscAnchorMm ?? null,
+          rearDiscAnchorMm: current.rearDiscAnchorMm ?? null,
+          frontPadKFactor: Number(current.frontPadKFactor ?? 1),
+          rearPadKFactor: Number(current.rearPadKFactor ?? 1),
+          frontDiscKFactor: Number(current.frontDiscKFactor ?? 1),
+          rearDiscKFactor: Number(current.rearDiscKFactor ?? 1),
+          updatedAt: new Date().toISOString(),
+        },
+        vehicle: {
+          fuelType: vehicle?.fuelType ?? null,
+          brakeForceFrontPercent: vehicle?.brakeForceFrontPercent ?? null,
+        },
+        latestOdometerKm: latest?.odometerKm ?? null,
+        componentInstallations: [],
+        referenceSpecs: [],
+        evidence: [],
+        tdiAggregate: {
+          tripCount: trips.length,
+          rawDistanceKm,
+          authoritativeDistanceKm,
+          latestTripStartedAt: trips.at(-1)?.tripStartedAt
+            ? String(trips.at(-1)!.tripStartedAt)
+            : null,
+          latestUpdatedAt: null,
+          hardBrakePer100KmSum: trips.reduce(
+            (sum, trip) => sum + Number(trip.hardBrakePer100Km ?? 0),
+            0,
+          ),
+          fullBrakingPer100KmSum: trips.reduce(
+            (sum, trip) => sum + Number(trip.fullBrakingPer100Km ?? 0),
+            0,
+          ),
+        },
+        ledgerAggregate: {
+          totalEvents: 0,
+          harshBraking: 0,
+          extremeBraking: 0,
+          fullBraking: 0,
+          highSpeedBraking: 0,
+          latestOccurredAt: null,
+        },
+        activeDtc: [],
+        gapPolicyVersion: 'brake-coverage-gap-v1',
+      };
+    }),
+  };
+  const brakeHealth = new BrakeHealthService(
+    prisma as never,
+    drivingImpact as never,
+    brakeEvidence,
+    recalcInputLoader as never,
+  );
+  const recalcOrchestrator = {
+    enqueue: jest.fn().mockImplementation(async (_input: { vehicleId: string }) => {
+      return brakeHealth.recalculate(_input.vehicleId);
+    }),
+  };
+  const outbox = new BrakeServiceOutboxService(prisma as never, recalcOrchestrator as never);
   const application = new BrakeServiceApplicationService(prisma as never, brakeHealth, outbox);
   const lifecycle = new BrakeLifecycleService(prisma as never, application);
 

@@ -19,7 +19,7 @@ import {
 import { assertSafeBrakeBaselineBackfillApplyTarget } from './brake-baseline-backfill-apply.safety';
 import type { VehicleBrakeBaselineAuditInput } from './brake-baseline-candidate-audit';
 import { BrakeComponentLifecycleService } from './brake-component-lifecycle.service';
-import { BrakeHealthService } from './brake-health.service';
+import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 import { thicknessFieldForComponent } from './brake-component-lifecycle.scope';
 
 export interface BrakeBaselineBackfillRunOptions {
@@ -38,7 +38,7 @@ export class BrakeBaselineBackfillService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly lifecycle: BrakeComponentLifecycleService,
-    private readonly brakeHealth: BrakeHealthService,
+    private readonly recalcOrchestrator: BrakeRecalculationOrchestratorService,
   ) {}
 
   async run(options: BrakeBaselineBackfillRunOptions): Promise<{
@@ -284,7 +284,7 @@ export class BrakeBaselineBackfillService {
       const vehicles = [...affectedVehicleIds].slice(0, max);
       for (const vehicleId of vehicles) {
         try {
-          await this.brakeHealth.recalculate(vehicleId);
+          await this.recalcOrchestrator.enqueue({ vehicleId, trigger: 'backfill' });
           recalculatedVehicleIds.push(vehicleId);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);

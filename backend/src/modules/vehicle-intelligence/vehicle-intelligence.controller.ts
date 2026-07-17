@@ -20,6 +20,7 @@ import { TireTripUsageService } from './tires/tire-trip-usage.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
+import { BrakeRecalculationOrchestratorService } from './brakes/brake-recalculation-orchestrator.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
@@ -96,6 +97,7 @@ import {
   RecordBrakeServiceDto,
   CreateBrakeSpecDto,
   UpdateBrakeSpecDto,
+  BrakeRecalculateDto,
 } from './brakes/dto/brake-mutation.dto';
 import { ValidateBrakeServiceScopePipe } from './brakes/brake-service-scope.validation';
 import {
@@ -123,6 +125,7 @@ export class VehicleIntelligenceController {
     private readonly tireLifecycleService: TireLifecycleService,
     private readonly brakesService: BrakesService,
     private readonly brakeHealthService: BrakeHealthService,
+    private readonly brakeRecalcOrchestrator: BrakeRecalculationOrchestratorService,
     private readonly brakeLifecycleService: BrakeLifecycleService,
     private readonly serviceEventsService: ServiceEventsService,
     private readonly enrichmentJobsService: EnrichmentJobsService,
@@ -794,8 +797,22 @@ export class VehicleIntelligenceController {
   }
 
   @Post('brake-health/recalculate')
-  async recalculateBrakeHealth(@Param('vehicleId') vehicleId: string) {
-    return this.brakeHealthService.recalculate(vehicleId);
+  async recalculateBrakeHealth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: BrakeRecalculateDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    const result = await this.brakeRecalcOrchestrator.enqueue({
+      vehicleId,
+      trigger: 'manual',
+      force: body.force,
+      reason: body.reason,
+      actorId: req.user?.id ?? null,
+    });
+    if (result.executedInline) {
+      return result.result;
+    }
+    return { queued: result.queued, jobId: result.jobId };
   }
 
   // --- Trip Profile ---

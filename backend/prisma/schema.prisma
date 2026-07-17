@@ -1899,6 +1899,7 @@ model Vehicle {
   brakeEvidence                     BrakeEvidence[]
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
+  brakeRecalculationAudits          BrakeRecalculationAudit[]
   dtcEvents                         VehicleDtcEvent[]
   tripDrivingImpacts                TripDrivingImpact[]
   drivingImpactCurrent              VehicleDrivingImpactCurrent?
@@ -6447,6 +6448,10 @@ model BrakeHealthCurrent {
   calibrationCount      Int    @default(0) @map("calibration_count")
   modelVersion          String @default("1.0.0") @map("model_version")
 
+  recalculationInputFingerprint String? @map("recalculation_input_fingerprint")
+  recalculationConfigHash       String? @map("recalculation_config_hash")
+  recalculationModelVersion       String? @map("recalculation_model_version")
+
   lastRecalculatedAt DateTime? @map("last_recalculated_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -6454,6 +6459,27 @@ model BrakeHealthCurrent {
 
   @@index([organizationId, vehicleId])
   @@map("brake_health_current")
+}
+
+model BrakeRecalculationAudit {
+  id               String   @id @default(uuid())
+  organizationId   String?  @map("organization_id")
+  vehicleId        String   @map("vehicle_id")
+  trigger          String
+  forced           Boolean  @default(false)
+  forceReason      String?  @map("force_reason")
+  actorId          String?  @map("actor_id")
+  inputFingerprint String?  @map("input_fingerprint")
+  result           String
+  skipReason       String?  @map("skip_reason")
+  durationMs       Int?     @map("duration_ms")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("brake_recalculation_audit")
 }
 
 // ------------------------------------------------

@@ -14,6 +14,7 @@ import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
 import { DimoDtcProcessor } from './processors/dimo-dtc.processor';
 import { TireRecalculationProcessor } from './processors/tire-recalculation.processor';
+import { BrakeRecalculationProcessor } from './processors/brake-recalculation.processor';
 import { TripTrackingProcessor } from './processors/trip-tracking.processor';
 import { TripBehaviorEnrichmentProcessor } from './processors/trip-behavior-enrichment.processor';
 import { DrivingImpactProcessor } from './processors/driving-impact.processor';
@@ -44,6 +45,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
       { name: QUEUE_NAMES.DIMO_VEHICLE_SYNC },
       { name: QUEUE_NAMES.DTC_POLL },
       { name: QUEUE_NAMES.TIRE_RECALCULATION },
+      { name: QUEUE_NAMES.BRAKE_RECALCULATION },
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
@@ -67,6 +69,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     DimoVehicleSyncProcessor,
     DimoDtcProcessor,
     TireRecalculationProcessor,
+    BrakeRecalculationProcessor,
     TripTrackingProcessor,
     TripBehaviorEnrichmentProcessor,
     DrivingImpactProcessor,

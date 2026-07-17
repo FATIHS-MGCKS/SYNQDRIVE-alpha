@@ -1017,6 +1017,39 @@ npm test -- --testPathPattern='brake-coverage-gap|brake-health.spec'
 
 ---
 
+## Idempotent Brake Recalculation Orchestrator (Prompt 17) — 2026-07-17
+
+### Ziel
+
+Recalculation queue-sicher, fingerprint-dedupliziert und für alle Trigger zentral orchestriert.
+
+### Architektur
+
+| Komponente | Rolle |
+|------------|-------|
+| `BrakeRecalculationOrchestratorService` | Einziger Enqueue-Einstieg |
+| `dimo.brake.recalculation` (BullMQ) | Dedupe, Retry (3×), Dead-Letter via `removeOnFail` |
+| `BrakeRecalculationProcessor` | Worker + Redis-Lock pro Fahrzeug |
+| `brake-recalculation-fingerprint.ts` | Kanonischer Input-Hash |
+| `BrakeRecalculationInputLoader` | Installations, Anchors, Specs, TDI, Ledger, Evidence, DTC |
+| `BrakeHealthObservabilityService` | `synqdrive_brake_recalculation_deduplicated_total` |
+
+### Trigger → Orchestrator
+
+`scheduler` · `post_trip` · `service` · `measurement` · `evidence` · `spec_update` · `backfill` · `manual` · `component_lifecycle` · `initialization`
+
+### Fingerprint-Policy
+
+Identischer Fingerprint → No-op, Metric `deduplicated`. `force` + `reason` → `brake_recalculation_audit`.
+
+### Tests
+
+```bash
+npm test -- --testPathPattern='brake-recalculation|brake-health.spec|brake-lifecycle-regression'
+```
+
+---
+
 ## Commit-Log (Remediation)
 
 | Prompt | Commit | Message |
@@ -1037,6 +1070,7 @@ npm test -- --testPathPattern='brake-coverage-gap|brake-health.spec'
 | 14 | *(dieser Commit)* | `fix(brakes): ingest DIMO native braking events reliably` |
 | 15 | *(dieser Commit)* | `feat(brakes): add canonical braking event ledger and deduplication` |
 | 16 | *(dieser Commit)* | `fix(brakes): remove temporal leakage from brake coverage gaps` |
+| 17 | *(dieser Commit)* | `fix(brakes): make brake recalculation idempotent and concurrency safe` |
 
 ---
 

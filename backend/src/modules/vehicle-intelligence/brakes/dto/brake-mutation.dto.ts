@@ -221,3 +221,11 @@ export class RegistrationBrakeManualSpecDto extends CreateBrakeSpecDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
 }
+
+export class BrakeRecalculateDto {
+  @IsOptional() @IsBoolean()
+  force?: boolean;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  reason?: string;
+}

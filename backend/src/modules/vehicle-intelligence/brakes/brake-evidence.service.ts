@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   BrakeAxle,
   BrakeComponentStatus,
@@ -8,6 +8,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 
 export interface BrakeEvidenceWriteInput {
   vehicleId: string;
@@ -41,7 +42,10 @@ const MM_TRUSTED_SOURCES: ReadonlySet<BrakeEvidenceSource> = new Set([
 
 @Injectable()
 export class BrakeEvidenceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly recalcOrchestrator?: BrakeRecalculationOrchestratorService,
+  ) {}
 
   private normalizeMm(v: number | null | undefined): number | null {
     if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return null;
@@ -97,7 +101,11 @@ export class BrakeEvidenceService {
   async record(input: BrakeEvidenceWriteInput) {
     const data = this.toCreateData(input);
     if (!data) return null;
-    return this.prisma.brakeEvidence.create({ data });
+    const row = await this.prisma.brakeEvidence.create({ data });
+    const trigger =
+      row.measuredPadMm != null || row.measuredDiscMm != null ? 'measurement' : 'evidence';
+    await this.recalcOrchestrator?.enqueue({ vehicleId: input.vehicleId, trigger });
+    return row;
   }
 
   /** Bulk-write evidence rows, skipping inputs without a meaningful signal. */
@@ -107,7 +115,18 @@ export class BrakeEvidenceService {
       .map((input) => this.toCreateData(input))
       .filter((d): d is Prisma.BrakeEvidenceUncheckedCreateInput => d != null);
     if (prepared.length === 0) return { count: 0 };
-    return this.prisma.brakeEvidence.createMany({ data: prepared });
+    const result = await this.prisma.brakeEvidence.createMany({ data: prepared });
+    const vehicleId = inputs[0]?.vehicleId;
+    if (vehicleId) {
+      const hasMeasurement = prepared.some(
+        (row) => row.measuredPadMm != null || row.measuredDiscMm != null,
+      );
+      await this.recalcOrchestrator?.enqueue({
+        vehicleId,
+        trigger: hasMeasurement ? 'measurement' : 'evidence',
+      });
+    }
+    return result;
   }
 
   /** Most recent evidence row, optionally filtered by source / axle. */
