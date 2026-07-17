@@ -8,7 +8,14 @@ export type VoiceMcpErrorCode =
   | 'Timeout'
   | 'RateLimited'
   | 'InvalidToken'
-  | 'GatewayDisabled';
+  | 'GatewayDisabled'
+  | 'ActionProhibited'
+  | 'ConfirmationRequired'
+  | 'ConfirmationInvalid'
+  | 'ConfirmationExpired'
+  | 'ApprovalPending'
+  | 'ApprovalDenied'
+  | 'ApprovalExpired';
 
 export class VoiceMcpError extends Error {
   readonly code: VoiceMcpErrorCode;

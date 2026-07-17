@@ -93,3 +93,22 @@ export function hashForAudit(value: unknown): string {
   }
   return hash.toString(16).padStart(8, '0');
 }
+
+export function redactToolOutput(value: Record<string, unknown>): Record<string, unknown> {
+  const clone = stripInternalIds(value, [
+    'id',
+    'customerId',
+    'vehicleId',
+    'bookingId',
+    'invoiceId',
+    'stationId',
+    'organizationId',
+    'documentIds',
+    'generatedDocumentId',
+    'outboundEmailId',
+  ]);
+  if (typeof clone.recipientEmail === 'string') {
+    clone.recipientEmail = maskEmail(clone.recipientEmail);
+  }
+  return clone;
+}

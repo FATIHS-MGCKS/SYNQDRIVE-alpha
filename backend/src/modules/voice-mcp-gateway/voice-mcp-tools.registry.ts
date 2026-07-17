@@ -1,8 +1,9 @@
 import type { VoiceToolCapabilityKey } from '@modules/voice-assistant/voice-assistant-permissions';
-import type { VoiceMcpReadOnlyToolName } from './voice-mcp-gateway.constants';
+import type { VoiceMcpToolName } from './voice-mcp-gateway.constants';
+import { VOICE_MCP_READ_ONLY_TOOLS, VOICE_MCP_WRITE_TOOLS } from './voice-mcp-gateway.constants';
 
 export type VoiceMcpToolDefinition = {
-  name: VoiceMcpReadOnlyToolName;
+  name: VoiceMcpToolName;
   description: string;
   capabilityKey: VoiceToolCapabilityKey;
   inputSchema: Record<string, unknown>;
@@ -121,10 +122,119 @@ export const VOICE_MCP_TOOL_REGISTRY: VoiceMcpToolDefinition[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'create_callback_request',
+    capabilityKey: 'createTask',
+    description: 'Record a callback request for staff follow-up after customer confirmation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        preferredPhone: { type: 'string' },
+        preferredWindow: { type: 'string' },
+        notes: { type: 'string' },
+        customerRef: { type: 'string' },
+        confirmationToken: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'create_support_case',
+    capabilityKey: 'createTask',
+    description: 'Open an internal support case after customer confirmation and staff approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        subject: { type: 'string' },
+        description: { type: 'string' },
+        reporterEmail: { type: 'string' },
+        reporterName: { type: 'string' },
+        bookingRef: { type: 'string' },
+        customerRef: { type: 'string' },
+        confirmationToken: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'create_task',
+    capabilityKey: 'createTask',
+    description: 'Create an internal follow-up task after customer confirmation and staff approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        priority: { type: 'string' },
+        bookingRef: { type: 'string' },
+        customerRef: { type: 'string' },
+        confirmationToken: { type: 'string' },
+      },
+      required: ['title'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'create_customer_note',
+    capabilityKey: 'modifyRecords',
+    description: 'Add a sanitized customer timeline note after customer confirmation and staff approval.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        customerRef: { type: 'string' },
+        title: { type: 'string' },
+        note: { type: 'string' },
+        confirmationToken: { type: 'string' },
+      },
+      required: ['customerRef', 'note'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'request_booking_change',
+    capabilityKey: 'modifyBooking',
+    description: 'Record a booking change request for staff review — never mutates the booking directly.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bookingRef: { type: 'string' },
+        search: { type: 'string' },
+        changeDetails: { type: 'string' },
+        requestedChanges: { type: 'string' },
+        confirmationToken: { type: 'string' },
+      },
+      required: ['changeDetails'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'request_document_resend',
+    capabilityKey: 'contactCustomer',
+    description: 'Resend booking documents to the customer email after customer confirmation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bookingRef: { type: 'string' },
+        search: { type: 'string' },
+        toEmail: { type: 'string' },
+        subject: { type: 'string' },
+        confirmationToken: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
+
+export const VOICE_MCP_READ_TOOL_REGISTRY = VOICE_MCP_TOOL_REGISTRY.filter((tool) =>
+  (VOICE_MCP_READ_ONLY_TOOLS as readonly string[]).includes(tool.name),
+);
+
+export const VOICE_MCP_WRITE_TOOL_REGISTRY = VOICE_MCP_TOOL_REGISTRY.filter((tool) =>
+  (VOICE_MCP_WRITE_TOOLS as readonly string[]).includes(tool.name),
+);
 
 const TOOL_BY_NAME = new Map(VOICE_MCP_TOOL_REGISTRY.map((tool) => [tool.name, tool]));
 
 export function getVoiceMcpToolDefinition(name: string): VoiceMcpToolDefinition | null {
-  return TOOL_BY_NAME.get(name as VoiceMcpReadOnlyToolName) ?? null;
+  return TOOL_BY_NAME.get(name as VoiceMcpToolName) ?? null;
 }

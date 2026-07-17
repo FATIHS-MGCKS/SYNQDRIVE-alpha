@@ -23,6 +23,8 @@ import { isVoiceMcpGatewayEnabled } from './voice-mcp-gateway.config';
 import { VoiceMcpError } from './voice-mcp-errors';
 import type { VoiceMcpRequestContext, VoiceMcpToolCallInput } from './voice-mcp-context.types';
 import { getVoiceMcpToolDefinition } from './voice-mcp-tools.registry';
+import { isProhibitedMcpTool, isWriteMcpTool } from './voice-mcp-risk.registry';
+import { VoiceMcpActionOrchestratorService } from './voice-mcp-action-orchestrator.service';
 import {
   hashForAudit,
   maskPhoneNumber,
@@ -30,7 +32,7 @@ import {
   toBookingReference,
   toCustomerReference,
 } from './voice-mcp-privacy.util';
-import type { VoiceMcpReadOnlyToolName } from './voice-mcp-gateway.constants';
+import type { VoiceMcpToolName } from './voice-mcp-gateway.constants';
 
 @Injectable()
 export class VoiceMcpGatewayMiddlewareService {
@@ -74,7 +76,11 @@ export class VoiceMcpGatewayMiddlewareService {
     }
   }
 
-  async assertToolAllowed(context: VoiceMcpRequestContext, toolName: VoiceMcpReadOnlyToolName): Promise<void> {
+  async assertToolAllowed(context: VoiceMcpRequestContext, toolName: VoiceMcpToolName): Promise<void> {
+    if (isProhibitedMcpTool(toolName)) {
+      throw new VoiceMcpError('ActionProhibited', `Tool ${toolName} is prohibited.`);
+    }
+
     if (!context.allowedTools.includes(toolName)) {
       throw new VoiceMcpError('ToolNotAllowed', `Tool ${toolName} is not allowed for this conversation.`);
     }
@@ -150,9 +156,14 @@ export class VoiceMcpToolsService {
     private readonly organizationsService: OrganizationsService,
     private readonly entityResolver: VoiceMcpEntityResolverService,
     private readonly prisma: PrismaService,
+    private readonly actionOrchestrator: VoiceMcpActionOrchestratorService,
   ) {}
 
   async execute(context: VoiceMcpRequestContext, call: VoiceMcpToolCallInput): Promise<Record<string, unknown>> {
+    if (isWriteMcpTool(call.name)) {
+      return this.actionOrchestrator.executeWriteTool(context, call.name, call.arguments);
+    }
+
     switch (call.name) {
       case 'identify_customer':
         return this.identifyCustomer(context, call.arguments);

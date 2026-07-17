@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
+  CompleteVoiceToolExecutionInput,
   CreateVoiceApprovalRequestInput,
   CreateVoiceBillingPeriodInput,
   CreateVoiceProviderWebhookEventInput,
   CreateVoiceTestRunInput,
   CreateVoiceToolExecutionInput,
   CreateVoiceUsageEventInput,
+  DecideVoiceApprovalRequestInput,
   UpsertVoiceBudgetPolicyInput,
 } from './voice-audit-persistence.types';
 
@@ -209,6 +211,29 @@ export class VoiceToolExecutionRepository {
     }
     return row;
   }
+
+  async markRunning(organizationId: string, id: string) {
+    await this.assertInOrg(organizationId, id);
+    return this.prisma.voiceToolExecution.update({
+      where: { id },
+      data: { status: 'RUNNING', startedAt: new Date() },
+    });
+  }
+
+  async complete(input: CompleteVoiceToolExecutionInput) {
+    await this.assertInOrg(input.organizationId, input.id);
+    return this.prisma.voiceToolExecution.update({
+      where: { id: input.id },
+      data: {
+        status: input.status,
+        redactedOutput: input.redactedOutput ?? Prisma.JsonNull,
+        errorCode: input.errorCode ?? null,
+        errorMessage: input.errorMessage ?? null,
+        durationMs: input.durationMs ?? null,
+        completedAt: new Date(),
+      },
+    });
+  }
 }
 
 @Injectable()
@@ -231,6 +256,66 @@ export class VoiceApprovalRequestRepository {
         protectedDecisionTokenRef: input.protectedDecisionTokenRef ?? null,
       },
     });
+  }
+
+  findPendingById(organizationId: string, id: string) {
+    return this.prisma.voiceApprovalRequest.findFirst({
+      where: { id, organizationId, status: 'PENDING' },
+      include: { toolExecution: true },
+    });
+  }
+
+  async decide(input: DecideVoiceApprovalRequestInput) {
+    const row = await this.findPendingById(input.organizationId, input.id);
+    if (!row) {
+      throw new NotFoundException('Pending voice approval request not found for organization');
+    }
+    if (row.expiresAt && row.expiresAt.getTime() < Date.now()) {
+      await this.prisma.voiceApprovalRequest.update({
+        where: { id: input.id },
+        data: { status: 'EXPIRED' },
+      });
+      throw new NotFoundException('Voice approval request has expired');
+    }
+
+    return this.prisma.voiceApprovalRequest.update({
+      where: { id: input.id },
+      data: {
+        status: input.status,
+        decidedByUserId: input.decidedByUserId,
+        decisionReason: input.decisionReason ?? null,
+        decidedAt: new Date(),
+      },
+      include: { toolExecution: true },
+    });
+  }
+
+  async expireStale(organizationId: string, now = new Date()) {
+    const expired = await this.prisma.voiceApprovalRequest.findMany({
+      where: {
+        organizationId,
+        status: 'PENDING',
+        expiresAt: { lt: now },
+      },
+      select: { id: true, toolExecutionId: true },
+    });
+
+    if (!expired.length) {
+      return 0;
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.voiceApprovalRequest.updateMany({
+        where: { id: { in: expired.map((row) => row.id) } },
+        data: { status: 'EXPIRED' },
+      }),
+      this.prisma.voiceToolExecution.updateMany({
+        where: { id: { in: expired.map((row) => row.toolExecutionId) } },
+        data: { status: 'CANCELLED', completedAt: now },
+      }),
+    ]);
+
+    return expired.length;
   }
 }
 

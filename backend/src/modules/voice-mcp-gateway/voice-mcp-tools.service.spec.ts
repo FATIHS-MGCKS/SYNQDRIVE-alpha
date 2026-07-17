@@ -8,6 +8,7 @@ import { StationsService } from '@modules/stations/stations.service';
 import { OrganizationsService } from '@modules/organizations/organizations.service';
 import { VoiceMcpEntityResolverService } from './voice-mcp-entity-resolver.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VoiceMcpActionOrchestratorService } from './voice-mcp-action-orchestrator.service';
 import {
   VoiceAgentDeploymentRepository,
   VoiceSubscriptionRepository,
@@ -48,6 +49,10 @@ describe('VoiceMcpToolsService', () => {
     },
   };
 
+  const actionOrchestrator = {
+    executeWriteTool: jest.fn(),
+  };
+
   const context = {
     organizationId: 'org-1',
     voiceAssistantId: 'assistant-1',
@@ -76,6 +81,7 @@ describe('VoiceMcpToolsService', () => {
         { provide: OrganizationsService, useValue: organizationsService },
         { provide: VoiceMcpEntityResolverService, useValue: entityResolver },
         { provide: PrismaService, useValue: prisma },
+        { provide: VoiceMcpActionOrchestratorService, useValue: actionOrchestrator },
       ],
     }).compile();
 

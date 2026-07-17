@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-mcp-controlled-write-tools-2026-07-17',
+    version: '4.9.591',
+    title: 'V4.9.591 — Voice AI: controlled MCP write tools and approvals',
+    summary: [
+      'Sechs kontrollierte Write-Tools: Callback, Supportfall, Task, Kundennotiz, Buchungsänderungsanfrage, Dokumenten-Neuversand.',
+      'Kundenbestätigung via kurzlebigem Redis-Token mit Parameter-Hash; Mitarbeiterfreigabe über VoiceApprovalRequest + Tenant-API.',
+      'Idempotenz über VoiceToolExecution; verbotene destruktive Tools explizit blockiert.',
+    ],
+    reason:
+      'Voice-Agenten sollen risikoarme Aktionen auslösen können, ohne Buchungen zu stornieren, Zahlungen zu erstatten oder Cross-Tenant-Daten zu verändern.',
+    previousBehavior: 'MCP-Gateway war read-only (Prompt 6A).',
+    details:
+      'backend/src/modules/voice-mcp-gateway/*, architecture/VOICE_AI_MCP_CONTROLLED_WRITE_TOOLS_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Voice AI',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
     id: 'voice-mcp-gateway-readonly-2026-07-17',
     version: '4.9.590',
     title: 'V4.9.590 — Voice AI: tenant-safe read-only MCP gateway',

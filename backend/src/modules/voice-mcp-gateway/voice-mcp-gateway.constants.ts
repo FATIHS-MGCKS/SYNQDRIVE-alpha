@@ -29,4 +29,35 @@ export const VOICE_MCP_READ_ONLY_TOOLS = [
   'get_business_hours',
 ] as const;
 
+export const VOICE_MCP_WRITE_TOOLS = [
+  'create_callback_request',
+  'create_support_case',
+  'create_task',
+  'create_customer_note',
+  'request_booking_change',
+  'request_document_resend',
+] as const;
+
+export const VOICE_MCP_PROHIBITED_TOOLS = [
+  'cancel_booking',
+  'change_booking_price',
+  'refund_payment',
+  'mark_invoice_paid',
+  'unlock_vehicle',
+  'remove_customer_block',
+  'change_vehicle_assignment',
+  'delete_customer',
+] as const;
+
+export const VOICE_MCP_ALL_TOOLS = [
+  ...VOICE_MCP_READ_ONLY_TOOLS,
+  ...VOICE_MCP_WRITE_TOOLS,
+] as const;
+
 export type VoiceMcpReadOnlyToolName = (typeof VOICE_MCP_READ_ONLY_TOOLS)[number];
+export type VoiceMcpWriteToolName = (typeof VOICE_MCP_WRITE_TOOLS)[number];
+export type VoiceMcpToolName = (typeof VOICE_MCP_ALL_TOOLS)[number];
+
+export const VOICE_MCP_CONFIRMATION_TTL_SECONDS = 300;
+
+export const VOICE_MCP_STAFF_APPROVAL_TTL_SECONDS = 3600;

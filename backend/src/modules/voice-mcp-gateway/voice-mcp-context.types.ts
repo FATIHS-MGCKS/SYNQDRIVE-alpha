@@ -1,11 +1,11 @@
-import type { VoiceMcpReadOnlyToolName } from './voice-mcp-gateway.constants';
+import type { VoiceMcpReadOnlyToolName, VoiceMcpToolName, VoiceMcpWriteToolName } from './voice-mcp-gateway.constants';
 
 export type VoiceMcpTokenClaims = {
   organizationId: string;
   voiceAssistantId: string;
   agentDeploymentId: string;
   conversationId: string;
-  allowedTools: VoiceMcpReadOnlyToolName[];
+  allowedTools: VoiceMcpToolName[];
   scopes: string[];
   issuedAt: number;
   expiresAt: number;
@@ -20,6 +20,6 @@ export type VoiceMcpRequestContext = VoiceMcpTokenClaims & {
 };
 
 export type VoiceMcpToolCallInput = {
-  name: VoiceMcpReadOnlyToolName;
+  name: VoiceMcpToolName;
   arguments: Record<string, unknown>;
 };

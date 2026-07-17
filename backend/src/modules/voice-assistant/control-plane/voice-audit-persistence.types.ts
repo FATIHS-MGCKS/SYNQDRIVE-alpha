@@ -48,6 +48,24 @@ export type CreateVoiceApprovalRequestInput = {
   protectedDecisionTokenRef?: string | null;
 };
 
+export type CompleteVoiceToolExecutionInput = {
+  organizationId: string;
+  id: string;
+  status: 'SUCCEEDED' | 'FAILED' | 'DENIED' | 'CANCELLED';
+  redactedOutput?: Prisma.InputJsonValue;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  durationMs?: number | null;
+};
+
+export type DecideVoiceApprovalRequestInput = {
+  organizationId: string;
+  id: string;
+  decidedByUserId: string;
+  status: 'APPROVED' | 'REJECTED';
+  decisionReason?: string | null;
+};
+
 export type CreateVoiceBillingPeriodInput = {
   organizationId: string;
   periodStart: Date;

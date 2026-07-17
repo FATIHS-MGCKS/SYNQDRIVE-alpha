@@ -7,7 +7,7 @@ import {
   VOICE_MCP_REQUEST_ID_HEADER,
   VOICE_MCP_SERVER_NAME,
   VOICE_MCP_SERVER_VERSION,
-  type VoiceMcpReadOnlyToolName,
+  type VoiceMcpToolName,
 } from './voice-mcp-gateway.constants';
 import { VoiceMcpError, isVoiceMcpError, toMcpToolErrorPayload } from './voice-mcp-errors';
 import type { VoiceMcpRequestContext } from './voice-mcp-context.types';
@@ -157,7 +157,7 @@ export class VoiceMcpProtocolService {
     context: VoiceMcpRequestContext,
     params: Record<string, unknown>,
   ): Promise<{ content: Array<{ type: 'text'; text: string }>; isError: boolean }> {
-    const name = String(params.name ?? '') as VoiceMcpReadOnlyToolName;
+    const name = String(params.name ?? '') as VoiceMcpToolName;
     const args =
       params.arguments && typeof params.arguments === 'object' && !Array.isArray(params.arguments)
         ? (params.arguments as Record<string, unknown>)
@@ -173,6 +173,18 @@ export class VoiceMcpProtocolService {
         isError: false,
       };
     } catch (error) {
+      if (isVoiceMcpError(error) && error.code === 'ConfirmationRequired') {
+        return {
+          content: [{ type: 'text', text: JSON.stringify(error.details ?? { code: error.code, message: error.message }) }],
+          isError: false,
+        };
+      }
+      if (isVoiceMcpError(error) && (error.code === 'ApprovalPending' || error.code === 'ApprovalDenied' || error.code === 'ApprovalExpired')) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ code: error.code, message: error.message, ...(error.details ?? {}) }) }],
+          isError: error.code !== 'ApprovalPending',
+        };
+      }
       await this.auditService.recordToolInvocation(context, name, args, 'FAILED');
       const payload = toMcpToolErrorPayload(error);
       return {

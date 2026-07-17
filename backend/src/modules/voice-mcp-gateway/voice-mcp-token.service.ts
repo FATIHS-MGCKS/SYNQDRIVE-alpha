@@ -5,7 +5,7 @@ import {
   resolveVoiceMcpTokenSecret,
   resolveVoiceMcpTokenTtlSeconds,
 } from './voice-mcp-gateway.config';
-import { VOICE_MCP_TOKEN_TYPE, type VoiceMcpReadOnlyToolName } from './voice-mcp-gateway.constants';
+import { VOICE_MCP_TOKEN_TYPE, type VoiceMcpToolName } from './voice-mcp-gateway.constants';
 import { VoiceMcpError } from './voice-mcp-errors';
 import type { VoiceMcpTokenClaims } from './voice-mcp-context.types';
 import { VoiceMcpNonceStore } from './voice-mcp-nonce.store';
@@ -15,7 +15,7 @@ type IssueVoiceMcpTokenInput = {
   voiceAssistantId: string;
   agentDeploymentId: string;
   conversationId: string;
-  allowedTools: VoiceMcpReadOnlyToolName[];
+  allowedTools: VoiceMcpToolName[];
   scopes?: string[];
   audience?: string | null;
   ttlSeconds?: number;
