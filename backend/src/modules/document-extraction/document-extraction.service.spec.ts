@@ -115,6 +115,8 @@ describe('DocumentExtractionService', () => {
       actionPlanPreview as any,
       applyResultService as any,
       followUpSuggestionService as any,
+      { prepareContactPreview: jest.fn(), recordPrepareOpened: jest.fn(), sendPreparedContact: jest.fn() } as any,
+      { resyncAfterPlanChange: jest.fn().mockResolvedValue(undefined) } as any,
     );
     return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }

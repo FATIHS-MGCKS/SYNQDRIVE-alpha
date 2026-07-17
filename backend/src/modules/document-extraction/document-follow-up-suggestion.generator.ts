@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import type { DocumentActionPlan } from './document-action-plan.types';
 import type { DocumentFollowUpSuggestionRule } from './document-schema-registry.types';
+import { evaluateVersionedFollowUpTrigger } from './document-follow-up-subtype-rules';
 import { readAcceptedEntityLinks } from './document-fine-extraction.rules';
 import {
   DOCUMENT_FOLLOW_UP_SUGGESTION_STATUSES,
@@ -43,9 +44,8 @@ const SEMANTIC_ACTION_TO_TYPE: Record<string, DocumentFollowUpSuggestionType> = 
   [TECHNICAL_SEMANTIC_ACTIONS.SUGGEST_BATTERY_FOLLOWUP]: DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.WORKSHOP_APPOINTMENT,
 };
 
-const REGISTRY_TRIGGER_TO_TYPE: Record<
-  DocumentFollowUpSuggestionRule['trigger'],
-  DocumentFollowUpSuggestionType
+const LEGACY_REGISTRY_TRIGGER_TO_TYPE: Partial<
+  Record<DocumentFollowUpSuggestionRule['trigger'], DocumentFollowUpSuggestionType>
 > = {
   missing_driver: DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PREPARE_DRIVER_CONTACT,
   missing_customer: DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.PREPARE_CUSTOMER_CONTACT,
@@ -75,26 +75,26 @@ function readEntityLinkIds(confirmedData: Record<string, unknown>) {
 }
 
 function evaluateRegistryTrigger(
-  trigger: DocumentFollowUpSuggestionRule['trigger'],
+  rule: DocumentFollowUpSuggestionRule,
   confirmedData: Record<string, unknown>,
 ): boolean {
-  const links = readEntityLinkIds(confirmedData);
-  switch (trigger) {
-    case 'missing_driver':
-      return !links.driverCustomerId;
-    case 'missing_customer':
-      return !links.customerId;
-    case 'missing_booking':
-      return !links.bookingId;
-    case 'missing_vendor':
-      return !links.vendorId;
-    case 'deadline_detected':
-      return hasDetectedDeadline(confirmedData);
-    case 'duplicate_reference':
-      return Boolean(confirmedData.duplicateReferenceFineId || confirmedData.duplicateVendorInvoiceId);
-    default:
-      return false;
-  }
+  return evaluateVersionedFollowUpTrigger(rule.trigger, confirmedData);
+}
+
+function resolveRegistryRuleType(
+  rule: DocumentFollowUpSuggestionRule,
+): DocumentFollowUpSuggestionType {
+  if (rule.suggestionType) return rule.suggestionType;
+  return LEGACY_REGISTRY_TRIGGER_TO_TYPE[rule.trigger] ?? DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.CREATE_TASK;
+}
+
+function resolveRegistryRuleTitle(rule: DocumentFollowUpSuggestionRule): string {
+  return rule.title?.trim() || rule.message;
+}
+
+function resolveRegistryRuleRationale(rule: DocumentFollowUpSuggestionRule): string {
+  if (rule.rationale?.trim()) return rule.rationale.trim();
+  return `${rule.message} (Regel ${rule.code}, Version ${rule.ruleVersion ?? 'legacy'}).`;
 }
 
 function hasDetectedDeadline(confirmedData: Record<string, unknown>): boolean {
@@ -212,11 +212,36 @@ export function buildFollowUpSuggestions(
 ): DocumentFollowUpSuggestion[] {
   const now = new Date().toISOString();
   const byRule = new Map<string, DocumentFollowUpSuggestion>();
+  const coveredTypes = new Set<DocumentFollowUpSuggestionType>();
+
+  for (const rule of input.registryRules ?? []) {
+    if (!evaluateRegistryTrigger(rule, input.confirmedData)) continue;
+    const type = resolveRegistryRuleType(rule);
+    if (coveredTypes.has(type) && type !== DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP) {
+      continue;
+    }
+    const generatedByRule = `registry:${rule.code}@${rule.ruleVersion ?? 'legacy'}`;
+    byRule.set(
+      generatedByRule,
+      buildSuggestionRow({
+        extractionId: input.extractionId,
+        plan: input.plan,
+        generatedByRule,
+        type,
+        title: resolveRegistryRuleTitle(rule),
+        rationale: resolveRegistryRuleRationale(rule),
+        confirmedData: input.confirmedData,
+        now,
+      }),
+    );
+    coveredTypes.add(type);
+  }
 
   for (const action of input.plan.actions) {
     if (action.requirement === 'REQUIRED') continue;
     const type = SEMANTIC_ACTION_TO_TYPE[action.semanticAction];
     if (!type) continue;
+    if (coveredTypes.has(type)) continue;
     const generatedByRule = `semantic:${action.semanticAction}`;
     byRule.set(
       generatedByRule,
@@ -227,35 +252,17 @@ export function buildFollowUpSuggestions(
         type,
         title:
           type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP
-            ? 'Kein automatischer Kontakt'
+            ? 'Keine Nachverfolgung'
             : semanticActionTitle(action.semanticAction),
         rationale:
           type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP
             ? 'Es werden keine automatischen Kontakte oder Aufgaben erstellt.'
-            : `Vorgeschlagene Nachverfolgung aus Aktionsplan (${action.semanticAction}).`,
+            : `Vorgeschlagene Nachverfolgung aus Aktionsplan (${action.semanticAction}) — nur nach Bestätigung.`,
         confirmedData: input.confirmedData,
         now,
       }),
     );
-  }
-
-  for (const rule of input.registryRules ?? []) {
-    if (!evaluateRegistryTrigger(rule.trigger, input.confirmedData)) continue;
-    const type = REGISTRY_TRIGGER_TO_TYPE[rule.trigger];
-    const generatedByRule = `registry:${rule.code}`;
-    byRule.set(
-      generatedByRule,
-      buildSuggestionRow({
-        extractionId: input.extractionId,
-        plan: input.plan,
-        generatedByRule,
-        type,
-        title: rule.message,
-        rationale: `${rule.message} (Regel ${rule.code}).`,
-        confirmedData: input.confirmedData,
-        now,
-      }),
-    );
+    coveredTypes.add(type);
   }
 
   const metadata = input.plan.metadata ?? {};
@@ -263,6 +270,7 @@ export function buildFollowUpSuggestions(
   if (Array.isArray(deadlineSuggestions)) {
     deadlineSuggestions.forEach((row, index) => {
       if (!row || typeof row !== 'object') return;
+      if (coveredTypes.has(DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.REVIEW_DEADLINE)) return;
       const deadline = row as { label?: string; date?: string };
       if (!deadline.date) return;
       const generatedByRule = `metadata:deadline:${index}`;
@@ -274,15 +282,23 @@ export function buildFollowUpSuggestions(
           generatedByRule,
           type: DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.REVIEW_DEADLINE,
           title: deadline.label?.trim() || 'Frist prüfen',
-          rationale: `Erkannte Frist ${deadline.date} — bitte manuell bestätigen.`,
+          rationale: `Erkannte Frist ${deadline.date} — bitte manuell bestätigen, bevor Aufgaben erstellt werden.`,
           confirmedData: input.confirmedData,
           now,
         }),
       );
+      coveredTypes.add(DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.REVIEW_DEADLINE);
     });
   }
 
-  if (byRule.size === 0) {
+  const actionableCount = [...byRule.values()].filter(
+    (row) => row.type !== DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP,
+  ).length;
+
+  const hasNoFollowUpOption = [...byRule.values()].some(
+    (row) => row.type === DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP,
+  );
+  if (!hasNoFollowUpOption) {
     byRule.set(
       'default:NO_FOLLOW_UP',
       buildSuggestionRow({
@@ -290,8 +306,11 @@ export function buildFollowUpSuggestions(
         plan: input.plan,
         generatedByRule: 'default:NO_FOLLOW_UP',
         type: DOCUMENT_FOLLOW_UP_SUGGESTION_TYPES.NO_FOLLOW_UP,
-        title: 'Keine Nachverfolgung erforderlich',
-        rationale: 'Für diesen Aktionsplan sind keine zusätzlichen Nachverfolgungen vorgesehen.',
+        title: 'Keine Folgeaktion',
+        rationale:
+          actionableCount > 0
+            ? 'Sie können bewusst keine weitere Nachverfolgung auslösen — es wird nichts automatisch ausgeführt.'
+            : 'Für diesen Aktionsplan sind keine zusätzlichen Nachverfolgungen vorgesehen.',
         confirmedData: input.confirmedData,
         now,
       }),

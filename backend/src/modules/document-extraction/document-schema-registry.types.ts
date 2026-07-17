@@ -37,11 +37,33 @@ export type DocumentAllowedAction = {
   requirement: DocumentActionRequirement;
 };
 
+import type { DocumentFollowUpSuggestionType } from './document-follow-up-suggestion.types';
+
+export type DocumentFollowUpRuleTrigger =
+  | 'missing_driver'
+  | 'missing_customer'
+  | 'missing_booking'
+  | 'missing_vendor'
+  | 'deadline_detected'
+  | 'duplicate_reference'
+  | 'defect_detected'
+  | 'reinspection_due'
+  | 'next_service_due'
+  | 'mileage_threshold'
+  | 'payment_approval_needed'
+  | 'customer_contact_relevant'
+  | 'insurance_context'
+  | 'archive_ready';
+
 export type DocumentFollowUpSuggestionRule = {
   code: string;
   message: string;
-  trigger: 'missing_driver' | 'missing_customer' | 'missing_booking' | 'missing_vendor' | 'deadline_detected' | 'duplicate_reference';
+  trigger: DocumentFollowUpRuleTrigger;
   severity: 'INFO' | 'WARNING';
+  ruleVersion?: string;
+  title?: string;
+  rationale?: string;
+  suggestionType?: DocumentFollowUpSuggestionType;
 };
 
 export type DocumentUiFieldMetadata = FieldDef & {

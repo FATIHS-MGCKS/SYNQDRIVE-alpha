@@ -76,6 +76,7 @@ import { DocumentActionPlanPreviewService } from './document-action-plan-preview
 import { DocumentApplyResultService } from './document-apply-result.service';
 import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
 import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
+import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
 import { DocumentSchemaRegistryService } from './document-schema-registry.service';
 
 /**
@@ -139,6 +140,7 @@ import { DocumentSchemaRegistryService } from './document-schema-registry.servic
     DocumentApplyResultService,
     DocumentFollowUpSuggestionService,
     DocumentFollowUpContactPrepareService,
+    DocumentFollowUpResyncService,
     DocumentMalwareScanService,
     DocumentLifecycleService,
     DocumentRetentionService,

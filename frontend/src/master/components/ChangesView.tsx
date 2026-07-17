@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-follow-up-subtype-rules-2026-07-17',
+    version: '4.9.651',
+    title: 'V4.9.651 — Document Follow-Up Subtype Rules',
+    summary: [
+      'Versionierte Folgeaktions-Regeln pro Dokument-Subtyp (FINE, INVOICE, TÜV/BOKraft, DAMAGE/ACCIDENT, SERVICE, GENERAL).',
+      'Explizite suggestionType, deutscher Titel und Begründung; keine irrelevanten Vorschläge; immer „Keine Folgeaktion“.',
+      'Neuberechnung nach Planänderung (Feldreview, Preferences, Entity-Links) via Preview-Plan + syncForActionPlan.',
+    ],
+    reason:
+      'Prompt 76/84 — Passende Folgeaktionen als versionierten Regelkatalog mit sicheren Defaults.',
+    previousBehavior:
+      'followUpSuggestionRules nur generische Trigger→Typ-Mapping; BOKraft leer; keine Resync nach Planinvalidierung.',
+    details:
+      'Backend: document-follow-up-subtype-rules.catalog, evaluateVersionedFollowUpTrigger, Generator-Dedupe, DocumentFollowUpResyncService. Tests pro Subtyp-Gruppe. Architektur: architecture/DOCUMENT_FOLLOW_UP_SUBTYPE_RULES_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T01:00:00.000Z',
+  },
+  {
     id: 'document-follow-up-contact-prepare-2026-07-17',
     version: '4.9.650',
     title: 'V4.9.650 — Document Follow-Up Kontakt vorbereiten',

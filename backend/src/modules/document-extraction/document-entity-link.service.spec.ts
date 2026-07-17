@@ -69,7 +69,9 @@ describe('DocumentEntityLinkService', () => {
       ...prismaOverrides,
     };
     return {
-      service: new DocumentEntityLinkService(prisma as never),
+      service: new DocumentEntityLinkService(prisma as never, {
+        resyncAfterPlanChange: jest.fn().mockResolvedValue(undefined),
+      } as never),
       prisma,
     };
   }

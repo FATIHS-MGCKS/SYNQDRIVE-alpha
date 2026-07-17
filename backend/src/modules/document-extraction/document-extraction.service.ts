@@ -105,6 +105,7 @@ import { DocumentActionPlanPreviewService } from './document-action-plan-preview
 import { DocumentApplyResultService } from './document-apply-result.service';
 import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
 import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
+import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
 import {
   mergeActionPlanPreferences,
   type DocumentActionPlanPreferences,
@@ -364,6 +365,7 @@ export class DocumentExtractionService implements OnModuleInit {
     private readonly applyResultService: DocumentApplyResultService,
     private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
     private readonly followUpContactPrepareService: DocumentFollowUpContactPrepareService,
+    private readonly followUpResyncService: DocumentFollowUpResyncService,
   ) {}
 
   onModuleInit(): void {
@@ -1467,6 +1469,8 @@ export class DocumentExtractionService implements OnModuleInit {
       },
     });
 
+    await this.followUpResyncService.resyncAfterPlanChange(updated);
+
     return updated;
   }
 
@@ -1545,8 +1549,11 @@ export class DocumentExtractionService implements OnModuleInit {
       },
     });
 
+    const refreshed = { ...existing, confirmedData, plausibility: plausibilityPayload };
+    await this.followUpResyncService.resyncAfterPlanChange(refreshed);
+
     return this.actionPlanPreview.buildForRecord(
-      { ...existing, confirmedData, plausibility: plausibilityPayload },
+      refreshed,
       { preferencesOverride: preferences },
     );
   }
