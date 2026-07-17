@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { DocumentExtractionType } from '@prisma/client';
 import type { FieldExtractionEvidence } from '@modules/ai/documents/document-extraction-merge.service';
 import { collectInvoicePlausibilityChecks } from './document-invoice-extraction.rules';
+import {
+  collectInspectionPlausibilityChecks,
+  isInspectionDocumentType,
+} from './document-inspection-extraction.rules';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 export type PlausibilitySource = 'DOCUMENT' | 'SYNQDRIVE_DB' | 'DIMO' | 'SYSTEM';
@@ -78,6 +82,8 @@ export class DocumentExtractionPlausibilityService {
           documentSubtype: options?.documentSubtype,
         }),
       );
+    } else if (isInspectionDocumentType(documentType)) {
+      checks.push(...collectInspectionPlausibilityChecks(documentType, fields));
     } else if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
       const isFine = documentType === 'FINE';
       checks.push({
@@ -135,19 +141,6 @@ export class DocumentExtractionPlausibilityService {
         message: 'Document date is in the future.',
         source: 'DOCUMENT',
       });
-    }
-
-    // Inspection validity must be after inspection date
-    if (documentType === 'TUV_REPORT' || documentType === 'BOKRAFT_REPORT') {
-      const validUntil = this.toDate(fields['validUntil']);
-      if (eventDate && validUntil && validUntil.getTime() < eventDate.getTime()) {
-        checks.push({
-          code: 'VALIDITY_BEFORE_INSPECTION',
-          status: 'WARNING',
-          message: 'Validity date is before the inspection date.',
-          source: 'DOCUMENT',
-        });
-      }
     }
 
     // Battery plausibility

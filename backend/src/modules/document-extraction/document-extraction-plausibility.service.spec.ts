@@ -84,13 +84,23 @@ describe('DocumentExtractionPlausibilityService', () => {
     expect(codes(result)).toContain('INVOICE_NET_GROSS_INCONSISTENT');
   });
 
-  it('warns when TUV validity is before the inspection date', () => {
+  it('blocks when TUV validity is before the inspection date', () => {
     const result = svc.runChecks(
       'TUV_REPORT',
-      { eventDate: '2026-05-01', validUntil: '2026-01-01' },
+      { inspectionDate: '2026-05-01', validUntil: '2026-01-01', result: 'ohne Mängel' },
       baseCtx,
     );
     expect(codes(result)).toContain('VALIDITY_BEFORE_INSPECTION');
+    expect(result.overallStatus).toBe('BLOCKER');
+  });
+
+  it('warns when TUV validUntil is missing', () => {
+    const result = svc.runChecks(
+      'TUV_REPORT',
+      { inspectionDate: '2026-06-01', result: 'ohne Mängel', reportNumber: 'HU-1' },
+      baseCtx,
+    );
+    expect(codes(result)).toContain('INSPECTION_MISSING_VALID_UNTIL');
   });
 
   it('warns on an out-of-range 12V battery voltage', () => {

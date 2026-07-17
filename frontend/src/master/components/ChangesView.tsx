@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-inspection-hardening-2026-07-17',
+    version: '4.9.606',
+    title: 'V4.9.606 — Document Intake V2 TÜV / BOKraft Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrales Modul document-inspection-extraction.rules für TÜV und BOKraft.',
+      'Felder: inspectionDate, validUntil, result, defectLevel, defects, reinspectionRequired, reinspectionDeadline, issuingOrganization, reportNumber, mileage.',
+      'validUntil hat Vorrang — keine pauschale +2-Jahre/+1-Jahr-Fortschreibung; fehlende Gültigkeit blockiert Fahrzeugstammdatenupdate, Archivierung bleibt möglich.',
+      'Mängel erzeugen nur vorgeschlagene Folgeaktionen; Hard Block nur über Compliance-Readiness-Policy.',
+      'document-action-planner.inspection-rules + Fixtures/Tests für ohne Mangel, mit Mangel, fehlende Gültigkeit.',
+    ],
+    reason: 'Prompt 30/84: Härtung von TÜV-/BOKraft-Extraktion und Action Planning.',
+    previousBehavior: 'Apply setzte nextTuvDate/nextBokraftDate blind mit +2y/+1y; validUntil ignoriert.',
+    details:
+      'document-inspection-extraction.rules.ts (+ spec, fixtures), document-action-planner.inspection-rules.ts (+ spec), schema/plausibility/apply/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T10:00:00.000Z',
+  },
+  {
     id: 'document-invoice-schema-2026-07-17',
     version: '4.9.605',
     title: 'V4.9.605 — Document Intake V2 Production Invoice Schema, Plausibility & Apply Gates',

@@ -88,6 +88,26 @@ describe('document-extraction.schemas', () => {
       expect(keys).toEqual(expect.arrayContaining(['eventDate', 'odometerKm', 'costCents']));
     });
 
+    it('declares production inspection fields for TÜV and BOKraft', () => {
+      for (const docType of ['TUV_REPORT', 'BOKRAFT_REPORT'] as const) {
+        const keys = getFieldSchema(docType).map((field) => field.key);
+        expect(keys).toEqual(
+          expect.arrayContaining([
+            'inspectionDate',
+            'validUntil',
+            'result',
+            'defectLevel',
+            'defects',
+            'reinspectionRequired',
+            'reinspectionDeadline',
+            'issuingOrganization',
+            'reportNumber',
+            'mileage',
+          ]),
+        );
+      }
+    });
+
     it('declares production invoice fields', () => {
       const keys = getFieldSchema('INVOICE').map((field) => field.key);
       expect(keys).toEqual(

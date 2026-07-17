@@ -29,6 +29,16 @@ import { InvoicesService } from '@modules/invoices/invoices.service';
 import { FinesService } from '@modules/fines/fines.service';
 import { ConfirmedExtractionData } from './document-extraction.types';
 import {
+  assessInspectionApplyGate,
+  buildInspectionServiceEventNotes,
+  buildInspectionVehicleComplianceUpdate,
+  INSPECTION_DOCUMENT_TYPES,
+  readInspectionDate,
+  readIssuingOrganization,
+  readMileageKm,
+  type InspectionDocumentType,
+} from './document-inspection-extraction.rules';
+import {
   assessInvoiceApplyGate,
   buildInvoiceApplyLineItems,
   readInvoiceDate,
@@ -86,8 +96,12 @@ export class DocumentExtractionApplyService {
       return this.applyBrake(input, d);
     }
 
-    if (['SERVICE', 'OIL_CHANGE', 'TUV_REPORT', 'BOKRAFT_REPORT'].includes(docType)) {
+    if (['SERVICE', 'OIL_CHANGE'].includes(docType)) {
       return this.applyServiceEvent(input, d);
+    }
+
+    if (docType === 'TUV_REPORT' || docType === 'BOKRAFT_REPORT') {
+      return this.applyInspectionReport(input, d, docType);
     }
 
     if (docType === 'BATTERY') {
@@ -323,15 +337,63 @@ export class DocumentExtractionApplyService {
         },
       });
     }
-    if (docType === 'TUV_REPORT' && eventDate) {
-      const nextTuv = new Date(eventDate);
-      nextTuv.setFullYear(nextTuv.getFullYear() + 2);
-      await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastTuvDate: eventDate, nextTuvDate: nextTuv } });
+
+    return { serviceEventId: svcEvent.id };
+  }
+
+  private async applyInspectionReport(
+    input: ApplyInput,
+    d: Record<string, unknown>,
+    docType: InspectionDocumentType,
+  ): Promise<ApplyResult> {
+    const gate = assessInspectionApplyGate({
+      documentType: docType,
+      fields: d,
+    });
+    if (!gate.canArchive) {
+      throw new BadRequestException({
+        message: 'Inspection apply gate blocked — invalid confirmed fields',
+        blockers: gate.blockers,
+      });
     }
-    if (docType === 'BOKRAFT_REPORT' && eventDate) {
-      const nextBk = new Date(eventDate);
-      nextBk.setFullYear(nextBk.getFullYear() + 1);
-      await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastBokraftDate: eventDate, nextBokraftDate: nextBk } });
+
+    const { vehicleId, sourceFileUrl } = input;
+    const eventType =
+      docType === INSPECTION_DOCUMENT_TYPES.TUV ? 'TUV_INSPECTION' : 'BOKRAFT_INSPECTION';
+    const eventDate = this.dateFrom(readInspectionDate(d));
+    const odometerKmParsed = this.toInt(readMileageKm(d));
+    const svcEvent = await this.prisma.vehicleServiceEvent.create({
+      data: {
+        vehicleId,
+        eventType: eventType as any,
+        eventDate: eventDate ?? new Date(),
+        odometerKm: odometerKmParsed,
+        workshopName: readIssuingOrganization(d) ?? undefined,
+        notes: buildInspectionServiceEventNotes(d),
+        documentUrl: sourceFileUrl,
+        origin: ServiceEventOrigin.AI_UPLOAD,
+      },
+    });
+
+    const complianceUpdate = buildInspectionVehicleComplianceUpdate(docType, d);
+    if (gate.canUpdateVehicleMasterData && complianceUpdate) {
+      if (docType === INSPECTION_DOCUMENT_TYPES.TUV) {
+        await this.prisma.vehicle.update({
+          where: { id: vehicleId },
+          data: {
+            lastTuvDate: complianceUpdate.lastInspectionDate,
+            nextTuvDate: complianceUpdate.nextValidUntilDate,
+          },
+        });
+      } else {
+        await this.prisma.vehicle.update({
+          where: { id: vehicleId },
+          data: {
+            lastBokraftDate: complianceUpdate.lastInspectionDate,
+            nextBokraftDate: complianceUpdate.nextValidUntilDate,
+          },
+        });
+      }
     }
 
     return { serviceEventId: svcEvent.id };
