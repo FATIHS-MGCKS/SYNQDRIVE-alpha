@@ -76,6 +76,7 @@ import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
     VoiceRetentionService,
     VoiceSecretsStartupService,
     VoiceWorkspaceService,
+    VoicePhoneOnboardingService,
   ],
   exports: [
     VoiceAssistantService,

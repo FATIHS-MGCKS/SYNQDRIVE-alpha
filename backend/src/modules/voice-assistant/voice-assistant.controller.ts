@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req, Headers } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -13,6 +13,16 @@ import {
 } from './dto';
 import { UpdateVoiceOnboardingStepDto } from './workspace/dto/update-voice-onboarding-step.dto';
 import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
+import { VoicePhoneOnboardingService } from './phone-onboarding/voice-phone-onboarding.service';
+import {
+  PurchasePhoneNumberDto,
+  RecordForwardTestDto,
+  RequestSipOnboardingDto,
+  SearchPhoneNumbersDto,
+  SelectPhoneOnboardingPathDto,
+  UpdateForwardOnboardingDto,
+  UpdatePortOnboardingDto,
+} from './phone-onboarding/dto/voice-phone-onboarding.dto';
 
 @Controller('organizations/:orgId/voice-assistant')
 @UseGuards(OrgScopingGuard, RolesGuard)
@@ -20,6 +30,7 @@ export class VoiceAssistantController {
   constructor(
     private readonly service: VoiceAssistantService,
     private readonly workspace: VoiceWorkspaceService,
+    private readonly phoneOnboarding: VoicePhoneOnboardingService,
   ) {}
 
   @Get()
@@ -90,6 +101,87 @@ export class VoiceAssistantController {
   @Post('conversations/sync')
   async syncConversations(@Param('orgId') orgId: string) {
     return this.service.syncConversations(orgId);
+  }
+
+  @Get('phone-onboarding')
+  async phoneOnboardingStatus(@Param('orgId') orgId: string) {
+    return this.phoneOnboarding.getOnboarding(orgId);
+  }
+
+  @Post('phone-onboarding/path')
+  async selectPhoneOnboardingPath(
+    @Param('orgId') orgId: string,
+    @Body() body: SelectPhoneOnboardingPathDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.phoneOnboarding.selectPath(orgId, body.path, req.user?.id);
+  }
+
+  @Post('phone-onboarding/search-numbers')
+  async searchPhoneOnboardingNumbers(
+    @Param('orgId') orgId: string,
+    @Body() body: SearchPhoneNumbersDto,
+  ) {
+    return this.phoneOnboarding.searchNumbers(orgId, body);
+  }
+
+  @Post('phone-onboarding/purchase-preview')
+  async previewPhoneOnboardingPurchase(
+    @Param('orgId') orgId: string,
+    @Body() body: PurchasePhoneNumberDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.phoneOnboarding.previewPurchase(orgId, body.selectionToken, req.user?.id);
+  }
+
+  @Post('phone-onboarding/purchase')
+  async confirmPhoneOnboardingPurchase(
+    @Param('orgId') orgId: string,
+    @Body() body: PurchasePhoneNumberDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.phoneOnboarding.confirmPurchase(
+      orgId,
+      body.selectionToken,
+      body.confirm,
+      idempotencyKey ?? `purchase:${orgId}:${body.selectionToken}`,
+      req.user?.id,
+    );
+  }
+
+  @Patch('phone-onboarding/forward')
+  async updatePhoneOnboardingForward(
+    @Param('orgId') orgId: string,
+    @Body() body: UpdateForwardOnboardingDto,
+  ) {
+    return this.phoneOnboarding.updateForward(orgId, body);
+  }
+
+  @Post('phone-onboarding/forward/test')
+  async recordPhoneOnboardingForwardTest(
+    @Param('orgId') orgId: string,
+    @Body() body: RecordForwardTestDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.phoneOnboarding.recordForwardTest(orgId, body.result, req.user?.id);
+  }
+
+  @Patch('phone-onboarding/port')
+  async updatePhoneOnboardingPort(
+    @Param('orgId') orgId: string,
+    @Body() body: UpdatePortOnboardingDto,
+  ) {
+    return this.phoneOnboarding.updatePort(orgId, body);
+  }
+
+  @Post('phone-onboarding/sip-request')
+  async requestPhoneOnboardingSip(
+    @Param('orgId') orgId: string,
+    @Body() body: RequestSipOnboardingDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.phoneOnboarding.requestSip(orgId, body.contactEmail, req.user?.id);
   }
 
   @Get('phone-numbers')

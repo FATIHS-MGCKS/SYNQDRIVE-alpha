@@ -50,6 +50,7 @@ export type TwilioProvisioningJobView = {
 };
 
 export type TwilioPhoneNumberSearchResult = {
+  selectionToken: string;
   maskedPhoneNumber: string;
   locality: string | null;
   region: string | null;
