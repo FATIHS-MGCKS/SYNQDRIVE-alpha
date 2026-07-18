@@ -33,6 +33,7 @@ import { VoiceControlPlaneAdminService } from './admin/voice-control-plane-admin
 import { VoiceProviderWebhookEventRepository } from './control-plane/voice-audit-persistence.repository';
 import { VoiceRetentionService } from './security/voice-retention.service';
 import { VoiceSecretsStartupService } from './security/voice-secrets-startup.service';
+import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { VoiceSecretsStartupService } from './security/voice-secrets-startup.ser
     VoiceControlPlaneAdminService,
     VoiceRetentionService,
     VoiceSecretsStartupService,
+    VoiceWorkspaceService,
   ],
   exports: [
     VoiceAssistantService,

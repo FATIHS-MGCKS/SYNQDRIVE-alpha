@@ -26,6 +26,9 @@ export function wizardStorageKey(orgId: string): string {
   return `${WIZARD_STORAGE_PREFIX}.${orgId}`;
 }
 
+/**
+ * @deprecated Server workspace persists onboarding step — localStorage is legacy fallback only.
+ */
 export function loadWizardStep(orgId: string | null): VoiceWizardStep {
   if (!orgId || typeof window === 'undefined') return 'plan';
   try {
@@ -41,6 +44,7 @@ export function loadWizardStep(orgId: string | null): VoiceWizardStep {
   return 'plan';
 }
 
+/** @deprecated Prefer `api.voiceAssistant.updateOnboardingStep`. */
 export function saveWizardStep(orgId: string, step: VoiceWizardStep): void {
   if (typeof window === 'undefined') return;
   try {
@@ -89,6 +93,7 @@ export function isWizardStepComplete(
     case 'assistant':
       return Boolean(
         ctx.assistant.name?.trim() &&
+          ctx.assistant.role?.trim() &&
           ctx.assistant.voiceId &&
           ctx.assistant.greetingMessage?.trim(),
       );

@@ -9,17 +9,19 @@ import type {
   VoiceAssistantUpdatePayload,
   VoiceOption,
   VoicePlanCode,
+  VoicePlanCatalogEntry,
   VoiceProtectionStatus,
 } from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
-import { VoiceAssistantBuilder } from './VoiceAssistantBuilder';
 import { VoiceLaunchChecklist } from './VoiceLaunchChecklist';
 import { VoicePermissionGroupsPanel } from './VoicePermissionGroupsPanel';
 import { VoiceTelephonyWizard } from './VoiceTelephonyWizard';
 import { VoiceTestCenter } from './VoiceTestCenter';
+import { VoiceWizardAssistantStep } from './VoiceWizardAssistantStep';
 import { VoiceWizardKnowledgeStep } from './VoiceWizardKnowledgeStep';
 import { VoiceWizardPlanStep } from './VoiceWizardPlanStep';
+import { assistantOnboardingToPayload } from './voice-assistant-onboarding.ops';
 import type { VoiceTextField } from './voice-assistant-builder.types';
 import type { VoiceToolPermissionsMap } from './voice-assistant-permissions.ops';
 import { buildLaunchChecklist } from './voice-assistant.ops';
@@ -29,7 +31,6 @@ import {
   isWizardStepComplete,
   nextWizardStep,
   prevWizardStep,
-  saveWizardStep,
   type VoiceWizardStep,
 } from './voice-wizard.ops';
 
@@ -53,7 +54,9 @@ interface VoiceOnboardingWizardProps {
   hasDraft: boolean;
   testPassed: boolean;
   actionError: string | null;
-  initialStep: VoiceWizardStep;
+  step: VoiceWizardStep;
+  allowedSteps: VoiceWizardStep[];
+  onStepChange: (step: VoiceWizardStep) => void | Promise<void>;
   textField: (key: VoiceTextField) => string;
   setTextField: (key: VoiceTextField, value: string) => void;
   setVoiceSelection: (voiceId: string, voiceName: string) => void;
@@ -94,7 +97,9 @@ export function VoiceOnboardingWizard({
   hasDraft,
   testPassed,
   actionError,
-  initialStep,
+  step,
+  allowedSteps,
+  onStepChange,
   textField,
   setTextField,
   setVoiceSelection,
@@ -108,17 +113,23 @@ export function VoiceOnboardingWizard({
   onTestPassed,
 }: VoiceOnboardingWizardProps) {
   const { t } = useLanguage();
-  const [step, setStep] = useState<VoiceWizardStep>(initialStep);
   const [planCode, setPlanCode] = useState<VoicePlanCode | null>(null);
+  const [activePlanDetails, setActivePlanDetails] = useState<VoicePlanCatalogEntry | null>(null);
+  const [assistantStepValid, setAssistantStepValid] = useState(false);
+  const [showAssistantErrors, setShowAssistantErrors] = useState(false);
   const [protection, setProtection] = useState<VoiceProtectionStatus | null>(null);
   const [protectionError, setProtectionError] = useState<string | null>(null);
   const [budgetCents, setBudgetCents] = useState('');
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const { links } = useVoiceKnowledgeLinks(orgId, assistant);
 
-  useEffect(() => {
-    saveWizardStep(orgId, step);
-  }, [orgId, step]);
+  const goToStep = useCallback(
+    (next: VoiceWizardStep) => {
+      if (!allowedSteps.includes(next)) return;
+      void onStepChange(next);
+    },
+    [allowedSteps, onStepChange],
+  );
 
   useEffect(() => {
     void api.voiceAssistant.billing
@@ -126,6 +137,23 @@ export function VoiceOnboardingWizard({
       .then(usage => setPlanCode(usage.planCode))
       .catch(() => undefined);
   }, [orgId, step]);
+
+  useEffect(() => {
+    if (!planCode) {
+      setActivePlanDetails(null);
+      return;
+    }
+    void api.voiceAssistant.billing
+      .plans(orgId)
+      .then(plans => setActivePlanDetails(plans.find(p => p.code === planCode) ?? null))
+      .catch(() => setActivePlanDetails(null));
+  }, [orgId, planCode]);
+
+  useEffect(() => {
+    if (step !== 'assistant') {
+      setShowAssistantErrors(false);
+    }
+  }, [step]);
 
   useEffect(() => {
     if (step !== 'activation') return;
@@ -173,16 +201,38 @@ export function VoiceOnboardingWizard({
   const labelCls = `block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`;
 
   const goNext = async () => {
+    if (step === 'assistant' && !assistantStepValid) {
+      setShowAssistantErrors(true);
+      toast.error(t('voice.assistant.onboarding.validationBlocked'));
+      return;
+    }
     if (hasDraft) {
       await onSave();
     }
     const next = nextWizardStep(step);
-    if (next) setStep(next);
+    if (next) void goToStep(next);
   };
+
+  const handleAssistantFieldsChange = useCallback(
+    (patch: ReturnType<typeof assistantOnboardingToPayload>) => {
+      if (patch.name !== undefined) setTextField('name', patch.name);
+      if (patch.role !== undefined) setTextField('role', patch.role);
+      if (patch.language !== undefined) setTextField('language', patch.language);
+      if (patch.personality !== undefined) setTextField('personality', patch.personality ?? '');
+      if (patch.greetingMessage !== undefined) setTextField('greetingMessage', patch.greetingMessage);
+      if (patch.companyContext !== undefined) setTextField('companyContext', patch.companyContext ?? '');
+      if (patch.voiceId !== undefined && patch.voiceName !== undefined) {
+        setVoiceSelection(patch.voiceId, patch.voiceName);
+      } else if (patch.voiceId !== undefined) {
+        setTextField('voiceId', patch.voiceId);
+      }
+    },
+    [setTextField, setVoiceSelection],
+  );
 
   const goPrev = () => {
     const prev = prevWizardStep(step);
-    if (prev) setStep(prev);
+    if (prev) void goToStep(prev);
   };
 
   const savePermissions = (patch: Partial<VoiceToolPermissionsMap>) => {
@@ -237,7 +287,8 @@ export function VoiceOnboardingWizard({
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setStep(id)}
+                onClick={() => goToStep(id)}
+                disabled={!allowedSteps.includes(id)}
                 className={cn(
                   'sq-press shrink-0 rounded-lg border px-2.5 py-2 text-left transition-colors',
                   active
@@ -271,21 +322,20 @@ export function VoiceOnboardingWizard({
         )}
 
         {step === 'assistant' && (
-          <VoiceAssistantBuilder
-            orgId={orgId}
+          <VoiceWizardAssistantStep
             assistant={assistant}
             readiness={readiness}
+            plan={activePlanDetails}
             voices={voices}
             voicesLoading={voicesLoading}
             voicesError={voicesError}
             onLoadVoices={onLoadVoices}
-            textField={textField}
-            setTextField={setTextField}
-            setVoiceSelection={setVoiceSelection}
             hasDraft={hasDraft}
             saving={saving}
             onSave={() => void onSave()}
-            onNavigateTab={() => undefined}
+            onFieldsChange={handleAssistantFieldsChange}
+            onValidationChange={setAssistantStepValid}
+            showValidationErrors={showAssistantErrors}
           />
         )}
 
@@ -309,7 +359,7 @@ export function VoiceOnboardingWizard({
             readinessElevenLabsOk={readiness?.checks.find(c => c.key === 'elevenlabs')?.ok}
             isBusy={isBusy}
             onAssistantUpdated={onAssistantUpdated}
-            onNavigateTest={() => setStep('tests')}
+            onNavigateTest={() => void goToStep('tests')}
             onError={err => toast.error(t('voice.phone.error'), { description: getErrorMessage(err) })}
             loadPhoneNumbers={() => api.voiceAssistant.phoneNumbers(orgId)}
             assignPhoneNumber={phoneNumberId => api.voiceAssistant.assignPhoneNumber(orgId, phoneNumberId)}
@@ -427,7 +477,7 @@ export function VoiceOnboardingWizard({
                   overview: 'activation',
                 };
                 const target = wizardMap[tab];
-                if (target) setStep(target);
+                if (target) void goToStep(target);
               }}
             />
 

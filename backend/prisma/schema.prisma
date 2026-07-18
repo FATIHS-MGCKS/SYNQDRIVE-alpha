@@ -10294,6 +10294,9 @@ model VoiceAssistant {
 
   status VoiceAssistantStatus @default(DRAFT)
 
+  onboardingStep           String? @map("onboarding_step")
+  onboardingCompletedSteps Json    @default("[]") @map("onboarding_completed_steps")
+
   totalCalls           Int   @default(0) @map("total_calls")
   answeredCalls        Int   @default(0) @map("answered_calls")
   missedCalls          Int   @default(0) @map("missed_calls")
