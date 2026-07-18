@@ -33,6 +33,7 @@ import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-chan
 import { StationsCorrectVehicleCurrentPermissionGuard } from './guards/stations-correct-vehicle-current-permission.guard';
 import { StationsManageTransfersPermissionGuard } from './guards/stations-manage-transfers-permission.guard';
 import { StationsOverrideRulesPermissionGuard } from './guards/stations-override-rules-permission.guard';
+import { StationsV2DiagnosticService } from './diagnostic/stations-v2-diagnostic.service';
 
 @Module({
   imports: [forwardRef(() => VehiclesModule), forwardRef(() => RentalHealthModule)],
@@ -58,6 +59,7 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationDomainAuditService,
     StationMetricsService,
     StationsAccessService,
+    StationsV2DiagnosticService,
     StationsPermissionGuard,
     StationsUpdatePermissionGuard,
     StationsAssignVehiclePermissionGuard,

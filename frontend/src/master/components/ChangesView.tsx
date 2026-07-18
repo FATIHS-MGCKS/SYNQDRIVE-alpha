@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-diagnose-cli-v49653-2026-07-18',
+    version: '4.9.653',
+    title: 'V4.9.653 — Stations V2: Read-only Diagnose-CLI (Prompt 73/78)',
+    summary: [
+      'CLI `stations-v2-diagnose --dry-run` — 16 Read-only-Checks (Primary, Capabilities, Koordinaten/Zeitzone/Öffnungszeiten, Home/Current/Expected, archivierte Links, Booking-Regeln, Scope-IDs, KPI-Abweichungen).',
+      'Service `StationsV2DiagnosticService` + Safety-Guards (`STATIONS_V2_DIAGNOSTIC_ALLOW_PROD/REMOTE`); Output: Counts, maskierte IDs, Severity, Remediation — keine Writes.',
+      'Runbook `docs/runbooks/stations-v2-data-remediation.md`; npm script `stations:v2:diagnose`.',
+      'Unit-Tests für Service und Util.',
+    ],
+    reason: 'Prompt 73/78: Datenqualitäts-Diagnose vor Remediation gemäß Stations-V2-Ausführungsvertrag.',
+    previousBehavior:
+      'Nur `stations-v2-primary-diagnose.ts` für Primary-Invarianten; kein umfassendes Stations-V2-Daten-Audit.',
+    details:
+      'backend/scripts/ops/stations-v2-diagnose.ts, backend/src/modules/stations/diagnostic/*, docs/runbooks/stations-v2-data-remediation.md',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T05:30:00.000Z',
+  },
+  {
     id: 'stations-v2-frontend-e2e-v49652-2026-07-18',
     version: '4.9.652',
     title: 'V4.9.652 — Stations V2: Frontend- & E2E-Testpaket (Prompt 72/78)',

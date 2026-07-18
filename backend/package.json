@@ -25,6 +25,7 @@
     "test:stations:v2": "jest --testPathPattern='stations|station-access-scope|station-scope|station-booking|station-capacity|station-kpis|station-summary|station-org-summaries|station-operations|handover-station|one-way-return|expected-station|vehicle-handover-station|vehicle-home-fleet|vehicle-change-home|vehicle-correct-current|vehicle-station-transfer|vehicle-station-position|bookings-handover.station|bookings.service.station-rules'",
     "test:stations:v2:verify": "bash scripts/test/stations-v2-verify.sh all",
     "test:stations:v2:verify:unit": "bash scripts/test/stations-v2-verify.sh unit",
+    "stations:v2:diagnose": "ts-node -r tsconfig-paths/register scripts/ops/stations-v2-diagnose.ts --dry-run",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
