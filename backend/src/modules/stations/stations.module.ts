@@ -7,6 +7,7 @@ import { StationCalendarExceptionService } from './station-calendar-exception.se
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
+import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { StationsAccessService } from './stations-access.service';
 import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
@@ -25,6 +26,7 @@ import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-chan
     StationOperationalCapabilityService,
     StationOperationsService,
     VehicleHomeFleetDeltaService,
+    VehicleHomeAssignmentPreviewService,
     StationsAccessService,
     StationsPermissionGuard,
     StationsUpdatePermissionGuard,
@@ -33,6 +35,6 @@ import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-chan
     StationsVehicleLocationPermissionGuard,
     StationsChangeVehicleHomePermissionGuard,
   ],
-  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService],
+  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService],
 })
 export class StationsModule {}

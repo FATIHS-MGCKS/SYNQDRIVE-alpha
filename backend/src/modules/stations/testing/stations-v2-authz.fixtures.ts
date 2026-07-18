@@ -261,6 +261,16 @@ export const AUTHZ_MUTATION_ENDPOINTS: AuthzEndpointCase[] = [
     specializedGuard: 'changeVehicleHome',
   },
   {
+    key: 'home-fleet-preview',
+    method: 'POST',
+    scope: { resource: 'station' },
+    params: { id: AUTHZ_STATION_A },
+    body: {
+      proposals: [{ vehicleId: AUTHZ_VEHICLE, desiredHomeStationId: AUTHZ_STATION_A }],
+    },
+    specializedGuard: 'changeVehicleHome',
+  },
+  {
     key: 'home-fleet-add',
     method: 'POST',
     scope: { resource: 'station' },
