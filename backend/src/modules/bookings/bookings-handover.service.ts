@@ -235,13 +235,23 @@ export class BookingsHandoverService {
               where: { id: booking.vehicleId },
               data: {
                 status: VehicleStatus.AVAILABLE,
-                ...(actualStationId ? { currentStationId: actualStationId } : {}),
+                ...(actualStationId
+                  ? {
+                      currentStationId: actualStationId,
+                      currentStationSource: 'HANDOVER_RETURN',
+                      currentStationConfirmedAt: new Date(),
+                    }
+                  : {}),
               },
             });
           } else if (actualStationId) {
             await tx.vehicle.update({
               where: { id: booking.vehicleId },
-              data: { currentStationId: actualStationId },
+              data: {
+                currentStationId: actualStationId,
+                currentStationSource: 'HANDOVER_RETURN',
+                currentStationConfirmedAt: new Date(),
+              },
             });
           }
         } else if (kind === 'PICKUP') {
@@ -262,7 +272,13 @@ export class BookingsHandoverService {
             where: { id: booking.vehicleId },
             data: {
               status: VehicleStatus.RENTED,
-              ...(actualStationId ? { currentStationId: actualStationId } : {}),
+              ...(actualStationId
+                ? {
+                    currentStationId: actualStationId,
+                    currentStationSource: 'HANDOVER_PICKUP',
+                    currentStationConfirmedAt: new Date(),
+                  }
+                : {}),
             },
           });
         }

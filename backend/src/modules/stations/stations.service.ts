@@ -1,7 +1,13 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
 import { BookingStatus, Prisma, Station, StationStatus, StationType, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { StationAccessContext } from '@shared/stations/station-access.types';
+import { StationAccessService } from '@shared/stations/station-access.service';
 import { StationValidationService } from './station-validation.service';
+import { StationReadModelService } from './read-model/station-read-model.service';
+import { StationDomainAuditService } from './audit/station-domain-audit.service';
+import { StationsV2ConfigService } from './stations-v2-config.service';
+import { evaluateGeofenceShadow } from './geofence/station-geofence-shadow.util';
 import {
   STATION_STATUS_LABELS,
   STATION_TYPE_LABELS,
@@ -136,6 +142,10 @@ export class StationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stationValidation: StationValidationService,
+    private readonly stationAccess: StationAccessService,
+    private readonly stationReadModel: StationReadModelService,
+    private readonly stationAudit: StationDomainAuditService,
+    private readonly stationsV2Config: StationsV2ConfigService,
   ) {}
 
   private stationIncludeCount() {
@@ -146,8 +156,13 @@ export class StationsService {
   // CRUD
   // ─────────────────────────────────────────────────────────────
 
-  async findAll(organizationId: string, query?: ListStationsQueryDto): Promise<StationDto[]> {
-    const where: Prisma.StationWhereInput = { organizationId };
+  async findAll(
+    organizationId: string,
+    query?: ListStationsQueryDto,
+    access?: StationAccessContext,
+  ): Promise<StationDto[]> {
+    const scope = access ?? { bypassScope: true, allowedStationIds: null, membershipRole: null, userId: '' };
+    const where: Prisma.StationWhereInput = this.stationAccess.buildStationWhere(organizationId, scope);
     if (query?.status) where.status = query.status;
     if (query?.type) where.type = query.type;
     if (query?.selectableOnly === 'true') {
@@ -163,7 +178,8 @@ export class StationsService {
     return stations.map((s) => this.toDto(s, s._count.vehiclesHome));
   }
 
-  async findOne(organizationId: string, id: string): Promise<StationDto> {
+  async findOne(organizationId: string, id: string, access?: StationAccessContext): Promise<StationDto> {
+    if (access) this.stationAccess.assertStationReadable(access, id);
     const station = await this.prisma.station.findFirst({
       where: { id, organizationId },
       include: this.stationIncludeCount(),
@@ -280,10 +296,21 @@ export class StationsService {
     return this.toDto(station, station._count.vehiclesHome);
   }
 
-  async archive(organizationId: string, id: string): Promise<StationDto> {
+  async archive(
+    organizationId: string,
+    id: string,
+    actorUserId?: string,
+  ): Promise<StationDto> {
     const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
     if (station.status === 'ARCHIVED') return this.findOne(organizationId, id);
+
+    const snapshot = {
+      pickupEnabled: station.pickupEnabled,
+      returnEnabled: station.returnEnabled,
+      isPrimary: station.isPrimary,
+      status: station.status,
+    };
 
     const updated = await this.prisma.station.update({
       where: { id },
@@ -293,26 +320,35 @@ export class StationsService {
         isPrimary: false,
         pickupEnabled: false,
         returnEnabled: false,
+        archivedCapabilitiesSnapshot: snapshot,
       },
       include: this.stationIncludeCount(),
     });
+    this.stationAudit.record(organizationId, actorUserId, 'STATION_ARCHIVED', id, { snapshot });
     return this.toDto(updated, updated._count.vehiclesHome);
   }
 
-  async restore(organizationId: string, id: string): Promise<StationDto> {
+  async restore(organizationId: string, id: string, actorUserId?: string): Promise<StationDto> {
     const station = await this.prisma.station.findFirst({ where: { id, organizationId } });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
+
+    const snapshot = station.archivedCapabilitiesSnapshot as {
+      pickupEnabled?: boolean;
+      returnEnabled?: boolean;
+      status?: StationStatus;
+    } | null;
 
     const updated = await this.prisma.station.update({
       where: { id },
       data: {
-        status: 'ACTIVE',
+        status: snapshot?.status && snapshot.status !== 'ARCHIVED' ? snapshot.status : 'ACTIVE',
         archivedAt: null,
-        pickupEnabled: true,
-        returnEnabled: true,
+        pickupEnabled: snapshot?.pickupEnabled ?? true,
+        returnEnabled: snapshot?.returnEnabled ?? true,
       },
       include: this.stationIncludeCount(),
     });
+    this.stationAudit.record(organizationId, actorUserId, 'STATION_RESTORED', id);
     return this.toDto(updated, updated._count.vehiclesHome);
   }
 
@@ -337,43 +373,62 @@ export class StationsService {
     return this.toDto(updated, updated._count.vehiclesHome);
   }
 
-  /** @deprecated Prefer archive() — kept for backward compatibility */
-  async delete(organizationId: string, id: string): Promise<{ id: string; unassignedVehicles: number; archived: boolean }> {
+  /** Always archives — no hard delete (DEL-01). */
+  async delete(organizationId: string, id: string, actorUserId?: string): Promise<{ id: string; unassignedVehicles: number; archived: boolean }> {
     const station = await this.prisma.station.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { vehiclesHome: true, pickupBookings: true, returnBookings: true } } },
+      include: {
+        _count: {
+          select: {
+            vehiclesHome: true,
+            vehiclesCurrent: true,
+            vehiclesExpected: true,
+            pickupBookings: true,
+            returnBookings: true,
+          },
+        },
+      },
     });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
 
-    const hasLinks =
-      station._count.vehiclesHome > 0 ||
-      station._count.pickupBookings > 0 ||
-      station._count.returnBookings > 0;
-
-    if (hasLinks) {
-      await this.archive(organizationId, id);
-      return { id, unassignedVehicles: 0, archived: true };
-    }
-
-    await this.prisma.station.delete({ where: { id } });
-    return { id, unassignedVehicles: 0, archived: false };
+    await this.archive(organizationId, id, actorUserId);
+    return {
+      id,
+      unassignedVehicles: station._count.vehiclesHome,
+      archived: true,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────
   // Stats for dashboard header / sidebar
   // ─────────────────────────────────────────────────────────────
 
-  async getStationStats(organizationId: string): Promise<StationsStatsDto> {
-    const [stations, unassignedVehicles] = await Promise.all([
-      this.prisma.station.findMany({
-        where: { organizationId, status: { not: 'ARCHIVED' } },
-        include: { _count: { select: { vehiclesHome: true } } },
-        orderBy: [{ isPrimary: 'desc' }, { status: 'asc' }, { name: 'asc' }],
-      }),
-      this.prisma.vehicle.count({
-        where: { organizationId, homeStationId: null },
-      }),
-    ]);
+  async getStationStats(organizationId: string, access?: StationAccessContext): Promise<StationsStatsDto> {
+    const scope = access ?? { bypassScope: true, allowedStationIds: null, membershipRole: null, userId: '' };
+    const stationWhere = this.stationAccess.buildStationWhere(organizationId, scope);
+    stationWhere.status = { not: 'ARCHIVED' };
+
+    const stations = await this.prisma.station.findMany({
+      where: stationWhere,
+      include: { _count: { select: { vehiclesHome: true } } },
+      orderBy: [{ isPrimary: 'desc' }, { status: 'asc' }, { name: 'asc' }],
+    });
+
+    const allowedIds = scope.bypassScope || scope.allowedStationIds === null
+      ? null
+      : scope.allowedStationIds;
+
+    const unassignedWhere: Prisma.VehicleWhereInput = {
+      organizationId,
+      homeStationId: null,
+    };
+    if (allowedIds) {
+      unassignedWhere.id = { in: [] };
+    }
+
+    const unassignedVehicles = allowedIds
+      ? 0
+      : await this.prisma.vehicle.count({ where: unassignedWhere });
 
     const totalVehicles = stations.reduce((sum, s) => sum + s._count.vehiclesHome, 0);
     const activeStations = stations.filter((s) => s.status === 'ACTIVE').length;
@@ -398,145 +453,69 @@ export class StationsService {
   async getStationOverviewStats(
     organizationId: string,
     stationId: string,
+    access?: StationAccessContext,
   ): Promise<StationOverviewStatsDto> {
-    const station = await this.prisma.station.findFirst({
-      where: { id: stationId, organizationId },
-    });
+    const scope = access ?? { bypassScope: true, allowedStationIds: null, membershipRole: null, userId: '' };
+    return this.stationReadModel.getOverviewStats(organizationId, stationId, scope);
+  }
+
+  async getStationSummariesBatch(
+    organizationId: string,
+    access: StationAccessContext,
+    stationIds?: string[],
+  ): Promise<Record<string, StationOverviewStatsDto>> {
+    return this.stationReadModel.getSummariesForStations(organizationId, access, stationIds);
+  }
+
+  async getArchivePreview(organizationId: string, stationId: string, access?: StationAccessContext) {
+    if (access) this.stationAccess.assertStationReadable(access, stationId);
+    const station = await this.prisma.station.findFirst({ where: { id: stationId, organizationId } });
     if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
-    const stationVehicleWhere: Prisma.VehicleWhereInput = {
-      organizationId,
-      OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
-    };
-
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const endOfToday = new Date(startOfToday);
-    endOfToday.setDate(endOfToday.getDate() + 1);
-
-    const activeBookingStatuses: BookingStatus[] = ['CONFIRMED', 'ACTIVE', 'PENDING'];
-
-    const stationVehicleIds = (
-      await this.prisma.vehicle.findMany({
-        where: stationVehicleWhere,
-        select: { id: true },
-      })
-    ).map((v) => v.id);
-
-    const stationBookingIds = (
-      await this.prisma.booking.findMany({
+    const [homeVehicles, currentVehicles, activeBookings] = await Promise.all([
+      this.prisma.vehicle.count({ where: { organizationId, homeStationId: stationId } }),
+      this.prisma.vehicle.count({ where: { organizationId, currentStationId: stationId } }),
+      this.prisma.booking.count({
         where: {
           organizationId,
+          status: { in: ['CONFIRMED', 'ACTIVE', 'PENDING'] },
           OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
-        },
-        select: { id: true },
-        take: 500,
-      })
-    ).map((b) => b.id);
-
-    const [
-      totalVehicles,
-      availableVehicles,
-      bookedVehicles,
-      inServiceVehicles,
-      todayPickups,
-      todayReturns,
-      upcomingPickups,
-      upcomingReturns,
-    ] = await Promise.all([
-      this.prisma.vehicle.count({ where: stationVehicleWhere }),
-      this.prisma.vehicle.count({
-        where: { ...stationVehicleWhere, status: VehicleStatus.AVAILABLE },
-      }),
-      this.prisma.vehicle.count({
-        where: { ...stationVehicleWhere, status: VehicleStatus.RENTED },
-      }),
-      this.prisma.vehicle.count({
-        where: {
-          ...stationVehicleWhere,
-          status: { in: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE] },
-        },
-      }),
-      this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
-          startDate: { gte: startOfToday, lt: endOfToday },
-          status: { in: activeBookingStatuses },
-        },
-      }),
-      this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
-          endDate: { gte: startOfToday, lt: endOfToday },
-          status: { in: activeBookingStatuses },
-        },
-      }),
-      this.prisma.booking.count({
-        where: {
-          organizationId,
-          pickupStationId: stationId,
-          startDate: { gte: endOfToday },
-          status: { in: activeBookingStatuses },
-        },
-      }),
-      this.prisma.booking.count({
-        where: {
-          organizationId,
-          returnStationId: stationId,
-          endDate: { gte: endOfToday },
-          status: { in: activeBookingStatuses },
         },
       }),
     ]);
 
-    let openTasks = 0;
-    if (stationVehicleIds.length || stationBookingIds.length) {
-      openTasks = await this.prisma.orgTask.count({
-        where: {
-          organizationId,
-          status: { in: ['OPEN', 'IN_PROGRESS'] },
-          OR: [
-            ...(stationVehicleIds.length
-              ? [{ vehicleId: { in: stationVehicleIds } }]
-              : []),
-            ...(stationBookingIds.length
-              ? [{ bookingId: { in: stationBookingIds } }]
-              : []),
-          ],
-        },
-      });
-    }
-
-    const capacity = station.capacity ?? null;
-    const capacityUsagePercent =
-      capacity != null && capacity > 0
-        ? Math.min(100, Math.round((totalVehicles / capacity) * 100))
-        : null;
-
     return {
-      totalVehicles,
-      availableVehicles,
-      bookedVehicles,
-      inServiceVehicles,
-      vehiclesWithHealthWarnings: null,
-      todayPickups,
-      todayReturns,
-      upcomingPickups,
-      upcomingReturns,
-      openTasks,
-      capacity,
-      capacityUsagePercent,
-      hasMissingCoordinates: station.latitude == null || station.longitude == null,
-      hasMissingOpeningHours: openingHoursIsMissing(station.openingHours),
-      hasMissingPickupReturnRules: !station.pickupEnabled && !station.returnEnabled,
+      stationId,
+      isPrimary: station.isPrimary,
+      homeVehicleCount: homeVehicles,
+      currentVehicleCount: currentVehicles,
+      activeBookingCount: activeBookings,
+      pickupEnabled: station.pickupEnabled,
+      returnEnabled: station.returnEnabled,
+      warnings:
+        homeVehicles > 0 || currentVehicles > 0 || activeBookings > 0 || station.isPrimary
+          ? ['LINKED_ENTITIES']
+          : [],
     };
   }
 
-  async getStationFleet(organizationId: string, stationId: string) {
-    await this.findOne(organizationId, stationId);
-    return this.prisma.vehicle.findMany({
+  async getStationFleet(organizationId: string, stationId: string, access?: StationAccessContext) {
+    const station = await this.prisma.station.findFirst({
+      where: { id: stationId, organizationId },
+      select: {
+        id: true,
+        latitude: true,
+        longitude: true,
+        radiusMeters: true,
+      },
+    });
+    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
+    if (access) this.stationAccess.assertStationReadable(access, stationId);
+
+    const flags = this.stationsV2Config.resolve(organizationId);
+    const shadowEnabled = flags.stationGeofenceShadowEnabled;
+
+    const vehicles = await this.prisma.vehicle.findMany({
       where: {
         organizationId,
         OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
@@ -551,9 +530,28 @@ export class StationsService {
         homeStationId: true,
         currentStationId: true,
         expectedStationId: true,
+        latestState: {
+          select: { latitude: true, longitude: true },
+        },
       },
       orderBy: [{ status: 'asc' }, { licensePlate: 'asc' }],
     });
+
+    if (!shadowEnabled) {
+      return vehicles.map(({ latestState, ...vehicle }) => vehicle);
+    }
+
+    const radius = station.radiusMeters;
+    return vehicles.map(({ latestState, ...vehicle }) => ({
+      ...vehicle,
+      geofenceShadow: evaluateGeofenceShadow({
+        stationLatitude: station.latitude,
+        stationLongitude: station.longitude,
+        radiusMeters: radius,
+        vehicleLatitude: latestState?.latitude ?? null,
+        vehicleLongitude: latestState?.longitude ?? null,
+      }),
+    }));
   }
 
   async getStationBookings(organizationId: string, stationId: string) {
@@ -603,9 +601,10 @@ export class StationsService {
     const data: Prisma.VehicleUpdateInput = {};
     if (target === 'home') {
       data.homeStation = { connect: { id: stationId } };
-      data.currentStation = { connect: { id: stationId } };
     } else if (target === 'current') {
       data.currentStation = { connect: { id: stationId } };
+      data.currentStationSource = 'MANUAL_ASSIGN';
+      data.currentStationConfirmedAt = new Date();
     } else {
       data.expectedStation = { connect: { id: stationId } };
     }
@@ -655,6 +654,9 @@ export class StationsService {
       data: {
         currentStationId,
         ...(expectedStationId !== undefined ? { expectedStationId } : {}),
+        ...(currentStationId
+          ? { currentStationSource: 'MANUAL_POSITION', currentStationConfirmedAt: new Date() }
+          : { currentStationSource: null, currentStationConfirmedAt: null }),
       },
       select: {
         id: true,
@@ -663,6 +665,84 @@ export class StationsService {
         expectedStationId: true,
       },
     });
+  }
+
+  async changeHomeStation(
+    organizationId: string,
+    vehicleId: string,
+    toStationId: string,
+    actorUserId?: string,
+  ) {
+    await this.stationValidation.assertVehicleStationAssignment(
+      organizationId,
+      vehicleId,
+      toStationId,
+      'home',
+    );
+
+    const vehicle = await this.prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: { homeStationId: toStationId },
+      select: {
+        id: true,
+        homeStationId: true,
+        currentStationId: true,
+        expectedStationId: true,
+      },
+    });
+    this.stationAudit.record(organizationId, actorUserId, 'VEHICLE_HOME_ASSIGNED', toStationId, {
+      vehicleId,
+    });
+    return vehicle;
+  }
+
+  async previewHomeFleetChange(
+    organizationId: string,
+    stationId: string,
+    vehicleIds: string[],
+  ) {
+    const station = await this.prisma.station.findFirst({
+      where: { id: stationId, organizationId },
+      select: { id: true, name: true, capacity: true },
+    });
+    if (!station) throw new NotFoundException(`Station ${stationId} not found`);
+
+    const uniqueIds = [...new Set(vehicleIds.filter(Boolean))];
+    const vehicles = uniqueIds.length
+      ? await this.prisma.vehicle.findMany({
+          where: { id: { in: uniqueIds }, organizationId },
+          select: { id: true, homeStationId: true },
+        })
+      : [];
+
+    if (vehicles.length !== uniqueIds.length) {
+      throw new BadRequestException('One or more vehicles do not belong to this organization');
+    }
+
+    const currentHome = await this.prisma.vehicle.findMany({
+      where: { organizationId, homeStationId: stationId },
+      select: { id: true },
+    });
+    const currentSet = new Set(currentHome.map((v) => v.id));
+    const requestedSet = new Set(uniqueIds);
+
+    const toAdd = uniqueIds.filter((id) => !currentSet.has(id));
+    const toRemove = [...currentSet].filter((id) => !requestedSet.has(id));
+    const postHomeCount = uniqueIds.length;
+    const capacityUsagePercent =
+      station.capacity && station.capacity > 0
+        ? Math.min(100, Math.round((postHomeCount / station.capacity) * 100))
+        : null;
+
+    return {
+      stationId,
+      toAdd,
+      toRemove,
+      postHomeCount,
+      capacity: station.capacity,
+      capacityUsagePercent,
+      touchesCurrentStation: false,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -693,7 +773,18 @@ export class StationsService {
 
     const requested = Array.from(new Set((vehicleIds ?? []).filter((id) => typeof id === 'string' && id.length > 0)));
 
-    // Validate that every requested vehicle belongs to this org. Doing the
+    const orgVehicleCount = await this.prisma.vehicle.count({ where: { organizationId } });
+    if (requested.length < orgVehicleCount) {
+      throw new BadRequestException({
+        message:
+          'Partial fleet SET rejected. Load the complete fleet or use POST /stations/vehicles/change-home-station.',
+        code: 'STATION_PARTIAL_SET_REJECTED',
+        orgVehicleCount,
+        requestedCount: requested.length,
+      });
+    }
+
+    // Validate that every requested vehicle belongs to this org.
     // lookup once also tells us how many are already on this station (so
     // we can return accurate "newlyAttached" / "movedFromOtherStations"
     // counters) without an extra round-trip.
@@ -745,7 +836,7 @@ export class StationsService {
         ? [
             this.prisma.vehicle.updateMany({
               where: { id: { in: idsToDetach }, organizationId },
-              data: { homeStationId: null, currentStationId: null },
+              data: { homeStationId: null },
             }),
           ]
         : []),
@@ -753,7 +844,7 @@ export class StationsService {
         ? [
             this.prisma.vehicle.updateMany({
               where: { id: { in: idsToAttach }, organizationId },
-              data: { homeStationId: stationId, currentStationId: stationId },
+              data: { homeStationId: stationId },
             }),
           ]
         : []),
@@ -1016,6 +1107,15 @@ export class StationsService {
   private readonly RADIUS_MAX_M = 5000;
 
   private buildWriteData(payload: StationPatchPayload): Record<string, unknown> {
+    if (payload.status !== undefined) {
+      throw new BadRequestException(
+        'Use POST /stations/:id/archive or /restore for status changes',
+      );
+    }
+    if (payload.isPrimary !== undefined) {
+      throw new BadRequestException('Use POST /stations/:id/set-primary for primary changes');
+    }
+
     const data: Record<string, unknown> = {};
     const passthrough: Array<keyof StationPatchPayload> = [
       'address',
@@ -1038,7 +1138,6 @@ export class StationsService {
       'googlePlaceId',
       'code',
       'type',
-      'isPrimary',
       'pickupEnabled',
       'returnEnabled',
       'afterHoursReturnEnabled',
@@ -1064,18 +1163,6 @@ export class StationsService {
           );
         }
         data.radiusMeters = rounded;
-      }
-    }
-
-    if (payload.status !== undefined) {
-      if (!STATION_STATUS_VALUES.includes(payload.status as StationStatus)) {
-        throw new BadRequestException(`Invalid station status: ${payload.status}`);
-      }
-      data.status = payload.status;
-      if (payload.status === 'ARCHIVED') {
-        data.archivedAt = new Date();
-      } else if (payload.status === 'ACTIVE') {
-        data.archivedAt = null;
       }
     }
 

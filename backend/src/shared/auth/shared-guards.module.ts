@@ -4,18 +4,27 @@ import { OrgScopingGuard } from './org-scoping.guard';
 import { VehicleOwnershipGuard } from './vehicle-ownership.guard';
 import { PermissionsGuard } from './permissions.guard';
 import { MasterBillingGuard } from './master-billing.guard';
+import { StationAccessService } from '@shared/stations/station-access.service';
+import { StationScopeGuard } from '@shared/guards/station-scope.guard';
 
-/**
- * GlobalGuardsModule — provides all platform security guards globally.
- *
- * Marking this module as @Global() makes all its exports injectable
- * in any feature module without needing explicit imports. This is the
- * correct pattern for shared infrastructure guards.
- */
 @Global()
 @Module({
   imports: [PrismaModule],
-  providers: [OrgScopingGuard, VehicleOwnershipGuard, PermissionsGuard, MasterBillingGuard],
-  exports: [OrgScopingGuard, VehicleOwnershipGuard, PermissionsGuard, MasterBillingGuard],
+  providers: [
+    OrgScopingGuard,
+    VehicleOwnershipGuard,
+    PermissionsGuard,
+    MasterBillingGuard,
+    StationAccessService,
+    StationScopeGuard,
+  ],
+  exports: [
+    OrgScopingGuard,
+    VehicleOwnershipGuard,
+    PermissionsGuard,
+    MasterBillingGuard,
+    StationAccessService,
+    StationScopeGuard,
+  ],
 })
 export class SharedGuardsModule {}

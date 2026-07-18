@@ -1394,6 +1394,7 @@ model Organization {
   memberships                            OrganizationMembership[]
   organizationProducts                   OrganizationProduct[]
   stations                               Station[]
+  vehicleStationTransfers                VehicleStationTransfer[]
   vehicles                               Vehicle[]
   brakeComponentInstallations            BrakeComponentInstallation[]
   brakeServiceApplications               BrakeServiceApplication[]
@@ -1793,15 +1794,18 @@ model Station {
   returnInstructions      String?       @map("return_instructions")
   notes                   String?
   internalNotes           String?       @map("internal_notes")
-  googlePlaceId           String?       @map("google_place_id")
-  archivedAt              DateTime?     @map("archived_at")
-  createdAt               DateTime      @default(now()) @map("created_at")
-  updatedAt               DateTime      @updatedAt @map("updated_at")
+  googlePlaceId                 String?       @map("google_place_id")
+  archivedAt                    DateTime?     @map("archived_at")
+  archivedCapabilitiesSnapshot  Json?         @map("archived_capabilities_snapshot")
+  createdAt                     DateTime      @default(now()) @map("created_at")
+  updatedAt                     DateTime      @updatedAt @map("updated_at")
 
   organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehiclesHome           Vehicle[]               @relation("VehicleHomeStation")
   vehiclesCurrent        Vehicle[]               @relation("VehicleCurrentStation")
   vehiclesExpected       Vehicle[]               @relation("VehicleExpectedStation")
+  transfersFrom          VehicleStationTransfer[] @relation("TransferFromStation")
+  transfersTo            VehicleStationTransfer[] @relation("TransferToStation")
   pickupBookings         Booking[]               @relation("BookingPickupStation")
   returnBookings         Booking[]               @relation("BookingReturnStation")
   actualPickupBookings   Booking[]               @relation("BookingActualPickupStation")
@@ -1812,6 +1816,36 @@ model Station {
   @@index([organizationId])
   @@index([organizationId, status])
   @@map("stations")
+}
+
+enum VehicleStationTransferStatus {
+  PLANNED
+  IN_TRANSIT
+  ARRIVED
+  CANCELLED
+}
+
+model VehicleStationTransfer {
+  id             String                       @id @default(uuid())
+  organizationId String                       @map("organization_id")
+  vehicleId      String                       @map("vehicle_id")
+  fromStationId  String?                      @map("from_station_id")
+  toStationId    String                       @map("to_station_id")
+  status         VehicleStationTransferStatus @default(PLANNED)
+  plannedAt      DateTime                     @default(now()) @map("planned_at")
+  arrivedAt      DateTime?                    @map("arrived_at")
+  cancelledAt    DateTime?                    @map("cancelled_at")
+  createdAt      DateTime                     @default(now()) @map("created_at")
+  updatedAt      DateTime                     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  fromStation  Station?     @relation("TransferFromStation", fields: [fromStationId], references: [id], onDelete: SetNull)
+  toStation    Station      @relation("TransferToStation", fields: [toStationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, vehicleId, status])
+  @@index([organizationId, toStationId])
+  @@map("vehicle_station_transfers")
 }
 
 // ------------------------------------------------
@@ -1858,6 +1892,8 @@ model Vehicle {
   organizationId                    String            @map("organization_id")
   homeStationId                     String?           @map("station_id")
   currentStationId                  String?           @map("current_station_id")
+  currentStationSource              String?           @map("current_station_source")
+  currentStationConfirmedAt         DateTime?         @map("current_station_confirmed_at")
   expectedStationId                 String?           @map("expected_station_id")
   dimoVehicleId                     String?           @map("dimo_vehicle_id")
   vin                               String
@@ -1926,6 +1962,7 @@ model Vehicle {
   homeStation                            Station?                                @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
   currentStation                         Station?                                @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
   expectedStation                        Station?                                @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
+  stationTransfers                       VehicleStationTransfer[]
   dimoVehicle                            DimoVehicle?                            @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
   batterySpecs                           VehicleBatterySpec[]
   tireSetups                             VehicleTireSetup[]

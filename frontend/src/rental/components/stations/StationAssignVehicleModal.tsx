@@ -38,24 +38,36 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
     setLoading(true);
     setError(null);
     try {
-      const vehicleRes = await api.vehicles.listByOrg(orgId, { limit: 500 });
-      const list: AssignVehicleRow[] = ((vehicleRes as { data?: unknown[] })?.data ?? []).map((v) => {
-        const row = v as Record<string, unknown>;
-        return {
-          id: String(row.id),
-          license: String(row.license ?? row.licensePlate ?? ''),
-          make: String(row.make ?? ''),
-          model: String(row.model ?? ''),
-          year: typeof row.year === 'number' ? row.year : null,
-          stationId: (row.homeStationId ?? row.stationId ?? null) as string | null,
-          stationName: (row.stationName ?? row.station ?? null) as string | null,
-          latitude: typeof row.latitude === 'number' ? row.latitude : null,
-          longitude: typeof row.longitude === 'number' ? row.longitude : null,
-        };
-      });
-      list.sort((a, b) => a.license.localeCompare(b.license, 'de'));
-      setVehicles(list);
-      setSelected(new Set(list.filter((v) => v.stationId === station.id).map((v) => v.id)));
+      const all: AssignVehicleRow[] = [];
+      let page = 1;
+      const pageSize = 100;
+      let total = Infinity;
+      while (all.length < total) {
+        const vehicleRes = await api.vehicles.listByOrg(orgId, { limit: pageSize, page });
+        const rows = ((vehicleRes as { data?: unknown[]; total?: number })?.data ?? []).map((v) => {
+          const row = v as Record<string, unknown>;
+          return {
+            id: String(row.id),
+            license: String(row.license ?? row.licensePlate ?? ''),
+            make: String(row.make ?? ''),
+            model: String(row.model ?? ''),
+            year: typeof row.year === 'number' ? row.year : null,
+            stationId: (row.homeStationId ?? row.stationId ?? null) as string | null,
+            stationName: (row.stationName ?? row.station ?? null) as string | null,
+            latitude: typeof row.latitude === 'number' ? row.latitude : null,
+            longitude: typeof row.longitude === 'number' ? row.longitude : null,
+          };
+        });
+        total = typeof (vehicleRes as { meta?: { total?: number } }).meta?.total === 'number'
+          ? (vehicleRes as { meta: { total: number } }).meta.total
+          : rows.length;
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        page += 1;
+      }
+      all.sort((a, b) => a.license.localeCompare(b.license, 'de'));
+      setVehicles(all);
+      setSelected(new Set(all.filter((v) => v.stationId === station.id).map((v) => v.id)));
     } catch (e) {
       setError((e as Error).message || t('stations.assign.errorLoad'));
     } finally {

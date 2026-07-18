@@ -30,6 +30,7 @@ export { default as billingReconciliationConfig } from './billing-reconciliation
 export { default as billingStripeSyncConfig } from './billing-stripe-sync.config';
 export { default as taskAutomationOutboxConfig } from './task-automation-outbox.config';
 export { default as drivingIntelligenceV2Config } from './driving-intelligence-v2.config';
+export { default as stationsV2Config } from './stations-v2.config';
 export { default as batteryHealthV2Config } from './battery-health-v2.config';
 export { default as batteryV2RetentionConfig } from './battery-v2-retention.config';
 export { default as voiceRetentionConfig } from './voice-retention.config';
