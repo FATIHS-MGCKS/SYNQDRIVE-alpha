@@ -20,12 +20,12 @@ const VEHICLE_BLOCKED = '55555555-5555-4555-8555-555555555555';
 const FOREIGN_VEHICLE = '66666666-6666-4666-8666-666666666666';
 
 describe('VehicleHomeAssignmentPreviewService', () => {
-  const stations = new Map<string, { id: string; organizationId: string; name: string; status: string }>([
-    [STATION_A, { id: STATION_A, organizationId: ORG, name: 'Station A', status: 'ACTIVE' }],
-    [STATION_B, { id: STATION_B, organizationId: ORG, name: 'Station B', status: 'ACTIVE' }],
+  const stations = new Map<string, { id: string; organizationId: string; name: string; status: string; updatedAt: Date }>([
+    [STATION_A, { id: STATION_A, organizationId: ORG, name: 'Station A', status: 'ACTIVE', updatedAt: new Date('2026-07-18T12:00:00.000Z') }],
+    [STATION_B, { id: STATION_B, organizationId: ORG, name: 'Station B', status: 'ACTIVE', updatedAt: new Date('2026-07-18T12:00:00.000Z') }],
     [
       STATION_ARCHIVED,
-      { id: STATION_ARCHIVED, organizationId: ORG, name: 'Archived', status: 'ARCHIVED' },
+      { id: STATION_ARCHIVED, organizationId: ORG, name: 'Archived', status: 'ARCHIVED', updatedAt: new Date('2026-07-18T12:00:00.000Z') },
     ],
   ]);
 
@@ -38,6 +38,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
     homeStationId: string | null;
     currentStationId: string | null;
     expectedStationId: string | null;
+    stationPositionVersion: number;
     status: string;
   }>([
     [
@@ -51,6 +52,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
         homeStationId: null,
         currentStationId: null,
         expectedStationId: null,
+        stationPositionVersion: 0,
         status: 'AVAILABLE',
       },
     ],
@@ -65,6 +67,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
         homeStationId: STATION_A,
         currentStationId: STATION_B,
         expectedStationId: STATION_A,
+        stationPositionVersion: 2,
         status: 'RENTED',
       },
     ],
@@ -79,6 +82,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
         homeStationId: STATION_B,
         currentStationId: STATION_B,
         expectedStationId: null,
+        stationPositionVersion: 3,
         status: 'AVAILABLE',
       },
     ],
@@ -93,6 +97,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
         homeStationId: STATION_A,
         currentStationId: STATION_A,
         expectedStationId: null,
+        stationPositionVersion: 1,
         status: 'AVAILABLE',
       },
     ],
@@ -107,6 +112,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
         homeStationId: null,
         currentStationId: null,
         expectedStationId: null,
+        stationPositionVersion: 0,
         status: 'AVAILABLE',
       },
     ],
@@ -150,6 +156,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
             homeStationId: vehicle.homeStationId,
             currentStationId: vehicle.currentStationId,
             expectedStationId: vehicle.expectedStationId,
+            stationPositionVersion: vehicle.stationPositionVersion,
             status: vehicle.status,
           }));
       }),
@@ -173,6 +180,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
     ]);
 
     expect(result.contextStationId).toBe(STATION_A);
+    expect(result.concurrency.contextStationUpdatedAt).toBe('2026-07-18T12:00:00.000Z');
     expect(result.summary).toEqual({
       requested: 6,
       evaluated: 6,
@@ -193,6 +201,7 @@ describe('VehicleHomeAssignmentPreviewService', () => {
     const addItem = result.items.find((item) => item.vehicleId === VEHICLE_ADD)!;
     expect(addItem.action).toBe(HomeAssignmentPreviewAction.ADD);
     expect(addItem.executableCommand).toBe(HomeAssignmentExecutableCommand.ADD);
+    expect(addItem.concurrency.stationPositionVersion).toBe(0);
     expect(addItem.currentPhysicalStation).toBeNull();
     expect(addItem.expectedStation).toBeNull();
 

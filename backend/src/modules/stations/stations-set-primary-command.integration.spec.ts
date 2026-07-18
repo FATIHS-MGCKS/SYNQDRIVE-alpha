@@ -13,6 +13,7 @@ import {
   StationSetPrimaryCommandOutcome,
 } from './station-set-primary-command.types';
 import { STATION_PRIMARY_UNIQUE_INDEX } from './station-set-primary-command.util';
+import { StationConcurrencyErrorCode } from '@shared/stations/station-optimistic-concurrency.constants';
 
 const ORG = 'org-set-primary';
 const STATION_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -26,6 +27,7 @@ describe('StationsService set-primary command', () => {
       findMany: jest.fn(),
       updateMany: jest.fn(),
       update: jest.fn(),
+      findFirstOrThrow: jest.fn(),
     },
   };
 
@@ -83,6 +85,11 @@ describe('StationsService set-primary command', () => {
       ...stationRow(),
       ...data,
     }));
+    (tx.station.findFirstOrThrow as jest.Mock).mockImplementation(async () => ({
+      ...stationRow(),
+      isPrimary: true,
+      status: 'ACTIVE',
+    }));
   });
 
   it('sets primary with org advisory lock and demotes previous primary', async () => {
@@ -94,10 +101,9 @@ describe('StationsService set-primary command', () => {
     expect(result.audit.demotedPrimaryStationIds).toEqual([STATION_B]);
     expect(tx.$executeRaw).toHaveBeenCalled();
     expect(tx.station.updateMany).toHaveBeenCalled();
-    expect(tx.station.update).toHaveBeenCalledWith(
+    expect(tx.station.findFirstOrThrow).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: STATION_A },
-        data: { isPrimary: true, status: 'ACTIVE' },
+        where: { id: STATION_A, organizationId: ORG },
       }),
     );
   });
@@ -143,6 +149,24 @@ describe('StationsService set-primary command', () => {
       ConflictException,
     );
   });
+
+  it('rejects stale expectedUpdatedAt before starting transaction', async () => {
+    const updatedAt = new Date('2026-07-18T12:00:00.000Z');
+    (prisma.station.findFirst as jest.Mock).mockResolvedValue(
+      stationRow({ updatedAt }),
+    );
+
+    await expect(
+      service.setPrimaryStation(ORG, STATION_A, USER_ID, {
+        expectedUpdatedAt: '2026-07-18T12:00:01.000Z',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: StationConcurrencyErrorCode.STATION_UPDATED_AT_CONFLICT,
+      }),
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
 });
 
 describe('StationsService set-primary concurrency', () => {
@@ -155,7 +179,7 @@ describe('StationsService set-primary concurrency', () => {
       }),
       station: {
         findMany: jest.fn().mockResolvedValue([]),
-        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         update: jest.fn().mockImplementation(async ({ where }) => {
           lockOrder.push(`update:${where.id}`);
           return {
@@ -166,6 +190,17 @@ describe('StationsService set-primary concurrency', () => {
             _count: { vehiclesHome: 0 },
           };
         }),
+        findFirstOrThrow: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) => ({
+          id: where.id,
+          organizationId: ORG,
+          status: 'ACTIVE',
+          isPrimary: true,
+          pickupEnabled: true,
+          returnEnabled: true,
+          archivedAt: null,
+          updatedAt: new Date(),
+          _count: { vehiclesHome: 0 },
+        })),
       },
     };
 
@@ -179,6 +214,7 @@ describe('StationsService set-primary concurrency', () => {
           pickupEnabled: true,
           returnEnabled: true,
           archivedAt: null,
+          updatedAt: new Date(),
           _count: { vehiclesHome: 0 },
         })),
         findMany: jest.fn().mockResolvedValue([]),
@@ -201,8 +237,6 @@ describe('StationsService set-primary concurrency', () => {
     ]);
 
     expect(lockOrder.filter((entry) => entry === 'lock')).toHaveLength(2);
-    expect(lockOrder).toEqual(
-      expect.arrayContaining([`update:${STATION_A}`, `update:${STATION_B}`]),
-    );
+    expect(lockOrder.filter((entry) => entry.startsWith('update:'))).toHaveLength(0);
   });
 });

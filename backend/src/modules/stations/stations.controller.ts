@@ -25,6 +25,7 @@ import {
   StationMapboxRetrieveQueryDto,
   RestoreStationDto,
 } from './dto';
+import { SetPrimaryStationDto } from './dto/set-primary-station.dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { StationScopeGuard } from '@shared/guards/station-scope.guard';
@@ -126,6 +127,7 @@ export class StationsController {
       body.vehicleId,
       body.currentStationId ?? null,
       body.expectedStationId,
+      body.expectedVersion,
     );
   }
 
@@ -176,7 +178,11 @@ export class StationsController {
       orgId,
       stationId,
       body.vehicleIds,
-      { idempotencyKey: body.idempotencyKey, reason: body.reason },
+      {
+        idempotencyKey: body.idempotencyKey,
+        reason: body.reason,
+        expectedVersions: body.expectedVersions,
+      },
     );
   }
 
@@ -192,7 +198,11 @@ export class StationsController {
       orgId,
       stationId,
       body.vehicleIds,
-      { idempotencyKey: body.idempotencyKey, reason: body.reason },
+      {
+        idempotencyKey: body.idempotencyKey,
+        reason: body.reason,
+        expectedVersions: body.expectedVersions,
+      },
     );
   }
 
@@ -209,7 +219,11 @@ export class StationsController {
       stationId,
       body.targetStationId,
       body.vehicleIds,
-      { idempotencyKey: body.idempotencyKey, reason: body.reason },
+      {
+        idempotencyKey: body.idempotencyKey,
+        reason: body.reason,
+        expectedVersions: body.expectedVersions,
+      },
     );
   }
 
@@ -503,9 +517,12 @@ export class StationsController {
   async setPrimary(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Body() body: SetPrimaryStationDto,
     @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.stationsService.setPrimaryStation(orgId, id, userId);
+    return this.stationsService.setPrimaryStation(orgId, id, userId, {
+      expectedUpdatedAt: body.expectedUpdatedAt,
+    });
   }
 
   /**
@@ -537,6 +554,7 @@ export class StationsController {
       id,
       body.vehicleId,
       body.target ?? 'home',
+      body.expectedVersion,
     );
   }
 

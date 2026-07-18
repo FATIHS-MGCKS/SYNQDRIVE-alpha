@@ -148,6 +148,7 @@ export function evaluateHomeAssignmentPreviewItem(input: {
         ),
       ],
       warnings,
+      concurrency: { stationPositionVersion: 0 },
     };
   }
 
@@ -250,6 +251,9 @@ export function evaluateHomeAssignmentPreviewItem(input: {
     moveToStationId,
     conflicts,
     warnings,
+    concurrency: {
+      stationPositionVersion: vehicle.stationPositionVersion,
+    },
   };
 }
 

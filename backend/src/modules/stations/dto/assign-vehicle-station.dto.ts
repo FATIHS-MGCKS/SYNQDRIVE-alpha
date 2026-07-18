@@ -1,4 +1,5 @@
-import { IsIn, IsOptional, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsOptional, IsUUID, Min, ValidateNested } from 'class-validator';
 
 export class AssignVehicleStationDto {
   @IsUUID()
@@ -7,6 +8,12 @@ export class AssignVehicleStationDto {
   @IsOptional()
   @IsIn(['home', 'current', 'expected'])
   target?: 'home' | 'current' | 'expected';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  expectedVersion?: number;
 }
 
 export class UpdateVehicleCurrentStationDto {
@@ -20,4 +27,20 @@ export class UpdateVehicleCurrentStationDto {
   @IsOptional()
   @IsUUID()
   expectedStationId?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  expectedVersion?: number;
+}
+
+export class VehiclePositionVersionDto {
+  @IsUUID()
+  vehicleId!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  expectedVersion!: number;
 }

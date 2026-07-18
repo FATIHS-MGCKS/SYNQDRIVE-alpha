@@ -195,6 +195,19 @@ describe('VehicleHomeFleetDeltaService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('fails when client expectedVersions do not match current stationPositionVersion', async () => {
+    const result = await service.addVehiclesToHomeStation(ORG, STATION_A, [VEHICLE_1], {
+      expectedVersions: [{ vehicleId: VEHICLE_1, expectedVersion: 99 }],
+    });
+
+    expect(result.summary).toEqual({ requested: 1, applied: 0, idempotent: 0, failed: 1 });
+    expect(result.results[0]?.outcome).toBe(VehicleHomeFleetDeltaItemOutcome.FAILED);
+    expect(result.results[0]?.error?.code).toBe(
+      VehicleHomeFleetDeltaIssueCode.VERSION_CONFLICT,
+    );
+    expect(vehicles.get(VEHICLE_1)?.homeStationId).toBeNull();
+  });
+
   it('handles parallel updates with per-vehicle version conflicts', async () => {
     const [first, second] = await Promise.all([
       service.addVehiclesToHomeStation(ORG, STATION_A, [VEHICLE_1]),

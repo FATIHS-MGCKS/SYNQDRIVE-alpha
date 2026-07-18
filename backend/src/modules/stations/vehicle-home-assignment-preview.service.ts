@@ -31,7 +31,7 @@ export class VehicleHomeAssignmentPreviewService {
 
     const contextStation = await this.prisma.station.findFirst({
       where: { id: contextStationId, organizationId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, updatedAt: true },
     });
     if (!contextStation) {
       throw new NotFoundException(`Station ${contextStationId} not found`);
@@ -52,6 +52,7 @@ export class VehicleHomeAssignmentPreviewService {
             homeStationId: true,
             currentStationId: true,
             expectedStationId: true,
+            stationPositionVersion: true,
             status: true,
           },
         })
@@ -92,6 +93,9 @@ export class VehicleHomeAssignmentPreviewService {
       organizationId,
       contextStationId,
       contextStationName: contextStation.name,
+      concurrency: {
+        contextStationUpdatedAt: contextStation.updatedAt.toISOString(),
+      },
       summary: summarizeHomeAssignmentPreviewItems(
         contextStationId,
         items,
