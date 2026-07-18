@@ -23,7 +23,7 @@ import { TwilioWebhookService } from './twilio-webhook.service';
 import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, forwardRef(() => VoiceWebhookIngestionModule), VoiceCallOrchestrationModule],
+  imports: [PrismaModule, ConfigModule, forwardRef(() => VoiceWebhookIngestionModule), forwardRef(() => VoiceCallOrchestrationModule)],
   controllers: [TwilioWebhookController, TwilioTenantProvisioningController],
   providers: [
     SecretRefResolver,
