@@ -54,6 +54,7 @@ import {
 } from './dto/station-calendar-exception.dto';
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
+import { StationSummaryReadModelService } from './station-summary-read-model.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { HomeAssignmentPreviewDto } from './dto/vehicle-home-assignment-preview.dto';
@@ -73,6 +74,7 @@ export class StationsController {
     private readonly stationCalendarExceptions: StationCalendarExceptionService,
     private readonly stationOperationalCapability: StationOperationalCapabilityService,
     private readonly stationOperations: StationOperationsService,
+    private readonly stationSummaryReadModel: StationSummaryReadModelService,
     private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
     private readonly vehicleHomeAssignmentPreview: VehicleHomeAssignmentPreviewService,
     private readonly vehicleStationTransfer: VehicleStationTransferService,
@@ -426,6 +428,27 @@ export class StationsController {
     @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
   ) {
     return this.stationsService.findOne(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+  }
+
+  @Get('summary/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getSummaryContract() {
+    return this.stationSummaryReadModel.getContractMetadata();
+  }
+
+  @Get(':id/summary')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getSummary(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query('at') at: string | undefined,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationSummaryReadModel.resolveForStation(orgId, id, req[STATION_SCOPE_CONTEXT_KEY], {
+      at,
+    });
   }
 
   @Get(':id/overview-stats')

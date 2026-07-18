@@ -300,6 +300,12 @@ describe('StationsController read handlers', () => {
     {} as StationCalendarExceptionService,
     {} as StationOperationalCapabilityService,
     stationOperations as unknown as StationOperationsService,
+    {
+      getContractMetadata: jest.fn(),
+      resolveForStation: jest.fn(),
+    } as never,
+    {} as never,
+    {} as never,
     {} as never,
     {} as never,
   );

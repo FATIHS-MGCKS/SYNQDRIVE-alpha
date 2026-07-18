@@ -6,6 +6,7 @@ import { StationMapboxService } from './station-mapbox.service';
 import { StationCalendarExceptionService } from './station-calendar-exception.service';
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
+import { StationSummaryReadModelService } from './station-summary-read-model.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
@@ -31,6 +32,7 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationCalendarExceptionService,
     StationOperationalCapabilityService,
     StationOperationsService,
+    StationSummaryReadModelService,
     VehicleHomeFleetDeltaService,
     VehicleHomeAssignmentPreviewService,
     VehicleStationTransferService,
@@ -47,6 +49,6 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationsManageTransfersPermissionGuard,
     StationsOverrideRulesPermissionGuard,
   ],
-  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService, StationBookingRulesService, StationRuleManualOverrideService],
+  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, StationSummaryReadModelService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService, StationBookingRulesService, StationRuleManualOverrideService],
 })
 export class StationsModule {}
