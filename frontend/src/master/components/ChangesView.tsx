@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-frontend-e2e-v49652-2026-07-18',
+    version: '4.9.652',
+    title: 'V4.9.652 — Stations V2: Frontend- & E2E-Testpaket (Prompt 72/78)',
+    summary: [
+      'Dokumentation `docs/testing/stations-v2-frontend-e2e-coverage.md` — 24 Bereiche (Liste/KPIs, Scope, CRUD, Lifecycle, Workflows, Fleet-Pagination, Booking-Warnings, Tabs, Error/Partial, Mobile, A11y, i18n).',
+      'Geteilte Fixtures `stations-v2-test-fixtures.ts`; Playwright-Mocks `e2e/stations-v2-fixtures.ts` mit Profilen default/scoped/partial-data/list-error/read-only/fleet-many.',
+      'E2E: `stations-v2-flow.spec.ts` (18 operative Flows) + `stations-v2-responsive.spec.ts` (Responsive, EN-Locale, Keyboard-Navigation).',
+      'Verify-Script `frontend/scripts/test/stations-v2-verify.sh` + `npm run test:stations:v2` / `test:stations:v2:e2e` / `test:stations:v2:verify`.',
+      '99 Vitest + 27 Playwright-Tests grün; Typecheck + Production-Build grün.',
+    ],
+    reason: 'Prompt 72/78: Umfassende Frontend- und E2E-Abdeckung für Stations V2 gemäß Ausführungsvertrag.',
+    previousBehavior:
+      'Stations-Frontend hatte verteilte Unit-/Integrations-Tests ohne konsolidiertes E2E-Paket und ohne dokumentierte 24-Bereiche-Matrix.',
+    details:
+      'Frontend: neue Fixtures, E2E-Specs, Package-Inventory-Test, Verify-Script, package.json-Skripte; Doku analog Backend-Paket Prompt 71.',
+    affectsArchitecture: false,
+    module: 'Stations',
+    createdAt: '2026-07-18T07:00:00.000Z',
+  },
+  {
     id: 'stations-v2-backend-test-package-v49651-2026-07-18',
     version: '4.9.651',
     title: 'V4.9.651 — Stations V2: Vollständiges Backend-Testpaket (Prompt 71/78)',
