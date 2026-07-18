@@ -15,6 +15,18 @@ describe('VoiceSecretsStartupService', () => {
     expect(checks.find((check) => check.key === 'ELEVENLABS_API_KEY')?.configured).toBe(true);
   });
 
+  it('does not require webhook secrets in production when ingestion is disabled by default', () => {
+    const service = new VoiceSecretsStartupService({ get: jest.fn() } as never);
+    const checks = service.evaluate({
+      NODE_ENV: 'production',
+      ELEVENLABS_API_KEY: 'set',
+      TWILIO_AUTH_TOKEN: 'set',
+    });
+
+    const webhookSecret = checks.find((check) => check.key === 'ELEVENLABS_WEBHOOK_SECRET');
+    expect(webhookSecret?.required).toBe(false);
+  });
+
   it('requires dedicated MCP secret in production when gateway enabled', () => {
     const service = new VoiceSecretsStartupService({ get: jest.fn() } as never);
     const checks = service.evaluate({

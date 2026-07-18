@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-webhook-ingestion-prod-default-2026-07-18',
+    version: '4.9.597',
+    title: 'V4.9.597 — Voice AI: production-safe webhook ingestion default',
+    summary: [
+      'Webhook ingestion is opt-in in production (`VOICE_WEBHOOK_INGESTION_ENABLED=true`); defaults on in dev/test.',
+      'Prevents platform boot failure when ElevenLabs webhook secret is not yet configured during phased voice rollout.',
+      'VPS ops: set `ELEVENLABS_WEBHOOK_SECRET` before enabling ingestion in production.',
+    ],
+    reason:
+      'Production deploy after voice merge crashed on missing `ELEVENLABS_WEBHOOK_SECRET` while ingestion defaulted on.',
+    previousBehavior:
+      'Webhook ingestion enabled unless `VOICE_WEBHOOK_INGESTION_ENABLED=false`; startup required webhook secrets in all production.',
+    details:
+      'voice-webhook-ingestion.config.ts production default; .env.example documents flag; characterization spec.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T00:15:00.000Z',
+  },
+  {
     id: 'voice-ui-onboarding-ops-2026-07-17',
     version: '4.9.596',
     title: 'V4.9.596 — Voice AI: organization onboarding and operations UI',
