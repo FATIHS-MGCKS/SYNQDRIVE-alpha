@@ -1,0 +1,91 @@
+{
+  "auditId": "fleet-connectivity-production-readiness-2026-07",
+  "phase": 3,
+  "completedAt": "2026-07-18T09:57:54.275Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "summary": "Replay confirms agreed recovery rule predicates pass but openUnpluggedEpisode remains true.",
+  "artifacts": [
+    "/workspace/docs/audits/data/fleet-connectivity-incident-replay-result-2026-07.json",
+    "/workspace/docs/audits/data/fleet-connectivity-incident-replay-fixture-2026-07.json"
+  ],
+  "notes": [
+    "Pure replay — no database access.",
+    "Uses buildDeviceConnectionSummary from codebase."
+  ],
+  "data": {
+    "mode": "pure-replay-read-only",
+    "writesPerformed": false,
+    "fixture": "fleet-connectivity-incident-replay-fixture-2026-07.json",
+    "actual": {
+      "openUnpluggedEpisode": true,
+      "currentDeviceConnectionStatus": "unplugged",
+      "severity": "warning"
+    },
+    "expectedCanonical": {
+      "openUnpluggedEpisode": false,
+      "currentDeviceConnectionStatus": "plugged",
+      "deviceState": "PLUGGED_INFERRED",
+      "resolutionMethod": "SNAPSHOT_PLUG_SIGNAL"
+    },
+    "predicates": {
+      "hasUnplugEvent": true,
+      "hasExplicitPlugEvent": false,
+      "telemetryAfterUnplug": true,
+      "anchorShowsPlugged": true,
+      "dimoConnected": true,
+      "sameBinding": true,
+      "lteR1Hardware": true
+    },
+    "agreedRuleWouldClose": true,
+    "mismatch": true,
+    "rootCauseLines": [
+      "device-connection-read-model.ts:338-340 openUnpluggedEpisode from events only",
+      "device-connection-read-model.ts:343-344 forces currentDeviceConnectionStatus=unplugged"
+    ],
+    "decisionTree": [
+      {
+        "step": 1,
+        "check": "last UNPLUG event exists",
+        "result": true,
+        "branch": "continue"
+      },
+      {
+        "step": 2,
+        "check": "newer PLUG webhook event exists",
+        "result": false,
+        "branch": "continue (incident path)"
+      },
+      {
+        "step": 3,
+        "check": "telemetry snapshot after unplug (T1>T0)",
+        "result": true,
+        "branch": "continue"
+      },
+      {
+        "step": 4,
+        "check": "connectivityAnchor obdIsPluggedIn=true",
+        "result": true,
+        "branch": "continue"
+      },
+      {
+        "step": 5,
+        "check": "DimoVehicle CONNECTED",
+        "result": true,
+        "branch": "continue"
+      },
+      {
+        "step": 6,
+        "check": "same token/binding episode",
+        "result": true,
+        "branch": "continue"
+      },
+      {
+        "step": 7,
+        "check": "buildDeviceConnectionSummary openUnpluggedEpisode (actual code)",
+        "result": true,
+        "branch": "BUG: agreed rule satisfied but episode still open"
+      }
+    ]
+  }
+}

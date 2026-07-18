@@ -1,0 +1,9 @@
+anonymizedVehicleId,issueCode,severity,dimoVehicleExists,authorizationStatus,consentStatus,consentGrantType,tokenPresent,activeDeviceBinding,providerErrorIgnored,historicalLinkShownActive,multipleActiveBindings,crossOrgRisk,syntheticOemMisclassified,description
+VEHICLE_001,CONSENT_LEDGER_GAP,P1,true,CONNECTED,NONE,,true,1_data_source_link,false,true,false,false,false,CONNECTED_with_telemetry_but_no_ACTIVE_vehicle_provider_consent_row
+VEHICLE_002,CONSENT_LEDGER_GAP,P1,true,CONNECTED,NONE,,true,0,false,true,false,false,false,same_as_V001_plus_no_vehicle_data_source_link
+VEHICLE_003,CONSENT_LEDGER_GAP,P1,true,CONNECTED,NONE,,true,0,false,true,false,false,false,same_as_V001
+VEHICLE_004,DEVICE_BINDING_MISSING,P2,true,CONNECTED,ACTIVE,DIMO_DIRECT,true,0,false,false,false,false,false,consent_ACTIVE_but_no_vehicle_data_source_link_row
+VEHICLE_005,DEVICE_BINDING_MISSING,P2,true,CONNECTED,ACTIVE,DIMO_DIRECT,true,0,false,false,false,false,false,same_as_V004
+VEHICLE_006,DEVICE_BINDING_MISSING,P2,true,CONNECTED,ACTIVE,DIMO_DIRECT,true,0,false,false,false,false,false,same_as_V004
+VEHICLE_001,SYNTHETIC_AND_AFTERMARKET_BOTH_PRESENT,P2,true,CONNECTED,NONE,,true,1,false,true,false,false,false,raw_json_has_both_aftermarketDevice_and_syntheticDevice_not_a_connectivity_blocker
+VEHICLE_007,NOT_LINKED,info,false,none,NONE,,false,0,false,false,false,false,false,expected_non_telematics_vehicle

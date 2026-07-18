@@ -1,0 +1,361 @@
+{
+  "auditId": "fleet-connectivity-production-readiness-2026-07",
+  "phase": 4,
+  "completedAt": "2026-07-18T10:00:00.000Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "analysisWindow": {
+    "days": 60,
+    "startUtc": "2026-05-19T10:00:00.000Z",
+    "endUtc": "2026-07-18T10:00:00.000Z",
+    "dataSources": [
+      "PostgreSQL vehicles",
+      "dimo_vehicles",
+      "vehicle_latest_states",
+      "dimo_device_connection_events",
+      "dimo_poll_logs",
+      "vehicle_provider_consents",
+      "vehicle_data_source_links",
+      "vehicle_trips",
+      "synqdrive.telemetry_snapshots (ClickHouse)"
+    ]
+  },
+  "fleetScope": {
+    "vehiclesTotal": 7,
+    "vehiclesAnonymized": [
+      "VEHICLE_001",
+      "VEHICLE_002",
+      "VEHICLE_003",
+      "VEHICLE_004",
+      "VEHICLE_005",
+      "VEHICLE_006",
+      "VEHICLE_007"
+    ],
+    "dimoLinked": 6,
+    "lteR1": 6,
+    "incidentVehicleAlias": "INCIDENT_VEHICLE_001 maps to VEHICLE_006 (mapping not in git)"
+  },
+  "aggregates": {
+    "deviceConnectionEventsAllTime": 2,
+    "unplugEvents": 2,
+    "plugEvents": 0,
+    "openUnplugEpisodesDb": 2,
+    "openUnplugEpisodesApi7dWindow": 1,
+    "episodesWithTelemetryRecovery": 2,
+    "falselyOpenEpisodes": 2,
+    "episodesOlderThan7Days": 1,
+    "episodesExpiredFromQueryWindow": 1,
+    "crossSurfaceInconsistencies": 6,
+    "providerLinkIntegrityIssues": 7,
+    "webhookEventsReceived": 2,
+    "webhookEventsPersisted": 2,
+    "webhookEventsFailed": 0,
+    "webhookDuplicateRate": 0,
+    "pollSuccess60d": 425652,
+    "pollFailure60d": 71972,
+    "clickhouseSnapshots60d": 396778,
+    "deviceUnplugNotifications60d": 0
+  },
+  "episodeClassificationCounts": {
+    "OPEN_CONFIRMED": 0,
+    "SHOULD_HAVE_BEEN_RESOLVED_BY_TELEMETRY": 2,
+    "RESOLVED_BY_EXPLICIT_PLUG": 0,
+    "RESOLVED_BY_SNAPSHOT_SIGNAL": 0,
+    "DEVICE_BINDING_CHANGED": 0,
+    "OUT_OF_ORDER": 0,
+    "DUPLICATE": 0,
+    "EXPIRED_FROM_QUERY_WINDOW": 1,
+    "NOT_ENOUGH_DATA": 0
+  },
+  "findingsSummary": {
+    "P0": 3,
+    "P1": 4,
+    "P2": 3,
+    "total": 10,
+    "productionBlockers": 2
+  },
+  "findings": [
+    {
+      "id": "FC-P0-01",
+      "severity": "P0",
+      "confidence": "CONFIRMED",
+      "category": "read_model",
+      "title": "openUnpluggedEpisode ignores snapshot-based telemetry recovery",
+      "codeEvidence": "backend/src/modules/dimo/device-connection-read-model.ts:338-344",
+      "dataEvidence": "2/2 fleet unplug events remain logically open in DB; both have obdIsPluggedIn=true, CONNECTED, and polls within 22s after unplug",
+      "affectedVehicleCount": 2,
+      "affectedEpisodeCount": 2,
+      "affectedConsumerCount": 4,
+      "impact": "Fleet tab, vehicle detail, dashboard KPI, and data analyse can show Gerät getrennt while telemetry is live",
+      "reproduction": "Replay fixture fleet-connectivity-incident-replay-fixture-2026-07.json with agreedRuleWouldClose=true",
+      "recommendation": "Close open unplug episodes when connectivityAnchor shows plugged + telemetry resumed on same binding",
+      "requiredTests": [
+        "device-connection-read-model.spec.ts snapshot recovery case",
+        "fleet-connectivity integration test for telemetry-after-unplug"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "FC-P0-03",
+      "severity": "P0",
+      "confidence": "CONFIRMED",
+      "category": "fleet_episode_integrity",
+      "title": "100% of fleet unplug webhooks stuck open despite telemetry recovery — systemic not one-off",
+      "codeEvidence": "buildDeviceConnectionSummary event-only closure; no backfill job for episodes",
+      "dataEvidence": "VPS 60d audit: 2 UNPLUG, 0 PLUG, 2 SHOULD_HAVE_BEEN_RESOLVED_BY_TELEMETRY; VEHICLE_005 +51 trips after unplug; VEHICLE_006 +14 trips",
+      "affectedVehicleCount": 2,
+      "affectedEpisodeCount": 2,
+      "affectedConsumerCount": 4,
+      "impact": "Any future unplug without plug webhook will permanently degrade connectivity UX for LTE_R1 fleet",
+      "reproduction": "SELECT count(*) FROM dimo_device_connection_events WHERE event_type='OBD_DEVICE_UNPLUGGED' → compare with open episode logic",
+      "recommendation": "Treat as fleet-wide defect; implement closure rule + optional one-time read-model reconciliation",
+      "requiredTests": [
+        "audit phase 3 replay",
+        "phase 4 fleet episode CSV regression"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "FC-P0-04",
+      "severity": "P0",
+      "confidence": "CONFIRMED",
+      "category": "cross_surface",
+      "title": "Live telemetry and open unplug episode coexist on same vehicle",
+      "codeEvidence": "fleet-connectivity.util.ts deriveConnectionStatus independent of deviceConnection; frontend splits ObdRowChip vs DeviceConnectionWebhookChip",
+      "dataEvidence": "VEHICLE_005: lastSeen 2026-07-18T09:45:11Z, obd=true, openUnpluggedEpisode=true in 7d API window",
+      "affectedVehicleCount": 1,
+      "affectedEpisodeCount": 1,
+      "affectedConsumerCount": 3,
+      "impact": "Operators see online/live plus unplug warning simultaneously — erodes trust in Fleet Connectivity tab",
+      "reproduction": "Open Fleet Connectivity for VEHICLE_005 equivalent; compare ConnectionStatusChip vs DeviceConnectionWebhookChip",
+      "recommendation": "Unify via canonical ConnectivityViewModel or close episode on snapshot recovery",
+      "requiredTests": [
+        "frontend fleet-connectivity.badges.test.tsx contradictory state"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "FC-P1-01",
+      "severity": "P1",
+      "confidence": "CONFIRMED",
+      "category": "query_window",
+      "title": "7-day device event query window hides unresolved episodes without closing them",
+      "codeEvidence": "device-connection-query.service.ts:79-86 observedAt gte since7d",
+      "dataEvidence": "VEHICLE_006 unplug 2026-07-08 outside 7d window on 2026-07-18; DB row persists but API returns no episode",
+      "affectedVehicleCount": 1,
+      "affectedEpisodeCount": 1,
+      "affectedConsumerCount": 2,
+      "impact": "Incident UI may disappear while DB episode remains unresolved; webhookConfigured flips to not_configured incorrectly",
+      "reproduction": "Compare full-history episode query vs getFleetSummariesForVehicles 7d filter for VEHICLE_006",
+      "recommendation": "Keep open episodes until explicitly resolved regardless of query window; separate recent-events pagination from episode state",
+      "requiredTests": [
+        "device-connection-query.service.spec.ts episode older than 7d"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "FC-P1-02",
+      "severity": "P1",
+      "confidence": "CONFIRMED",
+      "category": "freshness_threshold",
+      "title": "Fleet API offline at 24h vs canonical UI offline at 48h",
+      "codeEvidence": "fleet-connectivity.util.ts STANDBY_MAX_MS 24h; telemetryFreshness.ts TELEMETRY_DELAYED_MAX_MS 48h",
+      "dataEvidence": "Phase 2 state rule map; no fleet vehicles in 24-48h band at audit time but architectural mismatch confirmed",
+      "affectedVehicleCount": 0,
+      "affectedEpisodeCount": 0,
+      "affectedConsumerCount": 3,
+      "impact": "Same vehicle can be standby on Fleet tab and signal_delayed on Dashboard for 24-48h quiet period",
+      "reproduction": "Simulate lastSeenAt now-30h across surfaces",
+      "recommendation": "Align Fleet connectivity freshness with canonical telemetryFreshness or document explicit product split",
+      "requiredTests": [
+        "fleet-connectivity.util.spec.ts threshold alignment"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "FC-P1-03",
+      "severity": "P1",
+      "confidence": "CONFIRMED",
+      "category": "provider_link",
+      "title": "Three CONNECTED vehicles lack ACTIVE consent ledger rows",
+      "codeEvidence": "vehicle_provider_consents queried per vehicle; legacy DIMO_DIRECT path may skip ledger",
+      "dataEvidence": "VEHICLE_001-003: connection_status CONNECTED, consent status NONE, telemetry active",
+      "affectedVehicleCount": 3,
+      "affectedEpisodeCount": 0,
+      "affectedConsumerCount": 1,
+      "impact": "Authorization/consent UI may disagree with live connectivity; compliance audit gap",
+      "reproduction": "Lateral join vehicle_provider_consents ORDER BY granted_at DESC LIMIT 1",
+      "recommendation": "Backfill consent rows for legacy links or derive display status from DimoVehicle + grants",
+      "requiredTests": [
+        "integration hub consent display test"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "FC-P1-04",
+      "severity": "P1",
+      "confidence": "HIGH",
+      "category": "webhook_reliability",
+      "title": "webhookConfigured inferred from empty 7d event list — false negative",
+      "codeEvidence": "device-connection-read-model.ts:365-367 else if dimoLinked webhookConfigured=not_configured",
+      "dataEvidence": "6/6 linked vehicles show zero events in 7d except 1 with unplug; 5 would show not_configured despite active DIMO triggers",
+      "affectedVehicleCount": 5,
+      "affectedEpisodeCount": 0,
+      "affectedConsumerCount": 1,
+      "impact": "Master admin may believe webhooks are not configured when only quiet fleet",
+      "reproduction": "Linked vehicle with no events in 7d → webhookConfigured not_configured",
+      "recommendation": "Persist webhook registration status separately; do not infer from event absence",
+      "requiredTests": [
+        "device-connection-read-model.spec.ts webhookConfigured quiet fleet"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "FC-P2-01",
+      "severity": "P2",
+      "confidence": "CONFIRMED",
+      "category": "telemetry_pipeline",
+      "title": "~14% DIMO poll FAILURE rate fleet-wide with null error_code",
+      "codeEvidence": "DimoSnapshotProcessor poll logging",
+      "dataEvidence": "60d: 425652 SUCCESS vs 71972 FAILURE across 6 linked vehicles (~12k failures each)",
+      "affectedVehicleCount": 6,
+      "affectedEpisodeCount": 0,
+      "affectedConsumerCount": 0,
+      "impact": "Intermittent ingest gaps; not root cause of unplug episode bug but reduces observability quality",
+      "reproduction": "SELECT status,count(*) FROM dimo_poll_logs WHERE created_at >= now()-interval '60 days' GROUP BY 1",
+      "recommendation": "Classify FAILURE error_code; alert on sustained failure ratio per vehicle",
+      "requiredTests": [],
+      "productionBlocker": false
+    },
+    {
+      "id": "FC-P2-02",
+      "severity": "P2",
+      "confidence": "CONFIRMED",
+      "category": "readiness_score",
+      "title": "Readiness score ignores device episode state and capability context",
+      "codeEvidence": "fleet-connectivity.util.ts readinessScore = signalCoveragePercent only",
+      "dataEvidence": "VEHICLE_005/006 readiness 88% while open unplug episode; evSoc penalizes ICE vehicles",
+      "affectedVehicleCount": 7,
+      "affectedEpisodeCount": 0,
+      "affectedConsumerCount": 1,
+      "impact": "Fleet Connectivity readiness misleading for operators during tamper episodes",
+      "reproduction": "Compare readiness-comparison CSV raw vs capability-adjusted columns",
+      "recommendation": "Capability-adjusted scoring + episode penalty or separate device health dimension",
+      "requiredTests": [
+        "fleet-connectivity.util.spec.ts capability adjusted readiness"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "FC-P2-03",
+      "severity": "P2",
+      "confidence": "CONFIRMED",
+      "category": "notifications",
+      "title": "No device-unplug notifications despite open episodes",
+      "codeEvidence": "Phase 1 scan: notification.evaluation not wired to device connection events",
+      "dataEvidence": "60d notifications query: 0 device_unplug types; unrelated alerts only",
+      "affectedVehicleCount": 2,
+      "affectedEpisodeCount": 2,
+      "affectedConsumerCount": 0,
+      "impact": "Silent operational risk if unplug during booking — severity computed but not notified",
+      "reproduction": "Query notifications 60d for device connection types → empty",
+      "recommendation": "Explicit product decision: wire notifications or document intentional silence",
+      "requiredTests": [],
+      "productionBlocker": false
+    }
+  ],
+  "webhookReliability": {
+    "received": 2,
+    "persisted": 2,
+    "processed": 2,
+    "ignoredBusiness": 0,
+    "failedTechnical": 0,
+    "duplicateRate": 0,
+    "missingProviderEventId": 0,
+    "unknownVehicle": 0,
+    "unknownBinding": 0,
+    "signatureErrors": 0,
+    "parserErrors": 0,
+    "medianIngestLagSeconds": 2.6,
+    "notes": "Fleet has only 2 historical device webhooks; reliability stats not statistically significant. Dedup buckets unique (2/2)."
+  },
+  "telemetryFreshness60d": [
+    {
+      "vehicle": "VEHICLE_001",
+      "firstSeen": "2026-06-22T20:59:27Z",
+      "lastSeen": "2026-07-17T20:58:05Z",
+      "snapshotCount": 518,
+      "medianCadenceSec": 29,
+      "p95CadenceSec": 8397,
+      "maxGapSec": 1782161967,
+      "canonicalState": "standby",
+      "fleetState": "standby"
+    },
+    {
+      "vehicle": "VEHICLE_002",
+      "firstSeen": "2026-06-23T09:29:37Z",
+      "lastSeen": "2026-07-17T21:23:25Z",
+      "snapshotCount": 4047,
+      "medianCadenceSec": 30,
+      "p95CadenceSec": 91,
+      "maxGapSec": 1782206977,
+      "canonicalState": "standby",
+      "fleetState": "standby"
+    },
+    {
+      "vehicle": "VEHICLE_003",
+      "firstSeen": "2026-06-23T09:24:17Z",
+      "lastSeen": "2026-07-18T09:04:12Z",
+      "snapshotCount": 1638,
+      "medianCadenceSec": 30,
+      "p95CadenceSec": 245,
+      "maxGapSec": 1782206657,
+      "canonicalState": "live",
+      "fleetState": "online"
+    },
+    {
+      "vehicle": "VEHICLE_004",
+      "firstSeen": "2026-06-07T13:16:51Z",
+      "lastSeen": "2026-07-18T09:52:33Z",
+      "snapshotCount": 1839,
+      "medianCadenceSec": 29,
+      "p95CadenceSec": 139,
+      "maxGapSec": 1780838211,
+      "canonicalState": "live",
+      "fleetState": "online"
+    },
+    {
+      "vehicle": "VEHICLE_005",
+      "firstSeen": "2026-07-02T20:02:38Z",
+      "lastSeen": "2026-07-18T09:45:11Z",
+      "snapshotCount": 675,
+      "medianCadenceSec": 30,
+      "p95CadenceSec": 297,
+      "maxGapSec": 1783022558,
+      "canonicalState": "live",
+      "fleetState": "online"
+    },
+    {
+      "vehicle": "VEHICLE_006",
+      "firstSeen": "2026-07-06T16:52:41Z",
+      "lastSeen": "2026-07-18T09:54:49Z",
+      "snapshotCount": 1602,
+      "medianCadenceSec": 29,
+      "p95CadenceSec": 131,
+      "maxGapSec": 1783356761,
+      "canonicalState": "live",
+      "fleetState": "online"
+    },
+    {
+      "vehicle": "VEHICLE_007",
+      "firstSeen": null,
+      "lastSeen": null,
+      "snapshotCount": 0,
+      "medianCadenceSec": null,
+      "p95CadenceSec": null,
+      "maxGapSec": null,
+      "canonicalState": "no_signal",
+      "fleetState": "not_connected"
+    }
+  ]
+}
