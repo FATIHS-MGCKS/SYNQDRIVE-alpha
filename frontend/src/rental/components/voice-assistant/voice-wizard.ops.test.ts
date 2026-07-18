@@ -16,7 +16,7 @@ function assistant(partial: Partial<VoiceAssistantData> = {}): VoiceAssistantDat
     id: 'va-1',
     organizationId: 'org-1',
     name: 'Fleet Assistant',
-    role: null,
+    role: 'SynqDrive Rental',
     personality: null,
     language: 'de',
     voiceId: 'voice-1',

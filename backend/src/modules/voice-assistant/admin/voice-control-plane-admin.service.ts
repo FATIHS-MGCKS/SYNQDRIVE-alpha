@@ -14,7 +14,16 @@ import { VoiceSubscriptionService } from '@modules/voice-billing/voice-subscript
 import { VoiceProtectionAuditService } from '@modules/voice-protection/voice-protection-audit.service';
 import { VoiceWebhookReplayService } from '@modules/voice-webhook-ingestion/voice-webhook-processing.service';
 import { ElevenLabsService } from '../elevenlabs.service';
+import { ElevenLabsProviderAdapter } from '../elevenlabs-provider/elevenlabs-provider.adapter';
 import { VoiceAssistantService } from '../voice-assistant.service';
+import { maskCallerNumber } from '../voice-conversation.util';
+import { startOfToday } from '../voice-assistant-admin.util';
+import {
+  deriveOverallPlatformHealth,
+  deriveProviderHealthState,
+  healthStateLabel,
+  type VoicePlatformHealthState,
+} from './voice-platform-health.util';
 import { AgentDeploymentService } from '../agent-deployment/agent-deployment.service';
 import {
   VoiceAgentDeploymentRepository,
@@ -46,6 +55,7 @@ export class VoiceControlPlaneAdminService {
     private readonly prisma: PrismaService,
     private readonly assistantService: VoiceAssistantService,
     private readonly elevenLabs: ElevenLabsService,
+    private readonly elevenLabsProvider: ElevenLabsProviderAdapter,
     private readonly twilioControlPlane: TwilioControlPlaneTelephonyService,
     private readonly billing: VoiceBillingService,
     private readonly subscriptions: VoiceSubscriptionService,
@@ -63,11 +73,23 @@ export class VoiceControlPlaneAdminService {
   ) {}
 
   async getPlatformStatus() {
-    const elevenLabsOk = this.elevenLabs.isConfigured();
-    const twilioIe1Ok = this.twilioControlPlane.isConfigured();
-    const mcpGatewayOk = Boolean(process.env.VOICE_MCP_GATEWAY_ENABLED !== 'false');
+    const mcpGatewayEnabled = process.env.VOICE_MCP_GATEWAY_ENABLED !== 'false';
+    const todayStart = startOfToday();
 
-    const [webhookCounts, failedRecent, queueCounts, latencySample] = await Promise.all([
+    const [
+      elevenLabsHealth,
+      twilioHealth,
+      webhookCounts,
+      failedRecent,
+      queueCounts,
+      latencySample,
+      callsToday,
+      usageTodayAgg,
+      activeVoiceOrgs,
+      failedProvisionings,
+    ] = await Promise.all([
+      this.elevenLabsProvider.checkHealth(),
+      this.twilioControlPlane.checkHealth(),
       this.prisma.voiceProviderWebhookEvent.groupBy({
         by: ['status'],
         _count: { _all: true },
@@ -89,6 +111,15 @@ export class VoiceControlPlaneAdminService {
         take: 200,
         orderBy: { receivedAt: 'desc' },
       }),
+      this.prisma.voiceConversation.count({ where: { startedAt: { gte: todayStart } } }),
+      this.prisma.voiceUsageEvent.aggregate({
+        where: { occurredAt: { gte: todayStart } },
+        _sum: { billableMinutes: true, providerCostCents: true, customerPriceCents: true },
+      }),
+      this.prisma.voiceAssistant.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.voiceProvisioningJob.count({
+        where: { status: 'FAILED', archivedAt: null },
+      }),
     ]);
 
     const statusMap = Object.fromEntries(
@@ -108,12 +139,49 @@ export class VoiceControlPlaneAdminService {
         ? Math.round(delaysMs.reduce((sum, v) => sum + v, 0) / delaysMs.length)
         : null;
 
+    const elevenLabsState = deriveProviderHealthState({
+      configured: elevenLabsHealth.configured,
+      healthy: elevenLabsHealth.healthy,
+      degraded: elevenLabsHealth.degraded,
+    });
+    const twilioState = deriveProviderHealthState({
+      configured: twilioHealth.configured,
+      healthy: twilioHealth.healthy,
+      degraded: twilioHealth.degraded,
+    });
+    const mcpState = deriveProviderHealthState({
+      configured: true,
+      healthy: mcpGatewayEnabled,
+      explicitlyDisabled: !mcpGatewayEnabled,
+    });
+    const webhookIngestionHealthy = backlog <= 50 && failedRecent === 0 && (queueCounts.failed ?? 0) < 10;
+    const webhookState = deriveProviderHealthState({
+      configured: true,
+      healthy: webhookIngestionHealthy,
+      degraded: !webhookIngestionHealthy && failedRecent > 0,
+    });
+
     const incidents: Array<{ id: string; severity: 'critical' | 'warning'; message: string }> = [];
-    if (!elevenLabsOk) {
+    if (elevenLabsState === 'not_configured') {
       incidents.push({ id: 'elevenlabs', severity: 'critical', message: 'ElevenLabs not configured' });
+    } else if (elevenLabsState === 'incident' || elevenLabsState === 'degraded') {
+      incidents.push({
+        id: 'elevenlabs',
+        severity: elevenLabsState === 'incident' ? 'critical' : 'warning',
+        message: elevenLabsHealth.message ?? 'ElevenLabs health check failed',
+      });
     }
-    if (!twilioIe1Ok) {
+    if (twilioState === 'not_configured') {
       incidents.push({ id: 'twilio-ie1', severity: 'warning', message: 'Twilio IE1 control plane not configured' });
+    } else if (twilioState !== 'healthy') {
+      incidents.push({
+        id: 'twilio-ie1',
+        severity: twilioState === 'incident' ? 'critical' : 'warning',
+        message: twilioHealth.message ?? 'Twilio IE1 health check failed',
+      });
+    }
+    if (!mcpGatewayEnabled) {
+      incidents.push({ id: 'mcp-gateway', severity: 'warning', message: 'MCP gateway disabled' });
     }
     if (failedRecent > 0) {
       incidents.push({
@@ -129,14 +197,62 @@ export class VoiceControlPlaneAdminService {
         message: `Webhook processing backlog elevated (${backlog})`,
       });
     }
+    if (failedProvisionings > 0) {
+      incidents.push({
+        id: 'provisioning-failures',
+        severity: 'warning',
+        message: `${failedProvisionings} failed provisioning job(s)`,
+      });
+    }
+
+    const providerStates = [elevenLabsState, twilioState, mcpState, webhookState];
+    const overallState = deriveOverallPlatformHealth({
+      providerStates,
+      hasCriticalIncident: incidents.some(i => i.severity === 'critical'),
+      hasWarningIncident: incidents.some(i => i.severity === 'warning'),
+    });
+
+    const mapProvider = (
+      state: VoicePlatformHealthState,
+      label: string,
+      ok: boolean,
+      message?: string | null,
+    ) => ({ ok, label, state, message: message ?? undefined });
 
     return {
       checkedAt: new Date().toISOString(),
+      overall: { state: overallState, label: healthStateLabel(overallState) },
       providers: {
-        elevenLabs: { ok: elevenLabsOk, label: elevenLabsOk ? 'Connected' : 'Not configured' },
-        twilioIe1: { ok: twilioIe1Ok, label: twilioIe1Ok ? 'Connected' : 'Not configured' },
-        mcpGateway: { ok: mcpGatewayOk, label: mcpGatewayOk ? 'Enabled' : 'Disabled' },
-        webhookIngestion: { ok: true, label: 'Active' },
+        elevenLabs: mapProvider(
+          elevenLabsState,
+          healthStateLabel(elevenLabsState),
+          elevenLabsHealth.healthy,
+          elevenLabsHealth.message,
+        ),
+        twilioIe1: mapProvider(
+          twilioState,
+          healthStateLabel(twilioState),
+          twilioHealth.healthy,
+          twilioHealth.message,
+        ),
+        mcpGateway: mapProvider(
+          mcpState,
+          mcpGatewayEnabled ? healthStateLabel(mcpState) : 'Disabled',
+          mcpGatewayEnabled,
+        ),
+        webhookIngestion: mapProvider(
+          webhookState,
+          healthStateLabel(webhookState),
+          webhookIngestionHealthy,
+        ),
+      },
+      operations: {
+        callsToday,
+        usageMinutesToday: usageTodayAgg._sum.billableMinutes ?? 0,
+        estimatedCostTodayCents:
+          usageTodayAgg._sum.customerPriceCents ?? usageTodayAgg._sum.providerCostCents ?? 0,
+        activeVoiceOrganizations: activeVoiceOrgs,
+        failedProvisionings,
       },
       queues: {
         waiting: queueCounts.waiting ?? 0,
@@ -157,7 +273,8 @@ export class VoiceControlPlaneAdminService {
     const overview = await this.assistantService.getAdminOverview();
     const orgIds = overview.assistants.map(row => row.organizationId);
 
-    const [subscriptions, budgets, billingSnapshots] = await Promise.all([
+    const [subscriptions, budgets, billingSnapshots, phoneRows, failedJobs, deployments] =
+      await Promise.all([
       this.prisma.voiceSubscription.findMany({
         where: { organizationId: { in: orgIds }, archivedAt: null },
         orderBy: { createdAt: 'desc' },
@@ -174,6 +291,20 @@ export class VoiceControlPlaneAdminService {
           }
         }),
       ),
+      this.prisma.voicePhoneNumber.findMany({
+        where: { organizationId: { in: orgIds }, archivedAt: null },
+        select: { organizationId: true, maskedPhoneNumber: true },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.voiceProvisioningJob.findMany({
+        where: { organizationId: { in: orgIds }, status: 'FAILED', archivedAt: null },
+        select: { organizationId: true },
+      }),
+      this.prisma.voiceAgentDeployment.findMany({
+        where: { organizationId: { in: orgIds }, archivedAt: null },
+        select: { organizationId: true, status: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+      }),
     ]);
 
     const subByOrg = new Map<string, (typeof subscriptions)[number]>();
@@ -182,6 +313,57 @@ export class VoiceControlPlaneAdminService {
     }
     const budgetByOrg = new Map(budgets.map(b => [b.organizationId, b]));
     const usageByOrg = new Map(billingSnapshots.map(s => [s.orgId, s.usage]));
+    const phoneByOrg = new Map<string, string>();
+    for (const phone of phoneRows) {
+      if (!phoneByOrg.has(phone.organizationId)) {
+        phoneByOrg.set(phone.organizationId, phone.maskedPhoneNumber);
+      }
+    }
+    const failedJobOrgIds = new Set(failedJobs.map(j => j.organizationId));
+    const deploymentByOrg = new Map<string, string>();
+    for (const dep of deployments) {
+      if (!deploymentByOrg.has(dep.organizationId)) {
+        deploymentByOrg.set(dep.organizationId, dep.status);
+      }
+    }
+
+    const deriveRolloutStatus = (sub: (typeof subscriptions)[number] | undefined): string | null => {
+      if (!sub) return 'DISABLED';
+      if (sub.status === 'SUSPENDED' || sub.status === 'CANCELLED') return 'SUSPENDED';
+      if (sub.status === 'ACTIVE' || sub.status === 'TRIAL' || sub.status === 'PAST_DUE') return 'ENABLED';
+      return 'DISABLED';
+    };
+
+    const deriveBudgetStatus = (
+      budget: (typeof budgets)[number] | undefined,
+      usage: (typeof billingSnapshots)[number]['usage'] | undefined,
+    ): 'ok' | 'near_limit' | 'over_limit' | 'not_set' => {
+      if (!budget?.monthlyBudgetCents && !usage?.includedMinutes) return 'not_set';
+      if ((usage?.overageMinutes ?? 0) > 0) return 'over_limit';
+      const included = usage?.includedMinutes ?? 0;
+      const remaining = usage?.remainingIncludedMinutes ?? 0;
+      if (included > 0 && remaining / included <= 0.2) return 'near_limit';
+      return 'ok';
+    };
+
+    const deriveProblemStatus = (
+      row: (typeof overview.assistants)[number],
+      openErrors: number,
+    ): 'ok' | 'warning' | 'critical' | 'incident' => {
+      if (row.assistantStatus === 'NOT_CONFIGURED') return 'ok';
+      if (row.connectionStatus === 'ERROR' || openErrors > 2) return 'critical';
+      if (row.providerWarning || openErrors > 0 || row.missingReadinessItemsCount > 0) return 'warning';
+      return 'ok';
+    };
+
+    const deriveProviderHealth = (
+      row: (typeof overview.assistants)[number],
+    ): 'healthy' | 'degraded' | 'error' | 'not_configured' => {
+      if (row.assistantStatus === 'NOT_CONFIGURED') return 'not_configured';
+      if (row.connectionStatus === 'ERROR') return 'error';
+      if (row.connectionStatus === 'DEGRADED' || row.providerWarning) return 'degraded';
+      return 'healthy';
+    };
 
     return {
       summary: overview.summary,
@@ -189,16 +371,30 @@ export class VoiceControlPlaneAdminService {
         const sub = subByOrg.get(row.organizationId);
         const budget = budgetByOrg.get(row.organizationId);
         const usage = usageByOrg.get(row.organizationId);
+        const consumedMinutes = usage?.consumedMinutes ?? 0;
+        const openErrors = row.lastError ? 1 : row.missingReadinessItemsCount;
+        const maskedPhoneNumber =
+          phoneByOrg.get(row.organizationId) ??
+          maskCallerNumber(row.phoneNumber) ??
+          null;
         return {
           ...row,
+          phoneNumber: maskedPhoneNumber,
+          maskedPhoneNumber,
           planCode: sub?.planCode ?? usage?.planCode ?? null,
           subscriptionStatus: sub?.status ?? null,
+          rolloutStatus: deriveRolloutStatus(sub),
           subaccountStatus: null,
-          consumedMinutes: usage?.consumedMinutes ?? 0,
+          consumedMinutes,
           remainingMinutes: usage?.remainingIncludedMinutes ?? 0,
           monthlyBudgetCents: budget?.monthlyBudgetCents ?? null,
           maxConcurrentCalls: budget?.maxConcurrentCalls ?? null,
-          openErrors: row.lastError ? 1 : row.missingReadinessItemsCount,
+          openErrors,
+          agentDeploymentStatus: deploymentByOrg.get(row.organizationId) ?? null,
+          provisioningFailed: failedJobOrgIds.has(row.organizationId),
+          budgetStatus: deriveBudgetStatus(budget, usage),
+          problemStatus: deriveProblemStatus(row, openErrors),
+          providerHealth: deriveProviderHealth(row),
         };
       }),
     };

@@ -34,6 +34,7 @@ import {
   VoiceProvisioningJobRepository,
   VoiceSubscriptionRepository,
 } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
+import { isVoiceStagingOrganization } from '@modules/voice-assistant/staging/voice-staging.constants';
 import {
   readTwilioProvisioningFlags,
   TWILIO_PROVISIONING_DEFAULTS,
@@ -67,10 +68,17 @@ type SearchCacheEntry = {
   results: TwilioPhoneNumberSearchResponse['results'];
 };
 
+type SelectionCacheEntry = {
+  organizationId: string;
+  phoneNumber: string;
+  expiresAt: number;
+};
+
 @Injectable()
 export class TwilioTenantProvisioningService {
   private readonly logger = new Logger(TwilioTenantProvisioningService.name);
   private readonly searchCache = new Map<string, SearchCacheEntry>();
+  private readonly selectionCache = new Map<string, SelectionCacheEntry>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -130,7 +138,7 @@ export class TwilioTenantProvisioningService {
   async provisionSubaccount(
     input: TwilioSubaccountProvisionInput,
   ): Promise<TwilioSubaccountProvisionResult> {
-    this.assertMasterConfirmation(input.actor);
+    this.assertProvisioningConfirmation(input.actor);
     const flags = readTwilioProvisioningFlags();
     const dryRun = input.actor.dryRun === true || !flags.stagingProviderActionsEnabled;
     const preview = await this.previewProvisioning(input.organizationId);
@@ -269,7 +277,7 @@ export class TwilioTenantProvisioningService {
     organizationId: string,
     actor: TwilioProvisioningActor,
   ): Promise<TwilioCredentialRegistrationResult> {
-    this.assertMasterConfirmation(actor);
+    this.assertProvisioningConfirmation(actor);
     const flags = readTwilioProvisioningFlags();
     const dryRun = actor.dryRun === true || !flags.stagingProviderActionsEnabled;
     this.assertMutationsAllowed(flags, dryRun);
@@ -345,14 +353,25 @@ export class TwilioTenantProvisioningService {
     });
 
     const expiresAt = now + TWILIO_PROVISIONING_DEFAULTS.phoneSearchCacheTtlMs;
-    const results = rows.map((row) => ({
-      maskedPhoneNumber: maskE164(row.phoneNumber) ?? '***',
-      locality: row.locality,
-      region: row.region,
-      capabilities: row.capabilities,
-      regulatoryRequirements: row.regulatoryRequirements,
-      expiresAt: new Date(expiresAt).toISOString(),
-    }));
+    const results = rows.map((row) => {
+      const selectionToken = digestCanonicalValue(
+        `${input.organizationId}:${row.phoneNumber}:${cacheKey}:${expiresAt}`,
+      );
+      this.selectionCache.set(selectionToken, {
+        organizationId: input.organizationId,
+        phoneNumber: row.phoneNumber,
+        expiresAt,
+      });
+      return {
+        selectionToken,
+        maskedPhoneNumber: maskE164(row.phoneNumber) ?? '***',
+        locality: row.locality,
+        region: row.region,
+        capabilities: row.capabilities,
+        regulatoryRequirements: row.regulatoryRequirements,
+        expiresAt: new Date(expiresAt).toISOString(),
+      };
+    });
     this.searchCache.set(cacheKey, { expiresAt, results });
 
     return {
@@ -364,16 +383,41 @@ export class TwilioTenantProvisioningService {
     };
   }
 
+  async purchasePhoneNumberBySelectionToken(input: {
+    organizationId: string;
+    selectionToken: string;
+    actor: TwilioProvisioningActor;
+  }): Promise<TwilioPhoneNumberPurchaseResult> {
+    const phoneNumber = this.resolveSelectionToken(input.organizationId, input.selectionToken);
+    return this.purchasePhoneNumber({
+      organizationId: input.organizationId,
+      phoneNumber,
+      actor: input.actor,
+    });
+  }
+
+  resolveSelectionToken(organizationId: string, selectionToken: string): string {
+    const entry = this.selectionCache.get(selectionToken);
+    if (!entry || entry.organizationId !== organizationId || entry.expiresAt < Date.now()) {
+      throw new BadRequestException('Number selection expired. Please search again.');
+    }
+    return entry.phoneNumber;
+  }
+
   async purchasePhoneNumber(
     input: TwilioPhoneNumberPurchaseInput,
   ): Promise<TwilioPhoneNumberPurchaseResult> {
-    this.assertMasterConfirmation(input.actor);
+    this.assertProvisioningConfirmation(input.actor);
     const flags = readTwilioProvisioningFlags();
     const dryRun = input.actor.dryRun === true || !flags.stagingProviderActionsEnabled;
     this.assertMutationsAllowed(flags, dryRun);
 
     const preview = await this.previewProvisioning(input.organizationId);
-    if (preview.trialRestricted) {
+    const stagingTrialBypass =
+      isVoiceStagingOrganization(input.organizationId) &&
+      flags.stagingProviderActionsEnabled &&
+      preview.trialRestricted;
+    if (preview.trialRestricted && !stagingTrialBypass) {
       throw new ForbiddenException('Phone number purchase is restricted while voice subscription is in trial.');
     }
 
@@ -527,6 +571,7 @@ export class TwilioTenantProvisioningService {
 
   resetCachesForTests(): void {
     this.searchCache.clear();
+    this.selectionCache.clear();
   }
 
   private async resolveRegulatoryStatus(
@@ -587,11 +632,21 @@ export class TwilioTenantProvisioningService {
       throw new TwilioTenantIsolationViolationError('Organization not found.');
     }
 
+    const flags = readTwilioProvisioningFlags();
+    const stagingOrg = isVoiceStagingOrganization(organizationId);
     const subscriptions = await this.subscriptionRepository.listByOrganization(organizationId);
     const activeSubscription = subscriptions.find(
       (row) => row.status === VoiceSubscriptionStatus.ACTIVE,
     );
-    const trialRestricted = !activeSubscription;
+    const trialSubscription = subscriptions.find(
+      (row) => row.status === VoiceSubscriptionStatus.TRIAL,
+    );
+    const voiceSubscriptionActive = Boolean(
+      activeSubscription || (stagingOrg && trialSubscription),
+    );
+    const trialRestricted =
+      !activeSubscription &&
+      !(stagingOrg && flags.stagingProviderActionsEnabled && trialSubscription);
 
     const existingAccount = await this.findTwilioSubaccount(organizationId);
     const parentTwilioConfigured = this.controlPlane.isConfigured();
@@ -599,8 +654,9 @@ export class TwilioTenantProvisioningService {
     return {
       blockers: [] as string[],
       warnings: [] as string[],
-      voiceSubscriptionActive: Boolean(activeSubscription),
-      voiceSubscriptionStatus: activeSubscription?.status ?? subscriptions[0]?.status ?? null,
+      voiceSubscriptionActive,
+      voiceSubscriptionStatus:
+        activeSubscription?.status ?? trialSubscription?.status ?? subscriptions[0]?.status ?? null,
       trialRestricted,
       existingSubaccount: Boolean(existingAccount),
       maskedSubaccountRef: existingAccount?.maskedExternalRef ?? null,
@@ -676,7 +732,7 @@ export class TwilioTenantProvisioningService {
     await this.findTwilioSubaccountOrThrow(organizationId);
   }
 
-  private assertMasterConfirmation(actor: TwilioProvisioningActor): void {
+  private assertProvisioningConfirmation(actor: TwilioProvisioningActor): void {
     if (!actor.idempotencyKey?.trim()) {
       throw new BadRequestException('idempotency-key header is required.');
     }

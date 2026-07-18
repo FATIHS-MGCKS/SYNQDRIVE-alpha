@@ -1,52 +1,93 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
 import { StatusChip } from '../../../components/patterns';
 import { EmptyState } from '../../../components/patterns/states';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../../components/ui/table';
 import { cn } from '../../../components/ui/utils';
 import { api, getErrorMessage } from '../../../lib/api';
 import type {
+  VoiceAssistantData,
   VoiceConversationEntry,
   VoiceConversationListParams,
   VoiceConversationOutcome,
 } from '../../../lib/api';
+import { formatMoneyCents } from '../../../lib/money';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
+import { VoiceConversationDetailDrawer } from './VoiceConversationDetailDrawer';
 import {
-  directionLabel,
+  conversationIntent,
+  estimatedCallCostCents,
   formatDuration,
+  isFinalizedConversation,
   isInbound,
   maskCallerNumber,
   OUTCOME_OPTIONS,
   outcomeBadgeTone,
+  resolveFollowUpKind,
+  resolvePrivacyStatus,
+  shortEntityRef,
 } from './voice-conversation.utils';
 
 interface VoiceConversationsPanelProps {
   orgId: string;
+  assistant: VoiceAssistantData | null;
   isDarkMode: boolean;
   cardClassName: string;
+  initialEscalatedOnly?: boolean;
+  preselectedConversationId?: string | null;
   onConversationsChange?: (items: VoiceConversationEntry[]) => void;
+  onPreselectHandled?: () => void;
 }
 
 const DEFAULT_FILTERS: VoiceConversationListParams = {
-  limit: 50,
+  limit: 25,
   page: 1,
 };
 
 export function VoiceConversationsPanel({
   orgId,
+  assistant,
   isDarkMode,
   cardClassName,
+  initialEscalatedOnly = false,
+  preselectedConversationId = null,
   onConversationsChange,
+  onPreselectHandled,
 }: VoiceConversationsPanelProps) {
+  const { t, locale } = useLanguage();
+  const moneyLocale = locale === 'de' ? 'de-DE' : 'en-US';
   const [items, setItems] = useState<VoiceConversationEntry[]>([]);
   const [total, setTotal] = useState(0);
-  const [filters, setFilters] = useState<VoiceConversationListParams>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<VoiceConversationListParams>({
+    ...DEFAULT_FILTERS,
+    escalatedOnly: initialEscalatedOnly || undefined,
+  });
   const [searchInput, setSearchInput] = useState('');
+  const [intentFilter, setIntentFilter] = useState('');
+  const [errorsOnly, setErrorsOnly] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [trainingExamples, setTrainingExamples] = useState<Set<string>>(new Set());
-  const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<VoiceConversationEntry | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [centsPerMinute, setCentsPerMinute] = useState(0);
+
+  useEffect(() => {
+    if (!orgId) return;
+    void api.voiceAssistant.billing.usage(orgId)
+      .then(usage => {
+        if (usage.consumedMinutes > 0 && usage.estimatedUsageRevenueCents > 0) {
+          setCentsPerMinute(Math.round(usage.estimatedUsageRevenueCents / usage.consumedMinutes));
+        }
+      })
+      .catch(() => undefined);
+  }, [orgId]);
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -57,37 +98,40 @@ export function VoiceConversationsPanel({
         ...filters,
         search: searchInput.trim() || undefined,
       });
-      setItems(result.items);
-      setTotal(result.total);
+      let nextItems = result.items;
+      if (intentFilter.trim()) {
+        const needle = intentFilter.trim().toLowerCase();
+        nextItems = nextItems.filter(item => {
+          const intent = conversationIntent(item)?.toLowerCase() ?? '';
+          return intent.includes(needle);
+        });
+      }
+      if (errorsOnly) {
+        nextItems = nextItems.filter(item => Boolean(item.errorMessage));
+      }
+      setItems(nextItems);
+      setTotal(errorsOnly || intentFilter.trim() ? nextItems.length : result.total);
       onConversationsChange?.(result.items);
     } catch (err) {
-      const message = getErrorMessage(err);
-      setError(message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [orgId, filters, searchInput, onConversationsChange]);
+  }, [orgId, filters, searchInput, intentFilter, errorsOnly, onConversationsChange]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const sync = async () => {
-    if (!orgId || syncing) return;
-    setSyncing(true);
-    setError(null);
-    try {
-      const result = await api.voiceAssistant.syncConversations(orgId);
-      await load();
-      return result;
-    } catch (err) {
-      const message = getErrorMessage(err);
-      setError(message);
-      throw err;
-    } finally {
-      setSyncing(false);
+  useEffect(() => {
+    if (!preselectedConversationId || items.length === 0) return;
+    const match = items.find(item => item.id === preselectedConversationId);
+    if (match) {
+      setSelected(match);
+      setDrawerOpen(true);
+      onPreselectHandled?.();
     }
-  };
+  }, [preselectedConversationId, items, onPreselectHandled]);
 
   const updateFilter = <K extends keyof VoiceConversationListParams>(
     key: K,
@@ -100,51 +144,6 @@ export function VoiceConversationsPanel({
     }));
   };
 
-  const toggleTrainingExample = (id: string) => {
-    setTrainingExamples(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const createTaskFromCall = async (conversation: VoiceConversationEntry) => {
-    if (!orgId) return;
-    setCreatingTaskId(conversation.id);
-    try {
-      const title = `Follow-up: voice call ${new Date(conversation.startedAt).toLocaleDateString()}`;
-      const description = [
-        conversation.summary ? `Summary: ${conversation.summary}` : null,
-        conversation.escalationReason ? `Escalation: ${conversation.escalationReason}` : null,
-        `Conversation ID: ${conversation.id}`,
-      ]
-        .filter(Boolean)
-        .join('\n\n');
-
-      await api.tasks.create(orgId, {
-        title,
-        description,
-        type: 'CUSTOMER_FOLLOWUP',
-        source: 'MANUAL',
-        priority: conversation.escalated ? 'HIGH' : 'NORMAL',
-        bookingId: conversation.linkedBookingId ?? undefined,
-        customerId: conversation.linkedCustomerId ?? undefined,
-        vehicleId: conversation.linkedVehicleId ?? undefined,
-        metadata: {
-          voiceConversationId: conversation.id,
-          outcome: conversation.outcome,
-        },
-        sourceKey: 'VOICE_ASSISTANT',
-      });
-      toast.success('Task created from call');
-    } catch (err) {
-      toast.error('Could not create task', { description: getErrorMessage(err) });
-    } finally {
-      setCreatingTaskId(null);
-    }
-  };
-
   const inputCls = cn(
     'w-full rounded-lg px-3 py-2 text-xs outline-none transition-colors',
     isDarkMode
@@ -152,60 +151,47 @@ export function VoiceConversationsPanel({
       : 'bg-gray-50 border border-gray-200 text-gray-800 focus:border-purple-400',
   );
 
-  const selectCls = inputCls;
-
   const page = filters.page ?? 1;
-  const limit = filters.limit ?? 50;
+  const limit = filters.limit ?? 25;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   const filterSummary = useMemo(() => {
     const parts: string[] = [];
-    if (filters.escalatedOnly) parts.push('Escalated');
-    if (filters.hasTranscript) parts.push('With transcript');
-    if (filters.outcome) parts.push(filters.outcome);
+    if (filters.escalatedOnly) parts.push(t('voice.conversations.filters.escalated'));
+    if (filters.outcome) parts.push(t(`voice.conversations.outcome.${filters.outcome}` as 'voice.conversations.outcome.RESOLVED'));
+    if (filters.direction) parts.push(t(`voice.conversations.direction.${String(filters.direction).toLowerCase()}` as 'voice.conversations.direction.inbound'));
+    if (errorsOnly) parts.push(t('voice.conversations.filters.errors'));
+    if (intentFilter.trim()) parts.push(intentFilter.trim());
     return parts.join(' · ');
-  }, [filters]);
+  }, [filters, errorsOnly, intentFilter, t]);
+
+  const openConversation = (conversation: VoiceConversationEntry) => {
+    setSelected(conversation);
+    setDrawerOpen(true);
+  };
 
   return (
-    <div className={cn(cardClassName, 'p-5 space-y-4')}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className={cn(cardClassName, 'space-y-4 p-5')}>
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className={cn('text-sm font-bold', isDarkMode ? 'text-white' : 'text-gray-900')}>
-            Conversation Logs
+            {t('voice.conversations.title')}
           </h3>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            Filter, review, and prepare follow-ups from synced calls.
-          </p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">{t('voice.conversations.subtitle')}</p>
         </div>
         <button
           type="button"
-          onClick={() => void sync().catch(() => undefined)}
-          disabled={syncing || loading}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60',
-            isDarkMode
-              ? 'surface-premium text-gray-300 hover:bg-neutral-700'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-          )}
+          onClick={() => void load()}
+          disabled={loading}
+          className="sq-press inline-flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
         >
-          {syncing ? (
-            <Icon name="loader-2" className="w-3 h-3 animate-spin" />
-          ) : (
-            <Icon name="refresh-cw" className="w-3 h-3" />
-          )}
-          {syncing ? 'Syncing…' : 'Sync from ElevenLabs'}
+          <Icon name={loading ? 'loader-2' : 'refresh-cw'} className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+          {t('voice.common.retry')}
         </button>
-      </div>
+      </header>
 
       {error && (
-        <div
-          className={cn(
-            'rounded-lg border px-3 py-2 text-xs',
-            isDarkMode
-              ? 'border-red-500/30 bg-red-500/10 text-red-300'
-              : 'border-red-200 bg-red-50 text-red-700',
-          )}
-        >
+        <div className="rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/10 px-3 py-2 text-xs text-[color:var(--status-critical)]">
           {error}
         </div>
       )}
@@ -218,263 +204,213 @@ export function VoiceConversationsPanel({
           onKeyDown={e => {
             if (e.key === 'Enter') void load();
           }}
-          placeholder="Search summary, transcript, number…"
+          placeholder={t('voice.conversations.searchPlaceholder')}
           className={inputCls}
+          aria-label={t('voice.conversations.searchPlaceholder')}
         />
         <select
           value={filters.direction ?? 'all'}
           onChange={e => updateFilter('direction', e.target.value as VoiceConversationListParams['direction'])}
-          className={selectCls}
+          className={inputCls}
+          aria-label={t('voice.conversations.filters.direction')}
         >
-          <option value="all">All directions</option>
-          <option value="inbound">Inbound</option>
-          <option value="outbound">Outbound</option>
+          <option value="all">{t('voice.conversations.filters.allDirections')}</option>
+          <option value="inbound">{t('voice.conversations.direction.inbound')}</option>
+          <option value="outbound">{t('voice.conversations.direction.outbound')}</option>
         </select>
         <select
           value={filters.outcome ?? 'all'}
           onChange={e => updateFilter('outcome', e.target.value as VoiceConversationOutcome)}
-          className={selectCls}
+          className={inputCls}
+          aria-label={t('voice.conversations.filters.outcome')}
         >
-          <option value="all">All outcomes</option>
+          <option value="all">{t('voice.conversations.filters.allOutcomes')}</option>
           {OUTCOME_OPTIONS.map(o => (
             <option key={o} value={o}>
-              {o}
+              {t(`voice.conversations.outcome.${o}` as 'voice.conversations.outcome.RESOLVED')}
             </option>
           ))}
         </select>
         <select
-          value={
-            filters.escalatedOnly
-              ? 'escalated'
-              : filters.hasTranscript
-                ? 'transcript'
-                : 'all'
-          }
-          onChange={e => {
-            const value = e.target.value;
-            setFilters(prev => ({
-              ...prev,
-              page: 1,
-              escalatedOnly: value === 'escalated' ? true : undefined,
-              hasTranscript: value === 'transcript' ? true : undefined,
-            }));
-          }}
-          className={selectCls}
+          value={filters.escalatedOnly ? 'escalated' : 'all'}
+          onChange={e => updateFilter('escalatedOnly', e.target.value === 'escalated' ? true : undefined)}
+          className={inputCls}
+          aria-label={t('voice.conversations.filters.escalation')}
         >
-          <option value="all">All calls</option>
-          <option value="escalated">Escalated only</option>
-          <option value="transcript">Has transcript</option>
+          <option value="all">{t('voice.conversations.filters.allCalls')}</option>
+          <option value="escalated">{t('voice.conversations.filters.escalated')}</option>
         </select>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-4">
         <input
           type="date"
           value={filters.dateFrom?.slice(0, 10) ?? ''}
-          onChange={e => updateFilter('dateFrom', e.target.value ? `${e.target.value}T00:00:00.000Z` : undefined)}
+          onChange={e =>
+            updateFilter('dateFrom', e.target.value ? `${e.target.value}T00:00:00.000Z` : undefined)
+          }
           className={inputCls}
-          aria-label="From date"
+          aria-label={t('voice.conversations.filters.from')}
         />
         <input
           type="date"
           value={filters.dateTo?.slice(0, 10) ?? ''}
-          onChange={e => updateFilter('dateTo', e.target.value ? `${e.target.value}T23:59:59.999Z` : undefined)}
+          onChange={e =>
+            updateFilter('dateTo', e.target.value ? `${e.target.value}T23:59:59.999Z` : undefined)
+          }
           className={inputCls}
-          aria-label="To date"
+          aria-label={t('voice.conversations.filters.to')}
         />
+        <input
+          type="search"
+          value={intentFilter}
+          onChange={e => setIntentFilter(e.target.value)}
+          placeholder={t('voice.conversations.filters.intent')}
+          className={inputCls}
+          aria-label={t('voice.conversations.filters.intent')}
+        />
+        <label className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2 text-xs">
+          <input
+            type="checkbox"
+            checked={errorsOnly}
+            onChange={e => setErrorsOnly(e.target.checked)}
+          />
+          {t('voice.conversations.filters.errors')}
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className={cn(
-            'rounded-lg px-3 py-2 text-xs font-semibold',
-            isDarkMode ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-50 text-purple-700',
-          )}
+          className="rounded-lg bg-[color:var(--brand-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--brand-ink)] disabled:opacity-60"
         >
-          {loading ? 'Loading…' : 'Apply filters'}
+          {loading ? t('voice.common.loading') : t('voice.conversations.applyFilters')}
         </button>
+        {filterSummary && (
+          <p className="text-[10px] text-muted-foreground">
+            {t('voice.conversations.activeFilters', { filters: filterSummary })}
+          </p>
+        )}
       </div>
-
-      {filterSummary && (
-        <p className="text-[10px] text-muted-foreground">Active filters: {filterSummary}</p>
-      )}
 
       {loading && items.length === 0 ? (
         <div className="flex items-center justify-center py-12 text-xs text-muted-foreground">
-          <Icon name="loader-2" className="w-4 h-4 animate-spin mr-2" />
-          Loading conversations…
+          <Icon name="loader-2" className="mr-2 h-4 w-4 animate-spin" />
+          {t('voice.common.loading')}
         </div>
       ) : items.length === 0 ? (
         <EmptyState
           compact
           icon={<Icon name="file-text" className="h-5 w-5" />}
-          title="No conversations match"
-          description="Sync from ElevenLabs or adjust filters to see call history, transcripts, and escalation patterns."
-          action={
-            <button
-              type="button"
-              onClick={() => void sync().catch(() => undefined)}
-              disabled={syncing}
-              className="sq-press rounded-lg border border-border/60 surface-premium px-4 py-2 text-xs font-semibold disabled:opacity-60"
-            >
-              {syncing ? 'Syncing…' : 'Sync from ElevenLabs'}
-            </button>
-          }
+          title={t('voice.conversations.emptyTitle')}
+          description={t('voice.conversations.emptyDesc')}
         />
       ) : (
         <>
           <p className="text-[10px] text-muted-foreground">
-            Showing {items.length} of {total} conversation{total === 1 ? '' : 's'}
+            {t('voice.conversations.showing', { count: items.length, total })}
           </p>
-          <div className="space-y-2">
-            {items.map(conversation => {
-              const expanded = expandedId === conversation.id;
-              const isTraining = trainingExamples.has(conversation.id);
-              return (
-                <div
-                  key={conversation.id}
-                  className={cn(
-                    'p-3 rounded-lg transition-colors',
-                    isDarkMode
-                      ? 'bg-neutral-900/50 hover:surface-premium'
-                      : 'bg-gray-50/80 hover:bg-gray-100/80',
-                  )}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Icon
-                        name={isInbound(conversation.direction) ? 'phone-incoming' : 'phone-outgoing'}
-                        className={cn(
-                          'w-3 h-3',
-                          isInbound(conversation.direction) ? 'text-emerald-500' : 'text-status-info',
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('voice.conversations.col.direction')}</TableHead>
+                <TableHead>{t('voice.conversations.col.customer')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('voice.conversations.col.booking')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('voice.conversations.col.intent')}</TableHead>
+                <TableHead>{t('voice.conversations.col.outcome')}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t('voice.conversations.col.duration')}</TableHead>
+                <TableHead className="hidden xl:table-cell">{t('voice.conversations.col.time')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('voice.conversations.col.followUp')}</TableHead>
+                <TableHead className="hidden xl:table-cell">{t('voice.conversations.col.cost')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('voice.conversations.col.privacy')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map(conversation => {
+                const privacy = resolvePrivacyStatus(conversation, assistant);
+                const followUp = resolveFollowUpKind(conversation);
+                const costCents = estimatedCallCostCents(conversation, centsPerMinute);
+                const finalized = isFinalizedConversation(conversation);
+                return (
+                  <TableRow
+                    key={conversation.id}
+                    className="cursor-pointer"
+                    onClick={() => openConversation(conversation)}
+                    tabIndex={0}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openConversation(conversation);
+                      }
+                    }}
+                    aria-label={t('voice.conversations.openDetail')}
+                  >
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 text-[10px]">
+                        <Icon
+                          name={isInbound(conversation.direction) ? 'phone-incoming' : 'phone-outgoing'}
+                          className="h-3 w-3"
+                        />
+                        {t(
+                          isInbound(conversation.direction)
+                            ? 'voice.conversations.direction.inbound'
+                            : 'voice.conversations.direction.outbound',
                         )}
-                      />
-                      <span
-                        className={cn(
-                          'text-xs font-semibold',
-                          isDarkMode ? 'text-gray-200' : 'text-gray-700',
-                        )}
-                      >
-                        {maskCallerNumber(conversation.callerNumber)}
                       </span>
-                      <StatusChip tone="neutral">{directionLabel(conversation.direction)}</StatusChip>
-                      <StatusChip tone={outcomeBadgeTone(conversation.outcome)}>
-                        {conversation.outcome}
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate text-[11px] font-medium">
+                      {conversation.linkedCustomerId
+                        ? shortEntityRef(conversation.linkedCustomerId)
+                        : maskCallerNumber(conversation.callerNumber) ?? t('voice.ops.unknownCaller')}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-[10px]">
+                      {conversation.linkedBookingId ? shortEntityRef(conversation.linkedBookingId) : '—'}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell max-w-[160px] truncate text-[10px] text-muted-foreground">
+                      {conversationIntent(conversation) ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <StatusChip tone={outcomeBadgeTone(conversation.outcome)} className="text-[9px]">
+                        {!finalized
+                          ? t('voice.conversations.pendingFinalization')
+                          : t(`voice.conversations.outcome.${conversation.outcome}` as 'voice.conversations.outcome.RESOLVED')}
                       </StatusChip>
-                      {conversation.escalated && (
-                        <StatusChip tone="warning">Escalated</StatusChip>
-                      )}
-                      {isTraining && (
-                        <StatusChip tone="ai">Training example</StatusChip>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                      {new Date(conversation.startedAt).toLocaleString()} ·{' '}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-[10px] tabular-nums">
                       {formatDuration(conversation.durationSeconds)}
-                    </span>
-                  </div>
-
-                  {conversation.summary && (
-                    <p className="text-[11px] text-muted-foreground mb-2">{conversation.summary}</p>
-                  )}
-                  {conversation.escalationReason && (
-                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-2">
-                      Escalation: {conversation.escalationReason}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    <button
-                      type="button"
-                      disabled={creatingTaskId === conversation.id}
-                      onClick={() => void createTaskFromCall(conversation).catch(() => undefined)}
-                      className={cn(
-                        'px-2 py-1 rounded text-[10px] font-semibold disabled:opacity-60',
-                        isDarkMode
-                          ? 'surface-premium text-gray-300 hover:bg-neutral-700'
-                          : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50',
-                      )}
-                    >
-                      {creatingTaskId === conversation.id ? 'Creating…' : 'Create task from call'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled
-                      title="Booking link API coming soon"
-                      className="px-2 py-1 rounded text-[10px] font-semibold opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
-                    >
-                      Link to booking
-                    </button>
-                    <button
-                      type="button"
-                      disabled
-                      title="Customer link API coming soon"
-                      className="px-2 py-1 rounded text-[10px] font-semibold opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
-                    >
-                      Link to customer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => toggleTrainingExample(conversation.id)}
-                      className={cn(
-                        'px-2 py-1 rounded text-[10px] font-semibold',
-                        isTraining
-                          ? isDarkMode
-                            ? 'bg-purple-500/20 text-purple-300'
-                            : 'bg-purple-50 text-purple-700'
-                          : isDarkMode
-                            ? 'surface-premium text-gray-300 hover:bg-neutral-700'
-                            : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50',
-                      )}
-                    >
-                      {isTraining ? 'Unmark training' : 'Mark as training example'}
-                    </button>
-                  </div>
-
-                  {conversation.hasTranscript ? (
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedId(expanded ? null : conversation.id)
-                        }
-                        className="text-[10px] font-semibold text-purple-500 hover:underline"
-                      >
-                        {expanded ? 'Hide transcript' : 'View transcript'}
-                      </button>
-                      {expanded && conversation.transcript && (
-                        <pre
-                          className={cn(
-                            'mt-2 text-[10px] p-2 rounded whitespace-pre-wrap max-h-48 overflow-y-auto',
-                            isDarkMode
-                              ? 'surface-premium text-gray-300'
-                              : 'bg-gray-100 text-gray-600',
-                          )}
-                        >
-                          {conversation.transcript}
-                        </pre>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-[10px] text-muted-foreground">No transcript available</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-[10px] tabular-nums text-muted-foreground">
+                      {new Date(conversation.startedAt).toLocaleString(moneyLocale)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-[10px]">
+                      {t(`voice.conversations.followUp.${followUp}` as 'voice.conversations.followUp.none')}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-[10px] tabular-nums">
+                      {costCents == null ? '—' : formatMoneyCents(costCents, 'EUR', moneyLocale)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-[10px]">
+                      {t(`voice.conversations.privacy.${privacy}` as 'voice.conversations.privacy.full')}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
+            <nav className="flex items-center justify-between pt-2" aria-label={t('voice.conversations.pagination')}>
               <button
                 type="button"
                 disabled={page <= 1 || loading}
                 onClick={() => setFilters(prev => ({ ...prev, page: Math.max(1, (prev.page ?? 1) - 1) }))}
                 className="text-xs font-semibold text-muted-foreground disabled:opacity-40"
               >
-                Previous
+                {t('voice.conversations.previous')}
               </button>
               <span className="text-[10px] text-muted-foreground">
-                Page {page} of {totalPages}
+                {t('voice.conversations.page', { page, total: totalPages })}
               </span>
               <button
                 type="button"
@@ -482,12 +418,22 @@ export function VoiceConversationsPanel({
                 onClick={() => setFilters(prev => ({ ...prev, page: (prev.page ?? 1) + 1 }))}
                 className="text-xs font-semibold text-muted-foreground disabled:opacity-40"
               >
-                Next
+                {t('voice.conversations.next')}
               </button>
-            </div>
+            </nav>
           )}
         </>
       )}
+
+      <VoiceConversationDetailDrawer
+        orgId={orgId}
+        conversation={selected}
+        assistant={assistant}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        centsPerMinute={centsPerMinute}
+        onTaskCreated={() => void load()}
+      />
     </div>
   );
 }

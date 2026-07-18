@@ -60,7 +60,7 @@ export class TwilioProvisioningProviderClient implements TwilioProvisioningProvi
 
   async createSubaccount(friendlyName: string): Promise<{ accountSid: string; authToken: string }> {
     try {
-      const client = this.controlPlane.getClient();
+      const client = this.controlPlane.getAccountsManagementClient();
       const account = await client.api.accounts.create({ friendlyName });
       if (!account.sid || !account.authToken) {
         throw new Error('Twilio subaccount response missing sid or auth token.');
@@ -76,7 +76,7 @@ export class TwilioProvisioningProviderClient implements TwilioProvisioningProvi
     friendlyName: string,
   ): Promise<TwilioSubaccountCredentials> {
     try {
-      const client = this.controlPlane.getClient();
+      const client = this.controlPlane.getAccountsManagementClient();
       const created = await client.api.accounts(accountSid).newKeys.create({ friendlyName });
       if (!created.sid || !created.secret) {
         throw new Error('Twilio API key response missing sid or secret.');

@@ -59,6 +59,8 @@ describe('VoiceAssistantService', () => {
     assertLegacyDiagnosticCallAllowed: jest.fn(),
   };
   const protection = { assertActivationAllowed: jest.fn().mockResolvedValue(undefined) };
+  const activityLog = { log: jest.fn().mockResolvedValue(undefined) };
+  const testCenter = { getSummary: jest.fn().mockResolvedValue({ ready: true, scenarios: [] }) };
 
   let service: VoiceAssistantService;
 
@@ -141,6 +143,8 @@ describe('VoiceAssistantService', () => {
       twilioControlPlaneTelephony as any,
       callOrchestration as any,
       protection as any,
+      activityLog as any,
+      testCenter as any,
     );
   });
 
@@ -398,5 +402,34 @@ describe('VoiceAssistantService', () => {
       }),
     );
     expect(updated.toolPermissions?.createTask).toBe('SUGGEST_ONLY');
+  });
+
+  it('audits tool permission changes with capability diff', async () => {
+    prisma.voiceAssistant.findUnique.mockResolvedValue(baseAssistant);
+    prisma.voiceAssistant.update.mockImplementation(async ({ data }) => ({
+      ...baseAssistant,
+      ...data,
+      toolPermissions: data.toolPermissions,
+    }));
+
+    await service.updateAssistant(
+      'org-1',
+      { toolPermissions: { createTask: 'SUGGEST_ONLY' } },
+      { actorUserId: 'user-1' },
+    );
+
+    expect(activityLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org-1',
+        userId: 'user-1',
+        action: 'UPDATE',
+        metaJson: expect.objectContaining({
+          auditAction: 'VOICE_ASSISTANT_TOOL_PERMISSIONS_UPDATE',
+          changes: expect.arrayContaining([
+            expect.objectContaining({ capability: 'createTask', to: 'SUGGEST_ONLY' }),
+          ]),
+        }),
+      }),
+    );
   });
 });

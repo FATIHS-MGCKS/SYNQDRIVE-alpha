@@ -35,6 +35,224 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-staging-e2e-acceptance-2026-07-18',
+    version: '4.9.610',
+    title: 'V4.9.610 — Voice AI: real staging E2E acceptance audit (10A)',
+    summary: [
+      'Acceptance runner `voice-staging-e2e-acceptance.ts` — automated negative suites, staging DB snapshot, live-call budget enforcement, GO/NO-GO decision.',
+      'Rollback script `voice-staging-e2e-rollback.sh` closes `VOICE_E2E_ALLOW_LIVE_CALLS` and clears allowlist; `voice-staging-e2e-readiness.util.ts` for testable decision logic.',
+      'Audit `architecture/VOICE_AI_REAL_STAGING_E2E_ACCEPTANCE_2026-07-18.md` — **E2E NO-GO** (0 live calls; 9B provisioning blocker).',
+    ],
+    reason: 'Prompt 10A — validate real staging voice chain within strict live-call budget; no production exposure.',
+    previousBehavior: 'Provisioning attempt (9B) documented NO-GO; no formal E2E acceptance runner or rollback helper.',
+    details:
+      'voice-staging-e2e-acceptance.ts, voice-staging-e2e-rollback.sh, voice-staging-e2e-readiness.util.ts, docs/audits/voice-ai-real-staging-e2e-acceptance-report.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T03:30:00.000Z',
+  },
+  {
+    id: 'voice-staging-provision-2026-07-18',
+    version: '4.9.608',
+    title: 'V4.9.608 — Voice AI: staging tenant provisioning attempt (9B)',
+    summary: [
+      'Orchestration script `voice-staging-provision.ts` for 10-step staging infra (subscription → subaccount → number → agent → import → MCP/webhooks).',
+      'Twilio IE1 fix: Account Admin API via Auth Token US client; staging TRIAL bypass for cost actions; EL non-English turbo v2_5 model.',
+      'Audit `docs/audits/voice-ai-staging-provisioning-report.md` — NO-GO live E2E (IE1 subaccount API blocker).',
+    ],
+    reason: 'Prompt 9B — provision full voice staging infrastructure; no live calls.',
+    previousBehavior: 'Preflight only (9A); no orchestrated staging provision script.',
+    details:
+      'voice-staging-provision.ts, voice-staging-subaccount-env.util.ts, twilio accounts management client, provisioning report.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T03:25:00.000Z',
+  },
+  {
+    id: 'voice-staging-preflight-2026-07-18',
+    version: '4.9.607',
+    title: 'V4.9.607 — Voice AI: staging preflight & secure secret configuration (9A)',
+    summary: [
+      'Dedicated internal staging org bootstrap (`org-voice-staging-e2e`) with synthetic customer/vehicle/booking and rollout:STAGING — no production data.',
+      'Secret reference evaluation + staging policy snapshot + GO/NO-GO derivation; runtime probes without live calls.',
+      'Audit report `docs/audits/voice-ai-staging-preflight.md`; `.env.voice-staging.example`; webhook reachability accepts unsigned 401.',
+    ],
+    reason:
+      'Prompt 9A — prepare secure voice staging environment before real provisioning (no numbers, agents, or calls).',
+    previousBehavior:
+      'No canonical staging org bootstrap; webhook reachability probe expected HTTP 200 on unsigned POST.',
+    details:
+      'voice-staging-org-bootstrap.ts, voice-staging-preflight-probes.ts, voice-staging-preflight.util.ts, backend/.env.voice-staging.example',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T12:00:00.000Z',
+  },
+  {
+    id: 'master-voice-org-workspace-2026-07-18',
+    version: '4.9.606',
+    title: 'V4.9.606 — Voice AI: master organization operations workspace (8B)',
+    summary: [
+      'Replaced simple org drawer with full Voice Operations Workspace: 8 tabs (overview, provisioning, numbers, agent, conversations, billing, events, audit).',
+      '10-step provisioning stepper with status, prerequisites, errors, and fachlich klare retry actions; secure writes with confirmation, reason, idempotency, audit.',
+      'URL deep links via voiceOrgId + voiceOrgTab; masked IDs/numbers; no transcripts or raw payloads.',
+    ],
+    reason:
+      'Prompt 8B — operational per-org workspace for Master Admin voice provisioning and day-2 operations.',
+    previousBehavior:
+      'Shallow DetailDrawer with four sections and generic Deploy/Replay/Fortsetzen buttons.',
+    details:
+      'VoiceOrgWorkspace + voice-org-provisioning.ops + voice-org-workspace.actions; architecture/VOICE_AI_MASTER_ORG_WORKSPACE_2026-07-18.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T08:00:00.000Z',
+  },
+  {
+    id: 'master-voice-platform-overview-2026-07-18',
+    version: '4.9.605',
+    title: 'V4.9.605 — Voice AI: master platform overview (8A)',
+    summary: [
+      'Master Voice Betriebszentrum: platform status with live ElevenLabs/Twilio health probes, MCP gateway, webhook ingestion backlog/DLQ, incidents, and today operations KPIs.',
+      'Organization list as responsive card grid with filters (plan, rollout, provider health, budget, provisioning errors, incidents); masked numbers/IDs, clear next action per org.',
+      'Backend health util + enriched listOrganizations; frontend VoicePlatformStatusPanel + VoiceOrganizationsPanel with loading/error/empty/degraded states.',
+    ],
+    reason:
+      'Prompt 8A — professional master-admin voice operations center with real runtime health, not env-var-only checks.',
+    previousBehavior:
+      'Platform tab showed basic provider booleans; organizations were a dense DataTable without rollout/budget/problem filters or masked operational context.',
+    details:
+      'See architecture/VOICE_AI_MASTER_PLATFORM_OVERVIEW_2026-07-18.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
+    id: 'voice-automation-analytics-settings-2026-07-18',
+    version: '4.9.604',
+    title: 'V4.9.604 — Voice AI: automations, analytics & settings (7B)',
+    summary: [
+      'Automations tab: eight predefined voice outbound use cases bound to OrgWorkflow (`scope.voiceAutomation`, `notification.prepare` channel voice) with preview, confirmation, cooldown, budget summary, and detail sheet.',
+      'Analytics tab: finalized-only solution/escalation rates, peak hours, top intents (no PII), billing section with estimated vs final labeling, process gap hints.',
+      'Settings: availability, privacy retention, budget policy, admin-only diagnostics (masked IDs, agent deployment readiness/deploy/rollback with confirmation).',
+    ],
+    reason:
+      'Complete active voice operations UI for automations, usage analytics, and settings without a second automation engine.',
+    previousBehavior:
+      'Automations tab showed permission groups; analytics lacked conversation-derived quality metrics; availability/privacy/budget settings were placeholders.',
+    details:
+      'See architecture/VOICE_AI_AUTOMATION_ANALYTICS_SETTINGS_2026-07-18.md',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
+    id: 'voice-overview-conversations-2026-07-18',
+    version: '4.9.603',
+    title: 'V4.9.603 — Voice AI: operations overview & conversation center (7A)',
+    summary: [
+      'Post-activation overview redesigned as eight-section voice operations center: status hero, today KPIs, minutes/forecast, escalations, recent calls, problems, automation activity, quick actions.',
+      'Conversation center: filterable table, pagination, detail drawer with collapsible transcript and privacy-aware audio gate; removed customer-facing ElevenLabs sync and provider IDs.',
+      'Finalized-call-only KPIs, DE/EN i18n, ops/conversation unit tests.',
+    ],
+    reason: 'Prompt 7A — professional voice AI operations and conversation hub.',
+    previousBehavior:
+      'Basic four KPIs, English conversation list with inline transcripts and Sync from ElevenLabs; no status hero or drawer.',
+    details:
+      'VoiceStatusHero, voice-ops-overview.ops, VoiceConversationDetailDrawer, VoiceConversationsPanel rewrite; architecture/VOICE_AI_OPS_OVERVIEW_CONVERSATIONS_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T04:30:00.000Z',
+  },
+  {
+    id: 'voice-readiness-activation-2026-07-18',
+    version: '4.9.602',
+    title: 'V4.9.602 — Voice AI: availability, test center & activation (6B)',
+    summary: [
+      'Step 6 Availability: weekly plan with multi-window days, timezone, special hours, holidays, after-hours routing, staff groups, loop protection, conflict warnings, mobile week plan, priority preview.',
+      'Step 7 Test Center: 10 rental scenarios, simulation-first test runs with PASS/PARTIAL/FAIL persistence, collapsible technical details, staging-gated live mode.',
+      'Step 8 Activation: server-side BLOCKER/WARNING/READY summary, readiness checks for availability + tests, activation audit.',
+    ],
+    reason: 'Prompt 6B — complete voice readiness and activation flow.',
+    previousBehavior:
+      'Flat business hours fields; English-only test UI with local verdicts; activation without structured server summary.',
+    details:
+      'VoiceAvailabilityPanel, VoiceTestCenter redesign, VoiceActivationSummaryPanel, test-runs + activation-summary APIs; architecture/VOICE_AI_AVAILABILITY_TEST_ACTIVATION_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T03:30:00.000Z',
+  },
+  {
+    id: 'voice-phone-onboarding-2026-07-18',
+    version: '4.9.601',
+    title: 'V4.9.601 — Voice AI: professional phone number onboarding (6A)',
+    summary: [
+      'Replaced provider-centric telephony wizard with managed-service phone onboarding (4 paths: new number, forward, port, SIP).',
+      'Org APIs: phone-onboarding status, masked number search with selection tokens, explicit paid purchase confirmation, forward/port/SIP flows.',
+      'Removed ElevenLabs Agent ID, Twilio SID, API-key hints, and external purchase prompts from customer UI.',
+    ],
+    reason: 'Prompt 6A — professional telephony onboarding without provider leakage.',
+    previousBehavior:
+      'VoiceTelephonyWizard exposed ElevenLabs agent IDs, provider API key messaging, and ElevenLabs number picker.',
+    details:
+      'VoicePhoneOnboardingPanel, voice-phone-onboarding service/API, phone_onboarding JSON migration, selection tokens; architecture/VOICE_AI_PHONE_NUMBER_ONBOARDING_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:45:00.000Z',
+  },
+  {
+    id: 'voice-knowledge-permission-center-2026-07-18',
+    version: '4.9.600',
+    title: 'V4.9.600 — Voice AI: knowledge and permission center (5B)',
+    summary: [
+      'Knowledge center: 13 tenant-scoped sources with CONNECTED/INCOMPLETE/STALE/NOT_PUBLISHED/ERROR, data provenance, static vs live separation, knowledge gaps, safe legal-document preview.',
+      'Permission center: 7 business groups with examples, risk copy, MCP impact summary, mobile accordion; maps to real server-side MCP allowlist.',
+      'Backend audits toolPermissions changes via ActivityLog; wizard knowledge step requires ≥6 connected sources.',
+    ],
+    reason: 'Prompt 5B — make knowledge and access rights understandable, secure, and enforced server-side.',
+    previousBehavior:
+      'Binary knowledge links (4 sources); 4 permission groups without impact summary; no permission-change audit.',
+    details:
+      'VoiceKnowledgeCenterPanel, voice-knowledge-center.ops, voice-permission-groups.ops (7 groups), VoicePermissionGroupsPanel redesign, ActivityLog on permission update; architecture/VOICE_AI_KNOWLEDGE_PERMISSION_CENTER_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:30:00.000Z',
+  },
+  {
+    id: 'voice-plan-assistant-onboarding-2026-07-18',
+    version: '4.9.599',
+    title: 'V4.9.599 — Voice AI: plan and assistant onboarding redesign (5A)',
+    summary: [
+      'Plan step: API-driven comparison table, recommended PRO, net-price note, usage examples, plan-change confirmation — voice-ui primitives.',
+      'Assistant step: dedicated onboarding form with plan-gated languages, grouped voice picker, safe audio preview (rate-limited), greeting/sample-call preview, draft vs live.',
+      'Wizard blocks continue until assistant validation passes; company name required for step completion.',
+    ],
+    reason: 'Prompt 5A — production-ready first two onboarding steps without provider leakage or magic numbers.',
+    previousBehavior:
+      'Basic plan cards; full VoiceAssistantBuilder in wizard with English copy and ElevenLabs references.',
+    details:
+      'VoiceWizardPlanStep, VoiceWizardAssistantStep, VoiceWizardVoicePicker, voice-plan/assistant-onboarding.ops; architecture/VOICE_AI_PLAN_ASSISTANT_ONBOARDING_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:10:00.000Z',
+  },
+  {
+    id: 'voice-ui-information-architecture-2026-07-18',
+    version: '4.9.598',
+    title: 'V4.9.598 — Voice AI: organization information architecture and route state',
+    summary: [
+      'Server-derived org voice states (NO_PLAN, ONBOARDING, READY_TO_ACTIVATE, ACTIVE, DEGRADED, SUSPENDED) from subscription, rollout, provisioning, deployment, telephony, MCP, webhooks, readiness, and budget.',
+      'URL-synchronized onboarding wizard and post-activation ops tabs with deep links, browser back/forward, and server-persisted wizard progress (`onboarding_step`, `onboarding_completed_steps`).',
+      'Settings sub-navigation (assistant, knowledge, permissions, telephony, availability, privacy, budget, diagnostics); provider diagnostics only under Diagnose; technical IDs masked.',
+    ],
+    reason: 'Prompt 4B — establish voice information architecture with no local-only UI truth.',
+    previousBehavior:
+      'Onboarding resume in localStorage; ops nav via VoiceOpsSectionNav without workspace state; no unified workspace API or URL-synced route validation.',
+    details:
+      'VoiceWorkspaceService + GET/PATCH workspace; migration 20260718140000; useVoiceWorkspace, voice-information-architecture.ts, VoiceSettingsPanel, VoiceResponsiveTabs; architecture/VOICE_AI_INFORMATION_ARCHITECTURE_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:05:00.000Z',
+  },
+  {
     id: 'voice-webhook-ingestion-prod-default-2026-07-18',
     version: '4.9.597',
     title: 'V4.9.597 — Voice AI: production-safe webhook ingestion default',
