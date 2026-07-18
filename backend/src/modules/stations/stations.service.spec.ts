@@ -7,6 +7,7 @@ import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
 import { StationOperationsService } from './station-operations.service';
+import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 
 const ORG = 'org1';
 const STATION_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -138,6 +139,7 @@ describe('StationsService', () => {
     stationAccessScope,
     stationOperations as unknown as StationOperationsService,
     stationVehicleRuntimeLoader as never,
+    stationDomainAuditServiceMock as never,
   );
 
   const stationRow = {

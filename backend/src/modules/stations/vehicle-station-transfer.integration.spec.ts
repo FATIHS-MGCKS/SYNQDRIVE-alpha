@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   VehicleStationTransferCommandName,
@@ -50,6 +51,7 @@ describe('VehicleStationTransferService', () => {
     prisma,
     manualOverrideService,
     stationsAccess,
+    stationDomainAuditServiceMock as never,
   );
 
   const vehicleRow = (overrides: Record<string, unknown> = {}) => ({

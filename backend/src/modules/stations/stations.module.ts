@@ -15,6 +15,9 @@ import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-p
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
 import { StationBookingRulesService } from './station-booking-rules.service';
 import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
+import { StationDomainAuditService } from './station-domain-audit.service';
+import { StationVehicleWorkflowLookupService } from './station-vehicle-workflow-lookup.service';
+import { StationVehicleWorkflowPreviewService } from './station-vehicle-workflow-preview.service';
 import { StationsAccessService } from './stations-access.service';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
@@ -49,6 +52,7 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     VehicleStationTransferService,
     StationBookingRulesService,
     StationRuleManualOverrideService,
+    StationDomainAuditService,
     StationsAccessService,
     StationsPermissionGuard,
     StationsUpdatePermissionGuard,

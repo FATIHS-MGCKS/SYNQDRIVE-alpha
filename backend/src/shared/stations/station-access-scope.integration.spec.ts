@@ -3,6 +3,7 @@ import { StationValidationService } from '@modules/stations/station-validation.s
 import { StationAccessScopeService } from './station-access-scope.service';
 import { StationScopeService } from './station-scope.service';
 import { STATION_SCOPE_MODE } from './station-scope.constants';
+import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 import { stationOperationsServiceMock } from '../../modules/stations/testing/station-operations.service.mock';
 
 const ORG = 'org-1';
@@ -25,6 +26,8 @@ describe('Station access scope integration (stations list + stats)', () => {
     {} as StationValidationService,
     stationAccessScope,
     stationOperationsServiceMock,
+    { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+    stationDomainAuditServiceMock as never,
   );
 
   const stationRow = {

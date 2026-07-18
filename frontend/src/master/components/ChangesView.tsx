@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-domain-audit-v49649-2026-07-18',
+    version: '4.9.649',
+    title: 'V4.9.649 — Stations V2: Kanonischer Domain-Audit-Trail (Prompt 69/78)',
+    summary: [
+      '`StationDomainAuditService` persistiert Stations-Domain-Ereignisse in `ActivityLog` (entity=STATION) statt nur HTTP-Interceptor-Logs.',
+      'Abgedeckte Actions: STATION_CREATED, MASTER/OPERATIONS_UPDATED, ACTIVATED/DEACTIVATED, ARCHIVED/RESTORED, PRIMARY_CHANGED, HOME/CURRENT/EXPECTED station changes, TRANSFER_* und BOOKING_RULE_OVERRIDDEN.',
+      'Pro Event: organizationId, stationId, optional vehicleId/bookingId, actor, timestamp, reason, from/to, correlationId — idempotent via correlationId-Lookup.',
+      'Verdrahtung in StationsService, VehicleStationTransferService und StationRuleManualOverrideService; Stations-HTTP-Pfade vom Auto-Audit-Interceptor ausgenommen.',
+    ],
+    reason: 'Prompt 69/78: Domainhistorie für Stations V2 operativ nachvollziehbar und Activity-Tab-fähig.',
+    previousBehavior:
+      'Command-Handler lieferten nur in-memory `audit`-Payloads; Activity-Tab las vorhandene Logs, aber Mutations schrieben kaum station-scoped Domain-Events.',
+    details:
+      'Backend: `station-domain-audit.constants.ts`, `station-domain-audit.util.ts`, `station-domain-audit.service.ts`; Wiring in create/update/lifecycle/archive/restore/set-primary/home/current/transfer/override; Vitest util+service specs.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T04:30:00.000Z',
+  },
+  {
     id: 'stations-v2-ui-quality-v49648-2026-07-20',
     version: '4.9.648',
     title: 'V4.9.648 — Stations V2: UI-Qualität & Accessibility (Prompt 68/78)',

@@ -2,6 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ActivityAction, ActivityEntity, Prisma } from '@prisma/client';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { StationDomainAuditService } from './station-domain-audit.service';
+import { StationDomainAuditAction } from '@shared/stations/station-domain-audit.constants';
 import {
   STATION_RULE_MANUAL_OVERRIDE_PERMISSION,
   StationRuleManualOverrideReferenceType,
@@ -32,6 +34,7 @@ export class StationRuleManualOverrideService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly stationDomainAudit: StationDomainAuditService,
   ) {}
 
   validate(input: PersistStationRuleManualOverrideInput) {
@@ -113,7 +116,39 @@ export class StationRuleManualOverrideService {
       },
     });
 
+    const stationIds = this.resolveStationIdsFromScope(input.scope);
+    await this.stationDomainAudit.recordForStations(stationIds, {
+      organizationId: input.organizationId,
+      auditAction: StationDomainAuditAction.BOOKING_RULE_OVERRIDDEN,
+      actorUserId: input.actorUserId,
+      vehicleId: input.scope.vehicleId ?? input.scope.transferVehicleId ?? null,
+      bookingId: input.reference.bookingId ?? null,
+      transferId: input.reference.transferId ?? null,
+      reason: validation.reason,
+      correlationId: `${input.organizationId}:BOOKING_RULE_OVERRIDDEN:${created.id}`,
+      meta: {
+        overrideId: created.id,
+        referenceType: created.referenceType,
+        scopeFingerprint: created.scopeFingerprint,
+        expiresAt: created.expiresAt.toISOString(),
+      },
+    });
+
     return this.toAuditRecord(created);
+  }
+
+  private resolveStationIdsFromScope(scope: StationRuleManualOverrideScope): string[] {
+    return [
+      ...new Set(
+        [
+          scope.pickupStationId,
+          scope.returnStationId,
+          scope.transferFromStationId,
+          scope.transferToStationId,
+          scope.actualStationId,
+        ].filter((id): id is string => typeof id === 'string' && id.length > 0),
+      ),
+    ];
   }
 
   async linkBookingReference(
