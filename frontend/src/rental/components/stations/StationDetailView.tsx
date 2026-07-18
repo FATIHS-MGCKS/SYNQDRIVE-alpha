@@ -4,16 +4,13 @@ import {
   ArrowLeft,
   Calendar,
   Car,
-  Clock,
   MapPin,
   Star,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   api,
   type Station,
-  type StationActivityEntry,
   type StationOperationsDto,
   type StationOperationsTimelineEntry,
   type StationSummaryReadModel,
@@ -57,6 +54,8 @@ import { StationFormModal } from './StationFormModal';
 import { StationVehicleWorkflowMenu } from './StationVehicleWorkflowMenu';
 import { StationOverviewTab } from './StationOverviewTab';
 import { StationFleetTab } from './StationFleetTab';
+import { StationTeamTab } from './StationTeamTab';
+import { StationActivityTab } from './StationActivityTab';
 
 interface StationDetailViewProps {
   stationId: string;
@@ -66,6 +65,7 @@ interface StationDetailViewProps {
   onTabChange?: (tab: StationDetailTab) => void;
   onOpenBooking?: (bookingId: string) => void;
   onOpenVehicle?: (vehicleId: string) => void;
+  onManageTeam?: () => void;
   isDarkMode?: boolean;
 }
 
@@ -77,6 +77,7 @@ export function StationDetailView({
   onTabChange,
   onOpenBooking,
   onOpenVehicle,
+  onManageTeam,
   isDarkMode: _isDarkMode = false,
 }: StationDetailViewProps) {
   const { orgId } = useRentalOrg();
@@ -86,9 +87,10 @@ export function StationDetailView({
   const [station, setStation] = useState<Station | null>(initialStation ?? null);
   const [summary, setSummary] = useState<StationSummaryReadModel | null>(null);
   const [team, setTeam] = useState<StationTeamDto | null>(null);
+  const [teamLoading, setTeamLoading] = useState(true);
+  const [teamError, setTeamError] = useState<unknown | null>(null);
   const [timeline, setTimeline] = useState<StationOperationsTimelineEntry[]>([]);
   const [operations, setOperations] = useState<StationOperationsDto | null>(null);
-  const [activity, setActivity] = useState<StationActivityEntry[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
@@ -135,8 +137,9 @@ export function StationDetailView({
     loadedTabsRef.current = new Set();
     setTimeline([]);
     setOperations(null);
-    setActivity([]);
     setTeam(null);
+    setTeamLoading(true);
+    setTeamError(null);
 
     try {
       const stationResult = await api.stations.get(orgId, stationId);
@@ -145,6 +148,7 @@ export function StationDetailView({
       setStation(null);
       setSummary(null);
       setError(e);
+      setTeamLoading(false);
       setLoading(false);
       return;
     }
@@ -152,10 +156,21 @@ export function StationDetailView({
     try {
       const summaryResult = await api.stations.summary(orgId, stationId);
       setSummary(summaryResult);
+      setSummaryError(null);
     } catch (e) {
       setSummary(null);
       setSummaryError(e);
+    }
+
+    try {
+      const teamResult = await api.stations.team(orgId, stationId);
+      setTeam(teamResult);
+      setTeamError(null);
+    } catch (e) {
+      setTeam(null);
+      setTeamError(e);
     } finally {
+      setTeamLoading(false);
       setLoading(false);
     }
   }, [orgId, stationId]);
@@ -182,14 +197,6 @@ export function StationDetailView({
           const ops = await api.stations.operations(orgId, stationId);
           setOperations(ops);
         }
-        if (dataKey === 'team') {
-          const teamResult = await api.stations.team(orgId, stationId);
-          setTeam(teamResult);
-        }
-        if (dataKey === 'activity' && stationCaps.canViewActivity) {
-          const rows = await api.stations.activity(orgId, stationId);
-          setActivity(Array.isArray(rows) ? rows : []);
-        }
         loadedTabsRef.current.add(dataKey);
       } catch (e) {
         setTabError(e);
@@ -197,7 +204,7 @@ export function StationDetailView({
         setTabLoading(false);
       }
     },
-    [orgId, stationCaps.canViewActivity, stationId, t],
+    [orgId, stationId],
   );
 
   useEffect(() => {
@@ -472,23 +479,18 @@ export function StationDetailView({
       )}
 
       {activeTab === 'team' && (
-        <TeamTab
+        <StationTeamTab
           team={team}
-          loading={tabLoading}
-          error={tabError}
-          onRetry={() => void loadTabData('team')}
-          t={t}
+          loading={teamLoading}
+          error={teamError}
+          canManageTeam={stationCaps.canManageTeam}
+          onRetry={() => void loadCore()}
+          onManageTeam={onManageTeam}
         />
       )}
 
       {activeTab === 'activity' && stationCaps.canViewActivity && (
-        <ActivityTab
-          activity={activity}
-          loading={tabLoading}
-          error={tabError}
-          onRetry={() => void loadTabData('activity')}
-          t={t}
-        />
+        <StationActivityTab stationId={stationId} />
       )}
 
       <StationFormModal
@@ -715,97 +717,6 @@ function OperationsTab({
   );
 }
 
-function TeamTab({
-  team,
-  loading,
-  error,
-  onRetry,
-  t,
-}: {
-  team: StationTeamDto | null;
-  loading: boolean;
-  error: unknown | null;
-  onRetry?: () => void;
-  t: (k: TranslationKey) => string;
-}) {
-  const resolution = resolveStationTabFetchState({
-    loading,
-    error,
-    itemCount: team?.staff.length ?? 0,
-    fallbackMessage: t('stations.detail.tabError'),
-  });
-
-  return (
-    <StationFetchStateBoundary
-      resolution={resolution}
-      onRetry={onRetry}
-      emptyIcon={<Users className="w-8 h-8" />}
-      emptyTitleKey="stations.detail.teamEmptyTitle"
-      emptyDescriptionKey="stations.detail.teamEmptyDescription"
-    >
-    <div className="surface-premium overflow-hidden">
-      <ul className="divide-y divide-border">
-        {team?.staff.map((member) => (
-          <li key={member.id} className="px-4 py-3 text-sm flex items-center justify-between gap-2">
-            <span className="font-medium">{member.name}</span>
-            <span className="text-xs text-muted-foreground">{member.role ?? '—'}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-    </StationFetchStateBoundary>
-  );
-}
-
-function ActivityTab({
-  activity,
-  loading,
-  error,
-  onRetry,
-  t,
-}: {
-  activity: StationActivityEntry[];
-  loading: boolean;
-  error: unknown | null;
-  onRetry?: () => void;
-  t: (k: TranslationKey) => string;
-}) {
-  const resolution = resolveStationTabFetchState({
-    loading,
-    error,
-    itemCount: activity.length,
-    fallbackMessage: t('stations.detail.tabError'),
-  });
-
-  return (
-    <StationFetchStateBoundary
-      resolution={resolution}
-      onRetry={onRetry}
-      emptyIcon={<Clock className="w-8 h-8" />}
-      emptyTitleKey="stations.detail.activityEmptyTitle"
-      emptyDescriptionKey="stations.detail.activityEmptyDescription"
-    >
-    <div className="surface-premium overflow-hidden">
-      <ul className="divide-y divide-border">
-        {activity.map((entry) => (
-          <li key={entry.id} className="px-4 py-3 text-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-              <div>
-                <p className="font-medium">{entry.action}</p>
-                {entry.description ? <p className="text-xs text-muted-foreground mt-0.5">{entry.description}</p> : null}
-              </div>
-              <div className="text-xs text-muted-foreground shrink-0">
-                {entry.userName ? `${entry.userName} · ` : ''}
-                {new Date(entry.createdAt).toLocaleString()}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-    </StationFetchStateBoundary>
-  );
-}
 
 function RuleRow({ label, value }: { label: string; value: boolean }) {
   return (

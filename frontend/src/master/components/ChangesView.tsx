@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-team-activity-v49647-2026-07-20',
+    version: '4.9.647',
+    title: 'V4.9.647 — Stations V2: Team & Aktivität fachlich korrekt (Prompt 67/78)',
+    summary: [
+      'Team-Tab nur bei `team.wired` (Membership-/Station-Scope-Verdrahtung); kein leerer Attrappen-Tab.',
+      '`getStationTeam` listet scoped Memberships mit Rolle, Scope-Label und Display-Name ohne unnötige E-Mail-Exposition.',
+      'Aktivitäten-Tab liest Domain-Audit-Trail (`ActivityLog`) mit Actor, Aktion, From/To, Zeitpunkt und Filter (Suche/Aktion).',
+      'Management-Link nur mit `stations.manage_team`; dedizierte `StationTeamTab` / `StationActivityTab` Komponenten; Vitest Sichtbarkeits-Tests.',
+    ],
+    reason: 'Prompt 67/78: Team und Aktivität operativ korrekt statt Placeholder-Listen.',
+    previousBehavior:
+      'Team-Tab nur bei nicht-leerem `staff` (immer leer); Aktivität als flache Liste mit `userName` ohne From/To oder Filter.',
+    details:
+      'Backend: `station-team-read-model.util.ts`, `station-activity-read-model.util.ts`, erweiterte DTOs/Query-Params. Frontend: `StationTeamTab.tsx`, `StationActivityTab.tsx`, Core-Load für Team-Sichtbarkeit, Settings→Users für Team-Management.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T04:30:00.000Z',
+  },
+  {
     id: 'stations-v2-view-states-v49646-2026-07-20',
     version: '4.9.646',
     title: 'V4.9.646 — Stations V2: Kanonische Datenzustände (Prompt 66/78)',
