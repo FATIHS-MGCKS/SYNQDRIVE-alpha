@@ -121,6 +121,30 @@ export interface PublicDriverCandidateDto {
   driverRole: 'PRIMARY' | 'ADDITIONAL' | 'UNKNOWN';
 }
 
+export interface PublicPartnerCandidateDto {
+  vendorId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  confirmationRequired: boolean;
+  displayLabel: string;
+  partnerKind: string;
+  vendorCategory: string;
+}
+
+export interface PublicPartnerNewSuggestionDto {
+  partnerKind: string;
+  confirmationRequired: true;
+  displayLabel: string;
+  sourceField: string;
+}
+
 /** API-safe document extraction projection — no storage keys or internal secrets. */
 export interface PublicDocumentExtractionDto {
   id: string;
@@ -133,6 +157,8 @@ export interface PublicDocumentExtractionDto {
   bookingCandidates: PublicBookingCandidateDto[] | null;
   customerCandidates: PublicCustomerCandidateDto[] | null;
   driverCandidates: PublicDriverCandidateDto[] | null;
+  partnerCandidates: PublicPartnerCandidateDto[] | null;
+  partnerNewSuggestion: PublicPartnerNewSuggestionDto | null;
   vehicle: PublicVehicleDisplayDto | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

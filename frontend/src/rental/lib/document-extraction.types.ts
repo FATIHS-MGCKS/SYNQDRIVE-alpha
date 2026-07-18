@@ -198,6 +198,30 @@ export interface PublicDriverCandidate {
   driverRole: 'PRIMARY' | 'ADDITIONAL' | 'UNKNOWN';
 }
 
+export interface PublicPartnerCandidate {
+  vendorId: string;
+  confidence: number;
+  matchReasons: string[];
+  conflicts: Array<{
+    code: string;
+    field: string;
+    message: string;
+    severity: 'BLOCKER' | 'WARNING';
+  }>;
+  rank: number;
+  confirmationRequired: boolean;
+  displayLabel: string;
+  partnerKind: string;
+  vendorCategory: string;
+}
+
+export interface PublicPartnerNewSuggestion {
+  partnerKind: string;
+  confirmationRequired: true;
+  displayLabel: string;
+  sourceField: string;
+}
+
 export interface PublicDocumentExtraction {
   id: string;
   vehicleId: string | null;
@@ -207,6 +231,8 @@ export interface PublicDocumentExtraction {
   bookingCandidates: PublicBookingCandidate[] | null;
   customerCandidates: PublicCustomerCandidate[] | null;
   driverCandidates: PublicDriverCandidate[] | null;
+  partnerCandidates: PublicPartnerCandidate[] | null;
+  partnerNewSuggestion: PublicPartnerNewSuggestion | null;
   vehicle: PublicVehicleDisplay | null;
   status: DocumentExtractionStatus;
   processingStage: DocumentExtractionStage;

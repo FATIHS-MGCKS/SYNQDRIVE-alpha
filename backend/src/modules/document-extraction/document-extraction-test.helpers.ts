@@ -166,6 +166,31 @@ export function makeDriverCandidateResolverMock() {
   };
 }
 
+export function makePartnerCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) =>
+      ['INVOICE', 'SERVICE', 'OIL_CHANGE', 'TIRE', 'BRAKE', 'BATTERY', 'TUV_REPORT', 'BOKRAFT_REPORT', 'FINE', 'DAMAGE', 'ACCIDENT'].includes(type),
+    ),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {
+        organizationNamePresent: false,
+        ibanPresent: false,
+        vatIdPresent: false,
+        taxIdPresent: false,
+        emailPresent: false,
+        addressPresent: false,
+        vendorIdPresent: false,
+        expectedPartnerKind: 'WORKSHOP',
+      },
+      candidates: [],
+      newPartnerSuggestion: null,
+      ambiguousPartnerMatch: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
 export function makeLifecycleMock() {
   return {
     buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({

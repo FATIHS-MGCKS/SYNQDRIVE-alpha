@@ -22,12 +22,15 @@ import { readVehicleCandidatePipelineState } from './vehicle-candidate-matching.
 import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
 import { readCustomerCandidatePipelineState } from './customer-candidate-matching.util';
 import { readDriverCandidatePipelineState } from './driver-candidate-matching.util';
+import { readPartnerCandidatePipelineState } from './partner-candidate-matching.util';
 import type {
   PublicUploadContextDisplayDto,
   PublicVehicleCandidateDto,
   PublicBookingCandidateDto,
   PublicCustomerCandidateDto,
   PublicDriverCandidateDto,
+  PublicPartnerCandidateDto,
+  PublicPartnerNewSuggestionDto,
 } from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
@@ -273,6 +276,34 @@ function buildDriverCandidatesDisplay(record: ExtractionRecord): PublicDriverCan
   }));
 }
 
+function buildPartnerCandidatesDisplay(record: ExtractionRecord): PublicPartnerCandidateDto[] | null {
+  const pipeline = readPartnerCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    vendorId: candidate.vendorId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+    displayLabel: candidate.displayLabel,
+    partnerKind: candidate.partnerKind,
+    vendorCategory: candidate.vendorCategory,
+  }));
+}
+
+function buildPartnerNewSuggestionDisplay(
+  record: ExtractionRecord,
+): PublicPartnerNewSuggestionDto | null {
+  const pipeline = readPartnerCandidatePipelineState(record.plausibility);
+  return pipeline?.newPartnerSuggestion ?? null;
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
@@ -288,6 +319,8 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     bookingCandidates: buildBookingCandidatesDisplay(record),
     customerCandidates: buildCustomerCandidatesDisplay(record),
     driverCandidates: buildDriverCandidatesDisplay(record),
+    partnerCandidates: buildPartnerCandidatesDisplay(record),
+    partnerNewSuggestion: buildPartnerNewSuggestionDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,

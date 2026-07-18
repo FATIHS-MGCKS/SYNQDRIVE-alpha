@@ -13,7 +13,7 @@ import {
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
 import { DocumentExtractionEnqueueFailedException } from './document-extraction-enqueue.exception';
 import { DOCUMENT_EXTRACTION_ERROR_CODES } from './document-extraction-lifecycle.util';
-import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, makeVehicleCandidateResolverMock, makeBookingCandidateResolverMock, makeCustomerCandidateResolverMock, makeDriverCandidateResolverMock } from './document-extraction-test.helpers';
+import { makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, makeVehicleCandidateResolverMock, makeBookingCandidateResolverMock, makeCustomerCandidateResolverMock, makeDriverCandidateResolverMock, makePartnerCandidateResolverMock } from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -155,6 +155,7 @@ describe('Document extraction pipeline (integration wiring)', () => {
       makeBookingCandidateResolverMock() as any,
       makeCustomerCandidateResolverMock() as any,
       makeDriverCandidateResolverMock() as any,
+      makePartnerCandidateResolverMock() as any,
     );
     service = new DocumentExtractionService(
       prisma as any,

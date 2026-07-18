@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-partner-candidate-resolver-2026-07-17',
+    version: '4.9.631',
+    title: 'V4.9.631 — Document Intake V2 Partner Candidate Resolver',
+    summary: [
+      'PartnerCandidateResolver für Werkstätten, Lieferanten, Versicherungen und Behörden aus Organisationsname, IBAN, USt-ID, Steuernummer, Anschrift, E-Mail und Rechnungs-/Servicebeziehungen.',
+      'Kandidaten mit vendorId, confidence, matchReasons, conflicts, partnerKind, displayLabel in _pipeline.partnerCandidates; newPartnerSuggestion ohne Auto-Create.',
+      'Exakte IDs höher als normalisierter Name; Behörden vs Werkstätten fachlich getrennt (CATEGORY_MISMATCH); IBAN nicht in Pipeline-Hints.',
+      'Tenant-scoped Vendor/OrgInvoice/ServiceCase-Queries; confirmationRequired immer.',
+    ],
+    reason:
+      'Rechnungs- und Servicedokumente brauchen Partner-Vorschläge aus OCR ohne automatisches Anlegen — mit sichtbaren Konflikten und Kategorietrennung.',
+    previousBehavior:
+      'Nur exakter Vendor-Name-Match beim Invoice-Apply; keine Partner-Kandidaten im Extraction-Pipeline-Flow; Behörden nur als Freitext.',
+    details: 'architecture/DOCUMENT_PARTNER_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
     id: 'document-driver-candidate-resolver-2026-07-17',
     version: '4.9.630',
     title: 'V4.9.630 — Document Intake V2 Driver Candidate Resolver',
