@@ -632,9 +632,21 @@ export class StationsController {
   async getActivity(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Query('action') action?: string,
+    @Query('search') search?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
     @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
   ) {
-    return this.stationsService.getStationActivity(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+    const parsedLimit = limit ? Number.parseInt(limit, 10) : undefined;
+    return this.stationsService.getStationActivity(orgId, id, req[STATION_SCOPE_CONTEXT_KEY], {
+      action: action?.trim() || undefined,
+      search: search?.trim() || undefined,
+      from: from?.trim() || undefined,
+      to: to?.trim() || undefined,
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    });
   }
 
   @Get(':id/calendar-exceptions')

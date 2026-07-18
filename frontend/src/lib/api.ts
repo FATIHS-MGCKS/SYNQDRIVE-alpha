@@ -3966,8 +3966,22 @@ export const api = {
       get<StationOperationsTimelineContractMetadata>(
         `/organizations/${orgId}/stations/operations-timeline/contract`,
       ),
-    activity: (orgId: string, stationId: string) =>
-      get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
+    activity: (
+      orgId: string,
+      stationId: string,
+      params?: StationActivityQueryParams,
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.action) q.set('action', params.action);
+      if (params?.search) q.set('search', params.search);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      if (params?.limit != null) q.set('limit', String(params.limit));
+      const qs = q.toString();
+      return get<StationActivityReadModel>(
+        `/organizations/${orgId}/stations/${stationId}/activity${qs ? `?${qs}` : ''}`,
+      );
+    },
     team: (orgId: string, stationId: string) =>
       get<StationTeamDto>(`/organizations/${orgId}/stations/${stationId}/team`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
@@ -9926,20 +9940,56 @@ export interface StationBookingRow {
   vehicleLabel: string;
 }
 
+export interface StationActivityQueryParams {
+  action?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
 export interface StationActivityEntry {
   id: string;
   action: string;
+  actionLabel: string;
   description: string | null;
-  userName: string;
+  changeSummary: string | null;
+  actor: {
+    id: string | null;
+    displayName: string;
+  };
+  fromLabel: string | null;
+  toLabel: string | null;
   createdAt: string;
 }
 
+export interface StationActivityReadModel {
+  entries: StationActivityEntry[];
+  filters: {
+    actions: string[];
+  };
+}
+
+export interface StationTeamMember {
+  membershipId: string;
+  userId: string;
+  displayName: string;
+  name: string;
+  role: string;
+  roleLabel: string | null;
+  scopeMode: 'ALL_STATIONS' | 'ASSIGNED_STATIONS' | 'THIS_STATION' | 'NO_STATIONS';
+  scopeLabel: string;
+  assignedStationCount: number;
+}
+
 export interface StationTeamDto {
+  wired: boolean;
   managerName: string | null;
   contactPerson: string | null;
   phone: string | null;
   email: string | null;
-  staff: Array<{ id: string; name: string; role: string | null }>;
+  staff: StationTeamMember[];
+  totalCount: number;
 }
 
 export interface StationUpsertPayload {

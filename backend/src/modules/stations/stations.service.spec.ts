@@ -305,6 +305,7 @@ describe('StationsService', () => {
         reasons: [],
       },
     } as never);
+    (prisma.organizationMembership.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.station.findFirst as jest.Mock).mockResolvedValue({
       managerName: 'Alex',
       phone: '+49123',
@@ -321,8 +322,10 @@ describe('StationsService', () => {
       {},
     );
     expect(operations.capacityStatus.configuredCapacity).toBe(12);
+    expect(team.wired).toBe(true);
     expect(team.managerName).toBe('Alex');
     expect(team.staff).toEqual([]);
+    expect(team.totalCount).toBe(0);
   });
 
   it('lists station activity without cross-station leakage', async () => {
@@ -333,9 +336,12 @@ describe('StationsService', () => {
       {
         id: 'log-1',
         action: 'UPDATE',
+        entity: 'STATION',
         description: 'Updated station',
+        changeSummary: 'INACTIVE → ACTIVE',
+        metaJson: null,
         createdAt: new Date('2026-07-17T12:00:00.000Z'),
-        user: { name: 'Admin', email: 'admin@example.com' },
+        user: { id: 'user-1', name: 'Admin', email: 'admin@example.com' },
       },
     ]);
 
@@ -350,7 +356,10 @@ describe('StationsService', () => {
         },
       }),
     );
-    expect(activity).toHaveLength(1);
+    expect(activity.entries).toHaveLength(1);
+    expect(activity.entries[0].actor.displayName).toBe('Admin');
+    expect(activity.entries[0].fromLabel).toBe('INACTIVE');
+    expect(activity.filters.actions).toEqual(['UPDATE']);
   });
 
   it('returns empty list when scope context is missing (no undefined=all semantics)', async () => {

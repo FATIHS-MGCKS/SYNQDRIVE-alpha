@@ -982,6 +982,10 @@ function RentalAppContent() {
                 setCurrentView('overview');
               }
             }}
+            onManageTeam={() => {
+              setSettingsTab('users');
+              setCurrentView('settings');
+            }}
           />
         ) : currentView === 'station-detail' ? (
           <div className="max-w-lg mx-auto py-8">

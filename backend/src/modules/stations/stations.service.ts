@@ -107,7 +107,12 @@ import {
   parseArchivedCapabilitiesSnapshot,
 } from './station-restore-preview.util';
 import type { StationRestorePreviewResult } from './station-restore-preview.types';
-import { parseStationIds } from '@shared/stations/station-scope.util';
+import {
+  buildStationTeamMemberDisplayName,
+  formatStationTeamMemberScope,
+  membershipMatchesStation,
+} from '@shared/stations/station-team-read-model.util';
+import { mapStationActivityEntry } from '@shared/stations/station-activity-read-model.util';
 import { isStationReadableInAccessScope } from '@shared/stations/station-access-scope.util';
 import {
   buildVehicleChangeHomeStationCommandAudit,
@@ -266,20 +271,58 @@ export interface StationVehicleAssignmentResult {
 
 export type { StationOperationsDto } from '@shared/stations/station-operations.resolver';
 
+export interface StationTeamMemberDto {
+  membershipId: string;
+  userId: string;
+  displayName: string;
+  /** Archive-preview compatibility alias for displayName. */
+  name: string;
+  role: string;
+  roleLabel: string | null;
+  scopeMode: 'ALL_STATIONS' | 'ASSIGNED_STATIONS' | 'THIS_STATION' | 'NO_STATIONS';
+  scopeLabel: string;
+  assignedStationCount: number;
+}
+
 export interface StationTeamDto {
+  /** True when membership-based station scope wiring is active for team listing. */
+  wired: boolean;
   managerName: string | null;
   contactPerson: string | null;
   phone: string | null;
   email: string | null;
-  staff: Array<{ id: string; name: string; role: string | null }>;
+  staff: StationTeamMemberDto[];
+  totalCount: number;
+}
+
+export interface StationActivityQuery {
+  action?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
 }
 
 export interface StationActivityEntryDto {
   id: string;
   action: string;
-  description: string;
-  userName: string;
+  actionLabel: string;
+  description: string | null;
+  changeSummary: string | null;
+  actor: {
+    id: string | null;
+    displayName: string;
+  };
+  fromLabel: string | null;
+  toLabel: string | null;
   createdAt: string;
+}
+
+export interface StationActivityReadModel {
+  entries: StationActivityEntryDto[];
+  filters: {
+    actions: string[];
+  };
 }
 
 @Injectable()
@@ -2046,6 +2089,9 @@ export class StationsService {
         status: 'ACTIVE',
       },
       include: {
+        organizationRole: {
+          select: { name: true },
+        },
         user: {
           select: {
             id: true,
@@ -2057,22 +2103,24 @@ export class StationsService {
       },
     });
 
-    const matched = memberships.filter((membership) => {
-      const assignedIds = parseStationIds(membership.stationIds);
-      if (assignedIds.includes(stationId)) return true;
-      const legacyScope = membership.stationScope?.trim();
-      return legacyScope === stationId;
-    });
+    const matched = memberships.filter((membership) =>
+      membershipMatchesStation(membership, stationId),
+    );
 
-    const items = matched.slice(0, limit).map((membership) => ({
-      membershipId: membership.id,
-      userId: membership.user.id,
-      name:
-        `${membership.user.firstName ?? ''} ${membership.user.lastName ?? ''}`.trim() ||
-        membership.user.email ||
-        membership.user.id,
-      role: membership.role,
-    }));
+    const items = matched.slice(0, limit).map((membership) => {
+      const scope = formatStationTeamMemberScope(membership, stationId);
+      return {
+        membershipId: membership.id,
+        userId: membership.user.id,
+        displayName: buildStationTeamMemberDisplayName(membership.user),
+        name: buildStationTeamMemberDisplayName(membership.user),
+        role: membership.role,
+        roleLabel: membership.roleLabel ?? membership.organizationRole?.name ?? null,
+        scopeMode: scope.scopeMode,
+        scopeLabel: scope.scopeLabel,
+        assignedStationCount: scope.assignedStationCount,
+      };
+    });
 
     return {
       totalCount: matched.length,
@@ -2150,12 +2198,16 @@ export class StationsService {
       },
     });
 
+    const staffResult = await this.loadStationScopedStaff(organizationId, stationId, 100);
+
     return {
+      wired: true,
       managerName: station.managerName,
       contactPerson: station.managerName,
       phone: station.phone,
       email: station.email,
-      staff: [],
+      staff: staffResult.items,
+      totalCount: staffResult.totalCount,
     };
   }
 
@@ -2163,27 +2215,59 @@ export class StationsService {
     organizationId: string,
     stationId: string,
     scope?: StationScopeContext,
-    limit = 50,
-  ): Promise<StationActivityEntryDto[]> {
+    query: StationActivityQuery = {},
+  ): Promise<StationActivityReadModel> {
     const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
     await this.stationAccessScope.requireReadableStation(access, stationId, {
       select: { id: true },
     });
 
+    const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+    const where = this.stationAccessScope.buildStationActivityWhere(access, stationId);
+    const createdAt: { gte?: Date; lte?: Date } = {};
+    if (query.from) {
+      const parsed = new Date(query.from);
+      if (!Number.isNaN(parsed.getTime())) createdAt.gte = parsed;
+    }
+    if (query.to) {
+      const parsed = new Date(query.to);
+      if (!Number.isNaN(parsed.getTime())) createdAt.lte = parsed;
+    }
+
     const entries = await this.prisma.activityLog.findMany({
-      where: this.stationAccessScope.buildStationActivityWhere(access, stationId),
+      where: {
+        ...where,
+        ...(query.action ? { action: query.action as never } : {}),
+        ...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),
+        ...(query.search?.trim()
+          ? {
+              OR: [
+                { description: { contains: query.search.trim(), mode: 'insensitive' } },
+                { changeSummary: { contains: query.search.trim(), mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
       orderBy: { createdAt: 'desc' },
-      take: Math.min(Math.max(limit, 1), 100),
-      include: { user: { select: { name: true, email: true } } },
+      take: limit,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
-    return entries.map((entry) => ({
-      id: entry.id,
-      action: entry.action,
-      description: entry.description,
-      userName: entry.user?.name || entry.user?.email || '',
-      createdAt: entry.createdAt.toISOString(),
-    }));
+    const mapped = entries.map((entry) => mapStationActivityEntry(entry));
+    const actions = Array.from(new Set(mapped.map((entry) => entry.action))).sort();
+
+    return {
+      entries: mapped,
+      filters: { actions },
+    };
   }
 
   private async countUnassignedVehicles(access: StationAccessScope): Promise<number> {

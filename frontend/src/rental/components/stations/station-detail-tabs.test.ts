@@ -17,16 +17,13 @@ describe('station-detail-tabs', () => {
     expect(tabs.map((tab) => tab.key)).not.toContain('team');
   });
 
-  it('adds team only when staff assignments exist', () => {
-    expect(isStationTeamTabWired({ staff: [], managerName: 'A', contactPerson: null, phone: null, email: null })).toBe(false);
+  it('adds team only when membership wiring is active', () => {
+    expect(isStationTeamTabWired({ wired: false, staff: [] } as never)).toBe(false);
     expect(
       isStationTeamTabWired({
-        staff: [{ id: 'u1', name: 'Alex', role: 'Manager' }],
-        managerName: 'Alex',
-        contactPerson: null,
-        phone: null,
-        email: null,
-      }),
+        wired: true,
+        staff: [{ membershipId: 'm1', userId: 'u1', displayName: 'Alex', role: 'WORKER', roleLabel: null, scopeMode: 'THIS_STATION', scopeLabel: 'This station', assignedStationCount: 1 }],
+      } as never),
     ).toBe(true);
   });
 

@@ -26,7 +26,7 @@ const TAB_LABELS: Record<StationDetailTab, StationDetailTabDescriptor['labelKey'
 };
 
 export function isStationTeamTabWired(team: StationTeamDto | null | undefined): boolean {
-  return (team?.staff?.length ?? 0) > 0;
+  return team?.wired === true;
 }
 
 export function buildStationDetailTabDescriptors(
@@ -44,12 +44,10 @@ export function buildStationDetailTabDescriptors(
   }));
 }
 
-export type StationDetailTabDataKey = 'schedule' | 'operations' | 'team' | 'activity';
+export type StationDetailTabDataKey = 'schedule' | 'operations';
 
 export function tabRequiresDataLoad(tab: StationDetailTab): StationDetailTabDataKey | null {
   if (tab === 'schedule') return 'schedule';
   if (tab === 'operations') return 'operations';
-  if (tab === 'team') return 'team';
-  if (tab === 'activity') return 'activity';
   return null;
 }
