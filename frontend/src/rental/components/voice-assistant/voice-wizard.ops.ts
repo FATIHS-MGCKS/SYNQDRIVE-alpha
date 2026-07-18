@@ -1,4 +1,5 @@
 import type { VoiceAssistantData, VoiceAssistantReadiness, VoicePlanCode } from '../../../lib/api';
+import { isAvailabilityStepComplete } from './voice-availability.ops';
 
 export const WIZARD_STEPS = [
   'plan',
@@ -26,6 +27,9 @@ export function wizardStorageKey(orgId: string): string {
   return `${WIZARD_STORAGE_PREFIX}.${orgId}`;
 }
 
+/**
+ * @deprecated Server workspace persists onboarding step — localStorage is legacy fallback only.
+ */
 export function loadWizardStep(orgId: string | null): VoiceWizardStep {
   if (!orgId || typeof window === 'undefined') return 'plan';
   try {
@@ -41,6 +45,7 @@ export function loadWizardStep(orgId: string | null): VoiceWizardStep {
   return 'plan';
 }
 
+/** @deprecated Prefer `api.voiceAssistant.updateOnboardingStep`. */
 export function saveWizardStep(orgId: string, step: VoiceWizardStep): void {
   if (typeof window === 'undefined') return;
   try {
@@ -89,6 +94,7 @@ export function isWizardStepComplete(
     case 'assistant':
       return Boolean(
         ctx.assistant.name?.trim() &&
+          ctx.assistant.role?.trim() &&
           ctx.assistant.voiceId &&
           ctx.assistant.greetingMessage?.trim(),
       );
@@ -102,11 +108,7 @@ export function isWizardStepComplete(
           (!ctx.assistant.telephonyEnabled && !ctx.assistant.inboundEnabled),
       );
     case 'availability':
-      return Boolean(
-        ctx.assistant.businessHoursStart?.trim() &&
-          ctx.assistant.businessHoursEnd?.trim() &&
-          (ctx.assistant.fallbackMessage?.trim() || ctx.assistant.escalationPhone?.trim()),
-      );
+      return isAvailabilityStepComplete(ctx.assistant);
     case 'tests':
       return ctx.testPassed;
     case 'activation':

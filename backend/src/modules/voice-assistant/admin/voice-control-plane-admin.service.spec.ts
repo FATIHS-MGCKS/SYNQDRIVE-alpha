@@ -19,6 +19,7 @@ import {
   VoiceSubscriptionRepository,
 } from '../control-plane/voice-control-plane.repository';
 import { AgentDeploymentService } from '../agent-deployment/agent-deployment.service';
+import { ElevenLabsProviderAdapter } from '../elevenlabs-provider/elevenlabs-provider.adapter';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { getQueueToken } from '@nestjs/bullmq';
 
@@ -31,6 +32,13 @@ describe('VoiceControlPlaneAdminService', () => {
       count: jest.Mock;
       findMany: jest.Mock;
     };
+    voiceConversation: { count: jest.Mock };
+    voiceUsageEvent: { aggregate: jest.Mock };
+    voiceAssistant: { count: jest.Mock };
+    voiceProvisioningJob: { count: jest.Mock; findMany: jest.Mock };
+    voiceSubscription: { findMany: jest.Mock };
+    voiceBudgetPolicy: { findMany: jest.Mock };
+    voiceAgentDeployment: { findMany: jest.Mock };
   };
   let subscriptionRepo: { findActiveByOrganization: jest.Mock };
   let subscriptions: { suspendSubscription: jest.Mock };
@@ -40,12 +48,26 @@ describe('VoiceControlPlaneAdminService', () => {
 
   beforeEach(async () => {
     prisma = {
-      voicePhoneNumber: { findMany: jest.fn() },
+      voicePhoneNumber: { findMany: jest.fn().mockResolvedValue([]) },
       voiceProviderWebhookEvent: {
         groupBy: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
         findMany: jest.fn().mockResolvedValue([]),
       },
+      voiceConversation: { count: jest.fn().mockResolvedValue(0) },
+      voiceUsageEvent: {
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: { billableMinutes: 0, providerCostCents: 0, customerPriceCents: 0 },
+        }),
+      },
+      voiceAssistant: { count: jest.fn().mockResolvedValue(0) },
+      voiceProvisioningJob: {
+        count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      voiceSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+      voiceBudgetPolicy: { findMany: jest.fn().mockResolvedValue([]) },
+      voiceAgentDeployment: { findMany: jest.fn().mockResolvedValue([]) },
     };
     subscriptionRepo = { findActiveByOrganization: jest.fn() };
     subscriptions = { suspendSubscription: jest.fn() };
@@ -66,8 +88,27 @@ describe('VoiceControlPlaneAdminService', () => {
         },
         { provide: ElevenLabsService, useValue: { isConfigured: () => true } },
         {
+          provide: ElevenLabsProviderAdapter,
+          useValue: {
+            checkHealth: jest.fn().mockResolvedValue({
+              configured: true,
+              healthy: true,
+              degraded: false,
+              message: null,
+            }),
+          },
+        },
+        {
           provide: TwilioControlPlaneTelephonyService,
-          useValue: { isConfigured: () => true },
+          useValue: {
+            isConfigured: () => true,
+            checkHealth: jest.fn().mockResolvedValue({
+              configured: true,
+              healthy: true,
+              degraded: false,
+              message: null,
+            }),
+          },
         },
         {
           provide: VoiceBillingService,

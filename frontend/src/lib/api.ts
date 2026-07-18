@@ -5893,10 +5893,33 @@ export const api = {
       post<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant/deactivate`, {}),
     readiness: (orgId: string) =>
       get<VoiceAssistantReadiness>(`/organizations/${orgId}/voice-assistant/readiness`),
+    workspace: (orgId: string) =>
+      get<VoiceWorkspaceView>(`/organizations/${orgId}/voice-assistant/workspace`),
+    updateOnboardingStep: (orgId: string, step: VoiceWizardStep) =>
+      patch<VoiceWorkspaceView>(`/organizations/${orgId}/voice-assistant/workspace/onboarding-step`, {
+        step,
+      }),
     voices: (_orgId: string) =>
       get<VoiceOption[]>(`/organizations/${_orgId}/voice-assistant/voices`),
     testSession: (orgId: string) =>
       post<VoiceAssistantTestSession>(`/organizations/${orgId}/voice-assistant/test-session`, {}),
+    testRuns: {
+      summary: (orgId: string) =>
+        get<VoiceTestCenterSummary>(`/organizations/${orgId}/voice-assistant/test-runs/summary`),
+      run: (orgId: string, payload: { scenarioId: VoiceTestScenarioId; mode?: 'simulation' | 'live' }) =>
+        post<VoiceTestRunView>(`/organizations/${orgId}/voice-assistant/test-runs`, payload),
+      recordVerdict: (
+        orgId: string,
+        runId: string,
+        payload: { verdict: VoiceTestVerdict; reason: string; operatorNotes?: string },
+      ) =>
+        post<VoiceTestRunView>(
+          `/organizations/${orgId}/voice-assistant/test-runs/${runId}/verdict`,
+          payload,
+        ),
+    },
+    activationSummary: (orgId: string) =>
+      get<VoiceActivationSummary>(`/organizations/${orgId}/voice-assistant/activation-summary`),
     conversations: (orgId: string, params?: VoiceConversationListParams) =>
       get<VoiceConversationListResult>(
         `/organizations/${orgId}/voice-assistant/conversations${buildQuery({
@@ -5941,6 +5964,63 @@ export const api = {
         payload,
       ),
 
+    phoneOnboarding: {
+      get: (orgId: string) =>
+        get<VoicePhoneOnboardingView>(`/organizations/${orgId}/voice-assistant/phone-onboarding`),
+      selectPath: (orgId: string, path: VoicePhoneOnboardingPath) =>
+        post<VoicePhoneOnboardingView>(`/organizations/${orgId}/voice-assistant/phone-onboarding/path`, {
+          path,
+        }),
+      searchNumbers: (
+        orgId: string,
+        payload: { areaCode?: string; numberType?: 'local' | 'mobile'; limit?: number },
+      ) =>
+        post<VoicePhoneNumberSearchResponse>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/search-numbers`,
+          payload,
+        ),
+      previewPurchase: (orgId: string, selectionToken: string) =>
+        post<{
+          maskedPhoneNumber: string | null;
+          monthlyCostCents: number;
+          regulatoryStatus: string | null;
+        }>(`/organizations/${orgId}/voice-assistant/phone-onboarding/purchase-preview`, {
+          selectionToken,
+          confirm: true,
+          dryRun: true,
+        }),
+      confirmPurchase: (orgId: string, selectionToken: string) =>
+        post<unknown>(`/organizations/${orgId}/voice-assistant/phone-onboarding/purchase`, {
+          selectionToken,
+          confirm: true,
+        }),
+      updateForward: (
+        orgId: string,
+        payload: { carrierNotes?: string; loopProtectionAcknowledged?: boolean },
+      ) =>
+        patch<VoicePhoneOnboardingView>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/forward`,
+          payload,
+        ),
+      recordForwardTest: (orgId: string, result: 'passed' | 'failed') =>
+        post<VoicePhoneOnboardingView>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/forward/test`,
+          { result },
+        ),
+      updatePort: (
+        orgId: string,
+        payload: { checklistAcknowledged: boolean; documentsSubmitted?: boolean },
+      ) =>
+        patch<VoicePhoneOnboardingView>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/port`,
+          payload,
+        ),
+      requestSip: (orgId: string, contactEmail?: string) =>
+        post<VoicePhoneOnboardingView>(`/organizations/${orgId}/voice-assistant/phone-onboarding/sip-request`, {
+          contactEmail,
+        }),
+    },
+
     billing: {
       plans: (orgId: string) =>
         get<VoicePlanCatalogEntry[]>(`/organizations/${orgId}/voice-assistant/billing/plans`),
@@ -5963,6 +6043,31 @@ export const api = {
         get<VoiceProtectionStatus>(`/organizations/${orgId}/voice-assistant/protection/status`),
       updateBudgetPolicy: (orgId: string, payload: VoiceBudgetPolicyUpdate) =>
         patch<VoiceBudgetPolicy>(`/organizations/${orgId}/voice-assistant/protection/budget-policy`, payload),
+    },
+
+    agentDeployment: {
+      draft: (orgId: string) =>
+        get<Record<string, unknown> | null>(`/organizations/${orgId}/voice-assistant/agent-deployment/draft`),
+      saveDraft: (orgId: string, payload: Record<string, unknown>) =>
+        patch<Record<string, unknown>>(`/organizations/${orgId}/voice-assistant/agent-deployment/draft`, payload),
+      readiness: (orgId: string) =>
+        get<VoiceAgentDeploymentReadiness>(`/organizations/${orgId}/voice-assistant/agent-deployment/readiness`),
+      diff: (orgId: string) =>
+        get<Record<string, unknown>>(`/organizations/${orgId}/voice-assistant/agent-deployment/diff`),
+      deploy: (orgId: string, body: { confirm?: boolean }, idempotencyKey?: string) =>
+        request<Record<string, unknown>>(
+          `/organizations/${orgId}/voice-assistant/agent-deployment/deploy`,
+          {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+          },
+        ),
+      rollback: (orgId: string, body: { confirm?: boolean }) =>
+        post<Record<string, unknown>>(
+          `/organizations/${orgId}/voice-assistant/agent-deployment/rollback`,
+          body,
+        ),
     },
 
     admin: {
@@ -10433,6 +10538,67 @@ export interface VoiceTelephonySettingsPayload {
   outboundEnabled?: boolean;
 }
 
+export type VoicePhoneOnboardingPath =
+  | 'new_synqdrive_number'
+  | 'forward_existing'
+  | 'port_number'
+  | 'sip_pbx';
+
+export type VoicePhoneOnboardingStatus =
+  | 'not_started'
+  | 'path_selected'
+  | 'evidence_required'
+  | 'under_review'
+  | 'reserved'
+  | 'active'
+  | 'failed'
+  | 'suspended';
+
+export interface VoicePhoneOnboardingView {
+  organizationId: string;
+  path: VoicePhoneOnboardingPath | null;
+  status: VoicePhoneOnboardingStatus;
+  statusLabelKey: string;
+  maskedAssignedNumber: string | null;
+  synqDriveTargetNumber: string | null;
+  provisioningJob: {
+    id: string;
+    status: string;
+    currentStep: string | null;
+    progressPct: number | null;
+    errorMessage: string | null;
+  } | null;
+  regulatory: {
+    overall: string;
+    bundle: string;
+    address: string;
+    endUser: string;
+  } | null;
+  regulatoryRequirements: string[];
+  monthlyNumberCostCents: number;
+  trialPurchaseBlocked: boolean;
+  canPurchase: boolean;
+  record: Record<string, unknown>;
+}
+
+export interface VoicePhoneNumberSearchResult {
+  selectionToken: string;
+  maskedPhoneNumber: string;
+  locality: string | null;
+  region: string | null;
+  capabilities: { voice: boolean; sms: boolean; mms: boolean };
+  regulatoryRequirements: string[];
+  expiresAt: string;
+}
+
+export interface VoicePhoneNumberSearchResponse {
+  organizationId: string;
+  results: VoicePhoneNumberSearchResult[];
+  monthlyCostCents?: number;
+  cached: boolean;
+  expiresAt: string;
+}
+
 export interface VoiceReadinessItem {
   key: string;
   label: string;
@@ -10445,6 +10611,73 @@ export interface VoiceAssistantReadiness {
   ready: boolean;
   checks: VoiceReadinessItem[];
   missing?: string[];
+}
+
+export type VoiceWizardStep =
+  | 'plan'
+  | 'assistant'
+  | 'knowledge'
+  | 'permissions'
+  | 'phone'
+  | 'availability'
+  | 'tests'
+  | 'activation';
+
+export type VoiceOpsTab =
+  | 'overview'
+  | 'conversations'
+  | 'automations'
+  | 'analytics'
+  | 'settings';
+
+export type VoiceSettingsSection =
+  | 'assistant'
+  | 'knowledge'
+  | 'permissions'
+  | 'telephony'
+  | 'availability'
+  | 'privacy'
+  | 'budget'
+  | 'diagnostics';
+
+export type VoicePrimaryState =
+  | 'NO_PLAN'
+  | 'ONBOARDING'
+  | 'READY_TO_ACTIVATE'
+  | 'ACTIVE'
+  | 'DEGRADED'
+  | 'SUSPENDED';
+
+export interface VoiceWorkspaceNavigation {
+  phase: 'onboarding' | 'operations';
+  wizardStep: VoiceWizardStep | null;
+  opsTab: VoiceOpsTab | null;
+  settingsSection: VoiceSettingsSection | null;
+  allowedWizardSteps: VoiceWizardStep[];
+  allowedOpsTabs: VoiceOpsTab[];
+  allowedSettingsSections: VoiceSettingsSection[];
+}
+
+export interface VoiceWorkspaceIssue {
+  code: string;
+  message: string;
+  blocking: boolean;
+}
+
+export interface VoiceWorkspaceView {
+  organizationId: string;
+  primaryState: VoicePrimaryState;
+  issues: VoiceWorkspaceIssue[];
+  navigation: VoiceWorkspaceNavigation;
+  onboardingStep: VoiceWizardStep;
+  completedSteps: VoiceWizardStep[];
+  rolloutStatus: 'DISABLED' | 'ENABLED' | 'SUSPENDED';
+  subscriptionStatus: string | null;
+  assistantStatus: string;
+  readinessReady: boolean;
+  testPassed: boolean;
+  canActivate: boolean;
+  updatedAt: string;
 }
 
 export interface VoiceOption {
@@ -10510,6 +10743,7 @@ export interface VoiceAssistantTestSession {
   agentId: string | null;
   provider: string;
   status: 'ready' | 'blocked';
+  mode: 'simulation' | 'live';
   instructions: string;
   expiresAt: string | null;
   warnings: string[];
@@ -10520,6 +10754,70 @@ export interface VoiceAssistantTestSession {
   developerDetails: {
     signedUrl: string;
   } | null;
+}
+
+export type VoiceTestScenarioId =
+  | 'booking_status'
+  | 'pickup'
+  | 'return_vehicle'
+  | 'missing_document'
+  | 'open_invoice'
+  | 'breakdown'
+  | 'damage'
+  | 'unknown_question'
+  | 'sensitive_change'
+  | 'staff_handover';
+
+export type VoiceTestVerdict = 'PASS' | 'PARTIAL' | 'FAIL';
+
+export interface VoiceTestRunView {
+  id: string;
+  scenarioId: VoiceTestScenarioId;
+  mode: 'simulation' | 'live';
+  verdict: VoiceTestVerdict | null;
+  suggestedVerdict: VoiceTestVerdict | null;
+  reason: string | null;
+  toolsUsed: string[];
+  operatorNotes: string | null;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  technicalDetails: {
+    assertions: Array<{ key: string; ok: boolean; detail: string }>;
+    readinessGaps: string[];
+  } | null;
+}
+
+export interface VoiceTestCenterSummary {
+  ready: boolean;
+  passedCount: number;
+  partialCount: number;
+  failedCount: number;
+  pendingCount: number;
+  requiredCount: number;
+  scenarios: Array<{
+    scenarioId: VoiceTestScenarioId;
+    latest: VoiceTestRunView | null;
+  }>;
+}
+
+export type VoiceActivationSummaryLevel = 'BLOCKER' | 'WARNING' | 'READY';
+
+export interface VoiceActivationSummaryItem {
+  id: string;
+  section: string;
+  label: string;
+  level: VoiceActivationSummaryLevel;
+  message: string;
+}
+
+export interface VoiceActivationSummary {
+  canActivate: boolean;
+  blockers: VoiceActivationSummaryItem[];
+  warnings: VoiceActivationSummaryItem[];
+  ready: VoiceActivationSummaryItem[];
+  rolloutStatus: 'DISABLED' | 'ENABLED' | 'SUSPENDED';
+  stagingLiveCallsEnabled: boolean;
 }
 
 export interface VoiceSyncConversationsResult {
@@ -10663,6 +10961,19 @@ export type VoiceBudgetPolicyUpdate = Partial<{
   destinationRegionPolicy: 'DE_ONLY' | 'DE_EEA' | 'CUSTOM';
 }>;
 
+export interface VoiceAgentDeploymentReadinessItem {
+  key: string;
+  label: string;
+  level: 'blocker' | 'warning';
+  message: string;
+}
+
+export interface VoiceAgentDeploymentReadiness {
+  ready: boolean;
+  blockers: VoiceAgentDeploymentReadinessItem[];
+  warnings: VoiceAgentDeploymentReadinessItem[];
+}
+
 export interface VoiceAssistantAdminOverviewRow {
   organizationId: string;
   organizationName: string;
@@ -10773,13 +11084,35 @@ export interface VoiceMasterAdminOrgBilling {
   finalCostCents: number;
 }
 
+export type VoicePlatformHealthState =
+  | 'healthy'
+  | 'degraded'
+  | 'incident'
+  | 'disabled'
+  | 'not_configured';
+
+export interface VoiceControlPlaneProviderStatus {
+  ok: boolean;
+  label: string;
+  state: VoicePlatformHealthState;
+  message?: string;
+}
+
 export interface VoiceControlPlanePlatformStatus {
   checkedAt: string;
+  overall: { state: VoicePlatformHealthState; label: string };
   providers: {
-    elevenLabs: { ok: boolean; label: string };
-    twilioIe1: { ok: boolean; label: string };
-    mcpGateway: { ok: boolean; label: string };
-    webhookIngestion: { ok: boolean; label: string };
+    elevenLabs: VoiceControlPlaneProviderStatus;
+    twilioIe1: VoiceControlPlaneProviderStatus;
+    mcpGateway: VoiceControlPlaneProviderStatus;
+    webhookIngestion: VoiceControlPlaneProviderStatus;
+  };
+  operations: {
+    callsToday: number;
+    usageMinutesToday: number;
+    estimatedCostTodayCents: number;
+    activeVoiceOrganizations: number;
+    failedProvisionings: number;
   };
   queues: {
     waiting: number;
@@ -10798,12 +11131,19 @@ export interface VoiceControlPlanePlatformStatus {
 export type VoiceControlPlaneOrganizationRow = VoiceAssistantAdminOverviewRow & {
   planCode: string | null;
   subscriptionStatus: string | null;
+  rolloutStatus: string | null;
   subaccountStatus: string | null;
+  maskedPhoneNumber: string | null;
   consumedMinutes: number;
   remainingMinutes: number;
   monthlyBudgetCents: number | null;
   maxConcurrentCalls: number | null;
   openErrors: number;
+  agentDeploymentStatus: string | null;
+  provisioningFailed: boolean;
+  budgetStatus: 'ok' | 'near_limit' | 'over_limit' | 'not_set';
+  problemStatus: 'ok' | 'warning' | 'critical' | 'incident';
+  providerHealth: 'healthy' | 'degraded' | 'error' | 'not_configured';
 };
 
 export interface VoiceControlPlaneOrganizationsResponse {

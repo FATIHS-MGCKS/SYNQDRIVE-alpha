@@ -7,6 +7,7 @@ import type {
   CreateVoiceBillingPeriodInput,
   CreateVoiceProviderWebhookEventInput,
   CreateVoiceTestRunInput,
+  UpdateVoiceTestRunInput,
   CreateVoiceToolExecutionInput,
   CreateVoiceUsageEventInput,
   DecideVoiceApprovalRequestInput,
@@ -586,6 +587,21 @@ export class VoiceTestRunRepository {
     });
   }
 
+  listByOrganization(organizationId: string, limit = 50) {
+    return this.prisma.voiceTestRun.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  findLatestByScenario(organizationId: string, scenario: string) {
+    return this.prisma.voiceTestRun.findFirst({
+      where: { organizationId, scenario },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   create(input: CreateVoiceTestRunInput) {
     return this.prisma.voiceTestRun.create({
       data: {
@@ -594,6 +610,13 @@ export class VoiceTestRunRepository {
         scenario: input.scenario,
         assertions: input.assertions ?? [],
       },
+    });
+  }
+
+  update(organizationId: string, id: string, input: UpdateVoiceTestRunInput) {
+    return this.prisma.voiceTestRun.updateMany({
+      where: { id, organizationId },
+      data: input,
     });
   }
 }

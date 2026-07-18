@@ -116,3 +116,11 @@ export type CreateVoiceTestRunInput = {
   scenario: string;
   assertions?: Prisma.InputJsonValue;
 };
+
+export type UpdateVoiceTestRunInput = {
+  status?: 'PENDING' | 'RUNNING' | 'PASSED' | 'FAILED' | 'CANCELLED';
+  assertions?: Prisma.InputJsonValue;
+  redactedResult?: Prisma.InputJsonValue;
+  startedAt?: Date;
+  completedAt?: Date;
+};

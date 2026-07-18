@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { TwilioModule } from '@modules/twilio/twilio.module';
 import { VoiceBillingModule } from '@modules/voice-billing/voice-billing.module';
 import { VoiceCallOrchestrationModule } from '@modules/voice-call-orchestration/voice-call-orchestration.module';
@@ -33,11 +34,17 @@ import { VoiceControlPlaneAdminService } from './admin/voice-control-plane-admin
 import { VoiceProviderWebhookEventRepository } from './control-plane/voice-audit-persistence.repository';
 import { VoiceRetentionService } from './security/voice-retention.service';
 import { VoiceSecretsStartupService } from './security/voice-secrets-startup.service';
+import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
+import { VoicePhoneOnboardingService } from './phone-onboarding/voice-phone-onboarding.service';
+import { VoiceTestRunRepository } from './control-plane/voice-audit-persistence.repository';
+import { VoiceTestCenterService } from './test-center/voice-test-center.service';
+import { VoiceActivationSummaryService } from './activation/voice-activation-summary.service';
 
 @Module({
   imports: [
     PrismaModule,
     ConfigModule,
+    ActivityLogModule,
     TwilioModule,
     forwardRef(() => VoiceCallOrchestrationModule),
     VoiceProtectionModule,
@@ -72,6 +79,11 @@ import { VoiceSecretsStartupService } from './security/voice-secrets-startup.ser
     VoiceControlPlaneAdminService,
     VoiceRetentionService,
     VoiceSecretsStartupService,
+    VoiceWorkspaceService,
+    VoicePhoneOnboardingService,
+    VoiceTestRunRepository,
+    VoiceTestCenterService,
+    VoiceActivationSummaryService,
   ],
   exports: [
     VoiceAssistantService,

@@ -6,6 +6,7 @@ export interface VoiceTestSessionResponse {
   agentId: string | null;
   provider: string;
   status: VoiceTestSessionStatus;
+  mode: 'simulation' | 'live';
   instructions: string;
   expiresAt: string | null;
   warnings: string[];
@@ -22,7 +23,7 @@ export function buildTestSessionWarnings(assistant: VoiceAssistant): string[] {
   const warnings: string[] = [];
 
   if (!assistant.elevenLabsAgentId) {
-    warnings.push('Agent is not provisioned — activate the assistant first.');
+    warnings.push('Agent is not provisioned yet — use simulation tests before activation.');
   }
   if (!assistant.voiceId?.trim()) {
     warnings.push('No voice selected — callers will not hear the intended brand voice.');

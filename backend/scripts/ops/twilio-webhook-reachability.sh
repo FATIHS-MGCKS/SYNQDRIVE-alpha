@@ -43,15 +43,22 @@ status_code="$(probe POST "$STATUS_URL" "$FORM_DATA")"
 
 fail=0
 [[ "$health_code" == "200" ]] || fail=1
-[[ "$voice_code" == "200" ]] || fail=1
-[[ "$status_code" == "200" ]] || fail=1
+
+# Unsigned POST probes: 401 = signature rejection (expected when ingestion validates Twilio HMAC).
+# 200 may appear only when webhook ingestion is disabled and routes return a benign TwiML stub.
+voice_ok=0
+status_ok=0
+[[ "$voice_code" == "401" || "$voice_code" == "200" ]] && voice_ok=1
+[[ "$status_code" == "401" || "$status_code" == "200" ]] && status_ok=1
+[[ "$voice_ok" -eq 1 ]] || fail=1
+[[ "$status_ok" -eq 1 ]] || fail=1
 
 if [[ "$fail" -ne 0 ]]; then
   echo >&2
   echo "FAIL: One or more endpoints are not ready." >&2
-  echo "Expected after deploy: health=200, voice=200 (TwiML), status=200." >&2
+  echo "Expected: health=200; unsigned voice/status=401 (signature rejected) or 200 (ingestion off)." >&2
   echo "404 on voice/status usually means the Twilio module is not deployed yet." >&2
   exit 1
 fi
 
-echo "OK: Twilio webhook routes are reachable." >&2
+echo "OK: Twilio webhook routes are reachable (health=200; voice=$voice_code; status=$status_code)." >&2
