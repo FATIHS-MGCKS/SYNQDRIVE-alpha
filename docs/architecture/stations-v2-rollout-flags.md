@@ -66,5 +66,6 @@ Frontend: `useStationsV2FeatureFlags()` + `api.stations.featureFlags(orgId)`.
 
 ## Referenzen
 
-- Runbook: [`../runbooks/stations-v2-deployment.md`](../runbooks/stations-v2-deployment.md)
+- Deployment: [`../runbooks/stations-v2-deployment.md`](../runbooks/stations-v2-deployment.md)
+- Shadow Validation: [`../runbooks/stations-v2-shadow-validation.md`](../runbooks/stations-v2-shadow-validation.md)
 - Code: `backend/src/config/stations-v2.config.ts`, `backend/src/shared/stations/stations-v2-feature-flags.resolver.ts`

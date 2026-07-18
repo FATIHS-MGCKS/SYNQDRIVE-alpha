@@ -115,6 +115,7 @@ npm run test:stations:v2
 
 | Dokument | Inhalt |
 |----------|--------|
+| [`stations-v2-shadow-validation.md`](./stations-v2-shadow-validation.md) | Shadow-Gates vor Enforce / breiter UI (Prompt 75) |
 | [`stations-v2-rollout-flags.md`](../architecture/stations-v2-rollout-flags.md) | Flag-Katalog + Dependencies |
 | [`stations-v2-data-remediation.md`](./stations-v2-data-remediation.md) | Diagnose + Remediation |
 | [`stations-v2-prisma-migration-rollout-plan.md`](../architecture/stations-v2-prisma-migration-rollout-plan.md) | Schema / Dual-Write Plan |
