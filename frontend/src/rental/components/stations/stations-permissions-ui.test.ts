@@ -26,7 +26,8 @@ describe('stations permissions UI wiring', () => {
     expect(detailSource).toContain('StationFleetTab');
     const fleetSource = readFileSync(resolve(stationsDir, 'StationFleetTab.tsx'), 'utf8');
     expect(fleetSource).toContain('station-fleet-read-model.utils');
-    expect(fleetSource).toContain('ErrorState');
+    expect(fleetSource).toContain('StationFetchStateBoundary');
+    expect(fleetSource).toContain('resolveStationTabFetchState');
     expect(detailSource).toContain("activeTab === 'schedule'");
     expect(detailSource).toContain("activeTab === 'operations'");
     expect(detailSource).not.toContain('stations.detail.tab.staff');

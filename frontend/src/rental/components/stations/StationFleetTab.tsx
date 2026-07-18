@@ -6,12 +6,7 @@ import {
   type StationFleetReadModel,
   type StationFleetVehicleRow,
 } from '../../../lib/api';
-import {
-  EmptyState,
-  ErrorState,
-  SkeletonCard,
-  StatusChip,
-} from '../../../components/patterns';
+import { StatusChip } from '../../../components/patterns';
 import { useRentalOrg } from '../../RentalContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
@@ -22,6 +17,8 @@ import {
   formatFleetStationRef,
   mergeFleetGroupPage,
 } from '../../lib/station-fleet-read-model.utils';
+import { resolveStationTabFetchState } from '../../lib/station-view-state';
+import { StationFetchStateBoundary } from './StationViewStateBoundary';
 import { cn } from '../../../components/ui/utils';
 
 interface StationFleetTabProps {
@@ -34,7 +31,7 @@ export function StationFleetTab({ stationId, onOpenVehicle }: StationFleetTabPro
   const { t, locale } = useLanguage();
   const [model, setModel] = useState<StationFleetReadModel | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState<StationFleetGroupKey | 'all'>('all');
@@ -68,7 +65,7 @@ export function StationFleetTab({ stationId, onOpenVehicle }: StationFleetTabPro
             : result,
         );
       } catch (e) {
-        setError((e as Error).message || t('stations.detail.fleetError'));
+        setError(e);
         if (!options?.mergeGroup) setModel(null);
       } finally {
         setLoading(false);
@@ -91,26 +88,44 @@ export function StationFleetTab({ stationId, onOpenVehicle }: StationFleetTabPro
     await loadFleet({ group, page, mergeGroup: group });
   };
 
-  if (loading && !model) {
-    return (
-      <div className="space-y-3">
-        <SkeletonCard className="h-12 w-full" />
-        <SkeletonCard className="h-48 w-full" />
-      </div>
-    );
-  }
+  const fetchResolution = useMemo(
+    () =>
+      resolveStationTabFetchState({
+        loading,
+        error,
+        itemCount: model && fleetHasAnyVehicles(model) ? 1 : 0,
+        fallbackMessage: t('stations.detail.fleetError'),
+      }),
+    [error, loading, model, t],
+  );
 
-  if (error && !model) {
+  const blockingFetch =
+    fetchResolution.kind === 'loading' ||
+    fetchResolution.kind === 'permission_denied' ||
+    fetchResolution.kind === 'not_found' ||
+    fetchResolution.kind === 'api_error';
+
+  if (blockingFetch) {
     return (
-      <ErrorState
-        title={t('stations.detail.fleetErrorTitle')}
-        description={error}
+      <StationFetchStateBoundary
+        resolution={fetchResolution}
         onRetry={() => void loadFleet()}
-      />
+        loadingSkeleton="card"
+        emptyIcon={<Car className="w-8 h-8" />}
+        emptyTitleKey="stations.detail.fleetEmptyTitle"
+        emptyDescriptionKey="stations.detail.fleetEmptyDescription"
+      >
+        {null}
+      </StationFetchStateBoundary>
     );
   }
 
-  const emptyAfterLoad = model && !fleetHasAnyVehicles(model);
+  const emptyTitleKey = search
+    ? 'stations.detail.fleetSearchEmptyTitle'
+    : 'stations.detail.fleetEmptyTitle';
+  const emptyDescriptionKey = search
+    ? 'stations.detail.fleetSearchEmptyDescription'
+    : 'stations.detail.fleetEmptyDescription';
 
   return (
     <div className="space-y-4">
@@ -143,23 +158,25 @@ export function StationFleetTab({ stationId, onOpenVehicle }: StationFleetTabPro
         </div>
       </div>
 
-      {error ? (
-        <div className="rounded-xl border border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.04] px-4 py-3 text-sm text-muted-foreground">
-          {error}
+      {error && model ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.04] px-4 py-3 text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+        >
+          <span>{error instanceof Error ? error.message : t('stations.detail.fleetError')}</span>
+          <button type="button" className="text-xs font-semibold underline shrink-0" onClick={() => void loadFleet()}>
+            {t('stations.partialData.retry')}
+          </button>
         </div>
       ) : null}
 
-      {emptyAfterLoad ? (
-        <EmptyState
-          icon={<Car className="w-8 h-8" />}
-          title={t('stations.detail.fleetEmptyTitle')}
-          description={
-            search
-              ? t('stations.detail.fleetSearchEmptyDescription')
-              : t('stations.detail.fleetEmptyDescription')
-          }
-        />
-      ) : (
+      <StationFetchStateBoundary
+        resolution={fetchResolution}
+        onRetry={() => void loadFleet()}
+        emptyIcon={<Car className="w-8 h-8" />}
+        emptyTitleKey={emptyTitleKey}
+        emptyDescriptionKey={emptyDescriptionKey}
+      >
         <div className="space-y-4">
           {visibleGroups.map((group) => (
             <FleetGroupSection
@@ -173,7 +190,7 @@ export function StationFleetTab({ stationId, onOpenVehicle }: StationFleetTabPro
             />
           ))}
         </div>
-      )}
+      </StationFetchStateBoundary>
     </div>
   );
 }

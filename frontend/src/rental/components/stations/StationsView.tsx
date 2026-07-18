@@ -29,7 +29,6 @@ import {
   PageHeader,
   StatusChip,
   EmptyState,
-  ErrorState,
   SkeletonMetricGrid,
   SkeletonCard,
 } from '../../../components/patterns';
@@ -42,6 +41,12 @@ import {
   openingStatusTone,
   type StationSummariesViewFilters,
 } from '../../lib/station-org-summaries.utils';
+import {
+  extractStationPartialData,
+  resolveStationContextBanners,
+  resolveStationFetchState,
+} from '../../lib/station-view-state';
+import { StationContextBanners, StationFetchStateBoundary } from './StationViewStateBoundary';
 import {
   formatStationAddress,
   getStationWarnings,
@@ -174,7 +179,25 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   const summariesModel = summariesData?.model ?? null;
   const kpi = useMemo(() => selectStationOrgKpis(summariesModel), [summariesModel]);
   const kpisPending = loading && !summariesModel;
-  const partialDataIncomplete = summariesModel != null && !summariesModel.partialData.complete;
+  const listFetchResolution = useMemo(
+    () =>
+      resolveStationFetchState({
+        loading,
+        error,
+        hasData: stations.length > 0,
+        fallbackMessage: t('stations.errorLoad'),
+      }),
+    [error, loading, stations.length, t],
+  );
+
+  const listContextBanners = useMemo(
+    () =>
+      resolveStationContextBanners({
+        partialData: extractStationPartialData(summariesModel?.partialData),
+        evaluatedAt: summariesModel?.evaluatedAt,
+      }),
+    [summariesModel],
+  );
   const aggregationCapApplied = summariesModel?.limits.aggregationStationCapApplied ?? false;
   const scopedResults = summariesModel?.scope.applied ?? false;
 
@@ -359,15 +382,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
           {t('stations.scope.filteredBanner')}
         </div>
       )}
-      {partialDataIncomplete && (
-        <div className="rounded-xl border border-[color:var(--status-watch)]/35 bg-[color:var(--status-watch)]/[0.04] px-4 py-3 text-sm text-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <span>{t('stations.partialData.banner')}</span>
-          <Button type="button" size="sm" variant="neutral" onClick={() => void refresh()}>
-            <RefreshCw className="w-3.5 h-3.5" />
-            {t('stations.partialData.retry')}
-          </Button>
-        </div>
-      )}
+      <StationContextBanners banners={listContextBanners} onRetry={() => void refresh()} />
       {aggregationCapApplied && (
         <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           {t('stations.limits.aggregationCap')}
@@ -419,7 +434,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
         )}
       />
 
-      {loading ? (
+      {listFetchResolution.kind === 'loading' ? (
         <>
           <SkeletonMetricGrid
             count={6}
@@ -432,8 +447,17 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             ))}
           </div>
         </>
-      ) : error ? (
-        <ErrorState error={error ?? t('stations.errorLoad')} onRetry={() => void refresh()} />
+      ) : listFetchResolution.kind === 'api_error' ||
+        listFetchResolution.kind === 'not_found' ||
+        listFetchResolution.kind === 'permission_denied' ? (
+        <StationFetchStateBoundary
+          resolution={listFetchResolution}
+          onRetry={() => void refresh()}
+          emptyTitleKey="stations.empty.title"
+          emptyDescriptionKey="stations.empty.description"
+        >
+          {null}
+        </StationFetchStateBoundary>
       ) : (
         <>
           <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6">
@@ -555,7 +579,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             )}
           </div>
 
-          {stations.length === 0 ? (
+          {listFetchResolution.kind === 'empty' ? (
             <EmptyState
               icon={<MapPin className="w-8 h-8" />}
               title={t('stations.empty.title')}

@@ -23,20 +23,26 @@ import {
   type StationOverviewDecisionModel,
   type StationOverviewMetricValue,
 } from '../../lib/station-overview-decision.utils';
+import { resolveStationFetchState } from '../../lib/station-view-state';
+import { StationFetchStateBoundary } from './StationViewStateBoundary';
 import { cn } from '../../../components/ui/utils';
 
 interface StationOverviewTabProps {
   station: Station;
   summary: StationSummaryReadModel | null;
   summaryLoading?: boolean;
+  summaryError?: unknown | null;
   onNavigateTab: (tab: StationDetailTab) => void;
+  onRetrySummary?: () => void;
 }
 
 export function StationOverviewTab({
   station: _station,
   summary,
   summaryLoading = false,
+  summaryError = null,
   onNavigateTab,
+  onRetrySummary,
 }: StationOverviewTabProps) {
   const { t, locale } = useLanguage();
   const model = useMemo(
@@ -44,25 +50,39 @@ export function StationOverviewTab({
     [summary, locale],
   );
 
-  if (summaryLoading && !model) {
+  const summaryResolution = useMemo(
+    () =>
+      resolveStationFetchState({
+        loading: summaryLoading,
+        error: summaryError,
+        hasData: !!model,
+        fallbackMessage: t('stations.detail.overviewError'),
+      }),
+    [model, summaryError, summaryLoading, t],
+  );
+
+  if (
+    summaryResolution.kind === 'loading' ||
+    summaryResolution.kind === 'permission_denied' ||
+    summaryResolution.kind === 'not_found' ||
+    summaryResolution.kind === 'api_error' ||
+    summaryResolution.kind === 'empty'
+  ) {
     return (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <MetricCard key={index} label="…" value="—" loading />
-        ))}
-      </div>
+      <StationFetchStateBoundary
+        resolution={summaryResolution}
+        onRetry={onRetrySummary}
+        loadingSkeleton="metrics"
+        emptyIcon={<MapPin className="w-8 h-8" />}
+        emptyTitleKey="stations.detail.overviewEmptyTitle"
+        emptyDescriptionKey="stations.detail.overviewEmptyDescription"
+      >
+        {null}
+      </StationFetchStateBoundary>
     );
   }
 
-  if (!model) {
-    return (
-      <EmptyState
-        icon={<MapPin className="w-8 h-8" />}
-        title={t('stations.detail.overviewEmptyTitle')}
-        description={t('stations.detail.overviewEmptyDescription')}
-      />
-    );
-  }
+  if (!model) return null;
 
   const openingLabel =
     model.openingStatusLabel ??

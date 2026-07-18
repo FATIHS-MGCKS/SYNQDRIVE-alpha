@@ -666,7 +666,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(formatHttpErrorMessage(body, res.status, path));
+    const err = new Error(formatHttpErrorMessage(body, res.status, path)) as Error & {
+      status?: number;
+    };
+    err.status = res.status;
+    throw err;
   }
 
   if (res.status === 204) {
@@ -1093,7 +1097,11 @@ async function fetchBlob(path: string): Promise<Blob> {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(formatHttpErrorMessage(body, res.status, path));
+    const err = new Error(formatHttpErrorMessage(body, res.status, path)) as Error & {
+      status?: number;
+    };
+    err.status = res.status;
+    throw err;
   }
   return res.blob();
 }
