@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Patch,
   Param,
   Body,
   Query,
@@ -13,10 +14,12 @@ import {
   Header,
   Res,
   StreamableFile,
+  Req,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { Throttle } from '@nestjs/throttler';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
@@ -25,13 +28,26 @@ import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { DocumentExtractionService } from './document-extraction.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { ConfirmExtractionDto } from './dto/confirm-extraction.dto';
+import { SaveReviewExtractionDto } from './dto/save-review-extraction.dto';
+import { UpdateActionPlanPreferencesDto } from './dto/update-action-plan-preferences.dto';
 import { SetDocumentTypeDto } from './dto/set-document-type.dto';
+import { UpdateDocumentEntityLinksDto } from './dto/update-document-entity-links.dto';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
+import { DocumentEntityLinkService } from './document-entity-link.service';
 import { isAllowedMimeType, resolveMaxUploadBytes } from './document-extraction.schemas';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
+import { resolveRequestClientIp } from './document-upload-rate-limit.service';
 
 const MAX_UPLOAD_BYTES = resolveMaxUploadBytes();
+const UPLOAD_IP_THROTTLE_LIMIT = parseInt(
+  process.env.DOCUMENT_UPLOAD_THROTTLE_LIMIT_PER_IP || '40',
+  10,
+);
+const UPLOAD_IP_THROTTLE_TTL_MS = parseInt(
+  process.env.DOCUMENT_UPLOAD_THROTTLE_TTL_MS || '60000',
+  10,
+);
 
 /**
  * AI Document Upload endpoints (vehicle-scoped, tenant-isolated).
@@ -39,7 +55,10 @@ const MAX_UPLOAD_BYTES = resolveMaxUploadBytes();
 @Controller('vehicles/:vehicleId/document-extractions')
 @UseGuards(RolesGuard, VehicleOwnershipGuard, PermissionsGuard)
 export class DocumentExtractionController {
-  constructor(private readonly service: DocumentExtractionService) {}
+  constructor(
+    private readonly service: DocumentExtractionService,
+    private readonly entityLinkService: DocumentEntityLinkService,
+  ) {}
 
   @Get()
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
@@ -56,9 +75,10 @@ export class DocumentExtractionController {
   async download(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const dl = await this.service.getDownloadForVehicle(vehicleId, extractionId);
+    const dl = await this.service.getDownloadForVehicle(vehicleId, extractionId, userId ?? null);
     res.set({
       'Content-Type': dl.mimeType,
       'Content-Disposition': buildContentDisposition(dl.fileName, true),
@@ -77,6 +97,7 @@ export class DocumentExtractionController {
   }
 
   @Post('upload')
+  @Throttle({ default: { ttl: UPLOAD_IP_THROTTLE_TTL_MS, limit: UPLOAD_IP_THROTTLE_LIMIT } })
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -95,7 +116,8 @@ export class DocumentExtractionController {
     @Param('vehicleId') vehicleId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() body: UploadDocumentDto,
-    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser() user: { id?: string; platformRole?: string } | undefined,
+    @Req() req: Request,
   ) {
     if (!file) {
       throw new BadRequestException('file is required');
@@ -106,7 +128,14 @@ export class DocumentExtractionController {
       originalName: file.originalname,
       mimeType: file.mimetype,
       buffer: file.buffer,
-      userId: userId ?? null,
+      userId: user?.id ?? null,
+      reuploadReason: body.reuploadReason,
+      relatedExtractionId: body.relatedExtractionId,
+      invoiceNumberHint: body.invoiceNumberHint,
+      referenceNumberHint: body.referenceNumberHint,
+      clientIp: resolveRequestClientIp(req),
+      uploadSource: body.source ?? null,
+      platformRole: user?.platformRole ?? null,
     });
     return this.service.toPublicExtraction(record);
   }
@@ -148,6 +177,22 @@ export class DocumentExtractionController {
     return this.service.toPublicExtraction(record);
   }
 
+  @Patch(':extractionId/entity-links')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async updateEntityLinks(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: UpdateDocumentEntityLinksDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.entityLinkService.updateForVehicle(
+      vehicleId,
+      extractionId,
+      body.operations,
+      userId ?? null,
+    );
+  }
+
   @Post(':extractionId/confirm')
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
   async confirm(
@@ -161,8 +206,155 @@ export class DocumentExtractionController {
       extractionId,
       body.confirmedData,
       userId ?? null,
+      body.actionPlanFingerprint ?? null,
     );
     return this.service.toPublicExtraction(record);
+  }
+
+  @Post(':extractionId/save-review')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async saveReview(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: SaveReviewExtractionDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const record = await this.service.saveReview(
+      vehicleId,
+      extractionId,
+      body.confirmedData,
+      userId ?? null,
+    );
+    return this.service.toPublicExtraction(record);
+  }
+
+  @Get(':extractionId/action-plan-preview')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getActionPlanPreview(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.getActionPlanPreviewForVehicle(vehicleId, extractionId);
+  }
+
+  @Patch(':extractionId/action-plan-preferences')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  updateActionPlanPreferences(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: UpdateActionPlanPreferencesDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.updateActionPlanPreferencesForVehicle(
+      vehicleId,
+      extractionId,
+      { disabledOptionalActions: body.disabledOptionalActions },
+      userId ?? null,
+    );
+  }
+
+  @Get(':extractionId/apply-result')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getApplyResult(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.getApplyResultForVehicle(vehicleId, extractionId);
+  }
+
+  @Post(':extractionId/retry-failed-actions')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async retryFailedActions(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.retryFailedActionsForVehicle(vehicleId, extractionId, userId ?? null);
+  }
+
+  @Get(':extractionId/follow-up-suggestions')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  listFollowUpSuggestions(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+  ) {
+    return this.service.listFollowUpSuggestionsForVehicle(vehicleId, extractionId);
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/accept')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  acceptFollowUpSuggestion(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.acceptFollowUpSuggestionForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/dismiss')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  dismissFollowUpSuggestion(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.dismissFollowUpSuggestionForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
+  @Get(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  getFollowUpContactPrepare(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+  ) {
+    return this.service.getFollowUpContactPrepareForVehicle(vehicleId, extractionId, suggestionId);
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare/opened')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  recordFollowUpContactPrepareOpened(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.recordFollowUpContactPrepareOpenedForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+    );
+  }
+
+  @Post(':extractionId/follow-up-suggestions/:suggestionId/contact-prepare/send')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  sendFollowUpContact(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Param('suggestionId') suggestionId: string,
+    @Body() body: import('./dto/send-document-follow-up-contact.dto').SendDocumentFollowUpContactDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.sendFollowUpContactForVehicle(
+      vehicleId,
+      extractionId,
+      suggestionId,
+      userId ?? null,
+      body,
+    );
   }
 
   @Post(':extractionId/cancel')
@@ -184,6 +376,27 @@ export class DocumentExtractionController {
     @CurrentUser('id') userId: string | undefined,
   ) {
     const record = await this.service.deleteFile(vehicleId, extractionId, userId ?? null);
-    return this.service.toPublicExtraction(record);
+    return record;
+  }
+
+  @Post(':extractionId/legal-hold')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async setLegalHold(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: { reason?: string },
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.setLegalHold(vehicleId, extractionId, userId ?? null, body?.reason);
+  }
+
+  @Delete(':extractionId/legal-hold')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async clearLegalHold(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.clearLegalHold(vehicleId, extractionId, userId ?? null);
   }
 }

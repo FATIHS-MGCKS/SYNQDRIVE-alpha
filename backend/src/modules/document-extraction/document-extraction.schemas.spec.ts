@@ -88,6 +88,159 @@ describe('document-extraction.schemas', () => {
       expect(keys).toEqual(expect.arrayContaining(['eventDate', 'odometerKm', 'costCents']));
     });
 
+    it('declares production inspection fields for TÜV and BOKraft', () => {
+      for (const docType of ['TUV_REPORT', 'BOKRAFT_REPORT'] as const) {
+        const keys = getFieldSchema(docType).map((field) => field.key);
+        expect(keys).toEqual(
+          expect.arrayContaining([
+            'inspectionDate',
+            'validUntil',
+            'result',
+            'defectLevel',
+            'defects',
+            'reinspectionRequired',
+            'reinspectionDeadline',
+            'issuingOrganization',
+            'reportNumber',
+            'mileage',
+          ]),
+        );
+      }
+    });
+
+    it('declares production invoice fields', () => {
+      const keys = getFieldSchema('INVOICE').map((field) => field.key);
+      expect(keys).toEqual(
+        expect.arrayContaining([
+          'invoiceNumber',
+          'invoiceDate',
+          'dueDate',
+          'currency',
+          'supplier',
+          'customer',
+          'subtotalNet',
+          'totalTax',
+          'totalGross',
+          'taxExemptReason',
+          'reverseCharge',
+          'lineItems',
+          'taxLines',
+          'creditNoteReference',
+          'originalInvoiceReference',
+          'amountSemantics',
+          'taxSemantics',
+        ]),
+      );
+    });
+
+    it('declares production damage and accident fields', () => {
+      for (const docType of ['DAMAGE', 'ACCIDENT'] as const) {
+        const keys = getFieldSchema(docType).map((field) => field.key);
+        expect(keys).toEqual(
+          expect.arrayContaining([
+            'eventDateTime',
+            'damageDescription',
+            'damageAreas',
+            'damageType',
+            'severity',
+            'estimatedCostGross',
+          ]),
+        );
+      }
+
+      const damageKeys = getFieldSchema('DAMAGE').map((field) => field.key);
+      expect(damageKeys).toEqual(
+        expect.arrayContaining(['locationLabel', 'documentKind', 'linkedDamageId']),
+      );
+
+      const accidentKeys = getFieldSchema('ACCIDENT').map((field) => field.key);
+      expect(accidentKeys).toEqual(
+        expect.arrayContaining([
+          'drivable',
+          'thirdPartyInvolved',
+          'policeReference',
+          'insuranceReference',
+          'bookingContext',
+          'accidentApplyConfirmed',
+        ]),
+      );
+
+      const damageTypeField = getFieldSchema('DAMAGE').find((field) => field.key === 'damageType');
+      expect(damageTypeField?.enumValues).toEqual(
+        expect.arrayContaining(['SCRATCH', 'UNKNOWN']),
+      );
+      expect(damageTypeField?.hint).toMatch(/no SCRATCH default/i);
+    });
+
+    it('declares production technical fields for tire, brake, and battery', () => {
+      const tireKeys = getFieldSchema('TIRE').map((field) => field.key);
+      expect(tireKeys).toEqual(
+        expect.arrayContaining([
+          'measurementDate',
+          'treadDepthUnit',
+          'pressureUnit',
+          'treadDepthMm.fl',
+          'pressureBar.fl',
+        ]),
+      );
+
+      const brakeKeys = getFieldSchema('BRAKE').map((field) => field.key);
+      expect(brakeKeys).toEqual(
+        expect.arrayContaining([
+          'measurementDate',
+          'padThicknessUnit',
+          'scopeCsv',
+          'workshopFinding',
+          'minimumPadMmFront',
+        ]),
+      );
+      const serviceKindField = getFieldSchema('BRAKE').find((field) => field.key === 'serviceKind');
+      expect(serviceKindField?.hint).toMatch(/no full_brake_service default/i);
+
+      const batteryKeys = getFieldSchema('BATTERY').map((field) => field.key);
+      expect(batteryKeys).toEqual(
+        expect.arrayContaining([
+          'measurementDate',
+          'scope',
+          'sohSource',
+          'capacityKwh',
+          'temperatureContext',
+          'deviceOrWorkshop',
+        ]),
+      );
+      const scopeField = getFieldSchema('BATTERY').find((field) => field.key === 'scope');
+      expect(scopeField?.hint).toMatch(/no lv default/i);
+    });
+
+    it('declares archive-only fields for OTHER and VEHICLE_CONDITION', () => {
+      for (const docType of ['OTHER', 'VEHICLE_CONDITION'] as const) {
+        const keys = getFieldSchema(docType).map((field) => field.key);
+        expect(keys).toEqual(
+          expect.arrayContaining([
+            'archiveSubtype',
+            'sender',
+            'recipient',
+            'documentDate',
+            'referenceNumber',
+            'subject',
+            'deadlines',
+            'mentionedEntities',
+            'summary',
+            'actionRequired',
+          ]),
+        );
+      }
+
+      const subtypeField = getFieldSchema('OTHER').find((field) => field.key === 'archiveSubtype');
+      expect(subtypeField?.enumValues).toEqual(
+        expect.arrayContaining(['AUTHORITY_LETTER', 'UNKNOWN', 'CONTRACT_DOCUMENT']),
+      );
+      expect(subtypeField?.hint).toMatch(/UNKNOWN/i);
+      expect(
+        getFieldSchema('OTHER').find((field) => field.key === 'actionRequired')?.hint,
+      ).toMatch(/no automatic/i);
+    });
+
     it('declares schemas for every DocumentExtractionType', () => {
       for (const t of SUPPORTED_DOCUMENT_TYPES) {
         expect(Array.isArray(DOCUMENT_FIELD_SCHEMAS[t])).toBe(true);

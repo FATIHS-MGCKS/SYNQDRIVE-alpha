@@ -366,6 +366,45 @@ export class BrakeEvidenceService {
     });
   }
 
+  /** Idempotent per (documentExtractionId, axle) — one evidence row per axle per extraction. */
+  async recordForDocumentExtraction(input: BrakeEvidenceWriteInput) {
+    const organizationId = await this.resolveOrganizationId(
+      input.vehicleId,
+      input.organizationId,
+    );
+    if (!organizationId) return null;
+
+    const data = this.toPersistableData(input, organizationId);
+    if (!data?.documentExtractionId) return null;
+
+    const existing = await this.prisma.brakeEvidence.findFirst({
+      where: {
+        documentExtractionId: data.documentExtractionId,
+        axle: data.axle,
+      },
+    });
+    if (existing) {
+      return existing;
+    }
+
+    try {
+      return await this.prisma.brakeEvidence.create({ data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return this.prisma.brakeEvidence.findFirst({
+          where: {
+            documentExtractionId: data.documentExtractionId,
+            axle: data.axle,
+          },
+        });
+      }
+      throw error;
+    }
+  }
+
   /** Most recent evidence row, optionally filtered by source / axle. */
   async getLatest(
     vehicleId: string,

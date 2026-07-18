@@ -8,6 +8,7 @@ jest.mock('@shared/queue/queue-producer.util', () => ({
 }));
 
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import {makeLifecycleMock, makeMalwareScanMock, makeRetentionMock, makeUploadContextMock, spreadDocumentExtractionExtendedServiceMocks } from './document-extraction-test.helpers';
 
 function mockFailedRecord(id = 'e1') {
   const now = new Date();
@@ -42,9 +43,14 @@ function makeService(overrides: {
       ),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       create: jest.fn(),
+      delete: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
       ...(overrides.prisma ?? {}),
+    },
+    documentExtractionContentAnchor: {
+      create: jest.fn().mockResolvedValue({}),
+      findUnique: jest.fn(),
     },
     vehicle: {
       findUnique: jest.fn().mockResolvedValue({ organizationId: 'org-1' }),
@@ -78,6 +84,19 @@ function makeService(overrides: {
     ...(overrides.queue ?? {}),
   };
   const applyService = { apply: jest.fn().mockResolvedValue({}) };
+  const actionOrchestrator = {
+    supportsExecutorPath: jest.fn().mockReturnValue(false),
+    executeConfirmedPlan: jest.fn(),
+  };
+  const fileIdentification = {
+    identify: jest.fn().mockResolvedValue({
+      detectedKind: 'pdf',
+      detectedMime: 'application/pdf',
+      clientMime: 'application/pdf',
+      displayFileName: 'invoice.pdf',
+      sizeBytes: 100,
+    }),
+  };
   const plausibility = {
     runChecks: jest.fn().mockReturnValue({
       overallStatus: 'OK',
@@ -106,8 +125,21 @@ function makeService(overrides: {
     storage as any,
     queue as any,
     applyService as any,
+    actionOrchestrator as any,
     plausibility as any,
+    fileIdentification as any,
+    {
+      assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
+      claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
+      loadBlockedAssessmentFromAnchor: jest.fn(),
+    } as any,
+    { assertAllowed: jest.fn().mockResolvedValue(undefined) } as any,
+    makeMalwareScanMock(storage) as any,
+    makeLifecycleMock() as any,
+    makeRetentionMock() as any,
+    makeUploadContextMock() as any,
     observability as any,
+      ...spreadDocumentExtractionExtendedServiceMocks(),
   );
   return { svc, prisma, storage, queue, applyService, docConfig };
 }
@@ -121,13 +153,15 @@ describe('DocumentExtractionService queue lifecycle', () => {
     (canEnqueueQueue as jest.Mock).mockReturnValue(true);
   });
 
-  it('creates PENDING/STORAGE first, then QUEUED after successful queue.add', async () => {
+  it('creates PENDING/UPLOAD first, stores file, then QUEUED after successful queue.add', async () => {
     const create = jest.fn().mockResolvedValue({ id: 'e1', vehicleId: 'v1', organizationId: 'org-1' });
-    const update = jest.fn().mockResolvedValue({
-      id: 'e1',
-      status: 'QUEUED',
-      processingStage: 'QUEUE',
-    });
+    const update = jest.fn()
+      .mockResolvedValueOnce({ id: 'e1', vehicleId: 'v1', organizationId: 'org-1', processingStage: 'STORAGE' })
+      .mockResolvedValueOnce({
+        id: 'e1',
+        status: 'QUEUED',
+        processingStage: 'QUEUE',
+      });
     const { svc, prisma, queue } = makeService({
       prisma: { create, update },
     });
@@ -144,8 +178,13 @@ describe('DocumentExtractionService queue lifecycle', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'PENDING',
-          processingStage: 'STORAGE',
+          processingStage: 'UPLOAD',
         }),
+      }),
+    );
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ processingStage: 'STORAGE' }),
       }),
     );
     expect(queue.add).toHaveBeenCalledWith(
@@ -231,12 +270,23 @@ describe('DocumentExtractionService queue lifecycle', () => {
     process.env.NODE_ENV = 'development';
     const create = jest.fn().mockResolvedValue({
       id: 'e1',
+      vehicleId: 'v1',
+      organizationId: 'org-1',
       status: 'PENDING',
-      processingStage: 'STORAGE',
+      processingStage: 'UPLOAD',
     });
+    const update = jest.fn().mockImplementation(({ where, data }) =>
+      Promise.resolve({
+        id: where.id,
+        vehicleId: 'v1',
+        organizationId: 'org-1',
+        status: 'PENDING',
+        ...data,
+      }),
+    );
     const { svc, queue } = makeService({
       docConfig: { queueEnabled: false, allowPendingWithoutQueue: true },
-      prisma: { create },
+      prisma: { create, update },
     });
 
     const result = await svc.createFromUpload({

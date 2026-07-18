@@ -4,6 +4,7 @@ import { Icon } from '../ui/Icon';
 import { DataCard, StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { CustomerDocumentUploadBox } from '../CustomerDocumentUploadBox';
+import { DocumentIntakeLaunchAiButton } from '../documents/DocumentIntakeLaunchButton';
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
 import type { CustomerDocumentDomainStatus, CustomerDocumentVerificationStatusDto } from '../../../lib/api';
 import type { CustomerDetail, KycDocSlot } from './customerDetailTypes';
@@ -141,6 +142,29 @@ export function CustomerDocumentsTab({
         onVerificationUpdated={onVerificationUpdated}
         getDiditActionLabel={customerDetailDiditActionLabel}
       />
+
+      <div className={cdv.documentsUploadSection}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-xs font-bold">Betriebsdokumente (KI-Upload)</h4>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Rechnungen, Bußgelder und Belege — getrennt von KYC-Dokumenten.
+            </p>
+          </div>
+          <DocumentIntakeLaunchAiButton
+            label="KI-Upload"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[11px] font-semibold"
+            request={{
+              optionalContextType: 'CUSTOMER',
+              optionalContextId: customerId,
+              sourceSurface: 'customer_detail',
+              returnView: 'customer-detail',
+              returnEntityId: customerId,
+              documentTab: 'upload',
+            }}
+          />
+        </div>
+      </div>
 
       <DataCard title="Dokumentenstatus" bodyClassName="py-3.5">
         <div className={cdv.documentsStatusGrid}>

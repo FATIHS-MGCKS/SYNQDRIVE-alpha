@@ -5,6 +5,10 @@ export interface DocumentExtractionMetadataOptionDto {
 
 export interface DocumentExtractionMetadataDto {
   documentTypes: DocumentExtractionMetadataOptionDto[];
+  documentCategories: DocumentExtractionMetadataOptionDto[];
+  documentSubtypes: DocumentExtractionMetadataOptionDto[];
+  taxonomyVersion: string;
+  schemaRegistryVersion: string;
   classificationOptions: DocumentExtractionMetadataOptionDto[];
   mimeTypes: string[];
   extensions: string[];
@@ -13,4 +17,5 @@ export interface DocumentExtractionMetadataDto {
   statuses: DocumentExtractionMetadataOptionDto[];
   stages: DocumentExtractionMetadataOptionDto[];
   errorPhases: DocumentExtractionMetadataOptionDto[];
+  uploadDuplicateStatuses: DocumentExtractionMetadataOptionDto[];
 }

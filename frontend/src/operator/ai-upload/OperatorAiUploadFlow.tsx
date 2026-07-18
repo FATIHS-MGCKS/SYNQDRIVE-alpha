@@ -1,19 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle, FileUp, Loader2, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, CheckCircle, ChevronDown, FileUp, Loader2, X } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import { useDocumentExtractionFlow } from '../../rental/hooks/useDocumentExtractionFlow';
 import {
   FLOW_STATUS_LABEL_DE,
 } from '../../rental/components/documents/document-extraction.shared';
+import { DocumentClassificationResultPanel } from '../../rental/components/documents/DocumentClassificationResultPanel';
+import { DocumentExtractionFlowStatus } from '../../rental/components/documents/DocumentExtractionFlowStatus';
+import { useLanguage } from '../../rental/i18n/LanguageContext';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import {
-  CONTEXT_DEFAULT_DOC_TYPE,
   CONTEXT_MODE_LABELS,
   OPERATOR_DOC_TYPE_OPTIONS,
   OPERATOR_UPLOAD_SOURCE,
   type OperatorAiUploadContextMode,
 } from './operatorAiUpload.config';
+import { mapOperatorContextModeToEntry } from '../../rental/lib/document-intake-entry';
+import { useRentalOrg } from '../../rental/RentalContext';
 import { OperatorAiUploadReview } from './OperatorAiUploadReview';
 import { extractTreadFromAiReviewFields, parseTreadMm } from '../tire-measure/operatorTireMeasure.utils';
 
@@ -25,19 +29,33 @@ interface Props {
 
 export function OperatorAiUploadFlow({ action }: Props) {
   const { closeSheet, openSheet } = useOperatorShell();
+  const { orgId } = useRentalOrg();
+  const { t, locale } = useLanguage();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
+  const [showOptionalTypePicker, setShowOptionalTypePicker] = useState(false);
+  const [pendingTypeSelection, setPendingTypeSelection] = useState('AUTO');
 
   const contextMode: OperatorAiUploadContextMode = action.contextMode ?? 'vehicle';
-  const initialDocType = action.initialDocType ?? CONTEXT_DEFAULT_DOC_TYPE[contextMode];
+  const initialDocType = action.initialDocType ?? 'AUTO';
+  const operatorContext = mapOperatorContextModeToEntry({
+    contextMode,
+    vehicleId: action.vehicleId,
+    bookingId: action.bookingId,
+    customerId: action.customerId,
+  });
 
   const flow = useDocumentExtractionFlow({
     vehicleId: action.vehicleId,
+    orgId,
     initialDocType,
     uploadSource: OPERATOR_UPLOAD_SOURCE,
+    optionalContextType: operatorContext.optionalContextType,
+    optionalContextId: operatorContext.optionalContextId,
+    sourceSurface: 'operator_ai_upload',
     onComplete: () => {
       action.onComplete?.();
       setTimeout(closeSheet, 900);
@@ -48,6 +66,33 @@ export function OperatorAiUploadFlow({ action }: Props) {
     flow.setDocumentType(initialDocType);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when action context changes
   }, [action.vehicleId, initialDocType]);
+
+  useEffect(() => {
+    if (flow.flow === 'awaiting_type' && flow.record?.detectedDocumentType) {
+      setPendingTypeSelection(flow.record.detectedDocumentType);
+    }
+  }, [flow.flow, flow.record?.detectedDocumentType]);
+
+  const docTypeOptions = useMemo(() => {
+    const auto = flow.metadata?.classificationOptions ?? [
+      { value: 'AUTO', labelKey: 'documentExtraction.classification.AUTO' },
+    ];
+    const types =
+      flow.metadata?.documentTypes ??
+      OPERATOR_DOC_TYPE_OPTIONS.map((opt) => ({
+        value: opt.key,
+        labelKey: `documentExtraction.type.${opt.key}`,
+      }));
+    return [...auto, ...types];
+  }, [flow.metadata]);
+
+  const typeLabel = useCallback(
+    (labelKey: string, fallback?: string) => {
+      const translated = t(labelKey as Parameters<typeof t>[0]);
+      return translated === labelKey ? (fallback ?? labelKey) : translated;
+    },
+    [t],
+  );
 
   useEffect(() => {
     return () => {
@@ -100,6 +145,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
   };
 
   const showCapture = flow.flow === 'idle' || flow.flow === 'failed';
+  const showAwaitingType = flow.flow === 'awaiting_type';
   const showReview = flow.flow === 'ready' || flow.flow === 'applying';
   const showDone = flow.flow === 'done';
   const isTireDoc = flow.confirmedDocType === 'TIRE' || flow.documentType === 'TIRE';
@@ -184,26 +230,41 @@ export function OperatorAiUploadFlow({ action }: Props) {
             </p>
 
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Dokumenttyp</p>
-              <div className="flex flex-wrap gap-2">
-                {OPERATOR_DOC_TYPE_OPTIONS.map((opt) => {
-                  const active = flow.documentType === opt.key;
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => flow.setDocumentType(opt.key)}
-                      className={`sq-press min-h-[40px] rounded-full border px-3 py-2 text-xs font-semibold ${
-                        active
-                          ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                          : 'border-border surface-premium text-foreground'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowOptionalTypePicker((open) => !open)}
+                className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground"
+              >
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${showOptionalTypePicker ? 'rotate-180' : ''}`}
+                />
+                Optional: Dokumenttyp vorab festlegen
+              </button>
+              {showOptionalTypePicker ? (
+                <div className="flex flex-wrap gap-2">
+                  {OPERATOR_DOC_TYPE_OPTIONS.map((opt) => {
+                    const active = flow.documentType === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => flow.setDocumentType(opt.key)}
+                        className={`sq-press min-h-[40px] rounded-full border px-3 py-2 text-xs font-semibold ${
+                          active
+                            ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                            : 'border-border surface-premium text-foreground'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Standard: automatische Erkennung (AUTO) — Typ kann später korrigiert werden.
+                </p>
+              )}
             </div>
 
             {pendingPreview && (
@@ -274,13 +335,37 @@ export function OperatorAiUploadFlow({ action }: Props) {
           </div>
         )}
 
-        {flow.isBusy && (
+        {flow.isBusy && !showAwaitingType && (
           <div className="flex flex-col items-center py-16 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-[color:var(--brand)]" />
             <p className="mt-4 text-sm font-semibold">{FLOW_STATUS_LABEL_DE[flow.flow]}</p>
             {flow.uploadedFileName && (
               <p className="mt-1 text-xs text-muted-foreground">{flow.uploadedFileName}</p>
             )}
+          </div>
+        )}
+
+        {showAwaitingType && (
+          <div className="space-y-4">
+            <DocumentExtractionFlowStatus
+              flow={flow.flow}
+              uploadedFileName={flow.uploadedFileName}
+              errorMessage={flow.errorMessage}
+              record={flow.record}
+              onRetry={() => void flow.handleRetry()}
+              onReset={flow.handleReset}
+            />
+            <DocumentClassificationResultPanel
+              record={flow.record}
+              locale={locale}
+              t={t}
+              typeLabel={typeLabel}
+              mode="awaiting_type"
+              docTypeOptions={docTypeOptions}
+              pendingTypeSelection={pendingTypeSelection}
+              onPendingTypeChange={setPendingTypeSelection}
+              onSetDocumentType={(type, reextract) => void flow.handleSetDocumentType(type, reextract)}
+            />
           </div>
         )}
 

@@ -184,6 +184,60 @@ groups:
           summary: Document storage read/write failures detected
           description: Storage failures in the document extraction pipeline — check object storage health.
 
+  - name: synqdrive_document_intake_v2
+    rules:
+      - alert: DocumentIntakeUploadRejectionRateHigh
+        expr: |
+          sum(rate(synqdrive_document_upload_rejected_total[15m]))
+          /
+          clamp_min(
+            sum(rate(synqdrive_document_upload_total[15m]))
+            + sum(rate(synqdrive_document_upload_rejected_total[15m])),
+            0.001
+          ) > 0.35
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Document upload rejection rate above 35%
+          description: Check rate limits, duplicate policy, malware scan, and identification errors.
+
+      - alert: DocumentIntakeOcrFailureRateHigh
+        expr: |
+          sum(rate(synqdrive_document_ocr_failed_total{retryable="false"}[15m]))
+          /
+          clamp_min(sum(rate(synqdrive_document_ocr_total[15m])), 0.001) > 0.25
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Document Intake V2 permanent OCR failure rate elevated
+          description: More than 25% of OCR attempts are failing permanently.
+
+      - alert: DocumentIntakePartialApplyRateHigh
+        expr: |
+          sum(rate(synqdrive_document_partial_apply_total[30m]))
+          /
+          clamp_min(sum(rate(synqdrive_document_action_plan_total{outcome="completed"}[30m])), 0.001) > 0.2
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: Elevated partial apply rate in document intake
+          description: Optional action failures or partial lifecycles exceed 20% of completed plans.
+
+      - alert: DocumentIntakeDuplicateBlockRateHigh
+        expr: |
+          sum(rate(synqdrive_document_duplicate_total{outcome="blocked"}[1h]))
+          /
+          clamp_min(sum(rate(synqdrive_document_upload_total[1h])), 0.001) > 0.5
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: High blocked duplicate upload rate
+          description: More than half of upload attempts are blocked as exact duplicates.
+
   - name: synqdrive_notifications
     rules:
       - alert: NotificationDeliveryBacklogHigh

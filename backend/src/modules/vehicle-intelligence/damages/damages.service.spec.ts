@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
+import { Prisma } from '@prisma/client';
 import {
   DamageEvidenceStatus,
   DamageLocationView,
@@ -349,5 +350,103 @@ describe('DamagesService', () => {
     const errors = validateSync(dto);
     expect(errors.some((e) => e.property === 'locationX')).toBe(true);
     expect(errors.some((e) => e.property === 'locationY')).toBe(true);
+  });
+});
+
+describe('DamagesService document extraction idempotency', () => {
+  const extractionInput = {
+    organizationId: orgId,
+    vehicleId,
+    documentExtractionId: 'ext-damage-1',
+    documentActionIdempotencyKey: 'ext-damage-1:v1:fp:a1:CREATE_DAMAGE_DRAFT',
+    damageType: 'UNKNOWN',
+    severity: 'UNKNOWN',
+    description: 'Scratch on door',
+    locationLabel: 'rear_left_door',
+  };
+
+  let prisma: ReturnType<typeof makePrisma>;
+  let tasks: { upsertByDedup: jest.Mock };
+  let svc: DamagesService;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    tasks = { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }) };
+    svc = new DamagesService(prisma, tasks as any);
+    jest.clearAllMocks();
+  });
+
+  it('returns existing damage on retry for the same documentExtractionId', async () => {
+    const existing = makeDamageRow({
+      id: 'damage-existing',
+      organizationId: orgId,
+      documentExtractionId: 'ext-damage-1',
+    });
+    prisma.vehicleDamage.findUnique.mockResolvedValue(existing);
+
+    const result = await svc.createDraftFromDocumentExtraction(extractionInput);
+
+    expect(result.id).toBe('damage-existing');
+    expect(prisma.vehicleDamage.create).not.toHaveBeenCalled();
+  });
+
+  it('links existing damage case instead of creating duplicate when linkExistingDamageId is set', async () => {
+    const existing = makeDamageRow({
+      id: 'damage-existing',
+      organizationId: orgId,
+      documentExtractionId: null,
+    });
+    prisma.vehicleDamage.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    prisma.vehicleDamage.findFirst.mockResolvedValue(existing);
+    prisma.vehicleDamage.update.mockResolvedValue({
+      ...existing,
+      documentExtractionId: 'ext-damage-1',
+    });
+
+    const result = await svc.createDraftFromDocumentExtraction({
+      ...extractionInput,
+      linkExistingDamageId: 'damage-existing',
+    });
+
+    expect(result.id).toBe('damage-existing');
+    expect(prisma.vehicleDamage.create).not.toHaveBeenCalled();
+    expect(prisma.vehicleDamage.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'damage-existing' },
+        data: expect.objectContaining({ documentExtractionId: 'ext-damage-1' }),
+      }),
+    );
+  });
+
+  it('handles parallel draft create races via unique constraint and returns existing damage', async () => {
+    const racedDamage = makeDamageRow({
+      id: 'damage-raced',
+      organizationId: orgId,
+      documentExtractionId: 'ext-damage-1',
+      liabilityNote: '[extraction-uncertain:damageType=UNKNOWN,severity=UNKNOWN]',
+      locationView: DamageLocationView.UNKNOWN,
+      damageType: DamageType.OTHER,
+    });
+    let extractionLookupCount = 0;
+    prisma.vehicleDamage.findUnique.mockImplementation(async () => {
+      extractionLookupCount += 1;
+      if (extractionLookupCount <= 2) return null;
+      return racedDamage;
+    });
+    prisma.vehicleDamage.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    const results = await Promise.all([
+      svc.createDraftFromDocumentExtraction(extractionInput),
+      svc.createDraftFromDocumentExtraction(extractionInput),
+    ]);
+
+    expect(results[0].id).toBe('damage-raced');
+    expect(results[1].id).toBe('damage-raced');
+    expect(prisma.vehicleDamage.create).toHaveBeenCalledTimes(2);
   });
 });

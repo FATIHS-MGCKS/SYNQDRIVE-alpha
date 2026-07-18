@@ -1,6 +1,8 @@
 import { DocumentClassificationService } from './document-classification.service';
 import { CLASSIFICATION_UNKNOWN } from './document-classification.types';
 import { SUPPORTED_DOCUMENT_TYPES } from '@modules/document-extraction/document-extraction.schemas';
+import { buildDocumentClassificationContract } from '@modules/document-extraction/document-classification-taxonomy.util';
+import { GENERAL_CORRESPONDENCE_CLASSIFICATION_FIXTURE } from '@modules/document-extraction/__fixtures__/document-classification-fixtures';
 
 describe('DocumentClassificationService', () => {
   function makeService(overrides: Record<string, unknown> = {}) {
@@ -30,18 +32,23 @@ describe('DocumentClassificationService', () => {
     });
     expect(result.success).toBe(false);
     expect(result.detectedDocumentType).toBe(CLASSIFICATION_UNKNOWN);
+    expect(result.contractVersion).toBe('2.0.0');
     expect(llm.completeJson).not.toHaveBeenCalled();
   });
 
-  it('classifies a clear service record', async () => {
+  it('classifies a clear service record with taxonomy contract', async () => {
     const { service, llm } = makeService({
       llm: {
         completeJson: jest.fn().mockResolvedValue({
           data: {
             detectedDocumentType: 'SERVICE',
+            documentCategory: 'TECHNICAL',
+            documentSubtype: 'SERVICE_REPORT',
             confidence: 0.92,
             rationale: 'Contains workshop maintenance items and service date',
             sourcePages: [1],
+            alternatives: [],
+            detectedIdentifiers: [],
           },
           model: 'mistral-small',
         }),
@@ -58,6 +65,11 @@ describe('DocumentClassificationService', () => {
     expect(result.success).toBe(true);
     expect(result.detectedDocumentType).toBe('SERVICE');
     expect(result.confidence).toBe(0.92);
+    expect(result.category).toBe('TECHNICAL');
+    expect(result.subtype).toBe('SERVICE_REPORT');
+    expect(result.contractVersion).toBe('2.0.0');
+    expect(result.modelVersion).toBe('mistral-small');
+    expect(result.evidencePages).toEqual([1]);
     expect(result.provider).toBe('mistral');
     expect(llm.completeJson).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -67,19 +79,41 @@ describe('DocumentClassificationService', () => {
     );
   });
 
-  it('maps invalid model type to UNKNOWN', () => {
-    const { service } = makeService();
-    const normalized = service.normalizeResponse(
-      {
+  it('returns taxonomy contract with alternatives from fixture-shaped response', async () => {
+    const { service } = makeService({
+      llm: {
+        completeJson: jest.fn().mockResolvedValue({
+          data: { ...GENERAL_CORRESPONDENCE_CLASSIFICATION_FIXTURE },
+          model: 'mistral-small',
+        }),
+      },
+    });
+
+    const result = await service.classify({
+      documentText: 'Customer letter without workshop evidence',
+      allowedDocumentTypes: SUPPORTED_DOCUMENT_TYPES,
+    });
+
+    expect(result.category).toBe('CUSTOMER');
+    expect(result.subtype).toBe('CUSTOMER_CORRESPONDENCE');
+    expect(result.alternatives.length).toBeGreaterThan(0);
+    expect(result.detectedIdentifiers.length).toBeGreaterThan(0);
+    expect(result.contract.alternatives[0]?.subtype).toBe('SERVICE_REPORT');
+  });
+
+  it('maps invalid model legacy type to UNKNOWN when taxonomy is absent', () => {
+    const contract = buildDocumentClassificationContract({
+      raw: {
         detectedDocumentType: 'NOT_A_REAL_TYPE' as any,
         confidence: 0.99,
-        rationale: 'bogus',
+        rationale: 'bogus classification attempt',
         sourcePages: null,
       },
-      SUPPORTED_DOCUMENT_TYPES,
-      3,
-    );
-    expect(normalized.detectedDocumentType).toBe(CLASSIFICATION_UNKNOWN);
+      allowed: SUPPORTED_DOCUMENT_TYPES,
+      maxPage: 3,
+      modelVersion: 'mistral-small',
+    });
+    expect(contract.detectedDocumentType).toBe(CLASSIFICATION_UNKNOWN);
   });
 
   it('returns UNKNOWN on invalid JSON provider failure', async () => {
@@ -119,18 +153,26 @@ describe('DocumentClassificationService', () => {
           .mockResolvedValueOnce({
             data: {
               detectedDocumentType: 'INVOICE',
+              documentCategory: 'FINANCE',
+              documentSubtype: 'INVOICE',
               confidence: 0.88,
               rationale: 'Invoice number and total amount due',
               sourcePages: [1],
+              alternatives: [],
+              detectedIdentifiers: [],
             },
             model: 'mistral-small',
           })
           .mockResolvedValueOnce({
             data: {
               detectedDocumentType: 'TUV_REPORT',
+              documentCategory: 'COMPLIANCE',
+              documentSubtype: 'TUV_REPORT',
               confidence: 0.91,
               rationale: 'Hauptuntersuchung HU Prüfbericht',
               sourcePages: [1],
+              alternatives: [],
+              detectedIdentifiers: [],
             },
             model: 'mistral-small',
           }),
@@ -147,7 +189,9 @@ describe('DocumentClassificationService', () => {
     });
 
     expect(invoice.detectedDocumentType).toBe('INVOICE');
+    expect(invoice.subtype).toBe('INVOICE');
     expect(tuv.detectedDocumentType).toBe('TUV_REPORT');
+    expect(tuv.subtype).toBe('TUV_REPORT');
     expect(llm.completeJson).toHaveBeenCalledTimes(2);
   });
 });

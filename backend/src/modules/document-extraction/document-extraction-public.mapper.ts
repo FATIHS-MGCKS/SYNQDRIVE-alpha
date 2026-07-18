@@ -13,6 +13,36 @@ import {
 } from './document-content-cache.util';
 import { getAllowedDocumentExtractionActions } from './document-extraction-actions.util';
 import { resolveEffectiveDocumentType } from './document-extraction-lifecycle.util';
+import { buildPublicUploadDuplicateDto } from './dto/public-upload-duplicate.dto';
+import {
+  buildUploadContextDisplayLabel,
+  readUploadContextPipelineState,
+} from './document-upload-context.util';
+import { readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
+import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
+import { readCustomerCandidatePipelineState } from './customer-candidate-matching.util';
+import { readDriverCandidatePipelineState } from './driver-candidate-matching.util';
+import { readPartnerCandidatePipelineState } from './partner-candidate-matching.util';
+import { readEntityCandidateRankingPipelineState } from './entity-candidate-ranking.policy';
+import {
+  readDocumentTaxonomyPipelineState,
+  resolveDocumentTaxonomy,
+} from './document-taxonomy.util';
+import {
+  readFieldProvenanceRegistry,
+  toPublicFieldProvenance,
+} from './document-field-provenance.util';
+import { buildPublicDocumentApplyResult } from './document-apply-result.mapper';
+import type {
+  PublicUploadContextDisplayDto,
+  PublicVehicleCandidateDto,
+  PublicBookingCandidateDto,
+  PublicCustomerCandidateDto,
+  PublicDriverCandidateDto,
+  PublicPartnerCandidateDto,
+  PublicPartnerNewSuggestionDto,
+  PublicEntityCandidateRankingDto,
+} from './dto/public-document-extraction.dto';
 
 type VehicleJoin = {
   id: string;
@@ -31,8 +61,10 @@ type UserJoin = {
 
 type ExtractionRecord = {
   id: string;
-  vehicleId: string;
+  vehicleId: string | null;
   organizationId?: string | null;
+  uploadContextType?: string | null;
+  uploadContextId?: string | null;
   status: PublicDocumentExtractionDto['status'];
   processingStage: PublicDocumentExtractionDto['processingStage'];
   sourceFileName?: string | null;
@@ -78,6 +110,9 @@ type ExtractionRecord = {
   appliedById?: string | null;
   cancelledById?: string | null;
   fileDeletedById?: string | null;
+  uploadDuplicateStatus?: string | null;
+  relatedExtractionId?: string | null;
+  reuploadReason?: string | null;
   vehicle?: VehicleJoin | null;
   createdBy?: UserJoin | null;
   confirmedBy?: UserJoin | null;
@@ -105,8 +140,11 @@ function toActor(user: UserJoin | null | undefined): PublicActorDto | null {
   return { id: user.id, displayName };
 }
 
-function toVehicleDisplay(vehicle: VehicleJoin | null | undefined, vehicleId: string): PublicVehicleDisplayDto | null {
-  if (!vehicle) return null;
+function toVehicleDisplay(
+  vehicle: VehicleJoin | null | undefined,
+  vehicleId: string | null,
+): PublicVehicleDisplayDto | null {
+  if (!vehicle || !vehicleId) return null;
   return {
     id: vehicle.id ?? vehicleId,
     licensePlate: vehicle.licensePlate ?? null,
@@ -147,14 +185,226 @@ function buildAudit(record: ExtractionRecord): PublicDocumentExtractionAuditDto 
   };
 }
 
+function buildUploadContextDisplay(
+  record: ExtractionRecord,
+): PublicUploadContextDisplayDto | null {
+  const pipeline = readUploadContextPipelineState(record.plausibility);
+  const candidate = pipeline?.candidate;
+  if (!candidate) return null;
+  const resolver = pipeline?.resolver;
+  return {
+    entityType: candidate.entityType,
+    entityId: candidate.entityId,
+    sourceSurface: candidate.sourceSurface,
+    providedAt: candidate.providedAt,
+    providedByUserId: candidate.providedByUserId,
+    confirmationStatus: 'CANDIDATE',
+    label: buildUploadContextDisplayLabel(candidate),
+    resolverStatus: resolver?.status ?? 'PENDING',
+    conflicts: (resolver?.conflicts ?? []).map((conflict) => ({
+      field: conflict.field,
+      message: conflict.message,
+      contextValue: conflict.contextValue,
+      resolvedValue: conflict.resolvedValue,
+      severity: conflict.severity,
+    })),
+  };
+}
+
+function buildVehicleCandidatesDisplay(record: ExtractionRecord): PublicVehicleCandidateDto[] | null {
+  const pipeline = readVehicleCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    vehicleId: candidate.vehicleId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+  }));
+}
+
+function buildBookingCandidatesDisplay(record: ExtractionRecord): PublicBookingCandidateDto[] | null {
+  const pipeline = readBookingCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    bookingId: candidate.bookingId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    temporalOverlap: candidate.temporalOverlap,
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+  }));
+}
+
+function buildCustomerCandidatesDisplay(record: ExtractionRecord): PublicCustomerCandidateDto[] | null {
+  const pipeline = readCustomerCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    customerId: candidate.customerId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+    displayLabel: candidate.displayLabel,
+  }));
+}
+
+function buildDriverCandidatesDisplay(record: ExtractionRecord): PublicDriverCandidateDto[] | null {
+  const pipeline = readDriverCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    driverCustomerId: candidate.driverCustomerId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+    displayLabel: candidate.displayLabel,
+    driverRole: candidate.driverRole,
+  }));
+}
+
+function buildPartnerCandidatesDisplay(record: ExtractionRecord): PublicPartnerCandidateDto[] | null {
+  const pipeline = readPartnerCandidatePipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return pipeline.candidates.map((candidate) => ({
+    vendorId: candidate.vendorId,
+    confidence: candidate.confidence,
+    matchReasons: candidate.matchReasons,
+    conflicts: candidate.conflicts.map((conflict) => ({
+      code: conflict.code,
+      field: conflict.field,
+      message: conflict.message,
+      severity: conflict.severity,
+    })),
+    rank: candidate.rank,
+    confirmationRequired: candidate.confirmationRequired,
+    displayLabel: candidate.displayLabel,
+    partnerKind: candidate.partnerKind,
+    vendorCategory: candidate.vendorCategory,
+  }));
+}
+
+function buildPartnerNewSuggestionDisplay(
+  record: ExtractionRecord,
+): PublicPartnerNewSuggestionDto | null {
+  const pipeline = readPartnerCandidatePipelineState(record.plausibility);
+  return pipeline?.newPartnerSuggestion ?? null;
+}
+
+function buildEntityCandidateRankingDisplay(
+  record: ExtractionRecord,
+): PublicEntityCandidateRankingDto | null {
+  const pipeline = readEntityCandidateRankingPipelineState(record.plausibility);
+  if (!pipeline) return null;
+  return {
+    rankingVersion: pipeline.rankingVersion,
+    evaluatedAt: pipeline.evaluatedAt,
+    documentType: pipeline.documentType,
+    preselectionBlocked: pipeline.preselectionBlocked,
+    preselectionBlockedReason: pipeline.preselectionBlockedReason,
+    candidates: pipeline.candidates.map((candidate) => ({
+      entityType: candidate.entityType,
+      entityId: candidate.entityId,
+      score: candidate.ranking.score,
+      confidenceLevel: candidate.ranking.confidenceLevel,
+      positiveReasons: candidate.ranking.positiveReasons,
+      negativeReasons: candidate.ranking.negativeReasons,
+      conflicts: candidate.ranking.conflicts.map((conflict) => ({
+        code: conflict.code,
+        field: conflict.field,
+        message: conflict.message,
+        severity: conflict.severity,
+      })),
+      rank: candidate.ranking.rank,
+      autoSelectEligibility: candidate.ranking.autoSelectEligibility,
+    })),
+  };
+}
+
+function buildDocumentTaxonomyDisplay(record: ExtractionRecord) {
+  const pipelineTaxonomy = readDocumentTaxonomyPipelineState(record.plausibility);
+  if (pipelineTaxonomy) {
+    return {
+      documentCategory: pipelineTaxonomy.documentCategory,
+      documentSubtype: pipelineTaxonomy.documentSubtype,
+      documentTaxonomyVersion: pipelineTaxonomy.taxonomyVersion,
+      archiveRecommended: pipelineTaxonomy.archiveRecommended,
+    };
+  }
+
+  const effective = resolveEffectiveDocumentType(record);
+  const extracted =
+    record.extractedData && typeof record.extractedData === 'object' && !Array.isArray(record.extractedData)
+      ? (record.extractedData as Record<string, unknown>)
+      : {};
+  const confirmed =
+    record.confirmedData && typeof record.confirmedData === 'object' && !Array.isArray(record.confirmedData)
+      ? (record.confirmedData as Record<string, unknown>)
+      : {};
+
+  const taxonomy = resolveDocumentTaxonomy({
+    legacyDocumentType: effective,
+    documentSubtype:
+      (typeof confirmed.documentSubtype === 'string' ? confirmed.documentSubtype : null) ??
+      (typeof extracted.documentSubtype === 'string' ? extracted.documentSubtype : null) ??
+      (typeof extracted.archiveSubtype === 'string' ? extracted.archiveSubtype : null),
+    archiveSubtype:
+      typeof extracted.archiveSubtype === 'string' ? extracted.archiveSubtype : null,
+    source: effective ? 'legacy_mapping' : 'unknown_subtype_archive',
+  });
+
+  return {
+    documentCategory: taxonomy.documentCategory,
+    documentSubtype: taxonomy.documentSubtype,
+    documentTaxonomyVersion: taxonomy.taxonomyVersion,
+    archiveRecommended: taxonomy.archiveRecommended,
+  };
+}
+
 function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
   const effective = resolveEffectiveDocumentType(record);
   const allowedActions = getAllowedDocumentExtractionActions(record);
+  const taxonomy = buildDocumentTaxonomyDisplay(record);
+  const fieldProvenanceRegistry = readFieldProvenanceRegistry(record.plausibility);
 
   return {
     id: record.id,
     vehicleId: record.vehicleId,
     organizationId: record.organizationId ?? null,
+    uploadContextType: record.uploadContextType ?? null,
+    uploadContextId: record.uploadContextId ?? null,
+    uploadContext: buildUploadContextDisplay(record),
+    vehicleCandidates: buildVehicleCandidatesDisplay(record),
+    bookingCandidates: buildBookingCandidatesDisplay(record),
+    customerCandidates: buildCustomerCandidatesDisplay(record),
+    driverCandidates: buildDriverCandidatesDisplay(record),
+    partnerCandidates: buildPartnerCandidatesDisplay(record),
+    partnerNewSuggestion: buildPartnerNewSuggestionDisplay(record),
+    entityCandidateRanking: buildEntityCandidateRankingDisplay(record),
     vehicle: toVehicleDisplay(record.vehicle, record.vehicleId),
     status: record.status,
     processingStage: record.processingStage,
@@ -167,6 +417,10 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     documentType: effective,
     classificationMode: record.classificationMode,
     classificationConfidence: toConfidenceNumber(record.classificationConfidence),
+    documentCategory: taxonomy.documentCategory,
+    documentSubtype: taxonomy.documentSubtype,
+    documentTaxonomyVersion: taxonomy.documentTaxonomyVersion,
+    archiveRecommended: taxonomy.archiveRecommended,
     errorPhase: record.errorPhase ?? null,
     errorCode: record.errorCode ?? null,
     errorMessage: record.errorMessage ?? null,
@@ -179,6 +433,8 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     extractedData: record.extractedData ?? null,
     plausibility: stripPipelineFromPlausibility(record.plausibility) ?? null,
     confirmedData: record.confirmedData ?? null,
+    fieldProvenance: toPublicFieldProvenance(fieldProvenanceRegistry),
+    fieldCorrectionCount: fieldProvenanceRegistry?.correctionCount ?? null,
     queuedAt: toIso(record.queuedAt),
     processedAt: toIso(record.processedAt),
     appliedAt: toIso(record.appliedAt),
@@ -195,7 +451,27 @@ function mapBase(record: ExtractionRecord): PublicDocumentExtractionDto {
     hasStoredFile: Boolean(record.objectKey),
     allowedActions,
     audit: buildAudit(record),
+    uploadDuplicateStatus: record.uploadDuplicateStatus ?? null,
+    relatedExtractionId: record.relatedExtractionId ?? null,
+    reuploadReason: record.reuploadReason ?? null,
+    uploadDuplicate: buildPublicUploadDuplicateDto({
+      status: record.uploadDuplicateStatus,
+      relatedExtractionId: record.relatedExtractionId,
+      reuploadReason: record.reuploadReason,
+      plausibility: record.plausibility,
+    }),
+    applyResult: shouldIncludeApplyResult(record.status)
+      ? buildPublicDocumentApplyResult(record)
+      : null,
   };
+}
+
+function shouldIncludeApplyResult(status: string): boolean {
+  return (
+    status === 'CONFIRMED' ||
+    status === 'APPLIED' ||
+    status === 'PARTIALLY_APPLIED'
+  );
 }
 
 /** Maps a DB record to the public API contract — strips storage internals. */
@@ -212,5 +488,7 @@ export function toPublicDocumentExtractionSummary(
     extractedData: null,
     confirmedData: null,
     plausibility: null,
+    fieldProvenance: null,
+    fieldCorrectionCount: null,
   };
 }

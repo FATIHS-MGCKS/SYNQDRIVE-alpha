@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import { DocumentIntakeLaunchAiButton } from './documents/DocumentIntakeLaunchButton';
 
 interface Fine {
   id: string;
@@ -72,7 +73,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const [view, setView] = useState<'list' | 'create' | 'upload' | 'detail'>('list');
+  const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [selectedFine, setSelectedFine] = useState<Fine | null>(null);
 
   const tp = isDarkMode ? 'text-white' : 'text-gray-900';
@@ -141,10 +142,6 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
     return <CreateFineForm isDarkMode={isDarkMode} orgId={orgId || ''} vehicles={vehicles} onClose={() => setView('list')} onCreated={(f) => { setView('detail'); setSelectedFine(f); load(); }} card={card} tp={tp} ts={ts} inputCls={inputCls} />;
   }
 
-  // ── AI Upload flow ──
-  if (view === 'upload') {
-    return <AIUploadFlow isDarkMode={isDarkMode} orgId={orgId || ''} vehicles={vehicles} onClose={() => setView('list')} onCreated={(f) => { setView('detail'); setSelectedFine(f); load(); }} card={card} tp={tp} ts={ts} inputCls={inputCls} />;
-  }
 
   // ── Main list ──
   return (
@@ -157,14 +154,16 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setView('upload')}
+          <DocumentIntakeLaunchAiButton
+            label="KI-Upload"
             className="sq-press flex items-center gap-2 rounded-xl border border-border/60 surface-premium px-3 py-2 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
-          >
-            <Icon name="sparkles" className="h-4 w-4 text-purple-500" />
-            KI-Upload
-          </button>
+            request={{
+              optionalContextType: 'FINE',
+              sourceSurface: 'fines_page',
+              returnView: 'fines',
+              documentTab: 'upload',
+            }}
+          />
           <button
             type="button"
             onClick={() => setView('create')}
@@ -534,223 +533,6 @@ function CreateFineForm({ isDarkMode, orgId, vehicles, onClose, onCreated, card,
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════
-// AI UPLOAD FLOW
-// ════════════════════════════════════════════════
-
-function AIUploadFlow({ isDarkMode, orgId, vehicles, onClose, onCreated, card, tp, ts, inputCls }: {
-  isDarkMode: boolean; orgId: string; vehicles: any[]; onClose: () => void; onCreated: (f: Fine) => void;
-  card: string; tp: string; ts: string; inputCls: string;
-}) {
-  const [step, setStep] = useState<'upload' | 'analyzing' | 'review'>('upload');
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [extracted, setExtracted] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    const r = new FileReader();
-    r.onload = () => setPreview(r.result as string);
-    r.readAsDataURL(f);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (!f) return;
-    setFile(f);
-    const r = new FileReader();
-    r.onload = () => setPreview(r.result as string);
-    r.readAsDataURL(f);
-  };
-
-  const runExtraction = async () => {
-    if (!file) return;
-    setStep('analyzing');
-    try {
-      const uploadRes = await api.fines.uploadImage(orgId, file);
-      setImageUrl(uploadRes.url);
-    } catch { /* continue even if upload fails for local preview */ }
-
-    // No fine OCR/extraction service is wired yet. Previously this method
-    // fabricated Aktenzeichen, amounts, location and dates via Math.random()
-    // which is unsafe for a legal/regulatory record that directly drives
-    // driver liability. Until a real extraction service is available, we
-    // drop the user into manual-entry mode with sensible defaults.
-    setExtracted({
-      title: '',
-      offenseType: '',
-      fineNumber: '',
-      issuingAuthority: '',
-      amountCents: '',
-      location: '',
-      offenseDate: '',
-      receivedDate: new Date().toISOString().split('T')[0],
-    });
-    setStep('review');
-  };
-
-  const handleConfirm = async () => {
-    setSaving(true);
-    try {
-      const fine = await api.fines.create(orgId, {
-        title: extracted.title || 'Bußgeld',
-        offenseType: extracted.offenseType || '',
-        fineNumber: extracted.fineNumber || '',
-        issuingAuthority: extracted.issuingAuthority || '',
-        amountCents: parseInt(extracted.amountCents || '0', 10),
-        location: extracted.location || '',
-        offenseDate: extracted.offenseDate || '',
-        receivedDate: extracted.receivedDate || '',
-        dueDate: extracted.dueDate || '',
-        vehicleId: extracted.vehicleId || '',
-        imageUrl,
-        extractedData: extracted,
-      });
-      onCreated(fine);
-    } catch { setSaving(false); }
-  };
-
-  const setEx = (k: string, v: string) => setExtracted(p => ({ ...p, [k]: v }));
-  const labelCls = `block text-[11px] font-semibold mb-1.5 ${ts} uppercase tracking-wider`;
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-5">
-      <button onClick={onClose} className={`flex items-center gap-1 text-xs font-medium ${ts}`}>
-        <Icon name="chevron-left" className="w-4 h-4" /> Zurück
-      </button>
-
-      {/* Step: Upload */}
-      {step === 'upload' && (
-        <div className={`${card} p-6`}>
-          <div className="flex items-center gap-3 mb-5">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/60'}`}>
-              <Icon name="sparkles" className="w-4.5 h-4.5 text-purple-500" />
-            </div>
-            <div>
-              <h2 className={`text-base font-bold ${tp}`}>KI-gestützte Erfassung</h2>
-              <p className={`text-xs ${ts}`}>Laden Sie ein Bußgelddokument hoch – die KI extrahiert die Daten automatisch.</p>
-            </div>
-          </div>
-
-          <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={handleFile} className="hidden" />
-          <div
-            onDrop={handleDrop}
-            onDragOver={e => e.preventDefault()}
-            onClick={() => !file && fileRef.current?.click()}
-            className={`relative p-8 rounded-xl border-2 border-dashed text-center cursor-pointer transition-all ${isDarkMode ? 'border-border hover:border-status-ai/50 bg-muted/30' : 'border-gray-300 hover:border-purple-400 bg-gray-50/40'}`}
-          >
-            {preview ? (
-              <div className="space-y-3">
-                <img src={preview} alt="Preview" className="max-h-48 mx-auto rounded-xl object-contain" />
-                <p className={`text-xs font-medium ${tp}`}>{file?.name}</p>
-                <button onClick={(e) => { e.stopPropagation(); setFile(null); setPreview(null); }} className="text-xs text-red-500 underline">Andere Datei wählen</button>
-              </div>
-            ) : (
-              <div>
-                <Icon name="upload" className={`w-8 h-8 mx-auto mb-3 ${ts} opacity-50`} />
-                <p className={`text-sm font-medium ${tp}`}>Dokument hier ablegen</p>
-                <p className={`text-xs mt-1 ${ts}`}>oder klicken zum Auswählen (Bild / PDF)</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end mt-5">
-            <button onClick={runExtraction} disabled={!file} className="px-5 py-2.5 bg-purple-600 text-white rounded-xl text-xs font-semibold hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2">
-              <Icon name="sparkles" className="w-3.5 h-3.5" /> Analysieren
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step: Analyzing */}
-      {step === 'analyzing' && (
-        <div className={`${card} p-10 text-center`}>
-          <div className="relative w-14 h-14 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full border-2 border-purple-500/30 animate-ping" />
-            <div className="absolute inset-0 rounded-full flex items-center justify-center bg-purple-500/15">
-              <Icon name="sparkles" className="w-6 h-6 text-purple-500 animate-pulse" />
-            </div>
-          </div>
-          <h3 className={`text-sm font-bold ${tp}`}>KI analysiert das Dokument...</h3>
-          <p className={`text-xs mt-2 ${ts}`}>Bußgelddaten werden extrahiert. Einen Moment bitte.</p>
-        </div>
-      )}
-
-      {/* Step: Review */}
-      {step === 'review' && (
-        <div className={`${card} p-6`}>
-          <div className="flex items-center gap-2 mb-5">
-            <Icon name="check-circle" className="w-5 h-5 text-emerald-500" />
-            <h2 className={`text-base font-bold ${tp}`}>Extrahierte Daten prüfen</h2>
-          </div>
-          <p className={`text-xs mb-5 ${ts}`}>Bitte prüfen und korrigieren Sie die automatisch erkannten Werte, bevor Sie das Bußgeld erfassen.</p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Titel / Vergehen</label>
-              <input value={extracted.title || ''} onChange={e => setEx('title', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Vergehensart</label>
-              <select value={extracted.offenseType || ''} onChange={e => setEx('offenseType', e.target.value)} className={inputCls}>
-                <option value="">Auswählen...</option>
-                {OFFENSE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Aktenzeichen</label>
-              <input value={extracted.fineNumber || ''} onChange={e => setEx('fineNumber', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Betrag (EUR)</label>
-              <input type="number" step="0.01" value={extracted.amountCents ? (parseInt(extracted.amountCents, 10) / 100).toFixed(2) : ''} onChange={e => setEx('amountCents', String(Math.round(parseFloat(e.target.value || '0') * 100)))} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Behörde</label>
-              <input value={extracted.issuingAuthority || ''} onChange={e => setEx('issuingAuthority', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Tatdatum</label>
-              <input type="date" value={extracted.offenseDate || ''} onChange={e => setEx('offenseDate', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Tatort</label>
-              <input value={extracted.location || ''} onChange={e => setEx('location', e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Fahrzeug</label>
-              <select value={extracted.vehicleId || ''} onChange={e => setEx('vehicleId', e.target.value)} className={inputCls}>
-                <option value="">Auswählen...</option>
-                {vehicles.map((v: any) => <option key={v.id} value={v.id}>{v.make} {v.model} – {v.licensePlate || v.vin?.slice(-6)}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {preview && (
-            <div className="mt-5 pt-4 border-t" style={{ borderColor: isDarkMode ? 'rgb(64 64 64 / 0.5)' : 'rgb(229 231 235 / 0.5)' }}>
-              <p className={`text-[11px] font-semibold mb-2 ${ts} uppercase tracking-wider`}>Quelldokument</p>
-              <img src={preview} alt="Source" className="max-h-36 rounded-xl object-contain" />
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: isDarkMode ? 'rgb(64 64 64 / 0.5)' : 'rgb(229 231 235 / 0.5)' }}>
-            <button onClick={() => { setStep('upload'); setExtracted({}); }} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2.5 text-xs font-semibold">Zurück</button>
-            <button onClick={handleConfirm} disabled={saving || !extracted.title} className="sq-3d-btn sq-3d-btn--success flex items-center gap-2 px-5 py-2.5 text-xs font-semibold disabled:opacity-50">
-              {saving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check-circle" className="w-3.5 h-3.5" />} Bestätigen & erfassen
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

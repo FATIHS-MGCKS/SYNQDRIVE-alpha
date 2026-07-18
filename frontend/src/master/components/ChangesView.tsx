@@ -308,6 +308,1085 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-17T17:30:00.000Z',
   },
   {
+id: 'document-intake-v2-p2-fixes-2026-07-18',
+    version: '4.9.660',
+    title: 'V4.9.660 — Document Intake V2 P2 polish fixes',
+    summary: [
+      'Recovery scheduler uses DOCUMENT_EXTRACTION_RECOVERY_INTERVAL_MS from config.',
+      'Action-plan fingerprint includes planContext; archive panel exposes category/subtype/action filters.',
+      'Operator AUTO-first with optional type picker and awaiting_type UI; E2E fixtures default AUTO.',
+      'Removed legacy InvoiceExtractionUpload; pollThroughApply wired; frontend tsc build green.',
+      'Extended observability test mock; deployment runbook notes Redis + WORKERS_ENABLED.',
+    ],
+    reason: 'Close documented P2 gaps from final audit before stack merge.',
+    previousBehavior:
+      'Hardcoded recovery interval, partial archive filters, operator type-before-OCR, stale E2E defaults, dead pollThroughApply flag, frontend tsc errors.',
+    details:
+      'Backend: recovery scheduler onModuleInit, fingerprint planContext. Frontend: DocumentArchivePanel filters, OperatorAiUploadFlow, useDocumentExtractionMetadata, tsc fixes. Removed InvoiceExtractionUpload.tsx.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
+    id: 'document-intake-v2-final-audit-2026-07-18',
+    version: '4.9.659',
+    title: 'V4.9.659 — Document Intake V2 Final Audit & P0/P1 Fixes',
+    summary: [
+      'docs/audits/document-intake-v2-final-audit.md — 25+ Bereiche, P0/P1/P2-Klassifikation, Readiness-Gates, Validierung.',
+      'Fix: Queue-Recovery fuer AUTO/AWAITING ohne effectiveDocumentType; Confirm nutzt frische Plausibilitaet fuer Action-Plan-Preview.',
+      'Fix: POST organizations/.../confirm (confirmForOrg); Drawer AWAITING_DOCUMENT_TYPE UI; Action-Recovery skip ohne vehicleId.',
+      'Fix: Processor recordRequiredFieldMetrics Syntax; objectKey-Narrowing fuer OCR-Stage.',
+    ],
+    reason: 'Prompt 84/84 — Abschlussaudit mit belegten P0/P1-Korrekturen vor Shadow-Rollout.',
+    previousBehavior:
+      'AUTO-Uploads in QUEUED/PROCESSING wurden von Recovery uebersprungen; Confirm-Fingerprint konnte veraltete Plausibilitaet nutzen; Org-Confirm und Drawer-Awaiting-Type fehlten.',
+    details:
+      'docs/audits/document-intake-v2-final-audit.md. Backend: recovery scheduler, confirmForOrg, action-recovery guard, processor build. Frontend: VehicleDocumentUploadDrawer awaiting_type, useDocumentIntakeFlow org confirm/setDocumentType, api.confirmByOrg.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
+    id: 'document-intake-v2-runbooks-2026-07-18',
+    version: '4.9.658',
+    title: 'V4.9.658 — Document Intake V2 Deployment & Shadow Runbooks',
+    summary: [
+      'docs/runbooks/document-intake-v2-deployment.md — 14-Schritte-Rollout (Backup, Migration, Apply aus, Org-Upload, Entity-Vorschlag, Action-Plan Dry Run, Executor-Allowlist, Follow-up, Archiv, Security, Legacy-Apply aus).',
+      'docs/runbooks/document-intake-v2-shadow-validation.md — Shadow-Metriken (OCR, Wrong-high-confidence, Required Fields, Entity Top-1/3, Blocker, Action-Plan, Duplikate, Partial Apply, Field Correction, Follow-up-Akzeptanz).',
+      'Pflicht-Stichprobe: repräsentative PDF-, Bild- und Dokumenttyp-Proben vor breiter Freigabe.',
+    ],
+    reason: 'Operative Runbooks für kontrolliertes Document-Intake-V2-Rollout analog Battery V2.',
+    previousBehavior: 'Keine dedizierten Document-Intake-V2-Deployment- und Shadow-Validierungs-Runbooks.',
+    details: 'docs/runbooks/document-intake-v2-deployment.md, docs/runbooks/document-intake-v2-shadow-validation.md — verknüpft mit document-intake-v2-grafana-prometheus-ops.md und Reconciliation-CLI.',
+    affectsArchitecture: false,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
+    id: 'document-intake-v2-metrics-grafana-2026-07-18',
+    version: '4.9.657',
+    title: 'V4.9.657 — Document Intake V2 Metrics & Grafana',
+    summary: [
+      '17 neue Prometheus-Counter fuer Document Intake V2 (Upload, OCR, Klassifikation, Extraktion, Entity-Matching, Action-Plan, Follow-up, Archive, Recovery).',
+      'Grafana-Dashboard synqdrive-document-intake-v2 mit 10 Ops-Bereichen (Upload Funnel, OCR, Klassifikation, Required Fields, Entity Confidence, Actions, Partial Apply, Duplicates, Queue, Follow-up).',
+      'Alert-Gruppe synqdrive_document_intake_v2; OCR-Latenz via observeStage; keine Dokument-IDs oder Kennzeichen als Labels.',
+    ],
+    reason: 'Operative Transparenz und Alerting fuer den Document-Intake-V2-Flow ohne PII in Metriken.',
+    previousBehavior: 'Nur Legacy synqdrive_document_extraction_* Metriken in synqdrive-ops.json; kein dediziertes Intake-V2-Dashboard.',
+    details: 'backend/src/modules/document-extraction/observability/document-intake-v2-prometheus.metrics.ts, TripMetricsService, DocumentExtractionObservabilityService, Instrumentierung in Processor/Service/Orchestrator/Follow-up/Archive/Recovery. docs/architecture/document-intake-v2-grafana-prometheus-ops.md',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
+    id: 'document-intake-v2-frontend-e2e-tests-2026-07-18',
+    version: '4.9.656',
+    title: 'V4.9.656 — Document Intake V2 Frontend & E2E Test Package',
+    summary: [
+      'Vollstaendiges Frontend- und E2E-Testpaket fuer Document Intake V2 mit verify-Skript und 25-Bereiche-Coverage-Matrix.',
+      'Neue Specs: document-intake-v2-surfaces/flow.contract/tenant-isolation, follow-up/archive UI tests, apply-polling.',
+      'E2E: document-intake-v2-flow + responsive mit Profil-Fixtures (applying-guard, partial-apply, archive, cross-tenant).',
+      'Apply-Truth-Vertrag: keine Mock-Anzeige von APPLIED-Erfolg ohne bestaetigtes applyResult.',
+      'Fix: useDocumentIntakeFlow startPolling TDZ (ReferenceError beim Oeffnen der Upload-View).',
+    ],
+    reason: 'Prompt 81/84 — Frontend- und E2E-Abdeckung des vollstaendigen Intake-Flows.',
+    previousBehavior:
+      'Einzelne Upload-Specs ohne einheitliches npm-Paket, ohne Apply-Truth-E2E-Guards und ohne Archiv/Follow-up UI-Tests.',
+    details:
+      'Frontend: document-intake-test-fixtures.ts, 6 neue Unit/UI-Specs, document-intake-v2-verify.sh, npm run test:document-intake:v2 / :e2e / :verify. E2E: document-intake-v2-fixtures.ts (Profile), flow + responsive specs. Fix: useDocumentIntakeFlow startPolling vor handleRetryFailedActions. Docs: docs/testing/document-intake-v2-frontend-e2e-coverage.md.',
+    affectsArchitecture: false,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
+    id: 'document-intake-v2-backend-tests-2026-07-17',
+    version: '4.9.655',
+    title: 'V4.9.655 — Document Intake V2 Backend Test Package',
+    summary: [
+      'Vollstaendiges Backend-Testpaket fuer Document Intake V2 mit verify-Skript und Coverage-Matrix.',
+      'Neue Specs: action-plan.builder, apply-result.service, follow-up-resync, update-vehicle executor, retry-failed-actions, tenant-isolation, race-conditions.',
+      'npm run test:document-intake:v2 / :integration / :verify; tsconfig.document-intake.json fuer modul-scoped Typecheck.',
+      'Test-Harness spreadDocumentExtractionExtendedServiceMocks; Upload/Processor-Specs an 22-arg Service angepasst.',
+    ],
+    reason: 'Prompt 80/84 — Backend-Abdeckung aller Intake-V2-Pfade mit automatisierter Verifikation.',
+    previousBehavior:
+      'Breite Einzel-Specs ohne einheitliches npm-Paket, ohne Coverage-Dokument und mit Luecken bei Builder/Resync/Retry/Tenant/Race.',
+    details:
+      'Backend: 7 neue Spec-Dateien, document-intake-v2-verify.sh, package.json scripts, tsconfig.document-intake.json, document-extraction-test.helpers Erweiterung, Schema-Registry lazy-init, org-null vehicleId in Duplicate/Reconciliation. Docs: docs/testing/document-intake-v2-backend-coverage.md.',
+    affectsArchitecture: false,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T05:00:00.000Z',
+  },
+  {
+    id: 'document-intake-v2-entry-points-2026-07-17',
+    version: '4.9.654',
+    title: 'V4.9.654 — Document Intake V2 Entry Points',
+    summary: [
+      'Alle relevanten Dokumenten-Einstiegspunkte auf kanonischen Document Intake V2 Flow migriert.',
+      'openDocumentIntake mit URL-Kontext, Ruecknavigation, DocumentIntakeLaunchButton.',
+      'Legacy InvoiceExtractionUpload und FinesView AIUploadFlow Stub entfernt; Operator org-context upload.',
+      'KYC- und Invoice-Attachment-Uploads unveraendert getrennt.',
+    ],
+    reason: 'Prompt 79/84 — Ein Flow mit optionalem Kontext ueber alle Surfaces.',
+    previousBehavior:
+      'Parallele Legacy-Flows (Invoice KI, Fines KI-Stub), Health-Stubs ohne Navigation, Operator-Kontext nur UI.',
+    details:
+      'Frontend: document-intake-entry.ts, DocumentIntakeLaunchButton, App openDocumentIntake, useDocumentExtractionFlow optional context, entry-point tests. Architektur: architecture/DOCUMENT_INTAKE_V2_ENTRY_POINTS_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T04:00:00.000Z',
+  },
+  {
+    id: 'document-intake-three-tab-hub-2026-07-17',
+    version: '4.9.653',
+    title: 'V4.9.653 — Document Intake Three-Tab Hub',
+    summary: [
+      'Dokumentenseite verbindlich in Hochladen, Zu prüfen und Archiv strukturiert.',
+      'Review-Inbox mit Grund-Filtern (Typ, Entity, Pflichtfelder, Plausibilität, Action Preview, Apply, Follow-up).',
+      'Archiv-Tab mit Suche, Filtern, Pagination, bestätigten Links, Actions, Folgeaufgaben, Download und Audit-Trail-Zeitleiste.',
+      'URL-/Tab-State (`documentTab`, `extractionId`, `archiveQ`); keine lokale React-State-Historie als Navigation.',
+    ],
+    reason:
+      'Prompt 78/84 — Klare Drei-Tab-Struktur für kanonischen Upload, Review-Posteingang und Archiv.',
+    previousBehavior:
+      'DocumentUploadView mit Upload-Flow und lokaler Sidebar-Historie; kein dedizierter Review-Inbox- oder Archiv-Tab.',
+    details:
+      'Frontend: DocumentIntakeTabBar, DocumentReviewInboxPanel, DocumentArchivePanel, useDocumentReviewInbox, useDocumentArchiveList, document-intake-navigation, document-review-inbox.util, document-archive-audit.util. i18n en/de/fr. Tests. Architektur: architecture/DOCUMENT_INTAKE_THREE_TAB_HUB_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T03:00:00.000Z',
+  },
+  {
+    id: 'document-extraction-archive-read-model-2026-07-17',
+    version: '4.9.652',
+    title: 'V4.9.652 — Document Extraction Archive Read Model',
+    summary: [
+      'Organisationsweites Archiv-Read-Model mit denormalisiertem DocumentExtractionArchiveIndex.',
+      'Filter: Status, Kategorie, Subtyp, Fahrzeug, Buchung, Kunde, Fahrer, Anbieter, Uploader, Zeitraum, Dateiname, Rechnungsnr., Aktenzeichen, Action-/Follow-up-Status, Volltext über kontrollierte Metadaten.',
+      'Antwort: Dokument, Typ, Status, bestätigte Entity Links, Action/Follow-up Summary, Uploader, Zeitpunkte, canDownload. Pagination + Tenant-Scope + Performance-Tests.',
+    ],
+    reason:
+      'Prompt 77/84 — Kanonisches Archiv für Document-Extraction-History ohne OCR-Rohtexte in der Suche.',
+    previousBehavior:
+      'GET /organizations/:orgId/document-extractions nur Basis-Filter auf Extraktionszeilen; keine Action/Follow-up-Filter, kein kontrolliertes Volltext-Archiv.',
+    details:
+      'Backend: DocumentExtractionArchiveIndex, materializer/query/mapper, GET .../archive, Sync nach Review/Apply/Entity-Links/Follow-up/Processor. Frontend: api.documentExtraction.listArchiveByOrg + Typen. Architektur: architecture/DOCUMENT_EXTRACTION_ARCHIVE_READ_MODEL_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T02:00:00.000Z',
+  },
+  {
+    id: 'document-follow-up-subtype-rules-2026-07-17',
+    version: '4.9.651',
+    title: 'V4.9.651 — Document Follow-Up Subtype Rules',
+    summary: [
+      'Versionierte Folgeaktions-Regeln pro Dokument-Subtyp (FINE, INVOICE, TÜV/BOKraft, DAMAGE/ACCIDENT, SERVICE, GENERAL).',
+      'Explizite suggestionType, deutscher Titel und Begründung; keine irrelevanten Vorschläge; immer „Keine Folgeaktion“.',
+      'Neuberechnung nach Planänderung (Feldreview, Preferences, Entity-Links) via Preview-Plan + syncForActionPlan.',
+    ],
+    reason:
+      'Prompt 76/84 — Passende Folgeaktionen als versionierten Regelkatalog mit sicheren Defaults.',
+    previousBehavior:
+      'followUpSuggestionRules nur generische Trigger→Typ-Mapping; BOKraft leer; keine Resync nach Planinvalidierung.',
+    details:
+      'Backend: document-follow-up-subtype-rules.catalog, evaluateVersionedFollowUpTrigger, Generator-Dedupe, DocumentFollowUpResyncService. Tests pro Subtyp-Gruppe. Architektur: architecture/DOCUMENT_FOLLOW_UP_SUBTYPE_RULES_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T01:00:00.000Z',
+  },
+  {
+    id: 'document-follow-up-contact-prepare-2026-07-17',
+    version: '4.9.650',
+    title: 'V4.9.650 — Document Follow-Up Kontakt vorbereiten',
+    summary: [
+      'Follow-up „Kontakt vorbereiten“ für Kunde, Fahrer, Anbieter und Versicherung.',
+      'Empfänger aus bestätigtem Entity Link; Betreff/Textentwurf ohne sensible Rohdaten; optionale Dokumentreferenz.',
+      'Vorschau + expliziter Versand über OutboundEmailPolicy/Provider — niemals automatisch; Audit Trail.',
+    ],
+    reason:
+      'Prompt 75/84 — Kontaktvorbereitung an bestehenden E-Mail-/Versandflow anbinden ohne Auto-Send.',
+    previousBehavior:
+      'Contact-Follow-ups (PREPARE_*_CONTACT, PAYMENT_REVIEW, INSURANCE_REVIEW) hatten preparedOnly-Metadaten ohne Versand-UI.',
+    details:
+      'Backend: document-follow-up-contact.{types,draft,recipient.util,prepare.service}, GET/POST contact-prepare API. Frontend: DocumentFollowUpSuggestionsPanel + DocumentFollowUpContactPrepareModal in DocumentUploadView und VehicleDocumentUploadDrawer. Architektur: architecture/DOCUMENT_FOLLOW_UP_CONTACT_PREPARE_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
+    id: 'document-follow-up-task-v2-2026-07-17',
+    version: '4.9.649',
+    title: 'V4.9.649 — Document Follow-Up → Task Domain V2',
+    summary: [
+      'Accept materialisiert bestätigte Follow-up-Vorschläge in Task Domain V2.',
+      'checklistForType-Templates, Entity-Links (Document/Vehicle/Booking/Customer/Driver/Vendor), fineId/invoiceId aus Apply-Results.',
+      'Dedup mit invoice:payment-check und document-extraction:fine; Due Date nur bei dueDateConfirmed; Outbox bei Fehler.',
+    ],
+    reason:
+      'Prompt 74/84 — Follow-up-Accept an bestehende Task-Templates, Dedup und Outbox anbinden.',
+    previousBehavior:
+      'Accept rief TasksService.upsertByDedup direkt ohne Templates, Action-Result-IDs oder kanonische Dedup-Keys.',
+    details:
+      'Backend: document-follow-up-action-results.util, document-follow-up-task.materializer, Service-Upgrade, generator titles + dueDateConfirmed. Architektur: architecture/DOCUMENT_FOLLOW_UP_TASK_V2_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T23:30:00.000Z',
+  },
+  {
+    id: 'document-follow-up-suggestion-2026-07-17',
+    version: '4.9.648',
+    title: 'V4.9.648 — Document Follow-Up Suggestion Domain',
+    summary: [
+      'Zentrale DocumentFollowUpSuggestion-Domain nach Aktionsplan-Generierung.',
+      'Typen: CREATE_TASK, PREPARE_CUSTOMER/DRIVER_CONTACT, REVIEW_DEADLINE, VEHICLE_INSPECTION, WORKSHOP_APPOINTMENT, INSURANCE_REVIEW, PAYMENT_REVIEW, ASSIGN_RESPONSIBLE_USER, NO_FOLLOW_UP.',
+      'Idempotent, keine automatischen Kontakte — Accept erstellt Task via TasksService.upsertByDedup.',
+    ],
+    reason:
+      'Prompt 73/84 — Nachverfolgungsvorschläge als eigene Domain, getrennt von ausgefuehrten Apply-Actions.',
+    previousBehavior:
+      'followUpSuggestionRules nur Registry-Metadaten ohne Runtime-Evaluator; Fine-Task teils auto nach Apply.',
+    details:
+      'Backend: document-follow-up-suggestion.{types,store,generator,service}, Pipeline followUpSuggestions, Hook in prepareConfirmedPlan, GET/accept/dismiss API. Architektur: architecture/DOCUMENT_FOLLOW_UP_SUGGESTION_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T23:00:00.000Z',
+  },
+  {
+    id: 'document-intake-apply-result-2026-07-17',
+    version: '4.9.647',
+    title: 'V4.9.647 — Document Intake Apply Result',
+    summary: [
+      'Klare Apply-Ergebnisdarstellung: pro Action Status waehrend und nach Apply, Polling bis Finalstatus.',
+      'Erfolgreiche Entitaeten mit Deep-Links; Retry nur fuer fehlgeschlagene Actions; PARTIALLY_APPLIED deutlich.',
+      'Kein „Erledigt“ vor nachgewiesenen Pflichtaktionen; Drawer pollt durch Apply; Reload setzt Flow fort.',
+    ],
+    reason:
+      'Prompt 72/84 — Nutzer muessen Apply-Fortschritt und -Ergebnis verstehen, ohne vorzeitigen Erfolg oder doppelte Ausfuehrung.',
+    previousBehavior:
+      'Confirm zeigte sofort Erfolg; kein Action-Status; kein Retry fuer fehlgeschlagene Apply-Schritte; Drawer stoppte Polling nach Confirm.',
+    details:
+      'Backend: PublicDocumentApplyResultDto, apply-result + retry-failed-actions Endpoints, document-apply-result.mapper/messages. Frontend: DocumentApplyResultPanel, pollThroughApply, canShowApplyDone, isExtractionPollTerminal, i18n error codes. Architektur: architecture/DOCUMENT_INTAKE_APPLY_RESULT_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T22:30:00.000Z',
+  },
+  {
+    id: 'document-intake-action-plan-review-2026-07-17',
+    version: '4.9.646',
+    title: 'V4.9.646 — Document Intake Action Plan Review',
+    summary: [
+      'Zentraler Schritt „Was soll uebernommen werden?“ mit serverseitiger Aktionsvorschau.',
+      'Karten pro DocumentAction: Zielmodul, Aktion, Zielentitaet, Daten, Pflicht/optional, Status, Blocker, Konflikte.',
+      'Optionale Actions per Toggle deaktivierbar; Plan-Fingerprint Pflicht vor Confirm/Apply.',
+    ],
+    reason:
+      'Prompt 71/84 — Nutzer sollen vor Apply verstehen, was passiert, ohne clientseitige Action-Rekonstruktion.',
+    previousBehavior:
+      'Frontend baute Aktionsvorschau aus Schema-Registry (`buildDocumentActionPreview`) — nicht identisch mit Server-Plan.',
+    details:
+      'Backend: action-plan-preview + action-plan-preferences Endpoints, DocumentActionPlanPreviewService, fingerprint in confirm. Frontend: DocumentActionPlanReview, useDocumentActionPlanPreview, api hooks, intake confirm gate. Architektur: architecture/DOCUMENT_INTAKE_ACTION_PLAN_REVIEW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
+    id: 'document-intake-schema-field-review-2026-07-17',
+    version: '4.9.645',
+    title: 'V4.9.645 — Document Intake Schema Field Review',
+    summary: [
+      'Schema-gesteuertes Feldreview ersetzt duplizierte EXTRACTION_TEMPLATES — Gruppen, Pflichtfelder, fehlende Felder, Blocker/Warnings pro Feld.',
+      'Confidence nur bei hilfreichem KI-Kontext; Quelle/Seite optional; sensible Werte maskiert; Datum/Waehrung lokalisiert.',
+      'POST save-review persistiert confirmedData, aktualisiert Provenance, prueft Plausibilitaet erneut — ohne Apply.',
+      'Kein stilles Autosave; „Speichern und erneut pruefen“; Aktionsplan und Confirm nur mit gespeicherten Werten.',
+      'Tests fuer INVOICE, FINE, SERVICE sowie Backend saveReview.',
+    ],
+    reason:
+      'Feldreview muss schema-gesteuert, explizit speicherbar und mit Provenance/Plausibilitaet konsistent sein — nicht ueber statische Frontend-Templates.',
+    previousBehavior:
+      'Flache EXTRACTION_TEMPLATES-Liste ohne Gruppen, Save-Review, Provenance-Anzeige oder gespeicherte Confirm-Pflicht.',
+    details:
+      'Backend: saveReview/saveReviewForOrg, SaveReviewExtractionDto. Frontend: document-schema-field-review.ts, DocumentSchemaFieldReview, useDocumentSchemaReview, api resolveSchema/saveReview. Architektur: architecture/DOCUMENT_INTAKE_SCHEMA_FIELD_REVIEW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
+    id: 'document-intake-entity-review-2026-07-17',
+    version: '4.9.644',
+    title: 'V4.9.644 — Document Intake Shared Entity Review',
+    summary: [
+      'Gemeinsame DocumentEntityReview-Komponente fuer Fahrzeug, Buchung, Kunde, Fahrer, Anbieter/Behoerde und weitere Verknuepfungen.',
+      'Pro Abschnitt: bester Kandidat, Alternativen, Match-Gruende, Konflikte, Suche, Auswahl, „Nicht zuordnen“.',
+      'Nichts automatisch als bestaetigt; Herkunftskontext sichtbar; Fahrer-Unsicherheit verstaendlich; Kunde/Fahrer getrennt.',
+      'PATCH entity-links im Frontend angebunden; Plan-Invalidierungshinweis; Tests fuer 0/1/mehrere Kandidaten.',
+    ],
+    reason:
+      'Entity-Zuordnungen muessen im Review verstaendlich und explizit bestaetigt werden — ohne UUIDs oder falsche Sicherheit.',
+    previousBehavior:
+      'Read-only Entity-Vorschau-Liste in DocumentExtractionReviewPanel ohne Interaktion oder entity-links API.',
+    details:
+      'Frontend: document-entity-review.ts, DocumentEntityReview.tsx, useDocumentEntityLinks, api updateEntityLinks. Architektur: architecture/DOCUMENT_INTAKE_ENTITY_REVIEW_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T19:57:00.000Z',
+  },
+  {
+    id: 'document-intake-classification-result-2026-07-17',
+    version: '4.9.643',
+    title: 'V4.9.643 — Document Intake Classification Result UI',
+    summary: [
+      'Statische Klassifikationsbox durch konkretes Ergebnis aus plausibility.classification ersetzt.',
+      'Kategorie, Untertyp, verstaendliche Confidence-Baender, Erkennungsgruende und Alternativen bei Unsicherheit.',
+      'Button „Dokumenttyp aendern“ mit Re-Extraction- und Aktionsplan-Hinweis; Modellnamen nur in Details.',
+      'AWAITING_DOCUMENT_TYPE vollstaendig per Org-Route document-type; Tests fuer Parser und Panel.',
+    ],
+    reason:
+      'Nutzer sollen das Klassifikationsergebnis des aktuellen Dokuments verstehen — ohne technische Labels oder falsche Sicherheit.',
+    previousBehavior:
+      'Generische AUTO-Banner mit Typ + Prozent; einfacher Erkannter-Typ-Chip bei AWAITING_DOCUMENT_TYPE; separater Typkorrektur-Block.',
+    details:
+      'Frontend: document-classification-result.ts, DocumentClassificationResultPanel, DocumentUploadView. Backend: applySetDocumentType + POST organizations/.../document-type. Architektur: architecture/DOCUMENT_INTAKE_CLASSIFICATION_RESULT_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T19:52:00.000Z',
+  },
+  {
+    id: 'document-intake-status-flow-2026-07-17',
+    version: '4.9.642',
+    title: 'V4.9.642 — Document Intake User-Facing Status Flow',
+    summary: [
+      'Sechs klare Verarbeitungsschritte statt technischer OCR/Queue/Stage-Labels in der UI.',
+      'Echte status/stage/errorPhase-Signale; kein erfundener Fortschrittsprozentsatz.',
+      'Fehler am richtigen Schritt (rot), Retry mit Schrittbezug, AWAITING_DOCUMENT_TYPE eindeutig.',
+      'Laufzeit + sicheres Verlassen bei langer Verarbeitung; Marketingbox „KI-gestützte Klassifikation“ entfernt.',
+      'Tests für Success, Failure und Retry.',
+    ],
+    reason:
+      'Nutzer sollen den Verarbeitungsstand verstehen, ohne interne Pipeline-Begriffe zu sehen.',
+    previousBehavior:
+      'Technische Flow-Labels (OCR läuft, processingStage ENUM) und Sparkles-Marketingbox in der Sidebar.',
+    details: 'architecture/DOCUMENT_INTAKE_STATUS_FLOW_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T11:00:00.000Z',
+  },
+  {
+    id: 'document-intake-initial-ux-2026-07-17',
+    version: '4.9.641',
+    title: 'V4.9.641 — Document Intake Initial UX (upload-first)',
+    summary: [
+      'Initialzustand upload-first: Uploadzone, Dateiauswahl und Formathinweise sofort aktiv.',
+      'Dokumenttyp, Fahrzeug, Buchung, Kunde, Fahrer, extrahierte Felder und Actions erst nach OCR sichtbar.',
+      'AUTO intern als Standard; kein Auto-Select des ersten Fahrzeugs; Drawer-Kontext nur als unbestätigter Hinweis.',
+      'Org-Upload API im Frontend verdrahtet; Page pollt ohne Pflicht-Fahrzeug vor Upload.',
+      'DocumentIntakeUploadZone + Frontend-Tests für Initialzustände.',
+    ],
+    reason:
+      'Nutzer sollen sofort hochladen können, ohne leere Formulare oder vorab bestätigte Zuordnungen.',
+    previousBehavior:
+      'DocumentUploadView verlangte Fahrzeugwahl vor Upload; Drawer zeigte Dokumenttyp-Dropdown im Idle-Zustand.',
+    details: 'architecture/DOCUMENT_INTAKE_INITIAL_UX_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T10:00:00.000Z',
+  },
+  {
+    id: 'document-intake-unified-flow-2026-07-17',
+    version: '4.9.640',
+    title: 'V4.9.640 — Document Intake Unified Flow (canonical hook)',
+    summary: [
+      'useDocumentIntakeFlow als kanonischer Hook + State Machine für Page, Drawer und Operator.',
+      'Gemeinsame Komponenten: DocumentExtractionFlowStatus, DocumentExtractionReviewPanel, Action Preview, Entity Resolution Preview.',
+      'Gleiche Polling-/Fehlerbehandlung (Duplicate, Rate-Limit, Identification); Page pollt durch Apply bis APPLIED.',
+      'useDocumentExtractionFlow und useDocumentUploadPage sind dünne Wrapper — Drawer nur andere Darstellung.',
+    ],
+    reason:
+      'Keine parallelen Upload-Templates mehr; einheitliche Review- und Status-UX über alle Document-Extraction-Flows.',
+    previousBehavior:
+      'Zwei parallele Hooks (useDocumentUploadPage, useDocumentExtractionFlow) und drei getrennte Review-UIs ohne Action/Entity Preview.',
+    details: 'architecture/DOCUMENT_INTAKE_UNIFIED_FLOW_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T09:00:00.000Z',
+  },
+  {
+    id: 'document-intake-golden-corpus-2026-07-17',
+    version: '4.9.639',
+    title: 'V4.9.639 — Document Intake V2 Golden Fixture Corpus',
+    summary: [
+      'Datenschutzsicherer Golden-Fixture-Corpus (v1.0.0) für Classification und Extraction — 19 synthetische/anonymisierte Fälle.',
+      'Abdeckung: Service, Tire, Brake, Battery, TÜV, BOKraft, Invoice 19/7/steuerfrei/multi-rate, Credit Note, Reminder, Fine, Driver Identification, Damage, Accident, Insurance Letter, General Letter, Unknown.',
+      'Gespeicherte Mistral-Mockantworten (OCR, classify, extract) — Regression ohne API-Kosten, nur Text-Fixtures.',
+      'Loader-Utils + Testmatrix-Dry-Run erweitert; makeGoldenCorpusPipelineMocks für Pipeline-Tests.',
+    ],
+    reason:
+      'Kostenneutrale, datenschutzkonforme End-to-End-Regression für Document Intake ohne echte Kundendokumente.',
+    previousBehavior:
+      'Feld-Fixtures pro Typ und 5 Classification-Fixtures; kein einheitlicher Golden-Corpus mit OCR + Mistral-Mocks.',
+    details: 'architecture/DOCUMENT_INTAKE_GOLDEN_CORPUS_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T08:00:00.000Z',
+  },
+  {
+    id: 'document-field-provenance-2026-07-17',
+    version: '4.9.638',
+    title: 'V4.9.638 — Document Intake V2 Field Provenance',
+    summary: [
+      'Pro-Feld-Provenienz: rawValue, normalizedValue, confidence, page, textEvidence, sourceType, manuallyEdited, confirmedValue, confirmedBy, confirmedAt.',
+      'Textbelege begrenzt (~120 Zeichen) und für sensible Felder maskiert — kein Volltext im API-Standardpayload.',
+      'Review-DTO zeigt KI-Wert vs. Nutzerkorrektur; correctionCount/correctedFieldKeys für Field Correction Rate.',
+      'Action Plan nutzt ausschließlich bestätigte Werte; confirm() aktualisiert fieldProvenance in _pipeline.',
+    ],
+    reason:
+      'Nachvollziehbare Feldherkunft und messbare Korrekturrate — getrennte AI- und Nutzerwerte für Review und Apply.',
+    previousBehavior:
+      'Strukturierte Extraktion ohne separates confirmedValue; keine bounded textEvidence; Action Plan ohne expliziten Confirmed-Values-Vertrag.',
+    details: 'architecture/DOCUMENT_FIELD_PROVENANCE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T07:00:00.000Z',
+  },
+  {
+    id: 'document-structured-extraction-registry-2026-07-17',
+    version: '4.9.637',
+    title: 'V4.9.637 — Document Intake V2 Structured Extraction via Schema Registry',
+    summary: [
+      'Extraktion nutzt DocumentSchemaRegistry nach bestätigtem oder hochsicheren Untertyp (Taxonomie/Classification).',
+      'Strukturierter Vertrag: raw/normalized, Provenienz, Seiten, Confidence, missingFields, conflicts.',
+      'Processing Run (runId, modelVersion, trigger) in _pipeline.structuredExtractionRun; kein Apply-Default.',
+      'Typänderung/Re-Extraction archiviert vorherigen Lauf in supersededExtractionRuns — keine stille Überschreibung.',
+    ],
+    reason:
+      'Einheitliche registry-basierte Extraktion mit nachvollziehbarer Feldherkunft und kontrollierter Re-Extraction bei Typwechsel.',
+    previousBehavior:
+      'getFieldSchema(legacyType) ohne Subtype; flaches extractedData ohne raw/provenance; Re-Extract löschte Daten ohne Archiv.',
+    details: 'architecture/DOCUMENT_STRUCTURED_EXTRACTION_REGISTRY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
+    id: 'document-classification-taxonomy-contract-2026-07-17',
+    version: '4.9.636',
+    title: 'V4.9.636 — Document Intake V2 Classification Taxonomy Contract',
+    summary: [
+      'Klassifikationsvertrag 2.0.0: category, subtype, confidence, alternatives, rationale, evidencePages, detectedIdentifiers, modelVersion.',
+      'LLM-Schema und Prompt um Two-Stage-Taxonomie, Alternativen und Identifier erweitert; PII-Sanitisierung in detectedIdentifiers.',
+      'Decision-Util: unklarer Untertyp, konkurrierende High-Confidence-Alternativen und erzwungenes SERVICE bei Schreiben → AWAITING_DOCUMENT_TYPE.',
+      'Processor speichert vollständigen Vertrag in plausibility.classification; AUTO bleibt Standard; Legacy DocumentExtractionType kompatibel.',
+    ],
+    reason:
+      'Transparenz bei Klassifikationsentscheidungen — falsche High-Confidence-Treffer über Alternativen sichtbar machen, ohne Apply-Flow zu ändern.',
+    previousBehavior:
+      'Klassifikation lieferte nur detectedDocumentType, confidence, rationale, sourcePages; Taxonomie wurde nachträglich aus Legacy-Type abgeleitet.',
+    details: 'architecture/DOCUMENT_CLASSIFICATION_TAXONOMY_CONTRACT_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T05:00:00.000Z',
+  },
+  {
+    id: 'document-schema-registry-2026-07-17',
+    version: '4.9.635',
+    title: 'V4.9.635 — Document Intake V2 Schema Registry',
+    summary: [
+      'Zentrale DocumentSchemaRegistry pro Taxonomy-Untertyp mit Extraction Schema, Required Fields, Plausibilität, Entity Resolvern, Actions und Follow-up Rules.',
+      'UI-Feldmetadata inkl. sensitive-Flags; schemaVersion 1.0.0; Legacy DocumentType-Mapping über Taxonomy.',
+      'GET /document-extractions/schemas für Frontend-Felddefinitionen; PlausibilityService delegiert an Registry statt Switch.',
+      'Modulare Einträge in document-schema-registry.entries.ts — Vollständigkeitstest für alle 15 Untertypen.',
+    ],
+    reason:
+      'Ein zentraler Backend-Source-of-Truth für Dokumentschemas — erweiterbar pro Untertyp ohne verteilte Switch-Logik.',
+    previousBehavior:
+      'Field schemas in DOCUMENT_FIELD_SCHEMAS; Plausibilität per documentType-Switch; keine einheitliche Subtype-Metadaten-API.',
+    details: 'architecture/DOCUMENT_SCHEMA_REGISTRY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T04:00:00.000Z',
+  },
+  {
+    id: 'document-two-stage-taxonomy-2026-07-17',
+    version: '4.9.634',
+    title: 'V4.9.634 — Document Intake V2 Two-Stage Taxonomy',
+    summary: [
+      'Zweistufige Taxonomie: Kategorie (FINANCE, AUTHORITY, TECHNICAL, …) + Untertyp (INVOICE, FINE_NOTICE, SERVICE_REPORT, …).',
+      'Legacy DocumentExtractionType bleibt Apply-Vertrag; kompatibles Mapping ohne Bestandsdaten-Löschung.',
+      'Klassifikationsresultat enthält documentCategory, documentSubtype, taxonomyVersion 1.0.0.',
+      'Unbekannte Untertypen → GENERAL/OTHER mit archiveRecommended; Metadata-Endpoint liefert Kategorien/Subtypen.',
+    ],
+    reason:
+      'Einheitliche fachliche Kategorisierung über alle Dokumenttypen — rückwärtskompatibel zum bestehenden Apply-Flow.',
+    previousBehavior:
+      'Nur flacher DocumentExtractionType; documentCategory/documentSubtype fragmentiert in Finance/Archive-Regeln.',
+    details: 'architecture/DOCUMENT_TWO_STAGE_TAXONOMY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T03:00:00.000Z',
+  },
+  {
+    id: 'document-entity-links-api-2026-07-17',
+    version: '4.9.633',
+    title: 'V4.9.633 — Document Intake V2 Entity Links API',
+    summary: [
+      'PATCH entity-links auf Vehicle- und Org-Scope: confirm, change, remove für vehicle, booking, customer, driver, vendor.',
+      'acceptedEntityLinks in confirmedData; supersededEntityLinks + actionAudit in _pipeline; keine Downstream-Löschung.',
+      'Linkänderung invalidiert Action Plan (CONFIRMED_DATA_CHANGED); kein Executor/Apply beim bloßen Linken.',
+      'Org-Allgemeinschreiben darf ohne Fahrzeug bleiben; tenant-scoped Validierung pro Entity-Typ.',
+    ],
+    reason:
+      'Bestätigte Entity-Links müssen sicher verwaltet werden — mit Audit, Supersede-Historie und Plan-Invalidierung, ohne ungeprüftes Löschen.',
+    previousBehavior:
+      'acceptedEntityLinks nur implizit über confirm/apply; kein dedizierter API-Endpunkt für Link-CRUD, Supersede oder Plan-Invalidierung.',
+    details: 'architecture/DOCUMENT_ENTITY_LINKS_API_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T02:00:00.000Z',
+  },
+  {
+    id: 'document-entity-candidate-ranking-policy-2026-07-17',
+    version: '4.9.632',
+    title: 'V4.9.632 — Document Intake V2 Entity Candidate Ranking Policy',
+    summary: [
+      'Zentrale EntityCandidateRankingPolicy für Vehicle, Booking, Customer, Driver und Partner.',
+      'Pro Kandidat: score, confidenceLevel, positiveReasons, negativeReasons, conflicts, rank, autoSelectEligibility.',
+      'HIGH nur Vorauswahl; mehrere Kandidaten oberhalb Schwelle oder Kontextkonflikt blockieren Vorauswahl.',
+      'Dokumenttyp-Gewichtung, rankingVersion 1.0.0, maschinenlesbare Gründe in _pipeline.entityCandidateRanking.',
+    ],
+    reason:
+      'Einheitliches, erklärbares Ranking über alle Entity-Resolver — ohne Black-Box und ohne automatische Bestätigung.',
+    previousBehavior:
+      'Jeder Resolver rechnete confidence/rank isoliert ohne zentrale Policy, Vorauswahl-Regeln oder rankingVersion.',
+    details: 'architecture/DOCUMENT_ENTITY_CANDIDATE_RANKING_POLICY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T01:00:00.000Z',
+  },
+  {
+    id: 'document-partner-candidate-resolver-2026-07-17',
+    version: '4.9.631',
+    title: 'V4.9.631 — Document Intake V2 Partner Candidate Resolver',
+    summary: [
+      'PartnerCandidateResolver für Werkstätten, Lieferanten, Versicherungen und Behörden aus Organisationsname, IBAN, USt-ID, Steuernummer, Anschrift, E-Mail und Rechnungs-/Servicebeziehungen.',
+      'Kandidaten mit vendorId, confidence, matchReasons, conflicts, partnerKind, displayLabel in _pipeline.partnerCandidates; newPartnerSuggestion ohne Auto-Create.',
+      'Exakte IDs höher als normalisierter Name; Behörden vs Werkstätten fachlich getrennt (CATEGORY_MISMATCH); IBAN nicht in Pipeline-Hints.',
+      'Tenant-scoped Vendor/OrgInvoice/ServiceCase-Queries; confirmationRequired immer.',
+    ],
+    reason:
+      'Rechnungs- und Servicedokumente brauchen Partner-Vorschläge aus OCR ohne automatisches Anlegen — mit sichtbaren Konflikten und Kategorietrennung.',
+    previousBehavior:
+      'Nur exakter Vendor-Name-Match beim Invoice-Apply; keine Partner-Kandidaten im Extraction-Pipeline-Flow; Behörden nur als Freitext.',
+    details: 'architecture/DOCUMENT_PARTNER_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
+    id: 'document-driver-candidate-resolver-2026-07-17',
+    version: '4.9.630',
+    title: 'V4.9.630 — Document Intake V2 Driver Candidate Resolver',
+    summary: [
+      'DriverCandidateResolver getrennt vom Customer Resolver: Booking-Primary/Additional, Führerschein (normalisiert), Name, Driver-ID, Trip-Zuordnung.',
+      'Kandidaten mit driverCustomerId, confidence, matchReasons, conflicts, driverRole, displayLabel in _pipeline.driverCandidates.',
+      'Buchungskunde ist nicht automatisch Fahrer; mehrere zugelassene Fahrer → ambiguousDriverPool; FINE ohne eindeutigen Fahrer → unassignedDriver.',
+      'Keine negative Fahrerhistorie; confirmationRequired immer; PII-freie Hints; CUSTOMER/DRIVER Upload-Kontext getrennt.',
+    ],
+    reason:
+      'Bußgeld- und Schadensdokumente brauchen Fahrer-Vorschläge unabhängig vom Vertragspartner — sicher, mehrdeutigkeits-sichtbar, ohne Auto-Link.',
+    previousBehavior:
+      'Kein Driver Candidate Resolver; Fahrerzuordnung nur manuell über acceptedEntityLinks (entityType driver) beim Fine-Apply.',
+    details: 'architecture/DOCUMENT_DRIVER_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T23:00:00.000Z',
+  },
+  {
+    id: 'document-customer-candidate-resolver-2026-07-17',
+    version: '4.9.629',
+    title: 'V4.9.629 — Document Intake V2 Customer Candidate Resolver',
+    summary: [
+      'CustomerCandidateResolver aus Kundennummer, Booking-Link, normalisiertem Name, Anschrift, E-Mail, Telefon und Dokumentkontext.',
+      'Kandidaten mit customerId, confidence, matchReasons, conflicts, rank, confirmationRequired, displayLabel (ohne PII) in _pipeline.customerCandidates.',
+      'Booking-Link höherwertig als Name; kein aggressives Fuzzy; mehrere gleichnamige Kunden bleiben sichtbar mit DUPLICATE_NAME.',
+      'Kein Auto-Create, kein Auto-Kontakt; Kandidaten getrennt von acceptedEntityLinks; tenant-scoped.',
+    ],
+    reason:
+      'Nach Fahrzeug- und Buchungsvorschlag Kundenkandidaten für Fine/Invoice-Review vorschlagen — sicher, mehrdeutigkeits-sichtbar, ohne Auto-Link.',
+    previousBehavior:
+      'Kein Customer Candidate Resolver; Kundenzuordnung nur manuell über acceptedEntityLinks außerhalb des Extraction-Flows.',
+    details: 'architecture/DOCUMENT_CUSTOMER_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T22:00:00.000Z',
+  },
+  {
+    id: 'document-booking-candidate-resolver-2026-07-17',
+    version: '4.9.628',
+    title: 'V4.9.628 — Document Intake V2 Booking Candidate Resolver',
+    summary: [
+      'BookingCandidateResolver aus Fahrzeug-Anker, Tatzeit/Dokumentdatum, Booking-UUID, Kundenname (nur unterstützend), Rechnungs-/Fine-Referenz und Dokumentkontext.',
+      'Kandidaten mit bookingId, confidence, matchReasons, conflicts, temporalOverlap, rank, confirmationRequired in _pipeline.bookingCandidates.',
+      'Tatzeit für Bußgelder entscheidend; fehlende Uhrzeit senkt Confidence; mehrere überlappende Bookings bleiben ambiguous.',
+      'ACTIVE/COMPLETED/CONFIRMED berücksichtigt; keine Auto-Zuordnung nur per Kundenname; tenant-scoped.',
+    ],
+    reason:
+      'Nach Fahrzeug-Vorschlag Buchungskandidaten für Fine/Invoice-Review vorschlagen — zeitlich korrekt, konflikt-sichtbar, ohne Auto-Link.',
+    previousBehavior:
+      'Kein Booking Candidate Resolver; Buchungszuordnung nur manuell über acceptedEntityLinks oder FinesService.matchBooking außerhalb des Extraction-Flows.',
+    details: 'architecture/DOCUMENT_BOOKING_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
+    id: 'document-vehicle-candidate-resolver-2026-07-17',
+    version: '4.9.627',
+    title: 'V4.9.627 — Document Intake V2 Vehicle Candidate Resolver',
+    summary: [
+      'Tenant-sicherer VehicleCandidateResolver aus OCR-Signalen: Kennzeichen, VIN, Marke/Modell, Flottennummer (vehicleName), Dokumentkontext, Buchungsreferenz.',
+      'Kandidaten mit vehicleId, confidence, matchReasons, conflicts, rank, confirmationRequired in plausibility._pipeline.vehicleCandidates.',
+      'VIN-Exact > Kennzeichen; normalisierte Vergleiche; OCR-Unsicherheit senkt Confidence; widersprüchliches VIN/Kennzeichen → BLOCKER.',
+      'Keine Auto-Bestätigung bei mehreren plausiblen Kandidaten; kein Treffer ist valider Zustand.',
+    ],
+    reason:
+      'Org-Inbox-Uploads brauchen rangierte Fahrzeugvorschläge aus OCR ohne automatische Zuordnung — tenant-sicher und konflikt-sichtbar.',
+    previousBehavior:
+      'Kein DB-basierter Vehicle Candidate Resolver; nur manuelle Reassign oder Upload-Kontext-Konfliktprüfung.',
+    details: 'architecture/DOCUMENT_VEHICLE_CANDIDATE_RESOLVER_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
+    id: 'document-optional-context-contract-2026-07-17',
+    version: '4.9.626',
+    title: 'V4.9.626 — Document Intake V2 OptionalContext Contract',
+    summary: [
+      'OptionalContext-Typen VEHICLE, BOOKING, CUSTOMER, DRIVER, FINE, INVOICE, NONE mit Candidate-Feldern entityType/Id, sourceSurface, providedAt, providedByUserId.',
+      'Kontext wird als CANDIDATE in plausibility._pipeline.uploadContext gespeichert — nicht automatisch bestätigt.',
+      'Resolver ALIGNED/CONFLICT/NO_SIGNAL nach OCR; Konflikte im Public DTO und UI-Banner „Aufgerufen aus … – noch nicht bestätigt“.',
+      'searchScope grenzt Entity Search ein (narrowEntitySearchCandidates) ohne leere Listen zu erfinden; nur VEHICLE setzt vehicleId.',
+    ],
+    reason:
+      'Upload-Herkunft transparent machen, OCR-Widersprüche sichtbar halten und Entity-Suche kontextuell eingrenzen ohne Auto-Bestätigung.',
+    previousBehavior:
+      'DocumentUploadContextService nur VEHICLE; kein Pipeline-State, kein Resolver, kein UI-Banner für unbestätigten Kontext.',
+    details: 'architecture/DOCUMENT_OPTIONAL_CONTEXT_CONTRACT_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T20:00:00.000Z',
+  },
+  {
+    id: 'document-org-upload-endpoint-2026-07-17',
+    version: '4.9.625',
+    title: 'V4.9.625 — Document Intake V2 Org-Wide Upload Endpoint',
+    summary: [
+      'Kanonischer Upload POST /organizations/:orgId/document-extractions/upload ohne Pflicht-Fahrzeug.',
+      'requestedDocumentType default AUTO; optionalContextType/Id mit Berechtigungsprüfung (VEHICLE → org-scoped).',
+      'Storage inbox-Pfad organizations/{org}/inbox/documents ohne erfundene vehicleId; vehicleId nullable in DB und Queue.',
+      'Vehicle-Upload bleibt Kompatibilitätswrapper über createFromOrgUpload; keine automatische Entity-Bestätigung.',
+    ],
+    reason:
+      'Organisationsweite Dokumenten-Inbox ermöglichen, bevor ein Fahrzeug zugeordnet wird — tenant-sicher und storage-korrekt.',
+    previousBehavior:
+      'Upload nur über vehicles/:vehicleId/.../upload; vehicleId NOT NULL; kein org-scoped Upload-Endpunkt.',
+    details: 'architecture/DOCUMENT_ORG_UPLOAD_ENDPOINT_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T19:30:00.000Z',
+  },
+  {
+    id: 'document-storage-lifecycle-2026-07-17',
+    version: '4.9.624',
+    title: 'V4.9.624 — Document Intake V2 Storage & Lifecycle Hardening',
+    summary: [
+      'DocumentStoragePort um getCapabilities/resolveStorageZone erweitert — Quarantäne vs Clean, HTTPS-Transport, Encryption-at-rest- und Backup-Capability-Flags.',
+      'Lifecycle-Snapshot in plausibility._pipeline.lifecycle: retention, legalHold, mistralTransfer; Soft-Delete entfernt Datei + optional OCR-Cache.',
+      'DocumentRetentionService mit Dry-Run-Default, tenant-scoped Phasen (OCR-Cache, sensitive extractedData, Final-Row, REJECTED cleanup); Legal Hold blockiert Löschung.',
+      'Legal-Hold-API POST/DELETE; Audit download/delete_file/legal_hold; Runbook docs/runbooks/document-storage-retention.md.',
+    ],
+    reason:
+      'Storage und Dokumentenlebenszyklus für Compliance härten: minimierte OCR-Rohdaten, definierte Retention-Fristen, kein Auto-Delete ohne Policy.',
+    previousBehavior:
+      'Soft-Delete löschte nur objectKey ohne Lifecycle-Metadaten, Retention, Legal Hold oder Mistral-Transfer-Audit.',
+    details: 'architecture/DOCUMENT_STORAGE_LIFECYCLE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T19:00:00.000Z',
+  },
+  {
+    id: 'document-malware-scan-abstraction-2026-07-17',
+    version: '4.9.623',
+    title: 'V4.9.623 — Document Intake V2 Malware Scan Abstraction',
+    summary: [
+      'Provider-neutrale Malware-Scan-Abstraktion mit Quarantäne-Storage vor Clean-Promotion.',
+      'Status NOT_SCANNED, PENDING, CLEAN, INFECTED, SCAN_FAILED, UNSUPPORTED in plausibility._pipeline.malwareScan.',
+      'Feature Flag DOCUMENT_MALWARE_SCAN_ENABLED (default aus) — deaktiviert = bestehendes Verhalten als NOT_SCANNED.',
+      'INFECTED blockiert Enqueue/OCR/Mistral und Download; Mock-Scanner-Tests, kein automatisches ClamAV-Setup.',
+    ],
+    reason:
+      'Upload-Pipeline um optionalen Malware-Schutz erweitern, ohne externe Scanner-Infrastruktur automatisch zu installieren.',
+    previousBehavior:
+      'Uploads landeten direkt im Clean-Storage und wurden ohne Malware-Prüfung an OCR/Mistral übergeben.',
+    details: 'architecture/DOCUMENT_MALWARE_SCAN_ABSTRACTION_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T18:10:00.000Z',
+  },
+  {
+    id: 'document-file-identification-hardening-2026-07-17',
+    version: '4.9.622',
+    title: 'V4.9.622 — Document Intake V2 File Identification Hardening',
+    summary: [
+      'Byte-Level-Preprocessing nach MIME/Magic-Prüfung: PDF-Strukturprobe ohne Ausführung/Entschlüsselung, Bild-Dimensionen + EXIF-Orientierung.',
+      'Status ACCEPTED, OCR_REQUIRED, REQUIRES_PASSWORD, REJECTED_CORRUPT, REJECTED_TOO_COMPLEX, REJECTED_TOO_MANY_PAGES mit klaren 400-Fehlercodes.',
+      'Limits für Seitenzahl, Pixelzahl, dekomprimierte PDF-Komplexität, Objekte/Streams und Identify-Timeout; Fingerprint speichert identificationStatus.',
+      'Frontend parst verschachtelte Nest-400-Antworten mit deutschen Meldungen; Security- und Fixture-Tests für Passwort-PDF und Rotation.',
+    ],
+    reason:
+      'Upload-Pipeline gegen beschädigte, passwortgeschützte und resource-intensive Dateien härten, ohne MIME/Magic-Prüfung zu ersetzen.',
+    previousBehavior:
+      'DocumentFileIdentificationService prüfte nur Größe, MIME-Whitelist und Magic Bytes — keine PDF-Passwort-, Seiten- oder Bildkomplexitäts-Gates.',
+    details:
+      'architecture/DOCUMENT_FILE_IDENTIFICATION_HARDENING_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
+    id: 'document-upload-rate-limits-2026-07-17',
+    version: '4.9.621',
+    title: 'V4.9.621 — Document Intake V2 Upload Rate Limits',
+    summary: [
+      'Upload-Rate-Limits über bestehende Infrastruktur: Nest @Throttle (IP) + Redis-Fixed-Window (Org/User/IP) in DocumentUploadRateLimitService.',
+      'Begrenzung nach Dateianzahl und Gesamtbytes pro Zeitfenster; Hook vor Identify/Storage/Queue zum Schutz von Storage und BullMQ.',
+      'Klare 429-Antwort DOCUMENT_UPLOAD_RATE_LIMITED mit scope/reason/retryAfterSeconds; Operator- und Admin-Multiplikatoren.',
+      'Konfigurierbar via DOCUMENT_UPLOAD_RATE_LIMIT_*; Metrik synqdrive_document_extraction_upload_rate_limited_total (scope, reason). Tests für Limit, Reset, Org-Isolation.',
+    ],
+    reason:
+      'Prompt 46/84 — Missbrauchsschutz und faire Nutzung ohne neue parallele Throttling-Engine; normale Mehrfachuploads bleiben möglich.',
+    previousBehavior:
+      'Nur globales HTTP-Throttle (200/min/IP); keine org-/user-/byte-basierten Upload-Limits vor Storage/Queue.',
+    details: 'architecture/DOCUMENT_UPLOAD_RATE_LIMITS_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
+    id: 'document-upload-duplicate-policy-2026-07-17',
+    version: '4.9.620',
+    title: 'V4.9.620 — Document Intake V2 Upload Duplicate Policy',
+    summary: [
+      'Fachliche Upload-Duplikatpolicy mit Status UNIQUE, EXACT_DUPLICATE, POSSIBLE_BUSINESS_DUPLICATE, REUPLOAD_ALLOWED, DUPLICATE_BLOCKED.',
+      'Org-scoped exakter Content-Hash-Check + Business-Duplikat via Rechnungsnummer/Aktenzeichen-Hints; kein Auto-Delete, bestehendes Dokument mit Status und Entity-Links in 409-Response.',
+      'Autorisierter Re-Upload mit reuploadReason + relatedExtractionId; Content-Anchor-Tabelle mit Unique Constraint für parallele Uploads.',
+      'Frontend DocumentUploadDuplicatePanel + API-Fehlerparser; Backend- und Frontend-Tests für Block, Re-Upload, Business-Warnung und Parallel-Race.',
+    ],
+    reason:
+      'Prompt 45/84 — Kontrollierte Duplikaterkennung beim Upload mit Nutzerentscheidung statt stillem Doppel-Import.',
+    previousBehavior:
+      'Gleicher Content-Hash wurde nur gespeichert; identische parallele Uploads erzeugten unbegrenzt neue Extraktionen ohne Policy oder UI.',
+    details: 'architecture/DOCUMENT_UPLOAD_DUPLICATE_POLICY_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T20:00:00.000Z',
+  },
+  {
+    id: 'document-extraction-content-hash-2026-07-17',
+    version: '4.9.619',
+    title: 'V4.9.619 — Document Intake V2 Upload Content Hash (SHA-256)',
+    summary: [
+      'Stream-basierter SHA-256-Hash der Originaldatei beim Upload — vor OCR und Queue, org-scoped für Deduplizierung.',
+      'createFromUpload: Dateiidentifikation → Content-Hash → Storage → DB → Queue; bei Identifikationsfehler kein Storage/Enqueue.',
+      'contentSha256-Spalte + plausibility._pipeline.fileFingerprint im Extraction-/Fingerprint-Modell; keine Rohdatei-Inhalte in Logs.',
+      'Legacy-Uploads ohne Hash bleiben lesbar (nullable Spalte). Tests: gleiche Bytes/Name, gleiche Bytes/anderer Name, anderer Inhalt/gleicher Name, parallele Uploads.',
+    ],
+    reason:
+      'Prompt 44/84 — Sichere Dateiidentifikation per Content-Hash für org-scoped Deduplizierung und Audit vor der Extraktionspipeline.',
+    previousBehavior:
+      'Upload speicherte Datei und enqueued ohne Content-Hash; keine Fingerprint-Metadaten in plausibility._pipeline.',
+    details: 'architecture/DOCUMENT_EXTRACTION_CONTENT_HASH_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T19:30:00.000Z',
+  },
+  {
+    id: 'document-intake-recovery-reconcile-2026-07-17',
+    version: '4.9.618',
+    title: 'V4.9.618 — Document Intake V2 Action Recovery Scheduler & Inventory Reconciliation',
+    summary: [
+      'DocumentIntakeActionRecoveryScheduler — findet hängende APPLYING-Lifecycles, prüft Downstream per Idempotency-Key/documentExtractionId, markiert vorhandenen Erfolg, retried nur fehlende Actions mit Attempt-Limit und Dead Letter.',
+      'DocumentIntakeReconciliationService — read-only Bestandsdiagnose: APPLIED ohne Downstream, Downstream ohne APPLIED, CONFIRMED-Legacy, Duplikate, ungültige Statuskombinationen, STUCK_APPLYING, RECOVERY_DEAD_LETTER.',
+      'CLI scripts/ops/document-intake-reconcile.ts — Default immer --dry-run, keine automatische Produktionsreparatur.',
+      'Tests inkl. historischem FINE-No-op-Szenario (APPLIED ohne fines-Zeile) und Downstream-Reconcile bei stuck APPLYING.',
+    ],
+    reason:
+      'Prompt 43/84 — Kontrollierte Action-Recovery und read-only Inventar-Reconciliation für Document Intake V2.',
+    previousBehavior:
+      'Nur Queue/CONFIRMED-Recovery ohne APPLYING-Lifecycle-Unwind, ohne Downstream-Probe und ohne Inventar-CLI.',
+    details: 'architecture/DOCUMENT_INTAKE_RECOVERY_RECONCILE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T18:30:00.000Z',
+  },
+  {
+    id: 'document-action-plan-state-machine-2026-07-17',
+    version: '4.9.617',
+    title: 'V4.9.617 — Document Intake V2 Action Plan Apply Lifecycle State Machine',
+    summary: [
+      'Vollständige Apply-Lifecycle-State-Machine: READY_FOR_ACTION_PREVIEW → READY_TO_APPLY → APPLYING → APPLIED | PARTIALLY_APPLIED | APPLIED_WITH_WARNINGS | APPLY_FAILED.',
+      'document-action-plan.state-machine.ts — Transitionen, Outcome-Resolver (required vs optional vs suggestion), Plan-Lock während APPLYING, Retry nur für fehlgeschlagene Actions.',
+      'Orchestrator persistiert actionPlanApplyLifecycle transaktional in plausibility._pipeline; Extraction-Status PARTIALLY_APPLIED bei optionalen Apply-Fehlern.',
+      'Integrationstests für vollen Erfolg, APPLIED_WITH_WARNINGS bei Suggestion-Fehler und APPLY_FAILED-Retry ohne Re-Run erfolgreicher Actions.',
+    ],
+    reason:
+      'Prompt 42/84 — Explizite Apply-State-Machine mit partiellem Erfolg, Warnungen und gezieltem Action-Retry statt monolithischem CONFIRMED→APPLIED.',
+    previousBehavior:
+      'Plan-Execution nutzte EXECUTING/COMPLETED/FAILED ohne Apply-Lifecycle; optionale Fehler wurden nicht in Extraction-Status abgebildet; Retry-Logik ohne Lifecycle-Transitions.',
+    details: 'architecture/DOCUMENT_ACTION_PLAN_STATE_MACHINE_2026-07-17.md',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
+    id: 'document-technical-health-apply-executor-2026-07-17',
+    version: '4.9.616',
+    title: 'V4.9.616 — Document Intake V2 Idempotent Tire/Brake/Battery Apply via Action Executor',
+    summary: [
+      'TIRE, BRAKE und BATTERY migriert auf DocumentActionExecutor mit vereinheitlichtem documentExtractionId-Anker.',
+      'TireLifecycleService.applyMeasurementFromDocumentExtraction — Unique (vehicleId, documentExtractionId); BrakeLifecycleService.applyFromDocumentExtraction — transaktional Serviceevent + idempotente Evidence pro Achse.',
+      'BatteryHealthService.applyFromDocumentExtraction — Evidence-Dedup + optional LV-Snapshot ohne SOH-Override; Replacement via ServiceEventsService.',
+      'Executors: APPLY_TIRE_MEASUREMENT, APPLY_BRAKE_MEASUREMENT, APPLY_BATTERY_MEASUREMENT. Legacy applyTireReport/applyBrake/applyBattery entfernt.',
+    ],
+    reason:
+      'Prompt 41/84 — Technical-Health-Actions auf idempotente Executors mit vollständiger Messungs-Provenienz und Retry-sicherem Multi-Write.',
+    previousBehavior:
+      'TIRE/BRAKE/BATTERY liefen über DocumentExtractionApplyService mit direkten Domain-Calls ohne extraction-idempotency und ohne strukturierte Action-Execution-Audit.',
+    details:
+      'Backend: migration 20260717230000_technical_document_extraction_idempotency, tire/brake/battery domain apply methods, apply-technical-document-action.executor.ts, orchestrator TIRE/BRAKE/BATTERY wiring. Tests je Health-Domain. Architektur: architecture/DOCUMENT_TECHNICAL_HEALTH_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
+    id: 'document-damage-apply-executor-2026-07-17',
+    version: '4.9.615',
+    title: 'V4.9.615 — Document Intake V2 Idempotent Damage & Accident Apply via Action Executor',
+    summary: [
+      'DAMAGE und ACCIDENT migriert auf DocumentActionExecutor mit idempotentem VehicleDamage.documentExtractionId + Unique (organizationId, documentExtractionId).',
+      'DamagesService.createDraftFromDocumentExtraction / applyRecordFromDocumentExtraction / linkExistingDamageFromDocumentExtraction — bestätigte Werte unverändert; UNKNOWN bleibt UNKNOWN (locationView + extraction-uncertain note).',
+      'Accident Report nur als Draft bis accidentApplyConfirmed; Gutachten verknüpft bestehenden Case via linkCandidateId statt Duplikat.',
+      'Executors: CREATE_DAMAGE_DRAFT, CREATE_DAMAGE_RECORD, LINK_EXISTING_DAMAGE. Legacy applyDamageReport entfernt.',
+    ],
+    reason:
+      'Prompt 40/84 — Damage-/Accident-Actions auf idempotenten Executor mit documentExtractionId-Anker und Retry-sicherem Parallel-Create.',
+    previousBehavior:
+      'DAMAGE/ACCIDENT liefen über DocumentExtractionApplyService.applyDamageReport mit direktem DamagesService.create ohne extraction-idempotency und ohne strukturierte Action-Execution-Audit.',
+    details:
+      'Backend: migration 20260717220000_damage_document_extraction_idempotency, document-damage-extraction.rules buildDamageDraftPayload, damages.service idempotent draft/record/link, executors/create-damage-document-action.executor.ts, orchestrator DAMAGE/ACCIDENT wiring. Tests: parallel create, retry, existing case link. Architektur: architecture/DOCUMENT_DAMAGE_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
+    id: 'document-service-inspection-apply-executor-2026-07-17',
+    version: '4.9.614',
+    title: 'V4.9.614 — Document Intake V2 Idempotent Service & Inspection Apply via Action Executor',
+    summary: [
+      'SERVICE, OIL_CHANGE, TÜV und BOKraft migriert auf DocumentActionExecutor mit idempotentem VehicleServiceEvent.documentExtractionId + Unique (organizationId, documentExtractionId).',
+      'ServiceEventsService.createFromDocumentExtraction — explizites eventDate ohne Default-Rückdatierung; getrennte Actions für Serviceevent und Fahrzeugupdate (Compliance/Historie).',
+      'bestätigtes validUntil erforderlich für UPDATE_VEHICLE_COMPLIANCE_DATES; fehlende Gültigkeit → ARCHIVE_ONLY ohne Compliance-Update. Retry erzeugt kein zweites Serviceevent.',
+      'Executors: CREATE_SERVICE_EVENT, CREATE_COMPLIANCE_SERVICE_EVENT, UPDATE_VEHICLE_COMPLIANCE_DATES, REFRESH_VEHICLE_SERVICE_HISTORY. Legacy applyServiceEvent/applyInspectionReport entfernt.',
+    ],
+    reason:
+      'Prompt 39/84 — Service- und Inspektions-Apply auf idempotente Executors mit kontrolliertem Zwei-Phasen-Fahrzeugupdate.',
+    previousBehavior:
+      'SERVICE/OIL/TÜV/BOKraft liefen über DocumentExtractionApplyService mit direktem Prisma-Create, eventDate ?? new Date() Fallback und nicht-idempotenten Doppel-Events bei Retry.',
+    details:
+      'Backend: migration 20260717210000_service_event_document_extraction_idempotency, document-service-extraction.rules, document-action-planner.service-rules, service-events.service createFromDocumentExtraction + applyComplianceVehicleUpdateFromExtraction, service/inspection executors, orchestrator wiring. Tests: partial failure zwischen Event und Fahrzeugupdate. Architektur: architecture/DOCUMENT_SERVICE_INSPECTION_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
+    id: 'document-invoice-apply-executor-2026-07-17',
+    version: '4.9.613',
+    title: 'V4.9.613 — Document Intake V2 Idempotent Invoice Apply via Action Executor',
+    summary: [
+      'Invoice Apply migriert auf DocumentActionExecutor: Prisma OrgInvoice.documentExtractionId + tenant-sicherer Unique Constraint (organizationId, documentExtractionId).',
+      'InvoicesService.createFromDocumentExtraction — idempotent Lookup-before-Create, Vendor+Rechnungsnummer-Duplikatprüfung, explizite Steuergruppen/Positionen ohne pauschale 19 %, Gutschrift mit negativen Totals.',
+      'Unklare Semantik → DRAFT; klare Semantik → NEEDS_REVIEW. CreateInvoiceDocumentActionExecutor / CreateCreditNoteDocumentActionExecutor speichern resultEntityId; Payment-Task-Sync für non-draft Incoming.',
+      'assessFinancePlan plant CREATE_INVOICE_DRAFT / CREATE_CREDIT_NOTE_DRAFT; INVOICE confirm/retry über DocumentActionOrchestratorService. Legacy applyInvoice entfernt.',
+    ],
+    reason:
+      'Prompt 38/84 — Invoice Apply auf gemeinsames Action-Executor-Framework mit Idempotenzanker documentExtractionId/documentActionId.',
+    previousBehavior:
+      'INVOICE confirm lief über DocumentExtractionApplyService.applyInvoice mit direktem InvoicesService.create ohne extraction-idempotency, ohne Vendor-Duplikatprüfung und ohne strukturierte Action-Execution-Audit.',
+    details:
+      'Backend: migration 20260717200000_invoice_document_extraction_idempotency, document-invoice-extraction.rules buildInvoiceApplyPayload, document-action-planner.invoice-rules assessFinancePlan, executors/create-invoice-document-action.executor.ts, invoices.service createFromDocumentExtraction + syncExtractionPaymentTask, orchestrator INVOICE wiring. Tests: tax scenarios, retry, duplicate reference. Architektur: architecture/DOCUMENT_INVOICE_APPLY_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
+    id: 'document-fine-apply-idempotency-2026-07-17',
+    version: '4.9.612',
+    title: 'V4.9.612 — Document Intake V2 Idempotent Fine Apply via Action Executor',
+    summary: [
+      'Fine Apply vollständig idempotent und extraction-bezogen: Prisma Fine.documentExtractionId + tenant-sicherer Unique Constraint (organizationId, documentExtractionId).',
+      'FinesService.createFromDocumentExtraction sucht bestehenden Fine vor Create, prüft Referenznummer-Duplikate, erstellt UNDER_REVIEW Drafts statt auto-final MATCHED.',
+      'Booking/Customer/Driver-Links nur aus confirmedData.acceptedEntityLinks — kein automatisches matchBooking beim Extraction-Apply.',
+      'CreateFineDocumentActionExecutor (CREATE_FINE_DRAFT) speichert resultEntityId am DocumentAction-Execution-Record; Task-Dedup via document-extraction:fine:{extractionId}.',
+      'Kein Betrag-0, kein Default-Offense-Type; bestehende Fines ohne Backfill.',
+      'Tests für Retry und Parallel-Race in fines.service.spec.ts.',
+    ],
+    reason: 'Prompt 37/84: Fine-Apply idempotent machen und an DocumentActionExecutor-Framework anbinden.',
+    previousBehavior:
+      'applyFine() rief finesService.create() mit Default offenseType Parkverstoß und amountCents=0 an; keine documentExtractionId, keine Idempotenz, auto matchBooking.',
+    details:
+      'Backend: document-fine-extraction.rules.ts, document-action-planner.fine-rules.ts, executors/create-fine-document-action.executor.ts, fines.service.ts, Migration 20260717190000_fine_document_extraction_idempotency. Architektur: DOCUMENT_FINE_APPLY_IDEMPOTENCY_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T17:30:00.000Z',
+  },
+  {
+    id: 'document-action-executor-2026-07-17',
+    version: '4.9.611',
+    title: 'V4.9.611 — Document Intake V2 Action Executor Framework (ARCHIVE + LINK)',
+    summary: [
+      'Gemeinsames DocumentActionExecutor-Framework: je Executor genau ein Action-Typ, Registry statt monolithischer apply()-Verzweigung.',
+      'Orchestrator validiert Planversion + Fingerprint, prüft Idempotency Key, führt REQUIRED/OPTIONAL/INFORMATIONAL getrennt aus, speichert Result Entity ID und Actionstatus auditierbar in plausibility._pipeline.',
+      'ArchiveDocumentActionExecutor (ARCHIVE_DOCUMENT) und LinkEntityDocumentActionExecutor (SUGGEST_ENTITY_LINK) als erste Implementierungen.',
+      'Confirm/Apply für OTHER und VEHICLE_CONDITION läuft über DocumentActionOrchestratorService; andere Typen weiterhin über DocumentExtractionApplyService.',
+      'Strukturierte Fehler: DocumentActionBusinessError, DocumentActionTechnicalError, DocumentActionPlanError.',
+    ],
+    reason: 'Prompt 36/84: Action-Plan-Ausführung von monolithischem Apply entkoppeln und idempotent auditierbar machen.',
+    previousBehavior:
+      'Archive-Apply lief direkt über applyArchiveDocument() ohne Action-Plan-Validierung, Idempotency pro Action oder Executor-Registry.',
+    details:
+      'Backend: document-action.types.ts, document-action-plan.*, document-action-executor.*, document-action-orchestrator.service.ts, executors/archive + link. Architektur: DOCUMENT_ACTION_EXECUTOR_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T17:10:00.000Z',
+  },
+  {
+    id: 'document-plausibility-consistency-2026-07-17',
+    version: '4.9.610',
+    title: 'V4.9.610 — Document Intake V2 Cross-Type Plausibility Consistency & Action Plan Gating',
+    summary: [
+      'Neues Modul document-plausibility-consistency.rules für dokumenttypübergreifende Konsistenzprüfungen (Backend Source of Truth).',
+      'Strukturierte Ausgabe: INFO/WARNING/BLOCKER, code, fieldPaths, explanation, resolutionHint.',
+      'Prüfungen: Datumsreihenfolge, Betragssummen, Netto+Steuer=Brutto, VIN/Kennzeichen, Buchungszeitraum, Kilometerstand, Einheiten, Gültigkeit vs. Prüfdatum, Rechnungs-/Aktenzeichen-Duplikate, mehrere widersprüchliche Fahrzeuge.',
+      'document-plausibility-gate.util blockiert Action Plans bei ungelösten BLOCKERn — keine automatischen Datenkorrekturen.',
+      'Tests je Regel in document-plausibility-consistency.rules.spec.ts.',
+    ],
+    reason: 'Prompt 35/84: Erweiterung des Plausibilitätsservice um dokumenttypübergreifende Konsistenzprüfungen.',
+    previousBehavior:
+      'Plausibilität war typ-spezifisch fragmentiert; VIN/KM-Checks lagen inline im Service ohne fieldPaths/resolutionHint; Action Plans ignorierten globale BLOCKER.',
+    details:
+      'Backend: document-plausibility.types.ts, document-plausibility-consistency.rules.ts, document-plausibility-gate.util.ts, Service/Planner/Confirm-Context-Updates. Architektur: DOCUMENT_PLAUSIBILITY_CONSISTENCY_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T16:40:00.000Z',
+  },
+  {
+    id: 'document-archive-hardening-2026-07-17',
+    version: '4.9.609',
+    title: 'V4.9.609 — Document Intake V2 Archive / Correspondence Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrale Module document-archive-extraction.rules und document-action-planner.archive-rules für nicht automatisch anwendbare Dokumente (OTHER, VEHICLE_CONDITION).',
+      'Untertypen: AUTHORITY_LETTER, INSURANCE_LETTER, CUSTOMER_CORRESPONDENCE, DRIVER_DOCUMENT, PAYMENT_PROOF, WORKSHOP_REPORT, EXPERT_REPORT, GENERAL_EVIDENCE, CONTRACT_DOCUMENT, UNKNOWN.',
+      'Gemeinsame Felder: sender, recipient, documentDate, referenceNumber, subject, deadlines, mentionedEntities, summary, actionRequired.',
+      'Primär Archiv + Entity-Link-Vorschläge; keine erfundenen Domainobjekte; Fristen nur als Vorschläge; PII minimieren; kein automatischer Kontakt.',
+      'Fixtures/Tests pro Untertyp.',
+    ],
+    reason: 'Prompt 34/84: Sichere Extraktionsschemas für nicht automatisch anwendbare Dokumente.',
+    previousBehavior:
+      'OTHER/VEHICLE_CONDITION hatten nur eventDate/description; keine strukturierten Archiv-Untertypen, keine Entity-Link- oder Frist-Vorschläge, kein explizites Archive-Only-Gate.',
+    details:
+      'Backend: document-archive-extraction.rules.ts, document-action-planner.archive-rules.ts, applyArchiveDocument(), Schema/Plausibility/Alias/Frontend-Updates. Architektur: DOCUMENT_ARCHIVE_EXTRACTION_2026-07-17.md.',
+    affectsArchitecture: true,
+    module: 'Document Intake V2',
+    createdAt: '2026-07-17T16:30:00.000Z',
+  },
+  {
+    id: 'document-technical-hardening-2026-07-17',
+    version: '4.9.608',
+    title: 'V4.9.608 — Document Intake V2 TIRE / BRAKE / BATTERY Technical Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrale Module document-tire-extraction.rules, document-brake-extraction.rules, document-battery-extraction.rules für technische Werkstattberichte.',
+      'TIRE: Position, Profiltiefe, Druck, Dimension, DOT, Messdatum, Einheit — nur bestätigte Positionen, keine erfundenen Räder.',
+      'BRAKE: Achse/Position, Belagstärke, Scheibendicke, Mindestmaß, Messdatum, Werkstattbefund — kein full_brake_service-/now()-Default mehr.',
+      'BATTERY: LV/HV, Messungsart, Spannung, Kapazität, SOH nur mit echter Quelle, Temperaturkontext, Messdatum, Gerät/Werkstatt — kein scope=lv-/observedAt=now-Default.',
+      'document-action-planner.technical-rules + Fixtures/Tests für TIRE, BRAKE, BATTERY.',
+    ],
+    reason: 'Prompt 33/84: Härtung technischer Extraktionsschemas und Planner.',
+    previousBehavior:
+      'Apply erfand fehlende Reifenpositionen, defaultete Bremsen auf full_brake_service + now(), Batterie auf scope=lv + observedAt=now; SOH ohne Quellenprüfung.',
+    details:
+      'document-tire/brake/battery-extraction.rules.ts (+ spec, fixtures), document-action-planner.technical-rules.ts (+ spec), schema/plausibility/apply/APPLY_ALIAS_KEYS/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T12:00:00.000Z',
+  },
+  {
+    id: 'document-damage-hardening-2026-07-17',
+    version: '4.9.607',
+    title: 'V4.9.607 — Document Intake V2 Damage / Accident Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrales Modul document-damage-extraction.rules für Schadens-, Unfall- und Gutachten-Dokumente.',
+      'Felder: eventDateTime, damageDescription, damageAreas, damageType, severity, drivable, thirdPartyInvolved, policeReference, insuranceReference, bookingContext, estimatedCost.',
+      'Kein SCRATCH-/MODERATE-Default; UNKNOWN bleibt bestätigungspflichtig; Unfallbericht zunächst Draft-only.',
+      'Schadensbereich muss nachvollziehbar sein; vorhandener Damage Case wird als Kandidat gesucht; Duplikat-Upload blockiert Apply.',
+      'document-action-planner.damage-rules + Fixtures/Tests für Schaden, Unfall und Gutachten.',
+    ],
+    reason: 'Prompt 32/84: Härtung von Damage-/Accident-Schemas und Planner.',
+    previousBehavior:
+      'Apply nutzte SCRATCH/MODERATE-Defaults; kein Apply-Gate, keine Duplikatprüfung, minimales Schema.',
+    details:
+      'document-damage-extraction.rules.ts (+ spec, fixtures), document-action-planner.damage-rules.ts (+ spec), schema/plausibility/apply/APPLY_ALIAS_KEYS/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T11:00:00.000Z',
+  },
+  {
+    id: 'document-inspection-hardening-2026-07-17',
+    version: '4.9.606',
+    title: 'V4.9.606 — Document Intake V2 TÜV / BOKraft Extraction, Plausibility & Action Planning',
+    summary: [
+      'Zentrales Modul document-inspection-extraction.rules für TÜV und BOKraft.',
+      'Felder: inspectionDate, validUntil, result, defectLevel, defects, reinspectionRequired, reinspectionDeadline, issuingOrganization, reportNumber, mileage.',
+      'validUntil hat Vorrang — keine pauschale +2-Jahre/+1-Jahr-Fortschreibung; fehlende Gültigkeit blockiert Fahrzeugstammdatenupdate, Archivierung bleibt möglich.',
+      'Mängel erzeugen nur vorgeschlagene Folgeaktionen; Hard Block nur über Compliance-Readiness-Policy.',
+      'document-action-planner.inspection-rules + Fixtures/Tests für ohne Mangel, mit Mangel, fehlende Gültigkeit.',
+    ],
+    reason: 'Prompt 30/84: Härtung von TÜV-/BOKraft-Extraktion und Action Planning.',
+    previousBehavior: 'Apply setzte nextTuvDate/nextBokraftDate blind mit +2y/+1y; validUntil ignoriert.',
+    details:
+      'document-inspection-extraction.rules.ts (+ spec, fixtures), document-action-planner.inspection-rules.ts (+ spec), schema/plausibility/apply/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T10:00:00.000Z',
+  },
+  {
+    id: 'document-invoice-schema-2026-07-17',
+    version: '4.9.605',
+    title: 'V4.9.605 — Document Intake V2 Production Invoice Schema, Plausibility & Apply Gates',
+    summary: [
+      'Zentrales Modul document-invoice-extraction.rules für production-taugliche Rechnungsfelder.',
+      'Felder: invoiceNumber, invoiceDate, dueDate, currency, supplier, customer, subtotalNet, totalTax, totalGross, taxExemptReason, reverseCharge, lineItems, taxLines, creditNoteReference, originalInvoiceReference.',
+      'Keine 19-%-Annahme; mehrere Steuersätze; steuerfrei und Reverse Charge; Netto/Brutto-Konsistenz mit Rundungs-Warnings.',
+      'Unklare Betragssemantik blockiert finalen Apply; Währungen werden nicht still in EUR umgewandelt; Gutschriften korrekt gekennzeichnet.',
+      'document-action-planner.invoice-rules für Finance-Draft-Bewertung; Fixtures + Schema/Plausibilitäts/Planner-Tests.',
+    ],
+    reason: 'Prompt 29/84: strukturiertes Rechnungsschema production-tauglich erweitern.',
+    previousBehavior: 'INVOICE-Schema minimal; Apply nutzte hardcoded 19% VAT (/1.19); keine Invoice-Plausibilität.',
+    details:
+      'document-invoice-extraction.rules.ts (+ spec, fixtures), document-action-planner.invoice-rules.ts (+ spec), schema/plausibility/apply/APPLY_ALIAS_KEYS/frontend updates.',
+    affectsArchitecture: true,
+    module: 'Document Extraction',
+    createdAt: '2026-07-18T09:00:00.000Z',
+  },
+  {
     id: 'battery-snapshot-rest-backfill-v49581-2026-07-17',
     version: '4.9.581',
     title: 'V4.9.581 — Battery Option B: Historical Snapshot REST Backfill',

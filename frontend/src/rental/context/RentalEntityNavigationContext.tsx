@@ -9,6 +9,9 @@ export interface RentalEntityNavigationValue {
     documentId: string,
     options?: { vehicleId?: string | null; module?: string | null },
   ) => void;
+  openDocumentIntake: (
+    request: import('../lib/document-intake-entry').DocumentIntakeEntryRequest,
+  ) => void;
   openAlertById: (alertId: string, options?: { vehicleId?: string | null }) => void;
   openServiceCaseById: (serviceCaseId: string, options?: { vehicleId?: string | null }) => void;
   openFineById: (fineId: string) => void;
@@ -23,6 +26,7 @@ const defaultValue: RentalEntityNavigationValue = {
   openCustomerById: noop,
   openInvoiceById: noop,
   openDocumentById: noop,
+  openDocumentIntake: noop,
   openAlertById: noop,
   openServiceCaseById: noop,
   openFineById: noop,

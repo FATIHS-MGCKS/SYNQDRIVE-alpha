@@ -32,6 +32,7 @@ import { StationsView } from './components/stations/StationsView';
 import { StationDetailView } from './components/stations/StationDetailView';
 import { NewBookingView } from './components/NewBookingView';
 import { FinanceView } from './components/FinanceView';
+import { FinesView } from './components/FinesView';
 import type { FinanceTab } from './components/finance-navigation';
 import {
   parseFinanceViewFromUrl,
@@ -57,6 +58,7 @@ import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
+import { pushDocumentIntakeEntry, type DocumentIntakeEntryState } from './lib/document-intake-entry';
 import { AIAssistantView } from './components/AIAssistantView';
 import { SupportView } from './components/SupportView';
 import { HelpCenterView } from './components/HelpCenterView';
@@ -193,7 +195,7 @@ function RentalAppContent() {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
     if (financeView) return financeView;
     return readPersistedSettingsView() ? 'settings' : 'dashboard';
@@ -569,6 +571,10 @@ function RentalAppContent() {
         setFinanceTab('invoices');
         setCurrentView('invoices');
       },
+      openDocumentIntake: (request) => {
+        pushDocumentIntakeEntry(request);
+        setCurrentView('document-upload');
+      },
       openDocumentById: (_documentId, options) => {
         if (options?.vehicleId) {
           const match = fleetVehicles.find((vehicle) => vehicle.id === options.vehicleId);
@@ -589,8 +595,8 @@ function RentalAppContent() {
           tab: 'tasks',
         });
       },
-      openFineById: () => {
-        toast.info('Bußgelder können derzeit nur in der Verwaltung geöffnet werden.');
+      openFineById: (_fineId) => {
+        setCurrentView('fines');
       },
       openVendorById: (vendorId) => {
         setDetailVendorId(vendorId);
@@ -601,6 +607,32 @@ function RentalAppContent() {
   );
 
   /** Central view router — maps legacy views to the new IA. */
+  const handleReturnFromDocumentIntake = useCallback(
+    (entry: DocumentIntakeEntryState) => {
+      const view = entry.returnView;
+      if (!view) return;
+      if (view === 'invoices' || view === 'price-tariffs' || view === 'customer-payments') {
+        setFinanceTab(view as FinanceTab);
+      }
+      if (view === 'customer-detail' && entry.returnEntityId) {
+        setDetailCustomer({ id: entry.returnEntityId });
+      }
+      if (view === 'bookings' && entry.returnEntityId) {
+        setPendingBookingDetailId(entry.returnEntityId);
+      }
+      if (view === 'overview' && entry.returnEntityId) {
+        const match = fleetVehicles.find((vehicle) => vehicle.id === entry.returnEntityId);
+        if (match) setSelectedVehicle(match);
+      }
+      if (view === 'health-errors' && entry.returnEntityId) {
+        const match = fleetVehicles.find((vehicle) => vehicle.id === entry.returnEntityId);
+        if (match) setSelectedVehicle(match);
+      }
+      setCurrentView(view as typeof currentView);
+    },
+    [fleetVehicles],
+  );
+
   const handleViewChange = (view: string) => {
     if (view === 'fleet-condition') {
       setCurrentView('fleet');
@@ -613,7 +645,10 @@ function RentalAppContent() {
       setFleetHealthServiceSubTab('vendors');
       return;
     }
-    if (view === 'fines') return;
+    if (view === 'fines') {
+      setCurrentView('fines');
+      return;
+    }
     if (view === 'customer-payments' || view === 'invoices' || view === 'price-tariffs') {
       setFinanceTab(view as FinanceTab);
     }
@@ -1068,6 +1103,8 @@ function RentalAppContent() {
               setCurrentView('invoices');
             }}
           />
+        ) : currentView === 'fines' ? (
+          <FinesView isDarkMode={isDarkMode} />
         ) : currentView === 'invoices' || currentView === 'price-tariffs' || currentView === 'customer-payments' ? (
           <FinanceView
             isDarkMode={isDarkMode}
@@ -1111,7 +1148,29 @@ function RentalAppContent() {
             onHighlightConsumed={() => setHighlightedTaskId(null)}
           />
         ) : currentView === 'document-upload' ? (
-          <DocumentUploadView isDarkMode={isDarkMode} />
+          <DocumentUploadView
+            isDarkMode={isDarkMode}
+            onReturnToOrigin={handleReturnFromDocumentIntake}
+            onEntityNavigate={(target) => {
+              if (target.view === 'invoices') {
+                setPendingInvoiceDetailId(target.entityId);
+                setFinanceTab('invoices');
+                setCurrentView('invoices');
+                return;
+              }
+              if (target.view === 'financial-insights') {
+                setCurrentView('financial-insights');
+                return;
+              }
+              if (target.view === 'damages') {
+                setCurrentView('damages');
+                return;
+              }
+              if (target.view === 'health-errors') {
+                setCurrentView('health-errors');
+              }
+            }}
+          />
         ) : currentView === 'ai-assistant' ? (
           <AIAssistantView isDarkMode={isDarkMode} />
         ) : currentView === 'support' ? (

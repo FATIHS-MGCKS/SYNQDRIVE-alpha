@@ -30,6 +30,9 @@ export const DOCUMENT_EXTRACTION_ERROR_CODES = {
   EXTRACTION_FAILED: 'EXTRACTION_FAILED',
   QUEUE_UNAVAILABLE: 'QUEUE_UNAVAILABLE',
   APPLY_FAILED: 'APPLY_FAILED',
+  MALWARE_DETECTED: 'MALWARE_DETECTED',
+  MALWARE_SCAN_FAILED: 'MALWARE_SCAN_FAILED',
+  MALWARE_SCAN_PENDING: 'MALWARE_SCAN_PENDING',
   UNKNOWN: 'UNKNOWN',
 } as const;
 
@@ -77,6 +80,7 @@ export function deriveClassificationMode(
 export function mapStatusToDefaultStage(status: DocumentExtractionStatus): DocumentExtractionStage {
   switch (status) {
     case 'APPLIED':
+    case 'PARTIALLY_APPLIED':
       return 'APPLY';
     case 'CONFIRMED':
     case 'READY_FOR_REVIEW':

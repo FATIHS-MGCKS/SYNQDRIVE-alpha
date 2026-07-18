@@ -16,10 +16,65 @@ import {
   buildClassificationAllowedTypes,
   buildDocumentClassificationPrompt,
   buildDocumentClassificationResponseSchema,
-  sanitizeClassificationSourcePages,
 } from './document-classification.schema.util';
 import { mapClassificationFailure } from '@modules/document-extraction/document-extraction.errors';
 import { buildClassificationDocumentText } from './document-classification-text.util';
+import { buildDocumentClassificationContract } from '@modules/document-extraction/document-classification-taxonomy.util';
+
+function buildClassificationResult(
+  base: {
+    success: boolean;
+    provider: string;
+    model: string;
+    processingDurationMs: number;
+    error?: string;
+  },
+  contract: ReturnType<typeof buildDocumentClassificationContract>,
+): DocumentClassificationResult {
+  return {
+    success: base.success,
+    detectedDocumentType: contract.detectedDocumentType,
+    confidence: contract.confidence,
+    rationale: contract.rationale,
+    sourcePages: contract.evidencePages,
+    provider: base.provider,
+    model: base.model,
+    processingDurationMs: base.processingDurationMs,
+    documentCategory: contract.category,
+    documentSubtype: contract.subtype,
+    taxonomyVersion: contract.taxonomyVersion,
+    category: contract.category,
+    subtype: contract.subtype,
+    alternatives: contract.alternatives,
+    evidencePages: contract.evidencePages,
+    detectedIdentifiers: contract.detectedIdentifiers,
+    modelVersion: contract.modelVersion,
+    contractVersion: contract.contractVersion,
+    contract,
+    error: base.error,
+  };
+}
+
+function buildEmptyContract(
+  allowed: readonly ApplyDocumentExtractionType[],
+  maxPage: number | null,
+  modelVersion: string | null,
+  rationale: string,
+): ReturnType<typeof buildDocumentClassificationContract> {
+  return buildDocumentClassificationContract({
+    raw: {
+      detectedDocumentType: CLASSIFICATION_UNKNOWN,
+      confidence: 0,
+      rationale,
+      sourcePages: null,
+      alternatives: [],
+      detectedIdentifiers: [],
+    },
+    allowed,
+    maxPage,
+    modelVersion,
+  });
+}
 
 @Injectable()
 export class DocumentClassificationService {
@@ -45,18 +100,23 @@ export class DocumentClassificationService {
         : [...SUPPORTED_DOCUMENT_TYPES];
 
     if (!this.isEnabled()) {
-      return {
-        success: false,
-        detectedDocumentType: CLASSIFICATION_UNKNOWN,
-        confidence: 0,
-        rationale: 'Classification is not configured',
-        sourcePages: [],
-        provider: this.llm.activeProviderId,
-        model: 'unconfigured',
-        processingDurationMs: Date.now() - startedAt,
-        error:
-          'Document classification is not configured (MISTRAL_API_KEY missing or DOCUMENT_CLASSIFICATION_ENABLED=false)',
-      };
+      const contract = buildEmptyContract(
+        allowed,
+        null,
+        'unconfigured',
+        'Classification is not configured',
+      );
+      return buildClassificationResult(
+        {
+          success: false,
+          provider: this.llm.activeProviderId,
+          model: 'unconfigured',
+          processingDurationMs: Date.now() - startedAt,
+          error:
+            'Document classification is not configured (MISTRAL_API_KEY missing or DOCUMENT_CLASSIFICATION_ENABLED=false)',
+        },
+        contract,
+      );
     }
 
     const maxChars = this.conf?.classificationMaxChars ?? 24_000;
@@ -99,68 +159,43 @@ export class DocumentClassificationService {
         signal: this.buildAbortSignal(),
       });
 
-      const normalized = this.normalizeResponse(result.data, allowed, maxPage);
-      return {
-        success: true,
-        ...normalized,
-        provider: this.llm.activeProviderId,
-        model: result.model,
-        processingDurationMs: Date.now() - startedAt,
-      };
+      const contract = buildDocumentClassificationContract({
+        raw: result.data,
+        allowed,
+        maxPage,
+        modelVersion: result.model,
+      });
+      return buildClassificationResult(
+        {
+          success: true,
+          provider: this.llm.activeProviderId,
+          model: result.model,
+          processingDurationMs: Date.now() - startedAt,
+        },
+        contract,
+      );
     } catch (err: unknown) {
       const mapped = mapClassificationFailure(this.sanitizeError(err));
       this.logger.warn(
         `[DocClassify] failed provider=${this.llm.activeProviderId} code=${mapped.code}`,
       );
-      return {
-        success: false,
-        detectedDocumentType: CLASSIFICATION_UNKNOWN,
-        confidence: 0,
-        rationale: mapped.safeMessage,
-        sourcePages: [],
-        provider: this.llm.activeProviderId,
-        model: 'error',
-        processingDurationMs: Date.now() - startedAt,
-        error: mapped.safeMessage,
-      };
+      const contract = buildEmptyContract(
+        allowed,
+        maxPage,
+        'error',
+        mapped.safeMessage,
+      );
+      return buildClassificationResult(
+        {
+          success: false,
+          provider: this.llm.activeProviderId,
+          model: 'error',
+          processingDurationMs: Date.now() - startedAt,
+          error: mapped.safeMessage,
+        },
+        contract,
+      );
     }
-  }
-
-  normalizeResponse(
-    raw: DocumentClassificationLlmResponse | null | undefined,
-    allowed: readonly ApplyDocumentExtractionType[],
-    maxPage: number | null,
-  ): Pick<
-    DocumentClassificationResult,
-    'detectedDocumentType' | 'confidence' | 'rationale' | 'sourcePages'
-  > {
-    const allowedSet = new Set(allowed);
-    const detectedRaw = raw?.detectedDocumentType;
-    const detectedDocumentType =
-      typeof detectedRaw === 'string' &&
-      detectedRaw !== CLASSIFICATION_UNKNOWN &&
-      allowedSet.has(detectedRaw as ApplyDocumentExtractionType)
-        ? (detectedRaw as ApplyDocumentExtractionType)
-        : CLASSIFICATION_UNKNOWN;
-
-    const confidence =
-      typeof raw?.confidence === 'number' && Number.isFinite(raw.confidence)
-        ? Math.min(1, Math.max(0, raw.confidence))
-        : 0;
-
-    const rationale =
-      typeof raw?.rationale === 'string'
-        ? raw.rationale.replace(/[\r\n]+/g, ' ').trim().slice(0, 500)
-        : '';
-
-    const sourcePages = sanitizeClassificationSourcePages(raw?.sourcePages, maxPage);
-
-    return {
-      detectedDocumentType,
-      confidence,
-      rationale,
-      sourcePages,
-    };
   }
 
   private buildAbortSignal(): AbortSignal | undefined {

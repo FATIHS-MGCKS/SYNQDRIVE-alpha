@@ -16,6 +16,10 @@ describe('DocumentExtractionMetadataService', () => {
     const metadata = service.getMetadata();
 
     expect(metadata.documentTypes.map((t) => t.value)).toEqual(SUPPORTED_DOCUMENT_TYPES);
+    expect(metadata.documentCategories.length).toBeGreaterThan(0);
+    expect(metadata.documentSubtypes.length).toBeGreaterThan(0);
+    expect(metadata.taxonomyVersion).toBe('1.0.0');
+    expect(metadata.schemaRegistryVersion).toBe('1.0.0');
     expect(metadata.classificationOptions[0].value).toBe(AUTO_CLASSIFICATION_REQUEST);
     expect(metadata.mimeTypes).toEqual([...ALLOWED_MIME_TYPES]);
     expect(metadata.extensions).toEqual([...ALLOWED_EXTENSIONS]);

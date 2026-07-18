@@ -5347,6 +5347,82 @@ export const api = {
       get<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}`),
     createDocumentExtraction: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/document-extractions`, data),
     confirmDocumentExtraction: (vehicleId: string, extractionId: string, data: any) => post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/confirm`, data),
+    saveDocumentReview: (
+      vehicleId: string,
+      extractionId: string,
+      data: { confirmedData: Record<string, unknown> },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/save-review`,
+        data,
+      ),
+    getActionPlanPreview: (vehicleId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/action-plan-preview`,
+      ),
+    getApplyResult: (vehicleId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentApplyResult>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/apply-result`,
+      ),
+    retryFailedDocumentActions: (vehicleId: string, extractionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/retry-failed-actions`,
+        {},
+      ),
+    listFollowUpSuggestions: (vehicleId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion[]>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions`,
+      ),
+    getFollowUpContactPrepare: (vehicleId: string, extractionId: string, suggestionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpContactPrepare>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare`,
+      ),
+    recordFollowUpContactPrepareOpened: (
+      vehicleId: string,
+      extractionId: string,
+      suggestionId: string,
+    ) =>
+      post<{ recorded: boolean }>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/opened`,
+        {},
+      ),
+    sendFollowUpContact: (
+      vehicleId: string,
+      extractionId: string,
+      suggestionId: string,
+      data: {
+        toEmail: string;
+        ccEmails?: string[];
+        bccEmails?: string[];
+        subject: string;
+        bodyHtml: string;
+        bodyText?: string;
+        attachDocument?: boolean;
+      },
+    ) =>
+      post<unknown>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/send`,
+        data,
+      ),
+    acceptFollowUpSuggestion: (vehicleId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/accept`,
+        {},
+      ),
+    dismissFollowUpSuggestion: (vehicleId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/dismiss`,
+        {},
+      ),
+    updateActionPlanPreferences: (
+      vehicleId: string,
+      extractionId: string,
+      data: { disabledOptionalActions: string[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/action-plan-preferences`,
+        data,
+      ),
     retryDocumentExtraction: (vehicleId: string, extractionId: string) =>
       post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/retry`, {}),
     // Real multipart upload → stores file, creates QUEUED record, enqueues the
@@ -5356,11 +5432,21 @@ export const api = {
       file: File,
       documentType: string,
       source?: string,
+      options?: {
+        reuploadReason?: string;
+        relatedExtractionId?: string;
+        invoiceNumberHint?: string;
+        referenceNumberHint?: string;
+      },
     ) => {
       const form = new FormData();
       form.append('file', file);
       form.append('documentType', documentType);
       if (source) form.append('source', source);
+      if (options?.reuploadReason) form.append('reuploadReason', options.reuploadReason);
+      if (options?.relatedExtractionId) form.append('relatedExtractionId', options.relatedExtractionId);
+      if (options?.invoiceNumberHint) form.append('invoiceNumberHint', options.invoiceNumberHint);
+      if (options?.referenceNumberHint) form.append('referenceNumberHint', options.referenceNumberHint);
       const token = localStorage.getItem('synqdrive_token');
       const res = await fetch(`${BASE_URL}/vehicles/${vehicleId}/document-extractions/upload`, {
         method: 'POST',
@@ -5368,22 +5454,49 @@ export const api = {
         body: form,
       });
       if (!res.ok) {
-        let message = `Upload failed (${res.status})`;
+        let body: unknown = null;
         try {
-          const body = (await res.json()) as { message?: string };
-          if (body?.message) message = body.message;
+          body = await res.json();
         } catch {
-          /* keep default message */
+          /* keep null body */
         }
+        const { parseUploadDuplicateError } = await import('./document-upload-duplicate');
+        const duplicateError = parseUploadDuplicateError(body);
+        if (duplicateError) throw duplicateError;
+        const { parseUploadRateLimitError } = await import('./document-upload-rate-limit');
+        const rateLimitError = parseUploadRateLimitError(body);
+        if (rateLimitError) throw rateLimitError;
+        const { parseUploadIdentificationError, parseNestedUploadErrorMessage } = await import(
+          './document-upload-identification'
+        );
+        const identificationError = parseUploadIdentificationError(body);
+        if (identificationError) throw identificationError;
+        const message =
+          parseNestedUploadErrorMessage(body) ?? `Upload failed (${res.status})`;
         throw new Error(message);
       }
-      return (await res.json()) as { id: string; status: string; documentType: string };
+      return (await res.json()) as {
+        id: string;
+        status: string;
+        documentType: string;
+        uploadDuplicateStatus?: string;
+        uploadDuplicate?: unknown;
+      };
     },
     setDocumentType: (
       vehicleId: string,
       extractionId: string,
       data: { documentType: string; reextract?: boolean },
     ) => post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/document-type`, data),
+    updateEntityLinks: (
+      vehicleId: string,
+      extractionId: string,
+      data: { operations: import('../rental/lib/document-entity-links').DocumentEntityLinkOperation[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/vehicles/${vehicleId}/document-extractions/${extractionId}/entity-links`,
+        data,
+      ),
     cancelDocumentExtraction: (vehicleId: string, extractionId: string) =>
       post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/cancel`, {}),
     downloadDocumentExtraction: async (vehicleId: string, extractionId: string) => {
@@ -5409,6 +5522,19 @@ export const api = {
     metadata: () => get<import('../rental/lib/document-extraction.types').DocumentExtractionMetadata>(
       '/document-extractions/metadata',
     ),
+    listSchemas: () =>
+      get<import('../rental/lib/document-extraction.types').DocumentSchemaRegistryResponse>(
+        '/document-extractions/schemas',
+      ),
+    resolveSchema: (params: { legacyDocumentType: string; subtype?: string | null }) => {
+      const q = buildQuery({
+        legacyDocumentType: params.legacyDocumentType,
+        subtype: params.subtype ?? undefined,
+      });
+      return get<import('../rental/lib/document-extraction.types').PublicDocumentSubtypeSchema>(
+        `/document-extractions/schemas/resolve${q}`,
+      );
+    },
     listByOrg: (
       orgId: string,
       params?: {
@@ -5428,6 +5554,55 @@ export const api = {
       });
       return get<import('../rental/lib/document-extraction.types').DocumentExtractionListResponse>(
         `/organizations/${orgId}/document-extractions${q}`,
+      );
+    },
+    listArchiveByOrg: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        status?: string;
+        documentCategory?: string;
+        documentSubtype?: string;
+        vehicleId?: string;
+        bookingId?: string;
+        customerId?: string;
+        driverId?: string;
+        vendorId?: string;
+        uploadedBy?: string;
+        uploadedFrom?: string;
+        uploadedTo?: string;
+        fileName?: string;
+        invoiceNumber?: string;
+        caseReference?: string;
+        actionStatus?: string;
+        followUpStatus?: string;
+        q?: string;
+      },
+    ) => {
+      const q = buildQuery({
+        page: params?.page,
+        limit: params?.limit,
+        status: params?.status,
+        documentCategory: params?.documentCategory,
+        documentSubtype: params?.documentSubtype,
+        vehicleId: params?.vehicleId,
+        bookingId: params?.bookingId,
+        customerId: params?.customerId,
+        driverId: params?.driverId,
+        vendorId: params?.vendorId,
+        uploadedBy: params?.uploadedBy,
+        uploadedFrom: params?.uploadedFrom,
+        uploadedTo: params?.uploadedTo,
+        fileName: params?.fileName,
+        invoiceNumber: params?.invoiceNumber,
+        caseReference: params?.caseReference,
+        actionStatus: params?.actionStatus,
+        followUpStatus: params?.followUpStatus,
+        q: params?.q,
+      });
+      return get<import('../rental/lib/document-extraction.types').DocumentExtractionArchiveListResponse>(
+        `/organizations/${orgId}/document-extractions/archive${q}`,
       );
     },
     getByOrg: (orgId: string, extractionId: string) =>
@@ -5457,6 +5632,165 @@ export const api = {
         `/organizations/${orgId}/document-extractions/${extractionId}/vehicle`,
         { vehicleId },
       ),
+    setDocumentTypeByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { documentType: string; reextract?: boolean },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/document-type`,
+        data,
+      ),
+    updateEntityLinksByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { operations: import('../rental/lib/document-entity-links').DocumentEntityLinkOperation[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/entity-links`,
+        data,
+      ),
+    saveReviewByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { confirmedData: Record<string, unknown> },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/save-review`,
+        data,
+      ),
+    confirmByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { confirmedData: Record<string, unknown>; actionPlanFingerprint?: string },
+    ) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/confirm`,
+        data,
+      ),
+    getActionPlanPreviewByOrg: (orgId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/action-plan-preview`,
+      ),
+    getApplyResultByOrg: (orgId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentApplyResult>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/apply-result`,
+      ),
+    retryFailedActionsByOrg: (orgId: string, extractionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/retry-failed-actions`,
+        {},
+      ),
+    listFollowUpSuggestions: (orgId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion[]>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions`,
+      ),
+    getFollowUpContactPrepare: (orgId: string, extractionId: string, suggestionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpContactPrepare>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare`,
+      ),
+    recordFollowUpContactPrepareOpened: (
+      orgId: string,
+      extractionId: string,
+      suggestionId: string,
+    ) =>
+      post<{ recorded: boolean }>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/opened`,
+        {},
+      ),
+    sendFollowUpContact: (
+      orgId: string,
+      extractionId: string,
+      suggestionId: string,
+      data: {
+        toEmail: string;
+        ccEmails?: string[];
+        bccEmails?: string[];
+        subject: string;
+        bodyHtml: string;
+        bodyText?: string;
+        attachDocument?: boolean;
+      },
+    ) =>
+      post<unknown>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/contact-prepare/send`,
+        data,
+      ),
+    acceptFollowUpSuggestion: (orgId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/accept`,
+        {},
+      ),
+    dismissFollowUpSuggestion: (orgId: string, extractionId: string, suggestionId: string) =>
+      post<import('../rental/lib/document-extraction.types').PublicDocumentFollowUpSuggestion>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/follow-up-suggestions/${suggestionId}/dismiss`,
+        {},
+      ),
+    updateActionPlanPreferencesByOrg: (
+      orgId: string,
+      extractionId: string,
+      data: { disabledOptionalActions: string[] },
+    ) =>
+      patch<import('../rental/lib/document-extraction.types').PublicDocumentActionPlanPreview>(
+        `/organizations/${orgId}/document-extractions/${extractionId}/action-plan-preferences`,
+        data,
+      ),
+    upload: async (
+      orgId: string,
+      file: File,
+      options?: {
+        requestedDocumentType?: string;
+        optionalContextType?: string;
+        optionalContextId?: string;
+        sourceSurface?: string;
+        source?: string;
+        reuploadReason?: string;
+        relatedExtractionId?: string;
+        invoiceNumberHint?: string;
+        referenceNumberHint?: string;
+      },
+    ) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('requestedDocumentType', options?.requestedDocumentType ?? 'AUTO');
+      if (options?.optionalContextType) form.append('optionalContextType', options.optionalContextType);
+      if (options?.optionalContextId) form.append('optionalContextId', options.optionalContextId);
+      if (options?.sourceSurface) form.append('sourceSurface', options.sourceSurface);
+      if (options?.source) form.append('source', options.source);
+      if (options?.reuploadReason) form.append('reuploadReason', options.reuploadReason);
+      if (options?.relatedExtractionId) form.append('relatedExtractionId', options.relatedExtractionId);
+      if (options?.invoiceNumberHint) form.append('invoiceNumberHint', options.invoiceNumberHint);
+      if (options?.referenceNumberHint) form.append('referenceNumberHint', options.referenceNumberHint);
+      const token = localStorage.getItem('synqdrive_token');
+      const res = await fetch(`${BASE_URL}/organizations/${orgId}/document-extractions/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        let body: unknown = null;
+        try {
+          body = await res.json();
+        } catch {
+          /* keep null body */
+        }
+        const { parseUploadDuplicateError } = await import('./document-upload-duplicate');
+        const duplicateError = parseUploadDuplicateError(body);
+        if (duplicateError) throw duplicateError;
+        const { parseUploadRateLimitError } = await import('./document-upload-rate-limit');
+        const rateLimitError = parseUploadRateLimitError(body);
+        if (rateLimitError) throw rateLimitError;
+        const { parseUploadIdentificationError, parseNestedUploadErrorMessage } = await import(
+          './document-upload-identification'
+        );
+        const identificationError = parseUploadIdentificationError(body);
+        if (identificationError) throw identificationError;
+        const message =
+          parseNestedUploadErrorMessage(body) ?? `Upload failed (${res.status})`;
+        throw new Error(message);
+      }
+      return (await res.json()) as import('../rental/lib/document-extraction.types').PublicDocumentExtraction;
+    },
   },
   partsAccessories: {
     providers: () => get<PartsProviderSummary[]>('/parts-accessories/providers'),

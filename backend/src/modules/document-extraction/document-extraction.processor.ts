@@ -14,7 +14,7 @@ import { DocumentContentExtractorService } from './document-content-extractor.se
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import { DocumentAiExtractionService } from '@modules/ai/documents/document-ai-extraction.service';
 import { DocumentClassificationService } from '@modules/ai/documents/document-classification.service';
-import { getFieldSchema, buildEmptyExtractedData, SUPPORTED_DOCUMENT_TYPES } from './document-extraction.schemas';
+import { buildEmptyExtractedData, SUPPORTED_DOCUMENT_TYPES } from './document-extraction.schemas';
 import { DocumentExtractionJobData } from './document-extraction.types';
 import {
   DOCUMENT_EXTRACTION_ERROR_CODES,
@@ -24,10 +24,30 @@ import {
 } from './document-extraction-lifecycle.util';
 import { evaluateClassificationDecision } from './document-classification-decision.util';
 import {
+  buildClassificationPipelinePayload,
+  buildStoredClassificationPayload,
+} from './document-classification-pipeline.util';
+import {
+  resolveExtractionSchema,
+  resolveExtractionTrigger,
+} from './document-extraction-schema-resolve.util';
+import {
+  buildStructuredExtractionPayload,
+  buildStructuredExtractionRun,
+  collectMissingFieldPlausibilityChecks,
+} from './document-structured-extraction.util';
+import {
+  buildFieldProvenanceFromStructuredFields,
+  toPublicFieldProvenance,
+} from './document-field-provenance.util';
+import { mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomy } from './document-taxonomy.util';
+import {
   buildContentCacheEntry,
   mergePipelinePlausibility,
   readContentCache,
+  readPipelinePayload,
   stripPipelineFromPlausibility,
+  PIPELINE_PLAUSIBILITY_KEY,
 } from './document-content-cache.util';
 import { DocumentStructuredContent } from './document-page.types';
 import {
@@ -44,6 +64,24 @@ import {
   bucketFileSizeBytes,
   mimeCategoryFromMime,
 } from './document-extraction-observability.util';
+import { isMalwareScanReadyForProcessing } from './document-malware-scan.util';
+import { patchMistralTransferState } from './document-pipeline-lifecycle.util';
+import { DocumentUploadContextService } from './document-upload-context.service';
+import { VehicleCandidateResolverService } from './vehicle-candidate-resolver.service';
+import { BookingCandidateResolverService } from './booking-candidate-resolver.service';
+import { CustomerCandidateResolverService } from './customer-candidate-resolver.service';
+import { DriverCandidateResolverService } from './driver-candidate-resolver.service';
+import { PartnerCandidateResolverService } from './partner-candidate-resolver.service';
+import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
+import { buildEntityCandidateRankingFromPipeline } from './entity-candidate-ranking.util';
+import {
+  evaluateUploadContextResolver,
+  extractUploadResolverHints,
+  readUploadContextPipelineState,
+} from './document-upload-context.util';
+import { mapFieldEvidence, readVehicleCandidatePipelineState } from './vehicle-candidate-matching.util';
+import { readBookingCandidatePipelineState } from './booking-candidate-matching.util';
+import { makePlausibilityCheck, resolveOverallPlausibilityStatus } from './document-plausibility.types';
 
 const SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
@@ -74,12 +112,19 @@ export class DocumentExtractionProcessor extends WorkerHost {
     @Inject(documentExtractionConfig.KEY)
     private readonly docConfig: ConfigType<typeof documentExtractionConfig>,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly uploadContext: DocumentUploadContextService,
+    private readonly vehicleCandidateResolver: VehicleCandidateResolverService,
+    private readonly bookingCandidateResolver: BookingCandidateResolverService,
+    private readonly customerCandidateResolver: CustomerCandidateResolverService,
+    private readonly driverCandidateResolver: DriverCandidateResolverService,
+    private readonly partnerCandidateResolver: PartnerCandidateResolverService,
+    private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
   ) {
     super();
   }
 
   async process(job: Job<DocumentExtractionJobData>): Promise<void> {
-    const { extractionId, vehicleId } = job.data;
+    const { extractionId } = job.data;
 
     const record = await this.prisma.vehicleDocumentExtraction.findUnique({
       where: { id: extractionId },
@@ -103,6 +148,17 @@ export class DocumentExtractionProcessor extends WorkerHost {
       );
       return;
     }
+    const objectKey = record.objectKey;
+
+    if (!isMalwareScanReadyForProcessing(record.plausibility, this.docConfig.malwareScanEnabled)) {
+      await this.failPermanent(
+        extractionId,
+        'Document is not cleared for processing',
+        'QUEUE',
+        DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_SCAN_PENDING,
+      );
+      return;
+    }
 
     const claimed = await this.claimForProcessing(extractionId, job);
     if (!claimed) {
@@ -120,19 +176,34 @@ export class DocumentExtractionProcessor extends WorkerHost {
     const fileSizeBucket = bucketFileSizeBytes(record.sizeBytes);
 
     try {
-      const content = await this.resolveDocumentContent(record.objectKey, record, extractionId);
-      this.observability.recordPages(content.sourceMethod, content.pageCount ?? content.pages.length);
-      this.observability.logEvent({
+      const contentCacheHit = !!readContentCache(record.plausibility, objectKey);
+      const content = await this.observability.observeStage(
         extractionId,
-        stage: 'OCR',
-        status: 'completed',
-        mimeCategory,
-        fileSizeBucket,
-        pageCount: content.pageCount ?? content.pages.length,
-        provider: content.ocrProvider ?? null,
-        model: content.ocrModel ?? null,
-      });
+        'OCR',
+        () => this.resolveDocumentContent(objectKey, record, extractionId),
+        { mimeCategory, fileSizeBucket },
+      );
+      this.observability.recordOcrCompleted(contentCacheHit ? 'cached' : content.sourceMethod);
+      this.observability.recordPages(content.sourceMethod, content.pageCount ?? content.pages.length);
+      const ocrStartedAt = Date.now();
       const ocrCompletedAt = record.ocrCompletedAt ?? new Date();
+      const plausibilityPatch =
+        content.sourceMethod === 'OCR'
+          ? patchMistralTransferState(record.plausibility, {
+              provider: 'mistral',
+              status: 'completed',
+              sentAt: new Date(ocrStartedAt).toISOString(),
+              completedAt: ocrCompletedAt.toISOString(),
+              includesDocumentBytes: true,
+              includesImageBase64: false,
+              model: content.ocrModel ?? null,
+              pageCount: content.pageCount ?? content.pages.length,
+            })
+          : record.plausibility;
+
+      let workingPlausibility = mergePipelinePlausibility(plausibilityPatch, {
+        contentCache: buildContentCacheEntry(content, record.objectKey),
+      });
 
       await this.prisma.vehicleDocumentExtraction.update({
         where: { id: extractionId },
@@ -146,9 +217,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
                 ocrPageCount: content.pageCount ?? null,
               }
             : {}),
-          plausibility: mergePipelinePlausibility(record.plausibility, {
-            contentCache: buildContentCacheEntry(content, record.objectKey),
-          }) as unknown as Prisma.InputJsonValue,
+          plausibility: workingPlausibility as unknown as Prisma.InputJsonValue,
         },
       });
 
@@ -173,15 +242,35 @@ export class DocumentExtractionProcessor extends WorkerHost {
             autoContinueMinConfidence: this.docConfig.classificationAutoContinueMinConfidence,
             suggestionMinConfidence: this.docConfig.classificationSuggestionMinConfidence,
           },
+          category: classificationResult.category,
+          subtype: classificationResult.subtype,
+          legacyDocumentType: classificationResult.contract.legacyDocumentType,
+          alternatives: classificationResult.alternatives,
         });
 
         const classificationCompletedAt = new Date();
         const detectedForDb = decision.detectedType;
+        const classificationTaxonomy = resolveDocumentTaxonomy({
+          legacyDocumentType: detectedForDb ?? classificationResult.detectedDocumentType ?? 'OTHER',
+          documentSubtype: classificationResult.subtype,
+          source: 'classification',
+        });
+        const classificationPayload = buildStoredClassificationPayload(
+          buildClassificationPipelinePayload({ classificationResult, decision }),
+        );
+        const plausibilityWithTaxonomy = mergeDocumentTaxonomyPipeline(
+          mergePipelinePlausibility(workingPlausibility, {
+            contentCache: buildContentCacheEntry(content, record.objectKey),
+          }),
+          classificationTaxonomy,
+        );
+        workingPlausibility = plausibilityWithTaxonomy;
 
         if (decision.action === 'AWAIT_USER') {
           this.observability.recordClassification(
             decision.hasSuggestion ? 'await_user_with_suggestion' : 'await_user',
           );
+          this.observability.recordAwaitingDocumentType('classification');
           this.observability.recordJobOutcome('AWAITING_DOCUMENT_TYPE', 'CLASSIFICATION');
           await this.prisma.vehicleDocumentExtraction.updateMany({
             where: { id: extractionId, status: 'PROCESSING' },
@@ -198,17 +287,8 @@ export class DocumentExtractionProcessor extends WorkerHost {
               errorCode: null,
               errorPhase: null,
               plausibility: {
-                ...mergePipelinePlausibility(record.plausibility, {
-                  contentCache: buildContentCacheEntry(content, record.objectKey),
-                }),
-                classification: {
-                  rationale: classificationResult.rationale,
-                  sourcePages: classificationResult.sourcePages,
-                  provider: classificationResult.provider,
-                  model: classificationResult.model,
-                  hasSuggestion: decision.hasSuggestion,
-                  processingDurationMs: classificationResult.processingDurationMs,
-                },
+                ...plausibilityWithTaxonomy,
+                classification: classificationPayload,
               } as unknown as Prisma.InputJsonValue,
             },
           });
@@ -226,10 +306,15 @@ export class DocumentExtractionProcessor extends WorkerHost {
             effectiveDocumentType: applyDocumentType,
             documentType: applyDocumentType,
             processingStage: 'EXTRACTION',
+            plausibility: {
+              ...plausibilityWithTaxonomy,
+              classification: classificationPayload,
+            } as unknown as Prisma.InputJsonValue,
           },
         });
       } else if (!applyDocumentType) {
         this.observability.recordClassification('unknown');
+        this.observability.recordAwaitingDocumentType('no_type');
         this.observability.recordJobOutcome('AWAITING_DOCUMENT_TYPE', 'CLASSIFICATION');
         await this.prisma.vehicleDocumentExtraction.updateMany({
           where: { id: extractionId, status: 'PROCESSING' },
@@ -244,7 +329,14 @@ export class DocumentExtractionProcessor extends WorkerHost {
         return;
       }
 
-      await this.runExtraction(extractionId, vehicleId, applyDocumentType, content, record.plausibility);
+      await this.runExtraction(
+        extractionId,
+        record.vehicleId ?? job.data.vehicleId ?? null,
+        job.data.organizationId ?? record.organizationId ?? null,
+        applyDocumentType,
+        content,
+        workingPlausibility,
+      );
       this.observability.recordJobOutcome('READY_FOR_REVIEW', 'REVIEW');
     } catch (err) {
       await this.handleProcessingError(job, extractionId, err);
@@ -316,36 +408,48 @@ export class DocumentExtractionProcessor extends WorkerHost {
 
   private async runExtraction(
     extractionId: string,
-    vehicleId: string,
+    vehicleId: string | null,
+    organizationId: string | null,
     applyDocumentType: NonNullable<ReturnType<typeof resolveEffectiveDocumentType>>,
     content: DocumentStructuredContent,
     existingPlausibility: unknown,
   ): Promise<void> {
+    const extractionStartedAt = new Date();
     await this.prisma.vehicleDocumentExtraction.update({
       where: { id: extractionId },
       data: { processingStage: 'EXTRACTION' },
     });
 
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: {
-        vin: true,
-        licensePlate: true,
-        make: true,
-        model: true,
-        year: true,
-        fuelType: true,
-        mileageKm: true,
-      },
+    const resolvedSchema = resolveExtractionSchema({
+      legacyDocumentType: applyDocumentType,
+      plausibility: existingPlausibility,
     });
-    const latest = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { odometerKm: true, dimoTokenId: true },
-    });
+    const extractionTrigger = resolveExtractionTrigger(existingPlausibility);
+    const schema = resolvedSchema.fields;
+
+    const vehicle = vehicleId
+      ? await this.prisma.vehicle.findUnique({
+          where: { id: vehicleId },
+          select: {
+            vin: true,
+            licensePlate: true,
+            make: true,
+            model: true,
+            year: true,
+            fuelType: true,
+            mileageKm: true,
+          },
+        })
+      : null;
+    const latest = vehicleId
+      ? await this.prisma.vehicleLatestState.findUnique({
+          where: { vehicleId },
+          select: { odometerKm: true, dimoTokenId: true },
+        })
+      : null;
     const lastKnownOdometerKm = latest?.odometerKm ?? vehicle?.mileageKm ?? null;
     const dimoTokenId = latest?.dimoTokenId ?? undefined;
 
-    const schema = getFieldSchema(applyDocumentType);
     const agentResult = await this.aiExtraction.extract({
       documentType: applyDocumentType,
       fields: schema.map((f) => ({
@@ -375,10 +479,14 @@ export class DocumentExtractionProcessor extends WorkerHost {
       throw mapAiExtractionFailure(agentResult.error);
     }
 
+    const structuredExtraction = buildStructuredExtractionPayload({
+      resolvedSchema,
+      agentResult,
+    });
     const fields =
-      agentResult.fields && Object.keys(agentResult.fields).length > 0
-        ? agentResult.fields
-        : buildEmptyExtractedData(applyDocumentType);
+      Object.keys(structuredExtraction.normalizedFlat).length > 0
+        ? structuredExtraction.normalizedFlat
+        : buildEmptyExtractedData(applyDocumentType, resolvedSchema.documentSubtype);
 
     const plausibilityChecks = this.plausibility.runChecks(
       applyDocumentType,
@@ -390,6 +498,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
         dimoContextAvailable: agentResult.dimoContextAvailable,
       },
       {
+        documentSubtype: resolvedSchema.documentSubtype,
         extractionConflicts: agentResult.extractionConflicts,
         chunkingWarnings: agentResult.chunking?.limitExceeded
           ? [
@@ -398,11 +507,174 @@ export class DocumentExtractionProcessor extends WorkerHost {
           : undefined,
       },
     );
+    const missingFieldChecks = collectMissingFieldPlausibilityChecks(
+      structuredExtraction.missingFields,
+    );
+    const finalChecksBase = [...plausibilityChecks.checks, ...missingFieldChecks];
     const mergedNotes = Array.from(
       new Set([...(plausibilityChecks.recommendedHumanReviewNotes ?? []), ...agentResult.recommendedHumanReviewNotes]),
     );
 
-    const existingPublic = stripPipelineFromPlausibility(existingPlausibility);
+    const uploadPipeline = readUploadContextPipelineState(existingPlausibility);
+    let pipelineWithContext = existingPlausibility;
+    if (uploadPipeline?.candidate && organizationId) {
+      const entitySnapshot = await this.uploadContext.loadEntitySnapshot(
+        uploadPipeline.candidate.entityType,
+        uploadPipeline.candidate.entityId,
+        organizationId,
+      );
+      const resolver = evaluateUploadContextResolver({
+        candidate: uploadPipeline.candidate,
+        hints: extractUploadResolverHints(fields),
+        entitySnapshot,
+      });
+      pipelineWithContext = mergePipelinePlausibility(existingPlausibility, {
+        uploadContext: {
+          ...uploadPipeline,
+          resolver,
+        },
+      });
+    }
+
+    let finalChecks = finalChecksBase;
+    let overallStatus = resolveOverallPlausibilityStatus(finalChecks);
+
+    if (organizationId && !vehicleId) {
+      const uploadContextVehicleId =
+        uploadPipeline?.candidate?.entityType === 'VEHICLE'
+          ? uploadPipeline.candidate.entityId
+          : null;
+      const uploadContextBookingId =
+        uploadPipeline?.candidate?.entityType === 'BOOKING'
+          ? uploadPipeline.candidate.entityId
+          : null;
+
+      const vehicleCandidates = await this.vehicleCandidateResolver.resolve({
+        organizationId,
+        extractedData: fields as Record<string, unknown>,
+        uploadContextVehicleId,
+        uploadContextBookingId,
+        fieldEvidence: mapFieldEvidence(agentResult.fieldEvidence),
+        assignedVehicleId: vehicleId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        vehicleCandidates,
+      });
+
+      if (vehicleCandidates.blockerPresent) {
+        finalChecks = [
+          ...finalChecks,
+          makePlausibilityCheck({
+            code: 'VEHICLE_CANDIDATE_VIN_PLATE_MISMATCH',
+            status: 'BLOCKER',
+            explanation:
+              'OCR-VIN und OCR-Kennzeichen verweisen auf unterschiedliche Fahrzeuge in der Organisation.',
+            fieldPaths: ['vin', 'licensePlate'],
+            resolutionHint:
+              'Kennzeichen oder VIN manuell prüfen und das richtige Fahrzeug zuordnen.',
+            source: 'SYNQDRIVE_DB',
+          }),
+        ];
+        overallStatus = 'BLOCKER';
+      }
+    }
+
+    const vehiclePipeline = readVehicleCandidatePipelineState(pipelineWithContext);
+    const resolvedVehicleId =
+      vehicleId ?? vehiclePipeline?.candidates?.find((candidate) => candidate.rank === 1)?.vehicleId ?? null;
+
+    if (
+      organizationId &&
+      resolvedVehicleId &&
+      this.bookingCandidateResolver.supportsDocumentType(applyDocumentType)
+    ) {
+      const uploadContextBookingId =
+        uploadPipeline?.candidate?.entityType === 'BOOKING'
+          ? uploadPipeline.candidate.entityId
+          : null;
+
+      const bookingCandidates = await this.bookingCandidateResolver.resolve({
+        organizationId,
+        vehicleId: resolvedVehicleId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        uploadContextBookingId,
+        fieldEvidence: mapFieldEvidence(agentResult.fieldEvidence),
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        bookingCandidates,
+      });
+    }
+
+    const bookingPipeline = readBookingCandidatePipelineState(pipelineWithContext);
+    const linkedBookingId =
+      uploadPipeline?.candidate?.entityType === 'BOOKING'
+        ? uploadPipeline.candidate.entityId
+        : bookingPipeline?.candidates?.find((candidate) => candidate.rank === 1)?.bookingId ?? null;
+    const uploadContextCustomerId =
+      uploadPipeline?.candidate?.entityType === 'CUSTOMER'
+        ? uploadPipeline.candidate.entityId
+        : null;
+    const uploadContextDriverId =
+      uploadPipeline?.candidate?.entityType === 'DRIVER'
+        ? uploadPipeline.candidate.entityId
+        : null;
+
+    if (organizationId && this.customerCandidateResolver.supportsDocumentType(applyDocumentType)) {
+      const customerCandidates = await this.customerCandidateResolver.resolve({
+        organizationId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        uploadContextCustomerId,
+        linkedBookingId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        customerCandidates,
+      });
+    }
+
+    if (organizationId && this.driverCandidateResolver.supportsDocumentType(applyDocumentType)) {
+      const driverCandidates = await this.driverCandidateResolver.resolve({
+        organizationId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        linkedBookingId,
+        uploadContextDriverId,
+        resolvedVehicleId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        driverCandidates,
+      });
+    }
+
+    if (organizationId && this.partnerCandidateResolver.supportsDocumentType(applyDocumentType)) {
+      const partnerCandidates = await this.partnerCandidateResolver.resolve({
+        organizationId,
+        documentType: applyDocumentType,
+        extractedData: fields as Record<string, unknown>,
+        resolvedVehicleId,
+      });
+
+      pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+        partnerCandidates,
+      });
+    }
+
+    const uploadContextAfterResolvers = readUploadContextPipelineState(pipelineWithContext);
+    const entityCandidateRanking = buildEntityCandidateRankingFromPipeline({
+      documentType: applyDocumentType,
+      plausibility: pipelineWithContext,
+      uploadContextResolverStatus: uploadContextAfterResolvers?.resolver?.status ?? null,
+    });
+    pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+      entityCandidateRanking,
+    });
+
+    const existingPublic = stripPipelineFromPlausibility(pipelineWithContext);
     const classificationMeta =
       existingPublic &&
       typeof existingPublic === 'object' &&
@@ -412,6 +684,25 @@ export class DocumentExtractionProcessor extends WorkerHost {
         : {};
 
     const completedAt = new Date();
+    const structuredExtractionRun = buildStructuredExtractionRun({
+      resolvedSchema,
+      structured: structuredExtraction,
+      trigger: extractionTrigger,
+      startedAt: extractionStartedAt,
+      completedAt,
+      provider: agentResult.providerId ?? null,
+      modelVersion: agentResult.modelId ?? null,
+    });
+    const fieldProvenance = buildFieldProvenanceFromStructuredFields({
+      fields: structuredExtraction.fields,
+      pages: content.pages,
+    });
+    pipelineWithContext = mergePipelinePlausibility(pipelineWithContext, {
+      structuredExtraction,
+      structuredExtractionRun,
+      fieldProvenance,
+    });
+    const pipelinePayload = readPipelinePayload(pipelineWithContext);
     await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'PROCESSING' },
       data: {
@@ -421,15 +712,21 @@ export class DocumentExtractionProcessor extends WorkerHost {
             ? existingPublic
             : {}),
           ...classificationMeta,
-          overallStatus: plausibilityChecks.overallStatus,
-          checks: plausibilityChecks.checks,
+          overallStatus,
+          checks: finalChecks,
           recommendedHumanReviewNotes: mergedNotes,
           dimoContextAvailable: agentResult.dimoContextAvailable,
           sourceMethod: content.sourceMethod,
           contentPageCount: content.pageCount ?? null,
           extractionEvidence: agentResult.fieldEvidence ?? null,
           extractionConflicts: agentResult.extractionConflicts ?? null,
+          structuredExtraction,
+          structuredExtractionRun,
+          fieldProvenance: toPublicFieldProvenance(fieldProvenance),
+          missingFields: structuredExtraction.missingFields,
+          extractionFieldConflicts: structuredExtraction.conflicts,
           chunking: agentResult.chunking ?? null,
+          [PIPELINE_PLAUSIBILITY_KEY]: pipelinePayload,
         } as unknown as Prisma.InputJsonValue,
         status: 'READY_FOR_REVIEW',
         processingStage: 'REVIEW',
@@ -443,6 +740,47 @@ export class DocumentExtractionProcessor extends WorkerHost {
         errorPhase: null,
         nextRetryAt: null,
       },
+    });
+
+    const refreshed = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: extractionId },
+    });
+    if (refreshed) {
+      await this.archiveIndexService.upsertForRecord(refreshed);
+    }
+
+    this.observability.recordExtractionCompleted({
+      documentType: applyDocumentType,
+      overallStatus,
+    });
+    this.observability.recordPlausibilityBlockers(finalChecks);
+    this.observability.recordEntityCandidateRanking(entityCandidateRanking);
+    this.recordRequiredFieldMetrics(
+      applyDocumentType,
+      resolvedSchema.requiredFields,
+      structuredExtraction.missingFields,
+      structuredExtraction.fields.map((field) => field.key),
+    );
+  }
+
+  private recordRequiredFieldMetrics(
+    documentType: string,
+    requiredFields: readonly string[],
+    missingFields: string[],
+    extractedFieldKeys: string[],
+  ): void {
+    const requiredMissing = missingFields.length;
+    const requiredPresent = Math.max(0, requiredFields.length - requiredMissing);
+    const requiredSet = new Set(requiredFields);
+    const optionalKeys = extractedFieldKeys.filter((key) => !requiredSet.has(key));
+    const optionalPresent = optionalKeys.filter((key) => !missingFields.includes(key)).length;
+    const optionalMissing = Math.max(0, optionalKeys.length - optionalPresent);
+    this.observability.recordRequiredFieldCompleteness({
+      documentType,
+      requiredPresent,
+      requiredMissing,
+      optionalPresent,
+      optionalMissing,
     });
   }
 

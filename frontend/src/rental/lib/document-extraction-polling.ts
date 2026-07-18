@@ -1,4 +1,5 @@
 import type { PublicDocumentExtraction } from './document-extraction.types';
+import { isExtractionPollTerminal } from './document-extraction-apply-polling';
 import { isTerminalExtractionStatus } from './document-extraction-lifecycle';
 
 export interface ExtractionPollerOptions {
@@ -6,6 +7,8 @@ export interface ExtractionPollerOptions {
   onRecord: (record: PublicDocumentExtraction) => void;
   onError?: (error: unknown, consecutiveFailures: number) => void;
   signal?: AbortSignal;
+  /** When false, stop polling at review terminal states (no apply polling). Default true. */
+  pollThroughApply?: boolean;
 }
 
 function getPollIntervalMs(elapsedMs: number): number {
@@ -50,7 +53,10 @@ export function createExtractionPoller(options: ExtractionPollerOptions) {
       const record = await options.fetchRecord();
       consecutiveFailures = 0;
       options.onRecord(record);
-      if (isTerminalExtractionStatus(record.status) || options.signal?.aborted) {
+      const terminal = options.pollThroughApply === false
+        ? isTerminalExtractionStatus(record.status)
+        : isExtractionPollTerminal(record);
+      if (terminal || options.signal?.aborted) {
         stop();
         return;
       }

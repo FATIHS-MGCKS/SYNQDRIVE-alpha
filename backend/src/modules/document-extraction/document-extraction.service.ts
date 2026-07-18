@@ -20,9 +20,33 @@ import {
   DocumentStoragePort,
 } from './storage/document-storage.interface';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
+import { DocumentActionOrchestratorService } from './document-action-orchestrator.service';
+import { mapApplyLifecycleToExtractionStatus } from './document-action-plan.state-machine';
+import { isArchiveDocumentType } from './document-archive-extraction.rules';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
+import { DocumentFileIdentificationService } from './document-file-identification.service';
+import { computeDocumentContentSha256 } from './document-content-hash.util';
+import { buildDocumentExtractionFileFingerprint } from './document-extraction-fingerprint.types';
+import { mergePipelinePlausibility } from './document-content-cache.util';
+import { isMalwareScanDownloadAllowed } from './document-malware-scan.util';
+import { DocumentUploadDuplicateService } from './document-upload-duplicate.service';
+import { DocumentUploadDuplicateBlockedException } from './document-upload-duplicate.errors';
+import { DocumentUploadRateLimitService } from './document-upload-rate-limit.service';
+import { DocumentMalwareScanService } from './document-malware-scan.service';
+import { DocumentLifecycleService } from './document-lifecycle.service';
+import { DocumentRetentionService } from './document-retention.service';
+import { DocumentRetentionRunOptions } from './document-retention.types';
+import { DocumentUploadContextService } from './document-upload-context.service';
+import { buildInitialUploadContextPipelineState } from './document-upload-context.util';
+import {
+  DocumentMalwareDetectedError,
+  DocumentMalwareDownloadBlockedError,
+  DocumentMalwareScanFailedError,
+} from './document-malware-scan.errors';
+import { DocumentExtractionPipelineError } from './document-extraction.errors';
 import {
   ApplyDocumentExtractionType,
+  AUTO_CLASSIFICATION_REQUEST,
   getFieldSchema,
   isAllowedMimeType,
   isApplyDocumentType,
@@ -55,6 +79,14 @@ import {
   appendExtractionActionAudit,
   readContentCache,
 } from './document-content-cache.util';
+import { archiveSupersededExtractionRun } from './document-structured-extraction.util';
+import {
+  applyFieldProvenanceConfirmations,
+  mergeFieldProvenancePipeline,
+  readFieldProvenanceRegistry,
+  resolveConfirmedValuesForActionPlan,
+} from './document-field-provenance.util';
+import { readDocumentTaxonomyPipelineState, mergeDocumentTaxonomyPipeline, resolveDocumentTaxonomyFromLegacyType } from './document-taxonomy.util';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
 import {
   buildDocumentExtractionPaginatedResult,
@@ -63,6 +95,29 @@ import {
 } from './document-extraction-query.util';
 import { sanitizeDownloadFileName } from './document-extraction-download.util';
 import { DocumentExtractionObservabilityService } from './document-extraction-observability.service';
+import {
+  invalidateDocumentActionPlan,
+  readDocumentActionPlanState,
+} from './document-action-plan.store';
+import { DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS } from './document-action-plan.types';
+import { readConfirmedDataObject } from './document-entity-link.util';
+import { DocumentActionPlanPreviewService } from './document-action-plan-preview.service';
+import { DocumentApplyResultService } from './document-apply-result.service';
+import { DocumentFollowUpSuggestionService } from './document-follow-up-suggestion.service';
+import { DocumentFollowUpContactPrepareService } from './document-follow-up-contact-prepare.service';
+import { DocumentFollowUpResyncService } from './document-follow-up-resync.service';
+import { DocumentExtractionArchiveIndexService } from './document-extraction-archive-index.service';
+import {
+  buildDocumentExtractionArchiveWhere,
+  parseDocumentExtractionArchivePagination,
+} from './document-extraction-archive-query.util';
+import { toPublicDocumentExtractionArchiveItem } from './document-extraction-archive.mapper';
+import { ListDocumentExtractionArchiveQueryDto } from './dto/list-document-extraction-archive-query.dto';
+import {
+  mergeActionPlanPreferences,
+  type DocumentActionPlanPreferences,
+} from './document-action-plan-preferences.util';
+import { assertExecutableActionPlan } from './document-action-plan.builder';
 
 /** Extra confirmedData keys (beyond schema) that the apply layer understands. */
 const APPLY_ALIAS_KEYS = new Set<string>([
@@ -79,23 +134,175 @@ const APPLY_ALIAS_KEYS = new Set<string>([
   'title',
   'invoiceTitle',
   'vendorName',
+  'supplier',
+  'supplierName',
+  'customer',
+  'customerName',
+  'addressee',
+  'billTo',
   'notes',
   'vin',
   'licensePlate',
   'costCents',
+  'subtotalNet',
+  'subtotalNetCents',
+  'netCents',
+  'totalTax',
+  'totalTaxCents',
+  'taxCents',
+  'totalGross',
+  'totalGrossCents',
+  'grossCents',
+  'taxRatePercent',
+  'taxRate',
+  'taxLines',
+  'lineItems',
+  'taxExemptReason',
+  'taxExemptionReason',
+  'reverseCharge',
+  'amountSemantics',
+  'taxSemantics',
+  'creditNoteReference',
+  'originalInvoiceReference',
+  'originalInvoiceNumber',
+  'referencedInvoiceNumber',
+  'creditNoteNumber',
+  'documentNumber',
+  'isCreditNote',
+  'creditNote',
+  'currency',
+  'inspectionDate',
+  'defectLevel',
+  'defectDescription',
+  'reinspectionRequired',
+  'reinspectionDeadline',
+  'issuingOrganization',
+  'inspectionStation',
+  'inspectorName',
+  'certificateNumber',
+  'mileage',
   'temperatureC',
   'crankingVoltage',
   'chargingVoltage',
+  'eventDateTime',
+  'damageDescription',
+  'damageAreas',
+  'damageArea',
+  'damageType',
+  'drivable',
+  'drivableAfterIncident',
+  'thirdPartyInvolved',
+  'opponentInvolved',
+  'policeReference',
+  'policeReport',
+  'insuranceReference',
+  'insuranceClaimNumber',
+  'bookingContext',
+  'bookingReference',
+  'bookingId',
+  'estimatedCostGross',
+  'estimatedCost',
+  'estimatedCostCents',
+  'accidentApplyConfirmed',
+  'applyConfirmed',
+  'documentKind',
+  'linkedDamageId',
+  'acceptedEntityLinks',
+  'locationLabel',
+  'locationView',
+  'measurementDate',
+  'treadDepthUnit',
+  'pressureUnit',
+  'pressureBar',
+  'pressure',
+  'dimension',
+  'dotByPosition',
+  'dotFront',
+  'dotRear',
+  'dimensionFront',
+  'dimensionRear',
+  'padThicknessUnit',
+  'discThicknessUnit',
+  'thicknessUnit',
+  'minimumPadMm',
+  'minimumPadMmFront',
+  'minimumPadMmRear',
+  'minimumDiscMm',
+  'minimumDiscMmFront',
+  'minimumDiscMmRear',
+  'workshopFinding',
+  'workshopReport',
+  'batteryScope',
+  'targetScope',
+  'measurementType',
+  'sohSource',
+  'capacityKwh',
+  'capacityAh',
+  'hvCapacityKwh',
+  'lvCapacityAh',
+  'temperatureContext',
+  'ambientTemperatureNote',
+  'deviceOrWorkshop',
+  'testDevice',
+  'issuer',
+  'chemistry',
+  'archiveSubtype',
+  'documentSubtype',
+  'sender',
+  'from',
+  'issuer',
+  'recipient',
+  'to',
+  'addressee',
+  'documentDate',
+  'letterDate',
+  'referenceNumber',
+  'caseNumber',
+  'fileNumber',
+  'subject',
+  'deadlines',
+  'deadlineItems',
+  'deadline',
+  'replyBy',
+  'mentionedEntities',
+  'entityMentions',
+  'summary',
+  'actionRequired',
+  'requiredAction',
 ]);
+
+const TERMINAL_APPLIED_STATUSES = new Set(['APPLIED', 'PARTIALLY_APPLIED']);
 
 const TERMINAL_SKIP_STATUSES = new Set([
   'READY_FOR_REVIEW',
   'CONFIRMED',
   'APPLIED',
+  'PARTIALLY_APPLIED',
   'AWAITING_DOCUMENT_TYPE',
   'CANCELLED',
 ]);
 
+export interface CreateFromOrgUploadInput {
+  organizationId: string;
+  vehicleId?: string | null;
+  requestedDocumentType?: string;
+  optionalContextType?: string | null;
+  optionalContextId?: string | null;
+  sourceSurface?: string | null;
+  originalName: string;
+  mimeType: string;
+  buffer: Buffer;
+  userId?: string | null;
+  reuploadReason?: string | null;
+  relatedExtractionId?: string | null;
+  invoiceNumberHint?: string | null;
+  referenceNumberHint?: string | null;
+  clientIp?: string | null;
+  uploadSource?: string | null;
+  platformRole?: string | null;
+}
+
+/** Vehicle-scoped upload input — compatibility wrapper over {@link CreateFromOrgUploadInput}. */
 export interface CreateFromUploadInput {
   vehicleId: string;
   documentType: string;
@@ -103,6 +310,13 @@ export interface CreateFromUploadInput {
   mimeType: string;
   buffer: Buffer;
   userId?: string | null;
+  reuploadReason?: string | null;
+  relatedExtractionId?: string | null;
+  invoiceNumberHint?: string | null;
+  referenceNumberHint?: string | null;
+  clientIp?: string | null;
+  uploadSource?: string | null;
+  platformRole?: string | null;
 }
 
 export type EnqueueExtractionResult =
@@ -144,8 +358,22 @@ export class DocumentExtractionService implements OnModuleInit {
     @Inject(DOCUMENT_STORAGE) private readonly storage: DocumentStoragePort,
     @InjectQueue(QUEUE_NAMES.DOCUMENT_EXTRACTION) private readonly queue: Queue,
     private readonly applyService: DocumentExtractionApplyService,
+    private readonly actionOrchestrator: DocumentActionOrchestratorService,
     private readonly plausibilityService: DocumentExtractionPlausibilityService,
+    private readonly fileIdentification: DocumentFileIdentificationService,
+    private readonly uploadDuplicate: DocumentUploadDuplicateService,
+    private readonly uploadRateLimit: DocumentUploadRateLimitService,
+    private readonly malwareScan: DocumentMalwareScanService,
+    private readonly lifecycle: DocumentLifecycleService,
+    private readonly retention: DocumentRetentionService,
+    private readonly uploadContext: DocumentUploadContextService,
     private readonly observability: DocumentExtractionObservabilityService,
+    private readonly actionPlanPreview: DocumentActionPlanPreviewService,
+    private readonly applyResultService: DocumentApplyResultService,
+    private readonly followUpSuggestionService: DocumentFollowUpSuggestionService,
+    private readonly followUpContactPrepareService: DocumentFollowUpContactPrepareService,
+    private readonly followUpResyncService: DocumentFollowUpResyncService,
+    private readonly archiveIndexService: DocumentExtractionArchiveIndexService,
   ) {}
 
   onModuleInit(): void {
@@ -158,23 +386,8 @@ export class DocumentExtractionService implements OnModuleInit {
 
   // ── create (real upload) ──────────────────────────────────────────────
 
+  /** Vehicle-scoped compatibility wrapper — delegates to {@link createFromOrgUpload}. */
   async createFromUpload(input: CreateFromUploadInput) {
-    this.assertQueueAcceptingUploads();
-
-    if (!isRequestDocumentType(input.documentType)) {
-      throw new BadRequestException(`Unsupported document type: ${input.documentType}`);
-    }
-    if (!isAllowedMimeType(input.mimeType)) {
-      throw new BadRequestException(`Unsupported file type: ${input.mimeType}`);
-    }
-
-    const requestedType = input.documentType as DocumentExtractionType;
-    const classificationMode = deriveClassificationMode(requestedType);
-    const isAuto = isAutoClassificationRequest(requestedType);
-    const effectiveType: ApplyDocumentExtractionType | null = isAuto
-      ? null
-      : (requestedType as ApplyDocumentExtractionType);
-
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: input.vehicleId },
       select: { organizationId: true },
@@ -182,38 +395,257 @@ export class DocumentExtractionService implements OnModuleInit {
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
     }
-    const organizationId = vehicle.organizationId;
 
-    const stored = await this.storage.putObject({
-      organizationId,
+    return this.createFromOrgUpload({
+      organizationId: vehicle.organizationId,
       vehicleId: input.vehicleId,
+      requestedDocumentType: input.documentType,
+      sourceSurface: input.uploadSource ?? 'vehicle_detail',
       originalName: input.originalName,
-      buffer: input.buffer,
       mimeType: input.mimeType,
+      buffer: input.buffer,
+      userId: input.userId,
+      reuploadReason: input.reuploadReason,
+      relatedExtractionId: input.relatedExtractionId,
+      invoiceNumberHint: input.invoiceNumberHint,
+      referenceNumberHint: input.referenceNumberHint,
+      clientIp: input.clientIp,
+      uploadSource: input.uploadSource,
+      platformRole: input.platformRole,
     });
+  }
+
+  async createFromOrgUpload(input: CreateFromOrgUploadInput) {
+    this.assertQueueAcceptingUploads();
+
+    const requestedDocumentType = input.requestedDocumentType ?? AUTO_CLASSIFICATION_REQUEST;
+    if (!isRequestDocumentType(requestedDocumentType)) {
+      this.observability.recordUploadRejected('validation');
+      throw new BadRequestException(`Unsupported document type: ${requestedDocumentType}`);
+    }
+    if (!isAllowedMimeType(input.mimeType)) {
+      this.observability.recordUploadRejected('mime');
+      throw new BadRequestException(`Unsupported file type: ${input.mimeType}`);
+    }
+
+    const uploadTarget = await this.uploadContext.resolveUploadTarget({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId ?? null,
+      optionalContextType: input.optionalContextType,
+      optionalContextId: input.optionalContextId,
+      sourceSurface: input.sourceSurface ?? input.uploadSource ?? 'org_inbox',
+      providedByUserId: input.userId ?? null,
+    });
+    const organizationId = uploadTarget.organizationId;
+    const resolvedVehicleId = uploadTarget.vehicleId;
+
+    const requestedType = requestedDocumentType as DocumentExtractionType;
+    const classificationMode = deriveClassificationMode(requestedType);
+    const isAuto = isAutoClassificationRequest(requestedType);
+    const effectiveType: ApplyDocumentExtractionType | null = isAuto
+      ? null
+      : (requestedType as ApplyDocumentExtractionType);
+
+    await this.uploadRateLimit.assertAllowed({
+      organizationId,
+      userId: input.userId,
+      clientIp: input.clientIp,
+      uploadSource: input.uploadSource,
+      platformRole: input.platformRole,
+      sizeBytes: input.buffer.byteLength,
+    });
+
+    let identified;
+    let contentSha256: string;
+    try {
+      identified = await this.fileIdentification.identify({
+        buffer: input.buffer,
+        clientMimeType: input.mimeType,
+        originalName: input.originalName,
+      });
+      contentSha256 = await computeDocumentContentSha256(input.buffer);
+    } catch (error) {
+      if (error instanceof DocumentExtractionPipelineError) {
+        this.observability.recordUploadRejected('identification');
+        throw new BadRequestException({
+          message: error.safeMessage,
+          errorCode: error.code,
+          stage: error.stage,
+          identificationStatus:
+            (error as DocumentExtractionPipelineError & { identificationStatus?: string })
+              .identificationStatus ?? undefined,
+        });
+      }
+      throw error;
+    }
+
+    const duplicateAssessment = await this.uploadDuplicate.assess({
+      organizationId,
+      contentSha256,
+      reuploadReason: input.reuploadReason,
+      relatedExtractionId: input.relatedExtractionId,
+      invoiceNumberHint: input.invoiceNumberHint,
+      referenceNumberHint: input.referenceNumberHint,
+    });
+    if (duplicateAssessment.blocked) {
+      this.observability.recordDuplicateOutcome('blocked');
+      this.observability.recordUploadRejected('duplicate');
+      throw new DocumentUploadDuplicateBlockedException(duplicateAssessment);
+    }
+
+    this.observability.recordDuplicateOutcome(mapDuplicateStatusToMetric(duplicateAssessment.status));
+
+    const uploadDuplicateStatus = duplicateAssessment.status;
+    const relatedExtractionId = duplicateAssessment.relatedExtractionId ?? null;
+    const reuploadReason = duplicateAssessment.reuploadReason ?? null;
+
+    const fileFingerprint = buildDocumentExtractionFileFingerprint({
+      contentSha256,
+      organizationId,
+      sizeBytes: identified.sizeBytes,
+      detectedMime: identified.detectedMime,
+      displayFileName: identified.displayFileName,
+      identificationStatus: identified.identificationStatus,
+      pageCount: identified.pageCount,
+      pixelCount: identified.pixelCount,
+      rotationDegrees: identified.rotationDegrees,
+    });
+
+    const pipelineDuplicate =
+      duplicateAssessment.status === 'POSSIBLE_BUSINESS_DUPLICATE'
+        ? {
+            status: duplicateAssessment.status,
+            relatedExtractionId,
+            businessMatch: duplicateAssessment.businessMatch ?? null,
+            existingExtraction: duplicateAssessment.existingExtraction ?? null,
+          }
+        : duplicateAssessment.status === 'REUPLOAD_ALLOWED'
+          ? {
+              status: duplicateAssessment.status,
+              relatedExtractionId,
+              existingExtraction: duplicateAssessment.existingExtraction ?? null,
+            }
+          : undefined;
 
     const queueEnabled = this.docConfig.queueEnabled;
 
-    // Pre-queue state: file stored, job not yet enqueued.
-    const record = await this.prisma.vehicleDocumentExtraction.create({
+    let record = await this.prisma.vehicleDocumentExtraction.create({
       data: {
-        vehicleId: input.vehicleId,
+        vehicleId: resolvedVehicleId,
         organizationId,
+        uploadContextType: uploadTarget.uploadContextType,
+        uploadContextId: uploadTarget.uploadContextId,
         requestedDocumentType: requestedType,
         effectiveDocumentType: effectiveType,
         documentType: effectiveType,
         classificationMode,
         status: 'PENDING',
-        processingStage: 'STORAGE',
-        sourceFileName: input.originalName?.slice(0, 255),
-        objectKey: stored.objectKey,
-        storageProvider: stored.storageProvider,
-        mimeType: stored.mimeType,
-        sizeBytes: stored.sizeBytes,
+        processingStage: 'UPLOAD',
+        sourceFileName: identified.displayFileName,
+        mimeType: identified.detectedMime,
+        sizeBytes: identified.sizeBytes,
+        contentSha256,
+        uploadDuplicateStatus,
+        relatedExtractionId,
+        reuploadReason,
+        plausibility: this.lifecycle.seedLifecycleOnCreate(
+          mergePipelinePlausibility(null, {
+            fileFingerprint,
+            uploadDuplicate: pipelineDuplicate,
+            uploadContext: buildInitialUploadContextPipelineState(uploadTarget.contextCandidate),
+          }),
+          this.lifecycle.buildStorageCapabilitiesSnapshot(),
+        ) as Prisma.InputJsonValue,
         createdById: input.userId ?? null,
         processingAttempts: 0,
       },
     });
+
+    if (uploadDuplicateStatus === 'UNIQUE') {
+      const anchorResult = await this.uploadDuplicate.claimContentAnchor({
+        organizationId,
+        contentSha256,
+        extractionId: record.id,
+      });
+      if (anchorResult === 'conflict') {
+        await this.prisma.vehicleDocumentExtraction.delete({ where: { id: record.id } });
+        const blocked = await this.uploadDuplicate.loadBlockedAssessmentFromAnchor({
+          organizationId,
+          contentSha256,
+        });
+        this.observability.recordDuplicateOutcome('blocked');
+        this.observability.recordUploadRejected('duplicate');
+        throw new DocumentUploadDuplicateBlockedException(blocked);
+      }
+    }
+
+    const stored = await this.malwareScan.storeScannedUpload({
+      organizationId,
+      vehicleId: resolvedVehicleId,
+      originalName: identified.displayFileName,
+      buffer: input.buffer,
+      mimeType: identified.detectedMime,
+    }).catch(async (error) => {
+      if (error instanceof DocumentMalwareDetectedError) {
+        this.observability.recordUploadRejected('malware');
+        await this.prisma.vehicleDocumentExtraction.update({
+          where: { id: record.id },
+          data: {
+            status: 'REJECTED',
+            processingStage: 'UPLOAD',
+            errorPhase: 'UPLOAD',
+            errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_DETECTED,
+            errorMessage: error.message,
+            plausibility: mergePipelinePlausibility(record.plausibility, {
+              malwareScan: error.scanState,
+            }) as Prisma.InputJsonValue,
+          },
+        });
+        throw new BadRequestException({
+          message: error.message,
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_DETECTED,
+          stage: 'UPLOAD',
+          malwareScanStatus: error.scanState.status,
+        });
+      }
+      if (error instanceof DocumentMalwareScanFailedError) {
+        this.observability.recordUploadRejected('malware');
+        await this.prisma.vehicleDocumentExtraction.update({
+          where: { id: record.id },
+          data: {
+            status: 'FAILED',
+            processingStage: 'UPLOAD',
+            errorPhase: 'UPLOAD',
+            errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_SCAN_FAILED,
+            errorMessage: error.message,
+            plausibility: mergePipelinePlausibility(record.plausibility, {
+              malwareScan: error.scanState,
+            }) as Prisma.InputJsonValue,
+          },
+        });
+        throw new BadRequestException({
+          message: error.message,
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.MALWARE_SCAN_FAILED,
+          stage: 'UPLOAD',
+          malwareScanStatus: error.scanState.status,
+        });
+      }
+      throw error;
+    });
+
+    record = await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: record.id },
+      data: {
+        processingStage: 'STORAGE',
+        objectKey: stored.objectKey,
+        storageProvider: stored.storageProvider,
+        plausibility: mergePipelinePlausibility(record.plausibility, {
+          malwareScan: stored.malwareScan,
+        }) as Prisma.InputJsonValue,
+      },
+    });
+
+    // Pre-queue state: file identified + stored, job not yet enqueued.
 
     if (!queueEnabled) {
       if (this.docConfig.allowPendingWithoutQueue) {
@@ -227,13 +659,14 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(record.id, {
       extractionId: record.id,
-      vehicleId: record.vehicleId,
+      vehicleId: record.vehicleId ?? null,
       organizationId: record.organizationId,
       documentType: effectiveType,
       objectKey: stored.objectKey,
     });
 
     if (!enqueueResult.ok) {
+      this.observability.recordUploadRejected('queue');
       const failed = await this.markEnqueueFailure(record.id, {
         errorPhase: 'QUEUE',
         errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.QUEUE_UNAVAILABLE,
@@ -253,6 +686,10 @@ export class DocumentExtractionService implements OnModuleInit {
         errorMessage: null,
         nextRetryAt: null,
       },
+    });
+    this.observability.recordUploadAccepted({
+      scope: resolvedVehicleId ? 'vehicle' : 'org',
+      sourceSurface: input.sourceSurface ?? input.uploadSource ?? 'org_inbox',
     });
     return queued;
   }
@@ -383,6 +820,115 @@ export class DocumentExtractionService implements OnModuleInit {
     );
   }
 
+  async listArchiveForOrg(orgId: string, query: ListDocumentExtractionArchiveQueryDto) {
+    const pagination = parseDocumentExtractionArchivePagination(query);
+    const where = buildDocumentExtractionArchiveWhere({
+      organizationId: orgId,
+      status: query.status,
+      documentCategory: query.documentCategory,
+      documentSubtype: query.documentSubtype,
+      vehicleId: query.vehicleId,
+      bookingId: query.bookingId,
+      customerId: query.customerId,
+      driverId: query.driverId,
+      vendorId: query.vendorId,
+      uploadedBy: query.uploadedBy,
+      uploadedFrom: query.uploadedFrom,
+      uploadedTo: query.uploadedTo,
+      fileName: query.fileName,
+      invoiceNumber: query.invoiceNumber,
+      caseReference: query.caseReference,
+      actionStatus: query.actionStatus,
+      followUpStatus: query.followUpStatus,
+      q: query.q,
+    });
+
+    const [rows, total] = await Promise.all([
+      this.prisma.documentExtractionArchiveIndex.findMany({
+        where,
+        orderBy: { uploadedAt: 'desc' },
+        skip: pagination.skip,
+        take: pagination.take,
+        include: {
+          extraction: {
+            include: {
+              vehicle: { select: VEHICLE_SELECT },
+            },
+          },
+        },
+      }),
+      this.prisma.documentExtractionArchiveIndex.count({ where }),
+    ]);
+
+    const missingIds = rows
+      .filter((row) => !row.extraction)
+      .map((row) => row.extractionId);
+    if (missingIds.length > 0) {
+      await this.prisma.documentExtractionArchiveIndex.deleteMany({
+        where: { extractionId: { in: missingIds } },
+      });
+    }
+
+    const staleOrgRows = await this.prisma.vehicleDocumentExtraction.findMany({
+      where: {
+        organizationId: orgId,
+        archiveIndex: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: { id: true },
+    });
+    if (staleOrgRows.length > 0) {
+      await this.archiveIndexService.ensureIndexedForOrg(
+        orgId,
+        staleOrgRows.map((row) => row.id),
+      );
+    }
+
+    const uploaderIds = [
+      ...new Set(
+        rows
+          .map((row) => row.extraction?.createdById)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const uploaders =
+      uploaderIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: uploaderIds } },
+            select: USER_SELECT,
+          })
+        : [];
+    const uploaderById = new Map(uploaders.map((user) => [user.id, user]));
+
+    const items = rows
+      .filter((row) => row.extraction)
+      .map((row) =>
+        toPublicDocumentExtractionArchiveItem({
+          ...row,
+          extraction: {
+            ...row.extraction!,
+            createdBy: row.extraction!.createdById
+              ? uploaderById.get(row.extraction!.createdById) ?? null
+              : null,
+          },
+        }),
+      );
+
+    return buildDocumentExtractionPaginatedResult(
+      items,
+      total,
+      pagination.page,
+      pagination.limit,
+    );
+  }
+
+  async syncArchiveIndexForRecord(
+    record: Awaited<ReturnType<DocumentExtractionService['getForOrg']>>,
+  ): Promise<void> {
+    await this.archiveIndexService.upsertForRecord(record);
+  }
+
   async listPublicForVehicle(vehicleId: string, query: ListDocumentExtractionsQueryDto = {}) {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId },
@@ -427,14 +973,30 @@ export class DocumentExtractionService implements OnModuleInit {
     return this.listPublicForVehicle(vehicleId, query);
   }
 
-  async getDownloadForVehicle(vehicleId: string, extractionId: string): Promise<DocumentExtractionDownload> {
+  async getDownloadForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    userId?: string | null,
+  ): Promise<DocumentExtractionDownload> {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    return this.buildDownload(record);
+    const dl = await this.buildDownload(record);
+    if (userId) {
+      await this.lifecycle.recordDownloadAudit({ record, userId }).catch(() => undefined);
+    }
+    return dl;
   }
 
-  async getDownloadForOrg(orgId: string, extractionId: string): Promise<DocumentExtractionDownload> {
+  async getDownloadForOrg(
+    orgId: string,
+    extractionId: string,
+    userId?: string | null,
+  ): Promise<DocumentExtractionDownload> {
     const record = await this.getForOrg(orgId, extractionId);
-    return this.buildDownload(record);
+    const dl = await this.buildDownload(record);
+    if (userId) {
+      await this.lifecycle.recordDownloadAudit({ record, userId }).catch(() => undefined);
+    }
+    return dl;
   }
 
   private async buildDownload(record: {
@@ -442,9 +1004,13 @@ export class DocumentExtractionService implements OnModuleInit {
     sourceFileName?: string | null;
     mimeType?: string | null;
     sizeBytes?: number | null;
+    plausibility?: unknown;
   }): Promise<DocumentExtractionDownload> {
     if (!record.objectKey) {
       throw new NotFoundException('Document file is no longer available');
+    }
+    if (!isMalwareScanDownloadAllowed(record.plausibility)) {
+      throw new DocumentMalwareDownloadBlockedError();
     }
 
     try {
@@ -468,6 +1034,26 @@ export class DocumentExtractionService implements OnModuleInit {
     documentType: string,
     options?: { reextract?: boolean; userId?: string | null },
   ) {
+    const record = await this.getForVehicle(vehicleId, extractionId);
+    return this.applySetDocumentType(record, extractionId, documentType, options);
+  }
+
+  async setDocumentTypeForOrg(
+    orgId: string,
+    extractionId: string,
+    documentType: string,
+    options?: { reextract?: boolean; userId?: string | null },
+  ) {
+    const record = await this.getForOrg(orgId, extractionId);
+    return this.applySetDocumentType(record, extractionId, documentType, options);
+  }
+
+  private async applySetDocumentType(
+    record: Awaited<ReturnType<typeof this.getForVehicle>>,
+    extractionId: string,
+    documentType: string,
+    options?: { reextract?: boolean; userId?: string | null },
+  ) {
     if (!isApplyDocumentType(documentType)) {
       throw new BadRequestException(`Unsupported document type: ${documentType}`);
     }
@@ -475,10 +1061,9 @@ export class DocumentExtractionService implements OnModuleInit {
       throw new BadRequestException('AUTO is not a valid effective document type');
     }
 
-    const record = await this.getForVehicle(vehicleId, extractionId);
     const applyType = documentType as ApplyDocumentExtractionType;
 
-    if (record.status === 'APPLIED') {
+    if (record.status === 'APPLIED' || record.status === 'PARTIALLY_APPLIED') {
       throw new BadRequestException('Cannot change document type after data has been applied');
     }
     if (record.status === 'CONFIRMED') {
@@ -504,17 +1089,28 @@ export class DocumentExtractionService implements OnModuleInit {
     }
 
     const previousType = resolveEffectiveDocumentType(record);
-    const auditPlausibility = appendDocumentTypeAudit(record.plausibility, {
-      from: previousType ?? record.detectedDocumentType ?? record.requestedDocumentType ?? null,
-      to: applyType,
-      at: new Date().toISOString(),
-      userId: options?.userId ?? null,
-      reason: awaiting
-        ? 'user_selected_document_type'
-        : reviewCorrection
-          ? 'user_corrected_document_type_reextract'
-          : 'user_set_document_type_retry',
+    const supersedeReason: 'type_change' | 'reextract' = reviewCorrection ? 'reextract' : 'type_change';
+    const plausibilityWithSupersede = archiveSupersededExtractionRun({
+      plausibility: record.plausibility,
+      extractedData: record.extractedData,
+      supersededReason: supersedeReason,
+      previousDocumentType: previousType ?? record.detectedDocumentType ?? record.requestedDocumentType ?? null,
+      nextDocumentType: applyType,
     });
+    const auditPlausibility = mergeDocumentTaxonomyPipeline(
+      appendDocumentTypeAudit(plausibilityWithSupersede, {
+        from: previousType ?? record.detectedDocumentType ?? record.requestedDocumentType ?? null,
+        to: applyType,
+        at: new Date().toISOString(),
+        userId: options?.userId ?? null,
+        reason: awaiting
+          ? 'user_selected_document_type'
+          : reviewCorrection
+            ? 'user_corrected_document_type_reextract'
+            : 'user_set_document_type_retry',
+      }),
+      resolveDocumentTaxonomyFromLegacyType(applyType, 'manual_type'),
+    );
 
     const cleared = await this.prisma.vehicleDocumentExtraction.update({
       where: { id: extractionId },
@@ -548,7 +1144,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(extractionId, {
       extractionId,
-      vehicleId: record.vehicleId,
+      vehicleId: record.vehicleId ?? null,
       organizationId: record.organizationId,
       documentType: applyType,
       objectKey: record.objectKey,
@@ -578,7 +1174,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
   async retry(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    if (record.status === 'APPLIED') {
+    if (TERMINAL_APPLIED_STATUSES.has(record.status)) {
       throw new BadRequestException('Cannot retry an already applied extraction');
     }
     if (record.status === 'CONFIRMED') {
@@ -626,7 +1222,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const enqueueResult = await this.enqueueExtraction(extractionId, {
       extractionId,
-      vehicleId: record.vehicleId,
+      vehicleId: record.vehicleId ?? null,
       organizationId: record.organizationId,
       documentType: applyType,
       objectKey: record.objectKey,
@@ -658,10 +1254,11 @@ export class DocumentExtractionService implements OnModuleInit {
     extractionId: string,
     confirmedDataRaw: unknown,
     userId?: string | null,
+    actionPlanFingerprint?: string | null,
   ) {
     const existing = await this.getForVehicle(vehicleId, extractionId);
 
-    if (existing.status === 'APPLIED') {
+    if (existing.status === 'APPLIED' || existing.status === 'PARTIALLY_APPLIED') {
       return existing;
     }
 
@@ -673,11 +1270,26 @@ export class DocumentExtractionService implements OnModuleInit {
 
     const applyDocumentType = requireApplyDocumentType(existing);
     const confirmedData = this.sanitizeConfirmedData(applyDocumentType, confirmedDataRaw);
+    const confirmedAt = new Date().toISOString();
+    const taxonomySubtype =
+      readDocumentTaxonomyPipelineState(existing.plausibility)?.documentSubtype ?? null;
+    const existingFieldProvenance = readFieldProvenanceRegistry(existing.plausibility);
+    const fieldProvenanceAfterConfirm = existingFieldProvenance
+      ? applyFieldProvenanceConfirmations({
+          registry: existingFieldProvenance,
+          confirmedData,
+          confirmedBy: userId ?? null,
+          confirmedAt,
+          schemaFieldKeys: getFieldSchema(applyDocumentType, taxonomySubtype).map((field) => field.key),
+        })
+      : null;
+    const actionPlanConfirmedData = resolveConfirmedValuesForActionPlan(confirmedData);
 
     const plausibility = await this.runConfirmPlausibility(
       vehicleId,
       applyDocumentType,
-      confirmedData,
+      actionPlanConfirmedData,
+      extractionId,
     );
     if (plausibility.overallStatus === 'BLOCKER') {
       throw new BadRequestException({
@@ -686,11 +1298,7 @@ export class DocumentExtractionService implements OnModuleInit {
       });
     }
 
-    const sourceFileUrl =
-      existing.sourceFileUrl ??
-      (existing.objectKey ? `storage://${existing.objectKey}` : null);
-
-    const plausibilityPayload = {
+    const freshPlausibilityForPreview = {
       ...(typeof existing.plausibility === 'object' &&
       existing.plausibility &&
       !Array.isArray(existing.plausibility)
@@ -698,6 +1306,69 @@ export class DocumentExtractionService implements OnModuleInit {
         : {}),
       ...(plausibility as unknown as Record<string, unknown>),
     };
+    const recordForPreview = { ...existing, plausibility: freshPlausibilityForPreview };
+
+    if (this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
+      const preview = await this.actionPlanPreview.buildForRecord(recordForPreview);
+      if (!preview.canConfirm) {
+        throw new BadRequestException({
+          message:
+            preview.confirmBlockedReason ??
+            'Action plan is blocked — cannot confirm until issues are resolved',
+          actionPlanPreview: preview,
+        });
+      }
+      if (!actionPlanFingerprint?.trim()) {
+        throw new BadRequestException('actionPlanFingerprint is required before apply');
+      }
+      if (preview.fingerprint !== actionPlanFingerprint.trim()) {
+        throw new BadRequestException({
+          message:
+            'Der Aktionsplan hat sich geändert — bitte Vorschau erneut laden und prüfen.',
+          code: 'ACTION_PLAN_FINGERPRINT_MISMATCH',
+          expectedFingerprint: preview.fingerprint,
+          receivedFingerprint: actionPlanFingerprint.trim(),
+        });
+      }
+      const plan = await this.actionOrchestrator.buildPreviewPlan({
+        extractionId: existing.id,
+        organizationId: existing.organizationId ?? null,
+        vehicleId,
+        documentType: applyDocumentType,
+        sourceFileUrl:
+          existing.sourceFileUrl ??
+          (existing.objectKey ? `storage://${existing.objectKey}` : null),
+        confirmedData: actionPlanConfirmedData,
+        plausibilityChecks: plausibility.checks,
+        plausibility: freshPlausibilityForPreview,
+      });
+      assertExecutableActionPlan(plan);
+    }
+
+    const sourceFileUrl =
+      existing.sourceFileUrl ??
+      (existing.objectKey ? `storage://${existing.objectKey}` : null);
+
+    const plausibilityPayload = fieldProvenanceAfterConfirm
+      ? mergeFieldProvenancePipeline(
+          {
+            ...(typeof existing.plausibility === 'object' &&
+            existing.plausibility &&
+            !Array.isArray(existing.plausibility)
+              ? (existing.plausibility as Record<string, unknown>)
+              : {}),
+            ...(plausibility as unknown as Record<string, unknown>),
+          },
+          fieldProvenanceAfterConfirm,
+        )
+      : {
+          ...(typeof existing.plausibility === 'object' &&
+          existing.plausibility &&
+          !Array.isArray(existing.plausibility)
+            ? (existing.plausibility as Record<string, unknown>)
+            : {}),
+          ...(plausibility as unknown as Record<string, unknown>),
+        };
     const plausibilityWithConfirmAudit = appendExtractionActionAudit(plausibilityPayload, {
       action: 'confirm',
       at: new Date().toISOString(),
@@ -719,21 +1390,37 @@ export class DocumentExtractionService implements OnModuleInit {
     });
     if (confirmUpdate.count === 0) {
       const latest = await this.getForVehicle(vehicleId, extractionId);
-      if (latest.status === 'APPLIED') return latest;
+      if (latest.status === 'APPLIED' || latest.status === 'PARTIALLY_APPLIED') return latest;
       throw new BadRequestException(
         `Extraction must be READY_FOR_REVIEW before confirmation (current: ${latest.status})`,
       );
     }
 
-    let applyResult: Awaited<ReturnType<DocumentExtractionApplyService['apply']>>;
+    let applyResult: Awaited<ReturnType<DocumentExtractionApplyService['apply']>> & {
+      applyLifecycle?: { status: string };
+    };
     try {
-      applyResult = await this.applyService.apply({
-        extractionId,
-        vehicleId,
-        documentType: applyDocumentType,
-        sourceFileUrl,
-        confirmedData,
-      });
+      if (this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
+        applyResult = await this.actionOrchestrator.executeConfirmedPlan({
+          extractionId,
+          organizationId: existing.organizationId ?? null,
+          vehicleId,
+          documentType: applyDocumentType,
+          sourceFileUrl,
+          confirmedData: actionPlanConfirmedData,
+          confirmedById: userId ?? null,
+          plausibilityChecks: plausibility.checks,
+          plausibility: plausibilityWithConfirmAudit,
+        });
+      } else {
+        applyResult = await this.applyService.apply({
+          extractionId,
+          vehicleId,
+          documentType: applyDocumentType,
+          sourceFileUrl,
+          confirmedData: actionPlanConfirmedData,
+        });
+      }
       this.observability.recordApply('success');
       this.observability.logEvent({
         extractionId,
@@ -761,10 +1448,23 @@ export class DocumentExtractionService implements OnModuleInit {
       throw new BadRequestException(`Failed to apply confirmed data: ${message}`);
     }
 
+    const extractionStatus = applyResult.applyLifecycle
+      ? mapApplyLifecycleToExtractionStatus(
+          applyResult.applyLifecycle.status as Parameters<
+            typeof mapApplyLifecycleToExtractionStatus
+          >[0],
+        )
+      : 'APPLIED';
+
+    const latestAfterApply = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: extractionId },
+      select: { plausibility: true },
+    });
+
     const appliedUpdate = await this.prisma.vehicleDocumentExtraction.updateMany({
       where: { id: extractionId, status: 'CONFIRMED' },
       data: {
-        status: 'APPLIED',
+        status: extractionStatus,
         processingStage: 'APPLY',
         appliedAt: new Date(),
         appliedById: userId ?? null,
@@ -772,11 +1472,17 @@ export class DocumentExtractionService implements OnModuleInit {
         errorPhase: null,
         errorCode: null,
         errorMessage: null,
-        plausibility: appendExtractionActionAudit(plausibilityWithConfirmAudit, {
-          action: 'apply',
-          at: new Date().toISOString(),
-          userId: userId ?? null,
-        }) as Prisma.InputJsonValue,
+        plausibility: appendExtractionActionAudit(
+          latestAfterApply?.plausibility ?? plausibilityWithConfirmAudit,
+          {
+            action: 'apply',
+            at: new Date().toISOString(),
+            userId: userId ?? null,
+            details: applyResult.applyLifecycle
+              ? { applyLifecycleStatus: applyResult.applyLifecycle.status }
+              : undefined,
+          },
+        ) as Prisma.InputJsonValue,
         ...(applyResult.serviceEventId ? { serviceEventId: applyResult.serviceEventId } : {}),
       },
     });
@@ -785,7 +1491,554 @@ export class DocumentExtractionService implements OnModuleInit {
     }
 
     const updated = await this.getForVehicle(vehicleId, extractionId);
+    await this.archiveIndexService.upsertForRecord(updated);
+    if (extractionStatus === 'PARTIALLY_APPLIED') {
+      this.observability.recordPartialApply('partial_lifecycle');
+    }
     return applyResult.detail ? { ...updated, applyResult: applyResult.detail } : updated;
+  }
+
+  async confirmForOrg(
+    orgId: string,
+    extractionId: string,
+    confirmedDataRaw: unknown,
+    userId?: string | null,
+    actionPlanFingerprint?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    if (!existing.vehicleId) {
+      throw new BadRequestException(
+        'Vehicle assignment is required before confirming and applying document data',
+      );
+    }
+    return this.confirm(
+      existing.vehicleId,
+      extractionId,
+      confirmedDataRaw,
+      userId ?? null,
+      actionPlanFingerprint ?? null,
+    );
+  }
+
+  // ── saveReview (persist reviewed fields, re-run plausibility, stay in review) ─
+
+  async saveReview(
+    vehicleId: string,
+    extractionId: string,
+    confirmedDataRaw: unknown,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.persistReview(existing, confirmedDataRaw, userId ?? null);
+  }
+
+  async saveReviewForOrg(
+    orgId: string,
+    extractionId: string,
+    confirmedDataRaw: unknown,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.persistReview(existing, confirmedDataRaw, userId ?? null);
+  }
+
+  private async persistReview(
+    existing: Awaited<ReturnType<DocumentExtractionService['getForVehicle']>>,
+    confirmedDataRaw: unknown,
+    userId: string | null,
+  ) {
+    if (existing.status !== 'READY_FOR_REVIEW') {
+      throw new BadRequestException(
+        `Extraction must be READY_FOR_REVIEW before saving review (current: ${existing.status})`,
+      );
+    }
+
+    const applyDocumentType = requireApplyDocumentType(existing);
+    const sanitizedFields = this.sanitizeConfirmedData(applyDocumentType, confirmedDataRaw);
+    const confirmedBase = readConfirmedDataObject(existing.confirmedData);
+    const confirmedData = { ...confirmedBase, ...sanitizedFields };
+    const confirmedAt = new Date().toISOString();
+    const taxonomySubtype =
+      readDocumentTaxonomyPipelineState(existing.plausibility)?.documentSubtype ?? null;
+    const existingFieldProvenance = readFieldProvenanceRegistry(existing.plausibility);
+    const fieldProvenanceAfterSave = existingFieldProvenance
+      ? applyFieldProvenanceConfirmations({
+          registry: existingFieldProvenance,
+          confirmedData,
+          confirmedBy: userId,
+          confirmedAt,
+          schemaFieldKeys: getFieldSchema(applyDocumentType, taxonomySubtype).map((field) => field.key),
+        })
+      : null;
+    const actionPlanConfirmedData = resolveConfirmedValuesForActionPlan(confirmedData);
+
+    const plausibility = existing.vehicleId
+      ? await this.runConfirmPlausibility(
+          existing.vehicleId,
+          applyDocumentType,
+          actionPlanConfirmedData,
+          existing.id,
+        )
+      : this.plausibilityService.runChecks(
+          applyDocumentType,
+          actionPlanConfirmedData,
+          {},
+          {
+            existingInvoiceNumbers: [],
+            existingReferenceNumbers: [],
+            bookingStartDate: null,
+            bookingEndDate: null,
+            currentExtractionId: existing.id,
+            documentSubtype: taxonomySubtype,
+          },
+        );
+
+    let plausibilityPayload: Record<string, unknown> = fieldProvenanceAfterSave
+      ? mergeFieldProvenancePipeline(
+          {
+            ...(typeof existing.plausibility === 'object' &&
+            existing.plausibility &&
+            !Array.isArray(existing.plausibility)
+              ? (existing.plausibility as Record<string, unknown>)
+              : {}),
+            ...(plausibility as unknown as Record<string, unknown>),
+          },
+          fieldProvenanceAfterSave,
+        )
+      : {
+          ...(typeof existing.plausibility === 'object' &&
+          existing.plausibility &&
+          !Array.isArray(existing.plausibility)
+            ? (existing.plausibility as Record<string, unknown>)
+            : {}),
+          ...(plausibility as unknown as Record<string, unknown>),
+        };
+
+    const planState = readDocumentActionPlanState(plausibilityPayload);
+    if (planState.actionPlan && planState.actionPlan.status !== 'INVALIDATED') {
+      plausibilityPayload = invalidateDocumentActionPlan(
+        plausibilityPayload,
+        DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS.CONFIRMED_DATA_CHANGED,
+      );
+    }
+
+    plausibilityPayload = appendExtractionActionAudit(plausibilityPayload, {
+      action: 'save_review',
+      at: confirmedAt,
+      userId,
+    });
+
+    const updated = await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: existing.id },
+      data: {
+        confirmedData: confirmedData as Prisma.InputJsonValue,
+        plausibility: plausibilityPayload as Prisma.InputJsonValue,
+        processingStage: 'REVIEW',
+        status: 'READY_FOR_REVIEW',
+      },
+    });
+
+    await this.followUpResyncService.resyncAfterPlanChange(updated);
+    const refreshed = await this.prisma.vehicleDocumentExtraction.findUniqueOrThrow({
+      where: { id: updated.id },
+    });
+    await this.archiveIndexService.upsertForRecord(refreshed);
+
+    return refreshed;
+  }
+
+  async getActionPlanPreviewForVehicle(vehicleId: string, extractionId: string) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.actionPlanPreview.buildForRecord(existing);
+  }
+
+  async getActionPlanPreviewForOrg(orgId: string, extractionId: string) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.actionPlanPreview.buildForRecord(existing);
+  }
+
+  async updateActionPlanPreferencesForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    preferences: DocumentActionPlanPreferences,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.persistActionPlanPreferences(existing, preferences, userId ?? null);
+  }
+
+  async updateActionPlanPreferencesForOrg(
+    orgId: string,
+    extractionId: string,
+    preferences: DocumentActionPlanPreferences,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.persistActionPlanPreferences(existing, preferences, userId ?? null);
+  }
+
+  private async persistActionPlanPreferences(
+    existing: Awaited<ReturnType<DocumentExtractionService['getForVehicle']>>,
+    preferences: DocumentActionPlanPreferences,
+    userId: string | null,
+  ) {
+    if (existing.status !== 'READY_FOR_REVIEW') {
+      throw new BadRequestException(
+        `Extraction must be READY_FOR_REVIEW before updating action preferences (current: ${existing.status})`,
+      );
+    }
+
+    const confirmedBase = readConfirmedDataObject(existing.confirmedData);
+    const confirmedData = mergeActionPlanPreferences(confirmedBase, preferences);
+    const confirmedAt = new Date().toISOString();
+
+    let plausibilityPayload =
+      typeof existing.plausibility === 'object' &&
+      existing.plausibility &&
+      !Array.isArray(existing.plausibility)
+        ? ({ ...(existing.plausibility as Record<string, unknown>) } as Record<string, unknown>)
+        : {};
+
+    const planState = readDocumentActionPlanState(plausibilityPayload);
+    if (planState.actionPlan && planState.actionPlan.status !== 'INVALIDATED') {
+      plausibilityPayload = invalidateDocumentActionPlan(
+        plausibilityPayload,
+        DOCUMENT_ACTION_PLAN_INVALIDATION_REASONS.CONFIRMED_DATA_CHANGED,
+      );
+    }
+
+    plausibilityPayload = appendExtractionActionAudit(plausibilityPayload, {
+      action: 'update_action_plan_preferences',
+      at: confirmedAt,
+      userId,
+      details: { disabledOptionalActions: preferences.disabledOptionalActions },
+    });
+
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: existing.id },
+      data: {
+        confirmedData: confirmedData as Prisma.InputJsonValue,
+        plausibility: plausibilityPayload as Prisma.InputJsonValue,
+      },
+    });
+
+    const refreshed = { ...existing, confirmedData, plausibility: plausibilityPayload };
+    await this.followUpResyncService.resyncAfterPlanChange(refreshed);
+    const latest = await this.prisma.vehicleDocumentExtraction.findUniqueOrThrow({
+      where: { id: existing.id },
+    });
+    await this.archiveIndexService.upsertForRecord(latest);
+
+    return this.actionPlanPreview.buildForRecord(
+      refreshed,
+      { preferencesOverride: preferences },
+    );
+  }
+
+  async getApplyResultForVehicle(vehicleId: string, extractionId: string) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.applyResultService.buildForRecord(existing);
+  }
+
+  async getApplyResultForOrg(orgId: string, extractionId: string) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.applyResultService.buildForRecord(existing);
+  }
+
+  async listFollowUpSuggestionsForVehicle(vehicleId: string, extractionId: string) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.followUpSuggestionService.listForRecord(existing);
+  }
+
+  async listFollowUpSuggestionsForOrg(orgId: string, extractionId: string) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpSuggestionService.listForRecord(existing);
+  }
+
+  async acceptFollowUpSuggestionForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const result = await this.followUpSuggestionService.acceptSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    await this.archiveIndexService.upsertForRecord(
+      await this.getForVehicle(vehicleId, extractionId),
+    );
+    return result;
+  }
+
+  async acceptFollowUpSuggestionForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    const result = await this.followUpSuggestionService.acceptSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    await this.archiveIndexService.upsertForRecord(await this.getForOrg(orgId, extractionId));
+    return result;
+  }
+
+  async dismissFollowUpSuggestionForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const result = await this.followUpSuggestionService.dismissSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    await this.archiveIndexService.upsertForRecord(
+      await this.getForVehicle(vehicleId, extractionId),
+    );
+    return result;
+  }
+
+  async dismissFollowUpSuggestionForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    const result = await this.followUpSuggestionService.dismissSuggestion({
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    await this.archiveIndexService.upsertForRecord(await this.getForOrg(orgId, extractionId));
+    return result;
+  }
+
+  async getFollowUpContactPrepareForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const orgId = existing.organizationId;
+    if (!orgId) {
+      throw new BadRequestException('Organization scope required for contact preparation');
+    }
+    return this.followUpContactPrepareService.buildPreparePreview({
+      orgId,
+      record: existing,
+      suggestionId,
+    });
+  }
+
+  async getFollowUpContactPrepareForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpContactPrepareService.buildPreparePreview({
+      orgId,
+      record: existing,
+      suggestionId,
+    });
+  }
+
+  async recordFollowUpContactPrepareOpenedForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const orgId = existing.organizationId;
+    if (!orgId) {
+      throw new BadRequestException('Organization scope required for contact preparation');
+    }
+    await this.followUpContactPrepareService.recordPrepareOpened({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    return { recorded: true };
+  }
+
+  async recordFollowUpContactPrepareOpenedForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    await this.followUpContactPrepareService.recordPrepareOpened({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+    });
+    return { recorded: true };
+  }
+
+  async sendFollowUpContactForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId: string | null | undefined,
+    payload: import('./document-follow-up-contact.types').SendDocumentFollowUpContactInput,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    const orgId = existing.organizationId;
+    if (!orgId) {
+      throw new BadRequestException('Organization scope required for contact preparation');
+    }
+    return this.followUpContactPrepareService.sendPreparedContact({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+      payload,
+    });
+  }
+
+  async sendFollowUpContactForOrg(
+    orgId: string,
+    extractionId: string,
+    suggestionId: string,
+    userId: string | null | undefined,
+    payload: import('./document-follow-up-contact.types').SendDocumentFollowUpContactInput,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    return this.followUpContactPrepareService.sendPreparedContact({
+      orgId,
+      record: existing,
+      suggestionId,
+      userId: userId ?? null,
+      payload,
+    });
+  }
+
+  async retryFailedActionsForVehicle(
+    vehicleId: string,
+    extractionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForVehicle(vehicleId, extractionId);
+    return this.retryFailedActions(existing, vehicleId, userId ?? null);
+  }
+
+  async retryFailedActionsForOrg(
+    orgId: string,
+    extractionId: string,
+    userId?: string | null,
+  ) {
+    const existing = await this.getForOrg(orgId, extractionId);
+    if (!existing.vehicleId) {
+      throw new BadRequestException('Vehicle assignment required before retrying failed actions');
+    }
+    return this.retryFailedActions(existing, existing.vehicleId, userId ?? null);
+  }
+
+  private async retryFailedActions(
+    existing: Awaited<ReturnType<DocumentExtractionService['getForVehicle']>>,
+    vehicleId: string,
+    userId: string | null,
+  ) {
+    if (existing.status !== 'PARTIALLY_APPLIED' && existing.status !== 'CONFIRMED') {
+      throw new BadRequestException(
+        `Retry failed actions requires PARTIALLY_APPLIED or CONFIRMED (current: ${existing.status})`,
+      );
+    }
+
+    const applyDocumentType = requireApplyDocumentType(existing);
+    if (!this.actionOrchestrator.supportsExecutorPath(applyDocumentType)) {
+      throw new BadRequestException('This document type does not support action plan retry');
+    }
+
+    const confirmedBase = readConfirmedDataObject(existing.confirmedData);
+    const actionPlanConfirmedData = resolveConfirmedValuesForActionPlan(confirmedBase);
+    const sourceFileUrl =
+      existing.sourceFileUrl ??
+      (existing.objectKey ? `storage://${existing.objectKey}` : null);
+
+    let applyResult: Awaited<ReturnType<DocumentActionOrchestratorService['retryFailedApplyActions']>>;
+    try {
+      applyResult = await this.actionOrchestrator.retryFailedApplyActions({
+        extractionId: existing.id,
+        organizationId: existing.organizationId ?? null,
+        vehicleId,
+        documentType: applyDocumentType,
+        sourceFileUrl,
+        confirmedData: actionPlanConfirmedData,
+        plausibility: existing.plausibility,
+        confirmedById: userId,
+      });
+    } catch (err) {
+      const message = (err as Error).message?.slice(0, 500) ?? 'Retry failed';
+      await this.prisma.vehicleDocumentExtraction.update({
+        where: { id: existing.id },
+        data: {
+          errorPhase: 'APPLY',
+          errorCode: DOCUMENT_EXTRACTION_ERROR_CODES.APPLY_FAILED,
+          errorMessage: message,
+        },
+      });
+      throw new BadRequestException(`Failed to retry document actions: ${message}`);
+    }
+
+    const extractionStatus = applyResult.applyLifecycle
+      ? mapApplyLifecycleToExtractionStatus(
+          applyResult.applyLifecycle.status as Parameters<
+            typeof mapApplyLifecycleToExtractionStatus
+          >[0],
+        )
+      : 'APPLIED';
+
+    const latestAfterApply = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: existing.id },
+      select: { plausibility: true },
+    });
+
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: existing.id },
+      data: {
+        status: extractionStatus,
+        processingStage: 'APPLY',
+        appliedAt: extractionStatus === 'APPLIED' || extractionStatus === 'PARTIALLY_APPLIED'
+          ? new Date()
+          : existing.appliedAt,
+        appliedById: userId,
+        processingCompletedAt: new Date(),
+        errorPhase: null,
+        errorCode: null,
+        errorMessage: null,
+        plausibility: appendExtractionActionAudit(
+          latestAfterApply?.plausibility ?? existing.plausibility,
+          {
+            action: 'retry_failed_actions',
+            at: new Date().toISOString(),
+            userId,
+            details: applyResult.applyLifecycle
+              ? { applyLifecycleStatus: applyResult.applyLifecycle.status }
+              : undefined,
+          },
+        ) as Prisma.InputJsonValue,
+        ...(applyResult.serviceEventId ? { serviceEventId: applyResult.serviceEventId } : {}),
+      },
+    });
+
+    const updated = await this.getForVehicle(vehicleId, existing.id);
+    await this.archiveIndexService.upsertForRecord(updated);
+    return this.applyResultService.buildForRecord(updated);
   }
 
   /** Used by recovery scheduler to retry apply for stuck CONFIRMED rows. */
@@ -797,26 +2050,45 @@ export class DocumentExtractionService implements OnModuleInit {
       return false;
     }
     const applyDocumentType = resolveEffectiveDocumentType(record);
-    if (!applyDocumentType || !record.confirmedData) {
+    if (!applyDocumentType || !record.confirmedData || !record.vehicleId) {
       return false;
     }
+
+    const vehicleId = record.vehicleId;
 
     const sourceFileUrl =
       record.sourceFileUrl ??
       (record.objectKey ? `storage://${record.objectKey}` : null);
 
     try {
-      const applyResult = await this.applyService.apply({
-        extractionId,
-        vehicleId: record.vehicleId,
-        documentType: applyDocumentType,
-        sourceFileUrl,
-        confirmedData: record.confirmedData as Record<string, unknown>,
-      });
+      const confirmedData = record.confirmedData as Record<string, unknown>;
+      const applyResult = this.actionOrchestrator.supportsExecutorPath(applyDocumentType)
+        ? await this.actionOrchestrator.executeConfirmedPlan({
+            extractionId,
+            organizationId: record.organizationId ?? null,
+            vehicleId,
+            documentType: applyDocumentType,
+            sourceFileUrl,
+            confirmedData,
+            plausibility: record.plausibility,
+          })
+        : await this.applyService.apply({
+            extractionId,
+            vehicleId,
+            documentType: applyDocumentType,
+            sourceFileUrl,
+            confirmedData,
+          });
+      const lifecycle = (applyResult as { applyLifecycle?: { status: string } }).applyLifecycle;
+      const extractionStatus = lifecycle
+        ? mapApplyLifecycleToExtractionStatus(
+            lifecycle.status as Parameters<typeof mapApplyLifecycleToExtractionStatus>[0],
+          )
+        : 'APPLIED';
       await this.prisma.vehicleDocumentExtraction.updateMany({
         where: { id: extractionId, status: 'CONFIRMED' },
         data: {
-          status: 'APPLIED',
+          status: extractionStatus,
           processingStage: 'APPLY',
           appliedAt: new Date(),
           processingCompletedAt: new Date(),
@@ -914,7 +2186,7 @@ export class DocumentExtractionService implements OnModuleInit {
 
   async cancel(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    if (['APPLIED', 'CONFIRMED', 'CANCELLED'].includes(record.status)) {
+    if (['APPLIED', 'PARTIALLY_APPLIED', 'CONFIRMED', 'CANCELLED'].includes(record.status)) {
       throw new BadRequestException(`Cannot cancel extraction in status ${record.status}`);
     }
 
@@ -941,24 +2213,29 @@ export class DocumentExtractionService implements OnModuleInit {
 
   async deleteFile(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
-    if (record.objectKey) {
-      await this.storage.deleteObject(record.objectKey).catch(() => undefined);
-    }
-    return this.prisma.vehicleDocumentExtraction.update({
-      where: { id: extractionId },
-      data: {
-        objectKey: null,
-        sizeBytes: null,
-        mimeType: null,
-        fileDeletedAt: new Date(),
-        fileDeletedById: userId ?? null,
-        plausibility: appendExtractionActionAudit(record.plausibility, {
-          action: 'delete_file',
-          at: new Date().toISOString(),
-          userId: userId ?? null,
-        }) as Prisma.InputJsonValue,
-      },
-    });
+    await this.lifecycle.softDeleteFile({ record, userId });
+    return this.getPublicForVehicle(vehicleId, extractionId);
+  }
+
+  async setLegalHold(
+    vehicleId: string,
+    extractionId: string,
+    userId?: string | null,
+    reason?: string,
+  ) {
+    const record = await this.getForVehicle(vehicleId, extractionId);
+    await this.lifecycle.setLegalHold({ record, userId, reason });
+    return this.getPublicForVehicle(vehicleId, extractionId);
+  }
+
+  async clearLegalHold(vehicleId: string, extractionId: string, userId?: string | null) {
+    const record = await this.getForVehicle(vehicleId, extractionId);
+    await this.lifecycle.clearLegalHold({ record, userId });
+    return this.getPublicForVehicle(vehicleId, extractionId);
+  }
+
+  runDocumentRetention(options: DocumentRetentionRunOptions = {}) {
+    return this.retention.runOnce(options);
   }
 
   // ── queue helpers (also used by recovery scheduler) ───────────────────
@@ -1054,6 +2331,7 @@ export class DocumentExtractionService implements OnModuleInit {
     vehicleId: string,
     documentType: ApplyDocumentExtractionType,
     confirmedData: Record<string, unknown>,
+    extractionId?: string,
   ) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -1063,11 +2341,79 @@ export class DocumentExtractionService implements OnModuleInit {
       where: { vehicleId },
       select: { odometerKm: true },
     });
-    return this.plausibilityService.runChecks(documentType, confirmedData, {
-      vin: vehicle?.vin,
-      licensePlate: vehicle?.licensePlate,
-      lastKnownOdometerKm: latest?.odometerKm ?? vehicle?.mileageKm ?? null,
+    const consistencyContext = await this.buildPlausibilityConsistencyContext(
+      vehicleId,
+      confirmedData,
+      extractionId,
+    );
+    return this.plausibilityService.runChecks(
+      documentType,
+      confirmedData,
+      {
+        vin: vehicle?.vin,
+        licensePlate: vehicle?.licensePlate,
+        lastKnownOdometerKm: latest?.odometerKm ?? vehicle?.mileageKm ?? null,
+      },
+      consistencyContext,
+    );
+  }
+
+  private async buildPlausibilityConsistencyContext(
+    vehicleId: string,
+    confirmedData: Record<string, unknown>,
+    extractionId?: string,
+  ) {
+    const applied = await this.prisma.vehicleDocumentExtraction.findMany({
+      where: {
+        vehicleId,
+        status: { in: ['APPLIED', 'CONFIRMED'] },
+        ...(extractionId ? { id: { not: extractionId } } : {}),
+      },
+      select: { confirmedData: true },
     });
+
+    const existingInvoiceNumbers: string[] = [];
+    const existingReferenceNumbers: string[] = [];
+    for (const row of applied) {
+      const data =
+        row.confirmedData != null &&
+        typeof row.confirmedData === 'object' &&
+        !Array.isArray(row.confirmedData)
+          ? (row.confirmedData as Record<string, unknown>)
+          : null;
+      if (!data) continue;
+      if (typeof data.invoiceNumber === 'string') {
+        existingInvoiceNumbers.push(data.invoiceNumber);
+      }
+      const reference =
+        typeof data.referenceNumber === 'string'
+          ? data.referenceNumber
+          : typeof data.reportNumber === 'string'
+            ? data.reportNumber
+            : null;
+      if (reference) existingReferenceNumbers.push(reference);
+    }
+
+    let bookingStartDate: string | null = null;
+    let bookingEndDate: string | null = null;
+    const bookingId =
+      typeof confirmedData.bookingId === 'string' ? confirmedData.bookingId : null;
+    if (bookingId) {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: { startDate: true, endDate: true },
+      });
+      bookingStartDate = booking?.startDate?.toISOString() ?? null;
+      bookingEndDate = booking?.endDate?.toISOString() ?? null;
+    }
+
+    return {
+      existingInvoiceNumbers,
+      existingReferenceNumbers,
+      bookingStartDate,
+      bookingEndDate,
+      currentExtractionId: extractionId ?? null,
+    };
   }
 
   sanitizeConfirmedData(
@@ -1115,4 +2461,12 @@ export class DocumentExtractionService implements OnModuleInit {
 
     return out;
   }
+}
+
+function mapDuplicateStatusToMetric(
+  status: string,
+): 'unique' | 'business_duplicate' | 'reupload_allowed' {
+  if (status === 'POSSIBLE_BUSINESS_DUPLICATE') return 'business_duplicate';
+  if (status === 'REUPLOAD_ALLOWED') return 'reupload_allowed';
+  return 'unique';
 }

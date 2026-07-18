@@ -3,6 +3,7 @@ import type { FlowStatus } from '../components/documents/document-extraction.sha
 
 const TERMINAL_STATUSES: DocumentExtractionStatus[] = [
   'APPLIED',
+  'PARTIALLY_APPLIED',
   'FAILED',
   'CANCELLED',
   'READY_FOR_REVIEW',
@@ -45,6 +46,8 @@ export function mapServerToFlowStatus(
       return 'applying';
     case 'APPLIED':
       return 'done';
+    case 'PARTIALLY_APPLIED':
+      return 'partially_done';
     case 'FAILED':
     case 'REJECTED':
       return 'failed';
@@ -92,8 +95,10 @@ export function getStepperIndex(flow: FlowStatus): number {
       return 1;
     case 'ready':
     case 'applying':
+    case 'apply_failed':
     case 'failed':
       return 2;
+    case 'partially_done':
     case 'done':
     case 'cancelled':
       return 3;

@@ -1,5 +1,13 @@
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { DocumentExtractionService } from './document-extraction.service';
+import {
+  makeDocumentExtractionObservabilityMock,
+  makeLifecycleMock,
+  makeMalwareScanMock,
+  makeRetentionMock,
+  makeUploadContextMock,
+} from './document-extraction-test.helpers';
 
 jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: jest.fn(() => true),
@@ -21,9 +29,10 @@ describe('DocumentExtractionService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
         create: jest.fn(),
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn(),
         ...prismaOverrides,
       },
       vehicle: {
@@ -49,19 +58,38 @@ describe('DocumentExtractionService', () => {
     };
     const queue = { add: jest.fn().mockResolvedValue({}), getJob: jest.fn().mockResolvedValue(null) };
     const plausibility = { runChecks: jest.fn().mockReturnValue({ overallStatus: 'OK', checks: [], recommendedHumanReviewNotes: [] }) };
-    const observability = {
-      logEvent: jest.fn(),
-      recordApply: jest.fn(),
-      recordJobOutcome: jest.fn(),
-      recordFailure: jest.fn(),
-      recordStageDuration: jest.fn(),
-      recordPages: jest.fn(),
-      recordRetry: jest.fn(),
-      recordClassification: jest.fn(),
-      setQueueAgeSeconds: jest.fn(),
-      setActiveJobs: jest.fn(),
-      observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
+    const fileIdentification = {
+      identify: jest.fn().mockResolvedValue({
+        detectedKind: 'pdf',
+        detectedMime: 'application/pdf',
+        clientMime: 'application/pdf',
+        displayFileName: 'invoice.pdf',
+        sizeBytes: 100,
+      }),
     };
+    const actionOrchestrator = {
+      supportsExecutorPath: jest.fn().mockReturnValue(false),
+      executeConfirmedPlan: jest.fn(),
+      buildPreviewPlan: jest.fn(),
+    };
+    const actionPlanPreview = {
+      buildForRecord: jest.fn(),
+    };
+    const applyResultService = {
+      buildForRecord: jest.fn(),
+    };
+    const followUpSuggestionService = {
+      listForRecord: jest.fn(),
+      acceptSuggestion: jest.fn(),
+      dismissSuggestion: jest.fn(),
+    };
+    const observability = makeDocumentExtractionObservabilityMock();
+    const uploadDuplicate = {
+      assess: jest.fn().mockResolvedValue({ status: 'UNIQUE', blocked: false }),
+      claimContentAnchor: jest.fn().mockResolvedValue('claimed'),
+      loadBlockedAssessmentFromAnchor: jest.fn(),
+    };
+    const uploadRateLimit = { assertAllowed: jest.fn().mockResolvedValue(undefined) };
     const svc = new DocumentExtractionService(
       prisma as any,
       config as any,
@@ -69,10 +97,27 @@ describe('DocumentExtractionService', () => {
       storage as any,
       queue as any,
       applyService as any,
+      actionOrchestrator as any,
       plausibility as any,
+      fileIdentification as any,
+      uploadDuplicate as any,
+      uploadRateLimit as any,
+      makeMalwareScanMock(storage) as any,
+      makeLifecycleMock() as any,
+      makeRetentionMock() as any,
+    makeUploadContextMock() as any,
       observability as any,
+      actionPlanPreview as any,
+      applyResultService as any,
+      followUpSuggestionService as any,
+      { prepareContactPreview: jest.fn(), recordPrepareOpened: jest.fn(), sendPreparedContact: jest.fn() } as any,
+      { resyncAfterPlanChange: jest.fn().mockResolvedValue(undefined) } as any,
+      {
+        upsertForRecord: jest.fn().mockResolvedValue(undefined),
+        ensureIndexedForOrg: jest.fn().mockResolvedValue(undefined),
+      } as any,
     );
-    return { svc, prisma, applyService, storage, queue, observability };
+    return { svc, prisma, applyService, storage, queue, observability, fileIdentification, uploadDuplicate };
   }
 
   describe('sanitizeConfirmedData', () => {
@@ -206,7 +251,7 @@ describe('DocumentExtractionService', () => {
             documentType: 'SERVICE',
             classificationMode: 'MANUAL',
             status: 'PENDING',
-            processingStage: 'STORAGE',
+            processingStage: 'UPLOAD',
           }),
         }),
       );
@@ -361,6 +406,62 @@ describe('DocumentExtractionService', () => {
         BadRequestException,
       );
     });
+
+    it('archives prior structured extraction on re-extract type change', async () => {
+      const reviewRecord = {
+        ...awaitingRecord,
+        status: 'READY_FOR_REVIEW',
+        effectiveDocumentType: 'INVOICE',
+        documentType: 'INVOICE',
+        extractedData: { invoiceNumber: 'INV-OLD' },
+        plausibility: {
+          _pipeline: {
+            structuredExtraction: {
+              contractVersion: '1.0.0',
+              schemaVersion: '1.0.0',
+              documentSubtype: 'INVOICE',
+              legacyDocumentType: 'INVOICE',
+              fields: [],
+              missingFields: [],
+              conflicts: [],
+              normalizedFlat: { invoiceNumber: 'INV-OLD' },
+            },
+            structuredExtractionRun: {
+              runId: 'run-1',
+              contractVersion: '1.0.0',
+              schemaVersion: '1.0.0',
+              documentSubtype: 'INVOICE',
+              legacyDocumentType: 'INVOICE',
+              trigger: 'auto',
+              startedAt: '2026-07-17T10:00:00.000Z',
+              completedAt: '2026-07-17T10:00:01.000Z',
+              provider: 'mistral',
+              modelVersion: 'mistral-small',
+              fieldCount: 1,
+              missingFieldCount: 0,
+              conflictCount: 0,
+            },
+          },
+        },
+      };
+      const update = jest.fn().mockResolvedValue(reviewRecord);
+      const { svc } = makeService({
+        findFirst: jest.fn().mockResolvedValue(reviewRecord),
+        update,
+      });
+
+      await svc.setDocumentType('v1', 'e1', 'SERVICE', { reextract: true, userId: 'u1' });
+
+      const updateArg = update.mock.calls[0]?.[0];
+      const pipeline = (updateArg.data.plausibility as Record<string, unknown>)._pipeline as Record<
+        string,
+        unknown
+      >;
+      expect(Array.isArray(pipeline.supersededExtractionRuns)).toBe(true);
+      expect((pipeline.supersededExtractionRuns as unknown[]).length).toBe(1);
+      expect(pipeline.structuredExtraction).toBeNull();
+      expect(updateArg.data.extractedData).toBe(Prisma.DbNull);
+    });
   });
 
   describe('getForVehicle (cross-vehicle IDOR guard)', () => {
@@ -448,6 +549,47 @@ describe('DocumentExtractionService', () => {
       // CONFIRMED first (audit), then APPLIED with appliedAt set.
       expect(updateMany).toHaveBeenCalledTimes(2);
       expect(result.status).toBe('APPLIED');
+    });
+  });
+
+  describe('saveReview', () => {
+    it('persists confirmedData and stays READY_FOR_REVIEW', async () => {
+      const record = {
+        id: 'e1',
+        vehicleId: 'v1',
+        organizationId: 'org-1',
+        documentType: 'INVOICE',
+        effectiveDocumentType: 'INVOICE',
+        status: 'READY_FOR_REVIEW',
+        classificationMode: 'MANUAL',
+        processingStage: 'REVIEW',
+        processingAttempts: 1,
+        confirmedData: null,
+        plausibility: { overallStatus: 'OK', checks: [] },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...record, ...data }));
+      const findUniqueOrThrow = jest
+        .fn()
+        .mockImplementation(async () => update.mock.results.at(-1)?.value ?? record);
+      const { svc } = makeService({
+        findFirst: jest.fn().mockResolvedValue(record),
+        update,
+        findUniqueOrThrow,
+      });
+
+      const result = await svc.saveReview('v1', 'e1', {
+        invoiceNumber: 'INV-9',
+        invoiceDate: '2026-03-01',
+        totalGross: 10000,
+      });
+
+      expect(update).toHaveBeenCalledTimes(1);
+      const updateArg = update.mock.calls[0][0];
+      expect(updateArg.data.status).toBe('READY_FOR_REVIEW');
+      expect(updateArg.data.confirmedData).toMatchObject({ invoiceNumber: 'INV-9' });
+      expect(result.status).toBe('READY_FOR_REVIEW');
     });
   });
 });

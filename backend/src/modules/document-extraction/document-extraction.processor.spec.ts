@@ -4,16 +4,18 @@ import {
   DocumentExtractionPipelineError,
   DOCUMENT_PIPELINE_ERROR_CODES,
 } from './document-extraction.errors';
+import { makeClassificationResultMock } from './document-extraction-test.helpers';
 import { CLASSIFICATION_UNKNOWN } from '@modules/ai/documents/document-classification.types';
 
 function makeProcessor(overrides: Record<string, unknown> = {}) {
-  const prisma = {
-    vehicleDocumentExtraction: {
-      findUnique: jest.fn(),
-      update: jest.fn().mockResolvedValue({}),
-      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      ...(overrides.prisma as object),
-    },
+    const prisma = {
+      vehicleDocumentExtraction: {
+        findUnique: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        ...(overrides.prisma as object),
+      },
     vehicle: {
       findUnique: jest.fn().mockResolvedValue({ vin: null, licensePlate: null, mileageKm: null }),
     },
@@ -42,16 +44,7 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     ...(overrides.contentExtractor as object),
   };
   const classification = {
-    classify: jest.fn().mockResolvedValue({
-      success: true,
-      detectedDocumentType: 'SERVICE',
-      confidence: 0.9,
-      rationale: 'Workshop service maintenance record on page 1',
-      sourcePages: [1],
-      provider: 'mistral',
-      model: 'mistral-small',
-      processingDurationMs: 10,
-    }),
+    classify: jest.fn().mockResolvedValue(makeClassificationResultMock()),
     ...(overrides.classification as object),
   };
   const aiExtraction = {
@@ -75,6 +68,7 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     jobBackoffMs: 5000,
     classificationAutoContinueMinConfidence: 0.85,
     classificationSuggestionMinConfidence: 0.55,
+    malwareScanEnabled: false,
     ...(overrides.docConfig as object),
   };
   const observability = {
@@ -101,6 +95,15 @@ function makeProcessor(overrides: Record<string, unknown> = {}) {
     plausibility as any,
     docConfig as any,
     observability as any,
+    {
+      loadEntitySnapshot: jest.fn().mockResolvedValue({ licensePlate: 'B-AB 123', vin: null }),
+    } as any,
+    { resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: {}, candidates: [], blockerPresent: false, autoConfirmEligible: false }) } as any,
+    { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { eventTimePrecision: 'missing' }, candidates: [], ambiguousOverlap: false, autoConfirmEligible: false }) } as any,
+    { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { customerNumberPresent: false, bookingLinkPresent: false, namePresent: false, emailPresent: false, phonePresent: false, addressPresent: false, documentReferencePresent: false }, candidates: [], ambiguousNameMatch: false, autoConfirmEligible: false }) } as any,
+    { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { driverNamePresent: false, licensePresent: false, driverIdPresent: false, bookingLinkPresent: false, tripAssignmentPresent: false }, candidates: [], ambiguousDriverPool: false, unassignedDriver: false, autoConfirmEligible: false }) } as any,
+    { supportsDocumentType: jest.fn(() => true), resolve: jest.fn().mockResolvedValue({ evaluatedAt: new Date().toISOString(), hints: { organizationNamePresent: false, ibanPresent: false, vatIdPresent: false, taxIdPresent: false, emailPresent: false, addressPresent: false, vendorIdPresent: false, expectedPartnerKind: 'WORKSHOP' }, candidates: [], newPartnerSuggestion: null, ambiguousPartnerMatch: false, autoConfirmEligible: false }) } as any,
+    { upsertForRecord: jest.fn().mockResolvedValue(undefined) } as any,
   );
   return { processor, prisma, storage, contentExtractor, classification, aiExtraction, plausibility };
 }
@@ -176,14 +179,26 @@ describe('DocumentExtractionProcessor retry/idempotency', () => {
       classificationMode: 'AUTO',
       requestedDocumentType: 'AUTO',
     };
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const { processor, classification, aiExtraction } = makeProcessor({
-      prisma: { findUnique: jest.fn().mockResolvedValue(autoRecord) },
+      prisma: {
+        findUnique: jest.fn().mockResolvedValue(autoRecord),
+        updateMany,
+      },
     });
     await processor.process(makeJob());
     expect(classification.classify).toHaveBeenCalled();
     expect(aiExtraction.extract).toHaveBeenCalledWith(
       expect.objectContaining({ documentType: 'SERVICE' }),
     );
+    const readyCall = updateMany.mock.calls.find(
+      (call) => (call[0] as { data?: { status?: string } }).data?.status === 'READY_FOR_REVIEW',
+    );
+    expect(readyCall).toBeDefined();
+    const plausibility = (readyCall?.[0] as { data: { plausibility: Record<string, unknown> } }).data
+      .plausibility;
+    expect(plausibility.structuredExtractionRun).toBeDefined();
+    expect(plausibility.missingFields).toBeDefined();
   });
 
   it('AUTO with low confidence stops at AWAITING_DOCUMENT_TYPE (not FAILED)', async () => {
@@ -201,16 +216,16 @@ describe('DocumentExtractionProcessor retry/idempotency', () => {
         updateMany,
       },
       classification: {
-        classify: jest.fn().mockResolvedValue({
-          success: true,
-          detectedDocumentType: CLASSIFICATION_UNKNOWN,
-          confidence: 0.2,
-          rationale: 'Too generic to classify with confidence',
-          sourcePages: [],
-          provider: 'mistral',
-          model: 'mistral-small',
-          processingDurationMs: 5,
-        }),
+        classify: jest.fn().mockResolvedValue(
+          makeClassificationResultMock({
+            detectedDocumentType: CLASSIFICATION_UNKNOWN,
+            documentCategory: 'GENERAL',
+            documentSubtype: 'OTHER',
+            confidence: 0.2,
+            rationale: 'Too generic to classify with confidence',
+            sourcePages: [],
+          }),
+        ),
       },
     });
     await processor.process(makeJob());

@@ -1,16 +1,24 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
+import { buildOriginContextHint } from '../../../lib/document-upload-context';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
+import { useDocumentFollowUpSuggestions } from '../../hooks/useDocumentFollowUpSuggestions';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useRentalOrg } from '../../RentalContext';
 import {
   DOC_TYPE_LABELS,
-  EXTRACTION_TEMPLATES,
   FLOW_STATUS_LABEL_DE,
-  type PlausibilityStatus,
 } from './document-extraction.shared';
+import { DocumentExtractionFlowStatus } from './DocumentExtractionFlowStatus';
+import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
+import { DocumentApplyResultPanel } from './DocumentApplyResultPanel';
+import { DocumentFollowUpSuggestionsPanel } from './DocumentFollowUpSuggestionsPanel';
+import { DocumentIntakeUploadZone } from './DocumentIntakeUploadZone';
+import { DocumentClassificationResultPanel } from './DocumentClassificationResultPanel';
+import { canShowApplyDone } from '../../lib/document-apply-result';
 import type { VehicleDocumentCategoryId } from '../../lib/vehicle-file-summary.types';
-import { CATEGORY_TO_DOC_TYPE } from './vehicle-file.constants';
 
 export type DocumentDrawerMode = 'upload' | 'review' | 'view';
 
@@ -24,12 +32,7 @@ export interface VehicleDocumentUploadDrawerProps {
   extractionId?: string | null;
   fileName?: string | null;
   onComplete?: () => void;
-}
-
-function plausClass(status: PlausibilityStatus): string {
-  if (status === 'BLOCKER') return 'border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] text-[color:var(--status-critical)]';
-  if (status === 'WARNING') return 'border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] text-[color:var(--status-watch)]';
-  return 'border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.06] text-[color:var(--status-success)]';
+  onEntityNavigate?: (target: { view: string; tab?: string; entityId: string }) => void;
 }
 
 export function VehicleDocumentUploadDrawer({
@@ -37,24 +40,56 @@ export function VehicleDocumentUploadDrawer({
   onOpenChange,
   vehicleId,
   vehicleLabel,
-  categoryId,
   mode = 'upload',
   extractionId: initialExtractionId,
   fileName,
   onComplete,
+  onEntityNavigate,
 }: VehicleDocumentUploadDrawerProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const initialDocType = categoryId ? CATEGORY_TO_DOC_TYPE[categoryId] : 'SERVICE';
-
+  const { t, locale } = useLanguage();
+  const { orgId: rentalOrgId } = useRentalOrg();
+  const [pendingTypeSelection, setPendingTypeSelection] = useState('AUTO');
   const handleComplete = useCallback(() => {
     onComplete?.();
   }, [onComplete]);
 
   const flow = useDocumentExtractionFlow({
     vehicleId,
-    initialDocType,
+    orgId: rentalOrgId,
+    initialDocType: 'AUTO',
+    optionalContextType: 'VEHICLE',
+    optionalContextId: vehicleId,
+    uploadSource: 'documents_tab',
+    sourceSurface: 'vehicle_detail',
     onComplete: handleComplete,
   });
+
+  const originContextHint = useMemo(
+    () => buildOriginContextHint(vehicleLabel, 'Fahrzeugdetail'),
+    [vehicleLabel],
+  );
+
+  const docTypeOptions = useMemo(() => {
+    const auto = flow.metadata?.classificationOptions ?? [
+      { value: 'AUTO', labelKey: 'documentExtraction.classification.AUTO' },
+    ];
+    const types = flow.metadata?.documentTypes ?? [];
+    return [...auto, ...types];
+  }, [flow.metadata]);
+
+  const typeLabel = useCallback(
+    (labelKey: string, fallback?: string) => {
+      const translated = t(labelKey as Parameters<typeof t>[0]);
+      return translated === labelKey ? (fallback ?? labelKey) : translated;
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    if (flow.flow === 'awaiting_type' && flow.record?.detectedDocumentType) {
+      setPendingTypeSelection(flow.record.detectedDocumentType);
+    }
+  }, [flow.flow, flow.record?.detectedDocumentType]);
 
   useEffect(() => {
     if (!open) {
@@ -65,15 +100,29 @@ export function VehicleDocumentUploadDrawer({
       void flow.openReview(initialExtractionId, fileName);
     } else {
       flow.handleReset();
-      flow.setDocumentType(initialDocType);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open/mode driven
-  }, [open, mode, initialExtractionId, initialDocType, fileName]);
+  }, [open, mode, initialExtractionId, fileName]);
 
   const close = () => onOpenChange(false);
 
+  const applyDone = canShowApplyDone(flow.record?.status, flow.record?.applyResult);
+
+  const orgId = flow.record?.organizationId ?? rentalOrgId ?? '';
+  const followUpEnabled =
+    !!flow.extractionId &&
+    flow.flow !== 'idle' &&
+    flow.flow !== 'uploading' &&
+    flow.flow !== 'processing';
+  const followUp = useDocumentFollowUpSuggestions({
+    orgId: orgId || null,
+    vehicleId,
+    extractionId: flow.extractionId,
+    enabled: followUpEnabled && !!orgId,
+  });
+
   const footer =
-    flow.flow === 'ready' || flow.flow === 'applying' ? (
+    flow.flow === 'ready' || flow.flow === 'applying' || flow.flow === 'apply_failed' ? (
       <div className="flex w-full items-center gap-2">
         <button
           type="button"
@@ -83,21 +132,19 @@ export function VehicleDocumentUploadDrawer({
         >
           Schließen
         </button>
-        <button
-          type="button"
-          onClick={() => void flow.handleConfirm()}
-          disabled={flow.flow === 'applying' || flow.blockerPresent}
-          className="sq-press ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--status-success)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
-        >
-          {flow.flow === 'applying' ? (
-            <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
-          ) : (
+        {flow.flow === 'ready' ? (
+          <button
+            type="button"
+            onClick={() => void flow.handleConfirm()}
+            disabled={!flow.canConfirmActionPlan}
+            className="sq-press ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--status-success)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+          >
             <Icon name="check-circle" className="w-3.5 h-3.5" />
-          )}
-          Bestätigen & anwenden
-        </button>
+            {t('docUpload.confirmAndFile')}
+          </button>
+        ) : null}
       </div>
-    ) : flow.flow === 'done' ? (
+    ) : (flow.flow === 'done' || flow.flow === 'partially_done') && applyDone ? (
       <button
         type="button"
         onClick={close}
@@ -107,16 +154,25 @@ export function VehicleDocumentUploadDrawer({
       </button>
     ) : undefined;
 
+  const showReview =
+    flow.flow === 'ready' ||
+    flow.flow === 'applying' ||
+    flow.flow === 'apply_failed' ||
+    flow.flow === 'partially_done' ||
+    (mode === 'view' && flow.flow === 'done');
+
+  const showAwaitingType = flow.flow === 'awaiting_type';
+
   return (
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
       eyebrow="AI Document Upload"
       title={mode === 'review' ? 'Dokument prüfen' : mode === 'view' ? 'Dokument ansehen' : 'Dokument hochladen'}
-      description={vehicleLabel}
+      description="KI-gestützter Dokumenten-Upload"
       widthClassName="sm:max-w-xl"
       status={
-        <StatusChip tone={flow.flow === 'failed' ? 'critical' : flow.flow === 'ready' ? 'watch' : 'info'}>
+        <StatusChip tone={flow.flow === 'failed' ? 'critical' : flow.flow === 'duplicate_blocked' ? 'watch' : flow.flow === 'ready' ? 'watch' : 'info'}>
           {FLOW_STATUS_LABEL_DE[flow.flow]}
         </StatusChip>
       }
@@ -124,94 +180,76 @@ export function VehicleDocumentUploadDrawer({
     >
       <div className="space-y-4">
         {mode === 'upload' && flow.flow === 'idle' && (
-          <>
-            <div>
-              <label className="sq-section-label mb-1.5 block">Dokumenttyp</label>
-              <select
-                value={flow.documentType}
-                onChange={(e) => flow.setDocumentType(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-[12px] font-medium text-foreground"
-              >
-                {Object.keys(EXTRACTION_TEMPLATES).map((k) => (
-                  <option key={k} value={k}>
-                    {DOC_TYPE_LABELS[k] || k}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const f = e.dataTransfer.files?.[0];
-                if (f) void flow.handleFile(f);
-              }}
-              className="surface-elevated cursor-pointer rounded-xl border-2 border-dashed border-border/80 bg-muted/20 p-8 text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept={flow.acceptAttr}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void flow.handleFile(f);
-                }}
-              />
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl sq-tone-brand">
-                <Icon name="upload" className="w-5 h-5" />
-              </div>
-              <p className="text-[13px] font-semibold text-foreground">Datei hier ablegen oder klicken</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">PDF, JPG, PNG, WebP, TXT · max. 10 MB</p>
-            </div>
-          </>
+          <DocumentIntakeUploadZone
+            acceptAttr={flow.acceptAttr}
+            supportedFormatsLabel={
+              flow.metadata
+                ? `${(flow.metadata.extensions ?? []).map((e) => e.replace(/^\./, '').toUpperCase()).join(', ')} · max. ${flow.metadata.maxUploadMb ?? 10} MB`
+                : 'PDF, JPG, PNG, WebP, TXT · max. 10 MB'
+            }
+            onFilesSelected={(files) => {
+              const file = Array.from(files)[0];
+              if (file) void flow.handleFile(file);
+            }}
+            dropzoneLabel="Datei hier ablegen oder klicken"
+            dropzoneActiveLabel="Datei hier ablegen..."
+            browseLabel="Datei auswählen"
+            validationError={flow.validationError}
+            contextHint={originContextHint}
+            compact
+          />
         )}
 
-        {flow.validationError && flow.flow === 'idle' && (
-          <p className="text-[11px] text-[color:var(--status-critical)]">{flow.validationError}</p>
-        )}
+        <DocumentExtractionFlowStatus
+          flow={flow.flow}
+          uploadedFileName={flow.uploadedFileName}
+          errorMessage={flow.errorMessage}
+          validationError={flow.validationError}
+          uploadContext={flow.uploadContext}
+          record={flow.record}
+          duplicateBlocked={flow.duplicateBlocked}
+          uploadDuplicateWarning={flow.uploadDuplicateWarning}
+          pollNetworkWarning={flow.pollNetworkWarning}
+          showLongRunningHint={flow.showLongRunningHint}
+          processingStartedAt={flow.processingStartedAt}
+          processingStepLabels={{
+            file_check: 'Datei wird geprüft',
+            file_stored: 'Datei wurde sicher gespeichert',
+            text_recognition: 'Text wird erkannt',
+            classification: 'Dokument wird eingeordnet',
+            data_preparation: 'Daten und Zuordnungen werden vorbereitet',
+            ready_for_review: 'Bereit zur Prüfung',
+          }}
+          awaitingTypeDetail="Dokumenttyp erforderlich — bitte auswählen, um fortzufahren."
+          retryDetail={flow.flow === 'retrying' ? 'Verarbeitung wird erneut gestartet…' : 'Fehler an diesem Schritt — erneut versuchen.'}
+          elapsedPrefix="Laufzeit"
+          longRunningHint="Die Analyse dauert länger als erwartet."
+          safeLeaveHint="Sie können die Seite sicher verlassen — die Verarbeitung läuft serverseitig weiter."
+          networkWarning="Vorübergehende Verbindungsprobleme beim Statusabruf."
+          onRetry={() => void flow.handleRetry()}
+          onReset={flow.handleReset}
+          onAuthorizedReupload={(reason) => void flow.handleAuthorizedReupload(reason)}
+        />
 
-        {flow.isBusy && (
-          <div className="surface-premium rounded-xl border border-border bg-muted/20 p-8 text-center">
-            <Icon name="loader-2" className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
-            <p className="text-[13px] font-semibold text-foreground">{FLOW_STATUS_LABEL_DE[flow.flow]}</p>
-            {flow.uploadedFileName ? (
-              <p className="mt-1 truncate text-[11px] text-muted-foreground">{flow.uploadedFileName}</p>
-            ) : null}
+        {showAwaitingType && (
+          <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-4">
+            <h3 className="text-[13px] font-semibold text-foreground">{t('docUpload.awaitingTypeTitle')}</h3>
+            <p className="text-[11px] text-muted-foreground">{t('docUpload.awaitingTypeHint')}</p>
+            <DocumentClassificationResultPanel
+              record={flow.record}
+              locale={locale}
+              t={t}
+              typeLabel={typeLabel}
+              mode="awaiting_type"
+              docTypeOptions={docTypeOptions}
+              pendingTypeSelection={pendingTypeSelection}
+              onPendingTypeChange={setPendingTypeSelection}
+              onSetDocumentType={(type, reextract) => void flow.handleSetDocumentType(type, reextract)}
+            />
           </div>
         )}
 
-        {flow.flow === 'failed' && (
-          <div className="rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.05] p-5 text-center">
-            <Icon name="alert-triangle" className="mx-auto mb-2 h-7 w-7 text-[color:var(--status-critical)]" />
-            <p className="text-[13px] font-semibold text-foreground">Verarbeitung fehlgeschlagen</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{flow.errorMessage}</p>
-            <div className="mt-4 flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => void flow.handleRetry()}
-                className="sq-press inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-primary-foreground"
-              >
-                <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
-                Erneut versuchen
-              </button>
-              <button
-                type="button"
-                onClick={flow.handleReset}
-                className="sq-press rounded-lg border border-border px-3 py-2 text-[11px] font-semibold text-muted-foreground"
-              >
-                Abbrechen
-              </button>
-            </div>
-          </div>
-        )}
-
-        {(flow.flow === 'ready' || flow.flow === 'applying' || (mode === 'view' && flow.flow === 'done')) && (
+        {showReview && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2">
               <Icon name="file-text" className="w-4 h-4 shrink-0 text-muted-foreground" />
@@ -227,79 +265,107 @@ export function VehicleDocumentUploadDrawer({
               <p className="text-[11px] text-[color:var(--status-critical)]">{flow.errorMessage}</p>
             ) : null}
 
-            {flow.plausibility ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="sq-section-label">Plausibilität</span>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${plausClass(flow.plausibility.overallStatus)}`}>
-                    {flow.plausibility.overallStatus}
-                  </span>
-                </div>
-                {flow.plausibility.checks.map((c, i) => (
-                  <div key={`${c.code}-${i}`} className={`rounded-lg border px-3 py-2 text-[11px] ${plausClass(c.status)}`}>
-                    {c.message}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="sq-section-label">Erkannte Felder</span>
-                {flow.flow === 'ready' && (
+            <DocumentExtractionReviewPanel
+              confirmedDocType={flow.confirmedDocType}
+              editedFields={flow.editedFields}
+              plausibility={flow.plausibility}
+              record={flow.record}
+              editingFields={flow.editingFields}
+              readOnly={flow.flow !== 'ready'}
+              canEdit={flow.flow === 'ready'}
+              onToggleEdit={() => flow.setEditingFields(!flow.editingFields)}
+              entityReviewOrgId={flow.record?.organizationId ?? ''}
+              entityReviewVehicleId={vehicleId}
+              entityReviewExtractionId={flow.extractionId}
+              entityReviewLocale={locale}
+              entityReviewT={t}
+              onSchemaReviewUpdated={flow.handleSchemaReviewUpdated}
+              onActionPlanPreviewStateChange={flow.handleActionPlanPreviewState}
+              onFieldChange={(index, value) => {
+                const next = [...flow.editedFields];
+                next[index] = { ...next[index], value };
+                flow.setEditedFields(next);
+              }}
+              footerSlot={
+                flow.flow === 'ready' && flow.record?.allowedActions?.includes('reextract') !== false ? (
                   <button
                     type="button"
-                    onClick={() => flow.setEditingFields(!flow.editingFields)}
-                    className="text-[10px] font-semibold text-primary"
+                    onClick={() => void flow.handleReextract()}
+                    className="text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
                   >
-                    {flow.editingFields ? 'Fertig' : 'Bearbeiten'}
+                    Erneut extrahieren
                   </button>
-                )}
-              </div>
-              <div className="overflow-hidden rounded-xl border border-border">
-                {flow.editedFields.map((field, i) => (
-                  <div
-                    key={field.key}
-                    className={`flex items-center gap-3 px-3 py-2 ${i > 0 ? 'border-t border-border' : ''} bg-muted/10`}
-                  >
-                    <span className="w-36 shrink-0 text-[10px] font-medium text-muted-foreground">{field.label}</span>
-                    {flow.editingFields && flow.flow === 'ready' ? (
-                      <input
-                        value={field.value}
-                        onChange={(e) => {
-                          const next = [...flow.editedFields];
-                          next[i] = { ...next[i], value: e.target.value };
-                          flow.setEditedFields(next);
-                        }}
-                        className="flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
-                      />
-                    ) : (
-                      <span className="text-[11px] font-medium text-foreground">{field.value || '—'}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+                ) : null
+              }
+            />
 
-            {flow.flow === 'ready' && (
-              <button
-                type="button"
-                onClick={() => void flow.handleRetry()}
-                className="text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
-              >
-                Erneut extrahieren
-              </button>
-            )}
+            <DocumentApplyResultPanel
+              flow={flow.flow}
+              applyResult={flow.record?.applyResult ?? null}
+              actionPlanPreview={flow.actionPlanPreview}
+              pending={flow.flow === 'applying'}
+              retryPending={flow.applyRetryPending}
+              t={t}
+              onRetryFailed={() => void flow.handleRetryFailedActions()}
+              onEntityNavigate={onEntityNavigate}
+            />
+
+            {orgId ? (
+              <DocumentFollowUpSuggestionsPanel
+                orgId={orgId}
+                vehicleId={vehicleId}
+                extractionId={flow.extractionId}
+                suggestions={followUp.suggestions}
+                loading={followUp.loading}
+                t={t}
+                onRefresh={() => void followUp.reload()}
+              />
+            ) : null}
           </div>
         )}
 
-        {flow.flow === 'done' && mode === 'upload' && (
+        {flow.flow === 'done' && mode === 'upload' && applyDone && (
           <div className="rounded-xl border border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.06] p-6 text-center">
             <Icon name="check-circle" className="mx-auto mb-2 h-8 w-8 text-[color:var(--status-success)]" />
             <p className="text-[13px] font-semibold text-foreground">Dokument angewendet</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {DOC_TYPE_LABELS[flow.confirmedDocType] || flow.confirmedDocType}
             </p>
+            {orgId ? (
+              <div className="mt-4 text-left">
+                <DocumentFollowUpSuggestionsPanel
+                  orgId={orgId}
+                  vehicleId={vehicleId}
+                  extractionId={flow.extractionId}
+                  suggestions={followUp.suggestions}
+                  loading={followUp.loading}
+                  t={t}
+                  onRefresh={() => void followUp.reload()}
+                />
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {flow.flow === 'partially_done' && applyDone && (
+          <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] p-4">
+            <p className="text-[12px] font-semibold text-foreground">Teilweise übernommen</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Pflichtaktionen sind erledigt. Optionale Schritte können erneut versucht werden.
+            </p>
+            {orgId ? (
+              <div className="mt-3">
+                <DocumentFollowUpSuggestionsPanel
+                  orgId={orgId}
+                  vehicleId={vehicleId}
+                  extractionId={flow.extractionId}
+                  suggestions={followUp.suggestions}
+                  loading={followUp.loading}
+                  t={t}
+                  onRefresh={() => void followUp.reload()}
+                />
+              </div>
+            ) : null}
           </div>
         )}
       </div>

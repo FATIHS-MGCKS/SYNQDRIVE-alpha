@@ -12,7 +12,14 @@ import {
   resolveMaxUploadBytes,
   SUPPORTED_DOCUMENT_TYPES,
 } from './document-extraction.schemas';
+import { DOCUMENT_UPLOAD_DUPLICATE_STATUSES } from './document-upload-duplicate.types';
 import { DocumentExtractionMetadataDto } from './dto/document-extraction-metadata.dto';
+import {
+  DOCUMENT_CATEGORIES,
+  DOCUMENT_SUBTYPES,
+  DOCUMENT_TAXONOMY_VERSION,
+} from './document-taxonomy.types';
+import { DOCUMENT_SCHEMA_REGISTRY_VERSION } from './document-schema-registry.types';
 
 const PUBLIC_STATUSES: DocumentExtractionStatus[] = [
   'PENDING',
@@ -64,6 +71,16 @@ export class DocumentExtractionMetadataService {
         value,
         labelKey: `documentExtraction.type.${value}`,
       })),
+      documentCategories: DOCUMENT_CATEGORIES.map((value) => ({
+        value,
+        labelKey: `documentExtraction.category.${value}`,
+      })),
+      documentSubtypes: DOCUMENT_SUBTYPES.map((value) => ({
+        value,
+        labelKey: `documentExtraction.subtype.${value}`,
+      })),
+      taxonomyVersion: DOCUMENT_TAXONOMY_VERSION,
+      schemaRegistryVersion: DOCUMENT_SCHEMA_REGISTRY_VERSION,
       classificationOptions: [
         {
           value: AUTO_CLASSIFICATION_REQUEST,
@@ -85,6 +102,10 @@ export class DocumentExtractionMetadataService {
       errorPhases: PUBLIC_ERROR_PHASES.map((value) => ({
         value,
         labelKey: `documentExtraction.errorPhase.${value}`,
+      })),
+      uploadDuplicateStatuses: DOCUMENT_UPLOAD_DUPLICATE_STATUSES.map((value) => ({
+        value,
+        labelKey: `documentExtraction.uploadDuplicate.${value}`,
       })),
     };
   }

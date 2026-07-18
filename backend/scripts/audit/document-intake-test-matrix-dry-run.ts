@@ -34,6 +34,12 @@ import {
 import { evaluatePdfTextQuality } from '../../src/modules/document-extraction/pdf-text-quality.util';
 import { getAllowedDocumentExtractionActions } from '../../src/modules/document-extraction/document-extraction-actions.util';
 import { CLASSIFICATION_UNKNOWN } from '../../src/modules/ai/documents/document-classification.types';
+import {
+  assertGoldenCaseClassificationExpectations,
+  assertGoldenCaseFieldExpectations,
+  DOCUMENT_INTAKE_GOLDEN_CORPUS_VERSION,
+  listGoldenCorpusCases,
+} from '../../src/modules/document-extraction/document-intake-golden-corpus.util';
 
 type FileIdOutcome =
   | 'ACCEPTED'
@@ -439,11 +445,72 @@ async function runCase(tc: (typeof TEST_CASES)[number]): Promise<TestCaseResult>
   };
 }
 
+function runGoldenCorpusCase(id: string): TestCaseResult {
+  const goldenCase = listGoldenCorpusCases().find((entry) => entry.id === id);
+  if (!goldenCase) {
+    return {
+      id,
+      documentClass: 'golden-missing',
+      executionMode: 'EXECUTED',
+      classification: 'MISSING',
+      result: 'FAIL',
+      severity: 'P0',
+      notes: 'golden_case_not_found',
+    };
+  }
+
+  try {
+    assertGoldenCaseFieldExpectations(goldenCase);
+    assertGoldenCaseClassificationExpectations(goldenCase);
+    const classification = runClassificationScenario(
+      goldenCase.classificationMock.detectedDocumentType,
+      goldenCase.classificationMock.confidence,
+      goldenCase.classificationMock.rationale,
+    );
+    const missing = missingRequired(goldenCase.documentType, goldenCase.extractionMock.fields);
+    const plaus = PLAUSIBILITY.runChecks(goldenCase.documentType, goldenCase.extractionMock.fields, {
+      vin: 'WVWZZZ1JZXW000001',
+      licensePlate: 'M-SY-1001',
+      lastKnownOdometerKm: 50_000,
+      dimoContextAvailable: false,
+    });
+    const blocked = plaus.overallStatus === 'BLOCKER';
+    const actions = planActions(goldenCase.documentType, goldenCase.extractionMock.fields, blocked);
+    const unsafe = actions.filter((a) => a.status === 'WOULD_CREATE' && a.risk);
+    return {
+      id: goldenCase.id,
+      documentClass: `GOLDEN:${goldenCase.label}`,
+      executionMode: 'EXECUTED',
+      classification,
+      extraction: plaus.overallStatus === 'OK' ? 'PASS' : plaus.overallStatus,
+      requiredFields: missing.length === 0 ? 'COMPLETE' : `MISSING:${missing.join(',')}`,
+      actionPlan: blocked ? 'BLOCKED' : unsafe.length ? 'UNSAFE_WOULD_CREATE' : 'WOULD_CREATE',
+      followUp: followUpSuggestions(goldenCase.documentType, blocked),
+      result: missing.length === 0 ? 'PASS' : 'PARTIAL',
+      severity: missing.length === 0 ? null : 'P1',
+      notes: `goldenCorpusVersion=${DOCUMENT_INTAKE_GOLDEN_CORPUS_VERSION};mistralMock=true`,
+    };
+  } catch (error: any) {
+    return {
+      id: goldenCase.id,
+      documentClass: `GOLDEN:${goldenCase.label}`,
+      executionMode: 'EXECUTED',
+      classification: 'ASSERTION_FAILED',
+      result: 'FAIL',
+      severity: 'P0',
+      notes: error?.message ?? 'golden_assertion_failed',
+    };
+  }
+}
+
 async function main(): Promise<void> {
   const gitRef = process.env.GIT_REF ?? 'unknown';
   const results: TestCaseResult[] = [];
   for (const tc of TEST_CASES) {
     results.push(await runCase(tc));
+  }
+  for (const goldenCase of listGoldenCorpusCases()) {
+    results.push(runGoldenCorpusCase(goldenCase.id));
   }
 
   const executed = results.filter((r) => r.executionMode === 'EXECUTED').length;
@@ -483,9 +550,11 @@ async function main(): Promise<void> {
     },
     harnessCapabilities: {
       applyDryRunExists: false,
-      mistralMockFixtures: false,
+      mistralMockFixtures: true,
+      goldenCorpusVersion: DOCUMENT_INTAKE_GOLDEN_CORPUS_VERSION,
+      goldenCorpusCases: listGoldenCorpusCases().length,
       productionUploadSafe: false,
-      pureFunctions: ['fileIdentification', 'plausibility', 'classificationDecision', 'pdfTextQuality', 'actionPlanReconstruction'],
+      pureFunctions: ['fileIdentification', 'plausibility', 'classificationDecision', 'pdfTextQuality', 'actionPlanReconstruction', 'goldenCorpusRegression'],
     },
     allowedActionsSample: getAllowedDocumentExtractionActions({
       status: 'READY_FOR_REVIEW',

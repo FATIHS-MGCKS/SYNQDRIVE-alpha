@@ -1,4 +1,5 @@
 import { Readable } from 'stream';
+import type { DocumentStorageCapabilities, DocumentStorageZone } from '../document-storage-lifecycle.types';
 
 /**
  * Document storage port — a private storage abstraction for uploaded
@@ -17,7 +18,8 @@ export const DOCUMENT_STORAGE = Symbol('DOCUMENT_STORAGE');
 
 export interface PutObjectInput {
   organizationId: string;
-  vehicleId: string;
+  /** When omitted, object is stored under the org inbox prefix (no invented vehicle id). */
+  vehicleId?: string | null;
   /** Untrusted original filename — only used for the human-readable suffix. */
   originalName: string;
   buffer: Buffer;
@@ -34,12 +36,26 @@ export interface PutObjectResult {
 export interface DocumentStoragePort {
   /** Stores bytes under a safe generated key and returns storage metadata. */
   putObject(input: PutObjectInput): Promise<PutObjectResult>;
+  /** Stores bytes in the private quarantine zone before malware scanning. */
+  putQuarantineObject(input: PutObjectInput): Promise<PutObjectResult>;
+  /** Moves a quarantined object into the clean document zone. */
+  promoteQuarantineToClean(input: {
+    quarantineObjectKey: string;
+    organizationId: string;
+    vehicleId?: string | null;
+    originalName: string;
+    mimeType: string;
+  }): Promise<PutObjectResult>;
   /** Reads the full object into memory. Throws if the key is invalid/missing. */
   getObject(objectKey: string): Promise<Buffer>;
   /** Streams the object (for authenticated downloads). */
   getObjectStream(objectKey: string): Promise<Readable>;
   /** Best-effort delete; never throws for a missing object. */
   deleteObject(objectKey: string): Promise<void>;
+  /** Declared storage/transport/encryption/backup capabilities for lifecycle audit. */
+  getCapabilities(): DocumentStorageCapabilities;
+  /** Resolve whether a key belongs to quarantine or clean storage. */
+  resolveStorageZone(objectKey: string): DocumentStorageZone;
   /** Local-only: absolute filesystem path for a key, or null for non-local providers. */
   getInternalPath(objectKey: string): string | null;
 }

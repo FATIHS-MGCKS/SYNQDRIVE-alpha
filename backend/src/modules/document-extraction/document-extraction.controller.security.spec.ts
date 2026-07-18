@@ -8,6 +8,7 @@ import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { DocumentExtractionController } from './document-extraction.controller';
 import { DocumentExtractionOrgController } from './document-extraction-org.controller';
 import { DocumentExtractionMetadataController } from './document-extraction-metadata.controller';
+import { DocumentSchemaRegistryController } from './document-schema-registry.controller';
 
 type ControllerClass = abstract new (...args: unknown[]) => unknown;
 
@@ -47,6 +48,7 @@ describe('DocumentExtractionController security', () => {
       'upload',
       'setDocumentType',
       'retry',
+      'updateEntityLinks',
       'confirm',
       'cancel',
       'deleteFile',
@@ -76,6 +78,15 @@ describe('DocumentExtractionOrgController security', () => {
       level: 'read',
     });
   });
+
+  it('requires document-upload write for org entity link and vehicle reassignment', () => {
+    for (const method of ['updateEntityLinks', 'reassignVehicle'] as const) {
+      expect(permissionOf(DocumentExtractionOrgController.prototype, method)).toEqual({
+        module: DOCUMENT_UPLOAD_MODULE,
+        level: 'write',
+      });
+    }
+  });
 });
 
 describe('DocumentExtractionMetadataController security', () => {
@@ -85,6 +96,14 @@ describe('DocumentExtractionMetadataController security', () => {
     );
     expect(classGuards(DocumentExtractionMetadataController)).not.toEqual(
       expect.arrayContaining([OrgScopingGuard, VehicleOwnershipGuard, PermissionsGuard]),
+    );
+  });
+});
+
+describe('DocumentSchemaRegistryController security', () => {
+  it('requires authentication via RolesGuard only (no vehicle/org scope)', () => {
+    expect(classGuards(DocumentSchemaRegistryController)).toEqual(
+      expect.arrayContaining([RolesGuard]),
     );
   });
 });

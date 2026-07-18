@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  Prisma,
   ServiceEventOrigin,
   ServiceEventType,
   VehicleServiceEvent,
@@ -25,6 +26,44 @@ export interface ServiceEventMutationContext {
   origin?: ServiceEventOrigin;
 }
 
+export type CreateServiceEventFromDocumentExtractionInput = {
+  organizationId: string;
+  vehicleId: string;
+  documentExtractionId: string;
+  documentActionIdempotencyKey?: string | null;
+  eventType: ServiceEventType;
+  eventDate: string;
+  odometerKm?: number | null;
+  workshopName?: string | null;
+  notes?: string | null;
+  costCents?: number | null;
+  documentUrl?: string | null;
+};
+
+export type ApplyComplianceVehicleUpdateInput = {
+  organizationId: string;
+  vehicleId: string;
+  documentExtractionId: string;
+  documentActionIdempotencyKey?: string | null;
+  documentType: 'TUV_REPORT' | 'BOKRAFT_REPORT';
+  lastInspectionDate: Date;
+  nextValidUntilDate: Date;
+};
+
+export type DocumentExtractionVehicleUpdateResult = {
+  applied: boolean;
+  skipped: boolean;
+  vehicleId: string;
+};
+
+function sameUtcCalendarDay(left: Date, right: Date): boolean {
+  return (
+    left.getUTCFullYear() === right.getUTCFullYear() &&
+    left.getUTCMonth() === right.getUTCMonth() &&
+    left.getUTCDate() === right.getUTCDate()
+  );
+}
+
 @Injectable()
 export class ServiceEventsService {
   constructor(
@@ -48,6 +87,151 @@ export class ServiceEventsService {
       this.prisma.vehicleServiceEvent.count({ where }),
     ]);
     return buildPaginatedResult(data, total, params || {});
+  }
+
+  async findByDocumentExtractionId(organizationId: string, documentExtractionId: string) {
+    return this.prisma.vehicleServiceEvent.findUnique({
+      where: {
+        organizationId_documentExtractionId: {
+          organizationId,
+          documentExtractionId,
+        },
+      },
+    });
+  }
+
+  async createFromDocumentExtraction(
+    input: CreateServiceEventFromDocumentExtractionInput,
+  ): Promise<VehicleServiceEvent> {
+    if (!input.documentExtractionId) {
+      throw new BadRequestException('documentExtractionId is required for extraction apply');
+    }
+    if (!input.eventDate?.trim()) {
+      throw new BadRequestException('eventDate is required for extraction apply — no default date');
+    }
+    const eventDate = new Date(input.eventDate);
+    if (Number.isNaN(eventDate.getTime())) {
+      throw new BadRequestException('eventDate is invalid for extraction apply');
+    }
+
+    const existing = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    try {
+      const created = await this.prisma.vehicleServiceEvent.create({
+        data: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          documentExtractionId: input.documentExtractionId,
+          eventType: input.eventType,
+          eventDate,
+          odometerKm: input.odometerKm ?? null,
+          workshopName: input.workshopName?.trim() || null,
+          notes: input.notes?.trim() || null,
+          costCents: input.costCents ?? null,
+          documentUrl: input.documentUrl ?? null,
+          origin: ServiceEventOrigin.AI_UPLOAD,
+        },
+      });
+      return created;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.findByDocumentExtractionId(
+          input.organizationId,
+          input.documentExtractionId,
+        );
+        if (raced) {
+          return raced;
+        }
+      }
+      throw error;
+    }
+  }
+
+  async applyComplianceVehicleUpdateFromExtraction(
+    input: ApplyComplianceVehicleUpdateInput,
+  ): Promise<DocumentExtractionVehicleUpdateResult> {
+    const serviceEvent = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+    if (!serviceEvent) {
+      throw new BadRequestException({
+        message: 'Service event must exist before vehicle compliance update',
+        code: 'SERVICE_EVENT_MISSING_FOR_COMPLIANCE_UPDATE',
+      });
+    }
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, organizationId: input.organizationId },
+      select: {
+        id: true,
+        lastTuvDate: true,
+        nextTuvDate: true,
+        lastBokraftDate: true,
+        nextBokraftDate: true,
+      },
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found in organization');
+    }
+
+    const isTuv = input.documentType === 'TUV_REPORT';
+    const currentLast = isTuv ? vehicle.lastTuvDate : vehicle.lastBokraftDate;
+    const currentNext = isTuv ? vehicle.nextTuvDate : vehicle.nextBokraftDate;
+    if (
+      currentLast &&
+      currentNext &&
+      sameUtcCalendarDay(currentLast, input.lastInspectionDate) &&
+      sameUtcCalendarDay(currentNext, input.nextValidUntilDate)
+    ) {
+      return { applied: false, skipped: true, vehicleId: vehicle.id };
+    }
+
+    const data = isTuv
+      ? {
+          lastTuvDate: input.lastInspectionDate,
+          nextTuvDate: input.nextValidUntilDate,
+        }
+      : {
+          lastBokraftDate: input.lastInspectionDate,
+          nextBokraftDate: input.nextValidUntilDate,
+        };
+
+    await this.prisma.vehicle.update({
+      where: { id: vehicle.id },
+      data,
+    });
+
+    return { applied: true, skipped: false, vehicleId: vehicle.id };
+  }
+
+  async refreshVehicleServiceHistoryFromExtraction(input: {
+    organizationId: string;
+    vehicleId: string;
+    documentExtractionId: string;
+  }): Promise<DocumentExtractionVehicleUpdateResult> {
+    const serviceEvent = await this.findByDocumentExtractionId(
+      input.organizationId,
+      input.documentExtractionId,
+    );
+    if (!serviceEvent) {
+      throw new BadRequestException({
+        message: 'Service event must exist before service history refresh',
+        code: 'SERVICE_EVENT_MISSING_FOR_HISTORY_REFRESH',
+      });
+    }
+
+    await this.refreshVehicleHistoryDenorm(input.vehicleId);
+    return { applied: true, skipped: false, vehicleId: input.vehicleId };
   }
 
   async create(

@@ -484,6 +484,7 @@ enum DocumentExtractionStatus {
   READY_FOR_REVIEW
   CONFIRMED
   APPLIED
+  PARTIALLY_APPLIED
   FAILED
   REJECTED
   AWAITING_DOCUMENT_TYPE
@@ -2435,6 +2436,7 @@ model VehicleTireTreadMeasurement {
   id                    String              @id @default(uuid())
   vehicleId             String              @map("vehicle_id")
   tireSetupId           String              @map("tire_setup_id")
+  documentExtractionId  String?             @map("document_extraction_id")
   frontLeftMm           Float?              @map("front_left_mm")
   frontRightMm          Float?              @map("front_right_mm")
   rearLeftMm            Float?              @map("rear_left_mm")
@@ -2447,13 +2449,16 @@ model VehicleTireTreadMeasurement {
   createdAt             DateTime            @default(now()) @map("created_at")
   evidenceSource        TireEvidenceSource? @map("evidence_source")
 
-  tireSetup               VehicleTireSetup    @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
-  wearDataPointsAsActual  TireWearDataPoint[] @relation("WearDataPointActualMeasurement")
-  setupsAsInitialEvidence VehicleTireSetup[]  @relation("SetupInitialTreadEvidence")
+  tireSetup               VehicleTireSetup           @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
+  documentExtraction      VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  wearDataPointsAsActual  TireWearDataPoint[]        @relation("WearDataPointActualMeasurement")
+  setupsAsInitialEvidence VehicleTireSetup[]         @relation("SetupInitialTreadEvidence")
 
+  @@unique([vehicleId, documentExtractionId])
   @@index([vehicleId])
   @@index([tireSetupId])
   @@index([evidenceSource])
+  @@index([documentExtractionId])
   @@map("vehicle_tire_tread_measurements")
 }
 
@@ -2867,6 +2872,8 @@ model BrakeServiceOutbox {
 model VehicleServiceEvent {
   id                     String                         @id @default(uuid())
   vehicleId              String                         @map("vehicle_id")
+  organizationId         String?                        @map("organization_id")
+  documentExtractionId   String?                        @map("document_extraction_id")
   eventType              ServiceEventType               @map("event_type")
   eventDate              DateTime                       @map("event_date")
   odometerKm             Int?                           @map("odometer_km")
@@ -2889,6 +2896,7 @@ model VehicleServiceEvent {
   updatedAt              DateTime                       @updatedAt @map("updated_at")
 
   vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentExtraction                VehicleDocumentExtraction?        @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   batteryEvidence                   BatteryEvidence[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
@@ -2896,8 +2904,11 @@ model VehicleServiceEvent {
   brakeServiceApplication           BrakeServiceApplication?
   brakeServiceOutbox                BrakeServiceOutbox[]
 
+  @@unique([organizationId, documentExtractionId])
   @@index([vehicleId])
   @@index([eventDate])
+  @@index([documentExtractionId])
+  @@index([organizationId])
   @@map("vehicle_service_events")
 }
 
@@ -2907,8 +2918,10 @@ model VehicleServiceEvent {
 
 model VehicleDocumentExtraction {
   id                        String                               @id @default(uuid())
-  vehicleId                 String                               @map("vehicle_id")
+  vehicleId                 String?                              @map("vehicle_id")
   organizationId            String?                              @map("organization_id")
+  uploadContextType         String?                              @map("upload_context_type")
+  uploadContextId           String?                              @map("upload_context_id")
   // Legacy field — mirrors effectiveDocumentType for backward compatibility.
   documentType              DocumentExtractionType?              @map("document_type")
   requestedDocumentType     DocumentExtractionType?              @map("requested_document_type")
@@ -2934,6 +2947,10 @@ model VehicleDocumentExtraction {
   storageProvider           String?                              @map("storage_provider")
   mimeType                  String?                              @map("mime_type")
   sizeBytes                 Int?                                 @map("size_bytes")
+  contentSha256             String?                              @map("content_sha256")
+  uploadDuplicateStatus     String?                              @map("upload_duplicate_status")
+  relatedExtractionId       String?                              @map("related_extraction_id")
+  reuploadReason            String?                              @map("reupload_reason")
   extractedData             Json?                                @map("extracted_data")
   // Plausibility result produced by the worker (informational; never blocks storage).
   plausibility              Json?                                @map("plausibility")
@@ -2959,17 +2976,88 @@ model VehicleDocumentExtraction {
   createdAt                 DateTime                             @default(now()) @map("created_at")
   updatedAt                 DateTime                             @updatedAt @map("updated_at")
 
-  vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle                           Vehicle?                          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  relatedExtraction                 VehicleDocumentExtraction?        @relation("UploadDuplicateRelated", fields: [relatedExtractionId], references: [id], onDelete: SetNull)
+  relatedReuploads                  VehicleDocumentExtraction[]       @relation("UploadDuplicateRelated")
+  contentAnchor                     DocumentExtractionContentAnchor?  @relation("ContentAnchorCanonical")
   batteryEvidence                   BatteryEvidence[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
+  fines                             Fine[]
+  orgInvoices                       OrgInvoice[]
+  serviceEvents                     VehicleServiceEvent[]
+  damages                           VehicleDamage[]
+  tireTreadMeasurements             VehicleTireTreadMeasurement[]
+  archiveIndex                      DocumentExtractionArchiveIndex?
 
   @@index([vehicleId])
+  @@index([organizationId, uploadContextType, uploadContextId])
   @@index([status])
   @@index([organizationId, createdAt])
+  @@index([organizationId, contentSha256])
+  @@index([organizationId, uploadDuplicateStatus])
+  @@index([relatedExtractionId])
   @@index([vehicleId, createdAt])
   @@index([status, updatedAt])
   @@map("vehicle_document_extractions")
+}
+
+model DocumentExtractionArchiveIndex {
+  id                    String                   @id @default(uuid())
+  extractionId          String                   @unique @map("extraction_id")
+  organizationId        String                   @map("organization_id")
+  status                DocumentExtractionStatus @map("status")
+  documentCategory      String?                  @map("document_category")
+  documentSubtype       String?                  @map("document_subtype")
+  effectiveDocumentType DocumentExtractionType?  @map("effective_document_type")
+  vehicleId             String?                  @map("vehicle_id")
+  bookingId             String?                  @map("booking_id")
+  customerId            String?                  @map("customer_id")
+  driverId              String?                  @map("driver_id")
+  vendorId              String?                  @map("vendor_id")
+  createdById           String?                  @map("created_by_id")
+  sourceFileName        String?                  @map("source_file_name")
+  invoiceNumber         String?                  @map("invoice_number")
+  caseReference         String?                  @map("case_reference")
+  actionStatus          String?                  @map("action_status")
+  followUpStatus        String?                  @map("follow_up_status")
+  documentDate          DateTime?                @map("document_date")
+  searchText            String                   @default("") @map("search_text") @db.Text
+  uploadedAt            DateTime                 @map("uploaded_at")
+  appliedAt             DateTime?                @map("applied_at")
+  indexedAt             DateTime                 @default(now()) @map("indexed_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+
+  extraction VehicleDocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, uploadedAt], map: "doc_ext_archive_org_uploaded_at_idx")
+  @@index([organizationId, status], map: "doc_ext_archive_org_status_idx")
+  @@index([organizationId, documentCategory, documentSubtype], map: "doc_ext_archive_org_category_subtype_idx")
+  @@index([organizationId, vehicleId], map: "doc_ext_archive_org_vehicle_idx")
+  @@index([organizationId, bookingId], map: "doc_ext_archive_org_booking_idx")
+  @@index([organizationId, customerId], map: "doc_ext_archive_org_customer_idx")
+  @@index([organizationId, driverId], map: "doc_ext_archive_org_driver_idx")
+  @@index([organizationId, vendorId], map: "doc_ext_archive_org_vendor_idx")
+  @@index([organizationId, createdById], map: "doc_ext_archive_org_uploader_idx")
+  @@index([organizationId, invoiceNumber], map: "doc_ext_archive_org_invoice_idx")
+  @@index([organizationId, caseReference], map: "doc_ext_archive_org_case_ref_idx")
+  @@index([organizationId, actionStatus], map: "doc_ext_archive_org_action_status_idx")
+  @@index([organizationId, followUpStatus], map: "doc_ext_archive_org_follow_up_status_idx")
+  @@index([organizationId, documentDate], map: "doc_ext_archive_org_document_date_idx")
+  @@map("document_extraction_archive_index")
+}
+
+model DocumentExtractionContentAnchor {
+  id                    String   @id @default(uuid())
+  organizationId        String   @map("organization_id")
+  contentSha256         String   @map("content_sha256")
+  canonicalExtractionId String   @unique @map("canonical_extraction_id")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  canonicalExtraction VehicleDocumentExtraction @relation("ContentAnchorCanonical", fields: [canonicalExtractionId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, contentSha256])
+  @@map("document_extraction_content_anchors")
 }
 
 // ------------------------------------------------
@@ -5151,36 +5239,40 @@ enum FineStatus {
 }
 
 model Fine {
-  id               String     @id @default(uuid())
-  organizationId   String     @map("organization_id")
-  vehicleId        String?    @map("vehicle_id")
-  bookingId        String?    @map("booking_id")
-  customerId       String?    @map("customer_id")
-  fineNumber       String?    @map("fine_number")
-  title            String
-  description      String?
-  offenseType      String?    @map("offense_type")
-  issuingAuthority String?    @map("issuing_authority")
-  offenseDate      DateTime?  @map("offense_date")
-  receivedDate     DateTime?  @map("received_date")
-  location         String?
-  amountCents      Int        @map("amount_cents")
-  currency         String     @default("EUR")
-  dueDate          DateTime?  @map("due_date")
-  status           FineStatus @default(NEW)
-  imageUrl         String?    @map("image_url")
-  extractedData    Json?      @map("extracted_data")
-  notes            String?
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+  id                   String     @id @default(uuid())
+  organizationId       String     @map("organization_id")
+  vehicleId            String?    @map("vehicle_id")
+  bookingId            String?    @map("booking_id")
+  customerId           String?    @map("customer_id")
+  fineNumber           String?    @map("fine_number")
+  title                String
+  description          String?
+  offenseType          String?    @map("offense_type")
+  issuingAuthority     String?    @map("issuing_authority")
+  offenseDate          DateTime?  @map("offense_date")
+  receivedDate         DateTime?  @map("received_date")
+  location             String?
+  amountCents          Int        @map("amount_cents")
+  currency             String     @default("EUR")
+  dueDate              DateTime?  @map("due_date")
+  status               FineStatus @default(NEW)
+  imageUrl             String?    @map("image_url")
+  extractedData        Json?      @map("extracted_data")
+  notes                String?
+  documentExtractionId String?    @map("document_extraction_id")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
 
-  tasks OrgTask[]
+  documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  tasks              OrgTask[]
 
+  @@unique([organizationId, documentExtractionId])
   @@index([organizationId])
   @@index([vehicleId])
   @@index([customerId])
   @@index([status])
   @@index([offenseDate])
+  @@index([documentExtractionId])
   @@map("fines")
 }
 
@@ -5915,16 +6007,18 @@ model OrgInvoice {
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
+  documentExtraction     VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   tasks                  OrgTask[]
   payments               OrgInvoicePayment[]
   bookingPaymentRequests BookingPaymentRequest[]
-  vendor                 Vendor?                 @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  generatedDocument      GeneratedDocument?      @relation("InvoiceActiveDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
-  documents              GeneratedDocument[]     @relation("InvoiceDocuments")
+  vendor                 Vendor?                    @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  organization           Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  generatedDocument      GeneratedDocument?         @relation("InvoiceActiveDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
+  documents              GeneratedDocument[]        @relation("InvoiceDocuments")
   outboundEmails         OutboundEmail[]
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
+  @@unique([organizationId, documentExtractionId])
   @@index([organizationId])
   @@index([customerId])
   @@index([vendorId])
@@ -5936,6 +6030,8 @@ model OrgInvoice {
   @@index([organizationId, invoiceDate])
   @@index([organizationId, dueDate])
   @@index([organizationId, type, status])
+  @@index([documentExtractionId])
+  @@index([organizationId, vendorId, invoiceNumberDisplay])
   @@map("org_invoices")
 }
 
@@ -7191,6 +7287,7 @@ model BrakeEvidence {
   supersedes             BrakeEvidence[]              @relation("BrakeEvidenceSupersession")
   componentInstallations BrakeComponentInstallation[]
 
+  @@unique([documentExtractionId, axle])
   @@index([vehicleId, axle, measuredAt])
   @@index([vehicleId, source, measuredAt])
   @@index([documentExtractionId])
@@ -7544,6 +7641,8 @@ model DtcVehicleKnowledge {
 model VehicleDamage {
   id                     String                @id @default(uuid())
   vehicleId              String                @map("vehicle_id")
+  organizationId         String?               @map("organization_id")
+  documentExtractionId   String?               @map("document_extraction_id")
   damageType             DamageType            @map("damage_type")
   severity               DamageSeverity        @default(MINOR)
   status                 DamageStatus          @default(OPEN)
@@ -7571,13 +7670,15 @@ model VehicleDamage {
   createdAt              DateTime              @default(now()) @map("created_at")
   updatedAt              DateTime              @updatedAt @map("updated_at")
 
-  vehicle          Vehicle                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  booking          Booking?                 @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  customer         Customer?                @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  handoverProtocol BookingHandoverProtocol? @relation(fields: [handoverProtocolId], references: [id], onDelete: SetNull)
-  task             OrgTask?                 @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  images           VehicleDamageImage[]
+  vehicle            Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  booking            Booking?                   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer           Customer?                  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  handoverProtocol   BookingHandoverProtocol?   @relation(fields: [handoverProtocolId], references: [id], onDelete: SetNull)
+  task               OrgTask?                   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  images             VehicleDamageImage[]
 
+  @@unique([organizationId, documentExtractionId])
   @@index([vehicleId])
   @@index([damageType])
   @@index([status])
@@ -7585,6 +7686,8 @@ model VehicleDamage {
   @@index([customerId])
   @@index([handoverProtocolId])
   @@index([taskId])
+  @@index([documentExtractionId])
+  @@index([organizationId])
   @@map("vehicle_damages")
 }
 

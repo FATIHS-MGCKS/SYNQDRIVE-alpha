@@ -17,6 +17,7 @@ import {
 } from '../../lib/damage.types';
 import type { VehicleExteriorViewKey } from '../../../lib/api';
 import { validateDamageImageFile } from '../../lib/damage-image.utils';
+import { DocumentIntakeLaunchButton } from '../documents/DocumentIntakeLaunchButton';
 
 const VIEW_LABELS: Record<VehicleExteriorViewKey, string> = {
   FRONT: 'Front',
@@ -127,10 +128,27 @@ export function DamageAiIntakeDialog({
     >
       <div className="space-y-4">
         {!intake.enabled && (
-          <p className="text-[12px] rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-amber-800 dark:text-amber-200">
-            Exterior photo analysis is not enabled. Damage report documents can still be processed
-            via the AI Upload page (document type DAMAGE) with human confirmation.
-          </p>
+          <div className="text-[12px] rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-amber-800 dark:text-amber-200">
+            <p>
+              Exterior photo analysis is not enabled. For structured damage reports (invoices, police reports), use canonical Document Intake with human confirmation.
+            </p>
+            {vehicleId ? (
+              <DocumentIntakeLaunchButton
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[11px] font-semibold text-brand-foreground"
+                request={{
+                  optionalContextType: 'VEHICLE',
+                  optionalContextId: vehicleId,
+                  contextVehicleId: vehicleId,
+                  sourceSurface: 'damage_page',
+                  returnView: 'damages',
+                  returnEntityId: vehicleId,
+                  documentTab: 'upload',
+                }}
+              >
+                Open Document Intake (DAMAGE)
+              </DocumentIntakeLaunchButton>
+            ) : null}
+          </div>
         )}
 
         {intake.error && (

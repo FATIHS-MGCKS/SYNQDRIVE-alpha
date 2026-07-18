@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } fro
 import { createPortal } from 'react-dom';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Line, LineChart, ReferenceArea } from 'recharts';
 import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type DashboardWarningLightsResponse, type VehicleHealthTabSummaryDto, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type DtcKnowledgeDto, type BatteryHealthStatus, type BatteryRestingVoltageStatus, type VehicleTripAnalytics } from '../../lib/api';
+import { useRentalEntityNavigation } from '../context/RentalEntityNavigationContext';
 import {
   buildBokraftComplianceDisplay,
   buildNextServiceDisplay,
@@ -209,6 +210,19 @@ export function HealthErrorsView({
 }: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const { orgId, userRole } = useRentalOrg();
+  const { openDocumentIntake } = useRentalEntityNavigation();
+  const openHealthDocumentIntake = useCallback(() => {
+    if (!vehicleId) return;
+    openDocumentIntake({
+      optionalContextType: 'VEHICLE',
+      optionalContextId: vehicleId,
+      contextVehicleId: vehicleId,
+      sourceSurface: 'health_page',
+      returnView: 'health-errors',
+      returnEntityId: vehicleId,
+      documentTab: 'upload',
+    });
+  }, [openDocumentIntake, vehicleId]);
   const batteryQueryState = useHealthTabBatteryData({
     orgId,
     vehicleId,
@@ -2380,7 +2394,7 @@ export function HealthErrorsView({
                         )}
                         <div className="flex gap-2">
                           <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3.5 h-3.5" /> Add Brake Service</button>
-                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3.5 h-3.5" /> AI Upload Report</button>
+                          <button onClick={openHealthDocumentIntake} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3.5 h-3.5" /> AI Upload Report</button>
                         </div>
                       </div>
                       <p className={`text-[10px] mb-4 text-muted-foreground/70`}>Driving and braking behavior is already being collected via the Driving Impact Engine and will be available once brake tracking is initialized.</p>
@@ -2488,7 +2502,7 @@ export function HealthErrorsView({
                     {!showBrakeEntry && (
                       <div className="flex gap-2 mb-3">
                         <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3 h-3" /> Add Brake Service</button>
-                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3 h-3" /> AI Upload Report</button>
+                        <button onClick={openHealthDocumentIntake} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3 h-3" /> AI Upload Report</button>
                       </div>
                     )}
                     {showBrakeEntry && brakeEntryMode === 'manual' && (
@@ -3198,7 +3212,7 @@ export function HealthErrorsView({
                       <button onClick={() => setMeasurementMode('manual')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${'border-border hover:border-[color:var(--brand)] hover:bg-muted/50'}`}>
                         <Icon name="ruler" className={`w-6 h-6 ${'text-[color:var(--status-info)]'}`} /><p className={`text-xs font-semibold text-foreground`}>Manual Entry</p><p className={`text-[10px] text-center text-muted-foreground`}>Enter measured tread values</p>
                       </button>
-                      <button onClick={() => setMeasurementMode('upload')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${'border-border hover:border-[color:var(--status-ai)] hover:bg-muted/50'}`}>
+                      <button onClick={openHealthDocumentIntake} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${'border-border hover:border-[color:var(--status-ai)] hover:bg-muted/50'}`}>
                         <Icon name="upload" className={`w-6 h-6 ${'text-[color:var(--status-ai)]'}`} /><p className={`text-xs font-semibold text-foreground`}>AI Upload</p><p className={`text-[10px] text-center text-muted-foreground`}>Upload checkup sheet</p>
                       </button>
                     </div>

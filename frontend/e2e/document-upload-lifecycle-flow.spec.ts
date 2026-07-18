@@ -30,7 +30,8 @@ test.describe('Document upload lifecycle E2E (mocked Mistral)', () => {
     await expect(page.getByText(readyExtraction.extractedData.workshopName)).toBeVisible();
 
     await page.getByRole('button', { name: /bestaetigen & ablegen|confirm & file/i }).click();
-    await expect(page.getByText(/erfolgreich abgelegt/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/uebernahme-ergebnis|apply result/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/erfolgreich abgelegt|successfully filed/i)).toBeVisible({ timeout: 15_000 });
 
     await page.evaluate(
       ({ vehicleId, extractionId }) => {

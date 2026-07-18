@@ -260,7 +260,11 @@ export class BatteryObservationIntegrationHarness {
   buildServices() {
     const prisma = this.buildPrisma();
     const batteryEvidence = new BatteryEvidenceService(prisma);
-    const batteryHealth = new BatteryHealthService(prisma, batteryEvidence);
+    const batteryHealth = new BatteryHealthService(
+      prisma,
+      batteryEvidence,
+      { listForVehicle: jest.fn().mockResolvedValue([]) } as any,
+    );
     const hvBatteryHealth = new HvBatteryHealthService(
       prisma,
       batteryEvidence,

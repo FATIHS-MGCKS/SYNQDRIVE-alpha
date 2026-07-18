@@ -1,0 +1,408 @@
+import { buildDocumentClassificationContract } from './document-classification-taxonomy.util';
+import { SUPPORTED_DOCUMENT_TYPES } from './document-extraction.schemas';
+import {
+  getGoldenCorpusCase,
+  makeGoldenClassificationResult,
+  makeGoldenExtractionResult,
+  makeGoldenOcrResult,
+} from './document-intake-golden-corpus.util';
+
+export function makeMalwareScanMock(storage?: {
+  putObject: jest.Mock | ((input: unknown) => Promise<unknown>);
+}) {
+  return {
+    isEnabled: jest.fn().mockReturnValue(false),
+    storeScannedUpload:
+      storage == null
+        ? jest.fn().mockResolvedValue({
+            objectKey: 'organizations/org-1/vehicles/v1/documents/test.pdf',
+            storageProvider: 'local',
+            sizeBytes: 10,
+            mimeType: 'application/pdf',
+            malwareScan: { status: 'NOT_SCANNED' },
+          })
+        : jest.fn(async (input: unknown) => ({
+            ...(await storage.putObject(input)),
+            malwareScan: { status: 'NOT_SCANNED' },
+          })),
+  };
+}
+
+export function makeUploadContextMock() {
+  return {
+    resolveUploadTarget: jest.fn(async (params: {
+      organizationId: string;
+      vehicleId?: string | null;
+      optionalContextType?: string | null;
+      optionalContextId?: string | null;
+      sourceSurface?: string | null;
+      providedByUserId?: string | null;
+    }) => {
+      const providedAt = new Date().toISOString();
+      if (params.vehicleId) {
+        return {
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+          contextCandidate: {
+            entityType: 'VEHICLE',
+            entityId: params.vehicleId,
+            sourceSurface: params.sourceSurface ?? 'vehicle_detail',
+            providedAt,
+            providedByUserId: params.providedByUserId ?? null,
+            confirmationStatus: 'CANDIDATE',
+          },
+          searchScope: { entityType: 'VEHICLE', entityId: params.vehicleId, narrowsSearch: true },
+          uploadContextType: 'VEHICLE',
+          uploadContextId: params.vehicleId,
+        };
+      }
+      const type = params.optionalContextType?.toUpperCase() || null;
+      const id = params.optionalContextId || null;
+      if (type === 'VEHICLE' && id) {
+        return {
+          organizationId: params.organizationId,
+          vehicleId: id,
+          contextCandidate: {
+            entityType: 'VEHICLE',
+            entityId: id,
+            sourceSurface: params.sourceSurface ?? 'org_inbox',
+            providedAt,
+            providedByUserId: params.providedByUserId ?? null,
+            confirmationStatus: 'CANDIDATE',
+          },
+          searchScope: { entityType: 'VEHICLE', entityId: id, narrowsSearch: true },
+          uploadContextType: 'VEHICLE',
+          uploadContextId: id,
+        };
+      }
+      if (type && type !== 'NONE' && id) {
+        return {
+          organizationId: params.organizationId,
+          vehicleId: null,
+          contextCandidate: {
+            entityType: type,
+            entityId: id,
+            sourceSurface: params.sourceSurface ?? 'org_inbox',
+            providedAt,
+            providedByUserId: params.providedByUserId ?? null,
+            confirmationStatus: 'CANDIDATE',
+          },
+          searchScope: { entityType: type, entityId: id, narrowsSearch: true },
+          uploadContextType: type,
+          uploadContextId: id,
+        };
+      }
+      return {
+        organizationId: params.organizationId,
+        vehicleId: null,
+        contextCandidate: null,
+        searchScope: null,
+        uploadContextType: null,
+        uploadContextId: null,
+      };
+    }),
+    loadEntitySnapshot: jest.fn().mockResolvedValue(null),
+    assertVehicleInOrganization: jest.fn(),
+    assertEntityInOrganization: jest.fn(),
+  };
+}
+
+export function makeVehicleCandidateResolverMock() {
+  return {
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {},
+      candidates: [],
+      blockerPresent: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
+export function makeBookingCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) => ['FINE', 'INVOICE', 'DAMAGE', 'ACCIDENT'].includes(type)),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: { eventTimePrecision: 'missing' },
+      candidates: [],
+      ambiguousOverlap: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
+export function makeCustomerCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) =>
+      ['FINE', 'INVOICE', 'DAMAGE', 'ACCIDENT', 'OTHER'].includes(type),
+    ),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {
+        customerNumberPresent: false,
+        bookingLinkPresent: false,
+        namePresent: false,
+        emailPresent: false,
+        phonePresent: false,
+        addressPresent: false,
+        documentReferencePresent: false,
+      },
+      candidates: [],
+      ambiguousNameMatch: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
+export function makeDriverCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) => ['FINE', 'ACCIDENT', 'DAMAGE'].includes(type)),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {
+        driverNamePresent: false,
+        licensePresent: false,
+        driverIdPresent: false,
+        bookingLinkPresent: false,
+        tripAssignmentPresent: false,
+      },
+      candidates: [],
+      ambiguousDriverPool: false,
+      unassignedDriver: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
+export function makePartnerCandidateResolverMock() {
+  return {
+    supportsDocumentType: jest.fn((type: string) =>
+      ['INVOICE', 'SERVICE', 'OIL_CHANGE', 'TIRE', 'BRAKE', 'BATTERY', 'TUV_REPORT', 'BOKRAFT_REPORT', 'FINE', 'DAMAGE', 'ACCIDENT'].includes(type),
+    ),
+    resolve: jest.fn().mockResolvedValue({
+      evaluatedAt: new Date().toISOString(),
+      hints: {
+        organizationNamePresent: false,
+        ibanPresent: false,
+        vatIdPresent: false,
+        taxIdPresent: false,
+        emailPresent: false,
+        addressPresent: false,
+        vendorIdPresent: false,
+        expectedPartnerKind: 'WORKSHOP',
+      },
+      candidates: [],
+      newPartnerSuggestion: null,
+      ambiguousPartnerMatch: false,
+      autoConfirmEligible: false,
+    }),
+  };
+}
+
+export function makeLifecycleMock() {
+  return {
+    buildStorageCapabilitiesSnapshot: jest.fn().mockReturnValue({
+      provider: 'local',
+      zones: ['quarantine', 'clean'],
+      transport: { apiTransport: 'https', providerTransport: 'local-filesystem' },
+      encryptionAtRest: { declared: false, provider: 'none' },
+      backup: { strategy: 'none', documentObjectsIncluded: false },
+    }),
+    seedLifecycleOnCreate: jest.fn((plausibility: unknown) => plausibility),
+    softDeleteFile: jest.fn(async ({ record, userId }: { record: { id: string }; userId?: string | null }) => ({
+      ...record,
+      objectKey: null,
+      fileDeletedAt: new Date(),
+      fileDeletedById: userId ?? null,
+    })),
+    setLegalHold: jest.fn(),
+    clearLegalHold: jest.fn(),
+    recordDownloadAudit: jest.fn(),
+    assertNotOnLegalHold: jest.fn(),
+    hasDownstreamLinks: jest.fn().mockReturnValue(false),
+    redactSensitiveExtractedData: jest.fn().mockReturnValue(null),
+  };
+}
+
+export function makeRetentionMock() {
+  return {
+    runOnce: jest.fn().mockResolvedValue({
+      trigger: 'manual',
+      dryRun: true,
+      phases: [],
+      totals: { candidates: 0, affected: 0, skipped: 0 },
+    }),
+  };
+}
+
+export function makeStorageMock(overrides: Partial<Record<string, jest.Mock>> = {}) {
+  return {
+    putObject: jest.fn().mockResolvedValue({
+      objectKey: 'organizations/org-1/vehicles/v1/documents/2026/07/ext-1.pdf',
+      storageProvider: 'local',
+      mimeType: 'application/pdf',
+      sizeBytes: 100,
+    }),
+    putQuarantineObject: jest.fn().mockResolvedValue({
+      objectKey: 'quarantine/organizations/org-1/vehicles/v1/documents/2026/07/ext-1.pdf',
+      storageProvider: 'local',
+      mimeType: 'application/pdf',
+      sizeBytes: 100,
+    }),
+    promoteQuarantineToClean: jest.fn().mockResolvedValue({
+      objectKey: 'organizations/org-1/vehicles/v1/documents/2026/07/ext-1.pdf',
+      storageProvider: 'local',
+      mimeType: 'application/pdf',
+      sizeBytes: 100,
+    }),
+    getObject: jest.fn(),
+    getObjectStream: jest.fn(),
+    deleteObject: jest.fn(),
+    getInternalPath: jest.fn().mockReturnValue(null),
+    getCapabilities: jest.fn().mockReturnValue({
+      provider: 'local',
+      zones: ['quarantine', 'clean'],
+      transport: { apiTransport: 'https', providerTransport: 'local-filesystem' },
+      encryptionAtRest: { declared: false, provider: 'none' },
+      backup: { strategy: 'none', documentObjectsIncluded: false },
+    }),
+    resolveStorageZone: jest.fn().mockReturnValue('clean'),
+    ...overrides,
+  };
+}
+
+export function makeClassificationResultMock(
+  raw: Record<string, unknown> = {},
+  overrides: Record<string, unknown> = {},
+) {
+  const contract = buildDocumentClassificationContract({
+    raw: {
+      detectedDocumentType: 'SERVICE',
+      documentCategory: 'TECHNICAL',
+      documentSubtype: 'SERVICE_REPORT',
+      confidence: 0.9,
+      rationale: 'Workshop service maintenance record on page 1',
+      sourcePages: [1],
+      alternatives: [],
+      detectedIdentifiers: [],
+      ...raw,
+    },
+    allowed: SUPPORTED_DOCUMENT_TYPES,
+    maxPage: 1,
+    modelVersion: 'mistral-small',
+  });
+  return {
+    success: true,
+    detectedDocumentType: contract.detectedDocumentType,
+    confidence: contract.confidence,
+    rationale: contract.rationale,
+    sourcePages: contract.evidencePages,
+    provider: 'mistral',
+    model: 'mistral-small',
+    processingDurationMs: 10,
+    documentCategory: contract.category,
+    documentSubtype: contract.subtype,
+    taxonomyVersion: contract.taxonomyVersion,
+    category: contract.category,
+    subtype: contract.subtype,
+    alternatives: contract.alternatives,
+    evidencePages: contract.evidencePages,
+    detectedIdentifiers: contract.detectedIdentifiers,
+    modelVersion: contract.modelVersion,
+    contractVersion: contract.contractVersion,
+    contract,
+    ...overrides,
+  };
+}
+
+export function makeGoldenCorpusPipelineMocks(caseId: string) {
+  const goldenCase = getGoldenCorpusCase(caseId);
+  if (!goldenCase) {
+    throw new Error(`Unknown golden corpus case: ${caseId}`);
+  }
+  return {
+    goldenCase,
+    ocr: makeGoldenOcrResult(goldenCase),
+    classification: makeGoldenClassificationResult(goldenCase),
+    extraction: makeGoldenExtractionResult(goldenCase),
+  };
+}
+
+export function makeDocumentExtractionObservabilityMock() {
+  return {
+    logEvent: jest.fn(),
+    recordApply: jest.fn(),
+    recordJobOutcome: jest.fn(),
+    recordFailure: jest.fn(),
+    recordStageDuration: jest.fn(),
+    recordPages: jest.fn(),
+    recordRetry: jest.fn(),
+    recordClassification: jest.fn(),
+    setQueueAgeSeconds: jest.fn(),
+    setActiveJobs: jest.fn(),
+    observeStage: jest.fn((_id: string, _stage: string, fn: () => unknown) => fn()),
+    recordUploadAccepted: jest.fn(),
+    recordUploadRejected: jest.fn(),
+    recordUploadRateLimited: jest.fn(),
+    recordDuplicateOutcome: jest.fn(),
+    recordOcrCompleted: jest.fn(),
+    recordAwaitingDocumentType: jest.fn(),
+    recordExtractionCompleted: jest.fn(),
+    recordPlausibilityBlockers: jest.fn(),
+    recordEntityCandidateRanking: jest.fn(),
+    recordRequiredFieldCompleteness: jest.fn(),
+    recordActionPlan: jest.fn(),
+    recordActionExecution: jest.fn(),
+    recordPartialApply: jest.fn(),
+    recordRecovery: jest.fn(),
+    recordFollowUp: jest.fn(),
+    recordArchive: jest.fn(),
+  };
+}
+
+/** Mocks for DocumentExtractionService deps added in V2 action-plan / follow-up / archive waves. */
+export function makeDocumentExtractionExtendedServiceMocks(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    actionPlanPreview: { buildForRecord: jest.fn(), ...(overrides.actionPlanPreview as object) },
+    applyResultService: { buildForRecord: jest.fn(), ...(overrides.applyResultService as object) },
+    followUpSuggestionService: {
+      listForRecord: jest.fn(),
+      acceptSuggestion: jest.fn(),
+      dismissSuggestion: jest.fn(),
+      syncForActionPlan: jest.fn().mockResolvedValue(undefined),
+      ...(overrides.followUpSuggestionService as object),
+    },
+    followUpContactPrepareService: {
+      prepareContactPreview: jest.fn(),
+      recordPrepareOpened: jest.fn(),
+      sendPreparedContact: jest.fn(),
+      ...(overrides.followUpContactPrepareService as object),
+    },
+    followUpResyncService: {
+      resyncAfterPlanChange: jest.fn().mockResolvedValue(undefined),
+      ...(overrides.followUpResyncService as object),
+    },
+    archiveIndexService: {
+      upsertForRecord: jest.fn().mockResolvedValue(undefined),
+      ensureIndexedForOrg: jest.fn().mockResolvedValue(undefined),
+      ...(overrides.archiveIndexService as object),
+    },
+  };
+}
+
+export function spreadDocumentExtractionExtendedServiceMocks(
+  overrides: Record<string, unknown> = {},
+): [any, any, any, any, any, any] {
+  const extended = makeDocumentExtractionExtendedServiceMocks(overrides);
+  return [
+    extended.actionPlanPreview,
+    extended.applyResultService,
+    extended.followUpSuggestionService,
+    extended.followUpContactPrepareService,
+    extended.followUpResyncService,
+    extended.archiveIndexService,
+  ] as [any, any, any, any, any, any];
+}

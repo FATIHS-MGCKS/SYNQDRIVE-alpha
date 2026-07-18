@@ -1,37 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
-import {
-  buildReviewFields,
-  parseReviewFieldsForConfirm,
-  type FlowStatus,
-  type Plausibility,
-  type ReviewField,
-} from '../components/documents/document-extraction.shared';
 import { findVehicleIdByPlate } from '../lib/document-extraction-field-format';
 import {
   formatConfidencePercent,
   getStepperIndex,
-  isActiveExtractionStatus,
-  isBusyFlow,
-  mapServerToFlowStatus,
   resolveEffectiveType,
 } from '../lib/document-extraction-lifecycle';
-import { createExtractionPoller } from '../lib/document-extraction-polling';
-import {
-  readActiveExtractionPointer,
-  writeActiveExtractionPointer,
-} from '../lib/document-extraction-session';
-import type {
-  DocumentExtractionMetadata,
-  PublicDocumentExtraction,
-  PublicDocumentExtractionSummary,
-} from '../lib/document-extraction.types';
+import type { IntakeProcessingStepId } from '../lib/document-intake-processing-steps';
 import {
   buildAcceptAttribute,
   buildSupportedFormatsLabel,
   validateUploadFile,
   type UploadValidationCode,
 } from '../lib/document-extraction-validation';
+import type {
+  DocumentExtractionMetadata,
+  PublicDocumentExtraction,
+  PublicDocumentExtractionSummary,
+} from '../lib/document-extraction.types';
 import type { TranslationKey } from '../i18n/translations/en';
 import {
   batteryHealthQueryKeys,
@@ -39,11 +25,13 @@ import {
   serializeBatteryHealthQueryKey,
   withBatteryHealthCacheRollback,
 } from '../lib/battery-health-query';
+import { useDocumentIntakeFlow } from './useDocumentIntakeFlow';
+import type { FlowStatus } from '../components/documents/document-extraction.shared';
+import { canShowApplyDone } from '../lib/document-apply-result';
+import { readDocumentIntakeEntry, type DocumentIntakeEntryState } from '../lib/document-intake-entry';
 
 const AUTO_TYPE = 'AUTO';
 const UPLOAD_SOURCE = 'rental_ui';
-const LONG_RUNNING_MS = 90_000;
-const NETWORK_WARN_THRESHOLD = 3;
 
 export interface VehicleOption {
   id: string;
@@ -55,11 +43,6 @@ export interface UseDocumentUploadPageOptions {
   orgId: string;
   locale?: string;
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
-}
-
-function toPlausibility(raw: unknown): Plausibility | null {
-  if (!raw || typeof raw !== 'object') return null;
-  return raw as Plausibility;
 }
 
 function validationKey(code: UploadValidationCode): TranslationKey {
@@ -76,9 +59,6 @@ function validationKey(code: UploadValidationCode): TranslationKey {
 }
 
 export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUploadPageOptions) {
-  const abortRef = useRef<AbortController | null>(null);
-  const pollerStopRef = useRef<(() => void) | null>(null);
-  const processingStartedRef = useRef<number | null>(null);
   const autoReassignAttemptedRef = useRef<string | null>(null);
 
   const [metadata, setMetadata] = useState<DocumentExtractionMetadata | null>(null);
@@ -86,38 +66,15 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [documentType, setDocumentType] = useState(AUTO_TYPE);
-  const [pendingTypeSelection, setPendingTypeSelection] = useState('SERVICE');
-  const [flow, setFlow] = useState<FlowStatus>('idle');
-  const [record, setRecord] = useState<PublicDocumentExtraction | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState('');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [editingFields, setEditingFields] = useState(false);
-  const [editedFields, setEditedFields] = useState<ReviewField[]>([]);
-  const [plausibility, setPlausibility] = useState<Plausibility | null>(null);
-  const [extractionId, setExtractionId] = useState<string | null>(null);
+  const [pendingTypeSelection, setPendingTypeSelection] = useState(AUTO_TYPE);
+  const [intakeEntry, setIntakeEntry] = useState<DocumentIntakeEntryState>(() =>
+    readDocumentIntakeEntry(typeof window !== 'undefined' ? window.location.search : ''),
+  );
   const [history, setHistory] = useState<PublicDocumentExtractionSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [pollNetworkWarning, setPollNetworkWarning] = useState(false);
-  const [showLongRunningHint, setShowLongRunningHint] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [typeCorrectionPending, setTypeCorrectionPending] = useState(false);
-
-  const stopPolling = useCallback(() => {
-    pollerStopRef.current?.();
-    pollerStopRef.current = null;
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
-
-  const typeLabel = useCallback(
-    (labelKey: string, fallback?: string) => {
-      const key = labelKey as TranslationKey;
-      const translated = t(key);
-      return translated === key ? (fallback ?? labelKey) : translated;
-    },
-    [t],
-  );
+  const [pageValidationError, setPageValidationError] = useState<string | null>(null);
 
   const reloadHistory = useCallback(async () => {
     if (!orgId) return;
@@ -132,120 +89,38 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     }
   }, [orgId]);
 
-  const applyRecord = useCallback(
-    (next: PublicDocumentExtraction) => {
-      setRecord(next);
-      const effectiveType = resolveEffectiveType(next);
-      const mapped = mapServerToFlowStatus(next.status, next.processingStage);
-      if (next.sourceFileName) setUploadedFileName(next.sourceFileName);
-
-      if (mapped === 'ready') {
-        setEditedFields(buildReviewFields(effectiveType, next.extractedData ?? undefined, { locale }));
-        setPlausibility(toPlausibility(next.plausibility));
-        setSelectedVehicleId(next.vehicleId);
-        setFlow('ready');
-        stopPolling();
-        writeActiveExtractionPointer({
-          vehicleId: next.vehicleId,
-          extractionId: next.id,
-          updatedAt: new Date().toISOString(),
-        });
-        return;
-      }
-
-      if (mapped === 'awaiting_type') {
-        setEditedFields([]);
-        setPlausibility(null);
-        setFlow('awaiting_type');
-        if (next.detectedDocumentType) setPendingTypeSelection(next.detectedDocumentType);
-        stopPolling();
-        writeActiveExtractionPointer({
-          vehicleId: next.vehicleId,
-          extractionId: next.id,
-          updatedAt: new Date().toISOString(),
-        });
-        return;
-      }
-
-      if (mapped === 'failed' || mapped === 'cancelled') {
-        setErrorMessage(next.errorMessage || t('docUpload.extractionFailed'));
-        setFlow(mapped);
-        stopPolling();
-        return;
-      }
-
-      if (mapped === 'done') {
-        setFlow('done');
-        stopPolling();
-        writeActiveExtractionPointer(null);
-        void reloadHistory();
+  const intake = useDocumentIntakeFlow({
+    vehicleId: selectedVehicleId,
+    orgId,
+    initialDocType: documentType,
+    locale,
+    uploadSource: UPLOAD_SOURCE,
+    optionalContextType: intakeEntry.optionalContextType ?? undefined,
+    optionalContextId: intakeEntry.optionalContextId ?? undefined,
+    sourceSurface: intakeEntry.sourceSurface ?? 'rental_ui',
+    mode: 'page',
+    pollThroughApply: true,
+    respectAllowedActions: true,
+    onRecordApplied: (record) => {
+      void reloadHistory();
+      if (record.vehicleId && orgId) {
         invalidateBatteryHealthQueries({
           orgId,
-          vehicleId: next.vehicleId,
+          vehicleId: record.vehicleId,
           reason: 'document-confirmed',
           scopes: ['health', 'summary', 'detail'],
         });
-        return;
-      }
-
-      setFlow(mapped);
-      if (mapped === 'applying' && next.status === 'CONFIRMED') {
-        /* keep polling until APPLIED/FAILED */
       }
     },
-    [locale, reloadHistory, stopPolling, t],
-  );
+  });
 
-  const startPolling = useCallback(
-    (vehicleId: string, id: string) => {
-      stopPolling();
-      processingStartedRef.current = Date.now();
-      setPollNetworkWarning(false);
-      setShowLongRunningHint(false);
-
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      const poller = createExtractionPoller({
-        signal: controller.signal,
-        fetchRecord: () => api.vehicleIntelligence.getDocumentExtraction(vehicleId, id) as Promise<PublicDocumentExtraction>,
-        onRecord: (r) => {
-          applyRecord(r);
-          if (processingStartedRef.current && Date.now() - processingStartedRef.current > LONG_RUNNING_MS) {
-            setShowLongRunningHint(true);
-          }
-        },
-        onError: (_err, failures) => {
-          if (failures >= NETWORK_WARN_THRESHOLD) setPollNetworkWarning(true);
-        },
-      });
-      pollerStopRef.current = poller.stop;
+  const typeLabel = useCallback(
+    (labelKey: string, fallback?: string) => {
+      const key = labelKey as TranslationKey;
+      const translated = t(key);
+      return translated === key ? (fallback ?? labelKey) : translated;
     },
-    [applyRecord, stopPolling],
-  );
-
-  const loadExtraction = useCallback(
-    async (vehicleId: string, id: string, fileName?: string | null) => {
-      setExtractionId(id);
-      setSelectedVehicleId(vehicleId);
-      setErrorMessage(null);
-      setValidationError(null);
-      setEditingFields(false);
-      if (fileName) setUploadedFileName(fileName);
-      writeActiveExtractionPointer({ vehicleId, extractionId: id, updatedAt: new Date().toISOString() });
-
-      try {
-        const detail = (await api.vehicleIntelligence.getDocumentExtraction(vehicleId, id)) as PublicDocumentExtraction;
-        applyRecord(detail);
-        if (isActiveExtractionStatus(detail.status)) {
-          startPolling(vehicleId, id);
-        }
-      } catch {
-        setErrorMessage(t('docUpload.loadFailed'));
-        setFlow('failed');
-      }
-    },
-    [applyRecord, startPolling, t],
+    [t],
   );
 
   useEffect(() => {
@@ -256,9 +131,7 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
       .then((m) => {
         if (!cancelled) setMetadata(m);
       })
-      .catch(() => {
-        /* fallback constants used by validation helper */
-      })
+      .catch(() => undefined)
       .finally(() => {
         if (!cancelled) setMetadataLoading(false);
       });
@@ -281,25 +154,38 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
   }, [orgId, reloadHistory]);
 
   useEffect(() => {
-    if (flow !== 'ready' || !record || !orgId || !extractionId) return;
-    const effectiveType = resolveEffectiveType(record);
+    const syncEntry = () => {
+      const next = readDocumentIntakeEntry(window.location.search);
+      setIntakeEntry(next);
+      if (next.contextVehicleId) {
+        setSelectedVehicleId(next.contextVehicleId);
+      }
+    };
+    syncEntry();
+    window.addEventListener('popstate', syncEntry);
+    return () => window.removeEventListener('popstate', syncEntry);
+  }, []);
+
+  useEffect(() => {
+    if (intake.flow !== 'ready' || !intake.record || !orgId || !intake.extractionId) return;
+    const effectiveType = resolveEffectiveType(intake.record);
     if (effectiveType !== 'FINE') return;
-    const attemptKey = `${extractionId}:${record.vehicleId}`;
+    const attemptKey = `${intake.extractionId}:${intake.record.vehicleId}`;
     if (autoReassignAttemptedRef.current === attemptKey) return;
 
-    const extracted = (record.extractedData ?? {}) as Record<string, unknown>;
+    const extracted = (intake.record.extractedData ?? {}) as Record<string, unknown>;
     const plate = typeof extracted.licensePlate === 'string' ? extracted.licensePlate : null;
     const matchedId = findVehicleIdByPlate(vehicles, plate);
-    if (!matchedId || matchedId === record.vehicleId) return;
+    if (!matchedId || matchedId === intake.record.vehicleId) return;
 
     autoReassignAttemptedRef.current = attemptKey;
     let cancelled = false;
     void api.documentExtraction
-      .reassignVehicle(orgId, extractionId, matchedId)
+      .reassignVehicle(orgId, intake.extractionId, matchedId)
       .then((updated) => {
         if (cancelled) return;
         setSelectedVehicleId(matchedId);
-        applyRecord(updated);
+        intake.applyRecord(updated);
       })
       .catch(() => {
         autoReassignAttemptedRef.current = null;
@@ -307,18 +193,17 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     return () => {
       cancelled = true;
     };
-  }, [applyRecord, extractionId, flow, orgId, record, vehicles]);
-
-  useEffect(() => {
-    const pointer = readActiveExtractionPointer();
-    if (!pointer || !orgId) return;
-    void loadExtraction(pointer.vehicleId, pointer.extractionId);
-  }, [loadExtraction, orgId]);
+  }, [intake, orgId, vehicles]);
 
   useEffect(() => () => {
-    stopPolling();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-  }, [previewUrl, stopPolling]);
+  }, [previewUrl]);
+
+  useEffect(() => {
+    if (intake.flow === 'awaiting_type' && intake.record?.detectedDocumentType) {
+      setPendingTypeSelection(intake.record.detectedDocumentType);
+    }
+  }, [intake.flow, intake.record?.detectedDocumentType]);
 
   const docTypeOptions = useMemo(() => {
     const auto = metadata?.classificationOptions ?? [{ value: AUTO_TYPE, labelKey: 'documentExtraction.classification.AUTO' }];
@@ -332,85 +217,32 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     [metadata],
   );
 
-  const validateAndSetError = useCallback(
-    (file: File | null | undefined, fileCount = 1) => {
-      const result = validateUploadFile(file, metadata, {
-        vehicleSelected: Boolean(selectedVehicleId),
-        fileCount,
-      });
-      if (!result.ok && result.code) {
-        const msg = t(validationKey(result.code), { maxMb: metadata?.maxUploadMb ?? 10 });
-        setValidationError(msg);
-        return false;
-      }
-      setValidationError(null);
-      return true;
-    },
-    [metadata, selectedVehicleId, t],
-  );
-
   const handleReset = useCallback(() => {
-    stopPolling();
-    setFlow('idle');
-    setRecord(null);
-    setUploadedFileName('');
-    setEditingFields(false);
-    setEditedFields([]);
-    setPlausibility(null);
-    setExtractionId(null);
-    setErrorMessage(null);
-    setValidationError(null);
-    setPollNetworkWarning(false);
-    setShowLongRunningHint(false);
+    intake.handleReset();
     setTypeCorrectionPending(false);
     setDocumentType(AUTO_TYPE);
-    writeActiveExtractionPointer(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
-  }, [previewUrl, stopPolling]);
+  }, [intake, previewUrl]);
 
   const handleFile = useCallback(
     async (file: File, fileCount = 1) => {
-      if (!selectedVehicleId) return;
-      setFlow('validating');
-      if (!validateAndSetError(file, fileCount)) {
-        setFlow('idle');
+      const result = validateUploadFile(file, metadata, {
+        vehicleSelected: Boolean(selectedVehicleId) || Boolean(orgId),
+        requireVehicle: false,
+        fileCount,
+      });
+      if (!result.ok && result.code) {
+        setPageValidationError(t(validationKey(result.code), { maxMb: metadata?.maxUploadMb ?? 10 }));
         return;
       }
-
-      setUploadedFileName(file.name);
-      setErrorMessage(null);
-      setEditingFields(false);
-      setPlausibility(null);
-      setEditedFields([]);
-      setExtractionId(null);
-      setRecord(null);
-      setFlow('uploading');
-
-      try {
-        const res = await api.vehicleIntelligence.uploadDocumentExtraction(
-          selectedVehicleId,
-          file,
-          documentType,
-          UPLOAD_SOURCE,
-        );
-        setExtractionId(res.id);
-        writeActiveExtractionPointer({
-          vehicleId: selectedVehicleId,
-          extractionId: res.id,
-          updatedAt: new Date().toISOString(),
-        });
-        setFlow(mapServerToFlowStatus(res.status as PublicDocumentExtraction['status']));
-        startPolling(selectedVehicleId, res.id);
-        void reloadHistory();
-      } catch (err: unknown) {
-        setErrorMessage(err instanceof Error ? err.message : t('docUpload.uploadFailed'));
-        setFlow('failed');
-      }
+      setPageValidationError(null);
+      await intake.handleFile(file);
+      void reloadHistory();
     },
-    [documentType, reloadHistory, selectedVehicleId, startPolling, t, validateAndSetError],
+    [intake, metadata, orgId, reloadHistory, selectedVehicleId, t],
   );
 
   const handleDropFiles = useCallback(
@@ -418,143 +250,117 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
       const list = Array.from(files);
       if (list.length === 0) return;
       if (list.length > 1) {
-        validateAndSetError(list[0], list.length);
+        setPageValidationError(t('docUpload.validation.multipleFiles'));
         return;
       }
       void handleFile(list[0]);
     },
-    [handleFile, validateAndSetError],
+    [handleFile, t],
   );
 
-  const handleRetry = useCallback(async () => {
-    if (!selectedVehicleId || !extractionId) {
-      handleReset();
-      return;
-    }
-    if (!record?.allowedActions?.includes('retry')) return;
-    setErrorMessage(null);
-    setFlow('retrying');
-    try {
-      await api.vehicleIntelligence.retryDocumentExtraction(selectedVehicleId, extractionId);
-      startPolling(selectedVehicleId, extractionId);
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : t('docUpload.retryFailed'));
-      setFlow('failed');
-    }
-  }, [extractionId, handleReset, record?.allowedActions, selectedVehicleId, startPolling, t]);
-
-  const handleSetDocumentType = useCallback(async (type: string, reextract = false) => {
-    if (!selectedVehicleId || !extractionId) return;
-    setErrorMessage(null);
-    setFlow(reextract ? 'retrying' : 'queued');
-    try {
-      await api.vehicleIntelligence.setDocumentType(selectedVehicleId, extractionId, {
-        documentType: type,
-        reextract,
-      });
+  const handleSetDocumentType = useCallback(
+    async (type: string, reextract = false) => {
+      if (!intake.extractionId) return;
+      const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId || '';
+      intake.setDocumentType(type);
+      try {
+        if (mutationVehicleId) {
+          await api.vehicleIntelligence.setDocumentType(mutationVehicleId, intake.extractionId, {
+            documentType: type,
+            reextract,
+          });
+          intake.startPolling(intake.extractionId, mutationVehicleId);
+        } else if (orgId) {
+          await api.documentExtraction.setDocumentTypeByOrg(orgId, intake.extractionId, {
+            documentType: type,
+            reextract,
+          });
+          intake.startPolling(intake.extractionId, null);
+        } else {
+          return;
+        }
+      } catch {
+        /* keep current record */
+      }
       setTypeCorrectionPending(false);
-      startPolling(selectedVehicleId, extractionId);
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : t('docUpload.typeSetFailed'));
-      setFlow(record ? mapServerToFlowStatus(record.status, record.processingStage) : 'failed');
-    }
-  }, [extractionId, record, selectedVehicleId, startPolling, t]);
-
-  const handleReextract = useCallback(async () => {
-    if (!record?.allowedActions?.includes('reextract')) return;
-    const type = resolveEffectiveType(record);
-    await handleSetDocumentType(type, true);
-  }, [handleSetDocumentType, record]);
+    },
+    [intake, orgId, selectedVehicleId],
+  );
 
   const handleCancel = useCallback(async () => {
-    if (!selectedVehicleId || !extractionId || !record?.allowedActions?.includes('cancel')) {
+    const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
+    if (!mutationVehicleId || !intake.extractionId || !intake.record?.allowedActions?.includes('cancel')) {
       handleReset();
       return;
     }
     try {
-      await api.vehicleIntelligence.cancelDocumentExtraction(selectedVehicleId, extractionId);
-      setFlow('cancelled');
-      stopPolling();
-      writeActiveExtractionPointer(null);
+      await api.vehicleIntelligence.cancelDocumentExtraction(mutationVehicleId, intake.extractionId);
+      intake.stopPolling();
       void reloadHistory();
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : t('docUpload.cancelFailed'));
+      handleReset();
+    } catch {
+      /* intake surfaces errors */
     }
-  }, [extractionId, handleReset, record?.allowedActions, reloadHistory, selectedVehicleId, stopPolling, t]);
+  }, [handleReset, intake, reloadHistory, selectedVehicleId]);
 
   const handleConfirm = useCallback(async () => {
-    if (!selectedVehicleId || !extractionId || !record?.allowedActions?.includes('confirm')) return;
-    setFlow('applying');
-    setErrorMessage(null);
-
-    const confirmedData = parseReviewFieldsForConfirm(editedFields, { locale });
-
-    try {
-      await withBatteryHealthCacheRollback(
-        [
-          serializeBatteryHealthQueryKey(
-            batteryHealthQueryKeys.summary(orgId, selectedVehicleId),
-          ),
-          serializeBatteryHealthQueryKey(
-            batteryHealthQueryKeys.detail(orgId, selectedVehicleId),
-          ),
-        ],
-        () =>
-          api.vehicleIntelligence.confirmDocumentExtraction(selectedVehicleId, extractionId, {
-            confirmedData,
-          }),
-      );
-      startPolling(selectedVehicleId, extractionId);
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : t('docUpload.applyFailed'));
-      setFlow('ready');
-    }
-  }, [editedFields, extractionId, locale, record?.allowedActions, selectedVehicleId, startPolling, t]);
+    if (!intake.extractionId) return;
+    const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
+    if (!mutationVehicleId && !orgId) return;
+    await withBatteryHealthCacheRollback(
+      mutationVehicleId
+        ? [
+            serializeBatteryHealthQueryKey(batteryHealthQueryKeys.summary(orgId, mutationVehicleId)),
+            serializeBatteryHealthQueryKey(batteryHealthQueryKeys.detail(orgId, mutationVehicleId)),
+          ]
+        : [],
+      async () => {
+        await intake.handleConfirm();
+      },
+    );
+  }, [intake, orgId, selectedVehicleId]);
 
   const handleReassignVehicle = useCallback(
     async (newVehicleId: string) => {
-      if (!orgId || !extractionId || newVehicleId === selectedVehicleId) {
+      if (!orgId || !intake.extractionId || newVehicleId === selectedVehicleId) {
         setSelectedVehicleId(newVehicleId);
         return;
       }
       try {
-        const updated = await api.documentExtraction.reassignVehicle(orgId, extractionId, newVehicleId);
+        const updated = await api.documentExtraction.reassignVehicle(orgId, intake.extractionId, newVehicleId);
         setSelectedVehicleId(newVehicleId);
-        applyRecord(updated);
-        writeActiveExtractionPointer({
-          vehicleId: newVehicleId,
-          extractionId,
-          updatedAt: new Date().toISOString(),
-        });
-      } catch (err: unknown) {
-        setErrorMessage(err instanceof Error ? err.message : t('docUpload.applyFailed'));
+        intake.applyRecord(updated);
+      } catch {
+        /* intake surfaces errors */
       }
     },
-    [applyRecord, extractionId, orgId, selectedVehicleId, t],
+    [intake, orgId, selectedVehicleId],
   );
 
   const handleDownload = useCallback(async () => {
-    if (!selectedVehicleId || !extractionId || !record?.hasStoredFile) {
-      setErrorMessage(t('docUpload.noStoredFile'));
-      return;
+    if (!intake.extractionId || !intake.record?.hasStoredFile) {
+      return null;
     }
+    const mutationVehicleId = selectedVehicleId || intake.record?.vehicleId;
     try {
-      const blob = await api.vehicleIntelligence.downloadDocumentExtraction(selectedVehicleId, extractionId);
+      const blob = mutationVehicleId
+        ? await api.vehicleIntelligence.downloadDocumentExtraction(mutationVehicleId, intake.extractionId)
+        : await api.documentExtraction.downloadByOrg(orgId, intake.extractionId);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
       return url;
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : t('docUpload.downloadFailed'));
+    } catch {
       return null;
     }
-  }, [extractionId, previewUrl, record?.hasStoredFile, selectedVehicleId, t]);
+  }, [intake.extractionId, intake.record?.hasStoredFile, intake.record?.vehicleId, orgId, previewUrl, selectedVehicleId]);
 
   const handleOpenHistoryItem = useCallback(
     (item: PublicDocumentExtractionSummary) => {
-      void loadExtraction(item.vehicleId, item.id, item.sourceFileName);
+      setSelectedVehicleId(item.vehicleId ?? '');
+      void intake.openExtraction(item.id, item.sourceFileName, item.vehicleId ?? null);
     },
-    [loadExtraction],
+    [intake],
   );
 
   const flowStatusLabel = useCallback(
@@ -582,11 +388,65 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     [typeLabel],
   );
 
-  const confirmedDocType = record ? resolveEffectiveType(record) : documentType;
-  const isBusy = isBusyFlow(flow);
-  const blockerPresent = plausibility?.overallStatus === 'BLOCKER';
-  const stepperIndex = getStepperIndex(flow);
-  const classificationConfidence = formatConfidencePercent(record?.classificationConfidence ?? null);
+  const validateAndSetError = useCallback(
+    (file: File | null | undefined, fileCount = 1) => {
+      const result = validateUploadFile(file, metadata, {
+        vehicleSelected: Boolean(selectedVehicleId) || Boolean(orgId),
+        requireVehicle: false,
+        fileCount,
+      });
+      if (!result.ok && result.code) {
+        setPageValidationError(t(validationKey(result.code), { maxMb: metadata?.maxUploadMb ?? 10 }));
+        return false;
+      }
+      setPageValidationError(null);
+      return true;
+    },
+    [metadata, orgId, selectedVehicleId, t],
+  );
+
+  const assignedVehicleId = selectedVehicleId || intake.record?.vehicleId || '';
+  const canConfirm =
+    Boolean(assignedVehicleId) &&
+    intake.canConfirmActionPlan;
+
+  const processingStepLabels = useMemo(
+    (): Record<IntakeProcessingStepId, string> => ({
+      file_check: t('docUpload.processingStep.fileCheck'),
+      file_stored: t('docUpload.processingStep.fileStored'),
+      text_recognition: t('docUpload.processingStep.textRecognition'),
+      classification: t('docUpload.processingStep.classification'),
+      data_preparation: t('docUpload.processingStep.dataPreparation'),
+      ready_for_review: t('docUpload.processingStep.readyForReview'),
+    }),
+    [t],
+  );
+
+  const confirmedDocType = intake.record ? resolveEffectiveType(intake.record) : documentType;
+  const stepperIndex = getStepperIndex(intake.flow);
+  const classificationConfidence = formatConfidencePercent(intake.record?.classificationConfidence ?? null);
+
+  const vehicleLookup = useMemo(() => {
+    const map = new Map<string, { name: string; licensePlate?: string | null }>();
+    for (const vehicle of vehicles) {
+      map.set(vehicle.id, { name: vehicle.name, licensePlate: vehicle.licensePlate ?? null });
+    }
+    return map;
+  }, [vehicles]);
+
+  const handleEntityLinksUpdated = useCallback(
+    (updated: PublicDocumentExtraction) => {
+      intake.applyRecord(updated);
+    },
+    [intake],
+  );
+
+  const handleSchemaReviewUpdated = useCallback(
+    (updated: PublicDocumentExtraction) => {
+      intake.applyRecord(updated);
+    },
+    [intake],
+  );
 
   return {
     metadata,
@@ -598,33 +458,37 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     setDocumentType,
     pendingTypeSelection,
     setPendingTypeSelection,
-    flow,
-    record,
-    uploadedFileName,
-    errorMessage,
-    validationError,
-    editingFields,
-    setEditingFields,
-    editedFields,
-    setEditedFields,
-    plausibility,
-    extractionId,
+    intakeEntry,
+    flow: intake.flow,
+    record: intake.record,
+    uploadedFileName: intake.uploadedFileName,
+    errorMessage: intake.errorMessage,
+    validationError: pageValidationError ?? intake.validationError,
+    editingFields: intake.editingFields,
+    setEditingFields: intake.setEditingFields,
+    editedFields: intake.editedFields,
+    setEditedFields: intake.setEditedFields,
+    plausibility: intake.plausibility,
+    extractionId: intake.extractionId,
     history,
     historyLoading,
     reloadHistory,
-    pollNetworkWarning,
-    showLongRunningHint,
+    pollNetworkWarning: intake.pollNetworkWarning,
+    showLongRunningHint: intake.showLongRunningHint,
     previewUrl,
     typeCorrectionPending,
     setTypeCorrectionPending,
     acceptAttr,
     supportedFormatsLabel,
     docTypeOptions,
-    isBusy,
-    blockerPresent,
+    isBusy: intake.isBusy,
+    blockerPresent: intake.blockerPresent,
     stepperIndex,
     confirmedDocType,
     classificationConfidence,
+    uploadContext: intake.uploadContext,
+    duplicateBlocked: intake.duplicateBlocked,
+    uploadDuplicateWarning: intake.uploadDuplicateWarning,
     typeLabel,
     flowStatusLabel,
     serverStatusLabel,
@@ -632,15 +496,28 @@ export function useDocumentUploadPage({ orgId, locale = 'de', t }: UseDocumentUp
     errorPhaseLabel,
     handleFile,
     handleDropFiles,
-    handleRetry,
+    handleRetry: intake.handleRetry,
     handleConfirm,
     handleReassignVehicle,
     handleReset,
     handleSetDocumentType,
-    handleReextract,
+    handleReextract: intake.handleReextract,
     handleCancel,
     handleDownload,
     handleOpenHistoryItem,
+    handleAuthorizedReupload: intake.handleAuthorizedReupload,
     validateAndSetError,
+    assignedVehicleId,
+    canConfirm,
+    processingStepLabels,
+    processingStartedAt: intake.processingStartedAt,
+    vehicleLookup,
+    handleEntityLinksUpdated,
+    handleSchemaReviewUpdated,
+    handleActionPlanPreviewState: intake.handleActionPlanPreviewState,
+    actionPlanPreview: intake.actionPlanPreview,
+    applyRetryPending: intake.applyRetryPending,
+    handleRetryFailedActions: intake.handleRetryFailedActions,
+    canShowApplyDone: canShowApplyDone(intake.record?.status, intake.record?.applyResult),
   };
 }

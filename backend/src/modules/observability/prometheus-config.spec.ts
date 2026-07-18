@@ -12,6 +12,10 @@ const FORBIDDEN_LABELS = [
   'trip_id',
   'org_id',
   'organization_id',
+  'document_id',
+  'extraction_id',
+  'license_plate',
+  'file_name',
 ];
 
 describe('TripMetricsService label cardinality', () => {
@@ -76,6 +80,9 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_brake_alert_total');
     expect(text).toContain('synqdrive_brake_rental_block_total');
     expect(text).toContain('synqdrive_brake_backfill_conflict_total');
+    expect(text).toContain('synqdrive_document_upload_total');
+    expect(text).toContain('synqdrive_document_follow_up_total');
+    expect(text).toContain('synqdrive_document_archive_total');
   });
 });
 
@@ -96,6 +103,8 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('synqdrive_enrichment_pending');
     expect(yaml).toContain('synqdrive_dimo_snapshot_poll_total');
     expect(yaml).toContain('DocumentExtractionQueueAgeHigh');
+    expect(yaml).toContain('synqdrive_document_upload_rejected_total');
+    expect(yaml).toContain('synqdrive_document_ocr_failed_total');
     expect(yaml).toContain('BatteryJobsFailingDespiteSnapshotSuccess');
     expect(yaml).toContain('BatteryV2DeadLetterJobsPresent');
     expect(yaml).toContain('synqdrive_battery_jobs_failed_total');

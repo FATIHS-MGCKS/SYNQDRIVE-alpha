@@ -13,6 +13,27 @@ export interface PipelinePlausibilityPayload {
   contentCache?: DocumentContentCacheEntry;
   documentTypeAudit?: DocumentTypeAuditEntry[];
   actionAudit?: ExtractionActionAuditEntry[];
+  actionPlan?: import('./document-action-plan.types').DocumentActionPlan;
+  actionPlanExecution?: import('./document-action.types').DocumentActionPlanExecution;
+  actionPlanApplyLifecycle?: import('./document-action-plan.state-machine').DocumentActionPlanApplyLifecycle;
+  fileFingerprint?: import('./document-extraction-fingerprint.types').DocumentExtractionFileFingerprint;
+  uploadDuplicate?: import('./document-upload-duplicate.types').PipelineUploadDuplicatePayload;
+  malwareScan?: import('./document-malware-scan-status.types').DocumentMalwareScanPipelineState;
+  lifecycle?: import('./document-storage-lifecycle.types').DocumentPipelineLifecyclePayload;
+  uploadContext?: import('./document-upload-context.types').DocumentUploadContextPipelineState;
+  vehicleCandidates?: import('./vehicle-candidate-resolver.types').VehicleCandidatePipelineState;
+  bookingCandidates?: import('./booking-candidate-resolver.types').BookingCandidatePipelineState;
+  customerCandidates?: import('./customer-candidate-resolver.types').CustomerCandidatePipelineState;
+  driverCandidates?: import('./driver-candidate-resolver.types').DriverCandidatePipelineState;
+  partnerCandidates?: import('./partner-candidate-resolver.types').PartnerCandidatePipelineState;
+  entityCandidateRanking?: import('./entity-candidate-ranking.types').EntityCandidateRankingPipelineState;
+  supersededEntityLinks?: import('./document-entity-link.types').SupersededEntityLink[];
+  documentTaxonomy?: import('./document-taxonomy.types').DocumentTaxonomyPipelineState;
+  structuredExtraction?: import('./document-structured-extraction.types').StructuredExtractionPayload | null;
+  structuredExtractionRun?: import('./document-structured-extraction.types').StructuredExtractionRun | null;
+  supersededExtractionRuns?: import('./document-structured-extraction.types').SupersededStructuredExtractionRun[];
+  fieldProvenance?: import('./document-field-provenance.types').DocumentFieldProvenanceRegistry | null;
+  followUpSuggestions?: import('./document-follow-up-suggestion.types').DocumentFollowUpSuggestion[];
 }
 
 export interface DocumentTypeAuditEntry {
@@ -83,6 +104,27 @@ export function mergePipelinePlausibility(
     documentTypeAudit: patch.documentTypeAudit ?? current.documentTypeAudit,
     actionAudit: patch.actionAudit ?? current.actionAudit,
     contentCache: patch.contentCache ?? current.contentCache,
+    actionPlan: patch.actionPlan ?? current.actionPlan,
+    actionPlanExecution: patch.actionPlanExecution ?? current.actionPlanExecution,
+    actionPlanApplyLifecycle: patch.actionPlanApplyLifecycle ?? current.actionPlanApplyLifecycle,
+    fileFingerprint: patch.fileFingerprint ?? current.fileFingerprint,
+    uploadDuplicate: patch.uploadDuplicate ?? current.uploadDuplicate,
+    malwareScan: patch.malwareScan ?? current.malwareScan,
+    lifecycle: patch.lifecycle ?? current.lifecycle,
+    uploadContext: patch.uploadContext ?? current.uploadContext,
+    entityCandidateRanking: patch.entityCandidateRanking ?? current.entityCandidateRanking,
+    supersededEntityLinks: patch.supersededEntityLinks ?? current.supersededEntityLinks,
+    documentTaxonomy: patch.documentTaxonomy ?? current.documentTaxonomy,
+    structuredExtraction:
+      'structuredExtraction' in patch ? patch.structuredExtraction : current.structuredExtraction,
+    structuredExtractionRun:
+      'structuredExtractionRun' in patch
+        ? patch.structuredExtractionRun
+        : current.structuredExtractionRun,
+    supersededExtractionRuns:
+      patch.supersededExtractionRuns ?? current.supersededExtractionRuns,
+    fieldProvenance:
+      'fieldProvenance' in patch ? patch.fieldProvenance : current.fieldProvenance,
   };
   return base;
 }
