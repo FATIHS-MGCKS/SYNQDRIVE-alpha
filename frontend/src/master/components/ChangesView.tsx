@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-overview-conversations-2026-07-18',
+    version: '4.9.603',
+    title: 'V4.9.603 — Voice AI: operations overview & conversation center (7A)',
+    summary: [
+      'Post-activation overview redesigned as eight-section voice operations center: status hero, today KPIs, minutes/forecast, escalations, recent calls, problems, automation activity, quick actions.',
+      'Conversation center: filterable table, pagination, detail drawer with collapsible transcript and privacy-aware audio gate; removed customer-facing ElevenLabs sync and provider IDs.',
+      'Finalized-call-only KPIs, DE/EN i18n, ops/conversation unit tests.',
+    ],
+    reason: 'Prompt 7A — professional voice AI operations and conversation hub.',
+    previousBehavior:
+      'Basic four KPIs, English conversation list with inline transcripts and Sync from ElevenLabs; no status hero or drawer.',
+    details:
+      'VoiceStatusHero, voice-ops-overview.ops, VoiceConversationDetailDrawer, VoiceConversationsPanel rewrite; architecture/VOICE_AI_OPS_OVERVIEW_CONVERSATIONS_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T04:30:00.000Z',
+  },
+  {
     id: 'voice-readiness-activation-2026-07-18',
     version: '4.9.602',
     title: 'V4.9.602 — Voice AI: availability, test center & activation (6B)',

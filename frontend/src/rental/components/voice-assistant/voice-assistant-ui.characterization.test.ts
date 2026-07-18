@@ -50,7 +50,16 @@ describe('voice assistant UI characterization', () => {
     });
 
     it('loads billing remaining minutes for overview KPIs', () => {
+      const overviewSource = readFileSync(resolve(voiceDir, 'VoiceOperationsOverview.tsx'), 'utf8');
       expect(viewSource).toContain('VoiceOperationsOverview');
+      expect(overviewSource).toContain('VoiceStatusHero');
+      expect(overviewSource).toContain('billing.remainingMinutes');
+    });
+
+    it('uses conversation detail drawer instead of inline transcripts', () => {
+      const conversationsSource = readFileSync(resolve(voiceDir, 'VoiceConversationsPanel.tsx'), 'utf8');
+      expect(conversationsSource).toContain('VoiceConversationDetailDrawer');
+      expect(conversationsSource).not.toContain('Sync from ElevenLabs');
     });
 
     it('isolates provider diagnostics under settings diagnostics section', () => {
