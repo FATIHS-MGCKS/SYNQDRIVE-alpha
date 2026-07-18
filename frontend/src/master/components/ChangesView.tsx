@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-knowledge-permission-center-2026-07-18',
+    version: '4.9.600',
+    title: 'V4.9.600 — Voice AI: knowledge and permission center (5B)',
+    summary: [
+      'Knowledge center: 13 tenant-scoped sources with CONNECTED/INCOMPLETE/STALE/NOT_PUBLISHED/ERROR, data provenance, static vs live separation, knowledge gaps, safe legal-document preview.',
+      'Permission center: 7 business groups with examples, risk copy, MCP impact summary, mobile accordion; maps to real server-side MCP allowlist.',
+      'Backend audits toolPermissions changes via ActivityLog; wizard knowledge step requires ≥6 connected sources.',
+    ],
+    reason: 'Prompt 5B — make knowledge and access rights understandable, secure, and enforced server-side.',
+    previousBehavior:
+      'Binary knowledge links (4 sources); 4 permission groups without impact summary; no permission-change audit.',
+    details:
+      'VoiceKnowledgeCenterPanel, voice-knowledge-center.ops, voice-permission-groups.ops (7 groups), VoicePermissionGroupsPanel redesign, ActivityLog on permission update; architecture/VOICE_AI_KNOWLEDGE_PERMISSION_CENTER_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:30:00.000Z',
+  },
+  {
     id: 'voice-plan-assistant-onboarding-2026-07-18',
     version: '4.9.599',
     title: 'V4.9.599 — Voice AI: plan and assistant onboarding redesign (5A)',

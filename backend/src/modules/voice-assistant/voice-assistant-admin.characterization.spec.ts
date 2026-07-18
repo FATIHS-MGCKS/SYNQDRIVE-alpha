@@ -53,6 +53,7 @@ describe('VoiceAssistant admin characterization', () => {
     assertLegacyDiagnosticCallAllowed: jest.fn(),
   };
   const protection = { assertActivationAllowed: jest.fn().mockResolvedValue(undefined) };
+  const activityLog = { log: jest.fn().mockResolvedValue(undefined) };
 
   let service: VoiceAssistantService;
 
@@ -135,6 +136,7 @@ describe('VoiceAssistant admin characterization', () => {
       twilioControlPlaneTelephony as never,
       callOrchestration as never,
       protection as never,
+      activityLog as never,
     );
   });
 

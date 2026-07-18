@@ -31,6 +31,8 @@ import {
   resolveToolPermissions,
   syncLegacyBooleansFromToolPermissions,
   validateToolPermissionsUpdate,
+  type VoiceToolCapabilityKey,
+  type VoiceToolPermissionsMap,
 } from './voice-assistant-permissions';
 import {
   buildAdminWarnings,
@@ -76,6 +78,7 @@ import {
 } from './voice-assistant-test.util';
 import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
+import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import {
   VoiceProtectionDeniedError,
   toProtectionHttpException,
@@ -113,6 +116,7 @@ export class VoiceAssistantService {
     private readonly twilioControlPlaneTelephony: TwilioControlPlaneTelephonyService,
     private readonly callOrchestration: VoiceCallOrchestrationService,
     private readonly protection: VoiceBudgetEnforcementService,
+    private readonly activityLog: ActivityLogService,
   ) {}
 
   async getOrCreateAssistantForOrg(organizationId: string) {
@@ -137,14 +141,31 @@ export class VoiceAssistantService {
     return assistant ? await this.formatAssistant(assistant) : null;
   }
 
-  async updateAssistant(organizationId: string, dto: UpdateVoiceAssistantDto) {
+  async updateAssistant(
+    organizationId: string,
+    dto: UpdateVoiceAssistantDto,
+    options?: { actorUserId?: string },
+  ) {
     const assistant = await this.requireAssistantRow(organizationId);
+    const previousPermissions =
+      dto.toolPermissions !== undefined ? resolveToolPermissions(assistant) : null;
     const data = this.mapUpdateDto(dto, assistant);
 
     const updated = await this.prisma.voiceAssistant.update({
       where: { id: assistant.id },
       data,
     });
+
+    if (previousPermissions && dto.toolPermissions !== undefined) {
+      await this.auditToolPermissionsChange({
+        organizationId,
+        assistantId: assistant.id,
+        actorUserId: options?.actorUserId,
+        previous: previousPermissions,
+        next: resolveToolPermissions(updated),
+      });
+    }
+
     return await this.formatAssistant(updated);
   }
 
@@ -1186,6 +1207,48 @@ export class VoiceAssistantService {
     }
 
     return data;
+  }
+
+  private async auditToolPermissionsChange(input: {
+    organizationId: string;
+    assistantId: string;
+    actorUserId?: string;
+    previous: VoiceToolPermissionsMap;
+    next: VoiceToolPermissionsMap;
+  }): Promise<void> {
+    const changes = (Object.keys(input.next) as VoiceToolCapabilityKey[])
+      .filter(key => input.previous[key] !== input.next[key])
+      .map(key => ({
+        capability: key,
+        from: input.previous[key],
+        to: input.next[key],
+      }));
+
+    if (changes.length === 0) {
+      return;
+    }
+
+    try {
+      await this.activityLog.log({
+        organizationId: input.organizationId,
+        userId: input.actorUserId,
+        action: 'UPDATE',
+        entity: 'ORGANIZATION',
+        entityId: input.organizationId,
+        description: `Voice assistant tool permissions updated (${changes.length} capabilities).`,
+        metaJson: {
+          auditAction: 'VOICE_ASSISTANT_TOOL_PERMISSIONS_UPDATE',
+          voiceAssistantId: input.assistantId,
+          changes,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to audit voice tool permission update for org ${input.organizationId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   private async formatAssistant(assistant: VoiceAssistant) {

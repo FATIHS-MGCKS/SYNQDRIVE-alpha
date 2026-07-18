@@ -25,7 +25,7 @@ import { assistantOnboardingToPayload } from './voice-assistant-onboarding.ops';
 import type { VoiceTextField } from './voice-assistant-builder.types';
 import type { VoiceToolPermissionsMap } from './voice-assistant-permissions.ops';
 import { buildLaunchChecklist } from './voice-assistant.ops';
-import { useVoiceKnowledgeLinks } from './useVoiceKnowledgeLinks';
+import { useVoiceKnowledgeCenter } from './useVoiceKnowledgeCenter';
 import {
   WIZARD_STEPS,
   isWizardStepComplete,
@@ -121,7 +121,7 @@ export function VoiceOnboardingWizard({
   const [protectionError, setProtectionError] = useState<string | null>(null);
   const [budgetCents, setBudgetCents] = useState('');
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const { links } = useVoiceKnowledgeLinks(orgId, assistant);
+  const { center: knowledgeCenter } = useVoiceKnowledgeCenter(orgId, assistant);
 
   const goToStep = useCallback(
     (next: VoiceWizardStep) => {
@@ -164,15 +164,10 @@ export function VoiceOnboardingWizard({
       .catch(err => setProtectionError(getErrorMessage(err)));
   }, [orgId, step]);
 
-  const knowledgeReady = useMemo(() => {
-    const connected = [
-      links.stations,
-      links.rentalRules,
-      links.openingHours,
-      links.bookingPrerequisites,
-    ].filter(l => l.connected).length;
-    return connected >= 2;
-  }, [links]);
+  const knowledgeReady = useMemo(
+    () => knowledgeCenter.connectedCount >= 6,
+    [knowledgeCenter.connectedCount],
+  );
 
   const stepComplete = useCallback(
     (id: VoiceWizardStep) =>
