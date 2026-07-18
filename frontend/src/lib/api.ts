@@ -6045,6 +6045,31 @@ export const api = {
         patch<VoiceBudgetPolicy>(`/organizations/${orgId}/voice-assistant/protection/budget-policy`, payload),
     },
 
+    agentDeployment: {
+      draft: (orgId: string) =>
+        get<Record<string, unknown> | null>(`/organizations/${orgId}/voice-assistant/agent-deployment/draft`),
+      saveDraft: (orgId: string, payload: Record<string, unknown>) =>
+        patch<Record<string, unknown>>(`/organizations/${orgId}/voice-assistant/agent-deployment/draft`, payload),
+      readiness: (orgId: string) =>
+        get<VoiceAgentDeploymentReadiness>(`/organizations/${orgId}/voice-assistant/agent-deployment/readiness`),
+      diff: (orgId: string) =>
+        get<Record<string, unknown>>(`/organizations/${orgId}/voice-assistant/agent-deployment/diff`),
+      deploy: (orgId: string, body: { confirm?: boolean }, idempotencyKey?: string) =>
+        request<Record<string, unknown>>(
+          `/organizations/${orgId}/voice-assistant/agent-deployment/deploy`,
+          {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+          },
+        ),
+      rollback: (orgId: string, body: { confirm?: boolean }) =>
+        post<Record<string, unknown>>(
+          `/organizations/${orgId}/voice-assistant/agent-deployment/rollback`,
+          body,
+        ),
+    },
+
     admin: {
       overview: () => get<VoiceAssistantAdminOverview>('/admin/voice-assistant/overview'),
       orgDetail: (orgId: string) =>
@@ -10935,6 +10960,19 @@ export type VoiceBudgetPolicyUpdate = Partial<{
   overflowBehavior: 'WARN' | 'HARD_STOP' | 'ALLOW_OVERAGE';
   destinationRegionPolicy: 'DE_ONLY' | 'DE_EEA' | 'CUSTOM';
 }>;
+
+export interface VoiceAgentDeploymentReadinessItem {
+  key: string;
+  label: string;
+  level: 'blocker' | 'warning';
+  message: string;
+}
+
+export interface VoiceAgentDeploymentReadiness {
+  ready: boolean;
+  blockers: VoiceAgentDeploymentReadinessItem[];
+  warnings: VoiceAgentDeploymentReadinessItem[];
+}
 
 export interface VoiceAssistantAdminOverviewRow {
   organizationId: string;

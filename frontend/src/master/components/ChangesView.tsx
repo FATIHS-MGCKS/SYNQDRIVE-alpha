@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-automation-analytics-settings-2026-07-18',
+    version: '4.9.604',
+    title: 'V4.9.604 — Voice AI: automations, analytics & settings (7B)',
+    summary: [
+      'Automations tab: eight predefined voice outbound use cases bound to OrgWorkflow (`scope.voiceAutomation`, `notification.prepare` channel voice) with preview, confirmation, cooldown, budget summary, and detail sheet.',
+      'Analytics tab: finalized-only solution/escalation rates, peak hours, top intents (no PII), billing section with estimated vs final labeling, process gap hints.',
+      'Settings: availability, privacy retention, budget policy, admin-only diagnostics (masked IDs, agent deployment readiness/deploy/rollback with confirmation).',
+    ],
+    reason:
+      'Complete active voice operations UI for automations, usage analytics, and settings without a second automation engine.',
+    previousBehavior:
+      'Automations tab showed permission groups; analytics lacked conversation-derived quality metrics; availability/privacy/budget settings were placeholders.',
+    details:
+      'See architecture/VOICE_AI_AUTOMATION_ANALYTICS_SETTINGS_2026-07-18.md',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-18T00:00:00.000Z',
+  },
+  {
     id: 'voice-overview-conversations-2026-07-18',
     version: '4.9.603',
     title: 'V4.9.603 — Voice AI: operations overview & conversation center (7A)',

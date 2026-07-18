@@ -62,10 +62,22 @@ describe('voice assistant UI characterization', () => {
       expect(conversationsSource).not.toContain('Sync from ElevenLabs');
     });
 
-    it('isolates provider diagnostics under settings diagnostics section', () => {
-      expect(viewSource).toContain('<VoiceSettingsPanel');
-      expect(settingsPanelSource).toContain("activeSection === 'diagnostics'");
-      expect(settingsPanelSource).toContain('VoiceProviderDiagnostic');
+    it('wires automations tab to workflow-backed VoiceAutomationsPanel', () => {
+      expect(viewSource).toContain("opsTab === 'automations' && (");
+      expect(viewSource).toMatch(/opsTab === 'automations'[\s\S]*?<VoiceAutomationsPanel/);
+    });
+
+    it('passes conversations into analytics for finalized-only quality rates', () => {
+      const analyticsPanelSource = readFileSync(resolve(voiceDir, 'VoiceUsageAnalyticsPanel.tsx'), 'utf8');
+      expect(viewSource).toContain('conversations={conversations}');
+      expect(analyticsPanelSource).toContain('VoiceUsageBillingSection');
+    });
+
+    it('isolates admin diagnostics under settings diagnostics section', () => {
+      const diagnosticsSource = readFileSync(resolve(voiceDir, 'VoiceDiagnosticsPanel.tsx'), 'utf8');
+      expect(viewSource).toContain('VoiceDiagnosticsPanel');
+      expect(settingsPanelSource).toContain("userRole === 'ORG_ADMIN'");
+      expect(diagnosticsSource).toContain('VoiceConfirmationDialog');
     });
   });
 
@@ -103,12 +115,14 @@ describe('voice assistant UI characterization', () => {
   });
 
   describe('billing and protection APIs', () => {
-    it('exposes tenant billing, protection, and workspace client methods', () => {
+    it('exposes tenant billing, protection, workspace, and agent-deployment client methods', () => {
       expect(apiSource).toContain('billing: {');
       expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/billing/plans`');
       expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/billing/subscription`');
       expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/protection/status`');
       expect(apiSource).toContain('`/organizations/${orgId}/voice-assistant/workspace`');
+      expect(apiSource).toContain('agentDeployment: {');
+      expect(apiSource).toContain('agent-deployment/readiness');
     });
   });
 });

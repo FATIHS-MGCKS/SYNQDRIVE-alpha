@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { VoiceResponsiveTabs, VoiceSectionHeader, VoiceProviderDiagnostic } from '../../../components/voice-ui';
+import { VoiceResponsiveTabs, VoiceSectionHeader } from '../../../components/voice-ui';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { useRentalOrg } from '../../RentalContext';
 import {
   VOICE_SETTINGS_SECTIONS,
   type VoiceSettingsSection,
@@ -39,8 +40,13 @@ export function VoiceSettingsPanel({
   diagnosticsTitle,
 }: VoiceSettingsPanelProps) {
   const { t } = useLanguage();
+  const { userRole } = useRentalOrg();
+  const isAdmin =
+    userRole === 'ORG_ADMIN' || userRole === 'SUB_ADMIN' || userRole === 'MASTER_ADMIN';
 
-  const tabs = VOICE_SETTINGS_SECTIONS.map((section) => ({
+  const tabs = VOICE_SETTINGS_SECTIONS.filter(
+    section => section !== 'diagnostics' || isAdmin,
+  ).map(section => ({
     key: section,
     label: t(SETTINGS_LABEL_KEYS[section] as 'voice.settings.section.assistant'),
     disabled: false,
@@ -56,17 +62,12 @@ export function VoiceSettingsPanel({
         variant="tabs"
       />
 
-      {activeSection === 'diagnostics' && diagnosticRows ? (
-        <VoiceProviderDiagnostic
-          title={diagnosticsTitle ?? t('voice.settings.diagnosticsTitle')}
-          rows={diagnosticRows}
-        />
-      ) : (
-        <div key={activeSection} className="animate-fade-up motion-reduce:animate-none">
+      <div key={activeSection} className="animate-fade-up motion-reduce:animate-none">
+        {activeSection !== 'diagnostics' && (
           <VoiceSectionHeader title={t(SETTINGS_LABEL_KEYS[activeSection] as 'voice.settings.section.assistant')} />
-          {children}
-        </div>
-      )}
+        )}
+        {children}
+      </div>
     </div>
   );
 }
