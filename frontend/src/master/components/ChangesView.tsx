@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-feature-flags-v49698-2026-07-18',
+    version: '4.9.598',
+    title: 'V4.9.598 — Stations V2: Feature Flags & Deployment-Runbook (Prompt 74/78)',
+    summary: [
+      '10+ sichere Env-Flags (`stationsScopeV2Enabled`, Lifecycle, Summary, Delta Assignment, Positioning, Booking Rules, Capacity, Transfers, Audit, Geofence Shadow, UI) + Org-Allowlist.',
+      '`StationsV2ConfigService`, Resolver, `StationsV2FeatureGuard`, Booking-Rules-Enforcement (`off|shadow|warning|enforce`).',
+      'API `GET …/stations/feature-flags`; Frontend `useStationsV2FeatureFlags`.',
+      'Runbook `docs/runbooks/stations-v2-deployment.md`; Architektur `docs/architecture/stations-v2-rollout-flags.md`.',
+    ],
+    reason: 'Prompt 74/78: Schrittweise, reversible Stations-V2-Aktivierung ohne Produktions-Deployment in diesem Prompt.',
+    previousBehavior: 'Keine zentrale Stations-V2-Flag-Schicht; einzelnes Legacy-Flag `STATIONS_V2_SET_VEHICLES_DISABLED` fehlte auf main.',
+    details:
+      'backend/src/config/stations-v2.config.ts, backend/src/shared/stations/stations-v2-feature-flags.*, backend/src/modules/stations/stations-v2-config.service.ts, stations.controller.ts Guards, docs/runbooks/stations-v2-deployment.md',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
     id: 'voice-webhook-ingestion-prod-default-2026-07-18',
     version: '4.9.597',
     title: 'V4.9.597 — Voice AI: production-safe webhook ingestion default',

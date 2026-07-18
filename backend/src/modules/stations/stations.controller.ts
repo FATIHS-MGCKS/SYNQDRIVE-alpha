@@ -9,9 +9,11 @@ import {
   Param,
   Query,
   UseGuards,
+  GoneException,
 } from '@nestjs/common';
 import { StationsService } from './stations.service';
 import { StationMapboxService } from './station-mapbox.service';
+import { StationsV2ConfigService } from './stations-v2-config.service';
 import {
   CreateStationDto,
   UpdateStationDto,
@@ -24,14 +26,28 @@ import {
 } from './dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { StationsV2FeatureGuard } from './guards/stations-v2-feature.guard';
+import { RequireStationsV2Feature } from './decorators/require-stations-v2-feature.decorator';
+import { getStationsV2EffectiveFlags } from './stations-v2-feature-disabled.error';
 
 @Controller('organizations/:orgId/stations')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, StationsV2FeatureGuard)
 export class StationsController {
   constructor(
     private readonly stationsService: StationsService,
     private readonly stationMapbox: StationMapboxService,
+    private readonly stationsV2Config: StationsV2ConfigService,
   ) {}
+
+  @Get('feature-flags/contract')
+  getFeatureFlagsContract() {
+    return this.stationsV2Config.getContractMetadata();
+  }
+
+  @Get('feature-flags')
+  getFeatureFlags(@Param('orgId') orgId: string) {
+    return getStationsV2EffectiveFlags(orgId);
+  }
 
   @Get()
   async findAll(@Param('orgId') orgId: string, @Query() query: ListStationsQueryDto) {
@@ -60,11 +76,13 @@ export class StationsController {
   }
 
   @Post('backfill-coordinates')
+  @RequireStationsV2Feature('stationsSchemaV2Enabled')
   async backfillCoordinates(@Param('orgId') orgId: string) {
     return this.stationsService.backfillCoordinates(orgId);
   }
 
   @Patch('vehicles/current-station')
+  @RequireStationsV2Feature('stationPositioningV2Enabled')
   async updateVehicleCurrentStation(
     @Param('orgId') orgId: string,
     @Body() body: UpdateVehicleCurrentStationDto,
@@ -83,11 +101,13 @@ export class StationsController {
   }
 
   @Get(':id/overview-stats')
+  @RequireStationsV2Feature('stationSummaryV2Enabled')
   async getOverviewStats(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.getStationOverviewStats(orgId, id);
   }
 
   @Get(':id/fleet')
+  @RequireStationsV2Feature('stationSummaryV2Enabled')
   async getFleet(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.getStationFleet(orgId, id);
   }
@@ -112,16 +132,19 @@ export class StationsController {
   }
 
   @Post(':id/archive')
+  @RequireStationsV2Feature('stationsLifecycleV2Enabled')
   async archive(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.archive(orgId, id);
   }
 
   @Post(':id/restore')
+  @RequireStationsV2Feature('stationsLifecycleV2Enabled')
   async restore(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.restore(orgId, id);
   }
 
   @Post(':id/set-primary')
+  @RequireStationsV2Feature('stationsLifecycleV2Enabled')
   async setPrimary(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.setPrimaryStation(orgId, id);
   }
@@ -132,10 +155,22 @@ export class StationsController {
     @Param('id') id: string,
     @Body() body: SetStationVehiclesDto,
   ) {
+    const flags = getStationsV2EffectiveFlags(orgId);
+    if (flags.legacySetVehiclesEndpointDisabled) {
+      throw new GoneException({
+        message: 'PUT /stations/:id/vehicles is disabled. Use delta home-fleet assignment APIs.',
+        code: 'STATION_SET_VEHICLES_DISABLED',
+        replacement: {
+          method: 'POST',
+          path: '/organizations/:orgId/stations/vehicles/change-home-station',
+        },
+      });
+    }
     return this.stationsService.setStationVehicles(orgId, id, body.vehicleIds ?? []);
   }
 
   @Post(':id/assign-vehicle')
+  @RequireStationsV2Feature('stationDeltaAssignmentEnabled')
   async assignVehicle(
     @Param('orgId') orgId: string,
     @Param('id') id: string,

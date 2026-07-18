@@ -9,11 +9,7 @@ import type {
   PlaceDamageOnVehicleInput,
   UpdateVehicleDamageInput,
 } from '../rental/lib/damage.types';
-import type {
-  VehicleBookingContext,
-  VehicleDataQualityState,
-  VehicleOperationalState,
-} from '../rental/lib/vehicle-operational-state';
+import type { StationsV2FeatureFlagsResponse } from './stations-v2-feature-flags';
 
 export type {
   AddDamageImageInput,
@@ -3896,6 +3892,10 @@ export const api = {
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
+    featureFlags: (orgId: string) =>
+      get<StationsV2FeatureFlagsResponse>(`/organizations/${orgId}/stations/feature-flags`),
+    featureFlagsContract: (orgId: string) =>
+      get<Record<string, unknown>>(`/organizations/${orgId}/stations/feature-flags/contract`),
     searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
       const q = new URLSearchParams({ query });
       if (opts?.country) q.set('country', opts.country);
