@@ -5,6 +5,8 @@ export const STATION_RULE_MANUAL_OVERRIDE_VERSION = 1 as const;
 export const StationRuleManualOverrideReferenceType = {
   BOOKING_RULES: 'BOOKING_RULES',
   TRANSFER_PLAN: 'TRANSFER_PLAN',
+  HANDOVER_PICKUP: 'HANDOVER_PICKUP',
+  HANDOVER_RETURN: 'HANDOVER_RETURN',
 } as const;
 
 export type StationRuleManualOverrideReferenceType =
@@ -44,6 +46,9 @@ export interface StationRuleManualOverrideScope {
   transferToStationId?: string | null;
   plannedAt?: string | null;
   expectedArrivalAt?: string | null;
+  handoverKind?: string | null;
+  actualStationId?: string | null;
+  handoverEvaluatedAt?: string | null;
 }
 
 export interface StationRuleManualOverrideReference {

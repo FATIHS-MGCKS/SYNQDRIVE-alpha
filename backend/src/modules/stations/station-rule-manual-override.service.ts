@@ -89,7 +89,9 @@ export class StationRuleManualOverrideService {
       actorOrganizationId: input.organizationId,
       action: ActivityAction.ADMIN_OVERRIDE,
       entity:
-        input.referenceType === StationRuleManualOverrideReferenceType.BOOKING_RULES
+        input.referenceType === StationRuleManualOverrideReferenceType.BOOKING_RULES ||
+        input.referenceType === StationRuleManualOverrideReferenceType.HANDOVER_PICKUP ||
+        input.referenceType === StationRuleManualOverrideReferenceType.HANDOVER_RETURN
           ? ActivityEntity.BOOKING
           : ActivityEntity.VEHICLE,
       entityId:

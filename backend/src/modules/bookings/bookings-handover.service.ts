@@ -31,6 +31,13 @@ import type { HandoverTechnicalObservationDraft } from './handover.types';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
+import { StationBookingRulesService } from '@modules/stations/station-booking-rules.service';
+import { extractStationBookingRulesContext } from '@shared/stations/booking-station-rules-enforcement.util';
+import {
+  assessHandoverStationRulesPersistence,
+  serializeHandoverStationRulesSnapshot,
+} from '@shared/stations/handover-station-rules.util';
+import type { HandoverStationRulesResult } from '@shared/stations/handover-station-rules.contract';
 import {
   buildHandoverPickupPositionWriteData,
   buildHandoverReturnPositionWriteData,
@@ -67,6 +74,7 @@ export class BookingsHandoverService {
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly stationValidation: StationValidationService,
+    private readonly stationBookingRules: StationBookingRulesService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -80,7 +88,12 @@ export class BookingsHandoverService {
     bookingId: string,
     kind: HandoverKind,
     payload: CreateHandoverProtocolPayload,
-  ): Promise<{ booking: { id: string; status: string }; protocol: HandoverProtocolDto }> {
+    options?: { userId?: string | null },
+  ): Promise<{
+    booking: { id: string; status: string };
+    protocol: HandoverProtocolDto;
+    stationRules: HandoverStationRulesResult;
+  }> {
     this.validatePayload(payload);
 
     const booking = await this.prisma.booking.findFirst({
@@ -159,13 +172,51 @@ export class BookingsHandoverService {
       payload.actualStationId ??
       (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
 
-    if (kind === 'RETURN' && actualStationId) {
-      await this.stationValidation.assertVehicleStationAssignment(
-        orgId,
-        booking.vehicleId,
-        actualStationId,
-        'current',
+    if (!actualStationId) {
+      throw new BadRequestException(
+        'actualStationId is required when no planned station is set on the booking',
       );
+    }
+
+    const evaluatedAt =
+      kind === 'PICKUP'
+        ? performedAt ?? new Date()
+        : new Date();
+
+    await this.stationValidation.assertHandoverStation(
+      orgId,
+      actualStationId,
+      kind === 'PICKUP' ? 'pickup' : 'return',
+    );
+
+    const stationRulesContext = extractStationBookingRulesContext(
+      payload as unknown as Record<string, unknown>,
+    );
+    const stationRulesResult = await this.stationBookingRules.evaluateHandoverRequest(
+      orgId,
+      {
+        kind,
+        bookingId,
+        vehicleId: booking.vehicleId,
+        actualStationId,
+        plannedStationId:
+          kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId,
+        evaluatedAt,
+        manualOverride: stationRulesContext?.manualOverride ?? null,
+      },
+      options?.userId ? { id: options.userId } : undefined,
+    );
+
+    const rulesAssessment = assessHandoverStationRulesPersistence(stationRulesResult);
+    if (!rulesAssessment.allowed) {
+      throw new ConflictException({
+        message: rulesAssessment.blocked
+          ? 'Übergabe durch Stations-Regeln blockiert.'
+          : 'Manuelle Bestätigung der Stations-Regeln für die Übergabe erforderlich.',
+        code: rulesAssessment.code,
+        stationRules: stationRulesResult,
+        manualOverrideRequired: rulesAssessment.manualOverrideRequired,
+      });
     }
 
     const [protocol, updatedBooking] = await this.prisma.$transaction(
@@ -200,6 +251,10 @@ export class BookingsHandoverService {
             staffSignatureDataUrl: payload.staffSignatureDataUrl ?? null,
             documentsAcknowledged: payload.documentsAcknowledged ?? false,
             damageIds: damageIds as unknown as Prisma.InputJsonValue,
+            actualStationId,
+            stationRulesSnapshot: serializeHandoverStationRulesSnapshot(
+              stationRulesResult,
+            ) as unknown as Prisma.InputJsonValue,
           },
         });
 
@@ -439,7 +494,8 @@ export class BookingsHandoverService {
 
     return {
       booking: { id: updatedBooking.id, status: updatedBooking.status },
-      protocol: this.mapProtocol(protocol),
+      protocol: this.mapProtocol(protocol, stationRulesResult),
+      stationRules: stationRulesResult,
     };
   }
 
@@ -575,7 +631,8 @@ export class BookingsHandoverService {
     }
   }
 
-  private mapProtocol(r: {
+  private mapProtocol(
+    r: {
     id: string;
     bookingId: string;
     vehicleId: string;
@@ -598,9 +655,13 @@ export class BookingsHandoverService {
     staffSignatureDataUrl: string | null;
     documentsAcknowledged: boolean;
     damageIds: unknown;
+    actualStationId?: string | null;
+    stationRulesSnapshot?: unknown;
     createdAt: Date;
     updatedAt: Date;
-  }): HandoverProtocolDto {
+  },
+    stationRules?: HandoverStationRulesResult | null,
+  ): HandoverProtocolDto {
     const damageIds = Array.isArray(r.damageIds)
       ? (r.damageIds as unknown[]).filter(
           (x): x is string => typeof x === 'string',
@@ -629,6 +690,11 @@ export class BookingsHandoverService {
       staffSignatureDataUrl: r.staffSignatureDataUrl,
       documentsAcknowledged: r.documentsAcknowledged,
       damageIds,
+      actualStationId: r.actualStationId ?? null,
+      stationRules:
+        stationRules ??
+        (r.stationRulesSnapshot as HandoverStationRulesResult | null | undefined) ??
+        null,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     };

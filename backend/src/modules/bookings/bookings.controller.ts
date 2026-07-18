@@ -316,17 +316,23 @@ export class BookingsController {
   async createPickupHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
     @Body() body: CreateHandoverProtocolPayload,
   ) {
-    return this.handoverService.createHandover(orgId, bookingId, 'PICKUP', body);
+    return this.handoverService.createHandover(orgId, bookingId, 'PICKUP', body, {
+      userId,
+    });
   }
 
   @Post(':id/handover/return')
   async createReturnHandover(
     @Param('orgId') orgId: string,
     @Param('id') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
     @Body() body: CreateHandoverProtocolPayload,
   ) {
-    return this.handoverService.createHandover(orgId, bookingId, 'RETURN', body);
+    return this.handoverService.createHandover(orgId, bookingId, 'RETURN', body, {
+      userId,
+    });
   }
 }

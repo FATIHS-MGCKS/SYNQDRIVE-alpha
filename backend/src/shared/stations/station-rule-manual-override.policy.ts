@@ -66,6 +66,9 @@ export function buildStationRuleManualOverrideScopeFingerprint(
     transferToStationId: scope.transferToStationId ?? null,
     plannedAt: normalizeInstant(scope.plannedAt),
     expectedArrivalAt: normalizeInstant(scope.expectedArrivalAt),
+    handoverKind: scope.handoverKind ?? null,
+    actualStationId: scope.actualStationId ?? null,
+    handoverEvaluatedAt: normalizeInstant(scope.handoverEvaluatedAt),
   };
 
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');

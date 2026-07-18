@@ -1,6 +1,8 @@
 import { ConflictException } from '@nestjs/common';
 import { BookingsHandoverService } from './bookings-handover.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
+import { StationBookingRulesService } from '@modules/stations/station-booking-rules.service';
+import { StationBookingRuleOutcome } from '@shared/stations/station-booking-rules.contract';
 
 const ORG = 'org-handover-position';
 const BOOKING_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -66,7 +68,31 @@ describe('BookingsHandoverService station position wiring', () => {
 
   const stationValidation = {
     assertVehicleStationAssignment: jest.fn(),
+    assertHandoverStation: jest.fn(),
   } as unknown as StationValidationService;
+
+  const stationBookingRules = {
+    evaluateHandoverRequest: jest.fn().mockResolvedValue({
+      version: 1,
+      evaluatedAt: '2026-07-18T10:00:00.000Z',
+      kind: 'PICKUP',
+      actualStationId: STATION_PICKUP,
+      plannedStationId: STATION_PICKUP,
+      outcome: StationBookingRuleOutcome.ALLOWED,
+      reasons: [],
+      evaluations: [],
+      evaluatedInstant: {
+        instantUtc: '2026-07-18T08:00:00.000Z',
+        localDate: '2026-07-18',
+        localTime: '10:00',
+        timezone: 'Europe/Berlin',
+      },
+      manualOverrideRequired: false,
+      manualOverrideApplied: false,
+      manualOverrideAudit: null,
+      replacesBookingTimeEvaluation: true,
+    }),
+  } as unknown as StationBookingRulesService;
 
   const bookingDocumentBundleService = {
     generatePickupProtocolDocument: jest.fn().mockResolvedValue(undefined),
@@ -86,6 +112,7 @@ describe('BookingsHandoverService station position wiring', () => {
     taskAutomation as never,
     { invalidate: jest.fn() } as never,
     stationValidation,
+    stationBookingRules,
   );
 
   const basePayload = {
@@ -133,7 +160,7 @@ describe('BookingsHandoverService station position wiring', () => {
     (tx.vehicle.findFirst as jest.Mock).mockResolvedValue(vehicleState);
     (tx.vehicle.update as jest.Mock).mockResolvedValue({});
     (tx.booking.count as jest.Mock).mockResolvedValue(0);
-    (stationValidation.assertVehicleStationAssignment as jest.Mock).mockResolvedValue(undefined);
+    (stationValidation.assertHandoverStation as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('pickup clears current position and preserves home/expected', async () => {
@@ -142,6 +169,11 @@ describe('BookingsHandoverService station position wiring', () => {
       actualStationId: STATION_PICKUP,
     });
 
+    expect(stationValidation.assertHandoverStation).toHaveBeenCalledWith(
+      ORG,
+      STATION_PICKUP,
+      'pickup',
+    );
     expect(tx.vehicle.update).toHaveBeenCalledWith({
       where: { id: VEHICLE_ID },
       data: {
@@ -153,7 +185,6 @@ describe('BookingsHandoverService station position wiring', () => {
         stationPositionVersion: { increment: 1 },
       },
     });
-    expect(stationValidation.assertVehicleStationAssignment).not.toHaveBeenCalled();
   });
 
   it('pickup is idempotent when current position is already cleared', async () => {
@@ -163,7 +194,10 @@ describe('BookingsHandoverService station position wiring', () => {
       currentStationSource: null,
     });
 
-    await service.createHandover(ORG, BOOKING_ID, 'PICKUP', basePayload);
+    await service.createHandover(ORG, BOOKING_ID, 'PICKUP', {
+      ...basePayload,
+      actualStationId: STATION_PICKUP,
+    });
 
     expect(tx.vehicle.update).toHaveBeenCalledWith({
       where: { id: VEHICLE_ID },
@@ -191,11 +225,10 @@ describe('BookingsHandoverService station position wiring', () => {
       actualStationId: STATION_RETURN,
     });
 
-    expect(stationValidation.assertVehicleStationAssignment).toHaveBeenCalledWith(
+    expect(stationValidation.assertHandoverStation).toHaveBeenCalledWith(
       ORG,
-      VEHICLE_ID,
       STATION_RETURN,
-      'current',
+      'return',
     );
     expect(tx.vehicle.update).toHaveBeenCalledWith({
       where: { id: VEHICLE_ID },
@@ -245,7 +278,7 @@ describe('BookingsHandoverService station position wiring', () => {
       ...booking,
       status: 'ACTIVE',
     });
-    (stationValidation.assertVehicleStationAssignment as jest.Mock).mockRejectedValue(
+    (stationValidation.assertHandoverStation as jest.Mock).mockRejectedValue(
       new ConflictException('archived'),
     );
 

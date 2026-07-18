@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-handover-rules-revalidation-v49630-2026-07-19',
+    version: '4.9.630',
+    title: 'V4.9.630 — Stations V2: Re-validate Station Operations at Pickup/Return Handover (Prompt 50/78)',
+    summary: [
+      'BookingsHandoverService re-evaluiert Stations-Regeln zum tatsächlichen Pickup/Return-Zeitpunkt — Booking-Bewertung kann veraltet sein.',
+      'Aktueller Stationsstatus, After-hours, Keybox und Kapazität werden neu geprüft; Actual Pickup/Return Station validiert.',
+      'BLOCKED verhindert Abschluss; kontrollierter Override mit `stations.override_rules`; Return aktualisiert Current Station erst nach erfolgreichem Abschluss.',
+      'Audit: `stationRulesSnapshot` + `actualStationId` auf Handover-Protokoll; Override-Referenzen HANDOVER_PICKUP/HANDOVER_RETURN.',
+      'Integrationstests für Statusänderung zwischen Buchung und Übergabe.',
+    ],
+    reason:
+      'Planzeit-Bewertung beim Booking reicht nicht — operative Übergabe braucht eine frische Stations-Evaluation am performedAt.',
+    previousBehavior:
+      'Handover prüfte nur strukturelle Station-Validierung (Return/archiviert); keine Opening Hours/Keybox/Override; kein Rules-Snapshot am Protokoll.',
+    details:
+      'StationBookingRulesService.evaluateHandoverRequest; handover-station-rules.*; StationValidationService.assertHandoverStation; Migration `20260718190000_handover_station_rules_snapshot`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T20:00:00.000Z',
+  },
+  {
     id: 'stations-v2-booking-rules-wiring-v49629-2026-07-19',
     version: '4.9.629',
     title: 'V4.9.629 — Stations V2: Wire StationBookingRules into Booking Create/Update (Prompt 49/78)',

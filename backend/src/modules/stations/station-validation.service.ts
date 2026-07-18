@@ -106,6 +106,15 @@ export class StationValidationService {
     return { isOneWayRental, pickupStationId, returnStationId };
   }
 
+  async assertHandoverStation(
+    organizationId: string,
+    stationId: string,
+    purpose: 'pickup' | 'return',
+  ): Promise<void> {
+    const station = await this.getStationForOrg(organizationId, stationId);
+    this.assertStationSelectable(station, purpose);
+  }
+
   async assertVehicleStationAssignment(
     organizationId: string,
     vehicleId: string,
