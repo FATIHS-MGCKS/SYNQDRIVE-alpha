@@ -32,6 +32,7 @@ describe('station-detail-tabs', () => {
 
   it('maps tabs to lazy-loaded data keys', () => {
     expect(tabRequiresDataLoad('overview')).toBeNull();
+    expect(tabRequiresDataLoad('fleet')).toBeNull();
     expect(tabRequiresDataLoad('schedule')).toBe('schedule');
     expect(tabRequiresDataLoad('operations')).toBe('operations');
   });

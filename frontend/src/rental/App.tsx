@@ -975,6 +975,13 @@ function RentalAppContent() {
               setPendingBookingDetailId(bookingId);
               setCurrentView('bookings');
             }}
+            onOpenVehicle={(vehicleId) => {
+              const v = fleetVehicles.find((fv) => fv.id === vehicleId);
+              if (v) {
+                setSelectedVehicle(v);
+                setCurrentView('overview');
+              }
+            }}
           />
         ) : currentView === 'station-detail' ? (
           <div className="max-w-lg mx-auto py-8">

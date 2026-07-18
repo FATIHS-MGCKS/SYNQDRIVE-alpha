@@ -44,10 +44,9 @@ export function buildStationDetailTabDescriptors(
   }));
 }
 
-export type StationDetailTabDataKey = 'fleet' | 'schedule' | 'operations' | 'team' | 'activity';
+export type StationDetailTabDataKey = 'schedule' | 'operations' | 'team' | 'activity';
 
 export function tabRequiresDataLoad(tab: StationDetailTab): StationDetailTabDataKey | null {
-  if (tab === 'fleet') return 'fleet';
   if (tab === 'schedule') return 'schedule';
   if (tab === 'operations') return 'operations';
   if (tab === 'team') return 'team';

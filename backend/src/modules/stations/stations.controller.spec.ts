@@ -49,6 +49,7 @@ describe('StationsController read security', () => {
     expect(metadata(STATIONS_PERMISSION_KEY, 'findOne')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getOverviewStats')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getFleet')).toBe('stations.read');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'getFleetContract')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getBookings')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getOperations')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getOperationsTimeline')).toBe('stations.read');
@@ -177,6 +178,7 @@ describe('StationsController mutation handlers', () => {
     {} as StationCalendarExceptionService,
     {} as StationOperationalCapabilityService,
     {} as StationOperationsService,
+    {} as never,
     {} as never,
     {} as never,
     vehicleHomeFleetDelta as never,
@@ -310,6 +312,11 @@ describe('StationsController read handlers', () => {
     getContractMetadata: jest.fn(),
   };
 
+  const stationFleetReadModel = {
+    resolveForStation: jest.fn(),
+    getContractMetadata: jest.fn(),
+  };
+
   const controller = new StationsController(
     stationsService as unknown as StationsService,
     {} as StationMapboxService,
@@ -321,6 +328,7 @@ describe('StationsController read handlers', () => {
       resolveForStation: jest.fn(),
     } as never,
     stationOperationsTimeline as unknown as StationOperationsTimelineService,
+    stationFleetReadModel as never,
     {} as never,
     {} as never,
     {} as never,
@@ -380,6 +388,20 @@ describe('StationsController read handlers', () => {
       ORG,
       STATION_A,
       { page: 2, pageSize: 25, sortOrder: 'desc' },
+      assignedScope,
+    );
+  });
+
+  it('delegates fleet reads to StationFleetReadModelService', async () => {
+    stationFleetReadModel.resolveForStation.mockResolvedValue({ groups: [] });
+    const req = { [STATION_SCOPE_CONTEXT_KEY]: assignedScope };
+
+    await controller.getFleet(ORG, STATION_A, { search: 'golf', page: 2 }, req);
+
+    expect(stationFleetReadModel.resolveForStation).toHaveBeenCalledWith(
+      ORG,
+      STATION_A,
+      { search: 'golf', page: 2 },
       assignedScope,
     );
   });

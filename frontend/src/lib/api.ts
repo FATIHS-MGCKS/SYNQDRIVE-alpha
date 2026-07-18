@@ -3916,8 +3916,17 @@ export const api = {
           maxAggregationStations: number;
         };
       }>(`/organizations/${orgId}/stations/summaries/contract`),
-    fleet: (orgId: string, stationId: string) =>
-      get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
+    fleet: (orgId: string, stationId: string, params: StationFleetQueryParams = {}) => {
+      const q = new URLSearchParams();
+      if (params.search) q.set('search', params.search);
+      if (params.group) q.set('group', params.group);
+      if (params.page != null) q.set('page', String(params.page));
+      if (params.pageSize != null) q.set('pageSize', String(params.pageSize));
+      const qs = q.toString();
+      return get<StationFleetReadModel>(
+        `/organizations/${orgId}/stations/${stationId}/fleet${qs ? `?${qs}` : ''}`,
+      );
+    },
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
     operations: (orgId: string, stationId: string, params?: { at?: string }) => {
@@ -9798,6 +9807,75 @@ export interface StationFleetVehicle {
   homeStationId: string | null;
   currentStationId: string | null;
   expectedStationId: string | null;
+}
+
+export type StationFleetGroupKey =
+  | 'on_site'
+  | 'home_fleet_away'
+  | 'foreign_on_site'
+  | 'expected'
+  | 'currently_rented';
+
+export interface StationFleetStationRef {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
+export interface StationFleetNextAction {
+  code: string;
+  label: string;
+  deepLink: string | null;
+}
+
+export interface StationFleetVehicleRow {
+  id: string;
+  licensePlate: string | null;
+  make: string;
+  model: string;
+  vehicleName: string | null;
+  runtimeState: string;
+  runtimeStateLabel: string;
+  homeStation: StationFleetStationRef | null;
+  currentStation: StationFleetStationRef | null;
+  expectedStation: StationFleetStationRef | null;
+  positionSource: string | null;
+  lastConfirmationAt: string | null;
+  nextAction: StationFleetNextAction | null;
+  group: StationFleetGroupKey;
+}
+
+export interface StationFleetGroupSection {
+  key: StationFleetGroupKey;
+  total: number;
+  vehicles: StationFleetVehicleRow[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export interface StationFleetReadModel {
+  version: number;
+  stationId: string;
+  organizationId: string;
+  evaluatedAt: string;
+  search: string | null;
+  groupFilter: StationFleetGroupKey | null;
+  groups: StationFleetGroupSection[];
+  scope: {
+    applied: boolean;
+    mode: 'ALL_STATIONS' | 'SCOPED_STATIONS';
+  };
+  frontendRecomputation: false;
+}
+
+export interface StationFleetQueryParams {
+  search?: string;
+  group?: StationFleetGroupKey;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface StationBookingRow {

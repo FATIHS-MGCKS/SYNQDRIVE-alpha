@@ -23,9 +23,10 @@ describe('stations permissions UI wiring', () => {
     expect(detailSource).toContain('useStationsV2Permissions');
     expect(detailSource).toContain('buildStationDetailTabDescriptors');
     expect(detailSource).toContain('StationOverviewTab');
-    const overviewSource = readFileSync(resolve(stationsDir, 'StationOverviewTab.tsx'), 'utf8');
-    expect(overviewSource).toContain('station-overview-decision.utils');
-    expect(overviewSource).toContain('buildStationOverviewDecisionModel');
+    expect(detailSource).toContain('StationFleetTab');
+    const fleetSource = readFileSync(resolve(stationsDir, 'StationFleetTab.tsx'), 'utf8');
+    expect(fleetSource).toContain('station-fleet-read-model.utils');
+    expect(fleetSource).toContain('ErrorState');
     expect(detailSource).toContain("activeTab === 'schedule'");
     expect(detailSource).toContain("activeTab === 'operations'");
     expect(detailSource).not.toContain('stations.detail.tab.staff');

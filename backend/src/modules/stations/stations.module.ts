@@ -8,6 +8,7 @@ import { StationOperationalCapabilityService } from './station-operational-capab
 import { StationOperationsService } from './station-operations.service';
 import { StationSummaryReadModelService } from './station-summary-read-model.service';
 import { StationOperationsTimelineService } from './station-operations-timeline.service';
+import { StationFleetReadModelService } from './station-fleet-read-model.service';
 import { StationVehicleRuntimeLoader } from './station-vehicle-runtime.loader';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
@@ -39,6 +40,7 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationOperationsService,
     StationSummaryReadModelService,
     StationOperationsTimelineService,
+    StationFleetReadModelService,
     StationVehicleRuntimeLoader,
     VehicleHomeFleetDeltaService,
     VehicleHomeAssignmentPreviewService,
