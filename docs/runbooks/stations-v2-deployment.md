@@ -79,8 +79,8 @@ cd backend
 curl -s -H "Authorization: Bearer $TOKEN" \
   "https://app.synqdrive.eu/api/v1/organizations/$ORG_ID/stations/feature-flags" | jq .
 
-# Datenqualität (read-only)
-npm run stations:v2:diagnose -- --dry-run --organization-id=$ORG_ID
+# Datenqualität (read-only, nach Merge von stations-v2-diagnose)
+# npx ts-node -r tsconfig-paths/register scripts/ops/stations-v2-diagnose.ts --dry-run --organization-id=$ORG_ID
 
 # Stations-Tests (lokal/CI)
 npm run test:stations:v2
