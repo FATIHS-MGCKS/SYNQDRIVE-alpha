@@ -2,29 +2,35 @@ import { useCallback, useEffect, useState } from 'react';
 import { DataCard } from '../../../components/patterns/data-card';
 import { cn } from '../../../components/ui/utils';
 import { api, getErrorMessage } from '../../../lib/api';
-import type { VoiceUsageForecast, VoiceUsageSummary } from '../../../lib/api';
-import { formatMoneyCents } from '../../../lib/money';
+import type {
+  VoiceConversationEntry,
+  VoicePlanCatalogEntry,
+  VoiceSubscriptionResponse,
+  VoiceUsageForecast,
+  VoiceUsageSummary,
+} from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
-import { VoiceAnalyticsView } from './VoiceAnalyticsView';
+import { VoiceAnalyticsView, VoiceUsageBillingSection } from './VoiceAnalyticsView';
 
 interface VoiceUsageAnalyticsPanelProps {
   orgId: string;
   isDarkMode: boolean;
   cardClassName: string;
-  onRequestSync?: () => Promise<void>;
+  conversations?: VoiceConversationEntry[];
 }
 
 export function VoiceUsageAnalyticsPanel({
   orgId,
   isDarkMode,
   cardClassName,
-  onRequestSync,
+  conversations = [],
 }: VoiceUsageAnalyticsPanelProps) {
-  const { t, locale } = useLanguage();
-  const moneyLocale = locale === 'de' ? 'de-DE' : 'en-US';
+  const { t } = useLanguage();
   const [usage, setUsage] = useState<VoiceUsageSummary | null>(null);
   const [forecast, setForecast] = useState<VoiceUsageForecast | null>(null);
+  const [subscription, setSubscription] = useState<VoiceSubscriptionResponse | null>(null);
+  const [plan, setPlan] = useState<VoicePlanCatalogEntry | null>(null);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [forecastError, setForecastError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,9 +40,20 @@ export function VoiceUsageAnalyticsPanel({
     setUsageError(null);
     setForecastError(null);
     try {
-      const usageData = await api.voiceAssistant.billing.usage(orgId);
+      const [usageData, subscriptionData] = await Promise.all([
+        api.voiceAssistant.billing.usage(orgId),
+        api.voiceAssistant.billing.subscription(orgId).catch(() => null),
+      ]);
       setUsage(usageData);
+      setSubscription(subscriptionData);
+
       if (usageData.planCode) {
+        try {
+          const plans = await api.voiceAssistant.billing.plans(orgId);
+          setPlan(plans.find(p => p.code === usageData.planCode) ?? null);
+        } catch {
+          setPlan(null);
+        }
         try {
           const forecastData = await api.voiceAssistant.billing.forecast(orgId);
           setForecast(forecastData);
@@ -90,23 +107,24 @@ export function VoiceUsageAnalyticsPanel({
           </div>
         ) : null}
 
-        {forecast && (
-          <p className="mt-3 text-[10px] text-muted-foreground">
-            {t('voice.analytics.forecast', {
-              amount: formatMoneyCents(forecast.projectedRevenueCents, forecast.currency, moneyLocale),
-            })}
-          </p>
-        )}
         {forecastError && (
           <p className="mt-2 text-[10px] text-muted-foreground">{forecastError}</p>
         )}
       </DataCard>
 
+      <VoiceUsageBillingSection
+        usage={usage}
+        forecast={forecast}
+        subscription={subscription}
+        plan={plan}
+        cardClassName={cardClassName}
+      />
+
       <VoiceAnalyticsView
         orgId={orgId}
         isDarkMode={isDarkMode}
         cardClassName={cardClassName}
-        onRequestSync={onRequestSync}
+        conversations={conversations}
       />
     </div>
   );

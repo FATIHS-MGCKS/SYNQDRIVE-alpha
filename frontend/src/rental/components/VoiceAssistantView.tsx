@@ -22,12 +22,17 @@ import { VoiceCommandHeader } from './voice-assistant/VoiceCommandHeader';
 import { VoiceOnboardingWizard } from './voice-assistant/VoiceOnboardingWizard';
 import { VoiceOperationsOverview } from './voice-assistant/VoiceOperationsOverview';
 import { VoiceConversationsPanel } from './voice-assistant/VoiceConversationsPanel';
-import { VoicePermissionGroupsPanel } from './voice-assistant/VoicePermissionGroupsPanel';
+import { VoiceAutomationsPanel } from './voice-assistant/VoiceAutomationsPanel';
 import { VoiceUsageAnalyticsPanel } from './voice-assistant/VoiceUsageAnalyticsPanel';
 import { VoiceAssistantBuilder } from './voice-assistant/VoiceAssistantBuilder';
 import { VoiceTelephonyWizard } from './voice-assistant/VoiceTelephonyWizard';
 import { VoiceWizardKnowledgeStep } from './voice-assistant/VoiceWizardKnowledgeStep';
 import { VoiceSettingsPanel } from './voice-assistant/VoiceSettingsPanel';
+import { VoiceAvailabilityPanel } from './voice-assistant/VoiceAvailabilityPanel';
+import { VoicePrivacySettingsPanel } from './voice-assistant/VoicePrivacySettingsPanel';
+import { VoiceBudgetSettingsPanel } from './voice-assistant/VoiceBudgetSettingsPanel';
+import { VoiceDiagnosticsPanel } from './voice-assistant/VoiceDiagnosticsPanel';
+import { VoicePermissionGroupsPanel } from './voice-assistant/VoicePermissionGroupsPanel';
 import { useVoiceWorkspace } from './voice-assistant/useVoiceWorkspace';
 import {
   maskTechnicalId,
@@ -157,7 +162,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   }, [showWizard, loadVoices]);
 
   useEffect(() => {
-    if (!showWizard && (opsTab === 'overview' || opsTab === 'conversations')) {
+    if (!showWizard && (opsTab === 'overview' || opsTab === 'conversations' || opsTab === 'analytics')) {
       void loadConversations();
     }
   }, [showWizard, opsTab, loadConversations]);
@@ -482,15 +487,8 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           />
         )}
 
-        {opsTab === 'automations' && assistant.toolPermissions && (
-          <VoicePermissionGroupsPanel
-            assistant={assistant}
-            draft={draft}
-            saving={saving}
-            hasDraft={Boolean(draft.toolPermissions)}
-            onModeChange={setPermissionPatch}
-            onSave={() => void save({ toolPermissions: draft.toolPermissions })}
-          />
+        {opsTab === 'automations' && (
+          <VoiceAutomationsPanel orgId={orgId} assistant={assistant} cardClassName={card} />
         )}
 
         {opsTab === 'analytics' && (
@@ -498,7 +496,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
             orgId={orgId}
             isDarkMode={isDarkMode}
             cardClassName={card}
-            onRequestSync={syncLogs}
+            conversations={conversations}
           />
         )}
 
@@ -549,13 +547,37 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
               />
             )}
             {settingsSection === 'availability' && (
-              <p className="text-[12px] text-muted-foreground">{t('voice.availability.description')}</p>
+              <VoiceAvailabilityPanel
+                assistant={assistant}
+                isDarkMode={isDarkMode}
+                saving={saving}
+                onSave={async payload => {
+                  await save(payload);
+                }}
+              />
             )}
             {settingsSection === 'privacy' && (
-              <p className="text-[12px] text-muted-foreground">{t('voice.activation.privacy')}</p>
+              <VoicePrivacySettingsPanel
+                assistant={assistant}
+                isDarkMode={isDarkMode}
+                saving={saving}
+                onSave={async payload => {
+                  await save(payload);
+                }}
+              />
             )}
             {settingsSection === 'budget' && (
-              <p className="text-[12px] text-muted-foreground">{t('voice.activation.budgetDesc')}</p>
+              <VoiceBudgetSettingsPanel orgId={orgId} isDarkMode={isDarkMode} />
+            )}
+            {settingsSection === 'diagnostics' && (
+              <VoiceDiagnosticsPanel
+                orgId={orgId}
+                assistant={assistant}
+                readiness={readiness}
+                onReadinessRefresh={() => {
+                  void refreshReadiness(orgId);
+                }}
+              />
             )}
           </VoiceSettingsPanel>
         )}
