@@ -10,6 +10,7 @@ describe('stations permissions UI wiring', () => {
     expect(listSource).toContain('useStationOrgSummaries');
     expect(listSource).toContain('stations.kpi.homeFleet');
     expect(listSource).toContain('stations.card.onSite');
+    expect(listSource).toContain('stations.permissions.noAccessTitle');
     expect(listSource).not.toContain('overviewStats');
     expect(listSource).not.toContain('loadOverviewBatch');
     expect(listSource).not.toContain('.catch(() => null)');
@@ -20,8 +21,21 @@ describe('stations permissions UI wiring', () => {
     const detailSource = readFileSync(resolve(stationsDir, 'StationDetailView.tsx'), 'utf8');
     expect(listSource).toContain('useStationsV2Permissions');
     expect(detailSource).toContain('useStationsV2Permissions');
-    expect(listSource).toContain('stations.permissions.noAccessTitle');
-    expect(detailSource).toContain('stations.detail.tab.activity');
+    expect(detailSource).toContain('buildStationDetailTabDescriptors');
+    expect(detailSource).toContain("activeTab === 'schedule'");
+    expect(detailSource).toContain("activeTab === 'operations'");
+    expect(detailSource).not.toContain('stations.detail.tab.staff');
+    expect(detailSource).not.toContain('stations.detail.staffEmptyTitle');
+    expect(detailSource).toContain("activeTab === 'activity'");
+    expect(detailSource).toContain('stationCaps.canViewActivity');
+  });
+
+  it('syncs station detail navigation through App URL helpers', () => {
+    const appSource = readFileSync(resolve(stationsDir, '../../App.tsx'), 'utf8');
+    expect(appSource).toContain('parseStationDetailFromUrl');
+    expect(appSource).toContain('writeStationDetailUrl');
+    expect(appSource).toContain('handleStationDetailBack');
+    expect(appSource).toContain('onTabChange={setStationDetailTab}');
   });
 
   it('gates sidebar stations navigation on stations read', () => {

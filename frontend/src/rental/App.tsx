@@ -5,6 +5,7 @@ import {
   chromeTabTriggerClass,
   CHROME_TAB_BAR_SCROLL_CLASS,
 } from '../components/patterns/chrome-tab-bar';
+import { SkeletonCard } from '../components/patterns';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
@@ -30,6 +31,12 @@ import {
 } from './components/settings/settingsTypes';
 import { StationsView } from './components/stations/StationsView';
 import { StationDetailView } from './components/stations/StationDetailView';
+import {
+  clearStationDetailUrl,
+  parseStationDetailFromUrl,
+  type StationDetailTab,
+  writeStationDetailUrl,
+} from './components/stations/station-detail-navigation';
 import { NewBookingView } from './components/NewBookingView';
 import { FinanceView } from './components/FinanceView';
 import type { FinanceTab } from './components/finance-navigation';
@@ -194,12 +201,19 @@ function RentalAppContent() {
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
   const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
+    if (typeof window !== 'undefined' && parseStationDetailFromUrl(window.location.search)) {
+      return 'station-detail';
+    }
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
     if (financeView) return financeView;
     return readPersistedSettingsView() ? 'settings' : 'dashboard';
   });
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
   const [detailStation, setDetailStation] = useState<import('../lib/api').Station | null>(null);
+  const [stationDetailTab, setStationDetailTab] = useState<StationDetailTab>(() => {
+    if (typeof window === 'undefined') return 'overview';
+    return parseStationDetailFromUrl(window.location.search)?.tab ?? 'overview';
+  });
   const [detailVendorId, setDetailVendorId] = useState<string | null>(null);
   // V4.6.99 — Pending Booking-Detail-Id für die Cross-View-Navigation
   // (Dashboard → BookingsView → Detail-Seite). Wird gesetzt, wenn ein
@@ -600,6 +614,75 @@ function RentalAppContent() {
     [fleetVehicles, openServiceCenter, selectedVehicle?.id],
   );
 
+  const openStationDetail = useCallback((station: import('../lib/api').Station, tab: StationDetailTab = 'overview') => {
+    setDetailStation(station);
+    setStationDetailTab(tab);
+    setCurrentView('station-detail');
+    writeStationDetailUrl(station.id, tab, 'push');
+  }, []);
+
+  useEffect(() => {
+    if (!orgId || typeof window === 'undefined') return;
+    const parsed = parseStationDetailFromUrl(window.location.search);
+    if (!parsed) return;
+
+    setCurrentView('station-detail');
+    setStationDetailTab(parsed.tab);
+    if (detailStation?.id === parsed.stationId) return;
+
+    let cancelled = false;
+    void api.stations.get(orgId, parsed.stationId)
+      .then((station) => {
+        if (!cancelled) setDetailStation(station);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDetailStation(null);
+          setCurrentView('stations');
+          clearStationDetailUrl();
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, detailStation?.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onPopState = () => {
+      const parsed = parseStationDetailFromUrl(window.location.search);
+      if (parsed) {
+        setCurrentView('station-detail');
+        setStationDetailTab(parsed.tab);
+        if (orgId && detailStation?.id !== parsed.stationId) {
+          void api.stations.get(orgId, parsed.stationId).then(setDetailStation).catch(() => {
+            setDetailStation(null);
+            setCurrentView('stations');
+          });
+        }
+        return;
+      }
+
+      setCurrentView((view) => (view === 'station-detail' ? 'stations' : view));
+      setDetailStation(null);
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [orgId, detailStation?.id]);
+
+  const handleStationDetailBack = useCallback(() => {
+    if (typeof window !== 'undefined' && parseStationDetailFromUrl(window.location.search)) {
+      window.history.back();
+      return;
+    }
+    setCurrentView('stations');
+    setDetailStation(null);
+    clearStationDetailUrl();
+  }, []);
+
   /** Central view router — maps legacy views to the new IA. */
   const handleViewChange = (view: string) => {
     if (view === 'fleet-condition') {
@@ -879,18 +962,24 @@ function RentalAppContent() {
             }}
           />
         ) : currentView === 'stations' ? (
-          <StationsView onOpenStation={(s) => { setDetailStation(s); setCurrentView('station-detail'); }} />
+          <StationsView onOpenStation={(s) => openStationDetail(s)} />
         ) : currentView === 'station-detail' && detailStation ? (
           <StationDetailView
             stationId={detailStation.id}
             initialStation={detailStation}
+            initialTab={stationDetailTab}
             isDarkMode={isDarkMode}
-            onBack={() => setCurrentView('stations')}
+            onBack={handleStationDetailBack}
+            onTabChange={setStationDetailTab}
             onOpenBooking={(bookingId) => {
               setPendingBookingDetailId(bookingId);
               setCurrentView('bookings');
             }}
           />
+        ) : currentView === 'station-detail' ? (
+          <div className="max-w-lg mx-auto py-8">
+            <SkeletonCard className="h-64 w-full" />
+          </div>
         ) : currentView === 'dashboard' ? (
           <DashboardView
             onVehicleSelect={(vehicle) => { setSelectedVehicle(vehicle); setCurrentView('overview'); }}

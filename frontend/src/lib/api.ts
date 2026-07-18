@@ -3901,6 +3901,8 @@ export const api = {
     },
     overviewStats: (orgId: string, stationId: string) =>
       get<StationOverviewStats>(`/organizations/${orgId}/stations/${stationId}/overview-stats`),
+    summary: (orgId: string, stationId: string) =>
+      get<StationSummaryReadModel>(`/organizations/${orgId}/stations/${stationId}/summary`),
     summaries: (orgId: string, params: StationOrgSummariesQueryParams = {}) =>
       get<StationOrgSummariesReadModel>(buildStationSummariesRequestPath(orgId, params)),
     summariesContract: (orgId: string) =>
@@ -3945,6 +3947,8 @@ export const api = {
       ),
     activity: (orgId: string, stationId: string) =>
       get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
+    team: (orgId: string, stationId: string) =>
+      get<StationTeamDto>(`/organizations/${orgId}/stations/${stationId}/team`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
     openingHoursContract: (orgId: string) =>
       get<StationOpeningHoursContractMetadata>(
@@ -9814,6 +9818,14 @@ export interface StationActivityEntry {
   description: string | null;
   userName: string;
   createdAt: string;
+}
+
+export interface StationTeamDto {
+  managerName: string | null;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+  staff: Array<{ id: string; name: string; role: string | null }>;
 }
 
 export interface StationUpsertPayload {
