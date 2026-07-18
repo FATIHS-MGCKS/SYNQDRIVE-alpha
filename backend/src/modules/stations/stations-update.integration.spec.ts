@@ -128,4 +128,24 @@ describe('StationsService update restrictions', () => {
       service.update(ORG, STATION_ID, { unknownField: 'x' } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('uses updateMany lock when expectedUpdatedAt is provided', async () => {
+    const updatedAt = new Date('2026-07-18T12:00:00.000Z');
+    (prisma.station.findFirstOrThrow as jest.Mock)
+      .mockResolvedValueOnce({ ...existingRow, updatedAt })
+      .mockResolvedValueOnce({ ...existingRow, name: 'Locked', updatedAt: new Date('2026-07-18T12:00:01.000Z') });
+    (prisma.station.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+
+    await service.update(ORG, STATION_ID, {
+      name: 'Locked',
+      expectedUpdatedAt: updatedAt.toISOString(),
+    });
+
+    expect(prisma.station.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: STATION_ID, organizationId: ORG, updatedAt },
+      }),
+    );
+    expect(prisma.station.update).not.toHaveBeenCalled();
+  });
 });

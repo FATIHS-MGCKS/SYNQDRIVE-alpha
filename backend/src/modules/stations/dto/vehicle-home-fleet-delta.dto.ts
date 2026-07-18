@@ -6,13 +6,21 @@ import {
   IsString,
   IsUUID,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+import { VehiclePositionVersionDto } from './assign-vehicle-station.dto';
 
 export class VehicleHomeFleetDeltaBaseDto {
   @IsArray()
   @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   vehicleIds!: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => VehiclePositionVersionDto)
+  expectedVersions?: VehiclePositionVersionDto[];
 
   @IsOptional()
   @IsString()

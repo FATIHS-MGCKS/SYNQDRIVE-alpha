@@ -3877,7 +3877,7 @@ export const api = {
     get: (orgId: string, id: string) => get<Station>(`/organizations/${orgId}/stations/${id}`),
     create: (orgId: string, data: StationUpsertPayload) =>
       post<Station>(`/organizations/${orgId}/stations`, data),
-    update: (orgId: string, id: string, data: Partial<StationUpsertPayload>) =>
+    update: (orgId: string, id: string, data: Partial<StationUpsertPayload> & { expectedUpdatedAt?: string }) =>
       patch<Station>(`/organizations/${orgId}/stations/${id}`, data),
     /**
      * @deprecated Stations cannot be hard-deleted. Use `archive()` instead.
@@ -3889,11 +3889,13 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
     restore: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/restore`, {}),
-    setPrimary: async (orgId: string, id: string) => {
+    setPrimary: async (orgId: string, id: string, options?: { expectedUpdatedAt?: string }) => {
       const result = await post<{
         outcome: string;
         station: Station;
-      }>(`/organizations/${orgId}/stations/${id}/set-primary`, {});
+      }>(`/organizations/${orgId}/stations/${id}/set-primary`, {
+        ...(options?.expectedUpdatedAt ? { expectedUpdatedAt: options.expectedUpdatedAt } : {}),
+      });
       return result.station;
     },
     overviewStats: (orgId: string, stationId: string) =>
@@ -4006,6 +4008,22 @@ export const api = {
         `/organizations/${orgId}/stations/vehicles/change-home-station`,
         body,
       ),
+    updateVehicleCurrentStation: (
+      orgId: string,
+      body: {
+        vehicleId: string;
+        currentStationId?: string | null;
+        expectedStationId?: string | null;
+        expectedVersion?: number;
+      },
+    ) =>
+      patch<{
+        id: string;
+        homeStationId: string | null;
+        currentStationId: string | null;
+        expectedStationId: string | null;
+        stationPositionVersion: number;
+      }>(`/organizations/${orgId}/stations/vehicles/current-station`, body),
     previewHomeFleetAssignment: (
       orgId: string,
       stationId: string,
@@ -4047,10 +4065,21 @@ export const api = {
       stationId: string,
       vehicleId: string,
       target: 'home' | 'current' | 'expected' = 'home',
+      expectedVersion?: number,
     ) =>
-      post<{ id: string; homeStationId: string | null; currentStationId: string | null; expectedStationId: string | null }>(
+      post<{
+        id: string;
+        homeStationId: string | null;
+        currentStationId: string | null;
+        expectedStationId: string | null;
+        stationPositionVersion: number;
+      }>(
         `/organizations/${orgId}/stations/${stationId}/assign-vehicle`,
-        { vehicleId, target },
+        {
+          vehicleId,
+          target,
+          ...(expectedVersion != null ? { expectedVersion } : {}),
+        },
       ),
     /**
      * V4.7.07 — Geocode all stations in this org that are missing
@@ -9497,6 +9526,7 @@ export interface VehicleHomeFleetDeltaRequest {
   vehicleIds: string[];
   idempotencyKey?: string;
   reason?: string;
+  expectedVersions?: Array<{ vehicleId: string; expectedVersion: number }>;
 }
 
 export interface HomeAssignmentPreviewProposal {
@@ -9537,12 +9567,18 @@ export interface HomeAssignmentPreviewItem {
   moveToStationId: string | null;
   conflicts: Array<{ code: string; message: string }>;
   warnings: Array<{ code: string; message: string }>;
+  concurrency: {
+    stationPositionVersion: number;
+  };
 }
 
 export interface HomeAssignmentPreviewResult {
   organizationId: string;
   contextStationId: string;
   contextStationName: string;
+  concurrency: {
+    contextStationUpdatedAt: string;
+  };
   summary: {
     requested: number;
     evaluated: number;

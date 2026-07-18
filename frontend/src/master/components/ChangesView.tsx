@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-optimistic-concurrency-v49618-2026-07-18',
+    version: '4.9.618',
+    title: 'V4.9.618 — Stations V2: Optimistic Concurrency (Prompt 38/78)',
+    summary: [
+      'Station-Stammdaten und Betriebsregeln: optionales `expectedUpdatedAt` auf `PATCH /stations/:id` — stale Requests → HTTP 409 (`STATION_UPDATED_AT_CONFLICT`).',
+      'Primary-Wechsel: optionales `expectedUpdatedAt` auf `POST .../set-primary`; transaktionaler `updateMany`-Lock auf `Station.updatedAt`.',
+      'Fahrzeug-Position: optionales `expectedVersion` auf Current-Location-Korrektur, Transfer-Assign und Home-Fleet-Deltas; Preview liefert `concurrency.contextStationUpdatedAt` + pro Item `stationPositionVersion`.',
+      'Apply prüft dieselbe Version wie Preview; ohne Version bleibt Legacy-Verhalten kompatibel; klare 409-Recovery für parallele Updates.',
+    ],
+    reason:
+      'Kritische Station-/Fleet-Mutationen brauchen verlustfreie Parallelitätskontrolle — Preview und Apply müssen dieselbe Version teilen.',
+    previousBehavior:
+      'Keine explizite Versionsprüfung auf Station-PATCH/Set-Primary; Fahrzeug-Writer hatten teils nur implizite `updateMany`-Locks ohne Client-Version.',
+    details:
+      '`station-optimistic-concurrency.util` + Integrationstests; DTOs `expectedUpdatedAt`/`expectedVersion`/`expectedVersions`; Frontend `api.stations` erweitert.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T20:00:00.000Z',
+  },
+  {
     id: 'stations-v2-home-assignment-preview-v49617-2026-07-18',
     version: '4.9.617',
     title: 'V4.9.617 — Stations V2: Home Assignment Preview (Prompt 37/78)',

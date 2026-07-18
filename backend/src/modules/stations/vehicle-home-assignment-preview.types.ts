@@ -38,6 +38,14 @@ export interface HomeAssignmentPreviewIssue {
   message: string;
 }
 
+export interface HomeAssignmentPreviewConcurrency {
+  contextStationUpdatedAt: string;
+}
+
+export interface HomeAssignmentPreviewItemConcurrency {
+  stationPositionVersion: number;
+}
+
 export interface HomeAssignmentPreviewStationRef {
   id: string;
   name: string;
@@ -67,6 +75,7 @@ export interface HomeAssignmentPreviewItem {
   moveToStationId: string | null;
   conflicts: HomeAssignmentPreviewIssue[];
   warnings: HomeAssignmentPreviewIssue[];
+  concurrency: HomeAssignmentPreviewItemConcurrency;
 }
 
 export interface HomeAssignmentPreviewSummary {
@@ -91,6 +100,7 @@ export interface HomeAssignmentPreviewResult {
   organizationId: string;
   contextStationId: string;
   contextStationName: string;
+  concurrency: HomeAssignmentPreviewConcurrency;
   summary: HomeAssignmentPreviewSummary;
   batch: HomeAssignmentPreviewBatchMeta;
   items: HomeAssignmentPreviewItem[];
@@ -109,5 +119,6 @@ export interface HomeAssignmentPreviewVehicleRow {
   homeStationId: string | null;
   currentStationId: string | null;
   expectedStationId: string | null;
+  stationPositionVersion: number;
   status: VehicleStatus;
 }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { buildStationPositionVersionConflictIssue } from '@shared/stations/station-optimistic-concurrency.util';
 import {
   assertHomeFleetTargetStationAssignable,
   buildHomeFleetVehicleIdempotencyKey,
@@ -25,6 +26,19 @@ type VehicleRow = {
   status: VehicleHomeFleetDeltaVehicleSnapshot['status'];
 };
 
+type VehicleHomeFleetDeltaOptions = {
+  idempotencyKey?: string | null;
+  reason?: string | null;
+  expectedVersions?: Array<{ vehicleId: string; expectedVersion: number }>;
+};
+
+function toExpectedVersionMap(
+  items?: Array<{ vehicleId: string; expectedVersion: number }>,
+): Map<string, number> | undefined {
+  if (!items?.length) return undefined;
+  return new Map(items.map((item) => [item.vehicleId, item.expectedVersion]));
+}
+
 @Injectable()
 export class VehicleHomeFleetDeltaService {
   constructor(private readonly prisma: PrismaService) {}
@@ -33,7 +47,7 @@ export class VehicleHomeFleetDeltaService {
     organizationId: string,
     stationId: string,
     vehicleIds: string[],
-    options?: { idempotencyKey?: string | null; reason?: string | null },
+    options?: VehicleHomeFleetDeltaOptions,
   ): Promise<VehicleHomeFleetDeltaBatchResult> {
     const station = await this.requireAssignableTargetStation(organizationId, stationId);
     if (!station) {
@@ -46,6 +60,7 @@ export class VehicleHomeFleetDeltaService {
       stationId,
       vehicleIds,
       batchIdempotencyKey: options?.idempotencyKey ?? null,
+      expectedVersions: toExpectedVersionMap(options?.expectedVersions),
       evaluate: (vehicle) =>
         evaluateAddVehicleToHomeStation({
           vehicleId: vehicle.id,
@@ -60,7 +75,7 @@ export class VehicleHomeFleetDeltaService {
     organizationId: string,
     stationId: string,
     vehicleIds: string[],
-    options?: { idempotencyKey?: string | null; reason?: string | null },
+    options?: VehicleHomeFleetDeltaOptions,
   ): Promise<VehicleHomeFleetDeltaBatchResult> {
     const station = await this.prisma.station.findFirst({
       where: { id: stationId, organizationId },
@@ -76,6 +91,7 @@ export class VehicleHomeFleetDeltaService {
       stationId,
       vehicleIds,
       batchIdempotencyKey: options?.idempotencyKey ?? null,
+      expectedVersions: toExpectedVersionMap(options?.expectedVersions),
       evaluate: (vehicle) =>
         evaluateRemoveVehicleFromHomeStation({
           sourceStationId: stationId,
@@ -90,7 +106,7 @@ export class VehicleHomeFleetDeltaService {
     sourceStationId: string,
     targetStationId: string,
     vehicleIds: string[],
-    options?: { idempotencyKey?: string | null; reason?: string | null },
+    options?: VehicleHomeFleetDeltaOptions,
   ): Promise<VehicleHomeFleetDeltaBatchResult> {
     const [sourceStation, targetStation] = await Promise.all([
       this.prisma.station.findFirst({
@@ -114,6 +130,7 @@ export class VehicleHomeFleetDeltaService {
       targetStationId,
       vehicleIds,
       batchIdempotencyKey: options?.idempotencyKey ?? null,
+      expectedVersions: toExpectedVersionMap(options?.expectedVersions),
       evaluate: (vehicle) =>
         evaluateMoveVehicleToHomeStation({
           sourceStationId,
@@ -149,6 +166,7 @@ export class VehicleHomeFleetDeltaService {
     targetStationId?: string;
     vehicleIds: string[];
     batchIdempotencyKey: string | null;
+    expectedVersions?: Map<string, number>;
     evaluate: (
       vehicle: VehicleRow,
     ) => Pick<VehicleHomeFleetDeltaItemResult, 'outcome' | 'warnings' | 'error'> & {
@@ -209,6 +227,22 @@ export class VehicleHomeFleetDeltaService {
       }
 
       const evaluation = input.evaluate(vehicle);
+      const clientExpectedVersion = input.expectedVersions?.get(vehicleId);
+      if (
+        clientExpectedVersion !== undefined &&
+        clientExpectedVersion !== vehicle.stationPositionVersion
+      ) {
+        results.push({
+          vehicleId,
+          idempotencyKey,
+          outcome: VehicleHomeFleetDeltaItemOutcome.FAILED,
+          vehicle: this.toSnapshot(vehicle),
+          warnings: [],
+          error: buildStationPositionVersionConflictIssue(),
+        });
+        continue;
+      }
+
       if (
         evaluation.outcome === VehicleHomeFleetDeltaItemOutcome.IDEMPOTENT ||
         evaluation.outcome === VehicleHomeFleetDeltaItemOutcome.FAILED
@@ -228,6 +262,7 @@ export class VehicleHomeFleetDeltaService {
         input.organizationId,
         vehicle,
         evaluation.nextHomeStationId,
+        clientExpectedVersion,
       );
 
       results.push({
@@ -255,12 +290,14 @@ export class VehicleHomeFleetDeltaService {
     organizationId: string,
     vehicle: VehicleRow,
     nextHomeStationId: string | null,
+    expectedVersion?: number,
   ): Promise<Pick<VehicleHomeFleetDeltaItemResult, 'outcome' | 'vehicle' | 'error'>> {
+    const versionForUpdate = expectedVersion ?? vehicle.stationPositionVersion;
     const updateResult = await this.prisma.vehicle.updateMany({
       where: {
         id: vehicle.id,
         organizationId,
-        stationPositionVersion: vehicle.stationPositionVersion,
+        stationPositionVersion: versionForUpdate,
       },
       data: {
         homeStationId: nextHomeStationId,
@@ -284,11 +321,7 @@ export class VehicleHomeFleetDeltaService {
       return {
         outcome: VehicleHomeFleetDeltaItemOutcome.FAILED,
         vehicle: latest ? this.toSnapshot(latest) : this.toSnapshot(vehicle),
-        error: {
-          code: VehicleHomeFleetDeltaIssueCode.VERSION_CONFLICT,
-          message:
-            'Vehicle station position version conflict. Reload the vehicle and retry the delta operation.',
-        },
+        error: buildStationPositionVersionConflictIssue(),
       };
     }
 

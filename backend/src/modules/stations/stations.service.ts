@@ -33,6 +33,12 @@ import {
 } from './station-location-masterdata.util';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
+import {
+  assertStationPositionVersionMatches,
+  assertStationUpdatedAtMatches,
+  buildStationPositionVersionConflictIssue,
+} from '@shared/stations/station-optimistic-concurrency.util';
+import { StationConcurrencyErrorCode } from '@shared/stations/station-optimistic-concurrency.constants';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import {
   evaluateStationGeofenceCapability,
@@ -390,19 +396,28 @@ export class StationsService {
     id: string,
     payload: StationPatchPayload,
   ): Promise<StationDto> {
+    const { expectedUpdatedAt, ...patchPayload } = payload;
     const existing = await this.prisma.station.findFirstOrThrow({
       where: { id, organizationId },
     });
 
-    assertGenericStationUpdateAllowed(payload as StationUpdatePayload, {
+    if (expectedUpdatedAt !== undefined) {
+      assertStationUpdatedAtMatches({
+        expectedUpdatedAt,
+        actualUpdatedAt: existing.updatedAt,
+        resourceLabel: 'Station master data',
+      });
+    }
+
+    assertGenericStationUpdateAllowed(patchPayload as StationUpdatePayload, {
       status: existing.status,
       pickupEnabled: existing.pickupEnabled,
       returnEnabled: existing.returnEnabled,
     });
 
-    const writable = buildStationPatchWriteData(payload as StationUpdatePayload);
-    if (payload.radiusMeters !== undefined) {
-      const r = payload.radiusMeters;
+    const writable = buildStationPatchWriteData(patchPayload as StationUpdatePayload);
+    if (patchPayload.radiusMeters !== undefined) {
+      const r = patchPayload.radiusMeters;
       if (r === null) {
         writable.radiusMeters = null;
       } else {
@@ -411,13 +426,13 @@ export class StationsService {
     }
 
     if (payload.name !== undefined) {
-      const trimmed = payload.name?.trim();
+      const trimmed = patchPayload.name?.trim();
       if (!trimmed) throw new BadRequestException('Station name cannot be empty');
       writable.name = trimmed;
     }
 
-    if (payload.code) {
-      const normalizedCode = payload.code.trim();
+    if (patchPayload.code) {
+      const normalizedCode = patchPayload.code.trim();
       const dup = await this.prisma.station.findFirst({
         where: { organizationId, code: normalizedCode, id: { not: id } },
       });
@@ -425,11 +440,11 @@ export class StationsService {
       writable.code = normalizedCode;
     }
 
-    const wantsLatChange = payload.latitude !== undefined;
-    const wantsLngChange = payload.longitude !== undefined;
+    const wantsLatChange = patchPayload.latitude !== undefined;
+    const wantsLngChange = patchPayload.longitude !== undefined;
     if (wantsLatChange || wantsLngChange) {
-      const nextLat = wantsLatChange ? payload.latitude : existing.latitude;
-      const nextLng = wantsLngChange ? payload.longitude : existing.longitude;
+      const nextLat = wantsLatChange ? patchPayload.latitude : existing.latitude;
+      const nextLng = wantsLngChange ? patchPayload.longitude : existing.longitude;
       if (nextLat == null && nextLng == null) {
         Object.assign(
           writable,
@@ -444,17 +459,17 @@ export class StationsService {
     }
 
     const addressFieldsTouched =
-      payload.address !== undefined ||
-      payload.city !== undefined ||
-      payload.postalCode !== undefined ||
-      payload.country !== undefined;
+      patchPayload.address !== undefined ||
+      patchPayload.city !== undefined ||
+      patchPayload.postalCode !== undefined ||
+      patchPayload.country !== undefined;
     if (!wantsLatChange && !wantsLngChange && addressFieldsTouched) {
       const coords = await this.geocodeAddress({
-        address: payload.address !== undefined ? payload.address : existing.address,
-        city: payload.city !== undefined ? payload.city : existing.city,
+        address: patchPayload.address !== undefined ? patchPayload.address : existing.address,
+        city: patchPayload.city !== undefined ? patchPayload.city : existing.city,
         postalCode:
-          payload.postalCode !== undefined ? payload.postalCode : existing.postalCode,
-        country: payload.country !== undefined ? payload.country : existing.country,
+          patchPayload.postalCode !== undefined ? patchPayload.postalCode : existing.postalCode,
+        country: patchPayload.country !== undefined ? patchPayload.country : existing.country,
       });
       if (coords) {
         writable.latitude = coords.latitude;
@@ -464,6 +479,24 @@ export class StationsService {
           resolveStationCoordinatesProvenance({ geocodedCoordinates: true }),
         );
       }
+    }
+
+    if (expectedUpdatedAt !== undefined) {
+      const updated = await this.prisma.station.updateMany({
+        where: { id, organizationId, updatedAt: existing.updatedAt },
+        data: writable,
+      });
+      if (updated.count === 0) {
+        throw new ConflictException({
+          message: 'Station master data was updated by another request. Reload and retry.',
+          code: StationConcurrencyErrorCode.STATION_UPDATED_AT_CONFLICT,
+        });
+      }
+      const station = await this.prisma.station.findFirstOrThrow({
+        where: { id, organizationId },
+        include: this.stationIncludeCount(),
+      });
+      return this.toDto(station, station._count.vehiclesHome);
     }
 
     const station = await this.prisma.station.update({
@@ -1117,12 +1150,23 @@ export class StationsService {
     organizationId: string,
     id: string,
     performedByUserId?: string | null,
+    options?: { expectedUpdatedAt?: string },
   ): Promise<StationSetPrimaryCommandResult<StationDto>> {
     const station = await this.prisma.station.findFirst({
       where: { id, organizationId },
       include: this.stationIncludeCount(),
     });
     if (!station) throw new NotFoundException(`Station ${id} not found`);
+
+    if (options?.expectedUpdatedAt !== undefined) {
+      assertStationUpdatedAtMatches({
+        expectedUpdatedAt: options.expectedUpdatedAt,
+        actualUpdatedAt: station.updatedAt,
+        resourceLabel: 'Primary station change',
+      });
+    }
+
+    const stationUpdatedAtForLock = station.updatedAt;
 
     const preflight = await this.loadSetPrimaryPreflight(organizationId, station.id);
     const evaluation = evaluateStationSetPrimaryCommand({
@@ -1202,9 +1246,19 @@ export class StationsService {
           });
         }
 
-        const updatedStation = await tx.station.update({
-          where: { id },
+        const updatedResult = await tx.station.updateMany({
+          where: { id, organizationId, updatedAt: stationUpdatedAtForLock },
           data: { isPrimary: true, status: 'ACTIVE' },
+        });
+        if (updatedResult.count === 0) {
+          throw new ConflictException({
+            message: 'Primary station change conflict. Reload and retry.',
+            code: StationConcurrencyErrorCode.STATION_UPDATED_AT_CONFLICT,
+          });
+        }
+
+        const updatedStation = await tx.station.findFirstOrThrow({
+          where: { id, organizationId },
           include: this.stationIncludeCount(),
         });
 
@@ -2095,7 +2149,28 @@ export class StationsService {
     stationId: string,
     vehicleId: string,
     target: 'home' | 'current' | 'expected' = 'home',
+    expectedVersion?: number,
   ) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+      select: {
+        id: true,
+        homeStationId: true,
+        currentStationId: true,
+        expectedStationId: true,
+        stationPositionVersion: true,
+      },
+    });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+    if (expectedVersion !== undefined) {
+      assertStationPositionVersionMatches({
+        expectedVersion,
+        actualVersion: vehicle.stationPositionVersion,
+        resourceLabel: 'Vehicle station assignment',
+      });
+    }
+
     await this.stationValidation.assertVehicleStationAssignment(
       organizationId,
       vehicleId,
@@ -2103,24 +2178,36 @@ export class StationsService {
       target,
     );
 
-    const data: Prisma.VehicleUpdateInput = {};
-    if (target === 'home') {
-      data.homeStation = { connect: { id: stationId } };
-      data.currentStation = { connect: { id: stationId } };
-    } else if (target === 'current') {
-      data.currentStation = { connect: { id: stationId } };
-    } else {
-      data.expectedStation = { connect: { id: stationId } };
+    const versionForUpdate = expectedVersion ?? vehicle.stationPositionVersion;
+    const updateResult = await this.prisma.vehicle.updateMany({
+      where: {
+        id: vehicleId,
+        organizationId,
+        stationPositionVersion: versionForUpdate,
+      },
+      data: {
+        homeStationId: target === 'home' ? stationId : undefined,
+        currentStationId: target === 'home' || target === 'current' ? stationId : undefined,
+        expectedStationId: target === 'expected' ? stationId : undefined,
+        stationPositionVersion: { increment: 1 },
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new ConflictException({
+        message: buildStationPositionVersionConflictIssue().message,
+        code: StationConcurrencyErrorCode.STATION_POSITION_VERSION_CONFLICT,
+      });
     }
 
-    return this.prisma.vehicle.update({
-      where: { id: vehicleId },
-      data,
+    return this.prisma.vehicle.findFirstOrThrow({
+      where: { id: vehicleId, organizationId },
       select: {
         id: true,
         homeStationId: true,
         currentStationId: true,
         expectedStationId: true,
+        stationPositionVersion: true,
       },
     });
   }
@@ -2130,11 +2217,24 @@ export class StationsService {
     vehicleId: string,
     currentStationId: string | null,
     expectedStationId?: string | null,
+    expectedVersion?: number,
   ) {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId },
+      select: {
+        id: true,
+        stationPositionVersion: true,
+      },
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+    if (expectedVersion !== undefined) {
+      assertStationPositionVersionMatches({
+        expectedVersion,
+        actualVersion: vehicle.stationPositionVersion,
+        resourceLabel: 'Vehicle current location correction',
+      });
+    }
 
     if (currentStationId) {
       await this.stationValidation.assertVehicleStationAssignment(
@@ -2153,17 +2253,35 @@ export class StationsService {
       );
     }
 
-    return this.prisma.vehicle.update({
-      where: { id: vehicleId },
+    const versionForUpdate = expectedVersion ?? vehicle.stationPositionVersion;
+    const updateResult = await this.prisma.vehicle.updateMany({
+      where: {
+        id: vehicleId,
+        organizationId,
+        stationPositionVersion: versionForUpdate,
+      },
       data: {
         currentStationId,
         ...(expectedStationId !== undefined ? { expectedStationId } : {}),
+        stationPositionVersion: { increment: 1 },
       },
+    });
+
+    if (updateResult.count === 0) {
+      throw new ConflictException({
+        message: buildStationPositionVersionConflictIssue().message,
+        code: StationConcurrencyErrorCode.STATION_POSITION_VERSION_CONFLICT,
+      });
+    }
+
+    return this.prisma.vehicle.findFirstOrThrow({
+      where: { id: vehicleId, organizationId },
       select: {
         id: true,
         homeStationId: true,
         currentStationId: true,
         expectedStationId: true,
+        stationPositionVersion: true,
       },
     });
   }

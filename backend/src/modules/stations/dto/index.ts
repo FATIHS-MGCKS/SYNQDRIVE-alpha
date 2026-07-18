@@ -4,6 +4,7 @@ export * from './list-stations-query.dto';
 export * from './assign-vehicle-station.dto';
 export * from './change-vehicle-home-station.dto';
 export * from './vehicle-home-fleet-delta.dto';
+export * from './set-primary-station.dto';
 export * from './vehicle-home-assignment-preview.dto';
 export * from './set-station-vehicles.dto';
 export * from './station-mapbox-search.dto';
