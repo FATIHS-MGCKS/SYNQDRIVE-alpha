@@ -1,4 +1,4 @@
-import { StationStatus, VehicleStatus } from '@prisma/client';
+import { CleaningStatus, StationStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
@@ -6,6 +6,7 @@ import { STATION_SCOPE_MODE } from '@shared/stations/station-scope.constants';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import { StationOrgSummariesLimitCode } from '@shared/stations/station-org-summaries.contract';
 import { StationSummaryReadModelService } from './station-summary-read-model.service';
+import { StationVehicleRuntimeLoader } from './station-vehicle-runtime.loader';
 
 const ORG = 'org-org-summaries';
 const STATION_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -26,7 +27,33 @@ describe('StationSummaryReadModelService org summaries', () => {
     prisma,
     new StationScopeService(prisma),
   );
-  const service = new StationSummaryReadModelService(prisma, stationAccessScope);
+  const stationVehicleRuntimeLoader = {
+    loadRuntimeSnapshots: jest.fn().mockImplementation(async (_orgId: string, vehicles: Array<{ id: string; status: VehicleStatus }>) =>
+      vehicles.map((vehicle) => ({
+        vehicleId: vehicle.id,
+        vehicleStatus: vehicle.status,
+        cleaningStatus: CleaningStatus.CLEAN,
+        operational: {
+          token: 'AVAILABLE' as const,
+          reason: null,
+          dataQualityState: 'RELIABLE' as const,
+          dataQualityReasons: [],
+          isReliable: true,
+          maintenanceReason: null,
+        },
+        telemetry: {
+          lastSignalAt: '2026-07-18T12:00:00.000Z',
+          signalAgeMs: 60_000,
+        },
+        health: null,
+      })),
+    ),
+  } as unknown as StationVehicleRuntimeLoader;
+  const service = new StationSummaryReadModelService(
+    prisma,
+    stationAccessScope,
+    stationVehicleRuntimeLoader,
+  );
 
   const assignedScope: StationScopeContext = {
     orgId: ORG,
@@ -217,7 +244,33 @@ describe('StationSummaryReadModelService org summaries performance', () => {
     prisma,
     new StationScopeService(prisma),
   );
-  const service = new StationSummaryReadModelService(prisma, stationAccessScope);
+  const stationVehicleRuntimeLoader = {
+    loadRuntimeSnapshots: jest.fn().mockImplementation(async (_orgId: string, vehicles: Array<{ id: string; status: VehicleStatus }>) =>
+      vehicles.map((vehicle) => ({
+        vehicleId: vehicle.id,
+        vehicleStatus: vehicle.status,
+        cleaningStatus: CleaningStatus.CLEAN,
+        operational: {
+          token: 'AVAILABLE' as const,
+          reason: null,
+          dataQualityState: 'RELIABLE' as const,
+          dataQualityReasons: [],
+          isReliable: true,
+          maintenanceReason: null,
+        },
+        telemetry: {
+          lastSignalAt: '2026-07-18T12:00:00.000Z',
+          signalAgeMs: 60_000,
+        },
+        health: null,
+      })),
+    ),
+  } as unknown as StationVehicleRuntimeLoader;
+  const service = new StationSummaryReadModelService(
+    prisma,
+    stationAccessScope,
+    stationVehicleRuntimeLoader,
+  );
 
   const allScope: StationScopeContext = {
     orgId: ORG,

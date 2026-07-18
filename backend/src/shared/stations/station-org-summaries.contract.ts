@@ -50,7 +50,13 @@ export interface StationOrgGlobalKpis {
   expectedArrivalCount: number;
   currentlyRentedHomeVehicles: number;
   readyToRentOnSite: number;
+  notReadyOnSite: number;
   blockedOrMaintenanceOnSite: number;
+  criticalOnSite: number;
+  warningOnSite: number;
+  telemetryOfflineOnSite: number;
+  complianceBlockerOnSite: number;
+  vehiclesWithHealthWarningsOnSite: number;
   pickupsToday: number;
   returnsToday: number;
   overdueReturns: number;

@@ -37,6 +37,8 @@ import {
   buildFleetOperationalStateDto,
   type FleetVehicleOperationalStateDto,
 } from './operational/fleet-operational-state.util';
+import type { VehicleRuntimeProjectionInput } from '@shared/vehicle-runtime-state/vehicle-runtime-state.contract';
+import type { VehicleHealth } from '@modules/rental-health/rental-health.types';
 import { FleetMapCacheService } from './fleet-map-cache.service';
 import { VehicleDrivingCapabilityLifecycleService } from '../vehicle-intelligence/driving-capability/vehicle-driving-capability-lifecycle.service';
 import type { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
@@ -2397,5 +2399,88 @@ export class VehiclesService {
     }
 
     return complaint;
+  }
+
+  /**
+   * Batch-build canonical runtime projection inputs for station KPI aggregation.
+   * Operational truth comes from `deriveFleetStatusContext`; health is attached
+   * by the caller when available.
+   */
+  async buildVehicleRuntimeProjectionInputs(
+    organizationId: string,
+    vehicles: Array<{
+      id: string;
+      status: VehicleStatus;
+      cleaningStatus: CleaningStatus;
+      latestState: {
+        lastSeenAt: Date | null;
+        odometerKm: number | null;
+        speedKmh?: number | null;
+        isIgnitionOn?: boolean | null;
+      } | null;
+    }>,
+    healthByVehicleId: Map<string, VehicleHealth | null> = new Map(),
+  ): Promise<VehicleRuntimeProjectionInput[]> {
+    if (vehicles.length === 0) return [];
+
+    const vehicleIds = vehicles.map((vehicle) => vehicle.id);
+    const bookingBundle = await this.buildBookingContextMap(organizationId, vehicleIds);
+    const activeBookingIds = Array.from(bookingBundle.map.values())
+      .map((ctx) => ctx.activeBookingId)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
+    );
+
+    return vehicles.map((vehicle) => {
+      const bookingCtx = bookingBundle.map.get(vehicle.id) ?? null;
+      const fleetCtx = this.deriveFleetStatusContext({
+        vehicle: { id: vehicle.id, status: vehicle.status },
+        state: vehicle.latestState
+          ? {
+              odometerKm: vehicle.latestState.odometerKm,
+            }
+          : null,
+        bookingCtx,
+        pickupOdoByBooking,
+        bookingContextLoadFailed: bookingBundle.loadFailed,
+      });
+
+      const interpreted = interpretVehicleState(
+        {
+          lastSeenAt: vehicle.latestState?.lastSeenAt ?? null,
+          speedKmh: vehicle.latestState?.speedKmh ?? null,
+          isIgnitionOn: vehicle.latestState?.isIgnitionOn ?? null,
+          engineLoad: null,
+          tractionBatteryPowerKw: null,
+          coolantTempC: null,
+          odometerKm: vehicle.latestState?.odometerKm ?? null,
+        },
+        null,
+      );
+
+      const operational = fleetCtx.operationalState;
+      return {
+        vehicleId: vehicle.id,
+        vehicleStatus: vehicle.status,
+        cleaningStatus: vehicle.cleaningStatus,
+        operational: bookingBundle.loadFailed
+          ? null
+          : {
+              token: operational.status,
+              reason: operational.reason,
+              dataQualityState: operational.dataQualityState,
+              dataQualityReasons: operational.dataQualityReasons,
+              isReliable: operational.isReliable,
+              maintenanceReason: fleetCtx.maintenanceCtx.maintenanceReason,
+            },
+        telemetry: {
+          lastSignalAt: interpreted.lastSignal || null,
+          signalAgeMs: null,
+        },
+        health: healthByVehicleId.get(vehicle.id) ?? null,
+      } satisfies VehicleRuntimeProjectionInput;
+    });
   }
 }

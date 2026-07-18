@@ -33,6 +33,8 @@ import {
 } from './station-location-masterdata.util';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import type { StationAccessScope } from '@shared/stations/station-access-scope.types';
+import { projectVehicleRuntimeFlags } from '@shared/vehicle-runtime-state/vehicle-runtime-state.resolver';
+import { StationVehicleRuntimeLoader } from './station-vehicle-runtime.loader';
 import {
   assertStationPositionVersionMatches,
   assertStationUpdatedAtMatches,
@@ -289,6 +291,7 @@ export class StationsService {
     private readonly stationValidation: StationValidationService,
     private readonly stationAccessScope: StationAccessScopeService,
     private readonly stationOperations: StationOperationsService,
+    private readonly stationVehicleRuntimeLoader: StationVehicleRuntimeLoader,
   ) {}
 
   private stationIncludeCount() {
@@ -1504,6 +1507,43 @@ export class StationsService {
       ),
     });
 
+    const onSiteVehicles = await this.prisma.vehicle.findMany({
+      where: {
+        ...stationVehicleWhere,
+        currentStationId: stationId,
+      },
+      select: {
+        id: true,
+        homeStationId: true,
+        currentStationId: true,
+        expectedStationId: true,
+        status: true,
+        cleaningStatus: true,
+        latestState: {
+          select: {
+            lastSeenAt: true,
+            odometerKm: true,
+            speedKmh: true,
+            isIgnitionOn: true,
+          },
+        },
+      },
+    });
+
+    const vehiclesWithHealthWarnings = await (async () => {
+      if (onSiteVehicles.length === 0) return 0;
+      const runtimeSnapshots = await this.stationVehicleRuntimeLoader.loadRuntimeSnapshots(
+        organizationId,
+        onSiteVehicles,
+      );
+      return runtimeSnapshots.reduce((count, snapshot) => {
+        const flags = projectVehicleRuntimeFlags(snapshot, {
+          evaluatedAt: new Date().toISOString(),
+        });
+        return flags.known && flags.hasHealthWarning ? count + 1 : count;
+      }, 0);
+    })();
+
     const capacity = station.capacity ?? null;
     const capacityUsagePercent =
       capacity != null && capacity > 0
@@ -1515,7 +1555,7 @@ export class StationsService {
       availableVehicles,
       bookedVehicles,
       inServiceVehicles,
-      vehiclesWithHealthWarnings: null,
+      vehiclesWithHealthWarnings,
       todayPickups,
       todayReturns,
       upcomingPickups,

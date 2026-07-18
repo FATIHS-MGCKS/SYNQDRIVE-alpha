@@ -1,4 +1,6 @@
 import { StationCalendarExceptionStatus } from '@prisma/client';
+import type { CleaningStatus, VehicleStatus } from '@prisma/client';
+import type { VehicleRuntimeProjectionInput } from '@shared/vehicle-runtime-state/vehicle-runtime-state.contract';
 import type { StationAccessScope } from './station-access-scope.types';
 import { STATION_SCOPE_MODE } from './station-scope.constants';
 import { resolveStationKpis } from './station-kpis.resolver';
@@ -61,7 +63,14 @@ export type StationSummaryVehicleRow = {
   homeStationId: string | null;
   currentStationId: string | null;
   expectedStationId: string | null;
-  status: import('@prisma/client').VehicleStatus;
+  status: VehicleStatus;
+  cleaningStatus: CleaningStatus;
+  latestState: {
+    lastSeenAt: Date | null;
+    odometerKm: number | null;
+    speedKmh: number | null;
+    isIgnitionOn: boolean | null;
+  } | null;
 };
 
 export type StationSummaryBookingRow = {
@@ -190,6 +199,7 @@ export function assembleStationSummaryFromLoadRow(
   openOperationalTasksCount: number,
   evaluatedAt: string,
   access: StationAccessScope,
+  vehicleRuntime?: VehicleRuntimeProjectionInput[] | null,
 ): StationSummaryReadModel {
   const stationId = station.id;
   const calendarExceptions: StationOperationalCalendarExceptionInput[] =
@@ -242,6 +252,7 @@ export function assembleStationSummaryFromLoadRow(
       stationId,
     },
     vehicles,
+    vehicleRuntime,
     bookings: bookings.map((booking) => ({
       id: booking.id,
       status: booking.status,
