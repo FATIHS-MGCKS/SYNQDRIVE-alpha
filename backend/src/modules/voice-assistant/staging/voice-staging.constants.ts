@@ -9,3 +9,13 @@ export const VOICE_STAGING_COMPANY_NAME = 'Voice Staging E2E (Internal)';
 export const VOICE_STAGING_ROLLOUT_REFERENCE = 'rollout:STAGING';
 
 export const VOICE_STAGING_SYNTHETIC_PREFIX = 'staging-synthetic-';
+
+/** True when org is the canonical internal voice staging tenant. */
+export function isVoiceStagingOrganization(
+  organizationId: string,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const configured = env.VOICE_E2E_ORG_ID?.trim();
+  const canonical = configured || VOICE_STAGING_ORG_ID;
+  return organizationId.trim() === canonical;
+}

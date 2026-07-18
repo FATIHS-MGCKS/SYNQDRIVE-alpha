@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Twilio } from 'twilio';
-import { createTwilioClient, TWILIO_DEFAULT_EDGE, TWILIO_DEFAULT_REGION } from '@config/index';
+import { createTwilioClient, createTwilioAccountsManagementClient, TWILIO_DEFAULT_EDGE, TWILIO_DEFAULT_REGION } from '@config/index';
 import { TwilioInvalidConfigurationError, TwilioRegionMismatchError } from './errors/twilio-provider.errors';
 
 /** Marker service — inject only from control-plane / master-admin modules. */
@@ -10,6 +10,7 @@ export const TWILIO_CONTROL_PLANE_CLIENT = Symbol('TWILIO_CONTROL_PLANE_CLIENT')
 @Injectable()
 export class TwilioControlPlaneClient {
   private cachedClient: Twilio | null = null;
+  private cachedAccountsClient: Twilio | null = null;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -43,8 +44,26 @@ export class TwilioControlPlaneClient {
     return this.cachedClient;
   }
 
+  /** US-routed client for Account Admin API (subaccount provisioning). */
+  getAccountsManagementClient(): Twilio {
+    if (!this.cachedAccountsClient) {
+      const client = createTwilioAccountsManagementClient({
+        accountSid: this.config.get<string>('twilio.accountSid'),
+        authToken: this.config.get<string>('twilio.authToken'),
+        apiKeySid: this.config.get<string>('twilio.apiKeySid'),
+        apiKeySecret: this.config.get<string>('twilio.apiKeySecret'),
+      });
+      if (!client) {
+        throw new TwilioInvalidConfigurationError('Twilio control-plane credentials are incomplete.');
+      }
+      this.cachedAccountsClient = client;
+    }
+    return this.cachedAccountsClient;
+  }
+
   resetClientForTests(): void {
     this.cachedClient = null;
+    this.cachedAccountsClient = null;
   }
 
   private assertRegionConfiguration(): void {

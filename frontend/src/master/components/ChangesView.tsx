@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-staging-provision-2026-07-18',
+    version: '4.9.608',
+    title: 'V4.9.608 — Voice AI: staging tenant provisioning attempt (9B)',
+    summary: [
+      'Orchestration script `voice-staging-provision.ts` for 10-step staging infra (subscription → subaccount → number → agent → import → MCP/webhooks).',
+      'Twilio IE1 fix: Account Admin API via Auth Token US client; staging TRIAL bypass for cost actions; EL non-English turbo v2_5 model.',
+      'Audit `docs/audits/voice-ai-staging-provisioning-report.md` — NO-GO live E2E (IE1 subaccount API blocker).',
+    ],
+    reason: 'Prompt 9B — provision full voice staging infrastructure; no live calls.',
+    previousBehavior: 'Preflight only (9A); no orchestrated staging provision script.',
+    details:
+      'voice-staging-provision.ts, voice-staging-subaccount-env.util.ts, twilio accounts management client, provisioning report.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T03:25:00.000Z',
+  },
+  {
     id: 'voice-staging-preflight-2026-07-18',
     version: '4.9.607',
     title: 'V4.9.607 — Voice AI: staging preflight & secure secret configuration (9A)',

@@ -31,6 +31,7 @@
     "test:voice:staging-preflight": "jest voice-staging-preflight",
     "voice:staging:bootstrap": "ts-node -r tsconfig-paths/register scripts/ops/voice-staging-org-bootstrap.ts",
     "voice:staging:probes": "ts-node -r tsconfig-paths/register scripts/ops/voice-staging-preflight-probes.ts",
+    "voice:staging:provision": "ts-node -r tsconfig-paths/register scripts/ops/voice-staging-provision.ts",
     "audit:dependencies": "bash ../scripts/audits/audit-dependencies.sh",
     "audit:voice-secrets": "bash ../scripts/audits/scan-voice-secrets.sh",
     "billing:sandbox:replay-webhook": "ts-node -r tsconfig-paths/register scripts/ops/stripe-billing-e2e-replay-webhook.ts",

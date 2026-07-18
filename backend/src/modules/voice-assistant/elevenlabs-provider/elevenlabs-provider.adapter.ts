@@ -627,6 +627,14 @@ export class ElevenLabsProviderAdapter implements ElevenLabsProviderPort {
     >,
   ): Record<string, unknown> {
     const name = input.name ?? 'SynqDrive Agent';
+    const language = input.language?.trim().toLowerCase();
+    const tts: Record<string, string> = {};
+    if (input.voiceId) {
+      tts.voice_id = input.voiceId;
+    }
+    if (language && language !== 'en') {
+      tts.model_id = 'eleven_turbo_v2_5';
+    }
     return {
       conversation_config: {
         agent: {
@@ -639,7 +647,7 @@ export class ElevenLabsProviderAdapter implements ElevenLabsProviderPort {
             : {}),
           ...(input.language ? { language: input.language } : {}),
         },
-        ...(input.voiceId ? { tts: { voice_id: input.voiceId } } : {}),
+        ...(Object.keys(tts).length > 0 ? { tts } : {}),
       },
       ...(input.name ? { name: input.name } : {}),
       platform_settings: {},
