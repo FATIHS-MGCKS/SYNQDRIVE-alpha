@@ -12,7 +12,7 @@ import { VoiceCallPolicyService } from './voice-call-policy.service';
   imports: [
     PrismaModule,
     forwardRef(() => VoiceAssistantModule),
-    VoiceMcpGatewayModule,
+    forwardRef(() => VoiceMcpGatewayModule),
     VoiceWebhookIngestionModule,
     VoiceProtectionModule,
   ],

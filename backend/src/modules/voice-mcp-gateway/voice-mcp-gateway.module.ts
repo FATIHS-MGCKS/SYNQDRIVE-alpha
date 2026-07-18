@@ -8,7 +8,6 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { StationsModule } from '@modules/stations/stations.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
-import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { SupportModule } from '@modules/support/support.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
@@ -35,6 +34,10 @@ import {
   VoiceApprovalRequestRepository,
   VoiceToolExecutionRepository,
 } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
+import {
+  VoiceAgentDeploymentRepository,
+  VoiceSubscriptionRepository,
+} from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
 
 @Module({
   imports: [
@@ -48,7 +51,6 @@ import {
     InvoicesModule,
     StationsModule,
     OrganizationsModule,
-    VoiceAssistantModule,
     TasksModule,
     SupportModule,
     OutboundEmailModule,
@@ -71,6 +73,8 @@ import {
     VoiceMcpActionOrchestratorService,
     VoiceToolExecutionRepository,
     VoiceApprovalRequestRepository,
+    VoiceAgentDeploymentRepository,
+    VoiceSubscriptionRepository,
   ],
   exports: [VoiceMcpTokenService, VoiceMcpProtocolService, VoiceMcpApprovalService],
 })
