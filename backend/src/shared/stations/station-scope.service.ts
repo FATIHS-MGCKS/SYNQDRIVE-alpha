@@ -262,7 +262,7 @@ export class StationScopeService {
       }
 
       if (resource === 'vehicle_location') {
-        for (const key of ['currentStationId', 'expectedStationId'] as const) {
+        for (const key of ['currentStationId', 'expectedStationId', 'newHomeStationId'] as const) {
           const value = request.body?.[key];
           if (typeof value === 'string' && value.trim()) {
             stationIds.add(value.trim());

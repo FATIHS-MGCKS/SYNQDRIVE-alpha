@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-change-vehicle-home-station-v49614-2026-07-18',
+    version: '4.9.614',
+    title: 'V4.9.614 — Stations V2: ChangeVehicleHomeStationCommand (Prompt 34/78)',
+    summary: [
+      'Expliziter Domain-Command `ChangeVehicleHomeStation` — ändert ausschließlich `homeStationId`.',
+      'Input: `vehicleId`, `newHomeStationId|null`, `expectedVersion`, optional `reason`; Optimistic Concurrency via `stationPositionVersion`.',
+      'Endpoint `POST .../stations/vehicles/change-home-station`; Permission `stations.manage_home_fleet`; Station-Scope über vehicle + Zielstation.',
+      'Idempotent bei unveränderter Heimat; Warning bei `RENTED`; Audit From/To + Version; Current/Expected bleiben unverändert.',
+    ],
+    reason:
+      'Legacy `assignVehicle(home)` koppelte Home+Current (W-P1) — V2 erfordert entkoppelten Home-Writer gemäß `vehicle-station-positioning-v2.md` §3.1.',
+    previousBehavior:
+      'Kein dedizierter Home-Command; `assignVehicleToStation(target=home)` setzte still `currentStationId` mit.',
+    details:
+      'Service/Util/Types, DTO, Guard, Controller, Unit+Integration+Authz+Scope-Tests; keine Änderung an Legacy-Pfaden.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T16:00:00.000Z',
+  },
+  {
     id: 'stations-v2-vehicle-position-metadata-v49613-2026-07-18',
     version: '4.9.613',
     title: 'V4.9.613 — Stations V2: Vehicle Position Metadata Schema (Prompt 33/78)',
