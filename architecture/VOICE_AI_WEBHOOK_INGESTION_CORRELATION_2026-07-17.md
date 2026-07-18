@@ -99,6 +99,7 @@ Resolver: `VoiceConversationLifecycleService` — monotonic transitions only; Tw
 
 ---
 
-## 9. Rollback
+## 9. Rollback / production gating
 
-Revert migration `20260717230000_voice_webhook_ingestion_correlation`; disable `VOICE_WEBHOOK_INGESTION_ENABLED=false`.
+- Revert migration `20260717230000_voice_webhook_ingestion_correlation`; set `VOICE_WEBHOOK_INGESTION_ENABLED=false`.
+- **Production default (2026-07-18):** ingestion is **off** unless `VOICE_WEBHOOK_INGESTION_ENABLED=true` **and** `ELEVENLABS_WEBHOOK_SECRET` + `TWILIO_AUTH_TOKEN` are configured (`VoiceSecretsStartupService`).
