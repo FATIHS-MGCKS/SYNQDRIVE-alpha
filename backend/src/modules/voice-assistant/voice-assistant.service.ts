@@ -76,6 +76,9 @@ import {
   isTestSessionBlocked,
   type VoiceTestSessionResponse,
 } from './voice-assistant-test.util';
+import { isVoiceCallProviderStagingEnabled } from '@modules/voice-call-orchestration/voice-feature-flags.config';
+import { isAvailabilityConfigured } from './availability/voice-availability.util';
+import { VoiceTestCenterService } from './test-center/voice-test-center.service';
 import { VoiceCallOrchestrationService } from '@modules/voice-call-orchestration/voice-call-orchestration.service';
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
@@ -117,6 +120,7 @@ export class VoiceAssistantService {
     private readonly callOrchestration: VoiceCallOrchestrationService,
     private readonly protection: VoiceBudgetEnforcementService,
     private readonly activityLog: ActivityLogService,
+    private readonly testCenter: VoiceTestCenterService,
   ) {}
 
   async getOrCreateAssistantForOrg(organizationId: string) {
@@ -229,6 +233,27 @@ export class VoiceAssistantService {
       },
     });
 
+    try {
+      await this.activityLog.log({
+        organizationId,
+        action: 'UPDATE',
+        entity: 'ORGANIZATION',
+        entityId: organizationId,
+        description: 'Voice assistant activated.',
+        metaJson: {
+          auditAction: 'VOICE_ASSISTANT_ACTIVATED',
+          voiceAssistantId: assistant.id,
+          agentId,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to audit voice activation for org ${organizationId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
     return await this.formatAssistant(activated);
   }
 
@@ -255,14 +280,6 @@ export class VoiceAssistantService {
       );
     }
 
-    if (!assistant.elevenLabsAgentId) {
-      throw new BadRequestException({
-        message: 'Agent not provisioned yet. Activate the assistant first.',
-        warnings,
-        readinessSummary: { ready: readiness.ready, missing: readiness.missing },
-      });
-    }
-
     const readinessSummary = {
       ready: readiness.ready,
       missing: readiness.missing,
@@ -273,8 +290,24 @@ export class VoiceAssistantService {
         agentId: assistant.elevenLabsAgentId,
         provider: assistant.provider,
         status: 'blocked',
+        mode: 'simulation',
         instructions:
-          'Complete voice and system prompt in Configuration before starting a live test session.',
+          'Complete voice and system prompt in Configuration before starting a test session.',
+        expiresAt: null,
+        warnings,
+        readinessSummary,
+        developerDetails: null,
+      };
+    }
+
+    if (!assistant.elevenLabsAgentId || !isVoiceCallProviderStagingEnabled()) {
+      return {
+        agentId: assistant.elevenLabsAgentId,
+        provider: assistant.provider,
+        status: 'ready',
+        mode: 'simulation',
+        instructions:
+          'Simulation mode is active. Run scenario tests without a live provider call. Live calls require staging approval and a provisioned agent.',
         expiresAt: null,
         warnings,
         readinessSummary,
@@ -292,8 +325,9 @@ export class VoiceAssistantService {
       agentId: assistant.elevenLabsAgentId,
       provider: assistant.provider,
       status: 'ready',
+      mode: 'live',
       instructions:
-        'Start the test session and speak through your selected scenario. Live transcript integration is coming soon — use this session to validate tone, greeting, and escalation behavior.',
+        'Staging live session approved. Validate tone, greeting, and escalation with a signed provider session.',
       expiresAt: expiresAt ?? fallbackExpiry,
       warnings,
       readinessSummary,
@@ -1155,6 +1189,18 @@ export class VoiceAssistantService {
             : 'unknown',
       },
       {
+        key: 'availability',
+        label: 'Availability configured',
+        ok: isAvailabilityConfigured(assistant),
+        required: true,
+      },
+      {
+        key: 'tests',
+        label: 'Test scenarios validated',
+        ok: options.forActivation ? await this.hasValidatedTests(assistant.organizationId) : true,
+        required: options.forActivation,
+      },
+      {
         key: 'agentProvisioned',
         label: 'Agent provisioned',
         ok: Boolean(assistant.elevenLabsAgentId) || options.forActivation,
@@ -1172,6 +1218,11 @@ export class VoiceAssistantService {
     const ready = missing.length === 0;
 
     return { ready, checks, missing };
+  }
+
+  private async hasValidatedTests(organizationId: string): Promise<boolean> {
+    const summary = await this.testCenter.getSummary(organizationId);
+    return summary.ready;
   }
 
   private mapUpdateDto(

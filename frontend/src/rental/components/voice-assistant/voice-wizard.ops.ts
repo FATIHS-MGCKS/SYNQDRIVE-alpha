@@ -1,4 +1,5 @@
 import type { VoiceAssistantData, VoiceAssistantReadiness, VoicePlanCode } from '../../../lib/api';
+import { isAvailabilityStepComplete } from './voice-availability.ops';
 
 export const WIZARD_STEPS = [
   'plan',
@@ -107,11 +108,7 @@ export function isWizardStepComplete(
           (!ctx.assistant.telephonyEnabled && !ctx.assistant.inboundEnabled),
       );
     case 'availability':
-      return Boolean(
-        ctx.assistant.businessHoursStart?.trim() &&
-          ctx.assistant.businessHoursEnd?.trim() &&
-          (ctx.assistant.fallbackMessage?.trim() || ctx.assistant.escalationPhone?.trim()),
-      );
+      return isAvailabilityStepComplete(ctx.assistant);
     case 'tests':
       return ctx.testPassed;
     case 'activation':

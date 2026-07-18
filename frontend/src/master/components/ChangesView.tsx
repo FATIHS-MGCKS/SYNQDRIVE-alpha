@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-readiness-activation-2026-07-18',
+    version: '4.9.602',
+    title: 'V4.9.602 — Voice AI: availability, test center & activation (6B)',
+    summary: [
+      'Step 6 Availability: weekly plan with multi-window days, timezone, special hours, holidays, after-hours routing, staff groups, loop protection, conflict warnings, mobile week plan, priority preview.',
+      'Step 7 Test Center: 10 rental scenarios, simulation-first test runs with PASS/PARTIAL/FAIL persistence, collapsible technical details, staging-gated live mode.',
+      'Step 8 Activation: server-side BLOCKER/WARNING/READY summary, readiness checks for availability + tests, activation audit.',
+    ],
+    reason: 'Prompt 6B — complete voice readiness and activation flow.',
+    previousBehavior:
+      'Flat business hours fields; English-only test UI with local verdicts; activation without structured server summary.',
+    details:
+      'VoiceAvailabilityPanel, VoiceTestCenter redesign, VoiceActivationSummaryPanel, test-runs + activation-summary APIs; architecture/VOICE_AI_AVAILABILITY_TEST_ACTIVATION_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T03:30:00.000Z',
+  },
+  {
     id: 'voice-phone-onboarding-2026-07-18',
     version: '4.9.601',
     title: 'V4.9.601 — Voice AI: professional phone number onboarding (6A)',

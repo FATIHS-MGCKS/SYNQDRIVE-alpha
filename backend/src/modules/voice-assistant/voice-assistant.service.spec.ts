@@ -60,6 +60,7 @@ describe('VoiceAssistantService', () => {
   };
   const protection = { assertActivationAllowed: jest.fn().mockResolvedValue(undefined) };
   const activityLog = { log: jest.fn().mockResolvedValue(undefined) };
+  const testCenter = { getSummary: jest.fn().mockResolvedValue({ ready: true, scenarios: [] }) };
 
   let service: VoiceAssistantService;
 
@@ -143,6 +144,7 @@ describe('VoiceAssistantService', () => {
       callOrchestration as any,
       protection as any,
       activityLog as any,
+      testCenter as any,
     );
   });
 

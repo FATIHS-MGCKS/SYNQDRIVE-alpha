@@ -17,7 +17,10 @@ describe('VoiceWorkspaceService', () => {
     voiceProvisioningJob: { findFirst: jest.fn() },
     voicePhoneNumber: { findFirst: jest.fn() },
     voiceAgentDeployment: { findFirst: jest.fn() },
-    voiceTestRun: { findFirst: jest.fn() },
+  };
+
+  const testCenter = {
+    getSummary: jest.fn(),
   };
 
   const assistantService = {
@@ -66,6 +69,7 @@ describe('VoiceWorkspaceService', () => {
       assistantService as never,
       subscriptions as never,
       protection as never,
+      testCenter as never,
     );
 
     assistantService.getOrCreateAssistantForOrg.mockResolvedValue(baseAssistant);
@@ -85,7 +89,15 @@ describe('VoiceWorkspaceService', () => {
     prisma.voiceProvisioningJob.findFirst.mockResolvedValue(null);
     prisma.voicePhoneNumber.findFirst.mockResolvedValue(null);
     prisma.voiceAgentDeployment.findFirst.mockResolvedValue(null);
-    prisma.voiceTestRun.findFirst.mockResolvedValue(null);
+    testCenter.getSummary.mockResolvedValue({
+      ready: false,
+      passedCount: 0,
+      partialCount: 0,
+      failedCount: 0,
+      pendingCount: 10,
+      requiredCount: 10,
+      scenarios: [],
+    });
   });
 
   it('derives NO_PLAN without subscription', async () => {
@@ -103,7 +115,15 @@ describe('VoiceWorkspaceService', () => {
   });
 
   it('derives READY_TO_ACTIVATE when pre-activation steps complete', async () => {
-    prisma.voiceTestRun.findFirst.mockResolvedValue({ id: 'test-1' });
+    testCenter.getSummary.mockResolvedValue({
+      ready: true,
+      passedCount: 8,
+      partialCount: 2,
+      failedCount: 0,
+      pendingCount: 0,
+      requiredCount: 10,
+      scenarios: [],
+    });
     assistantService.getReadiness.mockResolvedValue({ ready: true, missing: [], checks: [] });
     prisma.voiceAssistant.findUnique.mockResolvedValue({
       ...baseAssistant,

@@ -1,19 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../../../components/ui/accordion';
 import { StatusChip } from '../../../components/patterns';
 import { EmptyState } from '../../../components/patterns/states';
+import { VoiceInlineNotice, VoiceSectionHeader } from '../../../components/voice-ui';
 import { cn } from '../../../components/ui/utils';
 import { api, getErrorMessage } from '../../../lib/api';
 import type {
   VoiceAssistantData,
   VoiceAssistantReadiness,
-  VoiceAssistantTestSession,
+  VoiceTestCenterSummary,
+  VoiceTestRunView,
+  VoiceTestVerdict,
 } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { VoiceTab } from './voice-assistant.ops';
-import { VOICE_TEST_SCENARIOS, type VoiceTestScenario } from './voice-test-scenarios';
-
-type SessionPhase = 'idle' | 'starting' | 'active' | 'expired' | 'error' | 'blocked';
-type TestVerdict = 'passed' | 'needs_review' | 'failed';
+import {
+  VOICE_TEST_SCENARIOS,
+  verdictTone,
+  type VoiceTestScenario,
+  type VoiceTestScenarioId,
+} from './voice-test-scenarios';
 
 interface VoiceTestCenterProps {
   orgId: string;
@@ -30,17 +42,34 @@ export function VoiceTestCenter({
   onTestPassed,
   onNavigateTab,
 }: VoiceTestCenterProps) {
-  const [session, setSession] = useState<VoiceAssistantTestSession | null>(null);
-  const [phase, setPhase] = useState<SessionPhase>('idle');
+  const { t } = useLanguage();
+  const [summary, setSummary] = useState<VoiceTestCenterSummary | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState<VoiceTestScenario | null>(null);
-  const [verdict, setVerdict] = useState<TestVerdict | null>(null);
-  const [notes, setNotes] = useState('');
+  const [activeRun, setActiveRun] = useState<VoiceTestRunView | null>(null);
+  const [running, setRunning] = useState(false);
+  const [verdictNotes, setVerdictNotes] = useState('');
+  const [recordingVerdict, setRecordingVerdict] = useState(false);
+  const [mode, setMode] = useState<'simulation' | 'live'>('simulation');
 
-  const micSupported = useMemo(
-    () => typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia),
-    [],
-  );
+  const loadSummary = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.voiceAssistant.testRuns.summary(orgId);
+      setSummary(res);
+      if (res.ready) onTestPassed();
+    } catch (err) {
+      setError(getErrorMessage(err, t('voice.test.loadError')));
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, onTestPassed, t]);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
 
   const readinessPct = useMemo(() => {
     if (!readiness?.checks.length) return 0;
@@ -49,401 +78,291 @@ export function VoiceTestCenter({
     return Math.round((pool.filter(c => c.ok).length / pool.length) * 100);
   }, [readiness]);
 
-  useEffect(() => {
-    if (phase !== 'active' || !session?.expiresAt) return;
-    const expiresAt = session.expiresAt;
-    const id = window.setInterval(() => {
-      if (new Date(expiresAt).getTime() <= Date.now()) {
-        setPhase('expired');
-      }
-    }, 10_000);
-    return () => window.clearInterval(id);
-  }, [session?.expiresAt, phase]);
+  const latestForScenario = useCallback(
+    (scenarioId: VoiceTestScenarioId) =>
+      summary?.scenarios.find(row => row.scenarioId === scenarioId)?.latest ?? null,
+    [summary],
+  );
 
-  const resetSession = () => {
-    setSession(null);
-    setPhase('idle');
+  const runScenario = async () => {
+    if (!selectedScenario) return;
+    setRunning(true);
     setError(null);
-  };
-
-  const startSession = async () => {
-    if (!orgId) return;
-    if (!micSupported) {
-      setError('Microphone access is not supported in this browser. Try Chrome or Edge on desktop.');
-      setPhase('error');
-      return;
-    }
-
-    setPhase('starting');
-    setError(null);
-    setVerdict(null);
-
     try {
-      const res = await api.voiceAssistant.testSession(orgId);
-      setSession(res);
-
-      if (res.status === 'blocked') {
-        setPhase('blocked');
-        return;
-      }
-
-      setPhase('active');
-      onTestPassed();
+      const run = await api.voiceAssistant.testRuns.run(orgId, {
+        scenarioId: selectedScenario.id,
+        mode,
+      });
+      setActiveRun(run);
+      setVerdictNotes(run.reason ?? '');
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not start test session'));
-      setPhase('error');
+      setError(getErrorMessage(err, t('voice.test.runError')));
+    } finally {
+      setRunning(false);
     }
   };
 
-  const agentProvisioned = Boolean(assistant.elevenLabsAgentId);
-  const providerOk = readiness?.checks.find(c => c.key === 'elevenlabs')?.ok ?? false;
+  const submitVerdict = async (verdict: VoiceTestVerdict) => {
+    if (!activeRun) return;
+    setRecordingVerdict(true);
+    setError(null);
+    try {
+      const reason =
+        verdictNotes.trim() ||
+        (verdict === 'PASS'
+          ? t('voice.test.verdict.passDefault')
+          : verdict === 'PARTIAL'
+            ? t('voice.test.verdict.partialDefault')
+            : t('voice.test.verdict.failDefault'));
 
-  const statusLabel =
-    phase === 'active'
-      ? 'Session active'
-      : phase === 'starting'
-        ? 'Starting…'
-        : phase === 'expired'
-          ? 'Session expired'
-          : phase === 'blocked'
-            ? 'Blocked — fix configuration'
-            : phase === 'error'
-              ? 'Error'
-              : 'Ready to test';
-
-  const statusTone =
-    phase === 'active'
-      ? 'success'
-      : phase === 'error' || phase === 'expired'
-        ? 'critical'
-        : phase === 'blocked'
-          ? 'watch'
-          : 'neutral';
+      await api.voiceAssistant.testRuns.recordVerdict(orgId, activeRun.id, {
+        verdict,
+        reason,
+      });
+      setActiveRun(null);
+      setSelectedScenario(null);
+      setVerdictNotes('');
+      await loadSummary();
+    } catch (err) {
+      setError(getErrorMessage(err, t('voice.test.verdictError')));
+    } finally {
+      setRecordingVerdict(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      {/* Readiness + status header */}
-      <div className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">Test Center</h3>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Validate greeting, tone, escalation, and permissions before going live on phone.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusChip tone={statusTone} className="text-[10px]">
-              {statusLabel}
+      <VoiceSectionHeader
+        title={t('voice.test.title')}
+        description={t('voice.test.description')}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <StatusChip tone={summary?.ready ? 'success' : 'watch'} className="text-[10px]">
+              {summary
+                ? t('voice.test.progress', {
+                    done: summary.passedCount + summary.partialCount,
+                    total: summary.requiredCount,
+                  })
+                : t('voice.test.loading')}
             </StatusChip>
             <StatusChip tone={readiness?.ready ? 'success' : 'watch'} className="text-[10px]">
-              Readiness {readinessPct}%
+              {t('voice.test.readiness', { pct: readinessPct })}
             </StatusChip>
           </div>
-        </div>
+        }
+      />
 
-        {readiness && !readiness.ready && (
-          <div className="mt-3 rounded-lg border border-[color:var(--status-watch)]/25 bg-[color:var(--status-watch)]/[0.04] px-3 py-2">
-            <p className="text-[10px] font-semibold text-foreground">Readiness gaps</p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
-              {(readiness.missing ?? []).join(' · ') || 'Some checks are incomplete.'}
-            </p>
-          </div>
-        )}
+      <VoiceInlineNotice tone="info" title={t('voice.test.simulationDefault')}>
+        {t('voice.test.simulationDefaultDesc')}
+      </VoiceInlineNotice>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {[
-            {
-              label: 'Provider',
-              ok: providerOk,
-              value: providerOk ? 'ElevenLabs connected' : 'Not connected',
-            },
-            {
-              label: 'Agent',
-              ok: agentProvisioned,
-              value: agentProvisioned
-                ? `${assistant.elevenLabsAgentId?.slice(0, 10)}…`
-                : 'Not provisioned',
-            },
-            {
-              label: 'Voice',
-              ok: Boolean(assistant.voiceId),
-              value: assistant.voiceName ?? 'Not set',
-            },
-          ].map(row => (
-            <div
-              key={row.label}
-              className={cn(
-                'rounded-lg border px-3 py-2',
-                row.ok
-                  ? 'border-[color:var(--status-positive)]/20 bg-[color:var(--status-positive)]/[0.03]'
-                  : 'border-border/50 bg-muted/15',
-              )}
-            >
-              <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                {row.label}
-              </p>
-              <p className="mt-0.5 truncate text-[11px] font-semibold text-foreground">{row.value}</p>
-            </div>
-          ))}
-        </div>
+      {error && (
+        <VoiceInlineNotice tone="blocked" title={t('voice.common.actionFailed')}>
+          {error}
+        </VoiceInlineNotice>
+      )}
 
-        {session?.warnings && session.warnings.length > 0 && (
-          <ul className="mt-3 space-y-1">
-            {session.warnings.map(w => (
-              <li key={w} className="flex items-start gap-1.5 text-[10px] text-[color:var(--status-watch)]">
-                <Icon name="alert-triangle" className="mt-0.5 h-3 w-3 shrink-0" />
-                {w}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {error && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.04] px-3 py-2">
-            <Icon name="alert-circle" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--status-critical)]" />
-            <p className="text-[10px] text-muted-foreground">{error}</p>
-          </div>
-        )}
-
-        {!micSupported && (
-          <p className="mt-3 text-[10px] text-[color:var(--status-watch)]">
-            Microphone not supported in this browser — live voice testing may be unavailable.
-          </p>
-        )}
-
-        <div className="mt-4 flex flex-wrap gap-2">
+      <div className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold text-muted-foreground">{t('voice.test.mode')}</span>
           <button
             type="button"
-            onClick={() => void startSession()}
-            disabled={phase === 'starting' || !agentProvisioned || !providerOk}
-            className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] px-4 py-2 text-[11px] font-semibold text-[color:var(--brand-ink)] disabled:opacity-60"
-          >
-            <Icon
-              name={phase === 'starting' ? 'loader-2' : 'mic'}
-              className={cn('h-3.5 w-3.5', phase === 'starting' && 'animate-spin')}
-            />
-            {phase === 'starting' ? 'Starting session…' : 'Start test session'}
-          </button>
-          {(phase === 'active' || phase === 'expired' || phase === 'error' || phase === 'blocked') && (
-            <button
-              type="button"
-              onClick={resetSession}
-              className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-border/60 surface-premium px-4 py-2 text-[11px] font-semibold"
-            >
-              <Icon name="rotate-ccw" className="h-3.5 w-3.5" />
-              Stop / reset
-            </button>
-          )}
-        </div>
-
-        {phase === 'active' && session && (
-          <p className="mt-3 text-[10px] text-muted-foreground">
-            {session.instructions}
-            {session.expiresAt && (
-              <>
-                {' '}
-                Expires {new Date(session.expiresAt).toLocaleTimeString()}.
-              </>
+            onClick={() => setMode('simulation')}
+            className={cn(
+              'rounded-lg border px-3 py-1.5 text-[10px] font-semibold',
+              mode === 'simulation' ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]' : 'border-border/50',
             )}
-          </p>
-        )}
-
-        {phase === 'expired' && (
-          <p className="mt-3 text-[10px] text-[color:var(--status-critical)]">
-            Test session expired. Start a new session to continue testing.
-          </p>
-        )}
-
-        {!agentProvisioned && (
-          <EmptyState
-            compact
-            className="mt-4"
-            icon={<Icon name="bot" className="h-5 w-5" />}
-            title="Agent not provisioned"
-            description="Activate the assistant from the command center to create an ElevenLabs agent before testing."
-            action={
-              <button
-                type="button"
-                onClick={() => onNavigateTab('overview')}
-                className="sq-press rounded-lg border border-border/60 surface-premium px-4 py-2 text-xs font-semibold"
-              >
-                Open launch checklist
-              </button>
-            }
-          />
+          >
+            {t('voice.test.modeSimulation')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('live')}
+            className={cn(
+              'rounded-lg border px-3 py-1.5 text-[10px] font-semibold',
+              mode === 'live' ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]' : 'border-border/50',
+            )}
+          >
+            {t('voice.test.modeLive')}
+          </button>
+        </div>
+        {mode === 'live' && (
+          <p className="mt-2 text-[10px] text-[color:var(--status-watch)]">{t('voice.test.liveWarning')}</p>
         )}
       </div>
 
-      {/* Scenarios */}
       <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-        <h4 className="text-[12px] font-bold text-foreground">Test scenarios</h4>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Select a scenario to define expected behavior. No automated simulation — use it as an operator script.
-        </p>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {VOICE_TEST_SCENARIOS.map(scenario => (
-            <button
-              key={scenario.id}
-              type="button"
-              onClick={() => setSelectedScenario(scenario)}
-              className={cn(
-                'sq-press rounded-xl border p-3 text-left transition-all',
-                selectedScenario?.id === scenario.id
-                  ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]/40 ring-1 ring-[color:var(--brand)]/15'
-                  : 'border-border/50 bg-muted/10 hover:bg-muted/20',
-              )}
-            >
-              <p className="text-[11px] font-semibold text-foreground">{scenario.title}</p>
-              <p className="mt-1 line-clamp-2 text-[10px] text-muted-foreground">{scenario.prompt}</p>
-            </button>
-          ))}
-        </div>
+        <h4 className="text-[12px] font-bold text-foreground">{t('voice.test.scenariosTitle')}</h4>
+        {loading ? (
+          <p className="mt-3 text-[10px] text-muted-foreground">{t('voice.test.loading')}</p>
+        ) : (
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {VOICE_TEST_SCENARIOS.map(scenario => {
+              const latest = latestForScenario(scenario.id);
+              return (
+                <button
+                  key={scenario.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedScenario(scenario);
+                    setActiveRun(null);
+                  }}
+                  className={cn(
+                    'sq-press rounded-xl border p-3 text-left transition-all',
+                    selectedScenario?.id === scenario.id
+                      ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]/40 ring-1 ring-[color:var(--brand)]/15'
+                      : 'border-border/50 bg-muted/10 hover:bg-muted/20',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-foreground">
+                      {t(scenario.titleKey as 'voice.test.scenario.bookingStatus.title')}
+                    </p>
+                    {latest?.verdict && (
+                      <StatusChip tone={verdictTone(latest.verdict)} className="text-[9px]">
+                        {latest.verdict}
+                      </StatusChip>
+                    )}
+                  </div>
+                  {scenario.critical && (
+                    <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-[color:var(--status-watch)]">
+                      {t('voice.test.critical')}
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-        {selectedScenario && (
-          <div className="mt-4 rounded-xl border border-border/50 bg-muted/10 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Current test scenario
-            </p>
-            <p className="mt-1 text-[12px] font-semibold text-foreground">{selectedScenario.title}</p>
-            <p className="mt-2 text-[11px] italic text-muted-foreground">
-              &ldquo;{selectedScenario.prompt}&rdquo;
-            </p>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div>
-                <p className="text-[10px] font-semibold text-foreground">Expected behavior</p>
-                <ul className="mt-1 list-inside list-disc text-[10px] text-muted-foreground">
-                  {selectedScenario.expectedBehavior.map(line => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold text-foreground">Escalate when</p>
-                <ul className="mt-1 list-inside list-disc text-[10px] text-muted-foreground">
-                  {selectedScenario.escalateWhen.map(line => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              </div>
+      {selectedScenario && (
+        <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            {t('voice.test.currentScenario')}
+          </p>
+          <p className="mt-1 text-[12px] font-semibold text-foreground">
+            {t(selectedScenario.titleKey as 'voice.test.scenario.bookingStatus.title')}
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="text-[10px] font-semibold text-foreground">{t('voice.test.goal')}</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {t(selectedScenario.goalKey as 'voice.test.scenario.bookingStatus.goal')}
+              </p>
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">
-              Permissions involved: {selectedScenario.permissions.join(' · ')}
-            </p>
+            <div>
+              <p className="text-[10px] font-semibold text-foreground">{t('voice.test.expectation')}</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {t(selectedScenario.expectationKey as 'voice.test.scenario.bookingStatus.expectation')}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            {t('voice.test.tools')}: {selectedScenario.tools.join(' · ')}
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={running}
+              onClick={() => void runScenario()}
+              className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] px-4 py-2 text-[11px] font-semibold text-[color:var(--brand-ink)] disabled:opacity-60"
+            >
+              <Icon name={running ? 'loader-2' : 'play'} className={cn('h-3.5 w-3.5', running && 'animate-spin')} />
+              {running ? t('voice.test.running') : t('voice.test.run')}
+            </button>
             {selectedScenario.fixTab && (
               <button
                 type="button"
                 onClick={() => onNavigateTab(selectedScenario.fixTab!)}
-                className="mt-3 text-[10px] font-semibold text-[color:var(--brand-ink)]"
+                className="text-[10px] font-semibold text-[color:var(--brand-ink)]"
               >
-                Review in {selectedScenario.fixTab} →
+                {t('voice.test.reviewIn', { tab: selectedScenario.fixTab })}
               </button>
             )}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* Live transcript placeholder */}
-      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-        <h4 className="text-[12px] font-bold text-foreground">Live session</h4>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Real-time transcript and tool-policy decisions will appear here when live integration is enabled.
-        </p>
-        {phase === 'active' ? (
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            {[
-              { label: 'Live transcript', hint: 'Waiting for live stream…' },
-              { label: 'Assistant response', hint: 'No response yet' },
-              { label: 'Detected intent', hint: '—' },
-              { label: 'Tool policy decision', hint: '—' },
-              { label: 'Escalation triggered', hint: 'No' },
-              { label: 'Latency', hint: '—' },
-            ].map(panel => (
-              <div
-                key={panel.label}
-                className="rounded-lg border border-dashed border-border/60 bg-muted/10 px-3 py-2.5"
-              >
-                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {panel.label}
-                </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">{panel.hint}</p>
-              </div>
-            ))}
+      {activeRun && (
+        <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-[12px] font-bold text-foreground">{t('voice.test.resultTitle')}</h4>
+            {activeRun.suggestedVerdict && (
+              <StatusChip tone={verdictTone(activeRun.suggestedVerdict)} className="text-[9px]">
+                {t('voice.test.suggested', { verdict: activeRun.suggestedVerdict })}
+              </StatusChip>
+            )}
           </div>
-        ) : (
-          <EmptyState
-            compact
-            className="mt-3"
-            icon={<Icon name="message-square" className="h-5 w-5" />}
-            title="No active session"
-            description="Start a test session to see transcript and policy panels."
+
+          {activeRun.technicalDetails && (
+            <Accordion type="single" collapsible className="mt-3">
+              <AccordionItem value="tech" className="border-border/40">
+                <AccordionTrigger className="text-[10px] font-semibold">
+                  {t('voice.test.technicalDetails')}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="space-y-1">
+                    {activeRun.technicalDetails.assertions.map(assertion => (
+                      <li key={assertion.key} className="flex items-start gap-2 text-[10px]">
+                        <Icon
+                          name={assertion.ok ? 'check-circle-2' : 'alert-circle'}
+                          className={cn('mt-0.5 h-3 w-3 shrink-0', assertion.ok ? 'text-[color:var(--status-positive)]' : 'text-[color:var(--status-watch)]')}
+                        />
+                        <span className="text-muted-foreground">{assertion.detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
+
+          <textarea
+            className="mt-3 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-[11px] outline-none focus:border-[color:var(--brand)]/40"
+            rows={3}
+            placeholder={t('voice.test.notesPlaceholder')}
+            value={verdictNotes}
+            onChange={e => setVerdictNotes(e.target.value)}
           />
-        )}
-      </section>
 
-      {/* Test result (local UI only) */}
-      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-        <h4 className="text-[12px] font-bold text-foreground">Test result</h4>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Record your operator verdict locally. Results are not saved to the server yet.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(
-            [
-              { id: 'passed' as const, label: 'Passed', tone: 'success' },
-              { id: 'needs_review' as const, label: 'Needs review', tone: 'watch' },
-              { id: 'failed' as const, label: 'Failed', tone: 'critical' },
-            ] as const
-          ).map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setVerdict(opt.id)}
-              className={cn(
-                'sq-press rounded-lg border px-3 py-1.5 text-[10px] font-semibold',
-                verdict === opt.id
-                  ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]'
-                  : 'border-border/60 surface-premium',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <textarea
-          className="mt-3 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-[11px] outline-none focus:border-[color:var(--brand)]/40"
-          rows={3}
-          placeholder="Notes: what worked, what failed, escalation issues…"
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-        />
-        {verdict && (
           <div className="mt-3 flex flex-wrap gap-2">
+            {(['PASS', 'PARTIAL', 'FAIL'] as const).map(verdict => (
+              <button
+                key={verdict}
+                type="button"
+                disabled={recordingVerdict}
+                onClick={() => void submitVerdict(verdict)}
+                className={cn(
+                  'sq-press rounded-lg border px-3 py-1.5 text-[10px] font-semibold',
+                  verdict === 'PASS' && 'border-[color:var(--status-positive)]/30',
+                  verdict === 'PARTIAL' && 'border-[color:var(--status-watch)]/30',
+                  verdict === 'FAIL' && 'border-[color:var(--status-critical)]/30',
+                )}
+              >
+                {verdict}
+              </button>
+            ))}
             <button
               type="button"
-              onClick={() => onNavigateTab('config')}
-              className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+              onClick={() => void runScenario()}
+              className="text-[10px] font-semibold text-muted-foreground"
             >
-              → Configuration
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('permissions')}
-              className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-            >
-              → Permissions
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('escalation')}
-              className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-            >
-              → Escalation
+              {t('voice.test.repeat')}
             </button>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* Signed provider URLs are not exposed to the browser for security. */}
+      {!loading && !selectedScenario && (
+        <EmptyState
+          compact
+          icon={<Icon name="flask-conical" className="h-5 w-5" />}
+          title={t('voice.test.emptyTitle')}
+          description={t('voice.test.emptyDesc')}
+        />
+      )}
     </div>
   );
 }

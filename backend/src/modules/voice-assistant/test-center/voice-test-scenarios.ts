@@ -1,5 +1,3 @@
-import type { VoiceTab } from './voice-assistant.ops';
-
 export type VoiceTestScenarioId =
   | 'booking_status'
   | 'pickup'
@@ -14,17 +12,16 @@ export type VoiceTestScenarioId =
 
 export type VoiceTestVerdict = 'PASS' | 'PARTIAL' | 'FAIL';
 
-export interface VoiceTestScenario {
+export type VoiceTestScenarioDefinition = {
   id: VoiceTestScenarioId;
   titleKey: string;
   goalKey: string;
   expectationKey: string;
   tools: string[];
   critical: boolean;
-  fixTab?: VoiceTab;
-}
+};
 
-export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
+export const VOICE_TEST_SCENARIO_DEFINITIONS: VoiceTestScenarioDefinition[] = [
   {
     id: 'booking_status',
     titleKey: 'voice.test.scenario.bookingStatus.title',
@@ -32,7 +29,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.bookingStatus.expectation',
     tools: ['booking_lookup', 'answer_general'],
     critical: true,
-    fixTab: 'permissions',
   },
   {
     id: 'pickup',
@@ -41,7 +37,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.pickup.expectation',
     tools: ['booking_lookup', 'station_info'],
     critical: true,
-    fixTab: 'config',
   },
   {
     id: 'return_vehicle',
@@ -50,7 +45,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.return.expectation',
     tools: ['booking_lookup', 'return_guidance'],
     critical: true,
-    fixTab: 'config',
   },
   {
     id: 'missing_document',
@@ -59,7 +53,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.missingDocument.expectation',
     tools: ['document_status', 'answer_general'],
     critical: false,
-    fixTab: 'knowledge',
   },
   {
     id: 'open_invoice',
@@ -68,7 +61,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.openInvoice.expectation',
     tools: ['invoice_lookup', 'escalation'],
     critical: true,
-    fixTab: 'permissions',
   },
   {
     id: 'breakdown',
@@ -77,7 +69,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.breakdown.expectation',
     tools: ['emergency_escalation', 'damage_case'],
     critical: true,
-    fixTab: 'escalation',
   },
   {
     id: 'damage',
@@ -86,7 +77,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.damage.expectation',
     tools: ['emergency_escalation', 'damage_case'],
     critical: true,
-    fixTab: 'escalation',
   },
   {
     id: 'unknown_question',
@@ -95,7 +85,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.unknown.expectation',
     tools: ['answer_general', 'escalation'],
     critical: false,
-    fixTab: 'knowledge',
   },
   {
     id: 'sensitive_change',
@@ -104,7 +93,6 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.sensitive.expectation',
     tools: ['permission_guard', 'escalation'],
     critical: true,
-    fixTab: 'permissions',
   },
   {
     id: 'staff_handover',
@@ -113,13 +101,11 @@ export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
     expectationKey: 'voice.test.scenario.handover.expectation',
     tools: ['transfer', 'escalation'],
     critical: true,
-    fixTab: 'escalation',
   },
 ];
 
-export function verdictTone(verdict: VoiceTestVerdict | null): 'success' | 'watch' | 'critical' | 'neutral' {
-  if (verdict === 'PASS') return 'success';
-  if (verdict === 'PARTIAL') return 'watch';
-  if (verdict === 'FAIL') return 'critical';
-  return 'neutral';
+export const VOICE_REQUIRED_TEST_SCENARIO_IDS = VOICE_TEST_SCENARIO_DEFINITIONS.map((s) => s.id);
+
+export function findScenarioDefinition(id: string): VoiceTestScenarioDefinition | undefined {
+  return VOICE_TEST_SCENARIO_DEFINITIONS.find((scenario) => scenario.id === id);
 }
