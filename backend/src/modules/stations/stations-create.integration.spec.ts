@@ -4,6 +4,7 @@ import { StationValidationService } from './station-validation.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
+import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 
 const ORG = 'org-create';
@@ -32,7 +33,14 @@ describe('StationsService create hardening', () => {
     prisma,
     new StationScopeService(prisma),
   );
-  const service = new StationsService(prisma, stationValidation, stationAccessScope, stationOperationsServiceMock);
+  const service = new StationsService(
+    prisma,
+    stationValidation,
+    stationAccessScope,
+    stationOperationsServiceMock,
+    { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+    stationDomainAuditServiceMock as never,
+  );
 
   const createdRow = {
     id: 'station-new',

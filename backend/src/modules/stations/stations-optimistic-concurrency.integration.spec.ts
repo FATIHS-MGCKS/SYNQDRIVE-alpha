@@ -1,6 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
+import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
@@ -70,6 +71,8 @@ describe('Stations optimistic concurrency', () => {
       {} as StationValidationService,
       new StationAccessScopeService(prisma, new StationScopeService(prisma)),
       stationOperationsServiceMock,
+      { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+      stationDomainAuditServiceMock as never,
     );
 
     beforeEach(() => {
@@ -166,6 +169,8 @@ describe('Stations optimistic concurrency', () => {
       {} as StationValidationService,
       new StationAccessScopeService(prisma, new StationScopeService(prisma)),
       stationOperationsServiceMock,
+      { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+      stationDomainAuditServiceMock as never,
     );
 
     beforeEach(() => {
@@ -223,6 +228,8 @@ describe('Stations optimistic concurrency', () => {
       stationValidation,
       new StationAccessScopeService(prisma, new StationScopeService(prisma)),
       stationOperationsServiceMock,
+      { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+      stationDomainAuditServiceMock as never,
     );
 
     const vehicleRow = {

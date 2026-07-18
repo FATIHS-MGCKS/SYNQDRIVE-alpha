@@ -7,6 +7,7 @@ import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
 import { StationOperationsService } from './station-operations.service';
+import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 
 const ORG = 'org-1';
 const OTHER_ORG = 'org-2';
@@ -35,6 +36,8 @@ describe('Stations nested resource security', () => {
     {} as StationValidationService,
     stationAccessScope,
     stationOperations,
+    { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+    stationDomainAuditServiceMock as never,
   );
 
   const assignedScope: StationScopeContext = {

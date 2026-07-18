@@ -724,8 +724,12 @@ export class StationsController {
   @Post()
   @RequireStationsPermission('stations.create')
   @RequireStationScope({ resource: 'create' })
-  async create(@Param('orgId') orgId: string, @Body() body: CreateStationDto) {
-    return this.stationsService.create(orgId, body);
+  async create(
+    @Param('orgId') orgId: string,
+    @Body() body: CreateStationDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.stationsService.create(orgId, body, userId);
   }
 
   @Patch(':id')
@@ -735,22 +739,31 @@ export class StationsController {
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: UpdateStationDto,
+    @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.stationsService.update(orgId, id, body);
+    return this.stationsService.update(orgId, id, body, userId);
   }
 
   @Post(':id/activate')
   @RequireStationsPermission('stations.activate')
   @RequireStationScope({ resource: 'station' })
-  async activate(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.activateStation(orgId, id);
+  async activate(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.stationsService.activateStation(orgId, id, userId);
   }
 
   @Post(':id/deactivate')
   @RequireStationsPermission('stations.deactivate')
   @RequireStationScope({ resource: 'station' })
-  async deactivate(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.stationsService.deactivateStation(orgId, id);
+  async deactivate(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.stationsService.deactivateStation(orgId, id, userId);
   }
 
   @Get(':id/archive-preview')

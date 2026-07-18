@@ -1,3 +1,4 @@
+import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 import { ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
@@ -56,7 +57,7 @@ describe('Station rule manual override integration', () => {
     assertStationsPermission: jest.fn().mockResolvedValue(undefined),
   } as unknown as StationsAccessService;
 
-  const manualOverrideService = new StationRuleManualOverrideService(prisma, audit);
+  const manualOverrideService = new StationRuleManualOverrideService(prisma, audit, stationDomainAuditServiceMock as never);
   const service = new StationBookingRulesService(
     prisma,
     stationAccessScope,

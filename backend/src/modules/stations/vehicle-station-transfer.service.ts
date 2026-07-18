@@ -35,6 +35,7 @@ import {
 import { StationRuleManualOverrideReferenceType } from '@shared/stations/station-rule-manual-override.contract';
 import { STATION_RULE_MANUAL_OVERRIDE_PERMISSION } from '@shared/stations/station-rule-manual-override.contract';
 import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
+import { StationDomainAuditService } from './station-domain-audit.service';
 import { StationsAccessService } from './stations-access.service';
 import {
   buildTransferCommandOutcome,
@@ -42,6 +43,8 @@ import {
   evaluateTransferTransition,
   resolveTransitionTimestampFields,
 } from './vehicle-station-transfer.util';
+import { StationDomainAuditAction } from '@shared/stations/station-domain-audit.constants';
+import { mapTransferCommandToAuditAction } from '@shared/stations/station-domain-audit.util';
 
 @Injectable()
 export class VehicleStationTransferService {
@@ -49,6 +52,7 @@ export class VehicleStationTransferService {
     private readonly prisma: PrismaService,
     private readonly manualOverrideService: StationRuleManualOverrideService,
     private readonly stationsAccess: StationsAccessService,
+    private readonly stationDomainAudit: StationDomainAuditService,
   ) {}
 
   async evaluatePlanTransfer(
@@ -254,6 +258,8 @@ export class VehicleStationTransferService {
       });
     }
 
+    const priorExpectedStationId = vehicle.expectedStationId;
+
     const result = await this.prisma.$transaction(async (tx) => {
       const transfer = await tx.vehicleStationTransfer.create({
         data: {
@@ -326,7 +332,7 @@ export class VehicleStationTransferService {
       };
     });
 
-    return this.buildResult({
+    const commandResult = this.buildResult({
       command: VehicleStationTransferCommandName.PLAN,
       organizationId,
       transfer: result.transfer,
@@ -344,6 +350,8 @@ export class VehicleStationTransferService {
       manualOverrideApplied: evaluation.manualOverrideApplied,
       manualOverrideAudit,
     });
+    await this.persistTransferDomainAudit(commandResult, priorExpectedStationId);
+    return commandResult;
   }
 
   async transitionTransfer(
@@ -360,6 +368,7 @@ export class VehicleStationTransferService {
     }
 
     const vehicle = await this.requireVehicle(organizationId, transfer.vehicleId);
+    const priorExpectedStationId = vehicle.expectedStationId;
 
     if (
       input.expectedVersion !== undefined &&
@@ -497,7 +506,7 @@ export class VehicleStationTransferService {
       return { transfer: updatedTransfer, vehicle: updatedVehicle };
     });
 
-    return this.buildResult({
+    const commandResult = this.buildResult({
       command,
       organizationId,
       transfer: result.transfer,
@@ -512,6 +521,8 @@ export class VehicleStationTransferService {
       setCurrent: evaluation.shouldSetCurrent,
       performedAt,
     });
+    await this.persistTransferDomainAudit(commandResult, priorExpectedStationId);
+    return commandResult;
   }
 
   async markReady(
@@ -736,6 +747,55 @@ export class VehicleStationTransferService {
         return VehicleStationTransferCommandName.MARK_OVERDUE;
       default:
         return VehicleStationTransferCommandName.PLAN;
+    }
+  }
+
+  private async persistTransferDomainAudit(
+    result: VehicleStationTransferCommandResult,
+    priorExpectedStationId?: string | null,
+  ): Promise<void> {
+    if (result.outcome !== VehicleStationTransferCommandOutcome.APPLIED) return;
+
+    const auditAction = mapTransferCommandToAuditAction(result.audit.command);
+    if (!auditAction) return;
+
+    await this.stationDomainAudit.recordForStations(
+      [result.audit.fromStationId, result.audit.toStationId],
+      {
+        organizationId: result.audit.organizationId,
+        auditAction,
+        actorUserId: result.audit.performedByUserId,
+        vehicleId: result.audit.vehicleId,
+        transferId: result.audit.transferId,
+        reason: result.audit.reason,
+        from: result.audit.fromStationId,
+        to: result.audit.toStationId,
+        command: result.audit.command,
+        performedAt: result.audit.performedAt,
+        meta: {
+          fromStatus: result.audit.fromStatus,
+          toStatus: result.audit.toStatus,
+          setCurrent: result.audit.setCurrent,
+          setExpected: result.audit.setExpected,
+          clearedExpected: result.audit.clearedExpected,
+        },
+      },
+    );
+
+    if (result.audit.setExpected) {
+      await this.stationDomainAudit.record({
+        organizationId: result.audit.organizationId,
+        stationId: result.audit.toStationId,
+        auditAction: StationDomainAuditAction.EXPECTED_STATION_CHANGED,
+        actorUserId: result.audit.performedByUserId,
+        vehicleId: result.audit.vehicleId,
+        transferId: result.audit.transferId,
+        from: priorExpectedStationId ?? null,
+        to: result.audit.toStationId,
+        reason: result.audit.reason,
+        command: result.audit.command,
+        performedAt: result.audit.performedAt,
+      });
     }
   }
 

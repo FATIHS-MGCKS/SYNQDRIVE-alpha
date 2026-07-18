@@ -21,6 +21,12 @@ const SKIP_PREFIXES = [
   '/api/v1/integrations/high-mobility/webhook',
 ];
 
+function shouldSkipAudit(url: string): boolean {
+  if (SKIP_PREFIXES.some((p) => url.startsWith(p))) return true;
+  const path = url.split('?')[0];
+  return /\/organizations\/[^/]+\/stations(\/|$)/.test(path);
+}
+
 function deriveEntity(url: string): ActivityEntity {
   const path = url.split('?')[0].toLowerCase();
   if (path.includes('/vehicles')) return ActivityEntity.VEHICLE;
@@ -66,7 +72,7 @@ export class AuditInterceptor implements NestInterceptor {
     const res = http.getResponse<any>();
 
     if (!AUDIT_METHODS.has(req.method)) return next.handle();
-    if (SKIP_PREFIXES.some((p) => req.url?.startsWith(p))) return next.handle();
+    if (shouldSkipAudit(req.url ?? '')) return next.handle();
 
     return next.handle().pipe(
       tap({

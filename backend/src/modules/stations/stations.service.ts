@@ -21,6 +21,7 @@ import {
 import {
   assertGenericStationUpdateAllowed,
   buildStationPatchWriteData,
+  evaluateStationUpdatePayload,
   type StationUpdatePayload,
 } from './station-update-validation.util';
 import { UpdateStationDto } from './dto/update-station.dto';
@@ -146,6 +147,8 @@ import {
   throwStationSetVehiclesDisabled,
   throwStationSetVehiclesPolicyBlocked,
 } from './station-set-vehicles-deprecation.util';
+import { StationDomainAuditService } from './station-domain-audit.service';
+import { StationDomainAuditAction } from '@shared/stations/station-domain-audit.constants';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 const FUTURE_BOOKING_STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE'];
@@ -335,6 +338,7 @@ export class StationsService {
     private readonly stationAccessScope: StationAccessScopeService,
     private readonly stationOperations: StationOperationsService,
     private readonly stationVehicleRuntimeLoader: StationVehicleRuntimeLoader,
+    private readonly stationDomainAudit: StationDomainAuditService,
   ) {}
 
   private stationIncludeCount() {
@@ -389,7 +393,11 @@ export class StationsService {
     return this.toDto(station, station._count.vehiclesHome);
   }
 
-  async create(organizationId: string, payload: StationUpsertPayload): Promise<StationDto> {
+  async create(
+    organizationId: string,
+    payload: StationUpsertPayload,
+    performedByUserId?: string | null,
+  ): Promise<StationDto> {
     validateStationCreatePayload(payload);
     const name = payload.name?.trim();
     if (!name) throw new BadRequestException('Station name is required');
@@ -446,6 +454,13 @@ export class StationsService {
         include: this.stationIncludeCount(),
       });
     });
+    void this.stationDomainAudit.recordStationCreated({
+      organizationId,
+      stationId: station.id,
+      actorUserId: performedByUserId,
+      stationName: station.name,
+      performedAt: station.createdAt.toISOString(),
+    });
     return this.toDto(station, station._count.vehiclesHome);
   }
 
@@ -453,6 +468,7 @@ export class StationsService {
     organizationId: string,
     id: string,
     payload: StationPatchPayload,
+    performedByUserId?: string | null,
   ): Promise<StationDto> {
     const { expectedUpdatedAt, ...patchPayload } = payload;
     const existing = await this.prisma.station.findFirstOrThrow({
@@ -468,6 +484,12 @@ export class StationsService {
     }
 
     assertGenericStationUpdateAllowed(patchPayload as StationUpdatePayload, {
+      status: existing.status,
+      pickupEnabled: existing.pickupEnabled,
+      returnEnabled: existing.returnEnabled,
+    });
+
+    const updateEvaluation = evaluateStationUpdatePayload(patchPayload as StationUpdatePayload, {
       status: existing.status,
       pickupEnabled: existing.pickupEnabled,
       returnEnabled: existing.returnEnabled,
@@ -554,6 +576,13 @@ export class StationsService {
         where: { id, organizationId },
         include: this.stationIncludeCount(),
       });
+      void this.stationDomainAudit.recordStationUpdated({
+        organizationId,
+        stationId: id,
+        actorUserId: performedByUserId,
+        auditHints: updateEvaluation.auditHints,
+        performedAt: station.updatedAt.toISOString(),
+      });
       return this.toDto(station, station._count.vehiclesHome);
     }
 
@@ -561,6 +590,13 @@ export class StationsService {
       where: { id },
       data: writable,
       include: this.stationIncludeCount(),
+    });
+    void this.stationDomainAudit.recordStationUpdated({
+      organizationId,
+      stationId: id,
+      actorUserId: performedByUserId,
+      auditHints: updateEvaluation.auditHints,
+      performedAt: station.updatedAt.toISOString(),
     });
     return this.toDto(station, station._count.vehiclesHome);
   }
@@ -715,6 +751,38 @@ export class StationsService {
       archivedCapabilitiesSnapshot,
     });
 
+    void this.stationDomainAudit.record({
+      organizationId: station.organizationId,
+      stationId: station.id,
+      auditAction: StationDomainAuditAction.ARCHIVED,
+      actorUserId: performedByUserId,
+      from: station.status,
+      to: 'ARCHIVED',
+      reason: options.reason ?? null,
+      command: StationArchiveCommandName.ARCHIVE,
+      performedAt: audit.performedAt,
+      meta: {
+        successorPrimaryStationId: successorId,
+        futurePickupCount: preflight.counts.futurePickupBookings,
+        futureReturnCount: preflight.counts.futureReturnBookings,
+      },
+    });
+
+    if (station.isPrimary && successorId) {
+      void this.stationDomainAudit.record({
+        organizationId: station.organizationId,
+        stationId: successorId,
+        auditAction: StationDomainAuditAction.PRIMARY_CHANGED,
+        actorUserId: performedByUserId,
+        from: false,
+        to: true,
+        reason: options.reason ?? null,
+        command: StationArchiveCommandName.ARCHIVE,
+        performedAt: audit.performedAt,
+        meta: { trigger: 'ARCHIVE_SUCCESSOR' },
+      });
+    }
+
     return {
       outcome: StationArchiveCommandOutcome.APPLIED,
       command: StationArchiveCommandName.ARCHIVE,
@@ -842,25 +910,34 @@ export class StationsService {
   async activateStation(
     organizationId: string,
     id: string,
+    performedByUserId?: string | null,
   ): Promise<StationLifecycleCommandResult<StationDto>> {
-    return this.runLifecycleStatusCommand(
+    const result = await this.runLifecycleStatusCommand(
       organizationId,
       id,
       StationLifecycleCommandName.ACTIVATE,
+      undefined,
+      performedByUserId,
     );
+    this.persistLifecycleDomainAudit(result, performedByUserId);
+    return result;
   }
 
   async deactivateStation(
     organizationId: string,
     id: string,
+    performedByUserId?: string | null,
   ): Promise<StationLifecycleCommandResult<StationDto>> {
     const preflight = await this.countFutureStationBookings(organizationId, id);
-    return this.runLifecycleStatusCommand(
+    const result = await this.runLifecycleStatusCommand(
       organizationId,
       id,
       StationLifecycleCommandName.DEACTIVATE,
       preflight,
+      performedByUserId,
     );
+    this.persistLifecycleDomainAudit(result, performedByUserId);
+    return result;
   }
 
   private async countFutureStationBookings(
@@ -894,6 +971,7 @@ export class StationsService {
     id: string,
     command: typeof StationLifecycleCommandName.ACTIVATE | typeof StationLifecycleCommandName.DEACTIVATE,
     preflight?: { futurePickupCount: number; futureReturnCount: number },
+    performedByUserId?: string | null,
   ): Promise<StationLifecycleCommandResult<StationDto>> {
     const station = await this.prisma.station.findFirst({
       where: { id, organizationId },
@@ -1104,6 +1182,18 @@ export class StationsService {
         include: this.stationIncludeCount(),
       }),
     )) as Prisma.StationGetPayload<{ include: ReturnType<StationsService['stationIncludeCount']> }>;
+
+    void this.stationDomainAudit.record({
+      organizationId: station.organizationId,
+      stationId: station.id,
+      auditAction: StationDomainAuditAction.RESTORED,
+      actorUserId: performedByUserId,
+      from: station.status,
+      to: 'ACTIVE',
+      command: StationRestoreCommandName.RESTORE,
+      performedAt: restoredAt.toISOString(),
+      meta: { appliedCapabilities },
+    });
 
     return {
       outcome: StationRestoreCommandOutcome.APPLIED,
@@ -1325,6 +1415,36 @@ export class StationsService {
           demotedPrimaryStationIds: demoted.map((row) => row.id),
         };
       });
+
+      const audit = buildStationSetPrimaryCommandAudit({
+        ...auditBase,
+        demotedPrimaryStationIds,
+      });
+
+      void this.stationDomainAudit.record({
+        organizationId,
+        stationId: station.id,
+        auditAction: StationDomainAuditAction.PRIMARY_CHANGED,
+        actorUserId: performedByUserId,
+        from: station.isPrimary,
+        to: true,
+        command: StationSetPrimaryCommandName.SET_PRIMARY,
+        performedAt: audit.performedAt,
+      });
+
+      for (const demotedStationId of demotedPrimaryStationIds) {
+        void this.stationDomainAudit.record({
+          organizationId,
+          stationId: demotedStationId,
+          auditAction: StationDomainAuditAction.PRIMARY_CHANGED,
+          actorUserId: performedByUserId,
+          from: true,
+          to: false,
+          command: StationSetPrimaryCommandName.SET_PRIMARY,
+          performedAt: audit.performedAt,
+          meta: { promotedStationId: station.id },
+        });
+      }
 
       return {
         outcome: StationSetPrimaryCommandOutcome.APPLIED,
@@ -2552,6 +2672,21 @@ export class StationsService {
       throw new NotFoundException('Vehicle not found');
     }
 
+    void this.stationDomainAudit.recordForStations(
+      [vehicle.homeStationId, input.newHomeStationId],
+      {
+        organizationId,
+        auditAction: StationDomainAuditAction.HOME_STATION_CHANGED,
+        actorUserId: performedByUserId,
+        vehicleId: vehicle.id,
+        from: vehicle.homeStationId,
+        to: input.newHomeStationId,
+        reason: input.reason ?? null,
+        command: VehicleChangeHomeStationCommandName.CHANGE_HOME_STATION,
+        performedAt: new Date().toISOString(),
+      },
+    );
+
     return {
       outcome: VehicleChangeHomeStationCommandOutcome.APPLIED,
       command: VehicleChangeHomeStationCommandName.CHANGE_HOME_STATION,
@@ -2770,6 +2905,22 @@ export class StationsService {
       throw new NotFoundException('Vehicle not found');
     }
 
+    void this.stationDomainAudit.recordForStations(
+      [vehicle.currentStationId, input.currentStationId],
+      {
+        organizationId,
+        auditAction: StationDomainAuditAction.CURRENT_STATION_CORRECTED,
+        actorUserId: performedByUserId,
+        vehicleId: vehicle.id,
+        from: vehicle.currentStationId,
+        to: input.currentStationId,
+        reason: input.reason,
+        command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
+        performedAt: new Date().toISOString(),
+        meta: { source: input.source },
+      },
+    );
+
     return {
       outcome: VehicleCorrectCurrentStationCommandOutcome.APPLIED,
       command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
@@ -2907,6 +3058,33 @@ export class StationsService {
    * geocoding. Returns `null` on any failure mode (missing token, missing
    * address parts, no result, network error). Never throws.
    */
+  private persistLifecycleDomainAudit(
+    result: StationLifecycleCommandResult<StationDto>,
+    performedByUserId?: string | null,
+  ): void {
+    if (result.outcome !== StationLifecycleCommandOutcome.APPLIED) return;
+
+    const auditAction =
+      result.command === StationLifecycleCommandName.ACTIVATE
+        ? StationDomainAuditAction.ACTIVATED
+        : StationDomainAuditAction.DEACTIVATED;
+
+    void this.stationDomainAudit.record({
+      organizationId: result.audit.organizationId,
+      stationId: result.audit.stationId,
+      auditAction,
+      actorUserId: performedByUserId,
+      from: result.audit.previousStatus,
+      to: result.audit.nextStatus,
+      command: result.audit.command,
+      performedAt: result.audit.performedAt,
+      meta: {
+        futurePickupCount: result.audit.futurePickupCount,
+        futureReturnCount: result.audit.futureReturnCount,
+      },
+    });
+  }
+
   private async geocodeAddress(input: {
     address: string | null | undefined;
     city: string | null | undefined;
