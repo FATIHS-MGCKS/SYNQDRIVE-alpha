@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-plan-assistant-onboarding-2026-07-18',
+    version: '4.9.599',
+    title: 'V4.9.599 — Voice AI: plan and assistant onboarding redesign (5A)',
+    summary: [
+      'Plan step: API-driven comparison table, recommended PRO, net-price note, usage examples, plan-change confirmation — voice-ui primitives.',
+      'Assistant step: dedicated onboarding form with plan-gated languages, grouped voice picker, safe audio preview (rate-limited), greeting/sample-call preview, draft vs live.',
+      'Wizard blocks continue until assistant validation passes; company name required for step completion.',
+    ],
+    reason: 'Prompt 5A — production-ready first two onboarding steps without provider leakage or magic numbers.',
+    previousBehavior:
+      'Basic plan cards; full VoiceAssistantBuilder in wizard with English copy and ElevenLabs references.',
+    details:
+      'VoiceWizardPlanStep, VoiceWizardAssistantStep, VoiceWizardVoicePicker, voice-plan/assistant-onboarding.ops; architecture/VOICE_AI_PLAN_ASSISTANT_ONBOARDING_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:10:00.000Z',
+  },
+  {
     id: 'voice-ui-information-architecture-2026-07-18',
     version: '4.9.598',
     title: 'V4.9.598 — Voice AI: organization information architecture and route state',

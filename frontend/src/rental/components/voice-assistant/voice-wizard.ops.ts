@@ -93,6 +93,7 @@ export function isWizardStepComplete(
     case 'assistant':
       return Boolean(
         ctx.assistant.name?.trim() &&
+          ctx.assistant.role?.trim() &&
           ctx.assistant.voiceId &&
           ctx.assistant.greetingMessage?.trim(),
       );

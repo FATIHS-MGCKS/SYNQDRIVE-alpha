@@ -36,6 +36,7 @@ describe('voice assistant UI characterization', () => {
       expect(wizardSource).toContain("step === 'plan'");
       expect(wizardSource).toContain("step === 'activation'");
       expect(wizardSource).toContain('VoiceWizardPlanStep');
+      expect(wizardSource).toContain('VoiceWizardAssistantStep');
       expect(wizardSource).toContain('VoiceTestCenter');
     });
   });
