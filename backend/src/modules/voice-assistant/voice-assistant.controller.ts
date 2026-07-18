@@ -11,11 +11,16 @@ import {
   InitiateTwilioOutboundCallDto,
   InitiateOutboundCallDto,
 } from './dto';
+import { UpdateVoiceOnboardingStepDto } from './workspace/dto/update-voice-onboarding-step.dto';
+import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
 
 @Controller('organizations/:orgId/voice-assistant')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class VoiceAssistantController {
-  constructor(private readonly service: VoiceAssistantService) {}
+  constructor(
+    private readonly service: VoiceAssistantService,
+    private readonly workspace: VoiceWorkspaceService,
+  ) {}
 
   @Get()
   async get(@Param('orgId') orgId: string) {
@@ -40,6 +45,19 @@ export class VoiceAssistantController {
   @Get('readiness')
   async readiness(@Param('orgId') orgId: string) {
     return this.service.getReadiness(orgId);
+  }
+
+  @Get('workspace')
+  async workspace(@Param('orgId') orgId: string) {
+    return this.workspace.getWorkspace(orgId);
+  }
+
+  @Patch('workspace/onboarding-step')
+  async updateOnboardingStep(
+    @Param('orgId') orgId: string,
+    @Body() body: UpdateVoiceOnboardingStepDto,
+  ) {
+    return this.workspace.updateOnboardingStep(orgId, body);
   }
 
   @Get('voices')

@@ -29,7 +29,6 @@ import {
   isWizardStepComplete,
   nextWizardStep,
   prevWizardStep,
-  saveWizardStep,
   type VoiceWizardStep,
 } from './voice-wizard.ops';
 
@@ -53,7 +52,9 @@ interface VoiceOnboardingWizardProps {
   hasDraft: boolean;
   testPassed: boolean;
   actionError: string | null;
-  initialStep: VoiceWizardStep;
+  step: VoiceWizardStep;
+  allowedSteps: VoiceWizardStep[];
+  onStepChange: (step: VoiceWizardStep) => void | Promise<void>;
   textField: (key: VoiceTextField) => string;
   setTextField: (key: VoiceTextField, value: string) => void;
   setVoiceSelection: (voiceId: string, voiceName: string) => void;
@@ -94,7 +95,9 @@ export function VoiceOnboardingWizard({
   hasDraft,
   testPassed,
   actionError,
-  initialStep,
+  step,
+  allowedSteps,
+  onStepChange,
   textField,
   setTextField,
   setVoiceSelection,
@@ -108,7 +111,6 @@ export function VoiceOnboardingWizard({
   onTestPassed,
 }: VoiceOnboardingWizardProps) {
   const { t } = useLanguage();
-  const [step, setStep] = useState<VoiceWizardStep>(initialStep);
   const [planCode, setPlanCode] = useState<VoicePlanCode | null>(null);
   const [protection, setProtection] = useState<VoiceProtectionStatus | null>(null);
   const [protectionError, setProtectionError] = useState<string | null>(null);
@@ -116,9 +118,13 @@ export function VoiceOnboardingWizard({
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const { links } = useVoiceKnowledgeLinks(orgId, assistant);
 
-  useEffect(() => {
-    saveWizardStep(orgId, step);
-  }, [orgId, step]);
+  const goToStep = useCallback(
+    (next: VoiceWizardStep) => {
+      if (!allowedSteps.includes(next)) return;
+      void onStepChange(next);
+    },
+    [allowedSteps, onStepChange],
+  );
 
   useEffect(() => {
     void api.voiceAssistant.billing
@@ -177,12 +183,12 @@ export function VoiceOnboardingWizard({
       await onSave();
     }
     const next = nextWizardStep(step);
-    if (next) setStep(next);
+    if (next) void goToStep(next);
   };
 
   const goPrev = () => {
     const prev = prevWizardStep(step);
-    if (prev) setStep(prev);
+    if (prev) void goToStep(prev);
   };
 
   const savePermissions = (patch: Partial<VoiceToolPermissionsMap>) => {
@@ -237,7 +243,8 @@ export function VoiceOnboardingWizard({
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setStep(id)}
+                onClick={() => goToStep(id)}
+                disabled={!allowedSteps.includes(id)}
                 className={cn(
                   'sq-press shrink-0 rounded-lg border px-2.5 py-2 text-left transition-colors',
                   active
@@ -309,7 +316,7 @@ export function VoiceOnboardingWizard({
             readinessElevenLabsOk={readiness?.checks.find(c => c.key === 'elevenlabs')?.ok}
             isBusy={isBusy}
             onAssistantUpdated={onAssistantUpdated}
-            onNavigateTest={() => setStep('tests')}
+            onNavigateTest={() => void goToStep('tests')}
             onError={err => toast.error(t('voice.phone.error'), { description: getErrorMessage(err) })}
             loadPhoneNumbers={() => api.voiceAssistant.phoneNumbers(orgId)}
             assignPhoneNumber={phoneNumberId => api.voiceAssistant.assignPhoneNumber(orgId, phoneNumberId)}
@@ -427,7 +434,7 @@ export function VoiceOnboardingWizard({
                   overview: 'activation',
                 };
                 const target = wizardMap[tab];
-                if (target) setStep(target);
+                if (target) void goToStep(target);
               }}
             />
 
