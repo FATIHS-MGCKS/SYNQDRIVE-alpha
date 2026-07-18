@@ -93,7 +93,7 @@ describe('Stations V2 authorization package', () => {
     });
 
     it('allows station manager on local ops but not archive/set-primary', async () => {
-      const allowed = ['update-master', 'update-operations', 'set-vehicles', 'assign-vehicle-home', 'change-vehicle-home-station', 'home-fleet-add', 'home-fleet-remove', 'backfill-coordinates'];
+      const allowed = ['update-master', 'update-operations', 'set-vehicles', 'assign-vehicle-home', 'change-vehicle-home-station', 'home-fleet-preview', 'home-fleet-add', 'home-fleet-remove', 'backfill-coordinates'];
       const denied = ['create', 'archive', 'set-primary', 'delete', 'restore'];
 
       for (const key of allowed) {

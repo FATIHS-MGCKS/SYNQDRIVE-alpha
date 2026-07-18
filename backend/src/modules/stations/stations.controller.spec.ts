@@ -110,6 +110,9 @@ describe('StationsController mutation security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'addVehiclesToHomeStation')).toEqual({
       resource: 'station',
     });
+    expect(metadata(STATION_SCOPE_KEY, 'previewHomeFleetAssignment')).toEqual({
+      resource: 'station',
+    });
     expect(metadata(STATION_SCOPE_KEY, 'moveVehiclesToHomeStation')).toEqual({
       resource: 'home_fleet_move',
     });
@@ -134,6 +137,9 @@ describe('StationsController mutation security', () => {
     expect(
       Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.changeVehicleHomeStation),
     ).toEqual(expect.arrayContaining([StationsChangeVehicleHomePermissionGuard]));
+    expect(
+      Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.previewHomeFleetAssignment),
+    ).toEqual(expect.arrayContaining([StationsChangeVehicleHomePermissionGuard]));
   });
 });
 
@@ -146,6 +152,9 @@ describe('StationsController mutation handlers', () => {
     removeVehiclesFromHomeStation: jest.fn(),
     moveVehiclesToHomeStation: jest.fn(),
   };
+  const vehicleHomeAssignmentPreview = {
+    previewHomeAssignment: jest.fn(),
+  };
 
   const controller = new StationsController(
     stationsService as unknown as StationsService,
@@ -154,6 +163,7 @@ describe('StationsController mutation handlers', () => {
     {} as StationOperationalCapabilityService,
     {} as StationOperationsService,
     vehicleHomeFleetDelta as never,
+    vehicleHomeAssignmentPreview as never,
   );
 
   beforeEach(() => {
@@ -217,6 +227,18 @@ describe('StationsController mutation handlers', () => {
       { idempotencyKey: undefined, reason: undefined },
     );
   });
+
+  it('delegates home fleet preview to VehicleHomeAssignmentPreviewService', async () => {
+    vehicleHomeAssignmentPreview.previewHomeAssignment.mockResolvedValue({ summary: { blocked: 0 } });
+
+    await controller.previewHomeFleetAssignment(ORG, STATION_A, {
+      proposals: [{ vehicleId: 'veh-1', desiredHomeStationId: STATION_A }],
+    });
+
+    expect(vehicleHomeAssignmentPreview.previewHomeAssignment).toHaveBeenCalledWith(ORG, STATION_A, [
+      { vehicleId: 'veh-1', desiredHomeStationId: STATION_A },
+    ]);
+  });
 });
 
 describe('StationsController read handlers', () => {
@@ -242,6 +264,7 @@ describe('StationsController read handlers', () => {
     {} as StationCalendarExceptionService,
     {} as StationOperationalCapabilityService,
     stationOperations as unknown as StationOperationsService,
+    {} as never,
     {} as never,
   );
 

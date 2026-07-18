@@ -4006,6 +4006,15 @@ export const api = {
         `/organizations/${orgId}/stations/vehicles/change-home-station`,
         body,
       ),
+    previewHomeFleetAssignment: (
+      orgId: string,
+      stationId: string,
+      body: HomeAssignmentPreviewRequest,
+    ) =>
+      post<HomeAssignmentPreviewResult>(
+        `/organizations/${orgId}/stations/${stationId}/home-fleet/preview`,
+        body,
+      ),
     addVehiclesToHomeStation: (
       orgId: string,
       stationId: string,
@@ -9488,6 +9497,69 @@ export interface VehicleHomeFleetDeltaRequest {
   vehicleIds: string[];
   idempotencyKey?: string;
   reason?: string;
+}
+
+export interface HomeAssignmentPreviewProposal {
+  vehicleId: string;
+  desiredHomeStationId: string | null;
+}
+
+export interface HomeAssignmentPreviewRequest {
+  proposals: HomeAssignmentPreviewProposal[];
+}
+
+export interface HomeAssignmentPreviewStationRef {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface HomeAssignmentPreviewActiveTransfer {
+  fromStationId: string | null;
+  toStationId: string;
+  fromStationName: string | null;
+  toStationName: string;
+}
+
+export interface HomeAssignmentPreviewItem {
+  vehicleId: string;
+  licensePlate: string | null;
+  vehicleLabel: string | null;
+  rentalStatus: string;
+  currentHomeStation: HomeAssignmentPreviewStationRef | null;
+  desiredHomeStation: HomeAssignmentPreviewStationRef | null;
+  currentPhysicalStation: HomeAssignmentPreviewStationRef | null;
+  expectedStation: HomeAssignmentPreviewStationRef | null;
+  activeTransfer: HomeAssignmentPreviewActiveTransfer | null;
+  action: 'ADD' | 'REMOVE' | 'MOVE' | 'UNCHANGED' | 'BLOCKED';
+  executableCommand: 'add' | 'remove' | 'move' | null;
+  moveFromStationId: string | null;
+  moveToStationId: string | null;
+  conflicts: Array<{ code: string; message: string }>;
+  warnings: Array<{ code: string; message: string }>;
+}
+
+export interface HomeAssignmentPreviewResult {
+  organizationId: string;
+  contextStationId: string;
+  contextStationName: string;
+  summary: {
+    requested: number;
+    evaluated: number;
+    toAdd: number;
+    toRemove: number;
+    toMove: number;
+    unchanged: number;
+    blocked: number;
+  };
+  batch: {
+    limit: number;
+    requested: number;
+    evaluated: number;
+    truncated: boolean;
+    duplicateVehicleIdsIgnored: number;
+  };
+  items: HomeAssignmentPreviewItem[];
 }
 
 export interface VehicleHomeFleetDeltaItemResult {

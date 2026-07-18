@@ -52,6 +52,8 @@ import {
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
+import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
+import { HomeAssignmentPreviewDto } from './dto/vehicle-home-assignment-preview.dto';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -63,6 +65,7 @@ export class StationsController {
     private readonly stationOperationalCapability: StationOperationalCapabilityService,
     private readonly stationOperations: StationOperationsService,
     private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
+    private readonly vehicleHomeAssignmentPreview: VehicleHomeAssignmentPreviewService,
   ) {}
 
   @Get()
@@ -143,6 +146,21 @@ export class StationsController {
         reason: body.reason,
       },
       userId,
+    );
+  }
+
+  @Post(':id/home-fleet/preview')
+  @UseGuards(StationsChangeVehicleHomePermissionGuard)
+  @RequireStationScope({ resource: 'station' })
+  async previewHomeFleetAssignment(
+    @Param('orgId') orgId: string,
+    @Param('id') stationId: string,
+    @Body() body: HomeAssignmentPreviewDto,
+  ) {
+    return this.vehicleHomeAssignmentPreview.previewHomeAssignment(
+      orgId,
+      stationId,
+      body.proposals,
     );
   }
 

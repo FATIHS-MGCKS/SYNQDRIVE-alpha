@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-home-assignment-preview-v49617-2026-07-18',
+    version: '4.9.617',
+    title: 'V4.9.617 — Stations V2: Home Assignment Preview (Prompt 37/78)',
+    summary: [
+      'Read-only Endpoint `POST .../stations/:id/home-fleet/preview` — simuliert Heimat-Zuordnungen ohne Mutation.',
+      'Pro Fahrzeug: aktuelle/gewünschte Heimat, physischer Standort, erwartete Station, Mietstatus, aktive Transfers, Konflikte, Warnings, ausführbare Aktion.',
+      'Summary: `toAdd`, `toRemove`, `toMove`, `unchanged`, `blocked`; Batch-Metadaten mit explizitem Limit (500) — keine stillen Truncations.',
+      'Permission `stations.manage_home_fleet` + Station-Scope; `currentStationId`/`expectedStationId` werden nur gelesen, nie geändert.',
+    ],
+    reason:
+      'UI-Assignment-Flows brauchen eine serverseitige Vorab-Ansicht vor Delta-Commits (Audit ST-H-010, Inventory Prompt 22).',
+    previousBehavior:
+      'Kein Preview — UI konnte nur clientseitig diffen oder blind `changeHomeStation` pro Fahrzeug ausführen.',
+    details:
+      '`VehicleHomeAssignmentPreviewService` + Util/Types/DTO; Mixed-Fleet-Integrationstests; Frontend `api.stations.previewHomeFleetAssignment`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T19:00:00.000Z',
+  },
+  {
     id: 'stations-v2-home-fleet-delta-endpoints-v49616-2026-07-18',
     version: '4.9.616',
     title: 'V4.9.616 — Stations V2: Home-Fleet Delta Endpoints (Prompt 36/78)',
