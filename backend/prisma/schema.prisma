@@ -1876,6 +1876,8 @@ model Station {
   @@unique([organizationId, code])
   @@index([organizationId])
   @@index([organizationId, status])
+  @@index([organizationId, type])
+  @@index([organizationId, isPrimary])
   @@map("stations")
 }
 

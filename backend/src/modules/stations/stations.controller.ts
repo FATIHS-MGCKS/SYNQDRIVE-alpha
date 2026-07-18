@@ -17,6 +17,7 @@ import {
   CreateStationDto,
   UpdateStationDto,
   ListStationsQueryDto,
+  ListStationSummariesQueryDto,
   SetStationVehiclesDto,
   AssignVehicleStationDto,
   UpdateVehicleCurrentStationDto,
@@ -419,6 +420,37 @@ export class StationsController {
     return this.stationOperations.getContractMetadata();
   }
 
+  @Get('summaries/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'list' })
+  getOrgSummariesContract() {
+    return this.stationSummaryReadModel.getOrgSummariesContractMetadata();
+  }
+
+  @Get('summaries')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'list' })
+  async getOrgSummaries(
+    @Param('orgId') orgId: string,
+    @Query() query: ListStationSummariesQueryDto,
+    @Query('at') at: string | undefined,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationSummaryReadModel.resolveForOrganization(
+      orgId,
+      query,
+      req[STATION_SCOPE_CONTEXT_KEY],
+      { at },
+    );
+  }
+
+  @Get('summary/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getSummaryContract() {
+    return this.stationSummaryReadModel.getContractMetadata();
+  }
+
   @Get(':id')
   @RequireStationsPermission('stations.read')
   @RequireStationScope({ resource: 'station' })
@@ -430,12 +462,6 @@ export class StationsController {
     return this.stationsService.findOne(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
   }
 
-  @Get('summary/contract')
-  @RequireStationsPermission('stations.read')
-  @RequireStationScope({ resource: 'none' })
-  getSummaryContract() {
-    return this.stationSummaryReadModel.getContractMetadata();
-  }
 
   @Get(':id/summary')
   @RequireStationsPermission('stations.read')
