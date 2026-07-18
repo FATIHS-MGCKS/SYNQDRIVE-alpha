@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-booking-rules-wiring-v49629-2026-07-19',
+    version: '4.9.629',
+    title: 'V4.9.629 — Stations V2: Wire StationBookingRules into Booking Create/Update (Prompt 49/78)',
+    summary: [
+      'BookingsService create/update ruft StationBookingRulesService serverseitig neu auf — Frontendwerte werden nicht vertrauenswürdig übernommen.',
+      'BLOCKED verhindert Persistenz; WARNING wird als `stationBookingRulesSnapshot` gespeichert und in der Response zurückgegeben.',
+      'MANUAL_CONFIRMATION_REQUIRED benötigt gültigen Override mit `stations.override_rules`; Scope-Änderung (Zeit/Station) invalidiert alte Bewertung.',
+      'One-Way wird serverseitig aus Station-IDs abgeleitet; Adress-Overrides überspringen Stations-Regel-Evaluation.',
+      'End-to-End-Service-Tests für Block, Override, WARNING-Snapshot und Update-Re-Evaluation.',
+    ],
+    reason:
+      'Stations-Regeln müssen bei jeder Buchungsanlage und -änderung serverseitig durchgesetzt werden — nicht nur über den separaten Evaluate-Endpoint.',
+    previousBehavior:
+      'Booking Create/Update nutzte nur StationValidationService (Existenz/Archiv); kein Hours/Capacity/Override-Gate; Contract `bookingIntegration: false`.',
+    details:
+      'BookingsService.enforceStationBookingRules; Prisma `stationBookingRulesSnapshot`; API-Feld `stationBookingRules.manualOverride`; Update übergibt Actor via Controller; Migration `20260718180000_booking_station_rules_snapshot`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T18:00:00.000Z',
+  },
+  {
     id: 'stations-v2-manual-rule-override-v49628-2026-07-19',
     version: '4.9.628',
     title: 'V4.9.628 — Stations V2: Audited Manual Override for WARNING + MANUAL_CONFIRMATION (Prompt 48/78)',

@@ -4678,6 +4678,8 @@ model Booking {
   returnAddressOverride   String?               @map("return_address_override")
   isOneWayRental          Boolean               @default(false) @map("is_one_way_rental")
   stationTransferFeeCents Int?                  @map("station_transfer_fee_cents")
+  /// Server-evaluated station booking rules snapshot (versioned JSON) — not client-trusted.
+  stationBookingRulesSnapshot Json?             @map("station_booking_rules_snapshot")
   startDate               DateTime              @map("start_date")
   endDate                 DateTime              @map("end_date")
   dailyRateCents          Int?                  @map("daily_rate_cents")

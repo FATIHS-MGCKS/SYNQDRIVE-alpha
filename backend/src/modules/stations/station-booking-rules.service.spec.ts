@@ -121,7 +121,7 @@ describe('StationBookingRulesService', () => {
   });
 
   it('exposes contract metadata without booking integration or frontend recomputation', () => {
-    expect(service.getContractMetadata().bookingIntegration).toBe(false);
+    expect(service.getContractMetadata().bookingIntegration).toBe(true);
     expect(service.getContractMetadata().frontendRecomputation).toBe(false);
     expect(service.getContractMetadata().instantEvaluation).toBe('station_timezone');
     expect(service.getContractMetadata().manualOverridePermission).toBe('stations.override_rules');
