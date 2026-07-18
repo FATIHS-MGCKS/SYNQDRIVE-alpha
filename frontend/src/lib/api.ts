@@ -3926,6 +3926,23 @@ export const api = {
         `/organizations/${orgId}/stations/${stationId}/operations${qs ? `?${qs}` : ''}`,
       );
     },
+    operationsTimeline: (orgId: string, stationId: string, params: StationOperationsTimelineQueryParams = {}) => {
+      const q = new URLSearchParams();
+      if (params.from) q.set('from', params.from);
+      if (params.to) q.set('to', params.to);
+      if (params.page != null) q.set('page', String(params.page));
+      if (params.pageSize != null) q.set('pageSize', String(params.pageSize));
+      if (params.sortOrder) q.set('sortOrder', params.sortOrder);
+      if (params.at) q.set('at', params.at);
+      const qs = q.toString();
+      return get<StationOperationsTimelineReadModel>(
+        `/organizations/${orgId}/stations/${stationId}/operations-timeline${qs ? `?${qs}` : ''}`,
+      );
+    },
+    operationsTimelineContract: (orgId: string) =>
+      get<StationOperationsTimelineContractMetadata>(
+        `/organizations/${orgId}/stations/operations-timeline/contract`,
+      ),
     activity: (orgId: string, stationId: string) =>
       get<StationActivityEntry[]>(`/organizations/${orgId}/stations/${stationId}/activity`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
@@ -9547,6 +9564,85 @@ export interface StationOperationsSummary {
     operationalWarnings: number;
     total: number;
   };
+}
+
+export type StationOperationsTimelineEntryType =
+  | 'PICKUP'
+  | 'RETURN'
+  | 'OVERDUE_RETURN'
+  | 'ONE_WAY_ARRIVAL'
+  | 'TRANSFER_ARRIVAL'
+  | 'TRANSFER_DEPARTURE'
+  | 'AFTER_HOURS_EVENT'
+  | 'OPERATIONAL_TASK';
+
+export type StationOperationsTimelineSortOrder = 'asc' | 'desc';
+
+export interface StationOperationsTimelineReference {
+  bookingId: string | null;
+  vehicleId: string | null;
+  transferId: string | null;
+  taskId: string | null;
+  bookingLabel: string | null;
+  vehicleLabel: string | null;
+}
+
+export interface StationOperationsTimelineEntry {
+  id: string;
+  type: StationOperationsTimelineEntryType;
+  status: string;
+  instantUtc: string;
+  stationLocalTime: string;
+  stationLocalDate: string;
+  references: StationOperationsTimelineReference;
+  actionRequired: boolean;
+  ruleWarning: boolean;
+  ruleWarningCodes: string[];
+  deepLink: string;
+}
+
+export interface StationOperationsTimelineReadModel {
+  version: number;
+  stationId: string;
+  organizationId: string;
+  evaluatedAt: string;
+  window: {
+    fromUtc: string;
+    toUtc: string;
+    timezone: string;
+  };
+  sortOrder: StationOperationsTimelineSortOrder;
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+  entries: StationOperationsTimelineEntry[];
+  scope: {
+    applied: boolean;
+    mode: 'ALL_STATIONS' | 'SCOPED_STATIONS';
+  };
+  frontendRecomputation: false;
+}
+
+export interface StationOperationsTimelineContractMetadata {
+  version: number;
+  resolver: string;
+  entryTypes: StationOperationsTimelineEntryType[];
+  defaultPageSize: number;
+  maxPageSize: number;
+  defaultRangeDays: number;
+  frontendRecomputation: false;
+}
+
+export interface StationOperationsTimelineQueryParams {
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+  sortOrder?: StationOperationsTimelineSortOrder;
+  at?: string;
 }
 
 export interface StationSummaryReadModel {

@@ -18,6 +18,7 @@ import {
   UpdateStationDto,
   ListStationsQueryDto,
   ListStationSummariesQueryDto,
+  ListStationOperationsTimelineQueryDto,
   SetStationVehiclesDto,
   AssignVehicleStationDto,
   UpdateVehicleCurrentStationDto,
@@ -56,6 +57,7 @@ import {
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
 import { StationSummaryReadModelService } from './station-summary-read-model.service';
+import { StationOperationsTimelineService } from './station-operations-timeline.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { HomeAssignmentPreviewDto } from './dto/vehicle-home-assignment-preview.dto';
@@ -76,6 +78,7 @@ export class StationsController {
     private readonly stationOperationalCapability: StationOperationalCapabilityService,
     private readonly stationOperations: StationOperationsService,
     private readonly stationSummaryReadModel: StationSummaryReadModelService,
+    private readonly stationOperationsTimeline: StationOperationsTimelineService,
     private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
     private readonly vehicleHomeAssignmentPreview: VehicleHomeAssignmentPreviewService,
     private readonly vehicleStationTransfer: VehicleStationTransferService,
@@ -420,6 +423,13 @@ export class StationsController {
     return this.stationOperations.getContractMetadata();
   }
 
+  @Get('operations-timeline/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getOperationsTimelineContract() {
+    return this.stationOperationsTimeline.getContractMetadata();
+  }
+
   @Get('summaries/contract')
   @RequireStationsPermission('stations.read')
   @RequireStationScope({ resource: 'list' })
@@ -526,6 +536,23 @@ export class StationsController {
     return this.stationOperations.resolveForStation(orgId, id, req[STATION_SCOPE_CONTEXT_KEY], {
       at,
     });
+  }
+
+  @Get(':id/operations-timeline')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'station' })
+  async getOperationsTimeline(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query() query: ListStationOperationsTimelineQueryDto,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationOperationsTimeline.resolveForStation(
+      orgId,
+      id,
+      query,
+      req[STATION_SCOPE_CONTEXT_KEY],
+    );
   }
 
   @Get(':id/team')

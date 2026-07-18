@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-operations-timeline-v49638-2026-07-20',
+    version: '4.9.638',
+    title: 'V4.9.638 — Stations V2: Kanonische Operations Timeline (Prompt 58/78)',
+    summary: [
+      'Neues kanonisches `StationOperationsTimelineReadModel` v1 — serverseitig sortierte, paginierte Timeline pro Station.',
+      'Eintragstypen: Pickup, Return, Overdue Return, One-Way Arrival, Transfer Arrival/Departure, After-hours Event, Operational Task.',
+      'Pro Eintrag: UTC + Stations-Lokalzeit, Status, Booking/Vehicle-Referenz (ohne PII), `actionRequired`, `ruleWarning`, Deep Link.',
+      'API: `GET .../stations/:id/operations-timeline` + `GET .../stations/operations-timeline/contract`; Scope, Zeitfenster, Pagination und Stations-TZ serverseitig.',
+    ],
+    reason:
+      'Stations-Operatoren brauchen eine chronologische, maschinenlesbare Operations-Timeline ohne Frontend-Nachberechnung und ohne unnötige personenbezogene Daten.',
+    previousBehavior:
+      'Operations Summary lieferte aggregierte Counts, aber keine kanonische chronologische Timeline mit Deep Links und Regelwarnungen pro Ereignis.',
+    details:
+      'Backend: `station-operations-timeline.contract.ts`, `station-operations-timeline.resolver.ts`, `StationOperationsTimelineService`, Controller-Routen. Tests: Resolver-Spec + Service-Integration + Controller-Security.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'stations-v2-operations-summary-v49637-2026-07-20',
     version: '4.9.637',
     title: 'V4.9.637 — Stations V2: Operations Summary für Tasks & Notifications (Prompt 57/78)',
