@@ -7,10 +7,14 @@
  * that persists connectivity / telemetry / notification data.
  *
  * Usage:
- *   npx ts-node scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=1
+ *   cd backend && TS_NODE_PROJECT=tsconfig.json npx ts-node -r tsconfig-paths/register \
+ *     ../scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=1
  *   FLEET_CONNECTIVITY_AUDIT_ALLOW_REMOTE=1 FLEET_CONNECTIVITY_AUDIT_ALLOW_PROD=1 \
  *     npx ts-node scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=2 \
- *     --output-dir=docs/audits/data
+ *   npx ts-node scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=3 --replay
+ *
+ * Phase 3 replay uses anonymized fixture only — no DATABASE_URL required:
+ *   docs/audits/data/fleet-connectivity-incident-replay-fixture-2026-07.json
  *
  * Environment:
  *   DATABASE_URL                                    PostgreSQL (required for phase >=2)
@@ -25,6 +29,10 @@
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  buildDeviceConnectionSummary,
+  type DeviceConnectionEventRow,
+} from '../../backend/src/modules/dimo/device-connection-read-model';
 
 const AUDIT_ID = 'fleet-connectivity-production-readiness-2026-07';
 const ALLOWED_PHASES = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -211,6 +219,172 @@ function phase2(): AuditPhaseResult {
   };
 }
 
+function phase3Replay(): AuditPhaseResult {
+  const fixturePath =
+    parseArg('--fixture') ??
+    path.join(
+      repoRoot(),
+      'docs',
+      'audits',
+      'data',
+      'fleet-connectivity-incident-replay-fixture-2026-07.json',
+    );
+  if (!fs.existsSync(fixturePath)) {
+    throw new Error(`Replay fixture not found: ${fixturePath}`);
+  }
+
+  const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as {
+    incidentVehicleAlias: string;
+    unplugObservedAt: string;
+    analysisNow: string;
+    hardwareType: string;
+    dimoLinked: boolean;
+    connectivityAnchorAtAnalysis: {
+      dimoConnectionStatus: 'CONNECTED' | 'DISCONNECTED' | 'ERROR' | 'PENDING';
+      obdIsPluggedIn: boolean | null;
+    };
+    events: Array<{ eventType: string; observedAt: string }>;
+    firstTelemetryAfterUnplug?: { clickhouseRecordedAt: string; pollStartedAt: string };
+    sameTokenBinding?: boolean;
+  };
+
+  const nowMs = new Date(fixture.analysisNow).getTime();
+  const events: DeviceConnectionEventRow[] = fixture.events.map((e, i) => ({
+    id: `replay-${i}`,
+    vehicleId: fixture.incidentVehicleAlias,
+    eventType: e.eventType as DeviceConnectionEventRow['eventType'],
+    observedAt: new Date(e.observedAt),
+  }));
+
+  const actual = buildDeviceConnectionSummary({
+    vehicleId: fixture.incidentVehicleAlias,
+    hardwareType: fixture.hardwareType,
+    dimoLinked: fixture.dimoLinked,
+    nowMs,
+    events,
+    bookings: [],
+    trips: [],
+    connectivityAnchor: fixture.connectivityAnchorAtAnalysis,
+  });
+
+  const unplugMs = new Date(fixture.unplugObservedAt).getTime();
+  const firstTelemetryMs = fixture.firstTelemetryAfterUnplug
+    ? new Date(fixture.firstTelemetryAfterUnplug.clickhouseRecordedAt).getTime()
+    : null;
+
+  const recoveryPredicates = {
+    hasUnplugEvent: events.some((e) => e.eventType === 'OBD_DEVICE_UNPLUGGED'),
+    hasExplicitPlugEvent: events.some((e) => e.eventType === 'OBD_DEVICE_PLUGGED_IN'),
+    telemetryAfterUnplug:
+      firstTelemetryMs != null && firstTelemetryMs > unplugMs,
+    anchorShowsPlugged: fixture.connectivityAnchorAtAnalysis.obdIsPluggedIn === true,
+    dimoConnected: fixture.connectivityAnchorAtAnalysis.dimoConnectionStatus === 'CONNECTED',
+    sameBinding: fixture.sameTokenBinding !== false,
+    lteR1Hardware: fixture.hardwareType === 'LTE_R1',
+  };
+
+  const agreedRuleWouldClose =
+    recoveryPredicates.hasUnplugEvent &&
+    !recoveryPredicates.hasExplicitPlugEvent &&
+    recoveryPredicates.telemetryAfterUnplug &&
+    recoveryPredicates.anchorShowsPlugged &&
+    recoveryPredicates.dimoConnected &&
+    recoveryPredicates.sameBinding &&
+    recoveryPredicates.lteR1Hardware;
+
+  const expected = {
+    openUnpluggedEpisode: agreedRuleWouldClose ? false : actual.openUnpluggedEpisode,
+    currentDeviceConnectionStatus: agreedRuleWouldClose
+      ? ('plugged' as const)
+      : actual.currentDeviceConnectionStatus,
+    deviceState: agreedRuleWouldClose ? 'PLUGGED_INFERRED' : 'UNPLUGGED_CONFIRMED',
+    resolutionMethod: agreedRuleWouldClose ? 'SNAPSHOT_PLUG_SIGNAL' : null,
+  };
+
+  const decisionTree = [
+    {
+      step: 1,
+      check: 'last UNPLUG event exists',
+      result: recoveryPredicates.hasUnplugEvent,
+      branch: recoveryPredicates.hasUnplugEvent ? 'continue' : 'no episode',
+    },
+    {
+      step: 2,
+      check: 'newer PLUG webhook event exists',
+      result: recoveryPredicates.hasExplicitPlugEvent,
+      branch: recoveryPredicates.hasExplicitPlugEvent ? 'close via webhook' : 'continue (incident path)',
+    },
+    {
+      step: 3,
+      check: 'telemetry snapshot after unplug (T1>T0)',
+      result: recoveryPredicates.telemetryAfterUnplug,
+      branch: recoveryPredicates.telemetryAfterUnplug ? 'continue' : 'stay open',
+    },
+    {
+      step: 4,
+      check: 'connectivityAnchor obdIsPluggedIn=true',
+      result: recoveryPredicates.anchorShowsPlugged,
+      branch: recoveryPredicates.anchorShowsPlugged ? 'continue' : 'stay open',
+    },
+    {
+      step: 5,
+      check: 'DimoVehicle CONNECTED',
+      result: recoveryPredicates.dimoConnected,
+      branch: recoveryPredicates.dimoConnected ? 'continue' : 'stay open',
+    },
+    {
+      step: 6,
+      check: 'same token/binding episode',
+      result: recoveryPredicates.sameBinding,
+      branch: recoveryPredicates.sameBinding ? 'continue' : 'invalidate old episode',
+    },
+    {
+      step: 7,
+      check: 'buildDeviceConnectionSummary openUnpluggedEpisode (actual code)',
+      result: actual.openUnpluggedEpisode,
+      branch: actual.openUnpluggedEpisode
+        ? 'BUG: agreed rule satisfied but episode still open'
+        : 'closed',
+    },
+  ];
+
+  const replayOut = {
+    mode: 'pure-replay-read-only',
+    writesPerformed: false,
+    fixture: path.basename(fixturePath),
+    actual: {
+      openUnpluggedEpisode: actual.openUnpluggedEpisode,
+      currentDeviceConnectionStatus: actual.currentDeviceConnectionStatus,
+      severity: actual.severity,
+    },
+    expectedCanonical: expected,
+    predicates: recoveryPredicates,
+    agreedRuleWouldClose,
+    mismatch: actual.openUnpluggedEpisode !== expected.openUnpluggedEpisode,
+    rootCauseLines: [
+      'device-connection-read-model.ts:338-340 openUnpluggedEpisode from events only',
+      'device-connection-read-model.ts:343-344 forces currentDeviceConnectionStatus=unplugged',
+    ],
+    decisionTree,
+  };
+
+  const artifact = writeJson('fleet-connectivity-incident-replay-result-2026-07.json', replayOut);
+
+  return {
+    auditId: AUDIT_ID,
+    phase: 3,
+    completedAt: new Date().toISOString(),
+    mode: 'read-only',
+    writesPerformed: false,
+    summary: agreedRuleWouldClose
+      ? 'Replay confirms agreed recovery rule predicates pass but openUnpluggedEpisode remains true.'
+      : 'Replay completed; recovery predicates not fully satisfied.',
+    artifacts: [artifact, fixturePath],
+    notes: ['Pure replay — no database access.', 'Uses buildDeviceConnectionSummary from codebase.'],
+    data: replayOut,
+  };
+}
+
 function notImplemented(phase: number): never {
   const err = new Error(`Phase ${phase} not implemented yet.`);
   (err as NodeJS.ErrnoException).code = 'PHASE_NOT_IMPLEMENTED';
@@ -219,6 +393,7 @@ function notImplemented(phase: number): never {
 
 function main(): void {
   const phase = parsePhase();
+  const replayOnly = process.argv.includes('--replay');
   let result: AuditPhaseResult;
 
   switch (phase) {
@@ -228,7 +403,14 @@ function main(): void {
     case 2:
       result = phase2();
       break;
+    case 3:
+      result = phase3Replay();
+      break;
     default:
+      if (replayOnly) {
+        result = phase3Replay();
+        break;
+      }
       notImplemented(phase);
   }
 

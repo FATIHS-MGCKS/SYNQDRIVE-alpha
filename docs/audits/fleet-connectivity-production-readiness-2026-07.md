@@ -5,8 +5,8 @@
 | **Audit ID** | `fleet-connectivity-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/fleet-connectivity-production-readiness-2026-07` |
-| **Phase** | **2 of 8 — State logic & derivation audit** |
-| **Status** | Phases 1–2 complete; Phases 3–8 outlined below |
+| **Phase** | **3 of 8 — Incident reconstruction (INCIDENT_VEHICLE_001)** |
+| **Status** | Phases 1–3 complete; Phases 4–8 outlined below |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | Through 2026-07-18 UTC |
 | **Incident vehicle (anonymized)** | `INCIDENT_VEHICLE_001` (real mapping **not** stored in git) |
@@ -23,8 +23,11 @@
 | State rule map | `docs/audits/data/fleet-connectivity-state-rule-map-2026-07.csv` | 2 |
 | Freshness consumer matrix | `docs/audits/data/fleet-connectivity-freshness-consumer-matrix-2026-07.csv` | 2 |
 | Device state machine | `docs/audits/data/fleet-connectivity-device-state-machine-2026-07.csv` | 2 |
-| Readiness factor map | `docs/audits/data/fleet-connectivity-readiness-factor-map-2026-07.csv` | 2 |
-| Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` | 1–2 |
+| Incident timeline CSV | `docs/audits/data/fleet-connectivity-incident-timeline-2026-07.csv` | 3 |
+| Incident state comparison JSON | `docs/audits/data/fleet-connectivity-incident-state-comparison-2026-07.json` | 3 |
+| Incident replay fixture | `docs/audits/data/fleet-connectivity-incident-replay-fixture-2026-07.json` | 3 |
+| Incident replay result | `docs/audits/data/fleet-connectivity-incident-replay-result-2026-07.json` | 3 (generated) |
+| Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` | 1–3 |
 
 ---
 
@@ -325,7 +328,7 @@ FLEET_CONNECTIVITY_AUDIT_ALLOW_REMOTE=1 FLEET_CONNECTIVITY_AUDIT_ALLOW_PROD=1 \
 
 ---
 
-# Phase 2 — State logic & derivation audit
+# Phase 2 — State logic & derivation audit (complete)
 
 ## 11. Status dimensions inventory
 
@@ -578,4 +581,126 @@ Episode closure for INCIDENT_VEHICLE_001 class: `deviceState=PLUGGED_INFERRED`, 
 
 ---
 
-*End of Phase 2. Do not proceed to Phase 3 in this agent turn.*
+# Phase 3 — INCIDENT_VEHICLE_001 reconstruction
+
+> **Privacy:** Production vehicle identified internally by license plate suffix; git artifacts use alias `INCIDENT_VEHICLE_001` only. No VIN, UUID, token ID, or full plate committed.
+
+## 21. Analysis window & binding
+
+| Field | Value |
+|-------|-------|
+| **Incident alias** | `INCIDENT_VEHICLE_001` |
+| **Window** | 2026-07-08 17:19 UTC → 2026-07-18 10:00 UTC |
+| **Unplug observed** | 2026-07-08 17:21:19 UTC |
+| **Device type** | LTE_R1 aftermarket OBD (not synthetic) |
+| **Provider** | DIMO |
+| **Consent** | ACTIVE `DIMO_DIRECT` (since vehicle registration) |
+| **Token binding** | Stable — no token change between unplug and analysis |
+| **Org scope** | Single organization verified for all queried rows |
+
+## 22. Event & snapshot counts
+
+| Metric | Count |
+|--------|-------|
+| Webhooks (total) | **1** |
+| Webhooks UNPLUG | 1 |
+| Webhooks PLUG | 0 |
+| ClickHouse snapshots before unplug | 5,727 |
+| ClickHouse snapshots after unplug | 30,099 |
+| CH snapshots first hour after unplug | 276 |
+| Poll SUCCESS after unplug | 29,931 |
+| Poll FAILURE after unplug | 11,905 |
+| Trips after unplug | 51 (44 with DIMO segment) |
+| Device-unplug notifications | **0** |
+
+## 23. Chronological timeline
+
+Full table: `docs/audits/data/fleet-connectivity-incident-timeline-2026-07.csv` (22 rows).
+
+**Critical sequence:**
+
+1. **17:21:19** — `OBD_DEVICE_UNPLUGGED` (`providerObservedAt` = payload signal timestamp)
+2. **17:21:21** — Event store `createdAt` (+2.571s ingest lag); webhook `payload.time` +2.2s
+3. **17:21:28** — First ClickHouse snapshot **after** unplug (provider `recorded_at`, +9s)
+4. **17:21:41** — First SUCCESS poll after unplug (+22s); snapshot processed into `VehicleLatestState` path
+5. **17:39:00** — First trip after unplug (+18 min) — operational recovery
+6. **2026-07-18** — Current: `obdIsPluggedIn=true`, `lastSeenAt` live, `DimoVehicle.CONNECTED`
+
+## 24. Snapshot recovery — 14 questions answered
+
+| # | Question | Answer | Evidence |
+|---|----------|--------|----------|
+| 1 | New snapshots after unplug? | **Yes** | 30,099 CH rows; polls SUCCESS from +22s |
+| 2 | Real or backfill? | **Real** | First `recorded_at` +9s after unplug; ingest +22s; current `sourceTimestamp`≈`lastSeenAt` |
+| 3 | Provider time after unplug? | **Yes** | 17:21:28 > 17:21:19 |
+| 4 | Receive time after unplug? | **Yes** | Poll 17:21:41 |
+| 5 | Same provider? | **Yes** | DIMO throughout |
+| 6 | Same binding episode? | **Yes** | Stable token; aftermarket device; no reconnect |
+| 7 | OBD/R1 vs synthetic? | **Physical OBD/R1** | `hardwareType=LTE_R1`, `aftermarketDevice=true` |
+| 8 | `obdIsPluggedIn` after recovery? | **true** (current VLS) | Signal ts 2026-07-18T09:51:09Z — CH has no historical obd column |
+| 9 | New trips after? | **Yes** | 51 trips; first at 17:39 UTC |
+| 10 | DIMO `connectionStatus` online? | **CONNECTED** | `lastSignal` fresh at analysis |
+| 11 | Why `openUnpluggedEpisode=true`? | **No PLUG event; read model ignores snapshot recovery** | 0 plug webhooks; episode logic event-only |
+| 12 | Blocking code line? | **`device-connection-read-model.ts:338-340`** | `openUnpluggedEpisode` from event order only |
+| 13 | Wrong UI components? | Fleet **DeviceConnectionWebhookChip**, **VehicleDeviceConnectionCard**, KPI **deviceUnpluggedOpenEpisodes**, filter `device_unplugged_webhook` | |
+| 14 | Surfaces already correct? | **ConnectionStatusChip online**, **ObdRowChip Plugged in**, **VehicleConnectionBadge Live**, booking gate not offline | |
+
+## 25. Event order & latency
+
+| Check | Result |
+|-------|--------|
+| Out-of-order webhooks | No (single event) |
+| Delayed webhook | No — observedAt matches payload signal ts |
+| Delayed snapshot | No — provider time after unplug |
+| Snapshot before unplug received after | No |
+| Event after snapshot but received before | N/A (webhook +2s after last pre-unplug poll) |
+| `providerObservedAt` vs `createdAt` | 2.571s lag |
+| Duplicate webhooks | No (`dedup_bucket` unique) |
+| Duplicate snapshots | Yes — 14 rows same second 17:21:28 (ingest burst, not ordering issue) |
+| Correlation ID | **Missing** — no cross-store sequence ID |
+
+## 26. Device / token change assessment
+
+No provider switch, token change, consent renewal, or new device binding detected in the analysis window. **The unplug episode still belongs to the current binding episode** — stale episode is a read-model bug, not a binding mismatch.
+
+## 27. Current vs expected state
+
+See `docs/audits/data/fleet-connectivity-incident-state-comparison-2026-07.json`.
+
+| | CURRENT_BACKEND_STATE | EXPECTED_CANONICAL_STATE |
+|---|----------------------|-------------------------|
+| Provider link | LINKED | LINKED |
+| Telemetry | live / online | live |
+| Device episode | UNPLUGGED open | PLUGGED_INFERRED closed |
+| `obdIsPluggedIn` | true | true |
+| Attention | device_unplug_warning | none |
+| **DIFFERENCE** | Episode stuck open despite recovery | Episode closed via snapshot rule |
+| **ROOT_CAUSE** | `openUnpluggedEpisode` event-only; anchor does not close UNPLUG | Implement agreed snapshot recovery in read model |
+
+## 28. Pure replay (read-only)
+
+```bash
+cd backend && TS_NODE_PROJECT=tsconfig.json npx ts-node -r tsconfig-paths/register \
+  ../scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=3
+```
+
+Fixture: `docs/audits/data/fleet-connectivity-incident-replay-fixture-2026-07.json`  
+Output: `docs/audits/data/fleet-connectivity-incident-replay-result-2026-07.json`
+
+Replay result: `agreedRuleWouldClose=true`, `actual.openUnpluggedEpisode=true`, `mismatch=true`.
+
+## 29. Phase 3 completion checklist
+
+- [x] Vehicle identified internally; git anonymized
+- [x] Full timeline CSV with timestamp types
+- [x] Snapshot recovery Q&A with evidence
+- [x] Event order / latency analysis
+- [x] Binding stability confirmed
+- [x] Current vs expected state JSON
+- [x] Pure replay mode in audit script
+- [x] No production writes; no raw payloads in git
+- [x] PII scan clean
+
+---
+
+*End of Phase 3. Do not proceed to Phase 4 in this agent turn.*
