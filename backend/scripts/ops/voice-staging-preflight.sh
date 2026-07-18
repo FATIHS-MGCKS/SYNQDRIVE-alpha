@@ -34,6 +34,8 @@ run_step "Voice staging E2E matrix" bash -c 'cd backend && npm run test:voice:st
 
 run_step "Prisma schema validate" bash -c 'cd backend && npm run prisma:validate'
 
+run_step "Voice staging runtime probes" bash -c 'cd backend && npm run voice:staging:probes'
+
 if [[ "${VOICE_PREFLIGHT_SKIP_WEBHOOK_PROBE:-}" != "1" ]]; then
   run_step "Twilio webhook reachability" bash backend/scripts/ops/twilio-webhook-reachability.sh
 else

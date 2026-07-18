@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-staging-preflight-2026-07-18',
+    version: '4.9.607',
+    title: 'V4.9.607 — Voice AI: staging preflight & secure secret configuration (9A)',
+    summary: [
+      'Dedicated internal staging org bootstrap (`org-voice-staging-e2e`) with synthetic customer/vehicle/booking and rollout:STAGING — no production data.',
+      'Secret reference evaluation + staging policy snapshot + GO/NO-GO derivation; runtime probes without live calls.',
+      'Audit report `docs/audits/voice-ai-staging-preflight.md`; `.env.voice-staging.example`; webhook reachability accepts unsigned 401.',
+    ],
+    reason:
+      'Prompt 9A — prepare secure voice staging environment before real provisioning (no numbers, agents, or calls).',
+    previousBehavior:
+      'No canonical staging org bootstrap; webhook reachability probe expected HTTP 200 on unsigned POST.',
+    details:
+      'voice-staging-org-bootstrap.ts, voice-staging-preflight-probes.ts, voice-staging-preflight.util.ts, backend/.env.voice-staging.example',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T12:00:00.000Z',
+  },
+  {
     id: 'master-voice-org-workspace-2026-07-18',
     version: '4.9.606',
     title: 'V4.9.606 — Voice AI: master organization operations workspace (8B)',
