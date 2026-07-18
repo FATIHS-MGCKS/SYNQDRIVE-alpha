@@ -17,6 +17,7 @@ import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary
 import { StationsUpdatePermissionGuard } from './guards/stations-update-permission.guard';
 import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicle-location-permission.guard';
 import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-change-vehicle-home-permission.guard';
+import { StationsCorrectVehicleCurrentPermissionGuard } from './guards/stations-correct-vehicle-current-permission.guard';
 import { STATIONS_PERMISSION_KEY } from './decorators/require-stations-permission.decorator';
 
 const ORG = 'org-1';
@@ -107,6 +108,9 @@ describe('StationsController mutation security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'changeVehicleHomeStation')).toEqual({
       resource: 'vehicle_location',
     });
+    expect(metadata(STATION_SCOPE_KEY, 'correctVehicleCurrentStation')).toEqual({
+      resource: 'vehicle_location',
+    });
     expect(metadata(STATION_SCOPE_KEY, 'addVehiclesToHomeStation')).toEqual({
       resource: 'station',
     });
@@ -138,6 +142,9 @@ describe('StationsController mutation security', () => {
       Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.changeVehicleHomeStation),
     ).toEqual(expect.arrayContaining([StationsChangeVehicleHomePermissionGuard]));
     expect(
+      Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.correctVehicleCurrentStation),
+    ).toEqual(expect.arrayContaining([StationsCorrectVehicleCurrentPermissionGuard]));
+    expect(
       Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.previewHomeFleetAssignment),
     ).toEqual(expect.arrayContaining([StationsChangeVehicleHomePermissionGuard]));
   });
@@ -146,6 +153,7 @@ describe('StationsController mutation security', () => {
 describe('StationsController mutation handlers', () => {
   const stationsService = {
     changeVehicleHomeStation: jest.fn(),
+    correctVehicleCurrentStation: jest.fn(),
   };
   const vehicleHomeFleetDelta = {
     addVehiclesToHomeStation: jest.fn(),
@@ -168,6 +176,34 @@ describe('StationsController mutation handlers', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('delegates correctVehicleCurrentStation to service with normalized payload', async () => {
+    stationsService.correctVehicleCurrentStation.mockResolvedValue({ outcome: 'APPLIED' });
+
+    await controller.correctVehicleCurrentStation(
+      ORG,
+      {
+        vehicleId: 'veh-1',
+        currentStationId: STATION_B,
+        source: 'MANUAL',
+        reason: 'Yard recount',
+        expectedVersion: 2,
+      },
+      'user-1',
+    );
+
+    expect(stationsService.correctVehicleCurrentStation).toHaveBeenCalledWith(
+      ORG,
+      {
+        vehicleId: 'veh-1',
+        currentStationId: STATION_B,
+        source: 'MANUAL',
+        reason: 'Yard recount',
+        expectedVersion: 2,
+      },
+      'user-1',
+    );
   });
 
   it('delegates changeVehicleHomeStation to service with normalized payload', async () => {

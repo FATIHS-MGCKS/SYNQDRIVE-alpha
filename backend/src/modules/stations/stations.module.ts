@@ -15,6 +15,7 @@ import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary
 import { StationsUpdatePermissionGuard } from './guards/stations-update-permission.guard';
 import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicle-location-permission.guard';
 import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-change-vehicle-home-permission.guard';
+import { StationsCorrectVehicleCurrentPermissionGuard } from './guards/stations-correct-vehicle-current-permission.guard';
 
 @Module({
   controllers: [StationsController],
@@ -34,6 +35,7 @@ import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-chan
     StationsSetPrimaryPermissionGuard,
     StationsVehicleLocationPermissionGuard,
     StationsChangeVehicleHomePermissionGuard,
+    StationsCorrectVehicleCurrentPermissionGuard,
   ],
   exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService],
 })
