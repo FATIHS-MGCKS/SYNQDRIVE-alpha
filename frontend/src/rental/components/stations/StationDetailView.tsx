@@ -27,9 +27,6 @@ import {
   PageHeader,
   StatusChip,
   EmptyState,
-  ErrorState,
-  SkeletonCard,
-  SkeletonMetricGrid,
 } from '../../../components/patterns';
 import {
   formatStationAddress,
@@ -49,6 +46,13 @@ import {
   type StationDetailTab,
   writeStationDetailUrl,
 } from './station-detail-navigation';
+import {
+  extractStationPartialData,
+  resolveStationContextBanners,
+  resolveStationFetchState,
+  resolveStationTabFetchState,
+} from '../../lib/station-view-state';
+import { StationContextBanners, StationFetchStateBoundary } from './StationViewStateBoundary';
 import { StationFormModal } from './StationFormModal';
 import { StationVehicleWorkflowMenu } from './StationVehicleWorkflowMenu';
 import { StationOverviewTab } from './StationOverviewTab';
@@ -88,8 +92,9 @@ export function StationDetailView({
 
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tabError, setTabError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown | null>(null);
+  const [summaryError, setSummaryError] = useState<unknown | null>(null);
+  const [tabError, setTabError] = useState<unknown | null>(null);
   const [activeTab, setActiveTab] = useState<StationDetailTab>(initialTab);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -126,24 +131,34 @@ export function StationDetailView({
     if (!orgId) return;
     setLoading(true);
     setError(null);
+    setSummaryError(null);
     loadedTabsRef.current = new Set();
+    setTimeline([]);
+    setOperations(null);
+    setActivity([]);
+    setTeam(null);
+
     try {
-      const [stationResult, summaryResult] = await Promise.all([
-        api.stations.get(orgId, stationId),
-        api.stations.summary(orgId, stationId),
-      ]);
+      const stationResult = await api.stations.get(orgId, stationId);
       setStation(stationResult);
-      setSummary(summaryResult);
-      setTimeline([]);
-      setOperations(null);
-      setActivity([]);
-      setTeam(null);
     } catch (e) {
-      setError((e as Error).message || t('stations.errorLoad'));
+      setStation(null);
+      setSummary(null);
+      setError(e);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const summaryResult = await api.stations.summary(orgId, stationId);
+      setSummary(summaryResult);
+    } catch (e) {
+      setSummary(null);
+      setSummaryError(e);
     } finally {
       setLoading(false);
     }
-  }, [orgId, stationId, t]);
+  }, [orgId, stationId]);
 
   const loadTabData = useCallback(
     async (tab: StationDetailTab) => {
@@ -177,7 +192,7 @@ export function StationDetailView({
         }
         loadedTabsRef.current.add(dataKey);
       } catch (e) {
-        setTabError((e as Error).message || t('stations.detail.tabError'));
+        setTabError(e);
       } finally {
         setTabLoading(false);
       }
@@ -261,6 +276,29 @@ export function StationDetailView({
     }
   };
 
+  const coreFetchResolution = useMemo(
+    () =>
+      resolveStationFetchState({
+        loading,
+        error,
+        hasData: !!station,
+        permissionDenied: permStatus === 'ready' && !capabilities.canRead,
+        fallbackMessage: t('stations.errorLoad'),
+      }),
+    [capabilities.canRead, error, loading, permStatus, station, t],
+  );
+
+  const contextBanners = useMemo(
+    () =>
+      resolveStationContextBanners({
+        station,
+        summary,
+        partialData: extractStationPartialData(summary?.partialData),
+        evaluatedAt: summary?.lastCalculatedAt,
+      }),
+    [station, summary],
+  );
+
   const handleBack = () => {
     onBack();
   };
@@ -275,23 +313,28 @@ export function StationDetailView({
     );
   }
 
-  if (loading && !station) {
+  if (
+    coreFetchResolution.kind === 'loading' ||
+    coreFetchResolution.kind === 'permission_denied' ||
+    coreFetchResolution.kind === 'not_found' ||
+    coreFetchResolution.kind === 'api_error'
+  ) {
     return (
-      <div className="space-y-4 max-w-[1400px] mx-auto">
-        <SkeletonCard className="h-16 w-full" />
-        <SkeletonMetricGrid count={4} />
-        <SkeletonCard className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (error && !station) {
-    return (
-      <div className="max-w-lg mx-auto py-8">
-        <ErrorState title={t('stations.detail.errorTitle')} description={error} onRetry={() => void loadCore()} />
-        <button type="button" onClick={handleBack} className="mt-4 block mx-auto text-xs text-muted-foreground">
-          ← {t('stations.detail.back')}
-        </button>
+      <div className="max-w-[1400px] mx-auto space-y-4">
+        <StationFetchStateBoundary
+          resolution={coreFetchResolution}
+          onRetry={() => void loadCore()}
+          loadingSkeleton="metrics"
+          emptyTitleKey="stations.empty.title"
+          emptyDescriptionKey="stations.empty.description"
+        >
+          {null}
+        </StationFetchStateBoundary>
+        {coreFetchResolution.kind === 'api_error' || coreFetchResolution.kind === 'not_found' ? (
+          <button type="button" onClick={handleBack} className="block mx-auto text-xs text-muted-foreground">
+            ← {t('stations.detail.back')}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -307,11 +350,7 @@ export function StationDetailView({
           {t('stations.permissions.readOnlyBanner')}
         </div>
       )}
-      {station.status === 'ARCHIVED' && (
-        <div className="rounded-xl border border-[color:var(--status-watch)]/35 bg-[color:var(--status-watch)]/[0.04] px-4 py-3 text-sm text-muted-foreground">
-          {t('stations.detail.archivedBanner')}
-        </div>
-      )}
+      <StationContextBanners banners={contextBanners} onRetry={() => void loadCore()} />
       <PageHeader
         variant="full"
         eyebrow={(
@@ -394,21 +433,14 @@ export function StationDetailView({
         </div>
       </div>
 
-      {tabError ? (
-        <div className="rounded-xl border border-[color:var(--status-watch)]/35 bg-[color:var(--status-watch)]/[0.04] px-4 py-3 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <span>{tabError}</span>
-          <button type="button" className="text-xs font-semibold underline" onClick={() => void loadTabData(activeTab)}>
-            {t('stations.partialData.retry')}
-          </button>
-        </div>
-      ) : null}
-
       {activeTab === 'overview' && (
         <StationOverviewTab
           station={station}
           summary={summary}
           summaryLoading={loading && !summary}
+          summaryError={summaryError}
           onNavigateTab={selectTab}
+          onRetrySummary={() => void loadCore()}
         />
       )}
 
@@ -420,7 +452,9 @@ export function StationDetailView({
         <ScheduleTab
           entries={timeline}
           loading={tabLoading}
+          error={tabError}
           onOpenBooking={onOpenBooking}
+          onRetry={() => void loadTabData('schedule')}
           t={t}
         />
       )}
@@ -431,16 +465,30 @@ export function StationDetailView({
           hours={hours}
           operations={operations}
           loading={tabLoading}
+          error={tabError}
+          onRetry={() => void loadTabData('operations')}
           t={t}
         />
       )}
 
       {activeTab === 'team' && (
-        <TeamTab team={team} loading={tabLoading} t={t} />
+        <TeamTab
+          team={team}
+          loading={tabLoading}
+          error={tabError}
+          onRetry={() => void loadTabData('team')}
+          t={t}
+        />
       )}
 
       {activeTab === 'activity' && stationCaps.canViewActivity && (
-        <ActivityTab activity={activity} loading={tabLoading} t={t} />
+        <ActivityTab
+          activity={activity}
+          loading={tabLoading}
+          error={tabError}
+          onRetry={() => void loadTabData('activity')}
+          t={t}
+        />
       )}
 
       <StationFormModal
@@ -464,26 +512,33 @@ export function StationDetailView({
 function ScheduleTab({
   entries,
   loading,
+  error,
   onOpenBooking,
+  onRetry,
   t,
 }: {
   entries: StationOperationsTimelineEntry[];
   loading: boolean;
+  error: unknown | null;
   onOpenBooking?: (id: string) => void;
+  onRetry?: () => void;
   t: (k: TranslationKey) => string;
 }) {
-  if (loading) return <SkeletonCard className="h-48 w-full" />;
-  if (entries.length === 0) {
-    return (
-      <EmptyState
-        icon={<Calendar className="w-8 h-8" />}
-        title={t('stations.detail.scheduleEmptyTitle')}
-        description={t('stations.detail.scheduleEmptyDescription')}
-      />
-    );
-  }
+  const resolution = resolveStationTabFetchState({
+    loading,
+    error,
+    itemCount: entries.length,
+    fallbackMessage: t('stations.detail.tabError'),
+  });
 
   return (
+    <StationFetchStateBoundary
+      resolution={resolution}
+      onRetry={onRetry}
+      emptyIcon={<Calendar className="w-8 h-8" />}
+      emptyTitleKey="stations.detail.scheduleEmptyTitle"
+      emptyDescriptionKey="stations.detail.scheduleEmptyDescription"
+    >
     <div className="surface-premium overflow-hidden">
       <ul className="divide-y divide-border">
         {entries.map((entry) => (
@@ -518,6 +573,7 @@ function ScheduleTab({
         ))}
       </ul>
     </div>
+    </StationFetchStateBoundary>
   );
 }
 
@@ -526,14 +582,25 @@ function OperationsTab({
   hours,
   operations,
   loading,
+  error,
+  onRetry,
   t,
 }: {
   station: Station;
   hours: ReturnType<typeof parseOpeningHours> | null;
   operations: StationOperationsDto | null;
   loading: boolean;
+  error: unknown | null;
+  onRetry?: () => void;
   t: (k: TranslationKey) => string;
 }) {
+  const liveOpsResolution = resolveStationFetchState({
+    loading: loading && !operations,
+    error,
+    hasData: !!operations,
+    fallbackMessage: t('stations.detail.tabError'),
+  });
+
   const dayLabels: Record<string, string> = {
     monday: t('stations.form.day.monday'),
     tuesday: t('stations.form.day.tuesday'),
@@ -552,27 +619,36 @@ function OperationsTab({
 
   return (
     <div className="space-y-4">
-      {loading && !operations ? <SkeletonCard className="h-32 w-full" /> : null}
-      {operations ? (
-        <div className="surface-premium p-4 space-y-3">
-          <h3 className="text-sm font-semibold">{t('stations.detail.liveOperations')}</h3>
-          <div className="flex flex-wrap gap-2">
-            <StatusChip tone="neutral">{operations.openingStatus.label}</StatusChip>
-            <StatusChip tone="neutral">{operations.capacityStatus.label}</StatusChip>
-            <StatusChip tone="neutral">{operations.pickupCapability.label}</StatusChip>
-            <StatusChip tone="neutral">{operations.returnCapability.label}</StatusChip>
-          </div>
-          {operations.operationalWarnings.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {operations.operationalWarnings.map((warning) => (
-                <StatusChip key={warning.code} tone={warning.severity === 'error' ? 'critical' : 'watch'}>
-                  {warning.message}
-                </StatusChip>
-              ))}
+      <StationFetchStateBoundary
+        resolution={liveOpsResolution}
+        onRetry={onRetry}
+        loadingSkeleton="card"
+        emptyTitleKey="stations.detail.operationsEmptyTitle"
+        emptyDescriptionKey="stations.detail.operationsEmptyDescription"
+      >
+        {operations ? (
+          <div className="surface-premium p-4 space-y-3">
+            <h3 className="text-sm font-semibold">{t('stations.detail.liveOperations')}</h3>
+            <div className="flex flex-wrap gap-2">
+              <StatusChip tone="neutral">{operations.openingStatus.label}</StatusChip>
+              <StatusChip tone="neutral">{operations.capacityStatus.label}</StatusChip>
+              <StatusChip tone="neutral">{operations.pickupCapability.label}</StatusChip>
+              <StatusChip tone="neutral">{operations.returnCapability.label}</StatusChip>
             </div>
-          ) : null}
-        </div>
-      ) : null}
+            {operations.operationalWarnings.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {operations.operationalWarnings.map((warning) => (
+                  <StatusChip key={warning.code} tone={warning.severity === 'error' ? 'critical' : 'watch'}>
+                    {warning.message}
+                  </StatusChip>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div />
+        )}
+      </StationFetchStateBoundary>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="surface-premium p-4 space-y-3">
@@ -642,27 +718,34 @@ function OperationsTab({
 function TeamTab({
   team,
   loading,
+  error,
+  onRetry,
   t,
 }: {
   team: StationTeamDto | null;
   loading: boolean;
+  error: unknown | null;
+  onRetry?: () => void;
   t: (k: TranslationKey) => string;
 }) {
-  if (loading && !team) return <SkeletonCard className="h-48 w-full" />;
-  if (!team || team.staff.length === 0) {
-    return (
-      <EmptyState
-        icon={<Users className="w-8 h-8" />}
-        title={t('stations.detail.teamEmptyTitle')}
-        description={t('stations.detail.teamEmptyDescription')}
-      />
-    );
-  }
+  const resolution = resolveStationTabFetchState({
+    loading,
+    error,
+    itemCount: team?.staff.length ?? 0,
+    fallbackMessage: t('stations.detail.tabError'),
+  });
 
   return (
+    <StationFetchStateBoundary
+      resolution={resolution}
+      onRetry={onRetry}
+      emptyIcon={<Users className="w-8 h-8" />}
+      emptyTitleKey="stations.detail.teamEmptyTitle"
+      emptyDescriptionKey="stations.detail.teamEmptyDescription"
+    >
     <div className="surface-premium overflow-hidden">
       <ul className="divide-y divide-border">
-        {team.staff.map((member) => (
+        {team?.staff.map((member) => (
           <li key={member.id} className="px-4 py-3 text-sm flex items-center justify-between gap-2">
             <span className="font-medium">{member.name}</span>
             <span className="text-xs text-muted-foreground">{member.role ?? '—'}</span>
@@ -670,29 +753,38 @@ function TeamTab({
         ))}
       </ul>
     </div>
+    </StationFetchStateBoundary>
   );
 }
 
 function ActivityTab({
   activity,
   loading,
+  error,
+  onRetry,
   t,
 }: {
   activity: StationActivityEntry[];
   loading: boolean;
+  error: unknown | null;
+  onRetry?: () => void;
   t: (k: TranslationKey) => string;
 }) {
-  if (loading) return <SkeletonCard className="h-48 w-full" />;
-  if (activity.length === 0) {
-    return (
-      <EmptyState
-        icon={<Clock className="w-8 h-8" />}
-        title={t('stations.detail.activityEmptyTitle')}
-        description={t('stations.detail.activityEmptyDescription')}
-      />
-    );
-  }
+  const resolution = resolveStationTabFetchState({
+    loading,
+    error,
+    itemCount: activity.length,
+    fallbackMessage: t('stations.detail.tabError'),
+  });
+
   return (
+    <StationFetchStateBoundary
+      resolution={resolution}
+      onRetry={onRetry}
+      emptyIcon={<Clock className="w-8 h-8" />}
+      emptyTitleKey="stations.detail.activityEmptyTitle"
+      emptyDescriptionKey="stations.detail.activityEmptyDescription"
+    >
     <div className="surface-premium overflow-hidden">
       <ul className="divide-y divide-border">
         {activity.map((entry) => (
@@ -711,6 +803,7 @@ function ActivityTab({
         ))}
       </ul>
     </div>
+    </StationFetchStateBoundary>
   );
 }
 

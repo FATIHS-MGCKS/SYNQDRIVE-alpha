@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-view-states-v49646-2026-07-20',
+    version: '4.9.646',
+    title: 'V4.9.646 — Stations V2: Kanonische Datenzustände (Prompt 66/78)',
+    summary: [
+      'Gemeinsame Resolver `station-view-state.ts` + `StationFetchStateBoundary` / `StationContextBanners` für Loading, Empty, Permission Denied, Not Found, API Error sowie Overlay-Banner Partial/Stale/Archived/Configuration Incomplete.',
+      'Listen- und Detailansicht trennen API-Fehler von leeren Erfolgszuständen; Retry mit Fehlerdetails; Partial Data nicht still summiert.',
+      '`api.request` setzt `err.status` für HTTP-Klassifikation; Detail-Core lädt Station und Summary getrennt.',
+      'Flotten-, Zeitplan-, Team-, Aktivitäts- und Übersicht-Tabs nutzen `resolveStationTabFetchState`; Vitest Unit + Integration/E2E-Wiring.',
+    ],
+    reason: 'Prompt 66/78: Einheitliche, verlässliche UI-Zustände für alle Stationstabs und Listen.',
+    previousBehavior:
+      'Ad-hoc Loading/Error/Empty pro Komponente; Tab-Fehler als Textbanner; Summary-Ausfall blockierte gesamtes Detail; API-Fehler teils wie leere Listen.',
+    details:
+      'Frontend: `station-api-error.ts`, `station-view-state.ts`, `StationViewStateBoundary.tsx`, Wiring in `StationsView`, `StationDetailView`, `StationOverviewTab`, `StationFleetTab`, i18n `stations.state.*`, Tests `station-view-state.test.ts`, `station-data-states.integration.test.ts`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T04:10:00.000Z',
+  },
+  {
     id: 'stations-v2-form-simplify-v49645-2026-07-20',
     version: '4.9.645',
     title: 'V4.9.645 — Stations V2: Create/Edit Station vereinfacht (Prompt 65/78)',
