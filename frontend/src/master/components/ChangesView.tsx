@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-kpis-domain-service-v49632-2026-07-19',
+    version: '4.9.632',
+    title: 'V4.9.632 — Stations V2: Canonical Station KPIs Domain Service (Prompt 52/78)',
+    summary: [
+      'Kanonischer KPI-Domainservice `resolveStationKpis` mit eindeutiger Semantik pro Kennzahl.',
+      'Metriken: homeFleetCount, currentOnSiteCount, foreignVehiclesOnSiteCount, expectedArrivalCount, currentlyRentedHomeVehicles, readyToRentOnSite, blockedOrMaintenanceOnSite, pickupsToday, returnsToday, overdueReturns, incoming/outgoingTransfers, openOperationalTasks, capacityStatus.',
+      '`bookedVehicles` explizit deprecated — RENTED nutzt `currentlyRentedHomeVehicles` (Runtime State).',
+      '„Heute“-KPIs über `station.timezone`; Partial Data via `known:false`; Scope-Kontext im Result-Envelope.',
+      'Unit-Tests für alle Kernpfade inkl. TZ, Partial Data, Transfers und Capacity-Status.',
+    ],
+    reason:
+      'Stations-KPIs brauchen einen zentralen, glossar-konformen Domainservice statt verstreuter Zähler mit falscher bookedVehicles-Semantik.',
+    previousBehavior:
+      '`getStationOverviewStats` zählte `bookedVehicles` als `Vehicle.status=RENTED` und nutzte Server-Mitternacht für today-Pickups/Returns.',
+    details:
+      '`station-kpis.contract.ts` + `station-kpis.resolver.ts` + Spec; integriert `evaluateStationCapacityPolicy` und `resolveZonedCalendarDayWindow`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T23:00:00.000Z',
+  },
+  {
     id: 'stations-v2-one-way-return-follow-up-v49631-2026-07-19',
     version: '4.9.631',
     title: 'V4.9.631 — Stations V2: One-Way Return Follow-Up Process (Prompt 51/78)',
