@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-manual-rule-override-v49628-2026-07-19',
+    version: '4.9.628',
+    title: 'V4.9.628 — Stations V2: Audited Manual Override for WARNING + MANUAL_CONFIRMATION (Prompt 48/78)',
+    summary: [
+      'Neuer auditierten manueller Override für WARNING und MANUAL_CONFIRMATION_REQUIRED — BLOCKED bleibt nicht übersteuerbar.',
+      'Pflichtfelder: Permission `stations.override_rules`, Reason, Actor, Timestamp, Original-Rule-Results, Booking/Transfer-Reference, Scope-Fingerprint + Gültigkeit (TTL).',
+      'Serverseitige Validierung in Booking-Rules-Evaluate und Transfer-Plan; kein stiller Frontend-Bypass; Scope-Änderung (Zeit/Station) invalidiert Override.',
+      'Prisma `StationRuleManualOverride` + Activity-Log; keine automatische Wiederverwendung — jeder Request braucht expliziten Override.',
+      'Security-/Integrationstests für Permission, Scope-Mismatch, BLOCKED-Ablehnung und Transfer soft-capacity.',
+    ],
+    reason:
+      'Operative Soft-Blocks sollen bewusst, berechtigt und nachvollziehbar überschrieben werden können — ohne Hard-Blocks zu umgehen oder Overrides still zu recyclen.',
+    previousBehavior:
+      'Legacy `adminOverride` in Pickup/Return-Rules ohne zentrale Audit-Persistenz; Transfer-Plan hatte keine Override-Schicht; keine dedizierte Permission.',
+    details:
+      'Shared: `station-rule-manual-override.contract.ts`, `station-rule-manual-override.policy.ts`, `station-booking-rules-manual-override.ts`; Service `StationRuleManualOverrideService`; Booking Rules Contract v5; Permission `override_rules` für Org/Sub/Station Manager; Migration `20260718170000_station_rule_manual_overrides`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T12:00:00.000Z',
+  },
+  {
     id: 'stations-v2-capacity-policy-integration-v49627-2026-07-19',
     version: '4.9.627',
     title: 'V4.9.627 — Stations V2: StationCapacityPolicy in Booking + Transfer Evaluations (Prompt 47/78)',

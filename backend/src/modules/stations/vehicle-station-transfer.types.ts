@@ -1,4 +1,6 @@
 import type { VehicleStationTransferStatus } from '@prisma/client';
+import type { StationRuleManualOverrideAuditRecord } from '@shared/stations/station-rule-manual-override.contract';
+import type { StationRuleManualOverrideInput } from '@shared/stations/station-rule-manual-override.contract';
 
 export const VehicleStationTransferCommandName = {
   PLAN: 'PlanVehicleStationTransfer',
@@ -35,6 +37,8 @@ export const VehicleStationTransferIssueCode = {
   CAPACITY_WARNING: 'VEHICLE_STATION_TRANSFER_CAPACITY_WARNING',
   CAPACITY_MANUAL_CONFIRMATION: 'VEHICLE_STATION_TRANSFER_CAPACITY_MANUAL_CONFIRMATION',
   CAPACITY_BLOCKED: 'VEHICLE_STATION_TRANSFER_CAPACITY_BLOCKED',
+  MANUAL_OVERRIDE_REQUIRED: 'VEHICLE_STATION_TRANSFER_MANUAL_OVERRIDE_REQUIRED',
+  MANUAL_OVERRIDE_INVALID: 'VEHICLE_STATION_TRANSFER_MANUAL_OVERRIDE_INVALID',
 } as const;
 
 export type VehicleStationTransferIssueCode =
@@ -105,6 +109,9 @@ export interface VehicleStationTransferCommandResult {
   vehicle: VehicleStationTransferVehicleSnapshot;
   blockingReasons: VehicleStationTransferIssue[];
   warnings: VehicleStationTransferIssue[];
+  manualOverrideRequired: boolean;
+  manualOverrideApplied: boolean;
+  manualOverrideAudit: StationRuleManualOverrideAuditRecord | null;
   audit: VehicleStationTransferCommandAudit;
 }
 
@@ -116,6 +123,7 @@ export interface PlanVehicleStationTransferInput {
   expectedArrivalAt?: Date | string | null;
   reason?: string | null;
   sourceBookingId?: string | null;
+  manualOverride?: StationRuleManualOverrideInput | null;
 }
 
 export interface TransitionVehicleStationTransferInput {

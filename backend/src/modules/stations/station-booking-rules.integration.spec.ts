@@ -7,6 +7,8 @@ import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import { StationBookingRuleOutcome, StationBookingRulesBookingType } from '@shared/stations/station-booking-rules.contract';
 import { zonedLocalTimeToUtc } from '@shared/stations/station-opening-calendar.util';
 import { StationBookingRulesService } from './station-booking-rules.service';
+import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
+import { StationsAccessService } from './stations-access.service';
 
 const ORG = 'org-booking-calendar';
 const PICKUP_STATION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -37,7 +39,21 @@ describe('StationBookingRulesService calendar/timezone integration', () => {
     prisma,
     new StationScopeService(prisma),
   );
-  const service = new StationBookingRulesService(prisma, stationAccessScope);
+  const manualOverrideService = {
+    persistAppliedOverride: jest.fn(),
+    validate: jest.fn(),
+  } as unknown as StationRuleManualOverrideService;
+
+  const stationsAccess = {
+    assertStationsPermission: jest.fn().mockResolvedValue(undefined),
+  } as unknown as StationsAccessService;
+
+  const service = new StationBookingRulesService(
+    prisma,
+    stationAccessScope,
+    stationsAccess,
+    manualOverrideService,
+  );
 
   const allScope: StationScopeContext = {
     orgId: ORG,
@@ -85,7 +101,7 @@ describe('StationBookingRulesService calendar/timezone integration', () => {
     expect(metadata.frontendRecomputation).toBe(false);
     expect(metadata.instantEvaluation).toBe('station_timezone');
     expect(metadata.calendarIntegration).toBe('opening_calendar_v2');
-    expect(metadata.version).toBe(4);
+    expect(metadata.version).toBe(5);
   });
 
   it('evaluates pickup and return with independent station timezones and local/UTC instants', async () => {

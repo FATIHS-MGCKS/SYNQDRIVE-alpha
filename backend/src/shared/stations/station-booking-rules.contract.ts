@@ -4,8 +4,10 @@ import type {
   StationCapacityBookingProjection,
   StationCapacityVehicleSnapshot,
 } from './station-capacity-policy';
+import type { StationRuleManualOverrideAuditRecord } from './station-rule-manual-override.contract';
+import type { StationRuleManualOverrideInput } from './station-rule-manual-override.contract';
 
-export const STATION_BOOKING_RULES_VERSION = 4 as const;
+export const STATION_BOOKING_RULES_VERSION = 5 as const;
 
 export const StationBookingRuleOutcome = {
   ALLOWED: 'ALLOWED',
@@ -86,7 +88,10 @@ export interface StationBookingRulesAdminOverride {
 
 export interface StationBookingRulesBookingContext {
   channel?: StationBookingRulesBookingChannel;
+  /** @deprecated Use top-level manualOverride on evaluate request — server validates permission. */
   adminOverride?: StationBookingRulesAdminOverride | null;
+  manualOverride?: StationRuleManualOverrideInput | null;
+  bookingId?: string | null;
 }
 
 export interface StationBookingRulesOrganizationPolicy {
@@ -171,7 +176,9 @@ export interface StationBookingRulesSideResult {
   timezone: string | null;
   /** Station-local and UTC views of the evaluated instant — server TZ is never used. */
   evaluatedInstant: StationBookingRulesEvaluatedInstant;
+  /** @deprecated use manualOverrideApplied */
   adminOverrideApplied: boolean;
+  manualOverrideApplied: boolean;
 }
 
 export interface StationBookingRulesResult {
@@ -181,6 +188,9 @@ export interface StationBookingRulesResult {
   derivedIsOneWay: boolean;
   pickup: StationBookingRulesSideResult;
   return: StationBookingRulesSideResult;
+  manualOverrideRequired: boolean;
+  manualOverrideApplied: boolean;
+  manualOverrideAudit: StationRuleManualOverrideAuditRecord | null;
 }
 
 export interface StationBookingRulesContractMetadata {
@@ -193,6 +203,8 @@ export interface StationBookingRulesContractMetadata {
   frontendRecomputation: false;
   instantEvaluation: 'station_timezone';
   calendarIntegration: 'opening_calendar_v2';
+  manualOverridePermission: 'stations.override_rules';
+  manualOverrideAutoReuse: false;
 }
 
 export function getStationBookingRulesContractMetadata(): StationBookingRulesContractMetadata {
@@ -205,5 +217,7 @@ export function getStationBookingRulesContractMetadata(): StationBookingRulesCon
     frontendRecomputation: false,
     instantEvaluation: 'station_timezone',
     calendarIntegration: 'opening_calendar_v2',
+    manualOverridePermission: 'stations.override_rules',
+    manualOverrideAutoReuse: false,
   };
 }

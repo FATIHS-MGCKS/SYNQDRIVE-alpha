@@ -1,6 +1,15 @@
-import { IsEnum, IsISO8601, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsDateString, IsEnum, IsISO8601, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { StationBookingRulesBookingType } from '@shared/stations/station-booking-rules.contract';
+
+export class StationRuleManualOverrideDto {
+  @IsString()
+  reason!: string;
+
+  @IsOptional()
+  @IsISO8601()
+  expiresAt?: string | null;
+}
 
 export class StationBookingRulesAdminOverrideDto {
   @IsOptional()
@@ -19,6 +28,15 @@ export class StationBookingRulesBookingContextDto {
   @IsOptional()
   @IsString()
   channel?: 'CUSTOMER' | 'INTERNAL_ADMIN';
+
+  @IsOptional()
+  @IsUUID()
+  bookingId?: string | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => StationRuleManualOverrideDto)
+  manualOverride?: StationRuleManualOverrideDto | null;
 
   @IsOptional()
   @ValidateNested()

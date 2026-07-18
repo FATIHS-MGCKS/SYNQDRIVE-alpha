@@ -204,7 +204,7 @@ describe('station-booking-return-rules', () => {
     expect(result.effectiveRule?.ruleId).toBe('station.timezone.missing');
   });
 
-  it('applies controlled internal admin override for soft return violations only', () => {
+  it('does not apply legacy admin override at return rule layer anymore', () => {
     const result = evaluateReturn({
       returnAt: zonedLocalTimeToUtc('2026-07-17', '20:00', BERLIN)!,
       bookingContext: {
@@ -217,11 +217,8 @@ describe('station-booking-return-rules', () => {
       },
     });
 
-    expect(result.outcome).toBe(StationBookingRuleOutcome.ALLOWED);
-    expect(result.adminOverrideApplied).toBe(true);
-    expect(
-      result.reasons.some((r) => r.code === StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED),
-    ).toBe(true);
+    expect(result.outcome).toBe(StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED);
+    expect(result.manualOverrideApplied).toBe(false);
   });
 
   it('does not apply admin override for return-disabled stations', () => {

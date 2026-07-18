@@ -33,6 +33,7 @@ describe('stations-v2-permission.util', () => {
         manage_home_fleet: false,
         manage_current_location: false,
         manage_transfers: false,
+        override_rules: false,
         manage_team: false,
         view_activity: false,
         geocode: false,

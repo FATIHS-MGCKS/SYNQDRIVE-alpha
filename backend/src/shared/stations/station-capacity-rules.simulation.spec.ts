@@ -180,6 +180,8 @@ describe('station-capacity simulation', () => {
     );
 
     const soft = evaluatePlanVehicleStationTransfer({
+      organizationId: 'org-capacity',
+      vehicleId: 'transfer-vehicle',
       fromStationId: OTHER,
       toStationId: STATION,
       toStationStatus: 'ACTIVE',
@@ -191,10 +193,32 @@ describe('station-capacity simulation', () => {
       },
     });
 
-    expect(soft.allowed).toBe(true);
+    expect(soft.allowed).toBe(false);
+    expect(soft.manualOverrideRequired).toBe(true);
     expect(soft.warnings.length).toBeGreaterThan(0);
 
+    const overridden = evaluatePlanVehicleStationTransfer({
+      organizationId: 'org-capacity',
+      vehicleId: 'transfer-vehicle',
+      fromStationId: OTHER,
+      toStationId: STATION,
+      toStationStatus: 'ACTIVE',
+      activeTransferCount: 0,
+      plannedAt: '2026-07-18T12:00:00.000Z',
+      manualOverride: { reason: 'Operator approved destination capacity exception' },
+      overrideActorUserId: 'user-override',
+      destinationCapacity: {
+        configuredCapacity: 4,
+        vehicles: fleet,
+      },
+    });
+
+    expect(overridden.allowed).toBe(true);
+    expect(overridden.manualOverrideApplied).toBe(true);
+
     const hard = evaluatePlanVehicleStationTransfer({
+      organizationId: 'org-capacity',
+      vehicleId: 'transfer-vehicle',
       fromStationId: OTHER,
       toStationId: STATION,
       toStationStatus: 'ACTIVE',

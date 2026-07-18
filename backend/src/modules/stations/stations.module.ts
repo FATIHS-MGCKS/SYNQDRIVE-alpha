@@ -10,6 +10,7 @@ import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
 import { StationBookingRulesService } from './station-booking-rules.service';
+import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
 import { StationsAccessService } from './stations-access.service';
 import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
@@ -19,6 +20,7 @@ import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicl
 import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-change-vehicle-home-permission.guard';
 import { StationsCorrectVehicleCurrentPermissionGuard } from './guards/stations-correct-vehicle-current-permission.guard';
 import { StationsManageTransfersPermissionGuard } from './guards/stations-manage-transfers-permission.guard';
+import { StationsOverrideRulesPermissionGuard } from './guards/stations-override-rules-permission.guard';
 
 @Module({
   controllers: [StationsController],
@@ -33,6 +35,7 @@ import { StationsManageTransfersPermissionGuard } from './guards/stations-manage
     VehicleHomeAssignmentPreviewService,
     VehicleStationTransferService,
     StationBookingRulesService,
+    StationRuleManualOverrideService,
     StationsAccessService,
     StationsPermissionGuard,
     StationsUpdatePermissionGuard,
@@ -42,7 +45,8 @@ import { StationsManageTransfersPermissionGuard } from './guards/stations-manage
     StationsChangeVehicleHomePermissionGuard,
     StationsCorrectVehicleCurrentPermissionGuard,
     StationsManageTransfersPermissionGuard,
+    StationsOverrideRulesPermissionGuard,
   ],
-  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService, StationBookingRulesService],
+  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService, StationBookingRulesService, StationRuleManualOverrideService],
 })
 export class StationsModule {}

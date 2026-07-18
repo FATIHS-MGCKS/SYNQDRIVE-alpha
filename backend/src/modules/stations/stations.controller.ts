@@ -366,15 +366,27 @@ export class StationsController {
     return this.stationBookingRules.getContractMetadata();
   }
 
+  @Get('booking-rules/manual-override/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getBookingRulesManualOverrideContract() {
+    return this.stationBookingRules.getManualOverrideMetadata();
+  }
+
   @Post('booking-rules/evaluate')
   @RequireStationsPermission('stations.read')
   @RequireStationScope({ resource: 'none' })
   async evaluateBookingRules(
     @Param('orgId') orgId: string,
     @Body() body: EvaluateStationBookingRulesDto,
-    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext; user?: { id?: string } },
   ) {
-    return this.stationBookingRules.evaluateRequest(orgId, body, req[STATION_SCOPE_CONTEXT_KEY]);
+    return this.stationBookingRules.evaluateRequest(
+      orgId,
+      body,
+      req[STATION_SCOPE_CONTEXT_KEY],
+      req.user,
+    );
   }
 
   @Get('opening-hours/contract')
