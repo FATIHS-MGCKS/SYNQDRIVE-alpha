@@ -10,6 +10,13 @@ import type {
   UpdateVehicleDamageInput,
 } from '../rental/lib/damage.types';
 import type { StationsV2FeatureFlagsResponse } from './stations-v2-feature-flags';
+import type {
+  VehicleBookingContext,
+  VehicleOperationalState,
+  VehicleOperationalStatus,
+  VehicleDataQualityState,
+  VehicleBookingReference,
+} from '../rental/lib/vehicle-operational-state';
 
 export type {
   AddDamageImageInput,
@@ -35,7 +42,7 @@ export type {
   VehicleOperationalStatus,
   VehicleDataQualityState,
   VehicleBookingReference,
-} from '../rental/lib/vehicle-operational-state';
+};
 
 const BASE_URL = '/api/v1';
 
