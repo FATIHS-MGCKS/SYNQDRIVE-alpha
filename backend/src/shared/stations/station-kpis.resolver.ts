@@ -1,5 +1,6 @@
 import { VehicleStatus } from '@prisma/client';
 import { resolveZonedCalendarDayWindow } from '@modules/bookings/booking-day-window.util';
+import { projectVehicleRuntimeFlags } from '@shared/vehicle-runtime-state/vehicle-runtime-state.resolver';
 import {
   evaluateStationCapacityPolicy,
   isForeignVehicleOnSite,
@@ -12,6 +13,7 @@ import {
   StationKpiReasonCode,
   type StationKpiMetric,
   type StationKpiReason,
+  type StationKpiVehicleRuntimeSnapshot,
   type StationKpisEvaluationInput,
   type StationKpisResult,
 } from './station-kpis.contract';
@@ -70,6 +72,111 @@ function isWithinInclusiveRange(instant: Date, start: Date, end: Date): boolean 
   return time >= start.getTime() && time <= end.getTime();
 }
 
+interface OnSiteRuntimeKpiCounts {
+  readyToRentOnSite: number;
+  notReadyOnSite: number;
+  blockedOrMaintenanceOnSite: number;
+  criticalOnSite: number;
+  warningOnSite: number;
+  telemetryOfflineOnSite: number;
+  complianceBlockerOnSite: number;
+  vehiclesWithHealthWarningsOnSite: number;
+  unknownRuntimeVehicleCount: number;
+}
+
+function resolveOnSiteRuntimeKpiCounts(input: {
+  stationId: string;
+  vehicles: NonNullable<StationKpisEvaluationInput['vehicles']>;
+  vehicleRuntime: StationKpiVehicleRuntimeSnapshot[] | null | undefined;
+  evaluatedAt: string;
+}): OnSiteRuntimeKpiCounts {
+  const runtimeByVehicleId = new Map(
+    (input.vehicleRuntime ?? []).map((snapshot) => [snapshot.vehicleId, snapshot]),
+  );
+
+  const counts: OnSiteRuntimeKpiCounts = {
+    readyToRentOnSite: 0,
+    notReadyOnSite: 0,
+    blockedOrMaintenanceOnSite: 0,
+    criticalOnSite: 0,
+    warningOnSite: 0,
+    telemetryOfflineOnSite: 0,
+    complianceBlockerOnSite: 0,
+    vehiclesWithHealthWarningsOnSite: 0,
+    unknownRuntimeVehicleCount: 0,
+  };
+
+  for (const vehicle of input.vehicles) {
+    if (!isOnSiteAtStation(vehicle, input.stationId)) continue;
+
+    const runtimeSnapshot = runtimeByVehicleId.get(vehicle.id);
+    if (!runtimeSnapshot) {
+      counts.unknownRuntimeVehicleCount += 1;
+      continue;
+    }
+
+    const flags = projectVehicleRuntimeFlags(runtimeSnapshot, {
+      evaluatedAt: input.evaluatedAt,
+    });
+    if (!flags.known) {
+      counts.unknownRuntimeVehicleCount += 1;
+      continue;
+    }
+
+    if (flags.isReadyForRenting) counts.readyToRentOnSite += 1;
+    if (flags.isNotReady) counts.notReadyOnSite += 1;
+    if (flags.isBlockedOrMaintenance) counts.blockedOrMaintenanceOnSite += 1;
+    if (flags.isCritical) counts.criticalOnSite += 1;
+    if (flags.isWarning) counts.warningOnSite += 1;
+    if (flags.isTelemetryOffline) counts.telemetryOfflineOnSite += 1;
+    if (flags.hasComplianceBlocker) counts.complianceBlockerOnSite += 1;
+    if (flags.hasHealthWarning) counts.vehiclesWithHealthWarningsOnSite += 1;
+  }
+
+  return counts;
+}
+
+function runtimeMetricFromCounts(
+  counts: OnSiteRuntimeKpiCounts,
+  pick: (counts: OnSiteRuntimeKpiCounts) => number,
+  vehicleReasons: StationKpiReason[],
+  onSiteVehicleCount: number,
+): StationKpiMetric<number> {
+  if (onSiteVehicleCount === 0) {
+    return knownMetric(0, vehicleReasons);
+  }
+
+  if (counts.unknownRuntimeVehicleCount === onSiteVehicleCount) {
+    return unknownMetric<number>(
+      [
+        ...vehicleReasons,
+        reason(
+          StationKpiReasonCode.RUNTIME_STATE_MISSING,
+          'Vehicle runtime state missing for all on-site vehicles.',
+        ),
+      ],
+      true,
+    );
+  }
+
+  const reasons = [...vehicleReasons];
+  if (counts.unknownRuntimeVehicleCount > 0) {
+    reasons.push(
+      reason(
+        StationKpiReasonCode.RUNTIME_STATE_PARTIAL,
+        `Runtime state missing for ${counts.unknownRuntimeVehicleCount} on-site vehicle(s).`,
+      ),
+    );
+  }
+
+  return {
+    value: pick(counts),
+    known: true,
+    partial: counts.unknownRuntimeVehicleCount > 0,
+    reasons,
+  };
+}
+
 export function resolveStationKpis(input: StationKpisEvaluationInput): StationKpisResult {
   const evaluatedAt = parseInstant(input.evaluatedAt);
   const dayWindow = resolveZonedCalendarDayWindow(evaluatedAt, input.timezone);
@@ -95,9 +202,149 @@ export function resolveStationKpis(input: StationKpisEvaluationInput): StationKp
     ...scopeReasons,
     reason(
       StationKpiReasonCode.RUNTIME_VEHICLE_STATUS,
-      'Vehicle runtime status is the source of truth for on-site availability KPIs.',
+      'On-site availability KPIs use the canonical Vehicle Runtime State Engine.',
     ),
   ];
+
+  const onSiteVehicles =
+    vehicles?.filter((vehicle) => isOnSiteAtStation(vehicle, input.stationId)) ?? [];
+  const onSiteRuntimeCounts =
+    vehicles == null
+      ? null
+      : resolveOnSiteRuntimeKpiCounts({
+          stationId: input.stationId,
+          vehicles,
+          vehicleRuntime: input.vehicleRuntime,
+          evaluatedAt: input.evaluatedAt,
+        });
+
+  const readyToRentOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — readyToRentOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.readyToRentOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
+
+  const notReadyOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — notReadyOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.notReadyOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
+
+  const blockedOrMaintenanceOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — blockedOrMaintenanceOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.blockedOrMaintenanceOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
+
+  const criticalOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — criticalOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.criticalOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
+
+  const warningOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — warningOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.warningOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
+
+  const telemetryOfflineOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — telemetryOfflineOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.telemetryOfflineOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
+
+  const complianceBlockerOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — complianceBlockerOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.complianceBlockerOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
+
+  const vehiclesWithHealthWarningsOnSite =
+    vehicles == null
+      ? unknownMetric<number>([
+          ...vehicleReasons,
+          reason(
+            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
+            'Vehicle snapshot missing — vehiclesWithHealthWarningsOnSite unknown.',
+          ),
+        ])
+      : runtimeMetricFromCounts(
+          onSiteRuntimeCounts!,
+          (counts) => counts.vehiclesWithHealthWarningsOnSite,
+          vehicleReasons,
+          onSiteVehicles.length,
+        );
 
   const homeFleetCount =
     vehicles == null
@@ -178,43 +425,6 @@ export function resolveStationKpis(input: StationKpisEvaluationInput): StationKp
               'Do not use bookedVehicles for RENTED count — use currentlyRentedHomeVehicles.',
             ),
           ],
-        );
-
-  const readyToRentOnSite =
-    vehicles == null
-      ? unknownMetric<number>([
-          ...vehicleReasons,
-          reason(
-            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
-            'Vehicle snapshot missing — readyToRentOnSite unknown.',
-          ),
-        ])
-      : knownMetric(
-          vehicles.filter(
-            (vehicle) =>
-              isOnSiteAtStation(vehicle, input.stationId) &&
-              vehicle.status === VehicleStatus.AVAILABLE,
-          ).length,
-          vehicleReasons,
-        );
-
-  const blockedOrMaintenanceOnSite =
-    vehicles == null
-      ? unknownMetric<number>([
-          ...vehicleReasons,
-          reason(
-            StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING,
-            'Vehicle snapshot missing — blockedOrMaintenanceOnSite unknown.',
-          ),
-        ])
-      : knownMetric(
-          vehicles.filter(
-            (vehicle) =>
-              isOnSiteAtStation(vehicle, input.stationId) &&
-              (vehicle.status === VehicleStatus.IN_SERVICE ||
-                vehicle.status === VehicleStatus.OUT_OF_SERVICE),
-          ).length,
-          vehicleReasons,
         );
 
   const bookingReasons = [
@@ -391,7 +601,13 @@ export function resolveStationKpis(input: StationKpisEvaluationInput): StationKp
       expectedArrivalCount,
       currentlyRentedHomeVehicles,
       readyToRentOnSite,
+      notReadyOnSite,
       blockedOrMaintenanceOnSite,
+      criticalOnSite,
+      warningOnSite,
+      telemetryOfflineOnSite,
+      complianceBlockerOnSite,
+      vehiclesWithHealthWarningsOnSite,
       pickupsToday,
       returnsToday,
       overdueReturns,

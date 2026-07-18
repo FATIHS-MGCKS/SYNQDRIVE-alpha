@@ -33,12 +33,14 @@ import {
 import { STATION_ORG_SUMMARIES_MAX_AGGREGATION_STATIONS } from '@shared/stations/station-org-summaries.contract';
 import { ACTIVE_VEHICLE_STATION_TRANSFER_STATUSES } from './vehicle-station-transfer.types';
 import type { ListStationSummariesQueryDto } from './dto/list-station-summaries-query.dto';
+import { StationVehicleRuntimeLoader } from './station-vehicle-runtime.loader';
 
 @Injectable()
 export class StationSummaryReadModelService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stationAccessScope: StationAccessScopeService,
+    private readonly stationVehicleRuntimeLoader: StationVehicleRuntimeLoader,
   ) {}
 
   getContractMetadata() {
@@ -95,6 +97,11 @@ export class StationSummaryReadModelService {
       ),
     });
 
+    const vehicleRuntime = await this.stationVehicleRuntimeLoader.loadRuntimeSnapshots(
+      organizationId,
+      vehicles,
+    );
+
     return assembleStationSummaryFromLoadRow(
       station,
       vehicles,
@@ -103,6 +110,7 @@ export class StationSummaryReadModelService {
       openOperationalTasksCount,
       evaluatedAt,
       access,
+      vehicleRuntime,
     );
   }
 
@@ -241,6 +249,14 @@ export class StationSummaryReadModelService {
       bookings,
     );
 
+    const vehicleRuntime = await this.stationVehicleRuntimeLoader.loadRuntimeSnapshots(
+      organizationId,
+      vehicles,
+    );
+    const runtimeByVehicleId = new Map(
+      vehicleRuntime.map((snapshot) => [snapshot.vehicleId, snapshot]),
+    );
+
     return stations.map((station) => {
       const stationVehicles = filterVehiclesForStation(vehicles, station.id);
       const stationBookings = filterBookingsForStation(bookings, station.id);
@@ -253,6 +269,9 @@ export class StationSummaryReadModelService {
         vehicleIds,
         bookingIds,
       );
+      const stationRuntime = stationVehicles
+        .map((vehicle) => runtimeByVehicleId.get(vehicle.id))
+        .filter((snapshot): snapshot is NonNullable<typeof snapshot> => snapshot != null);
 
       return assembleStationSummaryFromLoadRow(
         station,
@@ -262,6 +281,7 @@ export class StationSummaryReadModelService {
         openOperationalTasksCount,
         evaluatedAt,
         access,
+        stationRuntime,
       );
     });
   }
@@ -350,6 +370,15 @@ export class StationSummaryReadModelService {
       currentStationId: true,
       expectedStationId: true,
       status: true,
+      cleaningStatus: true,
+      latestState: {
+        select: {
+          lastSeenAt: true,
+          odometerKm: true,
+          speedKmh: true,
+          isIgnitionOn: true,
+        },
+      },
     } as const;
   }
 

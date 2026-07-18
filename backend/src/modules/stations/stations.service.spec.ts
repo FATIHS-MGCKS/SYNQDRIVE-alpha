@@ -128,11 +128,16 @@ describe('StationsService', () => {
     resolveForStation: jest.fn(),
   } as jest.Mocked<Pick<StationOperationsService, 'resolveForStation'>>;
 
+  const stationVehicleRuntimeLoader = {
+    loadRuntimeSnapshots: jest.fn().mockResolvedValue([]),
+  };
+
   const service = new StationsService(
     prisma,
     stationValidation,
     stationAccessScope,
     stationOperations as unknown as StationOperationsService,
+    stationVehicleRuntimeLoader as never,
   );
 
   const stationRow = {
@@ -385,13 +390,13 @@ describe('StationsService', () => {
       returnEnabled: false,
     });
     (prisma.vehicle.count as jest.Mock).mockResolvedValue(3);
-    (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([{ id: 'v1' }]);
+    (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.booking.count as jest.Mock).mockResolvedValue(0);
     (prisma.booking.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.orgTask.count as jest.Mock).mockResolvedValue(1);
 
     const stats = await service.getStationOverviewStats('org1', 's1', allScope);
-    expect(stats.vehiclesWithHealthWarnings).toBeNull();
+    expect(stats.vehiclesWithHealthWarnings).toBe(0);
     expect(stats.totalVehicles).toBe(3);
     expect(stats.openTasks).toBe(1);
     expect(stats.hasMissingCoordinates).toBe(true);

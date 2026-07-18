@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-runtime-kpis-v49636-2026-07-20',
+    version: '4.9.636',
+    title: 'V4.9.636 — Stations V2: Runtime KPI Wiring (Prompt 56/78)',
+    summary: [
+      'Station-KPIs für aktuell vor Ort befindliche Fahrzeuge nutzen die kanonische Vehicle Runtime State Engine (`projectVehicleRuntimeFlags`) statt rohem `Vehicle.status`.',
+      'Neue On-Site-Metriken: `notReadyOnSite`, `criticalOnSite`, `warningOnSite`, `telemetryOfflineOnSite`, `complianceBlockerOnSite`, `vehiclesWithHealthWarningsOnSite`; `readyToRentOnSite` und `blockedOrMaintenanceOnSite` aus Runtime-Flags.',
+      'Batch-Enrichment via `StationVehicleRuntimeLoader` + `VehiclesService.buildVehicleRuntimeProjectionInputs` + Rental Health; Partial Data bei fehlendem Runtime State.',
+      'Home Fleet und Current On-Site bleiben getrennt; Warning ≠ Blocked; Scope/Tenant über bestehende Station-Access-Scope-Pfade.',
+      '`vehiclesWithHealthWarnings` in `overview-stats` ersetzt `null`-Platzhalter durch echte On-Site-Health-Warnzählung.',
+    ],
+    reason:
+      'Stations-KPIs müssen dieselbe kanonische Runtime-Wahrheit wie Dashboard/Fleet nutzen — ohne eigene Stationsableitung oder Fake-Health-Werte.',
+    previousBehavior:
+      '`readyToRentOnSite`/`blockedOrMaintenanceOnSite` zählten `Vehicle.status`; keine Runtime-Breakdown-Metriken; `vehiclesWithHealthWarnings` in overview-stats war immer `null`.',
+    details:
+      '`vehicle-runtime-state.resolver.ts`, `station-kpis` v2, `station-vehicle-runtime.loader.ts`, Summary/Org-Summary-Enrichment, API-Typen, Tests gegen Runtime-Fixtures.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T03:00:00.000Z',
+  },
+  {
     id: 'stations-v2-org-summaries-v49634-2026-07-19',
     version: '4.9.634',
     title: 'V4.9.634 — Stations V2: Organization-Wide Station Summaries (Prompt 54/78)',

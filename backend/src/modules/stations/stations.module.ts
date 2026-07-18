@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { StationsController } from './stations.controller';
 import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
@@ -7,12 +7,15 @@ import { StationCalendarExceptionService } from './station-calendar-exception.se
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
 import { StationSummaryReadModelService } from './station-summary-read-model.service';
+import { StationVehicleRuntimeLoader } from './station-vehicle-runtime.loader';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
 import { StationBookingRulesService } from './station-booking-rules.service';
 import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
 import { StationsAccessService } from './stations-access.service';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
+import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
 import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary-permission.guard';
@@ -24,6 +27,7 @@ import { StationsManageTransfersPermissionGuard } from './guards/stations-manage
 import { StationsOverrideRulesPermissionGuard } from './guards/stations-override-rules-permission.guard';
 
 @Module({
+  imports: [forwardRef(() => VehiclesModule), forwardRef(() => RentalHealthModule)],
   controllers: [StationsController],
   providers: [
     StationsService,
@@ -33,6 +37,7 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationOperationalCapabilityService,
     StationOperationsService,
     StationSummaryReadModelService,
+    StationVehicleRuntimeLoader,
     VehicleHomeFleetDeltaService,
     VehicleHomeAssignmentPreviewService,
     VehicleStationTransferService,

@@ -1,7 +1,8 @@
 import { VehicleStatus } from '@prisma/client';
+import type { VehicleRuntimeProjectionInput } from '@shared/vehicle-runtime-state/vehicle-runtime-state.contract';
 import type { StationCapacityStatus } from './station-capacity-policy.contract';
 
-export const STATION_KPIS_VERSION = 1 as const;
+export const STATION_KPIS_VERSION = 2 as const;
 
 export const StationKpiMetricName = {
   HOME_FLEET_COUNT: 'homeFleetCount',
@@ -10,7 +11,13 @@ export const StationKpiMetricName = {
   EXPECTED_ARRIVAL_COUNT: 'expectedArrivalCount',
   CURRENTLY_RENTED_HOME_VEHICLES: 'currentlyRentedHomeVehicles',
   READY_TO_RENT_ON_SITE: 'readyToRentOnSite',
+  NOT_READY_ON_SITE: 'notReadyOnSite',
   BLOCKED_OR_MAINTENANCE_ON_SITE: 'blockedOrMaintenanceOnSite',
+  CRITICAL_ON_SITE: 'criticalOnSite',
+  WARNING_ON_SITE: 'warningOnSite',
+  TELEMETRY_OFFLINE_ON_SITE: 'telemetryOfflineOnSite',
+  COMPLIANCE_BLOCKER_ON_SITE: 'complianceBlockerOnSite',
+  VEHICLES_WITH_HEALTH_WARNINGS_ON_SITE: 'vehiclesWithHealthWarningsOnSite',
   PICKUPS_TODAY: 'pickupsToday',
   RETURNS_TODAY: 'returnsToday',
   OVERDUE_RETURNS: 'overdueReturns',
@@ -32,6 +39,8 @@ export const StationKpiReasonCode = {
   CAPACITY_PARTIAL: 'STATION_KPI_CAPACITY_PARTIAL',
   STATION_TIMEZONE_USED: 'STATION_KPI_STATION_TIMEZONE_USED',
   RUNTIME_VEHICLE_STATUS: 'STATION_KPI_RUNTIME_VEHICLE_STATUS',
+  RUNTIME_STATE_PARTIAL: 'STATION_KPI_RUNTIME_STATE_PARTIAL',
+  RUNTIME_STATE_MISSING: 'STATION_KPI_RUNTIME_STATE_MISSING',
   DEPRECATED_BOOKED_VEHICLES: 'STATION_KPI_DEPRECATED_BOOKED_VEHICLES',
 } as const;
 
@@ -57,6 +66,8 @@ export interface StationKpiVehicleSnapshot {
   expectedStationId: string | null;
   status: VehicleStatus;
 }
+
+export type StationKpiVehicleRuntimeSnapshot = VehicleRuntimeProjectionInput;
 
 export interface StationKpiBookingSnapshot {
   id: string;
@@ -100,6 +111,7 @@ export interface StationKpisEvaluationInput {
   configuredCapacity: number | null;
   scope: StationKpisScopeContext;
   vehicles?: StationKpiVehicleSnapshot[] | null;
+  vehicleRuntime?: StationKpiVehicleRuntimeSnapshot[] | null;
   bookings?: StationKpiBookingSnapshot[] | null;
   transfers?: StationKpiTransferSnapshot[] | null;
   openOperationalTasksCount?: number | null;
@@ -119,7 +131,13 @@ export interface StationKpisResult {
     expectedArrivalCount: StationKpiMetric<number>;
     currentlyRentedHomeVehicles: StationKpiMetric<number>;
     readyToRentOnSite: StationKpiMetric<number>;
+    notReadyOnSite: StationKpiMetric<number>;
     blockedOrMaintenanceOnSite: StationKpiMetric<number>;
+    criticalOnSite: StationKpiMetric<number>;
+    warningOnSite: StationKpiMetric<number>;
+    telemetryOfflineOnSite: StationKpiMetric<number>;
+    complianceBlockerOnSite: StationKpiMetric<number>;
+    vehiclesWithHealthWarningsOnSite: StationKpiMetric<number>;
     pickupsToday: StationKpiMetric<number>;
     returnsToday: StationKpiMetric<number>;
     overdueReturns: StationKpiMetric<number>;
@@ -141,7 +159,7 @@ export interface StationKpisContractMetadata {
   version: typeof STATION_KPIS_VERSION;
   resolver: 'station-kpis.resolver';
   frontendRecomputation: false;
-  vehicleTruth: 'runtime_status';
+  vehicleTruth: 'vehicle_runtime_state_engine';
   todayBasis: 'station.timezone';
   metrics: readonly StationKpiMetricName[];
   deprecatedMetricNames: readonly ['bookedVehicles'];
@@ -152,7 +170,7 @@ export function getStationKpisContractMetadata(): StationKpisContractMetadata {
     version: STATION_KPIS_VERSION,
     resolver: 'station-kpis.resolver',
     frontendRecomputation: false,
-    vehicleTruth: 'runtime_status',
+    vehicleTruth: 'vehicle_runtime_state_engine',
     todayBasis: 'station.timezone',
     metrics: Object.values(StationKpiMetricName),
     deprecatedMetricNames: ['bookedVehicles'],

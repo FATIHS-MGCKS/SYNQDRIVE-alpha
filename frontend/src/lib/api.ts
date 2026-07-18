@@ -9455,7 +9455,13 @@ export type StationKpiMetricName =
   | 'expectedArrivalCount'
   | 'currentlyRentedHomeVehicles'
   | 'readyToRentOnSite'
+  | 'notReadyOnSite'
   | 'blockedOrMaintenanceOnSite'
+  | 'criticalOnSite'
+  | 'warningOnSite'
+  | 'telemetryOfflineOnSite'
+  | 'complianceBlockerOnSite'
+  | 'vehiclesWithHealthWarningsOnSite'
   | 'pickupsToday'
   | 'returnsToday'
   | 'overdueReturns'
@@ -9489,7 +9495,13 @@ export interface StationKpisResult {
     expectedArrivalCount: StationKpiMetric<number>;
     currentlyRentedHomeVehicles: StationKpiMetric<number>;
     readyToRentOnSite: StationKpiMetric<number>;
+    notReadyOnSite: StationKpiMetric<number>;
     blockedOrMaintenanceOnSite: StationKpiMetric<number>;
+    criticalOnSite: StationKpiMetric<number>;
+    warningOnSite: StationKpiMetric<number>;
+    telemetryOfflineOnSite: StationKpiMetric<number>;
+    complianceBlockerOnSite: StationKpiMetric<number>;
+    vehiclesWithHealthWarningsOnSite: StationKpiMetric<number>;
     pickupsToday: StationKpiMetric<number>;
     returnsToday: StationKpiMetric<number>;
     overdueReturns: StationKpiMetric<number>;
@@ -9594,7 +9606,13 @@ export interface StationOrgSummariesReadModel {
     expectedArrivalCount: number;
     currentlyRentedHomeVehicles: number;
     readyToRentOnSite: number;
+    notReadyOnSite: number;
     blockedOrMaintenanceOnSite: number;
+    criticalOnSite: number;
+    warningOnSite: number;
+    telemetryOfflineOnSite: number;
+    complianceBlockerOnSite: number;
+    vehiclesWithHealthWarningsOnSite: number;
     pickupsToday: number;
     returnsToday: number;
     overdueReturns: number;

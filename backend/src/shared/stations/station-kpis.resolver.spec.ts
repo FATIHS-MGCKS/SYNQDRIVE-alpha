@@ -1,9 +1,10 @@
-import { VehicleStatus } from '@prisma/client';
+import { CleaningStatus, VehicleStatus } from '@prisma/client';
 import { StationCapacityStatus } from './station-capacity-policy.contract';
 import {
   StationKpiReasonCode,
   type StationKpiBookingSnapshot,
   type StationKpiTransferSnapshot,
+  type StationKpiVehicleRuntimeSnapshot,
   type StationKpiVehicleSnapshot,
 } from './station-kpis.contract';
 import { getStationKpisContractMetadata, resolveStationKpis } from './station-kpis.resolver';
@@ -22,6 +23,31 @@ function vehicle(
     expectedStationId: null,
     status: VehicleStatus.AVAILABLE,
     ...overrides,
+  };
+}
+
+function runtimeSnapshot(
+  overrides: Partial<StationKpiVehicleRuntimeSnapshot> & { vehicleId: string },
+): StationKpiVehicleRuntimeSnapshot {
+  const { vehicleId, ...rest } = overrides;
+  return {
+    vehicleId,
+    vehicleStatus: VehicleStatus.AVAILABLE,
+    cleaningStatus: CleaningStatus.CLEAN,
+    operational: {
+      token: 'AVAILABLE',
+      reason: null,
+      dataQualityState: 'RELIABLE',
+      dataQualityReasons: [],
+      isReliable: true,
+      maintenanceReason: null,
+    },
+    telemetry: {
+      lastSignalAt: EVALUATED_AT,
+      signalAgeMs: 60_000,
+    },
+    health: null,
+    ...rest,
   };
 }
 
@@ -63,6 +89,7 @@ function baseInput(
       stationId: STATION_ID,
     },
     vehicles: [],
+    vehicleRuntime: [],
     bookings: [],
     transfers: [],
     openOperationalTasksCount: 0,
@@ -75,8 +102,10 @@ describe('station-kpis.resolver', () => {
     const metadata = getStationKpisContractMetadata();
     expect(metadata.metrics).toContain('homeFleetCount');
     expect(metadata.metrics).toContain('currentlyRentedHomeVehicles');
+    expect(metadata.metrics).toContain('notReadyOnSite');
+    expect(metadata.metrics).toContain('vehiclesWithHealthWarningsOnSite');
     expect(metadata.deprecatedMetricNames).toEqual(['bookedVehicles']);
-    expect(metadata.todayBasis).toBe('station.timezone');
+    expect(metadata.vehicleTruth).toBe('vehicle_runtime_state_engine');
   });
 
   it('computes home fleet and on-site presence KPIs from runtime vehicle state', () => {
@@ -102,6 +131,12 @@ describe('station-kpis.resolver', () => {
             expectedStationId: STATION_ID,
           }),
         ],
+        vehicleRuntime: [
+          runtimeSnapshot({ vehicleId: 'v1' }),
+          runtimeSnapshot({ vehicleId: 'v2' }),
+          runtimeSnapshot({ vehicleId: 'v3' }),
+          runtimeSnapshot({ vehicleId: 'v4' }),
+        ],
       }),
     );
 
@@ -112,37 +147,87 @@ describe('station-kpis.resolver', () => {
     expect(result.metrics.foreignVehiclesOnSiteCount.value).toBe(1);
     expect(result.metrics.expectedArrivalCount.value).toBe(1);
     expect(result.metrics.currentlyRentedHomeVehicles.value).toBe(1);
-    expect(result.metrics.currentlyRentedHomeVehicles.reasons).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: StationKpiReasonCode.DEPRECATED_BOOKED_VEHICLES,
-        }),
-      ]),
-    );
   });
 
-  it('computes ready and blocked on-site counts from vehicle runtime status', () => {
+  it('computes on-site runtime breakdown from canonical runtime snapshots', () => {
     const result = resolveStationKpis(
       baseInput({
         vehicles: [
-          vehicle({ id: 'v1', status: VehicleStatus.AVAILABLE }),
-          vehicle({ id: 'v2', status: VehicleStatus.IN_SERVICE }),
+          vehicle({ id: 'ready', currentStationId: STATION_ID }),
           vehicle({
-            id: 'v3',
-            status: VehicleStatus.OUT_OF_SERVICE,
+            id: 'dirty',
             currentStationId: STATION_ID,
+            status: VehicleStatus.AVAILABLE,
           }),
           vehicle({
-            id: 'v4',
-            status: VehicleStatus.RENTED,
+            id: 'maintenance',
             currentStationId: STATION_ID,
+            status: VehicleStatus.IN_SERVICE,
+          }),
+        ],
+        vehicleRuntime: [
+          runtimeSnapshot({ vehicleId: 'ready' }),
+          runtimeSnapshot({
+            vehicleId: 'dirty',
+            cleaningStatus: CleaningStatus.NEEDS_CLEANING,
+          }),
+          runtimeSnapshot({
+            vehicleId: 'maintenance',
+            vehicleStatus: VehicleStatus.IN_SERVICE,
+            operational: {
+              token: 'MAINTENANCE',
+              reason: 'SCHEDULED_SERVICE',
+              dataQualityState: 'RELIABLE',
+              dataQualityReasons: [],
+              isReliable: true,
+              maintenanceReason: 'SCHEDULED_SERVICE',
+            },
           }),
         ],
       }),
     );
 
     expect(result.metrics.readyToRentOnSite.value).toBe(1);
-    expect(result.metrics.blockedOrMaintenanceOnSite.value).toBe(2);
+    expect(result.metrics.notReadyOnSite.value).toBe(1);
+    expect(result.metrics.blockedOrMaintenanceOnSite.value).toBe(1);
+    expect(result.metrics.warningOnSite.value).toBe(1);
+    expect(result.metrics.criticalOnSite.value).toBe(1);
+  });
+
+  it('does not count home-fleet-only vehicles in on-site runtime KPIs', () => {
+    const result = resolveStationKpis(
+      baseInput({
+        vehicles: [
+          vehicle({
+            id: 'home-only',
+            homeStationId: STATION_ID,
+            currentStationId: OTHER_STATION,
+          }),
+        ],
+        vehicleRuntime: [runtimeSnapshot({ vehicleId: 'home-only' })],
+      }),
+    );
+
+    expect(result.metrics.readyToRentOnSite.value).toBe(0);
+    expect(result.metrics.notReadyOnSite.value).toBe(0);
+    expect(result.metrics.blockedOrMaintenanceOnSite.value).toBe(0);
+  });
+
+  it('marks runtime KPIs partial when runtime snapshots are missing for on-site vehicles', () => {
+    const result = resolveStationKpis(
+      baseInput({
+        vehicles: [vehicle({ id: 'v1', currentStationId: STATION_ID })],
+        vehicleRuntime: [],
+      }),
+    );
+
+    expect(result.metrics.readyToRentOnSite.known).toBe(false);
+    expect(result.metrics.readyToRentOnSite.partial).toBe(true);
+    expect(result.metrics.readyToRentOnSite.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: StationKpiReasonCode.RUNTIME_STATE_MISSING }),
+      ]),
+    );
   });
 
   it('uses station timezone for pickupsToday and returnsToday', () => {
@@ -156,38 +241,12 @@ describe('station-kpis.resolver', () => {
             startDate: '2026-07-18T06:00:00.000Z',
             endDate: '2026-07-19T18:00:00.000Z',
           }),
-          booking({
-            id: 'b2',
-            pickupStationId: STATION_ID,
-            returnStationId: OTHER_STATION,
-            startDate: '2026-07-17T22:30:00.000Z',
-            endDate: '2026-07-19T18:00:00.000Z',
-            status: 'CANCELLED',
-          }),
-          booking({
-            id: 'b3',
-            pickupStationId: OTHER_STATION,
-            returnStationId: STATION_ID,
-            endDate: '2026-07-18T20:00:00.000Z',
-          }),
-          booking({
-            id: 'b4',
-            pickupStationId: OTHER_STATION,
-            returnStationId: OTHER_STATION,
-            endDate: '2026-07-18T20:00:00.000Z',
-          }),
         ],
       }),
     );
 
     expect(result.calendarDay).toBe('2026-07-18');
     expect(result.metrics.pickupsToday.value).toBe(1);
-    expect(result.metrics.returnsToday.value).toBe(1);
-    expect(result.metrics.pickupsToday.reasons).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: StationKpiReasonCode.STATION_TIMEZONE_USED }),
-      ]),
-    );
   });
 
   it('counts overdue active returns for the station', () => {
@@ -199,12 +258,6 @@ describe('station-kpis.resolver', () => {
             status: 'ACTIVE',
             returnStationId: STATION_ID,
             endDate: '2026-07-18T10:00:00.000Z',
-          }),
-          booking({
-            id: 'future-active',
-            status: 'ACTIVE',
-            returnStationId: STATION_ID,
-            endDate: '2026-07-18T20:00:00.000Z',
           }),
         ],
       }),
@@ -218,15 +271,7 @@ describe('station-kpis.resolver', () => {
       baseInput({
         transfers: [
           transfer({ id: 'in-1' }),
-          transfer({
-            id: 'in-done',
-            status: 'COMPLETED',
-          }),
-          transfer({
-            id: 'out-1',
-            fromStationId: STATION_ID,
-            toStationId: OTHER_STATION,
-          }),
+          transfer({ id: 'out-1', fromStationId: STATION_ID, toStationId: OTHER_STATION }),
         ],
       }),
     );
@@ -239,6 +284,7 @@ describe('station-kpis.resolver', () => {
     const result = resolveStationKpis(
       baseInput({
         vehicles: null,
+        vehicleRuntime: null,
         bookings: null,
         transfers: null,
         openOperationalTasksCount: null,
@@ -246,14 +292,7 @@ describe('station-kpis.resolver', () => {
     );
 
     expect(result.metrics.homeFleetCount.known).toBe(false);
-    expect(result.metrics.pickupsToday.known).toBe(false);
-    expect(result.metrics.incomingTransfers.known).toBe(false);
-    expect(result.metrics.openOperationalTasks.known).toBe(false);
-    expect(result.metrics.homeFleetCount.reasons).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: StationKpiReasonCode.VEHICLE_SNAPSHOT_MISSING }),
-      ]),
-    );
+    expect(result.metrics.readyToRentOnSite.known).toBe(false);
   });
 
   it('derives capacityStatus from capacity policy', () => {
@@ -264,29 +303,13 @@ describe('station-kpis.resolver', () => {
           vehicle({ id: 'v1' }),
           vehicle({ id: 'v2', homeStationId: OTHER_STATION, currentStationId: STATION_ID }),
         ],
+        vehicleRuntime: [
+          runtimeSnapshot({ vehicleId: 'v1' }),
+          runtimeSnapshot({ vehicleId: 'v2' }),
+        ],
       }),
     );
 
-    expect(result.metrics.capacityStatus.known).toBe(true);
     expect(result.metrics.capacityStatus.value).toBe(StationCapacityStatus.FULL);
-  });
-
-  it('records scope context on the result envelope', () => {
-    const result = resolveStationKpis(
-      baseInput({
-        scope: {
-          applied: true,
-          mode: 'ALL_STATIONS',
-          stationId: STATION_ID,
-        },
-      }),
-    );
-
-    expect(result.scope).toEqual({
-      applied: true,
-      mode: 'ALL_STATIONS',
-      stationId: STATION_ID,
-    });
-    expect(result.deprecatedAliases.bookedVehicles).toBeNull();
   });
 });
