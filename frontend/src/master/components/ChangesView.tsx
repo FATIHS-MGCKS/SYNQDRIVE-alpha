@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-final-production-acceptance-2026-07-18',
+    version: '4.9.622',
+    title: 'V4.9.622 — Voice AI: final production acceptance audit (10B)',
+    summary: [
+      'Independent production acceptance `VOICE_AI_FINAL_PRODUCTION_ACCEPTANCE_2026-07-18.md` — 30-section audit across deploy, runtime, telephony, UI, security, billing, canary.',
+      'Anonymized evidence `docs/audits/voice-ai-final-production-acceptance-evidence.md` — VPS probes, DB counts, automated suites.',
+      'Final decision **NO-GO** — P0 blockers: no live inbound/outbound evidence, 10A E2E NO-GO, provisioning incomplete, webhook ingestion off, deploy commit mismatch.',
+    ],
+    reason:
+      'Prompt 10B — finale visuelle und technische Production-Abnahme; no broad production activation.',
+    previousBehavior:
+      'Post-deployment audit (10B precursor) and 10A staging E2E documented blockers separately; no consolidated final GO/NO-GO.',
+    details:
+      'architecture/VOICE_AI_FINAL_PRODUCTION_ACCEPTANCE_2026-07-18.md, docs/audits/voice-ai-final-production-acceptance-evidence.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T03:30:00.000Z',
+  },
+  {
     id: 'voice-webhook-ingestion-prod-default-2026-07-18',
     version: '4.9.597',
     title: 'V4.9.597 — Voice AI: production-safe webhook ingestion default',
