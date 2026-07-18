@@ -1,0 +1,288 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["synqdrive"],
+      "targetBlank": false,
+      "title": "SynqDrive Ops",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "Stationsbestand",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(synqdrive_stations_total)", "refId": "A" }],
+      "title": "Stations gesamt",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(synqdrive_stations_total{status=\"active\"})", "refId": "A" }],
+      "title": "Aktive Stationen",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_station_archive_total{outcome=\"applied\"}[5m]))", "refId": "A" }],
+      "title": "Archive/s (applied)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_station_restore_total{outcome=\"applied\"}[5m]))", "refId": "A" }],
+      "title": "Restore/s (applied)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "id": 5,
+      "targets": [
+        { "expr": "synqdrive_stations_total", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Stationsbestand nach Status",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 101,
+      "panels": [],
+      "title": "Scope / Authz",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 14 },
+      "id": 6,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_station_scope_denied_total[5m]))", "refId": "A" }],
+      "title": "Scope/Permission denied/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 14 },
+      "id": 7,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_station_http_requests_total{status_class=\"4xx\"}[5m]))", "refId": "A" }],
+      "title": "Stations HTTP 4xx/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 14 },
+      "id": 8,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_station_http_requests_total{status_class=\"5xx\"}[5m]))", "refId": "A" }],
+      "title": "Stations HTTP 5xx/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "id": 9,
+      "targets": [
+        { "expr": "sum by (gate, reason) (rate(synqdrive_station_scope_denied_total[5m]))", "legendFormat": "{{gate}} {{reason}}", "refId": "A" }
+      ],
+      "title": "Scope/Authz denials by gate/reason (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "id": 102,
+      "panels": [],
+      "title": "Fleet Positioning",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "id": 10,
+      "targets": [
+        { "expr": "sum by (kind, outcome) (rate(synqdrive_station_assignment_total[5m]))", "legendFormat": "{{kind}} {{outcome}}", "refId": "A" }
+      ],
+      "title": "Assignment commands (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "id": 11,
+      "targets": [
+        { "expr": "sum by (kind, reason) (rate(synqdrive_station_assignment_conflict_total[5m]))", "legendFormat": "{{kind}} {{reason}}", "refId": "A" },
+        { "expr": "sum by (outcome) (rate(synqdrive_current_station_correction_total[5m]))", "legendFormat": "correction {{outcome}}", "refId": "B" }
+      ],
+      "title": "Version conflicts & current corrections (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "id": 103,
+      "panels": [],
+      "title": "Booking Rules",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "id": 12,
+      "targets": [
+        { "expr": "sum by (surface, outcome) (rate(synqdrive_station_booking_rule_total[5m]))", "legendFormat": "{{surface}} {{outcome}}", "refId": "A" }
+      ],
+      "title": "Booking rule evaluations (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "id": 13,
+      "targets": [
+        { "expr": "sum by (surface, reason) (rate(synqdrive_station_booking_rule_blocked_total[5m]))", "legendFormat": "blocked {{surface}} {{reason}}", "refId": "A" },
+        { "expr": "sum by (reference_type) (rate(synqdrive_station_booking_override_total[5m]))", "legendFormat": "override {{reference_type}}", "refId": "B" }
+      ],
+      "title": "Blocked rules & manual overrides (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+      "id": 104,
+      "panels": [],
+      "title": "Kapazität",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 },
+      "id": 14,
+      "targets": [
+        { "expr": "sum by (status) (rate(synqdrive_station_capacity_status_total[5m]))", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Capacity status observations (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
+      "id": 105,
+      "panels": [],
+      "title": "Transfers",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 54 },
+      "id": 15,
+      "targets": [
+        { "expr": "sum by (command, outcome) (rate(synqdrive_station_transfer_total[5m]))", "legendFormat": "{{command}} {{outcome}}", "refId": "A" }
+      ],
+      "title": "Transfer commands (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 62 },
+      "id": 106,
+      "panels": [],
+      "title": "API-Latenzen und Fehler",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 63 },
+      "id": 16,
+      "targets": [
+        { "expr": "sum by (route, status_class) (rate(synqdrive_station_http_requests_total[5m]))", "legendFormat": "{{route}} {{status_class}}", "refId": "A" }
+      ],
+      "title": "HTTP request rate by route/status (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 63 },
+      "id": 17,
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum by (le, route) (rate(synqdrive_station_http_request_duration_seconds_bucket[10m])))", "legendFormat": "{{route}} p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le, route) (rate(synqdrive_station_http_request_duration_seconds_bucket[10m])))", "legendFormat": "{{route}} p95", "refId": "B" }
+      ],
+      "title": "HTTP latency p50/p95 by route (10m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 71 },
+      "id": 107,
+      "panels": [],
+      "title": "Partial Data",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 72 },
+      "id": 18,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_station_summary_partial_total[30m])) / clamp_min(sum(rate(synqdrive_station_summary_requests_total[30m])), 0.001)", "refId": "A" }],
+      "title": "Partial summary ratio (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 72 },
+      "id": 19,
+      "targets": [
+        { "expr": "sum by (surface) (rate(synqdrive_station_summary_requests_total[5m]))", "legendFormat": "requests {{surface}}", "refId": "A" },
+        { "expr": "sum by (surface, reason) (rate(synqdrive_station_summary_partial_total[5m]))", "legendFormat": "partial {{surface}} {{reason}}", "refId": "B" }
+      ],
+      "title": "Summary requests vs partial responses (5m)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "stations", "stations-v2"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "title": "SynqDrive Stations V2",
+  "uid": "synqdrive-stations-v2",
+  "version": 1
+}

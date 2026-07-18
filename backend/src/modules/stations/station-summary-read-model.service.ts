@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
@@ -40,6 +40,7 @@ import { STATION_ORG_SUMMARIES_MAX_AGGREGATION_STATIONS } from '@shared/stations
 import { ACTIVE_VEHICLE_STATION_TRANSFER_STATUSES } from './vehicle-station-transfer.types';
 import type { ListStationSummariesQueryDto } from './dto/list-station-summaries-query.dto';
 import { StationVehicleRuntimeLoader } from './station-vehicle-runtime.loader';
+import { StationMetricsService } from './station-metrics.service';
 
 @Injectable()
 export class StationSummaryReadModelService {
@@ -47,6 +48,7 @@ export class StationSummaryReadModelService {
     private readonly prisma: PrismaService,
     private readonly stationAccessScope: StationAccessScopeService,
     private readonly stationVehicleRuntimeLoader: StationVehicleRuntimeLoader,
+    @Optional() private readonly stationMetrics?: StationMetricsService,
   ) {}
 
   getContractMetadata() {
@@ -104,7 +106,7 @@ export class StationSummaryReadModelService {
       vehicles,
     );
 
-    return assembleStationSummaryFromLoadRow(
+    const summary = assembleStationSummaryFromLoadRow(
       station,
       vehicles,
       bookings,
@@ -115,6 +117,9 @@ export class StationSummaryReadModelService {
       access,
       vehicleRuntime,
     );
+    this.stationMetrics?.recordSummaryRequest('station');
+    this.recordSummaryQualityMetrics('station', summary);
+    return summary;
   }
 
   async resolveForOrganization(
@@ -176,7 +181,7 @@ export class StationSummaryReadModelService {
 
     const scopeApplied = access.mode !== STATION_SCOPE_MODE.ALL_STATIONS;
 
-    return resolveStationOrgSummariesReadModel({
+    const result = resolveStationOrgSummariesReadModel({
       organizationId,
       evaluatedAt,
       scope: {
@@ -200,6 +205,41 @@ export class StationSummaryReadModelService {
       aggregationStationCapApplied,
       pageSizeCapped,
     });
+
+    this.stationMetrics?.recordSummaryRequest('organization');
+    if (aggregationStationCapApplied) {
+      this.stationMetrics?.recordSummaryPartial({
+        surface: 'organization',
+        reason: 'aggregation_cap',
+      });
+    }
+    if (pageSizeCapped) {
+      this.stationMetrics?.recordSummaryPartial({
+        surface: 'organization',
+        reason: 'page_size_capped',
+      });
+    }
+    for (const summary of summaries) {
+      this.recordSummaryQualityMetrics('organization', summary);
+    }
+
+    return result;
+  }
+
+  private recordSummaryQualityMetrics(
+    surface: 'station' | 'organization',
+    summary: StationSummaryReadModel,
+  ): void {
+    if (!summary.partialData.complete) {
+      this.stationMetrics?.recordSummaryPartial({
+        surface,
+        reason: 'incomplete_kpis',
+      });
+    }
+    const capacity = summary.kpis.metrics.capacityStatus;
+    if (capacity.known) {
+      this.stationMetrics?.recordCapacityStatus(capacity.value);
+    }
   }
 
   private async buildSummariesForStations(

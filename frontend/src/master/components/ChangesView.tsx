@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-prometheus-metrics-v49650-2026-07-18',
+    version: '4.9.650',
+    title: 'V4.9.650 — Stations V2: Prometheus-Metriken & Grafana (Prompt 70/78)',
+    summary: [
+      '`StationMetricsService` registriert alle Stations-V2-Counter/Histogramme auf dem shared `TripMetricsService`-Registry — keine IDs, Namen oder Kennzeichen als Labels.',
+      'Metriken: `stations_total`, `station_scope_denied_total`, Summary/Partial, Assignment/Conflict, Current-Correction, Transfer, Booking-Rules/Blocked/Override, Capacity-Status, Archive/Restore, HTTP-Latenz.',
+      '`StationsMetricsInterceptor` misst HTTP-Latenzen/Fehler und 403-Scope-Denials für `/organizations/:orgId/stations/*`; Routen als Templates (`:orgId`, `:id`).',
+      'Grafana-Dashboard `synqdrive-stations-v2` mit Sektionen Stationsbestand, Scope/Authz, Fleet Positioning, Booking Rules, Kapazität, Transfers, API-Latenzen, Partial Data.',
+    ],
+    reason: 'Prompt 70/78: Operative Observability für Stations V2 — Metriken und Dashboards analog Battery V2.',
+    previousBehavior:
+      'Stations-Modul hatte keinen dedizierten Prometheus-Export; Ops konnten Assignment-Konflikte, Scope-Denials und Partial-Summary-Raten nicht zentral auswerten.',
+    details:
+      'Backend: `station-metrics.service.ts`, `station-metrics.labels.ts`, `stations-metrics.interceptor.ts`; Wiring in Summary/Archive/Restore/Home/Current/Transfer/Booking-Rules/Override; `MetricsRefreshService.refreshStationsTotalGauge`; Dashboard `monitoring/grafana/dashboards/synqdrive-stations-v2.json`; Doku `docs/architecture/stations-v2-grafana-prometheus-ops.md`; Vitest label-cardinality specs.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T05:00:00.000Z',
+  },
+  {
     id: 'stations-v2-domain-audit-v49649-2026-07-18',
     version: '4.9.649',
     title: 'V4.9.649 — Stations V2: Kanonischer Domain-Audit-Trail (Prompt 69/78)',

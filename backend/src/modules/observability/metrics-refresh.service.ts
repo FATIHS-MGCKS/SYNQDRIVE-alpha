@@ -132,6 +132,31 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
   }
 
   @Cron('*/5 * * * *')
+  async refreshStationsTotalGauge(): Promise<void> {
+    if (!this.prisma) return;
+
+    try {
+      const grouped = await this.prisma.station.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      });
+      const counts: Record<string, number> = {
+        active: 0,
+        inactive: 0,
+        archived: 0,
+      };
+      for (const row of grouped) {
+        counts[row.status.toLowerCase()] = row._count._all;
+      }
+      this.metrics.setStationsTotalByStatus(counts);
+    } catch (err: unknown) {
+      this.logger.debug(
+        `Stations total gauge refresh skipped: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  @Cron('*/5 * * * *')
   async refreshBatteryPostgresTableRows(): Promise<void> {
     if (!this.prisma) return;
 

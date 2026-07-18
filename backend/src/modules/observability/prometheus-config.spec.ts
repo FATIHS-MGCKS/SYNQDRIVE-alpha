@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { TripMetricsService } from './trip-metrics.service';
 import { TireMetricsService } from '@modules/vehicle-intelligence/tires/tire-metrics.service';
 import { BrakeMetricsService } from '@modules/vehicle-intelligence/brakes/brake-metrics.service';
+import { StationMetricsService } from '@modules/stations/station-metrics.service';
 
 const FORBIDDEN_LABELS = [
   'vehicle_id',
@@ -12,6 +13,7 @@ const FORBIDDEN_LABELS = [
   'trip_id',
   'org_id',
   'organization_id',
+  'station_id',
 ];
 
 describe('TripMetricsService label cardinality', () => {
@@ -21,6 +23,7 @@ describe('TripMetricsService label cardinality', () => {
     metrics = new TripMetricsService();
     new TireMetricsService(metrics);
     new BrakeMetricsService(metrics);
+    new StationMetricsService(metrics);
   });
 
   it('does not register forbidden high-cardinality labels', async () => {
@@ -76,6 +79,11 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_brake_alert_total');
     expect(text).toContain('synqdrive_brake_rental_block_total');
     expect(text).toContain('synqdrive_brake_backfill_conflict_total');
+    expect(text).toContain('synqdrive_stations_total');
+    expect(text).toContain('synqdrive_station_scope_denied_total');
+    expect(text).toContain('synqdrive_station_summary_requests_total');
+    expect(text).toContain('synqdrive_station_transfer_total');
+    expect(text).toContain('synqdrive_station_http_request_duration_seconds');
   });
 });
 

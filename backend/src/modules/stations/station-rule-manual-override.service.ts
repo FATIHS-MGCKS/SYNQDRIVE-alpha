@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { ActivityAction, ActivityEntity, Prisma } from '@prisma/client';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationDomainAuditService } from './station-domain-audit.service';
 import { StationDomainAuditAction } from '@shared/stations/station-domain-audit.constants';
+import { StationMetricsService } from './station-metrics.service';
 import {
   STATION_RULE_MANUAL_OVERRIDE_PERMISSION,
   StationRuleManualOverrideReferenceType,
@@ -35,6 +36,7 @@ export class StationRuleManualOverrideService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly stationDomainAudit: StationDomainAuditService,
+    @Optional() private readonly stationMetrics?: StationMetricsService,
   ) {}
 
   validate(input: PersistStationRuleManualOverrideInput) {
@@ -133,6 +135,8 @@ export class StationRuleManualOverrideService {
         expiresAt: created.expiresAt.toISOString(),
       },
     });
+
+    this.stationMetrics?.recordBookingOverride(created.referenceType);
 
     return this.toAuditRecord(created);
   }

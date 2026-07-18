@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { Prisma, VehicleStationTransferStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -45,6 +46,7 @@ import {
 } from './vehicle-station-transfer.util';
 import { StationDomainAuditAction } from '@shared/stations/station-domain-audit.constants';
 import { mapTransferCommandToAuditAction } from '@shared/stations/station-domain-audit.util';
+import { StationMetricsService } from './station-metrics.service';
 
 @Injectable()
 export class VehicleStationTransferService {
@@ -53,6 +55,7 @@ export class VehicleStationTransferService {
     private readonly manualOverrideService: StationRuleManualOverrideService,
     private readonly stationsAccess: StationsAccessService,
     private readonly stationDomainAudit: StationDomainAuditService,
+    @Optional() private readonly stationMetrics?: StationMetricsService,
   ) {}
 
   async evaluatePlanTransfer(
@@ -317,6 +320,7 @@ export class VehicleStationTransferService {
       });
 
       if (updateResult.count === 0) {
+        this.recordTransferVersionConflict();
         throw new ConflictException(buildStationPositionVersionConflictIssue());
       }
 
@@ -374,6 +378,7 @@ export class VehicleStationTransferService {
       input.expectedVersion !== undefined &&
       input.expectedVersion !== vehicle.stationPositionVersion
     ) {
+      this.recordTransferVersionConflict();
       throw new ConflictException(buildStationPositionVersionConflictIssue());
     }
 
@@ -494,6 +499,7 @@ export class VehicleStationTransferService {
         });
 
         if (updateResult.count === 0) {
+          this.recordTransferVersionConflict();
           throw new ConflictException(buildStationPositionVersionConflictIssue());
         }
 
@@ -796,6 +802,39 @@ export class VehicleStationTransferService {
         command: result.audit.command,
         performedAt: result.audit.performedAt,
       });
+    }
+
+    this.stationMetrics?.recordTransfer({
+      command: this.mapTransferMetricsCommand(result.audit.command),
+      outcome: result.outcome,
+    });
+  }
+
+  private recordTransferVersionConflict(): void {
+    this.stationMetrics?.recordAssignmentConflict({
+      kind: 'transfer',
+      reason: 'version_conflict',
+    });
+  }
+
+  private mapTransferMetricsCommand(
+    command: VehicleStationTransferCommandName,
+  ): 'plan' | 'start' | 'arrive' | 'cancel' | 'ready' | 'overdue' {
+    switch (command) {
+      case VehicleStationTransferCommandName.PLAN:
+        return 'plan';
+      case VehicleStationTransferCommandName.START:
+        return 'start';
+      case VehicleStationTransferCommandName.ARRIVE:
+        return 'arrive';
+      case VehicleStationTransferCommandName.CANCEL:
+        return 'cancel';
+      case VehicleStationTransferCommandName.MARK_READY:
+        return 'ready';
+      case VehicleStationTransferCommandName.MARK_OVERDUE:
+        return 'overdue';
+      default:
+        return 'plan';
     }
   }
 
