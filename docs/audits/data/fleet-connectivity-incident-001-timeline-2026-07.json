@@ -1,0 +1,56 @@
+{
+  "auditId": "fleet-connectivity-production-readiness-2026-07",
+  "incidentVehicleAlias": "INCIDENT_VEHICLE_001",
+  "analysisWindowEndUtc": "2026-07-18T09:50:00Z",
+  "productionDataModified": false,
+  "timeline": [
+    {
+      "seq": 1,
+      "atUtc": "2026-07-08T17:21:19Z",
+      "source": "dimo_webhook",
+      "event": "OBD_DEVICE_UNPLUGGED persisted",
+      "notes": "Single persisted device-connection event for this vehicle; dedupBucket present"
+    },
+    {
+      "seq": 2,
+      "atUtc": "2026-07-08T17:21:41Z",
+      "source": "dimo_snapshot_poll",
+      "event": "First SUCCESS poll after unplug",
+      "notes": "Snapshot polling continued within ~22s; telemetry pipeline did not stop"
+    },
+    {
+      "seq": 3,
+      "atUtc": "2026-07-08T17:21:19Z",
+      "source": "gap",
+      "event": "No OBD_DEVICE_PLUGGED_IN webhook persisted",
+      "notes": "Expected per ops config (plug-in webhook disabled 2026-07-08); no snapshot-to-event intake exists"
+    },
+    {
+      "seq": 4,
+      "atUtc": "2026-07-18T09:47:39Z",
+      "source": "vehicle_latest_state",
+      "event": "Fresh telemetry with obdIsPluggedIn=true",
+      "notes": "lastSeenAt fresh; DIMO connectionStatus CONNECTED; snapshot plug signal true"
+    }
+  ],
+  "persistedState": {
+    "deviceConnectionEvents": {
+      "OBD_DEVICE_UNPLUGGED": 1,
+      "OBD_DEVICE_PLUGGED_IN": 0
+    },
+    "dimoConnectionStatus": "CONNECTED",
+    "snapshotObdIsPluggedIn": true,
+    "telemetryFreshAtAnalysis": true,
+    "openUnpluggedEpisodeByCurrentReadModel": true
+  },
+  "fleetContext": {
+    "totalVehicles": 7,
+    "dimoLinkedVehicles": 6,
+    "lteR1Vehicles": 6,
+    "vehiclesWithAnyDeviceConnectionEvent": 2,
+    "vehiclesWithLastEventUnplugged": 2,
+    "lteR1RecentTelemetryButNoPlugEventAfterUnplug": 2
+  },
+  "preliminaryRootCause": "openUnpluggedEpisode is derived exclusively from persisted webhook event sequence. Snapshot recovery (obdIsPluggedIn + CONNECTED + fresh lastSeenAt) does not synthesize episode closure or PLUGGED_IN evidence rows.",
+  "agreedRuleGap": "Business rule: unplug webhook then resumed real telemetry should auto-close open unplug episode without mandatory plug webhook. Code: reconcile anchor only suppresses phantom PLUG events; it never closes an open UNPLUG episode from snapshot telemetry."
+}
