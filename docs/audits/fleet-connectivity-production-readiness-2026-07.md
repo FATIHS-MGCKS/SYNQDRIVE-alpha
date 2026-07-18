@@ -5,8 +5,9 @@
 | **Audit ID** | `fleet-connectivity-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/fleet-connectivity-production-readiness-2026-07` |
-| **Phase** | **7 of 8 — Fleet Connectivity UI/UX target state** |
-| **Status** | Phases 1–7 complete; Phase 8 outlined below |
+| **Phase** | **8 of 8 — Final synthesis (complete)** |
+| **Verdict** | **NOT_READY** (see Part I §26) |
+| **Status** | **Complete** — Phases 1–8 |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | Through 2026-07-18 UTC |
 | **Incident vehicle (anonymized)** | `INCIDENT_VEHICLE_001` (real mapping **not** stored in git) |
@@ -46,8 +47,441 @@
 | i18n & accessibility CSV | `docs/audits/data/fleet-connectivity-i18n-accessibility-2026-07.csv` | 7 |
 | Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` | 1–4 |
 | DIMO read-only audit script | `scripts/audits/audit-fleet-connectivity-dimo.ts` | 5 |
+| Production readiness verdict JSON | `docs/audits/data/fleet-connectivity-production-readiness-verdict-2026-07.json` | 8 |
 
 ---
+
+# Part I — Final Production-Readiness Report
+
+> **Standalone synthesis.** This part consolidates Phases 1–7. Detailed phase evidence remains in Part II (appendix) below.
+
+---
+
+## 1. Executive Summary
+
+**Audit ID:** `fleet-connectivity-production-readiness-2026-07`  
+**Verdict:** **NOT_READY** for production-grade Fleet Connectivity under the agreed unplug→recovery business rule.
+
+SynqDrive ingests DIMO telemetry and device-connection webhooks correctly at intake, but **derives connectivity at read time through three parallel truths** (telemetry freshness, snapshot OBD, webhook episodes) without a unified runtime model. On the audited VPS fleet (7 vehicles, 6 DIMO-linked LTE_R1), **2/2 unplug webhooks remain logically open** despite live telemetry and `obdIsPluggedIn=true` on the same device binding — a **systemic read-model defect**, not an isolated incident.
+
+**Go-live blockers (3):**
+
+1. Snapshots/telemetry do not close open unplug episodes (`FC-P0-01`, `FC-C-04`)
+2. Fleet-wide stuck episodes with zero plug webhooks (`FC-P0-03`; DIMO plug trigger **disabled**)
+3. Episode recovery policy fails close → resolve alert → optional reconnected info
+
+**What works:** Rental blocking is **not** incorrectly driven by unplug episodes; canonical `telemetryFreshness` on fleet-map/dashboard/booking is largely correct; webhook intake dedup persisted 2/2 events; operational safety gates are isolated.
+
+**What must happen before READY:** Backend truth (`VehicleConnectivityRuntimeStateBuilder`), persistent episode closure with snapshot/binding rules, then UI migration off legacy Fleet Connectivity API — **18 recommended implementation prompts**, backend first.
+
+---
+
+## 2. Scope und Methodik
+
+| Dimension | Detail |
+|-----------|--------|
+| **Branch** | `audit/fleet-connectivity-production-readiness-2026-07` |
+| **Mode** | Read-only — no code fixes, no DB writes, no DIMO trigger mutations |
+| **VPS window** | 60 days: `2026-05-19` – `2026-07-18` UTC |
+| **Fleet** | 7 vehicles (anonymized `VEHICLE_001`–`VEHICLE_007`), 6 DIMO-linked |
+| **Methods** | Static code map, read-only SQL/ClickHouse on VPS, DIMO API read, incident replay fixture, consumer matrix, UI/IA audit, cross-surface comparison |
+| **DIMO MCP** | Unavailable — official docs + live Telemetry/Triggers API used |
+| **PII** | All committed artifacts use anonymized aliases; see §PII scan (Chapter 26) |
+
+### Dateivollständigkeit (Teil 1)
+
+**All 27 required files present.** No missing required artifacts.
+
+| Status | Files |
+|--------|-------|
+| ✅ Present | All paths listed in document map (lines 20–48) |
+| 📎 Supplementary (not required) | `incident-001-timeline`, `incident-replay-fixture/result`, `audit-phase-3-result`, `dimo-audit-summary` |
+| ⚠️ Outlined but not generated | `fleet-connectivity-fleet-stats-2026-07.json` — Phase 2 outline only; **superseded** by `fleet-coverage-2026-07.csv` + `integrity-findings-2026-07.json` aggregates |
+
+---
+
+## 3. VPS Runtime
+
+| Component | Role |
+|-----------|------|
+| PM2 `synqdrive` | NestJS API + schedulers + BullMQ workers |
+| PostgreSQL 16 | `vehicle_latest_states`, `dimo_device_connection_events`, consents, links |
+| Redis | BullMQ |
+| ClickHouse (optional) | Historical snapshots — not connectivity SoT |
+| Prometheus/Grafana | General observability; **no fleet connectivity freshness metrics** |
+
+**Connectivity writes:** snapshots + webhook events only. **No materialized connectivity state table** — all UI fields computed at read time.
+
+---
+
+## 4. Ist-Architektur
+
+```text
+DIMO poll (30s) → VehicleLatestState + optional CH
+DIMO webhook  → DimoDeviceConnectionEvent
+Read time:
+  fleet-connectivity.util     → connectionStatus (24h offline)
+  device-connection-read-model → openUnpluggedEpisode (event-only)
+  vehicle-state-interpreter   → telemetryFreshness (48h offline)
+  frontend telemetryFreshness.ts → canonical 5-state (fleet-map)
+```
+
+**Recommended target:** `VehicleConnectivityRuntimeStateBuilder` — single backend builder, consumed by fleet-map, fleet-connectivity API, device-connection API, notifications. **No frontend-derived connectivity truth.**
+
+### Kanonisches Zielmodell (Teil 4 — design only)
+
+**Dimensions (orthogonal):**
+
+| Dim | States |
+|-----|--------|
+| **A. Provider Link** | ACTIVE, REAUTH_REQUIRED, REVOKED, NO_LINK, ERROR, UNKNOWN |
+| **B. Telemetry** | LIVE, STANDBY, SOFT_OFFLINE, OFFLINE, UNKNOWN |
+| **C. Physical Device** | PLUGGED_CONFIRMED, PLUGGED_INFERRED, UNPLUGGED_CONFIRMED, UNKNOWN, NOT_APPLICABLE |
+| **D. Data Coverage** | GOOD, PARTIAL, INSUFFICIENT, UNKNOWN |
+| **E. Attention** | NONE, WATCH, ACTION_REQUIRED, CRITICAL |
+| **F. Overall Connectivity** | TELEMETRY_ACTIVE, STANDBY, SOFT_OFFLINE, OFFLINE, DEVICE_UNPLUGGED, AUTHORIZATION_REQUIRED, NO_ACTIVE_DATA_SOURCE, INTEGRATION_ERROR, UNKNOWN |
+
+**Overall priority (highest wins):**
+
+1. `INTEGRATION_ERROR` / `NO_ACTIVE_DATA_SOURCE`
+2. `AUTHORIZATION_REQUIRED`
+3. `DEVICE_UNPLUGGED` (confirmed, same binding)
+4. `OFFLINE` → `SOFT_OFFLINE` → `STANDBY` → `TELEMETRY_ACTIVE`
+5. `UNKNOWN` if conflicting evidence
+
+**Reason codes (examples):** `RC_TELEMETRY_OFFLINE_48H`, `RC_TELEMETRY_SOFT_24H`, `RC_DEVICE_UNPLUG_WEBHOOK`, `RC_DEVICE_RECOVERED_SNAPSHOT`, `RC_CONSENT_NONE`, `RC_BINDING_CHANGED`, `RC_COVERAGE_PARTIAL`, `RC_CONFLICTING_EVIDENCE`.
+
+---
+
+## 5. Provider Link
+
+- **Source:** `DimoVehicle.connectionStatus` + `vehicle_data_source_links`
+- **Issue:** CONNECTED telemetry with **NONE** consent on VEHICLE_001–003 (`FC-P1-03`)
+- **Rule:** Telemetry online ≠ provider link legally active; Integration Hub must surface REAUTH_REQUIRED
+
+---
+
+## 6. Authorization und Consent
+
+- **Source:** `vehicle_provider_consents` ledger + Data Authorization UI
+- **Gap:** Legacy DIMO_DIRECT links skip ledger; 3/6 linked vehicles show consent NONE while live
+- **Target:** Provider Link dimension `REAUTH_REQUIRED` when consent missing/expired
+
+---
+
+## 7. Device Binding
+
+- **Source:** `tokenId` + `aftermarketDevice.serial` in identity mirror
+- **Gap:** No binding episode ID persisted (`bindingIdAvailable=false` all 6 vehicles)
+- **Rule:** Recovery must require **same binding**; binding change closes episode → `DEVICE_BINDING_CHANGED` → manual review if ambiguous
+
+---
+
+## 8. Snapshot Intake
+
+- **Path:** `DimoSnapshotScheduler` → `DimoSnapshotProcessor` → `VehicleLatestState`
+- **60d:** 425,652 poll SUCCESS / 71,972 FAILURE (~14%); 396,778 CH snapshots
+- **Gap:** Snapshot producer/source not persisted — cannot distinguish synthetic vs OBD at ingest (`FC-P2-01` adjacent)
+
+---
+
+## 9. Telemetry Freshness
+
+| Contract | Thresholds | Consumers |
+|----------|------------|-----------|
+| **Canonical** | live <15m, standby <24h, soft 24–48h, offline ≥48h | fleet-map, dashboard, booking |
+| **Legacy Fleet API** | online <15m, standby <24h, **offline ≥24h** | Fleet Connectivity tab, admin |
+
+**Finding:** `FC-P1-02` — architectural split; standby is **not** an error (confirmed correct on fleet board).
+
+---
+
+## 10. Device Webhook Intake
+
+- **Path:** `POST /api/v1/webhooks/dimo` → `DeviceConnectionWebhookService`
+- **60d:** 2 received, 2 persisted, 0 failed, 0 duplicates
+- **Volume too low** for statistical reliability (`NOT_ENOUGH_DATA` for webhook reliability category)
+
+---
+
+## 11. Device Connection Episodes
+
+- **Model:** `buildDeviceConnectionSummary` — `openUnpluggedEpisode` from **last UNPLUG without PLUG event only**
+- **Fleet:** 2 UNPLUG, 0 PLUG, 2 open in DB, 1 visible in 7d API window
+- **Findings:** `FC-P0-01`, `FC-P0-03`, `FC-P1-01`
+
+---
+
+## 12. Snapshot-Based Recovery
+
+**Current:** Not implemented in read-model (event-only closure).
+
+### Verbindliche Ziel-Recovery-Policy (Teil 5)
+
+| Priority | Method | Evidence required | Confidence | Episode resolution | Alert | UI text (DE) | Audit trail |
+|----------|--------|-------------------|------------|-------------------|-------|--------------|-------------|
+| 1 | Explicit plug webhook | `OBD_DEVICE_PLUGGED_IN` same tokenId | HIGH | CLOSE_CONFIRMED | Resolve DEVICE_UNPLUGGED; optional DEVICE_RECONNECTED info | „Wieder verbunden – Webhook bestätigt“ | event id + timestamp |
+| 2 | Fresh explicit snapshot plug | `obdIsPluggedIn=true` timestamp > unplug, same binding | HIGH | CLOSE_SNAPSHOT | Resolve alert | „Wieder verbunden – aus Telemetrie erkannt“ | snapshot ts + binding |
+| 3 | Fresh telemetry same binding | polls/snapshots resumed, speed/odometer/gps, same tokenId, **not synthetic-only** | MEDIUM-HIGH | CLOSE_TELEMETRY_INFERRED | Resolve alert | „Wieder verbunden – Telemetrie aktiv“ | poll log + lastSeen |
+| 4 | Device binding changed | tokenId or serial change after unplug | HIGH | CLOSE_SUPERSEDED | Resolve; new binding episode | „Gerät gewechselt – Episode geschlossen“ | binding diff |
+| 5 | Manual review | operator confirms | N/A | CLOSE_MANUAL / KEEP_OPEN | per decision | „Manuell geprüft“ | user id + note |
+
+**Hard rules:**
+
+- Synthetic/OEM-only telemetry **must not** close physical OBD unplug (`recovery-policy-matrix`)
+- Open episode **must not** disappear from 7d query window (`FC-P1-01`)
+- Unknown ≠ Connected/Good
+
+---
+
+## 13. Incident Timeline
+
+**INCIDENT_VEHICLE_001** → `VEHICLE_006` (mapping not in git).
+
+| Time (UTC) | Event |
+|------------|-------|
+| 2026-07-08 17:21:19 | `OBD_DEVICE_UNPLUGGED` webhook persisted |
+| +22s | Poll SUCCESS; telemetry resumes |
+| +14d | 51 trips; `obdIsPluggedIn=true`; episode still open in DB |
+| 2026-07-18 | Episode **hidden** from 7d API window but DB row persists |
+
+Artifact: `fleet-connectivity-incident-timeline-2026-07.csv`
+
+---
+
+## 14. Fleet-wide Episode Analysis
+
+| Episode | Vehicle | Classification | Open DB | API 7d | Trips after |
+|---------|---------|----------------|---------|--------|-------------|
+| EPISODE_001 | VEHICLE_005 | SHOULD_HAVE_BEEN_RESOLVED_BY_TELEMETRY | yes | yes | 14 |
+| EPISODE_002 | VEHICLE_006 | SHOULD_HAVE_BEEN_RESOLVED_BY_TELEMETRY | yes | no | 51 |
+
+**100% false-open rate** on fleet unplug history.
+
+---
+
+## 15. DIMO Device Capabilities
+
+| Metric | Value |
+|--------|-------|
+| DIMO vehicles audited | 6 |
+| PHYSICAL_OBD_LTE_R1 | 6 |
+| Synthetic also present | 6 |
+| OEM-only | 0 |
+| `obdIsPluggedIn` in availableSignals | 5/6 (VEHICLE_002 missing) |
+| Recovery-capable bindings | 5/6 |
+
+**Rule:** `availableSignals` listing ≠ vehicle capability proof; missing signal → OBD state UNKNOWN not Good.
+
+---
+
+## 16. Trigger- und Webhook-Konfiguration
+
+| Trigger | Status |
+|---------|--------|
+| OBD unplug (`obdIsPluggedIn == 0`) | **ENABLED** |
+| OBD plug-in (`obdIsPluggedIn == 1`) | **DISABLED** |
+| High RPM | ENABLED |
+
+**Explains 0 fleet-wide PLUG events.** Snapshot-based recovery is **required** unless plug trigger enabled.
+
+**Finding:** `FC-P1-04` — `webhookConfigured` inferred from empty 7d events (false negative).
+
+---
+
+## 17. Readiness und Signal Coverage
+
+- **Formula:** `readinessScore = signalCoveragePercent` only
+- **Issues:** Ignores device episodes; penalizes ICE for missing evSoc (`FC-P2-02`)
+- **Target:** Capability-aware coverage dimension; separate from Overall Connectivity
+
+---
+
+## 18. Cross-Surface Consistency
+
+**31 consumers** — 14 CANONICAL, 9 LEGACY, 6 UNKNOWN (`consumer-wiring-2026-07.csv`).
+
+**6 confirmed cross-surface rows** in VPS CSV; architectural splits (24h vs 48h) add latent inconsistency.
+
+**Confirmed:** Live telemetry + open unplug on same vehicle (`FC-P0-04`).
+
+---
+
+## 19. Alerts und Notifications
+
+| Type | Status |
+|------|--------|
+| DEVICE_UNPLUGGED / RECONNECTED | Missing registry + producer |
+| TELEMETRY_OFFLINE | Registry only; ActionQueue partial |
+| Episode recovery | **FAIL** all 4 steps (`FC-C-04`) |
+| 60d device unplug notifications | **0** |
+
+---
+
+## 20. Operational Impact
+
+| Rule | Assessment |
+|------|------------|
+| Unplug episode blocks rental | **No** (`FC-C-05` positive) |
+| Standby blocks ready | **No** |
+| Low coverage hard block | **No** |
+| Trust erosion from contradictory UI | **Yes** |
+
+---
+
+## 21. UI Information Architecture
+
+**Current:** 9 KPIs, 10 columns, 3 filter dropdowns.  
+**Target:** 4 KPIs + header total; 5–6 columns; chip filters; action-first sort.
+
+See Phase 7 §61–71 and `ui-information-architecture-2026-07.csv`.
+
+---
+
+## 22. Detail Drawer
+
+**Current:** English technical dump — full VIN, raw coordinates, synthetic token, signal matrix default.
+
+**Target sections:** A Zustand → B Verlauf → C Datenverfügbarkeit → D Integration → E Technisch (collapsed).
+
+---
+
+## 23. Mobile, i18n und Accessibility
+
+- Mobile cards: 4 badges overflow — target 1+1 line
+- **28 i18n/a11y issues** — filter options and badges hardcoded English (`i18n-accessibility-2026-07.csv`)
+- KPI `aria-pressed` without `aria-label`
+
+---
+
+## 24. Performance, Reliability und Observability
+
+| Area | Assessment |
+|------|------------|
+| Poll pipeline | ~14% FAILURE rate, null error_code (`FC-P2-01`) |
+| Webhook intake | 100% persist on n=2 |
+| Connectivity metrics | **NOT_ENOUGH_DATA** — no Prometheus fleet freshness |
+| API | Single GET fleet-connectivity on tab mount — acceptable |
+
+---
+
+## 25. Findings P0–P3
+
+Full machine-readable list: `fleet-connectivity-integrity-findings-2026-07.json`  
+Verdict summary: `fleet-connectivity-production-readiness-verdict-2026-07.json`
+
+| ID | Sev | Confidence | Title | Blocker |
+|----|-----|------------|-------|---------|
+| FC-P0-01 | P0 | CONFIRMED | openUnpluggedEpisode ignores snapshot recovery | yes |
+| FC-P0-03 | P0 | CONFIRMED | 100% unplug webhooks stuck open fleet-wide | yes |
+| FC-P0-04 | P0 | CONFIRMED | Live telemetry + open episode coexist | no |
+| FC-C-04 | P0 | CONFIRMED | Episode recovery policy fails all steps | yes |
+| FC-P1-01 | P1 | CONFIRMED | 7d window hides unresolved episodes | no |
+| FC-P1-02 | P1 | CONFIRMED | Fleet API 24h vs canonical 48h offline | no |
+| FC-P1-03 | P1 | CONFIRMED | CONNECTED without ACTIVE consent | no |
+| FC-P1-04 | P1 | STRONG_EVIDENCE | webhookConfigured from event absence | no |
+| FC-C-01 | P1 | CONFIRMED | 31 consumers, three truth layers | no |
+| FC-C-02 | P1 | CONFIRMED | Fleet tab on legacy 24h contract | no |
+| FC-C-03 | P1 | CONFIRMED | 7 alert types missing/unwired | no |
+| FC-P2-01 | P2 | CONFIRMED | ~14% poll FAILURE rate | no |
+| FC-P2-02 | P2 | CONFIRMED | Readiness not capability-aware | no |
+| FC-P2-03 | P2 | CONFIRMED | No unplug notifications | no |
+| FC-C-05 | P3 | CONFIRMED | Operational gates correctly isolated (positive) | no |
+| FC-P3-01 | P3 | CONFIRMED | UI cognitive overload 9 KPI / 10 cols | no |
+| FC-P3-02 | P3 | CONFIRMED | i18n gaps hardcoded English | no |
+| FC-P3-03 | P3 | CONFIRMED | Drawer exposes VIN/coords/technical IDs | no |
+
+Each finding in JSON includes: code file/function, VPS evidence, affected counts, reproduction, recommendation, tests, dependencies.
+
+---
+
+## 26. Production-Readiness-Verdict und Umsetzungsplan
+
+### Production-Readiness-Kategorien (Teil 6)
+
+| Cat | Rating |
+|-----|--------|
+| A Correctness | NOT_READY |
+| B State Consistency | NOT_READY |
+| C Device Episode Integrity | NOT_READY |
+| D Provider-Link Integrity | CONDITIONALLY_READY |
+| E Telemetry Freshness | CONDITIONALLY_READY |
+| F Webhook Reliability | NOT_ENOUGH_DATA |
+| G Data Coverage Semantics | NOT_READY |
+| H Cross-Surface Consistency | NOT_READY |
+| I Operational Safety | CONDITIONALLY_READY |
+| J User Experience | NOT_READY |
+| K Mobile/i18n/A11y | NOT_READY |
+| L Test Readiness | NOT_READY |
+| M Observability | NOT_ENOUGH_DATA |
+
+### Gesamturteil
+
+**NOT_READY** — blocked by episode integrity + cross-surface truth fragmentation + UI trust erosion.
+
+### Umsetzungsplan (Teil 8) — 18 Prompts, 6 Phasen
+
+**Phase A — Backend truth (Prompts 1–6)**
+
+| # | Ziel | Scope | Dep | Abnahme | Mig | VPS | DIMO | UI | Risiko |
+|---|------|-------|-----|---------|-----|-----|------|-----|--------|
+| 1 | Baseline regression tests | replay fixture + episode specs | — | tests green | no | no | no | no | low |
+| 2 | VehicleConnectivityRuntimeStateBuilder | dims A–F + reason codes | 1 | unit matrix | no | no | no | no | med |
+| 3 | Persistent device episodes table | open/close lifecycle | 2 | migration + backfill plan | **yes** | yes | no | no | high |
+| 4 | Snapshot recovery closure | rules 2–3 policy | 3 | VEHICLE_005/006 replay | yes | yes | no | no | high |
+| 5 | Binding/token semantics | same-binding guard | 3 | binding change cases | yes | yes | yes | no | med |
+| 6 | Webhook inbox retry/DLQ | ingest reliability | 3 | failure injection | maybe | yes | yes | no | med |
+
+**Phase B — Provider & freshness (7–10)**
+
+| # | Ziel | Scope | Dep | Abnahme | Mig | VPS | DIMO | UI | Risiko |
+|---|------|-------|-----|---------|-----|-----|------|-----|--------|
+| 7 | Provider link + consent unify | dim A | 2 | consent backfill | yes | yes | no | no | med |
+| 8 | Canonical freshness alignment | fleet-connectivity API | 2 | 48h parity tests | no | no | no | no | low |
+| 9 | Capability-aware coverage | dim D | 2 | ICE/EV matrix | no | yes | yes | no | med |
+| 10 | Alerts + resolution wiring | registry producers | 3,4 | episode close → resolve | yes | yes | no | no | med |
+
+**Phase C — API & migration (11–12)**
+
+| # | Ziel | Scope | Dep | Abnahme | Mig | VPS | DIMO | UI | Risiko |
+|---|------|-------|-----|---------|-----|-----|------|-----|--------|
+| 11 | Cross-surface consumer migration | fleet-map + device-connection | 2–10 | consumer CSV green | no | yes | no | yes | high |
+| 12 | API contract v2 | fleet-connectivity DTO | 2 | OpenAPI + compat | maybe | yes | no | no | med |
+
+**Phase D — UI (13–16)** — only after Phase A–C
+
+| # | Ziel | Scope | Dep | Abnahme | Mig | VPS | DIMO | UI | Risiko |
+|---|------|-------|-----|---------|-----|-----|------|-----|--------|
+| 13 | KPI redesign | 4 KPIs | 12 | IA CSV | no | no | no | yes | low |
+| 14 | Table redesign | 5 cols | 12 | desktop+mobile | no | no | no | yes | low |
+| 15 | Drawer A–E | i18n | 12 | wireframes match | no | no | no | yes | med |
+| 16 | Mobile/i18n/a11y | 28 items | 13–15 | a11y CSV clean | no | no | no | yes | low |
+
+**Phase E — Ops (17–18)**
+
+| # | Ziel | Scope | Dep | Abnahme | Mig | VPS | DIMO | UI | Risiko |
+|---|------|-------|-----|---------|-----|-----|------|-----|--------|
+| 17 | Observability | Prometheus + dashboards | 2 | metrics live | no | yes | no | no | low |
+| 18 | Staging replay + VPS reconciliation | one-time episode close | 3,4 | 0 false-open | yes | **yes** | yes | no | high |
+
+### PII / Secret Scan (Teil 9)
+
+Scanned all `fleet-connectivity-*` audit paths. **No remediation required.** Vehicles anonymized; tokens masked; no raw payloads/VIN/plates/GPS in CSVs.
+
+### Read-only confirmations
+
+- ✅ No production data modified  
+- ✅ No DIMO triggers created/enabled/disabled  
+- ✅ No infrastructure changed  
+- ✅ No application code changed in this audit branch (docs + scripts only)
+
+---
+
+*End of Part I — Final Report. Part II (phase audit trail) follows.*
+
+---
+
+# Part II — Phase Audit Trail
 
 # Eight-phase audit outline
 
@@ -117,14 +551,15 @@
 - Textual wireframes (desktop, tablet, mobile, states)
 - Artifacts: `fleet-connectivity-ui-*-2026-07.csv` (3 files)
 
-## Phase 8 — Test coverage & remediation synthesis (planned)
+## Phase 8 — Final synthesis ✅
 
 - Unit/integration test inventory vs production scenarios
 - Pure replay of `buildDeviceConnectionSummary` for INCIDENT_VEHICLE_001 inputs
 - Frontend filter/badge tests for contradictory states
 - Target architecture for snapshot-based episode closure aligned with agreed business rule
 - Consolidated P0/P1/P2 findings and production-readiness verdict
-- Artifact: executive summary + remediation backlog + test-coverage CSV
+- Part I final report (26 chapters) + verdict JSON + expanded findings
+- [x] Complete
 
 ---
 
