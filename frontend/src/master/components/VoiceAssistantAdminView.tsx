@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Shield } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   chromeTabBarClass,
@@ -8,7 +8,6 @@ import {
 } from '../../components/patterns/chrome-tab-bar';
 import {
   DataTable,
-  DetailDrawer,
   EmptyState,
   ErrorState,
   PageHeader,
@@ -35,6 +34,23 @@ import {
   VOICE_CONTROL_PLANE_SECTIONS,
   type VoiceControlPlaneSection,
 } from './voice-control-plane/voice-control-plane-navigation';
+import {
+  buildVoiceOrgWorkspaceSearch,
+  readVoiceOrgId,
+  readVoiceOrgWorkspaceTab,
+  type VoiceOrgWorkspaceTab,
+} from './voice-control-plane/voice-org-workspace/voice-org-workspace-navigation';
+import { VoiceOrgWorkspace } from './voice-control-plane/voice-org-workspace/VoiceOrgWorkspace';
+import type { VoiceProvisioningStepView } from './voice-control-plane/voice-org-workspace/voice-org-provisioning.ops';
+import {
+  buildPublishAgentAction,
+  buildRefreshProvisioningAction,
+  buildReplayWebhookAction,
+  buildRetryNumberImportAction,
+  buildRetryTwilioSubaccountAction,
+  buildRollbackAgentAction,
+  buildSuspendOrgAction,
+} from './voice-control-plane/voice-org-workspace/voice-org-workspace.actions';
 import { VoicePlatformStatusPanel } from './voice-control-plane/VoicePlatformStatusPanel';
 import {
   DEFAULT_VOICE_ORG_FILTERS,
@@ -43,7 +59,6 @@ import {
 import type { VoiceOrgFilters } from './voice-control-plane/voice-platform-overview.ops';
 import { filterOrganizations } from './voice-control-plane/voice-platform-overview.ops';
 import {
-  createIdempotencyKey,
   VoiceSecureActionDialog,
   type VoiceSecureActionRequest,
 } from './voice-control-plane/VoiceSecureActionDialog';
@@ -121,9 +136,15 @@ export function VoiceAssistantAdminView() {
   const [webhookEvents, setWebhookEvents] = useState<VoiceControlPlaneWebhookEventRow[]>([]);
   const [auditEvents, setAuditEvents] = useState<VoiceControlPlaneAuditEventRow[]>([]);
   const [orgFilters, setOrgFilters] = useState<VoiceOrgFilters>(DEFAULT_VOICE_ORG_FILTERS);
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
+    readVoiceOrgId(window.location.search),
+  );
+  const [orgWorkspaceTab, setOrgWorkspaceTab] = useState<VoiceOrgWorkspaceTab>(
+    readVoiceOrgWorkspaceTab(window.location.search),
+  );
   const [workspace, setWorkspace] = useState<VoiceControlPlaneOrgWorkspace | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [usageBilling, setUsageBilling] = useState<VoiceMasterAdminOrgBilling[]>([]);
   const [secureAction, setSecureAction] = useState<VoiceSecureActionRequest | null>(null);
   const [provisioningOrgId, setProvisioningOrgId] = useState('');
@@ -171,20 +192,69 @@ export function VoiceAssistantAdminView() {
   const loadWorkspace = useCallback(async (orgId: string) => {
     setSelectedOrgId(orgId);
     setWorkspaceLoading(true);
+    setWorkspaceError(null);
     try {
       const data = await api.voiceAssistant.admin.controlPlane.organizationWorkspace(orgId);
       setWorkspace(data);
     } catch (err) {
-      toast.error('Workspace konnte nicht geladen werden', { description: getErrorMessage(err) });
+      const message = getErrorMessage(err);
+      setWorkspaceError(message);
+      toast.error('Workspace konnte nicht geladen werden', { description: message });
       setWorkspace(null);
     } finally {
       setWorkspaceLoading(false);
     }
   }, []);
 
+  const openOrgWorkspace = useCallback(
+    (orgId: string, tab: VoiceOrgWorkspaceTab = 'overview') => {
+      setOrgWorkspaceTab(tab);
+      const nextUrl = `${window.location.pathname}${buildVoiceOrgWorkspaceSearch(activeSection, orgId, tab)}`;
+      window.history.pushState(null, '', nextUrl);
+      void loadWorkspace(orgId);
+    },
+    [activeSection, loadWorkspace],
+  );
+
+  const closeOrgWorkspace = useCallback(() => {
+    setSelectedOrgId(null);
+    setWorkspace(null);
+    setWorkspaceError(null);
+    const nextUrl = `${window.location.pathname}${buildVoiceControlPlaneSearch(activeSection)}`;
+    window.history.pushState(null, '', nextUrl);
+  }, [activeSection]);
+
+  const navigateOrgTab = useCallback(
+    (tab: VoiceOrgWorkspaceTab) => {
+      if (!selectedOrgId) return;
+      setOrgWorkspaceTab(tab);
+      const nextUrl = `${window.location.pathname}${buildVoiceOrgWorkspaceSearch(activeSection, selectedOrgId, tab)}`;
+      window.history.pushState(null, '', nextUrl);
+    },
+    [activeSection, selectedOrgId],
+  );
+
+  const actionContext = useCallback(
+    () => ({
+      orgId: selectedOrgId!,
+      orgName: workspace?.detail?.organization?.companyName ?? 'Organisation',
+      onRefresh: async () => {
+        if (selectedOrgId) await loadWorkspace(selectedOrgId);
+        await loadCore();
+      },
+    }),
+    [selectedOrgId, workspace, loadWorkspace, loadCore],
+  );
+
   useEffect(() => {
     if (!canAccess) return;
     void loadCore();
+    const orgId = readVoiceOrgId(window.location.search);
+    if (orgId) {
+      setSelectedOrgId(orgId);
+      setOrgWorkspaceTab(readVoiceOrgWorkspaceTab(window.location.search));
+      void loadWorkspace(orgId);
+    }
     const interval = window.setInterval(() => {
       if (activeSection === 'platform' || activeSection === 'organizations') {
         void loadCore();
@@ -196,10 +266,18 @@ export function VoiceAssistantAdminView() {
   useEffect(() => {
     const onPopState = () => {
       setActiveSection(readVoiceControlPlaneSection(window.location.search));
+      const orgId = readVoiceOrgId(window.location.search);
+      setSelectedOrgId(orgId);
+      setOrgWorkspaceTab(readVoiceOrgWorkspaceTab(window.location.search));
+      if (orgId) void loadWorkspace(orgId);
+      else {
+        setWorkspace(null);
+        setWorkspaceError(null);
+      }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [loadWorkspace]);
 
   const filteredOrganizations = useMemo(
     () => filterOrganizations(organizations, orgFilters),
@@ -318,105 +396,89 @@ export function VoiceAssistantAdminView() {
   ];
 
   const openSuspend = (orgId: string, orgName: string) => {
-    setSecureAction({
-      title: 'Organisation suspendieren',
-      description: `Voice-Dienste für ${orgName} werden gesperrt.`,
-      confirmLabel: 'Suspendieren',
-      tone: 'critical',
-      onConfirm: async (reason) => {
-        await api.voiceAssistant.admin.controlPlane.suspendOrganization(
-          orgId,
-          { reason, confirm: true },
-          createIdempotencyKey('suspend'),
-        );
-        toast.success('Organisation suspendiert');
-        await loadCore();
-      },
-    });
+    setSecureAction(
+      buildSuspendOrgAction({
+        orgId,
+        orgName,
+        onRefresh: async () => {
+          await loadCore();
+          if (selectedOrgId === orgId) await loadWorkspace(orgId);
+        },
+      }),
+    );
   };
 
   const openReplay = (eventId: string) => {
-    setSecureAction({
-      title: 'Event replayen',
-      description: 'Das Webhook-Event wird erneut in die Verarbeitung eingestellt. Keine vollständigen Transkripte werden angezeigt.',
-      confirmLabel: 'Replay starten',
-      onConfirm: async (reason) => {
-        await api.voiceAssistant.admin.controlPlane.replayWebhookEvent(
-          eventId,
-          { reason, confirm: true },
-          createIdempotencyKey('replay'),
-        );
-        toast.success('Replay gestartet');
-        await loadCore();
-      },
-    });
+    const event = webhookEvents.find(row => row.id === eventId);
+    const orgId = selectedOrgId ?? event?.organizationId ?? '';
+    const orgName =
+      event?.organizationName ??
+      organizations.find(row => row.organizationId === orgId)?.organizationName ??
+      'Organisation';
+    setSecureAction(
+      buildReplayWebhookAction({
+        orgId,
+        orgName,
+        webhookEventId: eventId,
+        onRefresh: async () => {
+          await loadCore();
+          if (selectedOrgId) await loadWorkspace(selectedOrgId);
+        },
+      }),
+    );
   };
 
-  const openDeploy = (orgId: string) => {
-    setSecureAction({
-      title: 'Agent neu deployen',
-      description: 'Der aktuelle Draft wird als neue aktive Version ausgerollt.',
-      confirmLabel: 'Deploy',
-      onConfirm: async (reason) => {
-        await api.voiceAssistant.admin.controlPlane.deployAgent(
-          orgId,
-          { confirm: true },
-          createIdempotencyKey('deploy'),
-        );
-        toast.success('Deployment gestartet');
-        await loadWorkspace(orgId);
-      },
-    });
+  const openPublishAgent = () => {
+    if (!selectedOrgId) return;
+    setSecureAction(buildPublishAgentAction(actionContext()));
   };
 
-  const openRollback = (orgId: string) => {
-    setSecureAction({
-      title: 'Rollback',
-      description: 'Rollback auf die zuletzt aktive Agent-Version.',
-      confirmLabel: 'Rollback',
-      tone: 'critical',
-      onConfirm: async () => {
-        await api.voiceAssistant.admin.controlPlane.rollbackAgent(orgId, { confirm: true });
-        toast.success('Rollback ausgeführt');
-        await loadWorkspace(orgId);
-      },
-    });
+  const openRollbackAgent = () => {
+    if (!selectedOrgId) return;
+    setSecureAction(buildRollbackAgentAction(actionContext()));
+  };
+
+  const openRefreshProvisioning = () => {
+    if (!selectedOrgId) return;
+    setSecureAction(buildRefreshProvisioningAction(actionContext()));
+  };
+
+  const openReconnectNumber = (phoneNumberId: string) => {
+    if (!selectedOrgId) return;
+    setSecureAction(
+      buildRetryNumberImportAction({
+        ...actionContext(),
+        phoneNumberId,
+      }),
+    );
   };
 
   const openProvisionResume = (orgId: string) => {
-    setSecureAction({
-      title: 'Provisionierung fortsetzen',
-      description: 'Subaccount-Provisionierung wird mit Bestätigung fortgesetzt.',
-      confirmLabel: 'Fortsetzen',
-      onConfirm: async (reason) => {
-        await api.voiceAssistant.admin.provisioning.twilioProvisionSubaccount(
-          orgId,
-          { confirm: true, friendlyName: reason.slice(0, 40) },
-          createIdempotencyKey('provision'),
-        );
-        toast.success('Provisionierung fortgesetzt');
-        await loadWorkspace(orgId);
-      },
-    });
+    const orgName =
+      organizations.find(o => o.organizationId === orgId)?.organizationName ?? 'Organisation';
+    setSecureAction(
+      buildRetryTwilioSubaccountAction({
+        orgId,
+        orgName,
+        onRefresh: async () => {
+          await loadCore();
+          if (selectedOrgId === orgId) await loadWorkspace(orgId);
+        },
+      }),
+    );
   };
 
-  const openReconnectNumber = (orgId: string, phoneNumberId: string) => {
-    setSecureAction({
-      title: 'Nummer neu verbinden',
-      description: 'ElevenLabs-Import und Agent-Zuordnung werden erneut ausgeführt.',
-      confirmLabel: 'Neu verbinden',
-      onConfirm: async () => {
-        await api.voiceAssistant.admin.provisioning.elevenLabsImport(
-          orgId,
-          phoneNumberId,
-          { confirm: true },
-          createIdempotencyKey('reconnect'),
-        );
-        toast.success('Nummer wird neu verbunden');
-        await loadCore();
-        if (selectedOrgId === orgId) await loadWorkspace(orgId);
-      },
-    });
+  const handleProvisioningStepAction = (step: VoiceProvisioningStepView) => {
+    if (!selectedOrgId) return;
+    const ctx = actionContext();
+    if (step.actionKind === 'retry_twilio') {
+      setSecureAction(buildRetryTwilioSubaccountAction(ctx));
+    } else if (step.actionKind === 'retry_import') {
+      const phoneId = workspace?.phoneNumbers[0]?.id;
+      if (phoneId) setSecureAction(buildRetryNumberImportAction({ ...ctx, phoneNumberId: phoneId }));
+    } else if (step.actionKind === 'deploy_agent') {
+      setSecureAction(buildPublishAgentAction(ctx));
+    }
   };
 
   if (!canAccess) {
@@ -456,7 +518,7 @@ export function VoiceAssistantAdminView() {
           filters={orgFilters}
           onFiltersChange={patch => setOrgFilters(current => ({ ...current, ...patch }))}
           loading={loading}
-          onOpenWorkspace={orgId => void loadWorkspace(orgId)}
+          onOpenWorkspace={orgId => openOrgWorkspace(orgId)}
           onSuspend={openSuspend}
         />
       )}
@@ -483,9 +545,9 @@ export function VoiceAssistantAdminView() {
               type="button"
               size="sm"
               disabled={!provisioningOrgId}
-              onClick={() => provisioningOrgId && void loadWorkspace(provisioningOrgId)}
+              onClick={() => provisioningOrgId && openOrgWorkspace(provisioningOrgId, 'provisioning')}
             >
-              Jobs laden
+              Operations-Workspace öffnen
             </Button>
             <Button
               type="button"
@@ -494,7 +556,7 @@ export function VoiceAssistantAdminView() {
               disabled={!provisioningOrgId}
               onClick={() => provisioningOrgId && openProvisionResume(provisioningOrgId)}
             >
-              Provisionierung fortsetzen
+              Fehlgeschlagenen Schritt erneut versuchen
             </Button>
           </div>
           {workspace?.provisioningJobs?.length ? (
@@ -510,7 +572,7 @@ export function VoiceAssistantAdminView() {
               loading={workspaceLoading}
             />
           ) : (
-            <EmptyState title="Keine Provisioning-Jobs" description="Organisation wählen und Jobs laden." />
+            <EmptyState title="Keine Provisioning-Jobs" description="Organisation wählen und Operations-Workspace öffnen." />
           )}
         </div>
       )}
@@ -528,24 +590,24 @@ export function VoiceAssistantAdminView() {
       {!error && activeSection === 'deployments' && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Agent Deployments pro Organisation — wähle eine Organisation im Workspace-Drawer.
+            Agent Deployments pro Organisation — öffnen Sie den Operations-Workspace.
           </p>
           <DataTable
             columns={orgColumns.filter((col) => ['org', 'voice', 'errors'].includes(col.key))}
             rows={filteredOrganizations}
             getRowKey={(row) => row.organizationId}
             loading={loading}
-            onRowClick={(row) => void loadWorkspace(row.organizationId)}
+            onRowClick={(row) => openOrgWorkspace(row.organizationId, 'agent')}
             rowActions={(row) => (
               <button
                 type="button"
                 className="rounded-lg px-2 py-1 text-[10px] font-semibold hover:bg-muted"
                 onClick={(event) => {
                   event.stopPropagation();
-                  openDeploy(row.organizationId);
+                  openOrgWorkspace(row.organizationId, 'agent');
                 }}
               >
-                Deploy
+                Agent-Version veröffentlichen
               </button>
             )}
           />
@@ -565,7 +627,7 @@ export function VoiceAssistantAdminView() {
               className="rounded-lg px-2 py-1 text-[10px] font-semibold hover:bg-muted"
               onClick={() => openReplay(row.id)}
             >
-              Replay
+              Webhook-Ereignis erneut verarbeiten
             </button>
           )}
         />
@@ -591,112 +653,32 @@ export function VoiceAssistantAdminView() {
         />
       )}
 
-      <DetailDrawer
+      <VoiceOrgWorkspace
         open={Boolean(selectedOrgId)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedOrgId(null);
-            setWorkspace(null);
-          }
+        orgId={selectedOrgId}
+        orgName={workspace?.detail?.organization?.companyName ?? 'Organisation'}
+        activeTab={orgWorkspaceTab}
+        onTabChange={navigateOrgTab}
+        onClose={closeOrgWorkspace}
+        workspace={workspace}
+        workspaceLoading={workspaceLoading}
+        workspaceError={workspaceError}
+        webhookEvents={webhookEvents}
+        auditEvents={auditEvents}
+        onRefresh={async () => {
+          if (selectedOrgId) await loadWorkspace(selectedOrgId);
         }}
-        eyebrow="Organisation Workspace"
-        title={workspace?.detail?.organization?.companyName ?? 'Organisation'}
-        description={selectedOrgId ? `Org ID: ${selectedOrgId}` : undefined}
-        widthClassName="sm:max-w-xl"
-        footer={
-          selectedOrgId ? (
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" onClick={() => openDeploy(selectedOrgId)}>
-                Agent deployen
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => openRollback(selectedOrgId)}>
-                Rollback
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                onClick={() =>
-                  openSuspend(selectedOrgId, workspace?.detail?.organization?.companyName ?? 'Organisation')
-                }
-              >
-                Suspendieren
-              </Button>
-            </div>
-          ) : undefined
+        onRefreshProvisioning={openRefreshProvisioning}
+        onReconnectNumber={openReconnectNumber}
+        onPublishAgent={openPublishAgent}
+        onRollbackAgent={openRollbackAgent}
+        onReplayWebhook={openReplay}
+        onSuspend={() =>
+          selectedOrgId &&
+          openSuspend(selectedOrgId, workspace?.detail?.organization?.companyName ?? 'Organisation')
         }
-      >
-        {workspaceLoading ? (
-          <div className="p-5 text-xs text-muted-foreground">Lade Workspace…</div>
-        ) : !workspace ? (
-          <EmptyState title="Kein Workspace" description="Organisation aus der Tabelle wählen." />
-        ) : (
-          <div className="space-y-5 p-5 text-xs">
-            <section>
-              <h4 className="sq-section-label mb-2">Subaccounts</h4>
-              {workspace.providerAccounts.length === 0 ? (
-                <p className="text-muted-foreground">Keine Provider-Accounts</p>
-              ) : (
-                workspace.providerAccounts.map((account) => (
-                  <div key={account.id} className="flex justify-between gap-2 py-1">
-                    <span>{account.provider}</span>
-                    <span className="font-mono">{account.maskedExternalRef ?? '—'}</span>
-                  </div>
-                ))
-              )}
-            </section>
-
-            <section>
-              <h4 className="sq-section-label mb-2">Nummern (maskiert)</h4>
-              {workspace.phoneNumbers.map((number) => (
-                <div key={number.id} className="flex items-center justify-between gap-2 py-1">
-                  <span className="font-mono">{number.maskedPhoneNumber}</span>
-                  <button
-                    type="button"
-                    className="text-[10px] font-semibold text-[color:var(--brand)]"
-                    onClick={() => selectedOrgId && openReconnectNumber(selectedOrgId, number.id)}
-                  >
-                    Neu verbinden
-                  </button>
-                </div>
-              ))}
-            </section>
-
-            <section>
-              <h4 className="sq-section-label mb-2">Agent Deployment</h4>
-              <p className="text-muted-foreground">
-                Draft: {workspace.agentDeployment.draft ? 'vorhanden' : 'keiner'} · Diff:{' '}
-                {workspace.agentDeployment.diff ? 'verfügbar' : '—'}
-              </p>
-            </section>
-
-            <section>
-              <h4 className="sq-section-label mb-2 flex items-center gap-1">
-                <Shield className="h-3.5 w-3.5" />
-                Billing (Master)
-              </h4>
-              {workspace.billing ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-muted/40 px-3 py-2">
-                    <p className="text-[10px] text-muted-foreground">Minuten</p>
-                    <p className="font-bold tabular-nums">{workspace.billing.consumedMinutes.toFixed(1)}</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/40 px-3 py-2">
-                    <p className="text-[10px] text-muted-foreground">Marge</p>
-                    <p className="font-bold tabular-nums">{centsToEuros(workspace.billing.marginCents)}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-muted-foreground">Keine Billing-Daten</p>
-              )}
-            </section>
-
-            <p className="text-[10px] text-muted-foreground border-t border-border pt-3">
-              Keine vollständigen Transkripte oder unmaskierten Telefonnummern in der Master-Ansicht.
-            </p>
-          </div>
-        )}
-      </DetailDrawer>
+        onProvisioningStepAction={handleProvisioningStepAction}
+      />
 
       <VoiceSecureActionDialog request={secureAction} onClose={() => setSecureAction(null)} />
     </div>
