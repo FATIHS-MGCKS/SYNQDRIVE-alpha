@@ -20,6 +20,11 @@ import {
 import { getStationBookingPickupRulesMetadata } from '@shared/stations/station-booking-pickup-rules.contract';
 import { evaluateReturnBookingRules } from '@shared/stations/station-booking-return-rules';
 import { getStationBookingReturnRulesMetadata } from '@shared/stations/station-booking-return-rules.contract';
+import {
+  loadConcurrentCapacityProjection,
+  loadStationCapacityVehicles,
+  type StationCapacityProjectionDb,
+} from '@shared/stations/station-capacity-projection.util';
 import { StationOperationalCalendarExceptionInput } from '@shared/stations/station-operational-capability.resolver';
 import type { EvaluateStationBookingRulesDto } from './dto/evaluate-station-booking-rules.dto';
 
@@ -68,8 +73,20 @@ export class StationBookingRulesService {
   ): Promise<StationBookingRulesResult> {
     const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
     const [pickupStation, returnStation, vehicle] = await Promise.all([
-      this.loadStationInput(access.orgId, body.pickupStationId, access),
-      this.loadStationInput(access.orgId, body.returnStationId, access),
+      this.loadStationInput(
+        access.orgId,
+        body.pickupStationId,
+        access,
+        new Date(body.pickupDateTime),
+        body.vehicleId,
+      ),
+      this.loadStationInput(
+        access.orgId,
+        body.returnStationId,
+        access,
+        new Date(body.returnDateTime),
+        body.vehicleId,
+      ),
       body.vehicleId ? this.loadVehicleInput(access.orgId, body.vehicleId) : Promise.resolve(null),
     ]);
 
@@ -153,6 +170,8 @@ export class StationBookingRulesService {
     organizationId: string,
     stationId: string,
     access: ReturnType<StationAccessScopeService['resolveFromContextOrEmpty']>,
+    evaluatedAt: Date,
+    vehicleId?: string | null,
   ): Promise<StationBookingRulesStationInput> {
     const station = (await this.stationAccessScope.requireReadableStation(access, stationId, {
       select: {
@@ -174,7 +193,34 @@ export class StationBookingRulesService {
       },
     })) as unknown as StationBookingRulesLoadRow;
 
-    return this.mapStationRow(station);
+    const mapped = this.mapStationRow(station);
+
+    if (station.capacity == null) {
+      return mapped;
+    }
+
+    const [capacityVehicles, capacityBookingProjection] = await Promise.all([
+      loadStationCapacityVehicles(
+        this.prisma as unknown as StationCapacityProjectionDb,
+        organizationId,
+        stationId,
+      ),
+      loadConcurrentCapacityProjection(
+        this.prisma as unknown as StationCapacityProjectionDb,
+        organizationId,
+        stationId,
+        evaluatedAt,
+        {
+          excludeVehicleId: vehicleId ?? undefined,
+        },
+      ),
+    ]);
+
+    return {
+      ...mapped,
+      capacityVehicles,
+      capacityBookingProjection,
+    };
   }
 
   private mapStationRow(station: StationBookingRulesLoadRow): StationBookingRulesStationInput {

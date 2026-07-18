@@ -7,6 +7,15 @@ import {
   ExpectedStationRequestChannel,
 } from '@shared/stations/expected-station.policy';
 import {
+  evaluateStationCapacityRules,
+  toStationCapacityRulesPolicy,
+  type StationCapacityRulesPolicy,
+} from '@shared/stations/station-capacity-rules';
+import type {
+  StationCapacityBookingProjection,
+  StationCapacityVehicleSnapshot,
+} from '@shared/stations/station-capacity-policy';
+import {
   ACTIVE_VEHICLE_STATION_TRANSFER_STATUSES,
   VehicleStationTransferCommandOutcome,
   VehicleStationTransferIssueCode,
@@ -50,11 +59,25 @@ export function evaluatePlanVehicleStationTransfer(input: {
   vehicleExpectedStationId?: string | null;
   vehicleExpectedStationSource?: string | null;
   plannedAt: Date | string;
+  destinationCapacity?: {
+    configuredCapacity: number | null;
+    vehicles: StationCapacityVehicleSnapshot[];
+    concurrentProjection?: StationCapacityBookingProjection;
+    policy?: Partial<StationCapacityRulesPolicy>;
+  };
+  sourceCapacity?: {
+    configuredCapacity: number | null;
+    vehicles: StationCapacityVehicleSnapshot[];
+    concurrentProjection?: StationCapacityBookingProjection;
+    policy?: Partial<StationCapacityRulesPolicy>;
+  };
 }): {
   allowed: boolean;
   blockingReasons: VehicleStationTransferIssue[];
+  warnings: VehicleStationTransferIssue[];
 } {
   const blockingReasons: VehicleStationTransferIssue[] = [];
+  const warnings: VehicleStationTransferIssue[] = [];
 
   if (input.fromStationId && input.fromStationId === input.toStationId) {
     blockingReasons.push(
@@ -101,9 +124,84 @@ export function evaluatePlanVehicleStationTransfer(input: {
     );
   }
 
+  if (input.destinationCapacity?.configuredCapacity != null) {
+    const capacityPolicy = toStationCapacityRulesPolicy(input.destinationCapacity.policy);
+    const destinationEvaluations = evaluateStationCapacityRules({
+      ruleIdPrefix: 'transfer.destination',
+      policy: capacityPolicy,
+      capacityInput: {
+        stationId: input.toStationId,
+        configuredCapacity: input.destinationCapacity.configuredCapacity,
+        vehicles: input.destinationCapacity.vehicles,
+        bookingProjection: {
+          ...(input.destinationCapacity.concurrentProjection ?? {}),
+          concurrentTransferArrivals:
+            (input.destinationCapacity.concurrentProjection?.concurrentTransferArrivals ?? 0) + 1,
+        },
+      },
+    });
+
+    for (const evaluation of destinationEvaluations) {
+      if (evaluation.severity === 'BLOCKED') {
+        blockingReasons.push(
+          issue(VehicleStationTransferIssueCode.CAPACITY_BLOCKED, evaluation.message),
+        );
+      } else if (evaluation.severity === 'MANUAL_CONFIRMATION_REQUIRED') {
+        warnings.push(
+          issue(
+            VehicleStationTransferIssueCode.CAPACITY_MANUAL_CONFIRMATION,
+            evaluation.message,
+          ),
+        );
+      } else {
+        warnings.push(
+          issue(VehicleStationTransferIssueCode.CAPACITY_WARNING, evaluation.message),
+        );
+      }
+    }
+  }
+
+  if (input.sourceCapacity?.configuredCapacity != null && input.fromStationId) {
+    const capacityPolicy = toStationCapacityRulesPolicy(input.sourceCapacity.policy);
+    const sourceEvaluations = evaluateStationCapacityRules({
+      ruleIdPrefix: 'transfer.source',
+      policy: capacityPolicy,
+      capacityInput: {
+        stationId: input.fromStationId,
+        configuredCapacity: input.sourceCapacity.configuredCapacity,
+        vehicles: input.sourceCapacity.vehicles,
+        bookingProjection: {
+          ...(input.sourceCapacity.concurrentProjection ?? {}),
+          concurrentTransferDepartures:
+            (input.sourceCapacity.concurrentProjection?.concurrentTransferDepartures ?? 0) + 1,
+        },
+      },
+    });
+
+    for (const evaluation of sourceEvaluations) {
+      if (evaluation.severity === 'BLOCKED') {
+        blockingReasons.push(
+          issue(VehicleStationTransferIssueCode.CAPACITY_BLOCKED, evaluation.message),
+        );
+      } else if (evaluation.severity === 'MANUAL_CONFIRMATION_REQUIRED') {
+        warnings.push(
+          issue(
+            VehicleStationTransferIssueCode.CAPACITY_MANUAL_CONFIRMATION,
+            evaluation.message,
+          ),
+        );
+      } else {
+        warnings.push(
+          issue(VehicleStationTransferIssueCode.CAPACITY_WARNING, evaluation.message),
+        );
+      }
+    }
+  }
+
   return {
     allowed: blockingReasons.length === 0,
     blockingReasons,
+    warnings,
   };
 }
 

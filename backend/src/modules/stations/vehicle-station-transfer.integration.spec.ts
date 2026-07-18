@@ -72,6 +72,7 @@ describe('VehicleStationTransferService', () => {
     (prisma.station.findFirst as jest.Mock).mockResolvedValue({
       id: STATION_B,
       status: 'ACTIVE',
+      capacity: null,
     });
     (prisma.vehicleStationTransfer.count as jest.Mock).mockResolvedValue(0);
     (prisma.vehicle.findFirst as jest.Mock).mockResolvedValue(vehicleRow());

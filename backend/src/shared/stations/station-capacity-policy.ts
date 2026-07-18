@@ -22,6 +22,14 @@ export interface StationCapacityBookingProjection {
   expectedReturnArrivals?: number | null;
   /** Expected vehicle pickups leaving this station (unknown when null). */
   expectedPickupDepartures?: number | null;
+  /** Additional concurrent return arrivals in the evaluation time window. */
+  concurrentReturnArrivals?: number;
+  /** Additional concurrent pickup departures in the evaluation time window. */
+  concurrentPickupDepartures?: number;
+  /** Additional concurrent transfer arrivals in the evaluation time window. */
+  concurrentTransferArrivals?: number;
+  /** Additional concurrent transfer departures in the evaluation time window. */
+  concurrentTransferDepartures?: number;
 }
 
 export interface StationCapacityPolicyInput {
@@ -191,6 +199,17 @@ export function resolveStationCapacityStatus(
   return StationCapacityStatus.AVAILABLE;
 }
 
+function sumOptionalCount(
+  base: number | null | undefined,
+  extra: number | undefined,
+): number | null {
+  const addition = extra ?? 0;
+  if (base == null) {
+    return addition > 0 ? addition : null;
+  }
+  return base + addition;
+}
+
 export function evaluateStationCapacityPolicy(
   input: StationCapacityPolicyInput,
 ): StationCapacityPolicyResult {
@@ -232,17 +251,21 @@ export function evaluateStationCapacityPolicy(
     input.vehicles,
     input.stationId,
   );
-  if (expectedTransferArrivalCount > 0) {
+  const totalTransferArrivals =
+    expectedTransferArrivalCount + (input.bookingProjection?.concurrentTransferArrivals ?? 0);
+  if (totalTransferArrivals > 0) {
     reasons.push(
       reason(
         StationCapacityPolicyReasonCode.EXPECTED_TRANSFER_ARRIVAL,
-        `${expectedTransferArrivalCount} expected transfer arrival(s).`,
+        `${totalTransferArrivals} expected transfer arrival(s).`,
       ),
     );
   }
 
-  const expectedReturnArrivalCount =
-    input.bookingProjection?.expectedReturnArrivals ?? null;
+  const expectedReturnArrivalCount = sumOptionalCount(
+    input.bookingProjection?.expectedReturnArrivals,
+    input.bookingProjection?.concurrentReturnArrivals,
+  );
   if (expectedReturnArrivalCount != null && expectedReturnArrivalCount > 0) {
     reasons.push(
       reason(
@@ -252,10 +275,9 @@ export function evaluateStationCapacityPolicy(
     );
   }
 
-  const expectedTransferDepartureCount = countExpectedTransferDepartures(
-    input.vehicles,
-    input.stationId,
-  );
+  const expectedTransferDepartureCount =
+    countExpectedTransferDepartures(input.vehicles, input.stationId) +
+    (input.bookingProjection?.concurrentTransferDepartures ?? 0);
   if (expectedTransferDepartureCount > 0) {
     reasons.push(
       reason(
@@ -265,8 +287,10 @@ export function evaluateStationCapacityPolicy(
     );
   }
 
-  const expectedPickupDepartureCount =
-    input.bookingProjection?.expectedPickupDepartures ?? null;
+  const expectedPickupDepartureCount = sumOptionalCount(
+    input.bookingProjection?.expectedPickupDepartures,
+    input.bookingProjection?.concurrentPickupDepartures,
+  );
   if (expectedPickupDepartureCount != null && expectedPickupDepartureCount > 0) {
     reasons.push(
       reason(
@@ -276,10 +300,7 @@ export function evaluateStationCapacityPolicy(
     );
   }
 
-  const expectedArrivalCount = addNullable(
-    expectedTransferArrivalCount,
-    expectedReturnArrivalCount,
-  );
+  const expectedArrivalCount = addNullable(totalTransferArrivals, expectedReturnArrivalCount);
   const expectedDepartureCount = addNullable(
     expectedTransferDepartureCount,
     expectedPickupDepartureCount,

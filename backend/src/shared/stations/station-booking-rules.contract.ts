@@ -28,6 +28,7 @@ export const StationBookingRuleReasonCode = {
   KEYBOX_REQUIRED: 'KEYBOX_REQUIRED',
   CAPACITY_WARNING: 'CAPACITY_WARNING',
   CAPACITY_BLOCK: 'CAPACITY_BLOCK',
+  CAPACITY_MANUAL_CONFIRMATION: 'CAPACITY_MANUAL_CONFIRMATION',
   CONFIGURATION_INCOMPLETE: 'CONFIGURATION_INCOMPLETE',
   STATION_ORG_MISMATCH: 'STATION_ORG_MISMATCH',
   ADMIN_OVERRIDE_APPLIED: 'ADMIN_OVERRIDE_APPLIED',
@@ -102,6 +103,8 @@ export interface StationBookingRulesOrganizationPolicy {
   configurationIncompleteOutcome?: StationBookingRuleOutcome;
   capacityWarningEnabled?: boolean;
   capacityBlockAtFull?: boolean;
+  capacityFullOutcome?: StationBookingRuleOutcome;
+  capacityProjectedOverOutcome?: StationBookingRuleOutcome;
 }
 
 export const DEFAULT_STATION_BOOKING_RULES_ORGANIZATION_POLICY: Required<StationBookingRulesOrganizationPolicy> =
@@ -114,7 +117,9 @@ export const DEFAULT_STATION_BOOKING_RULES_ORGANIZATION_POLICY: Required<Station
     inactiveStationOutcome: StationBookingRuleOutcome.BLOCKED,
     configurationIncompleteOutcome: StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED,
     capacityWarningEnabled: true,
-    capacityBlockAtFull: true,
+    capacityBlockAtFull: false,
+    capacityFullOutcome: StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED,
+    capacityProjectedOverOutcome: StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED,
   };
 
 export interface StationBookingRulesStationInput extends StationOperationalCapabilitySnapshot {
