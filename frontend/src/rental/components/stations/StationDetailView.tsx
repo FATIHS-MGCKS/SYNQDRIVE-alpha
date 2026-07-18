@@ -5,13 +5,10 @@ import {
   Calendar,
   Car,
   Clock,
-  Mail,
   MapPin,
-  Phone,
   Star,
   Users,
 } from 'lucide-react';
-import type { FeatureCollection, Point } from 'geojson';
 import { toast } from 'sonner';
 import {
   api,
@@ -23,15 +20,12 @@ import {
   type StationSummaryReadModel,
   type StationTeamDto,
 } from '../../../lib/api';
-import { MapboxMap } from '../../../components/MapboxMap';
-import type { FleetMapFeatureProperties } from '../../stores/useFleetMapStore';
 import { useRentalOrg } from '../../RentalContext';
 import { useStationsV2Permissions } from '../../hooks/useStationsV2Permissions';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
   PageHeader,
-  MetricCard,
   StatusChip,
   EmptyState,
   ErrorState,
@@ -39,13 +33,7 @@ import {
   SkeletonMetricGrid,
 } from '../../../components/patterns';
 import {
-  capacityStatusTone,
-  getStationCardDisplayMetrics,
-  openingStatusTone,
-} from '../../lib/station-org-summaries.utils';
-import {
   formatStationAddress,
-  formatOpeningHoursSummary,
   getStationWarningsFromSummary,
   parseOpeningHours,
   stationStatusTone,
@@ -64,11 +52,7 @@ import {
 } from './station-detail-navigation';
 import { StationFormModal } from './StationFormModal';
 import { StationAssignVehicleModal } from './StationAssignVehicleModal';
-
-const EMPTY_FLEET_GEOJSON: FeatureCollection<Point, FleetMapFeatureProperties> = {
-  type: 'FeatureCollection',
-  features: [],
-};
+import { StationOverviewTab } from './StationOverviewTab';
 
 interface StationDetailViewProps {
   stationId: string;
@@ -87,7 +71,7 @@ export function StationDetailView({
   onBack,
   onTabChange,
   onOpenBooking,
-  isDarkMode = false,
+  isDarkMode: _isDarkMode = false,
 }: StationDetailViewProps) {
   const { orgId } = useRentalOrg();
   const { t } = useLanguage();
@@ -213,7 +197,6 @@ export function StationDetailView({
     void loadTabData(activeTab);
   }, [activeTab, loadTabData]);
 
-  const metrics = useMemo(() => getStationCardDisplayMetrics(summary ?? undefined), [summary]);
   const warnings = useMemo(
     () => (summary ? getStationWarningsFromSummary(summary) : []),
     [summary],
@@ -221,13 +204,6 @@ export function StationDetailView({
 
   const address = station ? formatStationAddress(station) : '';
   const hours = station ? parseOpeningHours(station.openingHours) : null;
-
-  const mapCenter = useMemo((): [number, number] | undefined => {
-    if (station?.longitude != null && station?.latitude != null) {
-      return [station.longitude, station.latitude];
-    }
-    return undefined;
-  }, [station]);
 
   const handleSave = async (payload: Parameters<typeof api.stations.create>[1]) => {
     if (!orgId || !station) return;
@@ -294,8 +270,6 @@ export function StationDetailView({
   if (!station) return null;
 
   const canEdit = stationCaps.canEditMasterData || stationCaps.canManageOperations;
-  const openingTone = openingStatusTone(metrics.openingStatus);
-  const capacityTone = capacityStatusTone(metrics.capacityStatus);
 
   return (
     <div className="space-y-4 max-w-[1400px] mx-auto">
@@ -398,17 +372,11 @@ export function StationDetailView({
       ) : null}
 
       {activeTab === 'overview' && (
-        <OverviewTab
+        <StationOverviewTab
           station={station}
-          metrics={metrics}
-          openingTone={openingTone}
-          capacityTone={capacityTone}
-          hours={hours}
-          mapCenter={mapCenter}
-          summaryIncomplete={metrics.partialDataIncomplete}
-          isDarkMode={isDarkMode}
-          onOpenSchedule={() => selectTab('schedule')}
-          t={t}
+          summary={summary}
+          summaryLoading={loading && !summary}
+          onNavigateTab={selectTab}
         />
       )}
 
@@ -467,123 +435,6 @@ export function StationDetailView({
   );
 }
 
-function OverviewTab({
-  station,
-  metrics,
-  openingTone,
-  capacityTone,
-  hours,
-  mapCenter,
-  summaryIncomplete,
-  isDarkMode,
-  onOpenSchedule,
-  t,
-}: {
-  station: Station;
-  metrics: ReturnType<typeof getStationCardDisplayMetrics>;
-  openingTone: ReturnType<typeof openingStatusTone>;
-  capacityTone: ReturnType<typeof capacityStatusTone>;
-  hours: ReturnType<typeof parseOpeningHours> | null;
-  mapCenter?: [number, number];
-  summaryIncomplete: boolean;
-  isDarkMode: boolean;
-  onOpenSchedule: () => void;
-  t: (k: TranslationKey, vars?: Record<string, string | number>) => string;
-}) {
-  const formatMetric = (value: number | '—') => (value === '—' ? '—' : String(value));
-  const openingLabel =
-    metrics.openingStatusLabel ??
-    (metrics.openingStatus
-      ? t(`stations.openingStatus.${metrics.openingStatus}` as const)
-      : t('stations.openingStatus.UNKNOWN'));
-  const capacityLabel = metrics.capacityKnown && metrics.capacityStatus
-    ? t(`stations.capacityStatus.${metrics.capacityStatus}` as const)
-    : t('stations.card.capacityUnknown');
-
-  return (
-    <div className="space-y-4 animate-fade-up">
-      {summaryIncomplete ? (
-        <div className="rounded-xl border border-[color:var(--status-watch)]/35 bg-[color:var(--status-watch)]/[0.04] px-4 py-3 text-sm text-muted-foreground">
-          {t('stations.partialData.banner')}
-        </div>
-      ) : null}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard label={t('stations.card.homeFleet')} value={formatMetric(metrics.homeFleet)} icon={<Car className="w-4 h-4" />} />
-        <MetricCard label={t('stations.card.onSite')} value={formatMetric(metrics.onSite)} icon={<MapPin className="w-4 h-4" />} />
-        <MetricCard label={t('stations.card.pickups')} value={formatMetric(metrics.todayPickups)} icon={<Calendar className="w-4 h-4" />} />
-        <MetricCard label={t('stations.card.returns')} value={formatMetric(metrics.todayReturns)} icon={<Calendar className="w-4 h-4" />} />
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <StatusChip tone={openingTone}>
-          <Clock className="mr-0.5 inline h-3 w-3" />
-          {openingLabel}
-        </StatusChip>
-        <StatusChip tone={capacityTone}>{capacityLabel}</StatusChip>
-        {metrics.operationalWarningCount > 0 ? (
-          <StatusChip tone="watch">
-            {t('stations.card.operationalWarnings', { count: metrics.operationalWarningCount })}
-          </StatusChip>
-        ) : null}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="surface-premium p-4 space-y-3">
-          <h3 className="text-sm font-semibold">{t('stations.detail.contact')}</h3>
-          <dl className="space-y-2 text-sm">
-            {station.phone && (
-              <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-muted-foreground" /><span>{station.phone}</span></div>
-            )}
-            {station.email && (
-              <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-muted-foreground" /><span>{station.email}</span></div>
-            )}
-            {(station.managerName || station.contactPerson) && (
-              <div className="flex items-center gap-2"><Users className="w-3.5 h-3.5 text-muted-foreground" /><span>{station.managerName ?? station.contactPerson}</span></div>
-            )}
-            {!station.phone && !station.email && !station.managerName && !station.contactPerson && (
-              <p className="text-xs text-muted-foreground">—</p>
-            )}
-          </dl>
-          <h3 className="text-sm font-semibold pt-2">{t('stations.detail.hours')}</h3>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5" />
-            {hours ? formatOpeningHoursSummary(hours) : '—'}
-          </p>
-          <button type="button" onClick={onOpenSchedule} className="text-xs font-semibold text-[color:var(--brand)] hover:underline">
-            {t('stations.detail.openSchedule')}
-          </button>
-        </div>
-
-        <div className="surface-premium overflow-hidden min-h-[220px]">
-          {mapCenter ? (
-            <MapboxMap
-              center={mapCenter}
-              zoom={14}
-              fleetGeoJson={EMPTY_FLEET_GEOJSON}
-              stations={[{
-                id: station.id,
-                name: station.name,
-                latitude: station.latitude,
-                longitude: station.longitude,
-                radiusMeters: station.radiusMeters ?? station.geofenceRadiusMeters,
-              }]}
-              className="w-full h-[220px] lg:h-full min-h-[220px]"
-              isDarkMode={isDarkMode}
-              interactive
-            />
-          ) : (
-            <EmptyState
-              compact
-              icon={<MapPin className="w-6 h-6" />}
-              title={t('stations.warning.missingCoordinates')}
-              description={t('stations.form.geocodeHint')}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function FleetTab({ fleet, loading, t }: { fleet: StationFleetVehicle[]; loading: boolean; t: (k: TranslationKey) => string }) {
   if (loading) return <SkeletonCard className="h-48 w-full" />;

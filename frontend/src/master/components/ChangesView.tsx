@@ -35,6 +35,47 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-overview-decision-v49642-2026-07-20',
+    version: '4.9.642',
+    title: 'V4.9.642 — Stations V2: Übersicht als Entscheidungsfläche (Prompt 62/78)',
+    summary: [
+      'StationOverviewTab ersetzt die statische Übersicht: Öffnungsstatus, nächstes Fenster, Kapazität, vor-Ort-KPIs, heutiger Betrieb und getrennte Problem-Panels.',
+      'Decision Model aus `StationSummaryReadModel` via `station-overview-decision.utils` — keine Roh-UUIDs, `known: false` → `—`, Deep Links zu Flotte/Zeitplan/Betrieb.',
+      'Konfigurationsprobleme und betriebliche/Fahrzeug-Probleme in separaten Panels; Fahrzeug-Signale nur ohne parallele Operational Warnings.',
+      'Responsive Grid-Layout, verständliche Empty States, i18n DE/EN, Vitest für mehrere Stationszustände.',
+    ],
+    reason:
+      'Operatoren brauchen auf dem Übersicht-Tab eine operative Entscheidungsfläche statt Kontakt/Karte — mit klaren Kennzahlen, Partial-Data-Sicherheit und Deep Links.',
+    previousBehavior:
+      'Übersicht zeigte Heimatflotte/Kontakt/Karte mit vier generischen KPI-Karten ohne Ready-for-Renting, Blocked/Maintenance, Transfers oder getrennte Problemtypen.',
+    details:
+      'Frontend: `StationOverviewTab.tsx`, `station-overview-decision.utils.ts`, `StationDetailView.tsx`, i18n en/de, Vitest `station-overview-decision.utils.test.ts`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
+    id: 'stations-v2-detail-tabs-v49641-2026-07-20',
+    version: '4.9.641',
+    title: 'V4.9.641 — Stations V2: Detail-Tabs konsolidiert (Prompt 61/78)',
+    summary: [
+      'StationDetailView auf vier Haupttabs: Übersicht, Flotte, Zeitplan, Betrieb & Regeln.',
+      'Zeitplan nutzt kanonische Operations Timeline; Betrieb & Regeln bündelt Regeln, Öffnungszeiten, Übergabe-Hinweise und Live-Operations.',
+      'Übersicht auf Summary Read Model (kein overviewStats); lazy Tab-Loads mit Cache gegen redundante Requests.',
+      'URL-Deep-Link-State (`view=station-detail&stationId&stationTab`), Browser-Back und Reload-Wiederherstellung in App.tsx.',
+      'Team-Tab nur bei echter Staff-Verdrahtung; Aktivitäten-Tab nur mit `stations.view_activity`. Leere Staff-Attrappe entfernt.',
+    ],
+    reason:
+      'Operatoren brauchen eine klare Detail-Navigation ohne leere Haupttabs, mit Deep Links und permission-gesteuerten optionalen Bereichen.',
+    previousBehavior:
+      'Sechs Haupttabs inkl. leerem Mitarbeiter-Tab, separater Buchungen-/Regeln-/Übergabe-Ansicht, overviewStats und parallele Fleet/Booking-Loads auf Übersicht.',
+    details:
+      'Frontend: `StationDetailView.tsx`, `station-detail-navigation.ts`, `station-detail-tabs.ts`, `App.tsx`, `api.stations.summary/team`, i18n DE/EN, Vitest Navigation/Rechte.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'stations-v2-stations-view-summary-v49640-2026-07-20',
     version: '4.9.640',
     title: 'V4.9.640 — Stations V2: StationsView auf Summary Read Model (Prompt 60/78)',
