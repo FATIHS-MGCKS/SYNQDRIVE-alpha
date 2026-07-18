@@ -46,10 +46,10 @@ import {
   type VoiceControlPlaneSection,
 } from './voice-control-plane/voice-control-plane-navigation';
 import {
-  createIdempotencyKey,
   VoiceSecureActionDialog,
   type VoiceSecureActionRequest,
 } from './voice-control-plane/VoiceSecureActionDialog';
+import { createIdempotencyKey } from './voice-control-plane/voice-secure-action.util';
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '—';
@@ -360,7 +360,7 @@ export function VoiceAssistantAdminView() {
       title: 'Agent neu deployen',
       description: 'Der aktuelle Draft wird als neue aktive Version ausgerollt.',
       confirmLabel: 'Deploy',
-      onConfirm: async (reason) => {
+      onConfirm: async () => {
         await api.voiceAssistant.admin.controlPlane.deployAgent(
           orgId,
           { confirm: true },

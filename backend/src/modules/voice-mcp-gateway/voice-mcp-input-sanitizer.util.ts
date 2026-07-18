@@ -1,5 +1,3 @@
-const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
-
 const BLOCKED_NOTE_PATTERNS = [
   /\bignore\s+all\s+previous\b/i,
   /\boverride\s+admin\b/i,
@@ -7,11 +5,32 @@ const BLOCKED_NOTE_PATTERNS = [
   /\bexecute\s+sql\b/i,
 ];
 
+function isControlChar(code: number): boolean {
+  return (
+    code === 0 ||
+    (code >= 1 && code <= 8) ||
+    code === 11 ||
+    code === 12 ||
+    (code >= 14 && code <= 31) ||
+    code === 127
+  );
+}
+
+function stripControlChars(value: string): string {
+  let cleaned = '';
+  for (const char of value) {
+    if (!isControlChar(char.charCodeAt(0))) {
+      cleaned += char;
+    }
+  }
+  return cleaned;
+}
+
 export function sanitizeShortText(value: unknown, maxLength: number): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
   }
-  const cleaned = value.replace(CONTROL_CHARS, '').trim();
+  const cleaned = stripControlChars(value).trim();
   if (!cleaned) {
     return undefined;
   }

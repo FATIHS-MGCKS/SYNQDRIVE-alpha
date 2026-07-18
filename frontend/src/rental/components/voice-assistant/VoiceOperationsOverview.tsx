@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { DataCard } from '../../../components/patterns/data-card';
 import { StatusChip } from '../../../components/patterns';
 import { EmptyState } from '../../../components/patterns/states';
 import { Icon } from '../ui/Icon';
-import { api, getErrorMessage } from '../../../lib/api';
 import type {
   VoiceAssistantData,
   VoiceAssistantReadiness,
   VoiceConversationEntry,
-  VoiceRemainingMinutes,
 } from '../../../lib/api';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
@@ -18,6 +16,7 @@ import {
   operatorStatusLabel,
   resolveOperatorStatus,
 } from './voice-assistant.ops';
+import { useVoiceRemainingMinutes } from './useVoiceRemainingMinutes';
 
 interface VoiceOperationsOverviewProps {
   orgId: string;
@@ -41,29 +40,11 @@ export function VoiceOperationsOverview({
   onOpenAnalytics,
 }: VoiceOperationsOverviewProps) {
   const { t } = useLanguage();
-  const [minutes, setMinutes] = useState<VoiceRemainingMinutes | null>(null);
-  const [minutesError, setMinutesError] = useState<string | null>(null);
-  const [minutesLoading, setMinutesLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setMinutesLoading(true);
-    setMinutesError(null);
-    void api.voiceAssistant.billing
-      .remainingMinutes(orgId)
-      .then(data => {
-        if (!cancelled) setMinutes(data);
-      })
-      .catch(err => {
-        if (!cancelled) setMinutesError(getErrorMessage(err));
-      })
-      .finally(() => {
-        if (!cancelled) setMinutesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [orgId]);
+  const {
+    loading: minutesLoading,
+    minutes,
+    error: minutesError,
+  } = useVoiceRemainingMinutes(orgId);
 
   const operatorStatus = resolveOperatorStatus(assistant, readiness);
   const callsToday = callsTodayFromConversations(conversations, conversationsLoaded);
