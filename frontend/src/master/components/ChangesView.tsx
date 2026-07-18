@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-production-rollout-v49600-2026-07-18',
+    version: '4.9.600',
+    title: 'V4.9.600 — Stations V2: globales Production-Rollout (enforce)',
+    summary: [
+      'PR #553 merged; Migration `20260718120000_stations_v2_final_fixes` auf Production.',
+      'Ops-Script `vps-enable-stations-v2-production.sh`: alle V2-Flags global, `BOOKING_RULES_ENFORCEMENT=enforce`, kein Org-Allowlist/Canary.',
+      'Legacy `PUT …/stations/:id/vehicles` via `STATIONS_V2_SET_VEHICLES_DISABLED=true` deaktiviert.',
+    ],
+    reason: 'Direktes Production-Rollout ohne Shadow/Canary-Phase auf ausdrückliche Anforderung.',
+    previousBehavior: 'Stations V2 Flags in Production default OFF; Booking Rules enforcement off.',
+    details:
+      'backend/scripts/ops/vps-enable-stations-v2-production.sh, /opt/synqdrive/shared/backend.env',
+    affectsArchitecture: false,
+    module: 'Stations',
+    createdAt: '2026-07-18T14:00:00.000Z',
+  },
+  {
     id: 'stations-v2-final-fixes-v49699-2026-07-18',
     version: '4.9.599',
     title: 'V4.9.599 — Stations V2: P0/P1 Audit-Remediation (Prompt 77/78)',
