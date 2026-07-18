@@ -3,6 +3,7 @@ import { StationsAssignVehiclePermissionGuard } from './stations-assign-vehicle-
 import { StationsSetPrimaryPermissionGuard } from './stations-set-primary-permission.guard';
 import { StationsUpdatePermissionGuard } from './stations-update-permission.guard';
 import { StationsVehicleLocationPermissionGuard } from './stations-vehicle-location-permission.guard';
+import { StationsCorrectVehicleCurrentPermissionGuard } from './stations-correct-vehicle-current-permission.guard';
 import { StationsAccessService } from '../stations-access.service';
 
 function mockContext(body: Record<string, unknown> = {}, user: Record<string, unknown> = { id: 'u1' }) {
@@ -100,5 +101,24 @@ describe('Stations mutation permission guards', () => {
     await expect(
       guard.canActivate(mockContext({ vehicleId: 'v1' }) as never),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('StationsCorrectVehicleCurrentPermissionGuard checks manage_current_location', async () => {
+    const guard = new StationsCorrectVehicleCurrentPermissionGuard(stationsAccess);
+    await guard.canActivate(
+      mockContext({
+        vehicleId: 'v1',
+        currentStationId: 's1',
+        source: 'MANUAL',
+        reason: 'Yard recount',
+        expectedVersion: 1,
+      }) as never,
+    );
+
+    expect(stationsAccess.assertStationsAccess).toHaveBeenCalledWith(
+      expect.any(Object),
+      { id: 'u1' },
+      'stations.manage_current_location',
+    );
   });
 });

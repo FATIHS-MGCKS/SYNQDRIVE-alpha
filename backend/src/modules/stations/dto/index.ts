@@ -3,6 +3,7 @@ export * from './update-station.dto';
 export * from './list-stations-query.dto';
 export * from './assign-vehicle-station.dto';
 export * from './change-vehicle-home-station.dto';
+export * from './correct-vehicle-current-station.dto';
 export * from './vehicle-home-fleet-delta.dto';
 export * from './set-primary-station.dto';
 export * from './vehicle-home-assignment-preview.dto';

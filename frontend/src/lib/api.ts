@@ -4008,6 +4008,23 @@ export const api = {
         `/organizations/${orgId}/stations/vehicles/change-home-station`,
         body,
       ),
+    correctVehicleCurrentStation: (
+      orgId: string,
+      body: {
+        vehicleId: string;
+        currentStationId: string | null;
+        source: 'MANUAL';
+        reason: string;
+        expectedVersion: number;
+      },
+    ) =>
+      post<CorrectVehicleCurrentStationResult>(
+        `/organizations/${orgId}/stations/vehicles/correct-current-station`,
+        body,
+      ),
+    /**
+     * @deprecated Prefer `correctVehicleCurrentStation` for explicit current-location commands.
+     */
     updateVehicleCurrentStation: (
       orgId: string,
       body: {
@@ -9520,6 +9537,38 @@ export interface ChangeVehicleHomeStationResult {
     status: string;
   };
   warnings?: Array<{ code: string; message: string }>;
+}
+
+export interface CorrectVehicleCurrentStationResult {
+  outcome: 'APPLIED' | 'IDEMPOTENT' | 'BLOCKED';
+  command: 'CorrectVehicleCurrentStation';
+  allowed: boolean;
+  vehicle: {
+    id: string;
+    homeStationId: string | null;
+    currentStationId: string | null;
+    expectedStationId: string | null;
+    currentStationSource: string | null;
+    currentStationConfirmedAt: string | null;
+    stationPositionVersion: number;
+    status: string;
+  };
+  blockingReasons: Array<{ code: string; message: string }>;
+  warnings: Array<{ code: string; message: string }>;
+  audit: {
+    command: 'CorrectVehicleCurrentStation';
+    organizationId: string;
+    vehicleId: string;
+    fromCurrentStationId: string | null;
+    toCurrentStationId: string | null;
+    source: 'MANUAL';
+    previousStationPositionVersion: number;
+    nextStationPositionVersion: number;
+    reason: string;
+    performedAt: string;
+    performedByUserId: string | null;
+    idempotent: boolean;
+  };
 }
 
 export interface VehicleHomeFleetDeltaRequest {

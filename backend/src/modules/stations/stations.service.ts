@@ -118,6 +118,18 @@ import {
   type VehicleChangeHomeStationCommandResult,
 } from './vehicle-change-home-station-command.types';
 import {
+  buildVehicleCorrectCurrentStationCommandAudit,
+  buildVehicleCorrectCurrentStationVersionConflictIssue,
+  evaluateCorrectVehicleCurrentStationCommand,
+  isSameCurrentStationAssignment,
+} from './vehicle-correct-current-station-command.util';
+import {
+  VehicleCorrectCurrentStationCommandIssueCode,
+  VehicleCorrectCurrentStationCommandName,
+  VehicleCorrectCurrentStationCommandOutcome,
+  type VehicleCorrectCurrentStationCommandResult,
+} from './vehicle-correct-current-station-command.types';
+import {
   evaluateSetStationVehiclesPolicy,
   type StationSetVehiclesListCompleteness,
 } from '@shared/stations/station-set-vehicles.policy';
@@ -2424,6 +2436,224 @@ export class StationsService {
       blockingReasons: [],
       warnings: evaluation.warnings,
       audit: buildVehicleChangeHomeStationCommandAudit({
+        ...auditBase,
+        nextStationPositionVersion: updated.stationPositionVersion,
+        idempotent: false,
+      }),
+    };
+  }
+
+  async correctVehicleCurrentStation(
+    organizationId: string,
+    input: {
+      vehicleId: string;
+      currentStationId: string | null;
+      source: 'MANUAL';
+      reason: string;
+      expectedVersion: number;
+    },
+    performedByUserId?: string | null,
+  ): Promise<VehicleCorrectCurrentStationCommandResult> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, organizationId },
+      select: {
+        id: true,
+        homeStationId: true,
+        currentStationId: true,
+        expectedStationId: true,
+        currentStationSource: true,
+        currentStationConfirmedAt: true,
+        stationPositionVersion: true,
+        status: true,
+      },
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+
+    const toSnapshot = (
+      row: typeof vehicle,
+    ): VehicleCorrectCurrentStationCommandResult['vehicle'] => ({
+      id: row.id,
+      homeStationId: row.homeStationId,
+      currentStationId: row.currentStationId,
+      expectedStationId: row.expectedStationId,
+      currentStationSource: row.currentStationSource,
+      currentStationConfirmedAt: row.currentStationConfirmedAt?.toISOString() ?? null,
+      stationPositionVersion: row.stationPositionVersion,
+      status: row.status,
+    });
+
+    if (input.expectedVersion !== vehicle.stationPositionVersion) {
+      throw new ConflictException({
+        message: buildVehicleCorrectCurrentStationVersionConflictIssue().message,
+        code: VehicleCorrectCurrentStationCommandIssueCode.STATION_POSITION_VERSION_CONFLICT,
+        outcome: VehicleCorrectCurrentStationCommandOutcome.BLOCKED,
+        command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
+        blockingReasons: [buildVehicleCorrectCurrentStationVersionConflictIssue()],
+        audit: buildVehicleCorrectCurrentStationCommandAudit({
+          organizationId,
+          vehicleId: vehicle.id,
+          fromCurrentStationId: vehicle.currentStationId,
+          toCurrentStationId: input.currentStationId,
+          source: input.source,
+          previousStationPositionVersion: vehicle.stationPositionVersion,
+          nextStationPositionVersion: vehicle.stationPositionVersion,
+          reason: input.reason,
+          performedByUserId,
+          idempotent: false,
+        }),
+      });
+    }
+
+    if (isSameCurrentStationAssignment(vehicle.currentStationId, input.currentStationId)) {
+      const idempotentEvaluation = evaluateCorrectVehicleCurrentStationCommand({
+        currentStationId: vehicle.currentStationId,
+        newCurrentStationId: input.currentStationId,
+        vehicleStatus: vehicle.status,
+        source: input.source,
+      });
+
+      return {
+        outcome: VehicleCorrectCurrentStationCommandOutcome.IDEMPOTENT,
+        command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
+        allowed: true,
+        vehicle: toSnapshot(vehicle),
+        blockingReasons: [],
+        warnings: idempotentEvaluation.warnings,
+        audit: buildVehicleCorrectCurrentStationCommandAudit({
+          organizationId,
+          vehicleId: vehicle.id,
+          fromCurrentStationId: vehicle.currentStationId,
+          toCurrentStationId: input.currentStationId,
+          source: input.source,
+          previousStationPositionVersion: vehicle.stationPositionVersion,
+          nextStationPositionVersion: vehicle.stationPositionVersion,
+          reason: input.reason,
+          performedByUserId,
+          idempotent: true,
+        }),
+      };
+    }
+
+    const targetStation = input.currentStationId
+      ? await this.prisma.station.findFirst({
+          where: { id: input.currentStationId, organizationId },
+          select: { id: true, status: true },
+        })
+      : null;
+
+    if (input.currentStationId && !targetStation) {
+      throw new NotFoundException('Station not found');
+    }
+
+    const evaluation = evaluateCorrectVehicleCurrentStationCommand({
+      currentStationId: vehicle.currentStationId,
+      newCurrentStationId: input.currentStationId,
+      vehicleStatus: vehicle.status,
+      source: input.source,
+      targetStationStatus: targetStation?.status ?? null,
+    });
+
+    const auditBase = {
+      organizationId,
+      vehicleId: vehicle.id,
+      fromCurrentStationId: vehicle.currentStationId,
+      toCurrentStationId: input.currentStationId,
+      source: input.source,
+      previousStationPositionVersion: vehicle.stationPositionVersion,
+      nextStationPositionVersion: vehicle.stationPositionVersion,
+      reason: input.reason,
+      performedByUserId,
+      idempotent: evaluation.idempotent,
+    };
+
+    if (evaluation.idempotent) {
+      return {
+        outcome: VehicleCorrectCurrentStationCommandOutcome.IDEMPOTENT,
+        command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
+        allowed: true,
+        vehicle: toSnapshot(vehicle),
+        blockingReasons: [],
+        warnings: evaluation.warnings,
+        audit: buildVehicleCorrectCurrentStationCommandAudit(auditBase),
+      };
+    }
+
+    if (!evaluation.allowed) {
+      throw new BadRequestException({
+        message:
+          evaluation.blockingReasons[0]?.message ??
+          'CorrectVehicleCurrentStation is not allowed for this vehicle',
+        code: 'CORRECT_CURRENT_STATION_BLOCKED',
+        outcome: VehicleCorrectCurrentStationCommandOutcome.BLOCKED,
+        command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
+        blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
+        audit: buildVehicleCorrectCurrentStationCommandAudit(auditBase),
+      });
+    }
+
+    const confirmedAt = new Date();
+    const updateResult = await this.prisma.vehicle.updateMany({
+      where: {
+        id: vehicle.id,
+        organizationId,
+        stationPositionVersion: input.expectedVersion,
+      },
+      data: input.currentStationId
+        ? {
+            currentStationId: input.currentStationId,
+            currentStationSource: input.source,
+            currentStationConfirmedAt: confirmedAt,
+            currentStationConfirmedByUserId: performedByUserId ?? null,
+            stationPositionVersion: { increment: 1 },
+          }
+        : {
+            currentStationId: null,
+            currentStationSource: null,
+            currentStationConfirmedAt: null,
+            currentStationConfirmedByUserId: null,
+            stationPositionVersion: { increment: 1 },
+          },
+    });
+
+    if (updateResult.count === 0) {
+      throw new ConflictException({
+        message: buildVehicleCorrectCurrentStationVersionConflictIssue().message,
+        code: VehicleCorrectCurrentStationCommandIssueCode.STATION_POSITION_VERSION_CONFLICT,
+        outcome: VehicleCorrectCurrentStationCommandOutcome.BLOCKED,
+        command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
+        blockingReasons: [buildVehicleCorrectCurrentStationVersionConflictIssue()],
+        audit: buildVehicleCorrectCurrentStationCommandAudit(auditBase),
+      });
+    }
+
+    const updated = await this.prisma.vehicle.findFirst({
+      where: { id: vehicle.id, organizationId },
+      select: {
+        id: true,
+        homeStationId: true,
+        currentStationId: true,
+        expectedStationId: true,
+        currentStationSource: true,
+        currentStationConfirmedAt: true,
+        stationPositionVersion: true,
+        status: true,
+      },
+    });
+    if (!updated) {
+      throw new NotFoundException('Vehicle not found');
+    }
+
+    return {
+      outcome: VehicleCorrectCurrentStationCommandOutcome.APPLIED,
+      command: VehicleCorrectCurrentStationCommandName.CORRECT_CURRENT_STATION,
+      allowed: true,
+      vehicle: toSnapshot(updated),
+      blockingReasons: [],
+      warnings: evaluation.warnings,
+      audit: buildVehicleCorrectCurrentStationCommandAudit({
         ...auditBase,
         nextStationPositionVersion: updated.stationPositionVersion,
         idempotent: false,

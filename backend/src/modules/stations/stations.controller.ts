@@ -21,6 +21,7 @@ import {
   AssignVehicleStationDto,
   UpdateVehicleCurrentStationDto,
   ChangeVehicleHomeStationDto,
+  CorrectVehicleCurrentStationDto,
   StationMapboxSearchQueryDto,
   StationMapboxRetrieveQueryDto,
   RestoreStationDto,
@@ -38,6 +39,7 @@ import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary
 import { StationsUpdatePermissionGuard } from './guards/stations-update-permission.guard';
 import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicle-location-permission.guard';
 import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-change-vehicle-home-permission.guard';
+import { StationsCorrectVehicleCurrentPermissionGuard } from './guards/stations-correct-vehicle-current-permission.guard';
 import { RequireStationsPermission } from './decorators/require-stations-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { ArchiveStationDto } from './dto/archive-station.dto';
@@ -128,6 +130,27 @@ export class StationsController {
       body.currentStationId ?? null,
       body.expectedStationId,
       body.expectedVersion,
+    );
+  }
+
+  @Post('vehicles/correct-current-station')
+  @UseGuards(StationsCorrectVehicleCurrentPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async correctVehicleCurrentStation(
+    @Param('orgId') orgId: string,
+    @Body() body: CorrectVehicleCurrentStationDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.stationsService.correctVehicleCurrentStation(
+      orgId,
+      {
+        vehicleId: body.vehicleId,
+        currentStationId: body.currentStationId ?? null,
+        source: body.source,
+        reason: body.reason,
+        expectedVersion: body.expectedVersion,
+      },
+      userId,
     );
   }
 

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-correct-current-station-command-v49619-2026-07-18',
+    version: '4.9.619',
+    title: 'V4.9.619 — Stations V2: CorrectVehicleCurrentStation Command (Prompt 39/78)',
+    summary: [
+      'Expliziter Domain-Command `POST .../vehicles/correct-current-station` für manuelle Current-Location-Korrektur.',
+      'Input: `vehicleId`, `currentStationId|null`, `source=MANUAL`, `reason`, `expectedVersion`; ändert nur Current-Position + Provenance-Metadaten.',
+      '`homeStationId` und `expectedStationId` bleiben unverändert; archivierte/inaktive Zielstationen werden abgelehnt; vermietete Fahrzeuge erhalten Warning.',
+      'Vollständiges Command-Result mit Audit (Actor, Grund, From/To, Zeitstempel); Permission `stations.manage_current_location`; idempotent.',
+    ],
+    reason:
+      'Fahrzeugpositionsvertrag §3.2 verlangt einen expliziten Writer für manuelle Current-Korrektur statt generischem PATCH mit Mehrschicht-Risiko.',
+    previousBehavior:
+      'Nur legacy `PATCH .../vehicles/current-station` ohne Command-Result, ohne Provenance-Felder, optional mit `expectedStationId`-Cross-Write.',
+    details:
+      '`vehicle-correct-current-station-command.*` + DTO/Guard/Service/Controller; Integrationstests; Frontend `api.stations.correctVehicleCurrentStation`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T21:00:00.000Z',
+  },
+  {
     id: 'stations-v2-optimistic-concurrency-v49618-2026-07-18',
     version: '4.9.618',
     title: 'V4.9.618 — Stations V2: Optimistic Concurrency (Prompt 38/78)',
