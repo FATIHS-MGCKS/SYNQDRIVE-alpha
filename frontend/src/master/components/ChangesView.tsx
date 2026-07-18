@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-booking-rules-calendar-tz-v49626-2026-07-19',
+    version: '4.9.626',
+    title: 'V4.9.626 — Stations V2: Booking Rules Calendar + Timezone Wiring (Prompt 46/78)',
+    summary: [
+      'Opening Calendar und Stationszeitzone vollständig in Booking Rules verdrahtet — fachlicher Tag pro Station-TZ, keine Server-TZ.',
+      'API `POST .../stations/booking-rules/evaluate` liefert `evaluatedInstant` mit `instantUtc`, `localDate`, `localTime`, `timezone` pro Pickup/Return-Seite.',
+      'Sonderöffnung überschreibt Feiertag; DST-Lücken/doppelte Uhrzeiten über `station-opening-calendar` + `station-timezone`; `frontendRecomputation: false`.',
+      'Integrationstests mit Berlin/New York, Feiertag, SPECIAL_OPENING und DST Spring-Forward.',
+    ],
+    reason:
+      'Booking Rules müssen Kalender und Zeitzone kanonisch serverseitig auflösen — UI darf Öffnungsregeln nicht neu berechnen.',
+    previousBehavior:
+      'Booking Rules lieferten nur `timezone` ohne lokale/UTC-Instant-Views; kein Evaluate-API-Endpoint mit DB-geladenem Kalender.',
+    details:
+      '`resolveStationBookingEvaluatedInstant`, Contract v4, `StationBookingRulesService.evaluateRequest`, Controller-Endpoints; noch nicht in Bookings Create/Update verdrahtet.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T06:00:00.000Z',
+  },
+  {
     id: 'stations-v2-return-booking-rules-v49625-2026-07-19',
     version: '4.9.625',
     title: 'V4.9.625 — Stations V2: Return Booking Rules (Prompt 45/78)',

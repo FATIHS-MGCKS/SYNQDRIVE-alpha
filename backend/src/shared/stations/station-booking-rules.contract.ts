@@ -5,7 +5,7 @@ import type {
   StationCapacityVehicleSnapshot,
 } from './station-capacity-policy';
 
-export const STATION_BOOKING_RULES_VERSION = 3 as const;
+export const STATION_BOOKING_RULES_VERSION = 4 as const;
 
 export const StationBookingRuleOutcome = {
   ALLOWED: 'ALLOWED',
@@ -145,6 +145,17 @@ export interface StationBookingRulesInput {
   bookingContext?: StationBookingRulesBookingContext | null;
 }
 
+export interface StationBookingRulesEvaluatedInstant {
+  /** Canonical evaluation instant in UTC (ISO-8601). */
+  instantUtc: string;
+  /** Business calendar date in the station IANA timezone (`YYYY-MM-DD`). */
+  localDate: string | null;
+  /** Local wall-clock time in the station timezone (`HH:mm`). */
+  localTime: string | null;
+  /** IANA timezone used for localDate/localTime; null when not configured. */
+  timezone: string | null;
+}
+
 export interface StationBookingRulesSideResult {
   side: StationBookingRulesSide;
   stationId: string | null;
@@ -153,6 +164,8 @@ export interface StationBookingRulesSideResult {
   evaluations: StationBookingRuleEvaluation[];
   effectiveRule: StationOperationalEffectiveRule | null;
   timezone: string | null;
+  /** Station-local and UTC views of the evaluated instant — server TZ is never used. */
+  evaluatedInstant: StationBookingRulesEvaluatedInstant;
   adminOverrideApplied: boolean;
 }
 
@@ -171,6 +184,10 @@ export interface StationBookingRulesContractMetadata {
   reasonCodes: StationBookingRuleReasonCode[];
   bookingTypes: StationBookingRulesBookingType[];
   bookingIntegration: false;
+  /** UI must not re-derive rules from opening hours in the browser. */
+  frontendRecomputation: false;
+  instantEvaluation: 'station_timezone';
+  calendarIntegration: 'opening_calendar_v2';
 }
 
 export function getStationBookingRulesContractMetadata(): StationBookingRulesContractMetadata {
@@ -180,5 +197,8 @@ export function getStationBookingRulesContractMetadata(): StationBookingRulesCon
     reasonCodes: Object.values(StationBookingRuleReasonCode),
     bookingTypes: Object.values(StationBookingRulesBookingType),
     bookingIntegration: false,
+    frontendRecomputation: false,
+    instantEvaluation: 'station_timezone',
+    calendarIntegration: 'opening_calendar_v2',
   };
 }

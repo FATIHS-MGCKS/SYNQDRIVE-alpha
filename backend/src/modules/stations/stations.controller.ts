@@ -61,6 +61,8 @@ import { PlanVehicleStationTransferDto } from './dto/plan-vehicle-station-transf
 import { TransitionVehicleStationTransferDto } from './dto/transition-vehicle-station-transfer.dto';
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
 import { StationsManageTransfersPermissionGuard } from './guards/stations-manage-transfers-permission.guard';
+import { StationBookingRulesService } from './station-booking-rules.service';
+import { EvaluateStationBookingRulesDto } from './dto/evaluate-station-booking-rules.dto';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -74,6 +76,7 @@ export class StationsController {
     private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
     private readonly vehicleHomeAssignmentPreview: VehicleHomeAssignmentPreviewService,
     private readonly vehicleStationTransfer: VehicleStationTransferService,
+    private readonly stationBookingRules: StationBookingRulesService,
   ) {}
 
   @Get()
@@ -354,6 +357,24 @@ export class StationsController {
         expectedVersions: body.expectedVersions,
       },
     );
+  }
+
+  @Get('booking-rules/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getBookingRulesContract() {
+    return this.stationBookingRules.getContractMetadata();
+  }
+
+  @Post('booking-rules/evaluate')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  async evaluateBookingRules(
+    @Param('orgId') orgId: string,
+    @Body() body: EvaluateStationBookingRulesDto,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationBookingRules.evaluateRequest(orgId, body, req[STATION_SCOPE_CONTEXT_KEY]);
   }
 
   @Get('opening-hours/contract')
