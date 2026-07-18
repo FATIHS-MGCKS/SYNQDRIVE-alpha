@@ -14,7 +14,6 @@ import {
   api,
   type Station,
   type StationActivityEntry,
-  type StationFleetVehicle,
   type StationOperationsDto,
   type StationOperationsTimelineEntry,
   type StationSummaryReadModel,
@@ -53,6 +52,7 @@ import {
 import { StationFormModal } from './StationFormModal';
 import { StationAssignVehicleModal } from './StationAssignVehicleModal';
 import { StationOverviewTab } from './StationOverviewTab';
+import { StationFleetTab } from './StationFleetTab';
 
 interface StationDetailViewProps {
   stationId: string;
@@ -61,6 +61,7 @@ interface StationDetailViewProps {
   onBack: () => void;
   onTabChange?: (tab: StationDetailTab) => void;
   onOpenBooking?: (bookingId: string) => void;
+  onOpenVehicle?: (vehicleId: string) => void;
   isDarkMode?: boolean;
 }
 
@@ -71,6 +72,7 @@ export function StationDetailView({
   onBack,
   onTabChange,
   onOpenBooking,
+  onOpenVehicle,
   isDarkMode: _isDarkMode = false,
 }: StationDetailViewProps) {
   const { orgId } = useRentalOrg();
@@ -80,7 +82,6 @@ export function StationDetailView({
   const [station, setStation] = useState<Station | null>(initialStation ?? null);
   const [summary, setSummary] = useState<StationSummaryReadModel | null>(null);
   const [team, setTeam] = useState<StationTeamDto | null>(null);
-  const [fleet, setFleet] = useState<StationFleetVehicle[]>([]);
   const [timeline, setTimeline] = useState<StationOperationsTimelineEntry[]>([]);
   const [operations, setOperations] = useState<StationOperationsDto | null>(null);
   const [activity, setActivity] = useState<StationActivityEntry[]>([]);
@@ -133,7 +134,6 @@ export function StationDetailView({
       ]);
       setStation(stationResult);
       setSummary(summaryResult);
-      setFleet([]);
       setTimeline([]);
       setOperations(null);
       setActivity([]);
@@ -155,10 +155,6 @@ export function StationDetailView({
       setTabLoading(true);
       setTabError(null);
       try {
-        if (dataKey === 'fleet') {
-          const rows = await api.stations.fleet(orgId, stationId);
-          setFleet(Array.isArray(rows) ? rows : []);
-        }
         if (dataKey === 'schedule') {
           const model = await api.stations.operationsTimeline(orgId, stationId, {
             page: 1,
@@ -381,7 +377,7 @@ export function StationDetailView({
       )}
 
       {activeTab === 'fleet' && (
-        <FleetTab fleet={fleet} loading={tabLoading} t={t} />
+        <StationFleetTab stationId={stationId} onOpenVehicle={onOpenVehicle} />
       )}
 
       {activeTab === 'schedule' && (
@@ -425,9 +421,7 @@ export function StationDetailView({
           station={assignOpen ? station : null}
           onClose={() => setAssignOpen(false)}
           onSaved={() => {
-            loadedTabsRef.current.delete('fleet');
             void loadCore();
-            void loadTabData('fleet');
           }}
         />
       )}

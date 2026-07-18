@@ -19,6 +19,7 @@ import {
   ListStationsQueryDto,
   ListStationSummariesQueryDto,
   ListStationOperationsTimelineQueryDto,
+  ListStationFleetQueryDto,
   SetStationVehiclesDto,
   AssignVehicleStationDto,
   UpdateVehicleCurrentStationDto,
@@ -58,6 +59,7 @@ import { StationOperationalCapabilityService } from './station-operational-capab
 import { StationOperationsService } from './station-operations.service';
 import { StationSummaryReadModelService } from './station-summary-read-model.service';
 import { StationOperationsTimelineService } from './station-operations-timeline.service';
+import { StationFleetReadModelService } from './station-fleet-read-model.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { HomeAssignmentPreviewDto } from './dto/vehicle-home-assignment-preview.dto';
@@ -79,6 +81,7 @@ export class StationsController {
     private readonly stationOperations: StationOperationsService,
     private readonly stationSummaryReadModel: StationSummaryReadModelService,
     private readonly stationOperationsTimeline: StationOperationsTimelineService,
+    private readonly stationFleetReadModel: StationFleetReadModelService,
     private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
     private readonly vehicleHomeAssignmentPreview: VehicleHomeAssignmentPreviewService,
     private readonly vehicleStationTransfer: VehicleStationTransferService,
@@ -502,15 +505,28 @@ export class StationsController {
     );
   }
 
+  @Get('fleet/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getFleetContract() {
+    return this.stationFleetReadModel.getContractMetadata();
+  }
+
   @Get(':id/fleet')
   @RequireStationsPermission('stations.read')
   @RequireStationScope({ resource: 'station' })
   async getFleet(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Query() query: ListStationFleetQueryDto,
     @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
   ) {
-    return this.stationsService.getStationFleet(orgId, id, req[STATION_SCOPE_CONTEXT_KEY]);
+    return this.stationFleetReadModel.resolveForStation(
+      orgId,
+      id,
+      query,
+      req[STATION_SCOPE_CONTEXT_KEY],
+    );
   }
 
   @Get(':id/bookings')
