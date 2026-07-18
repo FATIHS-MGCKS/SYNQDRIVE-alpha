@@ -31,7 +31,7 @@ function summaryFixture(
   } = {},
 ): StationSummaryReadModel {
   return {
-    version: 1,
+    version: 2,
     stationId,
     organizationId: ORG_ID,
     lastCalculatedAt: '2026-07-18T12:00:00.000Z',
@@ -117,6 +117,36 @@ function summaryFixture(
         capacityStatus: { value: 'AVAILABLE', known: true, reasons: [] },
       },
       deprecatedAliases: { bookedVehicles: null },
+    },
+    operationsSummary: {
+      version: 1,
+      stationId,
+      evaluatedAt: '2026-07-18T12:00:00.000Z',
+      tasks: {
+        total: 1,
+        categories: {
+          stationLinked: { count: 0 },
+          vehicleOnSite: { count: 1 },
+          bookingPickupReturn: { count: 0 },
+          overduePickupReturn: { count: 0 },
+          transfer: { count: 0 },
+        },
+      },
+      notifications: {
+        total: 0,
+        categories: {
+          stationLinked: { count: 0 },
+          vehicleOnSite: { count: 0 },
+          bookingPickupReturn: { count: 0 },
+          transfer: { count: 0 },
+        },
+      },
+      operationalProblems: {
+        configurationProblems: overrides.configurationProblems ?? 0,
+        operationalWarnings: overrides.operationalWarnings ?? 0,
+        total:
+          (overrides.configurationProblems ?? 0) + (overrides.operationalWarnings ?? 0),
+      },
     },
     configurationProblems: Array.from({ length: overrides.configurationProblems ?? 0 }).map(
       (_, index) => ({

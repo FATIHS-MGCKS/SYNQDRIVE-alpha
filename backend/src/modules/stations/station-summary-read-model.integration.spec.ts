@@ -20,7 +20,8 @@ describe('StationSummaryReadModelService', () => {
     vehicle: { findMany: jest.fn() },
     booking: { findMany: jest.fn() },
     vehicleStationTransfer: { findMany: jest.fn() },
-    orgTask: { count: jest.fn() },
+    orgTask: { findMany: jest.fn() },
+    notification: { findMany: jest.fn() },
   } as unknown as PrismaService;
 
   const stationAccessScope = new StationAccessScopeService(
@@ -171,7 +172,13 @@ describe('StationSummaryReadModelService', () => {
         status: 'IN_TRANSIT',
       },
     ]);
-    (prisma.orgTask.count as jest.Mock).mockResolvedValue(4);
+    (prisma.orgTask.findMany as jest.Mock).mockResolvedValue([
+      { id: 'task-1', type: 'VEHICLE_SERVICE', vehicleId: 'v-home', bookingId: null, metadata: null },
+      { id: 'task-2', type: 'BOOKING_PICKUP', vehicleId: null, bookingId: 'b-pickup-today', metadata: null },
+      { id: 'task-3', type: 'CUSTOM', vehicleId: null, bookingId: null, metadata: { stationId: STATION_ACTIVE } },
+      { id: 'task-4', type: 'VEHICLE_CLEANING', vehicleId: 'v-foreign', bookingId: null, metadata: null },
+    ]);
+    (prisma.notification.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   it('builds a consistent summary for an active station', async () => {
@@ -193,6 +200,10 @@ describe('StationSummaryReadModelService', () => {
     expect(summary.kpis.metrics.incomingTransfers.value).toBe(1);
     expect(summary.kpis.metrics.outgoingTransfers.value).toBe(1);
     expect(summary.kpis.metrics.openOperationalTasks.value).toBe(4);
+    expect(summary.operationsSummary.tasks.total).toBe(4);
+    expect(summary.operationsSummary.tasks.categories.vehicleOnSite.count).toBe(2);
+    expect(summary.operationsSummary.tasks.categories.stationLinked.count).toBe(1);
+    expect(summary.operationsSummary.operationalProblems.configurationProblems).toBeGreaterThanOrEqual(0);
     expect(summary.partialData.complete).toBe(true);
     expect(summary.lastCalculatedAt).toBe('2026-07-18T12:00:00.000Z');
     expect(summary.frontendRecomputation).toBe(false);
@@ -201,7 +212,8 @@ describe('StationSummaryReadModelService', () => {
     expect(prisma.vehicle.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.booking.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.vehicleStationTransfer.findMany).toHaveBeenCalledTimes(1);
-    expect(prisma.orgTask.count).toHaveBeenCalledTimes(1);
+    expect(prisma.orgTask.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.notification.findMany).toHaveBeenCalledTimes(1);
   });
 
   it('marks archived stations clearly in lifecycle', async () => {

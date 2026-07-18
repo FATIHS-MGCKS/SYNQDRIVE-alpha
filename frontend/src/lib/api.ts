@@ -9513,6 +9513,42 @@ export interface StationKpisResult {
   deprecatedAliases: { bookedVehicles: null };
 }
 
+export type StationOperationsTaskCategory =
+  | 'stationLinked'
+  | 'vehicleOnSite'
+  | 'bookingPickupReturn'
+  | 'overduePickupReturn'
+  | 'transfer';
+
+export type StationOperationsNotificationCategory =
+  | 'stationLinked'
+  | 'vehicleOnSite'
+  | 'bookingPickupReturn'
+  | 'transfer';
+
+export interface StationOperationsCategoryCount {
+  count: number;
+}
+
+export interface StationOperationsSummary {
+  version: number;
+  stationId: string;
+  evaluatedAt: string;
+  tasks: {
+    total: number;
+    categories: Record<StationOperationsTaskCategory, StationOperationsCategoryCount>;
+  };
+  notifications: {
+    total: number;
+    categories: Record<StationOperationsNotificationCategory, StationOperationsCategoryCount>;
+  };
+  operationalProblems: {
+    configurationProblems: number;
+    operationalWarnings: number;
+    total: number;
+  };
+}
+
 export interface StationSummaryReadModel {
   version: number;
   stationId: string;
@@ -9551,6 +9587,7 @@ export interface StationSummaryReadModel {
     keybox: StationOperationsLabeledStatus<StationKeyboxStatus>;
   };
   kpis: StationKpisResult;
+  operationsSummary: StationOperationsSummary;
   configurationProblems: StationOperationsReason[];
   operationalWarnings: StationOperationsReason[];
   partialData: {

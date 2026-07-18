@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-operations-summary-v49637-2026-07-20',
+    version: '4.9.637',
+    title: 'V4.9.637 — Stations V2: Operations Summary für Tasks & Notifications (Prompt 57/78)',
+    summary: [
+      'Neues `StationOperationsSummary` im `StationSummaryReadModel` v2 — kategorisierte, deduplizierte Counts für Tasks und Notifications plus Betriebsprobleme.',
+      'Task-Kategorien: `stationLinked`, `vehicleOnSite` (nur `currentStationId`), `bookingPickupReturn`, `overduePickupReturn`, `transfer` (metadata.transferId).',
+      'Notifications nur stationszuordenbar — org-weite Benachrichtigungen (`INTEGRATION_DISCONNECTED`, `ORGANIZATION`, kritische Security) werden nicht blind einer Station zugerechnet.',
+      'Keine harten 500-ID-Limits bei Task-/Notification-Loads; Batch-Queries für Org-Summaries bleiben fix (Tasks + Notifications).',
+      '`openOperationalTasks`-KPI nutzt deduplizierte Gesamtzahl aus der Operations Summary.',
+    ],
+    reason:
+      'Stations-Operatoren brauchen belastbare, kategorisierte Operations-Counts ohne Doppelzählung und ohne globale Notifications fälschlich stationär zuzuordnen.',
+    previousBehavior:
+      'Nur ein aggregierter `openOperationalTasks`-Count ohne Kategorien; Vehicle-Tasks über alle verknüpften Fahrzeuge (nicht nur On-Site); keine Notification-Aufschlüsselung im Summary.',
+    details:
+      '`station-operations-summary.contract.ts` + `.classification.ts` + `.resolver.ts`, `station-notification-attribution.util.ts`, Summary-Assembly/Service-Enrichment, API-Typen, Dedup- und Performance-Tests.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T06:00:00.000Z',
+  },
+  {
     id: 'stations-v2-runtime-kpis-v49636-2026-07-20',
     version: '4.9.636',
     title: 'V4.9.636 — Stations V2: Runtime KPI Wiring (Prompt 56/78)',

@@ -14,11 +14,11 @@ import {
 import {
   assembleStationSummaryFromLoadRow,
   bookingLinksToStation,
-  countOpenTasksForStation,
   filterBookingsForStation,
   filterTransfersForStation,
   filterVehiclesForStation,
   stationSummaryLoadInclude,
+  taskLinksToStation,
   transferLinksToStation,
   type StationSummaryBookingRow,
   type StationSummaryLoadRow,
@@ -26,6 +26,12 @@ import {
   type StationSummaryVehicleRow,
   vehicleLinksToStation,
 } from '@shared/stations/station-summary-read-model.assembly';
+import {
+  buildOrgWideExclusionClause,
+  buildStationAttributableNotificationsWhere,
+  isOrgWideNotificationForStationSummary,
+} from '@shared/stations/station-notification-attribution.util';
+import type { StationOperationsNotificationInput } from '@shared/stations/station-operations-summary.classification';
 import {
   getStationSummaryReadModelContractMetadata,
   type StationSummaryReadModel,
@@ -88,14 +94,10 @@ export class StationSummaryReadModelService {
       }),
     ]);
 
-    const openOperationalTasksCount = await this.prisma.orgTask.count({
-      where: this.stationAccessScope.buildStationOpenTasksWhere(
-        access,
-        stationId,
-        vehicles.map((vehicle) => vehicle.id),
-        bookings.map((booking) => booking.id),
-      ),
-    });
+    const [openTasks, notifications] = await Promise.all([
+      this.loadOpenTasksForStation(access, stationId, vehicles, bookings),
+      this.loadNotificationsForStation(organizationId, stationId, vehicles, bookings, transfers),
+    ]);
 
     const vehicleRuntime = await this.stationVehicleRuntimeLoader.loadRuntimeSnapshots(
       organizationId,
@@ -107,7 +109,8 @@ export class StationSummaryReadModelService {
       vehicles,
       bookings,
       transfers,
-      openOperationalTasksCount,
+      openTasks,
+      notifications,
       evaluatedAt,
       access,
       vehicleRuntime,
@@ -242,12 +245,10 @@ export class StationSummaryReadModelService {
       }),
     ]);
 
-    const scopedOpenTasks = await this.loadOpenTasksForStations(
-      organizationId,
-      stationIds,
-      vehicles,
-      bookings,
-    );
+    const [scopedOpenTasks, scopedNotifications] = await Promise.all([
+      this.loadOpenTasksForStations(organizationId, stationIds, vehicles, bookings),
+      this.loadNotificationsForStations(organizationId, stationIds, vehicles, bookings, transfers),
+    ]);
 
     const vehicleRuntime = await this.stationVehicleRuntimeLoader.loadRuntimeSnapshots(
       organizationId,
@@ -263,11 +264,17 @@ export class StationSummaryReadModelService {
       const stationTransfers = filterTransfersForStation(transfers, station.id);
       const vehicleIds = new Set(stationVehicles.map((vehicle) => vehicle.id));
       const bookingIds = new Set(stationBookings.map((booking) => booking.id));
-      const openOperationalTasksCount = countOpenTasksForStation(
-        scopedOpenTasks,
-        station.id,
-        vehicleIds,
-        bookingIds,
+      const stationOpenTasks = scopedOpenTasks.filter((task) =>
+        taskLinksToStation(task, station.id, vehicleIds, bookingIds),
+      );
+      const stationNotifications = scopedNotifications.filter((notification) =>
+        this.notificationLinksToStation(
+          notification,
+          station.id,
+          stationVehicles,
+          stationBookings,
+          stationTransfers,
+        ),
       );
       const stationRuntime = stationVehicles
         .map((vehicle) => runtimeByVehicleId.get(vehicle.id))
@@ -278,12 +285,181 @@ export class StationSummaryReadModelService {
         stationVehicles,
         stationBookings,
         stationTransfers,
-        openOperationalTasksCount,
+        stationOpenTasks,
+        stationNotifications,
         evaluatedAt,
         access,
         stationRuntime,
       );
     });
+  }
+
+  private async loadOpenTasksForStation(
+    access: ReturnType<StationAccessScopeService['resolveFromContextOrEmpty']>,
+    stationId: string,
+    vehicles: StationSummaryVehicleRow[],
+    bookings: StationSummaryBookingRow[],
+  ): Promise<StationSummaryOpenTaskRow[]> {
+    return this.prisma.orgTask.findMany({
+      where: this.stationAccessScope.buildStationOpenTasksWhere(
+        access,
+        stationId,
+        vehicles.map((vehicle) => vehicle.id),
+        bookings.map((booking) => booking.id),
+      ),
+      select: this.openTaskSelect(),
+    });
+  }
+
+  private async loadNotificationsForStation(
+    organizationId: string,
+    stationId: string,
+    vehicles: StationSummaryVehicleRow[],
+    bookings: StationSummaryBookingRow[],
+    transfers: Array<{ id: string; fromStationId: string | null; toStationId: string }>,
+  ): Promise<StationOperationsNotificationInput[]> {
+    const onSiteVehicleIds = vehicles
+      .filter((vehicle) => vehicle.currentStationId === stationId)
+      .map((vehicle) => vehicle.id);
+    const stationBookingIds = bookings
+      .filter((booking) => bookingLinksToStation(booking, stationId))
+      .map((booking) => booking.id);
+    const activeTransferIds = transfers
+      .filter((transfer) => transfer.fromStationId === stationId || transfer.toStationId === stationId)
+      .map((transfer) => transfer.id);
+
+    return this.prisma.notification.findMany({
+      where: buildStationAttributableNotificationsWhere(
+        organizationId,
+        stationId,
+        onSiteVehicleIds,
+        stationBookingIds,
+        activeTransferIds,
+      ),
+      select: this.notificationSelect(),
+    });
+  }
+
+  private async loadNotificationsForStations(
+    organizationId: string,
+    stationIds: string[],
+    vehicles: StationSummaryVehicleRow[],
+    bookings: StationSummaryBookingRow[],
+    transfers: Array<{ id: string; fromStationId: string | null; toStationId: string }>,
+  ): Promise<StationOperationsNotificationInput[]> {
+    if (stationIds.length === 0) {
+      return [];
+    }
+
+    const onSiteVehicleIds = [
+      ...new Set(
+        vehicles
+          .filter((vehicle) =>
+            stationIds.some((stationId) => vehicle.currentStationId === stationId),
+          )
+          .map((vehicle) => vehicle.id),
+      ),
+    ];
+    const stationBookingIds = [
+      ...new Set(
+        bookings
+          .filter((booking) =>
+            stationIds.some((stationId) => bookingLinksToStation(booking, stationId)),
+          )
+          .map((booking) => booking.id),
+      ),
+    ];
+    const activeTransferIds = [
+      ...new Set(
+        transfers
+          .filter((transfer) =>
+            stationIds.some(
+              (stationId) =>
+                transfer.fromStationId === stationId || transfer.toStationId === stationId,
+            ),
+          )
+          .map((transfer) => transfer.id),
+      ),
+    ];
+
+    const attributableOr: Prisma.NotificationWhereInput[] = stationIds.map((stationId) => ({
+      entityType: 'STATION',
+      entityId: stationId,
+    }));
+    for (const stationId of stationIds) {
+      attributableOr.push({
+        actionTarget: { path: ['stationId'], equals: stationId },
+      });
+    }
+    if (onSiteVehicleIds.length > 0) {
+      attributableOr.push({ entityType: 'VEHICLE', entityId: { in: onSiteVehicleIds } });
+    }
+    if (stationBookingIds.length > 0) {
+      attributableOr.push({ entityType: 'BOOKING', entityId: { in: stationBookingIds } });
+    }
+    for (const transferId of activeTransferIds) {
+      attributableOr.push({
+        actionTarget: { path: ['transferId'], equals: transferId },
+      });
+    }
+
+    return this.prisma.notification.findMany({
+      where: {
+        organizationId,
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED'] },
+        AND: [{ OR: attributableOr }, { NOT: buildOrgWideExclusionClause() }],
+      },
+      select: this.notificationSelect(),
+    });
+  }
+
+  private notificationLinksToStation(
+    notification: StationOperationsNotificationInput,
+    stationId: string,
+    vehicles: StationSummaryVehicleRow[],
+    bookings: StationSummaryBookingRow[],
+    transfers: Array<{ id: string; fromStationId: string | null; toStationId: string }>,
+  ): boolean {
+    if (isOrgWideNotificationForStationSummary(notification)) {
+      return false;
+    }
+    const onSiteVehicleIds = new Set(
+      vehicles
+        .filter((vehicle) => vehicle.currentStationId === stationId)
+        .map((vehicle) => vehicle.id),
+    );
+    const stationBookingIds = new Set(
+      bookings
+        .filter((booking) => bookingLinksToStation(booking, stationId))
+        .map((booking) => booking.id),
+    );
+    const activeTransferIds = new Set(
+      transfers
+        .filter((transfer) => transfer.fromStationId === stationId || transfer.toStationId === stationId)
+        .map((transfer) => transfer.id),
+    );
+
+    const target = (notification.actionTarget ?? {}) as Record<string, string | undefined>;
+    if (notification.entityType === 'STATION' && notification.entityId === stationId) {
+      return true;
+    }
+    if (target.stationId === stationId) {
+      return true;
+    }
+    if (target.transferId && activeTransferIds.has(target.transferId)) {
+      return true;
+    }
+    const vehicleId =
+      notification.entityType === 'VEHICLE' ? notification.entityId : target.vehicleId;
+    if (vehicleId && onSiteVehicleIds.has(vehicleId)) {
+      return true;
+    }
+    const bookingId =
+      notification.entityType === 'BOOKING' ? notification.entityId : target.bookingId;
+    if (bookingId && stationBookingIds.has(bookingId)) {
+      return true;
+    }
+    return false;
   }
 
   private async loadOpenTasksForStations(
@@ -405,9 +581,22 @@ export class StationSummaryReadModelService {
   private openTaskSelect() {
     return {
       id: true,
+      type: true,
       vehicleId: true,
       bookingId: true,
       metadata: true,
+    } as const;
+  }
+
+  private notificationSelect() {
+    return {
+      id: true,
+      eventType: true,
+      domain: true,
+      severity: true,
+      entityType: true,
+      entityId: true,
+      actionTarget: true,
     } as const;
   }
 }
