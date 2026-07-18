@@ -852,6 +852,7 @@ export class VehiclesService {
       homeStationId: v.homeStation?.id ?? null,
       currentStationId: v.currentStationId ?? null,
       expectedStationId: v.expectedStationId ?? null,
+      stationPositionVersion: v.stationPositionVersion ?? 0,
       fuelType: FUEL_TYPE_LABEL[v.fuelType as FuelType] ?? 'Other',
       // Rental status is derived from open bookings first, then falls back
       // to the admin-managed DB column. Maintenance wins over booking

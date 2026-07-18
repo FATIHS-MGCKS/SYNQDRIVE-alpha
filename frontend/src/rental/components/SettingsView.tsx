@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore
 
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
+import { applyStationHomeFleetSelection } from '../lib/stationHomeFleetAssignment';
 import { isVehicleAtHomeStation } from '../../lib/geospatial';
 import { UsersRolesTab } from './UsersRolesTab';
 import { DataAuthorizationTab } from './DataAuthorizationTab';
@@ -115,9 +116,7 @@ export function StationsTab() {
   // Status toggle feedback
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  // Vehicle assignment modal â€” SET-semantics editor for the vehicle â†” station
-  // mapping. We load all vehicles in the org once when the modal opens, then
-  // post the resulting set back via api.stations.setVehicles(...).
+  // Vehicle assignment modal — per-vehicle home-station commands (V4.9.615).
   type AssignVehicleRow = {
     id: string;
     license: string;
@@ -125,7 +124,8 @@ export function StationsTab() {
     model: string;
     year: number | null;
     imageUrl: string | null;
-    stationId: string | null;
+    homeStationId: string | null;
+    stationPositionVersion: number;
     stationName: string | null;
     latitude: number | null;
     longitude: number | null;
@@ -428,7 +428,9 @@ export function StationsTab() {
           model: v.model ?? '',
           year: typeof v.year === 'number' ? v.year : null,
           imageUrl: v.imageUrl ?? null,
-          stationId: v.stationId ?? null,
+          homeStationId: v.homeStationId ?? v.stationId ?? null,
+          stationPositionVersion:
+            typeof v.stationPositionVersion === 'number' ? v.stationPositionVersion : 0,
           stationName: v.stationName ?? v.station ?? null,
           latitude: typeof v.latitude === 'number' ? v.latitude : null,
           longitude: typeof v.longitude === 'number' ? v.longitude : null,
@@ -436,7 +438,7 @@ export function StationsTab() {
         list.sort((a, b) => a.license.localeCompare(b.license, 'de'));
         setAssignVehicles(list);
         setAssignSelected(
-          new Set(list.filter((v) => v.stationId === station.id).map((v) => v.id)),
+          new Set(list.filter((v) => v.homeStationId === station.id).map((v) => v.id)),
         );
       } catch (e) {
         setAssignError((e as Error).message || 'Fahrzeuge konnten nicht geladen werden');
@@ -471,11 +473,17 @@ export function StationsTab() {
     setAssignSaving(true);
     setAssignError(null);
     try {
-      await api.stations.setVehicles(
+      await applyStationHomeFleetSelection({
         orgId,
-        assignStation.id,
-        Array.from(assignSelected),
-      );
+        stationId: assignStation.id,
+        vehicles: assignVehicles.map((v) => ({
+          id: v.id,
+          homeStationId: v.homeStationId,
+          stationPositionVersion: v.stationPositionVersion,
+        })),
+        selectedIds: assignSelected,
+        reason: 'SettingsView.StationsTab',
+      });
       await load();
       setAssignStation(null);
       setAssignVehicles([]);
@@ -495,9 +503,9 @@ export function StationsTab() {
     const q = assignSearch.trim().toLowerCase();
     const stationId = assignStation?.id ?? null;
     return assignVehicles.filter((v) => {
-      if (assignFilter === 'unassigned' && v.stationId !== null) return false;
-      if (assignFilter === 'this' && v.stationId !== stationId) return false;
-      if (assignFilter === 'other' && (v.stationId === null || v.stationId === stationId)) return false;
+      if (assignFilter === 'unassigned' && v.homeStationId !== null) return false;
+      if (assignFilter === 'this' && v.homeStationId !== stationId) return false;
+      if (assignFilter === 'other' && (v.homeStationId === null || v.homeStationId === stationId)) return false;
       if (!q) return true;
       const haystack = [v.license, v.make, v.model, v.stationName ?? '']
         .filter(Boolean)
@@ -512,7 +520,7 @@ export function StationsTab() {
     let attaches = 0;
     let detaches = 0;
     for (const v of assignVehicles) {
-      const wasHere = v.stationId === assignStation.id;
+      const wasHere = v.homeStationId === assignStation.id;
       const willBeHere = assignSelected.has(v.id);
       if (!wasHere && willBeHere) attaches += 1;
       if (wasHere && !willBeHere) detaches += 1;
@@ -1338,9 +1346,9 @@ export function StationsTab() {
                 <div className="grid grid-cols-1 gap-1.5">
                   {assignFiltered.map((v) => {
                     const checked = assignSelected.has(v.id);
-                    const wasHere = v.stationId === assignStation.id;
+                    const wasHere = v.homeStationId === assignStation.id;
                     const willMove =
-                      checked && v.stationId !== null && v.stationId !== assignStation.id;
+                      checked && v.homeStationId !== null && v.homeStationId !== assignStation.id;
                     const willDetach = !checked && wasHere;
                     // Live geofence check â€” true â‡¢ vehicle's last GPS fix is
                     // inside this station's radius. Only useful when the
@@ -1378,13 +1386,13 @@ export function StationsTab() {
                           </div>
                           <div className="flex items-center flex-wrap gap-1.5 mt-0.5 text-[10px]">
                             <span className={textSecondary}>Aktuell:</span>
-                            {v.stationId === null ? (
+                            {v.homeStationId === null ? (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-watch"
                               >
                                 ohne Station
                               </span>
-                            ) : v.stationId === assignStation.id ? (
+                            ) : v.homeStationId === assignStation.id ? (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-success"
                               >
