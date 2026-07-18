@@ -1,0 +1,23 @@
+questionId,topic,currentBehaviorCodePath,currentAnswer,recommendedBehavior,resolutionMethodIfRecommended,gapSeverity,notes
+Q1,episode_start,device-connection-read-model buildDeviceConnectionSummary,When last canonical UNPLUG event exists and is newer than last PLUG (or no PLUG),Same but also consider snapshot recovery at T1,SNAPSHOT_PLUG_SIGNAL or TELEMETRY_RESUMED,P0,Webhook UNPLUG at observedAt starts episode
+Q2,episode_end,device-connection-read-model buildDeviceConnectionSummary,Only when persisted PLUG event observedAt > last UNPLUG,Close when snapshot obdIsPluggedIn=true + fresh telemetry + same binding after T0,SNAPSHOT_PLUG_SIGNAL + TELEMETRY_RESUMED,P0,INCIDENT_VEHICLE_001: never ends
+Q3,plug_webhook_only,device-connection-webhook.service.ts intake,PLUGGED_IN only from webhook intake (plug webhook disabled in ops),Allow closure without PLUG event row,SNAPSHOT_PLUG_SIGNAL,P0,Ops: unplug webhook only
+Q4,snapshot_closes_episode,none,No — snapshot updates obdIsPluggedIn only,Yes — read-model or intake should close inferred,SNAPSHOT_PLUG_SIGNAL,P0,Architecture gap
+Q5,obd_true_closes,device-connection-read-model reconcile,Anchor used only to drop false PLUG events; openUnpluggedEpisode ignores anchor when obd=true,If anchor plugged + fresh telemetry → episode closed inferred,SNAPSHOT_PLUG_SIGNAL,P0,Partial anchor use
+Q6,obd_false_while_plugged,obd-plug-status + fleet UI,Snapshot false → Unplugged chip; independent of webhook episode,If webhook episode open AND snapshot false → UNPLUGGED_CONFIRMED; if episode closed ignore stale false,EXPLICIT_PLUG_WEBHOOK,P1,Can disagree during transition
+Q7,null_obd,deriveFleetSignals obdPlug,unknown if no telemetry; available if value present,null → UNKNOWN not unplugged,UNKNOWN,P2,Correct null handling for snapshot
+Q8,out_of_order_events,filterCanonicalDeviceConnectionEvents,sorted by observedAt; collapse consecutive same type,Same + reject plug before unplug at same second if duplicate buckets,EXPLICIT_PLUG_WEBHOOK,P2,30s dedup bucket may collapse bursts
+Q9,delayed_snapshots,DimoSnapshotProcessor,lastSeenAt from provider signal timestamp; no episode interaction,Reject closure if signal timestamp < unplug observedAt or ingest backfill flag,TELEMETRY_RESUMED with timestamp guard,P1,No backfill detection in read model
+Q10,seven_day_window,DeviceConnectionQueryService,Events loaded since 7d only; older unplug without plug still open if within... actually if unplug >7d not loaded episode may false-close,Episode state should not depend on rolling window without persisted closure,TELEMETRY_RESUMED or persisted closure row,P1,7d query window risk for old episodes
+Q11,device_change,none,No binding episode ID; events keyed by vehicleId only,Reset episode on tokenId/serial change,DEVICE_BINDING_CHANGED,P1,Old unplug could affect new device on same vehicle row
+Q12,token_change,dimo_device_connection_events,tokenId stored per event but not compared in read model,Invalidate open episode on tokenId change,DEVICE_BINDING_CHANGED,P1,No token continuity check
+Q13,synthetic_oem,mapFleetConnectivityVehicle,isLteR1Hardware gates webhook UI; synthetic uses API/Software,device state NOT_APPLICABLE for non-physical OBD,NOT_APPLICABLE,P2,Synthetic should not show OBD unplug episode
+Q14,old_unplug_new_binding,none,vehicleId-scoped events persist; no binding generation,Scope events to binding episode,DEVICE_BINDING_CHANGED,P0,Fleet-wide 2 stuck cases likely this class
+Q15,episode_without_window,DeviceConnectionQueryService 7d limit,If all events fall out of 7d window summary shows no webhook / may clear deviceConnection projection,Persist episode closure or use anchor-based inference beyond window,SNAPSHOT_PLUG_SIGNAL,P1,vehicles.service gates deviceConnection on lteR1 OR lastWebhookReceivedAt
+
+currentState,recommendedState,enterCondition,exitCondition,persistedEvidence,uiLabel
+UNPLUGGED_CONFIRMED (current),UNPLUGGED_CONFIRMED,OBD_DEVICE_UNPLUGGED persisted; no newer PLUG event,PLUG event OR inferred recovery (missing),dimo_device_connection_events,Gerät getrennt / Unplugged Webhook
+PLUGGED_CONFIRMED (current),PLUGGED_CONFIRMED,Last event PLUGGED_IN newer than UNPLUG,New UNPLUG event,webhook event,Wieder verbunden Webhook
+unknown (current),UNKNOWN,No events or leading PLUG baseline stripped,First UNPLUG or inferred plug,none,Unbekannt
+N/A (current),PLUGGED_INFERRED,Not implemented,snapshot obd=true + fresh telemetry after T0 + same binding,none (should be read-model inference),Wieder verbunden (Telemetrie)
+N/A (current),NOT_APPLICABLE,Partial — lteR1 gate only,Synthetic/OEM without physical OBD,hardwareType,Kein physisches OBD

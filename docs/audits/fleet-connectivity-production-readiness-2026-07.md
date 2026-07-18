@@ -5,22 +5,26 @@
 | **Audit ID** | `fleet-connectivity-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/fleet-connectivity-production-readiness-2026-07` |
-| **Phase** | **1 of 8 — Architecture map & runtime baseline** |
-| **Status** | Phase 1 complete; Phases 2–8 outlined below |
+| **Phase** | **2 of 8 — State logic & derivation audit** |
+| **Status** | Phases 1–2 complete; Phases 3–8 outlined below |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | Through 2026-07-18 UTC |
 | **Incident vehicle (anonymized)** | `INCIDENT_VEHICLE_001` (real mapping **not** stored in git) |
 
 ---
 
-## Document map (Phase 1 artifacts)
+## Document map
 
-| Artifact | Path |
-|----------|------|
-| Main report (this file) | `docs/audits/fleet-connectivity-production-readiness-2026-07.md` |
-| Code map CSV | `docs/audits/data/fleet-connectivity-code-map-2026-07.csv` |
-| Incident timeline (anonymized) | `docs/audits/data/fleet-connectivity-incident-001-timeline-2026-07.json` |
-| Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` |
+| Artifact | Path | Phase |
+|----------|------|-------|
+| Main report (this file) | `docs/audits/fleet-connectivity-production-readiness-2026-07.md` | 1–2 |
+| Code map CSV | `docs/audits/data/fleet-connectivity-code-map-2026-07.csv` | 1 |
+| Incident timeline (anonymized) | `docs/audits/data/fleet-connectivity-incident-001-timeline-2026-07.json` | 1 |
+| State rule map | `docs/audits/data/fleet-connectivity-state-rule-map-2026-07.csv` | 2 |
+| Freshness consumer matrix | `docs/audits/data/fleet-connectivity-freshness-consumer-matrix-2026-07.csv` | 2 |
+| Device state machine | `docs/audits/data/fleet-connectivity-device-state-machine-2026-07.csv` | 2 |
+| Readiness factor map | `docs/audits/data/fleet-connectivity-readiness-factor-map-2026-07.csv` | 2 |
+| Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` | 1–2 |
 
 ---
 
@@ -317,8 +321,261 @@ FLEET_CONNECTIVITY_AUDIT_ALLOW_REMOTE=1 FLEET_CONNECTIVITY_AUDIT_ALLOW_PROD=1 \
 - [x] No production writes performed
 - [x] PII/secret scan on committed artifacts (no plates/VINs/UUIDs in git)
 
-**Changes / Architektur (SynqDrive Code views):** Not updated in Phase 1 — audit-only documentation; product architecture records unchanged pending Phase 8 verdict.
+**Changes / Architektur (SynqDrive Code views):** Not updated — audit-only documentation; product architecture records unchanged pending Phase 8 verdict.
 
 ---
 
-*End of Phase 1. Do not proceed to Phase 2 in this agent turn.*
+# Phase 2 — State logic & derivation audit
+
+## 11. Status dimensions inventory
+
+### 11.1 Provider link
+
+| Sub-state | Implemented? | Where | Used in Fleet Connectivity? |
+|-----------|--------------|-------|----------------------------|
+| Provider record present | Yes | `Vehicle.dimoVehicleId` + `DimoVehicle` row | `hasProviderLink = dv != null` |
+| Consent active | Yes (ledger) | `VehicleProviderConsent` | **No** — not in fleet-connectivity path |
+| Authorization valid | Partial | DIMO JWT via `DimoAuthService` | Implicit (poll succeeds) |
+| Token present | Yes | `DimoVehicle.tokenId` | Masked in API; used for poll/webhook |
+| Token expired | Partial | JWT refresh in auth service | Surfaces as poll FAILURE not fleet field |
+| Data source connected | Partial | `VehicleDataSourceLink` | Billing only |
+| Reauthorization required | No dedicated field | — | Not exposed |
+| Provider error | Partial | `DimoConnectionStatus.ERROR` | Reconcile anchor only |
+| Link removed | Yes | `dimoVehicleId` null | `not_connected` |
+| Historical record without active grant | Possible | Consent REVOKED rows | **Not evaluated** in connectivity UI |
+
+**Finding:** Fleet Connectivity collapses provider link to a single boolean (`dimoVehicle != null`). Consent, HM clearance, and reauthorization are **out of scope** for the tab despite existing backend models.
+
+### 11.2 Telemetry freshness
+
+| Sub-state | Canonical (5-state) | Fleet Connectivity API (4-state) | Data Analyse |
+|-----------|---------------------|----------------------------------|--------------|
+| No timestamp | `no_signal` | `offline` + note | `insufficient_data` |
+| Live (<15m) | `live` | `online` | `fresh` |
+| Standby (15m–24h) | `standby` | `standby` | `stale` |
+| Soft-offline (24–48h) | `signal_delayed` | **`offline`** (merged) | **`offline`** at 24h |
+| Offline (≥48h) | `offline` | `offline` at **24h** | `offline` at 24h |
+| Provider lag | Not modeled | — | — |
+| Ingest lag | `providerFetchedAt` exists | Not exposed | Notes only |
+| Delayed snapshot | Not distinguished | — | — |
+| Backfill snapshot | Not distinguished | — | — |
+
+**Finding:** **Three freshness vocabularies** coexist. Rental UI (`telemetryFreshness.ts`, `vehicle-state-interpreter.ts`) implements the agreed 5-state model with 48h offline. **Fleet Connectivity API** diverges: no `signal_delayed`, offline at **24h**.
+
+### 11.3 Physical device
+
+| Sub-state | Source | Fleet UI column | Webhook episode |
+|-----------|--------|-----------------|-----------------|
+| Plugged confirmed | Snapshot `obdIsPluggedIn=true` | `ObdRowChip` Plugged in | Needs `PLUGGED_IN` event |
+| Plugged inferred | **Not implemented** | — | — |
+| Unplugged confirmed | Webhook `UNPLUGGED` + open episode | `DeviceConnectionWebhookChip` | `openUnpluggedEpisode` |
+| Unplugged snapshot | `obdIsPluggedIn=false` | `ObdRowChip` Unplugged | Independent |
+| Unknown | `obdIsPluggedIn=null` | No data | `unknown` status |
+| Not applicable | Partial (`lteR1` gate) | Hides webhook block | Synthetic/OEM not fully N/A |
+| Device binding changed | **Not tracked** | — | Events vehicle-scoped only |
+
+**INCIDENT_VEHICLE_001:** Snapshot = plugged; webhook episode = open unplug → **both columns visible** on Fleet tab.
+
+### 11.4 Webhook intake
+
+| Sub-state | Implemented | Notes |
+|-----------|-------------|-------|
+| Trigger configured | **Inferred only** | `webhookConfigured`: events>0 → active; dimoLinked+no events → not_configured |
+| Event received | HTTP 200 on controller | Logged |
+| Event signed | Optional HMAC | DIMO triggers often unsigned |
+| Event persisted | `dimo_device_connection_events` upsert | 30s dedup bucket |
+| Event processed | `buildDeviceConnectionSummary` at read time | Not materialized |
+| Failed / retry / DLQ | Controller returns ignored; no DLQ table | Failures silent to UI |
+| Unknown trigger status | `unknown` when no events and not dimoLinked | — |
+
+**Finding:** `DimoTriggersService.listWebhooks()` can query DIMO API but is **not wired** into fleet or device-connection read models. **No event ≠ not configured.**
+
+### 11.5 Data coverage
+
+Eight signal keys in `deriveFleetSignals`: gps, odometer, speed, fuel, evSoc, dtc, obdPlug, jamming. Each: `available` | `missing` | `unknown`. **No per-signal freshness.** **No EV/ICE or OEM/OBD capability matrix** in score denominator.
+
+### 11.6 Operational attention
+
+| Signal | Mechanism | Consumer |
+|--------|-----------|----------|
+| Device unplug critical | `severity=critical` if open episode + active booking | Fleet chip, vehicle card |
+| Device unplug warning | open episode outside booking | Fleet chip |
+| Telemetry offline | `resolveTelemetryFreshness` shouldWarnUser | Fleet board, booking gate (48h) |
+| Health action required | `fleet-health-control-center` | **Health tab only** |
+| Notifications for device unplug | **None** | — |
+
+---
+
+## 12. Derivation rules summary
+
+Full rule-level CSV (40 rules): `docs/audits/data/fleet-connectivity-state-rule-map-2026-07.csv`.
+
+### Critical formulas
+
+**`hasProviderLink`** — `mapFleetConnectivityVehicle`: `dimoVehicle != null`. No consent check.
+
+**`connectionStatus` (Fleet API)** — `deriveConnectionStatus(hasProviderLink, lastSeenMs, nowMs)`:
+- `not_connected` if no link
+- `offline` if no `lastSeenAt` or future timestamp
+- `online` if age < **15 min**
+- `standby` if age < **24 h**
+- `offline` otherwise (including 24–48h band)
+
+**`openUnpluggedEpisode`** — `buildDeviceConnectionSummary`:
+```text
+lastUnplug exists AND (no lastPlug OR lastUnplug.observedAt > lastPlug.observedAt)
+```
+After `reconcileDeviceConnectionEvents` (phantom plug suppression only). **Does not read snapshot recovery.**
+
+**`readinessScore`** — `signalCoveragePercent` = `round(available / known * 100)` where `known` = signals not `unknown`.
+
+**`webhookConfigured`** — if any event in 7d window → `active`; else if dimoLinked → `not_configured`; else `unknown`.
+
+---
+
+## 13. Freshness consumer matrix
+
+See `docs/audits/data/fleet-connectivity-freshness-consumer-matrix-2026-07.csv`.
+
+| Deviation | Impact |
+|-----------|--------|
+| Fleet Connectivity offline @ 24h vs rental offline @ 48h | Same vehicle **bookable** on fleet map but **offline** on connectivity tab |
+| Missing `signal_delayed` on Fleet API | Soft-offline indistinguishable from hard offline |
+| `onlineStatus` OFFLINE @ 24h while `telemetryFreshness` = `signal_delayed` | API consumers using wrong field mis-rank vehicle |
+| Data Analyse `stale` label for 15m–24h | Operator vocabulary ≠ Fleet „standby“ |
+
+---
+
+## 14. Device-connection episode state machine
+
+See `docs/audits/data/fleet-connectivity-device-state-machine-2026-07.csv` (15 questions + current vs recommended states).
+
+### Current machine (simplified)
+
+```mermaid
+stateDiagram-v2
+  [*] --> UNKNOWN: no events
+  UNKNOWN --> UNPLUGGED_CONFIRMED: OBD_DEVICE_UNPLUGGED webhook
+  UNPLUGGED_CONFIRMED --> PLUGGED_CONFIRMED: OBD_DEVICE_PLUGGED_IN webhook newer
+  UNPLUGGED_CONFIRMED --> UNPLUGGED_CONFIRMED: snapshot obd=true + fresh telemetry
+  note right of UNPLUGGED_CONFIRMED: INCIDENT_VEHICLE_001 stuck here
+```
+
+### Recommended machine (not implemented)
+
+| State | Enter | Exit | Resolution method |
+|-------|-------|------|-------------------|
+| `UNPLUGGED_CONFIRMED` | Unplug webhook | Inferred/s explicit recovery | `EXPLICIT_PLUG_WEBHOOK` |
+| `PLUGGED_INFERRED` | Snapshot plug + fresh telemetry after T0 + same binding | New unplug | `SNAPSHOT_PLUG_SIGNAL` / `TELEMETRY_RESUMED` |
+| `PLUGGED_CONFIRMED` | Plug webhook | Unplug webhook | `EXPLICIT_PLUG_WEBHOOK` |
+| `UNKNOWN` | No evidence | Any confirmed transition | — |
+| `NOT_APPLICABLE` | Non-LTE_R1 / synthetic OEM | — | — |
+
+---
+
+## 15. Snapshot-based recovery rule evaluation
+
+**Desired rule:** Unplug @ T0 + snapshot @ T1 (T1>T0) + same provider/binding + physical OBD + non-backfill ⇒ close episode, state `PLUGGED_INFERRED`.
+
+| Criterion | Data available today? | Gap |
+|-----------|----------------------|-----|
+| Unplug @ T0 | Yes — `dimo_device_connection_events.observedAt` | — |
+| Snapshot @ T1 | Yes — `VehicleLatestState.lastSeenAt`, `rawPayloadJson.obdIsPluggedIn` | Signal-level timestamp in raw JSON; not used in read model |
+| T1 > T0 | Comparable in code | Not implemented |
+| Same provider | Yes — DIMO-only path today | — |
+| Same device/token binding | Partial — `tokenId` on events + `dimoTokenId` on VLS | **No binding episode ID**; token change not invalidating episode |
+| Physical OBD/R1 | Yes — `hardwareType=LTE_R1` | Synthetic path not excluded from episode |
+| Non-backfill | Partial — `providerFetchedAt` vs `sourceTimestamp` | No backfill guard in device read model |
+| Not delayed stale OEM-only cloud | Partial — `aftermarketDevice` vs `syntheticDevice` in `dimoVehicle.rawJson` | Not used in episode logic |
+
+**Timestamp semantics:**
+- Webhook: `observedAt` = provider trigger time (intake default `now` if missing)
+- Snapshot: `lastSeenAt` = newest signal timestamp in snapshot; `providerFetchedAt` = SynqDrive ingest time
+
+**Verdict:** **All raw inputs exist** to implement the rule in read-model or intake; **no code path applies them** for episode closure.
+
+---
+
+## 16. Readiness / coverage audit
+
+See `docs/audits/data/fleet-connectivity-readiness-factor-map-2026-07.csv`.
+
+| Issue | Detail |
+|-------|--------|
+| Score = coverage | `readinessScore` identical to `signalCoveragePercent` — not freshness-weighted |
+| EV SoC on ICE | `evSoc` in denominator; missing → lowers score |
+| Fuel on EV | `fuel` in denominator; same |
+| OBD on synthetic | `obdPlug` scored; only LTE_R1 gates webhook UI not score |
+| Jamming without capability | Raw key presence sufficient for `available` |
+| GPS privacy | Coordinates missing → `missing` not `not_applicable` |
+| DTC without active fault | Poll timestamp or empty list still `available` |
+| Speed while parked | Available if value present — no parked context |
+
+**Recommended (document only):**
+```text
+readiness = usable_fresh_signals / expected_capability_supported_signals
+```
+where „usable fresh“ requires signal timestamp within live window and „expected“ comes from per-vehicle capability profile.
+
+---
+
+## 17. Webhook configuration status
+
+| Status enum (product) | Current derivation | True config source available? |
+|---------------------|-------------------|------------------------------|
+| CONFIGURED | `events.length > 0` → `active` | DIMO `DimoTriggersService.listWebhooks()` — **not used** |
+| NOT_CONFIGURED | `dimoLinked && no events` | **Unsafe inference** |
+| ERROR | **Not modeled** | Poll failures in `dimo_poll_logs` — separate from webhooks |
+| UNKNOWN | Default | — |
+
+Data Analyse duplicates same inference (`deviceConnectionWebhookIntake` in `data-analyse.service.ts`). **No DB subscription registry.** Ops doc (`DIMO_OBD_WEBHOOK_UNPLUG_ONLY_2026-07-08.md`) is authoritative but not machine-readable in app.
+
+---
+
+## 18. Phase 2 — confirmed contradictory rules
+
+| ID | Contradiction |
+|----|----------------|
+| **FC-C-01** | Fleet API `offline` @ 24h vs canonical `signal_delayed` until 48h |
+| **FC-C-02** | `openUnpluggedEpisode` (webhook) vs `obdIsPluggedIn=true` (snapshot) on same vehicle |
+| **FC-C-03** | Vehicle header OBD badge (snapshot false only) vs Fleet webhook chip (episode) |
+| **FC-C-04** | `webhookConfigured=not_configured` from zero events vs ops-configured unplug-only webhook |
+| **FC-C-05** | `readinessScore` label implies operational readiness; formula is static signal presence |
+| **FC-C-06** | `onlineStatus=OFFLINE` @ 24h vs `telemetryFreshness=signal_delayed` @ 24–48h on same API payload |
+
+---
+
+## 19. Recommended canonical state structure (Phase 2 proposal)
+
+Single operator-facing projection (not implemented):
+
+```text
+ConnectivityViewModel {
+  providerLink: LINKED | NOT_LINKED | REAUTH_REQUIRED | ERROR
+  telemetryFreshness: live | standby | signal_delayed | offline | no_signal  // 5-state canonical
+  deviceState: PLUGGED_CONFIRMED | PLUGGED_INFERRED | UNPLUGGED_CONFIRMED | UNKNOWN | NOT_APPLICABLE
+  episode: { open: boolean, since: ISO|null, resolution: ResolutionMethod|null }
+  webhookConfig: CONFIGURED | NOT_CONFIGURED | ERROR | UNKNOWN  // from DIMO API or registry
+  coverage: { usableFresh: number, expectedCapable: number, score: number }
+}
+```
+
+Episode closure for INCIDENT_VEHICLE_001 class: `deviceState=PLUGGED_INFERRED`, `episode.open=false`, `resolution=SNAPSHOT_PLUG_SIGNAL` when recovery rule predicates pass.
+
+---
+
+## 20. Phase 2 completion checklist
+
+- [x] All six status dimensions inventoried
+- [x] Derivation rules documented (CSV + summary)
+- [x] Freshness consumer matrix vs canonical 5-state
+- [x] Device episode state machine (current + recommended)
+- [x] Snapshot recovery rule gap analysis
+- [x] Readiness/coverage factor map
+- [x] Webhook configuration inference audit
+- [x] No production writes; no code fixes
+- [x] PII scan on new artifacts
+
+---
+
+*End of Phase 2. Do not proceed to Phase 3 in this agent turn.*
