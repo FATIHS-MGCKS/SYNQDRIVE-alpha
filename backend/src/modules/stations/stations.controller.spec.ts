@@ -11,6 +11,7 @@ import { StationMapboxService } from './station-mapbox.service';
 import { StationCalendarExceptionService } from './station-calendar-exception.service';
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
+import { StationOperationsTimelineService } from './station-operations-timeline.service';
 import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
 import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary-permission.guard';
@@ -50,6 +51,8 @@ describe('StationsController read security', () => {
     expect(metadata(STATIONS_PERMISSION_KEY, 'getFleet')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getBookings')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getOperations')).toBe('stations.read');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'getOperationsTimeline')).toBe('stations.read');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'getOperationsTimelineContract')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getTeam')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getActivity')).toBe('stations.view_activity');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getArchivePreview')).toBe('stations.archive');
@@ -63,6 +66,8 @@ describe('StationsController read security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'findOne')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getFleet')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getOperations')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'getOperationsTimeline')).toEqual({ resource: 'station' });
+    expect(metadata(STATION_SCOPE_KEY, 'getOperationsTimelineContract')).toEqual({ resource: 'none' });
     expect(metadata(STATION_SCOPE_KEY, 'getTeam')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getActivity')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getArchivePreview')).toEqual({ resource: 'station' });
@@ -172,8 +177,12 @@ describe('StationsController mutation handlers', () => {
     {} as StationCalendarExceptionService,
     {} as StationOperationalCapabilityService,
     {} as StationOperationsService,
+    {} as never,
+    {} as never,
     vehicleHomeFleetDelta as never,
     vehicleHomeAssignmentPreview as never,
+    {} as never,
+    {} as never,
   );
 
   beforeEach(() => {
@@ -296,6 +305,11 @@ describe('StationsController read handlers', () => {
     resolveForStation: jest.fn(),
   };
 
+  const stationOperationsTimeline = {
+    resolveForStation: jest.fn(),
+    getContractMetadata: jest.fn(),
+  };
+
   const controller = new StationsController(
     stationsService as unknown as StationsService,
     {} as StationMapboxService,
@@ -306,6 +320,7 @@ describe('StationsController read handlers', () => {
       getContractMetadata: jest.fn(),
       resolveForStation: jest.fn(),
     } as never,
+    stationOperationsTimeline as unknown as StationOperationsTimelineService,
     {} as never,
     {} as never,
     {} as never,
@@ -348,5 +363,24 @@ describe('StationsController read handlers', () => {
     await controller.findOne(ORG, STATION_A, req);
 
     expect(stationsService.findOne).toHaveBeenCalledWith(ORG, STATION_A, assignedScope);
+  });
+
+  it('delegates operations timeline reads to StationOperationsTimelineService', async () => {
+    stationOperationsTimeline.resolveForStation.mockResolvedValue({ entries: [] });
+    const req = { [STATION_SCOPE_CONTEXT_KEY]: assignedScope };
+
+    await controller.getOperationsTimeline(
+      ORG,
+      STATION_A,
+      { page: 2, pageSize: 25, sortOrder: 'desc' },
+      req,
+    );
+
+    expect(stationOperationsTimeline.resolveForStation).toHaveBeenCalledWith(
+      ORG,
+      STATION_A,
+      { page: 2, pageSize: 25, sortOrder: 'desc' },
+      assignedScope,
+    );
   });
 });

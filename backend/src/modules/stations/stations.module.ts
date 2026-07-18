@@ -7,6 +7,7 @@ import { StationCalendarExceptionService } from './station-calendar-exception.se
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
 import { StationSummaryReadModelService } from './station-summary-read-model.service';
+import { StationOperationsTimelineService } from './station-operations-timeline.service';
 import { StationVehicleRuntimeLoader } from './station-vehicle-runtime.loader';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
@@ -37,6 +38,7 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationOperationalCapabilityService,
     StationOperationsService,
     StationSummaryReadModelService,
+    StationOperationsTimelineService,
     StationVehicleRuntimeLoader,
     VehicleHomeFleetDeltaService,
     VehicleHomeAssignmentPreviewService,
