@@ -101,7 +101,7 @@ export interface AuthzEndpointCase {
   scope: StationScopeOptions;
   params?: Record<string, string>;
   body?: Record<string, unknown>;
-  specializedGuard?: 'update' | 'setPrimary' | 'assignVehicle' | 'vehicleLocation';
+  specializedGuard?: 'update' | 'setPrimary' | 'assignVehicle' | 'vehicleLocation' | 'changeVehicleHome';
 }
 
 export const AUTHZ_READ_ENDPOINTS: AuthzEndpointCase[] = [
@@ -248,6 +248,17 @@ export const AUTHZ_MUTATION_ENDPOINTS: AuthzEndpointCase[] = [
     scope: { resource: 'vehicle_location' },
     body: { vehicleId: AUTHZ_VEHICLE, currentStationId: AUTHZ_STATION_A },
     specializedGuard: 'vehicleLocation',
+  },
+  {
+    key: 'change-vehicle-home-station',
+    method: 'POST',
+    scope: { resource: 'vehicle_location' },
+    body: {
+      vehicleId: AUTHZ_VEHICLE,
+      newHomeStationId: AUTHZ_STATION_B,
+      expectedVersion: 0,
+    },
+    specializedGuard: 'changeVehicleHome',
   },
   {
     key: 'backfill-coordinates',

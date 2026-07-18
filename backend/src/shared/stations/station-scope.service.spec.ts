@@ -361,6 +361,17 @@ describe('StationScopeService', () => {
         { resource: 'vehicle_location' },
       ),
     ).resolves.toBeDefined();
+
+    await expect(
+      service.enforceRequestScope(
+        request({
+          method: 'POST',
+          params: { orgId: ORG },
+          body: { vehicleId: VEHICLE, newHomeStationId: STATION_B, expectedVersion: 0 },
+        }),
+        { resource: 'vehicle_location' },
+      ),
+    ).resolves.toBeDefined();
   });
 
   it('throws structured forbidden payloads', () => {

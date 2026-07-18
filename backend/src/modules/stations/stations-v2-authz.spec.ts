@@ -93,7 +93,7 @@ describe('Stations V2 authorization package', () => {
     });
 
     it('allows station manager on local ops but not archive/set-primary', async () => {
-      const allowed = ['update-master', 'update-operations', 'set-vehicles', 'assign-vehicle-home', 'backfill-coordinates'];
+      const allowed = ['update-master', 'update-operations', 'set-vehicles', 'assign-vehicle-home', 'change-vehicle-home-station', 'backfill-coordinates'];
       const denied = ['create', 'archive', 'set-primary', 'delete', 'restore'];
 
       for (const key of allowed) {
@@ -117,6 +117,10 @@ describe('Stations V2 authorization package', () => {
       const assignHome = AUTHZ_MUTATION_ENDPOINTS.find((e) => e.key === 'assign-vehicle-home')!;
       const error = await harness.assertDenied(assignHome, AUTHZ_PERSONAS.worker);
       harness.expectDeniedCode(error, StationsPermissionErrorCode.MISSING_PERMISSION);
+
+      const changeHome = AUTHZ_MUTATION_ENDPOINTS.find((e) => e.key === 'change-vehicle-home-station')!;
+      const changeHomeError = await harness.assertDenied(changeHome, AUTHZ_PERSONAS.worker);
+      harness.expectDeniedCode(changeHomeError, StationsPermissionErrorCode.MISSING_PERMISSION);
     });
 
     it('denies worker from set-primary even with explicit permission flag', async () => {

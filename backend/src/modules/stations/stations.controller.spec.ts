@@ -16,6 +16,7 @@ import { StationsPermissionGuard } from './guards/stations-permission.guard';
 import { StationsSetPrimaryPermissionGuard } from './guards/stations-set-primary-permission.guard';
 import { StationsUpdatePermissionGuard } from './guards/stations-update-permission.guard';
 import { StationsVehicleLocationPermissionGuard } from './guards/stations-vehicle-location-permission.guard';
+import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-change-vehicle-home-permission.guard';
 import { STATIONS_PERMISSION_KEY } from './decorators/require-stations-permission.decorator';
 
 const ORG = 'org-1';
@@ -103,6 +104,9 @@ describe('StationsController mutation security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'updateVehicleCurrentStation')).toEqual({
       resource: 'vehicle_location',
     });
+    expect(metadata(STATION_SCOPE_KEY, 'changeVehicleHomeStation')).toEqual({
+      resource: 'vehicle_location',
+    });
   });
 
   it('applies specialized mutation permission guards', () => {
@@ -121,6 +125,53 @@ describe('StationsController mutation security', () => {
     expect(
       Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.updateVehicleCurrentStation),
     ).toEqual(expect.arrayContaining([StationsVehicleLocationPermissionGuard]));
+    expect(
+      Reflect.getMetadata(GUARDS_METADATA, StationsController.prototype.changeVehicleHomeStation),
+    ).toEqual(expect.arrayContaining([StationsChangeVehicleHomePermissionGuard]));
+  });
+});
+
+describe('StationsController mutation handlers', () => {
+  const stationsService = {
+    changeVehicleHomeStation: jest.fn(),
+  };
+
+  const controller = new StationsController(
+    stationsService as unknown as StationsService,
+    {} as StationMapboxService,
+    {} as StationCalendarExceptionService,
+    {} as StationOperationalCapabilityService,
+    {} as StationOperationsService,
+  );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('delegates changeVehicleHomeStation to service with normalized payload', async () => {
+    stationsService.changeVehicleHomeStation.mockResolvedValue({ outcome: 'APPLIED' });
+
+    await controller.changeVehicleHomeStation(
+      ORG,
+      {
+        vehicleId: 'veh-1',
+        newHomeStationId: STATION_B,
+        expectedVersion: 2,
+        reason: 'Rebalance',
+      },
+      'user-1',
+    );
+
+    expect(stationsService.changeVehicleHomeStation).toHaveBeenCalledWith(
+      ORG,
+      {
+        vehicleId: 'veh-1',
+        newHomeStationId: STATION_B,
+        expectedVersion: 2,
+        reason: 'Rebalance',
+      },
+      'user-1',
+    );
   });
 });
 

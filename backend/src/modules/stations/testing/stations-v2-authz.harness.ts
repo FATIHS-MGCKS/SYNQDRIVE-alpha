@@ -10,6 +10,7 @@ import { StationsUpdatePermissionGuard } from '../guards/stations-update-permiss
 import { StationsSetPrimaryPermissionGuard } from '../guards/stations-set-primary-permission.guard';
 import { StationsAssignVehiclePermissionGuard } from '../guards/stations-assign-vehicle-permission.guard';
 import { StationsVehicleLocationPermissionGuard } from '../guards/stations-vehicle-location-permission.guard';
+import { StationsChangeVehicleHomePermissionGuard } from '../guards/stations-change-vehicle-home-permission.guard';
 import { StationScopeGuard } from '@shared/guards/station-scope.guard';
 import { STATIONS_PERMISSION_KEY } from '../decorators/require-stations-permission.decorator';
 import { STATION_SCOPE_KEY } from '@shared/decorators/station-scope.decorator';
@@ -52,6 +53,7 @@ export class StationsV2AuthzHarness {
   readonly setPrimaryGuard = new StationsSetPrimaryPermissionGuard(this.stationsAccess);
   readonly assignGuard = new StationsAssignVehiclePermissionGuard(this.stationsAccess);
   readonly vehicleLocationGuard = new StationsVehicleLocationPermissionGuard(this.stationsAccess);
+  readonly changeVehicleHomeGuard = new StationsChangeVehicleHomePermissionGuard(this.stationsAccess);
 
   reset(): void {
     jest.clearAllMocks();
@@ -167,6 +169,9 @@ export class StationsV2AuthzHarness {
         return;
       case 'vehicleLocation':
         await this.vehicleLocationGuard.canActivate(ctx);
+        return;
+      case 'changeVehicleHome':
+        await this.changeVehicleHomeGuard.canActivate(ctx);
         return;
       default:
         return;
