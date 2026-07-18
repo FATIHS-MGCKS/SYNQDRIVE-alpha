@@ -8,6 +8,7 @@ import { VoiceCallOrchestrationModule } from '@modules/voice-call-orchestration/
 import { VoiceProtectionModule } from '@modules/voice-protection/voice-protection.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceEntitlementModule } from '@modules/voice-entitlement/voice-entitlement.module';
+import { VoiceRolloutModule } from '@modules/voice-rollout/voice-rollout.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { ElevenLabsService } from './elevenlabs.service';
 import { VoiceAssistantService } from './voice-assistant.service';
@@ -44,6 +45,7 @@ import { VoiceSecretsStartupService } from './security/voice-secrets-startup.ser
     VoiceProtectionModule,
     VoiceBillingModule,
     VoiceEntitlementModule,
+    VoiceRolloutModule,
     VoiceWebhookIngestionModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS }),
   ],

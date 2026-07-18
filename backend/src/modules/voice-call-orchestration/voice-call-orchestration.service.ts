@@ -30,6 +30,8 @@ import { VoiceMcpTokenService } from '@modules/voice-mcp-gateway/voice-mcp-token
 import { VoiceInternalEventIngestService } from '@modules/voice-webhook-ingestion/voice-internal-event-ingest.service';
 import { buildInboundFallbackTwiml, buildLegacyDiagnosticTwiml } from '@modules/twilio/twilio-voice-twiml.util';
 import { VoiceCallPolicyService } from './voice-call-policy.service';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
+import { VoiceRolloutDeniedError, toRolloutHttpException } from '@modules/voice-rollout/voice-rollout-reason-codes';
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
 import { resolveAllowedMcpToolsForAssistant } from './voice-mcp-tools.util';
 import {
@@ -58,6 +60,7 @@ export class VoiceCallOrchestrationService {
     private readonly phoneNumbers: VoicePhoneNumberRepository,
     private readonly policy: VoiceCallPolicyService,
     private readonly protection: VoiceBudgetEnforcementService,
+    private readonly rollout: VoiceRolloutService,
     private readonly mcpTokens: VoiceMcpTokenService,
     private readonly internalEvents: VoiceInternalEventIngestService,
   ) {}
@@ -72,76 +75,50 @@ export class VoiceCallOrchestrationService {
       ]);
     }
 
-    if (!isVoiceNativeTwilioIntegrationEnabled()) {
-      blockers.push({
-        code: 'native_integration_disabled',
-        message: 'VOICE_NATIVE_TWILIO_INTEGRATION is not enabled.',
+    const rollout = await this.rollout.evaluateCallPrerequisites(organizationId, 'inbound');
+    for (const blocker of rollout.blockers) {
+      blockers.push({ code: blocker.code, message: blocker.message });
+    }
+
+    if (blockers.length === 0) {
+      const phone = await this.resolveAssignedPhoneNumber(organizationId, assistant.phoneNumberId);
+      if (!phone) {
+        blockers.push({ code: 'phone_missing', message: 'No org voice phone number is assigned.' });
+      }
+
+      const deployment = await this.prisma.voiceAgentDeployment.findFirst({
+        where: {
+          organizationId,
+          status: VoiceAgentDeploymentStatus.ACTIVE,
+          provider: VoiceControlPlaneProvider.ELEVENLABS,
+          archivedAt: null,
+        },
+        orderBy: { version: 'desc' },
       });
-    }
 
-    if (assistant.status !== VoiceAssistantStatus.ACTIVE) {
-      blockers.push({ code: 'assistant_inactive', message: 'Voice assistant is not active.' });
-    }
+      const mcpGatewayConfigured =
+        isVoiceMcpGatewayFeatureEnabled() && Boolean(buildCanonicalVoiceMcpGatewayUrl(organizationId));
 
-    const phone = await this.resolveAssignedPhoneNumber(organizationId, assistant.phoneNumberId);
-    if (!phone) {
-      blockers.push({ code: 'phone_missing', message: 'No org voice phone number is assigned.' });
-    } else {
-      if (phone.lifecycle !== VoicePhoneNumberLifecycle.ACTIVE) {
-        blockers.push({ code: 'phone_inactive', message: 'Assigned phone number is not active.' });
-      }
-      if (phone.elevenLabsImportStatus !== VoiceElevenLabsImportStatus.ASSIGNED) {
-        blockers.push({
-          code: 'phone_not_imported',
-          message: 'Twilio number is not imported and assigned in ElevenLabs.',
-        });
-      }
-    }
+      const route: VoiceInboundRoute =
+        blockers.length === 0 ? 'native_elevenlabs' : assistant.status !== VoiceAssistantStatus.ACTIVE
+          ? 'assistant_fallback'
+          : 'rejected';
 
-    const deployment = await this.prisma.voiceAgentDeployment.findFirst({
-      where: {
+      return this.readinessResult(
         organizationId,
-        status: VoiceAgentDeploymentStatus.ACTIVE,
-        provider: VoiceControlPlaneProvider.ELEVENLABS,
-        archivedAt: null,
-      },
-      orderBy: { version: 'desc' },
-    });
-    if (!deployment) {
-      blockers.push({ code: 'deployment_missing', message: 'No active ElevenLabs agent deployment.' });
-    }
-
-    const mcpGatewayConfigured =
-      isVoiceMcpGatewayFeatureEnabled() && Boolean(buildCanonicalVoiceMcpGatewayUrl(organizationId));
-    if (isVoiceMcpGatewayFeatureEnabled() && !mcpGatewayConfigured) {
-      blockers.push({
-        code: 'mcp_url_missing',
-        message: 'MCP gateway public URL is not configured.',
-      });
-    }
-
-    const budgetDegradation = await this.protection.evaluateInboundDegradation(organizationId);
-    if (budgetDegradation.degraded) {
-      blockers.push({
-        code: budgetDegradation.reasonCode ?? 'inbound_budget_degraded',
-        message: budgetDegradation.message ?? 'Inbound voice degraded due to budget limits.',
-      });
+        assistant.id,
+        phone?.id ?? null,
+        deployment?.id ?? null,
+        route,
+        blockers,
+        mcpGatewayConfigured,
+      );
     }
 
     const route: VoiceInboundRoute =
-      blockers.length === 0 ? 'native_elevenlabs' : assistant.status !== VoiceAssistantStatus.ACTIVE
-        ? 'assistant_fallback'
-        : 'rejected';
+      assistant.status !== VoiceAssistantStatus.ACTIVE ? 'assistant_fallback' : 'rejected';
 
-    return this.readinessResult(
-      organizationId,
-      assistant.id,
-      phone?.id ?? null,
-      deployment?.id ?? null,
-      route,
-      blockers,
-      mcpGatewayConfigured,
-    );
+    return this.readinessResult(organizationId, assistant.id, null, null, route, blockers);
   }
 
   resolveInboundTwiml(params: {
@@ -188,7 +165,10 @@ export class VoiceCallOrchestrationService {
     if (assistant && assistant.status !== VoiceAssistantStatus.ACTIVE) {
       return 'assistant_fallback';
     }
-    if (isLegacyDiagnosticCallsEnabled()) {
+    const legacyRollout = await this.rollout.evaluateSurface(organizationId, 'legacy_diagnostic', {
+      skipRuntimePrerequisites: true,
+    });
+    if (legacyRollout.allowed && isLegacyDiagnosticCallsEnabled()) {
       return 'legacy_diagnostic';
     }
     return 'rejected';
@@ -322,6 +302,17 @@ export class VoiceCallOrchestrationService {
   async assertLegacyDiagnosticCallAllowed(
     request: VoiceLegacyDiagnosticCallRequest,
   ): Promise<void> {
+    try {
+      await this.rollout.assertSurfaceAllowed(request.organizationId, 'legacy_diagnostic', {
+        skipRuntimePrerequisites: true,
+      });
+    } catch (err) {
+      if (err instanceof VoiceRolloutDeniedError) {
+        throw toRolloutHttpException(err);
+      }
+      throw err;
+    }
+
     if (!isLegacyDiagnosticCallsEnabled()) {
       throw new ForbiddenException(
         'Legacy Twilio Say diagnostic calls are disabled. Set VOICE_LEGACY_DIAGNOSTIC_CALLS=true to enable.',

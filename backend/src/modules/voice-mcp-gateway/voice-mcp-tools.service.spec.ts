@@ -14,6 +14,7 @@ import {
   VoiceSubscriptionRepository,
 } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
 import { VoiceEntitlementService } from '@modules/voice-entitlement/voice-entitlement.service';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
 import { VoiceMcpError } from './voice-mcp-errors';
 
 describe('VoiceMcpToolsService', () => {
@@ -191,6 +192,9 @@ describe('VoiceMcpGatewayMiddlewareService', () => {
   const deployments = {
     findById: jest.fn(),
   };
+  const rollout = {
+    evaluateSurface: jest.fn().mockResolvedValue({ allowed: true, blockers: [] }),
+  };
   let entitlements: VoiceEntitlementService;
 
   beforeEach(async () => {
@@ -205,6 +209,7 @@ describe('VoiceMcpGatewayMiddlewareService', () => {
         { provide: VoiceSubscriptionRepository, useValue: subscriptions },
         { provide: VoiceAgentDeploymentRepository, useValue: deployments },
         { provide: VoiceEntitlementService, useValue: entitlements },
+        { provide: VoiceRolloutService, useValue: rollout },
       ],
     }).compile();
 

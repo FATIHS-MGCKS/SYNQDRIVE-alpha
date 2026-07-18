@@ -152,6 +152,12 @@ describe('AgentDeploymentService', () => {
       new AgentDeploymentDiffService(),
       readinessService,
       { record: jest.fn() } as unknown as AuditService,
+      {
+        assertCapability: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
+      } as unknown as import('@modules/voice-entitlement/voice-entitlement.service').VoiceEntitlementService,
+      {
+        assertSurfaceAllowed: jest.fn().mockResolvedValue({ status: 'CANARY' }),
+      } as unknown as import('@modules/voice-rollout/voice-rollout.service').VoiceRolloutService,
     );
   });
 

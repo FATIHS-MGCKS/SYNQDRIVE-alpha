@@ -24,6 +24,7 @@ import {
   VoiceSubscriptionRepository,
 } from '../control-plane/voice-control-plane.repository';
 import { VoiceProviderWebhookEventRepository } from '../control-plane/voice-audit-persistence.repository';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
 
 type WebhookEventRow = {
   id: string;
@@ -58,6 +59,7 @@ export class VoiceControlPlaneAdminService {
     private readonly provisioningJobs: VoiceProvisioningJobRepository,
     private readonly deployments: VoiceAgentDeploymentRepository,
     private readonly agentDeployment: AgentDeploymentService,
+    private readonly rollout: VoiceRolloutService,
     @InjectQueue(QUEUE_NAMES.VOICE_WEBHOOK_PROCESS)
     private readonly webhookQueue: Queue,
   ) {}
@@ -345,9 +347,12 @@ export class VoiceControlPlaneAdminService {
 
     const subscription = await this.subscriptionRepo.findActiveByOrganization(orgId);
 
+    const rollout = await this.rollout.getStatusView(orgId);
+
     return {
       detail,
       subscription,
+      rollout,
       billing,
       protectionAudit: protection,
       providerAccounts: accounts.map(a => ({

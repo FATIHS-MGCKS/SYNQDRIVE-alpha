@@ -15,6 +15,7 @@ import { DocumentsModule } from '@modules/documents/documents.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceEntitlementModule } from '@modules/voice-entitlement/voice-entitlement.module';
+import { VoiceRolloutModule } from '@modules/voice-rollout/voice-rollout.module';
 import { VoiceMcpGatewayController } from './voice-mcp-gateway.controller';
 import { VoiceMcpApprovalController } from './voice-mcp-approval.controller';
 import { VoiceMcpTokenService } from './voice-mcp-token.service';
@@ -58,6 +59,7 @@ import {
     DocumentsModule,
     VoiceWebhookIngestionModule,
     VoiceEntitlementModule,
+    VoiceRolloutModule,
   ],
   controllers: [VoiceMcpGatewayController, VoiceMcpApprovalController],
   providers: [

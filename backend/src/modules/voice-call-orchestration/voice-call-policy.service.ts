@@ -6,13 +6,18 @@ import {
   toProtectionHttpException,
 } from '@modules/voice-protection/voice-protection-reason-codes';
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
-import { isVoiceNativeTwilioIntegrationEnabled } from './voice-feature-flags.config';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
+import {
+  VoiceRolloutDeniedError,
+  toRolloutHttpException,
+} from '@modules/voice-rollout/voice-rollout-reason-codes';
 
 @Injectable()
 export class VoiceCallPolicyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly enforcement: VoiceBudgetEnforcementService,
+    private readonly rollout: VoiceRolloutService,
   ) {}
 
   async assertOutboundCallAllowed(params: {
@@ -21,10 +26,13 @@ export class VoiceCallPolicyService {
     voiceAssistantId: string;
     conversationId?: string;
   }): Promise<{ conversationSlotId: string }> {
-    if (!isVoiceNativeTwilioIntegrationEnabled()) {
-      throw new ForbiddenException(
-        'Native ElevenLabs-Twilio outbound calls are not enabled for this environment.',
-      );
+    try {
+      await this.rollout.assertSurfaceAllowed(params.organizationId, 'outbound');
+    } catch (err) {
+      if (err instanceof VoiceRolloutDeniedError) {
+        throw toRolloutHttpException(err);
+      }
+      throw err;
     }
 
     const assistant = await this.prisma.voiceAssistant.findFirst({
