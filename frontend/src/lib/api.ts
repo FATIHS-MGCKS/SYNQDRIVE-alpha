@@ -5947,6 +5947,63 @@ export const api = {
         payload,
       ),
 
+    phoneOnboarding: {
+      get: (orgId: string) =>
+        get<VoicePhoneOnboardingView>(`/organizations/${orgId}/voice-assistant/phone-onboarding`),
+      selectPath: (orgId: string, path: VoicePhoneOnboardingPath) =>
+        post<VoicePhoneOnboardingView>(`/organizations/${orgId}/voice-assistant/phone-onboarding/path`, {
+          path,
+        }),
+      searchNumbers: (
+        orgId: string,
+        payload: { areaCode?: string; numberType?: 'local' | 'mobile'; limit?: number },
+      ) =>
+        post<VoicePhoneNumberSearchResponse>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/search-numbers`,
+          payload,
+        ),
+      previewPurchase: (orgId: string, selectionToken: string) =>
+        post<{
+          maskedPhoneNumber: string | null;
+          monthlyCostCents: number;
+          regulatoryStatus: string | null;
+        }>(`/organizations/${orgId}/voice-assistant/phone-onboarding/purchase-preview`, {
+          selectionToken,
+          confirm: true,
+          dryRun: true,
+        }),
+      confirmPurchase: (orgId: string, selectionToken: string) =>
+        post<unknown>(`/organizations/${orgId}/voice-assistant/phone-onboarding/purchase`, {
+          selectionToken,
+          confirm: true,
+        }),
+      updateForward: (
+        orgId: string,
+        payload: { carrierNotes?: string; loopProtectionAcknowledged?: boolean },
+      ) =>
+        patch<VoicePhoneOnboardingView>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/forward`,
+          payload,
+        ),
+      recordForwardTest: (orgId: string, result: 'passed' | 'failed') =>
+        post<VoicePhoneOnboardingView>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/forward/test`,
+          { result },
+        ),
+      updatePort: (
+        orgId: string,
+        payload: { checklistAcknowledged: boolean; documentsSubmitted?: boolean },
+      ) =>
+        patch<VoicePhoneOnboardingView>(
+          `/organizations/${orgId}/voice-assistant/phone-onboarding/port`,
+          payload,
+        ),
+      requestSip: (orgId: string, contactEmail?: string) =>
+        post<VoicePhoneOnboardingView>(`/organizations/${orgId}/voice-assistant/phone-onboarding/sip-request`, {
+          contactEmail,
+        }),
+    },
+
     billing: {
       plans: (orgId: string) =>
         get<VoicePlanCatalogEntry[]>(`/organizations/${orgId}/voice-assistant/billing/plans`),
@@ -10437,6 +10494,67 @@ export interface VoiceTelephonySettingsPayload {
   telephonyEnabled?: boolean;
   inboundEnabled?: boolean;
   outboundEnabled?: boolean;
+}
+
+export type VoicePhoneOnboardingPath =
+  | 'new_synqdrive_number'
+  | 'forward_existing'
+  | 'port_number'
+  | 'sip_pbx';
+
+export type VoicePhoneOnboardingStatus =
+  | 'not_started'
+  | 'path_selected'
+  | 'evidence_required'
+  | 'under_review'
+  | 'reserved'
+  | 'active'
+  | 'failed'
+  | 'suspended';
+
+export interface VoicePhoneOnboardingView {
+  organizationId: string;
+  path: VoicePhoneOnboardingPath | null;
+  status: VoicePhoneOnboardingStatus;
+  statusLabelKey: string;
+  maskedAssignedNumber: string | null;
+  synqDriveTargetNumber: string | null;
+  provisioningJob: {
+    id: string;
+    status: string;
+    currentStep: string | null;
+    progressPct: number | null;
+    errorMessage: string | null;
+  } | null;
+  regulatory: {
+    overall: string;
+    bundle: string;
+    address: string;
+    endUser: string;
+  } | null;
+  regulatoryRequirements: string[];
+  monthlyNumberCostCents: number;
+  trialPurchaseBlocked: boolean;
+  canPurchase: boolean;
+  record: Record<string, unknown>;
+}
+
+export interface VoicePhoneNumberSearchResult {
+  selectionToken: string;
+  maskedPhoneNumber: string;
+  locality: string | null;
+  region: string | null;
+  capabilities: { voice: boolean; sms: boolean; mms: boolean };
+  regulatoryRequirements: string[];
+  expiresAt: string;
+}
+
+export interface VoicePhoneNumberSearchResponse {
+  organizationId: string;
+  results: VoicePhoneNumberSearchResult[];
+  monthlyCostCents?: number;
+  cached: boolean;
+  expiresAt: string;
 }
 
 export interface VoiceReadinessItem {

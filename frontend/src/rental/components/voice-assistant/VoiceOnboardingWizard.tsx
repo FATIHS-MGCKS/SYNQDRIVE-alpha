@@ -351,16 +351,9 @@ export function VoiceOnboardingWizard({
           <VoiceTelephonyWizard
             orgId={orgId}
             assistant={assistant}
-            readinessElevenLabsOk={readiness?.checks.find(c => c.key === 'elevenlabs')?.ok}
             isBusy={isBusy}
             onAssistantUpdated={onAssistantUpdated}
             onNavigateTest={() => void goToStep('tests')}
-            onError={err => toast.error(t('voice.phone.error'), { description: getErrorMessage(err) })}
-            loadPhoneNumbers={() => api.voiceAssistant.phoneNumbers(orgId)}
-            assignPhoneNumber={phoneNumberId => api.voiceAssistant.assignPhoneNumber(orgId, phoneNumberId)}
-            unassignPhoneNumber={() => api.voiceAssistant.unassignPhoneNumber(orgId)}
-            refreshTelephony={() => api.voiceAssistant.refreshTelephony(orgId)}
-            updateTelephonySettings={payload => api.voiceAssistant.updateTelephonySettings(orgId, payload)}
           />
         )}
 

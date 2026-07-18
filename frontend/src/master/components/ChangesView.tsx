@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-phone-onboarding-2026-07-18',
+    version: '4.9.601',
+    title: 'V4.9.601 — Voice AI: professional phone number onboarding (6A)',
+    summary: [
+      'Replaced provider-centric telephony wizard with managed-service phone onboarding (4 paths: new number, forward, port, SIP).',
+      'Org APIs: phone-onboarding status, masked number search with selection tokens, explicit paid purchase confirmation, forward/port/SIP flows.',
+      'Removed ElevenLabs Agent ID, Twilio SID, API-key hints, and external purchase prompts from customer UI.',
+    ],
+    reason: 'Prompt 6A — professional telephony onboarding without provider leakage.',
+    previousBehavior:
+      'VoiceTelephonyWizard exposed ElevenLabs agent IDs, provider API key messaging, and ElevenLabs number picker.',
+    details:
+      'VoicePhoneOnboardingPanel, voice-phone-onboarding service/API, phone_onboarding JSON migration, selection tokens; architecture/VOICE_AI_PHONE_NUMBER_ONBOARDING_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:45:00.000Z',
+  },
+  {
     id: 'voice-knowledge-permission-center-2026-07-18',
     version: '4.9.600',
     title: 'V4.9.600 — Voice AI: knowledge and permission center (5B)',
