@@ -198,7 +198,7 @@ export interface StationBookingRulesContractMetadata {
   outcomes: StationBookingRuleOutcome[];
   reasonCodes: StationBookingRuleReasonCode[];
   bookingTypes: StationBookingRulesBookingType[];
-  bookingIntegration: false;
+  bookingIntegration: true;
   /** UI must not re-derive rules from opening hours in the browser. */
   frontendRecomputation: false;
   instantEvaluation: 'station_timezone';
@@ -213,7 +213,7 @@ export function getStationBookingRulesContractMetadata(): StationBookingRulesCon
     outcomes: Object.values(StationBookingRuleOutcome),
     reasonCodes: Object.values(StationBookingRuleReasonCode),
     bookingTypes: Object.values(StationBookingRulesBookingType),
-    bookingIntegration: false,
+    bookingIntegration: true,
     frontendRecomputation: false,
     instantEvaluation: 'station_timezone',
     calendarIntegration: 'opening_calendar_v2',

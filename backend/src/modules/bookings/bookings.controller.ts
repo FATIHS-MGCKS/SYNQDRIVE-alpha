@@ -273,9 +273,10 @@ export class BookingsController {
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
     @Body() body: Prisma.BookingUpdateInput,
   ) {
-    return this.bookingsService.update(orgId, id, body);
+    return this.bookingsService.update(orgId, id, body, { userId });
   }
 
   @Delete(':id')

@@ -30,6 +30,21 @@ import {
   requireQuoteId,
 } from '@modules/pricing/pricing-quote.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
+import { StationBookingRulesService } from '@modules/stations/station-booking-rules.service';
+import {
+  assessBookingStationRulesPersistence,
+  bookingRequiresStationRulesEvaluation,
+  extractStationBookingRulesContext,
+  resolveServerBookingRulesType,
+  serializeStationBookingRulesSnapshot,
+  stripStationBookingRulesRequestFields,
+} from '@shared/stations/booking-station-rules-enforcement.util';
+import {
+  StationBookingRulesBookingChannel,
+  type StationBookingRulesResult,
+} from '@shared/stations/station-booking-rules.contract';
+import type { StationRuleManualOverrideInput } from '@shared/stations/station-rule-manual-override.contract';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import {
   assertValidBookingWindow,
@@ -97,6 +112,7 @@ export class BookingsService {
     private readonly pricingService: PricingService,
     private readonly pricingQuoteService: PricingQuoteService,
     private readonly stationValidation: StationValidationService,
+    private readonly stationBookingRules: StationBookingRulesService,
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
     private readonly fleetMapCache: FleetMapCacheService,
@@ -139,6 +155,70 @@ export class BookingsService {
         vehicleId,
       });
     }
+  }
+
+  private async enforceStationBookingRules(input: {
+    orgId: string;
+    vehicleId: string;
+    pickupStationId: string;
+    returnStationId: string;
+    startDate: Date;
+    endDate: Date;
+    isOneWayRental: boolean;
+    bookingId?: string;
+    manualOverride?: StationRuleManualOverrideInput | null;
+    actor?: PermissionActor | null;
+  }): Promise<StationBookingRulesResult> {
+    const result = await this.stationBookingRules.evaluateRequest(
+      input.orgId,
+      {
+        pickupStationId: input.pickupStationId,
+        returnStationId: input.returnStationId,
+        pickupDateTime: input.startDate.toISOString(),
+        returnDateTime: input.endDate.toISOString(),
+        bookingType: resolveServerBookingRulesType(input.isOneWayRental),
+        vehicleId: input.vehicleId,
+        bookingContext: {
+          channel: StationBookingRulesBookingChannel.INTERNAL_ADMIN,
+          bookingId: input.bookingId ?? null,
+          manualOverride: input.manualOverride
+            ? {
+                reason: input.manualOverride.reason,
+                expiresAt:
+                  input.manualOverride.expiresAt instanceof Date
+                    ? input.manualOverride.expiresAt.toISOString()
+                    : input.manualOverride.expiresAt ?? null,
+              }
+            : null,
+        },
+      },
+      undefined,
+      input.actor ?? undefined,
+    );
+
+    const assessment = assessBookingStationRulesPersistence(result);
+    if (!assessment.allowed) {
+      throw new ConflictException({
+        message: assessment.blocked
+          ? 'Buchung durch Stations-Regeln blockiert.'
+          : 'Manuelle Bestätigung der Stations-Regeln erforderlich.',
+        code: assessment.code,
+        stationBookingRules: result,
+        manualOverrideRequired: assessment.manualOverrideRequired,
+      });
+    }
+
+    return result;
+  }
+
+  private async linkStationBookingRulesOverride(
+    orgId: string,
+    bookingId: string,
+    result: StationBookingRulesResult | null,
+  ): Promise<void> {
+    const overrideId = result?.manualOverrideAudit?.id;
+    if (!overrideId) return;
+    await this.stationBookingRules.linkOverrideAuditToBooking(orgId, overrideId, bookingId);
   }
 
   async create(
@@ -245,11 +325,35 @@ export class BookingsService {
       });
 
     const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
+    const stationRulesContext = extractStationBookingRulesContext(anyData);
     const stationFields = await this.resolveBookingStationFields(
       orgId,
       await this.applyBookingStationDefaults(orgId, anyData, vehicleId),
     );
-    const bookingData = this.stripBookingCreateScalars(data as Record<string, unknown>);
+    let stationBookingRulesResult: StationBookingRulesResult | null = null;
+    if (
+      bookingRequiresStationRulesEvaluation({
+        pickupStationId: stationFields.pickupStationId,
+        returnStationId: stationFields.returnStationId,
+        pickupAddressOverride: stationFields.pickupAddressOverride,
+        returnAddressOverride: stationFields.returnAddressOverride,
+      })
+    ) {
+      stationBookingRulesResult = await this.enforceStationBookingRules({
+        orgId,
+        vehicleId,
+        pickupStationId: stationFields.pickupStationId!,
+        returnStationId: stationFields.returnStationId!,
+        startDate,
+        endDate,
+        isOneWayRental: stationFields.isOneWayRental ?? false,
+        manualOverride: stationRulesContext?.manualOverride ?? null,
+        actor: options?.userId ? { id: options.userId } : null,
+      });
+    }
+    const bookingData = this.stripBookingCreateScalars(
+      stripStationBookingRulesRequestFields(data as Record<string, unknown>),
+    );
 
     const booking = await this.prisma.$transaction(async (tx) => {
       const created = await tx.booking.create({
@@ -257,6 +361,9 @@ export class BookingsService {
           ...bookingData,
           ...pricedFields,
           ...this.stationFieldsToPrismaInput(stationFields, { forCreate: true }),
+          stationBookingRulesSnapshot: stationBookingRulesResult
+            ? (serializeStationBookingRulesSnapshot(stationBookingRulesResult) as unknown as Prisma.InputJsonValue)
+            : undefined,
           organization: { connect: { id: orgId } },
         } as Prisma.BookingCreateInput,
       });
@@ -272,6 +379,8 @@ export class BookingsService {
 
       return created;
     });
+
+    await this.linkStationBookingRulesOverride(orgId, booking.id, stationBookingRulesResult);
 
     try {
       await this.invoicesService.bootstrapBookingInvoice(orgId, {
@@ -342,10 +451,12 @@ export class BookingsService {
       healthGateStatus: rentalGate.healthGateStatus,
       healthGateWarning: rentalGate.healthGateWarning,
       manualReviewRequired: rentalGate.manualReviewRequired,
+      stationBookingRules: stationBookingRulesResult,
     } as Booking & {
       healthGateStatus?: string;
       healthGateWarning?: string | null;
       manualReviewRequired?: boolean;
+      stationBookingRules?: StationBookingRulesResult | null;
     };
   }
 
@@ -1575,12 +1686,15 @@ export class BookingsService {
     orgId: string,
     id: string,
     data: Prisma.BookingUpdateInput,
+    options?: { userId?: string | null },
   ): Promise<Booking> {
     const existing = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
     });
 
     const anyData = data as Record<string, unknown>;
+    const stationRulesContext = extractStationBookingRulesContext(anyData);
+    delete anyData.stationBookingRules;
     const nextVehicleId =
       (anyData.vehicleId as string | undefined) ??
       (anyData.vehicle as { connect?: { id?: string } } | undefined)?.connect?.id ??
@@ -1692,33 +1806,77 @@ export class BookingsService {
       anyData.actualPickupStationId !== undefined ||
       anyData.actualReturnStationId !== undefined ||
       anyData.isOneWayRental !== undefined;
+    const effectivePickupStationId =
+      (anyData.pickupStationId as string | undefined) ??
+      (anyData.pickupStation as { connect?: { id?: string } } | undefined)?.connect?.id ??
+      existing.pickupStationId;
+    const effectiveReturnStationId =
+      (anyData.returnStationId as string | undefined) ??
+      (anyData.returnStation as { connect?: { id?: string } } | undefined)?.connect?.id ??
+      existing.returnStationId;
+    const effectivePickupAddressOverride =
+      (anyData.pickupAddressOverride as string | undefined) ?? existing.pickupAddressOverride;
+    const effectiveReturnAddressOverride =
+      (anyData.returnAddressOverride as string | undefined) ?? existing.returnAddressOverride;
+    let effectiveIsOneWayRental = this.stationValidation.computeIsOneWayRental(
+      effectivePickupStationId,
+      effectiveReturnStationId,
+    );
     if (stationTouched) {
       const merged = {
-        pickupStationId:
-          (anyData.pickupStationId as string | undefined) ??
-          (anyData.pickupStation as { connect?: { id?: string } } | undefined)?.connect?.id ??
-          existing.pickupStationId,
-        returnStationId:
-          (anyData.returnStationId as string | undefined) ??
-          (anyData.returnStation as { connect?: { id?: string } } | undefined)?.connect?.id ??
-          existing.returnStationId,
+        pickupStationId: effectivePickupStationId,
+        returnStationId: effectiveReturnStationId,
         actualPickupStationId:
           (anyData.actualPickupStationId as string | undefined) ?? existing.actualPickupStationId,
         actualReturnStationId:
           (anyData.actualReturnStationId as string | undefined) ?? existing.actualReturnStationId,
-        pickupAddressOverride:
-          (anyData.pickupAddressOverride as string | undefined) ?? existing.pickupAddressOverride,
-        returnAddressOverride:
-          (anyData.returnAddressOverride as string | undefined) ?? existing.returnAddressOverride,
-        isOneWayRental: (anyData.isOneWayRental as boolean | undefined) ?? existing.isOneWayRental,
+        pickupAddressOverride: effectivePickupAddressOverride,
+        returnAddressOverride: effectiveReturnAddressOverride,
         stationTransferFeeCents:
           (anyData.stationTransferFeeCents as number | undefined) ??
           existing.stationTransferFeeCents,
       };
-      Object.assign(data, this.stationFieldsToPrismaInput(await this.resolveBookingStationFields(orgId, merged)));
+      const validated = await this.resolveBookingStationFields(orgId, merged);
+      effectiveIsOneWayRental = validated.isOneWayRental ?? false;
+      Object.assign(data, this.stationFieldsToPrismaInput(validated));
+    } else {
+      anyData.isOneWayRental = effectiveIsOneWayRental;
+    }
+
+    const rulesRelevant =
+      !terminalStatuses.includes(existing.status) &&
+      !terminalStatuses.includes(nextStatus) &&
+      (vehicleOrDatesChanged || stationTouched);
+    let stationBookingRulesResult: StationBookingRulesResult | null = null;
+    if (
+      rulesRelevant &&
+      bookingRequiresStationRulesEvaluation({
+        pickupStationId: effectivePickupStationId,
+        returnStationId: effectiveReturnStationId,
+        pickupAddressOverride: effectivePickupAddressOverride,
+        returnAddressOverride: effectiveReturnAddressOverride,
+      })
+    ) {
+      stationBookingRulesResult = await this.enforceStationBookingRules({
+        orgId,
+        vehicleId: nextVehicleId,
+        pickupStationId: effectivePickupStationId!,
+        returnStationId: effectiveReturnStationId!,
+        startDate: nextStart,
+        endDate: nextEnd,
+        isOneWayRental: effectiveIsOneWayRental,
+        bookingId: id,
+        manualOverride: stationRulesContext?.manualOverride ?? null,
+        actor: options?.userId ? { id: options.userId } : null,
+      });
+      data.stationBookingRulesSnapshot = serializeStationBookingRulesSnapshot(
+        stationBookingRulesResult,
+      ) as unknown as Prisma.InputJsonValue;
     }
 
     const updated = await this.prisma.booking.update({ where: { id }, data });
+
+    await this.linkStationBookingRulesOverride(orgId, updated.id, stationBookingRulesResult);
 
     if (pricingRelevant) {
       await this.pricingService.createBookingPriceSnapshot(orgId, id, {
@@ -1829,7 +1987,13 @@ export class BookingsService {
       }
     }
     await this.fleetMapCache.invalidate(orgId);
-    return updated;
+    if (!stationBookingRulesResult) {
+      return updated;
+    }
+    return {
+      ...updated,
+      stationBookingRules: stationBookingRulesResult,
+    } as Booking & { stationBookingRules?: StationBookingRulesResult | null };
   }
 
   async cancel(orgId: string, id: string): Promise<Booking> {

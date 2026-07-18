@@ -114,6 +114,26 @@ export class StationRuleManualOverrideService {
     return this.toAuditRecord(created);
   }
 
+  async linkBookingReference(
+    organizationId: string,
+    overrideId: string,
+    bookingId: string,
+  ): Promise<void> {
+    const updated = await this.prisma.stationRuleManualOverride.updateMany({
+      where: {
+        id: overrideId,
+        organizationId,
+      },
+      data: {
+        bookingId,
+      },
+    });
+
+    if (updated.count === 0) {
+      throw new BadRequestException('Manual override audit record not found for booking linkage.');
+    }
+  }
+
   private toAuditRecord(row: {
     id: string;
     organizationId: string;

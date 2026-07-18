@@ -263,6 +263,14 @@ export class StationBookingRulesService {
     return getStationRuleManualOverrideContractMetadata();
   }
 
+  async linkOverrideAuditToBooking(
+    organizationId: string,
+    overrideId: string,
+    bookingId: string,
+  ): Promise<void> {
+    await this.manualOverrideService.linkBookingReference(organizationId, overrideId, bookingId);
+  }
+
   private async loadStationInput(
     organizationId: string,
     stationId: string,
