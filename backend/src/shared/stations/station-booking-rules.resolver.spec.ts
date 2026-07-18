@@ -8,11 +8,13 @@ import { evaluateStationBookingRules } from './station-booking-rules.resolver';
 import { zonedLocalTimeToUtc } from './station-opening-calendar.util';
 
 const BERLIN = 'Europe/Berlin';
+const ORG_ID = 'org-booking-rules';
 const STATION_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const STATION_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 const BASE_STATION = {
   id: STATION_A,
+  organizationId: ORG_ID,
   status: 'ACTIVE' as const,
   pickupEnabled: true,
   returnEnabled: true,
@@ -43,6 +45,7 @@ function evaluate(input: Partial<Parameters<typeof evaluateStationBookingRules>[
     zonedLocalTimeToUtc('2026-07-17', '10:00', BERLIN)!.toISOString();
 
   return evaluateStationBookingRules({
+    organizationId: ORG_ID,
     pickupStation: input.pickupStation === undefined ? { ...BASE_STATION } : input.pickupStation,
     returnStation:
       input.returnStation === undefined
@@ -79,15 +82,24 @@ describe('station-booking-rules.resolver', () => {
     expect(result.return.reasons[0]?.code).toBe(StationBookingRuleReasonCode.STATION_ARCHIVED);
   });
 
-  it('blocks inactive stations by default', () => {
+  it('always blocks inactive pickup stations even when org policy would warn', () => {
     const inactive = { ...BASE_STATION, status: 'INACTIVE' as const };
     const result = evaluate({
       pickupStation: inactive,
-      returnStation: { ...inactive, id: STATION_B },
+      organizationPolicy: {
+        inactiveStationOutcome: StationBookingRuleOutcome.WARNING,
+      },
     });
 
     expect(result.pickup.outcome).toBe(StationBookingRuleOutcome.BLOCKED);
     expect(result.pickup.reasons[0]?.code).toBe(StationBookingRuleReasonCode.STATION_INACTIVE);
+  });
+
+  it('exposes pickup effective rule and timezone on pickup side', () => {
+    const result = evaluate({});
+
+    expect(result.pickup.effectiveRule?.source).toBe('station.opening_hours');
+    expect(result.pickup.timezone).toBe(BERLIN);
   });
 
   it('warns on pickup outside opening hours by default', () => {
@@ -283,7 +295,7 @@ describe('station-booking-rules.resolver', () => {
     });
 
     expect(result.bookingType).toBe(StationBookingRulesBookingType.ONE_WAY);
-    expect(result.version).toBe(1);
+    expect(result.version).toBe(2);
     expect(result.evaluatedAt).toBeTruthy();
   });
 });

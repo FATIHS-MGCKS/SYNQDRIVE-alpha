@@ -1,10 +1,11 @@
 import type { StationOperationalCapabilitySnapshot } from './station-operational-capability.contract';
+import type { StationOperationalEffectiveRule } from './station-operational-capability.contract';
 import type {
   StationCapacityBookingProjection,
   StationCapacityVehicleSnapshot,
 } from './station-capacity-policy';
 
-export const STATION_BOOKING_RULES_VERSION = 1 as const;
+export const STATION_BOOKING_RULES_VERSION = 2 as const;
 
 export const StationBookingRuleOutcome = {
   ALLOWED: 'ALLOWED',
@@ -28,6 +29,8 @@ export const StationBookingRuleReasonCode = {
   CAPACITY_WARNING: 'CAPACITY_WARNING',
   CAPACITY_BLOCK: 'CAPACITY_BLOCK',
   CONFIGURATION_INCOMPLETE: 'CONFIGURATION_INCOMPLETE',
+  STATION_ORG_MISMATCH: 'STATION_ORG_MISMATCH',
+  ADMIN_OVERRIDE_APPLIED: 'ADMIN_OVERRIDE_APPLIED',
 } as const;
 
 export type StationBookingRuleReasonCode =
@@ -64,6 +67,25 @@ export interface StationBookingRuleEvaluation {
   field: StationBookingRulesSide;
 }
 
+export const StationBookingRulesBookingChannel = {
+  CUSTOMER: 'CUSTOMER',
+  INTERNAL_ADMIN: 'INTERNAL_ADMIN',
+} as const;
+
+export type StationBookingRulesBookingChannel =
+  (typeof StationBookingRulesBookingChannel)[keyof typeof StationBookingRulesBookingChannel];
+
+export interface StationBookingRulesAdminOverride {
+  enabled: boolean;
+  reason: string;
+  performedByUserId?: string | null;
+}
+
+export interface StationBookingRulesBookingContext {
+  channel?: StationBookingRulesBookingChannel;
+  adminOverride?: StationBookingRulesAdminOverride | null;
+}
+
 export interface StationBookingRulesOrganizationPolicy {
   /** Default WARNING for pickup outside opening hours. */
   outsideOpeningHoursPickupOutcome?: StationBookingRuleOutcome;
@@ -89,6 +111,7 @@ export const DEFAULT_STATION_BOOKING_RULES_ORGANIZATION_POLICY: Required<Station
 
 export interface StationBookingRulesStationInput extends StationOperationalCapabilitySnapshot {
   id: string;
+  organizationId?: string | null;
   capacity?: number | null;
   capacityVehicles?: StationCapacityVehicleSnapshot[];
   capacityBookingProjection?: StationCapacityBookingProjection;
@@ -103,6 +126,7 @@ export interface StationBookingRulesVehicleInput {
 }
 
 export interface StationBookingRulesInput {
+  organizationId: string;
   pickupStation: StationBookingRulesStationInput | null;
   returnStation: StationBookingRulesStationInput | null;
   pickupDateTime: Date | string;
@@ -110,6 +134,7 @@ export interface StationBookingRulesInput {
   bookingType: StationBookingRulesBookingType;
   vehicle?: StationBookingRulesVehicleInput | null;
   organizationPolicy?: StationBookingRulesOrganizationPolicy;
+  bookingContext?: StationBookingRulesBookingContext | null;
 }
 
 export interface StationBookingRulesSideResult {
@@ -118,6 +143,9 @@ export interface StationBookingRulesSideResult {
   outcome: StationBookingRuleOutcome;
   reasons: StationBookingRuleReason[];
   evaluations: StationBookingRuleEvaluation[];
+  effectiveRule: StationOperationalEffectiveRule | null;
+  timezone: string | null;
+  adminOverrideApplied: boolean;
 }
 
 export interface StationBookingRulesResult {

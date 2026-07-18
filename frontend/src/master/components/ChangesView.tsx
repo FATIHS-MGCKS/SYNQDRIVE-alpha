@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-pickup-booking-rules-v49624-2026-07-19',
+    version: '4.9.624',
+    title: 'V4.9.624 — Stations V2: Pickup Booking Rules (Prompt 44/78)',
+    summary: [
+      'Dedizierte Pickup-Regeln in `station-booking-pickup-rules` — Org-Zugehörigkeit, Status, pickupEnabled, Öffnungszeiten, Kalenderausnahmen, TZ, Kapazität, fehlende Konfiguration.',
+      'Archiviert/inaktiv und pickupDisabled sind Hard-Blocks; Outside-Hours per Org-Policy WARNING oder MANUAL_CONFIRMATION; keine erfundenen Öffnungszeiten.',
+      'Internal-Admin-Override für kontrollierte Soft-Rule-Bypasses; `effectiveRule` + `timezone` im Pickup-Result.',
+      'Tests inkl. DST (Berlin/New York) und Feiertags-Kalenderausnahmen.',
+    ],
+    reason:
+      'Pickup-Seite braucht explizite Regeln mit wirksamer Regel und Admin-Override — nicht nur generische Capability-Mapping.',
+    previousBehavior:
+      'Pickup lief über generisches Side-Mapping ohne Org-Check, ohne effectiveRule und ohne Admin-Override.',
+    details:
+      '`evaluatePickupBookingRules` + `StationBookingRulesService.evaluatePickup`; Booking Rules v2; noch nicht in Bookings Create/Update verdrahtet.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T02:00:00.000Z',
+  },
+  {
+    id: 'stations-v2-station-booking-rules-service-v49623-2026-07-19',
+    version: '4.9.623',
+    title: 'V4.9.623 — Stations V2: StationBookingRulesService (Prompt 43/78)',
+    summary: [
+      'Zentraler `StationBookingRulesService` evaluiert Pickup- und Return-Seite unabhängig mit Outcomes ALLOWED/WARNING/MANUAL_CONFIRMATION_REQUIRED/BLOCKED.',
+      'Input: Pickup/Return-Station, DateTime, Booking Type, optionales Vehicle, Organization Policy; Reasons inkl. STATION_ARCHIVED/INACTIVE, Hours, Holiday, After-hours, Keybox, Capacity.',
+      'Baut auf `station-operational-capability.resolver` und `station-capacity-policy` auf — keine Booking Create/Update-Verdrahtung in diesem Prompt.',
+      'Umfassende Unit-Tests für Lifecycle-, Hours-, Holiday-, Capacity- und Policy-Szenarien.',
+    ],
+    reason:
+      'Schicht 8 (Booking Station Rules) braucht einen zentralen Evaluator mit vier Outcomes statt verstreuter BLOCKED-only-Validierung.',
+    previousBehavior:
+      'Kein Booking-Rules-Service; `StationValidationService` lieferte nur harte Exceptions ohne WARNING/MANUAL_CONFIRMATION.',
+    details:
+      '`station-booking-rules.contract.ts` + `station-booking-rules.resolver.ts` + `StationBookingRulesService`; exportiert aus `StationsModule`, noch nicht in Bookings verdrahtet.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T01:00:00.000Z',
+  },
+  {
     id: 'stations-v2-vehicle-station-transfer-domain-v49622-2026-07-19',
     version: '4.9.622',
     title: 'V4.9.622 — Stations V2: VehicleStationTransfer Domain (Prompt 42/78)',
