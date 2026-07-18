@@ -1941,6 +1941,7 @@ model VehicleStationTransfer {
 
   @@index([organizationId, vehicleId, status])
   @@index([organizationId, toStationId, status])
+  @@index([organizationId, fromStationId, status])
   @@map("vehicle_station_transfers")
 }
 
@@ -2190,6 +2191,7 @@ model Vehicle {
   @@index([expectedStationId])
   @@index([organizationId, currentStationId])
   @@index([organizationId, expectedStationId])
+  @@index([organizationId, homeStationId])
   @@index([currentStationSource])
   @@index([expectedStationSource])
   @@index([currentStationConfirmedByUserId])
@@ -4740,6 +4742,8 @@ model Booking {
   // vehicleId + status + startDate.
   @@index([vehicleId, status, startDate])
   @@index([organizationId, status])
+  @@index([organizationId, pickupStationId, startDate])
+  @@index([organizationId, returnStationId, endDate])
   @@map("bookings")
 }
 
@@ -5129,6 +5133,7 @@ model BookingHandoverProtocol {
   @@unique([bookingId, kind])
   @@index([organizationId])
   @@index([vehicleId])
+  @@index([organizationId, actualStationId, performedAt])
   @@map("booking_handover_protocols")
 }
 

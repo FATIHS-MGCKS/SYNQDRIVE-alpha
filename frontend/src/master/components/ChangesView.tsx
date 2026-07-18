@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-query-analysis-v49639-2026-07-20',
+    version: '4.9.639',
+    title: 'V4.9.639 — Stations V2: Query-Pfad-Analyse & additive Indizes (Prompt 59/78)',
+    summary: [
+      'Analyse aller belegten Stations-V2-Read-Pfade (Summary-Liste, Home/Current/Expected Fleet, Timeline, Pickups/Returns heute, Transfers, Tasks, Scope).',
+      'Fünf additive Indizes für nachgewiesene Lücken: Home Fleet org-batch, Pickup/Return station+date, Transfer from_station, Handover actual_station+performed_at (partial).',
+      'Dokumentation: `docs/performance/stations-v2-query-analysis.md` mit Lock-Risiken, Pagination vs. Limits, expliziter Nicht-Index-Liste.',
+      'Keine spekulativen Indizes, keine Produktionslasttests; Migration rein `CREATE INDEX`.',
+    ],
+    reason:
+      'Große Organisationen und häufige Stations-Reads brauchen planner-freundliche Indizes nur auf belegten Pfaden — ohne Schema-Rewrites oder JSON-GIN-Spekulation.',
+    previousBehavior:
+      'Einzelspalten-Indizes auf pickup/return_station_id und fehlender from_station-Transfer-Index; Handover-Timeline scannte org-weit.',
+    details:
+      'Migration `20260718220000_stations_v2_query_path_indexes`; Prisma-Schema `@@index` ergänzt; Test `station-query-path-indexes.spec.ts`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'stations-v2-operations-timeline-v49638-2026-07-20',
     version: '4.9.638',
     title: 'V4.9.638 — Stations V2: Kanonische Operations Timeline (Prompt 58/78)',
