@@ -93,7 +93,7 @@ describe('Stations V2 authorization package', () => {
     });
 
     it('allows station manager on local ops but not archive/set-primary', async () => {
-      const allowed = ['update-master', 'update-operations', 'set-vehicles', 'assign-vehicle-home', 'change-vehicle-home-station', 'backfill-coordinates'];
+      const allowed = ['update-master', 'update-operations', 'set-vehicles', 'assign-vehicle-home', 'change-vehicle-home-station', 'home-fleet-add', 'home-fleet-remove', 'backfill-coordinates'];
       const denied = ['create', 'archive', 'set-primary', 'delete', 'restore'];
 
       for (const key of allowed) {
@@ -106,6 +106,27 @@ describe('Stations V2 authorization package', () => {
         const error = await harness.assertDenied(endpoint, AUTHZ_PERSONAS.stationManager);
         harness.expectDeniedCode(error, StationsPermissionErrorCode.MISSING_PERMISSION);
       }
+    });
+
+    it('allows station manager on home-fleet-move when source and target are in scope', async () => {
+      const endpoint = AUTHZ_MUTATION_ENDPOINTS.find((e) => e.key === 'home-fleet-move')!;
+      const managerWithBothStations: typeof AUTHZ_PERSONAS.stationManager = {
+        ...AUTHZ_PERSONAS.stationManager,
+        membership: {
+          ...AUTHZ_PERSONAS.stationManager.membership,
+          stationIds: [AUTHZ_STATION_A, AUTHZ_STATION_B],
+        },
+      };
+
+      await expect(
+        harness.assertAllowed(endpoint, managerWithBothStations),
+      ).resolves.toBeUndefined();
+    });
+
+    it('denies station manager on home-fleet-move when target station is out of scope', async () => {
+      const endpoint = AUTHZ_MUTATION_ENDPOINTS.find((e) => e.key === 'home-fleet-move')!;
+      const error = await harness.assertDenied(endpoint, AUTHZ_PERSONAS.stationManager);
+      harness.expectDeniedCode(error, StationScopeErrorCode.STATION_NOT_IN_SCOPE);
     });
 
     it('allows worker current-location mutation only', async () => {

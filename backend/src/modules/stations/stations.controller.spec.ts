@@ -107,6 +107,12 @@ describe('StationsController mutation security', () => {
     expect(metadata(STATION_SCOPE_KEY, 'changeVehicleHomeStation')).toEqual({
       resource: 'vehicle_location',
     });
+    expect(metadata(STATION_SCOPE_KEY, 'addVehiclesToHomeStation')).toEqual({
+      resource: 'station',
+    });
+    expect(metadata(STATION_SCOPE_KEY, 'moveVehiclesToHomeStation')).toEqual({
+      resource: 'home_fleet_move',
+    });
   });
 
   it('applies specialized mutation permission guards', () => {
@@ -135,6 +141,11 @@ describe('StationsController mutation handlers', () => {
   const stationsService = {
     changeVehicleHomeStation: jest.fn(),
   };
+  const vehicleHomeFleetDelta = {
+    addVehiclesToHomeStation: jest.fn(),
+    removeVehiclesFromHomeStation: jest.fn(),
+    moveVehiclesToHomeStation: jest.fn(),
+  };
 
   const controller = new StationsController(
     stationsService as unknown as StationsService,
@@ -142,6 +153,7 @@ describe('StationsController mutation handlers', () => {
     {} as StationCalendarExceptionService,
     {} as StationOperationalCapabilityService,
     {} as StationOperationsService,
+    vehicleHomeFleetDelta as never,
   );
 
   beforeEach(() => {
@@ -173,6 +185,38 @@ describe('StationsController mutation handlers', () => {
       'user-1',
     );
   });
+
+  it('delegates home fleet delta endpoints to VehicleHomeFleetDeltaService', async () => {
+    vehicleHomeFleetDelta.addVehiclesToHomeStation.mockResolvedValue({ summary: { applied: 1 } });
+    vehicleHomeFleetDelta.removeVehiclesFromHomeStation.mockResolvedValue({ summary: { applied: 1 } });
+    vehicleHomeFleetDelta.moveVehiclesToHomeStation.mockResolvedValue({ summary: { applied: 1 } });
+
+    await controller.addVehiclesToHomeStation(ORG, STATION_A, {
+      vehicleIds: ['veh-1'],
+      idempotencyKey: 'batch-1',
+    });
+    await controller.removeVehiclesFromHomeStation(ORG, STATION_A, {
+      vehicleIds: ['veh-1'],
+    });
+    await controller.moveVehiclesToHomeStation(ORG, STATION_A, {
+      vehicleIds: ['veh-1'],
+      targetStationId: STATION_B,
+    });
+
+    expect(vehicleHomeFleetDelta.addVehiclesToHomeStation).toHaveBeenCalledWith(
+      ORG,
+      STATION_A,
+      ['veh-1'],
+      { idempotencyKey: 'batch-1', reason: undefined },
+    );
+    expect(vehicleHomeFleetDelta.moveVehiclesToHomeStation).toHaveBeenCalledWith(
+      ORG,
+      STATION_A,
+      STATION_B,
+      ['veh-1'],
+      { idempotencyKey: undefined, reason: undefined },
+    );
+  });
 });
 
 describe('StationsController read handlers', () => {
@@ -198,6 +242,7 @@ describe('StationsController read handlers', () => {
     {} as StationCalendarExceptionService,
     {} as StationOperationalCapabilityService,
     stationOperations as unknown as StationOperationsService,
+    {} as never,
   );
 
   beforeEach(() => {

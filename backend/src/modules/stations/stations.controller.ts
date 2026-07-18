@@ -40,6 +40,10 @@ import { StationsChangeVehicleHomePermissionGuard } from './guards/stations-chan
 import { RequireStationsPermission } from './decorators/require-stations-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { ArchiveStationDto } from './dto/archive-station.dto';
+import {
+  MoveVehiclesToHomeStationDto,
+  VehicleHomeFleetDeltaBaseDto,
+} from './dto/vehicle-home-fleet-delta.dto';
 import { StationCalendarExceptionService } from './station-calendar-exception.service';
 import {
   CreateStationCalendarExceptionDto,
@@ -47,6 +51,7 @@ import {
 } from './dto/station-calendar-exception.dto';
 import { StationOperationalCapabilityService } from './station-operational-capability.service';
 import { StationOperationsService } from './station-operations.service';
+import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -57,6 +62,7 @@ export class StationsController {
     private readonly stationCalendarExceptions: StationCalendarExceptionService,
     private readonly stationOperationalCapability: StationOperationalCapabilityService,
     private readonly stationOperations: StationOperationsService,
+    private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
   ) {}
 
   @Get()
@@ -137,6 +143,55 @@ export class StationsController {
         reason: body.reason,
       },
       userId,
+    );
+  }
+
+  @Post(':id/home-fleet/add')
+  @UseGuards(StationsChangeVehicleHomePermissionGuard)
+  @RequireStationScope({ resource: 'station' })
+  async addVehiclesToHomeStation(
+    @Param('orgId') orgId: string,
+    @Param('id') stationId: string,
+    @Body() body: VehicleHomeFleetDeltaBaseDto,
+  ) {
+    return this.vehicleHomeFleetDelta.addVehiclesToHomeStation(
+      orgId,
+      stationId,
+      body.vehicleIds,
+      { idempotencyKey: body.idempotencyKey, reason: body.reason },
+    );
+  }
+
+  @Post(':id/home-fleet/remove')
+  @UseGuards(StationsChangeVehicleHomePermissionGuard)
+  @RequireStationScope({ resource: 'station' })
+  async removeVehiclesFromHomeStation(
+    @Param('orgId') orgId: string,
+    @Param('id') stationId: string,
+    @Body() body: VehicleHomeFleetDeltaBaseDto,
+  ) {
+    return this.vehicleHomeFleetDelta.removeVehiclesFromHomeStation(
+      orgId,
+      stationId,
+      body.vehicleIds,
+      { idempotencyKey: body.idempotencyKey, reason: body.reason },
+    );
+  }
+
+  @Post(':id/home-fleet/move')
+  @UseGuards(StationsChangeVehicleHomePermissionGuard)
+  @RequireStationScope({ resource: 'home_fleet_move' })
+  async moveVehiclesToHomeStation(
+    @Param('orgId') orgId: string,
+    @Param('id') stationId: string,
+    @Body() body: MoveVehiclesToHomeStationDto,
+  ) {
+    return this.vehicleHomeFleetDelta.moveVehiclesToHomeStation(
+      orgId,
+      stationId,
+      body.targetStationId,
+      body.vehicleIds,
+      { idempotencyKey: body.idempotencyKey, reason: body.reason },
     );
   }
 

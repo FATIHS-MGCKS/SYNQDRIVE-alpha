@@ -273,6 +273,19 @@ export class StationScopeService {
       return [...stationIds];
     }
 
+    if (resource === 'home_fleet_move') {
+      const stationIds = new Set<string>();
+      const sourceStationId = resolveStationIdFromRequest(request);
+      if (sourceStationId) {
+        stationIds.add(sourceStationId);
+      }
+      const targetStationId = request.body?.targetStationId;
+      if (typeof targetStationId === 'string' && targetStationId.trim()) {
+        stationIds.add(targetStationId.trim());
+      }
+      return [...stationIds];
+    }
+
     if (resource === 'booking') {
       const field = options.resourceIdField ?? 'bookingId';
       const bookingId = resolveNestedResourceIdFromRequest(request, field);
