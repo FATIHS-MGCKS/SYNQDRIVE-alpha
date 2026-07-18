@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useAppTheme } from '../context/AppThemeContext';
+import { EmptyState } from '../components/patterns';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { TripsView } from './components/TripsView';
@@ -28,6 +29,7 @@ import {
   type SettingsTab,
   type SettingsTabInput,
 } from './components/settings/settingsTypes';
+import { useStationsV2FeatureFlags } from './hooks/useStationsV2FeatureFlags';
 import { StationsView } from './components/stations/StationsView';
 import { StationDetailView } from './components/stations/StationDetailView';
 import { NewBookingView } from './components/NewBookingView';
@@ -174,6 +176,7 @@ function readPersistedSettingsView(): boolean {
 function RentalAppContent() {
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles, loading: fleetLoading, refresh: refreshFleetVehicles } = useFleetVehicles();
+  const { uiEnabled: stationsUiEnabled, loading: stationsFlagsLoading } = useStationsV2FeatureFlags();
 
   useEffect(() => {
     if (!orgId) return;
@@ -912,6 +915,11 @@ function RentalAppContent() {
               const names = [...new Set((trips as { driverName?: string }[]).map((t) => t.driverName).filter(Boolean))] as string[];
               setTripDriverOptions(names);
             }}
+          />
+        ) : (currentView === 'stations' || currentView === 'station-detail') && !stationsFlagsLoading && !stationsUiEnabled ? (
+          <EmptyState
+            title="Stations"
+            description="Stations V2 UI is not enabled for this organization."
           />
         ) : currentView === 'stations' ? (
           <StationsView onOpenStation={(s) => { setDetailStation(s); setCurrentView('station-detail'); }} />

@@ -7,6 +7,8 @@ import { Reflector } from '@nestjs/core';
 import type { StationsV2FeatureFlagKey } from '@shared/stations/stations-v2-feature-flags.contract';
 import { STATIONS_V2_FEATURE_FLAG_KEY } from '../decorators/require-stations-v2-feature.decorator';
 import { StationsV2ConfigService } from '../stations-v2-config.service';
+import { StationsV2FeatureDisabledError } from '../stations-v2-feature-disabled.error';
+import { stationsV2FeatureDisabledTotal } from '@modules/observability/stations-v2-prometheus.metrics';
 
 @Injectable()
 export class StationsV2FeatureGuard implements CanActivate {
@@ -26,7 +28,14 @@ export class StationsV2FeatureGuard implements CanActivate {
     const orgId = request.params?.orgId;
     if (!orgId) return true;
 
-    this.stationsV2Config.assertEnabled(orgId, flag);
-    return true;
+    try {
+      this.stationsV2Config.assertEnabled(orgId, flag);
+      return true;
+    } catch (err) {
+      if (err instanceof StationsV2FeatureDisabledError) {
+        stationsV2FeatureDisabledTotal.inc({ flag });
+      }
+      throw err;
+    }
   }
 }

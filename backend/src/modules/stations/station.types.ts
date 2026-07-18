@@ -20,6 +20,8 @@ export const SELECTABLE_STATION_STATUSES: StationStatus[] = ['ACTIVE'];
 
 export type StationOverviewStatsDto = {
   totalVehicles: number;
+  vehicleCountHome?: number;
+  vehicleCountPresent?: number;
   availableVehicles: number;
   bookedVehicles: number;
   inServiceVehicles: number;
@@ -34,6 +36,7 @@ export type StationOverviewStatsDto = {
   hasMissingCoordinates: boolean;
   hasMissingOpeningHours: boolean;
   hasMissingPickupReturnRules: boolean;
+  partialFields?: string[];
 };
 
 export type StationDocumentInfo = {

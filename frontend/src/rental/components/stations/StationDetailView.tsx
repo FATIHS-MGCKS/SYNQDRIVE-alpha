@@ -199,6 +199,18 @@ export function StationDetailView({
     }
   };
 
+  const handleRestore = async () => {
+    if (!orgId || !station) return;
+    try {
+      const updated = await api.stations.restore(orgId, station.id);
+      setStation(updated);
+      toast.success(t('stations.restored'));
+      void loadCore();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   if (loading && !station) {
     return (
       <div className="space-y-4 max-w-[1400px] mx-auto">
@@ -256,6 +268,12 @@ export function StationDetailView({
         )}
         actions={(
           <div className="flex flex-wrap gap-2">
+            {station.status === 'ARCHIVED' ? (
+              <button type="button" onClick={() => void handleRestore()} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
+                {t('stations.action.restore')}
+              </button>
+            ) : (
+              <>
             <button type="button" onClick={() => setAssignOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
               {t('stations.action.assignVehicle')}
             </button>
@@ -267,6 +285,8 @@ export function StationDetailView({
             <button type="button" onClick={() => setFormOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold sq-tone-brand">
               {t('stations.action.edit')}
             </button>
+              </>
+            )}
           </div>
         )}
       />

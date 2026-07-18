@@ -159,21 +159,13 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   const loadOverviewBatch = useCallback(async (list: Station[]) => {
     if (!orgId || list.length === 0) return;
     setStatsLoading(true);
-    const entries: Record<string, StationOverviewStats> = {};
-    const chunkSize = 8;
-    for (let i = 0; i < list.length; i += chunkSize) {
-      const chunk = list.slice(i, i + chunkSize);
-      const results = await Promise.all(
-        chunk.map((s) =>
-          api.stations.overviewStats(orgId, s.id).catch(() => null),
-        ),
-      );
-      chunk.forEach((s, idx) => {
-        if (results[idx]) entries[s.id] = results[idx] as StationOverviewStats;
-      });
+    try {
+      const ids = list.map((s) => s.id);
+      const batch = await api.stations.summaries(orgId, ids).catch(() => ({}));
+      setOverviewById(batch);
+    } finally {
+      setStatsLoading(false);
     }
-    setOverviewById(entries);
-    setStatsLoading(false);
   }, [orgId]);
 
   const load = useCallback(async () => {

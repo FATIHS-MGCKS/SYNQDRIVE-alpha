@@ -3887,6 +3887,12 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations/${id}/set-primary`, {}),
     overviewStats: (orgId: string, stationId: string) =>
       get<StationOverviewStats>(`/organizations/${orgId}/stations/${stationId}/overview-stats`),
+    summaries: (orgId: string, stationIds: string[]) => {
+      const q = new URLSearchParams({ stationIds: stationIds.join(',') });
+      return get<Record<string, StationOverviewStats>>(
+        `/organizations/${orgId}/stations/summaries?${q.toString()}`,
+      );
+    },
     fleet: (orgId: string, stationId: string) =>
       get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
     bookings: (orgId: string, stationId: string) =>

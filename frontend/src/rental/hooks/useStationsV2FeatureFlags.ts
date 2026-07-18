@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
-import type { StationsV2FeatureFlagsResponse } from '../lib/stations-v2-feature-flags';
+import { api } from '../../lib/api';
+import type { StationsV2FeatureFlagsResponse } from '../../lib/stations-v2-feature-flags';
 import { useRentalOrg } from '../RentalContext';
 
 export function useStationsV2FeatureFlags() {

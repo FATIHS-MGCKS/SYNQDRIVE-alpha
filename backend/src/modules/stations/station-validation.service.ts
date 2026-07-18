@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Station, StationStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { SELECTABLE_STATION_STATUSES } from './station.types';
+import { StationRuleEngineService } from './booking-rules/station-rule-engine.service';
 
 export type BookingStationInput = {
   pickupStationId?: string | null;
@@ -12,11 +13,16 @@ export type BookingStationInput = {
   returnAddressOverride?: string | null;
   isOneWayRental?: boolean;
   stationTransferFeeCents?: number | null;
+  pickupAt?: Date | null;
+  returnAt?: Date | null;
 };
 
 @Injectable()
 export class StationValidationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stationRuleEngine: StationRuleEngineService,
+  ) {}
 
   async getStationForOrg(organizationId: string, stationId: string): Promise<Station> {
     const station = await this.prisma.station.findFirst({
@@ -26,6 +32,18 @@ export class StationValidationService {
       throw new NotFoundException(`Station ${stationId} not found`);
     }
     return station;
+  }
+
+  private async loadStationsMap(
+    organizationId: string,
+    ids: Array<string | null | undefined>,
+  ): Promise<Map<string, Station>> {
+    const unique = [...new Set(ids.filter(Boolean) as string[])];
+    if (!unique.length) return new Map();
+    const rows = await this.prisma.station.findMany({
+      where: { organizationId, id: { in: unique } },
+    });
+    return new Map(rows.map((s) => [s.id, s]));
   }
 
   assertStationSelectable(station: Station, purpose: 'pickup' | 'return' | 'assign'): void {
@@ -66,26 +84,38 @@ export class StationValidationService {
     isOneWayRental: boolean;
     pickupStationId: string | null;
     returnStationId: string | null;
+    ruleEvaluations?: import('./booking-rules/station-rule.types').StationRuleEvaluation[];
   }> {
     const pickupStationId = input.pickupStationId ?? null;
     const returnStationId = input.returnStationId ?? null;
 
+    const stations = await this.loadStationsMap(organizationId, [
+      pickupStationId,
+      returnStationId,
+      input.actualPickupStationId,
+      input.actualReturnStationId,
+    ]);
+
     if (pickupStationId) {
-      const pickup = await this.getStationForOrg(organizationId, pickupStationId);
+      const pickup = stations.get(pickupStationId);
+      if (!pickup) throw new NotFoundException(`Station ${pickupStationId} not found`);
       this.assertStationSelectable(pickup, 'pickup');
     }
     if (returnStationId) {
-      const ret = await this.getStationForOrg(organizationId, returnStationId);
+      const ret = stations.get(returnStationId);
+      if (!ret) throw new NotFoundException(`Station ${returnStationId} not found`);
       this.assertStationSelectable(ret, 'return');
     }
     if (input.actualPickupStationId) {
-      const actual = await this.getStationForOrg(organizationId, input.actualPickupStationId);
+      const actual = stations.get(input.actualPickupStationId);
+      if (!actual) throw new NotFoundException(`Station ${input.actualPickupStationId} not found`);
       if (actual.status === 'ARCHIVED') {
         throw new BadRequestException('Actual pickup station is archived');
       }
     }
     if (input.actualReturnStationId) {
-      const actual = await this.getStationForOrg(organizationId, input.actualReturnStationId);
+      const actual = stations.get(input.actualReturnStationId);
+      if (!actual) throw new NotFoundException(`Station ${input.actualReturnStationId} not found`);
       if (actual.status === 'ARCHIVED') {
         throw new BadRequestException('Actual return station is archived');
       }
@@ -103,7 +133,23 @@ export class StationValidationService {
       );
     }
 
-    return { isOneWayRental, pickupStationId, returnStationId };
+    const rules = await this.stationRuleEngine.assertBookingPersistenceAllowed(organizationId, {
+      organizationId,
+      pickupStationId,
+      returnStationId,
+      actualPickupStationId: input.actualPickupStationId,
+      actualReturnStationId: input.actualReturnStationId,
+      pickupAt: input.pickupAt,
+      returnAt: input.returnAt,
+      isOneWayRental,
+    });
+
+    return {
+      isOneWayRental,
+      pickupStationId,
+      returnStationId,
+      ruleEvaluations: rules.evaluations,
+    };
   }
 
   async assertVehicleStationAssignment(

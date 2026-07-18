@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-final-fixes-v49699-2026-07-18',
+    version: '4.9.599',
+    title: 'V4.9.599 — Stations V2: P0/P1 Audit-Remediation (Prompt 77/78)',
+    summary: [
+      'RBAC (`PermissionsGuard`) + Station-Scope (`StationAccessService`, `StationScopeGuard`) auf allen Stations-Routen.',
+      'Hard Delete entfernt; Home/Current entkoppelt; partieller SET serverseitig abgelehnt; Batch `GET …/summaries`.',
+      'Booking-Rules-Engine (4 Outcomes), TZ-Öffnungszeiten, Transfer-Lifecycle-API, Domain-Audit, Prometheus-Metriken.',
+      'Frontend: `stationsUiV2Enabled` Gating (Sidebar/App), Batch-Summaries, Vehicle-Pagination, Restore-UI.',
+      'Audit-Dokumentation `docs/audits/stations-v2-final-fixes.md`; `npm run test:stations:v2`.',
+    ],
+    reason: 'Prompt 77/78: Abschlussaudit P0/P1-Funde schließen ohne Deploy/Prod-Datenänderung.',
+    previousBehavior: 'Scope/RBAC unwired; SET-Detach-Risiko; HTTP N+1 in StationsView; Flags ohne Backend/Frontend-Wirkung.',
+    details:
+      'backend/src/modules/stations/*, backend/src/shared/stations/station-access.*, prisma/migrations/20260718120000_stations_v2_final_fixes, frontend/src/rental/components/stations/*, docs/audits/stations-v2-final-fixes.md',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T12:00:00.000Z',
+  },
+  {
     id: 'stations-v2-feature-flags-v49698-2026-07-18',
     version: '4.9.598',
     title: 'V4.9.598 — Stations V2: Feature Flags & Deployment-Runbook (Prompt 74/78)',

@@ -20,6 +20,7 @@
     "test:battery:retention:integration": "BATTERY_V2_RETENTION_INTEGRATION=1 jest battery-v2-retention.integration",
     "test:battery:v2": "jest --testPathPattern='battery-health|dimo-battery-signal|drive-profile-resolver|battery-policy-profile|lv-battery-chemistry|battery-v2|battery-critical\\.detector' --testPathIgnorePatterns=integration",
     "test:battery:v2:integration": "jest battery-provider-observation.integration && BATTERY_V2_RETENTION_INTEGRATION=1 jest battery-v2-retention.integration",
+    "test:stations:v2": "jest --testPathPattern='stations-v2|station-access|station-rule-engine|station-validation|station-geofence-shadow' --testPathIgnorePatterns=integration",
     "test:battery:v2:verify": "bash scripts/test/battery-health-v2-verify.sh all",
     "test:battery:v2:verify:unit": "bash scripts/test/battery-health-v2-verify.sh unit",
     "test:watch": "jest --watch",
