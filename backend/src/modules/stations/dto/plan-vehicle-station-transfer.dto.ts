@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { IsDateString, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
+import { StationRuleManualOverrideDto } from './evaluate-station-booking-rules.dto';
 
 export class PlanVehicleStationTransferDto {
   @IsUUID()
@@ -28,4 +29,9 @@ export class PlanVehicleStationTransferDto {
   @IsOptional()
   @IsUUID()
   sourceBookingId?: string | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => StationRuleManualOverrideDto)
+  manualOverride?: StationRuleManualOverrideDto | null;
 }

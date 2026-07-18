@@ -287,6 +287,11 @@ enum VehicleStationTransferStatus {
   OVERDUE
 }
 
+enum StationRuleManualOverrideReferenceType {
+  BOOKING_RULES
+  TRANSFER_PLAN
+}
+
 enum FuelType {
   GASOLINE
   DIESEL
@@ -1457,6 +1462,7 @@ model Organization {
   stations                               Station[]
   stationCalendarExceptions              StationCalendarException[]
   vehicleStationTransfers                VehicleStationTransfer[]
+  stationRuleManualOverrides             StationRuleManualOverride[]
   vehicles                               Vehicle[]
   brakeComponentInstallations            BrakeComponentInstallation[]
   brakeServiceApplications               BrakeServiceApplication[]
@@ -1634,6 +1640,7 @@ model User {
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
   brakeRentalHealthReviewGrants       BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
   vehicleCurrentStationConfirmations  Vehicle[]                               @relation("VehicleCurrentStationConfirmedBy")
+  stationRuleManualOverrides          StationRuleManualOverride[]
 
   @@map("users")
 }
@@ -1926,10 +1933,41 @@ model VehicleStationTransfer {
   fromStation   Station?     @relation("VehicleStationTransferFrom", fields: [fromStationId], references: [id], onDelete: SetNull)
   toStation     Station      @relation("VehicleStationTransferTo", fields: [toStationId], references: [id], onDelete: Restrict)
   sourceBooking Booking?     @relation(fields: [sourceBookingId], references: [id], onDelete: SetNull)
+  ruleManualOverrides StationRuleManualOverride[]
 
   @@index([organizationId, vehicleId, status])
   @@index([organizationId, toStationId, status])
   @@map("vehicle_station_transfers")
+}
+
+model StationRuleManualOverride {
+  id                  String                               @id @default(uuid())
+  organizationId      String                               @map("organization_id")
+  referenceType       StationRuleManualOverrideReferenceType @map("reference_type")
+  bookingId           String?                              @map("booking_id")
+  transferId          String?                              @map("transfer_id")
+  scopeFingerprint    String                               @map("scope_fingerprint")
+  scopeSnapshot       Json                                 @map("scope_snapshot")
+  permission          String
+  reason              String
+  actorUserId         String                               @map("actor_user_id")
+  originalRuleResults Json                                 @map("original_rule_results")
+  grantedAt           DateTime                             @default(now()) @map("granted_at")
+  expiresAt           DateTime                             @map("expires_at")
+  consumedAt          DateTime?                            @map("consumed_at")
+  revokedAt           DateTime?                            @map("revoked_at")
+  createdAt           DateTime                             @default(now()) @map("created_at")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking?                @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  transfer     VehicleStationTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+  actor        User                    @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([transferId])
+  @@index([organizationId, scopeFingerprint])
+  @@map("station_rule_manual_overrides")
 }
 
 // ------------------------------------------------
@@ -4682,6 +4720,7 @@ model Booking {
   driverAttributions      DriverAttribution[]
   allowedDrivers          BookingAllowedDriver[]
   sourceStationTransfers  VehicleStationTransfer[]
+  stationRuleManualOverrides StationRuleManualOverride[]
 
   @@index([organizationId])
   @@index([customerId])

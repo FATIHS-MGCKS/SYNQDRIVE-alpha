@@ -7,6 +7,12 @@ import {
   ExpectedStationRequestChannel,
 } from '@shared/stations/expected-station.policy';
 import {
+  buildTransferPlanManualOverrideScope,
+  mapTransferWarningsToOverrideEvaluations,
+  validateStationRuleManualOverrideRequest,
+} from '@shared/stations/station-rule-manual-override.policy';
+import type { StationRuleManualOverrideInput } from '@shared/stations/station-rule-manual-override.contract';
+import {
   evaluateStationCapacityRules,
   toStationCapacityRulesPolicy,
   type StationCapacityRulesPolicy,
@@ -59,6 +65,11 @@ export function evaluatePlanVehicleStationTransfer(input: {
   vehicleExpectedStationId?: string | null;
   vehicleExpectedStationSource?: string | null;
   plannedAt: Date | string;
+  expectedArrivalAt?: Date | string | null;
+  organizationId: string;
+  vehicleId: string;
+  manualOverride?: StationRuleManualOverrideInput | null;
+  overrideActorUserId?: string | null;
   destinationCapacity?: {
     configuredCapacity: number | null;
     vehicles: StationCapacityVehicleSnapshot[];
@@ -75,6 +86,8 @@ export function evaluatePlanVehicleStationTransfer(input: {
   allowed: boolean;
   blockingReasons: VehicleStationTransferIssue[];
   warnings: VehicleStationTransferIssue[];
+  manualOverrideRequired: boolean;
+  manualOverrideApplied: boolean;
 } {
   const blockingReasons: VehicleStationTransferIssue[] = [];
   const warnings: VehicleStationTransferIssue[] = [];
@@ -198,10 +211,55 @@ export function evaluatePlanVehicleStationTransfer(input: {
     }
   }
 
+  const overrideScope = buildTransferPlanManualOverrideScope({
+    organizationId: input.organizationId,
+    vehicleId: input.vehicleId,
+    fromStationId: input.fromStationId,
+    toStationId: input.toStationId,
+    plannedAt: input.plannedAt,
+    expectedArrivalAt: input.expectedArrivalAt ?? null,
+  });
+
+  const overrideValidation = validateStationRuleManualOverrideRequest({
+    manualOverride: input.manualOverride,
+    actor: input.overrideActorUserId
+      ? {
+          userId: input.overrideActorUserId,
+          permission: 'stations.override_rules',
+        }
+      : null,
+    scope: overrideScope,
+    evaluations: mapTransferWarningsToOverrideEvaluations(warnings),
+  });
+
+  const manualOverrideRequired = overrideValidation.issues.some(
+    (issueEntry) => issueEntry.code === 'STATION_RULE_MANUAL_OVERRIDE_REQUIRED',
+  );
+
+  if (manualOverrideRequired && !input.manualOverride) {
+    blockingReasons.push(
+      issue(
+        VehicleStationTransferIssueCode.MANUAL_OVERRIDE_REQUIRED,
+        'Manual override with reason is required before planning this transfer.',
+      ),
+    );
+  }
+
+  if (input.manualOverride && !overrideValidation.valid) {
+    blockingReasons.push(
+      issue(
+        VehicleStationTransferIssueCode.MANUAL_OVERRIDE_INVALID,
+        overrideValidation.issues[0]?.message ?? 'Manual override is invalid.',
+      ),
+    );
+  }
+
   return {
     allowed: blockingReasons.length === 0,
     blockingReasons,
     warnings,
+    manualOverrideRequired: manualOverrideRequired && !input.manualOverride,
+    manualOverrideApplied: Boolean(input.manualOverride && overrideValidation.valid),
   };
 }
 

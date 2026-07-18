@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { StationCalendarExceptionStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import type { StationScopeContext } from '@shared/stations/station-scope.types';
+import {
+  assessBookingRulesManualOverride,
+  attachBookingRulesManualOverrideAudit,
+  buildBookingRulesEvaluationScope,
+  buildBookingRulesOverrideReference,
+} from '@shared/stations/station-booking-rules-manual-override';
 import {
   evaluateStationBookingRules,
   getStationBookingRulesMetadata,
@@ -25,7 +32,13 @@ import {
   loadStationCapacityVehicles,
   type StationCapacityProjectionDb,
 } from '@shared/stations/station-capacity-projection.util';
+import { getStationRuleManualOverrideContractMetadata } from '@shared/stations/station-rule-manual-override.contract';
+import { STATION_RULE_MANUAL_OVERRIDE_PERMISSION } from '@shared/stations/station-rule-manual-override.contract';
+import type { StationRuleManualOverrideInput } from '@shared/stations/station-rule-manual-override.contract';
+import { StationRuleManualOverrideReferenceType } from '@shared/stations/station-rule-manual-override.contract';
 import { StationOperationalCalendarExceptionInput } from '@shared/stations/station-operational-capability.resolver';
+import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
+import { StationsAccessService } from './stations-access.service';
 import type { EvaluateStationBookingRulesDto } from './dto/evaluate-station-booking-rules.dto';
 
 type StationBookingRulesLoadRow = {
@@ -60,6 +73,8 @@ export class StationBookingRulesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stationAccessScope: StationAccessScopeService,
+    private readonly stationsAccess: StationsAccessService,
+    private readonly manualOverrideService: StationRuleManualOverrideService,
   ) {}
 
   evaluate(input: StationBookingRulesInput): StationBookingRulesResult {
@@ -70,6 +85,7 @@ export class StationBookingRulesService {
     organizationId: string,
     body: EvaluateStationBookingRulesDto,
     scope?: StationScopeContext,
+    actor?: PermissionActor,
   ): Promise<StationBookingRulesResult> {
     const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, scope);
     const [pickupStation, returnStation, vehicle] = await Promise.all([
@@ -90,7 +106,10 @@ export class StationBookingRulesService {
       body.vehicleId ? this.loadVehicleInput(access.orgId, body.vehicleId) : Promise.resolve(null),
     ]);
 
-    return this.evaluate({
+    const manualOverride = this.resolveManualOverride(body);
+    const bookingContext = (body.bookingContext as StationBookingRulesBookingContext | null | undefined) ?? null;
+
+    const baseResult = this.evaluate({
       organizationId: access.orgId,
       pickupStation,
       returnStation,
@@ -98,8 +117,82 @@ export class StationBookingRulesService {
       returnDateTime: body.returnDateTime,
       bookingType: body.bookingType,
       vehicle,
-      bookingContext: (body.bookingContext as StationBookingRulesBookingContext | null | undefined) ?? null,
+      bookingContext,
     });
+
+    const overrideScope = buildBookingRulesEvaluationScope({
+      organizationId: access.orgId,
+      pickupStationId: body.pickupStationId,
+      returnStationId: body.returnStationId,
+      pickupDateTime: body.pickupDateTime,
+      returnDateTime: body.returnDateTime,
+      bookingType: body.bookingType,
+      vehicleId: body.vehicleId ?? null,
+    });
+
+    const assessment = assessBookingRulesManualOverride({
+      result: baseResult,
+      manualOverride,
+      actorUserId: actor?.id ?? null,
+      scope: overrideScope,
+      reference: buildBookingRulesOverrideReference({
+        bookingId: bookingContext?.bookingId ?? null,
+      }),
+    });
+
+    if (!manualOverride) {
+      return assessment.result;
+    }
+
+    if (!actor?.id) {
+      throw new ForbiddenException('Authentication is required to apply a manual override.');
+    }
+
+    await this.stationsAccess.assertStationsPermission(
+      access.orgId,
+      actor,
+      STATION_RULE_MANUAL_OVERRIDE_PERMISSION,
+    );
+
+    if (!assessment.manualOverrideApplied) {
+      throw new BadRequestException({
+        message: 'Manual override could not be applied.',
+        issues: assessment.validation.issues,
+      });
+    }
+
+    const audit = await this.manualOverrideService.persistAppliedOverride({
+      organizationId: access.orgId,
+      referenceType: StationRuleManualOverrideReferenceType.BOOKING_RULES,
+      reference: buildBookingRulesOverrideReference({
+        bookingId: bookingContext?.bookingId ?? null,
+      }),
+      scope: overrideScope,
+      actorUserId: actor.id,
+      manualOverride,
+      evaluations: [...baseResult.pickup.evaluations, ...baseResult.return.evaluations],
+    });
+
+    return attachBookingRulesManualOverrideAudit(assessment.result, audit);
+  }
+
+  private resolveManualOverride(
+    body: EvaluateStationBookingRulesDto,
+  ): StationRuleManualOverrideInput | null {
+    const context = body.bookingContext;
+    if (context?.manualOverride?.reason?.trim()) {
+      return {
+        reason: context.manualOverride.reason.trim(),
+        expiresAt: context.manualOverride.expiresAt ?? null,
+      };
+    }
+
+    const legacy = context?.adminOverride;
+    if (legacy?.enabled && legacy.reason?.trim()) {
+      return { reason: legacy.reason.trim() };
+    }
+
+    return null;
   }
 
   evaluateReturn(
@@ -164,6 +257,10 @@ export class StationBookingRulesService {
 
   getMetadata() {
     return getStationBookingRulesMetadata();
+  }
+
+  getManualOverrideMetadata() {
+    return getStationRuleManualOverrideContractMetadata();
   }
 
   private async loadStationInput(

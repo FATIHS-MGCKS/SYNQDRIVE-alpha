@@ -176,7 +176,7 @@ describe('station-booking-pickup-rules', () => {
     );
   });
 
-  it('applies controlled internal admin override for soft pickup violations only', () => {
+  it('does not apply legacy admin override at pickup rule layer anymore', () => {
     const result = evaluatePickup({
       pickupAt: zonedLocalTimeToUtc('2026-07-14', '20:00', BERLIN)!,
       bookingContext: {
@@ -189,11 +189,8 @@ describe('station-booking-pickup-rules', () => {
       },
     });
 
-    expect(result.outcome).toBe(StationBookingRuleOutcome.ALLOWED);
-    expect(result.adminOverrideApplied).toBe(true);
-    expect(
-      result.reasons.some((r) => r.code === StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED),
-    ).toBe(true);
+    expect(result.outcome).toBe(StationBookingRuleOutcome.WARNING);
+    expect(result.manualOverrideApplied).toBe(false);
   });
 
   it('does not apply admin override for archived pickup stations', () => {

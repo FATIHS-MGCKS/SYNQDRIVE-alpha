@@ -47,6 +47,8 @@ describe('vehicle-station-transfer.util', () => {
   describe('evaluatePlanVehicleStationTransfer', () => {
     it('blocks when another active transfer exists', () => {
       const result = evaluatePlanVehicleStationTransfer({
+        organizationId: 'org-transfer',
+        vehicleId: 'vehicle-1',
         fromStationId: STATION_A,
         toStationId: STATION_B,
         toStationStatus: 'ACTIVE',
@@ -60,6 +62,8 @@ describe('vehicle-station-transfer.util', () => {
 
     it('blocks same from and to station', () => {
       const result = evaluatePlanVehicleStationTransfer({
+        organizationId: 'org-transfer',
+        vehicleId: 'vehicle-1',
         fromStationId: STATION_A,
         toStationId: STATION_A,
         toStationStatus: 'ACTIVE',

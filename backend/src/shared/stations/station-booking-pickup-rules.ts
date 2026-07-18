@@ -235,75 +235,22 @@ function mapPickupCapabilityEvaluations(
   }
 }
 
-function canApplyAdminPickupOverride(
-  bookingContext: StationBookingRulesBookingContext | null | undefined,
-): boolean {
-  const override = bookingContext?.adminOverride;
-  return Boolean(
-    bookingContext?.channel === StationBookingRulesBookingChannel.INTERNAL_ADMIN &&
-      override?.enabled &&
-      override.reason?.trim(),
-  );
-}
-
-function applyAdminPickupOverride(input: {
-  evaluations: StationBookingRuleEvaluation[];
-  bookingContext?: StationBookingRulesBookingContext | null;
-}): {
-  evaluations: StationBookingRuleEvaluation[];
-  adminOverrideApplied: boolean;
-} {
-  if (!canApplyAdminPickupOverride(input.bookingContext)) {
-    return { evaluations: input.evaluations, adminOverrideApplied: false };
-  }
-
-  const hasHardBlock = input.evaluations.some((evaluation) =>
-    HARD_BLOCK_REASON_CODES.has(String(evaluation.reason.code)),
-  );
-  if (hasHardBlock) {
-    return { evaluations: input.evaluations, adminOverrideApplied: false };
-  }
-
-  const overriddenEvaluations = input.evaluations.map((evaluation) => {
-    if (
-      evaluation.outcome === StationBookingRuleOutcome.WARNING ||
-      evaluation.outcome === StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED
-    ) {
-      return {
-        ...evaluation,
-        outcome: StationBookingRuleOutcome.ALLOWED,
-        reason: reason(
-          StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED,
-          input.bookingContext?.adminOverride?.reason?.trim() ??
-            'Internal admin override applied for pickup rules.',
-        ),
-      };
-    }
-    return evaluation;
-  });
-
-  overriddenEvaluations.push({
-    ruleId: 'pickup.admin_override',
-    outcome: StationBookingRuleOutcome.ALLOWED,
-    field: 'pickup',
-    stationId: overriddenEvaluations[0]?.stationId ?? null,
-    reason: reason(
-      StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED,
-      input.bookingContext?.adminOverride?.reason?.trim() ??
-        'Internal admin override applied for pickup rules.',
-    ),
-  });
-
-  return { evaluations: overriddenEvaluations, adminOverrideApplied: true };
-}
-
 function buildPickupSideResult(
   evaluations: StationBookingRuleEvaluation[],
   capability: StationOperationalCapabilityEvaluation | null,
-  adminOverrideApplied: boolean,
   at: Date,
   stationTimezone: string | null | undefined,
-): Pick<StationBookingRulesSideResult, 'outcome' | 'reasons' | 'evaluations' | 'effectiveRule' | 'timezone' | 'evaluatedInstant' | 'adminOverrideApplied'> {
+): Pick<
+  StationBookingRulesSideResult,
+  | 'outcome'
+  | 'reasons'
+  | 'evaluations'
+  | 'effectiveRule'
+  | 'timezone'
+  | 'evaluatedInstant'
+  | 'adminOverrideApplied'
+  | 'manualOverrideApplied'
+> {
   const outcome = aggregateOutcome(evaluations);
   const timezone = capability?.timezone ?? stationTimezone ?? null;
 
@@ -311,11 +258,7 @@ function buildPickupSideResult(
     outcome,
     reasons:
       outcome === StationBookingRuleOutcome.ALLOWED
-        ? adminOverrideApplied
-          ? evaluations
-              .filter((evaluation) => evaluation.reason.code === StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED)
-              .map((evaluation) => evaluation.reason)
-          : []
+        ? []
         : evaluations
             .filter((evaluation) => evaluation.outcome !== StationBookingRuleOutcome.ALLOWED)
             .map((evaluation) => evaluation.reason),
@@ -323,7 +266,8 @@ function buildPickupSideResult(
     effectiveRule: toPickupEffectiveRule(capability?.effectiveRule),
     timezone,
     evaluatedInstant: resolveStationBookingEvaluatedInstant(at, timezone),
-    adminOverrideApplied,
+    adminOverrideApplied: false,
+    manualOverrideApplied: false,
   };
 }
 
@@ -350,7 +294,7 @@ export function evaluatePickupBookingRules(input: {
     return {
       side: 'pickup',
       stationId: null,
-      ...buildPickupSideResult([missingEvaluation], null, false, input.pickupAt, null),
+      ...buildPickupSideResult([missingEvaluation], null, input.pickupAt, null),
     };
   }
 
@@ -372,7 +316,7 @@ export function evaluatePickupBookingRules(input: {
     return {
       side: 'pickup',
       stationId: station.id,
-      ...buildPickupSideResult(evaluations, null, false, input.pickupAt, station.timezone),
+      ...buildPickupSideResult(evaluations, null, input.pickupAt, station.timezone),
     };
   }
 
@@ -391,7 +335,7 @@ export function evaluatePickupBookingRules(input: {
     return {
       side: 'pickup',
       stationId: station.id,
-      ...buildPickupSideResult(evaluations, null, false, input.pickupAt, station.timezone),
+      ...buildPickupSideResult(evaluations, null, input.pickupAt, station.timezone),
     };
   }
 
@@ -404,14 +348,9 @@ export function evaluatePickupBookingRules(input: {
     ...evaluatePickupCapacityRules(station, input.vehicle, input.policy),
   );
 
-  const { evaluations: finalEvaluations, adminOverrideApplied } = applyAdminPickupOverride({
-    evaluations,
-    bookingContext: input.bookingContext,
-  });
-
   return {
     side: 'pickup',
     stationId: station.id,
-    ...buildPickupSideResult(finalEvaluations, capability, adminOverrideApplied, input.pickupAt, station.timezone),
+    ...buildPickupSideResult(evaluations, capability, input.pickupAt, station.timezone),
   };
 }

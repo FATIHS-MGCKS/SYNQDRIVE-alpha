@@ -15,6 +15,7 @@ export const STATIONS_V2_PERMISSION_KEYS = [
   'manage_home_fleet',
   'manage_current_location',
   'manage_transfers',
+  'override_rules',
   'manage_team',
   'view_activity',
   'geocode',
@@ -41,6 +42,7 @@ export const STATIONS_V2_LEGACY_WRITE_KEYS: readonly StationsV2PermissionKey[] =
   'manage_home_fleet',
   'manage_current_location',
   'manage_transfers',
+  'override_rules',
   'manage_team',
 ] as const;
 
@@ -57,6 +59,7 @@ export const STATIONS_V2_PERMISSION_LABELS: Readonly<Record<StationsV2Permission
   manage_home_fleet: 'Heimat-Flotte verwalten',
   manage_current_location: 'Aktuellen Standort verwalten',
   manage_transfers: 'Transfers verwalten',
+  override_rules: 'Stations-Regeln manuell überschreiben',
   manage_team: 'Stations-Team verwalten',
   view_activity: 'Aktivität einsehen',
   geocode: 'Geocoding',

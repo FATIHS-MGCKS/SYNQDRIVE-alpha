@@ -292,83 +292,26 @@ function mapReturnCapabilityEvaluations(
   }
 }
 
-function canApplyAdminReturnOverride(
-  bookingContext: StationBookingRulesBookingContext | null | undefined,
-): boolean {
-  const override = bookingContext?.adminOverride;
-  return Boolean(
-    bookingContext?.channel === StationBookingRulesBookingChannel.INTERNAL_ADMIN &&
-      override?.enabled &&
-      override.reason?.trim(),
-  );
-}
-
-function applyAdminReturnOverride(input: {
-  evaluations: StationBookingRuleEvaluation[];
-  bookingContext?: StationBookingRulesBookingContext | null;
-}): {
-  evaluations: StationBookingRuleEvaluation[];
-  adminOverrideApplied: boolean;
-} {
-  if (!canApplyAdminReturnOverride(input.bookingContext)) {
-    return { evaluations: input.evaluations, adminOverrideApplied: false };
-  }
-
-  const hasHardBlock = input.evaluations.some((evaluation) =>
-    HARD_BLOCK_REASON_CODES.has(String(evaluation.reason.code)),
-  );
-  if (hasHardBlock) {
-    return { evaluations: input.evaluations, adminOverrideApplied: false };
-  }
-
-  const overriddenEvaluations = input.evaluations.map((evaluation) => {
-    if (
-      evaluation.outcome === StationBookingRuleOutcome.WARNING ||
-      evaluation.outcome === StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED
-    ) {
-      return {
-        ...evaluation,
-        outcome: StationBookingRuleOutcome.ALLOWED,
-        reason: reason(
-          StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED,
-          input.bookingContext?.adminOverride?.reason?.trim() ??
-            'Internal admin override applied for return rules.',
-        ),
-      };
-    }
-    return evaluation;
-  });
-
-  overriddenEvaluations.push({
-    ruleId: 'return.admin_override',
-    outcome: StationBookingRuleOutcome.ALLOWED,
-    field: 'return',
-    stationId: overriddenEvaluations[0]?.stationId ?? null,
-    reason: reason(
-      StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED,
-      input.bookingContext?.adminOverride?.reason?.trim() ??
-        'Internal admin override applied for return rules.',
-    ),
-  });
-
-  return { evaluations: overriddenEvaluations, adminOverrideApplied: true };
-}
-
 function buildReturnSideResult(
   evaluations: StationBookingRuleEvaluation[],
   capability: StationOperationalCapabilityEvaluation | null,
-  adminOverrideApplied: boolean,
   at: Date,
   stationTimezone: string | null | undefined,
 ): Pick<
   StationBookingRulesSideResult,
-  'outcome' | 'reasons' | 'evaluations' | 'effectiveRule' | 'timezone' | 'evaluatedInstant' | 'adminOverrideApplied'
+  | 'outcome'
+  | 'reasons'
+  | 'evaluations'
+  | 'effectiveRule'
+  | 'timezone'
+  | 'evaluatedInstant'
+  | 'adminOverrideApplied'
+  | 'manualOverrideApplied'
 > {
   const outcome = aggregateOutcome(evaluations);
   const timezone = capability?.timezone ?? stationTimezone ?? null;
   const informationalReasonCodes = new Set<string>([
     StationBookingRuleReasonCode.ALLOWED_WITH_INFO,
-    StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED,
   ]);
 
   return {
@@ -385,7 +328,8 @@ function buildReturnSideResult(
     effectiveRule: toReturnEffectiveRule(capability?.effectiveRule),
     timezone,
     evaluatedInstant: resolveStationBookingEvaluatedInstant(at, timezone),
-    adminOverrideApplied,
+    adminOverrideApplied: false,
+    manualOverrideApplied: false,
   };
 }
 
@@ -412,7 +356,7 @@ export function evaluateReturnBookingRules(input: {
     return {
       side: 'return',
       stationId: null,
-      ...buildReturnSideResult([missingEvaluation], null, false, input.returnAt, null),
+      ...buildReturnSideResult([missingEvaluation], null, input.returnAt, null),
     };
   }
 
@@ -434,7 +378,7 @@ export function evaluateReturnBookingRules(input: {
     return {
       side: 'return',
       stationId: station.id,
-      ...buildReturnSideResult(evaluations, null, false, input.returnAt, station.timezone),
+      ...buildReturnSideResult(evaluations, null, input.returnAt, station.timezone),
     };
   }
 
@@ -453,7 +397,7 @@ export function evaluateReturnBookingRules(input: {
     return {
       side: 'return',
       stationId: station.id,
-      ...buildReturnSideResult(evaluations, null, false, input.returnAt, station.timezone),
+      ...buildReturnSideResult(evaluations, null, input.returnAt, station.timezone),
     };
   }
 
@@ -466,14 +410,9 @@ export function evaluateReturnBookingRules(input: {
     ...evaluateReturnCapacityRules(station, input.vehicle, input.policy),
   );
 
-  const { evaluations: finalEvaluations, adminOverrideApplied } = applyAdminReturnOverride({
-    evaluations,
-    bookingContext: input.bookingContext,
-  });
-
   return {
     side: 'return',
     stationId: station.id,
-    ...buildReturnSideResult(finalEvaluations, capability, adminOverrideApplied, input.returnAt, station.timezone),
+    ...buildReturnSideResult(evaluations, capability, input.returnAt, station.timezone),
   };
 }

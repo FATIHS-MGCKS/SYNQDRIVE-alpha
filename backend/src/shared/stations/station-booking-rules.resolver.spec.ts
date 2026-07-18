@@ -332,7 +332,7 @@ describe('station-booking-rules.resolver', () => {
 
     expect(result.bookingType).toBe(StationBookingRulesBookingType.ONE_WAY);
     expect(result.derivedIsOneWay).toBe(true);
-    expect(result.version).toBe(4);
+    expect(result.version).toBe(5);
     expect(result.evaluatedAt).toBeTruthy();
   });
 

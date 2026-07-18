@@ -29,6 +29,14 @@ import {
   type VehicleStationTransferVehicleSnapshot,
 } from './vehicle-station-transfer.types';
 import {
+  buildTransferPlanManualOverrideScope,
+  mapTransferWarningsToOverrideEvaluations,
+} from '@shared/stations/station-rule-manual-override.policy';
+import { StationRuleManualOverrideReferenceType } from '@shared/stations/station-rule-manual-override.contract';
+import { STATION_RULE_MANUAL_OVERRIDE_PERMISSION } from '@shared/stations/station-rule-manual-override.contract';
+import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
+import { StationsAccessService } from './stations-access.service';
+import {
   buildTransferCommandOutcome,
   evaluatePlanVehicleStationTransfer,
   evaluateTransferTransition,
@@ -37,7 +45,11 @@ import {
 
 @Injectable()
 export class VehicleStationTransferService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly manualOverrideService: StationRuleManualOverrideService,
+    private readonly stationsAccess: StationsAccessService,
+  ) {}
 
   async planTransfer(
     organizationId: string,
@@ -85,6 +97,8 @@ export class VehicleStationTransferService {
     ]);
 
     const evaluation = evaluatePlanVehicleStationTransfer({
+      organizationId,
+      vehicleId: input.vehicleId,
       fromStationId,
       toStationId: input.toStationId,
       toStationStatus: toStation.status,
@@ -92,9 +106,20 @@ export class VehicleStationTransferService {
       vehicleExpectedStationId: vehicle.expectedStationId,
       vehicleExpectedStationSource: vehicle.expectedStationSource,
       plannedAt,
+      expectedArrivalAt,
+      manualOverride: input.manualOverride ?? null,
+      overrideActorUserId: performedByUserId ?? null,
       destinationCapacity: destinationCapacity ?? undefined,
       sourceCapacity: sourceCapacity ?? undefined,
     });
+
+    if (input.manualOverride && performedByUserId) {
+      await this.stationsAccess.assertStationsPermission(
+        organizationId,
+        { id: performedByUserId },
+        STATION_RULE_MANUAL_OVERRIDE_PERMISSION,
+      );
+    }
 
     if (!evaluation.allowed) {
       return this.blockedPlanResult({
@@ -106,6 +131,30 @@ export class VehicleStationTransferService {
         performedByUserId,
         blockingReasons: evaluation.blockingReasons,
         warnings: evaluation.warnings,
+        manualOverrideRequired: evaluation.manualOverrideRequired,
+      });
+    }
+
+    let manualOverrideAudit = null;
+    if (evaluation.manualOverrideApplied && input.manualOverride && performedByUserId) {
+      manualOverrideAudit = await this.manualOverrideService.persistAppliedOverride({
+        organizationId,
+        referenceType: StationRuleManualOverrideReferenceType.TRANSFER_PLAN,
+        reference: {
+          type: StationRuleManualOverrideReferenceType.TRANSFER_PLAN,
+          bookingId: input.sourceBookingId ?? null,
+        },
+        scope: buildTransferPlanManualOverrideScope({
+          organizationId,
+          vehicleId: input.vehicleId,
+          fromStationId,
+          toStationId: input.toStationId,
+          plannedAt,
+          expectedArrivalAt,
+        }),
+        actorUserId: performedByUserId,
+        manualOverride: input.manualOverride,
+        evaluations: mapTransferWarningsToOverrideEvaluations(evaluation.warnings),
       });
     }
 
@@ -195,6 +244,9 @@ export class VehicleStationTransferService {
       clearedExpected: false,
       setCurrent: false,
       warnings: evaluation.warnings,
+      manualOverrideRequired: false,
+      manualOverrideApplied: evaluation.manualOverrideApplied,
+      manualOverrideAudit,
     });
   }
 
@@ -266,6 +318,9 @@ export class VehicleStationTransferService {
         vehicle: this.toVehicleSnapshot(vehicle),
         blockingReasons: evaluation.blockingReasons,
         warnings: [],
+        manualOverrideRequired: false,
+        manualOverrideApplied: false,
+        manualOverrideAudit: null,
         audit: this.buildAudit({
           command,
           organizationId,
@@ -637,6 +692,9 @@ export class VehicleStationTransferService {
     setCurrent: boolean;
     performedAt?: Date;
     warnings?: ReturnType<typeof evaluatePlanVehicleStationTransfer>['warnings'];
+    manualOverrideRequired?: boolean;
+    manualOverrideApplied?: boolean;
+    manualOverrideAudit?: VehicleStationTransferCommandResult['manualOverrideAudit'];
   }): VehicleStationTransferCommandResult {
     return {
       outcome: buildTransferCommandOutcome(true, input.idempotent),
@@ -646,6 +704,9 @@ export class VehicleStationTransferService {
       vehicle: this.toVehicleSnapshot(input.vehicle),
       blockingReasons: [],
       warnings: input.warnings ?? [],
+      manualOverrideRequired: input.manualOverrideRequired ?? false,
+      manualOverrideApplied: input.manualOverrideApplied ?? false,
+      manualOverrideAudit: input.manualOverrideAudit ?? null,
       audit: this.buildAudit(input),
     };
   }
@@ -666,6 +727,7 @@ export class VehicleStationTransferService {
     performedByUserId?: string | null;
     blockingReasons: ReturnType<typeof evaluatePlanVehicleStationTransfer>['blockingReasons'];
     warnings?: ReturnType<typeof evaluatePlanVehicleStationTransfer>['warnings'];
+    manualOverrideRequired?: boolean;
   }): VehicleStationTransferCommandResult {
     const placeholderTransfer: VehicleStationTransferRecord = {
       id: 'blocked',
@@ -693,6 +755,9 @@ export class VehicleStationTransferService {
       vehicle: this.toVehicleSnapshot(input.vehicle),
       blockingReasons: input.blockingReasons,
       warnings: input.warnings ?? [],
+      manualOverrideRequired: input.manualOverrideRequired ?? false,
+      manualOverrideApplied: false,
+      manualOverrideAudit: null,
       audit: {
         command: VehicleStationTransferCommandName.PLAN,
         organizationId: input.organizationId,

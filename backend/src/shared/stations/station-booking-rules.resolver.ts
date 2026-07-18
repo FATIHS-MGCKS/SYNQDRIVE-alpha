@@ -113,6 +113,9 @@ export function evaluateStationBookingRules(
     derivedIsOneWay,
     pickup,
     return: returnSide,
+    manualOverrideRequired: false,
+    manualOverrideApplied: false,
+    manualOverrideAudit: null,
   };
 }
 

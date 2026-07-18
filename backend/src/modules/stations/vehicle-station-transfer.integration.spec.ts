@@ -5,6 +5,8 @@ import {
   VehicleStationTransferCommandOutcome,
 } from './vehicle-station-transfer.types';
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
+import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
+import { StationsAccessService } from './stations-access.service';
 
 const ORG = 'org-transfer';
 const VEHICLE_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -35,7 +37,20 @@ describe('VehicleStationTransferService', () => {
     $transaction: jest.fn(),
   } as unknown as PrismaService;
 
-  const service = new VehicleStationTransferService(prisma);
+  const manualOverrideService = {
+    persistAppliedOverride: jest.fn(),
+    validate: jest.fn(),
+  } as unknown as StationRuleManualOverrideService;
+
+  const stationsAccess = {
+    assertStationsPermission: jest.fn().mockResolvedValue(undefined),
+  } as unknown as StationsAccessService;
+
+  const service = new VehicleStationTransferService(
+    prisma,
+    manualOverrideService,
+    stationsAccess,
+  );
 
   const vehicleRow = (overrides: Record<string, unknown> = {}) => ({
     id: VEHICLE_ID,
