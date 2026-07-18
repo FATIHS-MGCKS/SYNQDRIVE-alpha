@@ -53,6 +53,19 @@ describe('stations permissions UI wiring', () => {
     const formSource = readFileSync(resolve(stationsDir, 'StationFormModal.tsx'), 'utf8');
     expect(formSource).toContain('formCapabilities');
     expect(formSource).toContain('!caps.canSubmit');
+    expect(formSource).toContain('canActivate');
+    expect(formSource).toContain('canDeactivate');
+    expect(formSource).not.toContain('ARCHIVED');
+    expect(formSource).not.toContain('isPrimary');
+    expect(formSource).toContain('stations.form.sectionAddress');
+    expect(formSource).toContain('stations.form.sectionAdvanced');
+    expect(formSource).toContain('station-form.validation');
+  });
+
+  it('exposes station lifecycle API client methods', () => {
+    const apiSource = readFileSync(resolve(stationsDir, '../../../lib/api.ts'), 'utf8');
+    expect(apiSource).toContain('/stations/${id}/activate');
+    expect(apiSource).toContain('/stations/${id}/deactivate');
   });
 
   it('uses workflow menu instead of assign vehicle modal', () => {
