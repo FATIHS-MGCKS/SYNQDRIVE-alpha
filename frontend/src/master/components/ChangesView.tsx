@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-vehicle-workflows-v49644-2026-07-20',
+    version: '4.9.644',
+    title: 'V4.9.644 — Stations V2: Getrennte Fahrzeug-Workflows (Prompt 64/78)',
+    summary: [
+      'Ersetzt `StationAssignVehicleModal` (SET/500-Limit) durch fünf explizite Workflows: Heimatstation ändern/entfernen, Standort korrigieren, Transfer planen, physisch einbuchen.',
+      'Jeder Flow: eigener Backend-Command, serverseitige Fahrzeugsuche/Pagination (`GET .../vehicle-workflows/vehicles`), Preview (`POST .../vehicle-workflows/preview`), From/To für Home/Current/Expected.',
+      'Vermietete Fahrzeuge mit Warnung; archivierte Zielstationen nicht wählbar; stale `stationPositionVersion` als Konflikt-UI.',
+      '`StationVehicleWorkflowMenu` + `StationVehicleWorkflowModal` in Detail- und Listenansicht; i18n DE/EN; Vitest Utils/Komponenten/E2E-Wiring.',
+    ],
+    reason: 'Prompt 64/78: keine stille SET-Semantik; operative Stations-Workflows als explizite Commands mit Preview.',
+    previousBehavior:
+      'Ein „Fahrzeuge zuweisen“-Modal lud bis zu 500 Fahrzeuge clientseitig und schrieb per Checkbox-SET über `applyStationHomeFleetSelection`.',
+    details:
+      'Backend: `station-vehicle-workflow.contract.ts`, Lookup/Preview-Services, `evaluatePlanTransfer` Dry-Run, Controller-Routen. Frontend: Workflow-Menü/Modal, `api.stations.lookupVehicleWorkflowVehicles|previewVehicleWorkflow|planVehicleStationTransfer`. Tests: `station-vehicle-workflow.integration.spec.ts`, `station-vehicle-workflow.utils.test.ts`, `station-vehicle-workflow.integration.test.ts`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T03:30:00.000Z',
+  },
+  {
     id: 'stations-v2-fleet-groups-v49643-2026-07-20',
     version: '4.9.643',
     title: 'V4.9.643 — Stations V2: Flottentab nach Gruppen (Prompt 63/78)',

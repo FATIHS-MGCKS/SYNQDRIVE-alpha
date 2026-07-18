@@ -59,6 +59,7 @@ export const STATIONS_V2_PERMISSION_LABELS: Readonly<Record<StationsV2Permission
   manage_home_fleet: 'Heimat-Flotte verwalten',
   manage_current_location: 'Aktuellen Standort verwalten',
   manage_transfers: 'Transfers verwalten',
+  override_rules: 'Regeln manuell überschreiben',
   manage_team: 'Stations-Team verwalten',
   view_activity: 'Aktivität einsehen',
   geocode: 'Geocoding',

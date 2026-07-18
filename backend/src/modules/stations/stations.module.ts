@@ -41,6 +41,8 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationSummaryReadModelService,
     StationOperationsTimelineService,
     StationFleetReadModelService,
+    StationVehicleWorkflowLookupService,
+    StationVehicleWorkflowPreviewService,
     StationVehicleRuntimeLoader,
     VehicleHomeFleetDeltaService,
     VehicleHomeAssignmentPreviewService,

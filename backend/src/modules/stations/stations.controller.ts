@@ -20,6 +20,8 @@ import {
   ListStationSummariesQueryDto,
   ListStationOperationsTimelineQueryDto,
   ListStationFleetQueryDto,
+  ListStationVehicleWorkflowVehiclesQueryDto,
+  StationVehicleWorkflowPreviewDto,
   SetStationVehiclesDto,
   AssignVehicleStationDto,
   UpdateVehicleCurrentStationDto,
@@ -60,6 +62,8 @@ import { StationOperationsService } from './station-operations.service';
 import { StationSummaryReadModelService } from './station-summary-read-model.service';
 import { StationOperationsTimelineService } from './station-operations-timeline.service';
 import { StationFleetReadModelService } from './station-fleet-read-model.service';
+import { StationVehicleWorkflowLookupService } from './station-vehicle-workflow-lookup.service';
+import { StationVehicleWorkflowPreviewService } from './station-vehicle-workflow-preview.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { HomeAssignmentPreviewDto } from './dto/vehicle-home-assignment-preview.dto';
@@ -68,7 +72,7 @@ import { TransitionVehicleStationTransferDto } from './dto/transition-vehicle-st
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
 import { StationsManageTransfersPermissionGuard } from './guards/stations-manage-transfers-permission.guard';
 import { StationBookingRulesService } from './station-booking-rules.service';
-import { EvaluateStationBookingRulesDto } from './dto/evaluate-station-booking-rules.dto';
+import { getStationVehicleWorkflowContractMetadata } from '@shared/stations/station-vehicle-workflow.contract';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -82,6 +86,8 @@ export class StationsController {
     private readonly stationSummaryReadModel: StationSummaryReadModelService,
     private readonly stationOperationsTimeline: StationOperationsTimelineService,
     private readonly stationFleetReadModel: StationFleetReadModelService,
+    private readonly stationVehicleWorkflowLookup: StationVehicleWorkflowLookupService,
+    private readonly stationVehicleWorkflowPreview: StationVehicleWorkflowPreviewService,
     private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
     private readonly vehicleHomeAssignmentPreview: VehicleHomeAssignmentPreviewService,
     private readonly vehicleStationTransfer: VehicleStationTransferService,
@@ -510,6 +516,44 @@ export class StationsController {
   @RequireStationScope({ resource: 'none' })
   getFleetContract() {
     return this.stationFleetReadModel.getContractMetadata();
+  }
+
+  @Get('vehicle-workflows/contract')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'none' })
+  getVehicleWorkflowContract() {
+    return getStationVehicleWorkflowContractMetadata();
+  }
+
+  @Get('vehicle-workflows/vehicles')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'list' })
+  async lookupVehicleWorkflowVehicles(
+    @Param('orgId') orgId: string,
+    @Query() query: ListStationVehicleWorkflowVehiclesQueryDto,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
+  ) {
+    return this.stationVehicleWorkflowLookup.lookupVehicles(
+      orgId,
+      query,
+      req[STATION_SCOPE_CONTEXT_KEY],
+    );
+  }
+
+  @Post('vehicle-workflows/preview')
+  @RequireStationsPermission('stations.read')
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async previewVehicleWorkflow(
+    @Param('orgId') orgId: string,
+    @Body() body: StationVehicleWorkflowPreviewDto,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext; user?: { id?: string } },
+  ) {
+    return this.stationVehicleWorkflowPreview.preview(
+      orgId,
+      body,
+      req[STATION_SCOPE_CONTEXT_KEY],
+      req.user?.id,
+    );
   }
 
   @Get(':id/fleet')

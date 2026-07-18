@@ -4121,6 +4121,38 @@ export const api = {
         `/organizations/${orgId}/stations/${stationId}/home-fleet/move`,
         body,
       ),
+    vehicleWorkflowsContract: (orgId: string) =>
+      get<StationVehicleWorkflowContractMetadata>(
+        `/organizations/${orgId}/stations/vehicle-workflows/contract`,
+      ),
+    lookupVehicleWorkflowVehicles: (
+      orgId: string,
+      params: StationVehicleWorkflowLookupParams = {},
+    ) => {
+      const q = new URLSearchParams();
+      if (params.contextStationId) q.set('contextStationId', params.contextStationId);
+      if (params.search) q.set('search', params.search);
+      if (params.page) q.set('page', String(params.page));
+      if (params.pageSize) q.set('pageSize', String(params.pageSize));
+      if (params.homeAtContextOnly) q.set('homeAtContextOnly', 'true');
+      const qs = q.toString();
+      return get<StationVehicleWorkflowVehicleLookupResult>(
+        `/organizations/${orgId}/stations/vehicle-workflows/vehicles${qs ? `?${qs}` : ''}`,
+      );
+    },
+    previewVehicleWorkflow: (orgId: string, body: StationVehicleWorkflowPreviewRequest) =>
+      post<StationVehicleWorkflowPreviewResult>(
+        `/organizations/${orgId}/stations/vehicle-workflows/preview`,
+        body,
+      ),
+    planVehicleStationTransfer: (
+      orgId: string,
+      body: PlanVehicleStationTransferRequest,
+    ) =>
+      post<VehicleStationTransferCommandResult>(
+        `/organizations/${orgId}/stations/transfers/plan`,
+        body,
+      ),
     assignVehicle: (
       orgId: string,
       stationId: string,
@@ -9470,14 +9502,6 @@ export interface StationOverviewStats {
   hasMissingPickupReturnRules: boolean;
 }
 
-export type StationCapacityStatus =
-  | 'UNKNOWN'
-  | 'AVAILABLE'
-  | 'NEAR_CAPACITY'
-  | 'FULL'
-  | 'OVER_CAPACITY'
-  | 'PROJECTED_OVER_CAPACITY';
-
 export type StationKpiMetricName =
   | 'homeFleetCount'
   | 'currentOnSiteCount'
@@ -10024,6 +10048,129 @@ export interface VehicleHomeFleetDeltaRequest {
   idempotencyKey?: string;
   reason?: string;
   expectedVersions?: Array<{ vehicleId: string; expectedVersion: number }>;
+}
+
+export type StationVehicleWorkflowType =
+  | 'change_home'
+  | 'remove_home'
+  | 'correct_current'
+  | 'plan_transfer'
+  | 'check_in';
+
+export interface StationVehicleWorkflowContractMetadata {
+  version: number;
+  workflows: StationVehicleWorkflowType[];
+  limits: {
+    defaultPageSize: number;
+    maxPageSize: number;
+  };
+  frontendRecomputation: false;
+}
+
+export interface StationVehicleWorkflowStationRef {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+}
+
+export interface StationVehicleWorkflowVehicleRow {
+  id: string;
+  licensePlate: string | null;
+  make: string;
+  model: string;
+  vehicleName: string | null;
+  rentalStatus: string;
+  homeStation: StationVehicleWorkflowStationRef | null;
+  currentStation: StationVehicleWorkflowStationRef | null;
+  expectedStation: StationVehicleWorkflowStationRef | null;
+  stationPositionVersion: number;
+  isRented: boolean;
+}
+
+export interface StationVehicleWorkflowLookupParams {
+  contextStationId?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  homeAtContextOnly?: boolean;
+}
+
+export interface StationVehicleWorkflowVehicleLookupResult {
+  version: number;
+  organizationId: string;
+  contextStationId: string | null;
+  search: string | null;
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+  vehicles: StationVehicleWorkflowVehicleRow[];
+  frontendRecomputation: false;
+}
+
+export interface StationVehicleWorkflowPreviewRequest {
+  workflow: StationVehicleWorkflowType;
+  vehicleId: string;
+  contextStationId: string;
+  targetStationId?: string;
+  plannedAt?: string;
+  expectedArrivalAt?: string | null;
+  reason?: string;
+}
+
+export interface StationVehicleWorkflowPreviewResult {
+  workflow: StationVehicleWorkflowType;
+  allowed: boolean;
+  idempotent: boolean;
+  command: string;
+  vehicleId: string;
+  licensePlate: string | null;
+  vehicleLabel: string | null;
+  rentalStatus: string;
+  from: {
+    homeStation: StationVehicleWorkflowStationRef | null;
+    currentStation: StationVehicleWorkflowStationRef | null;
+    expectedStation: StationVehicleWorkflowStationRef | null;
+  };
+  to: {
+    homeStation: StationVehicleWorkflowStationRef | null;
+    currentStation: StationVehicleWorkflowStationRef | null;
+    expectedStation: StationVehicleWorkflowStationRef | null;
+  };
+  warnings: Array<{ code: string; message: string }>;
+  blockingReasons: Array<{ code: string; message: string }>;
+  concurrency: {
+    stationPositionVersion: number;
+  };
+  manualOverrideRequired?: boolean;
+}
+
+export interface PlanVehicleStationTransferRequest {
+  vehicleId: string;
+  fromStationId?: string | null;
+  toStationId: string;
+  plannedAt?: string;
+  expectedArrivalAt?: string | null;
+  reason?: string | null;
+  sourceBookingId?: string | null;
+}
+
+export interface VehicleStationTransferCommandResult {
+  outcome: 'APPLIED' | 'IDEMPOTENT' | 'BLOCKED';
+  command: string;
+  allowed: boolean;
+  blockingReasons?: Array<{ code: string; message: string }>;
+  warnings?: Array<{ code: string; message: string }>;
+  vehicle?: {
+    id: string;
+    homeStationId: string | null;
+    currentStationId: string | null;
+    expectedStationId: string | null;
+    stationPositionVersion: number;
+  };
 }
 
 export interface HomeAssignmentPreviewProposal {

@@ -50,7 +50,7 @@ import {
   writeStationDetailUrl,
 } from './station-detail-navigation';
 import { StationFormModal } from './StationFormModal';
-import { StationAssignVehicleModal } from './StationAssignVehicleModal';
+import { StationVehicleWorkflowMenu } from './StationVehicleWorkflowMenu';
 import { StationOverviewTab } from './StationOverviewTab';
 import { StationFleetTab } from './StationFleetTab';
 
@@ -92,7 +92,6 @@ export function StationDetailView({
   const [tabError, setTabError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<StationDetailTab>(initialTab);
   const [formOpen, setFormOpen] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadedTabsRef = useRef<Set<StationDetailTabDataKey>>(new Set());
@@ -311,10 +310,13 @@ export function StationDetailView({
         )}
         actions={(
           <div className="flex flex-wrap gap-2">
-            {stationCaps.canManageHomeFleet && (
-              <button type="button" onClick={() => setAssignOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
-                {t('stations.action.assignVehicle')}
-              </button>
+            {(stationCaps.canManageHomeFleet || stationCaps.canManageCurrentLocation || stationCaps.canManageTransfers) && (
+              <StationVehicleWorkflowMenu
+                station={station}
+                onSaved={() => {
+                  void loadCore();
+                }}
+              />
             )}
             {stationCaps.canSetPrimary && !station.isPrimary && (
               <button type="button" onClick={() => void handleSetPrimary()} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
@@ -416,65 +418,11 @@ export function StationDetailView({
         onClose={() => setFormOpen(false)}
         onSubmit={handleSave}
       />
-      {stationCaps.canManageHomeFleet && (
-        <StationAssignVehicleModal
-          station={assignOpen ? station : null}
-          onClose={() => setAssignOpen(false)}
-          onSaved={() => {
-            void loadCore();
-          }}
-        />
-      )}
     </div>
   );
 }
 
 
-function FleetTab({ fleet, loading, t }: { fleet: StationFleetVehicle[]; loading: boolean; t: (k: TranslationKey) => string }) {
-  if (loading) return <SkeletonCard className="h-48 w-full" />;
-  if (fleet.length === 0) {
-    return (
-      <EmptyState
-        icon={<Car className="w-8 h-8" />}
-        title={t('stations.detail.fleetEmptyTitle')}
-        description={t('stations.detail.fleetEmptyDescription')}
-      />
-    );
-  }
-  return (
-    <div className="surface-premium overflow-hidden">
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              <th className="p-3 font-semibold">{t('stations.detail.col.plate')}</th>
-              <th className="p-3 font-semibold">{t('stations.detail.col.vehicle')}</th>
-              <th className="p-3 font-semibold">{t('common.status')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fleet.map((v) => (
-              <tr key={v.id} className="border-b border-border/50 last:border-0">
-                <td className="p-3 font-mono text-xs">{v.licensePlate ?? '—'}</td>
-                <td className="p-3">{[v.make, v.model].filter(Boolean).join(' ') || v.vehicleName || '—'}</td>
-                <td className="p-3"><StatusChip tone="neutral">{v.status}</StatusChip></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="md:hidden divide-y divide-border">
-        {fleet.map((v) => (
-          <div key={v.id} className="p-3 space-y-1">
-            <div className="font-mono text-xs font-semibold">{v.licensePlate ?? '—'}</div>
-            <div className="text-sm">{[v.make, v.model].filter(Boolean).join(' ') || v.vehicleName}</div>
-            <StatusChip tone="neutral">{v.status}</StatusChip>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function ScheduleTab({
   entries,

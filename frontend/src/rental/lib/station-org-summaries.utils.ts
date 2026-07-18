@@ -71,7 +71,7 @@ function readKnownMetric(
 ): number | '—' {
   const entry = summary.kpis.metrics[metric];
   if (!entry.known || entry.value == null) return '—';
-  return entry.value;
+  return typeof entry.value === 'number' ? entry.value : '—';
 }
 
 export function buildStationSummariesQueryParams(
@@ -129,11 +129,19 @@ export function mapSummaryToStation(summary: StationSummaryReadModel): Station {
     coordinatesSource: null,
     coordinatesConfirmedAt: null,
     hasMissingCoordinates,
-    geofenceCapability: summary.configurationProblems.some((problem) =>
-      problem.code.includes('GEOFENCE'),
-    )
-      ? 'NOT_CONFIGURED'
-      : 'CONFIGURED_ONLY',
+    geofenceCapability: {
+      capabilityVersion: 1,
+      status: summary.configurationProblems.some((problem) => problem.code.includes('GEOFENCE'))
+        ? 'NOT_CONFIGURED'
+        : 'CONFIGURED_ONLY',
+      geofenceConfigured: false,
+      automationActive: false,
+      writesCurrentStationId: false,
+      publishesConfirmedArrival: false,
+      allowsAutomaticLocationDetectionClaim: false,
+      reasons: [],
+      uiHint: '',
+    },
     timezone: masterData.timezone,
     radiusMeters: null,
     geofenceRadiusMeters: null,
