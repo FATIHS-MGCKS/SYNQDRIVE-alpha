@@ -53,11 +53,19 @@ import { readVoiceControlPlaneSection } from '../voice-control-plane/voice-contr
 
 const mockPlatformStatus = {
   checkedAt: '2026-07-17T12:00:00.000Z',
+  overall: { state: 'healthy' as const, label: 'Healthy' },
   providers: {
-    elevenLabs: { ok: true, label: 'Connected' },
-    twilioIe1: { ok: true, label: 'Connected' },
-    mcpGateway: { ok: true, label: 'Enabled' },
-    webhookIngestion: { ok: true, label: 'Active' },
+    elevenLabs: { ok: true, label: 'Healthy', state: 'healthy' as const },
+    twilioIe1: { ok: true, label: 'Healthy', state: 'healthy' as const },
+    mcpGateway: { ok: true, label: 'Healthy', state: 'healthy' as const },
+    webhookIngestion: { ok: true, label: 'Healthy', state: 'healthy' as const },
+  },
+  operations: {
+    callsToday: 12,
+    usageMinutesToday: 34,
+    estimatedCostTodayCents: 450,
+    activeVoiceOrganizations: 3,
+    failedProvisionings: 0,
   },
   queues: { waiting: 0, active: 0, failed: 0, webhookBacklog: 0 },
   webhooks: { byStatus: {}, dlqCount24h: 0, avgProcessingDelayMs: 120 },
@@ -110,6 +118,13 @@ describe('VoiceAssistantAdminView control plane', () => {
           monthlyBudgetCents: 50000,
           maxConcurrentCalls: 2,
           openErrors: 0,
+          rolloutStatus: 'ENABLED',
+          maskedPhoneNumber: '+49 *** **42',
+          agentDeploymentStatus: 'ACTIVE',
+          provisioningFailed: false,
+          budgetStatus: 'ok',
+          problemStatus: 'ok',
+          providerHealth: 'healthy',
         },
       ],
     });
@@ -181,8 +196,9 @@ describe('VoiceAssistantAdminView control plane', () => {
     });
 
     await waitForHook(() => document.querySelector('[data-testid="voice-control-plane"]') != null);
-    expect(document.body.textContent).toContain('Voice AI Control Plane');
+    expect(document.body.textContent).toContain('Voice Betriebszentrum');
     expect(document.body.textContent).toContain('ElevenLabs');
+    expect(document.querySelector('[data-testid="voice-platform-status"]')).toBeTruthy();
     expect(document.body.textContent).not.toContain('accountSid');
 
     await act(async () => {

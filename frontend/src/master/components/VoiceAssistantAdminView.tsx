@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Activity,
-  AlertTriangle,
-  Bot,
-  Phone,
-  RefreshCw,
-  Search,
-  Shield,
-  Webhook,
-} from 'lucide-react';
+import { RefreshCw, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   chromeTabBarClass,
@@ -20,7 +11,6 @@ import {
   DetailDrawer,
   EmptyState,
   ErrorState,
-  MetricCard,
   PageHeader,
   StatusChip,
   type DataTableColumn,
@@ -45,6 +35,13 @@ import {
   VOICE_CONTROL_PLANE_SECTIONS,
   type VoiceControlPlaneSection,
 } from './voice-control-plane/voice-control-plane-navigation';
+import { VoicePlatformStatusPanel } from './voice-control-plane/VoicePlatformStatusPanel';
+import {
+  DEFAULT_VOICE_ORG_FILTERS,
+  VoiceOrganizationsPanel,
+} from './voice-control-plane/VoiceOrganizationsPanel';
+import type { VoiceOrgFilters } from './voice-control-plane/voice-platform-overview.ops';
+import { filterOrganizations } from './voice-control-plane/voice-platform-overview.ops';
 import {
   createIdempotencyKey,
   VoiceSecureActionDialog,
@@ -123,7 +120,7 @@ export function VoiceAssistantAdminView() {
   const [phoneNumbers, setPhoneNumbers] = useState<VoiceControlPlanePhoneNumberRow[]>([]);
   const [webhookEvents, setWebhookEvents] = useState<VoiceControlPlaneWebhookEventRow[]>([]);
   const [auditEvents, setAuditEvents] = useState<VoiceControlPlaneAuditEventRow[]>([]);
-  const [search, setSearch] = useState('');
+  const [orgFilters, setOrgFilters] = useState<VoiceOrgFilters>(DEFAULT_VOICE_ORG_FILTERS);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<VoiceControlPlaneOrgWorkspace | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
@@ -188,7 +185,13 @@ export function VoiceAssistantAdminView() {
   useEffect(() => {
     if (!canAccess) return;
     void loadCore();
-  }, [canAccess, loadCore]);
+    const interval = window.setInterval(() => {
+      if (activeSection === 'platform' || activeSection === 'organizations') {
+        void loadCore();
+      }
+    }, 60_000);
+    return () => window.clearInterval(interval);
+  }, [canAccess, loadCore, activeSection]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -198,16 +201,10 @@ export function VoiceAssistantAdminView() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const filteredOrganizations = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return organizations;
-    return organizations.filter(
-      (row) =>
-        row.organizationName.toLowerCase().includes(term) ||
-        row.organizationId.toLowerCase().includes(term) ||
-        (row.planCode?.toLowerCase().includes(term) ?? false),
-    );
-  }, [organizations, search]);
+  const filteredOrganizations = useMemo(
+    () => filterOrganizations(organizations, orgFilters),
+    [organizations, orgFilters],
+  );
 
   const orgColumns: DataTableColumn<VoiceControlPlaneOrganizationRow>[] = [
     {
@@ -436,7 +433,7 @@ export function VoiceAssistantAdminView() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-1" data-testid="voice-control-plane">
       <PageHeader
-        title="Voice AI Control Plane"
+        title="Voice Betriebszentrum"
         actions={
           <Button type="button" size="sm" variant="outline" onClick={() => void loadCore()} disabled={loading}>
             <RefreshCw className={cn('mr-2 h-3.5 w-3.5', loading && 'animate-spin')} />
@@ -450,106 +447,18 @@ export function VoiceAssistantAdminView() {
       {error && <ErrorState title="Control Plane konnte nicht geladen werden" description={error} onRetry={() => void loadCore()} />}
 
       {!error && activeSection === 'platform' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MetricCard
-              label="ElevenLabs"
-              value={platformStatus?.providers.elevenLabs.label ?? '—'}
-              icon={<Bot className="h-4 w-4" />}
-            />
-            <MetricCard
-              label="Twilio IE1"
-              value={platformStatus?.providers.twilioIe1.label ?? '—'}
-              icon={<Phone className="h-4 w-4" />}
-            />
-            <MetricCard
-              label="MCP Gateway"
-              value={platformStatus?.providers.mcpGateway.label ?? '—'}
-              icon={<Activity className="h-4 w-4" />}
-            />
-            <MetricCard
-              label="Queue Backlog"
-              value={platformStatus?.queues.webhookBacklog ?? 0}
-              icon={<Webhook className="h-4 w-4" />}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MetricCard label="DLQ (24h)" value={platformStatus?.webhooks.dlqCount24h ?? 0} />
-            <MetricCard
-              label="Eventverzögerung"
-              value={
-                platformStatus?.webhooks.avgProcessingDelayMs != null
-                  ? `${platformStatus.webhooks.avgProcessingDelayMs} ms`
-                  : '—'
-              }
-            />
-            <MetricCard label="Queue waiting" value={platformStatus?.queues.waiting ?? 0} />
-            <MetricCard label="Queue failed" value={platformStatus?.queues.failed ?? 0} />
-          </div>
-
-          {(platformStatus?.activeIncidents.length ?? 0) > 0 ? (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
-              <p className="text-xs font-semibold flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Aktive Incidents
-              </p>
-              {platformStatus?.activeIncidents.map((incident) => (
-                <p key={incident.id} className="text-xs text-muted-foreground">
-                  [{incident.severity}] {incident.message}
-                </p>
-              ))}
-            </div>
-          ) : (
-            <EmptyState compact title="Keine aktiven Incidents" description="Alle Provider und Queues im Normalbetrieb." />
-          )}
-        </div>
+        <VoicePlatformStatusPanel status={platformStatus} loading={loading} />
       )}
 
       {!error && activeSection === 'organizations' && (
-        <div className="space-y-3">
-          <div className="relative max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Organisationen suchen…"
-              className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-[color:var(--brand)]"
-            />
-          </div>
-          <DataTable
-            columns={orgColumns}
-            rows={filteredOrganizations}
-            getRowKey={(row) => row.organizationId}
-            loading={loading}
-            onRowClick={(row) => void loadWorkspace(row.organizationId)}
-            empty={<EmptyState title="Keine Organisationen" description="Noch keine Voice-Organisationen vorhanden." />}
-            rowActions={(row) => (
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  className="rounded-lg px-2 py-1 text-[10px] font-semibold hover:bg-muted"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void loadWorkspace(row.organizationId);
-                  }}
-                >
-                  Workspace
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-muted"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openSuspend(row.organizationId, row.organizationName);
-                  }}
-                >
-                  Suspend
-                </button>
-              </div>
-            )}
-          />
-        </div>
+        <VoiceOrganizationsPanel
+          organizations={organizations}
+          filters={orgFilters}
+          onFiltersChange={patch => setOrgFilters(current => ({ ...current, ...patch }))}
+          loading={loading}
+          onOpenWorkspace={orgId => void loadWorkspace(orgId)}
+          onSuspend={openSuspend}
+        />
       )}
 
       {!error && activeSection === 'provisioning' && (
