@@ -10,9 +10,43 @@ import {
 import { selectStationOrgKpis } from '../hooks/useStationOrgSummaries';
 import type { StationOrgSummariesReadModel, StationSummaryReadModel } from '../../lib/api';
 
-function summaryFixture(overrides: Partial<StationSummaryReadModel> = {}): StationSummaryReadModel {
+function operationsSummaryFixture(
+  stationId = 'station-a',
+): StationSummaryReadModel['operationsSummary'] {
   return {
     version: 1,
+    stationId,
+    evaluatedAt: '2026-07-18T12:00:00.000Z',
+    tasks: {
+      total: 3,
+      categories: {
+        stationLinked: { count: 0 },
+        vehicleOnSite: { count: 2 },
+        bookingPickupReturn: { count: 1 },
+        overduePickupReturn: { count: 0 },
+        transfer: { count: 0 },
+      },
+    },
+    notifications: {
+      total: 0,
+      categories: {
+        stationLinked: { count: 0 },
+        vehicleOnSite: { count: 0 },
+        bookingPickupReturn: { count: 0 },
+        transfer: { count: 0 },
+      },
+    },
+    operationalProblems: {
+      configurationProblems: 0,
+      operationalWarnings: 0,
+      total: 0,
+    },
+  };
+}
+
+function summaryFixture(overrides: Partial<StationSummaryReadModel> = {}): StationSummaryReadModel {
+  return {
+    version: 2,
     stationId: 'station-a',
     organizationId: 'org-a',
     lastCalculatedAt: '2026-07-18T12:00:00.000Z',
@@ -79,6 +113,7 @@ function summaryFixture(overrides: Partial<StationSummaryReadModel> = {}): Stati
       },
       deprecatedAliases: { bookedVehicles: null },
     },
+    operationsSummary: operationsSummaryFixture(),
     configurationProblems: [],
     operationalWarnings: [],
     partialData: { complete: true, unknownMetricNames: [], reasons: [] },

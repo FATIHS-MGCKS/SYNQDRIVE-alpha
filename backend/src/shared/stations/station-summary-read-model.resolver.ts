@@ -49,6 +49,7 @@ export function resolveStationSummaryReadModel(
       keybox: input.operations.keyboxStatus,
     },
     kpis: input.kpis,
+    operationsSummary: input.operationsSummary,
     configurationProblems: input.operations.configurationProblems,
     operationalWarnings: input.operations.operationalWarnings,
     partialData,

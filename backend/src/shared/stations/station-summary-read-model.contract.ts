@@ -9,8 +9,9 @@ import type {
   StationOpeningStatus,
 } from './station-operations.contract';
 import type { StationKpisResult, StationKpisScopeContext } from './station-kpis.contract';
+import type { StationOperationsSummary } from './station-operations-summary.contract';
 
-export const STATION_SUMMARY_READ_MODEL_VERSION = 1 as const;
+export const STATION_SUMMARY_READ_MODEL_VERSION = 2 as const;
 
 export interface StationSummaryMasterData {
   id: string;
@@ -62,6 +63,7 @@ export interface StationSummaryReadModel {
   openingStatus: StationOperationsLabeledStatus<StationOpeningStatus>;
   operationalCapabilities: StationSummaryOperationalCapabilities;
   kpis: StationKpisResult;
+  operationsSummary: StationOperationsSummary;
   configurationProblems: StationOperationsReason[];
   operationalWarnings: StationOperationsReason[];
   partialData: StationSummaryPartialDataStatus;
@@ -76,6 +78,7 @@ export interface StationSummaryReadModelAssemblyInput {
   lifecycle: StationSummaryLifecycle;
   operations: StationOperationsDto;
   kpis: StationKpisResult;
+  operationsSummary: StationOperationsSummary;
   scope: StationKpisScopeContext;
 }
 
@@ -97,6 +100,7 @@ export function getStationSummaryReadModelContractMetadata(): StationSummaryRead
       'openingStatus',
       'operationalCapabilities',
       'kpis',
+      'operationsSummary',
       'configurationProblems',
       'operationalWarnings',
       'partialData',

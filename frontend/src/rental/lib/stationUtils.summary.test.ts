@@ -2,9 +2,43 @@ import { describe, expect, it } from 'vitest';
 import { getStationWarningsFromSummary } from './stationUtils';
 import type { StationSummaryReadModel } from '../../lib/api';
 
-function summary(overrides: Partial<StationSummaryReadModel> = {}): StationSummaryReadModel {
+function operationsSummaryFixture(
+  stationId = 's1',
+): StationSummaryReadModel['operationsSummary'] {
   return {
     version: 1,
+    stationId,
+    evaluatedAt: '2026-07-18T12:00:00.000Z',
+    tasks: {
+      total: 0,
+      categories: {
+        stationLinked: { count: 0 },
+        vehicleOnSite: { count: 0 },
+        bookingPickupReturn: { count: 0 },
+        overduePickupReturn: { count: 0 },
+        transfer: { count: 0 },
+      },
+    },
+    notifications: {
+      total: 0,
+      categories: {
+        stationLinked: { count: 0 },
+        vehicleOnSite: { count: 0 },
+        bookingPickupReturn: { count: 0 },
+        transfer: { count: 0 },
+      },
+    },
+    operationalProblems: {
+      configurationProblems: 0,
+      operationalWarnings: 0,
+      total: 0,
+    },
+  };
+}
+
+function summary(overrides: Partial<StationSummaryReadModel> = {}): StationSummaryReadModel {
+  return {
+    version: 2,
     stationId: 's1',
     organizationId: 'org',
     lastCalculatedAt: '2026-07-18T12:00:00.000Z',
@@ -65,6 +99,7 @@ function summary(overrides: Partial<StationSummaryReadModel> = {}): StationSumma
       },
       deprecatedAliases: { bookedVehicles: null },
     },
+    operationsSummary: operationsSummaryFixture(),
     configurationProblems: [],
     operationalWarnings: [],
     partialData: { complete: true, unknownMetricNames: [], reasons: [] },

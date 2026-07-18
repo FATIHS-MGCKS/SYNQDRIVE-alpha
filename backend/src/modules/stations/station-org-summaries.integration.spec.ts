@@ -21,6 +21,7 @@ describe('StationSummaryReadModelService org summaries', () => {
     booking: { findMany: jest.fn() },
     vehicleStationTransfer: { findMany: jest.fn() },
     orgTask: { count: jest.fn(), findMany: jest.fn() },
+    notification: { findMany: jest.fn() },
   } as unknown as PrismaService;
 
   const stationAccessScope = new StationAccessScopeService(
@@ -156,9 +157,10 @@ describe('StationSummaryReadModelService org summaries', () => {
       },
     ]);
     (prisma.orgTask.findMany as jest.Mock).mockResolvedValue([
-      { id: 'task-a', vehicleId: 'v-home-a', bookingId: null, metadata: null },
-      { id: 'task-b', vehicleId: null, bookingId: null, metadata: { stationId: STATION_B } },
+      { id: 'task-a', type: 'VEHICLE_SERVICE', vehicleId: 'v-home-a', bookingId: null, metadata: null },
+      { id: 'task-b', type: 'CUSTOM', vehicleId: null, bookingId: null, metadata: { stationId: STATION_B } },
     ]);
+    (prisma.notification.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   it('returns org summaries with global KPIs, warnings, partial data, and pagination metadata', async () => {
@@ -238,6 +240,7 @@ describe('StationSummaryReadModelService org summaries performance', () => {
     booking: { findMany: jest.fn() },
     vehicleStationTransfer: { findMany: jest.fn() },
     orgTask: { count: jest.fn(), findMany: jest.fn() },
+    notification: { findMany: jest.fn() },
   } as unknown as PrismaService;
 
   const stationAccessScope = new StationAccessScopeService(
@@ -322,6 +325,7 @@ describe('StationSummaryReadModelService org summaries performance', () => {
     (prisma.booking.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.vehicleStationTransfer.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.orgTask.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.notification.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   it('uses a fixed number of batch queries regardless of station count', async () => {
@@ -335,6 +339,7 @@ describe('StationSummaryReadModelService org summaries performance', () => {
     expect(prisma.booking.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.vehicleStationTransfer.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.orgTask.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.notification.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.orgTask.count).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,11 @@ import type { StationAccessScope } from './station-access-scope.types';
 import { STATION_SCOPE_MODE } from './station-scope.constants';
 import { resolveStationKpis } from './station-kpis.resolver';
 import {
+  resolveStationOperationsSummary,
+  type StationOperationsNotificationInput,
+  type StationOperationsTaskInput,
+} from './station-operations-summary.resolver';
+import {
   resolveStationOperations,
   type StationOperationsSnapshot,
 } from './station-operations.resolver';
@@ -91,6 +96,7 @@ export type StationSummaryTransferRow = {
 
 export type StationSummaryOpenTaskRow = {
   id: string;
+  type: import('@prisma/client').TaskType;
   vehicleId: string | null;
   bookingId: string | null;
   metadata: unknown;
@@ -196,7 +202,8 @@ export function assembleStationSummaryFromLoadRow(
   vehicles: StationSummaryVehicleRow[],
   bookings: StationSummaryBookingRow[],
   transfers: StationSummaryTransferRow[],
-  openOperationalTasksCount: number,
+  openTasks: StationSummaryOpenTaskRow[],
+  notifications: StationOperationsNotificationInput[],
   evaluatedAt: string,
   access: StationAccessScope,
   vehicleRuntime?: VehicleRuntimeProjectionInput[] | null,
@@ -240,6 +247,28 @@ export function assembleStationSummaryFromLoadRow(
   const operations = resolveStationOperations(operationsSnapshot, { at: evaluatedAt });
   const timezone = station.timezone?.trim() || 'Europe/Berlin';
   const scopeApplied = access.mode !== STATION_SCOPE_MODE.ALL_STATIONS;
+
+  const stationTasks: StationOperationsTaskInput[] = openTasks.map((task) => ({
+    id: task.id,
+    type: task.type,
+    vehicleId: task.vehicleId,
+    bookingId: task.bookingId,
+    metadata: task.metadata,
+  }));
+
+  const operationsSummary = resolveStationOperationsSummary({
+    stationId,
+    evaluatedAt,
+    tasks: stationTasks,
+    notifications,
+    vehicles,
+    bookings,
+    transfers,
+    configurationProblems: operations.configurationProblems,
+    operationalWarnings: operations.operationalWarnings,
+  });
+
+  const openOperationalTasksCount = operationsSummary.tasks.total;
 
   const kpis = resolveStationKpis({
     stationId,
@@ -294,6 +323,7 @@ export function assembleStationSummaryFromLoadRow(
     },
     operations,
     kpis,
+    operationsSummary,
     scope: kpis.scope,
   });
 }

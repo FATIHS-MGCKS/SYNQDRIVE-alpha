@@ -1,4 +1,5 @@
 import { StationOpeningStatus } from './station-operations.contract';
+import { STATION_OPERATIONS_SUMMARY_VERSION } from './station-operations-summary.contract';
 import { resolveStationSummaryReadModel } from './station-summary-read-model.resolver';
 
 const STATION_ID = 'station-summary-a';
@@ -84,6 +85,38 @@ function operationsFixture() {
   };
 }
 
+function operationsSummaryFixture() {
+  return {
+    version: STATION_OPERATIONS_SUMMARY_VERSION,
+    stationId: STATION_ID,
+    evaluatedAt: '2026-07-18T12:00:00.000Z',
+    tasks: {
+      total: 3,
+      categories: {
+        stationLinked: { count: 1 },
+        vehicleOnSite: { count: 1 },
+        bookingPickupReturn: { count: 1 },
+        overduePickupReturn: { count: 0 },
+        transfer: { count: 0 },
+      },
+    },
+    notifications: {
+      total: 0,
+      categories: {
+        stationLinked: { count: 0 },
+        vehicleOnSite: { count: 0 },
+        bookingPickupReturn: { count: 0 },
+        transfer: { count: 0 },
+      },
+    },
+    operationalProblems: {
+      configurationProblems: 1,
+      operationalWarnings: 0,
+      total: 1,
+    },
+  };
+}
+
 describe('resolveStationSummaryReadModel', () => {
   it('assembles canonical sections without client recomputation', () => {
     const result = resolveStationSummaryReadModel({
@@ -114,6 +147,7 @@ describe('resolveStationSummaryReadModel', () => {
         archivedAt: null,
       },
       operations: operationsFixture() as never,
+      operationsSummary: operationsSummaryFixture(),
       kpis: {
         version: 2,
         stationId: STATION_ID,
@@ -156,11 +190,12 @@ describe('resolveStationSummaryReadModel', () => {
       },
     });
 
-    expect(result.version).toBe(1);
+    expect(result.version).toBe(2);
     expect(result.lastCalculatedAt).toBe('2026-07-18T12:00:00.000Z');
     expect(result.masterData.name).toBe('Berlin Mitte');
     expect(result.openingStatus.status).toBe(StationOpeningStatus.OPEN);
     expect(result.kpis.metrics.homeFleetCount.value).toBe(4);
+    expect(result.operationsSummary.tasks.total).toBe(3);
     expect(result.configurationProblems).toHaveLength(1);
     expect(result.partialData.complete).toBe(true);
     expect(result.frontendRecomputation).toBe(false);
@@ -195,6 +230,7 @@ describe('resolveStationSummaryReadModel', () => {
         archivedAt: '2026-07-01T00:00:00.000Z',
       },
       operations: operationsFixture() as never,
+      operationsSummary: operationsSummaryFixture(),
       kpis: {
         version: 2,
         stationId: STATION_ID,
