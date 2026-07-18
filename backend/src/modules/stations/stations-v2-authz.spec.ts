@@ -7,6 +7,7 @@ import { StationValidationService } from './station-validation.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
 import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
+import { stationVehicleRuntimeLoaderMock } from './testing/station-vehicle-runtime-loader.mock';
 import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 import { resolveStationIdFromRequest } from '@shared/stations/station-scope.util';
 import {
@@ -343,7 +344,7 @@ describe('Stations V2 authorization package', () => {
         {} as StationValidationService,
         new StationAccessScopeService(prisma as never, new StationScopeService(prisma as never)),
         stationOperationsServiceMock,
-        { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+        stationVehicleRuntimeLoaderMock as never,
         stationDomainAuditServiceMock as never,
       );
 
@@ -372,7 +373,7 @@ describe('Stations V2 authorization package', () => {
       {} as StationValidationService,
       new StationAccessScopeService(prisma as never, new StationScopeService({} as never)),
       stationOperationsServiceMock,
-      { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+      stationVehicleRuntimeLoaderMock as never,
       stationDomainAuditServiceMock as never,
     );
 
@@ -423,7 +424,7 @@ describe('Stations V2 authorization package', () => {
     {} as StationValidationService,
     new StationAccessScopeService(prisma as never, new StationScopeService(prisma as never)),
     stationOperationsServiceMock,
-    { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+    stationVehicleRuntimeLoaderMock as never,
     stationDomainAuditServiceMock as never,
   );
 

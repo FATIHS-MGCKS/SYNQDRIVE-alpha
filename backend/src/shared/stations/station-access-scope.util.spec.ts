@@ -154,6 +154,7 @@ describe('station-access-scope.util', () => {
         manage_team: false,
         view_activity: false,
         geocode: false,
+        override_rules: false,
       }),
     ).toBe(false);
 
@@ -174,6 +175,7 @@ describe('station-access-scope.util', () => {
         manage_team: false,
         view_activity: false,
         geocode: false,
+        override_rules: false,
       }),
     ).toBe(true);
   });
