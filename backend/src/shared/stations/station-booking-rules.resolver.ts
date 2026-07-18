@@ -3,6 +3,7 @@ import {
   StationCapacityStatus,
   type StationCapacityVehicleSnapshot,
 } from './station-capacity-policy';
+import { evaluatePickupBookingRules } from './station-booking-pickup-rules';
 import {
   DEFAULT_STATION_BOOKING_RULES_ORGANIZATION_POLICY,
   StationBookingRuleOutcome,
@@ -358,6 +359,9 @@ function evaluateSide(
       outcome: StationBookingRuleOutcome.BLOCKED,
       reasons: [missingEvaluation.reason],
       evaluations: [missingEvaluation],
+      effectiveRule: null,
+      timezone: null,
+      adminOverrideApplied: false,
     };
   }
 
@@ -380,6 +384,9 @@ function evaluateSide(
             .filter((evaluation) => evaluation.outcome !== StationBookingRuleOutcome.ALLOWED)
             .map((evaluation) => evaluation.reason),
     evaluations,
+    effectiveRule: capability.effectiveRule ?? null,
+    timezone: capability.timezone ?? null,
+    adminOverrideApplied: false,
   };
 }
 
@@ -391,7 +398,14 @@ export function evaluateStationBookingRules(
   const returnAt = parseInstant(input.returnDateTime);
   const evaluatedAt = new Date().toISOString();
 
-  const pickup = evaluateSide('pickup', input.pickupStation, pickupAt, input, policy);
+  const pickup = evaluatePickupBookingRules({
+    organizationId: input.organizationId,
+    station: input.pickupStation,
+    pickupAt,
+    vehicle: input.vehicle,
+    policy,
+    bookingContext: input.bookingContext,
+  });
   const returnSide = evaluateSide('return', input.returnStation, returnAt, input, policy);
 
   return {
