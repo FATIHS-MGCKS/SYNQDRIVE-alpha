@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-voice-platform-overview-2026-07-18',
+    version: '4.9.605',
+    title: 'V4.9.605 — Voice AI: master platform overview (8A)',
+    summary: [
+      'Master Voice Betriebszentrum: platform status with live ElevenLabs/Twilio health probes, MCP gateway, webhook ingestion backlog/DLQ, incidents, and today operations KPIs.',
+      'Organization list as responsive card grid with filters (plan, rollout, provider health, budget, provisioning errors, incidents); masked numbers/IDs, clear next action per org.',
+      'Backend health util + enriched listOrganizations; frontend VoicePlatformStatusPanel + VoiceOrganizationsPanel with loading/error/empty/degraded states.',
+    ],
+    reason:
+      'Prompt 8A — professional master-admin voice operations center with real runtime health, not env-var-only checks.',
+    previousBehavior:
+      'Platform tab showed basic provider booleans; organizations were a dense DataTable without rollout/budget/problem filters or masked operational context.',
+    details:
+      'See architecture/VOICE_AI_MASTER_PLATFORM_OVERVIEW_2026-07-18.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
     id: 'voice-automation-analytics-settings-2026-07-18',
     version: '4.9.604',
     title: 'V4.9.604 — Voice AI: automations, analytics & settings (7B)',

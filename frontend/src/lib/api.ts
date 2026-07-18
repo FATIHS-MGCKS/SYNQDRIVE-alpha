@@ -11084,13 +11084,35 @@ export interface VoiceMasterAdminOrgBilling {
   finalCostCents: number;
 }
 
+export type VoicePlatformHealthState =
+  | 'healthy'
+  | 'degraded'
+  | 'incident'
+  | 'disabled'
+  | 'not_configured';
+
+export interface VoiceControlPlaneProviderStatus {
+  ok: boolean;
+  label: string;
+  state: VoicePlatformHealthState;
+  message?: string;
+}
+
 export interface VoiceControlPlanePlatformStatus {
   checkedAt: string;
+  overall: { state: VoicePlatformHealthState; label: string };
   providers: {
-    elevenLabs: { ok: boolean; label: string };
-    twilioIe1: { ok: boolean; label: string };
-    mcpGateway: { ok: boolean; label: string };
-    webhookIngestion: { ok: boolean; label: string };
+    elevenLabs: VoiceControlPlaneProviderStatus;
+    twilioIe1: VoiceControlPlaneProviderStatus;
+    mcpGateway: VoiceControlPlaneProviderStatus;
+    webhookIngestion: VoiceControlPlaneProviderStatus;
+  };
+  operations: {
+    callsToday: number;
+    usageMinutesToday: number;
+    estimatedCostTodayCents: number;
+    activeVoiceOrganizations: number;
+    failedProvisionings: number;
   };
   queues: {
     waiting: number;
@@ -11109,12 +11131,19 @@ export interface VoiceControlPlanePlatformStatus {
 export type VoiceControlPlaneOrganizationRow = VoiceAssistantAdminOverviewRow & {
   planCode: string | null;
   subscriptionStatus: string | null;
+  rolloutStatus: string | null;
   subaccountStatus: string | null;
+  maskedPhoneNumber: string | null;
   consumedMinutes: number;
   remainingMinutes: number;
   monthlyBudgetCents: number | null;
   maxConcurrentCalls: number | null;
   openErrors: number;
+  agentDeploymentStatus: string | null;
+  provisioningFailed: boolean;
+  budgetStatus: 'ok' | 'near_limit' | 'over_limit' | 'not_set';
+  problemStatus: 'ok' | 'warning' | 'critical' | 'incident';
+  providerHealth: 'healthy' | 'degraded' | 'error' | 'not_configured';
 };
 
 export interface VoiceControlPlaneOrganizationsResponse {

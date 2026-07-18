@@ -31,6 +31,44 @@ export class TwilioControlPlaneTelephonyService {
     return this.controlPlaneClient.isConfigured();
   }
 
+  async checkHealth(): Promise<{
+    configured: boolean;
+    healthy: boolean;
+    degraded: boolean;
+    label: string;
+    message?: string;
+  }> {
+    if (!this.isConfigured()) {
+      return {
+        configured: false,
+        healthy: false,
+        degraded: false,
+        label: 'Not configured',
+        message: 'Twilio IE1 control-plane credentials are missing.',
+      };
+    }
+
+    try {
+      const client = this.controlPlaneClient.getClient();
+      await client.api.v2010.accounts(client.accountSid).fetch();
+      return {
+        configured: true,
+        healthy: true,
+        degraded: false,
+        label: 'Healthy',
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Twilio health check failed';
+      return {
+        configured: true,
+        healthy: false,
+        degraded: true,
+        label: 'Degraded',
+        message,
+      };
+    }
+  }
+
   async listParentPhoneNumbers(): Promise<TwilioPhoneNumberRecord[]> {
     const client = this.controlPlaneClient.getClient();
     try {
