@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-vehicle-position-metadata-v49613-2026-07-18',
+    version: '4.9.613',
+    title: 'V4.9.613 — Stations V2: Vehicle Position Metadata Schema (Prompt 33/78)',
+    summary: [
+      'Additive Vehicle-Felder: `currentStationSource`, `currentStationConfirmedAt`, `currentStationConfirmedByUserId`, `expectedStationSource`, `expectedStationSetAt`, `stationPositionVersion`.',
+      'Enum `VehicleStationPositionSource`: MANUAL, PICKUP, RETURN, TRANSFER, IMPORT, GEOFENCE_SHADOW, GEOFENCE_CONFIRMED, UNKNOWN.',
+      'Nullable + rückwärtskompatibel; bestehende IDs unverändert; keine Bestandsbereinigung in Migration.',
+      'Indizes: org+current, org+expected, source-Spalten, confirmed-by-user.',
+    ],
+    reason:
+      'Current/Expected-Positionierung hatte keine Provenance-Spalten — R4/V5 aus `vehicle-station-positioning-v2.md` erfordern additive Metadaten.',
+    previousBehavior:
+      'Nur `homeStationId` / `currentStationId` / `expectedStationId` ohne Source, Timestamp oder Versionszähler.',
+    details:
+      'Migration `20260718150000_vehicle_station_position_metadata`, Prisma-Enum, migration.spec.ts; keine Produktionsmigration ausgeführt.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T15:00:00.000Z',
+  },
+  {
     id: 'stations-v2-vehicle-positioning-v49612-2026-07-18',
     version: '4.9.612',
     title: 'V4.9.612 — Stations V2: Vehicle Station Positioning V2 Spec (Prompt 32/78)',
