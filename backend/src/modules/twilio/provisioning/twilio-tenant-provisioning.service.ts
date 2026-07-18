@@ -34,6 +34,7 @@ import {
   VoiceProvisioningJobRepository,
   VoiceSubscriptionRepository,
 } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
+import { isVoiceStagingOrganization } from '@modules/voice-assistant/staging/voice-staging.constants';
 import {
   readTwilioProvisioningFlags,
   TWILIO_PROVISIONING_DEFAULTS,
@@ -412,7 +413,11 @@ export class TwilioTenantProvisioningService {
     this.assertMutationsAllowed(flags, dryRun);
 
     const preview = await this.previewProvisioning(input.organizationId);
-    if (preview.trialRestricted) {
+    const stagingTrialBypass =
+      isVoiceStagingOrganization(input.organizationId) &&
+      flags.stagingProviderActionsEnabled &&
+      preview.trialRestricted;
+    if (preview.trialRestricted && !stagingTrialBypass) {
       throw new ForbiddenException('Phone number purchase is restricted while voice subscription is in trial.');
     }
 
@@ -627,11 +632,21 @@ export class TwilioTenantProvisioningService {
       throw new TwilioTenantIsolationViolationError('Organization not found.');
     }
 
+    const flags = readTwilioProvisioningFlags();
+    const stagingOrg = isVoiceStagingOrganization(organizationId);
     const subscriptions = await this.subscriptionRepository.listByOrganization(organizationId);
     const activeSubscription = subscriptions.find(
       (row) => row.status === VoiceSubscriptionStatus.ACTIVE,
     );
-    const trialRestricted = !activeSubscription;
+    const trialSubscription = subscriptions.find(
+      (row) => row.status === VoiceSubscriptionStatus.TRIAL,
+    );
+    const voiceSubscriptionActive = Boolean(
+      activeSubscription || (stagingOrg && trialSubscription),
+    );
+    const trialRestricted =
+      !activeSubscription &&
+      !(stagingOrg && flags.stagingProviderActionsEnabled && trialSubscription);
 
     const existingAccount = await this.findTwilioSubaccount(organizationId);
     const parentTwilioConfigured = this.controlPlane.isConfigured();
@@ -639,8 +654,9 @@ export class TwilioTenantProvisioningService {
     return {
       blockers: [] as string[],
       warnings: [] as string[],
-      voiceSubscriptionActive: Boolean(activeSubscription),
-      voiceSubscriptionStatus: activeSubscription?.status ?? subscriptions[0]?.status ?? null,
+      voiceSubscriptionActive,
+      voiceSubscriptionStatus:
+        activeSubscription?.status ?? trialSubscription?.status ?? subscriptions[0]?.status ?? null,
       trialRestricted,
       existingSubaccount: Boolean(existingAccount),
       maskedSubaccountRef: existingAccount?.maskedExternalRef ?? null,

@@ -36,6 +36,26 @@ export function createTwilioClient(options: TwilioClientOptions): Twilio | null 
   });
 }
 
+/**
+ * Parent-account management client (subaccount create, API keys).
+ * Account Admin API is not available on IE1 — use Auth Token on default US routing.
+ */
+export function createTwilioAccountsManagementClient(
+  options: TwilioClientOptions & { authToken?: string },
+): Twilio | null {
+  const accountSid = options.accountSid?.trim();
+  const authToken = options.authToken?.trim();
+  if (accountSid && authToken) {
+    return twilio(accountSid, authToken);
+  }
+  const apiKeySid = options.apiKeySid?.trim();
+  const apiKeySecret = options.apiKeySecret?.trim();
+  if (!accountSid || !apiKeySid || !apiKeySecret) {
+    return null;
+  }
+  return twilio(apiKeySid, apiKeySecret, { accountSid });
+}
+
 let legacyControlPlaneSingleton: Twilio | null = null;
 
 /**

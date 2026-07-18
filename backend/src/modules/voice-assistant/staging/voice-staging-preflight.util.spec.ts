@@ -5,6 +5,7 @@ import {
   evaluateVoiceStagingPolicies,
   maskStagingOrgId,
 } from './voice-staging-preflight.util';
+import { isVoiceStagingOrganization } from './voice-staging.constants';
 
 describe('voice-staging-preflight.util', () => {
   it('masks org ids for reports', () => {
@@ -27,6 +28,11 @@ describe('voice-staging-preflight.util', () => {
     expect(policies.provisioningStagingEnabled).toBe(true);
     expect(policies.liveCallsEnabled).toBe(false);
     expect(policies.twilioRegion).toBe('ie1');
+  });
+
+  it('identifies staging organization', () => {
+    expect(isVoiceStagingOrganization('org-voice-staging-e2e')).toBe(true);
+    expect(isVoiceStagingOrganization('org-prod-customer')).toBe(false);
   });
 
   it('returns NO-GO when blockers present', () => {
