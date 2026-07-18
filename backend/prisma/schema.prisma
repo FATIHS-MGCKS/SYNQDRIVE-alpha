@@ -277,6 +277,16 @@ enum VehicleStationPositionSource {
   UNKNOWN
 }
 
+/// Canonical vehicle station transfer lifecycle (Stations V2).
+enum VehicleStationTransferStatus {
+  PLANNED
+  READY
+  IN_TRANSIT
+  ARRIVED
+  CANCELLED
+  OVERDUE
+}
+
 enum FuelType {
   GASOLINE
   DIESEL
@@ -1446,6 +1456,7 @@ model Organization {
   organizationProducts                   OrganizationProduct[]
   stations                               Station[]
   stationCalendarExceptions              StationCalendarException[]
+  vehicleStationTransfers                VehicleStationTransfer[]
   vehicles                               Vehicle[]
   brakeComponentInstallations            BrakeComponentInstallation[]
   brakeServiceApplications               BrakeServiceApplication[]
@@ -1844,6 +1855,8 @@ model Station {
   vehiclesHome           Vehicle[]                  @relation("VehicleHomeStation")
   vehiclesCurrent        Vehicle[]                  @relation("VehicleCurrentStation")
   vehiclesExpected       Vehicle[]                  @relation("VehicleExpectedStation")
+  transfersFrom          VehicleStationTransfer[]   @relation("VehicleStationTransferFrom")
+  transfersTo            VehicleStationTransfer[]   @relation("VehicleStationTransferTo")
   pickupBookings         Booking[]                  @relation("BookingPickupStation")
   returnBookings         Booking[]                  @relation("BookingReturnStation")
   actualPickupBookings   Booking[]                  @relation("BookingActualPickupStation")
@@ -1887,6 +1900,36 @@ model StationCalendarException {
   @@index([organizationId, stationId, status])
   @@index([stationId, calendarDate])
   @@map("station_calendar_exceptions")
+}
+
+model VehicleStationTransfer {
+  id                String                       @id @default(uuid())
+  organizationId    String                       @map("organization_id")
+  vehicleId         String                       @map("vehicle_id")
+  fromStationId     String?                      @map("from_station_id")
+  toStationId       String                       @map("to_station_id")
+  status            VehicleStationTransferStatus @default(PLANNED)
+  plannedAt         DateTime                     @default(now()) @map("planned_at")
+  expectedArrivalAt DateTime?                    @map("expected_arrival_at")
+  startedAt         DateTime?                    @map("started_at")
+  completedAt       DateTime?                    @map("completed_at")
+  cancelledAt       DateTime?                    @map("cancelled_at")
+  createdByUserId   String?                      @map("created_by_user_id")
+  performedByUserId String?                      @map("performed_by_user_id")
+  reason            String?
+  sourceBookingId   String?                      @map("source_booking_id")
+  createdAt         DateTime                     @default(now()) @map("created_at")
+  updatedAt         DateTime                     @updatedAt @map("updated_at")
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  fromStation   Station?     @relation("VehicleStationTransferFrom", fields: [fromStationId], references: [id], onDelete: SetNull)
+  toStation     Station      @relation("VehicleStationTransferTo", fields: [toStationId], references: [id], onDelete: Restrict)
+  sourceBooking Booking?     @relation(fields: [sourceBookingId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, vehicleId, status])
+  @@index([organizationId, toStationId, status])
+  @@map("vehicle_station_transfers")
 }
 
 // ------------------------------------------------
@@ -2007,6 +2050,7 @@ model Vehicle {
   homeStation                            Station?                                @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
   currentStation                         Station?                                @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
   expectedStation                        Station?                                @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
+  stationTransfers                       VehicleStationTransfer[]
   currentStationConfirmedByUser          User?                                   @relation("VehicleCurrentStationConfirmedBy", fields: [currentStationConfirmedByUserId], references: [id], onDelete: SetNull)
   dimoVehicle                            DimoVehicle?                            @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
   batterySpecs                           VehicleBatterySpec[]
@@ -4637,6 +4681,7 @@ model Booking {
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
   allowedDrivers          BookingAllowedDriver[]
+  sourceStationTransfers  VehicleStationTransfer[]
 
   @@index([organizationId])
   @@index([customerId])

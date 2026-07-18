@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-vehicle-station-transfer-domain-v49622-2026-07-19',
+    version: '4.9.622',
+    title: 'V4.9.622 — Stations V2: VehicleStationTransfer Domain (Prompt 42/78)',
+    summary: [
+      'Neues Prisma-Aggregat `VehicleStationTransfer` mit Lifecycle PLANNED → READY → IN_TRANSIT → ARRIVED / CANCELLED / OVERDUE.',
+      'PLANNED setzt `expectedStationId` (Source TRANSFER); ARRIVED setzt `currentStationId` und löst Expected kontrolliert auf; `homeStationId` bleibt unverändert.',
+      'Cancel löscht Expected nur bei transfer-eigenem Kontext ohne andere aktive Transfers; keine Geofence-Automation.',
+      'Command-API unter `POST .../stations/transfers/*` mit Audit, Idempotenz und Integrationstests.',
+    ],
+    reason:
+      'Stations-V2 Phase 1 braucht ein kanonisches Transfer-Aggregat statt nur `expectedStationId`-Projektion ohne Lifecycle und Audit.',
+    previousBehavior:
+      'Kein Transfer-Modell; aktive Transfers nur aus `expectedStationId` abgeleitet; `assignVehicle(expected)` ohne Domain-Lifecycle.',
+    details:
+      '`vehicle-station-transfer.*` + Migration `20260718160000_vehicle_station_transfers`; Service wired mit `ExpectedStationPolicy`; Permission `stations.manage_transfers`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T00:00:00.000Z',
+  },
+  {
     id: 'stations-v2-expected-station-policy-v49621-2026-07-18',
     version: '4.9.621',
     title: 'V4.9.621 — Stations V2: ExpectedStationPolicy (Prompt 41/78)',

@@ -14,9 +14,11 @@ export type ExpectedStationOrigin =
 
 export const ExpectedStationTransferStatus = {
   PLANNED: 'PLANNED',
+  READY: 'READY',
   IN_TRANSIT: 'IN_TRANSIT',
-  COMPLETED: 'COMPLETED',
+  ARRIVED: 'ARRIVED',
   CANCELLED: 'CANCELLED',
+  OVERDUE: 'OVERDUE',
 } as const;
 
 export type ExpectedStationTransferStatus =

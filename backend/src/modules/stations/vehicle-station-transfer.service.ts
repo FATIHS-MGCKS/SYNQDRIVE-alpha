@@ -1,0 +1,657 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { Prisma, VehicleStationTransferStatus } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import {
+  evaluateSetExpectedStationPolicy,
+  ExpectedStationOrigin,
+  ExpectedStationRequestChannel,
+} from '@shared/stations/expected-station.policy';
+import { buildStationPositionVersionConflictIssue } from '@shared/stations/station-optimistic-concurrency.util';
+import {
+  ACTIVE_VEHICLE_STATION_TRANSFER_STATUSES,
+  VehicleStationTransferCommandName,
+  VehicleStationTransferCommandOutcome,
+  type PlanVehicleStationTransferInput,
+  type TransitionVehicleStationTransferInput,
+  type VehicleStationTransferCommandAudit,
+  type VehicleStationTransferCommandResult,
+  type VehicleStationTransferRecord,
+  type VehicleStationTransferVehicleSnapshot,
+} from './vehicle-station-transfer.types';
+import {
+  buildTransferCommandOutcome,
+  evaluatePlanVehicleStationTransfer,
+  evaluateTransferTransition,
+  resolveTransitionTimestampFields,
+} from './vehicle-station-transfer.util';
+
+@Injectable()
+export class VehicleStationTransferService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async planTransfer(
+    organizationId: string,
+    input: PlanVehicleStationTransferInput,
+    performedByUserId?: string | null,
+  ): Promise<VehicleStationTransferCommandResult> {
+    const plannedAt = input.plannedAt ? new Date(input.plannedAt) : new Date();
+    const expectedArrivalAt = input.expectedArrivalAt
+      ? new Date(input.expectedArrivalAt)
+      : null;
+
+    const vehicle = await this.requireVehicle(organizationId, input.vehicleId);
+    const toStation = await this.requireActiveStation(organizationId, input.toStationId);
+
+    if (input.fromStationId) {
+      await this.requireActiveStation(organizationId, input.fromStationId);
+    }
+
+    if (input.sourceBookingId) {
+      const booking = await this.prisma.booking.findFirst({
+        where: { id: input.sourceBookingId, organizationId, vehicleId: input.vehicleId },
+        select: { id: true },
+      });
+      if (!booking) {
+        throw new NotFoundException('Source booking not found for vehicle');
+      }
+    }
+
+    const activeTransferCount = await this.countActiveTransfers(
+      organizationId,
+      input.vehicleId,
+    );
+
+    const evaluation = evaluatePlanVehicleStationTransfer({
+      fromStationId: input.fromStationId ?? vehicle.currentStationId,
+      toStationId: input.toStationId,
+      toStationStatus: toStation.status,
+      activeTransferCount,
+      vehicleExpectedStationId: vehicle.expectedStationId,
+      vehicleExpectedStationSource: vehicle.expectedStationSource,
+      plannedAt,
+    });
+
+    if (!evaluation.allowed) {
+      return this.blockedPlanResult({
+        organizationId,
+        input,
+        vehicle,
+        plannedAt,
+        expectedArrivalAt,
+        performedByUserId,
+        blockingReasons: evaluation.blockingReasons,
+      });
+    }
+
+    const fromStationId = input.fromStationId ?? vehicle.currentStationId;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const transfer = await tx.vehicleStationTransfer.create({
+        data: {
+          organizationId,
+          vehicleId: input.vehicleId,
+          fromStationId,
+          toStationId: input.toStationId,
+          status: 'PLANNED',
+          plannedAt,
+          expectedArrivalAt,
+          reason: input.reason ?? null,
+          sourceBookingId: input.sourceBookingId ?? null,
+          createdByUserId: performedByUserId ?? null,
+          performedByUserId: performedByUserId ?? null,
+        },
+      });
+
+      const setPolicy = evaluateSetExpectedStationPolicy({
+        targetStationId: input.toStationId,
+        origin: ExpectedStationOrigin.PLANNED_TRANSFER,
+        sourceSetAt: plannedAt,
+        context: { transferId: transfer.id, transferStatus: 'PLANNED' },
+        targetStationStatus: toStation.status,
+        existing: {
+          expectedStationId: vehicle.expectedStationId,
+          expectedStationSource: vehicle.expectedStationSource,
+          expectedStationSetAt: vehicle.expectedStationSetAt,
+        },
+        requestChannel: ExpectedStationRequestChannel.COMMAND,
+      });
+
+      if (!setPolicy.allowed && !setPolicy.idempotent) {
+        throw new BadRequestException({
+          blockingReasons: setPolicy.blockingReasons,
+        });
+      }
+
+      const vehicleUpdate: Prisma.VehicleUncheckedUpdateInput = {
+        stationPositionVersion: { increment: 1 },
+      };
+
+      if (!setPolicy.idempotent) {
+        vehicleUpdate.expectedStationId = input.toStationId;
+        vehicleUpdate.expectedStationSource = 'TRANSFER';
+        vehicleUpdate.expectedStationSetAt = plannedAt;
+      }
+
+      const updateResult = await tx.vehicle.updateMany({
+        where: {
+          id: vehicle.id,
+          organizationId,
+          stationPositionVersion: vehicle.stationPositionVersion,
+        },
+        data: vehicleUpdate,
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(buildStationPositionVersionConflictIssue());
+      }
+
+      const updatedVehicle = await tx.vehicle.findFirstOrThrow({
+        where: { id: vehicle.id, organizationId },
+        select: this.vehicleSelect,
+      });
+
+      return {
+        transfer,
+        vehicle: updatedVehicle,
+        setExpected: !setPolicy.idempotent,
+      };
+    });
+
+    return this.buildResult({
+      command: VehicleStationTransferCommandName.PLAN,
+      organizationId,
+      transfer: result.transfer,
+      vehicle: result.vehicle,
+      fromStatus: 'PLANNED',
+      toStatus: 'PLANNED',
+      performedByUserId,
+      reason: input.reason ?? null,
+      idempotent: false,
+      setExpected: result.setExpected,
+      clearedExpected: false,
+      setCurrent: false,
+    });
+  }
+
+  async transitionTransfer(
+    organizationId: string,
+    input: TransitionVehicleStationTransferInput,
+    performedByUserId?: string | null,
+  ): Promise<VehicleStationTransferCommandResult> {
+    const performedAt = input.performedAt ? new Date(input.performedAt) : new Date();
+    const transfer = await this.prisma.vehicleStationTransfer.findFirst({
+      where: { id: input.transferId, organizationId },
+    });
+    if (!transfer) {
+      throw new NotFoundException('Transfer not found');
+    }
+
+    const vehicle = await this.requireVehicle(organizationId, transfer.vehicleId);
+
+    if (
+      input.expectedVersion !== undefined &&
+      input.expectedVersion !== vehicle.stationPositionVersion
+    ) {
+      throw new ConflictException(buildStationPositionVersionConflictIssue());
+    }
+
+    const otherActiveTransferCount = await this.countActiveTransfers(
+      organizationId,
+      transfer.vehicleId,
+      transfer.id,
+    );
+
+    const evaluation = evaluateTransferTransition({
+      transfer,
+      targetStatus: input.targetStatus,
+      vehicle: {
+        expectedStationId: vehicle.expectedStationId,
+        expectedStationSource: vehicle.expectedStationSource,
+        currentStationId: vehicle.currentStationId,
+      },
+      otherActiveTransferCount,
+      performedAt,
+    });
+
+    const command = this.resolveCommandForTargetStatus(input.targetStatus);
+
+    if (evaluation.idempotent) {
+      return this.buildResult({
+        command,
+        organizationId,
+        transfer,
+        vehicle,
+        fromStatus: transfer.status,
+        toStatus: input.targetStatus,
+        performedByUserId,
+        reason: input.reason ?? transfer.reason,
+        idempotent: true,
+        setExpected: false,
+        clearedExpected: false,
+        setCurrent: false,
+      });
+    }
+
+    if (!evaluation.allowed) {
+      return {
+        outcome: VehicleStationTransferCommandOutcome.BLOCKED,
+        command,
+        allowed: false,
+        transfer: this.toTransferRecord(transfer),
+        vehicle: this.toVehicleSnapshot(vehicle),
+        blockingReasons: evaluation.blockingReasons,
+        warnings: [],
+        audit: this.buildAudit({
+          command,
+          organizationId,
+          transfer,
+          fromStatus: transfer.status,
+          toStatus: input.targetStatus,
+          performedByUserId,
+          reason: input.reason ?? transfer.reason,
+          idempotent: false,
+          setExpected: false,
+          clearedExpected: false,
+          setCurrent: false,
+          performedAt,
+        }),
+      };
+    }
+
+    const timestampFields = resolveTransitionTimestampFields(input.targetStatus, performedAt);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updatedTransfer = await tx.vehicleStationTransfer.update({
+        where: { id: transfer.id },
+        data: {
+          status: input.targetStatus,
+          performedByUserId: performedByUserId ?? null,
+          reason: input.reason ?? transfer.reason,
+          ...timestampFields,
+        },
+      });
+
+      const vehicleUpdate: Prisma.VehicleUncheckedUpdateInput = {};
+      let touchesVehicle = false;
+
+      if (evaluation.shouldSetCurrent) {
+        vehicleUpdate.currentStationId = transfer.toStationId;
+        vehicleUpdate.currentStationSource = 'TRANSFER';
+        vehicleUpdate.currentStationConfirmedAt = performedAt;
+        vehicleUpdate.currentStationConfirmedByUserId = performedByUserId ?? null;
+        touchesVehicle = true;
+      }
+
+      if (evaluation.shouldClearExpected) {
+        vehicleUpdate.expectedStationId = null;
+        vehicleUpdate.expectedStationSource = null;
+        vehicleUpdate.expectedStationSetAt = null;
+        touchesVehicle = true;
+      }
+
+      let updatedVehicle = vehicle;
+      if (touchesVehicle) {
+        const versionForUpdate =
+          input.expectedVersion !== undefined
+            ? input.expectedVersion
+            : vehicle.stationPositionVersion;
+
+        const updateResult = await tx.vehicle.updateMany({
+          where: {
+            id: vehicle.id,
+            organizationId,
+            stationPositionVersion: versionForUpdate,
+          },
+          data: {
+            ...vehicleUpdate,
+            stationPositionVersion: { increment: 1 },
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new ConflictException(buildStationPositionVersionConflictIssue());
+        }
+
+        updatedVehicle = await tx.vehicle.findFirstOrThrow({
+          where: { id: vehicle.id, organizationId },
+          select: this.vehicleSelect,
+        });
+      }
+
+      return { transfer: updatedTransfer, vehicle: updatedVehicle };
+    });
+
+    return this.buildResult({
+      command,
+      organizationId,
+      transfer: result.transfer,
+      vehicle: result.vehicle,
+      fromStatus: transfer.status,
+      toStatus: input.targetStatus,
+      performedByUserId,
+      reason: input.reason ?? transfer.reason,
+      idempotent: false,
+      setExpected: evaluation.shouldSetExpected,
+      clearedExpected: evaluation.shouldClearExpected,
+      setCurrent: evaluation.shouldSetCurrent,
+      performedAt,
+    });
+  }
+
+  async markReady(
+    organizationId: string,
+    transferId: string,
+    reason?: string | null,
+    performedByUserId?: string | null,
+    expectedVersion?: number,
+  ) {
+    return this.transitionTransfer(
+      organizationId,
+      { transferId, targetStatus: 'READY', reason, expectedVersion },
+      performedByUserId,
+    );
+  }
+
+  async startTransfer(
+    organizationId: string,
+    transferId: string,
+    reason?: string | null,
+    performedByUserId?: string | null,
+    expectedVersion?: number,
+  ) {
+    return this.transitionTransfer(
+      organizationId,
+      { transferId, targetStatus: 'IN_TRANSIT', reason, expectedVersion },
+      performedByUserId,
+    );
+  }
+
+  async markArrived(
+    organizationId: string,
+    transferId: string,
+    reason?: string | null,
+    performedByUserId?: string | null,
+    expectedVersion?: number,
+  ) {
+    return this.transitionTransfer(
+      organizationId,
+      { transferId, targetStatus: 'ARRIVED', reason, expectedVersion },
+      performedByUserId,
+    );
+  }
+
+  async cancelTransfer(
+    organizationId: string,
+    transferId: string,
+    reason?: string | null,
+    performedByUserId?: string | null,
+    expectedVersion?: number,
+  ) {
+    return this.transitionTransfer(
+      organizationId,
+      { transferId, targetStatus: 'CANCELLED', reason, expectedVersion },
+      performedByUserId,
+    );
+  }
+
+  async markOverdue(
+    organizationId: string,
+    transferId: string,
+    reason?: string | null,
+    performedByUserId?: string | null,
+    expectedVersion?: number,
+  ) {
+    return this.transitionTransfer(
+      organizationId,
+      { transferId, targetStatus: 'OVERDUE', reason, expectedVersion },
+      performedByUserId,
+    );
+  }
+
+  private readonly vehicleSelect = {
+    id: true,
+    homeStationId: true,
+    currentStationId: true,
+    expectedStationId: true,
+    expectedStationSource: true,
+    expectedStationSetAt: true,
+    stationPositionVersion: true,
+  } as const;
+
+  private async requireVehicle(organizationId: string, vehicleId: string) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+      select: this.vehicleSelect,
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+    return vehicle;
+  }
+
+  private async requireActiveStation(organizationId: string, stationId: string) {
+    const station = await this.prisma.station.findFirst({
+      where: { id: stationId, organizationId },
+      select: { id: true, status: true },
+    });
+    if (!station) {
+      throw new NotFoundException('Station not found');
+    }
+    if (station.status === 'ARCHIVED') {
+      throw new BadRequestException('Archived stations cannot be used for transfers');
+    }
+    if (station.status !== 'ACTIVE') {
+      throw new BadRequestException('Inactive stations cannot be used for transfers');
+    }
+    return station;
+  }
+
+  private async countActiveTransfers(
+    organizationId: string,
+    vehicleId: string,
+    excludeTransferId?: string,
+  ): Promise<number> {
+    return this.prisma.vehicleStationTransfer.count({
+      where: {
+        organizationId,
+        vehicleId,
+        status: { in: ACTIVE_VEHICLE_STATION_TRANSFER_STATUSES },
+        ...(excludeTransferId ? { id: { not: excludeTransferId } } : {}),
+      },
+    });
+  }
+
+  private resolveCommandForTargetStatus(
+    targetStatus: VehicleStationTransferStatus,
+  ): VehicleStationTransferCommandName {
+    switch (targetStatus) {
+      case 'READY':
+        return VehicleStationTransferCommandName.MARK_READY;
+      case 'IN_TRANSIT':
+        return VehicleStationTransferCommandName.START;
+      case 'ARRIVED':
+        return VehicleStationTransferCommandName.ARRIVE;
+      case 'CANCELLED':
+        return VehicleStationTransferCommandName.CANCEL;
+      case 'OVERDUE':
+        return VehicleStationTransferCommandName.MARK_OVERDUE;
+      default:
+        return VehicleStationTransferCommandName.PLAN;
+    }
+  }
+
+  private toTransferRecord(
+    transfer: Prisma.VehicleStationTransferGetPayload<object>,
+  ): VehicleStationTransferRecord {
+    return {
+      id: transfer.id,
+      organizationId: transfer.organizationId,
+      vehicleId: transfer.vehicleId,
+      fromStationId: transfer.fromStationId,
+      toStationId: transfer.toStationId,
+      status: transfer.status,
+      plannedAt: transfer.plannedAt,
+      expectedArrivalAt: transfer.expectedArrivalAt,
+      startedAt: transfer.startedAt,
+      completedAt: transfer.completedAt,
+      cancelledAt: transfer.cancelledAt,
+      createdByUserId: transfer.createdByUserId,
+      performedByUserId: transfer.performedByUserId,
+      reason: transfer.reason,
+      sourceBookingId: transfer.sourceBookingId,
+    };
+  }
+
+  private toVehicleSnapshot(vehicle: {
+    id: string;
+    homeStationId: string | null;
+    currentStationId: string | null;
+    expectedStationId: string | null;
+    expectedStationSource: string | null;
+    stationPositionVersion: number;
+  }): VehicleStationTransferVehicleSnapshot {
+    return {
+      id: vehicle.id,
+      homeStationId: vehicle.homeStationId,
+      currentStationId: vehicle.currentStationId,
+      expectedStationId: vehicle.expectedStationId,
+      expectedStationSource: vehicle.expectedStationSource,
+      stationPositionVersion: vehicle.stationPositionVersion,
+    };
+  }
+
+  private buildAudit(input: {
+    command: VehicleStationTransferCommandName;
+    organizationId: string;
+    transfer: { id: string; vehicleId: string; fromStationId: string | null; toStationId: string };
+    fromStatus: VehicleStationTransferStatus;
+    toStatus: VehicleStationTransferStatus;
+    performedByUserId?: string | null;
+    reason: string | null;
+    idempotent: boolean;
+    setExpected: boolean;
+    clearedExpected: boolean;
+    setCurrent: boolean;
+    performedAt?: Date;
+  }): VehicleStationTransferCommandAudit {
+    const performedAt = input.performedAt ?? new Date();
+    return {
+      command: input.command,
+      organizationId: input.organizationId,
+      transferId: input.transfer.id,
+      vehicleId: input.transfer.vehicleId,
+      fromStatus: input.fromStatus,
+      toStatus: input.toStatus,
+      fromStationId: input.transfer.fromStationId,
+      toStationId: input.transfer.toStationId,
+      reason: input.reason,
+      performedAt: performedAt.toISOString(),
+      performedByUserId: input.performedByUserId ?? null,
+      idempotent: input.idempotent,
+      setExpected: input.setExpected,
+      clearedExpected: input.clearedExpected,
+      setCurrent: input.setCurrent,
+    };
+  }
+
+  private buildResult(input: {
+    command: VehicleStationTransferCommandName;
+    organizationId: string;
+    transfer: Prisma.VehicleStationTransferGetPayload<object>;
+    vehicle: {
+      id: string;
+      homeStationId: string | null;
+      currentStationId: string | null;
+      expectedStationId: string | null;
+      expectedStationSource: string | null;
+      stationPositionVersion: number;
+    };
+    fromStatus: VehicleStationTransferStatus;
+    toStatus: VehicleStationTransferStatus;
+    performedByUserId?: string | null;
+    reason: string | null;
+    idempotent: boolean;
+    setExpected: boolean;
+    clearedExpected: boolean;
+    setCurrent: boolean;
+    performedAt?: Date;
+  }): VehicleStationTransferCommandResult {
+    return {
+      outcome: buildTransferCommandOutcome(true, input.idempotent),
+      command: input.command,
+      allowed: true,
+      transfer: this.toTransferRecord(input.transfer),
+      vehicle: this.toVehicleSnapshot(input.vehicle),
+      blockingReasons: [],
+      warnings: [],
+      audit: this.buildAudit(input),
+    };
+  }
+
+  private blockedPlanResult(input: {
+    organizationId: string;
+    input: PlanVehicleStationTransferInput;
+    vehicle: {
+      id: string;
+      homeStationId: string | null;
+      currentStationId: string | null;
+      expectedStationId: string | null;
+      expectedStationSource: string | null;
+      stationPositionVersion: number;
+    };
+    plannedAt: Date;
+    expectedArrivalAt: Date | null;
+    performedByUserId?: string | null;
+    blockingReasons: ReturnType<typeof evaluatePlanVehicleStationTransfer>['blockingReasons'];
+  }): VehicleStationTransferCommandResult {
+    const placeholderTransfer: VehicleStationTransferRecord = {
+      id: 'blocked',
+      organizationId: input.organizationId,
+      vehicleId: input.input.vehicleId,
+      fromStationId: input.input.fromStationId ?? input.vehicle.currentStationId,
+      toStationId: input.input.toStationId,
+      status: 'PLANNED',
+      plannedAt: input.plannedAt,
+      expectedArrivalAt: input.expectedArrivalAt,
+      startedAt: null,
+      completedAt: null,
+      cancelledAt: null,
+      createdByUserId: input.performedByUserId ?? null,
+      performedByUserId: input.performedByUserId ?? null,
+      reason: input.input.reason ?? null,
+      sourceBookingId: input.input.sourceBookingId ?? null,
+    };
+
+    return {
+      outcome: VehicleStationTransferCommandOutcome.BLOCKED,
+      command: VehicleStationTransferCommandName.PLAN,
+      allowed: false,
+      transfer: placeholderTransfer,
+      vehicle: this.toVehicleSnapshot(input.vehicle),
+      blockingReasons: input.blockingReasons,
+      warnings: [],
+      audit: {
+        command: VehicleStationTransferCommandName.PLAN,
+        organizationId: input.organizationId,
+        transferId: 'blocked',
+        vehicleId: input.input.vehicleId,
+        fromStatus: 'PLANNED',
+        toStatus: 'PLANNED',
+        fromStationId: placeholderTransfer.fromStationId,
+        toStationId: placeholderTransfer.toStationId,
+        reason: input.input.reason ?? null,
+        performedAt: input.plannedAt.toISOString(),
+        performedByUserId: input.performedByUserId ?? null,
+        idempotent: false,
+        setExpected: false,
+        clearedExpected: false,
+        setCurrent: false,
+      },
+    };
+  }
+}
