@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-voice-org-workspace-2026-07-18',
+    version: '4.9.606',
+    title: 'V4.9.606 — Voice AI: master organization operations workspace (8B)',
+    summary: [
+      'Replaced simple org drawer with full Voice Operations Workspace: 8 tabs (overview, provisioning, numbers, agent, conversations, billing, events, audit).',
+      '10-step provisioning stepper with status, prerequisites, errors, and fachlich klare retry actions; secure writes with confirmation, reason, idempotency, audit.',
+      'URL deep links via voiceOrgId + voiceOrgTab; masked IDs/numbers; no transcripts or raw payloads.',
+    ],
+    reason:
+      'Prompt 8B — operational per-org workspace for Master Admin voice provisioning and day-2 operations.',
+    previousBehavior:
+      'Shallow DetailDrawer with four sections and generic Deploy/Replay/Fortsetzen buttons.',
+    details:
+      'VoiceOrgWorkspace + voice-org-provisioning.ops + voice-org-workspace.actions; architecture/VOICE_AI_MASTER_ORG_WORKSPACE_2026-07-18.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T08:00:00.000Z',
+  },
+  {
     id: 'master-voice-platform-overview-2026-07-18',
     version: '4.9.605',
     title: 'V4.9.605 — Voice AI: master platform overview (8A)',

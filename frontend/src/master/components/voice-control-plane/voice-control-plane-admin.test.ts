@@ -50,6 +50,7 @@ import { isMasterAdmin } from '../../../lib/auth';
 import { api } from '../../../lib/api';
 import { VoiceAssistantAdminView } from '../VoiceAssistantAdminView';
 import { readVoiceControlPlaneSection } from '../voice-control-plane/voice-control-plane-navigation';
+import { readVoiceOrgId } from '../voice-control-plane/voice-org-workspace/voice-org-workspace-navigation';
 
 const mockPlatformStatus = {
   checkedAt: '2026-07-17T12:00:00.000Z',
@@ -230,6 +231,7 @@ describe('VoiceAssistantAdminView control plane', () => {
   it('parses voice section from URL', () => {
     expect(readVoiceControlPlaneSection('?voiceSection=audit')).toBe('audit');
     expect(readVoiceControlPlaneSection('')).toBe('platform');
+    expect(readVoiceOrgId('?voiceOrgId=org-1')).toBe('org-1');
   });
 });
 
