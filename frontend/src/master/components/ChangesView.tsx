@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-summary-read-model-v49633-2026-07-19',
+    version: '4.9.633',
+    title: 'V4.9.633 — Stations V2: Canonical StationSummaryReadModel (Prompt 53/78)',
+    summary: [
+      'Kanonisches `StationSummaryReadModel` pro Station — Stammdaten, Lifecycle, Öffnungsstatus, Capabilities, KPIs, Konfigurationsprobleme, Warnungen, Partial Data, `lastCalculatedAt`.',
+      'Serverseitig konsistent via `StationSummaryReadModelService.resolveForStation` — keine Frontend-Neuberechnung.',
+      'Batch-Selects für Vehicles, Bookings, Transfers + Task-Count ohne N+1; Scope/Tenant über `StationAccessScopeService`.',
+      'Archivierte Stationen mit `lifecycle.archived` + `archivedAt`; Endpoint `GET .../stations/:id/summary`.',
+      'Unit- und Integrationstests für aktive, archivierte, out-of-scope und TZ-Konstellationen.',
+    ],
+    reason:
+      'Station-Detail braucht ein einheitliches Read Model statt verteilter Overview-Stats/Operations-Aufrufe mit inkonsistenter Semantik.',
+    previousBehavior:
+      'Overview-Stats, Operations und KPIs waren getrennte Endpoints/Queries; Frontend aggregierte teils selbst; `bookedVehicles` veraltet.',
+    details:
+      '`station-summary-read-model.contract.ts` + `.resolver.ts` + `StationSummaryReadModelService`; integriert `resolveStationOperations` + `resolveStationKpis`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'stations-v2-kpis-domain-service-v49632-2026-07-19',
     version: '4.9.632',
     title: 'V4.9.632 — Stations V2: Canonical Station KPIs Domain Service (Prompt 52/78)',
