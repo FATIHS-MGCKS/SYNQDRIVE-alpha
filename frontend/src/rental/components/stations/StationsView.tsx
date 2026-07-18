@@ -4,6 +4,7 @@ import {
   Archive,
   Car,
   ChevronDown,
+  Clock,
   LayoutGrid,
   List,
   Loader2,
@@ -36,7 +37,9 @@ import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import {
   buildStationSummariesQueryParams,
+  capacityStatusTone,
   getStationCardDisplayMetrics,
+  openingStatusTone,
   type StationSummariesViewFilters,
 } from '../../lib/station-org-summaries.utils';
 import {
@@ -404,14 +407,15 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
               subdued={kpi.active === 0}
             />
             <StationKpiCard
-              label={t('stations.kpi.vehicles')}
-              value={kpi.vehicles}
+              label={t('stations.kpi.homeFleet')}
+              value={kpisPending ? '—' : kpi.homeFleet}
               icon={<Car className="h-3 w-3" />}
+              subdued={kpisPending}
             />
             <StationKpiCard
-              label={t('stations.kpi.available')}
-              value={kpisPending ? '—' : kpi.available}
-              icon={<Car className="h-3 w-3" />}
+              label={t('stations.kpi.onSite')}
+              value={kpisPending ? '—' : kpi.onSite}
+              icon={<MapPin className="h-3 w-3" />}
               subdued={kpisPending}
             />
             <StationKpiCard
@@ -427,11 +431,11 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
               subdued={kpisPending}
             />
             <StationKpiCard
-              label={t('stations.kpi.problems')}
-              value={kpi.problems}
+              label={t('stations.kpi.operationalWarnings')}
+              value={kpi.operationalWarnings}
               icon={<AlertTriangle className="h-3 w-3" />}
               tone="watch"
-              subdued={kpi.problems === 0}
+              subdued={kpi.operationalWarnings === 0}
             />
           </div>
 
@@ -572,6 +576,10 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   );
 }
 
+function formatMetricValue(value: number | '—'): string {
+  return value === '—' ? '—' : String(value);
+}
+
 function StationCard({
   station,
   summary,
@@ -599,29 +607,77 @@ function StationCard({
   onSetPrimary: () => void;
   onAssign: () => void;
   stationCaps: StationsUiCapabilities;
-  t: (k: TranslationKey) => string;
+  t: (k: TranslationKey, vars?: Record<string, string | number>) => string;
 }) {
   const metricsDisplay = getStationCardDisplayMetrics(summary);
-  const warnings = getStationWarnings(station, null, summary);
+  const configurationWarnings = getStationWarnings(station, null, summary);
   const address = formatStationAddress(station);
+  const isArchived = station.status === 'ARCHIVED' || summary?.lifecycle.archived === true;
+  const isInactive = station.status === 'INACTIVE';
+  const isPartial = metricsDisplay.partialDataIncomplete;
+  const openingTone = openingStatusTone(metricsDisplay.openingStatus);
+  const capacityTone = capacityStatusTone(metricsDisplay.capacityStatus);
+  const operationalWarnings = summary?.operationalWarnings ?? [];
+  const openingLabel =
+    metricsDisplay.openingStatusLabel ??
+    (metricsDisplay.openingStatus
+      ? t(`stations.openingStatus.${metricsDisplay.openingStatus}` as const)
+      : t('stations.openingStatus.UNKNOWN'));
+  const capacityLabel = metricsDisplay.capacityKnown && metricsDisplay.capacityStatus
+    ? t(`stations.capacityStatus.${metricsDisplay.capacityStatus}` as const)
+    : t('stations.card.capacityUnknown');
 
   const metrics = (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-      <MetricPill label={t('stations.card.total')} value={metricsDisplay.totalVehicles} />
-      <MetricPill label={t('stations.card.available')} value={metricsDisplay.availableVehicles} />
-      <MetricPill label={t('stations.card.pickups')} value={metricsDisplay.todayPickups} />
-      <MetricPill label={t('stations.card.returns')} value={metricsDisplay.todayReturns} />
+    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+      <MetricPill label={t('stations.card.homeFleet')} value={formatMetricValue(metricsDisplay.homeFleet)} />
+      <MetricPill label={t('stations.card.onSite')} value={formatMetricValue(metricsDisplay.onSite)} highlight="info" />
+      <MetricPill label={t('stations.card.pickups')} value={formatMetricValue(metricsDisplay.todayPickups)} />
+      <MetricPill label={t('stations.card.returns')} value={formatMetricValue(metricsDisplay.todayReturns)} />
     </div>
   );
 
-  const warningBadges = warnings.length > 0 && (
-    <div className="flex flex-wrap gap-1 mt-2">
-      {warnings.map((w) => (
+  const statusBadges = (
+    <div className="mt-2 flex flex-wrap gap-1">
+      <StatusChip tone={openingTone}>
+        <Clock className="mr-0.5 inline h-3 w-3" />
+        {openingLabel}
+      </StatusChip>
+      <StatusChip tone={capacityTone}>{capacityLabel}</StatusChip>
+      {isPartial ? (
+        <StatusChip tone="watch">{t('stations.card.partialData')}</StatusChip>
+      ) : null}
+    </div>
+  );
+
+  const configurationWarningBadges = configurationWarnings.length > 0 && (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {configurationWarnings.map((w) => (
         <StatusChip key={w} tone="warning">
           {t(`stations.warning.${w}`)}
         </StatusChip>
       ))}
     </div>
+  );
+
+  const operationalWarningBadges = operationalWarnings.length > 0 && (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {operationalWarnings.slice(0, 3).map((warning) => (
+        <StatusChip key={warning.code} tone={warning.severity === 'error' ? 'critical' : 'watch'}>
+          {warning.message}
+        </StatusChip>
+      ))}
+      {operationalWarnings.length > 3 ? (
+        <StatusChip tone="neutral">
+          {t('stations.card.moreOperationalWarnings', { count: operationalWarnings.length - 3 })}
+        </StatusChip>
+      ) : null}
+    </div>
+  );
+
+  const cardSurfaceClass = cn(
+    'surface-premium rounded-xl',
+    isArchived && 'border border-dashed border-border/70 opacity-75',
+    isInactive && !isArchived && 'opacity-90',
   );
 
   const canEdit = stationCaps.canEditMasterData || stationCaps.canManageOperations;
@@ -664,19 +720,40 @@ function StationCard({
 
   if (viewMode === 'list') {
     return (
-      <div className="surface-premium rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className={cn(cardSurfaceClass, 'p-3 flex flex-col sm:flex-row sm:items-center gap-3')}>
         <button type="button" onClick={onOpen} className="flex-1 text-left min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-sm truncate">{station.name}</span>
             <StatusChip tone={stationStatusTone(station.status)}>{t(`stations.status.${station.status}`)}</StatusChip>
             <StatusChip tone={stationTypeTone(station.type)}>{t(`stations.type.${station.type}`)}</StatusChip>
             {station.isPrimary && <StatusChip tone="info"><Star className="w-3 h-3 inline mr-0.5" />{t('stations.primary')}</StatusChip>}
+            {isPartial ? <StatusChip tone="watch">{t('stations.card.partialData')}</StatusChip> : null}
           </div>
           <p className="text-xs text-muted-foreground truncate mt-0.5">{address || '—'}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            <StatusChip tone={openingTone}>{openingLabel}</StatusChip>
+            <StatusChip tone={capacityTone}>{capacityLabel}</StatusChip>
+          </div>
         </button>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Car className="w-3.5 h-3.5" />{metricsDisplay.totalVehicles}</span>
-          <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{metricsDisplay.openTasks}</span>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1" title={t('stations.card.homeFleet')}>
+            <Car className="w-3.5 h-3.5" />
+            {formatMetricValue(metricsDisplay.homeFleet)}
+          </span>
+          <span className="inline-flex items-center gap-1" title={t('stations.card.onSite')}>
+            <MapPin className="w-3.5 h-3.5" />
+            {formatMetricValue(metricsDisplay.onSite)}
+          </span>
+          <span className="inline-flex items-center gap-1" title={`${t('stations.card.pickups')} / ${t('stations.card.returns')}`}>
+            <Users className="w-3.5 h-3.5" />
+            {formatMetricValue(metricsDisplay.todayPickups)}/{formatMetricValue(metricsDisplay.todayReturns)}
+          </span>
+          {metricsDisplay.operationalWarningCount > 0 ? (
+            <StatusChip tone="watch">
+              <AlertTriangle className="mr-0.5 inline h-3 w-3" />
+              {metricsDisplay.operationalWarningCount}
+            </StatusChip>
+          ) : null}
           {actions}
         </div>
       </div>
@@ -684,7 +761,7 @@ function StationCard({
   }
 
   return (
-    <div className="surface-premium rounded-xl p-4 flex flex-col h-full">
+    <div className={cn(cardSurfaceClass, 'p-4 flex flex-col h-full')}>
       <div className="flex items-start justify-between gap-2">
         <button type="button" onClick={onOpen} className="text-left min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -704,15 +781,9 @@ function StationCard({
 
       <div className="mt-3 flex-1">{metrics}</div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
-        <span>{t('stations.card.inService')}: {metricsDisplay.inServiceVehicles}</span>
-        <span>{t('stations.card.tasks')}: {metricsDisplay.openTasks}</span>
-        {metricsDisplay.capacityUsagePercent != null ? (
-          <span>{t('stations.card.capacity')}: {metricsDisplay.capacityUsagePercent}%</span>
-        ) : null}
-      </div>
-
-      {warningBadges}
+      {statusBadges}
+      {configurationWarningBadges}
+      {operationalWarningBadges}
 
       <div className="mt-3 flex gap-2">
         <Button type="button" onClick={onOpen} variant="neutral" size="sm" className="flex-1">
@@ -728,11 +799,26 @@ function StationCard({
   );
 }
 
-function MetricPill({ label, value }: { label: string; value: string | number }) {
+function MetricPill({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string | number;
+  highlight?: 'info';
+}) {
   return (
     <div className="rounded-lg bg-muted/30 px-2 py-1.5">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold text-foreground">{value}</div>
+      <div
+        className={cn(
+          'text-sm font-semibold tabular-nums',
+          highlight === 'info' ? 'text-sky-600 dark:text-sky-400' : 'text-foreground',
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }

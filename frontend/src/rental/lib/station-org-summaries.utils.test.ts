@@ -150,11 +150,14 @@ describe('station-org-summaries.utils', () => {
 
   it('maps summary metrics without frontend recomputation', () => {
     const metrics = getStationCardDisplayMetrics(summaryFixture());
-    expect(metrics.totalVehicles).toBe(4);
-    expect(metrics.availableVehicles).toBe(1);
+    expect(metrics.homeFleet).toBe(4);
+    expect(metrics.onSite).toBe(2);
     expect(metrics.todayPickups).toBe(2);
-    expect(metrics.openTasks).toBe(3);
-    expect(metrics.capacityUsagePercent).toBe(20);
+    expect(metrics.todayReturns).toBe(1);
+    expect(metrics.openingStatus).toBe('OPEN');
+    expect(metrics.capacityStatus).toBe('AVAILABLE');
+    expect(metrics.operationalWarningCount).toBe(0);
+    expect(metrics.partialDataIncomplete).toBe(false);
   });
 
   it('returns em dash for unknown KPI metrics', () => {
@@ -250,8 +253,10 @@ describe('station-org-summaries.utils', () => {
       },
     } as never);
 
-    expect(kpis.vehicles).toBe(4);
+    expect(kpis.homeFleet).toBe(4);
+    expect(kpis.onSite).toBe(2);
     expect(kpis.todayPickups).toBe(2);
-    expect(kpis.problems).toBe(1);
+    expect(kpis.operationalWarnings).toBe(0);
+    expect(kpis.configurationProblems).toBe(1);
   });
 });

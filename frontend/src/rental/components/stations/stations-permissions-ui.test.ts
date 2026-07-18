@@ -8,6 +8,8 @@ describe('stations permissions UI wiring', () => {
   it('loads stations via org summaries instead of per-station overview stats', () => {
     const listSource = readFileSync(resolve(stationsDir, 'StationsView.tsx'), 'utf8');
     expect(listSource).toContain('useStationOrgSummaries');
+    expect(listSource).toContain('stations.kpi.homeFleet');
+    expect(listSource).toContain('stations.card.onSite');
     expect(listSource).not.toContain('overviewStats');
     expect(listSource).not.toContain('loadOverviewBatch');
     expect(listSource).not.toContain('.catch(() => null)');

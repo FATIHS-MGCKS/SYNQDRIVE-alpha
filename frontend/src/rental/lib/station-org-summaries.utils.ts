@@ -1,9 +1,12 @@
 import type {
   Station,
+  StationCapacityStatus,
+  StationOpeningStatus,
   StationOrgSummariesQueryParams,
   StationOrgSummariesReadModel,
   StationSummaryReadModel,
 } from '../../lib/api';
+import type { StatusTone } from '../../components/patterns';
 
 export const STATION_ORG_SUMMARIES_PAGE_SIZE = 100;
 
@@ -17,14 +20,42 @@ export type StationSummariesViewFilters = {
   primaryOnly: boolean;
 };
 
+export const STATION_TYPES_EXPECTING_HOME_FLEET = new Set<Station['type']>(['MAIN', 'BRANCH']);
+
 export interface StationCardDisplayMetrics {
-  totalVehicles: number | '—';
-  availableVehicles: number | '—';
+  homeFleet: number | '—';
+  onSite: number | '—';
   todayPickups: number | '—';
   todayReturns: number | '—';
-  inServiceVehicles: number | '—';
-  openTasks: number | '—';
-  capacityUsagePercent: number | '—' | null;
+  openingStatus: StationOpeningStatus | null;
+  openingStatusLabel: string | null;
+  capacityStatus: StationCapacityStatus | null;
+  capacityKnown: boolean;
+  operationalWarningCount: number;
+  configurationProblemCount: number;
+  partialDataIncomplete: boolean;
+}
+
+export function stationExpectsHomeFleet(summary: StationSummaryReadModel): boolean {
+  if (summary.lifecycle.status !== 'ACTIVE') return false;
+  if (!STATION_TYPES_EXPECTING_HOME_FLEET.has(summary.lifecycle.type)) return false;
+  return summaryHasPickupEnabled(summary) || summaryHasReturnEnabled(summary);
+}
+
+export function openingStatusTone(status: StationOpeningStatus | null): StatusTone {
+  if (status === 'OPEN') return 'success';
+  if (status === 'CLOSED') return 'warning';
+  return 'neutral';
+}
+
+export function capacityStatusTone(status: StationCapacityStatus | null): StatusTone {
+  if (!status || status === 'UNKNOWN') return 'neutral';
+  if (status === 'AVAILABLE') return 'success';
+  if (status === 'NEAR_CAPACITY') return 'watch';
+  if (status === 'FULL' || status === 'OVER_CAPACITY' || status === 'PROJECTED_OVER_CAPACITY') {
+    return 'critical';
+  }
+  return 'neutral';
 }
 
 export interface StationOrgSummariesLoaded {
@@ -135,34 +166,34 @@ export function getStationCardDisplayMetrics(
 ): StationCardDisplayMetrics {
   if (!summary) {
     return {
-      totalVehicles: '—',
-      availableVehicles: '—',
+      homeFleet: '—',
+      onSite: '—',
       todayPickups: '—',
       todayReturns: '—',
-      inServiceVehicles: '—',
-      openTasks: '—',
-      capacityUsagePercent: null,
+      openingStatus: null,
+      openingStatusLabel: null,
+      capacityStatus: null,
+      capacityKnown: false,
+      operationalWarningCount: 0,
+      configurationProblemCount: 0,
+      partialDataIncomplete: false,
     };
   }
 
-  const configuredCapacity = summary.masterData.capacity;
-  const onSite = summary.kpis.metrics.currentOnSiteCount;
-  const capacityUsagePercent =
-    configuredCapacity != null &&
-    configuredCapacity > 0 &&
-    onSite.known &&
-    onSite.value != null
-      ? Math.round((onSite.value / configuredCapacity) * 100)
-      : null;
+  const capacityMetric = summary.kpis.metrics.capacityStatus;
 
   return {
-    totalVehicles: readKnownMetric(summary, 'homeFleetCount'),
-    availableVehicles: readKnownMetric(summary, 'readyToRentOnSite'),
+    homeFleet: readKnownMetric(summary, 'homeFleetCount'),
+    onSite: readKnownMetric(summary, 'currentOnSiteCount'),
     todayPickups: readKnownMetric(summary, 'pickupsToday'),
     todayReturns: readKnownMetric(summary, 'returnsToday'),
-    inServiceVehicles: readKnownMetric(summary, 'blockedOrMaintenanceOnSite'),
-    openTasks: readKnownMetric(summary, 'openOperationalTasks'),
-    capacityUsagePercent,
+    openingStatus: summary.openingStatus?.status ?? null,
+    openingStatusLabel: summary.openingStatus?.label ?? null,
+    capacityStatus: capacityMetric.known ? capacityMetric.value : null,
+    capacityKnown: capacityMetric.known,
+    operationalWarningCount: summary.operationalWarnings.length,
+    configurationProblemCount: summary.configurationProblems.length,
+    partialDataIncomplete: !summary.partialData.complete,
   };
 }
 

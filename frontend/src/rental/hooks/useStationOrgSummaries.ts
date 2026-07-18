@@ -131,21 +131,23 @@ export function selectStationOrgKpis(model: StationOrgSummariesReadModel | null 
   if (!model) {
     return {
       active: 0,
-      vehicles: 0,
-      available: '—' as const,
+      homeFleet: '—' as const,
+      onSite: '—' as const,
       todayPickups: '—' as const,
       todayReturns: '—' as const,
-      problems: 0,
+      operationalWarnings: 0,
+      configurationProblems: 0,
     };
   }
 
   const { globalKpis, warningCounts } = model;
   return {
     active: globalKpis.stationCount,
-    vehicles: globalKpis.homeFleetCount,
-    available: globalKpis.readyToRentOnSite,
+    homeFleet: globalKpis.homeFleetCount,
+    onSite: globalKpis.currentOnSiteCount,
     todayPickups: globalKpis.pickupsToday,
     todayReturns: globalKpis.returnsToday,
-    problems: warningCounts.stationsWithConfigurationProblems,
+    operationalWarnings: warningCounts.stationsWithOperationalWarnings,
+    configurationProblems: warningCounts.stationsWithConfigurationProblems,
   };
 }

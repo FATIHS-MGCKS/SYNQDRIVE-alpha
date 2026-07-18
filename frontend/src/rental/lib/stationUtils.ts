@@ -1,8 +1,10 @@
 import type { Station, StationOpeningHours, StationOverviewStats, StationSummaryReadModel } from '../../lib/api';
 import type { StatusTone } from '../../components/patterns';
 import {
+  stationExpectsHomeFleet,
   summaryHasPickupEnabled,
   summaryHasReturnEnabled,
+  STATION_TYPES_EXPECTING_HOME_FLEET,
 } from './station-org-summaries.utils';
 
 export function formatStationAddress(station: Pick<Station, 'address' | 'addressLine1' | 'addressLine2' | 'postalCode' | 'city' | 'country'>): string {
@@ -34,20 +36,39 @@ export function getStationWarningsFromSummary(
   summary: StationSummaryReadModel,
 ): StationWarningKey[] {
   const warnings: StationWarningKey[] = [];
+  const stationType = summary.lifecycle.type;
+  const isActive = summary.lifecycle.status === 'ACTIVE';
+  const expectsOperationalSetup = STATION_TYPES_EXPECTING_HOME_FLEET.has(stationType);
+
   if (summary.configurationProblems.some((problem) => problem.code.includes('COORDINATES'))) {
-    warnings.push('missingCoordinates');
+    if (expectsOperationalSetup || summaryHasPickupEnabled(summary) || summaryHasReturnEnabled(summary)) {
+      warnings.push('missingCoordinates');
+    }
   }
-  if (summary.configurationProblems.some((problem) => problem.code.includes('OPENING_HOURS'))) {
+  if (
+    expectsOperationalSetup &&
+    summary.configurationProblems.some((problem) => problem.code.includes('OPENING_HOURS'))
+  ) {
     warnings.push('missingOpeningHours');
   }
-  if (!summaryHasPickupEnabled(summary) && !summaryHasReturnEnabled(summary)) {
+  if (
+    isActive &&
+    expectsOperationalSetup &&
+    !summaryHasPickupEnabled(summary) &&
+    !summaryHasReturnEnabled(summary)
+  ) {
     warnings.push('missingPickupReturnRules');
   }
-  const homeFleet = summary.kpis.metrics.homeFleetCount;
-  if (homeFleet.known && (homeFleet.value ?? 0) <= 0) {
-    warnings.push('noVehicles');
+  if (stationExpectsHomeFleet(summary)) {
+    const homeFleet = summary.kpis.metrics.homeFleetCount;
+    if (homeFleet.known && (homeFleet.value ?? 0) <= 0) {
+      warnings.push('noVehicles');
+    }
   }
-  if (summary.configurationProblems.some((problem) => problem.code.includes('GEOFENCE'))) {
+  if (
+    expectsOperationalSetup &&
+    summary.configurationProblems.some((problem) => problem.code.includes('GEOFENCE'))
+  ) {
     warnings.push('missingGeofence');
   }
   return warnings;
@@ -55,7 +76,7 @@ export function getStationWarningsFromSummary(
 
 export function stationHasProblemsFromSummary(summary: StationSummaryReadModel): boolean {
   return (
-    summary.configurationProblems.length > 0 ||
+    getStationWarningsFromSummary(summary).length > 0 ||
     summary.operationalWarnings.length > 0 ||
     !summary.partialData.complete
   );
