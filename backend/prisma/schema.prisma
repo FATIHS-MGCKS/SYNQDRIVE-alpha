@@ -290,6 +290,8 @@ enum VehicleStationTransferStatus {
 enum StationRuleManualOverrideReferenceType {
   BOOKING_RULES
   TRANSFER_PLAN
+  HANDOVER_PICKUP
+  HANDOVER_RETURN
 }
 
 enum FuelType {
@@ -5111,6 +5113,8 @@ model BookingHandoverProtocol {
   // continue to live in VehicleDamage with their pin coordinates, images,
   // cost and repair status.
   damageIds                Json?        @map("damage_ids")
+  actualStationId          String?      @map("actual_station_id")
+  stationRulesSnapshot     Json?        @map("station_rules_snapshot")
   createdAt                DateTime     @default(now()) @map("created_at")
   updatedAt                DateTime     @updatedAt @map("updated_at")
 

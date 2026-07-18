@@ -4,7 +4,16 @@
 // so only the two POST payloads are exposed here; queries are served via
 // the existing bookings list/detail routes.
 
+import type { HandoverStationRulesResult } from '@shared/stations/handover-station-rules.contract';
+
 export type HandoverKind = 'PICKUP' | 'RETURN';
+
+export interface HandoverStationRulesRequest {
+  manualOverride?: {
+    reason: string;
+    expiresAt?: string | null;
+  } | null;
+}
 
 /** Draft technical observation submitted with handover — created transactionally with protocol. */
 export interface HandoverTechnicalObservationDraft {
@@ -38,6 +47,8 @@ export interface HandoverProtocolDto {
   staffSignatureDataUrl: string | null;
   documentsAcknowledged: boolean;
   damageIds: string[];
+  actualStationId: string | null;
+  stationRules: HandoverStationRulesResult | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,4 +82,6 @@ export interface CreateHandoverProtocolPayload {
   actualStationId?: string | null;
   /** Technical observations to persist with the handover protocol (canonical VehicleComplaint rows). */
   technicalObservations?: HandoverTechnicalObservationDraft[];
+  /** Server-validated station rules override for WARNING / MANUAL_CONFIRMATION at handover time. */
+  stationBookingRules?: HandoverStationRulesRequest | null;
 }

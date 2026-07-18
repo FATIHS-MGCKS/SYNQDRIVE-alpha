@@ -40,6 +40,18 @@ import { StationOperationalCalendarExceptionInput } from '@shared/stations/stati
 import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
 import { StationsAccessService } from './stations-access.service';
 import type { EvaluateStationBookingRulesDto } from './dto/evaluate-station-booking-rules.dto';
+import type { HandoverKind } from '@prisma/client';
+import {
+  assessHandoverStationRulesManualOverride,
+  attachHandoverManualOverrideAudit,
+  buildHandoverManualOverrideScope,
+  buildHandoverOverrideReference,
+  resolveHandoverOverrideReferenceType,
+} from '@shared/stations/handover-station-rules-manual-override';
+import {
+  HandoverStationRulesKind,
+  type HandoverStationRulesResult,
+} from '@shared/stations/handover-station-rules.contract';
 
 type StationBookingRulesLoadRow = {
   id: string;
@@ -382,5 +394,129 @@ export class StationBookingRulesService {
     }
 
     return vehicle;
+  }
+
+  async evaluateHandoverRequest(
+    organizationId: string,
+    input: {
+      kind: HandoverKind;
+      bookingId: string;
+      vehicleId: string;
+      actualStationId: string;
+      plannedStationId: string | null;
+      evaluatedAt: Date;
+      manualOverride?: StationRuleManualOverrideInput | null;
+    },
+    actor?: PermissionActor,
+  ): Promise<HandoverStationRulesResult> {
+    const access = this.stationAccessScope.resolveFromContextOrEmpty(organizationId, undefined);
+    const evaluatedAtIso = input.evaluatedAt.toISOString();
+    const kind =
+      input.kind === 'PICKUP'
+        ? HandoverStationRulesKind.PICKUP
+        : HandoverStationRulesKind.RETURN;
+
+    const [station, vehicle] = await Promise.all([
+      this.loadStationInput(
+        access.orgId,
+        input.actualStationId,
+        access,
+        input.evaluatedAt,
+        input.vehicleId,
+      ),
+      this.loadVehicleInput(access.orgId, input.vehicleId),
+    ]);
+
+    const policy = DEFAULT_STATION_BOOKING_RULES_ORGANIZATION_POLICY;
+    const side =
+      input.kind === 'PICKUP'
+        ? evaluatePickupBookingRules({
+            organizationId: access.orgId,
+            station,
+            pickupAt: input.evaluatedAt,
+            vehicle,
+            policy,
+            bookingContext: { bookingId: input.bookingId },
+          })
+        : evaluateReturnBookingRules({
+            organizationId: access.orgId,
+            station,
+            returnAt: input.evaluatedAt,
+            vehicle,
+            policy,
+            bookingContext: { bookingId: input.bookingId },
+          });
+
+    const manualOverride = this.normalizeManualOverrideInput(input.manualOverride);
+    const scope = buildHandoverManualOverrideScope({
+      organizationId: access.orgId,
+      kind,
+      actualStationId: input.actualStationId,
+      plannedStationId: input.plannedStationId,
+      vehicleId: input.vehicleId,
+      evaluatedAt: input.evaluatedAt,
+    });
+
+    const assessment = assessHandoverStationRulesManualOverride({
+      kind,
+      actualStationId: input.actualStationId,
+      plannedStationId: input.plannedStationId,
+      side,
+      manualOverride,
+      actorUserId: actor?.id ?? null,
+      scope,
+      evaluatedAt: evaluatedAtIso,
+    });
+
+    if (!manualOverride) {
+      return assessment.result;
+    }
+
+    if (!actor?.id) {
+      throw new ForbiddenException('Authentication is required to apply a manual override.');
+    }
+
+    await this.stationsAccess.assertStationsPermission(
+      access.orgId,
+      actor,
+      STATION_RULE_MANUAL_OVERRIDE_PERMISSION,
+    );
+
+    if (!assessment.manualOverrideApplied) {
+      throw new BadRequestException({
+        message: 'Manual override could not be applied for handover.',
+        issues: assessment.validation.issues,
+      });
+    }
+
+    const audit = await this.manualOverrideService.persistAppliedOverride({
+      organizationId: access.orgId,
+      referenceType: resolveHandoverOverrideReferenceType(kind),
+      reference: buildHandoverOverrideReference({
+        kind,
+        bookingId: input.bookingId,
+      }),
+      scope,
+      actorUserId: actor.id,
+      manualOverride,
+      evaluations: side.evaluations,
+    });
+
+    return attachHandoverManualOverrideAudit(assessment.result, audit);
+  }
+
+  private normalizeManualOverrideInput(
+    manualOverride?: StationRuleManualOverrideInput | null,
+  ): StationRuleManualOverrideInput | null {
+    if (!manualOverride?.reason?.trim()) {
+      return null;
+    }
+    return {
+      reason: manualOverride.reason.trim(),
+      expiresAt:
+        manualOverride.expiresAt instanceof Date
+          ? manualOverride.expiresAt.toISOString()
+          : manualOverride.expiresAt ?? null,
+    };
   }
 }
