@@ -5,8 +5,8 @@
 | **Audit ID** | `fleet-connectivity-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/fleet-connectivity-production-readiness-2026-07` |
-| **Phase** | **6 of 8 — Consumer wiring, alerts & operational impact** |
-| **Status** | Phases 1–6 complete; Phases 7–8 outlined below |
+| **Phase** | **7 of 8 — Fleet Connectivity UI/UX target state** |
+| **Status** | Phases 1–7 complete; Phase 8 outlined below |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | Through 2026-07-18 UTC |
 | **Incident vehicle (anonymized)** | `INCIDENT_VEHICLE_001` (real mapping **not** stored in git) |
@@ -41,6 +41,9 @@
 | Consumer wiring CSV | `docs/audits/data/fleet-connectivity-consumer-wiring-2026-07.csv` | 6 |
 | Alert resolution matrix CSV | `docs/audits/data/fleet-connectivity-alert-resolution-matrix-2026-07.csv` | 6 |
 | Operational impact matrix CSV | `docs/audits/data/fleet-connectivity-operational-impact-matrix-2026-07.csv` | 6 |
+| UI component audit CSV | `docs/audits/data/fleet-connectivity-ui-component-audit-2026-07.csv` | 7 |
+| UI information architecture CSV | `docs/audits/data/fleet-connectivity-ui-information-architecture-2026-07.csv` | 7 |
+| i18n & accessibility CSV | `docs/audits/data/fleet-connectivity-i18n-accessibility-2026-07.csv` | 7 |
 | Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` | 1–4 |
 | DIMO read-only audit script | `scripts/audits/audit-fleet-connectivity-dimo.ts` | 5 |
 
@@ -101,13 +104,18 @@
 - Operational impact assessment (rental blocking, ready-to-rent, maintenance)
 - Artifacts: `fleet-connectivity-consumer-wiring-2026-07.csv`, `fleet-connectivity-alert-resolution-matrix-2026-07.csv`, `fleet-connectivity-operational-impact-matrix-2026-07.csv`
 
-## Phase 7 — Idempotency, locks, and failure modes (planned)
+## Phase 7 — Fleet Connectivity UI/UX target state ✅
 
-- Webhook dedup buckets, state-change gates, impulse filters
-- BullMQ `jobId=snapshot-<vehicleId>` semantics and stall recovery
-- Scheduler resume-gap backfill interaction with connectivity (indirect)
-- Redis queue depth baselines under load
-- Artifact: failure-mode matrix
+- Full audit of `FleetConnectivityTab`, KPIs, filters, table, mobile cards, drawer, badges
+- KPI reduction proposal (9 → 4 + header total)
+- Table reduction (10 → 5–6 columns)
+- Canonical user-facing status language (DE/EN)
+- Drawer restructure (sections A–E)
+- Filter/sort priority model
+- Mobile card target
+- Design-system alignment vs Fleet Hub / Dashboard patterns
+- Textual wireframes (desktop, tablet, mobile, states)
+- Artifacts: `fleet-connectivity-ui-*-2026-07.csv` (3 files)
 
 ## Phase 8 — Test coverage & remediation synthesis (planned)
 
@@ -1212,4 +1220,376 @@ New findings in `fleet-connectivity-integrity-findings-2026-07.json`:
 
 ---
 
-*End of Phase 6. Do not proceed to Phase 7 in this agent turn.*
+# Phase 7 — Fleet Connectivity UI/UX target state
+
+**Mode:** read-only UX audit and target IA. **No UI implemented.**
+
+**Source files audited:**
+
+- `frontend/src/rental/components/fleet-connectivity/FleetConnectivityTab.tsx`
+- `frontend/src/rental/components/fleet-connectivity/FleetConnectivityDetailDrawer.tsx`
+- `frontend/src/rental/components/fleet-connectivity/fleet-connectivity.badges.tsx`
+- `frontend/src/rental/components/fleet-connectivity/fleet-connectivity.utils.ts`
+- `frontend/src/rental/lib/device-connection-ui.ts`
+- i18n: `fleetConnectivity.*` in `en.ts` / `de.ts`
+
+## 61. Executive summary (Phase 7)
+
+The Fleet Connectivity tab is **functionally complete but cognitively overloaded**. It exposes **9 KPI cards**, **10 table columns**, and a **technical English drawer** while the rest of SynqDrive (Fleet list, Dashboard, Vehicle Detail) has migrated to **canonical 5-state telemetry language**.
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| KPI cards | **9** | **4** (+ total in header) |
+| Table columns (desktop) | **10** | **5–6** |
+| Primary filter controls | 3 selects + search | Search + chip filters |
+| Drawer default language | Mostly **English hardcoded** | Full **DE/EN i18n** |
+| Technical terms in primary UI | Webhook, OBD, Readiness %, DIMO | User canonical lexicon (§64) |
+
+**Primary user question today (implicit):** “Which vehicles have a connectivity or data problem?”  
+**What the UI actually answers:** “How many are online vs standby vs OBD unplugged vs webhook unplugged vs readiness watch?” — too many parallel taxonomies.
+
+## 62. Current page structure (Teil 1)
+
+### Layout hierarchy (top → bottom)
+
+1. **Header** — title (`fleetTab.connectivity`), subtitle, read-only monitoring badge  
+2. **KPI section** — “Fleet signals” label + 9 clickable cards (`fhs.kpiCard`, `surface-premium` tokens)  
+3. **Filter bar** — search, 3 `<select>` dropdowns, threshold chip, refresh  
+4. **List** — desktop `DataTable` (md+) OR mobile stacked cards  
+5. **Detail drawer** — `DetailDrawer` on row click  
+
+### Visual hierarchy issues
+
+| Issue | Detail |
+|-------|--------|
+| KPI strip dominates | 9 equal-weight cards on xl=5 columns → 2 rows; competes with list |
+| Technical KPIs = critical styling | OBD/webhook use warning/critical tones same as offline |
+| Table column explosion | 10 columns; 6 hidden until lg/xl → inconsistent row meaning by breakpoint |
+| Drawer is a dump | 6 flat technical sections; no action recommendation |
+| Redundant status | `connectionStatus` chip + `freshnessLabel` + readiness + OBD + webhook |
+
+### Redundant information
+
+- **Connected** vs **Online** KPIs (subset relationship unclear to operators)
+- **Status column** + **Last signal** + **Readiness** + **Coverage %**
+- **OBD column** + **Webhook column** (same unplug incident, different sources — Phase 6 FC-P0-04)
+- Drawer **Connection summary** repeats table fields
+
+### Technical terms in primary UI (should be details-only)
+
+- Webhook, OBD, DIMO Device Connection, Synthetic Token ID, Readiness 88%, Signal matrix, Jamming snapshot, Provider, Coverage %
+
+### Inconsistent colors / components
+
+- `ConnectionStatusChip` uses legacy online=green; fleet-map uses standby=neutral  
+- `freshnessLabel === 'Live'` hardcoded English string for green text (not i18n)  
+- Badges in `fleet-connectivity.badges.tsx` **all English** while tab chrome is i18n  
+- Drawer dates forced `de-DE` even when UI locale is EN  
+- Loading skeleton: **8** KPI placeholders vs **9** actual cards  
+
+### Unnecessary clicks
+
+- KPI → filter → still need row click for any detail  
+- Three separate dropdowns to combine status + readiness + signal  
+- No inline action (e.g. “Zum Fahrzeug”, “Data Authorization öffnen”) in table  
+
+### Mobile problems
+
+- Table hidden `< md`; cards show **4 badges** + coverage line → overflow/wrap  
+- KPI grid 2 columns → long German labels truncate (`fhs.kpiHint truncate`)  
+- No sticky filter/header on scroll  
+- Filter selects full-width stack — high vertical cost before first vehicle  
+
+## 63. KPI audit (Teil 2)
+
+### Current KPIs (9)
+
+| KPI | Source field | Issue |
+|-----|--------------|-------|
+| Gesamt | `summary.total` | OK but belongs in header |
+| Verbunden | `summary.connected` | Overlaps Online; legacy scope |
+| Online | `summary.online` | Legacy <15m; not “Telemetrie aktiv” |
+| Standby | `summary.standby` | Valid informational |
+| Offline | `summary.offline` | Legacy 24h; conflicts with 48h canonical |
+| Nicht verbunden | `summary.notConnected` | Valid |
+| OBD getrennt | `summary.obdUnplugged` | Technical; snapshot-only |
+| Gerät getrennt | `summary.deviceUnpluggedOpenEpisodes` | Technical; webhook jargon in hint |
+| Ø Bereitschaft | `summary.avgReadinessScore` | Low operator value; % abstract |
+
+### Target KPI structure (4 + header)
+
+| KPI | Includes | Rationale |
+|-----|----------|-----------|
+| **Handlung erforderlich** | Offline (canonical ≥48h), soft-offline (24–48h), open device unplug, auth expired, contradictory state | Single action bucket — answers “what needs me now?” |
+| **Telemetrie aktiv** | live + healthy standby with recent data | Positive operational default; not split into connected/online |
+| **Standby** | Canonical standby tier only | Parked/normal quiet; **not** an error (align fleet-map) |
+| **Ohne aktive Datenquelle** | `not_connected` + `no_signal` | Setup / linking problem |
+
+**Header (dezent):** `7 Fahrzeuge · Snapshot 18.07.2026, 10:15` — replaces Gesamt KPI.
+
+**Removed from KPI strip:** Connected, Online (merged), OBD KPI, Webhook KPI (merged into Handlung), Readiness % (drawer only).
+
+## 64. Canonical status language (Teil 4)
+
+Primary UI copy (DE → EN). Map from backend via canonical freshness + unified attention resolver — **not** raw `connectionStatus` / webhook flags.
+
+| DE (primary) | EN | When |
+|--------------|-----|------|
+| Telemetrie aktiv | Telemetry active | live or healthy standby |
+| Standby – Fahrzeug vermutlich geparkt | Standby – vehicle likely parked | standby tier |
+| Seit X Stunden keine Daten | No data for X hours | signal_delayed / soft-offline |
+| Gerät getrennt | Device disconnected | confirmed unplug episode or snapshot false |
+| Wieder verbunden – aus Telemetrie erkannt | Reconnected – detected from telemetry | episode closed by telemetry recovery |
+| Datenfreigabe abgelaufen | Data authorization expired | consent not ACTIVE |
+| Integration prüfen | Check integration | provider/link issue |
+| Keine aktive Datenquelle | No active data source | not_connected / never linked |
+| Daten teilweise verfügbar | Data partially available | low coverage, not blocking |
+| Status kann nicht sicher bestimmt werden | Status cannot be determined reliably | unknown / conflicting signals |
+
+**Avoid in primary UI:** Webhook, OBD Plug, DIMO Connection Status, Synthetic Token, Readiness 63 %, Raw Payload, Provider state enums.
+
+## 65. Table target structure (Teil 3)
+
+### Current columns (10)
+
+Vehicle · Status · Last signal · Readiness · Coverage · OBD · Webhook · Station · Provider · Jamming
+
+### Target columns (5 + optional)
+
+| # | Column | Content |
+|---|--------|---------|
+| 1 | **Fahrzeug** | Kennzeichen + Modell (no VIN) |
+| 2 | **Aktueller Zustand** | Single canonical status chip |
+| 3 | **Letzte Daten** | Relative time i18n (`vor 2 Std.`) |
+| 4 | **Priorisierter Hinweis** | One line: e.g. „Gerät getrennt“, „Datenfreigabe abgelaufen“, „—“ |
+| 5 | **Aktion** | Chevron + optional „Fahrzeug öffnen“ / „Freigabe prüfen“ |
+| 6 | *(optional)* **Station** | If ops confirmed need |
+
+**Moved to drawer:** Provider, signal coverage, device type, webhook history, jamming, readiness %, signal matrix.
+
+## 66. Detail drawer target (Teil 5)
+
+### Current problems
+
+- Eyebrow: “Technical telemetry” (EN)  
+- Full **VIN** in header  
+- **Raw lat/lng** (5 decimals)  
+- **Synthetic token ID** in default view  
+- Sections: Connection summary, Device identity, Telemetry readiness, Signal matrix, OBD & cellular (webhook), Location  
+- Hardcoded English throughout  
+- No **recommendation** or **timeline**  
+
+### Target sections
+
+**A. Aktueller Zustand** — Gesamtstatus chip · letzte verwertbare Telemetrie · Aufmerksamkeitszeile · konkrete Empfehlung (z. B. „Gerät vor Ort prüfen“, „Data Authorization erneuern“)
+
+**B. Verlauf** — Timeline: Unplug gemeldet · Telemetrie wieder empfangen · Wiederverbindung erkannt · Authorization geändert · Device Binding geändert
+
+**C. Datenverfügbarkeit** — capability-aware checklist (Standort, km, Geschwindigkeit, Energie/Kraftstoff, Diagnose) + freshness note — no raw matrix grid in default view
+
+**D. Integration** — Provider · Geräteart · Authorization · Consent · letzter erfolgreicher Abruf · Triggerstatus (collapsed summary)
+
+**E. Technische Details** — `<Collapsible>` only: masked IDs, optional coordinates, signal matrix, raw thresholds — no secrets
+
+## 67. Filter and sort (Teil 6)
+
+### Target chip filters (i18n)
+
+Handlung erforderlich · Telemetrie aktiv · Standby · Soft-Offline · Offline · Authorization erforderlich · Gerät getrennt · Keine aktive Datenquelle · Status unbekannt
+
+Replace three `<select>` elements with chip bar (reuse `sq-tab-bar` / filter chip pattern from Fleet Hub).
+
+### Default sort priority
+
+1. Critical / Action Required  
+2. Authorization Required  
+3. Device Unplugged  
+4. Offline  
+5. Soft-Offline  
+6. Unknown  
+7. Standby  
+8. Active  
+
+## 68. Mobile target (Teil 7)
+
+- **KPI:** horizontal scroll **or** 2×2 grid of 4 KPIs (no 9-card wrap)  
+- **List:** card per vehicle (keep) but **max 1 status chip + 1 hint line**  
+- **Filter:** sticky chip row under Fleet Hub tab bar  
+- **Drawer:** full-width sheet; Section A above fold; B–E accordion  
+- **Touch:** maintain `sq-press` / min 44px; reduce badge wrap  
+- **No horizontal table** on mobile (current `md:hidden` cards approach is correct direction)
+
+## 69. Design system alignment (Teil 8)
+
+| Aspect | Current | Target (existing tokens) |
+|--------|---------|--------------------------|
+| Page header | `DashboardSectionLabel` + badge | Match `FleetHubView` / dashboard section headers |
+| KPI cards | `fhs.kpiCard` ✓ | Keep; reduce count; same as Fleet Health overview KPI density |
+| Filter bar | `fhs.filterBar` `surface-premium` ✓ | Keep shell; replace selects with chips like `FleetConditionView` filters |
+| Table | `DataTable` `card` ✓ | Keep pattern; fewer columns |
+| Drawer | `DetailDrawer` ✓ | Keep; use `DetailSection` i18n + `Collapsible` for section E |
+| Badges | `StatusChip` ✓ | Reuse canonical tones from `telemetryFreshness` / `fleetVehicleDisplay` |
+| Typography | `ROW_TITLE_CLASS`, `META_TEXT_CLASS` ✓ | Keep dashboard shell tokens |
+| Liquid glass | `surface-premium`, `rounded-2xl` ✓ | No new isolated styles |
+| Reference | `FleetOperatorRow`, `FleetConditionView`, `telemetryFreshness.ts` labels | Align status chips 1:1 |
+
+**Deviations to fix:** legacy `connectionStatus` labels; English badge utils; drawer outside design-system i18n.
+
+## 70. i18n & accessibility (Teil 9)
+
+**28 items** in `fleet-connectivity-i18n-accessibility-2026-07.csv`.
+
+| Category | Count | Top issues |
+|----------|-------|------------|
+| Hardcoded English | 15 | Filter options, all badges, entire drawer |
+| Mixed DE/EN | 4 | Drawer + `device-connection-ui` DE inside EN shell |
+| Missing aria | 3 | KPI aria-label, search label |
+| Locale dates | 2 | `de-DE` forced in drawer |
+
+**Accessibility:** Status communicated by text + `StatusChip` tone (not color-only) — OK baseline. Improve: KPI `aria-label`, drawer focus return, reduce mobile badge clutter.
+
+## 71. Textual wireframes (Teil 10)
+
+### Desktop (≥1024px)
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Fleet Hub  [Status] [Zustand & Service] [Connectivity*]                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Connectivity · 7 Fahrzeuge · Snapshot 18.07. 10:15          [Aktualisieren] │
+│ Signalstatus und Handlungsbedarf Ihrer Flotte                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [Handlung 2] [Telemetrie aktiv 4] [Standby 3] [Ohne Quelle 1]               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [🔍 Suche…]  [Handlung*] [Aktiv] [Standby] [Offline] […mehr Filter]         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Fahrzeug      │ Zustand              │ Letzte Daten │ Hinweis           │ › │
+│ M-AB 1234     │ Telemetrie aktiv     │ vor 8 Min.   │ —                 │ › │
+│ VW Golf       │                      │              │                   │   │
+│ M-CD 5678     │ Handlung erforderlich│ vor 2 Std.   │ Gerät getrennt    │ › │
+│ …             │                      │              │                   │   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Tablet (768–1023px)
+
+```text
+┌──────────────────────────────────────┐
+│ Connectivity · 7 Fahrzeuge           │
+│ [Handlung 2] [Aktiv 4] [Standby 3]   │
+│          [Ohne Quelle 1]             │
+│ [🔍 Suche…]                          │
+│ [Handlung*][Aktiv][Standby][+Filter] │
+├──────────────────────────────────────┤
+│ M-AB 1234          Telemetrie aktiv│
+│ VW Golf            vor 8 Min.    › │
+├──────────────────────────────────────┤
+│ M-CD 5678       Handlung erforderl.│
+│ BMW 320d        Gerät getrennt   › │
+└──────────────────────────────────────┘
+(5-column table collapses to card list — same as mobile cards with slightly wider hint column)
+```
+
+### Mobile (<768px)
+
+```text
+┌─────────────────────────┐
+│ Connectivity            │
+│ 7 Fahrzeuge · 10:15     │
+├─────────────────────────┤
+│ ┌──────┐ ┌──────┐       │
+│ │Handl.│ │Aktiv │       │
+│ │  2   │ │  4   │       │
+│ └──────┘ └──────┘       │
+│ ┌──────┐ ┌──────┐       │
+│ │Standb│ │Ohne  │       │
+│ │  3   │ │  1   │       │
+│ └──────┘ └──────┘       │
+├─────────────────────────┤
+│ [🔍 Kennzeichen…]       │
+│ [Handlung*][Aktiv][…]   │  ← sticky
+├─────────────────────────┤
+│ M-AB 1234          [›]  │
+│ Telemetrie aktiv        │
+│ vor 8 Min.              │
+├─────────────────────────┤
+│ M-CD 5678          [›]  │
+│ Handlung erforderlich   │
+│ Gerät getrennt          │
+└─────────────────────────┘
+```
+
+### Detail drawer
+
+```text
+┌────────────────────────────────┐
+│ ×  M-CD 5678 · BMW 320d        │
+├────────────────────────────────┤
+│ A. AKTUELLER ZUSTAND           │
+│ [Handlung erforderlich]        │
+│ Letzte Telemetrie: vor 2 Std.  │
+│ ⚠ Gerät getrennt gemeldet      │
+│ → Empfehlung: Gerät vor Ort    │
+│   prüfen; Telemetrie läuft.    │
+│ [Fahrzeug öffnen]              │
+├────────────────────────────────┤
+│ B. VERLAUF                 [v] │
+│ • 08.07. Unplug gemeldet       │
+│ • 08.07. Telemetrie wieder     │
+│   (nicht als behoben gewertet) │
+├────────────────────────────────┤
+│ C. DATENVERFÜGBARKEIT      [v] │
+│ Standort ✓  km ✓  EV SoC n/a   │
+├────────────────────────────────┤
+│ D. INTEGRATION             [v] │
+│ DIMO · LTE OBD · Auth OK       │
+├────────────────────────────────┤
+│ E. Technische Details      [>] │
+└────────────────────────────────┘
+```
+
+### Empty / Error / Loading
+
+```text
+EMPTY (filtered):     [Car icon] Keine Fahrzeuge für die Filter
+                      Suche oder Filter anpassen. [Filter zurücksetzen]
+
+EMPTY (default):      Keine Fahrzeuge in der Konnektivitätsübersicht
+                      [Zur Fahrzeugverwaltung]
+
+ERROR:                Konnektivitätsdaten konnten nicht geladen werden
+                      [Erneut versuchen]
+
+LOADING:              [4 KPI skeletons]
+                      [8 row skeletons in surface-premium card]
+```
+
+## 72. Phase 7 artifacts
+
+| File | Rows |
+|------|------|
+| `docs/audits/data/fleet-connectivity-ui-component-audit-2026-07.csv` | 48 components |
+| `docs/audits/data/fleet-connectivity-ui-information-architecture-2026-07.csv` | 16 IA zones |
+| `docs/audits/data/fleet-connectivity-i18n-accessibility-2026-07.csv` | 28 items |
+
+## 73. Phase 7 completion checklist
+
+- [x] Current page structure documented (Teil 1)
+- [x] KPI audit + target 4-KPI model (Teil 2)
+- [x] Table audit + 5-column target (Teil 3)
+- [x] Canonical status language (Teil 4)
+- [x] Drawer target A–E (Teil 5)
+- [x] Filter/sort model (Teil 6)
+- [x] Mobile target (Teil 7)
+- [x] Design-system comparison (Teil 8)
+- [x] i18n/a11y audit (Teil 9)
+- [x] Textual wireframes (Teil 10)
+- [x] **No UI code changes**
+
+## 74. Read-only confirmation
+
+No React components, styles, or translations were modified. Documentation-only phase.
+
+---
+
+*End of Phase 7. Do not proceed to Phase 8 in this agent turn.*
