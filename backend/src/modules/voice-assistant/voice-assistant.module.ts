@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { TwilioModule } from '@modules/twilio/twilio.module';
 import { VoiceBillingModule } from '@modules/voice-billing/voice-billing.module';
 import { VoiceCallOrchestrationModule } from '@modules/voice-call-orchestration/voice-call-orchestration.module';
@@ -39,6 +40,7 @@ import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
   imports: [
     PrismaModule,
     ConfigModule,
+    ActivityLogModule,
     TwilioModule,
     forwardRef(() => VoiceCallOrchestrationModule),
     VoiceProtectionModule,

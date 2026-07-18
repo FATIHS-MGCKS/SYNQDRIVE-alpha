@@ -28,8 +28,12 @@ export class VoiceAssistantController {
   }
 
   @Patch()
-  async update(@Param('orgId') orgId: string, @Body() body: UpdateVoiceAssistantDto) {
-    return this.service.updateAssistant(orgId, body);
+  async update(
+    @Param('orgId') orgId: string,
+    @Body() body: UpdateVoiceAssistantDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.service.updateAssistant(orgId, body, { actorUserId: req.user?.id });
   }
 
   @Post('activate')
