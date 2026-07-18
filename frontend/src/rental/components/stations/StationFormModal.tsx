@@ -32,6 +32,7 @@ import { StatusChip } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import type { StationsFormCapabilities } from '../../lib/stations-v2-ui-capabilities';
+import { useStationModalA11y } from '../../lib/stations-modal-a11y';
 
 export type StationFormValues = {
   name: string;
@@ -248,6 +249,12 @@ export function StationFormModal({
     }
   }, [fieldErrors]);
 
+  const dialogRef = useStationModalA11y({
+    open,
+    onClose,
+    disabled: saving || lifecycleLoading,
+  });
+
   if (!open) return null;
 
   const isCreate = !station;
@@ -415,8 +422,9 @@ export function StationFormModal({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <button type="button" className="absolute inset-0 bg-black/40" onClick={onClose} aria-label={t('common.cancel')} />
+      <button type="button" className="absolute inset-0 bg-black/40" onClick={onClose} aria-label={t('common.close')} />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={formTitleId}
@@ -436,7 +444,7 @@ export function StationFormModal({
               </div>
             )}
           </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-muted/60 shrink-0" aria-label={t('common.cancel')}>
+          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-muted/60 shrink-0" aria-label={t('common.close')}>
             <X className="w-4 h-4" />
           </button>
         </div>

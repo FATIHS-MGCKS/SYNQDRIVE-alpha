@@ -36,6 +36,8 @@ export function StationVehicleWorkflowMenu({
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-haspopup="menu"
           className={
             buttonClassName ??
             'sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium inline-flex items-center gap-1.5'
@@ -47,7 +49,7 @@ export function StationVehicleWorkflowMenu({
         {open && (
           <>
             <button type="button" className="fixed inset-0 z-[70]" onClick={() => setOpen(false)} aria-label={t('common.close')} />
-            <div className="absolute right-0 mt-1 z-[75] min-w-[220px] rounded-xl border border-border surface-premium shadow-lg py-1">
+            <div role="menu" className="absolute right-0 mt-1 z-[75] min-w-[220px] rounded-xl border border-border surface-premium shadow-lg py-1">
               {workflows.map((workflow) => (
                 <button
                   key={workflow}

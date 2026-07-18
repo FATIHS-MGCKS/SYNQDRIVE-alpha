@@ -137,9 +137,9 @@ export function StationTeamTab({
 
 function ContactField({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="font-medium mt-0.5">{value}</div>
+      <div className="font-medium mt-0.5 truncate" title={value}>{value}</div>
     </div>
   );
 }

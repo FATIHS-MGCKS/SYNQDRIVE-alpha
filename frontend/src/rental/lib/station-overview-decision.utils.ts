@@ -9,6 +9,7 @@ import type {
 } from '../../lib/api';
 import type { StatusTone } from '../../components/patterns';
 import { capacityStatusTone, openingStatusTone } from './station-org-summaries.utils';
+import { formatStationCount } from './stations-ui-format';
 
 export type StationOverviewMetricValue = {
   display: string;
@@ -52,11 +53,15 @@ export interface StationOverviewDecisionModel {
   operationsQuiet: boolean;
 }
 
-function readKpiMetric(metric: StationKpiMetric<number>): StationOverviewMetricValue {
+function readKpiMetric(metric: StationKpiMetric<number>, locale: string): StationOverviewMetricValue {
   if (!metric.known || metric.value == null) {
     return { display: '—', known: false, numeric: null };
   }
-  return { display: String(metric.value), known: true, numeric: metric.value };
+  return {
+    display: formatStationCount(metric.value, locale),
+    known: true,
+    numeric: metric.value,
+  };
 }
 
 function readCapacityMetric(
@@ -161,13 +166,13 @@ export function buildStationOverviewDecisionModel(
   const configurationProblems = summary.configurationProblems;
   const operationalWarnings = summary.operationalWarnings;
 
-  const onSite = readKpiMetric(metrics.currentOnSiteCount);
-  const readyForRent = readKpiMetric(metrics.readyToRentOnSite);
-  const blockedOrMaintenance = readKpiMetric(metrics.blockedOrMaintenanceOnSite);
-  const pickupsToday = readKpiMetric(metrics.pickupsToday);
-  const returnsToday = readKpiMetric(metrics.returnsToday);
-  const overdueReturns = readKpiMetric(metrics.overdueReturns);
-  const expectedTransfers = readKpiMetric(metrics.incomingTransfers);
+  const onSite = readKpiMetric(metrics.currentOnSiteCount, locale);
+  const readyForRent = readKpiMetric(metrics.readyToRentOnSite, locale);
+  const blockedOrMaintenance = readKpiMetric(metrics.blockedOrMaintenanceOnSite, locale);
+  const pickupsToday = readKpiMetric(metrics.pickupsToday, locale);
+  const returnsToday = readKpiMetric(metrics.returnsToday, locale);
+  const overdueReturns = readKpiMetric(metrics.overdueReturns, locale);
+  const expectedTransfers = readKpiMetric(metrics.incomingTransfers, locale);
 
   const hasOpenOperationalProblems =
     configurationProblems.length > 0 ||

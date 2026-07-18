@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -58,6 +58,7 @@ import { StationFormModal } from './StationFormModal';
 import { StationVehicleWorkflowModal } from './StationVehicleWorkflowModal';
 import { availableStationVehicleWorkflows } from '../../lib/station-vehicle-workflow.utils';
 import type { StationVehicleWorkflowType } from '../../../lib/api';
+import { formatStationMetricValue } from '../../lib/stations-ui-format';
 
 type ViewMode = 'cards' | 'list';
 
@@ -101,7 +102,7 @@ function StationKpiCard({
     >
       <div className="flex h-full items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+          <p className="line-clamp-2 text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground" title={label}>
             {label}
           </p>
           <p
@@ -140,7 +141,7 @@ function StationKpiCard({
 
 export function StationsView({ onOpenStation }: StationsViewProps) {
   const { orgId } = useRentalOrg();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { status: permStatus, capabilities, forStation, formCapabilities, isReadOnly } = useStationsV2Permissions();
 
   const [search, setSearch] = useState('');
@@ -400,10 +401,11 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                 disabled={backfillRunning}
                 variant="neutral"
                 size="sm"
-                className="hidden sm:inline-flex"
+                className="sm:inline-flex"
+                aria-label={t('stations.a11y.backfillCoords')}
               >
                 {backfillRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                {t('stations.backfillCoords')} ({missingCoords})
+                <span className="hidden sm:inline">{t('stations.backfillCoords')} ({missingCoords})</span>
               </Button>
             )}
             <Button
@@ -427,7 +429,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             >
               <Plus className="w-3.5 h-3.5" />
               <span className="hidden min-[400px]:inline">{t('stations.newStation')}</span>
-              <span className="min-[400px]:hidden">{t('stations.newStation').split(' ')[0]}</span>
+              <span className="min-[400px]:hidden">{t('stations.newStationShort')}</span>
             </Button>
             )}
           </div>
@@ -463,38 +465,38 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
           <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6">
             <StationKpiCard
               label={t('stations.kpi.active')}
-              value={kpi.active}
+              value={formatStationMetricValue(kpi.active, locale)}
               icon={<MapPin className="h-3 w-3" />}
               tone="success"
               subdued={kpi.active === 0}
             />
             <StationKpiCard
               label={t('stations.kpi.homeFleet')}
-              value={kpisPending ? '—' : kpi.homeFleet}
+              value={kpisPending ? '—' : formatStationMetricValue(kpi.homeFleet, locale)}
               icon={<Car className="h-3 w-3" />}
               subdued={kpisPending}
             />
             <StationKpiCard
               label={t('stations.kpi.onSite')}
-              value={kpisPending ? '—' : kpi.onSite}
+              value={kpisPending ? '—' : formatStationMetricValue(kpi.onSite, locale)}
               icon={<MapPin className="h-3 w-3" />}
               subdued={kpisPending}
             />
             <StationKpiCard
               label={t('stations.kpi.todayPickups')}
-              value={kpisPending ? '—' : kpi.todayPickups}
+              value={kpisPending ? '—' : formatStationMetricValue(kpi.todayPickups, locale)}
               icon={<Users className="h-3 w-3" />}
               subdued={kpisPending}
             />
             <StationKpiCard
               label={t('stations.kpi.todayReturns')}
-              value={kpisPending ? '—' : kpi.todayReturns}
+              value={kpisPending ? '—' : formatStationMetricValue(kpi.todayReturns, locale)}
               icon={<Users className="h-3 w-3" />}
               subdued={kpisPending}
             />
             <StationKpiCard
               label={t('stations.kpi.operationalWarnings')}
-              value={kpi.operationalWarnings}
+              value={formatStationMetricValue(kpi.operationalWarnings, locale)}
               icon={<AlertTriangle className="h-3 w-3" />}
               tone="watch"
               subdued={kpi.operationalWarnings === 0}
@@ -504,9 +506,11 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
           <div className="surface-premium rounded-xl p-4 space-y-3">
             <div className="flex flex-col sm:flex-row gap-2">
               <input
+                type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('stations.searchPlaceholder')}
+                aria-label={t('stations.a11y.searchStations')}
                 className="flex-1 px-3 py-2 rounded-lg border border-border/70 bg-background text-sm outline-none focus:border-[color:var(--brand)]"
               />
               <Button
@@ -515,6 +519,9 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                 variant="neutral"
                 size="sm"
                 className="justify-center"
+                aria-expanded={filtersOpen}
+                aria-controls="stations-filter-panel"
+                aria-label={t('stations.a11y.toggleFilters')}
               >
                 {t('stations.filters')}
                 {activeFilterCount > 0 ? (
@@ -525,7 +532,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             </div>
 
             {filtersOpen && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1 border-t border-border/50">
+              <div id="stations-filter-panel" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1 border-t border-border/50">
                 <select
                   className="px-3 py-2 rounded-lg border border-border/70 surface-premium text-sm"
                   value={filters.status}
@@ -613,6 +620,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                   onOpenWorkflow={(station, workflow) => setWorkflowModal({ station, workflow })}
                   stationCaps={forStation(station)}
                   t={t}
+                  locale={locale}
                 />
               ))}
             </div>
@@ -644,8 +652,8 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   );
 }
 
-function formatMetricValue(value: number | '—'): string {
-  return value === '—' ? '—' : String(value);
+function formatMetricValue(value: number | '—', locale: string): string {
+  return formatStationMetricValue(value, locale);
 }
 
 function StationCard({
@@ -662,6 +670,7 @@ function StationCard({
   onOpenWorkflow,
   stationCaps,
   t,
+  locale,
 }: {
   station: Station;
   summary?: StationSummaryReadModel;
@@ -676,7 +685,29 @@ function StationCard({
   onOpenWorkflow: (station: Station, workflow: StationVehicleWorkflowType) => void;
   stationCaps: StationsUiCapabilities;
   t: (k: TranslationKey, vars?: Record<string, string | number>) => string;
+  locale: string;
 }) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onToggleMenu();
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onToggleMenu();
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen, onToggleMenu]);
   const metricsDisplay = getStationCardDisplayMetrics(summary);
   const configurationWarnings = getStationWarnings(station, null, summary);
   const address = formatStationAddress(station);
@@ -697,10 +728,10 @@ function StationCard({
 
   const metrics = (
     <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-      <MetricPill label={t('stations.card.homeFleet')} value={formatMetricValue(metricsDisplay.homeFleet)} />
-      <MetricPill label={t('stations.card.onSite')} value={formatMetricValue(metricsDisplay.onSite)} highlight="info" />
-      <MetricPill label={t('stations.card.pickups')} value={formatMetricValue(metricsDisplay.todayPickups)} />
-      <MetricPill label={t('stations.card.returns')} value={formatMetricValue(metricsDisplay.todayReturns)} />
+      <MetricPill label={t('stations.card.homeFleet')} value={formatMetricValue(metricsDisplay.homeFleet, locale)} />
+      <MetricPill label={t('stations.card.onSite')} value={formatMetricValue(metricsDisplay.onSite, locale)} highlight="info" />
+      <MetricPill label={t('stations.card.pickups')} value={formatMetricValue(metricsDisplay.todayPickups, locale)} />
+      <MetricPill label={t('stations.card.returns')} value={formatMetricValue(metricsDisplay.todayReturns, locale)} />
     </div>
   );
 
@@ -758,12 +789,19 @@ function StationCard({
     stationCaps.canRestore;
 
   const actions = hasMenuActions ? (
-    <div className="relative">
-      <button type="button" onClick={onToggleMenu} className="p-2 rounded-lg hover:bg-muted/60">
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={onToggleMenu}
+        className="p-2 rounded-lg hover:bg-muted/60"
+        aria-label={t('stations.a11y.stationActions')}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+      >
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-20 min-w-[180px] surface-premium rounded-lg border border-border shadow-lg py-1 text-sm">
+        <div role="menu" className="absolute right-0 top-full mt-1 z-20 min-w-[180px] surface-premium rounded-lg border border-border shadow-lg py-1 text-sm">
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onOpen}>{t('stations.action.open')}</button>
           {canEdit && (
             <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onEdit}>{t('stations.action.edit')}</button>
@@ -814,15 +852,15 @@ function StationCard({
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1" title={t('stations.card.homeFleet')}>
             <Car className="w-3.5 h-3.5" />
-            {formatMetricValue(metricsDisplay.homeFleet)}
+            {formatMetricValue(metricsDisplay.homeFleet, locale)}
           </span>
           <span className="inline-flex items-center gap-1" title={t('stations.card.onSite')}>
             <MapPin className="w-3.5 h-3.5" />
-            {formatMetricValue(metricsDisplay.onSite)}
+            {formatMetricValue(metricsDisplay.onSite, locale)}
           </span>
           <span className="inline-flex items-center gap-1" title={`${t('stations.card.pickups')} / ${t('stations.card.returns')}`}>
             <Users className="w-3.5 h-3.5" />
-            {formatMetricValue(metricsDisplay.todayPickups)}/{formatMetricValue(metricsDisplay.todayReturns)}
+            {formatMetricValue(metricsDisplay.todayPickups, locale)}/{formatMetricValue(metricsDisplay.todayReturns, locale)}
           </span>
           {metricsDisplay.operationalWarningCount > 0 ? (
             <StatusChip tone="watch">
@@ -886,7 +924,7 @@ function MetricPill({
 }) {
   return (
     <div className="rounded-lg bg-muted/30 px-2 py-1.5">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground line-clamp-2" title={label}>{label}</div>
       <div
         className={cn(
           'text-sm font-semibold tabular-nums',

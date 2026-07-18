@@ -158,20 +158,19 @@ export function MetricCard({
     );
   }
 
-  return (
-    <div
-      className={cn(
-        surfaceClass,
-        isInteractive && 'cursor-pointer',
-        'flex h-full flex-col p-3.5 sm:p-4',
-        className,
-      )}
-      onClick={onClick}
-    >
+  const rootClassName = cn(
+    surfaceClass,
+    isInteractive && 'cursor-pointer text-left w-full',
+    'flex h-full flex-col p-3.5 sm:p-4',
+    className,
+  );
+
+  const body = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           {status && <StatusDot tone={status} />}
-          <span className="truncate text-[12px] font-medium text-muted-foreground">{label}</span>
+          <span className="line-clamp-2 text-[12px] font-medium text-muted-foreground">{label}</span>
         </div>
         {icon && <span className="shrink-0 text-muted-foreground/80">{icon}</span>}
       </div>
@@ -207,6 +206,16 @@ export function MetricCard({
           {hint && <span className="truncate text-muted-foreground">{hint}</span>}
         </div>
       )}
-    </div>
+    </>
   );
+
+  if (isInteractive) {
+    return (
+      <button type="button" className={rootClassName} onClick={onClick}>
+        {body}
+      </button>
+    );
+  }
+
+  return <div className={rootClassName}>{body}</div>;
 }

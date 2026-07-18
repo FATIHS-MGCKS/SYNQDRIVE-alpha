@@ -137,6 +137,7 @@ export function StationFleetTab({ stationId, onOpenVehicle }: StationFleetTabPro
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder={t('stations.detail.fleetSearchPlaceholder')}
+            aria-label={t('stations.a11y.searchFleet')}
             className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-sm"
           />
         </label>
@@ -210,6 +211,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         'rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
         active
@@ -348,8 +350,8 @@ function FleetVehicleDesktopRow({
           {formatRuntimeLabel(vehicle, t)}
         </StatusChip>
       </td>
-      <td className="p-3 text-xs">{formatFleetStationRef(vehicle.homeStation)}</td>
-      <td className="p-3 text-xs">{formatFleetStationRef(vehicle.currentStation)}</td>
+      <td className="p-3 text-xs max-w-[180px] truncate" title={formatFleetStationRef(vehicle.homeStation)}>{formatFleetStationRef(vehicle.homeStation)}</td>
+      <td className="p-3 text-xs max-w-[180px] truncate" title={formatFleetStationRef(vehicle.currentStation)}>{formatFleetStationRef(vehicle.currentStation)}</td>
       <td className="p-3 text-xs">{formatFleetStationRef(vehicle.expectedStation)}</td>
       <td className="p-3 text-xs">
         {vehicle.positionSource
@@ -429,9 +431,9 @@ function FleetVehicleMobileCard({
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
+      <dd className="font-medium truncate" title={value}>{value}</dd>
     </div>
   );
 }
