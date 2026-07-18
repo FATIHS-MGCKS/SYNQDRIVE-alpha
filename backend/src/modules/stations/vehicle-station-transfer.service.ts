@@ -51,6 +51,102 @@ export class VehicleStationTransferService {
     private readonly stationsAccess: StationsAccessService,
   ) {}
 
+  async evaluatePlanTransfer(
+    organizationId: string,
+    input: PlanVehicleStationTransferInput,
+    performedByUserId?: string | null,
+  ) {
+    const plannedAt = input.plannedAt ? new Date(input.plannedAt) : new Date();
+    const expectedArrivalAt = input.expectedArrivalAt
+      ? new Date(input.expectedArrivalAt)
+      : null;
+
+    const vehicle = await this.requireVehicleForPreview(organizationId, input.vehicleId);
+    const toStation = await this.requireActiveStation(organizationId, input.toStationId);
+    const fromStationId = input.fromStationId ?? vehicle.currentStationId;
+
+    if (input.fromStationId) {
+      await this.requireActiveStation(organizationId, input.fromStationId);
+    }
+
+    const activeTransferCount = await this.countActiveTransfers(
+      organizationId,
+      input.vehicleId,
+    );
+
+    const evaluationAt = expectedArrivalAt ?? plannedAt;
+    const [destinationCapacity, sourceCapacity, stationDirectory] = await Promise.all([
+      this.loadTransferStationCapacity(organizationId, input.toStationId, evaluationAt, {
+        excludeVehicleId: input.vehicleId,
+      }),
+      fromStationId
+        ? this.loadTransferStationCapacity(organizationId, fromStationId, plannedAt, {
+            excludeVehicleId: input.vehicleId,
+          })
+        : Promise.resolve(null),
+      this.loadStationDirectory(organizationId, [
+        vehicle.homeStationId,
+        vehicle.currentStationId,
+        vehicle.expectedStationId,
+        fromStationId,
+        input.toStationId,
+      ]),
+    ]);
+
+    const evaluation = evaluatePlanVehicleStationTransfer({
+      organizationId,
+      vehicleId: input.vehicleId,
+      fromStationId,
+      toStationId: input.toStationId,
+      toStationStatus: toStation.status,
+      activeTransferCount,
+      vehicleExpectedStationId: vehicle.expectedStationId,
+      vehicleExpectedStationSource: vehicle.expectedStationSource,
+      plannedAt,
+      expectedArrivalAt,
+      manualOverride: input.manualOverride ?? null,
+      overrideActorUserId: performedByUserId ?? null,
+      destinationCapacity: destinationCapacity ?? undefined,
+      sourceCapacity: sourceCapacity ?? undefined,
+    });
+
+    const toExpectedStation = {
+      id: toStation.id,
+      name: stationDirectory.get(toStation.id)?.name ?? toStation.id,
+      code: stationDirectory.get(toStation.id)?.code ?? null,
+      status: toStation.status,
+    };
+
+    return {
+      allowed: evaluation.allowed,
+      idempotent: vehicle.expectedStationId === input.toStationId,
+      vehicleId: vehicle.id,
+      licensePlate: vehicle.licensePlate,
+      vehicleLabel: [vehicle.make, vehicle.model, vehicle.vehicleName].filter(Boolean).join(' ') || null,
+      rentalStatus: vehicle.status,
+      from: {
+        homeStation: vehicle.homeStationId ? stationDirectory.get(vehicle.homeStationId) ?? null : null,
+        currentStation: vehicle.currentStationId
+          ? stationDirectory.get(vehicle.currentStationId) ?? null
+          : null,
+        expectedStation: vehicle.expectedStationId
+          ? stationDirectory.get(vehicle.expectedStationId) ?? null
+          : null,
+      },
+      to: {
+        homeStation: vehicle.homeStationId ? stationDirectory.get(vehicle.homeStationId) ?? null : null,
+        currentStation: vehicle.currentStationId
+          ? stationDirectory.get(vehicle.currentStationId) ?? null
+          : null,
+        expectedStation: toExpectedStation,
+      },
+      warnings: evaluation.warnings,
+      blockingReasons: evaluation.blockingReasons,
+      concurrency: { stationPositionVersion: vehicle.stationPositionVersion },
+      manualOverrideRequired: evaluation.manualOverrideRequired,
+    };
+  }
+
   async planTransfer(
     organizationId: string,
     input: PlanVehicleStationTransferInput,
@@ -497,6 +593,53 @@ export class VehicleStationTransferService {
     expectedStationSetAt: true,
     stationPositionVersion: true,
   } as const;
+
+  private readonly vehiclePreviewSelect = {
+    ...this.vehicleSelect,
+    licensePlate: true,
+    make: true,
+    model: true,
+    vehicleName: true,
+    status: true,
+  } as const;
+
+  private async requireVehicleForPreview(organizationId: string, vehicleId: string) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+      select: this.vehiclePreviewSelect,
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+    return vehicle;
+  }
+
+  private async loadStationDirectory(
+    organizationId: string,
+    stationIds: Array<string | null | undefined>,
+  ) {
+    const ids = [...new Set(stationIds.filter((id): id is string => Boolean(id)))];
+    if (!ids.length) {
+      return new Map<string, { id: string; name: string; code: string | null; status: string }>();
+    }
+
+    const stations = await this.prisma.station.findMany({
+      where: { organizationId, id: { in: ids } },
+      select: { id: true, name: true, code: true, status: true },
+    });
+
+    return new Map(
+      stations.map((station) => [
+        station.id,
+        {
+          id: station.id,
+          name: station.name,
+          code: station.code,
+          status: station.status,
+        },
+      ]),
+    );
+  }
 
   private async requireVehicle(organizationId: string, vehicleId: string) {
     const vehicle = await this.prisma.vehicle.findFirst({

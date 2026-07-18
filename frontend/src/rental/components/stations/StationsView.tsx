@@ -50,7 +50,9 @@ import {
 } from '../../lib/stationUtils';
 import type { StationsUiCapabilities } from '../../lib/stations-v2-ui-capabilities';
 import { StationFormModal } from './StationFormModal';
-import { StationAssignVehicleModal } from './StationAssignVehicleModal';
+import { StationVehicleWorkflowModal } from './StationVehicleWorkflowModal';
+import { availableStationVehicleWorkflows } from '../../lib/station-vehicle-workflow.utils';
+import type { StationVehicleWorkflowType } from '../../../lib/api';
 
 type ViewMode = 'cards' | 'list';
 
@@ -186,7 +188,10 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   const [saving, setSaving] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [backfillRunning, setBackfillRunning] = useState(false);
-  const [assignStation, setAssignStation] = useState<Station | null>(null);
+  const [workflowModal, setWorkflowModal] = useState<{
+    station: Station;
+    workflow: StationVehicleWorkflowType;
+  } | null>(null);
 
   const cities = useMemo(
     () => [...new Set(stations.map((s) => s.city).filter(Boolean) as string[])].sort(),
@@ -548,7 +553,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                   onArchive={() => void handleArchive(station)}
                   onRestore={() => void handleRestore(station)}
                   onSetPrimary={() => void handleSetPrimary(station)}
-                  onAssign={() => setAssignStation(station)}
+                  onOpenWorkflow={(station, workflow) => setWorkflowModal({ station, workflow })}
                   stationCaps={forStation(station)}
                   t={t}
                 />
@@ -567,11 +572,14 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
         onClose={() => setFormOpen(false)}
         onSubmit={handleSave}
       />
-      <StationAssignVehicleModal
-        station={assignStation}
-        onClose={() => setAssignStation(null)}
-        onSaved={() => void refresh()}
-      />
+      {workflowModal && (
+        <StationVehicleWorkflowModal
+          station={workflowModal.station}
+          workflow={workflowModal.workflow}
+          onClose={() => setWorkflowModal(null)}
+          onSaved={() => void refresh()}
+        />
+      )}
     </div>
   );
 }
@@ -591,7 +599,7 @@ function StationCard({
   onArchive,
   onRestore,
   onSetPrimary,
-  onAssign,
+  onOpenWorkflow,
   stationCaps,
   t,
 }: {
@@ -605,7 +613,7 @@ function StationCard({
   onArchive: () => void;
   onRestore: () => void;
   onSetPrimary: () => void;
-  onAssign: () => void;
+  onOpenWorkflow: (station: Station, workflow: StationVehicleWorkflowType) => void;
   stationCaps: StationsUiCapabilities;
   t: (k: TranslationKey, vars?: Record<string, string | number>) => string;
 }) {
@@ -681,9 +689,10 @@ function StationCard({
   );
 
   const canEdit = stationCaps.canEditMasterData || stationCaps.canManageOperations;
+  const workflowOptions = availableStationVehicleWorkflows(stationCaps);
   const hasMenuActions =
     canEdit ||
-    stationCaps.canManageHomeFleet ||
+    workflowOptions.length > 0 ||
     stationCaps.canSetPrimary ||
     stationCaps.canArchive ||
     stationCaps.canRestore;
@@ -699,9 +708,16 @@ function StationCard({
           {canEdit && (
             <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onEdit}>{t('stations.action.edit')}</button>
           )}
-          {stationCaps.canManageHomeFleet && (
-            <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onAssign}>{t('stations.action.assignVehicle')}</button>
-          )}
+          {workflowOptions.map((workflow) => (
+            <button
+              key={workflow}
+              type="button"
+              className="w-full text-left px-3 py-2 hover:bg-muted/50"
+              onClick={() => onOpenWorkflow(station, workflow)}
+            >
+              {t(`stations.workflow.${workflow}.title`)}
+            </button>
+          ))}
           {stationCaps.canSetPrimary && !station.isPrimary && (
             <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onSetPrimary}>{t('stations.action.setPrimary')}</button>
           )}

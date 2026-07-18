@@ -54,4 +54,24 @@ describe('stations permissions UI wiring', () => {
     expect(formSource).toContain('formCapabilities');
     expect(formSource).toContain('!caps.canSubmit');
   });
+
+  it('uses workflow menu instead of assign vehicle modal', () => {
+    const detailSource = readFileSync(resolve(stationsDir, 'StationDetailView.tsx'), 'utf8');
+    const listSource = readFileSync(resolve(stationsDir, 'StationsView.tsx'), 'utf8');
+    expect(detailSource).toContain('StationVehicleWorkflowMenu');
+    expect(detailSource).not.toContain('StationAssignVehicleModal');
+    expect(listSource).toContain('StationVehicleWorkflowModal');
+    expect(listSource).toContain('availableStationVehicleWorkflows');
+    expect(listSource).not.toContain('StationAssignVehicleModal');
+  });
+
+  it('wires station vehicle workflow utilities and API client', () => {
+    const utilsSource = readFileSync(resolve(stationsDir, '../../lib/station-vehicle-workflow.utils.ts'), 'utf8');
+    const modalSource = readFileSync(resolve(stationsDir, 'StationVehicleWorkflowModal.tsx'), 'utf8');
+    expect(utilsSource).toContain('availableStationVehicleWorkflows');
+    expect(utilsSource).toContain('isVersionConflictError');
+    expect(modalSource).toContain('lookupVehicleWorkflowVehicles');
+    expect(modalSource).toContain('previewVehicleWorkflow');
+    expect(modalSource).toContain('stations.workflow.preview.from');
+  });
 });
