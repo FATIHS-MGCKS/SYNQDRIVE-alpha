@@ -49,7 +49,7 @@ function evaluate(input: Partial<Parameters<typeof evaluateStationBookingRules>[
     pickupStation: input.pickupStation === undefined ? { ...BASE_STATION } : input.pickupStation,
     returnStation:
       input.returnStation === undefined
-        ? { ...BASE_STATION, id: STATION_B }
+        ? { ...BASE_STATION, id: STATION_A }
         : input.returnStation,
     pickupDateTime: pickupAt,
     returnDateTime: returnAt,
@@ -73,7 +73,7 @@ describe('station-booking-rules.resolver', () => {
     const archived = { ...BASE_STATION, status: 'ARCHIVED' as const };
     const result = evaluate({
       pickupStation: archived,
-      returnStation: { ...archived, id: STATION_B },
+      returnStation: archived,
     });
 
     expect(result.pickup.outcome).toBe(StationBookingRuleOutcome.BLOCKED);
@@ -128,7 +128,6 @@ describe('station-booking-rules.resolver', () => {
     const result = evaluate({
       returnStation: {
         ...BASE_STATION,
-        id: STATION_B,
         afterHoursReturnEnabled: true,
         keyBoxAvailable: true,
       },
@@ -138,7 +137,7 @@ describe('station-booking-rules.resolver', () => {
     expect(result.return.outcome).toBe(StationBookingRuleOutcome.ALLOWED);
     expect(
       result.return.evaluations.some(
-        (evaluation) => evaluation.reason.code === StationBookingRuleReasonCode.AFTER_HOURS_ALLOWED,
+        (evaluation) => evaluation.reason.code === StationBookingRuleReasonCode.ALLOWED_WITH_INFO,
       ),
     ).toBe(true);
   });
@@ -147,7 +146,6 @@ describe('station-booking-rules.resolver', () => {
     const result = evaluate({
       returnStation: {
         ...BASE_STATION,
-        id: STATION_B,
         afterHoursReturnEnabled: true,
         keyBoxAvailable: false,
       },
@@ -171,7 +169,7 @@ describe('station-booking-rules.resolver', () => {
 
   it('blocks return when return is disabled', () => {
     const result = evaluate({
-      returnStation: { ...BASE_STATION, id: STATION_B, returnEnabled: false },
+      returnStation: { ...BASE_STATION, returnEnabled: false },
     });
 
     expect(result.return.outcome).toBe(StationBookingRuleOutcome.BLOCKED);
@@ -289,13 +287,31 @@ describe('station-booking-rules.resolver', () => {
     expect(result.return.outcome).toBe(StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED);
   });
 
-  it('includes booking type in the result envelope', () => {
+  it('includes booking type and derived one-way flag in the result envelope', () => {
     const result = evaluate({
       bookingType: StationBookingRulesBookingType.ONE_WAY,
+      returnStation: { ...BASE_STATION, id: STATION_B },
     });
 
     expect(result.bookingType).toBe(StationBookingRulesBookingType.ONE_WAY);
-    expect(result.version).toBe(2);
+    expect(result.derivedIsOneWay).toBe(true);
+    expect(result.version).toBe(3);
     expect(result.evaluatedAt).toBeTruthy();
+  });
+
+  it('blocks when booking type conflicts with derived one-way from station IDs', () => {
+    const result = evaluate({
+      bookingType: StationBookingRulesBookingType.STANDARD,
+      returnStation: { ...BASE_STATION, id: STATION_B },
+    });
+
+    expect(result.derivedIsOneWay).toBe(true);
+    expect(result.pickup.outcome).toBe(StationBookingRuleOutcome.BLOCKED);
+    expect(result.return.outcome).toBe(StationBookingRuleOutcome.BLOCKED);
+    expect(
+      result.pickup.evaluations.some(
+        (evaluation) => evaluation.reason.code === StationBookingRuleReasonCode.ONE_WAY_MISMATCH,
+      ),
+    ).toBe(true);
   });
 });

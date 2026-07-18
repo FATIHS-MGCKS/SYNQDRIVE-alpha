@@ -11,11 +11,37 @@ import {
   type StationBookingRulesResult,
 } from '@shared/stations/station-booking-rules.contract';
 import { getStationBookingPickupRulesMetadata } from '@shared/stations/station-booking-pickup-rules.contract';
+import { evaluateReturnBookingRules } from '@shared/stations/station-booking-return-rules';
+import { getStationBookingReturnRulesMetadata } from '@shared/stations/station-booking-return-rules.contract';
 
 @Injectable()
 export class StationBookingRulesService {
   evaluate(input: StationBookingRulesInput): StationBookingRulesResult {
     return evaluateStationBookingRules(input);
+  }
+
+  evaluateReturn(
+    input: Omit<StationBookingRulesInput, 'pickupStation' | 'pickupDateTime'> & {
+      returnAt?: Date | string;
+    },
+  ) {
+    const policy = {
+      ...DEFAULT_STATION_BOOKING_RULES_ORGANIZATION_POLICY,
+      ...input.organizationPolicy,
+    };
+    const returnAt =
+      input.returnAt instanceof Date
+        ? input.returnAt
+        : new Date(input.returnAt ?? input.returnDateTime);
+
+    return evaluateReturnBookingRules({
+      organizationId: input.organizationId,
+      station: input.returnStation,
+      returnAt,
+      vehicle: input.vehicle,
+      policy,
+      bookingContext: input.bookingContext,
+    });
   }
 
   evaluatePickup(
@@ -48,6 +74,10 @@ export class StationBookingRulesService {
 
   getPickupRulesMetadata() {
     return getStationBookingPickupRulesMetadata();
+  }
+
+  getReturnRulesMetadata() {
+    return getStationBookingReturnRulesMetadata();
   }
 
   getMetadata() {
