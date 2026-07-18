@@ -2,6 +2,7 @@ import { GoneException, NotFoundException } from '@nestjs/common';
 import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
 import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
+import { stationVehicleRuntimeLoaderMock } from './testing/station-vehicle-runtime-loader.mock';
 import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
@@ -25,7 +26,7 @@ describe('StationsService DELETE deprecation', () => {
     {} as StationValidationService,
     new StationAccessScopeService(prisma, new StationScopeService(prisma)),
     stationOperationsServiceMock,
-    { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+    stationVehicleRuntimeLoaderMock as never,
     stationDomainAuditServiceMock as never,
   );
 

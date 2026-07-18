@@ -7,6 +7,7 @@ import { StationScopeService } from '@shared/stations/station-scope.service';
 import { StationCoordinatesSource } from '@prisma/client';
 import { parseMapboxForwardGeocodeFeature } from './station-geocode.util';
 import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
+import { stationVehicleRuntimeLoaderMock } from './testing/station-vehicle-runtime-loader.mock';
 import { stationOperationsServiceMock } from './testing/station-operations.service.mock';
 
 const ORG = 'org-location';
@@ -37,7 +38,7 @@ describe('StationsService location master data', () => {
     {} as StationValidationService,
     new StationAccessScopeService(prisma, new StationScopeService(prisma)),
     stationOperationsServiceMock,
-    { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+    stationVehicleRuntimeLoaderMock as never,
     stationDomainAuditServiceMock as never,
   );
 

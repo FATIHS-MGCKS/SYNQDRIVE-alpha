@@ -7,6 +7,7 @@ import type { StationScopeContext } from '@shared/stations/station-scope.types';
 import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 import { StationScopeService } from '@shared/stations/station-scope.service';
 import { StationOperationsService } from './station-operations.service';
+import { stationVehicleRuntimeLoaderMock } from './testing/station-vehicle-runtime-loader.mock';
 import { stationDomainAuditServiceMock } from './testing/station-domain-audit.service.mock';
 
 const ORG = 'org-1';
@@ -22,6 +23,7 @@ describe('Stations nested resource security', () => {
     booking: { findMany: jest.fn(), count: jest.fn() },
     orgTask: { count: jest.fn() },
     activityLog: { findMany: jest.fn() },
+    organizationMembership: { findMany: jest.fn().mockResolvedValue([]) },
   } as unknown as PrismaService;
 
   const stationAccessScope = new StationAccessScopeService(
@@ -36,7 +38,7 @@ describe('Stations nested resource security', () => {
     {} as StationValidationService,
     stationAccessScope,
     stationOperations,
-    { resolveRuntimeSnapshots: jest.fn().mockResolvedValue([]) } as never,
+    stationVehicleRuntimeLoaderMock as never,
     stationDomainAuditServiceMock as never,
   );
 

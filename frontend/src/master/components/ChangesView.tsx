@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-backend-test-package-v49651-2026-07-18',
+    version: '4.9.651',
+    title: 'V4.9.651 — Stations V2: Vollständiges Backend-Testpaket (Prompt 71/78)',
+    summary: [
+      'Dokumentation `docs/testing/stations-v2-backend-coverage.md` — 24 Bereiche (Permissions, CRUD, Lifecycle, Archive/Restore, Positioning, Booking/Handover, KPIs, Audit, Tenant, Performance).',
+      'Neue Pakete: `stations-v2-tenant-isolation`, `stations-v2-audit-trail`, `stations-v2-transfers-authz`, `stations-v2-query-performance`.',
+      'Shared Mock `station-vehicle-runtime-loader.mock.ts`; Reparatur aller Stations-Specs auf `loadRuntimeSnapshots`.',
+      'Verify-Script `scripts/test/stations-v2-verify.sh` + `npm run test:stations:v2` / `test:stations:v2:verify`.',
+      '864 Stations-Tests grün (104 Suites); Controller-Import/Parameter-Fix; Bookings HandoverProtocolDto-Felder.',
+    ],
+    reason: 'Prompt 71/78: Operative Testabdeckung und CI-Verifikation für Stations V2.',
+    previousBehavior:
+      'Stations-Tests verteilt über ~60 Spec-Dateien ohne konsolidierte Coverage-Doku; 4 Suites rot (Runtime-Loader-Mock, Controller-Signatur, Permission-Map, Handover-DTO).',
+    details:
+      'Backend: neue Specs + Mocks + Verify-Script; Fixes in `stations.controller.ts`, `stations-nested-security.spec.ts`, `station-access-scope.*`, `bookings.service.ts`; Doku analog Battery V2.',
+    affectsArchitecture: false,
+    module: 'Stations',
+    createdAt: '2026-07-18T06:00:00.000Z',
+  },
+  {
     id: 'stations-v2-prometheus-metrics-v49650-2026-07-18',
     version: '4.9.650',
     title: 'V4.9.650 — Stations V2: Prometheus-Metriken & Grafana (Prompt 70/78)',

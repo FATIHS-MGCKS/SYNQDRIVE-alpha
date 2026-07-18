@@ -855,6 +855,12 @@ export class BookingsService {
               (x): x is string => typeof x === 'string',
             )
           : [],
+        actualStationId: r.actualStationId ?? null,
+        stationRules:
+          (r.stationRulesSnapshot as HandoverProtocolDto['stationRules']) ?? null,
+        oneWayReturnFollowUp:
+          (r.oneWayReturnFollowUpSnapshot as HandoverProtocolDto['oneWayReturnFollowUp']) ??
+          null,
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
       };

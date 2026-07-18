@@ -72,6 +72,7 @@ import { TransitionVehicleStationTransferDto } from './dto/transition-vehicle-st
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
 import { StationsManageTransfersPermissionGuard } from './guards/stations-manage-transfers-permission.guard';
 import { StationBookingRulesService } from './station-booking-rules.service';
+import { EvaluateStationBookingRulesDto } from './dto/evaluate-station-booking-rules.dto';
 import { getStationVehicleWorkflowContractMetadata } from '@shared/stations/station-vehicle-workflow.contract';
 
 @Controller('organizations/:orgId/stations')
@@ -632,12 +633,12 @@ export class StationsController {
   async getActivity(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
     @Query('action') action?: string,
     @Query('search') search?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('limit') limit?: string,
-    @Req() req: { [STATION_SCOPE_CONTEXT_KEY]?: StationScopeContext },
   ) {
     const parsedLimit = limit ? Number.parseInt(limit, 10) : undefined;
     return this.stationsService.getStationActivity(orgId, id, req[STATION_SCOPE_CONTEXT_KEY], {
