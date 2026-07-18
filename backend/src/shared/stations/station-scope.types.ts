@@ -5,6 +5,7 @@ export type StationScopeResourceHint =
   | 'station'
   | 'vehicle'
   | 'vehicle_location'
+  | 'home_fleet_move'
   | 'booking'
   | 'list'
   | 'create'

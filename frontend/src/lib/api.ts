@@ -4006,6 +4006,33 @@ export const api = {
         `/organizations/${orgId}/stations/vehicles/change-home-station`,
         body,
       ),
+    addVehiclesToHomeStation: (
+      orgId: string,
+      stationId: string,
+      body: VehicleHomeFleetDeltaRequest,
+    ) =>
+      post<VehicleHomeFleetDeltaBatchResult>(
+        `/organizations/${orgId}/stations/${stationId}/home-fleet/add`,
+        body,
+      ),
+    removeVehiclesFromHomeStation: (
+      orgId: string,
+      stationId: string,
+      body: VehicleHomeFleetDeltaRequest,
+    ) =>
+      post<VehicleHomeFleetDeltaBatchResult>(
+        `/organizations/${orgId}/stations/${stationId}/home-fleet/remove`,
+        body,
+      ),
+    moveVehiclesToHomeStation: (
+      orgId: string,
+      stationId: string,
+      body: VehicleHomeFleetDeltaRequest & { targetStationId: string },
+    ) =>
+      post<VehicleHomeFleetDeltaBatchResult>(
+        `/organizations/${orgId}/stations/${stationId}/home-fleet/move`,
+        body,
+      ),
     assignVehicle: (
       orgId: string,
       stationId: string,
@@ -9455,6 +9482,43 @@ export interface ChangeVehicleHomeStationResult {
     status: string;
   };
   warnings?: Array<{ code: string; message: string }>;
+}
+
+export interface VehicleHomeFleetDeltaRequest {
+  vehicleIds: string[];
+  idempotencyKey?: string;
+  reason?: string;
+}
+
+export interface VehicleHomeFleetDeltaItemResult {
+  vehicleId: string;
+  idempotencyKey: string;
+  outcome: 'APPLIED' | 'IDEMPOTENT' | 'FAILED';
+  vehicle: {
+    id: string;
+    homeStationId: string | null;
+    currentStationId: string | null;
+    expectedStationId: string | null;
+    stationPositionVersion: number;
+    status: string;
+  } | null;
+  warnings: Array<{ code: string; message: string }>;
+  error: { code: string; message: string } | null;
+}
+
+export interface VehicleHomeFleetDeltaBatchResult {
+  command: 'AddVehiclesToHomeStation' | 'RemoveVehiclesFromHomeStation' | 'MoveVehiclesToHomeStation';
+  organizationId: string;
+  stationId: string;
+  targetStationId?: string | null;
+  batchIdempotencyKey: string | null;
+  summary: {
+    requested: number;
+    applied: number;
+    idempotent: number;
+    failed: number;
+  };
+  results: VehicleHomeFleetDeltaItemResult[];
 }
 
 // V4.7.07 — One-shot Mapbox geocoding backfill summary returned by

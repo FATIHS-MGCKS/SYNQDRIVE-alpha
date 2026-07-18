@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-home-fleet-delta-endpoints-v49616-2026-07-18',
+    version: '4.9.616',
+    title: 'V4.9.616 — Stations V2: Home-Fleet Delta Endpoints (Prompt 36/78)',
+    summary: [
+      'Explizite Delta-Endpunkte: `POST .../stations/:id/home-fleet/add|remove|move` — nur konkrete `vehicleIds`, keine Sollmenge.',
+      'Pro Fahrzeug: `APPLIED | IDEMPOTENT | FAILED`; Batch-Summary; stabile Idempotency Keys (`batchKey:vehicleId` oder `home-fleet:op:org:station:vehicle[:to:target]`).',
+      'Nur `homeStationId` wird geändert; `currentStationId`/`expectedStationId` bleiben unverändert; Optimistic Concurrency via `stationPositionVersion`.',
+      'Ablehnung archivierter/inaktiver Zielstationen; Cross-Tenant-Fahrzeuge pro Item `FAILED`; Move erfordert Scope auf Quell- und Zielstation.',
+    ],
+    reason:
+      'Invariante S2 — partielle UI-Listen und SET-Deprecation erfordern explizite Delta-Operationen statt impliziter Vollmengen-Synchronisation.',
+    previousBehavior:
+      'Keine dedizierten Home-Fleet-Deltas; Bulk-Änderungen liefen über deprecated `PUT .../vehicles` oder Einzel-`change-home-station`.',
+    details:
+      '`VehicleHomeFleetDeltaService` + Util/Types/DTO; Scope-Ressource `home_fleet_move`; Frontend `api.stations.addVehiclesToHomeStation|removeVehiclesFromHomeStation|moveVehiclesToHomeStation`; Batch- + Parallelitäts-Tests.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T18:00:00.000Z',
+  },
+  {
     id: 'stations-v2-deprecate-set-vehicles-v49615-2026-07-18',
     version: '4.9.615',
     title: 'V4.9.615 — Stations V2: Deprecate SET /stations/:id/vehicles (Prompt 35/78)',
