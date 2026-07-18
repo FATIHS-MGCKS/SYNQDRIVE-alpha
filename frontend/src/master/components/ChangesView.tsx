@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-ui-information-architecture-2026-07-18',
+    version: '4.9.598',
+    title: 'V4.9.598 — Voice AI: organization information architecture and route state',
+    summary: [
+      'Server-derived org voice states (NO_PLAN, ONBOARDING, READY_TO_ACTIVATE, ACTIVE, DEGRADED, SUSPENDED) from subscription, rollout, provisioning, deployment, telephony, MCP, webhooks, readiness, and budget.',
+      'URL-synchronized onboarding wizard and post-activation ops tabs with deep links, browser back/forward, and server-persisted wizard progress (`onboarding_step`, `onboarding_completed_steps`).',
+      'Settings sub-navigation (assistant, knowledge, permissions, telephony, availability, privacy, budget, diagnostics); provider diagnostics only under Diagnose; technical IDs masked.',
+    ],
+    reason: 'Prompt 4B — establish voice information architecture with no local-only UI truth.',
+    previousBehavior:
+      'Onboarding resume in localStorage; ops nav via VoiceOpsSectionNav without workspace state; no unified workspace API or URL-synced route validation.',
+    details:
+      'VoiceWorkspaceService + GET/PATCH workspace; migration 20260718140000; useVoiceWorkspace, voice-information-architecture.ts, VoiceSettingsPanel, VoiceResponsiveTabs; architecture/VOICE_AI_INFORMATION_ARCHITECTURE_2026-07-18.md.',
+    affectsArchitecture: true,
+    module: 'Voice Assistant',
+    createdAt: '2026-07-18T02:05:00.000Z',
+  },
+  {
     id: 'voice-webhook-ingestion-prod-default-2026-07-18',
     version: '4.9.597',
     title: 'V4.9.597 — Voice AI: production-safe webhook ingestion default',

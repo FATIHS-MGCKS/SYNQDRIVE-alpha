@@ -38,6 +38,7 @@ import {
   parseFinanceViewFromUrl,
   stripLegacyBillingCustomerPaymentsParams,
 } from './components/finance-navigation';
+import { hasVoiceDeepLink } from './components/voice-assistant/voice-information-architecture';
 import { TasksView } from './components/TasksView';
 import { VendorDetailView } from './components/VendorDetailView';
 import { CustomerDetailView } from './components/CustomerDetailView';
@@ -198,6 +199,9 @@ function RentalAppContent() {
   const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
     if (financeView) return financeView;
+    if (typeof window !== 'undefined' && hasVoiceDeepLink(window.location.search)) {
+      return 'ai-voice-assistant';
+    }
     return readPersistedSettingsView() ? 'settings' : 'dashboard';
   });
   const [detailCustomer, setDetailCustomer] = useState<any>(null);

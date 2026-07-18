@@ -5893,6 +5893,12 @@ export const api = {
       post<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant/deactivate`, {}),
     readiness: (orgId: string) =>
       get<VoiceAssistantReadiness>(`/organizations/${orgId}/voice-assistant/readiness`),
+    workspace: (orgId: string) =>
+      get<VoiceWorkspaceView>(`/organizations/${orgId}/voice-assistant/workspace`),
+    updateOnboardingStep: (orgId: string, step: VoiceWizardStep) =>
+      patch<VoiceWorkspaceView>(`/organizations/${orgId}/voice-assistant/workspace/onboarding-step`, {
+        step,
+      }),
     voices: (_orgId: string) =>
       get<VoiceOption[]>(`/organizations/${_orgId}/voice-assistant/voices`),
     testSession: (orgId: string) =>
@@ -10445,6 +10451,73 @@ export interface VoiceAssistantReadiness {
   ready: boolean;
   checks: VoiceReadinessItem[];
   missing?: string[];
+}
+
+export type VoiceWizardStep =
+  | 'plan'
+  | 'assistant'
+  | 'knowledge'
+  | 'permissions'
+  | 'phone'
+  | 'availability'
+  | 'tests'
+  | 'activation';
+
+export type VoiceOpsTab =
+  | 'overview'
+  | 'conversations'
+  | 'automations'
+  | 'analytics'
+  | 'settings';
+
+export type VoiceSettingsSection =
+  | 'assistant'
+  | 'knowledge'
+  | 'permissions'
+  | 'telephony'
+  | 'availability'
+  | 'privacy'
+  | 'budget'
+  | 'diagnostics';
+
+export type VoicePrimaryState =
+  | 'NO_PLAN'
+  | 'ONBOARDING'
+  | 'READY_TO_ACTIVATE'
+  | 'ACTIVE'
+  | 'DEGRADED'
+  | 'SUSPENDED';
+
+export interface VoiceWorkspaceNavigation {
+  phase: 'onboarding' | 'operations';
+  wizardStep: VoiceWizardStep | null;
+  opsTab: VoiceOpsTab | null;
+  settingsSection: VoiceSettingsSection | null;
+  allowedWizardSteps: VoiceWizardStep[];
+  allowedOpsTabs: VoiceOpsTab[];
+  allowedSettingsSections: VoiceSettingsSection[];
+}
+
+export interface VoiceWorkspaceIssue {
+  code: string;
+  message: string;
+  blocking: boolean;
+}
+
+export interface VoiceWorkspaceView {
+  organizationId: string;
+  primaryState: VoicePrimaryState;
+  issues: VoiceWorkspaceIssue[];
+  navigation: VoiceWorkspaceNavigation;
+  onboardingStep: VoiceWizardStep;
+  completedSteps: VoiceWizardStep[];
+  rolloutStatus: 'DISABLED' | 'ENABLED' | 'SUSPENDED';
+  subscriptionStatus: string | null;
+  assistantStatus: string;
+  readinessReady: boolean;
+  testPassed: boolean;
+  canActivate: boolean;
+  updatedAt: string;
 }
 
 export interface VoiceOption {
