@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-staging-ie1-remediation-2026-07-18',
+    version: '4.9.623',
+    title: 'V4.9.623 — Voice AI: IE1 staging Twilio credential import',
+    summary: [
+      'IE1 workaround: `importSubaccountCredentials` + `voice-staging-import-subaccount.ts` when `accounts.create` is blocked.',
+      'Staging env: Console subaccount SID/token or `VOICE_STAGING_TWILIO_USE_PARENT_ACCOUNT=true` (staging org only).',
+      'VPS: subaccount imported + agent deploy v2 ACTIVE; phone API purchase still blocked on IE1 — Console number required.',
+    ],
+    reason: 'Unblock 9B staging provisioning for real E2E after IE1 Twilio API limitations.',
+    previousBehavior: 'Subaccount provision failed with realm ie1; no import path.',
+    details:
+      'voice-staging-twilio-import.util.ts, voice-staging-import-subaccount.ts, twilio-tenant-provisioning.service importSubaccountCredentials',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T14:55:00.000Z',
+  },
+  {
     id: 'voice-staging-provision-2026-07-18',
     version: '4.9.608',
     title: 'V4.9.608 — Voice AI: staging tenant provisioning attempt (9B)',
