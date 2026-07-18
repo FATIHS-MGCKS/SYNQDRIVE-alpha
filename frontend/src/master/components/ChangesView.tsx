@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-return-booking-rules-v49625-2026-07-19',
+    version: '4.9.625',
+    title: 'V4.9.625 — Stations V2: Return Booking Rules (Prompt 45/78)',
+    summary: [
+      'Dedizierte Return-Regeln in `station-booking-return-rules` — returnEnabled, Status, Öffnungszeiten, After-hours Return, Schlüsselbox, Kalender-Schließung, Kapazität, Stationszeitzone.',
+      'After-hours erlaubt → ALLOWED_WITH_INFO oder WARNING per Org-Policy; fehlende Schlüsselbox → MANUAL_CONFIRMATION oder BLOCKED per Policy; returnDisabled Hard-Block.',
+      '`derivedIsOneWay` aus Pickup-/Return-Station-IDs; `ONE_WAY_MISMATCH` bei Konflikt mit bookingType; keine automatische UI-Annahme.',
+      'Tests für reguläre Rückgabe, After-hours und Feiertag; Booking Rules Contract v3.',
+    ],
+    reason:
+      'Return-Seite braucht explizite Regeln inkl. After-hours-Präsentation und One-Way-Ableitung — nicht nur generisches Capability-Mapping.',
+    previousBehavior:
+      'Return lief über generisches `evaluateSide`-Mapping ohne dedizierte After-hours-Präsentation, ohne One-Way-Ableitung und ohne Return-Admin-Override.',
+    details:
+      '`evaluateReturnBookingRules` + `StationBookingRulesService.evaluateReturn`; `deriveIsOneWayFromStationIds`; noch nicht in Bookings Create/Update verdrahtet.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T04:00:00.000Z',
+  },
+  {
     id: 'stations-v2-pickup-booking-rules-v49624-2026-07-19',
     version: '4.9.624',
     title: 'V4.9.624 — Stations V2: Pickup Booking Rules (Prompt 44/78)',

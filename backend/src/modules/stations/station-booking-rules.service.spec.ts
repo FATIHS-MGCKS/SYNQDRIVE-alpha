@@ -35,7 +35,7 @@ describe('StationBookingRulesService', () => {
     const result = service.evaluate({
       organizationId: ORG_ID,
       pickupStation: STATION,
-      returnStation: { ...STATION, id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
+      returnStation: { ...STATION, id: STATION.id },
       pickupDateTime: '2026-07-14T08:00:00.000Z',
       returnDateTime: '2026-07-17T08:00:00.000Z',
       bookingType: StationBookingRulesBookingType.STANDARD,
@@ -64,9 +64,26 @@ describe('StationBookingRulesService', () => {
     expect(result.adminOverrideApplied).toBe(true);
   });
 
+  it('evaluates return rules directly with after-hours presentation', () => {
+    const result = service.evaluateReturn({
+      organizationId: ORG_ID,
+      returnStation: {
+        ...STATION,
+        afterHoursReturnEnabled: true,
+        keyBoxAvailable: true,
+      },
+      returnDateTime: '2026-07-17T18:00:00.000Z',
+      bookingType: StationBookingRulesBookingType.STANDARD,
+    });
+
+    expect(result.outcome).toBe(StationBookingRuleOutcome.ALLOWED);
+    expect(result.side).toBe('return');
+  });
+
   it('exposes contract metadata without booking integration', () => {
     expect(service.getContractMetadata().bookingIntegration).toBe(false);
     expect(service.getPickupRulesMetadata().contract).toBe('station-booking-pickup-rules');
+    expect(service.getReturnRulesMetadata().contract).toBe('station-booking-return-rules');
     expect(service.getMetadata().contract).toBe('station-booking-rules');
   });
 });

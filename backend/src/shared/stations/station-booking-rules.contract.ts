@@ -5,7 +5,7 @@ import type {
   StationCapacityVehicleSnapshot,
 } from './station-capacity-policy';
 
-export const STATION_BOOKING_RULES_VERSION = 2 as const;
+export const STATION_BOOKING_RULES_VERSION = 3 as const;
 
 export const StationBookingRuleOutcome = {
   ALLOWED: 'ALLOWED',
@@ -31,6 +31,8 @@ export const StationBookingRuleReasonCode = {
   CONFIGURATION_INCOMPLETE: 'CONFIGURATION_INCOMPLETE',
   STATION_ORG_MISMATCH: 'STATION_ORG_MISMATCH',
   ADMIN_OVERRIDE_APPLIED: 'ADMIN_OVERRIDE_APPLIED',
+  ALLOWED_WITH_INFO: 'ALLOWED_WITH_INFO',
+  ONE_WAY_MISMATCH: 'ONE_WAY_MISMATCH',
 } as const;
 
 export type StationBookingRuleReasonCode =
@@ -91,6 +93,10 @@ export interface StationBookingRulesOrganizationPolicy {
   outsideOpeningHoursPickupOutcome?: StationBookingRuleOutcome;
   /** Default MANUAL_CONFIRMATION_REQUIRED when after-hours return is not self-service. */
   outsideOpeningHoursReturnOutcome?: StationBookingRuleOutcome;
+  /** How to present after-hours return when enabled + keybox available. */
+  afterHoursReturnAllowedPresentation?: 'ALLOWED_WITH_INFO' | 'WARNING';
+  /** Outcome when after-hours return is enabled but keybox is missing. */
+  keyboxMissingReturnOutcome?: StationBookingRuleOutcome;
   holidayClosureOutcome?: StationBookingRuleOutcome;
   inactiveStationOutcome?: StationBookingRuleOutcome;
   configurationIncompleteOutcome?: StationBookingRuleOutcome;
@@ -102,6 +108,8 @@ export const DEFAULT_STATION_BOOKING_RULES_ORGANIZATION_POLICY: Required<Station
   {
     outsideOpeningHoursPickupOutcome: StationBookingRuleOutcome.WARNING,
     outsideOpeningHoursReturnOutcome: StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED,
+    afterHoursReturnAllowedPresentation: 'ALLOWED_WITH_INFO',
+    keyboxMissingReturnOutcome: StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED,
     holidayClosureOutcome: StationBookingRuleOutcome.WARNING,
     inactiveStationOutcome: StationBookingRuleOutcome.BLOCKED,
     configurationIncompleteOutcome: StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED,
@@ -152,6 +160,7 @@ export interface StationBookingRulesResult {
   version: typeof STATION_BOOKING_RULES_VERSION;
   evaluatedAt: string;
   bookingType: StationBookingRulesBookingType;
+  derivedIsOneWay: boolean;
   pickup: StationBookingRulesSideResult;
   return: StationBookingRulesSideResult;
 }
