@@ -83,7 +83,9 @@ export function isActiveTransferExpectedContext(input: {
   }
   return (
     input.transferStatus === ExpectedStationTransferStatus.PLANNED ||
-    input.transferStatus === ExpectedStationTransferStatus.IN_TRANSIT
+    input.transferStatus === ExpectedStationTransferStatus.READY ||
+    input.transferStatus === ExpectedStationTransferStatus.IN_TRANSIT ||
+    input.transferStatus === ExpectedStationTransferStatus.OVERDUE
   );
 }
 

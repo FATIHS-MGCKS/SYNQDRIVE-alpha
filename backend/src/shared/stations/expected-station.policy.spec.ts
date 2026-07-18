@@ -317,7 +317,7 @@ describe('expected-station.policy', () => {
       expect(
         isActiveTransferExpectedContext({
           origin: ExpectedStationOrigin.PLANNED_TRANSFER,
-          transferStatus: ExpectedStationTransferStatus.COMPLETED,
+          transferStatus: ExpectedStationTransferStatus.ARRIVED,
         }),
       ).toBe(false);
 

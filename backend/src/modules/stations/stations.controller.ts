@@ -57,6 +57,10 @@ import { StationOperationsService } from './station-operations.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { HomeAssignmentPreviewDto } from './dto/vehicle-home-assignment-preview.dto';
+import { PlanVehicleStationTransferDto } from './dto/plan-vehicle-station-transfer.dto';
+import { TransitionVehicleStationTransferDto } from './dto/transition-vehicle-station-transfer.dto';
+import { VehicleStationTransferService } from './vehicle-station-transfer.service';
+import { StationsManageTransfersPermissionGuard } from './guards/stations-manage-transfers-permission.guard';
 
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard, StationsPermissionGuard, StationScopeGuard)
@@ -69,6 +73,7 @@ export class StationsController {
     private readonly stationOperations: StationOperationsService,
     private readonly vehicleHomeFleetDelta: VehicleHomeFleetDeltaService,
     private readonly vehicleHomeAssignmentPreview: VehicleHomeAssignmentPreviewService,
+    private readonly vehicleStationTransfer: VehicleStationTransferService,
   ) {}
 
   @Get()
@@ -171,6 +176,107 @@ export class StationsController {
         reason: body.reason,
       },
       userId,
+    );
+  }
+
+  @Post('transfers/plan')
+  @UseGuards(StationsManageTransfersPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async planVehicleStationTransfer(
+    @Param('orgId') orgId: string,
+    @Body() body: PlanVehicleStationTransferDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.vehicleStationTransfer.planTransfer(orgId, body, userId);
+  }
+
+  @Post('transfers/:transferId/ready')
+  @UseGuards(StationsManageTransfersPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async markVehicleStationTransferReady(
+    @Param('orgId') orgId: string,
+    @Param('transferId') transferId: string,
+    @Body() body: TransitionVehicleStationTransferDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.vehicleStationTransfer.markReady(
+      orgId,
+      transferId,
+      body.reason,
+      userId,
+      body.expectedVersion,
+    );
+  }
+
+  @Post('transfers/:transferId/start')
+  @UseGuards(StationsManageTransfersPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async startVehicleStationTransfer(
+    @Param('orgId') orgId: string,
+    @Param('transferId') transferId: string,
+    @Body() body: TransitionVehicleStationTransferDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.vehicleStationTransfer.startTransfer(
+      orgId,
+      transferId,
+      body.reason,
+      userId,
+      body.expectedVersion,
+    );
+  }
+
+  @Post('transfers/:transferId/arrive')
+  @UseGuards(StationsManageTransfersPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async arriveVehicleStationTransfer(
+    @Param('orgId') orgId: string,
+    @Param('transferId') transferId: string,
+    @Body() body: TransitionVehicleStationTransferDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.vehicleStationTransfer.markArrived(
+      orgId,
+      transferId,
+      body.reason,
+      userId,
+      body.expectedVersion,
+    );
+  }
+
+  @Post('transfers/:transferId/cancel')
+  @UseGuards(StationsManageTransfersPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async cancelVehicleStationTransfer(
+    @Param('orgId') orgId: string,
+    @Param('transferId') transferId: string,
+    @Body() body: TransitionVehicleStationTransferDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.vehicleStationTransfer.cancelTransfer(
+      orgId,
+      transferId,
+      body.reason,
+      userId,
+      body.expectedVersion,
+    );
+  }
+
+  @Post('transfers/:transferId/mark-overdue')
+  @UseGuards(StationsManageTransfersPermissionGuard)
+  @RequireStationScope({ resource: 'vehicle_location' })
+  async markVehicleStationTransferOverdue(
+    @Param('orgId') orgId: string,
+    @Param('transferId') transferId: string,
+    @Body() body: TransitionVehicleStationTransferDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.vehicleStationTransfer.markOverdue(
+      orgId,
+      transferId,
+      body.reason,
+      userId,
+      body.expectedVersion,
     );
   }
 
