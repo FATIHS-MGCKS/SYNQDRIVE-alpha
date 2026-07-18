@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-stations-view-summary-v49640-2026-07-20',
+    version: '4.9.640',
+    title: 'V4.9.640 — Stations V2: StationsView auf Summary Read Model (Prompt 60/78)',
+    summary: [
+      'StationsView (Karten + Liste) nutzt kanonische Summary-Metriken: Heimatflotte, aktuell vor Ort, Pickups/Returns heute, Öffnungsstatus, Kapazitätsstatus, operative Warnungen.',
+      'Keine unklare Einzelzahl „Fahrzeuge“; KPI-Leiste und Karten zeigen `homeFleetCount` / `currentOnSiteCount` statt generischer Vehicle-Counts.',
+      'Konfigurationswarnungen stations-typspezifisch (`stationExpectsHomeFleet` — PARKING/PARTNER/TEMPORARY ohne pauschales `noVehicles`).',
+      'Partial Data pro Karte sichtbar; archivierte/inaktive Stationen visuell abgesetzt; i18n DE/EN.',
+    ],
+    reason:
+      'Operatoren sollen auf einen Blick die kanonischen Stations-KPIs aus dem Summary Read Model sehen — ohne Frontend-Nachberechnung und ohne irreführende Aggregat-Zahlen.',
+    previousBehavior:
+      'StationsView zeigte generische „Fahrzeuge/Verfügbar“-Zahlen und behandelte leere Heimatflotte pauschal als Problem.',
+    details:
+      'Frontend: `StationsView.tsx`, `station-org-summaries.utils.ts`, `stationUtils.ts`, `useStationOrgSummaries.ts`, i18n en/de, Vitest-Specs.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'stations-v2-query-analysis-v49639-2026-07-20',
     version: '4.9.639',
     title: 'V4.9.639 — Stations V2: Query-Pfad-Analyse & additive Indizes (Prompt 59/78)',

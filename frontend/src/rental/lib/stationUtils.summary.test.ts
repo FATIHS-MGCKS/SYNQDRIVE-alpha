@@ -125,4 +125,41 @@ describe('getStationWarningsFromSummary', () => {
       expect.arrayContaining(['missingCoordinates', 'missingOpeningHours', 'missingGeofence']),
     );
   });
+
+  it('does not flag empty home fleet for parking stations', () => {
+    const warnings = getStationWarningsFromSummary(
+      summary({
+        lifecycle: {
+          ...summary().lifecycle,
+          type: 'PARKING',
+          typeLabel: 'Parking',
+        },
+        kpis: {
+          ...summary().kpis,
+          metrics: {
+            ...summary().kpis.metrics,
+            homeFleetCount: { value: 0, known: true, reasons: [] },
+          },
+        },
+      }),
+    );
+
+    expect(warnings).not.toContain('noVehicles');
+  });
+
+  it('flags empty home fleet for active branch stations with pickup/return', () => {
+    const warnings = getStationWarningsFromSummary(
+      summary({
+        kpis: {
+          ...summary().kpis,
+          metrics: {
+            ...summary().kpis.metrics,
+            homeFleetCount: { value: 0, known: true, reasons: [] },
+          },
+        },
+      }),
+    );
+
+    expect(warnings).toContain('noVehicles');
+  });
 });
