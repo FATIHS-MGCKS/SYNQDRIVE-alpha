@@ -93,6 +93,7 @@ export function StationDetailView({
   const [activeTab, setActiveTab] = useState<StationDetailTab>(initialTab);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lifecycleLoading, setLifecycleLoading] = useState(false);
 
   const loadedTabsRef = useRef<Set<StationDetailTabDataKey>>(new Set());
 
@@ -213,6 +214,39 @@ export function StationDetailView({
       if (activeTab === 'operations') void loadTabData('operations');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!orgId || !station || !stationCaps.canActivate) return;
+    setLifecycleLoading(true);
+    try {
+      const updated = await api.stations.activate(orgId, station.id);
+      setStation(updated);
+      toast.success(t('stations.form.activated'));
+      await loadCore();
+    } catch (e) {
+      toast.error((e as Error).message);
+      throw e;
+    } finally {
+      setLifecycleLoading(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!orgId || !station || !stationCaps.canDeactivate) return;
+    setLifecycleLoading(true);
+    try {
+      const updated = await api.stations.deactivate(orgId, station.id);
+      setStation(updated);
+      toast.success(t('stations.form.deactivated'));
+      setFormOpen(false);
+      await loadCore();
+    } catch (e) {
+      toast.error((e as Error).message);
+      throw e;
+    } finally {
+      setLifecycleLoading(false);
     }
   };
 
@@ -413,10 +447,13 @@ export function StationDetailView({
         open={formOpen}
         station={station}
         saving={saving}
+        lifecycleLoading={lifecycleLoading}
         orgId={orgId}
         formCapabilities={formCapabilities(station, false)}
         onClose={() => setFormOpen(false)}
         onSubmit={handleSave}
+        onActivate={() => handleActivate()}
+        onDeactivate={() => handleDeactivate()}
       />
     </div>
   );

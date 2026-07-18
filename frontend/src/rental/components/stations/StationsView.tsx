@@ -186,6 +186,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Station | null>(null);
   const [saving, setSaving] = useState(false);
+  const [lifecycleLoading, setLifecycleLoading] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [workflowModal, setWorkflowModal] = useState<{
@@ -223,6 +224,38 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
       await refresh();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleActivate = async (target: Station) => {
+    if (!orgId || !forStation(target).canActivate) return;
+    setLifecycleLoading(true);
+    try {
+      await api.stations.activate(orgId, target.id);
+      toast.success(t('stations.form.activated'));
+      setFormOpen(false);
+      await refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+      throw e;
+    } finally {
+      setLifecycleLoading(false);
+    }
+  };
+
+  const handleDeactivate = async (target: Station) => {
+    if (!orgId || !forStation(target).canDeactivate) return;
+    setLifecycleLoading(true);
+    try {
+      await api.stations.deactivate(orgId, target.id);
+      toast.success(t('stations.form.deactivated'));
+      setFormOpen(false);
+      await refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+      throw e;
+    } finally {
+      setLifecycleLoading(false);
     }
   };
 
@@ -567,10 +600,13 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
         open={formOpen}
         station={editing}
         saving={saving}
+        lifecycleLoading={lifecycleLoading}
         orgId={orgId}
         formCapabilities={formCapabilities(editing, !editing)}
         onClose={() => setFormOpen(false)}
         onSubmit={handleSave}
+        onActivate={editing ? () => handleActivate(editing) : undefined}
+        onDeactivate={editing ? () => handleDeactivate(editing) : undefined}
       />
       {workflowModal && (
         <StationVehicleWorkflowModal

@@ -47,7 +47,8 @@ export type StationsFormCapabilities = {
   canEditMasterData: boolean;
   canManageOperations: boolean;
   canManageTeam: boolean;
-  canChangeStatus: boolean;
+  canActivate: boolean;
+  canDeactivate: boolean;
   canUseMapboxSearch: boolean;
   readOnly: boolean;
 };
@@ -167,7 +168,8 @@ export function getStationsFormCapabilities(
       canEditMasterData: false,
       canManageOperations: false,
       canManageTeam: false,
-      canChangeStatus: false,
+      canActivate: false,
+      canDeactivate: false,
       canUseMapboxSearch: false,
       readOnly: true,
     };
@@ -175,13 +177,15 @@ export function getStationsFormCapabilities(
 
   const canSubmit = isCreate ? ui.canCreate : (ui.canEditMasterData || ui.canManageOperations || ui.canManageTeam);
   const canUseMapboxSearch = ui.canRead && (isCreate ? ui.canCreate : ui.canEditMasterData);
+  const stationStatus = options?.station?.status;
 
   return {
     canSubmit,
     canEditMasterData: isCreate ? ui.canCreate : ui.canEditMasterData,
     canManageOperations: isCreate ? ui.canCreate : ui.canManageOperations,
     canManageTeam: isCreate ? ui.canCreate : ui.canManageTeam,
-    canChangeStatus: ui.canActivate || ui.canDeactivate,
+    canActivate: !isCreate && stationStatus === 'INACTIVE' && ui.canActivate,
+    canDeactivate: !isCreate && stationStatus === 'ACTIVE' && ui.canDeactivate,
     canUseMapboxSearch,
     readOnly: !canSubmit,
   };

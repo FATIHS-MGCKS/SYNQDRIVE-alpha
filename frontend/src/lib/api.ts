@@ -3890,6 +3890,10 @@ export const api = {
       post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
     restore: (orgId: string, id: string) =>
       post<Station>(`/organizations/${orgId}/stations/${id}/restore`, {}),
+    activate: (orgId: string, id: string) =>
+      post<{ station: Station }>(`/organizations/${orgId}/stations/${id}/activate`, {}).then((r) => r.station),
+    deactivate: (orgId: string, id: string) =>
+      post<{ station: Station }>(`/organizations/${orgId}/stations/${id}/deactivate`, {}).then((r) => r.station),
     setPrimary: async (orgId: string, id: string, options?: { expectedUpdatedAt?: string }) => {
       const result = await post<{
         outcome: string;

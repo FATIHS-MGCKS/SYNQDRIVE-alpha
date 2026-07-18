@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-form-simplify-v49645-2026-07-20',
+    version: '4.9.645',
+    title: 'V4.9.645 — Stations V2: Create/Edit Station vereinfacht (Prompt 65/78)',
+    summary: [
+      '`StationFormModal` in sechs Sektionen: Grunddaten, Adresse und Standort, Betrieb, Öffnungszeiten, Kapazität, Erweiterte Einstellungen.',
+      'Kein `ARCHIVED` im Status-Dropdown; kein Primary-Schalter; Activate/Deactivate als separate Lifecycle-Aktionen (`POST .../activate|deactivate`).',
+      'Mapbox überschreibt den Namen nicht; Koordinaten nur als Paar; IANA-Zeitzone als Select mit Vorschau; Öffnungszeiten mit semantischer Validierung.',
+      'After-hours ↔ Keybox Abhängigkeit mit Hinweis/Warnung; Feld-Fehler inline mit `aria-invalid`; Mobile-Touch-Targets; Vitest `station-form.validation.test.ts`.',
+    ],
+    reason: 'Prompt 65/78: Create/Edit-Form entkoppeln von Lifecycle/Primary und operative Validierung ins UI ziehen.',
+    previousBehavior:
+      'Gemischtes Formular mit Status-Dropdown inkl. ARCHIVED, getrennten Lat/Lng ohne Paar-Regel, freier Zeitzone und globalem Fehlerstring.',
+    details:
+      'Frontend: `station-form.validation.ts`, `station-form.constants.ts`, Refactor `StationFormModal.tsx`, `stations-v2-ui-capabilities` (`canActivate`/`canDeactivate`), `api.stations.activate|deactivate`, Wiring in `StationsView`/`StationDetailView`, i18n DE/EN.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T03:40:00.000Z',
+  },
+  {
     id: 'stations-v2-vehicle-workflows-v49644-2026-07-20',
     version: '4.9.644',
     title: 'V4.9.644 — Stations V2: Getrennte Fahrzeug-Workflows (Prompt 64/78)',
