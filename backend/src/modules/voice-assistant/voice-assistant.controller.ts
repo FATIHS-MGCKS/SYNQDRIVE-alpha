@@ -14,6 +14,9 @@ import {
 import { UpdateVoiceOnboardingStepDto } from './workspace/dto/update-voice-onboarding-step.dto';
 import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
 import { VoicePhoneOnboardingService } from './phone-onboarding/voice-phone-onboarding.service';
+import { RunVoiceTestDto, RecordVoiceTestVerdictDto } from './test-center/dto/voice-test-center.dto';
+import { VoiceTestCenterService } from './test-center/voice-test-center.service';
+import { VoiceActivationSummaryService } from './activation/voice-activation-summary.service';
 import {
   PurchasePhoneNumberDto,
   RecordForwardTestDto,
@@ -29,8 +32,10 @@ import {
 export class VoiceAssistantController {
   constructor(
     private readonly service: VoiceAssistantService,
-    private readonly workspace: VoiceWorkspaceService,
+    private readonly workspaceService: VoiceWorkspaceService,
     private readonly phoneOnboarding: VoicePhoneOnboardingService,
+    private readonly testCenter: VoiceTestCenterService,
+    private readonly activationSummaryService: VoiceActivationSummaryService,
   ) {}
 
   @Get()
@@ -64,7 +69,7 @@ export class VoiceAssistantController {
 
   @Get('workspace')
   async workspace(@Param('orgId') orgId: string) {
-    return this.workspace.getWorkspace(orgId);
+    return this.workspaceService.getWorkspace(orgId);
   }
 
   @Patch('workspace/onboarding-step')
@@ -72,7 +77,7 @@ export class VoiceAssistantController {
     @Param('orgId') orgId: string,
     @Body() body: UpdateVoiceOnboardingStepDto,
   ) {
-    return this.workspace.updateOnboardingStep(orgId, body);
+    return this.workspaceService.updateOnboardingStep(orgId, body);
   }
 
   @Get('voices')
@@ -83,6 +88,49 @@ export class VoiceAssistantController {
   @Post('test-session')
   async testSession(@Param('orgId') orgId: string) {
     return this.service.getTestSession(orgId);
+  }
+
+  @Get('test-runs/summary')
+  async testRunsSummary(@Param('orgId') orgId: string) {
+    return this.testCenter.getSummary(orgId);
+  }
+
+  @Get('test-runs')
+  async listTestRuns(@Param('orgId') orgId: string) {
+    return this.testCenter.getSummary(orgId);
+  }
+
+  @Post('test-runs')
+  async runTest(
+    @Param('orgId') orgId: string,
+    @Body() body: RunVoiceTestDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.testCenter.runScenario(orgId, body.scenarioId, body.mode ?? 'simulation', req.user?.id);
+  }
+
+  @Post('test-runs/:runId/verdict')
+  async recordTestVerdict(
+    @Param('orgId') orgId: string,
+    @Param('runId') runId: string,
+    @Body() body: RecordVoiceTestVerdictDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.testCenter.recordVerdict(
+      orgId,
+      runId,
+      {
+        verdict: body.verdict,
+        reason: body.reason,
+        operatorNotes: body.operatorNotes,
+      },
+      req.user?.id,
+    );
+  }
+
+  @Get('activation-summary')
+  async activationSummary(@Param('orgId') orgId: string) {
+    return this.activationSummaryService.getSummary(orgId);
   }
 
   @Get('conversations')

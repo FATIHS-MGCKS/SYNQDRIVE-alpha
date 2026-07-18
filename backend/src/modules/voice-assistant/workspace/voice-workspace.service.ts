@@ -11,13 +11,14 @@ import {
   VoicePhoneRegulatoryStatus,
   VoiceProvisioningJobStatus,
   VoiceSubscriptionStatus,
-  VoiceTestRunStatus,
   type VoiceAssistant,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
 import { VoiceAssistantService } from '../voice-assistant.service';
 import { VoiceSubscriptionRepository } from '../control-plane/voice-control-plane.repository';
+import { isAvailabilityConfigured } from '../availability/voice-availability.util';
+import { VoiceTestCenterService } from '../test-center/voice-test-center.service';
 import {
   isVoiceOpsTab,
   isVoiceSettingsSection,
@@ -76,6 +77,7 @@ export class VoiceWorkspaceService {
     private readonly assistantService: VoiceAssistantService,
     private readonly subscriptions: VoiceSubscriptionRepository,
     private readonly protection: VoiceBudgetEnforcementService,
+    private readonly testCenter: VoiceTestCenterService,
   ) {}
 
   async getWorkspace(organizationId: string): Promise<VoiceWorkspaceView> {
@@ -87,7 +89,7 @@ export class VoiceWorkspaceService {
       throw new NotFoundException('Voice assistant not found');
     }
 
-    const [subscription, readiness, org, failedJob, pendingPhone, failedDeployment, testRun] =
+    const [subscription, readiness, org, failedJob, pendingPhone, failedDeployment, testSummary] =
       await Promise.all([
         this.subscriptions.listByOrganization(organizationId).then((rows) => rows[0] ?? null),
         this.assistantService.getReadiness(organizationId),
@@ -120,17 +122,14 @@ export class VoiceWorkspaceService {
           },
           orderBy: { updatedAt: 'desc' },
         }),
-        this.prisma.voiceTestRun.findFirst({
-          where: { organizationId, status: VoiceTestRunStatus.PASSED },
-          orderBy: { createdAt: 'desc' },
-        }),
+        this.testCenter.getSummary(organizationId),
       ]);
 
     const completedSteps = this.computeCompletedSteps({
       assistant: row,
       subscription,
       readiness,
-      testPassed: Boolean(testRun),
+      testPassed: testSummary.ready,
       knowledgeReady: this.isKnowledgeReady(row),
     });
 
@@ -175,7 +174,7 @@ export class VoiceWorkspaceService {
       subscriptionStatus: subscription?.status ?? null,
       assistantStatus: row.status,
       readinessReady: readiness.ready,
-      testPassed: Boolean(testRun),
+      testPassed: testSummary.ready,
       canActivate,
       updatedAt: row.updatedAt.toISOString(),
     };
@@ -451,11 +450,7 @@ export class VoiceWorkspaceService {
     ) {
       completed.push('phone');
     }
-    if (
-      input.assistant.businessHoursStart?.trim() &&
-      input.assistant.businessHoursEnd?.trim() &&
-      (input.assistant.fallbackMessage?.trim() || input.assistant.escalationPhone?.trim())
-    ) {
+    if (isAvailabilityConfigured(input.assistant)) {
       completed.push('availability');
     }
     if (input.testPassed) completed.push('tests');

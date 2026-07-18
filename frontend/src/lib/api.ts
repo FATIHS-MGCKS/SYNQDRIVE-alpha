@@ -5903,6 +5903,23 @@ export const api = {
       get<VoiceOption[]>(`/organizations/${_orgId}/voice-assistant/voices`),
     testSession: (orgId: string) =>
       post<VoiceAssistantTestSession>(`/organizations/${orgId}/voice-assistant/test-session`, {}),
+    testRuns: {
+      summary: (orgId: string) =>
+        get<VoiceTestCenterSummary>(`/organizations/${orgId}/voice-assistant/test-runs/summary`),
+      run: (orgId: string, payload: { scenarioId: VoiceTestScenarioId; mode?: 'simulation' | 'live' }) =>
+        post<VoiceTestRunView>(`/organizations/${orgId}/voice-assistant/test-runs`, payload),
+      recordVerdict: (
+        orgId: string,
+        runId: string,
+        payload: { verdict: VoiceTestVerdict; reason: string; operatorNotes?: string },
+      ) =>
+        post<VoiceTestRunView>(
+          `/organizations/${orgId}/voice-assistant/test-runs/${runId}/verdict`,
+          payload,
+        ),
+    },
+    activationSummary: (orgId: string) =>
+      get<VoiceActivationSummary>(`/organizations/${orgId}/voice-assistant/activation-summary`),
     conversations: (orgId: string, params?: VoiceConversationListParams) =>
       get<VoiceConversationListResult>(
         `/organizations/${orgId}/voice-assistant/conversations${buildQuery({
@@ -10701,6 +10718,7 @@ export interface VoiceAssistantTestSession {
   agentId: string | null;
   provider: string;
   status: 'ready' | 'blocked';
+  mode: 'simulation' | 'live';
   instructions: string;
   expiresAt: string | null;
   warnings: string[];
@@ -10711,6 +10729,70 @@ export interface VoiceAssistantTestSession {
   developerDetails: {
     signedUrl: string;
   } | null;
+}
+
+export type VoiceTestScenarioId =
+  | 'booking_status'
+  | 'pickup'
+  | 'return_vehicle'
+  | 'missing_document'
+  | 'open_invoice'
+  | 'breakdown'
+  | 'damage'
+  | 'unknown_question'
+  | 'sensitive_change'
+  | 'staff_handover';
+
+export type VoiceTestVerdict = 'PASS' | 'PARTIAL' | 'FAIL';
+
+export interface VoiceTestRunView {
+  id: string;
+  scenarioId: VoiceTestScenarioId;
+  mode: 'simulation' | 'live';
+  verdict: VoiceTestVerdict | null;
+  suggestedVerdict: VoiceTestVerdict | null;
+  reason: string | null;
+  toolsUsed: string[];
+  operatorNotes: string | null;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  technicalDetails: {
+    assertions: Array<{ key: string; ok: boolean; detail: string }>;
+    readinessGaps: string[];
+  } | null;
+}
+
+export interface VoiceTestCenterSummary {
+  ready: boolean;
+  passedCount: number;
+  partialCount: number;
+  failedCount: number;
+  pendingCount: number;
+  requiredCount: number;
+  scenarios: Array<{
+    scenarioId: VoiceTestScenarioId;
+    latest: VoiceTestRunView | null;
+  }>;
+}
+
+export type VoiceActivationSummaryLevel = 'BLOCKER' | 'WARNING' | 'READY';
+
+export interface VoiceActivationSummaryItem {
+  id: string;
+  section: string;
+  label: string;
+  level: VoiceActivationSummaryLevel;
+  message: string;
+}
+
+export interface VoiceActivationSummary {
+  canActivate: boolean;
+  blockers: VoiceActivationSummaryItem[];
+  warnings: VoiceActivationSummaryItem[];
+  ready: VoiceActivationSummaryItem[];
+  rolloutStatus: 'DISABLED' | 'ENABLED' | 'SUSPENDED';
+  stagingLiveCallsEnabled: boolean;
 }
 
 export interface VoiceSyncConversationsResult {

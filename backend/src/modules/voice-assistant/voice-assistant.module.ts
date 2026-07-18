@@ -35,6 +35,10 @@ import { VoiceProviderWebhookEventRepository } from './control-plane/voice-audit
 import { VoiceRetentionService } from './security/voice-retention.service';
 import { VoiceSecretsStartupService } from './security/voice-secrets-startup.service';
 import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
+import { VoicePhoneOnboardingService } from './phone-onboarding/voice-phone-onboarding.service';
+import { VoiceTestRunRepository } from './control-plane/voice-audit-persistence.repository';
+import { VoiceTestCenterService } from './test-center/voice-test-center.service';
+import { VoiceActivationSummaryService } from './activation/voice-activation-summary.service';
 
 @Module({
   imports: [
@@ -77,6 +81,9 @@ import { VoiceWorkspaceService } from './workspace/voice-workspace.service';
     VoiceSecretsStartupService,
     VoiceWorkspaceService,
     VoicePhoneOnboardingService,
+    VoiceTestRunRepository,
+    VoiceTestCenterService,
+    VoiceActivationSummaryService,
   ],
   exports: [
     VoiceAssistantService,

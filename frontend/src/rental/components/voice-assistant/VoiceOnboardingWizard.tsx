@@ -18,12 +18,15 @@ import { VoiceLaunchChecklist } from './VoiceLaunchChecklist';
 import { VoicePermissionGroupsPanel } from './VoicePermissionGroupsPanel';
 import { VoiceTelephonyWizard } from './VoiceTelephonyWizard';
 import { VoiceTestCenter } from './VoiceTestCenter';
+import { VoiceAvailabilityPanel } from './VoiceAvailabilityPanel';
+import { VoiceActivationSummaryPanel } from './VoiceActivationSummaryPanel';
 import { VoiceWizardAssistantStep } from './VoiceWizardAssistantStep';
 import { VoiceWizardKnowledgeStep } from './VoiceWizardKnowledgeStep';
 import { VoiceWizardPlanStep } from './VoiceWizardPlanStep';
 import { assistantOnboardingToPayload } from './voice-assistant-onboarding.ops';
 import type { VoiceTextField } from './voice-assistant-builder.types';
 import type { VoiceToolPermissionsMap } from './voice-assistant-permissions.ops';
+import type { VoiceTab } from './voice-assistant.ops';
 import { buildLaunchChecklist } from './voice-assistant.ops';
 import { useVoiceKnowledgeCenter } from './useVoiceKnowledgeCenter';
 import {
@@ -33,6 +36,7 @@ import {
   prevWizardStep,
   type VoiceWizardStep,
 } from './voice-wizard.ops';
+import { isAvailabilityStepComplete } from './voice-availability.ops';
 
 type VoiceBoolField = Exclude<{
   [K in keyof VoiceAssistantUpdatePayload]: VoiceAssistantUpdatePayload[K] extends boolean | undefined ? K : never;
@@ -358,85 +362,14 @@ export function VoiceOnboardingWizard({
         )}
 
         {step === 'availability' && (
-          <div className="surface-premium space-y-4 rounded-2xl border border-border/40 p-5 shadow-[var(--shadow-1)]">
-            <div>
-              <h3 className="text-sm font-bold text-foreground">{t('voice.availability.title')}</h3>
-              <p className="mt-1 text-[11px] text-muted-foreground">{t('voice.availability.description')}</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <label className={labelCls}>{t('voice.availability.hoursStart')}</label>
-                <input
-                  type="time"
-                  className={inputCls}
-                  value={textField('businessHoursStart')}
-                  onChange={e => setTextField('businessHoursStart', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>{t('voice.availability.hoursEnd')}</label>
-                <input
-                  type="time"
-                  className={inputCls}
-                  value={textField('businessHoursEnd')}
-                  onChange={e => setTextField('businessHoursEnd', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>{t('voice.availability.timezone')}</label>
-                <input
-                  className={inputCls}
-                  value={textField('businessHoursTimezone')}
-                  onChange={e => setTextField('businessHoursTimezone', e.target.value)}
-                  placeholder="Europe/Berlin"
-                />
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>{t('voice.availability.afterHours')}</label>
-              <input
-                className={inputCls}
-                value={textField('afterHoursMessage')}
-                onChange={e => setTextField('afterHoursMessage', e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className={labelCls}>{t('voice.availability.escalationPhone')}</label>
-                <input
-                  className={inputCls}
-                  value={textField('escalationPhone')}
-                  onChange={e => setTextField('escalationPhone', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>{t('voice.availability.fallback')}</label>
-                <input
-                  className={inputCls}
-                  value={textField('fallbackMessage')}
-                  onChange={e => setTextField('fallbackMessage', e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              {(
-                [
-                  { key: 'escalateOnRequest', label: t('voice.availability.trigger.request') },
-                  { key: 'escalateOnLowConf', label: t('voice.availability.trigger.lowConf') },
-                  { key: 'escalateOnSensitive', label: t('voice.availability.trigger.sensitive') },
-                ] as const
-              ).map(item => (
-                <label key={item.key} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/20">
-                  <input
-                    type="checkbox"
-                    checked={boolField(item.key)}
-                    onChange={e => setBoolField(item.key, e.target.checked)}
-                  />
-                  <span className="text-[11px] font-semibold">{item.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <VoiceAvailabilityPanel
+            assistant={assistant}
+            isDarkMode={isDarkMode}
+            saving={saving}
+            onSave={async payload => {
+              await onSave(payload);
+            }}
+          />
         )}
 
         {step === 'tests' && (
@@ -448,20 +381,52 @@ export function VoiceOnboardingWizard({
               onTestPassed();
               void onReadinessRefresh();
             }}
-            onNavigateTab={() => undefined}
+            onNavigateTab={tab => {
+              const wizardMap: Partial<Record<VoiceTab, VoiceWizardStep>> = {
+                config: 'assistant',
+                escalation: 'availability',
+                telephony: 'phone',
+                test: 'tests',
+                permissions: 'permissions',
+                knowledge: 'knowledge',
+                overview: 'activation',
+              };
+              const target = wizardMap[tab];
+              if (target) void goToStep(target);
+            }}
           />
         )}
 
         {step === 'activation' && (
           <div className="space-y-4">
+            <VoiceActivationSummaryPanel
+              orgId={orgId}
+              canActivateLocal={canActivate}
+              onNavigateSection={section => {
+                const map: Record<string, VoiceWizardStep> = {
+                  plan: 'plan',
+                  assistant: 'assistant',
+                  knowledge: 'knowledge',
+                  permissions: 'permissions',
+                  phone: 'phone',
+                  availability: 'availability',
+                  tests: 'tests',
+                };
+                const target = map[section];
+                if (target) void goToStep(target);
+              }}
+            />
+
             <VoiceLaunchChecklist
               items={launchItems}
               onNavigate={tab => {
-                const wizardMap: Partial<Record<string, VoiceWizardStep>> = {
+                const wizardMap: Partial<Record<VoiceTab, VoiceWizardStep>> = {
                   config: 'assistant',
                   escalation: 'availability',
                   telephony: 'phone',
                   test: 'tests',
+                  permissions: 'permissions',
+                  knowledge: 'knowledge',
                   overview: 'activation',
                 };
                 const target = wizardMap[tab];

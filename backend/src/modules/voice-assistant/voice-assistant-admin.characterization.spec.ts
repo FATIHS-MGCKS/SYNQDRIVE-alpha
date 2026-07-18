@@ -54,6 +54,7 @@ describe('VoiceAssistant admin characterization', () => {
   };
   const protection = { assertActivationAllowed: jest.fn().mockResolvedValue(undefined) };
   const activityLog = { log: jest.fn().mockResolvedValue(undefined) };
+  const testCenter = { getSummary: jest.fn().mockResolvedValue({ ready: true, scenarios: [] }) };
 
   let service: VoiceAssistantService;
 
@@ -137,6 +138,7 @@ describe('VoiceAssistant admin characterization', () => {
       callOrchestration as never,
       protection as never,
       activityLog as never,
+      testCenter as never,
     );
   });
 
