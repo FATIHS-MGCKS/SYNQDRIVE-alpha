@@ -12,6 +12,8 @@ import {
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { RequireVoiceEntitlement } from '@modules/voice-entitlement/require-voice-entitlement.decorator';
+import { VoiceEntitlementGuard } from '@modules/voice-entitlement/voice-entitlement.guard';
 import { AgentDeploymentService } from './agent-deployment.service';
 import {
   DeployAgentDeploymentDto,
@@ -20,17 +22,19 @@ import {
 } from './dto/agent-deployment.dto';
 
 @Controller('organizations/:orgId/voice-assistant/agent-deployment')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, VoiceEntitlementGuard)
 @Roles('ORG_ADMIN', 'SUB_ADMIN', 'MASTER_ADMIN')
 export class AgentDeploymentController {
   constructor(private readonly deployments: AgentDeploymentService) {}
 
   @Get('draft')
+  @RequireVoiceEntitlement('agent.deployment.read')
   async getDraft(@Param('orgId') orgId: string) {
     return this.deployments.getDraft(orgId);
   }
 
   @Patch('draft')
+  @RequireVoiceEntitlement('agent.deployment.write')
   async saveDraft(
     @Param('orgId') orgId: string,
     @Body() body: SaveAgentDeploymentDraftDto,
@@ -40,16 +44,19 @@ export class AgentDeploymentController {
   }
 
   @Get('readiness')
+  @RequireVoiceEntitlement('agent.deployment.read')
   async getReadiness(@Param('orgId') orgId: string) {
     return this.deployments.getReadiness(orgId);
   }
 
   @Get('diff')
+  @RequireVoiceEntitlement('agent.deployment.read')
   async getDiff(@Param('orgId') orgId: string) {
     return this.deployments.getDiff(orgId);
   }
 
   @Post('deploy')
+  @RequireVoiceEntitlement('agent.deployment.deploy')
   async deploy(
     @Param('orgId') orgId: string,
     @Body() body: DeployAgentDeploymentDto,
@@ -64,6 +71,7 @@ export class AgentDeploymentController {
   }
 
   @Post('rollback')
+  @RequireVoiceEntitlement('agent.deployment.deploy')
   async rollback(
     @Param('orgId') orgId: string,
     @Body() body: RollbackAgentDeploymentDto,

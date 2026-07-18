@@ -26,7 +26,7 @@
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:billing:sandbox-matrix": "jest billing-stripe-sandbox.matrix",
-    "test:voice:security": "jest --testPathPattern='voice-(tenant-isolation|resilience)\\.security|voice-structured-log|voice-secrets-startup|voice-retention|voice-metrics|voice-mcp-gateway\\.security|voice-mcp-privacy|voice-webhook-ingestion\\.(pipeline|util)|twilio-webhook\\.controller\\.characterization|org-scoping\\.voice'",
+    "test:voice:security": "jest --testPathPattern='voice-(tenant-isolation|resilience|entitlement)\\.security|voice-entitlement|voice-structured-log|voice-secrets-startup|voice-retention|voice-metrics|voice-mcp-gateway\\.security|voice-mcp-privacy|voice-webhook-ingestion\\.(pipeline|util)|twilio-webhook\\.controller\\.characterization|org-scoping\\.voice|voice-assistant\\.controller\\.security'",
     "test:voice:staging-e2e": "jest voice-staging-e2e.matrix voice-e2e.config",
     "audit:dependencies": "bash ../scripts/audits/audit-dependencies.sh",
     "audit:voice-secrets": "bash ../scripts/audits/scan-voice-secrets.sh",
