@@ -29,6 +29,10 @@ import {
   VOICE_STAGING_ORG_ID,
 } from '../../src/modules/voice-assistant/staging/voice-staging.constants';
 import { persistSubaccountCredentialsToEnvFile } from '../../src/modules/voice-assistant/staging/voice-staging-subaccount-env.util';
+import {
+  isIe1SubaccountApiBlockedError,
+  resolveVoiceStagingTwilioImportCredentials,
+} from '../../src/modules/voice-assistant/staging/voice-staging-twilio-import.util';
 import { maskStagingOrgId } from '../../src/modules/voice-assistant/staging/voice-staging-preflight.util';
 import { PrismaService } from '../../src/shared/database/prisma.service';
 
@@ -207,11 +211,65 @@ async function main() {
         }
       }
     } catch (err) {
-      steps.push({
-        step: 'twilio_subaccount',
-        status: 'fail',
-        detail: err instanceof Error ? err.message : 'Subaccount failed',
-      });
+      const message = err instanceof Error ? err.message : 'Subaccount failed';
+      const importCreds = resolveVoiceStagingTwilioImportCredentials(process.env);
+      if (isIe1SubaccountApiBlockedError(message) && importCreds) {
+        try {
+          const imported = await twilio.importSubaccountCredentials({
+            organizationId: orgId,
+            accountSid: importCreds.accountSid,
+            authToken: importCreds.authToken,
+            source: importCreds.source,
+            actor: {
+              userId: undefined,
+              idempotencyKey: idempotencyKey('subaccount-import'),
+              confirm: true,
+              dryRun: false,
+            },
+          });
+          subaccountMasked = imported.maskedSubaccountRef;
+          masked.subaccount = {
+            maskedSid: imported.maskedSubaccountRef,
+            secretRef: imported.secretRefRegistered ? 'env-json://***' : null,
+            region: 'ie1',
+            edge: 'dublin',
+            importSource: importCreds.source,
+          };
+          const account = await prisma.voiceProviderAccount.findFirst({
+            where: { organizationId: orgId, archivedAt: null },
+          });
+          const envFile =
+            process.env.VOICE_STAGING_ENV_FILE?.trim() ||
+            '/opt/synqdrive/shared/backend.env';
+          if (account?.secretRef && fs.existsSync(path.dirname(envFile))) {
+            const creds = await secretResolver.resolveJson<Record<string, string>>(account.secretRef);
+            persistSubaccountCredentialsToEnvFile(envFile, orgId, {
+              accountSid: creds.accountSid,
+              apiKeySid: creds.apiKeySid,
+              apiKeySecret: creds.apiKeySecret,
+              authToken: creds.authToken ?? importCreds.authToken,
+            });
+          }
+          steps.push({
+            step: 'twilio_subaccount',
+            status: 'pass',
+            detail: `imported via ${importCreds.source} (${imported.maskedSubaccountRef ?? 'existing'})`,
+          });
+        } catch (importErr) {
+          steps.push({
+            step: 'twilio_subaccount',
+            status: 'fail',
+            detail:
+              importErr instanceof Error ? importErr.message : 'Subaccount import failed after IE1 block',
+          });
+        }
+      } else {
+        steps.push({
+          step: 'twilio_subaccount',
+          status: 'fail',
+          detail: message,
+        });
+      }
     }
 
     // 3 — Regulatory

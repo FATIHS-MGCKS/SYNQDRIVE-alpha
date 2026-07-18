@@ -127,3 +127,13 @@ export type TwilioSubaccountProvisionInput = {
   friendlyName?: string;
   actor: TwilioProvisioningActor;
 };
+
+export type TwilioSubaccountImportSource = 'manual' | 'parent_staging_fallback';
+
+export type TwilioSubaccountImportInput = {
+  organizationId: string;
+  accountSid: string;
+  authToken: string;
+  source: TwilioSubaccountImportSource;
+  actor: TwilioProvisioningActor;
+};

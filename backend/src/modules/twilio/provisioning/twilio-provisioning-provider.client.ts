@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Twilio } from 'twilio';
+import twilio = require('twilio');
 import { TWILIO_DEFAULT_EDGE, TWILIO_DEFAULT_REGION } from '@config/index';
 import { TwilioControlPlaneClient } from '../twilio-control-plane.client';
 import { mapTwilioSdkError } from '../errors/twilio-provider-error.mapper';
@@ -40,6 +41,11 @@ export type TwilioProvisioningProviderPort = {
     accountSid: string,
     friendlyName: string,
   ): Promise<TwilioSubaccountCredentials>;
+  createRuntimeApiKeyWithAuthToken(
+    accountSid: string,
+    authToken: string,
+    friendlyName: string,
+  ): Promise<TwilioSubaccountCredentials>;
   searchAvailablePhoneNumbers(
     client: Twilio,
     input: {
@@ -66,6 +72,31 @@ export class TwilioProvisioningProviderClient implements TwilioProvisioningProvi
         throw new Error('Twilio subaccount response missing sid or auth token.');
       }
       return { accountSid: account.sid, authToken: account.authToken };
+    } catch (err) {
+      throw mapTwilioSdkError(err);
+    }
+  }
+
+  async createRuntimeApiKeyWithAuthToken(
+    accountSid: string,
+    authToken: string,
+    friendlyName: string,
+  ): Promise<TwilioSubaccountCredentials> {
+    try {
+      const client = twilio(accountSid.trim(), authToken.trim(), {
+        region: TWILIO_DEFAULT_REGION,
+        edge: TWILIO_DEFAULT_EDGE,
+      });
+      const created = await client.newKeys.create({ friendlyName });
+      if (!created.sid || !created.secret) {
+        throw new Error('Twilio API key response missing sid or secret.');
+      }
+      return {
+        accountSid: accountSid.trim(),
+        apiKeySid: created.sid,
+        apiKeySecret: created.secret,
+        authToken: authToken.trim(),
+      };
     } catch (err) {
       throw mapTwilioSdkError(err);
     }

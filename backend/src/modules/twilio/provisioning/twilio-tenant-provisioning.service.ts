@@ -59,6 +59,7 @@ import type {
   TwilioProvisioningJobView,
   TwilioProvisioningPreview,
   TwilioRegulatoryStatusView,
+  TwilioSubaccountImportInput,
   TwilioSubaccountProvisionInput,
   TwilioSubaccountProvisionResult,
 } from './twilio-provisioning.types';
@@ -306,6 +307,156 @@ export class TwilioTenantProvisioningService {
       rotationPrepared: true,
       permissionScope: 'incoming-phone-numbers:read, incoming-phone-numbers:write, calls:write',
     };
+  }
+
+  /**
+   * Import Twilio subaccount credentials when Account Admin API is unavailable (IE1 parent).
+   * Staging org only. Creates a runtime API key and stores auth token for ElevenLabs import.
+   */
+  async importSubaccountCredentials(
+    input: TwilioSubaccountImportInput,
+  ): Promise<TwilioSubaccountProvisionResult> {
+    if (!isVoiceStagingOrganization(input.organizationId)) {
+      throw new ForbiddenException('Twilio credential import is limited to the voice staging organization.');
+    }
+    this.assertProvisioningConfirmation(input.actor);
+    const flags = readTwilioProvisioningFlags();
+    const dryRun = input.actor.dryRun === true || !flags.stagingProviderActionsEnabled;
+    this.assertMutationsAllowed(flags, dryRun);
+
+    const accountSid = input.accountSid?.trim();
+    const authToken = input.authToken?.trim();
+    if (!accountSid || !authToken) {
+      throw new BadRequestException('accountSid and authToken are required for Twilio import.');
+    }
+
+    const existingAccount = await this.findTwilioSubaccount(input.organizationId);
+    if (existingAccount) {
+      const { job } = await this.provisioningJobRepository.persistOrGet({
+        organizationId: input.organizationId,
+        jobType: VoiceProvisioningJobType.TWILIO_SUBACCOUNT_CREATE,
+        idempotencyKey: input.actor.idempotencyKey,
+        currentStep: 'existing_subaccount',
+        progressPct: 100,
+        createdByUserId: input.actor.userId ?? null,
+        payload: { source: input.source, dryRun },
+      });
+      return this.completeSubaccountProvisionResult(
+        input.organizationId,
+        job,
+        existingAccount,
+        dryRun,
+      );
+    }
+
+    const { job, created } = await this.provisioningJobRepository.persistOrGet({
+      organizationId: input.organizationId,
+      jobType: VoiceProvisioningJobType.TWILIO_SUBACCOUNT_CREATE,
+      idempotencyKey: input.actor.idempotencyKey,
+      currentStep: 'validate_import',
+      progressPct: 5,
+      createdByUserId: input.actor.userId ?? null,
+      payload: { source: input.source, dryRun },
+    });
+
+    if (dryRun) {
+      return {
+        organizationId: input.organizationId,
+        dryRun: true,
+        mutating: false,
+        job: this.toJobView(job),
+        providerAccountId: null,
+        maskedSubaccountRef: maskTwilioSid(accountSid, 'AC'),
+        secretRefRegistered: false,
+      };
+    }
+
+    if (!created && job.status === VoiceProvisioningJobStatus.COMPLETED && job.providerAccountId) {
+      const account = await this.prisma.voiceProviderAccount.findFirst({
+        where: { id: job.providerAccountId, organizationId: input.organizationId },
+      });
+      if (account) {
+        return this.completeSubaccountProvisionResult(input.organizationId, job, account, false);
+      }
+    }
+
+    let workingJob = job;
+    try {
+      workingJob = await this.provisioningJobRepository.updateProgress(input.organizationId, job.id, {
+        status: VoiceProvisioningJobStatus.IN_PROGRESS,
+        startedAt: new Date(),
+        currentStep: 'import_create_runtime_key',
+        progressPct: 40,
+      });
+
+      const credentials = await this.providerClient.createRuntimeApiKeyWithAuthToken(
+        accountSid,
+        authToken,
+        'SynqDrive Staging Runtime',
+      );
+      const secretRef = this.secretStore.registerSubaccountCredentials(input.organizationId, credentials);
+
+      workingJob = await this.provisioningJobRepository.updateProgress(input.organizationId, job.id, {
+        currentStep: 'persist_provider_account',
+        progressPct: 80,
+      });
+
+      const providerAccount = await this.prisma.voiceProviderAccount.create({
+        data: {
+          organizationId: input.organizationId,
+          provider: VoiceControlPlaneProvider.TWILIO,
+          accountType: VoiceProviderAccountType.SUBACCOUNT,
+          maskedExternalRef: maskTwilioSid(accountSid, 'AC') ?? 'AC***',
+          secretRef,
+          region: TWILIO_DEFAULT_REGION,
+          edge: TWILIO_DEFAULT_EDGE,
+          status: VoiceProviderAccountStatus.ACTIVE,
+          lastSyncedAt: new Date(),
+          healthMessage:
+            input.source === 'parent_staging_fallback'
+              ? 'IE1 staging fallback — parent account credentials (staging org only)'
+              : 'Imported subaccount credentials (IE1 manual path)',
+        },
+      });
+
+      workingJob = await this.provisioningJobRepository.updateProgress(input.organizationId, job.id, {
+        status: VoiceProvisioningJobStatus.COMPLETED,
+        currentStep: 'completed',
+        progressPct: 100,
+        completedAt: new Date(),
+        providerAccountId: providerAccount.id,
+        errorClass: null,
+        errorMessage: null,
+      });
+
+      this.tenantClientFactory.invalidateOrganization(input.organizationId);
+      void this.auditCostAction(input.organizationId, input.actor.userId, {
+        action: 'TWILIO_SUBACCOUNT_IMPORTED',
+        providerAccountId: providerAccount.id,
+        source: input.source,
+        dryRun: false,
+      });
+
+      return this.completeSubaccountProvisionResult(
+        input.organizationId,
+        workingJob,
+        providerAccount,
+        false,
+      );
+    } catch (err: unknown) {
+      const message = sanitizeTwilioProvisioningLogMessage(
+        err instanceof Error ? err.message : 'Twilio subaccount import failed.',
+      );
+      this.logger.warn(`Subaccount import failed org=${input.organizationId}: ${message}`);
+      workingJob = await this.provisioningJobRepository.updateProgress(input.organizationId, job.id, {
+        status: VoiceProvisioningJobStatus.FAILED,
+        failedAt: new Date(),
+        currentStep: 'failed',
+        errorClass: this.mapErrorClass(err),
+        errorMessage: message,
+      });
+      throw err;
+    }
   }
 
   async searchPhoneNumbers(

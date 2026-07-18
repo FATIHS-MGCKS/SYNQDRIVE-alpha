@@ -25,6 +25,10 @@ import { TwilioTenantProvisioningService } from './twilio-tenant-provisioning.se
 import { TwilioControlPlaneClient } from '../twilio-control-plane.client';
 import { TwilioTenantClientFactory } from '../twilio-tenant-client.factory';
 import { TwilioTenantIsolationViolationError } from '../errors/twilio-provider.errors';
+import {
+  isVoiceStagingOrganization,
+  VOICE_STAGING_ORG_ID,
+} from '@modules/voice-assistant/staging/voice-staging.constants';
 
 const ORG_A = 'org-a';
 const ORG_B = 'org-b';
@@ -83,6 +87,7 @@ describe('TwilioTenantProvisioningService', () => {
     providerClient = {
       createSubaccount: jest.fn(),
       createRestrictedSubaccountApiKey: jest.fn(),
+      createRuntimeApiKeyWithAuthToken: jest.fn(),
       searchAvailablePhoneNumbers: jest.fn(),
       purchasePhoneNumber: jest.fn(),
       getRegulatoryStatus: jest.fn(),
@@ -324,5 +329,81 @@ describe('TwilioTenantProvisioningService', () => {
         actor: { idempotencyKey: 'idem-2', confirm: true },
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects subaccount import for non-staging organizations', async () => {
+    enableProvisioningFlags();
+    await expect(
+      service.importSubaccountCredentials({
+        organizationId: ORG_A,
+        accountSid: 'AC1234567890abcdef1234567890abcd',
+        authToken: 'token',
+        source: 'manual',
+        actor: { idempotencyKey: 'import-1', confirm: true },
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('imports staging subaccount credentials via auth token path', async () => {
+    enableProvisioningFlags();
+    process.env.VOICE_E2E_ORG_ID = VOICE_STAGING_ORG_ID;
+    prisma.organization.findUnique.mockResolvedValue({ id: VOICE_STAGING_ORG_ID });
+    subscriptionRepository.listByOrganization.mockResolvedValue([
+      { id: 'sub-staging', status: VoiceSubscriptionStatus.TRIAL },
+    ] as any);
+    prisma.voiceProviderAccount.findFirst.mockResolvedValue(null);
+    provisioningJobRepository.persistOrGet.mockResolvedValue({
+      job: {
+        id: 'job-import',
+        jobType: VoiceProvisioningJobType.TWILIO_SUBACCOUNT_CREATE,
+        status: VoiceProvisioningJobStatus.PENDING,
+        currentStep: 'validate_import',
+        progressPct: 5,
+        idempotencyKey: 'import-staging',
+        providerAccountId: null,
+        phoneNumberId: null,
+        errorClass: null,
+        errorMessage: null,
+        retryCount: 0,
+      },
+      created: true,
+    } as any);
+    provisioningJobRepository.updateProgress.mockResolvedValue({
+      id: 'job-import',
+      jobType: VoiceProvisioningJobType.TWILIO_SUBACCOUNT_CREATE,
+      status: VoiceProvisioningJobStatus.COMPLETED,
+      currentStep: 'completed',
+      progressPct: 100,
+      idempotencyKey: 'import-staging',
+      providerAccountId: 'acct-staging',
+      phoneNumberId: null,
+      errorClass: null,
+      errorMessage: null,
+      retryCount: 0,
+    } as any);
+    providerClient.createRuntimeApiKeyWithAuthToken.mockResolvedValue({
+      accountSid: 'AC1234567890abcdef1234567890abcd',
+      apiKeySid: 'SK1234567890abcdef1234567890abcd',
+      apiKeySecret: 'api-secret',
+      authToken: 'token',
+    });
+    prisma.voiceProviderAccount.create.mockResolvedValue({
+      id: 'acct-staging',
+      maskedExternalRef: 'AC***cd',
+      secretRef: 'env-json://VOICE_TWILIO_SUB_ORG_VOICE_STAGING_E2E',
+    });
+
+    const result = await service.importSubaccountCredentials({
+      organizationId: VOICE_STAGING_ORG_ID,
+      accountSid: 'AC1234567890abcdef1234567890abcd',
+      authToken: 'token',
+      source: 'parent_staging_fallback',
+      actor: { idempotencyKey: 'import-staging', confirm: true },
+    });
+
+    expect(result.secretRefRegistered).toBe(true);
+    expect(providerClient.createRuntimeApiKeyWithAuthToken).toHaveBeenCalled();
+    expect(isVoiceStagingOrganization(VOICE_STAGING_ORG_ID)).toBe(true);
+    delete process.env.VOICE_E2E_ORG_ID;
   });
 });
