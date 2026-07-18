@@ -30,6 +30,14 @@ import {
 import type { HandoverTechnicalObservationDraft } from './handover.types';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
+import { StationValidationService } from '@modules/stations/station-validation.service';
+import {
+  buildHandoverPickupPositionWriteData,
+  buildHandoverReturnPositionWriteData,
+  isPickupCurrentPositionAlreadyApplied,
+  isReturnCurrentPositionAlreadyApplied,
+  shouldClearExpectedStationOnReturn,
+} from './vehicle-handover-station-position.util';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -39,7 +47,11 @@ import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service'
 //             never leave a booking ACTIVE while the car stays blocked.
 //   RETURN  → AVAILABLE only when no other ACTIVE booking exists and the car is
 //             not IN_SERVICE / OUT_OF_SERVICE (maintenance/out-of-service are
-//             never overwritten). One-way returns always update currentStationId.
+//             never overwritten). Return sets confirmed current position with
+//             source RETURN and clears expected only when fulfilled.
+// V4.9.620 — Handover pickup clears current position (IN_USE context); return
+// confirms actual return station via positioning util; home/expected unchanged
+// except explicit expected clear on fulfilled one-way destination.
 // Fleet read-models still derive rental state from open bookings as a safety net.
 @Injectable()
 export class BookingsHandoverService {
@@ -54,6 +66,7 @@ export class BookingsHandoverService {
     private readonly workflowEvents: WorkflowEventService,
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
+    private readonly stationValidation: StationValidationService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -142,6 +155,19 @@ export class BookingsHandoverService {
         )
       : [];
 
+    const actualStationId =
+      payload.actualStationId ??
+      (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
+
+    if (kind === 'RETURN' && actualStationId) {
+      await this.stationValidation.assertVehicleStationAssignment(
+        orgId,
+        booking.vehicleId,
+        actualStationId,
+        'current',
+      );
+    }
+
     const [protocol, updatedBooking] = await this.prisma.$transaction(
       async (tx) => {
         const created = await tx.bookingHandoverProtocol.create({
@@ -180,9 +206,6 @@ export class BookingsHandoverService {
         const bookingUpdateData: Prisma.BookingUpdateInput = {
           status: transitionTo,
         };
-        const actualStationId =
-          payload.actualStationId ??
-          (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
         if (kind === 'PICKUP' && actualStationId) {
           bookingUpdateData.actualPickupStation = { connect: { id: actualStationId } };
         }
@@ -215,11 +238,20 @@ export class BookingsHandoverService {
         // releases the car. Maintenance / out-of-service must not be overwritten.
         const vehicleRow = await tx.vehicle.findFirst({
           where: { id: booking.vehicleId, organizationId: orgId },
-          select: { status: true },
+          select: {
+            status: true,
+            homeStationId: true,
+            currentStationId: true,
+            expectedStationId: true,
+            currentStationSource: true,
+          },
         });
+        if (!vehicleRow) {
+          throw new NotFoundException('Vehicle not found');
+        }
         const blockedStatus =
-          vehicleRow?.status === VehicleStatus.IN_SERVICE ||
-          vehicleRow?.status === VehicleStatus.OUT_OF_SERVICE;
+          vehicleRow.status === VehicleStatus.IN_SERVICE ||
+          vehicleRow.status === VehicleStatus.OUT_OF_SERVICE;
 
         if (kind === 'RETURN') {
           const otherActive = await tx.booking.count({
@@ -230,18 +262,34 @@ export class BookingsHandoverService {
               id: { not: bookingId },
             },
           });
+          const returnPositionAlreadyApplied =
+            !!actualStationId &&
+            isReturnCurrentPositionAlreadyApplied(vehicleRow, actualStationId);
+          const returnPositionData =
+            actualStationId && !returnPositionAlreadyApplied
+              ? buildHandoverReturnPositionWriteData({
+                  actualStationId,
+                  performedByUserId: payload.performedByUserId ?? null,
+                  confirmedAt: created.performedAt,
+                  clearExpected: shouldClearExpectedStationOnReturn({
+                    expectedStationId: vehicleRow.expectedStationId,
+                    actualReturnStationId: actualStationId,
+                  }),
+                })
+              : {};
+
           if (!blockedStatus && otherActive === 0) {
             await tx.vehicle.update({
               where: { id: booking.vehicleId },
               data: {
                 status: VehicleStatus.AVAILABLE,
-                ...(actualStationId ? { currentStationId: actualStationId } : {}),
+                ...returnPositionData,
               },
             });
-          } else if (actualStationId) {
+          } else if (Object.keys(returnPositionData).length > 0) {
             await tx.vehicle.update({
               where: { id: booking.vehicleId },
-              data: { currentStationId: actualStationId },
+              data: returnPositionData,
             });
           }
         } else if (kind === 'PICKUP') {
@@ -255,14 +303,20 @@ export class BookingsHandoverService {
               message:
                 'Übergabe nicht möglich: Fahrzeug ist aktuell in Wartung bzw. nicht verfügbar (IN_SERVICE/OUT_OF_SERVICE). Bitte Fahrzeugstatus zuerst freigeben.',
               code: 'HANDOVER_PICKUP_VEHICLE_BLOCKED',
-              vehicleStatus: vehicleRow?.status ?? null,
+              vehicleStatus: vehicleRow.status,
             });
           }
+
+          const pickupPositionAlreadyApplied = isPickupCurrentPositionAlreadyApplied(vehicleRow);
+          const pickupPositionData = pickupPositionAlreadyApplied
+            ? {}
+            : buildHandoverPickupPositionWriteData();
+
           await tx.vehicle.update({
             where: { id: booking.vehicleId },
             data: {
               status: VehicleStatus.RENTED,
-              ...(actualStationId ? { currentStationId: actualStationId } : {}),
+              ...pickupPositionData,
             },
           });
         }
