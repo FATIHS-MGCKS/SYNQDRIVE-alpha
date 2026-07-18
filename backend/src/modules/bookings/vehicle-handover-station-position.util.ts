@@ -1,4 +1,9 @@
 import type { Prisma, VehicleStationPositionSource } from '@prisma/client';
+import {
+  evaluateClearExpectedStationPolicy,
+  ExpectedStationClearReason,
+  ExpectedStationRequestChannel,
+} from '../../shared/stations/expected-station.policy';
 
 export function isPickupCurrentPositionAlreadyApplied(vehicle: {
   currentStationId: string | null;
@@ -22,11 +27,17 @@ export function isReturnCurrentPositionAlreadyApplied(
 export function shouldClearExpectedStationOnReturn(input: {
   expectedStationId: string | null;
   actualReturnStationId: string | null;
+  clearedAt?: Date | string;
 }): boolean {
-  if (!input.expectedStationId || !input.actualReturnStationId) {
-    return false;
-  }
-  return input.expectedStationId === input.actualReturnStationId;
+  const evaluation = evaluateClearExpectedStationPolicy({
+    clearReason: ExpectedStationClearReason.DESTINATION_REACHED,
+    clearedAt: input.clearedAt ?? new Date(),
+    expectedStationId: input.expectedStationId,
+    actualArrivalStationId: input.actualReturnStationId,
+    requestChannel: ExpectedStationRequestChannel.COMMAND,
+  });
+
+  return evaluation.allowed && !evaluation.idempotent;
 }
 
 export function buildHandoverPickupPositionWriteData(): Prisma.VehicleUncheckedUpdateInput {

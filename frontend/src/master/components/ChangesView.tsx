@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-expected-station-policy-v49621-2026-07-18',
+    version: '4.9.621',
+    title: 'V4.9.621 — Stations V2: ExpectedStationPolicy (Prompt 41/78)',
+    summary: [
+      'Zentrale Pure-Policy `ExpectedStationPolicy` für Expected-Station-Writes gemäß Fahrzeugpositionsvertrag §2.3/V3/V5/V7.',
+      'Erlaubte Ursprünge: geplanter Transfer, bestätigte One-Way-Rückgabe, geplante Repositionierung, operatives Ziel — jeweils mit Pflicht-Kontext und Timestamp.',
+      'Aktiver Transfer hat Vorrang; Home-Mutation berührt Expected nicht; archivierte/inaktive Ziele blockiert; Destination-Reached löst kontrolliert auf.',
+      'Veraltetes Expected ohne gültigen Kontext wird nur für Reconciliation markiert, nicht still gelöscht; Unit-Tests für Priorität und Konflikte.',
+    ],
+    reason:
+      'Expected-Position braucht einen zentralen Ausführungsvertrag statt verstreuter Ad-hoc-Logik — Grundlage für künftige SetExpectedPosition/ClearExpectedPosition-Commands.',
+    previousBehavior:
+      'Keine zentrale Policy; Handover-Clear prüfte nur `actual === expected` ohne expliziten Clear-Reason-Kanal.',
+    details:
+      '`expected-station.policy.types.ts` + `expected-station.policy.ts` + Spec; `shouldClearExpectedStationOnReturn` delegiert an `evaluateClearExpectedStationPolicy`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T23:00:00.000Z',
+  },
+  {
     id: 'stations-v2-handover-current-station-wiring-v49620-2026-07-18',
     version: '4.9.620',
     title: 'V4.9.620 — Stations V2: Handover → Current Station Wiring (Prompt 40/78)',
