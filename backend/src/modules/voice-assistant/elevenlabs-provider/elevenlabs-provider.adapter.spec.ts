@@ -49,7 +49,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function makeAdapter(fetchFn: jest.Mock, prisma = makePrisma()) {
   const config = makeConfig();
-  const http = new ElevenLabsProviderHttpClient(config, fetchFn);
+  const http = ElevenLabsProviderHttpClient.createForTest(config, fetchFn);
   const tenantResolver = new ElevenLabsProviderTenantResolver(prisma);
   const adapter = new ElevenLabsProviderAdapter(http, tenantResolver);
   return { adapter, prisma, fetchFn };
@@ -63,7 +63,7 @@ describe('ElevenLabsProviderAdapter', () => {
   it('does not perform network requests on module import', () => {
     const fetchSpy = jest.fn();
     const config = makeConfig('');
-    expect(() => new ElevenLabsProviderHttpClient(config, fetchSpy)).not.toThrow();
+    expect(() => ElevenLabsProviderHttpClient.createForTest(config, fetchSpy)).not.toThrow();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -72,7 +72,7 @@ describe('ElevenLabsProviderAdapter', () => {
       const fetchFn = jest.fn();
       const { adapter } = makeAdapter(fetchFn, makePrisma());
       const config = makeConfig('');
-      const http = new ElevenLabsProviderHttpClient(config, fetchFn);
+      const http = ElevenLabsProviderHttpClient.createForTest(config, fetchFn);
       const tenantResolver = new ElevenLabsProviderTenantResolver(makePrisma());
       const unconfigured = new ElevenLabsProviderAdapter(http, tenantResolver);
 
@@ -266,7 +266,7 @@ describe('ElevenLabsProviderAdapter', () => {
 describe('ElevenLabsProviderHttpClient unauthorized', () => {
   it('throws ElevenLabsUnauthorizedError for 403 responses', async () => {
     const fetchFn = jest.fn().mockResolvedValue(jsonResponse({ detail: 'forbidden' }, 403));
-    const http = new ElevenLabsProviderHttpClient(makeConfig(), fetchFn);
+    const http = ElevenLabsProviderHttpClient.createForTest(makeConfig(), fetchFn);
 
     await expect(http.request('/voices')).rejects.toBeInstanceOf(ElevenLabsUnauthorizedError);
   });

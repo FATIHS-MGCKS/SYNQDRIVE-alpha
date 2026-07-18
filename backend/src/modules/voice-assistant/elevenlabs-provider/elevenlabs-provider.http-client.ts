@@ -29,11 +29,15 @@ export class ElevenLabsProviderHttpClient {
   private readonly logger = new Logger(ElevenLabsProviderHttpClient.name);
   private readonly fetchFn: ElevenLabsFetchFn;
 
-  constructor(
-    private readonly config: ConfigService,
-    fetchFn?: ElevenLabsFetchFn,
-  ) {
-    this.fetchFn = fetchFn ?? fetch;
+  constructor(private readonly config: ConfigService) {
+    this.fetchFn = fetch;
+  }
+
+  /** Test helper — production code uses global fetch. */
+  static createForTest(config: ConfigService, fetchFn: ElevenLabsFetchFn): ElevenLabsProviderHttpClient {
+    const client = new ElevenLabsProviderHttpClient(config);
+    Object.assign(client, { fetchFn });
+    return client;
   }
 
   getApiKey(): string {
