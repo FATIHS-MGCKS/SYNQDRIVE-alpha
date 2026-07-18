@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-org-summaries-v49634-2026-07-19',
+    version: '4.9.634',
+    title: 'V4.9.634 — Stations V2: Organization-Wide Station Summaries (Prompt 54/78)',
+    summary: [
+      'Organisationsweiter, scope-gefilterter Summary-Endpunkt `GET .../stations/summaries` mit `stationSummaries`, globalen KPIs, Partial Data, Warning Counts und Pagination/Filter-Metadaten.',
+      'Filter: Status, Typ, Primary, Pickup/Return Capability, Konfigurationsprobleme, Suche — DB-Pre-Filter plus Capability/Config-Post-Filter.',
+      'Batch-Loading für Vehicles, Bookings, Transfers und Open Tasks ohne pro-Station-HTTP-Requests; globale KPIs aus derselben gefilterten Datenbasis.',
+      'Transparente Query-Limits (`maxPageSize`, `maxAggregationStations=500`) mit `limits.codes`; Prisma-Indizes für `organizationId+type` und `organizationId+isPrimary`.',
+      'API- und Performance-Integrationstests prüfen feste Query-Anzahl unabhängig von der Stationszahl.',
+    ],
+    reason:
+      'Stations-Listen brauchen ein organisationsweites Read Model mit konsistenten KPIs und Filtern statt N Einzel-Summary-Requests.',
+    previousBehavior:
+      'Nur `GET .../stations/:id/summary` pro Station; keine aggregierten globalen KPIs, keine org-weiten Filter/Pagination.',
+    details:
+      '`station-org-summaries.contract.ts` + `.resolver.ts` + `station-summary-read-model.assembly.ts`; `StationSummaryReadModelService.resolveForOrganization`; DTO `ListStationSummariesQueryDto`; Migration `20260718210000_station_org_summaries_list_indexes`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T01:00:00.000Z',
+  },
+  {
     id: 'stations-v2-summary-read-model-v49633-2026-07-19',
     version: '4.9.633',
     title: 'V4.9.633 — Stations V2: Canonical StationSummaryReadModel (Prompt 53/78)',

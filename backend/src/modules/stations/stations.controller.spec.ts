@@ -44,6 +44,7 @@ describe('StationsController read security', () => {
   it('requires stations.read on list and detail read handlers', () => {
     expect(metadata(STATIONS_PERMISSION_KEY, 'findAll')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getStats')).toBe('stations.read');
+    expect(metadata(STATIONS_PERMISSION_KEY, 'getOrgSummaries')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'findOne')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getOverviewStats')).toBe('stations.read');
     expect(metadata(STATIONS_PERMISSION_KEY, 'getFleet')).toBe('stations.read');
@@ -58,6 +59,7 @@ describe('StationsController read security', () => {
   it('uses list scope for collection reads and station scope for detail reads', () => {
     expect(metadata(STATION_SCOPE_KEY, 'findAll')).toEqual({ resource: 'list' });
     expect(metadata(STATION_SCOPE_KEY, 'getStats')).toEqual({ resource: 'list' });
+    expect(metadata(STATION_SCOPE_KEY, 'getOrgSummaries')).toEqual({ resource: 'list' });
     expect(metadata(STATION_SCOPE_KEY, 'findOne')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getFleet')).toEqual({ resource: 'station' });
     expect(metadata(STATION_SCOPE_KEY, 'getOperations')).toEqual({ resource: 'station' });
