@@ -84,6 +84,7 @@ export function StationActivityTab({ stationId }: StationActivityTabProps) {
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder={t('stations.detail.activitySearchPlaceholder')}
+              aria-label={t('stations.a11y.searchActivity')}
               className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-sm"
             />
           </label>
@@ -92,6 +93,7 @@ export function StationActivityTab({ stationId }: StationActivityTabProps) {
             <select
               value={actionFilter}
               onChange={(event) => setActionFilter(event.target.value)}
+              aria-label={t('stations.a11y.filterActivityAction')}
               className="bg-transparent outline-none min-w-[120px]"
             >
               <option value="">{t('stations.detail.activityFilterAllActions')}</option>
@@ -156,7 +158,7 @@ function ActivityDesktopRow({
       <td className="p-3">
         <StatusChip tone="neutral">{entry.actionLabel}</StatusChip>
       </td>
-      <td className="p-3 text-xs text-muted-foreground">
+      <td className="p-3 text-xs text-muted-foreground break-words max-w-[280px]">
         <ActivityChange entry={entry} t={t} />
       </td>
       <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">

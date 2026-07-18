@@ -56,6 +56,11 @@ import { StationOverviewTab } from './StationOverviewTab';
 import { StationFleetTab } from './StationFleetTab';
 import { StationTeamTab } from './StationTeamTab';
 import { StationActivityTab } from './StationActivityTab';
+import {
+  handleStationTabListKeyDown,
+  stationTabId,
+  stationTabPanelId,
+} from '../../lib/stations-tab-a11y';
 
 interface StationDetailViewProps {
   stationId: string;
@@ -367,10 +372,11 @@ export function StationDetailView({
           </button>
         )}
         title={station.name}
+        titleClassName="line-clamp-2"
         description={(
-          <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {station.code && <span className="font-mono">{station.code}</span>}
-            {address && <><span>·</span><span>{address}</span></>}
+          <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0">
+            {station.code && <span className="font-mono shrink-0">{station.code}</span>}
+            {address && <><span>·</span><span className="line-clamp-2 min-w-0" title={address}>{address}</span></>}
           </span>
         )}
         status={(
@@ -422,13 +428,23 @@ export function StationDetailView({
       )}
 
       <div className="overflow-x-auto -mx-1 px-1">
-        <div className="flex gap-1 min-w-max sq-tab-bar p-1" role="tablist" aria-label={t('stations.detail.tabList')}>
+        <div
+          className="flex gap-1 min-w-max sq-tab-bar p-1"
+          role="tablist"
+          aria-label={t('stations.detail.tabList')}
+          onKeyDown={(event) =>
+            handleStationTabListKeyDown(event, visibleTabs, activeTab, selectTab)
+          }
+        >
           {tabDescriptors.map((tab) => (
             <button
               key={tab.key}
               type="button"
               role="tab"
+              id={stationTabId(tab.key)}
               aria-selected={activeTab === tab.key}
+              aria-controls={stationTabPanelId(tab.key)}
+              tabIndex={activeTab === tab.key ? 0 : -1}
               onClick={() => selectTab(tab.key)}
               className={`sq-tab px-3 py-1.5 text-[11px] font-semibold rounded-lg whitespace-nowrap ${
                 activeTab === tab.key ? 'sq-tab--active' : ''
@@ -440,6 +456,11 @@ export function StationDetailView({
         </div>
       </div>
 
+      <div
+        role="tabpanel"
+        id={stationTabPanelId(activeTab)}
+        aria-labelledby={stationTabId(activeTab)}
+      >
       {activeTab === 'overview' && (
         <StationOverviewTab
           station={station}
@@ -492,6 +513,7 @@ export function StationDetailView({
       {activeTab === 'activity' && stationCaps.canViewActivity && (
         <StationActivityTab stationId={stationId} />
       )}
+      </div>
 
       <StationFormModal
         open={formOpen}
@@ -656,10 +678,10 @@ function OperationsTab({
         <div className="surface-premium p-4 space-y-3">
           <h3 className="text-sm font-semibold">{t('stations.detail.rules')}</h3>
           <ul className="text-sm space-y-2">
-            <RuleRow label={t('stations.form.pickupEnabled')} value={station.pickupEnabled} />
-            <RuleRow label={t('stations.form.returnEnabled')} value={station.returnEnabled} />
-            <RuleRow label={t('stations.form.afterHours')} value={station.afterHoursReturnEnabled} />
-            <RuleRow label={t('stations.form.keyBox')} value={station.keyBoxAvailable} />
+            <RuleRow label={t('stations.form.pickupEnabled')} value={station.pickupEnabled} yesLabel={t('stations.detail.ruleYes')} noLabel={t('stations.detail.ruleNo')} />
+            <RuleRow label={t('stations.form.returnEnabled')} value={station.returnEnabled} yesLabel={t('stations.detail.ruleYes')} noLabel={t('stations.detail.ruleNo')} />
+            <RuleRow label={t('stations.form.afterHours')} value={station.afterHoursReturnEnabled} yesLabel={t('stations.detail.ruleYes')} noLabel={t('stations.detail.ruleNo')} />
+            <RuleRow label={t('stations.form.keyBox')} value={station.keyBoxAvailable} yesLabel={t('stations.detail.ruleYes')} noLabel={t('stations.detail.ruleNo')} />
             {station.capacity != null && (
               <li className="flex justify-between gap-2">
                 <span className="text-muted-foreground">{t('stations.form.capacity')}</span>
@@ -718,11 +740,23 @@ function OperationsTab({
 }
 
 
-function RuleRow({ label, value }: { label: string; value: boolean }) {
+function RuleRow({
+  label,
+  value,
+  yesLabel,
+  noLabel,
+}: {
+  label: string;
+  value: boolean;
+  yesLabel: string;
+  noLabel: string;
+}) {
   return (
     <li className="flex justify-between gap-2">
       <span className="text-muted-foreground">{label}</span>
-      <StatusChip tone={value ? 'success' : 'neutral'}>{value ? '✓' : '—'}</StatusChip>
+      <StatusChip tone={value ? 'success' : 'neutral'} aria-label={value ? yesLabel : noLabel}>
+        {value ? '✓' : '—'}
+      </StatusChip>
     </li>
   );
 }

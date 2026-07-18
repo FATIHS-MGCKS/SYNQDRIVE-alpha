@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-ui-quality-v49648-2026-07-20',
+    version: '4.9.648',
+    title: 'V4.9.648 — Stations V2: UI-Qualität & Accessibility (Prompt 68/78)',
+    summary: [
+      'Gezielter UI-Qualitätspass: Mobile-Karten, Tabnavigation, Modals, lange Namen/Adressen, KPI-Zahlenformatierung.',
+      'A11y: Fokus-Falle + Escape in Form-/Workflow-Modals; Tab-ARIA + Pfeiltasten; Screenreader-Labels für Suche/Filter/Menüs.',
+      'Glossar-Alignment i18n DE/EN (Aktuell vor Ort, Aktueller Standort, Erwartete Ankunft, Bereit zur Vermietung).',
+      'Utilities `stations-ui-format`, `stations-modal-a11y`, `stations-tab-a11y`; Vitest Responsive/A11y-Regressionen.',
+    ],
+    reason: 'Prompt 68/78: Stations V2 ohne Neugestaltung, aber barrierefrei und responsiv konsistent.',
+    previousBehavior:
+      'Modals ohne Fokus-Falle; Tabs ohne vollständiges ARIA; KPI-Rohzahlen; DE-String „Ready for Renting“; gekürzte KPI-Labels ohne Tooltip.',
+    details:
+      'Frontend: `StationsView`, `StationDetailView`, `StationFormModal`, `StationVehicleWorkflowModal`, Fleet/Team/Activity-Tabs, `MetricCard` keyboard-interaktiv; `stations-ui-quality.test.ts`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-20T05:15:00.000Z',
+  },
+  {
     id: 'stations-v2-team-activity-v49647-2026-07-20',
     version: '4.9.647',
     title: 'V4.9.647 — Stations V2: Team & Aktivität fachlich korrekt (Prompt 67/78)',

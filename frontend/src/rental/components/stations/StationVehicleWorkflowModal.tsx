@@ -22,6 +22,7 @@ import {
   workflowNeedsTargetStation,
   workflowRestrictHomeFleet,
 } from '../../lib/station-vehicle-workflow.utils';
+import { useStationModalA11y } from '../../lib/stations-modal-a11y';
 
 type WorkflowStep = 'select' | 'configure' | 'preview';
 
@@ -210,13 +211,18 @@ export function StationVehicleWorkflowModal({
   const unassignedLabel = t('stations.workflow.unassigned');
 
   return (
-    <WorkflowModalShell onClose={onClose} disabled={saving}>
+    <WorkflowModalShell
+      onClose={onClose}
+      disabled={saving}
+      titleId={`workflow-modal-title-${workflow}`}
+      closeLabel={t('common.close')}
+    >
       <div className="flex items-start justify-between gap-3 p-4 border-b border-border/60">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold">{t(`stations.workflow.${workflow}.title`)}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{station.name}</p>
+          <h2 id={`workflow-modal-title-${workflow}`} className="text-sm font-semibold">{t(`stations.workflow.${workflow}.title`)}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate" title={station.name}>{station.name}</p>
         </div>
-        <button type="button" onClick={onClose} disabled={saving} className="p-1.5 rounded-lg hover:bg-muted/60">
+        <button type="button" onClick={onClose} disabled={saving} className="p-1.5 rounded-lg hover:bg-muted/60" aria-label={t('common.close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -323,10 +329,11 @@ export function StationVehicleWorkflowModal({
               disabled={page <= 1}
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               className="p-1.5 rounded-lg border border-border disabled:opacity-40"
+              aria-label={t('stations.detail.fleetPrevPage')}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-semibold px-2">
+            <span className="text-xs font-semibold px-2 tabular-nums">
               {page}/{totalPages}
             </span>
             <button
@@ -334,6 +341,7 @@ export function StationVehicleWorkflowModal({
               disabled={page >= totalPages}
               onClick={() => setPage((current) => current + 1)}
               className="p-1.5 rounded-lg border border-border disabled:opacity-40"
+              aria-label={t('stations.detail.fleetNextPage')}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -365,20 +373,32 @@ function WorkflowModalShell({
   children,
   onClose,
   disabled,
+  titleId,
+  closeLabel,
 }: {
   children: ReactNode;
   onClose: () => void;
   disabled?: boolean;
+  titleId: string;
+  closeLabel: string;
 }) {
+  const dialogRef = useStationModalA11y({ open: true, onClose, disabled });
+
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <button
         type="button"
         className="absolute inset-0 bg-black/40"
         onClick={() => !disabled && onClose()}
-        aria-label="close"
+        aria-label={closeLabel}
       />
-      <div className="relative w-full sm:max-w-xl max-h-[90vh] surface-premium rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col animate-fade-up">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full sm:max-w-xl max-h-[90vh] surface-premium rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col animate-fade-up"
+      >
         {children}
       </div>
     </div>
@@ -441,6 +461,7 @@ function VehiclePicker({
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={searchPlaceholder}
+        aria-label={t('stations.a11y.searchWorkflowVehicles')}
         className="w-full px-3 py-2 rounded-lg border border-border surface-premium text-sm"
       />
       {loading ? (
@@ -459,7 +480,7 @@ function VehiclePicker({
                 className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-muted/40"
               >
                 <span className="text-sm font-semibold font-mono">{vehicle.licensePlate || '—'}</span>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5 break-words">
                   {[vehicle.make, vehicle.model].filter(Boolean).join(' ')}
                   {' · '}
                   {t('stations.workflow.position.home')}: {formatWorkflowStationRef(vehicle.homeStation, unassignedLabel)}
