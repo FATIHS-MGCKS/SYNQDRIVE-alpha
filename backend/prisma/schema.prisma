@@ -5115,6 +5115,7 @@ model BookingHandoverProtocol {
   damageIds                Json?        @map("damage_ids")
   actualStationId          String?      @map("actual_station_id")
   stationRulesSnapshot     Json?        @map("station_rules_snapshot")
+  oneWayReturnFollowUpSnapshot Json?      @map("one_way_return_follow_up_snapshot")
   createdAt                DateTime     @default(now()) @map("created_at")
   updatedAt                DateTime     @updatedAt @map("updated_at")
 

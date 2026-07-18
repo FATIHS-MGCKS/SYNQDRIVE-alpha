@@ -45,6 +45,9 @@ import {
   isReturnCurrentPositionAlreadyApplied,
   shouldClearExpectedStationOnReturn,
 } from './vehicle-handover-station-position.util';
+import { OneWayReturnFollowUpService } from './one-way-return-follow-up.service';
+import type { OneWayReturnFollowUpResult } from '@shared/stations/one-way-return-follow-up.contract';
+import { serializeOneWayReturnFollowUpSnapshot } from '@shared/stations/one-way-return-follow-up.util';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -75,6 +78,7 @@ export class BookingsHandoverService {
     private readonly fleetMapCache: FleetMapCacheService,
     private readonly stationValidation: StationValidationService,
     private readonly stationBookingRules: StationBookingRulesService,
+    private readonly oneWayReturnFollowUp: OneWayReturnFollowUpService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -93,6 +97,7 @@ export class BookingsHandoverService {
     booking: { id: string; status: string };
     protocol: HandoverProtocolDto;
     stationRules: HandoverStationRulesResult;
+    oneWayReturnFollowUp: OneWayReturnFollowUpResult | null;
   }> {
     this.validatePayload(payload);
 
@@ -107,6 +112,7 @@ export class BookingsHandoverService {
         endDate: true,
         pickupStationId: true,
         returnStationId: true,
+        isOneWayRental: true,
       },
     });
     if (!booking) {
@@ -492,10 +498,34 @@ export class BookingsHandoverService {
 
     await this.fleetMapCache.invalidate(orgId);
 
+    let oneWayReturnFollowUpResult: OneWayReturnFollowUpResult | null = null;
+    if (kind === 'RETURN') {
+      oneWayReturnFollowUpResult = await this.oneWayReturnFollowUp.evaluateAfterReturn({
+        organizationId: orgId,
+        bookingId,
+        vehicleId: booking.vehicleId,
+        isOneWayRental: booking.isOneWayRental,
+        pickupStationId: booking.pickupStationId,
+        plannedReturnStationId: booking.returnStationId,
+        actualReturnStationId: actualStationId,
+        evaluatedAt: protocol.performedAt,
+      });
+
+      await this.prisma.bookingHandoverProtocol.update({
+        where: { id: protocol.id },
+        data: {
+          oneWayReturnFollowUpSnapshot: serializeOneWayReturnFollowUpSnapshot(
+            oneWayReturnFollowUpResult,
+          ) as unknown as Prisma.InputJsonValue,
+        },
+      });
+    }
+
     return {
       booking: { id: updatedBooking.id, status: updatedBooking.status },
-      protocol: this.mapProtocol(protocol, stationRulesResult),
+      protocol: this.mapProtocol(protocol, stationRulesResult, oneWayReturnFollowUpResult),
       stationRules: stationRulesResult,
+      oneWayReturnFollowUp: oneWayReturnFollowUpResult,
     };
   }
 
@@ -657,10 +687,12 @@ export class BookingsHandoverService {
     damageIds: unknown;
     actualStationId?: string | null;
     stationRulesSnapshot?: unknown;
+    oneWayReturnFollowUpSnapshot?: unknown;
     createdAt: Date;
     updatedAt: Date;
   },
     stationRules?: HandoverStationRulesResult | null,
+    oneWayReturnFollowUp?: OneWayReturnFollowUpResult | null,
   ): HandoverProtocolDto {
     const damageIds = Array.isArray(r.damageIds)
       ? (r.damageIds as unknown[]).filter(
@@ -694,6 +726,10 @@ export class BookingsHandoverService {
       stationRules:
         stationRules ??
         (r.stationRulesSnapshot as HandoverStationRulesResult | null | undefined) ??
+        null,
+      oneWayReturnFollowUp:
+        oneWayReturnFollowUp ??
+        (r.oneWayReturnFollowUpSnapshot as OneWayReturnFollowUpResult | null | undefined) ??
         null,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),

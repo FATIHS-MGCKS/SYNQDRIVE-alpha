@@ -5,6 +5,7 @@
 // the existing bookings list/detail routes.
 
 import type { HandoverStationRulesResult } from '@shared/stations/handover-station-rules.contract';
+import type { OneWayReturnFollowUpResult } from '@shared/stations/one-way-return-follow-up.contract';
 
 export type HandoverKind = 'PICKUP' | 'RETURN';
 
@@ -49,6 +50,7 @@ export interface HandoverProtocolDto {
   damageIds: string[];
   actualStationId: string | null;
   stationRules: HandoverStationRulesResult | null;
+  oneWayReturnFollowUp: OneWayReturnFollowUpResult | null;
   createdAt: string;
   updatedAt: string;
 }
