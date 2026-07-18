@@ -233,7 +233,7 @@ describe('station-booking-rules.resolver', () => {
     ).toBe(true);
   });
 
-  it('blocks when station capacity is full', () => {
+  it('requires manual confirmation when station capacity is full by default', () => {
     const vehicles = Array.from({ length: 10 }, (_, index) => ({
       id: `vehicle-${index}`,
       homeStationId: STATION_A,
@@ -247,6 +247,34 @@ describe('station-booking-rules.resolver', () => {
         ...BASE_STATION,
         capacity: 10,
         capacityVehicles: vehicles,
+      },
+    });
+
+    expect(result.pickup.outcome).toBe(StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED);
+    expect(
+      result.pickup.reasons.some(
+        (r) => r.code === StationBookingRuleReasonCode.CAPACITY_MANUAL_CONFIRMATION,
+      ),
+    ).toBe(true);
+  });
+
+  it('blocks when organization policy enables capacity hard block at full', () => {
+    const vehicles = Array.from({ length: 10 }, (_, index) => ({
+      id: `vehicle-${index}`,
+      homeStationId: STATION_A,
+      currentStationId: STATION_A,
+      expectedStationId: null,
+      status: 'AVAILABLE' as const,
+    }));
+
+    const result = evaluate({
+      pickupStation: {
+        ...BASE_STATION,
+        capacity: 10,
+        capacityVehicles: vehicles,
+      },
+      organizationPolicy: {
+        capacityBlockAtFull: true,
       },
     });
 

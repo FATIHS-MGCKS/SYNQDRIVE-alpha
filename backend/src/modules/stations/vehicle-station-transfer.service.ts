@@ -7,6 +7,11 @@ import {
 import type { Prisma, VehicleStationTransferStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
+  loadConcurrentCapacityProjection,
+  loadStationCapacityVehicles,
+  type StationCapacityProjectionDb,
+} from '@shared/stations/station-capacity-projection.util';
+import {
   evaluateSetExpectedStationPolicy,
   ExpectedStationOrigin,
   ExpectedStationRequestChannel,
@@ -46,6 +51,7 @@ export class VehicleStationTransferService {
 
     const vehicle = await this.requireVehicle(organizationId, input.vehicleId);
     const toStation = await this.requireActiveStation(organizationId, input.toStationId);
+    const fromStationId = input.fromStationId ?? vehicle.currentStationId;
 
     if (input.fromStationId) {
       await this.requireActiveStation(organizationId, input.fromStationId);
@@ -66,14 +72,28 @@ export class VehicleStationTransferService {
       input.vehicleId,
     );
 
+    const evaluationAt = expectedArrivalAt ?? plannedAt;
+    const [destinationCapacity, sourceCapacity] = await Promise.all([
+      this.loadTransferStationCapacity(organizationId, input.toStationId, evaluationAt, {
+        excludeVehicleId: input.vehicleId,
+      }),
+      fromStationId
+        ? this.loadTransferStationCapacity(organizationId, fromStationId, plannedAt, {
+            excludeVehicleId: input.vehicleId,
+          })
+        : Promise.resolve(null),
+    ]);
+
     const evaluation = evaluatePlanVehicleStationTransfer({
-      fromStationId: input.fromStationId ?? vehicle.currentStationId,
+      fromStationId,
       toStationId: input.toStationId,
       toStationStatus: toStation.status,
       activeTransferCount,
       vehicleExpectedStationId: vehicle.expectedStationId,
       vehicleExpectedStationSource: vehicle.expectedStationSource,
       plannedAt,
+      destinationCapacity: destinationCapacity ?? undefined,
+      sourceCapacity: sourceCapacity ?? undefined,
     });
 
     if (!evaluation.allowed) {
@@ -85,10 +105,9 @@ export class VehicleStationTransferService {
         expectedArrivalAt,
         performedByUserId,
         blockingReasons: evaluation.blockingReasons,
+        warnings: evaluation.warnings,
       });
     }
-
-    const fromStationId = input.fromStationId ?? vehicle.currentStationId;
 
     const result = await this.prisma.$transaction(async (tx) => {
       const transfer = await tx.vehicleStationTransfer.create({
@@ -175,6 +194,7 @@ export class VehicleStationTransferService {
       setExpected: result.setExpected,
       clearedExpected: false,
       setCurrent: false,
+      warnings: evaluation.warnings,
     });
   }
 
@@ -437,7 +457,7 @@ export class VehicleStationTransferService {
   private async requireActiveStation(organizationId: string, stationId: string) {
     const station = await this.prisma.station.findFirst({
       where: { id: stationId, organizationId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, capacity: true },
     });
     if (!station) {
       throw new NotFoundException('Station not found');
@@ -449,6 +469,42 @@ export class VehicleStationTransferService {
       throw new BadRequestException('Inactive stations cannot be used for transfers');
     }
     return station;
+  }
+
+  private async loadTransferStationCapacity(
+    organizationId: string,
+    stationId: string,
+    at: Date,
+    options: { excludeVehicleId?: string } = {},
+  ) {
+    const station = await this.prisma.station.findFirst({
+      where: { id: stationId, organizationId },
+      select: { capacity: true },
+    });
+    if (!station || station.capacity == null) {
+      return null;
+    }
+
+    const [vehicles, concurrentProjection] = await Promise.all([
+      loadStationCapacityVehicles(
+        this.prisma as unknown as StationCapacityProjectionDb,
+        organizationId,
+        stationId,
+      ),
+      loadConcurrentCapacityProjection(
+        this.prisma as unknown as StationCapacityProjectionDb,
+        organizationId,
+        stationId,
+        at,
+        options,
+      ),
+    ]);
+
+    return {
+      configuredCapacity: station.capacity,
+      vehicles,
+      concurrentProjection,
+    };
   }
 
   private async countActiveTransfers(
@@ -580,6 +636,7 @@ export class VehicleStationTransferService {
     clearedExpected: boolean;
     setCurrent: boolean;
     performedAt?: Date;
+    warnings?: ReturnType<typeof evaluatePlanVehicleStationTransfer>['warnings'];
   }): VehicleStationTransferCommandResult {
     return {
       outcome: buildTransferCommandOutcome(true, input.idempotent),
@@ -588,7 +645,7 @@ export class VehicleStationTransferService {
       transfer: this.toTransferRecord(input.transfer),
       vehicle: this.toVehicleSnapshot(input.vehicle),
       blockingReasons: [],
-      warnings: [],
+      warnings: input.warnings ?? [],
       audit: this.buildAudit(input),
     };
   }
@@ -608,6 +665,7 @@ export class VehicleStationTransferService {
     expectedArrivalAt: Date | null;
     performedByUserId?: string | null;
     blockingReasons: ReturnType<typeof evaluatePlanVehicleStationTransfer>['blockingReasons'];
+    warnings?: ReturnType<typeof evaluatePlanVehicleStationTransfer>['warnings'];
   }): VehicleStationTransferCommandResult {
     const placeholderTransfer: VehicleStationTransferRecord = {
       id: 'blocked',
@@ -634,7 +692,7 @@ export class VehicleStationTransferService {
       transfer: placeholderTransfer,
       vehicle: this.toVehicleSnapshot(input.vehicle),
       blockingReasons: input.blockingReasons,
-      warnings: [],
+      warnings: input.warnings ?? [],
       audit: {
         command: VehicleStationTransferCommandName.PLAN,
         organizationId: input.organizationId,

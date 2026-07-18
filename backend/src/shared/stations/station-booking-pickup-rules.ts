@@ -1,8 +1,12 @@
 import {
-  evaluateStationCapacityPolicy,
-  StationCapacityStatus,
   type StationCapacityVehicleSnapshot,
 } from './station-capacity-policy';
+import {
+  evaluateStationCapacityRules,
+  mapCapacityEvaluationsToBookingOutcomes,
+  resolveEffectiveCapacityBookingProjection,
+  toStationCapacityRulesPolicy,
+} from './station-capacity-rules';
 import {
   StationBookingRuleOutcome,
   StationBookingRuleReasonCode,
@@ -107,56 +111,22 @@ function evaluatePickupCapacityRules(
     return [];
   }
 
-  const capacity = evaluateStationCapacityPolicy({
-    stationId: station.id,
-    configuredCapacity: station.capacity,
-    vehicles: buildCapacityVehicles(station, vehicle),
-    bookingProjection: {
-      ...(station.capacityBookingProjection ?? {}),
-      ...(vehicle ? { expectedPickupDepartures: 1 } : {}),
+  const capacityEvaluations = evaluateStationCapacityRules({
+    ruleIdPrefix: 'pickup',
+    policy: toStationCapacityRulesPolicy(policy),
+    capacityInput: {
+      stationId: station.id,
+      configuredCapacity: station.capacity,
+      vehicles: buildCapacityVehicles(station, vehicle),
+      bookingProjection: resolveEffectiveCapacityBookingProjection(
+        station.capacityBookingProjection,
+        'pickup',
+        Boolean(vehicle),
+      ),
     },
   });
 
-  const evaluations: StationBookingRuleEvaluation[] = [];
-
-  if (
-    policy.capacityWarningEnabled &&
-    (capacity.capacityStatus === StationCapacityStatus.NEAR_CAPACITY ||
-      capacity.capacityStatus === StationCapacityStatus.PROJECTED_OVER_CAPACITY)
-  ) {
-    evaluations.push({
-      ruleId: 'pickup.capacity_warning',
-      outcome: StationBookingRuleOutcome.WARNING,
-      field: 'pickup',
-      stationId: station.id,
-      reason: reason(
-        StationBookingRuleReasonCode.CAPACITY_WARNING,
-        `Pickup station capacity is elevated (${capacity.capacityStatus}).`,
-      ),
-    });
-  }
-
-  if (
-    capacity.capacityStatus === StationCapacityStatus.FULL ||
-    capacity.capacityStatus === StationCapacityStatus.OVER_CAPACITY
-  ) {
-    evaluations.push({
-      ruleId: 'pickup.capacity_block',
-      outcome: policy.capacityBlockAtFull
-        ? StationBookingRuleOutcome.BLOCKED
-        : StationBookingRuleOutcome.WARNING,
-      field: 'pickup',
-      stationId: station.id,
-      reason: reason(
-        policy.capacityBlockAtFull
-          ? StationBookingRuleReasonCode.CAPACITY_BLOCK
-          : StationBookingRuleReasonCode.CAPACITY_WARNING,
-        `Pickup station capacity is at or above limit (${capacity.capacityStatus}).`,
-      ),
-    });
-  }
-
-  return evaluations;
+  return mapCapacityEvaluationsToBookingOutcomes(capacityEvaluations, 'pickup', station.id);
 }
 
 function mapPickupCapabilityEvaluations(

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-capacity-policy-integration-v49627-2026-07-19',
+    version: '4.9.627',
+    title: 'V4.9.627 — Stations V2: StationCapacityPolicy in Booking + Transfer Evaluations (Prompt 47/78)',
+    summary: [
+      'Gemeinsames `evaluateStationCapacityRules` für Pickup-, Return- und Transfer-Planung; Default bei Voll/Projected-Over: MANUAL_CONFIRMATION_REQUIRED, nicht Hard-Block.',
+      'Org-Policy `capacityBlockAtFull` aktiviert Hard-Block; Unknown Capacity (`capacity=null`) erzeugt keine Kapazitätsregeln.',
+      'Return/Transfer-Arrival erhöhen projected occupancy; Pickup/Transfer-Departure reduzieren; Heimatflotte zählt nicht als physische Belegung.',
+      '`loadConcurrentCapacityProjection` zählt Buchungen/Transfers im ±30-Minuten-Fenster; Transfer-Plan liefert `warnings` bei Soft-Capacity.',
+      'Simulationstests für concurrent returns, pickup departures, home-fleet exclusion und Transfer soft vs hard block.',
+    ],
+    reason:
+      'Kapazität soll operative Entscheidungen warnen und bestätigen lassen — Hard-Blocks nur per Org-Policy, mit korrekter Projektion mehrerer Vorgänge.',
+    previousBehavior:
+      'Kapazität war in Booking Rules teilweise verdrahtet mit Default Hard-Block; Transfer-Planung ignorierte Kapazität; keine gemeinsame Concurrent-Projection.',
+    details:
+      'Backend: `station-capacity-rules.ts`, `station-capacity-rules.contract.ts`, `station-capacity-projection.util.ts`; Pickup/Return nutzen shared evaluator; `VehicleStationTransferService.planTransfer` lädt Fleet+Projection; `evaluatePlanVehicleStationTransfer` capacity warnings/blocking.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T00:00:00.000Z',
+  },
+  {
     id: 'stations-v2-booking-rules-calendar-tz-v49626-2026-07-19',
     version: '4.9.626',
     title: 'V4.9.626 — Stations V2: Booking Rules Calendar + Timezone Wiring (Prompt 46/78)',
