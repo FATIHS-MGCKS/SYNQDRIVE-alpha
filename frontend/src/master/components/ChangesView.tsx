@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-handover-current-station-wiring-v49620-2026-07-18',
+    version: '4.9.620',
+    title: 'V4.9.620 — Stations V2: Handover → Current Station Wiring (Prompt 40/78)',
+    summary: [
+      'Pickup-Abschluss leert `currentStationId` + Provenance (IN_USE-Kontext); `homeStationId`/`expectedStationId` bleiben unverändert.',
+      'Return-Abschluss setzt bestätigten Current auf tatsächliche Return-Station mit `source=RETURN` und `currentStationConfirmedAt`.',
+      'One-Way: tatsächliche Return-Station gewinnt; `expectedStationId` wird nur bei erfülltem Ziel (`actual === expected`) aufgelöst.',
+      'Station-Validierung vor Return-Transaktion; idempotente Position-Updates; Integrationstests für Pickup/Return/One-Way.',
+    ],
+    reason:
+      'Handover ist der kanonische Writer für physisch bestätigte Current-Position nach Fahrzeugpositionsvertrag §3.3/§3.4 — bisher nur rohes `currentStationId`-Set ohne Provenance.',
+    previousBehavior:
+      'Pickup setzte `currentStationId` auf Pickup-Station; Return setzte nur `currentStationId` ohne Source/Timestamp; Expected blieb unverändert.',
+    details:
+      '`vehicle-handover-station-position.util` + Wiring in `BookingsHandoverService`; archivierte Return-Stationen werden vor Transaktionsstart abgelehnt.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T22:00:00.000Z',
+  },
+  {
     id: 'stations-v2-correct-current-station-command-v49619-2026-07-18',
     version: '4.9.619',
     title: 'V4.9.619 — Stations V2: CorrectVehicleCurrentStation Command (Prompt 39/78)',
