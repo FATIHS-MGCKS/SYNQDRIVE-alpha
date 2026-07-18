@@ -3986,15 +3986,25 @@ export const api = {
         `/organizations/${orgId}/stations/search/mapbox/${encodeURIComponent(mapboxId)}?sessionToken=${encodeURIComponent(sessionToken)}`,
       ),
     /**
-     * Replace this station's vehicle list with `vehicleIds` (SET semantics).
-     * Vehicles previously assigned to this station that are not in the list
-     * will be detached; vehicles in the list that are currently elsewhere
-     * (including at another station) are moved here.
+     * @deprecated SET semantics removed server-side. Use `changeHomeStation` per vehicle.
      */
     setVehicles: (orgId: string, stationId: string, vehicleIds: string[]) =>
       put<StationVehicleAssignmentResult>(
         `/organizations/${orgId}/stations/${stationId}/vehicles`,
         { vehicleIds },
+      ),
+    changeHomeStation: (
+      orgId: string,
+      body: {
+        vehicleId: string;
+        newHomeStationId: string | null;
+        expectedVersion: number;
+        reason?: string;
+      },
+    ) =>
+      post<ChangeVehicleHomeStationResult>(
+        `/organizations/${orgId}/stations/vehicles/change-home-station`,
+        body,
       ),
     assignVehicle: (
       orgId: string,
@@ -9420,6 +9430,31 @@ export interface StationVehicleAssignmentResult {
   newlyAttached: number;
   detached: number;
   movedFromOtherStations: number;
+  deprecation?: {
+    deprecated: true;
+    code: string;
+    message: string;
+    replacement: {
+      method: string;
+      path: string;
+      command: string;
+    };
+    disableFlag: string;
+  };
+}
+
+export interface ChangeVehicleHomeStationResult {
+  outcome: 'APPLIED' | 'IDEMPOTENT' | 'BLOCKED';
+  command: 'ChangeVehicleHomeStation';
+  vehicle: {
+    id: string;
+    homeStationId: string | null;
+    currentStationId: string | null;
+    expectedStationId: string | null;
+    stationPositionVersion: number;
+    status: string;
+  };
+  warnings?: Array<{ code: string; message: string }>;
 }
 
 // V4.7.07 — One-shot Mapbox geocoding backfill summary returned by

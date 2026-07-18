@@ -111,6 +111,16 @@ import {
   VehicleChangeHomeStationCommandOutcome,
   type VehicleChangeHomeStationCommandResult,
 } from './vehicle-change-home-station-command.types';
+import {
+  evaluateSetStationVehiclesPolicy,
+  type StationSetVehiclesListCompleteness,
+} from '@shared/stations/station-set-vehicles.policy';
+import {
+  buildStationSetVehiclesDeprecationMetadata,
+  isStationSetVehiclesDisabled,
+  throwStationSetVehiclesDisabled,
+  throwStationSetVehiclesPolicyBlocked,
+} from './station-set-vehicles-deprecation.util';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 const FUTURE_BOOKING_STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED', 'ACTIVE'];
@@ -223,15 +233,15 @@ export interface StationGeocodingBackfillResult {
   }>;
 }
 
-// Result returned after a bulk vehicle-assignment write. The operation has
-// SET semantics: after it returns the station's vehicle list is exactly
-// the set of `vehicleIds` that was supplied.
+// Result returned after a bulk vehicle-assignment write.
+// @deprecated SET semantics removed — attach-only, no implicit detach.
 export interface StationVehicleAssignmentResult {
   stationId: string;
   totalAssigned: number;
   newlyAttached: number;
   detached: number;
   movedFromOtherStations: number;
+  deprecation: import('./station-set-vehicles-deprecation.util').StationSetVehiclesDeprecationMetadata;
 }
 
 export type { StationOperationsDto } from '@shared/stations/station-operations.resolver';
@@ -2308,37 +2318,51 @@ export class StationsService {
   // ─────────────────────────────────────────────────────────────
 
   /**
-   * SET semantics: after this call returns, the station's vehicle list is
-   * exactly `vehicleIds`. Vehicles that were previously at this station and
-   * are NOT in the list get detached (stationId → null). Vehicles in the
-   * list that were elsewhere — including vehicles currently assigned to a
-   * different station — are moved to this station.
-   *
-   * All vehicleIds must belong to the same organization as the station;
-   * unknown / cross-tenant ids are rejected with 400 to keep the response
-   * deterministic for the UI.
+   * @deprecated Attach-only compatibility shim. SET semantics (implicit detach
+   * from partial lists, currentStationId coupling) are removed. Use
+   * `changeVehicleHomeStation` per vehicle instead.
    */
   async setStationVehicles(
     organizationId: string,
     stationId: string,
     vehicleIds: string[],
+    options?: { listCompleteness?: StationSetVehiclesListCompleteness },
   ): Promise<StationVehicleAssignmentResult> {
+    if (isStationSetVehiclesDisabled()) {
+      throwStationSetVehiclesDisabled();
+    }
+
+    const deprecation = buildStationSetVehiclesDeprecationMetadata();
     const station = await this.prisma.station.findFirst({
       where: { id: stationId, organizationId },
       select: { id: true },
     });
     if (!station) throw new NotFoundException(`Station ${stationId} not found`);
 
-    const requested = Array.from(new Set((vehicleIds ?? []).filter((id) => typeof id === 'string' && id.length > 0)));
+    const requested = Array.from(
+      new Set((vehicleIds ?? []).filter((id) => typeof id === 'string' && id.length > 0)),
+    );
 
-    // Validate that every requested vehicle belongs to this org. Doing the
-    // lookup once also tells us how many are already on this station (so
-    // we can return accurate "newlyAttached" / "movedFromOtherStations"
-    // counters) without an extra round-trip.
+    const previouslyHere = await this.prisma.vehicle.findMany({
+      where: { organizationId, homeStationId: stationId },
+      select: { id: true },
+    });
+    const stationHomeVehicleIds = previouslyHere.map((v) => v.id);
+
+    const policy = evaluateSetStationVehiclesPolicy({
+      disabledByFlag: false,
+      stationHomeVehicleIds,
+      requestedVehicleIds: requested,
+      listCompleteness: options?.listCompleteness,
+    });
+    if (!policy.allowed) {
+      throwStationSetVehiclesPolicyBlocked(policy.blockingReasons);
+    }
+
     const requestedVehicles = requested.length
       ? await this.prisma.vehicle.findMany({
           where: { id: { in: requested }, organizationId },
-          select: { id: true, homeStationId: true },
+          select: { id: true, homeStationId: true, currentStationId: true, expectedStationId: true },
         })
       : [];
 
@@ -2348,61 +2372,48 @@ export class StationsService {
       );
     }
 
-    const previouslyHere = await this.prisma.vehicle.findMany({
-      where: { organizationId, homeStationId: stationId },
-      select: { id: true },
-    });
-    const previousIds = new Set(previouslyHere.map((v) => v.id));
-    const requestedSet = new Set(requested);
-
-    const idsToDetach = previouslyHere
-      .filter((v) => !requestedSet.has(v.id))
-      .map((v) => v.id);
     const idsToAttach = requestedVehicles
       .filter((v) => v.homeStationId !== stationId)
       .map((v) => v.id);
     const movedFromOtherStations = requestedVehicles.filter(
       (v) => v.homeStationId !== null && v.homeStationId !== stationId,
     ).length;
-    const newlyAttached = requestedVehicles.filter(
-      (v) => v.homeStationId === null,
-    ).length;
+    const newlyAttached = requestedVehicles.filter((v) => v.homeStationId === null).length;
 
-    if (idsToDetach.length === 0 && idsToAttach.length === 0) {
+    if (idsToAttach.length === 0) {
       return {
         stationId,
-        totalAssigned: previousIds.size,
+        totalAssigned: stationHomeVehicleIds.length,
         newlyAttached: 0,
         detached: 0,
         movedFromOtherStations: 0,
+        deprecation,
       };
     }
 
-    await this.prisma.$transaction([
-      ...(idsToDetach.length
-        ? [
-            this.prisma.vehicle.updateMany({
-              where: { id: { in: idsToDetach }, organizationId },
-              data: { homeStationId: null, currentStationId: null },
-            }),
-          ]
-        : []),
-      ...(idsToAttach.length
-        ? [
-            this.prisma.vehicle.updateMany({
-              where: { id: { in: idsToAttach }, organizationId },
-              data: { homeStationId: stationId, currentStationId: stationId },
-            }),
-          ]
-        : []),
-    ]);
+    await this.prisma.$transaction(
+      idsToAttach.map((vehicleId) =>
+        this.prisma.vehicle.update({
+          where: { id: vehicleId, organizationId },
+          data: {
+            homeStationId: stationId,
+            stationPositionVersion: { increment: 1 },
+          },
+        }),
+      ),
+    );
+
+    const attachedStillHere = await this.prisma.vehicle.count({
+      where: { organizationId, homeStationId: stationId },
+    });
 
     return {
       stationId,
-      totalAssigned: requested.length,
+      totalAssigned: attachedStillHere,
       newlyAttached,
-      detached: idsToDetach.length,
+      detached: 0,
       movedFromOtherStations,
+      deprecation,
     };
   }
 

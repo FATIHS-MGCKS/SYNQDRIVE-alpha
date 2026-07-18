@@ -5,13 +5,15 @@ import { api, type Station } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useStationsV2Permissions } from '../../hooks/useStationsV2Permissions';
+import { applyStationHomeFleetSelection } from '../../lib/stationHomeFleetAssignment';
 type AssignVehicleRow = {
   id: string;
   license: string;
   make: string;
   model: string;
   year: number | null;
-  stationId: string | null;
+  homeStationId: string | null;
+  stationPositionVersion: number;
   stationName: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -50,7 +52,9 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
           make: String(row.make ?? ''),
           model: String(row.model ?? ''),
           year: typeof row.year === 'number' ? row.year : null,
-          stationId: (row.homeStationId ?? row.stationId ?? null) as string | null,
+          homeStationId: (row.homeStationId ?? row.stationId ?? null) as string | null,
+          stationPositionVersion:
+            typeof row.stationPositionVersion === 'number' ? row.stationPositionVersion : 0,
           stationName: (row.stationName ?? row.station ?? null) as string | null,
           latitude: typeof row.latitude === 'number' ? row.latitude : null,
           longitude: typeof row.longitude === 'number' ? row.longitude : null,
@@ -58,7 +62,7 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
       });
       list.sort((a, b) => a.license.localeCompare(b.license, 'de'));
       setVehicles(list);
-      setSelected(new Set(list.filter((v) => v.stationId === station.id).map((v) => v.id)));
+      setSelected(new Set(list.filter((v) => v.homeStationId === station.id).map((v) => v.id)));
     } catch (e) {
       setError((e as Error).message || t('stations.assign.errorLoad'));
     } finally {
@@ -80,9 +84,9 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return vehicles.filter((v) => {
-      if (filter === 'here' && v.stationId !== station?.id) return false;
-      if (filter === 'elsewhere' && (!v.stationId || v.stationId === station?.id)) return false;
-      if (filter === 'unassigned' && v.stationId) return false;
+      if (filter === 'here' && v.homeStationId !== station?.id) return false;
+      if (filter === 'elsewhere' && (!v.homeStationId || v.homeStationId === station?.id)) return false;
+      if (filter === 'unassigned' && v.homeStationId) return false;
       if (!q) return true;
       const hay = [v.license, v.make, v.model, v.stationName].filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
@@ -103,7 +107,17 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
     setSaving(true);
     setError(null);
     try {
-      await api.stations.setVehicles(orgId, station.id, Array.from(selected));
+      await applyStationHomeFleetSelection({
+        orgId,
+        stationId: station.id,
+        vehicles: vehicles.map((v) => ({
+          id: v.id,
+          homeStationId: v.homeStationId,
+          stationPositionVersion: v.stationPositionVersion,
+        })),
+        selectedIds: selected,
+        reason: 'StationAssignVehicleModal',
+      });
       toast.success(t('stations.assign.saved'));
       onSaved?.();
       onClose();

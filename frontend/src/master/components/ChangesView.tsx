@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-deprecate-set-vehicles-v49615-2026-07-18',
+    version: '4.9.615',
+    title: 'V4.9.615 — Stations V2: Deprecate SET /stations/:id/vehicles (Prompt 35/78)',
+    summary: [
+      'PUT `.../stations/:id/vehicles` deprecated — kein SET-Detach mehr, kein `currentStationId`-Write.',
+      'Ablehnung bei unvollständiger Liste (600 Fahrzeuge / 500 geladen) und explizit `PARTIAL`.',
+      'Attach-only-Kompatibilität mit Deprecation-Metadaten; Feature-Flag `STATIONS_V2_SET_VEHICLES_DISABLED` für 410.',
+      'Frontend `StationAssignVehicleModal` + `SettingsView` migriert auf `changeHomeStation` pro Fahrzeug.',
+    ],
+    reason:
+      'Invariante S2 — partielle UI-Listen (limit 500) durften still Heimatfahrzeuge detachen (W-04).',
+    previousBehavior:
+      'SET-Semantik: fehlende IDs → Detach home+current; Attach setzte home+current.',
+    details:
+      'Policy `station-set-vehicles.policy.ts`, Deprecation-Util, Regressionstest 150/120, api.setVehicles @deprecated.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-18T17:00:00.000Z',
+  },
+  {
     id: 'stations-v2-change-vehicle-home-station-v49614-2026-07-18',
     version: '4.9.614',
     title: 'V4.9.614 — Stations V2: ChangeVehicleHomeStationCommand (Prompt 34/78)',

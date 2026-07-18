@@ -435,6 +435,9 @@ export class StationsController {
     return this.stationsService.setPrimaryStation(orgId, id, userId);
   }
 
+  /**
+   * @deprecated SET semantics removed — use POST /vehicles/change-home-station.
+   */
   @Put(':id/vehicles')
   @UseGuards(StationsAssignVehiclePermissionGuard)
   @RequireStationScope({ resource: 'station' })
@@ -443,7 +446,9 @@ export class StationsController {
     @Param('id') id: string,
     @Body() body: SetStationVehiclesDto,
   ) {
-    return this.stationsService.setStationVehicles(orgId, id, body.vehicleIds ?? []);
+    return this.stationsService.setStationVehicles(orgId, id, body.vehicleIds ?? [], {
+      listCompleteness: body.listCompleteness,
+    });
   }
 
   @Post(':id/assign-vehicle')
