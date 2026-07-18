@@ -1,5 +1,9 @@
-import type { Station, StationOpeningHours, StationOverviewStats } from '../../lib/api';
+import type { Station, StationOpeningHours, StationOverviewStats, StationSummaryReadModel } from '../../lib/api';
 import type { StatusTone } from '../../components/patterns';
+import {
+  summaryHasPickupEnabled,
+  summaryHasReturnEnabled,
+} from './station-org-summaries.utils';
 
 export function formatStationAddress(station: Pick<Station, 'address' | 'addressLine1' | 'addressLine2' | 'postalCode' | 'city' | 'country'>): string {
   const line1 = station.addressLine1 ?? station.address;
@@ -26,10 +30,45 @@ export type StationWarningKey =
   | 'noVehicles'
   | 'missingGeofence';
 
+export function getStationWarningsFromSummary(
+  summary: StationSummaryReadModel,
+): StationWarningKey[] {
+  const warnings: StationWarningKey[] = [];
+  if (summary.configurationProblems.some((problem) => problem.code.includes('COORDINATES'))) {
+    warnings.push('missingCoordinates');
+  }
+  if (summary.configurationProblems.some((problem) => problem.code.includes('OPENING_HOURS'))) {
+    warnings.push('missingOpeningHours');
+  }
+  if (!summaryHasPickupEnabled(summary) && !summaryHasReturnEnabled(summary)) {
+    warnings.push('missingPickupReturnRules');
+  }
+  const homeFleet = summary.kpis.metrics.homeFleetCount;
+  if (homeFleet.known && (homeFleet.value ?? 0) <= 0) {
+    warnings.push('noVehicles');
+  }
+  if (summary.configurationProblems.some((problem) => problem.code.includes('GEOFENCE'))) {
+    warnings.push('missingGeofence');
+  }
+  return warnings;
+}
+
+export function stationHasProblemsFromSummary(summary: StationSummaryReadModel): boolean {
+  return (
+    summary.configurationProblems.length > 0 ||
+    summary.operationalWarnings.length > 0 ||
+    !summary.partialData.complete
+  );
+}
+
 export function getStationWarnings(
   station: Station,
   stats?: StationOverviewStats | null,
+  summary?: StationSummaryReadModel | null,
 ): StationWarningKey[] {
+  if (summary) {
+    return getStationWarningsFromSummary(summary);
+  }
   const warnings: StationWarningKey[] = [];
   const missingCoords =
     stats?.hasMissingCoordinates ??
@@ -49,7 +88,14 @@ export function getStationWarnings(
   return warnings;
 }
 
-export function stationHasProblems(station: Station, stats?: StationOverviewStats | null): boolean {
+export function stationHasProblems(
+  station: Station,
+  stats?: StationOverviewStats | null,
+  summary?: StationSummaryReadModel | null,
+): boolean {
+  if (summary) {
+    return stationHasProblemsFromSummary(summary);
+  }
   return getStationWarnings(station, stats).length > 0;
 }
 

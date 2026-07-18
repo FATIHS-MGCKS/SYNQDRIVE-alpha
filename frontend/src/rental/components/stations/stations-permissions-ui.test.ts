@@ -5,6 +5,14 @@ import { describe, expect, it } from 'vitest';
 const stationsDir = resolve(import.meta.dirname);
 
 describe('stations permissions UI wiring', () => {
+  it('loads stations via org summaries instead of per-station overview stats', () => {
+    const listSource = readFileSync(resolve(stationsDir, 'StationsView.tsx'), 'utf8');
+    expect(listSource).toContain('useStationOrgSummaries');
+    expect(listSource).not.toContain('overviewStats');
+    expect(listSource).not.toContain('loadOverviewBatch');
+    expect(listSource).not.toContain('.catch(() => null)');
+  });
+
   it('uses useStationsV2Permissions in list and detail views', () => {
     const listSource = readFileSync(resolve(stationsDir, 'StationsView.tsx'), 'utf8');
     const detailSource = readFileSync(resolve(stationsDir, 'StationDetailView.tsx'), 'utf8');

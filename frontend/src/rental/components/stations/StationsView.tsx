@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -15,9 +15,13 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { api, type Station, type StationOverviewStats, type StationsStats } from '../../../lib/api';
+import { api, type Station, type StationSummaryReadModel } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { useStationsV2Permissions } from '../../hooks/useStationsV2Permissions';
+import {
+  selectStationOrgKpis,
+  useStationOrgSummaries,
+} from '../../hooks/useStationOrgSummaries';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
@@ -31,9 +35,13 @@ import {
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import {
+  buildStationSummariesQueryParams,
+  getStationCardDisplayMetrics,
+  type StationSummariesViewFilters,
+} from '../../lib/station-org-summaries.utils';
+import {
   formatStationAddress,
   getStationWarnings,
-  stationHasProblems,
   stationStatusTone,
   stationTypeTone,
 } from '../../lib/stationUtils';
@@ -43,15 +51,7 @@ import { StationAssignVehicleModal } from './StationAssignVehicleModal';
 
 type ViewMode = 'cards' | 'list';
 
-type Filters = {
-  status: '' | Station['status'];
-  type: '' | Station['type'];
-  city: string;
-  pickupOnly: boolean;
-  returnOnly: boolean;
-  problemsOnly: boolean;
-  primaryOnly: boolean;
-};
+type Filters = StationSummariesViewFilters;
 
 interface StationsViewProps {
   onOpenStation?: (station: Station) => void;
@@ -133,12 +133,6 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   const { t } = useLanguage();
   const { status: permStatus, capabilities, forStation, formCapabilities, isReadOnly } = useStationsV2Permissions();
 
-  const [stations, setStations] = useState<Station[]>([]);
-  const [stats, setStats] = useState<StationsStats | null>(null);
-  const [overviewById, setOverviewById] = useState<Record<string, StationOverviewStats>>({});
-  const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -152,6 +146,38 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     primaryOnly: false,
   });
 
+  const queryParams = useMemo(
+    () => buildStationSummariesQueryParams(filters, search),
+    [filters, search],
+  );
+
+  const {
+    data: summariesData,
+    loading,
+    error,
+    reload,
+    invalidate,
+  } = useStationOrgSummaries({
+    orgId,
+    enabled: capabilities.canRead && permStatus !== 'loading',
+    queryParams,
+    clientFilters: filters,
+  });
+
+  const stations = summariesData?.stations ?? [];
+  const summariesById = summariesData?.summariesById ?? {};
+  const summariesModel = summariesData?.model ?? null;
+  const kpi = useMemo(() => selectStationOrgKpis(summariesModel), [summariesModel]);
+  const kpisPending = loading && !summariesModel;
+  const partialDataIncomplete = summariesModel != null && !summariesModel.partialData.complete;
+  const aggregationCapApplied = summariesModel?.limits.aggregationStationCapApplied ?? false;
+  const scopedResults = summariesModel?.scope.applied ?? false;
+
+  const refresh = useCallback(async () => {
+    invalidate();
+    await reload();
+  }, [invalidate, reload]);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Station | null>(null);
   const [saving, setSaving] = useState(false);
@@ -159,90 +185,12 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [assignStation, setAssignStation] = useState<Station | null>(null);
 
-  const loadOverviewBatch = useCallback(async (list: Station[]) => {
-    if (!orgId || list.length === 0) return;
-    setStatsLoading(true);
-    const entries: Record<string, StationOverviewStats> = {};
-    const chunkSize = 8;
-    for (let i = 0; i < list.length; i += chunkSize) {
-      const chunk = list.slice(i, i + chunkSize);
-      const results = await Promise.all(
-        chunk.map((s) =>
-          api.stations.overviewStats(orgId, s.id).catch(() => null),
-        ),
-      );
-      chunk.forEach((s, idx) => {
-        if (results[idx]) entries[s.id] = results[idx] as StationOverviewStats;
-      });
-    }
-    setOverviewById(entries);
-    setStatsLoading(false);
-  }, [orgId]);
-
-  const load = useCallback(async () => {
-    if (!orgId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [list, agg] = await Promise.all([
-        api.stations.list(orgId),
-        api.stations.stats(orgId).catch(() => null),
-      ]);
-      const rows = Array.isArray(list) ? list : [];
-      setStations(rows);
-      setStats(agg);
-      void loadOverviewBatch(rows);
-    } catch (e) {
-      setError((e as Error).message || t('stations.errorLoad'));
-      setStations([]);
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId, loadOverviewBatch, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   const cities = useMemo(
     () => [...new Set(stations.map((s) => s.city).filter(Boolean) as string[])].sort(),
     [stations],
   );
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return stations.filter((s) => {
-      if (filters.status && s.status !== filters.status) return false;
-      if (filters.type && s.type !== filters.type) return false;
-      if (filters.city && s.city !== filters.city) return false;
-      if (filters.pickupOnly && !s.pickupEnabled) return false;
-      if (filters.returnOnly && !s.returnEnabled) return false;
-      if (filters.primaryOnly && !s.isPrimary) return false;
-      if (filters.problemsOnly && !stationHasProblems(s, overviewById[s.id])) return false;
-      if (!q) return true;
-      const hay = [s.name, s.code, s.city, s.address, s.addressLine1, s.postalCode]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [stations, search, filters, overviewById]);
-
-  const kpi = useMemo(() => {
-    const overviews = Object.values(overviewById);
-    const problemsCount = stations.filter((s) =>
-      stationHasProblems(s, overviewById[s.id]),
-    ).length;
-    return {
-      active: stats?.activeStations ?? stations.filter((s) => s.status === 'ACTIVE').length,
-      vehicles: stats?.totalVehicles ?? stations.reduce((n, s) => n + (s.vehicleCount ?? 0), 0),
-      available: overviews.reduce((n, o) => n + o.availableVehicles, 0),
-      todayPickups: overviews.reduce((n, o) => n + o.todayPickups, 0),
-      todayReturns: overviews.reduce((n, o) => n + o.todayReturns, 0),
-      problems: problemsCount,
-    };
-  }, [stats, stations, overviewById]);
+  const filtered = stations;
 
   const handleCreate = () => {
     if (!capabilities.canCreate) return;
@@ -264,7 +212,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     try {
       if (editing) await api.stations.update(orgId, editing.id, payload);
       else await api.stations.create(orgId, payload);
-      await load();
+      await refresh();
     } finally {
       setSaving(false);
     }
@@ -276,7 +224,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     try {
       await api.stations.archive(orgId, station.id);
       toast.success(t('stations.archived'));
-      await load();
+      await refresh();
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -288,7 +236,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     try {
       await api.stations.restore(orgId, station.id);
       toast.success(t('stations.restored'));
-      await load();
+      await refresh();
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -300,7 +248,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     try {
       await api.stations.setPrimary(orgId, station.id);
       toast.success(t('stations.setPrimaryDone'));
-      await load();
+      await refresh();
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -314,7 +262,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
       toast.success(
         `${t('stations.backfillDone')}: ${res.totalGeocoded}/${res.totalChecked}`,
       );
-      await load();
+      await refresh();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -322,7 +270,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     }
   };
 
-  const missingCoords = stations.filter((s) => s.latitude == null || s.longitude == null).length;
+  const missingCoords = stations.filter((s) => s.hasMissingCoordinates).length;
 
   const activeFilterCount = [
     filters.status,
@@ -332,6 +280,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     filters.returnOnly,
     filters.problemsOnly,
     filters.primaryOnly,
+    search.trim(),
   ].filter(Boolean).length;
 
   if (permStatus === 'loading') {
@@ -362,6 +311,25 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
       {isReadOnly && (
         <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           {t('stations.permissions.readOnlyBanner')}
+        </div>
+      )}
+      {scopedResults && (
+        <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          {t('stations.scope.filteredBanner')}
+        </div>
+      )}
+      {partialDataIncomplete && (
+        <div className="rounded-xl border border-[color:var(--status-watch)]/35 bg-[color:var(--status-watch)]/[0.04] px-4 py-3 text-sm text-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span>{t('stations.partialData.banner')}</span>
+          <Button type="button" size="sm" variant="neutral" onClick={() => void refresh()}>
+            <RefreshCw className="w-3.5 h-3.5" />
+            {t('stations.partialData.retry')}
+          </Button>
+        </div>
+      )}
+      {aggregationCapApplied && (
+        <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          {t('stations.limits.aggregationCap')}
         </div>
       )}
       <PageHeader
@@ -424,7 +392,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
           </div>
         </>
       ) : error ? (
-        <ErrorState error={error} onRetry={() => void load()} />
+        <ErrorState error={error ?? t('stations.errorLoad')} onRetry={() => void refresh()} />
       ) : (
         <>
           <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6">
@@ -442,21 +410,21 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             />
             <StationKpiCard
               label={t('stations.kpi.available')}
-              value={statsLoading && !Object.keys(overviewById).length ? '—' : kpi.available}
+              value={kpisPending ? '—' : kpi.available}
               icon={<Car className="h-3 w-3" />}
-              subdued={statsLoading && !Object.keys(overviewById).length}
+              subdued={kpisPending}
             />
             <StationKpiCard
               label={t('stations.kpi.todayPickups')}
-              value={statsLoading && !Object.keys(overviewById).length ? '—' : kpi.todayPickups}
+              value={kpisPending ? '—' : kpi.todayPickups}
               icon={<Users className="h-3 w-3" />}
-              subdued={statsLoading && !Object.keys(overviewById).length}
+              subdued={kpisPending}
             />
             <StationKpiCard
               label={t('stations.kpi.todayReturns')}
-              value={statsLoading && !Object.keys(overviewById).length ? '—' : kpi.todayReturns}
+              value={kpisPending ? '—' : kpi.todayReturns}
               icon={<Users className="h-3 w-3" />}
-              subdued={statsLoading && !Object.keys(overviewById).length}
+              subdued={kpisPending}
             />
             <StationKpiCard
               label={t('stations.kpi.problems')}
@@ -567,7 +535,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                 <StationCard
                   key={station.id}
                   station={station}
-                  overview={overviewById[station.id]}
+                  summary={summariesById[station.id]}
                   viewMode={viewMode}
                   menuOpen={menuId === station.id}
                   onToggleMenu={() => setMenuId((id) => (id === station.id ? null : station.id))}
@@ -598,7 +566,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
       <StationAssignVehicleModal
         station={assignStation}
         onClose={() => setAssignStation(null)}
-        onSaved={() => void load()}
+        onSaved={() => void refresh()}
       />
     </div>
   );
@@ -606,7 +574,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
 
 function StationCard({
   station,
-  overview,
+  summary,
   viewMode,
   menuOpen,
   onToggleMenu,
@@ -620,7 +588,7 @@ function StationCard({
   t,
 }: {
   station: Station;
-  overview?: StationOverviewStats;
+  summary?: StationSummaryReadModel;
   viewMode: ViewMode;
   menuOpen: boolean;
   onToggleMenu: () => void;
@@ -633,15 +601,16 @@ function StationCard({
   stationCaps: StationsUiCapabilities;
   t: (k: TranslationKey) => string;
 }) {
-  const warnings = getStationWarnings(station, overview);
+  const metricsDisplay = getStationCardDisplayMetrics(summary);
+  const warnings = getStationWarnings(station, null, summary);
   const address = formatStationAddress(station);
 
   const metrics = (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-      <MetricPill label={t('stations.card.total')} value={overview?.totalVehicles ?? station.vehicleCount ?? 0} />
-      <MetricPill label={t('stations.card.available')} value={overview?.availableVehicles ?? '—'} />
-      <MetricPill label={t('stations.card.pickups')} value={overview?.todayPickups ?? '—'} />
-      <MetricPill label={t('stations.card.returns')} value={overview?.todayReturns ?? '—'} />
+      <MetricPill label={t('stations.card.total')} value={metricsDisplay.totalVehicles} />
+      <MetricPill label={t('stations.card.available')} value={metricsDisplay.availableVehicles} />
+      <MetricPill label={t('stations.card.pickups')} value={metricsDisplay.todayPickups} />
+      <MetricPill label={t('stations.card.returns')} value={metricsDisplay.todayReturns} />
     </div>
   );
 
@@ -706,8 +675,8 @@ function StationCard({
           <p className="text-xs text-muted-foreground truncate mt-0.5">{address || '—'}</p>
         </button>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Car className="w-3.5 h-3.5" />{overview?.totalVehicles ?? station.vehicleCount ?? 0}</span>
-          <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{overview?.openTasks ?? 0}</span>
+          <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Car className="w-3.5 h-3.5" />{metricsDisplay.totalVehicles}</span>
+          <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{metricsDisplay.openTasks}</span>
           {actions}
         </div>
       </div>
@@ -736,10 +705,10 @@ function StationCard({
       <div className="mt-3 flex-1">{metrics}</div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
-        <span>{t('stations.card.inService')}: {overview?.inServiceVehicles ?? '—'}</span>
-        <span>{t('stations.card.tasks')}: {overview?.openTasks ?? '—'}</span>
-        {overview?.capacityUsagePercent != null ? (
-          <span>{t('stations.card.capacity')}: {overview.capacityUsagePercent}%</span>
+        <span>{t('stations.card.inService')}: {metricsDisplay.inServiceVehicles}</span>
+        <span>{t('stations.card.tasks')}: {metricsDisplay.openTasks}</span>
+        {metricsDisplay.capacityUsagePercent != null ? (
+          <span>{t('stations.card.capacity')}: {metricsDisplay.capacityUsagePercent}%</span>
         ) : null}
       </div>
 
