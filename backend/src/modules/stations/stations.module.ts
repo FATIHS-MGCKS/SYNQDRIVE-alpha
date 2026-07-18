@@ -9,6 +9,7 @@ import { StationOperationsService } from './station-operations.service';
 import { VehicleHomeFleetDeltaService } from './vehicle-home-fleet-delta.service';
 import { VehicleHomeAssignmentPreviewService } from './vehicle-home-assignment-preview.service';
 import { VehicleStationTransferService } from './vehicle-station-transfer.service';
+import { StationBookingRulesService } from './station-booking-rules.service';
 import { StationsAccessService } from './stations-access.service';
 import { StationsAssignVehiclePermissionGuard } from './guards/stations-assign-vehicle-permission.guard';
 import { StationsPermissionGuard } from './guards/stations-permission.guard';
@@ -31,6 +32,7 @@ import { StationsManageTransfersPermissionGuard } from './guards/stations-manage
     VehicleHomeFleetDeltaService,
     VehicleHomeAssignmentPreviewService,
     VehicleStationTransferService,
+    StationBookingRulesService,
     StationsAccessService,
     StationsPermissionGuard,
     StationsUpdatePermissionGuard,
@@ -41,6 +43,6 @@ import { StationsManageTransfersPermissionGuard } from './guards/stations-manage
     StationsCorrectVehicleCurrentPermissionGuard,
     StationsManageTransfersPermissionGuard,
   ],
-  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService],
+  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService, StationBookingRulesService],
 })
 export class StationsModule {}
