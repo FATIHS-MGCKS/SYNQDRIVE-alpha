@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'voice-staging-e2e-acceptance-2026-07-18',
+    version: '4.9.610',
+    title: 'V4.9.610 — Voice AI: real staging E2E acceptance audit (10A)',
+    summary: [
+      'Acceptance runner `voice-staging-e2e-acceptance.ts` — automated negative suites, staging DB snapshot, live-call budget enforcement, GO/NO-GO decision.',
+      'Rollback script `voice-staging-e2e-rollback.sh` closes `VOICE_E2E_ALLOW_LIVE_CALLS` and clears allowlist; `voice-staging-e2e-readiness.util.ts` for testable decision logic.',
+      'Audit `architecture/VOICE_AI_REAL_STAGING_E2E_ACCEPTANCE_2026-07-18.md` — **E2E NO-GO** (0 live calls; 9B provisioning blocker).',
+    ],
+    reason: 'Prompt 10A — validate real staging voice chain within strict live-call budget; no production exposure.',
+    previousBehavior: 'Provisioning attempt (9B) documented NO-GO; no formal E2E acceptance runner or rollback helper.',
+    details:
+      'voice-staging-e2e-acceptance.ts, voice-staging-e2e-rollback.sh, voice-staging-e2e-readiness.util.ts, docs/audits/voice-ai-real-staging-e2e-acceptance-report.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-18T03:30:00.000Z',
+  },
+  {
     id: 'voice-staging-provision-2026-07-18',
     version: '4.9.608',
     title: 'V4.9.608 — Voice AI: staging tenant provisioning attempt (9B)',
