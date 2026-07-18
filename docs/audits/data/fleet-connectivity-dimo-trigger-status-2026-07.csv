@@ -1,0 +1,10 @@
+scope,webhookId,displayName,metricName,condition,targetURL,status,failureCount,coolDownPeriod,classification,configState
+ORG_DEVELOPER_LICENSE,49438f51-3ca5-4808-81d5-3598336c53a3,OBD Device unplugged,vss.obdIsPluggedIn,valueNumber == 0,https://app.synqdrive.eu/api/v1/webhooks/dimo,enabled,0,0,OBD_PLUG_STATE,CONFIGURED
+ORG_DEVELOPER_LICENSE,7a0562d3-369a-45eb-b5ed-8d35258091dd,OBD Device Plugged in,vss.obdIsPluggedIn,valueNumber == 1,https://app.synqdrive.eu/api/v1/webhooks/dimo,disabled,0,0,OBD_PLUG_STATE,NOT_ACTIVE
+ORG_DEVELOPER_LICENSE,f6bdbe85-dec0-4e60-ad61-d9183cd55484,High RPM Triger,vss.powertrainCombustionEngineSpeed,valueNumber > 5000,https://app.synqdrive.eu/api/v1/webhooks/dimo,enabled,0,10,OTHER,CONFIGURED
+VEHICLE_001,49438f51-3ca5-4808-81d5-3598336c53a3;7a0562d3-369a-45eb-b5ed-8d35258091dd;f6bdbe85-dec0-4e60-ad61-d9183cd55484,,vehicle_subscriptions,,,SUBSCRIBED_OR_EMPTY,,,PER_VEHICLE_SUBSCRIPTION,UNKNOWN
+VEHICLE_002,49438f51-3ca5-4808-81d5-3598336c53a3;7a0562d3-369a-45eb-b5ed-8d35258091dd;f6bdbe85-dec0-4e60-ad61-d9183cd55484,,vehicle_subscriptions,,,SUBSCRIBED_OR_EMPTY,,,PER_VEHICLE_SUBSCRIPTION,UNKNOWN
+VEHICLE_003,49438f51-3ca5-4808-81d5-3598336c53a3;7a0562d3-369a-45eb-b5ed-8d35258091dd;f6bdbe85-dec0-4e60-ad61-d9183cd55484,,vehicle_subscriptions,,,SUBSCRIBED_OR_EMPTY,,,PER_VEHICLE_SUBSCRIPTION,UNKNOWN
+VEHICLE_004,49438f51-3ca5-4808-81d5-3598336c53a3;7a0562d3-369a-45eb-b5ed-8d35258091dd;f6bdbe85-dec0-4e60-ad61-d9183cd55484,,vehicle_subscriptions,,,SUBSCRIBED_OR_EMPTY,,,PER_VEHICLE_SUBSCRIPTION,UNKNOWN
+VEHICLE_005,49438f51-3ca5-4808-81d5-3598336c53a3;7a0562d3-369a-45eb-b5ed-8d35258091dd;f6bdbe85-dec0-4e60-ad61-d9183cd55484,,vehicle_subscriptions,,,SUBSCRIBED_OR_EMPTY,,,PER_VEHICLE_SUBSCRIPTION,UNKNOWN
+VEHICLE_006,f6bdbe85-dec0-4e60-ad61-d9183cd55484;49438f51-3ca5-4808-81d5-3598336c53a3,,vehicle_subscriptions,,,SUBSCRIBED_OR_EMPTY,,,PER_VEHICLE_SUBSCRIPTION,UNKNOWN

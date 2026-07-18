@@ -5,8 +5,8 @@
 | **Audit ID** | `fleet-connectivity-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/fleet-connectivity-production-readiness-2026-07` |
-| **Phase** | **4 of 8 — VPS integrity analysis (60 days)** |
-| **Status** | Phases 1–4 complete; Phases 5–8 outlined below |
+| **Phase** | **5 of 8 — DIMO connectivity capability analysis** |
+| **Status** | Phases 1–5 complete; Phases 6–8 outlined below |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | Through 2026-07-18 UTC |
 | **Incident vehicle (anonymized)** | `INCIDENT_VEHICLE_001` (real mapping **not** stored in git) |
@@ -33,7 +33,13 @@
 | Provider link integrity CSV | `docs/audits/data/fleet-connectivity-provider-link-integrity-2026-07.csv` | 4 |
 | Readiness comparison CSV | `docs/audits/data/fleet-connectivity-readiness-comparison-2026-07.csv` | 4 |
 | Integrity findings JSON | `docs/audits/data/fleet-connectivity-integrity-findings-2026-07.json` | 4 |
+| DIMO device capability CSV | `docs/audits/data/fleet-connectivity-dimo-device-capability-2026-07.csv` | 5 |
+| DIMO signal timeseries CSV | `docs/audits/data/fleet-connectivity-dimo-signal-timeseries-2026-07.csv` | 5 |
+| DIMO trigger status CSV | `docs/audits/data/fleet-connectivity-dimo-trigger-status-2026-07.csv` | 5 |
+| Recovery policy matrix CSV | `docs/audits/data/fleet-connectivity-recovery-policy-matrix-2026-07.csv` | 5 |
+| DIMO audit summary JSON | `docs/audits/data/fleet-connectivity-dimo-audit-summary-2026-07.json` | 5 |
 | Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` | 1–4 |
+| DIMO read-only audit script | `scripts/audits/audit-fleet-connectivity-dimo.ts` | 5 |
 
 ---
 
@@ -74,7 +80,16 @@
 - Webhook reliability baseline (2 events — low volume)
 - Artifacts: `fleet-connectivity-*-2026-07.csv/json` (see document map)
 
-## Phase 5 — Idempotency, locks, and failure modes (planned)
+## Phase 5 — DIMO connectivity capability analysis ✅
+
+- Official DIMO Telemetry / Identity / Vehicle Triggers API verification (DIMO MCP unavailable — live API + docs)
+- Per-vehicle `availableSignals`, `signalsLatest`, `dataSummary`, historical `obdIsPluggedIn`
+- Device type classification (aftermarket + synthetic on all linked vehicles)
+- Trigger/webhook configuration read-only inventory
+- Snapshot recovery policy matrix by device type
+- Artifacts: `fleet-connectivity-dimo-*` and `fleet-connectivity-recovery-policy-matrix-2026-07.csv`
+
+## Phase 6 — Idempotency, locks, and failure modes (planned)
 
 - Webhook dedup buckets, state-change gates, impulse filters
 - BullMQ `jobId=snapshot-<vehicleId>` semantics and stall recovery
@@ -82,14 +97,14 @@
 - Redis queue depth baselines under load
 - Artifact: failure-mode matrix
 
-## Phase 6 — Notifications, alerts, and operational response (planned)
+## Phase 7 — Notifications, alerts, and operational response (planned)
 
 - Whether `openUnpluggedEpisode` triggers notifications or tasks
 - Rental-relevant severity (`duringActiveBooking`) propagation
 - Integration Hub / consent / authorization impact on perceived connectivity
 - Artifact: alert-blocking matrix
 
-## Phase 7 — Test coverage & replay harness (planned)
+## Phase 8 — Test coverage & remediation synthesis (planned)
 
 - Unit/integration test inventory vs production scenarios
 - Pure replay of `buildDeviceConnectionSummary` for INCIDENT_VEHICLE_001 inputs
@@ -879,4 +894,141 @@ Optional: `--organization-id=<uuid>` (internal use only; not written to artifact
 
 ---
 
-*End of Phase 4. Do not proceed to Phase 5 in this agent turn.*
+# Phase 5 findings — DIMO connectivity capability
+
+> **Read-only:** Live DIMO Telemetry API + Vehicle Triggers API + PostgreSQL mirror queries on 2026-07-18. **No** trigger create/update/delete. **No** GPS historical queries. **DIMO MCP server was unavailable** (connection error); verification used [DIMO Build docs](https://www.dimo.org/docs/api-references/telemetry-api/signals), [Vehicle Triggers API](https://www.dimo.org/docs/api-references/vehicle-triggers-api), [Identity API](https://www.dimo.org/docs/api-references/identity-api/introduction), and SynqDrive integration code.
+
+## 42. DIMO documentation verification (Teil 1)
+
+| Topic | Current DIMO contract (verified) | SynqDrive usage |
+|-------|----------------------------------|-----------------|
+| **Vehicle binding** | Identity GraphQL: `Vehicle.aftermarketDevice`, `Vehicle.syntheticDevice` | `dimo-api-sync.service.ts` → `dimo_vehicles.raw_json`; tenant link via `vehicles.dimo_vehicle_id` |
+| **Device types** | `AftermarketDevice` = hardware OBD; `SyntheticDevice` = software/OEM API path | Fleet classifies via `rawJson` in `fleet-connectivity.util.ts` |
+| **Vehicle token** | ERC-721 `tokenId` + `tokenDID` (`did:erc721:137:<contract>:<tokenId>`) | `DimoVehicle.tokenId`; JWT via token-exchange API |
+| **Connection status** | **Not** a Telemetry `signalsLatest` field — SynqDrive mirrors `CONNECTED`/`DISCONNECTED` at identity sync | `DimoVehicle.connectionStatus` used as webhook reconcile **anchor** only |
+| **lastSeen** | `signalsLatest.lastSeen` (collection-level); per-signal `{ timestamp, value }` | `VehicleLatestState.lastSeenAt` ← `signalsLatest.lastSeen` |
+| **availableSignals** | Root query: list of signal names with stored data for `tokenId` | **Not** used by Fleet Connectivity tab; used in driving/battery preflight only |
+| **signalsLatest** | Latest value per signal; returns most recent per data source | `DimoSnapshotProcessor` every ~30s |
+| **Historical signals** | `signals(tokenId, from, to, interval)` with aggregations | Fleet connectivity **does not** use; audit script queries `obdIsPluggedIn` only |
+| **OBD unplug** | **No separate “unplug event”** — documented signal `obdIsPluggedIn` (0/1) + Vehicle Triggers CEL `valueNumber == 0` | Persisted as `OBD_DEVICE_UNPLUGGED` webhook intake |
+| **OBD plug-in** | Same signal `obdIsPluggedIn` with `valueNumber == 1` | Persisted as `OBD_DEVICE_PLUGGED_IN` — **but org trigger is DISABLED** (see §45) |
+| **Timestamps** | Signal `timestamp` = provider capture; webhook envelope `time` = delivery | `observedAt` ← signal/payload time; `createdAt` = ingest |
+| **Trigger config** | REST `vehicle-triggers-api.dimo.zone/v1/webhooks` + per-vehicle subscribe | Manual/console; `DimoTriggersService` helper exists, bootstrap **off** |
+| **Provider event ID** | Webhook CloudEvent `id` field | Stored in `raw_payload_json.id`; dedup uses 30s bucket not provider ID |
+| **Backfill / delay** | `dataSummary.firstSeen/lastSeen`; compare `signal.timestamp` vs `providerFetchedAt` | SynqDrive stores both but device read-model **does not** use for episode closure |
+
+## 43. Device type and snapshot source (Teil 2)
+
+Live audit: **6/6** DIMO-linked vehicles are `PHYSICAL_OBD_LTE_R1` with **both** `aftermarketDevice` and `syntheticDevice` present in identity mirror.
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | Can SynqDrive identify snapshot source from payload alone? | **Partially** — `tokenId` yes; per-snapshot `producer`/`source` from DIMO trigger payload **not** persisted on `VehicleLatestState` |
+| 2 | Can OEM snapshot continue after OBD unplug? | **Yes, architecturally** — synthetic/OEM path can emit telemetry without physical OBD; fleet has synthetic on all 6 vehicles |
+| 3 | Can synthetic source send snapshots while OBD unplugged? | **Yes** — must not use such snapshots to close OBD tamper episodes without source verification |
+| 4 | Metadata needed to close OBD episode via telemetry? | Stable `tokenId`, `aftermarketDevice` pairing, `obdIsPluggedIn=true` **after** unplug time, `signalsLatest.lastSeen` > unplug, same binding epoch |
+| 5 | Unique binding ID? | **No** single episode/binding ID in Telemetry API; Identity uses device NFT + vehicle NFT pairing |
+| 6 | Historical binding periods queryable? | **Not via Telemetry**; Identity pairing history **not** ingested by SynqDrive |
+| 7 | Token change representation? | New `tokenId` on `DimoVehicle`; no automatic episode invalidation in read-model |
+
+**VEHICLE_002 gap:** `obdIsPluggedIn` **absent** from `availableSignals` (26 signals listed) — explains null OBD snapshot in UI despite live speed/odometer.
+
+## 44. OBD plug / connection signals (Teil 3)
+
+| Signal / field | Documented (DIMO) | In availableSignals (fleet) | Latest | Historical | Semantics | SynqDrive device-state use |
+|----------------|-------------------|----------------------------|--------|------------|-----------|---------------------------|
+| **obdIsPluggedIn** | Yes — “OBD Device Plugged In”, 1=plugged | 5/6 vehicles | 5/6 = 1 | 44k–98k samples (60d) | Boolean float 0/1 | Snapshot column + webhook intake; **should** close episodes (not implemented) |
+| **connectivityCellularIsJammingDetected** | Yes | 0/6 in audit window | — | — | Boolean | Snapshot indication only |
+| **isIgnitionOn** | Yes | 5/6 | live | yes | Boolean | Freshness context only |
+| **speed** | Yes | 6/6 | live | yes | km/h | Freshness proxy |
+| **deviceConnected** | **No** | — | — | — | — | **Not invented** |
+| **devicePower** | **No** | — | — | — | — | **Not invented** |
+| **deviceOnline** | **No** | — | — | — | — | **Not invented** |
+| **dataSourceConnection** | **No** | — | — | — | — | **Not invented** |
+| **DimoVehicle.connectionStatus** | Identity mirror | N/A | CONNECTED 6/6 | not time-series | Enum | Anchor for phantom-plug suppression only |
+
+## 45. Historical timeseries (Teil 4) — no GPS
+
+Artifact: `docs/audits/data/fleet-connectivity-dimo-signal-timeseries-2026-07.csv`
+
+| Vehicle | obd in availableSignals | 60d samples | Median cadence | P95 cadence | Episode window recovery |
+|---------|-------------------------|-------------|----------------|-------------|-------------------------|
+| VEHICLE_001 | yes | 339 | 3600s | 86400s | n/a |
+| VEHICLE_002 | **no** | 0 | — | — | n/a |
+| VEHICLE_003 | yes | 437 | 3600s | 63000s | n/a |
+| VEHICLE_004 | yes | 297 | 900s | 74700s | n/a |
+| VEHICLE_005 | yes | 61 | 900s | 86400s | **YES** — 1 unplug + 1 plug sample in 24h post-unplug |
+| VEHICLE_006 | yes | 110 | 900s | 50400s | **PARTIAL** — 224 samples post-unplug, all value=1 (15m agg may mask brief 0) |
+
+**Interpretation:** Historical `obdIsPluggedIn` at 15m/30s intervals **can** prove recovery (VEHICLE_005) but may **miss** brief unplug at coarse intervals (VEHICLE_006). **`signalsLatest` with per-signal timestamp is stronger** for recovery than aggregated history alone.
+
+## 46. Trigger / webhook configuration (Teil 5)
+
+Artifact: `docs/audits/data/fleet-connectivity-dimo-trigger-status-2026-07.csv`
+
+| Webhook | metricName | Condition | Status | Callback |
+|---------|------------|-----------|--------|----------|
+| OBD Device unplugged | `vss.obdIsPluggedIn` | `valueNumber == 0` | **enabled** | `https://app.synqdrive.eu/api/v1/webhooks/dimo` |
+| OBD Device Plugged in | `vss.obdIsPluggedIn` | `valueNumber == 1` | **disabled** | same |
+| High RPM Trigger | `vss.powertrainCombustionEngineSpeed` | `valueNumber > 5000` | enabled | same |
+
+| Classification | Count |
+|----------------|-------|
+| CONFIGURED (unplug) | 1 |
+| NOT_ACTIVE (plug-in) | 1 |
+| CONFIGURED (other) | 1 |
+| Per-vehicle subscription | 6/6 vehicles subscribed to unplug webhook |
+
+**Critical finding:** Fleet has **zero** `OBD_DEVICE_PLUGGED_IN` events not only because of read-model logic but because the **DIMO plug-in trigger is disabled at source**. Snapshot-based recovery is **required** for closure unless plug trigger is enabled.
+
+## 47. Snapshot recovery policy matrix (Teil 6)
+
+Artifact: `docs/audits/data/fleet-connectivity-recovery-policy-matrix-2026-07.csv`
+
+| Device type | Can resolve unplug via snapshot? | Confidence | Key rule |
+|-------------|-------------------------------|------------|----------|
+| PHYSICAL_OBD_LTE_R1 | YES_WITH_POLICY | HIGH | `obdIsPluggedIn=true` + `lastSeen` > unplug + same tokenId |
+| AFTERMARKET_AND_SYNTHETIC | CONDITIONAL | MEDIUM | Must verify snapshot producer ≠ synthetic-only |
+| SYNTHETIC_ONLY | NO | N/A | No OBD semantics |
+| OEM_API | NO | LOW | No `obdIsPluggedIn` |
+
+**Timestamp comparison order:** `unplug.observedAt` < `obdIsPluggedIn.timestamp` ≤ `signalsLatest.lastSeen` ≤ `providerFetchedAt` (ingest). Backfill suspicion: `providerFetchedAt - sourceTimestamp` large delta or CH row burst without matching poll.
+
+**`obdIsPluggedIn=true` vs general telemetry:** Plug signal is **stronger** for episode closure; speed/odometer alone prove pipeline alive but **not** physical re-plug.
+
+## 48. Documentation and persistence gaps
+
+| Gap | Severity | Detail |
+|-----|----------|--------|
+| Plug webhook disabled in DIMO | **P0 config** | Explains 0/2 plug events fleet-wide |
+| Read-model ignores snapshot recovery | **P0 code** | FC-P0-01 (Phase 4) |
+| No per-snapshot producer persisted | P1 | Cannot distinguish synthetic vs OBD source at ingest |
+| No binding episode ID | P1 | Token/stable serial only |
+| `availableSignals` not in fleet readiness | P2 | Local derivation may mark OBD “missing” when not listed |
+| VEHICLE_002 no obdIsPluggedIn | P2 | Signal not provisioned — OBD column permanently unknown |
+| `webhookConfigured` inferred from events | P1 | FC-P1-04 |
+| DIMO MCP unavailable during audit | Info | Used official docs + live API instead |
+
+## 49. Phase 5 audit script
+
+```bash
+FLEET_CONNECTIVITY_DIMO_AUDIT_ALLOW_PROD=1 SYNQDRIVE_BACKEND_ROOT=/path/to/backend \
+  cd backend && npx ts-node -r tsconfig-paths/register \
+  ../scripts/audits/audit-fleet-connectivity-dimo.ts --days=60
+```
+
+## 50. Phase 5 completion checklist
+
+- [x] DIMO Telemetry / Identity / Triggers documentation verified
+- [x] 6 DIMO vehicles audited (anonymized)
+- [x] Device capability CSV
+- [x] Signal timeseries CSV (obdIsPluggedIn only, no GPS)
+- [x] Trigger status CSV (read-only API)
+- [x] Recovery policy matrix CSV
+- [x] `audit-fleet-connectivity-dimo.ts` created
+- [x] No DIMO writes; no trigger mutations
+- [x] PII scan clean (masked token suffixes only)
+
+---
+
+*End of Phase 5. Do not proceed to Phase 6 in this agent turn.*

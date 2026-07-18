@@ -1,0 +1,22 @@
+{
+  "auditId": "fleet-connectivity-dimo-2026-07",
+  "completedAt": "2026-07-18T10:01:34.502Z",
+  "mode": "read-only",
+  "dimoMcpStatus": "UNAVAILABLE_used_official_docs_and_live_api",
+  "vehicles": 6,
+  "physicalObd": 6,
+  "synthetic": 6,
+  "lteR1": 6,
+  "oemOnly": 0,
+  "obdSignalListed": 5,
+  "recoveryCapableBindings": 5,
+  "orgWebhooks": 3,
+  "obdUnplugTriggerEnabled": true,
+  "obdPlugTriggerEnabled": false,
+  "artifacts": [
+    "docs/audits/data/fleet-connectivity-dimo-device-capability-2026-07.csv",
+    "docs/audits/data/fleet-connectivity-dimo-signal-timeseries-2026-07.csv",
+    "docs/audits/data/fleet-connectivity-dimo-trigger-status-2026-07.csv",
+    "docs/audits/data/fleet-connectivity-recovery-policy-matrix-2026-07.csv"
+  ]
+}
