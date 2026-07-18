@@ -1,4 +1,5 @@
 import { getToken, clearAuth } from './auth';
+import { buildStationSummariesRequestPath } from './station-summaries-api.utils';
 import type {
   AddDamageImageInput,
   CreateVehicleDamageInput,
@@ -3900,6 +3901,19 @@ export const api = {
     },
     overviewStats: (orgId: string, stationId: string) =>
       get<StationOverviewStats>(`/organizations/${orgId}/stations/${stationId}/overview-stats`),
+    summaries: (orgId: string, params: StationOrgSummariesQueryParams = {}) =>
+      get<StationOrgSummariesReadModel>(buildStationSummariesRequestPath(orgId, params)),
+    summariesContract: (orgId: string) =>
+      get<{
+        version: number;
+        resolver: string;
+        frontendRecomputation: false;
+        limits: {
+          defaultPageSize: number;
+          maxPageSize: number;
+          maxAggregationStations: number;
+        };
+      }>(`/organizations/${orgId}/stations/summaries/contract`),
     fleet: (orgId: string, stationId: string) =>
       get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
     bookings: (orgId: string, stationId: string) =>
@@ -9424,6 +9438,199 @@ export interface StationOverviewStats {
   hasMissingCoordinates: boolean;
   hasMissingOpeningHours: boolean;
   hasMissingPickupReturnRules: boolean;
+}
+
+export type StationCapacityStatus =
+  | 'UNKNOWN'
+  | 'AVAILABLE'
+  | 'NEAR_CAPACITY'
+  | 'FULL'
+  | 'OVER_CAPACITY'
+  | 'PROJECTED_OVER_CAPACITY';
+
+export type StationKpiMetricName =
+  | 'homeFleetCount'
+  | 'currentOnSiteCount'
+  | 'foreignVehiclesOnSiteCount'
+  | 'expectedArrivalCount'
+  | 'currentlyRentedHomeVehicles'
+  | 'readyToRentOnSite'
+  | 'blockedOrMaintenanceOnSite'
+  | 'pickupsToday'
+  | 'returnsToday'
+  | 'overdueReturns'
+  | 'incomingTransfers'
+  | 'outgoingTransfers'
+  | 'openOperationalTasks'
+  | 'capacityStatus';
+
+export interface StationKpiMetric<T> {
+  value: T | null;
+  known: boolean;
+  partial?: boolean;
+  reasons: Array<{ code: string; message: string }>;
+}
+
+export interface StationKpisResult {
+  version: number;
+  stationId: string;
+  evaluatedAt: string;
+  timezone: string;
+  calendarDay: string;
+  scope: {
+    applied: boolean;
+    mode: 'ALL_STATIONS' | 'SCOPED_STATIONS';
+    stationId: string;
+  };
+  metrics: {
+    homeFleetCount: StationKpiMetric<number>;
+    currentOnSiteCount: StationKpiMetric<number>;
+    foreignVehiclesOnSiteCount: StationKpiMetric<number>;
+    expectedArrivalCount: StationKpiMetric<number>;
+    currentlyRentedHomeVehicles: StationKpiMetric<number>;
+    readyToRentOnSite: StationKpiMetric<number>;
+    blockedOrMaintenanceOnSite: StationKpiMetric<number>;
+    pickupsToday: StationKpiMetric<number>;
+    returnsToday: StationKpiMetric<number>;
+    overdueReturns: StationKpiMetric<number>;
+    incomingTransfers: StationKpiMetric<number>;
+    outgoingTransfers: StationKpiMetric<number>;
+    openOperationalTasks: StationKpiMetric<number>;
+    capacityStatus: StationKpiMetric<StationCapacityStatus>;
+  };
+  deprecatedAliases: { bookedVehicles: null };
+}
+
+export interface StationSummaryReadModel {
+  version: number;
+  stationId: string;
+  organizationId: string;
+  lastCalculatedAt: string;
+  masterData: {
+    id: string;
+    organizationId: string;
+    name: string;
+    code: string | null;
+    address: string | null;
+    addressLine2: string | null;
+    city: string | null;
+    postalCode: string | null;
+    country: string | null;
+    phone: string | null;
+    email: string | null;
+    managerName: string | null;
+    timezone: string;
+    capacity: number | null;
+  };
+  lifecycle: {
+    status: StationStatus;
+    statusLabel: string;
+    type: StationType;
+    typeLabel: string;
+    isPrimary: boolean;
+    archived: boolean;
+    archivedAt: string | null;
+  };
+  openingStatus: StationOperationsLabeledStatus<StationOpeningStatus>;
+  operationalCapabilities: {
+    pickup: StationOperationsCapabilityView;
+    return: StationOperationsCapabilityView;
+    afterHours: StationOperationsLabeledStatus<StationAfterHoursCapabilityStatus>;
+    keybox: StationOperationsLabeledStatus<StationKeyboxStatus>;
+  };
+  kpis: StationKpisResult;
+  configurationProblems: StationOperationsReason[];
+  operationalWarnings: StationOperationsReason[];
+  partialData: {
+    complete: boolean;
+    unknownMetricNames: string[];
+    reasons: Array<{ code: string; message: string }>;
+  };
+  scope: StationKpisResult['scope'];
+  frontendRecomputation: false;
+}
+
+export interface StationOrgSummariesReadModel {
+  version: number;
+  organizationId: string;
+  evaluatedAt: string;
+  lastCalculatedAt: string;
+  scope: {
+    applied: boolean;
+    mode: 'ALL_STATIONS' | 'SCOPED_STATIONS';
+  };
+  limits: {
+    defaultPageSize: number;
+    maxPageSize: number;
+    maxAggregationStations: number;
+    appliedPageSize: number;
+    aggregationStationCapApplied: boolean;
+    matchedStationCount: number;
+    processedStationCount: number;
+    codes: string[];
+  };
+  filters: {
+    status: string | null;
+    type: string | null;
+    isPrimary: boolean | null;
+    search: string | null;
+    pickupCapabilityAvailable: boolean | null;
+    returnCapabilityAvailable: boolean | null;
+    hasConfigurationProblems: boolean | null;
+  };
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+  stationSummaries: StationSummaryReadModel[];
+  globalKpis: {
+    stationCount: number;
+    homeFleetCount: number;
+    currentOnSiteCount: number;
+    foreignVehiclesOnSiteCount: number;
+    expectedArrivalCount: number;
+    currentlyRentedHomeVehicles: number;
+    readyToRentOnSite: number;
+    blockedOrMaintenanceOnSite: number;
+    pickupsToday: number;
+    returnsToday: number;
+    overdueReturns: number;
+    incomingTransfers: number;
+    outgoingTransfers: number;
+    openOperationalTasks: number;
+    capacityStatusCounts: Record<StationCapacityStatus, number>;
+    partialMetricCount: number;
+  };
+  partialData: {
+    complete: boolean;
+    stationsWithPartialData: number;
+    unknownMetricNames: StationKpiMetricName[];
+    reasons: Array<{ code: string; message: string }>;
+  };
+  warningCounts: {
+    configurationProblems: number;
+    operationalWarnings: number;
+    total: number;
+    stationsWithConfigurationProblems: number;
+    stationsWithOperationalWarnings: number;
+  };
+  frontendRecomputation: false;
+}
+
+export interface StationOrgSummariesQueryParams {
+  page?: number;
+  pageSize?: number;
+  status?: StationStatus;
+  type?: StationType;
+  isPrimary?: boolean;
+  search?: string;
+  pickupCapabilityAvailable?: boolean;
+  returnCapabilityAvailable?: boolean;
+  hasConfigurationProblems?: boolean;
+  at?: string;
 }
 
 export interface StationFleetVehicle {
