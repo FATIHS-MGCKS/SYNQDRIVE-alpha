@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { StationCalendarExceptionStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { PermissionActor } from '@shared/auth/permission.util';
@@ -39,6 +39,7 @@ import { StationRuleManualOverrideReferenceType } from '@shared/stations/station
 import { StationOperationalCalendarExceptionInput } from '@shared/stations/station-operational-capability.resolver';
 import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
 import { StationsAccessService } from './stations-access.service';
+import { StationMetricsService } from './station-metrics.service';
 import type { EvaluateStationBookingRulesDto } from './dto/evaluate-station-booking-rules.dto';
 import type { HandoverKind } from '@prisma/client';
 import {
@@ -87,6 +88,7 @@ export class StationBookingRulesService {
     private readonly stationAccessScope: StationAccessScopeService,
     private readonly stationsAccess: StationsAccessService,
     private readonly manualOverrideService: StationRuleManualOverrideService,
+    @Optional() private readonly stationMetrics?: StationMetricsService,
   ) {}
 
   evaluate(input: StationBookingRulesInput): StationBookingRulesResult {
@@ -153,6 +155,7 @@ export class StationBookingRulesService {
     });
 
     if (!manualOverride) {
+      this.recordBookingRuleMetrics(assessment.result);
       return assessment.result;
     }
 
@@ -185,7 +188,22 @@ export class StationBookingRulesService {
       evaluations: [...baseResult.pickup.evaluations, ...baseResult.return.evaluations],
     });
 
-    return attachBookingRulesManualOverrideAudit(assessment.result, audit);
+    const finalResult = attachBookingRulesManualOverrideAudit(assessment.result, audit);
+    this.recordBookingRuleMetrics(finalResult);
+    return finalResult;
+  }
+
+  private recordBookingRuleMetrics(result: StationBookingRulesResult): void {
+    for (const side of [result.pickup, result.return] as const) {
+      const blockedEvaluation = side.evaluations.find(
+        (evaluation) => evaluation.outcome === 'BLOCKED',
+      );
+      this.stationMetrics?.recordBookingRule({
+        surface: side.side === 'pickup' ? 'pickup' : 'return',
+        outcome: side.outcome,
+        blockedReason: blockedEvaluation?.reason.code ?? null,
+      });
+    }
   }
 
   private resolveManualOverride(

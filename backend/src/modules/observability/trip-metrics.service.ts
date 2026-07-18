@@ -151,6 +151,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly taskAutomationOutboxBacklog: Gauge<string>;
   readonly batteryV2DeadLetterBacklog: Gauge<string>;
   readonly batteryPostgresTableRows: Gauge<string>;
+  readonly stationsTotal: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -944,6 +945,13 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.stationsTotal = new Gauge({
+      name: 'synqdrive_stations_total',
+      help: 'Current station count by lifecycle status',
+      labelNames: ['status'],
+      registers: [this.registry],
+    });
+
     this.batteryRetentionRunsTotal = new Counter({
       name: 'synqdrive_battery_retention_runs_total',
       help: 'Battery V2 retention runs completed',
@@ -981,5 +989,11 @@ export class TripMetricsService implements OnModuleInit {
   /** Returns the Prometheus metrics text for the /metrics endpoint. */
   async getMetrics(): Promise<string> {
     return this.registry.metrics();
+  }
+
+  setStationsTotalByStatus(counts: Record<string, number>): void {
+    for (const [status, count] of Object.entries(counts)) {
+      this.stationsTotal.set({ status: status.toLowerCase() }, count);
+    }
   }
 }

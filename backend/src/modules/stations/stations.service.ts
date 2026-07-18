@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, ConflictException, Optional } from '@nestjs/common';
 import { BookingStatus, Prisma, Station, StationCoordinatesSource, StationStatus, StationType, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationValidationService } from './station-validation.service';
@@ -148,6 +148,7 @@ import {
   throwStationSetVehiclesPolicyBlocked,
 } from './station-set-vehicles-deprecation.util';
 import { StationDomainAuditService } from './station-domain-audit.service';
+import { StationMetricsService } from './station-metrics.service';
 import { StationDomainAuditAction } from '@shared/stations/station-domain-audit.constants';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
@@ -339,6 +340,7 @@ export class StationsService {
     private readonly stationOperations: StationOperationsService,
     private readonly stationVehicleRuntimeLoader: StationVehicleRuntimeLoader,
     private readonly stationDomainAudit: StationDomainAuditService,
+    @Optional() private readonly stationMetrics?: StationMetricsService,
   ) {}
 
   private stationIncludeCount() {
@@ -783,6 +785,8 @@ export class StationsService {
       });
     }
 
+    this.stationMetrics?.recordArchive(StationArchiveCommandOutcome.APPLIED);
+
     return {
       outcome: StationArchiveCommandOutcome.APPLIED,
       command: StationArchiveCommandName.ARCHIVE,
@@ -1194,6 +1198,8 @@ export class StationsService {
       performedAt: restoredAt.toISOString(),
       meta: { appliedCapabilities },
     });
+
+    this.stationMetrics?.recordRestore(StationRestoreCommandOutcome.APPLIED);
 
     return {
       outcome: StationRestoreCommandOutcome.APPLIED,
@@ -2568,6 +2574,10 @@ export class StationsService {
     }
 
     if (input.expectedVersion !== vehicle.stationPositionVersion) {
+      this.stationMetrics?.recordAssignmentConflict({
+        kind: 'change_home',
+        reason: 'version_conflict',
+      });
       throw new ConflictException({
         message: buildVehicleChangeHomeStationVersionConflictIssue().message,
         code: 'STATION_POSITION_VERSION_CONFLICT',
@@ -2647,6 +2657,10 @@ export class StationsService {
     });
 
     if (updateResult.count === 0) {
+      this.stationMetrics?.recordAssignmentConflict({
+        kind: 'change_home',
+        reason: 'version_conflict',
+      });
       throw new ConflictException({
         message: buildVehicleChangeHomeStationVersionConflictIssue().message,
         code: 'STATION_POSITION_VERSION_CONFLICT',
@@ -2686,6 +2700,11 @@ export class StationsService {
         performedAt: new Date().toISOString(),
       },
     );
+
+    this.stationMetrics?.recordAssignment({
+      kind: 'change_home',
+      outcome: VehicleChangeHomeStationCommandOutcome.APPLIED,
+    });
 
     return {
       outcome: VehicleChangeHomeStationCommandOutcome.APPLIED,
@@ -2744,6 +2763,10 @@ export class StationsService {
     });
 
     if (input.expectedVersion !== vehicle.stationPositionVersion) {
+      this.stationMetrics?.recordAssignmentConflict({
+        kind: 'correct_current',
+        reason: 'version_conflict',
+      });
       throw new ConflictException({
         message: buildVehicleCorrectCurrentStationVersionConflictIssue().message,
         code: VehicleCorrectCurrentStationCommandIssueCode.STATION_POSITION_VERSION_CONFLICT,
@@ -2878,6 +2901,10 @@ export class StationsService {
     });
 
     if (updateResult.count === 0) {
+      this.stationMetrics?.recordAssignmentConflict({
+        kind: 'correct_current',
+        reason: 'version_conflict',
+      });
       throw new ConflictException({
         message: buildVehicleCorrectCurrentStationVersionConflictIssue().message,
         code: VehicleCorrectCurrentStationCommandIssueCode.STATION_POSITION_VERSION_CONFLICT,
@@ -2919,6 +2946,10 @@ export class StationsService {
         performedAt: new Date().toISOString(),
         meta: { source: input.source },
       },
+    );
+
+    this.stationMetrics?.recordCurrentStationCorrection(
+      VehicleCorrectCurrentStationCommandOutcome.APPLIED,
     );
 
     return {

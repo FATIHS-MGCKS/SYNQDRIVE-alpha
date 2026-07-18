@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { StationsController } from './stations.controller';
 import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
@@ -16,6 +17,8 @@ import { VehicleStationTransferService } from './vehicle-station-transfer.servic
 import { StationBookingRulesService } from './station-booking-rules.service';
 import { StationRuleManualOverrideService } from './station-rule-manual-override.service';
 import { StationDomainAuditService } from './station-domain-audit.service';
+import { StationMetricsService } from './station-metrics.service';
+import { StationsMetricsInterceptor } from './stations-metrics.interceptor';
 import { StationVehicleWorkflowLookupService } from './station-vehicle-workflow-lookup.service';
 import { StationVehicleWorkflowPreviewService } from './station-vehicle-workflow-preview.service';
 import { StationsAccessService } from './stations-access.service';
@@ -53,6 +56,7 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationBookingRulesService,
     StationRuleManualOverrideService,
     StationDomainAuditService,
+    StationMetricsService,
     StationsAccessService,
     StationsPermissionGuard,
     StationsUpdatePermissionGuard,
@@ -63,7 +67,11 @@ import { StationsOverrideRulesPermissionGuard } from './guards/stations-override
     StationsCorrectVehicleCurrentPermissionGuard,
     StationsManageTransfersPermissionGuard,
     StationsOverrideRulesPermissionGuard,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: StationsMetricsInterceptor,
+    },
   ],
-  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, StationSummaryReadModelService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService, StationBookingRulesService, StationRuleManualOverrideService],
+  exports: [StationsService, StationValidationService, StationsAccessService, StationCalendarExceptionService, StationOperationalCapabilityService, StationOperationsService, StationSummaryReadModelService, VehicleHomeFleetDeltaService, VehicleHomeAssignmentPreviewService, VehicleStationTransferService, StationBookingRulesService, StationRuleManualOverrideService, StationMetricsService],
 })
 export class StationsModule {}
