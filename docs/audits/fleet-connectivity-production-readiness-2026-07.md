@@ -5,8 +5,8 @@
 | **Audit ID** | `fleet-connectivity-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/fleet-connectivity-production-readiness-2026-07` |
-| **Phase** | **5 of 8 — DIMO connectivity capability analysis** |
-| **Status** | Phases 1–5 complete; Phases 6–8 outlined below |
+| **Phase** | **6 of 8 — Consumer wiring, alerts & operational impact** |
+| **Status** | Phases 1–6 complete; Phases 7–8 outlined below |
 | **Production data modified** | **No** — all VPS/DB access was read-only |
 | **Analysis window (VPS)** | Through 2026-07-18 UTC |
 | **Incident vehicle (anonymized)** | `INCIDENT_VEHICLE_001` (real mapping **not** stored in git) |
@@ -38,6 +38,9 @@
 | DIMO trigger status CSV | `docs/audits/data/fleet-connectivity-dimo-trigger-status-2026-07.csv` | 5 |
 | Recovery policy matrix CSV | `docs/audits/data/fleet-connectivity-recovery-policy-matrix-2026-07.csv` | 5 |
 | DIMO audit summary JSON | `docs/audits/data/fleet-connectivity-dimo-audit-summary-2026-07.json` | 5 |
+| Consumer wiring CSV | `docs/audits/data/fleet-connectivity-consumer-wiring-2026-07.csv` | 6 |
+| Alert resolution matrix CSV | `docs/audits/data/fleet-connectivity-alert-resolution-matrix-2026-07.csv` | 6 |
+| Operational impact matrix CSV | `docs/audits/data/fleet-connectivity-operational-impact-matrix-2026-07.csv` | 6 |
 | Read-only orchestrator | `scripts/audits/audit-fleet-connectivity-production-readiness.ts` | 1–4 |
 | DIMO read-only audit script | `scripts/audits/audit-fleet-connectivity-dimo.ts` | 5 |
 
@@ -89,7 +92,16 @@
 - Snapshot recovery policy matrix by device type
 - Artifacts: `fleet-connectivity-dimo-*` and `fleet-connectivity-recovery-policy-matrix-2026-07.csv`
 
-## Phase 6 — Idempotency, locks, and failure modes (planned)
+## Phase 6 — Consumer wiring, alerts & operational impact ✅
+
+- Full consumer inventory (31 surfaces): Fleet Connectivity, fleet-map, Vehicle Detail, Dashboard, Trips, Integration Hub, Booking, Operator, Admin, Monitoring
+- Per-consumer classification: CANONICAL / PARTIALLY_CANONICAL / LEGACY / UNKNOWN
+- 15 inconsistency scenarios traced to code + VPS data
+- Alert/notification matrix for 10 connectivity alert types + episode recovery policy
+- Operational impact assessment (rental blocking, ready-to-rent, maintenance)
+- Artifacts: `fleet-connectivity-consumer-wiring-2026-07.csv`, `fleet-connectivity-alert-resolution-matrix-2026-07.csv`, `fleet-connectivity-operational-impact-matrix-2026-07.csv`
+
+## Phase 7 — Idempotency, locks, and failure modes (planned)
 
 - Webhook dedup buckets, state-change gates, impulse filters
 - BullMQ `jobId=snapshot-<vehicleId>` semantics and stall recovery
@@ -97,25 +109,14 @@
 - Redis queue depth baselines under load
 - Artifact: failure-mode matrix
 
-## Phase 7 — Notifications, alerts, and operational response (planned)
-
-- Whether `openUnpluggedEpisode` triggers notifications or tasks
-- Rental-relevant severity (`duringActiveBooking`) propagation
-- Integration Hub / consent / authorization impact on perceived connectivity
-- Artifact: alert-blocking matrix
-
 ## Phase 8 — Test coverage & remediation synthesis (planned)
 
 - Unit/integration test inventory vs production scenarios
 - Pure replay of `buildDeviceConnectionSummary` for INCIDENT_VEHICLE_001 inputs
 - Frontend filter/badge tests for contradictory states
-- Artifact: test-coverage CSV
-
-## Phase 8 — Remediation design & final synthesis (planned)
-
 - Target architecture for snapshot-based episode closure aligned with agreed business rule
 - Consolidated P0/P1/P2 findings and production-readiness verdict
-- Artifact: executive summary + remediation backlog
+- Artifact: executive summary + remediation backlog + test-coverage CSV
 
 ---
 
@@ -1031,4 +1032,184 @@ FLEET_CONNECTIVITY_DIMO_AUDIT_ALLOW_PROD=1 SYNQDRIVE_BACKEND_ROOT=/path/to/backe
 
 ---
 
-*End of Phase 5. Do not proceed to Phase 6 in this agent turn.*
+# Phase 6 — Consumer wiring, alerts & operational impact
+
+**Mode:** read-only code + data audit. **No fixes implemented.**
+
+## 51. Executive summary (Phase 6)
+
+SynqDrive does **not** use a single connectivity truth across all surfaces. The audit inventoried **31 consumers** and found **three coexisting layers**:
+
+| Layer | Source | Consumers | Classification |
+|-------|--------|-----------|----------------|
+| **Canonical 5-state freshness** | `telemetryFreshness.ts` / `vehicle-state-interpreter.ts` (15m / 24h / 48h) | Fleet list, map, dashboard KPIs, booking gate, operator app, vehicle header | **CANONICAL** (14 surfaces) |
+| **Fleet Connectivity API** | `fleet-connectivity.util.ts` `deriveConnectionStatus` (24h offline, no `signal_delayed`) | Fleet Connectivity tab, admin fleet view, data analyse | **LEGACY** (9 surfaces) |
+| **Webhook episode read-model** | `device-connection-read-model.ts` event-only `openUnpluggedEpisode` | Fleet tab webhook chip, vehicle device card, trip evidence | **LEGACY** (subset of 9) |
+
+**Classification distribution (31 consumers):**
+
+| Class | Count | Share |
+|-------|-------|-------|
+| CANONICAL | 14 | 45% |
+| PARTIALLY_CANONICAL | 2 | 6% |
+| LEGACY | 9 | 29% |
+| UNKNOWN | 6 | 19% |
+
+**Confirmed cross-surface contradictions:** 6 (from Phase 4 CSV) plus architectural splits documented in Phase 6 scenario matrix.
+
+**Alert gaps:** 7 of 10 audited alert types are **MISSING** or **unwired**; episode recovery policy **FAILS** (open episodes never close → no resolution path).
+
+**Operational impact:** Connectivity correctly **does not** block rental via unplug episodes; **inappropriate** trust erosion when Fleet tab shows unplug while telemetry is live.
+
+## 52. Consumer inventory (Teil 1)
+
+Artifact: `docs/audits/data/fleet-connectivity-consumer-wiring-2026-07.csv`
+
+Each row documents: API endpoint, backend service, status field, freshness rule, device/provider state, readiness/coverage, fallback, frontend logic, labels, colors, alert trigger.
+
+**Surfaces audited (minimum set from prompt):**
+
+| Area | Consumer IDs | Primary API | Classification |
+|------|--------------|-------------|----------------|
+| Fleet Connectivity Tab + Drawer | `fleet_connectivity_tab`, `fleet_connectivity_drawer` | `GET /fleet-connectivity` | LEGACY |
+| Fleet Hauptliste / Board / Command | `fleet_main_list`, `fleet_state_board`, `fleet_command_panel` | `GET /fleet-map` | CANONICAL |
+| Vehicle Detail Header / Overview | `vehicle_detail_header`, `vehicle_detail_overview` | `GET /fleet-map` + telemetry | CANONICAL (+ OBD partial) |
+| Vehicle Connectivity Card | `vehicle_device_connection_card` | `GET /vehicles/:id/device-connection` | LEGACY |
+| Dashboard KPIs + Notifications | `dashboard_kpis`, `dashboard_notifications` | `GET /fleet-map` + ActionQueue | CANONICAL |
+| Monitoring | `monitoring_backend` | Prometheus queue lag | UNKNOWN (no fleet freshness metrics) |
+| Integration Hub | `integration_hub_data_auth` | Data authorizations API | UNKNOWN (consent ≠ live connectivity) |
+| Trips | `trips_list`, `trips_detail_evidence` | fleet-map + trip evidence | CANONICAL / LEGACY split |
+| Vehicle Map | `vehicle_map` | `GET /fleet-map` | CANONICAL |
+| Rental Health | `rental_health` | rental-health API | CANONICAL (health separate from episodes) |
+| Booking / Availability | `booking_picker`, `ready_to_rent` | fleet-map + preflight | CANONICAL |
+| Operator / Mobile | `operator_app`, `mobile_views` | fleet-map | CANONICAL |
+| Admin / Organisation | `admin_fleet_connection`, `master_platform_vehicles` | admin fleet-connectivity / platform | LEGACY |
+| Notifications registry / channels | `notifications_registry`, `email_push_slack` | notification engine | UNKNOWN / unwired |
+| OBD / Webhook chips | `obd_row_chip`, `webhook_device_chip` | fleet-connectivity DTO | PARTIAL / LEGACY |
+
+## 53. Status sources per consumer (Teil 2)
+
+### Canonical contract (reference)
+
+```text
+live          < 15 min since lastSignal/lastSeenAt
+standby       < 24 h
+signal_delayed 24–48 h
+offline       ≥ 48 h
+no_signal     never / unknown timestamp
+```
+
+Implemented in `frontend/src/rental/lib/telemetryFreshness.ts` and `backend/src/modules/vehicles/vehicle-state-interpreter.ts`.
+
+### Key divergences
+
+| Consumer | Status field | Freshness | Device state | Own fallback |
+|----------|--------------|-----------|--------------|--------------|
+| Fleet Connectivity API | `connectionStatus` | offline @ **24h** | `openUnpluggedEpisode` (events only) | `not_connected` when unlinked |
+| Fleet map / dashboard | `telemetryFreshness` | offline @ **48h** | not used | `no_signal` fail-closed |
+| Device connection card | `openUnpluggedEpisode` | 7-day event window | webhook events only | hides card if no LTE_R1 |
+| OBD chip | `obdIsPluggedIn` snapshot | point-in-time | `rawPayloadJson` | null ≠ unplugged |
+| Readiness score | `readinessScore` | N/A | **ignored** | signal coverage % only |
+
+## 54. Inconsistency scenarios (Teil 3)
+
+| # | Scenario | Expected product behaviour | Observed | Verdict |
+|---|----------|---------------------------|----------|---------|
+| 1 | Telemetry live, unplug episode open | Episode should close on recovery | VEHICLE_005: live + `openUnpluggedEpisode=true` | **CONFIRMED** (FC-P0-04) |
+| 2 | Provider auth expired, DimoVehicle present | Authorization UI should flag action | VEHICLE_001–003: CONNECTED + consent NONE | **CONFIRMED** (FC-P1-03) |
+| 3 | Snapshot `obdIsPluggedIn=false`, then new snapshots true | Episode/snapshot should show recovered | Read-model ignores snapshot closure | **CONFIRMED** (FC-P0-01) |
+| 4 | Unplug older than 7 days | Episode should resolve or remain visible | VEHICLE_006: DB open, API 7d hides | **CONFIRMED** (FC-P1-01) |
+| 5 | Synthetic device without OBD | No physical unplug semantics | Recovery policy: SYNTHETIC_ONLY → NO | **BY DESIGN** |
+| 6 | OEM data active, physical OBD unplugged | Distinguish data sources | No per-producer persistence at ingest | **GAP** (Phase 5) |
+| 7 | Standby on Fleet, offline on Dashboard | Same freshness tier | Fleet offline @24h vs dashboard signal_delayed until 48h | **ARCHITECTURAL** (FC-P1-02) |
+| 8 | Soft-offline on Vehicle Detail, offline on Connectivity | Aligned tiers | Vehicle detail canonical; fleet tab 24h offline | **ARCHITECTURAL** (FC-P1-02) |
+| 9 | No webhook events, triggers configured | webhookConfigured = active | Inferred `not_configured` from empty 7d events | **CONFIRMED** (FC-P1-04) |
+| 10 | Data coverage good, snapshot old | Distinguish coverage vs freshness | readinessScore ignores snapshot age | **CONFIRMED** (FC-P2-02) |
+| 11 | EV with missing fuel | Capability-adjusted readiness | evSoc/fuel penalties in raw score | **CONFIRMED** (readiness CSV) |
+| 12 | ICE with missing EV SoC | Should not penalize ICE | evSoc factor still applied | **CONFIRMED** (FC-P2-02) |
+| 13 | Device binding changed | Close episode / new binding episode | No binding episode ID in schema | **GAP** (Phase 5) |
+| 14 | Unknown shown as Connected | Review state, not connected | Platform view uses binary Connected enum | **RISK** (`master_platform_vehicles`) |
+| 15 | Alert remains after recovery | Close episode + resolve alert | 0 notifications; episode stays open | **CONFIRMED** (FC-P2-03) |
+
+## 55. Alerts and notifications (Teil 4)
+
+Artifact: `docs/audits/data/fleet-connectivity-alert-resolution-matrix-2026-07.csv`
+
+| Alert code | Registry | Producer | Episode link | Recovery closes | Verdict |
+|------------|----------|----------|--------------|-----------------|---------|
+| DEVICE_UNPLUGGED | No | No | Should | No | **MISSING** |
+| DEVICE_RECONNECTED | No | No | Should | No (plug trigger disabled) | **MISSING** |
+| TELEMETRY_OFFLINE | Yes | Unwired for API | N/A | In-app only via ActionQueue | **PARTIAL** |
+| TELEMETRY_SOFT_OFFLINE | Operational issue only | ActionQueue | N/A | Yes on refresh | OK |
+| AUTHORIZATION_REQUIRED | No | No | Consent | Partial via Integration Hub | **MISSING** |
+| DATA_SOURCE_DISCONNECTED | No | No | Link table | N/A | **MISSING** |
+| LOW_SIGNAL_COVERAGE | No | Readiness display only | N/A | N/A | OK (not hard block) |
+| WEBHOOK_PROCESSING_FAILED | Yes | Unknown | Event | N/A | **UNKNOWN** |
+| DEVICE_BINDING_CHANGED | No | No | Should | N/A | **MISSING** |
+| UNKNOWN_CONNECTIVITY_STATE | No | `no_signal` label | N/A | Booking fail-closed | **PARTIAL** |
+
+**Episode recovery policy (required vs actual):**
+
+| Step | Required after recovery | Actual |
+|------|------------------------|--------|
+| Close open episode | Yes | **No** — event-only read-model |
+| Resolve alert | Yes | **N/A** — no unplug alert exists |
+| Optional one-shot „wieder verbunden“ | Product decision | **No** — 0 plug webhooks fleet-wide |
+| Stop showing „Gerät getrennt“ | Yes | **No** — FC-P0-01/03 |
+
+**Dedupe / severity:** ActionQueue uses `semanticKey` (`telemetry:offline`) for telemetry; OBD hint appended via `appendObdUnpluggedToHint` without separate dedupe key. No email/push/Slack connectivity producers found in 60d VPS notification data.
+
+## 56. Operational impact (Teil 5)
+
+Artifact: `docs/audits/data/fleet-connectivity-operational-impact-matrix-2026-07.csv`
+
+| Rule | Assessment |
+|------|------------|
+| Telemetry offline ≠ physical device unplugged | **Correct** — booking uses `isVehicleOffline` (48h), not episodes |
+| Standby is not an error | **Correct** — fleet board / operator panel do not warn on standby |
+| Low signal coverage is not a hard block | **Correct** — readiness is informational only |
+| Active authorization problems need action | **Gap** — CONNECTED + NONE consent not alerted |
+| Confirmed device unplug may need attention | **Gap** — UI shows severity; no notification wired |
+| Unknown needs review, not auto-maintenance | **Correct** — `no_signal` blocks booking but not maintenance |
+
+**Unzulässige operative Auswirkungen:** None found where unplug episode incorrectly sets `rental_blocked` or forces maintenance. **Trust impact** from contradictory Fleet Connectivity display is the primary operational harm.
+
+## 57. Phase 6 findings added to integrity JSON
+
+New findings in `fleet-connectivity-integrity-findings-2026-07.json`:
+
+- **FC-C-01** — 31 consumers; 45% canonical, 29% legacy, 19% unknown
+- **FC-C-02** — Fleet Connectivity tab is not on canonical freshness contract
+- **FC-C-03** — Seven connectivity alert types missing from registry/producers
+- **FC-C-04** — Episode recovery policy fails all four required steps
+- **FC-C-05** — Operational gates correctly isolated from webhook episodes (positive)
+
+## 58. Files produced (Teil 6)
+
+| File | Rows / entries |
+|------|----------------|
+| `docs/audits/data/fleet-connectivity-consumer-wiring-2026-07.csv` | 31 consumers |
+| `docs/audits/data/fleet-connectivity-alert-resolution-matrix-2026-07.csv` | 12 alert rows (10 types + policy row) |
+| `docs/audits/data/fleet-connectivity-operational-impact-matrix-2026-07.csv` | 16 operational domains |
+| `docs/audits/data/fleet-connectivity-integrity-findings-2026-07.json` | extended (phase 6) |
+
+## 59. Phase 6 completion checklist
+
+- [x] 31 consumers inventoried with API/service/field mapping
+- [x] Classification CANONICAL / LEGACY / PARTIAL / UNKNOWN
+- [x] 15 inconsistency scenarios assessed
+- [x] 10 alert types + recovery policy matrix
+- [x] Operational impact matrix (rental / ready / maintenance)
+- [x] Integrity findings JSON extended
+- [x] **No code fixes** — read-only audit only
+
+## 60. Read-only confirmation
+
+- No application code changed
+- No database writes
+- No DIMO trigger mutations
+- VPS data referenced from Phases 4–5 only (no new prod queries in Phase 6)
+
+---
+
+*End of Phase 6. Do not proceed to Phase 7 in this agent turn.*
