@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-v2-one-way-return-follow-up-v49631-2026-07-19',
+    version: '4.9.631',
+    title: 'V4.9.631 — Stations V2: One-Way Return Follow-Up Process (Prompt 51/78)',
+    summary: [
+      'Nach One-Way-Rückgabe bewertet `OneWayReturnFollowUpService` den operativen Folgeprozess read-only.',
+      'Prüft Heimatstation vs. Return, Current=Return, Repositionierung, nächste Buchung und Transfer-Sinnhaftigkeit.',
+      'Empfehlungen: NO_ACTION, KEEP_AT_RETURN_STATION, SUGGEST_TRANSFER_HOME, SUGGEST_TRANSFER_TO_NEXT_BOOKING, MANUAL_REVIEW.',
+      'Kein automatischer Transfer, Home bleibt unverändert, Expected nur nach bestätigtem Transfer — Vorschlag statt stiller Mutation.',
+      'Snapshot `oneWayReturnFollowUpSnapshot` auf Return-Protokoll; Integrationstests für typische One-Way-Szenarien.',
+    ],
+    reason:
+      'One-Way-Rückgaben brauchen einen kontrollierten operativen Folgeprozess statt impliziter Positions-/Transfer-Mutationen.',
+    previousBehavior:
+      'Return setzte nur Current Station; keine strukturierte Bewertung ob Repositionierung/Transfer zur Heimat oder nächsten Buchung sinnvoll ist.',
+    details:
+      '`one-way-return-follow-up.contract.ts` + `.util.ts`; `OneWayReturnFollowUpService.evaluateAfterReturn`; Wiring in `BookingsHandoverService` nach erfolgreichem Return; Migration `20260718200000_one_way_return_follow_up_snapshot`.',
+    affectsArchitecture: true,
+    module: 'Stations',
+    createdAt: '2026-07-19T22:00:00.000Z',
+  },
+  {
     id: 'stations-v2-handover-rules-revalidation-v49630-2026-07-19',
     version: '4.9.630',
     title: 'V4.9.630 — Stations V2: Re-validate Station Operations at Pickup/Return Handover (Prompt 50/78)',

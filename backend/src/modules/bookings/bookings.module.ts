@@ -22,6 +22,7 @@ import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.s
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
+import { OneWayReturnFollowUpService } from './one-way-return-follow-up.service';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
+    OneWayReturnFollowUpService,
   ],
   exports: [
     BookingsService,

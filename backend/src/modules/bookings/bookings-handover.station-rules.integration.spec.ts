@@ -4,6 +4,7 @@ import type { HandoverStationRulesResult } from '@shared/stations/handover-stati
 import { BookingsHandoverService } from './bookings-handover.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import { StationBookingRulesService } from '@modules/stations/station-booking-rules.service';
+import { OneWayReturnFollowUpService } from './one-way-return-follow-up.service';
 
 const ORG = 'org-handover-rules';
 const BOOKING_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -48,6 +49,7 @@ describe('BookingsHandoverService station rules re-validation', () => {
     endDate: new Date('2026-07-20T18:00:00.000Z'),
     pickupStationId: STATION_PICKUP,
     returnStationId: STATION_RETURN,
+    isOneWayRental: true,
   };
 
   const tx = {
@@ -77,6 +79,7 @@ describe('BookingsHandoverService station rules re-validation', () => {
     },
     bookingHandoverProtocol: {
       findUnique: jest.fn(),
+      update: jest.fn().mockResolvedValue(undefined),
     },
     $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<unknown>) =>
       callback(tx),
@@ -90,6 +93,10 @@ describe('BookingsHandoverService station rules re-validation', () => {
   const stationBookingRules = {
     evaluateHandoverRequest: jest.fn(),
   } as unknown as StationBookingRulesService;
+
+  const oneWayReturnFollowUp = {
+    evaluateAfterReturn: jest.fn().mockResolvedValue(null),
+  } as unknown as OneWayReturnFollowUpService;
 
   const service = new BookingsHandoverService(
     prisma as never,
@@ -106,6 +113,7 @@ describe('BookingsHandoverService station rules re-validation', () => {
     { invalidate: jest.fn() } as never,
     stationValidation,
     stationBookingRules,
+    oneWayReturnFollowUp,
   );
 
   const basePayload = {
