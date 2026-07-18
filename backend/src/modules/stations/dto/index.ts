@@ -12,3 +12,4 @@ export * from './station-mapbox-search.dto';
 export * from './archive-station.dto';
 export * from './restore-station.dto';
 export * from './station-calendar-exception.dto';
+export * from './evaluate-station-booking-rules.dto';

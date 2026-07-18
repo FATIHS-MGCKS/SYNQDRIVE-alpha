@@ -16,6 +16,7 @@ import {
   type StationBookingRulesVehicleInput,
 } from './station-booking-rules.contract';
 import { toPickupEffectiveRule } from './station-booking-pickup-rules.contract';
+import { resolveStationBookingEvaluatedInstant } from './station-booking-evaluated-instant.util';
 import {
   resolveStationOperationalCapability,
   StationOperationalCapabilityKind,
@@ -61,11 +62,17 @@ function aggregateOutcome(evaluations: StationBookingRuleEvaluation[]): StationB
 }
 
 function isHolidayClosure(capability: StationOperationalCapabilityEvaluation): boolean {
-  return capability.reasons.some(
-    (entry) =>
-      entry.code === StationOperationalCapabilityReasonCode.CALENDAR_EXCEPTION_CLOSURE ||
-      entry.code === StationOperationalCapabilityReasonCode.LEGACY_HOLIDAY_RULE,
-  );
+  if (
+    capability.reasons.some(
+      (entry) =>
+        entry.code === StationOperationalCapabilityReasonCode.CALENDAR_EXCEPTION_CLOSURE ||
+        entry.code === StationOperationalCapabilityReasonCode.LEGACY_HOLIDAY_RULE,
+    )
+  ) {
+    return true;
+  }
+
+  return capability.effectiveRule?.source === 'station.calendar_exception';
 }
 
 function buildCapacityVehicles(
@@ -324,8 +331,11 @@ function buildPickupSideResult(
   evaluations: StationBookingRuleEvaluation[],
   capability: StationOperationalCapabilityEvaluation | null,
   adminOverrideApplied: boolean,
-): Pick<StationBookingRulesSideResult, 'outcome' | 'reasons' | 'evaluations' | 'effectiveRule' | 'timezone' | 'adminOverrideApplied'> {
+  at: Date,
+  stationTimezone: string | null | undefined,
+): Pick<StationBookingRulesSideResult, 'outcome' | 'reasons' | 'evaluations' | 'effectiveRule' | 'timezone' | 'evaluatedInstant' | 'adminOverrideApplied'> {
   const outcome = aggregateOutcome(evaluations);
+  const timezone = capability?.timezone ?? stationTimezone ?? null;
 
   return {
     outcome,
@@ -341,7 +351,8 @@ function buildPickupSideResult(
             .map((evaluation) => evaluation.reason),
     evaluations,
     effectiveRule: toPickupEffectiveRule(capability?.effectiveRule),
-    timezone: capability?.timezone ?? null,
+    timezone,
+    evaluatedInstant: resolveStationBookingEvaluatedInstant(at, timezone),
     adminOverrideApplied,
   };
 }
@@ -369,7 +380,7 @@ export function evaluatePickupBookingRules(input: {
     return {
       side: 'pickup',
       stationId: null,
-      ...buildPickupSideResult([missingEvaluation], null, false),
+      ...buildPickupSideResult([missingEvaluation], null, false, input.pickupAt, null),
     };
   }
 
@@ -391,7 +402,7 @@ export function evaluatePickupBookingRules(input: {
     return {
       side: 'pickup',
       stationId: station.id,
-      ...buildPickupSideResult(evaluations, null, false),
+      ...buildPickupSideResult(evaluations, null, false, input.pickupAt, station.timezone),
     };
   }
 
@@ -410,7 +421,7 @@ export function evaluatePickupBookingRules(input: {
     return {
       side: 'pickup',
       stationId: station.id,
-      ...buildPickupSideResult(evaluations, null, false),
+      ...buildPickupSideResult(evaluations, null, false, input.pickupAt, station.timezone),
     };
   }
 
@@ -431,6 +442,6 @@ export function evaluatePickupBookingRules(input: {
   return {
     side: 'pickup',
     stationId: station.id,
-    ...buildPickupSideResult(finalEvaluations, capability, adminOverrideApplied),
+    ...buildPickupSideResult(finalEvaluations, capability, adminOverrideApplied, input.pickupAt, station.timezone),
   };
 }

@@ -287,6 +287,15 @@ describe('station-booking-rules.resolver', () => {
     expect(result.return.outcome).toBe(StationBookingRuleOutcome.MANUAL_CONFIRMATION_REQUIRED);
   });
 
+  it('exposes evaluated instant with local and UTC times on each side', () => {
+    const result = evaluate({});
+
+    expect(result.pickup.evaluatedInstant.instantUtc).toBeTruthy();
+    expect(result.pickup.evaluatedInstant.localDate).toBe('2026-07-14');
+    expect(result.pickup.evaluatedInstant.localTime).toBe('10:00');
+    expect(result.pickup.evaluatedInstant.timezone).toBe(BERLIN);
+  });
+
   it('includes booking type and derived one-way flag in the result envelope', () => {
     const result = evaluate({
       bookingType: StationBookingRulesBookingType.ONE_WAY,
@@ -295,7 +304,7 @@ describe('station-booking-rules.resolver', () => {
 
     expect(result.bookingType).toBe(StationBookingRulesBookingType.ONE_WAY);
     expect(result.derivedIsOneWay).toBe(true);
-    expect(result.version).toBe(3);
+    expect(result.version).toBe(4);
     expect(result.evaluatedAt).toBeTruthy();
   });
 

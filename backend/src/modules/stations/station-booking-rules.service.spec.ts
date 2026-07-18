@@ -4,6 +4,8 @@ import {
   StationBookingRulesBookingChannel,
   StationBookingRulesBookingType,
 } from '@shared/stations/station-booking-rules.contract';
+import { PrismaService } from '@shared/database/prisma.service';
+import { StationAccessScopeService } from '@shared/stations/station-access-scope.service';
 
 const ORG_ID = 'org-booking-service';
 const STATION = {
@@ -29,7 +31,23 @@ const STATION = {
 };
 
 describe('StationBookingRulesService', () => {
-  const service = new StationBookingRulesService();
+  const prisma = {
+    vehicle: { findFirst: jest.fn() },
+  } as unknown as PrismaService;
+
+  const stationAccessScope = {
+    resolveFromContextOrEmpty: jest.fn(),
+    requireReadableStation: jest.fn(),
+  } as unknown as StationAccessScopeService;
+
+  const service = new StationBookingRulesService(prisma, stationAccessScope);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (stationAccessScope.resolveFromContextOrEmpty as jest.Mock).mockReturnValue({
+      orgId: ORG_ID,
+    });
+  });
 
   it('delegates evaluation to the shared resolver', () => {
     const result = service.evaluate({
@@ -43,6 +61,8 @@ describe('StationBookingRulesService', () => {
 
     expect(result.pickup.outcome).toBe(StationBookingRuleOutcome.ALLOWED);
     expect(result.return.outcome).toBe(StationBookingRuleOutcome.ALLOWED);
+    expect(result.pickup.evaluatedInstant.instantUtc).toBeTruthy();
+    expect(result.pickup.evaluatedInstant.localDate).toBeTruthy();
   });
 
   it('evaluates pickup rules directly with admin override support', () => {
@@ -78,10 +98,13 @@ describe('StationBookingRulesService', () => {
 
     expect(result.outcome).toBe(StationBookingRuleOutcome.ALLOWED);
     expect(result.side).toBe('return');
+    expect(result.evaluatedInstant.timezone).toBe('Europe/Berlin');
   });
 
-  it('exposes contract metadata without booking integration', () => {
+  it('exposes contract metadata without booking integration or frontend recomputation', () => {
     expect(service.getContractMetadata().bookingIntegration).toBe(false);
+    expect(service.getContractMetadata().frontendRecomputation).toBe(false);
+    expect(service.getContractMetadata().instantEvaluation).toBe('station_timezone');
     expect(service.getPickupRulesMetadata().contract).toBe('station-booking-pickup-rules');
     expect(service.getReturnRulesMetadata().contract).toBe('station-booking-return-rules');
     expect(service.getMetadata().contract).toBe('station-booking-rules');

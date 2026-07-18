@@ -16,6 +16,7 @@ import {
   type StationBookingRulesVehicleInput,
 } from './station-booking-rules.contract';
 import { toReturnEffectiveRule } from './station-booking-return-rules.contract';
+import { resolveStationBookingEvaluatedInstant } from './station-booking-evaluated-instant.util';
 import {
   resolveStationOperationalCapability,
   StationOperationalCapabilityKind,
@@ -387,11 +388,14 @@ function buildReturnSideResult(
   evaluations: StationBookingRuleEvaluation[],
   capability: StationOperationalCapabilityEvaluation | null,
   adminOverrideApplied: boolean,
+  at: Date,
+  stationTimezone: string | null | undefined,
 ): Pick<
   StationBookingRulesSideResult,
-  'outcome' | 'reasons' | 'evaluations' | 'effectiveRule' | 'timezone' | 'adminOverrideApplied'
+  'outcome' | 'reasons' | 'evaluations' | 'effectiveRule' | 'timezone' | 'evaluatedInstant' | 'adminOverrideApplied'
 > {
   const outcome = aggregateOutcome(evaluations);
+  const timezone = capability?.timezone ?? stationTimezone ?? null;
   const informationalReasonCodes = new Set<string>([
     StationBookingRuleReasonCode.ALLOWED_WITH_INFO,
     StationBookingRuleReasonCode.ADMIN_OVERRIDE_APPLIED,
@@ -409,7 +413,8 @@ function buildReturnSideResult(
             .map((evaluation) => evaluation.reason),
     evaluations,
     effectiveRule: toReturnEffectiveRule(capability?.effectiveRule),
-    timezone: capability?.timezone ?? null,
+    timezone,
+    evaluatedInstant: resolveStationBookingEvaluatedInstant(at, timezone),
     adminOverrideApplied,
   };
 }
@@ -437,7 +442,7 @@ export function evaluateReturnBookingRules(input: {
     return {
       side: 'return',
       stationId: null,
-      ...buildReturnSideResult([missingEvaluation], null, false),
+      ...buildReturnSideResult([missingEvaluation], null, false, input.returnAt, null),
     };
   }
 
@@ -459,7 +464,7 @@ export function evaluateReturnBookingRules(input: {
     return {
       side: 'return',
       stationId: station.id,
-      ...buildReturnSideResult(evaluations, null, false),
+      ...buildReturnSideResult(evaluations, null, false, input.returnAt, station.timezone),
     };
   }
 
@@ -478,7 +483,7 @@ export function evaluateReturnBookingRules(input: {
     return {
       side: 'return',
       stationId: station.id,
-      ...buildReturnSideResult(evaluations, null, false),
+      ...buildReturnSideResult(evaluations, null, false, input.returnAt, station.timezone),
     };
   }
 
@@ -499,6 +504,6 @@ export function evaluateReturnBookingRules(input: {
   return {
     side: 'return',
     stationId: station.id,
-    ...buildReturnSideResult(finalEvaluations, capability, adminOverrideApplied),
+    ...buildReturnSideResult(finalEvaluations, capability, adminOverrideApplied, input.returnAt, station.timezone),
   };
 }
