@@ -77,6 +77,8 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [testPassed, setTestPassed] = useState(false);
+  const [conversationEscalatedFilter, setConversationEscalatedFilter] = useState(false);
+  const [preselectedConversationId, setPreselectedConversationId] = useState<string | null>(null);
   const operationLock = useRef(false);
 
   const isBusy = saving || activating || syncing;
@@ -394,6 +396,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
     <VoicePageShell
       header={
         <VoiceCommandHeader
+          workspace={workspace}
           assistant={assistant}
           readiness={readiness}
           callsToday={callsToday}
@@ -404,17 +407,12 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           isBusy={isBusy}
           activating={activating}
           saving={saving}
-          syncing={syncing}
           testLoading={false}
           canActivate={canActivate}
           isActive={isActive}
           hasDraft={hasDraft}
           onActivate={() => void toggleActive()}
           onTest={() => setOpsTab('settings', 'diagnostics')}
-          onSync={() => {
-            setOpsTab('conversations');
-            void syncLogs();
-          }}
           onSave={() => void save()}
         />
       }
@@ -448,21 +446,35 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
         {opsTab === 'overview' && (
           <VoiceOperationsOverview
             orgId={orgId}
+            workspace={workspace}
             assistant={assistant}
             readiness={readiness}
             conversations={conversations}
             conversationsLoaded={conversationsLoaded}
             providerWarning={providerWarning}
-            onOpenConversations={() => setOpsTab('conversations')}
+            onOpenConversations={filter => {
+              setConversationEscalatedFilter(filter === 'escalated');
+              setOpsTab('conversations');
+            }}
             onOpenAnalytics={() => setOpsTab('analytics')}
+            onOpenAutomations={() => setOpsTab('automations')}
+            onOpenSettings={section => setOpsTab('settings', section)}
+            onSelectConversation={conversation => {
+              setPreselectedConversationId(conversation.id);
+              setOpsTab('conversations');
+            }}
           />
         )}
 
         {opsTab === 'conversations' && (
           <VoiceConversationsPanel
             orgId={orgId}
+            assistant={assistant}
             isDarkMode={isDarkMode}
             cardClassName={card}
+            initialEscalatedOnly={conversationEscalatedFilter}
+            preselectedConversationId={preselectedConversationId}
+            onPreselectHandled={() => setPreselectedConversationId(null)}
             onConversationsChange={items => {
               setConversations(items);
               setConversationsLoaded(true);
