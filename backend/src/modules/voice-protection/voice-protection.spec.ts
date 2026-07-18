@@ -177,6 +177,8 @@ describe('VoiceBudgetEnforcementService limits', () => {
       countActive: jest.fn(async () => 0),
     };
     const abuse = { detectSignals: jest.fn(async () => []) };
+    const { VoiceEntitlementService } = require('@modules/voice-entitlement/voice-entitlement.service');
+    const entitlements = new VoiceEntitlementService(subscriptions);
     const prisma = {
       voiceUsageEvent: {
         aggregate: jest.fn(async () => ({ _sum: { customerPriceCents: 1500 } })),
@@ -197,6 +199,7 @@ describe('VoiceBudgetEnforcementService limits', () => {
       audit,
       concurrent,
       abuse,
+      entitlements,
     );
 
     return { enforcement, audit, concurrent, overrides, billing, prisma };

@@ -4,6 +4,7 @@ import { RedisModule } from '@shared/redis/redis.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VoiceBillingModule } from '@modules/voice-billing/voice-billing.module';
+import { VoiceEntitlementModule } from '@modules/voice-entitlement/voice-entitlement.module';
 import { VoiceBudgetPolicyRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { VoiceSubscriptionRepository } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
 import { VoiceAbuseDetectionService } from './voice-abuse-detection.service';
@@ -15,7 +16,7 @@ import { VoiceProtectionOverrideService } from './voice-protection-override.serv
 import { VoiceProtectionController, VoiceProtectionAdminController } from './voice-protection.controller';
 
 @Module({
-  imports: [PrismaModule, RedisModule, SharedGuardsModule, ActivityLogModule, VoiceBillingModule],
+  imports: [PrismaModule, RedisModule, SharedGuardsModule, ActivityLogModule, VoiceBillingModule, VoiceEntitlementModule],
   controllers: [VoiceProtectionController, VoiceProtectionAdminController],
   providers: [
     VoiceBudgetEnforcementService,

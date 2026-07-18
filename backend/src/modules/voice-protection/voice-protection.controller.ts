@@ -12,13 +12,15 @@ import {
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { RequireVoiceEntitlement } from '@modules/voice-entitlement/require-voice-entitlement.decorator';
+import { VoiceEntitlementGuard } from '@modules/voice-entitlement/voice-entitlement.guard';
 import { VoiceBudgetPolicyRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { VoiceBudgetEnforcementService } from './voice-budget-enforcement.service';
 import { VoiceBudgetWarningService } from './voice-budget-warning.service';
 import { VoiceProtectionAuditService } from './voice-protection-audit.service';
 
 @Controller('organizations/:orgId/voice-assistant/protection')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, VoiceEntitlementGuard)
 @Roles('ORG_ADMIN', 'SUB_ADMIN')
 export class VoiceProtectionController {
   constructor(
@@ -29,6 +31,7 @@ export class VoiceProtectionController {
   ) {}
 
   @Get('status')
+  @RequireVoiceEntitlement('protection.read')
   async status(@Param('orgId') orgId: string) {
     const [snapshot, forecast, policy] = await Promise.all([
       this.enforcement.getEnforcementSnapshot(orgId),
@@ -39,11 +42,13 @@ export class VoiceProtectionController {
   }
 
   @Get('audit')
+  @RequireVoiceEntitlement('protection.read')
   auditTrail(@Param('orgId') orgId: string) {
     return this.audit.listByOrganization(orgId);
   }
 
   @Patch('budget-policy')
+  @RequireVoiceEntitlement('protection.write')
   async updateBudgetPolicy(
     @Param('orgId') orgId: string,
     @Body() body: Record<string, unknown>,

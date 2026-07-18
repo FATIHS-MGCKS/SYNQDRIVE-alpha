@@ -16,6 +16,10 @@ import {
   VoiceAgentDeploymentRepository,
   VoiceSubscriptionRepository,
 } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
+import { VoiceEntitlementService } from '@modules/voice-entitlement/voice-entitlement.service';
+import { VoiceEntitlementDeniedError } from '@modules/voice-entitlement/voice-entitlement-reason-codes';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
+import { VoiceRolloutDeniedError } from '@modules/voice-rollout/voice-rollout-reason-codes';
 import { VoiceToolExecutionRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { isWithinBusinessHours } from '@modules/voice-assistant/agent-deployment/agent-business-hours.util';
 import { buildCanonicalAgentConfigFromAssistant } from '@modules/voice-assistant/agent-deployment/agent-config.builder';
@@ -43,11 +47,22 @@ export class VoiceMcpGatewayMiddlewareService {
     private readonly prisma: PrismaService,
     private readonly subscriptions: VoiceSubscriptionRepository,
     private readonly deployments: VoiceAgentDeploymentRepository,
+    private readonly entitlements: VoiceEntitlementService,
+    private readonly rollout: VoiceRolloutService,
   ) {}
 
   async assertGatewayReady(organizationId: string): Promise<void> {
     if (!isVoiceMcpGatewayEnabled()) {
       throw new VoiceMcpError('GatewayDisabled', 'The SynqDrive voice MCP gateway is not enabled.');
+    }
+
+    const evaluation = await this.rollout.evaluateSurface(organizationId, 'mcp');
+    if (!evaluation.allowed) {
+      const blocker = evaluation.blockers[0];
+      throw new VoiceMcpError(
+        'GatewayDisabled',
+        blocker?.message ?? 'Voice MCP is not enabled for this organization rollout tier.',
+      );
     }
   }
 
@@ -70,10 +85,13 @@ export class VoiceMcpGatewayMiddlewareService {
       throw new VoiceMcpError('TenantMismatch', 'The deployment does not match the voice assistant in this token.');
     }
 
-    const subscriptions = await this.subscriptions.listByOrganization(context.organizationId);
-    const activeSubscription = subscriptions.find((row) => row.status === 'ACTIVE');
-    if (!activeSubscription) {
-      throw new VoiceMcpError('PermissionDenied', 'Voice AI subscription is not active for this organization.');
+    try {
+      await this.entitlements.assertCapability(context.organizationId, 'mcp.tools');
+    } catch (err) {
+      if (err instanceof VoiceEntitlementDeniedError) {
+        throw new VoiceMcpError('PermissionDenied', err.message);
+      }
+      throw err;
     }
   }
 

@@ -12,12 +12,17 @@ import {
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { VoiceControlPlaneAdminService } from './voice-control-plane-admin.service';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
+import type { VoiceRolloutStatus } from '@prisma/client';
 
 @Controller('admin/voice-assistant/control-plane')
 @UseGuards(RolesGuard)
 @Roles('MASTER_ADMIN')
 export class VoiceControlPlaneAdminController {
-  constructor(private readonly controlPlane: VoiceControlPlaneAdminService) {}
+  constructor(
+    private readonly controlPlane: VoiceControlPlaneAdminService,
+    private readonly rollout: VoiceRolloutService,
+  ) {}
 
   @Get('platform-status')
   platformStatus() {
@@ -119,6 +124,39 @@ export class VoiceControlPlaneAdminController {
       orgId,
       confirm: body.confirm,
       actorUserId: req.user?.id,
+    });
+  }
+
+  @Get('organizations/:orgId/rollout-status')
+  getRolloutStatus(@Param('orgId') orgId: string) {
+    return this.rollout.getStatusView(orgId);
+  }
+
+  @Get('organizations/:orgId/rollout-audit')
+  listRolloutAudit(
+    @Param('orgId') orgId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.rollout.listAuditEvents(
+      orgId,
+      limit ? Number.parseInt(limit, 10) : undefined,
+    );
+  }
+
+  @Post('organizations/:orgId/rollout-status')
+  updateRolloutStatus(
+    @Param('orgId') orgId: string,
+    @Body() body: { status: VoiceRolloutStatus; reason: string; confirm?: boolean },
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.rollout.changeRolloutStatus({
+      organizationId: orgId,
+      status: body.status,
+      reason: body.reason,
+      confirm: body.confirm,
+      actorUserId: req.user?.id,
+      idempotencyKey,
     });
   }
 }

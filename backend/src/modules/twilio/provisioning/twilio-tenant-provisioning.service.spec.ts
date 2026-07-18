@@ -105,6 +105,9 @@ describe('TwilioTenantProvisioningService', () => {
       phoneNumberRepository,
       provisioningJobRepository,
       audit as unknown as AuditService,
+      {
+        assertSurfaceAllowed: jest.fn().mockResolvedValue({ status: 'CANARY' }),
+      } as unknown as import('@modules/voice-rollout/voice-rollout.service').VoiceRolloutService,
     );
   });
 

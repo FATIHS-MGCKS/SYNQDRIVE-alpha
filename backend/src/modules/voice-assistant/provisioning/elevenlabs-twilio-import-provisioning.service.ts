@@ -19,6 +19,8 @@ import {
   VoiceProvisioningJobType,
 } from '@prisma/client';
 import { AuditService } from '@modules/activity-log/audit.service';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
+import { VoiceRolloutDeniedError, toRolloutHttpException } from '@modules/voice-rollout/voice-rollout-reason-codes';
 import { TWILIO_DEFAULT_EDGE, TWILIO_DEFAULT_REGION } from '@config/index';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TwilioTenantClientFactory } from '@modules/twilio/twilio-tenant-client.factory';
@@ -65,6 +67,7 @@ export class ElevenLabsTwilioImportProvisioningService {
     private readonly deploymentRepository: VoiceAgentDeploymentRepository,
     private readonly provisioningJobRepository: VoiceProvisioningJobRepository,
     private readonly audit: AuditService,
+    private readonly rollout: VoiceRolloutService,
   ) {}
 
   async evaluateReadiness(
@@ -174,6 +177,16 @@ export class ElevenLabsTwilioImportProvisioningService {
     input: ElevenLabsTwilioImportAndAssignInput,
   ): Promise<ElevenLabsTwilioImportAndAssignResult> {
     this.assertConfirmation(input.actor);
+    try {
+      await this.rollout.assertSurfaceAllowed(input.organizationId, 'provisioning', {
+        skipRuntimePrerequisites: true,
+      });
+    } catch (err) {
+      if (err instanceof VoiceRolloutDeniedError) {
+        throw toRolloutHttpException(err);
+      }
+      throw err;
+    }
     const flags = readTwilioProvisioningFlags();
     const stagingEnabled = isElevenLabsImportStagingEnabled();
     const dryRun = input.actor.dryRun === true || !stagingEnabled;

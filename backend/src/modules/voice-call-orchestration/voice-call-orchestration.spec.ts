@@ -38,6 +38,16 @@ describe('VoiceCallOrchestrationService', () => {
   const protection = {
     evaluateInboundDegradation: jest.fn().mockResolvedValue({ degraded: false }),
   };
+  const rollout = {
+    evaluateCallPrerequisites: jest.fn().mockResolvedValue({
+      organizationId: ORG,
+      surface: 'inbound',
+      rolloutStatus: 'CANARY',
+      allowed: true,
+      blockers: [],
+    }),
+    evaluateSurface: jest.fn(),
+  };
   const mcpTokens = { issue: jest.fn() };
   const internalEvents = { recordConversationLifecycle: jest.fn() };
 
@@ -56,27 +66,25 @@ describe('VoiceCallOrchestrationService', () => {
       phoneNumbers as never,
       policy as never,
       protection as never,
+      rollout as never,
       mcpTokens as never,
       internalEvents as never,
     );
   });
 
-  it('reports inbound readiness blockers when phone is not imported', async () => {
+  it('reports inbound readiness blockers from rollout prerequisites', async () => {
     prisma.voiceAssistant.findUnique.mockResolvedValue({
       id: ASSISTANT_ID,
       organizationId: ORG,
       status: VoiceAssistantStatus.ACTIVE,
       phoneNumberId: PHONE_ID,
     });
-    phoneNumbers.findById.mockResolvedValue({
-      id: PHONE_ID,
-      lifecycle: VoicePhoneNumberLifecycle.ACTIVE,
-      elevenLabsImportStatus: VoiceElevenLabsImportStatus.NOT_IMPORTED,
-    });
-    prisma.voiceAgentDeployment.findFirst.mockResolvedValue({
-      id: DEPLOY_ID,
-      status: VoiceAgentDeploymentStatus.ACTIVE,
-      provider: VoiceControlPlaneProvider.ELEVENLABS,
+    rollout.evaluateCallPrerequisites.mockResolvedValue({
+      organizationId: ORG,
+      surface: 'inbound',
+      rolloutStatus: 'CANARY',
+      allowed: false,
+      blockers: [{ code: 'phone_not_imported', message: 'not imported' }],
     });
 
     const readiness = await service.evaluateInboundReadiness(ORG);
@@ -149,7 +157,9 @@ describe('VoiceCallPolicyService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.VOICE_NATIVE_TWILIO_INTEGRATION = 'true';
-    policy = new VoiceCallPolicyService(prisma as never, enforcement as never);
+    policy = new VoiceCallPolicyService(prisma as never, enforcement as never, {
+      assertSurfaceAllowed: jest.fn().mockResolvedValue({ organizationId: ORG, status: 'CANARY' }),
+    } as never);
   });
 
   it('rejects outbound when subscription is suspended', async () => {
