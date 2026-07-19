@@ -24,4 +24,6 @@ export const QUEUE_NAMES = {
   BATTERY_V2: 'battery.v2',
   /** Voice provider webhook async processing — lifecycle correlation. */
   VOICE_WEBHOOK_PROCESS: 'voice.webhook.process',
+  /** Device connection OBD plug/unplug webhook async processing. */
+  DEVICE_CONNECTION_WEBHOOK_PROCESS: 'device.connection.webhook.process',
 } as const;

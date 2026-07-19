@@ -13,7 +13,14 @@ export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
 export type DeviceConnectionIntakeOutcome =
   | 'created'
   | 'duplicate'
-  | 'ignored';
+  | 'ignored_by_policy';
+
+export type DeviceConnectionProcessResult = {
+  outcome: DeviceConnectionIntakeOutcome;
+  eventId?: string;
+  eventType?: DimoDeviceConnectionEventType;
+  policyReason?: string;
+};
 
 export type ObdPlugState = 'plugged' | 'unplugged' | 'unknown';
 
@@ -28,6 +35,8 @@ export interface IngestDeviceConnectionInput {
   pluggedIn: boolean;
   observedAt: Date;
   rawPayload: unknown;
+  receivedAt?: Date;
+  inboxId?: string;
 }
 
 /** Derive current plug state from the most recent persisted connection event. */
@@ -116,10 +125,11 @@ export class DeviceConnectionWebhookService {
 
   /**
    * Persist an OBD plug/unplug webhook event only on real state transitions.
+   * @deprecated Prefer inbox intake + async processing. Kept for unit tests and direct calls.
    */
   async ingestObdPlugStateChange(
     input: IngestDeviceConnectionInput,
-  ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
+  ): Promise<DeviceConnectionProcessResult> {
     const eventType = DeviceConnectionWebhookService.eventTypeForPlugState(input.pluggedIn);
     const gate = await this.evaluateStateChangeGate(
       input.vehicle.id,
@@ -130,7 +140,7 @@ export class DeviceConnectionWebhookService {
       this.logger.debug(
         `Device connection ignored for vehicle ${input.vehicle.id}: ${gate.reason} pluggedIn=${input.pluggedIn}`,
       );
-      return { outcome: 'ignored', eventType };
+      return { outcome: 'ignored_by_policy', eventType, policyReason: gate.reason };
     }
 
     return this.persistDeviceConnectionEvent({
@@ -144,7 +154,7 @@ export class DeviceConnectionWebhookService {
     input: Omit<IngestDeviceConnectionInput, 'pluggedIn'> & {
       eventType: DimoDeviceConnectionEventType;
     },
-  ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
+  ): Promise<DeviceConnectionProcessResult> {
     const pluggedIn = DeviceConnectionWebhookService.pluggedInFromEventType(input.eventType);
     const gate = await this.evaluateStateChangeGate(
       input.vehicle.id,
@@ -155,10 +165,45 @@ export class DeviceConnectionWebhookService {
       this.logger.debug(
         `Device connection ignored for vehicle ${input.vehicle.id}: ${gate.reason} eventType=${input.eventType}`,
       );
-      return { outcome: 'ignored', eventType: input.eventType };
+      return { outcome: 'ignored_by_policy', eventType: input.eventType, policyReason: gate.reason };
     }
 
     return this.persistDeviceConnectionEvent(input);
+  }
+
+  /** Process a validated inbox row — throws on technical failures (retry/DLQ upstream). */
+  async processInboxEntry(input: {
+    inboxId: string;
+    vehicle: DeviceConnectionVehicle;
+    tokenId: number;
+    pluggedIn: boolean;
+    observedAt: Date;
+    eventType: DimoDeviceConnectionEventType;
+    rawPayload: unknown;
+    receivedAt: Date;
+  }): Promise<DeviceConnectionProcessResult> {
+    const gate = await this.evaluateStateChangeGate(
+      input.vehicle.id,
+      input.pluggedIn,
+      input.observedAt,
+    );
+    if (!gate.persist) {
+      return {
+        outcome: 'ignored_by_policy',
+        eventType: input.eventType,
+        policyReason: gate.reason,
+      };
+    }
+
+    return this.persistDeviceConnectionEvent({
+      vehicle: input.vehicle,
+      tokenId: input.tokenId,
+      observedAt: input.observedAt,
+      rawPayload: input.rawPayload,
+      eventType: input.eventType,
+      receivedAt: input.receivedAt,
+      inboxId: input.inboxId,
+    });
   }
 
   private async evaluateStateChangeGate(
@@ -214,46 +259,47 @@ export class DeviceConnectionWebhookService {
     input: Omit<IngestDeviceConnectionInput, 'pluggedIn'> & {
       eventType: DimoDeviceConnectionEventType;
     },
-  ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
+  ): Promise<DeviceConnectionProcessResult> {
     const { vehicle, tokenId, observedAt, rawPayload, eventType } = input;
-    const receivedAt = new Date();
+    const receivedAt = input.receivedAt ?? new Date();
     const dedupBucket = DeviceConnectionWebhookService.dedupBucket(observedAt);
 
-    try {
-      const row = await this.prisma.dimoDeviceConnectionEvent.upsert({
-        where: {
-          provider_vehicleId_eventType_dedupBucket: {
-            provider: 'DIMO',
-            vehicleId: vehicle.id,
-            eventType,
-            dedupBucket,
-          },
-        },
-        create: {
-          organizationId: vehicle.organizationId,
-          vehicleId: vehicle.id,
-          tokenId,
+    const row = await this.prisma.dimoDeviceConnectionEvent.upsert({
+      where: {
+        provider_vehicleId_eventType_dedupBucket: {
           provider: 'DIMO',
+          vehicleId: vehicle.id,
           eventType,
-          observedAt,
-          receivedAt,
           dedupBucket,
-          rawPayloadJson: rawPayload as object,
         },
-        update: {},
-        select: { id: true, createdAt: true, updatedAt: true },
-      });
+      },
+      create: {
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+        tokenId,
+        provider: 'DIMO',
+        eventType,
+        observedAt,
+        receivedAt,
+        dedupBucket,
+        rawPayloadJson: rawPayload as object,
+      },
+      update: {},
+      select: { id: true, createdAt: true, updatedAt: true },
+    });
 
-      const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
-      if (!isNew) {
-        return { outcome: 'duplicate', eventId: row.id, eventType };
-      }
+    const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
+    if (!isNew) {
+      return { outcome: 'duplicate', eventId: row.id, eventType };
+    }
 
-      this.logger.log(
-        `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()}`,
-      );
+    this.logger.log(
+      `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()}` +
+        (input.inboxId ? ` (inbox=${input.inboxId})` : ''),
+    );
 
-      const processedAt = new Date();
+    const processedAt = new Date();
+    try {
       await this.syncEpisodeAfterPersistedEvent({
         organizationId: vehicle.organizationId,
         vehicleId: vehicle.id,
@@ -263,21 +309,20 @@ export class DeviceConnectionWebhookService {
         observedAt,
         receivedAt,
       });
-
-      await this.prisma.dimoDeviceConnectionEvent.update({
-        where: { id: row.id },
-        data: { processedAt },
-      });
-
-      return { outcome: 'created', eventId: row.id, eventType };
     } catch (err: unknown) {
-      this.logger.warn(
-        `Device connection intake failed for vehicle ${vehicle.id}: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Episode sync failed for device connection event ${row.id}: ${message}`,
       );
-      return { outcome: 'ignored' };
+      throw new Error(`EPISODE_SYNC_FAILED:${message}`);
     }
+
+    await this.prisma.dimoDeviceConnectionEvent.update({
+      where: { id: row.id },
+      data: { processedAt },
+    });
+
+    return { outcome: 'created', eventId: row.id, eventType };
   }
 
   private async syncEpisodeAfterPersistedEvent(input: {
