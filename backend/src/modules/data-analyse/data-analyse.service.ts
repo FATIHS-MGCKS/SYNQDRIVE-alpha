@@ -9,6 +9,7 @@ import { ClickHouseDiagnosticsService } from '@modules/clickhouse/clickhouse-dia
 import type { ClickHouseDiagnosticsDto } from '@modules/clickhouse/clickhouse-diagnostics.types';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DeviceConnectionWebhookConfigurationService } from '@modules/dimo/device-connection-webhook-configuration/device-connection-webhook-configuration.service';
+import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import {
   TELEMETRY_FRESH_THRESHOLD_MS,

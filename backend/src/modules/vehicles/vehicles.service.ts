@@ -2377,12 +2377,14 @@ export class VehiclesService {
 
     const hardwareById = new Map([[vehicle.id, vehicle.hardwareType as string | null]]);
     const dimoLinkedById = new Map([[vehicle.id, vehicle.dimoVehicleId != null]]);
+    const tokenIdById = new Map([[vehicle.id, vehicle.dimoVehicle?.tokenId ?? null]]);
     const [deviceSummaries, runtimeByVehicle] = await Promise.all([
       this.deviceConnectionQuery.getFleetSummariesForVehicles(
         organizationId,
         [vehicle.id],
         hardwareById,
         dimoLinkedById,
+        tokenIdById,
       ),
       this.connectivityRuntimeProjection.projectForVehicles(organizationId, [vehicle.id]),
     ]);

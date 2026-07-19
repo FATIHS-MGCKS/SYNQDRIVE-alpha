@@ -1845,52 +1845,52 @@ model OrganizationUserInvite {
 // ------------------------------------------------
 
 model Station {
-  id                      String        @id @default(uuid())
-  organizationId          String        @map("organization_id")
-  name                    String
-  code                    String?
-  status                  StationStatus @default(ACTIVE)
-  type                    StationType   @default(BRANCH)
-  isPrimary               Boolean       @default(false) @map("is_primary")
-  address                 String?
-  addressLine2            String?       @map("address_line2")
-  city                    String?
-  postalCode              String?       @map("postal_code")
-  country                 String?
-  latitude                Float?
-  longitude               Float?
-  timezone                String?       @default("Europe/Berlin")
-  radiusMeters            Int?          @default(100) @map("radius_meters")
-  phone                   String?
-  email                   String?
-  managerName             String?       @map("manager_name")
-  pickupEnabled           Boolean       @default(true) @map("pickup_enabled")
-  returnEnabled           Boolean       @default(true) @map("return_enabled")
-  afterHoursReturnEnabled Boolean       @default(false) @map("after_hours_return_enabled")
-  keyBoxAvailable         Boolean       @default(false) @map("key_box_available")
-  capacity                Int?
-  openingHours            Json?         @map("opening_hours")
-  holidayRules            Json?         @map("holiday_rules")
-  handoverInstructions    String?       @map("handover_instructions")
-  returnInstructions      String?       @map("return_instructions")
-  notes                   String?
-  internalNotes           String?       @map("internal_notes")
-  googlePlaceId                 String?       @map("google_place_id")
-  archivedAt                    DateTime?     @map("archived_at")
-  archivedCapabilitiesSnapshot  Json?         @map("archived_capabilities_snapshot")
-  createdAt                     DateTime      @default(now()) @map("created_at")
-  updatedAt                     DateTime      @updatedAt @map("updated_at")
+  id                           String        @id @default(uuid())
+  organizationId               String        @map("organization_id")
+  name                         String
+  code                         String?
+  status                       StationStatus @default(ACTIVE)
+  type                         StationType   @default(BRANCH)
+  isPrimary                    Boolean       @default(false) @map("is_primary")
+  address                      String?
+  addressLine2                 String?       @map("address_line2")
+  city                         String?
+  postalCode                   String?       @map("postal_code")
+  country                      String?
+  latitude                     Float?
+  longitude                    Float?
+  timezone                     String?       @default("Europe/Berlin")
+  radiusMeters                 Int?          @default(100) @map("radius_meters")
+  phone                        String?
+  email                        String?
+  managerName                  String?       @map("manager_name")
+  pickupEnabled                Boolean       @default(true) @map("pickup_enabled")
+  returnEnabled                Boolean       @default(true) @map("return_enabled")
+  afterHoursReturnEnabled      Boolean       @default(false) @map("after_hours_return_enabled")
+  keyBoxAvailable              Boolean       @default(false) @map("key_box_available")
+  capacity                     Int?
+  openingHours                 Json?         @map("opening_hours")
+  holidayRules                 Json?         @map("holiday_rules")
+  handoverInstructions         String?       @map("handover_instructions")
+  returnInstructions           String?       @map("return_instructions")
+  notes                        String?
+  internalNotes                String?       @map("internal_notes")
+  googlePlaceId                String?       @map("google_place_id")
+  archivedAt                   DateTime?     @map("archived_at")
+  archivedCapabilitiesSnapshot Json?         @map("archived_capabilities_snapshot")
+  createdAt                    DateTime      @default(now()) @map("created_at")
+  updatedAt                    DateTime      @updatedAt @map("updated_at")
 
-  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehiclesHome           Vehicle[]               @relation("VehicleHomeStation")
-  vehiclesCurrent        Vehicle[]               @relation("VehicleCurrentStation")
-  vehiclesExpected       Vehicle[]               @relation("VehicleExpectedStation")
+  organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehiclesHome           Vehicle[]                @relation("VehicleHomeStation")
+  vehiclesCurrent        Vehicle[]                @relation("VehicleCurrentStation")
+  vehiclesExpected       Vehicle[]                @relation("VehicleExpectedStation")
   transfersFrom          VehicleStationTransfer[] @relation("TransferFromStation")
   transfersTo            VehicleStationTransfer[] @relation("TransferToStation")
-  pickupBookings         Booking[]               @relation("BookingPickupStation")
-  returnBookings         Booking[]               @relation("BookingReturnStation")
-  actualPickupBookings   Booking[]               @relation("BookingActualPickupStation")
-  actualReturnBookings   Booking[]               @relation("BookingActualReturnStation")
+  pickupBookings         Booking[]                @relation("BookingPickupStation")
+  returnBookings         Booking[]                @relation("BookingReturnStation")
+  actualPickupBookings   Booking[]                @relation("BookingActualPickupStation")
+  actualReturnBookings   Booking[]                @relation("BookingActualReturnStation")
   userAccountPreferences UserAccountPreference[]
 
   @@unique([organizationId, code])
@@ -6490,7 +6490,7 @@ model DimoDeviceConnectionEvent {
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
-  openedEpisodes  DeviceConnectionEpisode[] @relation("EpisodeOpenedByEvent")
+  openedEpisodes   DeviceConnectionEpisode[] @relation("EpisodeOpenedByEvent")
   resolvedEpisodes DeviceConnectionEpisode[] @relation("EpisodeResolvedByEvent")
 
   @@unique([provider, vehicleId, eventType, dedupBucket])
@@ -6502,30 +6502,30 @@ model DimoDeviceConnectionEvent {
 }
 
 model DeviceConnectionWebhookInbox {
-  id                   String                                    @id @default(uuid())
-  providerEventId      String                                    @map("provider_event_id")
-  provider             String                                    @default("DIMO")
-  eventType            DimoDeviceConnectionEventType             @map("event_type")
-  observedAt           DateTime                                  @map("observed_at")
-  receivedAt           DateTime                                  @default(now()) @map("received_at")
-  processedAt          DateTime?                                 @map("processed_at")
-  processingStatus     DeviceConnectionWebhookProcessingStatus   @default(RECEIVED) @map("processing_status")
-  processingAttempts   Int                                       @default(0) @map("processing_attempts")
-  lastErrorCode        String?                                   @map("last_error_code")
-  lastErrorAt          DateTime?                                 @map("last_error_at")
-  nextRetryAt          DateTime?                                 @map("next_retry_at")
-  deadLetteredAt       DateTime?                                 @map("dead_lettered_at")
+  id                   String                                      @id @default(uuid())
+  providerEventId      String                                      @map("provider_event_id")
+  provider             String                                      @default("DIMO")
+  eventType            DimoDeviceConnectionEventType               @map("event_type")
+  observedAt           DateTime                                    @map("observed_at")
+  receivedAt           DateTime                                    @default(now()) @map("received_at")
+  processedAt          DateTime?                                   @map("processed_at")
+  processingStatus     DeviceConnectionWebhookProcessingStatus     @default(RECEIVED) @map("processing_status")
+  processingAttempts   Int                                         @default(0) @map("processing_attempts")
+  lastErrorCode        String?                                     @map("last_error_code")
+  lastErrorAt          DateTime?                                   @map("last_error_at")
+  nextRetryAt          DateTime?                                   @map("next_retry_at")
+  deadLetteredAt       DateTime?                                   @map("dead_lettered_at")
   vehicleMappingStatus DeviceConnectionWebhookVehicleMappingStatus @default(PENDING) @map("vehicle_mapping_status")
   bindingMappingStatus DeviceConnectionWebhookBindingMappingStatus @default(PENDING) @map("binding_mapping_status")
-  payloadHash          String                                    @map("payload_hash")
-  policyIgnoreReason   String?                                   @map("policy_ignore_reason")
-  organizationId       String?                                   @map("organization_id")
-  vehicleId            String?                                   @map("vehicle_id")
-  tokenId              Int                                       @map("token_id")
-  domainEventId        String?                                   @map("domain_event_id")
-  rawPayloadJson       Json                                      @map("raw_payload_json")
-  createdAt            DateTime                                  @default(now()) @map("created_at")
-  updatedAt            DateTime                                  @updatedAt @map("updated_at")
+  payloadHash          String                                      @map("payload_hash")
+  policyIgnoreReason   String?                                     @map("policy_ignore_reason")
+  organizationId       String?                                     @map("organization_id")
+  vehicleId            String?                                     @map("vehicle_id")
+  tokenId              Int                                         @map("token_id")
+  domainEventId        String?                                     @map("domain_event_id")
+  rawPayloadJson       Json                                        @map("raw_payload_json")
+  createdAt            DateTime                                    @default(now()) @map("created_at")
+  updatedAt            DateTime                                    @updatedAt @map("updated_at")
 
   @@unique([provider, providerEventId])
   @@index([processingStatus, nextRetryAt])
@@ -6556,31 +6556,31 @@ model DeviceConnectionTriggerRegistryCache {
 // DEVICE CONNECTION EPISODE (persistent binding-scoped unplug state)
 // ------------------------------------------------
 model DeviceConnectionEpisode {
-  id                   String                                 @id @default(uuid())
-  organizationId       String                                 @map("organization_id")
-  vehicleId            String                                 @map("vehicle_id")
-  provider             String                                 @default("DIMO")
-  deviceBindingId      String?                                @map("device_binding_id")
-  providerDeviceIdHash String?                                @map("provider_device_id_hash")
-  openedAt             DateTime                               @map("opened_at")
-  openedByEventId      String?                                @map("opened_by_event_id")
-  openedReason         DeviceConnectionEpisodeOpenedReason    @map("opened_reason")
+  id                   String                                   @id @default(uuid())
+  organizationId       String                                   @map("organization_id")
+  vehicleId            String                                   @map("vehicle_id")
+  provider             String                                   @default("DIMO")
+  deviceBindingId      String?                                  @map("device_binding_id")
+  providerDeviceIdHash String?                                  @map("provider_device_id_hash")
+  openedAt             DateTime                                 @map("opened_at")
+  openedByEventId      String?                                  @map("opened_by_event_id")
+  openedReason         DeviceConnectionEpisodeOpenedReason      @map("opened_reason")
   status               DeviceConnectionEpisodeStatus
-  resolvedAt           DateTime?                              @map("resolved_at")
+  resolvedAt           DateTime?                                @map("resolved_at")
   resolutionMethod     DeviceConnectionEpisodeResolutionMethod? @map("resolution_method")
-  resolutionEvidenceAt DateTime?                              @map("resolution_evidence_at")
-  resolutionEventId    String?                                @map("resolution_event_id")
-  resolutionSnapshotId String?                                @map("resolution_snapshot_id")
-  reviewReasonCodes    String[]                               @default([]) @map("review_reason_codes")
-  stateVersion         Int                                    @default(1) @map("state_version")
-  createdAt            DateTime                               @default(now()) @map("created_at")
-  updatedAt            DateTime                               @updatedAt @map("updated_at")
+  resolutionEvidenceAt DateTime?                                @map("resolution_evidence_at")
+  resolutionEventId    String?                                  @map("resolution_event_id")
+  resolutionSnapshotId String?                                  @map("resolution_snapshot_id")
+  reviewReasonCodes    String[]                                 @default([]) @map("review_reason_codes")
+  stateVersion         Int                                      @default(1) @map("state_version")
+  createdAt            DateTime                                 @default(now()) @map("created_at")
+  updatedAt            DateTime                                 @updatedAt @map("updated_at")
 
-  vehicle         Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  openedByEvent   DimoDeviceConnectionEvent? @relation("EpisodeOpenedByEvent", fields: [openedByEventId], references: [id], onDelete: SetNull)
-  resolvedByEvent DimoDeviceConnectionEvent? @relation("EpisodeResolvedByEvent", fields: [resolutionEventId], references: [id], onDelete: SetNull)
-  resolutionAudits DeviceConnectionEpisodeResolutionAudit[]
-  resolutionOutbox DeviceConnectionEpisodeResolutionOutbox[]
+  vehicle                       Vehicle                                        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  openedByEvent                 DimoDeviceConnectionEvent?                     @relation("EpisodeOpenedByEvent", fields: [openedByEventId], references: [id], onDelete: SetNull)
+  resolvedByEvent               DimoDeviceConnectionEvent?                     @relation("EpisodeResolvedByEvent", fields: [resolutionEventId], references: [id], onDelete: SetNull)
+  resolutionAudits              DeviceConnectionEpisodeResolutionAudit[]
+  resolutionOutbox              DeviceConnectionEpisodeResolutionOutbox[]
   telemetryRecoveryObservations DeviceConnectionTelemetryRecoveryObservation[]
   lifecycleAudits               DeviceConnectionEpisodeLifecycleAudit[]
 
@@ -6595,17 +6595,17 @@ model DeviceConnectionEpisode {
 }
 
 model DeviceConnectionEpisodeResolutionAudit {
-  id                   String                                 @id @default(uuid())
-  organizationId       String                                 @map("organization_id")
-  vehicleId            String                                 @map("vehicle_id")
-  episodeId            String                                 @map("episode_id")
+  id                   String                                  @id @default(uuid())
+  organizationId       String                                  @map("organization_id")
+  vehicleId            String                                  @map("vehicle_id")
+  episodeId            String                                  @map("episode_id")
   resolutionMethod     DeviceConnectionEpisodeResolutionMethod @map("resolution_method")
-  resolutionSnapshotId String                                 @map("resolution_snapshot_id")
-  providerObservedAt   DateTime                               @map("provider_observed_at")
-  receivedAt           DateTime                               @map("received_at")
+  resolutionSnapshotId String                                  @map("resolution_snapshot_id")
+  providerObservedAt   DateTime                                @map("provider_observed_at")
+  receivedAt           DateTime                                @map("received_at")
   outcome              String
   metadata             Json?
-  createdAt            DateTime                               @default(now()) @map("created_at")
+  createdAt            DateTime                                @default(now()) @map("created_at")
 
   episode DeviceConnectionEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
@@ -6617,22 +6617,22 @@ model DeviceConnectionEpisodeResolutionAudit {
 }
 
 model DeviceConnectionEpisodeResolutionOutbox {
-  id                 String                                          @id @default(uuid())
-  organizationId     String                                          @map("organization_id")
-  vehicleId          String                                          @map("vehicle_id")
-  episodeId          String                                          @map("episode_id")
+  id                 String                                           @id @default(uuid())
+  organizationId     String                                           @map("organization_id")
+  vehicleId          String                                           @map("vehicle_id")
+  episodeId          String                                           @map("episode_id")
   eventType          DeviceConnectionEpisodeResolutionOutboxEventType
-  idempotencyKey     String                                          @unique @map("idempotency_key")
+  idempotencyKey     String                                           @unique @map("idempotency_key")
   payload            Json
-  status             DeviceConnectionEpisodeResolutionOutboxStatus   @default(PENDING)
-  processingAttempts Int                                             @default(0) @map("processing_attempts")
-  lastErrorCode      String?                                         @map("last_error_code")
-  lastErrorAt        DateTime?                                       @map("last_error_at")
-  nextRetryAt        DateTime?                                       @map("next_retry_at")
-  deadLetteredAt     DateTime?                                       @map("dead_lettered_at")
-  createdAt          DateTime                                        @default(now()) @map("created_at")
-  updatedAt          DateTime                                        @updatedAt @map("updated_at")
-  processedAt        DateTime?                                       @map("processed_at")
+  status             DeviceConnectionEpisodeResolutionOutboxStatus    @default(PENDING)
+  processingAttempts Int                                              @default(0) @map("processing_attempts")
+  lastErrorCode      String?                                          @map("last_error_code")
+  lastErrorAt        DateTime?                                        @map("last_error_at")
+  nextRetryAt        DateTime?                                        @map("next_retry_at")
+  deadLetteredAt     DateTime?                                        @map("dead_lettered_at")
+  createdAt          DateTime                                         @default(now()) @map("created_at")
+  updatedAt          DateTime                                         @updatedAt @map("updated_at")
+  processedAt        DateTime?                                        @map("processed_at")
 
   episode DeviceConnectionEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
@@ -6645,7 +6645,7 @@ model DeviceConnectionEpisodeResolutionOutbox {
 
 model DeviceConnectionTelemetryRecoveryObservation {
   id                     String   @id @default(uuid())
-  organizationId           String   @map("organization_id")
+  organizationId         String   @map("organization_id")
   vehicleId              String   @map("vehicle_id")
   episodeId              String   @map("episode_id")
   snapshotReferenceId    String   @map("snapshot_reference_id")
@@ -6666,15 +6666,15 @@ model DeviceConnectionTelemetryRecoveryObservation {
 }
 
 model DeviceConnectionEpisodeLifecycleAudit {
-  id                 String                               @id @default(uuid())
-  organizationId     String                               @map("organization_id")
-  vehicleId          String                               @map("vehicle_id")
-  episodeId          String?                              @map("episode_id")
+  id                 String                                 @id @default(uuid())
+  organizationId     String                                 @map("organization_id")
+  vehicleId          String                                 @map("vehicle_id")
+  episodeId          String?                                @map("episode_id")
   action             DeviceConnectionEpisodeLifecycleAction
-  reasonCodes        String[]                             @map("reason_codes")
-  providerObservedAt DateTime?                            @map("provider_observed_at")
-  receivedAt         DateTime?                            @map("received_at")
-  processedAt        DateTime                             @default(now()) @map("processed_at")
+  reasonCodes        String[]                               @map("reason_codes")
+  providerObservedAt DateTime?                              @map("provider_observed_at")
+  receivedAt         DateTime?                              @map("received_at")
+  processedAt        DateTime                               @default(now()) @map("processed_at")
   metadata           Json?
 
   episode DeviceConnectionEpisode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
@@ -10630,21 +10630,21 @@ model VoiceConversation {
   voiceAssistantId String?         @map("voice_assistant_id")
   voiceAssistant   VoiceAssistant? @relation(fields: [voiceAssistantId], references: [id], onDelete: SetNull)
 
-  providerConversationId String?                    @map("provider_conversation_id")
-  elevenLabsConvId       String?                    @map("elevenlabs_conv_id")
-  twilioCallSid          String?                    @map("twilio_call_sid")
-  providerAgentId        String?                    @map("provider_agent_id")
-  callerNumber           String?                    @map("caller_number")
-  direction              VoiceConversationDirection @default(INBOUND)
-  durationSeconds        Int?                       @map("duration_seconds")
-  status                 VoiceConversationStatus    @default(COMPLETED)
+  providerConversationId String?                         @map("provider_conversation_id")
+  elevenLabsConvId       String?                         @map("elevenlabs_conv_id")
+  twilioCallSid          String?                         @map("twilio_call_sid")
+  providerAgentId        String?                         @map("provider_agent_id")
+  callerNumber           String?                         @map("caller_number")
+  direction              VoiceConversationDirection      @default(INBOUND)
+  durationSeconds        Int?                            @map("duration_seconds")
+  status                 VoiceConversationStatus         @default(COMPLETED)
   lifecycleState         VoiceConversationLifecycleState @default(CREATED) @map("lifecycle_state")
-  outcome                VoiceConversationOutcome   @default(PENDING)
-  transcript             String?                    @db.Text
+  outcome                VoiceConversationOutcome        @default(PENDING)
+  transcript             String?                         @db.Text
   summary                String?
-  escalationReason       String?                    @map("escalation_reason")
-  actionsPerformed       String[]                   @map("actions_performed")
-  errorMessage           String?                    @map("error_message")
+  escalationReason       String?                         @map("escalation_reason")
+  actionsPerformed       String[]                        @map("actions_performed")
+  errorMessage           String?                         @map("error_message")
   metadata               Json?
 
   startedAt DateTime  @default(now()) @map("started_at")
@@ -10789,22 +10789,22 @@ model VoiceSubscription {
   organizationId String       @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  planCode              String                  @map("plan_code")
-  planCatalogVersion    String                  @default("2026-07-17") @map("plan_catalog_version")
-  planReference         String?                 @map("plan_reference")
-  status                VoiceSubscriptionStatus @default(PENDING)
-  setupFeeCents         Int                     @default(0) @map("setup_fee_cents")
-  setupFeePaidAt        DateTime?               @map("setup_fee_paid_at")
-  pendingPlanCode       String?                 @map("pending_plan_code")
-  pendingPlanCatalogVersion String?             @map("pending_plan_catalog_version")
-  pendingPlanEffectiveAt DateTime?              @map("pending_plan_effective_at")
-  trialEndsAt           DateTime?               @map("trial_ends_at")
-  currentPeriodStart    DateTime?               @map("current_period_start")
-  currentPeriodEnd      DateTime?               @map("current_period_end")
-  activatedAt           DateTime?               @map("activated_at")
-  suspendedAt           DateTime?               @map("suspended_at")
-  cancelledAt           DateTime?               @map("cancelled_at")
-  archivedAt            DateTime?               @map("archived_at")
+  planCode                  String                  @map("plan_code")
+  planCatalogVersion        String                  @default("2026-07-17") @map("plan_catalog_version")
+  planReference             String?                 @map("plan_reference")
+  status                    VoiceSubscriptionStatus @default(PENDING)
+  setupFeeCents             Int                     @default(0) @map("setup_fee_cents")
+  setupFeePaidAt            DateTime?               @map("setup_fee_paid_at")
+  pendingPlanCode           String?                 @map("pending_plan_code")
+  pendingPlanCatalogVersion String?                 @map("pending_plan_catalog_version")
+  pendingPlanEffectiveAt    DateTime?               @map("pending_plan_effective_at")
+  trialEndsAt               DateTime?               @map("trial_ends_at")
+  currentPeriodStart        DateTime?               @map("current_period_start")
+  currentPeriodEnd          DateTime?               @map("current_period_end")
+  activatedAt               DateTime?               @map("activated_at")
+  suspendedAt               DateTime?               @map("suspended_at")
+  cancelledAt               DateTime?               @map("cancelled_at")
+  archivedAt                DateTime?               @map("archived_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -11137,20 +11137,20 @@ model VoiceUsageEvent {
   voiceConversationId String?            @map("voice_conversation_id")
   voiceConversation   VoiceConversation? @relation(fields: [voiceConversationId], references: [id], onDelete: SetNull)
 
-  provider           VoiceControlPlaneProvider @map("provider")
-  eventType          VoiceUsageEventType       @map("event_type")
-  billableSeconds    Int?                      @map("billable_seconds")
-  billableMinutes    Int?                      @map("billable_minutes")
-  providerCostCents    Int?                      @map("provider_cost_cents")
-  internalCostCents  Int?                      @map("internal_cost_cents")
-  twilioCostCents    Int?                      @map("twilio_cost_cents")
-  elevenLabsCostCents Int?                     @map("elevenlabs_cost_cents")
-  llmCostCents       Int?                      @map("llm_cost_cents")
-  customerPriceCents Int?                      @map("customer_price_cents")
-  currency           String                    @default("EUR") @db.Char(3)
-  externalUsageRef   String?                   @map("external_usage_ref")
-  idempotencyKey     String                    @map("idempotency_key")
-  costStatus         VoiceUsageCostStatus      @default(ESTIMATED) @map("cost_status")
+  provider            VoiceControlPlaneProvider @map("provider")
+  eventType           VoiceUsageEventType       @map("event_type")
+  billableSeconds     Int?                      @map("billable_seconds")
+  billableMinutes     Int?                      @map("billable_minutes")
+  providerCostCents   Int?                      @map("provider_cost_cents")
+  internalCostCents   Int?                      @map("internal_cost_cents")
+  twilioCostCents     Int?                      @map("twilio_cost_cents")
+  elevenLabsCostCents Int?                      @map("elevenlabs_cost_cents")
+  llmCostCents        Int?                      @map("llm_cost_cents")
+  customerPriceCents  Int?                      @map("customer_price_cents")
+  currency            String                    @default("EUR") @db.Char(3)
+  externalUsageRef    String?                   @map("external_usage_ref")
+  idempotencyKey      String                    @map("idempotency_key")
+  costStatus          VoiceUsageCostStatus      @default(ESTIMATED) @map("cost_status")
 
   occurredAt DateTime @default(now()) @map("occurred_at")
   createdAt  DateTime @default(now()) @map("created_at")
@@ -11204,19 +11204,19 @@ model VoiceBudgetPolicy {
   organizationId String       @unique @map("organization_id")
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  monthlyBudgetCents             Int?                        @map("monthly_budget_cents")
-  dailyLimitCents                Int?                        @map("daily_limit_cents")
-  dailyOutboundMinutesLimit      Int?                        @map("daily_outbound_minutes_limit")
-  maxConversationDurationSeconds Int?                        @map("max_conversation_duration_seconds")
-  maxConcurrentCalls             Int?                        @map("max_concurrent_calls")
-  maxRepeatsPerDestination       Int?                        @map("max_repeats_per_destination")
-  destinationCooldownSeconds     Int?                        @map("destination_cooldown_seconds")
+  monthlyBudgetCents             Int?                         @map("monthly_budget_cents")
+  dailyLimitCents                Int?                         @map("daily_limit_cents")
+  dailyOutboundMinutesLimit      Int?                         @map("daily_outbound_minutes_limit")
+  maxConversationDurationSeconds Int?                         @map("max_conversation_duration_seconds")
+  maxConcurrentCalls             Int?                         @map("max_concurrent_calls")
+  maxRepeatsPerDestination       Int?                         @map("max_repeats_per_destination")
+  destinationCooldownSeconds     Int?                         @map("destination_cooldown_seconds")
   destinationRegionPolicy        VoiceDestinationRegionPolicy @default(DE_EEA) @map("destination_region_policy")
-  allowedCountries               String[]                    @default([]) @map("allowed_countries")
-  warnThresholdPct               Int?                        @map("warn_threshold_pct")
-  hardLimitThresholdPct          Int?                        @map("hard_limit_threshold_pct")
-  hardLimitGraceMinutes          Int                         @default(0) @map("hard_limit_grace_minutes")
-  overflowBehavior               VoiceBudgetOverflowBehavior @default(WARN) @map("overflow_behavior")
+  allowedCountries               String[]                     @default([]) @map("allowed_countries")
+  warnThresholdPct               Int?                         @map("warn_threshold_pct")
+  hardLimitThresholdPct          Int?                         @map("hard_limit_threshold_pct")
+  hardLimitGraceMinutes          Int                          @default(0) @map("hard_limit_grace_minutes")
+  overflowBehavior               VoiceBudgetOverflowBehavior  @default(WARN) @map("overflow_behavior")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

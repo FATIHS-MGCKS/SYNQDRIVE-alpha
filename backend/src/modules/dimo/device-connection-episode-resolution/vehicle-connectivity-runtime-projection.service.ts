@@ -5,7 +5,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DataAuthorizationSourceType,
-  DeviceConnectionEpisodeStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { VehicleConnectivityRuntimeState } from '../../vehicles/connectivity/domain/connectivity-domain.types';

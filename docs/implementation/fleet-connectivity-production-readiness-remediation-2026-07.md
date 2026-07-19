@@ -421,6 +421,7 @@
 | 2026-07-19 | Phase2-5 | `fix(connectivity): bind episode reconciliation apply to audited evidence` | Evidence packages + apply validation |
 | 2026-07-19 | Phase2-6 | `fix(connectivity): route binding changes through canonical episode lifecycle` | reconcileBindingDrift + outbox/audit |
 | 2026-07-19 | Phase2-7 | `fix(connectivity): add recovery kill switch and evidence timestamps` | Kill switch env flags, evidence-based timeline timestamps |
+| 2026-07-19 | Phase2-8 | `test(connectivity): verify complete production release candidate` | RC branch `cursor/connectivity-release-candidate-2e0d`; audit `docs/audits/fleet-connectivity-release-candidate-verification-2026-07.md` |
 
 ---
 

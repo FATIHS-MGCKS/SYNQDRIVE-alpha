@@ -13,6 +13,7 @@ import {
   mapOverallStateToLegacyConnectionStatus,
   projectLegacyFleetConnectivityFields,
 } from './vehicle-connectivity-runtime-legacy.projection';
+import { mockWebhookConfiguration } from '@modules/dimo/device-connection-webhook-configuration/device-connection-webhook-configuration.test-helpers';
 import { DeviceConnectionEpisodeStatus } from '@prisma/client';
 
 const NOW = new Date('2026-07-18T12:00:00.000Z').getTime();
@@ -207,6 +208,7 @@ describe('connectivity consumer migration', () => {
         },
       };
 
+      const webhookTrigger = mockWebhookConfiguration();
       const deviceConnection = {
         lastDeviceUnpluggedAt: hoursAgo(2).toISOString(),
         lastDevicePluggedInAt: null,
@@ -218,6 +220,11 @@ describe('connectivity consumer migration', () => {
         rentalRelevant: false,
         duringActiveBooking: false,
         eventSource: 'dimo_webhook' as const,
+        unplugTriggerState: webhookTrigger.unplugTriggerState,
+        plugTriggerState: webhookTrigger.plugTriggerState,
+        recoveryPolicy: webhookTrigger.recoveryPolicy,
+        lastSuccessfulDeliveryAt: webhookTrigger.lastSuccessfulDeliveryAt,
+        lastDeliveryErrorAt: webhookTrigger.lastDeliveryErrorAt,
       };
 
       const mapped = mapFleetConnectivityVehicleWithRuntime(
