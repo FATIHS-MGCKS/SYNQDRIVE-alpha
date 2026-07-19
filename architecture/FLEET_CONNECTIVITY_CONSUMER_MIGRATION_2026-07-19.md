@@ -14,7 +14,16 @@ via batch projection on fleet-connectivity and fleet-map APIs.
 - `VehiclesService.getFleetConnectivity()` / `getFleetMapData()` / `getDeviceConnection()` embed `connectivityRuntime`
 - `connectivity-consumer-migration.spec.ts` — cross-surface + incident regressions
 
-## Frontend
+## Frontend (Prompt 17 — API v2 UI)
+
+- `fleet-connectivity-api.types.ts` / `fleet-connectivity-api.mapper.ts` — list + detail DTO contract
+- `GET /organizations/:orgId/fleet-connectivity/:vehicleId` — detail endpoint
+- `FleetConnectivityTab` — 4 KPIs, reduced columns, mobile cards, canonical `items` only
+- `FleetConnectivityDetailDrawer` — sections A–E, technical collapsed, detail fetch
+- `fleet-connectivity.presentation.ts` + full DE/EN i18n keys
+- `useFleetConnectivityList` hook; tests for filters, presentation, UI states
+
+## Frontend (Prompt 16)
 
 - `VehicleConnectivityRuntimeState` type on `FleetConnectivityVehicle`, `FleetMapVehicleResponse`, `DeviceConnectionSummary`
 - `ConnectivityRuntimeChip` replaces split `ObdRowChip` + `DeviceConnectionWebhookChip` on fleet connectivity tab

@@ -294,6 +294,16 @@ export class VehiclesController {
     return this.vehiclesService.getFleetConnectivity(orgId, query);
   }
 
+  @Get('organizations/:orgId/fleet-connectivity/:vehicleId')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet-connectivity', 'read')
+  async getFleetConnectivityDetail(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.vehiclesService.getFleetConnectivityDetail(orgId, vehicleId);
+  }
+
   @Get('organizations/:orgId/vehicles/:vehicleId/device-connection')
   @UseGuards(OrgScopingGuard)
   async getDeviceConnection(

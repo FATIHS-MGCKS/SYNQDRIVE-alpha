@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-connectivity-canonical-ui-v49700-2026-07-19',
+    version: '4.9.700',
+    title: 'V4.9.700 — Fleet Connectivity canonical API v2 UI redesign',
+    summary: [
+      'Backend: `FleetConnectivityListItemDto` / `FleetConnectivityDetailDto` + KPI summary; detail endpoint `GET …/fleet-connectivity/:vehicleId`; legacy `vehicles` deprecated.',
+      'Frontend: 4 KPIs (action required, telemetry active, standby, no data source), reduced table, mobile cards, user-facing drawer sections A–E, full DE/EN i18n.',
+      'UI reads only canonical `items` / detail DTO — no OBD/webhook/readiness columns or legacy status decisions.',
+    ],
+    reason: 'Prompt 17/18: Finalize connectivity API contract and redesign Fleet Connectivity tab around canonical runtime state.',
+    previousBehavior:
+      '8+ KPIs, OBD/webhook/jamming/readiness columns, technical drawer with masked tokens and raw coordinates; legacy `vehicles` + `connectionStatus` drove filters.',
+    details:
+      'backend/src/modules/vehicles/fleet-connectivity-api.*, frontend/src/rental/components/fleet-connectivity/*, frontend/src/lib/api.ts, i18n en/de, architecture/FLEET_CONNECTIVITY_CONSUMER_MIGRATION_2026-07-19.md.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-19T12:00:00.000Z',
+  },
+  {
     id: 'stations-v2-production-rollout-v49600-2026-07-18',
     version: '4.9.600',
     title: 'V4.9.600 — Stations V2: globales Production-Rollout (enforce)',

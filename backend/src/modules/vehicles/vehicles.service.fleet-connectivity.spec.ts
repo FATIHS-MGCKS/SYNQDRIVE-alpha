@@ -126,13 +126,13 @@ describe('VehiclesService.getFleetConnectivity', () => {
       signalDelayedMaxHours: 48,
     });
     expect(res.summary.total).toBe(1);
-    expect(res.summary.online).toBe(1);
+    expect(res.summary.telemetryActive).toBe(1);
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0].overallState).toBe('TELEMETRY_ACTIVE');
     expect(res.vehicles).toHaveLength(1);
     expect(res.vehicles[0].vehicleId).toBe('v-1');
     expect(res.vehicles[0].maskedDimoTokenId).toBe('123…678');
     expect(res.vehicles[0].dimoTokenId).toBeNull();
-    expect(res.vehicles[0].deviceConnection).toBeNull();
-    expect(res.vehicles[0].connectivityRuntime.overallState).toBe('TELEMETRY_ACTIVE');
     expect(res.pagination.totalInOrganization).toBe(1);
   });
 
@@ -160,8 +160,8 @@ describe('VehiclesService.getFleetConnectivity', () => {
     });
 
     expect(res.summary.total).toBe(1);
-    expect(res.summary.online).toBe(1);
-    expect(res.summary.offline).toBe(0);
+    expect(res.summary.telemetryActive).toBe(1);
+    expect(res.items).toHaveLength(1);
     expect(res.vehicles).toHaveLength(1);
     expect(res.pagination.total).toBe(1);
   });

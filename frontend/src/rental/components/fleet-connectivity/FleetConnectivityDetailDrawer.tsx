@@ -1,27 +1,29 @@
-import { Info, MapPin, Radio, Shield } from 'lucide-react';
-import { DetailDrawer, StatusChip } from '../../../components/patterns';
+import { ChevronDown, Info, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { DetailDrawer, ErrorState, StatusChip } from '../../../components/patterns';
 import { SupportContextButton } from '../../../components/support/SupportContextButton';
-import type { FleetConnectivityVehicle } from '../../../lib/api';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
+import { api, type FleetConnectivityDetail } from '../../../lib/api';
 import { formatOdometerKmFloor } from '../../../lib/formatVehicleDisplay';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { OverallStateChip } from './fleet-connectivity.badges';
 import {
-  ConnectionStatusChip,
-  CoverageStateChip,
-  SignalStateChip,
-} from './fleet-connectivity.badges';
-import {
-  SIGNAL_MATRIX_LABELS,
-  deviceConnectionRowLabel,
-  deviceConnectionSeverityTone,
-  jammingSnapshotSummary,
-  maskedIdentity,
-  obdPlugDisplay,
-} from './fleet-connectivity.utils';
-import {
-  DEVICE_CONNECTION_LABELS,
-  formatDeviceConnectionTimestamp,
-  formatDurationMs,
-} from '../../lib/device-connection-ui';
-import { DeviceConnectionWebhookChip, ConnectivityRuntimeChip } from './fleet-connectivity.badges';
+  capabilityAvailabilityLabel,
+  capabilityFreshnessLabel,
+  capabilitySignalLabel,
+  coverageStateLabel,
+  coverageStateTone,
+  deviceKindLabel,
+  formatLastTelemetry,
+  physicalDeviceLabel,
+  providerLinkLabel,
+  providerSummaryLabel,
+  reasonCodeHint,
+  recommendedActionLabel,
+  timelineEventLabel,
+  vehicleTitle,
+} from './fleet-connectivity.presentation';
 
 function DetailSection({
   title,
@@ -31,7 +33,7 @@ function DetailSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3">
+    <section className="space-y-3" aria-labelledby={title}>
       <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {title}
       </h3>
@@ -50,275 +52,280 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 interface FleetConnectivityDetailDrawerProps {
-  vehicle: FleetConnectivityVehicle | null;
+  orgId: string | null;
+  vehicleId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function FleetConnectivityDetailDrawer({
-  vehicle,
+  orgId,
+  vehicleId,
   open,
   onOpenChange,
 }: FleetConnectivityDetailDrawerProps) {
-  if (!vehicle) return null;
+  const { t, locale } = useLanguage();
+  const [detail, setDetail] = useState<FleetConnectivityDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const obd = obdPlugDisplay(vehicle.obdIsPluggedIn);
-  const jammingText = jammingSnapshotSummary(
-    vehicle.jammingDetectedCount,
-    vehicle.signals.jamming,
-  );
-  const location =
-    vehicle.latitude != null && vehicle.longitude != null
-      ? `${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)}`
-      : 'No data';
+  const load = useCallback(async () => {
+    if (!orgId || !vehicleId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.vehicles.fleetConnectivityDetail(orgId, vehicleId);
+      setDetail(res);
+    } catch {
+      setDetail(null);
+      setError(t('fleetConnectivity.detail.loadError'));
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, vehicleId, t]);
+
+  useEffect(() => {
+    if (open && orgId && vehicleId) {
+      void load();
+    }
+    if (!open) {
+      setDetail(null);
+      setError(null);
+    }
+  }, [open, orgId, vehicleId, load]);
+
+  const v = detail?.vehicle;
 
   return (
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
       widthClassName="sm:max-w-xl"
-      eyebrow="Technical telemetry"
       title={
-        <span>
-          {vehicle.make} {vehicle.model}
-          {vehicle.year ? ` ${vehicle.year}` : ''}
-        </span>
+        v ? (
+          <span>
+            {v.make} {v.model}
+            {v.year ? ` ${v.year}` : ''}
+          </span>
+        ) : (
+          t('fleetConnectivity.detail.title')
+        )
       }
       description={
-        <span className="font-mono text-[11px]">
-          {vehicle.licensePlate ?? '—'} · {vehicle.vin}
-        </span>
+        v ? (
+          <span className="text-[11px] tabular-nums">
+            {v.licensePlate ?? '—'} · {vehicleTitle(v)}
+          </span>
+        ) : undefined
       }
-      status={<ConnectionStatusChip runtime={vehicle.connectivityRuntime} />}
+      status={detail ? <OverallStateChip state={detail.overallState} t={t} /> : undefined}
+      closeLabel={t('fleetConnectivity.detail.close')}
     >
-      <div className="space-y-6">
-        <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5 text-[12px] text-muted-foreground flex gap-2">
-          <Info className="w-4 h-4 shrink-0 mt-0.5" />
-          <p>
-            Read-only technical view. Data coverage reflects capability-aware
-            signal freshness — not mechanical vehicle health.
-          </p>
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          <span className="text-sm">{t('fleetConnectivity.detail.loading')}</span>
         </div>
-
-        <DetailSection title="Connection summary">
-          <div className="surface-premium rounded-xl p-3 space-y-2.5">
-            <DetailRow label="Status" value={<ConnectionStatusChip runtime={vehicle.connectivityRuntime} />} />
-            <DetailRow
-              label="Runtime"
-              value={<ConnectivityRuntimeChip runtime={vehicle.connectivityRuntime} />}
-            />
-            <DetailRow label="Note" value={vehicle.statusNote} />
-            <DetailRow label="Provider" value={vehicle.provider} />
-            <DetailRow label="Connection type" value={vehicle.connectionType} />
-            <DetailRow label="Source type" value={vehicle.sourceType ?? '—'} />
-            <DetailRow
-              label="Paired / linked"
-              value={
-                vehicle.pairedAt
-                  ? new Date(vehicle.pairedAt).toLocaleString('de-DE')
-                  : '—'
-              }
-            />
-            <DetailRow
-              label="Last signal"
-              value={
-                vehicle.lastSeenAt
-                  ? new Date(vehicle.lastSeenAt).toLocaleString('de-DE')
-                  : '—'
-              }
-            />
-            <DetailRow
-              label="Last sync"
-              value={
-                vehicle.lastSyncedAt
-                  ? new Date(vehicle.lastSyncedAt).toLocaleString('de-DE')
-                  : '—'
-              }
-            />
-            <DetailRow label="Data freshness" value={vehicle.freshnessLabel} />
-          </div>
-        </DetailSection>
-
-        <DetailSection title="Device identity (masked)">
-          <div className="surface-premium rounded-xl p-3 space-y-2.5 font-mono text-[11px]">
-            <DetailRow label="Device serial" value={maskedIdentity(vehicle.maskedDeviceSerial)} />
-            <DetailRow label="DIMO token ID" value={maskedIdentity(vehicle.maskedDimoTokenId)} />
-            <DetailRow
-              label="Synthetic token ID"
-              value={maskedIdentity(vehicle.maskedSyntheticTokenId)}
-            />
-          </div>
-        </DetailSection>
-
-        <DetailSection title="Data coverage">
-          <div className="surface-premium rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <CoverageStateChip
-                state={vehicle.coverageState}
-                freshCount={vehicle.freshSignalCount}
-                expectedCount={vehicle.expectedSignalCount}
-              />
-              {vehicle.coveragePercent != null && (
-                <span className="text-[11px] text-muted-foreground tabular-nums">
-                  {vehicle.freshSignalCount}/{vehicle.expectedSignalCount} fresh expected
-                  {vehicle.staleSignalCount > 0
-                    ? ` · ${vehicle.staleSignalCount} stale`
-                    : ''}
-                  {vehicle.missingSignalCount > 0
-                    ? ` · ${vehicle.missingSignalCount} missing`
-                    : ''}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Fresh usable expected signals divided by expected and supported signals.
-              Non-applicable capabilities (e.g. EV SoC on ICE) are excluded.
-            </p>
-            {vehicle.reasonCodes.length > 0 && (
-              <p className="text-[10px] text-muted-foreground font-mono">
-                {vehicle.reasonCodes.join(' · ')}
-              </p>
-            )}
-          </div>
-        </DetailSection>
-
-        <DetailSection title="Signal matrix">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {(Object.keys(SIGNAL_MATRIX_LABELS) as Array<
-              keyof typeof SIGNAL_MATRIX_LABELS
-            >).map((key) => (
-              <div
-                key={key}
-                className="rounded-xl border border-border/60 px-2.5 py-2 space-y-1.5"
-              >
-                <p className="text-[10px] font-semibold text-muted-foreground">
-                  {SIGNAL_MATRIX_LABELS[key]}
-                </p>
-                <SignalStateChip state={vehicle.signals[key]} />
-              </div>
-            ))}
-          </div>
-        </DetailSection>
-
-        <DetailSection title="OBD & cellular">
-          <div className="surface-premium rounded-xl p-3 space-y-3">
-            <div className="flex items-start gap-2">
-              <Radio className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
-              <div>
-                <p className="text-[12px] font-medium">{obd.text}</p>
-                <StatusChip tone={obd.tone} className="mt-1.5">
-                  {DEVICE_CONNECTION_LABELS.snapshotObd}
-                </StatusChip>
-              </div>
-            </div>
-
-            {vehicle.deviceConnection?.eventSource === 'dimo_webhook' && (
-              <div className="flex items-start gap-2 border-t border-border/50 pt-3">
-                <Shield className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
-                <div className="space-y-2 w-full">
-                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                    DIMO Device Connection (Webhook)
-                  </p>
-                  <DeviceConnectionWebhookChip device={vehicle.deviceConnection} />
-                  <DetailRow
-                    label="Status"
-                    value={deviceConnectionRowLabel(vehicle.deviceConnection)}
-                  />
-                  <DetailRow
-                    label="Last unplugged"
-                    value={formatDeviceConnectionTimestamp(
-                      vehicle.deviceConnection.lastDeviceUnpluggedAt,
-                    )}
-                  />
-                  <DetailRow
-                    label="Last plugged"
-                    value={formatDeviceConnectionTimestamp(
-                      vehicle.deviceConnection.lastDevicePluggedInAt,
-                    )}
-                  />
-                  <DetailRow
-                    label="Open episode"
-                    value={
-                      vehicle.deviceConnection.openUnpluggedEpisode
-                        ? `${formatDeviceConnectionTimestamp(vehicle.deviceConnection.openUnpluggedSince)} · ${formatDurationMs(vehicle.deviceConnection.openUnpluggedDurationMs)}`
-                        : DEVICE_CONNECTION_LABELS.noOpenInterruption
-                    }
-                  />
-                  {vehicle.deviceConnection.duringActiveBooking && (
-                    <StatusChip tone="critical">
-                      {DEVICE_CONNECTION_LABELS.duringActiveBooking}
-                    </StatusChip>
-                  )}
-                  {vehicle.deviceConnection.severity && (
-                    <StatusChip tone={deviceConnectionSeverityTone(vehicle.deviceConnection)}>
-                      Severity: {vehicle.deviceConnection.severity}
-                    </StatusChip>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-start gap-2 border-t border-border/50 pt-3">
-              <Shield className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
-              <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                  Latest snapshot indication
-                </p>
-                <p className="text-[12px]">{jammingText}</p>
-                {vehicle.jammingSnapshotNote && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {vehicle.jammingSnapshotNote}
-                  </p>
-                )}
-                {vehicle.jammingDetectedCount > 0 &&
-                  vehicle.jammingIncidents[0] && (
-                    <p className="text-[11px] text-muted-foreground font-mono">
-                      Snapshot at{' '}
-                      {vehicle.jammingIncidents[0].detectedAt
-                        ? new Date(
-                            vehicle.jammingIncidents[0].detectedAt,
-                          ).toLocaleString('de-DE')
-                        : '—'}
-                      {vehicle.jammingIncidents[0].where
-                        ? ` · ${vehicle.jammingIncidents[0].where}`
-                        : ''}
-                    </p>
-                  )}
-              </div>
-            </div>
-          </div>
-        </DetailSection>
-
-        <DetailSection title="Location & odometer">
-          <div className="surface-premium rounded-xl p-3 space-y-2.5">
-            <DetailRow label="Odometer" value={formatOdometerKmFloor(vehicle.odometerKm)} />
-            <DetailRow
-              label="Location"
-              value={
-                <span className="inline-flex items-center gap-1.5 font-mono text-[11px]">
-                  <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                  {location}
-                </span>
-              }
-            />
-            <DetailRow label="Station" value={vehicle.station ?? '—'} />
-          </div>
-        </DetailSection>
-
-        <SupportContextButton
-          kind="fleet-connectivity"
-          className="w-full"
-          contextData={{
-            vehicleId: vehicle.vehicleId,
-            licensePlate: vehicle.licensePlate,
-            vin: vehicle.vin,
-            connectionStatus: vehicle.connectionStatus,
-            lastSeen: vehicle.lastSeenAt,
-            provider: vehicle.provider,
-            readinessLevel: vehicle.readinessLevel,
-          }}
+      ) : error ? (
+        <ErrorState
+          title={t('fleetConnectivity.detail.loadError')}
+          error={error}
+          onRetry={() => void load()}
+          retryLabel={t('fleetConnectivity.retry')}
         />
-      </div>
+      ) : detail ? (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5 text-[12px] text-muted-foreground flex gap-2">
+            <Info className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+            <p>{t('fleetConnectivity.detail.readOnlyNote')}</p>
+          </div>
+
+          <DetailSection title={t('fleetConnectivity.detail.section.currentState')}>
+            <div className="surface-premium rounded-xl p-3 space-y-2.5">
+              <DetailRow
+                label={t('fleetConnectivity.detail.overallState')}
+                value={<OverallStateChip state={detail.overallState} t={t} />}
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.lastTelemetry')}
+                value={formatLastTelemetry(detail.lastTelemetryAt, t, locale)}
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.attention')}
+                value={
+                  <StatusChip tone={detail.attentionState === 'CRITICAL' ? 'critical' : detail.attentionState === 'ACTION_REQUIRED' ? 'warning' : detail.attentionState === 'WATCH' ? 'watch' : 'neutral'}>
+                    {t(
+                      `fleetConnectivity.attention.${detail.attentionState}` as TranslationKey,
+                    )}
+                  </StatusChip>
+                }
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.recommendation')}
+                value={recommendedActionLabel(detail.recommendedAction, t)}
+              />
+              {detail.primaryReasonCode ? (
+                <DetailRow
+                  label={t('fleetConnectivity.detail.primaryHint')}
+                  value={reasonCodeHint(detail.primaryReasonCode, t)}
+                />
+              ) : null}
+            </div>
+          </DetailSection>
+
+          {detail.timeline.length > 0 ? (
+            <DetailSection title={t('fleetConnectivity.detail.section.timeline')}>
+              <ol className="space-y-2">
+                {detail.timeline.map((event) => (
+                  <li
+                    key={event.id}
+                    className="surface-premium rounded-xl px-3 py-2.5 text-[12px]"
+                  >
+                    <p className="font-medium text-foreground">
+                      {timelineEventLabel(event.type, t)}
+                    </p>
+                    <p className="mt-0.5 text-muted-foreground tabular-nums">
+                      {new Date(event.occurredAt).toLocaleString(
+                        locale === 'de' ? 'de-DE' : 'en-GB',
+                      )}
+                    </p>
+                    {event.reasonCode ? (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {reasonCodeHint(event.reasonCode, t)}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </DetailSection>
+          ) : null}
+
+          <DetailSection title={t('fleetConnectivity.detail.section.dataAvailability')}>
+            <div className="surface-premium rounded-xl p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <StatusChip tone={coverageStateTone(detail.dataCoverageState)}>
+                  {coverageStateLabel(detail.dataCoverageState, t)}
+                </StatusChip>
+                {detail.capabilities.coveragePercent != null ? (
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                    {detail.capabilities.freshSignalCount}/{detail.capabilities.expectedSignalCount}
+                  </span>
+                ) : null}
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {detail.capabilities.signals.map((signal) => (
+                  <div
+                    key={signal.key}
+                    className="rounded-xl border border-border/60 px-2.5 py-2 space-y-1"
+                  >
+                    <p className="text-[10px] font-semibold text-muted-foreground">
+                      {capabilitySignalLabel(signal.key, t)}
+                    </p>
+                    <p className="text-[12px] font-medium">
+                      {capabilityAvailabilityLabel(signal.availability, t)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {capabilityFreshnessLabel(signal.freshness, t)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </DetailSection>
+
+          <DetailSection title={t('fleetConnectivity.detail.section.integration')}>
+            <div className="surface-premium rounded-xl p-3 space-y-2.5">
+              <DetailRow
+                label={t('fleetConnectivity.detail.provider')}
+                value={providerSummaryLabel(detail.provider.providerLabel, t)}
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.deviceKind')}
+                value={deviceKindLabel(detail.provider.deviceKind, t)}
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.authorization')}
+                value={providerLinkLabel(detail.provider.authorizationState, t)}
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.consent')}
+                value={
+                  detail.provider.consentGranted
+                    ? t('fleetConnectivity.detail.consentGranted')
+                    : t('fleetConnectivity.detail.consentMissing')
+                }
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.triggerStatus')}
+                value={
+                  detail.provider.triggerConfigured
+                    ? t('fleetConnectivity.detail.triggerActive')
+                    : t('fleetConnectivity.detail.triggerInactive')
+                }
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.lastFetch')}
+                value={
+                  detail.provider.lastSuccessfulFetchAt
+                    ? new Date(detail.provider.lastSuccessfulFetchAt).toLocaleString(
+                        locale === 'de' ? 'de-DE' : 'en-GB',
+                      )
+                    : '—'
+                }
+              />
+            </div>
+          </DetailSection>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl border border-border/60 px-3 py-2.5 text-left text-[12px] font-semibold text-foreground hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]">
+              {t('fleetConnectivity.detail.section.technical')}
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 space-y-2.5 rounded-xl border border-border/50 bg-muted/20 p-3">
+              <DetailRow
+                label={t('fleetConnectivity.detail.physicalDevice')}
+                value={physicalDeviceLabel(detail.physicalDeviceState, t)}
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.odometer')}
+                value={formatOdometerKmFloor(detail.odometerKm)}
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.location')}
+                value={
+                  detail.hasLocation
+                    ? t('fleetConnectivity.detail.locationAvailable')
+                    : t('fleetConnectivity.detail.locationUnavailable')
+                }
+              />
+              <DetailRow
+                label={t('fleetConnectivity.detail.calculatedAt')}
+                value={new Date(detail.timestamps.calculatedAt).toLocaleString(
+                  locale === 'de' ? 'de-DE' : 'en-GB',
+                )}
+              />
+              {detail.activeEpisode?.open ? (
+                <DetailRow
+                  label={t('fleetConnectivity.detail.openEpisode')}
+                  value={t('fleetConnectivity.detail.episodeOpen')}
+                />
+              ) : null}
+            </CollapsibleContent>
+          </Collapsible>
+
+          <SupportContextButton
+            kind="fleet-connectivity"
+            className="w-full"
+            contextData={{
+              vehicleId: detail.vehicle.vehicleId,
+              licensePlate: detail.vehicle.licensePlate,
+              connectionStatus: detail.overallState,
+              lastSeen: detail.lastTelemetryAt,
+              provider: detail.provider.providerLabel,
+            }}
+          />
+        </div>
+      ) : null}
     </DetailDrawer>
   );
 }

@@ -2950,6 +2950,10 @@ export const api = {
         `/organizations/${orgId}/fleet-connectivity${qs ? `?${qs}` : ''}`,
       );
     },
+    fleetConnectivityDetail: (orgId: string, vehicleId: string) =>
+      get<FleetConnectivityDetail>(
+        `/organizations/${orgId}/fleet-connectivity/${vehicleId}`,
+      ),
     deviceConnection: (orgId: string, vehicleId: string) =>
       get<DeviceConnectionSummary>(
         `/organizations/${orgId}/vehicles/${vehicleId}/device-connection`,
@@ -8398,12 +8402,148 @@ export interface FleetConnectivityPagination {
   totalInOrganization: number;
 }
 
+export type ConnectivityReasonCode =
+  | 'TELEMETRY_FRESH'
+  | 'TELEMETRY_STANDBY'
+  | 'TELEMETRY_SOFT_OFFLINE'
+  | 'TELEMETRY_OFFLINE'
+  | 'NO_TELEMETRY_TIMESTAMP'
+  | 'DEVICE_UNPLUG_WEBHOOK'
+  | 'DEVICE_RECONNECTED_EXPLICIT'
+  | 'DEVICE_RECONNECTED_SNAPSHOT'
+  | 'DEVICE_RECONNECTED_TELEMETRY'
+  | 'DEVICE_BINDING_CHANGED'
+  | 'AUTHORIZATION_EXPIRED'
+  | 'CONSENT_MISSING'
+  | 'TOKEN_MISSING'
+  | 'PROVIDER_REVOKED'
+  | 'PROVIDER_ERROR'
+  | 'LINK_ACTIVE'
+  | 'NO_ACTIVE_PROVIDER_LINK'
+  | 'DATA_COVERAGE_PARTIAL'
+  | 'DATA_COVERAGE_INSUFFICIENT'
+  | 'WEBHOOK_PROCESSING_FAILED'
+  | 'STATE_CONFLICT'
+  | 'MANUAL_REVIEW_REQUIRED';
+
+export interface FleetConnectivityVehicleRef {
+  vehicleId: string;
+  licensePlate: string | null;
+  make: string;
+  model: string;
+  year: number | null;
+  station: string | null;
+}
+
+export interface FleetConnectivityListItem {
+  vehicle: FleetConnectivityVehicleRef;
+  overallState: OverallConnectivityState;
+  telemetryState: FleetTelemetryFreshness;
+  attentionState: ConnectivityAttentionState;
+  lastTelemetryAt: string | null;
+  primaryReasonCode: ConnectivityReasonCode | null;
+  recommendedAction: ConnectivityRecommendedAction;
+  requiresAction: boolean;
+  sortPriority: number;
+}
+
+export type FleetConnectivityTimelineEventType =
+  | 'DEVICE_UNPLUGGED'
+  | 'TELEMETRY_RESUMED'
+  | 'DEVICE_RECONNECTED'
+  | 'BINDING_CHANGED'
+  | 'AUTHORIZATION_CHANGED'
+  | 'INTEGRATION_ERROR';
+
+export interface FleetConnectivityTimelineEvent {
+  id: string;
+  type: FleetConnectivityTimelineEventType;
+  occurredAt: string;
+  reasonCode: ConnectivityReasonCode | null;
+}
+
+export interface FleetConnectivityActiveEpisode {
+  episodeId: string | null;
+  open: boolean;
+  openedAt: string | null;
+  durationMs: number | null;
+  rentalRelevant: boolean;
+  recoveryMethod: string | null;
+}
+
+export interface FleetConnectivityCapabilitySignal {
+  key: string;
+  availability: 'available' | 'missing' | 'unknown' | 'not_applicable';
+  freshness: 'fresh' | 'stale' | 'unknown';
+}
+
+export interface FleetConnectivityCapabilitySummary {
+  coverageState: FleetDataCoverageState;
+  coveragePercent: number | null;
+  freshSignalCount: number;
+  expectedSignalCount: number;
+  signals: FleetConnectivityCapabilitySignal[];
+}
+
+export interface FleetConnectivityProviderSummary {
+  providerLabel: string;
+  deviceKind: string;
+  authorizationState: ProviderLinkState;
+  consentGranted: boolean;
+  triggerConfigured: boolean;
+  lastSuccessfulFetchAt: string | null;
+}
+
+export interface FleetConnectivityTimestamps {
+  lastTelemetryAt: string | null;
+  lastProviderObservedAt: string | null;
+  lastReceivedAt: string | null;
+  calculatedAt: string;
+}
+
+export interface FleetConnectivityWebhookSummary {
+  configured: boolean;
+  lastEventAt: string | null;
+  openEpisode: boolean;
+}
+
+export interface FleetConnectivityDetail extends FleetConnectivityListItem {
+  providerLinkState: ProviderLinkState;
+  physicalDeviceState: PhysicalDeviceState;
+  dataCoverageState: FleetDataCoverageState;
+  reasonCodes: ConnectivityReasonCode[];
+  activeEpisode: FleetConnectivityActiveEpisode | null;
+  timeline: FleetConnectivityTimelineEvent[];
+  provider: FleetConnectivityProviderSummary;
+  capabilities: FleetConnectivityCapabilitySummary;
+  timestamps: FleetConnectivityTimestamps;
+  webhook: FleetConnectivityWebhookSummary;
+  odometerKm: number | null;
+  hasLocation: boolean;
+}
+
+/** Canonical fleet connectivity KPI summary (API v2). */
+export interface FleetConnectivityKpiSummary {
+  total: number;
+  actionRequired: number;
+  actionRequiredOffline: number;
+  actionRequiredSoftOffline: number;
+  telemetryActive: number;
+  standby: number;
+  noActiveDataSource: number;
+}
+
 export interface FleetConnectivityResponse {
   generatedAt: string;
-  thresholds: FleetConnectivityThresholds;
-  summary: FleetConnectivitySummary;
+  summary: FleetConnectivityKpiSummary;
   pagination: FleetConnectivityPagination;
-  vehicles: FleetConnectivityVehicle[];
+  items: FleetConnectivityListItem[];
+  /** @deprecated Legacy thresholds — not used for UI decisions. */
+  thresholds?: FleetConnectivityThresholds;
+  /** @deprecated Legacy summary — use `summary` KPI fields. */
+  legacySummary?: FleetConnectivitySummary;
+  /** @deprecated Legacy full rows — use `items`. */
+  vehicles?: FleetConnectivityVehicle[];
 }
 
 export type DataAnalyseIntervalStatus = 'OK' | 'Delayed' | 'Sparse' | 'Missing' | 'Unknown';

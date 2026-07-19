@@ -50,6 +50,13 @@ import {
   paginateFleetConnectivityVehicles,
 } from './fleet-connectivity.util';
 import type { FleetConnectivityResponseDto } from './fleet-connectivity.types';
+import type { FleetConnectivityDetailDto } from './fleet-connectivity-api.types';
+import {
+  buildFleetConnectivityKpiSummary,
+  mapFleetConnectivityDetail,
+  mapFleetConnectivityListItem,
+  sortFleetConnectivityListItems,
+} from './fleet-connectivity-api.mapper';
 import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
 import { BrakeRegistrationService } from '@modules/vehicle-intelligence/brakes/brake-registration.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
@@ -2319,25 +2326,75 @@ export class VehiclesService {
       );
     }
 
-    const summary = buildFleetConnectivitySummary(mapped);
-    const paginationResult = paginateFleetConnectivityVehicles(
-      mapped,
-      page,
-      limit,
+    const summaryLegacy = buildFleetConnectivitySummary(mapped);
+    const allItems = sortFleetConnectivityListItems(
+      mapped.map((v) => mapFleetConnectivityListItem(v)),
     );
+    const kpiSummary = buildFleetConnectivityKpiSummary(allItems);
+
+    const itemPagination = paginateFleetConnectivityVehicles(allItems, page, limit);
+    const vehicleById = new Map(mapped.map((v) => [v.vehicleId, v]));
+    const pageVehicles = itemPagination.pageItems
+      .map((item) => vehicleById.get(item.vehicle.vehicleId))
+      .filter((v): v is NonNullable<typeof v> => v != null);
 
     return {
       generatedAt,
-      thresholds: { ...FLEET_CONNECTIVITY_THRESHOLDS },
-      summary,
+      summary: kpiSummary,
       pagination: {
-        page: paginationResult.page,
-        limit: paginationResult.limit,
-        total: paginationResult.total,
+        page: itemPagination.page,
+        limit: itemPagination.limit,
+        total: itemPagination.total,
         totalInOrganization: vehicles.length,
       },
-      vehicles: paginationResult.pageItems,
+      items: itemPagination.pageItems,
+      vehicles: pageVehicles,
+      thresholds: { ...FLEET_CONNECTIVITY_THRESHOLDS },
+      legacySummary: summaryLegacy,
     };
+  }
+
+  async getFleetConnectivityDetail(
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<FleetConnectivityDetailDto> {
+    const nowMs = Date.now();
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+      include: {
+        dimoVehicle: true,
+        latestState: true,
+        homeStation: { select: { name: true } },
+      },
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+
+    const hardwareById = new Map([[vehicle.id, vehicle.hardwareType as string | null]]);
+    const dimoLinkedById = new Map([[vehicle.id, vehicle.dimoVehicleId != null]]);
+    const [deviceSummaries, runtimeByVehicle] = await Promise.all([
+      this.deviceConnectionQuery.getFleetSummariesForVehicles(
+        organizationId,
+        [vehicle.id],
+        hardwareById,
+        dimoLinkedById,
+      ),
+      this.connectivityRuntimeProjection.projectForVehicles(organizationId, [vehicle.id]),
+    ]);
+
+    const summary = deviceSummaries.get(vehicle.id);
+    const deviceConnection =
+      summary && (summary.lteR1Capable || summary.lastWebhookReceivedAt)
+        ? buildFleetDeviceConnectionFields(summary)
+        : null;
+    const runtime = runtimeByVehicle.get(vehicle.id);
+    if (!runtime) {
+      throw new Error(`Missing connectivity runtime for vehicle ${vehicle.id}`);
+    }
+
+    const mapped = mapFleetConnectivityVehicle(vehicle, nowMs, deviceConnection, runtime);
+    return mapFleetConnectivityDetail(mapped);
   }
 
   async getDeviceConnection(organizationId: string, vehicleId: string) {

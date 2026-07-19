@@ -1,4 +1,8 @@
 import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
+import type {
+  FleetConnectivityKpiSummaryDto,
+  FleetConnectivityListItemDto,
+} from './fleet-connectivity-api.types';
 
 export type FleetConnectionStatus =
   | 'online'
@@ -161,8 +165,17 @@ export interface FleetConnectivityPagination {
 
 export interface FleetConnectivityResponseDto {
   generatedAt: string;
-  thresholds: FleetConnectivityThresholds;
-  summary: FleetConnectivitySummary;
+  /** Canonical KPI summary for fleet connectivity UI. */
+  summary: FleetConnectivityKpiSummaryDto;
   pagination: FleetConnectivityPagination;
+  /** Canonical list contract — preferred for all UI consumers. */
+  items: FleetConnectivityListItemDto[];
+  /**
+   * @deprecated Use `items` — full legacy rows retained for transitional API clients.
+   */
   vehicles: FleetConnectivityVehicleDto[];
+  /** @deprecated Threshold copy for legacy clients — UI must not derive operational state from this. */
+  thresholds?: FleetConnectivityThresholds;
+  /** @deprecated Legacy aggregate counts — use `summary` instead. */
+  legacySummary?: FleetConnectivitySummary;
 }
