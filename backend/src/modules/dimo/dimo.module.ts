@@ -15,7 +15,13 @@ import { DeviceConnectionWebhookService } from './device-connection-webhook.serv
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
 import { RpmWebhookQueryService } from './rpm-webhook-query.service';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
-import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
+import { DeviceConnectionEpisodeResolutionService } from './device-connection-episode-resolution/device-connection-episode-resolution.service';
+import {
+  buildSnapshotReferenceId,
+  extractObdPlugSignalFromSnapshot,
+} from './device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
+import { VehicleConnectivityRuntimeProjectionService } from './device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
+import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
@@ -34,6 +40,9 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeReconciliationService,
+    DeviceConnectionEpisodeResolutionService,
+    DeviceConnectionEpisodeResolutionOutboxService,
+    VehicleConnectivityRuntimeProjectionService,
     DeviceConnectionQueryService,
     RpmWebhookCandidateService,
     RpmWebhookQueryService,
