@@ -105,7 +105,7 @@
 |---|------|--------|--------|-----------|-------|-----|------|-----|--------|
 | 1 | Baseline + Remediation-Tracking | **DONE** | `c1bcacb5` | — | dokumentiert | — | — | — | low |
 | 2 | Regression test safety net (Szenarien A–L) | **DONE** | `12bd652a` | — | 81 BE + 37 FE | — | — | — | low |
-| 3 | VehicleConnectivityRuntimeStateBuilder | pending | — | no | unit matrix | no | no | no | med |
+| 3 | VehicleConnectivityRuntimeStateBuilder (Domain-Typen A–F) | **DONE** | *(this commit)* | — | 23 domain | — | — | — | med |
 | 4 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
 | 5 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
 | 6 | Binding-/Token-Semantik | pending | — | maybe | binding cases | yes | yes | no | med |
@@ -163,6 +163,25 @@
 
 ---
 
+## Prompt 3 — Kanonische Connectivity-Domain (A–F)
+
+**Pfad:** `backend/src/modules/vehicles/connectivity/domain/`
+
+| Artefakt | Inhalt |
+|----------|--------|
+| `connectivity-domain.types.ts` | Enums A–F, Reason Codes, `VehicleConnectivityRuntimeState`, Evidence |
+| `connectivity-domain.priority.ts` | Overall-State-Präzedenz (dokumentiert) |
+| `connectivity-domain.validation.ts` | Impossible-combination Invarianten |
+| `connectivity-domain.spec.ts` | 23 Unit-Tests |
+
+**Telemetry:** Re-Export von `TelemetryFreshness` aus `vehicle-state-interpreter` — keine Duplikat-Enum.
+
+**Architektur:** `architecture/FLEET_CONNECTIVITY_RUNTIME_DOMAIN_2026-07-19.md`
+
+**Noch nicht in diesem Schritt:** Builder-Implementierung, Consumer-Migration.
+
+---
+
 ## VPS- / Staging-Verifikationen
 
 | Prompt | VPS | Staging | Notiz |
@@ -215,6 +234,7 @@
 |-------|--------|--------|-------|
 | 2026-07-19 | 1 | `c1bcacb5` | Baseline branch, Audit-Import, redaktionelle Audit-Korrekturen, dieses Dokument |
 | 2026-07-19 | 2 | `12bd652a` | Regressionstests A–L, keine Produktlogik geändert |
+| 2026-07-19 | 3 | *(this commit)* | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
 
 ---
 
