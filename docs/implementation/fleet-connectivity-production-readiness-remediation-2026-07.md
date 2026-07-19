@@ -105,7 +105,7 @@
 |---|------|--------|--------|-----------|-------|-----|------|-----|--------|
 | 1 | Baseline + Remediation-Tracking | **DONE** | `c1bcacb5` | — | dokumentiert | — | — | — | low |
 | 2 | Regression test safety net (Szenarien A–L) | **DONE** | `12bd652a` | — | 81 BE + 37 FE | — | — | — | low |
-| 3 | VehicleConnectivityRuntimeStateBuilder (Domain + Builder) | **DONE** | *(this commit)* | — | 42 domain+builder | — | — | — | med |
+| 3 | VehicleConnectivityRuntimeStateBuilder (Domain + Builder) | **DONE** | `1e41783c` / `3bf06880` | — | 42 domain+builder | — | — | — | med |
 | 4 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
 | 5 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
 | 6 | Binding-/Token-Semantik | pending | — | maybe | binding cases | yes | yes | no | med |
@@ -249,7 +249,7 @@
 | 2026-07-19 | 1 | `c1bcacb5` | Baseline branch, Audit-Import, redaktionelle Audit-Korrekturen, dieses Dokument |
 | 2026-07-19 | 2 | `12bd652a` | Regressionstests A–L, keine Produktlogik geändert |
 | 2026-07-19 | 3 | `1e41783c` | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
-| 2026-07-19 | 4 | *(this commit)* | VehicleConnectivityRuntimeStateBuilder (pure domain) |
+| 2026-07-19 | 4 | `3bf06880` | VehicleConnectivityRuntimeStateBuilder (pure domain) |
 
 ---
 
