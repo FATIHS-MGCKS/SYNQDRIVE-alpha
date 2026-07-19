@@ -7,7 +7,7 @@ import {
 } from '@prisma/client';
 import { DeviceConnectionEpisodeResolutionService } from './device-connection-episode-resolution.service';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution-outbox.service';
-import { DEFAULT_TELEMETRY_RECOVERY_POLICY } from './device-connection-telemetry-recovery.policy';
+import { DEFAULT_TELEMETRY_RECOVERY_POLICY, type TelemetryRecoveryPolicy } from './device-connection-telemetry-recovery.policy';
 import type { TelemetryRecoverySignalInput } from './device-connection-telemetry-recovery.evaluator';
 
 function openEpisode(overrides: Partial<DeviceConnectionEpisode> = {}): DeviceConnectionEpisode {
@@ -133,11 +133,8 @@ function buildService(policy = DEFAULT_TELEMETRY_RECOVERY_POLICY) {
   };
 
   const outboxService = new DeviceConnectionEpisodeResolutionOutboxService();
-  const service = new DeviceConnectionEpisodeResolutionService(
-    prisma as never,
-    outboxService,
-    policy,
-  );
+  const service = new DeviceConnectionEpisodeResolutionService(prisma as never, outboxService);
+  (service as unknown as { telemetryPolicy: TelemetryRecoveryPolicy }).telemetryPolicy = policy;
 
   return { service, prisma, tx, episodes, audits, outbox, observations };
 }
