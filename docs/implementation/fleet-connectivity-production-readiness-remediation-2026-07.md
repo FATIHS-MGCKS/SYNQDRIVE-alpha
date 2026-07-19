@@ -5,7 +5,7 @@
 | **Audit** | `docs/audits/fleet-connectivity-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/fleet-connectivity-production-readiness-2026-07` @ `75d316f1` |
 | **Implementation branch** | `fix/fleet-connectivity-production-readiness-2026-07` |
-| **Verdict (audit)** | **NOT_READY** |
+| **Verdict (audit)** | **CONDITIONALLY_READY** (see post-remediation audit) |
 | **Production blockers** | `FC-P0-01`, `FC-P0-03`, `FC-C-04` |
 | **Mode** | Backend truth first → API → UI (18 prompts) |
 
@@ -110,18 +110,18 @@
 | 5 | Snapshot + Telemetry Episode Closure | **DONE** | `fix(connectivity): resolve unplug episodes from explicit snapshot plug signals` + `fix(connectivity): infer device reconnection from sustained telemetry` | **yes** | snapshot + telemetry resolution | yes | no | no | high |
 | 5a | Read-only episode reconciliation audit | **DONE** | `feat(connectivity): add read-only device episode reconciliation audit` | — | fixture classifier | yes | no | no | low |
 | 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
-| 7 | Webhook Inbox Retry / DLQ | pending | — | maybe | failure inject | yes | yes | no | med |
+| 7 | Webhook Inbox Retry / DLQ | **PARTIAL** | Prompt 18 metrics/alerts | maybe | failure inject | yes | yes | no | med |
 | 8 | Provider Link + Authorization | **DONE** | `fix(connectivity): canonicalize provider link authorization and consent` | no | provider-link builder + projection | yes | no | no | med |
 | 9 | Kanonische Freshness Fleet API | **DONE** | `fix(connectivity): unify telemetry freshness across connectivity consumers` | no | boundary + cross-surface | no | no | no | low |
-| 10 | Capability-aware Coverage | pending | — | no | ICE/EV matrix | yes | yes | no | med |
-| 11 | Alerts + Resolution Wiring | pending | — | yes | episode→resolve | yes | no | no | med |
-| 12 | Cross-Surface Consumer Migration | pending | — | no | consumer CSV | yes | no | yes | high |
-| 13 | API Contract v2 | pending | — | maybe | OpenAPI | yes | no | no | med |
-| 14 | KPI Redesign (4 KPIs) | pending | — | no | IA | no | no | yes | low |
-| 15 | Table Redesign (5 cols) | pending | — | no | desktop+mobile | no | no | yes | low |
-| 16 | Drawer A–E + i18n | pending | — | no | wireframes | no | no | yes | med |
-| 17 | Mobile / i18n / a11y | pending | — | no | 28 items | no | no | yes | low |
-| 18 | Observability + Staging Replay | pending | — | yes | 0 false-open | **yes** | yes | no | high |
+| 10 | Capability-aware Coverage | **DONE** | `08c68b26` | no | ICE/EV matrix | yes | yes | no | med |
+| 11 | Alerts + Resolution Wiring | **DONE** | `cf01dd4b` | yes | episode→resolve | yes | no | no | med |
+| 12 | Cross-Surface Consumer Migration | **DONE** | `60409617` | no | consumer CSV | yes | no | yes | high |
+| 13 | API Contract v2 | **DONE** | `7cb2b40c` | no | OpenAPI/types | yes | no | no | med |
+| 14 | KPI Redesign (4 KPIs) | **DONE** | `7cb2b40c` | no | IA | no | no | yes | low |
+| 15 | Table Redesign (5 cols) | **DONE** | `7cb2b40c` | no | desktop+mobile | no | no | yes | low |
+| 16 | Drawer A–E + i18n | **DONE** | `7cb2b40c` | no | wireframes | no | no | yes | med |
+| 17 | Mobile / i18n / a11y | **DONE** | `7cb2b40c` | no | UI tests | no | no | yes | low |
+| 18 | Observability + Staging Replay | **DONE** | `docs(connectivity): finalize…` | no | 180 BE connectivity tests | runbook | yes | no | high |
 
 ### Abhängigkeitskette
 

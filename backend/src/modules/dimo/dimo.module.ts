@@ -24,8 +24,10 @@ import {
 import { VehicleConnectivityRuntimeProjectionService } from './device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
+import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
+import { DeviceConnectionEpisodeReconciliationApplyService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation-apply.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
@@ -47,6 +49,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeReconciliationService,
+    DeviceConnectionEpisodeReconciliationApplyService,
+    ConnectivityObservabilityService,
     DeviceConnectionEpisodeResolutionService,
     DeviceConnectionEpisodeResolutionOutboxService,
     ConnectivityAlertService,

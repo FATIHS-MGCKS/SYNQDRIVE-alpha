@@ -73,14 +73,14 @@ describe('device-connection-episode-reconciliation', () => {
       expect(c.conflicts).toContain('OEM_OR_SYNTHETIC_NO_OBD_CLOSURE');
     });
 
-    it('binding change — superseded episode', () => {
+    it('binding change — superseded episode (auto-apply when open)', () => {
       const c = candidateFor(FIXTURE_VEHICLE_ALIASES.BINDING_CHANGE);
       expect(c.classification).toBe('SUPERSEDED_BY_BINDING_CHANGE');
       expect(c.recommendedResolutionMethod).toBe(
         DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED,
       );
-      expect(c.applyEligible).toBe(false);
-      expect(c.reviewRequired).toBe(true);
+      expect(c.applyEligible).toBe(true);
+      expect(c.reviewRequired).toBe(false);
     });
 
     it('duplicate unplug events — DUPLICATE classification', () => {

@@ -16,6 +16,7 @@ import {
   type ConnectivityRuntimeVehicleRow,
 } from '../../vehicles/connectivity/vehicle-connectivity-runtime-batch.assembler';
 import { ConnectivityAlertService } from '../connectivity-alert/connectivity-alert.service';
+import { ConnectivityObservabilityService } from '../connectivity/connectivity-observability.service';
 
 const CONNECTIVITY_RUNTIME_VEHICLE_SELECT = {
   id: true,
@@ -90,6 +91,7 @@ export class VehicleConnectivityRuntimeProjectionService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly connectivityAlerts?: ConnectivityAlertService,
+    @Optional() private readonly observability?: ConnectivityObservabilityService,
   ) {}
 
   async projectForVehicle(
@@ -117,6 +119,15 @@ export class VehicleConnectivityRuntimeProjectionService {
       canonicalTelemetryFreshness: bundle.runtime.telemetryState,
       dataCoverageState: bundle.runtime.dataCoverageState,
       bindingChangedSinceEpisode: bundle.bindingChangedSinceEpisode,
+    });
+
+    this.observability?.log('runtime_state_calculated', {
+      overallState: bundle.runtime.overallState,
+      telemetryState: bundle.runtime.telemetryState,
+      providerLinkState: bundle.runtime.providerLinkState,
+      physicalDeviceState: bundle.runtime.physicalDeviceState,
+      coverageState: bundle.runtime.dataCoverageState,
+      coverageRatio: bundle.runtime.evidence.signalCoveragePercent ?? undefined,
     });
 
     return bundle.runtime;

@@ -185,6 +185,7 @@ export const RECONCILIATION_FIXTURE_VEHICLES: ReconciliationVehicleInput[] = [
       lastSeenAt: new Date('2026-07-18T12:00:00.000Z'),
       sustainedAfterUnplug: true,
     },
+    persistedOpenEpisode: true,
   }),
   baseInput(FIXTURE_VEHICLE_ALIASES.DUPLICATE, 'LTE_R1', {
     events: [

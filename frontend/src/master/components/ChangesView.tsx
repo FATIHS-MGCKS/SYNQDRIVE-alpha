@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-connectivity-production-readiness-v49701-2026-07-19',
+    version: '4.9.701',
+    title: 'V4.9.701 — Fleet Connectivity production readiness (observability + guarded apply)',
+    summary: [
+      'Structured connectivity logs (no PII) + Prometheus metrics (`synqdrive_connectivity_*`) + alert rules for webhook failures, DLQ, false-open episodes, state conflicts.',
+      'Guarded episode reconciliation apply: `--apply` requires organizationId, backup confirmation, audit hash, git commit, batch cap, operator, reason.',
+      'Production rollout runbook + post-remediation readiness audit; staging apply operator-gated.',
+    ],
+    reason: 'Prompt 18/18: Final verification — observability, controlled reconciliation apply tooling, runbook; no uncontrolled production changes.',
+    previousBehavior:
+      'Limited connectivity metrics; episode reconciliation read-only only; no guarded apply CLI or production rollout runbook.',
+    details:
+      'backend/src/modules/dimo/connectivity/*, device-connection-episode-reconciliation-apply.service.ts, apply-device-connection-episode-reconciliation.ts, alerts.yml, docs/runbooks/fleet-connectivity-production-rollout.md, docs/audits/fleet-connectivity-post-remediation-readiness-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-19T18:00:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-canonical-ui-v49700-2026-07-19',
     version: '4.9.700',
     title: 'V4.9.700 — Fleet Connectivity canonical API v2 UI redesign',
