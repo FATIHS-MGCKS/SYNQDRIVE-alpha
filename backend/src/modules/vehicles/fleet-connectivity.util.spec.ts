@@ -141,10 +141,12 @@ describe('fleet-connectivity.util', () => {
       expect(mapped.deviceSerial).toBeNull();
     });
 
-    it('maps online with fresh telemetry', () => {
+    it('maps online with fresh telemetry and capability-aware coverage', () => {
       const mapped = mapFleetConnectivityVehicle(
         {
           ...baseVehicle,
+          fuelType: 'GASOLINE',
+          hardwareType: 'LTE_R1',
           dimoVehicle: {
             tokenId: 12345678,
             lastSignal: minutesAgo(3),
@@ -183,7 +185,46 @@ describe('fleet-connectivity.util', () => {
       expect(mapped.dimoTokenId).toBeNull();
       expect(mapped.signals.gps).toBe('available');
       expect(mapped.signals.odometer).toBe('available');
-      expect(mapped.readinessScore).toBeGreaterThan(0);
+      expect(mapped.coverageState).toBe('GOOD');
+      expect(mapped.coveragePercent).toBe(83);
+      expect(mapped.missingSignalCount).toBe(1);
+    });
+
+    it('ICE: missing evSoc does not reduce coverage percent', () => {
+      const mapped = mapFleetConnectivityVehicle(
+        {
+          ...baseVehicle,
+          fuelType: 'GASOLINE',
+          hardwareType: 'LTE_R1',
+          dimoVehicle: {
+            tokenId: 1,
+            lastSignal: minutesAgo(3),
+            syncedAt: minutesAgo(3),
+            createdAt: new Date('2026-01-01'),
+            rawJson: { aftermarketDevice: { serial: 'SN-1' } },
+          },
+          latestState: {
+            lastSeenAt: minutesAgo(3),
+            sourceTimestamp: minutesAgo(3),
+            providerFetchedAt: minutesAgo(3),
+            latitude: 52.5,
+            longitude: 13.4,
+            speedKmh: 40,
+            odometerKm: 12000,
+            fuelLevelRelative: 0.5,
+            fuelLevelAbsolute: null,
+            evSoc: null,
+            obdDtcList: [],
+            lastDtcPollAt: new Date('2026-01-01'),
+            rawPayloadJson: { obdIsPluggedIn: { value: true } },
+            providerSource: 'DIMO',
+          },
+        },
+        NOW,
+      );
+
+      expect(mapped.coveragePercent).toBe(100);
+      expect(mapped.coverageState).toBe('GOOD');
     });
 
     it('labels jamming as snapshot indication only', () => {

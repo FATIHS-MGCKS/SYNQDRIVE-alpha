@@ -195,6 +195,34 @@ Single resolver: `telemetry-freshness.resolver.ts` (backend) / `telemetryFreshne
 
 Fleet Connectivity API exposes `telemetryFreshness` (canonical) + legacy `connectionStatus` mapping (`signal_delayed` added).
 
+## Data coverage (Prompt 14)
+
+Capability-, provider-, powertrain-, and freshness-aware coverage replaces the misleading flat `readinessScore`.
+
+### Module
+
+`fleet-data-coverage.ts` + `fleet-data-coverage.types.ts`
+
+### Signal groups
+
+`gps` · `odometer` · `speed` · `fuel` · `evSoc` · `dtc` · `obdPlug` · `jamming`
+
+### Capability matrix dimensions
+
+Provider (`DIMO` / `HIGH_MOBILITY` / `MANUAL` / `NONE`) · device class (`PHYSICAL_OBD` / `OEM` / `SYNTHETIC`) · powertrain (`ICE` / `EV` / `PHEV` / `UNKNOWN`)
+
+### Coverage formula
+
+`fresh usable expected signals / expected and supported signals`
+
+Excluded from denominator: EV SoC on ICE, fuel on EV, OBD plug on OEM/synthetic, jamming without physical-OBD capability. Empty DTC poll counts as available; speed `0` is valid.
+
+### API fields
+
+`coverageState` (`GOOD` | `PARTIAL` | `INSUFFICIENT` | `UNKNOWN` | `NOT_APPLICABLE`) · optional `coveragePercent` · `expectedSignalCount` · `freshSignalCount` · `staleSignalCount` · `missingSignalCount` · `reasonCodes`
+
+Legacy `readinessScore` / `readinessLevel` / `signalCoveragePercent` remain as transitional aliases derived from coverage.
+
 ## Reconciliation audit (Prompt 6)
 
 Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`

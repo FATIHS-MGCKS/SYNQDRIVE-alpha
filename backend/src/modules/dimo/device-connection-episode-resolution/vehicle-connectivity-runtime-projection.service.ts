@@ -23,6 +23,12 @@ import {
 import { ProviderLinkStateBuilder } from '../../vehicles/connectivity/domain/provider-link-state.builder';
 import type { VehicleConnectivityRuntimeState } from '@modules/vehicles/connectivity/domain/connectivity-domain.types';
 import { resolveTelemetryFreshness as resolveCanonicalTelemetryFreshness } from '../../vehicles/telemetry-freshness.resolver';
+import {
+  buildFleetDataCoverage,
+  resolveFleetDeviceClass,
+  resolveFleetPowertrainClass,
+  resolveFleetProviderClass,
+} from '../../vehicles/fleet-data-coverage';
 
 @Injectable()
 export class VehicleConnectivityRuntimeProjectionService {
@@ -38,6 +44,7 @@ export class VehicleConnectivityRuntimeProjectionService {
         id: true,
         organizationId: true,
         hardwareType: true,
+        fuelType: true,
         dimoVehicleId: true,
         dimoVehicle: { select: { connectionStatus: true, tokenId: true, lastSignal: true } },
         latestState: {
@@ -48,6 +55,15 @@ export class VehicleConnectivityRuntimeProjectionService {
             providerSource: true,
             providerBindingId: true,
             rawPayloadJson: true,
+            latitude: true,
+            longitude: true,
+            speedKmh: true,
+            odometerKm: true,
+            fuelLevelRelative: true,
+            fuelLevelAbsolute: true,
+            evSoc: true,
+            obdDtcList: true,
+            lastDtcPollAt: true,
           },
         },
         dataSourceLinks: {
@@ -189,6 +205,44 @@ export class VehicleConnectivityRuntimeProjectionService {
       },
     );
 
+    const hasProviderLink = providerLink.hasProviderLink;
+    const hasAftermarket = vehicle.hardwareType === 'LTE_R1';
+    const deviceClass = resolveFleetDeviceClass({
+      hardwareType: vehicle.hardwareType,
+      hasAftermarketDevice: hasAftermarket,
+      hasSyntheticDevice: false,
+      hasProviderLink,
+    });
+    const dataCoverageResult = buildFleetDataCoverage({
+      context: {
+        provider: resolveFleetProviderClass(
+          hasProviderLink,
+          vehicle.latestState?.providerSource,
+        ),
+        deviceClass,
+        powertrain: resolveFleetPowertrainClass(vehicle.fuelType),
+        physicalObdCapable: vehicle.hardwareType === 'LTE_R1',
+        hasProviderLink,
+        hasTelemetrySnapshot: vehicle.latestState != null,
+      },
+      observation: {
+        latitude: vehicle.latestState?.latitude,
+        longitude: vehicle.latestState?.longitude,
+        odometerKm: vehicle.latestState?.odometerKm,
+        speedKmh: vehicle.latestState?.speedKmh,
+        fuelLevelRelative: vehicle.latestState?.fuelLevelRelative,
+        fuelLevelAbsolute: vehicle.latestState?.fuelLevelAbsolute,
+        evSoc: vehicle.latestState?.evSoc,
+        obdDtcList: vehicle.latestState?.obdDtcList,
+        lastDtcPollAt: vehicle.latestState?.lastDtcPollAt,
+        obdIsPluggedIn: conn.obdIsPluggedIn,
+        jammingDetectedCount: conn.jammingDetectedCount,
+        hasTelemetry: vehicle.latestState != null,
+        rawSignals: raw,
+      },
+      telemetryFreshness: canonicalTelemetry.freshness,
+    });
+
     const input: BuildVehicleConnectivityRuntimeStateInput = {
       vehicleId: vehicle.id,
       organizationId: vehicle.organizationId,
@@ -232,7 +286,7 @@ export class VehicleConnectivityRuntimeProjectionService {
         recentEventIds: [],
       },
       dataCoverage: {
-        signalCoveragePercent: vehicle.latestState ? 80 : null,
+        signalCoveragePercent: dataCoverageResult.coveragePercent,
         hasTelemetrySnapshot: vehicle.latestState != null,
       },
       processingErrors: {

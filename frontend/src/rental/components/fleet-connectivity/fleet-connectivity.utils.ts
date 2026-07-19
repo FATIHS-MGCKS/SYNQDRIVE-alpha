@@ -3,6 +3,7 @@ import type {
   FleetConnectivitySignalState,
   FleetConnectivityStatus,
   FleetConnectivityVehicle,
+  FleetDataCoverageState,
   FleetDeviceConnectionDto,
 } from '../../../lib/api';
 import type { StatusTone } from '../../../components/patterns/status-utils';
@@ -79,6 +80,36 @@ export function readinessLabel(level: FleetConnectivityReadinessLevel): string {
       return 'Warning';
     default:
       return 'No data';
+  }
+}
+
+export function coverageStateTone(state: FleetDataCoverageState): StatusTone {
+  switch (state) {
+    case 'GOOD':
+      return 'success';
+    case 'PARTIAL':
+      return 'watch';
+    case 'INSUFFICIENT':
+      return 'warning';
+    case 'NOT_APPLICABLE':
+      return 'neutral';
+    default:
+      return 'noData';
+  }
+}
+
+export function coverageStateLabel(state: FleetDataCoverageState): string {
+  switch (state) {
+    case 'GOOD':
+      return 'Good coverage';
+    case 'PARTIAL':
+      return 'Partial coverage';
+    case 'INSUFFICIENT':
+      return 'Insufficient coverage';
+    case 'NOT_APPLICABLE':
+      return 'Not applicable';
+    default:
+      return 'Unknown coverage';
   }
 }
 

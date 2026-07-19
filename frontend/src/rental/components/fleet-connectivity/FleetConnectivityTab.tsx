@@ -40,10 +40,10 @@ import { fhs } from '../fleet-health-service/fleet-health-service-shell';
 import { FleetConnectivityDetailDrawer } from './FleetConnectivityDetailDrawer';
 import {
   ConnectionStatusChip,
+  CoverageStateChip,
   DeviceConnectionWebhookChip,
   JammingSnapshotChip,
   ObdRowChip,
-  ReadinessChip,
 } from './fleet-connectivity.badges';
 import {
   type FleetConnectionScopeFilter,
@@ -241,14 +241,15 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         hintKey: 'fleetConnectivity.kpi.hint.webhook',
       },
       {
-        id: 'readiness',
-        labelKey: 'fleetConnectivity.kpi.avgReadiness',
-        value: s?.avgReadinessScore != null ? `${s.avgReadinessScore}%` : '—',
+        id: 'coverage',
+        labelKey: 'fleetConnectivity.kpi.avgCoverage',
+        value:
+          s?.avgSignalCoverage != null ? `${s.avgSignalCoverage}%` : '—',
         status: 'info',
         icon: Radio,
         onClick: () => setReadinessFilter('watch'),
         active: readinessFilter === 'watch',
-        hintKey: 'fleetConnectivity.kpi.hint.readiness',
+        hintKey: 'fleetConnectivity.kpi.hint.coverage',
       },
     ],
     [s, statusFilter, signalFilter, readinessFilter],
@@ -284,20 +285,15 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         ),
       },
       {
-        key: 'readiness',
-        header: t('fleetConnectivity.col.readiness'),
-        className: 'hidden lg:table-cell',
-        cell: (v) => <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />,
-      },
-      {
         key: 'coverage',
         header: t('fleetConnectivity.col.coverage'),
-        className: 'hidden xl:table-cell',
-        numeric: true,
+        className: 'hidden lg:table-cell',
         cell: (v) => (
-          <span className="text-[12px] tabular-nums text-muted-foreground">
-            {v.signalCoveragePercent}%
-          </span>
+          <CoverageStateChip
+            state={v.coverageState}
+            freshCount={v.freshSignalCount}
+            expectedCount={v.expectedSignalCount}
+          />
         ),
       },
       {
@@ -574,13 +570,20 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
                   <ConnectionStatusChip status={v.connectionStatus} />
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />
+                  <CoverageStateChip
+                    state={v.coverageState}
+                    freshCount={v.freshSignalCount}
+                    expectedCount={v.expectedSignalCount}
+                  />
                   <ObdRowChip plugged={v.obdIsPluggedIn} />
                   <DeviceConnectionWebhookChip device={v.deviceConnection} />
                   <JammingSnapshotChip count={v.jammingDetectedCount} />
                 </div>
                 <p className={cn(META_TEXT_CLASS, 'mt-2 tabular-nums')}>
-                  {v.freshnessLabel} · {v.signalCoveragePercent}% {t('fleetConnectivity.col.coverage').toLowerCase()}
+                  {v.freshnessLabel}
+                  {v.coveragePercent != null
+                    ? ` · ${v.freshSignalCount}/${v.expectedSignalCount} fresh`
+                    : ''}
                 </p>
               </button>
             ))}

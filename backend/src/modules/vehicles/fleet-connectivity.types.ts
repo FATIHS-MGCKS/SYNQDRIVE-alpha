@@ -9,6 +9,22 @@ export type FleetSignalAvailability = 'available' | 'missing' | 'unknown';
 
 export type FleetReadinessLevel = 'good' | 'watch' | 'warning' | 'no_data';
 
+export type FleetDataCoverageState =
+  | 'GOOD'
+  | 'PARTIAL'
+  | 'INSUFFICIENT'
+  | 'UNKNOWN'
+  | 'NOT_APPLICABLE';
+
+export type FleetDataCoverageReasonCode =
+  | 'DATA_COVERAGE_PARTIAL'
+  | 'DATA_COVERAGE_INSUFFICIENT'
+  | 'SIGNAL_NOT_APPLICABLE'
+  | 'TELEMETRY_STALE'
+  | 'NO_TELEMETRY_SNAPSHOT'
+  | 'CAPABILITY_UNKNOWN'
+  | 'PROVIDER_CHANGED';
+
 export interface FleetConnectivityThresholds {
   onlineMaxMinutes: number;
   standbyMaxHours: number;
@@ -86,9 +102,19 @@ export interface FleetConnectivityVehicleDto {
   maskedDeviceSerial: string | null;
   maskedDimoTokenId: string | null;
   maskedSyntheticTokenId: string | null;
+  /** @deprecated Use coverageState — transitional alias derived from coverage. */
   readinessScore: number;
+  /** @deprecated Use coverageState — transitional alias derived from coverage. */
   readinessLevel: FleetReadinessLevel;
+  /** @deprecated Use coveragePercent — transitional alias. */
   signalCoveragePercent: number;
+  coverageState: FleetDataCoverageState;
+  coveragePercent: number | null;
+  expectedSignalCount: number;
+  freshSignalCount: number;
+  staleSignalCount: number;
+  missingSignalCount: number;
+  reasonCodes: FleetDataCoverageReasonCode[];
   signals: FleetConnectivitySignals;
   /** @deprecated Use maskedDeviceSerial — kept for transitional clients; value is masked. */
   deviceSerial: string | null;

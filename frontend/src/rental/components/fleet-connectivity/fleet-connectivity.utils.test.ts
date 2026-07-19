@@ -45,6 +45,13 @@ function vehicle(
     readinessScore: partial.readinessScore ?? 0,
     readinessLevel: partial.readinessLevel ?? 'no_data',
     signalCoveragePercent: partial.signalCoveragePercent ?? 0,
+    coverageState: partial.coverageState ?? 'UNKNOWN',
+    coveragePercent: partial.coveragePercent ?? null,
+    expectedSignalCount: partial.expectedSignalCount ?? 0,
+    freshSignalCount: partial.freshSignalCount ?? 0,
+    staleSignalCount: partial.staleSignalCount ?? 0,
+    missingSignalCount: partial.missingSignalCount ?? 0,
+    reasonCodes: partial.reasonCodes ?? [],
     signals: partial.signals ?? {
       gps: 'unknown',
       odometer: 'unknown',

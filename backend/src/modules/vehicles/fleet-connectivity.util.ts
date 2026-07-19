@@ -8,6 +8,13 @@ import {
   TELEMETRY_STANDBY_THRESHOLD_MS,
   type TelemetryTimestampEvidence,
 } from './telemetry-freshness.resolver';
+import {
+  buildFleetDataCoverage,
+  mapCoverageStateToLegacyReadinessLevel,
+  resolveFleetDeviceClass,
+  resolveFleetPowertrainClass,
+  resolveFleetProviderClass,
+} from './fleet-data-coverage';
 import type {
   FleetConnectionStatus,
   FleetConnectivityJammingSnapshot,
@@ -335,6 +342,8 @@ export interface FleetConnectivityVehicleInput {
   make: string;
   model: string;
   year: number | null;
+  fuelType?: string | null;
+  hardwareType?: string | null;
   homeStation?: { name: string } | null;
   dimoVehicle?: {
     tokenId: number | null;
@@ -433,13 +442,49 @@ export function mapFleetConnectivityVehicle(
     rawSignals,
   });
 
-  const signalCoveragePercent = computeSignalCoveragePercent(signals);
-  const readinessScore = signalCoveragePercent;
-  const readinessLevel = deriveReadinessLevel(
-    readinessScore,
+  const powertrain = resolveFleetPowertrainClass(v.fuelType);
+  const deviceClass = resolveFleetDeviceClass({
+    hardwareType: v.hardwareType,
+    hasAftermarketDevice: hasAftermarket,
+    hasSyntheticDevice: hasSynthetic,
     hasProviderLink,
-    hasTelemetry,
-    signals,
+  });
+  const providerClass = resolveFleetProviderClass(
+    hasProviderLink,
+    ls?.providerSource,
+  );
+  const dataCoverage = buildFleetDataCoverage({
+    context: {
+      provider: providerClass,
+      deviceClass,
+      powertrain,
+      physicalObdCapable: v.hardwareType === 'LTE_R1' || hasAftermarket,
+      hasProviderLink,
+      hasTelemetrySnapshot: hasTelemetry,
+    },
+    observation: {
+      latitude: ls?.latitude,
+      longitude: ls?.longitude,
+      odometerKm: ls?.odometerKm,
+      speedKmh: ls?.speedKmh,
+      fuelLevelRelative: ls?.fuelLevelRelative,
+      fuelLevelAbsolute: ls?.fuelLevelAbsolute,
+      evSoc: ls?.evSoc,
+      obdDtcList: ls?.obdDtcList,
+      lastDtcPollAt: ls?.lastDtcPollAt,
+      obdIsPluggedIn: conn.obdIsPluggedIn,
+      jammingDetectedCount: conn.jammingDetectedCount,
+      hasTelemetry,
+      rawSignals,
+    },
+    telemetryFreshness,
+  });
+
+  const coveragePercent = dataCoverage.coveragePercent;
+  const signalCoveragePercent = coveragePercent ?? 0;
+  const readinessScore = signalCoveragePercent;
+  const readinessLevel = mapCoverageStateToLegacyReadinessLevel(
+    dataCoverage.coverageState,
   );
 
   const jammingSnapshotNote = buildJammingSnapshotNote(
@@ -494,6 +539,13 @@ export function mapFleetConnectivityVehicle(
     readinessScore,
     readinessLevel,
     signalCoveragePercent,
+    coverageState: dataCoverage.coverageState,
+    coveragePercent,
+    expectedSignalCount: dataCoverage.expectedSignalCount,
+    freshSignalCount: dataCoverage.freshSignalCount,
+    staleSignalCount: dataCoverage.staleSignalCount,
+    missingSignalCount: dataCoverage.missingSignalCount,
+    reasonCodes: dataCoverage.reasonCodes,
     signals,
     deviceSerial: maskedDeviceSerial,
     dimoTokenId: null,
@@ -510,8 +562,8 @@ export function buildFleetConnectivitySummary(
     .length;
   const withTelemetry = vehicles.filter((v) => v.hasTelemetry).length;
   const coverageValues = vehicles
-    .map((v) => v.signalCoveragePercent)
-    .filter((n) => Number.isFinite(n));
+    .map((v) => v.coveragePercent ?? v.signalCoveragePercent)
+    .filter((n): n is number => n != null && Number.isFinite(n));
   const readinessValues = vehicles
     .map((v) => v.readinessScore)
     .filter((n) => Number.isFinite(n));
