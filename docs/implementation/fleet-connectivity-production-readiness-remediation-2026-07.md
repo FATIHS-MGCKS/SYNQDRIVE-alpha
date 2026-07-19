@@ -366,12 +366,40 @@
 | Prompt | VPS | Staging | Notiz |
 |--------|-----|---------|-------|
 | 1 | — | — | Nur Baseline lokal |
-| 3–6, 7, 10, 18 | geplant | geplant | Read-only Audit bereits auf Prod-VPS (60d) |
-| 11–16 | geplant | geplant | Cross-Surface nach API v2 |
+| 8 (RC) | ✅ | ✅ | Branch `cursor/connectivity-release-candidate-2e0d`; 421+ connectivity tests |
+| 9 | ✅ | ✅ | Migrate deploy, kill switch, audits, dry-run; `fleet-connectivity-staging-verification-2026-07.md` |
+| 10 | ⏳ | ⏳ | Soak **~10 min / 24 h** — `NOT_READY`; `fleet-connectivity-production-pilot-readiness-2026-07.md` |
 
 ---
 
-## Offene Risiken
+## Prompt 9 — Staging verification (2026-07-19)
+
+- RC deployed to VPS with pre-deploy backups
+- 7 connectivity migrations applied (`20260719120000` … `20260719180000`)
+- Boot fixes: Nest `forwardRef` circular imports; resolution service DI
+- Read-only audits + reconciliation dry-run (2 telemetry candidates, 0 apply)
+- Doc: `docs/audits/fleet-connectivity-staging-verification-2026-07.md`
+
+## Prompt 10 — Production pilot readiness (2026-07-19)
+
+- Soak evaluation at T+10m — **duration gate not met**
+- Verdict: **NOT_READY** for production pilot
+- Pilot plan documented (Teil 3–4) — execute after 24h soak green
+- Ops script: `backend/scripts/ops/evaluate-fleet-connectivity-staging-soak.sh`
+- Doc: `docs/audits/fleet-connectivity-production-pilot-readiness-2026-07.md`
+
+---
+
+## Verbleibende Production-Blocker (nach Audit, unverändert)
+
+**Code-level P0s from original audit are remediated on RC.** Operational gates:
+
+1. **24h staging soak** — incomplete at Prompt 10 evaluation  
+2. **Live webhook/retry/outbox** — not practically demonstrated post-deploy  
+3. **DIMO plug trigger** — disabled in prod console  
+4. **2 historical telemetry-recovery episodes** — dry-run eligible; apply deferred  
+
+**Operational safety (positiv):** Unplug-Episoden blockieren Rental nicht (`FC-C-05`).
 
 | Risiko | Mitigation |
 |--------|------------|
@@ -421,11 +449,12 @@
 | 2026-07-19 | Phase2-5 | `fix(connectivity): bind episode reconciliation apply to audited evidence` | Evidence packages + apply validation |
 | 2026-07-19 | Phase2-6 | `fix(connectivity): route binding changes through canonical episode lifecycle` | reconcileBindingDrift + outbox/audit |
 | 2026-07-19 | Phase2-7 | `fix(connectivity): add recovery kill switch and evidence timestamps` | Kill switch env flags, evidence-based timeline timestamps |
-| 2026-07-19 | Phase2-8 | `test(connectivity): verify complete production release candidate` | RC branch `cursor/connectivity-release-candidate-2e0d`; audit `docs/audits/fleet-connectivity-release-candidate-verification-2026-07.md` |
+| 2026-07-19 | Phase2-9 | `docs(connectivity): verify staging migration and incident replay` | Prompt 9 staging deploy + audits |
+| 2026-07-19 | Phase2-10 | `docs(connectivity): finalize production pilot readiness` | Soak eval NOT_READY; pilot plan |
 
 ---
 
-## Prompt 7 — Recovery kill switch + evidence timestamps
+## Offene Risiken
 
 ### Teil A — Zeitstempel
 

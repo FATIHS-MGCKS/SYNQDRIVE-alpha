@@ -2,117 +2,99 @@
 
 | Field | Value |
 |-------|-------|
-| **Audit date** | 2026-07-19 UTC |
-| **Branch** | `cursor/fleet-connectivity-redesign-2e0d` |
+| **Audit date** | 2026-07-19 UTC (updated Prompt 10) |
+| **RC branch** | `cursor/connectivity-release-candidate-2e0d` |
 | **Baseline audit** | `docs/audits/fleet-connectivity-production-readiness-2026-07.md` |
+| **Staging verification** | `docs/audits/fleet-connectivity-staging-verification-2026-07.md` |
+| **Pilot readiness** | `docs/audits/fleet-connectivity-production-pilot-readiness-2026-07.md` |
 | **Runbook** | `docs/runbooks/fleet-connectivity-production-rollout.md` |
-| **Verdict** | **CONDITIONALLY_READY** |
+| **Verdict** | **NOT_READY** (24h soak incomplete) |
 
 ## Executive summary
 
-All 18 remediation prompts are implemented in code, tests, observability, and operational tooling. **Staging apply and production rollout remain operator-gated** — this cloud agent run validated builds/tests and fixture-based audits only. No production database mutations were performed.
+All 18 remediation prompts plus Phase 2 follow-ups are implemented on the RC branch. VPS staging deploy (Prompt 9) succeeded with migrations, kill-switch defaults, and read-only audits. **Prompt 10 evaluation at T+10 minutes cannot approve a production pilot** — the mandatory 24-hour soak has not elapsed, and webhook/retry/outbox paths were not practically exercised with live traffic.
 
 ## Dimension scores
 
 | Dimension | Score | Notes |
 |-----------|-------|-------|
-| Correctness | PASS | Episode resolution paths (snapshot, telemetry, explicit plug, binding supersede) + regression specs |
-| State consistency | PASS | Single `VehicleConnectivityRuntimeState` builder; consumer migration complete |
-| Episode integrity | PASS | Persistent episodes, binding-scoped, reconciliation classifier + guarded apply |
-| Provider link | PASS | Separated from telemetry/device; authorization canonical |
-| Freshness | PASS | Unified `TelemetryFreshness` across consumers |
-| Webhook reliability | PARTIAL | Intake + dedup; DLQ/inbox retry architecture documented, metrics added |
-| Data coverage | PASS | Capability-aware coverage state |
-| Cross-surface consistency | PASS | Fleet connectivity, fleet map, device-connection APIs share runtime |
-| Operational safety | PASS | Read-only default; apply requires backup/hash/operator/reason/batch cap |
-| UX | PASS | API v2 UI: 4 KPIs, reduced table, mobile cards, DE/EN i18n |
-| Mobile / i18n / a11y | PASS | Card layout, aria labels, translation keys |
-| Tests | PASS | Backend connectivity suites + frontend UI/presentation/filter tests green |
-| Observability | PASS | Structured logs (no PII) + Prometheus metrics + alert rules |
+| Correctness | PASS | Episode resolution + runtime builder + regression specs |
+| State consistency | PASS | Single runtime state builder; consumer migration complete |
+| Episode integrity | PASS | Persistent episodes, reconciliation classifier, guarded apply |
+| Provider link | PASS | Separated from telemetry/device |
+| Freshness | PASS | Unified `TelemetryFreshness` |
+| Webhook reliability | PARTIAL | Architecture + unit tests; **0 live inbox events post-deploy** |
+| Data coverage | PASS | Capability-aware |
+| Cross-surface consistency | PASS | Runtime projection shared |
+| Operational safety | PASS | Kill switch, dry-run default, apply guards |
+| UX | PASS | API v2 UI |
+| Tests | PASS | Backend 280 + frontend 27 connectivity tests |
+| Observability | PASS | Metrics + alert rules |
+| Staging soak | **FAIL** | ~10 min / 24 h required |
+| Production pilot | **NOT STARTED** | Blocked by soak gate |
 
 ## P0 acceptance criteria
 
 | Criterion | Status |
 |-----------|--------|
-| Snapshot `obdIsPluggedIn=true` closes safe episode | ✅ Unit + reconciliation engine HIGH confidence |
-| Sustained telemetry same binding closes episode | ✅ `tryResolveFromSustainedTelemetry` + regression L |
-| OEM/synthetic does not close physical unplug | ✅ `NON_PHYSICAL_OBD_BINDING` / `OEM_OR_SYNTHETIC_NO_OBD_CLOSURE` |
-| 7-day window does not drive current state | ✅ Episode persistence + runtime builder |
-| Binding change handled safely | ✅ Supersede path + `DEVICE_BINDING_CHANGED` |
-| Webhook errors retryable | ✅ Idempotent intake; DLQ metrics for ops |
-| Trigger status read from DIMO | ✅ DIMO audit script + provider summary in API v2 |
-| Provider link ≠ telemetry ≠ device | ✅ Domain separation |
-| Freshness canonical everywhere | ✅ Consumer migration PR #561 |
-| Coverage capability-aware | ✅ PR #561 coverage state |
-| Alerts resolve on recovery | ✅ `ConnectivityAlertService` wired |
-| All consumers use runtime state | ✅ PR #561 |
-| UI reduced + mobile | ✅ PR #562 |
-| Tests/builds green | ✅ This verification run |
-| Staging replay | ⏳ Operator — runbook §8–11 |
-| 0 P0 findings | ✅ Code-level; staging sign-off pending |
+| Snapshot recovery closes safe episode | ✅ Unit + reconciliation |
+| Telemetry recovery closes episode | ✅ + INCIDENT_VEHICLE_001 spec |
+| OEM/synthetic guard | ✅ Evidence package specs |
+| 7-day window not canonical | ✅ Episode persistence |
+| Binding safety | ✅ Supersede path |
+| Webhook retryable | ✅ Unit; **live path unproven** |
+| Kill switch | ✅ Env + policy specs |
+| Reconciliation apply gated | ✅ Default off |
+| Staging migrate + health | ✅ Prompt 9 |
+| 24h soak green | ❌ **Incomplete** |
+| 0 P0 | ✅ Code + post-stable VPS |
 
-## Staging / verification run (agent environment)
-
-| Step | Result |
-|------|--------|
-| `prisma validate` | ✅ Exit 0 (2026-07-19 agent run) |
-| Backend build | ✅ Exit 0 |
-| Frontend build | ✅ Exit 0 (`tsc -b` + Vite) |
-| Connectivity test suites | ✅ Backend **263/263** + recovery/consumer **37/37** + frontend **46/46** |
-| Episode reconciliation fixtures | ✅ Existing engine spec |
-| Incident replay (phase 3 fixture) | ✅ Existing audit artifact + resolution spec |
-| Production `--apply` | **NOT EXECUTED** |
-| Production migrate deploy | **NOT EXECUTED** |
-| Production deploy | **NOT EXECUTED** |
-
-## Reconciliation apply (staging)
+## Staging soak summary (Prompt 10)
 
 | Metric | Value |
 |--------|-------|
-| Episodes reconciled (staging) | 0 — no staging DB in agent run |
-| Snapshot recovery applied | 0 |
-| Telemetry recovery applied | 0 |
-| False-open detected (fixture audit) | Documented in `device-connection-episode-reconciliation-2026-07.md` |
+| Soak start (stable) | 2026-07-19T12:26:00Z |
+| Evaluated at | 2026-07-19T12:36:00Z |
+| Duration | ~0.17 h |
+| Webhooks received (inbox) | 0 |
+| Retries / DLQ | 0 |
+| Episode resolutions (live) | 0 |
+| False opens (reconciliation) | 2 historical candidates (not applied) |
+| False resolutions | 0 |
+| Runtime conflicts | 0 |
+| Cross-surface deviations (new) | 0 |
 
-## Webhook / DLQ
+## Production readiness verdict ladder
 
-| Check | Result |
+| Stage | Status |
 |-------|--------|
-| Metrics exposed | `synqdrive_connectivity_webhook_*` |
-| Dead-letter alert | `ConnectivityWebhookDeadLetterGrowth` |
-| Inbox table | Not required for readiness — metrics + runbook cover ops path |
-
-## Cross-surface
-
-| Surface | Runtime source |
-|---------|----------------|
-| Fleet Connectivity API v2 | `items[]` / detail DTO |
-| Fleet map | `connectivityRuntime` batch |
-| Device connection summary | `connectivityRuntime` |
-| Vehicle detail | Runtime projection |
+| Code complete on RC | ✅ |
+| Staging deploy + migrate | ✅ |
+| 24h soak | ❌ In progress |
+| `READY_FOR_PRODUCTION_PILOT` | ❌ |
+| Controlled pilot (1 org) | ⏳ After soak |
+| `PRODUCTION_READY` / broad rollout | ❌ |
 
 ## Remaining findings
 
-| ID | Sev | Item | Mitigation |
-|----|-----|------|------------|
-| FC-OPS-01 | P1 | Staging apply not executed in CI | Runbook §8; operator batch apply |
-| FC-OPS-02 | P2 | Grafana dashboard not yet dedicated | Prometheus metrics + alerts in place |
-| FC-OPS-03 | P3 | Full webhook inbox retry worker | Future; DLQ metrics + manual replay |
-
-## Production readiness verdict
-
-**CONDITIONALLY_READY** — ship to staging and execute runbook validation. Promote to production after:
-
-1. Staging migrate deploy + health check
-2. Read-only audits with zero unexpected `CONFLICTING_DATA` for target org
-3. Controlled apply batch with documented hash
-4. Incident vehicle replay on staging data
-5. 24h clean connectivity metrics
+| ID | Sev | Item |
+|----|-----|------|
+| FC-PILOT-01 | P1 | 24h soak incomplete |
+| FC-PILOT-02 | P1 | Live webhook/retry path not exercised |
+| FC-PILOT-03 | P1 | Live outbox path not exercised |
+| FC-PILOT-04 | P1 | 2 telemetry-recovery apply candidates pending post-soak |
+| FC-OPS-01 | P1 | DIMO plug trigger disabled |
+| FC-OPS-02 | P2 | Grafana dashboard |
+| FC-OPS-03 | P3 | Org-scoped recovery flag (optional) |
 
 ## Production actions NOT performed
 
-- No production backup
-- No production `prisma migrate deploy`
-- No production backend/worker deploy
-- No episode reconciliation `--apply` on production
-- No org-wide runtime rebuild on production
+- No reconciliation `--apply`
+- No broad org rollout
+- No pilot org batch apply
+
+## Next steps
+
+1. Continue soak until **2026-07-20T12:26:00Z**
+2. Run `evaluate-fleet-connectivity-staging-soak.sh`
+3. If green → `READY_FOR_PRODUCTION_PILOT` per `fleet-connectivity-production-pilot-readiness-2026-07.md` Teil 3
