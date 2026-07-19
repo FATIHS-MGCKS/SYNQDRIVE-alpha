@@ -36,6 +36,7 @@ export function connectionStatusTone(
 ): StatusTone {
   if (status === 'online') return 'success';
   if (status === 'standby') return 'watch';
+  if (status === 'signal_delayed') return 'watch';
   if (status === 'offline') return 'critical';
   return 'noData';
 }
@@ -46,6 +47,8 @@ export function connectionStatusLabel(status: FleetConnectivityStatus): string {
       return 'Online';
     case 'standby':
       return 'Standby';
+    case 'signal_delayed':
+      return 'Signal delayed';
     case 'offline':
       return 'Offline';
     default:

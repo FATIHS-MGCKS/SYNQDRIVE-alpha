@@ -24,6 +24,7 @@ function vehicle(
     sourceType: partial.sourceType ?? null,
     provider: partial.provider ?? 'DIMO',
     connectionStatus: partial.connectionStatus ?? 'online',
+    telemetryFreshness: partial.telemetryFreshness ?? 'live',
     statusNote: partial.statusNote ?? '',
     online: partial.online ?? true,
     lastSeenAt: partial.lastSeenAt ?? null,

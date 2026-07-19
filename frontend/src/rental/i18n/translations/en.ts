@@ -73,6 +73,7 @@ export const en = {
   'fleetConnectivity.kpi.connected': 'Connected',
   'fleetConnectivity.kpi.online': 'Online',
   'fleetConnectivity.kpi.standby': 'Standby',
+  'fleetConnectivity.kpi.signalDelayed': 'Signal delayed',
   'fleetConnectivity.kpi.offline': 'Offline',
   'fleetConnectivity.kpi.notConnected': 'Not connected',
   'fleetConnectivity.kpi.obdUnplugged': 'OBD unplugged',

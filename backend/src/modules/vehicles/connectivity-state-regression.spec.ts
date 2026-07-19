@@ -12,6 +12,7 @@ import {
   mapFleetConnectivityVehicle,
   ONLINE_MAX_MS,
   STANDBY_MAX_MS,
+  SIGNAL_DELAYED_MAX_MS,
 } from './fleet-connectivity.util';
 import { VehiclesService } from './vehicles.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
@@ -48,65 +49,70 @@ describe('connectivity state regressions (H–K)', () => {
     jest.useRealTimers();
   });
 
-  describe('H — freshness thresholds (canonical vs fleet API)', () => {
+  describe('H — freshness thresholds (canonical unified across fleet API)', () => {
     const cases: Array<{
       label: string;
       lastSeen: Date | null;
       canonical: ReturnType<typeof backendClassifyFreshness>;
       fleetStatus: ReturnType<typeof deriveConnectionStatus>['connectionStatus'];
+      fleetFreshness: ReturnType<typeof deriveConnectionStatus>['telemetryFreshness'];
     }> = [
       {
         label: 'live (<15m)',
         lastSeen: minutesAgo(5),
         canonical: 'live',
         fleetStatus: 'online',
+        fleetFreshness: 'live',
       },
       {
         label: 'standby (15m–24h)',
         lastSeen: hoursAgo(3),
         canonical: 'standby',
         fleetStatus: 'standby',
+        fleetFreshness: 'standby',
       },
       {
         label: 'soft-offline / signal_delayed (24–48h)',
         lastSeen: hoursAgo(30),
         canonical: 'signal_delayed',
-        fleetStatus: 'offline',
+        fleetStatus: 'signal_delayed',
+        fleetFreshness: 'signal_delayed',
       },
       {
         label: 'offline (≥48h)',
         lastSeen: hoursAgo(50),
         canonical: 'offline',
         fleetStatus: 'offline',
+        fleetFreshness: 'offline',
       },
       {
         label: 'unknown / no timestamp',
         lastSeen: null,
         canonical: 'no_signal',
         fleetStatus: 'offline',
+        fleetFreshness: 'no_signal',
       },
     ];
 
     it.each(cases)(
-      '$label — documents fleet vs canonical divergence where applicable',
-      ({ lastSeen, canonical, fleetStatus }) => {
+      '$label — fleet API matches canonical freshness',
+      ({ lastSeen, canonical, fleetStatus, fleetFreshness }) => {
         expect(backendClassifyFreshness(lastSeen, NOW)).toBe(canonical);
 
-        const lastMs = lastSeen?.getTime() ?? null;
-        const fleet = deriveConnectionStatus(true, lastMs, NOW);
+        const fleet = deriveConnectionStatus(
+          true,
+          lastSeen ? { providerObservedAt: lastSeen } : {},
+          NOW,
+        );
         expect(fleet.connectionStatus).toBe(fleetStatus);
-
-        if (canonical === 'signal_delayed') {
-          // FC-P1-02: Fleet API treats 24–48h as hard offline; canonical uses signal_delayed
-          expect(fleet.connectionStatus).toBe('offline');
-          expect(backendClassifyFreshness(lastSeen, NOW)).toBe('signal_delayed');
-        }
+        expect(fleet.telemetryFreshness).toBe(fleetFreshness);
       },
     );
 
     it('verifies agreed threshold constants', () => {
       expect(ONLINE_MAX_MS).toBe(15 * 60 * 1000);
       expect(STANDBY_MAX_MS).toBe(24 * 60 * 60 * 1000);
+      expect(SIGNAL_DELAYED_MAX_MS).toBe(48 * 60 * 60 * 1000);
     });
   });
 
@@ -124,6 +130,8 @@ describe('connectivity state regressions (H–K)', () => {
           },
           latestState: {
             lastSeenAt: minutesAgo(5),
+            sourceTimestamp: minutesAgo(5),
+            providerFetchedAt: minutesAgo(5),
             latitude: 52.5,
             longitude: 13.4,
             speedKmh: 0,

@@ -10,7 +10,10 @@ import type { ClickHouseDiagnosticsDto } from '@modules/clickhouse/clickhouse-di
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
-import { ONLINE_MAX_MS, STANDBY_MAX_MS } from '@modules/vehicles/fleet-connectivity.util';
+import {
+  TELEMETRY_FRESH_THRESHOLD_MS,
+  TELEMETRY_STANDBY_THRESHOLD_MS,
+} from '@modules/vehicles/telemetry-freshness.resolver';
 import {
   CLICKHOUSE_ANALYSIS_WINDOW_HOURS,
   HIGH_FREQUENCY_THRESHOLD_MS,
@@ -158,8 +161,8 @@ export class DataAnalyseService {
     const freshness = classifyDataFreshness(
       lastSeenMs,
       ctx.nowMs,
-      ONLINE_MAX_MS,
-      STANDBY_MAX_MS,
+      TELEMETRY_FRESH_THRESHOLD_MS,
+      TELEMETRY_STANDBY_THRESHOLD_MS,
     );
 
     const insufficientData = persisted.length < 3 || lastSeenMs == null;

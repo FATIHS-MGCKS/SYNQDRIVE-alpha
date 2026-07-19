@@ -135,6 +135,66 @@ Provider `observedAt` is authoritative. Webhook rows store `receivedAt` + `proce
 - Runtime builder `activeEpisodeId` wiring
 - Production reconciliation backfill (Prompt 18) — only `applyEligible=yes` rows
 
+## Provider link authorization (Prompt 12)
+
+`ProviderLinkStateBuilder` canonicalizes provider link truth from consent ledger, authorization,
+token/binding, mapping, revocation, expiry, and provider errors — **not** `DimoVehicle` row presence.
+
+### States (`ProviderLinkState`)
+
+`ACTIVE` · `REAUTH_REQUIRED` · `REVOKED` · `NO_LINK` · `ERROR` · `UNKNOWN`
+
+### Source-of-truth priority (highest wins)
+
+1. Cross-tenant mapping mismatch → `ERROR`
+2. Provider/integration error → `ERROR`
+3. Explicit revocation → `REVOKED`
+4. No mapping and no historical identity → `NO_LINK`
+5. Active mapping without token → `REAUTH_REQUIRED` (`TOKEN_MISSING`)
+6. Authorization expired → `REAUTH_REQUIRED` (`AUTHORIZATION_EXPIRED`)
+7. Consent missing/expired → `REAUTH_REQUIRED` (`CONSENT_MISSING`)
+8. Historical `DimoVehicle` identity only → `UNKNOWN` (never `ACTIVE`)
+9. Ambiguous authorization → `UNKNOWN`
+10. Full active chain → `ACTIVE` (`LINK_ACTIVE`)
+
+Telemetry freshness is a **separate dimension** — live telemetry with missing consent yields
+`telemetryState=live` and `providerLinkState=REAUTH_REQUIRED`.
+
+### API reason codes
+
+`CONSENT_MISSING` · `AUTHORIZATION_EXPIRED` · `TOKEN_MISSING` · `PROVIDER_REVOKED` ·
+`PROVIDER_ERROR` · `LINK_ACTIVE` · `NO_ACTIVE_PROVIDER_LINK`
+
+### Wiring
+
+- `provider-link-evidence.assembler.ts` — maps Prisma rows to evidence input
+- `VehicleConnectivityRuntimeProjectionService` — loads consent + mapping + org authorization
+- `VehicleConnectivityRuntimeStateBuilder` — consumes `ProviderLinkStateResult` (no `dimoVehicleId` shortcut)
+
+## Telemetry freshness unification (Prompt 13)
+
+Single resolver: `telemetry-freshness.resolver.ts` (backend) / `telemetryFreshness.ts` (frontend).
+
+### Thresholds (canonical)
+
+| State | Age |
+|-------|-----|
+| LIVE (`live`) | < 15 min |
+| STANDBY (`standby`) | 15 min – 24 h |
+| SOFT_OFFLINE (`signal_delayed`) | 24 h – 48 h |
+| OFFLINE (`offline`) | ≥ 48 h |
+| UNKNOWN (`no_signal`) | no usable timestamp |
+
+### Timestamp priority
+
+1. `sourceTimestamp` (provider observedAt)
+2. Last valid telemetry at
+3. `receivedAt` — blocked when backfill lag exceeds 15 min vs observed
+4. `DimoVehicle.lastSignal`
+5. `lastSeenAt` / `updatedAt` (lowest trust)
+
+Fleet Connectivity API exposes `telemetryFreshness` (canonical) + legacy `connectionStatus` mapping (`signal_delayed` added).
+
 ## Reconciliation audit (Prompt 6)
 
 Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`

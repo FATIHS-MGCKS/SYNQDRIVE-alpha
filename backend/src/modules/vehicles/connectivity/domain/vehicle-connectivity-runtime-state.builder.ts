@@ -16,6 +16,10 @@ import {
   type VehicleConnectivityRuntimeState,
   type VehicleConnectivityTechnicalEvidence,
 } from './connectivity-domain.types';
+import {
+  ProviderLinkReasonCode,
+  type ProviderLinkStateResult,
+} from './provider-link-state.types';
 
 // ─── Input vocabulary ─────────────────────────────────────────────────────────
 
@@ -46,11 +50,9 @@ export const ProviderAuthorizationStatus = {
 export type ProviderAuthorizationStatus =
   (typeof ProviderAuthorizationStatus)[keyof typeof ProviderAuthorizationStatus];
 
+/** Canonical provider link dimension — always from {@link ProviderLinkStateBuilder}. */
 export interface ProviderLinkInput {
-  hasProviderLink: boolean;
-  authorizationStatus: ProviderAuthorizationStatus;
-  consentGranted: boolean | null;
-  providerConnectionStatus?: string | null;
+  link: ProviderLinkStateResult;
 }
 
 export interface TelemetryInput {
@@ -160,7 +162,8 @@ export class VehicleConnectivityRuntimeStateBuilder {
       input.calculatedAt ?? new Date(nowMs).toISOString();
     const reasonCodes: ConnectivityReasonCode[] = [];
 
-    const providerLinkState = resolveProviderLinkState(input.provider, reasonCodes);
+    const providerLinkState = input.provider.link.state;
+    mergeProviderLinkReasonCodes(input.provider.link.reasonCodes, reasonCodes);
     const telemetryState = resolveTelemetryState(
       input.telemetry,
       nowMs,
@@ -199,7 +202,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
       episodeRelevant,
       physicalObdApplicable,
       processingErrors: input.processingErrors,
-      hasProviderLink: input.provider.hasProviderLink,
+      hasProviderLink: input.provider.link.hasProviderLink,
       hasTelemetrySnapshot: input.dataCoverage.hasTelemetrySnapshot,
       reasonCodes,
     });
@@ -224,7 +227,7 @@ export class VehicleConnectivityRuntimeStateBuilder {
       attentionState === AttentionState.CRITICAL;
 
     const evidence: VehicleConnectivityTechnicalEvidence = {
-      providerConnectionStatus: input.provider.providerConnectionStatus ?? null,
+      providerConnectionStatus: input.provider.link.providerConnectionStatus,
       openUnpluggedEpisode: input.episode.openUnpluggedEpisode,
       deviceConnectionEpisodeId: input.episode.activeEpisodeId,
       deviceConnectionEventIds: input.webhook.recentEventIds,
@@ -260,40 +263,19 @@ export class VehicleConnectivityRuntimeStateBuilder {
   }
 }
 
-function resolveProviderLinkState(
-  provider: ProviderLinkInput,
+function mergeProviderLinkReasonCodes(
+  providerReasons: ProviderLinkReasonCode[],
   reasonCodes: ConnectivityReasonCode[],
-): ProviderLinkState {
-  if (!provider.hasProviderLink) {
-    reasonCodes.push(ConnectivityReasonCode.NO_ACTIVE_PROVIDER_LINK);
-    return ProviderLinkState.NO_LINK;
+): void {
+  for (const code of providerReasons) {
+    if (
+      Object.values(ConnectivityReasonCode).includes(
+        code as ConnectivityReasonCode,
+      )
+    ) {
+      reasonCodes.push(code as ConnectivityReasonCode);
+    }
   }
-
-  if (provider.authorizationStatus === ProviderAuthorizationStatus.REVOKED) {
-    reasonCodes.push(ConnectivityReasonCode.AUTHORIZATION_EXPIRED);
-    return ProviderLinkState.REVOKED;
-  }
-
-  if (provider.authorizationStatus === ProviderAuthorizationStatus.EXPIRED) {
-    reasonCodes.push(ConnectivityReasonCode.AUTHORIZATION_EXPIRED);
-    return ProviderLinkState.REAUTH_REQUIRED;
-  }
-
-  if (provider.consentGranted === false) {
-    reasonCodes.push(ConnectivityReasonCode.CONSENT_MISSING);
-    return ProviderLinkState.REAUTH_REQUIRED;
-  }
-
-  if (provider.authorizationStatus === ProviderAuthorizationStatus.MISSING) {
-    reasonCodes.push(ConnectivityReasonCode.CONSENT_MISSING);
-    return ProviderLinkState.REAUTH_REQUIRED;
-  }
-
-  if (provider.authorizationStatus === ProviderAuthorizationStatus.UNKNOWN) {
-    return ProviderLinkState.UNKNOWN;
-  }
-
-  return ProviderLinkState.ACTIVE;
 }
 
 function resolveTelemetryState(
