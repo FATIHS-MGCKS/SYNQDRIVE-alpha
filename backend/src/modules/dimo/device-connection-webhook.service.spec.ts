@@ -14,7 +14,8 @@ function mockPrisma(
   }),
 ) {
   const upsert = jest.fn();
-  return { upsert, findFirst, vehicle: { findUnique: vehicleFindUnique } };
+  const update = jest.fn().mockResolvedValue({});
+  return { upsert, update, findFirst, vehicle: { findUnique: vehicleFindUnique } };
 }
 
 function mockEpisodeService() {
@@ -123,7 +124,7 @@ describe('inferObdPlugStateFromLastEvent', () => {
 
 describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   it('creates a new unplug event when no prior state', async () => {
-    const { upsert, findFirst } = mockPrisma();
+    const { upsert, update, findFirst } = mockPrisma();
     const observedAt = new Date('2026-06-28T12:00:00Z');
     upsert.mockResolvedValue({
       id: 'evt-1',
@@ -133,7 +134,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
 
     const service = new DeviceConnectionWebhookService(
       {
-        dimoDeviceConnectionEvent: { upsert, findFirst },
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
         vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
       } as never,
       mockEpisodeService() as never,
@@ -152,7 +153,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('ignores repeated plugged=true when already plugged', async () => {
-    const { upsert, findFirst } = mockPrisma(
+    const { upsert, update, findFirst } = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
       }),
@@ -160,7 +161,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
 
     const service = new DeviceConnectionWebhookService(
       {
-        dimoDeviceConnectionEvent: { upsert, findFirst },
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
         vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
       } as never,
       mockEpisodeService() as never,
@@ -178,11 +179,11 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('ignores baseline plugged=true when no prior events', async () => {
-    const { upsert, findFirst } = mockPrisma();
+    const { upsert, update, findFirst } = mockPrisma();
 
     const service = new DeviceConnectionWebhookService(
       {
-        dimoDeviceConnectionEvent: { upsert, findFirst },
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
         vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
       } as never,
       mockEpisodeService() as never,
@@ -200,7 +201,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('creates plug-in after prior unplug when DIMO confirms connected', async () => {
-    const { upsert, findFirst, vehicle } = mockPrisma(
+    const { upsert, update, findFirst, vehicle } = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-06-28T12:00:00Z'),
@@ -219,7 +220,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
 
     const service = new DeviceConnectionWebhookService(
       {
-        dimoDeviceConnectionEvent: { upsert, findFirst },
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
         vehicle,
       } as never,
       mockEpisodeService() as never,
@@ -238,7 +239,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('ignores short plug impulse after unplug when DIMO still disconnected', async () => {
-    const { upsert, findFirst, vehicle } = mockPrisma(
+    const { upsert, update, findFirst, vehicle } = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-07-06T13:13:34.000Z'),
@@ -251,7 +252,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
 
     const service = new DeviceConnectionWebhookService(
       {
-        dimoDeviceConnectionEvent: { upsert, findFirst },
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
         vehicle,
       } as never,
       mockEpisodeService() as never,
@@ -269,7 +270,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('creates plug-in after prior unplug when outside impulse window', async () => {
-    const { upsert, findFirst, vehicle } = mockPrisma(
+    const { upsert, update, findFirst, vehicle } = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-06-28T11:00:00Z'),
@@ -288,7 +289,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
 
     const service = new DeviceConnectionWebhookService(
       {
-        dimoDeviceConnectionEvent: { upsert, findFirst },
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
         vehicle,
       } as never,
       mockEpisodeService() as never,
@@ -307,7 +308,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('returns duplicate when upsert hits existing bucket', async () => {
-    const { upsert, findFirst, vehicle } = mockPrisma(
+    const { upsert, update, findFirst, vehicle } = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-06-28T11:00:00Z'),
@@ -323,7 +324,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
 
     const service = new DeviceConnectionWebhookService(
       {
-        dimoDeviceConnectionEvent: { upsert, findFirst },
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
         vehicle,
       } as never,
       mockEpisodeService() as never,

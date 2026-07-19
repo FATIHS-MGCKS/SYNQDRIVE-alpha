@@ -90,8 +90,8 @@ describe('connectivity recovery regressions (A–G)', () => {
 
       const upsert = jest.fn().mockResolvedValue({
         id: 'evt-plug',
-        createdAt: plugAt,
-        updatedAt: plugAt,
+        createdAt: unplugAt,
+        updatedAt: unplugAt,
       });
       const findFirst = jest
         .fn()
@@ -107,9 +107,10 @@ describe('connectivity recovery regressions (A–G)', () => {
         },
       });
 
+      const update = jest.fn().mockResolvedValue({});
       const service = new DeviceConnectionWebhookService(
         {
-          dimoDeviceConnectionEvent: { upsert, findFirst },
+          dimoDeviceConnectionEvent: { upsert, update, findFirst },
           vehicle: { findUnique: vehicleFindUnique },
         } as never,
         mockEpisodeService() as never,

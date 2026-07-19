@@ -23,6 +23,7 @@ import {
 import { VehicleConnectivityRuntimeProjectionService } from './device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
+import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
@@ -56,6 +57,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoRechargeSegmentsClient,
     DimoTriggersService,
     DeviceConnectionQueryService,
+    DeviceConnectionEpisodeService,
+    DeviceConnectionEpisodeResolutionService,
     RpmWebhookQueryService,
   ],
 })

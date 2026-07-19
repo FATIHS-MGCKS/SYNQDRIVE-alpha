@@ -57,7 +57,11 @@ export class DeviceConnectionEpisodeResolutionService {
   async tryResolveFromSnapshotPlugSignal(
     input: SnapshotPlugSignalInput,
   ): Promise<SnapshotPlugResolutionResult> {
-    const openEpisode = await this.findOpenEpisode(input);
+    const openEpisode = await this.findOpenEpisode({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider: input.provider,
+    });
     const evaluation = evaluateSnapshotPlugResolution(input, openEpisode);
     if (evaluation.action === 'noop') {
       if (evaluation.reason === 'same_snapshot_already_applied' && openEpisode) {
@@ -169,7 +173,11 @@ export class DeviceConnectionEpisodeResolutionService {
   async tryResolveFromSustainedTelemetry(
     input: TelemetryRecoverySignalInput,
   ): Promise<TelemetryRecoveryResolutionResult> {
-    const openEpisode = await this.findOpenEpisode(input);
+    const openEpisode = await this.findOpenEpisode({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider: input.provider,
+    });
     const guard = evaluateTelemetryObservationGuard(
       input,
       openEpisode,

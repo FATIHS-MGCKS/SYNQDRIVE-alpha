@@ -1,4 +1,6 @@
 import type { DeviceConnectionEpisode } from '@prisma/client';
+import { evaluateHistoricalSnapshotBackfill } from '../device-connection-event-order';
+import { DEFAULT_TELEMETRY_RECOVERY_POLICY } from './device-connection-telemetry-recovery.policy';
 
 export type SnapshotPlugRejectReason =
   | 'obd_null'
@@ -7,6 +9,8 @@ export type SnapshotPlugRejectReason =
   | 'already_resolved'
   | 'same_snapshot_already_applied'
   | 'binding_mismatch'
+  | 'token_binding_mismatch'
+  | 'historical_backfill'
   | 'provider_mismatch'
   | 'organization_mismatch'
   | 'observed_before_unplug'
@@ -30,6 +34,7 @@ export interface SnapshotPlugSignalInput {
   receivedAt: Date;
   snapshotSource: string | null;
   providerBindingId: string | null;
+  providerDeviceIdHash: string | null;
   snapshotReferenceId: string;
   sourceSubtype: string | null;
 }
@@ -102,6 +107,14 @@ export function evaluateSnapshotPlugResolution(
     return { action: 'reject', reason: 'binding_mismatch' };
   }
 
+  if (
+    episode.providerDeviceIdHash != null &&
+    input.providerDeviceIdHash != null &&
+    episode.providerDeviceIdHash !== input.providerDeviceIdHash
+  ) {
+    return { action: 'reject', reason: 'token_binding_mismatch' };
+  }
+
   if (!input.providerObservedAt) {
     return { action: 'reject', reason: 'observed_before_unplug' };
   }
@@ -112,6 +125,16 @@ export function evaluateSnapshotPlugResolution(
 
   if (input.receivedAt.getTime() <= episode.openedAt.getTime()) {
     return { action: 'reject', reason: 'received_before_unplug' };
+  }
+
+  const backfill = evaluateHistoricalSnapshotBackfill({
+    providerObservedAt: input.providerObservedAt,
+    receivedAt: input.receivedAt,
+    episodeOpenedAt: episode.openedAt,
+    maxBackfillLagMs: DEFAULT_TELEMETRY_RECOVERY_POLICY.maxBackfillLagMs,
+  });
+  if (backfill.action === 'reject') {
+    return { action: 'reject', reason: 'historical_backfill' };
   }
 
   return {

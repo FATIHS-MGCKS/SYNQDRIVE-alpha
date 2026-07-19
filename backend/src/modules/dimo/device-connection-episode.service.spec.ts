@@ -32,6 +32,7 @@ type EpisodeRow = {
   resolutionEvidenceAt: Date | null;
   resolutionEventId: string | null;
   resolutionSnapshotId: string | null;
+  reviewReasonCodes: string[];
   stateVersion: number;
   createdAt: Date;
   updatedAt: Date;
@@ -55,6 +56,7 @@ function episodeRow(overrides: Partial<EpisodeRow> = {}): EpisodeRow {
     resolutionEvidenceAt: null,
     resolutionEventId: null,
     resolutionSnapshotId: null,
+    reviewReasonCodes: [],
     stateVersion: 1,
     createdAt: now,
     updatedAt: now,
@@ -73,23 +75,15 @@ function buildPrismaMock() {
   };
 
   const deviceConnectionEpisode = {
-    findFirst: jest.fn().mockImplementation(async (args: { where: Record<string, unknown> }) => {
-      const matches = episodes.filter((episode) => {
-        for (const [key, value] of Object.entries(args.where)) {
-          if (key === 'status' && episode.status !== value) return false;
-          if (key in episode && (episode as Record<string, unknown>)[key] !== value) {
-            return false;
-          }
-        }
-        return true;
-      });
-      return matches[0] ?? null;
-    }),
     findMany: jest.fn().mockImplementation(async (args: { where: Record<string, unknown> }) => {
       return episodes.filter((episode) => {
         for (const [key, value] of Object.entries(args.where)) {
           if (key === 'vehicleId' && typeof value === 'object' && value && 'in' in value) {
             if (!(value.in as string[]).includes(episode.vehicleId)) return false;
+            continue;
+          }
+          if (key === 'status' && typeof value === 'object' && value && 'in' in value) {
+            if (!(value.in as string[]).includes(episode.status)) return false;
             continue;
           }
           if (key in episode && (episode as Record<string, unknown>)[key] !== value) {
@@ -99,6 +93,34 @@ function buildPrismaMock() {
         return true;
       });
     }),
+    findFirst: jest.fn().mockImplementation(async (args?: { where?: Record<string, unknown>; orderBy?: unknown }) => {
+      let matches = [...episodes];
+      if (args?.where) {
+        matches = matches.filter((episode) => {
+          for (const [key, value] of Object.entries(args.where!)) {
+            if (key === 'status' && typeof value === 'object' && value && 'in' in value) {
+              if (!(value.in as string[]).includes(episode.status)) return false;
+              continue;
+            }
+            if (key in episode && (episode as Record<string, unknown>)[key] !== value) {
+              return false;
+            }
+          }
+          return true;
+        });
+      }
+      if (args?.orderBy) {
+        matches.sort((a, b) => {
+          const aEvidence = a.resolutionEvidenceAt?.getTime() ?? 0;
+          const bEvidence = b.resolutionEvidenceAt?.getTime() ?? 0;
+          return bEvidence - aEvidence;
+        });
+      }
+      return matches[0] ?? null;
+    }),
+    findUnique: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) =>
+      episodes.find((episode) => episode.id === where.id) ?? null,
+    ),
     create: jest.fn().mockImplementation(async ({ data }: { data: Partial<EpisodeRow> }) => {
       const openSameScope = episodes.find(
         (episode) =>
@@ -160,8 +182,14 @@ function buildPrismaMock() {
       bindingId = id;
     },
     prisma: {
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue({ hardwareType: 'LTE_R1' }),
+      },
       vehicleDataSourceLink,
       deviceConnectionEpisode,
+      deviceConnectionEpisodeLifecycleAudit: {
+        create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+      },
     },
   };
 }
@@ -406,6 +434,58 @@ describe('DeviceConnectionEpisodeService', () => {
     });
 
     expect(result.outcome).toBe('invalid_resolution_time');
+    expect(episodes[0]?.status).toBe(DeviceConnectionEpisodeStatus.OPEN);
+  });
+
+  it('ignores late unplug that would overwrite newer recovery', async () => {
+    const { prisma, episodes } = buildPrismaMock();
+    const service = new DeviceConnectionEpisodeService(prisma as never);
+
+    episodes.push(
+      episodeRow({
+        id: 'ep-resolved',
+        status: DeviceConnectionEpisodeStatus.RESOLVED,
+        resolutionMethod: DeviceConnectionEpisodeResolutionMethod.TELEMETRY_RESUMED,
+        resolutionEvidenceAt: new Date('2026-07-09T08:00:00.000Z'),
+        resolvedAt: new Date('2026-07-09T08:00:00.000Z'),
+        deviceBindingId: BINDING_A,
+      }),
+    );
+
+    const result = await service.openFromUnplugEvent({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_ID,
+      eventId: 'evt-unplug-late',
+      observedAt: new Date('2026-07-08T17:00:00.000Z'),
+      receivedAt: new Date('2026-07-10T10:00:00.000Z'),
+      tokenId: TOKEN_ID,
+    });
+
+    expect(result.outcome).toBe('ignored_stale');
+    expect(episodes.filter((e) => e.status === DeviceConnectionEpisodeStatus.OPEN)).toHaveLength(0);
+  });
+
+  it('rejects plug resolve when token hash mismatches open episode binding', async () => {
+    const { prisma, episodes } = buildPrismaMock();
+    const service = new DeviceConnectionEpisodeService(prisma as never);
+
+    await service.openFromUnplugEvent({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_ID,
+      eventId: 'evt-unplug-1',
+      observedAt: new Date('2026-07-10T10:00:00.000Z'),
+      tokenId: TOKEN_ID,
+    });
+
+    const result = await service.resolveFromExplicitPlugEvent({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_ID,
+      eventId: 'evt-plug-other-token',
+      observedAt: new Date('2026-07-10T11:00:00.000Z'),
+      tokenId: 999,
+    });
+
+    expect(result.outcome).toBe('binding_mismatch');
     expect(episodes[0]?.status).toBe(DeviceConnectionEpisodeStatus.OPEN);
   });
 

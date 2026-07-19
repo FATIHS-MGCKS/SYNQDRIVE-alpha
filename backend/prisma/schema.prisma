@@ -1228,6 +1228,13 @@ enum DeviceConnectionEpisodeResolutionMethod {
   DATA_RECONCILIATION
 }
 
+enum DeviceConnectionEpisodeLifecycleAction {
+  SUPERSEDED_BY_BINDING_CHANGE
+  STALE_EVENT_IGNORED
+  REQUIRES_REVIEW_FLAGGED
+  BINDING_DRIFT_RECONCILED
+}
+
 enum DeviceConnectionEpisodeResolutionOutboxEventType {
   CONNECTIVITY_RUNTIME_RECALCULATE
   DEVICE_ALERT_RESOLVE_PREPARED
@@ -6434,6 +6441,8 @@ model DimoDeviceConnectionEvent {
   provider       String                        @default("DIMO")
   eventType      DimoDeviceConnectionEventType @map("event_type")
   observedAt     DateTime                      @map("observed_at")
+  receivedAt     DateTime                      @default(now()) @map("received_at")
+  processedAt    DateTime?                     @map("processed_at")
   dedupBucket    BigInt                        @map("dedup_bucket")
   rawPayloadJson Json                          @map("raw_payload_json")
   createdAt      DateTime                      @default(now()) @map("created_at")
@@ -6471,6 +6480,7 @@ model DeviceConnectionEpisode {
   resolutionEvidenceAt DateTime?                              @map("resolution_evidence_at")
   resolutionEventId    String?                                @map("resolution_event_id")
   resolutionSnapshotId String?                                @map("resolution_snapshot_id")
+  reviewReasonCodes    String[]                               @default([]) @map("review_reason_codes")
   stateVersion         Int                                    @default(1) @map("state_version")
   createdAt            DateTime                               @default(now()) @map("created_at")
   updatedAt            DateTime                               @updatedAt @map("updated_at")
@@ -6481,6 +6491,7 @@ model DeviceConnectionEpisode {
   resolutionAudits DeviceConnectionEpisodeResolutionAudit[]
   resolutionOutbox DeviceConnectionEpisodeResolutionOutbox[]
   telemetryRecoveryObservations DeviceConnectionTelemetryRecoveryObservation[]
+  lifecycleAudits               DeviceConnectionEpisodeLifecycleAudit[]
 
   @@index([organizationId])
   @@index([vehicleId])
@@ -6554,6 +6565,26 @@ model DeviceConnectionTelemetryRecoveryObservation {
   @@index([vehicleId])
   @@index([episodeId, providerObservedAt])
   @@map("device_connection_telemetry_recovery_observations")
+}
+
+model DeviceConnectionEpisodeLifecycleAudit {
+  id                 String                               @id @default(uuid())
+  organizationId     String                               @map("organization_id")
+  vehicleId          String                               @map("vehicle_id")
+  episodeId          String?                              @map("episode_id")
+  action             DeviceConnectionEpisodeLifecycleAction
+  reasonCodes        String[]                             @map("reason_codes")
+  providerObservedAt DateTime?                            @map("provider_observed_at")
+  receivedAt         DateTime?                            @map("received_at")
+  processedAt        DateTime                             @default(now()) @map("processed_at")
+  metadata           Json?
+
+  episode DeviceConnectionEpisode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([episodeId])
+  @@map("device_connection_episode_lifecycle_audits")
 }
 
 // ------------------------------------------------

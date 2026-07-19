@@ -29,6 +29,7 @@ function openEpisode(overrides: Partial<DeviceConnectionEpisode> = {}): DeviceCo
     resolutionEvidenceAt: null,
     resolutionEventId: null,
     resolutionSnapshotId: null,
+    reviewReasonCodes: [],
     stateVersion: 1,
     createdAt: new Date('2026-07-08T17:21:19.000Z'),
     updatedAt: new Date('2026-07-08T17:21:19.000Z'),
@@ -47,6 +48,7 @@ function baseInput(overrides: Record<string, unknown> = {}) {
     receivedAt: new Date('2026-07-08T17:22:05.000Z'),
     snapshotSource: 'dimo',
     providerBindingId: 'binding-1',
+    providerDeviceIdHash: 'hash-1',
     snapshotReferenceId: 'vls:state-1:obd:2026-07-08T17:22:00.000Z',
     sourceSubtype: null,
     ...overrides,
@@ -64,6 +66,7 @@ function telemetryInput(overrides: Partial<TelemetryRecoverySignalInput> = {}): 
     receivedAt: new Date('2026-07-08T17:22:05.000Z'),
     snapshotSource: 'dimo',
     providerBindingId: 'binding-1',
+    providerDeviceIdHash: 'hash-1',
     snapshotReferenceId: 'vls:state-1:tel:2026-07-08T17:22:00.000Z',
     sourceSubtype: null,
     providerConnectionStatus: 'CONNECTED',
@@ -120,6 +123,7 @@ function buildService(policy = DEFAULT_TELEMETRY_RECOVERY_POLICY) {
   const prisma = {
     deviceConnectionEpisode: {
       findFirst: jest.fn().mockImplementation(async () => episodes.find((e) => e.status === 'OPEN') ?? null),
+      findMany: jest.fn().mockImplementation(async () => episodes.filter((e) => e.status === 'OPEN')),
       findUnique: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) =>
         episodes.find((episode) => episode.id === where.id) ?? null,
       ),

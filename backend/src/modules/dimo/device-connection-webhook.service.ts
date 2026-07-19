@@ -1,15 +1,3 @@
-/**
- * SynqDrive — DIMO Device Connection Webhook Intake
- *
- * Handles OBD plug/unplug state changes delivered via DIMO Vehicle Triggers
- * (signal: obdIsPluggedIn). These are connectivity/tamper evidence events —
- * NOT misuse cases and NOT engine-context anchors.
- *
- * Idempotent layers:
- *   1. State-change gating — ignore repeated webhooks with unchanged plug state
- *   2. Plug impulse filter — ignore short plug-in after unplug unless DIMO confirms reconnect
- *   3. Time-bucket dedup — collapse burst duplicates within 30s
- */
 import { Injectable, Logger } from '@nestjs/common';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -228,6 +216,7 @@ export class DeviceConnectionWebhookService {
     },
   ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
     const { vehicle, tokenId, observedAt, rawPayload, eventType } = input;
+    const receivedAt = new Date();
     const dedupBucket = DeviceConnectionWebhookService.dedupBucket(observedAt);
 
     try {
@@ -247,6 +236,7 @@ export class DeviceConnectionWebhookService {
           provider: 'DIMO',
           eventType,
           observedAt,
+          receivedAt,
           dedupBucket,
           rawPayloadJson: rawPayload as object,
         },
@@ -263,6 +253,7 @@ export class DeviceConnectionWebhookService {
         `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()}`,
       );
 
+      const processedAt = new Date();
       await this.syncEpisodeAfterPersistedEvent({
         organizationId: vehicle.organizationId,
         vehicleId: vehicle.id,
@@ -270,6 +261,12 @@ export class DeviceConnectionWebhookService {
         eventId: row.id,
         eventType,
         observedAt,
+        receivedAt,
+      });
+
+      await this.prisma.dimoDeviceConnectionEvent.update({
+        where: { id: row.id },
+        data: { processedAt },
       });
 
       return { outcome: 'created', eventId: row.id, eventType };
@@ -290,6 +287,7 @@ export class DeviceConnectionWebhookService {
     eventId: string;
     eventType: DimoDeviceConnectionEventType;
     observedAt: Date;
+    receivedAt: Date;
   }): Promise<void> {
     if (input.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED) {
       await this.episodeService.openFromUnplugEvent({
@@ -297,6 +295,7 @@ export class DeviceConnectionWebhookService {
         vehicleId: input.vehicleId,
         eventId: input.eventId,
         observedAt: input.observedAt,
+        receivedAt: input.receivedAt,
         tokenId: input.tokenId,
       });
       return;
@@ -308,6 +307,7 @@ export class DeviceConnectionWebhookService {
         vehicleId: input.vehicleId,
         eventId: input.eventId,
         observedAt: input.observedAt,
+        receivedAt: input.receivedAt,
         tokenId: input.tokenId,
       });
     }

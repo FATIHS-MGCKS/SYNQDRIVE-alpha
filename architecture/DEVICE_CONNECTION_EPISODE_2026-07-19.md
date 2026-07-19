@@ -104,6 +104,31 @@ Wired from `DimoSnapshotProcessor` after snapshot-plug attempt (telemetry path r
 
 UI copy (later): „Wieder verbunden – aus neuer Telemetrie erkannt“.
 
+## Binding lifecycle & event order (Prompt 9)
+
+Canonical binding identity: `device-binding-lifecycle.ts` — DIMO token hash, `VehicleDataSourceLink`,
+hardware/source class (`PHYSICAL_OBD_LTE_R1`, `OEM_API`, `SYNTHETIC_ONLY`).
+
+### Binding change
+
+- Open episodes on a **different binding scope** are `SUPERSEDED` with `DEVICE_BINDING_CHANGED`
+- `reconcileBindingDrift()` runs on snapshot ingest before resolution
+- New binding starts without inherited unplug state
+- Lifecycle audits: `device_connection_episode_lifecycle_audits`
+
+### Event ordering
+
+Provider `observedAt` is authoritative. Webhook rows store `receivedAt` + `processedAt`.
+`device-connection-event-order.ts` guards:
+
+- Late unplug after recovery → ignored (audit `STALE_EVENT_IGNORED`)
+- Plug only closes when `observedAt >= episode.openedAt`
+- Historical snapshot backfills → rejected (`HISTORICAL_BACKFILL_SNAPSHOT`)
+
+### Conflicts
+
+`REQUIRES_REVIEW` episode status + `reviewReasonCodes[]` — no silent resolution for ambiguous OEM/synthetic or out-of-order cases.
+
 ## Next steps (not in this commit)
 
 - Run `scripts/ops/audit-device-connection-episode-reconciliation.ts` against staging/prod (read-only) before controlled apply

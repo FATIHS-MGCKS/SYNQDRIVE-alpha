@@ -7,6 +7,7 @@ import {
   DeviceConnectionEpisodeResolutionMethod,
   DeviceConnectionEpisodeStatus,
 } from '@prisma/client';
+import { bindingScopeMatches, buildCanonicalDeviceBinding } from '../device-binding-lifecycle';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
 import {
@@ -70,10 +71,45 @@ export class VehicleConnectivityRuntimeProjectionService {
       throw new Error(`Vehicle ${vehicleId} not found for connectivity projection`);
     }
 
-    const openEpisode =
+    const openEpisodeRaw =
       vehicle.deviceConnectionEpisodes.find(
         (episode) => episode.status === DeviceConnectionEpisodeStatus.OPEN,
       ) ?? null;
+    const binding = vehicle.dataSourceLinks[0] ?? null;
+    const bindingId = binding?.id ?? vehicle.latestState?.providerBindingId ?? null;
+    const currentBinding = buildCanonicalDeviceBinding({
+      provider: 'DIMO',
+      dimoTokenId: vehicle.dimoVehicle?.tokenId ?? 0,
+      hardwareType: vehicle.hardwareType,
+      link: binding
+        ? {
+            id: binding.id,
+            sourceType: binding.sourceType,
+            sourceSubtype: binding.sourceSubtype,
+            sourceReferenceId: binding.id,
+            activatedAt: new Date(0),
+            deactivatedAt: null,
+          }
+        : null,
+    });
+    const openEpisode =
+      openEpisodeRaw &&
+      bindingScopeMatches(
+        {
+          deviceBindingId: openEpisodeRaw.deviceBindingId,
+          providerDeviceIdHash: null,
+        },
+        currentBinding,
+      )
+        ? openEpisodeRaw
+        : null;
+    const bindingChangedSinceEpisode =
+      openEpisodeRaw != null &&
+      openEpisode == null &&
+      openEpisodeRaw.deviceBindingId != null &&
+      bindingId != null &&
+      openEpisodeRaw.deviceBindingId !== bindingId;
+
     const latestResolvedEpisode = vehicle.deviceConnectionEpisodes.find(
       (episode) => episode.status === DeviceConnectionEpisodeStatus.RESOLVED,
     );
@@ -83,10 +119,8 @@ export class VehicleConnectivityRuntimeProjectionService {
       latestResolvedEpisode.resolutionEvidenceAt
         ? latestResolvedEpisode.resolutionEvidenceAt.toISOString()
         : null;
-    const binding = vehicle.dataSourceLinks[0] ?? null;
     const raw = vehicle.latestState?.rawPayloadJson as Record<string, unknown> | null;
     const conn = extractConnectivitySnapshot(raw ?? undefined);
-    const bindingId = binding?.id ?? vehicle.latestState?.providerBindingId ?? null;
 
     const input: BuildVehicleConnectivityRuntimeStateInput = {
       vehicleId: vehicle.id,
@@ -112,7 +146,7 @@ export class VehicleConnectivityRuntimeProjectionService {
           ? ConnectivitySourceType.DIMO
           : ConnectivitySourceType.NONE,
         physicalObdCapable: vehicle.hardwareType === 'LTE_R1',
-        bindingChangedSinceEpisode: false,
+        bindingChangedSinceEpisode,
       },
       episode: {
         activeEpisodeId: openEpisode?.id ?? null,

@@ -1,5 +1,6 @@
 import type { DeviceConnectionEpisode } from '@prisma/client';
 import { DimoConnectionStatus } from '@prisma/client';
+import { evaluateHistoricalSnapshotBackfill } from '../device-connection-event-order';
 import {
   isPhysicalObdHardware,
   isPhysicalObdSnapshotSource,
@@ -15,6 +16,8 @@ export type TelemetryRecoveryRejectReason =
   | 'already_resolved'
   | 'same_snapshot_already_applied'
   | 'binding_mismatch'
+  | 'token_binding_mismatch'
+  | 'historical_backfill'
   | 'provider_mismatch'
   | 'organization_mismatch'
   | 'observed_before_unplug'
@@ -44,6 +47,7 @@ export interface TelemetryRecoverySignalInput {
   snapshotSource: string | null;
   sourceSubtype: string | null;
   providerBindingId: string | null;
+  providerDeviceIdHash: string | null;
   snapshotReferenceId: string;
   providerConnectionStatus: string | null;
   hasOperationalSignal: boolean;
@@ -136,6 +140,14 @@ export function evaluateTelemetryObservationGuard(
     return { action: 'reject', reason: 'binding_mismatch' };
   }
 
+  if (
+    episode.providerDeviceIdHash != null &&
+    input.providerDeviceIdHash != null &&
+    episode.providerDeviceIdHash !== input.providerDeviceIdHash
+  ) {
+    return { action: 'reject', reason: 'token_binding_mismatch' };
+  }
+
   if (!input.providerObservedAt) {
     return { action: 'reject', reason: 'missing_provider_observed_at' };
   }
@@ -150,6 +162,16 @@ export function evaluateTelemetryObservationGuard(
 
   if (isBackfillReplay(input, policy)) {
     return { action: 'reject', reason: 'backfill_replay' };
+  }
+
+  const historical = evaluateHistoricalSnapshotBackfill({
+    providerObservedAt: input.providerObservedAt,
+    receivedAt: input.receivedAt,
+    episodeOpenedAt: episode.openedAt,
+    maxBackfillLagMs: policy.maxBackfillLagMs,
+  });
+  if (historical.action === 'reject') {
+    return { action: 'reject', reason: 'historical_backfill' };
   }
 
   if (policy.requireOperationalSignal && !input.hasOperationalSignal) {

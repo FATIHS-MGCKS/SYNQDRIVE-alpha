@@ -109,7 +109,7 @@
 | 4 | Persistente Device Connection Episodes | **DONE** | `feat(connectivity): add persistent device connection episodes` | **yes** | episode service + query regression | yes | no | no | high |
 | 5 | Snapshot + Telemetry Episode Closure | **DONE** | `fix(connectivity): resolve unplug episodes from explicit snapshot plug signals` + `fix(connectivity): infer device reconnection from sustained telemetry` | **yes** | snapshot + telemetry resolution | yes | no | no | high |
 | 5a | Read-only episode reconciliation audit | **DONE** | `feat(connectivity): add read-only device episode reconciliation audit` | — | fixture classifier | yes | no | no | low |
-| 6 | Binding-/Token-Semantik | pending | — | maybe | binding cases | yes | yes | no | med |
+| 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
 | 7 | Webhook Inbox Retry / DLQ | pending | — | maybe | failure inject | yes | yes | no | med |
 | 8 | Provider Link + Authorization | pending | — | yes | consent backfill | yes | no | no | med |
 | 9 | Kanonische Freshness Fleet API | pending | — | no | 48h parity | no | no | no | low |

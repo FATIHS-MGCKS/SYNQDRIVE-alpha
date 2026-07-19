@@ -28,6 +28,10 @@ import {
   extractObdPlugSignalFromSnapshot,
 } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
 import { buildTelemetrySnapshotReferenceId } from '../../modules/dimo/device-connection-episode-resolution/device-connection-telemetry-recovery.evaluator';
+import {
+  DeviceConnectionEpisodeService,
+  hashProviderDeviceId,
+} from '../../modules/dimo/device-connection-episode.service';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -61,6 +65,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional()
     private readonly episodeResolution?: DeviceConnectionEpisodeResolutionService,
+    @Optional()
+    private readonly episodeService?: DeviceConnectionEpisodeService,
   ) {
     super();
   }
@@ -140,6 +146,26 @@ export class DimoSnapshotProcessor extends WorkerHost {
         },
       });
 
+      if (this.episodeService) {
+        try {
+          await this.episodeService.reconcileBindingDrift({
+            organizationId: vehicle.organizationId,
+            vehicleId,
+            tokenId: dimoTokenId,
+            hardwareType: vehicle.hardwareType,
+            evidenceAt: normalized.lastSeenAt ?? fetchedAt,
+          });
+        } catch (err) {
+          this.logger.warn(
+            `Binding drift reconciliation skipped for ${vehicleId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+      }
+
+      const providerDeviceIdHash = hashProviderDeviceId('DIMO', dimoTokenId);
+
       await this.tryResolveOpenEpisodeFromSnapshot({
         organizationId: vehicle.organizationId,
         vehicleId,
@@ -149,6 +175,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         signals,
         vehicleLatestStateId: latestState.id,
         providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        providerDeviceIdHash,
         sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
       });
 
@@ -160,6 +187,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         normalized,
         vehicleLatestStateId: latestState.id,
         providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        providerDeviceIdHash,
         sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
         providerConnectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
         signals,
@@ -299,6 +327,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     signals: Record<string, unknown>;
     vehicleLatestStateId: string;
     providerBindingId: string | null;
+    providerDeviceIdHash: string;
     sourceSubtype: string | null;
   }): Promise<void> {
     if (!this.episodeResolution) return;
@@ -327,6 +356,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         providerBindingId: input.providerBindingId,
         snapshotReferenceId,
         sourceSubtype: input.sourceSubtype,
+        providerDeviceIdHash: input.providerDeviceIdHash,
       });
     } catch (err) {
       this.logger.warn(
@@ -345,6 +375,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     normalized: ReturnType<DimoSnapshotProcessor['normalizeSnapshot']>;
     vehicleLatestStateId: string;
     providerBindingId: string | null;
+    providerDeviceIdHash: string;
     sourceSubtype: string | null;
     providerConnectionStatus: string | null;
     signals: Record<string, unknown>;
@@ -378,6 +409,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         sourceSubtype: input.sourceSubtype,
         providerConnectionStatus: input.providerConnectionStatus,
         hasOperationalSignal: this.hasOperationalTelemetrySignal(input.normalized),
+        providerDeviceIdHash: input.providerDeviceIdHash,
       });
     } catch (err) {
       this.logger.warn(
