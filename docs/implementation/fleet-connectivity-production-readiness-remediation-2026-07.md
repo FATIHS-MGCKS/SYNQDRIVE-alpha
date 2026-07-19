@@ -133,6 +133,7 @@
 | 1 | Webhook inbox + reliable processing states | **DONE** | `fix(connectivity): persist reliable webhook processing states` | `20260719160000_device_connection_webhook_inbox` | inbox + webhook specs |
 | 2 | Webhook retry worker + dead letter + manual replay | **DONE** | `fix(connectivity): add webhook retry and dead letter processing` | — | processing + replay specs |
 | 3 | Episode resolution outbox — post-commit runtime + alerts | **DONE** | `fix(connectivity): process runtime recalculation after episode commit` | `20260719170000_device_connection_episode_resolution_outbox_retry` | outbox processor specs |
+| 4 | Historical episode reconciliation audit | **DONE** | `fix(connectivity): reconcile episodes from historical snapshot evidence` | — | historical assembler + reconciliation specs |
 
 ### Prompt 1 — Webhook Inbox (2026-07-19)
 
@@ -208,6 +209,30 @@
 - ✅ `CONNECTIVITY_RUNTIME_RECALCULATE` mit echter Verarbeitung
 - ✅ Keine No-op-Completions für unbekannte Typen
 - ✅ `resolutionEvidenceAt` als fachlicher Recovery-Zeitpunkt für Alerts
+
+### Prompt 4 — Historical Reconciliation Audit (2026-07-19)
+
+**Problem:** Der Read-only Reconciliation-Audit stützte sich auf `VehicleLatestState` (aktueller Stand) und setzte `observedAt`/`receivedAt` künstlich gleich — für historische Episoden unzureichend.
+
+**Lösung:**
+- Pro Episode begrenztes Zeitfenster (24h vor Unplug, bis Recovery oder max. 14 Tage)
+- Historische Quellen: `dimo_poll_logs`, `device_connection_telemetry_recovery_observations`, ClickHouse `telemetry_snapshots`, `device_connection_episode_resolution_audits`
+- `DeviceConnectionEpisodeReconciliationHistoricalLoader` + `assembleEpisodeHistoricalEvidence` berechnen Snapshotserie-Metriken (Cadence, Lücken, Backfill-Indikatoren, getrennte Timestamps)
+- Klassifikation nutzt historische Evidence; `vehicle_latest_state_only` blockiert Apply
+- `applyEvidence` maschinenlesbar für auto-anwendbare Klassifikationen
+- Event-`receivedAt` aus DB-Spalte (nicht `createdAt`)
+
+**Neue Dateien:**
+- `device-connection-episode-reconciliation-historical.types.ts`
+- `device-connection-episode-reconciliation-historical.config.ts`
+- `device-connection-episode-reconciliation-historical.assembler.ts`
+- `device-connection-episode-reconciliation-historical.loader.ts`
+
+**Abnahme:**
+- ✅ Recovery-Klassifikation auf echter historischer Evidence
+- ✅ LatestState allein reicht nicht für historischen Apply
+- ✅ Provider- und Empfangszeit getrennt
+- ✅ Unsichere Fälle → `NOT_ENOUGH_DATA` / `CONFLICTING_DATA`
 
 ### Abhängigkeitskette
 

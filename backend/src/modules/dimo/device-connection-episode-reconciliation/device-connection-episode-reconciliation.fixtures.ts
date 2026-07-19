@@ -2,8 +2,11 @@ import { DimoConnectionStatus, DimoDeviceConnectionEventType } from '@prisma/cli
 import { FIXTURE_VEHICLE_ALIASES } from './device-connection-episode-reconciliation.anonymize';
 import {
   buildReconciliationReport,
+  deriveEpisodeWindows,
   reconcileVehicleEpisodes,
 } from './device-connection-episode-reconciliation.engine';
+import { assembleEpisodeHistoricalEvidence } from './device-connection-episode-reconciliation-historical.assembler';
+import type { ReconciliationVehicleHistoricalSources } from './device-connection-episode-reconciliation-historical.types';
 import type { ReconciliationVehicleInput } from './device-connection-episode-reconciliation.types';
 
 function event(
@@ -232,9 +235,141 @@ export const RECONCILIATION_FIXTURE_VEHICLES: ReconciliationVehicleInput[] = [
   }),
 ];
 
+function fixtureHistoricalSources(vehicle: ReconciliationVehicleInput): ReconciliationVehicleHistoricalSources {
+  const unplug = vehicle.events.find(
+    (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+  );
+  const unplugAt = unplug?.observedAt;
+
+  const telemetryObservations: ReconciliationVehicleHistoricalSources['telemetryObservations'] = [];
+  if (unplugAt && vehicle.telemetry.firstAfterUnplugAt) {
+    telemetryObservations.push({
+      providerObservedAt: vehicle.telemetry.firstAfterUnplugAt,
+      receivedAt: new Date(vehicle.telemetry.firstAfterUnplugAt.getTime() + 5_000),
+      hasOperationalSignal: true,
+      connectionStatusActive: true,
+      providerBindingId: vehicle.bindings[0]?.id ?? null,
+      snapshotReferenceId: 'fixture:tel:1',
+    });
+    if (vehicle.telemetry.sustainedAfterUnplug) {
+      telemetryObservations.push({
+        providerObservedAt: new Date(vehicle.telemetry.firstAfterUnplugAt.getTime() + 6 * 60_000),
+        receivedAt: new Date(vehicle.telemetry.firstAfterUnplugAt.getTime() + 6 * 60_000 + 5_000),
+        hasOperationalSignal: true,
+        connectionStatusActive: true,
+        providerBindingId: vehicle.bindings[0]?.id ?? null,
+        snapshotReferenceId: 'fixture:tel:2',
+      });
+    }
+  }
+
+  const resolutionAudits: ReconciliationVehicleHistoricalSources['resolutionAudits'] = [];
+  if (unplugAt && vehicle.snapshot.observedAt && vehicle.snapshot.receivedAt) {
+    if (
+      vehicle.snapshot.obdIsPluggedIn === true &&
+      vehicle.snapshot.observedAt.getTime() > unplugAt.getTime()
+    ) {
+      resolutionAudits.push({
+        providerObservedAt: vehicle.snapshot.observedAt,
+        receivedAt: vehicle.snapshot.receivedAt,
+        resolutionSnapshotId: 'fixture:snapshot:plug',
+        resolutionMethod: 'SNAPSHOT_PLUG_SIGNAL',
+        metadata: { obdIsPluggedIn: true },
+      });
+    } else if (
+      vehicle.snapshot.obdIsPluggedIn === false &&
+      vehicle.snapshot.observedAt.getTime() > unplugAt.getTime()
+    ) {
+      resolutionAudits.push({
+        providerObservedAt: vehicle.snapshot.observedAt,
+        receivedAt: vehicle.snapshot.receivedAt,
+        resolutionSnapshotId: 'fixture:snapshot:not-plugged',
+        resolutionMethod: 'SNAPSHOT_PLUG_SIGNAL',
+        metadata: { obdIsPluggedIn: false },
+      });
+    } else if (vehicle.snapshot.observedAt.getTime() <= unplugAt.getTime()) {
+      resolutionAudits.push({
+        providerObservedAt: vehicle.snapshot.observedAt,
+        receivedAt: vehicle.snapshot.receivedAt,
+        resolutionSnapshotId: 'fixture:snapshot:stale',
+        resolutionMethod: 'SNAPSHOT_PLUG_SIGNAL',
+        metadata: { obdIsPluggedIn: true },
+      });
+    }
+  }
+
+  const pollLogs: ReconciliationVehicleHistoricalSources['pollLogs'] = [];
+  if (unplugAt && vehicle.telemetry.firstAfterUnplugAt) {
+    pollLogs.push({
+      id: 'poll-fixture-1',
+      startedAt: vehicle.telemetry.firstAfterUnplugAt,
+      finishedAt: new Date(vehicle.telemetry.firstAfterUnplugAt.getTime() + 2_000),
+      status: 'SUCCESS',
+    });
+  }
+
+  return {
+    pollLogs,
+    telemetryObservations,
+    resolutionAudits,
+    clickhouseSnapshots: vehicle.telemetry.sustainedAfterUnplug
+      ? [
+          {
+            recordedAt: vehicle.telemetry.firstAfterUnplugAt!,
+            hasOperationalSignal: true,
+          },
+          {
+            recordedAt: new Date(vehicle.telemetry.firstAfterUnplugAt!.getTime() + 6 * 60_000),
+            hasOperationalSignal: true,
+          },
+        ]
+      : [],
+    latestStateFallback:
+      vehicle.snapshot.observedAt &&
+      vehicle.snapshot.receivedAt &&
+      telemetryObservations.length === 0 &&
+      resolutionAudits.length === 0
+        ? {
+            providerObservedAt: vehicle.snapshot.observedAt,
+            receivedAt: vehicle.snapshot.receivedAt,
+            processedAt: vehicle.snapshot.receivedAt,
+            sourceTimestamp: vehicle.snapshot.observedAt,
+            providerFetchedAt: vehicle.snapshot.receivedAt,
+            providerBindingId: vehicle.bindings[0]?.id ?? null,
+            sourceSubtype: vehicle.bindings[0]?.sourceSubtype ?? null,
+            obdIsPluggedIn: vehicle.snapshot.obdIsPluggedIn,
+            dimoTokenId: null,
+          }
+        : null,
+  };
+}
+
+export function enrichFixtureVehicle(vehicle: ReconciliationVehicleInput): ReconciliationVehicleInput {
+  const windows = deriveEpisodeWindows(vehicle);
+  const sources = fixtureHistoricalSources(vehicle);
+  const tripStarts = vehicle.trips.firstTripStartAfterUnplug
+    ? Array.from({ length: vehicle.trips.tripCountAfterUnplug }, (_, i) =>
+        new Date(vehicle.trips.firstTripStartAfterUnplug!.getTime() + i * 3_600_000),
+      )
+    : [];
+
+  const historicalEvidenceByUnplugEventId: Record<string, ReturnType<typeof assembleEpisodeHistoricalEvidence>> =
+    {};
+  for (const window of windows) {
+    historicalEvidenceByUnplugEventId[window.unplugEvent.id] = assembleEpisodeHistoricalEvidence({
+      vehicle,
+      window,
+      sources,
+      tripStarts,
+    });
+  }
+
+  return { ...vehicle, historicalEvidenceByUnplugEventId };
+}
+
 export function buildFixtureReconciliationReport() {
-  const candidates = RECONCILIATION_FIXTURE_VEHICLES.flatMap((vehicle) =>
-    reconcileVehicleEpisodes(vehicle),
+  const candidates = RECONCILIATION_FIXTURE_VEHICLES.map(enrichFixtureVehicle).flatMap(
+    (vehicle) => reconcileVehicleEpisodes(vehicle),
   );
   return buildReconciliationReport({
     candidates,

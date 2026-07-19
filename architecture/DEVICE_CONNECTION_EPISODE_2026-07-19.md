@@ -249,10 +249,12 @@ Episode-scoped device alerts use notification fingerprint variant `conditionCode
 - `VehicleConnectivityRuntimeProjectionService` → telemetry / authorization / coverage runtime sync
 - Notifications link to Fleet Connectivity via `OPEN_VEHICLE_MODULE` + `module: connectivity`
 
-## Reconciliation audit (Prompt 6)
+## Reconciliation audit (Prompt 6 + historical evidence Prompt 4)
 
 Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`
 
 - Script: `backend/scripts/ops/audit-device-connection-episode-reconciliation.ts`
+- Historical loader: poll logs, telemetry recovery observations, ClickHouse mirror, resolution audits
+- Per-episode bounded window — **not** latest-state-only for apply eligibility
 - Fixture artifacts: `docs/audits/device-connection-episode-reconciliation-2026-07.md`
 - CSV: `docs/audits/data/device-connection-episode-reconciliation-2026-07.csv`

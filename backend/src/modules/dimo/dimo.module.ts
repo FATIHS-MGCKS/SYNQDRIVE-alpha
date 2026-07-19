@@ -38,6 +38,7 @@ import { ConnectivityAlertService } from './connectivity-alert/connectivity-aler
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
+import { DeviceConnectionEpisodeReconciliationHistoricalLoader } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation-historical.loader';
 import { DeviceConnectionEpisodeReconciliationApplyService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation-apply.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
@@ -71,6 +72,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookReplayService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeReconciliationService,
+    DeviceConnectionEpisodeReconciliationHistoricalLoader,
     DeviceConnectionEpisodeReconciliationApplyService,
     ConnectivityObservabilityService,
     DeviceConnectionEpisodeResolutionService,

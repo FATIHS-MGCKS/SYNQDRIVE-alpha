@@ -4,6 +4,11 @@ import {
 } from '@prisma/client';
 import { filterCanonicalDeviceConnectionEvents } from '../device-connection-read-model';
 import { DEVICE_CONNECTION_DEDUP_WINDOW_MS } from '../device-connection-webhook.service';
+import {
+  historicalEvidenceSupportsSnapshotRecovery,
+  historicalEvidenceSupportsTelemetryRecovery,
+} from './device-connection-episode-reconciliation-historical.assembler';
+import type { EpisodeHistoricalEvidence } from './device-connection-episode-reconciliation-historical.types';
 import type {
   BindingClass,
   EpisodeReconciliationCandidate,
@@ -157,8 +162,8 @@ export function deriveEpisodeWindows(
 }
 
 function snapshotRecoveryEligible(
-  input: ReconciliationVehicleInput,
-  openedAt: Date,
+  evidence: EpisodeHistoricalEvidence | null,
+  bindingIdAtUnplug: string | null,
   bindingClass: BindingClass,
 ): { eligible: boolean; conflicts: string[]; confidence: ReconciliationConfidence } {
   const conflicts: string[] = [];
@@ -167,38 +172,21 @@ function snapshotRecoveryEligible(
     return { eligible: false, conflicts, confidence: 'LOW' };
   }
 
-  const { snapshot } = input;
-  if (snapshot.sameBindingAsEpisode === false) {
-    conflicts.push('SNAPSHOT_BINDING_MISMATCH');
+  if (!evidence) {
+    conflicts.push('NO_HISTORICAL_EVIDENCE');
     return { eligible: false, conflicts, confidence: 'LOW' };
   }
 
-  if (snapshot.observedAt == null || snapshot.receivedAt == null) {
-    conflicts.push('MISSING_SNAPSHOT_TIMESTAMPS');
-    return { eligible: false, conflicts, confidence: 'LOW' };
-  }
-
-  if (snapshot.observedAt.getTime() <= openedAt.getTime()) {
-    conflicts.push('SNAPSHOT_OBSERVED_BEFORE_UNPLUG');
-    return { eligible: false, conflicts, confidence: 'LOW' };
-  }
-
-  if (snapshot.receivedAt.getTime() <= openedAt.getTime()) {
-    conflicts.push('SNAPSHOT_RECEIVED_BEFORE_UNPLUG');
-    return { eligible: false, conflicts, confidence: 'LOW' };
-  }
-
-  if (snapshot.obdIsPluggedIn !== true) {
-    conflicts.push('SNAPSHOT_NOT_PLUGGED');
-    return { eligible: false, conflicts, confidence: 'MEDIUM' };
-  }
-
-  return { eligible: true, conflicts, confidence: 'HIGH' };
+  const result = historicalEvidenceSupportsSnapshotRecovery(evidence, bindingIdAtUnplug);
+  return {
+    eligible: result.eligible,
+    conflicts: [...conflicts, ...result.conflicts],
+    confidence: result.eligible ? 'HIGH' : result.conflicts.includes('SNAPSHOT_NOT_PLUGGED') ? 'MEDIUM' : 'LOW',
+  };
 }
 
 function telemetryRecoveryEligible(
-  input: ReconciliationVehicleInput,
-  openedAt: Date,
+  evidence: EpisodeHistoricalEvidence | null,
   bindingClass: BindingClass,
 ): { eligible: boolean; conflicts: string[]; confidence: ReconciliationConfidence } {
   const conflicts: string[] = [];
@@ -207,27 +195,17 @@ function telemetryRecoveryEligible(
     return { eligible: false, conflicts, confidence: 'LOW' };
   }
 
-  const first = input.telemetry.firstAfterUnplugAt;
-  if (!first || first.getTime() <= openedAt.getTime()) {
-    conflicts.push('NO_TELEMETRY_AFTER_UNPLUG');
+  if (!evidence) {
+    conflicts.push('NO_HISTORICAL_EVIDENCE');
     return { eligible: false, conflicts, confidence: 'LOW' };
   }
 
-  if (!input.telemetry.sustainedAfterUnplug) {
-    conflicts.push('TELEMETRY_NOT_SUSTAINED');
-    return { eligible: false, conflicts, confidence: 'MEDIUM' };
-  }
-
-  if (
-    input.snapshot.obdIsPluggedIn === false &&
-    input.snapshot.observedAt &&
-    input.snapshot.observedAt.getTime() > openedAt.getTime()
-  ) {
-    conflicts.push('SNAPSHOT_CONTRADICTS_TELEMETRY');
-    return { eligible: false, conflicts, confidence: 'LOW' };
-  }
-
-  return { eligible: true, conflicts, confidence: 'HIGH' };
+  const result = historicalEvidenceSupportsTelemetryRecovery(evidence);
+  return {
+    eligible: result.eligible,
+    conflicts: [...conflicts, ...result.conflicts],
+    confidence: result.eligible ? 'HIGH' : 'MEDIUM',
+  };
 }
 
 export function classifyEpisodeWindow(
@@ -241,6 +219,10 @@ export function classifyEpisodeWindow(
     window.duplicateUnplugEvents.at(-1)?.observedAt ??
     window.unplugEvent.observedAt;
 
+  const historicalEvidence =
+    input.historicalEvidenceByUnplugEventId?.[window.unplugEvent.id] ?? null;
+  const bindingAtUnplug = findActiveBindingAt(input, openedAt);
+
   const conflicts: string[] = [];
   const notes: string[] = [];
   let classification: EpisodeReconciliationClassification = 'NOT_ENOUGH_DATA';
@@ -253,6 +235,13 @@ export function classifyEpisodeWindow(
   }
   if (!window.unplugEvent.providerEventIdPresent) {
     conflicts.push('MISSING_PROVIDER_EVENT_ID');
+  }
+
+  if (historicalEvidence?.backfillIndicator) {
+    notes.push(`delayed_snapshots=${historicalEvidence.delayedSnapshotCount}`);
+  }
+  if (historicalEvidence?.latestStateOnlyEvidence) {
+    notes.push('latest_state_only_fallback');
   }
 
   if (window.duplicateUnplugEvents.length > 0 && !window.plugEvent) {
@@ -270,7 +259,6 @@ export function classifyEpisodeWindow(
     confidence = 'MEDIUM';
     notes.push('token_or_binding_changed_before_resolution');
   } else if (!window.plugEvent) {
-    const bindingAtUnplug = findActiveBindingAt(input, openedAt);
     const bindingNow = [...input.bindings]
       .filter((b) => b.isActive)
       .sort((a, b) => b.activatedAt.getTime() - a.activatedAt.getTime())[0];
@@ -280,7 +268,7 @@ export function classifyEpisodeWindow(
       bindingAtUnplug.id !== bindingNow.id &&
       bindingNow.activatedAt.getTime() > openedAt.getTime();
 
-    if (bindingSuperseded) {
+    if (bindingSuperseded || historicalEvidence?.bindingChangedInWindow) {
       classification = 'SUPERSEDED_BY_BINDING_CHANGE';
       recommendedResolutionMethod =
         DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED;
@@ -288,8 +276,12 @@ export function classifyEpisodeWindow(
       applyEligible = input.persistedOpenEpisode;
       notes.push('active_binding_changed_after_unplug');
     } else {
-      const snapshot = snapshotRecoveryEligible(input, openedAt, bindingClass);
-      const telemetry = telemetryRecoveryEligible(input, openedAt, bindingClass);
+      const snapshot = snapshotRecoveryEligible(
+        historicalEvidence,
+        bindingAtUnplug?.id ?? null,
+        bindingClass,
+      );
+      const telemetry = telemetryRecoveryEligible(historicalEvidence, bindingClass);
       conflicts.push(...snapshot.conflicts, ...telemetry.conflicts);
 
       if (snapshot.eligible) {
@@ -306,6 +298,13 @@ export function classifyEpisodeWindow(
         applyEligible = confidence === 'HIGH';
       } else if (conflicts.includes('SNAPSHOT_CONTRADICTS_TELEMETRY')) {
         classification = 'CONFLICTING_DATA';
+        confidence = 'LOW';
+      } else if (
+        conflicts.includes('LATEST_STATE_ONLY_INSUFFICIENT_FOR_HISTORICAL_APPLY') ||
+        conflicts.includes('NO_HISTORICAL_SAMPLES') ||
+        conflicts.includes('NO_HISTORICAL_EVIDENCE')
+      ) {
+        classification = 'NOT_ENOUGH_DATA';
         confidence = 'LOW';
       } else if (bindingClass === 'SYNTHETIC_ONLY' || bindingClass === 'OEM_API') {
         classification = 'NOT_ENOUGH_DATA';
@@ -361,10 +360,16 @@ export function classifyEpisodeWindow(
     bindingClass,
     openedAt: openedAt.toISOString(),
     latestEventAt: iso(latestEventAt),
-    firstTelemetryAfterUnplug: iso(input.telemetry.firstAfterUnplugAt),
+    firstTelemetryAfterUnplug: iso(
+      historicalEvidence?.firstSnapshotAfterUnplug?.providerObservedAt
+        ? new Date(historicalEvidence.firstSnapshotAfterUnplug.providerObservedAt)
+        : input.telemetry.firstAfterUnplugAt,
+    ),
     explicitPlugSignal: window.plugEvent != null,
-    sustainedTelemetry: input.telemetry.sustainedAfterUnplug,
-    tripAfterUnplug: input.trips.tripCountAfterUnplug > 0,
+    sustainedTelemetry:
+      historicalEvidence?.sustainedTelemetryFromHistory ?? input.telemetry.sustainedAfterUnplug,
+    tripAfterUnplug:
+      (historicalEvidence?.tripCountAfterUnplug ?? input.trips.tripCountAfterUnplug) > 0,
     classification,
     recommendedResolutionMethod,
     confidence,
@@ -372,6 +377,7 @@ export function classifyEpisodeWindow(
     applyEligible,
     reviewRequired,
     notes,
+    historicalEvidence,
   };
 }
 

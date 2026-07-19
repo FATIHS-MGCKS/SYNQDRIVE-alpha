@@ -10,7 +10,13 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
 import { anonymizeVehicleId } from './device-connection-episode-reconciliation.anonymize';
 import {
+  assembleEpisodeHistoricalEvidence,
+  resolveEpisodeEvidenceWindow,
+} from './device-connection-episode-reconciliation-historical.assembler';
+import { DeviceConnectionEpisodeReconciliationHistoricalLoader } from './device-connection-episode-reconciliation-historical.loader';
+import {
   buildReconciliationReport,
+  deriveEpisodeWindows,
   reconcileVehicleEpisodes,
 } from './device-connection-episode-reconciliation.engine';
 import type {
@@ -39,7 +45,10 @@ function extractProviderEventMeta(raw: unknown): {
 
 @Injectable()
 export class DeviceConnectionEpisodeReconciliationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly historicalLoader: DeviceConnectionEpisodeReconciliationHistoricalLoader,
+  ) {}
 
   async runReadOnlyAudit(opts?: {
     organizationId?: string;
@@ -69,6 +78,10 @@ export class DeviceConnectionEpisodeReconciliationService {
             source: true,
             rawPayloadJson: true,
             dimoTokenId: true,
+            sourceTimestamp: true,
+            providerFetchedAt: true,
+            providerBindingId: true,
+            updatedAt: true,
           },
         },
         dataSourceLinks: {
@@ -123,7 +136,7 @@ export class DeviceConnectionEpisodeReconciliationService {
         id: event.id,
         eventType: event.eventType,
         observedAt: event.observedAt,
-        receivedAt: event.createdAt,
+        receivedAt: event.receivedAt,
         tokenId: event.tokenId,
         dedupBucket: event.dedupBucket,
         providerEventIdPresent: meta.providerEventIdPresent,
@@ -139,13 +152,54 @@ export class DeviceConnectionEpisodeReconciliationService {
       tripsByVehicle.set(trip.vehicleId, list);
     }
 
-    const candidates = vehicles.flatMap((vehicle) => {
+    const candidates = [];
+    for (const vehicle of vehicles) {
       const vehicleEvents = eventsByVehicle.get(vehicle.id) ?? [];
-      if (vehicleEvents.length === 0) return [];
+      if (vehicleEvents.length === 0) continue;
 
-      const input = this.buildVehicleInput(vehicle, vehicleEvents, tripsByVehicle.get(vehicle.id) ?? []);
-      return reconcileVehicleEpisodes(input);
-    });
+      const baseInput = this.buildVehicleInput(
+        vehicle,
+        vehicleEvents,
+        tripsByVehicle.get(vehicle.id) ?? [],
+      );
+      const windows = deriveEpisodeWindows(baseInput);
+      if (windows.length === 0) continue;
+
+      const unionStart = new Date(
+        Math.min(...windows.map((w) => resolveEpisodeEvidenceWindow(w).windowStart.getTime())),
+      );
+      const unionEnd = new Date(
+        Math.max(...windows.map((w) => resolveEpisodeEvidenceWindow(w).windowEnd.getTime())),
+      );
+
+      const openEpisodeIds = vehicle.deviceConnectionEpisodes.map((e) => e.id);
+      const sources = await this.historicalLoader.loadVehicleSources({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+        windowStart: unionStart,
+        windowEnd: unionEnd,
+        episodeIds: openEpisodeIds,
+      });
+
+      const historicalEvidenceByUnplugEventId: Record<string, ReturnType<typeof assembleEpisodeHistoricalEvidence>> =
+        {};
+      for (const window of windows) {
+        historicalEvidenceByUnplugEventId[window.unplugEvent.id] =
+          assembleEpisodeHistoricalEvidence({
+            vehicle: baseInput,
+            window,
+            sources,
+            tripStarts: tripsByVehicle.get(vehicle.id) ?? [],
+          });
+      }
+
+      candidates.push(
+        ...reconcileVehicleEpisodes({
+          ...baseInput,
+          historicalEvidenceByUnplugEventId,
+        }),
+      );
+    }
 
     return buildReconciliationReport({
       candidates,

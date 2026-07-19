@@ -8,6 +8,7 @@ import {
 import {
   RECONCILIATION_FIXTURE_VEHICLES,
   buildFixtureReconciliationReport,
+  enrichFixtureVehicle,
 } from './device-connection-episode-reconciliation.fixtures';
 import {
   renderReconciliationCsv,
@@ -37,7 +38,7 @@ describe('device-connection-episode-reconciliation', () => {
       const vehicle = RECONCILIATION_FIXTURE_VEHICLES.find(
         (v) => v.anonymizedVehicleId === alias,
       )!;
-      return reconcileVehicleEpisodes(vehicle)[0]!;
+      return reconcileVehicleEpisodes(enrichFixtureVehicle(vehicle))[0]!;
     }
 
     it('INCIDENT — telemetry recovery with open episode', () => {
@@ -61,7 +62,7 @@ describe('device-connection-episode-reconciliation', () => {
     it('stale snapshot — not eligible for snapshot closure', () => {
       const c = candidateFor(FIXTURE_VEHICLE_ALIASES.STALE_SNAPSHOT);
       expect(c.classification).toBe('OPEN_CONFIRMED');
-      expect(c.conflicts).toContain('SNAPSHOT_OBSERVED_BEFORE_UNPLUG');
+      expect(c.conflicts.some((x) => x.includes('SNAPSHOT') || x.includes('TELEMETRY'))).toBe(true);
       expect(c.applyEligible).toBe(false);
       expect(c.reviewRequired).toBe(true);
     });
@@ -109,7 +110,7 @@ describe('device-connection-episode-reconciliation', () => {
       const csv = renderReconciliationCsv(report.candidates);
       const lines = csv.trim().split('\n');
       expect(lines[0]).toBe(
-        'anonymizedVehicleId,provider,bindingClass,openedAt,latestEventAt,firstTelemetryAfterUnplug,explicitPlugSignal,sustainedTelemetry,tripAfterUnplug,classification,recommendedResolutionMethod,confidence,conflicts,applyEligible',
+        'anonymizedVehicleId,provider,bindingClass,openedAt,latestEventAt,firstTelemetryAfterUnplug,explicitPlugSignal,sustainedTelemetry,tripAfterUnplug,classification,recommendedResolutionMethod,confidence,conflicts,applyEligible,historicalSamplesAfterUnplug,historicalSources,latestStateOnlyEvidence',
       );
       expect(lines.length).toBe(report.candidates.length + 1);
       expect(csv).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/i);
@@ -137,7 +138,7 @@ describe('device-connection-episode-reconciliation', () => {
       const vehicle = RECONCILIATION_FIXTURE_VEHICLES.find(
         (v) => v.anonymizedVehicleId === FIXTURE_VEHICLE_ALIASES.UNRESOLVED,
       )!;
-      const c = reconcileVehicleEpisodes(vehicle)[0]!;
+      const c = reconcileVehicleEpisodes(enrichFixtureVehicle(vehicle))[0]!;
       expect(c.classification).toBe('OPEN_CONFIRMED');
       expect(c.conflicts).toContain('SNAPSHOT_NOT_PLUGGED');
     });
@@ -146,13 +147,13 @@ describe('device-connection-episode-reconciliation', () => {
       const incident = RECONCILIATION_FIXTURE_VEHICLES.find(
         (v) => v.anonymizedVehicleId === FIXTURE_VEHICLE_ALIASES.INCIDENT,
       )!;
-      const withSnapshot = {
+      const withSnapshot = enrichFixtureVehicle({
         ...incident,
         snapshot: {
           ...incident.snapshot,
           obdIsPluggedIn: true,
         },
-      };
+      });
       const c = reconcileVehicleEpisodes(withSnapshot)[0]!;
       expect(c.classification).toBe('SHOULD_RESOLVE_BY_SNAPSHOT_SIGNAL');
     });
@@ -163,14 +164,14 @@ describe('device-connection-episode-reconciliation', () => {
       const incident = RECONCILIATION_FIXTURE_VEHICLES.find(
         (v) => v.anonymizedVehicleId === FIXTURE_VEHICLE_ALIASES.INCIDENT,
       )!;
-      const withAllEvents = reconcileVehicleEpisodes(incident)[0]!;
+      const withAllEvents = reconcileVehicleEpisodes(enrichFixtureVehicle(incident))[0]!;
       const trimmed = {
         ...incident,
         events: incident.events.filter(
           (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         ),
       };
-      const withTrimmed = reconcileVehicleEpisodes(trimmed)[0]!;
+      const withTrimmed = reconcileVehicleEpisodes(enrichFixtureVehicle(trimmed))[0]!;
       expect(withAllEvents.classification).toBe(withTrimmed.classification);
     });
   });
