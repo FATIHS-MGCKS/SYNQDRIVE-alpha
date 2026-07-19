@@ -271,4 +271,50 @@ describe('device-connection-read-model', () => {
     );
     expect(result).toEqual({ ignore: true, reason: 'plug_impulse_after_unplug' });
   });
+
+  it('uses persisted open episode for current state independent of event window', () => {
+    const openedAt = new Date('2026-06-01T10:00:00.000Z');
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs,
+      events: [],
+      bookings: [],
+      trips: [],
+      persistedOpenEpisode: {
+        id: 'ep-persisted',
+        openedAt,
+        deviceBindingId: 'binding-1',
+      },
+    });
+
+    expect(summary.openUnpluggedEpisode).toBe(true);
+    expect(summary.currentDeviceConnectionStatus).toBe('unplugged');
+    expect(summary.lastDeviceUnpluggedAt).toBe(openedAt.toISOString());
+    expect(summary.unpluggedCount7d).toBe(0);
+  });
+
+  it('explicit null persisted episode closes state even when events imply open unplug', () => {
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs,
+      events: [
+        {
+          id: 'e1',
+          vehicleId: 'v-1',
+          eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+          observedAt: new Date('2026-06-28T11:00:00.000Z'),
+        },
+      ],
+      bookings: [],
+      trips: [],
+      persistedOpenEpisode: null,
+    });
+
+    expect(summary.openUnpluggedEpisode).toBe(false);
+    expect(summary.currentDeviceConnectionStatus).toBe('unknown');
+  });
 });

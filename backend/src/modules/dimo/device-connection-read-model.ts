@@ -215,6 +215,17 @@ export interface BuildDeviceConnectionSummaryInput {
   trips: DeviceConnectionTripWindow[];
   recentLimit?: number;
   connectivityAnchor?: DeviceConnectionConnectivityAnchor | null;
+  /**
+   * When provided (including explicit `null`), current open/closed device state is
+   * sourced from persistent episodes — not reconstructed from the event window.
+   */
+  persistedOpenEpisode?: PersistedOpenEpisodeInput | null;
+}
+
+export interface PersistedOpenEpisodeInput {
+  id: string;
+  openedAt: Date;
+  deviceBindingId: string | null;
 }
 
 /** Per-trip flags for list/timeline surfaces (OBD plug/unplug during trip window). */
@@ -320,6 +331,7 @@ export function buildDeviceConnectionSummary(
     trips,
     recentLimit = 10,
     connectivityAnchor = null,
+    persistedOpenEpisode,
   } = input;
 
   const sorted = [...reconcileDeviceConnectionEvents(events, connectivityAnchor)].sort(
@@ -335,9 +347,11 @@ export function buildDeviceConnectionSummary(
     (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
   );
 
-  const openUnpluggedEpisode =
-    !!lastUnplug &&
-    (!lastPlug || lastUnplug.observedAt.getTime() > lastPlug.observedAt.getTime());
+  const usePersistedEpisode = persistedOpenEpisode !== undefined;
+  const openUnpluggedEpisode = usePersistedEpisode
+    ? persistedOpenEpisode != null
+    : !!lastUnplug &&
+      (!lastPlug || lastUnplug.observedAt.getTime() > lastPlug.observedAt.getTime());
 
   let currentDeviceConnectionStatus: DeviceConnectionStatus = 'unknown';
   if (openUnpluggedEpisode) currentDeviceConnectionStatus = 'unplugged';
@@ -346,7 +360,11 @@ export function buildDeviceConnectionSummary(
   }
 
   const activeBooking = findActiveBookingNow(bookings, nowMs);
-  const openSince = openUnpluggedEpisode ? lastUnplug!.observedAt : null;
+  const openSince = openUnpluggedEpisode
+    ? usePersistedEpisode
+      ? persistedOpenEpisode!.openedAt
+      : lastUnplug!.observedAt
+    : null;
   const openDurationMs =
     openSince != null ? Math.max(0, nowMs - openSince.getTime()) : null;
 
@@ -395,7 +413,7 @@ export function buildDeviceConnectionSummary(
   return {
     lteR1Capable: isLteR1Hardware(hardwareType),
     dimoLinked,
-    lastDeviceUnpluggedAt: lastUnplug?.observedAt.toISOString() ?? null,
+    lastDeviceUnpluggedAt: openSince?.toISOString() ?? lastUnplug?.observedAt.toISOString() ?? null,
     lastDevicePluggedInAt: lastPlug?.observedAt.toISOString() ?? null,
     currentDeviceConnectionStatus,
     openUnpluggedEpisode,

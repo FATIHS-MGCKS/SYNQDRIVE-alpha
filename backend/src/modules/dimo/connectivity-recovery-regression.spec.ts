@@ -22,6 +22,17 @@ const VEHICLE_ID = 'veh-regression-001';
 const ORG_ID = 'org-regression-001';
 const HARDWARE_LTE_R1 = 'LTE_R1';
 
+function mockEpisodeService() {
+  return {
+    openFromUnplugEvent: jest
+      .fn()
+      .mockResolvedValue({ outcome: 'created', episodeId: 'ep-1' }),
+    resolveFromExplicitPlugEvent: jest
+      .fn()
+      .mockResolvedValue({ outcome: 'resolved', episodeId: 'ep-1' }),
+  };
+}
+
 function unplugEvent(
   observedAt: string,
   id = `unplug-${observedAt}`,
@@ -96,10 +107,13 @@ describe('connectivity recovery regressions (A–G)', () => {
         },
       });
 
-      const service = new DeviceConnectionWebhookService({
-        dimoDeviceConnectionEvent: { upsert, findFirst },
-        vehicle: { findUnique: vehicleFindUnique },
-      } as never);
+      const service = new DeviceConnectionWebhookService(
+        {
+          dimoDeviceConnectionEvent: { upsert, findFirst },
+          vehicle: { findUnique: vehicleFindUnique },
+        } as never,
+        mockEpisodeService() as never,
+      );
 
       const unplugResult = await service.ingestObdPlugStateChange({
         vehicle: { id: VEHICLE_ID, organizationId: ORG_ID },

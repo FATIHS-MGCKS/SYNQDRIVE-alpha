@@ -46,4 +46,5 @@ User-facing labels remain frontend i18n responsibility.
 ## Next steps (not in this commit)
 
 - Wire builder into fleet-connectivity API, fleet-map, device-connection API, notifications
-- Persistent episode table linkage for `activeEpisodeId`
+- Snapshot/telemetry episode closure (`SNAPSHOT_PLUG_SIGNAL`, `TELEMETRY_RESUMED`) — Prompt 5 remediation step
+- Production reconciliation backfill (Prompt 18)

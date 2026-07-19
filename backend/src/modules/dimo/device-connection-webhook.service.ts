@@ -14,6 +14,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
 import {
   shouldIgnorePlugImpulseAfterUnplug,
   type DeviceConnectionConnectivityAnchor,
@@ -82,7 +83,10 @@ export function shouldPersistObdPlugStateChange(
 export class DeviceConnectionWebhookService {
   private readonly logger = new Logger(DeviceConnectionWebhookService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly episodeService: DeviceConnectionEpisodeService,
+  ) {}
 
   /** True when the webhook signal/metric is the OBD plug state. */
   static isObdPluggedSignal(signalName: unknown, metricName?: unknown): boolean {
@@ -258,6 +262,16 @@ export class DeviceConnectionWebhookService {
       this.logger.log(
         `Device connection event ${eventType} for vehicle ${vehicle.id} at ${observedAt.toISOString()}`,
       );
+
+      await this.syncEpisodeAfterPersistedEvent({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+        tokenId,
+        eventId: row.id,
+        eventType,
+        observedAt,
+      });
+
       return { outcome: 'created', eventId: row.id, eventType };
     } catch (err: unknown) {
       this.logger.warn(
@@ -266,6 +280,36 @@ export class DeviceConnectionWebhookService {
         }`,
       );
       return { outcome: 'ignored' };
+    }
+  }
+
+  private async syncEpisodeAfterPersistedEvent(input: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    eventId: string;
+    eventType: DimoDeviceConnectionEventType;
+    observedAt: Date;
+  }): Promise<void> {
+    if (input.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED) {
+      await this.episodeService.openFromUnplugEvent({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        eventId: input.eventId,
+        observedAt: input.observedAt,
+        tokenId: input.tokenId,
+      });
+      return;
+    }
+
+    if (input.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN) {
+      await this.episodeService.resolveFromExplicitPlugEvent({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        eventId: input.eventId,
+        observedAt: input.observedAt,
+        tokenId: input.tokenId,
+      });
     }
   }
 }

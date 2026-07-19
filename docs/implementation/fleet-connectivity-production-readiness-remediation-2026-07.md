@@ -106,7 +106,7 @@
 | 1 | Baseline + Remediation-Tracking | **DONE** | `c1bcacb5` | — | dokumentiert | — | — | — | low |
 | 2 | Regression test safety net (Szenarien A–L) | **DONE** | `12bd652a` | — | 81 BE + 37 FE | — | — | — | low |
 | 3 | VehicleConnectivityRuntimeStateBuilder (Domain + Builder) | **DONE** | `1e41783c` / `3bf06880` | — | 42 domain+builder | — | — | — | med |
-| 4 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
+| 4 | Persistente Device Connection Episodes | **DONE** | `feat(connectivity): add persistent device connection episodes` | **yes** | episode service + query regression | yes | no | no | high |
 | 5 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
 | 6 | Binding-/Token-Semantik | pending | — | maybe | binding cases | yes | yes | no | med |
 | 7 | Webhook Inbox Retry / DLQ | pending | — | maybe | failure inject | yes | yes | no | med |
