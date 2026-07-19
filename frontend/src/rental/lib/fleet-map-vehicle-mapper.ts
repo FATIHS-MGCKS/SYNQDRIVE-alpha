@@ -23,6 +23,7 @@ export interface FleetMapVehicleRow extends VehicleData {
   stationName: string | null;
   heading: number | null;
   lastSeenAt: string | null;
+  connectivityRuntime?: import('../../lib/api').VehicleConnectivityRuntimeState;
 }
 
 function toFiniteNumber(value: unknown): number | undefined {
@@ -305,6 +306,7 @@ export function mapFleetMapVehicleResponse(
     stationName: raw.stationName ?? null,
     heading: toFiniteNumber(raw.heading) ?? null,
     lastSeenAt: raw.lastSeenAt ?? null,
+    connectivityRuntime: raw.connectivityRuntime,
     ...legacyBooking,
     maintenanceReason: raw.maintenanceReason ?? null,
     maintenanceReasonCode: reasonCode,

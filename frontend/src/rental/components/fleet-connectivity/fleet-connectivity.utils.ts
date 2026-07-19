@@ -3,7 +3,10 @@ import type {
   FleetConnectivitySignalState,
   FleetConnectivityStatus,
   FleetConnectivityVehicle,
+  FleetDataCoverageState,
   FleetDeviceConnectionDto,
+  OverallConnectivityState,
+  VehicleConnectivityRuntimeState,
 } from '../../../lib/api';
 import type { StatusTone } from '../../../components/patterns/status-utils';
 
@@ -31,11 +34,67 @@ export const SIGNAL_MATRIX_LABELS: Record<
   jamming: 'Jamming',
 };
 
+export function overallConnectivityLabel(state: OverallConnectivityState): string {
+  switch (state) {
+    case 'TELEMETRY_ACTIVE':
+      return 'Live';
+    case 'STANDBY':
+      return 'Standby';
+    case 'SOFT_OFFLINE':
+      return 'Soft offline';
+    case 'OFFLINE':
+      return 'Offline';
+    case 'DEVICE_UNPLUGGED':
+      return 'Device unplugged';
+    case 'AUTHORIZATION_REQUIRED':
+      return 'Authorization required';
+    case 'NO_ACTIVE_DATA_SOURCE':
+      return 'No data source';
+    case 'INTEGRATION_ERROR':
+      return 'Integration error';
+    default:
+      return 'Unknown';
+  }
+}
+
+export function overallConnectivityTone(state: OverallConnectivityState): StatusTone {
+  switch (state) {
+    case 'TELEMETRY_ACTIVE':
+      return 'success';
+    case 'STANDBY':
+      return 'neutral';
+    case 'SOFT_OFFLINE':
+      return 'watch';
+    case 'DEVICE_UNPLUGGED':
+      return 'critical';
+    case 'AUTHORIZATION_REQUIRED':
+      return 'warning';
+    case 'INTEGRATION_ERROR':
+      return 'critical';
+    case 'OFFLINE':
+      return 'critical';
+    case 'NO_ACTIVE_DATA_SOURCE':
+      return 'noData';
+    default:
+      return 'noData';
+  }
+}
+
+export function connectivityRuntimeTone(
+  runtime: VehicleConnectivityRuntimeState,
+): StatusTone {
+  if (runtime.attentionState === 'CRITICAL') return 'critical';
+  if (runtime.attentionState === 'ACTION_REQUIRED') return 'warning';
+  if (runtime.attentionState === 'WATCH') return 'watch';
+  return overallConnectivityTone(runtime.overallState);
+}
+
 export function connectionStatusTone(
   status: FleetConnectivityStatus,
 ): StatusTone {
   if (status === 'online') return 'success';
   if (status === 'standby') return 'watch';
+  if (status === 'signal_delayed') return 'watch';
   if (status === 'offline') return 'critical';
   return 'noData';
 }
@@ -46,6 +105,8 @@ export function connectionStatusLabel(status: FleetConnectivityStatus): string {
       return 'Online';
     case 'standby':
       return 'Standby';
+    case 'signal_delayed':
+      return 'Signal delayed';
     case 'offline':
       return 'Offline';
     default:
@@ -76,6 +137,36 @@ export function readinessLabel(level: FleetConnectivityReadinessLevel): string {
       return 'Warning';
     default:
       return 'No data';
+  }
+}
+
+export function coverageStateTone(state: FleetDataCoverageState): StatusTone {
+  switch (state) {
+    case 'GOOD':
+      return 'success';
+    case 'PARTIAL':
+      return 'watch';
+    case 'INSUFFICIENT':
+      return 'warning';
+    case 'NOT_APPLICABLE':
+      return 'neutral';
+    default:
+      return 'noData';
+  }
+}
+
+export function coverageStateLabel(state: FleetDataCoverageState): string {
+  switch (state) {
+    case 'GOOD':
+      return 'Good coverage';
+    case 'PARTIAL':
+      return 'Partial coverage';
+    case 'INSUFFICIENT':
+      return 'Insufficient coverage';
+    case 'NOT_APPLICABLE':
+      return 'Not applicable';
+    default:
+      return 'Unknown coverage';
   }
 }
 

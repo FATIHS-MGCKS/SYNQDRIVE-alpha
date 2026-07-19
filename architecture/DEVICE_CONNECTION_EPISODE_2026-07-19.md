@@ -135,6 +135,120 @@ Provider `observedAt` is authoritative. Webhook rows store `receivedAt` + `proce
 - Runtime builder `activeEpisodeId` wiring
 - Production reconciliation backfill (Prompt 18) — only `applyEligible=yes` rows
 
+## Provider link authorization (Prompt 12)
+
+`ProviderLinkStateBuilder` canonicalizes provider link truth from consent ledger, authorization,
+token/binding, mapping, revocation, expiry, and provider errors — **not** `DimoVehicle` row presence.
+
+### States (`ProviderLinkState`)
+
+`ACTIVE` · `REAUTH_REQUIRED` · `REVOKED` · `NO_LINK` · `ERROR` · `UNKNOWN`
+
+### Source-of-truth priority (highest wins)
+
+1. Cross-tenant mapping mismatch → `ERROR`
+2. Provider/integration error → `ERROR`
+3. Explicit revocation → `REVOKED`
+4. No mapping and no historical identity → `NO_LINK`
+5. Active mapping without token → `REAUTH_REQUIRED` (`TOKEN_MISSING`)
+6. Authorization expired → `REAUTH_REQUIRED` (`AUTHORIZATION_EXPIRED`)
+7. Consent missing/expired → `REAUTH_REQUIRED` (`CONSENT_MISSING`)
+8. Historical `DimoVehicle` identity only → `UNKNOWN` (never `ACTIVE`)
+9. Ambiguous authorization → `UNKNOWN`
+10. Full active chain → `ACTIVE` (`LINK_ACTIVE`)
+
+Telemetry freshness is a **separate dimension** — live telemetry with missing consent yields
+`telemetryState=live` and `providerLinkState=REAUTH_REQUIRED`.
+
+### API reason codes
+
+`CONSENT_MISSING` · `AUTHORIZATION_EXPIRED` · `TOKEN_MISSING` · `PROVIDER_REVOKED` ·
+`PROVIDER_ERROR` · `LINK_ACTIVE` · `NO_ACTIVE_PROVIDER_LINK`
+
+### Wiring
+
+- `provider-link-evidence.assembler.ts` — maps Prisma rows to evidence input
+- `VehicleConnectivityRuntimeProjectionService` — loads consent + mapping + org authorization
+- `VehicleConnectivityRuntimeStateBuilder` — consumes `ProviderLinkStateResult` (no `dimoVehicleId` shortcut)
+
+## Telemetry freshness unification (Prompt 13)
+
+Single resolver: `telemetry-freshness.resolver.ts` (backend) / `telemetryFreshness.ts` (frontend).
+
+### Thresholds (canonical)
+
+| State | Age |
+|-------|-----|
+| LIVE (`live`) | < 15 min |
+| STANDBY (`standby`) | 15 min – 24 h |
+| SOFT_OFFLINE (`signal_delayed`) | 24 h – 48 h |
+| OFFLINE (`offline`) | ≥ 48 h |
+| UNKNOWN (`no_signal`) | no usable timestamp |
+
+### Timestamp priority
+
+1. `sourceTimestamp` (provider observedAt)
+2. Last valid telemetry at
+3. `receivedAt` — blocked when backfill lag exceeds 15 min vs observed
+4. `DimoVehicle.lastSignal`
+5. `lastSeenAt` / `updatedAt` (lowest trust)
+
+Fleet Connectivity API exposes `telemetryFreshness` (canonical) + legacy `connectionStatus` mapping (`signal_delayed` added).
+
+## Data coverage (Prompt 14)
+
+Capability-, provider-, powertrain-, and freshness-aware coverage replaces the misleading flat `readinessScore`.
+
+### Module
+
+`fleet-data-coverage.ts` + `fleet-data-coverage.types.ts`
+
+### Signal groups
+
+`gps` · `odometer` · `speed` · `fuel` · `evSoc` · `dtc` · `obdPlug` · `jamming`
+
+### Capability matrix dimensions
+
+Provider (`DIMO` / `HIGH_MOBILITY` / `MANUAL` / `NONE`) · device class (`PHYSICAL_OBD` / `OEM` / `SYNTHETIC`) · powertrain (`ICE` / `EV` / `PHEV` / `UNKNOWN`)
+
+### Coverage formula
+
+`fresh usable expected signals / expected and supported signals`
+
+Excluded from denominator: EV SoC on ICE, fuel on EV, OBD plug on OEM/synthetic, jamming without physical-OBD capability. Empty DTC poll counts as available; speed `0` is valid.
+
+### API fields
+
+`coverageState` (`GOOD` | `PARTIAL` | `INSUFFICIENT` | `UNKNOWN` | `NOT_APPLICABLE`) · optional `coveragePercent` · `expectedSignalCount` · `freshSignalCount` · `staleSignalCount` · `missingSignalCount` · `reasonCodes`
+
+Legacy `readinessScore` / `readinessLevel` / `signalCoveragePercent` remain as transitional aliases derived from coverage.
+
+## Connectivity alerts (Prompt 15)
+
+Unified structured connectivity alerts via `connectivity-alert/` module + notification registry.
+
+### Alert types
+
+`DEVICE_UNPLUGGED` · `DEVICE_RECONNECTED` · `TELEMETRY_SOFT_OFFLINE` · `TELEMETRY_OFFLINE` · `AUTHORIZATION_REQUIRED` · `DATA_SOURCE_DISCONNECTED` · `DATA_COVERAGE_INSUFFICIENT` · `WEBHOOK_FAILURE` · `DEVICE_BINDING_CHANGED` · `CONNECTIVITY_STATE_UNKNOWN`
+
+### Categories
+
+DEVICE · TELEMETRY · AUTHORIZATION · DATA_QUALITY · INTEGRATION
+
+### Dedupe key
+
+`organizationId:vehicleId:provider:deviceBindingId:episodeId:alertType:stateVersion`
+
+Episode-scoped device alerts use notification fingerprint variant `conditionCode:episode:{episodeId}`.
+
+### Wiring
+
+- `DeviceConnectionEpisodeService.openFromUnplugEvent` → `DEVICE_UNPLUGGED` (once per episode)
+- Explicit plug / resolution outbox → resolve unplug + one `DEVICE_RECONNECTED` info event
+- `DeviceConnectionEpisodeResolutionOutbox` consumer → `ConnectivityAlertService.processResolutionOutboxRow`
+- `VehicleConnectivityRuntimeProjectionService` → telemetry / authorization / coverage runtime sync
+- Notifications link to Fleet Connectivity via `OPEN_VEHICLE_MODULE` + `module: connectivity`
+
 ## Reconciliation audit (Prompt 6)
 
 Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`

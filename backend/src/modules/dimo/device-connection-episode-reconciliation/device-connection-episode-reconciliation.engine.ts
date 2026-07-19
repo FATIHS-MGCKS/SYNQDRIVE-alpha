@@ -285,6 +285,7 @@ export function classifyEpisodeWindow(
       recommendedResolutionMethod =
         DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED;
       confidence = 'MEDIUM';
+      applyEligible = input.persistedOpenEpisode;
       notes.push('active_binding_changed_after_unplug');
     } else {
       const snapshot = snapshotRecoveryEligible(input, openedAt, bindingClass);
@@ -328,7 +329,7 @@ export function classifyEpisodeWindow(
       recommendedResolutionMethod =
         DeviceConnectionEpisodeResolutionMethod.EXPLICIT_PLUG_WEBHOOK;
       confidence = 'HIGH';
-      applyEligible = false;
+      applyEligible = input.persistedOpenEpisode;
     }
   }
 
@@ -337,20 +338,20 @@ export function classifyEpisodeWindow(
     classification === 'NOT_ENOUGH_DATA' ||
     classification === 'OUT_OF_ORDER' ||
     classification === 'DUPLICATE' ||
-    classification === 'SUPERSEDED_BY_BINDING_CHANGE' ||
     (classification === 'OPEN_CONFIRMED' && confidence !== 'HIGH');
 
   if (
-    (classification === 'SHOULD_RESOLVE_BY_SNAPSHOT_SIGNAL' ||
-      classification === 'SHOULD_RESOLVE_BY_TELEMETRY') &&
-    confidence === 'HIGH'
+    classification === 'SHOULD_RESOLVE_BY_SNAPSHOT_SIGNAL' ||
+    classification === 'SHOULD_RESOLVE_BY_TELEMETRY' ||
+    classification === 'RESOLVED_EXPLICIT' ||
+    classification === 'SUPERSEDED_BY_BINDING_CHANGE'
   ) {
-    applyEligible = true;
-  } else {
-    applyEligible = false;
+    if (confidence === 'HIGH' || classification === 'SUPERSEDED_BY_BINDING_CHANGE') {
+      applyEligible = applyEligible || input.persistedOpenEpisode;
+    }
   }
 
-  if (reviewRequired) {
+  if (reviewRequired && classification !== 'SUPERSEDED_BY_BINDING_CHANGE') {
     applyEligible = false;
   }
 

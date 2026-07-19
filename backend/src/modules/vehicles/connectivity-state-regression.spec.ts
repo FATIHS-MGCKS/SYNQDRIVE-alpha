@@ -5,15 +5,15 @@
 import { DimoConnectionStatus } from '@prisma/client';
 import { classifyTelemetryFreshness as backendClassifyFreshness } from './vehicle-state-interpreter';
 import {
-  computeSignalCoveragePercent,
   deriveConnectionStatus,
   deriveFleetSignals,
-  deriveReadinessLevel,
-  mapFleetConnectivityVehicle,
+  mapFleetConnectivityVehicleWithRuntime,
   ONLINE_MAX_MS,
   STANDBY_MAX_MS,
+  SIGNAL_DELAYED_MAX_MS,
 } from './fleet-connectivity.util';
 import { VehiclesService } from './vehicles.service';
+import { mockConnectivityRuntime } from './connectivity/connectivity-runtime.test-fixture';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { buildDeviceConnectionSummary } from '@modules/dimo/device-connection-read-model';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
@@ -48,71 +48,76 @@ describe('connectivity state regressions (H–K)', () => {
     jest.useRealTimers();
   });
 
-  describe('H — freshness thresholds (canonical vs fleet API)', () => {
+  describe('H — freshness thresholds (canonical unified across fleet API)', () => {
     const cases: Array<{
       label: string;
       lastSeen: Date | null;
       canonical: ReturnType<typeof backendClassifyFreshness>;
       fleetStatus: ReturnType<typeof deriveConnectionStatus>['connectionStatus'];
+      fleetFreshness: ReturnType<typeof deriveConnectionStatus>['telemetryFreshness'];
     }> = [
       {
         label: 'live (<15m)',
         lastSeen: minutesAgo(5),
         canonical: 'live',
         fleetStatus: 'online',
+        fleetFreshness: 'live',
       },
       {
         label: 'standby (15m–24h)',
         lastSeen: hoursAgo(3),
         canonical: 'standby',
         fleetStatus: 'standby',
+        fleetFreshness: 'standby',
       },
       {
         label: 'soft-offline / signal_delayed (24–48h)',
         lastSeen: hoursAgo(30),
         canonical: 'signal_delayed',
-        fleetStatus: 'offline',
+        fleetStatus: 'signal_delayed',
+        fleetFreshness: 'signal_delayed',
       },
       {
         label: 'offline (≥48h)',
         lastSeen: hoursAgo(50),
         canonical: 'offline',
         fleetStatus: 'offline',
+        fleetFreshness: 'offline',
       },
       {
         label: 'unknown / no timestamp',
         lastSeen: null,
         canonical: 'no_signal',
         fleetStatus: 'offline',
+        fleetFreshness: 'no_signal',
       },
     ];
 
     it.each(cases)(
-      '$label — documents fleet vs canonical divergence where applicable',
-      ({ lastSeen, canonical, fleetStatus }) => {
+      '$label — fleet API matches canonical freshness',
+      ({ lastSeen, canonical, fleetStatus, fleetFreshness }) => {
         expect(backendClassifyFreshness(lastSeen, NOW)).toBe(canonical);
 
-        const lastMs = lastSeen?.getTime() ?? null;
-        const fleet = deriveConnectionStatus(true, lastMs, NOW);
+        const fleet = deriveConnectionStatus(
+          true,
+          lastSeen ? { providerObservedAt: lastSeen } : {},
+          NOW,
+        );
         expect(fleet.connectionStatus).toBe(fleetStatus);
-
-        if (canonical === 'signal_delayed') {
-          // FC-P1-02: Fleet API treats 24–48h as hard offline; canonical uses signal_delayed
-          expect(fleet.connectionStatus).toBe('offline');
-          expect(backendClassifyFreshness(lastSeen, NOW)).toBe('signal_delayed');
-        }
+        expect(fleet.telemetryFreshness).toBe(fleetFreshness);
       },
     );
 
     it('verifies agreed threshold constants', () => {
       expect(ONLINE_MAX_MS).toBe(15 * 60 * 1000);
       expect(STANDBY_MAX_MS).toBe(24 * 60 * 60 * 1000);
+      expect(SIGNAL_DELAYED_MAX_MS).toBe(48 * 60 * 60 * 1000);
     });
   });
 
   describe('J — provider link with expired authorization (FC-P1-03)', () => {
     it('CURRENT: DimoVehicle presence alone counts as full provider link', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicleInput,
           dimoVehicle: {
@@ -124,6 +129,8 @@ describe('connectivity state regressions (H–K)', () => {
           },
           latestState: {
             lastSeenAt: minutesAgo(5),
+            sourceTimestamp: minutesAgo(5),
+            providerFetchedAt: minutesAgo(5),
             latitude: 52.5,
             longitude: 13.4,
             speedKmh: 0,
@@ -148,36 +155,50 @@ describe('connectivity state regressions (H–K)', () => {
   });
 
   describe('K — readiness / coverage must ignore non-applicable signals', () => {
-    it('ICE vehicle: missing evSoc should not reduce coverage when marked unknown', () => {
-      const signals = deriveFleetSignals({
-        hasTelemetry: true,
-        latitude: 52.5,
-        longitude: 13.4,
-        odometerKm: 12000,
-        speedKmh: 40,
-        fuelLevelRelative: 0.6,
-        fuelLevelAbsolute: null,
-        evSoc: null,
-        obdDtcList: null,
-        lastDtcPollAt: null,
-        obdIsPluggedIn: true,
-        jammingDetectedCount: 0,
-        rawSignals: {
-          currentLocationCoordinates: { value: [52.5, 13.4] },
-          powertrainTransmissionTravelledDistance: { value: 12000 },
-          speed: { value: 40 },
-          powertrainFuelSystemRelativeLevel: { value: 0.6 },
-          obdIsPluggedIn: { value: true },
+    it('ICE vehicle: missing evSoc should not reduce capability-aware coverage', () => {
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
+        {
+          ...baseVehicleInput,
+          fuelType: 'GASOLINE',
+          hardwareType: 'LTE_R1',
+          dimoVehicle: {
+            tokenId: 1,
+            lastSignal: minutesAgo(3),
+            syncedAt: minutesAgo(3),
+            createdAt: new Date('2026-01-01'),
+            rawJson: { aftermarketDevice: { serial: 'SN-1' } },
+          },
+          latestState: {
+            lastSeenAt: minutesAgo(3),
+            sourceTimestamp: minutesAgo(3),
+            providerFetchedAt: minutesAgo(3),
+            latitude: 52.5,
+            longitude: 13.4,
+            odometerKm: 12000,
+            speedKmh: 40,
+            fuelLevelRelative: 0.6,
+            fuelLevelAbsolute: null,
+            evSoc: null,
+            obdDtcList: [],
+            lastDtcPollAt: new Date('2026-07-18T11:00:00.000Z'),
+            rawPayloadJson: {
+              currentLocationCoordinates: { value: [52.5, 13.4] },
+              powertrainTransmissionTravelledDistance: { value: 12000 },
+              speed: { value: 40 },
+              powertrainFuelSystemRelativeLevel: { value: 0.6 },
+              obdIsPluggedIn: { value: true },
+            },
+            providerSource: 'DIMO',
+          },
         },
-      });
+        NOW,
+      );
 
-      expect(signals.evSoc).toBe('missing');
-      expect(signals.fuel).toBe('available');
-
-      const score = computeSignalCoveragePercent(signals);
-      // CURRENT (FC-P2-02): evSoc counts as known-missing and lowers score
-      expect(score).toBeLessThan(100);
-      expect(deriveReadinessLevel(score, true, true, signals)).not.toBe('no_data');
+      expect(mapped.signals.evSoc).toBe('missing');
+      expect(mapped.signals.fuel).toBe('available');
+      expect(mapped.coverageState).toBe('GOOD');
+      expect(mapped.coveragePercent).toBe(100);
+      expect(mapped.readinessLevel).toBe('good');
     });
 
     it('EV without fuel: fuel missing should not imply DTC missing', () => {
@@ -205,7 +226,7 @@ describe('connectivity state regressions (H–K)', () => {
     });
 
     it('OEM without OBD plug capability leaves obdPlug unknown/missing, not plugged', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicleInput,
           dimoVehicle: {
@@ -263,9 +284,11 @@ describe('connectivity state regressions (H–K)', () => {
       const deviceConnection = buildFleetDeviceConnectionFields(deviceSummary);
       expect(deviceConnection.openUnpluggedEpisode).toBe(true);
 
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicleInput,
+          fuelType: 'GASOLINE',
+          hardwareType: 'LTE_R1',
           dimoVehicle: {
             tokenId: 1,
             lastSignal: minutesAgo(3),
@@ -292,11 +315,11 @@ describe('connectivity state regressions (H–K)', () => {
         deviceConnection,
       );
 
-      // CURRENT: readiness is signal-coverage only — episode state ignored (FC-P2-02)
-      expect(mapped.readinessScore).toBe(63);
-      expect(mapped.readinessLevel).toBe('watch');
+      // Capability-aware coverage: missing DTC lowers score; unplug episode is separate
+      expect(mapped.coverageState).toBe('GOOD');
+      expect(mapped.coveragePercent).toBe(83);
+      expect(mapped.readinessLevel).toBe('good');
       expect(mapped.deviceConnection?.openUnpluggedEpisode).toBe(true);
-      // TARGET: readiness should reflect open unplug episode (lower score / warning level)
     });
   });
 
@@ -361,6 +384,27 @@ describe('connectivity state regressions (H–K)', () => {
           .mockResolvedValue(new Map([[baseVehicleInput.id, openSummary]])),
       };
 
+      const connectivityRuntimeProjection = {
+        projectForVehicles: jest.fn().mockResolvedValue(
+          new Map([
+            [
+              baseVehicleInput.id,
+              mockConnectivityRuntime({
+                vehicleId: baseVehicleInput.id,
+                organizationId: 'org-1',
+                overallState: 'DEVICE_UNPLUGGED',
+                telemetryState: 'live',
+                physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+                attentionState: 'ACTION_REQUIRED',
+                activeEpisodeId: 'ep-open',
+                evidence: { openUnpluggedEpisode: true },
+              }),
+            ],
+          ]),
+        ),
+        projectForVehicle: jest.fn(),
+      };
+
       const stub = (): unknown => ({});
       const service = new (VehiclesService as unknown as {
         new (...args: unknown[]): VehiclesService;
@@ -375,12 +419,18 @@ describe('connectivity state regressions (H–K)', () => {
         stub(),
         stub(),
         deviceConnectionQuery,
+        connectivityRuntimeProjection,
+        stub(),
+        stub(),
+        stub(),
         stub(),
       );
 
       const res = await service.getFleetConnectivity('org-1', {});
       expect(res.vehicles[0].deviceConnection?.openUnpluggedEpisode).toBe(true);
-      expect(res.vehicles[0].connectionStatus).toBe('online');
+      expect(res.vehicles[0].connectivityRuntime.overallState).toBe('DEVICE_UNPLUGGED');
+      expect(res.vehicles[0].connectionStatus).not.toBe('online');
+      expect(res.vehicles[0].online).toBe(false);
     });
   });
 });

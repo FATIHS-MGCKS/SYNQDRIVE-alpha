@@ -1,4 +1,28 @@
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import {
+  legacyConnectionStatusNote,
+  mapTelemetryFreshnessToLegacyConnectionStatus,
+  resolveTelemetryFreshness,
+  TELEMETRY_FRESH_THRESHOLD_MS,
+  TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS,
+  TELEMETRY_STANDBY_THRESHOLD_MS,
+  type TelemetryTimestampEvidence,
+} from './telemetry-freshness.resolver';
+import { projectLegacyFleetConnectivityFields } from './connectivity/vehicle-connectivity-runtime-legacy.projection';
+import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle-connectivity-runtime-state.dto';
+import type { VehicleConnectivityRuntimeState } from './connectivity/domain/connectivity-domain.types';
+import {
+  assembleVehicleConnectivityRuntimeState,
+  type ConnectivityRuntimeVehicleRow,
+} from './connectivity/vehicle-connectivity-runtime-batch.assembler';
+import { DeviceConnectionEpisodeStatus } from '@prisma/client';
+import {
+  buildFleetDataCoverage,
+  mapCoverageStateToLegacyReadinessLevel,
+  resolveFleetDeviceClass,
+  resolveFleetPowertrainClass,
+  resolveFleetProviderClass,
+} from './fleet-data-coverage';
 import type {
   FleetConnectionStatus,
   FleetConnectivityJammingSnapshot,
@@ -12,12 +36,17 @@ import type {
 } from './fleet-connectivity.types';
 
 export const FLEET_CONNECTIVITY_THRESHOLDS: FleetConnectivityThresholds = {
-  onlineMaxMinutes: 15,
-  standbyMaxHours: 24,
+  onlineMaxMinutes: TELEMETRY_FRESH_THRESHOLD_MS / 60_000,
+  standbyMaxHours: TELEMETRY_STANDBY_THRESHOLD_MS / 3_600_000,
+  signalDelayedMaxHours: TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS / 3_600_000,
 };
 
-export const ONLINE_MAX_MS = FLEET_CONNECTIVITY_THRESHOLDS.onlineMaxMinutes * 60 * 1000;
-export const STANDBY_MAX_MS = FLEET_CONNECTIVITY_THRESHOLDS.standbyMaxHours * 60 * 60 * 1000;
+/** @deprecated Use TELEMETRY_FRESH_THRESHOLD_MS from telemetry-freshness.resolver */
+export const ONLINE_MAX_MS = TELEMETRY_FRESH_THRESHOLD_MS;
+/** @deprecated Use TELEMETRY_STANDBY_THRESHOLD_MS from telemetry-freshness.resolver */
+export const STANDBY_MAX_MS = TELEMETRY_STANDBY_THRESHOLD_MS;
+/** @deprecated Use TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS from telemetry-freshness.resolver */
+export const SIGNAL_DELAYED_MAX_MS = TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS;
 export const FLEET_CONNECTIVITY_HARD_LIMIT = 1000;
 export const DEFAULT_FLEET_CONNECTIVITY_LIMIT = 100;
 export const MAX_FLEET_CONNECTIVITY_PAGE_LIMIT = 500;
@@ -63,67 +92,38 @@ export function toIsoString(
 
 export function deriveConnectionStatus(
   hasProviderLink: boolean,
-  lastSeenMs: number | null,
+  telemetryEvidence: TelemetryTimestampEvidence,
   nowMs: number,
 ): {
   connectionStatus: FleetConnectionStatus;
+  telemetryFreshness: ReturnType<typeof resolveTelemetryFreshness>['freshness'];
   statusNote: string;
   diffMs: number;
 } {
   if (!hasProviderLink) {
     return {
       connectionStatus: 'not_connected',
-      statusNote:
-        'Fahrzeug ist mit keiner DIMO-/Provider-Datenquelle verknüpft',
+      telemetryFreshness: 'no_signal',
+      statusNote: legacyConnectionStatusNote('not_connected', 'no_signal', null),
       diffMs: -1,
     };
   }
 
-  if (lastSeenMs == null) {
-    return {
-      connectionStatus: 'offline',
-      statusNote:
-        'Keine verwertbaren Signale — Verbindung ohne aktuellen Telemetrie-Feed',
-      diffMs: -1,
-    };
-  }
+  const resolved = resolveTelemetryFreshness(telemetryEvidence, nowMs);
+  const connectionStatus = mapTelemetryFreshnessToLegacyConnectionStatus(
+    resolved.freshness,
+    hasProviderLink,
+  );
 
-  const diffMs = nowMs - lastSeenMs;
-  if (diffMs < 0) {
-    return {
-      connectionStatus: 'offline',
-      statusNote:
-        'Signalzeitstempel ungültig — letzte Meldung liegt in der Zukunft',
-      diffMs,
-    };
-  }
-
-  if (diffMs < ONLINE_MAX_MS) {
-    return {
-      connectionStatus: 'online',
-      statusNote:
-        'Telemetrie wird aktiv empfangen (letztes Signal innerhalb von 15 Minuten)',
-      diffMs,
-    };
-  }
-
-  if (diffMs < STANDBY_MAX_MS) {
-    return {
-      connectionStatus: 'standby',
-      statusNote:
-        'Kein frisches Signal — Fahrzeug vermutlich geparkt oder inaktiv (letztes Signal innerhalb von 24 Stunden)',
-      diffMs,
-    };
-  }
-
-  const days = Math.round(diffMs / 86_400_000);
   return {
-    connectionStatus: 'offline',
-    statusNote:
-      days > 7
-        ? 'Seit über 7 Tagen kein Signal — Verbindung möglicherweise unterbrochen oder Gerät sendet nicht mehr'
-        : 'Kein Signal innerhalb der letzten 24 Stunden — Verbindung unterbrochen oder Gerät sendet nicht',
-    diffMs,
+    connectionStatus,
+    telemetryFreshness: resolved.freshness,
+    statusNote: legacyConnectionStatusNote(
+      connectionStatus,
+      resolved.freshness,
+      resolved.ageMs,
+    ),
+    diffMs: resolved.ageMs ?? -1,
   };
 }
 
@@ -350,6 +350,8 @@ export interface FleetConnectivityVehicleInput {
   make: string;
   model: string;
   year: number | null;
+  fuelType?: string | null;
+  hardwareType?: string | null;
   homeStation?: { name: string } | null;
   dimoVehicle?: {
     tokenId: number | null;
@@ -360,6 +362,9 @@ export interface FleetConnectivityVehicleInput {
   } | null;
   latestState?: {
     lastSeenAt: Date | null;
+    sourceTimestamp?: Date | null;
+    providerFetchedAt?: Date | null;
+    updatedAt?: Date | null;
     latitude: number | null;
     longitude: number | null;
     speedKmh: number | null;
@@ -374,10 +379,105 @@ export interface FleetConnectivityVehicleInput {
   } | null;
 }
 
+/** Builds canonical runtime state from fleet-connectivity list inputs (tests + admin). */
+export function buildFleetConnectivityRuntimeForInput(
+  v: FleetConnectivityVehicleInput,
+  nowMs: number,
+  deviceConnection: FleetDeviceConnectionDto | null = null,
+): VehicleConnectivityRuntimeState {
+  const dv = v.dimoVehicle;
+  const ls = v.latestState;
+  const openEpisodes: ConnectivityRuntimeVehicleRow['deviceConnectionEpisodes'] = [];
+
+  if (deviceConnection?.openUnpluggedEpisode) {
+    openEpisodes.push({
+      id: 'synthetic-open-episode',
+      deviceBindingId: 'synthetic-link',
+      openedAt: deviceConnection.openUnpluggedSince
+        ? new Date(deviceConnection.openUnpluggedSince)
+        : new Date(nowMs),
+      status: DeviceConnectionEpisodeStatus.OPEN,
+      resolutionMethod: null,
+      resolutionEvidenceAt: null,
+    });
+  }
+
+  const row: ConnectivityRuntimeVehicleRow = {
+    id: v.id,
+    organizationId: 'org-synthetic',
+    hardwareType: v.hardwareType ?? null,
+    fuelType: v.fuelType ?? null,
+    dimoVehicleId: dv ? 'dimo-linked' : null,
+    dimoVehicle: dv
+      ? {
+          connectionStatus: 'CONNECTED',
+          tokenId: dv.tokenId,
+          lastSignal: dv.lastSignal,
+        }
+      : null,
+    latestState: ls
+      ? {
+          lastSeenAt: ls.lastSeenAt,
+          providerFetchedAt: ls.providerFetchedAt ?? null,
+          sourceTimestamp: ls.sourceTimestamp ?? ls.lastSeenAt,
+          providerSource: ls.providerSource,
+          providerBindingId: null,
+          rawPayloadJson: ls.rawPayloadJson,
+          latitude: ls.latitude,
+          longitude: ls.longitude,
+          speedKmh: ls.speedKmh,
+          odometerKm: ls.odometerKm,
+          fuelLevelRelative: ls.fuelLevelRelative,
+          fuelLevelAbsolute: ls.fuelLevelAbsolute,
+          evSoc: ls.evSoc,
+          obdDtcList: ls.obdDtcList,
+          lastDtcPollAt: ls.lastDtcPollAt,
+        }
+      : null,
+    dataSourceLinks: dv
+      ? [
+          {
+            id: 'synthetic-link',
+            sourceType: 'DIMO',
+            sourceSubtype: null,
+            isActive: true,
+            provider: 'DIMO',
+          },
+        ]
+      : [],
+    providerConsents: dv
+      ? [
+          {
+            organizationId: 'org-synthetic',
+            provider: 'DIMO',
+            status: 'ACTIVE',
+            grantedAt: new Date('2026-01-01'),
+            expiresAt: null,
+            revokedAt: null,
+          },
+        ]
+      : [],
+    deviceConnectionEpisodes: openEpisodes,
+  };
+
+  return assembleVehicleConnectivityRuntimeState(row, null, nowMs);
+}
+
+/** Convenience wrapper — builds runtime then maps (tests and legacy callers). */
+export function mapFleetConnectivityVehicleWithRuntime(
+  v: FleetConnectivityVehicleInput,
+  nowMs: number,
+  deviceConnection: FleetDeviceConnectionDto | null = null,
+): FleetConnectivityVehicleDto {
+  const runtime = buildFleetConnectivityRuntimeForInput(v, nowMs, deviceConnection);
+  return mapFleetConnectivityVehicle(v, nowMs, deviceConnection, runtime);
+}
+
 export function mapFleetConnectivityVehicle(
   v: FleetConnectivityVehicleInput,
   nowMs: number,
   deviceConnection: FleetDeviceConnectionDto | null = null,
+  connectivityRuntime: VehicleConnectivityRuntimeState,
 ): FleetConnectivityVehicleDto {
   const dv = v.dimoVehicle;
   const ls = v.latestState;
@@ -405,8 +505,21 @@ export function mapFleetConnectivityVehicle(
         ? 'DIMO Platform'
         : null;
 
-  const lastSeenAtRaw = ls?.lastSeenAt ?? dv?.lastSignal ?? null;
-  const lastSeenMs = parseTimestampMs(lastSeenAtRaw);
+  const telemetryEvidence: TelemetryTimestampEvidence = {
+    providerObservedAt: ls?.sourceTimestamp ?? null,
+    lastValidTelemetryAt: ls?.sourceTimestamp ?? ls?.lastSeenAt ?? null,
+    receivedAt: ls?.providerFetchedAt ?? null,
+    lastSignal: dv?.lastSignal ?? null,
+    latestStateUpdatedAt: ls?.lastSeenAt ?? ls?.updatedAt ?? null,
+  };
+
+  const resolvedObserved = resolveTelemetryFreshness(telemetryEvidence, nowMs);
+  const legacy = projectLegacyFleetConnectivityFields(
+    connectivityRuntime,
+    resolvedObserved.ageMs,
+  );
+  const { connectionStatus, telemetryFreshness, statusNote, online } = legacy;
+  const freshnessLabel = deriveFreshnessLabel(resolvedObserved.observedAtMs, nowMs);
   const lastSyncedAt = toIsoString(dv?.syncedAt ?? null);
 
   const rawSignals = (ls?.rawPayloadJson ?? null) as Record<
@@ -414,13 +527,6 @@ export function mapFleetConnectivityVehicle(
     unknown
   > | null;
   const conn = extractConnectivitySnapshot(rawSignals ?? undefined);
-
-  const { connectionStatus, statusNote } = deriveConnectionStatus(
-    hasProviderLink,
-    lastSeenMs,
-    nowMs,
-  );
-  const freshnessLabel = deriveFreshnessLabel(lastSeenMs, nowMs);
 
   const hasTelemetry = ls != null;
   const signals = deriveFleetSignals({
@@ -439,13 +545,49 @@ export function mapFleetConnectivityVehicle(
     rawSignals,
   });
 
-  const signalCoveragePercent = computeSignalCoveragePercent(signals);
-  const readinessScore = signalCoveragePercent;
-  const readinessLevel = deriveReadinessLevel(
-    readinessScore,
+  const powertrain = resolveFleetPowertrainClass(v.fuelType);
+  const deviceClass = resolveFleetDeviceClass({
+    hardwareType: v.hardwareType,
+    hasAftermarketDevice: hasAftermarket,
+    hasSyntheticDevice: hasSynthetic,
     hasProviderLink,
-    hasTelemetry,
-    signals,
+  });
+  const providerClass = resolveFleetProviderClass(
+    hasProviderLink,
+    ls?.providerSource,
+  );
+  const dataCoverage = buildFleetDataCoverage({
+    context: {
+      provider: providerClass,
+      deviceClass,
+      powertrain,
+      physicalObdCapable: v.hardwareType === 'LTE_R1' || hasAftermarket,
+      hasProviderLink,
+      hasTelemetrySnapshot: hasTelemetry,
+    },
+    observation: {
+      latitude: ls?.latitude,
+      longitude: ls?.longitude,
+      odometerKm: ls?.odometerKm,
+      speedKmh: ls?.speedKmh,
+      fuelLevelRelative: ls?.fuelLevelRelative,
+      fuelLevelAbsolute: ls?.fuelLevelAbsolute,
+      evSoc: ls?.evSoc,
+      obdDtcList: ls?.obdDtcList,
+      lastDtcPollAt: ls?.lastDtcPollAt,
+      obdIsPluggedIn: conn.obdIsPluggedIn,
+      jammingDetectedCount: conn.jammingDetectedCount,
+      hasTelemetry,
+      rawSignals,
+    },
+    telemetryFreshness: connectivityRuntime.telemetryState,
+  });
+
+  const coveragePercent = dataCoverage.coveragePercent;
+  const signalCoveragePercent = coveragePercent ?? 0;
+  const readinessScore = signalCoveragePercent;
+  const readinessLevel = mapCoverageStateToLegacyReadinessLevel(
+    connectivityRuntime.dataCoverageState,
   );
 
   const jammingSnapshotNote = buildJammingSnapshotNote(
@@ -476,8 +618,9 @@ export function mapFleetConnectivityVehicle(
     connectionType,
     sourceType,
     connectionStatus,
+    telemetryFreshness,
     statusNote,
-    lastSeenAt: toIsoString(lastSeenAtRaw),
+    lastSeenAt: resolvedObserved.observedAtIso,
     lastSyncedAt,
     freshnessLabel,
     pairedAt:
@@ -499,12 +642,20 @@ export function mapFleetConnectivityVehicle(
     readinessScore,
     readinessLevel,
     signalCoveragePercent,
+    coverageState: connectivityRuntime.dataCoverageState,
+    coveragePercent,
+    expectedSignalCount: dataCoverage.expectedSignalCount,
+    freshSignalCount: dataCoverage.freshSignalCount,
+    staleSignalCount: dataCoverage.staleSignalCount,
+    missingSignalCount: dataCoverage.missingSignalCount,
+    reasonCodes: dataCoverage.reasonCodes,
     signals,
     deviceSerial: maskedDeviceSerial,
     dimoTokenId: null,
     syntheticTokenId: null,
-    online: connectionStatus === 'online',
+    online,
     deviceConnection,
+    connectivityRuntime: serializeVehicleConnectivityRuntimeState(connectivityRuntime),
   };
 }
 
@@ -515,17 +666,20 @@ export function buildFleetConnectivitySummary(
     .length;
   const withTelemetry = vehicles.filter((v) => v.hasTelemetry).length;
   const coverageValues = vehicles
-    .map((v) => v.signalCoveragePercent)
-    .filter((n) => Number.isFinite(n));
+    .map((v) => v.coveragePercent ?? v.signalCoveragePercent)
+    .filter((n): n is number => n != null && Number.isFinite(n));
   const readinessValues = vehicles
     .map((v) => v.readinessScore)
     .filter((n) => Number.isFinite(n));
 
   return {
     total: vehicles.length,
-    online: vehicles.filter((v) => v.connectionStatus === 'online').length,
-    standby: vehicles.filter((v) => v.connectionStatus === 'standby').length,
-    offline: vehicles.filter((v) => v.connectionStatus === 'offline').length,
+    online: vehicles.filter((v) => v.telemetryFreshness === 'live').length,
+    standby: vehicles.filter((v) => v.telemetryFreshness === 'standby').length,
+    signalDelayed: vehicles.filter((v) => v.telemetryFreshness === 'signal_delayed').length,
+    offline: vehicles.filter((v) =>
+      v.telemetryFreshness === 'offline' || v.telemetryFreshness === 'no_signal',
+    ).length,
     notConnected: vehicles.filter((v) => v.connectionStatus === 'not_connected')
       .length,
     connected,

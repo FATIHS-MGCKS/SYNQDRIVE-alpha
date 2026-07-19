@@ -24,6 +24,7 @@ function vehicle(
     sourceType: partial.sourceType ?? null,
     provider: partial.provider ?? 'DIMO',
     connectionStatus: partial.connectionStatus ?? 'online',
+    telemetryFreshness: partial.telemetryFreshness ?? 'live',
     statusNote: partial.statusNote ?? '',
     online: partial.online ?? true,
     lastSeenAt: partial.lastSeenAt ?? null,
@@ -44,6 +45,13 @@ function vehicle(
     readinessScore: partial.readinessScore ?? 0,
     readinessLevel: partial.readinessLevel ?? 'no_data',
     signalCoveragePercent: partial.signalCoveragePercent ?? 0,
+    coverageState: partial.coverageState ?? 'UNKNOWN',
+    coveragePercent: partial.coveragePercent ?? null,
+    expectedSignalCount: partial.expectedSignalCount ?? 0,
+    freshSignalCount: partial.freshSignalCount ?? 0,
+    staleSignalCount: partial.staleSignalCount ?? 0,
+    missingSignalCount: partial.missingSignalCount ?? 0,
+    reasonCodes: partial.reasonCodes ?? [],
     signals: partial.signals ?? {
       gps: 'unknown',
       odometer: 'unknown',
@@ -58,6 +66,29 @@ function vehicle(
     dimoTokenId: partial.dimoTokenId ?? null,
     syntheticTokenId: partial.syntheticTokenId ?? null,
     deviceConnection: partial.deviceConnection ?? null,
+    connectivityRuntime:
+      partial.connectivityRuntime ??
+      ({
+        vehicleId: partial.vehicleId,
+        organizationId: 'org-test',
+        overallState: 'TELEMETRY_ACTIVE',
+        providerLinkState: 'ACTIVE',
+        telemetryState: partial.telemetryFreshness ?? 'live',
+        physicalDeviceState: 'NOT_APPLICABLE',
+        dataCoverageState: partial.coverageState ?? 'GOOD',
+        attentionState: 'NONE',
+        reasonCodes: [],
+        recommendedAction: 'NONE',
+        requiresAction: false,
+        lastTelemetryAt: partial.lastSeenAt ?? null,
+        lastProviderObservedAt: partial.lastSeenAt ?? null,
+        lastReceivedAt: null,
+        deviceBindingId: null,
+        activeEpisodeId: null,
+        evidence: {},
+        calculatedAt: new Date().toISOString(),
+        stateVersion: 1,
+      } satisfies FleetConnectivityVehicle['connectivityRuntime']),
   };
 }
 

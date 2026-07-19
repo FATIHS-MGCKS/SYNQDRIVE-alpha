@@ -1,332 +1,231 @@
-import type { LucideIcon } from 'lucide-react';
 import {
-  Activity,
+  AlertTriangle,
   Car,
   ChevronRight,
-  Link2,
-  Plug,
   Radio,
   RefreshCw,
   Search,
-  ShieldAlert,
   Signal,
-  SignalZero,
   WifiOff,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
   DataTable,
   EmptyState,
   ErrorState,
+  PageHeader,
   SkeletonMetricGrid,
   SkeletonRows,
-  StatusChip,
   type DataTableColumn,
   type StatusTone,
 } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
-import { api, type FleetConnectivityResponse, type FleetConnectivityVehicle } from '../../../lib/api';
+import type { FleetConnectivityListItem } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
-import {
-  DashboardSectionLabel,
-  META_TEXT_CLASS,
-  ROW_BODY_CLASS,
-  ROW_TITLE_CLASS,
-} from '../dashboard/dashboardShell';
+import { META_TEXT_CLASS, ROW_BODY_CLASS, ROW_TITLE_CLASS } from '../dashboard/dashboardShell';
 import { fhs } from '../fleet-health-service/fleet-health-service-shell';
 import { FleetConnectivityDetailDrawer } from './FleetConnectivityDetailDrawer';
+import { OverallStateChip } from './fleet-connectivity.badges';
 import {
-  ConnectionStatusChip,
-  DeviceConnectionWebhookChip,
-  JammingSnapshotChip,
-  ObdRowChip,
-  ReadinessChip,
-} from './fleet-connectivity.badges';
+  filterFleetConnectivityItems,
+  hasActiveConnectivityFilters,
+  type FleetConnectivityKpiFilter,
+  type FleetConnectivityStateFilter,
+} from './fleet-connectivity.filters';
 import {
-  type FleetConnectionScopeFilter,
-  type FleetReadinessFilter,
-  type FleetSignalFilter,
-  filterFleetConnectivityVehicles,
-  hasActiveFleetFilters,
-} from './fleet-connectivity.utils';
+  formatLastTelemetry,
+  primaryListHint,
+  vehicleTitle,
+} from './fleet-connectivity.presentation';
+import { useFleetConnectivityList } from './useFleetConnectivityList';
 
 interface FleetConnectivityTabProps {
   /** When true, omits the standalone page header (Fleet hub provides top-level chrome). */
   embedded?: boolean;
 }
 
-const KPI_TONE: Record<
-  'neutral' | 'info' | 'success' | 'watch' | 'critical' | 'warning',
-  StatusTone
-> = {
+const KPI_TONE: Record<'neutral' | 'success' | 'watch' | 'critical' | 'warning', StatusTone> = {
   neutral: 'neutral',
-  info: 'info',
   success: 'success',
   watch: 'warning',
   critical: 'critical',
   warning: 'warning',
 };
 
-function ConnectivityVehicleIdentity({ vehicle }: { vehicle: FleetConnectivityVehicle }) {
-  const title = [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ');
+function ConnectivityVehicleIdentity({ item }: { item: FleetConnectivityListItem }) {
+  const v = item.vehicle;
   return (
     <div className="min-w-[168px]">
       <p className={cn(ROW_TITLE_CLASS, 'text-[13px] tabular-nums')}>
-        {vehicle.licensePlate ?? '—'}
+        {v.licensePlate ?? '—'}
       </p>
-      <p className={cn(ROW_BODY_CLASS, 'mt-0.5 truncate text-[11px]')}>{title || vehicle.vin}</p>
+      <p className={cn(ROW_BODY_CLASS, 'mt-0.5 truncate text-[11px]')}>{vehicleTitle(v)}</p>
     </div>
+  );
+}
+
+function ConnectivityListCard({
+  item,
+  t,
+  locale,
+  onOpen,
+  actionLabel,
+}: {
+  item: FleetConnectivityListItem;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+  locale: string;
+  onOpen: () => void;
+  actionLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="surface-premium w-full rounded-2xl p-3 text-left shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+      aria-label={`${item.vehicle.licensePlate ?? item.vehicle.make} — ${actionLabel}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <ConnectivityVehicleIdentity item={item} />
+        <OverallStateChip state={item.overallState} t={t} />
+      </div>
+      <p className={cn(META_TEXT_CLASS, 'mt-2 tabular-nums')}>
+        {formatLastTelemetry(item.lastTelemetryAt, t, locale)}
+      </p>
+      <p className="mt-1.5 text-[12px] leading-snug text-foreground">{primaryListHint(item, t)}</p>
+      <div className="mt-2 flex items-center justify-end gap-1 text-[11px] font-medium text-[var(--brand)]">
+        {actionLabel}
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+      </div>
+    </button>
   );
 }
 
 export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabProps) {
   const { orgId } = useRentalOrg();
   const { t, locale } = useLanguage();
-  const [data, setData] = useState<FleetConnectivityResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error, reload: load } = useFleetConnectivityList(
+    orgId,
+    t('fleetConnectivity.loadError'),
+  );
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<FleetConnectionScopeFilter>('all');
-  const [readinessFilter, setReadinessFilter] = useState<FleetReadinessFilter>('all');
-  const [signalFilter, setSignalFilter] = useState<FleetSignalFilter>('all');
-  const [selectedVehicle, setSelectedVehicle] = useState<FleetConnectivityVehicle | null>(null);
+  const [kpiFilter, setKpiFilter] = useState<FleetConnectivityKpiFilter>('all');
+  const [stateFilter, setStateFilter] = useState<FleetConnectivityStateFilter>('all');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!orgId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.vehicles.fleetConnectivity(orgId);
-      setData(res);
-    } catch {
-      setData(null);
-      setError(t('fleetConnectivity.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const vehicles = useMemo(() => {
-    if (!data?.vehicles) return [];
-    return filterFleetConnectivityVehicles(data.vehicles, {
+  const items = useMemo(() => {
+    if (!data?.items) return [];
+    return filterFleetConnectivityItems(data.items, {
       search,
-      statusFilter,
-      readinessFilter,
-      signalFilter,
+      kpiFilter,
+      stateFilter,
     });
-  }, [data, search, statusFilter, readinessFilter, signalFilter]);
+  }, [data, search, kpiFilter, stateFilter]);
 
   const s = data?.summary;
-  const filtersActive = hasActiveFleetFilters({
-    search,
-    statusFilter,
-    readinessFilter,
-    signalFilter,
-  });
+  const filtersActive = hasActiveConnectivityFilters({ search, kpiFilter, stateFilter });
 
   const clearFilters = () => {
     setSearch('');
-    setStatusFilter('all');
-    setReadinessFilter('all');
-    setSignalFilter('all');
+    setKpiFilter('all');
+    setStateFilter('all');
   };
 
   const kpiCards = useMemo(
     (): Array<{
-      id: string;
+      id: FleetConnectivityKpiFilter;
       labelKey: TranslationKey;
-      value: string | number;
-      status: 'neutral' | 'info' | 'success' | 'watch' | 'critical' | 'warning';
+      value: number;
+      status: 'neutral' | 'success' | 'watch' | 'critical' | 'warning';
       icon: LucideIcon;
-      onClick: () => void;
-      active: boolean;
       hintKey?: TranslationKey;
     }> => [
       {
-        id: 'total',
-        labelKey: 'fleetConnectivity.kpi.total',
-        value: s?.total ?? 0,
-        status: 'neutral',
-        icon: Car,
-        onClick: () => {
-          setStatusFilter('all');
-          setSignalFilter('all');
-          setReadinessFilter('all');
-        },
-        active: statusFilter === 'all' && signalFilter === 'all' && readinessFilter === 'all',
+        id: 'action_required',
+        labelKey: 'fleetConnectivity.kpi.actionRequired',
+        value: s?.actionRequired ?? 0,
+        status: 'critical',
+        icon: AlertTriangle,
+        hintKey: 'fleetConnectivity.kpi.hint.actionRequired',
       },
       {
-        id: 'connected',
-        labelKey: 'fleetConnectivity.kpi.connected',
-        value: s?.connected ?? 0,
-        status: 'info',
-        icon: Link2,
-        onClick: () => setStatusFilter('connected'),
-        active: statusFilter === 'connected',
-      },
-      {
-        id: 'online',
-        labelKey: 'fleetConnectivity.kpi.online',
-        value: s?.online ?? 0,
+        id: 'telemetry_active',
+        labelKey: 'fleetConnectivity.kpi.telemetryActive',
+        value: s?.telemetryActive ?? 0,
         status: 'success',
         icon: Signal,
-        onClick: () => setStatusFilter('online'),
-        active: statusFilter === 'online',
       },
       {
         id: 'standby',
         labelKey: 'fleetConnectivity.kpi.standby',
         value: s?.standby ?? 0,
         status: 'watch',
-        icon: Activity,
-        onClick: () => setStatusFilter('standby'),
-        active: statusFilter === 'standby',
+        icon: Radio,
       },
       {
-        id: 'offline',
-        labelKey: 'fleetConnectivity.kpi.offline',
-        value: s?.offline ?? 0,
-        status: 'critical',
-        icon: SignalZero,
-        onClick: () => setStatusFilter('offline'),
-        active: statusFilter === 'offline',
-      },
-      {
-        id: 'not_connected',
-        labelKey: 'fleetConnectivity.kpi.notConnected',
-        value: s?.notConnected ?? 0,
+        id: 'no_data_source',
+        labelKey: 'fleetConnectivity.kpi.noDataSource',
+        value: s?.noActiveDataSource ?? 0,
         status: 'neutral',
         icon: WifiOff,
-        onClick: () => setStatusFilter('not_connected'),
-        active: statusFilter === 'not_connected',
-      },
-      {
-        id: 'obd_unplugged',
-        labelKey: 'fleetConnectivity.kpi.obdUnplugged',
-        value: s?.obdUnplugged ?? 0,
-        status: 'warning',
-        icon: Plug,
-        onClick: () => setSignalFilter('obd_unplugged'),
-        active: signalFilter === 'obd_unplugged',
-        hintKey: 'fleetConnectivity.kpi.hint.obd',
-      },
-      {
-        id: 'device_unplugged_webhook',
-        labelKey: 'fleetConnectivity.kpi.deviceUnplugged',
-        value: s?.deviceUnpluggedOpenEpisodes ?? 0,
-        status: 'critical',
-        icon: ShieldAlert,
-        onClick: () => setSignalFilter('device_unplugged_webhook'),
-        active: signalFilter === 'device_unplugged_webhook',
-        hintKey: 'fleetConnectivity.kpi.hint.webhook',
-      },
-      {
-        id: 'readiness',
-        labelKey: 'fleetConnectivity.kpi.avgReadiness',
-        value: s?.avgReadinessScore != null ? `${s.avgReadinessScore}%` : '—',
-        status: 'info',
-        icon: Radio,
-        onClick: () => setReadinessFilter('watch'),
-        active: readinessFilter === 'watch',
-        hintKey: 'fleetConnectivity.kpi.hint.readiness',
       },
     ],
-    [s, statusFilter, signalFilter, readinessFilter],
+    [s],
   );
 
-  const columns: DataTableColumn<FleetConnectivityVehicle>[] = useMemo(
+  const columns: DataTableColumn<FleetConnectivityListItem>[] = useMemo(
     () => [
       {
         key: 'vehicle',
         header: t('fleetConnectivity.col.vehicle'),
-        cell: (v) => <ConnectivityVehicleIdentity vehicle={v} />,
+        cell: (item) => <ConnectivityVehicleIdentity item={item} />,
       },
       {
-        key: 'status',
-        header: t('fleetConnectivity.col.status'),
-        cell: (v) => <ConnectionStatusChip status={v.connectionStatus} />,
+        key: 'state',
+        header: t('fleetConnectivity.col.currentState'),
+        cell: (item) => <OverallStateChip state={item.overallState} t={t} />,
       },
       {
-        key: 'freshness',
-        header: t('fleetConnectivity.col.lastSignal'),
+        key: 'lastData',
+        header: t('fleetConnectivity.col.lastData'),
         className: 'hidden sm:table-cell',
-        cell: (v) => (
-          <span
-            className={cn(
-              'text-[12px] tabular-nums',
-              v.freshnessLabel === 'Live'
-                ? 'font-medium text-[color:var(--status-positive)]'
-                : 'text-muted-foreground',
-            )}
-          >
-            {v.freshnessLabel}
-          </span>
-        ),
-      },
-      {
-        key: 'readiness',
-        header: t('fleetConnectivity.col.readiness'),
-        className: 'hidden lg:table-cell',
-        cell: (v) => <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />,
-      },
-      {
-        key: 'coverage',
-        header: t('fleetConnectivity.col.coverage'),
-        className: 'hidden xl:table-cell',
-        numeric: true,
-        cell: (v) => (
+        cell: (item) => (
           <span className="text-[12px] tabular-nums text-muted-foreground">
-            {v.signalCoveragePercent}%
+            {formatLastTelemetry(item.lastTelemetryAt, t, locale)}
           </span>
         ),
       },
       {
-        key: 'obd',
-        header: t('fleetConnectivity.col.obd'),
-        className: 'hidden lg:table-cell',
-        cell: (v) => <ObdRowChip plugged={v.obdIsPluggedIn} />,
-      },
-      {
-        key: 'deviceWebhook',
-        header: t('fleetConnectivity.col.webhook'),
-        className: 'hidden xl:table-cell',
-        cell: (v) => <DeviceConnectionWebhookChip device={v.deviceConnection} />,
+        key: 'hint',
+        header: t('fleetConnectivity.col.priorityHint'),
+        cell: (item) => (
+          <span className="text-[12px] leading-snug text-foreground">{primaryListHint(item, t)}</span>
+        ),
       },
       {
         key: 'station',
         header: t('fleetConnectivity.col.station'),
-        className: 'hidden md:table-cell',
-        cell: (v) => (
-          <span className={META_TEXT_CLASS}>{v.station ?? '—'}</span>
+        className: 'hidden lg:table-cell',
+        cell: (item) => (
+          <span className={META_TEXT_CLASS}>{item.vehicle.station ?? '—'}</span>
         ),
       },
       {
-        key: 'provider',
-        header: t('fleetConnectivity.col.provider'),
-        className: 'hidden xl:table-cell',
-        cell: (v) => (
-          <span className={cn(META_TEXT_CLASS, 'truncate')}>{v.provider}</span>
+        key: 'action',
+        header: t('fleetConnectivity.col.action'),
+        className: 'w-[88px] text-right',
+        cell: () => (
+          <span className="text-[11px] font-semibold text-[var(--brand)]">
+            {t('fleetConnectivity.openDetail')}
+          </span>
         ),
-      },
-      {
-        key: 'jamming',
-        header: t('fleetConnectivity.col.jamming'),
-        className: 'hidden xl:table-cell',
-        cell: (v) => <JammingSnapshotChip count={v.jammingDetectedCount} />,
       },
     ],
-    [t],
+    [t, locale],
   );
 
   const snapshotLabel = data?.generatedAt
@@ -335,31 +234,47 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
       })
     : null;
 
-  const contextHeader = (
-    <header className="space-y-2">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          {!embedded ? (
-            <h1 className="font-display text-[length:var(--text-display-md)] font-bold tracking-[var(--tracking-display)] text-foreground">
-              {t('fleetTab.connectivity')}
-            </h1>
-          ) : (
-            <DashboardSectionLabel className="mb-0">{t('fleetTab.connectivity')}</DashboardSectionLabel>
-          )}
-          <p className={META_TEXT_CLASS}>{t('fleetConnectivity.subtitle')}</p>
-        </div>
-        <StatusChip tone="info" className="max-w-sm text-[10px] leading-snug">
-          {t('fleetConnectivity.monitoringBadge')}
-        </StatusChip>
-      </div>
-    </header>
+  const headerActions = (
+    <Button
+      type="button"
+      variant="neutral"
+      size="sm"
+      disabled={loading}
+      onClick={() => void load()}
+      className="h-8 gap-1.5"
+      aria-label={t('fleetConnectivity.refresh')}
+    >
+      <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} aria-hidden />
+      <span className="hidden sm:inline">{t('fleetConnectivity.refresh')}</span>
+    </Button>
+  );
+
+  const contextHeader = embedded ? (
+    <div className="mb-2">
+      <p className={META_TEXT_CLASS}>{t('fleetConnectivity.monitoringBadge')}</p>
+    </div>
+  ) : (
+    <PageHeader
+      variant="page"
+      title={
+        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span>{t('fleetTab.connectivity')}</span>
+          {s?.total != null ? (
+            <span className="text-[13px] font-normal text-muted-foreground tabular-nums">
+              {t('fleetConnectivity.totalVehicles', { total: s.total })}
+            </span>
+          ) : null}
+        </span>
+      }
+      actions={headerActions}
+    />
   );
 
   if (loading) {
     return (
       <div className="mx-auto max-w-[1600px] space-y-4">
         {contextHeader}
-        <SkeletonMetricGrid count={8} />
+        <SkeletonMetricGrid count={4} />
         <SkeletonRows rows={8} className="surface-premium rounded-2xl p-4" />
       </div>
     );
@@ -382,29 +297,34 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
   return (
     <div className="mx-auto max-w-[1600px] space-y-4">
       {contextHeader}
+      {embedded ? (
+        <div className="flex justify-end">{headerActions}</div>
+      ) : null}
 
-      <section className="space-y-2">
-        <DashboardSectionLabel>{t('fleetConnectivity.kpiSection')}</DashboardSectionLabel>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <section aria-label={t('fleetConnectivity.kpiSection')} className="space-y-2">
+        <p className="sq-section-label">{t('fleetConnectivity.kpiSection')}</p>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {kpiCards.map((kpi) => {
             const KpiIcon = kpi.icon;
+            const active = kpiFilter === kpi.id;
             const tone = KPI_TONE[kpi.status];
             return (
               <button
                 key={kpi.id}
                 type="button"
-                onClick={kpi.onClick}
-                aria-pressed={kpi.active}
+                onClick={() => setKpiFilter(kpi.id)}
+                aria-pressed={active}
+                aria-label={t(kpi.labelKey)}
                 className={cn(
                   fhs.kpiCard,
-                  kpi.active && fhs.kpiCardActive,
-                  kpi.status === 'critical' && Number(kpi.value) > 0 && fhs.kpiCardCritical,
-                  kpi.status === 'warning' && Number(kpi.value) > 0 && fhs.kpiCardWarning,
-                  kpi.status === 'success' && Number(kpi.value) > 0 && fhs.kpiCardSuccess,
+                  active && fhs.kpiCardActive,
+                  kpi.status === 'critical' && kpi.value > 0 && fhs.kpiCardCritical,
+                  kpi.status === 'warning' && kpi.value > 0 && fhs.kpiCardWarning,
+                  kpi.status === 'success' && kpi.value > 0 && fhs.kpiCardSuccess,
                 )}
               >
                 <div className="flex items-center gap-1">
-                  <KpiIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <KpiIcon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
                   <p className={fhs.kpiTitle}>{t(kpi.labelKey)}</p>
                 </div>
                 <p
@@ -414,25 +334,42 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
                     tone === 'critical' && 'text-[color:var(--status-critical)]',
                     tone === 'warning' && 'text-[color:var(--status-watch)]',
                     tone === 'success' && 'text-[color:var(--status-positive)]',
-                    tone === 'info' && 'text-[color:var(--brand-ink)]',
                     tone === 'neutral' && 'text-foreground',
                   )}
                 >
                   {kpi.value}
                 </p>
-                {kpi.hintKey ? <p className={cn('mt-0.5 truncate', fhs.kpiHint)}>{t(kpi.hintKey)}</p> : null}
+                {kpi.hintKey ? (
+                  <p className={cn('mt-0.5 truncate', fhs.kpiHint)}>{t(kpi.hintKey)}</p>
+                ) : null}
               </button>
             );
           })}
         </div>
+        {s && (s.actionRequiredOffline > 0 || s.actionRequiredSoftOffline > 0) ? (
+          <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+            {s.actionRequiredOffline > 0 ? (
+              <span>
+                {t('fleetConnectivity.kpi.breakdown.offline', { count: s.actionRequiredOffline })}
+              </span>
+            ) : null}
+            {s.actionRequiredSoftOffline > 0 ? (
+              <span>
+                {t('fleetConnectivity.kpi.breakdown.softOffline', {
+                  count: s.actionRequiredSoftOffline,
+                })}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
-      <section className={cn(fhs.filterBar, 'space-y-3')}>
+      <section className={cn(fhs.filterBar, 'space-y-3')} aria-label={t('fleetConnectivity.filterSection')}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <DashboardSectionLabel className="mb-1">{t('fleetConnectivity.filterSection')}</DashboardSectionLabel>
+            <p className="sq-section-label mb-1">{t('fleetConnectivity.filterSection')}</p>
             <p className={META_TEXT_CLASS}>
-              {t('fleetConnectivity.showing', { shown: vehicles.length, total: s?.total ?? 0 })}
+              {t('fleetConnectivity.showing', { shown: items.length, total: s?.total ?? 0 })}
               {snapshotLabel ? ` · ${snapshotLabel}` : ''}
             </p>
           </div>
@@ -446,24 +383,20 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
                 {t('fleetConnectivity.clearFilters')}
               </button>
             ) : null}
-            <Button
-              type="button"
-              variant="neutral"
-              size="sm"
-              disabled={loading}
-              onClick={() => void load()}
-              className="h-8 gap-1.5"
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-              <span className="hidden sm:inline">{t('fleetConnectivity.refresh')}</span>
-            </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_160px_160px_180px]">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_200px]">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <label htmlFor="fleet-connectivity-search" className="sr-only">
+              {t('fleetConnectivity.searchPlaceholder')}
+            </label>
+            <Search
+              className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
             <input
+              id="fleet-connectivity-search"
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -471,60 +404,36 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
               className="w-full rounded-xl border border-border/60 bg-background/50 py-2 pl-9 pr-3 text-xs outline-none transition-colors focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as FleetConnectionScopeFilter)}
-            className="rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-foreground"
-          >
-            <option value="all">{t('fleetConnectivity.filter.allStatuses')}</option>
-            <option value="connected">Connected</option>
-            <option value="online">Online</option>
-            <option value="standby">Standby</option>
-            <option value="offline">Offline</option>
-            <option value="not_connected">Not connected</option>
-          </select>
-          <select
-            value={readinessFilter}
-            onChange={(e) => setReadinessFilter(e.target.value as FleetReadinessFilter)}
-            className="rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-foreground"
-          >
-            <option value="all">{t('fleetConnectivity.filter.allReadiness')}</option>
-            <option value="good">Good</option>
-            <option value="watch">Watch</option>
-            <option value="warning">Warning</option>
-            <option value="no_data">No data</option>
-          </select>
-          <select
-            value={signalFilter}
-            onChange={(e) => setSignalFilter(e.target.value as FleetSignalFilter)}
-            className="rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-foreground sm:col-span-2 lg:col-span-1"
-          >
-            <option value="all">{t('fleetConnectivity.filter.allSignals')}</option>
-            <option value="obd_unplugged">OBD unplugged (snapshot)</option>
-            <option value="device_unplugged_webhook">Device unplugged (webhook)</option>
-            <option value="jamming">Jamming snapshot</option>
-            <option value="missing_gps">Missing GPS</option>
-            <option value="missing_odometer">Missing odometer</option>
-          </select>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {signalFilter === 'jamming' ? (
-            <StatusChip tone="watch" className="text-[10px]">
-              <ShieldAlert className="mr-1 inline h-3 w-3" />
-              {t('fleetConnectivity.filter.jammingActive')}
-            </StatusChip>
-          ) : null}
-          {data.thresholds ? (
-            <StatusChip tone="neutral" className="text-[10px]">
-              Online &lt; {data.thresholds.onlineMaxMinutes}m · Standby &lt;{' '}
-              {data.thresholds.standbyMaxHours}h
-            </StatusChip>
-          ) : null}
+          <div>
+            <label htmlFor="fleet-connectivity-state-filter" className="sr-only">
+              {t('fleetConnectivity.filter.stateLabel')}
+            </label>
+            <select
+              id="fleet-connectivity-state-filter"
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value as FleetConnectivityStateFilter)}
+              className="w-full rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-foreground"
+            >
+              <option value="all">{t('fleetConnectivity.filter.allStates')}</option>
+              <option value="TELEMETRY_ACTIVE">{t('fleetConnectivity.state.TELEMETRY_ACTIVE')}</option>
+              <option value="STANDBY">{t('fleetConnectivity.state.STANDBY')}</option>
+              <option value="SOFT_OFFLINE">{t('fleetConnectivity.state.SOFT_OFFLINE')}</option>
+              <option value="OFFLINE">{t('fleetConnectivity.state.OFFLINE')}</option>
+              <option value="DEVICE_UNPLUGGED">{t('fleetConnectivity.state.DEVICE_UNPLUGGED')}</option>
+              <option value="AUTHORIZATION_REQUIRED">
+                {t('fleetConnectivity.state.AUTHORIZATION_REQUIRED')}
+              </option>
+              <option value="NO_ACTIVE_DATA_SOURCE">
+                {t('fleetConnectivity.state.NO_ACTIVE_DATA_SOURCE')}
+              </option>
+              <option value="INTEGRATION_ERROR">{t('fleetConnectivity.state.INTEGRATION_ERROR')}</option>
+              <option value="UNKNOWN">{t('fleetConnectivity.state.UNKNOWN')}</option>
+            </select>
+          </div>
         </div>
       </section>
 
-      {vehicles.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState
           icon={<Car className="h-5 w-5" />}
           title={
@@ -543,45 +452,34 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
           <div className="hidden md:block">
             <DataTable
               columns={columns}
-              rows={vehicles}
-              getRowKey={(v) => v.vehicleId}
-              onRowClick={(v) => setSelectedVehicle(v)}
-              rowActions={() => <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+              rows={items}
+              getRowKey={(item) => item.vehicle.vehicleId}
+              onRowClick={(item) => setSelectedVehicleId(item.vehicle.vehicleId)}
+              rowActions={() => <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />}
               card
             />
           </div>
 
-          <div className="space-y-2 md:hidden">
-            {vehicles.map((v) => (
-              <button
-                key={v.vehicleId}
-                type="button"
-                onClick={() => setSelectedVehicle(v)}
-                className="surface-premium w-full rounded-2xl p-3 text-left shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-1)]"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <ConnectivityVehicleIdentity vehicle={v} />
-                  <ConnectionStatusChip status={v.connectionStatus} />
-                </div>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />
-                  <ObdRowChip plugged={v.obdIsPluggedIn} />
-                  <DeviceConnectionWebhookChip device={v.deviceConnection} />
-                  <JammingSnapshotChip count={v.jammingDetectedCount} />
-                </div>
-                <p className={cn(META_TEXT_CLASS, 'mt-2 tabular-nums')}>
-                  {v.freshnessLabel} · {v.signalCoveragePercent}% {t('fleetConnectivity.col.coverage').toLowerCase()}
-                </p>
-              </button>
+          <div className="space-y-2 md:hidden" role="list" aria-label={t('fleetConnectivity.mobileList')}>
+            {items.map((item) => (
+              <ConnectivityListCard
+                key={item.vehicle.vehicleId}
+                item={item}
+                t={t}
+                locale={locale}
+                onOpen={() => setSelectedVehicleId(item.vehicle.vehicleId)}
+                actionLabel={t('fleetConnectivity.openDetail')}
+              />
             ))}
           </div>
         </>
       )}
 
       <FleetConnectivityDetailDrawer
-        vehicle={selectedVehicle}
-        open={!!selectedVehicle}
-        onOpenChange={(open) => !open && setSelectedVehicle(null)}
+        orgId={orgId}
+        vehicleId={selectedVehicleId}
+        open={!!selectedVehicleId}
+        onOpenChange={(open) => !open && setSelectedVehicleId(null)}
       />
     </div>
   );

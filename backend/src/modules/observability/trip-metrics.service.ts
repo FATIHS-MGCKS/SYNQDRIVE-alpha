@@ -152,6 +152,26 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryRetentionRowsAggregatedTotal: Counter<string>;
   readonly batteryMeasurementDuplicateSkipTotal: Counter<string>;
 
+  /** Fleet connectivity — low-cardinality labels only (Prompt 18). */
+  readonly connectivityWebhookReceivedTotal: Counter<string>;
+  readonly connectivityWebhookProcessingFailedTotal: Counter<string>;
+  readonly connectivityWebhookDeadLetterTotal: Counter<string>;
+  readonly connectivityEpisodeOpenedTotal: Counter<string>;
+  readonly connectivityEpisodeResolvedTotal: Counter<string>;
+  readonly connectivityEpisodeFalseOpenDetectedTotal: Counter<string>;
+  readonly connectivityRecoverySnapshotTotal: Counter<string>;
+  readonly connectivityRecoveryTelemetryTotal: Counter<string>;
+  readonly connectivityBindingChangedTotal: Counter<string>;
+  readonly connectivityStateConflictTotal: Counter<string>;
+  readonly connectivityRuntimeStateTotal: Counter<string>;
+  readonly connectivityTelemetryStateTotal: Counter<string>;
+  readonly connectivityProviderLinkStateTotal: Counter<string>;
+  readonly connectivityDeviceStateTotal: Counter<string>;
+  readonly connectivityAlertTotal: Counter<string>;
+  readonly connectivityAlertResolvedTotal: Counter<string>;
+  readonly connectivityCoverageRatio: Gauge<string>;
+  readonly connectivityReconciliationConflictTotal: Counter<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
@@ -1120,6 +1140,132 @@ export class TripMetricsService implements OnModuleInit {
     this.batteryMeasurementDuplicateSkipTotal = new Counter({
       name: 'synqdrive_battery_measurement_duplicate_skip_total',
       help: 'Battery measurement writes skipped as duplicates before insert',
+      registers: [this.registry],
+    });
+
+    this.connectivityWebhookReceivedTotal = new Counter({
+      name: 'synqdrive_connectivity_webhook_received_total',
+      help: 'Device connection webhooks received',
+      labelNames: ['provider', 'event_type'],
+      registers: [this.registry],
+    });
+
+    this.connectivityWebhookProcessingFailedTotal = new Counter({
+      name: 'synqdrive_connectivity_webhook_processing_failed_total',
+      help: 'Device connection webhook processing failures',
+      labelNames: ['provider', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.connectivityWebhookDeadLetterTotal = new Counter({
+      name: 'synqdrive_connectivity_webhook_dead_letter_total',
+      help: 'Device connection webhook dead-letter events',
+      labelNames: ['provider', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.connectivityEpisodeOpenedTotal = new Counter({
+      name: 'synqdrive_connectivity_episode_opened_total',
+      help: 'Device connection episodes opened',
+      labelNames: ['provider', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.connectivityEpisodeResolvedTotal = new Counter({
+      name: 'synqdrive_connectivity_episode_resolved_total',
+      help: 'Device connection episodes resolved',
+      labelNames: ['provider', 'method'],
+      registers: [this.registry],
+    });
+
+    this.connectivityEpisodeFalseOpenDetectedTotal = new Counter({
+      name: 'synqdrive_connectivity_episode_false_open_detected_total',
+      help: 'False-open episodes detected during reconciliation audit',
+      labelNames: ['classification'],
+      registers: [this.registry],
+    });
+
+    this.connectivityRecoverySnapshotTotal = new Counter({
+      name: 'synqdrive_connectivity_recovery_snapshot_total',
+      help: 'Snapshot-based episode recovery attempts',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.connectivityRecoveryTelemetryTotal = new Counter({
+      name: 'synqdrive_connectivity_recovery_telemetry_total',
+      help: 'Telemetry-based episode recovery attempts',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.connectivityBindingChangedTotal = new Counter({
+      name: 'synqdrive_connectivity_binding_changed_total',
+      help: 'Device binding changes affecting connectivity',
+      labelNames: ['provider', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.connectivityStateConflictTotal = new Counter({
+      name: 'synqdrive_connectivity_state_conflict_total',
+      help: 'Connectivity runtime state conflicts',
+      labelNames: ['surface', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.connectivityRuntimeStateTotal = new Counter({
+      name: 'synqdrive_connectivity_runtime_state_total',
+      help: 'Connectivity runtime overall states calculated',
+      labelNames: ['overall_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityTelemetryStateTotal = new Counter({
+      name: 'synqdrive_connectivity_telemetry_state_total',
+      help: 'Connectivity telemetry freshness states calculated',
+      labelNames: ['telemetry_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityProviderLinkStateTotal = new Counter({
+      name: 'synqdrive_connectivity_provider_link_state_total',
+      help: 'Connectivity provider link states calculated',
+      labelNames: ['provider_link_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityDeviceStateTotal = new Counter({
+      name: 'synqdrive_connectivity_device_state_total',
+      help: 'Connectivity physical device states calculated',
+      labelNames: ['physical_device_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityAlertTotal = new Counter({
+      name: 'synqdrive_connectivity_alert_total',
+      help: 'Connectivity alerts created',
+      labelNames: ['alert_type'],
+      registers: [this.registry],
+    });
+
+    this.connectivityAlertResolvedTotal = new Counter({
+      name: 'synqdrive_connectivity_alert_resolved_total',
+      help: 'Connectivity alerts resolved',
+      labelNames: ['alert_type'],
+      registers: [this.registry],
+    });
+
+    this.connectivityCoverageRatio = new Gauge({
+      name: 'synqdrive_connectivity_coverage_ratio',
+      help: 'Aggregated fleet connectivity coverage ratio by coverage state bucket',
+      labelNames: ['coverage_state'],
+      registers: [this.registry],
+    });
+
+    this.connectivityReconciliationConflictTotal = new Counter({
+      name: 'synqdrive_connectivity_reconciliation_conflict_total',
+      help: 'Episode reconciliation conflicts by classification',
+      labelNames: ['classification'],
       registers: [this.registry],
     });
   }
