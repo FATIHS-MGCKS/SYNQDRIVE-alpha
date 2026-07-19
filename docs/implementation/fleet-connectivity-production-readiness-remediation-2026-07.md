@@ -390,7 +390,7 @@
 
 ---
 
-## Verbleibende Production-Blocker (nach Audit, unverändert)
+## Offene Risiken
 
 **Code-level P0s from original audit are remediated on RC.** Operational gates:
 
@@ -423,18 +423,6 @@
 
 ---
 
-## Verbleibende Production-Blocker (nach Audit, unverändert)
-
-1. **FC-P0-01 / FC-C-04** — `openUnpluggedEpisode` event-only; keine Snapshot/Telemetrie-Closure  
-2. **FC-P0-03** — 100% fleet Unplug-Episoden stuck; Plug-Trigger off  
-3. **FC-P1-01** — 7d Fenster versteckt Episoden  
-4. **FC-P1-02** — Fleet API 24h vs kanonisch 48h  
-5. **FC-C-01** — Drei parallele Connectivity-Wahrheiten  
-
-**Operational safety (positiv):** Unplug-Episoden blockieren Rental nicht (`FC-C-05`).
-
----
-
 ## Änderungslog
 
 | Datum | Prompt | Commit | Notiz |
@@ -454,7 +442,7 @@
 
 ---
 
-## Offene Risiken
+## Prompt 7 — Recovery kill switch + evidence timestamps
 
 ### Teil A — Zeitstempel
 
