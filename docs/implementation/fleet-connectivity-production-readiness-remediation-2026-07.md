@@ -419,6 +419,32 @@
 | 2026-07-19 | Phase2-4 | `fix(connectivity): reconcile episodes from historical snapshot evidence` | Historical evidence window + loader |
 | 2026-07-19 | Phase2-5 | `fix(connectivity): bind episode reconciliation apply to audited evidence` | Evidence packages + apply validation |
 | 2026-07-19 | Phase2-6 | `fix(connectivity): route binding changes through canonical episode lifecycle` | reconcileBindingDrift + outbox/audit |
+| 2026-07-19 | Phase2-7 | `fix(connectivity): add recovery kill switch and evidence timestamps` | Kill switch env flags, evidence-based timeline timestamps |
+
+---
+
+## Prompt 7 — Recovery kill switch + evidence timestamps
+
+### Teil A — Zeitstempel
+
+- Getrennte Felder in Domain/API: `providerObservedAt`, `receivedAt`, `processedAt`, `resolutionEvidenceAt`, `resolvedAt`
+- `VehicleConnectivityRuntimeState`: `lastRecoveryEvidenceAt`, `lastRecoveryReceivedAt`, `lastRecoveryResolvedAt`
+- Fleet timeline `DEVICE_RECONNECTED` nutzt `resolutionEvidenceAt` (nicht `calculatedAt` / Outbox-`new Date()`)
+- Outbox-Alert-Resolution nutzt weiterhin `episode.resolutionEvidenceAt` für `onEpisodeRecovered`
+- UI Detail-Drawer: „Wieder verbunden seit“ + optionale Verarbeitungszeilen in der Timeline
+
+### Teil B — Kill Switch
+
+| Variable | Default | Verhalten aus |
+|----------|---------|-------------|
+| `CONNECTIVITY_EPISODE_RECOVERY_ENABLED` | `true` | Keine auto Episode-Resolution, kein Episode-Sync nach Webhook, Outbox skip, kein Binding-Drift-Resolve |
+| `CONNECTIVITY_RECONCILIATION_APPLY_ENABLED` | `false` | Reconciliation `--apply` und `runApply(apply:true)` blockiert |
+
+**Bei deaktivierter Recovery bleiben erhalten:** Roh-Webhooks, Snapshots, bestehende kanonische Zustände/Episoden.
+
+**Tests:** `connectivity-recovery.policy.spec.ts`, `fleet-connectivity-api.mapper.spec.ts` (Timeline-Evidence-Zeit)
+
+**Runbook:** `docs/runbooks/fleet-connectivity-production-rollout.md` §15
 
 ---
 

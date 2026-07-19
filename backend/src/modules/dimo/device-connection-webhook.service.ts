@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
 import {
   shouldIgnorePlugImpulseAfterUnplug,
@@ -79,6 +80,7 @@ export class DeviceConnectionWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly episodeService: DeviceConnectionEpisodeService,
+    @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
 
   /** True when the webhook signal/metric is the OBD plug state. */
@@ -290,6 +292,10 @@ export class DeviceConnectionWebhookService {
     observedAt: Date;
     receivedAt: Date;
   }): Promise<void> {
+    if (this.recoveryPolicy && !this.recoveryPolicy.isEpisodeRecoveryEnabled()) {
+      return;
+    }
+
     if (input.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED) {
       await this.episodeService.openFromUnplugEvent({
         organizationId: input.organizationId,

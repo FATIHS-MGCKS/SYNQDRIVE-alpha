@@ -180,6 +180,13 @@ export interface VehicleConnectivityRuntimeState {
   lastProviderObservedAt: string | null;
   lastReceivedAt: string | null;
 
+  /** Business recovery time from latest resolved episode (`resolutionEvidenceAt`). */
+  lastRecoveryEvidenceAt: string | null;
+  /** When recovery evidence was received server-side (`receivedAt`). */
+  lastRecoveryReceivedAt: string | null;
+  /** When the episode was marked resolved (`resolvedAt` / processed). */
+  lastRecoveryResolvedAt: string | null;
+
   /** Internal binding reference — not a user-visible identifier. */
   deviceBindingId: string | null;
   activeEpisodeId: string | null;

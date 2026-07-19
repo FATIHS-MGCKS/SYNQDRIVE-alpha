@@ -25,6 +25,7 @@ import {
   evaluatePlugCloseEligibility,
 } from './device-connection-event-order';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
+import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 
@@ -110,7 +111,12 @@ export class DeviceConnectionEpisodeService {
     @Optional() private readonly connectivityAlerts?: ConnectivityAlertService,
     @Optional() private readonly resolutionOutbox?: DeviceConnectionEpisodeResolutionOutboxService,
     @Optional() private readonly observability?: ConnectivityObservabilityService,
+    @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
+
+  private isEpisodeRecoveryEnabled(): boolean {
+    return this.recoveryPolicy?.isEpisodeRecoveryEnabled() ?? true;
+  }
 
   async resolveCanonicalBinding(
     vehicleId: string,
@@ -228,6 +234,10 @@ export class DeviceConnectionEpisodeService {
   async reconcileBindingDrift(
     input: ReconcileBindingDriftInput,
   ): Promise<ReconcileBindingDriftResult> {
+    if (!this.isEpisodeRecoveryEnabled()) {
+      return { outcome: 'binding_unchanged', supersededEpisodeIds: [] };
+    }
+
     const provider = input.provider ?? 'DIMO';
     const receivedAt = input.receivedAt ?? input.evidenceAt;
     const resolutionReferenceId =

@@ -116,6 +116,31 @@ function mapTimelineType(code: ConnectivityReasonCode): FleetConnectivityTimelin
   }
 }
 
+function isRecoveryReasonCode(code: ConnectivityReasonCode): boolean {
+  return (
+    code === 'DEVICE_RECONNECTED_EXPLICIT' ||
+    code === 'DEVICE_RECONNECTED_SNAPSHOT' ||
+    code === 'DEVICE_RECONNECTED_TELEMETRY'
+  );
+}
+
+function buildRecoveryTimelineFields(
+  runtime: FleetConnectivityVehicleDto['connectivityRuntime'],
+  fallbackOccurredAt: string,
+): Pick<
+  FleetConnectivityTimelineEventDto,
+  'occurredAt' | 'providerObservedAt' | 'receivedAt' | 'processedAt' | 'resolutionEvidenceAt'
+> {
+  const evidenceAt = runtime.lastRecoveryEvidenceAt ?? fallbackOccurredAt;
+  return {
+    occurredAt: evidenceAt,
+    providerObservedAt: evidenceAt,
+    receivedAt: runtime.lastRecoveryReceivedAt,
+    processedAt: runtime.lastRecoveryResolvedAt,
+    resolutionEvidenceAt: runtime.lastRecoveryEvidenceAt ?? evidenceAt,
+  };
+}
+
 function buildTimeline(
   vehicle: FleetConnectivityVehicleDto,
   deviceConnection: FleetDeviceConnectionDto | null,
@@ -135,8 +160,8 @@ function buildTimeline(
     events.push({
       id: 'plug-last',
       type: 'DEVICE_RECONNECTED',
-      occurredAt: deviceConnection.lastDevicePluggedInAt,
       reasonCode: 'DEVICE_RECONNECTED_EXPLICIT',
+      ...buildRecoveryTimelineFields(runtime, deviceConnection.lastDevicePluggedInAt),
     });
   }
 
@@ -144,6 +169,22 @@ function buildTimeline(
     const type = mapTimelineType(code);
     if (!type) continue;
     if (events.some((e) => e.type === type && e.reasonCode === code)) continue;
+
+    if (type === 'DEVICE_RECONNECTED' && isRecoveryReasonCode(code)) {
+      const fallback =
+        runtime.lastRecoveryEvidenceAt ??
+        deviceConnection?.lastDevicePluggedInAt ??
+        runtime.lastTelemetryAt ??
+        runtime.calculatedAt;
+      events.push({
+        id: `reason-${code}`,
+        type,
+        reasonCode: code,
+        ...buildRecoveryTimelineFields(runtime, fallback),
+      });
+      continue;
+    }
+
     const occurredAt =
       runtime.lastTelemetryAt ??
       runtime.lastProviderObservedAt ??
@@ -240,6 +281,8 @@ export function mapFleetConnectivityDetail(
       lastProviderObservedAt: runtime.lastProviderObservedAt,
       lastReceivedAt: runtime.lastReceivedAt,
       calculatedAt: runtime.calculatedAt,
+      reconnectedSince: runtime.lastRecoveryEvidenceAt,
+      recoveryReceivedAt: runtime.lastRecoveryReceivedAt,
     },
     webhook: {
       configured: deviceConnection?.eventSource === 'dimo_webhook',

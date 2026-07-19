@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DeviceConnectionEpisodeResolutionMethod,
   DeviceConnectionEpisodeStatus,
@@ -21,6 +21,7 @@ import {
   loadTelemetryRecoveryPolicy,
   type TelemetryRecoveryPolicy,
 } from './device-connection-telemetry-recovery.policy';
+import { ConnectivityRecoveryPolicyService } from '../connectivity/connectivity-recovery.policy';
 
 export type SnapshotPlugResolutionResult =
   | { outcome: 'resolved'; episodeId: string; resolutionSnapshotId: string }
@@ -50,11 +51,19 @@ export class DeviceConnectionEpisodeResolutionService {
     private readonly prisma: PrismaService,
     private readonly outbox: DeviceConnectionEpisodeResolutionOutboxService,
     private readonly telemetryPolicy: TelemetryRecoveryPolicy = loadTelemetryRecoveryPolicy(),
+    @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
+
+  private isEpisodeRecoveryEnabled(): boolean {
+    return this.recoveryPolicy?.isEpisodeRecoveryEnabled() ?? true;
+  }
 
   async tryResolveFromSnapshotPlugSignal(
     input: SnapshotPlugSignalInput,
   ): Promise<SnapshotPlugResolutionResult> {
+    if (!this.isEpisodeRecoveryEnabled()) {
+      return { outcome: 'rejected', reason: 'recovery_disabled' };
+    }
     const openEpisode = await this.findOpenEpisode({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -164,6 +173,10 @@ export class DeviceConnectionEpisodeResolutionService {
   async tryResolveFromSustainedTelemetry(
     input: TelemetryRecoverySignalInput,
   ): Promise<TelemetryRecoveryResolutionResult> {
+    if (!this.isEpisodeRecoveryEnabled()) {
+      return { outcome: 'rejected', reason: 'recovery_disabled' };
+    }
+
     const openEpisode = await this.findOpenEpisode({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,

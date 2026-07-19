@@ -137,6 +137,38 @@ Never auto-apply: `CONFLICTING_DATA`, `NOT_ENOUGH_DATA`, OEM/synthetic-only, mis
 - Enable per organization after staging sign-off.
 - Start with lowest-risk org; expand after 24h clean metrics.
 
+### 15. Recovery kill switch (episode auto-recovery)
+
+| Env | Default | Scope |
+|-----|---------|-------|
+| `CONNECTIVITY_EPISODE_RECOVERY_ENABLED` | `true` | Automatic episode open/resolve, resolution outbox processing, reconnected notifications |
+| `CONNECTIVITY_RECONCILIATION_APPLY_ENABLED` | `false` | Controlled reconciliation `--apply` script + `DeviceConnectionEpisodeReconciliationApplyService` |
+
+**Affected workers/services**
+
+- `DeviceConnectionWebhookService` — persists webhooks always; skips episode sync when recovery off
+- `DeviceConnectionEpisodeResolutionService` — snapshot/telemetry resolution returns `recovery_disabled`
+- `DeviceConnectionEpisodeResolutionOutboxProcessorService` — skips pending outbox rows when recovery off
+- `DeviceConnectionEpisodeService.reconcileBindingDrift` — no-op when recovery off
+- `dimo-snapshot.processor` — snapshots still ingested; resolution gated by recovery flag
+- `apply-device-connection-episode-reconciliation.ts` — requires `CONNECTIVITY_RECONCILIATION_APPLY_ENABLED=1` for `--apply`
+
+**Disable recovery (incident / rollback)**
+
+1. Set `CONNECTIVITY_EPISODE_RECOVERY_ENABLED=false` in `backend.env` on VPS
+2. Restart API + workers: `pm2 restart synqdrive-api synqdrive-worker`
+3. Verify: webhooks still land in `dimo_device_connection_events`; snapshots in `vehicle_latest_states`
+4. Verify: open episodes unchanged; no new `DEVICE_RECONNECTED` notifications
+
+**Re-enable recovery**
+
+1. Set `CONNECTIVITY_EPISODE_RECOVERY_ENABLED=true`
+2. Restart API + workers
+3. Stale resolution outbox rows resume on next poll (no data loss)
+4. Monitor `synqdrive_connectivity_recovery_*` counters and alert resolution metrics
+
+**Reconciliation apply remains off** unless explicitly set — never enable in production without staging dry-run + audit hash.
+
 ## Rollback
 
 | Action | Safe? | Notes |

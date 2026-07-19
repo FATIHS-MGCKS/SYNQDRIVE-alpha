@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   DeviceConnectionEpisodeResolutionOutboxEventType,
@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 import deviceConnectionEpisodeResolutionOutboxConfig from '@config/device-connection-episode-resolution-outbox.config';
 import { ConnectivityAlertService } from '../connectivity-alert/connectivity-alert.service';
+import { ConnectivityRecoveryPolicyService } from '../connectivity/connectivity-recovery.policy';
 import type { DeviceRecoverySource } from '../connectivity-alert/connectivity-alert.types';
 import {
   computeOutboxBackoffMs,
@@ -35,9 +36,18 @@ export class DeviceConnectionEpisodeResolutionOutboxProcessorService {
     private readonly outboxRepo: DeviceConnectionEpisodeResolutionOutboxRepository,
     private readonly runtimeProjection: VehicleConnectivityRuntimeProjectionService,
     private readonly connectivityAlerts: ConnectivityAlertService,
+    @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
 
+  private isEpisodeRecoveryEnabled(): boolean {
+    return this.recoveryPolicy?.isEpisodeRecoveryEnabled() ?? true;
+  }
+
   async processOutboxId(outboxId: string): Promise<ResolutionOutboxProcessOutcome> {
+    if (!this.isEpisodeRecoveryEnabled()) {
+      return 'skipped';
+    }
+
     const existing = await this.outboxRepo.findById(outboxId);
     if (!existing) {
       this.logger.warn(`Resolution outbox row ${outboxId} not found`);

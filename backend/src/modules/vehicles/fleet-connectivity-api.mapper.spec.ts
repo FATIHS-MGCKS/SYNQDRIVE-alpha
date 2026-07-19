@@ -1,6 +1,7 @@
 import {
   buildFleetConnectivityKpiSummary,
   computeConnectivitySortPriority,
+  mapFleetConnectivityDetail,
   mapFleetConnectivityListItem,
   pickPrimaryReasonCode,
   sortFleetConnectivityListItems,
@@ -144,5 +145,29 @@ describe('fleet-connectivity-api.mapper', () => {
     expect(
       computeConnectivitySortPriority('STANDBY', 'CRITICAL'),
     ).toBeLessThan(computeConnectivitySortPriority('TELEMETRY_ACTIVE', 'NONE'));
+  });
+
+  it('uses resolutionEvidenceAt for DEVICE_RECONNECTED timeline events', () => {
+    const evidenceAt = '2026-07-08T17:22:00.000Z';
+    const processedAt = '2026-07-08T17:25:00.000Z';
+    const detail = mapFleetConnectivityDetail(
+      vehicleRow({
+        connectivityRuntime: mockConnectivityRuntime({
+          reasonCodes: ['DEVICE_RECONNECTED_TELEMETRY', 'TELEMETRY_FRESH'],
+          lastRecoveryEvidenceAt: evidenceAt,
+          lastRecoveryResolvedAt: processedAt,
+          lastTelemetryAt: '2026-07-18T12:00:00.000Z',
+          calculatedAt: '2026-07-18T12:00:00.000Z',
+        }),
+      }),
+    );
+
+    const reconnect = detail.timeline.find((e) => e.type === 'DEVICE_RECONNECTED');
+    expect(reconnect).toBeDefined();
+    expect(reconnect?.occurredAt).toBe(evidenceAt);
+    expect(reconnect?.resolutionEvidenceAt).toBe(evidenceAt);
+    expect(reconnect?.processedAt).toBe(processedAt);
+    expect(reconnect?.occurredAt).not.toBe(detail.timestamps.calculatedAt);
+    expect(detail.timestamps.reconnectedSince).toBe(evidenceAt);
   });
 });

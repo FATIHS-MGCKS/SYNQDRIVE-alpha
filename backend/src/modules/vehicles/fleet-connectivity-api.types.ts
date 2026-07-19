@@ -44,8 +44,13 @@ export type FleetConnectivityTimelineEventType =
 export interface FleetConnectivityTimelineEventDto {
   id: string;
   type: FleetConnectivityTimelineEventType;
+  /** Business event time — for recovery events this is `resolutionEvidenceAt`. */
   occurredAt: string;
   reasonCode: ConnectivityReasonCode | null;
+  providerObservedAt?: string | null;
+  receivedAt?: string | null;
+  processedAt?: string | null;
+  resolutionEvidenceAt?: string | null;
 }
 
 export interface FleetConnectivityActiveEpisodeDto {
@@ -85,6 +90,10 @@ export interface FleetConnectivityTimestampsDto {
   lastProviderObservedAt: string | null;
   lastReceivedAt: string | null;
   calculatedAt: string;
+  /** Business reconnection time (`resolutionEvidenceAt` of latest recovery). */
+  reconnectedSince: string | null;
+  /** When recovery evidence was received/processed server-side. */
+  recoveryReceivedAt: string | null;
 }
 
 export interface FleetConnectivityWebhookSummaryDto {

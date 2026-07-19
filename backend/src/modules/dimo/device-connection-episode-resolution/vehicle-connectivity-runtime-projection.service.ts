@@ -80,6 +80,7 @@ const CONNECTIVITY_RUNTIME_VEHICLE_SELECT = {
       status: true,
       resolutionMethod: true,
       resolutionEvidenceAt: true,
+      resolvedAt: true,
     },
   },
 } as const;

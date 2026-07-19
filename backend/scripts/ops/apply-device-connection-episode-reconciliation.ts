@@ -21,6 +21,8 @@
  *   CONNECTIVITY_RECONCILIATION_ALLOW_PROD=1   (strongly discouraged)
  *   CONNECTIVITY_RECONCILIATION_STAGING_CONFIRMED=1
  *   CONNECTIVITY_RECONCILIATION_GIT_COMMIT=<sha>
+ *   CONNECTIVITY_RECONCILIATION_APPLY_ENABLED=1  (required for --apply)
+ *   CONNECTIVITY_EPISODE_RECOVERY_ENABLED=1      (episode auto-recovery; default on)
  */
 import * as fs from 'fs';
 import * as path from 'path';

@@ -399,6 +399,7 @@ export function buildFleetConnectivityRuntimeForInput(
       status: DeviceConnectionEpisodeStatus.OPEN,
       resolutionMethod: null,
       resolutionEvidenceAt: null,
+      resolvedAt: null,
     });
   }
 

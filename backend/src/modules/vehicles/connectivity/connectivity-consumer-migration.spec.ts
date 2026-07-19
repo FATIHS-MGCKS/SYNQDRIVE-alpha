@@ -152,6 +152,7 @@ describe('connectivity consumer migration', () => {
               status: DeviceConnectionEpisodeStatus.OPEN,
               resolutionMethod: null,
               resolutionEvidenceAt: null,
+              resolvedAt: null,
             },
           ],
           latestState: {

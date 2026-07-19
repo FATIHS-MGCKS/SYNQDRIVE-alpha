@@ -12,6 +12,7 @@ import {
   validateEvidencePackageCanonical,
 } from './device-connection-episode-reconciliation-evidence-package.validator';
 import { isAutoApplicableClassification } from './device-connection-episode-reconciliation-evidence-package.builder';
+import { ConnectivityRecoveryPolicyService } from '../connectivity/connectivity-recovery.policy';
 
 export interface EpisodeReconciliationApplyItem {
   vehicleId: string;
@@ -54,6 +55,7 @@ export class DeviceConnectionEpisodeReconciliationApplyService {
     private readonly episodeService: DeviceConnectionEpisodeService,
     private readonly resolutionService: DeviceConnectionEpisodeResolutionService,
     @Optional() private readonly observability?: ConnectivityObservabilityService,
+    @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
 
   async runApply(opts: {
@@ -66,6 +68,10 @@ export class DeviceConnectionEpisodeReconciliationApplyService {
     gitCommit?: string | null;
     auditReportHash?: string | null;
   }): Promise<EpisodeReconciliationApplyReport> {
+    if (opts.apply) {
+      this.recoveryPolicy?.assertReconciliationApplyEnabled();
+    }
+
     const scoped = opts.evidencePackages
       .filter((pkg) => pkg.organizationId === opts.organizationId)
       .slice(0, opts.batchSize);

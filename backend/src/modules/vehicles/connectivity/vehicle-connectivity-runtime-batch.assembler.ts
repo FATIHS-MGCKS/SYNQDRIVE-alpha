@@ -76,6 +76,7 @@ export interface ConnectivityRuntimeVehicleRow {
     status: DeviceConnectionEpisodeStatus;
     resolutionMethod: DeviceConnectionEpisodeResolutionMethod | null;
     resolutionEvidenceAt: Date | null;
+    resolvedAt: Date | null;
   }>;
 }
 
@@ -156,15 +157,24 @@ export function assembleVehicleConnectivityRuntimeBundle(
     bindingId != null &&
     openEpisodeRaw.deviceBindingId !== bindingId;
 
-  const latestResolvedEpisode = vehicle.deviceConnectionEpisodes.find(
-    (episode) => episode.status === DeviceConnectionEpisodeStatus.RESOLVED,
-  );
+  const latestResolvedEpisode = [...vehicle.deviceConnectionEpisodes]
+    .filter((episode) => episode.status === DeviceConnectionEpisodeStatus.RESOLVED)
+    .sort((a, b) => {
+      const aMs = a.resolutionEvidenceAt?.getTime() ?? a.resolvedAt?.getTime() ?? 0;
+      const bMs = b.resolutionEvidenceAt?.getTime() ?? b.resolvedAt?.getTime() ?? 0;
+      return bMs - aMs;
+    })[0];
   const telemetryRecoveryAt =
     latestResolvedEpisode?.resolutionMethod ===
       DeviceConnectionEpisodeResolutionMethod.TELEMETRY_RESUMED &&
     latestResolvedEpisode.resolutionEvidenceAt
       ? latestResolvedEpisode.resolutionEvidenceAt.toISOString()
       : null;
+  const lastRecoveryEvidenceAt =
+    latestResolvedEpisode?.resolutionEvidenceAt?.toISOString() ?? null;
+  const lastRecoveryResolvedAt =
+    latestResolvedEpisode?.resolvedAt?.toISOString() ?? null;
+  const lastRecoveryReceivedAt: string | null = null;
   const raw = vehicle.latestState?.rawPayloadJson as Record<string, unknown> | null;
   const conn = extractConnectivitySnapshot(raw ?? undefined);
 
@@ -247,6 +257,9 @@ export function assembleVehicleConnectivityRuntimeBundle(
       lastUnplugWebhookAt: openEpisode?.openedAt.toISOString() ?? null,
       lastExplicitPlugWebhookAt: null,
       lastTelemetryRecoveryAt: openEpisode ? null : telemetryRecoveryAt,
+      lastRecoveryEvidenceAt,
+      lastRecoveryReceivedAt,
+      lastRecoveryResolvedAt,
     },
     snapshotPlug: {
       obdIsPluggedIn: conn.obdIsPluggedIn,

@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
 import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
+import connectivityRecoveryConfig from '@config/connectivity-recovery.config';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
@@ -36,6 +37,7 @@ import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from './devic
 import deviceConnectionEpisodeResolutionOutboxConfig from '@config/device-connection-episode-resolution-outbox.config';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
+import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
 import { DeviceConnectionEpisodeReconciliationHistoricalLoader } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation-historical.loader';
@@ -47,6 +49,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     ConfigModule.forFeature(dimoConfig),
     ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
     ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
+    ConfigModule.forFeature(connectivityRecoveryConfig),
     BullModule.registerQueue({ name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS }),
     ActivityLogModule,
     SharedGuardsModule,
@@ -75,6 +78,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionEpisodeReconciliationHistoricalLoader,
     DeviceConnectionEpisodeReconciliationApplyService,
     ConnectivityObservabilityService,
+    ConnectivityRecoveryPolicyService,
     DeviceConnectionEpisodeResolutionService,
     DeviceConnectionEpisodeResolutionOutboxService,
     DeviceConnectionEpisodeResolutionOutboxRepository,
@@ -97,6 +101,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeResolutionService,
     DeviceConnectionEpisodeResolutionOutboxProcessorService,
+    ConnectivityRecoveryPolicyService,
     ConnectivityAlertService,
     VehicleConnectivityRuntimeProjectionService,
     RpmWebhookQueryService,

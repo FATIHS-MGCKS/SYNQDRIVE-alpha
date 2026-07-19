@@ -263,3 +263,27 @@ Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconc
 - **Binding change lifecycle:** `DeviceConnectionEpisodeService.reconcileBindingDrift` — atomic supersede, lifecycle audit, resolution outbox (runtime + alerts); reconciliation apply delegates here
 - Fixture artifacts: `docs/audits/device-connection-episode-reconciliation-2026-07.md`
 - CSV: `docs/audits/data/device-connection-episode-reconciliation-2026-07.csv`
+
+## Recovery kill switch + evidence timestamps (Phase 2 Prompt 7)
+
+### Env flags
+
+| Variable | Default | Effect when off |
+|----------|---------|-----------------|
+| `CONNECTIVITY_EPISODE_RECOVERY_ENABLED` | `true` | No auto episode open/resolve, outbox skip, no binding-drift resolve; webhooks + snapshots still persist |
+| `CONNECTIVITY_RECONCILIATION_APPLY_ENABLED` | `false` | Blocks reconciliation `--apply` and `runApply(apply:true)` |
+
+Policy: `ConnectivityRecoveryPolicyService` (`connectivity-recovery.config.ts`).
+
+### Timestamp separation
+
+| Field | Meaning |
+|-------|---------|
+| `providerObservedAt` | Provider/signal observation time |
+| `receivedAt` | Server intake time |
+| `processedAt` / `resolvedAt` | Episode closed / outbox processed |
+| `resolutionEvidenceAt` | **Business recovery time** — timeline + `DEVICE_RECONNECTED` alerts |
+
+Runtime projection exposes `lastRecoveryEvidenceAt`, `lastRecoveryReceivedAt`, `lastRecoveryResolvedAt` on `VehicleConnectivityRuntimeState`. Fleet API timeline uses `resolutionEvidenceAt` for `DEVICE_RECONNECTED` events (not outbox `new Date()`).
+
+Runbook: `docs/runbooks/fleet-connectivity-production-rollout.md` §15.
