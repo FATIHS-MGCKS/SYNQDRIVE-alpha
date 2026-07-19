@@ -93,6 +93,7 @@ describe('VehiclesService.getFleetConnectivity', () => {
     expect(res.thresholds).toEqual({
       onlineMaxMinutes: 15,
       standbyMaxHours: 24,
+      signalDelayedMaxHours: 48,
     });
     expect(res.summary.total).toBe(1);
     expect(res.summary.online).toBe(1);

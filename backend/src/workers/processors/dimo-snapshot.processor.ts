@@ -32,6 +32,8 @@ import {
   DeviceConnectionEpisodeService,
   hashProviderDeviceId,
 } from '../../modules/dimo/device-connection-episode.service';
+import { ConnectivityAlertService } from '../../modules/dimo/connectivity-alert/connectivity-alert.service';
+import { VehicleConnectivityRuntimeProjectionService } from '../../modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -67,6 +69,10 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly episodeResolution?: DeviceConnectionEpisodeResolutionService,
     @Optional()
     private readonly episodeService?: DeviceConnectionEpisodeService,
+    @Optional()
+    private readonly connectivityAlerts?: ConnectivityAlertService,
+    @Optional()
+    private readonly runtimeProjection?: VehicleConnectivityRuntimeProjectionService,
   ) {
     super();
   }
@@ -192,6 +198,24 @@ export class DimoSnapshotProcessor extends WorkerHost {
         providerConnectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
         signals,
       });
+
+      if (this.connectivityAlerts) {
+        await this.connectivityAlerts.processPendingResolutionOutbox();
+      }
+      if (this.runtimeProjection) {
+        try {
+          await this.runtimeProjection.projectForVehicle(
+            vehicle.organizationId,
+            vehicleId,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `Connectivity runtime projection skipped for ${vehicleId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+      }
 
       // ── ClickHouse dual-write (fire-and-forget, never blocks live pipeline) ──
       if (this.chTelemetry) {

@@ -1,8 +1,10 @@
-import type { FleetConnectivityStatus, FleetDeviceConnectionDto } from '../../../lib/api';
+import type { FleetConnectivityStatus, FleetDeviceConnectionDto, FleetDataCoverageState } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
 import {
   connectionStatusLabel,
   connectionStatusTone,
+  coverageStateLabel,
+  coverageStateTone,
   deviceConnectionSeverityTone,
   readinessLabel,
   readinessTone,
@@ -34,8 +36,28 @@ export function ReadinessChip({
   score: number;
 }) {
   return (
-    <StatusChip tone={readinessTone(level)} title="Telemetry readiness — data confidence, not vehicle health">
+    <StatusChip tone={readinessTone(level)} title="Deprecated readiness alias — use data coverage state">
       {readinessLabel(level)} · {score}%
+    </StatusChip>
+  );
+}
+
+export function CoverageStateChip({
+  state,
+  freshCount,
+  expectedCount,
+}: {
+  state: FleetDataCoverageState;
+  freshCount?: number;
+  expectedCount?: number;
+}) {
+  const detail =
+    freshCount != null && expectedCount != null && expectedCount > 0
+      ? `${freshCount}/${expectedCount} fresh expected signals`
+      : 'Capability-aware data coverage — freshness of expected signals';
+  return (
+    <StatusChip tone={coverageStateTone(state)} title={detail}>
+      {coverageStateLabel(state)}
     </StatusChip>
   );
 }
