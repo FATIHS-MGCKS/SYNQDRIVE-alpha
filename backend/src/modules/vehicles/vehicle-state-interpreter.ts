@@ -5,6 +5,11 @@ const STANDBY_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Signal-delayed ("soft offline") window: 24h .. 48h. Real OFFLINE only beyond.
 const SIGNAL_DELAYED_THRESHOLD_MS = 48 * 60 * 60 * 1000; // 48 hours
 
+/** Canonical telemetry freshness thresholds — single source for all consumers. */
+export const TELEMETRY_FRESH_THRESHOLD_MS = FRESH_THRESHOLD_MS;
+export const TELEMETRY_STANDBY_THRESHOLD_MS = STANDBY_THRESHOLD_MS;
+export const TELEMETRY_SIGNAL_DELAYED_THRESHOLD_MS = SIGNAL_DELAYED_THRESHOLD_MS;
+
 export type OnlineStatus = 'ONLINE' | 'STANDBY' | 'OFFLINE';
 export type DisplayState = 'MOVING' | 'IDLE' | 'PARKED';
 export type DisplayIgnition = 'ON' | 'OFF' | 'UNKNOWN';

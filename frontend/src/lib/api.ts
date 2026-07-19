@@ -7980,8 +7980,16 @@ export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOC
 export type FleetConnectivityStatus =
   | 'online'
   | 'standby'
+  | 'signal_delayed'
   | 'offline'
   | 'not_connected';
+
+export type FleetTelemetryFreshness =
+  | 'live'
+  | 'standby'
+  | 'signal_delayed'
+  | 'offline'
+  | 'no_signal';
 
 export type FleetConnectivitySignalState = 'available' | 'missing' | 'unknown';
 
@@ -8116,6 +8124,22 @@ export type FleetConnectivityReadinessLevel =
   | 'warning'
   | 'no_data';
 
+export type FleetDataCoverageState =
+  | 'GOOD'
+  | 'PARTIAL'
+  | 'INSUFFICIENT'
+  | 'UNKNOWN'
+  | 'NOT_APPLICABLE';
+
+export type FleetDataCoverageReasonCode =
+  | 'DATA_COVERAGE_PARTIAL'
+  | 'DATA_COVERAGE_INSUFFICIENT'
+  | 'SIGNAL_NOT_APPLICABLE'
+  | 'TELEMETRY_STALE'
+  | 'NO_TELEMETRY_SNAPSHOT'
+  | 'CAPABILITY_UNKNOWN'
+  | 'PROVIDER_CHANGED';
+
 export interface FleetConnectivitySignals {
   gps: FleetConnectivitySignalState;
   odometer: FleetConnectivitySignalState;
@@ -8139,6 +8163,8 @@ export interface FleetConnectivityVehicle {
   sourceType: string | null;
   provider: string;
   connectionStatus: FleetConnectivityStatus;
+  /** Canonical telemetry freshness — matches runtime state builder vocabulary. */
+  telemetryFreshness: FleetTelemetryFreshness;
   statusNote: string;
   online: boolean;
   lastSeenAt: string | null;
@@ -8158,7 +8184,15 @@ export interface FleetConnectivityVehicle {
   maskedSyntheticTokenId: string | null;
   readinessScore: number;
   readinessLevel: FleetConnectivityReadinessLevel;
+  /** @deprecated Use coveragePercent */
   signalCoveragePercent: number;
+  coverageState: FleetDataCoverageState;
+  coveragePercent: number | null;
+  expectedSignalCount: number;
+  freshSignalCount: number;
+  staleSignalCount: number;
+  missingSignalCount: number;
+  reasonCodes: FleetDataCoverageReasonCode[];
   signals: FleetConnectivitySignals;
   /** @deprecated masked alias — raw serial is never returned */
   deviceSerial: string | null;
@@ -8173,12 +8207,14 @@ export interface FleetConnectivityVehicle {
 export interface FleetConnectivityThresholds {
   onlineMaxMinutes: number;
   standbyMaxHours: number;
+  signalDelayedMaxHours: number;
 }
 
 export interface FleetConnectivitySummary {
   total: number;
   online: number;
   standby: number;
+  signalDelayed: number;
   offline: number;
   notConnected: number;
   connected: number;

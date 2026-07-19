@@ -1,7 +1,6 @@
 import {
   ConnectivityDeviceType,
   ConnectivitySourceType,
-  ProviderAuthorizationStatus,
   VehicleConnectivityRuntimeStateBuilder,
   type BuildVehicleConnectivityRuntimeStateInput,
 } from './vehicle-connectivity-runtime-state.builder';
@@ -10,9 +9,16 @@ import {
   ConnectivityRecommendedAction,
 } from './connectivity-domain.types';
 import { validateConnectivityStateCombination } from './connectivity-domain.validation';
+import { ProviderLinkStateBuilder } from './provider-link-state.builder';
+import {
+  ConsentLedgerStatus,
+  ProviderAuthorizationLedgerStatus,
+  type ProviderLinkEvidenceInput,
+} from './provider-link-state.types';
 
 const NOW_MS = new Date('2026-07-18T12:00:00.000Z').getTime();
 const CALCULATED_AT = '2026-07-18T12:00:00.000Z';
+const ORG = 'org-builder-1';
 
 function minutesAgo(m: number): string {
   return new Date(NOW_MS - m * 60_000).toISOString();
@@ -20,6 +26,46 @@ function minutesAgo(m: number): string {
 
 function hoursAgo(h: number): string {
   return new Date(NOW_MS - h * 3_600_000).toISOString();
+}
+
+function activeProviderEvidence(
+  overrides: Partial<ProviderLinkEvidenceInput> = {},
+): ProviderLinkEvidenceInput {
+  return {
+    organizationId: ORG,
+    vehicleId: 'veh-builder-1',
+    nowMs: NOW_MS,
+    mapping: {
+      hasActiveMapping: true,
+      activeMappingCount: 1,
+      provider: 'DIMO',
+      mappingOrganizationId: ORG,
+    },
+    authorization: {
+      status: ProviderAuthorizationLedgerStatus.ACTIVE,
+      expiresAt: null,
+    },
+    consent: {
+      status: ConsentLedgerStatus.ACTIVE,
+      grantedAt: '2026-01-01T00:00:00.000Z',
+      expiresAt: null,
+    },
+    tokenBinding: {
+      hasToken: true,
+      tokenId: 12345,
+      bindingId: 'binding-1',
+      hasHistoricalDimoRecord: true,
+    },
+    revocation: { isRevoked: false, revokedAt: null },
+    expiry: { isExpired: false, expiresAt: null },
+    providerError: { hasError: false, connectionStatus: 'CONNECTED' },
+    lastAccess: { lastSuccessfulAt: minutesAgo(5) },
+    ...overrides,
+  };
+}
+
+function providerLink(overrides: Partial<ProviderLinkEvidenceInput> = {}) {
+  return { link: ProviderLinkStateBuilder.build(activeProviderEvidence(overrides)) };
 }
 
 function baseInput(
@@ -30,12 +76,7 @@ function baseInput(
     organizationId: 'org-builder-1',
     calculatedAt: CALCULATED_AT,
     nowMs: NOW_MS,
-    provider: {
-      hasProviderLink: true,
-      authorizationStatus: ProviderAuthorizationStatus.ACTIVE,
-      consentGranted: true,
-      providerConnectionStatus: 'CONNECTED',
-    },
+    provider: providerLink(),
     telemetry: {
       lastTelemetryAt: minutesAgo(5),
       lastProviderObservedAt: minutesAgo(5),
@@ -232,12 +273,13 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
 
   it('authorization expired keeps telemetry visible but overall AUTHORIZATION_REQUIRED', () => {
     const state = build({
-      provider: {
-        hasProviderLink: true,
-        authorizationStatus: ProviderAuthorizationStatus.EXPIRED,
-        consentGranted: true,
-        providerConnectionStatus: 'CONNECTED',
-      },
+      provider: providerLink({
+        authorization: {
+          status: ProviderAuthorizationLedgerStatus.EXPIRED,
+          expiresAt: '2026-06-01T00:00:00.000Z',
+        },
+        expiry: { isExpired: true, expiresAt: '2026-06-01T00:00:00.000Z' },
+      }),
       telemetry: {
         lastTelemetryAt: minutesAgo(3),
         lastProviderObservedAt: minutesAgo(3),
@@ -253,11 +295,29 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
 
   it('no provider link → NO_LINK + NO_ACTIVE_DATA_SOURCE', () => {
     const state = build({
-      provider: {
-        hasProviderLink: false,
-        authorizationStatus: ProviderAuthorizationStatus.MISSING,
-        consentGranted: null,
-      },
+      provider: providerLink({
+        mapping: {
+          hasActiveMapping: false,
+          activeMappingCount: 0,
+          provider: null,
+          mappingOrganizationId: ORG,
+        },
+        tokenBinding: {
+          hasToken: false,
+          tokenId: null,
+          bindingId: null,
+          hasHistoricalDimoRecord: false,
+        },
+        consent: {
+          status: ConsentLedgerStatus.MISSING,
+          grantedAt: null,
+          expiresAt: null,
+        },
+        authorization: {
+          status: ProviderAuthorizationLedgerStatus.MISSING,
+          expiresAt: null,
+        },
+      }),
       telemetry: {
         lastTelemetryAt: null,
         lastProviderObservedAt: null,
@@ -400,11 +460,13 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
 
   it('keeps telemetry, device, and provider as separate dimensions', () => {
     const state = build({
-      provider: {
-        hasProviderLink: true,
-        authorizationStatus: ProviderAuthorizationStatus.EXPIRED,
-        consentGranted: true,
-      },
+      provider: providerLink({
+        authorization: {
+          status: ProviderAuthorizationLedgerStatus.EXPIRED,
+          expiresAt: '2026-06-01T00:00:00.000Z',
+        },
+        expiry: { isExpired: true, expiresAt: '2026-06-01T00:00:00.000Z' },
+      }),
       episode: {
         activeEpisodeId: 'ep-1',
         openUnpluggedEpisode: true,
@@ -424,6 +486,44 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
     expect(state.telemetryState).toBe('live');
     expect(state.physicalDeviceState).toBe('UNPLUGGED_CONFIRMED');
     expect(state.overallState).toBe('AUTHORIZATION_REQUIRED');
+  });
+
+  it('telemetry live despite missing consent — dimensions stay separate', () => {
+    const state = build({
+      provider: providerLink({
+        consent: {
+          status: ConsentLedgerStatus.MISSING,
+          grantedAt: null,
+          expiresAt: null,
+        },
+        authorization: {
+          status: ProviderAuthorizationLedgerStatus.MISSING,
+          expiresAt: null,
+        },
+        mapping: {
+          hasActiveMapping: true,
+          activeMappingCount: 1,
+          provider: 'DIMO',
+          mappingOrganizationId: ORG,
+        },
+        tokenBinding: {
+          hasToken: true,
+          tokenId: 99,
+          bindingId: 'binding-1',
+          hasHistoricalDimoRecord: true,
+        },
+      }),
+      telemetry: {
+        lastTelemetryAt: minutesAgo(3),
+        lastProviderObservedAt: minutesAgo(3),
+        lastReceivedAt: minutesAgo(3),
+      },
+    });
+    expect(state.telemetryState).toBe('live');
+    expect(state.providerLinkState).toBe('REAUTH_REQUIRED');
+    expect(state.overallState).toBe('AUTHORIZATION_REQUIRED');
+    expect(state.reasonCodes).toContain(ConnectivityReasonCode.CONSENT_MISSING);
+    expect(state.reasonCodes).toContain(ConnectivityReasonCode.TELEMETRY_FRESH);
   });
 
   it('explicit plug webhook → PLUGGED_CONFIRMED', () => {
