@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { DimoController } from './dimo.controller';
 import { DimoWebhookController } from './dimo-webhook.controller';
 import { DimoAuthService } from './dimo-auth.service';
@@ -22,12 +23,17 @@ import {
 } from './device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
 import { VehicleConnectivityRuntimeProjectionService } from './device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
+import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
-  imports: [ConfigModule.forFeature(dimoConfig), forwardRef(() => VehicleIntelligenceModule)],
+  imports: [
+    ConfigModule.forFeature(dimoConfig),
+    NotificationsModule,
+    forwardRef(() => VehicleIntelligenceModule),
+  ],
   controllers: [DimoController, DimoWebhookController],
   providers: [
     DimoAuthService,
@@ -43,6 +49,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionEpisodeReconciliationService,
     DeviceConnectionEpisodeResolutionService,
     DeviceConnectionEpisodeResolutionOutboxService,
+    ConnectivityAlertService,
     VehicleConnectivityRuntimeProjectionService,
     DeviceConnectionQueryService,
     RpmWebhookCandidateService,
@@ -59,6 +66,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionQueryService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeResolutionService,
+    ConnectivityAlertService,
+    VehicleConnectivityRuntimeProjectionService,
     RpmWebhookQueryService,
   ],
 })

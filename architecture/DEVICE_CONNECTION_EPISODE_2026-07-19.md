@@ -223,6 +223,32 @@ Excluded from denominator: EV SoC on ICE, fuel on EV, OBD plug on OEM/synthetic,
 
 Legacy `readinessScore` / `readinessLevel` / `signalCoveragePercent` remain as transitional aliases derived from coverage.
 
+## Connectivity alerts (Prompt 15)
+
+Unified structured connectivity alerts via `connectivity-alert/` module + notification registry.
+
+### Alert types
+
+`DEVICE_UNPLUGGED` · `DEVICE_RECONNECTED` · `TELEMETRY_SOFT_OFFLINE` · `TELEMETRY_OFFLINE` · `AUTHORIZATION_REQUIRED` · `DATA_SOURCE_DISCONNECTED` · `DATA_COVERAGE_INSUFFICIENT` · `WEBHOOK_FAILURE` · `DEVICE_BINDING_CHANGED` · `CONNECTIVITY_STATE_UNKNOWN`
+
+### Categories
+
+DEVICE · TELEMETRY · AUTHORIZATION · DATA_QUALITY · INTEGRATION
+
+### Dedupe key
+
+`organizationId:vehicleId:provider:deviceBindingId:episodeId:alertType:stateVersion`
+
+Episode-scoped device alerts use notification fingerprint variant `conditionCode:episode:{episodeId}`.
+
+### Wiring
+
+- `DeviceConnectionEpisodeService.openFromUnplugEvent` → `DEVICE_UNPLUGGED` (once per episode)
+- Explicit plug / resolution outbox → resolve unplug + one `DEVICE_RECONNECTED` info event
+- `DeviceConnectionEpisodeResolutionOutbox` consumer → `ConnectivityAlertService.processResolutionOutboxRow`
+- `VehicleConnectivityRuntimeProjectionService` → telemetry / authorization / coverage runtime sync
+- Notifications link to Fleet Connectivity via `OPEN_VEHICLE_MODULE` + `module: connectivity`
+
 ## Reconciliation audit (Prompt 6)
 
 Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`

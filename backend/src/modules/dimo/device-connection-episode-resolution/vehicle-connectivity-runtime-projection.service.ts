@@ -2,7 +2,7 @@
  * Projects canonical connectivity runtime state after episode resolution.
  * Pure assembly over existing builder — no persistence table yet.
  */
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DataAuthorizationSourceType,
   DeviceConnectionEpisodeResolutionMethod,
@@ -29,10 +29,14 @@ import {
   resolveFleetPowertrainClass,
   resolveFleetProviderClass,
 } from '../../vehicles/fleet-data-coverage';
+import { ConnectivityAlertService } from '../connectivity-alert/connectivity-alert.service';
 
 @Injectable()
 export class VehicleConnectivityRuntimeProjectionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly connectivityAlerts?: ConnectivityAlertService,
+  ) {}
 
   async projectForVehicle(
     organizationId: string,
@@ -45,6 +49,9 @@ export class VehicleConnectivityRuntimeProjectionService {
         organizationId: true,
         hardwareType: true,
         fuelType: true,
+        make: true,
+        model: true,
+        licensePlate: true,
         dimoVehicleId: true,
         dimoVehicle: { select: { connectionStatus: true, tokenId: true, lastSignal: true } },
         latestState: {
@@ -295,6 +302,62 @@ export class VehicleConnectivityRuntimeProjectionService {
       },
     };
 
-    return VehicleConnectivityRuntimeStateBuilder.build(input);
+    const runtimeState = VehicleConnectivityRuntimeStateBuilder.build(input);
+
+    await this.syncConnectivityAlerts({
+      vehicle,
+      providerLink,
+      canonicalTelemetryFreshness: canonicalTelemetry.freshness,
+      dataCoverageState: dataCoverageResult.coverageState,
+      bindingChangedSinceEpisode,
+    });
+
+    return runtimeState;
+  }
+
+  private async syncConnectivityAlerts(input: {
+    vehicle: {
+      id: string;
+      organizationId: string;
+      make: string;
+      model: string;
+      licensePlate: string | null;
+    };
+    providerLink: ReturnType<typeof ProviderLinkStateBuilder.build>;
+    canonicalTelemetryFreshness: string;
+    dataCoverageState: string;
+    bindingChangedSinceEpisode: boolean;
+  }): Promise<void> {
+    if (!this.connectivityAlerts) return;
+
+    const label =
+      [input.vehicle.make, input.vehicle.model].filter(Boolean).join(' ').trim() ||
+      input.vehicle.id;
+
+    await this.connectivityAlerts.syncRuntimeAlerts({
+      organizationId: input.vehicle.organizationId,
+      vehicleId: input.vehicle.id,
+      provider: 'DIMO',
+      label,
+      licensePlate: input.vehicle.licensePlate,
+      telemetryFreshness: input.canonicalTelemetryFreshness as
+        | 'live'
+        | 'standby'
+        | 'signal_delayed'
+        | 'offline'
+        | 'no_signal',
+      providerLinkState: input.providerLink.state,
+      hasProviderLink: input.providerLink.hasProviderLink,
+      coverageState: input.dataCoverageState as
+        | 'GOOD'
+        | 'PARTIAL'
+        | 'INSUFFICIENT'
+        | 'UNKNOWN'
+        | 'NOT_APPLICABLE',
+      webhookProcessingFailed: input.providerLink.state === 'ERROR',
+      bindingChanged: input.bindingChangedSinceEpisode,
+      connectivityStateUnknown: input.providerLink.state === 'UNKNOWN',
+      observedAt: new Date(),
+    });
   }
 }
