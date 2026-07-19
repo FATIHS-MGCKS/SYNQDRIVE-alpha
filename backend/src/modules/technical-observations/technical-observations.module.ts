@@ -7,7 +7,12 @@ import { ServiceCasesModule } from '../service-cases/service-cases.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
-  imports: [TasksModule, ServiceCasesModule, NotificationsModule, forwardRef(() => VehicleIntelligenceModule)],
+  imports: [
+    TasksModule,
+    ServiceCasesModule,
+    forwardRef(() => NotificationsModule),
+    forwardRef(() => VehicleIntelligenceModule),
+  ],
   controllers: [TechnicalObservationsController],
   providers: [TechnicalObservationsService],
   exports: [TechnicalObservationsService],

@@ -55,7 +55,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     BullModule.registerQueue({ name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS }),
     ActivityLogModule,
     SharedGuardsModule,
-    NotificationsModule,
+    forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
   ],
   controllers: [DimoController, DimoWebhookController, DeviceConnectionWebhookInboxController],

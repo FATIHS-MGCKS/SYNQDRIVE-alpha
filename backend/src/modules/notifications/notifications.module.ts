@@ -47,7 +47,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     PrismaModule,
     ConfigModule,
     ObservabilityModule,
-    OutboundEmailModule,
+    forwardRef(() => OutboundEmailModule),
     BullModule.registerQueue(
       { name: QUEUE_NAMES.NOTIFICATION_EVALUATION },
       { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },

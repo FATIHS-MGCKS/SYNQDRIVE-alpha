@@ -24,7 +24,11 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
  * tokens so a future S3 / Chromium implementation can be swapped in.
  */
 @Module({
-  imports: [forwardRef(() => InvoicesModule), NotificationsModule, TasksModule],
+  imports: [
+    forwardRef(() => InvoicesModule),
+    forwardRef(() => NotificationsModule),
+    TasksModule,
+  ],
   controllers: [DocumentsController, LegalDocumentsController],
   providers: [
     LocalDocumentStorageService,
