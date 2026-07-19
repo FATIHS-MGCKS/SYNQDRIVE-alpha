@@ -34,15 +34,52 @@ export class DimoTriggersService {
   }
 
   async listWebhooks(): Promise<any[]> {
+    const result = await this.listWebhooksDetailed();
+    return result.webhooks;
+  }
+
+  async listWebhooksDetailed(): Promise<{
+    webhooks: any[];
+    error: { code: string; message: string } | null;
+  }> {
     try {
       const jwt = await this.auth.getDeveloperJwt();
       const res = await axios.get(`${this.triggersApiUrl}/v1/webhooks`, {
         headers: { Authorization: `Bearer ${jwt}` },
+        timeout: this.conf.requestTimeoutMs,
       });
-      return res.data?.webhooks ?? res.data ?? [];
+      const webhooks = res.data?.webhooks ?? res.data ?? [];
+      return { webhooks: Array.isArray(webhooks) ? webhooks : [], error: null };
     } catch (err: any) {
-      this.logger.warn(`List webhooks failed: ${err.message}`);
-      return [];
+      const message = err?.message ?? String(err);
+      this.logger.warn(`List webhooks failed: ${message}`);
+      return {
+        webhooks: [],
+        error: { code: 'DIMO_API_UNAVAILABLE', message },
+      };
+    }
+  }
+
+  async getVehicleWebhookSubscriptions(tokenId: number): Promise<{
+    subscriptions: unknown;
+    error: { code: string; message: string } | null;
+  }> {
+    try {
+      const jwt = await this.auth.getDeveloperJwt();
+      const contract = this.conf.vehicleNftContractAddress;
+      const subject = `did:erc721:137:${contract}:${tokenId}`;
+      const res = await axios.get(`${this.triggersApiUrl}/v1/webhooks/vehicles/${subject}`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+        timeout: this.conf.requestTimeoutMs,
+      });
+      return { subscriptions: res.data, error: null };
+    } catch (err: any) {
+      const message = err?.message ?? String(err);
+      this.logger.warn(`List vehicle webhook subscriptions failed for tokenId=${tokenId}: ${message}`);
+      return {
+        subscriptions: null,
+        error: { code: 'DIMO_API_UNAVAILABLE', message },
+      };
     }
   }
 

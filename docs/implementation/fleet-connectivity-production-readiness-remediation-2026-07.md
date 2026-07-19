@@ -21,7 +21,7 @@
 | Fleet Connectivity ≠ kanonische Freshness (24h vs 48h) | Architektur-Split | FC-P1-02 |
 | Parallele Wahrheiten (Provider/Telemetrie/Device/Webhook/Readiness) | 31 Consumer, 9 LEGACY | FC-C-01 |
 | Consent-Lücke bei CONNECTED-Fahrzeugen | 3/6 | FC-P1-03 |
-| webhookConfigured aus Event-Abwesenheit | 5/6 false negative | FC-P1-04 |
+| webhookConfigured aus Event-Abwesenheit | **FIXED** (Prompt 11) | FC-P1-04 |
 | Readiness nicht capability-aware | evSoc auf ICE | FC-P2-02 |
 | Alerts nach Recovery unwired | 0 Unplug-Notifications 60d | FC-C-03, FC-P2-03 |
 | UI überladen / i18n-Lücken | 9 KPI, 10 Spalten, EN hardcoded | FC-P3-01–03 |
@@ -111,7 +111,8 @@
 | 5 | Snapshot + Telemetry Episode Closure | **DONE** | `fix(connectivity): resolve unplug episodes from explicit snapshot plug signals` + `fix(connectivity): infer device reconnection from sustained telemetry` | **yes** | snapshot + telemetry resolution | yes | no | no | high |
 | 5a | Read-only episode reconciliation audit | **DONE** | `feat(connectivity): add read-only device episode reconciliation audit` | — | fixture classifier | yes | no | no | low |
 | 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
-| 7 | Webhook Inbox Retry / DLQ | **IN PROGRESS** | Prompt 1–2: inbox + async retry/DLQ worker | **yes** (`20260719160000_device_connection_webhook_inbox`) | inbox + processing specs | yes | yes | no | med |
+| 7 | Webhook Inbox Retry / DLQ | **DONE** | `f82e678e` + `496e8cdd` (Phase 2 inbox + retry/DLQ) | **yes** (`20260719160000_device_connection_webhook_inbox`) | inbox + processing specs | yes | yes | no | med |
+| 7b | Webhook Configuration aus Trigger-State | **DONE** | `fix(connectivity): derive webhook configuration from actual trigger state` | **yes** (`20260719180000_device_connection_trigger_registry_cache`) | config classifier tests | yes | yes | no | med |
 | 8 | Provider Link + Authorization | **DONE** | `fix(connectivity): canonicalize provider link authorization and consent` | no | provider-link builder + projection | yes | no | no | med |
 | 9 | Kanonische Freshness Fleet API | **DONE** | `fix(connectivity): unify telemetry freshness across connectivity consumers` | no | boundary + cross-surface | no | no | no | low |
 | 10 | Capability-aware Coverage | **DONE** | `08c68b26` | no | ICE/EV matrix | yes | yes | no | med |

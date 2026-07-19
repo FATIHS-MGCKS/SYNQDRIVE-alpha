@@ -42,6 +42,8 @@ import { DeviceConnectionQueryService } from './device-connection-query.service'
 import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
 import { DeviceConnectionEpisodeReconciliationHistoricalLoader } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation-historical.loader';
 import { DeviceConnectionEpisodeReconciliationApplyService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation-apply.service';
+import { DeviceConnectionWebhookConfigurationService } from './device-connection-webhook-configuration/device-connection-webhook-configuration.service';
+import { DimoTriggerRegistryService } from './device-connection-webhook-configuration/dimo-trigger-registry.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
@@ -73,6 +75,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookQueueProducer,
     DeviceConnectionWebhookInboxSchedulerService,
     DeviceConnectionWebhookReplayService,
+    DimoTriggerRegistryService,
+    DeviceConnectionWebhookConfigurationService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeReconciliationService,
     DeviceConnectionEpisodeReconciliationHistoricalLoader,
@@ -108,6 +112,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookProcessingService,
     DeviceConnectionWebhookReplayService,
     DeviceConnectionWebhookInboxSchedulerService,
+    DeviceConnectionWebhookConfigurationService,
+    DimoTriggerRegistryService,
   ],
 })
 export class DimoModule {}

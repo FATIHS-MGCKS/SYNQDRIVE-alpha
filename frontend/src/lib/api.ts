@@ -8003,6 +8003,33 @@ export type DeviceConnectionStatus = 'plugged' | 'unplugged' | 'unknown';
 export type DeviceConnectionSeverity = 'info' | 'warning' | 'critical';
 export type DeviceConnectionWebhookStatus = 'active' | 'not_configured' | 'unknown';
 
+export type WebhookConfigurationState =
+  | 'CONFIGURED'
+  | 'NOT_CONFIGURED'
+  | 'ERROR'
+  | 'UNKNOWN'
+  | 'NOT_APPLICABLE';
+
+export interface DeviceConnectionTriggerStateView {
+  state: WebhookConfigurationState;
+  reasonCode: string | null;
+  triggerId: string | null;
+  eventType: 'OBD_DEVICE_UNPLUGGED' | 'OBD_DEVICE_PLUGGED_IN' | null;
+  active: boolean | null;
+  callbackUrl: string | null;
+  failureCount: number | null;
+}
+
+export interface DeviceConnectionWebhookConfigurationView {
+  unplugTriggerState: DeviceConnectionTriggerStateView;
+  plugTriggerState: DeviceConnectionTriggerStateView;
+  recoveryPolicy: 'UNPLUG_WEBHOOK_PLUG_SNAPSHOT' | 'UNPLUG_WEBHOOK_ONLY' | 'NONE';
+  lastSuccessfulDeliveryAt: string | null;
+  lastDeliveryErrorAt: string | null;
+  configSyncedAt: string | null;
+  configSource: 'DIMO_TRIGGER_API' | 'REGISTRY_CACHE' | 'DEPLOYMENT_POLICY';
+}
+
 /** Explicit DIMO Vehicle Trigger OBD plug/unplug — distinct from snapshot obdIsPluggedIn / offline. */
 export interface FleetDeviceConnectionDto {
   lastDeviceUnpluggedAt: string | null;
@@ -8062,6 +8089,7 @@ export interface DeviceConnectionSummary {
   rentalRelevant: boolean;
   activeBookingId: string | null;
   webhookConfigured: DeviceConnectionWebhookStatus;
+  webhookConfiguration: DeviceConnectionWebhookConfigurationView;
   lastWebhookReceivedAt: string | null;
   unpluggedCount24h: number;
   unpluggedCount7d: number;

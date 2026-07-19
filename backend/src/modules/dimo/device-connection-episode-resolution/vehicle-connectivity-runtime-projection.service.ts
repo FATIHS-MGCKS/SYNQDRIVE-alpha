@@ -17,6 +17,8 @@ import {
 } from '../../vehicles/connectivity/vehicle-connectivity-runtime-batch.assembler';
 import { ConnectivityAlertService } from '../connectivity-alert/connectivity-alert.service';
 import { ConnectivityObservabilityService } from '../connectivity/connectivity-observability.service';
+import { DeviceConnectionWebhookConfigurationService } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.service';
+import { WebhookConfigurationStateEnum } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.types';
 
 const CONNECTIVITY_RUNTIME_VEHICLE_SELECT = {
   id: true,
@@ -93,6 +95,8 @@ export class VehicleConnectivityRuntimeProjectionService {
     private readonly prisma: PrismaService,
     @Optional() private readonly connectivityAlerts?: ConnectivityAlertService,
     @Optional() private readonly observability?: ConnectivityObservabilityService,
+    @Optional()
+    private readonly webhookConfiguration?: DeviceConnectionWebhookConfigurationService,
   ) {}
 
   async projectForVehicle(
@@ -114,24 +118,30 @@ export class VehicleConnectivityRuntimeProjectionService {
       orgAuthorization,
     );
 
+    const runtime = await this.applyWebhookConfigurationEvidence(
+      bundle.runtime,
+      organizationId,
+      vehicle,
+    );
+
     await this.syncConnectivityAlerts({
       vehicle,
       providerLink: bundle.providerLink,
-      canonicalTelemetryFreshness: bundle.runtime.telemetryState,
-      dataCoverageState: bundle.runtime.dataCoverageState,
+      canonicalTelemetryFreshness: runtime.telemetryState,
+      dataCoverageState: runtime.dataCoverageState,
       bindingChangedSinceEpisode: bundle.bindingChangedSinceEpisode,
     });
 
     this.observability?.log('runtime_state_calculated', {
-      overallState: bundle.runtime.overallState,
-      telemetryState: bundle.runtime.telemetryState,
-      providerLinkState: bundle.runtime.providerLinkState,
-      physicalDeviceState: bundle.runtime.physicalDeviceState,
-      coverageState: bundle.runtime.dataCoverageState,
-      coverageRatio: bundle.runtime.evidence.signalCoveragePercent ?? undefined,
+      overallState: runtime.overallState,
+      telemetryState: runtime.telemetryState,
+      providerLinkState: runtime.providerLinkState,
+      physicalDeviceState: runtime.physicalDeviceState,
+      coverageState: runtime.dataCoverageState,
+      coverageRatio: runtime.evidence.signalCoveragePercent ?? undefined,
     });
 
-    return bundle.runtime;
+    return runtime;
   }
 
   async projectForVehicles(
@@ -152,6 +162,38 @@ export class VehicleConnectivityRuntimeProjectionService {
       vehicles as ConnectivityRuntimeVehicleRow[],
       orgAuthorization,
     );
+  }
+
+  private async applyWebhookConfigurationEvidence(
+    runtime: VehicleConnectivityRuntimeState,
+    organizationId: string,
+    vehicle: {
+      id: string;
+      hardwareType: string | null;
+      dimoVehicleId: string | null;
+      dimoVehicle: { tokenId: number | null } | null;
+    },
+  ): Promise<VehicleConnectivityRuntimeState> {
+    if (!this.webhookConfiguration) return runtime;
+
+    const webhookConfig = await this.webhookConfiguration.getForVehicle({
+      organizationId,
+      vehicleId: vehicle.id,
+      hardwareType: vehicle.hardwareType,
+      dimoLinked: vehicle.dimoVehicleId != null,
+      tokenId: vehicle.dimoVehicle?.tokenId ?? null,
+    });
+
+    const configured =
+      webhookConfig.unplugTriggerState.state === WebhookConfigurationStateEnum.CONFIGURED;
+
+    return {
+      ...runtime,
+      evidence: {
+        ...runtime.evidence,
+        webhookConfigured: configured,
+      },
+    };
   }
 
   private async loadOrgAuthorization(organizationId: string) {

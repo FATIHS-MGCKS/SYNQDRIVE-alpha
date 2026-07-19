@@ -2293,11 +2293,15 @@ export class VehiclesService {
     const dimoLinkedById = new Map(
       vehicles.map((v) => [v.id, v.dimoVehicleId != null]),
     );
+    const tokenIdById = new Map(
+      vehicles.map((v) => [v.id, v.dimoVehicle?.tokenId ?? null]),
+    );
     const deviceSummaries = await this.deviceConnectionQuery.getFleetSummariesForVehicles(
       organizationId,
       vehicleIds,
       hardwareById,
       dimoLinkedById,
+      tokenIdById,
     );
     const runtimeByVehicle = await this.connectivityRuntimeProjection.projectForVehicles(
       organizationId,

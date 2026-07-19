@@ -8,7 +8,7 @@ import { SignalQualityReadService } from '@modules/clickhouse/signal-quality-rea
 import { ClickHouseDiagnosticsService } from '@modules/clickhouse/clickhouse-diagnostics.service';
 import type { ClickHouseDiagnosticsDto } from '@modules/clickhouse/clickhouse-diagnostics.types';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
-import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
+import { DeviceConnectionWebhookConfigurationService } from '@modules/dimo/device-connection-webhook-configuration/device-connection-webhook-configuration.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import {
   TELEMETRY_FRESH_THRESHOLD_MS,
@@ -104,6 +104,7 @@ export class DataAnalyseService {
     private readonly signalQualityRead: SignalQualityReadService,
     private readonly clickHouseDiagnostics: ClickHouseDiagnosticsService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
+    private readonly webhookConfiguration: DeviceConnectionWebhookConfigurationService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
     private readonly canonicalBatteryHealth: CanonicalBatteryHealthService,
   ) {}
@@ -555,7 +556,13 @@ export class DataAnalyseService {
   ): Promise<EventArchitectureDto> {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: tenantVehicleWhere(orgId, vehicleId),
-      select: { id: true, hardwareType: true, fuelType: true, dimoVehicleId: true },
+      select: {
+        id: true,
+        hardwareType: true,
+        fuelType: true,
+        dimoVehicleId: true,
+        dimoVehicle: { select: { tokenId: true } },
+      },
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
@@ -674,24 +681,47 @@ export class DataAnalyseService {
       };
     })();
 
-    const deviceConnectionWebhookIntake = ((): EventArchitectureDto['deviceConnectionWebhookIntake'] => {
+    const deviceConnectionWebhookIntake = await (async (): Promise<
+      EventArchitectureDto['deviceConnectionWebhookIntake']
+    > => {
+      const webhookConfig = await this.webhookConfiguration.getForVehicle({
+        organizationId: orgId,
+        vehicleId,
+        hardwareType: vehicle.hardwareType,
+        dimoLinked: hasDimoLink,
+        tokenId: vehicle.dimoVehicle?.tokenId ?? null,
+      });
+
+      const unplugState = webhookConfig.unplugTriggerState.state;
       let status: EventLayerStatus = 'unknown';
-      if (deviceEvents7d > 0) status = 'active';
-      else if (hasDimoLink) status = 'not_configured';
+      if (unplugState === 'CONFIGURED') status = 'configured';
+      else if (unplugState === 'NOT_CONFIGURED') status = 'not_configured';
+      else if (unplugState === 'ERROR') status = 'error';
+      else if (unplugState === 'NOT_APPLICABLE') status = 'not_applicable';
+      else status = 'unknown';
 
       const labelMap: Record<string, string> = {
-        active: 'Aktiv',
+        configured: 'Konfiguriert',
         not_configured: 'Nicht konfiguriert',
+        error: 'Fehler',
+        not_applicable: 'Nicht anwendbar',
         unknown: 'Unbekannt',
+        active: 'Aktiv',
       };
       const detailMap: Record<string, string> = {
+        configured:
+          'Unplug-Trigger ist in DIMO konfiguriert (unabhängig von Events in den letzten 7 Tagen).',
+        not_configured: webhookConfig.unplugTriggerState.reasonCode ?? 'Trigger nicht konfiguriert.',
+        error: webhookConfig.unplugTriggerState.reasonCode ?? 'Trigger-Fehlerzustand.',
+        not_applicable: 'OBD-Webhook-Konfiguration für dieses Fahrzeug nicht anwendbar.',
+        unknown: 'Trigger-Status konnte nicht ermittelt werden.',
         active: 'OBD-Stecker Ein-/Aus-Events werden über DIMO Vehicle Triggers empfangen.',
-        not_configured:
-          'DIMO-Fahrzeug vorhanden, aber keine OBD-Verbindungs-Events in den letzten 7 Tagen.',
-        unknown: 'Keine OBD-Verbindungs-Events beobachtet — Status unklar.',
       };
       const counters: Array<{ label: string; value: string }> = [
         { label: 'Events (7d)', value: String(deviceEvents7d) },
+        { label: 'Unplug-Trigger', value: unplugState },
+        { label: 'Plug-Trigger', value: webhookConfig.plugTriggerState.state },
+        { label: 'Recovery-Policy', value: webhookConfig.recoveryPolicy },
       ];
       if (lastUnplugged) {
         counters.push({
