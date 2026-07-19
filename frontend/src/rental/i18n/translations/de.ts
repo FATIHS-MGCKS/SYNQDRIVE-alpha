@@ -89,6 +89,7 @@ export const de: Record<TranslationKey, string> = {
   'fleetConnectivity.col.status': 'Status',
   'fleetConnectivity.col.lastSignal': 'Letztes Signal',
   'fleetConnectivity.col.coverage': 'Datenabdeckung',
+  'fleetConnectivity.col.runtime': 'Konnektivität',
   'fleetConnectivity.col.obd': 'OBD',
   'fleetConnectivity.col.webhook': 'Webhook',
   'fleetConnectivity.col.jamming': 'Jamming',

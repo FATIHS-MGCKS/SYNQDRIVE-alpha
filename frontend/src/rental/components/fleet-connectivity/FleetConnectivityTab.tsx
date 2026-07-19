@@ -40,10 +40,9 @@ import { fhs } from '../fleet-health-service/fleet-health-service-shell';
 import { FleetConnectivityDetailDrawer } from './FleetConnectivityDetailDrawer';
 import {
   ConnectionStatusChip,
+  ConnectivityRuntimeChip,
   CoverageStateChip,
-  DeviceConnectionWebhookChip,
   JammingSnapshotChip,
-  ObdRowChip,
 } from './fleet-connectivity.badges';
 import {
   type FleetConnectionScopeFilter,
@@ -265,7 +264,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
       {
         key: 'status',
         header: t('fleetConnectivity.col.status'),
-        cell: (v) => <ConnectionStatusChip status={v.connectionStatus} />,
+        cell: (v) => <ConnectionStatusChip runtime={v.connectivityRuntime} />,
       },
       {
         key: 'freshness',
@@ -297,16 +296,10 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         ),
       },
       {
-        key: 'obd',
-        header: t('fleetConnectivity.col.obd'),
+        key: 'connectivityRuntime',
+        header: t('fleetConnectivity.col.runtime'),
         className: 'hidden lg:table-cell',
-        cell: (v) => <ObdRowChip plugged={v.obdIsPluggedIn} />,
-      },
-      {
-        key: 'deviceWebhook',
-        header: t('fleetConnectivity.col.webhook'),
-        className: 'hidden xl:table-cell',
-        cell: (v) => <DeviceConnectionWebhookChip device={v.deviceConnection} />,
+        cell: (v) => <ConnectivityRuntimeChip runtime={v.connectivityRuntime} />,
       },
       {
         key: 'station',
@@ -567,7 +560,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
               >
                 <div className="flex items-start justify-between gap-2">
                   <ConnectivityVehicleIdentity vehicle={v} />
-                  <ConnectionStatusChip status={v.connectionStatus} />
+                  <ConnectionStatusChip runtime={v.connectivityRuntime} />
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   <CoverageStateChip
@@ -575,8 +568,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
                     freshCount={v.freshSignalCount}
                     expectedCount={v.expectedSignalCount}
                   />
-                  <ObdRowChip plugged={v.obdIsPluggedIn} />
-                  <DeviceConnectionWebhookChip device={v.deviceConnection} />
+                  <ConnectivityRuntimeChip runtime={v.connectivityRuntime} />
                   <JammingSnapshotChip count={v.jammingDetectedCount} />
                 </div>
                 <p className={cn(META_TEXT_CLASS, 'mt-2 tabular-nums')}>

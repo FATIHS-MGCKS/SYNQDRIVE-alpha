@@ -7973,6 +7973,8 @@ export interface FleetMapVehicleResponse {
   operationalState?: VehicleOperationalState | null;
   /** Booking context derived from fleet read-model (Prompt 26). */
   bookingContext?: VehicleBookingContext | null;
+  /** Canonical connectivity runtime from backend builder. */
+  connectivityRuntime?: VehicleConnectivityRuntimeState;
 }
 
 export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';
@@ -8063,6 +8065,7 @@ export interface DeviceConnectionSummary {
   pluggedCount7d: number;
   recentEvents: DeviceConnectionEventView[];
   rawEvents?: unknown[];
+  connectivityRuntime?: VehicleConnectivityRuntimeState;
 }
 
 export interface TripDeviceConnectionEvidenceItem extends DeviceConnectionEventView {
@@ -8118,11 +8121,42 @@ export interface VehicleRpmWebhookSummary {
   recentCandidates: RpmCandidateView[];
 }
 
-export type FleetConnectivityReadinessLevel =
-  | 'good'
-  | 'watch'
-  | 'warning'
-  | 'no_data';
+export type OverallConnectivityState =
+  | 'TELEMETRY_ACTIVE'
+  | 'STANDBY'
+  | 'SOFT_OFFLINE'
+  | 'OFFLINE'
+  | 'DEVICE_UNPLUGGED'
+  | 'AUTHORIZATION_REQUIRED'
+  | 'NO_ACTIVE_DATA_SOURCE'
+  | 'INTEGRATION_ERROR'
+  | 'UNKNOWN';
+
+export type ProviderLinkState =
+  | 'ACTIVE'
+  | 'REAUTH_REQUIRED'
+  | 'REVOKED'
+  | 'NO_LINK'
+  | 'ERROR'
+  | 'UNKNOWN';
+
+export type PhysicalDeviceState =
+  | 'PLUGGED_CONFIRMED'
+  | 'PLUGGED_INFERRED'
+  | 'UNPLUGGED_CONFIRMED'
+  | 'UNKNOWN'
+  | 'NOT_APPLICABLE';
+
+export type ConnectivityAttentionState = 'NONE' | 'WATCH' | 'ACTION_REQUIRED' | 'CRITICAL';
+
+export type ConnectivityRecommendedAction =
+  | 'NONE'
+  | 'CHECK_DEVICE'
+  | 'REAUTHORIZE_PROVIDER'
+  | 'CONNECT_DATA_SOURCE'
+  | 'REVIEW_CONNECTIVITY'
+  | 'WAIT_FOR_TELEMETRY'
+  | 'CHECK_INTEGRATION';
 
 export type FleetDataCoverageState =
   | 'GOOD'
@@ -8130,6 +8164,40 @@ export type FleetDataCoverageState =
   | 'INSUFFICIENT'
   | 'UNKNOWN'
   | 'NOT_APPLICABLE';
+
+export interface VehicleConnectivityRuntimeState {
+  vehicleId: string;
+  organizationId: string;
+  overallState: OverallConnectivityState;
+  providerLinkState: ProviderLinkState;
+  telemetryState: FleetTelemetryFreshness;
+  physicalDeviceState: PhysicalDeviceState;
+  dataCoverageState: FleetDataCoverageState;
+  attentionState: ConnectivityAttentionState;
+  reasonCodes: string[];
+  recommendedAction: ConnectivityRecommendedAction;
+  requiresAction: boolean;
+  lastTelemetryAt: string | null;
+  lastProviderObservedAt: string | null;
+  lastReceivedAt: string | null;
+  deviceBindingId: string | null;
+  activeEpisodeId: string | null;
+  evidence: {
+    providerConnectionStatus?: string | null;
+    openUnpluggedEpisode?: boolean | null;
+    deviceConnectionEpisodeId?: string | null;
+    signalCoveragePercent?: number | null;
+    webhookConfigured?: boolean | null;
+  };
+  calculatedAt: string;
+  stateVersion: number;
+}
+
+export type FleetConnectivityReadinessLevel =
+  | 'good'
+  | 'watch'
+  | 'warning'
+  | 'no_data';
 
 export type FleetDataCoverageReasonCode =
   | 'DATA_COVERAGE_PARTIAL'
@@ -8202,6 +8270,8 @@ export interface FleetConnectivityVehicle {
   syntheticTokenId: number | null;
   /** Explicit DIMO webhook device connection (not snapshot/offline). */
   deviceConnection: FleetDeviceConnectionDto | null;
+  /** Canonical connectivity runtime — single source of truth. */
+  connectivityRuntime: VehicleConnectivityRuntimeState;
 }
 
 export interface FleetConnectivityThresholds {

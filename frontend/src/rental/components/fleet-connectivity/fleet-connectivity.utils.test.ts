@@ -66,6 +66,29 @@ function vehicle(
     dimoTokenId: partial.dimoTokenId ?? null,
     syntheticTokenId: partial.syntheticTokenId ?? null,
     deviceConnection: partial.deviceConnection ?? null,
+    connectivityRuntime:
+      partial.connectivityRuntime ??
+      ({
+        vehicleId: partial.vehicleId,
+        organizationId: 'org-test',
+        overallState: 'TELEMETRY_ACTIVE',
+        providerLinkState: 'ACTIVE',
+        telemetryState: partial.telemetryFreshness ?? 'live',
+        physicalDeviceState: 'NOT_APPLICABLE',
+        dataCoverageState: partial.coverageState ?? 'GOOD',
+        attentionState: 'NONE',
+        reasonCodes: [],
+        recommendedAction: 'NONE',
+        requiresAction: false,
+        lastTelemetryAt: partial.lastSeenAt ?? null,
+        lastProviderObservedAt: partial.lastSeenAt ?? null,
+        lastReceivedAt: null,
+        deviceBindingId: null,
+        activeEpisodeId: null,
+        evidence: {},
+        calculatedAt: new Date().toISOString(),
+        stateVersion: 1,
+      } satisfies FleetConnectivityVehicle['connectivityRuntime']),
   };
 }
 

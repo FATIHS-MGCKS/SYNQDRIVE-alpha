@@ -1,3 +1,5 @@
+import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
+
 export type FleetConnectionStatus =
   | 'online'
   | 'standby'
@@ -126,6 +128,8 @@ export interface FleetConnectivityVehicleDto {
   online: boolean;
   /** Explicit DIMO Vehicle Trigger OBD plug/unplug events — not snapshot/offline. */
   deviceConnection: FleetDeviceConnectionDto | null;
+  /** Canonical connectivity runtime — single source of truth for all surfaces. */
+  connectivityRuntime: VehicleConnectivityRuntimeStateDto;
 }
 
 export interface FleetConnectivitySummary {

@@ -6,7 +6,7 @@
  * booking/offline gates.
  */
 import { describe, expect, it } from 'vitest';
-import type { FleetConnectivityStatus, FleetTelemetryFreshness } from '../../../lib/api';
+import type { FleetConnectivityStatus, FleetTelemetryFreshness, OverallConnectivityState, VehicleConnectivityRuntimeState } from '../../../lib/api';
 import { isVehicleOffline } from '../data/vehicles';
 import { deriveFleetVisualState } from './fleetVisualState';
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
@@ -53,6 +53,67 @@ function baseVehicle(lastSignal: string): VehicleData {
     lat: 52.5,
     lng: 13.4,
     signalAgeMs: NOW - Date.parse(lastSignal),
+  };
+}
+
+function runtimeFixture(
+  overrides: Partial<VehicleConnectivityRuntimeState> = {},
+): VehicleConnectivityRuntimeState {
+  return {
+    vehicleId: 'v-cross-1',
+    organizationId: 'org-1',
+    overallState: 'TELEMETRY_ACTIVE',
+    providerLinkState: 'ACTIVE',
+    telemetryState: 'live',
+    physicalDeviceState: 'NOT_APPLICABLE',
+    dataCoverageState: 'GOOD',
+    attentionState: 'NONE',
+    reasonCodes: ['TELEMETRY_FRESH'],
+    recommendedAction: 'NONE',
+    requiresAction: false,
+    lastTelemetryAt: minutesAgo(5),
+    lastProviderObservedAt: minutesAgo(5),
+    lastReceivedAt: minutesAgo(5),
+    deviceBindingId: null,
+    activeEpisodeId: null,
+    evidence: {},
+    calculatedAt: new Date(NOW).toISOString(),
+    stateVersion: 1,
+    ...overrides,
+  };
+}
+
+function mapOverallToConnectionStatus(overall: OverallConnectivityState): FleetConnectivityStatus {
+  switch (overall) {
+    case 'TELEMETRY_ACTIVE':
+      return 'online';
+    case 'STANDBY':
+      return 'standby';
+    case 'SOFT_OFFLINE':
+      return 'signal_delayed';
+    case 'DEVICE_UNPLUGGED':
+      return 'signal_delayed';
+    case 'OFFLINE':
+    case 'UNKNOWN':
+    case 'INTEGRATION_ERROR':
+      return 'offline';
+    case 'AUTHORIZATION_REQUIRED':
+    case 'NO_ACTIVE_DATA_SOURCE':
+      return 'not_connected';
+    default:
+      return 'offline';
+  }
+}
+
+function fleetConnectivityFromRuntime(
+  runtime: VehicleConnectivityRuntimeState,
+): {
+  connectionStatus: FleetConnectivityStatus;
+  telemetryFreshness: FleetTelemetryFreshness;
+} {
+  return {
+    telemetryFreshness: runtime.telemetryState,
+    connectionStatus: mapOverallToConnectionStatus(runtime.overallState),
   };
 }
 
@@ -190,6 +251,59 @@ describe('connectivity cross-surface regressions', () => {
       expect(fresh.freshness).toBe('no_signal');
       expect(fleetConnectivityFromCanonical(null).telemetryFreshness).toBe('no_signal');
       expect(isVehicleOffline(vehicle)).toBe(true);
+    });
+  });
+
+  describe('canonical runtime state — no parallel live + unplugged', () => {
+    it('DEVICE_UNPLUGGED incident never presents legacy online', () => {
+      const runtime = runtimeFixture({
+        overallState: 'DEVICE_UNPLUGGED',
+        telemetryState: 'live',
+        physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+        attentionState: 'ACTION_REQUIRED',
+        activeEpisodeId: 'ep-1',
+        evidence: { openUnpluggedEpisode: true },
+      });
+      const legacy = fleetConnectivityFromRuntime(runtime);
+      expect(legacy.connectionStatus).not.toBe('online');
+      expect(runtime.overallState).toBe('DEVICE_UNPLUGGED');
+    });
+
+    it('standby runtime does not block (attention NONE)', () => {
+      const runtime = runtimeFixture({
+        overallState: 'STANDBY',
+        telemetryState: 'standby',
+      });
+      expect(runtime.attentionState).toBe('NONE');
+      expect(runtime.overallState).toBe('STANDBY');
+    });
+
+    it('soft-offline is WATCH not hard offline overall', () => {
+      const runtime = runtimeFixture({
+        overallState: 'SOFT_OFFLINE',
+        telemetryState: 'signal_delayed',
+        attentionState: 'WATCH',
+      });
+      expect(runtime.overallState).toBe('SOFT_OFFLINE');
+      expect(runtime.overallState).not.toBe('OFFLINE');
+    });
+
+    it('partial coverage does not force OFFLINE overall', () => {
+      const runtime = runtimeFixture({
+        dataCoverageState: 'PARTIAL',
+        attentionState: 'WATCH',
+      });
+      expect(runtime.dataCoverageState).toBe('PARTIAL');
+      expect(runtime.overallState).not.toBe('OFFLINE');
+    });
+
+    it('unknown telemetry is not TELEMETRY_ACTIVE', () => {
+      const runtime = runtimeFixture({
+        overallState: 'UNKNOWN',
+        telemetryState: 'no_signal',
+        dataCoverageState: 'UNKNOWN',
+      });
+      expect(runtime.overallState).not.toBe('TELEMETRY_ACTIVE');
     });
   });
 });

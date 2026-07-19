@@ -21,7 +21,7 @@ import {
   formatDeviceConnectionTimestamp,
   formatDurationMs,
 } from '../../lib/device-connection-ui';
-import { DeviceConnectionWebhookChip } from './fleet-connectivity.badges';
+import { DeviceConnectionWebhookChip, ConnectivityRuntimeChip } from './fleet-connectivity.badges';
 
 function DetailSection({
   title,
@@ -89,7 +89,7 @@ export function FleetConnectivityDetailDrawer({
           {vehicle.licensePlate ?? '—'} · {vehicle.vin}
         </span>
       }
-      status={<ConnectionStatusChip status={vehicle.connectionStatus} />}
+      status={<ConnectionStatusChip runtime={vehicle.connectivityRuntime} />}
     >
       <div className="space-y-6">
         <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5 text-[12px] text-muted-foreground flex gap-2">
@@ -102,7 +102,11 @@ export function FleetConnectivityDetailDrawer({
 
         <DetailSection title="Connection summary">
           <div className="surface-premium rounded-xl p-3 space-y-2.5">
-            <DetailRow label="Status" value={<ConnectionStatusChip status={vehicle.connectionStatus} />} />
+            <DetailRow label="Status" value={<ConnectionStatusChip runtime={vehicle.connectivityRuntime} />} />
+            <DetailRow
+              label="Runtime"
+              value={<ConnectivityRuntimeChip runtime={vehicle.connectivityRuntime} />}
+            />
             <DetailRow label="Note" value={vehicle.statusNote} />
             <DetailRow label="Provider" value={vehicle.provider} />
             <DetailRow label="Connection type" value={vehicle.connectionType} />

@@ -1,11 +1,18 @@
-import type { FleetConnectivityStatus, FleetDeviceConnectionDto, FleetDataCoverageState } from '../../../lib/api';
+import type {
+  FleetConnectivityStatus,
+  FleetDataCoverageState,
+  FleetDeviceConnectionDto,
+  VehicleConnectivityRuntimeState,
+} from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
 import {
   connectionStatusLabel,
   connectionStatusTone,
+  connectivityRuntimeTone,
   coverageStateLabel,
   coverageStateTone,
   deviceConnectionSeverityTone,
+  overallConnectivityLabel,
   readinessLabel,
   readinessTone,
   signalStateLabel,
@@ -18,12 +25,50 @@ import type {
 
 export function ConnectionStatusChip({
   status,
+  runtime,
 }: {
-  status: FleetConnectivityStatus;
+  status?: FleetConnectivityStatus;
+  runtime?: VehicleConnectivityRuntimeState;
 }) {
+  if (runtime) {
+    return (
+      <StatusChip
+        tone={connectivityRuntimeTone(runtime)}
+        dot={runtime.overallState === 'TELEMETRY_ACTIVE'}
+      >
+        {overallConnectivityLabel(runtime.overallState)}
+      </StatusChip>
+    );
+  }
   return (
-    <StatusChip tone={connectionStatusTone(status)} dot={status === 'online'}>
-      {connectionStatusLabel(status)}
+    <StatusChip tone={connectionStatusTone(status!)} dot={status === 'online'}>
+      {connectionStatusLabel(status!)}
+    </StatusChip>
+  );
+}
+
+/** Canonical connectivity dimension chip — replaces split OBD/webhook derivation. */
+export function ConnectivityRuntimeChip({
+  runtime,
+}: {
+  runtime: VehicleConnectivityRuntimeState;
+}) {
+  const physical =
+    runtime.physicalDeviceState === 'UNPLUGGED_CONFIRMED'
+      ? 'Unplugged'
+      : runtime.physicalDeviceState === 'NOT_APPLICABLE'
+        ? 'OEM'
+        : runtime.physicalDeviceState === 'PLUGGED_CONFIRMED' ||
+            runtime.physicalDeviceState === 'PLUGGED_INFERRED'
+          ? 'Plugged'
+          : 'Unknown';
+
+  return (
+    <StatusChip
+      tone={connectivityRuntimeTone(runtime)}
+      title={`${runtime.overallState} · ${runtime.physicalDeviceState} · ${runtime.recommendedAction}`}
+    >
+      {overallConnectivityLabel(runtime.overallState)} · {physical}
     </StatusChip>
   );
 }

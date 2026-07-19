@@ -88,6 +88,7 @@ export const en = {
   'fleetConnectivity.col.status': 'Status',
   'fleetConnectivity.col.lastSignal': 'Last signal',
   'fleetConnectivity.col.coverage': 'Data coverage',
+  'fleetConnectivity.col.runtime': 'Connectivity',
   'fleetConnectivity.col.obd': 'OBD',
   'fleetConnectivity.col.webhook': 'Webhook',
   'fleetConnectivity.col.jamming': 'Jamming',

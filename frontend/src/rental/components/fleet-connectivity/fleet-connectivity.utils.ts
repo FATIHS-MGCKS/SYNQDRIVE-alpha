@@ -5,6 +5,8 @@ import type {
   FleetConnectivityVehicle,
   FleetDataCoverageState,
   FleetDeviceConnectionDto,
+  OverallConnectivityState,
+  VehicleConnectivityRuntimeState,
 } from '../../../lib/api';
 import type { StatusTone } from '../../../components/patterns/status-utils';
 
@@ -31,6 +33,61 @@ export const SIGNAL_MATRIX_LABELS: Record<
   obdPlug: 'OBD Plug',
   jamming: 'Jamming',
 };
+
+export function overallConnectivityLabel(state: OverallConnectivityState): string {
+  switch (state) {
+    case 'TELEMETRY_ACTIVE':
+      return 'Live';
+    case 'STANDBY':
+      return 'Standby';
+    case 'SOFT_OFFLINE':
+      return 'Soft offline';
+    case 'OFFLINE':
+      return 'Offline';
+    case 'DEVICE_UNPLUGGED':
+      return 'Device unplugged';
+    case 'AUTHORIZATION_REQUIRED':
+      return 'Authorization required';
+    case 'NO_ACTIVE_DATA_SOURCE':
+      return 'No data source';
+    case 'INTEGRATION_ERROR':
+      return 'Integration error';
+    default:
+      return 'Unknown';
+  }
+}
+
+export function overallConnectivityTone(state: OverallConnectivityState): StatusTone {
+  switch (state) {
+    case 'TELEMETRY_ACTIVE':
+      return 'success';
+    case 'STANDBY':
+      return 'neutral';
+    case 'SOFT_OFFLINE':
+      return 'watch';
+    case 'DEVICE_UNPLUGGED':
+      return 'critical';
+    case 'AUTHORIZATION_REQUIRED':
+      return 'warning';
+    case 'INTEGRATION_ERROR':
+      return 'critical';
+    case 'OFFLINE':
+      return 'critical';
+    case 'NO_ACTIVE_DATA_SOURCE':
+      return 'noData';
+    default:
+      return 'noData';
+  }
+}
+
+export function connectivityRuntimeTone(
+  runtime: VehicleConnectivityRuntimeState,
+): StatusTone {
+  if (runtime.attentionState === 'CRITICAL') return 'critical';
+  if (runtime.attentionState === 'ACTION_REQUIRED') return 'warning';
+  if (runtime.attentionState === 'WATCH') return 'watch';
+  return overallConnectivityTone(runtime.overallState);
+}
 
 export function connectionStatusTone(
   status: FleetConnectivityStatus,

@@ -7,7 +7,7 @@ import {
   deriveConnectionStatus,
   deriveFleetSignals,
   deriveReadinessLevel,
-  mapFleetConnectivityVehicle,
+  mapFleetConnectivityVehicleWithRuntime,
   maskSensitiveId,
   computeSignalCoveragePercent,
   paginateFleetConnectivityVehicles,
@@ -133,7 +133,7 @@ describe('fleet-connectivity.util', () => {
     };
 
     it('maps not_connected without dimoVehicle', () => {
-      const mapped = mapFleetConnectivityVehicle(baseVehicle, NOW);
+      const mapped = mapFleetConnectivityVehicleWithRuntime(baseVehicle, NOW);
       expect(mapped.connectionStatus).toBe('not_connected');
       expect(mapped.telemetryFreshness).toBe('no_signal');
       expect(mapped.dimoTokenId).toBeNull();
@@ -142,7 +142,7 @@ describe('fleet-connectivity.util', () => {
     });
 
     it('maps online with fresh telemetry and capability-aware coverage', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicle,
           fuelType: 'GASOLINE',
@@ -191,7 +191,7 @@ describe('fleet-connectivity.util', () => {
     });
 
     it('ICE: missing evSoc does not reduce coverage percent', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicle,
           fuelType: 'GASOLINE',
@@ -228,7 +228,7 @@ describe('fleet-connectivity.util', () => {
     });
 
     it('labels jamming as snapshot indication only', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicle,
           dimoVehicle: {

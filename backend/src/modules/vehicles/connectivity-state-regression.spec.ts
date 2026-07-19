@@ -7,12 +7,13 @@ import { classifyTelemetryFreshness as backendClassifyFreshness } from './vehicl
 import {
   deriveConnectionStatus,
   deriveFleetSignals,
-  mapFleetConnectivityVehicle,
+  mapFleetConnectivityVehicleWithRuntime,
   ONLINE_MAX_MS,
   STANDBY_MAX_MS,
   SIGNAL_DELAYED_MAX_MS,
 } from './fleet-connectivity.util';
 import { VehiclesService } from './vehicles.service';
+import { mockConnectivityRuntime } from './connectivity/connectivity-runtime.test-fixture';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { buildDeviceConnectionSummary } from '@modules/dimo/device-connection-read-model';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
@@ -116,7 +117,7 @@ describe('connectivity state regressions (H–K)', () => {
 
   describe('J — provider link with expired authorization (FC-P1-03)', () => {
     it('CURRENT: DimoVehicle presence alone counts as full provider link', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicleInput,
           dimoVehicle: {
@@ -155,7 +156,7 @@ describe('connectivity state regressions (H–K)', () => {
 
   describe('K — readiness / coverage must ignore non-applicable signals', () => {
     it('ICE vehicle: missing evSoc should not reduce capability-aware coverage', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicleInput,
           fuelType: 'GASOLINE',
@@ -225,7 +226,7 @@ describe('connectivity state regressions (H–K)', () => {
     });
 
     it('OEM without OBD plug capability leaves obdPlug unknown/missing, not plugged', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicleInput,
           dimoVehicle: {
@@ -283,7 +284,7 @@ describe('connectivity state regressions (H–K)', () => {
       const deviceConnection = buildFleetDeviceConnectionFields(deviceSummary);
       expect(deviceConnection.openUnpluggedEpisode).toBe(true);
 
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicleInput,
           fuelType: 'GASOLINE',
@@ -383,6 +384,27 @@ describe('connectivity state regressions (H–K)', () => {
           .mockResolvedValue(new Map([[baseVehicleInput.id, openSummary]])),
       };
 
+      const connectivityRuntimeProjection = {
+        projectForVehicles: jest.fn().mockResolvedValue(
+          new Map([
+            [
+              baseVehicleInput.id,
+              mockConnectivityRuntime({
+                vehicleId: baseVehicleInput.id,
+                organizationId: 'org-1',
+                overallState: 'DEVICE_UNPLUGGED',
+                telemetryState: 'live',
+                physicalDeviceState: 'UNPLUGGED_CONFIRMED',
+                attentionState: 'ACTION_REQUIRED',
+                activeEpisodeId: 'ep-open',
+                evidence: { openUnpluggedEpisode: true },
+              }),
+            ],
+          ]),
+        ),
+        projectForVehicle: jest.fn(),
+      };
+
       const stub = (): unknown => ({});
       const service = new (VehiclesService as unknown as {
         new (...args: unknown[]): VehiclesService;
@@ -397,12 +419,18 @@ describe('connectivity state regressions (H–K)', () => {
         stub(),
         stub(),
         deviceConnectionQuery,
+        connectivityRuntimeProjection,
+        stub(),
+        stub(),
+        stub(),
         stub(),
       );
 
       const res = await service.getFleetConnectivity('org-1', {});
       expect(res.vehicles[0].deviceConnection?.openUnpluggedEpisode).toBe(true);
-      expect(res.vehicles[0].connectionStatus).toBe('online');
+      expect(res.vehicles[0].connectivityRuntime.overallState).toBe('DEVICE_UNPLUGGED');
+      expect(res.vehicles[0].connectionStatus).not.toBe('online');
+      expect(res.vehicles[0].online).toBe(false);
     });
   });
 });

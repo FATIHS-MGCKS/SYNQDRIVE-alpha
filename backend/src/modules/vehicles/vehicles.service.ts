@@ -58,6 +58,9 @@ import { DataAuthorizationsService } from '@modules/data-authorizations/data-aut
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
+import { VehicleConnectivityRuntimeProjectionService } from '@modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
+import { serializeVehicleConnectivityRuntimeState } from './connectivity/vehicle-connectivity-runtime-state.dto';
+import type { VehicleConnectivityRuntimeStateDto } from './connectivity/vehicle-connectivity-runtime-state.dto';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
 
@@ -262,6 +265,8 @@ export interface FleetMapVehicleDto
   fuelPercent: number | null;
   evSoc: number | null;
   isElectric: boolean;
+  /** Canonical connectivity runtime — shared truth across fleet surfaces. */
+  connectivityRuntime?: VehicleConnectivityRuntimeStateDto;
 }
 
 @Injectable()
@@ -281,6 +286,7 @@ export class VehiclesService {
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
+    private readonly connectivityRuntimeProjection: VehicleConnectivityRuntimeProjectionService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
@@ -1412,6 +1418,11 @@ export class VehiclesService {
       activeBookingIds,
     );
 
+    const runtimeByVehicle = await this.connectivityRuntimeProjection.projectForVehicles(
+      organizationId,
+      vehicleIdsForMap,
+    );
+
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
       const tripState = tripStateMap.get(vehicle.id) ?? null;
@@ -1491,6 +1502,9 @@ export class VehiclesService {
         ...fleetCtx.bookingDto,
         activeKmDriven: fleetCtx.liveKmDriven,
         ...fleetCtx.maintenanceCtx,
+        connectivityRuntime: runtimeByVehicle.has(vehicle.id)
+          ? serializeVehicleConnectivityRuntimeState(runtimeByVehicle.get(vehicle.id)!)
+          : undefined,
       };
     });
 
@@ -2278,6 +2292,10 @@ export class VehiclesService {
       hardwareById,
       dimoLinkedById,
     );
+    const runtimeByVehicle = await this.connectivityRuntimeProjection.projectForVehicles(
+      organizationId,
+      vehicleIds,
+    );
 
     let mapped = vehicles.map((v) => {
       const summary = deviceSummaries.get(v.id);
@@ -2285,7 +2303,11 @@ export class VehiclesService {
         summary && (summary.lteR1Capable || summary.lastWebhookReceivedAt)
           ? buildFleetDeviceConnectionFields(summary)
           : null;
-      return mapFleetConnectivityVehicle(v, nowMs, deviceConnection);
+      const runtime = runtimeByVehicle.get(v.id);
+      if (!runtime) {
+        throw new Error(`Missing connectivity runtime for vehicle ${v.id}`);
+      }
+      return mapFleetConnectivityVehicle(v, nowMs, deviceConnection, runtime);
     });
 
     if (query.status) {
@@ -2319,9 +2341,16 @@ export class VehiclesService {
   }
 
   async getDeviceConnection(organizationId: string, vehicleId: string) {
-    return this.deviceConnectionQuery.getVehicleSummary(organizationId, vehicleId, {
-      eventLimit: 20,
-    });
+    const [summary, runtime] = await Promise.all([
+      this.deviceConnectionQuery.getVehicleSummary(organizationId, vehicleId, {
+        eventLimit: 20,
+      }),
+      this.connectivityRuntimeProjection.projectForVehicle(organizationId, vehicleId),
+    ]);
+    return {
+      ...summary,
+      connectivityRuntime: serializeVehicleConnectivityRuntimeState(runtime),
+    };
   }
 
   async listVehicleComplaints(organizationId: string, vehicleId: string) {
