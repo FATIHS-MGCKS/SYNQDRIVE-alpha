@@ -25,6 +25,9 @@ import {
   evaluatePlugCloseEligibility,
 } from './device-connection-event-order';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
+import { ConnectivityRecoveryPolicyService } from './connectivity/connectivity-recovery.policy';
+import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
+import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 
 export type EpisodeOpenOutcome =
   | 'created'
@@ -71,7 +74,25 @@ export interface ReconcileBindingDriftInput {
   provider?: string;
   tokenId: number;
   hardwareType: string | null;
+  /** Provider-observed binding change time — never processing "now" when historical evidence exists. */
   evidenceAt: Date;
+  /** Processing/received time, distinct from evidenceAt when known. */
+  receivedAt?: Date;
+  /** When set, only supersede this audited episode (reconciliation apply path). */
+  episodeId?: string;
+  /** Idempotency reference for outbox rows (e.g. evidence package resolutionSnapshotId). */
+  resolutionReferenceId?: string;
+}
+
+export type ReconcileBindingDriftOutcome =
+  | 'superseded'
+  | 'no_open_episode'
+  | 'already_resolved'
+  | 'binding_unchanged';
+
+export interface ReconcileBindingDriftResult {
+  outcome: ReconcileBindingDriftOutcome;
+  supersededEpisodeIds: string[];
 }
 
 export function hashProviderDeviceId(provider: string, tokenId: number): string {
@@ -88,7 +109,14 @@ export class DeviceConnectionEpisodeService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly connectivityAlerts?: ConnectivityAlertService,
+    @Optional() private readonly resolutionOutbox?: DeviceConnectionEpisodeResolutionOutboxService,
+    @Optional() private readonly observability?: ConnectivityObservabilityService,
+    @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
+
+  private isEpisodeRecoveryEnabled(): boolean {
+    return this.recoveryPolicy?.isEpisodeRecoveryEnabled() ?? true;
+  }
 
   async resolveCanonicalBinding(
     vehicleId: string,
@@ -205,8 +233,76 @@ export class DeviceConnectionEpisodeService {
 
   async reconcileBindingDrift(
     input: ReconcileBindingDriftInput,
-  ): Promise<{ supersededEpisodeIds: string[] }> {
+  ): Promise<ReconcileBindingDriftResult> {
+    if (!this.isEpisodeRecoveryEnabled()) {
+      return { outcome: 'binding_unchanged', supersededEpisodeIds: [] };
+    }
+
     const provider = input.provider ?? 'DIMO';
+    const receivedAt = input.receivedAt ?? input.evidenceAt;
+    const resolutionReferenceId =
+      input.resolutionReferenceId ??
+      `binding-change:${input.vehicleId}:${input.evidenceAt.toISOString()}`;
+
+    if (input.episodeId) {
+      const episode = await this.prisma.deviceConnectionEpisode.findFirst({
+        where: {
+          id: input.episodeId,
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          provider,
+        },
+        select: {
+          id: true,
+          status: true,
+          deviceBindingId: true,
+          providerDeviceIdHash: true,
+          reviewReasonCodes: true,
+        },
+      });
+
+      if (!episode) {
+        return { outcome: 'no_open_episode', supersededEpisodeIds: [] };
+      }
+
+      if (episode.status !== DeviceConnectionEpisodeStatus.OPEN) {
+        return { outcome: 'already_resolved', supersededEpisodeIds: [] };
+      }
+
+      const binding = await this.resolveCanonicalBinding(
+        input.vehicleId,
+        provider,
+        input.tokenId,
+        input.hardwareType,
+      );
+
+      const supersededEpisodeIds = await this.prisma.$transaction(async (tx) =>
+        this.supersedeEpisodesForBindingChangeTx(tx, {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          provider,
+          binding,
+          episodes: [episode],
+          evidenceAt: input.evidenceAt,
+          receivedAt,
+          resolutionReferenceId,
+          lifecycleAction: DeviceConnectionEpisodeLifecycleAction.BINDING_DRIFT_RECONCILED,
+          requireBindingScopeChange: false,
+        }),
+      );
+
+      if (supersededEpisodeIds.length === 0) {
+        return { outcome: 'binding_unchanged', supersededEpisodeIds: [] };
+      }
+
+      this.observability?.log('binding_changed', {
+        provider,
+        outcome: 'superseded',
+      });
+
+      return { outcome: 'superseded', supersededEpisodeIds };
+    }
+
     const binding = await this.resolveCanonicalBinding(
       input.vehicleId,
       provider,
@@ -221,34 +317,43 @@ export class DeviceConnectionEpisodeService {
         provider,
         status: DeviceConnectionEpisodeStatus.OPEN,
       },
+      select: {
+        id: true,
+        deviceBindingId: true,
+        providerDeviceIdHash: true,
+        reviewReasonCodes: true,
+      },
     });
 
-    const supersededEpisodeIds: string[] = [];
-    for (const episode of openEpisodes) {
-      if (!bindingScopeChanged(episode, binding)) continue;
-      await this.supersedeEpisode(
-        episode.id,
-        DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED,
-        input.evidenceAt,
-        describeBindingScopeChange(episode, binding),
-      );
-      await this.writeLifecycleAudit({
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        episodeId: episode.id,
-        action: DeviceConnectionEpisodeLifecycleAction.BINDING_DRIFT_RECONCILED,
-        reasonCodes: describeBindingScopeChange(episode, binding),
-        providerObservedAt: input.evidenceAt,
-        receivedAt: input.evidenceAt,
-        metadata: {
-          currentBindingId: binding.bindingId,
-          currentProviderDeviceIdHash: binding.providerDeviceIdHash,
-        },
-      });
-      supersededEpisodeIds.push(episode.id);
+    if (openEpisodes.length === 0) {
+      return { outcome: 'no_open_episode', supersededEpisodeIds: [] };
     }
 
-    return { supersededEpisodeIds };
+    const supersededEpisodeIds = await this.prisma.$transaction(async (tx) =>
+      this.supersedeEpisodesForBindingChangeTx(tx, {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        provider,
+        binding,
+        episodes: openEpisodes,
+        evidenceAt: input.evidenceAt,
+        receivedAt,
+        resolutionReferenceId,
+        lifecycleAction: DeviceConnectionEpisodeLifecycleAction.BINDING_DRIFT_RECONCILED,
+        requireBindingScopeChange: true,
+      }),
+    );
+
+    if (supersededEpisodeIds.length === 0) {
+      return { outcome: 'binding_unchanged', supersededEpisodeIds: [] };
+    }
+
+    this.observability?.log('binding_changed', {
+      provider,
+      outcome: 'superseded',
+    });
+
+    return { outcome: 'superseded', supersededEpisodeIds };
   }
 
   async openFromUnplugEvent(
@@ -272,26 +377,21 @@ export class DeviceConnectionEpisodeService {
     });
 
     let superseded = false;
-    for (const episode of openEpisodes) {
-      if (!bindingScopeChanged(episode, binding)) continue;
-      const reasonCodes = describeBindingScopeChange(episode, binding);
-      await this.supersedeEpisode(
-        episode.id,
-        DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED,
-        input.observedAt,
-        reasonCodes,
-      );
-      await this.writeLifecycleAudit({
+    const supersededEpisodeIds = await this.prisma.$transaction(async (tx) =>
+      this.supersedeEpisodesForBindingChangeTx(tx, {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        episodeId: episode.id,
-        action: DeviceConnectionEpisodeLifecycleAction.SUPERSEDED_BY_BINDING_CHANGE,
-        reasonCodes,
-        providerObservedAt: input.observedAt,
+        provider,
+        binding,
+        episodes: openEpisodes,
+        evidenceAt: input.observedAt,
         receivedAt,
-      });
-      superseded = true;
-    }
+        resolutionReferenceId: `binding-change:unplug:${input.eventId}`,
+        lifecycleAction: DeviceConnectionEpisodeLifecycleAction.SUPERSEDED_BY_BINDING_CHANGE,
+        requireBindingScopeChange: true,
+      }),
+    );
+    superseded = supersededEpisodeIds.length > 0;
 
     const sameBindingOpen = openEpisodes.find((episode) =>
       bindingScopeMatches(episode, binding),
@@ -585,28 +685,88 @@ export class DeviceConnectionEpisodeService {
     });
   }
 
-  private async supersedeEpisode(
-    episodeId: string,
-    method: DeviceConnectionEpisodeResolutionMethod,
-    evidenceAt: Date,
-    reasonCodes: EpisodeConflictReasonCode[] = [],
-  ): Promise<void> {
-    const current = await this.prisma.deviceConnectionEpisode.findUnique({
-      where: { id: episodeId },
-      select: { reviewReasonCodes: true },
-    });
+  private async supersedeEpisodesForBindingChangeTx(
+    tx: Prisma.TransactionClient,
+    input: {
+      organizationId: string;
+      vehicleId: string;
+      provider: string;
+      binding: CanonicalDeviceBinding;
+      episodes: Array<{
+        id: string;
+        deviceBindingId: string | null;
+        providerDeviceIdHash: string | null;
+        reviewReasonCodes: string[];
+      }>;
+      evidenceAt: Date;
+      receivedAt: Date;
+      resolutionReferenceId: string;
+      lifecycleAction: DeviceConnectionEpisodeLifecycleAction;
+      requireBindingScopeChange: boolean;
+    },
+  ): Promise<string[]> {
+    const supersededEpisodeIds: string[] = [];
 
-    await this.prisma.deviceConnectionEpisode.update({
-      where: { id: episodeId },
-      data: {
-        status: DeviceConnectionEpisodeStatus.SUPERSEDED,
-        resolvedAt: evidenceAt,
-        resolutionMethod: method,
-        resolutionEvidenceAt: evidenceAt,
-        reviewReasonCodes: mergeReasonCodes(current?.reviewReasonCodes ?? [], reasonCodes),
-        stateVersion: { increment: 1 },
-      },
-    });
+    for (const episode of input.episodes) {
+      if (
+        input.requireBindingScopeChange &&
+        !bindingScopeChanged(episode, input.binding)
+      ) {
+        continue;
+      }
+
+      const reasonCodes = describeBindingScopeChange(episode, input.binding);
+      const claimed = await tx.deviceConnectionEpisode.updateMany({
+        where: {
+          id: episode.id,
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          status: DeviceConnectionEpisodeStatus.OPEN,
+        },
+        data: {
+          status: DeviceConnectionEpisodeStatus.SUPERSEDED,
+          resolvedAt: input.evidenceAt,
+          resolutionMethod: DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED,
+          resolutionEvidenceAt: input.evidenceAt,
+          reviewReasonCodes: mergeReasonCodes(episode.reviewReasonCodes, reasonCodes),
+          stateVersion: { increment: 1 },
+        },
+      });
+
+      if (claimed.count === 0) continue;
+
+      await tx.deviceConnectionEpisodeLifecycleAudit.create({
+        data: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          episodeId: episode.id,
+          action: input.lifecycleAction,
+          reasonCodes,
+          providerObservedAt: input.evidenceAt,
+          receivedAt: input.receivedAt,
+          metadata: {
+            currentBindingId: input.binding.bindingId,
+            currentProviderDeviceIdHash: input.binding.providerDeviceIdHash,
+            resolutionReferenceId: input.resolutionReferenceId,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      if (this.resolutionOutbox) {
+        await this.resolutionOutbox.enqueuePreparedEvents(tx, {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          episodeId: episode.id,
+          resolutionSnapshotId: input.resolutionReferenceId,
+          resolutionEvidenceAt: input.evidenceAt,
+          recoverySource: 'binding_change',
+        });
+      }
+
+      supersededEpisodeIds.push(episode.id);
+    }
+
+    return supersededEpisodeIds;
   }
 
   private async writeLifecycleAudit(input: {

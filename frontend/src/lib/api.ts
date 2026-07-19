@@ -8460,6 +8460,10 @@ export interface FleetConnectivityTimelineEvent {
   type: FleetConnectivityTimelineEventType;
   occurredAt: string;
   reasonCode: ConnectivityReasonCode | null;
+  providerObservedAt?: string | null;
+  receivedAt?: string | null;
+  processedAt?: string | null;
+  resolutionEvidenceAt?: string | null;
 }
 
 export interface FleetConnectivityActiveEpisode {
@@ -8499,6 +8503,8 @@ export interface FleetConnectivityTimestamps {
   lastProviderObservedAt: string | null;
   lastReceivedAt: string | null;
   calculatedAt: string;
+  reconnectedSince: string | null;
+  recoveryReceivedAt: string | null;
 }
 
 export interface FleetConnectivityWebhookSummary {

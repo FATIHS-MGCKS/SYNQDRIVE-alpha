@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { loadConnectivityRecoveryConfig } from '@config/connectivity-recovery.config';
 
 const PROD_HOST_PATTERNS = [
   /prod/i,
@@ -83,6 +84,8 @@ export function assertApplyGuards(opts: {
     if (opts.expectedAuditReportHash !== opts.auditReportHash) {
       throw new Error('Audit report hash mismatch — re-run read-only audit before apply');
     }
+  } else if (opts.apply && !opts.auditReportHash) {
+    throw new Error('--audit-report-hash is required for --apply');
   }
 
   if (opts.expectedGitCommit) {
@@ -90,6 +93,15 @@ export function assertApplyGuards(opts: {
     if (actual && actual !== opts.expectedGitCommit) {
       throw new Error(
         `Git commit mismatch — expected ${opts.expectedGitCommit}, got ${actual}`,
+      );
+    }
+  }
+
+  if (opts.apply) {
+    const { reconciliationApplyEnabled } = loadConnectivityRecoveryConfig(process.env);
+    if (!reconciliationApplyEnabled) {
+      throw new Error(
+        'Episode reconciliation apply is disabled — set CONNECTIVITY_RECONCILIATION_APPLY_ENABLED=1',
       );
     }
   }

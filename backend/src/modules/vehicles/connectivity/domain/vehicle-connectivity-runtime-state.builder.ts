@@ -78,6 +78,12 @@ export interface DeviceEpisodeInput {
   lastExplicitPlugWebhookAt: string | null;
   /** Set when the latest closed episode was resolved via sustained telemetry. */
   lastTelemetryRecoveryAt: string | null;
+  /** Latest resolved episode business evidence time (`resolutionEvidenceAt`). */
+  lastRecoveryEvidenceAt?: string | null;
+  /** Latest resolved episode evidence received time. */
+  lastRecoveryReceivedAt?: string | null;
+  /** Latest resolved episode DB resolution time (`resolvedAt`). */
+  lastRecoveryResolvedAt?: string | null;
 }
 
 export interface SnapshotPlugEvidenceInput {
@@ -252,6 +258,9 @@ export class VehicleConnectivityRuntimeStateBuilder {
       lastTelemetryAt: input.telemetry.lastTelemetryAt,
       lastProviderObservedAt: input.telemetry.lastProviderObservedAt,
       lastReceivedAt: input.telemetry.lastReceivedAt,
+      lastRecoveryEvidenceAt: input.episode.lastRecoveryEvidenceAt ?? null,
+      lastRecoveryReceivedAt: input.episode.lastRecoveryReceivedAt ?? null,
+      lastRecoveryResolvedAt: input.episode.lastRecoveryResolvedAt ?? null,
       deviceBindingId: input.binding.deviceBindingId,
       activeEpisodeId: episodeRelevant ? input.episode.activeEpisodeId : null,
       requiresAction,

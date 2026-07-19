@@ -27,6 +27,9 @@ export interface VehicleConnectivityRuntimeStateDto {
   lastTelemetryAt: string | null;
   lastProviderObservedAt: string | null;
   lastReceivedAt: string | null;
+  lastRecoveryEvidenceAt: string | null;
+  lastRecoveryReceivedAt: string | null;
+  lastRecoveryResolvedAt: string | null;
   deviceBindingId: string | null;
   activeEpisodeId: string | null;
   evidence: VehicleConnectivityTechnicalEvidence;
@@ -52,6 +55,9 @@ export function serializeVehicleConnectivityRuntimeState(
     lastTelemetryAt: state.lastTelemetryAt,
     lastProviderObservedAt: state.lastProviderObservedAt,
     lastReceivedAt: state.lastReceivedAt,
+    lastRecoveryEvidenceAt: state.lastRecoveryEvidenceAt,
+    lastRecoveryReceivedAt: state.lastRecoveryReceivedAt,
+    lastRecoveryResolvedAt: state.lastRecoveryResolvedAt,
     deviceBindingId: state.deviceBindingId,
     activeEpisodeId: state.activeEpisodeId,
     evidence: { ...state.evidence },

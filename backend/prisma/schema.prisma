@@ -1206,6 +1206,28 @@ enum DimoDeviceConnectionEventType {
   OBD_DEVICE_PLUGGED_IN
 }
 
+enum DeviceConnectionWebhookProcessingStatus {
+  RECEIVED
+  VALIDATED
+  PROCESSED
+  IGNORED_BY_POLICY
+  RETRYABLE_FAILED
+  PERMANENTLY_FAILED
+  DEAD_LETTER
+}
+
+enum DeviceConnectionWebhookVehicleMappingStatus {
+  PENDING
+  RESOLVED
+  UNKNOWN_VEHICLE
+}
+
+enum DeviceConnectionWebhookBindingMappingStatus {
+  PENDING
+  RESOLVED
+  UNKNOWN_BINDING
+}
+
 enum DeviceConnectionEpisodeStatus {
   OPEN
   RESOLVED
@@ -1245,6 +1267,8 @@ enum DeviceConnectionEpisodeResolutionOutboxStatus {
   PROCESSING
   COMPLETED
   FAILED
+  RETRYABLE_FAILED
+  DEAD_LETTER
 }
 
 enum DamageType {
@@ -6461,6 +6485,40 @@ model DimoDeviceConnectionEvent {
   @@map("dimo_device_connection_events")
 }
 
+model DeviceConnectionWebhookInbox {
+  id                   String                                    @id @default(uuid())
+  providerEventId      String                                    @map("provider_event_id")
+  provider             String                                    @default("DIMO")
+  eventType            DimoDeviceConnectionEventType             @map("event_type")
+  observedAt           DateTime                                  @map("observed_at")
+  receivedAt           DateTime                                  @default(now()) @map("received_at")
+  processedAt          DateTime?                                 @map("processed_at")
+  processingStatus     DeviceConnectionWebhookProcessingStatus   @default(RECEIVED) @map("processing_status")
+  processingAttempts   Int                                       @default(0) @map("processing_attempts")
+  lastErrorCode        String?                                   @map("last_error_code")
+  lastErrorAt          DateTime?                                 @map("last_error_at")
+  nextRetryAt          DateTime?                                 @map("next_retry_at")
+  deadLetteredAt       DateTime?                                 @map("dead_lettered_at")
+  vehicleMappingStatus DeviceConnectionWebhookVehicleMappingStatus @default(PENDING) @map("vehicle_mapping_status")
+  bindingMappingStatus DeviceConnectionWebhookBindingMappingStatus @default(PENDING) @map("binding_mapping_status")
+  payloadHash          String                                    @map("payload_hash")
+  policyIgnoreReason   String?                                   @map("policy_ignore_reason")
+  organizationId       String?                                   @map("organization_id")
+  vehicleId            String?                                   @map("vehicle_id")
+  tokenId              Int                                       @map("token_id")
+  domainEventId        String?                                   @map("domain_event_id")
+  rawPayloadJson       Json                                      @map("raw_payload_json")
+  createdAt            DateTime                                  @default(now()) @map("created_at")
+  updatedAt            DateTime                                  @updatedAt @map("updated_at")
+
+  @@unique([provider, providerEventId])
+  @@index([processingStatus, nextRetryAt])
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([receivedAt])
+  @@map("device_connection_webhook_inbox")
+}
+
 // ------------------------------------------------
 // DEVICE CONNECTION EPISODE (persistent binding-scoped unplug state)
 // ------------------------------------------------
@@ -6526,22 +6584,29 @@ model DeviceConnectionEpisodeResolutionAudit {
 }
 
 model DeviceConnectionEpisodeResolutionOutbox {
-  id             String                                          @id @default(uuid())
-  organizationId String                                          @map("organization_id")
-  vehicleId      String                                          @map("vehicle_id")
-  episodeId      String                                          @map("episode_id")
-  eventType      DeviceConnectionEpisodeResolutionOutboxEventType
-  idempotencyKey String                                          @unique @map("idempotency_key")
-  payload        Json
-  status         DeviceConnectionEpisodeResolutionOutboxStatus   @default(PENDING)
-  createdAt      DateTime                                        @default(now()) @map("created_at")
-  processedAt    DateTime?                                       @map("processed_at")
+  id                 String                                          @id @default(uuid())
+  organizationId     String                                          @map("organization_id")
+  vehicleId          String                                          @map("vehicle_id")
+  episodeId          String                                          @map("episode_id")
+  eventType          DeviceConnectionEpisodeResolutionOutboxEventType
+  idempotencyKey     String                                          @unique @map("idempotency_key")
+  payload            Json
+  status             DeviceConnectionEpisodeResolutionOutboxStatus   @default(PENDING)
+  processingAttempts Int                                             @default(0) @map("processing_attempts")
+  lastErrorCode      String?                                         @map("last_error_code")
+  lastErrorAt        DateTime?                                       @map("last_error_at")
+  nextRetryAt        DateTime?                                       @map("next_retry_at")
+  deadLetteredAt     DateTime?                                       @map("dead_lettered_at")
+  createdAt          DateTime                                        @default(now()) @map("created_at")
+  updatedAt          DateTime                                        @updatedAt @map("updated_at")
+  processedAt        DateTime?                                       @map("processed_at")
 
   episode DeviceConnectionEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([vehicleId])
   @@index([status])
+  @@index([status, nextRetryAt])
   @@map("device_connection_episode_resolution_outbox")
 }
 

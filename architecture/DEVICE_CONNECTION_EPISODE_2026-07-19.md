@@ -64,9 +64,9 @@ On success (atomic transaction):
 - Episode → `RESOLVED` / `SNAPSHOT_PLUG_SIGNAL`
 - `device_connection_episode_resolution_audits` row
 - Outbox: `CONNECTIVITY_RUNTIME_RECALCULATE`, `DEVICE_ALERT_RESOLVE_PREPARED`
-- Runtime projection via `VehicleConnectivityRuntimeProjectionService`
+- **Post-commit** (outbox processor): runtime projection + alert resolution
 
-Wired from `DimoSnapshotProcessor` after `VehicleLatestState` upsert. Raw webhooks/events unchanged.
+Wired from `DimoSnapshotProcessor` after `VehicleLatestState` upsert via `DeviceConnectionEpisodeResolutionOutboxProcessorService.processPendingBatch()`. Raw webhooks/events unchanged.
 
 ## Telemetry-resume resolution (Prompt 8)
 
@@ -97,7 +97,7 @@ Same binding, LTE_R1 hardware, non-OEM/non-synthetic source, provider observed +
 
 - Observations: `device_connection_telemetry_recovery_observations` (idempotent per episode + snapshot ref)
 - On resolve: episode → `RESOLVED` / `TELEMETRY_RESUMED`, `resolutionEvidenceAt` = policy evidence time
-- Runtime projection → `PLUGGED_INFERRED` + `DEVICE_RECONNECTED_TELEMETRY`
+- **Post-commit** outbox processor → `PLUGGED_INFERRED` runtime + `DEVICE_RECONNECTED_TELEMETRY` alert
 - Outbox `recoverySource: telemetry_resumed`
 
 Wired from `DimoSnapshotProcessor` after snapshot-plug attempt (telemetry path runs when `obdIsPluggedIn` is not `false`).
@@ -245,14 +245,45 @@ Episode-scoped device alerts use notification fingerprint variant `conditionCode
 
 - `DeviceConnectionEpisodeService.openFromUnplugEvent` → `DEVICE_UNPLUGGED` (once per episode)
 - Explicit plug / resolution outbox → resolve unplug + one `DEVICE_RECONNECTED` info event
-- `DeviceConnectionEpisodeResolutionOutbox` consumer → `ConnectivityAlertService.processResolutionOutboxRow`
+- `DeviceConnectionEpisodeResolutionOutboxProcessorService` → runtime recalc + episode alert resolution (post-commit)
 - `VehicleConnectivityRuntimeProjectionService` → telemetry / authorization / coverage runtime sync
 - Notifications link to Fleet Connectivity via `OPEN_VEHICLE_MODULE` + `module: connectivity`
 
-## Reconciliation audit (Prompt 6)
+## Reconciliation audit (Prompt 6 + historical evidence Prompt 4 + audited apply Prompt 5)
 
 Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`
 
 - Script: `backend/scripts/ops/audit-device-connection-episode-reconciliation.ts`
+- Apply script: `backend/scripts/ops/apply-device-connection-episode-reconciliation.ts`
+- Historical loader: poll logs, telemetry recovery observations, ClickHouse mirror, resolution audits
+- Per-episode bounded window — **not** latest-state-only for apply eligibility
+- **Evidence packages:** deterministic `EpisodeReconciliationEvidencePackage` per auto-applicable candidate (`evidenceHash`, `codeVersion`, no secrets/raw payloads)
+- Apply consumes audit `evidencePackages[]` only — re-validates hash, episode/binding, audit waterline before resolution
+- Auto-apply classifications: explicit plug, snapshot `obdIsPluggedIn=true`, sustained telemetry, binding change
+- **Binding change lifecycle:** `DeviceConnectionEpisodeService.reconcileBindingDrift` — atomic supersede, lifecycle audit, resolution outbox (runtime + alerts); reconciliation apply delegates here
 - Fixture artifacts: `docs/audits/device-connection-episode-reconciliation-2026-07.md`
 - CSV: `docs/audits/data/device-connection-episode-reconciliation-2026-07.csv`
+
+## Recovery kill switch + evidence timestamps (Phase 2 Prompt 7)
+
+### Env flags
+
+| Variable | Default | Effect when off |
+|----------|---------|-----------------|
+| `CONNECTIVITY_EPISODE_RECOVERY_ENABLED` | `true` | No auto episode open/resolve, outbox skip, no binding-drift resolve; webhooks + snapshots still persist |
+| `CONNECTIVITY_RECONCILIATION_APPLY_ENABLED` | `false` | Blocks reconciliation `--apply` and `runApply(apply:true)` |
+
+Policy: `ConnectivityRecoveryPolicyService` (`connectivity-recovery.config.ts`).
+
+### Timestamp separation
+
+| Field | Meaning |
+|-------|---------|
+| `providerObservedAt` | Provider/signal observation time |
+| `receivedAt` | Server intake time |
+| `processedAt` / `resolvedAt` | Episode closed / outbox processed |
+| `resolutionEvidenceAt` | **Business recovery time** — timeline + `DEVICE_RECONNECTED` alerts |
+
+Runtime projection exposes `lastRecoveryEvidenceAt`, `lastRecoveryReceivedAt`, `lastRecoveryResolvedAt` on `VehicleConnectivityRuntimeState`. Fleet API timeline uses `resolutionEvidenceAt` for `DEVICE_RECONNECTED` events (not outbox `new Date()`).
+
+Runbook: `docs/runbooks/fleet-connectivity-production-rollout.md` §15.

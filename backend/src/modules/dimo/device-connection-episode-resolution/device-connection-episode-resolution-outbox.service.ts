@@ -14,8 +14,8 @@ export class DeviceConnectionEpisodeResolutionOutboxService {
       vehicleId: string;
       episodeId: string;
       resolutionSnapshotId: string;
-      runtimeStateVersion: number;
-      recoverySource?: 'snapshot_obd' | 'telemetry_resumed';
+      resolutionEvidenceAt: Date;
+      recoverySource?: 'snapshot_obd' | 'telemetry_resumed' | 'binding_change';
     },
   ): Promise<string[]> {
     const recoverySource = input.recoverySource ?? 'snapshot_obd';
@@ -30,8 +30,8 @@ export class DeviceConnectionEpisodeResolutionOutboxService {
         payload: {
           vehicleId: input.vehicleId,
           episodeId: input.episodeId,
-          runtimeStateVersion: input.runtimeStateVersion,
           resolutionSnapshotId: input.resolutionSnapshotId,
+          resolutionEvidenceAt: input.resolutionEvidenceAt.toISOString(),
         },
       },
       {
@@ -44,6 +44,7 @@ export class DeviceConnectionEpisodeResolutionOutboxService {
           alertPhase: 'recovered',
           recoverySource,
           resolutionSnapshotId: input.resolutionSnapshotId,
+          resolutionEvidenceAt: input.resolutionEvidenceAt.toISOString(),
         },
       },
     ];

@@ -17,6 +17,7 @@ import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
 import {
   buildDimoVerificationResponse,
   inferObdPlugStateFromWebhookContext,
@@ -43,6 +44,7 @@ export class DimoWebhookController {
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
     private readonly deviceConnection: DeviceConnectionWebhookService,
+    private readonly deviceConnectionInbox: DeviceConnectionWebhookInboxService,
     private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
@@ -141,6 +143,44 @@ export class DimoWebhookController {
       return { status: 'ignored', reason: 'missing_token_id' };
     }
 
+    const signalName = payload.signalName;
+    const value = payload.value;
+    const timestamp = payload.timestamp;
+
+    // ── OBD device plug/unplug (connectivity) — inbox handles vehicle mapping ───
+    if (
+      DeviceConnectionWebhookService.isObdPluggedSignal(signalName, payload.metricName) ||
+      inferObdPlugStateFromWebhookContext(payload) != null
+    ) {
+      const pluggedIn =
+        DeviceConnectionWebhookService.parsePluggedValue(value) ??
+        inferObdPlugStateFromWebhookContext(payload);
+
+      if (pluggedIn == null) {
+        this.logger.warn(`OBD plug webhook for tokenId=${tokenId} had no parseable plug state`);
+        return { status: 'ignored', reason: 'non_boolean_plug_state' };
+      }
+
+      const observedAt = timestamp ? new Date(timestamp) : new Date();
+      const intake = await this.deviceConnectionInbox.intakeDeviceConnectionWebhook({
+        tokenId,
+        pluggedIn,
+        observedAt: Number.isNaN(observedAt.getTime()) ? new Date() : observedAt,
+        rawPayload: body,
+      });
+      return {
+        status: 'processed',
+        type: 'device_connection',
+        outcome: intake.outcome,
+        inboxId: intake.inboxId,
+        processingStatus: intake.processingStatus,
+        eventId: intake.eventId,
+        eventType: intake.eventType,
+        policyIgnoreReason: intake.policyIgnoreReason,
+        errorCode: intake.errorCode,
+      };
+    }
+
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { dimoVehicle: { tokenId } },
       select: {
@@ -155,10 +195,6 @@ export class DimoWebhookController {
       this.logger.warn(`No vehicle found for tokenId=${tokenId}`);
       return { status: 'ignored', reason: 'unknown_vehicle' };
     }
-
-    const signalName = payload.signalName;
-    const value = payload.value;
-    const timestamp = payload.timestamp;
 
     if (signalName === 'obdDTCList' && value) {
       await this.handleDtcEvent(vehicle.id, value);
@@ -194,31 +230,6 @@ export class DimoWebhookController {
               ? 'below_threshold_or_intake_error'
               : undefined,
       };
-    }
-
-    // ── OBD device plug/unplug (connectivity / tamper evidence) ───────────────
-    if (
-      DeviceConnectionWebhookService.isObdPluggedSignal(signalName, payload.metricName) ||
-      inferObdPlugStateFromWebhookContext(payload) != null
-    ) {
-      const pluggedIn =
-        DeviceConnectionWebhookService.parsePluggedValue(value) ??
-        inferObdPlugStateFromWebhookContext(payload);
-
-      if (pluggedIn == null) {
-        this.logger.warn(`OBD plug webhook for vehicle ${vehicle.id} had no parseable plug state`);
-        return { status: 'ignored', reason: 'non_boolean_plug_state' };
-      }
-
-      const observedAt = timestamp ? new Date(timestamp) : new Date();
-      const { outcome, eventId, eventType } = await this.deviceConnection.ingestObdPlugStateChange({
-        vehicle: { id: vehicle.id, organizationId: vehicle.organizationId },
-        tokenId,
-        pluggedIn,
-        observedAt: Number.isNaN(observedAt.getTime()) ? new Date() : observedAt,
-        rawPayload: body,
-      });
-      return { status: 'processed', type: 'device_connection', outcome, eventId, eventType };
     }
 
     if (signalName === 'speed' && value != null) {

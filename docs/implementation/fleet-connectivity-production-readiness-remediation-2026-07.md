@@ -5,9 +5,10 @@
 | **Audit** | `docs/audits/fleet-connectivity-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/fleet-connectivity-production-readiness-2026-07` @ `75d316f1` |
 | **Implementation branch** | `fix/fleet-connectivity-production-readiness-2026-07` |
+| **Phase 2 branch** | `cursor/webhook-processing-states-2e0d` (prompts 1–10) |
 | **Verdict (audit)** | **CONDITIONALLY_READY** (see post-remediation audit) |
 | **Production blockers** | `FC-P0-01`, `FC-P0-03`, `FC-C-04` |
-| **Mode** | Backend truth first → API → UI (18 prompts) |
+| **Mode** | Backend truth first → API → UI (18 prompts + 10 follow-up prompts) |
 
 ---
 
@@ -110,7 +111,7 @@
 | 5 | Snapshot + Telemetry Episode Closure | **DONE** | `fix(connectivity): resolve unplug episodes from explicit snapshot plug signals` + `fix(connectivity): infer device reconnection from sustained telemetry` | **yes** | snapshot + telemetry resolution | yes | no | no | high |
 | 5a | Read-only episode reconciliation audit | **DONE** | `feat(connectivity): add read-only device episode reconciliation audit` | — | fixture classifier | yes | no | no | low |
 | 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
-| 7 | Webhook Inbox Retry / DLQ | **PARTIAL** | Prompt 18 metrics/alerts | maybe | failure inject | yes | yes | no | med |
+| 7 | Webhook Inbox Retry / DLQ | **IN PROGRESS** | Prompt 1–2: inbox + async retry/DLQ worker | **yes** (`20260719160000_device_connection_webhook_inbox`) | inbox + processing specs | yes | yes | no | med |
 | 8 | Provider Link + Authorization | **DONE** | `fix(connectivity): canonicalize provider link authorization and consent` | no | provider-link builder + projection | yes | no | no | med |
 | 9 | Kanonische Freshness Fleet API | **DONE** | `fix(connectivity): unify telemetry freshness across connectivity consumers` | no | boundary + cross-surface | no | no | no | low |
 | 10 | Capability-aware Coverage | **DONE** | `08c68b26` | no | ICE/EV matrix | yes | yes | no | med |
@@ -122,6 +123,168 @@
 | 16 | Drawer A–E + i18n | **DONE** | `7cb2b40c` | no | wireframes | no | no | yes | med |
 | 17 | Mobile / i18n / a11y | **DONE** | `7cb2b40c` | no | UI tests | no | no | yes | low |
 | 18 | Observability + Staging Replay | **DONE** | `docs(connectivity): finalize…` | no | 180 BE connectivity tests | runbook | yes | no | high |
+
+---
+
+## Phase 2 — Follow-up prompts (10)
+
+| # | Ziel | Status | Commit | Migration | Tests |
+|---|------|--------|--------|-----------|-------|
+| 1 | Webhook inbox + reliable processing states | **DONE** | `fix(connectivity): persist reliable webhook processing states` | `20260719160000_device_connection_webhook_inbox` | inbox + webhook specs |
+| 2 | Webhook retry worker + dead letter + manual replay | **DONE** | `fix(connectivity): add webhook retry and dead letter processing` | — | processing + replay specs |
+| 3 | Episode resolution outbox — post-commit runtime + alerts | **DONE** | `fix(connectivity): process runtime recalculation after episode commit` | `20260719170000_device_connection_episode_resolution_outbox_retry` | outbox processor specs |
+| 4 | Historical episode reconciliation audit | **DONE** | `fix(connectivity): reconcile episodes from historical snapshot evidence` | — | historical assembler + reconciliation specs |
+| 5 | Audited evidence packages for reconciliation apply | **DONE** | `fix(connectivity): bind episode reconciliation apply to audited evidence` | — | evidence package + apply validation specs |
+| 6 | Canonical binding-change episode lifecycle | **DONE** | `fix(connectivity): route binding changes through canonical episode lifecycle` | — | binding drift + apply routing specs |
+
+### Prompt 1 — Webhook Inbox (2026-07-19)
+
+**Problem:** `DeviceConnectionWebhookService` returned `{ outcome: 'ignored' }` for technical failures — not retryable.
+
+**Lösung:**
+- Neue Tabelle `device_connection_webhook_inbox` mit `processingStatus` (RECEIVED → VALIDATED → PROCESSED / IGNORED_BY_POLICY / RETRYABLE_FAILED / PERMANENTLY_FAILED / DEAD_LETTER)
+- `DeviceConnectionWebhookInboxService` — persist-first intake, klare Trennung policy-ignore vs technical failure vs unknown vehicle mapping
+- `DeviceConnectionWebhookService.processValidatedWebhookEvent` — technische Fehler werfen statt `ignored`
+- Controller: Device-Connection-Webhooks vor Vehicle-Lookup → Inbox übernimmt Mapping
+- **Kein Retry-Worker** in diesem Prompt (Retry-Felder `nextRetryAt`, `processingAttempts` vorbereitet)
+
+**Neue Dateien:**
+- `backend/src/modules/dimo/device-connection-webhook-inbox.service.ts`
+- `backend/src/modules/dimo/device-connection-webhook-inbox.types.ts`
+- `backend/prisma/migrations/20260719160000_device_connection_webhook_inbox/`
+
+**Abnahme:**
+- ✅ Kein technischer Fehler als `ignored`
+- ✅ Jedes valide Event hat dauerhaften `processingStatus`
+- ✅ Duplicate → kein zweites Domain-Event (bestehende dedup bucket Logik)
+- ✅ Backend Build + Tests grün
+
+### Prompt 2 — Webhook Retry + Dead Letter (2026-07-19)
+
+**Problem:** Inbox-Rows mit `RETRYABLE_FAILED` wurden nur bei erneutem HTTP-Delivery verarbeitet — kein automatischer Worker.
+
+**Lösung:**
+- BullMQ Queue `connectivity.webhook.process` + `DeviceConnectionWebhookProcessor`
+- `DeviceConnectionWebhookProcessingService` — idempotenter Claim/Process-Pfad (RECEIVED/VALIDATED/RETRYABLE_FAILED)
+- Exponentieller Backoff (`baseBackoffMs * 2^(attempt-1)`), max 5 Versuche → `DEAD_LETTER`
+- `DeviceConnectionWebhookInboxSchedulerService` — pollt fällige Retries + stale in-flight rows
+- `POST …/connectivity/webhook-inbox/:inboxId/replay` — Permission `fleet-connectivity.manage`, Reason, Audit-Log
+- Prometheus DLQ-Metrik via `ConnectivityObservabilityService` bei `dead_letter`
+- HTTP-Intake: persist + enqueue (async), kein synchrones Domain-Processing mehr
+
+**Neue Dateien:**
+- `device-connection-webhook-processing.service.ts`
+- `device-connection-webhook-queue.producer.ts`
+- `device-connection-webhook-inbox-scheduler.service.ts`
+- `device-connection-webhook-replay.service.ts`
+- `device-connection-webhook-inbox.controller.ts`
+- `workers/processors/device-connection-webhook.processor.ts`
+- `config/device-connection-webhook-inbox.config.ts`
+
+**Abnahme:**
+- ✅ Automatischer Retry für nicht verarbeitete valide Events
+- ✅ Dead-Letter sichtbar (`DEAD_LETTER` + Metrik/Alert)
+- ✅ Kontrolliertes, idempotentes Replay
+- ✅ Kein stiller Verlust (persist-first + queue + scheduler)
+
+### Prompt 3 — Episode Resolution Outbox (2026-07-19)
+
+**Problem:** `CONNECTIVITY_RUNTIME_RECALCULATE` wurde als No-op abgeschlossen; Runtime-Projektion lief innerhalb der offenen Episode-Transaction über separaten PrismaService und sah den noch nicht committeten Zustand nicht.
+
+**Lösung:**
+- Runtime-Projektion aus Episode-Transaction entfernt — Transaction schreibt nur Episode, Audit, Outbox
+- `DeviceConnectionEpisodeResolutionOutboxProcessorService` verarbeitet nach Commit:
+  - `CONNECTIVITY_RUNTIME_RECALCULATE` → committed Episode/Binding laden → `VehicleConnectivityRuntimeProjectionService.projectForVehicle`
+  - `DEVICE_ALERT_RESOLVE_PREPARED` → `ConnectivityAlertService.onEpisodeRecovered` mit `resolutionEvidenceAt`
+- Outbox-Retry: `RETRYABLE_FAILED`, exponentieller Backoff, max 5 Versuche → `DEAD_LETTER`
+- Unbekannte Event-Typen → `FAILED` (nicht `COMPLETED`)
+- `DimoSnapshotProcessor` triggert `processPendingBatch()` statt Inline-Projection + alter Alert-Outbox-Pfad
+
+**Neue Dateien:**
+- `device-connection-episode-resolution-outbox-processor.service.ts`
+- `device-connection-episode-resolution-outbox.repository.ts`
+- `config/device-connection-episode-resolution-outbox.config.ts`
+- Migration `20260719170000_device_connection_episode_resolution_outbox_retry`
+
+**Abnahme:**
+- ✅ Runtime State erst nach Commit aus neuem DB-Zustand
+- ✅ `CONNECTIVITY_RUNTIME_RECALCULATE` mit echter Verarbeitung
+- ✅ Keine No-op-Completions für unbekannte Typen
+- ✅ `resolutionEvidenceAt` als fachlicher Recovery-Zeitpunkt für Alerts
+
+### Prompt 4 — Historical Reconciliation Audit (2026-07-19)
+
+**Problem:** Der Read-only Reconciliation-Audit stützte sich auf `VehicleLatestState` (aktueller Stand) und setzte `observedAt`/`receivedAt` künstlich gleich — für historische Episoden unzureichend.
+
+**Lösung:**
+- Pro Episode begrenztes Zeitfenster (24h vor Unplug, bis Recovery oder max. 14 Tage)
+- Historische Quellen: `dimo_poll_logs`, `device_connection_telemetry_recovery_observations`, ClickHouse `telemetry_snapshots`, `device_connection_episode_resolution_audits`
+- `DeviceConnectionEpisodeReconciliationHistoricalLoader` + `assembleEpisodeHistoricalEvidence` berechnen Snapshotserie-Metriken (Cadence, Lücken, Backfill-Indikatoren, getrennte Timestamps)
+- Klassifikation nutzt historische Evidence; `vehicle_latest_state_only` blockiert Apply
+- `applyEvidence` maschinenlesbar für auto-anwendbare Klassifikationen
+- Event-`receivedAt` aus DB-Spalte (nicht `createdAt`)
+
+**Neue Dateien:**
+- `device-connection-episode-reconciliation-historical.types.ts`
+- `device-connection-episode-reconciliation-historical.config.ts`
+- `device-connection-episode-reconciliation-historical.assembler.ts`
+- `device-connection-episode-reconciliation-historical.loader.ts`
+
+**Abnahme:**
+- ✅ Recovery-Klassifikation auf echter historischer Evidence
+- ✅ LatestState allein reicht nicht für historischen Apply
+- ✅ Provider- und Empfangszeit getrennt
+- ✅ Unsichere Fälle → `NOT_ENOUGH_DATA` / `CONFLICTING_DATA`
+
+### Prompt 5 — Audited evidence packages for apply (2026-07-19)
+
+**Problem:** Der Reconciliation-Apply konnte fachliche Werte neu erfinden (`hasOperationalSignal=true`, `CONNECTED`, `receivedAt=now`) statt die im Audit klassifizierte Evidence zu verwenden.
+
+**Lösung:**
+- Deterministisches `EpisodeReconciliationEvidencePackage` pro auto-anwendbarem Audit-Kandidaten (Hash + `codeVersion`)
+- Audit-Report enthält `evidencePackages[]` und `evidenceCodeVersion` — Apply konsumiert dieselben Pakete
+- Apply validiert vor Ausführung: Hash, Code-Version, Episode/Binding unverändert, kein Event nach `auditWaterlineAt`, Cross-Tenant-Check
+- Bei Abweichung: Kandidat `rejected`, neuer Dry-Run erforderlich
+- Apply übergibt nur eingefrorene Paket-Felder an Resolution (`providerObservedAt`, `receivedAt`, `hasOperationalSignal`, `obdIsPluggedIn`); kein künstliches `CONNECTED` aus Latest-State
+- Ops-Script: `--apply` erfordert `--organization-id`, `--audit-report-hash`, `--backup-confirmed`, `--operator`, `--reason`, `--batch-size`, optional `--expected-git-commit`
+
+**Neue Dateien:**
+- `device-connection-episode-reconciliation-evidence-package.types.ts`
+- `device-connection-episode-reconciliation-evidence-package.version.ts`
+- `device-connection-episode-reconciliation-evidence-package.hash.ts`
+- `device-connection-episode-reconciliation-evidence-package.builder.ts`
+- `device-connection-episode-reconciliation-evidence-package.validator.ts`
+- `device-connection-episode-reconciliation-evidence-package.spec.ts`
+
+**Abnahme:**
+- ✅ Audit und Apply verwenden identische Evidence-Pakete
+- ✅ Keine erfundenen Wahrheitswerte im Apply
+- ✅ Veraltete Kandidaten werden abgelehnt (Binding, Episode, neues Event, Hash)
+- ✅ Idempotenz bei bereits aufgelösten Episoden
+- ✅ 38 Reconciliation-Tests grün
+
+### Prompt 6 — Canonical binding-change lifecycle (2026-07-19)
+
+**Problem:** Binding-Wechsel konnten Episoden direkt per `prisma.deviceConnectionEpisode.update` schließen (Reconciliation Apply) — ohne Audit, Outbox, Alert-/Runtime-Nachlauf.
+
+**Lösung:**
+- Zentraler Pfad: `DeviceConnectionEpisodeService.reconcileBindingDrift(...)` und `supersedeEpisodesForBindingChangeTx`
+- Atomar in Transaction: OPEN-Claim via `updateMany`, `SUPERSEDED`, `DEVICE_BINDING_CHANGED`, `resolutionEvidenceAt`/`resolvedAt` = Evidence-Zeitpunkt (nicht `new Date()`)
+- Lifecycle-Audit + Resolution-Outbox (`CONNECTIVITY_RUNTIME_RECALCULATE`, `DEVICE_ALERT_RESOLVE_PREPARED`, `recoverySource: binding_change`)
+- `openFromUnplugEvent` superseded alte Bindings über denselben Pfad
+- Reconciliation Apply ruft `reconcileBindingDrift` mit `episodeId` + audited timestamps — kein direktes Episode-Update mehr
+- Snapshot-Processor nutzt weiterhin `reconcileBindingDrift` bei aktuellem Drift
+
+**Neue/angepasste Dateien:**
+- `device-connection-episode.service.ts` — kanonischer Binding-Lifecycle
+- `device-connection-episode-binding-drift.spec.ts`
+- `device-connection-episode-reconciliation-apply.service.ts` — delegiert binding_change
+
+**Abnahme:**
+- ✅ Ein Binding-Change-Lifecycle für Drift, Unplug-Supersede und Reconciliation Apply
+- ✅ Evidence-Zeit und Processing-Zeit (`receivedAt`) getrennt
+- ✅ Outbox + Audit Trail bei jedem Supersede
+- ✅ Idempotenz bei Duplicate Apply / paralleler Verarbeitung
 
 ### Abhängigkeitskette
 
@@ -251,6 +414,37 @@
 | 2026-07-19 | 2 | `12bd652a` | Regressionstests A–L, keine Produktlogik geändert |
 | 2026-07-19 | 3 | `1e41783c` | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
 | 2026-07-19 | 4 | `3bf06880` | VehicleConnectivityRuntimeStateBuilder (pure domain) |
+| 2026-07-19 | Phase2-1 | `fix(connectivity): persist reliable webhook processing states` | Webhook inbox + processing states; migration `20260719160000` |
+| 2026-07-19 | Phase2-2 | `fix(connectivity): add webhook retry and dead letter processing` | BullMQ worker, scheduler, DLQ, manual replay API |
+| 2026-07-19 | Phase2-4 | `fix(connectivity): reconcile episodes from historical snapshot evidence` | Historical evidence window + loader |
+| 2026-07-19 | Phase2-5 | `fix(connectivity): bind episode reconciliation apply to audited evidence` | Evidence packages + apply validation |
+| 2026-07-19 | Phase2-6 | `fix(connectivity): route binding changes through canonical episode lifecycle` | reconcileBindingDrift + outbox/audit |
+| 2026-07-19 | Phase2-7 | `fix(connectivity): add recovery kill switch and evidence timestamps` | Kill switch env flags, evidence-based timeline timestamps |
+
+---
+
+## Prompt 7 — Recovery kill switch + evidence timestamps
+
+### Teil A — Zeitstempel
+
+- Getrennte Felder in Domain/API: `providerObservedAt`, `receivedAt`, `processedAt`, `resolutionEvidenceAt`, `resolvedAt`
+- `VehicleConnectivityRuntimeState`: `lastRecoveryEvidenceAt`, `lastRecoveryReceivedAt`, `lastRecoveryResolvedAt`
+- Fleet timeline `DEVICE_RECONNECTED` nutzt `resolutionEvidenceAt` (nicht `calculatedAt` / Outbox-`new Date()`)
+- Outbox-Alert-Resolution nutzt weiterhin `episode.resolutionEvidenceAt` für `onEpisodeRecovered`
+- UI Detail-Drawer: „Wieder verbunden seit“ + optionale Verarbeitungszeilen in der Timeline
+
+### Teil B — Kill Switch
+
+| Variable | Default | Verhalten aus |
+|----------|---------|-------------|
+| `CONNECTIVITY_EPISODE_RECOVERY_ENABLED` | `true` | Keine auto Episode-Resolution, kein Episode-Sync nach Webhook, Outbox skip, kein Binding-Drift-Resolve |
+| `CONNECTIVITY_RECONCILIATION_APPLY_ENABLED` | `false` | Reconciliation `--apply` und `runApply(apply:true)` blockiert |
+
+**Bei deaktivierter Recovery bleiben erhalten:** Roh-Webhooks, Snapshots, bestehende kanonische Zustände/Episoden.
+
+**Tests:** `connectivity-recovery.policy.spec.ts`, `fleet-connectivity-api.mapper.spec.ts` (Timeline-Evidence-Zeit)
+
+**Runbook:** `docs/runbooks/fleet-connectivity-production-rollout.md` §15
 
 ---
 

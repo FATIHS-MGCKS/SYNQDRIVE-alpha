@@ -68,10 +68,51 @@ function buildPrismaMock() {
   const episodes: EpisodeRow[] = [];
   let bindingId: string | null = BINDING_A;
 
+  const lifecycleAudits: Array<Record<string, unknown>> = [];
+  const outboxRows: Array<Record<string, unknown>> = [];
+
   const vehicleDataSourceLink = {
     findFirst: jest.fn().mockImplementation(async () =>
-      bindingId ? { id: bindingId } : null,
+      bindingId
+        ? {
+            id: bindingId,
+            sourceType: 'DIMO',
+            sourceSubtype: null,
+            sourceReferenceId: 'ref-fixture',
+            activatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            deactivatedAt: null,
+          }
+        : null,
     ),
+  };
+
+  const applyEpisodeUpdateMany = async ({
+    where,
+    data,
+  }: {
+    where: Record<string, unknown>;
+    data: Partial<EpisodeRow> & { stateVersion?: { increment: number } };
+  }) => {
+    let count = 0;
+    for (let idx = 0; idx < episodes.length; idx++) {
+      const episode = episodes[idx]!;
+      const matches = Object.entries(where).every(
+        ([key, value]) => (episode as Record<string, unknown>)[key] === value,
+      );
+      if (!matches) continue;
+      const nextVersion =
+        data.stateVersion?.increment != null
+          ? episode.stateVersion + data.stateVersion.increment
+          : episode.stateVersion;
+      episodes[idx] = {
+        ...episode,
+        ...data,
+        stateVersion: nextVersion,
+        updatedAt: new Date(),
+      };
+      count++;
+    }
+    return { count };
   };
 
   const deviceConnectionEpisode = {
@@ -174,23 +215,53 @@ function buildPrismaMock() {
         return episodes[idx];
       },
     ),
+    updateMany: jest.fn().mockImplementation(applyEpisodeUpdateMany),
+  };
+
+  const makeTxClient = () => ({
+    deviceConnectionEpisode: {
+      updateMany: jest.fn().mockImplementation(applyEpisodeUpdateMany),
+    },
+    deviceConnectionEpisodeLifecycleAudit: {
+      create: jest.fn().mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
+        lifecycleAudits.push(data);
+        return { id: `audit-${lifecycleAudits.length}` };
+      }),
+    },
+    deviceConnectionEpisodeResolutionOutbox: {
+      create: jest.fn().mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
+        outboxRows.push(data);
+        return { id: `outbox-${outboxRows.length}` };
+      }),
+    },
+  });
+
+  const prisma = {
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({ hardwareType: 'LTE_R1' }),
+      findFirst: jest.fn().mockResolvedValue({ licensePlate: 'B-XY', make: 'VW', model: 'Golf' }),
+    },
+    vehicleDataSourceLink,
+    deviceConnectionEpisode,
+    deviceConnectionEpisodeLifecycleAudit: {
+      create: jest.fn().mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
+        lifecycleAudits.push(data);
+        return { id: `audit-${lifecycleAudits.length}` };
+      }),
+    },
+    $transaction: jest.fn().mockImplementation(async (fn: (tx: ReturnType<typeof makeTxClient>) => Promise<unknown>) =>
+      fn(makeTxClient()),
+    ),
   };
 
   return {
     episodes,
+    lifecycleAudits,
+    outboxRows,
     setBindingId: (id: string | null) => {
       bindingId = id;
     },
-    prisma: {
-      vehicle: {
-        findUnique: jest.fn().mockResolvedValue({ hardwareType: 'LTE_R1' }),
-      },
-      vehicleDataSourceLink,
-      deviceConnectionEpisode,
-      deviceConnectionEpisodeLifecycleAudit: {
-        create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
-      },
-    },
+    prisma,
   };
 }
 

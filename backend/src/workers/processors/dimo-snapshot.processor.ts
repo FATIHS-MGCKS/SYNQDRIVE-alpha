@@ -32,8 +32,7 @@ import {
   DeviceConnectionEpisodeService,
   hashProviderDeviceId,
 } from '../../modules/dimo/device-connection-episode.service';
-import { ConnectivityAlertService } from '../../modules/dimo/connectivity-alert/connectivity-alert.service';
-import { VehicleConnectivityRuntimeProjectionService } from '../../modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
+import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -70,9 +69,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     @Optional()
     private readonly episodeService?: DeviceConnectionEpisodeService,
     @Optional()
-    private readonly connectivityAlerts?: ConnectivityAlertService,
-    @Optional()
-    private readonly runtimeProjection?: VehicleConnectivityRuntimeProjectionService,
+    private readonly resolutionOutboxProcessor?: DeviceConnectionEpisodeResolutionOutboxProcessorService,
   ) {
     super();
   }
@@ -199,22 +196,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
         signals,
       });
 
-      if (this.connectivityAlerts) {
-        await this.connectivityAlerts.processPendingResolutionOutbox();
-      }
-      if (this.runtimeProjection) {
-        try {
-          await this.runtimeProjection.projectForVehicle(
-            vehicle.organizationId,
-            vehicleId,
-          );
-        } catch (err) {
-          this.logger.warn(
-            `Connectivity runtime projection skipped for ${vehicleId}: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          );
-        }
+      if (this.resolutionOutboxProcessor) {
+        await this.resolutionOutboxProcessor.processPendingBatch();
       }
 
       // ── ClickHouse dual-write (fire-and-forget, never blocks live pipeline) ──

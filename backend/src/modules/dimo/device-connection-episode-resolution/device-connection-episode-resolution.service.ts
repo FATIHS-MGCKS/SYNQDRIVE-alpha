@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DeviceConnectionEpisodeResolutionMethod,
   DeviceConnectionEpisodeStatus,
@@ -21,7 +21,7 @@ import {
   loadTelemetryRecoveryPolicy,
   type TelemetryRecoveryPolicy,
 } from './device-connection-telemetry-recovery.policy';
-import { VehicleConnectivityRuntimeProjectionService } from './vehicle-connectivity-runtime-projection.service';
+import { ConnectivityRecoveryPolicyService } from '../connectivity/connectivity-recovery.policy';
 
 export type SnapshotPlugResolutionResult =
   | { outcome: 'resolved'; episodeId: string; resolutionSnapshotId: string }
@@ -49,14 +49,21 @@ export class DeviceConnectionEpisodeResolutionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly runtimeProjection: VehicleConnectivityRuntimeProjectionService,
     private readonly outbox: DeviceConnectionEpisodeResolutionOutboxService,
     private readonly telemetryPolicy: TelemetryRecoveryPolicy = loadTelemetryRecoveryPolicy(),
+    @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
+
+  private isEpisodeRecoveryEnabled(): boolean {
+    return this.recoveryPolicy?.isEpisodeRecoveryEnabled() ?? true;
+  }
 
   async tryResolveFromSnapshotPlugSignal(
     input: SnapshotPlugSignalInput,
   ): Promise<SnapshotPlugResolutionResult> {
+    if (!this.isEpisodeRecoveryEnabled()) {
+      return { outcome: 'rejected', reason: 'recovery_disabled' };
+    }
     const openEpisode = await this.findOpenEpisode({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -110,11 +117,6 @@ export class DeviceConnectionEpisodeResolutionService {
           );
         }
 
-        const runtimeState = await this.runtimeProjection.projectForVehicle(
-          input.organizationId,
-          input.vehicleId,
-        );
-
         await tx.deviceConnectionEpisodeResolutionAudit.create({
           data: {
             organizationId: input.organizationId,
@@ -127,9 +129,7 @@ export class DeviceConnectionEpisodeResolutionService {
             receivedAt: input.receivedAt,
             outcome: 'resolved',
             metadata: {
-              runtimeOverallState: runtimeState.overallState,
-              runtimePhysicalDeviceState: runtimeState.physicalDeviceState,
-              runtimeStateVersion: runtimeState.stateVersion,
+              resolutionEvidenceAt: evaluation.providerObservedAt.toISOString(),
               obdIsPluggedIn: input.obdIsPluggedIn,
               snapshotSource: input.snapshotSource,
               providerBindingId: input.providerBindingId,
@@ -142,7 +142,7 @@ export class DeviceConnectionEpisodeResolutionService {
           vehicleId: input.vehicleId,
           episodeId,
           resolutionSnapshotId: input.snapshotReferenceId,
-          runtimeStateVersion: runtimeState.stateVersion,
+          resolutionEvidenceAt: evaluation.providerObservedAt,
           recoverySource: 'snapshot_obd',
         });
 
@@ -173,6 +173,10 @@ export class DeviceConnectionEpisodeResolutionService {
   async tryResolveFromSustainedTelemetry(
     input: TelemetryRecoverySignalInput,
   ): Promise<TelemetryRecoveryResolutionResult> {
+    if (!this.isEpisodeRecoveryEnabled()) {
+      return { outcome: 'rejected', reason: 'recovery_disabled' };
+    }
+
     const openEpisode = await this.findOpenEpisode({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -281,11 +285,6 @@ export class DeviceConnectionEpisodeResolutionService {
           );
         }
 
-        const runtimeState = await this.runtimeProjection.projectForVehicle(
-          input.organizationId,
-          input.vehicleId,
-        );
-
         await tx.deviceConnectionEpisodeResolutionAudit.create({
           data: {
             organizationId: input.organizationId,
@@ -298,9 +297,7 @@ export class DeviceConnectionEpisodeResolutionService {
             receivedAt: input.receivedAt,
             outcome: 'resolved',
             metadata: {
-              runtimeOverallState: runtimeState.overallState,
-              runtimePhysicalDeviceState: runtimeState.physicalDeviceState,
-              runtimeStateVersion: runtimeState.stateVersion,
+              resolutionEvidenceAt: sustained.evidenceAt.toISOString(),
               policyVariant: sustained.variant,
               observationCount: sustained.observationCount,
               tripStartedOrCompletedAfterUnplug,
@@ -315,7 +312,7 @@ export class DeviceConnectionEpisodeResolutionService {
           vehicleId: input.vehicleId,
           episodeId,
           resolutionSnapshotId: input.snapshotReferenceId,
-          runtimeStateVersion: runtimeState.stateVersion,
+          resolutionEvidenceAt: sustained.evidenceAt,
           recoverySource: 'telemetry_resumed',
         });
 

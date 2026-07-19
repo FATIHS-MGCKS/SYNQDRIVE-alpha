@@ -189,6 +189,18 @@ export function FleetConnectivityDetailDrawer({
                         locale === 'de' ? 'de-DE' : 'en-GB',
                       )}
                     </p>
+                    {event.type === 'DEVICE_RECONNECTED' &&
+                    (event.processedAt || event.receivedAt) ? (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {event.processedAt
+                          ? `${t('fleetConnectivity.detail.recoveryProcessedAt')}: ${new Date(event.processedAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB')}`
+                          : null}
+                        {event.processedAt && event.receivedAt ? ' · ' : null}
+                        {event.receivedAt
+                          ? `${t('fleetConnectivity.detail.recoveryReceivedAt')}: ${new Date(event.receivedAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB')}`
+                          : null}
+                      </p>
+                    ) : null}
                     {event.reasonCode ? (
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         {reasonCodeHint(event.reasonCode, t)}
@@ -304,6 +316,14 @@ export function FleetConnectivityDetailDrawer({
                   locale === 'de' ? 'de-DE' : 'en-GB',
                 )}
               />
+              {detail.timestamps.reconnectedSince ? (
+                <DetailRow
+                  label={t('fleetConnectivity.detail.reconnectedSince')}
+                  value={new Date(detail.timestamps.reconnectedSince).toLocaleString(
+                    locale === 'de' ? 'de-DE' : 'en-GB',
+                  )}
+                />
+              ) : null}
               {detail.activeEpisode?.open ? (
                 <DetailRow
                   label={t('fleetConnectivity.detail.openEpisode')}

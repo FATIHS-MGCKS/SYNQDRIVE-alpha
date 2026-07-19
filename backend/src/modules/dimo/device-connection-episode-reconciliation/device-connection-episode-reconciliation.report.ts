@@ -18,6 +18,9 @@ const CSV_COLUMNS = [
   'confidence',
   'conflicts',
   'applyEligible',
+  'historicalSamplesAfterUnplug',
+  'historicalSources',
+  'latestStateOnlyEvidence',
 ] as const;
 
 function csvEscape(value: string): string {
@@ -47,6 +50,9 @@ export function renderReconciliationCsv(
       candidate.confidence,
       candidate.conflicts.join(';'),
       candidate.applyEligible ? 'yes' : 'no',
+      String(candidate.historicalEvidence?.samplesAfterUnplug ?? ''),
+      (candidate.historicalEvidence?.sourcesPresent ?? []).join('|'),
+      candidate.historicalEvidence?.latestStateOnlyEvidence ? 'yes' : 'no',
     ]
       .map((v) => csvEscape(String(v)))
       .join(','),
@@ -89,7 +95,8 @@ export function renderReconciliationMarkdown(report: EpisodeReconciliationReport
     '## Method',
     '',
     '- Reconstructs canonical unplug episodes from the **full** `DimoDeviceConnectionEvent` history.',
-    '- Evaluates snapshot (`obdIsPluggedIn`, provider/received timestamps), telemetry, trips, bindings, and alerts.',
+    '- Loads bounded historical evidence per episode window (poll logs, telemetry observations, ClickHouse mirror, resolution audits).',
+    '- Evaluates snapshot series with separate provider `observedAt` vs ingestion `receivedAt` — latest state alone is insufficient for historical apply.',
     '- **Does not** write episodes, mutate events, or apply resolutions.',
     '- Uncertain cases remain `reviewRequired` with `applyEligible=no`.',
     '',
