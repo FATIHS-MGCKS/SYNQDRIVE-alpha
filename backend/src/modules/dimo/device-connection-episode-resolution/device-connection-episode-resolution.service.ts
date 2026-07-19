@@ -50,9 +50,10 @@ export class DeviceConnectionEpisodeResolutionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outbox: DeviceConnectionEpisodeResolutionOutboxService,
-    private readonly telemetryPolicy: TelemetryRecoveryPolicy = loadTelemetryRecoveryPolicy(),
     @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
   ) {}
+
+  private readonly telemetryPolicy: TelemetryRecoveryPolicy = loadTelemetryRecoveryPolicy();
 
   private isEpisodeRecoveryEnabled(): boolean {
     return this.recoveryPolicy?.isEpisodeRecoveryEnabled() ?? true;
