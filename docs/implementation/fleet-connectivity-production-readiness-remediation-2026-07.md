@@ -20,7 +20,7 @@
 | Fleet Connectivity ≠ kanonische Freshness (24h vs 48h) | Architektur-Split | FC-P1-02 |
 | Parallele Wahrheiten (Provider/Telemetrie/Device/Webhook/Readiness) | 31 Consumer, 9 LEGACY | FC-C-01 |
 | Consent-Lücke bei CONNECTED-Fahrzeugen | 3/6 | FC-P1-03 |
-| webhookConfigured aus Event-Abwesenheit | 5/6 false negative | FC-P1-04 |
+| webhookConfigured aus Event-Abwesenheit | **FIXED** (Prompt 11) | FC-P1-04 |
 | Readiness nicht capability-aware | evSoc auf ICE | FC-P2-02 |
 | Alerts nach Recovery unwired | 0 Unplug-Notifications 60d | FC-C-03, FC-P2-03 |
 | UI überladen / i18n-Lücken | 9 KPI, 10 Spalten, EN hardcoded | FC-P3-01–03 |
@@ -110,7 +110,8 @@
 | 5 | Snapshot + Telemetry Episode Closure | **DONE** | `fix(connectivity): resolve unplug episodes from explicit snapshot plug signals` + `fix(connectivity): infer device reconnection from sustained telemetry` | **yes** | snapshot + telemetry resolution | yes | no | no | high |
 | 5a | Read-only episode reconciliation audit | **DONE** | `feat(connectivity): add read-only device episode reconciliation audit` | — | fixture classifier | yes | no | no | low |
 | 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
-| 7 | Webhook Inbox Retry / DLQ | pending | — | maybe | failure inject | yes | yes | no | med |
+| 7 | Webhook Inbox Retry / DLQ | **DONE** | `fix(connectivity): harden device webhook intake and retries` | maybe | failure inject + inbox tests | yes | yes | no | med |
+| 7b | Webhook Configuration aus Trigger-State | **DONE** | `fix(connectivity): derive webhook configuration from actual trigger state` | no | config classifier tests | yes | yes | no | med |
 | 8 | Provider Link + Authorization | pending | — | yes | consent backfill | yes | no | no | med |
 | 9 | Kanonische Freshness Fleet API | pending | — | no | 48h parity | no | no | no | low |
 | 10 | Capability-aware Coverage | pending | — | no | ICE/EV matrix | yes | yes | no | med |

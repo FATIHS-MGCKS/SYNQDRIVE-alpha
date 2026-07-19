@@ -30,6 +30,7 @@ import { PaymentEmailProcessor } from './processors/payment-email.processor';
 import { TaskAutomationOutboxProcessor } from './processors/task-automation-outbox.processor';
 import { BatteryV2Processor } from './processors/battery-v2.processor';
 import { VoiceWebhookProcessor } from './processors/voice-webhook.processor';
+import { DeviceConnectionWebhookProcessor } from './processors/device-connection-webhook.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -68,6 +69,7 @@ import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler'
       { name: QUEUE_NAMES.TASK_AUTOMATION },
       { name: QUEUE_NAMES.BATTERY_V2 },
       { name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS },
+      { name: QUEUE_NAMES.DEVICE_CONNECTION_WEBHOOK_PROCESS },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -99,6 +101,7 @@ import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler'
     TaskAutomationOutboxProcessor,
     BatteryV2Processor,
     VoiceWebhookProcessor,
+    DeviceConnectionWebhookProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

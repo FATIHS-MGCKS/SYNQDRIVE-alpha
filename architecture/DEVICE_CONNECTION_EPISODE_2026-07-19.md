@@ -104,6 +104,54 @@ Wired from `DimoSnapshotProcessor` after snapshot-plug attempt (telemetry path r
 
 UI copy (later): „Wieder verbunden – aus neuer Telemetrie erkannt“.
 
+## Webhook inbox & retries (Prompt 10)
+
+Durable intake via `device_connection_webhook_inbox` — decouples HTTP ack from episode processing.
+
+### Status lifecycle
+
+`RECEIVED` → `VALIDATED` → `PROCESSED` | `IGNORED_BY_POLICY` | `RETRYABLE_FAILED` → `PERMANENTLY_FAILED` | `DEAD_LETTER`
+
+Technical failures (DB, episode sync) are **never** classified as policy `ignored`.
+
+### HTTP intake
+
+- Invalid HMAC → `401 Unauthorized`
+- Valid payload → `status: accepted` + `inboxId` (fast ack)
+- Async processing via BullMQ queue `device.connection.webhook.process`
+
+### Dedupe
+
+Unique `(provider, providerEventId)` — CloudEvent `id` / `webhookId` or synthetic hash.
+
+### Raw payload
+
+Redacted JSON only (secrets stripped). Retention: operational inbox rows follow standard DB retention; no raw secrets stored.
+
+### Replay
+
+`POST /organizations/:orgId/fleet-connectivity/webhook-inbox/:inboxId/replay` (org admin).
+
+## Webhook configuration status (Prompt 11)
+
+`DeviceConnectionWebhookConfigurationService` derives trigger state from **DIMO Triggers API registry cache** — never from event absence.
+
+### States (`WebhookConfigurationState`)
+
+`CONFIGURED` · `NOT_CONFIGURED` · `ERROR` · `UNKNOWN` · `NOT_APPLICABLE`
+
+Per event type: `unplugTriggerState`, `plugTriggerState` (+ `recoveryPolicy`).
+
+Plug trigger intentionally `NOT_APPLICABLE` when `UNPLUG_WEBHOOK_PLUG_SNAPSHOT` policy applies (ops: unplug webhook only).
+
+### Cache
+
+`device_connection_trigger_registry_cache` — read-only sync, TTL 15min (`DEVICE_CONNECTION_TRIGGER_REGISTRY_CACHE_TTL_MS`). Stale cache served when DIMO API unavailable.
+
+### API fields
+
+`webhookConfiguration` on device-connection summary; fleet `deviceConnection` includes trigger states + delivery timestamps from inbox (not `dimo_device_connection_events`).
+
 ## Binding lifecycle & event order (Prompt 9)
 
 Canonical binding identity: `device-binding-lifecycle.ts` — DIMO token hash, `VehicleDataSourceLink`,

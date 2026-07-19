@@ -174,7 +174,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       rawPayload: { signal: 'obdIsPluggedIn', value: true },
     });
 
-    expect(result.outcome).toBe('ignored');
+    expect(result.outcome).toBe('ignored_by_policy');
     expect(upsert).not.toHaveBeenCalled();
   });
 
@@ -196,7 +196,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       rawPayload: { signal: 'obdIsPluggedIn', value: true },
     });
 
-    expect(result.outcome).toBe('ignored');
+    expect(result.outcome).toBe('ignored_by_policy');
     expect(upsert).not.toHaveBeenCalled();
   });
 
@@ -265,7 +265,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       rawPayload: { signal: 'obdIsPluggedIn', value: 1 },
     });
 
-    expect(result.outcome).toBe('ignored');
+    expect(result.outcome).toBe('ignored_by_policy');
     expect(upsert).not.toHaveBeenCalled();
   });
 

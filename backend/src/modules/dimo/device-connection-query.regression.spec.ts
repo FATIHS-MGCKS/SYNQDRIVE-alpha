@@ -4,6 +4,9 @@
  */
 import { DimoConnectionStatus, DimoDeviceConnectionEventType } from '@prisma/client';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
+import { configuredUnplugWebhookConfiguration } from './device-connection-webhook-configuration/device-connection-webhook-configuration.test-helpers';
+
+const TOKEN_ID = 777;
 
 const ORG_ID = 'org-query-regression';
 const VEHICLE_ID = 'veh-query-regression';
@@ -71,12 +74,25 @@ function buildPrismaMock(opts: {
         id: VEHICLE_ID,
         hardwareType: 'LTE_R1',
         dimoVehicleId: 'dimo-1',
-        dimoVehicle: { connectionStatus: DimoConnectionStatus.CONNECTED },
+        dimoVehicle: { connectionStatus: DimoConnectionStatus.CONNECTED, tokenId: TOKEN_ID },
         latestState: {
           rawPayloadJson: { obdIsPluggedIn: { value: true } },
         },
       }),
     },
+  };
+}
+
+function buildWebhookConfigMock() {
+  return {
+    getForVehicle: jest.fn().mockResolvedValue(configuredUnplugWebhookConfiguration()),
+    getForVehicles: jest.fn().mockImplementation(async (inputs: { vehicleId: string }[]) => {
+      const map = new Map();
+      for (const input of inputs) {
+        map.set(input.vehicleId, configuredUnplugWebhookConfiguration());
+      }
+      return map;
+    }),
   };
 }
 
@@ -116,6 +132,7 @@ describe('DeviceConnectionQueryService regressions', () => {
       const service = new DeviceConnectionQueryService(
         prisma as never,
         episodeService as never,
+        buildWebhookConfigMock() as never,
       );
 
       const fleetMap = await service.getFleetSummariesForVehicles(
@@ -123,6 +140,7 @@ describe('DeviceConnectionQueryService regressions', () => {
         [VEHICLE_ID],
         new Map([[VEHICLE_ID, 'LTE_R1']]),
         new Map([[VEHICLE_ID, true]]),
+        new Map([[VEHICLE_ID, TOKEN_ID]]),
       );
 
       const summary = fleetMap.get(VEHICLE_ID)!;
@@ -156,6 +174,7 @@ describe('DeviceConnectionQueryService regressions', () => {
       const service = new DeviceConnectionQueryService(
         prisma as never,
         episodeService as never,
+        buildWebhookConfigMock() as never,
       );
 
       const fleetMap = await service.getFleetSummariesForVehicles(
@@ -163,6 +182,7 @@ describe('DeviceConnectionQueryService regressions', () => {
         [VEHICLE_ID],
         new Map([[VEHICLE_ID, 'LTE_R1']]),
         new Map([[VEHICLE_ID, true]]),
+        new Map([[VEHICLE_ID, TOKEN_ID]]),
       );
 
       expect(fleetMap.get(VEHICLE_ID)?.openUnpluggedEpisode).toBe(false);
@@ -190,6 +210,7 @@ describe('DeviceConnectionQueryService regressions', () => {
       const service = new DeviceConnectionQueryService(
         prisma as never,
         episodeService as never,
+        buildWebhookConfigMock() as never,
       );
 
       const fleetMap = await service.getFleetSummariesForVehicles(
@@ -197,6 +218,7 @@ describe('DeviceConnectionQueryService regressions', () => {
         [VEHICLE_ID],
         new Map([[VEHICLE_ID, 'LTE_R1']]),
         new Map([[VEHICLE_ID, true]]),
+        new Map([[VEHICLE_ID, TOKEN_ID]]),
       );
 
       expect(fleetMap.get(VEHICLE_ID)?.openUnpluggedEpisode).toBe(true);
@@ -218,6 +240,7 @@ describe('DeviceConnectionQueryService regressions', () => {
       const service = new DeviceConnectionQueryService(
         prisma as never,
         episodeService as never,
+        buildWebhookConfigMock() as never,
       );
 
       const summary = await service.getVehicleSummary(ORG_ID, VEHICLE_ID);

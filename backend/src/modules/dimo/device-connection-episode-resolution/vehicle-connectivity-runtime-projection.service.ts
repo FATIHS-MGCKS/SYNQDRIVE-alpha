@@ -17,11 +17,16 @@ import {
   VehicleConnectivityRuntimeStateBuilder,
   type BuildVehicleConnectivityRuntimeStateInput,
 } from '../../vehicles/connectivity/domain/vehicle-connectivity-runtime-state.builder';
+import { DeviceConnectionWebhookConfigurationService } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.service';
 import type { VehicleConnectivityRuntimeState } from '@modules/vehicles/connectivity/domain/connectivity-domain.types';
+import { WebhookConfigurationStateEnum } from '../device-connection-webhook-configuration/device-connection-webhook-configuration.types';
 
 @Injectable()
 export class VehicleConnectivityRuntimeProjectionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly webhookConfiguration: DeviceConnectionWebhookConfigurationService,
+  ) {}
 
   async projectForVehicle(
     organizationId: string,
@@ -122,6 +127,14 @@ export class VehicleConnectivityRuntimeProjectionService {
     const raw = vehicle.latestState?.rawPayloadJson as Record<string, unknown> | null;
     const conn = extractConnectivitySnapshot(raw ?? undefined);
 
+    const webhookConfig = await this.webhookConfiguration.getForVehicle({
+      organizationId,
+      vehicleId,
+      hardwareType: vehicle.hardwareType,
+      dimoLinked: vehicle.dimoVehicleId != null,
+      tokenId: vehicle.dimoVehicle?.tokenId ?? null,
+    });
+
     const input: BuildVehicleConnectivityRuntimeStateInput = {
       vehicleId: vehicle.id,
       organizationId: vehicle.organizationId,
@@ -165,8 +178,9 @@ export class VehicleConnectivityRuntimeProjectionService {
           openEpisode.deviceBindingId === bindingId,
       },
       webhook: {
-        configured: vehicle.dimoVehicleId != null,
-        processingFailed: false,
+        configured:
+          webhookConfig.unplugTriggerState.state === WebhookConfigurationStateEnum.CONFIGURED,
+        processingFailed: webhookConfig.unplugTriggerState.state === WebhookConfigurationStateEnum.ERROR,
         recentEventIds: [],
       },
       dataCoverage: {

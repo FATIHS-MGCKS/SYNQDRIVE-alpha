@@ -1,8 +1,9 @@
-/**
- * Pure read-model helpers for DIMO OBD device connection / tamper events.
- * UI-facing only — no detection, no misuse case creation.
- */
 import { DimoConnectionStatus, DimoDeviceConnectionEventType } from '@prisma/client';
+import {
+  legacyWebhookConfiguredFromConfiguration,
+  WebhookConfigurationStateEnum,
+  type DeviceConnectionWebhookConfigurationView,
+} from './device-connection-webhook-configuration/device-connection-webhook-configuration.types';
 
 /** Short plug webhooks after unplug are often contact flutter — ignore unless DIMO confirms reconnect. */
 export const DEVICE_CONNECTION_PLUG_IMPULSE_WINDOW_MS = 120_000;
@@ -196,7 +197,9 @@ export interface DeviceConnectionSummary {
   severity: DeviceConnectionSeverity | null;
   rentalRelevant: boolean;
   activeBookingId: string | null;
+  /** @deprecated Use webhookConfiguration.unplugTriggerState — derived from trigger registry, not events. */
   webhookConfigured: DeviceConnectionWebhookStatus;
+  webhookConfiguration: import('./device-connection-webhook-configuration/device-connection-webhook-configuration.types').DeviceConnectionWebhookConfigurationView;
   lastWebhookReceivedAt: string | null;
   unpluggedCount24h: number;
   unpluggedCount7d: number;
@@ -220,6 +223,8 @@ export interface BuildDeviceConnectionSummaryInput {
    * sourced from persistent episodes — not reconstructed from the event window.
    */
   persistedOpenEpisode?: PersistedOpenEpisodeInput | null;
+  /** Trigger registry snapshot — must not be inferred from event history. */
+  webhookConfiguration?: DeviceConnectionWebhookConfigurationView;
 }
 
 export interface PersistedOpenEpisodeInput {
@@ -380,9 +385,34 @@ export function buildDeviceConnectionSummary(
     .map((e) => mapDeviceConnectionEventView(e, bookings, trips));
 
   const lastWebhookReceivedAt = sorted[0]?.observedAt.toISOString() ?? null;
-  let webhookConfigured: DeviceConnectionWebhookStatus = 'unknown';
-  if (sorted.length > 0) webhookConfigured = 'active';
-  else if (dimoLinked) webhookConfigured = 'not_configured';
+  const webhookConfiguration =
+    input.webhookConfiguration ??
+    ({
+      unplugTriggerState: {
+        state: 'UNKNOWN',
+        reasonCode: null,
+        triggerId: null,
+        eventType: 'OBD_DEVICE_UNPLUGGED',
+        active: null,
+        callbackUrl: null,
+        failureCount: null,
+      },
+      plugTriggerState: {
+        state: 'UNKNOWN',
+        reasonCode: null,
+        triggerId: null,
+        eventType: 'OBD_DEVICE_PLUGGED_IN',
+        active: null,
+        callbackUrl: null,
+        failureCount: null,
+      },
+      recoveryPolicy: 'UNPLUG_WEBHOOK_PLUG_SNAPSHOT',
+      lastSuccessfulDeliveryAt: null,
+      lastDeliveryErrorAt: null,
+      configSyncedAt: null,
+      configSource: 'DEPLOYMENT_POLICY',
+    } satisfies DeviceConnectionWebhookConfigurationView);
+  const webhookConfigured = legacyWebhookConfiguredFromConfiguration(webhookConfiguration);
 
   const unpluggedCount24h = sorted.filter(
     (e) =>
@@ -423,6 +453,7 @@ export function buildDeviceConnectionSummary(
     rentalRelevant,
     activeBookingId: activeBooking?.id ?? null,
     webhookConfigured,
+    webhookConfiguration,
     lastWebhookReceivedAt,
     unpluggedCount24h,
     unpluggedCount7d,
@@ -507,6 +538,11 @@ export function buildFleetDeviceConnectionFields(
   rentalRelevant: boolean;
   duringActiveBooking: boolean;
   eventSource: 'dimo_webhook' | 'none';
+  unplugTriggerState: DeviceConnectionWebhookConfigurationView['unplugTriggerState'];
+  plugTriggerState: DeviceConnectionWebhookConfigurationView['plugTriggerState'];
+  recoveryPolicy: DeviceConnectionWebhookConfigurationView['recoveryPolicy'];
+  lastSuccessfulDeliveryAt: string | null;
+  lastDeliveryErrorAt: string | null;
 } {
   return {
     lastDeviceUnpluggedAt: summary.lastDeviceUnpluggedAt,
@@ -520,5 +556,10 @@ export function buildFleetDeviceConnectionFields(
     duringActiveBooking:
       summary.openUnpluggedEpisode && summary.activeBookingId != null,
     eventSource: summary.lastWebhookReceivedAt ? 'dimo_webhook' : 'none',
+    unplugTriggerState: summary.webhookConfiguration.unplugTriggerState,
+    plugTriggerState: summary.webhookConfiguration.plugTriggerState,
+    recoveryPolicy: summary.webhookConfiguration.recoveryPolicy,
+    lastSuccessfulDeliveryAt: summary.webhookConfiguration.lastSuccessfulDeliveryAt,
+    lastDeliveryErrorAt: summary.webhookConfiguration.lastDeliveryErrorAt,
   };
 }
