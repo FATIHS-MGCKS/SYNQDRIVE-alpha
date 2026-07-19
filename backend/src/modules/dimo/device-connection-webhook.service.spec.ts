@@ -174,7 +174,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       rawPayload: { signal: 'obdIsPluggedIn', value: true },
     });
 
-    expect(result.outcome).toBe('ignored');
+    expect(result.outcome).toBe('ignored_by_policy');
     expect(upsert).not.toHaveBeenCalled();
   });
 
@@ -196,7 +196,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       rawPayload: { signal: 'obdIsPluggedIn', value: true },
     });
 
-    expect(result.outcome).toBe('ignored');
+    expect(result.outcome).toBe('ignored_by_policy');
     expect(upsert).not.toHaveBeenCalled();
   });
 
@@ -265,7 +265,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       rawPayload: { signal: 'obdIsPluggedIn', value: 1 },
     });
 
-    expect(result.outcome).toBe('ignored');
+    expect(result.outcome).toBe('ignored_by_policy');
     expect(upsert).not.toHaveBeenCalled();
   });
 
@@ -338,5 +338,35 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     });
     expect(result.outcome).toBe('duplicate');
     expect(result.eventType).toBe(DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN);
+  });
+
+  it('propagates episode sync failures instead of swallowing as ignored', async () => {
+    const { upsert, update, findFirst } = mockPrisma();
+    const observedAt = new Date('2026-06-28T12:00:00Z');
+    upsert.mockResolvedValue({
+      id: 'evt-1',
+      createdAt: observedAt,
+      updatedAt: observedAt,
+    });
+    const episodeService = mockEpisodeService();
+    episodeService.openFromUnplugEvent.mockRejectedValue(new Error('episode db error'));
+
+    const service = new DeviceConnectionWebhookService(
+      {
+        dimoDeviceConnectionEvent: { upsert, update, findFirst },
+        vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
+      } as never,
+      episodeService as never,
+    );
+
+    await expect(
+      service.processValidatedWebhookEvent({
+        vehicle: { id: 'v1', organizationId: 'o1' },
+        tokenId: 42,
+        pluggedIn: false,
+        observedAt,
+        rawPayload: { signal: 'obdIsPluggedIn', value: false },
+      }),
+    ).rejects.toThrow('episode db error');
   });
 });

@@ -5,9 +5,10 @@
 | **Audit** | `docs/audits/fleet-connectivity-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/fleet-connectivity-production-readiness-2026-07` @ `75d316f1` |
 | **Implementation branch** | `fix/fleet-connectivity-production-readiness-2026-07` |
+| **Phase 2 branch** | `cursor/webhook-processing-states-2e0d` (prompts 1–10) |
 | **Verdict (audit)** | **CONDITIONALLY_READY** (see post-remediation audit) |
 | **Production blockers** | `FC-P0-01`, `FC-P0-03`, `FC-C-04` |
-| **Mode** | Backend truth first → API → UI (18 prompts) |
+| **Mode** | Backend truth first → API → UI (18 prompts + 10 follow-up prompts) |
 
 ---
 
@@ -110,7 +111,7 @@
 | 5 | Snapshot + Telemetry Episode Closure | **DONE** | `fix(connectivity): resolve unplug episodes from explicit snapshot plug signals` + `fix(connectivity): infer device reconnection from sustained telemetry` | **yes** | snapshot + telemetry resolution | yes | no | no | high |
 | 5a | Read-only episode reconciliation audit | **DONE** | `feat(connectivity): add read-only device episode reconciliation audit` | — | fixture classifier | yes | no | no | low |
 | 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
-| 7 | Webhook Inbox Retry / DLQ | **PARTIAL** | Prompt 18 metrics/alerts | maybe | failure inject | yes | yes | no | med |
+| 7 | Webhook Inbox Retry / DLQ | **IN PROGRESS** | Prompt 1: inbox + processing states | **yes** (`20260719160000_device_connection_webhook_inbox`) | inbox + webhook specs | yes | yes | no | med |
 | 8 | Provider Link + Authorization | **DONE** | `fix(connectivity): canonicalize provider link authorization and consent` | no | provider-link builder + projection | yes | no | no | med |
 | 9 | Kanonische Freshness Fleet API | **DONE** | `fix(connectivity): unify telemetry freshness across connectivity consumers` | no | boundary + cross-surface | no | no | no | low |
 | 10 | Capability-aware Coverage | **DONE** | `08c68b26` | no | ICE/EV matrix | yes | yes | no | med |
@@ -122,6 +123,36 @@
 | 16 | Drawer A–E + i18n | **DONE** | `7cb2b40c` | no | wireframes | no | no | yes | med |
 | 17 | Mobile / i18n / a11y | **DONE** | `7cb2b40c` | no | UI tests | no | no | yes | low |
 | 18 | Observability + Staging Replay | **DONE** | `docs(connectivity): finalize…` | no | 180 BE connectivity tests | runbook | yes | no | high |
+
+---
+
+## Phase 2 — Follow-up prompts (10)
+
+| # | Ziel | Status | Commit | Migration | Tests |
+|---|------|--------|--------|-----------|-------|
+| 1 | Webhook inbox + reliable processing states | **DONE** | `fix(connectivity): persist reliable webhook processing states` | `20260719160000_device_connection_webhook_inbox` | inbox + webhook specs |
+
+### Prompt 1 — Webhook Inbox (2026-07-19)
+
+**Problem:** `DeviceConnectionWebhookService` returned `{ outcome: 'ignored' }` for technical failures — not retryable.
+
+**Lösung:**
+- Neue Tabelle `device_connection_webhook_inbox` mit `processingStatus` (RECEIVED → VALIDATED → PROCESSED / IGNORED_BY_POLICY / RETRYABLE_FAILED / PERMANENTLY_FAILED / DEAD_LETTER)
+- `DeviceConnectionWebhookInboxService` — persist-first intake, klare Trennung policy-ignore vs technical failure vs unknown vehicle mapping
+- `DeviceConnectionWebhookService.processValidatedWebhookEvent` — technische Fehler werfen statt `ignored`
+- Controller: Device-Connection-Webhooks vor Vehicle-Lookup → Inbox übernimmt Mapping
+- **Kein Retry-Worker** in diesem Prompt (Retry-Felder `nextRetryAt`, `processingAttempts` vorbereitet)
+
+**Neue Dateien:**
+- `backend/src/modules/dimo/device-connection-webhook-inbox.service.ts`
+- `backend/src/modules/dimo/device-connection-webhook-inbox.types.ts`
+- `backend/prisma/migrations/20260719160000_device_connection_webhook_inbox/`
+
+**Abnahme:**
+- ✅ Kein technischer Fehler als `ignored`
+- ✅ Jedes valide Event hat dauerhaften `processingStatus`
+- ✅ Duplicate → kein zweites Domain-Event (bestehende dedup bucket Logik)
+- ✅ Backend Build + Tests grün
 
 ### Abhängigkeitskette
 
@@ -251,6 +282,7 @@
 | 2026-07-19 | 2 | `12bd652a` | Regressionstests A–L, keine Produktlogik geändert |
 | 2026-07-19 | 3 | `1e41783c` | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
 | 2026-07-19 | 4 | `3bf06880` | VehicleConnectivityRuntimeStateBuilder (pure domain) |
+| 2026-07-19 | Phase2-1 | `fix(connectivity): persist reliable webhook processing states` | Webhook inbox + processing states; migration `20260719160000` |
 
 ---
 

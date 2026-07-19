@@ -13,6 +13,7 @@ import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-se
 import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
 import { RpmWebhookQueryService } from './rpm-webhook-query.service';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
@@ -47,6 +48,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoTriggersService,
     DimoTriggersBootstrapService,
     DeviceConnectionWebhookService,
+    DeviceConnectionWebhookInboxService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeReconciliationService,
     DeviceConnectionEpisodeReconciliationApplyService,

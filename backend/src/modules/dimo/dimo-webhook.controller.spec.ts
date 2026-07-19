@@ -1,10 +1,12 @@
 import { ServiceUnavailableException } from '@nestjs/common';
+import { DeviceConnectionWebhookProcessingStatus } from '@prisma/client';
 import { DimoWebhookController } from './dimo-webhook.controller';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 
 function makeController(overrides?: {
   prisma?: Partial<PrismaServiceMock>;
   deviceConnection?: Partial<DeviceConnectionMock>;
+  deviceConnectionInbox?: Partial<DeviceConnectionInboxMock>;
   rpmWebhookCandidate?: Partial<RpmWebhookMock>;
   verificationToken?: string;
 }) {
@@ -16,6 +18,15 @@ function makeController(overrides?: {
   const deviceConnection: DeviceConnectionMock = {
     ingestObdPlugStateChange: jest.fn().mockResolvedValue({ outcome: 'created', eventId: 'e1' }),
     ...overrides?.deviceConnection,
+  };
+  const deviceConnectionInbox: DeviceConnectionInboxMock = {
+    intakeDeviceConnectionWebhook: jest.fn().mockResolvedValue({
+      outcome: 'created',
+      inboxId: 'inbox-1',
+      processingStatus: DeviceConnectionWebhookProcessingStatus.PROCESSED,
+      eventId: 'e1',
+    }),
+    ...overrides?.deviceConnectionInbox,
   };
   const rpmWebhookCandidate: RpmWebhookMock = {
     ingestRpmThresholdEvent: jest.fn().mockResolvedValue({
@@ -34,9 +45,10 @@ function makeController(overrides?: {
     prisma as never,
     dtcService as never,
     deviceConnection as never,
+    deviceConnectionInbox as never,
     rpmWebhookCandidate as never,
   );
-  return { controller, prisma, deviceConnection, rpmWebhookCandidate, dtcService };
+  return { controller, prisma, deviceConnection, deviceConnectionInbox, rpmWebhookCandidate, dtcService };
 }
 
 type PrismaServiceMock = {
@@ -46,6 +58,10 @@ type PrismaServiceMock = {
 
 type DeviceConnectionMock = {
   ingestObdPlugStateChange: jest.Mock;
+};
+
+type DeviceConnectionInboxMock = {
+  intakeDeviceConnectionWebhook: jest.Mock;
 };
 
 type RpmWebhookMock = {
@@ -113,7 +129,7 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
     delete process.env.DIMO_WEBHOOK_SECRET;
 
     const vehicle = { id: 'veh-1', organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'PETROL' };
-    const { controller, prisma, deviceConnection } = makeController({
+    const { controller, prisma, deviceConnectionInbox } = makeController({
       prisma: {
         vehicle: { findFirst: jest.fn().mockResolvedValue(vehicle) },
       },
@@ -134,18 +150,9 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
 
     const result = await controller.handleWebhook({ rawBody: Buffer.from(JSON.stringify(body)) } as never, body, undefined, mockRes);
 
-    expect(prisma.vehicle.findFirst).toHaveBeenCalledWith({
-      where: { dimoVehicle: { tokenId: 777 } },
-      select: {
-        id: true,
-        organizationId: true,
-        hardwareType: true,
-        fuelType: true,
-      },
-    });
-    expect(deviceConnection.ingestObdPlugStateChange).toHaveBeenCalledWith(
+    expect(prisma.vehicle.findFirst).not.toHaveBeenCalled();
+    expect(deviceConnectionInbox.intakeDeviceConnectionWebhook).toHaveBeenCalledWith(
       expect.objectContaining({
-        vehicle: { id: 'veh-1', organizationId: 'org-1' },
         tokenId: 777,
         pluggedIn: false,
       }),
@@ -233,7 +240,7 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
     process.env.DIMO_WEBHOOK_SECRET = 'hmac-secret';
 
     const vehicle = { id: 'veh-1', organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'PETROL' };
-    const { controller, deviceConnection } = makeController({
+    const { controller, deviceConnectionInbox } = makeController({
       verificationToken: 'synqdrive-prod-token',
       prisma: {
         vehicle: { findFirst: jest.fn().mockResolvedValue(vehicle) },
@@ -258,7 +265,33 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
     );
 
     expect(result).toMatchObject({ status: 'processed', type: 'device_connection' });
-    expect(deviceConnection.ingestObdPlugStateChange).toHaveBeenCalled();
+    expect(deviceConnectionInbox.intakeDeviceConnectionWebhook).toHaveBeenCalled();
+  });
+
+  it('rejects invalid HMAC signature without persisting inbox row', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN = 'synqdrive-prod-token';
+    process.env.DIMO_WEBHOOK_SECRET = 'hmac-secret';
+
+    const { controller, deviceConnectionInbox } = makeController({
+      verificationToken: 'synqdrive-prod-token',
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: { signal: { name: 'obdIsPluggedIn', value: false } },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      'invalid-signature',
+      mockRes,
+    );
+
+    expect(result).toEqual({ status: 'rejected', reason: 'invalid_signature' });
+    expect(deviceConnectionInbox.intakeDeviceConnectionWebhook).not.toHaveBeenCalled();
   });
 
   it('rejects trigger payloads in production when verification token is missing', async () => {
