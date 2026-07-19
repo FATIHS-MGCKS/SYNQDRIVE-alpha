@@ -103,7 +103,7 @@
 
 | # | Ziel | Status | Commit | Migration | Tests | VPS | DIMO | UI | Risiko |
 |---|------|--------|--------|-----------|-------|-----|------|-----|--------|
-| 1 | Baseline + Remediation-Tracking | **DONE** | `16bdead7` | — | dokumentiert | — | — | — | low |
+| 1 | Baseline + Remediation-Tracking | **DONE** | `c1bcacb5` | — | dokumentiert | — | — | — | low |
 | 2 | VehicleConnectivityRuntimeStateBuilder | pending | — | no | unit matrix | no | no | no | med |
 | 3 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
 | 4 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
@@ -182,7 +182,7 @@
 
 | Datum | Prompt | Commit | Notiz |
 |-------|--------|--------|-------|
-| 2026-07-19 | 1 | `16bdead7` | Baseline branch, Audit-Import, redaktionelle Audit-Korrekturen, dieses Dokument |
+| 2026-07-19 | 1 | `c1bcacb5` | Baseline branch, Audit-Import, redaktionelle Audit-Korrekturen, dieses Dokument |
 
 ---
 
