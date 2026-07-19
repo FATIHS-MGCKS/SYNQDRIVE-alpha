@@ -112,7 +112,7 @@
 | 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
 | 7 | Webhook Inbox Retry / DLQ | pending | — | maybe | failure inject | yes | yes | no | med |
 | 8 | Provider Link + Authorization | **DONE** | `fix(connectivity): canonicalize provider link authorization and consent` | no | provider-link builder + projection | yes | no | no | med |
-| 9 | Kanonische Freshness Fleet API | pending | — | no | 48h parity | no | no | no | low |
+| 9 | Kanonische Freshness Fleet API | **DONE** | `fix(connectivity): unify telemetry freshness across connectivity consumers` | no | boundary + cross-surface | no | no | no | low |
 | 10 | Capability-aware Coverage | pending | — | no | ICE/EV matrix | yes | yes | no | med |
 | 11 | Alerts + Resolution Wiring | pending | — | yes | episode→resolve | yes | no | no | med |
 | 12 | Cross-Surface Consumer Migration | pending | — | no | consumer CSV | yes | no | yes | high |

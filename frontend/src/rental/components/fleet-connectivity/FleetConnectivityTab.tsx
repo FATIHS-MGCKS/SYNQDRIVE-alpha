@@ -194,6 +194,15 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         active: statusFilter === 'standby',
       },
       {
+        id: 'signal_delayed',
+        labelKey: 'fleetConnectivity.kpi.signalDelayed',
+        value: s?.signalDelayed ?? 0,
+        status: 'watch',
+        icon: Activity,
+        onClick: () => setStatusFilter('signal_delayed'),
+        active: statusFilter === 'signal_delayed',
+      },
+      {
         id: 'offline',
         labelKey: 'fleetConnectivity.kpi.offline',
         value: s?.offline ?? 0,
@@ -480,6 +489,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
             <option value="connected">Connected</option>
             <option value="online">Online</option>
             <option value="standby">Standby</option>
+            <option value="signal_delayed">Signal delayed</option>
             <option value="offline">Offline</option>
             <option value="not_connected">Not connected</option>
           </select>

@@ -171,6 +171,30 @@ Telemetry freshness is a **separate dimension** — live telemetry with missing 
 - `VehicleConnectivityRuntimeProjectionService` — loads consent + mapping + org authorization
 - `VehicleConnectivityRuntimeStateBuilder` — consumes `ProviderLinkStateResult` (no `dimoVehicleId` shortcut)
 
+## Telemetry freshness unification (Prompt 13)
+
+Single resolver: `telemetry-freshness.resolver.ts` (backend) / `telemetryFreshness.ts` (frontend).
+
+### Thresholds (canonical)
+
+| State | Age |
+|-------|-----|
+| LIVE (`live`) | < 15 min |
+| STANDBY (`standby`) | 15 min – 24 h |
+| SOFT_OFFLINE (`signal_delayed`) | 24 h – 48 h |
+| OFFLINE (`offline`) | ≥ 48 h |
+| UNKNOWN (`no_signal`) | no usable timestamp |
+
+### Timestamp priority
+
+1. `sourceTimestamp` (provider observedAt)
+2. Last valid telemetry at
+3. `receivedAt` — blocked when backfill lag exceeds 15 min vs observed
+4. `DimoVehicle.lastSignal`
+5. `lastSeenAt` / `updatedAt` (lowest trust)
+
+Fleet Connectivity API exposes `telemetryFreshness` (canonical) + legacy `connectionStatus` mapping (`signal_delayed` added).
+
 ## Reconciliation audit (Prompt 6)
 
 Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`

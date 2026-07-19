@@ -1,6 +1,7 @@
 export type FleetConnectionStatus =
   | 'online'
   | 'standby'
+  | 'signal_delayed'
   | 'offline'
   | 'not_connected';
 
@@ -11,6 +12,7 @@ export type FleetReadinessLevel = 'good' | 'watch' | 'warning' | 'no_data';
 export interface FleetConnectivityThresholds {
   onlineMaxMinutes: number;
   standbyMaxHours: number;
+  signalDelayedMaxHours: number;
 }
 
 export interface FleetConnectivitySignals {
@@ -61,6 +63,13 @@ export interface FleetConnectivityVehicleDto {
   connectionType: string;
   sourceType: string | null;
   connectionStatus: FleetConnectionStatus;
+  /** Canonical telemetry freshness — same vocabulary as runtime state builder. */
+  telemetryFreshness:
+    | 'live'
+    | 'standby'
+    | 'signal_delayed'
+    | 'offline'
+    | 'no_signal';
   statusNote: string;
   lastSeenAt: string | null;
   lastSyncedAt: string | null;
@@ -97,6 +106,7 @@ export interface FleetConnectivitySummary {
   total: number;
   online: number;
   standby: number;
+  signalDelayed: number;
   offline: number;
   notConnected: number;
   connected: number;

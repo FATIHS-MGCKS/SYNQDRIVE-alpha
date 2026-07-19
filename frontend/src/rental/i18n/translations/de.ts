@@ -74,6 +74,7 @@ export const de: Record<TranslationKey, string> = {
   'fleetConnectivity.kpi.connected': 'Verbunden',
   'fleetConnectivity.kpi.online': 'Online',
   'fleetConnectivity.kpi.standby': 'Standby',
+  'fleetConnectivity.kpi.signalDelayed': 'Signal verzögert',
   'fleetConnectivity.kpi.offline': 'Offline',
   'fleetConnectivity.kpi.notConnected': 'Nicht verbunden',
   'fleetConnectivity.kpi.obdUnplugged': 'OBD getrennt',

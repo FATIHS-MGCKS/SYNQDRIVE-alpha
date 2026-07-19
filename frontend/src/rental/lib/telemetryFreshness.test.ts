@@ -19,9 +19,12 @@ describe('telemetry freshness thresholds', () => {
 
   it('classifyTelemetryFreshness boundaries', () => {
     expect(classifyTelemetryFreshness(null)).toBe('no_signal');
-    expect(classifyTelemetryFreshness(5 * 60_000)).toBe('live');
-    expect(classifyTelemetryFreshness(60 * 60_000)).toBe('standby');
-    expect(classifyTelemetryFreshness(30 * 60 * 60_000)).toBe('signal_delayed');
+    expect(classifyTelemetryFreshness(0)).toBe('live');
+    expect(classifyTelemetryFreshness(TELEMETRY_LIVE_MAX_MS - 1)).toBe('live');
+    expect(classifyTelemetryFreshness(TELEMETRY_STANDBY_MAX_MS - 60_000)).toBe('standby');
+    expect(classifyTelemetryFreshness(TELEMETRY_STANDBY_MAX_MS)).toBe('signal_delayed');
+    expect(classifyTelemetryFreshness(TELEMETRY_DELAYED_MAX_MS - 60_000)).toBe('signal_delayed');
+    expect(classifyTelemetryFreshness(TELEMETRY_DELAYED_MAX_MS)).toBe('offline');
     expect(classifyTelemetryFreshness(60 * 60 * 60_000)).toBe('offline');
   });
 });
@@ -85,6 +88,14 @@ describe('resolveTelemetryFreshness', () => {
   it('prefers the live lastSignal timestamp over a stale interpreted signalAgeMs', () => {
     const f = resolveTelemetryFreshness({ lastSignal: minutesAgo(3), signalAgeMs: 99 * 60 * 60_000 });
     expect(f.freshness).toBe('live');
+  });
+
+  it('delayed snapshot: stale observed with fresh received stays stale', () => {
+    const f = resolveTelemetryFreshness({
+      providerObservedAt: hoursAgo(30),
+      receivedAt: new Date().toISOString(),
+    });
+    expect(f.freshness).toBe('signal_delayed');
   });
 
   it('localizes labels (de) for standby', () => {

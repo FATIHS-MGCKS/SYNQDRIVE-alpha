@@ -22,6 +22,7 @@ import {
 } from '../../vehicles/connectivity/domain/provider-link-evidence.assembler';
 import { ProviderLinkStateBuilder } from '../../vehicles/connectivity/domain/provider-link-state.builder';
 import type { VehicleConnectivityRuntimeState } from '@modules/vehicles/connectivity/domain/connectivity-domain.types';
+import { resolveTelemetryFreshness as resolveCanonicalTelemetryFreshness } from '../../vehicles/telemetry-freshness.resolver';
 
 @Injectable()
 export class VehicleConnectivityRuntimeProjectionService {
@@ -38,7 +39,7 @@ export class VehicleConnectivityRuntimeProjectionService {
         organizationId: true,
         hardwareType: true,
         dimoVehicleId: true,
-        dimoVehicle: { select: { connectionStatus: true, tokenId: true } },
+        dimoVehicle: { select: { connectionStatus: true, tokenId: true, lastSignal: true } },
         latestState: {
           select: {
             lastSeenAt: true,
@@ -177,13 +178,24 @@ export class VehicleConnectivityRuntimeProjectionService {
     const raw = vehicle.latestState?.rawPayloadJson as Record<string, unknown> | null;
     const conn = extractConnectivitySnapshot(raw ?? undefined);
 
+    const canonicalTelemetry = resolveCanonicalTelemetryFreshness(
+      {
+        providerObservedAt: vehicle.latestState?.sourceTimestamp ?? null,
+        lastValidTelemetryAt:
+          vehicle.latestState?.sourceTimestamp ?? vehicle.latestState?.lastSeenAt ?? null,
+        receivedAt: vehicle.latestState?.providerFetchedAt ?? null,
+        lastSignal: vehicle.dimoVehicle?.lastSignal ?? null,
+        latestStateUpdatedAt: vehicle.latestState?.lastSeenAt ?? null,
+      },
+    );
+
     const input: BuildVehicleConnectivityRuntimeStateInput = {
       vehicleId: vehicle.id,
       organizationId: vehicle.organizationId,
       provider: { link: providerLink },
       telemetry: {
-        lastTelemetryAt: vehicle.latestState?.sourceTimestamp?.toISOString() ?? null,
-        lastProviderObservedAt: vehicle.latestState?.sourceTimestamp?.toISOString() ?? null,
+        lastTelemetryAt: canonicalTelemetry.observedAtIso,
+        lastProviderObservedAt: canonicalTelemetry.observedAtIso,
         lastReceivedAt: vehicle.latestState?.providerFetchedAt?.toISOString() ?? null,
       },
       binding: {
@@ -208,7 +220,7 @@ export class VehicleConnectivityRuntimeProjectionService {
       },
       snapshotPlug: {
         obdIsPluggedIn: conn.obdIsPluggedIn,
-        observedAt: vehicle.latestState?.sourceTimestamp?.toISOString() ?? null,
+        observedAt: canonicalTelemetry.observedAtIso,
         sameBindingAsEpisode:
           openEpisode?.deviceBindingId == null ||
           bindingId == null ||
