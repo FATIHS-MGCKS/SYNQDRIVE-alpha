@@ -87,11 +87,15 @@ describe('connectivity domain types', () => {
         'DEVICE_UNPLUG_WEBHOOK',
         'DEVICE_RECONNECTED_SNAPSHOT',
         'AUTHORIZATION_EXPIRED',
+        'CONSENT_MISSING',
+        'TOKEN_MISSING',
+        'PROVIDER_REVOKED',
+        'LINK_ACTIVE',
         'STATE_CONFLICT',
         'MANUAL_REVIEW_REQUIRED',
       ]),
     );
-    expect(CONNECTIVITY_REASON_CODES).toHaveLength(19);
+    expect(CONNECTIVITY_REASON_CODES).toHaveLength(22);
   });
 
   it('stores machine codes only — no user-facing label fields on runtime state', () => {
