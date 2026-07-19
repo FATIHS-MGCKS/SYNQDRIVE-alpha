@@ -40,10 +40,9 @@ import { fhs } from '../fleet-health-service/fleet-health-service-shell';
 import { FleetConnectivityDetailDrawer } from './FleetConnectivityDetailDrawer';
 import {
   ConnectionStatusChip,
-  DeviceConnectionWebhookChip,
+  ConnectivityRuntimeChip,
+  CoverageStateChip,
   JammingSnapshotChip,
-  ObdRowChip,
-  ReadinessChip,
 } from './fleet-connectivity.badges';
 import {
   type FleetConnectionScopeFilter,
@@ -194,6 +193,15 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         active: statusFilter === 'standby',
       },
       {
+        id: 'signal_delayed',
+        labelKey: 'fleetConnectivity.kpi.signalDelayed',
+        value: s?.signalDelayed ?? 0,
+        status: 'watch',
+        icon: Activity,
+        onClick: () => setStatusFilter('signal_delayed'),
+        active: statusFilter === 'signal_delayed',
+      },
+      {
         id: 'offline',
         labelKey: 'fleetConnectivity.kpi.offline',
         value: s?.offline ?? 0,
@@ -232,14 +240,15 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         hintKey: 'fleetConnectivity.kpi.hint.webhook',
       },
       {
-        id: 'readiness',
-        labelKey: 'fleetConnectivity.kpi.avgReadiness',
-        value: s?.avgReadinessScore != null ? `${s.avgReadinessScore}%` : '—',
+        id: 'coverage',
+        labelKey: 'fleetConnectivity.kpi.avgCoverage',
+        value:
+          s?.avgSignalCoverage != null ? `${s.avgSignalCoverage}%` : '—',
         status: 'info',
         icon: Radio,
         onClick: () => setReadinessFilter('watch'),
         active: readinessFilter === 'watch',
-        hintKey: 'fleetConnectivity.kpi.hint.readiness',
+        hintKey: 'fleetConnectivity.kpi.hint.coverage',
       },
     ],
     [s, statusFilter, signalFilter, readinessFilter],
@@ -255,7 +264,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
       {
         key: 'status',
         header: t('fleetConnectivity.col.status'),
-        cell: (v) => <ConnectionStatusChip status={v.connectionStatus} />,
+        cell: (v) => <ConnectionStatusChip runtime={v.connectivityRuntime} />,
       },
       {
         key: 'freshness',
@@ -275,33 +284,22 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         ),
       },
       {
-        key: 'readiness',
-        header: t('fleetConnectivity.col.readiness'),
-        className: 'hidden lg:table-cell',
-        cell: (v) => <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />,
-      },
-      {
         key: 'coverage',
         header: t('fleetConnectivity.col.coverage'),
-        className: 'hidden xl:table-cell',
-        numeric: true,
+        className: 'hidden lg:table-cell',
         cell: (v) => (
-          <span className="text-[12px] tabular-nums text-muted-foreground">
-            {v.signalCoveragePercent}%
-          </span>
+          <CoverageStateChip
+            state={v.coverageState}
+            freshCount={v.freshSignalCount}
+            expectedCount={v.expectedSignalCount}
+          />
         ),
       },
       {
-        key: 'obd',
-        header: t('fleetConnectivity.col.obd'),
+        key: 'connectivityRuntime',
+        header: t('fleetConnectivity.col.runtime'),
         className: 'hidden lg:table-cell',
-        cell: (v) => <ObdRowChip plugged={v.obdIsPluggedIn} />,
-      },
-      {
-        key: 'deviceWebhook',
-        header: t('fleetConnectivity.col.webhook'),
-        className: 'hidden xl:table-cell',
-        cell: (v) => <DeviceConnectionWebhookChip device={v.deviceConnection} />,
+        cell: (v) => <ConnectivityRuntimeChip runtime={v.connectivityRuntime} />,
       },
       {
         key: 'station',
@@ -480,6 +478,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
             <option value="connected">Connected</option>
             <option value="online">Online</option>
             <option value="standby">Standby</option>
+            <option value="signal_delayed">Signal delayed</option>
             <option value="offline">Offline</option>
             <option value="not_connected">Not connected</option>
           </select>
@@ -561,16 +560,22 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
               >
                 <div className="flex items-start justify-between gap-2">
                   <ConnectivityVehicleIdentity vehicle={v} />
-                  <ConnectionStatusChip status={v.connectionStatus} />
+                  <ConnectionStatusChip runtime={v.connectivityRuntime} />
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />
-                  <ObdRowChip plugged={v.obdIsPluggedIn} />
-                  <DeviceConnectionWebhookChip device={v.deviceConnection} />
+                  <CoverageStateChip
+                    state={v.coverageState}
+                    freshCount={v.freshSignalCount}
+                    expectedCount={v.expectedSignalCount}
+                  />
+                  <ConnectivityRuntimeChip runtime={v.connectivityRuntime} />
                   <JammingSnapshotChip count={v.jammingDetectedCount} />
                 </div>
                 <p className={cn(META_TEXT_CLASS, 'mt-2 tabular-nums')}>
-                  {v.freshnessLabel} · {v.signalCoveragePercent}% {t('fleetConnectivity.col.coverage').toLowerCase()}
+                  {v.freshnessLabel}
+                  {v.coveragePercent != null
+                    ? ` · ${v.freshSignalCount}/${v.expectedSignalCount} fresh`
+                    : ''}
                 </p>
               </button>
             ))}

@@ -3,7 +3,7 @@
  * Events remain immutable; current state is episode-backed, not window-derived.
  */
 import { createHash } from 'crypto';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DeviceConnectionEpisodeLifecycleAction,
   DeviceConnectionEpisodeOpenedReason,
@@ -24,6 +24,7 @@ import {
   evaluateLateUnplugAgainstRecovery,
   evaluatePlugCloseEligibility,
 } from './device-connection-event-order';
+import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
 
 export type EpisodeOpenOutcome =
   | 'created'
@@ -84,7 +85,10 @@ export function hashProviderDeviceId(provider: string, tokenId: number): string 
 export class DeviceConnectionEpisodeService {
   private readonly logger = new Logger(DeviceConnectionEpisodeService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly connectivityAlerts?: ConnectivityAlertService,
+  ) {}
 
   async resolveCanonicalBinding(
     vehicleId: string,
@@ -395,6 +399,16 @@ export class DeviceConnectionEpisodeService {
         `Opened device connection episode ${created.id} for vehicle ${input.vehicleId}`,
       );
 
+      await this.emitDeviceUnplugAlert({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        provider,
+        episodeId: created.id,
+        stateVersion: created.stateVersion,
+        deviceBindingId: binding.bindingId,
+        observedAt: input.observedAt,
+      });
+
       return {
         outcome: superseded ? 'superseded_and_created' : 'created',
         episodeId: created.id,
@@ -494,7 +508,81 @@ export class DeviceConnectionEpisodeService {
       },
     });
 
+    await this.emitDeviceReconnectAlert({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider,
+      episodeId: open!.id,
+      deviceBindingId: open!.deviceBindingId,
+      recoverySource: 'plug_webhook',
+      resolutionMethod: DeviceConnectionEpisodeResolutionMethod.EXPLICIT_PLUG_WEBHOOK,
+      observedAt: input.observedAt,
+    });
+
     return { outcome: 'resolved', episodeId: open!.id };
+  }
+
+  private async emitDeviceUnplugAlert(input: {
+    organizationId: string;
+    vehicleId: string;
+    provider: string;
+    episodeId: string;
+    stateVersion: number;
+    deviceBindingId: string | null;
+    observedAt: Date;
+  }): Promise<void> {
+    if (!this.connectivityAlerts) return;
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, organizationId: input.organizationId },
+      select: { licensePlate: true, make: true, model: true },
+    });
+    const label =
+      [vehicle?.make, vehicle?.model].filter(Boolean).join(' ').trim() ||
+      input.vehicleId;
+    await this.connectivityAlerts.onDeviceUnplugged({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider: input.provider,
+      episodeId: input.episodeId,
+      stateVersion: input.stateVersion,
+      deviceBindingId: input.deviceBindingId,
+      observedAt: input.observedAt,
+      label,
+      licensePlate: vehicle?.licensePlate,
+    });
+  }
+
+  private async emitDeviceReconnectAlert(input: {
+    organizationId: string;
+    vehicleId: string;
+    provider: string;
+    episodeId: string;
+    deviceBindingId: string | null;
+    recoverySource: 'plug_webhook' | 'snapshot_obd' | 'telemetry_resumed';
+    resolutionMethod: DeviceConnectionEpisodeResolutionMethod;
+    observedAt: Date;
+  }): Promise<void> {
+    if (!this.connectivityAlerts) return;
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, organizationId: input.organizationId },
+      select: { licensePlate: true, make: true, model: true },
+    });
+    const label =
+      [vehicle?.make, vehicle?.model].filter(Boolean).join(' ').trim() ||
+      input.vehicleId;
+    await this.connectivityAlerts.onEpisodeRecovered({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider: input.provider,
+      episodeId: input.episodeId,
+      stateVersion: 1,
+      deviceBindingId: input.deviceBindingId,
+      recoverySource: input.recoverySource,
+      resolutionMethod: input.resolutionMethod,
+      observedAt: input.observedAt,
+      label,
+      licensePlate: vehicle?.licensePlate,
+    });
   }
 
   private async supersedeEpisode(

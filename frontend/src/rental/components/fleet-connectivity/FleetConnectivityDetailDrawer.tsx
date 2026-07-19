@@ -5,7 +5,7 @@ import type { FleetConnectivityVehicle } from '../../../lib/api';
 import { formatOdometerKmFloor } from '../../../lib/formatVehicleDisplay';
 import {
   ConnectionStatusChip,
-  ReadinessChip,
+  CoverageStateChip,
   SignalStateChip,
 } from './fleet-connectivity.badges';
 import {
@@ -21,7 +21,7 @@ import {
   formatDeviceConnectionTimestamp,
   formatDurationMs,
 } from '../../lib/device-connection-ui';
-import { DeviceConnectionWebhookChip } from './fleet-connectivity.badges';
+import { DeviceConnectionWebhookChip, ConnectivityRuntimeChip } from './fleet-connectivity.badges';
 
 function DetailSection({
   title,
@@ -89,20 +89,24 @@ export function FleetConnectivityDetailDrawer({
           {vehicle.licensePlate ?? '—'} · {vehicle.vin}
         </span>
       }
-      status={<ConnectionStatusChip status={vehicle.connectionStatus} />}
+      status={<ConnectionStatusChip runtime={vehicle.connectivityRuntime} />}
     >
       <div className="space-y-6">
         <div className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5 text-[12px] text-muted-foreground flex gap-2">
           <Info className="w-4 h-4 shrink-0 mt-0.5" />
           <p>
-            Read-only technical view. Telemetry readiness reflects data completeness
-            and freshness — not mechanical vehicle health.
+            Read-only technical view. Data coverage reflects capability-aware
+            signal freshness — not mechanical vehicle health.
           </p>
         </div>
 
         <DetailSection title="Connection summary">
           <div className="surface-premium rounded-xl p-3 space-y-2.5">
-            <DetailRow label="Status" value={<ConnectionStatusChip status={vehicle.connectionStatus} />} />
+            <DetailRow label="Status" value={<ConnectionStatusChip runtime={vehicle.connectivityRuntime} />} />
+            <DetailRow
+              label="Runtime"
+              value={<ConnectivityRuntimeChip runtime={vehicle.connectivityRuntime} />}
+            />
             <DetailRow label="Note" value={vehicle.statusNote} />
             <DetailRow label="Provider" value={vehicle.provider} />
             <DetailRow label="Connection type" value={vehicle.connectionType} />
@@ -146,18 +150,35 @@ export function FleetConnectivityDetailDrawer({
           </div>
         </DetailSection>
 
-        <DetailSection title="Telemetry readiness">
+        <DetailSection title="Data coverage">
           <div className="surface-premium rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <ReadinessChip level={vehicle.readinessLevel} score={vehicle.readinessScore} />
-              <span className="text-[11px] text-muted-foreground tabular-nums">
-                Coverage {vehicle.signalCoveragePercent}%
-              </span>
+              <CoverageStateChip
+                state={vehicle.coverageState}
+                freshCount={vehicle.freshSignalCount}
+                expectedCount={vehicle.expectedSignalCount}
+              />
+              {vehicle.coveragePercent != null && (
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {vehicle.freshSignalCount}/{vehicle.expectedSignalCount} fresh expected
+                  {vehicle.staleSignalCount > 0
+                    ? ` · ${vehicle.staleSignalCount} stale`
+                    : ''}
+                  {vehicle.missingSignalCount > 0
+                    ? ` · ${vehicle.missingSignalCount} missing`
+                    : ''}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Indicates how complete and fresh this vehicle&apos;s telemetry data is.
-              It is not a mechanical health score.
+              Fresh usable expected signals divided by expected and supported signals.
+              Non-applicable capabilities (e.g. EV SoC on ICE) are excluded.
             </p>
+            {vehicle.reasonCodes.length > 0 && (
+              <p className="text-[10px] text-muted-foreground font-mono">
+                {vehicle.reasonCodes.join(' · ')}
+              </p>
+            )}
           </div>
         </DetailSection>
 

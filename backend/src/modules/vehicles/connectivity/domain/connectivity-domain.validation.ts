@@ -114,7 +114,16 @@ export function validateConnectivityStateCombination(
   if (
     state.providerLinkState === 'REAUTH_REQUIRED' &&
     !state.reasonCodes.includes(ConnectivityReasonCode.AUTHORIZATION_EXPIRED) &&
-    !state.reasonCodes.includes(ConnectivityReasonCode.CONSENT_MISSING)
+    !state.reasonCodes.includes(ConnectivityReasonCode.CONSENT_MISSING) &&
+    !state.reasonCodes.includes(ConnectivityReasonCode.TOKEN_MISSING)
+  ) {
+    conflicts.push(ConnectivityReasonCode.MANUAL_REVIEW_REQUIRED);
+  }
+
+  if (
+    state.providerLinkState === 'REVOKED' &&
+    !state.reasonCodes.includes(ConnectivityReasonCode.PROVIDER_REVOKED) &&
+    !state.reasonCodes.includes(ConnectivityReasonCode.AUTHORIZATION_EXPIRED)
   ) {
     conflicts.push(ConnectivityReasonCode.MANUAL_REVIEW_REQUIRED);
   }
