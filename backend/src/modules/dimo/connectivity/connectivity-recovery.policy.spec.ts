@@ -82,7 +82,6 @@ describe('connectivity recovery kill switch behavior', () => {
     const service = new DeviceConnectionEpisodeResolutionService(
       { $transaction: jest.fn() } as never,
       { enqueuePreparedEvents: jest.fn() } as never,
-      undefined,
       recoveryPolicy as never,
     );
 
@@ -166,7 +165,6 @@ describe('connectivity recovery kill switch behavior', () => {
     const service = new DeviceConnectionEpisodeResolutionService(
       { deviceConnectionEpisode: { findFirst } } as never,
       { enqueuePreparedEvents: jest.fn() } as never,
-      undefined,
       recoveryPolicy as never,
     );
 
