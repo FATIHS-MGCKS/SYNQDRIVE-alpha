@@ -64,9 +64,9 @@ On success (atomic transaction):
 - Episode → `RESOLVED` / `SNAPSHOT_PLUG_SIGNAL`
 - `device_connection_episode_resolution_audits` row
 - Outbox: `CONNECTIVITY_RUNTIME_RECALCULATE`, `DEVICE_ALERT_RESOLVE_PREPARED`
-- Runtime projection via `VehicleConnectivityRuntimeProjectionService`
+- **Post-commit** (outbox processor): runtime projection + alert resolution
 
-Wired from `DimoSnapshotProcessor` after `VehicleLatestState` upsert. Raw webhooks/events unchanged.
+Wired from `DimoSnapshotProcessor` after `VehicleLatestState` upsert via `DeviceConnectionEpisodeResolutionOutboxProcessorService.processPendingBatch()`. Raw webhooks/events unchanged.
 
 ## Telemetry-resume resolution (Prompt 8)
 
@@ -97,7 +97,7 @@ Same binding, LTE_R1 hardware, non-OEM/non-synthetic source, provider observed +
 
 - Observations: `device_connection_telemetry_recovery_observations` (idempotent per episode + snapshot ref)
 - On resolve: episode → `RESOLVED` / `TELEMETRY_RESUMED`, `resolutionEvidenceAt` = policy evidence time
-- Runtime projection → `PLUGGED_INFERRED` + `DEVICE_RECONNECTED_TELEMETRY`
+- **Post-commit** outbox processor → `PLUGGED_INFERRED` runtime + `DEVICE_RECONNECTED_TELEMETRY` alert
 - Outbox `recoverySource: telemetry_resumed`
 
 Wired from `DimoSnapshotProcessor` after snapshot-plug attempt (telemetry path runs when `obdIsPluggedIn` is not `false`).
@@ -245,7 +245,7 @@ Episode-scoped device alerts use notification fingerprint variant `conditionCode
 
 - `DeviceConnectionEpisodeService.openFromUnplugEvent` → `DEVICE_UNPLUGGED` (once per episode)
 - Explicit plug / resolution outbox → resolve unplug + one `DEVICE_RECONNECTED` info event
-- `DeviceConnectionEpisodeResolutionOutbox` consumer → `ConnectivityAlertService.processResolutionOutboxRow`
+- `DeviceConnectionEpisodeResolutionOutboxProcessorService` → runtime recalc + episode alert resolution (post-commit)
 - `VehicleConnectivityRuntimeProjectionService` → telemetry / authorization / coverage runtime sync
 - Notifications link to Fleet Connectivity via `OPEN_VEHICLE_MODULE` + `module: connectivity`
 

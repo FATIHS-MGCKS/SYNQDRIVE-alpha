@@ -5,10 +5,8 @@ import {
   DeviceConnectionEpisodeResolutionOutboxEventType,
   type DeviceConnectionEpisode,
 } from '@prisma/client';
-import { OverallConnectivityState, PhysicalDeviceState } from '../../vehicles/connectivity/domain/connectivity-domain.types';
 import { DeviceConnectionEpisodeResolutionService } from './device-connection-episode-resolution.service';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution-outbox.service';
-import { VehicleConnectivityRuntimeProjectionService } from './vehicle-connectivity-runtime-projection.service';
 import { DEFAULT_TELEMETRY_RECOVERY_POLICY } from './device-connection-telemetry-recovery.policy';
 import type { TelemetryRecoverySignalInput } from './device-connection-telemetry-recovery.evaluator';
 
@@ -134,28 +132,19 @@ function buildService(policy = DEFAULT_TELEMETRY_RECOVERY_POLICY) {
     $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)),
   };
 
-  const runtimeProjection = {
-    projectForVehicle: jest.fn().mockResolvedValue({
-      overallState: OverallConnectivityState.TELEMETRY_ACTIVE,
-      physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
-      stateVersion: 2,
-    }),
-  } as unknown as VehicleConnectivityRuntimeProjectionService;
-
   const outboxService = new DeviceConnectionEpisodeResolutionOutboxService();
   const service = new DeviceConnectionEpisodeResolutionService(
     prisma as never,
-    runtimeProjection,
     outboxService,
     policy,
   );
 
-  return { service, prisma, tx, episodes, audits, outbox, observations, runtimeProjection };
+  return { service, prisma, tx, episodes, audits, outbox, observations };
 }
 
 describe('DeviceConnectionEpisodeResolutionService', () => {
-  it('resolves open episode from incident-like snapshot true', async () => {
-    const { service, tx, audits, outbox, runtimeProjection } = buildService();
+  it('resolves open episode from incident-like snapshot true without in-transaction projection', async () => {
+    const { service, tx, audits, outbox } = buildService();
 
     const result = await service.tryResolveFromSnapshotPlugSignal(baseInput());
 
@@ -170,7 +159,14 @@ describe('DeviceConnectionEpisodeResolutionService', () => {
     );
     expect(audits).toHaveLength(1);
     expect(outbox).toHaveLength(2);
-    expect(runtimeProjection.projectForVehicle).toHaveBeenCalledWith('org-a', 'veh-1');
+    expect((audits[0] as { metadata: Record<string, unknown> }).metadata).toEqual(
+      expect.objectContaining({
+        resolutionEvidenceAt: '2026-07-08T17:22:00.000Z',
+      }),
+    );
+    expect(
+      (outbox[0] as { payload: { resolutionEvidenceAt: string } }).payload.resolutionEvidenceAt,
+    ).toBe('2026-07-08T17:22:00.000Z');
   });
 
   it('does not resolve on false snapshot', async () => {

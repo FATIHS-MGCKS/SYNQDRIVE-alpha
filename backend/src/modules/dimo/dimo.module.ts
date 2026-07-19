@@ -31,6 +31,9 @@ import { DeviceConnectionEpisodeService } from './device-connection-episode.serv
 import { DeviceConnectionEpisodeResolutionService } from './device-connection-episode-resolution/device-connection-episode-resolution.service';
 import { VehicleConnectivityRuntimeProjectionService } from './device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
+import { DeviceConnectionEpisodeResolutionOutboxRepository } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.repository';
+import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
+import deviceConnectionEpisodeResolutionOutboxConfig from '@config/device-connection-episode-resolution-outbox.config';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
@@ -42,6 +45,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
   imports: [
     ConfigModule.forFeature(dimoConfig),
     ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
+    ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
     BullModule.registerQueue({ name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS }),
     ActivityLogModule,
     SharedGuardsModule,
@@ -71,6 +75,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     ConnectivityObservabilityService,
     DeviceConnectionEpisodeResolutionService,
     DeviceConnectionEpisodeResolutionOutboxService,
+    DeviceConnectionEpisodeResolutionOutboxRepository,
+    DeviceConnectionEpisodeResolutionOutboxProcessorService,
     ConnectivityAlertService,
     VehicleConnectivityRuntimeProjectionService,
     DeviceConnectionQueryService,
@@ -88,6 +94,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionQueryService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeResolutionService,
+    DeviceConnectionEpisodeResolutionOutboxProcessorService,
     ConnectivityAlertService,
     VehicleConnectivityRuntimeProjectionService,
     RpmWebhookQueryService,

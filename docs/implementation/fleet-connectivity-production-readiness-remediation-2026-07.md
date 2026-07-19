@@ -111,7 +111,7 @@
 | 5 | Snapshot + Telemetry Episode Closure | **DONE** | `fix(connectivity): resolve unplug episodes from explicit snapshot plug signals` + `fix(connectivity): infer device reconnection from sustained telemetry` | **yes** | snapshot + telemetry resolution | yes | no | no | high |
 | 5a | Read-only episode reconciliation audit | **DONE** | `feat(connectivity): add read-only device episode reconciliation audit` | — | fixture classifier | yes | no | no | low |
 | 6 | Binding-/Token-Semantik | **DONE** | `fix(connectivity): make device episodes binding and event-order aware` | **yes** | binding + event-order tests | yes | yes | no | med |
-| 7 | Webhook Inbox Retry / DLQ | **IN PROGRESS** | Prompt 1: inbox + processing states | **yes** (`20260719160000_device_connection_webhook_inbox`) | inbox + webhook specs | yes | yes | no | med |
+| 7 | Webhook Inbox Retry / DLQ | **IN PROGRESS** | Prompt 1–2: inbox + async retry/DLQ worker | **yes** (`20260719160000_device_connection_webhook_inbox`) | inbox + processing specs | yes | yes | no | med |
 | 8 | Provider Link + Authorization | **DONE** | `fix(connectivity): canonicalize provider link authorization and consent` | no | provider-link builder + projection | yes | no | no | med |
 | 9 | Kanonische Freshness Fleet API | **DONE** | `fix(connectivity): unify telemetry freshness across connectivity consumers` | no | boundary + cross-surface | no | no | no | low |
 | 10 | Capability-aware Coverage | **DONE** | `08c68b26` | no | ICE/EV matrix | yes | yes | no | med |
@@ -131,6 +131,8 @@
 | # | Ziel | Status | Commit | Migration | Tests |
 |---|------|--------|--------|-----------|-------|
 | 1 | Webhook inbox + reliable processing states | **DONE** | `fix(connectivity): persist reliable webhook processing states` | `20260719160000_device_connection_webhook_inbox` | inbox + webhook specs |
+| 2 | Webhook retry worker + dead letter + manual replay | **DONE** | `fix(connectivity): add webhook retry and dead letter processing` | — | processing + replay specs |
+| 3 | Episode resolution outbox — post-commit runtime + alerts | **DONE** | `fix(connectivity): process runtime recalculation after episode commit` | `20260719170000_device_connection_episode_resolution_outbox_retry` | outbox processor specs |
 
 ### Prompt 1 — Webhook Inbox (2026-07-19)
 
@@ -153,6 +155,59 @@
 - ✅ Jedes valide Event hat dauerhaften `processingStatus`
 - ✅ Duplicate → kein zweites Domain-Event (bestehende dedup bucket Logik)
 - ✅ Backend Build + Tests grün
+
+### Prompt 2 — Webhook Retry + Dead Letter (2026-07-19)
+
+**Problem:** Inbox-Rows mit `RETRYABLE_FAILED` wurden nur bei erneutem HTTP-Delivery verarbeitet — kein automatischer Worker.
+
+**Lösung:**
+- BullMQ Queue `connectivity.webhook.process` + `DeviceConnectionWebhookProcessor`
+- `DeviceConnectionWebhookProcessingService` — idempotenter Claim/Process-Pfad (RECEIVED/VALIDATED/RETRYABLE_FAILED)
+- Exponentieller Backoff (`baseBackoffMs * 2^(attempt-1)`), max 5 Versuche → `DEAD_LETTER`
+- `DeviceConnectionWebhookInboxSchedulerService` — pollt fällige Retries + stale in-flight rows
+- `POST …/connectivity/webhook-inbox/:inboxId/replay` — Permission `fleet-connectivity.manage`, Reason, Audit-Log
+- Prometheus DLQ-Metrik via `ConnectivityObservabilityService` bei `dead_letter`
+- HTTP-Intake: persist + enqueue (async), kein synchrones Domain-Processing mehr
+
+**Neue Dateien:**
+- `device-connection-webhook-processing.service.ts`
+- `device-connection-webhook-queue.producer.ts`
+- `device-connection-webhook-inbox-scheduler.service.ts`
+- `device-connection-webhook-replay.service.ts`
+- `device-connection-webhook-inbox.controller.ts`
+- `workers/processors/device-connection-webhook.processor.ts`
+- `config/device-connection-webhook-inbox.config.ts`
+
+**Abnahme:**
+- ✅ Automatischer Retry für nicht verarbeitete valide Events
+- ✅ Dead-Letter sichtbar (`DEAD_LETTER` + Metrik/Alert)
+- ✅ Kontrolliertes, idempotentes Replay
+- ✅ Kein stiller Verlust (persist-first + queue + scheduler)
+
+### Prompt 3 — Episode Resolution Outbox (2026-07-19)
+
+**Problem:** `CONNECTIVITY_RUNTIME_RECALCULATE` wurde als No-op abgeschlossen; Runtime-Projektion lief innerhalb der offenen Episode-Transaction über separaten PrismaService und sah den noch nicht committeten Zustand nicht.
+
+**Lösung:**
+- Runtime-Projektion aus Episode-Transaction entfernt — Transaction schreibt nur Episode, Audit, Outbox
+- `DeviceConnectionEpisodeResolutionOutboxProcessorService` verarbeitet nach Commit:
+  - `CONNECTIVITY_RUNTIME_RECALCULATE` → committed Episode/Binding laden → `VehicleConnectivityRuntimeProjectionService.projectForVehicle`
+  - `DEVICE_ALERT_RESOLVE_PREPARED` → `ConnectivityAlertService.onEpisodeRecovered` mit `resolutionEvidenceAt`
+- Outbox-Retry: `RETRYABLE_FAILED`, exponentieller Backoff, max 5 Versuche → `DEAD_LETTER`
+- Unbekannte Event-Typen → `FAILED` (nicht `COMPLETED`)
+- `DimoSnapshotProcessor` triggert `processPendingBatch()` statt Inline-Projection + alter Alert-Outbox-Pfad
+
+**Neue Dateien:**
+- `device-connection-episode-resolution-outbox-processor.service.ts`
+- `device-connection-episode-resolution-outbox.repository.ts`
+- `config/device-connection-episode-resolution-outbox.config.ts`
+- Migration `20260719170000_device_connection_episode_resolution_outbox_retry`
+
+**Abnahme:**
+- ✅ Runtime State erst nach Commit aus neuem DB-Zustand
+- ✅ `CONNECTIVITY_RUNTIME_RECALCULATE` mit echter Verarbeitung
+- ✅ Keine No-op-Completions für unbekannte Typen
+- ✅ `resolutionEvidenceAt` als fachlicher Recovery-Zeitpunkt für Alerts
 
 ### Abhängigkeitskette
 
@@ -283,6 +338,7 @@
 | 2026-07-19 | 3 | `1e41783c` | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
 | 2026-07-19 | 4 | `3bf06880` | VehicleConnectivityRuntimeStateBuilder (pure domain) |
 | 2026-07-19 | Phase2-1 | `fix(connectivity): persist reliable webhook processing states` | Webhook inbox + processing states; migration `20260719160000` |
+| 2026-07-19 | Phase2-2 | `fix(connectivity): add webhook retry and dead letter processing` | BullMQ worker, scheduler, DLQ, manual replay API |
 
 ---
 
