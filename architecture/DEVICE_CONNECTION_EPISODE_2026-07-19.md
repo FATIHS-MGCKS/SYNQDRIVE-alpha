@@ -52,9 +52,60 @@ current state. Replaces inferring open unplug episodes from a rolling 7-day even
 - `DeviceConnectionWebhookService` — episode sync after new events
 - `device-connection-read-model` — `persistedOpenEpisode` input
 
+## Snapshot plug resolution (Prompt 7)
+
+`DeviceConnectionEpisodeResolutionService.tryResolveFromSnapshotPlugSignal` closes open episodes when a **fresh**
+`obdIsPluggedIn=true` snapshot arrives for the same physical OBD binding.
+
+Guards (evaluator): provider observed + received after `openedAt`, binding match, LTE_R1 hardware, non-synthetic source.
+
+On success (atomic transaction):
+
+- Episode → `RESOLVED` / `SNAPSHOT_PLUG_SIGNAL`
+- `device_connection_episode_resolution_audits` row
+- Outbox: `CONNECTIVITY_RUNTIME_RECALCULATE`, `DEVICE_ALERT_RESOLVE_PREPARED`
+- Runtime projection via `VehicleConnectivityRuntimeProjectionService`
+
+Wired from `DimoSnapshotProcessor` after `VehicleLatestState` upsert. Raw webhooks/events unchanged.
+
+## Telemetry-resume resolution (Prompt 8)
+
+`DeviceConnectionEpisodeResolutionService.tryResolveFromSustainedTelemetry` closes open episodes when
+**sustained physical telemetry** resumes for the same OBD/R1 binding without an explicit plug webhook.
+
+### Conservative policy (configurable)
+
+Env keys: `DEVICE_CONNECTION_TELEMETRY_RECOVERY_*` — see
+`device-connection-telemetry-recovery.policy.ts`.
+
+Closure requires at least one variant:
+
+| Variant | Rule |
+|---------|------|
+| **SPAN** | ≥2 operational snapshots spanning ≥ `minSpanMs` without gaps > `maxGapBetweenSnapshotsMs` |
+| **TRIP** | ≥1 operational snapshot after unplug plus a trip started/completed after unplug |
+| **CONNECTION_STATUS** | Provider `CONNECTED` plus ≥2 fresh operational snapshots within `connectionStatusFreshWindowMs` |
+
+A single arbitrary telemetry line never resolves an episode.
+
+### Guards
+
+Same binding, LTE_R1 hardware, non-OEM/non-synthetic source, provider observed + received after
+`openedAt`, no backfill replay (`receivedAt − observedAt` ≤ `maxBackfillLagMs`), `obdIsPluggedIn !== false`.
+
+### Persistence
+
+- Observations: `device_connection_telemetry_recovery_observations` (idempotent per episode + snapshot ref)
+- On resolve: episode → `RESOLVED` / `TELEMETRY_RESUMED`, `resolutionEvidenceAt` = policy evidence time
+- Runtime projection → `PLUGGED_INFERRED` + `DEVICE_RECONNECTED_TELEMETRY`
+- Outbox `recoverySource: telemetry_resumed`
+
+Wired from `DimoSnapshotProcessor` after snapshot-plug attempt (telemetry path runs when `obdIsPluggedIn` is not `false`).
+
+UI copy (later): „Wieder verbunden – aus neuer Telemetrie erkannt“.
+
 ## Next steps (not in this commit)
 
-- Snapshot/telemetry **apply** path (closure at runtime — Prompt 5 remediation step)
 - Run `scripts/ops/audit-device-connection-episode-reconciliation.ts` against staging/prod (read-only) before controlled apply
 - Runtime builder `activeEpisodeId` wiring
 - Production reconciliation backfill (Prompt 18) — only `applyEligible=yes` rows

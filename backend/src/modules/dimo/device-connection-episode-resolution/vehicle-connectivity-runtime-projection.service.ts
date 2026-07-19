@@ -3,7 +3,10 @@
  * Pure assembly over existing builder — no persistence table yet.
  */
 import { Injectable } from '@nestjs/common';
-import { DeviceConnectionEpisodeStatus } from '@prisma/client';
+import {
+  DeviceConnectionEpisodeResolutionMethod,
+  DeviceConnectionEpisodeStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
 import {
@@ -48,17 +51,16 @@ export class VehicleConnectivityRuntimeProjectionService {
           select: { id: true, sourceType: true, sourceSubtype: true },
         },
         deviceConnectionEpisodes: {
-          where: {
-            organizationId,
-            status: DeviceConnectionEpisodeStatus.OPEN,
-          },
+          where: { organizationId },
           orderBy: { openedAt: 'desc' },
-          take: 1,
+          take: 2,
           select: {
             id: true,
             deviceBindingId: true,
             openedAt: true,
             status: true,
+            resolutionMethod: true,
+            resolutionEvidenceAt: true,
           },
         },
       },
@@ -68,7 +70,19 @@ export class VehicleConnectivityRuntimeProjectionService {
       throw new Error(`Vehicle ${vehicleId} not found for connectivity projection`);
     }
 
-    const openEpisode = vehicle.deviceConnectionEpisodes[0] ?? null;
+    const openEpisode =
+      vehicle.deviceConnectionEpisodes.find(
+        (episode) => episode.status === DeviceConnectionEpisodeStatus.OPEN,
+      ) ?? null;
+    const latestResolvedEpisode = vehicle.deviceConnectionEpisodes.find(
+      (episode) => episode.status === DeviceConnectionEpisodeStatus.RESOLVED,
+    );
+    const telemetryRecoveryAt =
+      latestResolvedEpisode?.resolutionMethod ===
+        DeviceConnectionEpisodeResolutionMethod.TELEMETRY_RESUMED &&
+      latestResolvedEpisode.resolutionEvidenceAt
+        ? latestResolvedEpisode.resolutionEvidenceAt.toISOString()
+        : null;
     const binding = vehicle.dataSourceLinks[0] ?? null;
     const raw = vehicle.latestState?.rawPayloadJson as Record<string, unknown> | null;
     const conn = extractConnectivitySnapshot(raw ?? undefined);
@@ -106,6 +120,7 @@ export class VehicleConnectivityRuntimeProjectionService {
         episodeBindingId: openEpisode?.deviceBindingId ?? null,
         lastUnplugWebhookAt: openEpisode?.openedAt.toISOString() ?? null,
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: openEpisode ? null : telemetryRecoveryAt,
       },
       snapshotPlug: {
         obdIsPluggedIn: conn.obdIsPluggedIn,

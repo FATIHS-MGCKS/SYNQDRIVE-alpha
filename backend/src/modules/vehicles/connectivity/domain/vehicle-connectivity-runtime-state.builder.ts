@@ -74,6 +74,8 @@ export interface DeviceEpisodeInput {
   episodeBindingId: string | null;
   lastUnplugWebhookAt: string | null;
   lastExplicitPlugWebhookAt: string | null;
+  /** Set when the latest closed episode was resolved via sustained telemetry. */
+  lastTelemetryRecoveryAt: string | null;
 }
 
 export interface SnapshotPlugEvidenceInput {
@@ -364,6 +366,14 @@ function resolvePhysicalDeviceState(
     reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_EXPLICIT);
     return {
       physicalDeviceState: PhysicalDeviceState.PLUGGED_CONFIRMED,
+      recoveryConflict: false,
+    };
+  }
+
+  if (episode.lastTelemetryRecoveryAt) {
+    reasonCodes.push(ConnectivityReasonCode.DEVICE_RECONNECTED_TELEMETRY);
+    return {
+      physicalDeviceState: PhysicalDeviceState.PLUGGED_INFERRED,
       recoveryConflict: false,
     };
   }

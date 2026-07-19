@@ -15,8 +15,10 @@ export class DeviceConnectionEpisodeResolutionOutboxService {
       episodeId: string;
       resolutionSnapshotId: string;
       runtimeStateVersion: number;
+      recoverySource?: 'snapshot_obd' | 'telemetry_resumed';
     },
   ): Promise<string[]> {
+    const recoverySource = input.recoverySource ?? 'snapshot_obd';
     const events: Array<{
       eventType: DeviceConnectionEpisodeResolutionOutboxEventType;
       idempotencyKey: string;
@@ -40,7 +42,7 @@ export class DeviceConnectionEpisodeResolutionOutboxService {
           vehicleId: input.vehicleId,
           episodeId: input.episodeId,
           alertPhase: 'recovered',
-          recoverySource: 'snapshot_obd',
+          recoverySource,
           resolutionSnapshotId: input.resolutionSnapshotId,
         },
       },

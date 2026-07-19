@@ -54,6 +54,7 @@ function baseInput(
       episodeBindingId: null,
       lastUnplugWebhookAt: null,
       lastExplicitPlugWebhookAt: null,
+      lastTelemetryRecoveryAt: null,
     },
     snapshotPlug: {
       obdIsPluggedIn: true,
@@ -141,6 +142,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: 'binding-1',
         lastUnplugWebhookAt: hoursAgo(2),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: false,
@@ -163,6 +165,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: null,
         lastUnplugWebhookAt: hoursAgo(48),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: true,
@@ -173,6 +176,26 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
     expect(state.physicalDeviceState).toBe('PLUGGED_INFERRED');
     expect(state.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_RECONNECTED_SNAPSHOT);
     expect(state.overallState).toBe('TELEMETRY_ACTIVE');
+  });
+
+  it('telemetry recovery → PLUGGED_INFERRED without snapshot plug signal', () => {
+    const state = build({
+      episode: {
+        activeEpisodeId: null,
+        openUnpluggedEpisode: false,
+        episodeBindingId: null,
+        lastUnplugWebhookAt: hoursAgo(48),
+        lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: minutesAgo(5),
+      },
+      snapshotPlug: {
+        obdIsPluggedIn: null,
+        observedAt: minutesAgo(5),
+        sameBindingAsEpisode: true,
+      },
+    });
+    expect(state.physicalDeviceState).toBe('PLUGGED_INFERRED');
+    expect(state.reasonCodes).toContain(ConnectivityReasonCode.DEVICE_RECONNECTED_TELEMETRY);
   });
 
   it('OEM without physical OBD → NOT_APPLICABLE, no DEVICE_UNPLUGGED overall', () => {
@@ -190,6 +213,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: 'synthetic-1',
         lastUnplugWebhookAt: hoursAgo(1),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: null,
@@ -262,6 +286,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: 'binding-1',
         lastUnplugWebhookAt: hoursAgo(10),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: true,
@@ -323,6 +348,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: 'binding-1',
         lastUnplugWebhookAt: hoursAgo(1),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: false,
@@ -352,6 +378,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: 'binding-old',
         lastUnplugWebhookAt: hoursAgo(20),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: true,
@@ -384,6 +411,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: 'binding-1',
         lastUnplugWebhookAt: hoursAgo(1),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: { obdIsPluggedIn: false, observedAt: hoursAgo(1), sameBindingAsEpisode: true },
       telemetry: {
@@ -406,6 +434,7 @@ describe('VehicleConnectivityRuntimeStateBuilder', () => {
         episodeBindingId: null,
         lastUnplugWebhookAt: hoursAgo(5),
         lastExplicitPlugWebhookAt: hoursAgo(4),
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: true,
@@ -433,6 +462,7 @@ describe('VehicleConnectivityRuntimeStateBuilder validation integration', () => 
         episodeBindingId: 'binding-1',
         lastUnplugWebhookAt: hoursAgo(10),
         lastExplicitPlugWebhookAt: null,
+        lastTelemetryRecoveryAt: null,
       },
       snapshotPlug: {
         obdIsPluggedIn: true,

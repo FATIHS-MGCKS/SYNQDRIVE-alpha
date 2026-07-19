@@ -6480,6 +6480,7 @@ model DeviceConnectionEpisode {
   resolvedByEvent DimoDeviceConnectionEvent? @relation("EpisodeResolvedByEvent", fields: [resolutionEventId], references: [id], onDelete: SetNull)
   resolutionAudits DeviceConnectionEpisodeResolutionAudit[]
   resolutionOutbox DeviceConnectionEpisodeResolutionOutbox[]
+  telemetryRecoveryObservations DeviceConnectionTelemetryRecoveryObservation[]
 
   @@index([organizationId])
   @@index([vehicleId])
@@ -6531,6 +6532,28 @@ model DeviceConnectionEpisodeResolutionOutbox {
   @@index([vehicleId])
   @@index([status])
   @@map("device_connection_episode_resolution_outbox")
+}
+
+model DeviceConnectionTelemetryRecoveryObservation {
+  id                     String   @id @default(uuid())
+  organizationId           String   @map("organization_id")
+  vehicleId              String   @map("vehicle_id")
+  episodeId              String   @map("episode_id")
+  snapshotReferenceId    String   @map("snapshot_reference_id")
+  providerObservedAt     DateTime @map("provider_observed_at")
+  receivedAt             DateTime @map("received_at")
+  hasOperationalSignal   Boolean  @map("has_operational_signal")
+  connectionStatusActive Boolean  @map("connection_status_active")
+  providerBindingId      String?  @map("provider_binding_id")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  episode DeviceConnectionEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([episodeId, snapshotReferenceId], map: "dce_telemetry_recovery_episode_snapshot_key")
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([episodeId, providerObservedAt])
+  @@map("device_connection_telemetry_recovery_observations")
 }
 
 // ------------------------------------------------
