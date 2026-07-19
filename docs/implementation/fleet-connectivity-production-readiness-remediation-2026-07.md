@@ -104,31 +104,62 @@
 | # | Ziel | Status | Commit | Migration | Tests | VPS | DIMO | UI | Risiko |
 |---|------|--------|--------|-----------|-------|-----|------|-----|--------|
 | 1 | Baseline + Remediation-Tracking | **DONE** | `c1bcacb5` | — | dokumentiert | — | — | — | low |
-| 2 | VehicleConnectivityRuntimeStateBuilder | pending | — | no | unit matrix | no | no | no | med |
-| 3 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
-| 4 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
-| 5 | Binding-/Token-Semantik | pending | — | maybe | binding cases | yes | yes | no | med |
-| 6 | Webhook Inbox Retry / DLQ | pending | — | maybe | failure inject | yes | yes | no | med |
-| 7 | Provider Link + Authorization | pending | — | yes | consent backfill | yes | no | no | med |
-| 8 | Kanonische Freshness Fleet API | pending | — | no | 48h parity | no | no | no | low |
-| 9 | Capability-aware Coverage | pending | — | no | ICE/EV matrix | yes | yes | no | med |
-| 10 | Alerts + Resolution Wiring | pending | — | yes | episode→resolve | yes | no | no | med |
-| 11 | Cross-Surface Consumer Migration | pending | — | no | consumer CSV | yes | no | yes | high |
-| 12 | API Contract v2 | pending | — | maybe | OpenAPI | yes | no | no | med |
-| 13 | KPI Redesign (4 KPIs) | pending | — | no | IA | no | no | yes | low |
-| 14 | Table Redesign (5 cols) | pending | — | no | desktop+mobile | no | no | yes | low |
-| 15 | Drawer A–E + i18n | pending | — | no | wireframes | no | no | yes | med |
-| 16 | Mobile / i18n / a11y | pending | — | no | 28 items | no | no | yes | low |
-| 17 | Observability | pending | — | no | Prometheus | yes | no | no | low |
-| 18 | Staging Replay + VPS Reconciliation | pending | — | yes | 0 false-open | **yes** | yes | no | high |
+| 2 | Regression test safety net (Szenarien A–L) | **DONE** | `fa419233` | — | 81 BE + 37 FE | — | — | — | low |
+| 3 | VehicleConnectivityRuntimeStateBuilder | pending | — | no | unit matrix | no | no | no | med |
+| 4 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
+| 5 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
+| 6 | Binding-/Token-Semantik | pending | — | maybe | binding cases | yes | yes | no | med |
+| 7 | Webhook Inbox Retry / DLQ | pending | — | maybe | failure inject | yes | yes | no | med |
+| 8 | Provider Link + Authorization | pending | — | yes | consent backfill | yes | no | no | med |
+| 9 | Kanonische Freshness Fleet API | pending | — | no | 48h parity | no | no | no | low |
+| 10 | Capability-aware Coverage | pending | — | no | ICE/EV matrix | yes | yes | no | med |
+| 11 | Alerts + Resolution Wiring | pending | — | yes | episode→resolve | yes | no | no | med |
+| 12 | Cross-Surface Consumer Migration | pending | — | no | consumer CSV | yes | no | yes | high |
+| 13 | API Contract v2 | pending | — | maybe | OpenAPI | yes | no | no | med |
+| 14 | KPI Redesign (4 KPIs) | pending | — | no | IA | no | no | yes | low |
+| 15 | Table Redesign (5 cols) | pending | — | no | desktop+mobile | no | no | yes | low |
+| 16 | Drawer A–E + i18n | pending | — | no | wireframes | no | no | yes | med |
+| 17 | Mobile / i18n / a11y | pending | — | no | 28 items | no | no | yes | low |
+| 18 | Observability + Staging Replay | pending | — | yes | 0 false-open | **yes** | yes | no | high |
 
 ### Abhängigkeitskette
 
 ```text
-1 → 2 → 3 → 4,5,6 → 7,8,9,10 → 11,12 → 13,14,15,16 → 17 → 18
+1 → 2 (tests) → 3 → 4,5,6,7 → 8,9,10,11 → 12,13 → 14,15,16,17 → 18
 ```
 
-**Regel:** Keine UI-Umstellung (13–16) vor Backend-Wahrheit (2–10) und API-Migration (11–12).
+**Regel:** Keine UI-Umstellung (14–17) vor Backend-Wahrheit (3–11) und API-Migration (12–13).
+
+---
+
+## Prompt 2 — Regressionstests (A–L)
+
+**Keine fachliche Reparatur.** Tests dokumentieren CURRENT-Verhalten und TARGET-Invarianten in Kommentaren.
+
+| Szenario | Finding | Testdatei |
+|----------|---------|-----------|
+| A Plug-Webhook Recovery | — (funktioniert) | `connectivity-recovery-regression.spec.ts` |
+| B Snapshot `obdIsPluggedIn=true` | FC-P0-01 | `connectivity-recovery-regression.spec.ts` |
+| C Sustained Telemetrie + Trip | FC-P0-03 | `connectivity-recovery-regression.spec.ts` |
+| D OEM/Synthetic | FC-C-01 | `connectivity-recovery-regression.spec.ts` |
+| E Backfill/Altsnapshot | — | `connectivity-recovery-regression.spec.ts` |
+| F Binding Change | FC-P1-05 | `connectivity-recovery-regression.spec.ts` |
+| G 7-Tage-Fenster | FC-P1-01 | `device-connection-query.regression.spec.ts` |
+| H Freshness | FC-P1-02 | `connectivity-state-regression.spec.ts`, `connectivity-cross-surface-regression.test.ts` |
+| I Cross-Surface | FC-C-01 | `connectivity-cross-surface-regression.test.ts` |
+| J Provider Link | FC-P1-03 | `connectivity-state-regression.spec.ts` |
+| K Readiness/Coverage | FC-P2-02 | `connectivity-state-regression.spec.ts` |
+| L Alerts | FC-C-03 | `connectivity-alert-policy-regression.spec.ts` |
+
+**Neue Dateien:**
+
+- `backend/src/modules/dimo/connectivity-recovery-regression.spec.ts`
+- `backend/src/modules/dimo/device-connection-query.regression.spec.ts`
+- `backend/src/modules/dimo/connectivity-alert-policy-regression.spec.ts`
+- `backend/src/modules/vehicles/connectivity-state-regression.spec.ts`
+- `frontend/src/rental/lib/connectivity-cross-surface-regression.test.ts`
+
+**Ergebnis (2026-07-19):** Backend connectivity suite **81/81** · Frontend connectivity suite **37/37**
 
 ---
 
@@ -183,7 +214,8 @@
 | Datum | Prompt | Commit | Notiz |
 |-------|--------|--------|-------|
 | 2026-07-19 | 1 | `c1bcacb5` | Baseline branch, Audit-Import, redaktionelle Audit-Korrekturen, dieses Dokument |
+| 2026-07-19 | 2 | `fa419233` | Regressionstests A–L, keine Produktlogik geändert |
 
 ---
 
-*Keine Produktionsdaten geändert. Keine DIMO-Trigger mutiert. Keine funktionale Connectivity-Logik in Prompt 1.*
+*Keine Produktionsdaten geändert. Keine DIMO-Trigger mutiert. Prompt 2: nur Tests + Dokumentation.*
