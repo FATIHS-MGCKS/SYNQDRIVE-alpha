@@ -595,7 +595,15 @@ function phase4(): AuditPhaseResult {
   for (const row of rows) {
     const alias = vehicleAlias(row.rn);
     const lastSeenMs = row.lastSeenAt ? new Date(row.lastSeenAt).getTime() : null;
-    const fleet = deriveConnectionStatus(row.providerLink, lastSeenMs, nowMs);
+    const fleet = deriveConnectionStatus(
+      row.providerLink,
+      {
+        providerObservedAt: row.lastSeenAt,
+        lastValidTelemetryAt: row.lastSeenAt,
+        latestStateUpdatedAt: row.lastSeenAt,
+      },
+      nowMs,
+    );
     const canonical = classifyTelemetryFreshness(
       row.lastSeenAt ? new Date(row.lastSeenAt) : null,
       nowMs,

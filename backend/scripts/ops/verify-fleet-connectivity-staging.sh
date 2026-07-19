@@ -81,23 +81,33 @@ fi
 
 log "==> Episode reconciliation audit (read-only, fleet-wide)"
 npx ts-node -r tsconfig-paths/register scripts/ops/audit-device-connection-episode-reconciliation.ts \
-  --format=json > "${OUT}/episode-reconciliation-audit.json" 2>&1
-tail -5 "${OUT}/episode-reconciliation-audit.json" | tee -a "${OUT}/verify.log"
+  --format=json 2>"${OUT}/episode-reconciliation-audit.stderr" \
+  | node -e "
+const fs=require('fs');
+let s='';
+process.stdin.on('data',d=>s+=d);
+process.stdin.on('end',()=>{
+  const i=s.indexOf('{');
+  if(i<0){process.stderr.write('no json in audit output');process.exit(1);}
+  fs.writeFileSync(process.argv[1], s.slice(i));
+});
+" "${OUT}/episode-reconciliation-audit.json"
+tail -3 "${OUT}/episode-reconciliation-audit.json" | tee -a "${OUT}/verify.log"
 
 log "==> Production readiness audit phase 2 (fleet stats)"
-cd "$ROOT"
-npx ts-node --project backend/tsconfig.json -r tsconfig-paths/register \
-  scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=2 \
+cd "$BACKEND"
+TS_NODE_PROJECT=tsconfig.json npx ts-node -r tsconfig-paths/register \
+  ../scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=2 \
   > "${OUT}/audit-phase-2.json" 2>&1
 
 log "==> Production readiness audit phase 3 (INCIDENT_VEHICLE_001 fixture replay)"
-npx ts-node --project backend/tsconfig.json -r tsconfig-paths/register \
-  scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=3 --replay \
+TS_NODE_PROJECT=tsconfig.json npx ts-node -r tsconfig-paths/register \
+  ../scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=3 --replay \
   > "${OUT}/audit-phase-3-replay.json" 2>&1
 
 log "==> Production readiness audit phase 4 (integrity / coverage / provider link)"
-npx ts-node --project backend/tsconfig.json -r tsconfig-paths/register \
-  scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=4 --days=60 \
+TS_NODE_PROJECT=tsconfig.json npx ts-node -r tsconfig-paths/register \
+  ../scripts/audits/audit-fleet-connectivity-production-readiness.ts --phase=4 --days=60 \
   > "${OUT}/audit-phase-4.json" 2>&1
 
 log "==> Reconciliation dry-run with evidence packages (no --apply)"
