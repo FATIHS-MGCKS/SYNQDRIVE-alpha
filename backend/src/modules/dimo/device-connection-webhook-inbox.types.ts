@@ -6,6 +6,7 @@ import {
 import { DEVICE_CONNECTION_DEDUP_WINDOW_MS } from './device-connection-webhook.service';
 
 export type DeviceConnectionWebhookIntakeOutcome =
+  | 'queued'
   | 'created'
   | 'duplicate'
   | 'ignored_by_policy'

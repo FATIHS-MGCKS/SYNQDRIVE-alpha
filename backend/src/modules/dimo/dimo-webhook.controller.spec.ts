@@ -21,9 +21,9 @@ function makeController(overrides?: {
   };
   const deviceConnectionInbox: DeviceConnectionInboxMock = {
     intakeDeviceConnectionWebhook: jest.fn().mockResolvedValue({
-      outcome: 'created',
+      outcome: 'queued',
       inboxId: 'inbox-1',
-      processingStatus: DeviceConnectionWebhookProcessingStatus.PROCESSED,
+      processingStatus: DeviceConnectionWebhookProcessingStatus.RECEIVED,
       eventId: 'e1',
     }),
     ...overrides?.deviceConnectionInbox,

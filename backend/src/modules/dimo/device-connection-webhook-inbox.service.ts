@@ -1,23 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  DeviceConnectionWebhookBindingMappingStatus,
   DeviceConnectionWebhookProcessingStatus,
-  DeviceConnectionWebhookVehicleMappingStatus,
   DimoDeviceConnectionEventType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  DeviceConnectionWebhookService,
-  type DeviceConnectionVehicle,
-} from './device-connection-webhook.service';
+import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
 import {
   computeProviderEventId,
   computeWebhookPayloadHash,
   isTerminalInboxStatus,
   type DeviceConnectionWebhookIntakeOutcome,
 } from './device-connection-webhook-inbox.types';
-
-const RETRY_BACKOFF_MS = 60_000;
 
 export interface DeviceConnectionWebhookIntakeInput {
   tokenId: number;
@@ -43,7 +37,7 @@ export class DeviceConnectionWebhookInboxService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly deviceConnection: DeviceConnectionWebhookService,
+    private readonly queue: DeviceConnectionWebhookQueueProducer,
   ) {}
 
   async intakeDeviceConnectionWebhook(
@@ -79,15 +73,11 @@ export class DeviceConnectionWebhookInboxService {
         };
       }
 
-      if (existing.processingStatus === DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED) {
-        return this.retryProcessing(existing.id);
-      }
-
+      await this.queue.enqueue(existing.id);
       return {
-        outcome: 'already_processed',
+        outcome: 'queued',
         inboxId: existing.id,
         processingStatus: existing.processingStatus,
-        eventId: existing.domainEventId ?? undefined,
         eventType: existing.eventType,
       };
     }
@@ -106,165 +96,18 @@ export class DeviceConnectionWebhookInboxService {
       },
     });
 
-    return this.processInboxRow(inboxRow.id, input);
-  }
+    await this.queue.enqueue(inboxRow.id);
 
-  private async retryProcessing(inboxId: string): Promise<DeviceConnectionWebhookIntakeResult> {
-    const row = await this.prisma.deviceConnectionWebhookInbox.findUniqueOrThrow({
-      where: { id: inboxId },
-    });
-    const pluggedIn = DeviceConnectionWebhookService.pluggedInFromEventType(row.eventType);
-    return this.processInboxRow(inboxId, {
-      tokenId: row.tokenId,
-      pluggedIn,
-      observedAt: row.observedAt,
-      rawPayload: row.rawPayloadJson,
-      provider: row.provider,
-    });
-  }
+    this.logger.log(
+      `Queued device connection webhook inbox ${inboxRow.id} for tokenId=${input.tokenId} eventType=${eventType}`,
+    );
 
-  private async processInboxRow(
-    inboxId: string,
-    input: DeviceConnectionWebhookIntakeInput,
-  ): Promise<DeviceConnectionWebhookIntakeResult> {
-    const row = await this.prisma.deviceConnectionWebhookInbox.findUniqueOrThrow({
-      where: { id: inboxId },
-    });
-    const eventType = DeviceConnectionWebhookService.eventTypeForPlugState(input.pluggedIn);
-    const attempts = row.processingAttempts + 1;
-
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { dimoVehicle: { tokenId: input.tokenId } },
-      select: { id: true, organizationId: true },
-    });
-
-    if (!vehicle) {
-      const processedAt = new Date();
-      await this.prisma.deviceConnectionWebhookInbox.update({
-        where: { id: inboxId },
-        data: {
-          processingAttempts: attempts,
-          processingStatus: DeviceConnectionWebhookProcessingStatus.PERMANENTLY_FAILED,
-          vehicleMappingStatus: DeviceConnectionWebhookVehicleMappingStatus.UNKNOWN_VEHICLE,
-          lastErrorCode: 'unknown_vehicle',
-          lastErrorAt: processedAt,
-          processedAt,
-        },
-      });
-      this.logger.warn(
-        `Device connection webhook inbox ${inboxId}: unknown vehicle for tokenId=${input.tokenId}`,
-      );
-      return {
-        outcome: 'permanently_failed',
-        inboxId,
-        processingStatus: DeviceConnectionWebhookProcessingStatus.PERMANENTLY_FAILED,
-        eventType,
-        errorCode: 'unknown_vehicle',
-      };
-    }
-
-    await this.prisma.deviceConnectionWebhookInbox.update({
-      where: { id: inboxId },
-      data: {
-        organizationId: vehicle.organizationId,
-        vehicleId: vehicle.id,
-        vehicleMappingStatus: DeviceConnectionWebhookVehicleMappingStatus.RESOLVED,
-        processingStatus: DeviceConnectionWebhookProcessingStatus.VALIDATED,
-        processingAttempts: attempts,
-      },
-    });
-
-    try {
-      const domainResult = await this.deviceConnection.processValidatedWebhookEvent({
-        vehicle: { id: vehicle.id, organizationId: vehicle.organizationId },
-        tokenId: input.tokenId,
-        pluggedIn: input.pluggedIn,
-        observedAt: input.observedAt,
-        rawPayload: input.rawPayload,
-        inboxId,
-      });
-
-      if (domainResult.outcome === 'ignored_by_policy') {
-        const processedAt = new Date();
-        await this.prisma.deviceConnectionWebhookInbox.update({
-          where: { id: inboxId },
-          data: {
-            processingStatus: DeviceConnectionWebhookProcessingStatus.IGNORED_BY_POLICY,
-            policyIgnoreReason: domainResult.policyReason,
-            bindingMappingStatus: DeviceConnectionWebhookBindingMappingStatus.RESOLVED,
-            processedAt,
-          },
-        });
-        return {
-          outcome: 'ignored_by_policy',
-          inboxId,
-          processingStatus: DeviceConnectionWebhookProcessingStatus.IGNORED_BY_POLICY,
-          eventType,
-          policyIgnoreReason: domainResult.policyReason,
-        };
-      }
-
-      if (domainResult.outcome === 'duplicate') {
-        const processedAt = new Date();
-        await this.prisma.deviceConnectionWebhookInbox.update({
-          where: { id: inboxId },
-          data: {
-            processingStatus: DeviceConnectionWebhookProcessingStatus.PROCESSED,
-            domainEventId: domainResult.eventId,
-            bindingMappingStatus: DeviceConnectionWebhookBindingMappingStatus.RESOLVED,
-            processedAt,
-          },
-        });
-        return {
-          outcome: 'duplicate',
-          inboxId,
-          processingStatus: DeviceConnectionWebhookProcessingStatus.PROCESSED,
-          eventId: domainResult.eventId,
-          eventType,
-        };
-      }
-
-      const processedAt = new Date();
-      await this.prisma.deviceConnectionWebhookInbox.update({
-        where: { id: inboxId },
-        data: {
-          processingStatus: DeviceConnectionWebhookProcessingStatus.PROCESSED,
-          domainEventId: domainResult.eventId,
-          bindingMappingStatus: DeviceConnectionWebhookBindingMappingStatus.RESOLVED,
-          processedAt,
-        },
-      });
-      return {
-        outcome: 'created',
-        inboxId,
-        processingStatus: DeviceConnectionWebhookProcessingStatus.PROCESSED,
-        eventId: domainResult.eventId,
-        eventType,
-      };
-    } catch (err: unknown) {
-      const errorCode = err instanceof Error ? err.name : 'processing_error';
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      const failedAt = new Date();
-      await this.prisma.deviceConnectionWebhookInbox.update({
-        where: { id: inboxId },
-        data: {
-          processingStatus: DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED,
-          lastErrorCode: errorCode,
-          lastErrorAt: failedAt,
-          nextRetryAt: new Date(failedAt.getTime() + RETRY_BACKOFF_MS),
-        },
-      });
-      this.logger.warn(
-        `Device connection webhook inbox ${inboxId} processing failed: ${errorMessage}`,
-      );
-      return {
-        outcome: 'retryable_failed',
-        inboxId,
-        processingStatus: DeviceConnectionWebhookProcessingStatus.RETRYABLE_FAILED,
-        eventType,
-        errorCode,
-      };
-    }
+    return {
+      outcome: 'queued',
+      inboxId: inboxRow.id,
+      processingStatus: DeviceConnectionWebhookProcessingStatus.RECEIVED,
+      eventType,
+    };
   }
 
   private mapTerminalOutcome(

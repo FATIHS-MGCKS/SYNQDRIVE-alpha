@@ -1,7 +1,12 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
+import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
+import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { DimoController } from './dimo.controller';
 import { DimoWebhookController } from './dimo-webhook.controller';
 import { DimoAuthService } from './dimo-auth.service';
@@ -14,14 +19,16 @@ import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
+import { DeviceConnectionWebhookInboxRepository } from './device-connection-webhook-inbox.repository';
+import { DeviceConnectionWebhookProcessingService } from './device-connection-webhook-processing.service';
+import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
+import { DeviceConnectionWebhookInboxSchedulerService } from './device-connection-webhook-inbox-scheduler.service';
+import { DeviceConnectionWebhookReplayService } from './device-connection-webhook-replay.service';
+import { DeviceConnectionWebhookInboxController } from './device-connection-webhook-inbox.controller';
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
 import { RpmWebhookQueryService } from './rpm-webhook-query.service';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
 import { DeviceConnectionEpisodeResolutionService } from './device-connection-episode-resolution/device-connection-episode-resolution.service';
-import {
-  buildSnapshotReferenceId,
-  extractObdPlugSignalFromSnapshot,
-} from './device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
 import { VehicleConnectivityRuntimeProjectionService } from './device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service';
 import { DeviceConnectionEpisodeResolutionOutboxService } from './device-connection-episode-resolution/device-connection-episode-resolution-outbox.service';
 import { ConnectivityAlertService } from './connectivity-alert/connectivity-alert.service';
@@ -34,10 +41,14 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
 @Module({
   imports: [
     ConfigModule.forFeature(dimoConfig),
+    ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
+    BullModule.registerQueue({ name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS }),
+    ActivityLogModule,
+    SharedGuardsModule,
     NotificationsModule,
     forwardRef(() => VehicleIntelligenceModule),
   ],
-  controllers: [DimoController, DimoWebhookController],
+  controllers: [DimoController, DimoWebhookController, DeviceConnectionWebhookInboxController],
   providers: [
     DimoAuthService,
     DimoTelemetryService,
@@ -49,6 +60,11 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoTriggersBootstrapService,
     DeviceConnectionWebhookService,
     DeviceConnectionWebhookInboxService,
+    DeviceConnectionWebhookInboxRepository,
+    DeviceConnectionWebhookProcessingService,
+    DeviceConnectionWebhookQueueProducer,
+    DeviceConnectionWebhookInboxSchedulerService,
+    DeviceConnectionWebhookReplayService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeReconciliationService,
     DeviceConnectionEpisodeReconciliationApplyService,
@@ -75,6 +91,9 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     ConnectivityAlertService,
     VehicleConnectivityRuntimeProjectionService,
     RpmWebhookQueryService,
+    DeviceConnectionWebhookProcessingService,
+    DeviceConnectionWebhookReplayService,
+    DeviceConnectionWebhookInboxSchedulerService,
   ],
 })
 export class DimoModule {}
