@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-connectivity-staging-verification-v49702-2026-07-19',
+    version: '4.9.702',
+    title: 'V4.9.702 — Fleet Connectivity RC staging verification (Prompt 9)',
+    summary: [
+      'RC deployed to production VPS with pre-deploy DB backup; 7 connectivity Prisma migrations applied; kill switch verified (recovery on, reconciliation apply off).',
+      'Read-only audits + reconciliation dry-run (2 telemetry-recovery candidates, 0 review required); no --apply executed.',
+      'INCIDENT_VEHICLE_001 resolution path verified (58 connectivity Jest tests); 24h observation window started.',
+    ],
+    reason: 'Prompt 9: Validate RC on staging/safe production data copy before phased rollout.',
+    previousBehavior:
+      'RC verified in agent only (Prompt 8); no VPS migrate deploy or live audit/dry-run on production data.',
+    details:
+      'docs/audits/fleet-connectivity-staging-verification-2026-07.md, backend/scripts/ops/vps-deploy-connectivity-staging.sh, verify-fleet-connectivity-staging.sh, boot/DI fixes (forwardRef, resolution service).',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-19T12:35:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-readiness-v49701-2026-07-19',
     version: '4.9.701',
     title: 'V4.9.701 — Fleet Connectivity production readiness (observability + guarded apply)',
