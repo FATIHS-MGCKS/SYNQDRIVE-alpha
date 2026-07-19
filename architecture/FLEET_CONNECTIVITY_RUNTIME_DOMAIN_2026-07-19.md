@@ -45,6 +45,5 @@ User-facing labels remain frontend i18n responsibility.
 
 ## Next steps (not in this commit)
 
-- `VehicleConnectivityRuntimeStateBuilder` (Prompt 4+)
-- Consumer migration off legacy fleet-connectivity projections
+- Wire builder into fleet-connectivity API, fleet-map, device-connection API, notifications
 - Persistent episode table linkage for `activeEpisodeId`

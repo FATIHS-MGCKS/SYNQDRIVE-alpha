@@ -120,12 +120,12 @@ export const CONNECTIVITY_REASON_CODES = Object.values(ConnectivityReasonCode);
 
 export const ConnectivityRecommendedAction = {
   NONE: 'NONE',
+  CHECK_DEVICE: 'CHECK_DEVICE',
   REAUTHORIZE_PROVIDER: 'REAUTHORIZE_PROVIDER',
-  VERIFY_PHYSICAL_DEVICE: 'VERIFY_PHYSICAL_DEVICE',
+  CONNECT_DATA_SOURCE: 'CONNECT_DATA_SOURCE',
+  REVIEW_CONNECTIVITY: 'REVIEW_CONNECTIVITY',
+  WAIT_FOR_TELEMETRY: 'WAIT_FOR_TELEMETRY',
   CHECK_INTEGRATION: 'CHECK_INTEGRATION',
-  RESOLVE_WEBHOOK_FAILURE: 'RESOLVE_WEBHOOK_FAILURE',
-  MANUAL_REVIEW: 'MANUAL_REVIEW',
-  MONITOR: 'MONITOR',
 } as const;
 export type ConnectivityRecommendedAction =
   (typeof ConnectivityRecommendedAction)[keyof typeof ConnectivityRecommendedAction];

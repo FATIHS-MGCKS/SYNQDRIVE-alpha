@@ -105,7 +105,7 @@
 |---|------|--------|--------|-----------|-------|-----|------|-----|--------|
 | 1 | Baseline + Remediation-Tracking | **DONE** | `c1bcacb5` | — | dokumentiert | — | — | — | low |
 | 2 | Regression test safety net (Szenarien A–L) | **DONE** | `12bd652a` | — | 81 BE + 37 FE | — | — | — | low |
-| 3 | VehicleConnectivityRuntimeStateBuilder (Domain-Typen A–F) | **DONE** | `1e41783c` | — | 23 domain | — | — | — | med |
+| 3 | VehicleConnectivityRuntimeStateBuilder (Domain + Builder) | **DONE** | *(this commit)* | — | 42 domain+builder | — | — | — | med |
 | 4 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
 | 5 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
 | 6 | Binding-/Token-Semantik | pending | — | maybe | binding cases | yes | yes | no | med |
@@ -182,6 +182,20 @@
 
 ---
 
+## Prompt 4 — VehicleConnectivityRuntimeStateBuilder
+
+**Pfad:** `backend/src/modules/vehicles/connectivity/domain/vehicle-connectivity-runtime-state.builder.ts`
+
+- Pure static `VehicleConnectivityRuntimeStateBuilder.build()` — keine DB-Zugriffe
+- Typisierte Inputs: Provider, Telemetry, Binding, Episode, Snapshot, Webhook, Coverage, Errors, Device/Source Type
+- Prioritätsregeln A–D implementiert; `STATE_CONFLICT` bei offener Episode + Snapshot plugged
+- RecommendedAction: NONE, CHECK_DEVICE, REAUTHORIZE_PROVIDER, CONNECT_DATA_SOURCE, REVIEW_CONNECTIVITY, WAIT_FOR_TELEMETRY, CHECK_INTEGRATION
+- Tests: `vehicle-connectivity-runtime-state.builder.spec.ts` (19 Szenarien)
+
+**Noch nicht in diesem Schritt:** Consumer-Migration (Fleet API, fleet-map, notifications).
+
+---
+
 ## VPS- / Staging-Verifikationen
 
 | Prompt | VPS | Staging | Notiz |
@@ -235,6 +249,7 @@
 | 2026-07-19 | 1 | `c1bcacb5` | Baseline branch, Audit-Import, redaktionelle Audit-Korrekturen, dieses Dokument |
 | 2026-07-19 | 2 | `12bd652a` | Regressionstests A–L, keine Produktlogik geändert |
 | 2026-07-19 | 3 | `1e41783c` | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
+| 2026-07-19 | 4 | *(this commit)* | VehicleConnectivityRuntimeStateBuilder (pure domain) |
 
 ---
 

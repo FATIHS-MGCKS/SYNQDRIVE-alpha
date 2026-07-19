@@ -109,12 +109,12 @@ describe('connectivity domain types', () => {
         ConnectivityReasonCode.TELEMETRY_FRESH,
         ConnectivityReasonCode.DATA_COVERAGE_PARTIAL,
       ],
-      recommendedAction: ConnectivityRecommendedAction.MONITOR,
+      recommendedAction: ConnectivityRecommendedAction.REVIEW_CONNECTIVITY,
       evidence: { signalCoveragePercent: 72, openUnpluggedEpisode: false },
     });
     expect(state.overallState).toBe('TELEMETRY_ACTIVE');
     expect(state.reasonCodes).toHaveLength(2);
-    expect(state.recommendedAction).toBe('MONITOR');
+    expect(state.recommendedAction).toBe('REVIEW_CONNECTIVITY');
     expect(state.evidence.signalCoveragePercent).toBe(72);
   });
 });
