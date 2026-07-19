@@ -54,6 +54,15 @@ current state. Replaces inferring open unplug episodes from a rolling 7-day even
 
 ## Next steps (not in this commit)
 
-- Snapshot/telemetry resolution (`SNAPSHOT_PLUG_SIGNAL`, `TELEMETRY_RESUMED`)
+- Snapshot/telemetry **apply** path (closure at runtime — Prompt 5 remediation step)
+- Run `scripts/ops/audit-device-connection-episode-reconciliation.ts` against staging/prod (read-only) before controlled apply
 - Runtime builder `activeEpisodeId` wiring
-- Production reconciliation backfill (Prompt 18)
+- Production reconciliation backfill (Prompt 18) — only `applyEligible=yes` rows
+
+## Reconciliation audit (Prompt 6)
+
+Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconciliation/`
+
+- Script: `backend/scripts/ops/audit-device-connection-episode-reconciliation.ts`
+- Fixture artifacts: `docs/audits/device-connection-episode-reconciliation-2026-07.md`
+- CSV: `docs/audits/data/device-connection-episode-reconciliation-2026-07.csv`

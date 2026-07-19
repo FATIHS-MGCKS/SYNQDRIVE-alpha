@@ -15,6 +15,7 @@ import { DeviceConnectionWebhookService } from './device-connection-webhook.serv
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
 import { RpmWebhookQueryService } from './rpm-webhook-query.service';
 import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
+import { DeviceConnectionEpisodeReconciliationService } from './device-connection-episode-reconciliation/device-connection-episode-reconciliation.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
@@ -32,6 +33,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoTriggersBootstrapService,
     DeviceConnectionWebhookService,
     DeviceConnectionEpisodeService,
+    DeviceConnectionEpisodeReconciliationService,
     DeviceConnectionQueryService,
     RpmWebhookCandidateService,
     RpmWebhookQueryService,
