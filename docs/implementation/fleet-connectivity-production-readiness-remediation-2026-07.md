@@ -104,7 +104,7 @@
 | # | Ziel | Status | Commit | Migration | Tests | VPS | DIMO | UI | Risiko |
 |---|------|--------|--------|-----------|-------|-----|------|-----|--------|
 | 1 | Baseline + Remediation-Tracking | **DONE** | `c1bcacb5` | — | dokumentiert | — | — | — | low |
-| 2 | Regression test safety net (Szenarien A–L) | **DONE** | `fa419233` | — | 81 BE + 37 FE | — | — | — | low |
+| 2 | Regression test safety net (Szenarien A–L) | **DONE** | `12bd652a` | — | 81 BE + 37 FE | — | — | — | low |
 | 3 | VehicleConnectivityRuntimeStateBuilder | pending | — | no | unit matrix | no | no | no | med |
 | 4 | Persistente Device Connection Episodes | pending | — | **yes** | migration spec | yes | no | no | high |
 | 5 | Snapshot-Recovery Episode Closure | pending | — | maybe | replay VEHICLE_005/006 | yes | no | no | high |
@@ -214,7 +214,7 @@
 | Datum | Prompt | Commit | Notiz |
 |-------|--------|--------|-------|
 | 2026-07-19 | 1 | `c1bcacb5` | Baseline branch, Audit-Import, redaktionelle Audit-Korrekturen, dieses Dokument |
-| 2026-07-19 | 2 | `fa419233` | Regressionstests A–L, keine Produktlogik geändert |
+| 2026-07-19 | 2 | `12bd652a` | Regressionstests A–L, keine Produktlogik geändert |
 
 ---
 
