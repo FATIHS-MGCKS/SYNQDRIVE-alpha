@@ -1265,6 +1265,14 @@ enum DeviceConnectionWebhookMappingStatus {
   PARSE_FAILED
 }
 
+enum WebhookConfigurationState {
+  CONFIGURED
+  NOT_CONFIGURED
+  ERROR
+  UNKNOWN
+  NOT_APPLICABLE
+}
+
 enum DamageType {
   SCRATCH
   DENT
@@ -6519,6 +6527,23 @@ model DeviceConnectionWebhookInbox {
   @@index([vehicleId, observedAt])
   @@index([rawPayloadHash])
   @@map("device_connection_webhook_inbox")
+}
+
+// ------------------------------------------------
+// DEVICE CONNECTION TRIGGER REGISTRY CACHE (DIMO Triggers API snapshot)
+// ------------------------------------------------
+model DeviceConnectionTriggerRegistryCache {
+  scopeKey     String   @id @default("DIMO_DEVELOPER") @map("scope_key")
+  provider     String   @default("DIMO")
+  callbackUrl  String?  @map("callback_url")
+  webhooksJson Json     @map("webhooks_json")
+  syncedAt     DateTime @map("synced_at")
+  syncError    String?  @map("sync_error")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("device_connection_trigger_registry_cache")
 }
 
 // ------------------------------------------------

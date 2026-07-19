@@ -62,6 +62,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookIngestService,
     DeviceConnectionWebhookProcessingService,
     DeviceConnectionWebhookReplayService,
+    DimoTriggerRegistryService,
+    DeviceConnectionWebhookConfigurationService,
     DeviceConnectionEpisodeService,
     DeviceConnectionEpisodeReconciliationService,
     DeviceConnectionEpisodeResolutionService,
@@ -85,6 +87,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookIngestService,
     DeviceConnectionWebhookProcessingService,
     DeviceConnectionWebhookReplayService,
+    DeviceConnectionWebhookConfigurationService,
+    DimoTriggerRegistryService,
     RpmWebhookQueryService,
   ],
 })

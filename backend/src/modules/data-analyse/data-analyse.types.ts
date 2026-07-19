@@ -294,6 +294,8 @@ export type EventLayerStatus =
   | 'unavailable'
   | 'configured'
   | 'not_configured'
+  | 'error'
+  | 'not_applicable'
   | 'failed'
   | 'insufficient'
   | 'skipped'

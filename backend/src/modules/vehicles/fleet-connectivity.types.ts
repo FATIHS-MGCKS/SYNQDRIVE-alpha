@@ -47,6 +47,19 @@ export interface FleetDeviceConnectionDto {
   rentalRelevant: boolean;
   duringActiveBooking: boolean;
   eventSource: 'dimo_webhook' | 'none';
+  unplugTriggerState: {
+    state: 'CONFIGURED' | 'NOT_CONFIGURED' | 'ERROR' | 'UNKNOWN' | 'NOT_APPLICABLE';
+    reasonCode: string | null;
+    triggerId: string | null;
+    eventType: 'OBD_DEVICE_UNPLUGGED' | 'OBD_DEVICE_PLUGGED_IN' | null;
+    active: boolean | null;
+    callbackUrl: string | null;
+    failureCount: number | null;
+  };
+  plugTriggerState: FleetDeviceConnectionDto['unplugTriggerState'];
+  recoveryPolicy: 'UNPLUG_WEBHOOK_PLUG_SNAPSHOT' | 'UNPLUG_WEBHOOK_ONLY' | 'NONE';
+  lastSuccessfulDeliveryAt: string | null;
+  lastDeliveryErrorAt: string | null;
 }
 
 export interface FleetConnectivityVehicleDto {
@@ -91,6 +104,14 @@ export interface FleetConnectivityVehicleDto {
   online: boolean;
   /** Explicit DIMO Vehicle Trigger OBD plug/unplug events — not snapshot/offline. */
   deviceConnection: FleetDeviceConnectionDto | null;
+  webhookConfiguration?: {
+    unplugTriggerState: FleetDeviceConnectionDto['unplugTriggerState'];
+    plugTriggerState: FleetDeviceConnectionDto['plugTriggerState'];
+    recoveryPolicy: FleetDeviceConnectionDto['recoveryPolicy'];
+    lastSuccessfulDeliveryAt: string | null;
+    lastDeliveryErrorAt: string | null;
+    configSyncedAt: string | null;
+  } | null;
 }
 
 export interface FleetConnectivitySummary {
