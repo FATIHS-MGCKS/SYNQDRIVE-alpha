@@ -35,7 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'fleet-connectivity-staging-verification-v49702-2026-07-19',
+    id: 'fleet-connectivity-pilot-readiness-v49703-2026-07-19',
+    version: '4.9.703',
+    title: 'V4.9.703 — Fleet Connectivity pilot readiness gate (Prompt 10)',
+    summary: [
+      '24h staging soak evaluated at T+10m — duration gate NOT met; verdict NOT_READY for production pilot.',
+      'Soak metrics: 0 webhooks, 0 retries/DLQ, 0 live resolutions; 2 historical telemetry-reconciliation candidates (not applied).',
+      'Pilot plan + soak evaluator script documented; execute pilot only after 2026-07-20T12:26Z soak re-check.',
+    ],
+    reason: 'Prompt 10 final go-live decision — soak gate blocks pilot until 24h + live path validation.',
+    previousBehavior:
+      'Prompt 9 ended with 24h observation pending; no formal soak verdict or pilot plan document.',
+    details:
+      'docs/audits/fleet-connectivity-production-pilot-readiness-2026-07.md, evaluate-fleet-connectivity-staging-soak.sh, post-remediation + remediation tracker updates.',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-19T12:38:00.000Z',
+  },
+  {
     version: '4.9.702',
     title: 'V4.9.702 — Fleet Connectivity RC staging verification (Prompt 9)',
     summary: [
