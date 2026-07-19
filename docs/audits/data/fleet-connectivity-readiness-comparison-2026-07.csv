@@ -1,0 +1,8 @@
+anonymizedVehicleId,powertrain,readinessScoreRaw,readinessScoreCapabilityAdjusted,signalCoveragePercent,gps,odometer,speed,fuel,evSoc,dtc,obdPlug,jamming,signalsCountedRaw,signalsApplicable,signalsAvailable,signalsMissingNotApplicable,signalsStale,signalsUnknown,notes
+VEHICLE_001,COMBUSTION,88,100,88,available,available,available,available,missing_not_applicable,available,available,available,8,7,7,1_evSoc,0,0,ICE_excludes_evSoc_from_adjusted_score
+VEHICLE_002,UNKNOWN,75,86,75,available,available,available,missing,available,available,unknown,available,8,7,6,1_fuel_if_EV,0,1_obdPlug,powertrain_unknown;may_be_EV_without_fuel
+VEHICLE_003,COMBUSTION,88,100,88,available,available,available,available,missing_not_applicable,available,available,available,8,7,7,1_evSoc,0,0,aligned
+VEHICLE_004,COMBUSTION,88,100,88,available,available,available,available,missing_not_applicable,available,available,available,8,7,7,1_evSoc,0,0,aligned
+VEHICLE_005,COMBUSTION,88,100,88,available,available,available,available,missing_not_applicable,available,available,available,8,7,7,1_evSoc,0,0,readiness_score_does_not_reflect_stuck_unplug_episode
+VEHICLE_006,COMBUSTION,88,100,88,available,available,available,available,missing_not_applicable,available,available,available,8,7,7,1_evSoc,0,0,same_as_V005
+VEHICLE_007,UNKNOWN,0,0,0,unknown,unknown,unknown,unknown,unknown,unknown,unknown,unknown,0,0,0,0,0,8,not_linked_no_telemetry

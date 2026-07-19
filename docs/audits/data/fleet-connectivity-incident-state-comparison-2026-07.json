@@ -1,0 +1,108 @@
+{
+  "incidentId": "INCIDENT_VEHICLE_001",
+  "anonymizedVehicleId": "INCIDENT_VEHICLE_001",
+  "analysisWindow": {
+    "startUtc": "2026-07-08T17:19:00Z",
+    "endUtc": "2026-07-18T10:00:00Z",
+    "unplugObservedAtUtc": "2026-07-08T17:21:19Z"
+  },
+  "productionDataModified": false,
+  "binding": {
+    "deviceType": "LTE_R1_AFTERMARKET_OBD",
+    "provider": "DIMO",
+    "syntheticDevice": false,
+    "aftermarketDevice": true,
+    "tokenBindingStable": true,
+    "consentStatus": "ACTIVE_DIMO_DIRECT",
+    "sameBindingEpisodeAsUnplug": true,
+    "providerOrTokenChangeInWindow": false
+  },
+  "counts": {
+    "webhooksTotal": 1,
+    "webhooksUnplug": 1,
+    "webhooksPlug": 0,
+    "clickhouseSnapshotsBeforeUnplug": 5727,
+    "clickhouseSnapshotsAfterUnplug": 30099,
+    "clickhouseSnapshotsFirstHourAfterUnplug": 276,
+    "pollSuccessAfterUnplug": 29931,
+    "pollFailureAfterUnplug": 11905,
+    "tripsAfterUnplug": 51,
+    "tripsWithDimoSegmentAfterUnplug": 44,
+    "deviceUnplugNotifications": 0
+  },
+  "unplugObservedAt": "2026-07-08T17:21:19Z",
+  "firstTelemetryAfterUnplug": {
+    "clickhouseRecordedAt": "2026-07-08T17:21:28Z",
+    "pollStartedAt": "2026-07-08T17:21:41.313Z",
+    "pollFinishedAt": "2026-07-08T17:21:41.635Z",
+    "lagProviderToPollSeconds": 13
+  },
+  "sameBinding": true,
+  "telemetryWasFresh": true,
+  "telemetryWasBackfill": false,
+  "backfillEvidence": "First post-unplug ClickHouse recorded_at (+9s) and poll ingest (+22s) are after unplug observedAt; current sourceTimestamp vs providerFetchedAt delta ~7s (normal ingest lag). No historical snapshot store with obdIsPluggedIn in ClickHouse — plug recovery inferred from current VehicleLatestState only.",
+  "explicitPlugSignal": false,
+  "snapshotObdAfterRecovery": true,
+  "dimoConnectionStatusCurrent": "CONNECTED",
+  "currentDeviceState": {
+    "backend": "UNPLUGGED_CONFIRMED",
+    "openUnpluggedEpisode": true,
+    "currentDeviceConnectionStatus": "unplugged",
+    "obdIsPluggedInSnapshot": true,
+    "connectionStatusFleetApi": "online",
+    "telemetryFreshnessCanonical": "live"
+  },
+  "expectedDeviceState": {
+    "deviceState": "PLUGGED_INFERRED",
+    "openUnpluggedEpisode": false,
+    "currentDeviceConnectionStatus": "plugged",
+    "resolutionMethod": "SNAPSHOT_PLUG_SIGNAL"
+  },
+  "currentOverallState": {
+    "providerLink": "LINKED",
+    "telemetryState": "live",
+    "deviceEpisodeState": "UNPLUGGED_OPEN",
+    "dataCoverage": "high",
+    "attentionState": "device_unplug_warning",
+    "fleetUiContradiction": "ObdRowChip=Plugged in AND DeviceConnectionWebhookChip=Unplugged Webhook"
+  },
+  "expectedOverallState": {
+    "providerLink": "LINKED",
+    "telemetryState": "live",
+    "deviceEpisodeState": "PLUGGED_INFERRED_CLOSED",
+    "dataCoverage": "high",
+    "attentionState": "none_device_connectivity",
+    "fleetUiContradiction": "none"
+  },
+  "rootCause": "buildDeviceConnectionSummary sets openUnpluggedEpisode solely from persisted webhook event ordering (last UNPLUG newer than last PLUG). reconcileDeviceConnectionEvents uses connectivityAnchor only to suppress phantom PLUG impulses — it never closes an open UNPLUG episode when obdIsPluggedIn=true and DIMO is CONNECTED.",
+  "rootCauseCodeLines": [
+    "backend/src/modules/dimo/device-connection-read-model.ts:338-340 (openUnpluggedEpisode)",
+    "backend/src/modules/dimo/device-connection-read-model.ts:343-344 (currentDeviceConnectionStatus=unplugged when episode open)"
+  ],
+  "affectedConsumers": [
+    "FleetConnectivityTab DeviceConnectionWebhookChip",
+    "FleetConnectivityDetailDrawer deviceConnection section",
+    "Fleet KPI deviceUnpluggedOpenEpisodes",
+    "VehicleDeviceConnectionCard open interruption text",
+    "DataAnalyse device connection metrics",
+    "TripDeviceConnectionEvidence recoveryAt (requires PLUG event)",
+    "filter device_unplugged_webhook"
+  ],
+  "surfacesShowingCorrectLiveState": [
+    "FleetConnectivityTab ConnectionStatusChip online",
+    "FleetConnectivityTab ObdRowChip Plugged in",
+    "VehicleConnectionBadge resolveTelemetryFreshness live",
+    "Fleet map / booking gate isVehicleOffline false",
+    "DimoVehicle.connectionStatus CONNECTED"
+  ],
+  "findingSeverity": "P0",
+  "recommendedResolutionRule": "If OBD_DEVICE_UNPLUGGED at T0 and subsequent snapshot shows obdIsPluggedIn=true with provider timestamp T1>T0 on same token/binding and fresh telemetry (non-backfill), set openUnpluggedEpisode=false and deviceState=PLUGGED_INFERRED without requiring OBD_DEVICE_PLUGGED_IN webhook row.",
+  "eventOrderFindings": {
+    "outOfOrderWebhooks": false,
+    "duplicateWebhooks": false,
+    "duplicateSnapshotsSameSecond": true,
+    "missingCorrelationId": true,
+    "providerVsReceivedWebhookLagSeconds": 2.571,
+    "snapshotBeforeUnplugReceivedAfter": false
+  }
+}

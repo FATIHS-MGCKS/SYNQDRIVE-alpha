@@ -1,0 +1,29 @@
+item_id,location,language,issue_type,current_text_or_behavior,wcag_risk,recommended_fix,priority
+i18n_tab_label_de,fleetTab.connectivity,de,untranslated,Connectivity (EN in DE file),low,Verbindung or Konnektivität,P2
+i18n_filter_status_options,FleetConnectivityTab.tsx select,en hardcoded,missing i18n,Connected/Online/Standby/Offline/Not connected,medium,Use t() keys for all options,P0
+i18n_filter_readiness_options,FleetConnectivityTab.tsx select,en hardcoded,missing i18n,Good/Watch/Warning/No data,medium,i18n keys,P1
+i18n_filter_signal_options,FleetConnectivityTab.tsx select,en hardcoded,technical+i18n,OBD unplugged (snapshot)/Device unplugged (webhook)/Jamming/missing GPS,high,User-facing filter labels ohne Webhook/OBD,P0
+i18n_threshold_chip,FleetConnectivityTab.tsx,en hardcoded,missing i18n,Online < Nm · Standby < Nh,low,Move to technical details or i18n,P2
+i18n_badge_connection,fleet-connectivity.utils.ts,en hardcoded,backend bypass,Online/Standby/Offline/Not Connected,medium,Canonical status i18n,P0
+i18n_badge_readiness,fleet-connectivity.utils.ts,en hardcoded,backend bypass,Good/Watch/Warning/No data,medium,Drawer-only labels,P1
+i18n_badge_obd,fleet-connectivity.badges.tsx,en hardcoded,technical,Plugged in/Unplugged/No data,high,Gerät verbunden/getrennt/keine Daten,P0
+i18n_badge_webhook,fleet-connectivity.badges.tsx,en hardcoded,technical,Unplugged · Webhook/Plugged · Webhook/No webhook,high,Single Gerät getrennt label,P0
+i18n_badge_jamming,fleet-connectivity.badges.tsx,en hardcoded,missing i18n,Snapshot · N/None,low,Drawer-only,P2
+i18n_drawer_all_sections,FleetConnectivityDetailDrawer.tsx,en hardcoded,missing i18n,Technical telemetry Connection summary Device identity etc.,high,Full drawer i18n namespace,P0
+i18n_drawer_disclaimer,FleetConnectivityDetailDrawer.tsx,en hardcoded,missing i18n,Read-only technical view…,medium,Short DE/EN operator copy,P1
+i18n_drawer_obd_text,fleet-connectivity.utils.ts obdPlugDisplay,en hardcoded,technical,OBD Device Plugged IN/NOT plugged in,high,User canonical phrases,P0
+i18n_drawer_jamming,fleet-connectivity.utils.ts,en hardcoded,missing i18n,Possible jamming detected…,medium,i18n,P2
+i18n_drawer_severity,FleetConnectivityDetailDrawer.tsx,en hardcoded,missing i18n,Severity: critical,medium,i18n,P2
+i18n_drawer_location,FleetConnectivityDetailDrawer.tsx,en hardcoded,missing i18n,No data for coords,low,i18n,P2
+i18n_dates_drawer,FleetConnectivityDetailDrawer.tsx,mixed,locale inconsistency,toLocaleString de-DE hardcoded even in EN UI,medium,Use locale from useLanguage(),P1
+i18n_device_connection_labels,device-connection-ui.ts,de only partial,mixed,DE labels used inside EN drawer,high,Unify i18n,P1
+i18n_monitoring_badge_de,fleetConnectivity.monitoringBadge,de mixed,product term,Data Authorization in German sentence,low,Localized product name,P2
+a11y_kpi_buttons,FleetConnectivityTab.tsx,—,aria,aria-pressed only no aria-label,medium,aria-label with filter name + count,P1
+a11y_search,FleetConnectivityTab.tsx,—,aria,placeholder only,medium,aria-label search vehicles,P2
+a11y_table_rows,DataTable,—,keyboard,row click chevron; depends on pattern,medium,Verify roving tabindex + Enter,P2
+a11y_status_color_only,StatusChip,—,color,status by color + short text,low,Ensure text always present; dot not sole indicator,LOW
+a11y_mobile_cards,FleetConnectivityTab.tsx,—,touch,full card button min-h ok,low,Maintain 44px touch; reduce badge clutter,P1
+a11y_drawer_focus,DetailDrawer,—,focus trap,pattern component,low,Verify focus return on close,P2
+a11y_contrast_live_green,FleetConnectivityTab.tsx freshness,—,contrast,var(--status-positive) on muted,low,Verify dark mode contrast,P2
+a11y_relative_time,freshnessLabel,—,time,backend freshnessLabel may be English Live,medium,Use locale-aware relative time,P1
+a11n_screen_reader_table,10 columns hidden responsive,—,structure,cols hidden sm/lg/xl may confuse,medium,Consistent column order; aria for hidden,P2

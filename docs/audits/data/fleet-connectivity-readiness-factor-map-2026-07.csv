@@ -1,0 +1,18 @@
+signalKey,includedInScore,numeratorRule,denominatorRule,capabilityAware,evIceAware,oemObdAware,freshnessRequired,historicalVsCurrent,nullHandling,notApplicableHandling,currentProblem,recommendedFormulaComponent
+gps,yes,available if lat/lng OR raw currentLocationCoordinates,counts if status != unknown,no,no,no,no,current snapshot only,null→unknown if no telemetry,still counted in denominator if unknown vs missing conflated,GPS privacy gaps not distinguished,exclude unknown from denominator; N/A if capability denies GPS
+odometer,yes,available if odometerKm OR raw distance signal,counts if != unknown,no,no,no,no,current only,null→unknown,missing when key absent but telemetry exists,ICE/EV both scored equally,capability-gated
+speed,yes,available if speedKmh OR raw speed,counts if != unknown,no,no,no,no,current only,null→unknown,parked vehicle may show 0 as available,speed at park is not freshness issue,optional: N/A when parked long-term
+fuel,yes,available if fuel columns OR raw fuel signals,always in denominator,no,no (EV still scored),no,no,current only,null→unknown,EV vehicles scored on fuel missing,capability: N/A for BEV
+evSoc,yes,available if evSoc OR raw SoC,always in denominator,no,no (ICE still scored),no,no,current only,null→unknown,ICE vehicles penalized for missing SoC,capability: N/A for ICE
+dtc,yes,available if lastDtcPollAt OR obdDtcList OR raw,always in denominator,no,no,no,no,current/historical poll mixed,null→unknown,no active codes still available if list empty,active vs capability separate
+obdPlug,yes,available if obdIsPluggedIn != null,always in denominator,partial (lte gate elsewhere),no,partial synthetic,no,current snapshot,null→unknown,synthetic OEM scored on OBD plug,N/A for NOT_APPLICABLE hardware
+jamming,yes,available if count>0 OR raw jamming signal,always in denominator,no,no,no,no,snapshot aggregate only,null→unknown,jamming without capability still in matrix,N/A without cellular jamming capability
+readinessScore,alias,signalCoveragePercent,signalCoveragePercent,no,no,no,no,current snapshot,N/A,N/A,equals coverage not operational readiness,rename or split scores
+readinessLevel,derived,thresholds on score 80/50,requires hasProviderLink+telemetry,no,no,no,no,current,N/A,N/A,no_data conflates no link and zero score,separate link state from coverage
+signalCoveragePercent,core,available signals / known signals,known = not unknown,none,no,no,no,no,current,null excluded from known set,unknown reduces denominator — can inflate score,usable fresh signals / expected capability-supported signals (recommended)
+
+aggregateMetric,currentFormula,recommendedFormula,gap
+usable_fresh_signals,not implemented,count signals where available AND signal timestamp within live window,Freshness not in coverage today
+expected_capability_supported_signals,not implemented,per-vehicle capability matrix (DIMO/HM) defining applicable signals,All 8 keys always considered
+readiness_score,available/known * 100,usable_fresh / expected_capable * 100,Score ignores freshness and capability
+fleet_kpi_avgReadinessScore,mean of readinessScore,same,Propagates skewed score

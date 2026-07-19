@@ -1,0 +1,16 @@
+ia_zone,current_element,current_count_or_content,user_question_primary,user_question_secondary,redundancy,technical_exposure,priority_rank,target_element,target_content,notes
+kpi_strip,KPI cards,9,Welche Fahrzeuge brauchen Aufmerksamkeit?,Wie viele sind verbunden?,connected+online overlap; OBD+webhook duplicate unplug,high,P0,4 KPI chips + header total,Wer braucht Handlung? / Standby / Aktiv / Keine Quelle,Action-first not telemetry taxonomy
+page_header,Title + subtitle + badge,1 header,Wo bin ich?,Ist das read-only?,badge repeats settings path,Data Authorization EN in DE UI,P1,Compact header,Fleet Connectivity · N Fahrzeuge · Snapshot time,Link zu Data Authorization statt Badge-Text
+filter_bar,3 selects + search,4 controls,Welches Teil der Flotte?,Welches Signal fehlt?,overlaps KPI click filters,webhook/OBD in signal select,P0,Chip filter bar,9 operational filters i18n,Single mental model with KPIs
+table_desktop,DataTable columns,10,Was ist der Status dieses Fahrzeugs?,Wann zuletzt Daten?,status+freshness+readiness+coverage+obd+webhook,very high,P0,5–6 columns,Fahrzeug | Zustand | Letzte Daten | Hinweis | Aktion,Provider/coverage/webhook → drawer
+table_mobile,Card per vehicle,N cards,Wie steht Fahrzeug X?,—,4 badges duplicate table cols,high,P1,Compact card,Plate + 1 status + 1 hint + chevron,Max 2 lines meta
+drawer_overview,Connection summary,9 rows,Was ist los?,Was tun?,duplicates table status,Provider Connection type Source type,P0,Section A Aktueller Zustand,Gesamtstatus + letzte Telemetrie + Empfehlung,One recommendation CTA
+drawer_timeline,Scattered in OBD section,webhook rows only,Wann passierte es?,Ist es behoben?,no unified timeline,Open episode Webhook labels,P0,Section B Verlauf,chronological events user language,Include telemetry recovery recognition
+drawer_data,Signal matrix + readiness,8+ metrics,Welche Daten fehlen?,Ist Abdeckung OK?,matrix duplicates coverage column,GPS DTC OBD Plug names,P1,Section C Datenverfügbarkeit,capability-aware checklist + freshness,No raw %
+drawer_integration,In connection summary,provider rows,Wer liefert Daten?,Ist Auth ok?,split across summary,token IDs in adjacent section,P1,Section D Integration,Provider Gerät Auth Consent Trigger,No synthetic token in default
+drawer_technical,Device identity + coords,IDs + lat/lng,—,—,should not be default,N/A,P0,Section E aufklappbar,masked IDs optional coords,Collapsed by default
+sort_default,Client filter order,insertion order,Wer zuerst?,—,no priority sort,critical vehicles buried,P0,priority sort,Action → Auth → Unplug → Offline → …,Matches prompt Teil 6
+canonical_language,Status labels,mixed EN DE,Verstehe ich den Status?,Ist das ein Fehler?,Online vs Live; Webhook vs Gerät getrennt,Webhook OBD DIMO Readiness,P0,user status lexicon,10 canonical phrases in Teil 4,Align with telemetryFreshness where possible
+empty_state,EmptyState,i18n OK,Warum leer?,—,none,low,LOW,enhanced empty,CTA link Data Authorization when all not_connected,
+loading_state,Skeleton,8 KPI + rows,Wird geladen,—,count mismatch,none,P2,4 KPI skeleton,Match target KPI count,
+error_state,ErrorState,i18n,Datenfehler?,—,none,low,LOW,unchanged,Retry + support context,
