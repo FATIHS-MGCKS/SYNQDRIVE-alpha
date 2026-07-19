@@ -14,6 +14,7 @@ import {
   resolveEpisodeEvidenceWindow,
 } from './device-connection-episode-reconciliation-historical.assembler';
 import { DeviceConnectionEpisodeReconciliationHistoricalLoader } from './device-connection-episode-reconciliation-historical.loader';
+import { buildEvidencePackagesForVehicle } from './device-connection-episode-reconciliation-evidence-package.builder';
 import {
   buildReconciliationReport,
   deriveEpisodeWindows,
@@ -99,7 +100,12 @@ export class DeviceConnectionEpisodeReconciliationService {
         },
         deviceConnectionEpisodes: {
           where: { status: DeviceConnectionEpisodeStatus.OPEN },
-          select: { id: true },
+          select: {
+            id: true,
+            deviceBindingId: true,
+            openedAt: true,
+            openedByEventId: true,
+          },
         },
       },
     });
@@ -153,6 +159,9 @@ export class DeviceConnectionEpisodeReconciliationService {
     }
 
     const candidates = [];
+    const evidencePackages = [];
+    const generatedAt = new Date().toISOString();
+
     for (const vehicle of vehicles) {
       const vehicleEvents = eventsByVehicle.get(vehicle.id) ?? [];
       if (vehicleEvents.length === 0) continue;
@@ -193,18 +202,37 @@ export class DeviceConnectionEpisodeReconciliationService {
           });
       }
 
-      candidates.push(
-        ...reconcileVehicleEpisodes({
-          ...baseInput,
-          historicalEvidenceByUnplugEventId,
+      const vehicleInput = {
+        ...baseInput,
+        historicalEvidenceByUnplugEventId,
+      };
+
+      const vehicleCandidates = reconcileVehicleEpisodes(vehicleInput);
+      candidates.push(...vehicleCandidates);
+
+      const openEpisode = vehicle.deviceConnectionEpisodes[0] ?? null;
+      const observationIds = sources.telemetryObservations.map((o) => o.snapshotReferenceId);
+      evidencePackages.push(
+        ...buildEvidencePackagesForVehicle({
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          hardwareType: vehicle.hardwareType,
+          vehicleInput,
+          windows,
+          candidates: vehicleCandidates,
+          openEpisode,
+          telemetryObservationSnapshotIds: observationIds,
+          generatedAt,
         }),
       );
     }
 
     return buildReconciliationReport({
       candidates,
+      evidencePackages,
       organizationScope: opts?.organizationId ?? null,
       vehicleScope: opts?.vehicleId ?? null,
+      generatedAt: new Date(generatedAt),
     });
   }
 

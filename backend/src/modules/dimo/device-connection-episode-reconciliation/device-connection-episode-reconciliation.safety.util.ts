@@ -83,6 +83,8 @@ export function assertApplyGuards(opts: {
     if (opts.expectedAuditReportHash !== opts.auditReportHash) {
       throw new Error('Audit report hash mismatch — re-run read-only audit before apply');
     }
+  } else if (opts.apply && !opts.auditReportHash) {
+    throw new Error('--audit-report-hash is required for --apply');
   }
 
   if (opts.expectedGitCommit) {

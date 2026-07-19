@@ -6,6 +6,7 @@ import {
   reconcileVehicleEpisodes,
 } from './device-connection-episode-reconciliation.engine';
 import { assembleEpisodeHistoricalEvidence } from './device-connection-episode-reconciliation-historical.assembler';
+import { buildEvidencePackagesForVehicle } from './device-connection-episode-reconciliation-evidence-package.builder';
 import type { ReconciliationVehicleHistoricalSources } from './device-connection-episode-reconciliation-historical.types';
 import type { ReconciliationVehicleInput } from './device-connection-episode-reconciliation.types';
 
@@ -368,13 +369,36 @@ export function enrichFixtureVehicle(vehicle: ReconciliationVehicleInput): Recon
 }
 
 export function buildFixtureReconciliationReport() {
-  const candidates = RECONCILIATION_FIXTURE_VEHICLES.map(enrichFixtureVehicle).flatMap(
-    (vehicle) => reconcileVehicleEpisodes(vehicle),
-  );
+  const enriched = RECONCILIATION_FIXTURE_VEHICLES.map(enrichFixtureVehicle);
+  const candidates = enriched.flatMap((vehicle) => reconcileVehicleEpisodes(vehicle));
+  const generatedAt = new Date('2026-07-19T12:00:00.000Z').toISOString();
+  const evidencePackages = enriched.flatMap((vehicle, index) => {
+    const windows = deriveEpisodeWindows(vehicle);
+    const openUnplug = vehicle.events.find(
+      (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+    );
+    if (!openUnplug) return [];
+    return buildEvidencePackagesForVehicle({
+      organizationId: 'FIXTURE_SCOPE',
+      vehicleId: vehicle.vehicleId,
+      hardwareType: vehicle.hardwareType,
+      vehicleInput: vehicle,
+      windows,
+      candidates: reconcileVehicleEpisodes(vehicle),
+      openEpisode: {
+        id: `episode-${index}`,
+        deviceBindingId: vehicle.bindings[0]?.id ?? null,
+        openedAt: openUnplug.observedAt,
+        openedByEventId: openUnplug.id,
+      },
+      generatedAt,
+    });
+  });
   return buildReconciliationReport({
     candidates,
+    evidencePackages,
     organizationScope: 'FIXTURE_SCOPE',
     vehicleScope: null,
-    generatedAt: new Date('2026-07-19T12:00:00.000Z'),
+    generatedAt: new Date(generatedAt),
   });
 }

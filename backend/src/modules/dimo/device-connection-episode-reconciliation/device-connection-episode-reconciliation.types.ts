@@ -1,6 +1,7 @@
 import { DimoConnectionStatus, DimoDeviceConnectionEventType } from '@prisma/client';
 import { DeviceConnectionEpisodeResolutionMethod } from '@prisma/client';
 import type { EpisodeHistoricalEvidence } from './device-connection-episode-reconciliation-historical.types';
+import type { EpisodeReconciliationEvidencePackage } from './device-connection-episode-reconciliation-evidence-package.types';
 
 export const RECONCILIATION_AUDIT_ID = 'device-connection-episode-reconciliation-2026-07';
 
@@ -105,6 +106,7 @@ export interface EpisodeReconciliationCandidate {
   reviewRequired: boolean;
   notes: string[];
   historicalEvidence: EpisodeHistoricalEvidence | null;
+  unplugEventId: string;
 }
 
 export interface EpisodeReconciliationReport {
@@ -120,4 +122,6 @@ export interface EpisodeReconciliationReport {
     reviewRequiredCount: number;
   };
   candidates: EpisodeReconciliationCandidate[];
+  evidencePackages: EpisodeReconciliationEvidencePackage[];
+  evidenceCodeVersion: string;
 }

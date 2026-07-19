@@ -134,6 +134,7 @@
 | 2 | Webhook retry worker + dead letter + manual replay | **DONE** | `fix(connectivity): add webhook retry and dead letter processing` | — | processing + replay specs |
 | 3 | Episode resolution outbox — post-commit runtime + alerts | **DONE** | `fix(connectivity): process runtime recalculation after episode commit` | `20260719170000_device_connection_episode_resolution_outbox_retry` | outbox processor specs |
 | 4 | Historical episode reconciliation audit | **DONE** | `fix(connectivity): reconcile episodes from historical snapshot evidence` | — | historical assembler + reconciliation specs |
+| 5 | Audited evidence packages for reconciliation apply | **DONE** | `fix(connectivity): bind episode reconciliation apply to audited evidence` | — | evidence package + apply validation specs |
 
 ### Prompt 1 — Webhook Inbox (2026-07-19)
 
@@ -233,6 +234,33 @@
 - ✅ LatestState allein reicht nicht für historischen Apply
 - ✅ Provider- und Empfangszeit getrennt
 - ✅ Unsichere Fälle → `NOT_ENOUGH_DATA` / `CONFLICTING_DATA`
+
+### Prompt 5 — Audited evidence packages for apply (2026-07-19)
+
+**Problem:** Der Reconciliation-Apply konnte fachliche Werte neu erfinden (`hasOperationalSignal=true`, `CONNECTED`, `receivedAt=now`) statt die im Audit klassifizierte Evidence zu verwenden.
+
+**Lösung:**
+- Deterministisches `EpisodeReconciliationEvidencePackage` pro auto-anwendbarem Audit-Kandidaten (Hash + `codeVersion`)
+- Audit-Report enthält `evidencePackages[]` und `evidenceCodeVersion` — Apply konsumiert dieselben Pakete
+- Apply validiert vor Ausführung: Hash, Code-Version, Episode/Binding unverändert, kein Event nach `auditWaterlineAt`, Cross-Tenant-Check
+- Bei Abweichung: Kandidat `rejected`, neuer Dry-Run erforderlich
+- Apply übergibt nur eingefrorene Paket-Felder an Resolution (`providerObservedAt`, `receivedAt`, `hasOperationalSignal`, `obdIsPluggedIn`); kein künstliches `CONNECTED` aus Latest-State
+- Ops-Script: `--apply` erfordert `--organization-id`, `--audit-report-hash`, `--backup-confirmed`, `--operator`, `--reason`, `--batch-size`, optional `--expected-git-commit`
+
+**Neue Dateien:**
+- `device-connection-episode-reconciliation-evidence-package.types.ts`
+- `device-connection-episode-reconciliation-evidence-package.version.ts`
+- `device-connection-episode-reconciliation-evidence-package.hash.ts`
+- `device-connection-episode-reconciliation-evidence-package.builder.ts`
+- `device-connection-episode-reconciliation-evidence-package.validator.ts`
+- `device-connection-episode-reconciliation-evidence-package.spec.ts`
+
+**Abnahme:**
+- ✅ Audit und Apply verwenden identische Evidence-Pakete
+- ✅ Keine erfundenen Wahrheitswerte im Apply
+- ✅ Veraltete Kandidaten werden abgelehnt (Binding, Episode, neues Event, Hash)
+- ✅ Idempotenz bei bereits aufgelösten Episoden
+- ✅ 38 Reconciliation-Tests grün
 
 ### Abhängigkeitskette
 
@@ -363,7 +391,8 @@
 | 2026-07-19 | 3 | `1e41783c` | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
 | 2026-07-19 | 4 | `3bf06880` | VehicleConnectivityRuntimeStateBuilder (pure domain) |
 | 2026-07-19 | Phase2-1 | `fix(connectivity): persist reliable webhook processing states` | Webhook inbox + processing states; migration `20260719160000` |
-| 2026-07-19 | Phase2-2 | `fix(connectivity): add webhook retry and dead letter processing` | BullMQ worker, scheduler, DLQ, manual replay API |
+| 2026-07-19 | Phase2-4 | `fix(connectivity): reconcile episodes from historical snapshot evidence` | Historical evidence window + loader |
+| 2026-07-19 | Phase2-5 | `fix(connectivity): bind episode reconciliation apply to audited evidence` | Evidence packages + apply validation |
 
 ---
 

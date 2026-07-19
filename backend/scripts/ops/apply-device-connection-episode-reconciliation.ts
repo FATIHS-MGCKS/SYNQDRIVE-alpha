@@ -116,7 +116,7 @@ async function main() {
     const applyService = app.get(DeviceConnectionEpisodeReconciliationApplyService);
     const report = await applyService.runApply({
       organizationId,
-      vehicleId,
+      evidencePackages: readOnlyReport.evidencePackages,
       apply,
       batchSize,
       operator: operator ?? 'unknown',

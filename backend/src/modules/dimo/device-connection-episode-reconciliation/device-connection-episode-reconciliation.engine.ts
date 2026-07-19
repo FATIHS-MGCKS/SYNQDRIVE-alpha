@@ -9,16 +9,18 @@ import {
   historicalEvidenceSupportsTelemetryRecovery,
 } from './device-connection-episode-reconciliation-historical.assembler';
 import type { EpisodeHistoricalEvidence } from './device-connection-episode-reconciliation-historical.types';
-import type {
-  BindingClass,
-  EpisodeReconciliationCandidate,
-  EpisodeReconciliationClassification,
-  EpisodeReconciliationReport,
-  ReconciliationConfidence,
-  ReconciliationEventInput,
-  ReconciliationVehicleInput,
+import {
+  RECONCILIATION_AUDIT_ID,
+  type BindingClass,
+  type EpisodeReconciliationCandidate,
+  type EpisodeReconciliationClassification,
+  type EpisodeReconciliationReport,
+  type ReconciliationConfidence,
+  type ReconciliationEventInput,
+  type ReconciliationVehicleInput,
 } from './device-connection-episode-reconciliation.types';
-import { RECONCILIATION_AUDIT_ID } from './device-connection-episode-reconciliation.types';
+import type { EpisodeReconciliationEvidencePackage } from './device-connection-episode-reconciliation-evidence-package.types';
+import { EPISODE_RECONCILIATION_EVIDENCE_CODE_VERSION } from './device-connection-episode-reconciliation-evidence-package.version';
 
 const SUSTAINED_TELEMETRY_MIN_MS = 5 * 60 * 1000;
 
@@ -378,6 +380,7 @@ export function classifyEpisodeWindow(
     reviewRequired,
     notes,
     historicalEvidence,
+    unplugEventId: window.unplugEvent.id,
   };
 }
 
@@ -391,6 +394,7 @@ export function reconcileVehicleEpisodes(
 
 export function buildReconciliationReport(opts: {
   candidates: EpisodeReconciliationCandidate[];
+  evidencePackages?: EpisodeReconciliationEvidencePackage[];
   organizationScope?: string | null;
   vehicleScope?: string | null;
   generatedAt?: Date;
@@ -424,5 +428,7 @@ export function buildReconciliationReport(opts: {
       reviewRequiredCount: opts.candidates.filter((c) => c.reviewRequired).length,
     },
     candidates: opts.candidates,
+    evidencePackages: opts.evidencePackages ?? [],
+    evidenceCodeVersion: EPISODE_RECONCILIATION_EVIDENCE_CODE_VERSION,
   };
 }
