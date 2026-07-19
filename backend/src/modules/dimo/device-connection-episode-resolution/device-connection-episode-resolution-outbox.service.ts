@@ -15,7 +15,7 @@ export class DeviceConnectionEpisodeResolutionOutboxService {
       episodeId: string;
       resolutionSnapshotId: string;
       resolutionEvidenceAt: Date;
-      recoverySource?: 'snapshot_obd' | 'telemetry_resumed';
+      recoverySource?: 'snapshot_obd' | 'telemetry_resumed' | 'binding_change';
     },
   ): Promise<string[]> {
     const recoverySource = input.recoverySource ?? 'snapshot_obd';

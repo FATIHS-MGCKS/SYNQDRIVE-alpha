@@ -260,5 +260,6 @@ Read-only classifier: `backend/src/modules/dimo/device-connection-episode-reconc
 - **Evidence packages:** deterministic `EpisodeReconciliationEvidencePackage` per auto-applicable candidate (`evidenceHash`, `codeVersion`, no secrets/raw payloads)
 - Apply consumes audit `evidencePackages[]` only — re-validates hash, episode/binding, audit waterline before resolution
 - Auto-apply classifications: explicit plug, snapshot `obdIsPluggedIn=true`, sustained telemetry, binding change
+- **Binding change lifecycle:** `DeviceConnectionEpisodeService.reconcileBindingDrift` — atomic supersede, lifecycle audit, resolution outbox (runtime + alerts); reconciliation apply delegates here
 - Fixture artifacts: `docs/audits/device-connection-episode-reconciliation-2026-07.md`
 - CSV: `docs/audits/data/device-connection-episode-reconciliation-2026-07.csv`

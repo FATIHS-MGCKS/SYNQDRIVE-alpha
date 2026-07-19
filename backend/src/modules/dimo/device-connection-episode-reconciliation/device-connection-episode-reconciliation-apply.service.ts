@@ -1,7 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DeviceConnectionEpisodeResolutionMethod,
-  DeviceConnectionEpisodeStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ConnectivityObservabilityService } from '../connectivity/connectivity-observability.service';
@@ -254,26 +253,25 @@ export class DeviceConnectionEpisodeReconciliationApplyService {
     }
 
     if (pkg.recoveryEvidenceType === 'binding_change') {
-      const open = await this.prisma.deviceConnectionEpisode.findFirst({
-        where: {
-          id: pkg.episodeId,
-          organizationId: pkg.organizationId,
-          vehicleId: pkg.vehicleId,
-          status: DeviceConnectionEpisodeStatus.OPEN,
-        },
+      const result = await this.episodeService.reconcileBindingDrift({
+        organizationId: pkg.organizationId,
+        vehicleId: pkg.vehicleId,
+        provider: pkg.provider,
+        episodeId: pkg.episodeId,
+        tokenId: pkg.bindingEvidence.tokenIdAtUnplug,
+        hardwareType: pkg.hardwareType,
+        evidenceAt: providerObservedAt,
+        receivedAt,
+        resolutionReferenceId: pkg.resolutionSnapshotId,
       });
-      if (!open) return 'already_resolved';
 
-      await this.prisma.deviceConnectionEpisode.update({
-        where: { id: open.id },
-        data: {
-          status: DeviceConnectionEpisodeStatus.SUPERSEDED,
-          resolvedAt: providerObservedAt,
-          resolutionMethod: DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED,
-          resolutionEvidenceAt: providerObservedAt,
-          stateVersion: { increment: 1 },
-        },
-      });
+      if (result.outcome === 'already_resolved') {
+        return 'already_resolved';
+      }
+      if (result.outcome === 'no_open_episode' || result.outcome === 'binding_unchanged') {
+        return 'rejected';
+      }
+
       this.observability?.log('binding_changed', { provider: pkg.provider, outcome: 'superseded' });
       return 'superseded';
     }

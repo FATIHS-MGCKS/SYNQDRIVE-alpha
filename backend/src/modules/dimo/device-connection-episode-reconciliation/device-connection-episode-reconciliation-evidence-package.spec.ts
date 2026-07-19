@@ -336,4 +336,61 @@ describe('DeviceConnectionEpisodeReconciliationApplyService', () => {
     expect(isAutoApplicableClassification('OPEN_CONFIRMED')).toBe(false);
     expect(isAutoApplicableClassification('SHOULD_RESOLVE_BY_TELEMETRY')).toBe(true);
   });
+
+  it('apply routes binding_change through canonical episode service', async () => {
+    const pkg = basePackage({
+      recoveryEvidenceType: 'binding_change',
+      classification: 'SUPERSEDED_BY_BINDING_CHANGE',
+      recommendedResolutionMethod: DeviceConnectionEpisodeResolutionMethod.DEVICE_BINDING_CHANGED,
+      operationalSignalSummary: {
+        sustained: false,
+        sampleCountAfterUnplug: 0,
+        hasOperationalSignal: false,
+        providerConnectionStatus: null,
+      },
+    });
+    const resolutionService = buildResolutionServiceMock();
+    const episodeService = {
+      reconcileBindingDrift: jest.fn().mockResolvedValue({
+        outcome: 'superseded',
+        supersededEpisodeIds: ['ep-1'],
+      }),
+      resolveFromExplicitPlugEvent: jest.fn(),
+    } as unknown as DeviceConnectionEpisodeService;
+    const prisma = buildPrismaMock();
+    (prisma.deviceConnectionEpisode.findFirst as jest.Mock).mockResolvedValue({
+      id: 'ep-1',
+      status: DeviceConnectionEpisodeStatus.OPEN,
+      deviceBindingId: 'bind-1',
+      openedAt: new Date(pkg.unplugObservedAt),
+    });
+    (prisma.dimoDeviceConnectionEvent.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.vehicle.findFirst as jest.Mock).mockResolvedValue({ id: 'veh-1' });
+
+    const service = new DeviceConnectionEpisodeReconciliationApplyService(
+      prisma,
+      episodeService,
+      resolutionService,
+    );
+
+    await service.runApply({
+      organizationId: 'org-1',
+      evidencePackages: [pkg],
+      apply: true,
+      batchSize: 10,
+      operator: 'ops',
+      reason: 'binding replay',
+    });
+
+    expect(episodeService.reconcileBindingDrift).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        episodeId: 'ep-1',
+        evidenceAt: new Date(pkg.providerObservedAt),
+        receivedAt: new Date(pkg.receivedAt),
+        resolutionReferenceId: pkg.resolutionSnapshotId,
+      }),
+    );
+  });
 });

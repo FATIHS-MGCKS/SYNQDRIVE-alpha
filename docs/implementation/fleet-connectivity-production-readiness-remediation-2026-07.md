@@ -135,6 +135,7 @@
 | 3 | Episode resolution outbox — post-commit runtime + alerts | **DONE** | `fix(connectivity): process runtime recalculation after episode commit` | `20260719170000_device_connection_episode_resolution_outbox_retry` | outbox processor specs |
 | 4 | Historical episode reconciliation audit | **DONE** | `fix(connectivity): reconcile episodes from historical snapshot evidence` | — | historical assembler + reconciliation specs |
 | 5 | Audited evidence packages for reconciliation apply | **DONE** | `fix(connectivity): bind episode reconciliation apply to audited evidence` | — | evidence package + apply validation specs |
+| 6 | Canonical binding-change episode lifecycle | **DONE** | `fix(connectivity): route binding changes through canonical episode lifecycle` | — | binding drift + apply routing specs |
 
 ### Prompt 1 — Webhook Inbox (2026-07-19)
 
@@ -261,6 +262,29 @@
 - ✅ Veraltete Kandidaten werden abgelehnt (Binding, Episode, neues Event, Hash)
 - ✅ Idempotenz bei bereits aufgelösten Episoden
 - ✅ 38 Reconciliation-Tests grün
+
+### Prompt 6 — Canonical binding-change lifecycle (2026-07-19)
+
+**Problem:** Binding-Wechsel konnten Episoden direkt per `prisma.deviceConnectionEpisode.update` schließen (Reconciliation Apply) — ohne Audit, Outbox, Alert-/Runtime-Nachlauf.
+
+**Lösung:**
+- Zentraler Pfad: `DeviceConnectionEpisodeService.reconcileBindingDrift(...)` und `supersedeEpisodesForBindingChangeTx`
+- Atomar in Transaction: OPEN-Claim via `updateMany`, `SUPERSEDED`, `DEVICE_BINDING_CHANGED`, `resolutionEvidenceAt`/`resolvedAt` = Evidence-Zeitpunkt (nicht `new Date()`)
+- Lifecycle-Audit + Resolution-Outbox (`CONNECTIVITY_RUNTIME_RECALCULATE`, `DEVICE_ALERT_RESOLVE_PREPARED`, `recoverySource: binding_change`)
+- `openFromUnplugEvent` superseded alte Bindings über denselben Pfad
+- Reconciliation Apply ruft `reconcileBindingDrift` mit `episodeId` + audited timestamps — kein direktes Episode-Update mehr
+- Snapshot-Processor nutzt weiterhin `reconcileBindingDrift` bei aktuellem Drift
+
+**Neue/angepasste Dateien:**
+- `device-connection-episode.service.ts` — kanonischer Binding-Lifecycle
+- `device-connection-episode-binding-drift.spec.ts`
+- `device-connection-episode-reconciliation-apply.service.ts` — delegiert binding_change
+
+**Abnahme:**
+- ✅ Ein Binding-Change-Lifecycle für Drift, Unplug-Supersede und Reconciliation Apply
+- ✅ Evidence-Zeit und Processing-Zeit (`receivedAt`) getrennt
+- ✅ Outbox + Audit Trail bei jedem Supersede
+- ✅ Idempotenz bei Duplicate Apply / paralleler Verarbeitung
 
 ### Abhängigkeitskette
 
@@ -391,8 +415,10 @@
 | 2026-07-19 | 3 | `1e41783c` | Kanonische Domain-Typen A–F, Reason Codes, Priority, Validation |
 | 2026-07-19 | 4 | `3bf06880` | VehicleConnectivityRuntimeStateBuilder (pure domain) |
 | 2026-07-19 | Phase2-1 | `fix(connectivity): persist reliable webhook processing states` | Webhook inbox + processing states; migration `20260719160000` |
+| 2026-07-19 | Phase2-2 | `fix(connectivity): add webhook retry and dead letter processing` | BullMQ worker, scheduler, DLQ, manual replay API |
 | 2026-07-19 | Phase2-4 | `fix(connectivity): reconcile episodes from historical snapshot evidence` | Historical evidence window + loader |
 | 2026-07-19 | Phase2-5 | `fix(connectivity): bind episode reconciliation apply to audited evidence` | Evidence packages + apply validation |
+| 2026-07-19 | Phase2-6 | `fix(connectivity): route binding changes through canonical episode lifecycle` | reconcileBindingDrift + outbox/audit |
 
 ---
 
