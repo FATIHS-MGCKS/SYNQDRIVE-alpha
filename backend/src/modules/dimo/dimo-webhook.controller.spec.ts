@@ -1,10 +1,9 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { DimoWebhookController } from './dimo-webhook.controller';
-import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 
 function makeController(overrides?: {
   prisma?: Partial<PrismaServiceMock>;
-  deviceConnection?: Partial<DeviceConnectionMock>;
+  deviceConnectionIngest?: Partial<DeviceConnectionIngestMock>;
   rpmWebhookCandidate?: Partial<RpmWebhookMock>;
   verificationToken?: string;
 }) {
@@ -13,9 +12,15 @@ function makeController(overrides?: {
     vehicleLatestState: { updateMany: jest.fn() },
     ...overrides?.prisma,
   };
-  const deviceConnection: DeviceConnectionMock = {
-    ingestObdPlugStateChange: jest.fn().mockResolvedValue({ outcome: 'created', eventId: 'e1' }),
-    ...overrides?.deviceConnection,
+  const deviceConnectionIngest: DeviceConnectionIngestMock = {
+    receiveObdPlugWebhook: jest.fn().mockResolvedValue({
+      accepted: true,
+      duplicate: false,
+      inboxId: 'inbox-1',
+      queued: true,
+      processingStatus: 'VALIDATED',
+    }),
+    ...overrides?.deviceConnectionIngest,
   };
   const rpmWebhookCandidate: RpmWebhookMock = {
     ingestRpmThresholdEvent: jest.fn().mockResolvedValue({
@@ -33,10 +38,10 @@ function makeController(overrides?: {
     dimoConf as never,
     prisma as never,
     dtcService as never,
-    deviceConnection as never,
+    deviceConnectionIngest as never,
     rpmWebhookCandidate as never,
   );
-  return { controller, prisma, deviceConnection, rpmWebhookCandidate, dtcService };
+  return { controller, prisma, deviceConnectionIngest, rpmWebhookCandidate, dtcService };
 }
 
 type PrismaServiceMock = {
@@ -44,8 +49,8 @@ type PrismaServiceMock = {
   vehicleLatestState: { updateMany: jest.Mock };
 };
 
-type DeviceConnectionMock = {
-  ingestObdPlugStateChange: jest.Mock;
+type DeviceConnectionIngestMock = {
+  receiveObdPlugWebhook: jest.Mock;
 };
 
 type RpmWebhookMock = {
@@ -113,7 +118,7 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
     delete process.env.DIMO_WEBHOOK_SECRET;
 
     const vehicle = { id: 'veh-1', organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'PETROL' };
-    const { controller, prisma, deviceConnection } = makeController({
+    const { controller, prisma, deviceConnectionIngest } = makeController({
       prisma: {
         vehicle: { findFirst: jest.fn().mockResolvedValue(vehicle) },
       },
@@ -143,21 +148,21 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
         fuelType: true,
       },
     });
-    expect(deviceConnection.ingestObdPlugStateChange).toHaveBeenCalledWith(
+    expect(deviceConnectionIngest.receiveObdPlugWebhook).toHaveBeenCalledWith(
       expect.objectContaining({
-        vehicle: { id: 'veh-1', organizationId: 'org-1' },
         tokenId: 777,
+        vehicle: { id: 'veh-1', organizationId: 'org-1' },
         pluggedIn: false,
       }),
     );
-    expect(result).toMatchObject({ status: 'processed', type: 'device_connection' });
+    expect(result).toMatchObject({ status: 'accepted', type: 'device_connection', queued: true });
   });
 
   it('ignores blocked throttle engine webhook signals', async () => {
     process.env.NODE_ENV = 'development';
     delete process.env.DIMO_WEBHOOK_SECRET;
 
-    const { controller, deviceConnection, rpmWebhookCandidate } = makeController({
+    const { controller, deviceConnectionIngest, rpmWebhookCandidate } = makeController({
       prisma: {
         vehicle: {
           findFirst: jest.fn().mockResolvedValue({
@@ -180,7 +185,7 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
 
     const result = await controller.handleWebhook({ rawBody: Buffer.from(JSON.stringify(body)) } as never, body, undefined, mockRes);
     expect(result).toEqual({ status: 'ignored', reason: 'blocked_engine_signal' });
-    expect(deviceConnection.ingestObdPlugStateChange).not.toHaveBeenCalled();
+    expect(deviceConnectionIngest.receiveObdPlugWebhook).not.toHaveBeenCalled();
     expect(rpmWebhookCandidate.ingestRpmThresholdEvent).not.toHaveBeenCalled();
   });
 
@@ -233,7 +238,7 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
     process.env.DIMO_WEBHOOK_SECRET = 'hmac-secret';
 
     const vehicle = { id: 'veh-1', organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'PETROL' };
-    const { controller, deviceConnection } = makeController({
+    const { controller, deviceConnectionIngest } = makeController({
       verificationToken: 'synqdrive-prod-token',
       prisma: {
         vehicle: { findFirst: jest.fn().mockResolvedValue(vehicle) },
@@ -257,8 +262,8 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
       mockRes,
     );
 
-    expect(result).toMatchObject({ status: 'processed', type: 'device_connection' });
-    expect(deviceConnection.ingestObdPlugStateChange).toHaveBeenCalled();
+    expect(result).toMatchObject({ status: 'accepted', type: 'device_connection' });
+    expect(deviceConnectionIngest.receiveObdPlugWebhook).toHaveBeenCalled();
   });
 
   it('rejects trigger payloads in production when verification token is missing', async () => {

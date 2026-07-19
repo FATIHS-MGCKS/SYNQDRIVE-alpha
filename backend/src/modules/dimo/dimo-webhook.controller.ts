@@ -10,12 +10,14 @@ import {
   Get,
   HttpCode,
   ServiceUnavailableException,
+  UnauthorizedException,
   Inject,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
+import { DeviceConnectionWebhookIngestService } from './device-connection-webhook-ingestion/device-connection-webhook-ingest.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import {
   buildDimoVerificationResponse,
@@ -42,7 +44,7 @@ export class DimoWebhookController {
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
-    private readonly deviceConnection: DeviceConnectionWebhookService,
+    private readonly deviceConnectionIngest: DeviceConnectionWebhookIngestService,
     private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
@@ -111,7 +113,7 @@ export class DimoWebhookController {
 
       if (!rawMatch && !prefixedMatch) {
         this.logger.warn('DIMO webhook rejected: invalid signature');
-        return { status: 'rejected', reason: 'invalid_signature' };
+        throw new UnauthorizedException({ status: 'rejected', reason: 'invalid_signature' });
       }
     } else if (secret && !signature) {
       this.logger.debug(
@@ -151,14 +153,46 @@ export class DimoWebhookController {
       },
     });
 
+    const signalName = payload.signalName;
+    const value = payload.value;
+    const timestamp = payload.timestamp;
+
+    // ── OBD device plug/unplug (connectivity) — persist inbox even when vehicle unmapped ─
+    if (
+      DeviceConnectionWebhookService.isObdPluggedSignal(signalName, payload.metricName) ||
+      inferObdPlugStateFromWebhookContext(payload) != null
+    ) {
+      const pluggedIn =
+        DeviceConnectionWebhookService.parsePluggedValue(value) ??
+        inferObdPlugStateFromWebhookContext(payload);
+
+      const observedAt = timestamp ? new Date(timestamp) : new Date();
+      const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(body));
+      const ingest = await this.deviceConnectionIngest.receiveObdPlugWebhook({
+        rawBody,
+        body,
+        tokenId,
+        vehicle: vehicle
+          ? { id: vehicle.id, organizationId: vehicle.organizationId }
+          : null,
+        pluggedIn,
+        observedAt: Number.isNaN(observedAt.getTime()) ? new Date() : observedAt,
+      });
+
+      return {
+        status: 'accepted',
+        type: 'device_connection',
+        inboxId: ingest.inboxId,
+        duplicate: ingest.duplicate,
+        queued: ingest.queued,
+        processingStatus: ingest.processingStatus,
+      };
+    }
+
     if (!vehicle) {
       this.logger.warn(`No vehicle found for tokenId=${tokenId}`);
       return { status: 'ignored', reason: 'unknown_vehicle' };
     }
-
-    const signalName = payload.signalName;
-    const value = payload.value;
-    const timestamp = payload.timestamp;
 
     if (signalName === 'obdDTCList' && value) {
       await this.handleDtcEvent(vehicle.id, value);
@@ -194,31 +228,6 @@ export class DimoWebhookController {
               ? 'below_threshold_or_intake_error'
               : undefined,
       };
-    }
-
-    // ── OBD device plug/unplug (connectivity / tamper evidence) ───────────────
-    if (
-      DeviceConnectionWebhookService.isObdPluggedSignal(signalName, payload.metricName) ||
-      inferObdPlugStateFromWebhookContext(payload) != null
-    ) {
-      const pluggedIn =
-        DeviceConnectionWebhookService.parsePluggedValue(value) ??
-        inferObdPlugStateFromWebhookContext(payload);
-
-      if (pluggedIn == null) {
-        this.logger.warn(`OBD plug webhook for vehicle ${vehicle.id} had no parseable plug state`);
-        return { status: 'ignored', reason: 'non_boolean_plug_state' };
-      }
-
-      const observedAt = timestamp ? new Date(timestamp) : new Date();
-      const { outcome, eventId, eventType } = await this.deviceConnection.ingestObdPlugStateChange({
-        vehicle: { id: vehicle.id, organizationId: vehicle.organizationId },
-        tokenId,
-        pluggedIn,
-        observedAt: Number.isNaN(observedAt.getTime()) ? new Date() : observedAt,
-        rawPayload: body,
-      });
-      return { status: 'processed', type: 'device_connection', outcome, eventId, eventType };
     }
 
     if (signalName === 'speed' && value != null) {

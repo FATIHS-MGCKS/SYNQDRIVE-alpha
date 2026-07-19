@@ -1,0 +1,25 @@
+/** Max async processing attempts before dead-letter. */
+export const DEVICE_CONNECTION_WEBHOOK_MAX_PROCESSING_RETRIES = 5;
+
+/** BullMQ job attempts (includes first run). */
+export const DEVICE_CONNECTION_WEBHOOK_QUEUE_ATTEMPTS = 5;
+
+/** Initial retry backoff for queue jobs (ms). */
+export const DEVICE_CONNECTION_WEBHOOK_QUEUE_BACKOFF_MS = 5_000;
+
+/** Redacted payload retention — see architecture/DEVICE_CONNECTION_EPISODE_2026-07-19.md */
+export const DEVICE_CONNECTION_WEBHOOK_MAX_PAYLOAD_BYTES = 256_000;
+
+export const DEVICE_CONNECTION_WEBHOOK_ERROR_CODES = {
+  VEHICLE_NOT_MAPPED: 'VEHICLE_NOT_MAPPED',
+  BINDING_NOT_MAPPED: 'BINDING_NOT_MAPPED',
+  PARSE_FAILED: 'PARSE_FAILED',
+  DB_PERSIST_FAILED: 'DB_PERSIST_FAILED',
+  EPISODE_SYNC_FAILED: 'EPISODE_SYNC_FAILED',
+  MAPPING_FAILED: 'MAPPING_FAILED',
+  POISON_PAYLOAD: 'POISON_PAYLOAD',
+  TENANT_MISMATCH: 'TENANT_MISMATCH',
+} as const;
+
+export type DeviceConnectionWebhookErrorCode =
+  (typeof DEVICE_CONNECTION_WEBHOOK_ERROR_CODES)[keyof typeof DEVICE_CONNECTION_WEBHOOK_ERROR_CODES];

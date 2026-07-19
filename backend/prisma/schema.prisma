@@ -1247,6 +1247,24 @@ enum DeviceConnectionEpisodeResolutionOutboxStatus {
   FAILED
 }
 
+enum DeviceConnectionWebhookInboxStatus {
+  RECEIVED
+  VALIDATED
+  PROCESSED
+  IGNORED_BY_POLICY
+  RETRYABLE_FAILED
+  PERMANENTLY_FAILED
+  DEAD_LETTER
+}
+
+enum DeviceConnectionWebhookMappingStatus {
+  UNKNOWN
+  MAPPED
+  UNMAPPED_VEHICLE
+  UNMAPPED_BINDING
+  PARSE_FAILED
+}
+
 enum DamageType {
   SCRATCH
   DENT
@@ -2061,6 +2079,7 @@ model Vehicle {
   brakingEventLedgerEntries              BrakingEventLedger[]
   dimoDeviceConnectionEvents             DimoDeviceConnectionEvent[]
   deviceConnectionEpisodes               DeviceConnectionEpisode[]
+  deviceConnectionWebhookInbox           DeviceConnectionWebhookInbox[]
   tripDetectionState                     VehicleTripDetectionState?
   tripTrackingRuns                       VehicleTripTrackingRun[]
   tripBehaviorEvents                     TripBehaviorEvent[]
@@ -6459,6 +6478,47 @@ model DimoDeviceConnectionEvent {
   @@index([observedAt])
   @@index([eventType])
   @@map("dimo_device_connection_events")
+}
+
+// ------------------------------------------------
+// DEVICE CONNECTION WEBHOOK INBOX (durable intake + async processing)
+// ------------------------------------------------
+model DeviceConnectionWebhookInbox {
+  id                   String                               @id @default(uuid())
+  organizationId       String?                              @map("organization_id")
+  vehicleId            String?                              @map("vehicle_id")
+  tokenId              Int?                                 @map("token_id")
+  provider             String                               @default("DIMO")
+  providerEventId      String                               @map("provider_event_id")
+  eventType            DimoDeviceConnectionEventType?       @map("event_type")
+  rawPayloadHash       String                               @map("raw_payload_hash")
+  redactedPayloadJson  Json                                 @map("redacted_payload_json")
+  observedAt           DateTime?                            @map("observed_at")
+  receivedAt           DateTime                             @default(now()) @map("received_at")
+  processedAt          DateTime?                            @map("processed_at")
+  processingStatus     DeviceConnectionWebhookInboxStatus   @default(RECEIVED) @map("processing_status")
+  processingAttempts   Int                                  @default(0) @map("processing_attempts")
+  lastErrorCode        String?                              @map("last_error_code")
+  lastErrorMessage     String?                              @map("last_error_message")
+  nextRetryAt          DateTime?                            @map("next_retry_at")
+  vehicleMappingStatus DeviceConnectionWebhookMappingStatus @default(UNKNOWN) @map("vehicle_mapping_status")
+  bindingMappingStatus DeviceConnectionWebhookMappingStatus @default(UNKNOWN) @map("binding_mapping_status")
+  policyIgnoreReason   String?                              @map("policy_ignore_reason")
+  connectionEventId    String?                              @map("connection_event_id")
+  dedupBucket          BigInt?                              @map("dedup_bucket")
+  deviceBindingId      String?                              @map("device_binding_id")
+  providerDeviceIdHash String?                              @map("provider_device_id_hash")
+  createdAt            DateTime                             @default(now()) @map("created_at")
+  updatedAt            DateTime                             @updatedAt @map("updated_at")
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([organizationId, receivedAt])
+  @@index([processingStatus, nextRetryAt])
+  @@index([vehicleId, observedAt])
+  @@index([rawPayloadHash])
+  @@map("device_connection_webhook_inbox")
 }
 
 // ------------------------------------------------

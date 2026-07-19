@@ -104,6 +104,34 @@ Wired from `DimoSnapshotProcessor` after snapshot-plug attempt (telemetry path r
 
 UI copy (later): „Wieder verbunden – aus neuer Telemetrie erkannt“.
 
+## Webhook inbox & retries (Prompt 10)
+
+Durable intake via `device_connection_webhook_inbox` — decouples HTTP ack from episode processing.
+
+### Status lifecycle
+
+`RECEIVED` → `VALIDATED` → `PROCESSED` | `IGNORED_BY_POLICY` | `RETRYABLE_FAILED` → `PERMANENTLY_FAILED` | `DEAD_LETTER`
+
+Technical failures (DB, episode sync) are **never** classified as policy `ignored`.
+
+### HTTP intake
+
+- Invalid HMAC → `401 Unauthorized`
+- Valid payload → `status: accepted` + `inboxId` (fast ack)
+- Async processing via BullMQ queue `device.connection.webhook.process`
+
+### Dedupe
+
+Unique `(provider, providerEventId)` — CloudEvent `id` / `webhookId` or synthetic hash.
+
+### Raw payload
+
+Redacted JSON only (secrets stripped). Retention: operational inbox rows follow standard DB retention; no raw secrets stored.
+
+### Replay
+
+`POST /organizations/:orgId/fleet-connectivity/webhook-inbox/:inboxId/replay` (org admin).
+
 ## Binding lifecycle & event order (Prompt 9)
 
 Canonical binding identity: `device-binding-lifecycle.ts` — DIMO token hash, `VehicleDataSourceLink`,
