@@ -6,7 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { api, type ApiServiceCase, type Station } from '../../../lib/api';
+import { api, type ApiServiceCase, type ApiTask, type Station } from '../../../lib/api';
 import { useFleetVehicles } from '../../FleetContext';
 import { useHandover } from '../../HandoverContext';
 import {
@@ -201,6 +201,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const [invoicesError, setInvoicesError] = useState(false);
 
   const [serviceCasesApi, setServiceCasesApi] = useState<ApiServiceCase[]>([]);
+  const [tasksApi, setTasksApi] = useState<ApiTask[]>([]);
 
   const stationFilter = useFleetMapStore((state) => state.filters.stationId);
   const setStationFilter = useFleetMapStore((state) => state.setStationFilter);
@@ -264,6 +265,19 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     }
   }, [orgId]);
 
+  const loadTasks = useCallback(async () => {
+    if (!orgId) {
+      setTasksApi([]);
+      return;
+    }
+    try {
+      const rows = await api.tasks.list(orgId);
+      setTasksApi(rows);
+    } catch {
+      setTasksApi([]);
+    }
+  }, [orgId]);
+
   useEffect(() => {
     void loadInvoices();
   }, [loadInvoices]);
@@ -271,6 +285,10 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   useEffect(() => {
     void loadServiceCases();
   }, [loadServiceCases]);
+
+  useEffect(() => {
+    void loadTasks();
+  }, [loadTasks]);
 
   const loadTodayBookings = useCallback(async () => {
     if (!orgId) {
@@ -325,6 +343,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         loadTodayBookings(),
         loadInvoices(),
         loadServiceCases(),
+        loadTasks(),
         shouldFetchV2NotificationsInBackground() ? notificationsV2.refresh() : Promise.resolve(),
       ]);
       const syncedAt = new Date();
@@ -333,7 +352,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, loadServiceCases, notificationsV2.refresh]);
+  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, loadServiceCases, loadTasks, notificationsV2.refresh]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -527,6 +546,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         telemetrySoftOfflineHours: 24,
         telemetryHardOfflineHours: 48,
         serviceCases: serviceCasesApi,
+        tasks: tasksApi,
       }),
     [
       locale,
@@ -543,6 +563,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       dashboardNow,
       runtimeDueSoonMinutes,
       serviceCasesApi,
+      tasksApi,
     ],
   );
 

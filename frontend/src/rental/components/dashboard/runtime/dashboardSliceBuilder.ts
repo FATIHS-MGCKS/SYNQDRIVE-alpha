@@ -1,4 +1,4 @@
-import type { ApiServiceCase, VehicleHealthResponse } from '../../../../lib/api';
+import type { ApiServiceCase, ApiTask, VehicleHealthResponse } from '../../../../lib/api';
 import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
@@ -48,6 +48,7 @@ export interface BuildDashboardRuntimeModelInput {
   telemetryHardOfflineHours?: number;
   generatedAt?: string;
   serviceCases?: ApiServiceCase[];
+  tasks?: ApiTask[];
 }
 
 interface BuildDashboardSlicesInput {
@@ -911,6 +912,7 @@ export function buildDashboardRuntimeModel(input: BuildDashboardRuntimeModelInpu
     telemetrySoftOfflineHours: input.telemetrySoftOfflineHours,
     telemetryHardOfflineHours: input.telemetryHardOfflineHours,
     serviceCases: input.serviceCases,
+    tasks: input.tasks,
   });
 
   return {

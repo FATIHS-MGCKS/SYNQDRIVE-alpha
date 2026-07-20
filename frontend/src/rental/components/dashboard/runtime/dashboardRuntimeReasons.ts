@@ -12,6 +12,8 @@ export interface RuntimeReasonInput {
   source?: string;
   reasonCode?: string;
   serviceCaseId?: string;
+  taskId?: string;
+  parentReasonId?: string;
   status?: string;
   scheduledAt?: string | null;
   expectedReadyAt?: string | null;
@@ -30,12 +32,13 @@ function normalizeToken(value: string | undefined): string {
 }
 
 export function runtimeReasonDedupeKey(
-  reason: Pick<RuntimeReason, 'category' | 'source' | 'title' | 'serviceCaseId'>,
+  reason: Pick<RuntimeReason, 'category' | 'source' | 'title' | 'serviceCaseId' | 'taskId'>,
 ): string {
   return [
     reason.category,
     normalizeToken(reason.source),
     normalizeToken(reason.serviceCaseId),
+    normalizeToken(reason.taskId),
     normalizeToken(reason.title),
   ].join(':');
 }
@@ -48,6 +51,7 @@ export function createRuntimeReason(input: RuntimeReasonInput): RuntimeReason {
     input.severity,
     normalizeToken(source),
     normalizeToken(input.serviceCaseId),
+    normalizeToken(input.taskId),
     normalizeToken(title),
   ].join(':');
 
@@ -60,6 +64,8 @@ export function createRuntimeReason(input: RuntimeReasonInput): RuntimeReason {
     source,
     reasonCode: input.reasonCode?.trim() || undefined,
     serviceCaseId: input.serviceCaseId?.trim() || undefined,
+    taskId: input.taskId?.trim() || undefined,
+    parentReasonId: input.parentReasonId?.trim() || undefined,
     status: input.status?.trim() || undefined,
     scheduledAt: input.scheduledAt ?? undefined,
     expectedReadyAt: input.expectedReadyAt ?? undefined,
