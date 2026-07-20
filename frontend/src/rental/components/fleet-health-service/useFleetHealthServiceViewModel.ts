@@ -21,7 +21,7 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
   reloadService: ReturnType<typeof useServiceCenterData>['reload'];
 } {
   const { orgId } = useRentalOrg();
-  const { fleetVehicles, healthMap, healthLoading } = useFleetVehicles();
+  const { fleetVehicles, healthMap, healthLoading, healthError } = useFleetVehicles();
   const service = useServiceCenterData(orgId);
 
   const vm = useMemo(
@@ -30,6 +30,7 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
         vehicles: fleetVehicles,
         healthMap,
         healthLoading,
+        healthError,
         taskSummary: service.summary,
         taskList: service.allTasks,
         vendors: service.vendors,
@@ -41,6 +42,7 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
       fleetVehicles,
       healthMap,
       healthLoading,
+      healthError,
       service.summary,
       service.allTasks,
       service.vendors,

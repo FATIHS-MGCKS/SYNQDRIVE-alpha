@@ -4,6 +4,7 @@ import type { VehicleData } from '../../data/vehicles';
 import {
   buildFleetHealthServiceUiItem,
   buildFleetHealthServiceViewModel,
+  buildPrioritizedOverviewSections,
   countOverdueServiceTasks,
   countVendorWaitingTasks,
   deriveRecommendedAction,
@@ -271,5 +272,131 @@ describe('fleet-health-service view model', () => {
     const taskRows = vm.prioritizedOverviewRows.filter((r) => r.kind === 'task');
     expect(taskRows).toHaveLength(1);
     expect(taskRows[0]?.taskId).toBe('t-only');
+  });
+
+  it('priority sections place rental_blocked health in technically_blocked', () => {
+    const health = buildHealth({
+      vehicle_id: 'v1',
+      rental_blocked: true,
+      blocking_reasons: ['TÜV überfällig'],
+      overall_state: 'critical',
+      modules: { service_compliance: mod('critical', 'TÜV überfällig') },
+    });
+    const vm = buildFleetHealthServiceViewModel({
+      vehicles: [vehicle('v1', 'B-XY 1')],
+      healthMap: new Map([['v1', health]]),
+      healthLoading: false,
+      taskSummary: null,
+      taskList: [],
+      vendors: [],
+      serviceLoading: false,
+      serviceError: null,
+      serviceLoaded: true,
+    });
+
+    const blocked = vm.prioritizedOverviewSections.find((s) => s.key === 'technically_blocked');
+    expect(blocked?.rows).toHaveLength(1);
+    expect(blocked?.rows[0]?.kind).toBe('health');
+    expect(blocked?.rows[0]?.detailLines).toContain('TÜV überfällig');
+  });
+
+  it('priority sections place warning health in technical_review', () => {
+    const health = buildHealth({
+      vehicle_id: 'v1',
+      overall_state: 'warning',
+      modules: { tires: mod('warning', 'Reifen prüfen') },
+    });
+    const vm = buildFleetHealthServiceViewModel({
+      vehicles: [vehicle('v1', 'B-XY 1')],
+      healthMap: new Map([['v1', health]]),
+      healthLoading: false,
+      taskSummary: null,
+      taskList: [],
+      vendors: [],
+      serviceLoading: false,
+      serviceError: null,
+      serviceLoaded: true,
+    });
+
+    const review = vm.prioritizedOverviewSections.find((s) => s.key === 'technical_review');
+    expect(review?.rows).toHaveLength(1);
+    expect(review?.rows[0]?.recommendedAction).toBe('create_task');
+  });
+
+  it('priority sections place unknown health in incomplete_data', () => {
+    const health = buildHealth({ vehicle_id: 'v1', overall_state: 'unknown' });
+    const vm = buildFleetHealthServiceViewModel({
+      vehicles: [vehicle('v1', 'B-XY 1')],
+      healthMap: new Map([['v1', health]]),
+      healthLoading: false,
+      taskSummary: null,
+      taskList: [],
+      vendors: [],
+      serviceLoading: false,
+      serviceError: null,
+      serviceLoaded: true,
+    });
+
+    const incomplete = vm.prioritizedOverviewSections.find((s) => s.key === 'incomplete_data');
+    expect(incomplete?.rows).toHaveLength(1);
+    expect(incomplete?.rows[0]?.recommendedAction).toBe('review_vehicle');
+  });
+
+  it('priority sections place due-soon tasks in due_soon', () => {
+    const dueSoon = new Date();
+    dueSoon.setDate(dueSoon.getDate() + 3);
+    const openTasks = [
+      task({
+        id: 't-soon',
+        vehicleId: 'v2',
+        status: 'OPEN',
+        dueDate: dueSoon.toISOString(),
+        title: 'Ölwechsel planen',
+      }),
+    ];
+    const vm = buildFleetHealthServiceViewModel({
+      vehicles: [vehicle('v1', 'B-XY 1'), vehicle('v2', 'B-AB 2')],
+      healthMap: new Map([
+        ['v1', buildHealth({ vehicle_id: 'v1', overall_state: 'good' })],
+        ['v2', buildHealth({ vehicle_id: 'v2', overall_state: 'good' })],
+      ]),
+      healthLoading: false,
+      taskSummary: null,
+      taskList: openTasks,
+      vendors: [],
+      serviceLoading: false,
+      serviceError: null,
+      serviceLoaded: true,
+    });
+
+    const dueSoonSection = vm.prioritizedOverviewSections.find((s) => s.key === 'due_soon');
+    expect(dueSoonSection?.rows).toHaveLength(1);
+    expect(dueSoonSection?.rows[0]?.kind).toBe('task');
+  });
+
+  it('buildPrioritizedOverviewSections returns five sections in order', () => {
+    const sections = buildPrioritizedOverviewSections(
+      [],
+      {
+        openServiceTasks: [],
+        overdueServiceTasks: [],
+        inProgressServiceTasks: [],
+        vendorWaitingTasks: [],
+        upcomingServiceItems: [],
+        completedServiceItems: [],
+        activeVendors: [],
+      },
+      new Map(),
+      new Map(),
+      [],
+    );
+    expect(sections).toHaveLength(5);
+    expect(sections.map((s) => s.key)).toEqual([
+      'technically_blocked',
+      'handle_today',
+      'technical_review',
+      'incomplete_data',
+      'due_soon',
+    ]);
   });
 });

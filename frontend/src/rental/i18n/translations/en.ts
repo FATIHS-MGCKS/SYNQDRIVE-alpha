@@ -222,6 +222,35 @@ export const en = {
   'fleetHealthService.tab.tasks': 'Tasks',
   'fleetHealthService.tab.schedule': 'Schedule',
   'fleetHealthService.tab.vendors': 'Vendors',
+  'fleetHealthService.overview.priorityTitle': 'Action priority',
+  'fleetHealthService.overview.prioritySubtitle':
+    'Health signals and operational work — grouped by urgency without a second health evaluation.',
+  'fleetHealthService.overview.section.technicallyBlocked': 'Technically blocked',
+  'fleetHealthService.overview.section.handleToday': 'Handle today',
+  'fleetHealthService.overview.section.technicalReview': 'Technical review',
+  'fleetHealthService.overview.section.incompleteData': 'Incomplete data',
+  'fleetHealthService.overview.section.dueSoon': 'Due soon',
+  'fleetHealthService.overview.emptyTitle': 'No entries',
+  'fleetHealthService.overview.empty.technicallyBlocked':
+    'No vehicles with a technical rental block.',
+  'fleetHealthService.overview.empty.handleToday':
+    'No overdue or due-today tasks.',
+  'fleetHealthService.overview.empty.technicalReview':
+    'No vehicles with warning signals requiring review.',
+  'fleetHealthService.overview.empty.incompleteData':
+    'No vehicles with incomplete health data.',
+  'fleetHealthService.overview.empty.dueSoon':
+    'No tasks due in the next few days.',
+  'fleetHealthService.overview.errorTitle': 'Could not load overview',
+  'fleetHealthService.overview.errorRetry': 'Retry',
+  'fleetHealthService.overview.kind.health': 'Health',
+  'fleetHealthService.overview.kind.task': 'Task',
+  'fleetHealthService.overview.showDetails': 'Show details',
+  'fleetHealthService.overview.hideDetails': 'Hide details',
+  'fleetHealthService.overview.entryCount': '{count} entries',
+  'fleetHealthService.overview.entryCountOne': '1 entry',
+  'fleetHealthService.overview.sourceHealth': 'Source',
+  'fleetHealthService.overview.sourceWork': 'Work',
 
   // ─── Service Center (Fleet hub) ───
   'serviceCenter.eyebrow': 'Fleet operations',

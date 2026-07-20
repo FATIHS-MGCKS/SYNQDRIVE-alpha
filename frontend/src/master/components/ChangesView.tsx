@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-priority-overview-p53-2026-07-20',
+    version: '4.9.724',
+    title: 'Fleet Health Service — Handlungspriorität in der Übersicht (Phase 8 P53)',
+    summary: [
+      'Übersicht strukturiert in fünf Prioritätsabschnitte: Technisch blockiert, Heute bearbeiten, Technisch prüfen, Daten unvollständig, Demnächst fällig.',
+      'Neu: `FleetHealthServicePriorityOverview` — collapsible Sektionen, Empty States, `ErrorState` bei Ladefehlern, Zustand/Aufgabe-Badges, expandierbare Details.',
+      'ViewModel: `prioritizedOverviewSections` aus bestehenden Health-Bändern + Task-Schedule — keine zweite Health-Bewertung.',
+    ],
+    reason: 'Phase 8 Prompt 53: Übersicht nach operativer Dringlichkeit strukturieren.',
+    previousBehavior:
+      'Flache priorisierte Liste ohne Abschnittsgruppierung; due-soon Tasks nicht in der Übersicht.',
+    details:
+      'fleet-health-service.view-model.ts, FleetHealthServicePriorityOverview.tsx, FleetHealthServiceOverviewPanel.tsx, i18n en/de, view-model tests',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:35:00.000Z',
+  },
+  {
     id: 'fleet-health-nav-simplify-p52-2026-07-20',
     version: '4.9.723',
     title: 'Fleet Health Service — Navigation auf vier Bereiche (Phase 8 P52)',
