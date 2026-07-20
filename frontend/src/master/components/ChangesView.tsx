@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'runtime-state-display-blocking-reasons-p44-2026-07-20',
+    version: '4.9.715',
+    title: 'Vehicle Runtime State — Service-/Health-Reason-Darstellung (Phase 6 P44)',
+    summary: [
+      '`reasonDisplay.ts` erweitert um Display-Gruppen: technische Blockade, Servicefall, Aufgabe, Schaden, Compliance, Reinigung, Telemetrie, Buchung/Betrieb.',
+      'Sichtbare Labels ohne UUIDs; Quelle, Arbeitsstatus und Aktion getrennt im Tooltip.',
+      'Parent/Child-Darstellung für verknüpfte Servicefall+Aufgabe; `RuntimeReasonPills` wiederverwendet bestehende Pill-UI.',
+      'i18n DE/EN für Gruppen-, Quellen- und Aktionslabels.',
+    ],
+    reason: 'Phase 6 Prompt 44: operative und technische Blockgründe klar und gruppiert darstellen.',
+    previousBehavior:
+      'Reason-Pills zeigten nur generische Titel ohne Gruppierung; Service-/Task-Blocker ohne eigene Darstellungsschicht.',
+    details:
+      'reasonDisplay.ts (+test), RuntimeReasonPills.tsx, FleetBoardVehicleRow.tsx, DashboardDrilldownDrawer.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'runtime-state-operational-work-blockers-p43-2026-07-20',
     version: '4.9.714',
     title: 'Vehicle Runtime State — operative Task-/Case-Blocker normalisiert (Phase 6 P43)',

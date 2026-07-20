@@ -3,10 +3,9 @@ import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import {
   dedupeDisplayReasons,
-  formatRuntimeReasonLabel,
   rowSeverityLabel,
-  runtimeReasonTooltip,
 } from './reasonDisplay';
+import { RuntimeReasonPills } from './RuntimeReasonPills';
 import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
 import type {
   DashboardSliceRow,
@@ -60,10 +59,6 @@ function runtimeStateLabel(state: VehicleRuntimeState | undefined, de: boolean):
   return `${ops} · ${rental}`;
 }
 
-function moreReasonsLabel(count: number, de: boolean): string {
-  return de ? `+${count} Gründe` : `+${count} reasons`;
-}
-
 /**
  * @deprecated Only consumed by the deprecated FleetStateBoard. The Dashboard
  * Fahrzeugliste is now rendered by FleetCommandPanel/FleetOperatorRow (shared
@@ -84,8 +79,6 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
     ...(runtimeState?.warningReasons ?? []),
   ];
   const reasons = dedupeDisplayReasons(rawReasons);
-  const visibleReasons = reasons.slice(0, 2);
-  const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
   const canOpen = Boolean(onOpen && row.vehicleId);
 
   const tint =
@@ -158,30 +151,8 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
           ) : null}
         </div>
 
-        {visibleReasons.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {visibleReasons.map((reason) => (
-              <span
-                key={reason.id}
-                title={runtimeReasonTooltip(reason, locale)}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                  reason.severity === 'critical'
-                    ? 'bg-[color:var(--status-critical)]/10 text-[color:var(--status-critical)]'
-                    : reason.severity === 'warning'
-                      ? 'bg-[color:var(--status-watch)]/10 text-[color:var(--status-watch)]'
-                      : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {formatRuntimeReasonLabel(reason, locale)}
-              </span>
-            ))}
-            {remainingReasons > 0 ? (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {moreReasonsLabel(remainingReasons, de)}
-              </span>
-            ) : null}
-          </div>
+        {reasons.length > 0 ? (
+          <RuntimeReasonPills reasons={reasons} locale={locale} maxVisible={2} />
         ) : null}
       </button>
 
