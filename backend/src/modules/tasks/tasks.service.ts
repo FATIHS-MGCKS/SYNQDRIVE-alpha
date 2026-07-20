@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -188,6 +189,7 @@ export class TasksService {
     private readonly prisma: PrismaService,
     private readonly activityLog: ActivityLogService,
     private readonly linkedObjectResolver: TaskLinkedObjectResolverService,
+    @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
 
   // ─── Serialization ─────────────────────────────────────────────────────
@@ -667,7 +669,8 @@ export class TasksService {
   }
 
   async listTasks(orgId: string, filters: ListTasksFilters) {
-    const now = new Date();
+    try {
+      const now = new Date();
     const timeZone = await this.resolveOrgTimezone(orgId);
     const bucketContext = createTaskBucketContext(now, timeZone);
     const where: Prisma.OrgTaskWhereInput = { organizationId: orgId };
@@ -775,6 +778,18 @@ export class TasksService {
         : [];
     const checklistProgressByTaskId = aggregateChecklistProgressByTaskId(checklistRows);
 
+    this.fleetHealthObservability?.recordHealthTaskMatches(
+      tasks.map((task) => ({
+        vehicleId: task.vehicleId,
+        status: task.status,
+        type: task.type,
+        sourceType: task.sourceType,
+        source: task.source,
+        blocksVehicleAvailability: task.blocksVehicleAvailability,
+        metadata: task.metadata,
+      })),
+    );
+
     return tasks.map((t) => {
       const formatted = this.format(t, now, checklistProgressByTaskId.get(t.id) ?? null);
       return {
@@ -783,6 +798,10 @@ export class TasksService {
         bucket: classifyPrimaryTaskBucket(t, bucketContext),
       };
     });
+    } catch (err) {
+      this.fleetHealthObservability?.recordTaskApiFailure('list', err);
+      throw err;
+    }
   }
 
   private async resolveOrgTimezone(orgId: string): Promise<string> {
@@ -943,7 +962,8 @@ export class TasksService {
   }
 
   async getDashboardSummary(orgId: string, currentUserId?: string) {
-    const now = new Date();
+    try {
+      const now = new Date();
     const timeZone = await this.resolveOrgTimezone(orgId);
     const bucketContext = createTaskBucketContext(now, timeZone);
     const activeFilter = { organizationId: orgId, status: { in: ACTIVE_TASK_STATUSES } };
@@ -996,6 +1016,10 @@ export class TasksService {
       buckets: bucketCounts,
       timezone: timeZone,
     };
+    } catch (err) {
+      this.fleetHealthObservability?.recordTaskApiFailure('summary', err);
+      throw err;
+    }
   }
 
   // ─── Create ───────────────────────────────────────────────────────────────

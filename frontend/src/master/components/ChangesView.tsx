@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-metrics-p59-2026-07-20',
+    version: '4.9.730',
+    title: 'Fleet Health Service — Prometheus-Metriken (Phase 9 P59)',
+    summary: [
+      'Bounded-cardinality `synqdrive_fleet_health_*` Metriken: Rental-Health-Latenz, Fleet-Summary-Latenz, Modulstatus, Availability ready/partial/unavailable.',
+      'Technische Blockaden, stale Module, Service-Cases nach Status, blockierende Cases, Task/Case/Vendor-API-Fehler.',
+      'Refresh-Partial-Failures, Health→Task ambiguous legacy matches, Battery Publication Coverage Ratio.',
+      'Alerts-Gruppe `synqdrive_fleet_health` + Architektur-Dokumentation.',
+    ],
+    reason: 'Phase 9 Prompt 59: operative Observability für Zustand & Service ohne vehicleId/orgId Labels.',
+    previousBehavior: 'Keine dedizierten Fleet-Health-Service-Prometheus-Metriken auf den aggregierten APIs.',
+    details:
+      'fleet-health-observability module, rental-health controller/summary/fleet, service-cases, tasks, vendors, fleet-health-prometheus.metrics.spec.ts, docs/architecture/fleet-health-prometheus-metrics.md',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:59:30.000Z',
+  },
+  {
     id: 'fleet-health-mobile-a11y-p58-2026-07-20',
     version: '4.9.729',
     title: 'Fleet Health Service — Mobile & Accessibility (Phase 8 P58)',

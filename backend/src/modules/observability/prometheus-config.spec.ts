@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { TripMetricsService } from './trip-metrics.service';
 import { TireMetricsService } from '@modules/vehicle-intelligence/tires/tire-metrics.service';
 import { BrakeMetricsService } from '@modules/vehicle-intelligence/brakes/brake-metrics.service';
+import { FleetHealthMetricsService } from '@modules/fleet-health-observability/fleet-health-metrics.service';
 
 const FORBIDDEN_LABELS = [
   'vehicle_id',
@@ -25,6 +26,7 @@ describe('TripMetricsService label cardinality', () => {
     metrics = new TripMetricsService();
     new TireMetricsService(metrics);
     new BrakeMetricsService(metrics);
+    new FleetHealthMetricsService(metrics);
   });
 
   it('does not register forbidden high-cardinality labels', async () => {
@@ -83,6 +85,11 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_document_upload_total');
     expect(text).toContain('synqdrive_document_follow_up_total');
     expect(text).toContain('synqdrive_document_archive_total');
+    expect(text).toContain('synqdrive_fleet_health_rental_health_request_duration_seconds');
+    expect(text).toContain('synqdrive_fleet_health_fleet_summary_duration_seconds');
+    expect(text).toContain('synqdrive_fleet_health_module_status_total');
+    expect(text).toContain('synqdrive_fleet_health_availability_total');
+    expect(text).toContain('synqdrive_fleet_health_battery_publication_coverage_ratio');
   });
 });
 

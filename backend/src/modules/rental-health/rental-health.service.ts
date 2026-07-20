@@ -12,6 +12,7 @@ import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/ti
 import { TireHealthObservabilityService } from '../vehicle-intelligence/tires/tire-health-observability.service';
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
 import { BrakeHealthObservabilityService } from '../vehicle-intelligence/brakes/brake-health-observability.service';
+import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
 import type { ServiceComplianceEvaluation } from '../vehicle-intelligence/service-compliance/service-compliance.types';
@@ -91,6 +92,7 @@ export class RentalHealthService {
     private readonly brakeRentalReview: BrakeRentalHealthReviewService,
     @Optional() private readonly tireObservability?: TireHealthObservabilityService,
     @Optional() private readonly brakeObservability?: BrakeHealthObservabilityService,
+    @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
 
   /**
@@ -223,7 +225,7 @@ export class RentalHealthService {
       batterySummary,
     );
 
-    return {
+    const health = {
       vehicle_id: vehicleId,
       organization_id: orgId,
       overall_state,
@@ -232,6 +234,9 @@ export class RentalHealthService {
       modules,
       generated_at: new Date().toISOString(),
     };
+
+    this.fleetHealthObservability?.recordVehicleHealth(health);
+    return health;
   }
 
   /**

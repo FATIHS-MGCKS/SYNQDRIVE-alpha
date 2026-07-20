@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Inject, forwardRef, Optional } from '@nestjs/common';
+import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import {
   Prisma,
   ServiceCaseCategory,
@@ -43,6 +44,7 @@ export class ServiceCasesService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => ServiceOverdueTaskService))
     private readonly serviceOverdueTasks: ServiceOverdueTaskService,
+    @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
 
   private format(row: ServiceCaseRow) {
@@ -144,26 +146,35 @@ export class ServiceCasesService {
   }
 
   async list(orgId: string, filters: ListServiceCasesFilters = {}) {
-    const where: Prisma.ServiceCaseWhereInput = { organizationId: orgId };
-    if (filters.status) where.status = filters.status;
-    if (filters.category) where.category = filters.category;
-    if (filters.priority) where.priority = filters.priority;
-    if (filters.source) where.source = filters.source;
-    if (filters.vehicleId) where.vehicleId = filters.vehicleId;
-    if (filters.vendorId) where.vendorId = filters.vendorId;
-    if (filters.search) {
-      where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ];
-    }
+    try {
+      const where: Prisma.ServiceCaseWhereInput = { organizationId: orgId };
+      if (filters.status) where.status = filters.status;
+      if (filters.category) where.category = filters.category;
+      if (filters.priority) where.priority = filters.priority;
+      if (filters.source) where.source = filters.source;
+      if (filters.vehicleId) where.vehicleId = filters.vehicleId;
+      if (filters.vendorId) where.vendorId = filters.vendorId;
+      if (filters.search) {
+        where.OR = [
+          { title: { contains: filters.search, mode: 'insensitive' } },
+          { description: { contains: filters.search, mode: 'insensitive' } },
+        ];
+      }
 
-    const rows = await this.prisma.serviceCase.findMany({
-      where,
-      include: this.detailInclude(),
-      orderBy: [{ status: 'asc' }, { openedAt: 'desc' }],
-    });
-    return rows.map((r) => this.format(r));
+      const rows = await this.prisma.serviceCase.findMany({
+        where,
+        include: this.detailInclude(),
+        orderBy: [{ status: 'asc' }, { openedAt: 'desc' }],
+      });
+      const formatted = rows.map((r) => this.format(r));
+      this.fleetHealthObservability?.recordServiceCases(
+        formatted.map((row) => ({ status: row.status, blocksRental: row.blocksRental })),
+      );
+      return formatted;
+    } catch (err) {
+      this.fleetHealthObservability?.recordCaseApiFailure('list', err);
+      throw err;
+    }
   }
 
   async getById(orgId: string, id: string) {
