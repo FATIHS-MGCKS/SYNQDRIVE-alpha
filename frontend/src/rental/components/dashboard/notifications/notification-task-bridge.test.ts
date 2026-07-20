@@ -60,7 +60,7 @@ describe('notification task bridge', () => {
   });
 
   it('builds health task prefill from notification', () => {
-    const prefill = buildNotificationTaskPrefill(healthItem(), []);
+    const prefill = buildNotificationTaskPrefill(healthItem(), [], 'org-1');
     expect(prefill).not.toBeNull();
     expect(prefill!.sourceType).toBe('HEALTH');
     expect(prefill!.priority).toBe('CRITICAL');

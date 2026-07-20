@@ -2028,5 +2028,39 @@ describe('TasksService', () => {
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
+
+    it('persists sanitized health finding identity metadata', async () => {
+      const sourceFindingId = 'a'.repeat(64);
+      prisma.orgTask.findFirst.mockResolvedValueOnce(null);
+      await svc.createManualTask('org1', {
+        title: 'Reifen prüfen',
+        type: 'TIRE_CHECK',
+        sourceType: 'HEALTH',
+        vehicleId: 'veh-1',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: 'org1',
+          vehicleId: 'veh-1',
+          healthModule: 'tires',
+          sourceFindingId,
+          findingCode: 'PRESSURE_WARNING',
+          sourceEntityType: 'rental_reason_code',
+          sourceEntityId: 'pressure_warning',
+          findingVersion: 'health-finding-identity-v1',
+        },
+      });
+
+      expect(prisma.orgTask.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              sourceFindingId,
+              findingCode: 'PRESSURE_WARNING',
+              sourceType: 'HEALTH',
+            }),
+          }),
+        }),
+      );
+    });
   });
 });

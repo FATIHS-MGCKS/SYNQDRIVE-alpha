@@ -97,6 +97,18 @@ const CONTROLLED_METADATA_KEYS = [
   'allowAutoResolve',
   'responsibleRole',
   'responsibleRoleLabel',
+  'sourceType',
+  'organizationId',
+  'vehicleId',
+  'healthModule',
+  'sourceFindingId',
+  'findingCode',
+  'sourceEntityType',
+  'sourceEntityId',
+  'findingVersion',
+  'blockingReasonCode',
+  'healthState',
+  'healthReason',
 ] as const;
 
 export interface LegacyFormattedTask {

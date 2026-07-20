@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'health-task-finding-identity-p37-2026-07-20',
+    version: '4.9.708',
+    title: 'Health→Task — Finding-Identität in Task-Metadaten (Phase 5 P37)',
+    summary: [
+      '`buildHealthTaskPrefill` persistiert `sourceType=HEALTH`, `healthModule`, `sourceFindingId`, `findingCode`, `sourceEntityType`, `sourceEntityId`, `findingVersion` und optional `blockingReasonCode`.',
+      'Keine vollständigen Health-Payloads in Task-Metadaten; Backend validiert und strippt verbotene Keys.',
+      'Legacy-Tasks ohne `sourceFindingId` bleiben lesbar; Dedup bevorzugt `sourceFindingId`.',
+      'Org/Fahrzeug werden serverseitig gegen Request-Scope geprüft; DTC-Codes nicht als alleinige globale ID.',
+    ],
+    reason: 'Phase 5 Prompt 37: Health→Task-Bridge mit stabiler Finding-Identität aus P35/P36.',
+    previousBehavior:
+      'Health-Task-Prefill speicherte nur healthModule/healthState/healthReason; DTC-Listen konnten in metadata landen.',
+    details:
+      'health-task-bridge.utils.ts (+test), health-task-metadata.util.ts (+spec), tasks.service.ts, HealthServiceActions.tsx, notification-task-bridge.ts, task-detail-view.builder.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'rental-health-expose-finding-ids-p36-2026-07-20',
     version: '4.9.707',
     title: 'Rental Health — stabile Finding-IDs in Modulen (Phase 5 P36)',

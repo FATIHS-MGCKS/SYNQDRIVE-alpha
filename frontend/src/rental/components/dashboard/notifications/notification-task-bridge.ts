@@ -64,8 +64,10 @@ export function canCreateTaskFromNotification(item: ActionQueueItem): boolean {
 export function buildNotificationTaskPrefill(
   item: ActionQueueItem,
   vendors: Vendor[] = [],
+  organizationId = '',
 ): HealthTaskPrefill | null {
   if (!item.vehicleId || !canCreateTaskFromNotification(item)) return null;
+  if (!organizationId) return null;
 
   const module = healthModuleFromItem(item) ?? 'error_codes';
   const severity = item.queue?.severity ?? item.severity;
@@ -81,6 +83,7 @@ export function buildNotificationTaskPrefill(
 
   const prefill = buildHealthTaskPrefill({
     module,
+    organizationId,
     vehicleId: item.vehicleId,
     rentalModule,
     contextLines: [
