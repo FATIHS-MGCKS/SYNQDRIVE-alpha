@@ -148,11 +148,132 @@ export function suggestedVendorForHealthModule(
 export function pickPrimarySourceFinding(
   rentalModule?: RentalHealthModule | null,
 ): RentalHealthSourceFinding | null {
-  const findings = rentalModule?.source_findings ?? [];
-  if (!findings.length) return null;
-  return [...findings].sort(
+  const findings = listActionableSourceFindings(rentalModule);
+  if (findings.length) return findings[0];
+  const all = rentalModule?.source_findings ?? [];
+  if (!all.length) return null;
+  return [...all].sort(
     (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
   )[0];
+}
+
+/** Actionable findings for task/case linking — one row per finding, not merged by module. */
+export function listActionableSourceFindings(
+  rentalModule?: RentalHealthModule | null,
+): RentalHealthSourceFinding[] {
+  const findings = rentalModule?.source_findings ?? [];
+  if (!findings.length) return [];
+  return [...findings]
+    .filter((f) => f.severity === 'critical' || f.severity === 'warning')
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+}
+
+export interface HealthFindingTaskState {
+  finding: RentalHealthSourceFinding | null;
+  prefill: HealthTaskPrefill;
+  duplicate: HealthTaskDuplicateResult;
+  hasExactTask: boolean;
+  canCreate: boolean;
+}
+
+export interface ModuleFindingTaskCoverage {
+  findings: RentalHealthSourceFinding[];
+  findingCount: number;
+  findingStates: HealthFindingTaskState[];
+  linkedFindingCount: number;
+  unlinkedFindingCount: number;
+  primaryLinkedTaskId: string | null;
+  primaryPossiblyRelatedTaskId: string | null;
+}
+
+export function buildModuleFindingTaskCoverage(opts: {
+  module: HealthActionModule;
+  organizationId: string;
+  vehicleId: string;
+  rentalModule?: RentalHealthModule | null;
+  openTasks: ApiTask[];
+  contextLines?: string[];
+  dtcCodes?: string[];
+  dueDate?: string | null;
+  vendors?: Vendor[];
+  blocksRental?: boolean;
+  blockingReasonCode?: string | null;
+  origin?: string;
+}): ModuleFindingTaskCoverage {
+  const actionable = listActionableSourceFindings(opts.rentalModule);
+  const findingSeeds: Array<RentalHealthSourceFinding | null> =
+    actionable.length > 0
+      ? actionable
+      : healthModuleNeedsAction(opts.rentalModule)
+        ? [null]
+        : [];
+
+  const findingStates: HealthFindingTaskState[] = findingSeeds.map((finding) => {
+    const prefill = buildHealthTaskPrefill({
+      module: opts.module,
+      organizationId: opts.organizationId,
+      vehicleId: opts.vehicleId,
+      rentalModule: opts.rentalModule,
+      sourceFinding: finding,
+      contextLines: finding?.reason
+        ? [finding.reason, ...(opts.contextLines ?? [])]
+        : opts.contextLines,
+      dtcCodes:
+        opts.module === 'error_codes' && finding?.source_entity_type === 'dtc_code'
+          ? [finding.source_entity_id.toUpperCase()]
+          : opts.dtcCodes,
+      dueDate: opts.dueDate,
+      vendors: opts.vendors,
+      blocksRental: opts.blocksRental,
+      blockingReasonCode: opts.blockingReasonCode,
+      origin: opts.origin,
+    });
+    const duplicate = findDuplicateHealthTask(opts.openTasks, {
+      organizationId: opts.organizationId,
+      vehicleId: opts.vehicleId,
+      module: opts.module,
+      sourceFindingId: finding?.source_finding_id ?? prefill.metadata.sourceFindingId,
+    });
+    const hasExactTask = duplicate.matchKind === 'exact';
+    return {
+      finding,
+      prefill,
+      duplicate,
+      hasExactTask,
+      canCreate: !hasExactTask,
+    };
+  });
+
+  const linkedFindingCount = findingStates.filter((s) => s.hasExactTask).length;
+  const unlinkedFindingCount = findingStates.filter((s) => s.canCreate).length;
+  const primaryLinked = findingStates.find((s) => s.hasExactTask);
+  const primaryPossiblyRelated = findingStates.find(
+    (s) =>
+      !s.hasExactTask &&
+      (s.duplicate.matchKind === 'legacy' || s.duplicate.matchKind === 'possibly_related'),
+  );
+
+  return {
+    findings: actionable,
+    findingCount: actionable.length || findingStates.length,
+    findingStates,
+    linkedFindingCount,
+    unlinkedFindingCount,
+    primaryLinkedTaskId: primaryLinked?.duplicate.task?.id ?? null,
+    primaryPossiblyRelatedTaskId:
+      primaryPossiblyRelated?.duplicate.task?.id ??
+      primaryPossiblyRelated?.duplicate.possiblyRelatedTask?.id ??
+      null,
+  };
+}
+
+export function formatHealthFindingLabel(
+  finding: RentalHealthSourceFinding | null,
+  fallback?: string,
+): string {
+  if (!finding) return fallback?.trim() || 'Health-Signal';
+  if (finding.reason?.trim()) return finding.reason.trim();
+  return finding.finding_code.replace(/_/g, ' ');
 }
 
 export function deriveBlockingReasonCode(

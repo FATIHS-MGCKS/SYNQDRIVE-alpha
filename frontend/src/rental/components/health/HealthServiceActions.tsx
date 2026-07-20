@@ -6,11 +6,12 @@ import { useRentalOrg } from '../../RentalContext';
 import { ComplianceTaskActions } from '../ComplianceTaskActions';
 import { ServiceTaskCreateModal } from '../service-center/ServiceTaskCreateModal';
 import {
-  buildHealthTaskPrefill,
+  buildModuleFindingTaskCoverage,
   complianceSignalsForModule,
-  findDuplicateHealthTask,
+  formatHealthFindingLabel,
   healthModuleNeedsAction,
   type HealthActionModule,
+  type HealthFindingTaskState,
   type HealthTaskPrefill,
 } from '../../lib/health-task-bridge.utils';
 
@@ -28,6 +29,11 @@ export interface HealthServiceActionsProps {
   onNavigateToHealth?: () => void;
   compact?: boolean;
   className?: string;
+}
+
+function relatedHintTask(state: HealthFindingTaskState) {
+  if (state.duplicate.matchKind === 'legacy') return state.duplicate.task;
+  return state.duplicate.possiblyRelatedTask;
 }
 
 export function HealthServiceActions({
@@ -72,39 +78,33 @@ export function HealthServiceActions({
     };
   }, [orgId, vehicleId]);
 
-  const prefillBase = useMemo(
+  const coverage = useMemo(
     () =>
-      buildHealthTaskPrefill({
+      buildModuleFindingTaskCoverage({
         module: healthModule,
         organizationId: orgId ?? '',
         vehicleId,
         rentalModule,
+        openTasks,
         contextLines,
         dtcCodes,
         dueDate,
         vendors,
         blocksRental,
       }),
-    [healthModule, orgId, vehicleId, rentalModule, contextLines, dtcCodes, dueDate, vendors, blocksRental],
+    [
+      healthModule,
+      orgId,
+      vehicleId,
+      rentalModule,
+      openTasks,
+      contextLines,
+      dtcCodes,
+      dueDate,
+      vendors,
+      blocksRental,
+    ],
   );
-
-  const duplicateResult = useMemo(
-    () =>
-      findDuplicateHealthTask(openTasks, {
-        organizationId: orgId ?? '',
-        vehicleId,
-        module: healthModule,
-        sourceFindingId: prefillBase.metadata.sourceFindingId,
-      }),
-    [openTasks, orgId, vehicleId, healthModule, prefillBase.metadata.sourceFindingId],
-  );
-
-  const exactDuplicate =
-    duplicateResult.matchKind === 'exact' ? duplicateResult.task : null;
-  const relatedHintTask =
-    duplicateResult.matchKind === 'legacy'
-      ? duplicateResult.task
-      : duplicateResult.possiblyRelatedTask;
 
   const complianceForModule = useMemo(() => {
     if (healthModule === 'service_compliance') {
@@ -113,67 +113,124 @@ export function HealthServiceActions({
     return [];
   }, [complianceSignals, healthModule]);
 
+  const hasFindingRows = coverage.findingStates.length > 0;
   const showActions =
     healthModuleNeedsAction(rentalModule) ||
-    Boolean(exactDuplicate) ||
-    Boolean(relatedHintTask) ||
+    hasFindingRows ||
     complianceForModule.length > 0;
   if (!showActions && !loading) return null;
 
-  const openCreate = () => {
-    setPrefill(prefillBase);
+  const openCreate = (nextPrefill: HealthTaskPrefill) => {
+    setPrefill(nextPrefill);
     setCreateOpen(true);
   };
 
   const btnClass =
     'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition-colors';
 
+  const multiFinding = coverage.findings.length > 1;
+
   return (
     <div className={`space-y-2 ${className}`}>
       {!compact && (
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Service-Aktionen
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Service-Aktionen
+          </p>
+          {coverage.findingCount > 1 && (
+            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
+              {coverage.linkedFindingCount}/{coverage.findingCount} mit Aufgabe
+            </span>
+          )}
+        </div>
+      )}
+
+      {multiFinding && (
+        <p className="text-[10px] text-muted-foreground">
+          {coverage.findingCount} parallele Findings — jeweils eigene Aufgabe möglich.
         </p>
       )}
 
-      {exactDuplicate && (
-        <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch-soft)] px-3 py-2 space-y-2">
-          <p className="text-[11px] text-foreground">
-            Offene Service-Aufgabe existiert bereits: <span className="font-semibold">{exactDuplicate.title}</span>
-          </p>
-          {onOpenExistingTask && (
-            <button
-              type="button"
-              onClick={() => onOpenExistingTask(exactDuplicate.id)}
-              className={`${btnClass} border-[color:var(--brand)]/25 surface-premium hover:bg-muted/40`}
-            >
-              <ExternalLink className="w-3 h-3" />
-              Bestehende Aufgabe öffnen
-            </button>
-          )}
-        </div>
-      )}
+      {coverage.findingStates.map((state) => {
+        const key =
+          state.finding?.source_finding_id ??
+          state.prefill.metadata.sourceFindingId ??
+          'legacy-module';
+        const exactDuplicate =
+          state.duplicate.matchKind === 'exact' ? state.duplicate.task : null;
+        const hintTask = !exactDuplicate ? relatedHintTask(state) : null;
+        const label = formatHealthFindingLabel(
+          state.finding,
+          rentalModule?.reason ?? undefined,
+        );
 
-      {relatedHintTask && !exactDuplicate && (
-        <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 space-y-2">
-          <p className="text-[11px] text-muted-foreground">
-            Möglicherweise zugehörige Aufgabe
-            {duplicateResult.matchKind === 'legacy' ? ' (Legacy, ohne Finding-ID)' : ''}:
-            {' '}
-            <span className="font-semibold text-foreground">{relatedHintTask.title}</span>
-          </p>
-          {onOpenExistingTask && (
-            <button
-              type="button"
-              onClick={() => onOpenExistingTask(relatedHintTask.id)}
-              className={`${btnClass} border-border/60 hover:bg-muted/40`}
-            >
-              <ExternalLink className="w-3 h-3" />
-              Aufgabe öffnen
-            </button>
-          )}
-        </div>
-      )}
+        return (
+          <div
+            key={key}
+            className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2 space-y-2"
+          >
+            {multiFinding && (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold text-foreground truncate">{label}</p>
+                <StatusChip
+                  tone={state.finding?.severity === 'critical' ? 'critical' : 'watch'}
+                >
+                  {state.finding?.finding_code ?? 'Legacy'}
+                </StatusChip>
+              </div>
+            )}
+
+            {exactDuplicate && (
+              <div className="rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch-soft)] px-2.5 py-2 space-y-2">
+                <p className="text-[11px] text-foreground">
+                  Offene Aufgabe: <span className="font-semibold">{exactDuplicate.title}</span>
+                </p>
+                {onOpenExistingTask && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenExistingTask(exactDuplicate.id)}
+                    className={`${btnClass} border-[color:var(--brand)]/25 surface-premium hover:bg-muted/40`}
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Aufgabe öffnen
+                  </button>
+                )}
+              </div>
+            )}
+
+            {hintTask && (
+              <div className="rounded-lg border border-border/60 bg-muted/20 px-2.5 py-2 space-y-2">
+                <p className="text-[11px] text-muted-foreground">
+                  Möglicherweise zugehörig
+                  {state.duplicate.matchKind === 'legacy' ? ' (Legacy)' : ''}:{' '}
+                  <span className="font-semibold text-foreground">{hintTask.title}</span>
+                </p>
+                {onOpenExistingTask && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenExistingTask(hintTask.id)}
+                    className={`${btnClass} border-border/60 hover:bg-muted/40`}
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Aufgabe öffnen
+                  </button>
+                )}
+              </div>
+            )}
+
+            {state.canCreate && healthModuleNeedsAction(rentalModule) && (
+              <button
+                type="button"
+                onClick={() => openCreate(state.prefill)}
+                className={`${btnClass} border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]`}
+              >
+                <ClipboardList className="w-3 h-3" />
+                {multiFinding ? 'Aufgabe für dieses Finding' : 'Service-Aufgabe anlegen'}
+              </button>
+            )}
+          </div>
+        );
+      })}
 
       {complianceForModule.length > 0 && (
         <ComplianceTaskActions vehicleId={vehicleId} signals={complianceForModule} compact={compact} />
@@ -181,16 +238,6 @@ export function HealthServiceActions({
 
       {healthModuleNeedsAction(rentalModule) && (
         <div className="flex flex-wrap gap-1.5">
-          {!exactDuplicate && (
-            <button
-              type="button"
-              onClick={openCreate}
-              className={`${btnClass} border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]`}
-            >
-              <ClipboardList className="w-3 h-3" />
-              Service-Aufgabe anlegen
-            </button>
-          )}
           {onOpenServiceCenter && (
             <button
               type="button"
@@ -201,7 +248,7 @@ export function HealthServiceActions({
               Service Center
             </button>
           )}
-          {rentalModule?.state && (
+          {rentalModule?.state && !multiFinding && (
             <StatusChip tone={rentalModule.state === 'critical' ? 'critical' : 'watch'}>
               Health: {rentalModule.state}
             </StatusChip>

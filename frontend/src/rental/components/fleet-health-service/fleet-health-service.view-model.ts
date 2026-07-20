@@ -16,8 +16,7 @@ import {
   type RentalHealthModuleKey,
 } from '../../lib/fleet-health-control-center';
 import {
-  findDuplicateHealthTask,
-  pickPrimarySourceFinding,
+  buildModuleFindingTaskCoverage,
   type HealthActionModule,
   type HealthTaskDuplicateResult,
 } from '../../lib/health-task-bridge.utils';
@@ -45,6 +44,9 @@ export interface FleetHealthServiceUiItem {
   sourceModule: RentalHealthModuleKey | null;
   existingTaskId: string | null;
   possiblyRelatedTaskId: string | null;
+  actionableFindingCount: number;
+  linkedFindingCount: number;
+  unlinkedFindingCount: number;
   recommendedAction: FleetHealthServiceRecommendedAction;
 }
 
@@ -149,27 +151,56 @@ export function resolveHealthTaskMatchForSignal(
   openTasks: ApiTask[],
   vehicleId: string,
   health: VehicleHealthResponse | null | undefined,
-): HealthTaskDuplicateResult {
+): HealthTaskDuplicateResult & {
+  coverage: ReturnType<typeof buildModuleFindingTaskCoverage> | null;
+} {
   const organizationId = health?.organization_id?.trim();
   if (!organizationId) {
-    return { task: null, matchKind: 'none', possiblyRelatedTask: null };
+    return { task: null, matchKind: 'none', possiblyRelatedTask: null, coverage: null };
   }
 
   const moduleKey = resolveSourceModule(health);
   if (!moduleKey) {
-    return { task: null, matchKind: 'none', possiblyRelatedTask: null };
+    return { task: null, matchKind: 'none', possiblyRelatedTask: null, coverage: null };
   }
 
   const rentalModule = health?.modules?.[moduleKey];
-  const sourceFinding = pickPrimarySourceFinding(rentalModule);
-  const sourceFindingId = sourceFinding?.source_finding_id ?? null;
-
-  return findDuplicateHealthTask(openTasks, {
+  const coverage = buildModuleFindingTaskCoverage({
+    module: moduleKey as HealthActionModule,
     organizationId,
     vehicleId,
-    module: moduleKey as HealthActionModule,
-    sourceFindingId,
+    rentalModule,
+    openTasks,
   });
+
+  const allLinked =
+    coverage.findingCount > 0 &&
+    coverage.unlinkedFindingCount === 0 &&
+    coverage.linkedFindingCount > 0;
+  const primaryState = coverage.findingStates.find((s) => s.hasExactTask);
+
+  if (allLinked && primaryState?.duplicate.task) {
+    return {
+      ...primaryState.duplicate,
+      coverage,
+    };
+  }
+
+  const possiblyRelatedState = coverage.findingStates.find(
+    (s) =>
+      !s.hasExactTask &&
+      (s.duplicate.matchKind === 'legacy' || s.duplicate.matchKind === 'possibly_related'),
+  );
+
+  return {
+    task: null,
+    matchKind: possiblyRelatedState?.duplicate.matchKind ?? 'none',
+    possiblyRelatedTask:
+      possiblyRelatedState?.duplicate.task ??
+      possiblyRelatedState?.duplicate.possiblyRelatedTask ??
+      null,
+    coverage,
+  };
 }
 
 /**
@@ -187,10 +218,17 @@ export function matchOpenTaskForHealthSignal(
 export function deriveRecommendedAction(
   health: VehicleHealthResponse | null | undefined,
   existingTask: ApiTask | null,
+  coverage: ReturnType<typeof buildModuleFindingTaskCoverage> | null,
 ): FleetHealthServiceRecommendedAction {
   const display = buildFleetHealthDisplay(health);
   if (display.band === 'good') return 'no_action';
   if (display.band === 'limited') return 'review_vehicle';
+  if (coverage && coverage.findingCount > 0) {
+    if (coverage.unlinkedFindingCount === 0 && coverage.linkedFindingCount > 0) {
+      return 'open_task';
+    }
+    if (coverage.unlinkedFindingCount > 0) return 'create_task';
+  }
   if (existingTask) return 'open_task';
   if (display.band === 'blocked' || display.band === 'critical' || display.band === 'review') {
     return 'create_task';
@@ -206,10 +244,9 @@ export function buildFleetHealthServiceUiItem(
   const display = buildFleetHealthDisplay(health);
   const matchResult = resolveHealthTaskMatchForSignal(openTasks, vehicle.id, health);
   const existingTask = matchResult.matchKind === 'exact' ? matchResult.task : null;
+  const coverage = matchResult.coverage;
   const possiblyRelatedTask =
-    matchResult.matchKind === 'legacy'
-      ? matchResult.task
-      : matchResult.possiblyRelatedTask;
+    matchResult.matchKind === 'exact' ? null : matchResult.possiblyRelatedTask;
 
   return {
     vehicleId: vehicle.id,
@@ -221,7 +258,10 @@ export function buildFleetHealthServiceUiItem(
     sourceModule: display.primaryModuleKey,
     existingTaskId: existingTask?.id ?? null,
     possiblyRelatedTaskId: possiblyRelatedTask?.id ?? null,
-    recommendedAction: deriveRecommendedAction(health, existingTask),
+    actionableFindingCount: coverage?.findingCount ?? 0,
+    linkedFindingCount: coverage?.linkedFindingCount ?? 0,
+    unlinkedFindingCount: coverage?.unlinkedFindingCount ?? 0,
+    recommendedAction: deriveRecommendedAction(health, existingTask, coverage),
   };
 }
 

@@ -181,6 +181,71 @@ describe('fleet-health-service view model', () => {
     expect(item.possiblyRelatedTaskId).toBe('t1');
   });
 
+  it('partial multi-finding coverage keeps create_task until all findings linked', () => {
+    const findings = ['a', 'b', 'c'].map((id) =>
+      sourceFinding(id.repeat(64)),
+    );
+    const health = buildHealth({
+      overall_state: 'critical',
+      modules: {
+        brakes: mod('critical', 'Bremsen kritisch', { source_findings: findings }),
+      },
+    });
+    const openTasks = [
+      task({
+        id: 't-linked',
+        vehicleId: 'v1',
+        type: 'BRAKE_CHECK',
+        status: 'OPEN',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          healthModule: 'brakes',
+          sourceFindingId: 'a'.repeat(64),
+        },
+        sourceType: 'HEALTH',
+      }),
+    ];
+    const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, openTasks);
+    expect(item.actionableFindingCount).toBe(3);
+    expect(item.linkedFindingCount).toBe(1);
+    expect(item.unlinkedFindingCount).toBe(2);
+    expect(item.recommendedAction).toBe('create_task');
+    expect(item.existingTaskId).toBeNull();
+  });
+
+  it('all findings linked → open_task with primary task id', () => {
+    const findings = ['a', 'b'].map((id) => sourceFinding(id.repeat(64)));
+    const health = buildHealth({
+      overall_state: 'critical',
+      modules: {
+        brakes: mod('critical', 'Bremsen kritisch', { source_findings: findings }),
+      },
+    });
+    const openTasks = findings.map((f, index) =>
+      task({
+        id: `t-${index}`,
+        vehicleId: 'v1',
+        type: 'BRAKE_CHECK',
+        status: 'OPEN',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          healthModule: 'brakes',
+          sourceFindingId: f.source_finding_id,
+        },
+        sourceType: 'HEALTH',
+      }),
+    );
+    const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, openTasks);
+    expect(item.linkedFindingCount).toBe(2);
+    expect(item.unlinkedFindingCount).toBe(0);
+    expect(item.recommendedAction).toBe('open_task');
+    expect(item.existingTaskId).toBe('t-0');
+  });
+
   it('rental_blocked blocking task without finding does not cover health blocker', () => {
     const health = buildHealth({
       overall_state: 'critical',
@@ -213,7 +278,7 @@ describe('fleet-health-service view model', () => {
     const health = buildHealth({ overall_state: 'good' });
     const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, []);
     expect(item.recommendedAction).toBe('no_action');
-    expect(deriveRecommendedAction(health, null)).toBe('no_action');
+    expect(deriveRecommendedAction(health, null, null)).toBe('no_action');
   });
 
   it('limited data → review_vehicle', () => {

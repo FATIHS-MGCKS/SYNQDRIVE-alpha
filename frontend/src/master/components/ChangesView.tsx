@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'health-service-multi-findings-p40-2026-07-20',
+    version: '4.9.711',
+    title: 'Health→Service — parallele Findings pro Modul (Phase 5 P40)',
+    summary: [
+      '`listActionableSourceFindings` + `buildModuleFindingTaskCoverage` — je Finding eigener Prefill/Dedup-Status.',
+      'Keine Zusammenführung nur wegen `healthModule`; behobene/info-Findings blockieren Geschwister nicht.',
+      '`HealthServiceActions` listet mehrere Findings mit Zähler (`n/m mit Aufgabe`) und pro-Finding-CTA.',
+      'Fleet-Health ViewModel: `actionableFindingCount`, `linkedFindingCount`, `unlinkedFindingCount`; `open_task` erst wenn alle Findings verknüpft.',
+    ],
+    reason: 'Phase 5 Prompt 40: mehrere DTCs/Reifen/Bremsachsen/Beobachtungen parallel bedienbar.',
+    previousBehavior:
+      'Nur `pickPrimarySourceFinding` — ein Finding pro Modul für Task-Matching und UI.',
+    details:
+      'health-task-bridge.utils.ts (+test), HealthServiceActions.tsx, fleet-health-service.view-model.ts (+test)',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'health-task-remove-heuristics-p39-2026-07-20',
     version: '4.9.710',
     title: 'Health→Task — breite Match-Heuristiken entfernt (Phase 5 P39)',

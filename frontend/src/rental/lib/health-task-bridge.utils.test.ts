@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { ApiTask, RentalHealthModule, RentalHealthSourceFinding } from '../../lib/api';
 import {
   buildHealthTaskPrefill,
+  buildModuleFindingTaskCoverage,
   findDuplicateHealthTask,
   healthContextFromTask,
+  listActionableSourceFindings,
   MODULE_PREFILL_TASK_TYPES,
   pickPrimarySourceFinding,
 } from './health-task-bridge.utils';
@@ -395,6 +397,131 @@ describe('health-task-bridge.utils', () => {
     expect(match.matchKind).toBe('possibly_related');
     expect(match.task).toBeNull();
     expect(match.possiblyRelatedTask?.id).toBe('repair-only');
+  });
+
+  it('listActionableSourceFindings excludes resolved/info findings', () => {
+    const findings = listActionableSourceFindings(
+      rentalModule('warning', [
+        sourceFinding({ severity: 'info', source_finding_id: 'i'.repeat(64), finding_code: 'RESOLVED' }),
+        sourceFinding({ severity: 'warning', source_finding_id: 'w'.repeat(64), finding_code: 'PRESSURE_FL' }),
+        sourceFinding({ severity: 'critical', source_finding_id: 'c'.repeat(64), finding_code: 'PRESSURE_FR' }),
+      ]),
+    );
+    expect(findings).toHaveLength(2);
+    expect(findings.map((f) => f.finding_code)).toEqual(['PRESSURE_FR', 'PRESSURE_FL']);
+  });
+
+  it('buildModuleFindingTaskCoverage supports three parallel DTC findings with per-finding duplicate match', () => {
+    const dtcFindings = ['p0301', 'p0420', 'p0171'].map((code, index) =>
+      sourceFinding({
+        finding_code: `DTC_${code.toUpperCase()}`,
+        source_entity_type: 'dtc_code',
+        source_entity_id: code,
+        source_finding_id: String(index + 1).repeat(64),
+        severity: index === 0 ? 'critical' : 'warning',
+      }),
+    );
+    const tasks = [
+      apiTask({
+        id: 'task-p0420',
+        type: 'REPAIR',
+        sourceType: 'HEALTH',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: ORG_ID,
+          vehicleId: VEHICLE_ID,
+          healthModule: 'error_codes',
+          sourceFindingId: '2'.repeat(64),
+          findingCode: 'DTC_P0420',
+        },
+      }),
+    ] as ApiTask[];
+
+    const coverage = buildModuleFindingTaskCoverage({
+      module: 'error_codes',
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      rentalModule: rentalModule('critical', dtcFindings),
+      openTasks: tasks,
+    });
+
+    expect(coverage.findingCount).toBe(3);
+    expect(coverage.linkedFindingCount).toBe(1);
+    expect(coverage.unlinkedFindingCount).toBe(2);
+    expect(coverage.findingStates[1]?.hasExactTask).toBe(true);
+    expect(coverage.findingStates[0]?.canCreate).toBe(true);
+    expect(coverage.findingStates[2]?.canCreate).toBe(true);
+    expect(coverage.findingStates[0]?.prefill.metadata.sourceFindingId).toBe('1'.repeat(64));
+    expect(coverage.findingStates[1]?.prefill.metadata.sourceFindingId).toBe('2'.repeat(64));
+    expect(coverage.findingStates[2]?.prefill.metadata.sourceFindingId).toBe('3'.repeat(64));
+  });
+
+  it('buildModuleFindingTaskCoverage supports three tire positions independently', () => {
+    const tireFindings = ['FL', 'FR', 'RL'].map((pos, index) =>
+      sourceFinding({
+        finding_code: `PRESSURE_${pos}`,
+        source_entity_type: 'tire_position',
+        source_entity_id: pos.toLowerCase(),
+        source_finding_id: `t${index}`.repeat(32),
+        severity: 'warning',
+      }),
+    );
+
+    const coverage = buildModuleFindingTaskCoverage({
+      module: 'tires',
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      rentalModule: rentalModule('warning', tireFindings),
+      openTasks: [],
+    });
+
+    expect(coverage.findingStates).toHaveLength(3);
+    expect(coverage.findingStates.every((s) => s.canCreate)).toBe(true);
+    expect(new Set(coverage.findingStates.map((s) => s.prefill.metadata.sourceFindingId))).toHaveLength(3);
+  });
+
+  it('resolved finding does not suppress task creation for sibling findings', () => {
+    const findings = [
+      sourceFinding({ severity: 'info', source_finding_id: 'done'.repeat(16), finding_code: 'BRAKE_OK' }),
+      sourceFinding({
+        severity: 'critical',
+        source_finding_id: 'front'.repeat(16),
+        finding_code: 'WEAR_FRONT_CRITICAL',
+        source_entity_id: 'front_axle',
+      }),
+      sourceFinding({
+        severity: 'warning',
+        source_finding_id: 'rear'.repeat(16),
+        finding_code: 'WEAR_REAR_WARNING',
+        source_entity_id: 'rear_axle',
+      }),
+    ];
+
+    const coverage = buildModuleFindingTaskCoverage({
+      module: 'brakes',
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      rentalModule: rentalModule('critical', findings),
+      openTasks: [
+        apiTask({
+          id: 'task-front',
+          type: 'BRAKE_CHECK',
+          sourceType: 'HEALTH',
+          metadata: {
+            sourceType: 'HEALTH',
+            organizationId: ORG_ID,
+            vehicleId: VEHICLE_ID,
+            healthModule: 'brakes',
+            sourceFindingId: 'front'.repeat(16),
+          },
+        }),
+      ],
+    });
+
+    expect(coverage.findingCount).toBe(2);
+    expect(coverage.linkedFindingCount).toBe(1);
+    expect(coverage.unlinkedFindingCount).toBe(1);
+    expect(coverage.findingStates.find((s) => s.finding?.finding_code === 'WEAR_REAR_WARNING')?.canCreate).toBe(true);
   });
 
   it('healthContextFromTask remains readable for legacy tasks without sourceFindingId', () => {
