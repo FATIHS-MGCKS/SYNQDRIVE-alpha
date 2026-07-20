@@ -37,15 +37,21 @@ describe('ServiceCasesController permissions characterization', () => {
     );
   });
 
-  it('does not require service_cases.read on mutation handlers', () => {
-    const writeHandlers = [
-      'create',
-      'update',
-      'complete',
-      'cancel',
-      'addComment',
-      'addAttachment',
-    ] as const;
+  const mutationHandlers = [
+    ['create', 'service_cases.create'],
+    ['update', 'service_cases.update'],
+    ['complete', 'service_cases.complete'],
+    ['cancel', 'service_cases.cancel'],
+  ] as const;
+
+  it.each(mutationHandlers)('%s requires canonical %s permission', (method, action) => {
+    expect(permissionOf(ServiceCasesController.prototype, method)).toEqual(
+      SERVICE_CASE_PERMISSION_REQUIREMENTS[action],
+    );
+  });
+
+  it('does not require service_cases.read on auxiliary mutation handlers', () => {
+    const writeHandlers = ['addComment', 'addAttachment'] as const;
 
     for (const method of writeHandlers) {
       expect(permissionOf(ServiceCasesController.prototype, method)).toBeUndefined();

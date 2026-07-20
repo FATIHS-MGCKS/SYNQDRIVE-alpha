@@ -269,7 +269,14 @@ export class ServiceCasesService {
   ) {
     const existing = await this.loadOrThrow(orgId, id);
     if (input.vendorId) await this.assertVendorInOrg(orgId, input.vendorId);
-    if (input.status) this.assertTransition(existing.status, input.status);
+    if (input.status) {
+      if (input.status === 'COMPLETED' || input.status === 'CANCELLED') {
+        throw new BadRequestException(
+          'Terminal status changes must use the dedicated complete or cancel endpoints',
+        );
+      }
+      this.assertTransition(existing.status, input.status);
+    }
 
     const row = await this.prisma.serviceCase.update({
       where: { id },

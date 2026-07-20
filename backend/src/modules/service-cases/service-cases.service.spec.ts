@@ -206,6 +206,56 @@ describe('ServiceCasesService', () => {
     await expect(svc.cancel('org1', 'sc1')).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('rejects COMPLETED status via generic update path', async () => {
+    prisma.serviceCase.findFirst.mockResolvedValue(baseCase({ status: 'OPEN' }));
+
+    await expect(svc.update('org1', 'sc1', { status: 'COMPLETED' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.serviceCase.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects CANCELLED status via generic update path', async () => {
+    prisma.serviceCase.findFirst.mockResolvedValue(baseCase({ status: 'OPEN' }));
+
+    await expect(svc.update('org1', 'sc1', { status: 'CANCELLED' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.serviceCase.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects vendor reassignment to a partner outside the org', async () => {
+    prisma.serviceCase.findFirst.mockResolvedValue(baseCase({ vendorId: 'vendor-1' }));
+    prisma.vendor.findFirst.mockResolvedValue(null);
+
+    await expect(svc.update('org1', 'sc1', { vendorId: 'vendor-other' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.serviceCase.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects create when vehicle belongs to another organization', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue(null);
+
+    await expect(
+      svc.create('org1', { title: 'Service', category: 'SERVICE', vehicleId: 'veh-other' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.serviceCase.create).not.toHaveBeenCalled();
+  });
+
+  it('records updatedByUserId from authenticated actor on update', async () => {
+    prisma.serviceCase.findFirst.mockResolvedValue(baseCase());
+    prisma.serviceCase.update.mockResolvedValue(baseCase({ title: 'Updated', updatedByUserId: 'u2' }));
+
+    await svc.update('org1', 'sc1', { title: 'Updated' }, 'u2');
+
+    expect(prisma.serviceCase.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ updatedByUserId: 'u2', title: 'Updated' }),
+      }),
+    );
+  });
+
   it('assertCaseAccessible rejects completed cases for task linking', async () => {
     prisma.serviceCase.findFirst.mockResolvedValue({
       id: 'sc1',
