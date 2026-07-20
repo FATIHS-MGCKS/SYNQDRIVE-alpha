@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   api,
-  type ApiServiceCase,
   type ApiTask,
   type ApiTaskSummary,
   type Vendor,
@@ -13,6 +12,10 @@ import {
 } from '../../../lib/tasks/invalidate';
 import { isCoordinatedRefreshActive } from '../fleet-health-service/fleet-health-service-refresh-coordinator';
 import { deriveServiceKpis, isActiveTask } from './service-center.utils';
+import {
+  fetchServiceCenterServiceCases,
+  hasServiceCenterServiceCases,
+} from './service-center-service-cases';
 import type { ServiceCenterData } from './service-center.types';
 import {
   hasPartialServiceCenterData,
@@ -120,15 +123,10 @@ const fetchVendors = async (orgId: string) => {
   const vendorsRes = await api.vendors.list(orgId);
   return normalizeArrayResponse<Vendor>(vendorsRes);
 };
-const fetchServiceCases = async (orgId: string) => {
-  const casesRes = await api.serviceCases.list(orgId);
-  return normalizeArrayResponse<ApiServiceCase>(casesRes);
-};
 
 const hasSummary = (summary: ApiTaskSummary | null) => summary != null;
 const hasTasks = (tasks: ApiTask[]) => tasks.length > 0;
 const hasVendors = (vendors: Vendor[]) => vendors.length > 0;
-const hasServiceCases = (cases: ApiServiceCase[]) => cases.length > 0;
 
 export function useServiceCenterData(orgId: string | null | undefined): ServiceCenterData {
   const taskSummarySlice = useSourceSlice(
@@ -143,9 +141,9 @@ export function useServiceCenterData(orgId: string | null | undefined): ServiceC
   const serviceCasesSlice = useSourceSlice(
     orgId,
     [],
-    hasServiceCases,
+    hasServiceCenterServiceCases,
     SERVICE_CASES_ERROR_MESSAGE,
-    fetchServiceCases,
+    fetchServiceCenterServiceCases,
   );
 
   const reloadAll = useCallback(async () => {
@@ -226,12 +224,15 @@ export function useServiceCenterData(orgId: string | null | undefined): ServiceC
     vendorsStatus: vendors.status,
     vendorsFetchedAt: vendors.fetchedAt,
     tasksFetchedAt: tasks.fetchedAt,
+    serviceCasesError: serviceCases.error,
+    serviceCasesStatus: serviceCases.status,
     serviceCasesFetchedAt: serviceCases.fetchedAt,
     kpis,
     loading,
     error,
     reload: reloadAll,
     reloadVendors: vendors.reload,
+    reloadServiceCases: serviceCases.reload,
   };
 }
 

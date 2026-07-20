@@ -46,10 +46,13 @@ export interface ServiceCenterData {
   vendorsStatus: ServiceCenterSourceStatus;
   vendorsFetchedAt: string | null;
   tasksFetchedAt: string | null;
+  serviceCasesError: string | null;
+  serviceCasesStatus: ServiceCenterSourceStatus;
   serviceCasesFetchedAt: string | null;
   kpis: ServiceKpiSnapshot;
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
   reloadVendors: () => Promise<void>;
+  reloadServiceCases: () => Promise<void>;
 }

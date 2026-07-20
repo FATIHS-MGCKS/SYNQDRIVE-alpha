@@ -81,6 +81,38 @@ const vendor = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 } as const;
 
+const serviceCase = {
+  id: 'sc-1',
+  organizationId: 'org-1',
+  vehicleId: 'veh-1',
+  vendorId: 'vendor-1',
+  title: 'Bremsen Service',
+  description: 'Vorderachse prüfen',
+  category: 'REPAIR',
+  status: 'OPEN',
+  priority: 'NORMAL',
+  source: 'MANUAL',
+  openedAt: '2026-07-20T10:00:00.000Z',
+  scheduledAt: null,
+  expectedReadyAt: null,
+  completedAt: null,
+  cancelledAt: null,
+  estimatedCostCents: null,
+  actualCostCents: null,
+  downtimeStart: null,
+  downtimeEnd: null,
+  blocksRental: false,
+  completionNotes: null,
+  documentId: null,
+  metadata: null,
+  createdByUserId: null,
+  updatedByUserId: null,
+  createdAt: '2026-07-20T10:00:00.000Z',
+  updatedAt: '2026-07-20T10:00:00.000Z',
+  taskCount: 1,
+  tasks: [{ id: 't1', title: 'Bremsen', status: 'OPEN', type: 'VEHICLE_SERVICE', dueDate: null }],
+} as const;
+
 describe('useServiceCenterData source states', () => {
   let unmountCurrent: (() => void) | null = null;
 
@@ -230,5 +262,115 @@ describe('useServiceCenterData source states', () => {
     expect(result.current.serviceCases.data).toEqual([]);
     expect(result.current.serviceCases.error).toBe(SERVICE_CASES_ERROR_MESSAGE);
     expect(result.current.tasks.data).toHaveLength(1);
+  });
+});
+
+describe('useServiceCenterData service cases source', () => {
+  let unmountCurrent: (() => void) | null = null;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.tasks.summary).mockResolvedValue(taskSummary as never);
+    vi.mocked(api.tasks.list).mockResolvedValue([task] as never);
+    vi.mocked(api.vendors.list).mockResolvedValue([vendor] as never);
+    vi.mocked(api.serviceCases.list).mockResolvedValue([] as never);
+  });
+
+  afterEach(() => {
+    unmountCurrent?.();
+    unmountCurrent = null;
+  });
+
+  it('loads service case list for the org', async () => {
+    vi.mocked(api.serviceCases.list).mockResolvedValue([serviceCase] as never);
+
+    const { result, unmount } = renderHook(() => useServiceCenterData('org-1'));
+    unmountCurrent = unmount;
+
+    await waitForHook(() => result.current.serviceCases.status === 'ready');
+
+    expect(api.serviceCases.list).toHaveBeenCalledWith('org-1');
+    expect(result.current.serviceCases.data).toEqual([serviceCase]);
+    expect(result.current.serviceCasesError).toBeNull();
+    expect(result.current.serviceCasesStatus).toBe('ready');
+    expect(result.current.serviceCasesFetchedAt).not.toBeNull();
+  });
+
+  it('treats an empty service case list as a successful zero-item response', async () => {
+    vi.mocked(api.serviceCases.list).mockResolvedValue([] as never);
+
+    const { result, unmount } = renderHook(() => useServiceCenterData('org-1'));
+    unmountCurrent = unmount;
+
+    await waitForHook(() => result.current.serviceCases.status === 'ready');
+
+    expect(result.current.serviceCases.data).toEqual([]);
+    expect(result.current.serviceCases.error).toBeNull();
+    expect(result.current.serviceCasesStatus).toBe('ready');
+  });
+
+  it('surfaces service case load failures without clearing the source silently', async () => {
+    vi.mocked(api.serviceCases.list).mockRejectedValue(new Error('service cases unavailable'));
+
+    const { result, unmount } = renderHook(() => useServiceCenterData('org-1'));
+    unmountCurrent = unmount;
+
+    await waitForHook(() => result.current.serviceCases.status === 'error');
+
+    expect(result.current.serviceCases.data).toEqual([]);
+    expect(result.current.serviceCases.error).toBe(SERVICE_CASES_ERROR_MESSAGE);
+    expect(result.current.serviceCasesStatus).toBe('error');
+    expect(result.current.serviceCasesFetchedAt).toBeNull();
+  });
+
+  it('keeps tasks available when service case loading fails', async () => {
+    vi.mocked(api.serviceCases.list).mockRejectedValue(new Error('service cases unavailable'));
+
+    const { result, unmount } = renderHook(() => useServiceCenterData('org-1'));
+    unmountCurrent = unmount;
+
+    await waitForHook(() => result.current.serviceCases.status === 'error');
+    await waitForHook(() => result.current.tasks.status === 'ready');
+
+    expect(result.current.tasks.data).toHaveLength(1);
+    expect(result.current.taskSummary.data).toEqual(taskSummary);
+    expect(result.current.partialData).toBe(true);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('rejects malformed list responses instead of silently coercing to an empty list', async () => {
+    vi.mocked(api.serviceCases.list).mockResolvedValue({ items: [] } as never);
+
+    const { result, unmount } = renderHook(() => useServiceCenterData('org-1'));
+    unmountCurrent = unmount;
+
+    await waitForHook(() => result.current.serviceCases.status === 'error');
+
+    expect(result.current.serviceCases.data).toEqual([]);
+    expect(result.current.serviceCases.error).toBe(SERVICE_CASES_ERROR_MESSAGE);
+  });
+
+  it('reloads service cases without touching tasks or vendors', async () => {
+    vi.mocked(api.serviceCases.list)
+      .mockRejectedValueOnce(new Error('temporary outage'))
+      .mockResolvedValueOnce([serviceCase] as never);
+
+    const { result, unmount } = renderHook(() => useServiceCenterData('org-1'));
+    unmountCurrent = unmount;
+
+    await waitForHook(() => result.current.serviceCases.status === 'error');
+    const summaryCallsAfterInitial = vi.mocked(api.tasks.summary).mock.calls.length;
+    const listCallsAfterInitial = vi.mocked(api.tasks.list).mock.calls.length;
+    const vendorCallsAfterInitial = vi.mocked(api.vendors.list).mock.calls.length;
+
+    await act(async () => {
+      await result.current.reloadServiceCases();
+    });
+    await waitForHook(() => result.current.serviceCases.status === 'ready');
+
+    expect(result.current.serviceCases.data).toEqual([serviceCase]);
+    expect(vi.mocked(api.tasks.summary).mock.calls.length).toBe(summaryCallsAfterInitial);
+    expect(vi.mocked(api.tasks.list).mock.calls.length).toBe(listCallsAfterInitial);
+    expect(vi.mocked(api.vendors.list).mock.calls.length).toBe(vendorCallsAfterInitial);
   });
 });
