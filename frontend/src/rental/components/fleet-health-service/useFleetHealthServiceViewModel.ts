@@ -35,7 +35,11 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
         vendors: service.vendors,
         serviceLoading: service.loading,
         serviceError: service.error,
-        serviceLoaded: service.summary != null || service.allTasks.length > 0,
+        serviceLoaded:
+          service.taskSummary.status === 'ready' ||
+          service.taskSummary.status === 'stale' ||
+          service.tasks.status === 'ready' ||
+          service.tasks.status === 'stale',
       }),
     [
       fleetVehicles,

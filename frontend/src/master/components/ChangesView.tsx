@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'service-center-separate-sources-fhs-p22-2026-07-20',
+    version: '4.9.613',
+    title: 'Service Center — separate source states (FHS Phase 3 P22)',
+    summary: [
+      '`useServiceCenterData` modelliert taskSummary, tasks, vendors und serviceCases als getrennte Quellen.',
+      'Je Quelle: `data`, `status`, `error`, `fetchedAt`, `reload`; `partialData` für gemischte Erfolg/Fehler-Zustände.',
+      'Fehler einer Quelle setzt andere nicht auf `[]`/`null` zurück; Service Cases als echte Quelle vorbereitet.',
+    ],
+    reason: 'FHS Phase 3 Prompt 22: Partial Data explizit erkennbar; keine stillen Cross-Source-Resets.',
+    previousBehavior:
+      'Tasks und Summary liefen gemeinsam in `reloadTasks`; Vendor-State war separat, Service Cases fehlten.',
+    details:
+      'service-center-source-state.ts, useServiceCenterData.ts (+Tests), service-center.types.ts, useFleetHealthServiceViewModel.ts',
+    affectsArchitecture: true,
+    module: 'Service Center',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'service-center-vendor-source-fhs-p21-2026-07-20',
     version: '4.9.612',
     title: 'Service Center — expose vendor source failures (FHS Phase 3 P21)',

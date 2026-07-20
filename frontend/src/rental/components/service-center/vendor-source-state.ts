@@ -1,49 +1,56 @@
+export {
+  VENDOR_SOURCE_ERROR_MESSAGE,
+  normalizeArrayResponse as normalizeVendorList,
+  resolveSourceAfterError,
+  resolveSourceAfterSuccess,
+  type ServiceCenterSourceStatus as VendorSourceState,
+} from './service-center-source-state';
+
 import type { Vendor } from '../../../lib/api';
-
-export type VendorSourceState = 'idle' | 'loading' | 'ready' | 'error' | 'stale';
-
-export const VENDOR_SOURCE_ERROR_MESSAGE = 'Partnerdaten konnten nicht geladen werden.';
-
-export function normalizeVendorList(response: unknown): Vendor[] {
-  return Array.isArray(response) ? response : [];
-}
+import {
+  normalizeArrayResponse,
+  resolveSourceAfterError,
+  resolveSourceAfterSuccess,
+  type ServiceCenterSourceStatus,
+} from './service-center-source-state';
 
 export function resolveVendorSourceAfterSuccess(
   response: unknown,
   fetchedAt: string,
-): { vendors: Vendor[]; status: 'ready'; fetchedAt: string; error: null } {
+): {
+  vendors: Vendor[];
+  status: 'ready';
+  fetchedAt: string;
+  error: null;
+} {
+  const next = resolveSourceAfterSuccess(normalizeArrayResponse<Vendor>(response), fetchedAt);
   return {
-    vendors: normalizeVendorList(response),
-    status: 'ready',
-    fetchedAt,
-    error: null,
+    vendors: next.data,
+    status: next.status,
+    fetchedAt: next.fetchedAt!,
+    error: next.error,
   };
 }
 
 export function resolveVendorSourceAfterError(
   previousVendors: Vendor[],
-  previousStatus: VendorSourceState,
+  previousStatus: ServiceCenterSourceStatus,
 ): {
   vendors: Vendor[];
   status: 'error' | 'stale';
   error: string;
 } {
-  const hadPriorData =
-    previousStatus === 'ready' ||
-    previousStatus === 'stale' ||
-    previousVendors.length > 0;
-
-  if (hadPriorData) {
-    return {
-      vendors: previousVendors,
-      status: 'stale',
-      error: VENDOR_SOURCE_ERROR_MESSAGE,
-    };
-  }
-
+  const next = resolveSourceAfterError({
+    previousData: previousVendors,
+    previousStatus,
+    previousFetchedAt: null,
+    emptyData: [],
+    hasMeaningfulData: (vendors) => vendors.length > 0,
+    errorMessage: 'Partnerdaten konnten nicht geladen werden.',
+  });
   return {
-    vendors: [],
-    status: 'error',
-    error: VENDOR_SOURCE_ERROR_MESSAGE,
+    vendors: next.data,
+    status: next.status,
+    error: next.error!,
   };
 }

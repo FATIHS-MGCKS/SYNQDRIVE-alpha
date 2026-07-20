@@ -1,141 +1,222 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, type ApiTask, type ApiTaskSummary, type Vendor } from '../../../lib/api';
-import { matchesTaskListInvalidation, matchesTaskSummaryInvalidation, subscribeTaskQueryInvalidation } from '../../../lib/tasks/invalidate';
+import {
+  api,
+  type ApiServiceCase,
+  type ApiTask,
+  type ApiTaskSummary,
+  type Vendor,
+} from '../../../lib/api';
+import {
+  matchesTaskListInvalidation,
+  matchesTaskSummaryInvalidation,
+  subscribeTaskQueryInvalidation,
+} from '../../../lib/tasks/invalidate';
 import { deriveServiceKpis, isActiveTask } from './service-center.utils';
 import type { ServiceCenterData } from './service-center.types';
 import {
-  resolveVendorSourceAfterError,
-  resolveVendorSourceAfterSuccess,
+  hasPartialServiceCenterData,
+  isSourceUsable,
+  normalizeArrayResponse,
+  resolveSourceAfterError,
+  resolveSourceAfterSuccess,
+  SERVICE_CASES_ERROR_MESSAGE,
+  TASK_SUMMARY_ERROR_MESSAGE,
+  TASKS_ERROR_MESSAGE,
   VENDOR_SOURCE_ERROR_MESSAGE,
-  type VendorSourceState,
-} from './vendor-source-state';
+  type ServiceCenterSource,
+  type ServiceCenterSourceState,
+  type ServiceCenterSourceStatus,
+} from './service-center-source-state';
 
-const TASKS_ERROR_MESSAGE = 'Service-Daten konnten nicht geladen werden.';
+type SourceSlice<T> = ServiceCenterSourceState<T>;
 
-export function useServiceCenterData(orgId: string | null | undefined): ServiceCenterData {
-  const [summary, setSummary] = useState<ApiTaskSummary | null>(null);
-  const [tasks, setTasks] = useState<ApiTask[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [vendorsStatus, setVendorsStatus] = useState<VendorSourceState>('idle');
-  const [vendorsError, setVendorsError] = useState<string | null>(null);
-  const [vendorsFetchedAt, setVendorsFetchedAt] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+function createIdleSlice<T>(emptyData: T): SourceSlice<T> {
+  return {
+    data: emptyData,
+    status: 'idle',
+    error: null,
+    fetchedAt: null,
+  };
+}
 
-  const vendorsStatusRef = useRef(vendorsStatus);
-  const vendorsRef = useRef(vendors);
-  vendorsStatusRef.current = vendorsStatus;
-  vendorsRef.current = vendors;
-
-  const resetVendorSource = useCallback(() => {
-    setVendors([]);
-    setVendorsStatus('idle');
-    setVendorsError(null);
-    setVendorsFetchedAt(null);
-  }, []);
-
-  const reloadVendors = useCallback(async () => {
-    if (!orgId) {
-      resetVendorSource();
-      return;
-    }
-
-    setVendorsStatus('loading');
-    setVendorsError(null);
-
-    try {
-      const vendorsRes = await api.vendors.list(orgId);
-      const next = resolveVendorSourceAfterSuccess(vendorsRes, new Date().toISOString());
-      setVendors(next.vendors);
-      setVendorsStatus(next.status);
-      setVendorsFetchedAt(next.fetchedAt);
-      setVendorsError(next.error);
-    } catch {
-      const next = resolveVendorSourceAfterError(
-        vendorsRef.current,
-        vendorsStatusRef.current,
-      );
-      setVendors(next.vendors);
-      setVendorsStatus(next.status);
-      setVendorsError(next.error);
-    }
-  }, [orgId, resetVendorSource]);
-
-  const reloadTasks = useCallback(async () => {
-    if (!orgId) {
-      setSummary(null);
-      setTasks([]);
-      setError(null);
-      setLoaded(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [summaryRes, listRes] = await Promise.all([
-        api.tasks.summary(orgId),
-        api.tasks.list(orgId),
-      ]);
-      setSummary(summaryRes);
-      setTasks(Array.isArray(listRes) ? listRes : []);
-      setLoaded(true);
-    } catch {
-      setSummary(null);
-      setTasks([]);
-      setError(TASKS_ERROR_MESSAGE);
-      setLoaded(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId]);
+function useSourceSlice<T>(
+  orgId: string | null | undefined,
+  emptyData: T,
+  hasMeaningfulData: (data: T) => boolean,
+  errorMessage: string,
+  fetcher: (orgId: string) => Promise<T>,
+): SourceSlice<T> & { reload: () => Promise<void> } {
+  const [slice, setSlice] = useState<SourceSlice<T>>(() => createIdleSlice(emptyData));
+  const sliceRef = useRef(slice);
+  sliceRef.current = slice;
 
   const reload = useCallback(async () => {
-    await Promise.all([reloadTasks(), reloadVendors()]);
-  }, [reloadTasks, reloadVendors]);
+    if (!orgId) {
+      setSlice(createIdleSlice(emptyData));
+      return;
+    }
+
+    setSlice((prev) => ({
+      ...prev,
+      status: 'loading',
+      error: null,
+    }));
+
+    try {
+      const response = await fetcher(orgId);
+      const next = resolveSourceAfterSuccess(response, new Date().toISOString());
+      setSlice(next);
+    } catch {
+      const current = sliceRef.current;
+      const next = resolveSourceAfterError({
+        previousData: current.data,
+        previousStatus: current.status,
+        previousFetchedAt: current.fetchedAt,
+        emptyData,
+        hasMeaningfulData,
+        errorMessage,
+      });
+      setSlice(next);
+    }
+  }, [orgId, emptyData, errorMessage, fetcher, hasMeaningfulData]);
+
+  return { ...slice, reload };
+}
+
+function toSource<T>(slice: SourceSlice<T> & { reload: () => Promise<void> }): ServiceCenterSource<T> {
+  return {
+    data: slice.data,
+    status: slice.status,
+    error: slice.error,
+    fetchedAt: slice.fetchedAt,
+    reload: slice.reload,
+  };
+}
+
+const fetchTaskSummary = (orgId: string) => api.tasks.summary(orgId);
+const fetchTasks = async (orgId: string) => {
+  const listRes = await api.tasks.list(orgId);
+  return normalizeArrayResponse<ApiTask>(listRes);
+};
+const fetchVendors = async (orgId: string) => {
+  const vendorsRes = await api.vendors.list(orgId);
+  return normalizeArrayResponse<Vendor>(vendorsRes);
+};
+const fetchServiceCases = async (orgId: string) => {
+  const casesRes = await api.serviceCases.list(orgId);
+  return normalizeArrayResponse<ApiServiceCase>(casesRes);
+};
+
+const hasSummary = (summary: ApiTaskSummary | null) => summary != null;
+const hasTasks = (tasks: ApiTask[]) => tasks.length > 0;
+const hasVendors = (vendors: Vendor[]) => vendors.length > 0;
+const hasServiceCases = (cases: ApiServiceCase[]) => cases.length > 0;
+
+export function useServiceCenterData(orgId: string | null | undefined): ServiceCenterData {
+  const taskSummarySlice = useSourceSlice(
+    orgId,
+    null,
+    hasSummary,
+    TASK_SUMMARY_ERROR_MESSAGE,
+    fetchTaskSummary,
+  );
+  const tasksSlice = useSourceSlice(orgId, [], hasTasks, TASKS_ERROR_MESSAGE, fetchTasks);
+  const vendorsSlice = useSourceSlice(orgId, [], hasVendors, VENDOR_SOURCE_ERROR_MESSAGE, fetchVendors);
+  const serviceCasesSlice = useSourceSlice(
+    orgId,
+    [],
+    hasServiceCases,
+    SERVICE_CASES_ERROR_MESSAGE,
+    fetchServiceCases,
+  );
+
+  const reloadAll = useCallback(async () => {
+    await Promise.all([
+      taskSummarySlice.reload(),
+      tasksSlice.reload(),
+      vendorsSlice.reload(),
+      serviceCasesSlice.reload(),
+    ]);
+  }, [taskSummarySlice.reload, tasksSlice.reload, vendorsSlice.reload, serviceCasesSlice.reload]);
 
   useEffect(() => {
-    void reloadTasks();
-    void reloadVendors();
-  }, [reloadTasks, reloadVendors]);
+    if (!orgId) return;
+    void taskSummarySlice.reload();
+    void tasksSlice.reload();
+    void vendorsSlice.reload();
+    void serviceCasesSlice.reload();
+    // Intentionally keyed only by orgId to avoid parallel reload loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
 
   useEffect(() => {
     return subscribeTaskQueryInvalidation((detail) => {
       if (!orgId || detail.orgId !== orgId) return;
-      if (matchesTaskListInvalidation(detail, orgId) || matchesTaskSummaryInvalidation(detail, orgId)) {
-        void reloadTasks();
+      if (matchesTaskSummaryInvalidation(detail, orgId)) {
+        void taskSummarySlice.reload();
+      }
+      if (matchesTaskListInvalidation(detail, orgId)) {
+        void tasksSlice.reload();
       }
     });
-  }, [orgId, reloadTasks]);
+  }, [orgId, taskSummarySlice.reload, tasksSlice.reload]);
 
-  const activeTasks = useMemo(() => tasks.filter(isActiveTask), [tasks]);
+  const taskSummary = useMemo(() => toSource(taskSummarySlice), [taskSummarySlice]);
+  const tasks = useMemo(() => toSource(tasksSlice), [tasksSlice]);
+  const vendors = useMemo(() => toSource(vendorsSlice), [vendorsSlice]);
+  const serviceCases = useMemo(() => toSource(serviceCasesSlice), [serviceCasesSlice]);
+
+  const allTasks = tasks.data;
+  const activeTasks = useMemo(() => allTasks.filter(isActiveTask), [allTasks]);
   const historyTasks = useMemo(
-    () => tasks.filter((t) => t.status === 'DONE' || t.status === 'CANCELLED'),
-    [tasks],
+    () => allTasks.filter((t) => t.status === 'DONE' || t.status === 'CANCELLED'),
+    [allTasks],
   );
 
+  const tasksLoaded = isSourceUsable(tasks.status);
   const kpis = useMemo(
-    () => deriveServiceKpis(summary, activeTasks, loaded),
-    [summary, activeTasks, loaded],
+    () => deriveServiceKpis(taskSummary.data, activeTasks, tasksLoaded),
+    [taskSummary.data, activeTasks, tasksLoaded],
   );
+
+  const partialData = useMemo(
+    () =>
+      hasPartialServiceCenterData([
+        taskSummary.status,
+        tasks.status,
+        vendors.status,
+        serviceCases.status,
+      ]),
+    [taskSummary.status, tasks.status, vendors.status, serviceCases.status],
+  );
+
+  const loading = taskSummary.status === 'loading' || tasks.status === 'loading';
+  const error = tasks.error ?? taskSummary.error;
 
   return {
-    summary,
-    allTasks: tasks,
+    taskSummary,
+    tasks,
+    vendors,
+    serviceCases,
+    partialData,
+    summary: taskSummary.data,
+    allTasks,
     activeTasks,
     historyTasks,
-    vendors,
-    vendorsError,
-    vendorsStatus,
-    vendorsFetchedAt,
+    vendorsError: vendors.error,
+    vendorsStatus: vendors.status,
+    vendorsFetchedAt: vendors.fetchedAt,
     kpis,
     loading,
     error,
-    reload,
-    reloadVendors,
+    reload: reloadAll,
+    reloadVendors: vendors.reload,
   };
 }
 
-export { VENDOR_SOURCE_ERROR_MESSAGE };
+export {
+  SERVICE_CASES_ERROR_MESSAGE,
+  TASK_SUMMARY_ERROR_MESSAGE,
+  TASKS_ERROR_MESSAGE,
+  VENDOR_SOURCE_ERROR_MESSAGE,
+};
