@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-case-viewmodel-fhs-p26-2026-07-20',
+    version: '4.9.617',
+    title: 'Fleet Zustand & Service — service case view model (FHS Phase 4 P26)',
+    summary: [
+      'Neu: `caseLayer` mit Case-KPIs getrennt von Health- und Task-KPIs.',
+      'Zählt Status, Overdue, expected-ready overdue, rental-blocking, ohne Termin/Partner.',
+      'Fehlerzustände liefern `null` (unknown), nicht `0`; Cases werden nicht als Tasks gezählt.',
+    ],
+    reason: 'FHS Phase 4 Prompt 26: Service Cases als eigenständige KPI-Schicht im FHS-ViewModel.',
+    previousBehavior:
+      'Service Cases wurden geladen, aber nicht im `useFleetHealthServiceViewModel` ausgewertet.',
+    details:
+      'fleet-health-service-case.view-model.ts (+Tests), fleet-health-service.view-model.ts, useFleetHealthServiceViewModel.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'service-center-service-cases-load-fhs-p25-2026-07-20',
     version: '4.9.616',
     title: 'Service Center — load service cases (FHS Phase 4 P25)',
