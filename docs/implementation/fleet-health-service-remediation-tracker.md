@@ -88,7 +88,7 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 | **1** | 0 | Remediation-Ausführungsvertrag | Audit 1 + 2 | Docs / Governance | Vertrag in `docs/implementation/`; Pre-Flight, Git, §5-Invarianten, Phasenübersicht; Audits verlinkt; Repo vs. Deploy dokumentiert | **DONE** | `4f8655e8` | N/A — Docs only | Datei löschen / Revert Commit |
 | **2** | 0 | Remediation-Tracker (66 Prompts) | Prompt 1 | Docs / Governance | Tracker mit allen 66 Zeilen; Status P1 DONE, P2 DONE; Baseline + Deploy-Hinweis; Audit-Links | **DONE** | `4f8655e8` | N/A — Docs only | Revert Commit |
 | **3** | 0 | Zielarchitektur Domain Boundaries | Prompt 1, 2 | Docs / Architektur | `docs/architecture/fleet-health-service-domain-boundaries.md`; 9 Konzepte, Owner/Consumer, Mermaid, keine Codeänderung | **DONE** | `e722687c` | N/A — Docs only | Revert ADR-Datei |
-| **4** | 0 | Call-Site-Baseline | Audit 1, 2, P3 ADR | Docs / Inventur | Vollständige Backend/Frontend Call-Sites + Tests inventarisiert; 283 Tests PASS | **DONE** | *(dieser Commit)* | 283 Tests PASS (§7) | Revert Baseline-Doc |
+| **4** | 0 | Call-Site-Baseline | Audit 1, 2, P3 ADR | Docs / Inventur | Vollständige Backend/Frontend Call-Sites + Tests inventarisiert; 283 Tests PASS | **DONE** | `47e27059` | 283 Tests PASS (§7) | Revert Baseline-Doc |
 | **5** | 0 | Testplan & Fixture-Katalog | Prompt 3, 4 | Docs / QA | Matrix FHS-T-001–142 → Prompt-Zuordnung; fehlende Specs gelistet; Golden-Fixture-Plan | TODO | — | — | Revert Testplan-Doc |
 | **6** | 0 | Rollout-Flags & Deploy-Runbook | Prompt 3, 5 | Docs / Ops | Feature-Flags für schrittweise FHS-Aktivierung; kein Auto-Deploy; Rollback-Schritte | TODO | — | — | Revert Runbook |
 
@@ -270,6 +270,7 @@ Nach Abschluss jedes Prompts **2–66**:
 |-------------|--------|----------|
 | 2026-07-20 | 2 | Initiale Tracker-Erstellung; P1 DONE; P2 DONE; P4 DONE; 63× TODO |
 | 2026-07-20 | 3 | Domain Boundaries ADR; P3 DONE |
+| 2026-07-20 | 4 | Call-Site-Baseline aktualisiert; 283 Tests PASS; P4 DONE |
 
 ---
 
