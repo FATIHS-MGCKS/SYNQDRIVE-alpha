@@ -45,7 +45,7 @@ describe('fleet-health-service view-model scale coverage', () => {
     },
   );
 
-  it('prioritized overview stays triage-sized at 5000 vehicles', () => {
+  it('prioritized overview stays bounded at 5000 vehicles', () => {
     const count = 5000;
     const vehicles = buildSyntheticFleetVehicles(count);
     const healthMap = buildSyntheticFleetHealthMap(count);

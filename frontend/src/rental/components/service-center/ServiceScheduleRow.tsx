@@ -76,7 +76,7 @@ export function ServiceScheduleRow({
             )}
             {appointment && (
               <span className="inline-flex items-center gap-1 text-[color:var(--brand-ink)]">
-                Termin {formatAppointmentLabel(appointment)}
+                Werkstatttermin {formatAppointmentLabel(appointment)}
               </span>
             )}
             {vendorName && (

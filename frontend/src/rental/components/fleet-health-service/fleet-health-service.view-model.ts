@@ -9,7 +9,7 @@ import type {
   Vendor,
 } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
-import { fhsModuleLabelDe, FHS_HEALTH_BADGE_DE } from './fleet-health-service-labels';
+import { fhsModuleLabelDe, FHS_HEALTH_BADGE_DE, FHS_SOURCE_LABEL_DE, formatVehiclePlateLabel } from './fleet-health-service-labels';
 import {
   buildFleetHealthDisplay,
   computeFleetHealthKpis,
@@ -291,7 +291,7 @@ export function buildFleetHealthServiceUiItem(
 
   return {
     vehicleId: vehicle.id,
-    plate: vehicle.license,
+    plate: formatVehiclePlateLabel(vehicle),
     makeModelYear: formatMakeModelYear(vehicle),
     healthState: health?.overall_state ?? 'unknown',
     primaryReason: display.primaryIssue,
@@ -488,7 +488,7 @@ function rowFromTask(
     statusLabel: status.label,
     statusTone: status.tone,
     primaryReason: task.title,
-    sourceLabel: 'Aufgabe',
+    sourceLabel: FHS_SOURCE_LABEL_DE.task,
     recommendedAction: 'open_task',
     existingTaskId: task.id,
     taskId: task.id,
@@ -545,7 +545,7 @@ function vehicleRowToLegacyOverviewRow(
     statusLabel: row.primaryStatusLabel,
     statusTone: row.primaryStatusTone,
     primaryReason: row.primaryBlockage,
-    sourceLabel: primaryFinding?.sourceLabel ?? (executionOnly ? 'Aufgabe' : 'Zustand'),
+    sourceLabel: primaryFinding?.sourceLabel ?? (executionOnly ? FHS_SOURCE_LABEL_DE.task : FHS_SOURCE_LABEL_DE.condition),
     recommendedAction: row.recommendedAction,
     existingTaskId: row.primaryLinkedTaskId,
     taskId: executionOnly ? primaryUnmatched?.id : undefined,

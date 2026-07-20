@@ -69,7 +69,7 @@ interface FleetConditionViewProps {
   embedded?: boolean;
   /** When embedded in FleetHub, header refresh is owned by the hub. */
   hideHeaderActions?: boolean;
-  /** Hide KPI strip when parent already shows triage KPIs (Zustand & Service Übersicht). */
+  /** Hide KPI strip when parent already shows overview KPIs (Zustand & Service Übersicht). */
   hideKpiStrip?: boolean;
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
@@ -135,21 +135,21 @@ const GROUP_CONFIG_DE: Record<
     icon: ShieldAlert,
   },
   needs_review: {
-    title: 'Prüfen',
+    title: 'Technisch prüfen',
     subtitle: 'Warnsignale — Inspektion einplanen',
     emptyTitle: 'Keine Fahrzeuge mit Prüfbedarf.',
     tone: 'warning',
     icon: AlertTriangle,
   },
   limited_data: {
-    title: 'Daten begrenzt',
+    title: 'Nicht bewertbar',
     subtitle: 'Zustand nicht voll bewertbar — Daten fehlen, verzögert oder nicht unterstützt.',
     emptyTitle: 'Alle Fahrzeuge haben bewertbare Zustandsdaten.',
     tone: 'neutral',
     icon: CircleDot,
   },
   good: {
-    title: 'Gesund',
+    title: 'Technisch unauffällig',
     subtitle: 'Vermietungsbereit bestätigt',
     emptyTitle: 'Kein Fahrzeug ist derzeit vollständig bereit.',
     tone: 'success',
@@ -212,10 +212,13 @@ const SORT_OPTIONS_DE: Array<{ value: OperatorSortMode; label: string; helper: s
 function localizedHealthBadge(label: string, locale: 'de' | 'en'): string {
   if (locale === 'en') return label;
   const map: Record<string, string> = {
-    'Action required': 'Handlungsbedarf',
-    'Needs review': 'Prüfen',
-    Healthy: 'Gesund',
-    'Limited data': 'Daten begrenzt',
+    'Action required': 'Technisch blockiert',
+    'Needs review': 'Technisch prüfen',
+    Healthy: 'Technisch unauffällig',
+    'Limited data': 'Nicht bewertbar',
+    Blocked: 'Mietblockade',
+    'Can rent': 'Technisch unauffällig',
+    Review: 'Technisch prüfen',
   };
   return map[label] ?? label;
 }
@@ -443,7 +446,7 @@ export function FleetConditionView({
     },
     {
       key: 'review',
-      label: uiLocale === 'de' ? 'Prüfen' : 'Needs review',
+      label: uiLocale === 'de' ? 'Technisch prüfen' : 'Needs review',
       value: kpis.needsReview,
       hint: uiLocale === 'de' ? 'bald prüfen' : 'inspect soon',
       filter: 'review' as OperatorStatusFilter,
@@ -452,7 +455,7 @@ export function FleetConditionView({
     },
     {
       key: 'healthy',
-      label: uiLocale === 'de' ? 'Gesund' : 'Healthy',
+      label: uiLocale === 'de' ? 'Technisch unauffällig' : 'Technically unremarkable',
       value: kpis.healthy,
       hint: uiLocale === 'de' ? 'vermietungsbereit' : 'ready for rental',
       filter: 'good' as OperatorStatusFilter,
@@ -461,7 +464,7 @@ export function FleetConditionView({
     },
     {
       key: 'limited',
-      label: uiLocale === 'de' ? 'Daten begrenzt' : 'Limited data',
+      label: uiLocale === 'de' ? 'Nicht bewertbar' : 'Limited data',
       value: kpis.limited,
       hint:
         kpis.naModuleVehicles > 0
