@@ -55,6 +55,7 @@ import {
   zonedLookbackStart,
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
+import { enforceBookingRentalHealthGate } from './booking-rental-health-gate.util';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -114,31 +115,7 @@ export class BookingsService {
     rentalGate: Awaited<ReturnType<RentalHealthService['isRentalBlocked']>>,
     vehicleId: string,
   ): void {
-    if (
-      rentalGate.healthGateStatus === 'UNAVAILABLE' ||
-      rentalGate.healthGateStatus === 'UNKNOWN'
-    ) {
-      throw new ConflictException({
-        message:
-          rentalGate.healthGateWarning ??
-          'Fahrzeug-Gesundheit konnte nicht geprüft werden — manuelle Prüfung erforderlich. Buchung wurde nicht freigegeben.',
-        code: 'VEHICLE_HEALTH_GATE_UNAVAILABLE',
-        healthGateStatus: rentalGate.healthGateStatus,
-        manualReviewRequired: true,
-        blockingReasons: rentalGate.reasons,
-        vehicleId,
-      });
-    }
-    if (rentalGate.blocked) {
-      throw new ConflictException({
-        message:
-          'Dieses Fahrzeug ist aktuell nicht vermietbar. ' +
-          rentalGate.reasons.join(' · '),
-        code: 'VEHICLE_RENTAL_BLOCKED',
-        blockingReasons: rentalGate.reasons,
-        vehicleId,
-      });
-    }
+    enforceBookingRentalHealthGate(rentalGate, vehicleId);
   }
 
   async create(

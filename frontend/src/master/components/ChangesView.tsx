@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'runtime-state-health-service-blocker-tests-p45-2026-07-20',
+    version: '4.9.716',
+    title: 'Vehicle Runtime State — Health/Service-Blocker-Trennung per Tests (Phase 6 P45)',
+    summary: [
+      'Szenario-Matrix für Runtime Builder: Health gut + Case blockiert, Health blockiert ohne Case, Health unknown, Case abgeschlossen + Finding aktiv, Task DONE/Case offen, Warnung ohne Blocker, Ready trotz Health-Warning, mehrere unabhängige Blockaden.',
+      'Booking Gate extrahiert nach `booking-rental-health-gate.util.ts` — health-only Create/Update-Prüfung contract-testbar ohne BookingsService-Graph.',
+      'Gate-Spec: OK/BLOCKED/UNAVAILABLE/UNKNOWN + `bookingRentalHealthGateAllowsCreate`; Service Cases/Tasks blockieren Booking Create nicht.',
+      'Frontend `healthServiceBlockerSeparation.test.ts` (11) + Backend `booking-rental-health-gate.util.spec.ts` (10).',
+    ],
+    reason: 'Phase 6 Prompt 45: Trennung von Health, Tasks, Service Cases und Runtime State durch Tests absichern.',
+    previousBehavior:
+      'Runtime-/Gate-Trennung war implementiert (P42–P44), aber ohne dedizierte Szenario-Matrix für Health vs. operative Blocker und ohne isolierten Booking-Gate-Contract-Test.',
+    details:
+      'healthServiceBlockerSeparation.test.ts, booking-rental-health-gate.util.ts (+spec), bookings.service.ts (delegation)',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'runtime-state-display-blocking-reasons-p44-2026-07-20',
     version: '4.9.715',
     title: 'Vehicle Runtime State — Service-/Health-Reason-Darstellung (Phase 6 P44)',
