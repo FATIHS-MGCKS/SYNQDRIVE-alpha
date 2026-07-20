@@ -268,6 +268,40 @@ export interface VehicleHealthResponse {
   generated_at: string;
 }
 
+export interface FleetRentalHealthQuery {
+  stationId?: string;
+  search?: string;
+  vehicleStatus?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface FleetRentalHealthAvailabilitySummary {
+  totalSelected: number;
+  byVehicleStatus: Record<string, number>;
+  semantics: 'vehicle_status_operational_vs_rental_health_per_row';
+}
+
+export interface FleetRentalHealthPageHealthSummary {
+  rentalBlocked: number;
+  byOverallState: Partial<Record<RentalHealthState, number>>;
+  vehiclesWithDetail: number;
+}
+
+export interface FleetRentalHealthSummary {
+  availability: FleetRentalHealthAvailabilitySummary;
+  pageHealth: FleetRentalHealthPageHealthSummary;
+}
+
+export interface FleetRentalHealthPage {
+  summary: FleetRentalHealthSummary;
+  data: VehicleHealthResponse[];
+  meta: {
+    limit: number;
+    nextCursor: string | null;
+  };
+}
+
 // ── HM Compatibility Matrix V1 (V4.6.77) ────────────────────────────────────
 // Master-Admin-internal compatibility intelligence — matches
 // backend/src/modules/high-mobility/compatibility/hm-compatibility.types.ts.
@@ -2664,6 +2698,47 @@ function billingTenantQuery(
   return q ? `?${q}` : '';
 }
 
+function buildFleetRentalHealthQueryString(filters?: FleetRentalHealthQuery): string {
+  const merged: FleetRentalHealthQuery = { limit: 25, ...filters };
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(merged)) {
+    if (v === undefined || v === null || v === '') continue;
+    q.set(k, String(v));
+  }
+  return q.toString();
+}
+
+function fetchFleetRentalHealthPage(orgId: string, filters?: FleetRentalHealthQuery) {
+  const qs = buildFleetRentalHealthQueryString(filters);
+  return get<FleetRentalHealthPage>(
+    `/organizations/${orgId}/rental-health/fleet${qs ? `?${qs}` : ''}`,
+  );
+}
+
+async function fetchAllFleetRentalHealth(
+  orgId: string,
+  filters?: FleetRentalHealthQuery,
+): Promise<{ vehicles: VehicleHealthResponse[]; summary: FleetRentalHealthSummary | null }> {
+  const vehicles: VehicleHealthResponse[] = [];
+  let cursor: string | undefined;
+  let summary: FleetRentalHealthSummary | null = null;
+  const pageSize = 50;
+
+  for (;;) {
+    const page = await fetchFleetRentalHealthPage(orgId, {
+      ...filters,
+      limit: pageSize,
+      ...(cursor ? { cursor } : {}),
+    });
+    if (!summary) summary = page.summary;
+    vehicles.push(...page.data);
+    if (!page.meta.nextCursor) break;
+    cursor = page.meta.nextCursor;
+  }
+
+  return { vehicles, summary };
+}
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
@@ -3471,6 +3546,11 @@ export const api = {
       get<VehicleHealthResponse>(
         `/organizations/${orgId}/vehicles/${vehicleId}/rental-health`,
       ),
+    getFleetPage: (orgId: string, filters?: FleetRentalHealthQuery) =>
+      fetchFleetRentalHealthPage(orgId, filters),
+    getFleetScoped: (orgId: string, filters?: FleetRentalHealthQuery) =>
+      fetchAllFleetRentalHealth(orgId, filters),
+    /** @deprecated Prefer `getFleetScoped` — avoids huge `vehicleIds` query strings. */
     getFleet: (orgId: string, vehicleIds?: string[]) => {
       const suffix =
         vehicleIds && vehicleIds.length > 0

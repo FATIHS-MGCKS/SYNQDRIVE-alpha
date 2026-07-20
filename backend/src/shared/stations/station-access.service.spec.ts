@@ -45,4 +45,17 @@ describe('StationAccessService', () => {
     expect(access.allowedStationIds).toEqual(['s1']);
     expect(() => service.assertStationReadable(access, 's2')).toThrow(NotFoundException);
   });
+
+  it('builds vehicle station scope where from allowed station ids', () => {
+    const where = service.buildVehicleStationScopeWhere({
+      bypassScope: false,
+      allowedStationIds: ['s1', 's2'],
+      membershipRole: 'WORKER',
+      userId: 'user-1',
+    });
+
+    expect(where).toEqual({
+      OR: [{ homeStationId: { in: ['s1', 's2'] } }, { currentStationId: { in: ['s1', 's2'] } }],
+    });
+  });
 });

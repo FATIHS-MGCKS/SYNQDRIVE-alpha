@@ -89,6 +89,23 @@ export class StationAccessService {
     }
   }
 
+  /**
+   * Restricts vehicle queries to stations the membership may see.
+   * Matches when home or current station is in the allow-list.
+   */
+  buildVehicleStationScopeWhere(access: StationAccessContext): Prisma.VehicleWhereInput {
+    if (access.bypassScope || access.allowedStationIds === null) return {};
+    if (access.allowedStationIds.length === 0) {
+      return { id: { in: [] } };
+    }
+    return {
+      OR: [
+        { homeStationId: { in: access.allowedStationIds } },
+        { currentStationId: { in: access.allowedStationIds } },
+      ],
+    };
+  }
+
   private parseStationIdsJson(raw: unknown): string[] {
     if (!Array.isArray(raw)) return [];
     return raw.filter((id): id is string => typeof id === 'string' && id.length > 0);

@@ -1,9 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { RentalHealthService } from './rental-health.service';
+import { RentalHealthFleetService } from './rental-health-fleet.service';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleHealth } from './rental-health.types';
+import { FleetRentalHealthQueryDto } from './dto/fleet-rental-health-query.dto';
+import type { FleetRentalHealthPageResult } from './rental-health-fleet-cursor.util';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
@@ -28,7 +31,8 @@ class CreateBrakeRentalReviewOverrideDto {
  *
  * Fleet-wide (for Fleet/Bookings list badges):
  *   GET /organizations/:orgId/rental-health
- *   GET /organizations/:orgId/rental-health?vehicleIds=a,b,c
+ *   GET /organizations/:orgId/rental-health?vehicleIds=a,b,c   (legacy)
+ *   GET /organizations/:orgId/rental-health/fleet               (scoped + paginated)
  *
  * The fleet endpoint deliberately returns the SAME VehicleHealth shape
  * per vehicle so the frontend has a single render path. It is fan-out
@@ -40,6 +44,7 @@ class CreateBrakeRentalReviewOverrideDto {
 export class RentalHealthController {
   constructor(
     private readonly rentalHealth: RentalHealthService,
+    private readonly rentalHealthFleet: RentalHealthFleetService,
     private readonly prisma: PrismaService,
     private readonly tireRentalReview: TireRentalHealthReviewService,
     private readonly brakeRentalReview: BrakeRentalHealthReviewService,
@@ -52,6 +57,16 @@ export class RentalHealthController {
     @Param('vehicleId') vehicleId: string,
   ): Promise<VehicleHealth> {
     return this.rentalHealth.getVehicleHealth(orgId, vehicleId);
+  }
+
+  @Get('rental-health/fleet')
+  @RequirePermission('fleet', 'read')
+  async getScopedFleetHealth(
+    @Param('orgId') orgId: string,
+    @Query() query: FleetRentalHealthQueryDto,
+    @Req() req: { user?: { id?: string } },
+  ): Promise<FleetRentalHealthPageResult<VehicleHealth>> {
+    return this.rentalHealthFleet.listFleetHealthPage(orgId, req.user?.id, query);
   }
 
   @Get('rental-health')

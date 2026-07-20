@@ -42,7 +42,7 @@
 
 | Artefakt | Quelle | Verwendung |
 |----------|--------|------------|
-| `healthMap` | `FleetContext` → `useFleetHealthMap` → `GET …/rental-health?vehicleIds=` | O(1) Lookup pro Fahrzeug in Fleet-Surfaces |
+| `healthMap` | `FleetContext` → `useFleetHealthMap` → `GET …/rental-health/fleet` (paginiert, org-gescoped) | O(1) Lookup pro Fahrzeug in Fleet-Surfaces |
 | `VehicleHealthResponse` | Frontend-Typ = Rental Health V1 Contract (`api.ts`) | Einzige kanonische Health-Payload-Form |
 | `overall_state` | Backend-Aggregat (`good` \| `warning` \| `critical` \| `unknown` \| `n_a`) | Ampel, KPI-Bänder, Sortierung |
 | `rental_blocked` | Backend Hard-Gate | Mietfähigkeit — nur explizite Blocker |

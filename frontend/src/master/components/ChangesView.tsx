@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-health-scoped-fleet-p49-2026-07-20',
+    version: '4.9.720',
+    title: 'Rental Health — org-gescopter Fleet-Endpunkt (Phase 7 P49)',
+    summary: [
+      '`GET /rental-health/fleet` — serverseitige Fahrzeugselektion (Org + Stationscope), Cursor-Pagination, Availability-Summary (`Vehicle.status`) getrennt von Rental-Health-Detail pro Seite.',
+      'Filter: `stationId`, `search`, `vehicleStatus`; `fleet.read` + `StationAccessService` — kein ungeprüftes Org-Full-Scan ohne Pagination.',
+      'Legacy `GET /rental-health?vehicleIds=` bleibt kompatibel; Frontend `useFleetHealthMap` nutzt `getFleetScoped` ohne vehicleIds im Querystring.',
+    ],
+    reason: 'Phase 7 Prompt 49: Hunderte vehicleIds im Querystring vermeiden.',
+    previousBehavior:
+      'Fleet-Health-Batch sendete alle UUIDs als CSV; kein Stationscope; unbegrenzter Org-Read ohne Pagination.',
+    details:
+      'rental-health-fleet.service.ts, rental-health-fleet-cursor.util.ts, fleet-rental-health-query.dto.ts, station-access buildVehicleStationScopeWhere, useVehicleHealth.ts (+test), api.ts',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',

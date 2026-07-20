@@ -67,9 +67,8 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fleetVehicleIds = useMemo(() => fleetVehicles.map((v) => v.id), [fleetVehicles]);
   const { map: healthMap, loading: healthLoading, error: healthError, reload: reloadHealth } =
-    useFleetHealthMap(orgId, fleetVehicleIds);
+    useFleetHealthMap(orgId);
 
   const refresh = useMemo(
     () => async () => {

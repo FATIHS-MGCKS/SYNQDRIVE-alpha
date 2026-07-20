@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../../lib/api';
-import type { VehicleHealthResponse } from '../../lib/api';
+import type { FleetRentalHealthQuery, VehicleHealthResponse } from '../../lib/api';
 
 interface UseVehicleHealthState {
   data: VehicleHealthResponse | null;
@@ -59,15 +59,25 @@ export function useVehicleHealth(
   return { data, loading, error, reload: load };
 }
 
+export interface UseFleetHealthMapOptions {
+  /** Optional server-side filters (station scope is always applied server-side). */
+  filters?: Omit<FleetRentalHealthQuery, 'limit' | 'cursor'>;
+  /**
+   * When true, uses the legacy `?vehicleIds=` endpoint (for compatibility only).
+   * Default: scoped paginated fleet endpoint.
+   */
+  legacyVehicleIds?: string[];
+}
+
 /**
  * Fleet-wide health hook — returns a Map<vehicleId, VehicleHealthResponse>
- * so list views can do O(1) lookups on each row. Useful for the Fleet,
- * Bookings and Dashboard tile rendering where we show a per-row badge
- * without doing a separate fetch per row.
+ * so list views can do O(1) lookups on each row.
+ *
+ * Uses the scoped paginated fleet endpoint by default (no vehicleIds in URL).
  */
 export function useFleetHealthMap(
   orgId: string | null | undefined,
-  vehicleIds?: string[],
+  options: UseFleetHealthMapOptions = {},
 ): {
   map: Map<string, VehicleHealthResponse>;
   loading: boolean;
@@ -79,7 +89,8 @@ export function useFleetHealthMap(
   const [error, setError] = useState<string | null>(null);
   const cancelRef = useRef(false);
 
-  const idsKey = vehicleIds ? vehicleIds.slice().sort().join(',') : '';
+  const filtersKey = JSON.stringify(options.filters ?? {});
+  const legacyKey = options.legacyVehicleIds?.slice().sort().join(',') ?? '';
 
   const load = useCallback(() => {
     if (!orgId) {
@@ -90,8 +101,15 @@ export function useFleetHealthMap(
     cancelRef.current = false;
     setLoading(true);
     setError(null);
-    api.rentalHealth
-      .getFleet(orgId, vehicleIds && vehicleIds.length > 0 ? vehicleIds : undefined)
+
+    const request =
+      options.legacyVehicleIds && options.legacyVehicleIds.length > 0
+        ? api.rentalHealth.getFleet(orgId, options.legacyVehicleIds).then((res) => ({
+            vehicles: res.vehicles,
+          }))
+        : api.rentalHealth.getFleetScoped(orgId, options.filters);
+
+    request
       .then((res) => {
         if (cancelRef.current) return;
         const next = new Map<string, VehicleHealthResponse>();
@@ -105,7 +123,7 @@ export function useFleetHealthMap(
         setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, idsKey]);
+  }, [orgId, filtersKey, legacyKey]);
 
   useEffect(() => {
     load();
@@ -115,4 +133,14 @@ export function useFleetHealthMap(
   }, [load]);
 
   return { map, loading, error, reload: load };
+}
+
+/**
+ * @deprecated Pass `{ legacyVehicleIds: vehicleIds }` to `useFleetHealthMap` instead.
+ */
+export function useFleetHealthMapLegacy(
+  orgId: string | null | undefined,
+  vehicleIds?: string[],
+) {
+  return useFleetHealthMap(orgId, { legacyVehicleIds: vehicleIds });
 }

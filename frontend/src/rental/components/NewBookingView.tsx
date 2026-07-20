@@ -507,15 +507,8 @@ export function NewBookingView({
     return matchesSearch && matchesStation && matchesFuel && matchesBrand;
   });
 
-  // V4.6.76 Rental Health V1 — preload the canonical health map for the
-  // vehicles visible in the picker. We pass the full fleet IDs (not the
-  // filtered subset) so applying/removing search/station/fuel filters
-  // doesn't refetch every keystroke.
-  const fleetPickerIds = useMemo(
-    () => fleetVehicles.map((v) => v.id).filter(Boolean),
-    [fleetVehicles],
-  );
-  const { map: pickerHealthMap } = useFleetHealthMap(orgId, fleetPickerIds);
+  // V4.6.76 Rental Health V1 — org-scoped fleet health map (no vehicleIds in URL).
+  const { map: pickerHealthMap } = useFleetHealthMap(orgId);
 
   const selectedVehicleHealth = selectedVehicle
     ? pickerHealthMap.get(selectedVehicle.id) ?? null
