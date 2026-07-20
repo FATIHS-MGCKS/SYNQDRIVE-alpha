@@ -77,6 +77,12 @@ interface FleetConditionViewProps {
   uiLocale?: 'de' | 'en';
   /** Applied when navigating from overview KPIs (Fleet Health Service). */
   initialStatusFilter?: OperatorStatusFilter;
+  /** Deep-link vehicle scope (Fleet Health Service P56). */
+  initialVehicleId?: string;
+  /** Deep-link station scope (Fleet Health Service P56). */
+  initialStationId?: string;
+  /** Restrict list to vehicles with rental-blocking open service cases. */
+  blockingVehicleIds?: ReadonlySet<string>;
   /** Optional task bridge from FleetHealthService view model. */
   getExistingTaskId?: (vehicleId: string) => string | null;
 }
@@ -232,6 +238,9 @@ export function FleetConditionView({
   onOpenExistingTask,
   uiLocale = 'en',
   initialStatusFilter,
+  initialVehicleId,
+  initialStationId,
+  blockingVehicleIds,
   getExistingTaskId,
 }: FleetConditionViewProps) {
   const GROUP_CONFIG = uiLocale === 'de' ? GROUP_CONFIG_DE : GROUP_CONFIG_EN;
@@ -311,6 +320,17 @@ export function FleetConditionView({
     }
   }, [initialStatusFilter]);
 
+  useEffect(() => {
+    if (!initialVehicleId) return;
+    setSelectedVehicleId(initialVehicleId);
+    setMobileDrawerOpen(true);
+  }, [initialVehicleId]);
+
+  const scopedVehicleIds = useMemo(() => {
+    if (!blockingVehicleIds || blockingVehicleIds.size === 0) return undefined;
+    return blockingVehicleIds;
+  }, [blockingVehicleIds]);
+
   const filtered = useMemo(
     () =>
       filterAndSortFleetConditionVehicles({
@@ -321,8 +341,22 @@ export function FleetConditionView({
         dataQualityFilter,
         searchQuery,
         sortMode,
+        vehicleId: initialVehicleId,
+        stationId: initialStationId,
+        vehicleIds: scopedVehicleIds,
       }),
-    [fleetVehicles, healthMap, statusFilter, moduleFilter, dataQualityFilter, searchQuery, sortMode],
+    [
+      fleetVehicles,
+      healthMap,
+      statusFilter,
+      moduleFilter,
+      dataQualityFilter,
+      searchQuery,
+      sortMode,
+      initialVehicleId,
+      initialStationId,
+      scopedVehicleIds,
+    ],
   );
 
   const groupedVehicles = useMemo(() => {

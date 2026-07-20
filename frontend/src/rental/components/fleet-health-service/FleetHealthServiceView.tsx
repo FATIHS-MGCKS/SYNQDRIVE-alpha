@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Vendor } from '../../../lib/api';
 import { FleetConditionView, type ConditionCategory } from '../FleetConditionView';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
@@ -6,11 +6,14 @@ import { FleetHealthServiceHistoryPanel } from './FleetHealthServiceHistoryPanel
 import { FleetHealthServiceOverviewPanel } from './FleetHealthServiceOverviewPanel';
 import { FleetHealthServiceTabBar } from './FleetHealthServiceTabBar';
 import { FleetHealthServiceWorkPanel } from './FleetHealthServiceWorkPanel';
-import type {
-  FleetHealthServiceNavState,
-  FleetHealthServiceTab,
-  FleetHealthServiceWorkSection,
+import {
+  clearFleetHealthServiceNavFilters,
+  fleetHealthServiceNavToTaskAdvancedFilters,
+  type FleetHealthServiceNavState,
+  type FleetHealthServiceTab,
+  type FleetHealthServiceWorkSection,
 } from './fleet-health-service.types';
+import { getBlockingServiceCaseVehicleIds } from './fleet-health-service-vehicle-overview';
 import { useFleetHealthServiceViewModel } from './useFleetHealthServiceViewModel';
 
 interface FleetHealthServiceViewProps {
@@ -40,6 +43,16 @@ export function FleetHealthServiceView({
   const vm = useFleetHealthServiceViewModel();
   const activeSubTab = nav.tab;
 
+  const blockingVehicleIds = useMemo(() => {
+    if (nav.serviceCaseFilter !== 'blocking') return undefined;
+    return getBlockingServiceCaseVehicleIds(vm.serviceCases);
+  }, [nav.serviceCaseFilter, vm.serviceCases]);
+
+  const taskAdvancedFilters = useMemo(
+    () => fleetHealthServiceNavToTaskAdvancedFilters(nav),
+    [nav],
+  );
+
   const focusTaskId =
     serviceCenterNavigation?.focusTaskId && nav.tab === 'work' && nav.workSection === 'tasks'
       ? serviceCenterNavigation.focusTaskId
@@ -56,24 +69,14 @@ export function FleetHealthServiceView({
 
   const setTab = useCallback(
     (tab: FleetHealthServiceTab) => {
-      onNavChange({
-        ...nav,
-        tab,
-        vehicleStatusFilter: undefined,
-        taskFilter: undefined,
-      });
+      onNavChange(clearFleetHealthServiceNavFilters({ ...nav, tab }));
     },
     [nav, onNavChange],
   );
 
   const setWorkSection = useCallback(
     (workSection: FleetHealthServiceWorkSection) => {
-      onNavChange({
-        tab: 'work',
-        workSection,
-        vehicleStatusFilter: undefined,
-        taskFilter: undefined,
-      });
+      onNavChange(clearFleetHealthServiceNavFilters({ tab: 'work', workSection }));
     },
     [onNavChange],
   );
@@ -102,6 +105,9 @@ export function FleetHealthServiceView({
           hideKpiStrip
           uiLocale="de"
           initialStatusFilter={nav.vehicleStatusFilter}
+          initialVehicleId={nav.vehicleId}
+          initialStationId={nav.stationId}
+          blockingVehicleIds={blockingVehicleIds}
           onDrillDown={onDrillDown}
           onOpenExistingTask={onOpenGlobalTasks}
           getExistingTaskId={getExistingTaskId}
@@ -124,6 +130,7 @@ export function FleetHealthServiceView({
           onOpenVendorDetail={onOpenVendorDetail}
           focusTaskId={focusTaskId}
           initialTaskFilter={nav.taskFilter}
+          initialAdvancedFilters={taskAdvancedFilters}
         />
       )}
 

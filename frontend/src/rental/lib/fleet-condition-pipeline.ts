@@ -29,9 +29,18 @@ export function filterAndSortFleetConditionVehicles(input: {
   dataQualityFilter: OperatorDataQualityFilter;
   searchQuery: string;
   sortMode: OperatorSortMode;
+  vehicleId?: string;
+  stationId?: string;
+  vehicleIds?: ReadonlySet<string>;
 }): VehicleData[] {
   const q = input.searchQuery.trim().toLowerCase();
   const base = input.fleetVehicles.filter((v) => {
+    if (input.vehicleId && v.id !== input.vehicleId) return false;
+    if (input.stationId) {
+      const stationKey = v.stationId ?? v.homeStationId;
+      if (stationKey !== input.stationId) return false;
+    }
+    if (input.vehicleIds && !input.vehicleIds.has(v.id)) return false;
     const health = input.healthMap.get(v.id);
     if (!matchesStatusFilter(input.statusFilter, health)) return false;
     if (!matchesModuleFilter(input.moduleFilter, health)) return false;

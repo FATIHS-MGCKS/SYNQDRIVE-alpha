@@ -3,6 +3,8 @@ import type { ApiTask, Vendor } from '../../../lib/api';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
+import type { ServiceTaskAdvancedFilters } from '../../lib/service-task-filters';
+import type { ServiceTaskFilter } from '../service-center/service-center.types';
 import {
   FLEET_HEALTH_SERVICE_WORK_SECTION_ORDER,
   type FleetHealthServiceWorkSection,
@@ -30,6 +32,8 @@ interface FleetHealthServiceWorkPanelProps {
   onOpenGlobalTasks?: (taskId: string) => void;
   onOpenVendorDetail?: (vendor: Vendor) => void;
   focusTaskId?: string | null;
+  initialTaskFilter?: ServiceTaskFilter;
+  initialAdvancedFilters?: Partial<ServiceTaskAdvancedFilters>;
 }
 
 export function FleetHealthServiceWorkPanel({
@@ -43,6 +47,8 @@ export function FleetHealthServiceWorkPanel({
   onOpenGlobalTasks,
   onOpenVendorDetail,
   focusTaskId,
+  initialTaskFilter,
+  initialAdvancedFilters,
 }: FleetHealthServiceWorkPanelProps) {
   const { t } = useLanguage();
 
@@ -100,6 +106,8 @@ export function FleetHealthServiceWorkPanel({
           onReload={onReload}
           onOpenGlobalTasks={onOpenGlobalTasks}
           focusTaskId={focusTaskId}
+          initialTaskFilter={initialTaskFilter}
+          initialAdvancedFilters={initialAdvancedFilters}
         />
       )}
 

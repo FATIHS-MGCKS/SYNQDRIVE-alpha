@@ -12,6 +12,7 @@ import type {
   FleetHealthServiceTab,
   FleetHealthServiceWorkSection,
 } from './fleet-health-service.types';
+import { sanitizeFleetHealthServiceNavState } from './fleet-health-service.types';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 
@@ -67,14 +68,19 @@ export function FleetHealthServiceOverviewPanel({
     })),
   }));
 
+  const applyNav = (next: FleetHealthServiceNavState) => {
+    onNavChange?.(sanitizeFleetHealthServiceNavState(next));
+  };
+
   const handleKpiClick = (item: FleetHealthServiceKpiItem) => {
     if (item.domain === 'health' && item.vehicleStatusFilter) {
       if (onNavChange && nav) {
-        onNavChange({
+        applyNav({
           ...nav,
           tab: 'vehicles',
           vehicleStatusFilter: item.vehicleStatusFilter,
           taskFilter: undefined,
+          serviceCaseFilter: undefined,
         });
       } else {
         onNavigateSubTab?.('vehicles');
@@ -83,27 +89,13 @@ export function FleetHealthServiceOverviewPanel({
     }
 
     if (item.domain === 'execution') {
-      if (item.workSection === 'vendors') {
-        if (onNavChange && nav) {
-          onNavChange({
-            ...nav,
-            tab: 'work',
-            workSection: 'vendors',
-            vehicleStatusFilter: undefined,
-            taskFilter: item.taskFilter,
-          });
-        } else {
-          onNavigateWork?.('vendors');
-        }
-        return;
-      }
-
       if (onNavChange && nav) {
-        onNavChange({
+        applyNav({
           ...nav,
           tab: 'work',
           workSection: item.workSection ?? 'tasks',
           vehicleStatusFilter: undefined,
+          serviceCaseFilter: undefined,
           taskFilter: item.taskFilter,
         });
       } else {

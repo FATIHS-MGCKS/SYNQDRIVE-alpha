@@ -191,6 +191,7 @@ export interface FleetHealthServiceViewModel {
   healthError: string | null;
   serviceLoading: boolean;
   serviceError: string | null;
+  serviceCases: ApiServiceCase[];
   healthKpis: FleetHealthKpis;
   healthGroups: FleetHealthServiceHealthGroups;
   executionGroups: FleetHealthServiceExecutionGroups;
@@ -643,6 +644,7 @@ export function buildFleetHealthServiceViewModel(
     healthError,
     serviceLoading,
     serviceError,
+    serviceCases,
     healthKpis,
     healthGroups,
     executionGroups,
