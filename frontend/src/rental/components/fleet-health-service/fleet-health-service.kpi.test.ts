@@ -59,7 +59,7 @@ describe('buildFleetHealthServiceKpiGroups', () => {
     const groups = buildFleetHealthServiceKpiGroups({
       healthKpis: baseHealthKpis,
       execution: emptyExecution,
-      healthError: 'Health failed',
+      healthError: 'Zustandsdaten konnten nicht geladen werden',
       serviceLoading: false,
     });
     const health = groups.find((g) => g.key === 'health');
@@ -74,7 +74,7 @@ describe('buildFleetHealthServiceKpiGroups', () => {
         ...emptyExecution,
         overdueServiceTasks: [task({ id: 't1', vehicleId: 'v1', isOverdue: true })],
       },
-      serviceError: 'Tasks failed',
+      serviceError: 'Aufgaben konnten nicht geladen werden',
       healthLoading: false,
     });
     const execution = groups.find((g) => g.key === 'execution');

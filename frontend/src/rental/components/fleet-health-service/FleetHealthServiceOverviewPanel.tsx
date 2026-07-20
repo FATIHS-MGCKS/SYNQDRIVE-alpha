@@ -27,6 +27,17 @@ const KPI_LABEL_KEYS: Record<string, TranslationKey> = {
   vendor: 'fleetHealthService.kpi.vendor',
 };
 
+const KPI_HINT_KEYS: Record<string, TranslationKey> = {
+  blocked: 'fleetHealthService.kpi.hint.blocked',
+  review: 'fleetHealthService.kpi.hint.review',
+  limited: 'fleetHealthService.kpi.hint.limited',
+  healthy: 'fleetHealthService.kpi.hint.healthy',
+  overdue: 'fleetHealthService.kpi.hint.overdue',
+  due_today: 'fleetHealthService.kpi.hint.dueToday',
+  in_progress: 'fleetHealthService.kpi.hint.inProgress',
+  vendor: 'fleetHealthService.kpi.hint.vendor',
+};
+
 interface FleetHealthServiceOverviewPanelProps {
   vm: FleetHealthServiceViewModel & { reloadService?: () => void };
   onNavChange?: (nav: FleetHealthServiceNavState) => void;
@@ -65,6 +76,7 @@ export function FleetHealthServiceOverviewPanel({
     items: group.items.map((item) => ({
       ...item,
       label: t(KPI_LABEL_KEYS[item.key] ?? 'fleetHealthService.kpi.blocked'),
+      hint: t(KPI_HINT_KEYS[item.key] ?? 'fleetHealthService.kpi.hint.blocked'),
     })),
   }));
 

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-terminology-p57-2026-07-20',
+    version: '4.9.728',
+    title: 'Fleet Health Service — kanonische Terminologie (Phase 8 P57)',
+    summary: [
+      'DE/EN-i18n vereinheitlicht: Technisch unauffällig, Technisch prüfen, Mietblockade, Servicefall, Fälligkeit, Werkstatttermin, Priorisierte Übersicht.',
+      'Entfernt: Triage, Gesund, Findings, Termine (bei Task-Fälligkeiten), englische Fehlertexte in FHS-Surfaces.',
+      'Fahrzeuglabels ohne UUID-Fallback; KPI-Hints und Panel-Texte vollständig über i18n.',
+    ],
+    reason: 'Phase 8 Prompt 57: sichtbare Resttexte und Terminologie im Zustand-&-Service-Bereich bereinigen.',
+    previousBehavior:
+      'Gemischte Begriffe (Gesund, Termine, Health-Findings, Triage in Kommentaren/UI), teils hardcodierte Panel-Texte.',
+    details:
+      'de.ts, en.ts, fleet-health-service-labels.ts, FleetConditionView, FleetHealthService*Panel, service-task-semantics.ts, ServiceScheduleRow, fleet-health-service.i18n.test.ts',
+    affectsArchitecture: false,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:55:00.000Z',
+  },
+  {
     id: 'fleet-health-deep-link-filters-p56-2026-07-20',
     version: '4.9.727',
     title: 'Fleet Health Service — kanonische Filter und Deep Links (Phase 8 P56)',

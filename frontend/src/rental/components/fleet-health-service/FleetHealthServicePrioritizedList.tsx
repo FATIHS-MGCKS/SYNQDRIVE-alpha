@@ -2,6 +2,7 @@ import { ChevronRight, Plus } from 'lucide-react';
 import { EmptyState, SkeletonCard, StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { fhsActionLabelDe } from './fleet-health-service-labels';
 import { fhs } from './fleet-health-service-shell';
 import type { FleetHealthServiceOverviewRow } from './fleet-health-service.view-model';
@@ -23,6 +24,8 @@ export function FleetHealthServicePrioritizedList({
   onCreateTask,
   onReviewVehicle,
 }: FleetHealthServicePrioritizedListProps) {
+  const { t } = useLanguage();
+
   if (loading && rows.length === 0) {
     return (
       <div className="space-y-2">
@@ -37,8 +40,8 @@ export function FleetHealthServicePrioritizedList({
     return (
       <EmptyState
         compact
-        title="Keine priorisierten Fälle"
-        description="Sobald Handlungsbedarf, offene Aufgaben oder Prüffälle vorliegen, erscheinen sie hier."
+        title={t('fleetHealthService.prioritizedList.emptyTitle')}
+        description={t('fleetHealthService.prioritizedList.emptyDescription')}
       />
     );
   }

@@ -137,7 +137,7 @@ export function ServiceOverviewTaskRow({
               )}
               <span className={`inline-flex items-center gap-1 ${dueClass}`}>
                 <Calendar className="w-3 h-3 shrink-0" />
-                {task.dueDate ? formatTaskDueDate(task.dueDate) : 'Kein Termin'}
+                {task.dueDate ? formatTaskDueDate(task.dueDate) : 'Keine Fälligkeit'}
               </span>
               <span className="inline-flex items-center gap-1 truncate">
                 <User className="w-3 h-3 shrink-0 opacity-70" />

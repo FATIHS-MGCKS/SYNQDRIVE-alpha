@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type ApiServiceCase } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export function useFleetHealthServiceCases(orgId: string | null | undefined) {
+  const { t } = useLanguage();
   const [serviceCases, setServiceCases] = useState<ApiServiceCase[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +21,10 @@ export function useFleetHealthServiceCases(orgId: string | null | undefined) {
       setServiceCases(Array.isArray(res) ? res : []);
     } catch {
       setServiceCases([]);
-      setError('Servicefälle konnten nicht geladen werden.');
+      setError(t('fleetHealthService.error.serviceCases'));
     }
     setLoading(false);
-  }, [orgId]);
+  }, [orgId, t]);
 
   useEffect(() => {
     void reload();

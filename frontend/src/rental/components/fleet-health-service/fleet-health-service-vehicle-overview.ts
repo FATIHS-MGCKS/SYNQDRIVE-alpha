@@ -22,7 +22,7 @@ import {
   isActiveTask,
   isDueSoonTask,
 } from '../service-center/service-center.utils';
-import { FHS_HEALTH_BADGE_DE, fhsModuleLabelDe } from './fleet-health-service-labels';
+import { FHS_HEALTH_BADGE_DE, fhsModuleLabelDe, FHS_SOURCE_LABEL_DE } from './fleet-health-service-labels';
 import {
   deriveRecommendedAction,
   FLEET_HEALTH_SERVICE_PRIORITY_SECTION_ORDER,
@@ -94,7 +94,7 @@ function taskToWorkItem(task: ApiTask): FleetHealthServiceVehicleTaskItem {
     status: task.status,
     statusLabel: status.label,
     tone: status.tone,
-    sourceLabel: 'Aufgabe',
+    sourceLabel: FHS_SOURCE_LABEL_DE.task,
     dueLabel: task.dueDate ? formatTaskDueDate(task.dueDate) : null,
     serviceCaseId: task.serviceCaseId,
   };

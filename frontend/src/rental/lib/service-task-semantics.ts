@@ -134,9 +134,15 @@ export function buildVehicleLabel(vehicle: {
   model?: string;
   year?: number;
 } | null | undefined): string {
-  if (!vehicle) return '—';
+  if (!vehicle) return 'Fahrzeug unbekannt';
+  const plate = vehicle.license?.trim();
+  const isUuid =
+    plate &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(plate);
   const mmy = [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ');
-  return vehicle.license ? `${vehicle.license}${mmy ? ` · ${mmy}` : ''}` : mmy || '—';
+  if (plate && !isUuid) return `${plate}${mmy ? ` · ${mmy}` : ''}`;
+  if (mmy) return mmy;
+  return 'Fahrzeug ohne Kennzeichen';
 }
 
 /** Preferred vendors for a vehicle from vendor master links. */
