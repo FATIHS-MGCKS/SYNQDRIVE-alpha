@@ -4,6 +4,7 @@ import {
   buildHealthTaskPrefill,
   findDuplicateHealthTask,
   healthContextFromTask,
+  MODULE_PREFILL_TASK_TYPES,
   pickPrimarySourceFinding,
 } from './health-task-bridge.utils';
 
@@ -170,6 +171,7 @@ describe('health-task-bridge.utils', () => {
         sourceFinding: finding,
       });
 
+      expect(prefill.type).toBe(MODULE_PREFILL_TASK_TYPES[module]);
       expect(prefill.type).toBe(expectedType);
       expect(prefill.metadata).toMatchObject({
         sourceType: 'HEALTH',
@@ -266,10 +268,12 @@ describe('health-task-bridge.utils', () => {
       module: 'brakes',
       sourceFindingId: brakeFindingId,
     });
-    expect(match.matchKind).toBe('none');
+    expect(match.matchKind).toBe('possibly_related');
+    expect(match.task).toBeNull();
+    expect(match.possiblyRelatedTask?.id).toBe('repair-task');
   });
 
-  it('findDuplicateHealthTask rejects CUSTOM for DTC finding', () => {
+  it('findDuplicateHealthTask flags CUSTOM as possibly related for DTC finding', () => {
     const dtcFindingId = 'e'.repeat(64);
     const tasks = [
       apiTask({
@@ -291,10 +295,32 @@ describe('health-task-bridge.utils', () => {
       module: 'error_codes',
       sourceFindingId: dtcFindingId,
     });
-    expect(match.matchKind).toBe('none');
+    expect(match.matchKind).toBe('possibly_related');
+    expect(match.possiblyRelatedTask?.id).toBe('custom-task');
   });
 
-  it('findDuplicateHealthTask rejects blocking task without exact finding', () => {
+  it('findDuplicateHealthTask ignores blocksVehicleAvailability without health module metadata', () => {
+    const tireFindingId = 't'.repeat(64);
+    const tasks = [
+      apiTask({
+        id: 'blocking-only',
+        type: 'VEHICLE_SERVICE',
+        blocksVehicleAvailability: true,
+        metadata: null,
+      }),
+    ];
+
+    const match = findDuplicateHealthTask(tasks, {
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      module: 'tires',
+      sourceFindingId: tireFindingId,
+    });
+    expect(match.matchKind).toBe('none');
+    expect(match.possiblyRelatedTask).toBeNull();
+  });
+
+  it('findDuplicateHealthTask does not exact-match blocking task with module metadata only', () => {
     const tireFindingId = 't'.repeat(64);
     const tasks = [
       apiTask({
@@ -316,7 +342,9 @@ describe('health-task-bridge.utils', () => {
       module: 'tires',
       sourceFindingId: tireFindingId,
     });
-    expect(match.matchKind).toBe('none');
+    expect(match.matchKind).toBe('possibly_related');
+    expect(match.task).toBeNull();
+    expect(match.possiblyRelatedTask?.id).toBe('blocking-task');
   });
 
   it('findDuplicateHealthTask legacy matches unambiguous module type without finding ids', () => {
@@ -340,11 +368,11 @@ describe('health-task-bridge.utils', () => {
       module: 'brakes',
     });
     expect(match.matchKind).toBe('legacy');
-    expect(match.legacyAmbiguous).toBe(false);
     expect(match.task?.id).toBe('legacy-brake');
+    expect(match.possiblyRelatedTask).toBeNull();
   });
 
-  it('findDuplicateHealthTask does not legacy-match ambiguous REPAIR without finding ids', () => {
+  it('findDuplicateHealthTask surfaces ambiguous REPAIR as possibly related', () => {
     const tasks = [
       apiTask({
         id: 'repair-only',
@@ -364,7 +392,9 @@ describe('health-task-bridge.utils', () => {
       vehicleId: VEHICLE_ID,
       module: 'brakes',
     });
-    expect(match.matchKind).toBe('none');
+    expect(match.matchKind).toBe('possibly_related');
+    expect(match.task).toBeNull();
+    expect(match.possiblyRelatedTask?.id).toBe('repair-only');
   });
 
   it('healthContextFromTask remains readable for legacy tasks without sourceFindingId', () => {

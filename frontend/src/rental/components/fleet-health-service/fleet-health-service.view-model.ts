@@ -19,6 +19,7 @@ import {
   findDuplicateHealthTask,
   pickPrimarySourceFinding,
   type HealthActionModule,
+  type HealthTaskDuplicateResult,
 } from '../../lib/health-task-bridge.utils';
 import { deriveTaskIsOverdue } from '../../lib/task-display.utils';
 import {
@@ -43,6 +44,7 @@ export interface FleetHealthServiceUiItem {
   rentalBlocked: boolean;
   sourceModule: RentalHealthModuleKey | null;
   existingTaskId: string | null;
+  possiblyRelatedTaskId: string | null;
   recommendedAction: FleetHealthServiceRecommendedAction;
 }
 
@@ -141,31 +143,44 @@ function resolveSourceModule(
 }
 
 /**
- * Exact finding match only — reuses health-task-bridge rules.
- * No module/type/blocking heuristics beyond controlled legacy (not used here).
+ * Resolves health→task link without broad type/blocking heuristics.
+ */
+export function resolveHealthTaskMatchForSignal(
+  openTasks: ApiTask[],
+  vehicleId: string,
+  health: VehicleHealthResponse | null | undefined,
+): HealthTaskDuplicateResult {
+  const organizationId = health?.organization_id?.trim();
+  if (!organizationId) {
+    return { task: null, matchKind: 'none', possiblyRelatedTask: null };
+  }
+
+  const moduleKey = resolveSourceModule(health);
+  if (!moduleKey) {
+    return { task: null, matchKind: 'none', possiblyRelatedTask: null };
+  }
+
+  const rentalModule = health?.modules?.[moduleKey];
+  const sourceFinding = pickPrimarySourceFinding(rentalModule);
+  const sourceFindingId = sourceFinding?.source_finding_id ?? null;
+
+  return findDuplicateHealthTask(openTasks, {
+    organizationId,
+    vehicleId,
+    module: moduleKey as HealthActionModule,
+    sourceFindingId,
+  });
+}
+
+/**
+ * Exact finding match only — used for open_task / dedup counts.
  */
 export function matchOpenTaskForHealthSignal(
   openTasks: ApiTask[],
   vehicleId: string,
   health: VehicleHealthResponse | null | undefined,
 ): ApiTask | null {
-  const organizationId = health?.organization_id?.trim();
-  if (!organizationId) return null;
-
-  const moduleKey = resolveSourceModule(health);
-  if (!moduleKey) return null;
-
-  const rentalModule = health?.modules?.[moduleKey];
-  const sourceFinding = pickPrimarySourceFinding(rentalModule);
-  const sourceFindingId = sourceFinding?.source_finding_id ?? null;
-
-  const result = findDuplicateHealthTask(openTasks, {
-    organizationId,
-    vehicleId,
-    module: moduleKey as HealthActionModule,
-    sourceFindingId,
-  });
-
+  const result = resolveHealthTaskMatchForSignal(openTasks, vehicleId, health);
   return result.matchKind === 'exact' ? result.task : null;
 }
 
@@ -189,7 +204,12 @@ export function buildFleetHealthServiceUiItem(
   openTasks: ApiTask[],
 ): FleetHealthServiceUiItem {
   const display = buildFleetHealthDisplay(health);
-  const existingTask = matchOpenTaskForHealthSignal(openTasks, vehicle.id, health);
+  const matchResult = resolveHealthTaskMatchForSignal(openTasks, vehicle.id, health);
+  const existingTask = matchResult.matchKind === 'exact' ? matchResult.task : null;
+  const possiblyRelatedTask =
+    matchResult.matchKind === 'legacy'
+      ? matchResult.task
+      : matchResult.possiblyRelatedTask;
 
   return {
     vehicleId: vehicle.id,
@@ -200,6 +220,7 @@ export function buildFleetHealthServiceUiItem(
     rentalBlocked: display.rentalBlocked,
     sourceModule: display.primaryModuleKey,
     existingTaskId: existingTask?.id ?? null,
+    possiblyRelatedTaskId: possiblyRelatedTask?.id ?? null,
     recommendedAction: deriveRecommendedAction(health, existingTask),
   };
 }

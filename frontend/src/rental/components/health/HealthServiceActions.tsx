@@ -101,8 +101,10 @@ export function HealthServiceActions({
 
   const exactDuplicate =
     duplicateResult.matchKind === 'exact' ? duplicateResult.task : null;
-  const legacyDuplicate =
-    duplicateResult.matchKind === 'legacy' ? duplicateResult.task : null;
+  const relatedHintTask =
+    duplicateResult.matchKind === 'legacy'
+      ? duplicateResult.task
+      : duplicateResult.possiblyRelatedTask;
 
   const complianceForModule = useMemo(() => {
     if (healthModule === 'service_compliance') {
@@ -114,7 +116,7 @@ export function HealthServiceActions({
   const showActions =
     healthModuleNeedsAction(rentalModule) ||
     Boolean(exactDuplicate) ||
-    Boolean(legacyDuplicate) ||
+    Boolean(relatedHintTask) ||
     complianceForModule.length > 0;
   if (!showActions && !loading) return null;
 
@@ -152,19 +154,22 @@ export function HealthServiceActions({
         </div>
       )}
 
-      {legacyDuplicate && !exactDuplicate && (
+      {relatedHintTask && !exactDuplicate && (
         <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 space-y-2">
           <p className="text-[11px] text-muted-foreground">
-            Mögliche Legacy-Aufgabe ohne Finding-ID: <span className="font-semibold text-foreground">{legacyDuplicate.title}</span>
+            Möglicherweise zugehörige Aufgabe
+            {duplicateResult.matchKind === 'legacy' ? ' (Legacy, ohne Finding-ID)' : ''}:
+            {' '}
+            <span className="font-semibold text-foreground">{relatedHintTask.title}</span>
           </p>
           {onOpenExistingTask && (
             <button
               type="button"
-              onClick={() => onOpenExistingTask(legacyDuplicate.id)}
+              onClick={() => onOpenExistingTask(relatedHintTask.id)}
               className={`${btnClass} border-border/60 hover:bg-muted/40`}
             >
               <ExternalLink className="w-3 h-3" />
-              Legacy-Aufgabe öffnen
+              Aufgabe öffnen
             </button>
           )}
         </div>
