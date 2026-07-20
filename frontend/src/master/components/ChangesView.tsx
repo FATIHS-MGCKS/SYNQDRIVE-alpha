@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'health-service-case-from-finding-fhs-p31-2026-07-20',
+    version: '4.9.622',
+    title: 'Health → Servicefall — CTA aus Health-Detail (FHS Phase 4 P31)',
+    summary: [
+      'Neu: „Servicefall erstellen“ in `HealthServiceActions` neben bestehender Service-Aufgabe.',
+      'Prefill: Fahrzeug fix, Health-Modul, Finding-Code, `sourceFindingId`, Kategorie, Priorität, Mietblockade-Kontext, Titel/Beschreibung; `organizationId` serverseitig.',
+      'Dedup: passender offener Servicefall wird erkannt und verlinkt (`sourceFindingId` / `findingCode`).',
+      'Keine automatische Erstellung; Read-only ohne Mutationsbuttons; Workflow-Hinweis Servicefall vs. Einzelaufgabe.',
+    ],
+    reason: 'FHS Phase 4 Prompt 31: Mehrstufige Werkstattprozesse aus Health-Finding anstoßen.',
+    previousBehavior:
+      'Health-Detail bot nur Service-Aufgabe; kein Servicefall-Prefill, keine Case-Dedup, kein Create-Modal.',
+    details:
+      'health-service-case-bridge.utils.ts (+Tests), ServiceCaseCreateModal.tsx, HealthServiceActions.tsx, HealthVehicleDetailPanel.tsx, HealthErrorsView.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-case-detail-fhs-p30-2026-07-20',
     version: '4.9.621',
     title: 'Fleet Zustand & Service — Servicefall-Detailpanel (FHS Phase 4 P30)',

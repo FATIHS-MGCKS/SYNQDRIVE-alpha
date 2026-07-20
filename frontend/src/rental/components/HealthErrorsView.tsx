@@ -1925,6 +1925,16 @@ export function HealthErrorsView({
                 vehicleId={vehicleId}
                 healthModule="error_codes"
                 rentalModule={rentalHealth?.modules.error_codes}
+                findingCode={(() => {
+                  const first = (dtcDetail?.currentFaults?.activeFaults ?? [])[0] as
+                    | { dtcCode?: string; code?: string }
+                    | undefined;
+                  const code = first ? String(first.dtcCode ?? first.code ?? '').trim() : '';
+                  return code ? `dtc-${code}` : 'rental-error_codes';
+                })()}
+                findingTitle={rentalHealth?.modules.error_codes?.reason ?? undefined}
+                blocksRental={rentalHealth?.rental_blocked}
+                blockingReasons={rentalHealth?.blocking_reasons}
                 dtcCodes={(dtcDetail?.currentFaults?.activeFaults ?? []).map((c: { dtcCode?: string; code?: string }) =>
                   String(c.dtcCode ?? c.code ?? ''),
                 ).filter(Boolean)}
@@ -2171,6 +2181,9 @@ export function HealthErrorsView({
                 vehicleId={vehicleId}
                 healthModule="battery"
                 rentalModule={rentalHealth?.modules.battery}
+                findingTitle={rentalHealth?.modules.battery?.reason ?? undefined}
+                blocksRental={rentalHealth?.rental_blocked}
+                blockingReasons={rentalHealth?.blocking_reasons}
                 onOpenServiceCenter={onOpenServiceCenter}
                 onOpenExistingTask={onOpenExistingTask}
                 className="mt-4 pt-4 border-t border-border"
@@ -2613,6 +2626,9 @@ export function HealthErrorsView({
                 vehicleId={vehicleId}
                 healthModule="brakes"
                 rentalModule={rentalHealth?.modules.brakes}
+                findingTitle={rentalHealth?.modules.brakes?.reason ?? undefined}
+                blocksRental={rentalHealth?.rental_blocked}
+                blockingReasons={rentalHealth?.blocking_reasons}
                 contextLines={[
                   brakeHealthSummary?.overallCondition
                     ? `Zustand: ${brakeHealthSummary.overallCondition}`
@@ -3626,6 +3642,9 @@ export function HealthErrorsView({
                 vehicleId={vehicleId}
                 healthModule="tires"
                 rentalModule={rentalHealth?.modules.tires}
+                findingTitle={rentalHealth?.modules.tires?.reason ?? undefined}
+                blocksRental={rentalHealth?.rental_blocked}
+                blockingReasons={rentalHealth?.blocking_reasons}
                 contextLines={[
                   tireHealth?.displayTreadMm != null
                     ? `Profiltiefe: ${tireHealth.displayTreadMm.toFixed(1)} mm`

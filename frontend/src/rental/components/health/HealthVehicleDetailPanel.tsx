@@ -69,6 +69,7 @@ export interface HealthVehicleDetailPanelProps {
   onClose: () => void;
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
+  onOpenExistingServiceCase?: (serviceCaseId: string) => void;
   className?: string;
 }
 
@@ -76,21 +77,31 @@ function ModuleServiceFooter({
   vehicleId,
   module,
   rentalModule,
+  findingCode,
+  findingTitle,
   contextLines,
   dtcCodes,
   complianceSignals,
+  blocksRental,
+  blockingReasons,
   onOpenServiceCenter,
   onOpenExistingTask,
+  onOpenExistingServiceCase,
   compact,
 }: {
   vehicleId: string;
   module: HealthActionModule;
   rentalModule?: import('../../../lib/api').RentalHealthModule;
+  findingCode?: string;
+  findingTitle?: string;
   contextLines?: string[];
   dtcCodes?: string[];
   complianceSignals?: import('../../../lib/api').ComplianceTaskSignal[] | null;
+  blocksRental?: boolean;
+  blockingReasons?: string[];
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
+  onOpenExistingServiceCase?: (serviceCaseId: string) => void;
   compact?: boolean;
 }) {
   return (
@@ -98,11 +109,16 @@ function ModuleServiceFooter({
       vehicleId={vehicleId}
       healthModule={module}
       rentalModule={rentalModule}
+      findingCode={findingCode ?? `rental-${module}`}
+      findingTitle={findingTitle}
       contextLines={contextLines}
       dtcCodes={dtcCodes}
       complianceSignals={complianceSignals}
+      blocksRental={blocksRental}
+      blockingReasons={blockingReasons}
       onOpenServiceCenter={onOpenServiceCenter}
       onOpenExistingTask={onOpenExistingTask}
+      onOpenExistingServiceCase={onOpenExistingServiceCase}
       compact={compact}
       className="pt-1"
     />
@@ -117,6 +133,7 @@ export function HealthVehicleDetailPanel({
   onClose,
   onOpenServiceCenter,
   onOpenExistingTask,
+  onOpenExistingServiceCase,
   className,
 }: HealthVehicleDetailPanelProps) {
   const { orgId } = useRentalOrg();
@@ -146,6 +163,8 @@ export function HealthVehicleDetailPanel({
   const explanation = buildStatusExplanation(health);
   const affected = affectedModuleCount(health);
   const actions = buildRecommendedActions(health);
+  const rentalBlocked = health?.rental_blocked ?? false;
+  const blockingReasons = health?.blocking_reasons ?? [];
   const trust = dataTrustSummary(health);
   const moduleChips = buildModuleChips(health);
 
@@ -232,8 +251,12 @@ export function HealthVehicleDetailPanel({
                     vehicleId={vehicle.id}
                     module={key}
                     rentalModule={mod}
+                    findingTitle={mod.reason ?? undefined}
+                    blocksRental={rentalBlocked}
+                    blockingReasons={blockingReasons}
                     onOpenServiceCenter={onOpenServiceCenter}
                     onOpenExistingTask={onOpenExistingTask}
+                    onOpenExistingServiceCase={onOpenExistingServiceCase}
                     compact
                   />
                 );
@@ -307,6 +330,9 @@ export function HealthVehicleDetailPanel({
           vehicleId={vehicle.id}
           module="tires"
           rentalModule={health?.modules.tires}
+          findingTitle={health?.modules.tires?.reason ?? undefined}
+          blocksRental={rentalBlocked}
+          blockingReasons={blockingReasons}
           contextLines={[
             tireLowestTreadLabel(s),
             tireDefaultAssumptionWarning(s) ?? '',
@@ -314,6 +340,7 @@ export function HealthVehicleDetailPanel({
           ].filter(Boolean)}
           onOpenServiceCenter={onOpenServiceCenter}
           onOpenExistingTask={onOpenExistingTask}
+          onOpenExistingServiceCase={onOpenExistingServiceCase}
         />
         </div>
       );
@@ -352,9 +379,13 @@ export function HealthVehicleDetailPanel({
           vehicleId={vehicle.id}
           module="brakes"
           rentalModule={health?.modules.brakes}
+          findingTitle={health?.modules.brakes?.reason ?? undefined}
+          blocksRental={rentalBlocked}
+          blockingReasons={blockingReasons}
           contextLines={[`Zustand: ${cond}`]}
           onOpenServiceCenter={onOpenServiceCenter}
           onOpenExistingTask={onOpenExistingTask}
+          onOpenExistingServiceCase={onOpenExistingServiceCase}
         />
         </div>
       );
@@ -428,8 +459,12 @@ export function HealthVehicleDetailPanel({
           vehicleId={vehicle.id}
           module="battery"
           rentalModule={health?.modules.battery}
+          findingTitle={health?.modules.battery?.reason ?? undefined}
+          blocksRental={rentalBlocked}
+          blockingReasons={blockingReasons}
           onOpenServiceCenter={onOpenServiceCenter}
           onOpenExistingTask={onOpenExistingTask}
+          onOpenExistingServiceCase={onOpenExistingServiceCase}
         />
         </div>
       );
@@ -470,9 +505,14 @@ export function HealthVehicleDetailPanel({
           vehicleId={vehicle.id}
           module="error_codes"
           rentalModule={mod}
+          findingCode={codes.length ? `dtc-${codes[0]}` : 'rental-error_codes'}
+          findingTitle={mod?.reason ?? undefined}
+          blocksRental={rentalBlocked}
+          blockingReasons={blockingReasons}
           dtcCodes={codes}
           onOpenServiceCenter={onOpenServiceCenter}
           onOpenExistingTask={onOpenExistingTask}
+          onOpenExistingServiceCase={onOpenExistingServiceCase}
         />
         </div>
       );
@@ -500,10 +540,14 @@ export function HealthVehicleDetailPanel({
             vehicleId={vehicle.id}
             module="service_compliance"
             rentalModule={health?.modules.service_compliance}
+            findingTitle={health?.modules.service_compliance?.reason ?? undefined}
+            blocksRental={rentalBlocked}
+            blockingReasons={blockingReasons}
             complianceSignals={svc?.taskSignals}
             contextLines={[tuv.label, bok.label].filter((l) => l && l !== '—')}
             onOpenServiceCenter={onOpenServiceCenter}
             onOpenExistingTask={onOpenExistingTask}
+            onOpenExistingServiceCase={onOpenExistingServiceCase}
           />
         </div>
       );
@@ -580,7 +624,10 @@ export function HealthVehicleDetailPanel({
     loading,
     moduleChips,
     onOpenExistingTask,
+    onOpenExistingServiceCase,
     onOpenServiceCenter,
+    rentalBlocked,
+    blockingReasons,
     trust,
     vehicle.id,
   ]);
