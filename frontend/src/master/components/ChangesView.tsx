@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'service-center-service-cases-load-fhs-p25-2026-07-20',
+    version: '4.9.616',
+    title: 'Service Center — load service cases (FHS Phase 4 P25)',
+    summary: [
+      '`api.serviceCases.list` org-scoped in `useServiceCenterData` über dediziertes Fetch-Modul.',
+      'Eigener Source State mit `serviceCasesError`, `serviceCasesStatus`, `serviceCasesFetchedAt`, `reloadServiceCases`.',
+      'Kein stilles Fallback bei ungültiger Listen-Response; List-Endpoint statt Detail-GET.',
+      '6-Tab-UI unverändert — Datenlayer vorbereitet für spätere Case-Navigation.',
+    ],
+    reason: 'FHS Phase 4 Prompt 25: Service Cases als echte vierte Quelle im Service Center.',
+    previousBehavior:
+      'Service Cases waren im Source-State vorbereitet, aber ohne dedizierten Fetch-Wrapper und ohne explizite Reload-/Error-Flächen.',
+    details:
+      'service-center-service-cases.ts (+Tests), useServiceCenterData.ts (+Hook-Tests), service-center.types.ts',
+    affectsArchitecture: true,
+    module: 'Service Center',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-source-freshness-fhs-p24-2026-07-20',
     version: '4.9.615',
     title: 'Fleet Zustand & Service — accurate source freshness (FHS Phase 3 P24)',
