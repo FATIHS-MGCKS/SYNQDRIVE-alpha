@@ -375,24 +375,6 @@ function FilterFields({
             />
             <span className="text-xs text-foreground">Nur überfällig</span>
           </label>
-          <label className={layout === 'stacked' ? 'block' : undefined}>
-            {layout === 'stacked' ? (
-              <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">Sortierung</span>
-            ) : null}
-            <select
-              value={filters.sortBy}
-              onChange={(event) =>
-                onChange({ sortBy: event.target.value as TasksFilterState['sortBy'] })
-              }
-              className={fieldClass}
-              aria-label="Sortierung"
-            >
-              <option value="dueDate">Fälligkeit</option>
-              <option value="priority">Priorität</option>
-              <option value="status">Status</option>
-              <option value="created">Neueste</option>
-            </select>
-          </label>
         </>
       ) : null}
 

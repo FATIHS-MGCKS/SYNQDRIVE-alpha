@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-tasks-cursor-pagination-ui-p47-2026-07-20',
+    version: '4.9.718',
+    title: 'Fleet Tasks — paginierte Aufgabenansicht (Phase 7 P47)',
+    summary: [
+      '`useTaskList` lädt initial eine Seite (`listPage`), `loadMore` folgt `nextCursor` ohne Duplikate.',
+      'Filterwechsel setzt Cursor zurück; Reload behält sichtbare Daten bei Fehlern (`isStale`).',
+      '`useTasksPageViewModel` + TasksView: „Weitere Ergebnisse laden“, getrennte Load-More-Fehler.',
+      'KPIs/Tab-Counts weiterhin aus `GET /tasks/summary`, nicht aus geladener Seite; keine Client-Vollsortierung.',
+    ],
+    reason: 'Phase 7 Prompt 47: Aufgabenansicht auf Cursor-Pagination umstellen.',
+    previousBehavior:
+      '`api.tasks.list` lud alle Seiten aggregiert; TasksView sortierte clientseitig und leitete Tab-Counts teils aus der geladenen Liste ab.',
+    details:
+      'useTaskList.ts (+test), taskListPagination.utils.ts (+test), useTasksPageViewModel.ts, tasksPageViewModel.utils.ts (+test), TasksView.tsx, TasksFilterPanel.tsx, TasksView.contract.test.ts',
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'tasks-cursor-pagination-p46-2026-07-20',
     version: '4.9.717',
     title: 'Tasks — serverseitige Cursor-Pagination (Phase 7 P46)',

@@ -25,9 +25,9 @@ describe('TasksView integration contract', () => {
   it('syncs filters with URL and uses task list hooks', () => {
     expect(source).toContain('readTasksListFiltersFromUrl');
     expect(source).toContain('syncTasksListFiltersToUrl');
-    expect(source).toContain('useTaskList');
-    expect(source).toContain('useTaskSummary');
+    expect(source).toContain('useTasksPageViewModel');
     expect(source).toContain('subscribeTaskQueryInvalidation');
+    expect(source).toContain('data-testid="tasks-load-more"');
   });
 
   it('renders loading, empty and error states', () => {
