@@ -93,16 +93,17 @@ export class RentalHealthController {
                 vehicle_id: v.id,
                 organization_id: orgId,
                 overall_state: 'unknown' as const,
+                availability: 'unavailable' as const,
                 rental_blocked: false,
                 blocking_reasons: [],
                 modules: {
-                  battery: stubUnknown(),
-                  tires: stubUnknown(),
-                  brakes: stubUnknown(),
-                  error_codes: stubUnknown(),
-                  service_compliance: stubUnknown(),
-                  complaints: stubUnknown(),
-                  vehicle_alerts: stubUnknown(),
+                  battery: stubUnknown(false),
+                  tires: stubUnknown(false),
+                  brakes: stubUnknown(false),
+                  error_codes: stubUnknown(false),
+                  service_compliance: stubUnknown(false),
+                  complaints: stubUnknown(false),
+                  vehicle_alerts: stubUnknown(false),
                 },
                 generated_at: new Date().toISOString(),
                 _error: (err as Error).message,
@@ -200,11 +201,12 @@ export class RentalHealthController {
   }
 }
 
-function stubUnknown() {
+function stubUnknown(pipelineAvailable = false) {
   return {
     state: 'unknown' as const,
     reason: 'Daten nicht verfügbar',
     last_updated_at: null,
     data_stale: true,
+    pipeline_available: pipelineAvailable,
   };
 }

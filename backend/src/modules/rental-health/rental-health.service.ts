@@ -26,9 +26,11 @@ import {
   ModuleHealth,
   VehicleHealth,
   computeOverallState,
+  finalizeVehicleHealthAvailability,
   maxSeverity,
   isStale,
   toIso,
+  type RentalHealthModuleKey,
 } from './rental-health.types';
 import {
   buildTireModuleHealth,
@@ -212,9 +214,20 @@ export class RentalHealthService {
       vehicle_alerts: this.evaluateVehicleAlerts(hmAi),
     } as const;
 
-    const overall_state = computeOverallState(Object.values(modules));
+    const moduleLoadFailures: Partial<Record<RentalHealthModuleKey, boolean>> = {
+      battery: batteryRes.status === 'rejected',
+      tires: tiresRes.status === 'rejected',
+      brakes: brakesRes.status === 'rejected' || brakesLoadError != null,
+      error_codes: dtcRes.status === 'rejected',
+      service_compliance: complianceRes.status === 'rejected',
+      complaints: !complaintsLoaded,
+    };
+    const { modules: modulesWithAvailability, availability } =
+      finalizeVehicleHealthAvailability(modules, moduleLoadFailures);
+
+    const overall_state = computeOverallState(Object.values(modulesWithAvailability));
     const blocking_reasons = this.collectBlockingReasons(
-      modules,
+      modulesWithAvailability,
       openComplaints,
       hmAi,
       complianceEval,
@@ -227,9 +240,10 @@ export class RentalHealthService {
       vehicle_id: vehicleId,
       organization_id: orgId,
       overall_state,
+      availability,
       rental_blocked: blocking_reasons.length > 0,
       blocking_reasons,
-      modules,
+      modules: modulesWithAvailability,
       generated_at: new Date().toISOString(),
     };
   }

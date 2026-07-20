@@ -16,11 +16,50 @@
 
 export type HealthState = 'good' | 'warning' | 'critical' | 'unknown' | 'n_a';
 
+/**
+ * Data/pipeline availability for the Rental Health V1 aggregate.
+ *
+ * Orthogonal to {@link HealthState} (`overall_state` severity) and
+ * {@link VehicleHealth.rental_blocked} (operational gate). Describes whether
+ * module evaluators successfully produced responses — not whether the vehicle
+ * is healthy.
+ *
+ * Additive V1 field: existing clients may ignore it; no URL version bump.
+ */
+export type RentalHealthAvailabilityState = 'ready' | 'partial' | 'unavailable';
+
+/** Per-module pipeline outcome used by {@link computeRentalHealthAvailability}. */
+export type ModulePipelineAvailability = 'available' | 'unavailable' | 'not_applicable';
+
+export const RENTAL_HEALTH_MODULE_KEYS = [
+  'battery',
+  'tires',
+  'brakes',
+  'error_codes',
+  'service_compliance',
+  'complaints',
+  'vehicle_alerts',
+] as const;
+
+export type RentalHealthModuleKey = (typeof RENTAL_HEALTH_MODULE_KEYS)[number];
+
+export interface ModuleAvailabilityInput {
+  key: RentalHealthModuleKey;
+  state: HealthState;
+  pipeline_availability: ModulePipelineAvailability;
+}
+
 export interface ModuleHealth {
   state: HealthState;
   reason: string;
   last_updated_at: string | null; // ISO 8601 — null when no data has ever been seen
   data_stale: boolean;
+  /**
+   * Whether the module evaluator responded successfully.
+   * `false` signals a pipeline/load failure — distinct from `state: unknown`
+   * when data is simply missing but the evaluator ran.
+   */
+  pipeline_available?: boolean;
   /** Data origin when known — e.g. hm_oem, dtc_poll, canonical_battery. */
   source?: string;
   /** How the module state was derived — never fabricated. */
@@ -40,6 +79,8 @@ export interface VehicleHealth {
   vehicle_id: string;
   organization_id: string;
   overall_state: HealthState;
+  /** Data/pipeline coverage across applicable modules — not health severity. */
+  availability: RentalHealthAvailabilityState;
   rental_blocked: boolean;
   blocking_reasons: string[];
   modules: {
@@ -94,6 +135,82 @@ export function computeOverallState(
   if (applicable.some((m) => m.state === 'warning')) return 'warning';
   if (applicable.some((m) => m.state === 'unknown')) return 'unknown';
   return 'good';
+}
+
+/**
+ * Resolve pipeline availability for one module.
+ *
+ * Pipeline failures (`loadFailed`) are never folded into `state: unknown`
+ * semantics — they map to `unavailable` here while successful evaluators
+ * with missing data remain `available`.
+ */
+export function resolveModulePipelineAvailability(
+  state: HealthState,
+  options: { loadFailed?: boolean } = {},
+): ModulePipelineAvailability {
+  if (state === 'n_a') return 'not_applicable';
+  if (options.loadFailed) return 'unavailable';
+  return 'available';
+}
+
+/**
+ * Aggregate vehicle-level data/pipeline availability.
+ *
+ *   all applicable modules available  → ready
+ *   some available, some unavailable  → partial (module payloads preserved)
+ *   none available                    → unavailable
+ *   every module not_applicable       → unavailable
+ */
+export function computeRentalHealthAvailability(
+  modules: ReadonlyArray<ModuleAvailabilityInput>,
+): RentalHealthAvailabilityState {
+  const applicable = modules.filter((m) => m.pipeline_availability !== 'not_applicable');
+  if (applicable.length === 0) return 'unavailable';
+
+  const availableCount = applicable.filter(
+    (m) => m.pipeline_availability === 'available',
+  ).length;
+  if (availableCount === 0) return 'unavailable';
+  if (availableCount === applicable.length) return 'ready';
+  return 'partial';
+}
+
+/**
+ * Build availability inputs from module states and per-key load failures.
+ * Does not mutate module payloads — safe to call after module assembly.
+ */
+export function buildModuleAvailabilityInputs(
+  modules: Record<RentalHealthModuleKey, Pick<ModuleHealth, 'state'>>,
+  loadFailures: Partial<Record<RentalHealthModuleKey, boolean>> = {},
+): ModuleAvailabilityInput[] {
+  return RENTAL_HEALTH_MODULE_KEYS.map((key) => ({
+    key,
+    state: modules[key].state,
+    pipeline_availability: resolveModulePipelineAvailability(modules[key].state, {
+      loadFailed: loadFailures[key] === true,
+    }),
+  }));
+}
+
+/**
+ * Annotate module payloads with `pipeline_available` and compute aggregate availability.
+ */
+export function finalizeVehicleHealthAvailability<T extends Record<RentalHealthModuleKey, ModuleHealth>>(
+  modules: T,
+  loadFailures: Partial<Record<RentalHealthModuleKey, boolean>> = {},
+): { modules: T; availability: RentalHealthAvailabilityState } {
+  const annotated = { ...modules } as T;
+  for (const key of RENTAL_HEALTH_MODULE_KEYS) {
+    const loadFailed = loadFailures[key] === true;
+    annotated[key] = {
+      ...modules[key],
+      pipeline_available: !loadFailed,
+    };
+  }
+  const availability = computeRentalHealthAvailability(
+    buildModuleAvailabilityInputs(annotated, loadFailures),
+  );
+  return { modules: annotated, availability };
 }
 
 /**

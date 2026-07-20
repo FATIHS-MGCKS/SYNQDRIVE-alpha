@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-health-availability-contract-fhs-p18-2026-07-20',
+    version: '4.9.609',
+    title: 'Rental Health — availability state contract (FHS Phase 3 P18)',
+    summary: [
+      'Neues Feld `availability: ready | partial | unavailable` im Rental-Health-V1-Contract — additiv, ohne URL-Version.',
+      'Orthogonal zu `overall_state` (Severity) und `rental_blocked` (Gate); `pipeline_available` pro Modul trennt Pipeline-Fehler von `state: unknown`.',
+      'Aggregation via `computeRentalHealthAvailability`; Service + Fleet-Degrade setzen Verfügbarkeit; reine Typ-/Aggregationstests.',
+    ],
+    reason: 'FHS Phase 3 Prompt 18: Daten-/Pipeline-Verfügbarkeit explizit modellieren vor Frontend-Konsum.',
+    previousBehavior:
+      'Nur `overall_state` und `rental_blocked`; Pipeline-Ausfälle und fehlende Daten nicht getrennt auf Vehicle-Ebene.',
+    details:
+      'rental-health.types.ts (+spec), rental-health.service.ts, rental-health.controller.ts; keine Frontend-Änderung.',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-service-permissions-matrix-fhs-p17-2026-07-20',
     version: '4.9.608',
     title: 'Auth — fleet service permission test matrix (FHS Phase 2 P17)',
