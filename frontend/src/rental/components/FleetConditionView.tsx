@@ -38,11 +38,6 @@ import {
   computeFleetHealthKpis,
   formatRelativeTime,
   latestHealthGeneratedAt,
-  matchesDataQualityFilter,
-  matchesModuleFilter,
-  matchesStatusFilter,
-  operatorGroupForVehicle,
-  priorityRank,
   vehicleLastUpdatedIso,
   type HealthIssueChip,
   type OperatorDataQualityFilter,
@@ -51,6 +46,12 @@ import {
   type OperatorSortMode,
   type OperatorStatusFilter,
 } from '../lib/fleet-health-control-center';
+import {
+  filterAndSortFleetConditionVehicles,
+  groupFleetConditionVehicles,
+  shouldVirtualizeFleetConditionGroup,
+} from '../lib/fleet-condition-pipeline';
+import { FleetConditionVirtualizedVehicleRows } from './FleetConditionVirtualizedVehicleRows';
 
 export type ConditionCategory =
   | 'tires'
@@ -291,69 +292,28 @@ export function FleetConditionView({
     };
   }, [healthLoading, kpis]);
 
-  const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const base = fleetVehicles.filter((v) => {
-      const health = healthMap.get(v.id);
-      if (!matchesStatusFilter(statusFilter, health)) return false;
-      if (!matchesModuleFilter(moduleFilter, health)) return false;
-      if (!matchesDataQualityFilter(dataQualityFilter, health)) return false;
-      if (!q) return true;
-      const haystack = [v.model, v.make, v.license, v.station, v.year?.toString()]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-
-    const sorted = [...base];
-    sorted.sort((a, b) => {
-      const ha = healthMap.get(a.id);
-      const hb = healthMap.get(b.id);
-      if (sortMode === 'priority') {
-        return (
-          priorityRank(hb) - priorityRank(ha) ||
-          (a.license ?? '').localeCompare(b.license ?? '', 'de')
-        );
-      }
-      if (sortMode === 'station') {
-        return (a.station ?? '').localeCompare(b.station ?? '', 'de');
-      }
-      if (sortMode === 'license') {
-        return (a.license ?? '').localeCompare(b.license ?? '', 'de');
-      }
-      const ua = vehicleLastUpdatedIso(ha);
-      const ub = vehicleLastUpdatedIso(hb);
-      return Date.parse(ub ?? '0') - Date.parse(ua ?? '0');
-    });
-    return sorted;
-  }, [
-    fleetVehicles,
-    healthMap,
-    statusFilter,
-    moduleFilter,
-    dataQualityFilter,
-    searchQuery,
-    sortMode,
-  ]);
+  const filtered = useMemo(
+    () =>
+      filterAndSortFleetConditionVehicles({
+        fleetVehicles,
+        healthMap,
+        statusFilter,
+        moduleFilter,
+        dataQualityFilter,
+        searchQuery,
+        sortMode,
+      }),
+    [fleetVehicles, healthMap, statusFilter, moduleFilter, dataQualityFilter, searchQuery, sortMode],
+  );
 
   const groupedVehicles = useMemo(() => {
-    const buckets: Record<OperatorGroupKey, typeof filtered> = {
-      action_required: [],
-      needs_review: [],
-      limited_data: [],
-      good: [],
-    };
-    for (const v of filtered) {
-      const health = healthMap.get(v.id);
-      buckets[operatorGroupForVehicle(health)].push(v);
-    }
+    const buckets = groupFleetConditionVehicles(filtered, healthMap);
     return (Object.keys(GROUP_CONFIG) as OperatorGroupKey[]).map((key) => ({
       key,
       ...GROUP_CONFIG[key],
       vehicles: buckets[key],
     }));
-  }, [filtered, healthMap]);
+  }, [filtered, healthMap, GROUP_CONFIG]);
 
   const selectedVehicle = useMemo(
     () => fleetVehicles.find((v) => v.id === selectedVehicleId) ?? null,
@@ -762,27 +722,49 @@ export function FleetConditionView({
                     />
                   </button>
 
-                  {isGroupOpen && (
-                    <div className="border-t border-border/60 divide-y divide-border/40">
-                      {group.vehicles.map((vehicle) => (
-                        <OperatorVehicleRow
-                          key={vehicle.id}
-                          vehicle={vehicle}
-                          health={healthMap.get(vehicle.id)}
-                          healthLoading={healthLoading}
-                          systemDark={systemDark}
-                          selected={selectedVehicleId === vehicle.id}
-                          uiLocale={uiLocale}
-                          existingTaskId={getExistingTaskId?.(vehicle.id) ?? null}
-                          onOpenExistingTask={onOpenExistingTask}
-                          onOpen={() => openVehicleDetail(vehicle.id)}
-                          onModuleClick={(chipKey) =>
-                            openVehicleDetail(vehicle.id, moduleKeyToTab(chipKey))
-                          }
-                        />
-                      ))}
-                    </div>
-                  )}
+                  {isGroupOpen &&
+                    (shouldVirtualizeFleetConditionGroup(group.vehicles.length) ? (
+                      <FleetConditionVirtualizedVehicleRows
+                        items={group.vehicles}
+                        getItemKey={(vehicle) => vehicle.id}
+                        renderItem={(vehicle) => (
+                          <OperatorVehicleRow
+                            vehicle={vehicle}
+                            health={healthMap.get(vehicle.id)}
+                            healthLoading={healthLoading}
+                            systemDark={systemDark}
+                            selected={selectedVehicleId === vehicle.id}
+                            uiLocale={uiLocale}
+                            existingTaskId={getExistingTaskId?.(vehicle.id) ?? null}
+                            onOpenExistingTask={onOpenExistingTask}
+                            onOpen={() => openVehicleDetail(vehicle.id)}
+                            onModuleClick={(chipKey) =>
+                              openVehicleDetail(vehicle.id, moduleKeyToTab(chipKey))
+                            }
+                          />
+                        )}
+                      />
+                    ) : (
+                      <div className="border-t border-border/60 divide-y divide-border/40">
+                        {group.vehicles.map((vehicle) => (
+                          <OperatorVehicleRow
+                            key={vehicle.id}
+                            vehicle={vehicle}
+                            health={healthMap.get(vehicle.id)}
+                            healthLoading={healthLoading}
+                            systemDark={systemDark}
+                            selected={selectedVehicleId === vehicle.id}
+                            uiLocale={uiLocale}
+                            existingTaskId={getExistingTaskId?.(vehicle.id) ?? null}
+                            onOpenExistingTask={onOpenExistingTask}
+                            onOpen={() => openVehicleDetail(vehicle.id)}
+                            onModuleClick={(chipKey) =>
+                              openVehicleDetail(vehicle.id, moduleKeyToTab(chipKey))
+                            }
+                          />
+                        ))}
+                      </div>
+                    ))}
                 </section>
               );
             })}
