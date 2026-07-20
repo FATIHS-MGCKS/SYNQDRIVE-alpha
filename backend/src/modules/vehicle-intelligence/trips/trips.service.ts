@@ -14,6 +14,7 @@ import {
   buildTripDriverIdentityFilter,
   scopedVehicleTripWhere,
 } from '../tenant/vehicle-intelligence-tenant.scope';
+import { resolveEnrichmentDistanceKm } from './trip-distance.helpers';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -311,10 +312,10 @@ export class TripsService {
       endTime,
     );
 
-    let distanceKm = trip.distanceKm;
-    if (matchResult && matchResult.totalDistance > 0) {
-      distanceKm = Math.round(matchResult.totalDistance / 100) / 10;
-    }
+    const distanceKm = resolveEnrichmentDistanceKm(
+      trip,
+      matchResult?.totalDistance,
+    );
 
     if (routePoints.length >= 2) {
       const firstPt = routePoints[0];

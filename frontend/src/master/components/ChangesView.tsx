@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-distance-dimo-preserve-2026-07-20',
+    version: '4.9.602',
+    title: 'V4.9.602 — Trip-Distanz: DIMO-Odometer bei Enrichment erhalten',
+    summary: [
+      'Fix: `TripsService.enrichTrip` überschreibt `distanceKm` nicht mehr mit Map-Match-Distanz, wenn die Fahrt eine DIMO-Segment-Odometer-Distanz in `rawDetectionMeta.dimoSegment` trägt (z. B. `DIMO_changePointDetection_REPAIR`).',
+      'Helper: `trip-distance.helpers.ts` — `resolveDimoCanonicalDistanceKm` / `resolveEnrichmentDistanceKm` kapseln die Priorität DIMO-Odometer > Map-Match > bestehender Wert.',
+      'Ops: `backend/scripts/ops/restore-dimo-trip-distances.ts` — stellt `distanceKm` aus DIMO-Metadaten für bereits fehlerhaft angereicherte Trips wieder her (dry-run / --apply).',
+    ],
+    reason:
+      'Nach V4.9.601-Reparatur stimmten Trip-Grenzen (8 Trips) mit DIMO überein, aber Route-Enrichment ersetzte die korrekte DIMO-Odometer-Distanz durch unvollständige Map-Match-Geometrie (z. B. Tiguan WOB L 7503, 19.07.2026: 866 km statt 1054 km).',
+    previousBehavior:
+      'enrichTrip setzte distanceKm immer auf Map-Match totalDistance, sobald ≥2 Routenpunkte vorlagen — unabhängig von DIMO-Segment-Odometer.',
+    details:
+      'backend/src/modules/vehicle-intelligence/trips/trip-distance.helpers.ts, backend/src/modules/vehicle-intelligence/trips/trips.service.ts, backend/scripts/ops/restore-dimo-trip-distances.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-20T15:50:00.000Z',
+  },
+  {
     id: 'trip-detection-snapshot-dimo-repair-2026-07-20',
     version: '4.9.601',
     title: 'V4.9.601 — Trip-Erkennung: Snapshot-Reparatur + DIMO-first Reconciliation',
