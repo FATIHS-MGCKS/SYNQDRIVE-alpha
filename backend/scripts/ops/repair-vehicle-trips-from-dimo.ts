@@ -15,7 +15,7 @@
 import { NestFactory } from '@nestjs/core';
 import { TripSource } from '@prisma/client';
 import { AppModule } from '../../src/app.module';
-import { PrismaService } from '../../src/shared/database/prisma.service';
+import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../src/modules/dimo/dimo-segments.service';
 import { TripReconciliationService } from '../../src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 
@@ -48,7 +48,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, {
     logger: ['error', 'warn', 'log'],
   });
 
