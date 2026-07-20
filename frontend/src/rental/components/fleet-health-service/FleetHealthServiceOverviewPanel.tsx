@@ -3,13 +3,14 @@ import {
   buildFleetHealthServiceKpis,
   FleetHealthServiceKpiStrip,
 } from './FleetHealthServiceKpiStrip';
-import { FleetHealthServicePrioritizedList } from './FleetHealthServicePrioritizedList';
+import { FleetHealthServicePriorityOverview } from './FleetHealthServicePriorityOverview';
 import { fhs } from './fleet-health-service-shell';
 import type { FleetHealthServiceViewModel } from './fleet-health-service.view-model';
 import type { FleetHealthServiceTab, FleetHealthServiceWorkSection } from './fleet-health-service.types';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface FleetHealthServiceOverviewPanelProps {
-  vm: FleetHealthServiceViewModel;
+  vm: FleetHealthServiceViewModel & { reloadService?: () => void };
   onNavigateSubTab?: (tab: FleetHealthServiceTab) => void;
   onNavigateWork?: (section: FleetHealthServiceWorkSection) => void;
   onOpenVehicle?: (vehicleId: string) => void;
@@ -25,6 +26,7 @@ export function FleetHealthServiceOverviewPanel({
   onOpenTask,
   onCreateTask,
 }: FleetHealthServiceOverviewPanelProps) {
+  const { t } = useLanguage();
   const kpiItems = buildFleetHealthServiceKpis(vm.healthKpis, vm.executionGroups);
 
   const handleKpiClick = (key: string) => {
@@ -45,6 +47,10 @@ export function FleetHealthServiceOverviewPanel({
     }
   };
 
+  const handleReload = () => {
+    vm.reloadService?.();
+  };
+
   return (
     <div className="space-y-4">
       <section className="space-y-2">
@@ -58,19 +64,18 @@ export function FleetHealthServiceOverviewPanel({
 
       <section className={fhs.panel}>
         <div className={fhs.panelBody}>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div>
-              <DashboardSectionLabel className="mb-1">
-                Priorisierte Fahrzeuge &amp; Aufgaben
-              </DashboardSectionLabel>
-              <p className={fhs.meta}>
-                Zustandssignale und offene Abarbeitung — ohne doppelte Zeilen pro Fahrzeug.
-              </p>
-            </div>
+          <div className="mb-3">
+            <DashboardSectionLabel className="mb-1">
+              {t('fleetHealthService.overview.priorityTitle')}
+            </DashboardSectionLabel>
+            <p className={fhs.meta}>{t('fleetHealthService.overview.prioritySubtitle')}</p>
           </div>
-          <FleetHealthServicePrioritizedList
-            rows={vm.prioritizedOverviewRows}
+          <FleetHealthServicePriorityOverview
+            sections={vm.prioritizedOverviewSections}
             loading={vm.loading}
+            healthError={vm.healthError}
+            serviceError={vm.serviceError}
+            onReload={handleReload}
             onOpenVehicle={onOpenVehicle}
             onOpenTask={onOpenTask}
             onCreateTask={() => onCreateTask?.()}

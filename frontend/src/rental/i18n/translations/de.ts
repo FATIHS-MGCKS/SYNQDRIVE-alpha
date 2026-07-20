@@ -223,6 +223,35 @@ export const de: Record<TranslationKey, string> = {
   'fleetHealthService.tab.tasks': 'Aufgaben',
   'fleetHealthService.tab.schedule': 'Termine',
   'fleetHealthService.tab.vendors': 'Partner',
+  'fleetHealthService.overview.priorityTitle': 'Handlungspriorität',
+  'fleetHealthService.overview.prioritySubtitle':
+    'Zustandssignale und operative Arbeit — nach Dringlichkeit gruppiert, ohne doppelte Health-Bewertung.',
+  'fleetHealthService.overview.section.technicallyBlocked': 'Technisch blockiert',
+  'fleetHealthService.overview.section.handleToday': 'Heute bearbeiten',
+  'fleetHealthService.overview.section.technicalReview': 'Technisch prüfen',
+  'fleetHealthService.overview.section.incompleteData': 'Daten unvollständig',
+  'fleetHealthService.overview.section.dueSoon': 'Demnächst fällig',
+  'fleetHealthService.overview.emptyTitle': 'Keine Einträge',
+  'fleetHealthService.overview.empty.technicallyBlocked':
+    'Keine Fahrzeuge mit technischer Vermietungssperre.',
+  'fleetHealthService.overview.empty.handleToday':
+    'Keine überfälligen oder heute fälligen Aufgaben.',
+  'fleetHealthService.overview.empty.technicalReview':
+    'Keine Fahrzeuge mit Warnsignalen zur technischen Prüfung.',
+  'fleetHealthService.overview.empty.incompleteData':
+    'Keine Fahrzeuge mit unvollständigen Health-Daten.',
+  'fleetHealthService.overview.empty.dueSoon':
+    'Keine Aufgaben mit Fälligkeit in den nächsten Tagen.',
+  'fleetHealthService.overview.errorTitle': 'Übersicht konnte nicht geladen werden',
+  'fleetHealthService.overview.errorRetry': 'Erneut laden',
+  'fleetHealthService.overview.kind.health': 'Zustand',
+  'fleetHealthService.overview.kind.task': 'Aufgabe',
+  'fleetHealthService.overview.showDetails': 'Details anzeigen',
+  'fleetHealthService.overview.hideDetails': 'Details ausblenden',
+  'fleetHealthService.overview.entryCount': '{count} Einträge',
+  'fleetHealthService.overview.entryCountOne': '1 Eintrag',
+  'fleetHealthService.overview.sourceHealth': 'Quelle',
+  'fleetHealthService.overview.sourceWork': 'Arbeit',
 
   // ─── Service Center (Fleet-Hub) ───
   'serviceCenter.eyebrow': 'Flottenbetrieb',

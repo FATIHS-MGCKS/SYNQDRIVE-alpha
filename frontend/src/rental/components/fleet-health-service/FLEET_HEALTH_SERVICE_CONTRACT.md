@@ -12,7 +12,7 @@
 | App-Router | `App.tsx` (`currentView === 'fleet'`, `fleetTab`, `fleetHealthServiceNav`) | Hält Fleet-View + Top-Level-Tab + interne Nav (`tab` + `workSection`) |
 | Fleet Top-Tabs | `FleetHubView.tsx` | **`Status`** \| **`Zustand & Service`** (kein separater Health-/Maintenance-Top-Tab) |
 | Tab **Zustand & Service** | `FleetHealthServiceView.tsx` | Vier Primärbereiche (2×2 mobile, 4 Spalten desktop) |
-| Bereich **Übersicht** | `FleetHealthServiceOverviewPanel` | Triage-KPIs + priorisierte Liste (Health + Execution, dedupliziert) |
+| Bereich **Übersicht** | `FleetHealthServiceOverviewPanel` + `FleetHealthServicePriorityOverview` | KPI-Strip + fünf Handlungsprioritäts-Abschnitte (collapsible, Empty States pro Abschnitt) |
 | Bereich **Fahrzeuge** | `FleetConditionView` (`uiLocale=de`, `hideKpiStrip`) | Health/Zustand — keine doppelte KPI-Leiste |
 | Bereich **Arbeiten** | `FleetHealthServiceWorkPanel` | Segmented **Aufgaben** \| **Fälligkeiten**; Partner als sekundäre Aktion |
 | Bereich **Historie** | `FleetHealthServiceHistoryPanel` | Abgeschlossene/stornierte Tasks |
@@ -140,6 +140,8 @@ Fleet
     │   ├── Fälligkeiten   ← ehem. Tab „Termine“
     │   └── Partner        ← sekundäre Aktion (ehem. Primärtab)
     └── Historie           ← ehem. „Verlauf“
+
+**Übersicht (P53):** Handlungspriorität in fünf Abschnitten — Technisch blockiert · Heute bearbeiten · Technisch prüfen · Daten unvollständig · Demnächst fällig. Ableitung aus `operatorGroupForVehicle`, Task-Schedule und bestehendem ViewModel — keine zweite Health-Bewertung.
 ```
 
 Datenquellen bleiben getrennt — nur Navigation zusammengeführt.
