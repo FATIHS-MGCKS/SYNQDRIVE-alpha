@@ -7,25 +7,18 @@ import { getStoredUser } from '../../lib/auth';
 import {
   matchesTaskDetailInvalidation,
   subscribeTaskQueryInvalidation,
-  useTaskList,
-  useTaskSummary,
 } from '../../lib/tasks';
 import { taskEntityOptionLabel } from '../../lib/tasks/entity-label.utils';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import {
-  buildTasksPageKpis,
-  bucketCountFromSummary,
   canViewUnassignedTasksBucket,
-  getVisibleTasksPageViews,
   tasksPageEmptyState,
-  tasksPageViewCountLabel,
   type TasksPageView,
 } from '../lib/tasks-page.utils';
 import {
   mapApiTaskToTaskListRow,
-  sortTaskListRows,
   type OrgMemberRef,
   type TaskListRow,
 } from '../lib/task-list.utils';
@@ -47,6 +40,7 @@ import {
   syncTasksListFiltersToUrl,
   type TasksListFilters,
 } from './tasks/tasksListState';
+import { useTasksPageViewModel } from './tasks/useTasksPageViewModel';
 import type { Invoice } from './invoices/invoiceTypes';
 import { Icon } from './ui/Icon';
 
@@ -229,20 +223,27 @@ export function TasksView({
     [filters, debouncedSearch, currentUserId],
   );
 
-  const listEnabled = Boolean(orgId) && (activeView !== 'unassigned' || canViewUnassigned);
   const {
-    tasks: rawTasks,
+    rawTasks,
     loading: tasksLoading,
+    loadingMore,
     error: tasksError,
+    loadMoreError,
+    hasMore,
     reload: reloadTasks,
+    loadMore,
     isStale,
-  } = useTaskList({
+    viewCounts,
+    kpis,
+    resultLabel,
+  } = useTasksPageViewModel({
     orgId,
-    filters: apiFilters,
-    enabled: listEnabled,
+    view: activeView,
+    apiFilters,
+    currentUserId,
+    userRole,
+    hasPermission,
   });
-
-  const { summary: taskSummary } = useTaskSummary({ orgId });
 
   const rowContext = useMemo(
     () => ({
@@ -263,12 +264,6 @@ export function TasksView({
     [rawTasks, rowContext],
   );
 
-  const sortedTasks = useMemo(
-    // Client-side sort applies to the current server page only (no cross-page ordering).
-    () => sortTaskListRows(tasks, filters.sortBy),
-    [tasks, filters.sortBy],
-  );
-
   const selectableTaskIds = useMemo(
     () => rawTasks.filter(isActiveApiTask).map((task) => task.id),
     [rawTasks],
@@ -281,25 +276,6 @@ export function TasksView({
   useEffect(() => {
     syncTasksListFiltersToUrl(filters, debouncedSearch);
   }, [filters, debouncedSearch]);
-
-  const viewCounts = useMemo(() => {
-    const counts: Partial<Record<TasksPageView, number>> = {};
-    for (const view of getVisibleTasksPageViews(canViewUnassigned)) {
-      if (view.id === activeView) {
-        counts[view.id] = sortedTasks.length;
-      } else if (view.id === 'mine') {
-        counts.mine = taskSummary?.assignedToMe ?? 0;
-      } else {
-        counts[view.id] = bucketCountFromSummary(taskSummary, view.bucket, 0);
-      }
-    }
-    return counts;
-  }, [activeView, canViewUnassigned, sortedTasks.length, taskSummary]);
-
-  const kpis = useMemo(
-    () => buildTasksPageKpis(taskSummary, canViewUnassigned),
-    [canViewUnassigned, taskSummary],
-  );
 
   const stationOptions = useMemo(
     () => orgStations.map((station) => ({ value: station.id, label: station.name })),
@@ -322,7 +298,6 @@ export function TasksView({
 
   const hasActiveFilters = hasActiveTaskFilters(filters, debouncedSearch);
   const emptyCopy = tasksPageEmptyState(activeView, hasActiveFilters);
-  const resultLabel = tasksPageViewCountLabel(activeView, sortedTasks.length);
 
   const clearFilters = useCallback(() => {
     setFilters((current) => ({
@@ -468,7 +443,7 @@ export function TasksView({
             <div key={index} className="surface-premium h-20 animate-pulse rounded-2xl md:h-[4.5rem]" />
           ))}
         </div>
-      ) : sortedTasks.length === 0 ? (
+      ) : tasks.length === 0 ? (
         <EmptyState
           compact
           icon={<ListTodo className="h-5 w-5" />}
@@ -496,7 +471,7 @@ export function TasksView({
               </button>
             </p>
           ) : null}
-          {sortedTasks.map((task) => (
+          {tasks.map((task) => (
             <TaskWorkItemCard
               key={task.id}
               task={task}
@@ -510,6 +485,29 @@ export function TasksView({
               }}
             />
           ))}
+          {loadMoreError ? (
+            <ErrorState
+              compact
+              title="Weitere Aufgaben konnten nicht geladen werden"
+              error={loadMoreError}
+              onRetry={() => void loadMore()}
+              className="rounded-2xl py-6"
+            />
+          ) : null}
+          {hasMore ? (
+            <div className="flex justify-center pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={loadingMore}
+                onClick={() => void loadMore()}
+                data-testid="tasks-load-more"
+              >
+                {loadingMore ? 'Lädt weitere Aufgaben…' : 'Weitere Ergebnisse laden'}
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 

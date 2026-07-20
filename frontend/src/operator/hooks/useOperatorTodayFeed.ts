@@ -23,6 +23,8 @@ function useBucketList(orgId: string | null, bucket: TaskBucket, enabled: boolea
     orgId,
     bucket,
     enabled: Boolean(orgId) && enabled,
+    paginated: true,
+    pageSize: OPERATOR_TODAY_BUCKET_PREVIEW_LIMITS[bucket],
   });
 }
 

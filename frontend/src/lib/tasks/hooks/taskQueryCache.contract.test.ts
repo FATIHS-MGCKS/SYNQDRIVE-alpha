@@ -13,6 +13,8 @@ describe('task query cache hooks contract', () => {
     expect(source).toContain('matchesTaskListInvalidation');
     expect(source).toContain('subscribeTaskQueryInvalidation');
     expect(source).toContain('tasksRef.current');
+    expect(source).toContain('loadMoreError');
+    expect(source).toContain('mergeTaskListPages');
     expect(source).toContain('isStale: Boolean(error) && tasks.length > 0');
   });
 
