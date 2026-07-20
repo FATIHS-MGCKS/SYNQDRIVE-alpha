@@ -3,6 +3,10 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import {
+  fingerprintBullMqJobIdKey,
+  formatBullMqJobIdLogContext,
+} from '@shared/queue/bullmq-job-id.sanitizer';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import {
@@ -70,7 +74,7 @@ export class BatteryV2JobProducerService {
 
     if (await this.deadLetters.isDeadLetter(jobType, payload.idempotencyKey)) {
       this.logger.debug(
-        `Battery V2 enqueue skipped (dead letter): ${jobType} key=${payload.idempotencyKey}`,
+        `Battery V2 enqueue skipped (dead letter): ${jobType} keyFp=${fingerprintBullMqJobIdKey(payload.idempotencyKey)}`,
       );
       return null;
     }
@@ -117,7 +121,11 @@ export class BatteryV2JobProducerService {
         return jobId;
       }
       this.logger.error(
-        `Battery V2 enqueue failed for ${jobType} jobId=${jobId}: ${(err as Error).message}`,
+        `Battery V2 enqueue failed for ${jobType} ${formatBullMqJobIdLogContext({
+          namespace: 'battery-v2',
+          key: payload.idempotencyKey,
+          jobId,
+        })}: ${(err as Error).message}`,
       );
       throw err;
     }

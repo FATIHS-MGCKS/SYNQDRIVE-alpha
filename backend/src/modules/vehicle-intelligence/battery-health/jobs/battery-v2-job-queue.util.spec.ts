@@ -1,10 +1,21 @@
 import { createHash } from 'crypto';
-import { buildBatteryV2JobId, buildBatteryV2JobOptions } from './battery-v2-job-queue.util';
+import {
+  buildBatteryV2JobId,
+  buildBatteryV2JobOptions,
+  isBatteryV2BullMqJobId,
+  isDeterministicBatteryV2JobId,
+} from './battery-v2-job-queue.util';
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
+import { isBullMqCompatibleJobId } from '@shared/queue/bullmq-job-id.sanitizer';
 
 describe('battery-v2-job-queue.util', () => {
-  it('builds stable job id from idempotency key', () => {
-    expect(buildBatteryV2JobId('obs:vehicle:123')).toBe('battery-v2:obs:vehicle:123');
+  it('builds stable colon-safe job id from idempotency key', () => {
+    const jobId = buildBatteryV2JobId('obs:vehicle:123');
+    expect(jobId).toBe('battery-v2_obs_3avehicle_3a123');
+    expect(jobId).not.toContain(':');
+    expect(isBullMqCompatibleJobId(jobId)).toBe(true);
+    expect(isBatteryV2BullMqJobId(jobId)).toBe(true);
+    expect(isDeterministicBatteryV2JobId('obs:vehicle:123', jobId)).toBe(true);
   });
 
   it('hashes long idempotency keys to deterministic BullMQ job ids', () => {
@@ -12,8 +23,11 @@ describe('battery-v2-job-queue.util', () => {
     const jobId = buildBatteryV2JobId(longKey);
     expect(jobId.length).toBeLessThanOrEqual(128);
     expect(jobId).toBe(buildBatteryV2JobId(longKey));
-    const hash = createHash('sha256').update(longKey).digest('hex').slice(0, 40);
-    expect(jobId).toBe(`battery-v2:${hash}`);
+    const hash = createHash('sha256')
+      .update(`battery-v2\x1f${longKey}`, 'utf8')
+      .digest('hex')
+      .slice(0, 40);
+    expect(jobId).toBe(`battery-v2_${hash}`);
   });
 
   it('maps retry policy into BullMQ options per job type', () => {
