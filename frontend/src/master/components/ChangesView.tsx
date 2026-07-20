@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'service-cases-read-permission-fhs-p15-2026-07-20',
+    version: '4.9.606',
+    title: 'Service Cases — enforce service_cases.read on all read endpoints (FHS Phase 2 P15)',
+    summary: [
+      'PermissionsGuard + `@RequireServiceCasePermission("service_cases.read")` auf allen GET Service-Case-Routen.',
+      'Abgedeckt: Liste, Detail (Tasks/Kommentare/Anhänge/Termine/Kosten), Fahrzeug- und Vendor-Convenience-Listen.',
+      'OrgScopingGuard + Tenant-Validierung für vehicleId/vendorId; Characterization- und Service-Tests für 403/NotFound.',
+    ],
+    reason: 'FHS Phase 2 Prompt 15: Service-Case-Leseendpunkte mit kanonischer Permission schützen.',
+    previousBehavior:
+      'ServiceCasesController nur OrgScopingGuard + RolesGuard ohne Modul-Permission auf GET-Routen.',
+    details:
+      'service-cases.controller.ts, decorators/require-service-case-permission.decorator.ts, service-cases.permissions.characterization.spec.ts, service-cases.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Service Cases',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'tasks-lifecycle-cost-permission-fhs-p14-2026-07-20',
     version: '4.9.605',
     title: 'Tasks — protect lifecycle and cost mutations (FHS Phase 2 P14)',

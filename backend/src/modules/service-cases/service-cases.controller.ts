@@ -12,6 +12,8 @@ import {
 import type { Request } from 'express';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequireServiceCasePermission } from './decorators/require-service-case-permission.decorator';
 import { ServiceCasesService } from './service-cases.service';
 import {
   AddServiceCaseAttachmentDto,
@@ -27,16 +29,18 @@ interface AuthRequest extends Request {
 }
 
 @Controller()
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class ServiceCasesController {
   constructor(private readonly serviceCases: ServiceCasesService) {}
 
   @Get('organizations/:orgId/service-cases')
+  @RequireServiceCasePermission('service_cases.read')
   async list(@Param('orgId') orgId: string, @Query() query: ListServiceCasesQueryDto) {
     return this.serviceCases.list(orgId, query);
   }
 
   @Get('organizations/:orgId/service-cases/:id')
+  @RequireServiceCasePermission('service_cases.read')
   async getOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.serviceCases.getById(orgId, id);
   }
@@ -96,6 +100,7 @@ export class ServiceCasesController {
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/service-cases')
+  @RequireServiceCasePermission('service_cases.read')
   async vehicleCases(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -105,6 +110,7 @@ export class ServiceCasesController {
   }
 
   @Get('organizations/:orgId/vendors/:vendorId/service-cases')
+  @RequireServiceCasePermission('service_cases.read')
   async vendorCases(
     @Param('orgId') orgId: string,
     @Param('vendorId') vendorId: string,
