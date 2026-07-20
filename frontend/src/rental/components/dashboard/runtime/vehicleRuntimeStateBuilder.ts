@@ -1,4 +1,4 @@
-import type { ApiServiceCase, VehicleHealthResponse } from '../../../../lib/api';
+import type { ApiServiceCase, ApiTask, VehicleHealthResponse } from '../../../../lib/api';
 import type {
   DashboardInsight,
   InsightSeverity,
@@ -20,10 +20,7 @@ import {
   type VehicleOperationalReadModel,
   type VehicleOperationalStatus as CanonicalOperationalStatus,
 } from '../../../lib/vehicle-operational-state';
-import {
-  blockingServiceCasesForVehicle,
-  createServiceCaseRuntimeReason,
-} from './serviceCaseRuntimeReasons';
+import { buildOperationalWorkBlockersForVehicle } from './operationalWorkBlockers';
 import {
   buildNextBookingInfoReason,
   deriveIsReadyForRenting,
@@ -179,6 +176,7 @@ export interface BuildVehicleRuntimeStatesInput {
   telemetryHardOfflineHours?: number;
   telemetryOfflineBlockLevel?: Exclude<RentalBlockLevel, 'none'> | 'none';
   serviceCases?: ApiServiceCase[];
+  tasks?: ApiTask[];
 }
 
 function parseTimeMs(iso: string | null | undefined): number | null {
@@ -554,13 +552,19 @@ function addTelemetryReason(input: {
   }
 }
 
-function addServiceCaseReasons(input: {
+function addOperationalWorkBlockers(input: {
   vehicleId: string;
+  tasks?: ApiTask[];
   serviceCases?: ApiServiceCase[];
   registerHardReason: (reason: RuntimeReason) => void;
+  addReason: (reason: RuntimeReason) => void;
 }): void {
-  for (const serviceCase of blockingServiceCasesForVehicle(input.serviceCases, input.vehicleId)) {
-    input.registerHardReason(createServiceCaseRuntimeReason(serviceCase));
+  for (const reason of buildOperationalWorkBlockersForVehicle(input)) {
+    if (reason.blocking === true) {
+      input.registerHardReason(reason);
+      continue;
+    }
+    input.addReason(reason);
   }
 }
 
@@ -913,10 +917,12 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
       health,
       healthRisk: healthRiskVehicleIds.has(vehicle.id),
     });
-    addServiceCaseReasons({
+    addOperationalWorkBlockers({
       vehicleId: vehicle.id,
+      tasks: input.tasks,
       serviceCases: input.serviceCases,
-      registerHardReason: registerHardReason,
+      registerHardReason,
+      addReason: (reason) => addReason(reasons, reason),
     });
     addInsightReasons({ target: reasons, vehicle, insights });
     addTelemetryReason({

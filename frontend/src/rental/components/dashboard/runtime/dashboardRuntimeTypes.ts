@@ -66,6 +66,8 @@ export interface RuntimeReason {
   source?: string;
   reasonCode?: string;
   serviceCaseId?: string;
+  taskId?: string;
+  parentReasonId?: string;
   status?: string;
   scheduledAt?: string | null;
   expectedReadyAt?: string | null;

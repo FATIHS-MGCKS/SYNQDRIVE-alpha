@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'runtime-state-operational-work-blockers-p43-2026-07-20',
+    version: '4.9.714',
+    title: 'Vehicle Runtime State — operative Task-/Case-Blocker normalisiert (Phase 6 P43)',
+    summary: [
+      '`operationalWorkBlockers.ts` vereint `blocksVehicleAvailability`-Tasks und `blocksRental`-Service-Cases im Runtime Builder.',
+      'Nur aktive Task-Status (`OPEN`, `IN_PROGRESS`, `WAITING`) und aktive Case-Status blockieren; `DONE`/`CANCELLED`/`COMPLETED` nicht.',
+      'Verknüpfte Task+Case: Case als Parent-Blocker, Task als Child-Reason ohne doppelte Blockade.',
+      'Stabile Reason Codes: `TASK_BLOCKS_VEHICLE_AVAILABILITY`, `SERVICE_CASE_BLOCKS_RENTAL`.',
+      'Dashboard lädt `api.tasks.list` und übergibt Tasks an `buildDashboardRuntimeModel` — keine Mutation von `vehicles.status`.',
+    ],
+    reason: 'Phase 6 Prompt 43: operative Arbeitsblocker (Tasks/Cases) getrennt von Rental Health und ohne Duplikate.',
+    previousBehavior:
+      'Nur Service Cases (P42) im Runtime State; Tasks mit `blocksVehicleAvailability` fehlten oder konnten doppelt blockieren.',
+    details:
+      'operationalWorkBlockers.ts (+test), taskRuntimeReasons.ts, vehicleRuntimeStateBuilder.ts, dashboardRuntimeTypes.ts, dashboardRuntimeReasons.ts, dashboardSliceBuilder.ts, useDashboardViewModel.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'runtime-state-blocking-service-cases-p42-2026-07-20',
     version: '4.9.713',
     title: 'Vehicle Runtime State — blockierende Service Cases (Phase 6 P42)',
