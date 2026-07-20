@@ -93,6 +93,7 @@ export class TasksController {
   }
 
   @Post('organizations/:orgId/tasks')
+  @RequireTaskPermission('tasks.create')
   async create(@Param('orgId') orgId: string, @Req() req: TaskAuthRequest, @Body() body: CreateTaskDto) {
     return this.tasksService.createManualTask(
       orgId,
@@ -130,6 +131,7 @@ export class TasksController {
   }
 
   @Patch('organizations/:orgId/tasks/:id')
+  @RequireTaskPermission('tasks.update')
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -155,6 +157,7 @@ export class TasksController {
   }
 
   @Patch('organizations/:orgId/tasks/:id/assign')
+  @RequireTaskPermission('tasks.assign')
   async assign(
     @Param('orgId') orgId: string,
     @Param('id') id: string,

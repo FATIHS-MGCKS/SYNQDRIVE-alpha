@@ -81,6 +81,7 @@ function makePrisma() {
     orgInvoice: { findFirst: jest.fn() },
     vehicleDocumentExtraction: { findUnique: jest.fn() },
     serviceCase: { findFirst: jest.fn() },
+    station: { findFirst: jest.fn() },
     $transaction: jest.fn(),
   };
 }
@@ -167,6 +168,28 @@ describe('TasksService', () => {
 
     await expect(
       svc.createManualTask('org1', { title: 'X', type: 'CUSTOM', vehicleId: 'veh-other' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.orgTask.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a manual task whose station belongs to another org (tenant scoping)', async () => {
+    prisma.station.findFirst.mockResolvedValue(null);
+
+    await expect(
+      svc.createManualTask('org1', {
+        title: 'X',
+        type: 'CUSTOM',
+        metadata: { stationId: 'station-other' },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.orgTask.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a manual task whose assignee is outside the org', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue(null);
+
+    await expect(
+      svc.createManualTask('org1', { title: 'X', type: 'CUSTOM', assignedUserId: 'u-outside' }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.orgTask.create).not.toHaveBeenCalled();
   });
@@ -1869,6 +1892,7 @@ describe('TasksService', () => {
         status: 'OPEN',
       });
       prisma.organizationMembership.findFirst.mockResolvedValue({ id: 'm1' });
+      prisma.station.findFirst.mockResolvedValue({ id: 'station-1' });
       prisma.orgTask.create.mockImplementation(async ({ data }: any) =>
         baseTask({
           id: 'created-1',

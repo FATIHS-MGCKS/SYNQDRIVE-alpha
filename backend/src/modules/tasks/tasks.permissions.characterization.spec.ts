@@ -37,11 +37,20 @@ describe('TasksController permissions characterization', () => {
     );
   });
 
-  it('does not require tasks.read on write handlers', () => {
+  const mutationHandlers = [
+    ['create', 'tasks.create'],
+    ['update', 'tasks.update'],
+    ['assign', 'tasks.assign'],
+  ] as const;
+
+  it.each(mutationHandlers)('%s requires canonical %s permission', (method, action) => {
+    expect(permissionOf(TasksController.prototype, method)).toEqual(
+      TASK_PERMISSION_REQUIREMENTS[action],
+    );
+  });
+
+  it('does not require tasks.read on other write handlers', () => {
     const writeHandlers = [
-      'create',
-      'update',
-      'assign',
       'start',
       'waiting',
       'complete',
@@ -197,5 +206,90 @@ describe('TasksController read permission enforcement', () => {
         statusCode: 403,
       },
     });
+  });
+});
+
+describe('TasksController write permission enforcement', () => {
+  const orgId = 'org-a';
+  const userId = 'user-1';
+
+  const reflector = { getAllAndOverride: jest.fn() } as unknown as Reflector;
+  const prisma = {
+    organizationMembership: { findFirst: jest.fn() },
+  };
+
+  let permissionsGuard: PermissionsGuard;
+
+  function permissionsContext(
+    user: Record<string, unknown> | undefined,
+    requirement: (typeof TASK_PERMISSION_REQUIREMENTS)[keyof typeof TASK_PERMISSION_REQUIREMENTS],
+    routeOrgId = orgId,
+  ) {
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue(requirement);
+    return {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user,
+          params: { orgId: routeOrgId },
+          query: {},
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    };
+  }
+
+  beforeEach(() => {
+    permissionsGuard = new PermissionsGuard(reflector, prisma as never);
+    jest.clearAllMocks();
+  });
+
+  const writeActions = ['tasks.create', 'tasks.update', 'tasks.assign'] as const;
+
+  it.each(writeActions)('allows tenant user with tasks.write for %s', async (action) => {
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      role: 'WORKER',
+      permissions: { tasks: { read: true, write: true } },
+    });
+
+    await expect(
+      permissionsGuard.canActivate(
+        permissionsContext(
+          { id: userId, organizationId: orgId },
+          TASK_PERMISSION_REQUIREMENTS[action],
+        ) as never,
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it.each(writeActions)('denies tenant user with read-only tasks permission for %s (403)', async (action) => {
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      role: 'WORKER',
+      permissions: { tasks: { read: true, write: false } },
+    });
+
+    await expect(
+      permissionsGuard.canActivate(
+        permissionsContext(
+          { id: userId, organizationId: orgId },
+          TASK_PERMISSION_REQUIREMENTS[action],
+        ) as never,
+      ),
+    ).rejects.toMatchObject({
+      response: { message: 'Missing permission: tasks.write', statusCode: 403 },
+    });
+  });
+
+  it.each(writeActions)('allows MASTER_ADMIN for %s without membership lookup', async (action) => {
+    await expect(
+      permissionsGuard.canActivate(
+        permissionsContext(
+          { id: userId, platformRole: 'MASTER_ADMIN' },
+          TASK_PERMISSION_REQUIREMENTS[action],
+          'org-other',
+        ) as never,
+      ),
+    ).resolves.toBe(true);
+    expect(prisma.organizationMembership.findFirst).not.toHaveBeenCalled();
   });
 });

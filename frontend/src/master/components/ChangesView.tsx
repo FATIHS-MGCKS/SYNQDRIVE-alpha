@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tasks-write-permission-fhs-p13-2026-07-20',
+    version: '4.9.604',
+    title: 'Tasks — enforce create, update and assign permissions (FHS Phase 2 P13)',
+    summary: [
+      'PermissionsGuard + `@RequireTaskPermission` auf POST create, PATCH update und PATCH assign.',
+      'Tenant-Scoping für `vehicleId`, `assigneeId` und `metadata.stationId` serverseitig validiert.',
+      'Characterization-Tests: positive/negative Guard-Szenarien für tasks.create|update|assign.',
+    ],
+    reason: 'FHS Phase 2 Prompt 13: Task-Mutationen granular schützen ohne reine Rollenprüfung.',
+    previousBehavior: 'Create/Update/Assign nur OrgScopingGuard + RolesGuard; stationId ohne Org-Validierung.',
+    details:
+      'tasks.controller.ts, tasks.service.ts (stationId-Scoping), tasks.permissions.characterization.spec.ts, tasks.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'tasks-read-permission-fhs-p12-2026-07-20',
     version: '4.9.603',
     title: 'Tasks — enforce tasks.read on all read endpoints (FHS Phase 2 P12)',
