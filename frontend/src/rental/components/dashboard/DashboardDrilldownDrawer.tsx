@@ -20,8 +20,8 @@ import {
 import {
   dedupeDisplayReasons,
   formatRuntimeReasonLabel,
-  runtimeReasonTooltip,
 } from './reasonDisplay';
+import { RuntimeReasonPills } from './RuntimeReasonPills';
 import { buildDashboardGroups } from './dashboardDrilldownGroups';
 import {
   composeBookingDrawerRowDisplay,
@@ -389,29 +389,12 @@ function BookingDrawerRowCard({
             </p>
           ) : null}
           {visibleReasons.length > 1 ? (
-            <div className="flex flex-wrap gap-1">
-              {visibleReasons.slice(1, 3).map((reason) => (
-                <span
-                  key={reason.id}
-                  title={runtimeReasonTooltip(reason, locale)}
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                    reason.severity === 'critical'
-                      ? 'bg-[color:var(--status-critical)]/10 text-[color:var(--status-critical)]'
-                      : reason.severity === 'warning'
-                        ? 'bg-[color:var(--status-watch)]/10 text-[color:var(--status-watch)]'
-                        : 'bg-muted text-muted-foreground',
-                  )}
-                >
-                  {formatRuntimeReasonLabel(reason, locale)}
-                </span>
-              ))}
-              {visibleReasons.length > 3 ? (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {reasonsLabel(visibleReasons.length - 3, de)}
-                </span>
-              ) : null}
-            </div>
+            <RuntimeReasonPills
+              reasons={visibleReasons.slice(1)}
+              locale={locale}
+              maxVisible={2}
+              className="gap-1"
+            />
           ) : null}
         </div>
 
