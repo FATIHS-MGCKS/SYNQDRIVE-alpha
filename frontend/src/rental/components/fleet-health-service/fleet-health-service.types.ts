@@ -1,5 +1,6 @@
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
-import type { ServiceCenterTab } from '../service-center/service-center.types';
+import type { OperatorStatusFilter } from '../../lib/fleet-health-control-center';
+import type { ServiceCenterTab, ServiceTaskFilter } from '../service-center/service-center.types';
 
 /** Top-level Fleet hub tab (after V4.9.182 navigation merge). */
 export type FleetTab = 'status' | 'condition-service' | 'connectivity';
@@ -30,6 +31,10 @@ export type FleetHealthServiceTabInput =
 export interface FleetHealthServiceNavState {
   tab: FleetHealthServiceTab;
   workSection: FleetHealthServiceWorkSection;
+  /** Optional vehicle status filter when navigating from KPI → Fahrzeuge. */
+  vehicleStatusFilter?: OperatorStatusFilter;
+  /** Optional task filter when navigating from KPI → Arbeiten. */
+  taskFilter?: ServiceTaskFilter;
 }
 
 export const FLEET_HEALTH_SERVICE_TAB_ORDER: FleetHealthServiceTab[] = [

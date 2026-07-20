@@ -8,6 +8,7 @@ import { rentalModuleSeverityDetailLabel } from './operational-issues/operationa
 
 export type OperatorStatusFilter =
   | 'all'
+  | 'blocked'
   | 'action'
   | 'review'
   | 'good'
@@ -493,6 +494,8 @@ export function matchesStatusFilter(
   if (filter === 'all') return true;
   const band = healthSeverityBand(health);
   switch (filter) {
+    case 'blocked':
+      return band === 'blocked';
     case 'action':
       return band === 'blocked' || band === 'critical';
     case 'review':

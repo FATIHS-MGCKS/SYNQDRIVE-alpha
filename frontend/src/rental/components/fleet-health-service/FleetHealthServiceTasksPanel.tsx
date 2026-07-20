@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ApiTask, Vendor } from '../../../lib/api';
 import { ServiceTasksPanel } from '../service-center/ServiceTasksPanel';
 import type { ServiceTaskFilter } from '../service-center/service-center.types';
@@ -13,6 +13,7 @@ interface FleetHealthServiceTasksPanelProps {
   onReload?: () => void;
   onOpenGlobalTasks?: (taskId: string) => void;
   focusTaskId?: string | null;
+  initialTaskFilter?: ServiceTaskFilter;
 }
 
 export function FleetHealthServiceTasksPanel({
@@ -23,8 +24,13 @@ export function FleetHealthServiceTasksPanel({
   onReload,
   onOpenGlobalTasks,
   focusTaskId,
+  initialTaskFilter,
 }: FleetHealthServiceTasksPanelProps) {
-  const [filter, setFilter] = useState<ServiceTaskFilter>('all');
+  const [filter, setFilter] = useState<ServiceTaskFilter>(initialTaskFilter ?? 'all');
+
+  useEffect(() => {
+    if (initialTaskFilter) setFilter(initialTaskFilter);
+  }, [initialTaskFilter]);
 
   return (
     <div className="space-y-3">

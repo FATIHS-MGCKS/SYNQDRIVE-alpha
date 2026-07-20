@@ -380,6 +380,7 @@ describe('fleet-health-service view model', () => {
       {
         openServiceTasks: [],
         overdueServiceTasks: [],
+        dueTodayServiceTasks: [],
         inProgressServiceTasks: [],
         vendorWaitingTasks: [],
         upcomingServiceItems: [],

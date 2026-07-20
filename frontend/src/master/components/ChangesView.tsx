@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-kpi-split-p54-2026-07-20',
+    version: '4.9.725',
+    title: 'Fleet Health Service — getrennte Health- und Ausführungs-KPIs (Phase 8 P54)',
+    summary: [
+      'KPI-Strip in zwei Gruppen: Fahrzeugzustand (4) und Ausführung (4) — Einheit „Fahrzeuge“ / „Aufgaben“ immer sichtbar.',
+      'API-Fehler zeigen „—“ statt 0; Klick setzt Zielbereich + Filter (`vehicleStatusFilter`, `taskFilter`).',
+      'Neu: `blocked` Health-Filter, `due-today` Task-Filter; `dueTodayServiceTasks` im ViewModel.',
+    ],
+    reason: 'Phase 8 Prompt 54: Health-Diagnose und operative Ausführung visuell und zähltechnisch trennen.',
+    previousBehavior:
+      'Sieben gleichwertige KPI-Karten mischten Health- und Task-Metriken; Fehler wurden als 0 angezeigt.',
+    details:
+      'FleetHealthServiceKpiStrip.tsx, fleet-health-service.types.ts (nav filters), FleetConditionView, FleetHealthServiceTasksPanel, fleet-health-control-center.ts, service-center.utils.ts, i18n, kpi tests',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:40:00.000Z',
+  },
+  {
     id: 'fleet-health-priority-overview-p53-2026-07-20',
     version: '4.9.724',
     title: 'Fleet Health Service — Handlungspriorität in der Übersicht (Phase 8 P53)',

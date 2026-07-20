@@ -56,21 +56,24 @@ export function FleetHealthServiceView({
 
   const setTab = useCallback(
     (tab: FleetHealthServiceTab) => {
-      onNavChange({ ...nav, tab });
+      onNavChange({
+        ...nav,
+        tab,
+        vehicleStatusFilter: undefined,
+        taskFilter: undefined,
+      });
     },
     [nav, onNavChange],
   );
 
   const setWorkSection = useCallback(
     (workSection: FleetHealthServiceWorkSection) => {
-      onNavChange({ tab: 'work', workSection });
-    },
-    [onNavChange],
-  );
-
-  const navigateWork = useCallback(
-    (workSection: FleetHealthServiceWorkSection) => {
-      onNavChange({ tab: 'work', workSection });
+      onNavChange({
+        tab: 'work',
+        workSection,
+        vehicleStatusFilter: undefined,
+        taskFilter: undefined,
+      });
     },
     [onNavChange],
   );
@@ -82,8 +85,10 @@ export function FleetHealthServiceView({
       {activeSubTab === 'overview' && (
         <FleetHealthServiceOverviewPanel
           vm={vm}
+          nav={nav}
+          onNavChange={onNavChange}
           onNavigateSubTab={setTab}
-          onNavigateWork={navigateWork}
+          onNavigateWork={setWorkSection}
           onOpenVehicle={onOpenVehicle}
           onOpenTask={onOpenGlobalTasks}
           onCreateTask={onCreateTask}
@@ -96,6 +101,7 @@ export function FleetHealthServiceView({
           hideHeaderActions
           hideKpiStrip
           uiLocale="de"
+          initialStatusFilter={nav.vehicleStatusFilter}
           onDrillDown={onDrillDown}
           onOpenExistingTask={onOpenGlobalTasks}
           getExistingTaskId={getExistingTaskId}
@@ -117,6 +123,7 @@ export function FleetHealthServiceView({
           }}
           onOpenVendorDetail={onOpenVendorDetail}
           focusTaskId={focusTaskId}
+          initialTaskFilter={nav.taskFilter}
         />
       )}
 
