@@ -11,6 +11,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   ValidateNested,
@@ -417,6 +418,21 @@ export class ListTasksQueryDto {
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
   @IsBoolean()
   includeCancelled?: boolean;
+
+  /** Page size for cursor pagination (max 100). When set, response is `{ data, meta }`. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  /** Opaque cursor from a previous page (`meta.nextCursor`). */
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  @MaxLength(2000)
+  cursor?: string;
 }
 
 export const BULK_TASK_ACTION_TYPES = [

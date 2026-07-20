@@ -47,6 +47,37 @@ describe('TasksController', () => {
     expect(tasksService.listTasks).toHaveBeenCalledWith(orgId, expect.objectContaining({ bucket: 'NOW', status: 'OPEN' }));
   });
 
+  it('delegates list pagination params to TasksService.listTasks', async () => {
+    tasksService.listTasks.mockResolvedValue({ data: [], meta: { limit: 25, nextCursor: null } });
+    await controller.findAll(orgId, {
+      vehicleId: 'veh-1',
+      vendorId: 'vendor-1',
+      status: 'OPEN',
+      dueFrom: '2026-07-01T00:00:00.000Z',
+      limit: 25,
+      cursor: 'cursor-token',
+    } as any);
+    expect(tasksService.listTasks).toHaveBeenCalledWith(
+      orgId,
+      expect.objectContaining({
+        vehicleId: 'veh-1',
+        vendorId: 'vendor-1',
+        status: 'OPEN',
+        dueFrom: '2026-07-01T00:00:00.000Z',
+        limit: 25,
+        cursor: 'cursor-token',
+      }),
+    );
+  });
+
+  it('keeps summary endpoint separate from list pagination', async () => {
+    tasksService.getDashboardSummary.mockResolvedValue({ open: 1 });
+    const req = { user } as any;
+    await controller.summary(orgId, req);
+    expect(tasksService.getDashboardSummary).toHaveBeenCalledWith(orgId, user.id);
+    expect(tasksService.listTasks).not.toHaveBeenCalled();
+  });
+
   it('delegates getTaskById with actor context', async () => {
     tasksService.getTaskById.mockResolvedValue({ id: taskId });
     const req = { user } as any;

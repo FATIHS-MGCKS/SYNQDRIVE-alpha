@@ -730,8 +730,50 @@ import type {
   CreateTaskPayload,
   TaskBucket,
   TaskListFilters,
+  TaskListPage,
   UpdateChecklistItemPayload,
 } from './tasks/types';
+
+function buildTaskListQueryString(filters?: TaskListFilters): string {
+  const q = new URLSearchParams();
+  if (filters) {
+    for (const [k, v] of Object.entries(filters)) {
+      if (v === undefined || v === null || v === '') continue;
+      q.set(k, String(v));
+    }
+  }
+  return q.toString();
+}
+
+function fetchTaskListPage(orgId: string, filters?: TaskListFilters) {
+  const merged: TaskListFilters = { limit: 50, ...filters };
+  const qs = buildTaskListQueryString(merged);
+  return get<TaskListPage>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
+}
+
+async function fetchAllTasks(orgId: string, filters?: TaskListFilters): Promise<ApiTask[]> {
+  if (filters?.limit != null || filters?.cursor != null) {
+    const page = await fetchTaskListPage(orgId, filters);
+    return page.data;
+  }
+
+  const all: ApiTask[] = [];
+  let cursor: string | undefined;
+  const pageSize = 100;
+
+  for (;;) {
+    const page = await fetchTaskListPage(orgId, {
+      ...filters,
+      limit: pageSize,
+      ...(cursor ? { cursor } : {}),
+    });
+    all.push(...page.data);
+    if (!page.meta.nextCursor) break;
+    cursor = page.meta.nextCursor;
+  }
+
+  return all;
+}
 
 export type {
   ApiTask,
@@ -747,6 +789,8 @@ export type {
   ApiTaskEvent,
   ApiTaskDetailNormalizedSections,
   TaskListFilters,
+  TaskListPage,
+  TaskListPageMeta,
   CreateTaskPayload,
   CompleteTaskPayload,
   UpdateChecklistItemPayload,
@@ -4692,31 +4736,13 @@ export const api = {
       get<FleetDamageStatsResponse>(`/organizations/${orgId}/damages/stats`),
   },
   tasks: {
-    list: (orgId: string, filters?: TaskListFilters) => {
-      const q = new URLSearchParams();
-      if (filters) {
-        for (const [k, v] of Object.entries(filters)) {
-          if (v === undefined || v === null || v === '') continue;
-          q.set(k, String(v));
-        }
-      }
-      const qs = q.toString();
-      return get<ApiTask[]>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
-    },
+    listPage: (orgId: string, filters?: TaskListFilters) => fetchTaskListPage(orgId, filters),
+    list: (orgId: string, filters?: TaskListFilters) => fetchAllTasks(orgId, filters),
     listByBucket: (
       orgId: string,
       bucket: TaskBucket,
       filters?: Omit<TaskListFilters, 'bucket'>,
-    ) => {
-      const q = new URLSearchParams();
-      const merged: TaskListFilters = { ...filters, bucket };
-      for (const [k, v] of Object.entries(merged)) {
-        if (v === undefined || v === null || v === '') continue;
-        q.set(k, String(v));
-      }
-      const qs = q.toString();
-      return get<ApiTask[]>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
-    },
+    ) => fetchAllTasks(orgId, { ...filters, bucket }),
     summary: (orgId: string) => get<ApiTaskSummary>(`/organizations/${orgId}/tasks/summary`),
     get: (orgId: string, id: string) => get<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}`),
     create: (orgId: string, data: CreateTaskPayload) =>

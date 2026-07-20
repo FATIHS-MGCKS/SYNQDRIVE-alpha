@@ -37,7 +37,6 @@ import {
   isActiveTaskStatus,
 } from './task-transition.policy';
 import {
-  buildTaskBucketOrderBy,
   buildTaskBucketWhere,
   classifyPrimaryTaskBucket,
   createTaskBucketContext,
@@ -47,6 +46,17 @@ import {
   TASK_OPERATOR_BUCKETS,
   type TaskOperatorBucket,
 } from './task-bucket.util';
+import {
+  buildTaskListCursorWhere,
+  buildTaskListOrderBy,
+  decodeTaskListCursor,
+  encodeTaskListCursorFromTask,
+  isTaskListPaginatedRequest,
+  resolveTaskListLimit,
+  resolveTaskListSortVariant,
+  TASK_LIST_LEGACY_MAX_LIMIT,
+  type TaskListPageResult,
+} from './task-list-cursor.util';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 
 // ─── Domain constants (V4.8.3 Task Action Layer) ─────────────────────────
@@ -144,6 +154,8 @@ export interface ListTasksFilters {
   search?: string;
   bucket?: TaskOperatorBucket;
   includeCancelled?: boolean;
+  limit?: number;
+  cursor?: string;
 }
 
 export interface BulkTaskActionInput {
@@ -740,12 +752,20 @@ export class TasksService {
       ];
     }
 
+    const paginated = isTaskListPaginatedRequest(filters);
+    const limit = paginated ? resolveTaskListLimit(filters.limit) : undefined;
+    const sortVariant = resolveTaskListSortVariant(filters.bucket);
+    const cursor = filters.cursor?.trim() || undefined;
+
+    if (cursor) {
+      andFilters.push(buildTaskListCursorWhere(decodeTaskListCursor(cursor), sortVariant));
+    }
+
     const mergedWhere: Prisma.OrgTaskWhereInput =
       andFilters.length > 0 ? { AND: [where, ...andFilters] } : where;
 
-    const orderBy = filters.bucket
-      ? buildTaskBucketOrderBy(filters.bucket)
-      : [{ priority: 'desc' as const }, { dueDate: 'asc' as const }, { createdAt: 'desc' as const }];
+    const orderBy = buildTaskListOrderBy(filters.bucket);
+    const take = paginated ? limit! + 1 : TASK_LIST_LEGACY_MAX_LIMIT;
 
     const tasks = await this.prisma.orgTask.findMany({
       where: mergedWhere,
@@ -763,9 +783,19 @@ export class TasksService {
         },
       },
       orderBy,
+      take,
     });
 
-    const taskIds = tasks.map((t) => t.id);
+    let nextCursor: string | null = null;
+    const pageTasks =
+      paginated && tasks.length > limit!
+        ? (() => {
+            nextCursor = encodeTaskListCursorFromTask(tasks[limit! - 1]!, sortVariant);
+            return tasks.slice(0, limit!);
+          })()
+        : tasks;
+
+    const taskIds = pageTasks.map((t) => t.id);
     const checklistRows =
       taskIds.length > 0
         ? await this.prisma.taskChecklistItem.findMany({
@@ -775,7 +805,7 @@ export class TasksService {
         : [];
     const checklistProgressByTaskId = aggregateChecklistProgressByTaskId(checklistRows);
 
-    return tasks.map((t) => {
+    const rows = pageTasks.map((t) => {
       const formatted = this.format(t, now, checklistProgressByTaskId.get(t.id) ?? null);
       return {
         ...formatted,
@@ -783,6 +813,19 @@ export class TasksService {
         bucket: classifyPrimaryTaskBucket(t, bucketContext),
       };
     });
+
+    if (paginated) {
+      const result: TaskListPageResult<(typeof rows)[number]> = {
+        data: rows,
+        meta: {
+          limit: limit!,
+          nextCursor,
+        },
+      };
+      return result;
+    }
+
+    return rows;
   }
 
   private async resolveOrgTimezone(orgId: string): Promise<string> {

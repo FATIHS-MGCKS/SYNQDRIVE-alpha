@@ -367,6 +367,29 @@ export interface TaskListFilters {
   search?: string;
   bucket?: TaskBucket;
   includeCancelled?: boolean;
+  /** When set (or with `cursor`), the API returns a paginated page instead of a flat array. */
+  limit?: number;
+  cursor?: string;
+}
+
+export interface TaskListPageMeta {
+  limit: number;
+  nextCursor: string | null;
+}
+
+export interface TaskListPage {
+  data: ApiTask[];
+  meta: TaskListPageMeta;
+}
+
+export function isTaskListPage(value: unknown): value is TaskListPage {
+  return (
+    value != null &&
+    typeof value === 'object' &&
+    Array.isArray((value as TaskListPage).data) &&
+    (value as TaskListPage).meta != null &&
+    typeof (value as TaskListPage).meta.limit === 'number'
+  );
 }
 
 export interface CreateTaskPayload {

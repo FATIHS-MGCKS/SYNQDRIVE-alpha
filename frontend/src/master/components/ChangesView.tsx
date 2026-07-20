@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tasks-cursor-pagination-p46-2026-07-20',
+    version: '4.9.717',
+    title: 'Tasks — serverseitige Cursor-Pagination (Phase 7 P46)',
+    summary: [
+      '`GET /tasks` unterstützt `limit` (max 100, default 50) und `cursor` → `{ data, meta: { limit, nextCursor } }`.',
+      'Stabile Sortierung pro Bucket/Default mit `id` als Tie-Breaker; Filter (Fahrzeug, Status, Vendor, Fälligkeit, …) bleiben serverseitig mit Org-Scoping vor der Query.',
+      'Legacy-Clients ohne `limit`/`cursor` erhalten weiterhin ein flaches Array (Safety-Cap 500); `GET /tasks/summary` unverändert separat.',
+      'Frontend `api.tasks.list` aggregiert Seiten transparent; `api.tasks.listPage` für explizite Cursor-Navigation.',
+    ],
+    reason: 'Phase 7 Prompt 46: unlimitierte Taskliste durch performante Cursor-Pagination ersetzen.',
+    previousBehavior:
+      '`listTasks` lud alle passenden `org_tasks` ohne `take`/`skip` — bei großen Flotten potenziell teuer und unbounded.',
+    details:
+      'task-list-cursor.util.ts (+spec), tasks.service.ts, task.dto.ts, tasks.controller.ts, api.ts, tasks/types.ts, tasks.service.spec.ts, tasks.controller.spec.ts',
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',

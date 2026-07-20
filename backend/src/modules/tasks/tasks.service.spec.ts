@@ -91,6 +91,11 @@ describe('TasksService', () => {
   let linkedObjectResolver: { resolveForTask: jest.Mock };
   let svc: TasksService;
 
+  async function listTasksRows(orgId: string, filters: Parameters<TasksService['listTasks']>[1] = {}) {
+    const result = await svc.listTasks(orgId, filters);
+    return Array.isArray(result) ? result : result.data;
+  }
+
   beforeEach(() => {
     prisma = makePrisma();
     activityLog = { log: jest.fn().mockResolvedValue({}) };
@@ -125,7 +130,7 @@ describe('TasksService', () => {
       baseTask({ id: 't-detail', createdByUserId: 'creator-1', updatedByUserId: 'editor-1' }),
     );
 
-    const list = await svc.listTasks('org1', {});
+    const list = await listTasksRows('org1', {});
     expect(list[0].createdByUserId).toBe('creator-1');
     expect(list[0].assignedUserId).toBe('assignee-1');
 
@@ -157,7 +162,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const list = await listTasksRows('org1', {});
     expect(list[0].createdByUserId).toBeNull();
     expect(list[0].sourceType).toBe('SYSTEM');
   });
@@ -582,7 +587,7 @@ describe('TasksService', () => {
       baseTask({ id: 'b', dueDate: past, status: 'DONE' }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const list = await listTasksRows('org1', {});
     expect(list.find((t) => t.id === 'a')!.isOverdue).toBe(true);
     expect(list.find((t) => t.id === 'b')!.isOverdue).toBe(false);
   });
@@ -733,7 +738,7 @@ describe('TasksService', () => {
       { taskId: 't-open', isDone: false, isRequired: false },
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const list = await listTasksRows('org1', {});
 
     expect(prisma.taskChecklistItem.findMany).toHaveBeenCalledWith({
       where: { taskId: { in: ['t-open', 't-empty'] } },
@@ -899,7 +904,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', { bucket: 'OVERDUE' });
+    const list = await listTasksRows('org1', { bucket: 'OVERDUE' });
 
     expect(prisma.orgTask.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -925,7 +930,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const list = await listTasksRows('org1', {});
     expect(list[0]?.isOverdue).toBe(false);
     expect(list[0]?.bucket).toBe('PLANNED');
     jest.useRealTimers();
@@ -1009,7 +1014,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const list = await listTasksRows('org1', {});
     expect(list.find((t) => t.id === 'future-active')!.isOverdue).toBe(false);
   });
 
@@ -1763,6 +1768,75 @@ describe('TasksService', () => {
             }),
           ]),
         }),
+      }),
+    );
+  });
+
+  it('listTasks returns paginated pages with nextCursor when limit is set', async () => {
+    prisma.orgTask.findMany.mockResolvedValue([
+      baseTask({ id: 't-1', priority: 'HIGH', dueDate: new Date('2026-07-20T08:00:00.000Z') }),
+      baseTask({ id: 't-2', priority: 'NORMAL', dueDate: new Date('2026-07-21T08:00:00.000Z') }),
+    ]);
+
+    const page = await svc.listTasks('org1', { limit: 1, vehicleId: 'veh-1', status: 'OPEN' });
+
+    expect(Array.isArray(page)).toBe(false);
+    expect(page).toMatchObject({
+      meta: { limit: 1, nextCursor: expect.any(String) },
+    });
+    expect((page as { data: { id: string }[] }).data).toHaveLength(1);
+    expect((page as { data: { id: string }[] }).data[0]?.id).toBe('t-1');
+    expect(prisma.orgTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          organizationId: 'org1',
+          vehicleId: 'veh-1',
+          status: 'OPEN',
+        }),
+        take: 2,
+        orderBy: expect.arrayContaining([{ id: 'asc' }]),
+      }),
+    );
+  });
+
+  it('listTasks applies cursor filter for subsequent pages', async () => {
+    prisma.orgTask.findMany.mockResolvedValue([]);
+    const cursor = Buffer.from(
+      JSON.stringify({
+        v: 'DEFAULT',
+        id: 't-1',
+        priority: 'HIGH',
+        dueDate: '2026-07-20T08:00:00.000Z',
+        createdAt: '2026-07-01T08:00:00.000Z',
+      }),
+      'utf8',
+    ).toString('base64url');
+
+    await svc.listTasks('org1', { limit: 25, cursor, vendorId: 'vendor-1' });
+
+    expect(prisma.orgTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({ organizationId: 'org1', vendorId: 'vendor-1' }),
+            expect.objectContaining({ OR: expect.any(Array) }),
+          ]),
+        }),
+        take: 26,
+      }),
+    );
+  });
+
+  it('listTasks keeps legacy flat array when pagination params are omitted', async () => {
+    prisma.orgTask.findMany.mockResolvedValue([baseTask({ id: 't-legacy' })]);
+
+    const list = await listTasksRows('org1', {});
+
+    expect(Array.isArray(list)).toBe(true);
+    expect(list[0]?.id).toBe('t-legacy');
+    expect(prisma.orgTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 500,
       }),
     );
   });
