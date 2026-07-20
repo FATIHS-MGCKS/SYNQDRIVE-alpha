@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-health-finding-identity-p35-2026-07-20',
+    version: '4.9.706',
+    title: 'Rental Health — stabile Finding-Identität (Phase 5 P35)',
+    summary: [
+      'Neuer Contract `HealthFindingIdentity` mit healthModule, findingCode, sourceEntityType/Id, sourceFindingId, findingOccurrenceId, vehicleId, organizationId, first/currentObservedAt und version.',
+      'Deterministische SHA-256-Fingerprints ohne Anzeigetext, Task-Typen oder sensible Rohdaten in IDs.',
+      '`occurrenceGeneration` trennt erneutes Auftreten nach Behebung vom vorherigen Episode-Fingerprint.',
+      'Rein backendseitig + Frontend-Typ-Spiegel; Unit-Tests für Stabilität, Dedup und Episode-Grenzen.',
+    ],
+    reason: 'Phase 5 Prompt 35: Fundament für sourceFindingId in Health→Task/Service-Bridge und Dedup.',
+    previousBehavior:
+      'Health-Signale nutzten modulbezogene Heuristiken (`healthModule` allein, Task-Typ-Matrix) ohne stabilen Finding-Fingerprint.',
+    details:
+      'health-finding-identity.types.ts, health-finding-identity.ts (+spec), health-finding-identity.config.ts, frontend health-finding-identity.types.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',
