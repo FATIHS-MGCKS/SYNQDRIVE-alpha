@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Date:** 2026-07-20  
 **Status:** **Normativ und verbindlich** für alle Prompts **2–66** der Fleet-Health-Service-Remediation  
-**Repository-Git-Commit (Erstellung):** `ce7af9e89654038a7bf5d1781634cb7d1ade2dae` (Prompt 1/66, gemeinsam mit Tracker Prompt 2)  
+**Repository-Git-Commit (Erstellung):** `297dfe764fda03432f9abc142ff1800c9b648168` (Prompt 1/66)  
 **Geltungsbereich:** SynqDrive-Repository — Fleet-Tab „Zustand & Service“ (FHS) und in den jeweiligen Prompts genannten Abhängigkeiten
 
 **Basis-Audits (Ist-Zustand):**

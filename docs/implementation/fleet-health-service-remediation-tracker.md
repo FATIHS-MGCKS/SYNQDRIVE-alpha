@@ -85,8 +85,8 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 
 | ID | Phase | Titel | Abhängigkeiten | Domäne | Akzeptanzkriterien | Status | Commit | Testnachweis | Rollback |
 |----|-------|-------|----------------|--------|-------------------|--------|--------|--------------|----------|
-| **1** | 0 | Remediation-Ausführungsvertrag | Audit 1 + 2 | Docs / Governance | Vertrag in `docs/implementation/`; Pre-Flight, Git, §5-Invarianten, Phasenübersicht; Audits verlinkt; Repo vs. Deploy dokumentiert | **DONE** | `ce7af9e8` | N/A — Docs only | Datei löschen / Revert Commit |
-| **2** | 0 | Remediation-Tracker (66 Prompts) | Prompt 1 | Docs / Governance | Tracker mit allen 66 Zeilen; Status P1 DONE, P2 DONE; Baseline + Deploy-Hinweis; Audit-Links | **DONE** | `ce7af9e8` | N/A — Docs only | Revert Commit |
+| **1** | 0 | Remediation-Ausführungsvertrag | Audit 1 + 2 | Docs / Governance | Vertrag in `docs/implementation/`; Pre-Flight, Git, §5-Invarianten, Phasenübersicht; Audits verlinkt; Repo vs. Deploy dokumentiert | **DONE** | `297dfe76` | N/A — Docs only | Datei löschen / Revert Commit |
+| **2** | 0 | Remediation-Tracker (66 Prompts) | Prompt 1 | Docs / Governance | Tracker mit allen 66 Zeilen; Status P1 DONE, P2 DONE; Baseline + Deploy-Hinweis; Audit-Links | **DONE** | `297dfe76` | N/A — Docs only | Revert Commit |
 | **3** | 0 | Zielarchitektur-ADR (FHS V2) | Prompt 1, 2 | Docs / Architektur | ADR: Vier-Schichten, Service-Case-UI-Zielbild, Runtime-Blockade; keine Codeänderung | TODO | — | — | Revert ADR-Datei |
 | **4** | 0 | Call-Site-Baseline | Audit 1, 2 | Docs / Inventur | Vollständige Backend/Frontend Call-Sites + Tests inventarisiert | **DONE** | `7192fb4e` | 283 Tests PASS (Baseline §10) | Revert Baseline-Doc |
 | **5** | 0 | Testplan & Fixture-Katalog | Prompt 3, 4 | Docs / QA | Matrix FHS-T-001–142 → Prompt-Zuordnung; fehlende Specs gelistet; Golden-Fixture-Plan | TODO | — | — | Revert Testplan-Doc |
