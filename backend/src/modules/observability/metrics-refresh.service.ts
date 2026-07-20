@@ -9,6 +9,7 @@ import { VoiceMetricsService } from './voice-metrics.service';
 import { QUEUE_NAMES } from '../../workers/queues/queue-names';
 import { RuntimeStatusRegistry } from './runtime-status.registry';
 import { TripMetricsService } from './trip-metrics.service';
+import { setBatteryV2VehiclesWithoutPublication } from '../vehicle-intelligence/battery-health/observability/battery-v2-prometheus.metrics';
 
 const MONITORED_QUEUES = [
   QUEUE_NAMES.DIMO_SNAPSHOT,
@@ -180,6 +181,33 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
         }
       }),
     );
+
+    await this.refreshBatteryV2PublicationCoverageGauges();
+  }
+
+  private async refreshBatteryV2PublicationCoverageGauges(): Promise<void> {
+    if (!this.prisma) return;
+
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(DISTINCT vbc.vehicle_id)::bigint AS count
+        FROM vehicle_battery_capabilities vbc
+        WHERE vbc.signal_key = 'lv.voltage'
+          AND vbc.status IN ('AVAILABLE', 'AVAILABLE_STALE', 'AVAILABLE_NULL')
+          AND NOT EXISTS (
+            SELECT 1
+            FROM battery_publications bp
+            WHERE bp.vehicle_id = vbc.vehicle_id
+              AND bp.scope = 'LV'
+          )
+      `;
+      const missing = Number(rows[0]?.count ?? 0);
+      setBatteryV2VehiclesWithoutPublication(this.metrics, { scope: 'lv', count: missing });
+    } catch (err: unknown) {
+      this.logger.debug(
+        `Battery V2 publication coverage gauge refresh skipped: ${(err as Error).message}`,
+      );
+    }
   }
 
   private async countBatteryPostgresTable(table: (typeof BATTERY_POSTGRES_TABLES)[number]): Promise<number> {

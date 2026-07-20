@@ -35,13 +35,27 @@ Low-cardinality Battery V2 counters registered on the shared `TripMetricsService
 | `synqdrive_hv_capacity_method_conflict_total` | `outcome` | M3 validation agree/conflict |
 | `synqdrive_battery_postgres_table_rows` | `table` | MetricsRefreshService cron |
 
+### Pipeline observability (FHS Phase 1 P9)
+
+| Prometheus name | Labels | Emitted from |
+|-----------------|--------|--------------|
+| `synqdrive_battery_v2_jobs_enqueue_total` | `job_type`, `outcome` | Job producer (`success` / `failed`) |
+| `synqdrive_battery_v2_jobs_enqueue_suppressed_total` | `job_type`, `reason` | Producer suppressions (`dead_letter`, `duplicate`, `workers_disabled`) |
+| `synqdrive_battery_v2_reconciliation_enqueued_total` | `category` | Reconciliation tick per category |
+| `synqdrive_battery_v2_publication_coverage_total` | `scope`, `state` | Publication service (`published` / `skipped`) |
+| `synqdrive_battery_v2_publication_age_hours` | `maturity` | Publication evidence age histogram |
+| `synqdrive_battery_v2_vehicles_without_publication` | `scope` | MetricsRefreshService cron (LV capability without publication row) |
+
+Structured logs: `observability/battery-v2-pipeline-observability.util.ts` — fingerprints for idempotency/job IDs; `organizationId`/`vehicleId` per Battery V2 convention; no VINs or secrets.
+
 ## Integration
 
 - Definitions: `trip-metrics.service.ts`
 - Record helpers: `observability/battery-v2-prometheus.metrics.ts`
 - Job metrics: `battery-v2-job-observability.service.ts`, `battery-v2-job-producer.service.ts`
+- Pipeline logs: `observability/battery-v2-pipeline-observability.util.ts`
 - Pipeline hooks: snapshot producer, rest window FSM, start proxy, HV reconcile/shadow, assessment, publication
 
 Supplementary metrics retained: job retry, processing duration histogram, dead-letter backlog gauge, HV reconcile errors, provider delay histogram, legacy `synqdrive_hv_snapshot_duplicates_discarded_total`.
 
-Tests: `battery-v2-prometheus.metrics.spec.ts`, `lv-rest-shadow-metrics.spec.ts`, `prometheus-config.spec.ts`.
+Tests: `battery-v2-prometheus.metrics.spec.ts`, `battery-v2-pipeline-observability.util.spec.ts`, `battery-v2-job-observability.service.spec.ts`, `lv-rest-shadow-metrics.spec.ts`, `prometheus-config.spec.ts`.

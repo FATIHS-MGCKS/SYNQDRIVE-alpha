@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-pipeline-observability-fhs-p9-2026-07-20',
+    version: '4.9.601',
+    title: 'Battery V2 — safe pipeline observability (FHS Phase 1 P9)',
+    summary: [
+      'Neue Pipeline-Metriken: Enqueue success/failed/suppressed, Reconciliation pro Kategorie, Publication coverage/age, Gauge Fahrzeuge ohne LV-Publication.',
+      'Strukturierte Logs mit keyFp/jobIdFp-Fingerprints; keine rohen Idempotency-Keys oder VINs.',
+      'Wiring in Producer, Processor, Reconciliation, Publication und MetricsRefreshService.',
+    ],
+    reason: 'FHS Phase 1 Prompt 9: sichere Observability für Battery-V2-Enqueue und Verarbeitung.',
+    previousBehavior: 'Enqueue/Reconciliation/Publication nur teilweise instrumentiert; Logs enthielten rohe idempotencyKey-Werte.',
+    details:
+      'observability/battery-v2-pipeline-observability.util.ts, battery-v2-prometheus.metrics.ts, battery-v2-job-producer.service.ts, battery-v2.processor.ts, battery-v2-reconciliation.service.ts, battery-publication.service.ts, metrics-refresh.service.ts, docs/architecture/battery-v2-prometheus-metrics.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-20T10:55:00.000Z',
+  },
+  {
     id: 'stations-v2-production-rollout-v49600-2026-07-18',
     version: '4.9.600',
     title: 'V4.9.600 — Stations V2: globales Production-Rollout (enforce)',

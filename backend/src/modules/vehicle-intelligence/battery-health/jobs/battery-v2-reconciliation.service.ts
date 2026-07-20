@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
   getBatteryRest60mDelayMs,
   getBatteryRest6hDelayMs,
@@ -36,6 +37,11 @@ import { LvRestWindowState } from '../battery-v2-domain';
 import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
 import { buildStartProxyMeasurementIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
+import {
+  recordBatteryV2ReconciliationEnqueued,
+  type BatteryV2ReconciliationCategory,
+} from '../observability/battery-v2-prometheus.metrics';
+import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
@@ -63,6 +69,7 @@ export class BatteryV2ReconciliationService {
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async reconcileAll(): Promise<BatteryV2ReconciliationResult> {
@@ -95,11 +102,34 @@ export class BatteryV2ReconciliationService {
       result.assessments +
       result.capabilityRefresh +
       result.capabilitySignalLoss;
-    if (total > 0) {
-      this.logger.log(`Battery V2 reconciliation enqueued ${total} jobs: ${JSON.stringify(result)}`);
-    }
+
+    this.recordReconciliationMetrics(result);
+    this.logger.log(
+      formatBatteryV2PipelineLog({
+        component: 'reconciliation',
+        event: 'reconcile_completed',
+        status: total > 0 ? 'completed' : 'skipped',
+        reconciliation: { ...result, total },
+      }),
+    );
 
     return result;
+  }
+
+  private recordReconciliationMetrics(result: BatteryV2ReconciliationResult): void {
+    if (!this.metrics) return;
+    const entries: Array<[BatteryV2ReconciliationCategory, number]> = [
+      ['observation_classify', result.observationClassify],
+      ['rest_targets', result.restTargets],
+      ['trip_starts', result.tripStarts],
+      ['recharge_segments', result.rechargeSegments],
+      ['assessments', result.assessments],
+      ['capability_refresh', result.capabilityRefresh],
+      ['capability_signal_loss', result.capabilitySignalLoss],
+    ];
+    for (const [category, count] of entries) {
+      recordBatteryV2ReconciliationEnqueued(this.metrics, { category, count });
+    }
   }
 
   private async reconcileMissingObservations(batch: number): Promise<number> {

@@ -12,6 +12,12 @@ import {
   recordBatteryRestWindow,
   recordBatteryStartInsufficientCoverage,
   recordBatteryStartProxy,
+  recordBatteryV2JobEnqueue,
+  recordBatteryV2JobEnqueueSuppressed,
+  recordBatteryV2PublicationAgeHours,
+  recordBatteryV2PublicationCoverage,
+  recordBatteryV2ReconciliationEnqueued,
+  setBatteryV2VehiclesWithoutPublication,
   recordHvCapacityM2SessionCv,
   recordHvCapacityMethodConflict,
   recordHvCapacityObservation,
@@ -51,6 +57,12 @@ describe('battery-v2-prometheus.metrics', () => {
       'synqdrive_hv_capacity_method_conflict_total',
       'synqdrive_hv_capacity_m2_session_cv',
       'synqdrive_battery_postgres_table_rows',
+      'synqdrive_battery_v2_jobs_enqueue_total',
+      'synqdrive_battery_v2_jobs_enqueue_suppressed_total',
+      'synqdrive_battery_v2_reconciliation_enqueued_total',
+      'synqdrive_battery_v2_publication_coverage_total',
+      'synqdrive_battery_v2_publication_age_hours',
+      'synqdrive_battery_v2_vehicles_without_publication',
     ];
     for (const name of required) {
       expect(text).toContain(name);
@@ -160,6 +172,57 @@ describe('battery-v2-prometheus.metrics', () => {
     expect(text).toMatch(
       /synqdrive_battery_publications_total\{maturity="STABLE",outcome="persisted"\} 1/,
     );
+  });
+
+  it('records pipeline enqueue, reconciliation, and publication observability metrics', async () => {
+    recordBatteryV2JobEnqueue(metrics, {
+      jobType: 'BATTERY_PUBLICATION_UPDATE',
+      outcome: 'success',
+    });
+    recordBatteryV2JobEnqueue(metrics, {
+      jobType: 'BATTERY_PUBLICATION_UPDATE',
+      outcome: 'failed',
+    });
+    recordBatteryV2JobEnqueueSuppressed(metrics, {
+      jobType: 'BATTERY_REST_TARGET_EVALUATE',
+      reason: 'duplicate',
+    });
+    recordBatteryV2ReconciliationEnqueued(metrics, {
+      category: 'rest_targets',
+      count: 4,
+    });
+    recordBatteryV2PublicationCoverage(metrics, {
+      scope: 'lv',
+      state: 'published',
+    });
+    recordBatteryV2PublicationAgeHours(metrics, {
+      maturity: 'STABLE',
+      ageHours: 12,
+    });
+    setBatteryV2VehiclesWithoutPublication(metrics, { scope: 'lv', count: 7 });
+
+    const text = await metrics.getMetrics();
+    expect(text).toMatch(
+      /synqdrive_battery_v2_jobs_enqueue_total\{job_type="BATTERY_PUBLICATION_UPDATE",outcome="success"\} 1/,
+    );
+    expect(text).toMatch(
+      /synqdrive_battery_v2_jobs_enqueue_total\{job_type="BATTERY_PUBLICATION_UPDATE",outcome="failed"\} 1/,
+    );
+    expect(text).toMatch(
+      /synqdrive_battery_v2_jobs_enqueue_suppressed_total\{job_type="BATTERY_REST_TARGET_EVALUATE",reason="duplicate"\} 1/,
+    );
+    expect(text).toMatch(
+      /synqdrive_battery_v2_reconciliation_enqueued_total\{category="rest_targets"\} 4/,
+    );
+    expect(text).toMatch(
+      /synqdrive_battery_v2_publication_coverage_total\{scope="lv",state="published"\} 1/,
+    );
+    expect(text).toContain('synqdrive_battery_v2_publication_age_hours_bucket');
+    expect(text).toMatch(
+      /synqdrive_battery_v2_vehicles_without_publication\{scope="lv"\} 7/,
+    );
+    expect(text).not.toMatch(/vehicle_id=/);
+    expect(text).not.toMatch(/organization_id=/);
   });
 
   it('records capability, M2 CV, and method conflict metrics', async () => {

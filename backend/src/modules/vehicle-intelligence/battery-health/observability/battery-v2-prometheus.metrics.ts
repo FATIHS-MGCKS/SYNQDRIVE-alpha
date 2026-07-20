@@ -218,6 +218,105 @@ export function recordBatteryPublication(
   });
 }
 
+export type BatteryV2EnqueueOutcome = 'success' | 'failed';
+
+export type BatteryV2EnqueueSuppressionReason =
+  | 'dead_letter'
+  | 'duplicate'
+  | 'workers_disabled';
+
+export type BatteryV2ReconciliationCategory =
+  | 'observation_classify'
+  | 'rest_targets'
+  | 'trip_starts'
+  | 'recharge_segments'
+  | 'assessments'
+  | 'capability_refresh'
+  | 'capability_signal_loss';
+
+export type BatteryV2PublicationCoverageState =
+  | 'published'
+  | 'skipped'
+  | 'missing';
+
+export function recordBatteryV2JobEnqueue(
+  metrics: TripMetricsService,
+  input: {
+    jobType: BatteryV2JobType | string;
+    outcome: BatteryV2EnqueueOutcome;
+  },
+): void {
+  metrics.batteryV2JobsEnqueueTotal.inc({
+    job_type: input.jobType,
+    outcome: input.outcome,
+  });
+}
+
+export function recordBatteryV2JobEnqueueSuppressed(
+  metrics: TripMetricsService,
+  input: {
+    jobType: BatteryV2JobType | string;
+    reason: BatteryV2EnqueueSuppressionReason;
+  },
+): void {
+  metrics.batteryV2JobsEnqueueSuppressedTotal.inc({
+    job_type: input.jobType,
+    reason: input.reason,
+  });
+}
+
+export function recordBatteryV2ReconciliationEnqueued(
+  metrics: TripMetricsService,
+  input: {
+    category: BatteryV2ReconciliationCategory;
+    count?: number;
+  },
+): void {
+  const count = input.count ?? 0;
+  if (count <= 0) return;
+  metrics.batteryV2ReconciliationEnqueuedTotal.inc({ category: input.category }, count);
+}
+
+export function recordBatteryV2PublicationCoverage(
+  metrics: TripMetricsService,
+  input: {
+    scope: 'lv' | 'hv';
+    state: BatteryV2PublicationCoverageState;
+  },
+): void {
+  metrics.batteryV2PublicationCoverageTotal.inc({
+    scope: input.scope,
+    state: input.state,
+  });
+}
+
+export function recordBatteryV2PublicationAgeHours(
+  metrics: TripMetricsService,
+  input: {
+    maturity: string;
+    ageHours: number;
+  },
+): void {
+  if (!Number.isFinite(input.ageHours) || input.ageHours < 0) return;
+  metrics.batteryV2PublicationAgeHours.observe(
+    { maturity: input.maturity },
+    input.ageHours,
+  );
+}
+
+export function setBatteryV2VehiclesWithoutPublication(
+  metrics: TripMetricsService,
+  input: {
+    scope: 'lv' | 'hv';
+    count: number;
+  },
+): void {
+  metrics.batteryV2VehiclesWithoutPublication.set(
+    { scope: input.scope },
+    Math.max(0, input.count),
+  );
+}
+
 export function recordBatteryCapabilitySignal(
   metrics: TripMetricsService,
   input: {

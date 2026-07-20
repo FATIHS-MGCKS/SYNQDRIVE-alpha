@@ -10,6 +10,13 @@ import {
   recordBatteryRestMeasurement,
   toBatteryRestWindowLabel,
 } from '../observability/battery-v2-prometheus.metrics';
+import {
+  fingerprintBatteryV2IdempotencyKey,
+  fingerprintBatteryV2JobId,
+  formatBatteryV2PipelineLog,
+  type BatteryV2PipelineLogEvent,
+  type BatteryV2PipelineLogStatus,
+} from '../observability/battery-v2-pipeline-observability.util';
 
 export interface BatteryV2JobLogEvent {
   jobType: BatteryV2JobType;
@@ -21,6 +28,7 @@ export interface BatteryV2JobLogEvent {
   attempt?: number;
   maxAttempts?: number;
   errorCode?: BatteryV2JobErrorCode;
+  jobId?: string;
 }
 
 @Injectable()
@@ -29,27 +37,37 @@ export class BatteryV2JobObservabilityService {
 
   constructor(private readonly metrics: TripMetricsService) {}
 
+  logPipeline(event: BatteryV2PipelineLogEvent): void {
+    const line = formatBatteryV2PipelineLog(event);
+    if (event.status === 'failed') {
+      this.logger.warn(line);
+      return;
+    }
+    if (event.status === 'suppressed' || event.status === 'skipped') {
+      this.logger.debug(line);
+      return;
+    }
+    this.logger.log(line);
+  }
+
   log(event: BatteryV2JobLogEvent): void {
-    this.logger.log({
-      msg: `battery.v2.${event.operation}`,
-      jobType: event.jobType,
-      organizationId: event.organizationId,
-      vehicleId: event.vehicleId,
-      idempotencyKey: event.idempotencyKey,
-      correlationId: event.correlationId,
-      attempt: event.attempt,
-      maxAttempts: event.maxAttempts,
-      errorCode: event.errorCode,
-    });
+    this.emitJobLog(event, 'completed');
   }
 
   logWarn(event: BatteryV2JobLogEvent): void {
-    this.logger.warn({
-      msg: `battery.v2.${event.operation}`,
+    this.emitJobLog(event, 'failed');
+  }
+
+  private emitJobLog(event: BatteryV2JobLogEvent, status: BatteryV2PipelineLogStatus): void {
+    this.logPipeline({
+      component: 'processor',
+      event: event.operation,
+      status,
       jobType: event.jobType,
       organizationId: event.organizationId,
       vehicleId: event.vehicleId,
-      idempotencyKey: event.idempotencyKey,
+      keyFp: fingerprintBatteryV2IdempotencyKey(event.idempotencyKey),
+      jobIdFp: event.jobId ? fingerprintBatteryV2JobId(event.jobId) : undefined,
       correlationId: event.correlationId,
       attempt: event.attempt,
       maxAttempts: event.maxAttempts,

@@ -9,7 +9,16 @@ import {
   type LvPublicationDecision,
   type LvPublicationEvidenceSummary,
 } from './lv-assessment/lv-publication.policy';
-import { recordBatteryPublication } from './observability/battery-v2-prometheus.metrics';
+import {
+  recordBatteryPublication,
+  recordBatteryV2PublicationAgeHours,
+  recordBatteryV2PublicationCoverage,
+} from './observability/battery-v2-prometheus.metrics';
+import {
+  bucketPublicationAgeHours,
+  computePublicationEvidenceAgeHours,
+  formatBatteryV2PipelineLog,
+} from './observability/battery-v2-pipeline-observability.util';
 
 export interface UpdateLvPublicationInput {
   organizationId: string;
@@ -149,7 +158,21 @@ export class BatteryPublicationService {
           maturity: decision.maturity,
           outcome: 'skipped',
         });
+        recordBatteryV2PublicationCoverage(this.metrics, {
+          scope: 'lv',
+          state: 'skipped',
+        });
       }
+      this.logger.debug(
+        formatBatteryV2PipelineLog({
+          component: 'publication',
+          event: 'publication_skipped',
+          status: 'skipped',
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          publicationMaturity: decision.maturity,
+        }),
+      );
       return {
         ok: true,
         decision,
@@ -176,8 +199,21 @@ export class BatteryPublicationService {
       });
     }
 
+    const publicationAgeHours = computePublicationEvidenceAgeHours(
+      evidence.firstAssessmentEvidenceObservedAt,
+      now,
+    );
+
     this.logger.log(
-      `LV publication ${decision.maturity} vehicle=${input.vehicleId} assessment=${input.assessmentId} published=${decision.publishedEstimatedHealth}`,
+      formatBatteryV2PipelineLog({
+        component: 'publication',
+        event: 'publication_persisted',
+        status: 'completed',
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        publicationMaturity: decision.maturity,
+        publicationAgeBucket: bucketPublicationAgeHours(publicationAgeHours),
+      }),
     );
 
     if (this.metrics) {
@@ -185,6 +221,16 @@ export class BatteryPublicationService {
         maturity: decision.maturity,
         outcome: decision.supersedePublicationId ? 'superseded' : 'persisted',
       });
+      recordBatteryV2PublicationCoverage(this.metrics, {
+        scope: 'lv',
+        state: 'published',
+      });
+      if (publicationAgeHours != null) {
+        recordBatteryV2PublicationAgeHours(this.metrics, {
+          maturity: decision.maturity,
+          ageHours: publicationAgeHours,
+        });
+      }
     }
 
     return {
