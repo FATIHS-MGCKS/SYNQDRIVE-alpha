@@ -12,8 +12,8 @@ function makePrisma() {
 }
 
 describe('RentalHealthFleetService', () => {
-  const rentalHealth = {
-    getVehicleHealth: jest.fn(),
+  const rentalHealthSummary = {
+    getFleetRowsBatch: jest.fn(),
   };
   const stationAccess = {
     resolve: jest.fn(),
@@ -29,7 +29,7 @@ describe('RentalHealthFleetService', () => {
     jest.clearAllMocks();
     stationAccess.resolve.mockResolvedValue(STATION_ACCESS_BYPASS);
     stationAccess.buildVehicleStationScopeWhere.mockReturnValue({});
-    svc = new RentalHealthFleetService(prisma as any, rentalHealth as any, stationAccess as any);
+    svc = new RentalHealthFleetService(prisma as any, rentalHealthSummary as any, stationAccess as any);
   });
 
   it('returns paginated fleet health with availability summary and page detail only', async () => {
@@ -43,8 +43,8 @@ describe('RentalHealthFleetService', () => {
       { id: 'v2', licensePlate: 'B-2' },
       { id: 'v3', licensePlate: 'C-3' },
     ]);
-    rentalHealth.getVehicleHealth
-      .mockResolvedValueOnce({
+    rentalHealthSummary.getFleetRowsBatch.mockResolvedValue([
+      {
         vehicle_id: 'v1',
         organization_id: 'org1',
         overall_state: 'good',
@@ -52,8 +52,8 @@ describe('RentalHealthFleetService', () => {
         blocking_reasons: [],
         modules: {},
         generated_at: '2026-07-01T00:00:00.000Z',
-      })
-      .mockResolvedValueOnce({
+      },
+      {
         vehicle_id: 'v2',
         organization_id: 'org1',
         overall_state: 'critical',
@@ -61,7 +61,8 @@ describe('RentalHealthFleetService', () => {
         blocking_reasons: ['Brakes'],
         modules: {},
         generated_at: '2026-07-01T00:00:00.000Z',
-      });
+      },
+    ]);
 
     const result = await svc.listFleetHealthPage('org1', 'user-1', { limit: 2 });
 

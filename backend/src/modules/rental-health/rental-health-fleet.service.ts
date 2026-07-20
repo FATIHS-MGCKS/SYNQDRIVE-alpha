@@ -12,8 +12,9 @@ import {
   type FleetRentalHealthPageResult,
   resolveFleetRentalHealthLimit,
 } from './rental-health-fleet-cursor.util';
-import { RentalHealthService } from './rental-health.service';
-import type { HealthState, VehicleHealth } from './rental-health.types';
+import { RentalHealthSummaryService } from './rental-health-summary.service';
+import type { FleetVehicleHealthRow } from './rental-health-summary.types';
+import type { HealthState } from './rental-health.types';
 
 export interface FleetRentalHealthListFilters {
   stationId?: string;
@@ -27,7 +28,7 @@ export interface FleetRentalHealthListFilters {
 export class RentalHealthFleetService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rentalHealth: RentalHealthService,
+    private readonly rentalHealthSummary: RentalHealthSummaryService,
     private readonly stationAccess: StationAccessService,
   ) {}
 
@@ -35,7 +36,7 @@ export class RentalHealthFleetService {
     orgId: string,
     userId: string | undefined,
     query: FleetRentalHealthQueryDto,
-  ): Promise<FleetRentalHealthPageResult<VehicleHealth>> {
+  ): Promise<FleetRentalHealthPageResult<FleetVehicleHealthRow>> {
     const access = await this.stationAccess.resolve(userId, orgId);
     const filters: FleetRentalHealthListFilters = {
       stationId: query.stationId,
@@ -81,7 +82,10 @@ export class RentalHealthFleetService {
           })()
         : vehicleRows;
 
-    const data = await this.loadVehicleHealthBatch(orgId, pageRows.map((row) => row.id));
+    const data = await this.rentalHealthSummary.getFleetRowsBatch(
+      orgId,
+      pageRows.map((row) => row.id),
+    );
 
     const byVehicleStatus = Object.fromEntries(
       byStatusRaw.map((row) => [row.status, row._count._all]),
@@ -145,45 +149,7 @@ export class RentalHealthFleetService {
     return { AND: andFilters };
   }
 
-  private async loadVehicleHealthBatch(orgId: string, vehicleIds: string[]): Promise<VehicleHealth[]> {
-    const BATCH = 5;
-    const results: VehicleHealth[] = [];
-
-    for (let i = 0; i < vehicleIds.length; i += BATCH) {
-      const slice = vehicleIds.slice(i, i + BATCH);
-      const batchResults = await Promise.all(
-        slice.map((vehicleId) =>
-          this.rentalHealth.getVehicleHealth(orgId, vehicleId).catch((err) => this.degradedVehicleHealth(orgId, vehicleId, err)),
-        ),
-      );
-      results.push(...batchResults);
-    }
-
-    return results;
-  }
-
-  private degradedVehicleHealth(orgId: string, vehicleId: string, err: unknown): VehicleHealth {
-    return {
-      vehicle_id: vehicleId,
-      organization_id: orgId,
-      overall_state: 'unknown',
-      rental_blocked: false,
-      blocking_reasons: [],
-      modules: {
-        battery: stubUnknown(),
-        tires: stubUnknown(),
-        brakes: stubUnknown(),
-        error_codes: stubUnknown(),
-        service_compliance: stubUnknown(),
-        complaints: stubUnknown(),
-        vehicle_alerts: stubUnknown(),
-      },
-      generated_at: new Date().toISOString(),
-      _error: err instanceof Error ? err.message : String(err),
-    } as VehicleHealth;
-  }
-
-  private summarizePageHealth(rows: VehicleHealth[]) {
+  private summarizePageHealth(rows: FleetVehicleHealthRow[]) {
     const byOverallState: Partial<Record<HealthState, number>> = {};
     let rentalBlocked = 0;
 
@@ -198,13 +164,4 @@ export class RentalHealthFleetService {
       vehiclesWithDetail: rows.length,
     };
   }
-}
-
-function stubUnknown() {
-  return {
-    state: 'unknown' as const,
-    reason: 'Daten nicht verfügbar',
-    last_updated_at: null,
-    data_stale: true,
-  };
 }

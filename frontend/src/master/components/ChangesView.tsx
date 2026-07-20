@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-health-fleet-summary-p50-2026-07-20',
+    version: '4.9.721',
+    title: 'Rental Health — Fleet Summary Read Model (Phase 7 P50)',
+    summary: [
+      'Redis cache-aside read model pro Fahrzeug (`rental-health-summary:{orgId}:{vehicleId}:v1`) — kein zweiter Evaluator, Projection aus kanonischem `getVehicleHealth`.',
+      'Fleet-Routen (`/rental-health/fleet`, Legacy-Batch) nutzen Summary; Detail-Route bleibt live ohne Cache.',
+      'Meta: `cache_stale` (soft stale >30s), `data_partial` (degraded modules); TTL 45s; Invalidation bei Review-Overrides, Booking/Handover.',
+    ],
+    reason: 'Phase 7 Prompt 50: linearen 7-Module×Fahrzeug-Fan-out für Fleet-Übersichten reduzieren.',
+    previousBehavior:
+      'Jeder Fleet-Page-Load rief pro Fahrzeug `getVehicleHealth` (7 parallele Modul-Reads) ohne Cache auf.',
+    details:
+      'rental-health-summary.{types,projection,cache,service}.ts, rental-health-fleet.service.ts, rental-health.controller.ts, bookings invalidation, api.ts VehicleHealthResponse meta, consistency tests',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T22:00:00.000Z',
+  },
+  {
     id: 'rental-health-scoped-fleet-p49-2026-07-20',
     version: '4.9.720',
     title: 'Rental Health — org-gescopter Fleet-Endpunkt (Phase 7 P49)',

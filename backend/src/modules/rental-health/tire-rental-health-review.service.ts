@@ -8,6 +8,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
 import type { TireRentalReviewOverrideSummary } from './tire-rental-health.types';
+import { RentalHealthSummaryCacheService } from './rental-health-summary-cache.service';
 
 export interface CreateTireRentalReviewOverrideInput {
   organizationId: string;
@@ -23,6 +24,7 @@ export class TireRentalHealthReviewService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
   ) {}
 
   async findActiveOverride(
@@ -105,6 +107,8 @@ export class TireRentalHealthReviewService {
       },
     });
 
+    await this.rentalHealthSummaryCache.invalidate(input.organizationId, input.vehicleId);
+
     return created;
   }
 
@@ -136,6 +140,8 @@ export class TireRentalHealthReviewService {
       level: 'WARN',
       metaJson: { overrideId },
     });
+
+    await this.rentalHealthSummaryCache.invalidate(organizationId, vehicleId);
 
     return revoked;
   }

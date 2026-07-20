@@ -30,6 +30,7 @@ import {
 import type { HandoverTechnicalObservationDraft } from './handover.types';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
+import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -54,6 +55,7 @@ export class BookingsHandoverService {
     private readonly workflowEvents: WorkflowEventService,
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
+    private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -398,6 +400,7 @@ export class BookingsHandoverService {
     }
 
     await this.fleetMapCache.invalidate(orgId);
+    await this.rentalHealthSummaryCache.invalidate(orgId, booking.vehicleId);
 
     return {
       booking: { id: updatedBooking.id, status: updatedBooking.status },
