@@ -24,6 +24,10 @@ import type {
   VehicleHealthComplianceDateState,
   VehicleHealthModuleStateBase,
 } from './vehicle-health-tab-summary.types';
+import {
+  buildOemDashboardLightSourceFinding,
+  type RentalHealthSourceFinding,
+} from '@modules/rental-health/health-finding-sources';
 
 const RENTAL_FINDING_MODULES = [
   'battery',
@@ -278,12 +282,30 @@ export class VehicleHealthTabSummaryService {
     const findings: VehicleHealthTabSummaryDto['findings'] = [];
 
     if (rental) {
+      const scope = {
+        organizationId: rental.organization_id,
+        vehicleId: rental.vehicle_id,
+      };
+
       for (const moduleKey of RENTAL_FINDING_MODULES) {
         const mod = rental.modules[moduleKey];
         if (mod.state === 'good' || mod.state === 'n_a') continue;
+
+        const moduleFindings = mod.source_findings ?? [];
+        if (moduleFindings.length > 0) {
+          for (const sourceFinding of moduleFindings) {
+            findings.push(
+              this.rentalSourceFindingToTabFinding(moduleKey, mod, sourceFinding),
+            );
+          }
+          continue;
+        }
+
         const severity = this.moduleStateToFindingSeverity(mod.state);
         findings.push({
           id: `rental-${moduleKey}`,
+          sourceFindingId: undefined,
+          findingOccurrenceId: undefined,
           module: moduleKey,
           severity,
           title: this.findingTitle(moduleKey, severity),
@@ -294,12 +316,20 @@ export class VehicleHealthTabSummaryService {
       }
     }
 
-    if (warningLights) {
+    if (warningLights && rental) {
+      const scope = {
+        organizationId: rental.organization_id,
+        vehicleId: rental.vehicle_id,
+      };
       for (const light of warningLights.lights) {
         if (light.state !== 'active') continue;
         const severity = this.lightSeverityToFinding(light);
+        const sourceFinding = buildOemDashboardLightSourceFinding(scope, light);
         findings.push({
-          id: `oem-${light.key}`,
+          id: sourceFinding.source_finding_id,
+          sourceFindingId: sourceFinding.source_finding_id,
+          findingOccurrenceId: sourceFinding.finding_occurrence_id,
+          findingCode: sourceFinding.finding_code,
           module: 'oem_hm',
           severity,
           title: light.label,
@@ -317,6 +347,37 @@ export class VehicleHealthTabSummaryService {
     );
 
     return findings;
+  }
+
+  private rentalSourceFindingToTabFinding(
+    moduleKey: (typeof RENTAL_FINDING_MODULES)[number],
+    mod: VehicleHealth['modules'][typeof moduleKey],
+    sourceFinding: RentalHealthSourceFinding,
+  ): VehicleHealthTabSummaryDto['findings'][number] {
+    const severity = this.mapSourceFindingSeverity(sourceFinding.severity, mod.state);
+    return {
+      id: sourceFinding.source_finding_id,
+      sourceFindingId: sourceFinding.source_finding_id,
+      findingOccurrenceId: sourceFinding.finding_occurrence_id,
+      findingCode: sourceFinding.finding_code,
+      module: moduleKey,
+      severity,
+      title: this.findingTitle(moduleKey, severity),
+      description: sourceFinding.reason ?? mod.reason ?? this.findingTitle(moduleKey, severity),
+      evidence: mod.data_stale ? ['Daten möglicherweise veraltet'] : undefined,
+      targetModalKey: MODULE_MODAL[moduleKey] ?? null,
+    };
+  }
+
+  private mapSourceFindingSeverity(
+    sourceSeverity: RentalHealthSourceFinding['severity'],
+    moduleState: HealthState,
+  ): VehicleHealthFindingSeverity {
+    if (sourceSeverity === 'critical' || sourceSeverity === 'warning' || sourceSeverity === 'unknown') {
+      return sourceSeverity;
+    }
+    if (sourceSeverity === 'info') return 'info';
+    return this.moduleStateToFindingSeverity(moduleState);
   }
 
   private moduleStateToFindingSeverity(state: HealthState): VehicleHealthFindingSeverity {

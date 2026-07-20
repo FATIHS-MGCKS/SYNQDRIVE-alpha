@@ -416,6 +416,36 @@ describe('VehicleHealthTabSummaryService', () => {
       expect(dtcFinding?.targetModalKey).toBe('dtc');
     });
 
+    it('uses stable source_finding_id from rental-health source_findings', async () => {
+      const stableId = 'a'.repeat(64);
+      const rh = rentalHealth('warning');
+      rh.modules.tires = {
+        ...baseModule('warning'),
+        source_findings: [
+          {
+            finding_code: 'PRESSURE_WARNING',
+            source_entity_type: 'rental_reason_code',
+            source_entity_id: 'pressure_warning',
+            source_finding_id: stableId,
+            finding_occurrence_id: 'b'.repeat(64),
+            occurrence_generation: 1,
+            version: 'health-finding-identity-v1',
+            first_observed_at: '2026-06-16T10:00:00.000Z',
+            current_observed_at: '2026-06-16T10:00:00.000Z',
+            severity: 'warning',
+            reason: 'Reifendruck niedrig',
+          },
+        ],
+      };
+      rentalHealthSvc.getVehicleHealth.mockResolvedValue(rh);
+
+      const res = await svc.getSummary('org-1', 'veh-1');
+      const tireFinding = res.findings.find((f) => f.module === 'tires');
+      expect(tireFinding?.id).toBe(stableId);
+      expect(tireFinding?.sourceFindingId).toBe(stableId);
+      expect(tireFinding?.findingCode).toBe('PRESSURE_WARNING');
+    });
+
     it('DIMO stale reduces dataQuality below high', async () => {
       rentalHealthSvc.getVehicleHealth.mockResolvedValue(rentalHealth('good'));
       const staleDate = new Date('2026-06-01T00:00:00.000Z');

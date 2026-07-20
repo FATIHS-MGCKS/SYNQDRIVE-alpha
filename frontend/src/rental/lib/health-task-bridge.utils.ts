@@ -4,9 +4,11 @@ import type {
   ApiTaskType,
   ComplianceTaskSignal,
   RentalHealthModule,
+  RentalHealthSourceFinding,
   RentalHealthState,
   Vendor,
 } from '../../lib/api';
+import { HEALTH_FINDING_IDENTITY_VERSION } from './health-finding-identity.types';
 import { preferredVendorsForVehicle } from './service-task-semantics';
 
 export type HealthActionModule =
@@ -17,6 +19,25 @@ export type HealthActionModule =
   | 'service_compliance'
   | 'vehicle_alerts'
   | 'complaints';
+
+export interface HealthTaskMetadata {
+  sourceType: 'HEALTH';
+  organizationId: string;
+  vehicleId: string;
+  healthModule: HealthActionModule;
+  sourceFindingId?: string;
+  findingCode?: string;
+  sourceEntityType?: string;
+  sourceEntityId?: string;
+  findingVersion?: string;
+  blockingReasonCode?: string;
+  healthState?: RentalHealthState;
+  healthReason?: string;
+  origin?: string;
+  notificationId?: string;
+  notificationEventType?: string;
+  complianceKind?: string;
+}
 
 export interface HealthTaskPrefill {
   title: string;
@@ -29,7 +50,7 @@ export interface HealthTaskPrefill {
   vendorId?: string;
   sourceType: 'HEALTH';
   sourceKey: string;
-  metadata: Record<string, unknown>;
+  metadata: HealthTaskMetadata;
 }
 
 const OPEN_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING']);
@@ -52,6 +73,13 @@ const MODULE_SERVICE_KEYWORDS: Record<HealthActionModule, string[]> = {
   service_compliance: ['tüv', 'inspection', 'service', 'hu'],
   vehicle_alerts: ['workshop', 'general'],
   complaints: [],
+};
+
+const SEVERITY_RANK: Record<RentalHealthSourceFinding['severity'], number> = {
+  critical: 0,
+  warning: 1,
+  unknown: 2,
+  info: 3,
 };
 
 export function healthModuleNeedsAction(
@@ -85,31 +113,95 @@ export function suggestedVendorForHealthModule(
   return match?.id ?? preferred[0]?.id;
 }
 
+export function pickPrimarySourceFinding(
+  rentalModule?: RentalHealthModule | null,
+): RentalHealthSourceFinding | null {
+  const findings = rentalModule?.source_findings ?? [];
+  if (!findings.length) return null;
+  return [...findings].sort(
+    (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
+  )[0];
+}
+
+export function deriveBlockingReasonCode(
+  rentalModule?: RentalHealthModule | null,
+): string | undefined {
+  return (
+    rentalModule?.tire_read_model?.rentalBlockingEvidence?.reasonCode ??
+    rentalModule?.brake_read_model?.rentalBlockingEvidence?.reasonCode
+  );
+}
+
+function buildHealthTaskMetadata(opts: {
+  organizationId: string;
+  vehicleId: string;
+  module: HealthActionModule;
+  state: RentalHealthState;
+  reason?: string;
+  sourceFinding?: RentalHealthSourceFinding | null;
+  blockingReasonCode?: string | null;
+  origin?: string;
+  extra?: Partial<HealthTaskMetadata>;
+}): HealthTaskMetadata {
+  const metadata: HealthTaskMetadata = {
+    sourceType: 'HEALTH',
+    organizationId: opts.organizationId,
+    vehicleId: opts.vehicleId,
+    healthModule: opts.module,
+    healthState: opts.state,
+    ...(opts.reason ? { healthReason: opts.reason } : {}),
+    origin: opts.origin ?? 'HEALTH_UI',
+    ...(opts.extra ?? {}),
+  };
+
+  if (opts.sourceFinding) {
+    metadata.sourceFindingId = opts.sourceFinding.source_finding_id;
+    metadata.findingCode = opts.sourceFinding.finding_code;
+    metadata.sourceEntityType = opts.sourceFinding.source_entity_type;
+    metadata.sourceEntityId = opts.sourceFinding.source_entity_id;
+    metadata.findingVersion = opts.sourceFinding.version ?? HEALTH_FINDING_IDENTITY_VERSION;
+  }
+
+  const blockingReasonCode = opts.blockingReasonCode?.trim();
+  if (blockingReasonCode) {
+    metadata.blockingReasonCode = blockingReasonCode;
+  }
+
+  return metadata;
+}
+
 export function buildHealthTaskPrefill(opts: {
   module: HealthActionModule;
+  organizationId: string;
   vehicleId: string;
   rentalModule?: RentalHealthModule | null;
+  sourceFinding?: RentalHealthSourceFinding | null;
   contextLines?: string[];
   dtcCodes?: string[];
   dueDate?: string | null;
   vendors?: Vendor[];
   blocksRental?: boolean;
+  blockingReasonCode?: string | null;
+  origin?: string;
 }): HealthTaskPrefill {
   const state = opts.rentalModule?.state ?? 'warning';
   const priority = priorityForHealthState(state);
   const reason = opts.rentalModule?.reason?.trim();
-  const context = [
-    reason,
-    ...(opts.contextLines ?? []),
-  ].filter(Boolean).join('\n');
+  const sourceFinding = opts.sourceFinding ?? pickPrimarySourceFinding(opts.rentalModule);
+  const blockingReasonCode =
+    opts.blockingReasonCode ?? deriveBlockingReasonCode(opts.rentalModule) ?? null;
 
-  const baseMeta = {
-    healthModule: opts.module,
-    healthState: state,
-    healthReason: reason ?? undefined,
-    origin: 'HEALTH_UI',
+  const context = [reason, ...(opts.contextLines ?? [])].filter(Boolean).join('\n');
+  const metadata = buildHealthTaskMetadata({
+    organizationId: opts.organizationId,
     vehicleId: opts.vehicleId,
-  };
+    module: opts.module,
+    state,
+    reason,
+    sourceFinding,
+    blockingReasonCode,
+    origin: opts.origin,
+  });
 
   const vendorId = opts.vendors?.length
     ? suggestedVendorForHealthModule(opts.vendors, opts.vehicleId, opts.module)
@@ -125,9 +217,9 @@ export function buildHealthTaskPrefill(opts: {
         category: 'Reifen',
         vendorId,
         sourceType: 'HEALTH',
-        sourceKey: 'HEALTH_TIRES',
+        sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_TIRES',
         blocksVehicleAvailability: opts.blocksRental ?? state === 'critical',
-        metadata: baseMeta,
+        metadata,
       };
     case 'brakes':
       return {
@@ -138,9 +230,9 @@ export function buildHealthTaskPrefill(opts: {
         category: 'Bremsen',
         vendorId,
         sourceType: 'HEALTH',
-        sourceKey: 'HEALTH_BRAKES',
+        sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_BRAKES',
         blocksVehicleAvailability: opts.blocksRental ?? state === 'critical',
-        metadata: baseMeta,
+        metadata,
       };
     case 'battery':
       return {
@@ -151,9 +243,9 @@ export function buildHealthTaskPrefill(opts: {
         category: 'Batterie',
         vendorId,
         sourceType: 'HEALTH',
-        sourceKey: 'HEALTH_BATTERY',
+        sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_BATTERY',
         blocksVehicleAvailability: opts.blocksRental ?? state === 'critical',
-        metadata: baseMeta,
+        metadata,
       };
     case 'error_codes': {
       const codes = opts.dtcCodes?.filter(Boolean) ?? [];
@@ -168,9 +260,9 @@ export function buildHealthTaskPrefill(opts: {
         category: 'Diagnose / Fehlercodes',
         vendorId,
         sourceType: 'HEALTH',
-        sourceKey: 'HEALTH_DTC',
+        sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_DTC',
         blocksVehicleAvailability: opts.blocksRental ?? state === 'critical',
-        metadata: { ...baseMeta, dtcCodes: codes },
+        metadata,
       };
     }
     case 'service_compliance':
@@ -183,9 +275,12 @@ export function buildHealthTaskPrefill(opts: {
         dueDate: opts.dueDate ?? undefined,
         vendorId,
         sourceType: 'HEALTH',
-        sourceKey: 'HEALTH_COMPLIANCE',
+        sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_COMPLIANCE',
         blocksVehicleAvailability: opts.blocksRental ?? state === 'critical',
-        metadata: { ...baseMeta, complianceKind: 'service_compliance' },
+        metadata: {
+          ...metadata,
+          complianceKind: 'service_compliance',
+        },
       };
     case 'vehicle_alerts':
       return {
@@ -196,8 +291,8 @@ export function buildHealthTaskPrefill(opts: {
         category: 'Diagnose / Fehlercodes',
         vendorId,
         sourceType: 'HEALTH',
-        sourceKey: 'HEALTH_ALERTS',
-        metadata: baseMeta,
+        sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_ALERTS',
+        metadata,
       };
     default:
       return {
@@ -206,8 +301,8 @@ export function buildHealthTaskPrefill(opts: {
         type: 'VEHICLE_SERVICE',
         priority,
         sourceType: 'HEALTH',
-        sourceKey: 'HEALTH_GENERAL',
-        metadata: baseMeta,
+        sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_GENERAL',
+        metadata,
       };
   }
 }
@@ -217,12 +312,14 @@ export function findDuplicateHealthTask(
   vehicleId: string,
   module: HealthActionModule,
   preferredType: ApiTaskType,
+  sourceFindingId?: string | null,
 ): ApiTask | null {
   const types = MODULE_TASK_TYPES[module];
   for (const task of tasks) {
     if (task.vehicleId !== vehicleId) continue;
     if (!OPEN_STATUSES.has(task.status)) continue;
     const meta = task.metadata && typeof task.metadata === 'object' ? task.metadata : null;
+    if (sourceFindingId && meta?.sourceFindingId === sourceFindingId) return task;
     if (meta?.healthModule === module) return task;
     if (types.includes(task.type) || task.type === preferredType) return task;
     if (task.sourceType === 'HEALTH' && types.includes(task.type)) return task;
@@ -244,6 +341,8 @@ export function healthContextFromTask(task: ApiTask): {
   stateLabel: string;
   reason: string | null;
   explanation: string;
+  findingCode: string | null;
+  sourceFindingId: string | null;
 } | null {
   if (!isHealthOriginatedTask(task)) return null;
   const meta = task.metadata && typeof task.metadata === 'object' ? task.metadata : {};
@@ -269,6 +368,8 @@ export function healthContextFromTask(task: ApiTask): {
     moduleLabel: labels[moduleKey] || 'Health',
     stateLabel: stateDe[state] || state || '—',
     reason: typeof meta.healthReason === 'string' ? meta.healthReason : null,
+    findingCode: typeof meta.findingCode === 'string' ? meta.findingCode : null,
+    sourceFindingId: typeof meta.sourceFindingId === 'string' ? meta.sourceFindingId : null,
     explanation: 'Diese Aufgabe wurde aus einem Health-Signal erstellt. Details und Messwerte finden Sie im Health-Tab des Fahrzeugs.',
   };
 }

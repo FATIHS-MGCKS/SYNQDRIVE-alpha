@@ -48,6 +48,10 @@ import {
   type TaskOperatorBucket,
 } from './task-bucket.util';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
+import {
+  healthTaskDedupKeyFromMetadata,
+  sanitizeHealthTaskMetadata,
+} from './health-task-metadata.util';
 
 // ─── Domain constants (V4.8.3 Task Action Layer) ─────────────────────────
 
@@ -1054,42 +1058,52 @@ export class TasksService {
     this.assertManualTaskDuration(input.estimatedDurationMinutes ?? undefined);
     await this.assertLinksBelongToOrg(orgId, input);
 
-    const dedupKey = this.resolveManualTaskDedupKey(input);
+    const normalizedMetadata = sanitizeHealthTaskMetadata(input.metadata, {
+      organizationId: orgId,
+      vehicleId: input.vehicleId ?? null,
+      sourceType: input.sourceType ?? null,
+    });
+    const taskInput: CreateManualTaskInput = {
+      ...input,
+      metadata: normalizedMetadata,
+    };
+
+    const dedupKey = this.resolveManualTaskDedupKey(taskInput);
     if (dedupKey) {
-      return this.createManualTaskByDedup(orgId, dedupKey, input, createdByUserId);
+      return this.createManualTaskByDedup(orgId, dedupKey, taskInput, createdByUserId);
     }
 
-    const type = input.type ?? 'CUSTOM';
-    const checklist = this.resolveChecklist(type, input.checklist);
-    const initialNote = input.initialNote?.trim() || undefined;
+    const type = taskInput.type ?? 'CUSTOM';
+    const checklist = this.resolveChecklist(type, taskInput.checklist);
+    const initialNote = taskInput.initialNote?.trim() || undefined;
 
     const task = await this.prisma.$transaction(async (tx) => {
       const created = await tx.orgTask.create({
         data: {
           organizationId: orgId,
-          title: input.title.trim(),
-          description: input.description,
-          category: input.category,
+          title: taskInput.title.trim(),
+          description: taskInput.description,
+          category: taskInput.category,
           type,
-          priority: input.priority ?? 'NORMAL',
-          source: input.source ?? null,
-          sourceType: input.sourceType ?? 'MANUAL',
-          vehicleId: input.vehicleId ?? undefined,
-          bookingId: input.bookingId ?? undefined,
-          customerId: input.customerId ?? undefined,
-          vendorId: input.vendorId ?? undefined,
-          alertId: input.alertId ?? undefined,
-          documentId: input.documentId ?? undefined,
-          fineId: input.fineId ?? undefined,
-          invoiceId: input.invoiceId ?? undefined,
-          serviceCaseId: input.serviceCaseId ?? undefined,
-          assignedUserId: input.assignedUserId ?? undefined,
-          dueDate: input.dueDate ? new Date(input.dueDate) : null,
-          activatesAt: input.activatesAt ? new Date(input.activatesAt) : new Date(),
-          estimatedCostCents: input.estimatedCostCents ?? undefined,
-          estimatedDurationMinutes: input.estimatedDurationMinutes ?? undefined,
-          blocksVehicleAvailability: input.blocksVehicleAvailability ?? false,
-          metadata: input.metadata,
+          priority: taskInput.priority ?? 'NORMAL',
+          source: taskInput.source ?? null,
+          sourceType: taskInput.sourceType ?? 'MANUAL',
+          vehicleId: taskInput.vehicleId ?? undefined,
+          bookingId: taskInput.bookingId ?? undefined,
+          customerId: taskInput.customerId ?? undefined,
+          vendorId: taskInput.vendorId ?? undefined,
+          alertId: taskInput.alertId ?? undefined,
+          documentId: taskInput.documentId ?? undefined,
+          fineId: taskInput.fineId ?? undefined,
+          invoiceId: taskInput.invoiceId ?? undefined,
+          serviceCaseId: taskInput.serviceCaseId ?? undefined,
+          assignedUserId: taskInput.assignedUserId ?? undefined,
+          dueDate: taskInput.dueDate ? new Date(taskInput.dueDate) : null,
+          activatesAt: taskInput.activatesAt ? new Date(taskInput.activatesAt) : new Date(),
+          estimatedCostCents: taskInput.estimatedCostCents ?? undefined,
+          estimatedDurationMinutes: taskInput.estimatedDurationMinutes ?? undefined,
+          blocksVehicleAvailability: taskInput.blocksVehicleAvailability ?? false,
+          metadata: taskInput.metadata,
           createdByUserId: createdByUserId ?? null,
           checklistItems: checklist
             ? {
@@ -1162,6 +1176,8 @@ export class TasksService {
     if (typeof meta.supportTicketId === 'string' && meta.supportTicketId.trim()) {
       return supportTicketFollowupDedupKey(meta.supportTicketId.trim());
     }
+    const healthFindingDedup = healthTaskDedupKeyFromMetadata(meta);
+    if (healthFindingDedup) return healthFindingDedup;
     return undefined;
   }
 
@@ -1287,7 +1303,13 @@ export class TasksService {
     if (data.assignedUserId !== undefined) update.assignedUserId = data.assignedUserId;
     if (data.estimatedCostCents !== undefined) update.estimatedCostCents = data.estimatedCostCents;
     if (data.actualCostCents !== undefined) update.actualCostCents = data.actualCostCents;
-    if (data.metadata !== undefined) update.metadata = data.metadata;
+    if (data.metadata !== undefined) {
+      update.metadata = sanitizeHealthTaskMetadata(data.metadata, {
+        organizationId: orgId,
+        vehicleId: existing.vehicleId,
+        sourceType: existing.sourceType,
+      });
+    }
     if (data.blocksVehicleAvailability !== undefined) {
       update.blocksVehicleAvailability = data.blocksVehicleAvailability;
     }

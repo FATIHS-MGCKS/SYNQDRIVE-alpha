@@ -262,7 +262,7 @@ export function NotificationPanel({
 
   const openCreateTask = useCallback(
     (item: ActionQueueItem) => {
-      const prefill = buildNotificationTaskPrefill(item, vendors);
+      const prefill = buildNotificationTaskPrefill(item, vendors, orgId ?? '');
       if (!prefill || !item.vehicleId) return;
       setTaskPrefill(prefill);
       setTaskVehicleId(item.vehicleId);

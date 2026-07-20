@@ -76,6 +76,7 @@ export function HealthServiceActions({
     () =>
       buildHealthTaskPrefill({
         module: healthModule,
+        organizationId: orgId ?? '',
         vehicleId,
         rentalModule,
         contextLines,
@@ -84,12 +85,19 @@ export function HealthServiceActions({
         vendors,
         blocksRental,
       }),
-    [healthModule, vehicleId, rentalModule, contextLines, dtcCodes, dueDate, vendors, blocksRental],
+    [healthModule, orgId, vehicleId, rentalModule, contextLines, dtcCodes, dueDate, vendors, blocksRental],
   );
 
   const duplicate = useMemo(
-    () => findDuplicateHealthTask(openTasks, vehicleId, healthModule, prefillBase.type),
-    [openTasks, vehicleId, healthModule, prefillBase.type],
+    () =>
+      findDuplicateHealthTask(
+        openTasks,
+        vehicleId,
+        healthModule,
+        prefillBase.type,
+        prefillBase.metadata.sourceFindingId,
+      ),
+    [openTasks, vehicleId, healthModule, prefillBase.type, prefillBase.metadata.sourceFindingId],
   );
 
   const complianceForModule = useMemo(() => {
