@@ -105,7 +105,7 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 | **13** | 1 | Task-Pagination Backend | Prompt 4 | Backend / Tasks | `listTasks` mit `take`/`cursor`; Default-Limit; org-scoped | TODO | — | — | API-Compat: alte Clients ohne cursor |
 | **14** | 1 | Task-Pagination Frontend | Prompt 13 | Frontend / Service Center | Infinite scroll oder paging in FHS Aufgaben; FHS-T-078 | TODO | — | — | Client-Flag |
 | **15** | 1 | Health Fleet Batch POST | Prompt 10 | Backend + Frontend | `vehicleIds` per POST body; URL-Längen-Limit behoben; FHS-T-077 | TODO | — | — | GET-Fallback behalten |
-| **16** | 1 | Battery V2 Job-ID Sanitization | Prompt 4 | Backend / Workers | Kein `:` in BullMQ custom job id; Prod-Log-Fehler behoben; FHS-T-092 | TODO | — | — | Revert Producer |
+| **16** | 1 | Battery V2 Job-ID Sanitization | Prompt 4 | Backend / Workers | Kein `:` in BullMQ custom job id; Prod-Log-Fehler behoben; FHS-T-092 | TODO | — | Repro: `battery-v2-bullmq-job-id.repro.spec.ts` (5 pass, 2 fail acceptance gate pre-fix) | Revert Producer |
 
 ### Phase 2 — Service Cases Tiefe
 
