@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DimoConnectionStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { DeviceConnectionEpisodeService } from './device-connection-episode.service';
+import { DeviceConnectionWebhookConfigurationService } from './device-connection-webhook-configuration/device-connection-webhook-configuration.service';
+import { configuredUnplugWebhookConfiguration } from './device-connection-webhook-configuration/device-connection-webhook-configuration.test-helpers';
 import {
   buildDeviceConnectionSummary,
   buildTripDeviceConnectionFlags,
@@ -12,6 +15,7 @@ import {
   type DeviceConnectionEventRow,
   type DeviceConnectionSummary,
   type DeviceConnectionTripWindow,
+  type PersistedOpenEpisodeInput,
   type TripDeviceConnectionFlags,
 } from './device-connection-read-model';
 
@@ -19,7 +23,11 @@ const BOOKING_STATUSES = ['ACTIVE', 'CONFIRMED', 'COMPLETED'] as const;
 
 @Injectable()
 export class DeviceConnectionQueryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly episodeService: DeviceConnectionEpisodeService,
+    private readonly webhookConfiguration: DeviceConnectionWebhookConfigurationService,
+  ) {}
 
   async getVehicleSummary(
     organizationId: string,
@@ -32,7 +40,7 @@ export class DeviceConnectionQueryService {
         id: true,
         hardwareType: true,
         dimoVehicleId: true,
-        dimoVehicle: { select: { connectionStatus: true } },
+        dimoVehicle: { select: { connectionStatus: true, tokenId: true } },
         latestState: { select: { rawPayloadJson: true } },
       },
     });
@@ -43,10 +51,18 @@ export class DeviceConnectionQueryService {
     const nowMs = Date.now();
     const since7d = new Date(nowMs - 7 * 24 * 60 * 60 * 1000);
 
-    const [events, bookings, trips] = await Promise.all([
+    const [events, bookings, trips, openEpisode, webhookConfig] = await Promise.all([
       this.loadEvents(organizationId, vehicleId, since7d, opts?.includeRawPayload),
       this.loadBookings(vehicleId, since7d),
       this.loadTrips(vehicleId, since7d),
+      this.episodeService.findOpenEpisodeForVehicle(organizationId, vehicleId),
+      this.webhookConfiguration.getForVehicle({
+        organizationId,
+        vehicleId,
+        hardwareType: vehicle.hardwareType,
+        dimoLinked: vehicle.dimoVehicleId != null,
+        tokenId: vehicle.dimoVehicle?.tokenId ?? null,
+      }),
     ]);
 
     const summary = buildDeviceConnectionSummary({
@@ -59,6 +75,8 @@ export class DeviceConnectionQueryService {
       trips,
       recentLimit: opts?.eventLimit ?? 20,
       connectivityAnchor: this.buildConnectivityAnchor(vehicle),
+      persistedOpenEpisode: this.toPersistedOpenEpisode(openEpisode),
+      webhookConfiguration: webhookConfig,
     });
 
     if (opts?.includeRawPayload) {
@@ -72,13 +90,14 @@ export class DeviceConnectionQueryService {
     vehicleIds: string[],
     hardwareById: Map<string, string | null>,
     dimoLinkedById: Map<string, boolean>,
+    tokenIdById: Map<string, number | null>,
   ): Promise<Map<string, ReturnType<typeof buildDeviceConnectionSummary>>> {
     if (vehicleIds.length === 0) return new Map();
 
     const nowMs = Date.now();
     const since7d = new Date(nowMs - 7 * 24 * 60 * 60 * 1000);
 
-    const [events, bookings, trips, vehicles] = await Promise.all([
+    const [events, bookings, trips, vehicles, openEpisodes] = await Promise.all([
       this.prisma.dimoDeviceConnectionEvent.findMany({
         where: {
           organizationId,
@@ -129,7 +148,10 @@ export class DeviceConnectionQueryService {
           latestState: { select: { rawPayloadJson: true } },
         },
       }),
+      this.episodeService.findOpenEpisodesForVehicles(organizationId, vehicleIds),
     ]);
+
+    const openEpisodeByVehicle = this.indexOpenEpisodesByVehicle(openEpisodes);
 
     const anchorByVehicle = new Map<string, DeviceConnectionConnectivityAnchor | null>();
     for (const v of vehicles) {
@@ -157,6 +179,15 @@ export class DeviceConnectionQueryService {
       tripsByVehicle.set(t.vehicleId, list);
     }
 
+    const configInputs = vehicleIds.map((vehicleId) => ({
+      organizationId,
+      vehicleId,
+      hardwareType: hardwareById.get(vehicleId) ?? null,
+      dimoLinked: dimoLinkedById.get(vehicleId) ?? false,
+      tokenId: tokenIdById.get(vehicleId) ?? null,
+    }));
+    const webhookConfigs = await this.webhookConfiguration.getForVehicles(configInputs);
+
     const out = new Map<string, ReturnType<typeof buildDeviceConnectionSummary>>();
     for (const vehicleId of vehicleIds) {
       out.set(
@@ -171,6 +202,8 @@ export class DeviceConnectionQueryService {
           trips: tripsByVehicle.get(vehicleId) ?? [],
           recentLimit: 5,
           connectivityAnchor: anchorByVehicle.get(vehicleId) ?? null,
+          persistedOpenEpisode: openEpisodeByVehicle.get(vehicleId) ?? null,
+          webhookConfiguration: webhookConfigs.get(vehicleId),
         }),
       );
     }
@@ -324,6 +357,39 @@ export class DeviceConnectionQueryService {
     });
     if (!vehicle) return null;
     return this.buildConnectivityAnchor(vehicle);
+  }
+
+  private toPersistedOpenEpisode(
+    episode: {
+      id: string;
+      openedAt: Date;
+      deviceBindingId: string | null;
+    } | null,
+  ): PersistedOpenEpisodeInput | null {
+    if (!episode) return null;
+    return {
+      id: episode.id,
+      openedAt: episode.openedAt,
+      deviceBindingId: episode.deviceBindingId,
+    };
+  }
+
+  private indexOpenEpisodesByVehicle(
+    episodes: Array<{
+      id: string;
+      vehicleId: string;
+      openedAt: Date;
+      deviceBindingId: string | null;
+    }>,
+  ): Map<string, PersistedOpenEpisodeInput> {
+    const out = new Map<string, PersistedOpenEpisodeInput>();
+    for (const episode of episodes) {
+      const existing = out.get(episode.vehicleId);
+      if (!existing || episode.openedAt.getTime() > existing.openedAt.getTime()) {
+        out.set(episode.vehicleId, this.toPersistedOpenEpisode(episode)!);
+      }
+    }
+    return out;
   }
 
   private async loadEvents(

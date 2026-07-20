@@ -2,11 +2,12 @@ import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals'
 import {
   ONLINE_MAX_MS,
   STANDBY_MAX_MS,
+  SIGNAL_DELAYED_MAX_MS,
   buildFleetConnectivitySummary,
   deriveConnectionStatus,
   deriveFleetSignals,
   deriveReadinessLevel,
-  mapFleetConnectivityVehicle,
+  mapFleetConnectivityVehicleWithRuntime,
   maskSensitiveId,
   computeSignalCoveragePercent,
   paginateFleetConnectivityVehicles,
@@ -25,43 +26,80 @@ function hoursAgo(hours: number): Date {
 describe('fleet-connectivity.util', () => {
   describe('deriveConnectionStatus', () => {
     it('returns not_connected without provider link', () => {
-      const result = deriveConnectionStatus(false, null, NOW);
+      const result = deriveConnectionStatus(false, {}, NOW);
       expect(result.connectionStatus).toBe('not_connected');
+      expect(result.telemetryFreshness).toBe('no_signal');
     });
 
     it('returns online when last signal is under 15 minutes', () => {
-      const lastSeenMs = minutesAgo(5).getTime();
-      const result = deriveConnectionStatus(true, lastSeenMs, NOW);
+      const lastSeen = minutesAgo(5);
+      const result = deriveConnectionStatus(
+        true,
+        { providerObservedAt: lastSeen },
+        NOW,
+      );
       expect(result.connectionStatus).toBe('online');
-      expect(NOW - lastSeenMs).toBeLessThan(ONLINE_MAX_MS);
+      expect(result.telemetryFreshness).toBe('live');
+      expect(NOW - lastSeen.getTime()).toBeLessThan(ONLINE_MAX_MS);
     });
 
     it('returns standby between 15 minutes and 24 hours', () => {
-      const lastSeenMs = hoursAgo(2).getTime();
-      const result = deriveConnectionStatus(true, lastSeenMs, NOW);
+      const lastSeen = hoursAgo(2);
+      const result = deriveConnectionStatus(
+        true,
+        { providerObservedAt: lastSeen },
+        NOW,
+      );
       expect(result.connectionStatus).toBe('standby');
-      const diff = NOW - lastSeenMs;
+      expect(result.telemetryFreshness).toBe('standby');
+      const diff = NOW - lastSeen.getTime();
       expect(diff).toBeGreaterThanOrEqual(ONLINE_MAX_MS);
       expect(diff).toBeLessThan(STANDBY_MAX_MS);
     });
 
-    it('returns offline when last signal is older than 24 hours', () => {
-      const lastSeenMs = hoursAgo(30).getTime();
-      const result = deriveConnectionStatus(true, lastSeenMs, NOW);
+    it('returns signal_delayed between 24 and 48 hours', () => {
+      const lastSeen = hoursAgo(30);
+      const result = deriveConnectionStatus(
+        true,
+        { providerObservedAt: lastSeen },
+        NOW,
+      );
+      expect(result.connectionStatus).toBe('signal_delayed');
+      expect(result.telemetryFreshness).toBe('signal_delayed');
+      const diff = NOW - lastSeen.getTime();
+      expect(diff).toBeGreaterThanOrEqual(STANDBY_MAX_MS);
+      expect(diff).toBeLessThan(SIGNAL_DELAYED_MAX_MS);
+    });
+
+    it('returns offline when last signal is older than 48 hours', () => {
+      const lastSeen = hoursAgo(50);
+      const result = deriveConnectionStatus(
+        true,
+        { providerObservedAt: lastSeen },
+        NOW,
+      );
       expect(result.connectionStatus).toBe('offline');
-      expect(NOW - lastSeenMs).toBeGreaterThanOrEqual(STANDBY_MAX_MS);
+      expect(result.telemetryFreshness).toBe('offline');
+      expect(NOW - lastSeen.getTime()).toBeGreaterThanOrEqual(SIGNAL_DELAYED_MAX_MS);
     });
 
     it('returns offline when linked but no usable signal timestamp', () => {
-      const result = deriveConnectionStatus(true, null, NOW);
+      const result = deriveConnectionStatus(true, {}, NOW);
       expect(result.connectionStatus).toBe('offline');
+      expect(result.telemetryFreshness).toBe('no_signal');
     });
 
-    it('handles invalid future timestamps safely', () => {
-      const future = NOW + 60_000;
-      const result = deriveConnectionStatus(true, future, NOW);
-      expect(result.connectionStatus).toBe('offline');
-      expect(result.statusNote).toContain('Zukunft');
+    it('does not rejuvenate freshness on backfill receivedAt', () => {
+      const lastSeen = hoursAgo(30);
+      const result = deriveConnectionStatus(
+        true,
+        {
+          providerObservedAt: lastSeen,
+          receivedAt: new Date(NOW),
+        },
+        NOW,
+      );
+      expect(result.telemetryFreshness).toBe('signal_delayed');
     });
   });
 
@@ -95,17 +133,20 @@ describe('fleet-connectivity.util', () => {
     };
 
     it('maps not_connected without dimoVehicle', () => {
-      const mapped = mapFleetConnectivityVehicle(baseVehicle, NOW);
+      const mapped = mapFleetConnectivityVehicleWithRuntime(baseVehicle, NOW);
       expect(mapped.connectionStatus).toBe('not_connected');
+      expect(mapped.telemetryFreshness).toBe('no_signal');
       expect(mapped.dimoTokenId).toBeNull();
       expect(mapped.maskedDimoTokenId).toBeNull();
       expect(mapped.deviceSerial).toBeNull();
     });
 
-    it('maps online with fresh telemetry', () => {
-      const mapped = mapFleetConnectivityVehicle(
+    it('maps online with fresh telemetry and capability-aware coverage', () => {
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicle,
+          fuelType: 'GASOLINE',
+          hardwareType: 'LTE_R1',
           dimoVehicle: {
             tokenId: 12345678,
             lastSignal: minutesAgo(3),
@@ -115,6 +156,8 @@ describe('fleet-connectivity.util', () => {
           },
           latestState: {
             lastSeenAt: minutesAgo(3),
+            sourceTimestamp: minutesAgo(3),
+            providerFetchedAt: minutesAgo(3),
             latitude: 52.5,
             longitude: 13.4,
             speedKmh: 40,
@@ -135,17 +178,57 @@ describe('fleet-connectivity.util', () => {
       );
 
       expect(mapped.connectionStatus).toBe('online');
+      expect(mapped.telemetryFreshness).toBe('live');
       expect(mapped.obdIsPluggedIn).toBe(true);
       expect(mapped.maskedDeviceSerial).not.toBe('SN-SECRET-999');
       expect(mapped.maskedDimoTokenId).toBe('123…678');
       expect(mapped.dimoTokenId).toBeNull();
       expect(mapped.signals.gps).toBe('available');
       expect(mapped.signals.odometer).toBe('available');
-      expect(mapped.readinessScore).toBeGreaterThan(0);
+      expect(mapped.coverageState).toBe('GOOD');
+      expect(mapped.coveragePercent).toBe(83);
+      expect(mapped.missingSignalCount).toBe(1);
+    });
+
+    it('ICE: missing evSoc does not reduce coverage percent', () => {
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
+        {
+          ...baseVehicle,
+          fuelType: 'GASOLINE',
+          hardwareType: 'LTE_R1',
+          dimoVehicle: {
+            tokenId: 1,
+            lastSignal: minutesAgo(3),
+            syncedAt: minutesAgo(3),
+            createdAt: new Date('2026-01-01'),
+            rawJson: { aftermarketDevice: { serial: 'SN-1' } },
+          },
+          latestState: {
+            lastSeenAt: minutesAgo(3),
+            sourceTimestamp: minutesAgo(3),
+            providerFetchedAt: minutesAgo(3),
+            latitude: 52.5,
+            longitude: 13.4,
+            speedKmh: 40,
+            odometerKm: 12000,
+            fuelLevelRelative: 0.5,
+            fuelLevelAbsolute: null,
+            evSoc: null,
+            obdDtcList: [],
+            lastDtcPollAt: new Date('2026-01-01'),
+            rawPayloadJson: { obdIsPluggedIn: { value: true } },
+            providerSource: 'DIMO',
+          },
+        },
+        NOW,
+      );
+
+      expect(mapped.coveragePercent).toBe(100);
+      expect(mapped.coverageState).toBe('GOOD');
     });
 
     it('labels jamming as snapshot indication only', () => {
-      const mapped = mapFleetConnectivityVehicle(
+      const mapped = mapFleetConnectivityVehicleWithRuntime(
         {
           ...baseVehicle,
           dimoVehicle: {
@@ -157,6 +240,8 @@ describe('fleet-connectivity.util', () => {
           },
           latestState: {
             lastSeenAt: minutesAgo(2),
+            sourceTimestamp: minutesAgo(2),
+            providerFetchedAt: minutesAgo(2),
             latitude: null,
             longitude: null,
             speedKmh: null,
@@ -187,6 +272,7 @@ describe('fleet-connectivity.util', () => {
       const summary = buildFleetConnectivitySummary([
         {
           connectionStatus: 'online',
+          telemetryFreshness: 'live',
           obdIsPluggedIn: true,
           jammingDetectedCount: 0,
           hasTelemetry: true,
@@ -195,6 +281,7 @@ describe('fleet-connectivity.util', () => {
         } as any,
         {
           connectionStatus: 'offline',
+          telemetryFreshness: 'offline',
           obdIsPluggedIn: false,
           jammingDetectedCount: 0,
           hasTelemetry: true,
@@ -203,6 +290,7 @@ describe('fleet-connectivity.util', () => {
         } as any,
         {
           connectionStatus: 'not_connected',
+          telemetryFreshness: 'no_signal',
           obdIsPluggedIn: null,
           jammingDetectedCount: 0,
           hasTelemetry: false,

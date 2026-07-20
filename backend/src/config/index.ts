@@ -29,6 +29,14 @@ export { default as billingEmailConfig } from './billing-email.config';
 export { default as billingReconciliationConfig } from './billing-reconciliation.config';
 export { default as billingStripeSyncConfig } from './billing-stripe-sync.config';
 export { default as taskAutomationOutboxConfig } from './task-automation-outbox.config';
+export { default as deviceConnectionWebhookInboxConfig } from './device-connection-webhook-inbox.config';
+export { default as connectivityRecoveryConfig } from './connectivity-recovery.config';
+export {
+  CONNECTIVITY_EPISODE_RECOVERY_ENABLED_ENV,
+  CONNECTIVITY_RECONCILIATION_APPLY_ENABLED_ENV,
+  loadConnectivityRecoveryConfig,
+  parseConnectivityRecoveryBoolean,
+} from './connectivity-recovery.config';
 export { default as drivingIntelligenceV2Config } from './driving-intelligence-v2.config';
 export { default as stationsV2Config } from './stations-v2.config';
 export { default as batteryHealthV2Config } from './battery-health-v2.config';

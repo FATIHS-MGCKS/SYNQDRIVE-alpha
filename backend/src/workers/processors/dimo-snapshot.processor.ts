@@ -22,6 +22,17 @@ import {
   resolveLvBatteryObservedAt,
   toVlsBatteryFields,
 } from '../../modules/dimo/mappers/dimo-battery-signal.mapper';
+import { DeviceConnectionEpisodeResolutionService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.service';
+import {
+  buildSnapshotReferenceId,
+  extractObdPlugSignalFromSnapshot,
+} from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
+import { buildTelemetrySnapshotReferenceId } from '../../modules/dimo/device-connection-episode-resolution/device-connection-telemetry-recovery.evaluator';
+import {
+  DeviceConnectionEpisodeService,
+  hashProviderDeviceId,
+} from '../../modules/dimo/device-connection-episode.service';
+import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -53,6 +64,12 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly batteryObservationProducer: BatteryV2SnapshotObservationProducer,
     @Optional() private readonly chTelemetry: ClickHouseTelemetryService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional()
+    private readonly episodeResolution?: DeviceConnectionEpisodeResolutionService,
+    @Optional()
+    private readonly episodeService?: DeviceConnectionEpisodeService,
+    @Optional()
+    private readonly resolutionOutboxProcessor?: DeviceConnectionEpisodeResolutionOutboxProcessorService,
   ) {
     super();
   }
@@ -64,7 +81,17 @@ export class DimoSnapshotProcessor extends WorkerHost {
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { organizationId: true },
+      select: {
+        organizationId: true,
+        hardwareType: true,
+        dimoVehicle: { select: { connectionStatus: true } },
+        dataSourceLinks: {
+          where: { isActive: true, provider: 'DIMO' },
+          orderBy: { activatedAt: 'desc' },
+          take: 1,
+          select: { id: true, sourceSubtype: true },
+        },
+      },
     });
     if (!vehicle?.organizationId) {
       throw new Error(`Vehicle ${vehicleId} missing organizationId — cannot process snapshot`);
@@ -98,7 +125,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         this.tripMetrics?.staleSnapshots.inc({ vehicle_profile: 'UNKNOWN' });
       }
       const fetchedAt = new Date();
-      await this.prisma.vehicleLatestState.upsert({
+      const latestState = await this.prisma.vehicleLatestState.upsert({
         where: { vehicleId },
         create: {
           vehicleId,
@@ -108,6 +135,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
           providerSource: 'DIMO',
           providerFetchedAt: fetchedAt,
           sourceTimestamp: normalized.lastSeenAt ?? null,
+          providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
           ...normalized,
         },
         update: {
@@ -116,9 +144,61 @@ export class DimoSnapshotProcessor extends WorkerHost {
           providerSource: 'DIMO',
           providerFetchedAt: fetchedAt,
           sourceTimestamp: normalized.lastSeenAt ?? null,
+          providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
           ...normalized,
         },
       });
+
+      if (this.episodeService) {
+        try {
+          await this.episodeService.reconcileBindingDrift({
+            organizationId: vehicle.organizationId,
+            vehicleId,
+            tokenId: dimoTokenId,
+            hardwareType: vehicle.hardwareType,
+            evidenceAt: normalized.lastSeenAt ?? fetchedAt,
+          });
+        } catch (err) {
+          this.logger.warn(
+            `Binding drift reconciliation skipped for ${vehicleId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+      }
+
+      const providerDeviceIdHash = hashProviderDeviceId('DIMO', dimoTokenId);
+
+      await this.tryResolveOpenEpisodeFromSnapshot({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        hardwareType: vehicle.hardwareType,
+        dimoTokenId,
+        fetchedAt,
+        signals,
+        vehicleLatestStateId: latestState.id,
+        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        providerDeviceIdHash,
+        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+      });
+
+      await this.tryResolveOpenEpisodeFromSustainedTelemetry({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        hardwareType: vehicle.hardwareType,
+        fetchedAt,
+        normalized,
+        vehicleLatestStateId: latestState.id,
+        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        providerDeviceIdHash,
+        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+        providerConnectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
+        signals,
+      });
+
+      if (this.resolutionOutboxProcessor) {
+        await this.resolutionOutboxProcessor.processPendingBatch();
+      }
 
       // ── ClickHouse dual-write (fire-and-forget, never blocks live pipeline) ──
       if (this.chTelemetry) {
@@ -257,6 +337,119 @@ export class DimoSnapshotProcessor extends WorkerHost {
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'failure' });
       throw err;
     }
+  }
+
+  private async tryResolveOpenEpisodeFromSnapshot(input: {
+    organizationId: string;
+    vehicleId: string;
+    hardwareType: string;
+    dimoTokenId: number;
+    fetchedAt: Date;
+    signals: Record<string, unknown>;
+    vehicleLatestStateId: string;
+    providerBindingId: string | null;
+    providerDeviceIdHash: string;
+    sourceSubtype: string | null;
+  }): Promise<void> {
+    if (!this.episodeResolution) return;
+
+    const obd = extractObdPlugSignalFromSnapshot(input.signals);
+    if (obd.obdIsPluggedIn == null) return;
+
+    const providerObservedAt = obd.providerObservedAt;
+    if (!providerObservedAt) return;
+
+    const snapshotReferenceId = buildSnapshotReferenceId({
+      vehicleLatestStateId: input.vehicleLatestStateId,
+      providerObservedAt,
+    });
+
+    try {
+      await this.episodeResolution.tryResolveFromSnapshotPlugSignal({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        provider: 'DIMO',
+        hardwareType: input.hardwareType,
+        obdIsPluggedIn: obd.obdIsPluggedIn,
+        providerObservedAt,
+        receivedAt: input.fetchedAt,
+        snapshotSource: 'dimo',
+        providerBindingId: input.providerBindingId,
+        snapshotReferenceId,
+        sourceSubtype: input.sourceSubtype,
+        providerDeviceIdHash: input.providerDeviceIdHash,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Episode snapshot resolution skipped for ${input.vehicleId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  private async tryResolveOpenEpisodeFromSustainedTelemetry(input: {
+    organizationId: string;
+    vehicleId: string;
+    hardwareType: string;
+    fetchedAt: Date;
+    normalized: ReturnType<DimoSnapshotProcessor['normalizeSnapshot']>;
+    vehicleLatestStateId: string;
+    providerBindingId: string | null;
+    providerDeviceIdHash: string;
+    sourceSubtype: string | null;
+    providerConnectionStatus: string | null;
+    signals: Record<string, unknown>;
+  }): Promise<void> {
+    if (!this.episodeResolution) return;
+
+    const obd = extractObdPlugSignalFromSnapshot(input.signals);
+    if (obd.obdIsPluggedIn === false) return;
+
+    const providerObservedAt =
+      input.normalized.lastSeenAt ?? obd.providerObservedAt;
+    if (!providerObservedAt) return;
+
+    const snapshotReferenceId = buildTelemetrySnapshotReferenceId({
+      vehicleLatestStateId: input.vehicleLatestStateId,
+      providerObservedAt,
+    });
+
+    try {
+      await this.episodeResolution.tryResolveFromSustainedTelemetry({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        provider: 'DIMO',
+        hardwareType: input.hardwareType,
+        obdIsPluggedIn: obd.obdIsPluggedIn,
+        providerObservedAt,
+        receivedAt: input.fetchedAt,
+        snapshotSource: 'dimo',
+        providerBindingId: input.providerBindingId,
+        snapshotReferenceId,
+        sourceSubtype: input.sourceSubtype,
+        providerConnectionStatus: input.providerConnectionStatus,
+        hasOperationalSignal: this.hasOperationalTelemetrySignal(input.normalized),
+        providerDeviceIdHash: input.providerDeviceIdHash,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Episode telemetry recovery skipped for ${input.vehicleId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  private hasOperationalTelemetrySignal(
+    normalized: ReturnType<DimoSnapshotProcessor['normalizeSnapshot']>,
+  ): boolean {
+    return (
+      normalized.speedKmh != null ||
+      normalized.isIgnitionOn != null ||
+      normalized.odometerKm != null ||
+      (normalized.latitude != null && normalized.longitude != null)
+    );
   }
 
   private async evaluateTripStart(

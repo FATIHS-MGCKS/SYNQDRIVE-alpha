@@ -1,0 +1,76 @@
+# Fleet Connectivity Runtime Domain (2026-07-19)
+
+## Summary
+
+Introduces the canonical **Vehicle Connectivity Runtime** domain under
+`backend/src/modules/vehicles/connectivity/domain/`.
+
+No consumer migration in this change — types, reason codes, priority rules,
+and validation invariants only.
+
+## Dimensions (separated)
+
+| Dimension | Type | Notes |
+|-----------|------|-------|
+| Provider Link | `ProviderLinkState` | ACTIVE, REAUTH_REQUIRED, REVOKED, NO_LINK, ERROR, UNKNOWN |
+| Telemetry | `TelemetryFreshness` | **Reused** from `vehicle-state-interpreter` — no duplicate enum |
+| Physical Device | `PhysicalDeviceState` | Includes NOT_APPLICABLE for OEM/synthetic |
+| Data Coverage | `DataCoverageState` | GOOD / PARTIAL / INSUFFICIENT / UNKNOWN / NOT_APPLICABLE |
+| Attention | `AttentionState` | NONE / WATCH / ACTION_REQUIRED / CRITICAL |
+| Overall | `OverallConnectivityState` | Synthesized; precedence documented in priority module |
+
+## Result object
+
+`VehicleConnectivityRuntimeState` — machine codes only:
+
+- Dimension states + `reasonCodes[]`
+- Timestamps: `lastTelemetryAt`, `lastProviderObservedAt`, `lastReceivedAt`
+- Binding / episode refs: `deviceBindingId`, `activeEpisodeId`
+- `requiresAction`, `recommendedAction` (enum codes)
+- `evidence` (structured technical facts)
+- `calculatedAt`, `stateVersion`
+
+User-facing labels remain frontend i18n responsibility.
+
+## Overall state priority (highest first)
+
+1. INTEGRATION_ERROR
+2. AUTHORIZATION_REQUIRED
+3. DEVICE_UNPLUGGED
+4. OFFLINE
+5. SOFT_OFFLINE
+6. UNKNOWN / NO_ACTIVE_DATA_SOURCE
+7. STANDBY
+8. TELEMETRY_ACTIVE
+
+## Next steps (not in this commit)
+
+- ~~Wire builder into fleet-connectivity API, fleet-map, device-connection API, notifications~~ (Prompt 16)
+- Snapshot/telemetry episode closure (`SNAPSHOT_PLUG_SIGNAL`, `TELEMETRY_RESUMED`) — Prompt 5 remediation step
+- Production reconciliation backfill (Prompt 18)
+- Admin fleet-connection master view migration to tenant canonical API
+
+## Consumer migration (Prompt 16 — 2026-07-19)
+
+All productive rental surfaces now receive `connectivityRuntime` from
+`VehicleConnectivityRuntimeProjectionService` + `VehicleConnectivityRuntimeStateBuilder`.
+
+### API fields (read-only contract)
+
+Each consumer reads the same machine codes:
+
+- `overallState`, `providerLinkState`, `telemetryState`, `physicalDeviceState`
+- `dataCoverageState`, `attentionState`, `reasonCodes`, `recommendedAction`
+
+Legacy `connectionStatus` / `readinessScore` remain transitional projections derived
+from runtime — never recomputed independently on the client.
+
+### Batch assembly
+
+`vehicle-connectivity-runtime-batch.assembler.ts` provides `assembleVehicleConnectivityRuntimeState`
+for fleet-connectivity list and fleet-map without N+1 projection queries.
+
+### Incident consistency rule
+
+When `overallState === DEVICE_UNPLUGGED`, legacy `connectionStatus` must not be `online`
+even if `telemetryState === live` (see `vehicle-connectivity-runtime-legacy.projection.ts`).

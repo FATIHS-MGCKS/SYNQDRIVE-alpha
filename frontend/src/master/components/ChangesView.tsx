@@ -35,6 +35,96 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
+    version: '4.9.704',
+    title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',
+    summary: [
+      'RC-Branch `cursor/connectivity-release-candidate-2e0d` nach `main` gemerged und via Standard-VPS-Deploy ausgerollt.',
+      'Runtime: Webhook-Inbox, Episode-Resolution, Connectivity-Recovery und kanonische Fleet-Connectivity-API aktiv; Reconciliation `--apply` bleibt deaktiviert (`CONNECTIVITY_RECONCILIATION_APPLY_ENABLED=false`).',
+      'Kill switch: Episode-Recovery aktiv (`CONNECTIVITY_EPISODE_RECOVERY_ENABLED=true`); 24h-Soak-Gate auf ausdrückliche Anforderung übersprungen.',
+    ],
+    reason: 'Ausdrückliche Anforderung: direkter Produktionsbetrieb ohne Soak/Test-Gate.',
+    previousBehavior:
+      'Production lief auf `main` ohne RC-Code (Schema voraus, Runtime hinterher); Connectivity-Migrationen in DB, aber kein Webhook-Inbox/Resolution-Runtime.',
+    details:
+      'PR #564 merge → main, cloud-agent-deploy.sh, docs/runbooks/fleet-connectivity-production-rollout.md',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T20:00:00.000Z',
+  },
+  {
+    id: 'fleet-connectivity-pilot-readiness-v49703-2026-07-19',
+    version: '4.9.703',
+    title: 'V4.9.703 — Fleet Connectivity pilot readiness gate (Prompt 10)',
+    summary: [
+      '24h staging soak evaluated at T+10m — duration gate NOT met; verdict NOT_READY for production pilot.',
+      'Soak metrics: 0 webhooks, 0 retries/DLQ, 0 live resolutions; 2 historical telemetry-reconciliation candidates (not applied).',
+      'Pilot plan + soak evaluator script documented; execute pilot only after 2026-07-20T12:26Z soak re-check.',
+    ],
+    reason: 'Prompt 10 final go-live decision — soak gate blocks pilot until 24h + live path validation.',
+    previousBehavior:
+      'Prompt 9 ended with 24h observation pending; no formal soak verdict or pilot plan document.',
+    details:
+      'docs/audits/fleet-connectivity-production-pilot-readiness-2026-07.md, evaluate-fleet-connectivity-staging-soak.sh, post-remediation + remediation tracker updates.',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-19T12:38:00.000Z',
+  },
+  {
+    id: 'fleet-connectivity-staging-verification-v49702-2026-07-19',
+    version: '4.9.702',
+    title: 'V4.9.702 — Fleet Connectivity RC staging verification (Prompt 9)',
+    summary: [
+      'RC deployed to production VPS with pre-deploy DB backup; 7 connectivity Prisma migrations applied; kill switch verified (recovery on, reconciliation apply off).',
+      'Read-only audits + reconciliation dry-run (2 telemetry-recovery candidates, 0 review required); no --apply executed.',
+      'INCIDENT_VEHICLE_001 resolution path verified (58 connectivity Jest tests); 24h observation window started.',
+    ],
+    reason: 'Prompt 9: Validate RC on staging/safe production data copy before phased rollout.',
+    previousBehavior:
+      'RC verified in agent only (Prompt 8); no VPS migrate deploy or live audit/dry-run on production data.',
+    details:
+      'docs/audits/fleet-connectivity-staging-verification-2026-07.md, backend/scripts/ops/vps-deploy-connectivity-staging.sh, verify-fleet-connectivity-staging.sh, boot/DI fixes (forwardRef, resolution service).',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-19T12:35:00.000Z',
+  },
+  {
+    id: 'fleet-connectivity-production-readiness-v49701-2026-07-19',
+    version: '4.9.701',
+    title: 'V4.9.701 — Fleet Connectivity production readiness (observability + guarded apply)',
+    summary: [
+      'Structured connectivity logs (no PII) + Prometheus metrics (`synqdrive_connectivity_*`) + alert rules for webhook failures, DLQ, false-open episodes, state conflicts.',
+      'Guarded episode reconciliation apply: `--apply` requires organizationId, backup confirmation, audit hash, git commit, batch cap, operator, reason.',
+      'Production rollout runbook + post-remediation readiness audit; staging apply operator-gated.',
+    ],
+    reason: 'Prompt 18/18: Final verification — observability, controlled reconciliation apply tooling, runbook; no uncontrolled production changes.',
+    previousBehavior:
+      'Limited connectivity metrics; episode reconciliation read-only only; no guarded apply CLI or production rollout runbook.',
+    details:
+      'backend/src/modules/dimo/connectivity/*, device-connection-episode-reconciliation-apply.service.ts, apply-device-connection-episode-reconciliation.ts, alerts.yml, docs/runbooks/fleet-connectivity-production-rollout.md, docs/audits/fleet-connectivity-post-remediation-readiness-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-19T18:00:00.000Z',
+  },
+  {
+    id: 'fleet-connectivity-canonical-ui-v49700-2026-07-19',
+    version: '4.9.700',
+    title: 'V4.9.700 — Fleet Connectivity canonical API v2 UI redesign',
+    summary: [
+      'Backend: `FleetConnectivityListItemDto` / `FleetConnectivityDetailDto` + KPI summary; detail endpoint `GET …/fleet-connectivity/:vehicleId`; legacy `vehicles` deprecated.',
+      'Frontend: 4 KPIs (action required, telemetry active, standby, no data source), reduced table, mobile cards, user-facing drawer sections A–E, full DE/EN i18n.',
+      'UI reads only canonical `items` / detail DTO — no OBD/webhook/readiness columns or legacy status decisions.',
+    ],
+    reason: 'Prompt 17/18: Finalize connectivity API contract and redesign Fleet Connectivity tab around canonical runtime state.',
+    previousBehavior:
+      '8+ KPIs, OBD/webhook/jamming/readiness columns, technical drawer with masked tokens and raw coordinates; legacy `vehicles` + `connectionStatus` drove filters.',
+    details:
+      'backend/src/modules/vehicles/fleet-connectivity-api.*, frontend/src/rental/components/fleet-connectivity/*, frontend/src/lib/api.ts, i18n en/de, architecture/FLEET_CONNECTIVITY_CONSUMER_MIGRATION_2026-07-19.md.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-19T12:00:00.000Z',
+  },
+  {
     id: 'trip-distance-dimo-preserve-2026-07-20',
     version: '4.9.602',
     title: 'V4.9.602 — Trip-Distanz: DIMO-Odometer bei Enrichment erhalten',

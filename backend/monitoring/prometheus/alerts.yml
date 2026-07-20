@@ -621,3 +621,61 @@ groups:
         annotations:
           summary: Brake registration may not materialize BrakeHealthCurrent
           description: Initialization successes coexist with failures and skipped recalculations — audit registration pipeline.
+
+  - name: synqdrive_connectivity
+    rules:
+      - alert: ConnectivityWebhookProcessingFailures
+        expr: rate(synqdrive_connectivity_webhook_processing_failed_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Connectivity webhook processing failures
+          description: Device connection webhook processing is failing — inspect DIMO webhook intake and workers.
+
+      - alert: ConnectivityWebhookDeadLetterGrowth
+        expr: increase(synqdrive_connectivity_webhook_dead_letter_total[30m]) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: Connectivity webhook dead-letter growth
+          description: Webhook events are landing in dead-letter — replay after fixing root cause.
+
+      - alert: ConnectivityEpisodeFalseOpenDetected
+        expr: increase(synqdrive_connectivity_episode_false_open_detected_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: False-open device connection episodes detected
+          description: Reconciliation audit found episodes that should be resolved — run read-only audit before apply.
+
+      - alert: ConnectivityStateConflict
+        expr: rate(synqdrive_connectivity_state_conflict_total[15m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Connectivity runtime state conflicts
+          description: Cross-surface or runtime builder reported state conflicts.
+
+      - alert: ConnectivityReconciliationConflicts
+        expr: increase(synqdrive_connectivity_reconciliation_conflict_total{classification="CONFLICTING_DATA"}[1h]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Episode reconciliation conflicts
+          description: Manual review required for conflicting episode reconciliation candidates.
+
+      - alert: ConnectivityOpenEpisodesHigh
+        expr: |
+          increase(synqdrive_connectivity_episode_opened_total[24h])
+          - increase(synqdrive_connectivity_episode_resolved_total[24h]) > 5
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Unusually many open connectivity episodes
+          description: Episode opens exceed resolutions over 24h — inspect fleet connectivity tab and reconciliation audit.

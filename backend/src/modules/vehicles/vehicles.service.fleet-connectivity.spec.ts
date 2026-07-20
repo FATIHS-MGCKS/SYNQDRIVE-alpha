@@ -1,12 +1,38 @@
 import { VehiclesService } from './vehicles.service';
 import { FLEET_CONNECTIVITY_HARD_LIMIT } from './fleet-connectivity.util';
+import { mockConnectivityRuntime } from './connectivity/connectivity-runtime.test-fixture';
 
-function makeFleetConnectivityService(prisma: {
-  vehicle: { findMany: jest.Mock };
-}): VehiclesService {
+function makeFleetConnectivityService(
+  prisma: { vehicle: { findMany: jest.Mock } },
+  orgId = 'org-tenant-a',
+): VehiclesService {
   const stub = (): unknown => ({});
   const deviceConnectionQuery = {
     getFleetSummariesForVehicles: jest.fn().mockResolvedValue(new Map()),
+  };
+  const connectivityRuntimeProjection = {
+    projectForVehicles: jest
+      .fn()
+      .mockImplementation(async (_orgId: string, ids: string[]) => {
+        const map = new Map();
+        for (const id of ids) {
+          map.set(
+            id,
+            mockConnectivityRuntime({
+              vehicleId: id,
+              organizationId: orgId,
+              ...(id === 'v-2'
+                ? {
+                    overallState: 'OFFLINE' as const,
+                    telemetryState: 'offline' as const,
+                  }
+                : {}),
+            }),
+          );
+        }
+        return map;
+      }),
+    projectForVehicle: jest.fn(),
   };
   return new (VehiclesService as unknown as {
     new (...args: unknown[]): VehiclesService;
@@ -21,6 +47,10 @@ function makeFleetConnectivityService(prisma: {
     stub(),
     stub(),
     deviceConnectionQuery,
+    connectivityRuntimeProjection,
+    stub(),
+    stub(),
+    stub(),
     stub(),
   );
 }
@@ -93,14 +123,16 @@ describe('VehiclesService.getFleetConnectivity', () => {
     expect(res.thresholds).toEqual({
       onlineMaxMinutes: 15,
       standbyMaxHours: 24,
+      signalDelayedMaxHours: 48,
     });
     expect(res.summary.total).toBe(1);
-    expect(res.summary.online).toBe(1);
+    expect(res.summary.telemetryActive).toBe(1);
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0].overallState).toBe('TELEMETRY_ACTIVE');
     expect(res.vehicles).toHaveLength(1);
     expect(res.vehicles[0].vehicleId).toBe('v-1');
     expect(res.vehicles[0].maskedDimoTokenId).toBe('123…678');
     expect(res.vehicles[0].dimoTokenId).toBeNull();
-    expect(res.vehicles[0].deviceConnection).toBeNull();
     expect(res.pagination.totalInOrganization).toBe(1);
   });
 
@@ -128,8 +160,8 @@ describe('VehiclesService.getFleetConnectivity', () => {
     });
 
     expect(res.summary.total).toBe(1);
-    expect(res.summary.online).toBe(1);
-    expect(res.summary.offline).toBe(0);
+    expect(res.summary.telemetryActive).toBe(1);
+    expect(res.items).toHaveLength(1);
     expect(res.vehicles).toHaveLength(1);
     expect(res.pagination.total).toBe(1);
   });

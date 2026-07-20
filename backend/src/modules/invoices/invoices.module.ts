@@ -15,7 +15,11 @@ import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
-  imports: [TasksModule, forwardRef(() => DocumentsModule), OutboundEmailModule],
+  imports: [
+    TasksModule,
+    forwardRef(() => DocumentsModule),
+    forwardRef(() => OutboundEmailModule),
+  ],
   controllers: [InvoicesController],
   providers: [
     InvoicesService,

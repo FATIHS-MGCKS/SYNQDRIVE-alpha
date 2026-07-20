@@ -1,0 +1,52 @@
+component_id,file,element_type,current_state,design_system_token,issue_severity,issue_summary,target_change
+page_header,FleetConnectivityTab.tsx,header,embedded DashboardSectionLabel or h1 + subtitle + monitoring StatusChip,dashboardShell META_TEXT_CLASS + font-display,P2,Dual header modes; monitoring badge references Data Authorization in mixed EN/DE,Single header row: title + dezent total count + refresh; move setup hint to footer link
+kpi_strip,FleetConnectivityTab.tsx,kpi_grid,9 clickable KPI cards (2-col mobile → 5-col xl),fhs.kpiCard + DASHBOARD_KPI_*,P0,9 KPIs overload; connected/online overlap; OBD/webhook/readiness technical,fReduce to 4 action-oriented KPIs + optional header total
+kpi_total,FleetConnectivityTab.tsx,kpi_card,Total count filter reset,neutral tone,LOW,Redundant with filter bar showing count,Move to header meta only
+kpi_connected,FleetConnectivityTab.tsx,kpi_card,Connected count,info,P1,Overlaps with online; uses legacy API connected scope,Remove; fold into telemetry active or data source
+kpi_online,FleetConnectivityTab.tsx,kpi_card,Online <15m,success,P1,Legacy online not canonical live,Replace with Telemetrie aktiv
+kpi_standby,FleetConnectivityTab.tsx,kpi_card,Standby count,watch,MEDIUM,Valid but buried among 9 cards,Keep as dedicated KPI (informational not error)
+kpi_offline,FleetConnectivityTab.tsx,kpi_card,Offline @24h legacy,critical,P0,Threshold differs from fleet-map 48h; label Offline ambiguous,Merge into Handlung erforderlich with canonical tiers
+kpi_not_connected,FleetConnectivityTab.tsx,kpi_card,Not connected,neutral,MEDIUM,Valid operational bucket,Keep as Ohne aktive Datenquelle
+kpi_obd_unplugged,FleetConnectivityTab.tsx,kpi_card,OBD unplugged snapshot,warning,P0,Technical term in primary KPI,Move to Handlung erforderlich sub-count; detail only
+kpi_device_unplugged,FleetConnectivityTab.tsx,kpi_card,Webhook unplug episodes,critical,P0,DIMO/webhook jargon; duplicates OBD KPI,Single Gerät getrennt in action KPI
+kpi_readiness,FleetConnectivityTab.tsx,kpi_card,Avg readiness %,info,P1,Readiness 63% meaningless to operators,Remove from KPI strip; drawer section C only
+filter_bar,FleetConnectivityTab.tsx,filter_section,search + 3 native selects + threshold chip,fhs.filterBar surface-premium,P1,Select options hardcoded English; 3 dropdowns cognitive load,Single filter chips row + search; all i18n
+search_input,FleetConnectivityTab.tsx,input,type=search plate/VIN/station,patterns-adjacent custom,P2,No aria-label beyond placeholder,Add aria-label; debounce optional
+status_select,FleetConnectivityTab.tsx,select,5 English options,raw select,P0,Not i18n: Connected/Online/Standby/Offline/Not connected,Replace with chip filters + canonical labels
+readiness_select,FleetConnectivityTab.tsx,select,Good/Watch/Warning/No data,raw select,P1,Technical readiness in primary filter,Move to drawer/detail filter only
+signal_select,FleetConnectivityTab.tsx,select,OBD/webhook/jamming/missing GPS,raw select,P0,Webhook/OBD in primary filter,Operational filters only in chip bar
+threshold_chip,FleetConnectivityTab.tsx,StatusChip,Online < Xm · Standby < Yh,neutral,P2,English Online; exposes internal thresholds,Move to technical details accordion
+data_table,FleetConnectivityTab.tsx,table,10 columns desktop DataTable,patterns DataTable card,P0,Information overload; provider/coverage/webhook in list,5 columns: vehicle/state/last data/hint/action
+col_vehicle,FleetConnectivityTab.tsx,column,plate + make/model/VIN fallback,ROW_TITLE_CLASS,MEDIUM,VIN shown as subtitle fallback in table,Plate primary; model secondary; no VIN in list
+col_status,FleetConnectivityTab.tsx,column,ConnectionStatusChip legacy,StatusChip,P0,Online/Standby not canonical 5-state,Unified Zustand chip from canonical mapper
+col_freshness,FleetConnectivityTab.tsx,column,freshnessLabel hidden sm+,tabular-nums,P1,Live hardcoded green; English Live string,Use resolveTelemetryFreshness labels i18n
+col_readiness,FleetConnectivityTab.tsx,column,ReadinessChip lg+,StatusChip,P1,Good · 88% in table,Remove from table
+col_coverage,FleetConnectivityTab.tsx,column,signalCoveragePercent xl+,META,P1,Raw % in list,Drawer only
+col_obd,FleetConnectivityTab.tsx,column,ObdRowChip lg+,StatusChip,P0,Plugged in/Unplugged English,Remove from table; hint column only
+col_webhook,FleetConnectivityTab.tsx,column,DeviceConnectionWebhookChip xl+,StatusChip,P0,Unplugged · Webhook,Remove from table
+col_station,FleetConnectivityTab.tsx,column,station md+,META,LOW,Optional keep as 6th column if ops need it,Optional station column
+col_provider,FleetConnectivityTab.tsx,column,provider xl+,META,P1,Provider in list,Drawer integration section
+col_jamming,FleetConnectivityTab.tsx,column,JammingSnapshotChip xl+,StatusChip,P2,Jamming in list,rare; drawer only
+mobile_cards,FleetConnectivityTab.tsx,mobile_list,md:hidden button cards surface-premium,P2,4 badges + coverage % overflow,Single status + one hint line + chevron; sticky filter
+row_click,FleetConnectivityTab.tsx,interaction,opens DetailDrawer,DataTable onRowClick,LOW,No keyboard row focus documented,Ensure DataTable a11y row focus
+loading_state,FleetConnectivityTab.tsx,skeleton,SkeletonMetricGrid count=8 + SkeletonRows,surface-premium,P2,8 skeleton KPIs vs 9 actual,Match 4 KPI skeleton
+error_state,FleetConnectivityTab.tsx,ErrorState,i18n title + retry,patterns ErrorState,LOW,error string may leak raw,Keep; ensure generic user message
+empty_state,FleetConnectivityTab.tsx,EmptyState,filtered vs default i18n,patterns EmptyState,LOW,Good pattern,Keep; add CTA to Data Authorization when not_connected
+detail_drawer,FleetConnectivityDetailDrawer.tsx,drawer,sm:max-w-xl DetailDrawer,patterns DetailDrawer,P0,English-only; full VIN; raw coords; technical sections flat,Restructure A–E sections per target IA
+drawer_eyebrow,FleetConnectivityDetailDrawer.tsx,text,Technical telemetry,hardcoded EN,P0,Sets wrong expectation,Replace with operator-facing eyebrow i18n
+drawer_vin,FleetConnectivityDetailDrawer.tsx,text,full VIN in description,font-mono,P0,PII/unnecessary in primary chrome,Masked VIN last 6 or remove; link to vehicle detail
+drawer_info_banner,FleetConnectivityDetailDrawer.tsx,banner,English read-only disclaimer,muted box,P1,Not i18n,Short DE/EN action-oriented intro
+drawer_connection_summary,FleetConnectivityDetailDrawer.tsx,section,9 rows technical English,surface-premium,P0,Duplicates table; Provider/Connection type upfront,Section A: Zustand + Empfehlung
+drawer_device_identity,FleetConnectivityDetailDrawer.tsx,section,Synthetic token ID visible,font-mono,P0,Technical IDs in default view,Move to Section E collapsible
+drawer_readiness,FleetConnectivityDetailDrawer.tsx,section,Coverage % + English explainer,P1,Readiness prominent,Section C Datenverfügbarkeit
+drawer_signal_matrix,FleetConnectivityDetailDrawer.tsx,section,8 signal chips 2x4 grid,P1,GPS/OBD Plug/DTC jargon upfront,Section C capability-aware; hide matrix behind expand
+drawer_obd_webhook,FleetConnectivityDetailDrawer.tsx,section,DIMO Device Connection Webhook block,P0,Webhook/OBD in primary drawer,Section B Verlauf timeline + Section D Integration
+drawer_location,FleetConnectivityDetailDrawer.tsx,section,lat/lng 5 decimals font-mono,P0,Raw coordinates,Human place name or map link; coords in E only
+drawer_support,FleetConnectivityDetailDrawer.tsx,SupportContextButton,includes full vin in context,LOW,Support context OK,Keep masked in UI only
+badge_connection,ConnectionStatusChip,fleet-connectivity.badges.tsx,Online/Standby/Offline/Not Connected,StatusChip,P0,English hardcoded; legacy 4-state,Canonical status labels DE/EN
+badge_readiness,ReadinessChip,fleet-connectivity.badges.tsx,Good · 88%,StatusChip,P1,English + % in chip,Drawer/detail only
+badge_obd,ObdRowChip,fleet-connectivity.badges.tsx,Plugged in/Unplugged,StatusChip,P0,English OBD terms,Gerät getrennt / OK — details only
+badge_webhook,DeviceConnectionWebhookChip,fleet-connectivity.badges.tsx,Unplugged · Webhook,StatusChip,P0,Webhook in UI,Gerät getrennt single label
+badge_jamming,JammingSnapshotChip,fleet-connectivity.badges.tsx,Snapshot · N,StatusChip,P2,English,Drawer only
+utils_labels,fleet-connectivity.utils.ts,labels,connectionStatusLabel readinessLabel signalStateLabel English,hardcoded,P0,All badge labels bypass i18n,Central i18n keys or reuse telemetryFreshness
+device_connection_ui,device-connection-ui.ts,labels,German DEVICE_CONNECTION_LABELS mixed,DE only in module,P1,Drawer mixes EN sections with DE device-connection labels,Unify under i18n namespace

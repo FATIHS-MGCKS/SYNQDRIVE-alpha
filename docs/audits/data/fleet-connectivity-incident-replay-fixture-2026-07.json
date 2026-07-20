@@ -1,0 +1,24 @@
+{
+  "auditId": "fleet-connectivity-production-readiness-2026-07",
+  "incidentVehicleAlias": "INCIDENT_VEHICLE_001",
+  "replayFixtureVersion": "2026-07-18",
+  "unplugObservedAt": "2026-07-08T17:21:19Z",
+  "events": [
+    {
+      "eventType": "OBD_DEVICE_UNPLUGGED",
+      "observedAt": "2026-07-08T17:21:19Z"
+    }
+  ],
+  "connectivityAnchorAtAnalysis": {
+    "dimoConnectionStatus": "CONNECTED",
+    "obdIsPluggedIn": true
+  },
+  "hardwareType": "LTE_R1",
+  "dimoLinked": true,
+  "analysisNow": "2026-07-18T10:00:00Z",
+  "firstTelemetryAfterUnplug": {
+    "clickhouseRecordedAt": "2026-07-08T17:21:28Z",
+    "pollStartedAt": "2026-07-08T17:21:41.313Z"
+  },
+  "sameTokenBinding": true
+}

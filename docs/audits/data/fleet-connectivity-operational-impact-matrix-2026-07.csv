@@ -1,0 +1,17 @@
+operational_domain,connectivity_signal_used,signal_source,blocks_rental_picker,affects_ready_to_rent,affects_vehicle_operational_status,forces_maintenance,critical_alert,availability_calendar,assessment,notes
+rental_blocking_hard,rental_blocked,VehicleHealthResponse blocking_reasons,yes (with offline/no_tariff),yes when blocked,no unless explicit blocking_reason,yes when safety blockers,yes via health critical,no,APPROPRIATE,Connectivity episodes do not set rental_blocked — correct separation
+ready_to_rent_count,isVehicleOffline + rental_blocked,fleet-map + rental-health,yes offline blocks picker,yes,indirect via runtime only,no,no,no,APPROPRIATE,Standby and soft offline remain ready; matches product rule
+vehicle_operational_status,operationalState + rawVehicleStatus,fleet-map runtime builder,no,no,direct display only,no,no,no,APPROPRIATE,Telemetry offline ≠ maintenance; operational status not forced by unplug episode
+maintenance_mode,blocking_reasons + tasks/damages,rental-health + work orders,no,no,only explicit reasons,yes when work order/blocker,no,no,APPROPRIATE,Unknown connectivity should not auto-maintenance — confirmed not wired
+critical_alert_dashboard,telemetry_offline operational issue,normalizeOperationalIssues,no,no,no,no,yes in ActionQueue,no,APPROPRIATE,Hard offline ≥48h surfaces as critical attention; soft offline attention only
+availability_booking_calendar,isVehicleOffline + station rules,fleet-map + booking rules,yes offline,no,no,no,no,yes indirect,APPROPRIATE,Unplug episode alone does not disable calendar slot
+telemetry_offline_booking,isVehicleOffline canonical 48h,resolveTelemetryFreshness,yes,marks not ready,no,no,attention not block,muted row,APPROPRIATE,Telemetrie offline is not automatically physical unplug — booking uses freshness only
+standby_operations,standby freshness tier,canonical 5-state,no,no,no,no,no,no,APPROPRIATE,Standby is not error — fleet board does not warn
+signal_delayed_operations,signal_delayed 24-48h,canonical 5-state,no,no,no,no,soft attention only,no,APPROPRIATE,Low delay is not hard block
+low_signal_coverage,readinessScore signalCoveragePercent,fleet-connectivity API,no,no,no,no,no,no,APPROPRIATE,Geringe Abdeckung is not hard block — only fleet tab readiness display
+open_unplug_episode,openUnpluggedEpisode,device-connection-read-model,no,no,no,no,no,no,INAPPROPRIATE_IF_TRUSTED,Episode shown as Gerät getrennt while live telemetry — erodes trust but does not block ops (FC-P0-04)
+authorization_expired,consent NONE + CONNECTED dimo,provider consents,no,no,no,no,no,no,NEEDS_HANDLING,Active auth problems need action — FC-P1-03 gap in Integration Hub vs live data
+obd_snapshot_unplug,obdIsPluggedIn=false snapshot,fleet-connectivity snapshot,no,no,no,no,hint only in ActionQueue,no,APPROPRIATE,Snapshot hint enriches offline attention; does not block alone
+device_unplug_during_booking,rentalRelevant + openUnpluggedEpisode,device-connection card UI,no,no,no,no,UI banner only,no,NEEDS_PRODUCT_DECISION,Severity computed but no notification (FC-P2-03); may need attention not block
+fleet_tab_offline_24h,connectionStatus offline,fleet-connectivity.util 24h,no,no,no,no,no,no,INAPPROPRIATE_CROSS_SURFACE,Same vehicle standby on dashboard signal_delayed 24-48h (FC-P1-02)
+unknown_no_signal,isNoSignal + no lastSignal,canonical freshness,yes (isVehicleOffline),not ready,no,no,setup check attention,no,APPROPRIATE,Unknown needs review via no_signal label; blocks booking when never seen — fail-closed reasonable

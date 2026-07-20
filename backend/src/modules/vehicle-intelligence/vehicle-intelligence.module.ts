@@ -226,7 +226,7 @@ import {
     forwardRef(() => TechnicalObservationsModule),
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
-    NotificationsModule,
+    forwardRef(() => NotificationsModule),
     TasksModule,
     BatteryV2JobsProducerModule,
     BullModule.registerQueue(

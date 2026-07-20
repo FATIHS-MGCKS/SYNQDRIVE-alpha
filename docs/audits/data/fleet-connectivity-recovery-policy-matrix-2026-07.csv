@@ -1,0 +1,6 @@
+deviceType,snapshotType,sameBindingRequired,canResolveUnplug,resolutionConfidence,reason
+PHYSICAL_OBD_LTE_R1,signalsLatest.obdIsPluggedIn,tokenId + aftermarketDevice.serial (no binding episode ID),YES_WITH_POLICY,HIGH,DIMO documents obdIsPluggedIn for aftermarket OBD; SynqDrive already polls it; needs read-model closure not new signal
+PHYSICAL_OBD_AFTERMARKET,signalsLatest.obdIsPluggedIn,tokenId stable,YES_WITH_POLICY,HIGH,Same signal path as LTE_R1
+SYNTHETIC_ONLY,signalsLatest (no obdIsPluggedIn),syntheticDevice.tokenId,NO,N/A,OBD unplug semantics not applicable; OEM/API may continue without physical OBD
+AFTERMARKET_AND_SYNTHETIC,signalsLatest.obdIsPluggedIn + identity pairing,MUST verify snapshot producer/source,CONDITIONAL,MEDIUM,Fleet has both device types in rawJson; must not close OBD episode from synthetic-only telemetry
+OEM_API,OEM signals without obdIsPluggedIn,integrationId,NO,LOW,No documented OBD plug signal for pure OEM path

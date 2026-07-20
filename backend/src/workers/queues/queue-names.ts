@@ -24,4 +24,6 @@ export const QUEUE_NAMES = {
   BATTERY_V2: 'battery.v2',
   /** Voice provider webhook async processing — lifecycle correlation. */
   VOICE_WEBHOOK_PROCESS: 'voice.webhook.process',
+  /** Device connection webhook inbox async processing — connectivity retry/DLQ. */
+  CONNECTIVITY_WEBHOOK_PROCESS: 'connectivity.webhook.process',
 } as const;

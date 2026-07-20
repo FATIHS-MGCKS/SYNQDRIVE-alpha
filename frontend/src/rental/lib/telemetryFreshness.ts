@@ -33,9 +33,15 @@ export const TELEMETRY_DELAYED_MAX_MS = 48 * 60 * 60 * 1000; // 48 h
 export interface TelemetryFreshnessInput {
   signalAgeMs?: number | null;
   lastSignal?: string | null;
+  providerObservedAt?: string | null;
+  lastValidTelemetryAt?: string | null;
+  receivedAt?: string | null;
+  latestStateUpdatedAt?: string | null;
   /** Backend 3-state hint (ONLINE/STANDBY/OFFLINE), used only as a fallback. */
   onlineStatus?: string | null;
 }
+
+export const DEFAULT_TELEMETRY_BACKFILL_MAX_LAG_MS = 15 * 60 * 1000;
 
 export interface TelemetryFreshnessState {
   freshness: TelemetryFreshness;
@@ -54,18 +60,55 @@ export interface TelemetryFreshnessState {
   shouldWarnUser: boolean;
 }
 
+export function parseTelemetryTimestampMs(
+  value: string | null | undefined,
+): number | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  return ms;
+}
+
 /**
- * Best-effort signal age in ms. Prefers the live `lastSignal` timestamp (so the
- * age keeps advancing while the page is open) and falls back to the interpreted
- * `signalAgeMs`. Returns null when there is no usable timestamp at all.
+ * Canonical observation instant for freshness — mirrors backend resolver priority.
  */
+export function resolveCanonicalTelemetryObservedAtMs(
+  input: TelemetryFreshnessInput,
+  maxBackfillLagMs: number = DEFAULT_TELEMETRY_BACKFILL_MAX_LAG_MS,
+): number | null {
+  const providerObserved = parseTelemetryTimestampMs(input.providerObservedAt);
+  if (providerObserved != null) return providerObserved;
+
+  const lastValid = parseTelemetryTimestampMs(input.lastValidTelemetryAt);
+  if (lastValid != null) return lastValid;
+
+  const received = parseTelemetryTimestampMs(input.receivedAt);
+  const lastSignal = parseTelemetryTimestampMs(input.lastSignal);
+  const stateUpdated = parseTelemetryTimestampMs(input.latestStateUpdatedAt);
+
+  const staleObserved = lastSignal ?? stateUpdated;
+  if (
+    received != null &&
+    staleObserved != null &&
+    received - staleObserved > maxBackfillLagMs
+  ) {
+    if (lastSignal != null) return lastSignal;
+    if (stateUpdated != null) return stateUpdated;
+  }
+
+  if (lastSignal != null) return lastSignal;
+  if (stateUpdated != null) return stateUpdated;
+
+  return null;
+}
+
 export function telemetrySignalAgeMs(
   v: TelemetryFreshnessInput,
   now: number = Date.now(),
 ): number | null {
-  if (v.lastSignal) {
-    const t = Date.parse(v.lastSignal);
-    if (Number.isFinite(t)) return Math.max(0, now - t);
+  const observedMs = resolveCanonicalTelemetryObservedAtMs(v);
+  if (observedMs != null) {
+    return Math.max(0, now - observedMs);
   }
   if (
     typeof v.signalAgeMs === 'number' &&

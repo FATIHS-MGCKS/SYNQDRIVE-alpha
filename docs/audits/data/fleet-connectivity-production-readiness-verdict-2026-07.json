@@ -1,0 +1,84 @@
+{
+  "auditId": "fleet-connectivity-production-readiness-2026-07",
+  "phase": 8,
+  "completedAt": "2026-07-18T12:30:00.000Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "dimoTriggersMutated": false,
+  "infrastructureChanged": false,
+  "verdict": "NOT_READY",
+  "productionBlockers": [
+    "FC-P0-01",
+    "FC-P0-03",
+    "FC-C-04"
+  ],
+  "readinessCategories": {
+    "A_correctness": "NOT_READY",
+    "B_state_consistency": "NOT_READY",
+    "C_device_episode_integrity": "NOT_READY",
+    "D_provider_link_integrity": "CONDITIONALLY_READY",
+    "E_telemetry_freshness": "CONDITIONALLY_READY",
+    "F_webhook_reliability": "NOT_ENOUGH_DATA",
+    "G_data_coverage_semantics": "NOT_READY",
+    "H_cross_surface_consistency": "NOT_READY",
+    "I_operational_safety": "CONDITIONALLY_READY",
+    "J_user_experience": "NOT_READY",
+    "K_mobile_i18n_a11y": "NOT_READY",
+    "L_test_readiness": "NOT_READY",
+    "M_observability": "NOT_ENOUGH_DATA"
+  },
+  "fleetMetrics": {
+    "analysisWindowDays": 60,
+    "analysisStartUtc": "2026-05-19T10:00:00.000Z",
+    "analysisEndUtc": "2026-07-18T10:00:00.000Z",
+    "vehiclesTotal": 7,
+    "dimoLinked": 6,
+    "physicalObdLteR1Bindings": 6,
+    "syntheticBindings": 6,
+    "oemOnlyBindings": 0,
+    "unplugEpisodesTotal": 2,
+    "openEpisodesDb": 2,
+    "openEpisodesApi7d": 1,
+    "episodesWithLaterTelemetry": 2,
+    "falselyOpenEpisodes": 2,
+    "episodesLostTo7dWindow": 1,
+    "crossSurfaceInconsistencies": 6,
+    "consumersInventoried": 31
+  },
+  "triggerWebhookStatus": {
+    "obdUnplugTrigger": "ENABLED",
+    "obdPlugTrigger": "DISABLED",
+    "webhooksReceived60d": 2,
+    "webhooksPersisted": 2,
+    "webhooksFailed": 0,
+    "plugEventsFleetWide": 0
+  },
+  "findingsCounts": {
+    "P0": 4,
+    "P1": 7,
+    "P2": 3,
+    "P3": 4,
+    "total": 18,
+    "productionBlockers": 3
+  },
+  "recommendedImplementationPrompts": 18,
+  "artifactInventory": {
+    "requiredFilesPresent": 27,
+    "requiredFilesMissing": [],
+    "supplementaryFiles": [
+      "docs/audits/data/fleet-connectivity-incident-001-timeline-2026-07.json",
+      "docs/audits/data/fleet-connectivity-incident-replay-fixture-2026-07.json",
+      "docs/audits/data/fleet-connectivity-incident-replay-result-2026-07.json",
+      "docs/audits/data/fleet-connectivity-audit-phase-3-result-2026-07.json",
+      "docs/audits/data/fleet-connectivity-dimo-audit-summary-2026-07.json"
+    ],
+    "missingFromEarlierOutline": {
+      "fleet-connectivity-fleet-stats-2026-07.json": "Outlined in Phase 2 plan but never generated; superseded by Phase 4 fleet-coverage and integrity JSON aggregates"
+    }
+  },
+  "piiScan": {
+    "scannedPaths": "docs/audits/fleet-connectivity-production-readiness-2026-07.md, docs/audits/data/fleet-connectivity-*",
+    "issuesFound": 0,
+    "notes": "All vehicle references anonymized VEHICLE_001–007; token IDs masked ***NNN; no VIN/plate/GPS/customer PII in committed audit data. Webhook UUIDs in trigger CSV are DIMO config identifiers not secrets. Main report mentions DATABASE_URL only as operational instruction without value."
+  }
+}

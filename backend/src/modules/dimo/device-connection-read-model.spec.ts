@@ -8,6 +8,10 @@ import {
   shouldIgnorePlugImpulseAfterUnplug,
   severityForUnplugEvent,
 } from './device-connection-read-model';
+import { configuredUnplugWebhookConfiguration } from './device-connection-webhook-configuration/device-connection-webhook-configuration.test-helpers';
+import {
+  WebhookConfigurationStateEnum,
+} from './device-connection-webhook-configuration/device-connection-webhook-configuration.types';
 
 describe('device-connection-read-model', () => {
   const nowMs = new Date('2026-06-28T12:00:00.000Z').getTime();
@@ -34,6 +38,7 @@ describe('device-connection-read-model', () => {
       ],
       bookings: [],
       trips: [],
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
     });
 
     expect(summary.openUnpluggedEpisode).toBe(true);
@@ -64,6 +69,7 @@ describe('device-connection-read-model', () => {
         },
       ],
       trips: [],
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
     });
 
     expect(summary.severity).toBe('critical');
@@ -94,6 +100,7 @@ describe('device-connection-read-model', () => {
       ],
       bookings: [],
       trips: [],
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
     });
 
     const fleet = buildFleetDeviceConnectionFields(summary);
@@ -224,6 +231,7 @@ describe('device-connection-read-model', () => {
         dimoConnectionStatus: 'DISCONNECTED',
         obdIsPluggedIn: null,
       },
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
     });
 
     expect(summary.currentDeviceConnectionStatus).toBe('unplugged');
@@ -270,5 +278,71 @@ describe('device-connection-read-model', () => {
       { dimoConnectionStatus: 'DISCONNECTED', obdIsPluggedIn: null },
     );
     expect(result).toEqual({ ignore: true, reason: 'plug_impulse_after_unplug' });
+  });
+
+  it('uses persisted open episode for current state independent of event window', () => {
+    const openedAt = new Date('2026-06-01T10:00:00.000Z');
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs,
+      events: [],
+      bookings: [],
+      trips: [],
+      persistedOpenEpisode: {
+        id: 'ep-persisted',
+        openedAt,
+        deviceBindingId: 'binding-1',
+      },
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
+    });
+
+    expect(summary.openUnpluggedEpisode).toBe(true);
+    expect(summary.currentDeviceConnectionStatus).toBe('unplugged');
+    expect(summary.lastDeviceUnpluggedAt).toBe(openedAt.toISOString());
+    expect(summary.unpluggedCount7d).toBe(0);
+  });
+
+  it('explicit null persisted episode closes state even when events imply open unplug', () => {
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs,
+      events: [
+        {
+          id: 'e1',
+          vehicleId: 'v-1',
+          eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+          observedAt: new Date('2026-06-28T11:00:00.000Z'),
+        },
+      ],
+      bookings: [],
+      trips: [],
+      persistedOpenEpisode: null,
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
+    });
+
+    expect(summary.openUnpluggedEpisode).toBe(false);
+    expect(summary.currentDeviceConnectionStatus).toBe('unknown');
+  });
+
+  it('derives legacy webhookConfigured from trigger registry — not event absence', () => {
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs,
+      events: [],
+      bookings: [],
+      trips: [],
+      webhookConfiguration: configuredUnplugWebhookConfiguration(),
+    });
+
+    expect(summary.webhookConfigured).toBe('active');
+    expect(summary.webhookConfiguration.unplugTriggerState.state).toBe(
+      WebhookConfigurationStateEnum.CONFIGURED,
+    );
   });
 });
