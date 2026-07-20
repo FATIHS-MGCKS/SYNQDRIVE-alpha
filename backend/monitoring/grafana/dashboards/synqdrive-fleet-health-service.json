@@ -1,0 +1,277 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["synqdrive"],
+      "targetBlank": false,
+      "title": "SynqDrive Ops",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Übersicht",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(synqdrive_fleet_health_availability_total{level=\"ready\"}) / clamp_min(sum(synqdrive_fleet_health_availability_total), 1)", "refId": "A" }],
+      "title": "Health ready share",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "synqdrive_fleet_health_blocking_service_case_total", "refId": "A" }],
+      "title": "Blockierende Service Cases",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "synqdrive_fleet_health_battery_publication_coverage_ratio", "refId": "A" }],
+      "title": "Battery publication coverage",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_fleet_health_refresh_partial_failure_total[30m]))", "refId": "A" }],
+      "title": "Refresh partial failures/s (30m)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "Health Availability & Modul-Coverage",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 5,
+      "targets": [
+        { "expr": "sum by (level) (synqdrive_fleet_health_availability_total)", "legendFormat": "{{level}}", "refId": "A" }
+      ],
+      "title": "Health availability by level",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 6,
+      "targets": [
+        { "expr": "sum by (module, state) (synqdrive_fleet_health_module_status_total)", "legendFormat": "{{module}} {{state}}", "refId": "A" }
+      ],
+      "title": "Modul-Coverage nach Status",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "Technische Blockaden & Datenfrische",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "id": 7,
+      "targets": [
+        { "expr": "sum by (source) (synqdrive_fleet_health_technical_blockade_total)", "legendFormat": "{{source}}", "refId": "A" }
+      ],
+      "title": "Technische Blockaden",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "id": 8,
+      "targets": [
+        { "expr": "sum by (module) (synqdrive_fleet_health_stale_module_total)", "legendFormat": "stale {{module}}", "refId": "A" },
+        { "expr": "sum by (module) (synqdrive_fleet_health_module_status_total{state=\"unknown\"})", "legendFormat": "unknown {{module}}", "refId": "B" }
+      ],
+      "title": "Stale & unknown Module",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 103,
+      "title": "Fleet-Health-Latenz",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 9,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, route) (rate(synqdrive_fleet_health_rental_health_request_duration_seconds_bucket[10m])))", "legendFormat": "{{route}} p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.50, sum by (le, route) (rate(synqdrive_fleet_health_rental_health_request_duration_seconds_bucket[10m])))", "legendFormat": "{{route}} p50", "refId": "B" }
+      ],
+      "title": "Rental health request latency (10m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 10,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(synqdrive_fleet_health_fleet_summary_duration_seconds_bucket[10m])))", "legendFormat": "{{operation}} p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.50, sum by (le, operation) (rate(synqdrive_fleet_health_fleet_summary_duration_seconds_bucket[10m])))", "legendFormat": "{{operation}} p50", "refId": "B" }
+      ],
+      "title": "Fleet summary duration (10m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 104,
+      "title": "API-Fehler",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 33 },
+      "id": 11,
+      "targets": [
+        { "expr": "sum by (operation, error_code) (rate(synqdrive_fleet_health_task_api_errors_total[5m]))", "legendFormat": "task {{operation}} {{error_code}}", "refId": "A" },
+        { "expr": "sum by (operation, error_code) (rate(synqdrive_fleet_health_case_api_errors_total[5m]))", "legendFormat": "case {{operation}} {{error_code}}", "refId": "B" },
+        { "expr": "sum by (operation, error_code) (rate(synqdrive_fleet_health_vendor_api_errors_total[5m]))", "legendFormat": "vendor {{operation}} {{error_code}}", "refId": "C" }
+      ],
+      "title": "Task / Case / Vendor API errors (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "id": 105,
+      "title": "Service Cases & Tasks",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 42 },
+      "id": 12,
+      "targets": [
+        { "expr": "sum by (status) (synqdrive_fleet_health_service_case_total)", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Service Cases nach Status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 42 },
+      "id": 13,
+      "targets": [
+        { "expr": "sum by (outcome) (synqdrive_fleet_health_health_task_ambiguous_legacy_match_total)", "legendFormat": "ambiguous {{outcome}}", "refId": "A" },
+        { "expr": "sum by (operation, error_code) (rate(synqdrive_fleet_health_task_api_errors_total[5m]))", "legendFormat": "task error {{operation}} {{error_code}}", "refId": "B" }
+      ],
+      "title": "Tasks — Health-Match-Audit & API-Fehler (kein Status-Counter)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "id": 106,
+      "title": "Blockierende Cases, Battery & Vendor",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 51 },
+      "id": 14,
+      "targets": [
+        { "expr": "synqdrive_fleet_health_blocking_service_case_total", "legendFormat": "blocking cases", "refId": "A" }
+      ],
+      "title": "Blockierende Service Cases",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 51 },
+      "id": 15,
+      "targets": [
+        { "expr": "synqdrive_fleet_health_battery_publication_coverage_ratio", "legendFormat": "{{scope}}", "refId": "A" }
+      ],
+      "title": "Battery publication coverage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 51 },
+      "id": 16,
+      "targets": [
+        { "expr": "sum by (operation, error_code) (rate(synqdrive_fleet_health_vendor_api_errors_total[5m]))", "legendFormat": "{{operation}} {{error_code}}", "refId": "A" }
+      ],
+      "title": "Vendor-Fehler (5m)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 59 },
+      "id": 107,
+      "title": "Queues & Refresh-Degradation",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 60 },
+      "id": 17,
+      "targets": [
+        { "expr": "synqdrive_queue_failed_jobs", "legendFormat": "{{queue}} failed", "refId": "A" }
+      ],
+      "title": "Queue failed jobs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 60 },
+      "id": 18,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, queue) (rate(synqdrive_queue_lag_seconds_bucket[10m])))", "legendFormat": "{{queue}} p95 lag", "refId": "A" },
+        { "expr": "sum by (source) (rate(synqdrive_fleet_health_refresh_partial_failure_total[5m]))", "legendFormat": "refresh {{source}}", "refId": "B" }
+      ],
+      "title": "Queue lag p95 & Refresh partial failures (5m)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["synqdrive", "fleet-health", "fleet-health-service"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "title": "SynqDrive Fleet Health Service",
+  "uid": "synqdrive-fleet-health-service",
+  "version": 1
+}
