@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'service-center-vendor-source-fhs-p21-2026-07-20',
+    version: '4.9.612',
+    title: 'Service Center — expose vendor source failures (FHS Phase 3 P21)',
+    summary: [
+      'Entfernt stilles `api.vendors.list().catch(() => [])` in `useServiceCenterData`.',
+      'Separater Vendor-Source-State: idle/loading/ready/error/stale mit `vendorsError`, `vendorsFetchedAt`, `reloadVendors`.',
+      'Task-Daten bleiben bei Vendor-Fehlern sichtbar; leere erfolgreiche Response = 0 Partner.',
+    ],
+    reason: 'FHS Phase 3 Prompt 21: API-Fehler bei Partnern darf nicht wie „keine Partner“ aussehen.',
+    previousBehavior:
+      'Vendor-API-Fehler wurden zu `[]` geschluckt; Tasks und Vendors liefen in einem gemeinsamen Promise.all mit stiller Degradation.',
+    details:
+      'vendor-source-state.ts, useServiceCenterData.ts (+Tests), service-center.types.ts',
+    affectsArchitecture: true,
+    module: 'Service Center',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'rental-health-frontend-availability-fhs-p20-2026-07-20',
     version: '4.9.611',
     title: 'Rental Health — honest unavailable rendering in Fleet UI (FHS Phase 3 P20)',

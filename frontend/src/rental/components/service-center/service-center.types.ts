@@ -1,5 +1,6 @@
 import type { ApiTask, ApiTaskSummary } from '../../../lib/api';
 import type { Vendor } from '../../../lib/api';
+import type { VendorSourceState } from './vendor-source-state';
 
 export type ServiceCenterTab = 'overview' | 'tasks' | 'schedule' | 'vendors' | 'history';
 
@@ -33,8 +34,12 @@ export interface ServiceCenterData {
   activeTasks: ApiTask[];
   historyTasks: ApiTask[];
   vendors: Vendor[];
+  vendorsError: string | null;
+  vendorsStatus: VendorSourceState;
+  vendorsFetchedAt: string | null;
   kpis: ServiceKpiSnapshot;
   loading: boolean;
   error: string | null;
   reload: () => void;
+  reloadVendors: () => void;
 }
