@@ -70,7 +70,7 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 | 1 | 7–16 | P0 — Vendor, Service Cases, Health-Degradation, Pagination, Battery, Refresh | 0/10 |
 | 2 | 17–24 | Service Cases — Termine, Historie, Runtime-Blockade, KPI | 0/8 |
 | 3 | 25–30 | Health→Task-Brücke, Dedup, Multi-Finding | 0/6 |
-| 4 | 31–36 | RBAC Tasks/Service Cases | 0/6 |
+| 4 | 31–36 | RBAC Tasks/Service Cases | 5/6 |
 | 5 | 37–44 | Skalierung, Batch API, Virtualisierung | 0/8 |
 | 6 | 45–50 | Partial Failure, Freshness | 0/6 |
 | 7 | 51–58 | UX, i18n, a11y, IA | 0/8 |
@@ -135,12 +135,12 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 
 | ID | Phase | Titel | Abhängigkeiten | Domäne | Akzeptanzkriterien | Status | Commit | Testnachweis | Rollback |
 |----|-------|-------|----------------|--------|-------------------|--------|--------|--------------|----------|
-| **31** | 4 | Permission-Keys `tasks.read` / `tasks.write` | Prompt 3 | Backend / Auth | Keys in Permission-Registry | TODO | — | — | Keys deprecaten |
-| **32** | 4 | Tasks-Controller `PermissionsGuard` | Prompt 31 | Backend | CRUD an Permissions gebunden; FHS-T-072 | TODO | — | — | Guard-Revert |
-| **33** | 4 | Service-Cases-Controller Guards | Prompt 31 | Backend | Analog Tasks; org-scoped | TODO | — | — | Guard-Revert |
+| **31** | 4 | Permission-Keys `tasks.read` / `tasks.write` | Prompt 3 | Backend / Auth | Keys in Permission-Registry | **DONE** | `c6802eac` | `operational-permission.registry.spec.ts`, `*.defaults.spec.ts` PASS | Keys deprecaten |
+| **32** | 4 | Tasks-Controller `PermissionsGuard` | Prompt 31 | Backend | CRUD an Permissions gebunden; FHS-T-072 | **DONE** | `34c40fc0`–`513eadd2` | `tasks.permissions.characterization.spec.ts`, `tasks.lifecycle-permissions.spec.ts` PASS | Guard-Revert |
+| **33** | 4 | Service-Cases-Controller Guards | Prompt 31 | Backend | Analog Tasks; org-scoped | **DONE** | `c978ac08`–`66a639f9` | `service-cases.permissions.characterization.spec.ts`, `service-cases.write-permissions.spec.ts` PASS | Guard-Revert |
 | **34** | 4 | Frontend Permission-Gating | Prompt 32, 33 | Frontend | Mutations nur mit Permission; Read-only blockiert | TODO | — | — | UI-Revert |
-| **35** | 4 | RBAC Controller-Specs | Prompt 32, 33 | Tests | 403 für fehlende Permissions; FHS-T-074 | TODO | — | — | — |
-| **36** | 4 | RBAC-Dokumentation & Rollenmatrix | Prompt 35 | Docs | Matrix aus Audit 2 §5.2 in Architektur | TODO | — | — | Doc-Revert |
+| **35** | 4 | RBAC Controller-Specs | Prompt 32, 33 | Tests | 403 für fehlende Permissions; FHS-T-074 | **DONE** | `07d2a9da` | `fleet-service.permissions.matrix.spec.ts` (23), Characterization + Lifecycle/Write-Specs PASS (101 gesamt) | — |
+| **36** | 4 | RBAC-Dokumentation & Rollenmatrix | Prompt 35 | Docs | Matrix aus Audit 2 §5.2 in Architektur | **DONE** | `07d2a9da` | Rollenmatrix: Master Admin, Org/Sub Admin, Service/Station Manager, Worker, Driver, Read-only, Cross-Tenant; Station-Scope + Kosten/Termine in `fleet-service.permissions.matrix.spec.ts` | Doc-Revert |
 
 ### Phase 5 — Skalierung & API
 
@@ -271,6 +271,7 @@ Nach Abschluss jedes Prompts **2–66**:
 | 2026-07-20 | 2 | Initiale Tracker-Erstellung; P1 DONE; P2 DONE; P4 DONE; 63× TODO |
 | 2026-07-20 | 3 | Domain Boundaries ADR; P3 DONE |
 | 2026-07-20 | 4 | Call-Site-Baseline aktualisiert; 283 Tests PASS; P4 DONE |
+| 2026-07-20 | Auth P11–P17 | Phase 4 RBAC Backend: Permission-Keys, Tasks/Service-Cases Guards, Rollenmatrix-Specs; P31–P33, P35–P36 DONE; P34 Frontend offen |
 
 ---
 

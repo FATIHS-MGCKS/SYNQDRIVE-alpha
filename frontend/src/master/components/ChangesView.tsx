@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-service-permissions-matrix-fhs-p17-2026-07-20',
+    version: '4.9.608',
+    title: 'Auth — fleet service permission test matrix (FHS Phase 2 P17)',
+    summary: [
+      'Zentrale Rollenmatrix-Spec für Tasks + Service Cases: Master Admin, Org/Sub Admin, Service/Station Manager, Worker, Driver, Read-only, Cross-Tenant.',
+      'Abgedeckt: Assign/Complete für Worker, Kostenrechte (`manage_costs`), Case-Termine (`schedule`), Station-Scope-Sichtbarkeit, fehlende Permissions, Legacy-Modul-JSON ohne neue Keys.',
+      'PermissionsGuard + OrgScopingGuard Enforcement; Tracker Phase 4 P35/P36 mit RBAC-Nachweis aktualisiert.',
+    ],
+    reason: 'FHS Phase 2 Prompt 17: realistische RBAC-Testmatrix als Nachweis vor Frontend-Gating (P34).',
+    previousBehavior:
+      'Einzelne Characterization-Specs pro Controller; keine übergreifende Rollenmatrix über Tasks und Service Cases.',
+    details:
+      'fleet-service.permissions.matrix.spec.ts, fleet-health-service-remediation-tracker.md (P31–P33, P35–P36 DONE)',
+    affectsArchitecture: true,
+    module: 'Auth / RBAC',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'service-cases-write-permission-fhs-p16-2026-07-20',
     version: '4.9.607',
     title: 'Service Cases — enforce granular write permissions (FHS Phase 2 P16)',
