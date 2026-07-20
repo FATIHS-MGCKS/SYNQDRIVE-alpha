@@ -11,9 +11,13 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { TasksService } from './tasks.service';
+import { TaskPermissionService } from './task-permission.service';
+import { resolveTaskActor } from './task-auth-actor.util';
+import { hasTaskCostMutation } from './task-cost-mutation.util';
+import { TASK_BULK_ACTION_PERMISSIONS } from './task-bulk-action-permissions';
 
 interface TaskAuthRequest extends Request {
-  user?: { id?: string; platformRole?: string };
+  user?: { id?: string; platformRole?: string; organizationId?: string };
 }
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -41,7 +45,10 @@ import {
 @Controller()
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(
+    private readonly tasksService: TasksService,
+    private readonly taskPermissionService: TaskPermissionService,
+  ) {}
 
   @Get('organizations/:orgId/tasks')
   @RequireTaskPermission('tasks.read')
@@ -95,6 +102,15 @@ export class TasksController {
   @Post('organizations/:orgId/tasks')
   @RequireTaskPermission('tasks.create')
   async create(@Param('orgId') orgId: string, @Req() req: TaskAuthRequest, @Body() body: CreateTaskDto) {
+    const actor = resolveTaskActor(req.user);
+    const metadata = {
+      ...(body.metadata && typeof body.metadata === 'object' ? body.metadata : {}),
+      ...(body.stationId ? { stationId: body.stationId } : {}),
+    };
+    if (hasTaskCostMutation({ estimatedCostCents: body.estimatedCostCents, metadata })) {
+      await this.taskPermissionService.assert(actor, orgId, 'tasks.manage_costs');
+    }
+
     return this.tasksService.createManualTask(
       orgId,
       {
@@ -120,10 +136,7 @@ export class TasksController {
         checklist: body.checklist,
         blocksVehicleAvailability: body.blocksVehicleAvailability,
         initialNote: body.initialNote,
-        metadata: {
-          ...(body.metadata && typeof body.metadata === 'object' ? body.metadata : {}),
-          ...(body.stationId ? { stationId: body.stationId } : {}),
-        },
+        metadata,
         source: body.sourceKey ?? undefined,
       },
       req.user?.id,
@@ -138,6 +151,14 @@ export class TasksController {
     @Req() req: TaskAuthRequest,
     @Body() body: UpdateTaskDto,
   ) {
+    const actor = resolveTaskActor(req.user);
+    if (hasTaskCostMutation({
+      estimatedCostCents: body.estimatedCostCents,
+      actualCostCents: body.actualCostCents,
+    })) {
+      await this.taskPermissionService.assert(actor, orgId, 'tasks.manage_costs');
+    }
+
     return this.tasksService.updateTask(
       orgId,
       id,
@@ -178,12 +199,18 @@ export class TasksController {
   }
 
   @Patch('organizations/:orgId/tasks/:id/complete')
+  @RequireTaskPermission('tasks.complete')
   async complete(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Req() req: TaskAuthRequest,
     @Body() body: CompleteTaskDto,
   ) {
+    const actor = resolveTaskActor(req.user);
+    if (body.actualCostCents !== undefined && body.actualCostCents !== null) {
+      await this.taskPermissionService.assert(actor, orgId, 'tasks.manage_costs');
+    }
+
     return this.tasksService.completeTask(
       orgId,
       id,
@@ -199,6 +226,7 @@ export class TasksController {
   }
 
   @Patch('organizations/:orgId/tasks/:id/cancel')
+  @RequireTaskPermission('tasks.cancel')
   async cancel(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: TaskAuthRequest) {
     return this.tasksService.cancelTask(orgId, id, req.user?.id);
   }
@@ -209,6 +237,9 @@ export class TasksController {
     @Req() req: TaskAuthRequest,
     @Body() body: BulkTaskActionDto,
   ) {
+    const actor = resolveTaskActor(req.user);
+    await this.taskPermissionService.assert(actor, orgId, TASK_BULK_ACTION_PERMISSIONS[body.action]);
+
     return this.tasksService.bulkTaskActions(
       orgId,
       {

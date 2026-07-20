@@ -1327,6 +1327,11 @@ export class TasksService {
       orgId = t.organizationId;
     }
     if (data.status) {
+      if (data.status === 'DONE' || data.status === 'CANCELLED') {
+        throw new BadRequestException(
+          'Terminal status changes must use the dedicated complete or cancel endpoints',
+        );
+      }
       await this.changeStatus(orgId, id, data.status);
     }
     const rest: UpdateTaskInput = {};

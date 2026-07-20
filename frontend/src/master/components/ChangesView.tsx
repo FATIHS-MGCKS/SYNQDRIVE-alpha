@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tasks-lifecycle-cost-permission-fhs-p14-2026-07-20',
+    version: '4.9.605',
+    title: 'Tasks — protect lifecycle and cost mutations (FHS Phase 2 P14)',
+    summary: [
+      'PATCH complete → `tasks.complete`, PATCH cancel → `tasks.cancel`; Bulk-cancel nutzt `tasks.cancel`.',
+      'Kostenfelder (`estimatedCostCents`, `actualCostCents`, cost-Metadata) erfordern `tasks.manage_costs`.',
+      'Legacy-`update(status=DONE|CANCELLED)` blockiert; Audit-Actor ausschließlich aus Auth-Kontext.',
+    ],
+    reason: 'FHS Phase 2 Prompt 14: sensible Lifecycle- und Kostenaktionen granular schützen.',
+    previousBehavior:
+      'Complete/Cancel ohne Action-Guards; Kosten über PATCH update/complete ohne manage; Terminal-Status per Legacy-update möglich.',
+    details:
+      'tasks.controller.ts, task-permission.service.ts, task-cost-mutation.util.ts, task-bulk-action-permissions.ts, tasks.lifecycle-permissions.spec.ts',
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'tasks-write-permission-fhs-p13-2026-07-20',
     version: '4.9.604',
     title: 'Tasks — enforce create, update and assign permissions (FHS Phase 2 P13)',

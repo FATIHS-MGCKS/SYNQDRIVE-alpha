@@ -31,7 +31,14 @@ describe('TasksController', () => {
     getTasksForCustomer: jest.fn(),
   };
 
-  const controller = new TasksController(tasksService as any);
+  const taskPermissionService = {
+    assert: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const controller = new TasksController(
+    tasksService as any,
+    taskPermissionService as any,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -75,10 +82,15 @@ describe('TasksController', () => {
     );
   });
 
-  it('delegates bulk actions', async () => {
+  it('delegates bulk actions after asserting cancel permission', async () => {
     tasksService.bulkTaskActions.mockResolvedValue({ succeeded: 1, failed: 0, results: [] });
     const req = { user } as any;
     await controller.bulkActions(orgId, req, { taskIds: ['t1'], action: 'cancel' } as any);
+    expect(taskPermissionService.assert).toHaveBeenCalledWith(
+      { id: user.id, platformRole: undefined, organizationId: undefined },
+      orgId,
+      'tasks.cancel',
+    );
     expect(tasksService.bulkTaskActions).toHaveBeenCalledWith(
       orgId,
       { taskIds: ['t1'], action: 'cancel' },

@@ -41,6 +41,8 @@ describe('TasksController permissions characterization', () => {
     ['create', 'tasks.create'],
     ['update', 'tasks.update'],
     ['assign', 'tasks.assign'],
+    ['complete', 'tasks.complete'],
+    ['cancel', 'tasks.cancel'],
   ] as const;
 
   it.each(mutationHandlers)('%s requires canonical %s permission', (method, action) => {
@@ -53,8 +55,6 @@ describe('TasksController permissions characterization', () => {
     const writeHandlers = [
       'start',
       'waiting',
-      'complete',
-      'cancel',
       'bulkActions',
       'addComment',
       'addChecklistItem',
