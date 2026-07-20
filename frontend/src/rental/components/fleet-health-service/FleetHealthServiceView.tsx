@@ -163,7 +163,6 @@ export function FleetHealthServiceView({
         <FleetHealthServiceWorkPanel
           activeView={workView}
           onViewChange={handleWorkViewChange}
-          vm={vm}
           vendors={vm.vendors}
           tasks={taskNavigation.filteredTasks}
           tasksLoading={taskSource.loading}
@@ -171,6 +170,8 @@ export function FleetHealthServiceView({
           taskFilter={taskNavigation.taskFilter}
           onTaskFilterChange={taskNavigation.setTaskFilter}
           initialAdvancedFilters={taskNavigation.advancedNavPatch}
+          serviceCases={service.serviceCases.data}
+          serviceCasesDataReady={vm.caseLayer.kpis.dataReady}
           serviceCasesError={service.serviceCases.error}
           serviceCasesLoading={serviceCasesLoading}
           focusTaskId={taskNavigation.focusTaskId}

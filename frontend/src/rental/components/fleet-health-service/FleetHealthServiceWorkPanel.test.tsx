@@ -2,8 +2,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ApiTask } from '../../../lib/api';
-import { buildFleetHealthServiceCaseLayer } from './fleet-health-service-case.view-model';
-import { buildFleetHealthServiceViewModel } from './fleet-health-service.view-model';
 import { FleetHealthServiceWorkPanel } from './FleetHealthServiceWorkPanel';
 
 vi.mock('./FleetHealthServiceTasksPanel', () => ({
@@ -36,26 +34,6 @@ vi.mock('./FleetHealthServiceSchedulePanel', () => ({
   FleetHealthServiceSchedulePanel: () => <div data-testid="fhs-schedule-panel" />,
 }));
 
-const vm = buildFleetHealthServiceViewModel({
-  vehicles: [],
-  healthMap: new Map(),
-  healthLoading: false,
-  healthFetchedAt: null,
-  taskSummary: null,
-  taskList: [],
-  vendors: [],
-  tasksFetchedAt: null,
-  vendorsFetchedAt: null,
-  serviceCasesFetchedAt: null,
-  serviceCaseList: [],
-  serviceCasesLoaded: true,
-  serviceLoading: false,
-  serviceError: null,
-  serviceLoaded: true,
-});
-
-vm.caseLayer = buildFleetHealthServiceCaseLayer({ serviceCases: [], dataReady: true });
-
 const tasks: ApiTask[] = [
   {
     id: 'task-1',
@@ -71,9 +49,10 @@ const tasks: ApiTask[] = [
 ];
 
 const baseProps = {
-  vm,
   vendors: [],
   tasks,
+  serviceCases: [],
+  serviceCasesDataReady: true,
   tasksLoading: false,
   tasksError: null,
   taskFilter: 'all' as const,

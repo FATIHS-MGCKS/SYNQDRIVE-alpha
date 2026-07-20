@@ -1,9 +1,8 @@
 import { Building2 } from 'lucide-react';
-import type { ApiTask, Vendor } from '../../../lib/api';
+import type { ApiServiceCase, ApiTask, Vendor } from '../../../lib/api';
 import type { ServiceTaskAdvancedFilters } from '../../lib/service-task-filters';
 import { Button } from '../../../components/ui/button';
 import type { ServiceTaskFilter } from '../service-center/service-center.types';
-import type { FleetHealthServiceViewModel } from './fleet-health-service.view-model';
 import { FleetHealthServiceCasesPanel } from './FleetHealthServiceCasesPanel';
 import { FleetHealthServiceSchedulePanel } from './FleetHealthServiceSchedulePanel';
 import { FleetHealthServiceTasksPanel } from './FleetHealthServiceTasksPanel';
@@ -14,7 +13,6 @@ import { fhs } from './fleet-health-service-shell';
 interface FleetHealthServiceWorkPanelProps {
   activeView: FleetHealthServiceWorkView;
   onViewChange: (view: FleetHealthServiceWorkView) => void;
-  vm: FleetHealthServiceViewModel;
   vendors: Vendor[];
   tasks: ApiTask[];
   tasksLoading?: boolean;
@@ -22,6 +20,8 @@ interface FleetHealthServiceWorkPanelProps {
   taskFilter: ServiceTaskFilter;
   onTaskFilterChange: (filter: ServiceTaskFilter) => void;
   initialAdvancedFilters?: Partial<ServiceTaskAdvancedFilters>;
+  serviceCases: ApiServiceCase[];
+  serviceCasesDataReady: boolean;
   serviceCasesError?: string | null;
   serviceCasesLoading?: boolean;
   focusTaskId?: string | null;
@@ -33,7 +33,6 @@ interface FleetHealthServiceWorkPanelProps {
 export function FleetHealthServiceWorkPanel({
   activeView,
   onViewChange,
-  vm,
   vendors,
   tasks,
   tasksLoading,
@@ -41,6 +40,8 @@ export function FleetHealthServiceWorkPanel({
   taskFilter,
   onTaskFilterChange,
   initialAdvancedFilters,
+  serviceCases,
+  serviceCasesDataReady,
   serviceCasesError,
   serviceCasesLoading,
   focusTaskId,
@@ -90,7 +91,9 @@ export function FleetHealthServiceWorkPanel({
 
       {activeView === 'service-cases' ? (
         <FleetHealthServiceCasesPanel
-          caseLayer={vm.caseLayer}
+          serviceCases={serviceCases}
+          vendors={vendors}
+          dataReady={serviceCasesDataReady}
           loading={serviceCasesLoading}
           error={serviceCasesError}
           onReload={onReload}
