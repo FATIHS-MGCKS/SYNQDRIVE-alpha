@@ -1,5 +1,6 @@
 import type { StatusTone } from '../../../components/patterns';
 import type {
+  ApiServiceCase,
   ApiTask,
   ApiTaskSummary,
   RentalHealthState,
@@ -31,6 +32,10 @@ import {
   buildFleetHealthServiceFreshness,
   type FleetHealthServiceFreshness,
 } from './fleet-health-service-freshness';
+import {
+  buildFleetHealthServiceCaseLayer,
+  type FleetHealthServiceCaseLayer,
+} from './fleet-health-service-case.view-model';
 
 export type FleetHealthServiceRecommendedAction =
   | 'open_task'
@@ -112,6 +117,7 @@ export interface FleetHealthServiceViewModel {
   serviceLoading: boolean;
   serviceError: string | null;
   freshness: FleetHealthServiceFreshness;
+  caseLayer: FleetHealthServiceCaseLayer;
   healthKpis: FleetHealthKpis;
   healthGroups: FleetHealthServiceHealthGroups;
   executionGroups: FleetHealthServiceExecutionGroups;
@@ -132,6 +138,8 @@ export interface BuildFleetHealthServiceViewModelInput {
   tasksFetchedAt: string | null;
   vendorsFetchedAt: string | null;
   serviceCasesFetchedAt: string | null;
+  serviceCaseList: ApiServiceCase[];
+  serviceCasesLoaded: boolean;
   serviceLoading: boolean;
   serviceError: string | null;
   serviceLoaded: boolean;
@@ -428,6 +436,8 @@ export function buildFleetHealthServiceViewModel(
     tasksFetchedAt,
     vendorsFetchedAt,
     serviceCasesFetchedAt,
+    serviceCaseList,
+    serviceCasesLoaded,
     serviceLoading,
     serviceError,
   } = input;
@@ -453,6 +463,10 @@ export function buildFleetHealthServiceViewModel(
     vendorsFetchedAt,
     serviceCasesFetchedAt,
   });
+  const caseLayer = buildFleetHealthServiceCaseLayer({
+    serviceCases: serviceCaseList,
+    dataReady: serviceCasesLoaded,
+  });
 
   return {
     loading: healthLoading || serviceLoading,
@@ -460,6 +474,7 @@ export function buildFleetHealthServiceViewModel(
     serviceLoading,
     serviceError,
     freshness,
+    caseLayer,
     healthKpis,
     healthGroups,
     executionGroups,

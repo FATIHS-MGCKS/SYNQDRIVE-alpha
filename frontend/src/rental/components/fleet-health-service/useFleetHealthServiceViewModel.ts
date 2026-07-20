@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useFleetVehicles } from '../../FleetContext';
+import { isSourceUsable } from '../service-center/service-center-source-state';
 import {
   buildFleetHealthServiceViewModel,
   type FleetHealthServiceViewModel,
@@ -36,6 +37,8 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
         tasksFetchedAt: service.tasksFetchedAt,
         vendorsFetchedAt: service.vendorsFetchedAt,
         serviceCasesFetchedAt: service.serviceCasesFetchedAt,
+        serviceCaseList: service.serviceCases.data,
+        serviceCasesLoaded: isSourceUsable(service.serviceCases.status),
         serviceLoading: service.loading,
         serviceError: service.error,
         serviceLoaded:
@@ -55,6 +58,8 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
       service.tasksFetchedAt,
       service.vendorsFetchedAt,
       service.serviceCasesFetchedAt,
+      service.serviceCases.data,
+      service.serviceCases.status,
       service.loading,
       service.error,
       service.taskSummary.status,

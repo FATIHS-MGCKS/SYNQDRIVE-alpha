@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { ApiTask, RentalHealthModule, RentalHealthState, VehicleHealthResponse } from '../../../lib/api';
+import type {
+  ApiServiceCase,
+  ApiTask,
+  RentalHealthModule,
+  RentalHealthState,
+  VehicleHealthResponse,
+} from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import {
   buildFleetHealthServiceUiItem,
@@ -100,6 +106,63 @@ function task(
     blocksVehicleAvailability: false,
     serviceCaseId: null,
     metadata: null,
+    ...overrides,
+  };
+}
+
+function serviceCase(
+  overrides: Partial<ApiServiceCase> & Pick<ApiServiceCase, 'id' | 'vehicleId' | 'status'>,
+): ApiServiceCase {
+  return {
+    organizationId: 'org1',
+    vendorId: null,
+    title: 'Servicefall',
+    description: '',
+    category: 'REPAIR',
+    priority: 'NORMAL',
+    source: 'MANUAL',
+    openedAt: '2026-06-22T00:00:00.000Z',
+    scheduledAt: null,
+    expectedReadyAt: null,
+    completedAt: null,
+    cancelledAt: null,
+    estimatedCostCents: null,
+    actualCostCents: null,
+    downtimeStart: null,
+    downtimeEnd: null,
+    blocksRental: false,
+    completionNotes: null,
+    documentId: null,
+    metadata: null,
+    createdByUserId: null,
+    updatedByUserId: null,
+    createdAt: '2026-06-22T00:00:00.000Z',
+    updatedAt: '2026-06-22T00:00:00.000Z',
+    taskCount: 0,
+    tasks: [],
+    ...overrides,
+  };
+}
+
+function baseVmInput(
+  overrides: Partial<Parameters<typeof buildFleetHealthServiceViewModel>[0]> = {},
+) {
+  return {
+    vehicles: [vehicle('v1', 'B-XY 1')],
+    healthMap: new Map([['v1', buildHealth({ vehicle_id: 'v1' })]]),
+    healthLoading: false,
+    healthFetchedAt: null,
+    taskSummary: null,
+    taskList: [],
+    vendors: [],
+    tasksFetchedAt: null,
+    vendorsFetchedAt: null,
+    serviceCasesFetchedAt: null,
+    serviceCaseList: [],
+    serviceCasesLoaded: true,
+    serviceLoading: false,
+    serviceError: null,
+    serviceLoaded: true,
     ...overrides,
   };
 }
@@ -212,21 +275,13 @@ describe('fleet-health-service view model', () => {
         sourceType: 'HEALTH',
       }),
     ];
-    const vm = buildFleetHealthServiceViewModel({
-      vehicles: [vehicle('v1', 'B-XY 1')],
-      healthMap: new Map([['v1', health]]),
-      healthLoading: false,
-      healthFetchedAt: null,
-      taskSummary: null,
-      taskList: openTasks,
-      vendors: [],
-      tasksFetchedAt: null,
-      vendorsFetchedAt: null,
-      serviceCasesFetchedAt: null,
-      serviceLoading: false,
-      serviceError: null,
-      serviceLoaded: true,
-    });
+    const vm = buildFleetHealthServiceViewModel(
+      baseVmInput({
+        vehicles: [vehicle('v1', 'B-XY 1')],
+        healthMap: new Map([['v1', health]]),
+        taskList: openTasks,
+      }),
+    );
 
     expect(vm.uiItems[0]?.recommendedAction).toBe('open_task');
     expect(vm.overviewCounts.vehiclesWithLinkedHealthTask).toBe(1);
@@ -261,21 +316,13 @@ describe('fleet-health-service view model', () => {
         sourceType: 'HEALTH',
       }),
     ];
-    const vm = buildFleetHealthServiceViewModel({
-      vehicles: [vehicle('v1', 'B-XY 1')],
-      healthMap: new Map([['v1', health]]),
-      healthLoading: false,
-      healthFetchedAt: null,
-      taskSummary: null,
-      taskList: openTasks,
-      vendors: [],
-      tasksFetchedAt: null,
-      vendorsFetchedAt: null,
-      serviceCasesFetchedAt: null,
-      serviceLoading: false,
-      serviceError: null,
-      serviceLoaded: true,
-    });
+    const vm = buildFleetHealthServiceViewModel(
+      baseVmInput({
+        vehicles: [vehicle('v1', 'B-XY 1')],
+        healthMap: new Map([['v1', health]]),
+        taskList: openTasks,
+      }),
+    );
 
     expect(vm.prioritizedOverviewRows).toHaveLength(1);
     expect(vm.prioritizedOverviewRows[0]?.kind).toBe('health');
@@ -292,27 +339,90 @@ describe('fleet-health-service view model', () => {
         title: 'Ölwechsel',
       }),
     ];
-    const vm = buildFleetHealthServiceViewModel({
-      vehicles: [vehicle('v1', 'B-XY 1'), vehicle('v2', 'B-AB 2')],
-      healthMap: new Map([
-        ['v1', buildHealth({ vehicle_id: 'v1', overall_state: 'good' })],
-        ['v2', buildHealth({ vehicle_id: 'v2', overall_state: 'good' })],
-      ]),
-      healthLoading: false,
-      healthFetchedAt: null,
-      taskSummary: null,
-      taskList: openTasks,
-      vendors: [],
-      tasksFetchedAt: null,
-      vendorsFetchedAt: null,
-      serviceCasesFetchedAt: null,
-      serviceLoading: false,
-      serviceError: null,
-      serviceLoaded: true,
-    });
+    const vm = buildFleetHealthServiceViewModel(
+      baseVmInput({
+        vehicles: [vehicle('v1', 'B-XY 1'), vehicle('v2', 'B-AB 2')],
+        healthMap: new Map([
+          ['v1', buildHealth({ vehicle_id: 'v1', overall_state: 'good' })],
+          ['v2', buildHealth({ vehicle_id: 'v2', overall_state: 'good' })],
+        ]),
+        taskList: openTasks,
+      }),
+    );
 
     const taskRows = vm.prioritizedOverviewRows.filter((r) => r.kind === 'task');
     expect(taskRows).toHaveLength(1);
     expect(taskRows[0]?.taskId).toBe('t-only');
+  });
+
+  it('keeps task overview counts separate from service case KPIs', () => {
+    const vm = buildFleetHealthServiceViewModel(
+      baseVmInput({
+        taskList: [
+          task({ id: 't1', vehicleId: 'v1', status: 'OPEN', isOverdue: true }),
+        ],
+        serviceCaseList: [
+          serviceCase({ id: 'sc-1', vehicleId: 'v1', status: 'OPEN', blocksRental: true }),
+        ],
+      }),
+    );
+
+    expect(vm.overviewCounts.activeServiceTasks).toBe(1);
+    expect(vm.caseLayer.kpis.activeCases).toBe(1);
+    expect(vm.caseLayer.kpis.rentalBlockingCases).toBe(1);
+    expect(vm.healthKpis.total).toBe(1);
+  });
+
+  it('does not count linked service case tasks as task KPI inflation', () => {
+    const vm = buildFleetHealthServiceViewModel(
+      baseVmInput({
+        taskList: [
+          task({
+            id: 't-linked',
+            vehicleId: 'v1',
+            status: 'OPEN',
+            serviceCaseId: 'sc-1',
+          }),
+        ],
+        serviceCaseList: [
+          serviceCase({
+            id: 'sc-1',
+            vehicleId: 'v1',
+            status: 'IN_PROGRESS',
+            vendorId: 'vendor-1',
+            taskCount: 1,
+            tasks: [
+              {
+                id: 't-linked',
+                title: 'Teilaufgabe',
+                status: 'OPEN',
+                type: 'VEHICLE_SERVICE',
+                dueDate: null,
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(vm.overviewCounts.activeServiceTasks).toBe(1);
+    expect(vm.caseLayer.kpis.activeCases).toBe(1);
+    expect(vm.caseLayer.kpis.inProgress).toBe(1);
+  });
+
+  it('returns unknown case KPIs when service cases are not loaded', () => {
+    const vm = buildFleetHealthServiceViewModel(
+      baseVmInput({
+        serviceCaseList: [
+          serviceCase({ id: 'sc-1', vehicleId: 'v1', status: 'OPEN' }),
+        ],
+        serviceCasesLoaded: false,
+      }),
+    );
+
+    expect(vm.caseLayer.kpis.dataReady).toBe(false);
+    expect(vm.caseLayer.kpis.activeCases).toBeNull();
+    expect(vm.caseLayer.kpis.openCases).toBeNull();
+    expect(vm.overviewCounts.activeServiceTasks).toBe(0);
   });
 });
