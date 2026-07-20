@@ -19,6 +19,10 @@ import {
 } from './battery-v2-job-idempotency.policy';
 import { buildBatteryV2JobId } from './battery-v2-job-queue.util';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import {
+  isBullMqCompatibleJobId,
+  sanitizeBullMqJobId,
+} from '@shared/queue/bullmq-job-id.sanitizer';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
@@ -145,6 +149,25 @@ describe('battery-v2 BullMQ custom job id repro', () => {
         expect.any(Object),
         expect.objectContaining({ jobId: invalidJobId }),
       );
+    });
+  });
+
+  describe('sanitizer preview (not wired to producer yet)', () => {
+    it('would produce a BullMQ-compatible id for the documented invalid rest-target key', () => {
+      const idempotencyKey = buildBatteryRestTargetJobIdempotencyKey({
+        vehicleId: VEH,
+        restWindowId: REST_WINDOW_ID,
+        targetSuffix: '60m',
+      });
+      const sanitized = sanitizeBullMqJobId({
+        namespace: 'battery-v2',
+        key: idempotencyKey,
+      });
+
+      expect(sanitized).not.toBe(INVALID_BATTERY_REST_JOB_ID);
+      expect(sanitized).not.toContain(':');
+      expect(isBullMqCompatibleJobId(sanitized)).toBe(true);
+      expect(() => assertBullMqAcceptsCustomJobId(sanitized)).not.toThrow();
     });
   });
 
