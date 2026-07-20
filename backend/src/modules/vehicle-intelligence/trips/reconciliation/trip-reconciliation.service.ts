@@ -552,8 +552,32 @@ export class TripReconciliationService {
     dimoTokenId: number,
     options?: ReconciliationOptions,
   ): Promise<RepairCandidate[]> {
-    const candidates: RepairCandidate[] = [];
     const chAssistEnabled = isClickHouseTripAssistEnabled();
+
+    // DIMO changePoint segments are the canonical repair source when enabled.
+    // ClickHouse ignition/motion micro-segments fragment long drives (many
+    // short ON/OFF cycles inside one DIMO trip) and must not compete.
+    if (options?.useDimoSegmentFallback && dimoTokenId > 0) {
+      const dimoSegments = await this.dimoSegments.fetchTripSegments(
+        dimoTokenId,
+        from,
+        to,
+      );
+      const dimoCandidates = this.buildDimoSegmentCandidates(dimoSegments);
+      if (dimoCandidates.length > 0) {
+        this.tripMetrics?.tripEvidencePaths.inc({
+          phase: 'reconciliation',
+          path: 'DIMO_SEGMENT',
+        });
+        this.tripMetrics?.missingTripCandidates.inc(
+          { tier: 'reconciliation' },
+          dimoCandidates.length,
+        );
+        return this.dedupeRepairCandidates(dimoCandidates);
+      }
+    }
+
+    const candidates: RepairCandidate[] = [];
 
     if (chAssistEnabled && this.ignitionDetector) {
       const ignFinding = await this.ignitionDetector.evaluate({
@@ -602,22 +626,6 @@ export class TripReconciliationService {
         this.tripMetrics?.tripEvidencePaths.inc({
           phase: 'reconciliation',
           path: 'CLICKHOUSE_MOTION',
-        });
-      }
-    }
-
-    if (options?.useDimoSegmentFallback && dimoTokenId > 0) {
-      const dimoSegments = await this.dimoSegments.fetchTripSegments(
-        dimoTokenId,
-        from,
-        to,
-      );
-      const dimoCandidates = this.buildDimoSegmentCandidates(dimoSegments);
-      candidates.push(...dimoCandidates);
-      if (dimoCandidates.length > 0) {
-        this.tripMetrics?.tripEvidencePaths.inc({
-          phase: 'reconciliation',
-          path: 'DIMO_SEGMENT',
         });
       }
     }

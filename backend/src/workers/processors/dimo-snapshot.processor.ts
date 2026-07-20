@@ -154,36 +154,50 @@ export class DimoSnapshotProcessor extends WorkerHost {
       }
 
       // Battery V2: classify provider observations and enqueue durable job (awaited).
-      // Snapshot may complete once follow-up job is durably enqueued — handler failures are isolated.
-      const batteryFollowUpJobId = await this.batteryObservationProducer.classifyAndEnqueue({
-        organizationId: vehicle.organizationId,
-        vehicleId,
-        receivedAt: fetchedAt,
-        normalized: {
-          lvBatteryVoltage: normalized.lvBatteryVoltage,
-          evSoc: normalized.evSoc,
-          tractionBatteryCurrentEnergyKwh: normalized.tractionBatteryCurrentEnergyKwh,
-          tractionBatterySohPercent: normalized.tractionBatterySohPercent,
-          tractionBatteryPowerKw: normalized.tractionBatteryPowerKw,
-          tractionBatteryChargingPowerKw: normalized.tractionBatteryChargingPowerKw,
-          tractionBatteryAddedEnergyKwh: normalized.tractionBatteryAddedEnergyKwh,
-          tractionBatteryChargeLimitPercent: normalized.tractionBatteryChargeLimitPercent,
-          tractionBatteryIsCharging: normalized.tractionBatteryIsCharging,
-          tractionBatteryChargingCableConnected:
-            normalized.tractionBatteryChargingCableConnected,
-          tractionBatteryTemperatureC: normalized.tractionBatteryTemperatureC,
-          tractionBatteryGrossCapacityKwh: normalized.tractionBatteryGrossCapacityKwh,
-          rangeKm: normalized.rangeKm,
-          odometerKm: normalized.odometerKm,
-        },
-        batteryMap,
-        lvBatteryObservedAt,
-        correlationId: `snapshot:${vehicleId}:${fetchedAt.toISOString()}`,
-      });
+      // Trip start evaluation must not depend on battery queue health — isolate failures.
+      try {
+        const batteryFollowUpJobId =
+          await this.batteryObservationProducer.classifyAndEnqueue({
+            organizationId: vehicle.organizationId,
+            vehicleId,
+            receivedAt: fetchedAt,
+            normalized: {
+              lvBatteryVoltage: normalized.lvBatteryVoltage,
+              evSoc: normalized.evSoc,
+              tractionBatteryCurrentEnergyKwh:
+                normalized.tractionBatteryCurrentEnergyKwh,
+              tractionBatterySohPercent: normalized.tractionBatterySohPercent,
+              tractionBatteryPowerKw: normalized.tractionBatteryPowerKw,
+              tractionBatteryChargingPowerKw:
+                normalized.tractionBatteryChargingPowerKw,
+              tractionBatteryAddedEnergyKwh:
+                normalized.tractionBatteryAddedEnergyKwh,
+              tractionBatteryChargeLimitPercent:
+                normalized.tractionBatteryChargeLimitPercent,
+              tractionBatteryIsCharging: normalized.tractionBatteryIsCharging,
+              tractionBatteryChargingCableConnected:
+                normalized.tractionBatteryChargingCableConnected,
+              tractionBatteryTemperatureC: normalized.tractionBatteryTemperatureC,
+              tractionBatteryGrossCapacityKwh:
+                normalized.tractionBatteryGrossCapacityKwh,
+              rangeKm: normalized.rangeKm,
+              odometerKm: normalized.odometerKm,
+            },
+            batteryMap,
+            lvBatteryObservedAt,
+            correlationId: `snapshot:${vehicleId}:${fetchedAt.toISOString()}`,
+          });
 
-      if (batteryFollowUpJobId) {
-        this.logger.debug(
-          `Battery V2 follow-up enqueued for vehicle ${vehicleId}: ${batteryFollowUpJobId}`,
+        if (batteryFollowUpJobId) {
+          this.logger.debug(
+            `Battery V2 follow-up enqueued for vehicle ${vehicleId}: ${batteryFollowUpJobId}`,
+          );
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Battery V2 classify/enqueue failed for ${vehicleId} (snapshot continues): ${
+            err instanceof Error ? err.message : String(err)
+          }`,
         );
       }
 
