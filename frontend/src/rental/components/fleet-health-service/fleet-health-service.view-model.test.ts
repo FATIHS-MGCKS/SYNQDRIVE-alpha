@@ -103,6 +103,17 @@ function task(
   };
 }
 
+function getVehicleOverviewRow(
+  sections: ReturnType<typeof buildFleetHealthServiceViewModel>['prioritizedOverviewSections'],
+  vehicleId: string,
+) {
+  for (const section of sections) {
+    const row = section.rows.find((entry) => entry.vehicleId === vehicleId);
+    if (row) return row;
+  }
+  return undefined;
+}
+
 describe('fleet-health-service view model', () => {
   it('critical health without task → create_task', () => {
     const health = buildHealth({
@@ -242,6 +253,9 @@ describe('fleet-health-service view model', () => {
     expect(vm.prioritizedOverviewRows).toHaveLength(1);
     expect(vm.prioritizedOverviewRows[0]?.kind).toBe('health');
     expect(vm.prioritizedOverviewRows[0]?.recommendedAction).toBe('open_task');
+    const vehicleRow = getVehicleOverviewRow(vm.prioritizedOverviewSections, 'v1');
+    expect(vehicleRow?.findings).toHaveLength(1);
+    expect(vehicleRow?.unmatchedTasks).toHaveLength(0);
   });
 
   it('prioritized overview adds execution-only overdue when no health row', () => {
@@ -272,6 +286,11 @@ describe('fleet-health-service view model', () => {
     const taskRows = vm.prioritizedOverviewRows.filter((r) => r.kind === 'task');
     expect(taskRows).toHaveLength(1);
     expect(taskRows[0]?.taskId).toBe('t-only');
+
+    const vehicleRow = getVehicleOverviewRow(vm.prioritizedOverviewSections, 'v2');
+    expect(vehicleRow?.section).toBe('handle_today');
+    expect(vehicleRow?.openTaskCount).toBe(1);
+    expect(vehicleRow?.unmatchedTasks[0]?.id).toBe('t-only');
   });
 
   it('priority sections place rental_blocked health in technically_blocked', () => {
@@ -296,8 +315,9 @@ describe('fleet-health-service view model', () => {
 
     const blocked = vm.prioritizedOverviewSections.find((s) => s.key === 'technically_blocked');
     expect(blocked?.rows).toHaveLength(1);
-    expect(blocked?.rows[0]?.kind).toBe('health');
-    expect(blocked?.rows[0]?.detailLines).toContain('TÜV überfällig');
+    expect(blocked?.rows[0]?.vehicleId).toBe('v1');
+    expect(blocked?.rows[0]?.primaryBlockage).toContain('TÜV überfällig');
+    expect(blocked?.rows[0]?.findings.length).toBeGreaterThan(0);
   });
 
   it('priority sections place warning health in technical_review', () => {
@@ -371,7 +391,8 @@ describe('fleet-health-service view model', () => {
 
     const dueSoonSection = vm.prioritizedOverviewSections.find((s) => s.key === 'due_soon');
     expect(dueSoonSection?.rows).toHaveLength(1);
-    expect(dueSoonSection?.rows[0]?.kind).toBe('task');
+    expect(dueSoonSection?.rows[0]?.vehicleId).toBe('v2');
+    expect(dueSoonSection?.rows[0]?.openTaskCount).toBe(1);
   });
 
   it('buildPrioritizedOverviewSections returns five sections in order', () => {

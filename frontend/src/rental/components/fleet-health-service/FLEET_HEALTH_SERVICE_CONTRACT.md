@@ -12,7 +12,7 @@
 | App-Router | `App.tsx` (`currentView === 'fleet'`, `fleetTab`, `fleetHealthServiceNav`) | Hält Fleet-View + Top-Level-Tab + interne Nav (`tab` + `workSection`) |
 | Fleet Top-Tabs | `FleetHubView.tsx` | **`Status`** \| **`Zustand & Service`** (kein separater Health-/Maintenance-Top-Tab) |
 | Tab **Zustand & Service** | `FleetHealthServiceView.tsx` | Vier Primärbereiche (2×2 mobile, 4 Spalten desktop) |
-| Bereich **Übersicht** | `FleetHealthServiceOverviewPanel` + `FleetHealthServicePriorityOverview` | KPI-Strip + fünf Handlungsprioritäts-Abschnitte (collapsible, Empty States pro Abschnitt) |
+| Bereich **Übersicht** | `FleetHealthServiceOverviewPanel` + `FleetHealthServicePriorityOverview` | KPI-Strip + fünf Prioritätsabschnitte mit **fahrzeugzentrierten Zeilen** (collapsed: Zustand, Zähler, Blockade, „+N weitere“; expanded: Findings, Cases, unmatched Arbeiten) |
 | Bereich **Fahrzeuge** | `FleetConditionView` (`uiLocale=de`, `hideKpiStrip`) | Health/Zustand — keine doppelte KPI-Leiste |
 | Bereich **Arbeiten** | `FleetHealthServiceWorkPanel` | Segmented **Aufgaben** \| **Fälligkeiten**; Partner als sekundäre Aktion |
 | Bereich **Historie** | `FleetHealthServiceHistoryPanel` | Abgeschlossene/stornierte Tasks |
@@ -67,7 +67,7 @@ Health berechnet **keine** Task-Status, Vendor-Zustände oder Abarbeitungs-Forts
 | `vendors` | `api.vendors.list(orgId)` | Partner-Tab, Task-Zuordnung |
 | `kpis` / `ServiceKpiSnapshot` | `deriveServiceKpis(summary, activeTasks)` in `service-center.utils.ts` | Maintenance KPI-Leiste |
 | Schedules | `groupTasksByDueDate` / `groupTasksByDueWeek` auf `activeTasks` | Planungs-Subtab |
-| `serviceCases` | `api.serviceCases` (Backend vorhanden) | **Noch nicht** in Service-Center-UI verdrahtet — UI bleibt task-basiert |
+| `serviceCases` | `api.serviceCases.list(orgId)` via `useFleetHealthServiceCases` | Offene Servicefälle in Übersicht (P55) und Fahrzeug-Expand |
 
 **Regel:** Service beantwortet *„Was muss operativ getan werden — wer macht es — wann ist es fällig?“*  
 Tasks sind die Wahrheit für operative Abarbeitung. Vendors sind die Wahrheit für Werkstatt-/Partnerdaten.
@@ -141,7 +141,7 @@ Fleet
     │   └── Partner        ← sekundäre Aktion (ehem. Primärtab)
     └── Historie           ← ehem. „Verlauf“
 
-**Übersicht (P53):** Handlungspriorität in fünf Abschnitten — Technisch blockiert · Heute bearbeiten · Technisch prüfen · Daten unvollständig · Demnächst fällig. Ableitung aus `operatorGroupForVehicle`, Task-Schedule und bestehendem ViewModel — keine zweite Health-Bewertung.
+**Übersicht (P53/P55):** Handlungspriorität in fünf Abschnitten — Technisch blockiert · Heute bearbeiten · Technisch prüfen · Daten unvollständig · Demnächst fällig. Pro Fahrzeug eine Zeile mit expandierbaren Details (alle Findings, Tasks, Cases) — keine vehicle-covered-Ausblendung; Dedupe nur bei exakt verknüpften Objekten. Ableitung aus `operatorGroupForVehicle`, Task-Schedule, Service Cases und bestehendem ViewModel — keine zweite Health-Bewertung.
 ```
 
 Datenquellen bleiben getrennt — nur Navigation zusammengeführt.
@@ -152,6 +152,6 @@ Datenquellen bleiben getrennt — nur Navigation zusammengeführt.
 
 **Health:** `FleetContext.tsx`, `useVehicleHealth.ts`, `fleet-health-control-center.ts`, `FleetConditionView.tsx`, `health/*`  
 **Service:** `useServiceCenterData.ts`, `service-center.utils.ts`, `ServiceCenterView.tsx`, `service-center/*`  
-**ViewModel (V4.9.183):** `useFleetHealthServiceViewModel.ts`, `fleet-health-service.view-model.ts` — UI-Ableitung ohne neue Health-Bewertung  
+**ViewModel (V4.9.183/P55):** `useFleetHealthServiceViewModel.ts`, `fleet-health-service.view-model.ts`, `fleet-health-service-vehicle-overview.ts` — UI-Ableitung ohne neue Health-Bewertung; Service Cases org-gescoped  
 **Brücke:** `health-task-bridge.utils.ts`, `HealthServiceActions.tsx`, `service-center-navigation.ts`  
 **Backend (read-only Contract):** `backend/src/modules/rental-health/*`, `backend/src/modules/tasks/*`, `backend/src/modules/vendors/*`

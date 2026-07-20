@@ -266,6 +266,16 @@ export const de: Record<TranslationKey, string> = {
   'fleetHealthService.overview.entryCountOne': '1 Eintrag',
   'fleetHealthService.overview.sourceHealth': 'Quelle',
   'fleetHealthService.overview.sourceWork': 'Arbeit',
+  'fleetHealthService.overview.moreBadge': 'weitere',
+  'fleetHealthService.overview.findingsCount': 'Findings',
+  'fleetHealthService.overview.tasksCount': 'Aufgaben',
+  'fleetHealthService.overview.casesCount': 'Servicefälle',
+  'fleetHealthService.overview.findingsHeading': 'Health-Findings',
+  'fleetHealthService.overview.casesHeading': 'Servicefälle',
+  'fleetHealthService.overview.unmatchedWorkHeading': 'Weitere Arbeiten',
+  'fleetHealthService.overview.linkedTask': 'verknüpfte Aufgabe',
+  'fleetHealthService.overview.openLinkedTask': 'Verknüpfte Aufgabe öffnen',
+  'fleetHealthService.overview.caseSource': 'Quelle',
 
   // ─── Service Center (Fleet-Hub) ───
   'serviceCenter.eyebrow': 'Flottenbetrieb',

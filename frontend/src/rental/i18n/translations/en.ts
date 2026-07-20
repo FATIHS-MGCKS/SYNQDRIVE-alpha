@@ -265,6 +265,16 @@ export const en = {
   'fleetHealthService.overview.entryCountOne': '1 entry',
   'fleetHealthService.overview.sourceHealth': 'Source',
   'fleetHealthService.overview.sourceWork': 'Work',
+  'fleetHealthService.overview.moreBadge': 'more',
+  'fleetHealthService.overview.findingsCount': 'findings',
+  'fleetHealthService.overview.tasksCount': 'tasks',
+  'fleetHealthService.overview.casesCount': 'service cases',
+  'fleetHealthService.overview.findingsHeading': 'Health findings',
+  'fleetHealthService.overview.casesHeading': 'Service cases',
+  'fleetHealthService.overview.unmatchedWorkHeading': 'Other work',
+  'fleetHealthService.overview.linkedTask': 'linked task',
+  'fleetHealthService.overview.openLinkedTask': 'Open linked task',
+  'fleetHealthService.overview.caseSource': 'Source',
 
   // ─── Service Center (Fleet hub) ───
   'serviceCenter.eyebrow': 'Fleet operations',

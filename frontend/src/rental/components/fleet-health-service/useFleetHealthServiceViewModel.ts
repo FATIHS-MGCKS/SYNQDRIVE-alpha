@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { useServiceCenterData } from '../service-center/useServiceCenterData';
+import { useFleetHealthServiceCases } from './useFleetHealthServiceCases';
 import {
   buildFleetHealthServiceViewModel,
   type FleetHealthServiceViewModel,
@@ -11,18 +12,22 @@ import {
  * Combined read model for Fleet → Zustand & Service.
  *
  * Health truth: FleetContext.healthMap (RentalHealthV1).
- * Service truth: tasks summary/list + vendors via useServiceCenterData.
- *
- * Does NOT compute health or mutate tasks — UI derivation only.
+ * Service truth: tasks + vendors + service cases (org-scoped lists).
  */
 export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & {
   allTasks: ReturnType<typeof useServiceCenterData>['allTasks'];
   vendors: ReturnType<typeof useServiceCenterData>['vendors'];
-  reloadService: ReturnType<typeof useServiceCenterData>['reload'];
+  reloadService: () => void;
 } {
   const { orgId } = useRentalOrg();
   const { fleetVehicles, healthMap, healthLoading, healthError } = useFleetVehicles();
   const service = useServiceCenterData(orgId);
+  const serviceCasesState = useFleetHealthServiceCases(orgId);
+
+  const reloadService = () => {
+    void service.reload();
+    void serviceCasesState.reload();
+  };
 
   const vm = useMemo(
     () =>
@@ -34,9 +39,12 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
         taskSummary: service.summary,
         taskList: service.allTasks,
         vendors: service.vendors,
-        serviceLoading: service.loading,
-        serviceError: service.error,
+        serviceLoading: service.loading || serviceCasesState.loading,
+        serviceError: service.error ?? serviceCasesState.error,
         serviceLoaded: service.summary != null || service.allTasks.length > 0,
+        serviceCases: serviceCasesState.serviceCases,
+        serviceCasesError: serviceCasesState.error,
+        serviceCasesLoading: serviceCasesState.loading,
       }),
     [
       fleetVehicles,
@@ -48,6 +56,9 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
       service.vendors,
       service.loading,
       service.error,
+      serviceCasesState.serviceCases,
+      serviceCasesState.loading,
+      serviceCasesState.error,
     ],
   );
 
@@ -55,6 +66,6 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
     ...vm,
     allTasks: service.allTasks,
     vendors: service.vendors,
-    reloadService: service.reload,
+    reloadService,
   };
 }
