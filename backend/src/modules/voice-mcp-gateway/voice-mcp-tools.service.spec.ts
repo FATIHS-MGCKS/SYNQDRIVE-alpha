@@ -13,6 +13,8 @@ import {
   VoiceAgentDeploymentRepository,
   VoiceSubscriptionRepository,
 } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
+import { VoiceEntitlementService } from '@modules/voice-entitlement/voice-entitlement.service';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
 import { VoiceMcpError } from './voice-mcp-errors';
 
 describe('VoiceMcpToolsService', () => {
@@ -190,10 +192,15 @@ describe('VoiceMcpGatewayMiddlewareService', () => {
   const deployments = {
     findById: jest.fn(),
   };
+  const rollout = {
+    evaluateSurface: jest.fn().mockResolvedValue({ allowed: true, blockers: [] }),
+  };
+  let entitlements: VoiceEntitlementService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     process.env.VOICE_AI_MCP_GATEWAY_ENABLED = 'true';
+    entitlements = new VoiceEntitlementService(subscriptions as unknown as VoiceSubscriptionRepository);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -201,6 +208,8 @@ describe('VoiceMcpGatewayMiddlewareService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: VoiceSubscriptionRepository, useValue: subscriptions },
         { provide: VoiceAgentDeploymentRepository, useValue: deployments },
+        { provide: VoiceEntitlementService, useValue: entitlements },
+        { provide: VoiceRolloutService, useValue: rollout },
       ],
     }).compile();
 

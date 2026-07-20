@@ -2,7 +2,6 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   VoiceBudgetOverflowBehavior,
   VoiceProtectionOverrideScope,
-  VoiceSubscriptionStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VoiceBudgetPolicyRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
@@ -12,6 +11,12 @@ import { VoiceBillingService } from '@modules/voice-billing/voice-billing.servic
 import { currentBillingPeriodBounds } from '@modules/voice-billing/voice-billing-period.util';
 import { billableMinutesFromSeconds } from '@modules/voice-billing/voice-billing-minute.util';
 import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
+import { VoiceEntitlementService } from '@modules/voice-entitlement/voice-entitlement.service';
+import {
+  VOICE_ENTITLEMENT_REASON_CODES,
+  VoiceEntitlementDeniedError,
+} from '@modules/voice-entitlement/voice-entitlement-reason-codes';
+import type { VoiceEntitlementCapability } from '@modules/voice-entitlement/voice-entitlement.types';
 import { VoiceAbuseDetectionService } from './voice-abuse-detection.service';
 import { VoiceConcurrentCallReservationService } from './voice-concurrent-call.reservation.service';
 import { VoiceProtectionAuditService } from './voice-protection-audit.service';
@@ -63,11 +68,12 @@ export class VoiceBudgetEnforcementService {
     private readonly audit: VoiceProtectionAuditService,
     private readonly concurrent: VoiceConcurrentCallReservationService,
     private readonly abuse: VoiceAbuseDetectionService,
+    private readonly entitlements: VoiceEntitlementService,
     @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
   async assertOutboundAllowed(ctx: OutboundEnforcementContext): Promise<{ conversationSlotId: string }> {
-    await this.assertSubscriptionOperational(ctx.organizationId);
+    await this.assertEntitlementCapability(ctx.organizationId, 'calls.outbound');
 
     const destination = normalizeDestinationE164(ctx.toE164);
     if (!destination) {
@@ -164,7 +170,7 @@ export class VoiceBudgetEnforcementService {
   }
 
   async assertActivationAllowed(organizationId: string): Promise<void> {
-    await this.assertSubscriptionOperational(organizationId);
+    await this.assertEntitlementCapability(organizationId, 'assistant.activate');
     const activeOverrides = await this.overrides.listActive(organizationId);
     try {
       await this.assertBudgetAndUsageLimits(organizationId, activeOverrides);
@@ -182,6 +188,21 @@ export class VoiceBudgetEnforcementService {
     reasonCode?: VoiceProtectionReasonCode;
     message?: string;
   }> {
+    const inboundAllowed = await this.entitlements.isCapabilityAllowed(organizationId, 'calls.inbound');
+    if (!inboundAllowed) {
+      await this.audit.record({
+        organizationId,
+        action: 'INBOUND_DEGRADED',
+        reasonCode: VOICE_PROTECTION_REASON_CODES.SUBSCRIPTION_INACTIVE,
+        message: 'Inbound degraded because voice subscription does not allow inbound calls.',
+      });
+      return {
+        degraded: true,
+        reasonCode: VOICE_PROTECTION_REASON_CODES.SUBSCRIPTION_INACTIVE,
+        message: 'Voice subscription does not allow inbound calls.',
+      };
+    }
+
     const policy = await this.budgetPolicies.findByOrganization(organizationId);
     const activeOverrides = await this.overrides.listActive(organizationId);
     if (this.overrides.hasActiveOverride(activeOverrides, 'MONTHLY_BUDGET')) {
@@ -284,23 +305,27 @@ export class VoiceBudgetEnforcementService {
     };
   }
 
-  private async assertSubscriptionOperational(organizationId: string): Promise<void> {
-    const subscriptions = await this.subscriptions.listByOrganization(organizationId);
-    const operational = subscriptions.find((row) =>
-      ['TRIAL', 'ACTIVE', 'PAST_DUE'].includes(row.status),
-    );
-    if (!operational) {
-      const suspended = subscriptions.find((row) => row.status === VoiceSubscriptionStatus.SUSPENDED);
-      const code = suspended
-        ? VOICE_PROTECTION_REASON_CODES.SUBSCRIPTION_SUSPENDED
-        : VOICE_PROTECTION_REASON_CODES.SUBSCRIPTION_INACTIVE;
-      await this.block(organizationId, 'OUTBOUND_BLOCKED', code, 'Voice subscription not operational.');
-      throw new VoiceProtectionDeniedError({
-        reasonCode: code,
-        message: suspended
-          ? 'Voice AI subscription is suspended.'
-          : 'Voice AI subscription is not active for this organization.',
-      });
+  private async assertEntitlementCapability(
+    organizationId: string,
+    capability: VoiceEntitlementCapability,
+  ): Promise<void> {
+    try {
+      await this.entitlements.assertCapability(organizationId, capability);
+    } catch (err) {
+      if (err instanceof VoiceEntitlementDeniedError) {
+        const code =
+          err.reasonCode === VOICE_ENTITLEMENT_REASON_CODES.SUBSCRIPTION_SUSPENDED
+            ? VOICE_PROTECTION_REASON_CODES.SUBSCRIPTION_SUSPENDED
+            : VOICE_PROTECTION_REASON_CODES.SUBSCRIPTION_INACTIVE;
+        const action =
+          capability === 'assistant.activate' ? 'ACTIVATION_BLOCKED' : 'OUTBOUND_BLOCKED';
+        await this.block(organizationId, action, code, err.message);
+        throw new VoiceProtectionDeniedError({
+          reasonCode: code,
+          message: err.message,
+        });
+      }
+      throw err;
     }
   }
 

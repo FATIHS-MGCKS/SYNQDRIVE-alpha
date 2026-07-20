@@ -9,7 +9,9 @@ import {
 test.describe('Voice AI Control Plane — staging E2E (mocked)', () => {
   test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
-  test.beforeEach(({ }, testInfo) => {
+  // Playwright requires a destructured fixtures argument; project filter uses testInfo only.
+  // eslint-disable-next-line no-empty-pattern -- Playwright fixture tuple
+  test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-1280', 'Voice control plane specs run on desktop-1280 only');
   });
 

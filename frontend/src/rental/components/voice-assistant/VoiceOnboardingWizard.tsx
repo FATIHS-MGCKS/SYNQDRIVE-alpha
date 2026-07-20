@@ -129,11 +129,21 @@ export function VoiceOnboardingWizard({
 
   useEffect(() => {
     if (step !== 'activation') return;
-    setProtectionError(null);
+    let cancelled = false;
     void api.voiceAssistant.protection
       .status(orgId)
-      .then(setProtection)
-      .catch(err => setProtectionError(getErrorMessage(err)));
+      .then(data => {
+        if (!cancelled) {
+          setProtection(data);
+          setProtectionError(null);
+        }
+      })
+      .catch(err => {
+        if (!cancelled) setProtectionError(getErrorMessage(err));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [orgId, step]);
 
   const knowledgeReady = useMemo(() => {

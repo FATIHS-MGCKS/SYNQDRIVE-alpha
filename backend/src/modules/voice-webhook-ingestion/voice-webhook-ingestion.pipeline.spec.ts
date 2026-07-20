@@ -30,6 +30,10 @@ describe('Voice webhook ingestion pipeline', () => {
     enqueue: jest.fn(),
   };
 
+  const rollout = {
+    evaluateSurface: jest.fn().mockResolvedValue({ allowed: true, blockers: [] }),
+  };
+
   let ingest: VoiceWebhookIngestService;
   let processing: VoiceWebhookProcessingService;
   let correlation: VoiceWebhookCorrelationService;
@@ -58,7 +62,7 @@ describe('Voice webhook ingestion pipeline', () => {
     } as any, {
       evaluateThresholds: jest.fn(),
     } as any);
-    ingest = new VoiceWebhookIngestService(events as never, correlation, queue as never);
+    ingest = new VoiceWebhookIngestService(events as never, correlation, queue as never, rollout as never);
     processing = new VoiceWebhookProcessingService(
       events as never,
       lifecycle,

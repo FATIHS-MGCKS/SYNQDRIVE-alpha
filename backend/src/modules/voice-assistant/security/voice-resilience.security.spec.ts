@@ -13,12 +13,16 @@ describe('Voice resilience behavior', () => {
       resolveFromTwilioForm: jest.fn().mockResolvedValue({ organizationId: 'org-1' }),
     };
     const queue = { enqueue: jest.fn() };
+    const rollout = {
+      evaluateSurface: jest.fn().mockResolvedValue({ allowed: true, blockers: [] }),
+    };
     const metrics = { webhookIngest: { inc: jest.fn() } };
 
     const ingest = new VoiceWebhookIngestService(
       events as never,
       correlation as never,
       queue as never,
+      rollout as never,
       metrics as never,
     );
 

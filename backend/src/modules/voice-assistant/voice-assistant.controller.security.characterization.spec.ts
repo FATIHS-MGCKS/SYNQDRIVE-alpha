@@ -2,6 +2,8 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { VOICE_ENTITLEMENT_KEY } from '@modules/voice-entitlement/require-voice-entitlement.decorator';
+import { VoiceEntitlementGuard } from '@modules/voice-entitlement/voice-entitlement.guard';
 import {
   VoiceAssistantAdminController,
   VoiceAssistantController,
@@ -16,9 +18,27 @@ function rolesOf(target: object, method?: string) {
 }
 
 describe('VoiceAssistantController security characterization', () => {
-  it('applies OrgScopingGuard and RolesGuard on tenant controller', () => {
+  it('applies OrgScopingGuard, RolesGuard, and VoiceEntitlementGuard on tenant controller', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, VoiceAssistantController) ?? [];
-    expect(guards).toEqual(expect.arrayContaining([OrgScopingGuard, RolesGuard]));
+    expect(guards).toEqual(
+      expect.arrayContaining([OrgScopingGuard, RolesGuard, VoiceEntitlementGuard]),
+    );
+  });
+
+  it('declares voice entitlement capability on activate handler', () => {
+    const capabilities = Reflect.getMetadata(
+      VOICE_ENTITLEMENT_KEY,
+      VoiceAssistantController.prototype.activate,
+    );
+    expect(capabilities).toEqual(['assistant.activate']);
+  });
+
+  it('declares outbound entitlement on outboundCall handler', () => {
+    const capabilities = Reflect.getMetadata(
+      VOICE_ENTITLEMENT_KEY,
+      VoiceAssistantController.prototype.outboundCall,
+    );
+    expect(capabilities).toEqual(['calls.outbound']);
   });
 
   it('does not apply PermissionsGuard on tenant controller (current behavior)', () => {
@@ -85,7 +105,6 @@ describe('VoiceAssistantController security characterization', () => {
   });
 
   describe('pending ADR targets', () => {
-    it.todo('ADR target: tenant voice routes should require org-admin or voice-specific permission');
     it.todo('ADR target: WORKER and DRIVER roles should not manage voice assistant configuration');
   });
 });

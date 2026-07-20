@@ -8,6 +8,7 @@ import {
 } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceCallOrchestrationModule } from '@modules/voice-call-orchestration/voice-call-orchestration.module';
+import { VoiceRolloutModule } from '@modules/voice-rollout/voice-rollout.module';
 import { SecretRefResolver } from './secrets/secret-ref.resolver';
 import { TwilioProvisioningProviderClient } from './provisioning/twilio-provisioning-provider.client';
 import { TwilioSecretStoreService } from './provisioning/twilio-secret-store.service';
@@ -23,7 +24,7 @@ import { TwilioWebhookService } from './twilio-webhook.service';
 import { TwilioVoiceBridgeService } from './twilio-voice-bridge.service';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, forwardRef(() => VoiceWebhookIngestionModule), forwardRef(() => VoiceCallOrchestrationModule)],
+  imports: [PrismaModule, ConfigModule, VoiceRolloutModule, forwardRef(() => VoiceWebhookIngestionModule), forwardRef(() => VoiceCallOrchestrationModule)],
   controllers: [TwilioWebhookController, TwilioTenantProvisioningController],
   providers: [
     SecretRefResolver,

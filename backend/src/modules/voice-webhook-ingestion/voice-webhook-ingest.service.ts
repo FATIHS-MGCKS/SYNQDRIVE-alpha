@@ -9,6 +9,7 @@ import { VoiceWebhookCorrelationService } from './voice-webhook-correlation.serv
 import { hashWebhookPayload } from './voice-webhook-payload.util';
 import { redactTwilioFormPayload, redactWebhookPayload } from './voice-webhook-redaction.util';
 import { isVoiceWebhookIngestionEnabled } from './voice-webhook-ingestion.config';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
 import { VOICE_WEBHOOK_EVENT_TYPES } from './voice-webhook-ingestion.constants';
 
 export type VoiceWebhookIngestResult = {
@@ -53,6 +54,7 @@ export class VoiceWebhookIngestService {
     private readonly events: VoiceProviderWebhookEventRepository,
     private readonly correlation: VoiceWebhookCorrelationService,
     private readonly queue: VoiceWebhookQueueProducer,
+    private readonly rollout: VoiceRolloutService,
     @Optional() private readonly voiceMetrics?: VoiceMetricsService,
   ) {}
 
@@ -177,6 +179,15 @@ export class VoiceWebhookIngestService {
     redactedPayload: Record<string, unknown>;
     correlation: Awaited<ReturnType<VoiceWebhookCorrelationService['resolveFromTwilioForm']>>;
   }): Promise<VoiceWebhookIngestResult> {
+    if (params.organizationId) {
+      const rollout = await this.rollout.evaluateSurface(params.organizationId, 'webhooks', {
+        skipRuntimePrerequisites: true,
+      });
+      if (!rollout.allowed) {
+        return { accepted: false, duplicate: false, eventId: '', queued: false };
+      }
+    }
+
     const { event, created } = await this.events.persistOrGet({
       organizationId: params.organizationId ?? null,
       provider: params.provider,

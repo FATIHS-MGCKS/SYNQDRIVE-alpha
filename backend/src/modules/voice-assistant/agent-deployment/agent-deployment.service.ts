@@ -50,6 +50,9 @@ import { isAgentDeploymentStagingEnabled } from './agent-deployment.config';
 import { buildCanonicalElevenLabsPostCallWebhookUrl } from './agent-post-call.config';
 import { buildCanonicalVoiceMcpGatewayUrl } from '@modules/voice-mcp-gateway/voice-mcp-canonical-url';
 import { isVoiceMcpGatewayFeatureEnabled } from '@modules/voice-call-orchestration/voice-feature-flags.config';
+import { VoiceEntitlementService } from '@modules/voice-entitlement/voice-entitlement.service';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
+import { VoiceRolloutDeniedError, toRolloutHttpException } from '@modules/voice-rollout/voice-rollout-reason-codes';
 import { validateTransferConfig } from './agent-transfer.validation';
 import type { SaveAgentDeploymentDraftDto } from './dto/agent-deployment.dto';
 import type { AgentDeploymentReadinessView } from './agent-config.types';
@@ -72,6 +75,8 @@ export class AgentDeploymentService {
     private readonly diffService: AgentDeploymentDiffService,
     private readonly readinessService: AgentDeploymentReadinessService,
     private readonly audit: AuditService,
+    private readonly entitlements: VoiceEntitlementService,
+    private readonly rollout: VoiceRolloutService,
   ) {}
 
   async getDraft(organizationId: string): Promise<AgentDeploymentDraftView> {
@@ -159,6 +164,15 @@ export class AgentDeploymentService {
     actor: ActorContext,
   ): Promise<AgentDeploymentResultView> {
     this.assertStagingEnabled();
+    try {
+      await this.rollout.assertSurfaceAllowed(organizationId, 'agent_deployment');
+    } catch (err) {
+      if (err instanceof VoiceRolloutDeniedError) {
+        throw toRolloutHttpException(err);
+      }
+      throw err;
+    }
+    await this.entitlements.assertCapability(organizationId, 'agent.deployment.deploy');
     if (!actor.confirm) {
       throw new BadRequestException('Deployment requires confirm=true.');
     }
@@ -373,6 +387,7 @@ export class AgentDeploymentService {
     actor: ActorContext,
   ): Promise<AgentDeploymentRollbackView> {
     this.assertStagingEnabled();
+    await this.entitlements.assertCapability(organizationId, 'agent.deployment.deploy');
     if (!actor.confirm) {
       throw new BadRequestException('Rollback requires confirm=true.');
     }

@@ -1468,6 +1468,8 @@ model Organization {
   voiceBudgetPolicies                    VoiceBudgetPolicy[]
   voiceProtectionOverrides               VoiceProtectionOverride[]
   voiceProtectionAuditEvents             VoiceProtectionAuditEvent[]
+  voiceOrganizationRollout               VoiceOrganizationRollout?
+  voiceRolloutAuditEvents                VoiceRolloutAuditEvent[]
   voiceBudgetWarningStates               VoiceBudgetWarningState[]
   voiceToolExecutions                    VoiceToolExecution[]
   voiceApprovalRequests                  VoiceApprovalRequest[]
@@ -10235,6 +10237,22 @@ enum VoiceAssistantStatus {
   INACTIVE
 }
 
+/// Per-organization voice rollout tier (Prompt 2B). Global env flags are kill-switches only.
+enum VoiceRolloutStatus {
+  DISABLED
+  INTERNAL_TEST
+  STAGING
+  CANARY
+  PRODUCTION
+  SUSPENDED
+}
+
+enum VoiceRolloutAuditAction {
+  STATUS_READ
+  STATUS_CHANGED
+  STATUS_CHANGE_IDEMPOTENT_REPLAY
+}
+
 enum VoicePstnProvider {
   ELEVENLABS
   TWILIO
@@ -10350,6 +10368,40 @@ model VoiceAssistant {
 
   @@index([status])
   @@map("voice_assistants")
+}
+
+/// Persistent per-tenant voice rollout state. Missing row resolves as DISABLED.
+model VoiceOrganizationRollout {
+  id             String             @id @default(uuid())
+  organizationId String             @unique @map("organization_id")
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status         VoiceRolloutStatus @default(DISABLED)
+  lastReason     String?            @map("last_reason")
+  updatedByUserId String?           @map("updated_by_user_id")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("voice_organization_rollouts")
+}
+
+/// Immutable audit trail for master-admin rollout changes.
+model VoiceRolloutAuditEvent {
+  id              String                  @id @default(uuid())
+  organizationId  String                  @map("organization_id")
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  action          VoiceRolloutAuditAction @map("action")
+  previousStatus  VoiceRolloutStatus?     @map("previous_status")
+  newStatus       VoiceRolloutStatus?     @map("new_status")
+  reason          String
+  actorUserId     String?                 @map("actor_user_id")
+  idempotencyKey  String?                 @map("idempotency_key")
+  metadata        Json?
+  createdAt       DateTime                @default(now()) @map("created_at")
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, createdAt])
+  @@map("voice_rollout_audit_events")
 }
 
 model VoiceConversation {

@@ -84,6 +84,12 @@ import {
   isLegacyDiagnosticCallsEnabled,
   isVoiceNativeTwilioIntegrationEnabled,
 } from '@modules/voice-call-orchestration/voice-feature-flags.config';
+import { VoiceEntitlementService } from '@modules/voice-entitlement/voice-entitlement.service';
+import {
+  VoiceEntitlementDeniedError,
+  toEntitlementHttpException,
+} from '@modules/voice-entitlement/voice-entitlement-reason-codes';
+import type { VoiceEntitlementCapability } from '@modules/voice-entitlement/voice-entitlement.types';
 
 export { buildToolPolicyForAssistant } from './voice-assistant-permissions';
 export type { VoiceToolPolicy, VoiceToolPermissionsMap } from './voice-assistant-permissions';
@@ -113,7 +119,22 @@ export class VoiceAssistantService {
     private readonly twilioControlPlaneTelephony: TwilioControlPlaneTelephonyService,
     private readonly callOrchestration: VoiceCallOrchestrationService,
     private readonly protection: VoiceBudgetEnforcementService,
+    private readonly entitlements: VoiceEntitlementService,
   ) {}
+
+  private async assertVoiceCapability(
+    organizationId: string,
+    capability: VoiceEntitlementCapability,
+  ): Promise<void> {
+    try {
+      await this.entitlements.assertCapability(organizationId, capability);
+    } catch (err) {
+      if (err instanceof VoiceEntitlementDeniedError) {
+        throw toEntitlementHttpException(err);
+      }
+      throw err;
+    }
+  }
 
   async getOrCreateAssistantForOrg(organizationId: string) {
     const existing = await this.prisma.voiceAssistant.findUnique({
@@ -138,6 +159,7 @@ export class VoiceAssistantService {
   }
 
   async updateAssistant(organizationId: string, dto: UpdateVoiceAssistantDto) {
+    await this.assertVoiceCapability(organizationId, 'assistant.config.write');
     const assistant = await this.requireAssistantRow(organizationId);
     const data = this.mapUpdateDto(dto, assistant);
 
@@ -149,6 +171,7 @@ export class VoiceAssistantService {
   }
 
   async activateAssistant(organizationId: string) {
+    await this.assertVoiceCapability(organizationId, 'assistant.activate');
     const assistant = await this.requireAssistantRow(organizationId);
     const readiness = await this.computeReadiness(assistant, { forActivation: true });
 
@@ -224,6 +247,7 @@ export class VoiceAssistantService {
   }
 
   async getTestSession(organizationId: string): Promise<VoiceTestSessionResponse> {
+    await this.assertVoiceCapability(organizationId, 'test.center');
     const assistant = await this.requireAssistantRow(organizationId);
     const readiness = await this.computeReadiness(assistant, { forActivation: false });
     const warnings = buildTestSessionWarnings(assistant);
@@ -384,6 +408,7 @@ export class VoiceAssistantService {
   }
 
   async syncConversations(organizationId: string) {
+    await this.assertVoiceCapability(organizationId, 'history.read');
     const assistant = await this.prisma.voiceAssistant.findUnique({
       where: { organizationId },
     });
@@ -504,6 +529,7 @@ export class VoiceAssistantService {
     phoneNumberId: string,
     provider: 'elevenlabs' | 'twilio' = 'elevenlabs',
   ) {
+    await this.assertVoiceCapability(organizationId, 'telephony.number.manage');
     if (provider === 'twilio') {
       return this.assignTwilioPhoneNumber(organizationId, phoneNumberId);
     }
@@ -753,6 +779,7 @@ export class VoiceAssistantService {
     params: { to: string; idempotencyKey: string; customerId?: string; bookingId?: string },
     initiatedByUserId?: string,
   ) {
+    await this.assertVoiceCapability(organizationId, 'calls.outbound');
     return this.callOrchestration.orchestrateOutboundCall({
       organizationId,
       toE164: params.to.trim(),

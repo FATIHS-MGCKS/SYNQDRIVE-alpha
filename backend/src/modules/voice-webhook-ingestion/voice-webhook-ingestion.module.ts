@@ -7,6 +7,7 @@ import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { VoiceProviderWebhookEventRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { VoiceBillingModule } from '@modules/voice-billing/voice-billing.module';
 import { VoiceProtectionModule } from '@modules/voice-protection/voice-protection.module';
+import { VoiceRolloutModule } from '@modules/voice-rollout/voice-rollout.module';
 import { ElevenLabsWebhookController } from './elevenlabs-webhook.controller';
 import { VoiceWebhookReplayController } from './voice-webhook-replay.controller';
 import { VoiceWebhookIngestService, VoiceWebhookQueueProducer } from './voice-webhook-ingest.service';
@@ -25,6 +26,7 @@ import { VoiceInternalEventIngestService } from './voice-internal-event-ingest.s
     SharedGuardsModule,
     VoiceBillingModule,
     VoiceProtectionModule,
+    VoiceRolloutModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS }),
   ],
   controllers: [ElevenLabsWebhookController, VoiceWebhookReplayController],

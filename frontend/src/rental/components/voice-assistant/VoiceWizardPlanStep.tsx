@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { DataCard } from '../../../components/patterns/data-card';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { api, getErrorMessage } from '../../../lib/api';

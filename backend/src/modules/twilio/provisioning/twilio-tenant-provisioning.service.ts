@@ -20,6 +20,8 @@ import {
   VoiceSubscriptionStatus,
 } from '@prisma/client';
 import { AuditService } from '@modules/activity-log/audit.service';
+import { VoiceRolloutService } from '@modules/voice-rollout/voice-rollout.service';
+import { VoiceRolloutDeniedError, toRolloutHttpException } from '@modules/voice-rollout/voice-rollout-reason-codes';
 import { TWILIO_DEFAULT_EDGE, TWILIO_DEFAULT_REGION } from '@config/index';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TwilioControlPlaneClient } from '../twilio-control-plane.client';
@@ -83,6 +85,7 @@ export class TwilioTenantProvisioningService {
     private readonly phoneNumberRepository: VoicePhoneNumberRepository,
     private readonly provisioningJobRepository: VoiceProvisioningJobRepository,
     private readonly audit: AuditService,
+    private readonly rollout: VoiceRolloutService,
   ) {}
 
   async previewProvisioning(
@@ -131,6 +134,16 @@ export class TwilioTenantProvisioningService {
     input: TwilioSubaccountProvisionInput,
   ): Promise<TwilioSubaccountProvisionResult> {
     this.assertMasterConfirmation(input.actor);
+    try {
+      await this.rollout.assertSurfaceAllowed(input.organizationId, 'provisioning', {
+        skipRuntimePrerequisites: true,
+      });
+    } catch (err) {
+      if (err instanceof VoiceRolloutDeniedError) {
+        throw toRolloutHttpException(err);
+      }
+      throw err;
+    }
     const flags = readTwilioProvisioningFlags();
     const dryRun = input.actor.dryRun === true || !flags.stagingProviderActionsEnabled;
     const preview = await this.previewProvisioning(input.organizationId);

@@ -113,6 +113,9 @@ describe('ElevenLabsTwilioImportProvisioningService', () => {
       deploymentRepository,
       provisioningJobRepository,
       { record: jest.fn() } as unknown as AuditService,
+      {
+        assertSurfaceAllowed: jest.fn().mockResolvedValue({ status: 'CANARY' }),
+      } as unknown as import('@modules/voice-rollout/voice-rollout.service').VoiceRolloutService,
     );
   });
 

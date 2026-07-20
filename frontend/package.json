@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
     "lint": "eslint \"src/rental/hooks/useDocumentExtractionFlow.ts\" \"src/rental/hooks/useDocumentUploadPage.ts\" \"src/rental/components/DocumentUploadView.tsx\" \"src/rental/components/documents/**\" \"src/rental/lib/document-extraction*.ts\" \"src/rental/lib/document-upload.constants.ts\" \"src/operator/ai-upload/**\" \"e2e/document-upload*.ts\" \"e2e/document-intake-v2*.ts\"",
     "lint:all": "eslint .",
+    "lint:voice": "eslint \"src/rental/components/voice-assistant/**/*.{ts,tsx}\" \"src/master/components/voice-control-plane/**/*.{ts,tsx}\" \"src/master/components/VoiceAssistantAdminView.tsx\" \"e2e/voice-*.ts\"",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,6 +21,8 @@
     "test:document-intake:v2:verify": "bash scripts/test/document-intake-v2-verify.sh all",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:voice:e2e": "playwright test -c e2e/playwright.config.ts voice-control-plane-flow.spec.ts --project=desktop-1280",
+    "test:voice": "vitest run src/master/components/voice-control-plane src/rental/components/voice-assistant",
+    "test:voice:verify": "bash scripts/test/voice-ai-verify.sh all",
     "check:surface": "bash scripts/check-surface-legacy.sh"
   },
   "dependencies": {

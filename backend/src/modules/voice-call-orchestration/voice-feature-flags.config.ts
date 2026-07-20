@@ -18,6 +18,10 @@ export function isLegacyDiagnosticCallsEnabled(env: NodeJS.ProcessEnv = process.
   return env.VOICE_LEGACY_DIAGNOSTIC_CALLS?.trim().toLowerCase() === 'true';
 }
 
+export function isVoiceOutboundAutomationsEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.VOICE_OUTBOUND_AUTOMATIONS?.trim().toLowerCase() === 'true';
+}
+
 export function isVoiceCallProviderStagingEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.VOICE_AI_PROVISIONING_STAGING_ENABLED?.trim().toLowerCase() === 'true';
 }

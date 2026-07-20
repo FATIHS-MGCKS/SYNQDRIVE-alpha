@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/modules/voice-*/**/*.ts",
+    "src/modules/twilio/**/*.ts",
+    "src/shared/auth/org-scoping.voice.*.ts",
+    "src/modules/observability/voice-*.ts"
+  ],
+  "exclude": ["**/*.spec.ts", "**/*.integration.spec.ts"]
+}
