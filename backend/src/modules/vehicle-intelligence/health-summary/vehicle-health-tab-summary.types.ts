@@ -100,6 +100,10 @@ export interface VehicleHealthTabSummaryDto {
 
   findings: Array<{
     id: string;
+    /** Stable logical fingerprint from rental-health source_findings (health-finding-identity-v1). */
+    sourceFindingId?: string;
+    findingOccurrenceId?: string;
+    findingCode?: string;
     module: VehicleHealthFindingModule;
     severity: VehicleHealthFindingSeverity;
     title: string;

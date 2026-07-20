@@ -42,6 +42,15 @@ import {
 } from './brake-rental-health.policy';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import type { BrakeRentalHealthModuleHealth } from './brake-rental-health.types';
+import {
+  buildBatterySourceFindingsFromInputs,
+  buildBrakeSourceFindings,
+  buildComplaintSourceFindings,
+  buildComplianceSourceFindings,
+  buildDtcSourceFindings,
+  buildTireSourceFindings,
+  buildVehicleAlertSourceFindings,
+} from './health-finding-sources';
 
 export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
 
@@ -195,21 +204,70 @@ export class RentalHealthService {
           evidence_type: 'unknown' as const,
         };
 
+    const findingScope = { organizationId: orgId, vehicleId };
+
+    const batteryModule = this.evaluateBattery(batterySummary, hmAi, dtcSummary);
+    const tiresModule = this.evaluateTires(tireSummary, tireReviewOverride);
+    const brakesModule = this.evaluateBrakes(brakeSummary, {
+      moduleLoadError: brakesLoadError,
+      activeReviewOverride: brakeReviewOverride,
+    });
+    const errorCodesModule = this.evaluateErrorCodes(dtcSummary);
+    const serviceComplianceBase = {
+      ...serviceComplianceModule,
+      source: 'service_compliance',
+      evidence_type: this.serviceComplianceEvidenceType(complianceEval),
+    };
+    const complaintsModule = this.evaluateComplaints(openComplaints, complaintsLoaded);
+    const vehicleAlertsModule = this.evaluateVehicleAlerts(hmAi);
+
     const modules = {
-      battery: this.evaluateBattery(batterySummary, hmAi, dtcSummary),
-      tires: this.evaluateTires(tireSummary, tireReviewOverride),
-      brakes: this.evaluateBrakes(brakeSummary, {
-        moduleLoadError: brakesLoadError,
-        activeReviewOverride: brakeReviewOverride,
-      }),
-      error_codes: this.evaluateErrorCodes(dtcSummary),
-      service_compliance: {
-        ...serviceComplianceModule,
-        source: 'service_compliance',
-        evidence_type: this.serviceComplianceEvidenceType(complianceEval),
+      battery: {
+        ...batteryModule,
+        source_findings: buildBatterySourceFindingsFromInputs(
+          findingScope,
+          batteryModule,
+          batterySummary,
+          readBatteryWarningLight(hmAi),
+          dtcSummary?.activeFaultPreview ?? null,
+        ),
       },
-      complaints: this.evaluateComplaints(openComplaints, complaintsLoaded),
-      vehicle_alerts: this.evaluateVehicleAlerts(hmAi),
+      tires: {
+        ...tiresModule,
+        source_findings: buildTireSourceFindings(findingScope, tiresModule),
+      },
+      brakes: {
+        ...brakesModule,
+        source_findings: buildBrakeSourceFindings(findingScope, brakesModule),
+      },
+      error_codes: {
+        ...errorCodesModule,
+        source_findings: buildDtcSourceFindings(findingScope, errorCodesModule, dtcSummary),
+      },
+      service_compliance: {
+        ...serviceComplianceBase,
+        source_findings: buildComplianceSourceFindings(
+          findingScope,
+          serviceComplianceBase,
+          complianceEval,
+        ),
+      },
+      complaints: {
+        ...complaintsModule,
+        source_findings: buildComplaintSourceFindings(
+          findingScope,
+          complaintsModule,
+          openComplaints,
+        ),
+      },
+      vehicle_alerts: {
+        ...vehicleAlertsModule,
+        source_findings: buildVehicleAlertSourceFindings(
+          findingScope,
+          vehicleAlertsModule,
+          hmAi,
+        ),
+      },
     } as const;
 
     const overall_state = computeOverallState(Object.values(modules));

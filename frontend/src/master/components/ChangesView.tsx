@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-health-expose-finding-ids-p36-2026-07-20',
+    version: '4.9.707',
+    title: 'Rental Health — stabile Finding-IDs in Modulen (Phase 5 P36)',
+    summary: [
+      'Jedes Rental-Health-Modul liefert optional `source_findings[]` mit `source_finding_id`, `finding_occurrence_id`, `finding_code`, `source_entity_type/id` und `health-finding-identity-v1`.',
+      'Primärschlüssel bevorzugt (Complaint-ID, DTC-Code, OEM-Light-Key, strukturierte Reason-Codes); aggregierter Fallback `MODULE_STATE_*` nur wenn keine strukturierten Signale.',
+      'Health-Tab-Summary nutzt `source_finding_id` als Finding-`id` statt `rental-{module}` / `oem-{key}`.',
+      'Unit-Tests: gleiche Quelle → gleicher Fingerprint; fachlich neues Ereignis bleibt unterscheidbar.',
+    ],
+    reason: 'Phase 5 Prompt 36: Exponiere sourceFindingId für Dedup, Health→Task-Bridge und Tab-Summary.',
+    previousBehavior:
+      'Module lieferten nur aggregierten State/Reason; Tab-Summary generierte instabile Finding-IDs pro Request.',
+    details:
+      'health-finding-sources.ts (+spec), rental-health.{types,service}, vehicle-health-tab-summary.{types,service}, frontend api.ts + health-finding-identity.types.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
+    id: 'rental-health-finding-identity-p35-2026-07-20',
+    version: '4.9.706',
+    title: 'Rental Health — stabile Finding-Identität (Phase 5 P35)',
+    summary: [
+      'Neuer Contract `HealthFindingIdentity` mit healthModule, findingCode, sourceEntityType/Id, sourceFindingId, findingOccurrenceId, vehicleId, organizationId, first/currentObservedAt und version.',
+      'Deterministische SHA-256-Fingerprints ohne Anzeigetext, Task-Typen oder sensible Rohdaten in IDs.',
+      '`occurrenceGeneration` trennt erneutes Auftreten nach Behebung vom vorherigen Episode-Fingerprint.',
+      'Rein backendseitig + Frontend-Typ-Spiegel; Unit-Tests für Stabilität, Dedup und Episode-Grenzen.',
+    ],
+    reason: 'Phase 5 Prompt 35: Fundament für sourceFindingId in Health→Task/Service-Bridge und Dedup.',
+    previousBehavior:
+      'Health-Signale nutzten modulbezogene Heuristiken (`healthModule` allein, Task-Typ-Matrix) ohne stabilen Finding-Fingerprint.',
+    details:
+      'health-finding-identity.types.ts, health-finding-identity.ts (+spec), health-finding-identity.config.ts, frontend health-finding-identity.types.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',
