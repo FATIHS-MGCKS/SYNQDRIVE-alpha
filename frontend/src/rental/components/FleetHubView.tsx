@@ -5,7 +5,7 @@ import { type ConditionCategory } from './FleetConditionView';
 import { FleetHealthServiceView } from './fleet-health-service/FleetHealthServiceView';
 import {
   normalizeFleetTab,
-  type FleetHealthServiceTab,
+  type FleetHealthServiceNavState,
   type FleetTab,
   type FleetTabInput,
 } from './fleet-health-service/fleet-health-service.types';
@@ -22,13 +22,13 @@ import type { Vendor } from '../../lib/api';
 import type { ServiceCenterNavState } from '../lib/service-center-navigation';
 import { useMemo } from 'react';
 
-export type { FleetTab, FleetTabInput, FleetHealthServiceTab };
+export type { FleetTab, FleetTabInput, FleetHealthServiceNavState };
 
 interface FleetHubViewProps {
   activeTab: FleetTabInput;
   onTabChange: (tab: FleetTab) => void;
-  healthServiceSubTab: FleetHealthServiceTab;
-  onHealthServiceSubTabChange: (tab: FleetHealthServiceTab) => void;
+  healthServiceNav: FleetHealthServiceNavState;
+  onHealthServiceNavChange: (nav: FleetHealthServiceNavState) => void;
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
   onOpenVendorDetail?: (vendor: Vendor) => void;
@@ -49,8 +49,8 @@ const TAB_ICONS = {
 export function FleetHubView({
   activeTab: activeTabInput,
   onTabChange,
-  healthServiceSubTab,
-  onHealthServiceSubTabChange,
+  healthServiceNav,
+  onHealthServiceNavChange,
   onVehicleSelect,
   onDrillDown,
   onOpenVendorDetail,
@@ -119,7 +119,7 @@ export function FleetHubView({
 
   const showHealthRefresh =
     activeTab === 'condition-service' &&
-    (healthServiceSubTab === 'vehicles' || healthServiceSubTab === 'overview');
+    (healthServiceNav.tab === 'vehicles' || healthServiceNav.tab === 'overview');
 
   const healthHeaderActions = showHealthRefresh ? (
     <div className="flex flex-col items-end gap-1">
@@ -166,8 +166,8 @@ export function FleetHubView({
       )}
       {activeTab === 'condition-service' && (
         <FleetHealthServiceView
-          activeSubTab={healthServiceSubTab}
-          onSubTabChange={onHealthServiceSubTabChange}
+          nav={healthServiceNav}
+          onNavChange={onHealthServiceNavChange}
           onDrillDown={onDrillDown}
           onOpenVendorDetail={onOpenVendorDetail}
           onOpenGlobalTasks={onOpenGlobalTasks}

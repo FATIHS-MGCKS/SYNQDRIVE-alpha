@@ -6,11 +6,12 @@ import {
 import { FleetHealthServicePrioritizedList } from './FleetHealthServicePrioritizedList';
 import { fhs } from './fleet-health-service-shell';
 import type { FleetHealthServiceViewModel } from './fleet-health-service.view-model';
-import type { FleetHealthServiceTab } from './fleet-health-service.types';
+import type { FleetHealthServiceTab, FleetHealthServiceWorkSection } from './fleet-health-service.types';
 
 interface FleetHealthServiceOverviewPanelProps {
   vm: FleetHealthServiceViewModel;
   onNavigateSubTab?: (tab: FleetHealthServiceTab) => void;
+  onNavigateWork?: (section: FleetHealthServiceWorkSection) => void;
   onOpenVehicle?: (vehicleId: string) => void;
   onOpenTask?: (taskId: string) => void;
   onCreateTask?: () => void;
@@ -19,6 +20,7 @@ interface FleetHealthServiceOverviewPanelProps {
 export function FleetHealthServiceOverviewPanel({
   vm,
   onNavigateSubTab,
+  onNavigateWork,
   onOpenVehicle,
   onOpenTask,
   onCreateTask,
@@ -30,8 +32,16 @@ export function FleetHealthServiceOverviewPanel({
       onNavigateSubTab?.('vehicles');
       return;
     }
-    if (key === 'in_progress' || key === 'overdue' || key === 'vendor') {
-      onNavigateSubTab?.('tasks');
+    if (key === 'in_progress') {
+      onNavigateWork?.('tasks');
+      return;
+    }
+    if (key === 'overdue') {
+      onNavigateWork?.('schedule');
+      return;
+    }
+    if (key === 'vendor') {
+      onNavigateWork?.('vendors');
     }
   };
 

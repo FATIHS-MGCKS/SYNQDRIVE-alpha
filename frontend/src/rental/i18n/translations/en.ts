@@ -214,10 +214,14 @@ export const en = {
   'fleetConnectivity.detail.episodeOpen': 'Active',
   'fleetHealthService.tab.overview': 'Overview',
   'fleetHealthService.tab.vehicles': 'Vehicles',
+  'fleetHealthService.tab.work': 'Work',
+  'fleetHealthService.tab.history': 'History',
+  'fleetHealthService.work.tasks': 'Tasks',
+  'fleetHealthService.work.schedule': 'Due dates',
+  'fleetHealthService.work.vendorsAction': 'Partners',
   'fleetHealthService.tab.tasks': 'Tasks',
   'fleetHealthService.tab.schedule': 'Schedule',
   'fleetHealthService.tab.vendors': 'Vendors',
-  'fleetHealthService.tab.history': 'History',
 
   // ─── Service Center (Fleet hub) ───
   'serviceCenter.eyebrow': 'Fleet operations',
