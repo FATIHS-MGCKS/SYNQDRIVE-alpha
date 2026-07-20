@@ -1,0 +1,44 @@
+# Fleet Health Service Grafana / Prometheus Ops (V4.9.731)
+
+Operational dashboard for **Zustand & Service** (Fleet Health Service), built on the existing SynqDrive monitoring stack (`backend/monitoring/`) and the `synqdrive_fleet_health_*` metrics from P59.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `monitoring/grafana/dashboards/synqdrive-fleet-health-service.json` | Fleet Health Service ops dashboard |
+| `monitoring/prometheus/alerts.yml` | Alert group `synqdrive_fleet_health` (P59) |
+| `docs/architecture/fleet-health-prometheus-metrics.md` | Metric catalog |
+
+Provisioning follows the same pattern as `synqdrive-battery-v2.json` via `grafana/provisioning/dashboards/default.yml`.
+
+## Dashboard panels
+
+1. **Übersicht** — ready availability share, blocking service cases, battery publication coverage, refresh partial-failure rate
+2. **Health Availability** — `synqdrive_fleet_health_availability_total` by `level` (`ready` / `partial` / `unavailable`)
+3. **Modul-Coverage** — `synqdrive_fleet_health_module_status_total` by `module` + `state`
+4. **Technische Blockaden** — `synqdrive_fleet_health_technical_blockade_total` by `source`
+5. **Stale & unknown Module** — `synqdrive_fleet_health_stale_module_total` + `module_status_total{state="unknown"}`
+6. **Fleet-Health-Latenz** — rental-health request + fleet-summary histogram p50/p95
+7. **API-Fehler** — task / case / vendor API error counters
+8. **Service Cases nach Status** — `synqdrive_fleet_health_service_case_total` by `status`
+9. **Tasks** — health→task ambiguous legacy match audit + task API errors (no task-by-status counter yet)
+10. **Blockierende Cases** — `synqdrive_fleet_health_blocking_service_case_total`
+11. **Battery publication coverage** — `synqdrive_fleet_health_battery_publication_coverage_ratio`
+12. **Vendor-Fehler** — `synqdrive_fleet_health_vendor_api_errors_total`
+13. **Queues** — `synqdrive_queue_failed_jobs`, `synqdrive_queue_lag_seconds` p95, refresh partial failures
+
+## Alerts (`synqdrive_fleet_health`)
+
+See `fleet-health-prometheus-metrics.md` and `monitoring/prometheus/alerts.yml` for:
+
+- Rental health request p95 > 5s
+- Refresh partial failures
+- Task / case API errors
+- Battery publication coverage < 50%
+
+## Deploy
+
+After merging to `main`, copy the dashboard JSON to the VPS Grafana provisioning path (same flow as other SynqDrive dashboards). No automated deploy change in P60.
+
+Grafana UID: `synqdrive-fleet-health-service` — linked from SynqDrive Ops dashboard tag navigation (`tags: ["synqdrive"]`).

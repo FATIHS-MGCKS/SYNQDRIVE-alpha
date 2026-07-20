@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-grafana-p60-2026-07-20',
+    version: '4.9.731',
+    title: 'Fleet Health Service — Grafana-Dashboard (Phase 9 P60)',
+    summary: [
+      'Repo-konformes Grafana-Dashboard `synqdrive-fleet-health-service` für Zustand & Service.',
+      'Panels: Health Availability, Modul-Coverage, technische Blockaden, Fleet-Health-Latenz, API-Fehler.',
+      'Battery Publication Coverage, Vendor-Fehler, Service Cases nach Status, blockierende Cases.',
+      'Stale/unknown Module, Queue-Fehler (failed jobs + lag) und Refresh-Partial-Failures.',
+    ],
+    reason: 'Phase 9 Prompt 60: operative Visualisierung der P59-Metriken ohne Deployment- oder Grafana-API-Änderung.',
+    previousBehavior: 'Fleet-Health-Service-Metriken ohne dediziertes Grafana-Dashboard im Repo.',
+    details:
+      'backend/monitoring/grafana/dashboards/synqdrive-fleet-health-service.json, docs/architecture/fleet-health-grafana-prometheus-ops.md',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:59:45.000Z',
+  },
+  {
     id: 'fleet-health-metrics-p59-2026-07-20',
     version: '4.9.730',
     title: 'Fleet Health Service — Prometheus-Metriken (Phase 9 P59)',
