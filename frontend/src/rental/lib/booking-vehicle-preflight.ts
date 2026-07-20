@@ -1,4 +1,5 @@
 import type { VehicleHealthResponse } from '../../lib/api';
+import { isRentalBlockedUnverified } from './rental-health-availability';
 import type { PriceTariffCatalog } from '../pricing/pricingTypes';
 import {
   catalogCurrency,
@@ -75,8 +76,10 @@ export function resolveBookingVehiclePreflight(
 ): BookingVehiclePreflight {
   const offline = isVehicleOffline(vehicle);
   const rentalBlocked = health?.rental_blocked === true;
+  const rentalUnverified = health != null && isRentalBlockedUnverified(health);
   const healthWarningOnly =
     !rentalBlocked &&
+    !rentalUnverified &&
     (health?.overall_state === 'warning' || health?.overall_state === 'critical');
   const noTariff = !hasTariff && !catalogLoading;
 
@@ -99,6 +102,9 @@ export function resolveBookingVehiclePreflight(
     hardBlockReason = 'rental_blocked';
     blockingReason =
       health?.blocking_reasons?.filter(Boolean).join(' · ') || 'Nicht vermietbar';
+  } else if (rentalUnverified) {
+    hardBlockReason = 'rental_blocked';
+    blockingReason = 'Mietfreigabe nicht verifiziert';
   } else if (noTariff) {
     hardBlockReason = 'no_tariff';
     blockingReason = 'Kein aktiver Tarif zugewiesen';
@@ -123,11 +129,17 @@ export function resolveBookingVehiclePreflight(
     rentalBlocked,
     healthWarningOnly,
     noTariff,
-    isSelectable: !offline && !rentalBlocked && !noTariff && !isUnknown && !statusUnreliable,
+    isSelectable:
+      !offline &&
+      !rentalBlocked &&
+      !rentalUnverified &&
+      !noTariff &&
+      !isUnknown &&
+      !statusUnreliable,
     hardBlockReason,
     blockingReason,
     cautionReason,
-    muted: offline || rentalBlocked || isMaintenance || isRented || isUnknown,
+    muted: offline || rentalBlocked || rentalUnverified || isMaintenance || isRented || isUnknown,
   };
 }
 

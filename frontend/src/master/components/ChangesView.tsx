@@ -35,8 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'rental-health-availability-contract-fhs-p18-2026-07-20',
-    version: '4.9.609',
+    id: 'rental-health-frontend-availability-fhs-p20-2026-07-20',
+    version: '4.9.611',
+    title: 'Rental Health — honest unavailable rendering in Fleet UI (FHS Phase 3 P20)',
+    summary: [
+      'Frontend-Typen/Mappings an `availability` + tri-state `rental_blocked` angepasst.',
+      'Neues Severity-Band `unevaluable` — neutral statt Critical-Rot bei Pipeline-Fehlern.',
+      'DE-Copy „Technischer Status nicht vollständig verfügbar“; partial zeigt verfügbare Module.',
+      'Booking-Preflight fail-closed bei unverifizierter Mietfreigabe.',
+    ],
+    reason: 'FHS Phase 3 Prompt 20: unavailable nie als healthy; unbekannte Blockade nie als „keine Mietblockade“.',
+    previousBehavior:
+      'Degraded Health mit `overall_state: critical` oder `rental_blocked: null` konnte als gesund/kritisch fehlinterpretiert werden; „Can rent“ bei unbekanntem Gate.',
+    details:
+      'rental-health-availability.ts, fleet-health-control-center.ts, FleetConditionView.tsx, RentalHealthBadge.tsx, health-detail-utils.ts, booking-vehicle-preflight.ts, fleet-health-service.view-model.ts (+Tests).',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
   {
     id: 'rental-health-fleet-degrade-fhs-p19-2026-07-20',
     version: '4.9.610',
