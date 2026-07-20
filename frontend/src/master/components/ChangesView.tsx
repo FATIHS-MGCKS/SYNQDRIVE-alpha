@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-case-detail-fhs-p30-2026-07-20',
+    version: '4.9.621',
+    title: 'Fleet Zustand & Service — Servicefall-Detailpanel (FHS Phase 4 P30)',
+    summary: [
+      'Neu: `FleetHealthServiceCaseDetailDrawer` (mobil Drawer / Desktop Panel via `DetailDrawer`).',
+      'Zeigt Status, Priorität, Fahrzeug, Quelle, gespeicherte Health-Findings, Tasks, Partner, Termine, Kosten, Dokumente, Kommentare und Audit-Timeline.',
+      '`blocksRental` als operative Mietblockade; keine Health-Neubewertung — nur gespeicherte Metadata/Quelle.',
+      'Detail-GET on-demand; Mutations (Kommentar, Abschließen, Stornieren) nur mit vendor-management write/manage.',
+    ],
+    reason: 'FHS Phase 4 Prompt 30: Operatives Servicefall-Detail im Arbeiten-Bereich.',
+    previousBehavior:
+      'Servicefall-Liste ohne Detailansicht; keine Drawer-Integration und keine permission-gated Aktionen.',
+    details:
+      'FleetHealthServiceCaseDetailDrawer.tsx, fleet-health-service-case-detail.ts, fleet-health-service-case-permissions.ts, useFleetHealthServiceCaseDetail.ts (+Tests), FleetHealthServiceCaseList.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
+    id: 'fleet-health-service-case-work-list-fhs-p29-2026-07-20',
+    version: '4.9.620',
+    title: 'Fleet Zustand & Service — Servicefall-Arbeitsliste (FHS Phase 4 P29)',
+    summary: [
+      'Servicefälle in „Arbeiten“ als gefilterte Tabelle (Desktop) und Cards (Mobile).',
+      'Spalten: Fahrzeug (Kennzeichen + Name), Titel/Kategorie, Status, Priorität, Partner, Termine, offene Tasks, Kostenstatus, Mietblockade, Aktualisierung.',
+      'Filter: offen, geplant, in Bearbeitung, wartet Partner/Teile, blockiert Fahrzeug, abgeschlossen.',
+      'Fahrzeuglabels aus FleetContext — keine sichtbaren UUIDs; Loading/Error/Empty vollständig.',
+    ],
+    reason: 'FHS Phase 4 Prompt 29: Service-Case-Liste operativ im Arbeiten-Bereich bereitstellen.',
+    previousBehavior:
+      'Servicefälle zeigten nur eine minimale Liste mit UUID-Fahrzeugreferenz und ohne Statusfilter oder Kosten-/Task-Spalten.',
+    details:
+      'FleetHealthServiceCaseList.tsx, fleet-health-service-case-list.ts (+Tests), FleetHealthServiceCasesPanel.tsx, FleetHealthServiceWorkPanel.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-tasks-work-area-fhs-p28-2026-07-20',
     version: '4.9.619',
     title: 'Fleet Zustand & Service — tasks in Arbeiten shell (FHS Phase 4 P28)',

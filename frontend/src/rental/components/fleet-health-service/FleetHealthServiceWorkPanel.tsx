@@ -97,6 +97,7 @@ export function FleetHealthServiceWorkPanel({
           loading={serviceCasesLoading}
           error={serviceCasesError}
           onReload={onReload}
+          onOpenTask={onOpenGlobalTasks}
         />
       ) : null}
 

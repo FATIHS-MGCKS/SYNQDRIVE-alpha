@@ -16,6 +16,7 @@ import {
   type FleetHealthServiceCaseFilter,
   type FleetHealthServiceCaseListRow,
 } from './fleet-health-service-case-list';
+import { FleetHealthServiceCaseDetailDrawer } from './FleetHealthServiceCaseDetailDrawer';
 
 interface FleetHealthServiceCaseListProps {
   serviceCases: ApiServiceCase[];
@@ -24,6 +25,7 @@ interface FleetHealthServiceCaseListProps {
   loading?: boolean;
   error?: string | null;
   onReload?: () => void;
+  onOpenTask?: (taskId: string) => void;
 }
 
 function CaseFilterBar({
@@ -60,10 +62,18 @@ function CaseFilterBar({
   );
 }
 
-function CaseMobileCard({ row }: { row: FleetHealthServiceCaseListRow }) {
+function CaseMobileCard({
+  row,
+  onOpen,
+}: {
+  row: FleetHealthServiceCaseListRow;
+  onOpen: () => void;
+}) {
   return (
-    <div
-      className={`${fhs.interactiveRow} flex-col items-stretch gap-2`}
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`${fhs.interactiveRow} flex-col items-stretch gap-2 text-left w-full`}
       data-testid={`fhs-case-card-${row.serviceCase.id}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -117,7 +127,7 @@ function CaseMobileCard({ row }: { row: FleetHealthServiceCaseListRow }) {
       </dl>
 
       <p className={fhs.meta}>Aktualisiert {row.updatedAtLabel}</p>
-    </div>
+    </button>
   );
 }
 
@@ -128,9 +138,12 @@ export function FleetHealthServiceCaseList({
   loading,
   error,
   onReload,
+  onOpenTask,
 }: FleetHealthServiceCaseListProps) {
   const { fleetVehicles } = useFleetVehicles();
   const [activeFilter, setActiveFilter] = useState<FleetHealthServiceCaseFilter>('open');
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const vehicleById = useMemo(
     () => new Map(fleetVehicles.map((vehicle) => [vehicle.id, vehicle])),
@@ -140,6 +153,16 @@ export function FleetHealthServiceCaseList({
     () => new Map(vendors.map((vendor) => [vendor.id, vendor])),
     [vendors],
   );
+
+  const selectedCase = useMemo(
+    () => serviceCases.find((serviceCase) => serviceCase.id === selectedCaseId) ?? null,
+    [serviceCases, selectedCaseId],
+  );
+
+  const openCaseDetail = (caseId: string) => {
+    setSelectedCaseId(caseId);
+    setDetailOpen(true);
+  };
 
   const rows = useMemo(
     () =>
@@ -279,6 +302,7 @@ export function FleetHealthServiceCaseList({
           columns={columns}
           rows={rows}
           getRowKey={(row) => row.serviceCase.id}
+          onRowClick={(row) => openCaseDetail(row.serviceCase.id)}
           getRowClassName={(row) =>
             row.blocksRental ? 'bg-[color:var(--status-critical)]/[0.03]' : undefined
           }
@@ -318,9 +342,21 @@ export function FleetHealthServiceCaseList({
             }
           />
         ) : (
-          rows.map((row) => <CaseMobileCard key={row.serviceCase.id} row={row} />)
+          rows.map((row) => (
+            <CaseMobileCard key={row.serviceCase.id} row={row} onOpen={() => openCaseDetail(row.serviceCase.id)} />
+          ))
         )}
       </div>
+
+      <FleetHealthServiceCaseDetailDrawer
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        serviceCaseId={selectedCaseId}
+        initialCase={selectedCase}
+        vendors={vendors}
+        onOpenTask={onOpenTask}
+        onCaseChanged={onReload}
+      />
     </div>
   );
 }

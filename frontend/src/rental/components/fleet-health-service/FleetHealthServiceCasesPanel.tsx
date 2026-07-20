@@ -10,6 +10,7 @@ interface FleetHealthServiceCasesPanelProps {
   loading?: boolean;
   error?: string | null;
   onReload?: () => void;
+  onOpenTask?: (taskId: string) => void;
 }
 
 export function FleetHealthServiceCasesPanel({
@@ -19,6 +20,7 @@ export function FleetHealthServiceCasesPanel({
   loading,
   error,
   onReload,
+  onOpenTask,
 }: FleetHealthServiceCasesPanelProps) {
   return (
     <div className="space-y-3">
@@ -38,6 +40,7 @@ export function FleetHealthServiceCasesPanel({
         loading={loading}
         error={error}
         onReload={onReload}
+        onOpenTask={onOpenTask}
       />
     </div>
   );
