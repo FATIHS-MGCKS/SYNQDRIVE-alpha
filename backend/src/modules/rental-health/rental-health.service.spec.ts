@@ -13,7 +13,10 @@ describe('RentalHealthService (unit)', () => {
   const tires = { getSummary: jest.fn() };
   const brakes = { getSummary: jest.fn() };
   const dtc = { getSummary: jest.fn() };
-  const hm = { getAiHealthCareSignals: jest.fn() };
+  const hm = {
+    getAiHealthCareSignals: jest.fn(),
+    getTirePressureSignals: jest.fn().mockResolvedValue(null),
+  };
   const serviceCompliance = {
     evaluateCompliance: jest.fn(),
     toRentalModuleHealth: jest.fn(),
@@ -617,6 +620,42 @@ describe('RentalHealthService (unit)', () => {
 
   it('isRentalBlocked returns blocked on aggregation failure', async () => {
     prisma.vehicle.findFirst.mockRejectedValue(new Error('db down'));
+    const gate = await svc.isRentalBlocked('org-1', 'veh-1');
+    expect(gate.healthGateStatus).toBe('UNAVAILABLE');
+    expect(gate.blocked).toBe(true);
+    expect(gate.manualReviewRequired).toBe(true);
+  });
+
+  it('isRentalBlocked fails closed when availability is partial', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-1',
+      organizationId: 'org-1',
+      fuelType: 'PETROL',
+      lastTuvDate: null,
+      nextTuvDate: null,
+      lastBokraftDate: null,
+      nextBokraftDate: null,
+      lastServiceDate: null,
+      lastServiceOdometerKm: null,
+    });
+    prisma.vehicleLatestState.findUnique.mockResolvedValue(null);
+    prisma.vehicleComplaint.findMany.mockResolvedValue([]);
+    battery.getSummary.mockResolvedValue(batterySummary({ healthStatus: 'GOOD' }));
+    tires.getSummary.mockRejectedValue(new Error('tires down'));
+    brakes.getSummary.mockResolvedValue(brakeSummaryFixture());
+    dtc.getSummary.mockResolvedValue({ status: 'clean', activeFaultCount: 0 });
+    hm.getAiHealthCareSignals.mockResolvedValue(null);
+    serviceCompliance.evaluateCompliance.mockResolvedValue({
+      nextService: { trackingStatus: 'NOT_TRACKED' },
+      tuvBokraft: {},
+    });
+    serviceCompliance.toRentalModuleHealth.mockReturnValue({
+      state: 'good',
+      reason: 'OK',
+      last_updated_at: null,
+      data_stale: false,
+    });
+
     const gate = await svc.isRentalBlocked('org-1', 'veh-1');
     expect(gate.healthGateStatus).toBe('UNAVAILABLE');
     expect(gate.blocked).toBe(true);

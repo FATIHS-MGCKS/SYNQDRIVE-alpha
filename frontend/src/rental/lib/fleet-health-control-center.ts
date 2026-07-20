@@ -2,6 +2,12 @@ import type { RentalHealthModule, RentalHealthState, VehicleHealthResponse } fro
 import type { StatusTone } from '../../components/patterns';
 import { RENTAL_HEALTH_MODULE_LABELS } from '../rental-health-ui';
 import {
+  isHealthPipelineDegraded,
+  isModulePipelineUnavailable,
+  isRentalBlockedConfirmed,
+  isRentalBlockedUnverified,
+} from './rental-health-availability';
+import {
   isOperativeRentalHealthModule,
 } from './operational-issues/operationalIssueTaxonomy';
 import { rentalModuleSeverityDetailLabel } from './operational-issues/operationalHealthModuleSeverity';
@@ -54,6 +60,8 @@ export interface FleetHealthKpis {
   needsReview: number;
   /** Distinct vehicles confirmed healthy (good and not blocked). */
   healthy: number;
+  /** Pipeline-degraded vehicles — never counted as healthy. */
+  unevaluable: number;
 }
 
 /**
@@ -61,13 +69,22 @@ export interface FleetHealthKpis {
  * Always derived from RentalHealthV1 (overall_state + rental_blocked), never from
  * free-form reason text and never from data freshness ("stale" is not a band).
  */
-export type HealthSeverityBand = 'blocked' | 'critical' | 'review' | 'good' | 'limited';
+export type HealthSeverityBand =
+  | 'blocked'
+  | 'critical'
+  | 'review'
+  | 'good'
+  | 'limited'
+  | 'unevaluable';
 
 export function healthSeverityBand(
   health: VehicleHealthResponse | null | undefined,
 ): HealthSeverityBand {
-  if (!health) return 'limited';
-  if (health.rental_blocked) return 'blocked';
+  if (!health) return 'unevaluable';
+  if (isRentalBlockedConfirmed(health)) return 'blocked';
+  if (isHealthPipelineDegraded(health) || isRentalBlockedUnverified(health)) {
+    return 'unevaluable';
+  }
   switch (health.overall_state) {
     case 'critical':
       return 'critical';
@@ -119,6 +136,7 @@ export function isLimitedHealth(
   health: VehicleHealthResponse | null | undefined,
 ): boolean {
   if (!health) return true;
+  if (isHealthPipelineDegraded(health)) return true;
   return health.overall_state === 'unknown';
 }
 
@@ -136,19 +154,26 @@ export function computeFleetHealthKpis(
   let needsReview = 0;
   let healthy = 0;
 
+  let unevaluable = 0;
+
   for (const id of vehicleIds) {
     const health = healthMap.get(id);
     if (!health) {
       limited++;
+      unevaluable++;
       continue;
     }
-    if (health.rental_blocked) blocked++;
-    if (health.overall_state === 'critical') critical++;
+    if (isRentalBlockedConfirmed(health)) blocked++;
+
+    const band = healthSeverityBand(health);
+    if (band === 'unevaluable') {
+      unevaluable++;
+      limited++;
+    } else if (health.overall_state === 'critical') critical++;
     else if (health.overall_state === 'warning') warning++;
     else if (health.overall_state === 'good') good++;
     else limited++;
 
-    const band = healthSeverityBand(health);
     if (band === 'blocked' || band === 'critical') actionRequired++;
     else if (band === 'review') needsReview++;
     else if (band === 'good') healthy++;
@@ -168,6 +193,7 @@ export function computeFleetHealthKpis(
     actionRequired,
     needsReview,
     healthy,
+    unevaluable,
   };
 }
 
@@ -188,7 +214,8 @@ export function priorityRank(
   health: VehicleHealthResponse | null | undefined,
 ): number {
   if (!health) return 0;
-  if (health.rental_blocked) return 5;
+  if (isHealthPipelineDegraded(health)) return 1;
+  if (isRentalBlockedConfirmed(health)) return 5;
   switch (health.overall_state) {
     case 'critical':
       return 4;
@@ -206,8 +233,8 @@ export function priorityRank(
 export function operatorGroupForVehicle(
   health: VehicleHealthResponse | null | undefined,
 ): OperatorGroupKey {
-  if (!health || health.overall_state === 'unknown') return 'limited_data';
-  if (health.rental_blocked || health.overall_state === 'critical') {
+  if (!health || isHealthPipelineDegraded(health)) return 'limited_data';
+  if (isRentalBlockedConfirmed(health) || health.overall_state === 'critical') {
     return 'action_required';
   }
   if (health.overall_state === 'warning') return 'needs_review';
@@ -250,6 +277,8 @@ export interface HealthIssueChip {
 export interface FleetHealthDisplay {
   band: HealthSeverityBand;
   rentalBlocked: boolean;
+  rentalBlockedUnverified: boolean;
+  pipelineDegraded: boolean;
   group: OperatorGroupKey;
   /** Primary status badge shown on the right of the row header. */
   primaryBadge: { label: string; tone: StatusTone };
@@ -303,6 +332,7 @@ function collectIssueChips(
   const out: HealthIssueChip[] = [];
   for (const key of MODULE_ORDER) {
     const mod = health.modules[key];
+    if (isModulePipelineUnavailable(mod)) continue;
     if (!isOperativeRentalHealthModule(key, mod)) continue;
     if (mod.state !== 'critical' && mod.state !== 'warning') continue;
     out.push({
@@ -339,6 +369,8 @@ function buildBadge(
       return { label: 'Needs review', tone: 'warning' };
     case 'good':
       return { label: 'Healthy', tone: 'success' };
+    case 'unevaluable':
+      return { label: 'Not fully evaluable', tone: 'noData' };
     case 'limited':
     default:
       return { label: 'Limited data', tone: 'noData' };
@@ -355,10 +387,13 @@ export function buildFleetHealthDisplay(
   const band = healthSeverityBand(health);
   const group = operatorGroupForVehicle(health);
   const issues = collectIssueChips(health);
-  const primaryModuleKey = issues.length > 0 ? issues[0].key : null;
+  const primaryModuleKey =
+    band === 'unevaluable' ? null : issues.length > 0 ? issues[0].key : null;
 
   let primaryIssue: string | null = null;
-  if (health?.rental_blocked && health.blocking_reasons.length > 0) {
+  if (band === 'unevaluable') {
+    primaryIssue = 'Technical status not fully available';
+  } else if (isRentalBlockedConfirmed(health) && health.blocking_reasons.length > 0) {
     primaryIssue = health.blocking_reasons[0];
   } else if (issues.length > 0) {
     primaryIssue = `${issues[0].label}: ${issues[0].reason}`;
@@ -366,19 +401,23 @@ export function buildFleetHealthDisplay(
     primaryIssue = 'Limited assessable health data';
   }
 
-  const secondaryIssues = issues.filter((i) => i.key !== primaryModuleKey);
+  const secondaryIssues =
+    band === 'unevaluable' ? issues : issues.filter((i) => i.key !== primaryModuleKey);
 
   let clearModuleCount = 0;
   let dataQualityCount = 0;
   if (health) {
     for (const mod of Object.values(health.modules)) {
+      if (isModulePipelineUnavailable(mod)) continue;
       if (mod.state === 'good') clearModuleCount++;
       else if (isDataQualityModule(mod)) dataQualityCount++;
     }
   }
 
   let dataQualityNote: string | null = null;
-  if (dataQualityCount >= 4) {
+  if (health?.availability === 'partial') {
+    dataQualityNote = 'Partial module coverage';
+  } else if (dataQualityCount >= 4) {
     dataQualityNote = 'Limited data coverage';
   } else if (dataQualityCount > 0) {
     dataQualityNote = `${dataQualityCount} data note${dataQualityCount > 1 ? 's' : ''}`;
@@ -386,7 +425,9 @@ export function buildFleetHealthDisplay(
 
   return {
     band,
-    rentalBlocked: Boolean(health?.rental_blocked),
+    rentalBlocked: isRentalBlockedConfirmed(health),
+    rentalBlockedUnverified: isRentalBlockedUnverified(health),
+    pipelineDegraded: isHealthPipelineDegraded(health),
     group,
     primaryBadge: buildBadge(band),
     primaryIssue,
@@ -437,29 +478,35 @@ export function buildModuleChips(
   health: VehicleHealthResponse | null | undefined,
 ): ModuleChipModel[] {
   if (!health) return [];
-  return MODULE_ORDER.map((key) => {
-    const mod = health.modules[key];
-    return {
-      key,
-      label: RENTAL_HEALTH_MODULE_LABELS[key] ?? key,
-      detail: moduleDetail(key, mod),
-      state: mod.state,
-      tone: rentalStateToTone(mod.state),
-      dataStale: mod.data_stale,
-      evidenceType: mod.evidence_type,
-    };
-  });
+  return MODULE_ORDER.filter((key) => !isModulePipelineUnavailable(health.modules[key])).map(
+    (key) => {
+      const mod = health.modules[key];
+      return {
+        key,
+        label: RENTAL_HEALTH_MODULE_LABELS[key] ?? key,
+        detail: moduleDetail(key, mod),
+        state: mod.state,
+        tone: rentalStateToTone(mod.state),
+        dataStale: mod.data_stale,
+        evidenceType: mod.evidence_type,
+      };
+    },
+  );
 }
 
 export function primaryOperatorReason(
   health: VehicleHealthResponse | null | undefined,
 ): string {
   if (!health) return 'Health status unavailable';
-  if (health.rental_blocked && health.blocking_reasons.length > 0) {
+  if (isHealthPipelineDegraded(health)) {
+    return 'Technical status not fully available';
+  }
+  if (isRentalBlockedConfirmed(health) && health.blocking_reasons.length > 0) {
     return health.blocking_reasons[0];
   }
   const modules = Object.entries(health.modules)
     .filter(([key, m]) => isOperativeRentalHealthModule(key, m))
+    .filter(([, m]) => !isModulePipelineUnavailable(m))
     .filter(([, m]) => m.state === 'critical' || m.state === 'warning')
     .sort(
       (a, b) =>
@@ -480,7 +527,10 @@ export function rentalGateLabel(
   health: VehicleHealthResponse | null | undefined,
 ): { label: string; tone: StatusTone } {
   if (!health) return { label: 'Limited data', tone: 'noData' };
-  if (health.rental_blocked) return { label: 'Blocked', tone: 'critical' };
+  if (isRentalBlockedConfirmed(health)) return { label: 'Blocked', tone: 'critical' };
+  if (isRentalBlockedUnverified(health)) {
+    return { label: 'Not verified', tone: 'noData' };
+  }
   if (health.overall_state === 'unknown') return { label: 'Limited data', tone: 'noData' };
   if (health.overall_state === 'good') return { label: 'Can rent', tone: 'success' };
   return { label: 'Review', tone: 'watch' };
@@ -500,7 +550,8 @@ export function matchesStatusFilter(
     case 'good':
       return band === 'good';
     case 'limited':
-      return band === 'limited';
+    case 'unevaluable':
+      return band === 'limited' || band === 'unevaluable';
     default:
       return true;
   }

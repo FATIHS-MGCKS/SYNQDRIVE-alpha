@@ -18,6 +18,7 @@ function rentalHealth(overall: VehicleHealth['overall_state']): VehicleHealth {
     vehicle_id: 'veh-1',
     organization_id: 'org-1',
     overall_state: overall,
+    availability: 'ready',
     rental_blocked: overall === 'critical',
     blocking_reasons: overall === 'critical' ? ['Battery critical'] : [],
     modules: {

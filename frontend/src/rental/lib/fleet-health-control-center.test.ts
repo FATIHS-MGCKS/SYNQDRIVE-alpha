@@ -11,6 +11,7 @@ import {
   matchesStatusFilter,
   operatorGroupForVehicle,
   priorityRank,
+  rentalGateLabel,
 } from './fleet-health-control-center';
 
 type ModuleKey = keyof VehicleHealthResponse['modules'];
@@ -33,7 +34,8 @@ function mod(
 function buildHealth(
   overrides: Partial<{
     overall_state: RentalHealthState;
-    rental_blocked: boolean;
+    rental_blocked: boolean | null;
+    availability: VehicleHealthResponse['availability'];
     blocking_reasons: string[];
     modules: Partial<Record<ModuleKey, RentalHealthModule>>;
   }> = {},
@@ -51,6 +53,7 @@ function buildHealth(
     vehicle_id: 'v1',
     organization_id: 'org1',
     overall_state: overrides.overall_state ?? 'good',
+    availability: overrides.availability ?? 'ready',
     rental_blocked: overrides.rental_blocked ?? false,
     blocking_reasons: overrides.blocking_reasons ?? [],
     modules: { ...baseModules, ...(overrides.modules ?? {}) },
@@ -70,7 +73,31 @@ describe('healthSeverityBand', () => {
     expect(healthSeverityBand(buildHealth({ overall_state: 'warning' }))).toBe('review');
     expect(healthSeverityBand(buildHealth({ overall_state: 'good' }))).toBe('good');
     expect(healthSeverityBand(buildHealth({ overall_state: 'unknown' }))).toBe('limited');
-    expect(healthSeverityBand(null)).toBe('limited');
+    expect(healthSeverityBand(null)).toBe('unevaluable');
+  });
+
+  it('does not treat null rental_blocked as confirmed safe', () => {
+    expect(
+      healthSeverityBand(
+        buildHealth({
+          overall_state: 'good',
+          rental_blocked: null,
+          availability: 'unavailable',
+        }),
+      ),
+    ).toBe('unevaluable');
+  });
+
+  it('does not treat pipeline-degraded critical as critical band', () => {
+    expect(
+      healthSeverityBand(
+        buildHealth({
+          overall_state: 'critical',
+          availability: 'unavailable',
+          rental_blocked: null,
+        }),
+      ),
+    ).toBe('unevaluable');
   });
 });
 
@@ -170,6 +197,34 @@ describe('buildFleetHealthDisplay', () => {
     expect(d.dataQualityCount).toBeGreaterThanOrEqual(4);
     expect(d.dataQualityNote).toBe('Limited data coverage');
   });
+
+  it('renders partial coverage with available module issues only', () => {
+    const health = buildHealth({
+      availability: 'partial',
+      rental_blocked: null,
+      overall_state: 'warning',
+      modules: {
+        tires: mod('warning', 'Reifen beobachten'),
+        brakes: mod('unknown', 'Pipeline failed', { pipeline_available: false }),
+      },
+    });
+    const d = buildFleetHealthDisplay(health);
+    expect(d.band).toBe('unevaluable');
+    expect(d.pipelineDegraded).toBe(true);
+    expect(d.rentalBlockedUnverified).toBe(true);
+    expect(d.primaryIssue).toBe('Technical status not fully available');
+    expect(d.secondaryIssues.map((i) => i.key)).toEqual(['tires']);
+    expect(d.clearModuleCount).toBeGreaterThan(0);
+    expect(d.dataQualityNote).toBe('Partial module coverage');
+  });
+
+  it('uses neutral badge for unevaluable vehicles', () => {
+    const d = buildFleetHealthDisplay(
+      buildHealth({ availability: 'unavailable', rental_blocked: null }),
+    );
+    expect(d.primaryBadge.label).toBe('Not fully evaluable');
+    expect(d.primaryBadge.tone).toBe('noData');
+  });
 });
 
 describe('health severity ≠ data freshness', () => {
@@ -258,5 +313,34 @@ describe('computeFleetHealthKpis', () => {
     expect(kpis.needsReview).toBe(1); // c
     expect(kpis.healthy).toBe(1); // d
     expect(kpis.limited).toBe(2); // e (unknown) + f (no health)
+    expect(kpis.unevaluable).toBe(1); // f (no health)
+  });
+
+  it('does not count unavailable critical vehicles as healthy or action required', () => {
+    const map = new Map<string, VehicleHealthResponse>([
+      [
+        'degraded',
+        buildHealth({
+          overall_state: 'critical',
+          availability: 'unavailable',
+          rental_blocked: null,
+        }),
+      ],
+    ]);
+    const kpis = computeFleetHealthKpis(['degraded'], map);
+    expect(kpis.actionRequired).toBe(0);
+    expect(kpis.healthy).toBe(0);
+    expect(kpis.unevaluable).toBe(1);
+    expect(kpis.critical).toBe(0);
+  });
+});
+
+describe('rentalGateLabel', () => {
+  it('never shows can rent when rental gate is unverified', () => {
+    const gate = rentalGateLabel(
+      buildHealth({ availability: 'partial', rental_blocked: null, overall_state: 'good' }),
+    );
+    expect(gate.label).toBe('Not verified');
+    expect(gate.tone).toBe('noData');
   });
 });

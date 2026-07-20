@@ -26,9 +26,12 @@ import {
   ModuleHealth,
   VehicleHealth,
   computeOverallState,
+  finalizeVehicleHealthAvailability,
   maxSeverity,
   isStale,
+  resolveRentalBlockedState,
   toIso,
+  type RentalHealthModuleKey,
 } from './rental-health.types';
 import {
   buildTireModuleHealth,
@@ -212,9 +215,20 @@ export class RentalHealthService {
       vehicle_alerts: this.evaluateVehicleAlerts(hmAi),
     } as const;
 
-    const overall_state = computeOverallState(Object.values(modules));
+    const moduleLoadFailures: Partial<Record<RentalHealthModuleKey, boolean>> = {
+      battery: batteryRes.status === 'rejected',
+      tires: tiresRes.status === 'rejected',
+      brakes: brakesRes.status === 'rejected' || brakesLoadError != null,
+      error_codes: dtcRes.status === 'rejected',
+      service_compliance: complianceRes.status === 'rejected',
+      complaints: !complaintsLoaded,
+    };
+    const { modules: modulesWithAvailability, availability } =
+      finalizeVehicleHealthAvailability(modules, moduleLoadFailures);
+
+    const overall_state = computeOverallState(Object.values(modulesWithAvailability));
     const blocking_reasons = this.collectBlockingReasons(
-      modules,
+      modulesWithAvailability,
       openComplaints,
       hmAi,
       complianceEval,
@@ -227,9 +241,10 @@ export class RentalHealthService {
       vehicle_id: vehicleId,
       organization_id: orgId,
       overall_state,
-      rental_blocked: blocking_reasons.length > 0,
+      availability,
+      rental_blocked: resolveRentalBlockedState(availability, blocking_reasons),
       blocking_reasons,
-      modules,
+      modules: modulesWithAvailability,
       generated_at: new Date().toISOString(),
     };
   }
@@ -246,6 +261,19 @@ export class RentalHealthService {
   ): Promise<RentalHealthGateResult> {
     try {
       const health = await this.getVehicleHealth(orgId, vehicleId);
+      if (health.availability !== 'ready' || health.rental_blocked === null) {
+        return {
+          blocked: true,
+          reasons: [
+            health.degradation?.message ??
+              'Fahrzeug-Gesundheit konnte nicht vollständig geprüft werden',
+          ],
+          healthGateStatus: 'UNAVAILABLE',
+          healthGateWarning:
+            'Fahrzeug-Gesundheit konnte nicht vollständig geprüft werden. Manuelle Bestätigung erforderlich.',
+          manualReviewRequired: true,
+        };
+      }
       if (health.rental_blocked) {
         return {
           blocked: true,

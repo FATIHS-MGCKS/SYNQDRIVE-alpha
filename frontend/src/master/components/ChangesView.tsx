@@ -35,6 +35,61 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-health-frontend-availability-fhs-p20-2026-07-20',
+    version: '4.9.611',
+    title: 'Rental Health — honest unavailable rendering in Fleet UI (FHS Phase 3 P20)',
+    summary: [
+      'Frontend-Typen/Mappings an `availability` + tri-state `rental_blocked` angepasst.',
+      'Neues Severity-Band `unevaluable` — neutral statt Critical-Rot bei Pipeline-Fehlern.',
+      'DE-Copy „Technischer Status nicht vollständig verfügbar“; partial zeigt verfügbare Module.',
+      'Booking-Preflight fail-closed bei unverifizierter Mietfreigabe.',
+    ],
+    reason: 'FHS Phase 3 Prompt 20: unavailable nie als healthy; unbekannte Blockade nie als „keine Mietblockade“.',
+    previousBehavior:
+      'Degraded Health mit `overall_state: critical` oder `rental_blocked: null` konnte als gesund/kritisch fehlinterpretiert werden; „Can rent“ bei unbekanntem Gate.',
+    details:
+      'rental-health-availability.ts, fleet-health-control-center.ts, FleetConditionView.tsx, RentalHealthBadge.tsx, health-detail-utils.ts, booking-vehicle-preflight.ts, fleet-health-service.view-model.ts (+Tests).',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
+    id: 'rental-health-fleet-degrade-fhs-p19-2026-07-20',
+    version: '4.9.610',
+    title: 'Rental Health — honest fleet degrade on pipeline failure (FHS Phase 3 P19)',
+    summary: [
+      'Fleet-Batch-Degrade: `rental_blocked: null` statt gefährlichem `false` bei Pipeline-Fehlern.',
+      '`availability: unavailable`, `overall_state: unknown`, sichere `degradation`-Metadaten ohne Interna.',
+      'Booking-Gate fail-closed bei `partial`/`unavailable`; Consumer tri-state (`=== true` / `null`).',
+    ],
+    reason: 'FHS Phase 3 Prompt 19: keine falsche Safe-Aussage bei per-vehicle Health-Pipeline-Fehlern.',
+    previousBehavior:
+      'Fleet-Fan-out setzte bei Fehlern `rental_blocked: false` und leakte `_error` mit internen Details.',
+    details:
+      'rental-health.types.ts, rental-health.controller.ts (+spec), rental-health.service.ts, bookings.service.ts, fleet-health-control-center.ts',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
+    id: 'rental-health-availability-contract-fhs-p18-2026-07-20',
+    version: '4.9.609',
+    title: 'Rental Health — availability state contract (FHS Phase 3 P18)',
+    summary: [
+      'Neues Feld `availability: ready | partial | unavailable` im Rental-Health-V1-Contract — additiv, ohne URL-Version.',
+      'Orthogonal zu `overall_state` (Severity) und `rental_blocked` (Gate); `pipeline_available` pro Modul trennt Pipeline-Fehler von `state: unknown`.',
+      'Aggregation via `computeRentalHealthAvailability`; Service + Fleet-Degrade setzen Verfügbarkeit; reine Typ-/Aggregationstests.',
+    ],
+    reason: 'FHS Phase 3 Prompt 18: Daten-/Pipeline-Verfügbarkeit explizit modellieren vor Frontend-Konsum.',
+    previousBehavior:
+      'Nur `overall_state` und `rental_blocked`; Pipeline-Ausfälle und fehlende Daten nicht getrennt auf Vehicle-Ebene.',
+    details:
+      'rental-health.types.ts (+spec), rental-health.service.ts, rental-health.controller.ts; keine Frontend-Änderung.',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-service-permissions-matrix-fhs-p17-2026-07-20',
     version: '4.9.608',
     title: 'Auth — fleet service permission test matrix (FHS Phase 2 P17)',

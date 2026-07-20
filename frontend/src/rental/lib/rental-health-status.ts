@@ -1,6 +1,12 @@
 import type { RentalHealthModule, RentalHealthState, VehicleHealthResponse } from '../../lib/api';
 import type { HealthState, StatusTone } from '../../components/patterns';
 import { normalizeHealthState } from '../../components/patterns';
+import {
+  healthUnavailableMessage,
+  isHealthPipelineDegraded,
+  isRentalBlockedConfirmed,
+  isRentalBlockedUnverified,
+} from './rental-health-availability';
 
 /** Canonical health semantics used across Fleet Condition, drawer, and vehicle health surfaces. */
 export type RentalHealthSemantic =
@@ -92,7 +98,10 @@ export function rentalGateToTone(
   health: VehicleHealthResponse | null | undefined,
 ): { label: string; tone: StatusTone } {
   if (!health) return { label: 'Limited data', tone: 'noData' };
-  if (health.rental_blocked) return { label: 'Blocked', tone: 'critical' };
+  if (isRentalBlockedConfirmed(health)) return { label: 'Blocked', tone: 'critical' };
+  if (isRentalBlockedUnverified(health)) {
+    return { label: 'Not verified', tone: 'noData' };
+  }
   if (health.overall_state === 'unknown') return { label: 'Limited data', tone: 'noData' };
   if (health.overall_state === 'good') return { label: 'Can rent', tone: 'success' };
   return { label: 'Review', tone: 'watch' };
