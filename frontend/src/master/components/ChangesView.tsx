@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'health-task-exact-matches-p38-2026-07-20',
+    version: '4.9.709',
+    title: 'Health→Task — exaktes Finding-Matching statt breiter Heuristik (Phase 5 P38)',
+    summary: [
+      '`findDuplicateHealthTask` matcht primär exakt: gleiche Org, Fahrzeug, `sourceType=HEALTH`, `sourceFindingId`, offener Status.',
+      'Legacy-Matching nur kontrolliert ohne `sourceFindingId` auf beiden Seiten und fachlich eindeutige Typen (z. B. `BRAKE_CHECK`); kein Auto-Suppress bei Unsicherheit.',
+      'Generischer `REPAIR` matcht kein Brake-Finding; `CUSTOM` kein DTC-Finding; blockierende Tasks decken keinen Health-Blocker ab.',
+      'Fleet-Health `matchOpenTaskForHealthSignal` nutzt nur exakte Matches; `HealthServiceActions` unterdrückt Create nur bei exaktem Treffer.',
+    ],
+    reason: 'Phase 5 Prompt 38: FALSE_MATCH-Risiko aus Typ-/Modul-Heuristik entfernen.',
+    previousBehavior:
+      'Dedup matchte auf healthModule, Task-Typ-Matrix und blockierende Tasks bei rental_blocked — REPAIR/CUSTOM false positives.',
+    details:
+      'health-task-bridge.utils.ts (+test), HealthServiceActions.tsx, fleet-health-service.view-model.ts (+test)',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'health-task-finding-identity-p37-2026-07-20',
     version: '4.9.708',
     title: 'Health→Task — Finding-Identität in Task-Metadaten (Phase 5 P37)',

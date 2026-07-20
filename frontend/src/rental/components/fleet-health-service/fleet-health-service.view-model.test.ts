@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ApiTask, RentalHealthModule, RentalHealthState, VehicleHealthResponse } from '../../../lib/api';
+import type { ApiTask, RentalHealthModule, RentalHealthSourceFinding, RentalHealthState, VehicleHealthResponse } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import {
   buildFleetHealthServiceUiItem,
@@ -9,6 +9,23 @@ import {
   deriveRecommendedAction,
   matchOpenTaskForHealthSignal,
 } from './fleet-health-service.view-model';
+
+function sourceFinding(sourceFindingId: string): RentalHealthSourceFinding {
+  return {
+    finding_code: 'WEAR_MEASURED_CRITICAL',
+    source_entity_type: 'rental_reason_code',
+    source_entity_id: 'wear_measured_critical',
+    source_finding_id: sourceFindingId,
+    finding_occurrence_id: 'occ'.repeat(32),
+    occurrence_generation: 1,
+    version: 'health-finding-identity-v1',
+    first_observed_at: '2026-06-22T00:00:00.000Z',
+    current_observed_at: '2026-06-22T00:00:00.000Z',
+    severity: 'critical',
+  };
+}
+
+const BRAKE_FINDING_ID = 'f'.repeat(64);
 
 type ModuleKey = keyof VehicleHealthResponse['modules'];
 
@@ -113,7 +130,37 @@ describe('fleet-health-service view model', () => {
     expect(item.existingTaskId).toBeNull();
   });
 
-  it('critical health with matching open task → open_task', () => {
+  it('critical health with exact finding match → open_task', () => {
+    const health = buildHealth({
+      overall_state: 'critical',
+      modules: {
+        brakes: mod('critical', 'Bremsen kritisch', {
+          source_findings: [sourceFinding(BRAKE_FINDING_ID)],
+        }),
+      },
+    });
+    const openTasks = [
+      task({
+        id: 't1',
+        vehicleId: 'v1',
+        type: 'BRAKE_CHECK',
+        status: 'OPEN',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          healthModule: 'brakes',
+          sourceFindingId: BRAKE_FINDING_ID,
+        },
+        sourceType: 'HEALTH',
+      }),
+    ];
+    const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, openTasks);
+    expect(item.recommendedAction).toBe('open_task');
+    expect(item.existingTaskId).toBe('t1');
+  });
+
+  it('critical health with legacy module-only task → create_task', () => {
     const health = buildHealth({
       overall_state: 'critical',
       modules: { brakes: mod('critical', 'Bremsen kritisch') },
@@ -129,8 +176,34 @@ describe('fleet-health-service view model', () => {
       }),
     ];
     const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, openTasks);
-    expect(item.recommendedAction).toBe('open_task');
-    expect(item.existingTaskId).toBe('t1');
+    expect(item.recommendedAction).toBe('create_task');
+    expect(item.existingTaskId).toBeNull();
+  });
+
+  it('rental_blocked blocking task without finding does not cover health blocker', () => {
+    const health = buildHealth({
+      overall_state: 'critical',
+      rental_blocked: true,
+      blocking_reasons: ['brakes_critical'],
+      modules: {
+        brakes: mod('critical', 'Bremsen kritisch', {
+          source_findings: [sourceFinding(BRAKE_FINDING_ID)],
+        }),
+      },
+    });
+    const openTasks = [
+      task({
+        id: 'blocking',
+        vehicleId: 'v1',
+        type: 'VEHICLE_SERVICE',
+        status: 'OPEN',
+        blocksVehicleAvailability: true,
+        metadata: { healthModule: 'service_compliance' },
+      }),
+    ];
+    expect(matchOpenTaskForHealthSignal(openTasks, 'v1', health)).toBeNull();
+    const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, openTasks);
+    expect(item.recommendedAction).toBe('create_task');
   });
 
   it('healthy vehicle → no_action', () => {
@@ -164,12 +237,30 @@ describe('fleet-health-service view model', () => {
     expect(countVendorWaitingTasks(tasks)).toBe(1);
   });
 
-  it('does not double-count overdue when health already links open task', () => {
+  it('does not double-count overdue when health already links exact finding task', () => {
     const health = buildHealth({
       vehicle_id: 'v1',
       overall_state: 'critical',
-      modules: { service_compliance: mod('critical', 'TÜV überfällig') },
+      modules: {
+        service_compliance: mod('critical', 'TÜV überfällig', {
+          source_findings: [
+            {
+              finding_code: 'TUV_OVERDUE',
+              source_entity_type: 'compliance_signal',
+              source_entity_id: 'tuv',
+              source_finding_id: 's'.repeat(64),
+              finding_occurrence_id: 'occ'.repeat(32),
+              occurrence_generation: 1,
+              version: 'health-finding-identity-v1',
+              first_observed_at: '2026-06-22T00:00:00.000Z',
+              current_observed_at: '2026-06-22T00:00:00.000Z',
+              severity: 'critical',
+            },
+          ],
+        }),
+      },
     });
+    const complianceFindingId = 's'.repeat(64);
     const openTasks = [
       task({
         id: 't-overdue',
@@ -177,7 +268,13 @@ describe('fleet-health-service view model', () => {
         type: 'VEHICLE_INSPECTION',
         status: 'OPEN',
         isOverdue: true,
-        metadata: { healthModule: 'service_compliance' },
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          healthModule: 'service_compliance',
+          sourceFindingId: complianceFindingId,
+        },
         sourceType: 'HEALTH',
       }),
     ];
@@ -209,11 +306,15 @@ describe('fleet-health-service view model', () => {
     expect(matchOpenTaskForHealthSignal(openTasks, 'v1', health)).toBeNull();
   });
 
-  it('prioritized overview rows dedupe health + linked overdue task', () => {
+  it('prioritized overview rows dedupe health + exact linked overdue task', () => {
     const health = buildHealth({
       vehicle_id: 'v1',
       overall_state: 'critical',
-      modules: { brakes: mod('critical', 'Bremsen kritisch') },
+      modules: {
+        brakes: mod('critical', 'Bremsen kritisch', {
+          source_findings: [sourceFinding(BRAKE_FINDING_ID)],
+        }),
+      },
     });
     const openTasks = [
       task({
@@ -222,7 +323,13 @@ describe('fleet-health-service view model', () => {
         type: 'BRAKE_CHECK',
         status: 'OPEN',
         isOverdue: true,
-        metadata: { healthModule: 'brakes' },
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: 'org1',
+          vehicleId: 'v1',
+          healthModule: 'brakes',
+          sourceFindingId: BRAKE_FINDING_ID,
+        },
         sourceType: 'HEALTH',
       }),
     ];

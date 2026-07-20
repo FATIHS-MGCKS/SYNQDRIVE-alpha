@@ -55,15 +55,32 @@ export interface HealthTaskPrefill {
 
 const OPEN_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING']);
 
-const MODULE_TASK_TYPES: Record<HealthActionModule, ApiTaskType[]> = {
-  tires: ['TIRE_CHECK', 'REPAIR'],
-  brakes: ['BRAKE_CHECK', 'REPAIR'],
-  battery: ['BATTERY_CHECK', 'REPAIR'],
-  error_codes: ['REPAIR', 'CUSTOM'],
-  service_compliance: ['VEHICLE_INSPECTION', 'VEHICLE_SERVICE'],
-  vehicle_alerts: ['REPAIR', 'VEHICLE_SERVICE'],
-  complaints: ['CUSTOM', 'VEHICLE_SERVICE'],
+/** Legacy module-only matching — only semantically unambiguous task types. */
+const MODULE_LEGACY_UNAMBIGUOUS_TYPES: Record<HealthActionModule, ApiTaskType[]> = {
+  tires: ['TIRE_CHECK'],
+  brakes: ['BRAKE_CHECK'],
+  battery: ['BATTERY_CHECK'],
+  error_codes: [],
+  service_compliance: ['VEHICLE_INSPECTION'],
+  vehicle_alerts: [],
+  complaints: [],
 };
+
+export type HealthTaskDuplicateMatchKind = 'exact' | 'legacy' | 'none';
+
+export interface HealthTaskDuplicateQuery {
+  organizationId: string;
+  vehicleId: string;
+  module: HealthActionModule;
+  sourceFindingId?: string | null;
+}
+
+export interface HealthTaskDuplicateResult {
+  task: ApiTask | null;
+  matchKind: HealthTaskDuplicateMatchKind;
+  /** True when a weak signal was seen but must not suppress new task creation. */
+  legacyAmbiguous?: boolean;
+}
 
 const MODULE_SERVICE_KEYWORDS: Record<HealthActionModule, string[]> = {
   tires: ['tire', 'reifen'],
@@ -307,25 +324,106 @@ export function buildHealthTaskPrefill(opts: {
   }
 }
 
-export function findDuplicateHealthTask(
-  tasks: ApiTask[],
-  vehicleId: string,
-  module: HealthActionModule,
-  preferredType: ApiTaskType,
-  sourceFindingId?: string | null,
-): ApiTask | null {
-  const types = MODULE_TASK_TYPES[module];
-  for (const task of tasks) {
-    if (task.vehicleId !== vehicleId) continue;
-    if (!OPEN_STATUSES.has(task.status)) continue;
-    const meta = task.metadata && typeof task.metadata === 'object' ? task.metadata : null;
-    if (sourceFindingId && meta?.sourceFindingId === sourceFindingId) return task;
-    if (meta?.healthModule === module) return task;
-    if (types.includes(task.type) || task.type === preferredType) return task;
-    if (task.sourceType === 'HEALTH' && types.includes(task.type)) return task;
-    if (task.source?.startsWith('INSIGHT_') && types.includes(task.type)) return task;
+function taskMetadataRecord(task: ApiTask): Record<string, unknown> | null {
+  return task.metadata && typeof task.metadata === 'object' ? task.metadata : null;
+}
+
+function taskOrganizationId(task: ApiTask): string | null {
+  const meta = taskMetadataRecord(task);
+  const fromMeta = meta?.organizationId;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  return task.organizationId?.trim() || null;
+}
+
+function taskSourceFindingId(task: ApiTask): string | null {
+  const meta = taskMetadataRecord(task);
+  const id = meta?.sourceFindingId;
+  return typeof id === 'string' && id.trim() ? id.trim() : null;
+}
+
+function taskHealthModule(task: ApiTask): HealthActionModule | null {
+  const meta = taskMetadataRecord(task);
+  const moduleKey = meta?.healthModule;
+  if (
+    moduleKey === 'tires' ||
+    moduleKey === 'brakes' ||
+    moduleKey === 'battery' ||
+    moduleKey === 'error_codes' ||
+    moduleKey === 'service_compliance' ||
+    moduleKey === 'vehicle_alerts' ||
+    moduleKey === 'complaints'
+  ) {
+    return moduleKey;
   }
   return null;
+}
+
+function taskHealthSourceType(task: ApiTask): 'HEALTH' | null {
+  if (task.sourceType === 'HEALTH') return 'HEALTH';
+  const meta = taskMetadataRecord(task);
+  if (meta?.sourceType === 'HEALTH') return 'HEALTH';
+  return null;
+}
+
+function isOpenRelevantTaskStatus(status: ApiTask['status']): boolean {
+  return OPEN_STATUSES.has(status);
+}
+
+/**
+ * Primary: exact finding identity (org + vehicle + HEALTH + sourceFindingId + open).
+ * Secondary legacy: module + unambiguous type when both sides lack sourceFindingId.
+ * Never suppresses on ambiguous type/module-only matches (REPAIR, CUSTOM, blocking tasks).
+ */
+export function findDuplicateHealthTask(
+  tasks: ApiTask[],
+  query: HealthTaskDuplicateQuery,
+): HealthTaskDuplicateResult {
+  const organizationId = query.organizationId.trim();
+  const vehicleId = query.vehicleId.trim();
+  const queryFindingId = query.sourceFindingId?.trim() || null;
+
+  if (!organizationId || !vehicleId) {
+    return { task: null, matchKind: 'none' };
+  }
+
+  let legacyCandidate: ApiTask | null = null;
+
+  for (const task of tasks) {
+    if (task.vehicleId !== vehicleId) continue;
+    if (!isOpenRelevantTaskStatus(task.status)) continue;
+
+    const taskOrg = taskOrganizationId(task);
+    if (!taskOrg || taskOrg !== organizationId) continue;
+
+    const taskFindingId = taskSourceFindingId(task);
+    const taskModule = taskHealthModule(task);
+    const taskSource = taskHealthSourceType(task);
+
+    if (
+      queryFindingId &&
+      taskFindingId === queryFindingId &&
+      taskSource === 'HEALTH'
+    ) {
+      return { task, matchKind: 'exact' };
+    }
+
+    if (queryFindingId) continue;
+
+    if (
+      !taskFindingId &&
+      taskModule === query.module &&
+      taskSource === 'HEALTH' &&
+      MODULE_LEGACY_UNAMBIGUOUS_TYPES[query.module].includes(task.type)
+    ) {
+      legacyCandidate = task;
+    }
+  }
+
+  if (legacyCandidate) {
+    return { task: legacyCandidate, matchKind: 'legacy', legacyAmbiguous: false };
+  }
+
+  return { task: null, matchKind: 'none' };
 }
 
 export function isHealthOriginatedTask(task: ApiTask): boolean {

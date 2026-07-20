@@ -88,17 +88,21 @@ export function HealthServiceActions({
     [healthModule, orgId, vehicleId, rentalModule, contextLines, dtcCodes, dueDate, vendors, blocksRental],
   );
 
-  const duplicate = useMemo(
+  const duplicateResult = useMemo(
     () =>
-      findDuplicateHealthTask(
-        openTasks,
+      findDuplicateHealthTask(openTasks, {
+        organizationId: orgId ?? '',
         vehicleId,
-        healthModule,
-        prefillBase.type,
-        prefillBase.metadata.sourceFindingId,
-      ),
-    [openTasks, vehicleId, healthModule, prefillBase.type, prefillBase.metadata.sourceFindingId],
+        module: healthModule,
+        sourceFindingId: prefillBase.metadata.sourceFindingId,
+      }),
+    [openTasks, orgId, vehicleId, healthModule, prefillBase.metadata.sourceFindingId],
   );
+
+  const exactDuplicate =
+    duplicateResult.matchKind === 'exact' ? duplicateResult.task : null;
+  const legacyDuplicate =
+    duplicateResult.matchKind === 'legacy' ? duplicateResult.task : null;
 
   const complianceForModule = useMemo(() => {
     if (healthModule === 'service_compliance') {
@@ -107,7 +111,11 @@ export function HealthServiceActions({
     return [];
   }, [complianceSignals, healthModule]);
 
-  const showActions = healthModuleNeedsAction(rentalModule) || Boolean(duplicate) || complianceForModule.length > 0;
+  const showActions =
+    healthModuleNeedsAction(rentalModule) ||
+    Boolean(exactDuplicate) ||
+    Boolean(legacyDuplicate) ||
+    complianceForModule.length > 0;
   if (!showActions && !loading) return null;
 
   const openCreate = () => {
@@ -126,19 +134,37 @@ export function HealthServiceActions({
         </p>
       )}
 
-      {duplicate && (
+      {exactDuplicate && (
         <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch-soft)] px-3 py-2 space-y-2">
           <p className="text-[11px] text-foreground">
-            Offene Service-Aufgabe existiert bereits: <span className="font-semibold">{duplicate.title}</span>
+            Offene Service-Aufgabe existiert bereits: <span className="font-semibold">{exactDuplicate.title}</span>
           </p>
           {onOpenExistingTask && (
             <button
               type="button"
-              onClick={() => onOpenExistingTask(duplicate.id)}
+              onClick={() => onOpenExistingTask(exactDuplicate.id)}
               className={`${btnClass} border-[color:var(--brand)]/25 surface-premium hover:bg-muted/40`}
             >
               <ExternalLink className="w-3 h-3" />
               Bestehende Aufgabe öffnen
+            </button>
+          )}
+        </div>
+      )}
+
+      {legacyDuplicate && !exactDuplicate && (
+        <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 space-y-2">
+          <p className="text-[11px] text-muted-foreground">
+            Mögliche Legacy-Aufgabe ohne Finding-ID: <span className="font-semibold text-foreground">{legacyDuplicate.title}</span>
+          </p>
+          {onOpenExistingTask && (
+            <button
+              type="button"
+              onClick={() => onOpenExistingTask(legacyDuplicate.id)}
+              className={`${btnClass} border-border/60 hover:bg-muted/40`}
+            >
+              <ExternalLink className="w-3 h-3" />
+              Legacy-Aufgabe öffnen
             </button>
           )}
         </div>
@@ -150,7 +176,7 @@ export function HealthServiceActions({
 
       {healthModuleNeedsAction(rentalModule) && (
         <div className="flex flex-wrap gap-1.5">
-          {!duplicate && (
+          {!exactDuplicate && (
             <button
               type="button"
               onClick={openCreate}

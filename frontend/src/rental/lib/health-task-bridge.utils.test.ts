@@ -9,6 +9,45 @@ import {
 
 const ORG_ID = 'org-1';
 const VEHICLE_ID = 'veh-1';
+const FINDING_ID = 'd'.repeat(64);
+
+function apiTask(overrides: Partial<ApiTask> & Pick<ApiTask, 'id'>): ApiTask {
+  return {
+    organizationId: ORG_ID,
+    title: 'Service',
+    description: '',
+    category: 'Service',
+    type: 'VEHICLE_SERVICE',
+    status: 'OPEN',
+    priority: 'NORMAL',
+    source: null,
+    sourceType: 'MANUAL',
+    dedupKey: null,
+    vehicleId: VEHICLE_ID,
+    bookingId: null,
+    customerId: null,
+    vendorId: null,
+    assignedUserId: null,
+    dueDate: null,
+    blocksVehicleAvailability: false,
+    serviceCaseId: null,
+    metadata: null,
+    isOverdue: false,
+    estimatedCostCents: null,
+    actualCostCents: null,
+    resolutionNote: null,
+    alertId: null,
+    documentId: null,
+    fineId: null,
+    invoiceId: null,
+    startedAt: null,
+    completedAt: null,
+    cancelledAt: null,
+    createdAt: '2026-07-10T08:00:00.000Z',
+    updatedAt: '2026-07-10T08:00:00.000Z',
+    ...overrides,
+  };
+}
 
 function sourceFinding(
   overrides: Partial<RentalHealthSourceFinding> = {},
@@ -179,20 +218,153 @@ describe('health-task-bridge.utils', () => {
     expect(chosen?.source_finding_id).toBe('c'.repeat(64));
   });
 
-  it('findDuplicateHealthTask matches by sourceFindingId before module', () => {
-    const findingId = 'd'.repeat(64);
+  it('findDuplicateHealthTask exact match requires org + vehicle + HEALTH + sourceFindingId', () => {
     const tasks = [
-      {
+      apiTask({
         id: 'task-1',
-        vehicleId: VEHICLE_ID,
-        status: 'OPEN',
         type: 'CUSTOM',
-        metadata: { healthModule: 'battery', sourceFindingId: findingId },
-      },
-    ] as ApiTask[];
+        sourceType: 'HEALTH',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: ORG_ID,
+          vehicleId: VEHICLE_ID,
+          healthModule: 'error_codes',
+          sourceFindingId: FINDING_ID,
+        },
+      }),
+    ];
 
-    const match = findDuplicateHealthTask(tasks, VEHICLE_ID, 'error_codes', 'REPAIR', findingId);
-    expect(match?.id).toBe('task-1');
+    const match = findDuplicateHealthTask(tasks, {
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      module: 'error_codes',
+      sourceFindingId: FINDING_ID,
+    });
+    expect(match.matchKind).toBe('exact');
+    expect(match.task?.id).toBe('task-1');
+  });
+
+  it('findDuplicateHealthTask rejects generic REPAIR for brake finding', () => {
+    const brakeFindingId = 'b'.repeat(64);
+    const tasks = [
+      apiTask({
+        id: 'repair-task',
+        type: 'REPAIR',
+        sourceType: 'HEALTH',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: ORG_ID,
+          vehicleId: VEHICLE_ID,
+          healthModule: 'brakes',
+        },
+      }),
+    ];
+
+    const match = findDuplicateHealthTask(tasks, {
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      module: 'brakes',
+      sourceFindingId: brakeFindingId,
+    });
+    expect(match.matchKind).toBe('none');
+  });
+
+  it('findDuplicateHealthTask rejects CUSTOM for DTC finding', () => {
+    const dtcFindingId = 'e'.repeat(64);
+    const tasks = [
+      apiTask({
+        id: 'custom-task',
+        type: 'CUSTOM',
+        sourceType: 'HEALTH',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: ORG_ID,
+          vehicleId: VEHICLE_ID,
+          healthModule: 'error_codes',
+        },
+      }),
+    ];
+
+    const match = findDuplicateHealthTask(tasks, {
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      module: 'error_codes',
+      sourceFindingId: dtcFindingId,
+    });
+    expect(match.matchKind).toBe('none');
+  });
+
+  it('findDuplicateHealthTask rejects blocking task without exact finding', () => {
+    const tireFindingId = 't'.repeat(64);
+    const tasks = [
+      apiTask({
+        id: 'blocking-task',
+        type: 'VEHICLE_SERVICE',
+        blocksVehicleAvailability: true,
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: ORG_ID,
+          vehicleId: VEHICLE_ID,
+          healthModule: 'tires',
+        },
+      }),
+    ];
+
+    const match = findDuplicateHealthTask(tasks, {
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      module: 'tires',
+      sourceFindingId: tireFindingId,
+    });
+    expect(match.matchKind).toBe('none');
+  });
+
+  it('findDuplicateHealthTask legacy matches unambiguous module type without finding ids', () => {
+    const tasks = [
+      apiTask({
+        id: 'legacy-brake',
+        type: 'BRAKE_CHECK',
+        sourceType: 'HEALTH',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: ORG_ID,
+          vehicleId: VEHICLE_ID,
+          healthModule: 'brakes',
+        },
+      }),
+    ];
+
+    const match = findDuplicateHealthTask(tasks, {
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      module: 'brakes',
+    });
+    expect(match.matchKind).toBe('legacy');
+    expect(match.legacyAmbiguous).toBe(false);
+    expect(match.task?.id).toBe('legacy-brake');
+  });
+
+  it('findDuplicateHealthTask does not legacy-match ambiguous REPAIR without finding ids', () => {
+    const tasks = [
+      apiTask({
+        id: 'repair-only',
+        type: 'REPAIR',
+        sourceType: 'HEALTH',
+        metadata: {
+          sourceType: 'HEALTH',
+          organizationId: ORG_ID,
+          vehicleId: VEHICLE_ID,
+          healthModule: 'brakes',
+        },
+      }),
+    ];
+
+    const match = findDuplicateHealthTask(tasks, {
+      organizationId: ORG_ID,
+      vehicleId: VEHICLE_ID,
+      module: 'brakes',
+    });
+    expect(match.matchKind).toBe('none');
   });
 
   it('healthContextFromTask remains readable for legacy tasks without sourceFindingId', () => {
