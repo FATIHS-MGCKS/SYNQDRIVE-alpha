@@ -104,8 +104,9 @@ export function FleetHealthServiceWorkPanel({
       {activeView === 'due-dates' ? (
         <FleetHealthServiceSchedulePanel
           tasks={tasks}
+          serviceCases={serviceCases}
           vendors={vendors}
-          loading={tasksLoading}
+          loading={tasksLoading || serviceCasesLoading}
           onSelectTask={onOpenGlobalTasks}
           compact
         />

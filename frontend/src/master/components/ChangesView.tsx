@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-combined-schedule-fhs-p33-2026-07-20',
+    version: '4.9.624',
+    title: 'Fleet Zustand & Service — kombinierte Fälligkeitsansicht (FHS Phase 4 P33)',
+    summary: [
+      'Fälligkeitsplan im Arbeiten-Bereich vereint offene Aufgaben (`OrgTask.dueDate`) und aktive Servicefälle (`scheduledAt`, `expectedReadyAt`).',
+      'Gruppen: Überfällig, Heute, Nächste 7 Tage, Später, Ohne Termin — Kalendertage in der Organisations-Zeitzone.',
+      'Getrennte Kennzeichnung: Aufgabe fällig / Werkstatttermin / erwartete Fertigstellung; Fahrzeug und Partner sichtbar.',
+      'Servicefall-Termine ausschließlich aus API-Feldern, nicht aus Titeltext; ein Fall kann zwei Zeilen (Werkstatt + Fertigstellung) erzeugen.',
+    ],
+    reason: 'FHS Phase 4 Prompt 33: Operative Terminübersicht für Tasks und Service Cases in einer Ansicht.',
+    previousBehavior:
+      'Fälligkeits-Subtab delegierte an Service-Center-Schedule (nur Tasks); keine Service-Case-Termine, andere Bucket-Namen.',
+    details:
+      'fleet-health-service-schedule.utils.ts (+Tests), FleetHealthServiceSchedulePanel.tsx, FleetHealthServiceScheduleItemRow.tsx, useOrganizationTimeZone.ts, FleetHealthServiceWorkPanel.tsx, FleetHealthServiceView.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'service-cases-link-operational-tasks-fhs-p32-2026-07-20',
     version: '4.9.623',
     title: 'Service Cases ↔ Tasks — operative Verknüpfung (FHS Phase 4 P32)',

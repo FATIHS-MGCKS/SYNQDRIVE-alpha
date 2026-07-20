@@ -186,8 +186,9 @@ export function FleetHealthServiceView({
       {!showWorkPanel && activeSubTab === 'schedule' && (
         <FleetHealthServiceSchedulePanel
           tasks={taskNavigation.filteredTasks}
+          serviceCases={service.serviceCases.data}
           vendors={vm.vendors}
-          loading={taskSource.loading}
+          loading={taskSource.loading || service.serviceCases.status === 'loading'}
           onSelectTask={handleOpenGlobalTask}
         />
       )}
