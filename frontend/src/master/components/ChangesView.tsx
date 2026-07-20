@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-mobile-a11y-p58-2026-07-20',
+    version: '4.9.729',
+    title: 'Fleet Health Service — Mobile & Accessibility (Phase 8 P58)',
+    summary: [
+      'Haupt- und Arbeiten-Subnavigation: einheitliche tablist/tab mit aria-controls, 44px Touch-Targets, tabpanels.',
+      'KPI-Karten: aria-label pro Navigations-KPI; Live-Region für Refresh-Status in der Übersicht.',
+      'Priorisierte Übersicht: ein Expand-Trigger pro Fahrzeugzeile, Escape schließt Details, Servicefall-Drawer mit Fokus-Rückgabe.',
+      'Reduced Motion auf Chevron-Animationen; responsive Zeilenlayout (Stack auf schmalen Viewports).',
+    ],
+    reason: 'Phase 8 Prompt 58: fokussierter Mobile- und Accessibility-Pass für Zustand & Service.',
+    previousBehavior:
+      'Partner-Button außerhalb der Arbeiten-tablist; doppelte Expand-Steuerung; Servicefälle nur inline; fehlende Live-Regions und KPI aria-labels.',
+    details:
+      'fleet-health-service-a11y.ts, FleetHealthServiceCaseDrawer, FleetHealthServiceTabBar/WorkPanel/View/KpiStrip/PriorityOverview, fleet-health-service-shell.ts, i18n de/en, fleet-health-service.a11y.ui.test.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:59:00.000Z',
+  },
+  {
     id: 'fleet-health-terminology-p57-2026-07-20',
     version: '4.9.728',
     title: 'Fleet Health Service — kanonische Terminologie (Phase 8 P57)',

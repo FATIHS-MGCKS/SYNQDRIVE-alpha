@@ -30,6 +30,20 @@ const FLEET_HEALTH_SERVICE_KEYS: TranslationKey[] = [
   'fleetHealthService.overview.dueDate',
   'fleetHealthService.prioritizedList.emptyTitle',
   'fleetHealthService.error.serviceCases',
+  'fleetHealthService.a11y.mainTabs',
+  'fleetHealthService.a11y.workTabs',
+  'fleetHealthService.a11y.kpiNavigate',
+  'fleetHealthService.a11y.refreshing',
+  'fleetHealthService.a11y.refreshDone',
+  'fleetHealthService.a11y.statusRegion',
+  'fleetHealthService.a11y.expandVehicle',
+  'fleetHealthService.a11y.collapseVehicle',
+  'fleetHealthService.a11y.openServiceCase',
+  'fleetHealthService.a11y.serviceCaseDrawer',
+  'fleetHealthService.a11y.linkedTasks',
+  'fleetHealthService.a11y.openTask',
+  'fleetHealthService.a11y.sectionExpand',
+  'fleetHealthService.a11y.sectionCollapse',
 ];
 
 describe('fleet health service i18n', () => {

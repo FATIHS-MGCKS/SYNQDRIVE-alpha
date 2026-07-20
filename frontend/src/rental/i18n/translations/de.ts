@@ -300,6 +300,20 @@ export const de: Record<TranslationKey, string> = {
   'fleetHealthService.prioritizedList.emptyDescription':
     'Sobald Handlungsbedarf, offene Aufgaben oder Prüffälle vorliegen, erscheinen sie hier.',
   'fleetHealthService.error.serviceCases': 'Servicefälle konnten nicht geladen werden.',
+  'fleetHealthService.a11y.mainTabs': 'Flottenzustand-Service-Bereiche',
+  'fleetHealthService.a11y.workTabs': 'Arbeiten-Unterbereiche',
+  'fleetHealthService.a11y.kpiNavigate': '{label}: {value} {unit}. {hint}. Gefilterte Ansicht öffnen.',
+  'fleetHealthService.a11y.refreshing': 'Flottenzustand wird aktualisiert',
+  'fleetHealthService.a11y.refreshDone': 'Flottenzustand aktualisiert',
+  'fleetHealthService.a11y.statusRegion': 'Statusmeldungen Flottenzustand',
+  'fleetHealthService.a11y.expandVehicle': 'Details für {plate} anzeigen',
+  'fleetHealthService.a11y.collapseVehicle': 'Details für {plate} ausblenden',
+  'fleetHealthService.a11y.openServiceCase': 'Servicefall {title} öffnen',
+  'fleetHealthService.a11y.serviceCaseDrawer': 'Servicefall-Details',
+  'fleetHealthService.a11y.linkedTasks': 'Verknüpfte Aufgaben',
+  'fleetHealthService.a11y.openTask': 'Aufgabe {title} öffnen',
+  'fleetHealthService.a11y.sectionExpand': 'Bereich {title} aufklappen',
+  'fleetHealthService.a11y.sectionCollapse': 'Bereich {title} zuklappen',
 
   // ─── Service Center (Fleet-Hub) ───
   'serviceCenter.eyebrow': 'Flottenbetrieb',

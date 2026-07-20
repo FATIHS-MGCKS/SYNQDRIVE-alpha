@@ -299,6 +299,20 @@ export const en = {
   'fleetHealthService.prioritizedList.emptyDescription':
     'When action is required, open tasks or review cases exist, they will appear here.',
   'fleetHealthService.error.serviceCases': 'Service cases could not be loaded.',
+  'fleetHealthService.a11y.mainTabs': 'Fleet health service sections',
+  'fleetHealthService.a11y.workTabs': 'Work area sections',
+  'fleetHealthService.a11y.kpiNavigate': '{label}: {value} {unit}. {hint}. Open filtered view.',
+  'fleetHealthService.a11y.refreshing': 'Refreshing fleet health data',
+  'fleetHealthService.a11y.refreshDone': 'Fleet health data updated',
+  'fleetHealthService.a11y.statusRegion': 'Fleet health status updates',
+  'fleetHealthService.a11y.expandVehicle': 'Show details for {plate}',
+  'fleetHealthService.a11y.collapseVehicle': 'Hide details for {plate}',
+  'fleetHealthService.a11y.openServiceCase': 'Open service case {title}',
+  'fleetHealthService.a11y.serviceCaseDrawer': 'Service case details',
+  'fleetHealthService.a11y.linkedTasks': 'Linked tasks',
+  'fleetHealthService.a11y.openTask': 'Open task {title}',
+  'fleetHealthService.a11y.sectionExpand': 'Expand section {title}',
+  'fleetHealthService.a11y.sectionCollapse': 'Collapse section {title}',
 
   // ─── Service Center (Fleet hub) ───
   'serviceCenter.eyebrow': 'Fleet operations',
