@@ -35,7 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'battery-v2-pipeline-observability-fhs-p9-2026-07-20',
+    id: 'auth-task-service-case-permissions-fhs-p11-2026-07-20',
+    version: '4.9.602',
+    title: 'Auth — granular task and service case permission keys (FHS Phase 2 P11)',
+    summary: [
+      'Neue Action-Keys `tasks.*` und `service_cases.*` analog zum Payment-Pattern.',
+      'Mapping auf bestehende Module `tasks` bzw. `vendor-management` — rückwärtskompatibel mit Role-Templates.',
+      'Zentrale Registry `operational-permission.registry.ts` + `evaluateOperationalPermission()`.',
+      'Tests für Registrierung und Role-Default-Matrix; Controller noch nicht umgestellt.',
+    ],
+    reason: 'FHS Phase 2 Prompt 11: granulare Permission-Keys für Tasks und Service Cases vorbereiten.',
+    previousBehavior: 'Nur Modul-Flags `{ tasks: { read, write, manage } }`; keine `tasks.read`/`service_cases.create` Action-Registry.',
+    details:
+      'task-permission.constants.ts, service-case-permission.constants.ts, operational-permission.registry.ts, operational-permission.util.ts, *.defaults.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-20T11:05:00.000Z',
+  },
+  {
     version: '4.9.601',
     title: 'Battery V2 — safe pipeline observability (FHS Phase 1 P9)',
     summary: [
