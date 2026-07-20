@@ -679,3 +679,50 @@ groups:
         annotations:
           summary: Unusually many open connectivity episodes
           description: Episode opens exceed resolutions over 24h — inspect fleet connectivity tab and reconciliation audit.
+
+  - name: synqdrive_fleet_health
+    rules:
+      - alert: FleetHealthRentalRequestLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(synqdrive_fleet_health_rental_health_request_duration_seconds_bucket[10m])) by (le, route)) > 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Fleet health rental request latency p95 high
+          description: Rental health API p95 latency exceeds 5s — inspect module evaluators and cache.
+
+      - alert: FleetHealthPartialRefreshFailures
+        expr: increase(synqdrive_fleet_health_refresh_partial_failure_total[15m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Fleet health partial refresh failures
+          description: Fleet summary batch returned degraded rows — check upstream health modules.
+
+      - alert: FleetHealthTaskApiErrors
+        expr: increase(synqdrive_fleet_health_task_api_errors_total[10m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Fleet health task API errors
+          description: Task list/summary failed for fleet health surfaces.
+
+      - alert: FleetHealthCaseApiErrors
+        expr: increase(synqdrive_fleet_health_case_api_errors_total[10m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Fleet health service case API errors
+          description: Service case list failed for fleet health surfaces.
+
+      - alert: FleetHealthBatteryPublicationCoverageLow
+        expr: synqdrive_fleet_health_battery_publication_coverage_ratio < 0.5
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Battery publication coverage low in fleet health summaries
+          description: Less than half of battery-applicable fleet rows have publication coverage.

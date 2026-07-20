@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Query, Req, UnauthorizedException, UseGuards, Optional } from '@nestjs/common';
+import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { RentalHealthService } from './rental-health.service';
 import { RentalHealthFleetService } from './rental-health-fleet.service';
 import { RentalHealthSummaryService } from './rental-health-summary.service';
@@ -49,6 +50,7 @@ export class RentalHealthController {
     private readonly prisma: PrismaService,
     private readonly tireRentalReview: TireRentalHealthReviewService,
     private readonly brakeRentalReview: BrakeRentalHealthReviewService,
+    @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
 
   @Get('vehicles/:vehicleId/rental-health')
@@ -57,7 +59,23 @@ export class RentalHealthController {
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
   ): Promise<VehicleHealth> {
-    return this.rentalHealth.getVehicleHealth(orgId, vehicleId);
+    const started = performance.now();
+    try {
+      const health = await this.rentalHealth.getVehicleHealth(orgId, vehicleId);
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'vehicle_detail',
+        'success',
+        (performance.now() - started) / 1000,
+      );
+      return health;
+    } catch (err) {
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'vehicle_detail',
+        err instanceof NotFoundException ? 'not_found' : 'error',
+        (performance.now() - started) / 1000,
+      );
+      throw err;
+    }
   }
 
   @Get('rental-health/fleet')
@@ -67,7 +85,23 @@ export class RentalHealthController {
     @Query() query: FleetRentalHealthQueryDto,
     @Req() req: { user?: { id?: string } },
   ): Promise<FleetRentalHealthPageResult<FleetVehicleHealthRow>> {
-    return this.rentalHealthFleet.listFleetHealthPage(orgId, req.user?.id, query);
+    const started = performance.now();
+    try {
+      const result = await this.rentalHealthFleet.listFleetHealthPage(orgId, req.user?.id, query);
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'fleet_page',
+        'success',
+        (performance.now() - started) / 1000,
+      );
+      return result;
+    } catch (err) {
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'fleet_page',
+        'error',
+        (performance.now() - started) / 1000,
+      );
+      throw err;
+    }
   }
 
   @Get('rental-health')
@@ -76,27 +110,42 @@ export class RentalHealthController {
     @Param('orgId') orgId: string,
     @Query('vehicleIds') vehicleIdsCsv?: string,
   ): Promise<{ vehicles: FleetVehicleHealthRow[] }> {
-    const filter = vehicleIdsCsv
-      ? vehicleIdsCsv
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : null;
+    const started = performance.now();
+    try {
+      const filter = vehicleIdsCsv
+        ? vehicleIdsCsv
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : null;
 
-    const vehicleRows = await this.prisma.vehicle.findMany({
-      where: {
-        organizationId: orgId,
-        ...(filter && filter.length > 0 ? { id: { in: filter } } : {}),
-      },
-      select: { id: true },
-    });
+      const vehicleRows = await this.prisma.vehicle.findMany({
+        where: {
+          organizationId: orgId,
+          ...(filter && filter.length > 0 ? { id: { in: filter } } : {}),
+        },
+        select: { id: true },
+      });
 
-    const vehicles = await this.rentalHealthSummary.getFleetRowsBatch(
-      orgId,
-      vehicleRows.map((row) => row.id),
-    );
+      const vehicles = await this.rentalHealthSummary.getFleetRowsBatch(
+        orgId,
+        vehicleRows.map((row) => row.id),
+      );
 
-    return { vehicles };
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'fleet_legacy_batch',
+        'success',
+        (performance.now() - started) / 1000,
+      );
+      return { vehicles };
+    } catch (err) {
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'fleet_legacy_batch',
+        'error',
+        (performance.now() - started) / 1000,
+      );
+      throw err;
+    }
   }
 
   @Post('vehicles/:vehicleId/tire-rental-health/review-override')

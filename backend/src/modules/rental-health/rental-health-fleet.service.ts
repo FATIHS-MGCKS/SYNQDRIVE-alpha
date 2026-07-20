@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { Prisma, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StationAccessService } from '@shared/stations/station-access.service';
@@ -30,9 +31,35 @@ export class RentalHealthFleetService {
     private readonly prisma: PrismaService,
     private readonly rentalHealthSummary: RentalHealthSummaryService,
     private readonly stationAccess: StationAccessService,
+    @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
 
   async listFleetHealthPage(
+    orgId: string,
+    userId: string | undefined,
+    query: FleetRentalHealthQueryDto,
+  ): Promise<FleetRentalHealthPageResult<FleetVehicleHealthRow>> {
+    const started = performance.now();
+    try {
+      const result = await this.listFleetHealthPageInternal(orgId, userId, query);
+      this.fleetHealthObservability?.recordFleetRows(result.data, 'fleet_page');
+      this.fleetHealthObservability?.observeFleetSummary(
+        'page',
+        'success',
+        (performance.now() - started) / 1000,
+      );
+      return result;
+    } catch (err) {
+      this.fleetHealthObservability?.observeFleetSummary(
+        'page',
+        'error',
+        (performance.now() - started) / 1000,
+      );
+      throw err;
+    }
+  }
+
+  private async listFleetHealthPageInternal(
     orgId: string,
     userId: string | undefined,
     query: FleetRentalHealthQueryDto,

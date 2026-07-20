@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { Prisma, ActivityAction, ActivityEntity } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService, AuditContext } from '@modules/activity-log/audit.service';
@@ -31,6 +32,7 @@ export class VendorsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly serviceCases: ServiceCasesService,
+    @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
 
   // ── master data ────────────────────────────────────────────────────────────
@@ -79,16 +81,21 @@ export class VendorsService {
   }
 
   async findAll(orgId: string) {
-    const vendors = await this.prisma.vendor.findMany({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        vendorVehicles: { include: { vehicle: { select: VEHICLE_SELECT } } },
-        _count: { select: { invoices: true } },
-      },
-    });
+    try {
+      const vendors = await this.prisma.vendor.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          vendorVehicles: { include: { vehicle: { select: VEHICLE_SELECT } } },
+          _count: { select: { invoices: true } },
+        },
+      });
 
-    return vendors.map((v) => this.shapeVendor(v));
+      return vendors.map((v) => this.shapeVendor(v));
+    } catch (err) {
+      this.fleetHealthObservability?.recordVendorApiFailure('list', err);
+      throw err;
+    }
   }
 
   async findById(orgId: string, id: string) {
@@ -399,24 +406,29 @@ export class VendorsService {
   }
 
   async getStats(orgId: string) {
-    const [total, active, byCategory] = await Promise.all([
-      this.prisma.vendor.count({ where: { organizationId: orgId } }),
-      this.prisma.vendor.count({ where: { organizationId: orgId, isActive: true } }),
-      this.prisma.vendor.groupBy({
-        by: ['category'],
-        where: { organizationId: orgId, isActive: true },
-        _count: true,
-      }),
-    ]);
-    return {
-      total,
-      active,
-      inactive: total - active,
-      byCategory: byCategory.reduce(
-        (acc, g) => ({ ...acc, [g.category]: g._count }),
-        {} as Record<string, number>,
-      ),
-    };
+    try {
+      const [total, active, byCategory] = await Promise.all([
+        this.prisma.vendor.count({ where: { organizationId: orgId } }),
+        this.prisma.vendor.count({ where: { organizationId: orgId, isActive: true } }),
+        this.prisma.vendor.groupBy({
+          by: ['category'],
+          where: { organizationId: orgId, isActive: true },
+          _count: true,
+        }),
+      ]);
+      return {
+        total,
+        active,
+        inactive: total - active,
+        byCategory: byCategory.reduce(
+          (acc, g) => ({ ...acc, [g.category]: g._count }),
+          {} as Record<string, number>,
+        ),
+      };
+    } catch (err) {
+      this.fleetHealthObservability?.recordVendorApiFailure('stats', err);
+      throw err;
+    }
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────────
