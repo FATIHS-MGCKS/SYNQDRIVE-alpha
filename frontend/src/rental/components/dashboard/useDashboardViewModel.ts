@@ -6,7 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { api, type Station } from '../../../lib/api';
+import { api, type ApiServiceCase, type Station } from '../../../lib/api';
 import { useFleetVehicles } from '../../FleetContext';
 import { useHandover } from '../../HandoverContext';
 import {
@@ -200,6 +200,8 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const [invoicesLoaded, setInvoicesLoaded] = useState(false);
   const [invoicesError, setInvoicesError] = useState(false);
 
+  const [serviceCasesApi, setServiceCasesApi] = useState<ApiServiceCase[]>([]);
+
   const stationFilter = useFleetMapStore((state) => state.filters.stationId);
   const setStationFilter = useFleetMapStore((state) => state.setStationFilter);
   const selectedStationId = useMemo(
@@ -249,9 +251,26 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     }
   }, [orgId]);
 
+  const loadServiceCases = useCallback(async () => {
+    if (!orgId) {
+      setServiceCasesApi([]);
+      return;
+    }
+    try {
+      const rows = await api.serviceCases.list(orgId);
+      setServiceCasesApi(rows);
+    } catch {
+      setServiceCasesApi([]);
+    }
+  }, [orgId]);
+
   useEffect(() => {
     void loadInvoices();
   }, [loadInvoices]);
+
+  useEffect(() => {
+    void loadServiceCases();
+  }, [loadServiceCases]);
 
   const loadTodayBookings = useCallback(async () => {
     if (!orgId) {
@@ -305,6 +324,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         refreshInsights(),
         loadTodayBookings(),
         loadInvoices(),
+        loadServiceCases(),
         shouldFetchV2NotificationsInBackground() ? notificationsV2.refresh() : Promise.resolve(),
       ]);
       const syncedAt = new Date();
@@ -313,7 +333,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, notificationsV2.refresh]);
+  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, loadServiceCases, notificationsV2.refresh]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -506,6 +526,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         dueSoonMinutes: runtimeDueSoonMinutes,
         telemetrySoftOfflineHours: 24,
         telemetryHardOfflineHours: 48,
+        serviceCases: serviceCasesApi,
       }),
     [
       locale,
@@ -521,6 +542,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       healthMap,
       dashboardNow,
       runtimeDueSoonMinutes,
+      serviceCasesApi,
     ],
   );
 

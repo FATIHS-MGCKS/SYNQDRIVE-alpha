@@ -64,6 +64,11 @@ export interface RuntimeReason {
   title: string;
   description?: string;
   source?: string;
+  reasonCode?: string;
+  serviceCaseId?: string;
+  status?: string;
+  scheduledAt?: string | null;
+  expectedReadyAt?: string | null;
   /**
    * True only for genuine blockers: the vehicle must not be rented and is a
    * real Blocked & Maintenance candidate (maintenance, hard compliance/legal
