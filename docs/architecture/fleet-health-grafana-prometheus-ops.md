@@ -28,14 +28,22 @@ Provisioning follows the same pattern as `synqdrive-battery-v2.json` via `grafan
 12. **Vendor-Fehler** — `synqdrive_fleet_health_vendor_api_errors_total`
 13. **Queues** — `synqdrive_queue_failed_jobs`, `synqdrive_queue_lag_seconds` p95, refresh partial failures
 
-## Alerts (`synqdrive_fleet_health`)
+## Alerts & SLOs (`synqdrive_fleet_health`)
 
-See `fleet-health-prometheus-metrics.md` and `monitoring/prometheus/alerts.yml` for:
+See `docs/architecture/fleet-health-service-readiness-alerts-slo.md` and `docs/runbooks/fleet-health-service-readiness.md`.
 
-- Rental health request p95 > 5s
-- Refresh partial failures
-- Task / case API errors
-- Battery publication coverage < 50%
+Recording rules pre-compute fleet-size-aware ratios and p99 latencies. Alerts use `for` durations, `owner: fleet-health-service`, severity, runbook links, and documented clear conditions. Small-fleet guardrails prevent paging on 1–3 vehicle tenants.
+
+Key alerts:
+
+- `FleetHealthUnavailableShareHigh` — > 20% unavailable when fleet ≥ 10
+- `FleetHealthRentalRequestLatencyP99High` / `FleetHealthSummaryLatencyP99High`
+- `FleetHealthBatteryPublicationCoverageLow` / `Absent`
+- `FleetHealthTaskApiErrorsSustained` / `Case` / `Vendor`
+- `FleetHealthUnknownModuleShareHigh`
+- `FleetHealthTaskAutomationEnqueueFailures`
+- `FleetHealthBlockingCasesBacklogHigh` (info)
+- `FleetHealthQueueFailedJobsElevated`
 
 ## Deploy
 

@@ -125,5 +125,14 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('BrakeEvidenceProcessingFailure');
     expect(yaml).toContain('BrakeBackfillConflict');
     expect(yaml).toContain('BrakeHealthCurrentMissingAfterRegistration');
+    expect(yaml).toContain('synqdrive_fleet_health_slo');
+    expect(yaml).toContain('FleetHealthUnavailableShareHigh');
+    expect(yaml).toContain('FleetHealthRentalRequestLatencyP99High');
+    expect(yaml).toContain('FleetHealthBatteryPublicationCoverageAbsent');
+    expect(yaml).toContain('FleetHealthTaskAutomationEnqueueFailures');
+    expect(yaml).toContain('FleetHealthBlockingCasesBacklogHigh');
+    expect(yaml).toContain('owner: fleet-health-service');
+    expect(yaml).toContain('runbook_url:');
+    expect(yaml).toContain('clear_condition:');
   });
 });

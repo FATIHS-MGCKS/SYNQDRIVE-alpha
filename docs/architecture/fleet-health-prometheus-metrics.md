@@ -2,6 +2,8 @@
 
 Low-cardinality Fleet Health Service counters, histograms, and gauges registered on the shared `TripMetricsService` registry (`GET /api/v1/metrics`). No `vehicleId`, `organizationId`, license plates, or other high-cardinality labels.
 
+**Alerts & SLOs (P61):** `docs/architecture/fleet-health-service-readiness-alerts-slo.md` — recording rules `synqdrive_fleet_health_slo`, alert group `synqdrive_fleet_health`, runbook `docs/runbooks/fleet-health-service-readiness.md`.
+
 ## Metric catalog
 
 | Prometheus name | Labels | Emitted from |
@@ -44,4 +46,4 @@ Low-cardinality Fleet Health Service counters, histograms, and gauges registered
 - `fleet-health-prometheus.metrics.spec.ts`
 - `fleet-health-task-match.util.spec.ts`
 - `prometheus-config.spec.ts` (registry + forbidden labels)
-- Alerts: `backend/monitoring/prometheus/alerts.yml` → `synqdrive_fleet_health`
+- Alerts: `backend/monitoring/prometheus/alerts.yml` → `synqdrive_fleet_health_slo` (recording) + `synqdrive_fleet_health` (alerts)
