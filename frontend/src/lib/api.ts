@@ -866,6 +866,7 @@ export interface ApiServiceCase {
   createdAt: string;
   updatedAt: string;
   taskCount: number;
+  openTaskCount?: number;
   tasks: ApiServiceCaseTaskRef[];
   comments?: ApiServiceCaseComment[];
   attachments?: ApiServiceCaseAttachment[];
@@ -919,6 +920,20 @@ export interface CompleteServiceCasePayload {
   completionNotes?: string;
   actualCostCents?: number;
   downtimeEnd?: string;
+}
+
+export interface CreateServiceCaseTaskPayload {
+  title: string;
+  description?: string;
+  type?: ApiTaskType;
+  priority?: ApiTaskPriority;
+  category?: string;
+  dueDate?: string;
+  assignedUserId?: string;
+  vendorId?: string;
+  estimatedCostCents?: number;
+  blocksVehicleAvailability?: boolean;
+  initialNote?: string;
 }
 
 export type SupportTicketStatus =
@@ -4803,6 +4818,12 @@ export const api = {
       id: string,
       data: { fileUrl: string; fileName?: string; mimeType?: string; size?: number },
     ) => post<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}/attachments`, data),
+    createTask: (orgId: string, id: string, data: CreateServiceCaseTaskPayload) =>
+      post<ApiTask>(`/organizations/${orgId}/service-cases/${id}/tasks`, data),
+    linkTask: (orgId: string, caseId: string, taskId: string) =>
+      post<ApiTask>(`/organizations/${orgId}/service-cases/${caseId}/tasks/${taskId}/link`, {}),
+    unlinkTask: (orgId: string, caseId: string, taskId: string) =>
+      del<ApiTask>(`/organizations/${orgId}/service-cases/${caseId}/tasks/${taskId}`),
     forVehicle: (orgId: string, vehicleId: string, filters?: ServiceCaseListFilters) => {
       const q = new URLSearchParams();
       if (filters) {

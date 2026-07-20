@@ -18,6 +18,9 @@ describe('ServiceCasesController write permission characterization', () => {
     ['update', 'service_cases.update'],
     ['complete', 'service_cases.complete'],
     ['cancel', 'service_cases.cancel'],
+    ['createTask', 'service_cases.update'],
+    ['linkTask', 'service_cases.update'],
+    ['unlinkTask', 'service_cases.update'],
   ] as const;
 
   it.each(mutationHandlers)('%s requires canonical %s permission', (method, action) => {
@@ -43,9 +46,16 @@ describe('ServiceCasesController write permission enforcement', () => {
     assert: jest.fn().mockResolvedValue(undefined),
   };
 
+  const serviceCaseTaskLinks = {
+    createTask: jest.fn(),
+    linkTask: jest.fn(),
+    unlinkTask: jest.fn(),
+  };
+
   const controller = new ServiceCasesController(
     serviceCases as unknown as ServiceCasesService,
     serviceCasePermissionService as unknown as ServiceCasePermissionService,
+    serviceCaseTaskLinks as never,
   );
 
   beforeEach(() => {

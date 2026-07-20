@@ -8,6 +8,7 @@ import type { VehicleData } from '../../data/vehicles';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { formatCostCents, TASK_PRIORITY_LABEL_DE } from '../../lib/service-task-semantics';
 import { isActiveServiceCase } from './fleet-health-service-case.view-model';
+import { resolveServiceCaseOpenTaskCount } from './service-case-task-actions';
 
 export type FleetHealthServiceCaseFilter =
   | 'open'
@@ -104,13 +105,7 @@ export function resolveServiceCaseVehicleDisplay(
 }
 
 export function countOpenServiceCaseTasks(serviceCase: ApiServiceCase): number {
-  if (serviceCase.tasks?.length) {
-    return serviceCase.tasks.filter(
-      (task) => task.status !== 'DONE' && task.status !== 'CANCELLED',
-    ).length;
-  }
-  if (!isActiveServiceCase(serviceCase)) return 0;
-  return serviceCase.taskCount ?? 0;
+  return resolveServiceCaseOpenTaskCount(serviceCase);
 }
 
 export function deriveServiceCaseCostStatus(

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'service-cases-link-operational-tasks-fhs-p32-2026-07-20',
+    version: '4.9.623',
+    title: 'Service Cases ↔ Tasks — operative Verknüpfung (FHS Phase 4 P32)',
+    summary: [
+      'Neu: `POST …/service-cases/:id/tasks` (Aufgabe aus Fall), `POST …/tasks/:taskId/link`, `DELETE …/tasks/:taskId` (Trennen).',
+      'Validierung: gleiche Organisation, `vehicleId` muss übereinstimmen; kein Link auf abgeschlossene Fälle.',
+      'Audit: Task-Events `SERVICE_CASE_LINKED/UNLINKED` + Case-Kommentar `[task-link]`.',
+      'Response: `openTaskCount`; Case bleibt bei erledigter Aufgabe offen; offene Tasks auf abgeschlossenem Fall bleiben sichtbar.',
+      'UI: Servicefall-Detail — Aufgabe anlegen/verknüpfen/trennen, Inkonsistenz-Hinweis.',
+    ],
+    reason: 'FHS Phase 4 Prompt 32: Task-Domain sauber mit Service Cases verdrahten.',
+    previousBehavior:
+      'Nur implizites `serviceCaseId` bei Task-Create; kein Link/Unlink-API, kein Audit, keine Case-Task-Aktionen im Detail.',
+    details:
+      'service-case-task-link.service.ts (+Tests), service-cases.controller.ts, FleetHealthServiceCaseDetailDrawer.tsx, service-case-task-actions.ts (+Tests), api.ts, ServiceTaskCreateModal.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'health-service-case-from-finding-fhs-p31-2026-07-20',
     version: '4.9.622',
     title: 'Health → Servicefall — CTA aus Health-Detail (FHS Phase 4 P31)',

@@ -1,6 +1,10 @@
 import type { ApiServiceCase, ApiServiceCaseSource } from '../../../lib/api';
 import type { TimelineItem } from '../../../components/patterns';
 import { formatServiceCaseDateTime } from './fleet-health-service-case-list';
+import {
+  isServiceCaseTaskLinkAuditComment,
+  serviceCaseTaskLinkAuditTitle,
+} from './service-case-task-actions';
 
 export const SERVICE_CASE_SOURCE_LABEL_DE: Record<ApiServiceCaseSource, string> = {
   MANUAL: 'Manuell',
@@ -179,7 +183,10 @@ export function buildServiceCaseAuditTimeline(serviceCase: ApiServiceCase): Time
   }
 
   for (const comment of serviceCase.comments ?? []) {
-    push(`comment-${comment.id}`, 'Kommentar', comment.createdAt, comment.body, 'neutral');
+    const title = isServiceCaseTaskLinkAuditComment(comment.body)
+      ? serviceCaseTaskLinkAuditTitle(comment.body)
+      : 'Kommentar';
+    push(`comment-${comment.id}`, title, comment.createdAt, comment.body, 'neutral');
   }
 
   push('completed', 'Fall abgeschlossen', serviceCase.completedAt, serviceCase.completionNotes, 'success');

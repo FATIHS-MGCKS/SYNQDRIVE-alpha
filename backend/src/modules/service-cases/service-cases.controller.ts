@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -21,12 +22,14 @@ import {
   hasServiceCaseScheduleMutation,
 } from './service-case-mutation.util';
 import { ServiceCasePermissionService } from './service-case-permission.service';
+import { ServiceCaseTaskLinkService } from './service-case-task-link.service';
 import { ServiceCasesService } from './service-cases.service';
 import {
   AddServiceCaseAttachmentDto,
   AddServiceCaseCommentDto,
   CompleteServiceCaseDto,
   CreateServiceCaseDto,
+  CreateServiceCaseTaskDto,
   ListServiceCasesQueryDto,
   UpdateServiceCaseDto,
 } from './dto';
@@ -41,6 +44,7 @@ export class ServiceCasesController {
   constructor(
     private readonly serviceCases: ServiceCasesService,
     private readonly serviceCasePermissionService: ServiceCasePermissionService,
+    private readonly serviceCaseTaskLinks: ServiceCaseTaskLinkService,
   ) {}
 
   @Get('organizations/:orgId/service-cases')
@@ -140,6 +144,39 @@ export class ServiceCasesController {
     @Body() body: AddServiceCaseAttachmentDto,
   ) {
     return this.serviceCases.addAttachment(orgId, id, body, req.user?.id);
+  }
+
+  @Post('organizations/:orgId/service-cases/:id/tasks')
+  @RequireServiceCasePermission('service_cases.update')
+  async createTask(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: AuthRequest,
+    @Body() body: CreateServiceCaseTaskDto,
+  ) {
+    return this.serviceCaseTaskLinks.createTask(orgId, id, body, req.user?.id);
+  }
+
+  @Post('organizations/:orgId/service-cases/:id/tasks/:taskId/link')
+  @RequireServiceCasePermission('service_cases.update')
+  async linkTask(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('taskId') taskId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.serviceCaseTaskLinks.linkTask(orgId, id, taskId, req.user?.id);
+  }
+
+  @Delete('organizations/:orgId/service-cases/:id/tasks/:taskId')
+  @RequireServiceCasePermission('service_cases.update')
+  async unlinkTask(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('taskId') taskId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.serviceCaseTaskLinks.unlinkTask(orgId, id, taskId, req.user?.id);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/service-cases')

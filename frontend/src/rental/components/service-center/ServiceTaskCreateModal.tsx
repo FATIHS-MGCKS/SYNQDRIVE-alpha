@@ -22,6 +22,9 @@ interface ServiceTaskCreateModalProps {
   defaultVehicleId?: string | null;
   defaultVendorId?: string | null;
   healthPrefill?: HealthTaskPrefill | null;
+  /** When set, task is created via service-case endpoint with audit trail. */
+  serviceCaseId?: string | null;
+  lockVehicle?: boolean;
 }
 
 const PRIORITIES: ApiTaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
@@ -34,6 +37,8 @@ export function ServiceTaskCreateModal({
   defaultVehicleId,
   defaultVendorId,
   healthPrefill,
+  serviceCaseId,
+  lockVehicle = false,
 }: ServiceTaskCreateModalProps) {
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
@@ -139,8 +144,23 @@ export function ServiceTaskCreateModal({
         blocksVehicleAvailability: blocksRental,
         metadata: healthPrefill?.metadata,
         checklist: checklist.length ? checklist : undefined,
+        serviceCaseId: serviceCaseId ?? undefined,
       };
-      const created = await api.tasks.create(orgId, payload);
+      const created = serviceCaseId
+        ? await api.serviceCases.createTask(orgId, serviceCaseId, {
+            title: payload.title,
+            description: payload.description,
+            type: payload.type,
+            priority: payload.priority,
+            category: payload.category,
+            dueDate: payload.dueDate,
+            assignedUserId: payload.assignedUserId,
+            vendorId: payload.vendorId,
+            estimatedCostCents: payload.estimatedCostCents,
+            blocksVehicleAvailability: payload.blocksVehicleAvailability,
+            initialNote: undefined,
+          })
+        : await api.tasks.create(orgId, payload);
       toast.success('Service-Aufgabe angelegt');
       onCreated?.(created);
       onOpenChange(false);
@@ -231,14 +251,22 @@ export function ServiceTaskCreateModal({
 
         <div>
           <label className={labelClass}>Fahrzeug</label>
-          <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className={inputClass}>
-            <option value="">Kein Fahrzeug</option>
-            {fleetVehicles.map((v) => (
-              <option key={v.id} value={v.id}>
-                {[v.license, v.make, v.model].filter(Boolean).join(' · ')}
-              </option>
-            ))}
-          </select>
+          {lockVehicle || serviceCaseId ? (
+            <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[12px] font-medium text-foreground">
+              {[fleetVehicles.find((v) => v.id === vehicleId)?.license, fleetVehicles.find((v) => v.id === vehicleId)?.make, fleetVehicles.find((v) => v.id === vehicleId)?.model]
+                .filter(Boolean)
+                .join(' · ') || 'Fahrzeug'}
+            </div>
+          ) : (
+            <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className={inputClass}>
+              <option value="">Kein Fahrzeug</option>
+              {fleetVehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {[v.license, v.make, v.model].filter(Boolean).join(' · ')}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <TaskVendorPicker

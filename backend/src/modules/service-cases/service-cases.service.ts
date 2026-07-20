@@ -75,6 +75,9 @@ export class ServiceCasesService {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       taskCount: row.tasks.length,
+      openTaskCount: row.tasks.filter(
+        (t) => t.status !== 'DONE' && t.status !== 'CANCELLED',
+      ).length,
       tasks: row.tasks.map((t) => ({
         id: t.id,
         title: t.title,
