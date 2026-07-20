@@ -54,7 +54,7 @@ export function isMaintenanceHistoryTask(task: ApiTask): boolean {
 }
 
 export function taskCompletedTimestamp(task: ApiTask): number {
-  const raw = task.completedAt ?? task.updatedAt ?? task.createdAt;
+  const raw = task.completedAt ?? task.cancelledAt ?? task.updatedAt ?? task.createdAt;
   const d = new Date(raw ?? 0).getTime();
   return Number.isFinite(d) ? d : 0;
 }
