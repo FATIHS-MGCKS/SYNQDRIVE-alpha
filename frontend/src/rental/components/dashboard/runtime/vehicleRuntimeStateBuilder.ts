@@ -1,4 +1,4 @@
-import type { VehicleHealthResponse } from '../../../../lib/api';
+import type { ApiServiceCase, VehicleHealthResponse } from '../../../../lib/api';
 import type {
   DashboardInsight,
   InsightSeverity,
@@ -20,6 +20,10 @@ import {
   type VehicleOperationalReadModel,
   type VehicleOperationalStatus as CanonicalOperationalStatus,
 } from '../../../lib/vehicle-operational-state';
+import {
+  blockingServiceCasesForVehicle,
+  createServiceCaseRuntimeReason,
+} from './serviceCaseRuntimeReasons';
 import {
   buildNextBookingInfoReason,
   deriveIsReadyForRenting,
@@ -174,6 +178,7 @@ export interface BuildVehicleRuntimeStatesInput {
   telemetrySoftOfflineHours?: number;
   telemetryHardOfflineHours?: number;
   telemetryOfflineBlockLevel?: Exclude<RentalBlockLevel, 'none'> | 'none';
+  serviceCases?: ApiServiceCase[];
 }
 
 function parseTimeMs(iso: string | null | undefined): number | null {
@@ -549,6 +554,16 @@ function addTelemetryReason(input: {
   }
 }
 
+function addServiceCaseReasons(input: {
+  vehicleId: string;
+  serviceCases?: ApiServiceCase[];
+  registerHardReason: (reason: RuntimeReason) => void;
+}): void {
+  for (const serviceCase of blockingServiceCasesForVehicle(input.serviceCases, input.vehicleId)) {
+    input.registerHardReason(createServiceCaseRuntimeReason(serviceCase));
+  }
+}
+
 function addBookingReasons(input: {
   target: RuntimeReason[];
   bookingState: BookingRuntimeState;
@@ -897,6 +912,11 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
       target: reasons,
       health,
       healthRisk: healthRiskVehicleIds.has(vehicle.id),
+    });
+    addServiceCaseReasons({
+      vehicleId: vehicle.id,
+      serviceCases: input.serviceCases,
+      registerHardReason: registerHardReason,
     });
     addInsightReasons({ target: reasons, vehicle, insights });
     addTelemetryReason({

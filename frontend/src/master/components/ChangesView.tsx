@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'runtime-state-blocking-service-cases-p42-2026-07-20',
+    version: '4.9.713',
+    title: 'Vehicle Runtime State — blockierende Service Cases (Phase 6 P42)',
+    summary: [
+      '`buildVehicleRuntimeStates` integriert aktive Service Cases mit `blocksRental=true` als operative Runtime-Reasons (`source=SERVICE_CASE`).',
+      'Reason-Payload: `reasonCode`, `serviceCaseId`, Titel, Status, `scheduledAt`, `expectedReadyAt`, `blocking=true`.',
+      'Nur aktive Status (OPEN…WAITING_PARTS); COMPLETED/CANCELLED blockieren nicht.',
+      'Rental Health unverändert — `overall_state`/`healthSeverity` werden nicht durch Service Cases beeinflusst.',
+      'Dashboard lädt `api.serviceCases.list` und übergibt Cases an `buildDashboardRuntimeModel`.',
+    ],
+    reason: 'Phase 6 Prompt 42: operative Service-Case-Blockade getrennt von technischer Rental-Health-Blockade.',
+    previousBehavior:
+      'Service Cases existierten in Tasks/Service Center, aber nicht im zentralen Vehicle Runtime State.',
+    details:
+      'serviceCaseRuntimeReasons.ts (+test), vehicleRuntimeStateBuilder.ts (+test), dashboardRuntimeTypes.ts, dashboardRuntimeReasons.ts, dashboardSliceBuilder.ts, useDashboardViewModel.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'health-service-multi-findings-p40-2026-07-20',
     version: '4.9.711',
     title: 'Health→Service — parallele Findings pro Modul (Phase 5 P40)',

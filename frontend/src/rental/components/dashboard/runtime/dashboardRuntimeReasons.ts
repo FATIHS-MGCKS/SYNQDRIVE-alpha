@@ -10,6 +10,11 @@ export interface RuntimeReasonInput {
   title: string;
   description?: string;
   source?: string;
+  reasonCode?: string;
+  serviceCaseId?: string;
+  status?: string;
+  scheduledAt?: string | null;
+  expectedReadyAt?: string | null;
   blocking?: boolean;
   preventsReady?: boolean;
   actionLabel?: string;
@@ -24,10 +29,13 @@ function normalizeToken(value: string | undefined): string {
     .replace(/^-+|-+$/g, '') || 'unknown';
 }
 
-export function runtimeReasonDedupeKey(reason: Pick<RuntimeReason, 'category' | 'source' | 'title'>): string {
+export function runtimeReasonDedupeKey(
+  reason: Pick<RuntimeReason, 'category' | 'source' | 'title' | 'serviceCaseId'>,
+): string {
   return [
     reason.category,
     normalizeToken(reason.source),
+    normalizeToken(reason.serviceCaseId),
     normalizeToken(reason.title),
   ].join(':');
 }
@@ -39,6 +47,7 @@ export function createRuntimeReason(input: RuntimeReasonInput): RuntimeReason {
     input.category,
     input.severity,
     normalizeToken(source),
+    normalizeToken(input.serviceCaseId),
     normalizeToken(title),
   ].join(':');
 
@@ -49,6 +58,11 @@ export function createRuntimeReason(input: RuntimeReasonInput): RuntimeReason {
     title,
     description: input.description?.trim() || undefined,
     source,
+    reasonCode: input.reasonCode?.trim() || undefined,
+    serviceCaseId: input.serviceCaseId?.trim() || undefined,
+    status: input.status?.trim() || undefined,
+    scheduledAt: input.scheduledAt ?? undefined,
+    expectedReadyAt: input.expectedReadyAt ?? undefined,
     blocking: input.blocking,
     preventsReady: input.preventsReady,
     actionLabel: input.actionLabel?.trim() || undefined,

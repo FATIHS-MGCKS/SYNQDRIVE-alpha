@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ApiServiceCase } from '../../../../lib/api';
 import type { VehicleData } from '../../../data/vehicles';
 import {
   VEHICLE_DATA_QUALITY_STATE,
@@ -256,5 +257,113 @@ describe('buildVehicleRuntimeStates readiness rules', () => {
     expect(state?.blockReasons.some((reason) => reason.source === 'vehicle-status:maintenance')).toBe(
       true,
     );
+  });
+});
+
+function serviceCase(overrides: Partial<ApiServiceCase> = {}): ApiServiceCase {
+  return {
+    id: overrides.id ?? 'sc-1',
+    organizationId: overrides.organizationId ?? 'org-1',
+    vehicleId: overrides.vehicleId ?? 'v1',
+    vendorId: overrides.vendorId ?? null,
+    title: overrides.title ?? 'Servicefall blockiert Vermietung',
+    description: overrides.description ?? 'Werkstatt',
+    category: overrides.category ?? 'REPAIR',
+    status: overrides.status ?? 'IN_PROGRESS',
+    priority: overrides.priority ?? 'HIGH',
+    source: overrides.source ?? 'MANUAL',
+    openedAt: overrides.openedAt ?? '2026-07-10T08:00:00.000Z',
+    scheduledAt: overrides.scheduledAt ?? '2026-07-18T09:00:00.000Z',
+    expectedReadyAt: overrides.expectedReadyAt ?? '2026-07-19T17:00:00.000Z',
+    completedAt: overrides.completedAt ?? null,
+    cancelledAt: overrides.cancelledAt ?? null,
+    estimatedCostCents: overrides.estimatedCostCents ?? null,
+    actualCostCents: overrides.actualCostCents ?? null,
+    downtimeStart: overrides.downtimeStart ?? null,
+    downtimeEnd: overrides.downtimeEnd ?? null,
+    blocksRental: overrides.blocksRental ?? true,
+    completionNotes: overrides.completionNotes ?? null,
+    documentId: overrides.documentId ?? null,
+    metadata: overrides.metadata ?? null,
+    createdByUserId: overrides.createdByUserId ?? null,
+    updatedByUserId: overrides.updatedByUserId ?? null,
+    createdAt: overrides.createdAt ?? '2026-07-10T08:00:00.000Z',
+    updatedAt: overrides.updatedAt ?? '2026-07-10T08:00:00.000Z',
+    taskCount: overrides.taskCount ?? 0,
+    tasks: overrides.tasks ?? [],
+    comments: overrides.comments,
+    attachments: overrides.attachments,
+  };
+}
+
+describe('buildVehicleRuntimeStates service cases', () => {
+  it('adds blocking service-case reasons without changing rental-health overall_state', () => {
+    const v = operationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, { id: 'v1' });
+    const [state] = buildVehicleRuntimeStates({
+      fleetVehicles: [v],
+      now: NOW,
+      serviceCases: [serviceCase({ vehicleId: 'v1', id: 'sc-block' })],
+      healthMap: new Map([
+        [
+          'v1',
+          {
+            vehicle_id: 'v1',
+            organization_id: 'org-1',
+            overall_state: 'good',
+            rental_blocked: false,
+            blocking_reasons: [],
+            modules: {},
+            generated_at: NOW.toISOString(),
+          },
+        ],
+      ]),
+    });
+
+    const serviceReason = state?.blockReasons.find((reason) => reason.source === 'SERVICE_CASE');
+    expect(serviceReason).toMatchObject({
+      reasonCode: 'SERVICE_CASE_BLOCKS_RENTAL',
+      serviceCaseId: 'sc-block',
+      title: 'Servicefall blockiert Vermietung',
+      status: 'IN_PROGRESS',
+      scheduledAt: '2026-07-18T09:00:00.000Z',
+      expectedReadyAt: '2026-07-19T17:00:00.000Z',
+      blocking: true,
+      source: 'SERVICE_CASE',
+    });
+    expect(state?.healthSeverity).toBe('ok');
+    expect(state?.isReadyToRent).toBe(false);
+    expect(state?.isBlocked).toBe(true);
+    expect(state?.blockLevel).toBe('hard_blocked');
+  });
+
+  it('ignores completed and cancelled service cases', () => {
+    const v = operationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, { id: 'v1' });
+    const [state] = buildVehicleRuntimeStates({
+      fleetVehicles: [v],
+      now: NOW,
+      serviceCases: [
+        serviceCase({ id: 'sc-done', status: 'COMPLETED' }),
+        serviceCase({ id: 'sc-cancelled', status: 'CANCELLED' }),
+      ],
+    });
+
+    expect(state?.blockReasons.some((reason) => reason.source === 'SERVICE_CASE')).toBe(false);
+    expect(state?.isReadyToRent).toBe(true);
+  });
+
+  it('supports multiple active blocking cases on one vehicle', () => {
+    const v = operationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, { id: 'v1' });
+    const [state] = buildVehicleRuntimeStates({
+      fleetVehicles: [v],
+      now: NOW,
+      serviceCases: [
+        serviceCase({ id: 'sc-1', title: 'Bremsen' }),
+        serviceCase({ id: 'sc-2', title: 'Karosserie' }),
+      ],
+    });
+
+    const serviceReasons = state?.blockReasons.filter((reason) => reason.source === 'SERVICE_CASE');
+    expect(serviceReasons).toHaveLength(2);
+    expect(serviceReasons?.map((reason) => reason.serviceCaseId).sort()).toEqual(['sc-1', 'sc-2']);
   });
 });
