@@ -680,49 +680,226 @@ groups:
           summary: Unusually many open connectivity episodes
           description: Episode opens exceed resolutions over 24h — inspect fleet connectivity tab and reconciliation audit.
 
+  - name: synqdrive_fleet_health_slo
+    rules:
+      - record: synqdrive:fleet_health:fleet_row_total
+        expr: sum(synqdrive_fleet_health_availability_total)
+
+      - record: synqdrive:fleet_health:battery_applicable_rows
+        expr: sum(synqdrive_fleet_health_module_status_total{module="battery"})
+
+      - record: synqdrive:fleet_health:ready_share
+        expr: |
+          sum(synqdrive_fleet_health_availability_total{level="ready"})
+          / clamp_min(sum(synqdrive_fleet_health_availability_total), 1)
+
+      - record: synqdrive:fleet_health:unavailable_share
+        expr: |
+          sum(synqdrive_fleet_health_availability_total{level="unavailable"})
+          / clamp_min(sum(synqdrive_fleet_health_availability_total), 1)
+
+      - record: synqdrive:fleet_health:unknown_module_share
+        expr: |
+          sum(synqdrive_fleet_health_module_status_total{state="unknown"})
+          / clamp_min(sum(synqdrive_fleet_health_module_status_total), 1)
+
+      - record: synqdrive:fleet_health:rental_health_request_p99_seconds
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le, route) (
+              rate(synqdrive_fleet_health_rental_health_request_duration_seconds_bucket[10m])
+            )
+          )
+
+      - record: synqdrive:fleet_health:fleet_summary_p99_seconds
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le, operation) (
+              rate(synqdrive_fleet_health_fleet_summary_duration_seconds_bucket[10m])
+            )
+          )
+
   - name: synqdrive_fleet_health
     rules:
-      - alert: FleetHealthRentalRequestLatencyHigh
-        expr: histogram_quantile(0.95, sum(rate(synqdrive_fleet_health_rental_health_request_duration_seconds_bucket[10m])) by (le, route)) > 5
+      - alert: FleetHealthUnavailableShareHigh
+        expr: |
+          synqdrive:fleet_health:fleet_row_total >= 10
+          and synqdrive:fleet_health:unavailable_share > 0.20
+        for: 20m
+        labels:
+          severity: critical
+          owner: fleet-health-service
+        annotations:
+          summary: Fleet health unavailable share above 20%
+          description: More than 20% of fleet health summary rows are unavailable for at least 20 minutes while the fleet snapshot has at least 10 vehicles.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthunavailablesharehigh
+          clear_condition: unavailable share stays below 15% for 10m, or fleet_row_total drops below 10 (small-fleet guard).
+
+      - alert: FleetHealthRentalRequestLatencyP99High
+        expr: |
+          synqdrive:fleet_health:rental_health_request_p99_seconds{route="fleet_page"} > 8
+          and sum(rate(synqdrive_fleet_health_rental_health_request_duration_seconds_count{route="fleet_page"}[10m])) > 0.05
         for: 15m
         labels:
           severity: warning
+          owner: fleet-health-service
         annotations:
-          summary: Fleet health rental request latency p95 high
-          description: Rental health API p95 latency exceeds 5s — inspect module evaluators and cache.
+          summary: Fleet health rental page latency p99 high
+          description: Rental health fleet_page p99 exceeds 8s with sustained request volume — inspect module evaluators, cache, and DB load.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthrentalrequestlatencyp99high
+          clear_condition: fleet_page p99 stays below 6s for 15m with non-trivial request rate.
 
-      - alert: FleetHealthPartialRefreshFailures
-        expr: increase(synqdrive_fleet_health_refresh_partial_failure_total[15m]) > 0
+      - alert: FleetHealthSummaryLatencyP99High
+        expr: |
+          synqdrive:fleet_health:fleet_summary_p99_seconds{operation="page"} > 10
+          and sum(rate(synqdrive_fleet_health_fleet_summary_duration_seconds_count{operation="page"}[10m])) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          owner: fleet-health-service
+        annotations:
+          summary: Fleet health summary page latency p99 high
+          description: Fleet summary page aggregation p99 exceeds 10s — inspect RentalHealthSummaryService and upstream module batching.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthsummarylatencyp99high
+          clear_condition: page-operation p99 stays below 8s for 15m.
+
+      - alert: FleetHealthBatteryPublicationCoverageLow
+        expr: |
+          synqdrive:fleet_health:battery_applicable_rows >= 5
+          and synqdrive_fleet_health_battery_publication_coverage_ratio < 0.7
+        for: 1h
+        labels:
+          severity: warning
+          owner: fleet-health-service
+        annotations:
+          summary: Battery publication coverage low in fleet health summaries
+          description: Less than 70% of battery-applicable fleet rows have publication coverage while at least 5 battery rows are present.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthbatterypublicationcoveragelow
+          clear_condition: coverage ratio stays at or above 0.75 for 30m, or battery_applicable_rows drops below 5.
+
+      - alert: FleetHealthBatteryPublicationCoverageAbsent
+        expr: |
+          synqdrive:fleet_health:battery_applicable_rows >= 5
+          and synqdrive_fleet_health_battery_publication_coverage_ratio < 0.1
+        for: 30m
+        labels:
+          severity: critical
+          owner: fleet-health-service
+        annotations:
+          summary: Battery publications effectively absent in fleet health
+          description: Battery publication coverage collapsed below 10% with a meaningful battery fleet — publications may have stopped flowing.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthbatterypublicationcoverageabsent
+          clear_condition: coverage ratio recovers above 0.5 for 20m.
+
+      - alert: FleetHealthPartialRefreshFailuresSustained
+        expr: |
+          synqdrive:fleet_health:fleet_row_total >= 10
+          and increase(synqdrive_fleet_health_refresh_partial_failure_total[30m]) >= 3
+        for: 15m
+        labels:
+          severity: warning
+          owner: fleet-health-service
+        annotations:
+          summary: Sustained fleet health partial refresh failures
+          description: Fleet summary batch returned degraded rows at least three times in 30 minutes — check upstream health modules and safe fallbacks.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthpartialrefreshfailuressustained
+          clear_condition: no new partial refresh failures for 30m.
+
+      - alert: FleetHealthTaskApiErrorsSustained
+        expr: increase(synqdrive_fleet_health_task_api_errors_total[15m]) >= 3
         for: 10m
         labels:
           severity: warning
+          owner: fleet-health-service
         annotations:
-          summary: Fleet health partial refresh failures
-          description: Fleet summary batch returned degraded rows — check upstream health modules.
+          summary: Sustained fleet health task API errors
+          description: Task list/summary failed at least three times in 15 minutes for fleet health surfaces.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthtaskapierrorssustained
+          clear_condition: fewer than 2 task API errors in the trailing 15m window.
 
-      - alert: FleetHealthTaskApiErrors
-        expr: increase(synqdrive_fleet_health_task_api_errors_total[10m]) > 0
-        for: 5m
+      - alert: FleetHealthCaseApiErrorsSustained
+        expr: increase(synqdrive_fleet_health_case_api_errors_total[15m]) >= 3
+        for: 10m
         labels:
           severity: warning
+          owner: fleet-health-service
         annotations:
-          summary: Fleet health task API errors
-          description: Task list/summary failed for fleet health surfaces.
+          summary: Sustained fleet health service case API errors
+          description: Service case list failed at least three times in 15 minutes for fleet health surfaces.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthcaseapierrorssustained
+          clear_condition: fewer than 2 case API errors in the trailing 15m window.
 
-      - alert: FleetHealthCaseApiErrors
-        expr: increase(synqdrive_fleet_health_case_api_errors_total[10m]) > 0
-        for: 5m
+      - alert: FleetHealthVendorApiErrorsSustained
+        expr: increase(synqdrive_fleet_health_vendor_api_errors_total[15m]) >= 3
+        for: 10m
         labels:
           severity: warning
+          owner: fleet-health-service
         annotations:
-          summary: Fleet health service case API errors
-          description: Service case list failed for fleet health surfaces.
+          summary: Sustained fleet health vendor API errors
+          description: Vendor list/stats failed at least three times in 15 minutes for fleet health surfaces.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthvendorapierrorssustained
+          clear_condition: fewer than 2 vendor API errors in the trailing 15m window.
 
-      - alert: FleetHealthBatteryPublicationCoverageLow
-        expr: synqdrive_fleet_health_battery_publication_coverage_ratio < 0.5
+      - alert: FleetHealthUnknownModuleShareHigh
+        expr: |
+          synqdrive:fleet_health:fleet_row_total >= 10
+          and sum(synqdrive_fleet_health_module_status_total{state="unknown"}) >= 5
+          and synqdrive:fleet_health:unknown_module_share > 0.25
         for: 30m
         labels:
           severity: warning
+          owner: fleet-health-service
         annotations:
-          summary: Battery publication coverage low in fleet health summaries
-          description: Less than half of battery-applicable fleet rows have publication coverage.
+          summary: Unusually high unknown module share in fleet health
+          description: More than 25% of module status samples are unknown with at least 5 unknown cells and a fleet snapshot of 10+ vehicles.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthunknownmodulesharehigh
+          clear_condition: unknown share stays below 20% for 30m, or unknown cell count drops below 3.
+
+      - alert: FleetHealthTaskAutomationEnqueueFailures
+        expr: |
+          increase(synqdrive_task_automation_outbox_failed_total[30m]) >= 5
+          or (
+            synqdrive_task_automation_outbox_backlog > 10
+            and increase(synqdrive_task_automation_outbox_failed_total[1h]) >= 2
+          )
+        for: 15m
+        labels:
+          severity: warning
+          owner: fleet-health-service
+        annotations:
+          summary: Task automation outbox enqueue/processing failures elevated
+          description: Task materialization outbox failures or backlog are elevated — service tasks and health bridges may not materialize.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthtaskautomationenqueuefailures
+          clear_condition: fewer than 2 outbox failures in 30m and backlog below 5.
+
+      - alert: FleetHealthBlockingCasesBacklogHigh
+        expr: |
+          synqdrive:fleet_health:fleet_row_total >= 15
+          and synqdrive_fleet_health_blocking_service_case_total >= 5
+          and delta(synqdrive_fleet_health_blocking_service_case_total[24h]) >= 0
+        for: 6h
+        labels:
+          severity: info
+          owner: fleet-health-service
+        annotations:
+          summary: Blocking service cases not clearing over 24h
+          description: At least five rental-blocking service cases persist without net reduction over 24 hours on a fleet of 15+ vehicles — review operational closure, not only platform health.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthblockingcasesbackloghigh
+          clear_condition: blocking case count drops below 3, or net 24h delta becomes negative.
+
+      - alert: FleetHealthQueueFailedJobsElevated
+        expr: |
+          sum(synqdrive_queue_failed_jobs) >= 5
+          and sum(synqdrive_queue_failed_jobs) > 0.02 * synqdrive:fleet_health:fleet_row_total
+        for: 30m
+        labels:
+          severity: warning
+          owner: fleet-health-service
+        annotations:
+          summary: Queue failed jobs elevated relative to fleet size
+          description: BullMQ failed jobs are at least 5 and exceed 2% of the current fleet health row count — inspect queues feeding health/task materialization.
+          runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthqueuefailedjobselevated
+          clear_condition: failed jobs total below 3 for 30m, or ratio drops below 1% of fleet rows.

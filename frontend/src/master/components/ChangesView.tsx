@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-alerting-p61-2026-07-20',
+    version: '4.9.732',
+    title: 'Fleet Health Service — Readiness Alerts & SLOs (Phase 9 P61)',
+    summary: [
+      'Prometheus Recording Rules `synqdrive_fleet_health_slo` für ready/unavailable/unknown shares und p99-Latenzen.',
+      'Fleet-size-aware Alerts: unavailable share, Battery-Publication-Coverage, API-Fehlerraten, unknown Module.',
+      'Task-Automation-Outbox-Enqueue-Fehler, blockierende Cases ohne 24h-Fortschritt, Queue-Failed-Jobs relativ zur Flotte.',
+      'Runbook mit Owner, Severity, For-Duration und Entwarnungsbedingungen; keine Deployment-Änderung.',
+    ],
+    reason: 'Phase 9 Prompt 61: sinnvolle Betriebsalarme für Zustand & Service ohne Noise bei kleinen Flotten.',
+    previousBehavior: 'Fünf grobe Fleet-Health-Alerts ohne SLO-Recording, Runbook oder Small-Fleet-Guards.',
+    details:
+      'monitoring/prometheus/alerts.yml, docs/architecture/fleet-health-service-readiness-alerts-slo.md, docs/runbooks/fleet-health-service-readiness.md, prometheus-config.spec.ts',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:59:55.000Z',
+  },
+  {
     id: 'fleet-health-grafana-p60-2026-07-20',
     version: '4.9.731',
     title: 'Fleet Health Service — Grafana-Dashboard (Phase 9 P60)',
