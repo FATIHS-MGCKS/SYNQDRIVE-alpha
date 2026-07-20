@@ -67,7 +67,13 @@ export function healthSeverityBand(
   health: VehicleHealthResponse | null | undefined,
 ): HealthSeverityBand {
   if (!health) return 'limited';
-  if (health.rental_blocked) return 'blocked';
+  if (health.rental_blocked === true) return 'blocked';
+  if (
+    health.rental_blocked === null ||
+    (health.availability != null && health.availability !== 'ready')
+  ) {
+    return 'limited';
+  }
   switch (health.overall_state) {
     case 'critical':
       return 'critical';
@@ -142,7 +148,7 @@ export function computeFleetHealthKpis(
       limited++;
       continue;
     }
-    if (health.rental_blocked) blocked++;
+    if (health.rental_blocked === true) blocked++;
     if (health.overall_state === 'critical') critical++;
     else if (health.overall_state === 'warning') warning++;
     else if (health.overall_state === 'good') good++;
@@ -188,7 +194,7 @@ export function priorityRank(
   health: VehicleHealthResponse | null | undefined,
 ): number {
   if (!health) return 0;
-  if (health.rental_blocked) return 5;
+  if (health.rental_blocked === true) return 5;
   switch (health.overall_state) {
     case 'critical':
       return 4;
@@ -207,7 +213,7 @@ export function operatorGroupForVehicle(
   health: VehicleHealthResponse | null | undefined,
 ): OperatorGroupKey {
   if (!health || health.overall_state === 'unknown') return 'limited_data';
-  if (health.rental_blocked || health.overall_state === 'critical') {
+  if (health.rental_blocked === true || health.overall_state === 'critical') {
     return 'action_required';
   }
   if (health.overall_state === 'warning') return 'needs_review';
@@ -358,7 +364,7 @@ export function buildFleetHealthDisplay(
   const primaryModuleKey = issues.length > 0 ? issues[0].key : null;
 
   let primaryIssue: string | null = null;
-  if (health?.rental_blocked && health.blocking_reasons.length > 0) {
+  if (health?.rental_blocked === true && health.blocking_reasons.length > 0) {
     primaryIssue = health.blocking_reasons[0];
   } else if (issues.length > 0) {
     primaryIssue = `${issues[0].label}: ${issues[0].reason}`;
@@ -386,7 +392,7 @@ export function buildFleetHealthDisplay(
 
   return {
     band,
-    rentalBlocked: Boolean(health?.rental_blocked),
+    rentalBlocked: health?.rental_blocked === true,
     group,
     primaryBadge: buildBadge(band),
     primaryIssue,
@@ -455,7 +461,7 @@ export function primaryOperatorReason(
   health: VehicleHealthResponse | null | undefined,
 ): string {
   if (!health) return 'Health status unavailable';
-  if (health.rental_blocked && health.blocking_reasons.length > 0) {
+  if (health.rental_blocked === true && health.blocking_reasons.length > 0) {
     return health.blocking_reasons[0];
   }
   const modules = Object.entries(health.modules)
@@ -480,7 +486,7 @@ export function rentalGateLabel(
   health: VehicleHealthResponse | null | undefined,
 ): { label: string; tone: StatusTone } {
   if (!health) return { label: 'Limited data', tone: 'noData' };
-  if (health.rental_blocked) return { label: 'Blocked', tone: 'critical' };
+  if (health.rental_blocked === true) return { label: 'Blocked', tone: 'critical' };
   if (health.overall_state === 'unknown') return { label: 'Limited data', tone: 'noData' };
   if (health.overall_state === 'good') return { label: 'Can rent', tone: 'success' };
   return { label: 'Review', tone: 'watch' };

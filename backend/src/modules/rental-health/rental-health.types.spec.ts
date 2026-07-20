@@ -1,9 +1,12 @@
 import {
+  buildDegradedVehicleHealth,
   buildModuleAvailabilityInputs,
   computeOverallState,
   computeRentalHealthAvailability,
   finalizeVehicleHealthAvailability,
   resolveModulePipelineAvailability,
+  resolveRentalBlockedState,
+  RENTAL_HEALTH_DEGRADATION_CODES,
   type HealthState,
   type ModuleHealth,
   type RentalHealthModuleKey,
@@ -171,6 +174,44 @@ describe('finalizeVehicleHealthAvailability', () => {
     const { availability } = finalizeVehicleHealthAvailability(modules);
     expect(computeOverallState(Object.values(modules))).toBe('unknown');
     expect(availability).toBe('ready');
+  });
+});
+
+describe('resolveRentalBlockedState', () => {
+  it('returns null for partial pipeline coverage', () => {
+    expect(resolveRentalBlockedState('partial', [])).toBeNull();
+    expect(resolveRentalBlockedState('partial', ['TÜV abgelaufen'])).toBeNull();
+  });
+
+  it('returns null for unavailable pipeline coverage', () => {
+    expect(resolveRentalBlockedState('unavailable', [])).toBeNull();
+  });
+
+  it('returns boolean only when availability is ready', () => {
+    expect(resolveRentalBlockedState('ready', [])).toBe(false);
+    expect(resolveRentalBlockedState('ready', ['Brakes critical'])).toBe(true);
+  });
+});
+
+describe('buildDegradedVehicleHealth', () => {
+  it('never emits confirmed rental_blocked false on pipeline failure', () => {
+    const degraded = buildDegradedVehicleHealth({
+      vehicle_id: 'veh-1',
+      organization_id: 'org-1',
+      degradation: {
+        code: RENTAL_HEALTH_DEGRADATION_CODES.PIPELINE_UNAVAILABLE,
+        message: 'Gesundheitsdaten konnten nicht geladen werden',
+      },
+    });
+
+    expect(degraded.overall_state).toBe('unknown');
+    expect(degraded.availability).toBe('unavailable');
+    expect(degraded.rental_blocked).toBeNull();
+    expect(degraded.blocking_reasons).toEqual([]);
+    expect(degraded.degradation?.code).toBe(
+      RENTAL_HEALTH_DEGRADATION_CODES.PIPELINE_UNAVAILABLE,
+    );
+    expect(degraded.degradation?.message).not.toMatch(/Error|stack|prisma/i);
   });
 });
 

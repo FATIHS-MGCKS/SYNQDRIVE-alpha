@@ -37,6 +37,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'rental-health-availability-contract-fhs-p18-2026-07-20',
     version: '4.9.609',
+  {
+    id: 'rental-health-fleet-degrade-fhs-p19-2026-07-20',
+    version: '4.9.610',
+    title: 'Rental Health — honest fleet degrade on pipeline failure (FHS Phase 3 P19)',
+    summary: [
+      'Fleet-Batch-Degrade: `rental_blocked: null` statt gefährlichem `false` bei Pipeline-Fehlern.',
+      '`availability: unavailable`, `overall_state: unknown`, sichere `degradation`-Metadaten ohne Interna.',
+      'Booking-Gate fail-closed bei `partial`/`unavailable`; Consumer tri-state (`=== true` / `null`).',
+    ],
+    reason: 'FHS Phase 3 Prompt 19: keine falsche Safe-Aussage bei per-vehicle Health-Pipeline-Fehlern.',
+    previousBehavior:
+      'Fleet-Fan-out setzte bei Fehlern `rental_blocked: false` und leakte `_error` mit internen Details.',
+    details:
+      'rental-health.types.ts, rental-health.controller.ts (+spec), rental-health.service.ts, bookings.service.ts, fleet-health-control-center.ts',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
+    id: 'rental-health-availability-contract-fhs-p18-2026-07-20',
+    version: '4.9.609',
     title: 'Rental Health — availability state contract (FHS Phase 3 P18)',
     summary: [
       'Neues Feld `availability: ready | partial | unavailable` im Rental-Health-V1-Contract — additiv, ohne URL-Version.',

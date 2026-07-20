@@ -1157,7 +1157,7 @@ export class BookingsService {
         model: vehicle.model,
         year: vehicle.year,
         vehicleStatus: vehicle.status,
-        rentalBlocked: rentalHealth?.rental_blocked ?? false,
+        rentalBlocked: rentalHealth?.rental_blocked ?? null,
         blockingReasons: rentalHealth?.blocking_reasons ?? [],
         odometerKm: vehicle.mileageKm,
         fuelPercent: null,
@@ -1204,7 +1204,7 @@ export class BookingsService {
         items: taskItems,
       },
       health: {
-        rentalBlocked: rentalHealth?.rental_blocked ?? false,
+        rentalBlocked: rentalHealth?.rental_blocked ?? null,
         blockingReasons: rentalHealth?.blocking_reasons ?? [],
         overallState: rentalHealth?.overall_state ?? null,
         criticalWarnings,

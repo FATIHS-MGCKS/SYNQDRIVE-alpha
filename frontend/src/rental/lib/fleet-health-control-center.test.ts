@@ -33,7 +33,8 @@ function mod(
 function buildHealth(
   overrides: Partial<{
     overall_state: RentalHealthState;
-    rental_blocked: boolean;
+    rental_blocked: boolean | null;
+    availability: VehicleHealthResponse['availability'];
     blocking_reasons: string[];
     modules: Partial<Record<ModuleKey, RentalHealthModule>>;
   }> = {},
@@ -51,6 +52,7 @@ function buildHealth(
     vehicle_id: 'v1',
     organization_id: 'org1',
     overall_state: overrides.overall_state ?? 'good',
+    availability: overrides.availability ?? 'ready',
     rental_blocked: overrides.rental_blocked ?? false,
     blocking_reasons: overrides.blocking_reasons ?? [],
     modules: { ...baseModules, ...(overrides.modules ?? {}) },
@@ -71,6 +73,18 @@ describe('healthSeverityBand', () => {
     expect(healthSeverityBand(buildHealth({ overall_state: 'good' }))).toBe('good');
     expect(healthSeverityBand(buildHealth({ overall_state: 'unknown' }))).toBe('limited');
     expect(healthSeverityBand(null)).toBe('limited');
+  });
+
+  it('does not treat null rental_blocked as confirmed safe', () => {
+    expect(
+      healthSeverityBand(
+        buildHealth({
+          overall_state: 'good',
+          rental_blocked: null,
+          availability: 'unavailable',
+        }),
+      ),
+    ).toBe('limited');
   });
 });
 

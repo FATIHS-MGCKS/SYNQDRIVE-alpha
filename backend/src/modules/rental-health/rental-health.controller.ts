@@ -3,7 +3,11 @@ import { RentalHealthService } from './rental-health.service';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { VehicleHealth } from './rental-health.types';
+import {
+  buildDegradedVehicleHealth,
+  RENTAL_HEALTH_DEGRADATION_CODES,
+  VehicleHealth,
+} from './rental-health.types';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
@@ -86,29 +90,17 @@ export class RentalHealthController {
         slice.map((v) =>
           this.rentalHealth
             .getVehicleHealth(orgId, v.id)
-            .catch((err) => {
-              // Degrade per-vehicle, never drop — the fleet list must keep
-              // rendering even if one vehicle's pipeline errors out.
-              return {
+            .catch(() =>
+              buildDegradedVehicleHealth({
                 vehicle_id: v.id,
                 organization_id: orgId,
-                overall_state: 'unknown' as const,
-                availability: 'unavailable' as const,
-                rental_blocked: false,
-                blocking_reasons: [],
-                modules: {
-                  battery: stubUnknown(false),
-                  tires: stubUnknown(false),
-                  brakes: stubUnknown(false),
-                  error_codes: stubUnknown(false),
-                  service_compliance: stubUnknown(false),
-                  complaints: stubUnknown(false),
-                  vehicle_alerts: stubUnknown(false),
+                availability: 'unavailable',
+                degradation: {
+                  code: RENTAL_HEALTH_DEGRADATION_CODES.PIPELINE_UNAVAILABLE,
+                  message: 'Gesundheitsdaten konnten nicht geladen werden',
                 },
-                generated_at: new Date().toISOString(),
-                _error: (err as Error).message,
-              } as any;
-            }),
+              }),
+            ),
         ),
       );
       results.push(...batchResults);
@@ -201,12 +193,3 @@ export class RentalHealthController {
   }
 }
 
-function stubUnknown(pipelineAvailable = false) {
-  return {
-    state: 'unknown' as const,
-    reason: 'Daten nicht verfügbar',
-    last_updated_at: null,
-    data_stale: true,
-    pipeline_available: pipelineAvailable,
-  };
-}

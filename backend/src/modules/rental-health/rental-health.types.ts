@@ -81,7 +81,11 @@ export interface VehicleHealth {
   overall_state: HealthState;
   /** Data/pipeline coverage across applicable modules — not health severity. */
   availability: RentalHealthAvailabilityState;
-  rental_blocked: boolean;
+  /**
+   * Operational rental gate. `null` when pipeline coverage is incomplete
+   * (`availability` is `partial` or `unavailable`) — never a confirmed safe false.
+   */
+  rental_blocked: boolean | null;
   blocking_reasons: string[];
   modules: {
     battery: ModuleHealth;
@@ -93,6 +97,20 @@ export interface VehicleHealth {
     vehicle_alerts: ModuleHealth;
   };
   generated_at: string; // ISO 8601
+  /** Present when the aggregate was degraded — safe operator copy, no internals. */
+  degradation?: RentalHealthDegradation;
+}
+
+export const RENTAL_HEALTH_DEGRADATION_CODES = {
+  PIPELINE_UNAVAILABLE: 'PIPELINE_UNAVAILABLE',
+} as const;
+
+export type RentalHealthDegradationCode =
+  (typeof RENTAL_HEALTH_DEGRADATION_CODES)[keyof typeof RENTAL_HEALTH_DEGRADATION_CODES];
+
+export interface RentalHealthDegradation {
+  code: RentalHealthDegradationCode;
+  message: string;
 }
 
 /** Alias for the canonical per-vehicle health aggregate; {@link RentalHealthService} is the VehicleHealthStatus aggregator. */
@@ -211,6 +229,71 @@ export function finalizeVehicleHealthAvailability<T extends Record<RentalHealthM
     buildModuleAvailabilityInputs(annotated, loadFailures),
   );
   return { modules: annotated, availability };
+}
+
+/**
+ * Resolve rental_blocked only when the pipeline is fully ready.
+ * Partial/unavailable coverage must not emit a confirmed `false`.
+ */
+export function resolveRentalBlockedState(
+  availability: RentalHealthAvailabilityState,
+  blockingReasons: string[],
+): boolean | null {
+  if (availability !== 'ready') return null;
+  return blockingReasons.length > 0;
+}
+
+export function isRentalBlockedConfirmed(
+  rentalBlocked: boolean | null | undefined,
+): rentalBlocked is true {
+  return rentalBlocked === true;
+}
+
+export function isRentalBlockedVerified(
+  rentalBlocked: boolean | null | undefined,
+): rentalBlocked is boolean {
+  return rentalBlocked !== null && rentalBlocked !== undefined;
+}
+
+function stubDegradedModule(): ModuleHealth {
+  return {
+    state: 'unknown',
+    reason: 'Daten nicht verfügbar',
+    last_updated_at: null,
+    data_stale: true,
+    pipeline_available: false,
+  };
+}
+
+/**
+ * Deterministic per-vehicle degrade payload for fleet fan-out failures.
+ * Never asserts `rental_blocked: false` on pipeline errors.
+ */
+export function buildDegradedVehicleHealth(params: {
+  vehicle_id: string;
+  organization_id: string;
+  availability?: RentalHealthAvailabilityState;
+  degradation?: RentalHealthDegradation;
+}): VehicleHealth {
+  const modules = RENTAL_HEALTH_MODULE_KEYS.reduce(
+    (acc, key) => {
+      acc[key] = stubDegradedModule();
+      return acc;
+    },
+    {} as VehicleHealth['modules'],
+  );
+
+  return {
+    vehicle_id: params.vehicle_id,
+    organization_id: params.organization_id,
+    overall_state: 'unknown',
+    availability: params.availability ?? 'unavailable',
+    rental_blocked: null,
+    blocking_reasons: [],
+    modules,
+    generated_at: new Date().toISOString(),
+    ...(params.degradation ? { degradation: params.degradation } : {}),
+  };
 }
 
 /**

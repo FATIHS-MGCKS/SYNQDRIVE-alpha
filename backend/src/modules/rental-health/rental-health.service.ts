@@ -29,6 +29,7 @@ import {
   finalizeVehicleHealthAvailability,
   maxSeverity,
   isStale,
+  resolveRentalBlockedState,
   toIso,
   type RentalHealthModuleKey,
 } from './rental-health.types';
@@ -241,7 +242,7 @@ export class RentalHealthService {
       organization_id: orgId,
       overall_state,
       availability,
-      rental_blocked: blocking_reasons.length > 0,
+      rental_blocked: resolveRentalBlockedState(availability, blocking_reasons),
       blocking_reasons,
       modules: modulesWithAvailability,
       generated_at: new Date().toISOString(),
@@ -260,6 +261,19 @@ export class RentalHealthService {
   ): Promise<RentalHealthGateResult> {
     try {
       const health = await this.getVehicleHealth(orgId, vehicleId);
+      if (health.availability !== 'ready' || health.rental_blocked === null) {
+        return {
+          blocked: true,
+          reasons: [
+            health.degradation?.message ??
+              'Fahrzeug-Gesundheit konnte nicht vollständig geprüft werden',
+          ],
+          healthGateStatus: 'UNAVAILABLE',
+          healthGateWarning:
+            'Fahrzeug-Gesundheit konnte nicht vollständig geprüft werden. Manuelle Bestätigung erforderlich.',
+          manualReviewRequired: true,
+        };
+      }
       if (health.rental_blocked) {
         return {
           blocked: true,
