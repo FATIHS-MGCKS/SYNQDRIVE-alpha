@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-unified-refresh-fhs-p23-2026-07-20',
+    version: '4.9.614',
+    title: 'Fleet Zustand & Service — unified refresh (FHS Phase 3 P23)',
+    summary: [
+      'Neu: `reloadAll()` lädt Rental Health, Fleet-Runtime, Task Summary, Tasks, Vendors und Service Cases parallel (`Promise.allSettled`).',
+      'Einzelne Fehler bleiben sichtbar (`partial`/`allSucceeded`); bestehende Daten werden beim Refresh nicht geleert.',
+      'In-Flight-Dedup auf `reloadAll` und pro Service-Center-Quelle; koordinierter Refresh unterdrückt Task-Invalidierungs-Loops.',
+      'Refresh-Button in Fleet Hub und Tasks-Panel nutzt ausschließlich `reloadAll`.',
+    ],
+    reason: 'FHS Phase 3 Prompt 23: Einheitliche Aktualisierung für Zustand & Service ohne doppelte Requests oder Endlosschleifen.',
+    previousBehavior:
+      'Health-Reload und Service-Center-Reload liefen getrennt; parallele Invalidierung konnte doppelte Requests auslösen.',
+    details:
+      'fleet-health-service-refresh.ts, fleet-health-service-refresh-coordinator.ts, FleetHealthServiceRefreshContext.tsx (+Tests), useServiceCenterData.ts, FleetHubView.tsx, useFleetHealthServiceViewModel.ts',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'service-center-separate-sources-fhs-p22-2026-07-20',
     version: '4.9.613',
     title: 'Service Center — separate source states (FHS Phase 3 P22)',

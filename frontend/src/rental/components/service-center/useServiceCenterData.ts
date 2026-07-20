@@ -11,6 +11,7 @@ import {
   matchesTaskSummaryInvalidation,
   subscribeTaskQueryInvalidation,
 } from '../../../lib/tasks/invalidate';
+import { isCoordinatedRefreshActive } from '../fleet-health-service/fleet-health-service-refresh-coordinator';
 import { deriveServiceKpis, isActiveTask } from './service-center.utils';
 import type { ServiceCenterData } from './service-center.types';
 import {
@@ -48,35 +49,52 @@ function useSourceSlice<T>(
 ): SourceSlice<T> & { reload: () => Promise<void> } {
   const [slice, setSlice] = useState<SourceSlice<T>>(() => createIdleSlice(emptyData));
   const sliceRef = useRef(slice);
+  const inFlightReloadRef = useRef<Promise<void> | null>(null);
   sliceRef.current = slice;
 
   const reload = useCallback(async () => {
     if (!orgId) {
+      inFlightReloadRef.current = null;
       setSlice(createIdleSlice(emptyData));
       return;
     }
 
-    setSlice((prev) => ({
-      ...prev,
-      status: 'loading',
-      error: null,
-    }));
+    if (inFlightReloadRef.current) {
+      return inFlightReloadRef.current;
+    }
 
+    const promise = (async () => {
+      setSlice((prev) => ({
+        ...prev,
+        status: 'loading',
+        error: null,
+      }));
+
+      try {
+        const response = await fetcher(orgId);
+        const next = resolveSourceAfterSuccess(response, new Date().toISOString());
+        setSlice(next);
+      } catch {
+        const current = sliceRef.current;
+        const next = resolveSourceAfterError({
+          previousData: current.data,
+          previousStatus: current.status,
+          previousFetchedAt: current.fetchedAt,
+          emptyData,
+          hasMeaningfulData,
+          errorMessage,
+        });
+        setSlice(next);
+      }
+    })();
+
+    inFlightReloadRef.current = promise;
     try {
-      const response = await fetcher(orgId);
-      const next = resolveSourceAfterSuccess(response, new Date().toISOString());
-      setSlice(next);
-    } catch {
-      const current = sliceRef.current;
-      const next = resolveSourceAfterError({
-        previousData: current.data,
-        previousStatus: current.status,
-        previousFetchedAt: current.fetchedAt,
-        emptyData,
-        hasMeaningfulData,
-        errorMessage,
-      });
-      setSlice(next);
+      await promise;
+    } finally {
+      if (inFlightReloadRef.current === promise) {
+        inFlightReloadRef.current = null;
+      }
     }
   }, [orgId, emptyData, errorMessage, fetcher, hasMeaningfulData]);
 
@@ -152,6 +170,7 @@ export function useServiceCenterData(orgId: string | null | undefined): ServiceC
   useEffect(() => {
     return subscribeTaskQueryInvalidation((detail) => {
       if (!orgId || detail.orgId !== orgId) return;
+      if (isCoordinatedRefreshActive()) return;
       if (matchesTaskSummaryInvalidation(detail, orgId)) {
         void taskSummarySlice.reload();
       }

@@ -72,7 +72,7 @@ export function useFleetHealthMap(
   map: Map<string, VehicleHealthResponse>;
   loading: boolean;
   error: string | null;
-  reload: () => void;
+  reload: () => Promise<void>;
 } {
   const [map, setMap] = useState<Map<string, VehicleHealthResponse>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -81,28 +81,29 @@ export function useFleetHealthMap(
 
   const idsKey = vehicleIds ? vehicleIds.slice().sort().join(',') : '';
 
-  const load = useCallback(() => {
+  const load = useCallback((): Promise<void> => {
     if (!orgId) {
       setMap(new Map());
       setError(null);
-      return;
+      return Promise.resolve();
     }
     cancelRef.current = false;
     setLoading(true);
     setError(null);
-    api.rentalHealth
+    return api.rentalHealth
       .getFleet(orgId, vehicleIds && vehicleIds.length > 0 ? vehicleIds : undefined)
       .then((res) => {
         if (cancelRef.current) return;
         const next = new Map<string, VehicleHealthResponse>();
         for (const v of res.vehicles) next.set(v.vehicle_id, v);
         setMap(next);
-        setLoading(false);
       })
       .catch((err) => {
         if (cancelRef.current) return;
         setError(err?.message ?? 'Failed to load fleet health');
-        setLoading(false);
+      })
+      .finally(() => {
+        if (!cancelRef.current) setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, idsKey]);

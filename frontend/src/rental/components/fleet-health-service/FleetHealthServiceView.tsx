@@ -83,7 +83,7 @@ export function FleetHealthServiceView({
           vendors={vm.vendors}
           loading={vm.serviceLoading}
           error={vm.serviceError}
-          onReload={() => void vm.reloadService()}
+          onReload={() => void vm.reloadAll()}
           onOpenGlobalTasks={(taskId) => {
             onOpenGlobalTasks?.(taskId);
             handleNavigationConsumed();

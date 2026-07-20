@@ -1,28 +1,27 @@
 import { useMemo } from 'react';
 import { useFleetVehicles } from '../../FleetContext';
-import { useRentalOrg } from '../../RentalContext';
-import { useServiceCenterData } from '../service-center/useServiceCenterData';
 import {
   buildFleetHealthServiceViewModel,
   type FleetHealthServiceViewModel,
 } from './fleet-health-service.view-model';
+import { useFleetHealthServiceRefresh } from './FleetHealthServiceRefreshContext';
 
 /**
  * Combined read model for Fleet → Zustand & Service.
  *
  * Health truth: FleetContext.healthMap (RentalHealthV1).
- * Service truth: tasks summary/list + vendors via useServiceCenterData.
+ * Service truth: tasks summary/list + vendors via FleetHealthServiceRefreshProvider.
  *
  * Does NOT compute health or mutate tasks — UI derivation only.
  */
 export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & {
-  allTasks: ReturnType<typeof useServiceCenterData>['allTasks'];
-  vendors: ReturnType<typeof useServiceCenterData>['vendors'];
-  reloadService: ReturnType<typeof useServiceCenterData>['reload'];
+  allTasks: ReturnType<typeof useFleetHealthServiceRefresh>['service']['allTasks'];
+  vendors: ReturnType<typeof useFleetHealthServiceRefresh>['service']['vendors'];
+  reloadAll: ReturnType<typeof useFleetHealthServiceRefresh>['reloadAll'];
+  refreshing: boolean;
 } {
-  const { orgId } = useRentalOrg();
   const { fleetVehicles, healthMap, healthLoading } = useFleetVehicles();
-  const service = useServiceCenterData(orgId);
+  const { service, reloadAll, refreshing } = useFleetHealthServiceRefresh();
 
   const vm = useMemo(
     () =>
@@ -32,7 +31,7 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
         healthLoading,
         taskSummary: service.summary,
         taskList: service.allTasks,
-        vendors: service.vendors,
+        vendors: service.vendors.data,
         serviceLoading: service.loading,
         serviceError: service.error,
         serviceLoaded:
@@ -47,16 +46,19 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
       healthLoading,
       service.summary,
       service.allTasks,
-      service.vendors,
+      service.vendors.data,
       service.loading,
       service.error,
+      service.taskSummary.status,
+      service.tasks.status,
     ],
   );
 
   return {
     ...vm,
     allTasks: service.allTasks,
-    vendors: service.vendors,
-    reloadService: service.reload,
+    vendors: service.vendors.data,
+    reloadAll,
+    refreshing,
   };
 }
