@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-work-area-shell-fhs-p27-2026-07-20',
+    version: '4.9.618',
+    title: 'Fleet Zustand & Service — Arbeiten work area shell (FHS Phase 4 P27)',
+    summary: [
+      'Neu: `FleetHealthServiceWorkPanel` mit internen Ansichten Aufgaben, Servicefälle, Fälligkeiten.',
+      'Bestehende `FleetHealthServiceTasksPanel` und `FleetHealthServiceSchedulePanel` wiederverwendet (`compact`).',
+      'Partnerverwaltung als sekundäre Aktion vorbereitet; URL-/Deep-Link-Mapping über `fleet-health-service-work-area.ts`.',
+      'Feature-Flag `VITE_FHS_WORK_AREA=1` oder `localStorage synqdrive.fhs.work-area=1` — 6-Tab-Navigation unverändert.',
+    ],
+    reason: 'FHS Phase 4 Prompt 27: Interne „Arbeiten“-Struktur vorbereiten ohne Top-Navigation umzuschalten.',
+    previousBehavior:
+      'Aufgaben und Termine waren getrennte Top-Level-Subtabs ohne gemeinsame Arbeiten-Hülle; Servicefälle hatten keine eigene Ansicht.',
+    details:
+      'FleetHealthServiceWorkPanel.tsx, FleetHealthServiceWorkSubTabBar.tsx, FleetHealthServiceCasesPanel.tsx, fleet-health-service-work-area.ts (+Tests), FleetHealthServiceView.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-case-viewmodel-fhs-p26-2026-07-20',
     version: '4.9.617',
     title: 'Fleet Zustand & Service — service case view model (FHS Phase 4 P26)',

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Vendor } from '../../../lib/api';
 import { FleetConditionView, type ConditionCategory } from '../FleetConditionView';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
@@ -8,7 +8,17 @@ import { FleetHealthServiceSchedulePanel } from './FleetHealthServiceSchedulePan
 import { FleetHealthServiceTabBar } from './FleetHealthServiceTabBar';
 import { FleetHealthServiceTasksPanel } from './FleetHealthServiceTasksPanel';
 import { FleetHealthServiceVendorsPanel } from './FleetHealthServiceVendorsPanel';
+import { FleetHealthServiceWorkPanel } from './FleetHealthServiceWorkPanel';
 import type { FleetHealthServiceTab } from './fleet-health-service.types';
+import {
+  isFleetHealthServiceWorkAreaEnabled,
+  isFleetHealthServiceWorkAreaSubTab,
+  resolveFleetSubTabForWorkView,
+  resolveWorkViewFromFleetSubTab,
+  resolveWorkViewFromServiceCenterNav,
+  type FleetHealthServiceWorkView,
+} from './fleet-health-service-work-area';
+import { useFleetHealthServiceRefresh } from './FleetHealthServiceRefreshContext';
 import { useFleetHealthServiceViewModel } from './useFleetHealthServiceViewModel';
 
 interface FleetHealthServiceViewProps {
@@ -36,6 +46,22 @@ export function FleetHealthServiceView({
   onServiceCenterNavigationConsumed,
 }: FleetHealthServiceViewProps) {
   const vm = useFleetHealthServiceViewModel();
+  const { service } = useFleetHealthServiceRefresh();
+  const workAreaEnabled = isFleetHealthServiceWorkAreaEnabled();
+
+  const [workView, setWorkView] = useState<FleetHealthServiceWorkView>(() =>
+    resolveWorkViewFromFleetSubTab(activeSubTab) ?? 'tasks',
+  );
+
+  useEffect(() => {
+    const mapped = resolveWorkViewFromFleetSubTab(activeSubTab);
+    if (mapped) setWorkView(mapped);
+  }, [activeSubTab]);
+
+  useEffect(() => {
+    if (!serviceCenterNavigation) return;
+    setWorkView(resolveWorkViewFromServiceCenterNav(serviceCenterNavigation));
+  }, [serviceCenterNavigation]);
 
   const focusTaskId =
     serviceCenterNavigation?.focusTaskId && activeSubTab === 'tasks'
@@ -46,10 +72,23 @@ export function FleetHealthServiceView({
     onServiceCenterNavigationConsumed?.();
   }, [onServiceCenterNavigationConsumed]);
 
+  const handleWorkViewChange = useCallback(
+    (view: FleetHealthServiceWorkView) => {
+      setWorkView(view);
+      const nextSubTab = resolveFleetSubTabForWorkView(view);
+      if (nextSubTab !== activeSubTab) {
+        onSubTabChange(nextSubTab);
+      }
+    },
+    [activeSubTab, onSubTabChange],
+  );
+
   const getExistingTaskId = useCallback(
     (vehicleId: string) => vm.byVehicleId.get(vehicleId)?.existingTaskId ?? null,
     [vm.byVehicleId],
   );
+
+  const showWorkPanel = workAreaEnabled && isFleetHealthServiceWorkAreaSubTab(activeSubTab);
 
   return (
     <div className="space-y-4">
@@ -77,7 +116,24 @@ export function FleetHealthServiceView({
         />
       )}
 
-      {activeSubTab === 'tasks' && (
+      {showWorkPanel ? (
+        <FleetHealthServiceWorkPanel
+          activeView={workView}
+          onViewChange={handleWorkViewChange}
+          vm={vm}
+          vendors={vm.vendors}
+          serviceCasesError={service.serviceCases.error}
+          focusTaskId={focusTaskId}
+          onReload={() => void vm.reloadAll()}
+          onOpenGlobalTasks={(taskId) => {
+            onOpenGlobalTasks?.(taskId);
+            handleNavigationConsumed();
+          }}
+          onOpenVendors={() => onSubTabChange('vendors')}
+        />
+      ) : null}
+
+      {!showWorkPanel && activeSubTab === 'tasks' && (
         <FleetHealthServiceTasksPanel
           tasks={vm.allTasks}
           vendors={vm.vendors}
@@ -92,7 +148,7 @@ export function FleetHealthServiceView({
         />
       )}
 
-      {activeSubTab === 'schedule' && (
+      {!showWorkPanel && activeSubTab === 'schedule' && (
         <FleetHealthServiceSchedulePanel
           tasks={vm.allTasks}
           vendors={vm.vendors}

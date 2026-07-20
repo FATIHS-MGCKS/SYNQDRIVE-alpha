@@ -8,6 +8,7 @@ interface FleetHealthServiceSchedulePanelProps {
   vendors: Vendor[];
   loading?: boolean;
   onSelectTask?: (taskId: string) => void;
+  compact?: boolean;
 }
 
 export function FleetHealthServiceSchedulePanel({
@@ -15,18 +16,21 @@ export function FleetHealthServiceSchedulePanel({
   vendors,
   loading,
   onSelectTask,
+  compact = false,
 }: FleetHealthServiceSchedulePanelProps) {
   return (
     <div className="space-y-3">
-      <div className={fhs.panel}>
-        <div className={fhs.panelBody}>
-          <DashboardSectionLabel className="mb-1">Termine</DashboardSectionLabel>
-          <p className="text-[12px] text-muted-foreground">
-            Wartung, HU/TÜV, BOKraft und Werkstatttermine aus offenen Aufgaben — nur echte
-            Fälligkeiten.
-          </p>
+      {!compact ? (
+        <div className={fhs.panel}>
+          <div className={fhs.panelBody}>
+            <DashboardSectionLabel className="mb-1">Termine</DashboardSectionLabel>
+            <p className="text-[12px] text-muted-foreground">
+              Wartung, HU/TÜV, BOKraft und Werkstatttermine aus offenen Aufgaben — nur echte
+              Fälligkeiten.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
       <ServiceSchedulePanel
         tasks={tasks}
         vendors={vendors}

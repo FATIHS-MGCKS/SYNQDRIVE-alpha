@@ -13,6 +13,7 @@ interface FleetHealthServiceTasksPanelProps {
   onReload?: () => void;
   onOpenGlobalTasks?: (taskId: string) => void;
   focusTaskId?: string | null;
+  compact?: boolean;
 }
 
 export function FleetHealthServiceTasksPanel({
@@ -23,19 +24,22 @@ export function FleetHealthServiceTasksPanel({
   onReload,
   onOpenGlobalTasks,
   focusTaskId,
+  compact = false,
 }: FleetHealthServiceTasksPanelProps) {
   const [filter, setFilter] = useState<ServiceTaskFilter>('all');
 
   return (
     <div className="space-y-3">
-      <div className={fhs.panel}>
-        <div className={fhs.panelBody}>
-          <DashboardSectionLabel className="mb-1">Aufgaben</DashboardSectionLabel>
-          <p className="text-[12px] text-muted-foreground mb-3">
-            Offene Service- und Wartungsaufgaben — Abarbeitung, keine erneute Health-Diagnose.
-          </p>
+      {!compact ? (
+        <div className={fhs.panel}>
+          <div className={fhs.panelBody}>
+            <DashboardSectionLabel className="mb-1">Aufgaben</DashboardSectionLabel>
+            <p className="text-[12px] text-muted-foreground mb-3">
+              Offene Service- und Wartungsaufgaben — Abarbeitung, keine erneute Health-Diagnose.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
       <ServiceTasksPanel
         tasks={tasks}
         vendors={vendors}
