@@ -10,18 +10,16 @@ import {
   type FleetTabInput,
 } from './fleet-health-service/fleet-health-service.types';
 import { Button } from '../../components/ui/button';
-import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import {
   chromeTabBarClass,
   chromeTabTriggerClass,
 } from '../../components/patterns/chrome-tab-bar';
-import { formatRelativeTime, latestHealthGeneratedAt } from '../lib/fleet-health-control-center';
 import type { VehicleData } from '../data/vehicles';
 import type { Vendor } from '../../lib/api';
 import type { ServiceCenterNavState } from '../lib/service-center-navigation';
-import { useMemo } from 'react';
 import { FleetHealthServiceRefreshProvider, useFleetHealthServiceRefresh } from './fleet-health-service/FleetHealthServiceRefreshContext';
+import { FleetHealthServiceFreshnessIndicator } from './fleet-health-service/FleetHealthServiceFreshnessIndicator';
 
 export type { FleetTab, FleetTabInput, FleetHealthServiceTab };
 
@@ -62,15 +60,9 @@ export function FleetHubView({
   onServiceCenterNavigationConsumed,
   onOpenServiceCenter,
 }: FleetHubViewProps) {
-  const { t, locale } = useLanguage();
-  const { healthMap } = useFleetVehicles();
+  const { t } = useLanguage();
 
   const activeTab = normalizeFleetTab(activeTabInput).tab;
-
-  const lastHealthUpdated = useMemo(
-    () => latestHealthGeneratedAt(healthMap),
-    [healthMap],
-  );
 
   const tabs: {
     key: FleetTab;
@@ -112,12 +104,6 @@ export function FleetHubView({
     </div>
   );
 
-  const lastHealthUpdatedLabel = lastHealthUpdated
-    ? locale === 'de'
-      ? `Aktualisiert ${formatRelativeTime(lastHealthUpdated)}`
-      : `Updated ${formatRelativeTime(lastHealthUpdated)}`
-    : null;
-
   const showHealthRefresh =
     activeTab === 'condition-service' &&
     (healthServiceSubTab === 'vehicles' || healthServiceSubTab === 'overview');
@@ -128,7 +114,6 @@ export function FleetHubView({
         activeTab={activeTab}
         tabBar={tabBar}
         showHealthRefresh={showHealthRefresh}
-        lastHealthUpdatedLabel={lastHealthUpdatedLabel}
         onVehicleSelect={onVehicleSelect}
         healthServiceSubTab={healthServiceSubTab}
         onHealthServiceSubTabChange={onHealthServiceSubTabChange}
@@ -145,14 +130,8 @@ export function FleetHubView({
   );
 }
 
-function FleetHubRefreshButton({
-  showHealthRefresh,
-  lastHealthUpdatedLabel,
-}: {
-  showHealthRefresh: boolean;
-  lastHealthUpdatedLabel: string | null;
-}) {
-  const { t, locale } = useLanguage();
+function FleetHubRefreshButton({ showHealthRefresh }: { showHealthRefresh: boolean }) {
+  const { locale } = useLanguage();
   const { reloadAll, refreshing } = useFleetHealthServiceRefresh();
 
   if (!showHealthRefresh) return null;
@@ -170,9 +149,7 @@ function FleetHubRefreshButton({
         <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
         {locale === 'de' ? 'Aktualisieren' : 'Refresh'}
       </Button>
-      {lastHealthUpdatedLabel ? (
-        <span className="text-[10px] text-muted-foreground">{lastHealthUpdatedLabel}</span>
-      ) : null}
+      <FleetHealthServiceFreshnessIndicator className="hidden sm:inline-flex" />
     </div>
   );
 }
@@ -181,7 +158,6 @@ function FleetHubViewBody({
   activeTab,
   tabBar,
   showHealthRefresh,
-  lastHealthUpdatedLabel,
   onVehicleSelect,
   healthServiceSubTab,
   onHealthServiceSubTabChange,
@@ -197,7 +173,6 @@ function FleetHubViewBody({
   activeTab: FleetTab;
   tabBar: React.ReactNode;
   showHealthRefresh: boolean;
-  lastHealthUpdatedLabel: string | null;
   onVehicleSelect?: (vehicle: VehicleData) => void;
   healthServiceSubTab: FleetHealthServiceTab;
   onHealthServiceSubTabChange: (tab: FleetHealthServiceTab) => void;
@@ -221,18 +196,15 @@ function FleetHubViewBody({
 
         <div className="mx-auto w-full lg:justify-self-center">
           {tabBar}
-          {showHealthRefresh && lastHealthUpdatedLabel ? (
-            <p className="mt-1.5 text-center text-[12px] font-normal text-muted-foreground sm:hidden">
-              {lastHealthUpdatedLabel}
-            </p>
+          {showHealthRefresh ? (
+            <div className="mt-1.5 flex justify-center sm:hidden">
+              <FleetHealthServiceFreshnessIndicator />
+            </div>
           ) : null}
         </div>
 
         <div className="hidden min-h-8 items-start justify-end sm:flex lg:justify-self-end">
-          <FleetHubRefreshButton
-            showHealthRefresh={showHealthRefresh}
-            lastHealthUpdatedLabel={lastHealthUpdatedLabel}
-          />
+          <FleetHubRefreshButton showHealthRefresh={showHealthRefresh} />
         </div>
       </header>
 

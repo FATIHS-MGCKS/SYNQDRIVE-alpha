@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-source-freshness-fhs-p24-2026-07-20',
+    version: '4.9.615',
+    title: 'Fleet Zustand & Service — accurate source freshness (FHS Phase 3 P24)',
+    summary: [
+      'Ersetzt irreführendes „neuester Flotten-Timestamp“ durch getrennte Fetch- und Messzeiten.',
+      'Neu: `healthFetchedAt`, `oldestRelevantHealthSourceAt`, `tasksFetchedAt`, `vendorsFetchedAt`, `serviceCasesFetchedAt`.',
+      'Zählt partial/unavailable Fahrzeuge und veraltete Module; Header kompakt, Detail-Popover pro Quelle.',
+      'Ein frisches Fahrzeug maskiert nicht mehr die gesamte Flotte als aktuell.',
+    ],
+    reason: 'FHS Phase 3 Prompt 24: API-Fetch-Zeit und fachlicher Messzeitpunkt strikt trennen.',
+    previousBehavior:
+      'Fleet-Header nutzte `latestHealthGeneratedAt` (MAX `generated_at`) — ein frisches Fahrzeug wirkte wie frische Flotte.',
+    details:
+      'fleet-health-service-freshness.ts (+Fake-Time-Tests), useVehicleHealth.ts, FleetContext.tsx, FleetHubView.tsx, FleetHealthServiceFreshnessIndicator.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-unified-refresh-fhs-p23-2026-07-20',
     version: '4.9.614',
     title: 'Fleet Zustand & Service — unified refresh (FHS Phase 3 P23)',

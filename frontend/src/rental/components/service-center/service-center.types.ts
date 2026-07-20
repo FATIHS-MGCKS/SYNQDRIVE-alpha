@@ -45,6 +45,8 @@ export interface ServiceCenterData {
   vendorsError: string | null;
   vendorsStatus: ServiceCenterSourceStatus;
   vendorsFetchedAt: string | null;
+  tasksFetchedAt: string | null;
+  serviceCasesFetchedAt: string | null;
   kpis: ServiceKpiSnapshot;
   loading: boolean;
   error: string | null;

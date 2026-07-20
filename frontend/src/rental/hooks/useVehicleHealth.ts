@@ -72,11 +72,13 @@ export function useFleetHealthMap(
   map: Map<string, VehicleHealthResponse>;
   loading: boolean;
   error: string | null;
+  fetchedAt: string | null;
   reload: () => Promise<void>;
 } {
   const [map, setMap] = useState<Map<string, VehicleHealthResponse>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const cancelRef = useRef(false);
 
   const idsKey = vehicleIds ? vehicleIds.slice().sort().join(',') : '';
@@ -85,6 +87,7 @@ export function useFleetHealthMap(
     if (!orgId) {
       setMap(new Map());
       setError(null);
+      setFetchedAt(null);
       return Promise.resolve();
     }
     cancelRef.current = false;
@@ -97,10 +100,12 @@ export function useFleetHealthMap(
         const next = new Map<string, VehicleHealthResponse>();
         for (const v of res.vehicles) next.set(v.vehicle_id, v);
         setMap(next);
+        setFetchedAt(new Date().toISOString());
       })
       .catch((err) => {
         if (cancelRef.current) return;
         setError(err?.message ?? 'Failed to load fleet health');
+        setFetchedAt(new Date().toISOString());
       })
       .finally(() => {
         if (!cancelRef.current) setLoading(false);
@@ -115,5 +120,5 @@ export function useFleetHealthMap(
     };
   }, [load]);
 
-  return { map, loading, error, reload: load };
+  return { map, loading, error, fetchedAt, reload: load };
 }

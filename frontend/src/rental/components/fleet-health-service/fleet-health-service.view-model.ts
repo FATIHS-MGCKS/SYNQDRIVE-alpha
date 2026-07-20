@@ -27,6 +27,11 @@ import {
   selectUpcomingTasks,
 } from '../service-center/service-center.utils';
 
+import {
+  buildFleetHealthServiceFreshness,
+  type FleetHealthServiceFreshness,
+} from './fleet-health-service-freshness';
+
 export type FleetHealthServiceRecommendedAction =
   | 'open_task'
   | 'create_task'
@@ -106,6 +111,7 @@ export interface FleetHealthServiceViewModel {
   healthLoading: boolean;
   serviceLoading: boolean;
   serviceError: string | null;
+  freshness: FleetHealthServiceFreshness;
   healthKpis: FleetHealthKpis;
   healthGroups: FleetHealthServiceHealthGroups;
   executionGroups: FleetHealthServiceExecutionGroups;
@@ -119,9 +125,13 @@ export interface BuildFleetHealthServiceViewModelInput {
   vehicles: VehicleData[];
   healthMap: Map<string, VehicleHealthResponse>;
   healthLoading: boolean;
+  healthFetchedAt: string | null;
   taskSummary: ApiTaskSummary | null;
   taskList: ApiTask[];
   vendors: Vendor[];
+  tasksFetchedAt: string | null;
+  vendorsFetchedAt: string | null;
+  serviceCasesFetchedAt: string | null;
   serviceLoading: boolean;
   serviceError: string | null;
   serviceLoaded: boolean;
@@ -412,8 +422,12 @@ export function buildFleetHealthServiceViewModel(
     vehicles,
     healthMap,
     healthLoading,
+    healthFetchedAt,
     taskList,
     vendors,
+    tasksFetchedAt,
+    vendorsFetchedAt,
+    serviceCasesFetchedAt,
     serviceLoading,
     serviceError,
   } = input;
@@ -431,12 +445,21 @@ export function buildFleetHealthServiceViewModel(
   const executionGroups = buildExecutionGroups(taskList, vendors);
   const overviewCounts = buildOverviewCounts(uiItems, executionGroups);
   const prioritizedOverviewRows = buildPrioritizedOverviewRows(uiItems, executionGroups, byVehicleId);
+  const freshness = buildFleetHealthServiceFreshness({
+    healthFetchedAt,
+    healthMap,
+    vehicleIds,
+    tasksFetchedAt,
+    vendorsFetchedAt,
+    serviceCasesFetchedAt,
+  });
 
   return {
     loading: healthLoading || serviceLoading,
     healthLoading,
     serviceLoading,
     serviceError,
+    freshness,
     healthKpis,
     healthGroups,
     executionGroups,

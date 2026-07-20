@@ -4,6 +4,7 @@ import {
   FleetHealthServiceKpiStrip,
 } from './FleetHealthServiceKpiStrip';
 import { FleetHealthServicePrioritizedList } from './FleetHealthServicePrioritizedList';
+import { FleetHealthServiceFreshnessIndicator } from './FleetHealthServiceFreshnessIndicator';
 import { fhs } from './fleet-health-service-shell';
 import type { FleetHealthServiceViewModel } from './fleet-health-service.view-model';
 import type { FleetHealthServiceTab } from './fleet-health-service.types';
@@ -37,6 +38,11 @@ export function FleetHealthServiceOverviewPanel({
 
   return (
     <div className="space-y-4">
+      <section className="flex items-center justify-between gap-2">
+        <DashboardSectionLabel>Datenaktualität</DashboardSectionLabel>
+        <FleetHealthServiceFreshnessIndicator />
+      </section>
+
       <section className="space-y-2">
         <DashboardSectionLabel>Triage-Kennzahlen</DashboardSectionLabel>
         <FleetHealthServiceKpiStrip
