@@ -24,7 +24,8 @@ export function FleetHealthServiceHistoryPanel({
         <div className={fhs.panelBody}>
           <DashboardSectionLabel className="mb-1">Verlauf</DashboardSectionLabel>
           <p className="text-[12px] text-muted-foreground">
-            Abgeschlossene Service- und Wartungsaufgaben aus dem Task-System.
+            Vereinheitlichte Servicehistorie aus Aufgaben, Servicefällen, Serviceereignissen und
+            stabil verknüpften Dokumenten/Rechnungen.
           </p>
         </div>
       </div>

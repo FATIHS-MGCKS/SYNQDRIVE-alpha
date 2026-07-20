@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-unified-history-fhs-p34-2026-07-20',
+    version: '4.9.705',
+    title: 'Fleet Zustand & Service — vereinheitlichte Servicehistorie (FHS Phase 4 P34)',
+    summary: [
+      'Verlauf-Tab zeigt jetzt eine gemeinsame Timeline aus erledigten/stornierten Aufgaben, abgeschlossenen/stornierten Servicefällen, dokumentierten Serviceereignissen sowie stabil verknüpften Dokumenten und Rechnungen.',
+      'Ereignistyp, Quelle, Fahrzeug, Actor und Zeitpunkt sind je Zeile sichtbar; verknüpfte Tasks an terminalen Servicefällen werden dedupliziert.',
+      'Chronologie nur aus gespeicherten Zeitstempeln (keine erfundene Reihenfolge); Client-Pagination vorbereitet (`paginateUnifiedServiceHistory`, „Weitere Einträge laden“).',
+      'Bestehende Task-Historie-Filter (`service-history.utils`) bleiben für Aufgaben-Einträge rückwärtskompatibel.',
+    ],
+    reason: 'FHS Phase 4 Prompt 34: Task-Historie zu echter Servicehistorie erweitern.',
+    previousBehavior:
+      'Verlauf-Tab listete nur erledigte Wartungsaufgaben (task-only); keine Servicefälle, Serviceereignisse oder verknüpfte Dokumente/Rechnungen.',
+    details:
+      'unified-service-history.utils.ts (+Tests), useUnifiedServiceHistoryData.ts, UnifiedServiceHistoryTimelineRow.tsx, ServiceHistoryPanel.tsx, FleetHealthServiceHistoryPanel.tsx, service-history.utils.ts (cancelledAt)',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',
