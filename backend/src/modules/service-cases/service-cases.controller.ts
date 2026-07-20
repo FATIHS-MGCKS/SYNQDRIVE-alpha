@@ -36,6 +36,11 @@ export class ServiceCasesController {
     return this.serviceCases.list(orgId, query);
   }
 
+  @Get('organizations/:orgId/service-cases/summary')
+  async summary(@Param('orgId') orgId: string) {
+    return this.serviceCases.getDashboardSummary(orgId);
+  }
+
   @Get('organizations/:orgId/service-cases/:id')
   async getOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.serviceCases.getById(orgId, id);

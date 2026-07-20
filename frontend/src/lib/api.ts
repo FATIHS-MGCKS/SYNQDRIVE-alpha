@@ -831,7 +831,7 @@ export interface ApiServiceCaseAttachment {
   createdAt: string;
 }
 
-export interface ApiServiceCase {
+export interface ApiServiceCaseListItem {
   id: string;
   organizationId: string;
   vehicleId: string;
@@ -860,6 +860,9 @@ export interface ApiServiceCase {
   createdAt: string;
   updatedAt: string;
   taskCount: number;
+}
+
+export interface ApiServiceCase extends ApiServiceCaseListItem {
   tasks: ApiServiceCaseTaskRef[];
   comments?: ApiServiceCaseComment[];
   attachments?: ApiServiceCaseAttachment[];
@@ -873,6 +876,37 @@ export interface ServiceCaseListFilters {
   vehicleId?: string;
   vendorId?: string;
   search?: string;
+  blocksRental?: boolean;
+  scheduledFrom?: string;
+  scheduledTo?: string;
+  expectedReadyFrom?: string;
+  expectedReadyTo?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ServiceCaseListPageMeta {
+  limit: number;
+  nextCursor: string | null;
+}
+
+export interface ServiceCaseListPage {
+  data: ApiServiceCaseListItem[];
+  meta: ServiceCaseListPageMeta;
+}
+
+export interface ApiServiceCaseSummary {
+  open: number;
+  active: number;
+  scheduled: number;
+  inProgress: number;
+  waitingVendor: number;
+  waitingParts: number;
+  completed: number;
+  cancelled: number;
+  blocksRental: number;
+  byStatus: Partial<Record<ApiServiceCaseStatus, number>>;
+  byPriority: Partial<Record<ApiTaskPriority, number>>;
 }
 
 export interface CreateServiceCasePayload {
@@ -2662,6 +2696,48 @@ function billingTenantQuery(
   }
   const q = search.toString();
   return q ? `?${q}` : '';
+}
+
+function buildServiceCaseListQueryString(filters?: ServiceCaseListFilters): string {
+  const merged: ServiceCaseListFilters = { limit: 50, ...filters };
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(merged)) {
+    if (v === undefined || v === null || v === '') continue;
+    q.set(k, String(v));
+  }
+  return q.toString();
+}
+
+function fetchServiceCaseListPage(orgId: string, filters?: ServiceCaseListFilters) {
+  const qs = buildServiceCaseListQueryString(filters);
+  return get<ServiceCaseListPage>(`/organizations/${orgId}/service-cases${qs ? `?${qs}` : ''}`);
+}
+
+async function fetchAllServiceCases(
+  orgId: string,
+  filters?: ServiceCaseListFilters,
+): Promise<ApiServiceCaseListItem[]> {
+  if (filters?.limit != null || filters?.cursor != null) {
+    const page = await fetchServiceCaseListPage(orgId, filters);
+    return page.data;
+  }
+
+  const all: ApiServiceCaseListItem[] = [];
+  let cursor: string | undefined;
+  const pageSize = 100;
+
+  for (;;) {
+    const page = await fetchServiceCaseListPage(orgId, {
+      ...filters,
+      limit: pageSize,
+      ...(cursor ? { cursor } : {}),
+    });
+    all.push(...page.data);
+    if (!page.meta.nextCursor) break;
+    cursor = page.meta.nextCursor;
+  }
+
+  return all;
 }
 
 export const api = {
@@ -4774,17 +4850,11 @@ export const api = {
     forCustomer: (orgId: string, customerId: string) => get<ApiTask[]>(`/organizations/${orgId}/customers/${customerId}/tasks`),
   },
   serviceCases: {
-    list: (orgId: string, filters?: ServiceCaseListFilters) => {
-      const q = new URLSearchParams();
-      if (filters) {
-        for (const [k, v] of Object.entries(filters)) {
-          if (v === undefined || v === null || v === '') continue;
-          q.set(k, String(v));
-        }
-      }
-      const qs = q.toString();
-      return get<ApiServiceCase[]>(`/organizations/${orgId}/service-cases${qs ? `?${qs}` : ''}`);
-    },
+    listPage: (orgId: string, filters?: ServiceCaseListFilters) =>
+      fetchServiceCaseListPage(orgId, filters),
+    list: (orgId: string, filters?: ServiceCaseListFilters) => fetchAllServiceCases(orgId, filters),
+    summary: (orgId: string) =>
+      get<ApiServiceCaseSummary>(`/organizations/${orgId}/service-cases/summary`),
     get: (orgId: string, id: string) => get<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}`),
     create: (orgId: string, data: CreateServiceCasePayload) =>
       post<ApiServiceCase>(`/organizations/${orgId}/service-cases`, data),
@@ -4801,31 +4871,27 @@ export const api = {
       id: string,
       data: { fileUrl: string; fileName?: string; mimeType?: string; size?: number },
     ) => post<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}/attachments`, data),
-    forVehicle: (orgId: string, vehicleId: string, filters?: ServiceCaseListFilters) => {
-      const q = new URLSearchParams();
-      if (filters) {
-        for (const [k, v] of Object.entries(filters)) {
-          if (v === undefined || v === null || v === '') continue;
-          q.set(k, String(v));
-        }
+    forVehicle: async (orgId: string, vehicleId: string, filters?: ServiceCaseListFilters) => {
+      if (filters?.limit != null || filters?.cursor != null) {
+        const qs = buildServiceCaseListQueryString(filters);
+        const page = await get<ServiceCaseListPage>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/service-cases${qs ? `?${qs}` : ''}`,
+        );
+        return page.data;
       }
-      const qs = q.toString();
-      return get<ApiServiceCase[]>(
-        `/organizations/${orgId}/vehicles/${vehicleId}/service-cases${qs ? `?${qs}` : ''}`,
-      );
+
+      return fetchAllServiceCases(orgId, { ...filters, vehicleId });
     },
-    forVendor: (orgId: string, vendorId: string, filters?: ServiceCaseListFilters) => {
-      const q = new URLSearchParams();
-      if (filters) {
-        for (const [k, v] of Object.entries(filters)) {
-          if (v === undefined || v === null || v === '') continue;
-          q.set(k, String(v));
-        }
+    forVendor: async (orgId: string, vendorId: string, filters?: ServiceCaseListFilters) => {
+      if (filters?.limit != null || filters?.cursor != null) {
+        const qs = buildServiceCaseListQueryString(filters);
+        const page = await get<ServiceCaseListPage>(
+          `/organizations/${orgId}/vendors/${vendorId}/service-cases${qs ? `?${qs}` : ''}`,
+        );
+        return page.data;
       }
-      const qs = q.toString();
-      return get<ApiServiceCase[]>(
-        `/organizations/${orgId}/vendors/${vendorId}/service-cases${qs ? `?${qs}` : ''}`,
-      );
+
+      return fetchAllServiceCases(orgId, { ...filters, vendorId });
     },
   },
   invoices: {

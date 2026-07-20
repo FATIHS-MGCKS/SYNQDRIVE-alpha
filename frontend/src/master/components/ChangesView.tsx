@@ -35,7 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
+    id: 'service-cases-cursor-pagination-p48-2026-07-20',
+    version: '4.9.719',
+    title: 'Service Cases — Cursor-Pagination (Phase 7 P48)',
+    summary: [
+      '`GET /service-cases` unterstützt `limit`+`cursor` mit stabiler Sortierung (`status asc`, `openedAt desc`, `id` tie-breaker).',
+      'Filter: Status, Fahrzeug, Partner (`vendorId`), `blocksRental`, `scheduledFrom/To`, `expectedReadyFrom/To`.',
+      'Listenprojektion leicht (`taskCount` only); Detail via `GET /service-cases/:id` lädt Tasks, Timeline (Comments) und Dokumente lazy.',
+      '`GET /service-cases/summary` für KPIs separat; Frontend `api.serviceCases.listPage` + `useServiceCaseList`/`useServiceCaseDetail`/`useServiceCaseSummary`.',
+    ],
+    reason: 'Phase 7 Prompt 48: Service Cases paginieren, schwere Relationen aus Listenabfrage entfernen.',
+    previousBehavior:
+      'Unbegrenztes `findMany` mit Comments/Attachments/Tasks in jedem Listeneintrag; keine Summary-Route; kein Cursor.',
+    details:
+      'service-case-list-cursor.util.ts (+spec), service-cases.service.ts, service-cases.controller.ts (+spec), frontend/src/lib/service-cases/* (+tests), api.ts',
+    affectsArchitecture: true,
+    module: 'Service Cases',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',
     summary: [

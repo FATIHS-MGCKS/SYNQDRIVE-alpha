@@ -1,10 +1,12 @@
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsISO8601,
   IsInt,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -186,6 +188,39 @@ export class ListServiceCasesQueryDto {
   @IsString()
   @MaxLength(200)
   search?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  blocksRental?: boolean;
+
+  @IsOptional()
+  @IsISO8601()
+  scheduledFrom?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  scheduledTo?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  expectedReadyFrom?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  expectedReadyTo?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => (value != null && value !== '' ? Number(value) : undefined))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  cursor?: string;
 }
 
 export class AddServiceCaseCommentDto {

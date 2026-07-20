@@ -8,6 +8,16 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ServiceOverdueTaskService } from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.service';
+import {
+  buildServiceCaseListCursorWhere,
+  buildServiceCaseListOrderBy,
+  decodeServiceCaseListCursor,
+  encodeServiceCaseListCursorFromRow,
+  isServiceCaseListPaginatedRequest,
+  resolveServiceCaseListLimit,
+  SERVICE_CASE_LIST_LEGACY_MAX_LIMIT,
+  type ServiceCaseListPageResult,
+} from './service-case-list-cursor.util';
 
 const STATUS_TRANSITIONS: Record<ServiceCaseStatus, ServiceCaseStatus[]> = {
   OPEN: ['SCHEDULED', 'IN_PROGRESS', 'WAITING_VENDOR', 'WAITING_PARTS', 'CANCELLED'],
@@ -27,13 +37,26 @@ export interface ListServiceCasesFilters {
   vehicleId?: string;
   vendorId?: string;
   search?: string;
+  blocksRental?: boolean;
+  scheduledFrom?: string;
+  scheduledTo?: string;
+  expectedReadyFrom?: string;
+  expectedReadyTo?: string;
+  limit?: number;
+  cursor?: string;
 }
 
-type ServiceCaseRow = Prisma.ServiceCaseGetPayload<{
+type ServiceCaseDetailRow = Prisma.ServiceCaseGetPayload<{
   include: {
     tasks: { select: { id: true; title: true; status: true; type: true; dueDate: true } };
     comments: true;
     attachments: true;
+  };
+}>;
+
+type ServiceCaseListRow = Prisma.ServiceCaseGetPayload<{
+  include: {
+    _count: { select: { tasks: true } };
   };
 }>;
 
@@ -45,7 +68,7 @@ export class ServiceCasesService {
     private readonly serviceOverdueTasks: ServiceOverdueTaskService,
   ) {}
 
-  private format(row: ServiceCaseRow) {
+  private formatScalars(row: ServiceCaseDetailRow | ServiceCaseListRow) {
     return {
       id: row.id,
       organizationId: row.organizationId,
@@ -74,6 +97,19 @@ export class ServiceCasesService {
       updatedByUserId: row.updatedByUserId ?? null,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
+    };
+  }
+
+  private formatList(row: ServiceCaseListRow) {
+    return {
+      ...this.formatScalars(row),
+      taskCount: row._count.tasks,
+    };
+  }
+
+  private formatDetail(row: ServiceCaseDetailRow) {
+    return {
+      ...this.formatScalars(row),
       taskCount: row.tasks.length,
       tasks: row.tasks.map((t) => ({
         id: t.id,
@@ -97,6 +133,17 @@ export class ServiceCasesService {
         uploadedByUserId: a.uploadedByUserId,
         createdAt: a.createdAt.toISOString(),
       })),
+    };
+  }
+
+  /** @deprecated use formatDetail */
+  private format(row: ServiceCaseDetailRow) {
+    return this.formatDetail(row);
+  }
+
+  private listInclude() {
+    return {
+      _count: { select: { tasks: true } },
     };
   }
 
@@ -143,7 +190,7 @@ export class ServiceCasesService {
     }
   }
 
-  async list(orgId: string, filters: ListServiceCasesFilters = {}) {
+  private buildListWhere(orgId: string, filters: ListServiceCasesFilters): Prisma.ServiceCaseWhereInput {
     const where: Prisma.ServiceCaseWhereInput = { organizationId: orgId };
     if (filters.status) where.status = filters.status;
     if (filters.category) where.category = filters.category;
@@ -151,6 +198,28 @@ export class ServiceCasesService {
     if (filters.source) where.source = filters.source;
     if (filters.vehicleId) where.vehicleId = filters.vehicleId;
     if (filters.vendorId) where.vendorId = filters.vendorId;
+    if (filters.blocksRental != null) where.blocksRental = filters.blocksRental;
+
+    if (filters.scheduledFrom || filters.scheduledTo) {
+      where.scheduledAt = {};
+      if (filters.scheduledFrom) {
+        (where.scheduledAt as Prisma.DateTimeFilter).gte = new Date(filters.scheduledFrom);
+      }
+      if (filters.scheduledTo) {
+        (where.scheduledAt as Prisma.DateTimeFilter).lte = new Date(filters.scheduledTo);
+      }
+    }
+
+    if (filters.expectedReadyFrom || filters.expectedReadyTo) {
+      where.expectedReadyAt = {};
+      if (filters.expectedReadyFrom) {
+        (where.expectedReadyAt as Prisma.DateTimeFilter).gte = new Date(filters.expectedReadyFrom);
+      }
+      if (filters.expectedReadyTo) {
+        (where.expectedReadyAt as Prisma.DateTimeFilter).lte = new Date(filters.expectedReadyTo);
+      }
+    }
+
     if (filters.search) {
       where.OR = [
         { title: { contains: filters.search, mode: 'insensitive' } },
@@ -158,16 +227,116 @@ export class ServiceCasesService {
       ];
     }
 
+    return where;
+  }
+
+  async list(orgId: string, filters: ListServiceCasesFilters = {}) {
+    const paginated = isServiceCaseListPaginatedRequest(filters);
+    const limit = paginated ? resolveServiceCaseListLimit(filters.limit) : undefined;
+    const cursor = filters.cursor?.trim() || undefined;
+    const where = this.buildListWhere(orgId, filters);
+    const andFilters: Prisma.ServiceCaseWhereInput[] = [];
+
+    if (cursor) {
+      andFilters.push(buildServiceCaseListCursorWhere(decodeServiceCaseListCursor(cursor)));
+    }
+
+    const mergedWhere: Prisma.ServiceCaseWhereInput =
+      andFilters.length > 0 ? { AND: [where, ...andFilters] } : where;
+
+    const orderBy = buildServiceCaseListOrderBy();
+    const take = paginated ? limit! + 1 : SERVICE_CASE_LIST_LEGACY_MAX_LIMIT;
+
     const rows = await this.prisma.serviceCase.findMany({
-      where,
-      include: this.detailInclude(),
-      orderBy: [{ status: 'asc' }, { openedAt: 'desc' }],
+      where: mergedWhere,
+      include: this.listInclude(),
+      orderBy,
+      take,
     });
-    return rows.map((r) => this.format(r));
+
+    let nextCursor: string | null = null;
+    const pageRows =
+      paginated && rows.length > limit!
+        ? (() => {
+            nextCursor = encodeServiceCaseListCursorFromRow(rows[limit! - 1]!);
+            return rows.slice(0, limit!);
+          })()
+        : rows;
+
+    const data = pageRows.map((row) => this.formatList(row));
+
+    if (paginated) {
+      const result: ServiceCaseListPageResult<(typeof data)[number]> = {
+        data,
+        meta: {
+          limit: limit!,
+          nextCursor,
+        },
+      };
+      return result;
+    }
+
+    return data;
+  }
+
+  async getDashboardSummary(orgId: string) {
+    const orgFilter = { organizationId: orgId };
+    const activeStatuses: ServiceCaseStatus[] = [
+      'OPEN',
+      'SCHEDULED',
+      'IN_PROGRESS',
+      'WAITING_VENDOR',
+      'WAITING_PARTS',
+    ];
+
+    const [byStatusRaw, byPriorityRaw, open, scheduled, inProgress, waitingVendor, waitingParts, completed, cancelled, blocksRental] =
+      await Promise.all([
+        this.prisma.serviceCase.groupBy({
+          by: ['status'],
+          where: orgFilter,
+          _count: { _all: true },
+        }),
+        this.prisma.serviceCase.groupBy({
+          by: ['priority'],
+          where: { ...orgFilter, status: { in: activeStatuses } },
+          _count: { _all: true },
+        }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, status: 'OPEN' } }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, status: 'SCHEDULED' } }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, status: 'IN_PROGRESS' } }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, status: 'WAITING_VENDOR' } }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, status: 'WAITING_PARTS' } }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, status: 'COMPLETED' } }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, status: 'CANCELLED' } }),
+        this.prisma.serviceCase.count({ where: { ...orgFilter, blocksRental: true, status: { in: activeStatuses } } }),
+      ]);
+
+    const byStatus = Object.fromEntries(byStatusRaw.map((row) => [row.status, row._count._all]));
+    const byPriority = Object.fromEntries(byPriorityRaw.map((row) => [row.priority, row._count._all]));
+    const active =
+      (byStatus.OPEN ?? 0) +
+      (byStatus.SCHEDULED ?? 0) +
+      (byStatus.IN_PROGRESS ?? 0) +
+      (byStatus.WAITING_VENDOR ?? 0) +
+      (byStatus.WAITING_PARTS ?? 0);
+
+    return {
+      open,
+      active,
+      scheduled,
+      inProgress,
+      waitingVendor,
+      waitingParts,
+      completed,
+      cancelled,
+      blocksRental,
+      byStatus,
+      byPriority,
+    };
   }
 
   async getById(orgId: string, id: string) {
-    return this.format(await this.loadOrThrow(orgId, id));
+    return this.formatDetail(await this.loadOrThrow(orgId, id));
   }
 
   async listForVehicle(orgId: string, vehicleId: string, filters: ListServiceCasesFilters = {}) {
