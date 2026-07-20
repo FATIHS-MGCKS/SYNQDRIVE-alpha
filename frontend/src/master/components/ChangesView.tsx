@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-tasks-work-area-fhs-p28-2026-07-20',
+    version: '4.9.619',
+    title: 'Fleet Zustand & Service — tasks in Arbeiten shell (FHS Phase 4 P28)',
+    summary: [
+      'Aufgabenansicht vollständig in `FleetHealthServiceWorkPanel` integriert — Filter, Create-Dialog, Lifecycle-Aktionen unverändert via `ServiceTasksPanel`.',
+      'Task Loading/Error aus `tasks` + `taskSummary` Source-State; keine zweite Task-Abfrage im Child.',
+      'Deep-Link-Navigation (`vehicleId`, `focusTaskId`, KPI-Filter) über `useFleetHealthServiceTaskNavigation` + Kontextleiste.',
+      'Legacy-Aufgaben-Tab nutzt dieselbe Task-Pipeline bis Work-Area-Flag aktiv ist.',
+    ],
+    reason: 'FHS Phase 4 Prompt 28: Bestehende Aufgabenansicht ohne Regression in die Arbeiten-Hülle verschieben.',
+    previousBehavior:
+      'Work-Area-Shell renderte Aufgaben ohne Service-Center-Nav-Kontext; Loading/Error nutzte aggregiertes ViewModel statt Task-Source-State.',
+    details:
+      'useFleetHealthServiceTaskNavigation.ts, fleet-health-service-task-source.ts (+Tests), FleetHealthServiceView.tsx, FleetHealthServiceWorkPanel.tsx, FleetHealthServiceTasksPanel.tsx, FleetHealthServiceWorkPanel.test.tsx',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-work-area-shell-fhs-p27-2026-07-20',
     version: '4.9.618',
     title: 'Fleet Zustand & Service — Arbeiten work area shell (FHS Phase 4 P27)',

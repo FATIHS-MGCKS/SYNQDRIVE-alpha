@@ -1,6 +1,8 @@
 import { Building2 } from 'lucide-react';
-import type { Vendor } from '../../../lib/api';
+import type { ApiTask, Vendor } from '../../../lib/api';
+import type { ServiceTaskAdvancedFilters } from '../../lib/service-task-filters';
 import { Button } from '../../../components/ui/button';
+import type { ServiceTaskFilter } from '../service-center/service-center.types';
 import type { FleetHealthServiceViewModel } from './fleet-health-service.view-model';
 import { FleetHealthServiceCasesPanel } from './FleetHealthServiceCasesPanel';
 import { FleetHealthServiceSchedulePanel } from './FleetHealthServiceSchedulePanel';
@@ -14,7 +16,14 @@ interface FleetHealthServiceWorkPanelProps {
   onViewChange: (view: FleetHealthServiceWorkView) => void;
   vm: FleetHealthServiceViewModel;
   vendors: Vendor[];
+  tasks: ApiTask[];
+  tasksLoading?: boolean;
+  tasksError?: string | null;
+  taskFilter: ServiceTaskFilter;
+  onTaskFilterChange: (filter: ServiceTaskFilter) => void;
+  initialAdvancedFilters?: Partial<ServiceTaskAdvancedFilters>;
   serviceCasesError?: string | null;
+  serviceCasesLoading?: boolean;
   focusTaskId?: string | null;
   onReload?: () => void;
   onOpenGlobalTasks?: (taskId: string) => void;
@@ -26,7 +35,14 @@ export function FleetHealthServiceWorkPanel({
   onViewChange,
   vm,
   vendors,
+  tasks,
+  tasksLoading,
+  tasksError,
+  taskFilter,
+  onTaskFilterChange,
+  initialAdvancedFilters,
   serviceCasesError,
+  serviceCasesLoading,
   focusTaskId,
   onReload,
   onOpenGlobalTasks,
@@ -58,10 +74,13 @@ export function FleetHealthServiceWorkPanel({
 
       {activeView === 'tasks' ? (
         <FleetHealthServiceTasksPanel
-          tasks={vm.allTasks}
+          tasks={tasks}
           vendors={vendors}
-          loading={vm.serviceLoading}
-          error={vm.serviceError}
+          loading={tasksLoading}
+          error={tasksError}
+          filter={taskFilter}
+          onFilterChange={onTaskFilterChange}
+          initialAdvancedFilters={initialAdvancedFilters}
           onReload={onReload}
           onOpenGlobalTasks={onOpenGlobalTasks}
           focusTaskId={focusTaskId}
@@ -72,7 +91,7 @@ export function FleetHealthServiceWorkPanel({
       {activeView === 'service-cases' ? (
         <FleetHealthServiceCasesPanel
           caseLayer={vm.caseLayer}
-          loading={vm.serviceLoading}
+          loading={serviceCasesLoading}
           error={serviceCasesError}
           onReload={onReload}
         />
@@ -80,9 +99,9 @@ export function FleetHealthServiceWorkPanel({
 
       {activeView === 'due-dates' ? (
         <FleetHealthServiceSchedulePanel
-          tasks={vm.allTasks}
+          tasks={tasks}
           vendors={vendors}
-          loading={vm.serviceLoading}
+          loading={tasksLoading}
           onSelectTask={onOpenGlobalTasks}
           compact
         />

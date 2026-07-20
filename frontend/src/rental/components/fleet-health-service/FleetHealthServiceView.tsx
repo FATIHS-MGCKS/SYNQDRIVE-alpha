@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Vendor } from '../../../lib/api';
 import { FleetConditionView, type ConditionCategory } from '../FleetConditionView';
+import { ServiceCenterContextBar } from '../service-center/ServiceCenterContextBar';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
 import { FleetHealthServiceHistoryPanel } from './FleetHealthServiceHistoryPanel';
 import { FleetHealthServiceOverviewPanel } from './FleetHealthServiceOverviewPanel';
@@ -10,6 +11,7 @@ import { FleetHealthServiceTasksPanel } from './FleetHealthServiceTasksPanel';
 import { FleetHealthServiceVendorsPanel } from './FleetHealthServiceVendorsPanel';
 import { FleetHealthServiceWorkPanel } from './FleetHealthServiceWorkPanel';
 import type { FleetHealthServiceTab } from './fleet-health-service.types';
+import { resolveFleetHealthServiceTaskSourceState } from './fleet-health-service-task-source';
 import {
   isFleetHealthServiceWorkAreaEnabled,
   isFleetHealthServiceWorkAreaSubTab,
@@ -19,6 +21,7 @@ import {
   type FleetHealthServiceWorkView,
 } from './fleet-health-service-work-area';
 import { useFleetHealthServiceRefresh } from './FleetHealthServiceRefreshContext';
+import { useFleetHealthServiceTaskNavigation } from './useFleetHealthServiceTaskNavigation';
 import { useFleetHealthServiceViewModel } from './useFleetHealthServiceViewModel';
 
 interface FleetHealthServiceViewProps {
@@ -49,6 +52,20 @@ export function FleetHealthServiceView({
   const { service } = useFleetHealthServiceRefresh();
   const workAreaEnabled = isFleetHealthServiceWorkAreaEnabled();
 
+  const taskSource = useMemo(
+    () => resolveFleetHealthServiceTaskSourceState(service),
+    [service.tasks.status, service.tasks.error, service.taskSummary.status, service.taskSummary.error],
+  );
+
+  const serviceCasesLoading = service.serviceCases.status === 'loading';
+
+  const taskNavigation = useFleetHealthServiceTaskNavigation({
+    navigation: serviceCenterNavigation,
+    onNavigationConsumed: onServiceCenterNavigationConsumed,
+    allTasks: vm.allTasks,
+    vendors: vm.vendors,
+  });
+
   const [workView, setWorkView] = useState<FleetHealthServiceWorkView>(() =>
     resolveWorkViewFromFleetSubTab(activeSubTab) ?? 'tasks',
   );
@@ -62,15 +79,6 @@ export function FleetHealthServiceView({
     if (!serviceCenterNavigation) return;
     setWorkView(resolveWorkViewFromServiceCenterNav(serviceCenterNavigation));
   }, [serviceCenterNavigation]);
-
-  const focusTaskId =
-    serviceCenterNavigation?.focusTaskId && activeSubTab === 'tasks'
-      ? serviceCenterNavigation.focusTaskId
-      : null;
-
-  const handleNavigationConsumed = useCallback(() => {
-    onServiceCenterNavigationConsumed?.();
-  }, [onServiceCenterNavigationConsumed]);
 
   const handleWorkViewChange = useCallback(
     (view: FleetHealthServiceWorkView) => {
@@ -89,6 +97,33 @@ export function FleetHealthServiceView({
   );
 
   const showWorkPanel = workAreaEnabled && isFleetHealthServiceWorkAreaSubTab(activeSubTab);
+  const showLegacyTasks = !showWorkPanel && activeSubTab === 'tasks';
+  const showTaskContextBar =
+    (showWorkPanel && workView === 'tasks') || showLegacyTasks;
+
+  const handleOpenGlobalTask = useCallback(
+    (taskId: string) => {
+      onOpenGlobalTasks?.(taskId);
+    },
+    [onOpenGlobalTasks],
+  );
+
+  const handleReloadAll = useCallback(() => {
+    void vm.reloadAll();
+  }, [vm]);
+
+  const taskPanelCommonProps = {
+    tasks: taskNavigation.filteredTasks,
+    vendors: vm.vendors,
+    loading: taskSource.loading,
+    error: taskSource.error,
+    filter: taskNavigation.taskFilter,
+    onFilterChange: taskNavigation.setTaskFilter,
+    initialAdvancedFilters: taskNavigation.advancedNavPatch,
+    focusTaskId: taskNavigation.focusTaskId,
+    onReload: handleReloadAll,
+    onOpenGlobalTasks: handleOpenGlobalTask,
+  };
 
   return (
     <div className="space-y-4">
@@ -116,44 +151,43 @@ export function FleetHealthServiceView({
         />
       )}
 
+      {showTaskContextBar && taskNavigation.hasNavContext ? (
+        <ServiceCenterContextBar
+          context={taskNavigation.navContext}
+          vendorName={taskNavigation.contextVendorName}
+          onClear={taskNavigation.clearNavContext}
+        />
+      ) : null}
+
       {showWorkPanel ? (
         <FleetHealthServiceWorkPanel
           activeView={workView}
           onViewChange={handleWorkViewChange}
           vm={vm}
           vendors={vm.vendors}
+          tasks={taskNavigation.filteredTasks}
+          tasksLoading={taskSource.loading}
+          tasksError={taskSource.error}
+          taskFilter={taskNavigation.taskFilter}
+          onTaskFilterChange={taskNavigation.setTaskFilter}
+          initialAdvancedFilters={taskNavigation.advancedNavPatch}
           serviceCasesError={service.serviceCases.error}
-          focusTaskId={focusTaskId}
-          onReload={() => void vm.reloadAll()}
-          onOpenGlobalTasks={(taskId) => {
-            onOpenGlobalTasks?.(taskId);
-            handleNavigationConsumed();
-          }}
+          serviceCasesLoading={serviceCasesLoading}
+          focusTaskId={taskNavigation.focusTaskId}
+          onReload={handleReloadAll}
+          onOpenGlobalTasks={handleOpenGlobalTask}
           onOpenVendors={() => onSubTabChange('vendors')}
         />
       ) : null}
 
-      {!showWorkPanel && activeSubTab === 'tasks' && (
-        <FleetHealthServiceTasksPanel
-          tasks={vm.allTasks}
-          vendors={vm.vendors}
-          loading={vm.serviceLoading}
-          error={vm.serviceError}
-          onReload={() => void vm.reloadAll()}
-          onOpenGlobalTasks={(taskId) => {
-            onOpenGlobalTasks?.(taskId);
-            handleNavigationConsumed();
-          }}
-          focusTaskId={focusTaskId}
-        />
-      )}
+      {showLegacyTasks ? <FleetHealthServiceTasksPanel {...taskPanelCommonProps} /> : null}
 
       {!showWorkPanel && activeSubTab === 'schedule' && (
         <FleetHealthServiceSchedulePanel
-          tasks={vm.allTasks}
+          tasks={taskNavigation.filteredTasks}
           vendors={vm.vendors}
-          loading={vm.serviceLoading}
-          onSelectTask={onOpenGlobalTasks}
+          loading={taskSource.loading}
+          onSelectTask={handleOpenGlobalTask}
         />
       )}
 
@@ -163,9 +197,9 @@ export function FleetHealthServiceView({
 
       {activeSubTab === 'history' && (
         <FleetHealthServiceHistoryPanel
-          tasks={vm.allTasks}
+          tasks={taskNavigation.filteredTasks}
           vendors={vm.vendors}
-          loading={vm.serviceLoading}
+          loading={taskSource.loading}
           onOpenVehicle={onOpenVehicle}
           initialVehicleId={serviceCenterNavigation?.vehicleId ?? undefined}
         />

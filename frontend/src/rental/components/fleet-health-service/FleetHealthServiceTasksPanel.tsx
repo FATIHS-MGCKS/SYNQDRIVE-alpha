@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ApiTask, Vendor } from '../../../lib/api';
+import type { ServiceTaskAdvancedFilters } from '../../lib/service-task-filters';
 import { ServiceTasksPanel } from '../service-center/ServiceTasksPanel';
 import type { ServiceTaskFilter } from '../service-center/service-center.types';
 import { fhs } from './fleet-health-service-shell';
@@ -10,6 +11,9 @@ interface FleetHealthServiceTasksPanelProps {
   vendors: Vendor[];
   loading?: boolean;
   error?: string | null;
+  filter?: ServiceTaskFilter;
+  onFilterChange?: (filter: ServiceTaskFilter) => void;
+  initialAdvancedFilters?: Partial<ServiceTaskAdvancedFilters>;
   onReload?: () => void;
   onOpenGlobalTasks?: (taskId: string) => void;
   focusTaskId?: string | null;
@@ -21,12 +25,17 @@ export function FleetHealthServiceTasksPanel({
   vendors,
   loading,
   error,
+  filter: filterProp,
+  onFilterChange,
+  initialAdvancedFilters,
   onReload,
   onOpenGlobalTasks,
   focusTaskId,
   compact = false,
 }: FleetHealthServiceTasksPanelProps) {
-  const [filter, setFilter] = useState<ServiceTaskFilter>('all');
+  const [internalFilter, setInternalFilter] = useState<ServiceTaskFilter>('all');
+  const filter = filterProp ?? internalFilter;
+  const handleFilterChange = onFilterChange ?? setInternalFilter;
 
   return (
     <div className="space-y-3">
@@ -46,7 +55,8 @@ export function FleetHealthServiceTasksPanel({
         loading={loading}
         error={error}
         filter={filter}
-        onFilterChange={setFilter}
+        onFilterChange={handleFilterChange}
+        initialAdvancedFilters={initialAdvancedFilters}
         onOpenGlobalTasks={onOpenGlobalTasks}
         onReload={onReload}
         focusTaskId={focusTaskId}
