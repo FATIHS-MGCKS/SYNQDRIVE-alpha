@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-vehicle-findings-p55-2026-07-20',
+    version: '4.9.726',
+    title: 'Fleet Health Service — mehrere Findings und Arbeiten pro Fahrzeug (Phase 8 P55)',
+    summary: [
+      'Übersicht zeigt fahrzeugzentrierte Zeilen: primärer Zustand, Zähler (Findings/Tasks/Cases), wichtigste Blockade, Badge „+N weitere“.',
+      'Expandiert: alle Health-Findings, verknüpfte Tasks, Service Cases und unmatched Arbeiten mit Quelle und Status.',
+      'Neu: `fleet-health-service-vehicle-overview.ts`, `useFleetHealthServiceCases`; keine Ausblendung wegen „vehicle covered“.',
+    ],
+    reason: 'Phase 8 Prompt 55: parallele Findings und Ausführungsarbeit pro Fahrzeug sichtbar machen, ohne die Übersicht zu überladen.',
+    previousBehavior:
+      'Flache Health-/Task-Zeilen mit vehicle-covered-Dedupe — pro Fahrzeug höchstens eine Zeile; Service Cases nicht in der Übersicht.',
+    details:
+      'fleet-health-service-vehicle-overview.ts, FleetHealthServicePriorityOverview.tsx, fleet-health-service.view-model.ts, useFleetHealthServiceCases.ts, fleet-health-control-center.ts, i18n en/de, view-model + vehicle-overview tests, FLEET_HEALTH_SERVICE_CONTRACT.md',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:45:00.000Z',
+  },
+  {
     id: 'fleet-health-kpi-split-p54-2026-07-20',
     version: '4.9.725',
     title: 'Fleet Health Service — getrennte Health- und Ausführungs-KPIs (Phase 8 P54)',

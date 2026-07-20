@@ -323,6 +323,13 @@ function collectIssueChips(
   return out;
 }
 
+/** All operative health issue chips for a vehicle (primary ordering preserved). */
+export function listFleetHealthIssueChips(
+  health: VehicleHealthResponse | null | undefined,
+): HealthIssueChip[] {
+  return collectIssueChips(health);
+}
+
 /** True when a module only carries a data-quality limitation (not a real issue). */
 function isDataQualityModule(mod: RentalHealthModule): boolean {
   if (mod.state === 'critical' || mod.state === 'warning') return false;

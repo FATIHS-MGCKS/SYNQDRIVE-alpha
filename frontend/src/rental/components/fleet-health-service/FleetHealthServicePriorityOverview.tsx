@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Activity, ChevronDown, ChevronRight, ClipboardList, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import {
+  Activity,
+  Briefcase,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  FolderOpen,
+  Plus,
+} from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,9 +21,11 @@ import type { TranslationKey } from '../../i18n/translations/en';
 import { fhsActionLabelDe } from './fleet-health-service-labels';
 import { fhs } from './fleet-health-service-shell';
 import type {
-  FleetHealthServiceOverviewRow,
   FleetHealthServicePrioritySection,
   FleetHealthServicePrioritySectionKey,
+  FleetHealthServiceVehicleFinding,
+  FleetHealthServiceVehicleOverviewRow,
+  FleetHealthServiceVehicleTaskItem,
 } from './fleet-health-service.view-model';
 
 const SECTION_TITLE_KEYS: Record<FleetHealthServicePrioritySectionKey, TranslationKey> = {
@@ -46,14 +56,66 @@ interface FleetHealthServicePriorityOverviewProps {
   onReviewVehicle?: (vehicleId: string) => void;
 }
 
-function PriorityOverviewRow({
+function FindingChip({ finding }: { finding: FleetHealthServiceVehicleFinding }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium',
+        finding.tone === 'critical'
+          ? 'border-[color:var(--status-critical)]/25 bg-[color:var(--status-critical)]/[0.06] text-[color:var(--status-critical)]'
+          : finding.tone === 'warning'
+            ? 'border-[color:var(--status-watch)]/25 bg-[color:var(--status-watch)]/[0.06] text-[color:var(--status-watch)]'
+            : 'border-border/50 bg-muted/30 text-muted-foreground',
+      )}
+      title={finding.reason}
+    >
+      <Activity className="h-3 w-3 shrink-0" aria-hidden />
+      <span className="font-semibold">{finding.label}</span>
+      <span className="opacity-60">·</span>
+      <span className="truncate">{finding.detail}</span>
+    </span>
+  );
+}
+
+function WorkItemRow({
+  item,
+  onOpenTask,
+}: {
+  item: FleetHealthServiceVehicleTaskItem;
+  onOpenTask?: (taskId: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpenTask?.(item.id)}
+      className="flex w-full items-start justify-between gap-2 rounded-lg border border-border/40 px-2.5 py-2 text-left transition-colors hover:bg-muted/20"
+    >
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ClipboardList className="h-3.5 w-3.5 shrink-0 text-[color:var(--brand)]" aria-hidden />
+          <span className="text-[11px] font-semibold text-foreground">{item.title}</span>
+          <StatusChip tone={item.tone} className="text-[9px]">
+            {item.statusLabel}
+          </StatusChip>
+        </div>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          {item.sourceLabel}
+          {item.dueLabel ? ` · ${item.dueLabel}` : ''}
+        </p>
+      </div>
+      <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+    </button>
+  );
+}
+
+function VehiclePriorityRow({
   row,
   onOpenVehicle,
   onOpenTask,
   onCreateTask,
   onReviewVehicle,
 }: {
-  row: FleetHealthServiceOverviewRow;
+  row: FleetHealthServiceVehicleOverviewRow;
   onOpenVehicle?: (vehicleId: string) => void;
   onOpenTask?: (taskId: string) => void;
   onCreateTask?: (vehicleId: string) => void;
@@ -62,20 +124,10 @@ function PriorityOverviewRow({
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const actionLabel = fhsActionLabelDe(row.recommendedAction);
-  const hasDetails = row.detailLines.length > 0;
-  const KindIcon = row.kind === 'health' ? Activity : ClipboardList;
-  const kindLabel =
-    row.kind === 'health'
-      ? t('fleetHealthService.overview.kind.health')
-      : t('fleetHealthService.overview.kind.task');
-  const sourcePrefix =
-    row.kind === 'health'
-      ? t('fleetHealthService.overview.sourceHealth')
-      : t('fleetHealthService.overview.sourceWork');
 
   const handlePrimary = () => {
-    if (row.recommendedAction === 'open_task' && row.existingTaskId) {
-      onOpenTask?.(row.existingTaskId);
+    if (row.recommendedAction === 'open_task' && row.primaryLinkedTaskId) {
+      onOpenTask?.(row.primaryLinkedTaskId);
       return;
     }
     if (row.recommendedAction === 'create_task') {
@@ -86,40 +138,83 @@ function PriorityOverviewRow({
       onReviewVehicle?.(row.vehicleId);
       return;
     }
-    if (row.vehicleId) onOpenVehicle?.(row.vehicleId);
+    onOpenVehicle?.(row.vehicleId);
   };
+
+  const toggleExpanded = () => setExpanded((prev) => !prev);
+
+  const onHeaderKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleExpanded();
+    }
+  };
+
+  const tasksForCase = (serviceCase: FleetHealthServiceVehicleOverviewRow['cases'][number]) =>
+    row.matchedTasks.filter(
+      (task) =>
+        task.serviceCaseId === serviceCase.id || serviceCase.linkedTaskIds.includes(task.id),
+    );
+
+  const hasExpandableContent =
+    row.findings.length > 0 ||
+    row.cases.length > 0 ||
+    row.unmatchedTasks.length > 0 ||
+    Boolean(row.dataQualityNote);
 
   return (
     <div className={fhs.interactiveRow}>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="font-mono text-[13px] font-bold tracking-tight text-foreground tabular-nums">
-            {row.plate}
-          </span>
-          {row.makeModelYear ? (
-            <span className={cn(fhs.meta, 'truncate')}>{row.makeModelYear}</span>
-          ) : null}
-          <span
-            className={cn(
-              'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold',
-              row.kind === 'health'
-                ? 'border-[color:var(--status-watch)]/25 bg-[color:var(--status-watch)]/[0.06] text-[color:var(--status-watch)]'
-                : 'border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/50 text-[color:var(--brand)]',
-            )}
-          >
-            <KindIcon className="h-3 w-3 shrink-0" aria-hidden />
-            {kindLabel}
-          </span>
-          <StatusChip tone={row.statusTone} className="shrink-0 text-[10px]">
-            {row.statusLabel}
-          </StatusChip>
-        </div>
-        <p className={cn(fhs.rowBody, 'line-clamp-2')}>{row.primaryReason}</p>
-        <p className={fhs.sourceTag}>
-          {sourcePrefix}: {row.sourceLabel}
-        </p>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          onClick={toggleExpanded}
+          onKeyDown={onHeaderKeyDown}
+          className="cursor-pointer space-y-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-mono text-[13px] font-bold tracking-tight text-foreground tabular-nums">
+              {row.plate}
+            </span>
+            {row.makeModelYear ? (
+              <span className={cn(fhs.meta, 'truncate')}>{row.makeModelYear}</span>
+            ) : null}
+            <StatusChip tone={row.primaryStatusTone} className="shrink-0 text-[10px]">
+              {row.primaryStatusLabel}
+            </StatusChip>
+            {row.moreCount > 0 ? (
+              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                +{row.moreCount} {t('fleetHealthService.overview.moreBadge')}
+              </span>
+            ) : null}
+          </div>
 
-        {hasDetails ? (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground tabular-nums">
+            {row.findings.length > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <Activity className="h-3 w-3" aria-hidden />
+                {row.findings.length} {t('fleetHealthService.overview.findingsCount')}
+              </span>
+            ) : null}
+            {row.openTaskCount > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <ClipboardList className="h-3 w-3" aria-hidden />
+                {row.openTaskCount} {t('fleetHealthService.overview.tasksCount')}
+              </span>
+            ) : null}
+            {row.openCaseCount > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <Briefcase className="h-3 w-3" aria-hidden />
+                {row.openCaseCount} {t('fleetHealthService.overview.casesCount')}
+              </span>
+            ) : null}
+          </div>
+
+          <p className={cn(fhs.rowBody, 'line-clamp-2 font-medium')}>{row.primaryBlockage}</p>
+        </div>
+
+        {hasExpandableContent ? (
           <Collapsible open={expanded} onOpenChange={setExpanded}>
             <CollapsibleTrigger className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground">
               <ChevronDown
@@ -129,12 +224,80 @@ function PriorityOverviewRow({
                 ? t('fleetHealthService.overview.hideDetails')
                 : t('fleetHealthService.overview.showDetails')}
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-1.5 space-y-1 border-l-2 border-border/50 pl-2.5">
-              {row.detailLines.map((line) => (
-                <p key={line} className="text-[11px] leading-snug text-muted-foreground">
-                  {line}
-                </p>
-              ))}
+            <CollapsibleContent className="mt-2 space-y-3 border-l-2 border-border/50 pl-2.5">
+              {row.findings.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('fleetHealthService.overview.findingsHeading')}
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {row.findings.map((finding) => (
+                      <div key={finding.id} className="space-y-1">
+                        <FindingChip finding={finding} />
+                        <p className="text-[10px] text-muted-foreground">
+                          {t('fleetHealthService.overview.sourceHealth')}: {finding.sourceLabel}
+                          {finding.linkedTaskId
+                            ? ` · ${t('fleetHealthService.overview.linkedTask')}`
+                            : ''}
+                        </p>
+                        {finding.linkedTaskId ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[11px]"
+                            onClick={() => onOpenTask?.(finding.linkedTaskId!)}
+                          >
+                            {t('fleetHealthService.overview.openLinkedTask')}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {row.cases.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('fleetHealthService.overview.casesHeading')}
+                  </p>
+                  {row.cases.map((serviceCase) => (
+                    <div
+                      key={serviceCase.id}
+                      className="space-y-1 rounded-lg border border-border/40 px-2.5 py-2"
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                        <span className="text-[11px] font-semibold">{serviceCase.title}</span>
+                        <StatusChip tone="info" className="text-[9px]">
+                          {serviceCase.statusLabel}
+                        </StatusChip>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t('fleetHealthService.overview.caseSource')}: {serviceCase.sourceLabel}
+                      </p>
+                      {tasksForCase(serviceCase).map((task) => (
+                        <WorkItemRow key={task.id} item={task} onOpenTask={onOpenTask} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {row.unmatchedTasks.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('fleetHealthService.overview.unmatchedWorkHeading')}
+                  </p>
+                  {row.unmatchedTasks.map((task) => (
+                    <WorkItemRow key={task.id} item={task} onOpenTask={onOpenTask} />
+                  ))}
+                </div>
+              ) : null}
+
+              {row.dataQualityNote ? (
+                <p className="text-[10px] text-muted-foreground">{row.dataQualityNote}</p>
+              ) : null}
             </CollapsibleContent>
           </Collapsible>
         ) : null}
@@ -267,7 +430,7 @@ export function FleetHealthServicePriorityOverview({
               ) : (
                 <div className="space-y-2">
                   {section.rows.map((row) => (
-                    <PriorityOverviewRow
+                    <VehiclePriorityRow
                       key={row.id}
                       row={row}
                       onOpenVehicle={onOpenVehicle}

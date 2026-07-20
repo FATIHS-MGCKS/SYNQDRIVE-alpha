@@ -2,6 +2,8 @@ import type { StatusTone } from '../../../components/patterns';
 import type {
   ApiTask,
   ApiTaskSummary,
+  ApiServiceCase,
+  ApiServiceCaseStatus,
   RentalHealthState,
   VehicleHealthResponse,
   Vendor,
@@ -13,6 +15,7 @@ import {
   computeFleetHealthKpis,
   operatorGroupForVehicle,
   type FleetHealthKpis,
+  type HealthIssueChip,
   type RentalHealthModuleKey,
 } from '../../lib/fleet-health-control-center';
 import {
@@ -21,6 +24,7 @@ import {
 } from '../../lib/health-task-bridge.utils';
 import { deriveTaskIsOverdue, formatTaskDueDate } from '../../lib/task-display.utils';
 import { getScheduleBucket } from '../../lib/service-schedule.utils';
+import { buildVehicleOverviewSections } from './fleet-health-service-vehicle-overview';
 import {
   isActiveTask,
   isDueSoonTask,
@@ -121,9 +125,64 @@ export interface FleetHealthServiceOverviewRow {
   detailLines: string[];
 }
 
+export interface FleetHealthServiceVehicleFinding {
+  id: string;
+  moduleKey: HealthIssueChip['key'];
+  label: string;
+  detail: string;
+  reason: string;
+  state: RentalHealthState;
+  tone: StatusTone;
+  linkedTaskId: string | null;
+  sourceLabel: string;
+}
+
+export interface FleetHealthServiceVehicleCaseItem {
+  id: string;
+  title: string;
+  status: ApiServiceCaseStatus;
+  statusLabel: string;
+  sourceLabel: string;
+  linkedTaskIds: string[];
+}
+
+export interface FleetHealthServiceVehicleTaskItem {
+  id: string;
+  title: string;
+  status: ApiTask['status'];
+  statusLabel: string;
+  tone: StatusTone;
+  sourceLabel: string;
+  dueLabel: string | null;
+  serviceCaseId: string | null;
+}
+
+export interface FleetHealthServiceVehicleOverviewRow {
+  id: string;
+  vehicleId: string;
+  plate: string;
+  makeModelYear: string;
+  section: FleetHealthServicePrioritySectionKey;
+  primaryStatusLabel: string;
+  primaryStatusTone: StatusTone;
+  primaryBlockage: string;
+  additionalFindingsCount: number;
+  openTaskCount: number;
+  openCaseCount: number;
+  moreCount: number;
+  recommendedAction: FleetHealthServiceRecommendedAction;
+  primaryLinkedTaskId: string | null;
+  sortRank: number;
+  findings: FleetHealthServiceVehicleFinding[];
+  cases: FleetHealthServiceVehicleCaseItem[];
+  matchedTasks: FleetHealthServiceVehicleTaskItem[];
+  unmatchedTasks: FleetHealthServiceVehicleTaskItem[];
+  dataQualityNote: string | null;
+}
+
 export interface FleetHealthServicePrioritySection {
   key: FleetHealthServicePrioritySectionKey;
-  rows: FleetHealthServiceOverviewRow[];
+  rows: FleetHealthServiceVehicleOverviewRow[];
 }
 
 export interface FleetHealthServiceViewModel {
@@ -153,6 +212,9 @@ export interface BuildFleetHealthServiceViewModelInput {
   serviceLoading: boolean;
   serviceError: string | null;
   serviceLoaded: boolean;
+  serviceCases?: ApiServiceCase[];
+  serviceCasesError?: string | null;
+  serviceCasesLoading?: boolean;
 }
 
 const OPEN_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING']);
@@ -454,74 +516,60 @@ function emptyPrioritySections(): Record<
 }
 
 /**
- * Priority-grouped overview for Übersicht — reuses health bands + task schedule utilities only.
+ * Priority-grouped overview — one expandable row per vehicle (P55).
  */
 export function buildPrioritizedOverviewSections(
+  uiItems: FleetHealthServiceUiItem[],
+  _executionGroups: FleetHealthServiceExecutionGroups,
+  _byVehicleId: Map<string, FleetHealthServiceUiItem>,
+  healthMap: Map<string, VehicleHealthResponse>,
+  taskList: ApiTask[],
+  serviceCases: ApiServiceCase[] = [],
+): FleetHealthServicePrioritySection[] {
+  return buildVehicleOverviewSections(uiItems, healthMap, taskList, serviceCases);
+}
+
+function vehicleRowToLegacyOverviewRow(
+  row: FleetHealthServiceVehicleOverviewRow,
+): FleetHealthServiceOverviewRow {
+  const primaryFinding = row.findings[0];
+  const primaryUnmatched = row.unmatchedTasks[0];
+  const executionOnly = !primaryFinding && Boolean(primaryUnmatched);
+  return {
+    id: row.id,
+    kind: executionOnly ? 'task' : 'health',
+    vehicleId: row.vehicleId,
+    plate: row.plate,
+    makeModelYear: row.makeModelYear,
+    statusLabel: row.primaryStatusLabel,
+    statusTone: row.primaryStatusTone,
+    primaryReason: row.primaryBlockage,
+    sourceLabel: primaryFinding?.sourceLabel ?? (executionOnly ? 'Aufgabe' : 'Zustand'),
+    recommendedAction: row.recommendedAction,
+    existingTaskId: row.primaryLinkedTaskId,
+    taskId: executionOnly ? primaryUnmatched?.id : undefined,
+    sortRank: row.sortRank,
+    detailLines: row.findings.slice(1).map((f) => `${f.label}: ${f.reason}`),
+  };
+}
+
+/** Flat projection of vehicle overview rows for legacy consumers/tests. */
+export function buildPrioritizedOverviewRows(
   uiItems: FleetHealthServiceUiItem[],
   executionGroups: FleetHealthServiceExecutionGroups,
   byVehicleId: Map<string, FleetHealthServiceUiItem>,
   healthMap: Map<string, VehicleHealthResponse>,
   taskList: ApiTask[],
-): FleetHealthServicePrioritySection[] {
-  const buckets = emptyPrioritySections();
-  const coveredVehicleIds = new Set<string>();
-
-  const healthCandidates = uiItems
-    .filter((item) => item.recommendedAction !== 'no_action')
-    .sort((a, b) => healthSortRank(a) - healthSortRank(b));
-
-  for (const item of healthCandidates) {
-    const health = healthMap.get(item.vehicleId);
-    const sectionKey = classifyHealthSection(item, health);
-    if (!sectionKey) continue;
-    coveredVehicleIds.add(item.vehicleId);
-    buckets[sectionKey].push(rowFromHealthItem(item, health));
-  }
-
-  const linkedVehicleIds = new Set(
-    uiItems.filter((i) => i.recommendedAction === 'open_task').map((i) => i.vehicleId),
-  );
-
-  const openTasks = taskList.filter(isActiveTask);
-  const seenTaskIds = new Set<string>();
-
-  for (const task of openTasks) {
-    if (seenTaskIds.has(task.id)) continue;
-    const sectionKey = classifyTaskSection(task);
-    if (!sectionKey) continue;
-
-    if (task.vehicleId) {
-      if (linkedVehicleIds.has(task.vehicleId)) continue;
-      if (coveredVehicleIds.has(task.vehicleId)) continue;
-    }
-
-    seenTaskIds.add(task.id);
-    buckets[sectionKey].push(rowFromTask(task, byVehicleId));
-  }
-
-  return FLEET_HEALTH_SERVICE_PRIORITY_SECTION_ORDER.map((key) => ({
-    key,
-    rows: sortOverviewRows(buckets[key]),
-  }));
-}
-
-/**
- * Deduped triage list for Übersicht — flat projection of priority sections.
- */
-export function buildPrioritizedOverviewRows(
-  uiItems: FleetHealthServiceUiItem[],
-  _executionGroups: FleetHealthServiceExecutionGroups,
-  byVehicleId: Map<string, FleetHealthServiceUiItem>,
-  healthMap: Map<string, VehicleHealthResponse>,
-  taskList: ApiTask[],
+  serviceCases: ApiServiceCase[] = [],
 ): FleetHealthServiceOverviewRow[] {
   return buildPrioritizedOverviewSections(
     uiItems,
-    _executionGroups,
+    executionGroups,
     byVehicleId,
     healthMap,
     taskList,
-  ).flatMap((section) => section.rows);
+    serviceCases,
+  ).flatMap((section) => section.rows.map(vehicleRowToLegacyOverviewRow));
 }
 
 function buildOverviewCounts(
@@ -562,6 +610,7 @@ export function buildFleetHealthServiceViewModel(
     vendors,
     serviceLoading,
     serviceError,
+    serviceCases = [],
   } = input;
 
   const openTasks = taskList.filter(isActiveTask);
@@ -582,8 +631,11 @@ export function buildFleetHealthServiceViewModel(
     byVehicleId,
     healthMap,
     taskList,
+    serviceCases,
   );
-  const prioritizedOverviewRows = prioritizedOverviewSections.flatMap((section) => section.rows);
+  const prioritizedOverviewRows = prioritizedOverviewSections.flatMap((section) =>
+    section.rows.map(vehicleRowToLegacyOverviewRow),
+  );
 
   return {
     loading: healthLoading || serviceLoading,
