@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-nav-simplify-p52-2026-07-20',
+    version: '4.9.723',
+    title: 'Fleet Health Service — Navigation auf vier Bereiche (Phase 8 P52)',
+    summary: [
+      'Primärnavigation: Übersicht, Fahrzeuge, Arbeiten, Historie (statt sechs Subtabs).',
+      'Migration: Aufgaben/Termine/Partner → Arbeiten (Segmented + Partner-Aktion); Verlauf → Historie.',
+      'Deep Links: `?fhs=` + `?fhsWork=`, Legacy-Tab-IDs normalisiert; Browser Back/Forward + sessionStorage; stabile Analytics-Keys.',
+    ],
+    reason: 'Phase 8 Prompt 52: Informationsarchitektur vereinfachen, mobile horizontale Tab-Leiste vermeiden.',
+    previousBehavior:
+      'Sechs gleichwertige Subtabs (Übersicht, Fahrzeuge, Aufgaben, Termine, Partner, Verlauf) in einer scrollbaren Tab-Leiste.',
+    details:
+      'fleet-health-service.types.ts (NavState, URL sync), FleetHealthServiceWorkPanel.tsx, FleetHealthServiceTabBar.tsx, App.tsx, i18n en/de, fleet-health-service.types.test.ts, FLEET_HEALTH_SERVICE_CONTRACT.md',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:30:00.000Z',
+  },
+  {
     id: 'fleet-health-scale-coverage-p51-2026-07-20',
     version: '4.9.722',
     title: 'Fleet Health Service — synthetische Skalierungstests (Phase 7 P51)',

@@ -17,8 +17,17 @@ import { DashboardView } from './components/DashboardView';
 import { BookingsView } from './components/BookingsView';
 import { FinancialInsightsView } from './components/FinancialInsightsView';
 import { HealthErrorsView } from './components/HealthErrorsView';
-import { FleetHubView, type FleetHealthServiceTab, type FleetTab, type FleetTabInput } from './components/FleetHubView';
-import { fleetSubTabFromServiceCenterNav, normalizeFleetTab } from './components/fleet-health-service/fleet-health-service.types';
+import { FleetHubView, type FleetHealthServiceNavState, type FleetTab, type FleetTabInput } from './components/FleetHubView';
+import {
+  applyFleetHealthServiceNavToUrl,
+  fleetSubTabFromServiceCenterNav,
+  normalizeFleetHealthServiceNavState,
+  normalizeFleetHealthServiceTab,
+  normalizeFleetTab,
+  parseFleetHealthServiceNavFromSearch,
+  persistFleetHealthServiceNav,
+  readPersistedFleetHealthServiceNav,
+} from './components/fleet-health-service/fleet-health-service.types';
 import { DamagesView } from './components/DamagesView';
 import { DocumentsView } from './components/DocumentsView';
 import { CustomersView } from './components/CustomersView';
@@ -268,8 +277,14 @@ function RentalAppContent() {
       }
     }
   }, []);
-  const [fleetHealthServiceSubTab, setFleetHealthServiceSubTab] =
-    useState<FleetHealthServiceTab>('overview');
+  const [fleetHealthServiceNav, setFleetHealthServiceNav] =
+    useState<FleetHealthServiceNavState>(() => {
+      const fromUrl =
+        typeof window !== 'undefined'
+          ? parseFleetHealthServiceNavFromSearch(window.location.search)
+          : null;
+      return fromUrl ?? readPersistedFleetHealthServiceNav();
+    });
   const [serviceCenterNav, setServiceCenterNav] = useState<ServiceCenterNavState | null>(null);
   const [financeTab, setFinanceTab] = useState<FinanceTab>(() => {
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
@@ -537,16 +552,25 @@ function RentalAppContent() {
     setFleetTab('status');
   };
 
+  const setFleetHealthServiceNavNormalized = useCallback(
+    (input: Parameters<typeof normalizeFleetHealthServiceNavState>[0]) => {
+      setFleetHealthServiceNav(normalizeFleetHealthServiceNavState(input));
+    },
+    [],
+  );
+
   const setFleetTabNormalized = useCallback((tab: FleetTabInput) => {
     const normalized = normalizeFleetTab(tab);
     setFleetTab(normalized.tab);
-    if (normalized.subTab) setFleetHealthServiceSubTab(normalized.subTab);
+    if (normalized.subTab) {
+      setFleetHealthServiceNav(normalizeFleetHealthServiceTab(normalized.subTab));
+    }
   }, []);
 
   const openServiceCenter = useCallback((nav?: Partial<ServiceCenterNavState>) => {
     setServiceCenterNav(nav ?? {});
     setFleetTab('condition-service');
-    setFleetHealthServiceSubTab(fleetSubTabFromServiceCenterNav(nav));
+    setFleetHealthServiceNav(fleetSubTabFromServiceCenterNav(nav));
     setCurrentView('fleet');
   }, []);
 
@@ -645,7 +669,7 @@ function RentalAppContent() {
     if (view === 'vendor-management') {
       setCurrentView('fleet');
       setFleetTab('condition-service');
-      setFleetHealthServiceSubTab('vendors');
+      setFleetHealthServiceNav({ tab: 'work', workSection: 'vendors' });
       return;
     }
     if (view === 'fines') {
@@ -685,6 +709,38 @@ function RentalAppContent() {
       /* ignore */
     }
   }, [fleetTab]);
+
+  const skipFleetHealthNavUrlSync = useRef(false);
+  const didInitialFleetHealthNavUrlSync = useRef(false);
+
+  useEffect(() => {
+    persistFleetHealthServiceNav(fleetHealthServiceNav);
+  }, [fleetHealthServiceNav]);
+
+  useEffect(() => {
+    if (currentView !== 'fleet' || fleetTab !== 'condition-service') return;
+    if (skipFleetHealthNavUrlSync.current) {
+      skipFleetHealthNavUrlSync.current = false;
+      return;
+    }
+    if (!didInitialFleetHealthNavUrlSync.current) {
+      didInitialFleetHealthNavUrlSync.current = true;
+      applyFleetHealthServiceNavToUrl(fleetHealthServiceNav, { replace: true });
+      return;
+    }
+    applyFleetHealthServiceNavToUrl(fleetHealthServiceNav);
+  }, [currentView, fleetTab, fleetHealthServiceNav]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const fromUrl = parseFleetHealthServiceNavFromSearch(window.location.search);
+      if (!fromUrl) return;
+      skipFleetHealthNavUrlSync.current = true;
+      setFleetHealthServiceNav(fromUrl);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // Handle station change
   const handleStationChange = (newStation: string) => {
@@ -1016,8 +1072,8 @@ function RentalAppContent() {
           <FleetHubView
             activeTab={fleetTab}
             onTabChange={setFleetTab}
-            healthServiceSubTab={fleetHealthServiceSubTab}
-            onHealthServiceSubTabChange={setFleetHealthServiceSubTab}
+            healthServiceNav={fleetHealthServiceNav}
+            onHealthServiceNavChange={setFleetHealthServiceNavNormalized}
             onVehicleSelect={handleVehicleSelect}
             onOpenVendorDetail={(vendor) => { setDetailVendorId(vendor.id); setCurrentView('vendor-detail'); }}
             onOpenGlobalTasks={(taskId) => {
@@ -1144,7 +1200,7 @@ function RentalAppContent() {
             onBack={() => {
               setCurrentView('fleet');
               setFleetTab('condition-service');
-              setFleetHealthServiceSubTab('vendors');
+              setFleetHealthServiceNav({ tab: 'work', workSection: 'vendors' });
               setDetailVendorId(null);
             }}
           />

@@ -215,10 +215,14 @@ export const de: Record<TranslationKey, string> = {
   'fleetConnectivity.detail.episodeOpen': 'Aktiv',
   'fleetHealthService.tab.overview': 'Übersicht',
   'fleetHealthService.tab.vehicles': 'Fahrzeuge',
+  'fleetHealthService.tab.work': 'Arbeiten',
+  'fleetHealthService.tab.history': 'Historie',
+  'fleetHealthService.work.tasks': 'Aufgaben',
+  'fleetHealthService.work.schedule': 'Fälligkeiten',
+  'fleetHealthService.work.vendorsAction': 'Partner',
   'fleetHealthService.tab.tasks': 'Aufgaben',
   'fleetHealthService.tab.schedule': 'Termine',
   'fleetHealthService.tab.vendors': 'Partner',
-  'fleetHealthService.tab.history': 'Verlauf',
 
   // ─── Service Center (Fleet-Hub) ───
   'serviceCenter.eyebrow': 'Flottenbetrieb',

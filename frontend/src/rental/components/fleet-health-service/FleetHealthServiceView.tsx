@@ -4,16 +4,18 @@ import { FleetConditionView, type ConditionCategory } from '../FleetConditionVie
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
 import { FleetHealthServiceHistoryPanel } from './FleetHealthServiceHistoryPanel';
 import { FleetHealthServiceOverviewPanel } from './FleetHealthServiceOverviewPanel';
-import { FleetHealthServiceSchedulePanel } from './FleetHealthServiceSchedulePanel';
 import { FleetHealthServiceTabBar } from './FleetHealthServiceTabBar';
-import { FleetHealthServiceTasksPanel } from './FleetHealthServiceTasksPanel';
-import { FleetHealthServiceVendorsPanel } from './FleetHealthServiceVendorsPanel';
-import type { FleetHealthServiceTab } from './fleet-health-service.types';
+import { FleetHealthServiceWorkPanel } from './FleetHealthServiceWorkPanel';
+import type {
+  FleetHealthServiceNavState,
+  FleetHealthServiceTab,
+  FleetHealthServiceWorkSection,
+} from './fleet-health-service.types';
 import { useFleetHealthServiceViewModel } from './useFleetHealthServiceViewModel';
 
 interface FleetHealthServiceViewProps {
-  activeSubTab: FleetHealthServiceTab;
-  onSubTabChange: (tab: FleetHealthServiceTab) => void;
+  nav: FleetHealthServiceNavState;
+  onNavChange: (nav: FleetHealthServiceNavState) => void;
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
   onOpenVendorDetail?: (vendor: Vendor) => void;
   onOpenGlobalTasks?: (taskId: string) => void;
@@ -25,8 +27,8 @@ interface FleetHealthServiceViewProps {
 }
 
 export function FleetHealthServiceView({
-  activeSubTab,
-  onSubTabChange,
+  nav,
+  onNavChange,
   onDrillDown,
   onOpenVendorDetail,
   onOpenGlobalTasks,
@@ -36,9 +38,10 @@ export function FleetHealthServiceView({
   onServiceCenterNavigationConsumed,
 }: FleetHealthServiceViewProps) {
   const vm = useFleetHealthServiceViewModel();
+  const activeSubTab = nav.tab;
 
   const focusTaskId =
-    serviceCenterNavigation?.focusTaskId && activeSubTab === 'tasks'
+    serviceCenterNavigation?.focusTaskId && nav.tab === 'work' && nav.workSection === 'tasks'
       ? serviceCenterNavigation.focusTaskId
       : null;
 
@@ -51,14 +54,36 @@ export function FleetHealthServiceView({
     [vm.byVehicleId],
   );
 
+  const setTab = useCallback(
+    (tab: FleetHealthServiceTab) => {
+      onNavChange({ ...nav, tab });
+    },
+    [nav, onNavChange],
+  );
+
+  const setWorkSection = useCallback(
+    (workSection: FleetHealthServiceWorkSection) => {
+      onNavChange({ tab: 'work', workSection });
+    },
+    [onNavChange],
+  );
+
+  const navigateWork = useCallback(
+    (workSection: FleetHealthServiceWorkSection) => {
+      onNavChange({ tab: 'work', workSection });
+    },
+    [onNavChange],
+  );
+
   return (
     <div className="space-y-4">
-      <FleetHealthServiceTabBar activeTab={activeSubTab} onTabChange={onSubTabChange} />
+      <FleetHealthServiceTabBar activeTab={activeSubTab} onTabChange={setTab} />
 
       {activeSubTab === 'overview' && (
         <FleetHealthServiceOverviewPanel
           vm={vm}
-          onNavigateSubTab={onSubTabChange}
+          onNavigateSubTab={setTab}
+          onNavigateWork={navigateWork}
           onOpenVehicle={onOpenVehicle}
           onOpenTask={onOpenGlobalTasks}
           onCreateTask={onCreateTask}
@@ -77,8 +102,10 @@ export function FleetHealthServiceView({
         />
       )}
 
-      {activeSubTab === 'tasks' && (
-        <FleetHealthServiceTasksPanel
+      {activeSubTab === 'work' && (
+        <FleetHealthServiceWorkPanel
+          activeSection={nav.workSection}
+          onSectionChange={setWorkSection}
           tasks={vm.allTasks}
           vendors={vm.vendors}
           loading={vm.serviceLoading}
@@ -88,21 +115,9 @@ export function FleetHealthServiceView({
             onOpenGlobalTasks?.(taskId);
             handleNavigationConsumed();
           }}
+          onOpenVendorDetail={onOpenVendorDetail}
           focusTaskId={focusTaskId}
         />
-      )}
-
-      {activeSubTab === 'schedule' && (
-        <FleetHealthServiceSchedulePanel
-          tasks={vm.allTasks}
-          vendors={vm.vendors}
-          loading={vm.serviceLoading}
-          onSelectTask={onOpenGlobalTasks}
-        />
-      )}
-
-      {activeSubTab === 'vendors' && (
-        <FleetHealthServiceVendorsPanel onOpenVendorDetail={onOpenVendorDetail} />
       )}
 
       {activeSubTab === 'history' && (

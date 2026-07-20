@@ -1,8 +1,4 @@
-import {
-  chromeTabBarClass,
-  chromeTabTriggerClass,
-  CHROME_TAB_BAR_SCROLL_CLASS,
-} from '../../../components/patterns/chrome-tab-bar';
+import { chromeTabBarClass, chromeTabTriggerClass } from '../../../components/patterns/chrome-tab-bar';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
@@ -13,9 +9,7 @@ import {
 const TAB_LABEL_KEYS: Record<FleetHealthServiceTab, TranslationKey> = {
   overview: 'fleetHealthService.tab.overview',
   vehicles: 'fleetHealthService.tab.vehicles',
-  tasks: 'fleetHealthService.tab.tasks',
-  schedule: 'fleetHealthService.tab.schedule',
-  vendors: 'fleetHealthService.tab.vendors',
+  work: 'fleetHealthService.tab.work',
   history: 'fleetHealthService.tab.history',
 };
 
@@ -33,7 +27,7 @@ export function FleetHealthServiceTabBar({ activeTab, onTabChange }: FleetHealth
       role="tablist"
       aria-label={t('fleetTab.conditionService')}
     >
-      <div className={CHROME_TAB_BAR_SCROLL_CLASS}>
+      <div className="grid w-full grid-cols-2 gap-0.5 sm:grid-cols-4">
         {FLEET_HEALTH_SERVICE_TAB_ORDER.map((tab) => {
           const isActive = activeTab === tab;
           return (
@@ -43,7 +37,7 @@ export function FleetHealthServiceTabBar({ activeTab, onTabChange }: FleetHealth
               role="tab"
               aria-selected={isActive}
               onClick={() => onTabChange(tab)}
-              className={chromeTabTriggerClass(isActive)}
+              className={chromeTabTriggerClass(isActive, 'w-full justify-center')}
             >
               <span className="truncate">{t(TAB_LABEL_KEYS[tab])}</span>
             </button>
