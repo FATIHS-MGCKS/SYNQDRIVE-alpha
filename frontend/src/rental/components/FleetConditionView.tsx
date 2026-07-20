@@ -75,6 +75,8 @@ interface FleetConditionViewProps {
   onOpenExistingTask?: (taskId: string) => void;
   /** UI copy locale — Fleet Zustand & Service uses `de`. */
   uiLocale?: 'de' | 'en';
+  /** Applied when navigating from overview KPIs (Fleet Health Service). */
+  initialStatusFilter?: OperatorStatusFilter;
   /** Optional task bridge from FleetHealthService view model. */
   getExistingTaskId?: (vehicleId: string) => string | null;
 }
@@ -229,6 +231,7 @@ export function FleetConditionView({
   onOpenServiceCenter,
   onOpenExistingTask,
   uiLocale = 'en',
+  initialStatusFilter,
   getExistingTaskId,
 }: FleetConditionViewProps) {
   const GROUP_CONFIG = uiLocale === 'de' ? GROUP_CONFIG_DE : GROUP_CONFIG_EN;
@@ -251,7 +254,9 @@ export function FleetConditionView({
 
   const { fleetVehicles, healthMap, healthLoading, healthError, reloadHealth } = useFleetVehicles();
 
-  const [statusFilter, setStatusFilter] = useState<OperatorStatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<OperatorStatusFilter>(
+    initialStatusFilter ?? 'all',
+  );
   const [moduleFilter, setModuleFilter] = useState<OperatorModuleFilter>('all');
   const [dataQualityFilter, setDataQualityFilter] = useState<OperatorDataQualityFilter>('all');
   const [sortMode, setSortMode] = useState<OperatorSortMode>('priority');
@@ -291,6 +296,20 @@ export function FleetConditionView({
       cancelled = true;
     };
   }, [healthLoading, kpis]);
+
+  useEffect(() => {
+    if (!initialStatusFilter) return;
+    setStatusFilter(initialStatusFilter);
+    if (initialStatusFilter === 'action' || initialStatusFilter === 'blocked') {
+      setExpandedGroups((prev) => new Set(prev).add('action_required'));
+    } else if (initialStatusFilter === 'review') {
+      setExpandedGroups((prev) => new Set(prev).add('needs_review'));
+    } else if (initialStatusFilter === 'limited') {
+      setExpandedGroups((prev) => new Set(prev).add('limited_data'));
+    } else if (initialStatusFilter === 'good') {
+      setExpandedGroups((prev) => new Set(prev).add('good'));
+    }
+  }, [initialStatusFilter]);
 
   const filtered = useMemo(
     () =>

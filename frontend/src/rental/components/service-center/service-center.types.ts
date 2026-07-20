@@ -6,6 +6,7 @@ export type ServiceCenterTab = 'overview' | 'tasks' | 'schedule' | 'vendors' | '
 export type ServiceTaskFilter =
   | 'all'
   | 'overdue'
+  | 'due-today'
   | 'due-soon'
   | 'in-progress'
   | 'waiting-vendor'

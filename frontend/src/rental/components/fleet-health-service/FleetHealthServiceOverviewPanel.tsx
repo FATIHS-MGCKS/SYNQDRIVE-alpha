@@ -1,16 +1,35 @@
 import { DashboardSectionLabel } from '../dashboard/dashboardShell';
 import {
-  buildFleetHealthServiceKpis,
+  buildFleetHealthServiceKpiGroups,
   FleetHealthServiceKpiStrip,
+  type FleetHealthServiceKpiItem,
 } from './FleetHealthServiceKpiStrip';
 import { FleetHealthServicePriorityOverview } from './FleetHealthServicePriorityOverview';
 import { fhs } from './fleet-health-service-shell';
 import type { FleetHealthServiceViewModel } from './fleet-health-service.view-model';
-import type { FleetHealthServiceTab, FleetHealthServiceWorkSection } from './fleet-health-service.types';
+import type {
+  FleetHealthServiceNavState,
+  FleetHealthServiceTab,
+  FleetHealthServiceWorkSection,
+} from './fleet-health-service.types';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
+
+const KPI_LABEL_KEYS: Record<string, TranslationKey> = {
+  blocked: 'fleetHealthService.kpi.blocked',
+  review: 'fleetHealthService.kpi.review',
+  limited: 'fleetHealthService.kpi.limited',
+  healthy: 'fleetHealthService.kpi.healthy',
+  overdue: 'fleetHealthService.kpi.overdue',
+  due_today: 'fleetHealthService.kpi.dueToday',
+  in_progress: 'fleetHealthService.kpi.inProgress',
+  vendor: 'fleetHealthService.kpi.vendor',
+};
 
 interface FleetHealthServiceOverviewPanelProps {
   vm: FleetHealthServiceViewModel & { reloadService?: () => void };
+  onNavChange?: (nav: FleetHealthServiceNavState) => void;
+  nav?: FleetHealthServiceNavState;
   onNavigateSubTab?: (tab: FleetHealthServiceTab) => void;
   onNavigateWork?: (section: FleetHealthServiceWorkSection) => void;
   onOpenVehicle?: (vehicleId: string) => void;
@@ -20,6 +39,8 @@ interface FleetHealthServiceOverviewPanelProps {
 
 export function FleetHealthServiceOverviewPanel({
   vm,
+  onNavChange,
+  nav,
   onNavigateSubTab,
   onNavigateWork,
   onOpenVehicle,
@@ -27,23 +48,67 @@ export function FleetHealthServiceOverviewPanel({
   onCreateTask,
 }: FleetHealthServiceOverviewPanelProps) {
   const { t } = useLanguage();
-  const kpiItems = buildFleetHealthServiceKpis(vm.healthKpis, vm.executionGroups);
+  const kpiGroups = buildFleetHealthServiceKpiGroups({
+    healthKpis: vm.healthKpis,
+    execution: vm.executionGroups,
+    healthError: vm.healthError,
+    serviceError: vm.serviceError,
+    healthLoading: vm.healthLoading,
+    serviceLoading: vm.serviceLoading,
+  }).map((group) => ({
+    ...group,
+    title:
+      group.key === 'health'
+        ? t('fleetHealthService.kpi.group.health')
+        : t('fleetHealthService.kpi.group.execution'),
+    items: group.items.map((item) => ({
+      ...item,
+      label: t(KPI_LABEL_KEYS[item.key] ?? 'fleetHealthService.kpi.blocked'),
+    })),
+  }));
 
-  const handleKpiClick = (key: string) => {
-    if (key === 'action' || key === 'review' || key === 'limited' || key === 'healthy') {
-      onNavigateSubTab?.('vehicles');
+  const handleKpiClick = (item: FleetHealthServiceKpiItem) => {
+    if (item.domain === 'health' && item.vehicleStatusFilter) {
+      if (onNavChange && nav) {
+        onNavChange({
+          ...nav,
+          tab: 'vehicles',
+          vehicleStatusFilter: item.vehicleStatusFilter,
+          taskFilter: undefined,
+        });
+      } else {
+        onNavigateSubTab?.('vehicles');
+      }
       return;
     }
-    if (key === 'in_progress') {
-      onNavigateWork?.('tasks');
-      return;
-    }
-    if (key === 'overdue') {
-      onNavigateWork?.('schedule');
-      return;
-    }
-    if (key === 'vendor') {
-      onNavigateWork?.('vendors');
+
+    if (item.domain === 'execution') {
+      if (item.workSection === 'vendors') {
+        if (onNavChange && nav) {
+          onNavChange({
+            ...nav,
+            tab: 'work',
+            workSection: 'vendors',
+            vehicleStatusFilter: undefined,
+            taskFilter: item.taskFilter,
+          });
+        } else {
+          onNavigateWork?.('vendors');
+        }
+        return;
+      }
+
+      if (onNavChange && nav) {
+        onNavChange({
+          ...nav,
+          tab: 'work',
+          workSection: item.workSection ?? 'tasks',
+          vehicleStatusFilter: undefined,
+          taskFilter: item.taskFilter,
+        });
+      } else {
+        onNavigateWork?.(item.workSection ?? 'tasks');
+      }
     }
   };
 
@@ -54,12 +119,8 @@ export function FleetHealthServiceOverviewPanel({
   return (
     <div className="space-y-4">
       <section className="space-y-2">
-        <DashboardSectionLabel>Triage-Kennzahlen</DashboardSectionLabel>
-        <FleetHealthServiceKpiStrip
-          items={kpiItems}
-          loading={vm.loading}
-          onItemClick={handleKpiClick}
-        />
+        <DashboardSectionLabel>{t('fleetHealthService.kpi.sectionLabel')}</DashboardSectionLabel>
+        <FleetHealthServiceKpiStrip groups={kpiGroups} onItemClick={handleKpiClick} />
       </section>
 
       <section className={fhs.panel}>

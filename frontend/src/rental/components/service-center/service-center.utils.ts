@@ -1,5 +1,6 @@
 import type { ApiTask, ApiTaskSummary } from '../../../lib/api';
 import { deriveTaskIsOverdue } from '../../lib/task-display.utils';
+import { getScheduleBucket } from '../../lib/service-schedule.utils';
 import type { ServiceKpiSnapshot, ServiceTaskFilter } from './service-center.types';
 
 const ACTIVE_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING']);
@@ -73,6 +74,9 @@ export function deriveServiceKpis(
 export function matchesServiceTaskFilter(task: ApiTask, filter: ServiceTaskFilter): boolean {
   if (filter === 'all') return isActiveTask(task);
   if (filter === 'overdue') return isActiveTask(task) && deriveTaskIsOverdue(task);
+  if (filter === 'due-today') {
+    return isActiveTask(task) && getScheduleBucket(task) === 'today';
+  }
   if (filter === 'due-soon') return isDueSoonTask(task);
   if (filter === 'in-progress') return task.status === 'IN_PROGRESS';
   if (filter === 'waiting-vendor') return task.status === 'WAITING' && Boolean(task.vendorId);

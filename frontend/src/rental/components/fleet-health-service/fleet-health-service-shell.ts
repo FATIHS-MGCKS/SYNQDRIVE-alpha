@@ -23,7 +23,7 @@ export const fhs = {
     INTERACTIVE_ROW_CLASS,
     'flex items-start gap-2.5 rounded-xl border border-border/45 surface-elevated px-3 py-2.5 hover:bg-muted/20',
   ),
-  kpiGrid: 'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7',
+  kpiGrid: 'grid grid-cols-2 gap-2 lg:grid-cols-4',
   kpiTitle: DASHBOARD_KPI_TITLE_CLASS,
   kpiNumber: DASHBOARD_KPI_NUMBER_CLASS,
   kpiHint: DASHBOARD_KPI_HINT_CLASS,

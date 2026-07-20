@@ -59,6 +59,7 @@ export interface FleetHealthServiceHealthGroups {
 export interface FleetHealthServiceExecutionGroups {
   openServiceTasks: ApiTask[];
   overdueServiceTasks: ApiTask[];
+  dueTodayServiceTasks: ApiTask[];
   inProgressServiceTasks: ApiTask[];
   vendorWaitingTasks: ApiTask[];
   upcomingServiceItems: ApiTask[];
@@ -281,6 +282,9 @@ function buildExecutionGroups(
 ): FleetHealthServiceExecutionGroups {
   const openServiceTasks = taskList.filter(isActiveTask);
   const overdueServiceTasks = openServiceTasks.filter((t) => deriveTaskIsOverdue(t));
+  const dueTodayServiceTasks = openServiceTasks.filter(
+    (t) => !deriveTaskIsOverdue(t) && getScheduleBucket(t) === 'today',
+  );
   const inProgressServiceTasks = openServiceTasks.filter((t) => t.status === 'IN_PROGRESS');
   const vendorWaitingTasks = openServiceTasks.filter(
     (t) => t.status === 'WAITING' && Boolean(t.vendorId),
@@ -290,6 +294,7 @@ function buildExecutionGroups(
   return {
     openServiceTasks,
     overdueServiceTasks,
+    dueTodayServiceTasks,
     inProgressServiceTasks,
     vendorWaitingTasks,
     upcomingServiceItems: selectUpcomingTasks(openServiceTasks),
@@ -607,6 +612,13 @@ export function countVendorWaitingTasks(tasks: ApiTask[]): number {
   return tasks
     .filter(isActiveTask)
     .filter((t) => t.status === 'WAITING' && Boolean(t.vendorId)).length;
+}
+
+/** Exported for tests — due-today active tasks (schedule bucket `today`, not overdue). */
+export function countDueTodayServiceTasks(tasks: ApiTask[]): number {
+  return tasks
+    .filter(isActiveTask)
+    .filter((t) => !deriveTaskIsOverdue(t) && getScheduleBucket(t) === 'today').length;
 }
 
 /** Exported for tests — upcoming within default service-center window. */
