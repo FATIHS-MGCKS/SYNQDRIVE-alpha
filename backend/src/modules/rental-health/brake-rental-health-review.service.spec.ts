@@ -12,7 +12,11 @@ describe('BrakeRentalHealthReviewService', () => {
   };
   const audit = { record: jest.fn() };
 
-  const svc = new BrakeRentalHealthReviewService(prisma as any, audit as any);
+  const svc = new BrakeRentalHealthReviewService(
+    prisma as any,
+    audit as any,
+    { invalidate: jest.fn() } as any,
+  );
 
   beforeEach(() => jest.clearAllMocks());
 

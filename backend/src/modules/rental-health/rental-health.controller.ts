@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { RentalHealthService } from './rental-health.service';
 import { RentalHealthFleetService } from './rental-health-fleet.service';
+import { RentalHealthSummaryService } from './rental-health-summary.service';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { VehicleHealth } from './rental-health.types';
+import type { FleetVehicleHealthRow } from './rental-health-summary.types';
+import type { VehicleHealth } from './rental-health.types';
 import { FleetRentalHealthQueryDto } from './dto/fleet-rental-health-query.dto';
 import type { FleetRentalHealthPageResult } from './rental-health-fleet-cursor.util';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -31,13 +33,11 @@ class CreateBrakeRentalReviewOverrideDto {
  *
  * Fleet-wide (for Fleet/Bookings list badges):
  *   GET /organizations/:orgId/rental-health
- *   GET /organizations/:orgId/rental-health?vehicleIds=a,b,c   (legacy)
- *   GET /organizations/:orgId/rental-health/fleet               (scoped + paginated)
+ *   GET /organizations/:orgId/rental-health?vehicleIds=a,b,c   (legacy, cached read model)
+ *   GET /organizations/:orgId/rental-health/fleet               (scoped + paginated, cached)
  *
- * The fleet endpoint deliberately returns the SAME VehicleHealth shape
- * per vehicle so the frontend has a single render path. It is fan-out
- * by design — vehicles without a full health surface still get a
- * deterministic `unknown` + reasons entry, never silently dropped.
+ * Fleet endpoints use the Redis-backed summary read model (see
+ * {@link RentalHealthSummaryService}). Detail route stays canonical.
  */
 @Controller('organizations/:orgId')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
@@ -45,6 +45,7 @@ export class RentalHealthController {
   constructor(
     private readonly rentalHealth: RentalHealthService,
     private readonly rentalHealthFleet: RentalHealthFleetService,
+    private readonly rentalHealthSummary: RentalHealthSummaryService,
     private readonly prisma: PrismaService,
     private readonly tireRentalReview: TireRentalHealthReviewService,
     private readonly brakeRentalReview: BrakeRentalHealthReviewService,
@@ -65,7 +66,7 @@ export class RentalHealthController {
     @Param('orgId') orgId: string,
     @Query() query: FleetRentalHealthQueryDto,
     @Req() req: { user?: { id?: string } },
-  ): Promise<FleetRentalHealthPageResult<VehicleHealth>> {
+  ): Promise<FleetRentalHealthPageResult<FleetVehicleHealthRow>> {
     return this.rentalHealthFleet.listFleetHealthPage(orgId, req.user?.id, query);
   }
 
@@ -74,7 +75,7 @@ export class RentalHealthController {
   async getFleetHealth(
     @Param('orgId') orgId: string,
     @Query('vehicleIds') vehicleIdsCsv?: string,
-  ): Promise<{ vehicles: VehicleHealth[] }> {
+  ): Promise<{ vehicles: FleetVehicleHealthRow[] }> {
     const filter = vehicleIdsCsv
       ? vehicleIdsCsv
           .split(',')
@@ -90,45 +91,12 @@ export class RentalHealthController {
       select: { id: true },
     });
 
-    // Fan-out in batches of 10 to protect the DB from a 100-vehicle burst.
-    // A single request triggers up to 7 module evaluators × N vehicles —
-    // batching keeps the P99 latency bounded without serializing everything.
-    const BATCH = 10;
-    const results: VehicleHealth[] = [];
-    for (let i = 0; i < vehicleRows.length; i += BATCH) {
-      const slice = vehicleRows.slice(i, i + BATCH);
-      const batchResults = await Promise.all(
-        slice.map((v) =>
-          this.rentalHealth
-            .getVehicleHealth(orgId, v.id)
-            .catch((err) => {
-              // Degrade per-vehicle, never drop — the fleet list must keep
-              // rendering even if one vehicle's pipeline errors out.
-              return {
-                vehicle_id: v.id,
-                organization_id: orgId,
-                overall_state: 'unknown' as const,
-                rental_blocked: false,
-                blocking_reasons: [],
-                modules: {
-                  battery: stubUnknown(),
-                  tires: stubUnknown(),
-                  brakes: stubUnknown(),
-                  error_codes: stubUnknown(),
-                  service_compliance: stubUnknown(),
-                  complaints: stubUnknown(),
-                  vehicle_alerts: stubUnknown(),
-                },
-                generated_at: new Date().toISOString(),
-                _error: (err as Error).message,
-              } as any;
-            }),
-        ),
-      );
-      results.push(...batchResults);
-    }
+    const vehicles = await this.rentalHealthSummary.getFleetRowsBatch(
+      orgId,
+      vehicleRows.map((row) => row.id),
+    );
 
-    return { vehicles: results };
+    return { vehicles };
   }
 
   @Post('vehicles/:vehicleId/tire-rental-health/review-override')
@@ -215,11 +183,3 @@ export class RentalHealthController {
   }
 }
 
-function stubUnknown() {
-  return {
-    state: 'unknown' as const,
-    reason: 'Daten nicht verfügbar',
-    last_updated_at: null,
-    data_stale: true,
-  };
-}

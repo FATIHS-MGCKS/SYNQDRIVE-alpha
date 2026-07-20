@@ -11,9 +11,11 @@ describe('RentalHealthController scoped fleet', () => {
   const tireRentalReview = {};
   const brakeRentalReview = {};
 
+  const rentalHealthSummary = { getFleetRowsBatch: jest.fn() };
   const controller = new RentalHealthController(
     rentalHealth as any,
     rentalHealthFleet as any,
+    rentalHealthSummary as any,
     prisma as any,
     tireRentalReview as any,
     brakeRentalReview as any,

@@ -2,12 +2,15 @@ import { Module, forwardRef } from '@nestjs/common';
 import { RentalHealthController } from './rental-health.controller';
 import { RentalHealthService } from './rental-health.service';
 import { RentalHealthFleetService } from './rental-health-fleet.service';
+import { RentalHealthSummaryService } from './rental-health-summary.service';
+import { RentalHealthSummaryCacheService } from './rental-health-summary-cache.service';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { HighMobilityModule } from '../high-mobility/high-mobility.module';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
+import { RedisModule } from '@shared/redis/redis.module';
 
 /**
  * Rental Health V1 — top-level module.
@@ -27,17 +30,22 @@ import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
     forwardRef(() => HighMobilityModule),
     ActivityLogModule,
     SharedGuardsModule,
+    RedisModule,
   ],
   controllers: [RentalHealthController],
   providers: [
     RentalHealthService,
     RentalHealthFleetService,
+    RentalHealthSummaryService,
+    RentalHealthSummaryCacheService,
     TireRentalHealthReviewService,
     BrakeRentalHealthReviewService,
   ],
   exports: [
     RentalHealthService,
     RentalHealthFleetService,
+    RentalHealthSummaryService,
+    RentalHealthSummaryCacheService,
     TireRentalHealthReviewService,
     BrakeRentalHealthReviewService,
   ],

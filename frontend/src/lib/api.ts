@@ -266,6 +266,10 @@ export interface VehicleHealthResponse {
     vehicle_alerts: RentalHealthModule;
   };
   generated_at: string;
+  /** Fleet read-model only — detail route omits these fields. */
+  cache_stale?: boolean;
+  data_partial?: boolean;
+  cached_at?: string | null;
 }
 
 export interface FleetRentalHealthQuery {

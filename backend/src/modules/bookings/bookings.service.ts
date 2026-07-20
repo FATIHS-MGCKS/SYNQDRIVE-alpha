@@ -31,6 +31,7 @@ import {
 } from '@modules/pricing/pricing-quote.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
+import { RentalHealthSummaryCacheService } from '@modules/rental-health/rental-health-summary-cache.service';
 import {
   assertValidBookingWindow,
   buildOverlapWhere,
@@ -100,6 +101,7 @@ export class BookingsService {
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
     private readonly fleetMapCache: FleetMapCacheService,
+    private readonly rentalHealthSummaryCache: RentalHealthSummaryCacheService,
   ) {}
 
   /**
@@ -336,6 +338,7 @@ export class BookingsService {
     }
 
     await this.fleetMapCache.invalidate(orgId);
+    await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
 
     return {
       ...booking,
@@ -1829,6 +1832,11 @@ export class BookingsService {
       }
     }
     await this.fleetMapCache.invalidate(orgId);
+    await this.invalidateRentalHealthFleetCache(
+      orgId,
+      updated.vehicleId,
+      existing.vehicleId,
+    );
     return updated;
   }
 
@@ -1871,6 +1879,7 @@ export class BookingsService {
       .catch(() => {});
 
     await this.fleetMapCache.invalidate(orgId);
+    await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
 
     return updated;
   }
@@ -1958,6 +1967,7 @@ export class BookingsService {
     void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
 
     await this.fleetMapCache.invalidate(orgId);
+    await this.invalidateRentalHealthFleetCache(orgId, booking.vehicleId);
 
     return updated;
   }
@@ -2014,5 +2024,15 @@ export class BookingsService {
         customerId,
       });
     }
+  }
+
+  private async invalidateRentalHealthFleetCache(
+    orgId: string,
+    ...vehicleIds: Array<string | null | undefined>
+  ): Promise<void> {
+    const uniqueIds = [...new Set(vehicleIds.filter((id): id is string => Boolean(id)))];
+    await Promise.all(
+      uniqueIds.map((vehicleId) => this.rentalHealthSummaryCache.invalidate(orgId, vehicleId)),
+    );
   }
 }
