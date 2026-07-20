@@ -269,6 +269,7 @@ Vollständige Zeilen im [Tracker](./fleet-health-service-remediation-tracker.md)
 
 | Dokument | Zweck |
 |----------|-------|
+| [`../architecture/fleet-health-service-domain-boundaries.md`](../architecture/fleet-health-service-domain-boundaries.md) | Zielarchitektur Domain Boundaries (Prompt 3) |
 | [`fleet-health-service-remediation-tracker.md`](./fleet-health-service-remediation-tracker.md) | Prompt-Status, Abhängigkeiten, Akzeptanz |
 | [`fleet-health-service-callsite-baseline.md`](./fleet-health-service-callsite-baseline.md) | Call-Site-Inventur (Prompt 4) |
 | [`../audits/fleet-health-service-production-reality.md`](../audits/fleet-health-service-production-reality.md) | Production Reality Audit |

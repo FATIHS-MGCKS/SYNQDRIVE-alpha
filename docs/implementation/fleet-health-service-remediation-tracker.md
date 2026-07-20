@@ -66,7 +66,7 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 
 | Phase | Prompts | Fokus | Fortschritt |
 |-------|---------|-------|-------------|
-| 0 | 1–6 | Planung, Vertrag, Tracker, ADR, Baseline, Testplan, Rollout | 3/6 DONE |
+| 0 | 1–6 | Planung, Vertrag, Tracker, ADR, Baseline, Testplan, Rollout | 4/6 DONE |
 | 1 | 7–16 | P0 — Vendor, Service Cases, Health-Degradation, Pagination, Battery, Refresh | 0/10 |
 | 2 | 17–24 | Service Cases — Termine, Historie, Runtime-Blockade, KPI | 0/8 |
 | 3 | 25–30 | Health→Task-Brücke, Dedup, Multi-Finding | 0/6 |
@@ -87,7 +87,7 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 |----|-------|-------|----------------|--------|-------------------|--------|--------|--------------|----------|
 | **1** | 0 | Remediation-Ausführungsvertrag | Audit 1 + 2 | Docs / Governance | Vertrag in `docs/implementation/`; Pre-Flight, Git, §5-Invarianten, Phasenübersicht; Audits verlinkt; Repo vs. Deploy dokumentiert | **DONE** | `297dfe76` | N/A — Docs only | Datei löschen / Revert Commit |
 | **2** | 0 | Remediation-Tracker (66 Prompts) | Prompt 1 | Docs / Governance | Tracker mit allen 66 Zeilen; Status P1 DONE, P2 DONE; Baseline + Deploy-Hinweis; Audit-Links | **DONE** | `297dfe76` | N/A — Docs only | Revert Commit |
-| **3** | 0 | Zielarchitektur-ADR (FHS V2) | Prompt 1, 2 | Docs / Architektur | ADR: Vier-Schichten, Service-Case-UI-Zielbild, Runtime-Blockade; keine Codeänderung | TODO | — | — | Revert ADR-Datei |
+| **3** | 0 | Zielarchitektur Domain Boundaries | Prompt 1, 2 | Docs / Architektur | `docs/architecture/fleet-health-service-domain-boundaries.md`; 9 Konzepte, Owner/Consumer, Mermaid, keine Codeänderung | **DONE** | *(dieser Commit)* | N/A — Docs only | Revert ADR-Datei |
 | **4** | 0 | Call-Site-Baseline | Audit 1, 2 | Docs / Inventur | Vollständige Backend/Frontend Call-Sites + Tests inventarisiert | **DONE** | `7192fb4e` | 283 Tests PASS (Baseline §10) | Revert Baseline-Doc |
 | **5** | 0 | Testplan & Fixture-Katalog | Prompt 3, 4 | Docs / QA | Matrix FHS-T-001–142 → Prompt-Zuordnung; fehlende Specs gelistet; Golden-Fixture-Plan | TODO | — | — | Revert Testplan-Doc |
 | **6** | 0 | Rollout-Flags & Deploy-Runbook | Prompt 3, 5 | Docs / Ops | Feature-Flags für schrittweise FHS-Aktivierung; kein Auto-Deploy; Rollback-Schritte | TODO | — | — | Revert Runbook |
@@ -269,6 +269,7 @@ Nach Abschluss jedes Prompts **2–66**:
 | Datum (UTC) | Prompt | Änderung |
 |-------------|--------|----------|
 | 2026-07-20 | 2 | Initiale Tracker-Erstellung; P1 DONE; P2 DONE; P4 DONE; 63× TODO |
+| 2026-07-20 | 3 | Domain Boundaries ADR; P3 DONE |
 
 ---
 
