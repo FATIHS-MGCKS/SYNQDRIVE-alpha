@@ -178,6 +178,7 @@ describe('fleet-health-service view model', () => {
     const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, openTasks);
     expect(item.recommendedAction).toBe('create_task');
     expect(item.existingTaskId).toBeNull();
+    expect(item.possiblyRelatedTaskId).toBe('t1');
   });
 
   it('rental_blocked blocking task without finding does not cover health blocker', () => {
@@ -204,6 +205,8 @@ describe('fleet-health-service view model', () => {
     expect(matchOpenTaskForHealthSignal(openTasks, 'v1', health)).toBeNull();
     const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, openTasks);
     expect(item.recommendedAction).toBe('create_task');
+    expect(item.existingTaskId).toBeNull();
+    expect(item.possiblyRelatedTaskId).toBeNull();
   });
 
   it('healthy vehicle → no_action', () => {

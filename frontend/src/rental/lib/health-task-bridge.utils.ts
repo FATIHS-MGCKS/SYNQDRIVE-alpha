@@ -55,6 +55,20 @@ export interface HealthTaskPrefill {
 
 const OPEN_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING']);
 
+/**
+ * Default task types for Health→Task prefill only.
+ * Never used as finding identity or duplicate-match signal.
+ */
+export const MODULE_PREFILL_TASK_TYPES: Record<HealthActionModule, ApiTaskType> = {
+  tires: 'TIRE_CHECK',
+  brakes: 'BRAKE_CHECK',
+  battery: 'BATTERY_CHECK',
+  error_codes: 'REPAIR',
+  service_compliance: 'VEHICLE_INSPECTION',
+  vehicle_alerts: 'REPAIR',
+  complaints: 'VEHICLE_SERVICE',
+};
+
 /** Legacy module-only matching — only semantically unambiguous task types. */
 const MODULE_LEGACY_UNAMBIGUOUS_TYPES: Record<HealthActionModule, ApiTaskType[]> = {
   tires: ['TIRE_CHECK'],
@@ -66,7 +80,7 @@ const MODULE_LEGACY_UNAMBIGUOUS_TYPES: Record<HealthActionModule, ApiTaskType[]>
   complaints: [],
 };
 
-export type HealthTaskDuplicateMatchKind = 'exact' | 'legacy' | 'none';
+export type HealthTaskDuplicateMatchKind = 'exact' | 'legacy' | 'possibly_related' | 'none';
 
 export interface HealthTaskDuplicateQuery {
   organizationId: string;
@@ -76,10 +90,11 @@ export interface HealthTaskDuplicateQuery {
 }
 
 export interface HealthTaskDuplicateResult {
+  /** Confirmed duplicate (exact or controlled legacy). */
   task: ApiTask | null;
   matchKind: HealthTaskDuplicateMatchKind;
-  /** True when a weak signal was seen but must not suppress new task creation. */
-  legacyAmbiguous?: boolean;
+  /** Weak module/type signal — informational only, never suppresses create. */
+  possiblyRelatedTask: ApiTask | null;
 }
 
 const MODULE_SERVICE_KEYWORDS: Record<HealthActionModule, string[]> = {
@@ -229,7 +244,7 @@ export function buildHealthTaskPrefill(opts: {
       return {
         title: state === 'critical' ? 'Reifen kritisch — prüfen/wechseln' : 'Reifen prüfen',
         description: context || 'Auslöser: Reifen-Gesundheit im Health-Tab.',
-        type: 'TIRE_CHECK',
+        type: MODULE_PREFILL_TASK_TYPES.tires,
         priority,
         category: 'Reifen',
         vendorId,
@@ -242,7 +257,7 @@ export function buildHealthTaskPrefill(opts: {
       return {
         title: state === 'critical' ? 'Bremsen kritisch — prüfen' : 'Bremsen prüfen',
         description: context || 'Auslöser: Bremsen-Gesundheit im Health-Tab.',
-        type: 'BRAKE_CHECK',
+        type: MODULE_PREFILL_TASK_TYPES.brakes,
         priority,
         category: 'Bremsen',
         vendorId,
@@ -255,7 +270,7 @@ export function buildHealthTaskPrefill(opts: {
       return {
         title: state === 'critical' ? 'Batterie kritisch — prüfen' : 'Batterie prüfen',
         description: context || 'Auslöser: Batterie-Gesundheit im Health-Tab.',
-        type: 'BATTERY_CHECK',
+        type: MODULE_PREFILL_TASK_TYPES.battery,
         priority,
         category: 'Batterie',
         vendorId,
@@ -272,7 +287,7 @@ export function buildHealthTaskPrefill(opts: {
           context,
           codes.length ? `Aktive Codes: ${codes.join(', ')}` : '',
         ].filter(Boolean).join('\n'),
-        type: 'REPAIR',
+        type: MODULE_PREFILL_TASK_TYPES.error_codes,
         priority,
         category: 'Diagnose / Fehlercodes',
         vendorId,
@@ -286,7 +301,7 @@ export function buildHealthTaskPrefill(opts: {
       return {
         title: 'TÜV/HU oder Service-Termin planen',
         description: context || 'Auslöser: Service & Compliance im Health-Tab.',
-        type: 'VEHICLE_INSPECTION',
+        type: MODULE_PREFILL_TASK_TYPES.service_compliance,
         priority,
         category: 'TÜV/HU',
         dueDate: opts.dueDate ?? undefined,
@@ -303,7 +318,7 @@ export function buildHealthTaskPrefill(opts: {
       return {
         title: 'OEM-Warnung prüfen',
         description: context || 'Auslöser: Fahrzeug-Warnungen im Health-Tab.',
-        type: 'REPAIR',
+        type: MODULE_PREFILL_TASK_TYPES.vehicle_alerts,
         priority,
         category: 'Diagnose / Fehlercodes',
         vendorId,
@@ -315,7 +330,7 @@ export function buildHealthTaskPrefill(opts: {
       return {
         title: 'Health-Hinweis bearbeiten',
         description: context || 'Auslöser: Health-Tab.',
-        type: 'VEHICLE_SERVICE',
+        type: MODULE_PREFILL_TASK_TYPES.complaints,
         priority,
         sourceType: 'HEALTH',
         sourceKey: sourceFinding?.source_finding_id ?? 'HEALTH_GENERAL',
@@ -369,10 +384,57 @@ function isOpenRelevantTaskStatus(status: ApiTask['status']): boolean {
   return OPEN_STATUSES.has(status);
 }
 
+function isLegacyUnambiguousMatch(
+  module: HealthActionModule,
+  taskType: ApiTaskType,
+): boolean {
+  return MODULE_LEGACY_UNAMBIGUOUS_TYPES[module].includes(taskType);
+}
+
+/**
+ * Weak module association — never uses task type or blocksVehicleAvailability alone.
+ * Requires HEALTH origin + matching healthModule metadata.
+ */
+function isPossiblyRelatedHealthTask(
+  query: HealthTaskDuplicateQuery,
+  queryFindingId: string | null,
+  task: ApiTask,
+  taskFindingId: string | null,
+  taskModule: HealthActionModule | null,
+  taskSource: 'HEALTH' | null,
+): boolean {
+  if (taskSource !== 'HEALTH' || taskModule !== query.module) return false;
+
+  if (queryFindingId && taskFindingId === queryFindingId) return false;
+
+  if (
+    !queryFindingId &&
+    !taskFindingId &&
+    isLegacyUnambiguousMatch(query.module, task.type)
+  ) {
+    return false;
+  }
+
+  if (queryFindingId && taskFindingId && queryFindingId !== taskFindingId) {
+    return true;
+  }
+
+  if (queryFindingId && !taskFindingId) {
+    return true;
+  }
+
+  if (!queryFindingId && !taskFindingId && !isLegacyUnambiguousMatch(query.module, task.type)) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Primary: exact finding identity (org + vehicle + HEALTH + sourceFindingId + open).
  * Secondary legacy: module + unambiguous type when both sides lack sourceFindingId.
- * Never suppresses on ambiguous type/module-only matches (REPAIR, CUSTOM, blocking tasks).
+ * Possibly related: weak module signal only — never suppresses create/open_task.
+ * Never matches on task type alone, blocksVehicleAvailability, or rental_blocked.
  */
 export function findDuplicateHealthTask(
   tasks: ApiTask[],
@@ -383,10 +445,11 @@ export function findDuplicateHealthTask(
   const queryFindingId = query.sourceFindingId?.trim() || null;
 
   if (!organizationId || !vehicleId) {
-    return { task: null, matchKind: 'none' };
+    return { task: null, matchKind: 'none', possiblyRelatedTask: null };
   }
 
   let legacyCandidate: ApiTask | null = null;
+  let possiblyRelatedCandidate: ApiTask | null = null;
 
   for (const task of tasks) {
     if (task.vehicleId !== vehicleId) continue;
@@ -404,26 +467,45 @@ export function findDuplicateHealthTask(
       taskFindingId === queryFindingId &&
       taskSource === 'HEALTH'
     ) {
-      return { task, matchKind: 'exact' };
+      return { task, matchKind: 'exact', possiblyRelatedTask: null };
     }
 
-    if (queryFindingId) continue;
-
     if (
+      !queryFindingId &&
       !taskFindingId &&
       taskModule === query.module &&
       taskSource === 'HEALTH' &&
-      MODULE_LEGACY_UNAMBIGUOUS_TYPES[query.module].includes(task.type)
+      isLegacyUnambiguousMatch(query.module, task.type)
     ) {
       legacyCandidate = task;
+      continue;
+    }
+
+    if (
+      !possiblyRelatedCandidate &&
+      isPossiblyRelatedHealthTask(query, queryFindingId, task, taskFindingId, taskModule, taskSource)
+    ) {
+      possiblyRelatedCandidate = task;
     }
   }
 
   if (legacyCandidate) {
-    return { task: legacyCandidate, matchKind: 'legacy', legacyAmbiguous: false };
+    return {
+      task: legacyCandidate,
+      matchKind: 'legacy',
+      possiblyRelatedTask: possiblyRelatedCandidate,
+    };
   }
 
-  return { task: null, matchKind: 'none' };
+  if (possiblyRelatedCandidate) {
+    return {
+      task: null,
+      matchKind: 'possibly_related',
+      possiblyRelatedTask: possiblyRelatedCandidate,
+    };
+  }
+
+  return { task: null, matchKind: 'none', possiblyRelatedTask: null };
 }
 
 export function isHealthOriginatedTask(task: ApiTask): boolean {

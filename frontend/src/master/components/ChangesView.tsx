@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'health-task-remove-heuristics-p39-2026-07-20',
+    version: '4.9.710',
+    title: 'Health→Task — breite Match-Heuristiken entfernt (Phase 5 P39)',
+    summary: [
+      '`MODULE_PREFILL_TASK_TYPES` nur für Prefill — nicht für Dedup/Matching.',
+      '`findDuplicateHealthTask` kapselt exakt / legacy / possibly_related; `blocksVehicleAvailability` und Task-Typ allein sind kein Match-Signal.',
+      'Fleet-Health ViewModel: `existingTaskId` nur bei exaktem Match; `possiblyRelatedTaskId` für schwache Hinweise.',
+      '`HealthServiceActions` zeigt „möglicherweise zugehörig“ ohne Create zu unterdrücken; Audit-Regressionstests M2–M11.',
+    ],
+    reason: 'Phase 5 Prompt 39: FALSE_MATCH-Risiko aus Typ-/Blocking-Heuristiken vollständig entkoppeln.',
+    previousBehavior:
+      'P38 entfernte breite Typ-Matrix; Legacy/Blocking-Signale waren noch nicht als separates Hint-Modell modelliert.',
+    details:
+      'health-task-bridge.utils.ts (+test), health-task-match.regression.test.ts, HealthServiceActions.tsx, fleet-health-service.view-model.ts (+test)',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-20T00:00:00.000Z',
+  },
+  {
     id: 'health-task-exact-matches-p38-2026-07-20',
     version: '4.9.709',
     title: 'Health→Task — exaktes Finding-Matching statt breiter Heuristik (Phase 5 P38)',
