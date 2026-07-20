@@ -19,7 +19,7 @@ import {
   validateBatteryV2JobPayload,
 } from './battery-v2-job.validation';
 import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency.validation';
-import { buildBatteryV2JobId, buildBatteryV2JobOptions } from './battery-v2-job-queue.util';
+import { buildBatteryV2JobId, buildBatteryV2JobOptions, assertBatteryV2BullMqJobId } from './battery-v2-job-queue.util';
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { recordBatteryJob } from '../observability/battery-v2-prometheus.metrics';
@@ -80,6 +80,7 @@ export class BatteryV2JobProducerService {
     }
 
     const jobId = buildBatteryV2JobId(payload.idempotencyKey);
+    assertBatteryV2BullMqJobId(jobId);
     return this.addIdempotent(jobType, payload, jobId, {
       ...buildBatteryV2JobOptions(jobType),
       delay: options.delayMs ?? 0,
@@ -110,6 +111,7 @@ export class BatteryV2JobProducerService {
     }
 
     try {
+      assertBatteryV2BullMqJobId(jobId);
       await this.queue.add(jobType, payload, { ...options, jobId });
       if (this.metrics) {
         recordBatteryJob(this.metrics, { jobType, outcome: 'enqueued' });

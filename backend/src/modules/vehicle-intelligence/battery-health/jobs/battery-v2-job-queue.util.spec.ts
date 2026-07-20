@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import {
   buildBatteryV2JobId,
   buildBatteryV2JobOptions,
+  assertBatteryV2BullMqJobId,
   isBatteryV2BullMqJobId,
   isDeterministicBatteryV2JobId,
 } from './battery-v2-job-queue.util';
@@ -28,6 +29,12 @@ describe('battery-v2-job-queue.util', () => {
       .digest('hex')
       .slice(0, 40);
     expect(jobId).toBe(`battery-v2_${hash}`);
+  });
+
+  it('rejects legacy colon-bearing ids at the BullMQ boundary', () => {
+    expect(() => assertBatteryV2BullMqJobId('battery-v2:broken:key')).toThrow(
+      /buildBatteryV2JobId/,
+    );
   });
 
   it('maps retry policy into BullMQ options per job type', () => {
