@@ -21,14 +21,20 @@ export const fhs = {
   meta: META_TEXT_CLASS,
   interactiveRow: cn(
     INTERACTIVE_ROW_CLASS,
-    'flex items-start gap-2.5 rounded-xl border border-border/45 surface-elevated px-3 py-2.5 hover:bg-muted/20',
+    'flex flex-col gap-2.5 rounded-xl border border-border/45 surface-elevated px-3 py-2.5 hover:bg-muted/20 sm:flex-row sm:items-start',
   ),
+  touchTarget:
+    'min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+  workTab:
+    'min-h-11 rounded-[calc(var(--radius-md)-2px)] border border-transparent px-3 py-2 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+  chevron:
+    'motion-reduce:transition-none motion-reduce:transform-none transition-transform duration-200',
   kpiGrid: 'grid grid-cols-2 gap-2 lg:grid-cols-4',
   kpiTitle: DASHBOARD_KPI_TITLE_CLASS,
   kpiNumber: DASHBOARD_KPI_NUMBER_CLASS,
   kpiHint: DASHBOARD_KPI_HINT_CLASS,
   kpiCard:
-    'sq-press group relative min-h-[78px] overflow-hidden rounded-xl border border-border/45 bg-background/40 px-2.5 py-2.5 text-left transition-colors duration-200 hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+    'sq-press group relative min-h-11 overflow-hidden rounded-xl border border-border/45 bg-background/40 px-2.5 py-2.5 text-left transition-colors duration-200 motion-reduce:transition-none hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] sm:min-h-[78px]',
   kpiCardActive: 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_30%,transparent)] bg-[color:var(--brand-soft)]/40',
   kpiCardCritical:
     'border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.03]',

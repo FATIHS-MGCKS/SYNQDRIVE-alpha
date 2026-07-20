@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import type { Vendor } from '../../../lib/api';
 import { FleetConditionView, type ConditionCategory } from '../FleetConditionView';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
+import { FHS_TAB_PANEL_ID } from './fleet-health-service-a11y';
 import { FleetHealthServiceHistoryPanel } from './FleetHealthServiceHistoryPanel';
 import { FleetHealthServiceOverviewPanel } from './FleetHealthServiceOverviewPanel';
 import { FleetHealthServiceTabBar } from './FleetHealthServiceTabBar';
@@ -85,64 +86,96 @@ export function FleetHealthServiceView({
     <div className="space-y-4">
       <FleetHealthServiceTabBar activeTab={activeSubTab} onTabChange={setTab} />
 
-      {activeSubTab === 'overview' && (
-        <FleetHealthServiceOverviewPanel
-          vm={vm}
-          nav={nav}
-          onNavChange={onNavChange}
-          onNavigateSubTab={setTab}
-          onNavigateWork={setWorkSection}
-          onOpenVehicle={onOpenVehicle}
-          onOpenTask={onOpenGlobalTasks}
-          onCreateTask={onCreateTask}
-        />
-      )}
+      <div
+        id={FHS_TAB_PANEL_ID.overview}
+        role="tabpanel"
+        aria-labelledby="fhs-tab-overview"
+        hidden={activeSubTab !== 'overview'}
+        className={activeSubTab !== 'overview' ? 'hidden' : undefined}
+      >
+        {activeSubTab === 'overview' && (
+          <FleetHealthServiceOverviewPanel
+            vm={vm}
+            nav={nav}
+            onNavChange={onNavChange}
+            onNavigateSubTab={setTab}
+            onNavigateWork={setWorkSection}
+            onOpenVehicle={onOpenVehicle}
+            onOpenTask={onOpenGlobalTasks}
+            onCreateTask={onCreateTask}
+          />
+        )}
+      </div>
 
-      {activeSubTab === 'vehicles' && (
-        <FleetConditionView
-          embedded
-          hideHeaderActions
-          hideKpiStrip
-          uiLocale="de"
-          initialStatusFilter={nav.vehicleStatusFilter}
-          initialVehicleId={nav.vehicleId}
-          initialStationId={nav.stationId}
-          blockingVehicleIds={blockingVehicleIds}
-          onDrillDown={onDrillDown}
-          onOpenExistingTask={onOpenGlobalTasks}
-          getExistingTaskId={getExistingTaskId}
-        />
-      )}
+      <div
+        id={FHS_TAB_PANEL_ID.vehicles}
+        role="tabpanel"
+        aria-labelledby="fhs-tab-vehicles"
+        hidden={activeSubTab !== 'vehicles'}
+        className={activeSubTab !== 'vehicles' ? 'hidden' : undefined}
+      >
+        {activeSubTab === 'vehicles' && (
+          <FleetConditionView
+            embedded
+            hideHeaderActions
+            hideKpiStrip
+            uiLocale="de"
+            initialStatusFilter={nav.vehicleStatusFilter}
+            initialVehicleId={nav.vehicleId}
+            initialStationId={nav.stationId}
+            blockingVehicleIds={blockingVehicleIds}
+            onDrillDown={onDrillDown}
+            onOpenExistingTask={onOpenGlobalTasks}
+            getExistingTaskId={getExistingTaskId}
+          />
+        )}
+      </div>
 
-      {activeSubTab === 'work' && (
-        <FleetHealthServiceWorkPanel
-          activeSection={nav.workSection}
-          onSectionChange={setWorkSection}
-          tasks={vm.allTasks}
-          vendors={vm.vendors}
-          loading={vm.serviceLoading}
-          error={vm.serviceError}
-          onReload={() => void vm.reloadService()}
-          onOpenGlobalTasks={(taskId) => {
-            onOpenGlobalTasks?.(taskId);
-            handleNavigationConsumed();
-          }}
-          onOpenVendorDetail={onOpenVendorDetail}
-          focusTaskId={focusTaskId}
-          initialTaskFilter={nav.taskFilter}
-          initialAdvancedFilters={taskAdvancedFilters}
-        />
-      )}
+      <div
+        id={FHS_TAB_PANEL_ID.work}
+        role="tabpanel"
+        aria-labelledby="fhs-tab-work"
+        hidden={activeSubTab !== 'work'}
+        className={activeSubTab !== 'work' ? 'hidden' : undefined}
+      >
+        {activeSubTab === 'work' && (
+          <FleetHealthServiceWorkPanel
+            activeSection={nav.workSection}
+            onSectionChange={setWorkSection}
+            tasks={vm.allTasks}
+            vendors={vm.vendors}
+            loading={vm.serviceLoading}
+            error={vm.serviceError}
+            onReload={() => void vm.reloadService()}
+            onOpenGlobalTasks={(taskId) => {
+              onOpenGlobalTasks?.(taskId);
+              handleNavigationConsumed();
+            }}
+            onOpenVendorDetail={onOpenVendorDetail}
+            focusTaskId={focusTaskId}
+            initialTaskFilter={nav.taskFilter}
+            initialAdvancedFilters={taskAdvancedFilters}
+          />
+        )}
+      </div>
 
-      {activeSubTab === 'history' && (
-        <FleetHealthServiceHistoryPanel
-          tasks={vm.allTasks}
-          vendors={vm.vendors}
-          loading={vm.serviceLoading}
-          onOpenVehicle={onOpenVehicle}
-          initialVehicleId={serviceCenterNavigation?.vehicleId ?? undefined}
-        />
-      )}
+      <div
+        id={FHS_TAB_PANEL_ID.history}
+        role="tabpanel"
+        aria-labelledby="fhs-tab-history"
+        hidden={activeSubTab !== 'history'}
+        className={activeSubTab !== 'history' ? 'hidden' : undefined}
+      >
+        {activeSubTab === 'history' && (
+          <FleetHealthServiceHistoryPanel
+            tasks={vm.allTasks}
+            vendors={vm.vendors}
+            loading={vm.serviceLoading}
+            onOpenVehicle={onOpenVehicle}
+            initialVehicleId={serviceCenterNavigation?.vehicleId ?? undefined}
+          />
+        )}
+      </div>
     </div>
   );
 }

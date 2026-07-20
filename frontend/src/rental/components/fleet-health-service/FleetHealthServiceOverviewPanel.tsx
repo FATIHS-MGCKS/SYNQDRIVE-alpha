@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react';
 import { DashboardSectionLabel } from '../dashboard/dashboardShell';
 import {
   buildFleetHealthServiceKpiGroups,
@@ -60,6 +61,7 @@ export function FleetHealthServiceOverviewPanel({
   onCreateTask,
 }: FleetHealthServiceOverviewPanelProps) {
   const { t } = useLanguage();
+  const [statusMessage, setStatusMessage] = useState('');
   const kpiGroups = buildFleetHealthServiceKpiGroups({
     healthKpis: vm.healthKpis,
     execution: vm.executionGroups,
@@ -116,12 +118,30 @@ export function FleetHealthServiceOverviewPanel({
     }
   };
 
-  const handleReload = () => {
+  const handleReload = useCallback(() => {
+    setStatusMessage(t('fleetHealthService.a11y.refreshing'));
     vm.reloadService?.();
-  };
+  }, [t, vm]);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    if (vm.loading || vm.serviceLoading) return;
+    setStatusMessage(t('fleetHealthService.a11y.refreshDone'));
+    const timer = window.setTimeout(() => setStatusMessage(''), 2500);
+    return () => window.clearTimeout(timer);
+  }, [vm.loading, vm.serviceLoading, statusMessage, t]);
 
   return (
     <div className="space-y-4">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t('fleetHealthService.a11y.statusRegion')}
+        className="sr-only"
+      >
+        {statusMessage}
+      </div>
       <section className="space-y-2">
         <DashboardSectionLabel>{t('fleetHealthService.kpi.sectionLabel')}</DashboardSectionLabel>
         <FleetHealthServiceKpiStrip groups={kpiGroups} onItemClick={handleKpiClick} />

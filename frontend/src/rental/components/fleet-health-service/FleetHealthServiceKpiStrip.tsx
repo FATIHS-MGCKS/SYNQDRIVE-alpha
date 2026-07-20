@@ -275,11 +275,22 @@ export function FleetHealthServiceKpiStrip({
               const IconCmp = item.icon;
               const Tag = onItemClick ? 'button' : 'div';
               const displayValue = formatKpiValue(item.value);
+              const unitLabel = t(UNIT_LABEL_KEYS[item.unit]);
+              const ariaLabel =
+                onItemClick && item.value !== null
+                  ? t('fleetHealthService.a11y.kpiNavigate', {
+                      label: item.label,
+                      value: displayValue,
+                      unit: unitLabel,
+                      hint: item.hint,
+                    })
+                  : undefined;
               return (
                 <Tag
                   key={item.key}
                   type={onItemClick ? 'button' : undefined}
                   onClick={onItemClick ? () => onItemClick(item) : undefined}
+                  aria-label={ariaLabel}
                   className={cn(
                     fhs.kpiCard,
                     onItemClick && 'cursor-pointer',
