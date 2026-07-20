@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-deep-link-filters-p56-2026-07-20',
+    version: '4.9.727',
+    title: 'Fleet Health Service — kanonische Filter und Deep Links (Phase 8 P56)',
+    summary: [
+      'Kanonischer Nav-State: Health-Filter (blockiert/prüfen/nicht bewertbar), Task-Filter (überfällig/heute/Partner), blockierender Service Case, Fahrzeug/Station/Partner/Status.',
+      'URL + sessionStorage round-trip (`fhsVf`, `fhsTf`, `fhsCase`, `fhsV`, `fhsSt`, `fhsVen`, `fhsTs`); Legacy-Aliase `vehicleStatusFilter`/`taskFilter`; Browser Back/Forward.',
+      'KPI-Klicks setzen Tab + Filter; `sanitizeFleetHealthServiceNavState` verhindert inkompatible Kombinationen; Tasks-Panel erhält Advanced Filters.',
+    ],
+    reason: 'Phase 8 Prompt 56: reload-resistente Deep Links und KPI-Navigation ohne stille Nullresultate.',
+    previousBehavior:
+      'Nur Tab/Sektion in URL; Filter gingen bei Normalisierung verloren; Task-Filter nicht bis zum Tasks-Panel durchgereicht.',
+    details:
+      'fleet-health-service.types.ts, FleetHealthServiceView.tsx, FleetHealthServiceWorkPanel.tsx, FleetConditionView.tsx, fleet-condition-pipeline.ts, fleet-health-service-vehicle-overview.ts, fleet-health-service.types.test.ts, FLEET_HEALTH_SERVICE_CONTRACT.md',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:50:00.000Z',
+  },
+  {
     id: 'fleet-health-vehicle-findings-p55-2026-07-20',
     version: '4.9.726',
     title: 'Fleet Health Service — mehrere Findings und Arbeiten pro Fahrzeug (Phase 8 P55)',

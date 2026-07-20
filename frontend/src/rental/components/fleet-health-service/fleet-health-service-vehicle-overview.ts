@@ -75,6 +75,17 @@ export function isOpenServiceCase(serviceCase: ApiServiceCase): boolean {
   return OPEN_SERVICE_CASE_STATUSES.has(serviceCase.status);
 }
 
+export function getBlockingServiceCaseVehicleIds(
+  serviceCases: ApiServiceCase[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const serviceCase of serviceCases) {
+    if (!isOpenServiceCase(serviceCase) || !serviceCase.blocksRental) continue;
+    ids.add(serviceCase.vehicleId);
+  }
+  return ids;
+}
+
 function taskToWorkItem(task: ApiTask): FleetHealthServiceVehicleTaskItem {
   const status = taskStatusForTask(task);
   return {

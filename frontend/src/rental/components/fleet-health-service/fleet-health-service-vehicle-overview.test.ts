@@ -5,6 +5,7 @@ import { buildFleetHealthServiceUiItem } from './fleet-health-service.view-model
 import {
   buildVehicleOverviewRow,
   buildVehicleOverviewSections,
+  getBlockingServiceCaseVehicleIds,
   isOpenServiceCase,
 } from './fleet-health-service-vehicle-overview';
 
@@ -225,6 +226,15 @@ describe('fleet-health-service vehicle overview', () => {
     expect(row?.cases[0]?.linkedTaskIds).toEqual(['t-case']);
     expect(row?.unmatchedTasks).toHaveLength(0);
     expect(row?.matchedTasks.map((entry) => entry.id)).toEqual(['t-case']);
+  });
+
+  it('getBlockingServiceCaseVehicleIds returns open rental-blocking cases only', () => {
+    const ids = getBlockingServiceCaseVehicleIds([
+      serviceCase({ id: 'c1', vehicleId: 'v1', status: 'OPEN', blocksRental: true }),
+      serviceCase({ id: 'c2', vehicleId: 'v2', status: 'OPEN', blocksRental: false }),
+      serviceCase({ id: 'c3', vehicleId: 'v3', status: 'COMPLETED', blocksRental: true }),
+    ]);
+    expect([...ids]).toEqual(['v1']);
   });
 
   it('buildVehicleOverviewSections emits one row per vehicle without covered dedupe', () => {

@@ -26,7 +26,7 @@
 **Deep-Link / Cross-Navigation**
 
 - `openServiceCenter(nav?)` in `App.tsx` → `fleetTab='condition-service'` + `fleetHealthServiceNav` aus Nav
-- URL-Sync: `?fhs=` (Primärbereich) + `?fhsWork=` (Arbeiten-Sektion); `popstate` + `sessionStorage` (`synqdrive_rental_fleet_health_service_nav`)
+- URL-Sync: `?fhs=` (Primärbereich) + `?fhsWork=` (Arbeiten-Sektion); **P56 Filter:** `fhsVf`, `fhsTf`, `fhsCase`, `fhsV`, `fhsSt`, `fhsVen`, `fhsTs` (Legacy-Aliase `vehicleStatusFilter`/`taskFilter`); `popstate` + `sessionStorage` (`synqdrive_rental_fleet_health_service_nav`)
 - Legacy `fhs=tasks|schedule|vendors` → normalisiert auf `work` + Sektion; Analytics-Keys bleiben stabil (`fleet_health_service.work.*`)
 - Legacy `health` / `service` Top-Level States werden via `normalizeFleetTab()` auf `condition-service` + Bereich gemappt
 - `vendor-management` View → Fleet `condition-service` + Arbeiten/Partner

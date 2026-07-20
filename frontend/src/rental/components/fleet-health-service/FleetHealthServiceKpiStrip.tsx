@@ -209,7 +209,7 @@ export function buildFleetHealthServiceKpiGroups(
           tone: 'warning',
           icon: UserRound,
           taskFilter: 'waiting-vendor',
-          workSection: 'vendors',
+          workSection: 'tasks',
         },
       ],
     },
