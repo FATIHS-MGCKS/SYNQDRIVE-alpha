@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-domain-integration-p62-2026-07-20',
+    version: '4.9.733',
+    title: 'Fleet Health Service — Domain-Integrationstests (Phase 9 P62)',
+    summary: [
+      'Backend-Pipeline-Tests: Finding→Task, Finding→Service Case, Case→mehrere Tasks, Vendor Waiting.',
+      'scheduledAt/expectedReadyAt, blocksRental, Case DONE + aktives Finding, Finding resolved + offener Case.',
+      'Partial Vendor Failure, Pagination/Filter, Permissions, Cross-Tenant, per-vehicle Isolation.',
+      'Frontend Read-Model-Integration: runtime rental_blocked, blocking cases, vendor waiting, limited health.',
+    ],
+    reason: 'Phase 9 Prompt 62: fokussiertes Integrations-Testpaket über die vollständige Domain-Kette ohne Produktionsdaten.',
+    previousBehavior: 'Keine End-to-End-In-Memory-Tests für Observation→Case→Task-Orchestrierung im Fleet-Health-Kontext.',
+    details:
+      'fleet-health-service-test-store.ts, fleet-health-service-pipeline.harness.ts, fleet-health-service.domain.integration.spec.ts, fleet-health-service.domain.integration.test.ts',
+    affectsArchitecture: false,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T00:00:10.000Z',
+  },
+  {
     id: 'fleet-health-alerting-p61-2026-07-20',
     version: '4.9.732',
     title: 'Fleet Health Service — Readiness Alerts & SLOs (Phase 9 P61)',
