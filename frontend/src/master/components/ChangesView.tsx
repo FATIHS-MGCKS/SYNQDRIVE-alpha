@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-scale-coverage-p51-2026-07-20',
+    version: '4.9.722',
+    title: 'Fleet Health Service — synthetische Skalierungstests (Phase 7 P51)',
+    summary: [
+      'Reproduzierbare Scale-Benchmarks für 100 / 500 / 1.000 / 5.000 synthetische Fahrzeuge: Request-Anzahl, URL-Länge, Payload, Prisma-Reads, CPU-Budgets dokumentiert.',
+      '`FleetConditionView`: Virtualisierung ab >50 Zeilen pro expandierter Gruppe (`@tanstack/react-virtual`).',
+      'Filter/Group-Pipeline extrahiert (`fleet-condition-pipeline.ts`); Pagination-Client nach `fleet-rental-health-pagination.ts`.',
+    ],
+    reason: 'Phase 7 Prompt 51: Skalierungsverhalten absichern ohne Produktions-Lasttests.',
+    previousBehavior:
+      'Keine dokumentierten Grenzwerte; volle DOM-Render bei großen expandierten Gruppen; Legacy-URL-Risiko undateniert.',
+    details:
+      'docs/testing/fleet-health-service-scale-benchmarks.md, *.scale.test.ts (frontend+backend), FleetConditionVirtualizedVehicleRows.tsx, fleet-rental-health-pagination.ts',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-20T23:00:00.000Z',
+  },
+  {
     id: 'rental-health-fleet-summary-p50-2026-07-20',
     version: '4.9.721',
     title: 'Rental Health — Fleet Summary Read Model (Phase 7 P50)',

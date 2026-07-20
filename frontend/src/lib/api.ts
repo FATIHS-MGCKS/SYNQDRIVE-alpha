@@ -1,4 +1,8 @@
 import { getToken, clearAuth } from './auth';
+import {
+  buildFleetRentalHealthQueryString,
+  fetchAllFleetRentalHealth as collectFleetRentalHealthPages,
+} from './fleet-rental-health-pagination';
 import type {
   AddDamageImageInput,
   CreateVehicleDamageInput,
@@ -2702,16 +2706,6 @@ function billingTenantQuery(
   return q ? `?${q}` : '';
 }
 
-function buildFleetRentalHealthQueryString(filters?: FleetRentalHealthQuery): string {
-  const merged: FleetRentalHealthQuery = { limit: 25, ...filters };
-  const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(merged)) {
-    if (v === undefined || v === null || v === '') continue;
-    q.set(k, String(v));
-  }
-  return q.toString();
-}
-
 function fetchFleetRentalHealthPage(orgId: string, filters?: FleetRentalHealthQuery) {
   const qs = buildFleetRentalHealthQueryString(filters);
   return get<FleetRentalHealthPage>(
@@ -2719,28 +2713,11 @@ function fetchFleetRentalHealthPage(orgId: string, filters?: FleetRentalHealthQu
   );
 }
 
-async function fetchAllFleetRentalHealth(
+function fetchAllFleetRentalHealth(
   orgId: string,
   filters?: FleetRentalHealthQuery,
 ): Promise<{ vehicles: VehicleHealthResponse[]; summary: FleetRentalHealthSummary | null }> {
-  const vehicles: VehicleHealthResponse[] = [];
-  let cursor: string | undefined;
-  let summary: FleetRentalHealthSummary | null = null;
-  const pageSize = 50;
-
-  for (;;) {
-    const page = await fetchFleetRentalHealthPage(orgId, {
-      ...filters,
-      limit: pageSize,
-      ...(cursor ? { cursor } : {}),
-    });
-    if (!summary) summary = page.summary;
-    vehicles.push(...page.data);
-    if (!page.meta.nextCursor) break;
-    cursor = page.meta.nextCursor;
-  }
-
-  return { vehicles, summary };
+  return collectFleetRentalHealthPages(orgId, fetchFleetRentalHealthPage, filters);
 }
 
 export const api = {
