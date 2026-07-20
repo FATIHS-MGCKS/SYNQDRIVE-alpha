@@ -14,6 +14,8 @@
  * data_stale flag so the UI has a uniform render path.
  */
 
+import type { RentalHealthSourceFinding } from './health-finding-sources';
+
 export type HealthState = 'good' | 'warning' | 'critical' | 'unknown' | 'n_a';
 
 export interface ModuleHealth {
@@ -34,6 +36,11 @@ export interface ModuleHealth {
     | 'complaint'
     | 'legacy_unverified'
     | 'unknown';
+  /**
+   * Stable upstream finding identities for this module (health-finding-identity-v1).
+   * Empty when the module is good or n_a; aggregated fallback when no structured signals exist.
+   */
+  source_findings?: RentalHealthSourceFinding[];
 }
 
 export interface VehicleHealth {

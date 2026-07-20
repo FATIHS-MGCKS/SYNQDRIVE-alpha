@@ -50,3 +50,18 @@ export type HealthFindingFingerprintPair = {
   occurrenceGeneration: number;
   version: typeof HEALTH_FINDING_IDENTITY_VERSION;
 };
+
+/** API-facing stable finding on rental-health modules (snake_case). */
+export type RentalHealthSourceFinding = {
+  finding_code: string;
+  source_entity_type: HealthFindingSourceEntityType;
+  source_entity_id: string;
+  source_finding_id: string;
+  finding_occurrence_id: string;
+  occurrence_generation: number;
+  version: typeof HEALTH_FINDING_IDENTITY_VERSION;
+  first_observed_at: string;
+  current_observed_at: string;
+  severity: 'critical' | 'warning' | 'info' | 'unknown';
+  reason?: string;
+};

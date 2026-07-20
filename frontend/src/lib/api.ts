@@ -63,6 +63,8 @@ export type RentalHealthState =
   | 'unknown'
   | 'n_a';
 
+import type { RentalHealthSourceFinding } from '../rental/lib/health-finding-identity.types';
+
 export interface RentalHealthModule {
   state: RentalHealthState;
   reason: string;
@@ -78,6 +80,7 @@ export interface RentalHealthModule {
     | 'sensor'
     | 'complaint'
     | 'unknown';
+  source_findings?: RentalHealthSourceFinding[];
   tire_read_model?: TireRentalHealthReadModel;
   brake_read_model?: BrakeRentalHealthReadModel;
 }
@@ -9256,6 +9259,9 @@ export interface VehicleHealthTabSummaryDto {
   };
   findings: Array<{
     id: string;
+    sourceFindingId?: string;
+    findingOccurrenceId?: string;
+    findingCode?: string;
     module: VehicleHealthFindingModule | string;
     severity: VehicleHealthFindingSeverity;
     title: string;
