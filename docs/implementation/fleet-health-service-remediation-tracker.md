@@ -139,8 +139,8 @@ Nachvollziehbarer Umsetzungs-Tracker für die gesamte Fleet-Health-Service-Remed
 | **32** | 4 | Tasks-Controller `PermissionsGuard` | Prompt 31 | Backend | CRUD an Permissions gebunden; FHS-T-072 | **DONE** | `34c40fc0`–`513eadd2` | `tasks.permissions.characterization.spec.ts`, `tasks.lifecycle-permissions.spec.ts` PASS | Guard-Revert |
 | **33** | 4 | Service-Cases-Controller Guards | Prompt 31 | Backend | Analog Tasks; org-scoped | **DONE** | `c978ac08`–`66a639f9` | `service-cases.permissions.characterization.spec.ts`, `service-cases.write-permissions.spec.ts` PASS | Guard-Revert |
 | **34** | 4 | Frontend Permission-Gating | Prompt 32, 33 | Frontend | Mutations nur mit Permission; Read-only blockiert | TODO | — | — | UI-Revert |
-| **35** | 4 | RBAC Controller-Specs | Prompt 32, 33 | Tests | 403 für fehlende Permissions; FHS-T-074 | **DONE** | `07d2a9da` | `fleet-service.permissions.matrix.spec.ts` (23), Characterization + Lifecycle/Write-Specs PASS (101 gesamt) | — |
-| **36** | 4 | RBAC-Dokumentation & Rollenmatrix | Prompt 35 | Docs | Matrix aus Audit 2 §5.2 in Architektur | **DONE** | `07d2a9da` | Rollenmatrix: Master Admin, Org/Sub Admin, Service/Station Manager, Worker, Driver, Read-only, Cross-Tenant; Station-Scope + Kosten/Termine in `fleet-service.permissions.matrix.spec.ts` | Doc-Revert |
+| **35** | 4 | RBAC Controller-Specs | Prompt 32, 33 | Tests | 403 für fehlende Permissions; FHS-T-074 | **DONE** | `5f4f749e` | `fleet-service.permissions.matrix.spec.ts` (23), Characterization + Lifecycle/Write-Specs PASS (101 gesamt) | — |
+| **36** | 4 | RBAC-Dokumentation & Rollenmatrix | Prompt 35 | Docs | Matrix aus Audit 2 §5.2 in Architektur | **DONE** | `5f4f749e` | Rollenmatrix: Master Admin, Org/Sub Admin, Service/Station Manager, Worker, Driver, Read-only, Cross-Tenant; Station-Scope + Kosten/Termine in `fleet-service.permissions.matrix.spec.ts` | Doc-Revert |
 
 ### Phase 5 — Skalierung & API
 
