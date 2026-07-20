@@ -35,7 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'auth-task-service-case-permissions-fhs-p11-2026-07-20',
+    id: 'tasks-read-permission-fhs-p12-2026-07-20',
+    version: '4.9.603',
+    title: 'Tasks — enforce tasks.read on all read endpoints (FHS Phase 2 P12)',
+    summary: [
+      'PermissionsGuard + `@RequireTaskPermission("tasks.read")` auf allen GET Task-Routen.',
+      'Abgedeckt: Liste, Summary, Detail (inkl. Historie/Metadaten), Fahrzeug/Buchung/Vendor/Kunde.',
+      'OrgScopingGuard unverändert; MASTER_ADMIN-Bypass erhalten; Characterization-Tests für 403-Szenarien.',
+    ],
+    reason: 'FHS Phase 2 Prompt 12: Task-Leseendpunkte mit kanonischer Permission schützen.',
+    previousBehavior: 'TasksController nur OrgScopingGuard + RolesGuard ohne Modul-Permission.',
+    details:
+      'tasks.controller.ts, decorators/require-task-permission.decorator.ts, tasks.permissions.characterization.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-20T11:01:00.000Z',
+  },
+  {
     version: '4.9.602',
     title: 'Auth — granular task and service case permission keys (FHS Phase 2 P11)',
     summary: [

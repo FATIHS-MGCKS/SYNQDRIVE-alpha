@@ -17,6 +17,8 @@ interface TaskAuthRequest extends Request {
 }
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequireTaskPermission } from './decorators/require-task-permission.decorator';
 import {
   AddAttachmentDto,
   AddCommentDto,
@@ -37,11 +39,12 @@ import {
  * leak even if an id from another org is supplied.
  */
 @Controller()
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get('organizations/:orgId/tasks')
+  @RequireTaskPermission('tasks.read')
   async findAll(@Param('orgId') orgId: string, @Query() query: ListTasksQueryDto) {
     return this.tasksService.listTasks(orgId, {
       status: query.status,
@@ -70,11 +73,13 @@ export class TasksController {
   }
 
   @Get('organizations/:orgId/tasks/summary')
+  @RequireTaskPermission('tasks.read')
   async summary(@Param('orgId') orgId: string, @Req() req: TaskAuthRequest) {
     return this.tasksService.getDashboardSummary(orgId, req.user?.id);
   }
 
   @Get('organizations/:orgId/tasks/:id')
+  @RequireTaskPermission('tasks.read')
   async findOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -271,21 +276,25 @@ export class TasksController {
   // ─── Per-entity convenience routes ──────────────────────────────────────────
 
   @Get('organizations/:orgId/vehicles/:vehicleId/tasks')
+  @RequireTaskPermission('tasks.read')
   async vehicleTasks(@Param('orgId') orgId: string, @Param('vehicleId') vehicleId: string) {
     return this.tasksService.getTasksForVehicle(orgId, vehicleId);
   }
 
   @Get('organizations/:orgId/bookings/:bookingId/tasks')
+  @RequireTaskPermission('tasks.read')
   async bookingTasks(@Param('orgId') orgId: string, @Param('bookingId') bookingId: string) {
     return this.tasksService.getTasksForBooking(orgId, bookingId);
   }
 
   @Get('organizations/:orgId/vendors/:vendorId/tasks')
+  @RequireTaskPermission('tasks.read')
   async vendorTasks(@Param('orgId') orgId: string, @Param('vendorId') vendorId: string) {
     return this.tasksService.getTasksForVendor(orgId, vendorId);
   }
 
   @Get('organizations/:orgId/customers/:customerId/tasks')
+  @RequireTaskPermission('tasks.read')
   async customerTasks(@Param('orgId') orgId: string, @Param('customerId') customerId: string) {
     return this.tasksService.getTasksForCustomer(orgId, customerId);
   }
