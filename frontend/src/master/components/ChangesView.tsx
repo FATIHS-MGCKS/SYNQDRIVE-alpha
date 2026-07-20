@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-detection-snapshot-dimo-repair-2026-07-20',
+    version: '4.9.601',
+    title: 'V4.9.601 — Trip-Erkennung: Snapshot-Reparatur + DIMO-first Reconciliation',
+    summary: [
+      'Fix: Battery V2 BullMQ job ids enthalten keine Doppelpunkte mehr (`buildBatteryV2JobId` hasht Idempotency-Keys deterministisch als `battery-v2-<sha256>`). Behebt seit 17.07. flottenweite Snapshot-Failures `Custom Id cannot contain :`, die die Live-Trip-FSM komplett blockierten.',
+      'Defense: `DimoSnapshotProcessor` isoliert Battery-V2-Enqueue-Fehler per try/catch — Trip-Start-Evaluation läuft auch bei Battery-Queue-Problemen weiter.',
+      'Fix: `TripReconciliationService.collectRepairCandidates` nutzt bei `useDimoSegmentFallback: true` ausschließlich DIMO changePoint-Segmente, wenn welche vorhanden sind. ClickHouse Ignition/Motion-Micro-Segmente werden nicht mehr parallel angelegt (verhindert 12 fragmentierte Trips statt 2 DIMO-Trips).',
+      'Ops: `backend/scripts/ops/repair-vehicle-trips-from-dimo.ts` — löscht REPAIRED-Trips in einem Fenster und reconciled aus DIMO (dry-run / --apply).',
+    ],
+    reason:
+      'Seit Battery V2 P22 schlugen DIMO-Snapshots fehl → Live-FSM tot → Reconciliation erzeugte fragmentierte CH-Reparatur-Trips statt DIMO-Wahrheit (z. B. Tiguan WOB L 7503, 19.07.2026: 12 Trips / 274 km statt 2 / ~1054 km).',
+    previousBehavior:
+      'Battery job id = `battery-v2:` + roher Idempotency-Key mit `:` → BullMQ reject. Reconciliation sammelte CH Ignition + Motion + DIMO parallel und legte viele Micro-Trips an.',
+    details:
+      'backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-queue.util.ts, backend/src/workers/processors/dimo-snapshot.processor.ts, backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts, backend/scripts/ops/repair-vehicle-trips-from-dimo.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-20T11:00:00.000Z',
+  },
+  {
     id: 'stations-v2-production-rollout-v49600-2026-07-18',
     version: '4.9.600',
     title: 'V4.9.600 — Stations V2: globales Production-Rollout (enforce)',
