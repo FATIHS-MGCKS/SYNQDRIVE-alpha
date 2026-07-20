@@ -471,6 +471,13 @@ function taskOrganizationId(task: ApiTask): string | null {
   return task.organizationId?.trim() || null;
 }
 
+function taskVehicleId(task: ApiTask): string | null {
+  const meta = taskMetadataRecord(task);
+  const fromMeta = meta?.vehicleId;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  return task.vehicleId?.trim() || null;
+}
+
 function taskSourceFindingId(task: ApiTask): string | null {
   const meta = taskMetadataRecord(task);
   const id = meta?.sourceFindingId;
@@ -573,7 +580,8 @@ export function findDuplicateHealthTask(
   let possiblyRelatedCandidate: ApiTask | null = null;
 
   for (const task of tasks) {
-    if (task.vehicleId !== vehicleId) continue;
+    const taskVehicle = taskVehicleId(task);
+    if (!taskVehicle || taskVehicle !== vehicleId) continue;
     if (!isOpenRelevantTaskStatus(task.status)) continue;
 
     const taskOrg = taskOrganizationId(task);
