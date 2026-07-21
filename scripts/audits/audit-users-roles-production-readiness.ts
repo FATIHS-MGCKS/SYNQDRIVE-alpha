@@ -153,6 +153,30 @@ function assertNoPiiLeak(filePath: string, content: string): void {
   }
 }
 
+function loadFindings(): {
+  writesPerformed?: boolean;
+  mode?: string;
+  phase?: number;
+  summaryCounts?: Record<string, number>;
+  scope?: Record<string, number>;
+  findings?: Array<{ severity: string; productionBlocker?: boolean; id?: string }>;
+} {
+  const root = repoRoot();
+  return JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'docs/audits/data/iam-integrity-findings-2026-07.json'),
+      'utf8',
+    ),
+  ) as {
+    writesPerformed?: boolean;
+    mode?: string;
+    phase?: number;
+    summaryCounts?: Record<string, number>;
+    scope?: Record<string, number>;
+    findings?: Array<{ severity: string; productionBlocker?: boolean; id?: string }>;
+  };
+}
+
 function phase4VpsIntegrity(): AuditPhaseResult {
   const required = requireArtifacts([
     'docs/audits/users-roles-production-readiness-2026-07.md',
@@ -174,18 +198,7 @@ function phase4VpsIntegrity(): AuditPhaseResult {
     assertNoPiiLeak(rel, fs.readFileSync(abs, 'utf8'));
   }
 
-  const findings = JSON.parse(
-    fs.readFileSync(
-      path.join(root, 'docs/audits/data/iam-integrity-findings-2026-07.json'),
-      'utf8',
-    ),
-  ) as {
-    writesPerformed?: boolean;
-    mode?: string;
-    summaryCounts?: Record<string, number>;
-    scope?: Record<string, number>;
-    findings?: Array<{ severity: string; productionBlocker?: boolean }>;
-  };
+  const findings = loadFindings();
 
   if (findings.writesPerformed !== false || findings.mode !== 'read-only') {
     throw new Error('Phase-4 findings must declare mode=read-only and writesPerformed=false');
@@ -232,6 +245,61 @@ function phase4VpsIntegrity(): AuditPhaseResult {
   };
 }
 
+function phase5LifecycleGovernance(): AuditPhaseResult {
+  const required = requireArtifacts([
+    'docs/audits/users-roles-production-readiness-2026-07.md',
+    'docs/audits/data/iam-invite-security-flow-2026-07.csv',
+    'docs/audits/data/iam-password-reset-security-2026-07.csv',
+    'docs/audits/data/iam-mfa-step-up-matrix-2026-07.csv',
+    'docs/audits/data/iam-joiner-mover-leaver-2026-07.csv',
+    'docs/audits/data/iam-access-review-readiness-2026-07.csv',
+    'docs/audits/data/iam-integrity-findings-2026-07.json',
+  ]);
+
+  const root = repoRoot();
+  for (const rel of required) {
+    if (rel.endsWith('.md')) continue;
+    assertNoPiiLeak(rel, fs.readFileSync(path.join(root, rel), 'utf8'));
+  }
+
+  const findings = loadFindings();
+  if (findings.writesPerformed !== false || findings.mode !== 'read-only') {
+    throw new Error('Findings must declare mode=read-only and writesPerformed=false');
+  }
+  if ((findings.phase ?? 0) < 5) {
+    throw new Error('iam-integrity-findings-2026-07.json must be updated to phase >= 5');
+  }
+
+  const p5 = (findings.findings ?? []).filter((f) => (f.id ?? '').startsWith('UR-P5-'));
+  const p0 = p5.filter((f) => f.severity === 'P0').length;
+  const p1 = p5.filter((f) => f.severity === 'P1').length;
+  const blockers = p5.filter((f) => f.productionBlocker).length;
+
+  return {
+    auditId: AUDIT_ID,
+    phase: 5,
+    completedAt: new Date().toISOString(),
+    mode: 'read-only',
+    writesPerformed: false,
+    summary:
+      'Phase 5 complete: invite/password/MFA/JML/access-review governance matrices and findings validated.',
+    artifacts: required,
+    notes: [
+      'No productive invite/password/MFA/session/membership actions performed.',
+      'Password-reset target policy documented only — not implemented.',
+      `Phase-5 findings: ${p5.length} (P0=${p0} P1=${p1} blockers=${blockers})`,
+      `Cumulative findings: ${findings.findings?.length ?? 0}`,
+    ],
+    data: {
+      phase5FindingCount: p5.length,
+      phase5P0: p0,
+      phase5P1: p1,
+      phase5ProductionBlockers: blockers,
+      summaryCounts: findings.summaryCounts ?? {},
+    },
+  };
+}
+
 function main(): void {
   assertReadOnlyPosture();
   const phase = parsePhase();
@@ -241,6 +309,8 @@ function main(): void {
     result = phase1StaticInventory();
   } else if (phase === 4) {
     result = phase4VpsIntegrity();
+  } else if (phase === 5) {
+    result = phase5LifecycleGovernance();
   } else {
     console.error(
       JSON.stringify(

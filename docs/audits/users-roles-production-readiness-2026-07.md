@@ -5,11 +5,11 @@
 | **Audit ID** | `users-roles-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/users-roles-production-readiness-2026-07` |
-| **Phase** | **4 of 8 — VPS IAM integrity (users / roles / sessions / invites)** |
+| **Phase** | **5 of 8 — Invite / password / MFA / JML / access-review governance** |
 | **Verdict (interim)** | **NOT READY** (preliminary — full verdict in Phase 8) |
-| **Status** | **Phases 1–4 complete** — Phases 5–8 outlined, not executed |
-| **Production data modified** | **No** — Phase 4 VPS queries were SELECT-only; no session/role/invite mutations |
-| **Analysis window (VPS)** | Sessions/IAM activity: last **90 days**; users/memberships/roles/invites/audit: **full history** (captured 2026-07-21 UTC) |
+| **Status** | **Phases 1–5 complete** — Phases 6–8 outlined, not executed |
+| **Production data modified** | **No** — Phase 5 code/static only; prior VPS work remained SELECT-only |
+| **Analysis window (VPS)** | Sessions/IAM activity: last **90 days** (Phase 4); Phase 5 lifecycle = full code paths + prior anonymized aggregates |
 
 ---
 
@@ -37,8 +37,13 @@
 | Multi-org session integrity | `docs/audits/data/iam-multi-org-session-integrity-2026-07.csv` | 4 |
 | Session revocation integrity | `docs/audits/data/iam-session-revocation-integrity-2026-07.csv` | 4 |
 | Invite integrity | `docs/audits/data/iam-invite-integrity-2026-07.csv` | 4 |
-| Integrity findings JSON | `docs/audits/data/iam-integrity-findings-2026-07.json` | 4 |
+| Integrity findings JSON | `docs/audits/data/iam-integrity-findings-2026-07.json` | 4–5 |
 | Phase-4 script result | `docs/audits/data/users-roles-audit-phase-4-result-2026-07.json` | 4 (generated) |
+| Invite security flow | `docs/audits/data/iam-invite-security-flow-2026-07.csv` | 5 |
+| Password reset security | `docs/audits/data/iam-password-reset-security-2026-07.csv` | 5 |
+| MFA / step-up matrix | `docs/audits/data/iam-mfa-step-up-matrix-2026-07.csv` | 5 |
+| Joiner-Mover-Leaver | `docs/audits/data/iam-joiner-mover-leaver-2026-07.csv` | 5 |
+| Access-review readiness | `docs/audits/data/iam-access-review-readiness-2026-07.csv` | 5 |
 | Read-only orchestrator | `scripts/audits/audit-users-roles-production-readiness.ts` | 1–8 |
 | Effective-access helper | `scripts/audits/audit-effective-access.ts` | 4 |
 | VPS integrity SQL dump (SELECT-only) | `scripts/audits/iam-vps-integrity-readonly.py` | 4 |
@@ -48,7 +53,6 @@ Planned later-phase artifacts (not yet generated):
 | Artifact | Path | Phase |
 |----------|------|-------|
 | Threat / control matrix | `docs/audits/data/users-roles-control-matrix-2026-07.csv` | 8 |
-| Invite lifecycle evidence | `docs/audits/data/users-roles-invite-lifecycle-2026-07.csv` | 5 |
 | UI/UX security audit | `docs/audits/data/users-roles-ui-ux-audit-2026-07.csv` | 7 |
 | DSGVO / ISO 27001 mapping | `docs/audits/data/users-roles-compliance-mapping-2026-07.csv` | 7–8 |
 | Final verdict JSON | `docs/audits/data/users-roles-production-readiness-verdict-2026-07.json` | 8 |
@@ -108,14 +112,13 @@ Stable, non-reversible aliases used in all Git artifacts:
 - Invite integrity (empirical; zero invite rows in this environment)
 - Read-only scripts + findings JSON
 
-## Phase 5 — Joiner / Mover / Leaver (invites, role moves, suspend, remove)
+## Phase 5 — Invite / credentials / MFA / JML / access reviews *(complete below)*
 
-- Invite create → deliver → accept → membership
-- Existing-user accept without re-auth
-- Role assign / template edit propagation
-- Suspend / remove / reactivate
-- Last-active-admin protection
-- Session & audit side effects per lifecycle event
+- Invite lifecycle secret handling (create → mail → FE → resend → accept)
+- Password reset vs target policy (admin request → token → user sets → revoke → notify)
+- MFA / step-up target matrix for privileged actions
+- Joiner-Mover-Leaver controls and deprovisioning gaps
+- Access-review readiness (absent) + minimum model
 
 ## Phase 6 — Multi-organization users & org switching (deep dive)
 
@@ -872,7 +875,115 @@ Cumulative interim (Phases 1–4): production blockers confirmed in **data** for
 | Read-only scripts extended | Done |
 | Main report updated | Done |
 | No production mutations | Confirmed |
-| Prompt 5 not started | Confirmed |
+| Prompt 5 started only after Phase 4 exit | Confirmed |
+
+---
+
+# Phase 5 findings — Invite, password, MFA, JML, access reviews
+
+## P5.0 Method & safety
+
+| Item | Value |
+|------|-------|
+| Mode | **read-only** (`writesPerformed=false`) |
+| Method | Static code inspection of invite/password/MFA/JML paths + Phase-4 anonymized VPS aggregates |
+| Productive actions | **None** — no invites sent, no passwords changed, no sessions revoked, no MFA mutations |
+| Target policies | Documented for password reset & step-up — **not implemented** in this phase |
+
+## P5.1 Invite lifecycle (Teil 1–2)
+
+Flow reconstructed: `createInvite` → `generateInviteToken` (32-byte base64url) → bcrypt `tokenHash` + sha256 `tokenLookup` → `TransactionalMailService` (fallback log) → API returns **plaintext** `inviteToken`/`inviteUrl` → FE (create: no auto-copy; **resend: clipboard**) → resend **rotates** hash/lookup (old links die) → expiry **7 days** → public `validate`/`accept` → membership create/update (`REMOVED`→`ACTIVE`) → void audits → **no** session minted (login separate).
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | Klartexttoken an FE? | **Yes** — create + resend |
+| 2 | Auto-clipboard? | **Yes on resend**; not on create wizard |
+| 3 | Logs/analytics? | **Yes risk** — mail `debug` body includes URL; request logger redacts query `token`; no FE analytics SDK found |
+| 4 | Resend rotation? | **Yes** — new hash/lookup |
+| 5 | Alte Links ungültig? | **Yes** after successful resend |
+| 6 | Einmalig? | **Status-based** PENDING→ACCEPTED (no explicit lock) |
+| 7 | Laufzeit? | **7 days** (`INVITE_EXPIRY_DAYS`) |
+| 8 | Rate limits? | **Global only** (~200/min/IP); no invite-specific throttle |
+| 9 | Nur per E-Mail? | **No** — API + clipboard + log fallback |
+| 10 | Admin Link erneut anzeigen? | **Not same link** via list; **resend** returns new plaintext |
+| 11 | Step-up für Anzeigen? | **No** |
+| 12 | Admin-Invites stärker? | **No** (only `users-roles.manage` at create) |
+
+**Acceptance**
+
+| Path | Result |
+|------|--------|
+| A New user | Password required (min 12); user+membership created; **no email verify** beyond token; `mustChangePassword=false`; **no SPA** `/accept-invite` route |
+| B Existing user | **Not** required to be logged in; email match = invite row email only; **no re-auth**; public validate shows org name + role; **token holder** can activate; **REMOVED reactivated**; sessions **not** adjusted |
+| C High-risk role | **No** extra confirm / MFA / step-up / elevated notify |
+
+## P5.2 Password reset (Teil 3)
+
+| Flow | Status |
+|------|--------|
+| Forgot / self-service token | **Missing** (LoginPage support stub) |
+| Admin-initiated token reset | **Missing** |
+| Direct admin password set (org + master) | **Present** — writes global `User.passwordHash` |
+| Session revocation on admin reset | **None** (Phase 4: 0 revoked) |
+| User notification | **None** |
+| Policy / history | Length-only 10 vs 12; **no** history |
+| Org admin × multi-org credential | **Confirmed unsafe** — Org A can change global password for Org B |
+
+**Target policy (audit definition — not implemented):**  
+Admin requests reset → short-lived single-use hashed token → user sets password → revoke all/defined sessions → CRITICAL audit + user notification. Forbid routine direct hash set.
+
+## P5.3 MFA & step-up (Teil 4)
+
+| Capability | Status |
+|------------|--------|
+| MFA enrollment / TOTP / WebAuthn / recovery / remembered devices | **Not implemented** (flags hardcoded `false`; UI placeholders) |
+| Step-up / recent auth / `amr`/`aal`/`auth_time` | **Not implemented** |
+| Privileged actions today | JWT + permission/role guards only |
+
+Target step-up matrix (see CSV): admin role grant, critical permissions, mass role edit, password reset, MFA reset, revoke others’ sessions, reveal invite link, remove user, audit/DSGVO export, break-glass — all require step-up (± MFA) **once framework exists**.
+
+## P5.4 Joiner-Mover-Leaver (Teil 5)
+
+| Area | Gap |
+|------|-----|
+| JOINER | No approval workflow; invite secret exposure; MFA optional/absent; legacy `inviteByEmail` parallel path |
+| MOVER | Role/station/permission changes **do not** invalidate sessions; no backend impact preview; no user notify |
+| LEAVER | No central `DeprovisioningService`; remove≠revoke sessions; suspend hits **global** user; invites/tasks/docs not cleaned; REMOVED reactivatable via invite |
+
+**Direct answers:** (1) No central deprovisioning service. (2) Not all channels disabled. (3) No personal API-key model found. (4) Tasks/bookings/docs unchanged. (5) Yes — invite can reactivate REMOVED. (6) Yes — old sessions remain. (7) Exit audit partial (`void` / incomplete).
+
+## P5.5 Access reviews (Teil 6)
+
+**Absent** end-to-end (no campaign/reviewer/due date/attestation/export/reminder/escalation). Phase-4 data: `accessReviewsFound=0`.  
+
+Minimum model + ISO-oriented process + frequencies documented in `iam-access-review-readiness-2026-07.csv`. Depends on implementing **EffectiveAccess** read-model (Phase 3) first.
+
+## P5.6 Phase-5 P0 / P1 Zwischenstand
+
+| ID | Sev | Title |
+|----|-----|-------|
+| UR-P5-INV-01/03/05 | P0 | Invite plaintext to FE/logs + clipboard resend |
+| UR-P5-INV-16/17 | P0 | Existing-user + high-risk accept without re-auth/step-up |
+| UR-P5-PW-03 / PW-TARGET | P0 | Direct global admin password set; target reset policy missing |
+| UR-P5-MFA-06 | P0 | No MFA/step-up framework |
+| UR-P5-JML-09/10 | P0 | Global suspend; leaver/mover no session revoke / no deprovisioner |
+| UR-P5-AR-10 | P0 | Access review blocked without EffectiveAccess RM |
+| UR-P5-INV-13 / PW-01 / MFA-01 / AR-01 / JML-13 | P1 | SPA missing; forgot-password missing; MFA placeholders; no AR campaigns; ownership gaps |
+
+Cumulative findings JSON: **26** total (**13×P0**, **10×P1**, **3×P2**); **13** production blockers.
+
+## P5.7 Phase 5 exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Invite security flow CSV | Done |
+| Password reset security CSV + target policy | Done (not implemented) |
+| MFA/step-up matrix | Done |
+| JML CSV + 7 leaver questions | Done |
+| Access-review readiness CSV | Done |
+| Findings JSON extended | Done |
+| No productive IAM actions | Confirmed |
+| Prompt 6 not started | Confirmed |
 
 ---
 
@@ -885,18 +996,18 @@ Cumulative interim (Phases 1–4): production blockers confirmed in **data** for
 | 3 | Role values copied; later edits don’t propagate | **Confirmed** + Phase-4: no linked templates to observe drift | 5, 8 |
 | 4 | Multi-org login/refresh non-deterministic | **Confirmed** + three selection algorithms; 0 multi-org users in VPS | 6, 8 |
 | 5 | Refresh not bound to org/membership | **Confirmed** + Phase-4: 80/80 sessions unbound | 6, 8 |
-| 6 | Invite plaintext to FE/clipboard | **Confirmed** | 5, 7 |
-| 7 | Existing users accept invite without re-auth | **Confirmed** | 5, 7 |
-| 8 | Critical IAM audits fire-and-forget | **Confirmed**; Phase-4: `auditAction` rows=0 despite 89 UPDATEs | 5, 8 |
-| 9 | MFA/sessions/security activity partial | **Confirmed — not implemented** | 7, 8 |
+| 6 | Invite plaintext to FE/clipboard | **Confirmed** + Phase-5 flow CSV (resend clipboard; mail debug URL) | 7, 8 |
+| 7 | Existing users accept invite without re-auth | **Confirmed** + REMOVED reactivation; no SPA accept route | 7, 8 |
+| 8 | Critical IAM audits fire-and-forget | **Confirmed**; Phase-4: `auditAction` rows=0 despite 89 UPDATEs | 8 |
+| 9 | MFA/sessions/security activity partial | **Confirmed — not implemented**; step-up matrix defined | 7, 8 |
 | 10 | Parallel access truths | **Confirmed** (template/membership/JWT/FE/station + endpoint guard inconsistency) | 7, 8 |
-| 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed gap** | 7, 8 |
+| 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed** + Phase-5 AR readiness CSV (absent) | 7, 8 |
 
 ---
 
 ## Appendix B — Changes / Architektur
 
-**Not updated** (Phases 1–4). Audit documentation and read-only scripts only; no product implementation or architecture behavior change was made.
+**Not updated** (Phases 1–5). Audit documentation and read-only scripts only; no product implementation or architecture behavior change was made.
 
 ---
 
@@ -911,8 +1022,9 @@ Cumulative interim (Phases 1–4): production blockers confirmed in **data** for
 | Create/send/revoke/accept invites | No |
 | Change MFA state | No |
 | Role reconciliation / membership updates | No |
+| Access-review campaigns | No |
 | Prisma migrate / infra config change | No |
 | Redis writes | No |
 | Commit of PII/secrets | No |
 
-All VPS access was diagnostic/read-only (`psql` SELECT aggregates via `iam-vps-integrity-readonly.py`, Redis SCAN/DBSIZE in earlier phases, `curl -I` headers, PM2 status, env key **presence/shape** only).
+All VPS access was diagnostic/read-only (`psql` SELECT aggregates via `iam-vps-integrity-readonly.py`, Redis SCAN/DBSIZE in earlier phases, `curl -I` headers, PM2 status, env key **presence/shape** only). Phase 5 added **no** VPS mutations — code/static analysis only.

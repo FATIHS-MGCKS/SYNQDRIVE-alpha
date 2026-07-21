@@ -1,6 +1,6 @@
 {
   "auditId": "users-roles-production-readiness-2026-07",
-  "phase": 4,
+  "phase": 5,
   "capturedAt": "2026-07-21T01:06:03.353647+00:00",
   "mode": "read-only",
   "writesPerformed": false,
@@ -12,16 +12,18 @@
     "windowDaysSessionsActivity": 90
   },
   "summaryCounts": {
-    "findings": 10,
-    "P0": 2,
-    "P1": 5,
+    "findings": 26,
+    "P0": 13,
+    "P1": 10,
     "P2": 3,
     "roleDriftLinkedRows": 0,
     "noRoleLinkActiveMemberships": 1,
     "privilegedDriftCases": 0,
     "inviteRows": 0,
     "singleAdminOrgs": 1,
-    "zeroAdminOrgsWithMembers": 0
+    "zeroAdminOrgsWithMembers": 0,
+    "phase5FindingsAdded": 16,
+    "productionBlockers": 13
   },
   "findings": [
     {
@@ -150,7 +152,7 @@
       "severity": "P2",
       "confidence": "high",
       "category": "invite_integrity",
-      "title": "No invite rows in production \u2014 joiner path unused; cannot validate invite integrity empirically",
+      "title": "No invite rows in production — joiner path unused; cannot validate invite integrity empirically",
       "codeEvidence": "OrganizationInviteService + plaintext inviteUrl return (Phase 1/2)",
       "dataEvidence": "invitesTotal=0 across organizations",
       "affectedOrganizationCount": 2,
@@ -190,7 +192,7 @@
       "severity": "P2",
       "confidence": "high",
       "category": "role_drift",
-      "title": "No membership\u2194role drift pairs \u2014 because no memberships linked to roles",
+      "title": "No membership↔role drift pairs — because no memberships linked to roles",
       "codeEvidence": "updateRole does not cascade (Phase 3)",
       "dataEvidence": "roleMembershipDrift linked rows=0; NO_ROLE_LINK=1; system roles on ORG_001=10 all unassigned",
       "affectedOrganizationCount": 1,
@@ -224,6 +226,346 @@
         "access_review_export_readonly"
       ],
       "productionBlocker": false
+    },
+    {
+      "id": "UR-P5-INV-01",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "invite_secret_exposure",
+      "title": "Invite create/resend returns plaintext inviteToken and inviteUrl to the frontend",
+      "codeEvidence": "OrganizationInviteService.createInvite/resendInvite return inviteToken+inviteUrl; FE types OrganizationInviteCreatedDto",
+      "dataEvidence": "invitesTotal=0 in VPS — code-confirmed; no empirical accept samples",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Invite secret leaves server boundary; browser/network/clipboard exposure; not email-only delivery",
+      "reproduction": "Read createInvite return and api.organizationInvites.create response type",
+      "recommendation": "Never return plaintext token to FE; deliver hashed-token link via real mail only; admin sees status not URL",
+      "requiredTests": [
+        "invite_create_response_omits_token",
+        "invite_resend_response_omits_token"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-INV-05",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "invite_secret_exposure",
+      "title": "Resend auto-copies invite URL to clipboard without step-up",
+      "codeEvidence": "InvitesTab.tsx and UsersTab.tsx navigator.clipboard.writeText(res.inviteUrl)",
+      "dataEvidence": "n/a code path",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Secrets persist on shared clipboards; shoulder-surfing; paste into chat/tickets",
+      "reproduction": "Trigger resend in Users & Roles UI",
+      "recommendation": "Remove auto-clipboard; email-only; require step-up if emergency reveal ever needed",
+      "requiredTests": [
+        "invite_resend_does_not_clipboard"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-INV-03",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "invite_delivery",
+      "title": "Transactional mail is log-fallback and debug-logs full inviteUrl",
+      "codeEvidence": "TransactionalMailService.sendOrganizationInvite returns sent:false fallback; logger.debug body includes inviteUrl",
+      "dataEvidence": "Phase1 runtime SMTP unset / invite mail fallback",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Invites not reliably delivered; secrets may enter application logs",
+      "reproduction": "Call sendOrganizationInvite without provider; inspect log shape (no prod log dump to git)",
+      "recommendation": "Wire production mail provider; never log URL/token; redact in log pipelines",
+      "requiredTests": [
+        "invite_mail_provider_required_in_prod",
+        "invite_logs_redact_token"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-INV-16",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "invite_acceptance",
+      "title": "Existing-user invite accept is public token-only; no login or re-authentication",
+      "codeEvidence": "acceptInvite: if user exists password not required; AuthGuard bypass on /invites/accept; can reactivate REMOVED membership",
+      "dataEvidence": "invitesTotal=0 — code-confirmed",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Stolen invite link grants/reactivates org membership for existing identity without proving control of that account session",
+      "reproduction": "Public POST /api/v1/invites/accept with token for existing email — no Authorization header",
+      "recommendation": "Require authenticated session matching invite email + recent re-auth; show org/role confirm UI",
+      "requiredTests": [
+        "invite_accept_existing_user_requires_auth",
+        "invite_accept_removed_requires_reapproval"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-INV-17",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "invite_acceptance",
+      "title": "ORG_ADMIN / high-risk invites have no extra accept confirmation MFA or step-up",
+      "codeEvidence": "createInvite requires manage for ORG_ADMIN but acceptInvite has no elevated checks; audit INFO",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Privilege escalation to tenant admin via invite token theft",
+      "reproduction": "Create ORG_ADMIN invite; accept via public endpoint",
+      "recommendation": "Shorter TTL; email-only; step-up on create/resend; dual confirm on accept; CRITICAL audit + notify admins",
+      "requiredTests": [
+        "org_admin_invite_accept_requires_step_up"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-PW-03",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "password_reset",
+      "title": "Org admin can set global User.passwordHash directly; no reset token; no session revoke; multi-org unsafe",
+      "codeEvidence": "UsersService.changeOrgUserPassword updates passwordHash+mustChangePassword; no revokeAllForUser",
+      "dataEvidence": "Phase4: refreshTokensRevoked=0; passwordEventsObserved=89 with surviving sessions",
+      "affectedOrganizationCount": 1,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Org A admin changes credential used for all orgs; attackers with old refresh keep access",
+      "reproduction": "POST .../users/:userId/change-password; observe user.passwordHash change and active refresh count",
+      "recommendation": "Target policy: admin requests reset → short-lived single-use token → user sets password → revoke sessions → audit+notify; forbid direct hash set except break-glass",
+      "requiredTests": [
+        "org_admin_cannot_set_password_hash",
+        "admin_reset_issues_token_only",
+        "password_reset_revokes_sessions"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-PW-TARGET",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "password_reset",
+      "title": "Target password-reset policy defined in audit but not implemented",
+      "codeEvidence": "No PasswordResetToken model/routes; LoginPage forgot-password is support stub",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Production relies on direct admin password entry and unenforced mustChangePassword",
+      "reproduction": "Schema search PasswordReset; LoginPage forgot handler",
+      "recommendation": "Implement documented target policy in remediation; do not implement in this audit phase",
+      "requiredTests": [
+        "forgot_password_token_flow",
+        "must_change_password_enforced"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-MFA-06",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "mfa_step_up",
+      "title": "No MFA enrollment and no step-up / recent-auth framework for privileged IAM actions",
+      "codeEvidence": "AccountService security twoFactor*/passkeys* false; JWT claims lack amr/aal/auth_time; users/roles controllers permission-only",
+      "dataEvidence": "org security-activity twoFactorEnabled=null activeSessionCount=null",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Stolen session JWT can perform password reset role assign remove invite reveal without re-auth",
+      "reproduction": "Inspect account.service security DTO and users.controller privileged routes",
+      "recommendation": "Ship step-up before or with MFA; require for matrix actions in iam-mfa-step-up-matrix",
+      "requiredTests": [
+        "step_up_required_for_password_reset",
+        "step_up_required_for_org_admin_assign"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-JML-10",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "joiner_mover_leaver",
+      "title": "Leaver/mover paths do not revoke sessions; no central deprovisioning service",
+      "codeEvidence": "removeOrgUser sets REMOVED only; suspend sets global User.status; assignRole/updateOrgUser no RefreshTokenService calls",
+      "dataEvidence": "Phase4 refreshTokensRevoked=0; active sessions survive password events",
+      "affectedOrganizationCount": 1,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Removed/suspended/downgraded users retain refresh until expiry; access JWT role claims stale",
+      "reproduction": "Code path review + Phase4 session integrity CSV",
+      "recommendation": "DeprovisioningService: revoke sessions revoke invites reassign ownership await audit",
+      "requiredTests": [
+        "remove_user_revokes_refresh_families",
+        "role_downgrade_revokes_or_reissues_tokens"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-JML-09",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "joiner_mover_leaver",
+      "title": "Org suspend mutates global User.status instead of membership.status=SUSPENDED",
+      "codeEvidence": "updateOrgUser dto.status SUSPENDED → UserStatus.SUSPENDED",
+      "dataEvidence": "Phase2 identity model confirmation",
+      "affectedOrganizationCount": 1,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Tenant-local suspend locks user out of all organizations",
+      "reproduction": "PATCH org user status SUSPENDED; observe users.status",
+      "recommendation": "Membership-scoped suspend; optional global lock only for platform/compromise",
+      "requiredTests": [
+        "org_suspend_does_not_set_global_user_status"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-AR-01",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "access_review",
+      "title": "No access-review campaigns reviewers attestation export reminders or escalation",
+      "codeEvidence": "No AccessReview model/scheduler; Phase4 coverage accessReviewsFound=0",
+      "dataEvidence": "accessReviewsFound=0 for ORG_001 and ORG_002",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "ISO-oriented periodic access certification not operable; privileged access unreviewed",
+      "reproduction": "Schema/code search + VPS coverage field",
+      "recommendation": "Minimum model in iam-access-review-readiness CSV; quarterly all / monthly privileged; depends on EffectiveAccess RM",
+      "requiredTests": [
+        "access_review_campaign_create_readonly_export"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P5-AR-10",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "access_review",
+      "title": "Access reviews blocked by missing EffectiveAccess read-model implementation",
+      "codeEvidence": "Phase3 canonical RM documented only; runtime uses membership snapshot + ORG_ADMIN bypass + FE localStorage",
+      "dataEvidence": "NO_ROLE_LINK membership; parallel access truths",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Reviewers cannot attest a single source of truth for permissions/stations",
+      "reproduction": "Compare Phase3 rule map vs absence of EffectiveAccess service",
+      "recommendation": "Implement EffectiveAccessReadModel before access-review UI",
+      "requiredTests": [
+        "effective_access_endpoint_matches_guard"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P5-INV-13",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "invite_acceptance",
+      "title": "Invite URL points to /accept-invite but no SPA route exists",
+      "codeEvidence": "buildInviteUrl uses /accept-invite?token=; frontend/src has no AcceptInvite route",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Joiner UX broken; token may linger in bookmarks/history if page added later without hygiene",
+      "reproduction": "Ripgrep accept-invite in frontend/src",
+      "recommendation": "Ship accept-invite SPA with fragment token handling + existing-user re-auth",
+      "requiredTests": [
+        "accept_invite_spa_route_exists"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P5-PW-01",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "password_reset",
+      "title": "Forgot-password / self-service reset link flow missing",
+      "codeEvidence": "LoginPage sets support message only; no PasswordResetToken",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Users depend on admin direct password set — amplifies UR-P5-PW-03",
+      "reproduction": "Click forgot password on LoginPage",
+      "recommendation": "Implement tokenized self-service reset per target policy",
+      "requiredTests": [
+        "forgot_password_sends_token_email"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P5-JML-13",
+      "severity": "P1",
+      "confidence": "medium",
+      "category": "joiner_mover_leaver",
+      "title": "Leaver does not reassign tasks bookings documents or revoke open invites automatically",
+      "codeEvidence": "removeOrgUser only updates membership status; no invite scan; no ownership transfer service",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Operational orphans and lingering invite tokens after exit",
+      "reproduction": "Code inspection of removeOrgUser and invite revoke coupling",
+      "recommendation": "Deprovisioning checklist: invites sessions ownership transfer",
+      "requiredTests": [
+        "remove_user_revokes_pending_invites_for_email"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P5-MFA-01",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "mfa_step_up",
+      "title": "MFA TOTP/WebAuthn/recovery codes not implemented; UI placeholders only",
+      "codeEvidence": "AccountSessionsSection placeholders; security flags hardcoded false",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Password-only assurance for all privileged IAM actions",
+      "reproduction": "GET /account/me security object",
+      "recommendation": "Implement MFA; hide placeholders until available",
+      "requiredTests": [
+        "mfa_enroll_totp_login_challenge"
+      ],
+      "productionBlocker": false
     }
-  ]
+  ],
+  "phase5CapturedAt": "2026-07-21T01:14:07.761996+00:00",
+  "phase5Scope": {
+    "method": "code_static_and_prior_vps_read_only",
+    "productiveActions": false,
+    "artifacts": [
+      "iam-invite-security-flow-2026-07.csv",
+      "iam-password-reset-security-2026-07.csv",
+      "iam-mfa-step-up-matrix-2026-07.csv",
+      "iam-joiner-mover-leaver-2026-07.csv",
+      "iam-access-review-readiness-2026-07.csv"
+    ]
+  }
 }

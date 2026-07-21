@@ -1,0 +1,43 @@
+{
+  "auditId": "users-roles-production-readiness-2026-07",
+  "phase": 5,
+  "completedAt": "2026-07-21T01:14:47.464Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "summary": "Phase 5 complete: invite/password/MFA/JML/access-review governance matrices and findings validated.",
+  "artifacts": [
+    "docs/audits/users-roles-production-readiness-2026-07.md",
+    "docs/audits/data/iam-invite-security-flow-2026-07.csv",
+    "docs/audits/data/iam-password-reset-security-2026-07.csv",
+    "docs/audits/data/iam-mfa-step-up-matrix-2026-07.csv",
+    "docs/audits/data/iam-joiner-mover-leaver-2026-07.csv",
+    "docs/audits/data/iam-access-review-readiness-2026-07.csv",
+    "docs/audits/data/iam-integrity-findings-2026-07.json"
+  ],
+  "notes": [
+    "No productive invite/password/MFA/session/membership actions performed.",
+    "Password-reset target policy documented only — not implemented.",
+    "Phase-5 findings: 16 (P0=11 P1=5 blockers=11)",
+    "Cumulative findings: 26"
+  ],
+  "data": {
+    "phase5FindingCount": 16,
+    "phase5P0": 11,
+    "phase5P1": 5,
+    "phase5ProductionBlockers": 11,
+    "summaryCounts": {
+      "findings": 26,
+      "P0": 13,
+      "P1": 10,
+      "P2": 3,
+      "roleDriftLinkedRows": 0,
+      "noRoleLinkActiveMemberships": 1,
+      "privilegedDriftCases": 0,
+      "inviteRows": 0,
+      "singleAdminOrgs": 1,
+      "zeroAdminOrgsWithMembers": 0,
+      "phase5FindingsAdded": 16,
+      "productionBlockers": 13
+    }
+  }
+}
