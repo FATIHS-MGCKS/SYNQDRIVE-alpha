@@ -32,7 +32,7 @@ export function isHealthPipelineDegraded(
 }
 
 export function isModulePipelineUnavailable(mod: RentalHealthModule): boolean {
-  return mod.pipeline_available === false;
+  return mod.state === 'unknown' && mod.data_stale;
 }
 
 export function isRentalBlockedConfirmed(

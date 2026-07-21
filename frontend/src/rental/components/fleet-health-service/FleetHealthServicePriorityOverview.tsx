@@ -395,7 +395,9 @@ export function FleetHealthServicePriorityOverview({
 
   const defaultOpenSections = useMemo(() => {
     const keys = sections.filter((s) => s.rows.length > 0).map((s) => s.key);
-    return new Set(keys.length > 0 ? keys : ['technically_blocked', 'handle_today']);
+    return new Set<FleetHealthServicePrioritySectionKey>(
+      keys.length > 0 ? (keys as FleetHealthServicePrioritySectionKey[]) : ['technically_blocked'],
+    );
   }, [sections]);
 
   const [openSections, setOpenSections] = useState<Set<FleetHealthServicePrioritySectionKey>>(

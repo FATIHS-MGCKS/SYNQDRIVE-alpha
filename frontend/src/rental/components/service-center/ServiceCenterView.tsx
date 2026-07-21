@@ -123,10 +123,12 @@ export function ServiceCenterView({
     return data.allTasks.filter((t) => t.vehicleId === navContext.vehicleId);
   }, [data.allTasks, navContext.vehicleId]);
 
+  const vendors = data.vendors.data;
+
   const contextVendorName = useMemo(() => {
     if (!navContext.vendorId) return null;
-    return data.vendors.find((v) => v.id === navContext.vendorId)?.name ?? null;
-  }, [data.vendors, navContext.vendorId]);
+    return vendors.find((v) => v.id === navContext.vendorId)?.name ?? null;
+  }, [vendors, navContext.vendorId]);
 
   const tabs: Array<{ key: ServiceCenterTab; label: string }> = [
     { key: 'overview', label: t('serviceCenter.tab.overview') },
@@ -216,7 +218,7 @@ export function ServiceCenterView({
         <ServiceOverviewPanel
           activeTasks={data.activeTasks}
           historyTasks={data.historyTasks}
-          vendors={data.vendors}
+          vendors={vendors}
           loading={data.loading}
           onOpenTasks={() => goToTab('tasks')}
           onOpenSchedule={() => goToTab('schedule')}
@@ -228,7 +230,7 @@ export function ServiceCenterView({
       {activeTab === 'tasks' && (
         <ServiceTasksPanel
           tasks={filteredAllTasks}
-          vendors={data.vendors}
+          vendors={vendors}
           loading={data.loading}
           error={data.error}
           filter={taskFilter}
@@ -243,7 +245,7 @@ export function ServiceCenterView({
       {activeTab === 'schedule' && (
         <ServiceSchedulePanel
           tasks={filteredActiveTasks}
-          vendors={data.vendors}
+          vendors={vendors}
           loading={data.loading}
           onSelectTask={openTaskInPanel}
         />
@@ -256,11 +258,11 @@ export function ServiceCenterView({
       {activeTab === 'history' && (
         <ServiceHistoryPanel
           tasks={filteredAllTasks}
-          vendors={data.vendors}
+          vendors={vendors}
           loading={data.loading}
           onOpenVehicle={onOpenVehicle}
           onOpenVendor={(vendorId) => {
-            const vendor = data.vendors.find((v) => v.id === vendorId);
+            const vendor = vendors.find((v) => v.id === vendorId);
             if (vendor) onOpenVendorDetail?.(vendor);
           }}
           initialVehicleId={navContext.vehicleId}

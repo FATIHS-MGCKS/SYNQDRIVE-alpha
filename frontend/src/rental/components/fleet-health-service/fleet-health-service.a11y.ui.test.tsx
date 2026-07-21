@@ -43,6 +43,7 @@ const baseHealthKpis: FleetHealthKpis = {
   actionRequired: 2,
   needsReview: 1,
   healthy: 1,
+  unevaluable: 0,
 };
 
 const execution: FleetHealthServiceExecutionGroups = {

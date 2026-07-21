@@ -28,7 +28,7 @@ export function resolveVendorSourceAfterSuccess(
     vendors: next.data,
     status: next.status,
     fetchedAt: next.fetchedAt!,
-    error: next.error,
+    error: null,
   };
 }
 

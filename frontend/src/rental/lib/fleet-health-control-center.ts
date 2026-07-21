@@ -18,7 +18,8 @@ export type OperatorStatusFilter =
   | 'action'
   | 'review'
   | 'good'
-  | 'limited';
+  | 'limited'
+  | 'unevaluable';
 
 export type OperatorModuleFilter =
   | 'all'
@@ -401,7 +402,7 @@ export function buildFleetHealthDisplay(
   let primaryIssue: string | null = null;
   if (band === 'unevaluable') {
     primaryIssue = 'Technical status not fully available';
-  } else if (isRentalBlockedConfirmed(health) && health.blocking_reasons.length > 0) {
+  } else if (health && isRentalBlockedConfirmed(health) && health.blocking_reasons.length > 0) {
     primaryIssue = health.blocking_reasons[0];
   } else if (issues.length > 0) {
     primaryIssue = `${issues[0].label}: ${issues[0].reason}`;

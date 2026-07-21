@@ -115,8 +115,8 @@ export function FleetHubView({
         tabBar={tabBar}
         showHealthRefresh={showHealthRefresh}
         onVehicleSelect={onVehicleSelect}
-        healthServiceSubTab={healthServiceSubTab}
-        onHealthServiceSubTabChange={onHealthServiceSubTabChange}
+        healthServiceNav={healthServiceNav}
+        onHealthServiceNavChange={onHealthServiceNavChange}
         onDrillDown={onDrillDown}
         onOpenVendorDetail={onOpenVendorDetail}
         onOpenGlobalTasks={onOpenGlobalTasks}
@@ -159,8 +159,8 @@ function FleetHubViewBody({
   tabBar,
   showHealthRefresh,
   onVehicleSelect,
-  healthServiceSubTab,
-  onHealthServiceSubTabChange,
+  healthServiceNav,
+  onHealthServiceNavChange,
   onDrillDown,
   onOpenVendorDetail,
   onOpenGlobalTasks,
@@ -174,8 +174,8 @@ function FleetHubViewBody({
   tabBar: React.ReactNode;
   showHealthRefresh: boolean;
   onVehicleSelect?: (vehicle: VehicleData) => void;
-  healthServiceSubTab: FleetHealthServiceTab;
-  onHealthServiceSubTabChange: (tab: FleetHealthServiceTab) => void;
+  healthServiceNav: FleetHealthServiceNavState;
+  onHealthServiceNavChange: (nav: FleetHealthServiceNavState) => void;
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
   onOpenVendorDetail?: (vendor: Vendor) => void;
   onOpenGlobalTasks?: (taskId: string) => void;

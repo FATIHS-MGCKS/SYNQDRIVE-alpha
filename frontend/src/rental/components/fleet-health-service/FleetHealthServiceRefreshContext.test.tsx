@@ -69,7 +69,10 @@ function renderRefreshHook() {
 
   act(() => {
     root.render(
-      createElement(FleetHealthServiceRefreshProvider, { enabled: true }, createElement(Probe)),
+      createElement(
+        FleetHealthServiceRefreshProvider,
+        { enabled: true, children: createElement(Probe) },
+      ),
     );
   });
 
