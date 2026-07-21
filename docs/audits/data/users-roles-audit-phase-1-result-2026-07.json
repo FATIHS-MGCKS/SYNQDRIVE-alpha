@@ -1,0 +1,24 @@
+{
+  "auditId": "users-roles-production-readiness-2026-07",
+  "phase": 1,
+  "completedAt": "2026-07-21T00:02:18.695Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "summary": "Phase 1 complete: IAM code map, runtime snapshot, and main report outline present.",
+  "artifacts": [
+    "docs/audits/users-roles-production-readiness-2026-07.md",
+    "docs/audits/data/users-roles-code-map-2026-07.csv",
+    "docs/audits/data/users-roles-runtime-snapshot-2026-07.json",
+    "scripts/audits/audit-users-roles-production-readiness.ts"
+  ],
+  "notes": [
+    "No production mutations performed by this script.",
+    "Phases 2–8 are outlined in the main report and not executed here.",
+    "Code map rows: 69",
+    "Runtime preliminary signals: 6"
+  ],
+  "data": {
+    "codeMapRows": 69,
+    "runtimeSignalCount": 6
+  }
+}
