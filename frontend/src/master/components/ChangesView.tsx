@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-rollout-plan-p66-2026-07-21',
+    version: '4.9.737',
+    title: 'Fleet Health Service — Go/No-Go Rollout-Plan (Phase 9 P66)',
+    summary: [
+      'Kontrollierter Rollout-Plan: `docs/releases/fleet-health-service-rollout-plan.md` mit Pflicht-Gates G1–G15, Blocker-Register, Feature-Flag-Strategie, Pilot-Org, 72h-Beobachtung.',
+      'Abbruchkriterien Battery/Permission/False-Safe; Rollback per Flag; read-only P64 vor Prod-Pilot; Freigabe größere Flotten nur nach G15.',
+      'Tracker finalisiert (`fleet-health-service-remediation-tracker.md` v2.0); Sign-off **NO_GO** — kein Deployment in diesem Prompt.',
+    ],
+    reason: 'Phase 9 Prompt 66: Sign-off und kontrollierter Go/No-Go-Plan nach Post-Remediation-Audit.',
+    previousBehavior: 'Post-Remediation-Audit (CONDITIONALLY_READY) ohne verbindlichen Rollout- und Gate-Plan.',
+    details:
+      'docs/releases/fleet-health-service-rollout-plan.md; docs/implementation/fleet-health-service-remediation-tracker.md (final); Urteil NO_GO bis G1–G15 PASS.',
+    affectsArchitecture: false,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T01:05:00.000Z',
+  },
+  {
     id: 'fleet-health-service-post-audit-p65-2026-07-21',
     version: '4.9.736',
     title: 'Fleet Health Service — Post-Remediation Readiness Audit (Phase 9 P65)',
