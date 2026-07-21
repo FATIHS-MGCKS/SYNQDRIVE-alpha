@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { api, type ApiTask, type ApiTaskSummary } from '../../lib/api';
+import { fetchAllTasks } from '../../lib/tasks-pagination';
 import { matchesTaskListInvalidation, matchesTaskSummaryInvalidation, subscribeTaskQueryInvalidation } from '../../lib/tasks/invalidate';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
 import { useRentalOrg } from '../../rental/RentalContext';
@@ -80,7 +81,7 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
     setTasksError(null);
     try {
       const [taskList, sum] = await Promise.all([
-        api.tasks.list(orgId, { bucket: 'ALL_OPEN' }),
+        fetchAllTasks(orgId, { bucket: 'ALL_OPEN' }),
         api.tasks.summary(orgId).catch(() => null),
       ]);
       setTasks(taskList);

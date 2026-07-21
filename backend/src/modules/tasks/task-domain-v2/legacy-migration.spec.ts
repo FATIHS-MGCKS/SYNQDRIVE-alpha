@@ -94,7 +94,7 @@ describe('Task Domain V2 — Migration and legacy (J)', () => {
       ]);
       prisma.taskChecklistItem.findMany.mockResolvedValue([]);
 
-      const list = await svc.listTasks('org1', { bucket: 'UPCOMING' });
+      const { data: list } = await svc.listTasks('org1', { bucket: 'UPCOMING' });
       expect(Array.isArray(list)).toBe(true);
       expect(prisma.orgTask.findMany).toHaveBeenCalled();
     });

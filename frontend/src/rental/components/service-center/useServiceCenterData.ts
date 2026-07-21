@@ -11,6 +11,7 @@ import {
   matchesTaskSummaryInvalidation,
   subscribeTaskQueryInvalidation,
 } from '../../../lib/tasks/invalidate';
+import { fetchAllTasks } from '../../../lib/tasks-pagination';
 import { isCoordinatedRefreshActive } from '../fleet-health-service/fleet-health-service-refresh-coordinator';
 import { deriveServiceKpis, isActiveTask } from './service-center.utils';
 import type { ServiceCenterData } from './service-center.types';
@@ -112,10 +113,7 @@ function toSource<T>(slice: SourceSlice<T> & { reload: () => Promise<void> }): S
 }
 
 const fetchTaskSummary = (orgId: string) => api.tasks.summary(orgId);
-const fetchTasks = async (orgId: string) => {
-  const listRes = await api.tasks.list(orgId);
-  return normalizeArrayResponse<ApiTask>(listRes);
-};
+const fetchTasks = async (orgId: string) => fetchAllTasks(orgId);
 const fetchVendors = async (orgId: string) => {
   const vendorsRes = await api.vendors.list(orgId);
   return normalizeArrayResponse<Vendor>(vendorsRes);

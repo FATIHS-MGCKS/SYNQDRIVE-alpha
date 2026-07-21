@@ -76,6 +76,8 @@ export class TasksController {
       search: query.search,
       bucket: query.bucket,
       includeCancelled: query.includeCancelled,
+      limit: query.limit,
+      cursor: query.cursor,
     });
   }
 

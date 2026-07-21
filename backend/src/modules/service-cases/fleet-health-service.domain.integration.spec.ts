@@ -272,7 +272,7 @@ describe('Fleet Health Service domain integration', () => {
       );
 
       const vehicleACases = await serviceCases.listForVehicle(ids.orgA, ids.vehicleA);
-      const caseTasks = await tasks.listTasks(ids.orgA, { serviceCaseId: caseA.id });
+      const caseTasks = (await tasks.listTasks(ids.orgA, { serviceCaseId: caseA.id })).data;
 
       expect(vehicleACases).toHaveLength(1);
       expect(vehicleACases[0]?.id).toBe(caseA.id);

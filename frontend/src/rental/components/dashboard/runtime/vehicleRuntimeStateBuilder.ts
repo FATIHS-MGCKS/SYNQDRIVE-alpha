@@ -157,6 +157,11 @@ interface VehicleTelemetryTimestampFields {
   speed?: number | null;
 }
 
+export interface RentalBlockingServiceCaseRef {
+  id: string;
+  title: string;
+}
+
 export interface BuildVehicleRuntimeStatesInput {
   fleetVehicles: VehicleData[];
   availableVehicles?: VehicleData[];
@@ -168,6 +173,7 @@ export interface BuildVehicleRuntimeStatesInput {
   blockedVehicleIds?: Set<string>;
   healthRiskVehicleIds?: Set<string>;
   healthMap?: Map<string, VehicleHealthResponse>;
+  rentalBlockingServiceCases?: Map<string, RentalBlockingServiceCaseRef>;
   now?: Date;
   locale?: string;
   dueSoonMinutes?: number;
@@ -807,6 +813,7 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
   const returnItems = input.returnItems ?? [];
   const insights = input.insights ?? [];
   const blockedVehicleIds = input.blockedVehicleIds ?? new Set<string>();
+  const rentalBlockingServiceCases = input.rentalBlockingServiceCases ?? new Map();
   const healthRiskVehicleIds = input.healthRiskVehicleIds ?? new Set<string>();
   const telemetryOfflineBlockLevel = input.telemetryOfflineBlockLevel ?? 'hard_blocked';
 
@@ -872,6 +879,19 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
           severity: 'critical',
           title: 'Rental blocked',
           source: 'blocked-vehicle-ids',
+          blocking: true,
+        }),
+      );
+    }
+
+    const blockingServiceCase = rentalBlockingServiceCases.get(vehicle.id);
+    if (blockingServiceCase) {
+      registerHardReason(
+        createRuntimeReason({
+          category: 'service',
+          severity: 'critical',
+          title: blockingServiceCase.title || 'Service blockiert Vermietung',
+          source: `service-case:${blockingServiceCase.id}`,
           blocking: true,
         }),
       );

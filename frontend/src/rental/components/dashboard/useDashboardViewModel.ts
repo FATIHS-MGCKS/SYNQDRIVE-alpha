@@ -6,7 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { api, type Station } from '../../../lib/api';
+import { api, type ApiServiceCase, type Station } from '../../../lib/api';
 import { useFleetVehicles } from '../../FleetContext';
 import { useHandover } from '../../HandoverContext';
 import {
@@ -85,6 +85,7 @@ import {
   type DashboardRuntimeModel,
   type DashboardSliceId,
 } from './runtime';
+import { buildRentalBlockingServiceCaseMap } from '../fleet-health-service/fleet-health-service-vehicle-overview';
 import { useNotifications } from '../../hooks/useNotifications';
 import {
   getNotificationsV2Mode,
@@ -438,6 +439,32 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     return ids;
   }, [filteredFleetVehicles, healthMap]);
 
+  const [serviceCases, setServiceCases] = useState<ApiServiceCase[]>([]);
+
+  useEffect(() => {
+    if (!orgId) {
+      setServiceCases([]);
+      return;
+    }
+    let cancelled = false;
+    void api.serviceCases
+      .list(orgId)
+      .then((rows) => {
+        if (!cancelled) setServiceCases(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setServiceCases([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  const rentalBlockingServiceCases = useMemo(
+    () => buildRentalBlockingServiceCaseMap(serviceCases),
+    [serviceCases],
+  );
+
   const readyOptions = useMemo<ReadyToRentOptions>(
     () => ({ blockedVehicleIds, healthRiskVehicleIds }),
     [blockedVehicleIds, healthRiskVehicleIds],
@@ -502,6 +529,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         blockedVehicleIds,
         healthRiskVehicleIds,
         healthMap,
+        rentalBlockingServiceCases,
         now: dashboardNow,
         dueSoonMinutes: runtimeDueSoonMinutes,
         telemetrySoftOfflineHours: 24,
@@ -519,6 +547,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       blockedVehicleIds,
       healthRiskVehicleIds,
       healthMap,
+      rentalBlockingServiceCases,
       dashboardNow,
       runtimeDueSoonMinutes,
     ],

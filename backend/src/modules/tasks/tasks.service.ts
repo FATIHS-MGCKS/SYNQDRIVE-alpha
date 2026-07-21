@@ -48,6 +48,15 @@ import {
   TASK_OPERATOR_BUCKETS,
   type TaskOperatorBucket,
 } from './task-bucket.util';
+import {
+  buildTaskListCursorWhere,
+  buildTaskListOrderBy,
+  decodeTaskListCursor,
+  encodeTaskListCursorFromRow,
+  resolveTaskListLimit,
+  resolveTaskListSortVariant,
+  type TaskListPageResult,
+} from './tasks-list-cursor.util';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 
 // ─── Domain constants (V4.8.3 Task Action Layer) ─────────────────────────
@@ -146,6 +155,8 @@ export interface ListTasksFilters {
   search?: string;
   bucket?: TaskOperatorBucket;
   includeCancelled?: boolean;
+  limit?: number;
+  cursor?: string;
 }
 
 export interface BulkTaskActionInput {
@@ -759,12 +770,27 @@ export class TasksService {
     const mergedWhere: Prisma.OrgTaskWhereInput =
       andFilters.length > 0 ? { AND: [where, ...andFilters] } : where;
 
-    const orderBy = filters.bucket
-      ? buildTaskBucketOrderBy(filters.bucket)
-      : [{ priority: 'desc' as const }, { dueDate: 'asc' as const }, { createdAt: 'desc' as const }];
+    const orderBy = buildTaskListOrderBy(filters.bucket);
+
+    const limit = resolveTaskListLimit(filters.limit);
+    const sortVariant = resolveTaskListSortVariant(filters.bucket);
+    let cursorWhere: Prisma.OrgTaskWhereInput | undefined;
+    if (filters.cursor) {
+      const payload = decodeTaskListCursor(filters.cursor);
+      if (payload.v !== sortVariant) {
+        throw new BadRequestException({
+          message: 'Der Cursor passt nicht zur aktuellen Sortierung.',
+          code: 'TASK_LIST_CURSOR_SORT_MISMATCH',
+        });
+      }
+      cursorWhere = buildTaskListCursorWhere(payload);
+    }
+
+    const mergedWhereWithCursor: Prisma.OrgTaskWhereInput =
+      cursorWhere != null ? { AND: [mergedWhere, cursorWhere] } : mergedWhere;
 
     const tasks = await this.prisma.orgTask.findMany({
-      where: mergedWhere,
+      where: mergedWhereWithCursor,
       include: {
         attachments: {
           select: {
@@ -779,9 +805,17 @@ export class TasksService {
         },
       },
       orderBy,
+      take: limit + 1,
     });
 
-    const taskIds = tasks.map((t) => t.id);
+    const hasMore = tasks.length > limit;
+    const pageRows = hasMore ? tasks.slice(0, limit) : tasks;
+    const nextCursor =
+      hasMore && pageRows.length > 0
+        ? encodeTaskListCursorFromRow(pageRows[pageRows.length - 1]!, sortVariant)
+        : null;
+
+    const taskIds = pageRows.map((t) => t.id);
     const checklistRows =
       taskIds.length > 0
         ? await this.prisma.taskChecklistItem.findMany({
@@ -792,7 +826,7 @@ export class TasksService {
     const checklistProgressByTaskId = aggregateChecklistProgressByTaskId(checklistRows);
 
     this.fleetHealthObservability?.recordHealthTaskMatches(
-      tasks.map((task) => ({
+      pageRows.map((task) => ({
         vehicleId: task.vehicleId,
         status: task.status,
         type: task.type,
@@ -803,7 +837,7 @@ export class TasksService {
       })),
     );
 
-    return tasks.map((t) => {
+    const data = pageRows.map((t) => {
       const formatted = this.format(t, now, checklistProgressByTaskId.get(t.id) ?? null);
       return {
         ...formatted,
@@ -811,6 +845,12 @@ export class TasksService {
         bucket: classifyPrimaryTaskBucket(t, bucketContext),
       };
     });
+
+    const result: TaskListPageResult<(typeof data)[number]> = {
+      data,
+      meta: { limit, nextCursor },
+    };
+    return result;
     } catch (err) {
       this.fleetHealthObservability?.recordTaskApiFailure('list', err);
       throw err;

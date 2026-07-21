@@ -9,6 +9,7 @@ import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { useLanguage, type Locale } from '../i18n/LanguageContext';
 import { api } from '../../lib/api';
+import { unwrapTaskListPage } from '../../lib/tasks-pagination';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
 import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 import { useAppTheme } from '../../context/AppThemeContext';
@@ -95,7 +96,10 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
         (api.customers.list as (id: string) => Promise<any>)(orgId).then((r) => (Array.isArray(r) ? r : r?.data ?? [])).catch(() => []),
         api.bookings.list(orgId).catch(() => []),
         api.invoices.list(orgId).catch(() => []),
-        api.tasks.list(orgId).catch(() => []),
+        api.tasks
+          .list(orgId, { limit: 30, search: searchQuery })
+          .then((page) => unwrapTaskListPage(page).data)
+          .catch(() => []),
         api.fines.list(orgId).catch(() => []),
       ]).then(([customers, bookings, invoices, tasks, fines]) => {
         if (cancelled) return;

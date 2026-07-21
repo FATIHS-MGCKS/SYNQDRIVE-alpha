@@ -367,6 +367,18 @@ export interface TaskListFilters {
   search?: string;
   bucket?: TaskBucket;
   includeCancelled?: boolean;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface TaskListPageMeta {
+  limit: number;
+  nextCursor: string | null;
+}
+
+export interface TaskListPage {
+  data: ApiTask[];
+  meta: TaskListPageMeta;
 }
 
 export interface CreateTaskPayload {

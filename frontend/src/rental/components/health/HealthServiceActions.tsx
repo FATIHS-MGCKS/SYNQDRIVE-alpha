@@ -88,8 +88,14 @@ export function HealthServiceActions({
   );
 
   const duplicate = useMemo(
-    () => findDuplicateHealthTask(openTasks, vehicleId, healthModule, prefillBase.type),
-    [openTasks, vehicleId, healthModule, prefillBase.type],
+    () =>
+      findDuplicateHealthTask(
+        openTasks,
+        vehicleId,
+        healthModule,
+        String(prefillBase.metadata.sourceFindingId ?? ''),
+      ),
+    [openTasks, vehicleId, healthModule, prefillBase.metadata.sourceFindingId],
   );
 
   const complianceForModule = useMemo(() => {

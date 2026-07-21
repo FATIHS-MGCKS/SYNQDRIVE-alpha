@@ -257,4 +257,20 @@ describe('buildVehicleRuntimeStates readiness rules', () => {
       true,
     );
   });
+
+  it('blocks ready-to-rent when open service case blocks rental', () => {
+    const vehicle = operationalVehicle(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+    const [state] = buildVehicleRuntimeStates({
+      fleetVehicles: [vehicle],
+      rentalBlockingServiceCases: new Map([
+        [vehicle.id, { id: 'case-1', title: 'Getriebe-Reparatur' }],
+      ]),
+      now: NOW,
+    });
+    expect(state?.isReadyToRent).toBe(false);
+    expect(state?.isBlocked).toBe(true);
+    expect(
+      state?.blockReasons.some((reason) => reason.source === 'service-case:case-1'),
+    ).toBe(true);
+  });
 });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ListTodo, Plus } from 'lucide-react';
 import { apiTaskPriorityLabelDe } from '../../lib/tasks/task-labels';
 import { api, type ApiTask, type ApiTaskPriority } from '../../lib/api';
+import { unwrapTaskListPage } from '../../lib/tasks-pagination';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
 import { bookingRef } from '../../rental/components/bookings/bookingUtils';
 import { useFleetVehicles } from '../../rental/FleetContext';
@@ -59,8 +60,8 @@ export function OperatorTasksView() {
     }
     setRemoteLoading(true);
     try {
-      const response = await api.tasks.list(orgId, listFilters);
-      setRemoteTasks(sortOperatorTasks(response));
+      const response = unwrapTaskListPage(await api.tasks.list(orgId, listFilters));
+      setRemoteTasks(sortOperatorTasks(response.data));
     } catch {
       setRemoteTasks([]);
     } finally {

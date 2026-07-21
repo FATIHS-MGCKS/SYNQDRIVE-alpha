@@ -42,6 +42,7 @@ export interface BuildDashboardRuntimeModelInput {
   blockedVehicleIds?: Set<string>;
   healthRiskVehicleIds?: Set<string>;
   healthMap?: Map<string, VehicleHealthResponse>;
+  rentalBlockingServiceCases?: Map<string, { id: string; title: string }>;
   now?: Date;
   dueSoonMinutes?: number;
   telemetrySoftOfflineHours?: number;
@@ -904,6 +905,7 @@ export function buildDashboardRuntimeModel(input: BuildDashboardRuntimeModelInpu
     blockedVehicleIds: input.blockedVehicleIds,
     healthRiskVehicleIds: input.healthRiskVehicleIds,
     healthMap: input.healthMap,
+    rentalBlockingServiceCases: input.rentalBlockingServiceCases,
     now,
     locale: input.locale,
     dueSoonMinutes,

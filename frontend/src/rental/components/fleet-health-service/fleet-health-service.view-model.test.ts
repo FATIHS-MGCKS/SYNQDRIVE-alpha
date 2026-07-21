@@ -10,6 +10,18 @@ import {
   deriveRecommendedAction,
   matchOpenTaskForHealthSignal,
 } from './fleet-health-service.view-model';
+import {
+  buildHealthSourceFindingId,
+  type HealthActionModule,
+} from '../../lib/health-task-bridge.utils';
+
+function healthTaskMeta(vehicleId: string, module: HealthActionModule, reason: string) {
+  return {
+    healthModule: module,
+    healthReason: reason,
+    sourceFindingId: buildHealthSourceFindingId({ vehicleId, module, reason }),
+  };
+}
 
 type ModuleKey = keyof VehicleHealthResponse['modules'];
 
@@ -138,7 +150,7 @@ describe('fleet-health-service view model', () => {
         vehicleId: 'v1',
         type: 'BRAKE_CHECK',
         status: 'OPEN',
-        metadata: { healthModule: 'brakes' },
+        metadata: healthTaskMeta('v1', 'brakes', 'Bremsen kritisch'),
         sourceType: 'HEALTH',
       }),
     ];
@@ -220,7 +232,7 @@ describe('fleet-health-service view model', () => {
         type: 'VEHICLE_INSPECTION',
         status: 'OPEN',
         isOverdue: true,
-        metadata: { healthModule: 'service_compliance' },
+        metadata: healthTaskMeta('v1', 'service_compliance', 'TÜV überfällig'),
         sourceType: 'HEALTH',
       }),
     ];
@@ -269,7 +281,7 @@ describe('fleet-health-service view model', () => {
         type: 'BRAKE_CHECK',
         status: 'OPEN',
         isOverdue: true,
-        metadata: { healthModule: 'brakes' },
+        metadata: healthTaskMeta('v1', 'brakes', 'Bremsen kritisch'),
         sourceType: 'HEALTH',
       }),
     ];

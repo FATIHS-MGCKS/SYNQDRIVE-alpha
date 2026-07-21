@@ -236,6 +236,9 @@ export function TasksView({
     error: tasksError,
     reload: reloadTasks,
     isStale,
+    hasMore,
+    loadingMore,
+    loadMore,
   } = useTaskList({
     orgId,
     filters: apiFilters,
@@ -510,6 +513,19 @@ export function TasksView({
               }}
             />
           ))}
+          {hasMore ? (
+            <div className="flex justify-center pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={loadingMore}
+                onClick={() => void loadMore()}
+              >
+                {loadingMore ? 'Lädt…' : 'Weitere Aufgaben laden'}
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 

@@ -34,15 +34,21 @@ export interface HealthTaskPrefill {
 
 const OPEN_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING']);
 
-const MODULE_TASK_TYPES: Record<HealthActionModule, ApiTaskType[]> = {
-  tires: ['TIRE_CHECK', 'REPAIR'],
-  brakes: ['BRAKE_CHECK', 'REPAIR'],
-  battery: ['BATTERY_CHECK', 'REPAIR'],
-  error_codes: ['REPAIR', 'CUSTOM'],
-  service_compliance: ['VEHICLE_INSPECTION', 'VEHICLE_SERVICE'],
-  vehicle_alerts: ['REPAIR', 'VEHICLE_SERVICE'],
-  complaints: ['CUSTOM', 'VEHICLE_SERVICE'],
-};
+function normalizeFindingKey(value?: string | null): string {
+  return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+export function buildHealthSourceFindingId(opts: {
+  vehicleId: string;
+  module: HealthActionModule;
+  reason?: string | null;
+  evidenceKey?: string | null;
+}): string {
+  const reasonKey = normalizeFindingKey(opts.reason);
+  const evidenceKey = normalizeFindingKey(opts.evidenceKey);
+  const identity = reasonKey || evidenceKey || 'module-default';
+  return `health:${opts.vehicleId}:${opts.module}:${identity}`;
+}
 
 const MODULE_SERVICE_KEYWORDS: Record<HealthActionModule, string[]> = {
   tires: ['tire', 'reifen'],
@@ -109,6 +115,15 @@ export function buildHealthTaskPrefill(opts: {
     healthReason: reason ?? undefined,
     origin: 'HEALTH_UI',
     vehicleId: opts.vehicleId,
+    sourceFindingId: buildHealthSourceFindingId({
+      vehicleId: opts.vehicleId,
+      module: opts.module,
+      reason,
+      evidenceKey:
+        opts.module === 'error_codes'
+          ? (opts.dtcCodes?.filter(Boolean).sort().join(',') ?? '')
+          : undefined,
+    }),
   };
 
   const vendorId = opts.vendors?.length
@@ -216,17 +231,23 @@ export function findDuplicateHealthTask(
   tasks: ApiTask[],
   vehicleId: string,
   module: HealthActionModule,
-  preferredType: ApiTaskType,
+  sourceFindingId: string,
 ): ApiTask | null {
-  const types = MODULE_TASK_TYPES[module];
   for (const task of tasks) {
     if (task.vehicleId !== vehicleId) continue;
     if (!OPEN_STATUSES.has(task.status)) continue;
-    const meta = task.metadata && typeof task.metadata === 'object' ? task.metadata : null;
-    if (meta?.healthModule === module) return task;
-    if (types.includes(task.type) || task.type === preferredType) return task;
-    if (task.sourceType === 'HEALTH' && types.includes(task.type)) return task;
-    if (task.source?.startsWith('INSIGHT_') && types.includes(task.type)) return task;
+    const meta =
+      task.metadata && typeof task.metadata === 'object'
+        ? (task.metadata as Record<string, unknown>)
+        : null;
+    if (meta?.sourceFindingId === sourceFindingId) return task;
+    if (!meta?.sourceFindingId && meta?.healthModule === module) {
+      const storedReason = normalizeFindingKey(
+        typeof meta.healthReason === 'string' ? meta.healthReason : null,
+      );
+      const targetReason = normalizeFindingKey(sourceFindingId.split(':').slice(3).join(':'));
+      if (storedReason && storedReason === targetReason) return task;
+    }
   }
   return null;
 }

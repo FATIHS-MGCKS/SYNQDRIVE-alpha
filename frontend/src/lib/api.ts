@@ -4768,7 +4768,7 @@ export const api = {
         }
       }
       const qs = q.toString();
-      return get<ApiTask[]>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
+      return get<import('./tasks/types').TaskListPage>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
     },
     listByBucket: (
       orgId: string,
@@ -4782,7 +4782,7 @@ export const api = {
         q.set(k, String(v));
       }
       const qs = q.toString();
-      return get<ApiTask[]>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
+      return get<import('./tasks/types').TaskListPage>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
     },
     summary: (orgId: string) => get<ApiTaskSummary>(`/organizations/${orgId}/tasks/summary`),
     get: (orgId: string, id: string) => get<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}`),

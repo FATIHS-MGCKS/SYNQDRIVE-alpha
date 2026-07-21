@@ -126,7 +126,7 @@ describe('TasksService', () => {
       baseTask({ id: 't-detail', createdByUserId: 'creator-1', updatedByUserId: 'editor-1' }),
     );
 
-    const list = await svc.listTasks('org1', {});
+    const { data: list } = await svc.listTasks('org1', {});
     expect(list[0].createdByUserId).toBe('creator-1');
     expect(list[0].assignedUserId).toBe('assignee-1');
 
@@ -158,7 +158,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const { data: list } = await svc.listTasks('org1', {});
     expect(list[0].createdByUserId).toBeNull();
     expect(list[0].sourceType).toBe('SYSTEM');
   });
@@ -605,7 +605,7 @@ describe('TasksService', () => {
       baseTask({ id: 'b', dueDate: past, status: 'DONE' }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const { data: list } = await svc.listTasks('org1', {});
     expect(list.find((t) => t.id === 'a')!.isOverdue).toBe(true);
     expect(list.find((t) => t.id === 'b')!.isOverdue).toBe(false);
   });
@@ -756,7 +756,7 @@ describe('TasksService', () => {
       { taskId: 't-open', isDone: false, isRequired: false },
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const { data: list } = await svc.listTasks('org1', {});
 
     expect(prisma.taskChecklistItem.findMany).toHaveBeenCalledWith({
       where: { taskId: { in: ['t-open', 't-empty'] } },
@@ -922,7 +922,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', { bucket: 'OVERDUE' });
+    const { data: list } = await svc.listTasks('org1', { bucket: 'OVERDUE' });
 
     expect(prisma.orgTask.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -948,7 +948,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const { data: list } = await svc.listTasks('org1', {});
     expect(list[0]?.isOverdue).toBe(false);
     expect(list[0]?.bucket).toBe('PLANNED');
     jest.useRealTimers();
@@ -1032,7 +1032,7 @@ describe('TasksService', () => {
       }),
     ]);
 
-    const list = await svc.listTasks('org1', {});
+    const { data: list } = await svc.listTasks('org1', {});
     expect(list.find((t) => t.id === 'future-active')!.isOverdue).toBe(false);
   });
 

@@ -417,6 +417,18 @@ export class ListTasksQueryDto {
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
   @IsBoolean()
   includeCancelled?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  @MaxLength(500)
+  cursor?: string;
 }
 
 export const BULK_TASK_ACTION_TYPES = [

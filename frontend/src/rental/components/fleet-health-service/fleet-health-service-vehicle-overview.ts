@@ -15,6 +15,7 @@ import {
 import { deriveTaskIsOverdue, formatTaskDueDate } from '../../lib/task-display.utils';
 import { getScheduleBucket } from '../../lib/service-schedule.utils';
 import {
+  buildHealthSourceFindingId,
   findDuplicateHealthTask,
   type HealthActionModule,
 } from '../../lib/health-task-bridge.utils';
@@ -84,6 +85,17 @@ export function getBlockingServiceCaseVehicleIds(
     ids.add(serviceCase.vehicleId);
   }
   return ids;
+}
+
+export function buildRentalBlockingServiceCaseMap(
+  serviceCases: ApiServiceCase[],
+): Map<string, { id: string; title: string }> {
+  const map = new Map<string, { id: string; title: string }>();
+  for (const serviceCase of serviceCases) {
+    if (!isOpenServiceCase(serviceCase) || !serviceCase.blocksRental) continue;
+    map.set(serviceCase.vehicleId, { id: serviceCase.id, title: serviceCase.title });
+  }
+  return map;
 }
 
 function taskToWorkItem(task: ApiTask): FleetHealthServiceVehicleTaskItem {
@@ -230,11 +242,16 @@ export function buildVehicleOverviewRow(
 
   const shownTaskIds = new Set<string>();
   const findings: FleetHealthServiceVehicleFinding[] = issueChips.map((chip) => {
+    const sourceFindingId = buildHealthSourceFindingId({
+      vehicleId,
+      module: chip.key as HealthActionModule,
+      reason: chip.reason,
+    });
     const linked = findDuplicateHealthTask(
       openTasks,
       vehicleId,
       chip.key as HealthActionModule,
-      'VEHICLE_SERVICE',
+      sourceFindingId,
     );
     if (linked) shownTaskIds.add(linked.id);
     return findingFromChip(chip, linked?.id ?? null);

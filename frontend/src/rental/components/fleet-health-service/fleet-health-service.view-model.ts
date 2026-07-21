@@ -19,6 +19,7 @@ import {
   type RentalHealthModuleKey,
 } from '../../lib/fleet-health-control-center';
 import {
+  buildHealthSourceFindingId,
   findDuplicateHealthTask,
   type HealthActionModule,
 } from '../../lib/health-task-bridge.utils';
@@ -234,47 +235,32 @@ function formatMakeModelYear(vehicle: VehicleData): string {
   return [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ');
 }
 
-function resolveSourceModule(
-  health: VehicleHealthResponse | null | undefined,
-): RentalHealthModuleKey | null {
-  const display = buildFleetHealthDisplay(health);
-  return display.primaryModuleKey;
-}
-
-/**
- * Conservative task match — reuses health-task-bridge rules.
- * No aggressive title/category heuristics beyond existing bridge logic.
- */
 export function matchOpenTaskForHealthSignal(
   openTasks: ApiTask[],
   vehicleId: string,
   health: VehicleHealthResponse | null | undefined,
 ): ApiTask | null {
-  const moduleKey = resolveSourceModule(health);
-  if (moduleKey) {
-    const matched = findDuplicateHealthTask(
-      openTasks,
-      vehicleId,
-      moduleKey as HealthActionModule,
-      'VEHICLE_SERVICE',
-    );
-    if (matched) return matched;
-  }
+  const display = buildFleetHealthDisplay(health);
+  const moduleKey = display.primaryModuleKey;
+  if (!moduleKey) return null;
 
-  if (health?.rental_blocked !== true) return null;
+  const primaryModule = health?.modules?.[moduleKey];
+  const sourceFindingId = buildHealthSourceFindingId({
+    vehicleId,
+    module: moduleKey as HealthActionModule,
+    reason: primaryModule?.reason,
+    evidenceKey:
+      moduleKey === 'error_codes'
+        ? (health?.modules?.error_codes?.reason ?? '')
+        : undefined,
+  });
 
-  for (const task of openTasks) {
-    if (task.vehicleId !== vehicleId) continue;
-    if (!OPEN_STATUSES.has(task.status)) continue;
-    if (task.blocksVehicleAvailability) return task;
-    const meta =
-      task.metadata && typeof task.metadata === 'object'
-        ? (task.metadata as Record<string, unknown>)
-        : null;
-    if (task.sourceType === 'HEALTH' && meta?.healthModule) return task;
-  }
-
-  return null;
+  return findDuplicateHealthTask(
+    openTasks,
+    vehicleId,
+    moduleKey as HealthActionModule,
+    sourceFindingId,
+  );
 }
 
 export function deriveRecommendedAction(

@@ -87,7 +87,7 @@ describe('useServiceCenterData source states', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.tasks.summary).mockResolvedValue(taskSummary as never);
-    vi.mocked(api.tasks.list).mockResolvedValue([task] as never);
+    vi.mocked(api.tasks.list).mockResolvedValue({ data: [task], meta: { limit: 50, nextCursor: null } } as never);
     vi.mocked(api.vendors.list).mockResolvedValue([vendor] as never);
     vi.mocked(api.serviceCases.list).mockResolvedValue([] as never);
   });
