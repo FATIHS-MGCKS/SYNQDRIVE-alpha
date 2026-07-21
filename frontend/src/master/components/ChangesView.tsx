@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-prod-validation-p64-2026-07-21',
+    version: '4.9.735',
+    title: 'Fleet Health Service — Production Validation Runbook (Phase 9 P64)',
+    summary: [
+      'Read-only Post-Deploy-Runbook `docs/runbooks/fleet-health-service-production-validation.md` für Zustand & Service.',
+      'Prüfbereiche: Commit, API/PM2, Battery-V2, Queues, Modul-Coverage, Availability, Vendor/Task/Case, Pagination, Permissions, Runtime Blocker, Metrics, Grafana, Logs, UI Smoke.',
+      'Strikte No-Write-Regeln: keine DB/Queue-Mutationen, keine Restarts, anonymisierte Protokollvorlage.',
+    ],
+    reason: 'Phase 9 Prompt 64: operatives Validierungs-Runbook für den später deployten Stand ohne Produktions-Risiko.',
+    previousBehavior: 'Incident-Runbook (Alerts) vorhanden, aber kein dediziertes read-only Post-Deploy-Validation-Playbook.',
+    details: 'docs/runbooks/fleet-health-service-production-validation.md',
+    affectsArchitecture: false,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T00:00:30.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',
