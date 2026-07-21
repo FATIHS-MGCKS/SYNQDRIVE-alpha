@@ -1,26 +1,32 @@
 import { Controller, Get, Post, Delete, Param, Body, Query, Res, UseGuards, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { ChatService } from './chat.service';
 
 @Controller('organizations/:orgId/chat')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
 
   constructor(private readonly chatService: ChatService) {}
 
   @Get('agent')
+  @RequirePermission('ai-assistant', 'read')
   async getAgent(@Param('orgId') orgId: string) {
     return this.chatService.getAgentInfo(orgId);
   }
 
   @Post('agent')
+  @RequirePermission('ai-assistant', 'write')
   async ensureAgent(@Param('orgId') orgId: string) {
     return this.chatService.ensureAgent(orgId);
   }
 
   @Post('message')
+  @RequirePermission('ai-assistant', 'write')
   async sendMessage(
     @Param('orgId') orgId: string,
     @Body() body: { content: string },
@@ -48,6 +54,7 @@ export class ChatController {
   }
 
   @Post('message/stream')
+  @RequirePermission('ai-assistant', 'write')
   async streamMessage(
     @Param('orgId') orgId: string,
     @Body() body: { content: string },
@@ -93,6 +100,7 @@ export class ChatController {
   }
 
   @Get('history')
+  @RequirePermission('ai-assistant', 'read')
   async getHistory(
     @Param('orgId') orgId: string,
     @Query('limit') limit?: string,
@@ -102,6 +110,7 @@ export class ChatController {
   }
 
   @Delete('history')
+  @RequirePermission('ai-assistant', 'write')
   async clearHistory(@Param('orgId') orgId: string) {
     return this.chatService.clearHistory(orgId);
   }

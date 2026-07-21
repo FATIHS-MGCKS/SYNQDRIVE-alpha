@@ -222,6 +222,19 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 
 ---
 
+## Prompt 13 — Endpoint Enforcement Triage
+
+**Datum:** 2026-07-21 UTC
+
+- Manual triage of 152 P0/P1 audit matrix candidates
+- Classifications: CONFIRMED_MISSING_GUARD, SERVICE_LEVEL_ENFORCED, MASTER_ADMIN_ONLY, SIGNED_WEBHOOK, PUBLIC_EXPECTED, FALSE_POSITIVE, REQUIRES_TEST
+- Hardened: Chat, WhatsApp, integrations secrets, fines IDOR/upload, document download, fleet write paths
+- Preserved: webhooks, public auth, MCP bearer auth, MASTER_ADMIN routes
+- `docs/audits/iam-endpoint-enforcement-triage-2026-07.md`
+- `architecture/IAM_ENDPOINT_ENFORCEMENT_TRIAGE_2026-07-21.md`
+
+---
+
 ## Prompt 2 — Security Regression Harness (Szenarien)
 
 - **A** Globale Identität (Passwort, E-Mail, globaler Status)

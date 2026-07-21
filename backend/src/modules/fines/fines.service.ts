@@ -87,9 +87,9 @@ export class FinesService {
     return fines.map((f) => this.format(f as unknown as Record<string, unknown>));
   }
 
-  async findById(id: string) {
-    const fine = await this.prisma.fine.findUnique({
-      where: { id },
+  async findById(orgId: string, id: string) {
+    const fine = await this.prisma.fine.findFirst({
+      where: { id, organizationId: orgId },
       include: { tasks: true },
     });
     if (!fine) throw new NotFoundException('Fine not found');
@@ -149,7 +149,7 @@ export class FinesService {
     );
     if (existing) {
       await this.syncFineFollowUpTask(input.organizationId, existing.id, input);
-      return this.findById(existing.id);
+      return this.findById(input.organizationId, existing.id);
     }
 
     if (input.fineNumber) {
@@ -202,7 +202,7 @@ export class FinesService {
       });
 
       await this.syncFineFollowUpTask(input.organizationId, fine.id, input);
-      return this.findById(fine.id);
+      return this.findById(input.organizationId, fine.id);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -214,7 +214,7 @@ export class FinesService {
         );
         if (raced) {
           await this.syncFineFollowUpTask(input.organizationId, raced.id, input);
-          return this.findById(raced.id);
+          return this.findById(input.organizationId, raced.id);
         }
       }
       throw error;
@@ -289,10 +289,10 @@ export class FinesService {
       fineId: fine.id,
     });
 
-    return this.findById(fine.id);
+    return this.findById(orgId, fine.id);
   }
 
-  async update(id: string, data: {
+  async update(orgId: string, id: string, data: {
     fineNumber?: string;
     title?: string;
     description?: string;
@@ -318,8 +318,9 @@ export class FinesService {
       }
     }
 
+    await this.findById(orgId, id);
     await this.prisma.fine.update({ where: { id }, data: updateData });
-    return this.findById(id);
+    return this.findById(orgId, id);
   }
 
   async matchBooking(orgId: string, vehicleId: string, offenseDateStr: string) {

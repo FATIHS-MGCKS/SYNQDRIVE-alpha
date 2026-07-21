@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-endpoint-enforcement-triage-v49715-2026-07-21',
+    version: '4.9.715',
+    title: 'V4.9.715 — IAM endpoint enforcement triage and guard hardening (Prompt 13)',
+    summary: [
+      'Manual triage of 152 P0/P1 static audit candidates with classification taxonomy.',
+      'Hardened confirmed gaps: Chat, WhatsApp, integrations secrets, fines IDOR, document download, fleet writes.',
+      'Webhooks, public auth, and service-level auth paths left unchanged by design.',
+    ],
+    reason: 'Users & Roles remediation Prompt 13 — close confirmed authorization gaps without blanket false-positive fixes.',
+    previousBehavior:
+      'Several org-scoped routes relied on RolesGuard only or lacked OrgScopingGuard; fines findById allowed cross-tenant IDOR.',
+    details:
+      'docs/audits/iam-endpoint-enforcement-triage-2026-07.md, architecture/IAM_ENDPOINT_ENFORCEMENT_TRIAGE_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-22T01:30:00.000Z',
+  },
+  {
     id: 'iam-role-assignment-drift-reconciliation-v49714-2026-07-21',
     version: '4.9.714',
     title: 'V4.9.714 — IAM role assignment drift reconciliation (Prompt 12)',
