@@ -159,6 +159,9 @@ export function createRoleServiceHarness() {
       update: jest.Mock;
       count: jest.Mock;
     };
+    organizationRoleVersion: {
+      count: jest.Mock;
+    };
   } = {
     organizationRole: {
       count: jest.fn(),
@@ -174,13 +177,25 @@ export function createRoleServiceHarness() {
       update: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
     },
+    organizationRoleVersion: {
+      count: jest.fn().mockResolvedValue(1),
+    },
   };
   const userAudit = { record: jest.fn().mockResolvedValue(undefined) };
+  const roleVersionService = {
+    createInitialVersionForRole: jest.fn().mockResolvedValue({ id: 'ver-1' }),
+    maybeCreateVersionOnRoleUpdate: jest.fn().mockResolvedValue(null),
+    assignRoleToMembership: jest.fn().mockResolvedValue({
+      assignment: { id: 'assign-1', assignmentMode: 'FOLLOW_LATEST_APPROVED_VERSION' },
+      membership: { organizationRoleId: 'role-1' },
+    }),
+  };
   const service = new OrganizationRoleService(
     prisma as unknown as PrismaService,
     userAudit as unknown as UserAccessAuditService,
+    roleVersionService as never,
   );
-  return { prisma, userAudit, service };
+  return { prisma, userAudit, roleVersionService, service };
 }
 
 export function createRefreshTokenHarness() {
