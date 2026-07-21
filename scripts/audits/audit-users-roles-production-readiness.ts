@@ -300,6 +300,112 @@ function phase5LifecycleGovernance(): AuditPhaseResult {
   };
 }
 
+function phase8FinalSynthesis(): AuditPhaseResult {
+  const required = requireArtifacts([
+    'docs/audits/users-roles-production-readiness-2026-07.md',
+    'docs/audits/data/users-roles-production-readiness-verdict-2026-07.json',
+    'docs/audits/data/users-roles-remediation-prompt-plan-2026-07.csv',
+    'docs/audits/data/iam-integrity-findings-2026-07.json',
+    'docs/audits/data/users-roles-code-map-2026-07.csv',
+    'docs/audits/data/iam-identity-membership-model-2026-07.csv',
+    'docs/audits/data/iam-multi-org-session-flow-2026-07.csv',
+    'docs/audits/data/iam-session-invalidation-matrix-2026-07.csv',
+    'docs/audits/data/iam-password-mfa-flow-2026-07.csv',
+    'docs/audits/data/iam-role-permission-model-2026-07.csv',
+    'docs/audits/data/iam-effective-access-rule-map-2026-07.csv',
+    'docs/audits/data/iam-endpoint-enforcement-matrix-2026-07.csv',
+    'docs/audits/data/iam-role-change-impact-matrix-2026-07.csv',
+    'docs/audits/data/iam-privileged-account-controls-2026-07.csv',
+    'docs/audits/data/iam-vps-organization-coverage-2026-07.csv',
+    'docs/audits/data/iam-role-membership-drift-2026-07.csv',
+    'docs/audits/data/iam-effective-access-vps-2026-07.csv',
+    'docs/audits/data/iam-multi-org-session-integrity-2026-07.csv',
+    'docs/audits/data/iam-session-revocation-integrity-2026-07.csv',
+    'docs/audits/data/iam-invite-integrity-2026-07.csv',
+    'docs/audits/data/iam-invite-security-flow-2026-07.csv',
+    'docs/audits/data/iam-password-reset-security-2026-07.csv',
+    'docs/audits/data/iam-mfa-step-up-matrix-2026-07.csv',
+    'docs/audits/data/iam-joiner-mover-leaver-2026-07.csv',
+    'docs/audits/data/iam-access-review-readiness-2026-07.csv',
+    'docs/audits/data/iam-audit-event-coverage-2026-07.csv',
+    'docs/audits/data/iam-audit-transaction-reliability-2026-07.csv',
+    'docs/audits/data/iam-data-retention-classification-2026-07.csv',
+    'docs/audits/data/iam-dsgvo-technical-capability-2026-07.csv',
+    'docs/audits/data/iam-iso27001-control-alignment-2026-07.csv',
+    'docs/audits/data/users-roles-ui-component-audit-2026-07.csv',
+    'docs/audits/data/users-roles-ui-information-architecture-2026-07.csv',
+    'docs/audits/data/users-roles-dangerous-action-ux-2026-07.csv',
+    'docs/audits/data/users-roles-i18n-accessibility-2026-07.csv',
+    'scripts/audits/audit-effective-access.ts',
+  ]);
+
+  const root = repoRoot();
+  for (const rel of required) {
+    if (rel.endsWith('.ts') || rel.endsWith('.md')) continue;
+    assertNoPiiLeak(rel, fs.readFileSync(path.join(root, rel), 'utf8'));
+  }
+
+  const report = fs.readFileSync(
+    path.join(root, 'docs/audits/users-roles-production-readiness-2026-07.md'),
+    'utf8',
+  );
+  for (let chapter = 1; chapter <= 26; chapter++) {
+    if (!report.includes(`# ${chapter}.`) && !report.includes(`# ${chapter} `)) {
+      // allow "# 1. Executive" style
+      const re = new RegExp(`^# ${chapter}\\.`, 'm');
+      if (!re.test(report)) {
+        throw new Error(`Main report missing chapter ${chapter}`);
+      }
+    }
+  }
+  if (!/NOT_READY/.test(report)) {
+    throw new Error('Main report must state NOT_READY verdict for this audit');
+  }
+  if (/ISO\/IEC 27001 certified|this constitutes legal advice/i.test(report)) {
+    throw new Error('Report must not claim certification or legal advice');
+  }
+
+  const verdict = JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'docs/audits/data/users-roles-production-readiness-verdict-2026-07.json'),
+      'utf8',
+    ),
+  ) as {
+    overallVerdict?: string;
+    writesPerformed?: boolean;
+    findingCounts?: Record<string, number>;
+  };
+  if (verdict.writesPerformed !== false || verdict.overallVerdict !== 'NOT_READY') {
+    throw new Error('Verdict JSON must be writesPerformed=false and overallVerdict=NOT_READY');
+  }
+
+  const findings = loadFindings();
+  if ((findings.phase ?? 0) < 8) {
+    throw new Error('Findings JSON must be phase >= 8 for final synthesis');
+  }
+
+  return {
+    auditId: AUDIT_ID,
+    phase: 8,
+    completedAt: new Date().toISOString(),
+    mode: 'read-only',
+    writesPerformed: false,
+    summary:
+      'Phase 8 complete: final production-readiness synthesis, verdict NOT_READY, remediation plan validated.',
+    artifacts: required,
+    notes: [
+      'No production mutations; no sessions revoked; no user/role/invite actions; no infra changes.',
+      'Not legal advice; not ISO certification.',
+      `Findings: ${findings.findings?.length ?? 0}; blockers in verdict: ${verdict.findingCounts?.productionBlockers ?? 'n/a'}`,
+    ],
+    data: {
+      overallVerdict: verdict.overallVerdict,
+      findingCounts: verdict.findingCounts ?? findings.summaryCounts ?? {},
+      summaryCounts: findings.summaryCounts ?? {},
+    },
+  };
+}
+
 function phase6AuditPrivacyControls(): AuditPhaseResult {
   const required = requireArtifacts([
     'docs/audits/users-roles-production-readiness-2026-07.md',
@@ -376,6 +482,8 @@ function main(): void {
     result = phase5LifecycleGovernance();
   } else if (phase === 6) {
     result = phase6AuditPrivacyControls();
+  } else if (phase === 8) {
+    result = phase8FinalSynthesis();
   } else {
     console.error(
       JSON.stringify(

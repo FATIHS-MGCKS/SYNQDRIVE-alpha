@@ -1,0 +1,73 @@
+{
+  "auditId": "users-roles-production-readiness-2026-07",
+  "finalizedAt": "2026-07-21T01:30:00.000Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "legalAdvice": false,
+  "isoCertificationClaim": false,
+  "overallVerdict": "NOT_READY",
+  "vpsWindow": {
+    "sessionsAndAuthActivityDays": 90,
+    "entityHistory": "full_available",
+    "capturedPhase4Utc": "2026-07-21"
+  },
+  "population": {
+    "organizations": 2,
+    "users": 2,
+    "memberships": 1,
+    "multiOrgActiveUsers": 0,
+    "roles": 10,
+    "roleDriftLinkedCases": 0,
+    "privilegedDriftCases": 0,
+    "invitesOpen": 0,
+    "invitesExpired": 0,
+    "refreshTokensActive": 70,
+    "refreshTokensRevoked": 0,
+    "activeSessionsSurvivingPasswordEventsDistinctUsers": 2
+  },
+  "categoryReadiness": {
+    "A_IdentityIntegrity": "NOT_READY",
+    "B_TenantIsolation": "NOT_READY",
+    "C_AuthenticationSecurity": "NOT_READY",
+    "D_SessionSecurity": "NOT_READY",
+    "E_RolePermissionCorrectness": "NOT_READY",
+    "F_EffectiveAccessConsistency": "NOT_READY",
+    "G_InviteSecurity": "NOT_READY",
+    "H_PrivilegedAccessGovernance": "NOT_READY",
+    "I_AuditReliability": "NOT_READY",
+    "J_JoinerMoverLeaver": "NOT_READY",
+    "K_PrivacyAndRetention": "NOT_READY",
+    "L_IsoControlAlignment": "NOT_READY",
+    "M_UserExperience": "NOT_READY",
+    "N_MobileI18nAccessibility": "NOT_READY",
+    "O_TestReadiness": "CONDITIONALLY_READY",
+    "P_Observability": "NOT_READY"
+  },
+  "findingCounts": {
+    "P0": 28,
+    "P1": 14,
+    "P2": 4,
+    "P3": 0,
+    "total": 46,
+    "productionBlockers": 27
+  },
+  "goLiveBlockers": [
+    "Org admin can mutate global User.passwordHash",
+    "Password/admin reset does not revoke refresh sessions (VPS: 0 revoked)",
+    "Refresh tokens not bound to organization/membership",
+    "Role template edits do not propagate; no roleVersion",
+    "No single EffectiveAccessEngine; FE snapshot drifts",
+    "122 org-scoped writes without PermissionsGuard",
+    "Invite plaintext token/URL returned to FE + clipboard on resend",
+    "Existing user invite accept without re-authentication",
+    "IAM audits fire-and-forget / non-transactional",
+    "Last-admin check enum-only; custom privileged bypass",
+    "No MFA/step-up for privileged actions",
+    "Deprovisioning does not revoke sessions/invites",
+    "Weak IAM retention/erase/anonymization",
+    "Security Activity MFA/session placeholders"
+  ],
+  "recommendedRemediationPrompts": 22,
+  "recommendedPhaseGroups": 8,
+  "mainReport": "docs/audits/users-roles-production-readiness-2026-07.md"
+}

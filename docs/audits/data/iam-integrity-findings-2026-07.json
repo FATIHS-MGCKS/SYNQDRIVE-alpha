@@ -1,9 +1,11 @@
 {
   "auditId": "users-roles-production-readiness-2026-07",
-  "phase": 6,
-  "capturedAt": "2026-07-21T01:06:03.353647+00:00",
+  "phase": 8,
+  "finalizedAt": "2026-07-21T01:26:36.097141+00:00",
   "mode": "read-only",
   "writesPerformed": false,
+  "legalAdvice": false,
+  "isoCertificationClaim": false,
   "scope": {
     "organizationsAnalyzed": 2,
     "usersAnalyzed": 2,
@@ -12,19 +14,21 @@
     "windowDaysSessionsActivity": 90
   },
   "summaryCounts": {
-    "findings": 44,
-    "P0": 26,
+    "findings": 46,
+    "P0": 28,
     "P1": 14,
     "P2": 4,
+    "P3": 0,
+    "productionBlockers": 27,
     "roleDriftLinkedRows": 0,
     "noRoleLinkActiveMemberships": 1,
     "privilegedDriftCases": 0,
     "inviteRows": 0,
     "singleAdminOrgs": 1,
-    "zeroAdminOrgsWithMembers": 0,
-    "phase5FindingsAdded": 16,
-    "productionBlockers": 25,
-    "phase6FindingsAdded": 18
+    "orgWriteWithoutPermissionsGuard": 122,
+    "endpointMatrixRows": 525,
+    "refreshTokensActive": 70,
+    "refreshTokensRevoked": 0
   },
   "findings": [
     {
@@ -46,7 +50,11 @@
         "password_reset_revokes_all_refresh_families",
         "self_change_password_default_revoke_all_except_current"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "passwordEventsObserved=89; refreshTokensRevoked=0; refreshTokensActive=70; distinctUsersWithPasswordEventsAndSurvivingSessions=2; maxSurvivorsSingleEvent=53",
+      "codeFileOrFunction": "RefreshTokenService.revokeAllForUser not called from changeOrgUserPassword/changePasswordAdmin; AccountService.changePassword only optionally revokes others"
     },
     {
       "id": "UR-P4-F02",
@@ -66,7 +74,11 @@
       "requiredTests": [
         "refresh_cannot_change_organization_without_switch"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "sessionsWithoutOrganizationBinding=80; multiOrgActiveUsers=0; all sessionUsers sessionOrgBound=no",
+      "codeFileOrFunction": "schema RefreshToken has no organization_id; rotate selects newest ACTIVE membership"
     },
     {
       "id": "UR-P4-F03",
@@ -86,7 +98,11 @@
       "requiredTests": [
         "login_reuses_or_rotates_family_per_device"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "familiesActive=70; usersWithParallelActiveFamilies=2; tokensWithReplacedBy=0; USER_002 activeFamilies=56 USER_001=14",
+      "codeFileOrFunction": "Login always creates new family; SPA discards refresh token so logout/rotate unused"
     },
     {
       "id": "UR-P4-F04",
@@ -106,7 +122,11 @@
       "requiredTests": [
         "org_create_seeds_system_roles"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "adminRisk ORG_001 singleAdminRisk=true activeOrgAdminCount=1; ORG_002 noMembers=true rolesTotal=0",
+      "codeFileOrFunction": "assertNotLastActiveOrgAdmin only protects MembershipRole.ORG_ADMIN"
     },
     {
       "id": "UR-P4-F05",
@@ -126,7 +146,11 @@
       "requiredTests": [
         "create_org_admin_sets_organization_role_id"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "effectiveAccess MEMBERSHIP_001 roleSource=direct_or_legacy hasPermissionSnapshot=false driftClass=NO_ROLE_LINK; activeMembershipsWithoutRoleLink=1; rolesWithoutAssignments=10",
+      "codeFileOrFunction": "PermissionsGuard ORG_ADMIN bypass; mapOrgUser shows role without template link"
     },
     {
       "id": "UR-P4-F06",
@@ -146,7 +170,11 @@
       "requiredTests": [
         "admin_session_list_and_revoke_all"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "usersNoActiveMembershipWithSessions USER_001 platformRole=MASTER_ADMIN activeRefreshTokens=14; activeSessionsForUsersWithoutActiveMembership=14",
+      "codeFileOrFunction": "OrgScopingGuard bypass for MASTER_ADMIN; refresh tokens user-global"
     },
     {
       "id": "UR-P4-F07",
@@ -166,7 +194,11 @@
       "requiredTests": [
         "invite_accept_existing_user_requires_auth"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "invitesTotal=0 across organizations",
+      "codeFileOrFunction": "OrganizationInviteService + plaintext inviteUrl return (Phase 1/2)"
     },
     {
       "id": "UR-P4-F08",
@@ -186,7 +218,11 @@
       "requiredTests": [
         "iam_mutation_writes_audit_action"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "iamAuditActionsAllTime={}; activityAuth90d={'AUTH_FAIL': 9, 'LOGIN': 101, 'UPDATE': 87}",
+      "codeFileOrFunction": "UserAccessAuditService via void record; MASTER_ADMIN password path has no userAudit"
     },
     {
       "id": "UR-P4-F09",
@@ -206,7 +242,11 @@
       "requiredTests": [
         "role_update_marks_assigned_memberships_stale"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "roleMembershipDrift linked rows=0; NO_ROLE_LINK=1; system roles on ORG_001=10 all unassigned",
+      "codeFileOrFunction": "updateRole does not cascade (Phase 3)"
     },
     {
       "id": "UR-P4-F10",
@@ -226,7 +266,11 @@
       "requiredTests": [
         "access_review_export_readonly"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "accessReviewsFound=0 for all orgs",
+      "codeFileOrFunction": "No access review model/scheduler in IAM modules (Phase 1/3)"
     },
     {
       "id": "UR-P5-INV-01",
@@ -247,7 +291,11 @@
         "invite_create_response_omits_token",
         "invite_resend_response_omits_token"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "invitesTotal=0 in VPS — code-confirmed; no empirical accept samples",
+      "codeFileOrFunction": "OrganizationInviteService.createInvite/resendInvite return inviteToken+inviteUrl; FE types OrganizationInviteCreatedDto"
     },
     {
       "id": "UR-P5-INV-05",
@@ -267,7 +315,11 @@
       "requiredTests": [
         "invite_resend_does_not_clipboard"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a code path",
+      "codeFileOrFunction": "InvitesTab.tsx and UsersTab.tsx navigator.clipboard.writeText(res.inviteUrl)"
     },
     {
       "id": "UR-P5-INV-03",
@@ -288,7 +340,11 @@
         "invite_mail_provider_required_in_prod",
         "invite_logs_redact_token"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase1 runtime SMTP unset / invite mail fallback",
+      "codeFileOrFunction": "TransactionalMailService.sendOrganizationInvite returns sent:false fallback; logger.debug body includes inviteUrl"
     },
     {
       "id": "UR-P5-INV-16",
@@ -309,7 +365,11 @@
         "invite_accept_existing_user_requires_auth",
         "invite_accept_removed_requires_reapproval"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "invitesTotal=0 — code-confirmed",
+      "codeFileOrFunction": "acceptInvite: if user exists password not required; AuthGuard bypass on /invites/accept; can reactivate REMOVED membership"
     },
     {
       "id": "UR-P5-INV-17",
@@ -329,7 +389,11 @@
       "requiredTests": [
         "org_admin_invite_accept_requires_step_up"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "createInvite requires manage for ORG_ADMIN but acceptInvite has no elevated checks; audit INFO"
     },
     {
       "id": "UR-P5-PW-03",
@@ -351,7 +415,11 @@
         "admin_reset_issues_token_only",
         "password_reset_revokes_sessions"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase4: refreshTokensRevoked=0; passwordEventsObserved=89 with surviving sessions",
+      "codeFileOrFunction": "UsersService.changeOrgUserPassword updates passwordHash+mustChangePassword; no revokeAllForUser"
     },
     {
       "id": "UR-P5-PW-TARGET",
@@ -372,7 +440,11 @@
         "forgot_password_token_flow",
         "must_change_password_enforced"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "No PasswordResetToken model/routes; LoginPage forgot-password is support stub"
     },
     {
       "id": "UR-P5-MFA-06",
@@ -393,7 +465,11 @@
         "step_up_required_for_password_reset",
         "step_up_required_for_org_admin_assign"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "org security-activity twoFactorEnabled=null activeSessionCount=null",
+      "codeFileOrFunction": "AccountService security twoFactor*/passkeys* false; JWT claims lack amr/aal/auth_time; users/roles controllers permission-only"
     },
     {
       "id": "UR-P5-JML-10",
@@ -414,7 +490,11 @@
         "remove_user_revokes_refresh_families",
         "role_downgrade_revokes_or_reissues_tokens"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase4 refreshTokensRevoked=0; active sessions survive password events",
+      "codeFileOrFunction": "removeOrgUser sets REMOVED only; suspend sets global User.status; assignRole/updateOrgUser no RefreshTokenService calls"
     },
     {
       "id": "UR-P5-JML-09",
@@ -434,7 +514,11 @@
       "requiredTests": [
         "org_suspend_does_not_set_global_user_status"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase2 identity model confirmation",
+      "codeFileOrFunction": "updateOrgUser dto.status SUSPENDED → UserStatus.SUSPENDED"
     },
     {
       "id": "UR-P5-AR-01",
@@ -454,7 +538,11 @@
       "requiredTests": [
         "access_review_campaign_create_readonly_export"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "accessReviewsFound=0 for ORG_001 and ORG_002",
+      "codeFileOrFunction": "No AccessReview model/scheduler; Phase4 coverage accessReviewsFound=0"
     },
     {
       "id": "UR-P5-AR-10",
@@ -474,7 +562,11 @@
       "requiredTests": [
         "effective_access_endpoint_matches_guard"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "NO_ROLE_LINK membership; parallel access truths",
+      "codeFileOrFunction": "Phase3 canonical RM documented only; runtime uses membership snapshot + ORG_ADMIN bypass + FE localStorage"
     },
     {
       "id": "UR-P5-INV-13",
@@ -494,7 +586,11 @@
       "requiredTests": [
         "accept_invite_spa_route_exists"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "buildInviteUrl uses /accept-invite?token=; frontend/src has no AcceptInvite route"
     },
     {
       "id": "UR-P5-PW-01",
@@ -514,7 +610,11 @@
       "requiredTests": [
         "forgot_password_sends_token_email"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "LoginPage sets support message only; no PasswordResetToken"
     },
     {
       "id": "UR-P5-JML-13",
@@ -534,7 +634,11 @@
       "requiredTests": [
         "remove_user_revokes_pending_invites_for_email"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "removeOrgUser only updates membership status; no invite scan; no ownership transfer service"
     },
     {
       "id": "UR-P5-MFA-01",
@@ -554,7 +658,11 @@
       "requiredTests": [
         "mfa_enroll_totp_login_challenge"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "AccountSessionsSection placeholders; security flags hardcoded false"
     },
     {
       "id": "UR-P6-FF-01",
@@ -575,7 +683,11 @@
         "iam_mutation_fails_if_outbox_insert_fails",
         "audit_worker_retries_then_dlq"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase4 iamAuditActionsAllTime={}; password UPDATE events=89 without matching auditAction rows",
+      "codeFileOrFunction": "AuditService intentionally swallows errors; callers void this.userAudit.record / void this.audit.record after prisma commits"
     },
     {
       "id": "UR-P6-FF-03",
@@ -595,7 +707,11 @@
       "requiredTests": [
         "outbox_row_created_in_same_transaction"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a code architecture",
+      "codeFileOrFunction": "acceptInvite/removeOrgUser/changeOrgUserPassword complete domain write then void audit via separate prisma.activityLog.create"
     },
     {
       "id": "UR-P6-FF-04",
@@ -615,7 +731,11 @@
       "requiredTests": [
         "audit_dlq_metric_alert"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "No AuditOutbox model; AuditService only logger.error on failure"
     },
     {
       "id": "UR-P6-AC-06",
@@ -635,7 +755,11 @@
       "requiredTests": [
         "refresh_reuse_writes_critical_audit"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "refresh-token.service.ts logs Logger.warn and revokeFamily; no audit.record"
     },
     {
       "id": "UR-P6-AC-08",
@@ -655,7 +779,11 @@
       "requiredTests": [
         "master_password_reset_writes_critical_audit"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase4/5 prior findings",
+      "codeFileOrFunction": "users.service changePasswordAdmin updates hash without userAudit; org path has USER_PASSWORD_RESET_BY_ADMIN"
     },
     {
       "id": "UR-P6-MP-02",
@@ -676,7 +804,11 @@
         "activity_log_update_forbidden",
         "prune_requires_break_glass_audit"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "RETENTION_ACTIVITY_LOGS_DAYS default 0 (keep) but delete path exists when configured; prune wipes all",
+      "codeFileOrFunction": "DataRetentionScheduler can delete activity_logs; platform-admin.service deleteMany activityLog; no hash fields/triggers"
     },
     {
       "id": "UR-P6-RET-02",
@@ -696,7 +828,11 @@
       "requiredTests": [
         "audit_record_scrubs_email_patterns"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a code",
+      "codeFileOrFunction": "ActivityLogService.log scrubs description/metaJson; AuditService.prisma.activityLog.create raw; invite descriptions include email"
     },
     {
       "id": "UR-P6-RET-07",
@@ -716,7 +852,11 @@
       "requiredTests": [
         "activity_log_ip_ttl_enforced_when_configured"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase4 sessionMetadataHasIpFlagCount=80",
+      "codeFileOrFunction": "RETENTION_ACTIVITY_LOGS_DAYS default 0; User.lastLoginIp no TTL job"
     },
     {
       "id": "UR-P6-GDPR-04",
@@ -736,7 +876,11 @@
       "requiredTests": [
         "global_erase_requires_all_org_memberships_resolved"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "No User.piiAnonymizedAt; customer anonymize is placeholder only",
+      "codeFileOrFunction": "removeOrgUser keeps User (good); users.service.delete hard-deletes without cross-org orchestration/anonymize fields"
     },
     {
       "id": "UR-P6-GDPR-10",
@@ -756,7 +900,11 @@
       "requiredTests": [
         "invite_response_omits_token_default"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "prior phases",
+      "codeFileOrFunction": "Phase5 invite/password findings; AuditService unsanitized; MFA flags false"
     },
     {
       "id": "UR-P6-ISO-07",
@@ -776,7 +924,11 @@
       "requiredTests": [
         "org_admin_invite_requires_second_approval"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "Single actor with users-roles.manage can invite ORG_ADMIN, reset password, remove users without dual control"
     },
     {
       "id": "UR-P6-ISO-17",
@@ -796,7 +948,11 @@
       "requiredTests": [
         "access_review_campaign_export"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "accessReviewsFound=0",
+      "codeFileOrFunction": "Phase5 access-review readiness; no model/scheduler"
     },
     {
       "id": "UR-P6-AC-24",
@@ -816,7 +972,11 @@
       "requiredTests": [
         "seed_admin_disabled_in_production_config"
       ],
-      "productionBlocker": true
+      "productionBlocker": true,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase1 runtime snapshot seed-admin enabled",
+      "codeFileOrFunction": "ENABLE_SEED_ADMIN runtime; no BREAK_GLASS UserAccessAuditAction"
     },
     {
       "id": "UR-P6-FF-05",
@@ -836,7 +996,11 @@
       "requiredTests": [
         "metric_iam_audit_lag"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase4 zero auditAction vs 89 UPDATEs",
+      "codeFileOrFunction": "No reconcile job comparing mutations to auditAction evidence"
     },
     {
       "id": "UR-P6-MP-03",
@@ -856,7 +1020,11 @@
       "requiredTests": [
         "activity_export_writes_audit"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "ActivityLogController GET only; no export audit producer"
     },
     {
       "id": "UR-P6-GDPR-02",
@@ -876,7 +1044,11 @@
       "requiredTests": [
         "dsar_export_org_scoped"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "No DSAR/export orchestrator for user+memberships+invites+sessions+logs"
     },
     {
       "id": "UR-P6-RET-09",
@@ -896,7 +1068,11 @@
       "requiredTests": [
         "invite_retention_prunes_expired"
       ],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "STRONG_EVIDENCE",
+      "dependencies": [],
+      "vpsDataEvidence": "Phase4 invitesTotal=0 but code gap remains",
+      "codeFileOrFunction": "DataRetentionScheduler targets omit invites; only expiry status on validate"
     },
     {
       "id": "UR-P6-DISCLAIMER",
@@ -914,33 +1090,64 @@
       "reproduction": "n/a",
       "recommendation": "Engage legal/compliance for binding assessments; use matrices as engineering backlog input",
       "requiredTests": [],
-      "productionBlocker": false
+      "productionBlocker": false,
+      "evidenceConfidence": "CONFIRMED",
+      "dependencies": [],
+      "vpsDataEvidence": "n/a",
+      "codeFileOrFunction": "Prompt-6 scope; CSV disclaimers"
+    },
+    {
+      "id": "UR-P8-EP-01",
+      "severity": "P0",
+      "evidenceConfidence": "CONFIRMED",
+      "confidence": "high",
+      "category": "endpoint_enforcement",
+      "title": "122 organization-scoped write handlers lack PermissionsGuard (module least-privilege gap)",
+      "codeEvidence": "Decorator scan iam-endpoint-enforcement-matrix; RolesGuard no-op without @Roles",
+      "codeFileOrFunction": "shared/auth/*Guards; domain controllers across bookings/workflows/orgs",
+      "dataEvidence": "iam-endpoint-enforcement-summary orgWriteWithoutPermissionsGuard=122; matrixRows=525 risk P0=151",
+      "vpsDataEvidence": "static scan; not runtime traffic",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Any ACTIVE member may invoke many org write APIs if only OrgScoping applies",
+      "reproduction": "Open iam-endpoint-enforcement-summary-2026-07.json orgWriteWithoutPermissionsGuard",
+      "recommendation": "Require PermissionsGuard+@RequirePermission on org writes; fix RolesGuard no-op",
+      "requiredTests": [
+        "org_write_requires_module_permission"
+      ],
+      "dependencies": [
+        "UR-P3-PS-12",
+        "EffectiveAccessEngine"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P8-SYN-01",
+      "severity": "P0",
+      "evidenceConfidence": "CONFIRMED",
+      "confidence": "high",
+      "category": "production_readiness",
+      "title": "Cumulative IAM architecture is NOT READY for production under least-privilege and session integrity expectations",
+      "codeEvidence": "Phases 1–7 confirmed global credential mutation, unbound refresh, snapshot roles, fire-and-forget audit, invite plaintext, no MFA",
+      "codeFileOrFunction": "users.service / refresh-token.service / organization-invite.service / audit.service / permissions.guard",
+      "dataEvidence": "VPS: 70 active 0 revoked refresh; 0 auditAction rows; 0 invites; single admin ORG_001",
+      "vpsDataEvidence": "iam-session-revocation-integrity + iam-vps-organization-coverage + iam-integrity-findings",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Go-live blocked until identity/session/role/audit truth repaired",
+      "reproduction": "Read Phase 8 verdict categories",
+      "recommendation": "Execute remediation prompt sequence in recommended order",
+      "requiredTests": [
+        "full_iam_security_regression_suite"
+      ],
+      "dependencies": [
+        "all P0 blockers"
+      ],
+      "productionBlocker": true
     }
-  ],
-  "phase5CapturedAt": "2026-07-21T01:14:07.761996+00:00",
-  "phase5Scope": {
-    "method": "code_static_and_prior_vps_read_only",
-    "productiveActions": false,
-    "artifacts": [
-      "iam-invite-security-flow-2026-07.csv",
-      "iam-password-reset-security-2026-07.csv",
-      "iam-mfa-step-up-matrix-2026-07.csv",
-      "iam-joiner-mover-leaver-2026-07.csv",
-      "iam-access-review-readiness-2026-07.csv"
-    ]
-  },
-  "phase6CapturedAt": "2026-07-21T01:20:44.788386+00:00",
-  "phase6Scope": {
-    "method": "code_static_plus_prior_vps_read_only",
-    "productiveActions": false,
-    "legalAdvice": false,
-    "isoCertificationClaim": false,
-    "artifacts": [
-      "iam-audit-event-coverage-2026-07.csv",
-      "iam-audit-transaction-reliability-2026-07.csv",
-      "iam-data-retention-classification-2026-07.csv",
-      "iam-dsgvo-technical-capability-2026-07.csv",
-      "iam-iso27001-control-alignment-2026-07.csv"
-    ]
-  }
+  ]
 }
