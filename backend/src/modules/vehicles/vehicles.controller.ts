@@ -108,6 +108,8 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/telemetry')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'read')
   async getVehicleTelemetry(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -116,6 +118,8 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/live-gps')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'read')
   async getLiveGps(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -124,7 +128,8 @@ export class VehiclesController {
   }
 
   @Post('organizations/:orgId/vehicles')
-  @UseGuards(OrgScopingGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async createByOrg(
     @Param('orgId') orgId: string,
     @Body() body: Omit<Prisma.VehicleCreateInput, 'organization'>,
@@ -134,6 +139,8 @@ export class VehiclesController {
   }
 
   @Post('organizations/:orgId/vehicles/register-from-dimo')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async registerFromDimo(
     @Param('orgId') orgId: string,
     @Body()
@@ -181,6 +188,8 @@ export class VehiclesController {
   }
 
   @Patch('organizations/:orgId/vehicles/:vehicleId')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async updateByOrg(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -190,6 +199,8 @@ export class VehiclesController {
   }
 
   @Put('organizations/:orgId/vehicles/:vehicleId/tires')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async upsertTireData(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -239,7 +250,8 @@ export class VehiclesController {
     ]);
 
   @Patch('organizations/:orgId/vehicles/:vehicleId/status')
-  @UseGuards(OrgScopingGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async updateVehicleStatus(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -314,6 +326,8 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/complaints')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'read')
   async listVehicleComplaints(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -322,6 +336,8 @@ export class VehiclesController {
   }
 
   @Post('organizations/:orgId/vehicles/:vehicleId/complaints')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async createVehicleComplaint(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -337,6 +353,8 @@ export class VehiclesController {
   }
 
   @Delete('organizations/:orgId/vehicles/:vehicleId')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'manage')
   async deleteByOrg(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
