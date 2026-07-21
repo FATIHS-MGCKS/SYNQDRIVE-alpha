@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-followups-2026-07-21',
+    version: '4.9.740',
+    title: 'Fleet Health Service — Follow-ups (Pagination, Runtime, Matching)',
+    summary: [
+      'P0-5: Task-Listen-API mit Cursor-Pagination (`{ data, meta }`), `useTaskList` loadMore, Service Center `fetchAllTasks`.',
+      'P1-5: `ServiceCase.blocksRental` in `vehicleRuntimeStateBuilder` + Dashboard-Runtime (ohne Rental Health).',
+      'P1-1/P1-6: `sourceFindingId` in Health→Task-Bridge; striktes Dedup ohne REPAIR/CUSTOM False-Match.',
+      'Monitoring: `verify-fleet-health-monitoring.sh` für Grafana/Prometheus-Artefakte im Repo.',
+    ],
+    reason: 'Production-Follow-ups nach direktem FHS-Rollout.',
+    previousBehavior: 'Unbounded Task-Listen; FALSE_MATCH bei Health→Task; Service-Case-Block nur in FHS-Filter.',
+    details:
+      'tasks-list-cursor.util.ts, tasks-pagination.ts, health-task-bridge.utils.ts, vehicleRuntimeStateBuilder.ts, backend/scripts/ops/verify-fleet-health-monitoring.sh',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T11:15:00.000Z',
+  },
+  {
     id: 'fleet-health-service-production-validation-2026-07-21',
     version: '4.9.739',
     title: 'Fleet Health Service — Production Validation (P64)',
