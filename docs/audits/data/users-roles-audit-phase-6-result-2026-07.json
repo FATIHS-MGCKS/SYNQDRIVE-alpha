@@ -1,0 +1,44 @@
+{
+  "auditId": "users-roles-production-readiness-2026-07",
+  "phase": 6,
+  "completedAt": "2026-07-21T01:21:36.673Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "summary": "Phase 6 complete: audit coverage, fire-and-forget reliability, retention, DSGVO technical capability, and ISO-oriented alignment validated.",
+  "artifacts": [
+    "docs/audits/users-roles-production-readiness-2026-07.md",
+    "docs/audits/data/iam-audit-event-coverage-2026-07.csv",
+    "docs/audits/data/iam-audit-transaction-reliability-2026-07.csv",
+    "docs/audits/data/iam-data-retention-classification-2026-07.csv",
+    "docs/audits/data/iam-dsgvo-technical-capability-2026-07.csv",
+    "docs/audits/data/iam-iso27001-control-alignment-2026-07.csv",
+    "docs/audits/data/iam-integrity-findings-2026-07.json"
+  ],
+  "notes": [
+    "No productive mutations; no legal advice; no ISO certification claim.",
+    "Audit-outbox target architecture documented only — not implemented.",
+    "Phase-6 findings: 18 (P0=13 P1=4 blockers=12)",
+    "Cumulative findings: 44"
+  ],
+  "data": {
+    "phase6FindingCount": 18,
+    "phase6P0": 13,
+    "phase6P1": 4,
+    "phase6ProductionBlockers": 12,
+    "summaryCounts": {
+      "findings": 44,
+      "P0": 26,
+      "P1": 14,
+      "P2": 4,
+      "roleDriftLinkedRows": 0,
+      "noRoleLinkActiveMemberships": 1,
+      "privilegedDriftCases": 0,
+      "inviteRows": 0,
+      "singleAdminOrgs": 1,
+      "zeroAdminOrgsWithMembers": 0,
+      "phase5FindingsAdded": 16,
+      "productionBlockers": 25,
+      "phase6FindingsAdded": 18
+    }
+  }
+}

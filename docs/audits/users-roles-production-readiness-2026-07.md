@@ -5,11 +5,11 @@
 | **Audit ID** | `users-roles-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/users-roles-production-readiness-2026-07` |
-| **Phase** | **5 of 8 — Invite / password / MFA / JML / access-review governance** |
+| **Phase** | **6 of 8 — Audit reliability / privacy / ISO-oriented control alignment** |
 | **Verdict (interim)** | **NOT READY** (preliminary — full verdict in Phase 8) |
-| **Status** | **Phases 1–5 complete** — Phases 6–8 outlined, not executed |
-| **Production data modified** | **No** — Phase 5 code/static only; prior VPS work remained SELECT-only |
-| **Analysis window (VPS)** | Sessions/IAM activity: last **90 days** (Phase 4); Phase 5 lifecycle = full code paths + prior anonymized aggregates |
+| **Status** | **Phases 1–6 complete** — Phases 7–8 outlined, not executed |
+| **Production data modified** | **No** — Phase 6 code/static only; no legal advice or ISO certification claim |
+| **Analysis window (VPS)** | Prior Phase-4 anonymized aggregates reused; Phase 6 = code paths + retention config |
 
 ---
 
@@ -37,13 +37,18 @@
 | Multi-org session integrity | `docs/audits/data/iam-multi-org-session-integrity-2026-07.csv` | 4 |
 | Session revocation integrity | `docs/audits/data/iam-session-revocation-integrity-2026-07.csv` | 4 |
 | Invite integrity | `docs/audits/data/iam-invite-integrity-2026-07.csv` | 4 |
-| Integrity findings JSON | `docs/audits/data/iam-integrity-findings-2026-07.json` | 4–5 |
 | Phase-4 script result | `docs/audits/data/users-roles-audit-phase-4-result-2026-07.json` | 4 (generated) |
 | Invite security flow | `docs/audits/data/iam-invite-security-flow-2026-07.csv` | 5 |
 | Password reset security | `docs/audits/data/iam-password-reset-security-2026-07.csv` | 5 |
 | MFA / step-up matrix | `docs/audits/data/iam-mfa-step-up-matrix-2026-07.csv` | 5 |
 | Joiner-Mover-Leaver | `docs/audits/data/iam-joiner-mover-leaver-2026-07.csv` | 5 |
 | Access-review readiness | `docs/audits/data/iam-access-review-readiness-2026-07.csv` | 5 |
+| Audit event coverage | `docs/audits/data/iam-audit-event-coverage-2026-07.csv` | 6 |
+| Audit transaction reliability | `docs/audits/data/iam-audit-transaction-reliability-2026-07.csv` | 6 |
+| Data retention classification | `docs/audits/data/iam-data-retention-classification-2026-07.csv` | 6 |
+| DSGVO technical capability | `docs/audits/data/iam-dsgvo-technical-capability-2026-07.csv` | 6 |
+| ISO/IEC 27001-oriented alignment | `docs/audits/data/iam-iso27001-control-alignment-2026-07.csv` | 6 |
+| Integrity findings JSON | `docs/audits/data/iam-integrity-findings-2026-07.json` | 4–6 |
 | Read-only orchestrator | `scripts/audits/audit-users-roles-production-readiness.ts` | 1–8 |
 | Effective-access helper | `scripts/audits/audit-effective-access.ts` | 4 |
 | VPS integrity SQL dump (SELECT-only) | `scripts/audits/iam-vps-integrity-readonly.py` | 4 |
@@ -54,7 +59,6 @@ Planned later-phase artifacts (not yet generated):
 |----------|------|-------|
 | Threat / control matrix | `docs/audits/data/users-roles-control-matrix-2026-07.csv` | 8 |
 | UI/UX security audit | `docs/audits/data/users-roles-ui-ux-audit-2026-07.csv` | 7 |
-| DSGVO / ISO 27001 mapping | `docs/audits/data/users-roles-compliance-mapping-2026-07.csv` | 7–8 |
 | Final verdict JSON | `docs/audits/data/users-roles-production-readiness-verdict-2026-07.json` | 8 |
 
 ---
@@ -120,19 +124,24 @@ Stable, non-reversible aliases used in all Git artifacts:
 - Joiner-Mover-Leaver controls and deprovisioning gaps
 - Access-review readiness (absent) + minimum model
 
-## Phase 6 — Multi-organization users & org switching (deep dive)
+## Phase 6 — Audit reliability / privacy / ISO-oriented controls *(complete below)*
 
-- Build on Phase-2 multi-org CSV with fixture replay when multi-org users exist
-- OrgScopingGuard mismatch attacks
-- Recommended switch protocol
+- IAM audit event coverage inventory
+- Fire-and-forget / non-transactional audit analysis + target outbox architecture (not implemented)
+- Manipulation protection & export
+- Data-category retention matrix
+- DSGVO **technical** capability (not legal advice)
+- ISO/IEC 27001-**oriented** control alignment (not certification)
 
-## Phase 7 — UI/UX, Security Activity, MFA placeholders, DSGVO readiness
+Multi-org switch deep dive remains evidenced in Phase 2; residual switch protocol → Phase 8.
+
+## Phase 7 — UI/UX, Security Activity, MFA placeholders, residual privacy UX
 
 - `frontend/src/rental/components/users-roles/*`
 - Clipboard of invite URLs and temporary passwords
 - Missing accept-invite SPA route
 - Security Activity / MFA / activeSessionCount placeholders
-- Retention, deletion, anonymization, access-review gaps
+- Operator-facing privacy/security UX gaps
 
 ## Phase 8 — Final synthesis & production-readiness verdict
 
@@ -983,7 +992,140 @@ Cumulative findings JSON: **26** total (**13×P0**, **10×P1**, **3×P2**); **13
 | Access-review readiness CSV | Done |
 | Findings JSON extended | Done |
 | No productive IAM actions | Confirmed |
-| Prompt 6 not started | Confirmed |
+| Prompt 6 started only after Phase 5 exit | Confirmed |
+
+---
+
+# Phase 6 findings — Audit reliability, privacy, ISO-oriented alignment
+
+> **Scope disclaimer:** Technical assessment only. **Not** legal advice. **Not** an ISO/IEC 27001 certification claim or accredited audit opinion. Legal bases and certification evidence are **organizational/legal to define**.
+
+## P6.0 Method & safety
+
+| Item | Value |
+|------|-------|
+| Mode | **read-only** |
+| Method | Code inventory of `UserAccessAuditAction` / `ActivityAction` producers; `void` audit patterns; retention config; ActivityLog access/delete paths |
+| Productive actions | **None** |
+| Target architectures | Audit outbox documented — **not implemented** |
+
+## P6.1 Audit event coverage (Teil 1)
+
+Inventoried in `iam-audit-event-coverage-2026-07.csv`.
+
+| Bucket | Status |
+|--------|--------|
+| Login / logout / AUTH_FAIL | Present (`void` ActivityLog) |
+| Session revoke | Present (account service) |
+| Session create as ActivityLog | **Partial** (token row only) |
+| Refresh reuse | **Warn log only — no ActivityLog** |
+| Password self-change | Present |
+| Password reset request/complete | **Missing** (no flow) |
+| Admin org password reset | Present (`USER_PASSWORD_RESET_BY_ADMIN`) |
+| Admin master password reset | **No audit** |
+| MFA events | **Missing** (no MFA) |
+| Invite create/resend/revoke/accept | Present (codes exist; fire-and-forget) |
+| User/role/permission/scope | Present (enum coverage good) |
+| Org switch / access review / break-glass / DSGVO export | **Missing** |
+
+Typical payload gaps on IAM `userAudit` path: **IP/UA/reason often omitted**; before/after present for some role/permission/scope changes; **not transactional** with mutation.
+
+## P6.2 Fire-and-forget (Teil 2)
+
+| Question | Answer |
+|----------|--------|
+| Mutation commits while audit fails? | **Yes** — designed that way (`AuditService` swallows errors) |
+| Outbox? | **No** |
+| Retry / DLQ? | **No** |
+| Failure visible to actor? | **No** |
+| Missing audit detectable? | **Only offline** (Phase 4: 0 `auditAction` vs 89 UPDATEs) |
+
+**Target architecture (documented, not implemented):**  
+IAM mutation + Audit-Outbox → same DB transaction → immutable audit worker → retry + DLQ.
+
+## P6.3 Manipulation protection & export (Teil 3)
+
+| Control | Result |
+|---------|--------|
+| API update of audit rows | No update endpoint found |
+| Delete | Retention scheduler + **platform prune `activityLog.deleteMany`**; DB superuser |
+| Org admin hide own changes via API | Cannot update/delete via org API; **can read** own org logs (`users-roles.read`) |
+| Append-only / hash-chain | **No** |
+| Export | Paginated GET only; **export not audited** |
+| Pseudonymization | **No** on read; scrub only on unused `ActivityLogService.log` path |
+| Deleted user reference | `userId` **SetNull**; meta/descriptions may retain identifiers |
+
+## P6.4 Data categories & retention (Teil 4)
+
+See `iam-data-retention-classification-2026-07.csv`. Highlights:
+
+- **activity_logs** retention default **disabled** (`days=0` → keep); when enabled, **hard delete** (not anonymize).
+- **refresh_tokens** default **30d** after expiry.
+- **invites** — **no** prune job.
+- **IP/UA** on logs/tokens; `lastLoginIp` unbounded.
+- Legal basis column marked **ORGANIZATIONAL_LEGAL_TO_DEFINE** everywhere.
+
+## P6.5 DSGVO technical capability (Teil 5)
+
+| Capability | Readiness |
+|------------|-----------|
+| Auskunft / Portability package | **MISSING / PARTIAL** |
+| Berichtigung | **PARTIAL** (self + org admin global fields) |
+| Membership remove without global delete | **YES** |
+| Global erase orchestration / anonymize User | **NO** |
+| Restriction / IAM legal hold | **MISSING** |
+| Privacy by default | **WEAK** |
+| Automated retention | **PARTIAL** (scheduler; IAM incomplete) |
+| Tenant-scoped activity read | **YES** (not a DSAR export) |
+
+## P6.6 ISO/IEC 27001-oriented matrix (Teil 6)
+
+See `iam-iso27001-control-alignment-2026-07.csv`. Summary readiness:
+
+| Topic | Readiness |
+|-------|-----------|
+| Identity / Authn info / Access provision-modify-remove | **PARTIAL** |
+| Privileged access / Secure authentication / Logging / Monitoring / Deletion / Masking / PII / Incident | **PARTIAL** |
+| Segregation of Duties | **MISSING** |
+| Periodic Access Review | **MISSING** |
+| Cloud / Supplier access | **PARTIAL** (light touch) |
+
+## P6.7 Organisatorisch notwendige Maßnahmen (non-code)
+
+- Define retention TTLs and legal bases for IAM categories (especially IP/UA/audit/invites).
+- Assign DSAR / erase process owners and multi-org coordination.
+- SoD / dual-control policy for privileged IAM.
+- Access-review cadence and evidence ownership.
+- Incident response hooks for refresh-reuse and missing-audit alerts.
+- Decide break-glass vs disable `ENABLE_SEED_ADMIN` in production.
+- Engage legal/compliance separately for binding assessments — **out of scope here**.
+
+## P6.8 Phase-6 P0 / production blockers (Zwischenstand)
+
+| ID | Title |
+|----|-------|
+| UR-P6-FF-01/03/04 | Fire-and-forget; non-transactional; no outbox/retry/DLQ |
+| UR-P6-AC-06/08/24 | Reuse unaudited; master password unaudited; break-glass unaudited |
+| UR-P6-MP-02 | Logs deletable; not append-only |
+| UR-P6-RET-02 | PII scrub bypass on AuditService |
+| UR-P6-GDPR-04/10 | No erase orchestrator; weak privacy defaults |
+| UR-P6-ISO-07/17 | SoD missing; periodic access review missing |
+
+Cumulative findings JSON: **44** total (**26×P0**, **14×P1**, **4×P2**); **25** production blockers.
+
+## P6.9 Phase 6 exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Audit event coverage CSV | Done |
+| Transaction reliability CSV + target outbox | Done (not implemented) |
+| Retention classification CSV | Done |
+| DSGVO technical capability CSV | Done |
+| ISO-oriented alignment CSV | Done |
+| Findings JSON extended | Done |
+| No legal/certification claims | Confirmed |
+| No productive mutations | Confirmed |
+| Prompt 7 not started | Confirmed |
 
 ---
 
@@ -998,16 +1140,16 @@ Cumulative findings JSON: **26** total (**13×P0**, **10×P1**, **3×P2**); **13
 | 5 | Refresh not bound to org/membership | **Confirmed** + Phase-4: 80/80 sessions unbound | 6, 8 |
 | 6 | Invite plaintext to FE/clipboard | **Confirmed** + Phase-5 flow CSV (resend clipboard; mail debug URL) | 7, 8 |
 | 7 | Existing users accept invite without re-auth | **Confirmed** + REMOVED reactivation; no SPA accept route | 7, 8 |
-| 8 | Critical IAM audits fire-and-forget | **Confirmed**; Phase-4: `auditAction` rows=0 despite 89 UPDATEs | 8 |
+| 8 | Critical IAM audits fire-and-forget | **Confirmed** + Phase-6 outbox/retry absent; scrub bypass | 8 |
 | 9 | MFA/sessions/security activity partial | **Confirmed — not implemented**; step-up matrix defined | 7, 8 |
 | 10 | Parallel access truths | **Confirmed** (template/membership/JWT/FE/station + endpoint guard inconsistency) | 7, 8 |
-| 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed** + Phase-5 AR readiness CSV (absent) | 7, 8 |
+| 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed** + Phase-6 retention/DSGVO/ISO matrices | 7, 8 |
 
 ---
 
 ## Appendix B — Changes / Architektur
 
-**Not updated** (Phases 1–5). Audit documentation and read-only scripts only; no product implementation or architecture behavior change was made.
+**Not updated** (Phases 1–6). Audit documentation and read-only scripts only; no product implementation or architecture behavior change was made. Target audit-outbox architecture is documented in Phase 6 only.
 
 ---
 
@@ -1023,8 +1165,9 @@ Cumulative findings JSON: **26** total (**13×P0**, **10×P1**, **3×P2**); **13
 | Change MFA state | No |
 | Role reconciliation / membership updates | No |
 | Access-review campaigns | No |
+| Retention job execution / log deletion | No |
 | Prisma migrate / infra config change | No |
 | Redis writes | No |
 | Commit of PII/secrets | No |
 
-All VPS access was diagnostic/read-only (`psql` SELECT aggregates via `iam-vps-integrity-readonly.py`, Redis SCAN/DBSIZE in earlier phases, `curl -I` headers, PM2 status, env key **presence/shape** only). Phase 5 added **no** VPS mutations — code/static analysis only.
+All VPS access was diagnostic/read-only (`psql` SELECT aggregates via `iam-vps-integrity-readonly.py`, Redis SCAN/DBSIZE in earlier phases, `curl -I` headers, PM2 status, env key **presence/shape** only). Phases 5–6 added **no** VPS mutations — code/static analysis only.

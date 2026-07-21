@@ -300,6 +300,69 @@ function phase5LifecycleGovernance(): AuditPhaseResult {
   };
 }
 
+function phase6AuditPrivacyControls(): AuditPhaseResult {
+  const required = requireArtifacts([
+    'docs/audits/users-roles-production-readiness-2026-07.md',
+    'docs/audits/data/iam-audit-event-coverage-2026-07.csv',
+    'docs/audits/data/iam-audit-transaction-reliability-2026-07.csv',
+    'docs/audits/data/iam-data-retention-classification-2026-07.csv',
+    'docs/audits/data/iam-dsgvo-technical-capability-2026-07.csv',
+    'docs/audits/data/iam-iso27001-control-alignment-2026-07.csv',
+    'docs/audits/data/iam-integrity-findings-2026-07.json',
+  ]);
+
+  const root = repoRoot();
+  for (const rel of required) {
+    if (rel.endsWith('.md')) continue;
+    assertNoPiiLeak(rel, fs.readFileSync(path.join(root, rel), 'utf8'));
+  }
+
+  const findings = loadFindings();
+  if (findings.writesPerformed !== false || findings.mode !== 'read-only') {
+    throw new Error('Findings must declare mode=read-only and writesPerformed=false');
+  }
+  if ((findings.phase ?? 0) < 6) {
+    throw new Error('iam-integrity-findings-2026-07.json must be updated to phase >= 6');
+  }
+
+  const report = fs.readFileSync(
+    path.join(root, 'docs/audits/users-roles-production-readiness-2026-07.md'),
+    'utf8',
+  );
+  if (/ISO\/IEC 27001 certified|legal advice claiming compliance/i.test(report)) {
+    throw new Error('Report must not claim ISO certification or legal compliance advice');
+  }
+
+  const p6 = (findings.findings ?? []).filter((f) => (f.id ?? '').startsWith('UR-P6-'));
+  const p0 = p6.filter((f) => f.severity === 'P0').length;
+  const p1 = p6.filter((f) => f.severity === 'P1').length;
+  const blockers = p6.filter((f) => f.productionBlocker).length;
+
+  return {
+    auditId: AUDIT_ID,
+    phase: 6,
+    completedAt: new Date().toISOString(),
+    mode: 'read-only',
+    writesPerformed: false,
+    summary:
+      'Phase 6 complete: audit coverage, fire-and-forget reliability, retention, DSGVO technical capability, and ISO-oriented alignment validated.',
+    artifacts: required,
+    notes: [
+      'No productive mutations; no legal advice; no ISO certification claim.',
+      'Audit-outbox target architecture documented only — not implemented.',
+      `Phase-6 findings: ${p6.length} (P0=${p0} P1=${p1} blockers=${blockers})`,
+      `Cumulative findings: ${findings.findings?.length ?? 0}`,
+    ],
+    data: {
+      phase6FindingCount: p6.length,
+      phase6P0: p0,
+      phase6P1: p1,
+      phase6ProductionBlockers: blockers,
+      summaryCounts: findings.summaryCounts ?? {},
+    },
+  };
+}
+
 function main(): void {
   assertReadOnlyPosture();
   const phase = parsePhase();
@@ -311,6 +374,8 @@ function main(): void {
     result = phase4VpsIntegrity();
   } else if (phase === 5) {
     result = phase5LifecycleGovernance();
+  } else if (phase === 6) {
+    result = phase6AuditPrivacyControls();
   } else {
     console.error(
       JSON.stringify(

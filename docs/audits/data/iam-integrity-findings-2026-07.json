@@ -1,6 +1,6 @@
 {
   "auditId": "users-roles-production-readiness-2026-07",
-  "phase": 5,
+  "phase": 6,
   "capturedAt": "2026-07-21T01:06:03.353647+00:00",
   "mode": "read-only",
   "writesPerformed": false,
@@ -12,10 +12,10 @@
     "windowDaysSessionsActivity": 90
   },
   "summaryCounts": {
-    "findings": 26,
-    "P0": 13,
-    "P1": 10,
-    "P2": 3,
+    "findings": 44,
+    "P0": 26,
+    "P1": 14,
+    "P2": 4,
     "roleDriftLinkedRows": 0,
     "noRoleLinkActiveMemberships": 1,
     "privilegedDriftCases": 0,
@@ -23,7 +23,8 @@
     "singleAdminOrgs": 1,
     "zeroAdminOrgsWithMembers": 0,
     "phase5FindingsAdded": 16,
-    "productionBlockers": 13
+    "productionBlockers": 25,
+    "phase6FindingsAdded": 18
   },
   "findings": [
     {
@@ -554,6 +555,366 @@
         "mfa_enroll_totp_login_challenge"
       ],
       "productionBlocker": false
+    },
+    {
+      "id": "UR-P6-FF-01",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "audit_reliability",
+      "title": "IAM audits are fire-and-forget (void record); mutations commit even if audit fails",
+      "codeEvidence": "AuditService intentionally swallows errors; callers void this.userAudit.record / void this.audit.record after prisma commits",
+      "dataEvidence": "Phase4 iamAuditActionsAllTime={}; password UPDATE events=89 without matching auditAction rows",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Security-relevant IAM changes can leave no durable evidence; governance and forensics unreliable",
+      "reproduction": "Inspect AuditService.record catch; grep void this.userAudit.record in users/invite/role modules",
+      "recommendation": "Target architecture: mutation + audit outbox same DB transaction; immutable worker; retry+DLQ — do not implement in this audit phase",
+      "requiredTests": [
+        "iam_mutation_fails_if_outbox_insert_fails",
+        "audit_worker_retries_then_dlq"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-FF-03",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "audit_reliability",
+      "title": "Audit writes are not in the same DB transaction as IAM mutations",
+      "codeEvidence": "acceptInvite/removeOrgUser/changeOrgUserPassword complete domain write then void audit via separate prisma.activityLog.create",
+      "dataEvidence": "n/a code architecture",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "No atomicity between access change and evidence",
+      "reproduction": "Read invite accept transaction vs subsequent userAudit.record",
+      "recommendation": "Transactional outbox row inserted with membership/user update",
+      "requiredTests": [
+        "outbox_row_created_in_same_transaction"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-FF-04",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "audit_reliability",
+      "title": "No audit outbox, retry worker, or dead-letter queue",
+      "codeEvidence": "No AuditOutbox model; AuditService only logger.error on failure",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Dropped audits are not recoverable",
+      "reproduction": "Schema search outbox; AuditService catch block",
+      "recommendation": "Implement outbox+worker+DLQ per documented target architecture",
+      "requiredTests": [
+        "audit_dlq_metric_alert"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-AC-06",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "audit_coverage",
+      "title": "Refresh-token reuse detection is not written to ActivityLog",
+      "codeEvidence": "refresh-token.service.ts logs Logger.warn and revokeFamily; no audit.record",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Credential-theft signal missing from revision-safe store",
+      "reproduction": "Read reuse branch in RefreshTokenService.rotate",
+      "recommendation": "CRITICAL ActivityLog on reuse with family id alias; alert",
+      "requiredTests": [
+        "refresh_reuse_writes_critical_audit"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-AC-08",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "audit_coverage",
+      "title": "Master-admin password reset has no UserAccessAudit / ActivityLog record",
+      "codeEvidence": "users.service changePasswordAdmin updates hash without userAudit; org path has USER_PASSWORD_RESET_BY_ADMIN",
+      "dataEvidence": "Phase4/5 prior findings",
+      "affectedOrganizationCount": 0,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 14,
+      "impact": "Highest-privilege credential change can be invisible in IAM audit codes",
+      "reproduction": "Read changePasswordAdmin vs changeOrgUserPassword",
+      "recommendation": "Mandatory CRITICAL audit + session revoke + notify",
+      "requiredTests": [
+        "master_password_reset_writes_critical_audit"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-MP-02",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "audit_integrity",
+      "title": "Activity logs are not append-only; deletable via retention and platform prune; no hash-chain",
+      "codeEvidence": "DataRetentionScheduler can delete activity_logs; platform-admin.service deleteMany activityLog; no hash fields/triggers",
+      "dataEvidence": "RETENTION_ACTIVITY_LOGS_DAYS default 0 (keep) but delete path exists when configured; prune wipes all",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Evidence can be destroyed; org admins cannot API-update logs but platform/DB can erase history",
+      "reproduction": "Read retention.config activityLogs + platform prune + ActivityLog model",
+      "recommendation": "WORM/immutable store or hash-chain; separate security log; restrict prune; legal hold",
+      "requiredTests": [
+        "activity_log_update_forbidden",
+        "prune_requires_break_glass_audit"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-RET-02",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "privacy_minimization",
+      "title": "AuditService bypasses ActivityLogService PII scrubbing; invite/user audits may embed emails",
+      "codeEvidence": "ActivityLogService.log scrubs description/metaJson; AuditService.prisma.activityLog.create raw; invite descriptions include email",
+      "dataEvidence": "n/a code",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Data minimization failure in the primary IAM evidence path",
+      "reproduction": "Compare ActivityLogService.log vs AuditService.record",
+      "recommendation": "Route all writes through scrubbing; store subject aliases not emails in descriptions",
+      "requiredTests": [
+        "audit_record_scrubs_email_patterns"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-RET-07",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "retention",
+      "title": "IP/UA in activity_logs have default retention disabled (keep forever); lastLoginIp unbounded",
+      "codeEvidence": "RETENTION_ACTIVITY_LOGS_DAYS default 0; User.lastLoginIp no TTL job",
+      "dataEvidence": "Phase4 sessionMetadataHasIpFlagCount=80",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 80,
+      "impact": "Technical PII likely retained longer than necessary without configured policy",
+      "reproduction": "Read retention.config.ts defaults",
+      "recommendation": "Organizational policy then finite TTL; separate security retention; scrub on erase",
+      "requiredTests": [
+        "activity_log_ip_ttl_enforced_when_configured"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P6-GDPR-04",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "dsgvo_technical",
+      "title": "No safe multi-org global erasure/anonymization orchestration for User identity",
+      "codeEvidence": "removeOrgUser keeps User (good); users.service.delete hard-deletes without cross-org orchestration/anonymize fields",
+      "dataEvidence": "No User.piiAnonymizedAt; customer anonymize is placeholder only",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Cannot technically execute controlled identity erasure across tenants with evidence preservation rules",
+      "reproduction": "Code search anonymize/erase for User; read delete(id)",
+      "recommendation": "Erasure orchestrator: memberships invites sessions tokens; anonymize audits; legal hold checks",
+      "requiredTests": [
+        "global_erase_requires_all_org_memberships_resolved"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-GDPR-10",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "dsgvo_technical",
+      "title": "Privacy by default weak for IAM (plaintext invites, clipboard secrets, no MFA, verbose audits)",
+      "codeEvidence": "Phase5 invite/password findings; AuditService unsanitized; MFA flags false",
+      "dataEvidence": "prior phases",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "System defaults increase personal-data exposure surface",
+      "reproduction": "Invite create response + Account security DTO",
+      "recommendation": "Default to email-only invites; no FE secrets; scrub logs; MFA for privileged",
+      "requiredTests": [
+        "invite_response_omits_token_default"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-ISO-07",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "iso_alignment",
+      "title": "Segregation of Duties technically missing for privileged IAM actions",
+      "codeEvidence": "Single actor with users-roles.manage can invite ORG_ADMIN, reset password, remove users without dual control",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 1,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "ISO-oriented SoD control objective unsupported in product",
+      "reproduction": "Permission matrix on privileged routes",
+      "recommendation": "Maker-checker or step-up+second approver for privileged IAM",
+      "requiredTests": [
+        "org_admin_invite_requires_second_approval"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-ISO-17",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "iso_alignment",
+      "title": "Periodic access review control technically MISSING",
+      "codeEvidence": "Phase5 access-review readiness; no model/scheduler",
+      "dataEvidence": "accessReviewsFound=0",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Cannot demonstrate periodic access rights review in-product",
+      "reproduction": "Schema/code search AccessReview",
+      "recommendation": "Implement minimum model from Phase5 CSV; depends on EffectiveAccess",
+      "requiredTests": [
+        "access_review_campaign_export"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-AC-24",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "audit_coverage",
+      "title": "Break-glass / seed-admin usage has no dedicated IAM audit code",
+      "codeEvidence": "ENABLE_SEED_ADMIN runtime; no BREAK_GLASS UserAccessAuditAction",
+      "dataEvidence": "Phase1 runtime snapshot seed-admin enabled",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Emergency privileged path not revision-safe",
+      "reproduction": "Env presence + enum UserAccessAuditAction inventory",
+      "recommendation": "Disable seed-admin in prod; formal break-glass with CRITICAL audit",
+      "requiredTests": [
+        "seed_admin_disabled_in_production_config"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P6-FF-05",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "audit_reliability",
+      "title": "Missing IAM audit rows not automatically detected or alerted",
+      "codeEvidence": "No reconcile job comparing mutations to auditAction evidence",
+      "dataEvidence": "Phase4 zero auditAction vs 89 UPDATEs",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Evidence gaps persist unnoticed",
+      "reproduction": "Compare activity_logs auditAction counts to AUTH UPDATE counts",
+      "recommendation": "Monitoring: alert on IAM mutation without outbox/audit within SLA",
+      "requiredTests": [
+        "metric_iam_audit_lag"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P6-MP-03",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "audit_export",
+      "title": "No dedicated auditor export; reading activity-log is not itself audited",
+      "codeEvidence": "ActivityLogController GET only; no export audit producer",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Weak chain of custody for evidence packages",
+      "reproduction": "Inspect activity-log.controller.ts",
+      "recommendation": "Export endpoint with redaction + audit of export",
+      "requiredTests": [
+        "activity_export_writes_audit"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P6-GDPR-02",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "dsgvo_technical",
+      "title": "No tenant-scoped IAM data-portability / Auskunft export package",
+      "codeEvidence": "No DSAR/export orchestrator for user+memberships+invites+sessions+logs",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Technical Auskunft/Portability support incomplete",
+      "reproduction": "Code search portability/DSAR/export for users module",
+      "recommendation": "Build subject export with mandant separation and redaction",
+      "requiredTests": [
+        "dsar_export_org_scoped"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P6-RET-09",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "retention",
+      "title": "No retention/prune job for organization_user_invites (email + token hashes)",
+      "codeEvidence": "DataRetentionScheduler targets omit invites; only expiry status on validate",
+      "dataEvidence": "Phase4 invitesTotal=0 but code gap remains",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Invite PII and token material can accumulate indefinitely when invites used",
+      "reproduction": "Read data-retention.scheduler buildTargets",
+      "recommendation": "Prune accepted/expired/revoked invites after grace; keep audit aliases",
+      "requiredTests": [
+        "invite_retention_prunes_expired"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P6-DISCLAIMER",
+      "severity": "P2",
+      "confidence": "high",
+      "category": "scope",
+      "title": "Phase-6 matrices are technical alignment only — not legal advice or ISO certification",
+      "codeEvidence": "Prompt-6 scope; CSV disclaimers",
+      "dataEvidence": "n/a",
+      "affectedOrganizationCount": 0,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Readers must not treat readiness labels as compliance certification",
+      "reproduction": "n/a",
+      "recommendation": "Engage legal/compliance for binding assessments; use matrices as engineering backlog input",
+      "requiredTests": [],
+      "productionBlocker": false
     }
   ],
   "phase5CapturedAt": "2026-07-21T01:14:07.761996+00:00",
@@ -566,6 +927,20 @@
       "iam-mfa-step-up-matrix-2026-07.csv",
       "iam-joiner-mover-leaver-2026-07.csv",
       "iam-access-review-readiness-2026-07.csv"
+    ]
+  },
+  "phase6CapturedAt": "2026-07-21T01:20:44.788386+00:00",
+  "phase6Scope": {
+    "method": "code_static_plus_prior_vps_read_only",
+    "productiveActions": false,
+    "legalAdvice": false,
+    "isoCertificationClaim": false,
+    "artifacts": [
+      "iam-audit-event-coverage-2026-07.csv",
+      "iam-audit-transaction-reliability-2026-07.csv",
+      "iam-data-retention-classification-2026-07.csv",
+      "iam-dsgvo-technical-capability-2026-07.csv",
+      "iam-iso27001-control-alignment-2026-07.csv"
     ]
   }
 }
