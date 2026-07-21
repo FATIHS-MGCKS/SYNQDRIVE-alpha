@@ -10,6 +10,8 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/auth/login',
   '/api/v1/auth/refresh',
   '/api/v1/auth/logout',
+  '/api/v1/auth/password-reset/request',
+  '/api/v1/auth/password-reset/confirm',
   // Seed-admin bootstrap: still token-gated via SEED_ADMIN_TOKEN + ENABLE_SEED_ADMIN in controller.
   '/api/v1/auth/seed-admin',
   '/api/v1/invites/validate',

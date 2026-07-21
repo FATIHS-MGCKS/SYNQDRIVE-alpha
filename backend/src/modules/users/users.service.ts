@@ -43,6 +43,7 @@ import {
   IamSessionPolicyService,
   type IamSessionRevocationIntentInput,
 } from '@modules/auth/iam-session-policy.service';
+import { PasswordResetService } from '@modules/auth/password-reset.service';
 
 const ROLE_DISPLAY: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -110,6 +111,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly userAudit: UserAccessAuditService,
     private readonly sessionPolicy: IamSessionPolicyService,
+    private readonly passwordReset: PasswordResetService,
   ) {}
 
   private assertPasswordStrength(password: string): void {
@@ -738,17 +740,8 @@ export class UsersService {
     orgId: string,
     userId: string,
     actor: PermissionActor,
-    options?: { reason?: string },
+    options?: { reason?: string; ipAddress?: string; userAgent?: string },
   ) {
-    const membership = await this.prisma.organizationMembership.findFirst({
-      where: { organizationId: orgId, userId },
-      include: { user: { select: { email: true } } },
-    });
-    if (!membership) throw new NotFoundException('User not found in organization');
-    if (membership.status === MembershipStatus.REMOVED) {
-      throw new BadRequestException('Cannot request password reset for a removed membership');
-    }
-
     await assertMembershipPermission(
       this.prisma,
       actor,
@@ -757,22 +750,16 @@ export class UsersService {
       'manage',
     );
 
-    void this.userAudit.record({
+    return this.passwordReset.requestAdminReset({
       organizationId: orgId,
+      userId,
       actorUserId: actor.id,
-      auditAction: UserAccessAuditAction.USER_PASSWORD_RESET_REQUESTED,
-      targetUserId: userId,
-      description: `Passwort-Reset angefordert für Benutzer ${userId}`,
-      metadata: options?.reason ? { reason: options.reason } : undefined,
+      reason: options?.reason,
+      context: {
+        ipAddress: options?.ipAddress,
+        userAgent: options?.userAgent,
+      },
     });
-
-    return {
-      code: 'PASSWORD_RESET_REQUEST_RECORDED',
-      message:
-        'Password reset request recorded. Email delivery and token issuance are handled by the global reset flow (not org-admin direct password write).',
-      targetUserId: userId,
-      organizationId: orgId,
-    };
   }
 
   async removeOrgUser(orgId: string, userId: string, actor?: PermissionActor) {

@@ -8,6 +8,17 @@ export interface SendInviteMailInput {
   invitedByName?: string;
 }
 
+export interface SendPasswordResetMailInput {
+  to: string;
+  resetUrl: string;
+  expiresAt: Date;
+  purpose: 'ADMIN_INITIATED' | 'SELF_SERVICE';
+}
+
+export interface SendPasswordResetCompletedMailInput {
+  to: string;
+}
+
 export interface MailSendResult {
   sent: boolean;
   fallback: boolean;
@@ -49,5 +60,26 @@ export class TransactionalMailService {
     this.logger.debug(`[mail-fallback-body]\n${body}`);
 
     return { sent: false, fallback: true, provider: smtpHost ? 'smtp-pending' : 'log' };
+  }
+
+  async sendPasswordReset(input: SendPasswordResetMailInput): Promise<MailSendResult> {
+    const from = process.env.MAIL_FROM?.trim() || 'noreply@synqdrive.local';
+    const subject = 'SynqDrive — Passwort zurücksetzen';
+
+    // Do not log resetUrl or token — email channel only.
+    this.logger.log(
+      `[mail] password-reset queued → ${input.to} | purpose=${input.purpose} | expires=${input.expiresAt.toISOString()} | from=${from} | subject=${subject}`,
+    );
+
+    return { sent: false, fallback: true, provider: 'log' };
+  }
+
+  async sendPasswordResetCompleted(
+    input: SendPasswordResetCompletedMailInput,
+  ): Promise<MailSendResult> {
+    this.logger.log(
+      `[mail] password-reset-completed notification → ${input.to}`,
+    );
+    return { sent: false, fallback: true, provider: 'log' };
   }
 }

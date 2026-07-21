@@ -68,12 +68,20 @@ export function createUsersServiceHarness() {
     enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: [], scopes: [] }),
     processIntents: jest.fn().mockResolvedValue([]),
   };
+  const passwordReset = {
+    requestAdminReset: jest.fn().mockResolvedValue({
+      status: 'accepted',
+      message:
+        'If an account exists for this request, password reset instructions will be sent to the verified email address.',
+    }),
+  };
   const service = new UsersService(
     prisma as unknown as PrismaService,
     userAudit as unknown as UserAccessAuditService,
     sessionPolicy as unknown as IamSessionPolicyService,
+    passwordReset as unknown as import('@modules/auth/password-reset.service').PasswordResetService,
   );
-  return { prisma, userAudit, sessionPolicy, service };
+  return { prisma, userAudit, sessionPolicy, passwordReset, service };
 }
 
 export function createInviteServiceHarness() {

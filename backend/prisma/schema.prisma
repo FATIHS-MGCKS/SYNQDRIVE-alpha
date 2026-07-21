@@ -1640,6 +1640,7 @@ model User {
   activityLogs                        ActivityLog[]
   refreshTokens                       RefreshToken[]
   iamSessionRevocationIntents         IamSessionRevocationIntent[]
+  passwordResetTokens                 PasswordResetToken[]
   accountPreferences                  UserAccountPreference[]
   notificationPreferences             UserNotificationPreference[]
   invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
@@ -1818,6 +1819,43 @@ model IamSessionRevocationIntent {
   @@index([status, createdAt])
   @@index([userId])
   @@map("iam_session_revocation_intents")
+}
+
+enum PasswordResetPurpose {
+  ADMIN_INITIATED
+  SELF_SERVICE
+}
+
+model PasswordResetToken {
+  id             String               @id @default(uuid())
+  userId         String               @map("user_id")
+  tokenHash      String               @map("token_hash")
+  tokenLookup    String               @unique @map("token_lookup")
+  purpose        PasswordResetPurpose
+  organizationId String?              @map("organization_id")
+  actorUserId    String?              @map("actor_user_id")
+  reason         String?
+  expiresAt      DateTime             @map("expires_at")
+  usedAt         DateTime?            @map("used_at")
+  revokedAt      DateTime?            @map("revoked_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model PasswordResetAttempt {
+  id             String   @id @default(uuid())
+  scope          String
+  scopeKey       String   @map("scope_key")
+  organizationId String?  @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([scope, scopeKey, createdAt])
+  @@map("password_reset_attempts")
 }
 
 // ------------------------------------------------

@@ -19,6 +19,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { PasswordPolicyService } from '@shared/auth/password-policy.service';
 import {
   NOTIFICATION_CATEGORY_META,
   NOTIFICATION_CATEGORY_ORDER,
@@ -51,6 +52,7 @@ export class AccountService {
     private readonly audit: AuditService,
     private readonly refreshTokens: RefreshTokenService,
     private readonly sessionPolicy: IamSessionPolicyService,
+    private readonly passwordPolicy: PasswordPolicyService,
   ) {}
 
   async getMe(userId: string, jwtOrgId: string | null): Promise<AccountMeDto> {
@@ -257,7 +259,7 @@ export class AccountService {
     if (dto.newPassword === dto.currentPassword) {
       throw new BadRequestException('newPassword must differ from currentPassword');
     }
-    this.assertPasswordPolicy(dto.newPassword);
+    this.passwordPolicy.assertAcceptablePassword(dto.newPassword);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.passwordHash) {
@@ -510,13 +512,6 @@ export class AccountService {
       throw new BadRequestException(
         'SECURITY notifications must keep at least inApp or email enabled',
       );
-    }
-  }
-
-  private assertPasswordPolicy(password: string) {
-    const minLength = 10;
-    if (!password || password.length < minLength) {
-      throw new BadRequestException(`Password must be at least ${minLength} characters`);
     }
   }
 

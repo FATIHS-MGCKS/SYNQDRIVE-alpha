@@ -10,6 +10,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { PasswordPolicyService } from '@shared/auth/password-policy.service';
 
 describe('AccountService', () => {
   const userId = 'user-1';
@@ -95,7 +96,15 @@ describe('AccountService', () => {
     processIntents: jest.fn().mockResolvedValue([]),
   } as unknown as IamSessionPolicyService;
 
-  const service = new AccountService(prisma, audit, refreshTokens, sessionPolicy);
+  const passwordPolicy = new PasswordPolicyService();
+
+  const service = new AccountService(
+    prisma,
+    audit,
+    refreshTokens,
+    sessionPolicy,
+    passwordPolicy,
+  );
 
   function mockContext() {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(baseUser);

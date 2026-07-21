@@ -193,24 +193,9 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
   });
 
   describe('password reset request contract', () => {
-    it('records reset request without writing passwordHash', async () => {
-      const { prisma, userAudit, service } = createUsersServiceHarness();
-      prisma.organizationMembership.findFirst.mockImplementation(
-        async (args: { where?: { userId?: string }; include?: unknown }) => {
-          const userId = args?.where?.userId;
-          if (userId === IAM_REGRESSION_IDS.adminA) {
-            return { role: MembershipRole.ORG_ADMIN, permissions: null };
-          }
-          if (userId === IAM_REGRESSION_IDS.multiOrgUser) {
-            return {
-              id: IAM_REGRESSION_IDS.membershipA,
-              status: MembershipStatus.ACTIVE,
-              user: { email: 'multi@regression.test' },
-            };
-          }
-          return null;
-        },
-      );
+    it('delegates to PasswordResetService with neutral response only', async () => {
+      const { prisma, passwordReset, service } = createUsersServiceHarness();
+      mockOrgAdminActorMembership(prisma, activeWorkerMembership);
 
       const result = await service.requestOrgUserPasswordReset(
         IAM_REGRESSION_IDS.orgA,
@@ -219,9 +204,10 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
         { reason: 'User locked out' },
       );
 
-      expect(result.code).toBe('PASSWORD_RESET_REQUEST_RECORDED');
-      expect(prisma.user.update).not.toHaveBeenCalled();
-      expect(userAudit.record).toHaveBeenCalled();
+      expect(passwordReset.requestAdminReset).toHaveBeenCalled();
+      expect(result.status).toBe('accepted');
+      expect(result).not.toHaveProperty('targetUserId');
+      expect(JSON.stringify(result)).not.toMatch(/token|resetUrl/i);
     });
   });
 

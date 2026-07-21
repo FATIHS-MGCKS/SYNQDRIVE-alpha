@@ -14,6 +14,11 @@ import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { PasswordResetService } from './password-reset.service';
+import {
+  ConfirmPasswordResetDto,
+  RequestPasswordResetDto,
+} from './dto/password-reset.dto';
 import { LoginDto, RefreshTokenDto, LogoutDto } from '@shared/dto/auth.dto';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
@@ -28,6 +33,7 @@ export class AuthController {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly passwordResetService: PasswordResetService,
     private readonly audit: AuditService,
   ) {
     // JWT_SECRET is validated at startup by app.config.ts; reading it here is safe
@@ -177,6 +183,35 @@ export class AuthController {
         permissions: (membership?.permissions as Record<string, { read: boolean; write: boolean }>) ?? null,
       },
     };
+  }
+
+  /** Public self-service password reset request (enumeration-safe). */
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('password-reset/request')
+  @HttpCode(HttpStatus.OK)
+  async requestPasswordReset(@Body() body: RequestPasswordResetDto, @Req() req: any) {
+    return this.passwordResetService.requestSelfServiceReset({
+      email: body.email,
+      context: {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    });
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('password-reset/confirm')
+  @HttpCode(HttpStatus.OK)
+  async confirmPasswordReset(@Body() body: ConfirmPasswordResetDto, @Req() req: any) {
+    return this.passwordResetService.confirmReset({
+      token: body.token,
+      newPassword: body.newPassword,
+      confirmPassword: body.confirmPassword,
+      context: {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    });
   }
 
   /** Exchange a valid refresh token for a new access + refresh token pair (rotation). */

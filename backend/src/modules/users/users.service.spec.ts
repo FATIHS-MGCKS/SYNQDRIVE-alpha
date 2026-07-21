@@ -5,6 +5,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { UserAccessAuditService } from './user-access-audit.service';
 import { LAST_ORG_ADMIN_MESSAGE } from '@shared/auth/permission.constants';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { PasswordResetService } from '@modules/auth/password-reset.service';
 
 describe('UsersService — security & membership', () => {
   const orgId = 'org-1';
@@ -33,6 +34,7 @@ describe('UsersService — security & membership', () => {
     enqueueInTransaction: jest.Mock;
     processIntents: jest.Mock;
   };
+  let passwordReset: { requestAdminReset: jest.Mock };
   let service: UsersService;
 
   beforeEach(() => {
@@ -60,10 +62,18 @@ describe('UsersService — security & membership', () => {
       enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: ['intent-1'], scopes: [] }),
       processIntents: jest.fn().mockResolvedValue([]),
     };
+    passwordReset = {
+      requestAdminReset: jest.fn().mockResolvedValue({
+        status: 'accepted',
+        message:
+          'If an account exists for this request, password reset instructions will be sent to the verified email address.',
+      }),
+    };
     service = new UsersService(
       prisma as unknown as PrismaService,
       userAudit as unknown as UserAccessAuditService,
       sessionPolicy as unknown as IamSessionPolicyService,
+      passwordReset as unknown as PasswordResetService,
     );
   });
 

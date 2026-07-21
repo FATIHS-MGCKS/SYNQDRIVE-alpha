@@ -153,7 +153,11 @@ export class UsersController {
       orgId,
       userId,
       req.user ?? {},
-      { reason: body.reason },
+      {
+        reason: body.reason,
+        ipAddress: (req as { ip?: string }).ip,
+        userAgent: (req as { headers?: Record<string, string> }).headers?.['user-agent'],
+      },
     );
   }
 

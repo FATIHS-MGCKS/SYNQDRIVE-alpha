@@ -4,7 +4,7 @@
 |-------|-------|
 | **Audit** | `docs/audits/users-roles-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/users-roles-production-readiness-2026-07` @ `0f99ce41` |
-| **Implementation branch** | `cursor/iam-session-invalidation-policy-fb6e` |
+| **Implementation branch** | `cursor/iam-secure-password-reset-fb6e` |
 | **Verdict (audit)** | **NOT_READY** (28× P0, 27 production blockers) |
 | **Mode** | Identity & session truth → roles & audit → governance & UI (22 prompts) |
 
@@ -33,9 +33,9 @@
 | 2 | Security regression test harness (A–K) | ✅ | `284aaf6b` |
 | 3 | Bootstrap/seed admin hardening | ⬜ | — |
 | 4 | Isolate org membership admin from global identity | ✅ | `ceae35bb` |
-| 5 | Central session invalidation policy | ✅ | (this commit) |
-| 6 | Org-bound refresh tokens | ⬜ | — |
-| 7 | Central EffectiveAccessEngine | ⬜ | — |
+| 5 | Central session invalidation policy | ✅ | `6e320e44` |
+| 6 | Secure password self-service reset | ✅ | (this commit) |
+| 7 | Org-bound refresh tokens | ⬜ | — |
 | 8 | Versioned roles + assignment link | ⬜ | — |
 | 9 | Role propagation + drift detection | ⬜ | — |
 | 10 | Endpoint/Guard hardening | ⬜ | — |
@@ -122,6 +122,19 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 - Refresh tokens store `organizationId` for multi-org scoped revocation
 - Wired: membership suspend/remove/role/permission/station, password change, refresh reuse
 - `architecture/IAM_SESSION_INVALIDATION_POLICY_2026-07-21.md`
+
+---
+
+## Prompt 6 — Secure Password Self-Service Reset
+
+**Datum:** 2026-07-21 UTC
+
+- `PasswordResetService` — admin request → email token → user confirm (global identity)
+- Org admin API: neutral `{ status: accepted }` only — no password, token, or URL
+- Public `POST /auth/password-reset/request|confirm`
+- `PasswordPolicyService` central validation; rate limits per IP/email/org
+- Confirm triggers `PASSWORD_CHANGED` session revocation + `USER_PASSWORD_RESET_COMPLETED` audit
+- `architecture/IAM_PASSWORD_RESET_SELF_SERVICE_2026-07-21.md`
 
 ---
 

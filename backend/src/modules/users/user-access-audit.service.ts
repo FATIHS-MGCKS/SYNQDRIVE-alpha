@@ -14,6 +14,7 @@ export const UserAccessAuditAction = {
   USER_STATION_SCOPE_CHANGED: 'USER_STATION_SCOPE_CHANGED',
   USER_PASSWORD_RESET_BY_ADMIN: 'USER_PASSWORD_RESET_BY_ADMIN',
   USER_PASSWORD_RESET_REQUESTED: 'USER_PASSWORD_RESET_REQUESTED',
+  USER_PASSWORD_RESET_COMPLETED: 'USER_PASSWORD_RESET_COMPLETED',
   SESSION_INVALIDATION_EXECUTED: 'SESSION_INVALIDATION_EXECUTED',
   USER_INVITED: 'USER_INVITED',
   USER_INVITE_RESENT: 'USER_INVITE_RESENT',
@@ -109,7 +110,10 @@ export class UserAccessAuditService {
     ) {
       return ActivityAction.CREATE;
     }
-    if (auditAction.includes('RESET')) {
+    if (
+      auditAction.includes('RESET') ||
+      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_COMPLETED
+    ) {
       return ActivityAction.RESET;
     }
     return ActivityAction.UPDATE;
@@ -123,6 +127,7 @@ export class UserAccessAuditService {
       auditAction === UserAccessAuditAction.USER_PERMISSIONS_CHANGED ||
       auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN ||
       auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_REQUESTED ||
+      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_COMPLETED ||
       auditAction === UserAccessAuditAction.SESSION_INVALIDATION_EXECUTED
     ) {
       return 'WARN';

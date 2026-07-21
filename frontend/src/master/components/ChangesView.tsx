@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-password-reset-self-service-v49708-2026-07-21',
+    version: '4.9.708',
+    title: 'V4.9.708 — IAM secure password self-service reset (Prompt 6)',
+    summary: [
+      'Org admin password reset: neutral API only — token emailed to verified global address, never returned in API.',
+      'PasswordResetService with hash-only tokens, rate limits, central PasswordPolicyService.',
+      'Confirm flow revokes all sessions via IamSessionPolicyService; public /auth/password-reset/* endpoints.',
+    ],
+    reason: 'Users & Roles remediation Prompt 6 — admin never sets or knows user passwords.',
+    previousBehavior:
+      'Org admin change-password endpoint accepted plaintext passwords; reset request was audit-only stub without token/email flow.',
+    details:
+      'backend/src/modules/auth/password-reset.service.ts, architecture/IAM_PASSWORD_RESET_SELF_SERVICE_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:05:00.000Z',
+  },
+  {
     id: 'iam-session-invalidation-policy-v49707-2026-07-21',
     version: '4.9.707',
     title: 'V4.9.707 — IAM central session invalidation policy (Prompt 5)',
