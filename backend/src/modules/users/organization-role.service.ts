@@ -12,7 +12,8 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 import { computeEffectiveAccess } from './policies/effective-access-engine';
-import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
+import { assertNotLastEffectiveOrgAdmin } from './org-admin-protection.util';
+import { hasStructuralRoleChanges } from './policies/role-change-impact.policy';
 import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from './defaults/organization-role.defaults';
 import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
 import { OrganizationRoleVersionService } from './organization-role-version.service';
@@ -137,6 +138,12 @@ export class OrganizationRoleService {
     dto: UpdateOrganizationRoleDto,
     actorUserId?: string,
   ) {
+    if (hasStructuralRoleChanges(dto)) {
+      throw new BadRequestException(
+        'Structural role changes require previewRoleChange and applyRoleChange',
+      );
+    }
+
     const before = await this.findRoleOrThrow(orgId, roleId);
     if (before.isSystemTemplate && dto.name && dto.name !== before.name) {
       throw new BadRequestException('System role templates cannot be renamed');
@@ -154,11 +161,6 @@ export class OrganizationRoleService {
       );
     }
 
-    const permissions =
-      dto.permissions !== undefined
-        ? normalizeMembershipPermissions(dto.permissions)
-        : undefined;
-
     const role = await this.prisma.organizationRole.update({
       where: { id: roleId },
       data: {
@@ -166,46 +168,9 @@ export class OrganizationRoleService {
         ...(dto.description !== undefined
           ? { description: dto.description?.trim() || null }
           : {}),
-        ...(dto.membershipRole !== undefined
-          ? { membershipRole: dto.membershipRole as MembershipRole }
-          : {}),
-        ...(permissions !== undefined
-          ? {
-              permissions: permissions
-                ? (permissions as unknown as Prisma.InputJsonValue)
-                : Prisma.JsonNull,
-            }
-          : {}),
-        ...(dto.stationScopeDefault !== undefined
-          ? { stationScopeDefault: dto.stationScopeDefault?.trim() || null }
-          : {}),
-        ...(dto.defaultStationIds !== undefined
-          ? {
-              defaultStationIds: dto.defaultStationIds?.length
-                ? dto.defaultStationIds
-                : Prisma.JsonNull,
-            }
-          : {}),
-        ...(dto.fieldAgentAccessDefault !== undefined
-          ? { fieldAgentAccessDefault: dto.fieldAgentAccessDefault }
-          : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });
-
-    await this.roleVersionService.maybeCreateVersionOnRoleUpdate(
-      orgId,
-      roleId,
-      role,
-      {
-        permissions: dto.permissions,
-        membershipRole: dto.membershipRole as MembershipRole | undefined,
-        stationScopeDefault: dto.stationScopeDefault,
-        defaultStationIds: dto.defaultStationIds,
-        fieldAgentAccessDefault: dto.fieldAgentAccessDefault,
-      },
-      actorUserId,
-    );
 
     void this.userAudit.record({
       organizationId: orgId,
@@ -330,7 +295,7 @@ export class OrganizationRoleService {
       role.membershipRole !== MembershipRole.ORG_ADMIN &&
       membership.status === MembershipStatus.ACTIVE
     ) {
-      await assertNotLastActiveOrgAdmin(this.prisma, orgId, userId);
+      await assertNotLastEffectiveOrgAdmin(this.prisma, orgId, userId);
     }
 
     const { assignment, membership: updated } =

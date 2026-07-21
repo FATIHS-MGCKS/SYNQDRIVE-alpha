@@ -265,7 +265,7 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
   });
 
   describe('F — Role drift', () => {
-    it('characterization: updateRole does not propagate permissions to assigned memberships', async () => {
+    it('characterization: updateRole rejects structural permission changes', async () => {
       const { prisma, service } = createRoleServiceHarness();
       prisma.organizationRole.findFirst.mockResolvedValue({
         id: IAM_REGRESSION_IDS.roleWorker,
@@ -284,35 +284,20 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      prisma.organizationRole.update.mockResolvedValue({
-        id: IAM_REGRESSION_IDS.roleWorker,
-        organizationId: IAM_REGRESSION_IDS.orgA,
-        name: 'Worker',
-        description: null,
-        systemKey: null,
-        isSystemTemplate: false,
-        isDefault: false,
-        isActive: true,
-        membershipRole: MembershipRole.WORKER,
-        permissions: { bookings: { read: true, write: false } },
-        fieldAgentAccessDefault: false,
-        stationScopeDefault: null,
-        defaultStationIds: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
 
-      await service.updateRole(
-        IAM_REGRESSION_IDS.orgA,
-        IAM_REGRESSION_IDS.roleWorker,
-        { permissions: { bookings: { read: true, write: false } } },
-        IAM_REGRESSION_IDS.adminA,
-      );
+      await expect(
+        service.updateRole(
+          IAM_REGRESSION_IDS.orgA,
+          IAM_REGRESSION_IDS.roleWorker,
+          { permissions: { bookings: { read: true, write: false } } },
+          IAM_REGRESSION_IDS.adminA,
+        ),
+      ).rejects.toThrow(/previewRoleChange/);
 
       expect(prisma.organizationMembership.update).not.toHaveBeenCalled();
     });
 
-    it('TARGET RED: role permission reduction must update assigned membership snapshots', async () => {
+    it('TARGET: structural role changes must use applyRoleChange not silent updateRole', async () => {
       const { prisma, service } = createRoleServiceHarness();
       prisma.organizationRole.findFirst.mockResolvedValue({
         id: IAM_REGRESSION_IDS.roleWorker,
@@ -322,22 +307,15 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         membershipRole: MembershipRole.WORKER,
         permissions: { bookings: { read: true, write: true } },
       });
-      prisma.organizationRole.update.mockResolvedValue({
-        id: IAM_REGRESSION_IDS.roleWorker,
-        permissions: { bookings: { read: true, write: false } },
-      });
-      prisma.organizationMembership.findMany.mockResolvedValue([
-        { id: IAM_REGRESSION_IDS.membershipA },
-      ]);
 
-      await service.updateRole(
-        IAM_REGRESSION_IDS.orgA,
-        IAM_REGRESSION_IDS.roleWorker,
-        { permissions: { bookings: { read: true, write: false } } },
-        IAM_REGRESSION_IDS.adminA,
-      );
-
-      expect(prisma.organizationMembership.update).toHaveBeenCalled();
+      await expect(
+        service.updateRole(
+          IAM_REGRESSION_IDS.orgA,
+          IAM_REGRESSION_IDS.roleWorker,
+          { permissions: { bookings: { read: true, write: false } } },
+          IAM_REGRESSION_IDS.adminA,
+        ),
+      ).rejects.toThrow(/previewRoleChange/);
     });
   });
 
@@ -584,7 +562,9 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
           findFirst: jest.fn().mockResolvedValue({
             role: MembershipRole.ORG_ADMIN,
             status: MembershipStatus.ACTIVE,
+            permissions: null,
           }),
+          findMany: jest.fn().mockResolvedValue([]),
           count: jest.fn().mockResolvedValue(0),
         },
       };
@@ -594,7 +574,7 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('TARGET RED: custom role with users-roles.manage must count as effective admin', async () => {
+    it('TARGET: custom role with users-roles.manage counts as effective admin', async () => {
       const prisma = {
         organizationMembership: {
           findFirst: jest.fn().mockResolvedValue({
@@ -602,6 +582,7 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
             status: MembershipStatus.ACTIVE,
             permissions: { 'users-roles': { read: true, write: true, manage: true } },
           }),
+          findMany: jest.fn().mockResolvedValue([]),
           count: jest.fn().mockResolvedValue(0),
         },
       };

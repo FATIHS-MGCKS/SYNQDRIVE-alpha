@@ -224,6 +224,7 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
         stationIds: null,
         fieldAgentAccess: true,
       });
+      prisma.organizationMembership.findMany.mockResolvedValue([]);
       prisma.organizationMembership.count.mockResolvedValue(0);
 
       await expect(

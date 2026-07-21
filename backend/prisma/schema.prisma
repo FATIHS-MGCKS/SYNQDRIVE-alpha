@@ -1582,6 +1582,7 @@ model Organization {
   organizationRoleVersions               OrganizationRoleVersion[]
   organizationRoleAssignments            OrganizationRoleAssignment[]
   membershipPermissionOverrides          MembershipPermissionOverride[]
+  organizationRoleChangeApplications     OrganizationRoleChangeApplication[]
   organizationUserInvites                OrganizationUserInvite[]
   orgEmailSettings                       OrgEmailSettings?
   orgEmailDomains                        OrgEmailDomain[]
@@ -1654,6 +1655,7 @@ model User {
   organizationRoleVersionsCreated     OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
   organizationRoleAssignmentsCreated  OrganizationRoleAssignment[]          @relation("RoleAssignmentsCreated")
   membershipPermissionOverridesCreated MembershipPermissionOverride[]       @relation("PermissionOverridesCreated")
+  organizationRoleChangeApplications   OrganizationRoleChangeApplication[] @relation("RoleChangeApplications")
   billingPriceVersionsCreated         BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
   billingPriceVersionsPublished       BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
   billingSubscriptionsCreated         BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
@@ -1943,6 +1945,7 @@ model OrganizationRole {
   invites      OrganizationUserInvite[]
   versions     OrganizationRoleVersion[]
   assignments  OrganizationRoleAssignment[]
+  changeApplications OrganizationRoleChangeApplication[]
 
   @@unique([organizationId, systemKey])
   @@index([organizationId, isActive])
@@ -1970,6 +1973,7 @@ model OrganizationRoleVersion {
   organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy        User?                        @relation("RoleVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
   assignments      OrganizationRoleAssignment[] @relation("AssignedRoleVersion")
+  changeApplications OrganizationRoleChangeApplication[]
 
   @@unique([organizationRoleId, version])
   @@index([organizationId, status])
@@ -2024,6 +2028,28 @@ model MembershipPermissionOverride {
   @@index([organizationId, membershipId])
   @@index([expiresAt])
   @@map("membership_permission_overrides")
+}
+
+model OrganizationRoleChangeApplication {
+  id                    String   @id @default(uuid())
+  idempotencyKey        String   @unique @map("idempotency_key")
+  organizationId        String   @map("organization_id")
+  organizationRoleId    String   @map("organization_role_id")
+  previewHash           String   @map("preview_hash")
+  expectedVersionNumber Int      @map("expected_version_number")
+  actorUserId           String?  @map("actor_user_id")
+  reason                String?
+  createdRoleVersionId  String?  @map("created_role_version_id")
+  result                Json?
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole   OrganizationRole        @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
+  actor              User?                   @relation("RoleChangeApplications", fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdRoleVersion OrganizationRoleVersion? @relation(fields: [createdRoleVersionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, organizationRoleId, createdAt])
+  @@map("organization_role_change_applications")
 }
 
 // ------------------------------------------------

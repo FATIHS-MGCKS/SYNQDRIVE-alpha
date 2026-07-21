@@ -2,11 +2,13 @@ import {
   IsBoolean,
   IsEmail,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   MinLength,
+  Min,
 } from 'class-validator';
 import { MembershipRole } from '@prisma/client';
 import { IsMembershipPermissions, IsStationIds } from './membership-validators';
@@ -91,4 +93,33 @@ export class UpdateOrganizationRoleDto {
 export class AssignOrganizationRoleDto {
   @IsUUID()
   roleId!: string;
+}
+
+export class PreviewRoleChangeDto extends UpdateOrganizationRoleDto {}
+
+export class ApplyRoleChangeDto {
+  @IsString()
+  @MinLength(64)
+  @MaxLength(128)
+  previewHash!: string;
+
+  changes!: UpdateOrganizationRoleDto;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  reason!: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(200)
+  idempotencyKey!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  stepUpConfirmed?: boolean;
+
+  @IsInt()
+  @Min(0)
+  expectedRoleVersion!: number;
 }

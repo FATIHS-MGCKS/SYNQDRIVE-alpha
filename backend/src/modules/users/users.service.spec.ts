@@ -83,7 +83,9 @@ describe('UsersService — security & membership', () => {
       role: MembershipRole.ORG_ADMIN,
       status: MembershipStatus.ACTIVE,
       membershipVersion: 0,
+      permissions: null,
     });
+    prisma.organizationMembership.findMany.mockResolvedValue([]);
     prisma.organizationMembership.count.mockResolvedValue(0);
 
     await expect(service.removeOrgUser(orgId, adminUserId)).rejects.toThrow(

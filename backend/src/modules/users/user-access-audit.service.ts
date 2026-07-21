@@ -25,6 +25,8 @@ export const UserAccessAuditAction = {
   ROLE_UPDATED: 'ROLE_UPDATED',
   ROLE_DELETED: 'ROLE_DELETED',
   ROLE_ASSIGNED: 'ROLE_ASSIGNED',
+  ROLE_CHANGE_PREVIEWED: 'ROLE_CHANGE_PREVIEWED',
+  ROLE_CHANGE_APPLIED: 'ROLE_CHANGE_APPLIED',
 } as const;
 
 export type UserAccessAuditActionCode =

@@ -160,6 +160,24 @@ describe('OrganizationRoleService', () => {
     );
   });
 
+  it('blocks structural updates without preview/apply flow', async () => {
+    prisma.organizationRole.findFirst.mockResolvedValue({
+      id: roleId,
+      organizationId: orgId,
+      isSystemTemplate: false,
+      name: 'Custom',
+    });
+
+    await expect(
+      service.updateRole(
+        orgId,
+        roleId,
+        { permissions: { bookings: { read: true, write: true } } },
+        actorId,
+      ),
+    ).rejects.toThrow(/previewRoleChange/);
+  });
+
   it('blocks deleting system template', async () => {
     prisma.organizationRole.findFirst.mockResolvedValue({
       id: roleId,

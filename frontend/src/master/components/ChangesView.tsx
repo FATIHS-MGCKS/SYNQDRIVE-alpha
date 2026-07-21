@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-role-change-impact-v49713-2026-07-21',
+    version: '4.9.713',
+    title: 'V4.9.713 — IAM role change impact preview and apply (Prompt 11)',
+    summary: [
+      'POST preview-change / apply-change with impact analysis, preview hash, version check, idempotency.',
+      'Structural PATCH blocked; new RoleVersion on apply; FOLLOW_LATEST propagates with session invalidation.',
+      'Effective last-admin protection via privileged capabilities; PINNED assignments unchanged.',
+    ],
+    reason: 'Users & Roles remediation Prompt 11 — no silent role propagation.',
+    previousBehavior: 'PATCH /roles/:id overwrote template without preview, versioning, or session handling.',
+    details:
+      'backend/src/modules/users/organization-role-change.service.ts, architecture/IAM_ROLE_CHANGE_IMPACT_PREVIEW_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-22T00:15:00.000Z',
+  },
+  {
     id: 'iam-versioned-role-assignments-v49712-2026-07-21',
     version: '4.9.712',
     title: 'V4.9.712 — IAM versioned organization role assignments (Prompt 10)',
