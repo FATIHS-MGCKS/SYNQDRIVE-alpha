@@ -22,6 +22,7 @@ vi.mock('../../FleetContext', () => ({
     fleetVehicles: [],
     healthMap: new Map(),
     healthLoading: false,
+    healthFetchedAt: null,
   }),
 }));
 
@@ -42,6 +43,8 @@ vi.mock('../service-center/useServiceCenterData', () => ({
     vendorsError: null,
     vendorsStatus: 'ready',
     vendorsFetchedAt: null,
+    tasksFetchedAt: null,
+    serviceCasesFetchedAt: null,
     kpis: { dataReady: true },
     loading: false,
     error: null,

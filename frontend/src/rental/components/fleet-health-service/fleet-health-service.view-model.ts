@@ -32,6 +32,11 @@ import {
   selectUpcomingTasks,
 } from '../service-center/service-center.utils';
 
+import {
+  buildFleetHealthServiceFreshness,
+  type FleetHealthServiceFreshness,
+} from './fleet-health-service-freshness';
+
 export type FleetHealthServiceRecommendedAction =
   | 'open_task'
   | 'create_task'
@@ -192,6 +197,7 @@ export interface FleetHealthServiceViewModel {
   serviceLoading: boolean;
   serviceError: string | null;
   serviceCases: ApiServiceCase[];
+  freshness: FleetHealthServiceFreshness;
   healthKpis: FleetHealthKpis;
   healthGroups: FleetHealthServiceHealthGroups;
   executionGroups: FleetHealthServiceExecutionGroups;
@@ -207,9 +213,13 @@ export interface BuildFleetHealthServiceViewModelInput {
   healthMap: Map<string, VehicleHealthResponse>;
   healthLoading: boolean;
   healthError?: string | null;
+  healthFetchedAt?: string | null;
   taskSummary: ApiTaskSummary | null;
   taskList: ApiTask[];
   vendors: Vendor[];
+  tasksFetchedAt: string | null;
+  vendorsFetchedAt: string | null;
+  serviceCasesFetchedAt: string | null;
   serviceLoading: boolean;
   serviceError: string | null;
   serviceLoaded: boolean;
@@ -609,8 +619,12 @@ export function buildFleetHealthServiceViewModel(
     healthMap,
     healthLoading,
     healthError = null,
+    healthFetchedAt = null,
     taskList,
     vendors,
+    tasksFetchedAt,
+    vendorsFetchedAt,
+    serviceCasesFetchedAt,
     serviceLoading,
     serviceError,
     serviceCases = [],
@@ -639,6 +653,14 @@ export function buildFleetHealthServiceViewModel(
   const prioritizedOverviewRows = prioritizedOverviewSections.flatMap((section) =>
     section.rows.map(vehicleRowToLegacyOverviewRow),
   );
+  const freshness = buildFleetHealthServiceFreshness({
+    healthFetchedAt,
+    healthMap,
+    vehicleIds,
+    tasksFetchedAt,
+    vendorsFetchedAt,
+    serviceCasesFetchedAt,
+  });
 
   return {
     loading: healthLoading || serviceLoading,
@@ -647,6 +669,7 @@ export function buildFleetHealthServiceViewModel(
     serviceLoading,
     serviceError,
     serviceCases,
+    freshness,
     healthKpis,
     healthGroups,
     executionGroups,

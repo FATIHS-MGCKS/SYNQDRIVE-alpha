@@ -18,7 +18,7 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
   reloadAll: ReturnType<typeof useFleetHealthServiceRefresh>['reloadAll'];
   refreshing: boolean;
 } {
-  const { fleetVehicles, healthMap, healthLoading, healthError } = useFleetVehicles();
+  const { fleetVehicles, healthMap, healthLoading, healthError, healthFetchedAt } = useFleetVehicles();
   const { service, reloadAll, refreshing } = useFleetHealthServiceRefresh();
 
   const vm = useMemo(
@@ -28,9 +28,13 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
         healthMap,
         healthLoading,
         healthError,
+        healthFetchedAt,
         taskSummary: service.summary,
         taskList: service.allTasks,
         vendors: service.vendors.data,
+        tasksFetchedAt: service.tasksFetchedAt,
+        vendorsFetchedAt: service.vendorsFetchedAt,
+        serviceCasesFetchedAt: service.serviceCasesFetchedAt,
         serviceLoading: service.loading,
         serviceError: service.error,
         serviceLoaded:
@@ -47,9 +51,13 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
       healthMap,
       healthLoading,
       healthError,
+      healthFetchedAt,
       service.summary,
       service.allTasks,
       service.vendors.data,
+      service.tasksFetchedAt,
+      service.vendorsFetchedAt,
+      service.serviceCasesFetchedAt,
       service.loading,
       service.error,
       service.taskSummary.status,

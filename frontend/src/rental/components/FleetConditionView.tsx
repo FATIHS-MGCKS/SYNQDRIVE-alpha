@@ -33,11 +33,17 @@ import {
 } from '../lib/health-detail-utils';
 import { HealthVehicleDetailDrawer } from './health/HealthVehicleDetailDrawer';
 import { HealthVehicleDetailPanel } from './health/HealthVehicleDetailPanel';
+import { computeOldestRelevantHealthSourceAt } from './fleet-health-service/fleet-health-service-freshness';
 import {
   buildFleetHealthDisplay,
   computeFleetHealthKpis,
   formatRelativeTime,
   latestHealthGeneratedAt,
+  matchesDataQualityFilter,
+  matchesModuleFilter,
+  matchesStatusFilter,
+  operatorGroupForVehicle,
+  priorityRank,
   vehicleLastUpdatedIso,
   type HealthIssueChip,
   type OperatorDataQualityFilter,
@@ -278,7 +284,8 @@ export function FleetConditionView({
     () => false,
   );
 
-  const { fleetVehicles, healthMap, healthLoading, healthError, reloadHealth } = useFleetVehicles();
+  const { fleetVehicles, healthMap, healthLoading, healthError, healthFetchedAt, reloadHealth } =
+    useFleetVehicles();
 
   const [statusFilter, setStatusFilter] = useState<OperatorStatusFilter>(
     initialStatusFilter ?? 'all',
@@ -302,7 +309,11 @@ export function FleetConditionView({
     () => computeFleetHealthKpis(vehicleIds, healthMap),
     [vehicleIds, healthMap],
   );
-  const lastGeneratedAt = useMemo(() => latestHealthGeneratedAt(healthMap), [healthMap]);
+  const lastHealthFetchedAt = healthFetchedAt;
+  const oldestFleetMeasurementAt = useMemo(
+    () => computeOldestRelevantHealthSourceAt(healthMap, vehicleIds),
+    [healthMap, vehicleIds],
+  );
 
   useEffect(() => {
     if (didInitGroups.current || healthLoading) return;
@@ -505,9 +516,9 @@ export function FleetConditionView({
         <RefreshCw className={`h-3.5 w-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
         Refresh
       </button>
-      {lastGeneratedAt && (
+      {lastHealthFetchedAt && (
         <span className="text-[10px] text-muted-foreground">
-          Updated {formatRelativeTime(lastGeneratedAt)}
+          Loaded {formatRelativeTime(lastHealthFetchedAt)}
         </span>
       )}
     </div>
@@ -538,8 +549,11 @@ export function FleetConditionView({
             ) : undefined
           }
           meta={
-            lastGeneratedAt ? (
-              <span>Health snapshot · {new Date(lastGeneratedAt).toLocaleString('de-DE')}</span>
+            oldestFleetMeasurementAt ? (
+              <span>
+                Oldest fleet measurement ·{' '}
+                {new Date(oldestFleetMeasurementAt).toLocaleString('de-DE')}
+              </span>
             ) : undefined
           }
         />

@@ -6,6 +6,7 @@ import {
   type FleetHealthServiceKpiItem,
 } from './FleetHealthServiceKpiStrip';
 import { FleetHealthServicePriorityOverview } from './FleetHealthServicePriorityOverview';
+import { FleetHealthServiceFreshnessIndicator } from './FleetHealthServiceFreshnessIndicator';
 import { fhs } from './fleet-health-service-shell';
 import type { FleetHealthServiceViewModel } from './fleet-health-service.view-model';
 import type {
@@ -40,7 +41,7 @@ const KPI_HINT_KEYS: Record<string, TranslationKey> = {
 };
 
 interface FleetHealthServiceOverviewPanelProps {
-  vm: FleetHealthServiceViewModel & { reloadService?: () => void };
+  vm: FleetHealthServiceViewModel & { reloadAll?: () => void | Promise<unknown> };
   onNavChange?: (nav: FleetHealthServiceNavState) => void;
   nav?: FleetHealthServiceNavState;
   onNavigateSubTab?: (tab: FleetHealthServiceTab) => void;
@@ -120,7 +121,7 @@ export function FleetHealthServiceOverviewPanel({
 
   const handleReload = useCallback(() => {
     setStatusMessage(t('fleetHealthService.a11y.refreshing'));
-    vm.reloadService?.();
+    vm.reloadAll?.();
   }, [t, vm]);
 
   useEffect(() => {
@@ -142,6 +143,10 @@ export function FleetHealthServiceOverviewPanel({
       >
         {statusMessage}
       </div>
+      <section className="flex items-center justify-between gap-2">
+        <DashboardSectionLabel>{t('fleetHealthService.freshness.sectionLabel')}</DashboardSectionLabel>
+        <FleetHealthServiceFreshnessIndicator />
+      </section>
       <section className="space-y-2">
         <DashboardSectionLabel>{t('fleetHealthService.kpi.sectionLabel')}</DashboardSectionLabel>
         <FleetHealthServiceKpiStrip groups={kpiGroups} onItemClick={handleKpiClick} />

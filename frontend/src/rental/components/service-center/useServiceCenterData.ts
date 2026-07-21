@@ -225,6 +225,8 @@ export function useServiceCenterData(orgId: string | null | undefined): ServiceC
     vendorsError: vendors.error,
     vendorsStatus: vendors.status,
     vendorsFetchedAt: vendors.fetchedAt,
+    tasksFetchedAt: tasks.fetchedAt,
+    serviceCasesFetchedAt: serviceCases.fetchedAt,
     kpis,
     loading,
     error,
