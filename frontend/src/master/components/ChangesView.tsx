@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-security-regression-harness-v49705-2026-07-21',
+    version: '4.9.705',
+    title: 'V4.9.705 — IAM security regression harness (Users & Roles remediation Prompt 2)',
+    summary: [
+      'Added IAM security regression tests (scenarios A–K) documenting confirmed P0 gaps before remediation.',
+      'Pure policy modules for target session invalidation, effective access, and global identity boundaries (test-only, not wired to runtime).',
+      'npm script `test:iam:security` — characterization tests green; 12 TARGET RED tests fail until Prompts 3–13 land.',
+    ],
+    reason: 'Users & Roles production-readiness remediation Prompt 2 — reproducible security test net before fixes.',
+    previousBehavior:
+      'IAM risks documented in audit only; no dedicated regression suite for multi-org sessions, invite secrets, role drift, or audit outbox.',
+    details:
+      'backend/src/modules/users/iam-security-regression*.ts, policies/iam-*.policy.ts, docs/implementation/users-roles-production-readiness-remediation-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T21:35:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',
