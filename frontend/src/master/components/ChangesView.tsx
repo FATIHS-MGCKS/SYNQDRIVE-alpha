@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-production-release-2026-07-21',
+    version: '4.9.738',
+    title: 'Fleet Health Service — Production Release (direkt)',
+    summary: [
+      'Merge-Train: FHS-Remediation + unified refresh + freshness + P64 Runbook auf `main`.',
+      'P0-Fixes: Vendor source-state, unified reloadAll, Health-Degradation `rental_blocked: null`, Battery-V2 colon-safe job ids.',
+      'Direkt-Production-Deploy ohne Pilot-Phase (explizite Anweisung); read-only P64-Validation nach Deploy.',
+    ],
+    reason: 'Kontrollierter Production-Rollout aller Fleet-Health-Service-Remediation-Punkte ohne Pilot.',
+    previousBehavior: 'Remediation auf parallelen Branches; Production ohne FHS-Stack.',
+    details:
+      'Branch cursor/fleet-health-production-release-bad3; Gates G1–G8; kein Feature-Flag-Pilot.',
+    affectsArchitecture: true,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T10:05:00.000Z',
+  },
+  {
     id: 'fleet-health-service-rollout-plan-p66-2026-07-21',
     version: '4.9.737',
     title: 'Fleet Health Service — Go/No-Go Rollout-Plan (Phase 9 P66)',
