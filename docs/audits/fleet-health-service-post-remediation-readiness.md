@@ -15,7 +15,7 @@
 
 ## 1. Executive Summary
 
-Die Fleet-Health-Service-Remediation (66 Prompts) hat **substantielle Fortschritte** auf **parallelen Feature-Branches** erzielt: paginierter Rental-Health-Fleet-Endpunkt, Service-Case-Verdrahtung in der FHS-UI, priorisierte Multi-Finding-Übersicht, Observability (Metriken, Grafana, Alerts, Runbook), Domain-Integrationstests und ein dedizierter Playwright-Flow (Prompt 63). Lokale Tests auf dem Integrations-Branch **`cursor/fleet-health-e2e-bad3`**: **171 bestandene Tests** (55 Backend + 68 Frontend FHS + 32 Runtime/Control-Center + 16 E2E), **0 Failures**.
+Die Fleet-Health-Service-Remediation (66 Prompts) hat **substantielle Fortschritte** auf **parallelen Feature-Branches** erzielt: paginierter Rental-Health-Fleet-Endpunkt, Service-Case-Verdrahtung in der FHS-UI, priorisierte Multi-Finding-Übersicht, Observability (Metriken, Grafana, Alerts, Runbook), Domain-Integrationstests und ein dedizierter Playwright-Flow (Prompt 63). Lokale Tests auf dem Integrations-Branch **`cursor/fleet-health-e2e-bad3`**: **178 bestandene Tests** (55 Backend FHS + 7 Battery/Prometheus + 68 Frontend FHS + 32 Runtime/Control-Center + 16 E2E), **0 Failures**.
 
 **Es gibt keine belastbare Production-Ready-Freigabe:**
 
@@ -168,7 +168,7 @@ Legende: **DONE** · **PARTIAL** · **TODO** · **BRANCH** (implementiert, aber 
 | **UI/UX** | **CONDITIONALLY_READY** | IA, KPI-Split, Priority Overview, DE Copy; Permission/Partial-Failure-Lücken |
 | **Mobile / A11y** | **READY** | 5 a11y UI tests + mobile E2E drawer PASS |
 | **Metrics / Observability** | **READY** | Metriken, Grafana JSON, SLO alerts, incident runbook + prometheus-config spec |
-| **Tests** | **CONDITIONALLY_READY** | 171+ PASS lokal; RBAC-Suite nicht auf Branch; keine Prod-E2E |
+| **Tests** | **CONDITIONALLY_READY** | 178 PASS lokal; RBAC-Suite nicht auf Branch; keine Prod-E2E |
 
 ### Gesamturteil
 
