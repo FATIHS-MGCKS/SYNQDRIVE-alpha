@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-e2e-p63-2026-07-20',
+    version: '4.9.734',
+    title: 'Fleet Health Service — Playwright E2E Flow (Phase 9 P63)',
+    summary: [
+      'Dedizierter Playwright-Flow `fleet-health-service-flow.spec.ts` mit isolierten API-Mocks (`fleet-health-service-fixtures.ts`).',
+      'Abdeckung: Tab-Öffnung, KPI-Filter, Multi-Finding-Fahrzeug, Health-Detail, Task aus Finding, Service Case aus technischer Beobachtung.',
+      'Service-Case-Drawer, Fälligkeiten, Partnerfehler, Refresh aller Quellen, unknown Health, Permission denied, Mobile Drawer, Legacy-Deep-Links.',
+    ],
+    reason: 'Phase 9 Prompt 63: End-to-End-Verifikation des Zustand-&-Service-Flows ohne Produktionsdaten.',
+    previousBehavior: 'Kein dedizierter Playwright-Flow für Fleet Health Service mit isolierten Fixtures.',
+    details:
+      'e2e/fleet-health-service-fixtures.ts, e2e/fleet-health-service-flow.spec.ts (16 Tests desktop-1280 + mobile-375).',
+    affectsArchitecture: false,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T00:00:20.000Z',
+  },
+  {
     id: 'fleet-health-domain-integration-p62-2026-07-20',
     version: '4.9.733',
     title: 'Fleet Health Service — Domain-Integrationstests (Phase 9 P62)',
