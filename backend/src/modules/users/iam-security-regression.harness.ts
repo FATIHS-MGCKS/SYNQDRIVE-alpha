@@ -191,11 +191,17 @@ export function createRefreshTokenHarness() {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    organizationMembership: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   };
   const config = {
-    get: jest.fn((key: string, fallback?: string) => {
+    get: jest.fn((key: string, fallback?: unknown) => {
       if (key === 'app.jwtSecret') return 'test-jwt-secret';
       if (key === 'app.jwtExpiresIn') return '15m';
+      if (key === 'iam.enableOrgBoundRefreshSessions') return true;
+      if (key === 'iam.enableLegacyUnscopedRefreshGrace') return false;
       return fallback;
     }),
   };
@@ -207,7 +213,7 @@ export function createRefreshTokenHarness() {
     config as unknown as ConfigService,
     sessionPolicy as never,
   );
-  return { prisma, config, service };
+  return { prisma, config, sessionPolicy, service };
 }
 
 export function multiOrgUserFixture() {

@@ -4,7 +4,7 @@
 |-------|-------|
 | **Audit** | `docs/audits/users-roles-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/users-roles-production-readiness-2026-07` @ `0f99ce41` |
-| **Implementation branch** | `cursor/iam-secure-password-reset-fb6e` |
+| **Implementation branch** | `cursor/iam-refresh-org-binding-fb6e` |
 | **Verdict (audit)** | **NOT_READY** (28× P0, 27 production blockers) |
 | **Mode** | Identity & session truth → roles & audit → governance & UI (22 prompts) |
 
@@ -34,8 +34,8 @@
 | 3 | Bootstrap/seed admin hardening | ⬜ | — |
 | 4 | Isolate org membership admin from global identity | ✅ | `ceae35bb` |
 | 5 | Central session invalidation policy | ✅ | `6e320e44` |
-| 6 | Secure password self-service reset | ✅ | (this commit) |
-| 7 | Org-bound refresh tokens | ⬜ | — |
+| 6 | Secure password self-service reset | ✅ | `778353b2` |
+| 7 | Org-bound refresh tokens | ✅ | (this commit) |
 | 8 | Versioned roles + assignment link | ⬜ | — |
 | 9 | Role propagation + drift detection | ⬜ | — |
 | 10 | Endpoint/Guard hardening | ⬜ | — |
@@ -135,6 +135,19 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 - `PasswordPolicyService` central validation; rate limits per IP/email/org
 - Confirm triggers `PASSWORD_CHANGED` session revocation + `USER_PASSWORD_RESET_COMPLETED` audit
 - `architecture/IAM_PASSWORD_RESET_SELF_SERVICE_2026-07-21.md`
+
+---
+
+## Prompt 7 — Org-Bound Refresh Sessions
+
+**Datum:** 2026-07-21 UTC
+
+- `RefreshToken` binding fields + `RefreshTokenScope` (`ORG_MEMBERSHIP_BOUND` / `LEGACY_UNSCOPED`)
+- Login org resolution: single membership auto; multi-org requires `organizationId` or `lastAuthOrganizationId`
+- Refresh preserves `organizationId` + `membershipId`; version snapshots validated on rotate
+- Legacy unscoped tokens: controlled grace via `ENABLE_IAM_LEGACY_UNSCOPED_REFRESH_GRACE`
+- `architecture/IAM_ORG_BOUND_REFRESH_SESSIONS_2026-07-21.md`
+- Scenario **E** regression tests green
 
 ---
 

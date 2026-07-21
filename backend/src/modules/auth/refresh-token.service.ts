@@ -1,10 +1,20 @@
 import { Injectable, Inject, forwardRef, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MembershipRole } from '@prisma/client';
-import { PrismaService } from '@shared/database/prisma.service';
 import {
-  IamSessionPolicyService,
-} from './iam-session-policy.service';
+  MembershipRole,
+  MembershipStatus,
+  RefreshTokenScope,
+  SessionAssuranceLevel,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import { IamSessionPolicyService } from './iam-session-policy.service';
+import {
+  buildVersionSnapshot,
+  classifyRefreshTokenScope,
+  type LoginMembershipCandidate,
+  resolveRefreshBinding,
+  validateVersionSnapshots,
+} from '@modules/users/policies/refresh-session-binding.policy';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 
@@ -19,6 +29,7 @@ export interface RefreshTokenMembershipContext {
   permissions?: unknown;
   membershipId?: string | null;
   membershipVersion?: number | null;
+  organizationRoleId?: string | null;
 }
 
 export interface RefreshTokenUserContext {
@@ -28,6 +39,18 @@ export interface RefreshTokenUserContext {
   platformRole: string;
   sessionVersion?: number;
 }
+
+type MembershipWithOrg = {
+  id: string;
+  userId: string;
+  organizationId: string;
+  role: MembershipRole;
+  organizationRoleId: string | null;
+  status: MembershipStatus;
+  membershipVersion: number;
+  permissions: unknown;
+  organization: { companyName: string | null; logoUrl: string | null } | null;
+};
 
 @Injectable()
 export class RefreshTokenService {
@@ -64,18 +87,7 @@ export class RefreshTokenService {
 
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      include: {
-        user: {
-          include: {
-            memberships: {
-              where: { status: 'ACTIVE' },
-              include: { organization: true },
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-            },
-          },
-        },
-      },
+      include: { user: true },
     });
 
     if (!stored) {
@@ -90,6 +102,8 @@ export class RefreshTokenService {
         await this.sessionPolicy.recordAndExecute({
           eventType: 'REFRESH_TOKEN_REUSE_DETECTED',
           userId: stored.userId,
+          organizationId: stored.organizationId,
+          membershipId: stored.membershipId,
           tokenFamily: stored.family,
           refreshTokenId: stored.id,
           highRiskReuse: true,
@@ -103,8 +117,73 @@ export class RefreshTokenService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    const membership = user.memberships[0] ?? null;
+    const activeMemberships = await this.loadActiveMemberships(user.id);
+    const boundMembership = stored.membershipId
+      ? await this.loadMembershipForUser(stored.membershipId, user.id)
+      : null;
 
+    const binding = resolveRefreshBinding(
+      {
+        scope: stored.scope as 'ORG_MEMBERSHIP_BOUND' | 'LEGACY_UNSCOPED',
+        organizationId: stored.organizationId,
+        membershipId: stored.membershipId,
+        sessionVersion: stored.sessionVersion,
+        membershipVersion: stored.membershipVersion,
+        permissionVersion: stored.permissionVersion,
+        roleVersion: stored.roleVersion,
+        userId: stored.userId,
+      },
+      boundMembership,
+      activeMemberships,
+      {
+        lastAuthOrganizationId: user.lastAuthOrganizationId,
+        graceEnabled: this.isLegacyGraceEnabled(),
+        orgBoundEnforced: this.isOrgBoundEnforced(),
+      },
+    );
+
+    if (!binding.ok) {
+      await this.revokeStoredToken(stored.id, binding.auditEvent ?? binding.code);
+      if (
+        binding.code === 'MEMBERSHIP_INACTIVE' ||
+        binding.code === 'MEMBERSHIP_REMOVED'
+      ) {
+        void this.sessionPolicy.recordAndExecute({
+          eventType:
+            binding.code === 'MEMBERSHIP_REMOVED'
+              ? 'MEMBERSHIP_REMOVED'
+              : 'MEMBERSHIP_SUSPENDED',
+          userId: stored.userId,
+          organizationId: stored.organizationId,
+          membershipId: stored.membershipId,
+          refreshTokenId: stored.id,
+          tokenFamily: stored.family,
+        });
+      }
+      throw new UnauthorizedException(binding.message);
+    }
+
+    const membership = binding.membership;
+    const membershipContext = membership
+      ? this.toMembershipContext(membership)
+      : null;
+
+    const versionCheck = validateVersionSnapshots(
+      stored,
+      buildVersionSnapshot({
+        sessionVersion: user.sessionVersion,
+        membership: membership,
+      }),
+    );
+    if (!('ok' in versionCheck && versionCheck.ok)) {
+      await this.revokeStoredToken(
+        stored.id,
+        versionCheck.auditEvent ?? 'VERSION_MISMATCH',
+      );
+      throw new UnauthorizedException(versionCheck.message);
+    }
+
+    const authenticatedAt = stored.authenticatedAt ?? stored.createdAt;
     const newPair = await this.issueTokenPairWithFamily(
       {
         id: user.id,
@@ -113,18 +192,14 @@ export class RefreshTokenService {
         platformRole: user.platformRole,
         sessionVersion: user.sessionVersion,
       },
-      membership
-        ? {
-            role: membership.role,
-            organizationId: membership.organizationId,
-            organizationName: membership.organization?.companyName ?? null,
-            permissions: membership.permissions,
-            membershipId: membership.id,
-            membershipVersion: membership.membershipVersion,
-          }
-        : null,
+      membershipContext,
       stored.family,
       context,
+      {
+        scope: binding.scope,
+        authenticatedAt,
+        assuranceLevel: stored.assuranceLevel ?? SessionAssuranceLevel.PASSWORD,
+      },
     );
 
     await this.prisma.refreshToken.update({
@@ -132,6 +207,7 @@ export class RefreshTokenService {
       data: {
         revokedAt: new Date(),
         replacedBy: newPair.refreshTokenId,
+        lastUsedAt: new Date(),
       },
     });
 
@@ -142,12 +218,15 @@ export class RefreshTokenService {
     };
   }
 
-  async revoke(rawToken: string): Promise<void> {
+  async revoke(rawToken: string, revocationReason?: string): Promise<void> {
     const tokenHash = await this.hashToken(rawToken);
     await this.prisma.refreshToken
       .updateMany({
         where: { tokenHash, revokedAt: null },
-        data: { revokedAt: new Date() },
+        data: {
+          revokedAt: new Date(),
+          revocationReason: revocationReason ?? null,
+        },
       })
       .catch(() => undefined);
   }
@@ -159,7 +238,10 @@ export class RefreshTokenService {
   async revokeAllActiveForUser(userId: string): Promise<number> {
     const result = await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
-      data: { revokedAt: new Date() },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'USER_ALL_SESSIONS_REVOKED',
+      },
     });
     return result.count;
   }
@@ -175,7 +257,10 @@ export class RefreshTokenService {
         revokedAt: null,
         expiresAt: { gt: new Date() },
       },
-      data: { revokedAt: new Date() },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'ORG_MEMBERSHIP_SESSIONS_REVOKED',
+      },
     });
     return result.count;
   }
@@ -183,7 +268,10 @@ export class RefreshTokenService {
   async revokeFamily(family: string): Promise<number> {
     const result = await this.prisma.refreshToken.updateMany({
       where: { family, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'TOKEN_FAMILY_REVOKED',
+      },
     });
     return result.count;
   }
@@ -196,7 +284,10 @@ export class RefreshTokenService {
         revokedAt: null,
         expiresAt: { gt: new Date() },
       },
-      data: { revokedAt: new Date() },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'PRIVILEGED_SESSIONS_REVOKED',
+      },
     });
     return result.count;
   }
@@ -223,7 +314,10 @@ export class RefreshTokenService {
   async revokeSessionById(userId: string, sessionId: string): Promise<boolean> {
     const result = await this.prisma.refreshToken.updateMany({
       where: { id: sessionId, userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'SESSION_REVOKED_BY_ID',
+      },
     });
     return result.count > 0;
   }
@@ -252,7 +346,10 @@ export class RefreshTokenService {
         revokedAt: null,
         id: { not: keepId },
       },
-      data: { revokedAt: new Date() },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'OTHER_SESSIONS_REVOKED',
+      },
     });
 
     return { revoked: result.count, keptSessionId: keepId };
@@ -269,6 +366,23 @@ export class RefreshTokenService {
       membership,
       family,
       context,
+      {
+        scope: classifyRefreshTokenScope(
+          membership
+            ? {
+                id: membership.membershipId!,
+                organizationId: membership.organizationId!,
+                role: membership.role ?? 'WORKER',
+                status: MembershipStatus.ACTIVE,
+                membershipVersion: membership.membershipVersion ?? 0,
+                permissions: membership.permissions,
+                organizationRoleId: membership.organizationRoleId,
+              }
+            : null,
+        ),
+        authenticatedAt: new Date(),
+        assuranceLevel: SessionAssuranceLevel.PASSWORD,
+      },
     );
     return result.rawRefreshToken;
   }
@@ -278,6 +392,11 @@ export class RefreshTokenService {
     membership: RefreshTokenMembershipContext | null,
     family: string,
     context: { userAgent?: string; ipAddress?: string },
+    options: {
+      scope: RefreshTokenScope;
+      authenticatedAt: Date;
+      assuranceLevel: SessionAssuranceLevel;
+    },
     userIdOverride?: string,
   ): Promise<{ accessToken: string; rawRefreshToken: string; refreshTokenId: string }> {
     const userId = user?.id ?? userIdOverride!;
@@ -285,16 +404,35 @@ export class RefreshTokenService {
     const tokenHash = await this.hashToken(rawToken);
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
     const privilegedSession = this.isPrivilegedMembership(membership);
+    const versionSnapshot = buildVersionSnapshot({
+      sessionVersion: user?.sessionVersion ?? 0,
+      membership: membership?.membershipId
+        ? {
+            id: membership.membershipId,
+            organizationId: membership.organizationId!,
+            role: membership.role ?? 'WORKER',
+            status: MembershipStatus.ACTIVE,
+            membershipVersion: membership.membershipVersion ?? 0,
+            permissions: membership.permissions,
+            organizationRoleId: membership.organizationRoleId,
+          }
+        : null,
+    });
 
     const record = await this.prisma.refreshToken.create({
       data: {
         userId,
         tokenHash,
         family,
+        scope: options.scope,
         organizationId: membership?.organizationId ?? null,
         membershipId: membership?.membershipId ?? null,
-        sessionVersion: user?.sessionVersion ?? null,
-        membershipVersion: membership?.membershipVersion ?? null,
+        sessionVersion: versionSnapshot.sessionVersion,
+        membershipVersion: versionSnapshot.membershipVersion,
+        permissionVersion: versionSnapshot.permissionVersion,
+        roleVersion: versionSnapshot.roleVersion,
+        assuranceLevel: options.assuranceLevel,
+        authenticatedAt: options.authenticatedAt,
         privilegedSession,
         expiresAt,
         userAgent: context.userAgent ?? null,
@@ -305,6 +443,77 @@ export class RefreshTokenService {
     const accessToken = user ? this.signAccessToken(user, membership) : '';
 
     return { accessToken, rawRefreshToken: rawToken, refreshTokenId: record.id };
+  }
+
+  private async loadActiveMemberships(
+    userId: string,
+  ): Promise<LoginMembershipCandidate[]> {
+    const rows = await this.prisma.organizationMembership.findMany({
+      where: { userId, status: MembershipStatus.ACTIVE },
+      include: { organization: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) => this.toLoginMembershipCandidate(row));
+  }
+
+  private async loadMembershipForUser(
+    membershipId: string,
+    userId: string,
+  ): Promise<LoginMembershipCandidate | null> {
+    const row = await this.prisma.organizationMembership.findFirst({
+      where: { id: membershipId, userId },
+      include: { organization: true },
+    });
+    return row ? this.toLoginMembershipCandidate(row) : null;
+  }
+
+  private toLoginMembershipCandidate(
+    row: MembershipWithOrg,
+  ): LoginMembershipCandidate {
+    return {
+      id: row.id,
+      userId: row.userId,
+      organizationId: row.organizationId,
+      role: row.role,
+      status: row.status,
+      membershipVersion: row.membershipVersion,
+      permissions: row.permissions,
+      organizationRoleId: row.organizationRoleId,
+      organization: row.organization,
+    };
+  }
+
+  private toMembershipContext(
+    membership: LoginMembershipCandidate,
+  ): RefreshTokenMembershipContext {
+    return {
+      role: membership.role,
+      organizationId: membership.organizationId,
+      organizationName: membership.organization?.companyName ?? null,
+      organizationLogoUrl: membership.organization?.logoUrl ?? null,
+      permissions: membership.permissions,
+      membershipId: membership.id,
+      membershipVersion: membership.membershipVersion,
+      organizationRoleId: membership.organizationRoleId,
+    };
+  }
+
+  private async revokeStoredToken(id: string, reason: string): Promise<void> {
+    await this.prisma.refreshToken.update({
+      where: { id },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: reason,
+      },
+    });
+  }
+
+  private isOrgBoundEnforced(): boolean {
+    return this.config.get<boolean>('iam.enableOrgBoundRefreshSessions', true);
+  }
+
+  private isLegacyGraceEnabled(): boolean {
+    return this.config.get<boolean>('iam.enableLegacyUnscopedRefreshGrace', false);
   }
 
   private isPrivilegedMembership(

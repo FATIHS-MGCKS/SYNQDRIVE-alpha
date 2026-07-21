@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-org-bound-refresh-sessions-v49709-2026-07-21',
+    version: '4.9.709',
+    title: 'V4.9.709 — IAM org-bound refresh sessions (Prompt 7)',
+    summary: [
+      'Refresh tokens bound to organizationId + membershipId with version snapshots (session, membership, role, permission).',
+      'Login resolves org deterministically; multi-org requires organizationId or lastAuthOrganizationId.',
+      'LEGACY_UNSCOPED tokens have controlled grace migration; refresh cannot switch organizations.',
+    ],
+    reason: 'Users & Roles remediation Prompt 7 — multi-org session isolation and refresh integrity.',
+    previousBehavior:
+      'Refresh rotate used take:1 on active memberships — could switch organization without explicit org selection.',
+    details:
+      'backend/src/modules/auth/refresh-token.service.ts, policies/refresh-session-binding.policy.ts, architecture/IAM_ORG_BOUND_REFRESH_SESSIONS_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:30:00.000Z',
+  },
+  {
     id: 'iam-password-reset-self-service-v49708-2026-07-21',
     version: '4.9.708',
     title: 'V4.9.708 — IAM secure password self-service reset (Prompt 6)',

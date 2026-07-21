@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsUUID } from 'class-validator';
 
 export class LoginDto {
   @IsEmail({}, { message: 'A valid email address is required' })
@@ -7,6 +7,11 @@ export class LoginDto {
   @IsString()
   @MinLength(1, { message: 'Password is required' })
   password: string;
+
+  /** Required when the user has multiple active organization memberships. */
+  @IsOptional()
+  @IsUUID('4', { message: 'organizationId must be a valid UUID' })
+  organizationId?: string;
 }
 
 export class RefreshTokenDto {

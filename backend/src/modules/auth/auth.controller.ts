@@ -22,6 +22,7 @@ import {
 import { LoginDto, RefreshTokenDto, LogoutDto } from '@shared/dto/auth.dto';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
+import { resolveLoginMembership } from '@modules/users/policies/refresh-session-binding.policy';
 import * as bcrypt from 'bcrypt';
 
 @Controller('auth')
@@ -46,7 +47,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: LoginDto, @Req() req: any) {
-    const { email, password } = body;
+    const { email, password, organizationId } = body;
     if (!email || !password) {
       throw new UnauthorizedException('Email and password are required');
     }
@@ -57,7 +58,7 @@ export class AuthController {
         memberships: {
           where: { status: 'ACTIVE' },
           include: { organization: true },
-          take: 1,
+          orderBy: { createdAt: 'asc' },
         },
       },
     });
@@ -118,17 +119,50 @@ export class AuthController {
       },
     });
 
-    const membership = user.memberships[0];
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-      platformRole: user.platformRole,
-      membershipRole: membership?.role ?? null,
-      organizationId: membership?.organizationId ?? null,
-      organizationName: membership?.organization?.companyName ?? null,
-      organizationLogoUrl: membership?.organization?.logoUrl ?? null,
-    };
+    const membershipResolution = resolveLoginMembership(
+      user.memberships.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        organizationId: m.organizationId,
+        role: m.role,
+        status: m.status,
+        membershipVersion: m.membershipVersion,
+        permissions: m.permissions,
+        organizationRoleId: m.organizationRoleId,
+        organization: m.organization,
+      })),
+      {
+        requestedOrganizationId: organizationId,
+        lastAuthOrganizationId: user.lastAuthOrganizationId,
+      },
+    );
+
+    if (!membershipResolution.ok) {
+      void this.audit.warn({
+        ...auditBase,
+        actorUserId: user.id,
+        action: ActivityAction.AUTH_FAIL,
+        entity: ActivityEntity.AUTH_EVENT,
+        entityId: user.id,
+        description: `Login rejected — ${membershipResolution.code}: ${email}`,
+      });
+      if (membershipResolution.code === 'ORGANIZATION_SELECTION_REQUIRED') {
+        throw new ForbiddenException({
+          message: membershipResolution.message,
+          code: membershipResolution.code,
+        });
+      }
+      throw new UnauthorizedException(membershipResolution.message);
+    }
+
+    const membership = membershipResolution.membership;
+
+    if (membership?.organizationId) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastAuthOrganizationId: membership.organizationId },
+      });
+    }
 
     const { accessToken, refreshToken, expiresIn } = await this.refreshTokenService.issueTokenPair(
       {
@@ -147,6 +181,7 @@ export class AuthController {
             permissions: membership.permissions,
             membershipId: membership.id,
             membershipVersion: membership.membershipVersion,
+            organizationRoleId: membership.organizationRoleId,
           }
         : null,
       {

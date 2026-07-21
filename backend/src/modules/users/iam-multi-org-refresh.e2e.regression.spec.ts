@@ -1,7 +1,7 @@
 /**
  * Multi-org refresh/session E2E regression (Prompt 2/22 — scenario E).
  */
-import { MembershipRole, MembershipStatus, UserStatus } from '@prisma/client';
+import { MembershipRole, MembershipStatus, RefreshTokenScope, UserStatus } from '@prisma/client';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
@@ -9,102 +9,74 @@ import {
   createRefreshTokenHarness,
   IAM_REGRESSION_IDS,
 } from './iam-security-regression.harness';
+import {
+  computePermissionVersionSnapshot,
+  computeRoleVersionSnapshot,
+} from './policies/refresh-session-binding.policy';
 
 function sha256(raw: string): string {
   return crypto.createHash('sha256').update(raw).digest('hex');
 }
 
 describe('IAM multi-org refresh E2E regression (E)', () => {
-  it('characterization: refresh rotate picks newest active membership (take:1) — not login org', async () => {
-    const rawToken = crypto.randomBytes(40).toString('hex');
-    const tokenHash = sha256(rawToken);
-    const user = {
-      id: IAM_REGRESSION_IDS.multiOrgUser,
-      email: 'multi@regression.test',
-      name: 'Multi Org',
-      platformRole: 'USER',
-      status: UserStatus.ACTIVE,
-      memberships: [
-        {
-          role: MembershipRole.ORG_ADMIN,
-          organizationId: IAM_REGRESSION_IDS.orgB,
-          permissions: null,
-          organization: { companyName: 'Org B' },
-          createdAt: new Date('2026-06-01'),
-        },
-      ],
-    };
-
-    const { prisma, service } = createRefreshTokenHarness();
-    prisma.refreshToken.findUnique.mockResolvedValue({
-      id: 'rt-1',
-      userId: user.id,
-      tokenHash,
-      family: 'family-1',
-      revokedAt: null,
-      expiresAt: new Date(Date.now() + 86_400_000),
-      replacedBy: null,
-      user,
-    });
-    prisma.refreshToken.create.mockImplementation(async ({ data }) => ({
-      id: 'rt-2',
-      ...data,
-    }));
-    prisma.refreshToken.update.mockResolvedValue({});
-
-    const result = await service.rotate(rawToken, {});
-    const decoded = jwt.decode(result.accessToken) as {
-      organizationId?: string;
-      membershipRole?: string;
-    };
-
-    expect(decoded.organizationId).toBe(IAM_REGRESSION_IDS.orgB);
-    expect(decoded.membershipRole).toBe(MembershipRole.ORG_ADMIN);
-  });
-
-  it('TARGET RED: refresh must not switch organization without explicit org switch', async () => {
+  it('org-bound refresh preserves login organization across rotation', async () => {
     const rawToken = crypto.randomBytes(40).toString('hex');
     const tokenHash = sha256(rawToken);
     const loginOrgId = IAM_REGRESSION_IDS.orgA;
-    const user = {
-      id: IAM_REGRESSION_IDS.multiOrgUser,
-      email: 'multi@regression.test',
-      name: 'Multi Org',
-      platformRole: 'USER',
-      status: UserStatus.ACTIVE,
-      memberships: [
-        {
-          role: MembershipRole.WORKER,
-          organizationId: IAM_REGRESSION_IDS.orgA,
-          status: MembershipStatus.ACTIVE,
-          permissions: null,
-          organization: { companyName: 'Org A' },
-          createdAt: new Date('2026-06-01'),
-        },
-        {
-          role: MembershipRole.ORG_ADMIN,
-          organizationId: IAM_REGRESSION_IDS.orgB,
-          status: MembershipStatus.ACTIVE,
-          permissions: null,
-          organization: { companyName: 'Org B' },
-          createdAt: new Date('2026-01-01'),
-        },
-      ],
+    const membershipA = {
+      id: IAM_REGRESSION_IDS.membershipA,
+      userId: IAM_REGRESSION_IDS.multiOrgUser,
+      organizationId: IAM_REGRESSION_IDS.orgA,
+      role: MembershipRole.WORKER,
+      organizationRoleId: null,
+      status: MembershipStatus.ACTIVE,
+      membershipVersion: 0,
+      permissions: { bookings: { read: true, write: false } },
+      organization: { companyName: 'Org A', logoUrl: null },
+    };
+    const membershipB = {
+      id: IAM_REGRESSION_IDS.membershipB,
+      userId: IAM_REGRESSION_IDS.multiOrgUser,
+      organizationId: IAM_REGRESSION_IDS.orgB,
+      role: MembershipRole.ORG_ADMIN,
+      organizationRoleId: null,
+      status: MembershipStatus.ACTIVE,
+      membershipVersion: 0,
+      permissions: null,
+      organization: { companyName: 'Org B', logoUrl: null },
     };
 
     const { prisma, service } = createRefreshTokenHarness();
     prisma.refreshToken.findUnique.mockResolvedValue({
       id: 'rt-bound-a',
-      userId: user.id,
+      userId: IAM_REGRESSION_IDS.multiOrgUser,
       tokenHash,
       family: 'family-bound-a',
+      scope: RefreshTokenScope.ORG_MEMBERSHIP_BOUND,
       organizationId: loginOrgId,
       membershipId: IAM_REGRESSION_IDS.membershipA,
+      sessionVersion: 0,
+      membershipVersion: 0,
+      permissionVersion: computePermissionVersionSnapshot(membershipA.permissions),
+      roleVersion: computeRoleVersionSnapshot(MembershipRole.WORKER, null),
+      authenticatedAt: new Date('2026-07-01'),
+      privilegedSession: false,
       revokedAt: null,
       expiresAt: new Date(Date.now() + 86_400_000),
       replacedBy: null,
-      user,
+      createdAt: new Date('2026-07-01'),
+      user: {
+        id: IAM_REGRESSION_IDS.multiOrgUser,
+        email: 'multi@regression.test',
+        name: 'Multi Org',
+        platformRole: 'USER',
+        status: UserStatus.ACTIVE,
+        sessionVersion: 0,
+        lastAuthOrganizationId: loginOrgId,
+      },
     });
+    prisma.organizationMembership.findFirst.mockResolvedValue(membershipA);
+    prisma.organizationMembership.findMany.mockResolvedValue([membershipA, membershipB]);
     prisma.refreshToken.create.mockImplementation(async ({ data }) => ({
       id: 'rt-bound-a-next',
       ...data,
@@ -118,9 +90,10 @@ describe('IAM multi-org refresh E2E regression (E)', () => {
     expect(decoded.organizationId).not.toBe(IAM_REGRESSION_IDS.orgB);
   });
 
-  it('TARGET RED: membership selection must not depend on take:1 ordering alone', () => {
+  it('refresh binding resolves membership by stored organizationId and membershipId', () => {
     const rotateSource = RefreshTokenService.prototype.rotate.toString();
     expect(rotateSource).toMatch(/organizationId|membershipId/);
     expect(rotateSource).not.toContain('take: 1');
+    expect(rotateSource).toMatch(/resolveRefreshBinding|loadMembershipForUser/);
   });
 });

@@ -658,11 +658,11 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
   });
 });
 
-describe('RefreshTokenService membership selection (E — characterization)', () => {
-  it('rotate uses take:1 on active memberships ordered by createdAt desc', () => {
+describe('RefreshTokenService membership selection (E — org-bound)', () => {
+  it('rotate resolves binding from stored organizationId and membershipId', () => {
     const rotateSource = RefreshTokenService.prototype.rotate.toString();
-    expect(rotateSource).toContain('take: 1');
-    expect(rotateSource).toContain('orderBy');
-    expect(rotateSource).not.toMatch(/stored\.organizationId|refreshToken\.organizationId/);
+    expect(rotateSource).toMatch(/organizationId|membershipId/);
+    expect(rotateSource).not.toContain('take: 1');
+    expect(rotateSource).toMatch(/resolveRefreshBinding|loadMembershipForUser/);
   });
 });

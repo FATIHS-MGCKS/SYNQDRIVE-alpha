@@ -1602,6 +1602,7 @@ model Organization {
   hvCapacityObservations                 HvCapacityObservation[]
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
+  refreshTokens                          RefreshToken[]
 
   @@index([status])
   @@map("organizations")
@@ -1629,16 +1630,17 @@ model User {
   timezone           String?          @default("Europe/Berlin")
   dateFormat         String?          @default("DD.MM.YYYY") @map("date_format")
   mustChangePassword Boolean          @default(false) @map("must_change_password")
-  sessionVersion     Int              @default(0) @map("session_version")
+  sessionVersion           Int              @default(0) @map("session_version")
+  lastAuthOrganizationId   String?          @map("last_auth_organization_id")
   lastLoginAt        DateTime?        @map("last_login_at")
   lastLoginIp        String?          @map("last_login_ip")
   lastLoginDevice    String?          @map("last_login_device")
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
+  refreshTokens                       RefreshToken[]
   memberships                         OrganizationMembership[]
   activityLogs                        ActivityLog[]
-  refreshTokens                       RefreshToken[]
   iamSessionRevocationIntents         IamSessionRevocationIntent[]
   passwordResetTokens                 PasswordResetToken[]
   accountPreferences                  UserAccountPreference[]
@@ -1678,28 +1680,49 @@ model User {
 // REFRESH TOKENS
 // ------------------------------------------------
 
-model RefreshToken {
-  id                String    @id @default(uuid())
-  userId            String    @map("user_id")
-  tokenHash         String    @unique @map("token_hash") // bcrypt hash of the actual token
-  family            String    @map("family") // rotation family — revoke all on reuse detection
-  organizationId    String?   @map("organization_id")
-  membershipId      String?   @map("membership_id")
-  sessionVersion    Int?      @map("session_version")
-  membershipVersion Int?      @map("membership_version")
-  privilegedSession Boolean   @default(false) @map("privileged_session")
-  expiresAt         DateTime  @map("expires_at")
-  revokedAt         DateTime? @map("revoked_at")
-  replacedBy        String?   @map("replaced_by") // id of the next token in chain
-  userAgent         String?   @map("user_agent")
-  ipAddress         String?   @map("ip_address")
-  createdAt         DateTime  @default(now()) @map("created_at")
+enum RefreshTokenScope {
+  ORG_MEMBERSHIP_BOUND
+  LEGACY_UNSCOPED
+}
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum SessionAssuranceLevel {
+  PASSWORD
+  MFA
+}
+
+model RefreshToken {
+  id                String                 @id @default(uuid())
+  userId            String                 @map("user_id")
+  tokenHash         String                 @unique @map("token_hash") // bcrypt hash of the actual token
+  family            String                 @map("family") // rotation family — revoke all on reuse detection
+  scope             RefreshTokenScope      @default(LEGACY_UNSCOPED) @map("scope")
+  organizationId    String?                @map("organization_id")
+  membershipId      String?                @map("membership_id")
+  sessionVersion    Int?                   @map("session_version")
+  membershipVersion Int?                   @map("membership_version")
+  permissionVersion Int?                   @map("permission_version")
+  roleVersion       Int?                   @map("role_version")
+  assuranceLevel    SessionAssuranceLevel? @map("assurance_level")
+  authenticatedAt   DateTime?              @map("authenticated_at")
+  lastUsedAt        DateTime?              @map("last_used_at")
+  privilegedSession Boolean                @default(false) @map("privileged_session")
+  expiresAt         DateTime               @map("expires_at")
+  revokedAt         DateTime?              @map("revoked_at")
+  revocationReason  String?                @map("revocation_reason")
+  replacedBy        String?                @map("replaced_by") // id of the next token in chain
+  userAgent         String?                @map("user_agent")
+  ipAddress         String?                @map("ip_address")
+  createdAt         DateTime               @default(now()) @map("created_at")
+
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  membership   OrganizationMembership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([family])
   @@index([userId, organizationId])
+  @@index([membershipId])
+  @@index([scope])
   @@map("refresh_tokens")
 }
 
@@ -1771,6 +1794,7 @@ model OrganizationMembership {
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  refreshTokens    RefreshToken[]
 
   @@unique([userId, organizationId])
   @@index([organizationId])

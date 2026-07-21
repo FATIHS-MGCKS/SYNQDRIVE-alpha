@@ -44,6 +44,11 @@ export { default as batteryV2RetentionConfig } from './battery-v2-retention.conf
 export { default as voiceRetentionConfig } from './voice-retention.config';
 export { default as documentRetentionConfig } from './document-retention.config';
 export {
+  default as iamConfig,
+  IAM_ORG_BOUND_REFRESH_SESSIONS_ENV,
+  IAM_LEGACY_UNSCOPED_REFRESH_GRACE_ENV,
+} from './iam.config';
+export {
   BATTERY_CRANK_SIGNAL_CADENCE_MS,
   BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV,
   BATTERY_V2_START_PROXY_ENV,
