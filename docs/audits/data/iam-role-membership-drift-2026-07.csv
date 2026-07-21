@@ -1,0 +1,2 @@
+membershipAlias,userAlias,organizationAlias,roleAlias,membershipStatus,classification,permDiff,stationScopeDiff,stationIdsDiff,fieldAgentDiff,membershipRoleDiff,roleActive,roleUpdatedAt,membershipUpdatedAt,privilegedDrift,notes
+MEMBERSHIP_001,USER_002,ORG_001,,ACTIVE,NO_ROLE_LINK,False,False,False,False,False,,,,False,Active membership has null organization_role_id; effective access via MembershipRole bypass (ORG_ADMIN) or empty permissions JSON

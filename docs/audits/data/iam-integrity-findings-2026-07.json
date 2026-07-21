@@ -1,0 +1,229 @@
+{
+  "auditId": "users-roles-production-readiness-2026-07",
+  "phase": 4,
+  "capturedAt": "2026-07-21T01:06:03.353647+00:00",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "scope": {
+    "organizationsAnalyzed": 2,
+    "usersAnalyzed": 2,
+    "membershipsAnalyzed": 1,
+    "multiOrgActiveUsers": 0,
+    "windowDaysSessionsActivity": 90
+  },
+  "summaryCounts": {
+    "findings": 10,
+    "P0": 2,
+    "P1": 5,
+    "P2": 3,
+    "roleDriftLinkedRows": 0,
+    "noRoleLinkActiveMemberships": 1,
+    "privilegedDriftCases": 0,
+    "inviteRows": 0,
+    "singleAdminOrgs": 1,
+    "zeroAdminOrgsWithMembers": 0
+  },
+  "findings": [
+    {
+      "id": "UR-P4-F01",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "session_integrity",
+      "title": "Active refresh sessions survive password-related UPDATE events; zero revoked refresh tokens",
+      "codeEvidence": "RefreshTokenService.revokeAllForUser not called from changeOrgUserPassword/changePasswordAdmin; AccountService.changePassword only optionally revokes others",
+      "dataEvidence": "passwordEventsObserved=89; refreshTokensRevoked=0; refreshTokensActive=70; distinctUsersWithPasswordEventsAndSurvivingSessions=2; maxSurvivorsSingleEvent=53",
+      "affectedOrganizationCount": 1,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Credential change does not terminate existing refresh families; stolen refresh remains valid until 30d expiry",
+      "reproduction": "Read-only: count refresh_tokens where revoked_at is null; correlate activity_logs UPDATE/RESET events for users",
+      "recommendation": "On any password change/reset: revokeAllForUser; enforce mustChangePassword; short access TTL",
+      "requiredTests": [
+        "password_reset_revokes_all_refresh_families",
+        "self_change_password_default_revoke_all_except_current"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P4-F02",
+      "severity": "P0",
+      "confidence": "high",
+      "category": "session_binding",
+      "title": "All refresh sessions are user-only (no organization/membership binding)",
+      "codeEvidence": "schema RefreshToken has no organization_id; rotate selects newest ACTIVE membership",
+      "dataEvidence": "sessionsWithoutOrganizationBinding=80; multiOrgActiveUsers=0; all sessionUsers sessionOrgBound=no",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 80,
+      "impact": "Architecture allows refresh from prior org context to mint access for another org when multi-org exists",
+      "reproduction": "information_schema + refresh_tokens column inventory; sessionUsers classification USER_ONLY_SESSION",
+      "recommendation": "Bind refresh family to organizationId+membershipId; require explicit org switch for rebind",
+      "requiredTests": [
+        "refresh_cannot_change_organization_without_switch"
+      ],
+      "productionBlocker": true
+    },
+    {
+      "id": "UR-P4-F03",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "session_integrity",
+      "title": "Session pile-up: many parallel active families; no rotation/reuse evidence in DB",
+      "codeEvidence": "Login always creates new family; SPA discards refresh token so logout/rotate unused",
+      "dataEvidence": "familiesActive=70; usersWithParallelActiveFamilies=2; tokensWithReplacedBy=0; USER_002 activeFamilies=56 USER_001=14",
+      "affectedOrganizationCount": 1,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 70,
+      "impact": "Large attack surface of long-lived refresh secrets; reuse detection never exercised in prod data",
+      "reproduction": "Group active refresh_tokens by user_id/family",
+      "recommendation": "Persist and rotate refresh client-side; cap concurrent families; idle revoke",
+      "requiredTests": [
+        "login_reuses_or_rotates_family_per_device"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P4-F04",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "privileged_accounts",
+      "title": "ORG_001 is single-admin; ORG_002 has zero members/roles",
+      "codeEvidence": "assertNotLastActiveOrgAdmin only protects MembershipRole.ORG_ADMIN",
+      "dataEvidence": "adminRisk ORG_001 singleAdminRisk=true activeOrgAdminCount=1; ORG_002 noMembers=true rolesTotal=0",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 1,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Single point of failure for tenant admin; empty org lacks seeded roles until ensureDefaultRoles runs",
+      "reproduction": "Count ACTIVE ORG_ADMIN per organization_id",
+      "recommendation": "Require >=2 admins policy; seed roles on org create; break-glass runbook",
+      "requiredTests": [
+        "org_create_seeds_system_roles"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P4-F05",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "role_link",
+      "title": "Active ORG_ADMIN membership has no organization_role_id and empty permissions snapshot",
+      "codeEvidence": "PermissionsGuard ORG_ADMIN bypass; mapOrgUser shows role without template link",
+      "dataEvidence": "effectiveAccess MEMBERSHIP_001 roleSource=direct_or_legacy hasPermissionSnapshot=false driftClass=NO_ROLE_LINK; activeMembershipsWithoutRoleLink=1; rolesWithoutAssignments=10",
+      "affectedOrganizationCount": 1,
+      "affectedUserCount": 1,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 56,
+      "impact": "System role templates unused in live auth path; drift tooling cannot compare template vs membership",
+      "reproduction": "organization_memberships where status=ACTIVE and organization_role_id is null",
+      "recommendation": "Link admins to org_admin system template on create; store permission snapshot even for ORG_ADMIN for audit",
+      "requiredTests": [
+        "create_org_admin_sets_organization_role_id"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P4-F06",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "session_orphans",
+      "title": "MASTER_ADMIN has 14 active refresh families without any organization membership",
+      "codeEvidence": "OrgScopingGuard bypass for MASTER_ADMIN; refresh tokens user-global",
+      "dataEvidence": "usersNoActiveMembershipWithSessions USER_001 platformRole=MASTER_ADMIN activeRefreshTokens=14; activeSessionsForUsersWithoutActiveMembership=14",
+      "affectedOrganizationCount": 0,
+      "affectedUserCount": 1,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 14,
+      "impact": "Platform admin sessions accumulate without tenant membership; still user-global refresh surface",
+      "reproduction": "Users with active refresh and zero ACTIVE memberships",
+      "recommendation": "Session inventory + revoke controls for platform admins; optional membership binding still N/A",
+      "requiredTests": [
+        "admin_session_list_and_revoke_all"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P4-F07",
+      "severity": "P2",
+      "confidence": "high",
+      "category": "invite_integrity",
+      "title": "No invite rows in production \u2014 joiner path unused; cannot validate invite integrity empirically",
+      "codeEvidence": "OrganizationInviteService + plaintext inviteUrl return (Phase 1/2)",
+      "dataEvidence": "invitesTotal=0 across organizations",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 0,
+      "affectedMembershipCount": 0,
+      "affectedSessionCount": 0,
+      "impact": "Invite security hypotheses remain code-confirmed only; no prod evidence of accept/resend/expiry handling",
+      "reproduction": "count organization_user_invites",
+      "recommendation": "When invites used: hash-only delivery, no clipboard plaintext, re-auth for existing users",
+      "requiredTests": [
+        "invite_accept_existing_user_requires_auth"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P4-F08",
+      "severity": "P1",
+      "confidence": "high",
+      "category": "audit_trail",
+      "title": "Zero ActivityLog rows with metaJson.auditAction despite 89 password-related UPDATE events",
+      "codeEvidence": "UserAccessAuditService via void record; MASTER_ADMIN password path has no userAudit",
+      "dataEvidence": "iamAuditActionsAllTime={}; activityAuth90d={'AUTH_FAIL': 9, 'LOGIN': 101, 'UPDATE': 87}",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "IAM-specific audit codes unused in production; forensic reconstruction limited to coarse AUTH_EVENT/UPDATE",
+      "reproduction": "select count(*) from activity_logs where meta_json ? 'auditAction'",
+      "recommendation": "Await audit writes; cover master password reset; alert on missing audit after IAM mutations",
+      "requiredTests": [
+        "iam_mutation_writes_audit_action"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P4-F09",
+      "severity": "P2",
+      "confidence": "high",
+      "category": "role_drift",
+      "title": "No membership\u2194role drift pairs \u2014 because no memberships linked to roles",
+      "codeEvidence": "updateRole does not cascade (Phase 3)",
+      "dataEvidence": "roleMembershipDrift linked rows=0; NO_ROLE_LINK=1; system roles on ORG_001=10 all unassigned",
+      "affectedOrganizationCount": 1,
+      "affectedUserCount": 1,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "Drift detector idle; privileged drift not observable until templates are assigned",
+      "reproduction": "Join memberships to organization_roles on organization_role_id",
+      "recommendation": "Assign templates; add scheduled drift report",
+      "requiredTests": [
+        "role_update_marks_assigned_memberships_stale"
+      ],
+      "productionBlocker": false
+    },
+    {
+      "id": "UR-P4-F10",
+      "severity": "P2",
+      "confidence": "medium",
+      "category": "access_review",
+      "title": "No access-review records or jobs found",
+      "codeEvidence": "No access review model/scheduler in IAM modules (Phase 1/3)",
+      "dataEvidence": "accessReviewsFound=0 for all orgs",
+      "affectedOrganizationCount": 2,
+      "affectedUserCount": 2,
+      "affectedMembershipCount": 1,
+      "affectedSessionCount": 0,
+      "impact": "ISO/DSGVO access review control not operational",
+      "reproduction": "Schema/code search + org coverage field",
+      "recommendation": "Periodic access review export for admins/privileged memberships",
+      "requiredTests": [
+        "access_review_export_readonly"
+      ],
+      "productionBlocker": false
+    }
+  ]
+}

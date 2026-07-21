@@ -1,0 +1,53 @@
+{
+  "auditId": "users-roles-production-readiness-2026-07",
+  "phase": 4,
+  "completedAt": "2026-07-21T01:08:47.299Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "summary": "Phase 4 complete: anonymized VPS IAM coverage, role drift, session/invite integrity, and findings JSON validated.",
+  "artifacts": [
+    "docs/audits/users-roles-production-readiness-2026-07.md",
+    "docs/audits/data/iam-vps-organization-coverage-2026-07.csv",
+    "docs/audits/data/iam-role-membership-drift-2026-07.csv",
+    "docs/audits/data/iam-effective-access-vps-2026-07.csv",
+    "docs/audits/data/iam-multi-org-session-integrity-2026-07.csv",
+    "docs/audits/data/iam-session-revocation-integrity-2026-07.csv",
+    "docs/audits/data/iam-invite-integrity-2026-07.csv",
+    "docs/audits/data/iam-integrity-findings-2026-07.json",
+    "scripts/audits/audit-effective-access.ts",
+    "scripts/audits/iam-vps-integrity-readonly.py"
+  ],
+  "notes": [
+    "No session revokes, role reconciliations, membership updates, or invite actions performed.",
+    "Reproduce aggregates with scripts/audits/iam-vps-integrity-readonly.py (SELECT-only).",
+    "Lightweight re-check: scripts/audits/audit-effective-access.ts [--organizationAlias=ORG_001].",
+    "Organization coverage rows: 2",
+    "Findings P0=2 P1=5 productionBlockers=2"
+  ],
+  "data": {
+    "organizationCoverageRows": 2,
+    "scope": {
+      "organizationsAnalyzed": 2,
+      "usersAnalyzed": 2,
+      "membershipsAnalyzed": 1,
+      "multiOrgActiveUsers": 0,
+      "windowDaysSessionsActivity": 90
+    },
+    "summaryCounts": {
+      "findings": 10,
+      "P0": 2,
+      "P1": 5,
+      "P2": 3,
+      "roleDriftLinkedRows": 0,
+      "noRoleLinkActiveMemberships": 1,
+      "privilegedDriftCases": 0,
+      "inviteRows": 0,
+      "singleAdminOrgs": 1,
+      "zeroAdminOrgsWithMembers": 0
+    },
+    "findingCount": 10,
+    "p0": 2,
+    "p1": 5,
+    "productionBlockers": 2
+  }
+}

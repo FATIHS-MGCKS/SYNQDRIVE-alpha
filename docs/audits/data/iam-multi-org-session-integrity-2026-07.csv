@@ -1,0 +1,4 @@
+userAlias,userStatus,platformRole,activeMembershipCount,removedMembershipCount,suspendedMembershipCount,organizationAliases,activeRefreshTokenCount,activeFamilyCount,classification,sessionOrgBound,ambiguousOrgSelectionRisk,notes
+USER_001,ACTIVE,MASTER_ADMIN,0,0,0,,14,14,USER_ONLY_SESSION,no,n/a,
+USER_002,ACTIVE,USER,1,0,0,ORG_001,56,56,USER_ONLY_SESSION,no,possible,
+(none),,,0,0,0,,0,0,NOT_ENOUGH_DATA,n/a,n/a,No multi-org active users in this environment; architecture still USER_ONLY_SESSION / REFRESH_ORG_DRIFT_RISK when multi-org appears

@@ -5,11 +5,11 @@
 | **Audit ID** | `users-roles-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/users-roles-production-readiness-2026-07` |
-| **Phase** | **3 of 8 — Roles / permissions / effective access / endpoint enforcement** |
+| **Phase** | **4 of 8 — VPS IAM integrity (users / roles / sessions / invites)** |
 | **Verdict (interim)** | **NOT READY** (preliminary — full verdict in Phase 8) |
-| **Status** | **Phases 1–3 complete** — Phases 4–8 outlined, not executed |
-| **Production data modified** | **No** — code/static scans only in Phase 3; prior VPS diagnostics read-only |
-| **Analysis window (VPS)** | 2026-07-20 UTC (Phase 1); Phases 2–3 code-complete 2026-07-21 |
+| **Status** | **Phases 1–4 complete** — Phases 5–8 outlined, not executed |
+| **Production data modified** | **No** — Phase 4 VPS queries were SELECT-only; no session/role/invite mutations |
+| **Analysis window (VPS)** | Sessions/IAM activity: last **90 days**; users/memberships/roles/invites/audit: **full history** (captured 2026-07-21 UTC) |
 
 ---
 
@@ -31,7 +31,17 @@
 | Endpoint enforcement summary | `docs/audits/data/iam-endpoint-enforcement-summary-2026-07.json` | 3 |
 | Role-change impact matrix | `docs/audits/data/iam-role-change-impact-matrix-2026-07.csv` | 3 |
 | Privileged account controls | `docs/audits/data/iam-privileged-account-controls-2026-07.csv` | 3 |
+| VPS org IAM coverage | `docs/audits/data/iam-vps-organization-coverage-2026-07.csv` | 4 |
+| Role↔membership drift | `docs/audits/data/iam-role-membership-drift-2026-07.csv` | 4 |
+| Effective access (VPS) | `docs/audits/data/iam-effective-access-vps-2026-07.csv` | 4 |
+| Multi-org session integrity | `docs/audits/data/iam-multi-org-session-integrity-2026-07.csv` | 4 |
+| Session revocation integrity | `docs/audits/data/iam-session-revocation-integrity-2026-07.csv` | 4 |
+| Invite integrity | `docs/audits/data/iam-invite-integrity-2026-07.csv` | 4 |
+| Integrity findings JSON | `docs/audits/data/iam-integrity-findings-2026-07.json` | 4 |
+| Phase-4 script result | `docs/audits/data/users-roles-audit-phase-4-result-2026-07.json` | 4 (generated) |
 | Read-only orchestrator | `scripts/audits/audit-users-roles-production-readiness.ts` | 1–8 |
+| Effective-access helper | `scripts/audits/audit-effective-access.ts` | 4 |
+| VPS integrity SQL dump (SELECT-only) | `scripts/audits/iam-vps-integrity-readonly.py` | 4 |
 
 Planned later-phase artifacts (not yet generated):
 
@@ -88,11 +98,15 @@ Stable, non-reversible aliases used in all Git artifacts:
 - Repository-wide endpoint enforcement scan
 - Last-admin / privileged controls and role-change impact
 
-## Phase 4 — Authentication hardening & lockout (follow-on)
+## Phase 4 — VPS IAM integrity analysis *(complete below)*
 
-- Login failure / throttle / lockout gaps (deeper than Phase 2)
-- Brute-force / CAPTCHA / progressive delay
-- Correlation of AUTH_FAIL with session anomalies
+- Fleet/org-wide IAM coverage (anonymized aggregates)
+- Role↔membership drift classification + impact
+- Multi-org session binding / org-selection risk
+- Session revocation integrity vs password/suspend/remove events
+- Last-admin / orphan risks
+- Invite integrity (empirical; zero invite rows in this environment)
+- Read-only scripts + findings JSON
 
 ## Phase 5 — Joiner / Mover / Leaver (invites, role moves, suspend, remove)
 
@@ -709,7 +723,156 @@ Full rows: `iam-endpoint-enforcement-matrix-2026-07.csv`.
 | Last-admin / privileged controls | Done |
 | Role-change impact matrix | Done |
 | No production mutations / no product fixes | Confirmed |
-| Prompt 4 not started | Confirmed |
+| Prompt 4 started only after Phase 3 exit | Confirmed |
+
+---
+
+# Phase 4 findings — VPS users / roles / sessions / invites integrity
+
+## P4.0 Method & safety
+
+| Item | Value |
+|------|-------|
+| Mode | **read-only** (`writesPerformed=false`) |
+| Transport | SSH → VPS `psql` **SELECT** aggregates only |
+| Window | Sessions / AUTH activity: **90 days**; entities: **full history** |
+| Scripts | `iam-vps-integrity-readonly.py`, `audit-effective-access.ts`, orchestrator `--phase=4` |
+| Forbidden actions | Session revoke, role reconciliation, membership update, invite create/accept/revoke |
+| Git hygiene | Aliases only; no emails, IPs, UAs, tokens, raw UUIDs |
+
+Reproduce:
+
+```bash
+DATABASE_URL=... USERS_ROLES_AUDIT_ALLOW_REMOTE=1 USERS_ROLES_AUDIT_ALLOW_PROD=1 \
+  python3 scripts/audits/iam-vps-integrity-readonly.py > /tmp/iam-vps-anonymized.json
+node --experimental-strip-types scripts/audits/audit-users-roles-production-readiness.ts --phase=4
+```
+
+## P4.1 Population snapshot (anonymized)
+
+| Metric | Value |
+|--------|-------|
+| Organizations | **2** (`ORG_001`, `ORG_002`) |
+| Users | **2** |
+| Memberships | **1** (`MEMBERSHIP_001` → `ORG_001` / `USER_002`, `ACTIVE` `ORG_ADMIN`) |
+| Roles | **10** (all system templates on `ORG_001`; **0** assignments) |
+| Invites | **0** |
+| Refresh tokens | **80** total / **70** active / **0** revoked |
+| Multi-org active users | **0** |
+| Users without active membership | **1** (`USER_001` `MASTER_ADMIN`, **14** active families) |
+
+### Organization coverage (Teil 1)
+
+| Org | Active mem | Admins | System roles | Custom | Open invites | Active refresh (member users) | All-stations active | Access reviews | Audit 90d |
+|-----|------------|--------|--------------|--------|--------------|-------------------------------|---------------------|----------------|-----------|
+| `ORG_001` | 1 | 1 | 10 | 0 | 0 | 56 | 1 | 0 | 500 |
+| `ORG_002` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 |
+
+Full columns: `iam-vps-organization-coverage-2026-07.csv`.
+
+## P4.2 Role propagation & drift (Teil 2)
+
+| Classification | Count | Notes |
+|----------------|-------|-------|
+| Linked membership↔role pairs | **0** | No `organization_role_id` on live membership |
+| `NO_ROLE_LINK` | **1** | `MEMBERSHIP_001` — empty permissions JSON; access via `ORG_ADMIN` bypass |
+| `IN_SYNC` / `STALE_*` / `ROLE_CHANGED_*` / privileged drift | **0** | Detector idle until templates are assigned |
+| Disabled role with active assignment | **0** | |
+| Invalid station IDs on memberships | **0** | |
+
+Impact evaluation (empirical):
+
+| Impact axis | Result |
+|-------------|--------|
+| Affected memberships (linked drift) | 0 |
+| Extra / missing rights vs template | n/a (no link) |
+| Privileged drift | **0** observed |
+| Cross-station drift | **0** |
+| Sessions with stale role claims | Architecture risk remains (Phase 2/3); no linked-role timestamp evidence |
+
+## P4.3 Multi-org sessions (Teil 3)
+
+No multi-org active users in this environment. Both users with refresh tokens classify as **`USER_ONLY_SESSION`** (refresh rows have no org/membership FK). Architecture still implies **`REFRESH_ORG_DRIFT_RISK`** when a second ACTIVE membership appears.
+
+| User | Platform | Active memberships | Active families | Classification |
+|------|----------|--------------------|-----------------|----------------|
+| `USER_001` | `MASTER_ADMIN` | 0 | 14 | `USER_ONLY_SESSION` |
+| `USER_002` | `USER` | 1 (`ORG_001`) | 56 | `USER_ONLY_SESSION` |
+
+No access/refresh tokens decoded or committed.
+
+## P4.4 Session integrity (Teil 4)
+
+| Metric | Value |
+|--------|-------|
+| Active token families | **70** |
+| Revoked token families / rows | **0** |
+| Rotation evidence (`replaced_by`) | **0** |
+| Reuse-detection DB rows | not directly logged |
+| Password-related events observed | **89** |
+| Active sessions surviving those events (sum) | **1935** (max single event survivors **53**) |
+| Suspend/remove IAM audit events | **0** |
+| Active sessions for users without ACTIVE membership | **14** (`USER_001`) |
+| Active sessions older than 90d | **0** |
+| Sessions without organization binding | **80 / 80** |
+| Parallel active families (users) | **2** |
+
+IPs / user agents: presence flags only in aggregates — **never** written to Git.
+
+## P4.5 Last-admin & orphan risks (Teil 5)
+
+| Risk | Result |
+|------|--------|
+| Org with zero active admin (but has members) | **0** |
+| Org with exactly one admin | **`ORG_001`** (`singleAdminRisk=true`) |
+| Empty org (no members/roles) | **`ORG_002`** |
+| Custom admin-equivalent roles assigned | **0** |
+| Suspended sole admin | **0** |
+| Open admin invite as sole replacement | **0** |
+| Removed users with active sessions | **0** (no REMOVED memberships) |
+| User without membership + active session | **`USER_001`** (expected for `MASTER_ADMIN`) |
+| Invalid station scope refs | **0** |
+
+## P4.6 Invite integrity (Teil 6)
+
+**Zero** `organization_user_invites` rows — empirical invite checks (resend rotation, accept-after-expiry, duplicate accept, email normalization) have **no production samples**. Placeholder row in `iam-invite-integrity-2026-07.csv`. Code-level invite risks remain from Phases 1–2.
+
+## P4.7 Audit-trail signal
+
+| Signal | Value |
+|--------|-------|
+| `metaJson.auditAction` rows (all time) | **0** |
+| AUTH 90d | `LOGIN` 101, `UPDATE` 87, `AUTH_FAIL` 9 |
+| Access reviews | **0** |
+
+## P4.8 Phase-4 findings summary (P0/P1 Zwischenstand)
+
+| ID | Sev | Title | Blocker? |
+|----|-----|-------|----------|
+| UR-P4-F01 | P0 | Active refresh survives password UPDATE events; **0** revoked tokens | **Yes** |
+| UR-P4-F02 | P0 | All refresh sessions user-only (no org/membership binding) | **Yes** |
+| UR-P4-F03 | P1 | Session pile-up (56+14 active families); no rotation evidence | No |
+| UR-P4-F04 | P1 | `ORG_001` single-admin; `ORG_002` empty | No |
+| UR-P4-F05 | P1 | Active `ORG_ADMIN` has null `organization_role_id` + empty permissions | No |
+| UR-P4-F06 | P1 | `MASTER_ADMIN` 14 active families without membership | No |
+| UR-P4-F07 | P2 | No invite rows — invite integrity unvalidated empirically | No |
+| UR-P4-F08 | P1 | Zero `auditAction` rows despite 89 password UPDATEs | No |
+| UR-P4-F09 | P2 | No linked role↔membership drift pairs | No |
+| UR-P4-F10 | P2 | No access-review records | No |
+
+Cumulative interim (Phases 1–4): production blockers confirmed in **data** for session revocation and refresh org-binding; role-drift detectors idle because templates are unassigned; invite path unused in prod.
+
+## P4.9 Phase 4 exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Org coverage CSV | Done |
+| Drift / effective-access / multi-org / session / invite CSVs | Done |
+| Findings JSON with required fields | Done (10 findings) |
+| Read-only scripts extended | Done |
+| Main report updated | Done |
+| No production mutations | Confirmed |
+| Prompt 5 not started | Confirmed |
 
 ---
 
@@ -718,13 +881,13 @@ Full rows: `iam-endpoint-enforcement-matrix-2026-07.csv`.
 | # | Hypothesis | Phase-1 result | Follow-up phase |
 |---|------------|----------------|-----------------|
 | 1 | Org admins can change global password | **Confirmed** (Phase 2 deepened: also email/status) | 5, 6, 8 |
-| 2 | Password/suspend/role revoke sessions unreliable | **Confirmed** + invalidation matrix | 5, 8 |
-| 3 | Role values copied; later edits don’t propagate | **Confirmed** + no impact preview/versioning | 5, 8 |
-| 4 | Multi-org login/refresh non-deterministic | **Confirmed** + three selection algorithms | 6, 8 |
-| 5 | Refresh not bound to org/membership | **Confirmed**; refresh A→access B | 6, 8 |
+| 2 | Password/suspend/role revoke sessions unreliable | **Confirmed** + Phase-4 data: 0 revoked; survivors after password events | 5, 8 |
+| 3 | Role values copied; later edits don’t propagate | **Confirmed** + Phase-4: no linked templates to observe drift | 5, 8 |
+| 4 | Multi-org login/refresh non-deterministic | **Confirmed** + three selection algorithms; 0 multi-org users in VPS | 6, 8 |
+| 5 | Refresh not bound to org/membership | **Confirmed** + Phase-4: 80/80 sessions unbound | 6, 8 |
 | 6 | Invite plaintext to FE/clipboard | **Confirmed** | 5, 7 |
 | 7 | Existing users accept invite without re-auth | **Confirmed** | 5, 7 |
-| 8 | Critical IAM audits fire-and-forget | **Confirmed**; master password reset has **no** audit | 5, 8 |
+| 8 | Critical IAM audits fire-and-forget | **Confirmed**; Phase-4: `auditAction` rows=0 despite 89 UPDATEs | 5, 8 |
 | 9 | MFA/sessions/security activity partial | **Confirmed — not implemented** | 7, 8 |
 | 10 | Parallel access truths | **Confirmed** (template/membership/JWT/FE/station + endpoint guard inconsistency) | 7, 8 |
 | 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed gap** | 7, 8 |
@@ -733,7 +896,7 @@ Full rows: `iam-endpoint-enforcement-matrix-2026-07.csv`.
 
 ## Appendix B — Changes / Architektur
 
-**Not updated** (Phases 1–3). Audit documentation only; no product implementation or architecture behavior change was made.
+**Not updated** (Phases 1–4). Audit documentation and read-only scripts only; no product implementation or architecture behavior change was made.
 
 ---
 
@@ -747,8 +910,9 @@ Full rows: `iam-endpoint-enforcement-matrix-2026-07.csv`.
 | Revoke sessions | No |
 | Create/send/revoke/accept invites | No |
 | Change MFA state | No |
+| Role reconciliation / membership updates | No |
 | Prisma migrate / infra config change | No |
 | Redis writes | No |
 | Commit of PII/secrets | No |
 
-All VPS access was diagnostic/read-only (`psql` SELECT aggregates, Redis SCAN/DBSIZE, `curl -I` headers, PM2 status, env key **presence/shape** only).
+All VPS access was diagnostic/read-only (`psql` SELECT aggregates via `iam-vps-integrity-readonly.py`, Redis SCAN/DBSIZE in earlier phases, `curl -I` headers, PM2 status, env key **presence/shape** only).
