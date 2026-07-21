@@ -30,7 +30,7 @@
 | Prompt | Ziel | Status | Commit |
 |--------|------|--------|--------|
 | 1 | Remediation baseline (Branch, Inventar, Fortschrittsdokument) | ✅ (audit-Artefakte + Branch) | — |
-| 2 | Security regression test harness (A–K) | ✅ | _pending_ |
+| 2 | Security regression test harness (A–K) | ✅ | `1a2025e8` |
 | 3 | Remove org-admin direct global password set | ⬜ | — |
 | 4 | Self-service + admin reset tokens + session revoke | ⬜ | — |
 | 5 | Org-bound refresh tokens | ⬜ | — |
