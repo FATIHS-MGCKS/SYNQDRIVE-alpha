@@ -84,7 +84,7 @@ export type BookingDetailDto = {
     model: string | null;
     year: number | null;
     vehicleStatus: string | null;
-    rentalBlocked: boolean;
+    rentalBlocked: boolean | null;
     blockingReasons: string[];
     odometerKm: number | null;
     fuelPercent: number | null;
@@ -129,7 +129,7 @@ export type BookingDetailDto = {
     items: TaskSummaryItem[];
   };
   health: {
-    rentalBlocked: boolean;
+    rentalBlocked: boolean | null;
     blockingReasons: string[];
     overallState: string | null;
     criticalWarnings: string[];
