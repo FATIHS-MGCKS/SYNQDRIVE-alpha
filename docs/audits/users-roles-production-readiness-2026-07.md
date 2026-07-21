@@ -5,11 +5,11 @@
 | **Audit ID** | `users-roles-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/users-roles-production-readiness-2026-07` |
-| **Phase** | **2 of 8 — Identity / membership / session / password / MFA** |
+| **Phase** | **3 of 8 — Roles / permissions / effective access / endpoint enforcement** |
 | **Verdict (interim)** | **NOT READY** (preliminary — full verdict in Phase 8) |
-| **Status** | **Phases 1–2 complete** — Phases 3–8 outlined, not executed |
-| **Production data modified** | **No** — code read + prior VPS/DB/Redis diagnostics were read-only |
-| **Analysis window (VPS)** | 2026-07-20 UTC (Phase 1); Phase 2 code-complete 2026-07-21 |
+| **Status** | **Phases 1–3 complete** — Phases 4–8 outlined, not executed |
+| **Production data modified** | **No** — code/static scans only in Phase 3; prior VPS diagnostics read-only |
+| **Analysis window (VPS)** | 2026-07-20 UTC (Phase 1); Phases 2–3 code-complete 2026-07-21 |
 
 ---
 
@@ -25,14 +25,19 @@
 | Multi-org session flow | `docs/audits/data/iam-multi-org-session-flow-2026-07.csv` | 2 |
 | Session invalidation matrix | `docs/audits/data/iam-session-invalidation-matrix-2026-07.csv` | 2 |
 | Password / MFA flow matrix | `docs/audits/data/iam-password-mfa-flow-2026-07.csv` | 2 |
+| Role / permission model | `docs/audits/data/iam-role-permission-model-2026-07.csv` | 3 |
+| Effective access rule map | `docs/audits/data/iam-effective-access-rule-map-2026-07.csv` | 3 |
+| Endpoint enforcement matrix | `docs/audits/data/iam-endpoint-enforcement-matrix-2026-07.csv` | 3 |
+| Endpoint enforcement summary | `docs/audits/data/iam-endpoint-enforcement-summary-2026-07.json` | 3 |
+| Role-change impact matrix | `docs/audits/data/iam-role-change-impact-matrix-2026-07.csv` | 3 |
+| Privileged account controls | `docs/audits/data/iam-privileged-account-controls-2026-07.csv` | 3 |
 | Read-only orchestrator | `scripts/audits/audit-users-roles-production-readiness.ts` | 1–8 |
 
 Planned later-phase artifacts (not yet generated):
 
 | Artifact | Path | Phase |
 |----------|------|-------|
-| Threat / control matrix | `docs/audits/data/users-roles-control-matrix-2026-07.csv` | 2 residual / 8 |
-| Effective-permission replay | `docs/audits/data/users-roles-effective-permissions-2026-07.csv` | 3 |
+| Threat / control matrix | `docs/audits/data/users-roles-control-matrix-2026-07.csv` | 8 |
 | Invite lifecycle evidence | `docs/audits/data/users-roles-invite-lifecycle-2026-07.csv` | 5 |
 | UI/UX security audit | `docs/audits/data/users-roles-ui-ux-audit-2026-07.csv` | 7 |
 | DSGVO / ISO 27001 mapping | `docs/audits/data/users-roles-compliance-mapping-2026-07.csv` | 7–8 |
@@ -75,13 +80,13 @@ Stable, non-reversible aliases used in all Git artifacts:
 - Password admin/self/forgot flows and MFA/assurance gaps
 - Residual threat/control synthesis deferred to Phase 8 (CSV matrices hold Phase-2 evidence)
 
-## Phase 3 — Effective permission computation & parallel truths
+## Phase 3 — Roles / permissions / effective access / endpoints *(complete below)*
 
-- Formalize effective permission algorithm
-- Diff: `OrganizationRole.permissions` vs `OrganizationMembership.permissions` vs JWT `membershipRole` vs FE `hasPermission`
-- Station scope + fieldAgentAccess interaction
-- ORG_ADMIN bypass paths
-- Replay fixtures with anonymized ROLE/MEMBERSHIP slots
+- Role template vs membership snapshot model
+- Permission semantics (manage/write/read cascade, default deny)
+- Canonical effective-access read-model (defined, not implemented)
+- Repository-wide endpoint enforcement scan
+- Last-admin / privileged controls and role-change impact
 
 ## Phase 4 — Authentication hardening & lockout (follow-on)
 
@@ -551,27 +556,184 @@ See `iam-session-invalidation-matrix-2026-07.csv`.
 
 ---
 
+# Phase 3 findings — Roles, permissions, endpoints, privileged controls
+
+Artifacts:
+
+- `docs/audits/data/iam-role-permission-model-2026-07.csv`
+- `docs/audits/data/iam-effective-access-rule-map-2026-07.csv`
+- `docs/audits/data/iam-endpoint-enforcement-matrix-2026-07.csv`
+- `docs/audits/data/iam-endpoint-enforcement-summary-2026-07.json`
+- `docs/audits/data/iam-role-change-impact-matrix-2026-07.csv`
+- `docs/audits/data/iam-privileged-account-controls-2026-07.csv`
+
+## P3.1 Role model (Teil 1)
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | `OrganizationRole` dynamic or template? | **Template only** |
+| 2 | Permissions copied on assign? | **Yes** |
+| 3 | Later role edit? | Updates template row only |
+| 4 | Existing memberships updated? | **No** (unless re-assign / direct PATCH) |
+| 5 | Role version? | **No** |
+| 6 | Membership can diverge? | **Yes** |
+| 7 | Overrides explicit? | **No** — implicit snapshot in `membership.permissions` |
+| 8 | UI role label vs effective perms mismatch? | **Yes** |
+| 9 | Deactivated roles still effective? | **Yes** for already-copied memberships |
+| 10 | System roles? | 10 seeded templates per org (`ensureDefaultRoles`) |
+| 11 | System mutate/copy/delete? | Permissions immutable; rename blocked; **duplicate OK**; delete blocked |
+| 12 | Org-unique? | `systemKey` unique per org; custom names not uniquely constrained |
+
+## P3.2 Permission semantics (Teil 2)
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | `manage` ⇒ `write`+`read`? | **Yes** (`evaluateModulePermission`) |
+| 2 | `write` ⇒ `read`? | **Yes** |
+| 3 | Central vs per-guard? | Central util; FE **duplicates** cascade |
+| 4 | Unknown keys? | Dropped / deny |
+| 5 | New modules default-denied? | **Yes** (unless ORG_ADMIN/MASTER_ADMIN) |
+| 6 | Missing object allows? | **No** |
+| 7 | Wildcards? | **No** |
+| 8 | ORG_ADMIN full bypass? | **Yes** (module + station) |
+| 9 | Master admin separated? | **Yes** (`/admin/*` + bypasses) |
+| 10 | FE/BE name drift? | Possible — dual manual registries |
+
+**Critical:** `RolesGuard` without `@Roles` is a **no-op** (returns true). Controllers that only mount `OrgScopingGuard + RolesGuard` (e.g. bookings, customers) authorize **any ACTIVE org member** for writes.
+
+## P3.3 Effective access (Teil 3)
+
+### Actual runtime formula
+
+```text
+MASTER_ADMIN → allow
+else require ACTIVE membership in target org
+  (+ JWT organizationId must match :orgId on OrgScopingGuard routes)
+if membership.role == ORG_ADMIN → allow all modules
+else evaluateModulePermission(membership.permissions, module, level)
+station axis (optional feature flag): StationAccessService.resolve(...)
+FE visibility: login snapshot hasPermission (ORG_ADMIN → true)
+```
+
+`OrganizationRole` is **not** in the runtime formula. No `roleVersion`. No single server `getEffectiveAccess()` API.
+
+### Canonical Effective-Access Read-Model (audit definition — **not implemented**)
+
+| Field | Intent |
+|-------|--------|
+| `effectiveRole` | Coarse membership role |
+| `roleSource` | `template` \| `direct` \| `legacy` |
+| `roleVersion` | Stamp from template at last assign (today: null) |
+| `effectivePermissions` | Normalized map (or implicit all for ORG_ADMIN) |
+| `directOverrides` | Diff vs last template snapshot |
+| `inheritedPermissions` | Template permissions at assign time |
+| `stationScope` / `effectiveStationIds` | From StationAccessService |
+| `privilegedCapabilities` | Derived admin-equivalent capabilities |
+| `deniedCapabilities` | Explicit denials / missing modules |
+| `decisionReasons` | Structured allow/deny explanations |
+
+Multiple evaluators today: `PermissionsGuard`, `assertMembershipPermission`, `StationAccessService`, `RolesGuard` (JWT), FE `hasPermission` — **drift confirmed**.
+
+## P3.4 Endpoint enforcement (Teil 4)
+
+Static decorator scan of Nest controllers:
+
+| Metric | Count |
+|--------|------:|
+| Controllers scanned | 94 |
+| HTTP handlers scanned | 935 |
+| Matrix rows (writes + permission-decorated + export/upload) | **525** |
+| Risk OK | 373 |
+| Risk P0 (heuristic) | 151 |
+| Org writes with OrgScoping but **no** PermissionsGuard | **122** |
+| Non-admin orgId writes missing OrgScopingGuard | 29 |
+| Users/roles endpoints with Org+Perm guards | 13 / 20 IAM routes |
+
+Largest module-permission gaps (org-scoped writes without `PermissionsGuard`):  
+`organizations_other` (34), `workflows_tasks` (20), `bookings` (17), `billing_subscription` (12), `customers` (9), `support` (6), `documents` (4), …
+
+**Users & Roles module itself** is comparatively well guarded (`OrgScopingGuard` + `PermissionsGuard` + `@RequirePermission`).
+
+**Cross-tenant notes:**
+- Org routes with OrgScopingGuard: JWT org must match `:orgId` + ACTIVE membership — good baseline.
+- Body `organizationId` trust not exhaustively proven per handler (scan is decorator-level).
+- Webhooks under `:orgId` intentionally skip OrgScoping (HMAC/other auth) — classified separately.
+- Export/download/upload appear in matrix; many lack module permissions.
+
+Full rows: `iam-endpoint-enforcement-matrix-2026-07.csv`.
+
+## P3.5 Last-admin & privileged accounts (Teil 5)
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | Detects effective admin or enum only? | **`MembershipRole.ORG_ADMIN` only** |
+| 2 | Custom role bypass? | **Yes** — `users-roles.manage` without ORG_ADMIN |
+| 3 | ≥2 privileged accounts recommended? | **Not enforced** |
+| 4 | Break-glass? | **None** |
+| 5 | Privileged marking? | Enum / platformRole only |
+| 6 | Step-up + justification? | **None** |
+
+## P3.6 Role-change impact (Teil 6)
+
+| Capability | Present? |
+|------------|----------|
+| Member count before template edit | **No** |
+| Permission gain/loss diff | **No** |
+| Session invalidation plan | **No** (and none executed) |
+| Station impact | **No** |
+| Privileged-access emergence flag | **No** |
+| API/JWT token impact | **No** |
+| Propagation | Template edit: **none**; assign/PATCH: **immediate on membership row only** |
+| Preview API | `permissionPreview` = single template normalize — **not** blast radius |
+
+## P3.7 Phase-3 P0 / P1 Zwischenstand
+
+| ID | Sev | Finding |
+|----|-----|---------|
+| UR-P3-RM-01..05 | P0 | Template snapshot model; no propagation; no roleVersion |
+| UR-P3-PS-12 | P0 | `RolesGuard` no-op without `@Roles` → org membership ≈ full write on many modules |
+| UR-P3-EA-18 | P0 | No single effective-access truth; FE snapshot drifts |
+| UR-P3-PA-01/02/15 | P0 | Last-admin ignores custom privileged roles |
+| UR-P3-RC-01/09/10 | P0 | No role-change impact analysis / versioned propagation |
+| Endpoint matrix | P0 | **122** org writes without module `PermissionsGuard` |
+| UR-P3-RM-07/09 | P1 | Implicit overrides; deactivated templates still empower members |
+| UR-P3-PS-03/10 | P1 | FE/BE permission cascade duplication / registry drift risk |
+
+## P3.8 Phase 3 exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Role/permission questions answered | Done |
+| Effective-access formula + canonical RM | Done (RM not implemented) |
+| Endpoint matrix produced | Done (525 rows) |
+| Last-admin / privileged controls | Done |
+| Role-change impact matrix | Done |
+| No production mutations / no product fixes | Confirmed |
+| Prompt 4 not started | Confirmed |
+
+---
+
 ## Appendix A — Hypothesis tracker (living)
 
 | # | Hypothesis | Phase-1 result | Follow-up phase |
 |---|------------|----------------|-----------------|
 | 1 | Org admins can change global password | **Confirmed** (Phase 2 deepened: also email/status) | 5, 6, 8 |
 | 2 | Password/suspend/role revoke sessions unreliable | **Confirmed** + invalidation matrix | 5, 8 |
-| 3 | Role values copied; later edits don’t propagate | **Confirmed** | 3, 5 |
+| 3 | Role values copied; later edits don’t propagate | **Confirmed** + no impact preview/versioning | 5, 8 |
 | 4 | Multi-org login/refresh non-deterministic | **Confirmed** + three selection algorithms | 6, 8 |
 | 5 | Refresh not bound to org/membership | **Confirmed**; refresh A→access B | 6, 8 |
 | 6 | Invite plaintext to FE/clipboard | **Confirmed** | 5, 7 |
 | 7 | Existing users accept invite without re-auth | **Confirmed** | 5, 7 |
 | 8 | Critical IAM audits fire-and-forget | **Confirmed**; master password reset has **no** audit | 5, 8 |
 | 9 | MFA/sessions/security activity partial | **Confirmed — not implemented** | 7, 8 |
-| 10 | Parallel access truths | **Confirmed** (+ dual User/Membership status) | 3, 7 |
+| 10 | Parallel access truths | **Confirmed** (template/membership/JWT/FE/station + endpoint guard inconsistency) | 7, 8 |
 | 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed gap** | 7, 8 |
 
 ---
 
 ## Appendix B — Changes / Architektur
 
-**Not updated** (Phases 1–2). Audit documentation only; no product implementation or architecture behavior change was made.
+**Not updated** (Phases 1–3). Audit documentation only; no product implementation or architecture behavior change was made.
 
 ---
 
