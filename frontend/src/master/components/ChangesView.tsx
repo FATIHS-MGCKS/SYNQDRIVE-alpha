@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-versioned-role-assignments-v49712-2026-07-21',
+    version: '4.9.712',
+    title: 'V4.9.712 — IAM versioned organization role assignments (Prompt 10)',
+    summary: [
+      'OrganizationRoleVersion, OrganizationRoleAssignment, MembershipPermissionOverride models.',
+      'Assignment modes: FOLLOW_LATEST_APPROVED_VERSION, PINNED_VERSION, MIGRATION_LEGACY_SNAPSHOT.',
+      'Explicit ALLOW/DENY overrides; legacy membership JSON preserved; migration backfill.',
+    ],
+    reason: 'Users & Roles remediation Prompt 10 — traceable role history and separated assignment from template.',
+    previousBehavior:
+      'Role permissions copied once to membership JSON with no version history or explicit overrides.',
+    details:
+      'backend/src/modules/users/organization-role-version.service.ts, architecture/IAM_VERSIONED_ROLE_ASSIGNMENTS_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T23:45:00.000Z',
+  },
+  {
     id: 'iam-effective-access-engine-v49711-2026-07-21',
     version: '4.9.711',
     title: 'V4.9.711 — IAM canonical EffectiveAccessEngine (Prompt 9)',

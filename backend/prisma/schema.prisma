@@ -1579,6 +1579,9 @@ model Organization {
   bookingPriceLineItems                  BookingPriceLineItem[]
   pricingQuotes                          PricingQuote[]
   organizationRoles                      OrganizationRole[]
+  organizationRoleVersions               OrganizationRoleVersion[]
+  organizationRoleAssignments            OrganizationRoleAssignment[]
+  membershipPermissionOverrides          MembershipPermissionOverride[]
   organizationUserInvites                OrganizationUserInvite[]
   orgEmailSettings                       OrgEmailSettings?
   orgEmailDomains                        OrgEmailDomain[]
@@ -1648,6 +1651,9 @@ model User {
   invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
   invitesAccepted                     OrganizationUserInvite[]                @relation("InvitesAccepted")
   organizationRolesCreated            OrganizationRole[]                      @relation("RolesCreated")
+  organizationRoleVersionsCreated     OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
+  organizationRoleAssignmentsCreated  OrganizationRoleAssignment[]          @relation("RoleAssignmentsCreated")
+  membershipPermissionOverridesCreated MembershipPermissionOverride[]       @relation("PermissionOverridesCreated")
   billingPriceVersionsCreated         BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
   billingPriceVersionsPublished       BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
   billingSubscriptionsCreated         BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
@@ -1795,6 +1801,8 @@ model OrganizationMembership {
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
   refreshTokens    RefreshToken[]
+  roleAssignments  OrganizationRoleAssignment[]
+  permissionOverrides MembershipPermissionOverride[]
 
   @@unique([userId, organizationId])
   @@index([organizationId])
@@ -1886,6 +1894,31 @@ model PasswordResetAttempt {
 // ORGANIZATION ROLE TEMPLATES (Access Control)
 // ------------------------------------------------
 
+enum OrganizationRoleVersionStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+  RETIRED
+}
+
+enum OrganizationRoleRiskClassification {
+  STANDARD
+  ELEVATED
+  PRIVILEGED
+  CRITICAL
+}
+
+enum OrganizationRoleAssignmentMode {
+  FOLLOW_LATEST_APPROVED_VERSION
+  PINNED_VERSION
+  MIGRATION_LEGACY_SNAPSHOT
+}
+
+enum MembershipPermissionOverrideEffect {
+  ALLOW
+  DENY
+}
+
 model OrganizationRole {
   id                      String         @id @default(uuid())
   organizationId          String         @map("organization_id")
@@ -1908,10 +1941,89 @@ model OrganizationRole {
   createdBy    User?                    @relation("RolesCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
   memberships  OrganizationMembership[]
   invites      OrganizationUserInvite[]
+  versions     OrganizationRoleVersion[]
+  assignments  OrganizationRoleAssignment[]
 
   @@unique([organizationId, systemKey])
   @@index([organizationId, isActive])
   @@map("organization_roles")
+}
+
+model OrganizationRoleVersion {
+  id                  String                           @id @default(uuid())
+  organizationRoleId  String                           @map("organization_role_id")
+  organizationId      String                           @map("organization_id")
+  version             Int
+  nameSnapshot        String                           @map("name_snapshot")
+  descriptionSnapshot String?                          @map("description_snapshot")
+  permissions         Json?
+  defaultStationScope String?                          @map("default_station_scope")
+  defaultStationIds   Json?                            @map("default_station_ids")
+  fieldAgentAccess    Boolean                          @default(false) @map("field_agent_access")
+  riskClassification  OrganizationRoleRiskClassification @default(STANDARD) @map("risk_classification")
+  createdByUserId     String?                          @map("created_by_user_id")
+  createdAt           DateTime                         @default(now()) @map("created_at")
+  changeReason        String?                          @map("change_reason")
+  status              OrganizationRoleVersionStatus    @default(APPROVED)
+
+  organizationRole OrganizationRole             @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
+  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy        User?                        @relation("RoleVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignments      OrganizationRoleAssignment[] @relation("AssignedRoleVersion")
+
+  @@unique([organizationRoleId, version])
+  @@index([organizationId, status])
+  @@index([organizationRoleId, status, version])
+  @@map("organization_role_versions")
+}
+
+model OrganizationRoleAssignment {
+  id                    String                         @id @default(uuid())
+  organizationId        String                         @map("organization_id")
+  membershipId          String                         @map("membership_id")
+  organizationRoleId    String?                        @map("organization_role_id")
+  assignedRoleVersionId String?                        @map("assigned_role_version_id")
+  assignmentMode        OrganizationRoleAssignmentMode @map("assignment_mode")
+  assignedByUserId      String?                        @map("assigned_by_user_id")
+  assignedAt            DateTime                       @default(now()) @map("assigned_at")
+  effectiveFrom         DateTime                       @default(now()) @map("effective_from")
+  endedAt               DateTime?                      @map("ended_at")
+  isCurrent             Boolean                        @default(true) @map("is_current")
+
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership          OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  organizationRole    OrganizationRole?        @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  assignedRoleVersion OrganizationRoleVersion? @relation("AssignedRoleVersion", fields: [assignedRoleVersionId], references: [id], onDelete: SetNull)
+  assignedBy          User?                    @relation("RoleAssignmentsCreated", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, membershipId, isCurrent])
+  @@index([membershipId, isCurrent])
+  @@index([organizationRoleId])
+  @@index([assignedRoleVersionId])
+  @@map("organization_role_assignments")
+}
+
+model MembershipPermissionOverride {
+  id             String                           @id @default(uuid())
+  organizationId String                           @map("organization_id")
+  membershipId   String                           @map("membership_id")
+  moduleKey      String                           @map("module_key")
+  permissionLevel String                          @map("permission_level")
+  effect         MembershipPermissionOverrideEffect
+  actorUserId    String?                          @map("actor_user_id")
+  reason         String?
+  expiresAt      DateTime?                        @map("expires_at")
+  revokedAt      DateTime?                        @map("revoked_at")
+  createdAt      DateTime                         @default(now()) @map("created_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  actor        User?                  @relation("PermissionOverridesCreated", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([membershipId, moduleKey, revokedAt])
+  @@index([organizationId, membershipId])
+  @@index([expiresAt])
+  @@map("membership_permission_overrides")
 }
 
 // ------------------------------------------------

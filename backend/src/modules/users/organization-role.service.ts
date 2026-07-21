@@ -15,6 +15,7 @@ import { computeEffectiveAccess } from './policies/effective-access-engine';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
 import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from './defaults/organization-role.defaults';
 import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
+import { OrganizationRoleVersionService } from './organization-role-version.service';
 import type { CreateOrganizationRoleDto, UpdateOrganizationRoleDto } from './dto/organization-role.dto';
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -24,6 +25,7 @@ export class OrganizationRoleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly userAudit: UserAccessAuditService,
+    private readonly roleVersionService: OrganizationRoleVersionService,
   ) {}
 
   async ensureDefaultRoles(orgId: string, createdByUserId?: string): Promise<void> {
@@ -33,7 +35,7 @@ export class OrganizationRoleService {
     if (count >= DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length) return;
 
     for (const template of DEFAULT_ORGANIZATION_ROLE_TEMPLATES) {
-      await this.prisma.organizationRole.upsert({
+      const role = await this.prisma.organizationRole.upsert({
         where: {
           organizationId_systemKey: {
             organizationId: orgId,
@@ -55,6 +57,17 @@ export class OrganizationRoleService {
         },
         update: {},
       });
+
+      const versionCount = await this.prisma.organizationRoleVersion.count({
+        where: { organizationRoleId: role.id },
+      });
+      if (versionCount === 0) {
+        await this.roleVersionService.createInitialVersionForRole(
+          role,
+          createdByUserId,
+          'System template seed — initial approved version',
+        );
+      }
     }
   }
 
@@ -99,6 +112,12 @@ export class OrganizationRoleService {
         createdByUserId: actorUserId ?? null,
       },
     });
+
+    await this.roleVersionService.createInitialVersionForRole(
+      role,
+      actorUserId,
+      'Role created — initial approved version',
+    );
 
     void this.userAudit.record({
       organizationId: orgId,
@@ -173,6 +192,20 @@ export class OrganizationRoleService {
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });
+
+    await this.roleVersionService.maybeCreateVersionOnRoleUpdate(
+      orgId,
+      roleId,
+      role,
+      {
+        permissions: dto.permissions,
+        membershipRole: dto.membershipRole as MembershipRole | undefined,
+        stationScopeDefault: dto.stationScopeDefault,
+        defaultStationIds: dto.defaultStationIds,
+        fieldAgentAccessDefault: dto.fieldAgentAccessDefault,
+      },
+      actorUserId,
+    );
 
     void this.userAudit.record({
       organizationId: orgId,
@@ -300,21 +333,13 @@ export class OrganizationRoleService {
       await assertNotLastActiveOrgAdmin(this.prisma, orgId, userId);
     }
 
-    const permissions = normalizeMembershipPermissions(role.permissions);
-    const updated = await this.prisma.organizationMembership.update({
-      where: { id: membership.id },
-      data: {
-        organizationRoleId: role.id,
-        role: role.membershipRole,
-        roleLabel: role.name,
-        permissions: permissions
-          ? (permissions as unknown as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
-        fieldAgentAccess: role.fieldAgentAccessDefault,
-        stationScope: role.stationScopeDefault,
-        stationIds: role.defaultStationIds ?? Prisma.JsonNull,
-      },
-    });
+    const { assignment, membership: updated } =
+      await this.roleVersionService.assignRoleToMembership(
+        orgId,
+        membership.id,
+        roleId,
+        actorUserId,
+      );
 
     void this.userAudit.record({
       organizationId: orgId,
@@ -324,7 +349,11 @@ export class OrganizationRoleService {
       targetRoleId: role.id,
       description: `Rolle „${role.name}" zugewiesen`,
       before: { organizationRoleId: membership.organizationRoleId },
-      after: { organizationRoleId: updated.organizationRoleId },
+      after: {
+        organizationRoleId: updated.organizationRoleId,
+        assignmentId: assignment.id,
+        assignmentMode: assignment.assignmentMode,
+      },
     });
 
     return updated;

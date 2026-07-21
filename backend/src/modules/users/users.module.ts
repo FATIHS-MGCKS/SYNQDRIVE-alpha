@@ -22,6 +22,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     UsersService,
     OrganizationInviteService,
     OrganizationRoleService,
+    OrganizationRoleVersionService,
     UserAccessAuditService,
     TransactionalMailService,
   ],
@@ -29,6 +30,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     UsersService,
     OrganizationInviteService,
     OrganizationRoleService,
+    OrganizationRoleVersionService,
     UserAccessAuditService,
   ],
 })

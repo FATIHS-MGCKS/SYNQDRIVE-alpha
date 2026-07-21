@@ -65,6 +65,8 @@
 | `backend/src/modules/users/policies/iam-session-invalidation.policy.ts` | Ziel-Session-Invalidierungsmatrix (pure domain) |
 | `backend/src/modules/users/policies/iam-effective-access.policy.ts` | Effective-Access-Vergleichslogik für Tests (delegiert an EffectiveAccessEngine) |
 | `backend/src/modules/users/policies/effective-access-engine.ts` | Canonical EffectiveAccessEngine (Prompt 9) |
+| `backend/src/modules/users/organization-role-version.service.ts` | Versioned role assignments + overrides (Prompt 10) |
+| `backend/src/modules/users/policies/organization-role-version.policy.ts` | Pure domain for role versions/assignments/overrides |
 | `backend/src/modules/users/policies/iam-global-identity.policy.ts` | Globale Identität vs Org-Grenze (Ziel) |
 | `backend/src/modules/users/iam-security-regression.harness.ts` | Shared mocks / IDs |
 | `backend/src/modules/users/iam-security-regression.spec.ts` | Szenarien A–D, F–K |
@@ -174,6 +176,20 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 - Wired: `PermissionsGuard`, `assertMembershipPermission`, `StationAccessService.resolve`, `OrganizationRoleService.permissionPreview`
 - Central admin bypass (MASTER_ADMIN, SERVICE_ACCOUNT, ORG_ADMIN); default deny; no controller-level bypasses
 - `architecture/IAM_EFFECTIVE_ACCESS_ENGINE_2026-07-21.md`
+
+---
+
+## Prompt 10 — Versioned Organization Role Assignments
+
+**Datum:** 2026-07-21 UTC
+
+- `OrganizationRoleVersion` — immutable snapshots (permissions, station defaults, risk classification, change reason)
+- `OrganizationRoleAssignment` — membership ↔ role link with assignment modes
+- `MembershipPermissionOverride` — explicit ALLOW/DENY with actor, reason, optional expiry
+- Assignment modes: `FOLLOW_LATEST_APPROVED_VERSION`, `PINNED_VERSION`, `MIGRATION_LEGACY_SNAPSHOT`
+- Migration backfills version 1 + legacy assignments; membership JSON preserved
+- `OrganizationRoleVersionService` + `organization-role-version.policy.ts`
+- `architecture/IAM_VERSIONED_ROLE_ASSIGNMENTS_2026-07-21.md`
 
 ---
 
