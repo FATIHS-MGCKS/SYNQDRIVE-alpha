@@ -113,7 +113,7 @@ export function useTaskList({
   useEffect(() => {
     if (!orgId) return undefined;
     return subscribeTaskQueryInvalidation((event) => {
-      if (matchesTaskListInvalidation(event, orgId, filtersRef.current, bucket)) {
+      if (matchesTaskListInvalidation(event, orgId, bucket)) {
         void reload();
       }
     });

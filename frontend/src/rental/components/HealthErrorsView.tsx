@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } fro
 import { createPortal } from 'react-dom';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Line, LineChart, ReferenceArea } from 'recharts';
 import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type DashboardWarningLightsResponse, type VehicleHealthTabSummaryDto, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type DtcKnowledgeDto, type BatteryHealthStatus, type BatteryRestingVoltageStatus, type VehicleTripAnalytics } from '../../lib/api';
+import { unwrapTaskListPage } from '../../lib/tasks-pagination';
 import { useRentalEntityNavigation } from '../context/RentalEntityNavigationContext';
 import {
   buildBokraftComplianceDisplay,
@@ -429,9 +430,10 @@ export function HealthErrorsView({
     let cancelled = false;
     api.tasks
       .list(orgId)
-      .then((rows: any[]) => {
+      .then((page) => {
         if (cancelled) return;
-        const list = (Array.isArray(rows) ? rows : []).filter(
+        const rows = unwrapTaskListPage(page).data;
+        const list = rows.filter(
           (t) =>
             t.vehicleId === vehicleId &&
             typeof t.source === 'string' &&
