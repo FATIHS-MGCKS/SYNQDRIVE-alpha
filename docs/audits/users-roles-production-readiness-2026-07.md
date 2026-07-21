@@ -5,11 +5,11 @@
 | **Audit ID** | `users-roles-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/users-roles-production-readiness-2026-07` |
-| **Phase** | **1 of 8 — Architecture map & IAM runtime inventory** |
+| **Phase** | **2 of 8 — Identity / membership / session / password / MFA** |
 | **Verdict (interim)** | **NOT READY** (preliminary — full verdict in Phase 8) |
-| **Status** | **Phase 1 complete** — Phases 2–8 outlined, not executed |
-| **Production data modified** | **No** — code read + VPS/DB/Redis diagnostics were read-only |
-| **Analysis window (VPS)** | 2026-07-20 UTC |
+| **Status** | **Phases 1–2 complete** — Phases 3–8 outlined, not executed |
+| **Production data modified** | **No** — code read + prior VPS/DB/Redis diagnostics were read-only |
+| **Analysis window (VPS)** | 2026-07-20 UTC (Phase 1); Phase 2 code-complete 2026-07-21 |
 
 ---
 
@@ -21,17 +21,19 @@
 | Code map CSV | `docs/audits/data/users-roles-code-map-2026-07.csv` | 1 |
 | Runtime snapshot (anonymized) | `docs/audits/data/users-roles-runtime-snapshot-2026-07.json` | 1 |
 | Phase-1 script result | `docs/audits/data/users-roles-audit-phase-1-result-2026-07.json` | 1 (generated) |
+| Identity vs membership model | `docs/audits/data/iam-identity-membership-model-2026-07.csv` | 2 |
+| Multi-org session flow | `docs/audits/data/iam-multi-org-session-flow-2026-07.csv` | 2 |
+| Session invalidation matrix | `docs/audits/data/iam-session-invalidation-matrix-2026-07.csv` | 2 |
+| Password / MFA flow matrix | `docs/audits/data/iam-password-mfa-flow-2026-07.csv` | 2 |
 | Read-only orchestrator | `scripts/audits/audit-users-roles-production-readiness.ts` | 1–8 |
 
 Planned later-phase artifacts (not yet generated):
 
 | Artifact | Path | Phase |
 |----------|------|-------|
-| Threat / control matrix | `docs/audits/data/users-roles-control-matrix-2026-07.csv` | 2 |
+| Threat / control matrix | `docs/audits/data/users-roles-control-matrix-2026-07.csv` | 2 residual / 8 |
 | Effective-permission replay | `docs/audits/data/users-roles-effective-permissions-2026-07.csv` | 3 |
-| Session lifecycle matrix | `docs/audits/data/users-roles-session-lifecycle-2026-07.csv` | 4 |
 | Invite lifecycle evidence | `docs/audits/data/users-roles-invite-lifecycle-2026-07.csv` | 5 |
-| Multi-org / switch matrix | `docs/audits/data/users-roles-multi-org-matrix-2026-07.csv` | 6 |
 | UI/UX security audit | `docs/audits/data/users-roles-ui-ux-audit-2026-07.csv` | 7 |
 | DSGVO / ISO 27001 mapping | `docs/audits/data/users-roles-compliance-mapping-2026-07.csv` | 7–8 |
 | Final verdict JSON | `docs/audits/data/users-roles-production-readiness-verdict-2026-07.json` | 8 |
@@ -65,12 +67,13 @@ Stable, non-reversible aliases used in all Git artifacts:
 - Actual production runtime (PM2, Postgres aggregates, Redis, headers, token config)
 - Preliminary P0/P1 suspicions against the 11 audit hypotheses
 
-## Phase 2 — Threat model, trust boundaries & control matrix
+## Phase 2 — Identity / membership / session / password / MFA *(complete below)*
 
-- Actor classes: MASTER_ADMIN, ORG_ADMIN, SUB_ADMIN, WORKER, DRIVER, invited outsider, stolen refresh, stolen invite link
-- Trust boundaries: global User vs org Membership vs JWT vs FE snapshot
-- Map each hypothesis to ISO/IEC 27001-aligned control families (A.5, A.5.15, A.5.16, A.5.17, A.5.18, A.8.2, A.8.5, A.8.15, A.8.16)
-- Abuse cases: cross-org password reset, invite token theft, session fixation/reuse, last-admin bypass attempts
+- Global identity vs organization membership field boundaries
+- Multi-org login / refresh / (missing) switch reconstruction
+- Access vs refresh binding, TTLs, cookies/CSRF, invalidation matrix
+- Password admin/self/forgot flows and MFA/assurance gaps
+- Residual threat/control synthesis deferred to Phase 8 (CSV matrices hold Phase-2 evidence)
 
 ## Phase 3 — Effective permission computation & parallel truths
 
@@ -80,14 +83,11 @@ Stable, non-reversible aliases used in all Git artifacts:
 - ORG_ADMIN bypass paths
 - Replay fixtures with anonymized ROLE/MEMBERSHIP slots
 
-## Phase 4 — Authentication, password & session lifecycle
+## Phase 4 — Authentication hardening & lockout (follow-on)
 
-- Login failure / throttle / lockout gaps
-- Password change (self vs org admin vs MASTER_ADMIN)
-- `mustChangePassword` enforcement surfaces
-- Refresh rotation, reuse detection, revokeAll wiring gaps
-- Access-token TTL vs revocation expectation
-- Missing forgot-password flow
+- Login failure / throttle / lockout gaps (deeper than Phase 2)
+- Brute-force / CAPTCHA / progressive delay
+- Correlation of AUTH_FAIL with session anomalies
 
 ## Phase 5 — Joiner / Mover / Leaver (invites, role moves, suspend, remove)
 
@@ -98,13 +98,11 @@ Stable, non-reversible aliases used in all Git artifacts:
 - Last-active-admin protection
 - Session & audit side effects per lifecycle event
 
-## Phase 6 — Multi-organization users & org switching
+## Phase 6 — Multi-organization users & org switching (deep dive)
 
-- Membership selection on login / me / refresh / account
-- Absence of org-switch API
-- Refresh token unbound to org/membership
-- Cross-org data access risk with stale JWT `organizationId`
-- OrgScopingGuard behavior under multi-membership
+- Build on Phase-2 multi-org CSV with fixture replay when multi-org users exist
+- OrgScopingGuard mismatch attacks
+- Recommended switch protocol
 
 ## Phase 7 — UI/UX, Security Activity, MFA placeholders, DSGVO readiness
 
@@ -394,27 +392,186 @@ This is multiple concurrent “access truths.” Backend module checks are fresh
 
 ---
 
+# Phase 2 findings — Identity, sessions, multi-org, password, MFA
+
+Detailed matrices:
+
+- `docs/audits/data/iam-identity-membership-model-2026-07.csv`
+- `docs/audits/data/iam-multi-org-session-flow-2026-07.csv`
+- `docs/audits/data/iam-session-invalidation-matrix-2026-07.csv`
+- `docs/audits/data/iam-password-mfa-flow-2026-07.csv`
+
+## P2.1 Global identity versus membership
+
+### Answers (Teil 1)
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | Global identity fields | `User`: email (unique), `passwordHash`, `platformRole`, `status`, profile/contact/locale, `mustChangePassword`, last-login metadata. **No** `organizationId` on `User`. |
+| 2 | Organization fields | `OrganizationMembership`: role, `organizationRoleId`, permissions JSON, station scope/ids, `fieldAgentAccess`, membership `status`. Plus per-org account/notification preferences. |
+| 3 | Can org admin change global identity? | **Yes** — email, name, phones, address, locale, **and** `User.status`; plus global `passwordHash` via change-password. |
+| 4 | Can Org A affect Org B access? | **Yes** — shared password; global suspend blocks all logins; email rewrite moves login identity. |
+| 5 | Suspend org-scoped or global? | **Global `User.status`**. Org UI `status=SUSPENDED` does **not** set `membership.status=SUSPENDED` (enum unused by this path; membership stays `ACTIVE`). |
+| 6 | Delete = membership remove or user delete? | Org UI = soft `REMOVED` membership. MASTER_ADMIN `/admin/users` = hard `User` delete. |
+| 7 | Data responsibility / history | Soft remove keeps User + historical `ActivityLog` refs. No user anonymization job. Hard delete cascades FKs. |
+| 8 | Same email → multiple users? | **No** — `@unique` on `User.email`. |
+| 9 | Normalized email constraints? | App-layer `toLowerCase().trim()` on login/update; DB unique (not citext). |
+| 10 | Email change / verification? | Immediate rewrite; **no** verification model, confirmation mail, or `emailVerified` field. |
+
+### Critical model defect — dual status
+
+Org deactivate (`UsersTab` → `updateByOrg({ status: 'SUSPENDED' })`) sets **`User.status = SUSPENDED`** and leaves **`OrganizationMembership.status = ACTIVE`**. UI badge then shows Suspended via `USER_STATUS_MAP[u.status]`. Consequence: one tenant’s “deactivate” is a **global account lockout**.
+
+---
+
+## P2.2 Login and organization selection (Teil 2)
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | First login org | First `ACTIVE` membership `take: 1` **without `orderBy`** — non-deterministic. |
+| 2 | Refresh org | **Newest** `ACTIVE` membership `orderBy createdAt desc`. |
+| 3 | Org change without user action? | **Yes** — refresh can rebind to a different org than login. |
+| 4 | Removed/suspended membership reselected? | `REMOVED`/`INVITED` excluded. Org-UI “suspend” does **not** clear membership `ACTIVE` (uses `User.status` instead). |
+| 5 | Membership in refresh token? | **No**. |
+| 6 | Org in token family state? | **No** — family is a UUID only. |
+| 7 | Session bound to user+org+membership? | **Only `userId`** (+ family). |
+| 8 | Explicit org switch? | **Not implemented**. `OrgScopingGuard` requires JWT `organizationId` == `:orgId`. |
+| 9 | Switch creates new family? | N/A. Login always creates a **new** family (explains session pile-up). |
+| 10 | Refresh from Org A → access for Org B? | **Yes** — user-global refresh re-selects newest ACTIVE membership. |
+
+**Three incompatible selection algorithms:**
+
+1. Login / `me`: unordered `take: 1`
+2. Refresh: newest by `createdAt`
+3. Account fallback: oldest by `createdAt` (if JWT org missing)
+
+SPA currently stores **only** the access token, so refresh rebind is latent for the main UI—but any client using `/auth/refresh` inherits the cross-org issue. Access tokens remain valid up to **24h** (prod).
+
+---
+
+## P2.3 Access / refresh token properties (Teil 3)
+
+| Property | Finding |
+|----------|---------|
+| Access TTL | Prod `JWT_EXPIRES_IN=24h` (code default also `24h`) |
+| Refresh TTL | 30 days (code constant) |
+| Rotation | Yes — consume old, issue new in same family |
+| Family reuse detection | Yes — revoked+replaced reuse → revoke family |
+| Revocation helpers | `revoke`, `revokeAllForUser`, `revokeSessionById`, `revokeOtherSessionsForUser` |
+| Cookies / SameSite / Secure / HttpOnly | **No auth cookies** — Bearer in `localStorage` |
+| CSRF | No cookie session → classic CSRF N/A; XSS steals bearer |
+| Device/session metadata | `ipAddress` + `userAgent` on refresh rows; last-login IP/UA on User |
+| Org / membership binding | **Absent** on refresh |
+| Role / permission version | **Absent** |
+| Authentication assurance | Password-only; no `amr`/`aal`/`auth_time` |
+
+### Teil-3 checks
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | How fast do role/permission changes apply? | **PermissionsGuard**: immediate (DB). **RolesGuard / FE / JWT role**: until refresh/re-login (up to 24h). |
+| 2 | Access after suspend? | **Yes** until JWT expiry — `AuthGuard` does not re-check `User.status`. |
+| 3 | Access after membership removal? | Org-scoped routes **403**; other routes may work until expiry. |
+| 4 | Refresh after password reset? | **Yes** — admin/self reset does not revoke refresh (self may optionally revoke others). |
+| 5 | All families on compromise? | Only if someone calls `logout-all` / `revokeAllForUser` — **not** wired to password reset. |
+| 6 | Org-scoped session revoke? | **No**. |
+| 7 | Global session revoke? | **Yes** via `logout-all` / `revokeAllForUser`. |
+| 8 | Admins see/revoke foreign sessions? | **No** — self-service only. |
+| 9 | IP/UA storage? | Yes in Postgres; returned to account owner; no IAM anonymization policy. |
+| 10 | Session fixation? | Low for classic cookie fixation; stolen refresh remains the main risk (family revoke on reuse). |
+
+---
+
+## P2.4 Session invalidation matrix (Teil 4)
+
+See `iam-session-invalidation-matrix-2026-07.csv`.
+
+**Largest gaps:** admin password reset, org suspend, membership remove, role demotion — **no refresh revoke**; access JWT lingers; `mustChangePassword` **not enforced** by LoginPage or API middleware.
+
+---
+
+## P2.5 Password admin flow (Teil 5)
+
+| Flow | Verdict |
+|------|---------|
+| Self change | Works; current password required; FE defaults `revokeOtherSessions=true`; policy **min 10** (weaker than admin **min 12**) |
+| Forgot password | UI stub → “contact support”; **no backend** |
+| Reset link | **Missing** (no token model) |
+| Org admin reset | `UsersTab` modal → `POST .../change-password` (`users-roles.manage`); **global** hash; admin sees plaintext; **no** session revoke; **no** notify; `mustChangePassword` set but **unenforced** |
+| Master admin reset | Same gaps + **no IAM audit** |
+| Temporary password | CreateUserWizard clipboard copy of plaintext |
+| Global credential mgmt | Single `User.passwordHash` — **not** multi-org safe |
+
+---
+
+## P2.6 MFA and assurance (Teil 6)
+
+| Capability | Status |
+|------------|--------|
+| TOTP / WebAuthn / Passkeys / Recovery codes | **Not implemented** (no schema, no routes) |
+| `twoFactorEnabled` / `passkeysAvailable` | Hardcoded `false` in account security DTO |
+| Security activity MFA/session counts | `null` placeholders |
+| Step-up / recent authentication | **Absent** — high-risk admin actions unprotected |
+| MFA claims in tokens | **Absent** |
+| MFA reset auditability | N/A (no MFA) |
+
+---
+
+## P2.7 Confirmed Phase-2 P0 / P1 findings
+
+| ID | Sev | Finding |
+|----|-----|---------|
+| UR-P2-ID-04 / UR-P0-01 | P0 | Org admin mutates global password/email/status with cross-org blast radius |
+| UR-P2-ID-05 | P0 | “Suspend” is global `User.status`, not membership suspend |
+| UR-P2-ID-10 | P0 | Email change without verification |
+| UR-P2-MO-01/02/13 | P0 | Non-deterministic login; refresh can mint Org B access from user-global refresh |
+| UR-P2-SI-02/04/05 | P0 | No session revoke on admin password reset / suspend / membership remove |
+| UR-P2-SI-16 | P0 | `mustChangePassword` ineffective |
+| UR-P2-PW-07 | P0 | Credentials are global, not tenant-scoped |
+| UR-P2-MFA-05 | P0 | No step-up for high-risk IAM actions |
+| UR-P2-TOK-02 | P0 | 24h access TTL amplifies invalidation gaps |
+| UR-P2-PW-01 | P1 | Password policy mismatch (10 vs 12) |
+| UR-P2-MFA-01..04 | P1 | MFA entirely placeholder |
+| UR-P2-MFA-08 | P1 | Admins cannot remotely revoke a user’s sessions |
+| UR-P2-PW-02/03 | P1 | No forgot-password / reset-link |
+
+---
+
+## P2.8 Phase 2 exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Identity vs membership answered | Done |
+| Multi-org login/refresh reconstructed | Done |
+| Token binding / invalidation matrix | Done |
+| Password + MFA flows documented | Done |
+| CSVs committed | Done |
+| No production mutations | Confirmed |
+| Prompt 3 not started | Confirmed |
+
+---
+
 ## Appendix A — Hypothesis tracker (living)
 
 | # | Hypothesis | Phase-1 result | Follow-up phase |
 |---|------------|----------------|-----------------|
-| 1 | Org admins can change global password | **Confirmed** | 4, 6 |
-| 2 | Password/suspend/role revoke sessions unreliable | **Confirmed** (code); runtime TTL/session pile-up supports | 4, 5 |
+| 1 | Org admins can change global password | **Confirmed** (Phase 2 deepened: also email/status) | 5, 6, 8 |
+| 2 | Password/suspend/role revoke sessions unreliable | **Confirmed** + invalidation matrix | 5, 8 |
 | 3 | Role values copied; later edits don’t propagate | **Confirmed** | 3, 5 |
-| 4 | Multi-org login/refresh non-deterministic | **Confirmed** in code; no multi-org users in prod yet | 6 |
-| 5 | Refresh not bound to org/membership | **Confirmed** | 4, 6 |
+| 4 | Multi-org login/refresh non-deterministic | **Confirmed** + three selection algorithms | 6, 8 |
+| 5 | Refresh not bound to org/membership | **Confirmed**; refresh A→access B | 6, 8 |
 | 6 | Invite plaintext to FE/clipboard | **Confirmed** | 5, 7 |
 | 7 | Existing users accept invite without re-auth | **Confirmed** | 5, 7 |
-| 8 | Critical IAM audits fire-and-forget | **Confirmed**; prod unused | 5, 8 |
-| 9 | MFA/sessions/security activity partial | **Confirmed** | 7 |
-| 10 | Parallel access truths | **Confirmed** | 3, 7 |
+| 8 | Critical IAM audits fire-and-forget | **Confirmed**; master password reset has **no** audit | 5, 8 |
+| 9 | MFA/sessions/security activity partial | **Confirmed — not implemented** | 7, 8 |
+| 10 | Parallel access truths | **Confirmed** (+ dual User/Membership status) | 3, 7 |
 | 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed gap** | 7, 8 |
 
 ---
 
 ## Appendix B — Changes / Architektur
 
-**Not updated.** This prompt is audit documentation only; no product implementation or architecture behavior change was made.
+**Not updated** (Phases 1–2). Audit documentation only; no product implementation or architecture behavior change was made.
 
 ---
 
