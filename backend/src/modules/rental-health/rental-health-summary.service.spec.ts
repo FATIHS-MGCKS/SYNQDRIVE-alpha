@@ -7,6 +7,7 @@ describe('RentalHealthSummaryService', () => {
     vehicle_id: 'veh-1',
     organization_id: 'org-1',
     overall_state: 'warning',
+    availability: 'ready',
     rental_blocked: true,
     blocking_reasons: ['Brakes'],
     modules: {} as VehicleHealth['modules'],

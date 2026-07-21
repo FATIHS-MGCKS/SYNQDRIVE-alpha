@@ -12,6 +12,7 @@ describe('Rental health detail vs fleet summary consistency', () => {
     vehicle_id: 'veh-consistency',
     organization_id: 'org-consistency',
     overall_state: 'critical',
+    availability: 'ready',
     rental_blocked: true,
     blocking_reasons: ['Tires critical'],
     modules: {

@@ -24,7 +24,8 @@ function buildHealth(
   overrides: Partial<{
     vehicle_id: string;
     overall_state: RentalHealthState;
-    rental_blocked: boolean;
+    availability?: VehicleHealthResponse['availability'];
+    rental_blocked: boolean | null;
     blocking_reasons: string[];
     modules: Partial<Record<ModuleKey, RentalHealthModule>>;
   }> = {},
@@ -42,6 +43,9 @@ function buildHealth(
     vehicle_id: overrides.vehicle_id ?? 'v1',
     organization_id: 'org-fhs-a',
     overall_state: overrides.overall_state ?? 'good',
+    availability:
+      overrides.availability ??
+      (overrides.overall_state === 'unknown' ? 'unavailable' : 'ready'),
     rental_blocked: overrides.rental_blocked ?? false,
     blocking_reasons: overrides.blocking_reasons ?? [],
     modules: { ...baseModules, ...(overrides.modules ?? {}) },

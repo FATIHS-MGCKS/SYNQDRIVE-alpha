@@ -11,6 +11,7 @@ function sampleHealth(overrides: Partial<VehicleHealth> = {}): VehicleHealth {
     vehicle_id: 'veh-1',
     organization_id: 'org-1',
     overall_state: 'good',
+    availability: 'ready',
     rental_blocked: false,
     blocking_reasons: [],
     modules: {

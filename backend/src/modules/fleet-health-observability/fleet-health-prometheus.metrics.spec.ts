@@ -22,6 +22,7 @@ function sampleRow(overrides: Partial<FleetVehicleHealthRow> = {}): FleetVehicle
     vehicle_id: 'v1',
     organization_id: 'org1',
     overall_state: 'good',
+    availability: 'ready',
     rental_blocked: false,
     blocking_reasons: [],
     modules: {

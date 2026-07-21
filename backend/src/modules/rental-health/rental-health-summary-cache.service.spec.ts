@@ -12,6 +12,7 @@ describe('RentalHealthSummaryCacheService', () => {
     vehicle_id: vehicleId,
     organization_id: orgId,
     overall_state: 'good',
+    availability: 'ready',
     rental_blocked: false,
     blocking_reasons: [],
     modules: {} as VehicleHealth['modules'],

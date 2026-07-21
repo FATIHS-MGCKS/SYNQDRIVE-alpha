@@ -221,7 +221,7 @@ export class VehicleHealthTabSummaryService {
       label: OVERALL_LABELS[state],
       headline: this.overallHeadline(state, rental),
       description: this.overallDescription(state, rental),
-      rentalBlocked: rental.rental_blocked,
+      rentalBlocked: rental.rental_blocked ?? false,
       blockingReasons: [...rental.blocking_reasons],
     };
   }
