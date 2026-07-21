@@ -1581,6 +1581,7 @@ model Organization {
   organizationRoles                      OrganizationRole[]
   organizationUserInvites                OrganizationUserInvite[]
   inviteEmailOutbox                      InviteEmailOutbox[]
+  iamAuditOutbox                         IamAuditOutbox[]
   orgEmailSettings                       OrgEmailSettings?
   orgEmailDomains                        OrgEmailDomain[]
   outboundEmails                         OutboundEmail[]
@@ -1850,6 +1851,12 @@ enum InviteEmailOutboxStatus {
   DEAD_LETTER
 }
 
+enum IamAuditOutboxStatus {
+  PENDING
+  PROCESSED
+  DEAD_LETTER
+}
+
 model InviteEmailOutbox {
   id              String                  @id @default(uuid())
   organizationId  String                  @map("organization_id")
@@ -1884,6 +1891,25 @@ model OrganizationInviteAttempt {
 
   @@index([scope, scopeKey, createdAt])
   @@map("organization_invite_attempts")
+}
+
+model IamAuditOutbox {
+  id             String               @id @default(uuid())
+  organizationId String               @map("organization_id")
+  idempotencyKey String               @unique @map("idempotency_key")
+  auditAction    String               @map("audit_action")
+  payload        Json
+  status         IamAuditOutboxStatus @default(PENDING)
+  processedAt    DateTime?            @map("processed_at")
+  errorMessage   String?              @map("error_message")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status, createdAt])
+  @@map("iam_audit_outbox")
 }
 
 // ------------------------------------------------

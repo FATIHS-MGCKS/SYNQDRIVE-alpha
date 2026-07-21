@@ -12,6 +12,9 @@ import { InviteRateLimitService } from './invite-rate-limit.service';
 import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
 import { InviteEmailDeliveryService } from './invite-email-delivery.service';
 import { InviteEmailSchedulerService } from './invite-email-scheduler.service';
+import { InviteAcceptService } from './invite-accept.service';
+import { IamAuditOutboxRepository } from './iam-audit-outbox.repository';
+import { IamAuditOutboxProcessorService } from './iam-audit-outbox.processor';
 
 @Module({
   controllers: [
@@ -30,6 +33,9 @@ import { InviteEmailSchedulerService } from './invite-email-scheduler.service';
     InviteEmailOutboxRepository,
     InviteEmailDeliveryService,
     InviteEmailSchedulerService,
+    InviteAcceptService,
+    IamAuditOutboxRepository,
+    IamAuditOutboxProcessorService,
   ],
   exports: [
     UsersService,

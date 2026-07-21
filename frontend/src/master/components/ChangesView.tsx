@@ -391,6 +391,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-20T00:00:00.000Z',
   },
   {
+    id: 'iam-invite-acceptance-v49717-2026-07-21',
+    version: '4.9.717',
+    title: 'V4.9.717 — IAM invite acceptance verified identity (Prompt 15)',
+    summary: [
+      'Existing users must authenticate with matching email to accept invites; wrong logged-in accounts are rejected.',
+      'Explicit confirmation required; removed/suspended memberships need acknowledgeRejoin; privileged roles need acknowledgePrivilegedRole.',
+      'Transactional accept: membership + invite status + iam_audit_outbox + notification in one transaction; idempotent duplicate accept.',
+    ],
+    reason: 'UR-P1-IN-02 — invite acceptance must bind verified identity and block implicit membership reactivation.',
+    previousBehavior:
+      'Existing users could accept invites without session; removed memberships were silently reactivated on accept.',
+    details:
+      'invite-accept.service.ts, iam-audit-outbox, optional-auth.util.ts, identity-email.util.ts, public-invites.controller.ts',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T22:50:00.000Z',
+  },
+  {
     id: 'iam-invite-secret-surface-v49716-2026-07-21',
     version: '4.9.716',
     title: 'V4.9.716 — IAM invite secret surface hardening (Prompt 14)',

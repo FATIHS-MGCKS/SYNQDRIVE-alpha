@@ -7,6 +7,7 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  Equals,
 } from 'class-validator';
 import { MembershipRole } from '@prisma/client';
 import { IsMembershipPermissions, IsStationIds } from './membership-validators';
@@ -85,6 +86,17 @@ export class AcceptInviteDto {
   @IsString()
   @MinLength(16)
   token!: string;
+
+  @Equals(true, { message: 'Explicit acceptance confirmation is required' })
+  confirmed!: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  acknowledgeRejoin?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  acknowledgePrivilegedRole?: boolean;
 
   @IsOptional()
   @IsString()
