@@ -61,7 +61,7 @@ export function FleetHealthServiceOverviewPanel({
   onOpenTask,
   onCreateTask,
 }: FleetHealthServiceOverviewPanelProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [statusMessage, setStatusMessage] = useState('');
   const kpiGroups = buildFleetHealthServiceKpiGroups({
     healthKpis: vm.healthKpis,
@@ -144,7 +144,9 @@ export function FleetHealthServiceOverviewPanel({
         {statusMessage}
       </div>
       <section className="flex items-center justify-between gap-2">
-        <DashboardSectionLabel>{t('fleetHealthService.freshness.sectionLabel')}</DashboardSectionLabel>
+        <DashboardSectionLabel>
+          {locale === 'de' ? 'Datenaktualität' : 'Data freshness'}
+        </DashboardSectionLabel>
         <FleetHealthServiceFreshnessIndicator />
       </section>
       <section className="space-y-2">
