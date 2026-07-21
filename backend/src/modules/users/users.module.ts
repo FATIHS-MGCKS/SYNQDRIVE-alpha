@@ -8,6 +8,10 @@ import { OrganizationInviteService } from './organization-invite.service';
 import { OrganizationRoleService } from './organization-role.service';
 import { UserAccessAuditService } from './user-access-audit.service';
 import { TransactionalMailService } from './transactional-mail.service';
+import { InviteRateLimitService } from './invite-rate-limit.service';
+import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
+import { InviteEmailDeliveryService } from './invite-email-delivery.service';
+import { InviteEmailSchedulerService } from './invite-email-scheduler.service';
 
 @Module({
   controllers: [
@@ -22,6 +26,10 @@ import { TransactionalMailService } from './transactional-mail.service';
     OrganizationRoleService,
     UserAccessAuditService,
     TransactionalMailService,
+    InviteRateLimitService,
+    InviteEmailOutboxRepository,
+    InviteEmailDeliveryService,
+    InviteEmailSchedulerService,
   ],
   exports: [
     UsersService,

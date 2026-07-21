@@ -71,7 +71,6 @@ export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
         <UsersTab
           orgId={orgId}
           users={users}
-          invites={invites}
           stations={stations}
           stationNameById={stationNameById}
           kpis={{ ...kpis, pendingInvites: invites.filter((i) => i.status === 'PENDING').length }}

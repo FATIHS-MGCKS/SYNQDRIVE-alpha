@@ -21,7 +21,7 @@ import {
   SkeletonRows,
   type DataTableColumn,
 } from '../../../components/patterns';
-import { api, type OrganizationInviteDto, type OrgUserDto, type Station } from '../../../lib/api';
+import { api, type OrgUserDto, type Station } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { AdminBadge, ScopeBadge, UserStatusBadge } from './badges';
 import { CreateUserWizard } from './CreateUserWizard';
@@ -40,7 +40,6 @@ import {
 interface UsersTabProps {
   orgId: string;
   users: OrgUserDto[];
-  invites: OrganizationInviteDto[];
   stations: Station[];
   stationNameById: Map<string, string>;
   kpis: {
@@ -63,7 +62,6 @@ interface UsersTabProps {
 export function UsersTab({
   orgId,
   users,
-  invites,
   stations,
   stationNameById,
   kpis,
@@ -114,16 +112,6 @@ export function UsersTab({
     window.addEventListener('click', close);
     return () => window.removeEventListener('click', close);
   }, [rowMenu]);
-
-  const pendingInviteByEmail = useMemo(() => {
-    const map = new Map<string, OrganizationInviteDto>();
-    for (const inv of invites) {
-      if (inv.status === 'PENDING') {
-        map.set(inv.email.toLowerCase(), inv);
-      }
-    }
-    return map;
-  }, [invites]);
 
   useEffect(() => {
     if (!focusUserId) return;
@@ -221,20 +209,14 @@ export function UsersTab({
   };
 
   const handleResendInvite = async (user: OrgUserDto) => {
-    const invite = pendingInviteByEmail.get(user.email.toLowerCase());
-    if (!invite) {
+    if (!user.pendingInviteId) {
       onNotifyError(new Error('Keine offene Einladung gefunden'), 'Einladung konnte nicht erneut gesendet werden.');
       return;
     }
     setActionLoading(true);
     try {
-      const res = await api.organizationInvites.resend(orgId, invite.id);
-      if (res.inviteUrl) {
-        await navigator.clipboard.writeText(res.inviteUrl);
-        onNotifySuccess('Einladung erneut gesendet — Link kopiert');
-      } else {
-        onNotifySuccess('Einladung erneut gesendet');
-      }
+      await api.organizationInvites.resend(orgId, user.pendingInviteId);
+      onNotifySuccess('Einladung erneut per E-Mail versendet');
       await onRefresh();
     } catch (err) {
       onNotifyError(err, 'Einladung konnte nicht erneut gesendet werden.');
@@ -354,7 +336,7 @@ export function UsersTab({
                       <MenuBtn icon={MapPin} label="Zugriff ändern" onClick={() => { openDrawer(u, { edit: true, section: 'scope' }); setRowMenu(null); }} />
                     </>
                   )}
-                  {canManageUsers && u.status === 'Invited' && pendingInviteByEmail.has(u.email.toLowerCase()) && (
+                  {canManageUsers && u.status === 'Invited' && u.pendingInviteId && (
                     <MenuBtn icon={Mail} label="Einladung erneut senden" onClick={() => void handleResendInvite(u)} />
                   )}
                   {canManageUsers && u.status === 'Active' && (

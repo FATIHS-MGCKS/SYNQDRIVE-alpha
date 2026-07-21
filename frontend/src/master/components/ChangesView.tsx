@@ -391,6 +391,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-20T00:00:00.000Z',
   },
   {
+    id: 'iam-invite-secret-surface-v49716-2026-07-21',
+    version: '4.9.716',
+    title: 'V4.9.716 — IAM invite secret surface hardening (Prompt 14)',
+    summary: [
+      'Admin invite create/resend no longer returns inviteToken or inviteUrl — only inviteId, status, expiresAt, deliveryStatus, recipientMasked, roleSummary.',
+      'Invite delivery via invite_email_outbox with encrypted token at rest, retry/dead-letter, and masked mail logging.',
+      'Rate limits per org/actor/recipient on create and resend; frontend copy-link removed; UsersTab resend uses pendingInviteId.',
+    ],
+    reason: 'UR-P1-IN-01 — invite secrets must not leave the email delivery path.',
+    previousBehavior:
+      'Create/resend API returned plaintext inviteToken + inviteUrl; resend auto-copied link to clipboard in UI.',
+    details:
+      'organization-invite.service.ts, invite-email-delivery.service.ts, invite-rate-limit.service.ts, InvitesTab.tsx, UsersTab.tsx, docs/audits/iam-invite-secret-surface-2026-07.md',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T22:45:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',
     version: '4.9.704',
     title: 'V4.9.704 — Fleet Connectivity RC: direktes Production-Rollout',

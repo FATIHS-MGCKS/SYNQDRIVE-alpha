@@ -8,15 +8,32 @@ export interface SendInviteMailInput {
   invitedByName?: string;
 }
 
+export interface SendPasswordResetMailInput {
+  to: string;
+  resetUrl: string;
+  expiresAt: Date;
+  purpose: 'ADMIN_INITIATED' | 'SELF_SERVICE';
+}
+
+export interface SendPasswordResetCompletedMailInput {
+  to: string;
+}
+
 export interface MailSendResult {
   sent: boolean;
   fallback: boolean;
   provider?: string;
 }
 
+function maskRecipientForLog(email: string): string {
+  const at = email.indexOf('@');
+  if (at <= 0) return '***';
+  return `${email[0]}***@${email.slice(at + 1)}`;
+}
+
 /**
  * Transactional mail — production-ready contract with safe dev fallback.
- * Wire SMTP/SendGrid/SES when credentials are configured.
+ * Invite URLs and tokens are never written to logs.
  */
 @Injectable()
 export class TransactionalMailService {
@@ -27,27 +44,36 @@ export class TransactionalMailService {
     const from = process.env.MAIL_FROM?.trim() || 'noreply@synqdrive.local';
     const subject = `Einladung zu ${input.organizationName} — SynqDrive`;
 
-    const body = [
-      `Sie wurden eingeladen, ${input.organizationName} auf SynqDrive beizutreten.`,
-      input.invitedByName ? `Eingeladen von: ${input.invitedByName}` : '',
-      `Link (gültig bis ${input.expiresAt.toISOString()}):`,
-      input.inviteUrl,
-    ]
-      .filter(Boolean)
-      .join('\n');
-
     if (smtpHost) {
-      // Placeholder for real provider wiring — keeps API stable without faking success.
       this.logger.warn(
-        `SMTP_HOST is set but provider adapter is not configured yet — using fallback log for ${input.to}`,
+        `SMTP_HOST is set but provider adapter is not configured yet — using fallback log for ${maskRecipientForLog(input.to)}`,
       );
     }
 
     this.logger.log(
-      `[mail-fallback] invite → ${input.to} | org=${input.organizationName} | from=${from} | subject=${subject}`,
+      `[mail] invite queued → recipient=${maskRecipientForLog(input.to)} | org=${input.organizationName} | expires=${input.expiresAt.toISOString()} | from=${from} | subject=${subject}`,
     );
-    this.logger.debug(`[mail-fallback-body]\n${body}`);
 
     return { sent: false, fallback: true, provider: smtpHost ? 'smtp-pending' : 'log' };
+  }
+
+  async sendPasswordReset(input: SendPasswordResetMailInput): Promise<MailSendResult> {
+    const from = process.env.MAIL_FROM?.trim() || 'noreply@synqdrive.local';
+    const subject = 'SynqDrive — Passwort zurücksetzen';
+
+    this.logger.log(
+      `[mail] password-reset queued → ${maskRecipientForLog(input.to)} | purpose=${input.purpose} | expires=${input.expiresAt.toISOString()} | from=${from} | subject=${subject}`,
+    );
+
+    return { sent: false, fallback: true, provider: 'log' };
+  }
+
+  async sendPasswordResetCompleted(
+    input: SendPasswordResetCompletedMailInput,
+  ): Promise<MailSendResult> {
+    this.logger.log(
+      `[mail] password-reset-completed notification → ${maskRecipientForLog(input.to)}`,
+    );
+    return { sent: false, fallback: true, provider: 'log' };
   }
 }

@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import {
+  InviteEmailOutboxStatus,
   MembershipRole,
   MembershipStatus,
   OrganizationInviteStatus,
@@ -7,8 +8,10 @@ import {
 import { OrganizationInviteService } from './organization-invite.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { OrganizationRoleService } from './organization-role.service';
-import { TransactionalMailService } from './transactional-mail.service';
 import { UserAccessAuditService } from './user-access-audit.service';
+import { InviteRateLimitService } from './invite-rate-limit.service';
+import { InviteEmailDeliveryService } from './invite-email-delivery.service';
+import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
 import { generateInviteToken, inviteTokenLookupKey } from './utils/invite-token.util';
 
 describe('OrganizationInviteService', () => {
@@ -41,8 +44,10 @@ describe('OrganizationInviteService', () => {
     resolveRoleForInvite: jest.Mock;
     inviteExpiryDays: number;
   };
-  let mail: { sendOrganizationInvite: jest.Mock };
   let userAudit: { record: jest.Mock };
+  let inviteRateLimit: { assertCreateAllowed: jest.Mock; assertResendAllowed: jest.Mock };
+  let inviteDelivery: { enqueueInviteDelivery: jest.Mock; processOutboxIds: jest.Mock };
+  let inviteOutbox: { findById: jest.Mock; findLatestByInviteIds: jest.Mock };
   let service: OrganizationInviteService;
 
   beforeEach(() => {
@@ -74,13 +79,29 @@ describe('OrganizationInviteService', () => {
       resolveRoleForInvite: jest.fn(),
       inviteExpiryDays: 7,
     };
-    mail = { sendOrganizationInvite: jest.fn().mockResolvedValue(undefined) };
     userAudit = { record: jest.fn().mockResolvedValue(undefined) };
+    inviteRateLimit = {
+      assertCreateAllowed: jest.fn().mockResolvedValue(undefined),
+      assertResendAllowed: jest.fn().mockResolvedValue(undefined),
+    };
+    inviteDelivery = {
+      enqueueInviteDelivery: jest.fn().mockResolvedValue({ outboxId: 'outbox-1' }),
+      processOutboxIds: jest.fn().mockResolvedValue(undefined),
+    };
+    inviteOutbox = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'outbox-1',
+        status: InviteEmailOutboxStatus.COMPLETED,
+      }),
+      findLatestByInviteIds: jest.fn().mockResolvedValue(new Map()),
+    };
     service = new OrganizationInviteService(
       prisma as unknown as PrismaService,
       roleService as unknown as OrganizationRoleService,
-      mail as unknown as TransactionalMailService,
       userAudit as unknown as UserAccessAuditService,
+      inviteRateLimit as unknown as InviteRateLimitService,
+      inviteDelivery as unknown as InviteEmailDeliveryService,
+      inviteOutbox as unknown as InviteEmailOutboxRepository,
     );
   });
 
@@ -117,10 +138,10 @@ describe('OrganizationInviteService', () => {
     const createData = prisma.organizationUserInvite.create.mock.calls[0][0].data;
     expect(createData.tokenHash).toBeDefined();
     expect(createData.tokenLookup).toBeDefined();
-    expect(createData.tokenHash).not.toBe(result.inviteToken);
-    expect(createData.tokenLookup).toBe(inviteTokenLookupKey(result.inviteToken!));
-    expect(result.inviteToken).toBeDefined();
+    expect(result).not.toHaveProperty('inviteToken');
+    expect(result.inviteId).toBe(inviteId);
     expect(userAudit.record).toHaveBeenCalled();
+    expect(inviteDelivery.enqueueInviteDelivery).toHaveBeenCalled();
   });
 
   it('blocks accept on expired invite', async () => {
@@ -202,6 +223,7 @@ describe('OrganizationInviteService', () => {
       email,
       status: OrganizationInviteStatus.PENDING,
       membershipRole: MembershipRole.WORKER,
+      roleLabel: null,
       expiresAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -211,10 +233,7 @@ describe('OrganizationInviteService', () => {
       organizationId: orgId,
       email,
       membershipRole: MembershipRole.WORKER,
-      organizationRoleId: null,
       roleLabel: null,
-      department: null,
-      position: null,
       status: OrganizationInviteStatus.REVOKED,
       expiresAt: new Date(),
       createdAt: new Date(),

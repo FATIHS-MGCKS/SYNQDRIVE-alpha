@@ -6,6 +6,7 @@ import {
 import {
   MembershipStatus,
   MembershipRole,
+  OrganizationInviteStatus,
   Prisma,
   UserStatus,
 } from '@prisma/client';
@@ -312,7 +313,20 @@ export class UsersService {
       },
       orderBy: { createdAt: 'asc' },
     });
-    return memberships.map((m) => this.mapOrgUser(m));
+    const pendingInvites = await this.prisma.organizationUserInvite.findMany({
+      where: {
+        organizationId: orgId,
+        status: OrganizationInviteStatus.PENDING,
+      },
+      select: { id: true, email: true },
+    });
+    const inviteIdByEmail = new Map(
+      pendingInvites.map((invite) => [invite.email.toLowerCase(), invite.id]),
+    );
+    return memberships.map((m) => ({
+      ...this.mapOrgUser(m),
+      pendingInviteId: inviteIdByEmail.get(m.user.email?.toLowerCase() ?? '') ?? null,
+    }));
   }
 
   async findOrgUserDetail(orgId: string, userId: string) {

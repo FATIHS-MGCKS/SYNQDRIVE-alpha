@@ -1,4 +1,4 @@
-import { Copy, Mail, RefreshCw, Trash2 } from 'lucide-react';
+import { Mail, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   DataTable,
@@ -10,9 +10,24 @@ import {
 import { api, type OrganizationInviteDto, type OrganizationInviteStatus } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { InviteStatusBadge } from './badges';
-import { extractApiError, formatDateTime, inviteStationLabel } from './utils';
+import { extractApiError, formatDateTime } from './utils';
 
 type InviteBucket = 'pending' | 'expired' | 'accepted';
+
+function deliveryStatusLabel(status: OrganizationInviteDto['deliveryStatus']): string {
+  switch (status) {
+    case 'SENT':
+      return 'E-Mail gesendet';
+    case 'SENDING':
+      return 'Wird gesendet';
+    case 'FAILED':
+      return 'Zustellung fehlgeschlagen';
+    case 'DEAD_LETTER':
+      return 'Zustellung abgebrochen';
+    default:
+      return 'In Warteschlange';
+  }
+}
 
 interface InvitesTabProps {
   orgId: string;
@@ -60,15 +75,10 @@ export function InvitesTab({
   }, [load]);
 
   const handleResend = async (invite: OrganizationInviteDto) => {
-    setActionId(invite.id);
+    setActionId(invite.inviteId);
     try {
-      const res = await api.organizationInvites.resend(orgId, invite.id);
-      if (res.inviteUrl) {
-        await navigator.clipboard.writeText(res.inviteUrl);
-        onNotifySuccess('Einladung erneut gesendet — Link in Zwischenablage kopiert');
-      } else {
-        onNotifySuccess('Einladung erneut gesendet');
-      }
+      await api.organizationInvites.resend(orgId, invite.inviteId);
+      onNotifySuccess('Einladung erneut per E-Mail versendet');
       await load();
       await onRefreshParent();
     } catch (err) {
@@ -81,14 +91,14 @@ export function InvitesTab({
   const handleRevoke = async (invite: OrganizationInviteDto) => {
     if (
       !window.confirm(
-        `Einladung an ${invite.email} wirklich widerrufen? Der Link ist danach ungültig.`,
+        `Einladung an ${invite.recipientMasked} wirklich widerrufen? Der Link ist danach ungültig.`,
       )
     ) {
       return;
     }
-    setActionId(invite.id);
+    setActionId(invite.inviteId);
     try {
-      await api.organizationInvites.revoke(orgId, invite.id);
+      await api.organizationInvites.revoke(orgId, invite.inviteId);
       onNotifySuccess('Einladung widerrufen');
       await load();
       await onRefreshParent();
@@ -102,39 +112,21 @@ export function InvitesTab({
   const columns: DataTableColumn<OrganizationInviteDto>[] = [
     {
       key: 'email',
-      header: 'E-Mail',
-      cell: (i) => <span className="text-[13px] font-medium">{i.email}</span>,
+      header: 'Empfänger',
+      cell: (i) => <span className="text-[13px] font-medium">{i.recipientMasked}</span>,
     },
     {
       key: 'role',
       header: 'Rolle',
-      cell: (i) => (
-        <span className="text-[12px] text-muted-foreground">
-          {i.organizationRoleName || i.roleLabel || i.membershipRole}
-        </span>
-      ),
+      cell: (i) => <span className="text-[12px] text-muted-foreground">{i.roleSummary}</span>,
     },
     {
-      key: 'scope',
-      header: 'Standort',
-      cell: (i) => <span className="text-[12px]">{inviteStationLabel(i)}</span>,
-      className: 'hidden lg:table-cell',
-    },
-    {
-      key: 'invitedBy',
-      header: 'Eingeladen von',
+      key: 'delivery',
+      header: 'Zustellung',
       cell: (i) => (
-        <span className="text-[12px] text-muted-foreground">
-          {i.invitedBy?.name || i.invitedBy?.email || '—'}
-        </span>
+        <span className="text-[12px] text-muted-foreground">{deliveryStatusLabel(i.deliveryStatus)}</span>
       ),
       className: 'hidden md:table-cell',
-    },
-    {
-      key: 'created',
-      header: 'Eingeladen am',
-      cell: (i) => <span className="text-[12px] tabular-nums">{formatDateTime(i.createdAt)}</span>,
-      className: 'hidden xl:table-cell',
     },
     {
       key: 'expires',
@@ -155,7 +147,7 @@ export function InvitesTab({
           <div className="flex justify-end gap-1">
             <button
               type="button"
-              disabled={actionId === i.id}
+              disabled={actionId === i.inviteId}
               className="p-2 rounded-lg hover:bg-muted/60 text-muted-foreground"
               title="Erneut senden"
               onClick={(e) => {
@@ -163,11 +155,11 @@ export function InvitesTab({
                 void handleResend(i);
               }}
             >
-              <RefreshCw className={`w-4 h-4 ${actionId === i.id ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${actionId === i.inviteId ? 'animate-spin' : ''}`} />
             </button>
             <button
               type="button"
-              disabled={actionId === i.id}
+              disabled={actionId === i.inviteId}
               className="p-2 rounded-lg hover:bg-muted/60 text-red-600"
               title="Widerrufen"
               onClick={(e) => {
@@ -225,27 +217,28 @@ export function InvitesTab({
         ) : (
           <>
             <div className="hidden md:block p-1">
-              <DataTable columns={columns} rows={invites} getRowKey={(i) => i.id} card={false} />
+              <DataTable columns={columns} rows={invites} getRowKey={(i) => i.inviteId} card={false} />
             </div>
             <div className="md:hidden divide-y divide-border/60">
               {invites.map((i) => (
-                <div key={i.id} className="p-4 space-y-2">
+                <div key={i.inviteId} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-semibold text-[13px]">{i.email}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {i.organizationRoleName || i.membershipRole}
-                      </p>
+                      <p className="font-semibold text-[13px]">{i.recipientMasked}</p>
+                      <p className="text-[11px] text-muted-foreground">{i.roleSummary}</p>
                     </div>
                     <InviteStatusBadge status={i.status} />
                   </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Zustellung: {deliveryStatusLabel(i.deliveryStatus)}
+                  </p>
                   <p className="text-[11px] text-muted-foreground">
                     Läuft ab: {formatDateTime(i.expiresAt)}
                   </p>
                   {i.status === 'PENDING' && (
                     <div className="flex gap-2 pt-1">
                       <button type="button" className="sq-3d-btn text-xs" onClick={() => void handleResend(i)}>
-                        <Copy className="w-3.5 h-3.5 inline mr-1" /> Erneut senden
+                        <RefreshCw className="w-3.5 h-3.5 inline mr-1" /> Erneut senden
                       </button>
                       <button type="button" className="sq-3d-btn text-xs text-red-600" onClick={() => void handleRevoke(i)}>
                         Widerrufen

@@ -24,13 +24,20 @@ import {
 } from '@shared/auth/permission.util';
 import { USERS_ROLES_MODULE } from '@shared/auth/permission.constants';
 import { OrganizationRoleService } from './organization-role.service';
-import { TransactionalMailService } from './transactional-mail.service';
 import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
+import { InviteEmailDeliveryService } from './invite-email-delivery.service';
+import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
+import { InviteRateLimitService } from './invite-rate-limit.service';
 import {
   generateInviteToken,
   inviteTokenLookupKey,
   verifyInviteToken,
 } from './utils/invite-token.util';
+import {
+  maskRecipientEmail,
+  toInviteAdminView,
+  type OrganizationInviteAdminView,
+} from './utils/invite-admin-response.util';
 import type { AcceptInviteDto, CreateOrganizationInviteDto } from './dto/organization-invite.dto';
 
 @Injectable()
@@ -38,8 +45,10 @@ export class OrganizationInviteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly roleService: OrganizationRoleService,
-    private readonly mail: TransactionalMailService,
     private readonly userAudit: UserAccessAuditService,
+    private readonly inviteRateLimit: InviteRateLimitService,
+    private readonly inviteDelivery: InviteEmailDeliveryService,
+    private readonly inviteOutbox: InviteEmailOutboxRepository,
   ) {}
 
   async createInvite(
@@ -51,6 +60,8 @@ export class OrganizationInviteService {
     await this.roleService.ensureDefaultRoles(orgId, invitedByUserId);
 
     const email = dto.email.toLowerCase().trim();
+    await this.inviteRateLimit.assertCreateAllowed(orgId, invitedByUserId, email);
+
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
       select: { companyName: true },
@@ -159,31 +170,27 @@ export class OrganizationInviteService {
       },
     });
 
-    const inviteUrl = this.buildInviteUrl(plain);
-    await this.mail.sendOrganizationInvite({
-      to: email,
-      organizationName: org.companyName,
-      inviteUrl,
-      expiresAt,
-      invitedByName: invite.invitedBy?.name ?? invite.invitedBy?.email ?? undefined,
+    const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
+      organizationId: orgId,
+      inviteId: invite.id,
+      plainToken: plain,
+      sentByUserId: invitedByUserId,
+      idempotencyKey: `invite:create:${invite.id}`,
     });
+    await this.inviteDelivery.processOutboxIds([outboxId]);
+    const deliveryRow = outboxId ? await this.inviteOutbox.findById(outboxId) : null;
 
     void this.userAudit.record({
       organizationId: orgId,
       actorUserId: invitedByUserId,
       auditAction: UserAccessAuditAction.USER_INVITED,
       targetInviteId: invite.id,
-      description: `Einladung an ${email} versendet`,
-      after: this.mapInvite(invite, { includeToken: false }),
-      metadata: { email, membershipRole, organizationRoleId },
+      description: `Einladung an ${maskRecipientEmail(email)} versendet`,
+      after: this.toAdminViewFromInvite(invite, deliveryRow?.status ?? null),
+      metadata: { recipientMasked: maskRecipientEmail(email), membershipRole, organizationRoleId },
     });
 
-    return {
-      ...this.mapInvite(invite, { includeToken: false }),
-      /** Plain token returned once for admin copy — never stored or logged. */
-      inviteToken: plain,
-      inviteUrl,
-    };
+    return this.toAdminViewFromInvite(invite, deliveryRow?.status ?? null);
   }
 
   async listInvites(orgId: string, status?: OrganizationInviteStatus) {
@@ -198,7 +205,13 @@ export class OrganizationInviteService {
         organizationRole: { select: { id: true, name: true } },
       },
     });
-    return invites.map((i) => this.mapInvite(i, { includeToken: false }));
+    const deliveryMap = await this.inviteOutbox.findLatestByInviteIds(invites.map((i) => i.id));
+    return invites.map((invite) =>
+      this.toAdminViewFromInvite(
+        invite,
+        deliveryMap.get(invite.id)?.status ?? null,
+      ),
+    );
   }
 
   async resendInvite(orgId: string, inviteId: string, actorUserId: string) {
@@ -206,6 +219,8 @@ export class OrganizationInviteService {
     if (invite.status !== OrganizationInviteStatus.PENDING) {
       throw new BadRequestException('Only pending invites can be resent');
     }
+
+    await this.inviteRateLimit.assertResendAllowed(orgId, actorUserId, invite.email);
 
     const { plain, hash } = generateInviteToken();
     const tokenLookup = inviteTokenLookupKey(plain);
@@ -223,30 +238,29 @@ export class OrganizationInviteService {
       include: {
         organization: { select: { companyName: true } },
         invitedBy: { select: { id: true, name: true, email: true } },
+        organizationRole: { select: { id: true, name: true } },
       },
     });
 
-    const inviteUrl = this.buildInviteUrl(plain);
-    await this.mail.sendOrganizationInvite({
-      to: updated.email,
-      organizationName: updated.organization.companyName,
-      inviteUrl,
-      expiresAt,
+    const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
+      organizationId: orgId,
+      inviteId: updated.id,
+      plainToken: plain,
+      sentByUserId: actorUserId,
+      idempotencyKey: `invite:resend:${updated.id}:${tokenLookup}`,
     });
+    await this.inviteDelivery.processOutboxIds([outboxId]);
+    const deliveryRow = outboxId ? await this.inviteOutbox.findById(outboxId) : null;
 
     void this.userAudit.record({
       organizationId: orgId,
       actorUserId,
       auditAction: UserAccessAuditAction.USER_INVITE_RESENT,
       targetInviteId: inviteId,
-      description: `Einladung an ${updated.email} erneut versendet`,
+      description: `Einladung an ${maskRecipientEmail(updated.email)} erneut versendet`,
     });
 
-    return {
-      ...this.mapInvite(updated, { includeToken: false }),
-      inviteToken: plain,
-      inviteUrl,
-    };
+    return this.toAdminViewFromInvite(updated, deliveryRow?.status ?? null);
   }
 
   async revokeInvite(
@@ -278,7 +292,7 @@ export class OrganizationInviteService {
       });
     }
 
-    return this.mapInvite(updated, { includeToken: false });
+    return this.toAdminViewFromInvite(updated, null);
   }
 
   async validateInviteToken(token: string) {
@@ -541,12 +555,32 @@ export class OrganizationInviteService {
     return invite;
   }
 
-  private buildInviteUrl(plainToken: string): string {
-    const base =
-      process.env.APP_PUBLIC_URL?.trim() ||
-      process.env.FRONTEND_URL?.trim() ||
-      'http://localhost:5173';
-    return `${base.replace(/\/$/, '')}/accept-invite?token=${encodeURIComponent(plainToken)}`;
+  private toAdminViewFromInvite(
+    invite: {
+      id: string;
+      email: string;
+      membershipRole: MembershipRole;
+      status: OrganizationInviteStatus;
+      expiresAt: Date;
+      roleLabel: string | null;
+      organizationRole?: { name: string } | null;
+    },
+    deliveryOutboxStatus:
+      | import('@prisma/client').InviteEmailOutboxStatus
+      | null
+      | 'QUEUED',
+  ): OrganizationInviteAdminView {
+    return toInviteAdminView({
+      id: invite.id,
+      email: invite.email,
+      status: invite.status,
+      expiresAt: invite.expiresAt,
+      membershipRole: invite.membershipRole,
+      roleLabel: invite.roleLabel,
+      organizationRoleName: invite.organizationRole?.name ?? null,
+      deliveryOutboxStatus:
+        deliveryOutboxStatus === 'QUEUED' ? null : deliveryOutboxStatus,
+    });
   }
 
   private mapPublicInvite(invite: {
@@ -567,60 +601,6 @@ export class OrganizationInviteService {
       roleLabel: invite.roleLabel ?? invite.organizationRole?.name ?? null,
       status: invite.status,
       expiresAt: invite.expiresAt.toISOString(),
-    };
-  }
-
-  private mapInvite(
-    invite: {
-      id: string;
-      organizationId: string;
-      email: string;
-      membershipRole: MembershipRole;
-      status: OrganizationInviteStatus;
-      expiresAt: Date;
-      createdAt: Date;
-      updatedAt: Date;
-      acceptedAt: Date | null;
-      revokedAt: Date | null;
-      roleLabel: string | null;
-      department: string | null;
-      position: string | null;
-      stationScope: string | null;
-      stationIds: unknown;
-      organizationRoleId: string | null;
-      invitedBy?: { id: string; name: string | null; email: string } | null;
-      organizationRole?: { id: string; name: string } | null;
-    },
-    _opts: { includeToken: boolean },
-  ) {
-    const stationIds = Array.isArray(invite.stationIds)
-      ? invite.stationIds.filter((id): id is string => typeof id === 'string' && !!id.trim())
-      : [];
-    return {
-      id: invite.id,
-      organizationId: invite.organizationId,
-      email: invite.email,
-      membershipRole: invite.membershipRole,
-      organizationRoleId: invite.organizationRoleId,
-      organizationRoleName: invite.organizationRole?.name ?? null,
-      roleLabel: invite.roleLabel,
-      department: invite.department,
-      position: invite.position,
-      stationScope: invite.stationScope,
-      stationIds,
-      status: invite.status,
-      expiresAt: invite.expiresAt.toISOString(),
-      createdAt: invite.createdAt.toISOString(),
-      updatedAt: invite.updatedAt.toISOString(),
-      acceptedAt: invite.acceptedAt?.toISOString() ?? null,
-      revokedAt: invite.revokedAt?.toISOString() ?? null,
-      invitedBy: invite.invitedBy
-        ? {
-            id: invite.invitedBy.id,
-            name: invite.invitedBy.name,
-            email: invite.invitedBy.email,
-          }
-        : null,
     };
   }
 }

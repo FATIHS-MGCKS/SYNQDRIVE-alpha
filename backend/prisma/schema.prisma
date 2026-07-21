@@ -1580,6 +1580,7 @@ model Organization {
   pricingQuotes                          PricingQuote[]
   organizationRoles                      OrganizationRole[]
   organizationUserInvites                OrganizationUserInvite[]
+  inviteEmailOutbox                      InviteEmailOutbox[]
   orgEmailSettings                       OrgEmailSettings?
   orgEmailDomains                        OrgEmailDomain[]
   outboundEmails                         OutboundEmail[]
@@ -1642,6 +1643,7 @@ model User {
   notificationPreferences             UserNotificationPreference[]
   invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
   invitesAccepted                     OrganizationUserInvite[]                @relation("InvitesAccepted")
+  inviteEmailOutboxSent               InviteEmailOutbox[]                     @relation("InviteEmailOutboxSentBy")
   organizationRolesCreated            OrganizationRole[]                      @relation("RolesCreated")
   billingPriceVersionsCreated         BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
   billingPriceVersionsPublished       BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
@@ -1833,11 +1835,55 @@ model OrganizationUserInvite {
   organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
   invitedBy        User              @relation("InvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
   acceptedBy       User?             @relation("InvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  inviteEmailOutbox InviteEmailOutbox[]
 
   @@index([organizationId, status])
   @@index([organizationId, email])
   @@index([tokenHash])
   @@map("organization_user_invites")
+}
+
+enum InviteEmailOutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  DEAD_LETTER
+}
+
+model InviteEmailOutbox {
+  id              String                  @id @default(uuid())
+  organizationId  String                  @map("organization_id")
+  inviteId        String                  @map("invite_id")
+  idempotencyKey  String                  @unique @map("idempotency_key")
+  status          InviteEmailOutboxStatus @default(PENDING)
+  tokenCiphertext String?                 @map("token_ciphertext")
+  attempts        Int                     @default(0)
+  availableAt     DateTime                @default(now()) @map("available_at")
+  processedAt     DateTime?               @map("processed_at")
+  errorMessage    String?                 @map("error_message")
+  sentByUserId    String?                 @map("sent_by_user_id")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invite       OrganizationUserInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  sentBy       User?                  @relation("InviteEmailOutboxSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([inviteId])
+  @@index([status, availableAt])
+  @@map("invite_email_outbox")
+}
+
+model OrganizationInviteAttempt {
+  id             String   @id @default(uuid())
+  scope          String
+  scopeKey       String   @map("scope_key")
+  organizationId String?  @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([scope, scopeKey, createdAt])
+  @@map("organization_invite_attempts")
 }
 
 // ------------------------------------------------

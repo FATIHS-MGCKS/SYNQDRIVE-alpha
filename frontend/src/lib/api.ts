@@ -2446,30 +2446,20 @@ export type MembershipPermissionsMap = Record<string, MembershipPermissionLevel>
 
 export type OrganizationInviteStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
 
+export type InviteDeliveryStatus =
+  | 'QUEUED'
+  | 'SENDING'
+  | 'SENT'
+  | 'FAILED'
+  | 'DEAD_LETTER';
+
 export interface OrganizationInviteDto {
-  id: string;
-  organizationId: string;
-  email: string;
-  membershipRole: string;
-  organizationRoleId: string | null;
-  organizationRoleName: string | null;
-  roleLabel: string | null;
-  department: string | null;
-  position: string | null;
-  stationScope: string | null;
-  stationIds: string[];
+  inviteId: string;
   status: OrganizationInviteStatus;
   expiresAt: string;
-  createdAt: string;
-  updatedAt: string;
-  acceptedAt: string | null;
-  revokedAt: string | null;
-  invitedBy: { id: string; name: string | null; email: string } | null;
-}
-
-export interface OrganizationInviteCreatedDto extends OrganizationInviteDto {
-  inviteToken?: string;
-  inviteUrl?: string;
+  deliveryStatus: InviteDeliveryStatus;
+  recipientMasked: string;
+  roleSummary: string;
 }
 
 export interface CreateOrganizationInvitePayload {
@@ -2567,6 +2557,7 @@ export interface OrgUserDto {
   mustChangePassword?: boolean;
   lastLoginIp?: string;
   lastLoginDevice?: string;
+  pendingInviteId?: string | null;
 }
 
 export interface UserSecurityActivityDto {
@@ -2936,9 +2927,9 @@ export const api = {
         `/organizations/${orgId}/invites${status ? `?status=${status}` : ''}`,
       ),
     create: (orgId: string, data: CreateOrganizationInvitePayload) =>
-      post<OrganizationInviteCreatedDto>(`/organizations/${orgId}/invites`, data),
+      post<OrganizationInviteDto>(`/organizations/${orgId}/invites`, data),
     resend: (orgId: string, inviteId: string) =>
-      post<OrganizationInviteDto & { inviteToken?: string; inviteUrl?: string }>(
+      post<OrganizationInviteDto>(
         `/organizations/${orgId}/invites/${inviteId}/resend`,
         {},
       ),
