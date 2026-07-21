@@ -1,0 +1,21 @@
+area,currentState,gap,target,severity,findingId
+hardcoded_german,Nearly all users-roles strings DE-only in constants/components,Not DE/EN capable despite Settings outer tabs i18n,Wire useLanguage/t keys for all Users&Roles copy,P0,UR-P7-I18N-01
+hardcoded_english_mix,Health Stripe Connect Field Agent Basis-Membership Sub-Admin Data Analyse,Inconsistent bilingual UX,Localized glossary; no raw EN product jargon without DE/EN pair,P1,UR-P7-I18N-02
+backend_user_facing_errors,extractApiError may surface server DE/EN mixed,Unpredictable locale,Map error codes to FE i18n; never show raw stack,P1,UR-P7-I18N-03
+role_labels,MEMBERSHIP_ROLE_LABELS DE hardcoded; role.name from API,Custom role names untranslated by design OK; system labels not i18n,i18n system role keys; keep custom names as entered,P1,UR-P7-I18N-04
+permission_names,PERMISSION_MODULES labels DE hardcoded,EN locale unsupported,i18n module labels + tooltip descriptions,P0,UR-P7-I18N-05
+semantic_tabs,Inner tabs are buttons without role=tablist/tab/aria-selected,Outer AdministrationTabBar has correct roles,Match outer a11y pattern on 3 target tabs,P0,UR-P7-A11Y-01
+dialog_focus_trap,CreateUserWizard and UsersTab ConfirmDialog custom overlays lack role=dialog aria-modal focus trap,Keyboard users can tab to background,Use shared Dialog primitive with focus trap and restore,P0,UR-P7-A11Y-02
+keyboard_navigation,Row menus partial; icon buttons on roles/invites often title-only,Incomplete operability,All actions reachable; visible focus rings; Escape closes,P1,UR-P7-A11Y-03
+screenreader_labels,Some aria-label on user menu; many icon-only actions unlabeled,SR silence,aria-label on every icon control; live regions for toasts already via sonner,P1,UR-P7-A11Y-04
+contrast,Brand/amber badges on muted; theme vars used,Needs contrast QA on amber-500/15 chips,Verify WCAG AA for status chips in light/dark,P2,UR-P7-A11Y-05
+status_not_color_only,Status chips include text — good; timeline criticality mostly color dots aria-hidden,Risk on timeline,Always text label for severity; do not rely on dot color,P1,UR-P7-A11Y-05
+table_headers,DataTable headers present on desktop,Mobile cards omit some column semantics,Card labels for each field; preserve header associations,P1,UR-P7-A11Y-06
+menus,Dropdown row actions,Check menu keyboard patterns in shared menu,Ensure MenuItem focusable + Escape,P2,UR-P7-A11Y-07
+relative_time,formatDateTime absolute mostly,No relative last activity,Show relative + absolute title tooltip; i18n-aware,P2,UR-P7-I18N-06
+security_placeholder_misread,2FA Nicht verfügbar / sessions — can look neutral,False assurance,Map to NOT_SUPPORTED or UNKNOWN with ACTION_REQUIRED styling — never success green,P0,UR-P7-A11Y-08
+touch_targets,Some icon buttons compact,Mobile tap risk,min 44px targets on mobile action rows,P1,UR-P7-MOB-01
+permission_matrix_mobile,Native selects in long scroll groups,Hard to use one-handed,Accordion per module group; sticky save/cancel; summary chips,P0,UR-P7-MOB-02
+sticky_save,Roles editor save not sticky; drawer footer exists,Risk losing save on long scroll,Sticky Save/Cancel on role editor and drawer edit mode,P1,UR-P7-MOB-03
+horizontal_scroll,Inner tab bar overflow-x-auto; DataTable scroll,Weak affordance,Scroll fade/hint; prefer cards on small screens,P2,UR-P7-MOB-04
+long_names,Long role/permission labels truncate,Loss of meaning,Wrap on mobile; tooltip full name,P2,UR-P7-MOB-05

@@ -1,0 +1,17 @@
+action,currentUiEntry,confirmDialog,stepUp,reasonRequired,impactPreview,sessionImpactShown,userNotification,fourEyes,passwordEntryInUi,severity,findingId,targetUx
+suspend_user,UsersTab row menu → ConfirmDialog,YES custom copy login blocked,NO,NO,NO,NO (and backend does not revoke),NO,NO,NO,P0,UR-P7-DA-01,Confirm+reason+session revoke plan+notify; membership-scoped wording
+remove_user,UsersTab/Drawer → ConfirmDialog,YES; last-admin error surfacing,NO,NO,NO ownership/tasks,NO,NO,NO,NO,P0,UR-P7-DA-02,Confirm+impact checklist+session revoke+invite cleanup summary
+grant_admin_rights,Drawer role select ORG_ADMIN / users-roles.manage via permissions,NO,NO,NO,NO,NO,NO,NO,NO,P0,UR-P7-DA-03,Dedicated grant flow: step-up+impact+optional 4-eyes+CRITICAL audit
+revoke_admin_rights,Drawer role change away from ORG_ADMIN,NO (last-admin backend only),NO,NO,NO,NO,NO,NO,NO,P0,UR-P7-DA-04,Confirm+last-admin guard UX+successor required
+trigger_password_reset,UsersTab ConfirmDialog with newPassword input min12,YES but asks admin to type password,NO,NO,NO,NO,NO,NO,YES — direct password,P0,UR-P7-DA-05,Replace with reset-link trigger only; no password field; show session revoke+notify
+reset_mfa,NOT_IN_UI,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,P1,UR-P7-DA-06,When MFA exists: step-up+reason+notify; state ACTION_REQUIRED
+revoke_sessions,NOT_IN_ORG_ADMIN_UI (self account only elsewhere),n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,P0,UR-P7-DA-07,Drawer D: revoke all/others with step-up+reason+count preview
+reveal_invite_link,InvitesTab/UsersTab resend → clipboard.writeText(inviteUrl),NO,NO,NO,NO secret exposure,n/a,NO,NO,n/a token URL,P0,UR-P7-DA-08,Never reveal; email-only; if break-glass reveal: step-up+reason+audit
+edit_role_many_assignees,RolesTab save immediate,NO,NO,NO,NO — PermissionPreview not assignee blast radius,NO,NO,NO,NO,P0,UR-P7-DA-09,Block save until Impact Preview: users gained/lost privileged stations sessions
+change_last_admin,Indirect via remove/role change,Backend error only,NO,NO,NO,NO,NO,NO,NO,P0,UR-P7-DA-10,Preventive UI: single-admin KPI+block with successor invite
+export_audit,SecurityActivityTab view only — no export button,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,P1,UR-P7-DA-11,Export with step-up+reason+audit-of-export+redaction
+create_with_temp_password,CreateUserWizard password method + clipboard,NO for clipboard,NO,NO,NO,n/a,clipboard secret,NO,YES plaintext shown,P0,UR-P7-DA-12,Deprecate password path or force invite-only default; never clipboard
+reactivate_user,UsersTab menu immediate,NO,NO,NO,NO,NO,NO,NO,NO,P1,UR-P7-DA-13,Confirm+scope/role review before ACTIVE
+duplicate_role,RolesTab immediate,NO,NO,NO,NO,n/a,n/a,n/a,n/a,P2,UR-P7-DA-14,OK light confirm optional
+delete_deactivate_role,RolesTab trash immediate; toast says deaktiviert vs delete API,NO,NO,NO,NO assignees,n/a,NO,NO,NO,P0,UR-P7-DA-15,Confirm+assignee count; block if assigned; clarify deactivate vs delete
+assign_role_in_drawer,Save without confirm,NO,NO,NO,FE removal warning only,NO,NO,NO,NO,P0,UR-P7-DA-16,Impact Preview on privilege gain/loss before save

@@ -5,11 +5,11 @@
 | **Audit ID** | `users-roles-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/users-roles-production-readiness-2026-07` |
-| **Phase** | **6 of 8 — Audit reliability / privacy / ISO-oriented control alignment** |
+| **Phase** | **7 of 8 — Users & Roles UI/UX target structure** |
 | **Verdict (interim)** | **NOT READY** (preliminary — full verdict in Phase 8) |
-| **Status** | **Phases 1–6 complete** — Phases 7–8 outlined, not executed |
-| **Production data modified** | **No** — Phase 6 code/static only; no legal advice or ISO certification claim |
-| **Analysis window (VPS)** | Prior Phase-4 anonymized aggregates reused; Phase 6 = code paths + retention config |
+| **Status** | **Phases 1–7 complete** — Phase 8 outlined, not executed |
+| **Production data modified** | **No** — Phase 7 UI audit + target wireframes only; **no UI implemented** |
+| **Analysis window (VPS)** | UI code inspection of `frontend/src/rental/components/users-roles/*` (2026-07-21) |
 
 ---
 
@@ -49,6 +49,10 @@
 | DSGVO technical capability | `docs/audits/data/iam-dsgvo-technical-capability-2026-07.csv` | 6 |
 | ISO/IEC 27001-oriented alignment | `docs/audits/data/iam-iso27001-control-alignment-2026-07.csv` | 6 |
 | Integrity findings JSON | `docs/audits/data/iam-integrity-findings-2026-07.json` | 4–6 |
+| UI component audit | `docs/audits/data/users-roles-ui-component-audit-2026-07.csv` | 7 |
+| UI information architecture | `docs/audits/data/users-roles-ui-information-architecture-2026-07.csv` | 7 |
+| Dangerous action UX | `docs/audits/data/users-roles-dangerous-action-ux-2026-07.csv` | 7 |
+| i18n / accessibility | `docs/audits/data/users-roles-i18n-accessibility-2026-07.csv` | 7 |
 | Read-only orchestrator | `scripts/audits/audit-users-roles-production-readiness.ts` | 1–8 |
 | Effective-access helper | `scripts/audits/audit-effective-access.ts` | 4 |
 | VPS integrity SQL dump (SELECT-only) | `scripts/audits/iam-vps-integrity-readonly.py` | 4 |
@@ -135,13 +139,13 @@ Stable, non-reversible aliases used in all Git artifacts:
 
 Multi-org switch deep dive remains evidenced in Phase 2; residual switch protocol → Phase 8.
 
-## Phase 7 — UI/UX, Security Activity, MFA placeholders, residual privacy UX
+## Phase 7 — Users & Roles UI/UX target structure *(complete below)*
 
-- `frontend/src/rental/components/users-roles/*`
-- Clipboard of invite URLs and temporary passwords
-- Missing accept-invite SPA route
-- Security Activity / MFA / activeSessionCount placeholders
-- Operator-facing privacy/security UX gaps
+- Current IA audit (5 tabs, KPIs, drawer, matrix)
+- Target navigation: Team | Roles & Access | Security & Audit
+- KPI / list / drawer / roles / permission / dangerous-action targets
+- Mobile + i18n/a11y gaps
+- Textual wireframes — **no productive UI implemented**
 
 ## Phase 8 — Final synthesis & production-readiness verdict
 
@@ -1125,7 +1129,173 @@ Cumulative findings JSON: **44** total (**26×P0**, **14×P1**, **4×P2**); **25
 | Findings JSON extended | Done |
 | No legal/certification claims | Confirmed |
 | No productive mutations | Confirmed |
-| Prompt 7 not started | Confirmed |
+| Prompt 7 started only after Phase 6 exit | Confirmed |
+
+---
+
+# Phase 7 findings — Users & Roles UI/UX target (no implementation)
+
+> **No productive UI was implemented in this phase.** Targets and wireframes are audit recommendations for later remediation prompts.
+
+## P7.0 Current information architecture
+
+| Item | Current |
+|------|---------|
+| Mount | Settings → Administration → `users` → `UsersRolesTab` |
+| Inner tabs | **5**: Benutzer · Einladungen · Rollen · Zugriffsbereiche · Sicherheit & Aktivität |
+| Components | 14 files under `frontend/src/rental/components/users-roles/` |
+| KPIs (Users) | 5: total, active, pending invites, admins (`ORG_ADMIN`/`SUB_ADMIN`), scoped |
+| KPIs (Scopes) | +3 more |
+| Users columns | Benutzer, Rolle, Status, Standort, Letzter Login, Sicherheit, Aktionen |
+| Permission UX | Grouped `select` none/read/write/manage; preview = first 12 capability lines |
+| Security UI | Timeline of USER/INVITE/ROLE activity; drawer shows 2FA „Nicht verfügbar“, sessions „—“ |
+| Locale | Inner surface **DE-hardcoded**; outer admin tabs are i18n |
+| Design system | Reuses `PageHeader`, `DataTable`, `DetailDrawer`/`Sheet`, `Timeline`, `EmptyState`/`ErrorState` |
+
+**Complexity issues:** redundant Invites surfaces; Scopes overlaps Standort; technical jargon (Basis-Membership, Field Agent, manage); dangerous password/clipboard paths; no Impact Preview; placeholders can read as calm/OK.
+
+## P7.1 Target navigation (3 areas)
+
+| Target area | Absorbs | Contents |
+|-------------|---------|----------|
+| **1. Team** | Users + Invites | Active / suspended / open invites; search & filters |
+| **2. Roles & Access** | Roles + Scopes (+ permission matrix) | Roles; effective permissions; station scope; assignments; Impact Preview |
+| **3. Security & Audit** | Security tab expanded | Privileged accounts; MFA; sessions; login activity; IAM audit; Access Reviews |
+
+## P7.2 KPI target (exactly 4)
+
+| KPI | Source | Rule | Drilldown | Empty |
+|-----|--------|------|-----------|-------|
+| Active users | Memberships `ACTIVE` | Count distinct users with ACTIVE membership (not global User.status alone) | Team → filter active | „Noch keine Teammitglieder“ |
+| Open invites | Invites `PENDING` ∧ not expired | No double-count with users | Team → invites open | „Keine offenen Einladungen“ |
+| Privileged accounts | EffectiveAccess privileged | `ORG_ADMIN` **or** `users-roles.manage` **or** `billing.manage` (not SUB_ADMIN-only heuristic) | Security → privileged | „Keine“ + warn if zero admins |
+| Review required | Composite queue | Union of: MFA missing on privileged; AR overdue; expired invite; role drift; user without valid role; session after suspend; single admin; unsafe scope — **each subject counted once** | Security → review queue | „Alles geprüft“ + `asOf` timestamp — never imply OK if data `UNKNOWN` |
+
+## P7.3 User list (max 6 columns)
+
+`User` · `Access` (role + risk) · `Scope` (stations) · `Security` (MFA/sessions state enum) · `Last activity` (relative) · `Action`
+
+- Show display name + business email under User.
+- **No** password field in list or drawer.
+- Actions: view, invite resend (no clipboard secret), suspend/remove via Dangerous Action pattern.
+
+## P7.4 User drawer target sections
+
+A Overview · B Effective access (inherited/overrides/guard truth) · C Stations & scope · D Security & sessions (reset-**link**, revoke sessions — **no** admin password entry) · E Activity (invite/role/scope/session/suspend/AR).
+
+## P7.5 Roles & permission matrix target
+
+Each role: name, system/custom, assignee count, risk class, effective permissions, default scope, last change + actor, **roleVersion**.  
+Before save: Impact Preview (users affected, perms gained/lost, privileged deltas, stations, required session revokes).  
+Matrix: fach groups, tooltips, risk badges, no unexplained Select-all manage, **server** EffectiveAccess preview.
+
+## P7.6 Dangerous actions (summary)
+
+Password entry, clipboard invite URL, role delete without confirm, admin grant without step-up, and missing session-impact copy are **P0 UX blockers**. Target pattern: Confirm + Step-up + Reason + Impact Preview + Session effect + Notify (+ 4-eyes for admin grant). Details: `users-roles-dangerous-action-ux-2026-07.csv`.
+
+## P7.7 Security states
+
+UI must use: `ENABLED` · `DISABLED` · `REQUIRED` · `UNKNOWN` · `NOT_SUPPORTED` · `ACTION_REQUIRED`.  
+Missing MFA/session data → `NOT_SUPPORTED` / `UNKNOWN`, never a green “OK”.
+
+## P7.8 Mobile / i18n / a11y (highlights)
+
+- Mobile: team cards; role cards; permission accordion; sticky save; 44px targets.
+- i18n: entire Users & Roles island needs `t()` keys (currently DE-only).
+- a11y: tab roles; Dialog focus trap for wizard/confirm; unlabeled icon buttons; severity not color-only.
+
+## P7.9 Textual wireframes
+
+### Desktop — Team
+
+```
+┌─ Benutzer & Rollen ─────────────────────────────────────────┐
+│ [ Team ]  [ Roles & Access ]  [ Security & Audit ]          │
+│                                                             │
+│ ┌ Active users ┐ ┌ Open invites ┐ ┌ Privileged ┐ ┌ Review ┐ │
+│ │     12       │ │      3       │ │     2      │ │   4    │ │
+│ └──────────────┘ └──────────────┘ └────────────┘ └────────┘ │
+│ Search…………  Filters: Active | Suspended | Invites | All     │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ User        │ Access      │ Scope   │ Security │ Activity││
+│ │ Ada N.      │ Admin · HIGH│ All     │ MFA ?    │ 2h ago  ││
+│ │ ada@…       │             │         │ UNKNOWN  │  [···]  ││
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Desktop — Roles & Access
+
+```
+│ [Roles list]              │ [Role editor]                      │
+│ • Org Admin (system) 1    │ Name  Risk  Version  Assignees     │
+│ • Dispatcher (custom) 4   │ Effective permissions (summary)    │
+│ • Yard (custom) 0         │ Default scope · Field agent        │
+│                           │ [Permission groups accordion]      │
+│                           │ ┌ Impact Preview (required) ─────┐ │
+│                           │ │ 4 users · +2 manage · sessions │ │
+│                           │ └────────────────────────────────┘ │
+│                           │ [Cancel]              [Save role]  │
+```
+
+### Desktop — Security & Audit
+
+```
+│ Privileged accounts (2)   │ Review required (4)                │
+│ MFA · Sessions · Logins   │ Queue items with ACTION_REQUIRED   │
+│ IAM audit timeline        │ Access reviews (or NOT_SUPPORTED)  │
+│ [Export…] → step-up       │ Never show green when UNKNOWN      │
+```
+
+### User drawer
+
+```
+│ Ada Nguyen                          ACTIVE · ORG_001           │
+│ A Overview │ B Access │ C Stations │ D Security │ E Activity │
+│ … Effective access (server) …                                  │
+│ D: MFA NOT_SUPPORTED · Sessions 3 · [Reset link] [Revoke all] │
+│    (no password field)                                         │
+```
+
+### Role editor + Impact Preview
+
+```
+│ Save blocked until Impact Preview acknowledged                 │
+│ Affected 4 · Gained billing.manage · Lost tasks.write          │
+│ Privileged change YES · Stations +2 · Revoke sessions YES      │
+│ Reason ………………………………  [Confirm save]                           │
+```
+
+### Mobile — Team cards / Permission accordion
+
+```
+│ [Team] [Roles] [Security]  (segmented)                         │
+│ ┌ Card ─────────────────────────────┐                          │
+│ │ Ada N.  HIGH  · All stations      │                          │
+│ │ MFA UNKNOWN · Active 2h ago  [···]│                          │
+│ └───────────────────────────────────┘                          │
+│ Permissions: ▶ Finanzen  ▶ Flotte  ▶ Benutzer & Rollen         │
+│ ▓▓▓ sticky [Cancel] [Save] ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │
+```
+
+### Empty / Error / Loading
+
+```
+Loading: skeleton KPI row + 5 card/table rows
+Empty Team: illustration + “Invite teammate” primary
+Error: ErrorState + Retry (never blank security)
+Empty Security with UNKNOWN MFA: “Status unknown — action required” (amber)
+```
+
+## P7.10 Phase 7 exit criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Component + IA + dangerous-action + i18n/a11y CSVs | Done |
+| Target nav / KPI / list / drawer / roles / matrix defined | Done |
+| Textual wireframes in main report | Done |
+| **No UI implementation** | Confirmed |
+| Prompt 8 not started | Confirmed |
 
 ---
 
@@ -1141,15 +1311,15 @@ Cumulative findings JSON: **44** total (**26×P0**, **14×P1**, **4×P2**); **25
 | 6 | Invite plaintext to FE/clipboard | **Confirmed** + Phase-5 flow CSV (resend clipboard; mail debug URL) | 7, 8 |
 | 7 | Existing users accept invite without re-auth | **Confirmed** + REMOVED reactivation; no SPA accept route | 7, 8 |
 | 8 | Critical IAM audits fire-and-forget | **Confirmed** + Phase-6 outbox/retry absent; scrub bypass | 8 |
-| 9 | MFA/sessions/security activity partial | **Confirmed — not implemented**; step-up matrix defined | 7, 8 |
-| 10 | Parallel access truths | **Confirmed** (template/membership/JWT/FE/station + endpoint guard inconsistency) | 7, 8 |
-| 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed** + Phase-6 retention/DSGVO/ISO matrices | 7, 8 |
+| 9 | MFA/sessions/security activity partial | **Confirmed** + Phase-7 UI placeholders misreadable as calm | 8 |
+| 10 | Parallel access truths | **Confirmed** + Phase-7 FE lacks EffectiveAccess preview | 8 |
+| 11 | Retention/deletion/anonymization/access review incomplete | **Confirmed** + Phase-6 matrices; AR absent in Security UX | 8 |
 
 ---
 
 ## Appendix B — Changes / Architektur
 
-**Not updated** (Phases 1–6). Audit documentation and read-only scripts only; no product implementation or architecture behavior change was made. Target audit-outbox architecture is documented in Phase 6 only.
+**Not updated** (Phases 1–7). Audit documentation only; Phase 7 defines UI targets/wireframes but **does not implement** frontend changes.
 
 ---
 
@@ -1166,8 +1336,9 @@ Cumulative findings JSON: **44** total (**26×P0**, **14×P1**, **4×P2**); **25
 | Role reconciliation / membership updates | No |
 | Access-review campaigns | No |
 | Retention job execution / log deletion | No |
+| Frontend UI implementation / redesign | **No** (Phase 7 audit-only) |
 | Prisma migrate / infra config change | No |
 | Redis writes | No |
 | Commit of PII/secrets | No |
 
-All VPS access was diagnostic/read-only (`psql` SELECT aggregates via `iam-vps-integrity-readonly.py`, Redis SCAN/DBSIZE in earlier phases, `curl -I` headers, PM2 status, env key **presence/shape** only). Phases 5–6 added **no** VPS mutations — code/static analysis only.
+All VPS access was diagnostic/read-only. Phases 5–7 added **no** VPS mutations and **no** UI code changes — documentation/CSV/wireframes only.
