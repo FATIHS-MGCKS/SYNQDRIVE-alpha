@@ -11,7 +11,6 @@ import {
   OrganizationInviteStatus,
   UserStatus,
 } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { UsersService } from './users.service';
 import { orgAdminMayMutateGlobalIdentity } from './policies/iam-global-identity.policy';
@@ -47,32 +46,9 @@ const activeWorkerMembership = {
 
 describe('IAM security regressions A–K (Prompt 2/22)', () => {
   describe('A — Global identity boundary', () => {
-    it('characterization: org admin changeOrgUserPassword writes global passwordHash', async () => {
+    it('org admin changeOrgUserPassword is deprecated and does not write passwordHash', async () => {
       const { prisma, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
-      prisma.user.update.mockResolvedValue({});
-
-      await service.changeOrgUserPassword(
-        IAM_REGRESSION_IDS.orgA,
-        IAM_REGRESSION_IDS.multiOrgUser,
-        'longpassword123',
-        IAM_REGRESSION_IDS.adminA,
-        { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
-      );
-
-      expect(prisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: IAM_REGRESSION_IDS.multiOrgUser },
-          data: expect.objectContaining({ passwordHash: expect.any(String) }),
-        }),
-      );
-    });
-
-    it('TARGET RED: org admin must not set global password hash', async () => {
-      expect(orgAdminMayMutateGlobalIdentity('SET_PASSWORD_HASH')).toBe(false);
-      const { prisma, service } = createUsersServiceHarness();
-      mockOrgAdminActorMembership(prisma, activeWorkerMembership);
-      prisma.user.update.mockResolvedValue({});
 
       await expect(
         service.changeOrgUserPassword(
@@ -82,31 +58,42 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
           IAM_REGRESSION_IDS.adminA,
           { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
         ),
-      ).rejects.toThrow(/reset|forbidden|not allowed/i);
+      ).rejects.toThrow(/reset|forbidden|not allowed|deprecated/i);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
-    it('characterization: org admin updateOrgUser can change global email', async () => {
+    it('TARGET: org admin must not set global password hash', async () => {
+      expect(orgAdminMayMutateGlobalIdentity('SET_PASSWORD_HASH')).toBe(false);
       const { prisma, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
-      prisma.organizationMembership.update.mockResolvedValue({});
-      prisma.user.update.mockResolvedValue({});
-      jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
 
-      await service.updateOrgUser(
-        IAM_REGRESSION_IDS.orgA,
-        IAM_REGRESSION_IDS.multiOrgUser,
-        { email: 'new-email@regression.test' },
-        { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
-      );
-
-      expect(prisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ email: 'new-email@regression.test' }),
-        }),
-      );
+      await expect(
+        service.changeOrgUserPassword(
+          IAM_REGRESSION_IDS.orgA,
+          IAM_REGRESSION_IDS.multiOrgUser,
+          'longpassword123',
+          IAM_REGRESSION_IDS.adminA,
+          { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
+        ),
+      ).rejects.toThrow(/reset|forbidden|not allowed|deprecated/i);
     });
 
-    it('TARGET RED: org admin must not change global email via org user update', async () => {
+    it('org admin updateOrgUser cannot change global email', async () => {
+      const { prisma, service } = createUsersServiceHarness();
+      mockOrgAdminActorMembership(prisma, activeWorkerMembership);
+
+      await expect(
+        service.updateOrgUser(
+          IAM_REGRESSION_IDS.orgA,
+          IAM_REGRESSION_IDS.multiOrgUser,
+          { email: 'new-email@regression.test' },
+          { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
+        ),
+      ).rejects.toThrow(/global|forbidden|not allowed/i);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('TARGET: org admin must not change global email via org user update', async () => {
       expect(orgAdminMayMutateGlobalIdentity('CHANGE_EMAIL')).toBe(false);
       const { prisma, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
@@ -121,11 +108,10 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
       ).rejects.toThrow(/global|forbidden|not allowed/i);
     });
 
-    it('characterization: suspend in org A sets global User.status SUSPENDED', async () => {
+    it('org A suspension sets membership SUSPENDED without global User.status', async () => {
       const { prisma, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
       prisma.organizationMembership.update.mockResolvedValue({});
-      prisma.user.update.mockResolvedValue({});
       jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
 
       await service.updateOrgUser(
@@ -135,18 +121,15 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
         { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
       );
 
-      expect(prisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ status: UserStatus.SUSPENDED }),
-        }),
-      );
+      const membershipUpdate = prisma.organizationMembership.update.mock.calls[0]?.[0];
+      expect(membershipUpdate?.data?.status).toBe(MembershipStatus.SUSPENDED);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
-    it('TARGET RED: org A suspension must not deactivate org B membership', async () => {
+    it('TARGET: org A suspension must not deactivate org B membership', async () => {
       const { prisma, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
       prisma.organizationMembership.update.mockResolvedValue({});
-      prisma.user.update.mockResolvedValue({});
       jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
 
       await service.updateOrgUser(
@@ -187,25 +170,7 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
   });
 
   describe('C — Password reset', () => {
-    it('characterization: admin changeOrgUserPassword sets plaintext-derived hash directly', async () => {
-      const { prisma, service } = createUsersServiceHarness();
-      mockOrgAdminActorMembership(prisma, activeWorkerMembership);
-      prisma.user.update.mockImplementation(async ({ data }) => data);
-
-      const result = await service.changeOrgUserPassword(
-        IAM_REGRESSION_IDS.orgA,
-        IAM_REGRESSION_IDS.multiOrgUser,
-        'adminSetPassword1',
-        IAM_REGRESSION_IDS.adminA,
-        { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
-      );
-
-      expect(result.message).toMatch(/updated/i);
-      const hash = prisma.user.update.mock.calls[0][0].data.passwordHash as string;
-      expect(await bcrypt.compare('adminSetPassword1', hash)).toBe(true);
-    });
-
-    it('TARGET RED: admin must trigger reset flow instead of setting password hash', async () => {
+    it('org admin changeOrgUserPassword is rejected (no plaintext hash write)', async () => {
       const { prisma, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
 
@@ -217,7 +182,23 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
           IAM_REGRESSION_IDS.adminA,
           { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
         ),
-      ).rejects.toThrow(/reset|token|forbidden/i);
+      ).rejects.toThrow(/reset|token|forbidden|deprecated/i);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('TARGET: admin must trigger reset flow instead of setting password hash', async () => {
+      const { prisma, service } = createUsersServiceHarness();
+      mockOrgAdminActorMembership(prisma, activeWorkerMembership);
+
+      await expect(
+        service.changeOrgUserPassword(
+          IAM_REGRESSION_IDS.orgA,
+          IAM_REGRESSION_IDS.multiOrgUser,
+          'adminSetPassword1',
+          IAM_REGRESSION_IDS.adminA,
+          { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
+        ),
+      ).rejects.toThrow(/reset|token|forbidden|deprecated/i);
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
@@ -229,18 +210,19 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
       refreshRevoke.mockClear();
     });
 
-    it('characterization: admin password change does not revoke sessions', async () => {
+    it('admin password change endpoint is deprecated (no session revoke yet)', async () => {
       const { prisma, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
-      prisma.user.update.mockResolvedValue({});
 
-      await service.changeOrgUserPassword(
-        IAM_REGRESSION_IDS.orgA,
-        IAM_REGRESSION_IDS.multiOrgUser,
-        'longpassword123',
-        IAM_REGRESSION_IDS.adminA,
-        { id: IAM_REGRESSION_IDS.adminA },
-      );
+      await expect(
+        service.changeOrgUserPassword(
+          IAM_REGRESSION_IDS.orgA,
+          IAM_REGRESSION_IDS.multiOrgUser,
+          'longpassword123',
+          IAM_REGRESSION_IDS.adminA,
+          { id: IAM_REGRESSION_IDS.adminA },
+        ),
+      ).rejects.toThrow(/reset|deprecated/i);
 
       expect(refreshRevoke).not.toHaveBeenCalled();
     });

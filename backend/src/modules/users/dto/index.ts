@@ -2,6 +2,7 @@ export {
   CreateOrgUserDto,
   UpdateOrgUserDto,
   ChangeOrgUserPasswordDto,
+  RequestOrgUserPasswordResetDto,
   CreateMembershipDto,
   AdminCreateUserDto,
   AdminUpdateUserDto,

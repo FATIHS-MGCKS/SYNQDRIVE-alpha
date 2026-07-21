@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  GoneException,
 } from '@nestjs/common';
 import {
   MembershipStatus,
@@ -26,6 +27,11 @@ import type {
 } from './dto';
 import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
+import {
+  assertOrgAdminUpdateDoesNotTouchGlobalIdentity,
+  ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE,
+  ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE,
+} from './policies/org-membership-admin.policy';
 
 const ROLE_DISPLAY: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -38,6 +44,13 @@ const USER_STATUS_MAP: Record<string, string> = {
   ACTIVE: 'Active',
   INACTIVE: 'Inactive',
   SUSPENDED: 'Inactive',
+};
+
+const MEMBERSHIP_STATUS_DISPLAY: Record<MembershipStatus, string> = {
+  [MembershipStatus.ACTIVE]: 'Active',
+  [MembershipStatus.INVITED]: 'Invited',
+  [MembershipStatus.REMOVED]: 'Removed',
+  [MembershipStatus.SUSPENDED]: 'Inactive',
 };
 
 function getInitials(name: string | null | undefined): string {
@@ -345,6 +358,10 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({ where: { email } });
 
     if (existing) {
+      if (dto.password) {
+        throw new BadRequestException(ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE);
+      }
+
       const existingMembership =
         await this.prisma.organizationMembership.findUnique({
           where: {
@@ -398,20 +415,8 @@ export class UsersService {
             status: UserStatus.ACTIVE,
           },
         });
-      } else if (passwordHash) {
-        await tx.user.update({
-          where: { id: user.id },
-          data: {
-            passwordHash,
-            mustChangePassword: true,
-            firstName: dto.firstName || user.firstName,
-            lastName: dto.lastName || user.lastName,
-            name: fullName || user.name,
-            phone: dto.phone || user.phone,
-            mobile: dto.mobile || user.mobile,
-            address: dto.address || user.address,
-          },
-        });
+      } else {
+        // Existing global user: add org membership only — do not mutate global identity.
       }
 
       const membership = await tx.organizationMembership.create({
@@ -458,15 +463,12 @@ export class UsersService {
     dto: CreateOrgUserDto,
     membershipId: string,
   ) {
+    if (dto.password) {
+      throw new BadRequestException(ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE);
+    }
+
     const roleFields = await this.resolveMembershipRoleFields(orgId, dto);
     await this.validateStationIds(orgId, roleFields.stationIds);
-
-    const fullName = buildDisplayName(dto.firstName, dto.lastName);
-    let passwordHash: string | undefined;
-    if (dto.password) {
-      this.assertPasswordStrength(dto.password);
-      passwordHash = await bcrypt.hash(dto.password, 10);
-    }
 
     const stationFields = this.resolveStationFields({
       stationScope: roleFields.stationScope,
@@ -474,28 +476,8 @@ export class UsersService {
     });
     const normalizedPermissions = roleFields.permissions;
 
-    const membership = await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          name: fullName || undefined,
-          email: dto.email.toLowerCase().trim(),
-          phone: dto.phone || undefined,
-          mobile: dto.mobile || undefined,
-          address: dto.address || undefined,
-          language: dto.language || undefined,
-          timezone: dto.timezone || undefined,
-          dateFormat: dto.dateFormat || undefined,
-          status: UserStatus.ACTIVE,
-          ...(passwordHash
-            ? { passwordHash, mustChangePassword: true }
-            : {}),
-        },
-      });
-
-      return tx.organizationMembership.update({
+    const membership = await this.prisma.$transaction(async (tx) =>
+      tx.organizationMembership.update({
         where: { id: membershipId },
         data: {
           role: roleFields.role,
@@ -517,8 +499,8 @@ export class UsersService {
           user: true,
           organization: { select: { id: true, companyName: true } },
         },
-      });
-    });
+      }),
+    );
 
     const mapped = this.mapOrgUserFull(membership);
     void this.userAudit.record({
@@ -536,6 +518,8 @@ export class UsersService {
     dto: UpdateOrgUserDto,
     actor: PermissionActor,
   ) {
+    assertOrgAdminUpdateDoesNotTouchGlobalIdentity(dto);
+
     const membership = await this.prisma.organizationMembership.findFirst({
       where: { organizationId: orgId, userId },
     });
@@ -571,14 +555,6 @@ export class UsersService {
       await this.validateStationIds(orgId, dto.stationIds);
     }
 
-    const fullName =
-      dto.firstName !== undefined || dto.lastName !== undefined
-        ? buildDisplayName(
-            dto.firstName ?? undefined,
-            dto.lastName ?? undefined,
-          )
-        : undefined;
-
     const stationFields = this.resolveStationFields(dto, membership);
     const normalizedPermissions =
       dto.permissions !== undefined
@@ -596,26 +572,6 @@ export class UsersService {
     };
 
     await this.prisma.$transaction(async (tx) => {
-      const userUpdate: Prisma.UserUpdateInput = {};
-      if (dto.firstName !== undefined) userUpdate.firstName = dto.firstName;
-      if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName;
-      if (fullName) userUpdate.name = fullName;
-      if (dto.email !== undefined) userUpdate.email = dto.email.toLowerCase().trim();
-      if (dto.phone !== undefined) userUpdate.phone = dto.phone;
-      if (dto.mobile !== undefined) userUpdate.mobile = dto.mobile;
-      if (dto.address !== undefined) userUpdate.address = dto.address;
-      if (dto.language !== undefined) userUpdate.language = dto.language;
-      if (dto.timezone !== undefined) userUpdate.timezone = dto.timezone;
-      if (dto.dateFormat !== undefined) userUpdate.dateFormat = dto.dateFormat;
-      if (dto.status !== undefined) {
-        userUpdate.status =
-          dto.status === 'SUSPENDED' ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
-      }
-
-      if (Object.keys(userUpdate).length > 0) {
-        await tx.user.update({ where: { id: userId }, data: userUpdate });
-      }
-
       const membershipUpdate: Prisma.OrganizationMembershipUpdateInput = {};
       if (dto.role !== undefined) membershipUpdate.role = dto.role as MembershipRole;
       if (dto.roleLabel !== undefined) membershipUpdate.roleLabel = dto.roleLabel;
@@ -632,6 +588,12 @@ export class UsersService {
       }
       if (dto.fieldAgentAccess !== undefined) {
         membershipUpdate.fieldAgentAccess = dto.fieldAgentAccess;
+      }
+      if (dto.status !== undefined) {
+        membershipUpdate.status =
+          dto.status === 'SUSPENDED'
+            ? MembershipStatus.SUSPENDED
+            : MembershipStatus.ACTIVE;
       }
 
       if (Object.keys(membershipUpdate).length > 0) {
@@ -699,65 +661,84 @@ export class UsersService {
         description: `Benutzer ${userId} aktualisiert`,
       });
     } else if (
-      dto.firstName !== undefined ||
-      dto.lastName !== undefined ||
-      dto.email !== undefined ||
-      dto.phone !== undefined
+      dto.department !== undefined ||
+      dto.position !== undefined ||
+      dto.roleLabel !== undefined
     ) {
       void this.userAudit.record({
         organizationId: orgId,
         actorUserId,
         auditAction: UserAccessAuditAction.USER_UPDATED,
         targetUserId: userId,
-        description: `Benutzerprofil ${userId} aktualisiert`,
+        description: `Organisations-Mitgliedschaft ${userId} aktualisiert`,
       });
     }
 
     return this.findOrgUserDetail(orgId, userId);
   }
 
+  /**
+   * @deprecated Org admins must not set plaintext passwords. Use requestOrgUserPasswordReset.
+   */
   async changeOrgUserPassword(
     orgId: string,
     userId: string,
-    password: string,
-    requesterId: string,
-    actor: PermissionActor,
+    _password: string,
+    _requesterId: string,
+    _actor: PermissionActor,
   ) {
     const membership = await this.prisma.organizationMembership.findFirst({
       where: { organizationId: orgId, userId },
     });
     if (!membership) throw new NotFoundException('User not found in organization');
 
-    const isSelf = requesterId === userId;
-    if (!isSelf) {
-      await assertMembershipPermission(
-        this.prisma,
-        actor,
-        orgId,
-        USERS_ROLES_MODULE,
-        'manage',
-      );
+    throw new GoneException({
+      statusCode: 410,
+      code: 'ORG_ADMIN_DIRECT_PASSWORD_WRITE_DEPRECATED',
+      message: ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE,
+      resetRequestRoute: `POST /organizations/${orgId}/users/${userId}/request-password-reset`,
+    });
+  }
+
+  async requestOrgUserPasswordReset(
+    orgId: string,
+    userId: string,
+    actor: PermissionActor,
+    options?: { reason?: string },
+  ) {
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: { organizationId: orgId, userId },
+      include: { user: { select: { email: true } } },
+    });
+    if (!membership) throw new NotFoundException('User not found in organization');
+    if (membership.status === MembershipStatus.REMOVED) {
+      throw new BadRequestException('Cannot request password reset for a removed membership');
     }
 
-    this.assertPasswordStrength(password);
-    const hash = await bcrypt.hash(password, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        passwordHash: hash,
-        mustChangePassword: !isSelf,
-      },
+    await assertMembershipPermission(
+      this.prisma,
+      actor,
+      orgId,
+      USERS_ROLES_MODULE,
+      'manage',
+    );
+
+    void this.userAudit.record({
+      organizationId: orgId,
+      actorUserId: actor.id,
+      auditAction: UserAccessAuditAction.USER_PASSWORD_RESET_REQUESTED,
+      targetUserId: userId,
+      description: `Passwort-Reset angefordert für Benutzer ${userId}`,
+      metadata: options?.reason ? { reason: options.reason } : undefined,
     });
-    if (!isSelf) {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId: actor.id,
-        auditAction: UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN,
-        targetUserId: userId,
-        description: `Passwort von Admin für Benutzer ${userId} zurückgesetzt`,
-      });
-    }
-    return { message: 'Password updated successfully' };
+
+    return {
+      code: 'PASSWORD_RESET_REQUEST_RECORDED',
+      message:
+        'Password reset request recorded. Email delivery and token issuance are handled by the global reset flow (not org-admin direct password write).',
+      targetUserId: userId,
+      organizationId: orgId,
+    };
   }
 
   async removeOrgUser(orgId: string, userId: string, actor?: PermissionActor) {
@@ -902,12 +883,7 @@ export class UsersService {
       stationIds,
       fieldAgentAccess: !!membership.fieldAgentAccess,
       permissions,
-      status:
-        membershipStatus === MembershipStatus.INVITED
-          ? 'Invited'
-          : membershipStatus === MembershipStatus.REMOVED
-            ? 'Removed'
-            : USER_STATUS_MAP[u.status] || 'Active',
+      status: MEMBERSHIP_STATUS_DISPLAY[membershipStatus] ?? 'Active',
       membershipStatus,
       lastActive: u.lastLoginAt?.toISOString() || u.updatedAt?.toISOString() || '',
       lastLoginAt: u.lastLoginAt?.toISOString() || '',

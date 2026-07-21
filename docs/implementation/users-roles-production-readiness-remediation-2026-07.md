@@ -4,7 +4,7 @@
 |-------|-------|
 | **Audit** | `docs/audits/users-roles-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/users-roles-production-readiness-2026-07` @ `0f99ce41` |
-| **Implementation branch** | `cursor/iam-security-regression-tests-fb6e` |
+| **Implementation branch** | `cursor/iam-membership-identity-isolation-fb6e` |
 | **Verdict (audit)** | **NOT_READY** (28× P0, 27 production blockers) |
 | **Mode** | Identity & session truth → roles & audit → governance & UI (22 prompts) |
 
@@ -30,9 +30,9 @@
 | Prompt | Ziel | Status | Commit |
 |--------|------|--------|--------|
 | 1 | Remediation baseline (Branch, Inventar, Fortschrittsdokument) | ✅ (audit-Artefakte + Branch) | — |
-| 2 | Security regression test harness (A–K) | ✅ | `1a2025e8` |
-| 3 | Remove org-admin direct global password set | ⬜ | — |
-| 4 | Self-service + admin reset tokens + session revoke | ⬜ | — |
+| 2 | Security regression test harness (A–K) | ✅ | `284aaf6b` |
+| 3 | Bootstrap/seed admin hardening | ⬜ | — |
+| 4 | Isolate org membership admin from global identity | ✅ | (this commit) |
 | 5 | Org-bound refresh tokens | ⬜ | — |
 | 6 | Explicit organization switch | ⬜ | — |
 | 7 | Central EffectiveAccessEngine | ⬜ | — |
@@ -78,9 +78,41 @@
 cd backend && npm run test:iam:security
 ```
 
-**Erwartung (vor Fixes):** Characterization- und Policy-Tests **grün**; `TARGET RED`-Tests **rot** (12 bekannte Lücken).
+**Erwartung (nach Prompt 4):** Szenarien **A/C** (Identitätsgrenze, Passwort-Deprecation) **grün**; verbleibende `TARGET RED` (E, F, G, H, I, J, …) rot bis spätere Prompts.
 
-### Abgedeckte Szenarien
+---
+
+## Prompt 4 — Membership vs Global Identity Isolation
+
+**Datum:** 2026-07-21 UTC
+
+### Geänderte Runtime-Pfade
+
+| Endpoint | Vorher | Nachher |
+|----------|--------|---------|
+| `PATCH /organizations/:orgId/users/:id` | Schrieb `User.email`, Profil, globalen `User.status` | Nur `OrganizationMembership` (Rolle, Permissions, Status, Stations-Scope, …) |
+| `PATCH` mit `status: SUSPENDED` | `User.status = SUSPENDED` global | `Membership.status = SUSPENDED` org-scoped |
+| `POST .../change-password` | Klartext → `passwordHash` | `410 Gone` + Migrationshinweis |
+| `POST .../request-password-reset` | — | Audit `USER_PASSWORD_RESET_REQUESTED` (kein Hash-Write) |
+| `POST .../users` (bestehender User) | Profil/Passwort global überschrieben | Nur Membership; Passwort abgelehnt |
+
+### Neue Dateien
+
+- `backend/src/modules/users/policies/org-membership-admin.policy.ts`
+- `backend/src/modules/users/iam-membership-identity-isolation.spec.ts`
+- `architecture/IAM_MEMBERSHIP_IDENTITY_ISOLATION_2026-07-21.md`
+
+### Client-Übergangsvertrag
+
+Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-Updates. Frontend (`changePasswordByOrg`, Profil-Felder in `UserDetailDrawer`) muss in Prompt 20 angepasst werden.
+
+### Self-Service unverändert
+
+`POST /account/me/change-password` — weiterhin für eingeloggte Nutzer.
+
+---
+
+## Prompt 2 — Security Regression Harness
 
 - **A** Globale Identität (Passwort, E-Mail, globaler Status)
 - **B** Membership-Suspendierung / Session-Revoke-Ziel

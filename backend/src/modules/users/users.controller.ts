@@ -8,7 +8,7 @@ import {
   Param,
   Req,
   UseGuards,
-  ForbiddenException,
+  GoneException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -22,6 +22,7 @@ import {
   AdminCreateUserDto,
   AdminUpdateUserDto,
   ChangeOrgUserPasswordDto,
+  RequestOrgUserPasswordResetDto,
   CreateMembershipDto,
   CreateOrgUserDto,
   UpdateOrgUserDto,
@@ -139,26 +140,42 @@ export class UsersController {
     return this.usersService.updateOrgUser(orgId, id, body, req.user ?? {});
   }
 
+  @Post('organizations/:orgId/users/:userId/request-password-reset')
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission(USERS_MODULE, 'manage')
+  async orgRequestPasswordReset(
+    @Param('orgId') orgId: string,
+    @Param('userId') userId: string,
+    @Req() req: AuthedRequest,
+    @Body() body: RequestOrgUserPasswordResetDto,
+  ) {
+    return this.usersService.requestOrgUserPasswordReset(
+      orgId,
+      userId,
+      req.user ?? {},
+      { reason: body.reason },
+    );
+  }
+
+  /**
+   * @deprecated Direct password write removed — returns 410 with migration hint.
+   */
   @Post('organizations/:orgId/users/:userId/change-password')
   @UseGuards(OrgScopingGuard, PermissionsGuard)
   @RequirePermission(USERS_MODULE, 'manage')
   async orgChangePassword(
     @Param('orgId') orgId: string,
     @Param('userId') userId: string,
-    @Req() req: AuthedRequest,
-    @Body() body: ChangeOrgUserPasswordDto,
+    @Body() _body: ChangeOrgUserPasswordDto,
   ) {
-    const requesterId = req.user?.id;
-    if (!requesterId) {
-      throw new ForbiddenException('Authentication required');
-    }
-    return this.usersService.changeOrgUserPassword(
-      orgId,
-      userId,
-      body.password,
-      requesterId,
-      req.user ?? {},
-    );
+    throw new GoneException({
+      statusCode: 410,
+      code: 'ORG_ADMIN_DIRECT_PASSWORD_WRITE_DEPRECATED',
+      message:
+        'Direct password changes by organization administrators are not allowed. ' +
+        'Use POST /organizations/:orgId/users/:userId/request-password-reset instead.',
+      resetRequestRoute: `POST /organizations/${orgId}/users/${userId}/request-password-reset`,
+    });
   }
 
   @Delete('organizations/:orgId/users/:id')

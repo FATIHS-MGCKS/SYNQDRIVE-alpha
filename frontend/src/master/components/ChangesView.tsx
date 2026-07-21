@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-membership-identity-isolation-v49706-2026-07-21',
+    version: '4.9.706',
+    title: 'V4.9.706 — IAM: org membership admin isolated from global identity (Prompt 4)',
+    summary: [
+      'Org admin PATCH updates membership only; global email/profile/status rejected with explicit 400.',
+      'Suspend/remove sets OrganizationMembership.status (org-scoped); User.status and other orgs unchanged.',
+      'POST .../change-password deprecated (410); new POST .../request-password-reset audit contract (no passwordHash write).',
+    ],
+    reason: 'Users & Roles remediation Prompt 4 — prevent org admins from mutating global identity of other users.',
+    previousBehavior:
+      'Org admins could set passwordHash, email, and global User.status via org-scoped user endpoints.',
+    details:
+      'backend/src/modules/users/users.service.ts, policies/org-membership-admin.policy.ts, architecture/IAM_MEMBERSHIP_IDENTITY_ISOLATION_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T21:45:00.000Z',
+  },
+  {
     id: 'iam-security-regression-harness-v49705-2026-07-21',
     version: '4.9.705',
     title: 'V4.9.705 — IAM security regression harness (Users & Roles remediation Prompt 2)',

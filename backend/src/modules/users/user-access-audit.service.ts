@@ -13,6 +13,7 @@ export const UserAccessAuditAction = {
   USER_PERMISSIONS_CHANGED: 'USER_PERMISSIONS_CHANGED',
   USER_STATION_SCOPE_CHANGED: 'USER_STATION_SCOPE_CHANGED',
   USER_PASSWORD_RESET_BY_ADMIN: 'USER_PASSWORD_RESET_BY_ADMIN',
+  USER_PASSWORD_RESET_REQUESTED: 'USER_PASSWORD_RESET_REQUESTED',
   USER_INVITED: 'USER_INVITED',
   USER_INVITE_RESENT: 'USER_INVITE_RESENT',
   USER_INVITE_REVOKED: 'USER_INVITE_REVOKED',
@@ -119,7 +120,8 @@ export class UserAccessAuditService {
     if (
       auditAction === UserAccessAuditAction.USER_REMOVED_FROM_ORG ||
       auditAction === UserAccessAuditAction.USER_PERMISSIONS_CHANGED ||
-      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN
+      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN ||
+      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_REQUESTED
     ) {
       return 'WARN';
     }

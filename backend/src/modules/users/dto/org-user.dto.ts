@@ -203,11 +203,20 @@ export class UpdateOrgUserDto {
   status?: 'ACTIVE' | 'SUSPENDED';
 }
 
+/** @deprecated Use RequestOrgUserPasswordResetDto — org admins must not set plaintext passwords. */
 export class ChangeOrgUserPasswordDto {
   @IsString()
   @MinLength(12)
   @MaxLength(128)
   password!: string;
+}
+
+/** Org admin password reset request (no plaintext password). */
+export class RequestOrgUserPasswordResetDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }
 
 export class CreateMembershipDto {

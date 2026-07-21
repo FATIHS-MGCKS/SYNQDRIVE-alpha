@@ -135,7 +135,7 @@ describe('UsersService — security & membership', () => {
     expect(result.email).toBe('worker@test.de');
   });
 
-  it('rejects passwords shorter than 12 characters', async () => {
+  it('rejects direct org-admin password write (deprecated endpoint)', async () => {
     prisma.organizationMembership.findFirst.mockResolvedValue({
       id: 'm1',
       role: MembershipRole.WORKER,
@@ -150,6 +150,6 @@ describe('UsersService — security & membership', () => {
         workerUserId,
         { id: workerUserId },
       ),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toThrow(/reset|deprecated/i);
   });
 });

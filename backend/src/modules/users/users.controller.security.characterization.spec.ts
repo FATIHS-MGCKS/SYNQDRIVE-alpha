@@ -26,6 +26,7 @@ describe('UsersController security characterization', () => {
   const orgWriteHandlers = [
     'orgCreate',
     'orgUpdate',
+    'orgRequestPasswordReset',
     'orgChangePassword',
     'orgDelete',
     'orgCreateMembership',
@@ -48,11 +49,27 @@ describe('UsersController security characterization', () => {
     });
   });
 
-  it('orgChangePassword requires users-roles.manage (not write)', () => {
-    expect(permissionOf(UsersController.prototype, 'orgChangePassword')).toEqual({
+  it('orgRequestPasswordReset requires users-roles.manage (not write)', () => {
+    expect(permissionOf(UsersController.prototype, 'orgRequestPasswordReset')).toEqual({
       module: USERS_ROLES_MODULE,
       level: 'manage',
     });
+  });
+
+  it('orgRequestPasswordReset exposes reset-request contract (not direct password body)', () => {
+    const paramNames = Reflect.getMetadata(
+      'design:paramtypes',
+      UsersController.prototype,
+      'orgRequestPasswordReset',
+    );
+    const dtoName = paramNames?.[3]?.name ?? '';
+    expect(dtoName).toMatch(/ResetRequest|TriggerReset|RequestOrgUserPasswordReset/i);
+    expect(dtoName).not.toMatch(/ChangeOrgUserPasswordDto/i);
+  });
+
+  it('deprecated orgChangePassword route returns 410 at controller (no service password write)', () => {
+    const source = UsersController.prototype.orgChangePassword.toString();
+    expect(source).toMatch(/GoneException|410|deprecated/i);
   });
 
   it('admin routes require MASTER_ADMIN via RolesGuard', () => {
@@ -67,16 +84,5 @@ describe('UsersController security characterization', () => {
       expect(rolesOf(UsersController.prototype, method)).toEqual(['MASTER_ADMIN']);
       expect(guardsOf(UsersController.prototype, method)).toContain(RolesGuard);
     }
-  });
-
-  it('TARGET RED: orgChangePassword route should expose reset-request not direct password body', () => {
-    const paramNames = Reflect.getMetadata(
-      'design:paramtypes',
-      UsersController.prototype,
-      'orgChangePassword',
-    );
-    const dtoName = paramNames?.[3]?.name ?? '';
-    expect(dtoName).toMatch(/ResetRequest|TriggerReset/i);
-    expect(dtoName).not.toMatch(/ChangeOrgUserPasswordDto/i);
   });
 });
