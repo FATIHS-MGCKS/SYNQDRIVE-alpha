@@ -1583,6 +1583,7 @@ model Organization {
   organizationRoleAssignments            OrganizationRoleAssignment[]
   membershipPermissionOverrides          MembershipPermissionOverride[]
   organizationRoleChangeApplications     OrganizationRoleChangeApplication[]
+  organizationRoleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
   organizationUserInvites                OrganizationUserInvite[]
   orgEmailSettings                       OrgEmailSettings?
   orgEmailDomains                        OrgEmailDomain[]
@@ -1805,6 +1806,7 @@ model OrganizationMembership {
   refreshTokens    RefreshToken[]
   roleAssignments  OrganizationRoleAssignment[]
   permissionOverrides MembershipPermissionOverride[]
+  roleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
 
   @@unique([userId, organizationId])
   @@index([organizationId])
@@ -2050,6 +2052,26 @@ model OrganizationRoleChangeApplication {
 
   @@index([organizationId, organizationRoleId, createdAt])
   @@map("organization_role_change_applications")
+}
+
+model OrganizationRoleAssignmentDriftReconciliationApplication {
+  id                  String   @id @default(uuid())
+  idempotencyKey      String   @unique @map("idempotency_key")
+  organizationId      String   @map("organization_id")
+  membershipId        String   @map("membership_id")
+  evidenceHash        String   @map("evidence_hash")
+  expectedGitCommit   String   @map("expected_git_commit")
+  operator            String
+  reason              String
+  classification      String
+  result              Json?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "org_role_assignment_drift_recon_app_org_fkey")
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade, map: "org_role_assignment_drift_recon_app_mem_fkey")
+
+  @@index([organizationId, membershipId, createdAt])
+  @@map("organization_role_assignment_drift_reconciliation_applications")
 }
 
 // ------------------------------------------------

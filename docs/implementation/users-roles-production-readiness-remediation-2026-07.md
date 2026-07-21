@@ -66,7 +66,8 @@
 | `backend/src/modules/users/policies/iam-effective-access.policy.ts` | Effective-Access-Vergleichslogik für Tests (delegiert an EffectiveAccessEngine) |
 | `backend/src/modules/users/policies/effective-access-engine.ts` | Canonical EffectiveAccessEngine (Prompt 9) |
 | `backend/src/modules/users/organization-role-version.service.ts` | Versioned role assignments + overrides (Prompt 10) |
-| `backend/src/modules/users/policies/organization-role-version.policy.ts` | Pure domain for role versions/assignments/overrides |
+| `backend/src/modules/users/organization-role-change.service.ts` | Role change preview/apply with session invalidation (Prompt 11) |
+| `backend/src/modules/users/policies/role-change-impact.policy.ts` | Pure domain impact analysis for role changes |
 | `backend/src/modules/users/policies/iam-global-identity.policy.ts` | Globale Identität vs Org-Grenze (Ziel) |
 | `backend/src/modules/users/iam-security-regression.harness.ts` | Shared mocks / IDs |
 | `backend/src/modules/users/iam-security-regression.spec.ts` | Szenarien A–D, F–K |
@@ -190,6 +191,34 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 - Migration backfills version 1 + legacy assignments; membership JSON preserved
 - `OrganizationRoleVersionService` + `organization-role-version.policy.ts`
 - `architecture/IAM_VERSIONED_ROLE_ASSIGNMENTS_2026-07-21.md`
+
+---
+
+## Prompt 11 — Role Change Impact Preview & Apply
+
+**Datum:** 2026-07-21 UTC
+
+- `POST .../roles/:roleId/preview-change` + `POST .../roles/:roleId/apply-change`
+- Impact preview: memberships, permission gain/loss, privileges, stations, sessions, last-admin, SoD
+- Apply: previewHash, expectedRoleVersion, reason, idempotencyKey, stepUpConfirmed
+- New RoleVersion on apply; FOLLOW_LATEST propagates with session invalidation; PINNED unchanged
+- `PATCH /roles/:id` — metadata-only; structural changes blocked
+- Effective last-admin protection (not enum-only)
+- `architecture/IAM_ROLE_CHANGE_IMPACT_PREVIEW_2026-07-21.md`
+
+---
+
+## Prompt 12 — Role Assignment Drift Reconciliation
+
+**Datum:** 2026-07-21 UTC
+
+- Extended `scripts/audits/audit-effective-access.ts` with `--drift-audit` (read-only default)
+- Classifications: EXACT_ROLE_MATCH, INTENTIONAL_OVERRIDE, STALE_ROLE_SNAPSHOT, PRIVILEGED_DRIFT, UNKNOWN_ROLE_SOURCE, INVALID_PERMISSION_KEY, DISABLED_ROLE_ASSIGNMENT, NO_ROLE_ASSIGNMENT
+- Evidence packages with permission/scope diff, audit history, sessions, hash
+- Guarded apply: `--apply`, organizationId, evidenceHash, expectedGitCommit, backup-confirmed, operator, reason, batchLimit
+- `RoleAssignmentDriftReconciliationService` + policy module
+- Safe apply: FOLLOW_LATEST assignment, explicit overrides, membershipVersion bump, session policy, audit
+- `architecture/IAM_ROLE_ASSIGNMENT_DRIFT_RECONCILIATION_2026-07-21.md`
 
 ---
 

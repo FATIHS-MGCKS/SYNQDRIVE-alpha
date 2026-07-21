@@ -8,6 +8,7 @@ import { OrganizationInviteService } from './organization-invite.service';
 import { OrganizationRoleService } from './organization-role.service';
 import { OrganizationRoleVersionService } from './organization-role-version.service';
 import { OrganizationRoleChangeService } from './organization-role-change.service';
+import { RoleAssignmentDriftReconciliationService } from './role-assignment-drift-reconciliation.service';
 import { UserAccessAuditService } from './user-access-audit.service';
 import { TransactionalMailService } from './transactional-mail.service';
 import { AuthApiModule } from '@modules/auth/auth.module';
@@ -26,6 +27,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     OrganizationRoleService,
     OrganizationRoleVersionService,
     OrganizationRoleChangeService,
+    RoleAssignmentDriftReconciliationService,
     UserAccessAuditService,
     TransactionalMailService,
   ],
@@ -35,6 +37,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     OrganizationRoleService,
     OrganizationRoleVersionService,
     OrganizationRoleChangeService,
+    RoleAssignmentDriftReconciliationService,
     UserAccessAuditService,
   ],
 })

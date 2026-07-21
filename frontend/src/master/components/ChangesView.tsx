@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-role-assignment-drift-reconciliation-v49714-2026-07-21',
+    version: '4.9.714',
+    title: 'V4.9.714 — IAM role assignment drift reconciliation (Prompt 12)',
+    summary: [
+      'Read-only drift classifier with evidence packages for legacy membership permission snapshots.',
+      'Classifications: exact match, intentional override, stale snapshot, privileged drift, unknown source, etc.',
+      'Guarded apply: evidence hash, git commit, backup confirmation, operator, reason, batch limit, idempotency.',
+    ],
+    reason: 'Users & Roles remediation Prompt 12 — safe migration into versioned role assignments without guessing permissions.',
+    previousBehavior:
+      'Legacy MIGRATION_LEGACY_SNAPSHOT assignments had no classified drift path or controlled reconciliation apply.',
+    details:
+      'scripts/audits/audit-effective-access.ts, backend/src/modules/users/role-assignment-drift-reconciliation.service.ts, architecture/IAM_ROLE_ASSIGNMENT_DRIFT_RECONCILIATION_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-22T01:00:00.000Z',
+  },
+  {
     id: 'iam-role-change-impact-v49713-2026-07-21',
     version: '4.9.713',
     title: 'V4.9.713 — IAM role change impact preview and apply (Prompt 11)',

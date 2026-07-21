@@ -1,20 +1,35 @@
 #!/usr/bin/env node
 /**
- * Read-only effective-access / IAM integrity audit helper (Prompt 4+).
+ * Effective-access / IAM integrity audit helper (Prompt 4 + Prompt 12).
  *
  * SAFETY:
- *  - SELECT-only SQL via psql
- *  - Never mutates memberships, roles, invites, sessions, or passwords
- *  - Never prints emails, names, IPs, user agents, tokens, hashes, or raw UUIDs
- *  - Emits anonymized aliases ORG_001 / USER_001 / MEMBERSHIP_001 / ROLE_001
+ *  - Default mode is READ ONLY
+ *  - Apply mode requires explicit --apply plus operator, reason, backup confirmation,
+ *    organizationId, evidence hash, expected git commit, and batch limit
+ *  - Never prints emails, names, IPs, user agents, tokens, hashes, or raw UUIDs in console
+ *  - Evidence packages use anonymized aliases ORG_001 / USER_001 / MEMBERSHIP_001
  *
- * Usage:
- *   DATABASE_URL=... USERS_ROLES_AUDIT_ALLOW_REMOTE=1 USERS_ROLES_AUDIT_ALLOW_PROD=1 \
- *     node --experimental-strip-types scripts/audits/audit-effective-access.ts \
- *       [--organizationAlias=ORG_001] [--outDir=docs/audits/data]
+ * Usage (read-only drift classification — Prompt 12):
+ *   cd backend
+ *   DATABASE_URL=... npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-effective-access.ts \
+ *     --drift-audit --organizationId=<uuid> [--outDir=docs/audits/data]
  *
- * Optional organization filter uses alias ordinal (ORG_00N → Nth org by created_at),
- * never a real UUID from CLI.
+ * Usage (legacy phase-4 coverage summary):
+ *   DATABASE_URL=... node --experimental-strip-types scripts/audits/audit-effective-access.ts \
+ *     [--organizationAlias=ORG_001] [--outDir=docs/audits/data]
+ *
+ * Usage (controlled apply — Prompt 12):
+ *   cd backend
+ *   DATABASE_URL=... npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-effective-access.ts \
+ *     --drift-audit --apply \
+ *     --organizationId=<uuid> \
+ *     --evidenceHash=<reportHash> \
+ *     --expectedGitCommit=<sha> \
+ *     --backup-confirmed \
+ *     --operator=<name> \
+ *     --reason="..." \
+ *     --batchLimit=25 \
+ *     --idempotencyKeyPrefix=drift-2026-07-21
  */
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
@@ -25,6 +40,10 @@ const AUDIT_ID = 'users-roles-production-readiness-2026-07';
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
   return arg?.split('=').slice(1).join('=').trim() || undefined;
+}
+
+function hasFlag(flag: string): boolean {
+  return process.argv.includes(flag);
 }
 
 function scriptDir(): string {
@@ -41,7 +60,18 @@ function repoRoot(): string {
   return path.resolve(scriptDir(), '../..');
 }
 
-function assertReadOnly(): void {
+function resolveGitCommit(): string | null {
+  const fromArg = parseArg('--expectedGitCommit');
+  if (fromArg) return fromArg;
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return null;
+  }
+}
+
+function assertReadOnlyUnlessApply(): void {
+  if (hasFlag('--apply')) return;
   for (const key of [
     'USERS_ROLES_AUDIT_ALLOW_WRITE',
     'IAM_AUDIT_ALLOW_WRITE',
@@ -67,7 +97,6 @@ function assertDbAllowed(): string {
       'Non-local DATABASE_URL requires USERS_ROLES_AUDIT_ALLOW_REMOTE=1 and USERS_ROLES_AUDIT_ALLOW_PROD=1',
     );
   }
-  // strip prisma schema param for libpq
   return url.replace(/[?&]schema=[^&]*/g, '').replace('?&', '?').replace(/[?&]$/, '');
 }
 
@@ -83,13 +112,132 @@ function psql(url: string, sql: string): string[][] {
     .map((l) => l.split('\t'));
 }
 
-function main(): void {
-  assertReadOnly();
+async function runDriftAudit(): Promise<void> {
+  assertReadOnlyUnlessApply();
+  const outDir = path.resolve(repoRoot(), parseArg('--outDir') ?? 'docs/audits/data');
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const organizationId = parseArg('--organizationId');
+  const organizationAlias = parseArg('--organizationAlias');
+  if (!organizationId && !organizationAlias) {
+    throw new Error('drift audit requires --organizationId or --organizationAlias');
+  }
+
+  const apply = hasFlag('--apply');
+  if (apply && !hasFlag('--backup-confirmed')) {
+    throw new Error('--apply requires --backup-confirmed');
+  }
+
+  const backendRoot = path.join(repoRoot(), 'backend');
+  const envPath = path.join(backendRoot, '.env');
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+    }
+  }
+
+  const { NestFactory } = await import('@nestjs/core');
+  const { AppModule } = await import('../../backend/src/app.module');
+  const { RoleAssignmentDriftReconciliationService } = await import(
+    '../../backend/src/modules/users/role-assignment-drift-reconciliation.service'
+  );
+
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, {
+    logger: ['error', 'warn'],
+  });
+
+  try {
+    const service = app.get(RoleAssignmentDriftReconciliationService);
+    const gitCommit = resolveGitCommit();
+
+    if (!apply) {
+      const report = await service.runReadOnlyAudit({
+        organizationId,
+        organizationAlias,
+        gitCommit,
+      });
+      const outPath = path.join(outDir, 'iam-role-assignment-drift-evidence-2026-07.json');
+      fs.writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+      console.log(
+        JSON.stringify(
+          {
+            auditId: AUDIT_ID,
+            phase: 12,
+            mode: 'read-only',
+            writesPerformed: false,
+            organizationAlias: report.organizationAlias,
+            summary: report.summary,
+            reportHash: report.reportHash,
+            resultArtifact: outPath,
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+
+    const evidenceHash = parseArg('--evidenceHash');
+    const operator = parseArg('--operator');
+    const reason = parseArg('--reason');
+    const batchLimit = Number(parseArg('--batchLimit') ?? '25');
+    const idempotencyKeyPrefix =
+      parseArg('--idempotencyKeyPrefix') ?? `drift-${new Date().toISOString().slice(0, 10)}`;
+
+    if (!organizationId) {
+      throw new Error('--apply requires --organizationId (not alias only)');
+    }
+    if (!evidenceHash) throw new Error('--apply requires --evidenceHash');
+    if (!operator) throw new Error('--apply requires --operator');
+    if (!reason) throw new Error('--apply requires --reason');
+    if (!Number.isInteger(batchLimit) || batchLimit < 1) {
+      throw new Error('--batchLimit must be a positive integer');
+    }
+    if (!gitCommit) throw new Error('--expectedGitCommit or git HEAD is required for --apply');
+
+    const applyReport = await service.applyDriftReconciliation({
+      organizationId,
+      evidencePackages: [],
+      evidenceHash,
+      expectedGitCommit: gitCommit,
+      operator,
+      reason,
+      batchLimit,
+      backupConfirmed: true,
+      apply: true,
+      idempotencyKeyPrefix,
+    });
+
+    const outPath = path.join(outDir, 'iam-role-assignment-drift-apply-2026-07.json');
+    fs.writeFileSync(outPath, `${JSON.stringify(applyReport, null, 2)}\n`, 'utf8');
+    console.log(
+      JSON.stringify(
+        {
+          auditId: AUDIT_ID,
+          phase: 12,
+          mode: 'apply',
+          writesPerformed: true,
+          summary: applyReport.summary,
+          resultArtifact: outPath,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
+  }
+}
+
+function runLegacyPhase4Audit(): void {
+  assertReadOnlyUnlessApply();
   const dbUrl = assertDbAllowed();
   const outDir = path.resolve(repoRoot(), parseArg('--outDir') ?? 'docs/audits/data');
   fs.mkdirSync(outDir, { recursive: true });
 
-  const orgFilterAlias = parseArg('--organizationAlias'); // e.g. ORG_001
+  const orgFilterAlias = parseArg('--organizationAlias');
   let orgOrdinal: number | null = null;
   if (orgFilterAlias) {
     const m = /^ORG_(\d+)$/.exec(orgFilterAlias);
@@ -143,7 +291,6 @@ function main(): void {
     });
   }
 
-  // Drift: memberships with role link vs template (counts only)
   const driftCounts = psql(
     dbUrl,
     `SELECT
@@ -152,6 +299,15 @@ function main(): void {
        count(*) FILTER (WHERE m.organization_role_id IS NULL AND m.status='ACTIVE')::text AS active_unlinked
      FROM organization_memberships m
      LEFT JOIN organization_roles r ON r.id = m.organization_role_id;`,
+  )[0];
+
+  const legacyAssignmentCounts = psql(
+    dbUrl,
+    `SELECT
+       count(*)::text AS current_assignments,
+       count(*) FILTER (WHERE assignment_mode='MIGRATION_LEGACY_SNAPSHOT')::text AS legacy_snapshot
+     FROM organization_role_assignments
+     WHERE is_current=true;`,
   )[0];
 
   const sessionCounts = psql(
@@ -175,14 +331,16 @@ function main(): void {
       membershipsWithRoleLink: Number(driftCounts[0]),
       membershipPermissionMismatchVsRole: Number(driftCounts[1]),
       activeMembershipsWithoutRoleLink: Number(driftCounts[2]),
+      currentRoleAssignments: Number(legacyAssignmentCounts[0]),
+      legacySnapshotAssignments: Number(legacyAssignmentCounts[1]),
       refreshTokensTotal: Number(sessionCounts[0]),
       refreshTokensActive: Number(sessionCounts[1]),
       refreshTokensRevoked: Number(sessionCounts[2]),
     },
     notes: [
       'Aliases only — no raw UUIDs/emails/IPs/tokens emitted.',
-      'Full CSV matrices are produced by the Phase-4 VPS dump pipeline documented in the main audit report.',
-      'This script never calls revoke/update/invite APIs.',
+      'Use --drift-audit for Prompt 12 membership classification and evidence packages.',
+      'Apply mode is disabled by default and requires explicit --apply safeguards.',
     ],
   };
 
@@ -191,10 +349,16 @@ function main(): void {
   console.log(JSON.stringify({ ...result, resultArtifact: outPath }, null, 2));
 }
 
-try {
-  main();
-} catch (err) {
+async function main(): Promise<void> {
+  if (hasFlag('--drift-audit')) {
+    await runDriftAudit();
+    return;
+  }
+  runLegacyPhase4Audit();
+}
+
+main().catch((err) => {
   const message = err instanceof Error ? err.message : String(err);
   console.error(JSON.stringify({ auditId: AUDIT_ID, error: message, writesPerformed: false }));
   process.exit(1);
-}
+});
