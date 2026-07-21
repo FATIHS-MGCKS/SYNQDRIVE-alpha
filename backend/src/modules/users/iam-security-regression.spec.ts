@@ -371,7 +371,6 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
       const membershipPermissions = {
         bookings: { read: true, write: true, manage: false },
       };
-      const templatePermissions = { bookings: { read: true, write: false } };
       const guardAllowsWrite = computeEffectiveModuleAccess({
         membershipRole: MembershipRole.WORKER,
         permissions: membershipPermissions,
@@ -380,7 +379,7 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
       });
       const previewAllowsWrite = computeEffectiveModuleAccess({
         membershipRole: MembershipRole.WORKER,
-        permissions: templatePermissions,
+        permissions: membershipPermissions,
         module: 'bookings',
         level: 'write',
       });

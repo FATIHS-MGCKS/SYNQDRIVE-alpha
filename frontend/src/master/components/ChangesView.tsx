@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-effective-access-engine-v49711-2026-07-21',
+    version: '4.9.711',
+    title: 'V4.9.711 — IAM canonical EffectiveAccessEngine (Prompt 9)',
+    summary: [
+      'Single server-side EffectiveAccessEngine for module permissions, station scope, and privileged capabilities.',
+      'PermissionsGuard, assertMembershipPermission, StationAccessService, and permissionPreview use the same engine.',
+      'Default deny; central MASTER_ADMIN / ORG_ADMIN bypass; decision reasons and version snapshots.',
+    ],
+    reason: 'Users & Roles remediation Prompt 9 — one effective-access truth for guards, APIs, and UI preview.',
+    previousBehavior:
+      'PermissionsGuard, assertMembershipPermission, StationAccessService, and frontend each evaluated access independently.',
+    details:
+      'backend/src/modules/users/policies/effective-access-engine.ts, backend/src/shared/auth/effective-access-loader.service.ts, architecture/IAM_EFFECTIVE_ACCESS_ENGINE_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T23:15:00.000Z',
+  },
+  {
     id: 'iam-org-session-switching-v49710-2026-07-21',
     version: '4.9.710',
     title: 'V4.9.710 — IAM explicit organization session switching (Prompt 8)',

@@ -63,7 +63,8 @@
 | Pfad | Rolle |
 |------|-------|
 | `backend/src/modules/users/policies/iam-session-invalidation.policy.ts` | Ziel-Session-Invalidierungsmatrix (pure domain) |
-| `backend/src/modules/users/policies/iam-effective-access.policy.ts` | Effective-Access-Vergleichslogik für Tests |
+| `backend/src/modules/users/policies/iam-effective-access.policy.ts` | Effective-Access-Vergleichslogik für Tests (delegiert an EffectiveAccessEngine) |
+| `backend/src/modules/users/policies/effective-access-engine.ts` | Canonical EffectiveAccessEngine (Prompt 9) |
 | `backend/src/modules/users/policies/iam-global-identity.policy.ts` | Globale Identität vs Org-Grenze (Ziel) |
 | `backend/src/modules/users/iam-security-regression.harness.ts` | Shared mocks / IDs |
 | `backend/src/modules/users/iam-security-regression.spec.ts` | Szenarien A–D, F–K |
@@ -161,6 +162,18 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 - `/auth/me` uses JWT session membership (no `take:1`)
 - Frontend org picker on login + `OrganizationSwitcher` in TopBar
 - `architecture/IAM_ORG_SESSION_SWITCHING_2026-07-21.md`
+
+---
+
+## Prompt 9 — Canonical EffectiveAccessEngine
+
+**Datum:** 2026-07-21 UTC
+
+- `EffectiveAccessEngine` — pure domain service (module permissions, station scope, privileged capabilities, decision reasons)
+- `EffectiveAccessLoaderService` — DB adapter (membership + organization role template)
+- Wired: `PermissionsGuard`, `assertMembershipPermission`, `StationAccessService.resolve`, `OrganizationRoleService.permissionPreview`
+- Central admin bypass (MASTER_ADMIN, SERVICE_ACCOUNT, ORG_ADMIN); default deny; no controller-level bypasses
+- `architecture/IAM_EFFECTIVE_ACCESS_ENGINE_2026-07-21.md`
 
 ---
 

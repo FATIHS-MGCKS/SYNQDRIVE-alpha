@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
+import { computeEffectiveAccess } from './policies/effective-access-engine';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
 import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from './defaults/organization-role.defaults';
 import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
@@ -239,16 +240,41 @@ export class OrganizationRoleService {
 
   async permissionPreview(orgId: string, roleId: string) {
     const role = await this.findRoleOrThrow(orgId, roleId);
+    const normalized = normalizeMembershipPermissions(role.permissions);
+    const effectiveAccess = computeEffectiveAccess({
+      membership: {
+        role: role.membershipRole,
+        status: MembershipStatus.ACTIVE,
+        organizationId: orgId,
+        organizationRoleId: role.id,
+        permissions: normalized,
+        stationScope: role.stationScopeDefault,
+        stationIds: Array.isArray(role.defaultStationIds)
+          ? role.defaultStationIds
+          : [],
+        fieldAgentAccess: role.fieldAgentAccessDefault,
+      },
+      organizationRole: {
+        id: role.id,
+        permissions: role.permissions,
+        membershipRole: role.membershipRole,
+        stationScopeDefault: role.stationScopeDefault,
+        defaultStationIds: role.defaultStationIds,
+        fieldAgentAccessDefault: role.fieldAgentAccessDefault,
+      },
+      resourceContext: { organizationId: orgId },
+    });
     return {
       roleId: role.id,
       name: role.name,
       membershipRole: role.membershipRole,
-      permissions: normalizeMembershipPermissions(role.permissions),
+      permissions: normalized,
       fieldAgentAccessDefault: role.fieldAgentAccessDefault,
       stationScopeDefault: role.stationScopeDefault,
       defaultStationIds: Array.isArray(role.defaultStationIds)
         ? role.defaultStationIds
         : [],
+      effectiveAccess,
     };
   }
 

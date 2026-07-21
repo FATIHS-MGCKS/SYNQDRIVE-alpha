@@ -6,26 +6,23 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '@shared/database/prisma.service';
 import {
   PERMISSION_KEY,
   RequiredPermission,
 } from '@shared/decorators/require-permission.decorator';
-import {
-  evaluateModulePermission,
-  normalizeMembershipPermissions,
-  resolvePermissionOrgId,
-} from './permission.util';
+import { isModuleAccessAllowed } from '@modules/users/policies/effective-access-engine';
+import { EffectiveAccessLoaderService } from './effective-access-loader.service';
+import { resolvePermissionOrgId } from './permission.util';
 
 /**
- * Permission-based authorization using `OrganizationMembership.permissions` JSON.
+ * Permission-based authorization using the canonical EffectiveAccessEngine.
  *
- * Resolution order:
+ * Resolution order (centralized in engine — do not duplicate in controllers):
  *   1. No `@RequirePermission` → pass-through (route must still be auth + org scoped).
  *   2. Unauthenticated → deny.
- *   3. MASTER_ADMIN → allow.
- *   4. ORG_ADMIN membership → allow within org.
- *   5. Everyone else → explicit module permission required (never open-by-default).
+ *   3. MASTER_ADMIN → allow (engine bypass).
+ *   4. ACTIVE ORG_ADMIN membership → allow within org (engine bypass).
+ *   5. Everyone else → explicit module permission required (default deny).
  *
  * Must run AFTER OrgScopingGuard on org-scoped routes.
  */
@@ -35,7 +32,7 @@ export class PermissionsGuard implements CanActivate {
 
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    private readonly effectiveAccessLoader: EffectiveAccessLoaderService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -60,20 +57,18 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Organization context required');
     }
 
-    const membership = await this.prisma.organizationMembership.findFirst({
-      where: { userId: user.id, organizationId: orgId, status: 'ACTIVE' },
-      select: { role: true, permissions: true },
-    });
+    const access = await this.effectiveAccessLoader.loadForUserOrganization(
+      user.id,
+      orgId,
+      { platformRole: user.platformRole },
+    );
 
-    if (!membership) {
+    if (!access.membershipActive && access.roleSource !== 'ORG_ADMIN') {
       throw new ForbiddenException('You do not have access to this organization');
     }
 
-    if (membership.role === 'ORG_ADMIN') return true;
-
-    const permissions = normalizeMembershipPermissions(membership.permissions);
-    const granted = evaluateModulePermission(
-      permissions,
+    const granted = isModuleAccessAllowed(
+      access,
       required.module,
       required.level,
     );

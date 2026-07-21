@@ -1,4 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
+import { MembershipStatus } from '@prisma/client';
 import { Reflector } from '@nestjs/core';
 import { PermissionsGuard } from './permissions.guard';
 import {
@@ -6,6 +7,7 @@ import {
   normalizeMembershipPermissions,
   resolvePermissionOrgId,
 } from './permission.util';
+import { EffectiveAccessLoaderService } from './effective-access-loader.service';
 
 describe('permission.util', () => {
   it('normalizes and drops unknown permission modules', () => {
@@ -82,13 +84,16 @@ describe('permission.util', () => {
 
 describe('PermissionsGuard', () => {
   const reflector = { getAllAndOverride: jest.fn() } as unknown as Reflector;
-  const prisma = {
-    organizationMembership: { findFirst: jest.fn() },
+  const effectiveAccessLoader = {
+    loadForUserOrganization: jest.fn(),
   };
   let guard: PermissionsGuard;
 
   beforeEach(() => {
-    guard = new PermissionsGuard(reflector, prisma as never);
+    guard = new PermissionsGuard(
+      reflector,
+      effectiveAccessLoader as unknown as EffectiveAccessLoaderService,
+    );
     jest.clearAllMocks();
   });
 
@@ -121,14 +126,15 @@ describe('PermissionsGuard', () => {
     );
   });
 
-  it('allows ORG_ADMIN via active membership in database', async () => {
+  it('allows ORG_ADMIN via effective access engine', async () => {
     (reflector.getAllAndOverride as jest.Mock).mockReturnValue({
       module: 'users-roles',
       level: 'manage',
     });
-    prisma.organizationMembership.findFirst.mockResolvedValue({
-      role: 'ORG_ADMIN',
-      permissions: null,
+    effectiveAccessLoader.loadForUserOrganization.mockResolvedValue({
+      membershipActive: true,
+      roleSource: 'ORG_ADMIN',
+      effectivePermissions: null,
     });
     const ctx = {
       switchToHttp: () => ({
@@ -141,7 +147,7 @@ describe('PermissionsGuard', () => {
       getClass: () => ({}),
     };
     await expect(guard.canActivate(ctx as never)).resolves.toBe(true);
-    expect(prisma.organizationMembership.findFirst).toHaveBeenCalled();
+    expect(effectiveAccessLoader.loadForUserOrganization).toHaveBeenCalled();
   });
 
   it('denies worker without users-roles.read', async () => {
@@ -149,9 +155,10 @@ describe('PermissionsGuard', () => {
       module: 'users-roles',
       level: 'read',
     });
-    prisma.organizationMembership.findFirst.mockResolvedValue({
-      role: 'WORKER',
-      permissions: { dashboard: { read: true, write: false } },
+    effectiveAccessLoader.loadForUserOrganization.mockResolvedValue({
+      membershipActive: true,
+      roleSource: 'template',
+      effectivePermissions: { dashboard: { read: true, write: false, manage: false } },
     });
     const ctx = {
       switchToHttp: () => ({
@@ -173,9 +180,10 @@ describe('PermissionsGuard', () => {
       module: 'billing',
       level: 'read',
     });
-    prisma.organizationMembership.findFirst.mockResolvedValue({
-      role: 'WORKER',
-      permissions: { billing: { read: true, write: false } },
+    effectiveAccessLoader.loadForUserOrganization.mockResolvedValue({
+      membershipActive: true,
+      roleSource: 'template',
+      effectivePermissions: { billing: { read: true, write: false, manage: false } },
     });
     const ctx = {
       switchToHttp: () => ({
@@ -189,10 +197,10 @@ describe('PermissionsGuard', () => {
       getClass: () => ({}),
     };
     await expect(guard.canActivate(ctx as never)).resolves.toBe(true);
-    expect(prisma.organizationMembership.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ organizationId: 'org-a' }),
-      }),
+    expect(effectiveAccessLoader.loadForUserOrganization).toHaveBeenCalledWith(
+      'u1',
+      'org-a',
+      expect.objectContaining({ platformRole: undefined }),
     );
   });
 
