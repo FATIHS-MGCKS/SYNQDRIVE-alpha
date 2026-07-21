@@ -25,7 +25,8 @@ import type {
   CreateOrgUserDto,
   UpdateOrgUserDto,
 } from './dto';
-import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
+import { UserAccessAuditAction } from './user-access-audit.service';
+import { IamAuditService } from './iam-audit.service';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -85,7 +86,7 @@ function hasSensitiveMembershipChanges(dto: UpdateOrgUserDto): boolean {
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly userAudit: UserAccessAuditService,
+    private readonly iamAudit: IamAuditService,
   ) {}
 
   private assertPasswordStrength(password: string): void {
@@ -392,6 +393,7 @@ export class UsersService {
     });
     const normalizedPermissions = roleFields.permissions;
 
+    const outboxIds: string[] = [];
     const result = await this.prisma.$transaction(async (tx) => {
       let user = existing;
       if (!user) {
@@ -453,16 +455,28 @@ export class UsersService {
         },
       });
 
+      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: orgId,
+        idempotencyKey: `user-created:${orgId}:${membership.id}`,
+        eventType: UserAccessAuditAction.USER_CREATED,
+        actorUserId: actor.id,
+        subjectUserId: membership.user.id,
+        membershipId: membership.id,
+        description: `Benutzer ${membership.user.email} erstellt`,
+        after: {
+          membershipId: membership.id,
+          role: membership.role,
+          status: membership.status,
+        },
+      });
+      outboxIds.push(outbox.id);
+
       return membership;
     });
 
+    await this.iamAudit.processOutboxIds(outboxIds);
+
     const mapped = this.mapOrgUserFull(result);
-    void this.userAudit.record({
-      organizationId: orgId,
-      auditAction: UserAccessAuditAction.USER_CREATED,
-      targetUserId: result.user.id,
-      description: `Benutzer ${result.user.email} erstellt`,
-    });
     return mapped;
   }
 
@@ -488,6 +502,7 @@ export class UsersService {
     });
     const normalizedPermissions = roleFields.permissions;
 
+    const outboxIds: string[] = [];
     const membership = await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: userId },
@@ -509,7 +524,7 @@ export class UsersService {
         },
       });
 
-      return tx.organizationMembership.update({
+      const updated = await tx.organizationMembership.update({
         where: { id: membershipId },
         data: {
           role: roleFields.role,
@@ -532,15 +547,24 @@ export class UsersService {
           organization: { select: { id: true, companyName: true } },
         },
       });
+
+      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: orgId,
+        idempotencyKey: `user-reactivated:${orgId}:${updated.id}`,
+        eventType: UserAccessAuditAction.USER_REACTIVATED,
+        subjectUserId: userId,
+        membershipId: updated.id,
+        description: `Benutzer ${dto.email} reaktiviert`,
+        after: { status: updated.status, role: updated.role },
+      });
+      outboxIds.push(outbox.id);
+
+      return updated;
     });
 
+    await this.iamAudit.processOutboxIds(outboxIds);
+
     const mapped = this.mapOrgUserFull(membership);
-    void this.userAudit.record({
-      organizationId: orgId,
-      auditAction: UserAccessAuditAction.USER_REACTIVATED,
-      targetUserId: userId,
-      description: `Benutzer ${dto.email} reaktiviert`,
-    });
     return mapped;
   }
 
@@ -609,6 +633,9 @@ export class UsersService {
       status: membership.status,
     };
 
+    const actorUserId = actor.id;
+    const outboxIds: string[] = [];
+
     await this.prisma.$transaction(async (tx) => {
       const userUpdate: Prisma.UserUpdateInput = {};
       if (dto.firstName !== undefined) userUpdate.firstName = dto.firstName;
@@ -654,78 +681,99 @@ export class UsersService {
           data: membershipUpdate,
         });
       }
+
+      if (dto.role !== undefined && dto.role !== auditBefore.role) {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `user-role-changed:${orgId}:${membership.id}:${dto.role}`,
+          eventType: UserAccessAuditAction.USER_ROLE_CHANGED,
+          actorUserId,
+          subjectUserId: userId,
+          membershipId: membership.id,
+          description: `Rolle geändert für Benutzer ${userId}`,
+          before: { role: auditBefore.role },
+          after: { role: dto.role },
+        });
+        outboxIds.push(outbox.id);
+      }
+      if (dto.permissions !== undefined) {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `user-permissions-changed:${orgId}:${membership.id}:${Date.now()}`,
+          eventType: UserAccessAuditAction.USER_PERMISSIONS_CHANGED,
+          actorUserId,
+          subjectUserId: userId,
+          membershipId: membership.id,
+          description: `Berechtigungen geändert für Benutzer ${userId}`,
+          before: { permissions: auditBefore.permissions },
+          after: { permissions: normalizedPermissions },
+        });
+        outboxIds.push(outbox.id);
+      }
+      if (dto.stationScope !== undefined || dto.stationIds !== undefined) {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `user-scope-changed:${orgId}:${membership.id}:${Date.now()}`,
+          eventType: UserAccessAuditAction.USER_STATION_SCOPE_CHANGED,
+          actorUserId,
+          subjectUserId: userId,
+          membershipId: membership.id,
+          description: `Stations-Scope geändert für Benutzer ${userId}`,
+          before: {
+            stationScope: auditBefore.stationScope,
+            stationIds: auditBefore.stationIds,
+          },
+          after: {
+            stationScope: stationFields.stationScope,
+            stationIds: stationFields.stationIds,
+          },
+        });
+        outboxIds.push(outbox.id);
+      }
+      if (dto.status === 'SUSPENDED') {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `user-deactivated:${orgId}:${membership.id}`,
+          eventType: UserAccessAuditAction.USER_DEACTIVATED,
+          actorUserId,
+          subjectUserId: userId,
+          membershipId: membership.id,
+          description: `Benutzer ${userId} deaktiviert`,
+          before: { status: auditBefore.status },
+          after: { status: MembershipStatus.SUSPENDED },
+        });
+        outboxIds.push(outbox.id);
+      } else if (dto.status === 'ACTIVE') {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `user-updated:${orgId}:${membership.id}:status-active`,
+          eventType: UserAccessAuditAction.USER_UPDATED,
+          actorUserId,
+          subjectUserId: userId,
+          membershipId: membership.id,
+          description: `Benutzer ${userId} aktualisiert`,
+        });
+        outboxIds.push(outbox.id);
+      } else if (
+        dto.firstName !== undefined ||
+        dto.lastName !== undefined ||
+        dto.email !== undefined ||
+        dto.phone !== undefined
+      ) {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `user-profile-updated:${orgId}:${membership.id}:${Date.now()}`,
+          eventType: UserAccessAuditAction.USER_UPDATED,
+          actorUserId,
+          subjectUserId: userId,
+          membershipId: membership.id,
+          description: `Benutzerprofil ${userId} aktualisiert`,
+        });
+        outboxIds.push(outbox.id);
+      }
     });
 
-    const actorUserId = actor.id;
-    if (dto.role !== undefined && dto.role !== auditBefore.role) {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId,
-        auditAction: UserAccessAuditAction.USER_ROLE_CHANGED,
-        targetUserId: userId,
-        description: `Rolle geändert für Benutzer ${userId}`,
-        before: { role: auditBefore.role },
-        after: { role: dto.role },
-      });
-    }
-    if (dto.permissions !== undefined) {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId,
-        auditAction: UserAccessAuditAction.USER_PERMISSIONS_CHANGED,
-        targetUserId: userId,
-        description: `Berechtigungen geändert für Benutzer ${userId}`,
-        before: { permissions: auditBefore.permissions },
-        after: { permissions: normalizedPermissions },
-      });
-    }
-    if (dto.stationScope !== undefined || dto.stationIds !== undefined) {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId,
-        auditAction: UserAccessAuditAction.USER_STATION_SCOPE_CHANGED,
-        targetUserId: userId,
-        description: `Stations-Scope geändert für Benutzer ${userId}`,
-        before: {
-          stationScope: auditBefore.stationScope,
-          stationIds: auditBefore.stationIds,
-        },
-        after: {
-          stationScope: stationFields.stationScope,
-          stationIds: stationFields.stationIds,
-        },
-      });
-    }
-    if (dto.status === 'SUSPENDED') {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId,
-        auditAction: UserAccessAuditAction.USER_DEACTIVATED,
-        targetUserId: userId,
-        description: `Benutzer ${userId} deaktiviert`,
-      });
-    } else if (dto.status === 'ACTIVE') {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId,
-        auditAction: UserAccessAuditAction.USER_UPDATED,
-        targetUserId: userId,
-        description: `Benutzer ${userId} aktualisiert`,
-      });
-    } else if (
-      dto.firstName !== undefined ||
-      dto.lastName !== undefined ||
-      dto.email !== undefined ||
-      dto.phone !== undefined
-    ) {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId,
-        auditAction: UserAccessAuditAction.USER_UPDATED,
-        targetUserId: userId,
-        description: `Benutzerprofil ${userId} aktualisiert`,
-      });
-    }
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return this.findOrgUserDetail(orgId, userId);
   }
@@ -755,22 +803,32 @@ export class UsersService {
 
     this.assertPasswordStrength(password);
     const hash = await bcrypt.hash(password, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        passwordHash: hash,
-        mustChangePassword: !isSelf,
-      },
-    });
-    if (!isSelf) {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId: actor.id,
-        auditAction: UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN,
-        targetUserId: userId,
-        description: `Passwort von Admin für Benutzer ${userId} zurückgesetzt`,
+    const outboxIds: string[] = [];
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash: hash,
+          mustChangePassword: !isSelf,
+        },
       });
-    }
+
+      if (!isSelf) {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `user-password-reset-admin:${orgId}:${userId}:${Date.now()}`,
+          eventType: UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN,
+          actorUserId: actor.id,
+          subjectUserId: userId,
+          membershipId: membership.id,
+          description: `Passwort von Admin für Benutzer ${userId} zurückgesetzt`,
+          level: 'WARN',
+        });
+        outboxIds.push(outbox.id);
+      }
+    });
+
+    await this.iamAudit.processOutboxIds(outboxIds);
     return { message: 'Password updated successfully' };
   }
 
@@ -782,19 +840,29 @@ export class UsersService {
 
     await this.assertNotLastActiveOrgAdmin(orgId, userId);
 
-    await this.prisma.organizationMembership.update({
-      where: { id: membership.id },
-      data: { status: MembershipStatus.REMOVED },
+    const outboxIds: string[] = [];
+    await this.prisma.$transaction(async (tx) => {
+      await tx.organizationMembership.update({
+        where: { id: membership.id },
+        data: { status: MembershipStatus.REMOVED },
+      });
+
+      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: orgId,
+        idempotencyKey: `user-removed:${orgId}:${membership.id}`,
+        eventType: UserAccessAuditAction.USER_REMOVED_FROM_ORG,
+        actorUserId: actor?.id,
+        subjectUserId: userId,
+        membershipId: membership.id,
+        description: `Benutzer ${userId} aus Organisation entfernt`,
+        before: { status: membership.status, role: membership.role },
+        after: { status: MembershipStatus.REMOVED },
+        level: 'WARN',
+      });
+      outboxIds.push(outbox.id);
     });
-    void this.userAudit.record({
-      organizationId: orgId,
-      actorUserId: actor?.id,
-      auditAction: UserAccessAuditAction.USER_REMOVED_FROM_ORG,
-      targetUserId: userId,
-      description: `Benutzer ${userId} aus Organisation entfernt`,
-      before: { status: membership.status, role: membership.role },
-      after: { status: MembershipStatus.REMOVED },
-    });
+
+    await this.iamAudit.processOutboxIds(outboxIds);
     return { removed: true };
   }
 

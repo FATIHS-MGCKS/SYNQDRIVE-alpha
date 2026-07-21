@@ -10,8 +10,7 @@ import {
 } from '@prisma/client';
 import { InviteAcceptService } from './invite-accept.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { IamAuditOutboxRepository } from './iam-audit-outbox.repository';
-import { IamAuditOutboxProcessorService } from './iam-audit-outbox.processor';
+import { IamAuditService } from './iam-audit.service';
 import { generateInviteToken, inviteTokenLookupKey } from './utils/invite-token.util';
 import { INVITE_ACCEPT_ERROR } from './policies/invite-accept.policy';
 
@@ -37,8 +36,10 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     iamAuditOutbox: { create: jest.Mock };
     $transaction: jest.Mock;
   };
-  let auditOutbox: { enqueueInTransaction: jest.Mock };
-  let auditProcessor: { processOutboxId: jest.Mock };
+  let iamAudit: {
+    enqueueInTransaction: jest.Mock;
+    processOutboxIds: jest.Mock;
+  };
   let service: InviteAcceptService;
 
   const baseDto = {
@@ -90,20 +91,22 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       },
       activityLog: { create: jest.fn().mockResolvedValue({}) },
       iamAuditOutbox: {
-        create: jest.fn().mockImplementation(async ({ data }) => ({ id: `outbox-${data.auditAction}`, ...data })),
+        create: jest.fn().mockImplementation(async ({ data }) => ({
+          id: `outbox-${data.eventType ?? data.auditAction ?? 'event'}`,
+          ...data,
+        })),
       },
       $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma)),
     };
-    auditOutbox = {
+    iamAudit = {
       enqueueInTransaction: jest.fn().mockImplementation((_tx, input) =>
         prisma.iamAuditOutbox.create({ data: input }),
       ),
+      processOutboxIds: jest.fn().mockResolvedValue(undefined),
     };
-    auditProcessor = { processOutboxId: jest.fn().mockResolvedValue('processed') };
     service = new InviteAcceptService(
       prisma as unknown as PrismaService,
-      auditOutbox as unknown as IamAuditOutboxRepository,
-      auditProcessor as unknown as IamAuditOutboxProcessorService,
+      iamAudit as unknown as IamAuditService,
     );
   });
 
@@ -118,7 +121,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     expect(result.accepted).toBe(true);
     expect(prisma.user.create).toHaveBeenCalled();
     expect(prisma.organizationMembership.create).toHaveBeenCalled();
-    expect(auditOutbox.enqueueInTransaction).toHaveBeenCalled();
+    expect(iamAudit.enqueueInTransaction).toHaveBeenCalled();
   });
 
   it('requires authentication for existing user', async () => {

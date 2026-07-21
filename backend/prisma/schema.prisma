@@ -1853,6 +1853,7 @@ enum InviteEmailOutboxStatus {
 
 enum IamAuditOutboxStatus {
   PENDING
+  PROCESSING
   PROCESSED
   DEAD_LETTER
 }
@@ -1895,12 +1896,26 @@ model OrganizationInviteAttempt {
 
 model IamAuditOutbox {
   id             String               @id @default(uuid())
+  eventId        String               @unique @default(uuid()) @map("event_id")
   organizationId String               @map("organization_id")
   idempotencyKey String               @unique @map("idempotency_key")
-  auditAction    String               @map("audit_action")
+  actorUserId    String?              @map("actor_user_id")
+  subjectUserId  String?              @map("subject_user_id")
+  membershipId   String?              @map("membership_id")
+  eventType      String               @map("event_type")
+  occurredAt     DateTime             @default(now()) @map("occurred_at")
+  payloadVersion Int                  @default(1) @map("payload_version")
+  beforeHash     String?              @map("before_hash")
+  beforeSummary  String?              @map("before_summary")
+  afterHash      String?              @map("after_hash")
+  afterSummary   String?              @map("after_summary")
+  reason         String?
   payload        Json
-  status         IamAuditOutboxStatus @default(PENDING)
+  status         IamAuditOutboxStatus @default(PENDING) @map("processing_status")
+  attempts       Int                  @default(0)
+  nextRetryAt    DateTime             @default(now()) @map("next_retry_at")
   processedAt    DateTime?            @map("processed_at")
+  deadLetteredAt DateTime?            @map("dead_lettered_at")
   errorMessage   String?              @map("error_message")
   createdAt      DateTime             @default(now()) @map("created_at")
   updatedAt      DateTime             @updatedAt @map("updated_at")
@@ -1908,7 +1923,8 @@ model IamAuditOutbox {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
-  @@index([status, createdAt])
+  @@index([status, nextRetryAt])
+  @@index([organizationId, eventType])
   @@map("iam_audit_outbox")
 }
 

@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { MembershipRole } from '@prisma/client';
 import { OrganizationRoleService } from './organization-role.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { UserAccessAuditService } from './user-access-audit.service';
+import { IamAuditService } from './iam-audit.service';
 import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from './defaults/organization-role.defaults';
 
 describe('OrganizationRoleService', () => {
@@ -24,8 +24,12 @@ describe('OrganizationRoleService', () => {
       update: jest.Mock;
       count: jest.Mock;
     };
+    $transaction: jest.Mock;
   };
-  let userAudit: { record: jest.Mock };
+  let iamAudit: {
+    enqueueInTransaction: jest.Mock;
+    processOutboxIds: jest.Mock;
+  };
   let service: OrganizationRoleService;
 
   beforeEach(() => {
@@ -43,11 +47,15 @@ describe('OrganizationRoleService', () => {
         update: jest.fn(),
         count: jest.fn().mockResolvedValue(0),
       },
+      $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma)),
     };
-    userAudit = { record: jest.fn().mockResolvedValue(undefined) };
+    iamAudit = {
+      enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
+      processOutboxIds: jest.fn().mockResolvedValue(undefined),
+    };
     service = new OrganizationRoleService(
       prisma as unknown as PrismaService,
-      userAudit as unknown as UserAccessAuditService,
+      iamAudit as unknown as IamAuditService,
     );
   });
 
@@ -92,8 +100,9 @@ describe('OrganizationRoleService', () => {
     );
 
     expect(role.name).toBe('Custom Desk');
-    expect(userAudit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ auditAction: 'ROLE_CREATED' }),
+    expect(iamAudit.enqueueInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ eventType: 'ROLE_CREATED' }),
     );
   });
 
@@ -135,8 +144,9 @@ describe('OrganizationRoleService', () => {
         }),
       }),
     );
-    expect(userAudit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ auditAction: 'ROLE_ASSIGNED' }),
+    expect(iamAudit.enqueueInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ eventType: 'ROLE_ASSIGNED' }),
     );
   });
 

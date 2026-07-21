@@ -32,8 +32,7 @@ import {
   requiresRejoinAcknowledgement,
 } from './policies/invite-accept.policy';
 import { UserAccessAuditAction } from './user-access-audit.service';
-import { IamAuditOutboxRepository } from './iam-audit-outbox.repository';
-import { IamAuditOutboxProcessorService } from './iam-audit-outbox.processor';
+import { IamAuditService } from './iam-audit.service';
 import { buildRoleSummary } from './utils/invite-admin-response.util';
 import type { AcceptInviteDto } from './dto/organization-invite.dto';
 
@@ -43,8 +42,7 @@ type LoadedInvite = NonNullable<Awaited<ReturnType<InviteAcceptService['loadInvi
 export class InviteAcceptService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditOutbox: IamAuditOutboxRepository,
-    private readonly auditProcessor: IamAuditOutboxProcessorService,
+    private readonly iamAudit: IamAuditService,
   ) {}
 
   async validateInviteToken(token: string) {
@@ -288,56 +286,50 @@ export class InviteAcceptService {
         },
       });
 
-      const acceptedOutbox = await this.auditOutbox.enqueueInTransaction(tx, {
+      const acceptedOutbox = await this.iamAudit.enqueueInTransaction(tx, {
         organizationId: invite.organizationId,
         idempotencyKey: `invite-accept:${invite.id}`,
-        auditAction: UserAccessAuditAction.USER_INVITE_ACCEPTED,
-        payload: {
-          actorUserId: user!.id,
-          targetUserId: user!.id,
-          targetInviteId: invite.id,
-          description: `Einladung angenommen`,
-          after: {
-            membershipRole: invite.membershipRole,
-            organizationRoleId: invite.organizationRoleId,
-            privilegedRole,
-            previousMembershipStatus,
-          },
-          metadata: {
-            privilegedRole,
-            previousMembershipStatus,
-            rejoinAcknowledged: Boolean(dto.acknowledgeRejoin),
-          },
-          level: privilegedRole ? 'WARN' : 'INFO',
+        eventType: UserAccessAuditAction.USER_INVITE_ACCEPTED,
+        actorUserId: user!.id,
+        subjectUserId: user!.id,
+        targetInviteId: invite.id,
+        description: 'Einladung angenommen',
+        after: {
+          membershipRole: invite.membershipRole,
+          organizationRoleId: invite.organizationRoleId,
+          privilegedRole,
+          previousMembershipStatus,
         },
+        metadata: {
+          privilegedRole,
+          previousMembershipStatus,
+          rejoinAcknowledged: Boolean(dto.acknowledgeRejoin),
+        },
+        level: privilegedRole ? 'WARN' : 'INFO',
       });
       outboxIds.push(acceptedOutbox.id);
 
       if (wasNewUser) {
-        const createdOutbox = await this.auditOutbox.enqueueInTransaction(tx, {
+        const createdOutbox = await this.iamAudit.enqueueInTransaction(tx, {
           organizationId: invite.organizationId,
           idempotencyKey: `invite-accept-user-created:${invite.id}`,
-          auditAction: UserAccessAuditAction.USER_CREATED,
-          payload: {
-            actorUserId: user!.id,
-            targetUserId: user!.id,
-            description: 'Benutzer durch Einladung erstellt',
-          },
+          eventType: UserAccessAuditAction.USER_CREATED,
+          actorUserId: user!.id,
+          subjectUserId: user!.id,
+          description: 'Benutzer durch Einladung erstellt',
         });
         outboxIds.push(createdOutbox.id);
       } else if (requiresRejoinAcknowledgement(previousMembershipStatus)) {
-        const rejoinOutbox = await this.auditOutbox.enqueueInTransaction(tx, {
+        const rejoinOutbox = await this.iamAudit.enqueueInTransaction(tx, {
           organizationId: invite.organizationId,
           idempotencyKey: `invite-accept-rejoin:${invite.id}`,
-          auditAction: UserAccessAuditAction.USER_REACTIVATED,
-          payload: {
-            actorUserId: user!.id,
-            targetUserId: user!.id,
-            description: 'Benutzer durch Einladung der Organisation erneut beigetreten',
-            before: { membershipStatus: previousMembershipStatus },
-            after: { membershipStatus: MembershipStatus.ACTIVE },
-            level: 'WARN',
-          },
+          eventType: UserAccessAuditAction.USER_REACTIVATED,
+          actorUserId: user!.id,
+          subjectUserId: user!.id,
+          description: 'Benutzer durch Einladung der Organisation erneut beigetreten',
+          before: { membershipStatus: previousMembershipStatus },
+          after: { membershipStatus: MembershipStatus.ACTIVE },
+          level: 'WARN',
         });
         outboxIds.push(rejoinOutbox.id);
       }
@@ -361,9 +353,7 @@ export class InviteAcceptService {
       });
     });
 
-    for (const outboxId of outboxIds) {
-      await this.auditProcessor.processOutboxId(outboxId);
-    }
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return {
       accepted: true,

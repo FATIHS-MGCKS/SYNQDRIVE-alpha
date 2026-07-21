@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { MembershipRole, MembershipStatus } from '@prisma/client';
 import { UsersService } from './users.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { UserAccessAuditService } from './user-access-audit.service';
+import { IamAuditService } from './iam-audit.service';
 import { LAST_ORG_ADMIN_MESSAGE } from '@shared/auth/permission.constants';
 
 describe('UsersService — security & membership', () => {
@@ -27,7 +27,10 @@ describe('UsersService — security & membership', () => {
     station: { count: jest.Mock };
     $transaction: jest.Mock;
   };
-  let userAudit: { record: jest.Mock };
+  let iamAudit: {
+    enqueueInTransaction: jest.Mock;
+    processOutboxIds: jest.Mock;
+  };
   let service: UsersService;
 
   beforeEach(() => {
@@ -50,10 +53,13 @@ describe('UsersService — security & membership', () => {
         fn(prisma),
       ),
     };
-    userAudit = { record: jest.fn().mockResolvedValue(undefined) };
+    iamAudit = {
+      enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
+      processOutboxIds: jest.fn().mockResolvedValue(undefined),
+    };
     service = new UsersService(
       prisma as unknown as PrismaService,
-      userAudit as unknown as UserAccessAuditService,
+      iamAudit as unknown as IamAuditService,
     );
   });
 

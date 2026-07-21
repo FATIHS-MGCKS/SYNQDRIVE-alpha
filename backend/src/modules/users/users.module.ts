@@ -15,6 +15,9 @@ import { InviteEmailSchedulerService } from './invite-email-scheduler.service';
 import { InviteAcceptService } from './invite-accept.service';
 import { IamAuditOutboxRepository } from './iam-audit-outbox.repository';
 import { IamAuditOutboxProcessorService } from './iam-audit-outbox.processor';
+import { IamAuditOutboxSchedulerService } from './iam-audit-outbox.scheduler.service';
+import { IamAuditOutboxMetricsService } from './iam-audit-outbox.metrics';
+import { IamAuditService } from './iam-audit.service';
 
 @Module({
   controllers: [
@@ -36,12 +39,19 @@ import { IamAuditOutboxProcessorService } from './iam-audit-outbox.processor';
     InviteAcceptService,
     IamAuditOutboxRepository,
     IamAuditOutboxProcessorService,
+    IamAuditOutboxSchedulerService,
+    IamAuditOutboxMetricsService,
+    IamAuditService,
   ],
   exports: [
     UsersService,
     OrganizationInviteService,
     OrganizationRoleService,
     UserAccessAuditService,
+    IamAuditService,
+    IamAuditOutboxRepository,
+    IamAuditOutboxProcessorService,
+    IamAuditOutboxMetricsService,
   ],
 })
 export class UsersModule {}

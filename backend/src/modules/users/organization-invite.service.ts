@@ -18,7 +18,8 @@ import {
   type PermissionActor,
 } from '@shared/auth/permission.util';
 import { OrganizationRoleService } from './organization-role.service';
-import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
+import { UserAccessAuditAction } from './user-access-audit.service';
+import { IamAuditService } from './iam-audit.service';
 import { InviteEmailDeliveryService } from './invite-email-delivery.service';
 import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
 import { InviteRateLimitService } from './invite-rate-limit.service';
@@ -39,7 +40,7 @@ export class OrganizationInviteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly roleService: OrganizationRoleService,
-    private readonly userAudit: UserAccessAuditService,
+    private readonly iamAudit: IamAuditService,
     private readonly inviteRateLimit: InviteRateLimitService,
     private readonly inviteDelivery: InviteEmailDeliveryService,
     private readonly inviteOutbox: InviteEmailOutboxRepository,
@@ -137,31 +138,51 @@ export class OrganizationInviteService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + this.roleService.inviteExpiryDays);
 
-    const invite = await this.prisma.organizationUserInvite.create({
-      data: {
+    const outboxIds: string[] = [];
+    const invite = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.organizationUserInvite.create({
+        data: {
+          organizationId: orgId,
+          email,
+          membershipRole,
+          organizationRoleId,
+          permissions: permissions
+            ? (permissions as unknown as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+          stationScope,
+          stationIds: stationIds ? stationIds : Prisma.JsonNull,
+          fieldAgentAccess,
+          department: dto.department?.trim() || null,
+          position: dto.position?.trim() || null,
+          roleLabel,
+          tokenHash: hash,
+          tokenLookup,
+          status: OrganizationInviteStatus.PENDING,
+          expiresAt,
+          invitedByUserId,
+        },
+        include: {
+          organization: { select: { companyName: true } },
+          invitedBy: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
         organizationId: orgId,
-        email,
-        membershipRole,
-        organizationRoleId,
-        permissions: permissions
-          ? (permissions as unknown as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
-        stationScope,
-        stationIds: stationIds ? stationIds : Prisma.JsonNull,
-        fieldAgentAccess,
-        department: dto.department?.trim() || null,
-        position: dto.position?.trim() || null,
-        roleLabel,
-        tokenHash: hash,
-        tokenLookup,
-        status: OrganizationInviteStatus.PENDING,
-        expiresAt,
-        invitedByUserId,
-      },
-      include: {
-        organization: { select: { companyName: true } },
-        invitedBy: { select: { id: true, name: true, email: true } },
-      },
+        idempotencyKey: `invite-created:${created.id}`,
+        eventType: UserAccessAuditAction.USER_INVITED,
+        actorUserId: invitedByUserId,
+        targetInviteId: created.id,
+        description: `Einladung an ${maskRecipientEmail(email)} versendet`,
+        after: this.toAdminViewFromInvite(created, null),
+        metadata: {
+          recipientMasked: maskRecipientEmail(email),
+          membershipRole,
+          organizationRoleId,
+        },
+      });
+      outboxIds.push(outbox.id);
+      return created;
     });
 
     const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
@@ -174,15 +195,7 @@ export class OrganizationInviteService {
     await this.inviteDelivery.processOutboxIds([outboxId]);
     const deliveryRow = outboxId ? await this.inviteOutbox.findById(outboxId) : null;
 
-    void this.userAudit.record({
-      organizationId: orgId,
-      actorUserId: invitedByUserId,
-      auditAction: UserAccessAuditAction.USER_INVITED,
-      targetInviteId: invite.id,
-      description: `Einladung an ${maskRecipientEmail(email)} versendet`,
-      after: this.toAdminViewFromInvite(invite, deliveryRow?.status ?? null),
-      metadata: { recipientMasked: maskRecipientEmail(email), membershipRole, organizationRoleId },
-    });
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return this.toAdminViewFromInvite(invite, deliveryRow?.status ?? null);
   }
@@ -221,19 +234,44 @@ export class OrganizationInviteService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + this.roleService.inviteExpiryDays);
 
-    const updated = await this.prisma.organizationUserInvite.update({
-      where: { id: inviteId },
-      data: {
-        tokenHash: hash,
-        tokenLookup,
-        expiresAt,
-        revokedAt: null,
-      },
-      include: {
-        organization: { select: { companyName: true } },
-        invitedBy: { select: { id: true, name: true, email: true } },
-        organizationRole: { select: { id: true, name: true } },
-      },
+    const outboxIds: string[] = [];
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const inviteUpdated = await tx.organizationUserInvite.update({
+        where: { id: inviteId },
+        data: {
+          tokenHash: hash,
+          tokenLookup,
+          expiresAt,
+          revokedAt: null,
+        },
+        include: {
+          organization: { select: { companyName: true } },
+          invitedBy: { select: { id: true, name: true, email: true } },
+          organizationRole: { select: { id: true, name: true } },
+        },
+      });
+
+      const rotatedOutbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: orgId,
+        idempotencyKey: `invite-rotated:${inviteId}:${tokenLookup}`,
+        eventType: UserAccessAuditAction.USER_INVITE_ROTATED,
+        actorUserId,
+        targetInviteId: inviteId,
+        description: `Einladungstoken für ${maskRecipientEmail(inviteUpdated.email)} rotiert`,
+      });
+      outboxIds.push(rotatedOutbox.id);
+
+      const resentOutbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: orgId,
+        idempotencyKey: `invite-resent:${inviteId}:${tokenLookup}`,
+        eventType: UserAccessAuditAction.USER_INVITE_RESENT,
+        actorUserId,
+        targetInviteId: inviteId,
+        description: `Einladung an ${maskRecipientEmail(inviteUpdated.email)} erneut versendet`,
+      });
+      outboxIds.push(resentOutbox.id);
+
+      return inviteUpdated;
     });
 
     const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
@@ -246,13 +284,7 @@ export class OrganizationInviteService {
     await this.inviteDelivery.processOutboxIds([outboxId]);
     const deliveryRow = outboxId ? await this.inviteOutbox.findById(outboxId) : null;
 
-    void this.userAudit.record({
-      organizationId: orgId,
-      actorUserId,
-      auditAction: UserAccessAuditAction.USER_INVITE_RESENT,
-      targetInviteId: inviteId,
-      description: `Einladung an ${maskRecipientEmail(updated.email)} erneut versendet`,
-    });
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return this.toAdminViewFromInvite(updated, deliveryRow?.status ?? null);
   }
@@ -268,23 +300,32 @@ export class OrganizationInviteService {
       throw new BadRequestException('Only pending invites can be revoked');
     }
 
-    const updated = await this.prisma.organizationUserInvite.update({
-      where: { id: inviteId },
-      data: {
-        status: OrganizationInviteStatus.REVOKED,
-        revokedAt: new Date(),
-      },
+    const outboxIds: string[] = [];
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const inviteUpdated = await tx.organizationUserInvite.update({
+        where: { id: inviteId },
+        data: {
+          status: OrganizationInviteStatus.REVOKED,
+          revokedAt: new Date(),
+        },
+      });
+
+      if (audit && actorUserId) {
+        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+          organizationId: orgId,
+          idempotencyKey: `invite-revoked:${inviteId}`,
+          eventType: UserAccessAuditAction.USER_INVITE_REVOKED,
+          actorUserId,
+          targetInviteId: inviteId,
+          description: `Einladung an ${maskRecipientEmail(invite.email)} widerrufen`,
+        });
+        outboxIds.push(outbox.id);
+      }
+
+      return inviteUpdated;
     });
 
-    if (audit && actorUserId) {
-      void this.userAudit.record({
-        organizationId: orgId,
-        actorUserId,
-        auditAction: UserAccessAuditAction.USER_INVITE_REVOKED,
-        targetInviteId: inviteId,
-        description: `Einladung an ${invite.email} widerrufen`,
-      });
-    }
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return this.toAdminViewFromInvite(updated, null);
   }

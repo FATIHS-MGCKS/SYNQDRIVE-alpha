@@ -1,0 +1,31 @@
+export const IAM_AUDIT_OUTBOX = {
+  payloadVersion: 1,
+  pollBatchSize: 25,
+  maxAttempts: 5,
+  backoffMs: 2_000,
+  staleProcessingMs: 5 * 60_000,
+} as const;
+
+export const IAM_AUDIT_SENSITIVE_KEYS = [
+  'password',
+  'passwordhash',
+  'password_hash',
+  'token',
+  'tokenhash',
+  'token_hash',
+  'refreshtoken',
+  'refresh_token',
+  'accesstoken',
+  'access_token',
+  'secret',
+  'apikey',
+  'api_key',
+  'privatekey',
+  'private_key',
+  'tokenciphertext',
+  'token_ciphertext',
+  'inviteurl',
+  'invite_url',
+  'plaintext',
+  'plain_token',
+] as const;

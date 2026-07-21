@@ -18,6 +18,8 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
+import { IamAuditService } from '@modules/users/iam-audit.service';
+import { UserAccessAuditAction } from '@modules/users/user-access-audit.service';
 import {
   NOTIFICATION_CATEGORY_META,
   NOTIFICATION_CATEGORY_ORDER,
@@ -49,6 +51,7 @@ export class AccountService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly iamAudit: IamAuditService,
   ) {}
 
   async getMe(userId: string, jwtOrgId: string | null): Promise<AccountMeDto> {
@@ -268,27 +271,36 @@ export class AccountService {
     }
 
     const hash = await bcrypt.hash(dto.newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: hash, mustChangePassword: false },
+    const outboxIds: string[] = [];
+    const { membership } = await this.loadUserContext(userId, jwtOrgId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash: hash, mustChangePassword: false },
+      });
+
+      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: membership.organizationId,
+        idempotencyKey: `password-reset-completed:${membership.organizationId}:${userId}:${Date.now()}`,
+        eventType: UserAccessAuditAction.USER_PASSWORD_RESET_COMPLETED,
+        actorUserId: userId,
+        subjectUserId: userId,
+        membershipId: membership.id,
+        description: 'Password changed (self-service)',
+        route: auditCtx.route,
+        ipAddress: auditCtx.ip,
+        userAgent: auditCtx.userAgent,
+        level: 'WARN',
+      });
+      outboxIds.push(outbox.id);
     });
 
     if (dto.revokeOtherSessions) {
       await this.refreshTokens.revokeOtherSessionsForUser(userId);
     }
 
-    void this.audit.record({
-      actorUserId: userId,
-      actorOrganizationId: jwtOrgId ?? undefined,
-      action: ActivityAction.UPDATE,
-      entity: ActivityEntity.AUTH_EVENT,
-      entityId: userId,
-      description: 'Password changed (self-service)',
-      level: 'WARN',
-      route: auditCtx.route,
-      ipAddress: auditCtx.ip,
-      userAgent: auditCtx.userAgent,
-    });
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return { message: 'Password updated successfully' };
   }
@@ -323,20 +335,52 @@ export class AccountService {
     keepSessionId?: string,
     auditCtx?: { ip?: string; userAgent?: string; route?: string },
   ) {
-    await this.loadUserContext(userId, jwtOrgId);
-    const result = await this.refreshTokens.revokeOtherSessionsForUser(userId, keepSessionId);
+    const { membership } = await this.loadUserContext(userId, jwtOrgId);
+    const tokens = await this.refreshTokens.listSessionsForUser(userId);
+    const now = new Date();
+    const active = tokens.filter(
+      (t) => !t.revokedAt && t.expiresAt > now && !t.replacedBy,
+    );
+    const keepId =
+      keepSessionId && active.some((t) => t.id === keepSessionId)
+        ? keepSessionId
+        : this.refreshTokens.resolveCurrentSessionId(tokens);
 
-    void this.audit.record({
-      actorUserId: userId,
-      actorOrganizationId: jwtOrgId ?? undefined,
-      action: ActivityAction.REVOKE,
-      entity: ActivityEntity.REFRESH_TOKEN,
-      entityId: userId,
-      description: `Revoked ${result.revoked} other session(s) (self-service)`,
-      route: auditCtx?.route,
-      ipAddress: auditCtx?.ip,
-      userAgent: auditCtx?.userAgent,
+    if (!keepId) {
+      return { revoked: 0, keptSessionId: null };
+    }
+
+    const outboxIds: string[] = [];
+    const result = await this.prisma.$transaction(async (tx) => {
+      const revoked = await tx.refreshToken.updateMany({
+        where: {
+          userId,
+          revokedAt: null,
+          id: { not: keepId },
+        },
+        data: { revokedAt: new Date() },
+      });
+
+      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: membership.organizationId,
+        idempotencyKey: `sessions-revoked-others:${membership.organizationId}:${userId}:${keepId}`,
+        eventType: UserAccessAuditAction.SESSIONS_REVOKED_OTHERS,
+        actorUserId: userId,
+        subjectUserId: userId,
+        membershipId: membership.id,
+        description: `Revoked ${revoked.count} other session(s) (self-service)`,
+        after: { revoked: revoked.count, keptSessionId: keepId },
+        route: auditCtx?.route,
+        ipAddress: auditCtx?.ip,
+        userAgent: auditCtx?.userAgent,
+        level: 'WARN',
+      });
+      outboxIds.push(outbox.id);
+
+      return { revoked: revoked.count, keptSessionId: keepId };
     });
+
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return result;
   }
@@ -347,7 +391,7 @@ export class AccountService {
     sessionId: string,
     auditCtx?: { ip?: string; userAgent?: string; route?: string },
   ) {
-    await this.loadUserContext(userId, jwtOrgId);
+    const { membership } = await this.loadUserContext(userId, jwtOrgId);
 
     const tokens = await this.refreshTokens.listSessionsForUser(userId);
     const currentId = this.refreshTokens.resolveCurrentSessionId(tokens);
@@ -357,22 +401,39 @@ export class AccountService {
       );
     }
 
-    const ok = await this.refreshTokens.revokeSessionById(userId, sessionId);
+    const outboxIds: string[] = [];
+    const ok = await this.prisma.$transaction(async (tx) => {
+      const revoked = await tx.refreshToken.updateMany({
+        where: { id: sessionId, userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      if (revoked.count === 0) {
+        return false;
+      }
+
+      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: membership.organizationId,
+        idempotencyKey: `session-revoked:${membership.organizationId}:${sessionId}`,
+        eventType: UserAccessAuditAction.SESSION_REVOKED,
+        actorUserId: userId,
+        subjectUserId: userId,
+        membershipId: membership.id,
+        description: 'Session revoked (self-service)',
+        after: { sessionId },
+        route: auditCtx?.route,
+        ipAddress: auditCtx?.ip,
+        userAgent: auditCtx?.userAgent,
+        level: 'WARN',
+      });
+      outboxIds.push(outbox.id);
+      return true;
+    });
+
     if (!ok) {
       throw new NotFoundException('Session not found or already revoked');
     }
 
-    void this.audit.record({
-      actorUserId: userId,
-      actorOrganizationId: jwtOrgId ?? undefined,
-      action: ActivityAction.REVOKE,
-      entity: ActivityEntity.REFRESH_TOKEN,
-      entityId: sessionId,
-      description: 'Session revoked (self-service)',
-      route: auditCtx?.route,
-      ipAddress: auditCtx?.ip,
-      userAgent: auditCtx?.userAgent,
-    });
+    await this.iamAudit.processOutboxIds(outboxIds);
 
     return { revoked: true };
   }

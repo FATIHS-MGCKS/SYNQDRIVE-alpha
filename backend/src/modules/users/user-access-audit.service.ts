@@ -13,14 +13,22 @@ export const UserAccessAuditAction = {
   USER_PERMISSIONS_CHANGED: 'USER_PERMISSIONS_CHANGED',
   USER_STATION_SCOPE_CHANGED: 'USER_STATION_SCOPE_CHANGED',
   USER_PASSWORD_RESET_BY_ADMIN: 'USER_PASSWORD_RESET_BY_ADMIN',
+  USER_PASSWORD_RESET_REQUESTED: 'USER_PASSWORD_RESET_REQUESTED',
+  USER_PASSWORD_RESET_COMPLETED: 'USER_PASSWORD_RESET_COMPLETED',
   USER_INVITED: 'USER_INVITED',
   USER_INVITE_RESENT: 'USER_INVITE_RESENT',
+  USER_INVITE_ROTATED: 'USER_INVITE_ROTATED',
   USER_INVITE_REVOKED: 'USER_INVITE_REVOKED',
   USER_INVITE_ACCEPTED: 'USER_INVITE_ACCEPTED',
   ROLE_CREATED: 'ROLE_CREATED',
   ROLE_UPDATED: 'ROLE_UPDATED',
   ROLE_DELETED: 'ROLE_DELETED',
   ROLE_ASSIGNED: 'ROLE_ASSIGNED',
+  SESSION_REVOKED: 'SESSION_REVOKED',
+  SESSIONS_REVOKED_OTHERS: 'SESSIONS_REVOKED_OTHERS',
+  MFA_CHANGED: 'MFA_CHANGED',
+  ORGANIZATION_SWITCHED: 'ORGANIZATION_SWITCHED',
+  BREAK_GLASS_ACTIVATED: 'BREAK_GLASS_ACTIVATED',
 } as const;
 
 export type UserAccessAuditActionCode =
@@ -91,13 +99,26 @@ export class UserAccessAuditService {
     if (auditAction.includes('INVITE')) {
       return ActivityEntity.ORGANIZATION_INVITE;
     }
+    if (auditAction.startsWith('SESSION')) {
+      return ActivityEntity.REFRESH_TOKEN;
+    }
+    if (
+      auditAction === UserAccessAuditAction.BREAK_GLASS_ACTIVATED ||
+      auditAction === UserAccessAuditAction.ORGANIZATION_SWITCHED
+    ) {
+      return ActivityEntity.AUTH_EVENT;
+    }
     return ActivityEntity.USER;
   }
 
   private resolveActivityAction(
     auditAction: UserAccessAuditActionCode,
   ): ActivityAction {
-    if (auditAction.includes('DELETED') || auditAction.includes('REVOKED') || auditAction.includes('REMOVED')) {
+    if (
+      auditAction.includes('DELETED') ||
+      auditAction.includes('REVOKED') ||
+      auditAction.includes('REMOVED')
+    ) {
       return ActivityAction.DELETE;
     }
     if (
@@ -119,7 +140,11 @@ export class UserAccessAuditService {
     if (
       auditAction === UserAccessAuditAction.USER_REMOVED_FROM_ORG ||
       auditAction === UserAccessAuditAction.USER_PERMISSIONS_CHANGED ||
-      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN
+      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN ||
+      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_COMPLETED ||
+      auditAction === UserAccessAuditAction.BREAK_GLASS_ACTIVATED ||
+      auditAction === UserAccessAuditAction.SESSION_REVOKED ||
+      auditAction === UserAccessAuditAction.SESSIONS_REVOKED_OTHERS
     ) {
       return 'WARN';
     }

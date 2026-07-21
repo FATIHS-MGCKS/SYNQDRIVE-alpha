@@ -391,6 +391,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-20T00:00:00.000Z',
   },
   {
+    id: 'iam-transactional-audit-outbox-v49718-2026-07-21',
+    version: '4.9.718',
+    title: 'V4.9.718 — IAM transactional audit outbox (Prompt 16)',
+    summary: [
+      'Critical IAM mutations enqueue iam_audit_outbox in the same DB transaction (membership, roles, invites, password reset, session revoke).',
+      'Outbox worker: claim, retry/backoff, dead-letter, idempotent processing, metrics; scheduler polls every 15s.',
+      'Audit payloads sanitized — no tokens/password hashes; before/after stored as masked summaries + SHA-256 hashes.',
+    ],
+    reason: 'UR-P1-AU-01 — critical access changes must have durable audit intent before commit.',
+    previousBehavior:
+      'Many IAM paths used void userAudit.record (fire-and-forget) outside transactions; audit could be lost on failure.',
+    details:
+      'iam-audit.service.ts, iam-audit-outbox.*, users/organization-role/organization-invite/account services, migration 20260722000000_iam_audit_outbox_v2',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T23:05:00.000Z',
+  },
+  {
     id: 'iam-invite-acceptance-v49717-2026-07-21',
     version: '4.9.717',
     title: 'V4.9.717 — IAM invite acceptance verified identity (Prompt 15)',

@@ -8,7 +8,7 @@ import {
 import { OrganizationInviteService } from './organization-invite.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { OrganizationRoleService } from './organization-role.service';
-import { UserAccessAuditService } from './user-access-audit.service';
+import { IamAuditService } from './iam-audit.service';
 import { InviteRateLimitService } from './invite-rate-limit.service';
 import { InviteEmailDeliveryService } from './invite-email-delivery.service';
 import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
@@ -44,7 +44,10 @@ describe('OrganizationInviteService', () => {
     resolveRoleForInvite: jest.Mock;
     inviteExpiryDays: number;
   };
-  let userAudit: { record: jest.Mock };
+  let iamAudit: {
+    enqueueInTransaction: jest.Mock;
+    processOutboxIds: jest.Mock;
+  };
   let inviteRateLimit: { assertCreateAllowed: jest.Mock; assertResendAllowed: jest.Mock };
   let inviteDelivery: { enqueueInviteDelivery: jest.Mock; processOutboxIds: jest.Mock };
   let inviteOutbox: { findById: jest.Mock; findLatestByInviteIds: jest.Mock };
@@ -79,7 +82,10 @@ describe('OrganizationInviteService', () => {
       resolveRoleForInvite: jest.fn(),
       inviteExpiryDays: 7,
     };
-    userAudit = { record: jest.fn().mockResolvedValue(undefined) };
+    iamAudit = {
+      enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
+      processOutboxIds: jest.fn().mockResolvedValue(undefined),
+    };
     inviteRateLimit = {
       assertCreateAllowed: jest.fn().mockResolvedValue(undefined),
       assertResendAllowed: jest.fn().mockResolvedValue(undefined),
@@ -98,7 +104,7 @@ describe('OrganizationInviteService', () => {
     service = new OrganizationInviteService(
       prisma as unknown as PrismaService,
       roleService as unknown as OrganizationRoleService,
-      userAudit as unknown as UserAccessAuditService,
+      iamAudit as unknown as IamAuditService,
       inviteRateLimit as unknown as InviteRateLimitService,
       inviteDelivery as unknown as InviteEmailDeliveryService,
       inviteOutbox as unknown as InviteEmailOutboxRepository,
@@ -140,7 +146,7 @@ describe('OrganizationInviteService', () => {
     expect(createData.tokenLookup).toBeDefined();
     expect(result).not.toHaveProperty('inviteToken');
     expect(result.inviteId).toBe(inviteId);
-    expect(userAudit.record).toHaveBeenCalled();
+    expect(iamAudit.enqueueInTransaction).toHaveBeenCalled();
     expect(inviteDelivery.enqueueInviteDelivery).toHaveBeenCalled();
   });
 
@@ -177,6 +183,6 @@ describe('OrganizationInviteService', () => {
         data: expect.objectContaining({ status: OrganizationInviteStatus.REVOKED }),
       }),
     );
-    expect(userAudit.record).toHaveBeenCalled();
+    expect(iamAudit.enqueueInTransaction).toHaveBeenCalled();
   });
 });
