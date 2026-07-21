@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-post-audit-p65-2026-07-21',
+    version: '4.9.736',
+    title: 'Fleet Health Service — Post-Remediation Readiness Audit (Phase 9 P65)',
+    summary: [
+      'Read-only Audit 3/3: `docs/audits/fleet-health-service-post-remediation-readiness.md` mit Tracker-Abgleich P1–P64.',
+      'Domänen-Bewertung (Architektur, Battery-V2, RBAC, Partial Failures, Service Cases, Matching, Runtime, Pagination, UX, A11y, Metrics, Tests).',
+      'Lokal 178 Tests PASS auf Integrations-Branch; Gesamturteil CONDITIONALLY_READY — kein Production-Ready ohne Merge/Staging.',
+    ],
+    reason: 'Phase 9 Prompt 65: vollständiger Post-Remediation-Audit vor Sign-off (P66).',
+    previousBehavior: 'Nur Ursprungs-Audits 1/2 (CONDITIONALLY_READY) ohne Tracker-Nachweis nach Remediation.',
+    details:
+      'docs/audits/fleet-health-service-post-remediation-readiness.md; Tests: 55 BE + 68 FE FHS + 32 Runtime + 16 E2E PASS auf cursor/fleet-health-e2e-bad3.',
+    affectsArchitecture: false,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T00:01:00.000Z',
+  },
+  {
     id: 'fleet-health-service-e2e-p63-2026-07-20',
     version: '4.9.734',
     title: 'Fleet Health Service — Playwright E2E Flow (Phase 9 P63)',
