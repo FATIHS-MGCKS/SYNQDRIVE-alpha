@@ -68,6 +68,7 @@ import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
 import { WorkersModule } from '@workers/workers.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 import { AccountModule } from '@modules/account/account.module';
+import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { HealthModule } from '@modules/health/health.module';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
@@ -185,6 +186,7 @@ export class AppModule {
         SharedGuardsModule,
         AuthApiModule,
         AccountModule,
+        IamMfaModule,
         NotificationsModule,
         HealthModule,
 

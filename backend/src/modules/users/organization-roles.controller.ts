@@ -11,6 +11,9 @@ import {
 } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { StepUpGuard } from '@shared/auth/step-up.guard';
+import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { USERS_ROLES_MODULE } from '@shared/auth/permission.constants';
 import { OrganizationRoleService } from './organization-role.service';
@@ -27,7 +30,7 @@ interface AuthedRequest {
 const USERS_MODULE = USERS_ROLES_MODULE;
 
 @Controller('organizations/:orgId/roles')
-@UseGuards(OrgScopingGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, PermissionsGuard, StepUpGuard)
 export class OrganizationRolesController {
   constructor(private readonly roles: OrganizationRoleService) {}
 
@@ -51,6 +54,7 @@ export class OrganizationRolesController {
 
   @Post()
   @RequirePermission(USERS_MODULE, 'manage')
+  @RequireStepUp(STEP_UP_ACTION.PRIVILEGED_PERMISSION_CHANGE)
   create(
     @Param('orgId') orgId: string,
     @Req() req: AuthedRequest,
@@ -61,6 +65,7 @@ export class OrganizationRolesController {
 
   @Patch(':roleId')
   @RequirePermission(USERS_MODULE, 'manage')
+  @RequireStepUp(STEP_UP_ACTION.PRIVILEGED_PERMISSION_CHANGE)
   update(
     @Param('orgId') orgId: string,
     @Param('roleId') roleId: string,
@@ -82,6 +87,7 @@ export class OrganizationRolesController {
 
   @Delete(':roleId')
   @RequirePermission(USERS_MODULE, 'manage')
+  @RequireStepUp(STEP_UP_ACTION.ROLE_BULK_ASSIGNMENT_CHANGE)
   delete(
     @Param('orgId') orgId: string,
     @Param('roleId') roleId: string,

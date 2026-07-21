@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
+import { sessionClaimsFromJwt } from './auth-session-claims.types';
 
 /**
  * Exact paths (not prefixes) that require no authentication.
@@ -96,6 +97,8 @@ export class AuthGuard implements CanActivate {
         platformPermissions: decoded.platformPermissions ?? [],
         membershipRole: decoded.membershipRole,
         organizationId: decoded.organizationId,
+        sessionClaims: sessionClaimsFromJwt(decoded as Record<string, unknown>),
+        securityVersion: decoded.securityVersion ?? 0,
       };
       return true;
     } catch {

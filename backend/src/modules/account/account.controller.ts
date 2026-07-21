@@ -8,9 +8,13 @@ import {
   Patch,
   Post,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AccountService } from './account.service';
+import { StepUpGuard } from '@shared/auth/step-up.guard';
+import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
 import { UpdateMyNotificationPreferencesDto } from './dto/update-my-notification-preferences.dto';
@@ -87,6 +91,8 @@ export class AccountController {
 
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('me/change-password')
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.PRIVILEGED_PERMISSION_CHANGE)
   @HttpCode(HttpStatus.OK)
   async changePassword(@Req() req: AuthedRequest, @Body() body: ChangeMyPasswordDto) {
     const c = this.ctx(req);
@@ -103,6 +109,8 @@ export class AccountController {
   }
 
   @Post('me/sessions/revoke-others')
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS)
   @HttpCode(HttpStatus.OK)
   async revokeOtherSessions(@Req() req: AuthedRequest, @Body() body: RevokeOtherSessionsDto) {
     const c = this.ctx(req);

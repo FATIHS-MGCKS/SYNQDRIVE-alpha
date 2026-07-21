@@ -4,6 +4,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
+import {
+  AuthSessionClaims,
+  buildPasswordOnlyClaims,
+} from '@shared/auth/auth-session-claims.types';
 
 const REFRESH_TOKEN_BYTES = 40;
 const REFRESH_TOKEN_TTL_DAYS = 30;
@@ -25,13 +29,36 @@ export class RefreshTokenService {
 
   /** Issue a new access + refresh token pair after successful authentication. */
   async issueTokenPair(
-    user: { id: string; email: string; name?: string | null; platformRole: string },
+    user: { id: string; email: string; name?: string | null; platformRole: string; securityVersion?: number },
     membership: { role?: string | null; organizationId?: string | null; organizationName?: string | null; organizationLogoUrl?: string | null; permissions?: any } | null,
     context: { userAgent?: string; ipAddress?: string } = {},
+    sessionClaims?: AuthSessionClaims,
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
-    const accessToken = this.signAccessToken(user, membership);
+    const claims =
+      sessionClaims ?? buildPasswordOnlyClaims(user.securityVersion ?? 0);
+    const accessToken = this.signAccessToken(user, membership, claims);
     const refreshToken = await this.createRefreshToken(user.id, context);
     return { accessToken, refreshToken, expiresIn: this.jwtExpiresIn };
+  }
+
+  /** Re-issue access token with elevated session claims (MFA step-up) without rotating refresh token. */
+  async reissueAccessToken(
+    user: { id: string; email: string; name?: string | null; platformRole: string },
+    membership: { role?: string | null; organizationId?: string | null; organizationName?: string | null; permissions?: any } | null,
+    sessionClaims: AuthSessionClaims,
+  ): Promise<{ accessToken: string; expiresIn: string }> {
+    return {
+      accessToken: this.signAccessToken(user, membership, sessionClaims),
+      expiresIn: this.jwtExpiresIn,
+    };
+  }
+
+  decodeAccessToken(token: string): jwt.JwtPayload | null {
+    try {
+      return jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -85,6 +112,8 @@ export class RefreshTokenService {
 
     const membership = user.memberships[0] ?? null;
 
+    const sessionClaims = buildPasswordOnlyClaims(user.securityVersion ?? 0);
+
     // Issue new pair
     const newPair = await this.issueTokenPairWithFamily(
       user,
@@ -98,6 +127,8 @@ export class RefreshTokenService {
         : null,
       stored.family,
       context,
+      undefined,
+      sessionClaims,
     );
 
     // Mark old token as revoked/replaced
@@ -219,6 +250,7 @@ export class RefreshTokenService {
     family: string,
     context: { userAgent?: string; ipAddress?: string },
     userIdOverride?: string,
+    sessionClaims?: AuthSessionClaims,
   ): Promise<{ accessToken: string; rawRefreshToken: string; refreshTokenId: string }> {
     const userId = user?.id ?? userIdOverride!;
     const rawToken = crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
@@ -236,7 +268,9 @@ export class RefreshTokenService {
       },
     });
 
-    const accessToken = user ? this.signAccessToken(user, membership) : '';
+    const claims =
+      sessionClaims ?? buildPasswordOnlyClaims(user?.securityVersion ?? 0);
+    const accessToken = user ? this.signAccessToken(user, membership, claims) : '';
 
     return { accessToken, rawRefreshToken: rawToken, refreshTokenId: record.id };
   }
@@ -251,6 +285,7 @@ export class RefreshTokenService {
   private signAccessToken(
     user: { id: string; email: string; name?: string | null; platformRole: string },
     membership: { role?: string | null; organizationId?: string | null; organizationName?: string | null } | null,
+    sessionClaims: AuthSessionClaims,
   ): string {
     const payload = {
       sub: user.id,
@@ -260,6 +295,11 @@ export class RefreshTokenService {
       membershipRole: membership?.role ?? null,
       organizationId: membership?.organizationId ?? null,
       organizationName: membership?.organizationName ?? null,
+      assuranceLevel: sessionClaims.assuranceLevel,
+      authenticatedAt: sessionClaims.authenticatedAt,
+      mfaAuthenticatedAt: sessionClaims.mfaAuthenticatedAt,
+      authMethods: sessionClaims.authMethods,
+      securityVersion: sessionClaims.securityVersion,
     };
     return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn as any });
   }

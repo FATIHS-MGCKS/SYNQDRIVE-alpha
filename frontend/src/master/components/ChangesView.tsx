@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-mfa-step-up-v49720-2026-07-21',
+    version: '4.9.720',
+    title: 'V4.9.720 — IAM privileged MFA and step-up authentication (Prompt 18)',
+    summary: [
+      'TOTP MFA enrollment with AES-encrypted secrets and bcrypt-hashed single-use recovery codes.',
+      'JWT session claims: assuranceLevel, authenticatedAt, mfaAuthenticatedAt, authMethods, securityVersion.',
+      'StepUpGuard enforces fresh MFA for admin role changes, privileged permissions, MFA reset, session revoke, audit export, invite resend.',
+      'Feature flags: IAM_MFA_ENROLLMENT_ENABLED, IAM_MFA_STEP_UP_ENFORCED, IAM_MFA_ORG_ALLOWLIST (gradual rollout).',
+      'MFA reset: transactional audit outbox (MFA_CHANGED), session revocation, user notification via activity log.',
+    ],
+    reason: 'Privileged IAM actions require real strong authentication, not placeholder flags.',
+    previousBehavior: 'requiresStepUp/mfaRequired were response hints only; no MFA storage or enforcement.',
+    details:
+      'IamMfaModule, migration 20260722110000_iam_mfa_step_up, iam-mfa.security.spec.ts (14 tests), architecture/IAM_MFA_STEP_UP_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T23:10:00.000Z',
+  },
+  {
     id: 'fleet-health-service-followups-2026-07-21',
     version: '4.9.740',
     title: 'Fleet Health Service — Follow-ups (Pagination, Runtime, Matching)',

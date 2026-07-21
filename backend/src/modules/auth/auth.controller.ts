@@ -139,6 +139,13 @@ export class AuthController {
         userAgent: (req as any)?.headers?.['user-agent'],
         ipAddress: (req as any)?.ip,
       },
+      {
+        assuranceLevel: 1,
+        authenticatedAt: new Date().toISOString(),
+        mfaAuthenticatedAt: null,
+        authMethods: ['pwd'],
+        securityVersion: user.securityVersion ?? 0,
+      },
     );
 
     void this.audit.record({

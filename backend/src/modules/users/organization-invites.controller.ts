@@ -12,6 +12,9 @@ import {
 import { OrganizationInviteStatus } from '@prisma/client';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { StepUpGuard } from '@shared/auth/step-up.guard';
+import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { USERS_ROLES_MODULE } from '@shared/auth/permission.constants';
 import { OrganizationInviteService } from './organization-invite.service';
@@ -28,7 +31,7 @@ interface AuthedRequest {
 const USERS_MODULE = USERS_ROLES_MODULE;
 
 @Controller('organizations/:orgId/invites')
-@UseGuards(OrgScopingGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, PermissionsGuard, StepUpGuard)
 export class OrganizationInvitesController {
   constructor(private readonly invites: OrganizationInviteService) {}
 
@@ -53,6 +56,7 @@ export class OrganizationInvitesController {
 
   @Post(':inviteId/resend')
   @RequirePermission(USERS_MODULE, 'manage')
+  @RequireStepUp(STEP_UP_ACTION.MANUAL_INVITE_LINK)
   resend(
     @Param('orgId') orgId: string,
     @Param('inviteId') inviteId: string,

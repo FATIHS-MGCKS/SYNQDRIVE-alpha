@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { OrganizationInvitesController } from './organization-invites.controller';
 import { OrganizationRolesController } from './organization-roles.controller';
@@ -17,10 +17,13 @@ import { IamAuditOutboxRepository } from './iam-audit-outbox.repository';
 import { IamAuditOutboxProcessorService } from './iam-audit-outbox.processor';
 import { IamAuditOutboxSchedulerService } from './iam-audit-outbox.scheduler.service';
 import { IamAuditOutboxMetricsService } from './iam-audit-outbox.metrics';
+import { IamAuditService } from './iam-audit.service';
 import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { IamMembershipLifecycleNotificationService } from './iam-membership-lifecycle-notification.service';
+import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 
 @Module({
+  imports: [forwardRef(() => IamMfaModule)],
   controllers: [
     UsersController,
     OrganizationInvitesController,

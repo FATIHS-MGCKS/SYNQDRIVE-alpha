@@ -15,6 +15,9 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { StepUpGuard } from '@shared/auth/step-up.guard';
+import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { USERS_ROLES_MODULE } from '@shared/auth/permission.constants';
 import {
@@ -84,8 +87,9 @@ export class UsersController {
   }
 
   @Post('admin/users/:id/change-password')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, StepUpGuard)
   @Roles('MASTER_ADMIN')
+  @RequireStepUp(STEP_UP_ACTION.PRIVILEGED_PERMISSION_CHANGE)
   async adminChangePassword(
     @Param('id') id: string,
     @Body() body: AdminChangePasswordDto,
@@ -128,8 +132,9 @@ export class UsersController {
   }
 
   @Patch('organizations/:orgId/users/:id')
-  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard, StepUpGuard)
   @RequirePermission(USERS_MODULE, 'write')
+  @RequireStepUp(STEP_UP_ACTION.ADMIN_ROLE_ASSIGN)
   async orgUpdate(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -140,8 +145,9 @@ export class UsersController {
   }
 
   @Post('organizations/:orgId/users/:userId/change-password')
-  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard, StepUpGuard)
   @RequirePermission(USERS_MODULE, 'manage')
+  @RequireStepUp(STEP_UP_ACTION.PRIVILEGED_PERMISSION_CHANGE)
   async orgChangePassword(
     @Param('orgId') orgId: string,
     @Param('userId') userId: string,
@@ -162,8 +168,9 @@ export class UsersController {
   }
 
   @Delete('organizations/:orgId/users/:id')
-  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard, StepUpGuard)
   @RequirePermission(USERS_MODULE, 'manage')
+  @RequireStepUp(STEP_UP_ACTION.ADMIN_ROLE_ASSIGN)
   async orgDelete(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -184,8 +191,9 @@ export class UsersController {
   }
 
   @Post('organizations/:orgId/users/:userId/assign-role')
-  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard, StepUpGuard)
   @RequirePermission(USERS_MODULE, 'manage')
+  @RequireStepUp(STEP_UP_ACTION.ADMIN_ROLE_ASSIGN)
   async assignRole(
     @Param('orgId') orgId: string,
     @Param('userId') userId: string,
@@ -202,8 +210,9 @@ export class UsersController {
   }
 
   @Get('organizations/:orgId/users/:userId/security-activity')
-  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard, StepUpGuard)
   @RequirePermission(USERS_MODULE, 'read')
+  @RequireStepUp(STEP_UP_ACTION.AUDIT_EXPORT)
   async securityActivity(
     @Param('orgId') orgId: string,
     @Param('userId') userId: string,
