@@ -20,6 +20,9 @@ import { IamAuditOutboxMetricsService } from './iam-audit-outbox.metrics';
 import { IamAuditService } from './iam-audit.service';
 import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { IamMembershipLifecycleNotificationService } from './iam-membership-lifecycle-notification.service';
+import { IamAccessReviewService } from './iam-access-review.service';
+import { IamAccessReviewSnapshotService } from './iam-access-review-snapshot.service';
+import { IamAccessReviewController } from './iam-access-review.controller';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 
 @Module({
@@ -29,6 +32,7 @@ import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
     OrganizationInvitesController,
     OrganizationRolesController,
     PublicInvitesController,
+    IamAccessReviewController,
   ],
   providers: [
     UsersService,
@@ -48,6 +52,8 @@ import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
     IamAuditService,
     IamMembershipLifecycleService,
     IamMembershipLifecycleNotificationService,
+    IamAccessReviewService,
+    IamAccessReviewSnapshotService,
   ],
   exports: [
     UsersService,

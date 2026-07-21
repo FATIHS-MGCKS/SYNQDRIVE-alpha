@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-access-review-v49721-2026-07-21',
+    version: '4.9.721',
+    title: 'V4.9.721 — IAM privileged access reviews and attestations (Prompt 19)',
+    summary: [
+      'AccessReviewCampaign / Item / Decision models with effective-access snapshots.',
+      'Scopes: privileged accounts, single admin, inactive users, invalid role, overdue reviews.',
+      'Decisions CONFIRM/MODIFY/SUSPEND/REMOVE/ESCALATE — changes only via IamMembershipLifecycleService.',
+      'Last-admin and break-glass policies block risky suspend/remove; stale snapshot version guard.',
+      'API under /organizations/:orgId/access-reviews + transactional audit outbox.',
+    ],
+    reason: 'Privileged access must be periodically reviewable with full audit trail and canonical lifecycle application.',
+    previousBehavior: 'No structured access review or attestation workflow.',
+    details:
+      'iam-access-review.service.ts, snapshot/policy modules, migration 20260722120000_iam_access_review, iam-access-review.security.spec.ts',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T23:20:00.000Z',
+  },
+  {
     id: 'iam-mfa-step-up-v49720-2026-07-21',
     version: '4.9.720',
     title: 'V4.9.720 — IAM privileged MFA and step-up authentication (Prompt 18)',

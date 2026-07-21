@@ -52,6 +52,44 @@ enum MfaFactorType {
   WEBAUTHN
 }
 
+enum AccessReviewCampaignStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+enum AccessReviewCampaignScope {
+  PRIVILEGED_ACCOUNTS
+  SINGLE_ADMIN
+  INACTIVE_USERS
+  INVALID_ROLE_MEMBERSHIP
+  OVERDUE_REVIEWS
+}
+
+enum AccessReviewItemStatus {
+  PENDING
+  DECIDED
+  SKIPPED
+}
+
+enum AccessReviewDecisionType {
+  CONFIRM
+  MODIFY
+  SUSPEND
+  REMOVE
+  ESCALATE
+}
+
+enum AccessReviewResultApplicationStatus {
+  PENDING
+  APPLIED
+  FAILED
+  SKIPPED
+  NOT_APPLICABLE
+}
+
 enum OrganizationInviteStatus {
   PENDING
   ACCEPTED
@@ -1589,6 +1627,9 @@ model Organization {
   organizationUserInvites                OrganizationUserInvite[]
   inviteEmailOutbox                      InviteEmailOutbox[]
   iamAuditOutbox                         IamAuditOutbox[]
+  accessReviewCampaigns                  AccessReviewCampaign[]
+  accessReviewItems                      AccessReviewItem[]
+  accessReviewDecisions                  AccessReviewDecision[]
   orgEmailSettings                       OrgEmailSettings?
   orgEmailDomains                        OrgEmailDomain[]
   outboundEmails                         OutboundEmail[]
@@ -1651,6 +1692,10 @@ model User {
   mfaFactors                          UserMfaFactor[]
   mfaRecoveryCodes                    UserMfaRecoveryCode[]
   mfaStepUpGrants                     UserMfaStepUpGrant[]
+  accessReviewCampaignsCreated        AccessReviewCampaign[]        @relation("AccessReviewCampaignsCreated")
+  accessReviewCampaignsAsReviewer     AccessReviewCampaign[]        @relation("AccessReviewReviewer")
+  accessReviewDecisions               AccessReviewDecision[]        @relation("AccessReviewDecisions")
+  accessReviewItems                   AccessReviewItem[]
   accountPreferences                  UserAccountPreference[]
   notificationPreferences             UserNotificationPreference[]
   invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
@@ -1836,6 +1881,7 @@ model OrganizationMembership {
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  accessReviewItems AccessReviewItem[]
 
   @@unique([userId, organizationId])
   @@index([organizationId])
@@ -1998,6 +2044,102 @@ model IamAuditOutbox {
   @@index([status, nextRetryAt])
   @@index([organizationId, eventType])
   @@map("iam_audit_outbox")
+}
+
+// ------------------------------------------------
+// ACCESS REVIEWS (privileged access attestation)
+// ------------------------------------------------
+
+model AccessReviewCampaign {
+  id              String                     @id @default(uuid())
+  organizationId  String                     @map("organization_id")
+  scope           AccessReviewCampaignScope
+  reviewerUserId  String                     @map("reviewer_user_id")
+  dueAt           DateTime                   @map("due_at")
+  status          AccessReviewCampaignStatus @default(DRAFT)
+  createdByUserId String                     @map("created_by_user_id")
+  startedAt       DateTime?                  @map("started_at")
+  completedAt     DateTime?                  @map("completed_at")
+  cancelledAt     DateTime?                  @map("cancelled_at")
+  snapshotVersion Int                        @default(1) @map("snapshot_version")
+  metadata        Json?
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewer     User                 @relation("AccessReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: Restrict)
+  createdBy    User                 @relation("AccessReviewCampaignsCreated", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  items        AccessReviewItem[]
+  decisions    AccessReviewDecision[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, dueAt])
+  @@map("access_review_campaigns")
+}
+
+model AccessReviewItem {
+  id                     String                 @id @default(uuid())
+  campaignId             String                 @map("campaign_id")
+  organizationId         String                 @map("organization_id")
+  membershipId           String                 @map("membership_id")
+  userId                 String                 @map("user_id")
+  status                 AccessReviewItemStatus @default(PENDING)
+  membershipStatus       String                 @map("membership_status")
+  membershipVersion      Int                    @map("membership_version")
+  effectiveRole          String                 @map("effective_role")
+  effectiveRoleId        String?                @map("effective_role_id")
+  effectiveRoleLabel     String?                @map("effective_role_label")
+  privilegedCapabilities Json                   @map("privileged_capabilities")
+  stationScope           String?                @map("station_scope")
+  stationIds             Json?                  @map("station_ids")
+  permissionsSnapshot    Json?                  @map("permissions_snapshot")
+  lastActivityAt         DateTime?              @map("last_activity_at")
+  mfaEnrolled            Boolean                @default(false) @map("mfa_enrolled")
+  activeSessionCount     Int                    @default(0) @map("active_session_count")
+  riskReasons            Json                   @map("risk_reasons")
+  accessSnapshot         Json                   @map("access_snapshot")
+  snapshotVersion        Int                    @map("snapshot_version")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  campaign   AccessReviewCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership OrganizationMembership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decisions  AccessReviewDecision[]
+
+  @@unique([campaignId, membershipId])
+  @@index([organizationId, campaignId])
+  @@index([campaignId, status])
+  @@map("access_review_items")
+}
+
+model AccessReviewDecision {
+  id                          String                            @id @default(uuid())
+  itemId                      String                            @map("item_id")
+  campaignId                  String                            @map("campaign_id")
+  organizationId              String                            @map("organization_id")
+  reviewerUserId              String                            @map("reviewer_user_id")
+  decision                    AccessReviewDecisionType
+  reason                      String
+  decidedAt                   DateTime                          @map("decided_at")
+  resultApplicationStatus     AccessReviewResultApplicationStatus @default(PENDING) @map("result_application_status")
+  appliedAt                   DateTime?                         @map("applied_at")
+  applicationError            String?                           @map("application_error")
+  modifyPayload               Json?                             @map("modify_payload")
+  idempotencyKey              String                            @unique @map("idempotency_key")
+  membershipVersionAtDecision Int                               @map("membership_version_at_decision")
+  createdAt                   DateTime                          @default(now()) @map("created_at")
+
+  item       AccessReviewItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  campaign   AccessReviewCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewer   User                 @relation("AccessReviewDecisions", fields: [reviewerUserId], references: [id], onDelete: Restrict)
+
+  @@index([campaignId])
+  @@index([organizationId])
+  @@index([itemId])
+  @@map("access_review_decisions")
 }
 
 // ------------------------------------------------
