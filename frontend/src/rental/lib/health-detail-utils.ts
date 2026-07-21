@@ -1,5 +1,10 @@
 import type { RentalHealthModule, RentalHealthState, VehicleHealthResponse } from '../../lib/api';
 import type { StatusTone } from '../../components/patterns';
+import {
+  healthUnavailableMessage,
+  isHealthPipelineDegraded,
+  isRentalBlockedConfirmed,
+} from './rental-health-availability';
 import { RENTAL_HEALTH_MODULE_LABELS, collectRentalHealthReasons } from '../rental-health-ui';
 import {
   formatRelativeTime,
@@ -112,7 +117,10 @@ export function evidenceLabel(mod: RentalHealthModule): string {
 
 export function buildStatusExplanation(health: VehicleHealthResponse | null | undefined): string {
   if (!health) return 'Health status unavailable — SynqDrive cannot assess this vehicle right now.';
-  if (health.rental_blocked && health.blocking_reasons.length > 0) {
+  if (isHealthPipelineDegraded(health)) {
+    return `${healthUnavailableMessage('en')}. Rental clearance is not verified.`;
+  }
+  if (isRentalBlockedConfirmed(health) && health.blocking_reasons.length > 0) {
     return `Blocked because ${health.blocking_reasons[0].replace(/\.$/, '')}.`;
   }
   const reasons = collectRentalHealthReasons(health);
@@ -148,7 +156,11 @@ export function buildRecommendedActions(
 ): string[] {
   if (!health) return ['Retry loading health data or check vehicle telemetry connection.'];
   const actions: string[] = [];
-  if (health.rental_blocked) {
+  if (isHealthPipelineDegraded(health)) {
+    actions.push('Wait for health data to load or retry before releasing the vehicle for rental.');
+    return actions;
+  }
+  if (isRentalBlockedConfirmed(health)) {
     actions.push('Resolve blocking items before releasing the vehicle for rental.');
     for (const reason of health.blocking_reasons.slice(0, 3)) {
       actions.push(`Address: ${reason}`);

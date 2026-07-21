@@ -21,6 +21,7 @@ import type { VehicleData } from '../data/vehicles';
 import type { Vendor } from '../../lib/api';
 import type { ServiceCenterNavState } from '../lib/service-center-navigation';
 import { useMemo } from 'react';
+import { FleetHealthServiceRefreshProvider, useFleetHealthServiceRefresh } from './fleet-health-service/FleetHealthServiceRefreshContext';
 
 export type { FleetTab, FleetTabInput, FleetHealthServiceNavState };
 
@@ -62,7 +63,7 @@ export function FleetHubView({
   onOpenServiceCenter,
 }: FleetHubViewProps) {
   const { t, locale } = useLanguage();
-  const { healthMap, healthLoading, reloadHealth } = useFleetVehicles();
+  const { healthMap } = useFleetVehicles();
 
   const activeTab = normalizeFleetTab(activeTabInput).tab;
 
@@ -121,24 +122,95 @@ export function FleetHubView({
     activeTab === 'condition-service' &&
     (healthServiceNav.tab === 'vehicles' || healthServiceNav.tab === 'overview');
 
-  const healthHeaderActions = showHealthRefresh ? (
+  return (
+    <FleetHealthServiceRefreshProvider enabled={activeTab === 'condition-service'}>
+      <FleetHubViewBody
+        activeTab={activeTab}
+        tabBar={tabBar}
+        showHealthRefresh={showHealthRefresh}
+        lastHealthUpdatedLabel={lastHealthUpdatedLabel}
+        onVehicleSelect={onVehicleSelect}
+        healthServiceSubTab={healthServiceSubTab}
+        onHealthServiceSubTabChange={onHealthServiceSubTabChange}
+        onDrillDown={onDrillDown}
+        onOpenVendorDetail={onOpenVendorDetail}
+        onOpenGlobalTasks={onOpenGlobalTasks}
+        onCreateTask={onCreateTask}
+        onOpenVehicle={onOpenVehicle}
+        serviceCenterNavigation={serviceCenterNavigation}
+        onServiceCenterNavigationConsumed={onServiceCenterNavigationConsumed}
+        onOpenServiceCenter={onOpenServiceCenter}
+      />
+    </FleetHealthServiceRefreshProvider>
+  );
+}
+
+function FleetHubRefreshButton({
+  showHealthRefresh,
+  lastHealthUpdatedLabel,
+}: {
+  showHealthRefresh: boolean;
+  lastHealthUpdatedLabel: string | null;
+}) {
+  const { t, locale } = useLanguage();
+  const { reloadAll, refreshing } = useFleetHealthServiceRefresh();
+
+  if (!showHealthRefresh) return null;
+
+  return (
     <div className="flex flex-col items-end gap-1">
       <Button
         type="button"
         variant="neutral"
         size="sm"
-        disabled={healthLoading}
-        onClick={() => reloadHealth()}
+        disabled={refreshing}
+        onClick={() => void reloadAll()}
         className="hidden sm:inline-flex"
       >
-        <RefreshCw className={`h-3.5 w-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
+        <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
         {locale === 'de' ? 'Aktualisieren' : 'Refresh'}
       </Button>
       {lastHealthUpdatedLabel ? (
         <span className="text-[10px] text-muted-foreground">{lastHealthUpdatedLabel}</span>
       ) : null}
     </div>
-  ) : null;
+  );
+}
+
+function FleetHubViewBody({
+  activeTab,
+  tabBar,
+  showHealthRefresh,
+  lastHealthUpdatedLabel,
+  onVehicleSelect,
+  healthServiceSubTab,
+  onHealthServiceSubTabChange,
+  onDrillDown,
+  onOpenVendorDetail,
+  onOpenGlobalTasks,
+  onCreateTask,
+  onOpenVehicle,
+  serviceCenterNavigation,
+  onServiceCenterNavigationConsumed,
+  onOpenServiceCenter,
+}: {
+  activeTab: FleetTab;
+  tabBar: React.ReactNode;
+  showHealthRefresh: boolean;
+  lastHealthUpdatedLabel: string | null;
+  onVehicleSelect?: (vehicle: VehicleData) => void;
+  healthServiceSubTab: FleetHealthServiceTab;
+  onHealthServiceSubTabChange: (tab: FleetHealthServiceTab) => void;
+  onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
+  onOpenVendorDetail?: (vendor: Vendor) => void;
+  onOpenGlobalTasks?: (taskId: string) => void;
+  onCreateTask?: () => void;
+  onOpenVehicle?: (vehicleId: string) => void;
+  serviceCenterNavigation?: ServiceCenterNavState | null;
+  onServiceCenterNavigationConsumed?: () => void;
+  onOpenServiceCenter?: (nav?: Partial<ServiceCenterNavState>) => void;
+}) {
+  const { t } = useLanguage();
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5">
@@ -157,7 +229,10 @@ export function FleetHubView({
         </div>
 
         <div className="hidden min-h-8 items-start justify-end sm:flex lg:justify-self-end">
-          {healthHeaderActions}
+          <FleetHubRefreshButton
+            showHealthRefresh={showHealthRefresh}
+            lastHealthUpdatedLabel={lastHealthUpdatedLabel}
+          />
         </div>
       </header>
 

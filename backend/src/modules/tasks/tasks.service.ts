@@ -65,6 +65,7 @@ export interface TaskLinks {
   invoiceId?: string | null;
   assignedUserId?: string | null;
   serviceCaseId?: string | null;
+  stationId?: string | null;
 }
 
 export interface CreateManualTaskInput extends TaskLinks {
@@ -356,6 +357,17 @@ export class TasksService {
     }
   }
 
+  private resolveTaskStationId(input: {
+    stationId?: string | null;
+    metadata?: Prisma.InputJsonValue;
+  }): string | undefined {
+    if (input.stationId?.trim()) return input.stationId.trim();
+    const meta = input.metadata;
+    if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return undefined;
+    const stationId = (meta as Record<string, unknown>).stationId;
+    return typeof stationId === 'string' && stationId.trim() ? stationId.trim() : undefined;
+  }
+
   private async assertLinksBelongToOrg(orgId: string, links: TaskLinks): Promise<void> {
     if (links.assignedUserId) {
       await this.assertOrgMember(orgId, links.assignedUserId);
@@ -368,6 +380,7 @@ export class TasksService {
       [links.alertId, () => this.prisma.dashboardInsight.findFirst({ where: { id: links.alertId!, organizationId: orgId }, select: { id: true } }), 'Alert'],
       [links.fineId, () => this.prisma.fine.findFirst({ where: { id: links.fineId!, organizationId: orgId }, select: { id: true } }), 'Fine'],
       [links.invoiceId, () => this.prisma.orgInvoice.findFirst({ where: { id: links.invoiceId!, organizationId: orgId }, select: { id: true } }), 'Invoice'],
+      [links.stationId, () => this.prisma.station.findFirst({ where: { id: links.stationId!, organizationId: orgId }, select: { id: true } }), 'Station'],
     ];
     for (const [id, query, label] of checks) {
       if (!id) continue;
@@ -1076,7 +1089,8 @@ export class TasksService {
     if (!input.title?.trim()) throw new BadRequestException('Title is required');
     this.assertManualTaskTiming(input);
     this.assertManualTaskDuration(input.estimatedDurationMinutes ?? undefined);
-    await this.assertLinksBelongToOrg(orgId, input);
+    const stationId = this.resolveTaskStationId(input);
+    await this.assertLinksBelongToOrg(orgId, { ...input, stationId });
 
     const dedupKey = this.resolveManualTaskDedupKey(input);
     if (dedupKey) {
@@ -1337,6 +1351,11 @@ export class TasksService {
       orgId = t.organizationId;
     }
     if (data.status) {
+      if (data.status === 'DONE' || data.status === 'CANCELLED') {
+        throw new BadRequestException(
+          'Terminal status changes must use the dedicated complete or cancel endpoints',
+        );
+      }
       await this.changeStatus(orgId, id, data.status);
     }
     const rest: UpdateTaskInput = {};

@@ -5,7 +5,7 @@ import {
 } from './battery-v2-snapshot-observation.producer';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
-import { isDeterministicBatteryV2JobId } from './battery-v2-job-queue.util';
+import { isDeterministicBatteryV2JobId, buildBatteryV2JobId } from './battery-v2-job-queue.util';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
@@ -112,9 +112,9 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       lvBatteryObservedAt: receivedAt,
     });
 
-    expect(jobId).toContain('battery-v2:');
     expect(queueAdd).toHaveBeenCalledTimes(1);
     const [jobType, payload, opts] = queueAdd.mock.calls[0];
+    expect(jobId).toBe(buildBatteryV2JobId(payload.idempotencyKey));
     expect(jobType).toBe('BATTERY_OBSERVATION_CLASSIFY');
     expect(payload.organizationId).toBe(ORG);
     expect(payload.snapshotContext?.evSoc).toBe(72);
@@ -349,7 +349,7 @@ describe('BatteryV2TripStartProducer', () => {
     });
 
     const expectedKey = `battery-start-proxy:${TRIP}:1.0.0`;
-    expect(first).toBe(`battery-v2:${expectedKey}`);
+    expect(first).toBe(buildBatteryV2JobId(expectedKey));
     expect(second).toBe(first);
     expect(queueAdd).toHaveBeenCalledTimes(1);
     expect(queueAdd.mock.calls[0][2].delay).toBeGreaterThan(0);

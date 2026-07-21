@@ -1,20 +1,39 @@
 import { JobsOptions } from 'bullmq';
-import { createHash } from 'crypto';
+import {
+  BULLMQ_JOB_ID_DEFAULT_MAX_LENGTH,
+  isBullMqCompatibleJobId,
+  sanitizeBullMqJobId,
+} from '@shared/queue/bullmq-job-id.sanitizer';
 import type { BatteryV2JobType } from './battery-v2-job.types';
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
 
-/** BullMQ custom job ids must not contain ':' — idempotency keys use ':' as a delimiter. */
-const JOB_ID_PREFIX = 'battery-v2-';
+export const BATTERY_V2_JOB_ID_NAMESPACE = 'battery-v2';
 
-/** BullMQ job id — deterministic SHA-256 digest of the canonical idempotency key. */
+/** BullMQ job id derived from the canonical idempotency key (colon-safe, deterministic). */
 export function buildBatteryV2JobId(idempotencyKey: string): string {
-  const hash = createHash('sha256').update(idempotencyKey).digest('hex').slice(0, 40);
-  return `${JOB_ID_PREFIX}${hash}`;
+  return sanitizeBullMqJobId({
+    namespace: BATTERY_V2_JOB_ID_NAMESPACE,
+    key: idempotencyKey,
+    maxLength: BULLMQ_JOB_ID_DEFAULT_MAX_LENGTH,
+  });
 }
 
 /** Reverse lookup not required — payload carries canonical idempotencyKey. */
 export function isDeterministicBatteryV2JobId(idempotencyKey: string, jobId: string): boolean {
   return jobId === buildBatteryV2JobId(idempotencyKey);
+}
+
+export function isBatteryV2BullMqJobId(jobId: string): boolean {
+  return isBullMqCompatibleJobId(jobId) && jobId.startsWith(`${BATTERY_V2_JOB_ID_NAMESPACE}_`);
+}
+
+/** Throws before BullMQ when a non-canonical or colon-bearing job id would be enqueued. */
+export function assertBatteryV2BullMqJobId(jobId: string): void {
+  if (!isBatteryV2BullMqJobId(jobId)) {
+    throw new Error(
+      `Battery V2 job id must be built via buildBatteryV2JobId (colon-free BullMQ id): ${jobId}`,
+    );
+  }
 }
 
 export function buildBatteryV2JobOptions(jobType: BatteryV2JobType): JobsOptions {

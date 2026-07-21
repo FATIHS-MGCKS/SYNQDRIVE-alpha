@@ -1,7 +1,11 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { RentalHealthService } from './rental-health.service';
-import type { VehicleHealth } from './rental-health.types';
+import {
+  buildDegradedVehicleHealth,
+  RENTAL_HEALTH_DEGRADATION_CODES,
+  type VehicleHealth,
+} from './rental-health.types';
 import { RentalHealthSummaryCacheService } from './rental-health-summary-cache.service';
 import { projectFleetHealthRow } from './rental-health-summary.projection';
 import type { FleetVehicleHealthRow } from './rental-health-summary.types';
@@ -102,34 +106,16 @@ export class RentalHealthSummaryService {
   private degradedVehicleHealth(
     orgId: string,
     vehicleId: string,
-    err: unknown,
-  ): VehicleHealth & { _error: string } {
-    return {
+    _err: unknown,
+  ): VehicleHealth {
+    return buildDegradedVehicleHealth({
       vehicle_id: vehicleId,
       organization_id: orgId,
-      overall_state: 'unknown',
-      rental_blocked: false,
-      blocking_reasons: [],
-      modules: {
-        battery: stubUnknown(),
-        tires: stubUnknown(),
-        brakes: stubUnknown(),
-        error_codes: stubUnknown(),
-        service_compliance: stubUnknown(),
-        complaints: stubUnknown(),
-        vehicle_alerts: stubUnknown(),
+      availability: 'unavailable',
+      degradation: {
+        code: RENTAL_HEALTH_DEGRADATION_CODES.PIPELINE_UNAVAILABLE,
+        message: 'Gesundheitsdaten konnten nicht geladen werden',
       },
-      generated_at: new Date().toISOString(),
-      _error: err instanceof Error ? err.message : String(err),
-    };
+    });
   }
-}
-
-function stubUnknown() {
-  return {
-    state: 'unknown' as const,
-    reason: 'Daten nicht verfügbar',
-    last_updated_at: null,
-    data_stale: true,
-  };
 }

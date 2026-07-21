@@ -6,6 +6,11 @@ import type {
   RentalHealthState,
   VehicleHealthResponse,
 } from '../../../lib/api';
+import {
+  healthUnavailableMessage,
+  isHealthPipelineDegraded,
+  isRentalBlockedConfirmed,
+} from '../../lib/rental-health-availability';
 
 /**
  * V4.6.76 Rental Health V1 — compact badge.
@@ -62,10 +67,22 @@ export function RentalHealthBadge({
   const sz = size === 'sm' ? 'text-[10px] px-1.5 py-0.5 gap-1' : 'text-xs px-2 py-1 gap-1.5';
   const iconSz = size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5';
 
+  if (isHealthPipelineDegraded(health)) {
+    return (
+      <span
+        title={health.degradation?.message ?? healthUnavailableMessage('de')}
+        className={`inline-flex items-center rounded-md border border-current/15 font-semibold sq-tone-nodata ${sz} ${className}`}
+      >
+        <HelpCircle className={iconSz} />
+        Unevaluable
+      </span>
+    );
+  }
+
   // Blocked takes visual priority — a vehicle that is rental-blocked is
   // never rendered as "just warning" even if one contributing module is
   // only at warning level (should not happen in practice, but defensive).
-  if (health.rental_blocked && showBlockingLabel) {
+  if (isRentalBlockedConfirmed(health) && showBlockingLabel) {
     return (
       <span
         title={health.blocking_reasons.join(' · ')}
@@ -82,7 +99,7 @@ export function RentalHealthBadge({
   return (
     <span
       title={
-        health.rental_blocked
+        isRentalBlockedConfirmed(health)
           ? `Nicht vermietbar: ${health.blocking_reasons.join(' · ')}`
           : visuals.label
       }

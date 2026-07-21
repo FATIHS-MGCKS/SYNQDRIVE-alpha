@@ -1,33 +1,25 @@
 import { useMemo } from 'react';
 import { useFleetVehicles } from '../../FleetContext';
-import { useRentalOrg } from '../../RentalContext';
-import { useServiceCenterData } from '../service-center/useServiceCenterData';
-import { useFleetHealthServiceCases } from './useFleetHealthServiceCases';
 import {
   buildFleetHealthServiceViewModel,
   type FleetHealthServiceViewModel,
 } from './fleet-health-service.view-model';
+import { useFleetHealthServiceRefresh } from './FleetHealthServiceRefreshContext';
 
 /**
  * Combined read model for Fleet → Zustand & Service.
  *
  * Health truth: FleetContext.healthMap (RentalHealthV1).
- * Service truth: tasks + vendors + service cases (org-scoped lists).
+ * Service truth: tasks summary/list + vendors + service cases via refresh provider.
  */
 export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & {
-  allTasks: ReturnType<typeof useServiceCenterData>['allTasks'];
-  vendors: ReturnType<typeof useServiceCenterData>['vendors'];
-  reloadService: () => void;
+  allTasks: ReturnType<typeof useFleetHealthServiceRefresh>['service']['allTasks'];
+  vendors: ReturnType<typeof useFleetHealthServiceRefresh>['service']['vendors']['data'];
+  reloadAll: ReturnType<typeof useFleetHealthServiceRefresh>['reloadAll'];
+  refreshing: boolean;
 } {
-  const { orgId } = useRentalOrg();
   const { fleetVehicles, healthMap, healthLoading, healthError } = useFleetVehicles();
-  const service = useServiceCenterData(orgId);
-  const serviceCasesState = useFleetHealthServiceCases(orgId);
-
-  const reloadService = () => {
-    void service.reload();
-    void serviceCasesState.reload();
-  };
+  const { service, reloadAll, refreshing } = useFleetHealthServiceRefresh();
 
   const vm = useMemo(
     () =>
@@ -38,13 +30,17 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
         healthError,
         taskSummary: service.summary,
         taskList: service.allTasks,
-        vendors: service.vendors,
-        serviceLoading: service.loading || serviceCasesState.loading,
-        serviceError: service.error ?? serviceCasesState.error,
-        serviceLoaded: service.summary != null || service.allTasks.length > 0,
-        serviceCases: serviceCasesState.serviceCases,
-        serviceCasesError: serviceCasesState.error,
-        serviceCasesLoading: serviceCasesState.loading,
+        vendors: service.vendors.data,
+        serviceLoading: service.loading,
+        serviceError: service.error,
+        serviceLoaded:
+          service.taskSummary.status === 'ready' ||
+          service.taskSummary.status === 'stale' ||
+          service.tasks.status === 'ready' ||
+          service.tasks.status === 'stale',
+        serviceCases: service.serviceCases.data,
+        serviceCasesError: service.serviceCases.error,
+        serviceCasesLoading: service.serviceCases.status === 'loading',
       }),
     [
       fleetVehicles,
@@ -53,19 +49,22 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & 
       healthError,
       service.summary,
       service.allTasks,
-      service.vendors,
+      service.vendors.data,
       service.loading,
       service.error,
-      serviceCasesState.serviceCases,
-      serviceCasesState.loading,
-      serviceCasesState.error,
+      service.taskSummary.status,
+      service.tasks.status,
+      service.serviceCases.data,
+      service.serviceCases.error,
+      service.serviceCases.status,
     ],
   );
 
   return {
     ...vm,
     allTasks: service.allTasks,
-    vendors: service.vendors,
-    reloadService,
+    vendors: service.vendors.data,
+    reloadAll,
+    refreshing,
   };
 }

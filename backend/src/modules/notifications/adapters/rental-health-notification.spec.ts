@@ -28,6 +28,7 @@ function stubHealth(
     vehicle_id: VEHICLE_ID,
     organization_id: 'org-fs',
     overall_state: 'warning',
+    availability: 'ready',
     rental_blocked: false,
     blocking_reasons: [],
     generated_at: '2026-07-11T10:00:00.000Z',

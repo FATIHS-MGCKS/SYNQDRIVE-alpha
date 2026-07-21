@@ -3,6 +3,9 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
+import {
+  formatBullMqJobIdLogContext,
+} from '@shared/queue/bullmq-job-id.sanitizer';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import {
@@ -15,10 +18,19 @@ import {
   validateBatteryV2JobPayload,
 } from './battery-v2-job.validation';
 import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency.validation';
-import { buildBatteryV2JobId, buildBatteryV2JobOptions } from './battery-v2-job-queue.util';
+import { buildBatteryV2JobId, buildBatteryV2JobOptions, assertBatteryV2BullMqJobId } from './battery-v2-job-queue.util';
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
-import { recordBatteryJob } from '../observability/battery-v2-prometheus.metrics';
+import {
+  recordBatteryJob,
+  recordBatteryV2JobEnqueue,
+  recordBatteryV2JobEnqueueSuppressed,
+} from '../observability/battery-v2-prometheus.metrics';
+import {
+  fingerprintBatteryV2IdempotencyKey,
+  fingerprintBatteryV2JobId,
+  formatBatteryV2PipelineLog,
+} from '../observability/battery-v2-pipeline-observability.util';
 
 export type BatteryV2JobEnqueueInput<T extends BatteryV2JobType> = Omit<
   BatteryV2JobPayload<T>,
@@ -53,6 +65,16 @@ export class BatteryV2JobProducerService {
     options: BatteryV2JobEnqueueOptions = {},
   ): Promise<string | null> {
     if (!canEnqueueQueue(this.logger, 'battery-v2')) {
+      this.recordEnqueueSuppressed(jobType, 'workers_disabled');
+      this.logger.debug(
+        formatBatteryV2PipelineLog({
+          component: 'enqueue',
+          event: 'enqueue_skipped',
+          status: 'suppressed',
+          jobType,
+          suppressionReason: 'workers_disabled',
+        }),
+      );
       return null;
     }
 
@@ -69,13 +91,25 @@ export class BatteryV2JobProducerService {
     validateBatteryV2JobIdempotencyKey(jobType, payload.idempotencyKey);
 
     if (await this.deadLetters.isDeadLetter(jobType, payload.idempotencyKey)) {
+      this.recordEnqueueSuppressed(jobType, 'dead_letter');
       this.logger.debug(
-        `Battery V2 enqueue skipped (dead letter): ${jobType} key=${payload.idempotencyKey}`,
+        formatBatteryV2PipelineLog({
+          component: 'enqueue',
+          event: 'enqueue_skipped',
+          status: 'suppressed',
+          jobType,
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+          correlationId: payload.correlationId,
+          suppressionReason: 'dead_letter',
+        }),
       );
       return null;
     }
 
     const jobId = buildBatteryV2JobId(payload.idempotencyKey);
+    assertBatteryV2BullMqJobId(jobId);
     return this.addIdempotent(jobType, payload, jobId, {
       ...buildBatteryV2JobOptions(jobType),
       delay: options.delayMs ?? 0,
@@ -97,7 +131,21 @@ export class BatteryV2JobProducerService {
         state === 'active' ||
         state === 'prioritized'
       ) {
-        this.logger.debug(`Battery V2 job already queued: ${jobId} (${state})`);
+        this.recordEnqueueSuppressed(jobType, 'duplicate');
+        this.logger.debug(
+          formatBatteryV2PipelineLog({
+            component: 'enqueue',
+            event: 'enqueue_duplicate_in_queue',
+            status: 'suppressed',
+            jobType,
+            organizationId: payload.organizationId,
+            vehicleId: payload.vehicleId,
+            keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+            jobIdFp: fingerprintBatteryV2JobId(jobId),
+            correlationId: payload.correlationId,
+            suppressionReason: 'duplicate',
+          }),
+        );
         return jobId;
       }
       if (state === 'completed' || state === 'failed') {
@@ -106,20 +154,78 @@ export class BatteryV2JobProducerService {
     }
 
     try {
+      assertBatteryV2BullMqJobId(jobId);
       await this.queue.add(jobType, payload, { ...options, jobId });
       if (this.metrics) {
         recordBatteryJob(this.metrics, { jobType, outcome: 'enqueued' });
+        recordBatteryV2JobEnqueue(this.metrics, { jobType, outcome: 'success' });
       }
+      this.logger.debug(
+        formatBatteryV2PipelineLog({
+          component: 'enqueue',
+          event: 'enqueue_success',
+          status: 'completed',
+          jobType,
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+          jobIdFp: fingerprintBatteryV2JobId(jobId),
+          correlationId: payload.correlationId,
+        }),
+      );
       return jobId;
     } catch (err) {
       if (isDuplicateBatteryV2JobError(err)) {
-        this.logger.debug(`Battery V2 duplicate job suppressed: ${jobId}`);
+        this.recordEnqueueSuppressed(jobType, 'duplicate');
+        this.logger.debug(
+          formatBatteryV2PipelineLog({
+            component: 'enqueue',
+            event: 'enqueue_duplicate_race',
+            status: 'suppressed',
+            jobType,
+            organizationId: payload.organizationId,
+            vehicleId: payload.vehicleId,
+            keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+            jobIdFp: fingerprintBatteryV2JobId(jobId),
+            correlationId: payload.correlationId,
+            suppressionReason: 'duplicate',
+          }),
+        );
         return jobId;
       }
+      if (this.metrics) {
+        recordBatteryV2JobEnqueue(this.metrics, { jobType, outcome: 'failed' });
+      }
       this.logger.error(
-        `Battery V2 enqueue failed for ${jobType} jobId=${jobId}: ${(err as Error).message}`,
+        formatBatteryV2PipelineLog({
+          component: 'enqueue',
+          event: 'enqueue_failed',
+          status: 'failed',
+          jobType,
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+          jobIdFp: fingerprintBatteryV2JobId(jobId),
+          correlationId: payload.correlationId,
+          errorCode: 'ENQUEUE_FAILED',
+        }),
+      );
+      this.logger.error(
+        `Battery V2 enqueue failed for ${jobType} ${formatBullMqJobIdLogContext({
+          namespace: 'battery-v2',
+          key: payload.idempotencyKey,
+          jobId,
+        })}: ${(err as Error).message}`,
       );
       throw err;
     }
+  }
+
+  private recordEnqueueSuppressed(
+    jobType: BatteryV2JobType,
+    reason: 'dead_letter' | 'duplicate' | 'workers_disabled',
+  ): void {
+    if (!this.metrics) return;
+    recordBatteryV2JobEnqueueSuppressed(this.metrics, { jobType, reason });
   }
 }

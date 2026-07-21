@@ -251,7 +251,7 @@ export function matchOpenTaskForHealthSignal(
     if (matched) return matched;
   }
 
-  if (!health?.rental_blocked) return null;
+  if (health?.rental_blocked !== true) return null;
 
   for (const task of openTasks) {
     if (task.vehicleId !== vehicleId) continue;
@@ -273,7 +273,7 @@ export function deriveRecommendedAction(
 ): FleetHealthServiceRecommendedAction {
   const display = buildFleetHealthDisplay(health);
   if (display.band === 'good') return 'no_action';
-  if (display.band === 'limited') return 'review_vehicle';
+  if (display.band === 'unevaluable' || display.band === 'limited') return 'review_vehicle';
   if (existingTask) return 'open_task';
   if (display.band === 'blocked' || display.band === 'critical' || display.band === 'review') {
     return 'create_task';
@@ -323,9 +323,11 @@ function buildHealthGroups(
     else if (group === 'limited_data') limitedDataVehicles.push(item);
     else healthyVehicles.push(item);
 
-    if (health?.rental_blocked) blockedVehicles.push(item);
-    if (health?.overall_state === 'warning') warningVehicles.push(item);
-    if (health?.overall_state === 'critical') criticalVehicles.push(item);
+    if (health?.rental_blocked === true) blockedVehicles.push(item);
+    if (health && health.availability === 'ready') {
+      if (health.overall_state === 'warning') warningVehicles.push(item);
+      if (health.overall_state === 'critical') criticalVehicles.push(item);
+    }
   }
 
   return {

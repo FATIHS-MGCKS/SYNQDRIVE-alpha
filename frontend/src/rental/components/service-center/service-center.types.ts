@@ -1,5 +1,8 @@
-import type { ApiTask, ApiTaskSummary } from '../../../lib/api';
-import type { Vendor } from '../../../lib/api';
+import type { ApiServiceCase, ApiTask, ApiTaskSummary, Vendor } from '../../../lib/api';
+import type {
+  ServiceCenterSource,
+  ServiceCenterSourceStatus,
+} from './service-center-source-state';
 
 export type ServiceCenterTab = 'overview' | 'tasks' | 'schedule' | 'vendors' | 'history';
 
@@ -29,13 +32,23 @@ export interface ServiceKpiSnapshot {
 }
 
 export interface ServiceCenterData {
+  taskSummary: ServiceCenterSource<ApiTaskSummary | null>;
+  tasks: ServiceCenterSource<ApiTask[]>;
+  vendors: ServiceCenterSource<Vendor[]>;
+  serviceCases: ServiceCenterSource<ApiServiceCase[]>;
+  /** True when at least one source is usable and another settled source failed. */
+  partialData: boolean;
+  /** Legacy flat accessors kept for existing UI during migration. */
   summary: ApiTaskSummary | null;
   allTasks: ApiTask[];
   activeTasks: ApiTask[];
   historyTasks: ApiTask[];
-  vendors: Vendor[];
+  vendorsError: string | null;
+  vendorsStatus: ServiceCenterSourceStatus;
+  vendorsFetchedAt: string | null;
   kpis: ServiceKpiSnapshot;
   loading: boolean;
   error: string | null;
-  reload: () => void;
+  reload: () => Promise<void>;
+  reloadVendors: () => Promise<void>;
 }

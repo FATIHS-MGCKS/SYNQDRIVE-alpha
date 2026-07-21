@@ -216,11 +216,25 @@ function localizedHealthBadge(label: string, locale: 'de' | 'en'): string {
     'Needs review': 'Technisch prüfen',
     Healthy: 'Technisch unauffällig',
     'Limited data': 'Nicht bewertbar',
+    'Not fully evaluable': 'Nicht bewertbar',
     Blocked: 'Mietblockade',
     'Can rent': 'Technisch unauffällig',
     Review: 'Technisch prüfen',
   };
   return map[label] ?? label;
+}
+
+function localizedPrimaryIssue(
+  issue: string | null,
+  band: ReturnType<typeof buildFleetHealthDisplay>['band'],
+  locale: 'de' | 'en',
+): string | null {
+  if (band === 'unevaluable') {
+    return locale === 'de'
+      ? 'Technischer Status nicht vollständig verfügbar'
+      : 'Technical status not fully available';
+  }
+  return issue;
 }
 
 const MAX_VISIBLE_ISSUE_CHIPS = 3;
@@ -966,17 +980,22 @@ function OperatorVehicleRow({
   const visibleChips = display.secondaryIssues.slice(0, MAX_VISIBLE_ISSUE_CHIPS);
   const hiddenChipCount = display.secondaryIssues.length - visibleChips.length;
   const isAction = display.band === 'blocked' || display.band === 'critical';
+  const isUnevaluable = display.band === 'unevaluable';
 
   // Subtle full-row tint only for the most urgent band — never a left accent bar.
   const tint = isAction
     ? 'bg-[color:color-mix(in_srgb,var(--status-critical)_4%,transparent)]'
-    : '';
+    : isUnevaluable
+      ? 'bg-muted/20'
+      : '';
 
   const primaryTextTone = isAction
     ? 'text-[color:var(--status-critical)]'
-    : display.band === 'review'
-      ? 'text-foreground'
-      : 'text-muted-foreground';
+    : isUnevaluable
+      ? 'text-muted-foreground'
+      : display.band === 'review'
+        ? 'text-foreground'
+        : 'text-muted-foreground';
 
   const showClearSummary =
     display.secondaryIssues.length === 0 && !display.primaryIssue && display.clearModuleCount > 0;
@@ -1036,11 +1055,19 @@ function OperatorVehicleRow({
                 </span>
               </>
             )}
+            {display.rentalBlockedUnverified && !display.rentalBlocked && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="font-medium text-muted-foreground">
+                  {uiLocale === 'de' ? 'Mietfreigabe nicht verifiziert' : 'Rental clearance not verified'}
+                </span>
+              </>
+            )}
           </div>
 
           {display.primaryIssue && (
             <p className={cn('line-clamp-1 text-[11px] font-medium leading-snug text-pretty', primaryTextTone)}>
-              {display.primaryIssue}
+              {localizedPrimaryIssue(display.primaryIssue, display.band, uiLocale)}
             </p>
           )}
         </button>

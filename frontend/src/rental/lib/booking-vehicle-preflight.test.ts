@@ -73,6 +73,19 @@ describe('booking-vehicle-preflight', () => {
     expect(result.blockingReason).toContain('TÜV');
   });
 
+  it('blocks vehicles with unverified rental gate', () => {
+    const v = baseVehicle();
+    const h = health({
+      availability: 'partial',
+      rental_blocked: null,
+      overall_state: 'good',
+    });
+    const result = resolveBookingVehiclePreflight(v, h, true, false);
+    expect(result.isSelectable).toBe(false);
+    expect(result.hardBlockReason).toBe('rental_blocked');
+    expect(result.blockingReason).toContain('nicht verifiziert');
+  });
+
   it('allows warning health without rental_blocked', () => {
     const v = baseVehicle();
     const h = health({ overall_state: 'warning', rental_blocked: false });

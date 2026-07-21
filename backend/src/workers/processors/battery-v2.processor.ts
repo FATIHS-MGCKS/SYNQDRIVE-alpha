@@ -10,6 +10,11 @@ import { BatteryV2JobDeadLetterService } from '@modules/vehicle-intelligence/bat
 import { BatteryV2JobObservabilityService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-observability.service';
 import { classifyBatteryV2JobError } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-error.util';
 import {
+  fingerprintBatteryV2IdempotencyKey,
+  fingerprintBatteryV2JobId,
+  formatBatteryV2PipelineLog,
+} from '@modules/vehicle-intelligence/battery-health/observability/battery-v2-pipeline-observability.util';
+import {
   isBatteryV2JobType,
   validateBatteryV2JobPayload,
   BatteryV2JobValidationError,
@@ -56,7 +61,17 @@ export class BatteryV2Processor extends WorkerHost {
 
       if (result.skipped) {
         this.logger.debug(
-          `Battery V2 job skipped (already completed): ${jobType} key=${payload.idempotencyKey}`,
+          formatBatteryV2PipelineLog({
+            component: 'processor',
+            event: 'job_skipped',
+            status: 'skipped',
+            jobType,
+            organizationId: payload.organizationId,
+            vehicleId: payload.vehicleId,
+            keyFp: fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey),
+            jobIdFp: job.id ? fingerprintBatteryV2JobId(String(job.id)) : undefined,
+            correlationId: payload.correlationId,
+          }),
         );
       } else {
         this.observability.recordCompleted(jobType);
@@ -122,8 +137,23 @@ export class BatteryV2Processor extends WorkerHost {
   onFailed(job: Job<BatteryV2JobPayload> | undefined, err: Error): void {
     if (!job || !isBatteryV2JobType(job.name)) return;
     const classified = classifyBatteryV2JobError(err);
+    const payload = job.data;
     this.logger.error(
-      `Battery V2 worker failed job=${job.name} vehicle=${job.data?.vehicleId} attempts=${job.attemptsMade} code=${classified.code}`,
+      formatBatteryV2PipelineLog({
+        component: 'processor',
+        event: 'worker_failed',
+        status: 'failed',
+        jobType: job.name,
+        organizationId: payload?.organizationId,
+        vehicleId: payload?.vehicleId,
+        keyFp: payload?.idempotencyKey
+          ? fingerprintBatteryV2IdempotencyKey(payload.idempotencyKey)
+          : undefined,
+        jobIdFp: job.id ? fingerprintBatteryV2JobId(String(job.id)) : undefined,
+        correlationId: payload?.correlationId,
+        errorCode: classified.code,
+        attempt: job.attemptsMade,
+      }),
     );
   }
 }

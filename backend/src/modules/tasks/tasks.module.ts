@@ -13,6 +13,7 @@ import { TaskAutomationRuleOverrideService } from './automation/task-automation-
 import { TaskAutomationAdminService } from './automation/task-automation-admin.service';
 import { TaskAutomationAdminController } from './automation/task-automation-admin.controller';
 import { TaskAutomationSimulationService } from './automation/task-automation-simulation.service';
+import { TaskPermissionService } from './task-permission.service';
 
 @Module({
   imports: [ActivityLogModule, TaskAutomationOutboxCoreModule],
@@ -28,6 +29,7 @@ import { TaskAutomationSimulationService } from './automation/task-automation-si
     TaskAutomationRuleOverrideService,
     TaskAutomationAdminService,
     TaskAutomationSimulationService,
+    TaskPermissionService,
   ],
   exports: [
     TasksService,

@@ -144,6 +144,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryPublicationsTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
+  readonly batteryV2PublicationAgeHours: Histogram<string>;
   readonly batteryCapabilitySignalsTotal: Counter<string>;
   readonly hvCapacityMethodConflictTotal: Counter<string>;
   readonly hvCapacityM2SessionCv: Histogram<string>;
@@ -151,6 +152,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryRetentionRowsDeletedTotal: Counter<string>;
   readonly batteryRetentionRowsAggregatedTotal: Counter<string>;
   readonly batteryMeasurementDuplicateSkipTotal: Counter<string>;
+  readonly batteryV2JobsEnqueueTotal: Counter<string>;
+  readonly batteryV2JobsEnqueueSuppressedTotal: Counter<string>;
+  readonly batteryV2ReconciliationEnqueuedTotal: Counter<string>;
+  readonly batteryV2PublicationCoverageTotal: Counter<string>;
 
   /** Fleet connectivity — low-cardinality labels only (Prompt 18). */
   readonly connectivityWebhookReceivedTotal: Counter<string>;
@@ -191,6 +196,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationQueueBacklog: Gauge<string>;
   readonly taskAutomationOutboxBacklog: Gauge<string>;
   readonly batteryV2DeadLetterBacklog: Gauge<string>;
+  readonly batteryV2VehiclesWithoutPublication: Gauge<string>;
   readonly batteryPostgresTableRows: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
@@ -981,6 +987,49 @@ export class TripMetricsService implements OnModuleInit {
     this.batteryV2DeadLetterBacklog = new Gauge({
       name: 'synqdrive_battery_v2_dead_letter_backlog',
       help: 'Battery V2 dead-letter rows awaiting operator review',
+      registers: [this.registry],
+    });
+
+    this.batteryV2VehiclesWithoutPublication = new Gauge({
+      name: 'synqdrive_battery_v2_vehicles_without_publication',
+      help: 'Fleet vehicles with LV battery features but no LV publication row',
+      labelNames: ['scope'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobsEnqueueTotal = new Counter({
+      name: 'synqdrive_battery_v2_jobs_enqueue_total',
+      help: 'Battery V2 BullMQ enqueue attempts by outcome',
+      labelNames: ['job_type', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobsEnqueueSuppressedTotal = new Counter({
+      name: 'synqdrive_battery_v2_jobs_enqueue_suppressed_total',
+      help: 'Battery V2 enqueue suppressions (dead letter, duplicate, workers disabled)',
+      labelNames: ['job_type', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2ReconciliationEnqueuedTotal = new Counter({
+      name: 'synqdrive_battery_v2_reconciliation_enqueued_total',
+      help: 'Jobs enqueued by Battery V2 reconciliation tick per category',
+      labelNames: ['category'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2PublicationCoverageTotal = new Counter({
+      name: 'synqdrive_battery_v2_publication_coverage_total',
+      help: 'Battery publication fleet coverage observations',
+      labelNames: ['scope', 'state'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2PublicationAgeHours = new Histogram({
+      name: 'synqdrive_battery_v2_publication_age_hours',
+      help: 'Age of LV publication evidence at publish time (bucketed histogram)',
+      labelNames: ['maturity'],
+      buckets: [1, 6, 24, 24 * 7, 24 * 30, 24 * 90],
       registers: [this.registry],
     });
 

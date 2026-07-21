@@ -31,7 +31,8 @@ function buildHealth(
   overrides: Partial<{
     vehicle_id: string;
     overall_state: RentalHealthState;
-    rental_blocked: boolean;
+    rental_blocked: boolean | null;
+    availability: VehicleHealthResponse['availability'];
     blocking_reasons: string[];
     modules: Partial<Record<ModuleKey, RentalHealthModule>>;
   }> = {},
@@ -49,6 +50,7 @@ function buildHealth(
     vehicle_id: overrides.vehicle_id ?? 'v1',
     organization_id: 'org1',
     overall_state: overrides.overall_state ?? 'good',
+    availability: overrides.availability ?? 'ready',
     rental_blocked: overrides.rental_blocked ?? false,
     blocking_reasons: overrides.blocking_reasons ?? [],
     modules: { ...baseModules, ...(overrides.modules ?? {}) },
@@ -156,6 +158,35 @@ describe('fleet-health-service view model', () => {
     const health = buildHealth({ overall_state: 'unknown' });
     const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, []);
     expect(item.recommendedAction).toBe('review_vehicle');
+  });
+
+  it('pipeline-degraded health → review_vehicle, not create_task', () => {
+    const health = buildHealth({
+      overall_state: 'critical',
+      availability: 'unavailable',
+      rental_blocked: null,
+    });
+    const item = buildFleetHealthServiceUiItem(vehicle('v1', 'B-XY 1'), health, []);
+    expect(item.recommendedAction).toBe('review_vehicle');
+    expect(item.rentalBlocked).toBe(false);
+    expect(item.primaryReason).toBe('Technical status not fully available');
+  });
+
+  it('does not match rental-block task when gate is unverified', () => {
+    const health = buildHealth({
+      rental_blocked: null,
+      availability: 'partial',
+      blocking_reasons: ['Should not match'],
+    });
+    const openTasks = [
+      task({
+        id: 't1',
+        vehicleId: 'v1',
+        status: 'OPEN',
+        blocksVehicleAvailability: true,
+      }),
+    ];
+    expect(matchOpenTaskForHealthSignal(openTasks, 'v1', health)).toBeNull();
   });
 
   it('overdue task count is correct', () => {

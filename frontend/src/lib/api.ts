@@ -258,7 +258,9 @@ export interface VehicleHealthResponse {
   vehicle_id: string;
   organization_id: string;
   overall_state: RentalHealthState;
-  rental_blocked: boolean;
+  availability?: 'ready' | 'partial' | 'unavailable';
+  /** `null` when pipeline coverage is incomplete — not a confirmed safe false. */
+  rental_blocked: boolean | null;
   blocking_reasons: string[];
   modules: {
     battery: RentalHealthModule;
@@ -274,6 +276,10 @@ export interface VehicleHealthResponse {
   cache_stale?: boolean;
   data_partial?: boolean;
   cached_at?: string | null;
+  degradation?: {
+    code: 'PIPELINE_UNAVAILABLE';
+    message: string;
+  };
 }
 
 export interface FleetRentalHealthQuery {

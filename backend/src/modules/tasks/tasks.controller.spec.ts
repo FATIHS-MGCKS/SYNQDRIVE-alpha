@@ -1,5 +1,6 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { TasksController } from './tasks.controller';
 
@@ -30,15 +31,24 @@ describe('TasksController', () => {
     getTasksForCustomer: jest.fn(),
   };
 
-  const controller = new TasksController(tasksService as any);
+  const taskPermissionService = {
+    assert: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const controller = new TasksController(
+    tasksService as any,
+    taskPermissionService as any,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('applies OrgScopingGuard and RolesGuard', () => {
+  it('applies OrgScopingGuard, RolesGuard and PermissionsGuard', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, TasksController);
-    expect(guards).toEqual(expect.arrayContaining([OrgScopingGuard, RolesGuard]));
+    expect(guards).toEqual(
+      expect.arrayContaining([OrgScopingGuard, RolesGuard, PermissionsGuard]),
+    );
   });
 
   it('delegates list to TasksService.listTasks with bucket filters', async () => {
@@ -72,10 +82,15 @@ describe('TasksController', () => {
     );
   });
 
-  it('delegates bulk actions', async () => {
+  it('delegates bulk actions after asserting cancel permission', async () => {
     tasksService.bulkTaskActions.mockResolvedValue({ succeeded: 1, failed: 0, results: [] });
     const req = { user } as any;
     await controller.bulkActions(orgId, req, { taskIds: ['t1'], action: 'cancel' } as any);
+    expect(taskPermissionService.assert).toHaveBeenCalledWith(
+      { id: user.id, platformRole: undefined, organizationId: undefined },
+      orgId,
+      'tasks.cancel',
+    );
     expect(tasksService.bulkTaskActions).toHaveBeenCalledWith(
       orgId,
       { taskIds: ['t1'], action: 'cancel' },

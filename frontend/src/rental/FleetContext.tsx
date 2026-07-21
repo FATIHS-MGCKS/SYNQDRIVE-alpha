@@ -40,7 +40,7 @@ interface FleetContextValue {
   healthMap: Map<string, VehicleHealthResponse>;
   healthLoading: boolean;
   healthError: string | null;
-  reloadHealth: () => void;
+  reloadHealth: () => Promise<void>;
 }
 
 const FleetCtx = createContext<FleetContextValue>({
@@ -51,7 +51,7 @@ const FleetCtx = createContext<FleetContextValue>({
   healthMap: new Map(),
   healthLoading: false,
   healthError: null,
-  reloadHealth: () => {},
+  reloadHealth: async () => {},
 });
 
 export function FleetProvider({ children }: { children: ReactNode }) {
