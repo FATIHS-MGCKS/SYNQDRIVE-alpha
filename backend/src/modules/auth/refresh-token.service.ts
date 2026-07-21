@@ -136,7 +136,7 @@ export class RefreshTokenService {
       boundMembership,
       activeMemberships,
       {
-        lastAuthOrganizationId: user.lastAuthOrganizationId,
+        lastSelectedOrganizationId: user.lastSelectedOrganizationId,
         graceEnabled: this.isLegacyGraceEnabled(),
         orgBoundEnforced: this.isOrgBoundEnforced(),
       },

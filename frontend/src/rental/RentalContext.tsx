@@ -1,6 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { getStoredUser, patchStoredUser } from '../lib/auth';
+import {
+  getRefreshToken,
+  getStoredUser,
+  patchStoredUser,
+  setAuth,
+  type AuthOrganizationOption,
+  type AuthUser,
+} from '../lib/auth';
 import { api } from '../lib/api';
 
 interface RentalContextValue {
@@ -10,9 +17,10 @@ interface RentalContextValue {
   loading: boolean;
   userRole: string | null;
   userPermissions: Record<string, { read: boolean; write: boolean; manage?: boolean }> | null;
+  availableOrganizations: AuthOrganizationOption[];
+  switchingOrganization: boolean;
   hasPermission: (module: string, level: 'read' | 'write' | 'manage') => boolean;
-  /** Update orgName + orgLogoUrl in memory and persist to the stored auth user
-   *  so other consumers (RightSidebar, TopBar, …) re-render immediately. */
+  switchOrganization: (organizationId: string) => Promise<void>;
   setOrgBranding: (patch: { orgName?: string; orgLogoUrl?: string | null }) => void;
 }
 
@@ -23,9 +31,31 @@ const RentalCtx = createContext<RentalContextValue>({
   loading: true,
   userRole: null,
   userPermissions: null,
+  availableOrganizations: [],
+  switchingOrganization: false,
   hasPermission: () => false,
+  switchOrganization: async () => undefined,
   setOrgBranding: () => {},
 });
+
+function applyUserToState(
+  user: AuthUser,
+  setters: {
+    setOrgId: (value: string) => void;
+    setOrgName: (value: string) => void;
+    setOrgLogoUrl: (value: string | null) => void;
+    setUserRole: (value: string | null) => void;
+    setUserPermissions: (
+      value: Record<string, { read: boolean; write: boolean; manage?: boolean }> | null,
+    ) => void;
+  },
+) {
+  setters.setOrgId(user.organizationId ?? '');
+  setters.setOrgName(user.organizationName ?? '');
+  setters.setOrgLogoUrl(user.organizationLogoUrl ?? null);
+  setters.setUserRole(user.membershipRole);
+  setters.setUserPermissions(user.permissions ?? null);
+}
 
 export function RentalProvider({ children }: { children: ReactNode }) {
   const [orgId, setOrgId] = useState('');
@@ -33,17 +63,38 @@ export function RentalProvider({ children }: { children: ReactNode }) {
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [userPermissions, setUserPermissions] = useState<Record<string, { read: boolean; write: boolean; manage?: boolean }> | null>(null);
+  const [userPermissions, setUserPermissions] = useState<Record<
+    string,
+    { read: boolean; write: boolean; manage?: boolean }
+  > | null>(null);
+  const [availableOrganizations, setAvailableOrganizations] = useState<AuthOrganizationOption[]>([]);
+  const [switchingOrganization, setSwitchingOrganization] = useState(false);
+
+  const hydrateFromUser = useCallback((user: AuthUser) => {
+    applyUserToState(user, {
+      setOrgId,
+      setOrgName,
+      setOrgLogoUrl,
+      setUserRole,
+      setUserPermissions,
+    });
+  }, []);
+
+  const loadMemberships = useCallback(async () => {
+    try {
+      const response = await api.auth.memberships();
+      setAvailableOrganizations(response.organizations ?? []);
+    } catch {
+      setAvailableOrganizations([]);
+    }
+  }, []);
 
   useEffect(() => {
     const user = getStoredUser();
     if (user?.organizationId) {
-      setOrgId(user.organizationId);
-      setOrgName(user.organizationName ?? '');
-      setOrgLogoUrl(user.organizationLogoUrl ?? null);
-      setUserRole(user.membershipRole);
-      setUserPermissions(user.permissions ?? null);
+      hydrateFromUser(user);
       setLoading(false);
+      void loadMemberships();
       return;
     }
     api.organizations.list().then((res) => {
@@ -57,7 +108,7 @@ export function RentalProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [hydrateFromUser, loadMemberships]);
 
   const hasPermission = useCallback((module: string, level: 'read' | 'write' | 'manage'): boolean => {
     if (userRole === 'ORG_ADMIN') return true;
@@ -68,6 +119,34 @@ export function RentalProvider({ children }: { children: ReactNode }) {
     if (level === 'write') return perm.write === true || perm.manage === true;
     return perm.manage === true;
   }, [userRole, userPermissions]);
+
+  const switchOrganization = useCallback(async (organizationId: string) => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      throw new Error('Refresh token missing — please sign in again');
+    }
+    setSwitchingOrganization(true);
+    try {
+      const result = await api.auth.switchOrganization(organizationId, refreshToken);
+      const storedUser = getStoredUser();
+      const nextUser: AuthUser = {
+        ...(storedUser ?? result.user),
+        ...result.user,
+        organizationId: result.user.organizationId,
+        organizationName: result.user.organizationName,
+        organizationLogoUrl: result.user.organizationLogoUrl,
+        membershipRole: result.user.membershipRole,
+        membershipId: result.user.membershipId,
+        permissions: result.user.permissions,
+      };
+      setAuth(result.accessToken, nextUser, result.refreshToken);
+      hydrateFromUser(nextUser);
+      setAvailableOrganizations(result.organizations ?? []);
+      window.location.reload();
+    } finally {
+      setSwitchingOrganization(false);
+    }
+  }, [hydrateFromUser]);
 
   const setOrgBranding = useCallback(
     (patch: { orgName?: string; orgLogoUrl?: string | null }) => {
@@ -91,7 +170,21 @@ export function RentalProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <RentalCtx.Provider value={{ orgId, orgName, orgLogoUrl, loading, userRole, userPermissions, hasPermission, setOrgBranding }}>
+    <RentalCtx.Provider
+      value={{
+        orgId,
+        orgName,
+        orgLogoUrl,
+        loading,
+        userRole,
+        userPermissions,
+        availableOrganizations,
+        switchingOrganization,
+        hasPermission,
+        switchOrganization,
+        setOrgBranding,
+      }}
+    >
       {children}
     </RentalCtx.Provider>
   );

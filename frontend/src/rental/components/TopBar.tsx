@@ -11,6 +11,7 @@ import { useLanguage, type Locale } from '../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
 import { ThemeToggleButton } from '../../components/ThemeToggleButton';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useAppTheme } from '../../context/AppThemeContext';
 import type { SettingsTabInput } from './settings/settingsTypes';
 
@@ -440,6 +441,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
 
       {/* Right Section - Actions */}
       <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
+        <OrganizationSwitcher />
         <OperatorEntryButton />
 
         <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />

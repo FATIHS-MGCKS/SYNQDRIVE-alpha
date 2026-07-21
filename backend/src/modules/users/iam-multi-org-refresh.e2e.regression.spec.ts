@@ -72,7 +72,7 @@ describe('IAM multi-org refresh E2E regression (E)', () => {
         platformRole: 'USER',
         status: UserStatus.ACTIVE,
         sessionVersion: 0,
-        lastAuthOrganizationId: loginOrgId,
+        lastSelectedOrganizationId: loginOrgId,
       },
     });
     prisma.organizationMembership.findFirst.mockResolvedValue(membershipA);

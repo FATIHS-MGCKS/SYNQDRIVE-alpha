@@ -78,7 +78,7 @@ describe('refresh-session-binding.policy', () => {
       }
     });
 
-    it('falls back to lastAuthOrganizationId when documented', () => {
+    it('does not auto-select organization from lastSelectedOrganizationId at login', () => {
       const memberships = [
         membershipFixture({ id: membershipA, organizationId: orgA }),
         membershipFixture({
@@ -88,12 +88,14 @@ describe('refresh-session-binding.policy', () => {
         }),
       ];
       const result = resolveLoginMembership(memberships, {
-        lastAuthOrganizationId: orgA,
+        lastSelectedOrganizationId: orgA,
+      } as never);
+      expect(result).toEqual({
+        ok: false,
+        code: 'ORGANIZATION_SELECTION_REQUIRED',
+        message:
+          'Multiple organizations available — organizationId is required at login',
       });
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.membership?.organizationId).toBe(orgA);
-      }
     });
 
     it('returns null membership when no active memberships', () => {

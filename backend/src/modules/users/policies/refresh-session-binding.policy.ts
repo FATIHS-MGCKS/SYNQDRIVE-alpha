@@ -113,7 +113,6 @@ export function resolveLoginMembership(
   activeMemberships: LoginMembershipCandidate[],
   options: {
     requestedOrganizationId?: string | null;
-    lastAuthOrganizationId?: string | null;
   } = {},
 ): LoginMembershipResolution {
   if (activeMemberships.length === 0) {
@@ -124,35 +123,26 @@ export function resolveLoginMembership(
     return { ok: true, membership: activeMemberships[0]! };
   }
 
-  if (options.requestedOrganizationId) {
-    const match = activeMemberships.find(
-      (m) => m.organizationId === options.requestedOrganizationId,
-    );
-    if (!match) {
-      return {
-        ok: false,
-        code: 'ORGANIZATION_NOT_ACCESSIBLE',
-        message: 'You do not have access to the requested organization',
-      };
-    }
-    return { ok: true, membership: match };
+  if (!options.requestedOrganizationId) {
+    return {
+      ok: false,
+      code: 'ORGANIZATION_SELECTION_REQUIRED',
+      message:
+        'Multiple organizations available — organizationId is required at login',
+    };
   }
 
-  if (options.lastAuthOrganizationId) {
-    const last = activeMemberships.find(
-      (m) => m.organizationId === options.lastAuthOrganizationId,
-    );
-    if (last) {
-      return { ok: true, membership: last };
-    }
+  const match = activeMemberships.find(
+    (m) => m.organizationId === options.requestedOrganizationId,
+  );
+  if (!match) {
+    return {
+      ok: false,
+      code: 'ORGANIZATION_NOT_ACCESSIBLE',
+      message: 'You do not have access to the requested organization',
+    };
   }
-
-  return {
-    ok: false,
-    code: 'ORGANIZATION_SELECTION_REQUIRED',
-    message:
-      'Multiple organizations available — organizationId is required at login',
-  };
+  return { ok: true, membership: match };
 }
 
 export function isOrgMembershipBoundScope(
@@ -206,7 +196,7 @@ export function resolveLegacyUnscopedRefreshBinding(
   stored: StoredRefreshBinding,
   activeMemberships: LoginMembershipCandidate[],
   options: {
-    lastAuthOrganizationId?: string | null;
+    lastSelectedOrganizationId?: string | null;
     graceEnabled: boolean;
   },
 ): RefreshBindingResolution {
@@ -228,9 +218,9 @@ export function resolveLegacyUnscopedRefreshBinding(
     };
   }
 
-  if (options.lastAuthOrganizationId) {
+  if (options.lastSelectedOrganizationId) {
     const last = activeMemberships.find(
-      (m) => m.organizationId === options.lastAuthOrganizationId,
+      (m) => m.organizationId === options.lastSelectedOrganizationId,
     );
     if (last) {
       return {
@@ -256,7 +246,7 @@ export function resolveRefreshBinding(
   membership: LoginMembershipCandidate | null,
   activeMemberships: LoginMembershipCandidate[],
   options: {
-    lastAuthOrganizationId?: string | null;
+    lastSelectedOrganizationId?: string | null;
     graceEnabled: boolean;
     orgBoundEnforced: boolean;
   },
@@ -316,7 +306,7 @@ export function resolveRefreshBinding(
   }
 
   return resolveLegacyUnscopedRefreshBinding(stored, activeMemberships, {
-    lastAuthOrganizationId: options.lastAuthOrganizationId,
+    lastSelectedOrganizationId: options.lastSelectedOrganizationId,
     graceEnabled: options.graceEnabled,
   });
 }

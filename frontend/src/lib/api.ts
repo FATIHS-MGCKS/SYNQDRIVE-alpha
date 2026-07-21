@@ -2666,9 +2666,51 @@ function billingTenantQuery(
 
 export const api = {
   auth: {
-    login: (email: string, password: string) =>
-      post<{ token: string; user: any }>('/auth/login', { email, password }),
+    login: (email: string, password: string, organizationId?: string) =>
+      post<{
+        requiresOrganizationSelection?: boolean;
+        organizations?: Array<{
+          organizationId: string;
+          organizationName: string | null;
+          organizationLogoUrl: string | null;
+          membershipId: string;
+          role: string;
+        }>;
+        suggestedOrganizationId?: string | null;
+        token?: string;
+        accessToken?: string;
+        refreshToken?: string;
+        expiresIn?: string;
+        user?: any;
+      }>('/auth/login', { email, password, ...(organizationId ? { organizationId } : {}) }),
     me: () => get<any>('/auth/me'),
+    memberships: () =>
+      get<{
+        organizations: Array<{
+          organizationId: string;
+          organizationName: string | null;
+          organizationLogoUrl: string | null;
+          membershipId: string;
+          role: string;
+        }>;
+        activeOrganizationId: string | null;
+        suggestedOrganizationId: string | null;
+      }>('/auth/memberships'),
+    switchOrganization: (organizationId: string, refreshToken: string) =>
+      post<{
+        token: string;
+        accessToken: string;
+        refreshToken: string;
+        expiresIn: string;
+        user: any;
+        organizations: Array<{
+          organizationId: string;
+          organizationName: string | null;
+          organizationLogoUrl: string | null;
+          membershipId: string;
+          role: string;
+        }>;
+      }>('/auth/switch-organization', { organizationId, refreshToken }),
     seedAdmin: () => post<any>('/auth/seed-admin', {}),
   },
   customerVerification: {

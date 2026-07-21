@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { RefreshTokenService } from './refresh-token.service';
 import { PasswordResetService } from './password-reset.service';
+import { OrganizationSwitchService } from './organization-switch.service';
+import { AuthSessionContextService } from './auth-session-context.service';
 import { PasswordResetRateLimitService } from './password-reset-rate-limit.service';
 import {
   IamSessionNotificationService,
@@ -18,6 +20,8 @@ import { PasswordPolicyService } from '@shared/auth/password-policy.service';
   controllers: [AuthController],
   providers: [
     RefreshTokenService,
+    OrganizationSwitchService,
+    AuthSessionContextService,
     IamSessionNotificationService,
     IamSessionPolicyService,
     UserAccessAuditService,

@@ -69,7 +69,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
         platformRole: 'USER',
         status: UserStatus.ACTIVE,
         sessionVersion: 0,
-        lastAuthOrganizationId: IAM_REGRESSION_IDS.orgA,
+        lastSelectedOrganizationId: IAM_REGRESSION_IDS.orgA,
       },
       ...overrides,
     };

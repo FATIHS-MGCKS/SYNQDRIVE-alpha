@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-org-session-switching-v49710-2026-07-21',
+    version: '4.9.710',
+    title: 'V4.9.710 — IAM explicit organization session switching (Prompt 8)',
+    summary: [
+      'POST /auth/switch-organization mints new org-bound token family; revokes current refresh token.',
+      'Multi-org login returns organization picker without tokens until user confirms organizationId.',
+      'Frontend OrganizationSwitcher in TopBar; /auth/me uses JWT-bound membership.',
+    ],
+    reason: 'Users & Roles remediation Prompt 8 — org changes only via explicit user action.',
+    previousBehavior:
+      'Multi-org login could fall back to lastAuthOrganizationId; /auth/me used take:1 membership; no switch endpoint.',
+    details:
+      'backend/src/modules/auth/organization-switch.service.ts, architecture/IAM_ORG_SESSION_SWITCHING_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:45:00.000Z',
+  },
+  {
     id: 'iam-org-bound-refresh-sessions-v49709-2026-07-21',
     version: '4.9.709',
     title: 'V4.9.709 — IAM org-bound refresh sessions (Prompt 7)',

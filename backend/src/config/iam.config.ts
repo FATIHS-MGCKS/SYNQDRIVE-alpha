@@ -6,7 +6,7 @@ export const IAM_ORG_BOUND_REFRESH_SESSIONS_ENV =
 
 /**
  * Env: allow one-time upgrade of LEGACY_UNSCOPED refresh tokens when org is
- * determinable (single active membership or lastAuthOrganizationId).
+ * determinable (single active membership or lastSelectedOrganizationId).
  */
 export const IAM_LEGACY_UNSCOPED_REFRESH_GRACE_ENV =
   'ENABLE_IAM_LEGACY_UNSCOPED_REFRESH_GRACE';

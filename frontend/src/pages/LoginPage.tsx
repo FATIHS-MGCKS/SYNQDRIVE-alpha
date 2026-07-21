@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setAuth } from '../lib/auth';
-import { Eye, EyeOff, ArrowRight, Car, Zap, Shield, Globe } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Car, Zap, Shield, Globe, Building2 } from 'lucide-react';
 import { SynqDriveBrandLogo } from '../components/brand/SynqDriveBrandLogo';
 import loginHeroVideo from '../assets/synqdrive-login.mp4';
 
@@ -22,6 +22,13 @@ const loginCopy: Record<string, { en: string; de: string }> = {
   trustSubtitle: { en: 'Telemetry, rentals, health and tasks — connected', de: 'Telemetrie, Vermietung, Health und Tasks — verbunden' },
   welcomeBack: { en: 'Welcome Back!', de: 'Willkommen zurück!' },
   subtitle: { en: 'Enter your details below to sign in.', de: 'Geben Sie Ihre Daten ein, um sich anzumelden.' },
+  chooseOrgTitle: { en: 'Choose your organization', de: 'Organisation auswählen' },
+  chooseOrgSubtitle: {
+    en: 'Your account has access to multiple organizations. Select where you want to work.',
+    de: 'Ihr Konto hat Zugriff auf mehrere Organisationen. Wählen Sie Ihren Arbeitsbereich.',
+  },
+  continue: { en: 'Continue', de: 'Weiter' },
+  back: { en: 'Back', de: 'Zurück' },
   email: { en: 'Email', de: 'E-Mail' },
   password: { en: 'Password', de: 'Passwort' },
   emailPlaceholder: { en: 'name@company.com', de: 'name@unternehmen.com' },
@@ -31,6 +38,14 @@ const loginCopy: Record<string, { en: string; de: string }> = {
   logIn: { en: 'Log in', de: 'Anmelden' },
   or: { en: 'or', de: 'oder' },
   footer: { en: '© 2026 SYNQDRIVE · Multi-Tenant Fleet Management SaaS', de: '© 2026 SYNQDRIVE · Multi-Mandanten-Flottenmanagement SaaS' },
+};
+
+type OrganizationChoice = {
+  organizationId: string;
+  organizationName: string | null;
+  organizationLogoUrl: string | null;
+  membershipId: string;
+  role: string;
 };
 
 export default function LoginPage() {
@@ -43,8 +58,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [organizationChoices, setOrganizationChoices] = useState<OrganizationChoice[] | null>(null);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
 
   const t = (key: keyof typeof loginCopy) => loginCopy[key]?.[locale] ?? loginCopy[key]?.en ?? '';
+
+  const completeLogin = (res: { token?: string; accessToken?: string; refreshToken?: string; user: any }) => {
+    const token = res.accessToken ?? res.token;
+    if (!token || !res.user) {
+      throw new Error('Login response incomplete');
+    }
+    setAuth(token, res.user, res.refreshToken);
+    if (res.user.platformRole === 'MASTER_ADMIN') navigate('/master', { replace: true });
+    else if (res.user.organizationId) navigate('/rental', { replace: true });
+    else navigate('/master', { replace: true });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,10 +84,32 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.auth.login(email.trim(), password);
-      setAuth(res.token, res.user);
-      if (res.user.platformRole === 'MASTER_ADMIN') navigate('/master', { replace: true });
-      else if (res.user.organizationId) navigate('/rental', { replace: true });
-      else navigate('/master', { replace: true });
+      if (res.requiresOrganizationSelection) {
+        setOrganizationChoices(res.organizations ?? []);
+        setSelectedOrganizationId(res.suggestedOrganizationId ?? res.organizations?.[0]?.organizationId ?? null);
+        return;
+      }
+      completeLogin(res);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOrganizationContinue = async () => {
+    if (!selectedOrganizationId) {
+      setError(locale === 'de' ? 'Bitte eine Organisation auswählen.' : 'Please select an organization.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.auth.login(email.trim(), password, selectedOrganizationId);
+      if (res.requiresOrganizationSelection) {
+        throw new Error('Organization selection still required');
+      }
+      completeLogin(res);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -72,7 +122,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden bg-background">
-      {/* Ambient brand moment — allowed glass/gradient on login only */}
       <div
         className="pointer-events-none fixed inset-0 opacity-80"
         style={{
@@ -88,7 +137,6 @@ export default function LoginPage() {
         }}
       />
 
-      {/* Language Switcher */}
       <div className="fixed top-5 right-6 z-50">
         <div className="relative">
           <button
@@ -128,17 +176,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Main Card
-          Scaled to 120% via CSS transform on md+ so all inner proportions
-          (video, typography, pills, form fields, spacing) enlarge uniformly
-          without needing to touch every utility class. On small viewports we
-          keep the original size so the card does not overflow the root's
-          overflow-hidden container. */}
-      <div
-        className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2] surface-frosted border border-border shadow-[var(--shadow-2)]"
-      >
+      <div className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2] surface-frosted border border-border shadow-[var(--shadow-2)]">
         <div className="flex min-h-[460px]">
-          {/* Left Panel */}
           <div className="hidden lg:flex lg:w-[360px] relative overflow-hidden rounded-[14px] m-2 bg-black">
             <video
               src={loginHeroVideo}
@@ -150,12 +189,8 @@ export default function LoginPage() {
               aria-hidden
               className="absolute inset-0 w-full h-full object-cover"
             />
-            {/* Gradient focused on the bottom 40% so the upper portion of the
-                video stays visually unobstructed. */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/25 to-black/90" />
-
             <div className="relative z-10 flex flex-col justify-end p-6 h-full">
-              {/* Content block — anchored to the bottom 40% of the panel */}
               <div className="space-y-3">
                 <div
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/15 shadow-sm"
@@ -164,7 +199,6 @@ export default function LoginPage() {
                   <Zap className="w-3 h-3 text-[color:var(--brand)]" />
                   <span className="text-[10px] text-white/90 font-medium tracking-wide">{t('fleetManagement')}</span>
                 </div>
-
                 <div>
                   <h2 className="text-xl font-bold text-white tracking-tight leading-snug drop-shadow-md">
                     {t('headline')}<br />{t('headlineBr')}
@@ -177,177 +211,90 @@ export default function LoginPage() {
                     {t('subPart2')}
                   </p>
                 </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { icon: Car, label: t('pillFleet') },
-                    { icon: Shield, label: t('pillSecure') },
-                    { icon: Zap, label: t('pillRealtime') },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md border border-white/20 shadow-sm"
-                      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)' }}
-                    >
-                      <item.icon className="w-2.5 h-2.5 text-white/80" />
-                      <span className="text-[10px] text-white/90 font-medium">{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="surface-frosted inline-flex items-center gap-2 rounded-xl border border-white/15 p-2.5 shadow-[var(--shadow-md)]">
-                  <div className="flex -space-x-1.5">
-                    {['var(--brand)', 'color-mix(in srgb, var(--brand) 75%, white)', 'color-mix(in srgb, var(--brand) 55%, white)', 'color-mix(in srgb, var(--brand) 40%, white)'].map((color, i) => (
-                      <div
-                        key={i}
-                        className="flex h-5 w-5 items-center justify-center rounded-full border border-black/20 text-[8px] font-bold text-white shadow-[var(--shadow-xs)]"
-                        style={{ background: color }}
-                      >
-                        {['F', 'L', 'O', 'T'][i]}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="pr-2">
-                    <span className="mb-0.5 block text-[10px] font-medium leading-none text-white/90">{t('trustHeadline')}</span>
-                    <span className="block text-[8px] leading-none text-white/60">{t('trustSubtitle')}</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Right Panel */}
           <div className="flex-1 flex flex-col items-center justify-center px-5 sm:px-7 lg:px-9 py-5">
             <div className="w-full max-w-[280px]">
-              {/* Logo */}
               <div className="flex items-center justify-center mb-5">
                 <SynqDriveBrandLogo className="h-5 w-auto object-contain" />
               </div>
 
-              <div className="mb-4 text-center">
-                <h1 className="text-sm font-bold tracking-tight text-foreground">{t('welcomeBack')}</h1>
-                <p className="text-[11px] text-muted-foreground mt-1">{t('subtitle')}</p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-2.5">
-                {error && (
-                  <div className="px-3 py-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] text-xs text-[color:var(--status-critical)]">
-                    {error}
+              {!organizationChoices ? (
+                <>
+                  <div className="mb-4 text-center">
+                    <h1 className="text-sm font-bold tracking-tight text-foreground">{t('welcomeBack')}</h1>
+                    <p className="text-[11px] text-muted-foreground mt-1">{t('subtitle')}</p>
                   </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('email')}</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t('emailPlaceholder')}
-                    className={inputClass}
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('password')}</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={t('passwordPlaceholder')}
-                      className={`${inputClass} pr-8`}
-                      autoComplete="current-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  <form onSubmit={handleSubmit} className="space-y-2.5">
+                    {error && (
+                      <div className="px-3 py-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] text-xs text-[color:var(--status-critical)]">
+                        {error}
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('email')}</label>
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('emailPlaceholder')} className={inputClass} autoComplete="email" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('password')}</label>
+                      <div className="relative">
+                        <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('passwordPlaceholder')} className={`${inputClass} pr-8`} autoComplete="current-password" />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <button type="submit" disabled={loading} className="w-full py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors duration-200 flex items-center justify-center gap-2 shadow-[var(--shadow-1)] disabled:opacity-70 mt-1 sq-press">
+                      {loading ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>{t('logIn')}<ArrowRight className="w-3.5 h-3.5" /></>}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4 text-center">
+                    <h1 className="text-sm font-bold tracking-tight text-foreground">{t('chooseOrgTitle')}</h1>
+                    <p className="text-[11px] text-muted-foreground mt-1">{t('chooseOrgSubtitle')}</p>
+                  </div>
+                  {error && (
+                    <div className="mb-3 px-3 py-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] text-xs text-[color:var(--status-critical)]">
+                      {error}
+                    </div>
+                  )}
+                  <div className="space-y-2 mb-3">
+                    {organizationChoices.map((org) => {
+                      const active = selectedOrganizationId === org.organizationId;
+                      return (
+                        <button
+                          key={org.organizationId}
+                          type="button"
+                          onClick={() => setSelectedOrganizationId(org.organizationId)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                            active
+                              ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]'
+                              : 'border-border hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <Building2 className="w-4 h-4 text-[color:var(--brand)] shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-medium truncate">{org.organizationName || org.organizationId}</div>
+                            <div className="text-[10px] text-muted-foreground">{org.role}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => { setOrganizationChoices(null); setError(''); }} className="flex-1 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
+                      {t('back')}
+                    </button>
+                    <button type="button" onClick={handleOrganizationContinue} disabled={loading || !selectedOrganizationId} className="flex-1 py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors disabled:opacity-70">
+                      {loading ? <div className="mx-auto w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('continue')}
                     </button>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 cursor-pointer group">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setRememberMe(!rememberMe)}
-                      onKeyDown={(e) => e.key === 'Enter' && setRememberMe((v) => !v)}
-                      className={`w-[14px] h-[14px] rounded border-[1.5px] flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                        rememberMe ? 'bg-[color:var(--brand)] border-[color:var(--brand)]' : 'border-border group-hover:border-muted-foreground'
-                      }`}
-                    >
-                      {rememberMe && (
-                        <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-medium">{t('rememberMe')}</span>
-                  </label>
-                  <button
-                    type="button"
-                    className="text-[10px] text-muted-foreground hover:text-foreground font-medium transition-colors"
-                    onClick={() => setError(locale === 'de' ? 'Bitte wenden Sie sich an den Support.' : 'Please contact support.')}
-                  >
-                    {t('forgotPassword')}
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors duration-200 flex items-center justify-center gap-2 shadow-[var(--shadow-1)] disabled:opacity-70 mt-1 sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  {loading ? (
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      {t('logIn')}
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </>
-                  )}
-                </button>
-
-                <div className="flex items-center gap-3 py-0.5">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-[9px] text-muted-foreground font-medium tracking-wider uppercase">{t('or')}</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled
-                    className="flex-1 py-1.5 rounded-lg border border-border surface-premium text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    </svg>
-                    <span className="hidden sm:inline">Google</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex-1 py-1.5 rounded-lg border border-border surface-premium text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
-                  >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                      <rect x="1" y="1" width="10" height="10" fill="#F25022"/>
-                      <rect x="13" y="1" width="10" height="10" fill="#7FBA00"/>
-                      <rect x="1" y="13" width="10" height="10" fill="#00A4EF"/>
-                      <rect x="13" y="13" width="10" height="10" fill="#FFB900"/>
-                    </svg>
-                    <span className="hidden sm:inline">Microsoft</span>
-                  </button>
-                </div>
-              </form>
+                </>
+              )}
             </div>
           </div>
         </div>

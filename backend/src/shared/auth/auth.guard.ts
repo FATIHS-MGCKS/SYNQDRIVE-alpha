@@ -98,6 +98,9 @@ export class AuthGuard implements CanActivate {
         platformPermissions: decoded.platformPermissions ?? [],
         membershipRole: decoded.membershipRole,
         organizationId: decoded.organizationId,
+        membershipId: decoded.membershipId ?? null,
+        sessionVersion: decoded.sessionVersion ?? 0,
+        membershipVersion: decoded.membershipVersion ?? null,
       };
       return true;
     } catch {

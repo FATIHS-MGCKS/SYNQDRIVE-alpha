@@ -4,7 +4,7 @@
 |-------|-------|
 | **Audit** | `docs/audits/users-roles-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/users-roles-production-readiness-2026-07` @ `0f99ce41` |
-| **Implementation branch** | `cursor/iam-refresh-org-binding-fb6e` |
+| **Implementation branch** | `cursor/iam-org-switch-fb6e` |
 | **Verdict (audit)** | **NOT_READY** (28× P0, 27 production blockers) |
 | **Mode** | Identity & session truth → roles & audit → governance & UI (22 prompts) |
 
@@ -35,22 +35,22 @@
 | 4 | Isolate org membership admin from global identity | ✅ | `ceae35bb` |
 | 5 | Central session invalidation policy | ✅ | `6e320e44` |
 | 6 | Secure password self-service reset | ✅ | `778353b2` |
-| 7 | Org-bound refresh tokens | ✅ | (this commit) |
-| 8 | Versioned roles + assignment link | ⬜ | — |
-| 9 | Role propagation + drift detection | ⬜ | — |
-| 10 | Endpoint/Guard hardening | ⬜ | — |
-| 11 | Stop invite plaintext in API | ⬜ | — |
-| 12 | Secure invite accept for existing users | ⬜ | — |
-| 13 | Transactional IAM audit outbox | ⬜ | — |
-| 14 | JML deprovisioning orchestrator | ⬜ | — |
-| 15 | MFA + step-up for privileged IAM | ⬜ | — |
-| 16 | Access review campaigns | ⬜ | — |
-| 17 | Retention / erase / anonymize IAM | ⬜ | — |
-| 18 | Security Activity real sessions/MFA | ⬜ | — |
-| 19 | IAM API contract stabilization | ⬜ | — |
-| 20 | Users & Roles UI redesign | ⬜ | — |
-| 21 | IAM observability + missing-audit alerts | ⬜ | — |
-| 22 | Staging replay + security/tenant tests | ⬜ | — |
+| 7 | Org-bound refresh tokens | ✅ | `09c8f0a2` |
+| 8 | Explicit organization session switching | ✅ | (this commit) |
+| 9 | Versioned roles + assignment link | ⬜ | — |
+| 10 | Role propagation + drift detection | ⬜ | — |
+| 11 | Endpoint/Guard hardening | ⬜ | — |
+| 12 | Stop invite plaintext in API | ⬜ | — |
+| 13 | Secure invite accept for existing users | ⬜ | — |
+| 14 | Transactional IAM audit outbox | ⬜ | — |
+| 15 | JML deprovisioning orchestrator | ⬜ | — |
+| 16 | MFA + step-up for privileged IAM | ⬜ | — |
+| 17 | Access review campaigns | ⬜ | — |
+| 18 | Retention / erase / anonymize IAM | ⬜ | — |
+| 19 | Security Activity real sessions/MFA | ⬜ | — |
+| 20 | IAM API contract stabilization | ⬜ | — |
+| 21 | Users & Roles UI redesign | ⬜ | — |
+| 22 | IAM observability + staging replay / security tests | ⬜ | — |
 
 ---
 
@@ -148,6 +148,19 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 - Legacy unscoped tokens: controlled grace via `ENABLE_IAM_LEGACY_UNSCOPED_REFRESH_GRACE`
 - `architecture/IAM_ORG_BOUND_REFRESH_SESSIONS_2026-07-21.md`
 - Scenario **E** regression tests green
+
+---
+
+## Prompt 8 — Explicit Organization Session Switching
+
+**Datum:** 2026-07-21 UTC
+
+- `POST /auth/switch-organization` + `GET /auth/memberships`
+- Login multi-org returns `requiresOrganizationSelection` without tokens until explicit org chosen
+- `User.lastSelectedOrganizationId` (renamed from `lastAuthOrganizationId`) — explicit user selection only
+- `/auth/me` uses JWT session membership (no `take:1`)
+- Frontend org picker on login + `OrganizationSwitcher` in TopBar
+- `architecture/IAM_ORG_SESSION_SWITCHING_2026-07-21.md`
 
 ---
 
