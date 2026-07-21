@@ -19,6 +19,7 @@ import {
   LAST_ORG_ADMIN_MESSAGE,
   MIN_USER_PASSWORD_LENGTH,
 } from '@shared/auth/permission.constants';
+import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 import type { OptionalAuthIdentity } from '@shared/auth/optional-auth.util';
 import { verifyInviteToken, inviteTokenLookupKey } from './utils/invite-token.util';
 import {
@@ -33,6 +34,7 @@ import {
 } from './policies/invite-accept.policy';
 import { UserAccessAuditAction } from './user-access-audit.service';
 import { IamAuditService } from './iam-audit.service';
+import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { buildRoleSummary } from './utils/invite-admin-response.util';
 import type { AcceptInviteDto } from './dto/organization-invite.dto';
 
@@ -42,6 +44,7 @@ type LoadedInvite = NonNullable<Awaited<ReturnType<InviteAcceptService['loadInvi
 export class InviteAcceptService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly lifecycle: IamMembershipLifecycleService,
     private readonly iamAudit: IamAuditService,
   ) {}
 
@@ -232,19 +235,6 @@ export class InviteAcceptService {
         });
       }
 
-      const membershipData = {
-        role: invite.membershipRole,
-        organizationRoleId: invite.organizationRoleId,
-        roleLabel: invite.roleLabel,
-        stationScope: invite.stationScope,
-        stationIds: invite.stationIds ?? Prisma.JsonNull,
-        department: invite.department,
-        position: invite.position,
-        permissions: invite.permissions ?? Prisma.JsonNull,
-        fieldAgentAccess: invite.fieldAgentAccess,
-        status: MembershipStatus.ACTIVE,
-      };
-
       if (existingMembership) {
         if (
           existingMembership.role === MembershipRole.ORG_ADMIN &&
@@ -262,19 +252,33 @@ export class InviteAcceptService {
             throw new BadRequestException(LAST_ORG_ADMIN_MESSAGE);
           }
         }
-        await tx.organizationMembership.update({
-          where: { id: existingMembership.id },
-          data: membershipData,
-        });
-      } else {
-        await tx.organizationMembership.create({
-          data: {
-            userId: user!.id,
-            organizationId: invite.organizationId,
-            ...membershipData,
-          },
-        });
       }
+
+      const joinApplied = await this.lifecycle.applyJoinInTransaction(
+        tx,
+        {
+          organizationId: invite.organizationId,
+          userId: user!.id,
+          idempotencyKey: `membership-join:invite:${invite.id}`,
+          actor: { userId: user!.id },
+          role: invite.membershipRole,
+          organizationRoleId: invite.organizationRoleId,
+          roleLabel: invite.roleLabel,
+          stationScope: invite.stationScope,
+          stationIds: Array.isArray(invite.stationIds)
+            ? (invite.stationIds as string[])
+            : null,
+          department: invite.department,
+          position: invite.position,
+          permissions: normalizeMembershipPermissions(invite.permissions),
+          fieldAgentAccess: invite.fieldAgentAccess,
+          mfaRequired: privilegedRole,
+          source: 'invite',
+          inviteId: invite.id,
+        },
+        existingMembership,
+      );
+      outboxIds.push(joinApplied.outboxId);
 
       await tx.organizationUserInvite.update({
         where: { id: invite.id },
@@ -319,19 +323,6 @@ export class InviteAcceptService {
           description: 'Benutzer durch Einladung erstellt',
         });
         outboxIds.push(createdOutbox.id);
-      } else if (requiresRejoinAcknowledgement(previousMembershipStatus)) {
-        const rejoinOutbox = await this.iamAudit.enqueueInTransaction(tx, {
-          organizationId: invite.organizationId,
-          idempotencyKey: `invite-accept-rejoin:${invite.id}`,
-          eventType: UserAccessAuditAction.USER_REACTIVATED,
-          actorUserId: user!.id,
-          subjectUserId: user!.id,
-          description: 'Benutzer durch Einladung der Organisation erneut beigetreten',
-          before: { membershipStatus: previousMembershipStatus },
-          after: { membershipStatus: MembershipStatus.ACTIVE },
-          level: 'WARN',
-        });
-        outboxIds.push(rejoinOutbox.id);
       }
 
       await tx.activityLog.create({

@@ -39,10 +39,12 @@ enum MembershipRole {
 }
 
 enum MembershipStatus {
-  ACTIVE
   INVITED
+  ACTIVE
   SUSPENDED
+  OFFBOARDING
   REMOVED
+  REACTIVATION_REQUIRED
 }
 
 enum OrganizationInviteStatus {
@@ -1758,6 +1760,7 @@ model OrganizationMembership {
   stationIds         Json?            @map("station_ids")
   fieldAgentAccess   Boolean          @default(false) @map("field_agent_access")
   status             MembershipStatus @default(ACTIVE)
+  membershipVersion  Int              @default(1) @map("membership_version")
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 

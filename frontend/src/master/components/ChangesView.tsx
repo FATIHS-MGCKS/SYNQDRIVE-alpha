@@ -391,6 +391,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-20T00:00:00.000Z',
   },
   {
+    id: 'iam-membership-lifecycle-v49719-2026-07-21',
+    version: '4.9.719',
+    title: 'V4.9.719 — IAM joiner/mover/leaver lifecycle (Prompt 17)',
+    summary: [
+      'Central IamMembershipLifecycleService orchestrates join, move, suspend, remove, and explicit reactivate flows.',
+      'Extended MembershipStatus: OFFBOARDING, REACTIVATION_REQUIRED; membershipVersion for mover invalidation.',
+      'Leaver revokes sessions, pending invites, automation overrides; reports ownership conflicts; never deletes global user.',
+    ],
+    reason: 'UR-P1-LC-01 — membership lifecycle must be atomic, centralized, and explicitly controlled.',
+    previousBehavior:
+      'Membership changes were scattered across UsersService/InviteAccept with implicit reactivation and fire-and-forget side effects.',
+    details:
+      'iam-membership-lifecycle.service.ts, lifecycle policy/side-effects/notification, users.service + invite-accept delegation, migration 20260722100000_iam_membership_lifecycle',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T23:30:00.000Z',
+  },
+  {
     id: 'iam-transactional-audit-outbox-v49718-2026-07-21',
     version: '4.9.718',
     title: 'V4.9.718 — IAM transactional audit outbox (Prompt 16)',

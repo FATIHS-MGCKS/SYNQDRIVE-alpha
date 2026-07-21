@@ -11,6 +11,7 @@ import {
 import { InviteAcceptService } from './invite-accept.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamAuditService } from './iam-audit.service';
+import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { generateInviteToken, inviteTokenLookupKey } from './utils/invite-token.util';
 import { INVITE_ACCEPT_ERROR } from './policies/invite-accept.policy';
 
@@ -35,6 +36,9 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     activityLog: { create: jest.Mock };
     iamAuditOutbox: { create: jest.Mock };
     $transaction: jest.Mock;
+  };
+  let lifecycle: {
+    applyJoinInTransaction: jest.Mock;
   };
   let iamAudit: {
     enqueueInTransaction: jest.Mock;
@@ -98,6 +102,13 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       },
       $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma)),
     };
+    lifecycle = {
+      applyJoinInTransaction: jest.fn().mockResolvedValue({
+        row: { id: 'mem-1', membershipVersion: 1 },
+        outboxId: 'outbox-join',
+        mfaRequired: false,
+      }),
+    };
     iamAudit = {
       enqueueInTransaction: jest.fn().mockImplementation((_tx, input) =>
         prisma.iamAuditOutbox.create({ data: input }),
@@ -106,6 +117,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     };
     service = new InviteAcceptService(
       prisma as unknown as PrismaService,
+      lifecycle as unknown as IamMembershipLifecycleService,
       iamAudit as unknown as IamAuditService,
     );
   });
@@ -120,8 +132,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
 
     expect(result.accepted).toBe(true);
     expect(prisma.user.create).toHaveBeenCalled();
-    expect(prisma.organizationMembership.create).toHaveBeenCalled();
-    expect(iamAudit.enqueueInTransaction).toHaveBeenCalled();
+    expect(lifecycle.applyJoinInTransaction).toHaveBeenCalled();
   });
 
   it('requires authentication for existing user', async () => {
@@ -147,7 +158,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
 
     expect(result.accepted).toBe(true);
     expect(prisma.user.create).not.toHaveBeenCalled();
-    expect(prisma.organizationMembership.create).toHaveBeenCalled();
+    expect(lifecycle.applyJoinInTransaction).toHaveBeenCalled();
   });
 
   it('rejects wrong logged-in user', async () => {
@@ -209,11 +220,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     );
 
     expect(result.accepted).toBe(true);
-    expect(prisma.organizationMembership.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: MembershipStatus.ACTIVE }),
-      }),
-    );
+    expect(lifecycle.applyJoinInTransaction).toHaveBeenCalled();
   });
 
   it('blocks suspended membership without rejoin acknowledgement', async () => {

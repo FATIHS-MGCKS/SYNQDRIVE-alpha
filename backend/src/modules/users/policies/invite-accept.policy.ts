@@ -32,7 +32,12 @@ export function isPrivilegedInviteRole(input: {
 export function requiresRejoinAcknowledgement(
   status: MembershipStatus | null | undefined,
 ): boolean {
-  return status === MembershipStatus.REMOVED || status === MembershipStatus.SUSPENDED;
+  return (
+    status === MembershipStatus.REMOVED ||
+    status === MembershipStatus.SUSPENDED ||
+    status === MembershipStatus.REACTIVATION_REQUIRED ||
+    status === MembershipStatus.OFFBOARDING
+  );
 }
 
 export function canActivateMembershipFromInvite(

@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { MembershipRole, MembershipStatus } from '@prisma/client';
 import { UsersService } from './users.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { IamAuditService } from './iam-audit.service';
 import { LAST_ORG_ADMIN_MESSAGE } from '@shared/auth/permission.constants';
 
@@ -31,6 +32,14 @@ describe('UsersService — security & membership', () => {
     enqueueInTransaction: jest.Mock;
     processOutboxIds: jest.Mock;
   };
+  let lifecycle: {
+    applyJoinInTransaction: jest.Mock;
+    join: jest.Mock;
+    remove: jest.Mock;
+    reactivate: jest.Mock;
+    suspend: jest.Mock;
+    move: jest.Mock;
+  };
   let service: UsersService;
 
   beforeEach(() => {
@@ -57,19 +66,23 @@ describe('UsersService — security & membership', () => {
       enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
       processOutboxIds: jest.fn().mockResolvedValue(undefined),
     };
+    lifecycle = {
+      applyJoinInTransaction: jest.fn(),
+      join: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
+      remove: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
+      reactivate: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
+      suspend: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
+      move: jest.fn().mockResolvedValue({ membershipId: 'mem-1', idempotent: false }),
+    };
     service = new UsersService(
       prisma as unknown as PrismaService,
       iamAudit as unknown as IamAuditService,
+      lifecycle as unknown as IamMembershipLifecycleService,
     );
   });
 
   it('blocks removing the last active ORG_ADMIN', async () => {
-    prisma.organizationMembership.findFirst.mockResolvedValue({
-      id: 'm1',
-      role: MembershipRole.ORG_ADMIN,
-      status: MembershipStatus.ACTIVE,
-    });
-    prisma.organizationMembership.count.mockResolvedValue(0);
+    lifecycle.remove.mockRejectedValue(new BadRequestException(LAST_ORG_ADMIN_MESSAGE));
 
     await expect(service.removeOrgUser(orgId, adminUserId)).rejects.toThrow(
       BadRequestException,
@@ -94,7 +107,8 @@ describe('UsersService — security & membership', () => {
       id: 'm-removed',
       status: MembershipStatus.REMOVED,
     });
-    prisma.organizationMembership.update.mockResolvedValue({
+    lifecycle.reactivate.mockResolvedValue({ membershipId: 'm-removed', idempotent: false });
+    prisma.organizationMembership.findFirst.mockResolvedValue({
       id: 'm-removed',
       role: MembershipRole.WORKER,
       status: MembershipStatus.ACTIVE,
@@ -128,6 +142,7 @@ describe('UsersService — security & membership', () => {
         lastLoginDevice: '',
       },
       organization: { id: orgId, companyName: 'Test Org' },
+      organizationRole: null,
     });
 
     const result = await service.createOrgUser(orgId, {
@@ -137,7 +152,7 @@ describe('UsersService — security & membership', () => {
       role: 'WORKER',
     });
 
-    expect(prisma.organizationMembership.update).toHaveBeenCalled();
+    expect(lifecycle.reactivate).toHaveBeenCalled();
     expect(result.email).toBe('worker@test.de');
   });
 

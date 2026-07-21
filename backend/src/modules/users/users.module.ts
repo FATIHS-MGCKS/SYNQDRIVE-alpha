@@ -17,7 +17,8 @@ import { IamAuditOutboxRepository } from './iam-audit-outbox.repository';
 import { IamAuditOutboxProcessorService } from './iam-audit-outbox.processor';
 import { IamAuditOutboxSchedulerService } from './iam-audit-outbox.scheduler.service';
 import { IamAuditOutboxMetricsService } from './iam-audit-outbox.metrics';
-import { IamAuditService } from './iam-audit.service';
+import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
+import { IamMembershipLifecycleNotificationService } from './iam-membership-lifecycle-notification.service';
 
 @Module({
   controllers: [
@@ -42,6 +43,8 @@ import { IamAuditService } from './iam-audit.service';
     IamAuditOutboxSchedulerService,
     IamAuditOutboxMetricsService,
     IamAuditService,
+    IamMembershipLifecycleService,
+    IamMembershipLifecycleNotificationService,
   ],
   exports: [
     UsersService,
@@ -49,6 +52,7 @@ import { IamAuditService } from './iam-audit.service';
     OrganizationRoleService,
     UserAccessAuditService,
     IamAuditService,
+    IamMembershipLifecycleService,
     IamAuditOutboxRepository,
     IamAuditOutboxProcessorService,
     IamAuditOutboxMetricsService,
