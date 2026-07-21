@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-production-validation-2026-07-21',
+    version: '4.9.739',
+    title: 'Fleet Health Service — Production Validation (P64)',
+    summary: [
+      'Read-only Post-Deploy-Validation: `docs/audits/fleet-health-service-production-validation-2026-07-21.md`.',
+      'Ergebnis PASS mit Hinweisen: Commit-Match, Health 200, Battery-V2-Colon-Fehler 0 post-deploy, PM2 online.',
+      'Rollout-Plan auf GO (Production direkt) aktualisiert; G11 PASS, P0-5/P1 Follow-up dokumentiert.',
+    ],
+    reason: 'Nach direktem Production-Deploy P64-Protokoll und Rollout-Status aktualisieren.',
+    previousBehavior: 'Rollout-Plan NO_GO; keine Prod-Validation nach Deploy.',
+    details:
+      'VPS 5041210; Release 20260721101713_v4994; docs/releases/fleet-health-service-rollout-plan.md v1.1.',
+    affectsArchitecture: false,
+    module: 'Fleet Health Service',
+    createdAt: '2026-07-21T10:25:00.000Z',
+  },
+  {
     id: 'fleet-health-service-production-release-2026-07-21',
     version: '4.9.738',
     title: 'Fleet Health Service — Production Release (direkt)',

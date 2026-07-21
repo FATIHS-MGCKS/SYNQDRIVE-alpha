@@ -6,10 +6,11 @@
 | **Abgeschlossen (UTC)** | 2026-07-21 |
 | **Prompt** | 66/66 (Sign-off) |
 | **Vertrag** | [`fleet-health-service-remediation-contract.md`](./fleet-health-service-remediation-contract.md) (Tracker-Branch) |
-| **Integrations-Branch** | `cursor/fleet-health-e2e-bad3` @ `439ed532` |
+| **Production-Commit** | `main` @ `50412105` |
 | **Post-Remediation-Audit** | [`docs/audits/fleet-health-service-post-remediation-readiness.md`](../audits/fleet-health-service-post-remediation-readiness.md) |
 | **Rollout-Plan** | [`docs/releases/fleet-health-service-rollout-plan.md`](../releases/fleet-health-service-rollout-plan.md) |
-| **Gesamturteil** | **`CONDITIONALLY_READY`** (Code-Integration) · **`NO_GO`** (Production-Pilot) |
+| **Prod-Validation** | [`docs/audits/fleet-health-service-production-validation-2026-07-21.md`](../audits/fleet-health-service-production-validation-2026-07-21.md) |
+| **Gesamturteil** | **`GO (Production live)`** · Restrisiken P0-5, P1-* dokumentiert |
 
 ---
 
