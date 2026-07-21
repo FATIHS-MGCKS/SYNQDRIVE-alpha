@@ -32,6 +32,17 @@ import {
   ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE,
   ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE,
 } from './policies/org-membership-admin.policy';
+import {
+  isRoleDowngrade,
+  isRoleUpgrade,
+  permissionsWereReduced,
+  stationScopeWasReduced,
+  type IamSessionInvalidationTrigger,
+} from './policies/iam-session-invalidation.policy';
+import {
+  IamSessionPolicyService,
+  type IamSessionRevocationIntentInput,
+} from '@modules/auth/iam-session-policy.service';
 
 const ROLE_DISPLAY: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -98,6 +109,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly userAudit: UserAccessAuditService,
+    private readonly sessionPolicy: IamSessionPolicyService,
   ) {}
 
   private assertPasswordStrength(password: string): void {
@@ -569,7 +581,20 @@ export class UsersService {
       stationIds: membership.stationIds,
       fieldAgentAccess: membership.fieldAgentAccess,
       status: membership.status,
+      membershipVersion: membership.membershipVersion,
     };
+
+    const sessionEvents = this.buildSessionInvalidationEvents(
+      orgId,
+      userId,
+      membership.id,
+      auditBefore,
+      dto,
+      stationFields,
+      normalizedPermissions,
+      actor.id,
+    );
+    const intentIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
       const membershipUpdate: Prisma.OrganizationMembershipUpdateInput = {};
@@ -602,7 +627,16 @@ export class UsersService {
           data: membershipUpdate,
         });
       }
+
+      for (const event of sessionEvents) {
+        const enqueued = await this.sessionPolicy.enqueueInTransaction(tx, event);
+        intentIds.push(...enqueued.intentIds);
+      }
     });
+
+    if (intentIds.length > 0) {
+      await this.sessionPolicy.processIntents(intentIds);
+    }
 
     const actorUserId = actor.id;
     if (dto.role !== undefined && dto.role !== auditBefore.role) {
@@ -749,10 +783,27 @@ export class UsersService {
 
     await this.assertNotLastActiveOrgAdmin(orgId, userId);
 
-    await this.prisma.organizationMembership.update({
-      where: { id: membership.id },
-      data: { status: MembershipStatus.REMOVED },
+    let intentIds: string[] = [];
+    await this.prisma.$transaction(async (tx) => {
+      await tx.organizationMembership.update({
+        where: { id: membership.id },
+        data: { status: MembershipStatus.REMOVED },
+      });
+      const enqueued = await this.sessionPolicy.enqueueInTransaction(tx, {
+        eventType: 'MEMBERSHIP_REMOVED',
+        userId,
+        organizationId: orgId,
+        membershipId: membership.id,
+        actorUserId: actor?.id,
+        mutationVersion: membership.membershipVersion + 1,
+      });
+      intentIds = enqueued.intentIds;
     });
+
+    if (intentIds.length > 0) {
+      await this.sessionPolicy.processIntents(intentIds);
+    }
+
     void this.userAudit.record({
       organizationId: orgId,
       actorUserId: actor?.id,
@@ -817,6 +868,78 @@ export class UsersService {
       where: { id: userId },
       data: { lastLoginAt: new Date() },
     });
+  }
+
+  private buildSessionInvalidationEvents(
+    orgId: string,
+    userId: string,
+    membershipId: string,
+    before: {
+      role: MembershipRole;
+      permissions: unknown;
+      stationIds: unknown;
+      status: MembershipStatus;
+      membershipVersion: number;
+    },
+    dto: UpdateOrgUserDto,
+    stationFields: { stationIds: Prisma.InputJsonValue | typeof Prisma.JsonNull },
+    normalizedPermissions: ReturnType<typeof normalizeMembershipPermissions> | undefined,
+    actorUserId?: string,
+  ): IamSessionRevocationIntentInput[] {
+    const events: IamSessionRevocationIntentInput[] = [];
+    const base = {
+      userId,
+      organizationId: orgId,
+      membershipId,
+      actorUserId,
+      mutationVersion: before.membershipVersion + 1,
+    };
+
+    if (dto.status === 'SUSPENDED') {
+      events.push({ ...base, eventType: 'MEMBERSHIP_SUSPENDED' });
+    }
+
+    if (dto.role !== undefined && dto.role !== before.role) {
+      const eventType: IamSessionInvalidationTrigger = isRoleDowngrade(
+        before.role as 'ORG_ADMIN' | 'SUB_ADMIN' | 'WORKER' | 'DRIVER',
+        dto.role as 'ORG_ADMIN' | 'SUB_ADMIN' | 'WORKER' | 'DRIVER',
+      )
+        ? 'ROLE_DOWNGRADED'
+        : isRoleUpgrade(
+              before.role as 'ORG_ADMIN' | 'SUB_ADMIN' | 'WORKER' | 'DRIVER',
+              dto.role as 'ORG_ADMIN' | 'SUB_ADMIN' | 'WORKER' | 'DRIVER',
+            )
+          ? 'ROLE_UPGRADED'
+          : 'ROLE_DOWNGRADED';
+      events.push({ ...base, eventType });
+    }
+
+    if (
+      normalizedPermissions !== undefined &&
+      permissionsWereReduced(
+        (before.permissions as Record<string, { read?: boolean; write?: boolean; manage?: boolean }>) ??
+          null,
+        normalizedPermissions as Record<string, { read?: boolean; write?: boolean; manage?: boolean }>,
+      )
+    ) {
+      events.push({ ...base, eventType: 'PERMISSION_REVOKED' });
+    }
+
+    if (
+      (dto.stationIds !== undefined || dto.stationScope !== undefined) &&
+      stationScopeWasReduced(
+        parseStationIds(before.stationIds),
+        parseStationIds(
+          stationFields.stationIds === Prisma.JsonNull
+            ? null
+            : stationFields.stationIds,
+        ),
+      )
+    ) {
+      events.push({ ...base, eventType: 'STATION_SCOPE_REDUCED' });
+    }
+
+    return events;
   }
 
   private mapOrgUser(membership: {

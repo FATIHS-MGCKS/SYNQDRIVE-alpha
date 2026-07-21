@@ -18,6 +18,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
+import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
 import {
   NOTIFICATION_CATEGORY_META,
   NOTIFICATION_CATEGORY_ORDER,
@@ -49,6 +50,7 @@ export class AccountService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly sessionPolicy: IamSessionPolicyService,
   ) {}
 
   async getMe(userId: string, jwtOrgId: string | null): Promise<AccountMeDto> {
@@ -268,13 +270,25 @@ export class AccountService {
     }
 
     const hash = await bcrypt.hash(dto.newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: hash, mustChangePassword: false },
+    let intentIds: string[] = [];
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash: hash, mustChangePassword: false },
+      });
+      const enqueued = await this.sessionPolicy.enqueueInTransaction(tx, {
+        eventType: 'PASSWORD_CHANGED',
+        userId,
+        organizationId: jwtOrgId,
+        actorUserId: userId,
+        metadata: { revokeOtherSessions: dto.revokeOtherSessions },
+      });
+      intentIds = enqueued.intentIds;
     });
 
-    if (dto.revokeOtherSessions) {
-      await this.refreshTokens.revokeOtherSessionsForUser(userId);
+    if (intentIds.length > 0) {
+      await this.sessionPolicy.processIntents(intentIds);
     }
 
     void this.audit.record({

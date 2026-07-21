@@ -4,7 +4,7 @@
 |-------|-------|
 | **Audit** | `docs/audits/users-roles-production-readiness-2026-07.md` |
 | **Audit branch** | `audit/users-roles-production-readiness-2026-07` @ `0f99ce41` |
-| **Implementation branch** | `cursor/iam-membership-identity-isolation-fb6e` |
+| **Implementation branch** | `cursor/iam-session-invalidation-policy-fb6e` |
 | **Verdict (audit)** | **NOT_READY** (28× P0, 27 production blockers) |
 | **Mode** | Identity & session truth → roles & audit → governance & UI (22 prompts) |
 
@@ -32,9 +32,9 @@
 | 1 | Remediation baseline (Branch, Inventar, Fortschrittsdokument) | ✅ (audit-Artefakte + Branch) | — |
 | 2 | Security regression test harness (A–K) | ✅ | `284aaf6b` |
 | 3 | Bootstrap/seed admin hardening | ⬜ | — |
-| 4 | Isolate org membership admin from global identity | ✅ | (this commit) |
-| 5 | Org-bound refresh tokens | ⬜ | — |
-| 6 | Explicit organization switch | ⬜ | — |
+| 4 | Isolate org membership admin from global identity | ✅ | `ceae35bb` |
+| 5 | Central session invalidation policy | ✅ | (this commit) |
+| 6 | Org-bound refresh tokens | ⬜ | — |
 | 7 | Central EffectiveAccessEngine | ⬜ | — |
 | 8 | Versioned roles + assignment link | ⬜ | — |
 | 9 | Role propagation + drift detection | ⬜ | — |
@@ -112,7 +112,20 @@ Siehe Architektur-Dokument — **keine** stille Weiterleitung auf globale User-U
 
 ---
 
-## Prompt 2 — Security Regression Harness
+## Prompt 5 — Central Session Invalidation Policy
+
+**Datum:** 2026-07-21 UTC
+
+- `IamSessionPolicyService` + `iam_session_revocation_intents` outbox (intent in IAM transaction, execution post-commit)
+- Scopes: `USER_ALL_SESSIONS`, `ORGANIZATION_MEMBERSHIP_SESSIONS`, `TOKEN_FAMILY`, `PRIVILEGED_SESSIONS`, …
+- `User.sessionVersion`, `OrganizationMembership.membershipVersion`, JWT claims on access tokens
+- Refresh tokens store `organizationId` for multi-org scoped revocation
+- Wired: membership suspend/remove/role/permission/station, password change, refresh reuse
+- `architecture/IAM_SESSION_INVALIDATION_POLICY_2026-07-21.md`
+
+---
+
+## Prompt 2 — Security Regression Harness (Szenarien)
 
 - **A** Globale Identität (Passwort, E-Mail, globaler Status)
 - **B** Membership-Suspendierung / Session-Revoke-Ziel

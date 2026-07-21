@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-session-invalidation-policy-v49707-2026-07-21',
+    version: '4.9.707',
+    title: 'V4.9.707 — IAM central session invalidation policy (Prompt 5)',
+    summary: [
+      'IamSessionPolicyService with deterministic scopes and transactional revocation-intent outbox.',
+      'sessionVersion / membershipVersion on User + Membership; refresh tokens org-bound for multi-org revocation.',
+      'Wired into membership suspend/remove, permission/role changes, password change, refresh-token reuse.',
+    ],
+    reason: 'Users & Roles remediation Prompt 5 — no scattered ad-hoc session revocations.',
+    previousBehavior:
+      'Session revocation was ad-hoc (optional revokeOtherSessions on password change only); membership IAM changes did not revoke tokens.',
+    details:
+      'backend/src/modules/auth/iam-session-policy.service.ts, policies/iam-session-invalidation.policy.ts, architecture/IAM_SESSION_INVALIDATION_POLICY_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:00:00.000Z',
+  },
+  {
     id: 'iam-membership-identity-isolation-v49706-2026-07-21',
     version: '4.9.706',
     title: 'V4.9.706 — IAM: org membership admin isolated from global identity (Prompt 4)',

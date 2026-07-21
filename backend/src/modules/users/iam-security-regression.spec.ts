@@ -18,10 +18,7 @@ import {
   computeEffectiveModuleAccess,
   surfacesAgree,
 } from './policies/iam-effective-access.policy';
-import {
-  describeSessionInvalidationGap,
-  sessionInvalidationSatisfiesTarget,
-} from './policies/iam-session-invalidation.policy';
+import { sessionInvalidationSatisfiesTarget } from './policies/iam-session-invalidation.policy';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
 import {
   createInviteServiceHarness,
@@ -42,6 +39,7 @@ const activeWorkerMembership = {
   stationScope: null,
   stationIds: null,
   fieldAgentAccess: false,
+  membershipVersion: 0,
 };
 
 describe('IAM security regressions A–K (Prompt 2/22)', () => {
@@ -158,14 +156,24 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
       expect(membershipB?.status).toBe(MembershipStatus.ACTIVE);
     });
 
-    it('TARGET RED: org-scoped suspension must revoke org-bound sessions', () => {
-      const observed = 'NONE';
-      expect(
-        sessionInvalidationSatisfiesTarget('MEMBERSHIP_SUSPENDED', observed),
-      ).toBe(false);
-      expect(describeSessionInvalidationGap('MEMBERSHIP_SUSPENDED', observed)).toContain(
-        'target=ORG_BOUND_SESSIONS',
+    it('TARGET: org-scoped suspension enqueues membership session invalidation', async () => {
+      const { prisma, sessionPolicy, service } = createUsersServiceHarness();
+      mockOrgAdminActorMembership(prisma, activeWorkerMembership);
+      prisma.organizationMembership.update.mockResolvedValue({});
+      jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
+
+      await service.updateOrgUser(
+        IAM_REGRESSION_IDS.orgA,
+        IAM_REGRESSION_IDS.multiOrgUser,
+        { status: 'SUSPENDED' },
+        { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
       );
+
+      expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ eventType: 'MEMBERSHIP_SUSPENDED' }),
+      );
+      expect(sessionPolicy.processIntents).toHaveBeenCalled();
     });
   });
 
@@ -204,71 +212,55 @@ describe('IAM security regressions A–K (Prompt 2/22)', () => {
   });
 
   describe('D — Session invalidation policy', () => {
-    const refreshRevoke = jest.fn();
-
-    beforeEach(() => {
-      refreshRevoke.mockClear();
-    });
-
-    it('admin password change endpoint is deprecated (no session revoke yet)', async () => {
-      const { prisma, service } = createUsersServiceHarness();
+    it('membership suspension enqueues ORGANIZATION_MEMBERSHIP_SESSIONS intent', async () => {
+      const { prisma, sessionPolicy, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
+      prisma.organizationMembership.update.mockResolvedValue({});
+      jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
 
-      await expect(
-        service.changeOrgUserPassword(
-          IAM_REGRESSION_IDS.orgA,
-          IAM_REGRESSION_IDS.multiOrgUser,
-          'longpassword123',
-          IAM_REGRESSION_IDS.adminA,
-          { id: IAM_REGRESSION_IDS.adminA },
-        ),
-      ).rejects.toThrow(/reset|deprecated/i);
+      await service.updateOrgUser(
+        IAM_REGRESSION_IDS.orgA,
+        IAM_REGRESSION_IDS.multiOrgUser,
+        { status: 'SUSPENDED' },
+        { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
+      );
 
-      expect(refreshRevoke).not.toHaveBeenCalled();
+      expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          eventType: 'MEMBERSHIP_SUSPENDED',
+          organizationId: IAM_REGRESSION_IDS.orgA,
+        }),
+      );
     });
 
-    it('TARGET RED: password change must invalidate sessions', () => {
+    it('policy rejects NONE for PASSWORD_CHANGED', () => {
       expect(
         sessionInvalidationSatisfiesTarget('PASSWORD_CHANGED', 'NONE'),
       ).toBe(false);
     });
 
-    it('TARGET RED: membership removal must invalidate sessions', () => {
-      expect(
-        sessionInvalidationSatisfiesTarget('MEMBERSHIP_REMOVED', 'NONE'),
-      ).toBe(false);
-    });
-
-    it('TARGET RED: role downgrade must invalidate sessions', () => {
-      expect(
-        sessionInvalidationSatisfiesTarget('ROLE_DOWNGRADED', 'NONE'),
-      ).toBe(false);
-    });
-
-    it('TARGET RED: permission revocation must invalidate sessions', () => {
-      expect(
-        sessionInvalidationSatisfiesTarget('PERMISSION_REVOKED', 'NONE'),
-      ).toBe(false);
-    });
-
-    it('TARGET RED: station scope reduction must invalidate sessions', () => {
-      expect(
-        sessionInvalidationSatisfiesTarget('STATION_SCOPE_REDUCED', 'NONE'),
-      ).toBe(false);
-    });
-
-    it('characterization: removeOrgUser does not call RefreshTokenService', async () => {
-      const { prisma, service } = createUsersServiceHarness();
+    it('removeOrgUser enqueues MEMBERSHIP_REMOVED session invalidation', async () => {
+      const { prisma, sessionPolicy, service } = createUsersServiceHarness();
       prisma.organizationMembership.findFirst.mockResolvedValue({
         id: 'm1',
         role: MembershipRole.WORKER,
         status: MembershipStatus.ACTIVE,
+        membershipVersion: 0,
       });
       prisma.organizationMembership.count.mockResolvedValue(1);
       prisma.organizationMembership.update.mockResolvedValue({});
 
-      await service.removeOrgUser(IAM_REGRESSION_IDS.orgA, IAM_REGRESSION_IDS.multiOrgUser);
-      expect(refreshRevoke).not.toHaveBeenCalled();
+      await service.removeOrgUser(
+        IAM_REGRESSION_IDS.orgA,
+        IAM_REGRESSION_IDS.multiOrgUser,
+      );
+
+      expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ eventType: 'MEMBERSHIP_REMOVED' }),
+      );
+      expect(sessionPolicy.processIntents).toHaveBeenCalled();
     });
   });
 

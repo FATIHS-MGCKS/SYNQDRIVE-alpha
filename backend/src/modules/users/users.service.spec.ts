@@ -4,6 +4,7 @@ import { UsersService } from './users.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { UserAccessAuditService } from './user-access-audit.service';
 import { LAST_ORG_ADMIN_MESSAGE } from '@shared/auth/permission.constants';
+import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
 
 describe('UsersService — security & membership', () => {
   const orgId = 'org-1';
@@ -28,6 +29,10 @@ describe('UsersService — security & membership', () => {
     $transaction: jest.Mock;
   };
   let userAudit: { record: jest.Mock };
+  let sessionPolicy: {
+    enqueueInTransaction: jest.Mock;
+    processIntents: jest.Mock;
+  };
   let service: UsersService;
 
   beforeEach(() => {
@@ -51,9 +56,14 @@ describe('UsersService — security & membership', () => {
       ),
     };
     userAudit = { record: jest.fn().mockResolvedValue(undefined) };
+    sessionPolicy = {
+      enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: ['intent-1'], scopes: [] }),
+      processIntents: jest.fn().mockResolvedValue([]),
+    };
     service = new UsersService(
       prisma as unknown as PrismaService,
       userAudit as unknown as UserAccessAuditService,
+      sessionPolicy as unknown as IamSessionPolicyService,
     );
   });
 
@@ -62,6 +72,7 @@ describe('UsersService — security & membership', () => {
       id: 'm1',
       role: MembershipRole.ORG_ADMIN,
       status: MembershipStatus.ACTIVE,
+      membershipVersion: 0,
     });
     prisma.organizationMembership.count.mockResolvedValue(0);
 

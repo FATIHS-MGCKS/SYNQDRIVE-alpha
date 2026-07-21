@@ -125,7 +125,13 @@ export class AuthController {
     };
 
     const { accessToken, refreshToken, expiresIn } = await this.refreshTokenService.issueTokenPair(
-      user,
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        platformRole: user.platformRole,
+        sessionVersion: user.sessionVersion,
+      },
       membership
         ? {
             role: membership.role,
@@ -133,6 +139,8 @@ export class AuthController {
             organizationName: membership.organization?.companyName ?? null,
             organizationLogoUrl: membership.organization?.logoUrl ?? null,
             permissions: membership.permissions,
+            membershipId: membership.id,
+            membershipVersion: membership.membershipVersion,
           }
         : null,
       {

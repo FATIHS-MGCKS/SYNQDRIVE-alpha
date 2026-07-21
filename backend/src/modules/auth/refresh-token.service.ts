@@ -1,13 +1,33 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { MembershipRole } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  IamSessionPolicyService,
+} from './iam-session-policy.service';
 import * as crypto from 'crypto';
-import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 
 const REFRESH_TOKEN_BYTES = 40;
 const REFRESH_TOKEN_TTL_DAYS = 30;
-const BCRYPT_ROUNDS = 10;
+
+export interface RefreshTokenMembershipContext {
+  role?: string | null;
+  organizationId?: string | null;
+  organizationName?: string | null;
+  organizationLogoUrl?: string | null;
+  permissions?: unknown;
+  membershipId?: string | null;
+  membershipVersion?: number | null;
+}
+
+export interface RefreshTokenUserContext {
+  id: string;
+  email: string;
+  name?: string | null;
+  platformRole: string;
+  sessionVersion?: number;
+}
 
 @Injectable()
 export class RefreshTokenService {
@@ -18,6 +38,8 @@ export class RefreshTokenService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Inject(forwardRef(() => IamSessionPolicyService))
+    private readonly sessionPolicy: IamSessionPolicyService,
   ) {
     this.jwtSecret = this.config.get<string>('app.jwtSecret')!;
     this.jwtExpiresIn = this.config.get<string>('app.jwtExpiresIn', '15m');
@@ -25,22 +47,15 @@ export class RefreshTokenService {
 
   /** Issue a new access + refresh token pair after successful authentication. */
   async issueTokenPair(
-    user: { id: string; email: string; name?: string | null; platformRole: string },
-    membership: { role?: string | null; organizationId?: string | null; organizationName?: string | null; organizationLogoUrl?: string | null; permissions?: any } | null,
+    user: RefreshTokenUserContext,
+    membership: RefreshTokenMembershipContext | null,
     context: { userAgent?: string; ipAddress?: string } = {},
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
     const accessToken = this.signAccessToken(user, membership);
-    const refreshToken = await this.createRefreshToken(user.id, context);
+    const refreshToken = await this.createRefreshToken(user, membership, context);
     return { accessToken, refreshToken, expiresIn: this.jwtExpiresIn };
   }
 
-  /**
-   * Rotate a refresh token:
-   *  - Verify the token is valid and not expired/revoked.
-   *  - Detect reuse: if the token was already replaced, revoke the entire family (token theft).
-   *  - Issue a new access + refresh token pair.
-   *  - Revoke the consumed token.
-   */
   async rotate(
     rawToken: string,
     context: { userAgent?: string; ipAddress?: string } = {},
@@ -68,12 +83,17 @@ export class RefreshTokenService {
     }
 
     if (stored.revokedAt || stored.expiresAt < new Date()) {
-      // Token already revoked or expired — if it had a replacement, this looks like reuse
       if (stored.replacedBy) {
         this.logger.warn(
           `Refresh token reuse detected for user ${stored.userId}, family ${stored.family}. Revoking entire family.`,
         );
-        await this.revokeFamily(stored.family);
+        await this.sessionPolicy.recordAndExecute({
+          eventType: 'REFRESH_TOKEN_REUSE_DETECTED',
+          userId: stored.userId,
+          tokenFamily: stored.family,
+          refreshTokenId: stored.id,
+          highRiskReuse: true,
+        });
       }
       throw new UnauthorizedException('Refresh token is no longer valid');
     }
@@ -85,22 +105,28 @@ export class RefreshTokenService {
 
     const membership = user.memberships[0] ?? null;
 
-    // Issue new pair
     const newPair = await this.issueTokenPairWithFamily(
-      user,
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        platformRole: user.platformRole,
+        sessionVersion: user.sessionVersion,
+      },
       membership
         ? {
             role: membership.role,
             organizationId: membership.organizationId,
             organizationName: membership.organization?.companyName ?? null,
             permissions: membership.permissions,
+            membershipId: membership.id,
+            membershipVersion: membership.membershipVersion,
           }
         : null,
       stored.family,
       context,
     );
 
-    // Mark old token as revoked/replaced
     await this.prisma.refreshToken.update({
       where: { id: stored.id },
       data: {
@@ -116,7 +142,6 @@ export class RefreshTokenService {
     };
   }
 
-  /** Revoke a single refresh token (logout from one device). */
   async revoke(rawToken: string): Promise<void> {
     const tokenHash = await this.hashToken(rawToken);
     await this.prisma.refreshToken
@@ -127,15 +152,55 @@ export class RefreshTokenService {
       .catch(() => undefined);
   }
 
-  /** Revoke all refresh tokens for a user (logout from all devices). */
   async revokeAllForUser(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    await this.revokeAllActiveForUser(userId);
   }
 
-  /** List refresh-token sessions for account self-service (metadata only). */
+  async revokeAllActiveForUser(userId: string): Promise<number> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
+  }
+
+  async revokeForOrganizationMembership(
+    userId: string,
+    organizationId: string,
+  ): Promise<number> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        organizationId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
+  }
+
+  async revokeFamily(family: string): Promise<number> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { family, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
+  }
+
+  async revokePrivilegedSessionsForUser(userId: string): Promise<number> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        privilegedSession: true,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
+  }
+
   async listSessionsForUser(userId: string) {
     return this.prisma.refreshToken.findMany({
       where: { userId },
@@ -144,10 +209,6 @@ export class RefreshTokenService {
     });
   }
 
-  /**
-   * Heuristic for "current" session when no raw refresh token is supplied:
-   * the newest active token (not revoked, not expired, not superseded by rotation).
-   */
   resolveCurrentSessionId(
     tokens: Array<{ id: string; revokedAt: Date | null; expiresAt: Date; replacedBy: string | null }>,
   ): string | null {
@@ -159,7 +220,6 @@ export class RefreshTokenService {
     return active[0]?.id ?? null;
   }
 
-  /** Revoke a single session owned by the user. */
   async revokeSessionById(userId: string, sessionId: string): Promise<boolean> {
     const result = await this.prisma.refreshToken.updateMany({
       where: { id: sessionId, userId, revokedAt: null },
@@ -168,12 +228,6 @@ export class RefreshTokenService {
     return result.count > 0;
   }
 
-  /**
-   * Revoke all active sessions except `keepSessionId`.
-   * When `keepSessionId` is omitted, keeps the newest active session so the
-   * caller is not locked out if the current session cannot be determined
-   * from the access token alone.
-   */
   async revokeOtherSessionsForUser(
     userId: string,
     keepSessionId?: string | null,
@@ -205,17 +259,23 @@ export class RefreshTokenService {
   }
 
   private async createRefreshToken(
-    userId: string,
+    user: RefreshTokenUserContext,
+    membership: RefreshTokenMembershipContext | null,
     context: { userAgent?: string; ipAddress?: string },
   ): Promise<string> {
     const family = crypto.randomUUID();
-    const result = await this.issueTokenPairWithFamily(null, null, family, context, userId);
+    const result = await this.issueTokenPairWithFamily(
+      user,
+      membership,
+      family,
+      context,
+    );
     return result.rawRefreshToken;
   }
 
   private async issueTokenPairWithFamily(
-    user: any,
-    membership: any,
+    user: RefreshTokenUserContext | null,
+    membership: RefreshTokenMembershipContext | null,
     family: string,
     context: { userAgent?: string; ipAddress?: string },
     userIdOverride?: string,
@@ -224,12 +284,18 @@ export class RefreshTokenService {
     const rawToken = crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
     const tokenHash = await this.hashToken(rawToken);
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+    const privilegedSession = this.isPrivilegedMembership(membership);
 
     const record = await this.prisma.refreshToken.create({
       data: {
         userId,
         tokenHash,
         family,
+        organizationId: membership?.organizationId ?? null,
+        membershipId: membership?.membershipId ?? null,
+        sessionVersion: user?.sessionVersion ?? null,
+        membershipVersion: membership?.membershipVersion ?? null,
+        privilegedSession,
         expiresAt,
         userAgent: context.userAgent ?? null,
         ipAddress: context.ipAddress ?? null,
@@ -241,16 +307,22 @@ export class RefreshTokenService {
     return { accessToken, rawRefreshToken: rawToken, refreshTokenId: record.id };
   }
 
-  private async revokeFamily(family: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { family, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+  private isPrivilegedMembership(
+    membership: RefreshTokenMembershipContext | null,
+  ): boolean {
+    if (!membership?.role) return false;
+    if (membership.role === MembershipRole.ORG_ADMIN) return true;
+    const perms = membership.permissions as
+      | Record<string, { manage?: boolean }>
+      | null
+      | undefined;
+    if (!perms) return false;
+    return Object.values(perms).some((p) => !!p?.manage);
   }
 
   private signAccessToken(
-    user: { id: string; email: string; name?: string | null; platformRole: string },
-    membership: { role?: string | null; organizationId?: string | null; organizationName?: string | null } | null,
+    user: RefreshTokenUserContext,
+    membership: RefreshTokenMembershipContext | null,
   ): string {
     const payload = {
       sub: user.id,
@@ -260,13 +332,14 @@ export class RefreshTokenService {
       membershipRole: membership?.role ?? null,
       organizationId: membership?.organizationId ?? null,
       organizationName: membership?.organizationName ?? null,
+      sessionVersion: user.sessionVersion ?? 0,
+      membershipVersion: membership?.membershipVersion ?? null,
+      membershipId: membership?.membershipId ?? null,
     };
-    return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn as any });
+    return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn as jwt.SignOptions['expiresIn'] });
   }
 
   private async hashToken(rawToken: string): Promise<string> {
-    // Use SHA-256 for lookup hash (fast, deterministic) and bcrypt only at creation for storage
-    // This way lookup is O(1) and brute-force resistance comes from token entropy (40 random bytes)
     return crypto.createHash('sha256').update(rawToken).digest('hex');
   }
 }

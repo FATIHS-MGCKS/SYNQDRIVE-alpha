@@ -5,6 +5,7 @@ import { UsersService } from './users.service';
 import { OrganizationInviteService } from './organization-invite.service';
 import { OrganizationRoleService } from './organization-role.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
+import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
 import { ConfigService } from '@nestjs/config';
 
 export const IAM_REGRESSION_IDS = {
@@ -60,11 +61,19 @@ export function createUsersServiceHarness() {
     fn(prisma),
   );
   const userAudit: { record: jest.Mock } = { record: jest.fn().mockResolvedValue(undefined) };
+  const sessionPolicy: {
+    enqueueInTransaction: jest.Mock;
+    processIntents: jest.Mock;
+  } = {
+    enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: [], scopes: [] }),
+    processIntents: jest.fn().mockResolvedValue([]),
+  };
   const service = new UsersService(
     prisma as unknown as PrismaService,
     userAudit as unknown as UserAccessAuditService,
+    sessionPolicy as unknown as IamSessionPolicyService,
   );
-  return { prisma, userAudit, service };
+  return { prisma, userAudit, sessionPolicy, service };
 }
 
 export function createInviteServiceHarness() {
@@ -182,9 +191,13 @@ export function createRefreshTokenHarness() {
       return fallback;
     }),
   };
+  const sessionPolicy = {
+    recordAndExecute: jest.fn().mockResolvedValue({ revokedTokenCount: 0 }),
+  };
   const service = new RefreshTokenService(
     prisma as unknown as PrismaService,
     config as unknown as ConfigService,
+    sessionPolicy as never,
   );
   return { prisma, config, service };
 }

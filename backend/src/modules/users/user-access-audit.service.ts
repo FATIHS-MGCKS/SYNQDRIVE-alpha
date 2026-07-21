@@ -14,6 +14,7 @@ export const UserAccessAuditAction = {
   USER_STATION_SCOPE_CHANGED: 'USER_STATION_SCOPE_CHANGED',
   USER_PASSWORD_RESET_BY_ADMIN: 'USER_PASSWORD_RESET_BY_ADMIN',
   USER_PASSWORD_RESET_REQUESTED: 'USER_PASSWORD_RESET_REQUESTED',
+  SESSION_INVALIDATION_EXECUTED: 'SESSION_INVALIDATION_EXECUTED',
   USER_INVITED: 'USER_INVITED',
   USER_INVITE_RESENT: 'USER_INVITE_RESENT',
   USER_INVITE_REVOKED: 'USER_INVITE_REVOKED',
@@ -28,7 +29,7 @@ export type UserAccessAuditActionCode =
   (typeof UserAccessAuditAction)[keyof typeof UserAccessAuditAction];
 
 export interface UserAccessAuditInput {
-  organizationId: string;
+  organizationId?: string;
   actorUserId?: string;
   auditAction: UserAccessAuditActionCode;
   targetUserId?: string;
@@ -121,7 +122,8 @@ export class UserAccessAuditService {
       auditAction === UserAccessAuditAction.USER_REMOVED_FROM_ORG ||
       auditAction === UserAccessAuditAction.USER_PERMISSIONS_CHANGED ||
       auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN ||
-      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_REQUESTED
+      auditAction === UserAccessAuditAction.USER_PASSWORD_RESET_REQUESTED ||
+      auditAction === UserAccessAuditAction.SESSION_INVALIDATION_EXECUTED
     ) {
       return 'WARN';
     }
