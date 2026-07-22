@@ -1568,6 +1568,7 @@ model Organization {
   legalDocumentEvents                    OrganizationLegalDocumentEvent[]
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
+  bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
   legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
@@ -4795,6 +4796,7 @@ model Booking {
   outboundEmails          OutboundEmail[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
   documentGenerationJobs        BookingDocumentGenerationJob[]
+  pickupGateAuditEvents         BookingPickupGateAuditEvent[]
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
@@ -6474,6 +6476,29 @@ model BookingDocumentGenerationJob {
   @@index([organizationId, bookingId], map: "booking_document_generation_jobs_org_booking_idx")
   @@index([status, nextRetryAt], map: "booking_document_generation_jobs_status_retry_idx")
   @@map("booking_document_generation_jobs")
+}
+
+/// Append-only audit trail for pickup gate evaluations, blocks, and authorized overrides.
+model BookingPickupGateAuditEvent {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  bookingId           String   @map("booking_id")
+  eventType           String   @map("event_type")
+  outcome             String
+  actorUserId         String?  @map("actor_user_id")
+  actorDisplayName    String?  @map("actor_display_name")
+  overrideReason      String?  @map("override_reason")
+  gateCode            String?  @map("gate_code")
+  missingRequirements Json?    @map("missing_requirements")
+  correlationId       String?  @map("correlation_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, bookingId, createdAt], map: "booking_pickup_gate_audit_events_org_booking_created_idx")
+  @@index([organizationId, createdAt], map: "booking_pickup_gate_audit_events_org_created_idx")
+  @@map("booking_pickup_gate_audit_events")
 }
 
 /// Checkpointed storage reconciliation runs for legal document integrity audits.

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-pickup-gate-2026-07-22',
+    version: '4.9.759',
+    title: 'Legal Documents — Server-Side Pickup Gate (Prompt 20/32)',
+    summary: [
+      'BookingPickupGateService blockiert CONFIRMED→ACTIVE ohne erfüllte Rechtsdokument-Voraussetzungen.',
+      'Prüft Completeness, Delivery Evidence, Generierungsjobs, Integrität, Mandant und Actor.',
+      'performedByUserId/Name nur aus authentifiziertem Request — Client-Felder abgelehnt.',
+      'Strukturierte 409-Antwort mit missingRequirements; Override nur mit override_handover + Begründung.',
+      'Append-only BookingPickupGateAuditEvent für BLOCKED und OVERRIDE.',
+      'Idempotenter Pickup bei ACTIVE; PATCH ACTIVE ohne Handover gesperrt.',
+    ],
+    reason: 'Production-Readiness — kein Pickup ohne nachweisbare Rechtsgrundlage.',
+    previousBehavior: 'Pickup ohne serverseitiges Gate; performedBy aus Client-Payload.',
+    details:
+      'docs/audits/legal-documents-pickup-gate-2026-07.md, architecture/LEGAL_DOCUMENT_PICKUP_GATE_2026-07-22.md, booking-pickup-gate.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Bookings / Documents',
+    createdAt: '2026-07-22T21:30:00.000Z',
+  },
+  {
     id: 'legal-documents-generation-workflow-2026-07-22',
     version: '4.9.758',
     title: 'Legal Documents — Idempotent Generation Workflow (Prompt 19/32)',
