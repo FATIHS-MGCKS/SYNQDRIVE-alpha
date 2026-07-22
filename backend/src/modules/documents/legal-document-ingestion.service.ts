@@ -31,6 +31,10 @@ export interface LegalDocumentIngestionSuccess {
   validatedAt: Date;
   malwareScannedAt: Date | null;
   malwareScannerId: string | null;
+  malwareEngineVersion: string | null;
+  malwareThreatName: string | null;
+  malwareScanDetail: string | null;
+  malwareScanAttempts: number | null;
   quarantineObjectKey: string | null;
 }
 
@@ -82,8 +86,12 @@ export class LegalDocumentIngestionService {
       pageCount: validation.pageCount,
       scanStatus: LEGAL_DOCUMENT_SCAN_STATUSES.SCAN_PASSED,
       validatedAt: now,
-      malwareScannedAt: this.malwareScan.isEnabled() ? scan.scannedAt : null,
+      malwareScannedAt: scan.scannedAt,
       malwareScannerId: scan.scannerId,
+      malwareEngineVersion: scan.engineVersion,
+      malwareThreatName: scan.threatName,
+      malwareScanDetail: scan.scanDetail,
+      malwareScanAttempts: scan.scanAttempts,
       quarantineObjectKey: scan.quarantineObjectKey,
     };
   }

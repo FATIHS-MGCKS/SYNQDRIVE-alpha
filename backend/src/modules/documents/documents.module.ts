@@ -4,9 +4,6 @@ import documentsConfig from '@config/documents.config';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
-import { MockDocumentMalwareScannerService } from '@modules/document-extraction/scanners/mock-document-malware-scanner.service';
-import { UnavailableDocumentMalwareScannerService } from '@modules/document-extraction/scanners/unavailable-document-malware-scanner.service';
-import { DOCUMENT_MALWARE_SCANNER } from '@modules/document-extraction/document-malware-scanner.interface';
 import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
 import { GeneratedDocumentsService } from './generated-documents.service';
@@ -25,6 +22,13 @@ import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
 import { DOCUMENTS_STORAGE } from './storage/document-storage.interface';
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
+import { LEGAL_DOCUMENT_MALWARE_SCANNER } from './malware-scanner/legal-document-malware-scanner.interface';
+import { LEGAL_MALWARE_SCANNER_PROVIDERS } from './malware-scanner/legal-document-malware-scanner.constants';
+import { LegalDocumentDevelopmentMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-development-malware-scanner.adapter';
+import { LegalDocumentClamAvMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-clamav-malware-scanner.adapter';
+import { LegalDocumentUnavailableMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-unavailable-malware-scanner.adapter';
+import { LegalDocumentMalwareScannerStartupService } from './malware-scanner/legal-document-malware-scanner-startup.service';
+import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/legal-document-malware-scanner-health.service';
 
 /**
  * Central document engine for the Booking Document Lifecycle.
@@ -55,25 +59,41 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
     LegalDocumentPdfValidationService,
     LegalDocumentMalwareScanService,
     LegalDocumentIngestionService,
-    MockDocumentMalwareScannerService,
-    UnavailableDocumentMalwareScannerService,
+    LegalDocumentDevelopmentMalwareScannerAdapter,
+    LegalDocumentClamAvMalwareScannerAdapter,
+    LegalDocumentUnavailableMalwareScannerAdapter,
     {
-      provide: DOCUMENT_MALWARE_SCANNER,
+      provide: LEGAL_DOCUMENT_MALWARE_SCANNER,
       useFactory: (
         config: ConfigType<typeof documentsConfig>,
-        mockScanner: MockDocumentMalwareScannerService,
-        unavailableScanner: UnavailableDocumentMalwareScannerService,
+        developmentScanner: LegalDocumentDevelopmentMalwareScannerAdapter,
+        clamAvScanner: LegalDocumentClamAvMalwareScannerAdapter,
+        unavailableScanner: LegalDocumentUnavailableMalwareScannerAdapter,
       ) => {
-        if (!config.legalMalwareScanEnabled) return unavailableScanner;
-        if (config.legalMalwareScannerProvider === 'mock') return mockScanner;
+        if (!config.legalMalwareScanEnabled) {
+          return unavailableScanner;
+        }
+        const provider = config.legalMalwareScannerProvider;
+        if (
+          provider === LEGAL_MALWARE_SCANNER_PROVIDERS.DEVELOPMENT ||
+          provider === LEGAL_MALWARE_SCANNER_PROVIDERS.MOCK
+        ) {
+          return developmentScanner;
+        }
+        if (provider === LEGAL_MALWARE_SCANNER_PROVIDERS.CLAMAV) {
+          return clamAvScanner;
+        }
         return unavailableScanner;
       },
       inject: [
         documentsConfig.KEY,
-        MockDocumentMalwareScannerService,
-        UnavailableDocumentMalwareScannerService,
+        LegalDocumentDevelopmentMalwareScannerAdapter,
+        LegalDocumentClamAvMalwareScannerAdapter,
+        LegalDocumentUnavailableMalwareScannerAdapter,
       ],
     },
+    LegalDocumentMalwareScannerStartupService,
+    LegalDocumentMalwareScannerHealthService,
     LegalDocumentsService,
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,
@@ -88,6 +108,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
     DocumentNumberingService,
     DOCUMENTS_STORAGE,
     DOCUMENT_RENDERER,
+    LegalDocumentMalwareScannerHealthService,
   ],
 })
 export class DocumentsModule {}

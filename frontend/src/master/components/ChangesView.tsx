@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-malware-scanner-2026-07-22',
+    version: '4.9.751',
+    title: 'Legal Documents — Malware Scanner Adapter (Prompt 12/32)',
+    summary: [
+      'Austauschbarer Malware-Scanner-Adapter für Rechtstext-Uploads (LEGAL_DOCUMENT_MALWARE_SCANNER).',
+      'Production: ClamAV TCP-Adapter (INSTREAM); Development: EICAR-Mock mit Warnung.',
+      'Fail-closed in Produktion — Startup-Validierung verbietet noop/unavailable/mock.',
+      'Retries, Timeout, Quarantäne bleibt bei Scanner-Fehler, idempotente Scan-Keys.',
+      'Parallel-Dedup via In-Flight-Lock; Engine-Version + Scan-Metadaten in DB.',
+      'Health-Check + ALERT bei dauerhaft nicht verfügbarem Scanner.',
+    ],
+    reason: 'Production-Readiness — echte Malware-Prüfung mit austauschbarem Provider und sicherer Fehlerbehandlung.',
+    previousBehavior: 'Generischer DOCUMENT_MALWARE_SCANNER aus document-extraction; Quarantäne bei Fehler gelöscht; keine Startup-Validierung.',
+    details:
+      'docs/audits/legal-documents-malware-scanner-2026-07.md, architecture/LEGAL_DOCUMENT_MALWARE_SCANNER_2026-07-22.md, legal-document-malware-scan.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T13:30:00.000Z',
+  },
+  {
     id: 'legal-documents-pdf-validation-2026-07-22',
     version: '4.9.750',
     title: 'Legal Documents — PDF Validation & Quarantine (Prompt 11/32)',

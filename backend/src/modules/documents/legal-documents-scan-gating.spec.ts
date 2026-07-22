@@ -66,6 +66,22 @@ describe('LegalDocumentsService scan gating', () => {
     });
   });
 
+  it('blocks activate when scan status is unknown', async () => {
+    const h = createLegalDocumentActivationHarness();
+    const row = h.seedApproved({
+      id: 'approved-unknown',
+      organizationId: 'org-a',
+      documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+      versionLabel: 'v1',
+    });
+    row.scanStatus = 'NOT_A_REAL_STATUS';
+
+    const svc = makeSvc(h);
+    await expect(svc.activate('org-a', 'approved-unknown')).rejects.toBeInstanceOf(
+      LegalDocumentScanNotPassedError,
+    );
+  });
+
   it('allows activate when scan has passed', async () => {
     const h = createLegalDocumentActivationHarness();
     h.seedApproved({

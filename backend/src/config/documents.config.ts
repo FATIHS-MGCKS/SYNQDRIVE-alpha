@@ -45,5 +45,22 @@ export default registerAs('documents', () => ({
     process.env.DOCUMENT_LEGAL_MALWARE_SCAN_TIMEOUT_MS,
     parsePositiveIntEnv(process.env.DOCUMENT_MALWARE_SCAN_TIMEOUT_MS, 15_000),
   ),
+  legalMalwareScanMaxRetries: parsePositiveIntEnv(
+    process.env.DOCUMENT_LEGAL_MALWARE_SCAN_MAX_RETRIES,
+    3,
+  ),
+  legalMalwareScanRetryBackoffMs: parsePositiveIntEnv(
+    process.env.DOCUMENT_LEGAL_MALWARE_SCAN_RETRY_BACKOFF_MS,
+    500,
+  ),
+  legalMalwareScanHealthAlertThreshold: parsePositiveIntEnv(
+    process.env.DOCUMENT_LEGAL_MALWARE_SCAN_HEALTH_ALERT_THRESHOLD,
+    5,
+  ),
   legalMalwareScanFailOpen: (process.env.DOCUMENT_LEGAL_MALWARE_SCAN_FAIL_OPEN ?? 'false') === 'true',
+  legalClamAvHost: process.env.DOCUMENT_LEGAL_CLAMAV_HOST || process.env.CLAMAV_HOST || '127.0.0.1',
+  legalClamAvPort: parsePositiveIntEnv(
+    process.env.DOCUMENT_LEGAL_CLAMAV_PORT || process.env.CLAMAV_PORT,
+    3310,
+  ),
 }));

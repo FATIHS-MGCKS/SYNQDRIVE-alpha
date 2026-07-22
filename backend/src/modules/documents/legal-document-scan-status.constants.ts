@@ -44,3 +44,8 @@ export type LegalDocumentValidationErrorCode =
 export function isLegalDocumentScanPassed(status: string | null | undefined): boolean {
   return status === LEGAL_DOCUMENT_SCAN_STATUSES.SCAN_PASSED;
 }
+
+export function isLegalDocumentUnknownScanStatus(status: string | null | undefined): boolean {
+  if (!status) return true;
+  return !Object.values(LEGAL_DOCUMENT_SCAN_STATUSES).includes(status as LegalDocumentScanStatus);
+}
