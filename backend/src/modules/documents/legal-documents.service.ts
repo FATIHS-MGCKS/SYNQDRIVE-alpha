@@ -1,14 +1,16 @@
 import {
-  BadRequestException,
-  ConflictException,
   Inject,
   Injectable,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { OrganizationLegalDocument, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  buildPaginatedResult,
+  PaginatedResult,
+  parsePagination,
+} from '@shared/utils/pagination';
 import {
   DOCUMENTS_STORAGE,
   DocumentStoragePort,
@@ -25,14 +27,26 @@ import {
   legalDocumentLookupKeys,
   normalizeLegalDocumentType,
   resolveLegalVariantInput,
-  toLegacyDocumentType,
 } from './legal-document-type.compat';
 import { DocumentDownload } from './generated-documents.service';
 import { isLegalPdfUpload, normalizeLegalPdfMimeType } from './legal-documents.util';
 import {
-  LEGAL_DOCUMENT_ERROR_CODES,
-  type LegalDocumentConflictBody,
-} from './legal-documents.errors';
+  LegalDocumentActiveConflictError,
+  LegalDocumentDomainError,
+  LegalDocumentInvalidTransitionError,
+  LegalDocumentNotActivatableError,
+  LegalDocumentNotFoundError,
+  LegalDocumentScopeLockedError,
+  LegalDocumentValidationError,
+} from './legal-documents-api.errors';
+import {
+  collectLegalDocumentActorUserIds,
+  LegalDocumentActorRef,
+  LegalDocumentApiResponse,
+  mapLegalDocumentToApiResponse,
+} from './legal-document-api.mapper';
+import type { LegalDocumentListQueryDto } from './dto/legal-document-list-query.dto';
+import { buildUserDisplayName } from '@modules/tasks/task-detail-view.builder';
 import { isLegalDocumentSingleActiveViolation } from './legal-documents-prisma.util';
 import {
   LEGAL_ACTIVATABLE_STATUSES,
@@ -49,9 +63,7 @@ import {
 } from './legal-document-scope.validation';
 import { LegalDocumentScopeService } from './legal-document-scope.service';
 import {
-  scopeToDto,
   toLegalDocumentScopeShape,
-  type LegalDocumentApplicationScopeDto,
   type LegalDocumentWithStations,
 } from './legal-document-scope.util';
 import { scopeFingerprint } from './legal-document-scope.conflicts';
@@ -93,34 +105,7 @@ export interface ScheduleLegalDocumentInput extends LegalDocumentStatusChangeInp
   validFrom: Date;
 }
 
-export interface LegalDocumentDto {
-  id: string;
-  documentType: string;
-  /** Set when documentType is CONSUMER_INFORMATION. */
-  legalVariant: string | null;
-  /**
-   * @deprecated Legacy API alias (e.g. WITHDRAWAL_INFORMATION) when applicable.
-   * New clients should use documentType + legalVariant.
-   */
-  legacyDocumentType: string | null;
-  title: string;
-  versionLabel: string;
-  language: string;
-  status: string;
-  fileName: string;
-  sizeBytes: number | null;
-  /** @deprecated Use activatedAt — kept for API backward compatibility. */
-  activeFrom: string | null;
-  activatedAt: string | null;
-  validFrom: string | null;
-  validUntil: string | null;
-  legalOwnerName: string | null;
-  changeSummary: string | null;
-  statusReason: string | null;
-  applicationScope: LegalDocumentApplicationScopeDto;
-  createdAt: string;
-  updatedAt: string;
-}
+export interface LegalDocumentDto extends LegalDocumentApiResponse {}
 
 type Tx = Prisma.TransactionClient;
 
@@ -143,16 +128,17 @@ export class LegalDocumentsService {
 
   async upload(input: UploadLegalDocumentInput): Promise<OrganizationLegalDocument> {
     if (!isLegalDocumentType(input.documentType)) {
-      throw new BadRequestException(
+      throw new LegalDocumentValidationError(
         'documentType must be one of: TERMS_AND_CONDITIONS, CONSUMER_INFORMATION, PRIVACY_POLICY (legacy: WITHDRAWAL_INFORMATION)',
+        'documentType',
       );
     }
     if (!isLegalPdfUpload({ mimetype: input.mimeType, originalname: input.fileName })) {
-      throw new BadRequestException('Legal documents must be PDF files');
+      throw new LegalDocumentValidationError('Legal documents must be PDF files', 'file');
     }
     const versionLabel = (input.versionLabel || '').trim();
     if (!versionLabel) {
-      throw new BadRequestException('versionLabel is required');
+      throw new LegalDocumentValidationError('versionLabel is required', 'versionLabel');
     }
 
     const canonicalType = normalizeLegalDocumentType(input.documentType);
@@ -161,8 +147,9 @@ export class LegalDocumentsService {
       try {
         legalVariant = resolveLegalVariantInput(input.documentType, input.legalVariant);
       } catch {
-        throw new BadRequestException(
+        throw new LegalDocumentValidationError(
           `legalVariant must be one of: ${CONSUMER_INFORMATION_VARIANTS.join(', ')}`,
+          'legalVariant',
         );
       }
     }
@@ -191,7 +178,7 @@ export class LegalDocumentsService {
       });
     } catch (err) {
       if (err instanceof LegalScopeValidationError) {
-        throw new BadRequestException(err.message);
+        throw new LegalDocumentValidationError(err.message, err.field);
       }
       throw err;
     }
@@ -267,12 +254,57 @@ export class LegalDocumentsService {
     });
   }
 
+  async listPaginated(
+    orgId: string,
+    query: LegalDocumentListQueryDto,
+  ): Promise<LegalDocumentApiResponse[] | PaginatedResult<LegalDocumentApiResponse>> {
+    const where = this.buildListWhere(orgId, query);
+    const orderBy = this.buildListOrderBy(query);
+    const include = { stations: { select: { stationId: true } } } as const;
+
+    if (query.page == null && query.limit == null) {
+      const docs = await this.prisma.organizationLegalDocument.findMany({
+        where,
+        include,
+        orderBy,
+      });
+      return this.mapManyToApiResponse(docs);
+    }
+
+    const { skip, take } = parsePagination(query);
+    const page = Math.max(1, query.page || 1);
+    const limit = Math.min(100, Math.max(1, query.limit || 20));
+
+    const [docs, total] = await Promise.all([
+      this.prisma.organizationLegalDocument.findMany({
+        where,
+        include,
+        orderBy,
+        skip,
+        take,
+      }),
+      this.prisma.organizationLegalDocument.count({ where }),
+    ]);
+
+    const data = await this.mapManyToApiResponse(docs);
+    return buildPaginatedResult(data, total, { page, limit });
+  }
+
+  async getDetail(orgId: string, id: string): Promise<LegalDocumentApiResponse> {
+    const doc = await this.getById(orgId, id);
+    const [snapshotCount, usersById] = await Promise.all([
+      this.countSnapshots(orgId, id),
+      this.loadActorUsers([doc]),
+    ]);
+    return mapLegalDocumentToApiResponse(doc, { snapshotCount, usersById });
+  }
+
   async getById(orgId: string, id: string): Promise<LegalDocumentWithStations> {
     const doc = await this.prisma.organizationLegalDocument.findFirst({
       where: { id, organizationId: orgId },
       include: { stations: { select: { stationId: true } } },
     });
-    if (!doc) throw new NotFoundException('Legal document not found');
+    if (!doc) throw new LegalDocumentNotFoundError();
     return doc;
   }
 
@@ -283,9 +315,7 @@ export class LegalDocumentsService {
   ): Promise<LegalDocumentWithStations> {
     const doc = await this.getById(orgId, id);
     if (doc.status === LEGAL_STATUS.ACTIVE || doc.status === LEGAL_STATUS.SUPERSEDED) {
-      throw new BadRequestException(
-        'Application scope cannot be changed on ACTIVE or SUPERSEDED legal documents',
-      );
+      throw new LegalDocumentScopeLockedError();
     }
 
     let scopeInput;
@@ -306,7 +336,7 @@ export class LegalDocumentsService {
       });
     } catch (err) {
       if (err instanceof LegalScopeValidationError) {
-        throw new BadRequestException(err.message);
+        throw new LegalDocumentValidationError(err.message, err.field);
       }
       throw err;
     }
@@ -405,7 +435,7 @@ export class LegalDocumentsService {
     input: ScheduleLegalDocumentInput,
   ): Promise<OrganizationLegalDocument> {
     if (!(input.validFrom instanceof Date) || Number.isNaN(input.validFrom.getTime())) {
-      throw new BadRequestException('validFrom must be a valid date');
+      throw new LegalDocumentValidationError('validFrom must be a valid date', 'validFrom');
     }
     const actor = this.resolveActor(input);
     return this.transitionStatus(
@@ -438,10 +468,10 @@ export class LegalDocumentsService {
       doc.status !== LEGAL_STATUS.ACTIVE &&
       !LEGAL_ACTIVATABLE_STATUSES.has(doc.status as LegalStatus)
     ) {
-      throw new BadRequestException({
-        message: `Legal document must be APPROVED or SCHEDULED before activation (current: ${doc.status})`,
-        code: LEGAL_DOCUMENT_ERROR_CODES.NOT_ACTIVATABLE,
-      });
+      throw new LegalDocumentNotActivatableError(
+        `Legal document must be APPROVED or SCHEDULED before activation (current: ${doc.status})`,
+        { status: doc.status },
+      );
     }
 
     try {
@@ -449,7 +479,7 @@ export class LegalDocumentsService {
         const current = await tx.organizationLegalDocument.findFirst({
           where: { id: doc.id, organizationId: orgId },
         });
-        if (!current) throw new NotFoundException('Legal document not found');
+        if (!current) throw new LegalDocumentNotFoundError();
 
         const otherActiveCount = await tx.organizationLegalDocument.count({
           where: {
@@ -469,10 +499,10 @@ export class LegalDocumentsService {
           current.status !== LEGAL_STATUS.ACTIVE &&
           !LEGAL_ACTIVATABLE_STATUSES.has(current.status as LegalStatus)
         ) {
-          throw new BadRequestException({
-            message: `Legal document must be APPROVED or SCHEDULED before activation (current: ${current.status})`,
-            code: LEGAL_DOCUMENT_ERROR_CODES.NOT_ACTIVATABLE,
-          });
+          throw new LegalDocumentNotActivatableError(
+            `Legal document must be APPROVED or SCHEDULED before activation (current: ${current.status})`,
+            { status: current.status },
+          );
         }
 
         if (current.status !== LEGAL_STATUS.ACTIVE) {
@@ -532,7 +562,10 @@ export class LegalDocumentsService {
   ): Promise<OrganizationLegalDocument> {
     const reason = input.statusReason?.trim();
     if (!reason) {
-      throw new BadRequestException('statusReason is required when revoking a legal document');
+      throw new LegalDocumentValidationError(
+        'statusReason is required when revoking a legal document',
+        'statusReason',
+      );
     }
     const actor = this.resolveActor(input);
     return this.transitionStatus(
@@ -601,29 +634,7 @@ export class LegalDocumentsService {
   }
 
   toDto(doc: OrganizationLegalDocument & { stations?: { stationId: string }[] }): LegalDocumentDto {
-    const activatedAt = doc.activatedAt ? doc.activatedAt.toISOString() : null;
-    return {
-      id: doc.id,
-      documentType: doc.documentType,
-      legalVariant: doc.legalVariant,
-      legacyDocumentType: toLegacyDocumentType(doc.documentType, doc.legalVariant),
-      title: doc.title,
-      versionLabel: doc.versionLabel,
-      language: doc.language,
-      status: doc.status,
-      fileName: doc.fileName,
-      sizeBytes: doc.sizeBytes,
-      activeFrom: activatedAt,
-      activatedAt,
-      validFrom: doc.validFrom ? doc.validFrom.toISOString() : null,
-      validUntil: doc.validUntil ? doc.validUntil.toISOString() : null,
-      legalOwnerName: doc.legalOwnerName,
-      changeSummary: doc.changeSummary,
-      statusReason: doc.statusReason,
-      applicationScope: scopeToDto(doc),
-      createdAt: doc.createdAt.toISOString(),
-      updatedAt: doc.updatedAt.toISOString(),
-    };
+    return mapLegalDocumentToApiResponse(doc);
   }
 
   private async transitionStatus(
@@ -641,19 +652,14 @@ export class LegalDocumentsService {
   ): Promise<OrganizationLegalDocument> {
     const doc = await this.getById(orgId, id);
     if (!isLegalStatusTransitionAllowed(doc.status, toStatus)) {
-      throw new BadRequestException({
-        message: `Illegal legal document status transition: ${doc.status} → ${toStatus}`,
-        code: LEGAL_DOCUMENT_ERROR_CODES.INVALID_STATUS_TRANSITION,
-        fromStatus: doc.status,
-        toStatus,
-      });
+      throw new LegalDocumentInvalidTransitionError(doc.status, toStatus);
     }
 
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.organizationLegalDocument.findFirst({
         where: { id: doc.id, organizationId: orgId },
       });
-      if (!current) throw new NotFoundException('Legal document not found');
+      if (!current) throw new LegalDocumentNotFoundError();
       return this.applyStatusTransition(tx, current, toStatus, patch(new Date()), actor, audit);
     });
   }
@@ -756,23 +762,113 @@ export class LegalDocumentsService {
     doc: OrganizationLegalDocument,
   ): never {
     if (
-      err instanceof NotFoundException ||
-      err instanceof BadRequestException ||
-      err instanceof ConflictException
+      err instanceof LegalDocumentNotFoundError ||
+      err instanceof LegalDocumentDomainError
     ) {
       throw err;
     }
     if (isLegalDocumentSingleActiveViolation(err)) {
-      const body: LegalDocumentConflictBody = {
-        message:
-          'Another legal document version is already active for this organization, document type, and language',
-        code: LEGAL_DOCUMENT_ERROR_CODES.ACTIVE_CONFLICT,
-        organizationId: orgId,
-        documentType: doc.documentType,
-        language: doc.language,
-      };
-      throw new ConflictException(body);
+      throw new LegalDocumentActiveConflictError(orgId, doc.documentType, doc.language);
     }
     throw err;
+  }
+
+  private buildListWhere(
+    orgId: string,
+    query: LegalDocumentListQueryDto,
+  ): Prisma.OrganizationLegalDocumentWhereInput {
+    const search = query.search?.trim();
+    return {
+      organizationId: orgId,
+      ...(query.documentType ? { documentType: query.documentType } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.language ? { language: query.language } : {}),
+      ...(query.jurisdiction ? { jurisdictionCountry: query.jurisdiction.toUpperCase() } : {}),
+      ...(query.customerSegment ? { customerSegment: query.customerSegment as never } : {}),
+      ...(query.channelScope ? { bookingChannel: query.channelScope as never } : {}),
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { versionLabel: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+  }
+
+  private buildListOrderBy(
+    query: LegalDocumentListQueryDto,
+  ): Prisma.OrganizationLegalDocumentOrderByWithRelationInput[] {
+    const direction = query.order === 'asc' ? 'asc' : 'desc';
+    const sort = query.sort ?? 'createdAt';
+    return [{ [sort]: direction }];
+  }
+
+  private async mapManyToApiResponse(
+    docs: LegalDocumentWithStations[],
+  ): Promise<LegalDocumentApiResponse[]> {
+    if (docs.length === 0) return [];
+    const ids = docs.map((d) => d.id);
+    const [snapshotCounts, usersById] = await Promise.all([
+      this.loadSnapshotCounts(docs[0]!.organizationId, ids),
+      this.loadActorUsers(docs),
+    ]);
+    return docs.map((doc) =>
+      mapLegalDocumentToApiResponse(doc, {
+        snapshotCount: snapshotCounts.get(doc.id) ?? 0,
+        usersById,
+      }),
+    );
+  }
+
+  private async countSnapshots(orgId: string, legalDocumentId: string): Promise<number> {
+    return this.prisma.generatedDocument.count({
+      where: { organizationId: orgId, legalDocumentId },
+    });
+  }
+
+  private async loadSnapshotCounts(
+    orgId: string,
+    legalDocumentIds: string[],
+  ): Promise<Map<string, number>> {
+    if (legalDocumentIds.length === 0) return new Map();
+    const rows = await this.prisma.generatedDocument.groupBy({
+      by: ['legalDocumentId'],
+      where: {
+        organizationId: orgId,
+        legalDocumentId: { in: legalDocumentIds },
+      },
+      _count: { _all: true },
+    });
+    return new Map(
+      rows
+        .filter((row) => row.legalDocumentId != null)
+        .map((row) => [row.legalDocumentId as string, row._count._all]),
+    );
+  }
+
+  private async loadActorUsers(
+    docs: Array<
+      Pick<
+        OrganizationLegalDocument,
+        'uploadedByUserId' | 'approvedByUserId' | 'activatedByUserId'
+      >
+    >,
+  ): Promise<Map<string, LegalDocumentActorRef>> {
+    const ids = collectLegalDocumentActorUserIds(docs);
+    if (ids.length === 0) return new Map();
+
+    const rows = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, firstName: true, lastName: true, email: true },
+    });
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        { id: row.id, displayName: buildUserDisplayName(row) },
+      ]),
+    );
   }
 }

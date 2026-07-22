@@ -35,6 +35,45 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-api-2026-07-22',
+    version: '4.9.748',
+    title: 'Legal Documents — API & DTO Professionalization (Prompt 9/32)',
+    summary: [
+      'Professionelle List-/Detail-Responses: documentVariant, jurisdiction, channelScope, stationScope, integrityStatus, snapshotCount, Actor-Refs.',
+      'Keine Storage-Pfade, keine öffentlichen URLs, keine Provider-Metadaten in JSON.',
+      'Strukturierte Fehlercodes: 409 Konflikte, 422 Validierung, 404 tenant-sicher.',
+      'List: serverseitige Filter/Sort; Pagination optional (Legacy-Array ohne page/limit).',
+      'Neuer `GET …/legal-documents/:id`; Events-Query mit from/to/sort/order.',
+      'DTO-Tests, Controller-Tests, Tenant-Negativtests (154 Specs grün).',
+    ],
+    reason: 'Production-Readiness — stabile Admin-API vor Frontend-Typ-Anpassung.',
+    previousBehavior: 'Unpaginierte Array-Liste, minimales DTO, BadRequestException ohne einheitliche Codes.',
+    details:
+      'docs/audits/legal-documents-api-2026-07.md, architecture/LEGAL_DOCUMENT_API_2026-07-22.md, legal-documents-api.*.spec.ts, legal-document-api.mapper.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T12:00:00.000Z',
+  },
+  {
+    id: 'legal-documents-resolver-2026-07-22',
+    version: '4.9.747',
+    title: 'Legal Documents — Central Resolver (Prompt 8/32)',
+    summary: [
+      '`LegalDocumentResolverService` — deterministische Auflösung gültiger Rechtstexte pro Buchungskontext.',
+      'Strukturiertes Ergebnis: selectedDocuments, missingMandatoryDocuments, conflicts, fallbackDecisions, evaluatedContext, resolverVersion.',
+      'Prioritätsauswahl ohne findFirst; Konflikte bei gleicher Priorität + Scope-Overlap explizit.',
+      'Kein stiller Deutsch-Fallback — fehlende Sprache → MISSING_LANGUAGE; Fallbacks in fallbackDecisions dokumentiert.',
+      'Bestehende Bundle-Aufrufer unverändert — zentrale API bereit für Prompt 9.',
+    ],
+    reason: 'Production-Readiness — einheitliche Resolver-Logik vor Migration der Bundle-Pipeline.',
+    previousBehavior: '`getActiveByType(orgId, "de")` — nur Sprache, kein Segment/Kanal/Station/Jurisdiktion.',
+    details:
+      'docs/audits/legal-documents-resolver-2026-07.md, architecture/LEGAL_DOCUMENT_RESOLVER_2026-07-22.md, legal-document-resolver.*.spec.ts',
+    affectsArchitecture: true,
+    module: 'Booking Documents',
+    createdAt: '2026-07-22T12:10:00.000Z',
+  },
+  {
     id: 'legal-documents-application-scope-2026-07-22',
     version: '4.9.746',
     title: 'Legal Documents — Application Scope (Prompt 7/32)',

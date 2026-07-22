@@ -8,6 +8,10 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
 import { DocumentNumberingService } from './document-numbering.service';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
+import {
+  LegalDocumentNotActivatableError,
+  LegalDocumentValidationError,
+} from './legal-documents-api.errors';
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
@@ -145,17 +149,17 @@ describe('LegalDocumentsService', () => {
     const svc = makeLegalSvc({} as any);
     await expect(
       svc.upload({ ...baseInput(), fileName: 'scan.png', mimeType: 'image/png' }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toBeInstanceOf(LegalDocumentValidationError);
   });
 
   it('rejects unknown legal document types', async () => {
     const svc = makeLegalSvc({} as any);
-    await expect(svc.upload({ ...baseInput(), documentType: 'NOT_A_LEGAL_TYPE' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.upload({ ...baseInput(), documentType: 'NOT_A_LEGAL_TYPE' })).rejects.toBeInstanceOf(LegalDocumentValidationError);
   });
 
   it('rejects a missing version label', async () => {
     const svc = makeLegalSvc({} as any);
-    await expect(svc.upload({ ...baseInput(), versionLabel: '   ' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.upload({ ...baseInput(), versionLabel: '   ' })).rejects.toBeInstanceOf(LegalDocumentValidationError);
   });
 
   it('accepts legacy WITHDRAWAL_INFORMATION upload and stores CONSUMER_INFORMATION', async () => {
@@ -240,7 +244,7 @@ describe('LegalDocumentsService', () => {
       organizationLegalDocument: { findFirst: jest.fn().mockResolvedValue(draft) },
     } as any;
     const svc = makeLegalSvc(prisma);
-    await expect(svc.activate('org-1', 'legal-draft')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.activate('org-1', 'legal-draft')).rejects.toBeInstanceOf(LegalDocumentNotActivatableError);
   });
 
   it('activate is idempotent when the version is already the sole ACTIVE document', async () => {
