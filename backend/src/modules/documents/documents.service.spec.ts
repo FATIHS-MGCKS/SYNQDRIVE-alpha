@@ -396,8 +396,20 @@ describe('GeneratedDocumentsService — org scoping + storage', () => {
 
 describe('BookingDocumentBundleService', () => {
   function makeService(prisma: any, config = configStub()) {
-    const generatedDocs = { listForBooking: jest.fn().mockResolvedValue([]), toDto: jest.fn((d: any) => d) } as any;
+    const generatedDocs = {
+      listForBooking: jest.fn().mockResolvedValue([]),
+      toDto: jest.fn((d: any) => d),
+      createFromPdf: jest.fn(),
+      voidDocument: jest.fn(),
+    } as any;
     const legalDocs = { getActiveByType: jest.fn().mockResolvedValue({}) } as any;
+    const legalResolver = { resolveForBooking: jest.fn().mockResolvedValue({
+      resolverVersion: '1',
+      evaluatedAt: new Date().toISOString(),
+      selectedDocuments: [],
+      missingMandatoryDocuments: [],
+      conflicts: [],
+    }) } as any;
     const numbering = {} as any;
     const invoices = {} as any;
     const renderer = { renderPdf: jest.fn() } as any;
@@ -407,6 +419,11 @@ describe('BookingDocumentBundleService', () => {
       closeStaleDocumentPackageTasksForBooking: jest.fn(),
     } as any;
     const orgLegalNotification = { syncFromOrgLegalState: jest.fn().mockResolvedValue(undefined) } as any;
+    const bundleMonitoring = {
+      recordPointerMappingMissing: jest.fn(),
+      recordResolverConflict: jest.fn(),
+      recordMissingMandatorySelection: jest.fn(),
+    } as any;
     const prismaWithLock = {
       ...prisma,
       $executeRaw: jest.fn().mockResolvedValue(undefined),
@@ -416,13 +433,15 @@ describe('BookingDocumentBundleService', () => {
       config,
       generatedDocs,
       legalDocs,
+      legalResolver,
       numbering,
       invoices,
       renderer,
       taskAutomation,
       orgLegalNotification,
+      bundleMonitoring,
     );
-    return { svc, generatedDocs, renderer, taskAutomation, orgLegalNotification };
+    return { svc, generatedDocs, renderer, taskAutomation, orgLegalNotification, legalResolver, bundleMonitoring };
   }
 
   it('getOrCreateBundle rejects cross-org access (tenant isolation)', async () => {
@@ -439,8 +458,12 @@ describe('BookingDocumentBundleService', () => {
     } as any;
     const { svc } = makeService(prisma);
     const view = await svc.getBundleView('org-1', 'bk-1');
-    expect(view.legal.missing).toEqual([DOCUMENT_TYPE.TERMS_AND_CONDITIONS, DOCUMENT_TYPE.CONSUMER_INFORMATION]);
-    expect(view.missingLegalDocuments).toEqual(['TERMS_AND_CONDITIONS', 'REVOCATION_POLICY']);
+    expect(view.legal.missing).toEqual([
+      DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+      DOCUMENT_TYPE.CONSUMER_INFORMATION,
+      DOCUMENT_TYPE.PRIVACY_POLICY,
+    ]);
+    expect(view.missingLegalDocuments).toEqual(['TERMS_AND_CONDITIONS', 'REVOCATION_POLICY', 'PRIVACY_POLICY']);
     expect(view.warnings[0]).toContain('Administration → Unternehmen hochladen');
   });
 
@@ -454,6 +477,7 @@ describe('BookingDocumentBundleService', () => {
           status: BUNDLE_STATUS.FAILED,
           termsDocumentId: null,
           withdrawalDocumentId: null,
+          privacyDocumentId: null,
           generatedAt: null,
           lastError: 'pdfkit_1.default is not a constructor',
         }),
@@ -463,6 +487,7 @@ describe('BookingDocumentBundleService', () => {
     (svc as any).legalDocs.getActiveByType.mockResolvedValue({
       [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: { id: 't1' },
       [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: { id: 'w1' },
+      [DOCUMENT_TYPE.PRIVACY_POLICY]: { id: 'p1' },
     });
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.warnings[0]).toContain('Dokumentenerstellung fehlgeschlagen');
@@ -471,12 +496,13 @@ describe('BookingDocumentBundleService', () => {
 
   it('getBundleView has no warning once both legal docs are attached', async () => {
     const prisma = {
-      bookingDocumentBundle: { findUnique: jest.fn().mockResolvedValue({ id: 'b', organizationId: 'org-1', bookingId: 'bk-1', status: BUNDLE_STATUS.COMPLETE, termsDocumentId: 't', withdrawalDocumentId: 'w', generatedAt: new Date(), lastError: null }) },
+      bookingDocumentBundle: { findUnique: jest.fn().mockResolvedValue({ id: 'b', organizationId: 'org-1', bookingId: 'bk-1', status: BUNDLE_STATUS.COMPLETE, termsDocumentId: 't', withdrawalDocumentId: 'w', privacyDocumentId: 'p', generatedAt: new Date(), lastError: null }) },
     } as any;
     const { svc, generatedDocs } = makeService(prisma);
     generatedDocs.listForBooking.mockResolvedValue([
       { id: 't', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, status: DOCUMENT_STATUS.GENERATED },
       { id: 'w', documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION, status: DOCUMENT_STATUS.GENERATED },
+      { id: 'p', documentType: DOCUMENT_TYPE.PRIVACY_POLICY, status: DOCUMENT_STATUS.GENERATED },
     ]);
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.legal.missing).toEqual([]);
@@ -490,7 +516,7 @@ describe('BookingDocumentBundleService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 'b', organizationId: 'org-1', bookingId: 'bk-1',
           bookingInvoiceDocumentId: 'i', depositReceiptDocumentId: 'd', rentalContractDocumentId: 'c',
-          termsDocumentId: null, withdrawalDocumentId: null,
+          termsDocumentId: null, withdrawalDocumentId: null, privacyDocumentId: null,
           pickupProtocolDocumentId: null, returnProtocolDocumentId: null, finalInvoiceDocumentId: null,
           generatedAt: null,
         }),
@@ -511,7 +537,7 @@ describe('BookingDocumentBundleService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 'b', organizationId: 'org-1', bookingId: 'bk-1',
           bookingInvoiceDocumentId: 'i', depositReceiptDocumentId: 'd', rentalContractDocumentId: 'c',
-          termsDocumentId: 't', withdrawalDocumentId: 'w',
+          termsDocumentId: 't', withdrawalDocumentId: 'w', privacyDocumentId: 'p',
           pickupProtocolDocumentId: null, returnProtocolDocumentId: null, finalInvoiceDocumentId: null,
           generatedAt: null,
         }),
@@ -530,7 +556,7 @@ describe('BookingDocumentBundleService', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 'b', organizationId: 'org-1', bookingId: 'bk-1',
           bookingInvoiceDocumentId: null, depositReceiptDocumentId: null, rentalContractDocumentId: null,
-          termsDocumentId: null, withdrawalDocumentId: null,
+          termsDocumentId: null, withdrawalDocumentId: null, privacyDocumentId: null,
           pickupProtocolDocumentId: null, returnProtocolDocumentId: null, finalInvoiceDocumentId: null,
           generatedAt: null,
         }),

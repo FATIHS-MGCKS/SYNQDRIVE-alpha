@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-bundle-pointers-2026-07-22',
+    version: '4.9.754',
+    title: 'Legal Documents — Bundle Pointer Wiring (Prompt 15/32)',
+    summary: [
+      'Zentrales typsicheres Mapping: AGB → termsDocumentId, Verbraucherinformation → withdrawalDocumentId, Datenschutz → privacyDocumentId.',
+      'LegalDocumentResolverService (Prompt 8) wählt Version; STATIC_LEGAL-Snapshot mit Sprache und Prüfsumme.',
+      'Idempotente Pointer: keine Überschreibung historischer Bundles ohne force.',
+      'Unmapped DocumentType → kontrollierter Fehler + ALERT (kein stilles return).',
+      'Bundle-DTO erweitert: privacyAttached, consumerDocumentId, privacyDocumentId.',
+      'Mietvertrag-Snapshot referenziert eingefrorene Legal-Versionen inkl. privacyDocumentId.',
+    ],
+    reason: 'Production-Readiness — vollständige und typsichere Verdrahtung der Rechtstext-Bundle-Pointer.',
+    previousBehavior: 'privacyDocumentId ungenutzt; getActiveByType statt Resolver; stille Pointer-Lücken möglich.',
+    details:
+      'docs/audits/legal-documents-bundle-pointers-2026-07.md, architecture/LEGAL_DOCUMENT_BUNDLE_POINTERS_2026-07-22.md, booking-document-bundle-legal-pointer.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T16:30:00.000Z',
+  },
+  {
     id: 'legal-documents-integrity-reconciliation-2026-07-22',
     version: '4.9.753',
     title: 'Legal Documents — Checksum Verification & Reconciliation (Prompt 14/32)',
