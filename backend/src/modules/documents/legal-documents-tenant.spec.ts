@@ -1,5 +1,5 @@
 import { LegalDocumentNotFoundError } from './legal-documents-api.errors';
-import { LegalDocumentsService } from './legal-documents.service';
+import { createLegalDocumentsServiceForTests } from './integrity/legal-document-integrity.test-utils';
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 import { createNoopLegalDocumentFourEyesService } from './legal-document-four-eyes.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
@@ -10,7 +10,13 @@ describe('LegalDocumentsService tenant isolation', () => {
   const events = createNoopLegalDocumentEventsService();
 
   function makeSvc(prisma: any) {
-    return new LegalDocumentsService(prisma, events, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, createNoopLegalDocumentIngestionService() as any, storage);
+    return createLegalDocumentsServiceForTests(prisma, {
+      events,
+      scope: createNoopLegalDocumentScopeService(),
+      fourEyes: createNoopLegalDocumentFourEyesService(),
+      ingestion: createNoopLegalDocumentIngestionService(),
+      storage,
+    });
   }
 
   it('returns structured 404 when document belongs to another organization', async () => {

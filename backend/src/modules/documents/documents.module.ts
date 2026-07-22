@@ -26,6 +26,10 @@ import { S3PrivateDocumentStorageService } from './storage/s3-private-document-s
 import { DOCUMENT_STORAGE_PROVIDERS } from './storage/document-storage.constants';
 import { DocumentStorageStartupService } from './storage/document-storage-startup.service';
 import { DocumentStorageHealthService } from './storage/document-storage-health.service';
+import { LegalDocumentChecksumVerificationService } from './integrity/legal-document-checksum-verification.service';
+import { LegalDocumentIntegrityPersistenceService } from './integrity/legal-document-integrity-persistence.service';
+import { LegalDocumentIntegrityAlertService } from './integrity/legal-document-integrity-alert.service';
+import { LegalDocumentStorageReconciliationService } from './integrity/legal-document-storage-reconciliation.service';
 import { LEGAL_DOCUMENT_MALWARE_SCANNER } from './malware-scanner/legal-document-malware-scanner.interface';
 import { LEGAL_MALWARE_SCANNER_PROVIDERS } from './malware-scanner/legal-document-malware-scanner.constants';
 import { LegalDocumentDevelopmentMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-development-malware-scanner.adapter';
@@ -69,6 +73,10 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     },
     DocumentStorageStartupService,
     DocumentStorageHealthService,
+    LegalDocumentChecksumVerificationService,
+    LegalDocumentIntegrityPersistenceService,
+    LegalDocumentIntegrityAlertService,
+    LegalDocumentStorageReconciliationService,
     DocumentRendererService,
     { provide: DOCUMENT_RENDERER, useClass: DocumentRendererService },
     GeneratedDocumentsService,
@@ -130,6 +138,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     DOCUMENT_RENDERER,
     LegalDocumentMalwareScannerHealthService,
     DocumentStorageHealthService,
+    LegalDocumentStorageReconciliationService,
   ],
 })
 export class DocumentsModule {}

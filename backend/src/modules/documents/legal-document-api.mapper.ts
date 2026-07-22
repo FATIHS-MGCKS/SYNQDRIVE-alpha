@@ -9,9 +9,9 @@ import {
   type LegalDocumentApplicationScopeDto,
   type LegalDocumentWithStations,
 } from './legal-document-scope.util';
+import type { LegalDocumentIntegrityStatus } from './integrity/legal-document-integrity.constants';
 
-export type { LegalDocumentScanStatus };
-export type LegalDocumentIntegrityStatus = 'VERIFIED' | 'UNVERIFIED' | 'MISSING';
+export type { LegalDocumentScanStatus, LegalDocumentIntegrityStatus };
 
 export interface LegalDocumentActorRef {
   id: string;
@@ -75,11 +75,15 @@ export interface LegalDocumentApiMapperContext {
 }
 
 export function deriveIntegrityStatus(
+  integrityStatus: string | null | undefined,
   checksum: string | null | undefined,
   sizeBytes: number | null | undefined,
 ): LegalDocumentIntegrityStatus {
-  if (!checksum?.trim()) return 'MISSING';
-  if (sizeBytes != null && sizeBytes > 0) return 'VERIFIED';
+  if (integrityStatus?.trim()) {
+    return integrityStatus as LegalDocumentIntegrityStatus;
+  }
+  if (!checksum?.trim()) return 'UNVERIFIED';
+  if (sizeBytes != null && sizeBytes > 0) return 'UNVERIFIED';
   return 'UNVERIFIED';
 }
 
@@ -132,7 +136,7 @@ export function mapLegalDocumentToApiResponse(
     fileSize: doc.sizeBytes,
     pageCount: doc.pageCount ?? null,
     scanStatus: deriveScanStatus(doc.scanStatus),
-    integrityStatus: deriveIntegrityStatus(doc.checksum, doc.sizeBytes),
+    integrityStatus: deriveIntegrityStatus(doc.integrityStatus, doc.checksum, doc.sizeBytes),
     uploadedAt: doc.createdAt.toISOString(),
     uploadedBy: resolveActorRef(doc.uploadedByUserId, usersById),
     approvedAt: doc.approvedAt ? doc.approvedAt.toISOString() : null,

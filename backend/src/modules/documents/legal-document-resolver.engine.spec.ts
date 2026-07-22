@@ -46,6 +46,8 @@ function candidate(
     status: 'ACTIVE',
     validFrom: null,
     validUntil: null,
+    integrityStatus: 'VERIFIED',
+    integrityUnavailable: false,
     ...overrides,
   };
 }

@@ -98,4 +98,6 @@ export interface LegalDocumentResolverCandidate {
   status: string;
   validFrom: Date | null;
   validUntil: Date | null;
+  integrityStatus: string;
+  integrityUnavailable: boolean;
 }

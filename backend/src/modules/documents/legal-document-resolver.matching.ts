@@ -21,6 +21,9 @@ import {
   LEGAL_CUSTOMER_SEGMENT,
   LEGAL_STATION_SCOPE_MODE,
 } from './legal-document-scope.constants';
+import {
+  isLegalDocumentIntegrityBlocking,
+} from './integrity/legal-document-integrity.constants';
 
 export type CandidateExclusionReason =
   | 'STATUS_NOT_ACTIVE'
@@ -35,7 +38,8 @@ export type CandidateExclusionReason =
   | 'CUSTOMER_SEGMENT_MISMATCH'
   | 'BOOKING_CHANNEL_MISMATCH'
   | 'PRODUCT_SCOPE_MISMATCH'
-  | 'STATION_SCOPE_MISMATCH';
+  | 'STATION_SCOPE_MISMATCH'
+  | 'INTEGRITY_UNAVAILABLE';
 
 export function isDocumentValidAt(
   doc: Pick<LegalDocumentResolverCandidate, 'validFrom' | 'validUntil'>,
@@ -106,6 +110,10 @@ export function documentMatchesContext(
 ): { matches: boolean; reason?: CandidateExclusionReason } {
   const statusReason = getStatusExclusionReason(doc.status);
   if (statusReason) return { matches: false, reason: statusReason };
+
+  if (doc.integrityUnavailable || isLegalDocumentIntegrityBlocking(doc.integrityStatus)) {
+    return { matches: false, reason: 'INTEGRITY_UNAVAILABLE' };
+  }
 
   if (!isDocumentValidAt(doc, at)) {
     if (doc.validFrom && doc.validFrom > at) return { matches: false, reason: 'NOT_YET_VALID' };

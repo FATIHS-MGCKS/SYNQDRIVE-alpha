@@ -1,4 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
+import documentsConfig from '@config/documents.config';
 import { OrganizationLegalDocument, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -27,6 +29,8 @@ import { DocumentDownload } from './generated-documents.service';
 import {
   LegalDocumentActiveConflictError,
   LegalDocumentDomainError,
+  LegalDocumentForbiddenError,
+  LegalDocumentIntegrityUnavailableError,
   LegalDocumentInvalidTransitionError,
   LegalDocumentNotActivatableError,
   LegalDocumentNotFoundError,
@@ -71,6 +75,13 @@ import {
 import { LegalDocumentFourEyesService } from './legal-document-four-eyes.service';
 import { LegalDocumentIngestionService } from './legal-document-ingestion.service';
 import { isLegalDocumentScanPassed, isLegalDocumentUnknownScanStatus } from './legal-document-scan-status.constants';
+import { LegalDocumentChecksumVerificationService } from './integrity/legal-document-checksum-verification.service';
+import { LegalDocumentIntegrityPersistenceService } from './integrity/legal-document-integrity-persistence.service';
+import { isLegalDocumentIntegrityBlocking } from './integrity/legal-document-integrity.constants';
+import { createChecksumVerifyingTransform } from './integrity/legal-document-checksum-stream.util';
+import { LEGAL_DOCUMENT_INTEGRITY_STATUS } from './integrity/legal-document-integrity.constants';
+import { pipeline } from 'stream/promises';
+import { PassThrough } from 'stream';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -125,6 +136,10 @@ export class LegalDocumentsService {
     private readonly scope: LegalDocumentScopeService,
     private readonly fourEyes: LegalDocumentFourEyesService,
     private readonly ingestion: LegalDocumentIngestionService,
+    private readonly checksumVerification: LegalDocumentChecksumVerificationService,
+    private readonly integrityPersistence: LegalDocumentIntegrityPersistenceService,
+    @Inject(documentsConfig.KEY)
+    private readonly config: ConfigType<typeof documentsConfig>,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
   ) {}
 
@@ -238,6 +253,8 @@ export class LegalDocumentsService {
           malwareScanDetail: ingested.malwareScanDetail,
           malwareScanAttempts: ingested.malwareScanAttempts,
           quarantineObjectKey: ingested.quarantineObjectKey,
+          integrityStatus: LEGAL_DOCUMENT_INTEGRITY_STATUS.VERIFIED,
+          integrityCheckedAt: new Date(),
           uploadedByUserId: input.uploadedByUserId ?? null,
           legalOwnerName: input.legalOwnerName?.trim() || null,
           changeSummary: input.changeSummary?.trim() || null,
@@ -655,8 +672,68 @@ export class LegalDocumentsService {
 
   async getDownload(orgId: string, id: string): Promise<DocumentDownload> {
     const doc = await this.getById(orgId, id);
-    const stream = await this.storage.getObjectStream(doc.objectKey);
-    return { stream, fileName: doc.fileName, mimeType: doc.mimeType, sizeBytes: doc.sizeBytes };
+
+    if (doc.integrityUnavailable || isLegalDocumentIntegrityBlocking(doc.integrityStatus)) {
+      throw new LegalDocumentIntegrityUnavailableError(
+        doc.integrityStatus,
+        doc.integrityDetail ?? undefined,
+      );
+    }
+
+    if (this.config.integrityVerifyOnDownload) {
+      const result = await this.checksumVerification.verify({
+        organizationId: doc.organizationId,
+        legalDocumentId: doc.id,
+        objectKey: doc.objectKey,
+        checksum: doc.checksum,
+        sizeBytes: doc.sizeBytes,
+      });
+
+      if (result.status !== LEGAL_DOCUMENT_INTEGRITY_STATUS.VERIFIED) {
+        await this.integrityPersistence.applyVerificationResult(doc, result, {
+          source: 'download',
+        });
+        throw new LegalDocumentIntegrityUnavailableError(result.status, result.detail);
+      }
+
+      if (doc.integrityStatus !== LEGAL_DOCUMENT_INTEGRITY_STATUS.VERIFIED) {
+        await this.integrityPersistence.applyVerificationResult(doc, result, {
+          source: 'download',
+        });
+      }
+    }
+
+    const sourceStream = await this.storage.getObjectStream(doc.objectKey);
+    const output = new PassThrough();
+    const verifier = createChecksumVerifyingTransform(doc.checksum);
+
+    void pipeline(sourceStream, verifier.stream, output).catch(async (err) => {
+      output.destroy(err as Error);
+    });
+
+    verifier.stream.on('end', () => {
+      if (doc.checksum && !verifier.verify()) {
+        void this.integrityPersistence.applyVerificationResult(
+          doc,
+          {
+            status: LEGAL_DOCUMENT_INTEGRITY_STATUS.CHECKSUM_MISMATCH,
+            detail: 'Checksum mismatch during download stream',
+            expectedChecksum: doc.checksum,
+            actualChecksum: verifier.getDigest(),
+            checkedAt: new Date(),
+          },
+          { source: 'download' },
+        );
+        output.destroy(new Error('Checksum mismatch'));
+      }
+    });
+
+    return {
+      stream: output,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      sizeBytes: doc.sizeBytes,
+    };
   }
 
   toDto(doc: OrganizationLegalDocument & { stations?: { stationId: string }[] }): LegalDocumentDto {

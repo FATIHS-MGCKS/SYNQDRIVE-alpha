@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createReadStream } from 'fs';
-import { access, mkdir, readFile, unlink, writeFile } from 'fs/promises';
+import { access, mkdir, readFile, readdir, unlink, writeFile } from 'fs/promises';
 import { constants } from 'fs';
 import { dirname, resolve } from 'path';
 import { Readable } from 'stream';
@@ -15,6 +15,7 @@ import {
 import {
   buildDocumentObjectKey,
   resolveLocalObjectKeyPath,
+  safeStorageSegment,
 } from './document-storage-key.util';
 import { sha256Hex } from './document-storage-content-hash.util';
 import { DOCUMENT_STORAGE_PROVIDERS } from './document-storage.constants';
@@ -128,6 +129,73 @@ export class LocalDocumentStorageService implements DocumentStoragePort {
       return resolveLocalObjectKeyPath(this.quarantineBaseDir, objectKey);
     }
     return resolveLocalObjectKeyPath(this.baseDir, objectKey);
+  }
+
+  async listObjectKeysForOrganization(input: {
+    organizationId: string;
+    cursor?: string | null;
+    limit: number;
+    zone?: 'clean' | 'quarantine' | 'all';
+  }): Promise<import('./document-storage.interface').DocumentStorageListKeysResult> {
+    const orgSeg = safeStorageSegment(input.organizationId);
+    const limit = Math.max(1, Math.min(input.limit, 500));
+    const zones: Array<{ base: string; prefix: string }> = [];
+
+    if (!input.zone || input.zone === 'clean' || input.zone === 'all') {
+      zones.push({ base: this.baseDir, prefix: `organizations/${orgSeg}/` });
+    }
+    if (!input.zone || input.zone === 'quarantine' || input.zone === 'all') {
+      zones.push({
+        base: this.quarantineBaseDir,
+        prefix: `quarantine/organizations/${orgSeg}/`,
+      });
+    }
+
+    const allKeys: string[] = [];
+    for (const zone of zones) {
+      const keys = await this.collectLocalKeys(zone.base, zone.prefix);
+      allKeys.push(...keys);
+    }
+    allKeys.sort();
+
+    const startIndex = input.cursor
+      ? allKeys.findIndex((key) => key > input.cursor!) + 1 || allKeys.length
+      : 0;
+    const slice = allKeys.slice(startIndex, startIndex + limit);
+    const nextCursor =
+      startIndex + limit < allKeys.length ? slice[slice.length - 1] ?? null : null;
+
+    return { keys: slice, nextCursor };
+  }
+
+  private async collectLocalKeys(baseDir: string, prefix: string): Promise<string[]> {
+    const absPrefix = resolveLocalObjectKeyPath(baseDir, prefix.replace(/\/$/, ''));
+    try {
+      await access(absPrefix);
+    } catch {
+      return [];
+    }
+    const keys: string[] = [];
+    await this.walkLocalDir(baseDir, prefix.replace(/\/$/, ''), absPrefix, keys);
+    return keys;
+  }
+
+  private async walkLocalDir(
+    baseDir: string,
+    keyPrefix: string,
+    absDir: string,
+    keys: string[],
+  ): Promise<void> {
+    const entries = await readdir(absDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const absPath = `${absDir}/${entry.name}`;
+      const objectKey = `${keyPrefix}/${entry.name}`;
+      if (entry.isDirectory()) {
+        await this.walkLocalDir(baseDir, objectKey, absPath, keys);
+      } else if (entry.isFile()) {
+        keys.push(objectKey);
+      }
+    }
   }
 
   async checkHealth(): Promise<DocumentStorageHealthStatus> {

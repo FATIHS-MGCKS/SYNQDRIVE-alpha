@@ -46,6 +46,10 @@ describe('legal-document-api.mapper', () => {
     uploadedByUserId: 'user-1',
     scanStatus: 'SCAN_PASSED',
     pageCount: 3,
+    integrityStatus: 'VERIFIED',
+    integrityCheckedAt: new Date('2026-01-01T00:00:00.000Z'),
+    integrityDetail: null,
+    integrityUnavailable: false,
     validationErrorCode: null,
     validationErrorDetail: null,
     validatedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -100,10 +104,11 @@ describe('legal-document-api.mapper', () => {
     expect(dto.activeFrom).toBe(dto.activatedAt);
   });
 
-  it('derives integrity status from checksum and size', () => {
-    expect(deriveIntegrityStatus('abc', 100)).toBe('VERIFIED');
-    expect(deriveIntegrityStatus('abc', null)).toBe('UNVERIFIED');
-    expect(deriveIntegrityStatus(null, 100)).toBe('MISSING');
+  it('derives integrity status from persisted record', () => {
+    expect(deriveIntegrityStatus('VERIFIED', 'abc', 100)).toBe('VERIFIED');
+    expect(deriveIntegrityStatus('CHECKSUM_MISMATCH', 'abc', 100)).toBe('CHECKSUM_MISMATCH');
+    expect(deriveIntegrityStatus(null, 'abc', null)).toBe('UNVERIFIED');
+    expect(deriveIntegrityStatus(null, null, 100)).toBe('UNVERIFIED');
   });
 
   it('derives scan status from persisted record', () => {

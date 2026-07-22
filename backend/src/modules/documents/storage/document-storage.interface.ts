@@ -38,6 +38,11 @@ export interface DocumentObjectMetadata {
   etag: string | null;
 }
 
+export interface DocumentStorageListKeysResult {
+  keys: string[];
+  nextCursor: string | null;
+}
+
 export interface DocumentStorageHealthStatus {
   healthy: boolean;
   provider: string;
@@ -78,4 +83,14 @@ export interface DocumentStoragePort {
   getInternalPath(objectKey: string): string | null;
   /** Probes storage reachability (disk writable / bucket head). */
   checkHealth(): Promise<DocumentStorageHealthStatus>;
+  /**
+   * Lists object keys under an organization prefix for reconciliation.
+   * Keys are returned without bucket/key-prefix — same format as stored objectKey.
+   */
+  listObjectKeysForOrganization(input: {
+    organizationId: string;
+    cursor?: string | null;
+    limit: number;
+    zone?: 'clean' | 'quarantine' | 'all';
+  }): Promise<DocumentStorageListKeysResult>;
 }

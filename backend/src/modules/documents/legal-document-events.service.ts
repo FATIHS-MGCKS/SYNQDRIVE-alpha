@@ -15,6 +15,7 @@ import {
   resolveLegalDocumentEventType,
   type LegalDocumentEventType,
 } from './legal-document-events.constants';
+import type { LegalDocumentIntegrityEventType } from './integrity/legal-document-integrity.constants';
 import type { LegalDocumentEventsQueryDto } from './dto/legal-document-events-query.dto';
 import { LegalDocumentNotFoundError } from './legal-documents-api.errors';
 
@@ -108,6 +109,49 @@ export class LegalDocumentEventsService {
         validFrom: input.validFrom ?? input.legalDocument.validFrom,
         validUntil: input.validUntil ?? input.legalDocument.validUntil,
         correlationId: input.actor?.correlationId ?? null,
+      },
+    });
+  }
+
+  async appendIntegrityEventInTransaction(
+    tx: Tx,
+    input: {
+      organizationId: string;
+      legalDocument: OrganizationLegalDocument;
+      eventType: LegalDocumentIntegrityEventType;
+      reason?: string | null;
+      correlationId?: string | null;
+    },
+  ): Promise<OrganizationLegalDocumentEvent> {
+    return tx.organizationLegalDocumentEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        legalDocumentId: input.legalDocument.id,
+        eventType: input.eventType,
+        previousStatus: input.legalDocument.status,
+        newStatus: input.legalDocument.status,
+        actorUserId: null,
+        actorDisplayName: 'system:integrity',
+        reason: input.reason?.trim() || null,
+        changeSummary: `integrityStatus=${input.legalDocument.integrityStatus}`,
+        versionLabel: input.legalDocument.versionLabel,
+        documentType: input.legalDocument.documentType,
+        legalVariant: input.legalDocument.legalVariant,
+        checksum: input.legalDocument.checksum,
+        language: input.legalDocument.language,
+        jurisdiction:
+          input.legalDocument.jurisdictionCountry ??
+          deriveJurisdictionFromLanguage(input.legalDocument.language),
+        customerSegment: input.legalDocument.customerSegment,
+        bookingChannel: input.legalDocument.bookingChannel,
+        productScope: input.legalDocument.productScope,
+        stationScopeMode: input.legalDocument.stationScopeMode,
+        priority: input.legalDocument.priority,
+        isMandatory: input.legalDocument.isMandatory,
+        noticePurpose: input.legalDocument.noticePurpose,
+        validFrom: input.legalDocument.validFrom,
+        validUntil: input.legalDocument.validUntil,
+        correlationId: input.correlationId ?? null,
       },
     });
   }

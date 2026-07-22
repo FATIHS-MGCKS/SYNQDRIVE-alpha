@@ -113,4 +113,22 @@ export class InMemoryDocumentPrivateS3Operations implements DocumentPrivateS3Ope
   async headBucket(_params: { bucket: string }): Promise<void> {
     return;
   }
+
+  async listObjectKeys(params: {
+    bucket: string;
+    prefix: string;
+    cursor?: string;
+    limit: number;
+  }): Promise<{ keys: string[]; nextCursor?: string }> {
+    const prefix = `${params.bucket}::${params.prefix}`;
+    const keys = [...this.objects.keys()]
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => key.slice(prefix.length))
+      .sort();
+    const start = params.cursor ? keys.indexOf(params.cursor) + 1 : 0;
+    const slice = keys.slice(start, start + params.limit);
+    const nextCursor =
+      start + params.limit < keys.length ? slice[slice.length - 1] : undefined;
+    return { keys: slice, nextCursor };
+  }
 }

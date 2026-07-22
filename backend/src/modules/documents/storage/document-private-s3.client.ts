@@ -113,5 +113,22 @@ export async function createDocumentPrivateS3Operations(
         }),
       );
     },
+    async listObjectKeys(params) {
+      const result = await client.send(
+        new sdk.ListObjectsV2Command({
+          Bucket: params.bucket,
+          Prefix: params.prefix,
+          MaxKeys: params.limit,
+          ContinuationToken: params.cursor || undefined,
+        }),
+      );
+      const keys = (result.Contents ?? [])
+        .map((item: { Key?: string }) => item.Key)
+        .filter((key: string | undefined): key is string => Boolean(key));
+      return {
+        keys,
+        nextCursor: result.IsTruncated ? result.NextContinuationToken : undefined,
+      };
+    },
   };
 }

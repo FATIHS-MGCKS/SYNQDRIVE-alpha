@@ -17,6 +17,7 @@ import { LegalDocumentIngestionService } from './legal-document-ingestion.servic
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 import { createNoopLegalDocumentFourEyesService } from './legal-document-four-eyes.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
+import { createLegalDocumentsServiceForTests } from './integrity/legal-document-integrity.test-utils';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BUNDLE_STATUS, DOCUMENT_STATUS, DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
 
@@ -155,14 +156,13 @@ describe('LegalDocumentsService', () => {
       })),
       ...ingestion,
     };
-    return new LegalDocumentsService(
-      prisma,
+    return createLegalDocumentsServiceForTests(prisma, {
       events,
-      createNoopLegalDocumentScopeService(),
-      createNoopLegalDocumentFourEyesService() as any,
-      ingestionSvc as any,
+      scope: createNoopLegalDocumentScopeService(),
+      fourEyes: createNoopLegalDocumentFourEyesService(),
+      ingestion: ingestionSvc,
       storage,
-    );
+    });
   }
 
   function baseInput() {
