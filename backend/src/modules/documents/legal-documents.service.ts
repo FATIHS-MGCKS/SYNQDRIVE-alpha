@@ -84,6 +84,7 @@ import { pipeline } from 'stream/promises';
 import { PassThrough } from 'stream';
 import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
 import { LEGAL_MASTER_PURGEABLE_STATUSES, LEGAL_DOCUMENT_RETENTION_CLASS } from './retention/legal-document-retention.constants';
+import { LegalDocumentOperationalNotificationService } from './notifications/legal-document-operational-notification.service';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -141,6 +142,7 @@ export class LegalDocumentsService {
     private readonly checksumVerification: LegalDocumentChecksumVerificationService,
     private readonly integrityPersistence: LegalDocumentIntegrityPersistenceService,
     private readonly retentionPolicy: LegalDocumentRetentionPolicyService,
+    private readonly operationalNotifications: LegalDocumentOperationalNotificationService,
     @Inject(documentsConfig.KEY)
     private readonly config: ConfigType<typeof documentsConfig>,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
@@ -857,6 +859,14 @@ export class LegalDocumentsService {
         });
       }
     }
+
+    void this.operationalNotifications
+      .loadAndSyncOrgReadiness(updated.organizationId)
+      .catch((err) =>
+        this.logger.debug(
+          `operational notification sync after status ${toStatus}: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      );
 
     return updated;
   }

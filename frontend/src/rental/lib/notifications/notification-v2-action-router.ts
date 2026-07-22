@@ -61,6 +61,7 @@ export interface NotificationV2NavigationHandlers {
   onOpenBookingById?: (bookingId: string) => void;
   onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenSettingsTab?: (tab: string) => void;
   onStartHandoverPickup?: (bookingId: string) => void;
   onStartHandoverReturn?: (bookingId: string) => void;
 }
@@ -111,6 +112,13 @@ export function navigateNotificationV2Action(
       return true;
     case 'open-rental':
     default:
+      if (target.module?.startsWith('settings:')) {
+        const tab = target.module.slice('settings:'.length);
+        if (tab) {
+          handlers.onOpenSettingsTab?.(tab);
+          return true;
+        }
+      }
       handlers.onOpenRentalView?.('bookings');
       return true;
   }

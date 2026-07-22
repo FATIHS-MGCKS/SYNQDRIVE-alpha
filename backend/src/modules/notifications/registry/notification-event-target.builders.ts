@@ -81,6 +81,18 @@ export function rentalTarget(ctx: NotificationActionTargetContext): Notification
   };
 }
 
+/** Opens Verwaltung → Rechtliche Dokumente (settings tab via module). */
+export function legalDocumentsSettingsTarget(
+  ctx: NotificationActionTargetContext,
+): NotificationActionTarget {
+  const module =
+    ctx.module?.startsWith('settings:') ? ctx.module : 'settings:legal-documents';
+  return {
+    type: NotificationActionType.OPEN_RENTAL,
+    module,
+  };
+}
+
 export function resolveEntityType(
   ctx: NotificationActionTargetContext,
   expected: NotificationEntityType,

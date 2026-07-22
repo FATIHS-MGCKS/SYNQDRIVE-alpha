@@ -18,6 +18,8 @@ import { LegalDocumentIngestionService } from './legal-document-ingestion.servic
 import { LegalDocumentUsageService } from './legal-document-usage.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
+import { LegalDocumentOperationalNotificationService } from './notifications/legal-document-operational-notification.service';
+import { LegalDocumentOrgReadinessLoader } from './notifications/legal-document-org-readiness.loader';
 import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
 import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
 import { RentalContractLegalSnapshotService } from './rental-contract-legal-snapshot.service';
@@ -141,6 +143,8 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     LegalDocumentUsageService,
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,
+    LegalDocumentOperationalNotificationService,
+    LegalDocumentOrgReadinessLoader,
     BookingDocumentBundleMonitoringService,
     BookingDocumentCompletenessService,
     RentalContractLegalSnapshotService,

@@ -139,7 +139,7 @@ export class LegalDocumentStorageReconciliationService {
       };
     } catch (err) {
       metrics.durationMs = Date.now() - started;
-      await this.failRun(run.id, metrics, (err as Error).message);
+      await this.failRun(run.id, organizationId, metrics, (err as Error).message);
       throw err;
     }
   }
@@ -290,6 +290,7 @@ export class LegalDocumentStorageReconciliationService {
 
   private async failRun(
     runId: string,
+    organizationId: string | null,
     metrics: LegalDocumentStorageReconciliationMetrics,
     detail: string,
   ): Promise<void> {
@@ -304,6 +305,11 @@ export class LegalDocumentStorageReconciliationService {
           detail,
         } as unknown as Prisma.InputJsonValue,
       },
+    });
+    await this.alerts.emitReconciliationFailed({
+      organizationId,
+      detail,
+      runId,
     });
   }
 
