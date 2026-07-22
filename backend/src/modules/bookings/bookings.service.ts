@@ -1190,7 +1190,7 @@ export class BookingsService {
       documents: {
         bundleStatus: bundleView?.bundle.status ?? null,
         legalTermsAttached: bundleView?.legal.termsAttached ?? false,
-        legalWithdrawalAttached: bundleView?.legal.withdrawalAttached ?? false,
+        legalWithdrawalAttached: bundleView?.legal.consumerAttached ?? bundleView?.legal.withdrawalAttached ?? false,
         legalMissing: bundleView?.legal.missing ?? [],
         warnings: bundleView?.warnings ?? [],
         slots: documentSlots,

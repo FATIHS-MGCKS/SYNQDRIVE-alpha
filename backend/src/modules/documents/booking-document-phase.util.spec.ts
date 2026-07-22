@@ -37,6 +37,7 @@ describe('computeMissingDocumentSlots', () => {
     rentalContractDocumentId: null,
     termsDocumentId: null,
     withdrawalDocumentId: null,
+    privacyDocumentId: null,
     pickupProtocolDocumentId: null,
     returnProtocolDocumentId: null,
     finalInvoiceDocumentId: null,
@@ -51,10 +52,12 @@ describe('computeMissingDocumentSlots', () => {
         rentalContractDocumentId: 'c1',
         termsDocumentId: 't1',
         withdrawalDocumentId: 'w1',
+        privacyDocumentId: 'p1',
       },
       orgActiveLegal: {
         [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: { id: 't1' },
         [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: { id: 'w1' },
+        [DOCUMENT_TYPE.PRIVACY_POLICY]: { id: 'p1' },
       },
       generationError: null,
     });
@@ -72,6 +75,7 @@ describe('computeMissingDocumentSlots', () => {
       orgActiveLegal: {
         [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: { id: 't1' },
         [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: { id: 'w1' },
+        [DOCUMENT_TYPE.PRIVACY_POLICY]: { id: 'p1' },
       },
       generationError: null,
     });
@@ -82,6 +86,7 @@ describe('computeMissingDocumentSlots', () => {
       DOCUMENT_TYPE.RENTAL_CONTRACT,
       DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       DOCUMENT_TYPE.CONSUMER_INFORMATION,
+      DOCUMENT_TYPE.PRIVACY_POLICY,
     ]);
   });
 
@@ -95,6 +100,7 @@ describe('computeMissingDocumentSlots', () => {
 
     expect(missing.map((m) => m.documentType)).not.toContain(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
     expect(missing.map((m) => m.documentType)).not.toContain(DOCUMENT_TYPE.CONSUMER_INFORMATION);
+    expect(missing.map((m) => m.documentType)).not.toContain(DOCUMENT_TYPE.PRIVACY_POLICY);
     expect(missing.length).toBe(3);
   });
 

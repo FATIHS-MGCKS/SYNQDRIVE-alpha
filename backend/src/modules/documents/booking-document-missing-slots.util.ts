@@ -3,6 +3,7 @@ import type { BookingDocumentPhase } from './booking-document-phase.util';
 import { DOCUMENT_PHASE_REQUIREMENTS } from './booking-document-phase.util';
 import type { MissingBookingDocumentSlot } from './booking-document-task.types';
 import { hasOrgActiveLegalDocument } from './legal-document-type.compat';
+import { resolveBundlePointerField } from './booking-document-bundle-pointer.mapping';
 
 const CHECKLIST_SLOT_PREFIX = 'documentSlot:';
 
@@ -31,7 +32,7 @@ export function computeMissingDocumentSlots(input: {
   const missing: MissingBookingDocumentSlot[] = [];
 
   for (const documentType of required) {
-    const pointerField = bundlePointerField(documentType);
+    const pointerField = resolveBundlePointerField(documentType);
     if (pointerField && input.bundle[pointerField]) continue;
 
     const isLegal = (LEGAL_DOCUMENT_TYPES as string[]).includes(documentType) ||
@@ -57,21 +58,6 @@ export function computeMissingDocumentSlots(input: {
   return missing;
 }
 
-function bundlePointerField(documentType: DocumentType): string | null {
-  const map: Partial<Record<DocumentType, string>> = {
-    [DOCUMENT_TYPE.BOOKING_INVOICE]: 'bookingInvoiceDocumentId',
-    [DOCUMENT_TYPE.DEPOSIT_RECEIPT]: 'depositReceiptDocumentId',
-    [DOCUMENT_TYPE.RENTAL_CONTRACT]: 'rentalContractDocumentId',
-    [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: 'termsDocumentId',
-    [DOCUMENT_TYPE.CONSUMER_INFORMATION]: 'withdrawalDocumentId',
-    [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: 'withdrawalDocumentId',
-    [DOCUMENT_TYPE.HANDOVER_PICKUP]: 'pickupProtocolDocumentId',
-    [DOCUMENT_TYPE.HANDOVER_RETURN]: 'returnProtocolDocumentId',
-    [DOCUMENT_TYPE.FINAL_INVOICE]: 'finalInvoiceDocumentId',
-  };
-  return map[documentType] ?? null;
-}
-
 export function orgMissingLegalTemplateTypes(
   orgActiveLegal: Partial<Record<DocumentType, { id: string } | undefined>>,
 ): DocumentType[] {
@@ -84,6 +70,9 @@ export function orgMissingLegalTemplateTypes(
     !orgActiveLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
   ) {
     missing.push(DOCUMENT_TYPE.CONSUMER_INFORMATION);
+  }
+  if (!orgActiveLegal[DOCUMENT_TYPE.PRIVACY_POLICY]) {
+    missing.push(DOCUMENT_TYPE.PRIVACY_POLICY);
   }
   return missing;
 }
