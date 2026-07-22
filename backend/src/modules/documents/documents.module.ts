@@ -22,6 +22,10 @@ import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
 import { DOCUMENTS_STORAGE } from './storage/document-storage.interface';
 import { LocalDocumentStorageService } from './storage/local-document-storage.service';
+import { S3PrivateDocumentStorageService } from './storage/s3-private-document-storage.service';
+import { DOCUMENT_STORAGE_PROVIDERS } from './storage/document-storage.constants';
+import { DocumentStorageStartupService } from './storage/document-storage-startup.service';
+import { DocumentStorageHealthService } from './storage/document-storage-health.service';
 import { LEGAL_DOCUMENT_MALWARE_SCANNER } from './malware-scanner/legal-document-malware-scanner.interface';
 import { LEGAL_MALWARE_SCANNER_PROVIDERS } from './malware-scanner/legal-document-malware-scanner.constants';
 import { LegalDocumentDevelopmentMalwareScannerAdapter } from './malware-scanner/adapters/legal-document-development-malware-scanner.adapter';
@@ -36,8 +40,8 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
  * Owns rendering, private storage, document metadata, download endpoints,
  * bundle orchestration and legal document versioning. Business modules
  * (bookings/invoices/handover) provide data and trigger generation; they do not
- * render or store PDFs themselves. The storage + renderer are bound behind
- * tokens so a future S3 / Chromium implementation can be swapped in.
+ * render or store PDFs themselves. Storage (local dev / private S3 prod) and
+ * renderer are bound behind tokens.
  */
 @Module({
   imports: [
@@ -48,7 +52,23 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
   controllers: [DocumentsController, LegalDocumentsController],
   providers: [
     LocalDocumentStorageService,
-    { provide: DOCUMENTS_STORAGE, useClass: LocalDocumentStorageService },
+    S3PrivateDocumentStorageService,
+    {
+      provide: DOCUMENTS_STORAGE,
+      useFactory: (
+        config: ConfigType<typeof documentsConfig>,
+        local: LocalDocumentStorageService,
+        s3: S3PrivateDocumentStorageService,
+      ) => {
+        if (config.storageProvider === DOCUMENT_STORAGE_PROVIDERS.S3) {
+          return s3;
+        }
+        return local;
+      },
+      inject: [documentsConfig.KEY, LocalDocumentStorageService, S3PrivateDocumentStorageService],
+    },
+    DocumentStorageStartupService,
+    DocumentStorageHealthService,
     DocumentRendererService,
     { provide: DOCUMENT_RENDERER, useClass: DocumentRendererService },
     GeneratedDocumentsService,
@@ -109,6 +129,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     DOCUMENTS_STORAGE,
     DOCUMENT_RENDERER,
     LegalDocumentMalwareScannerHealthService,
+    DocumentStorageHealthService,
   ],
 })
 export class DocumentsModule {}

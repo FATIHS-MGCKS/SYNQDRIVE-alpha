@@ -1,30 +1,34 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createReadStream } from 'fs';
-import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
-import { resolve, sep, dirname, extname, basename } from 'path';
-import { randomUUID } from 'crypto';
+import { access, mkdir, readFile, unlink, writeFile } from 'fs/promises';
+import { constants } from 'fs';
+import { dirname, resolve } from 'path';
 import { Readable } from 'stream';
 import {
   DocumentStoragePort,
   PutDocumentInput,
   PutDocumentResult,
+  DocumentObjectMetadata,
+  DocumentStorageHealthStatus,
 } from './document-storage.interface';
-
-const STORAGE_PROVIDER = 'local';
+import {
+  buildDocumentObjectKey,
+  resolveLocalObjectKeyPath,
+} from './document-storage-key.util';
+import { sha256Hex } from './document-storage-content-hash.util';
+import { DOCUMENT_STORAGE_PROVIDERS } from './document-storage.constants';
 
 /**
  * Local-disk implementation of {@link DocumentStoragePort}.
  *
- * Files are written under `documents.localStorageDir` (default
- * `./storage/documents`), which is NOT registered as a static asset directory —
- * generated PDFs and legal documents are never publicly reachable.
- *
- * Quarantined legal uploads are written under `documents.localQuarantineStorageDir`
- * until PDF validation and malware scanning promote them to clean storage.
+ * Development and test only — production startup rejects this provider unless
+ * explicitly overridden via DOCUMENT_STORAGE_ALLOW_LOCAL_IN_PRODUCTION.
  */
 @Injectable()
 export class LocalDocumentStorageService implements DocumentStoragePort {
+  readonly provider = DOCUMENT_STORAGE_PROVIDERS.LOCAL;
+
   private readonly logger = new Logger(LocalDocumentStorageService.name);
   private readonly baseDir: string;
   private readonly quarantineBaseDir: string;
@@ -57,8 +61,16 @@ export class LocalDocumentStorageService implements DocumentStoragePort {
     originalName: string;
     mimeType: string;
   }): Promise<PutDocumentResult> {
-    const quarantinePath = this.resolveKeyInBase(this.quarantineBaseDir, input.quarantineObjectKey);
-    const buffer = await readFile(quarantinePath);
+    const quarantinePath = resolveLocalObjectKeyPath(
+      this.quarantineBaseDir,
+      input.quarantineObjectKey,
+    );
+    let buffer: Buffer;
+    try {
+      buffer = await readFile(quarantinePath);
+    } catch {
+      throw new NotFoundException('Quarantined object not found');
+    }
     const stored = await this.putObject({
       organizationId: input.organizationId,
       bookingId: null,
@@ -73,12 +85,33 @@ export class LocalDocumentStorageService implements DocumentStoragePort {
 
   async getObject(objectKey: string): Promise<Buffer> {
     const absPath = this.resolveKey(objectKey);
-    return readFile(absPath);
+    try {
+      return await readFile(absPath);
+    } catch {
+      throw new NotFoundException('Object not found');
+    }
   }
 
   async getObjectStream(objectKey: string): Promise<Readable> {
     const absPath = this.resolveKey(objectKey);
+    try {
+      await access(absPath, constants.R_OK);
+    } catch {
+      throw new NotFoundException('Object not found');
+    }
     return createReadStream(absPath);
+  }
+
+  async getObjectMetadata(objectKey: string): Promise<DocumentObjectMetadata> {
+    const buffer = await this.getObject(objectKey);
+    const contentHash = sha256Hex(buffer);
+    return {
+      objectKey,
+      sizeBytes: buffer.length,
+      mimeType: null,
+      contentHash,
+      etag: contentHash,
+    };
   }
 
   async deleteObject(objectKey: string): Promise<void> {
@@ -92,9 +125,32 @@ export class LocalDocumentStorageService implements DocumentStoragePort {
 
   getInternalPath(objectKey: string): string | null {
     if (objectKey.startsWith('quarantine/')) {
-      return this.resolveKeyInBase(this.quarantineBaseDir, objectKey);
+      return resolveLocalObjectKeyPath(this.quarantineBaseDir, objectKey);
     }
-    return this.resolveKeyInBase(this.baseDir, objectKey);
+    return resolveLocalObjectKeyPath(this.baseDir, objectKey);
+  }
+
+  async checkHealth(): Promise<DocumentStorageHealthStatus> {
+    const checkedAt = new Date();
+    try {
+      await mkdir(this.baseDir, { recursive: true });
+      await mkdir(this.quarantineBaseDir, { recursive: true });
+      await access(this.baseDir, constants.W_OK | constants.R_OK);
+      await access(this.quarantineBaseDir, constants.W_OK | constants.R_OK);
+      return {
+        healthy: true,
+        provider: this.provider,
+        detail: `Local storage writable at ${this.baseDir}`,
+        checkedAt,
+      };
+    } catch (err) {
+      return {
+        healthy: false,
+        provider: this.provider,
+        detail: (err as Error).message,
+        checkedAt,
+      };
+    }
   }
 
   private async writeObject(
@@ -102,79 +158,32 @@ export class LocalDocumentStorageService implements DocumentStoragePort {
     baseDir: string,
     keyPrefix: string,
   ): Promise<PutDocumentResult> {
-    const orgSeg = this.safeSegment(input.organizationId);
-    const typeSeg = this.safeSegment(input.documentType) || 'document';
-    if (!orgSeg) {
-      throw new BadRequestException('organizationId is required for storage');
-    }
-
-    const now = new Date();
-    const yyyy = String(now.getUTCFullYear());
-    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const safeName = this.sanitizeFileName(input.originalName);
-
-    const bookingSeg = input.bookingId ? this.safeSegment(input.bookingId) : '';
-    const scope = bookingSeg
-      ? ['bookings', bookingSeg, typeSeg]
-      : ['legal', typeSeg];
-
-    const objectKey = [keyPrefix, orgSeg, ...scope, yyyy, mm, `${randomUUID()}-${safeName}`].join(
-      '/',
-    );
-
-    const absPath = this.resolveKeyInBase(baseDir, objectKey);
+    const objectKey = buildDocumentObjectKey({
+      organizationId: input.organizationId,
+      bookingId: input.bookingId,
+      documentType: input.documentType,
+      originalName: input.originalName,
+      keyPrefix,
+    });
+    const contentHash = sha256Hex(input.buffer);
+    const absPath = resolveLocalObjectKeyPath(baseDir, objectKey);
     await mkdir(dirname(absPath), { recursive: true });
     await writeFile(absPath, input.buffer);
 
     return {
       objectKey,
-      storageProvider: STORAGE_PROVIDER,
+      storageProvider: this.provider,
       sizeBytes: input.buffer.length,
       mimeType: input.mimeType,
+      contentHash,
+      etag: contentHash,
     };
   }
 
   private resolveKey(objectKey: string): string {
     if (objectKey.startsWith('quarantine/')) {
-      return this.resolveKeyInBase(this.quarantineBaseDir, objectKey);
+      return resolveLocalObjectKeyPath(this.quarantineBaseDir, objectKey);
     }
-    return this.resolveKeyInBase(this.baseDir, objectKey);
-  }
-
-  private resolveKeyInBase(baseDir: string, objectKey: string): string {
-    if (typeof objectKey !== 'string' || objectKey.length === 0) {
-      throw new BadRequestException('Invalid object key');
-    }
-    if (objectKey.includes('\0') || objectKey.includes('..')) {
-      throw new BadRequestException('Invalid object key');
-    }
-    const normalized = objectKey.replace(/\\/g, '/').replace(/^\/+/, '');
-    if (/^[a-zA-Z]:/.test(normalized)) {
-      throw new BadRequestException('Invalid object key');
-    }
-    const abs = resolve(baseDir, normalized);
-    const baseWithSep = baseDir.endsWith(sep) ? baseDir : baseDir + sep;
-    if (abs !== baseDir && !abs.startsWith(baseWithSep)) {
-      throw new BadRequestException('Invalid object key (path traversal)');
-    }
-    return abs;
-  }
-
-  private safeSegment(value: string): string {
-    if (!value) return '';
-    return basename(String(value)).replace(/[^a-zA-Z0-9_-]/g, '');
-  }
-
-  private sanitizeFileName(originalName: string): string {
-    const base = basename(String(originalName || 'document'));
-    const ext = extname(base).toLowerCase().replace(/[^a-z0-9.]/g, '');
-    const stem =
-      base
-        .slice(0, base.length - extname(base).length)
-        .replace(/[^a-zA-Z0-9_-]/g, '_')
-        .replace(/_+/g, '_')
-        .slice(0, 60) || 'document';
-    const safeExt = ext && ext.length <= 6 ? ext : '';
-    return `${stem}${safeExt}`;
+    return resolveLocalObjectKeyPath(this.baseDir, objectKey);
   }
 }

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-private-storage-2026-07-22',
+    version: '4.9.752',
+    title: 'Legal Documents — Private Object Storage (Prompt 13/32)',
+    summary: [
+      'DocumentStoragePort mit Local- (dev/test) und S3-Private-Adapter (Produktion).',
+      'Tenant-scoped Object Keys serverseitig; keine Client-Pfade oder öffentlichen URLs.',
+      'SSE (AES256/aws:kms), Content-Hash-Metadaten, Streaming-Upload/Download.',
+      'Startup fail-closed: local in Produktion nur mit DOCUMENT_STORAGE_ALLOW_LOCAL_IN_PRODUCTION.',
+      'Storage Health Check + Contract Tests für beide Adapter.',
+      'Migrationspfad local → S3 dokumentiert; bestehende Dateien bleiben erhalten.',
+    ],
+    reason: 'Production-Readiness — private Rechtsdokumente in S3-kompatiblem Object Storage statt lokaler Platte.',
+    previousBehavior: 'DocumentsModule band immer LocalDocumentStorageService; kein S3-Adapter, keine Startup-Validierung.',
+    details:
+      'docs/audits/legal-documents-private-storage-2026-07.md, architecture/LEGAL_DOCUMENT_PRIVATE_STORAGE_2026-07-22.md, document-storage.contract.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T14:30:00.000Z',
+  },
+  {
     id: 'legal-documents-malware-scanner-2026-07-22',
     version: '4.9.751',
     title: 'Legal Documents — Malware Scanner Adapter (Prompt 12/32)',
