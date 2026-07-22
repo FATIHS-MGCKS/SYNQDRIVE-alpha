@@ -49,6 +49,8 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
 import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.scheduler';
 import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
 import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
+import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
+import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
 
 @Module({
   imports: [
@@ -82,6 +84,7 @@ import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler'
     BatteryV2JobsModule,
     VoiceWebhookIngestionModule,
     VoiceAssistantModule,
+    IamDataRetentionModule,
   ],
   providers: [
     // Processors
@@ -121,6 +124,7 @@ import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler'
     BatteryV2ReconciliationScheduler,
     BatteryV2RetentionScheduler,
     VoiceRetentionScheduler,
+    IamDataRetentionScheduler,
   ],
 })
 export class WorkersModule {}

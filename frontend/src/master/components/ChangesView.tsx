@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-data-retention-v49722-2026-07-21',
+    version: '4.9.722',
+    title: 'V4.9.722 — IAM configurable retention and data subject workflows (Prompt 20)',
+    summary: [
+      'IamDataCategory definitions with configurable retention, strategies, and org overrides.',
+      'Retention worker: dry-run default, batch limits, retry, legal-hold gate, per-phase audit logs.',
+      'DSAR export: tenant-scoped, step-up required, idempotent, audited via transactional outbox.',
+      'Global user deletion assessment + pseudonymization with cross-org dependency checks.',
+      'API under /organizations/:orgId/iam/data-retention + cron scheduler.',
+    ],
+    reason: 'Data minimization, retention, deletion, and data-subject requests require enforceable technical foundations without hard-coded legal conclusions.',
+    previousBehavior: 'No IAM-specific retention policies, legal holds, or DSAR export workflow.',
+    details:
+      'iam-data-retention module, migration 20260722130000_iam_data_retention, runbook docs/runbooks/iam-data-retention-and-user-rights.md, iam-data-retention.security.spec.ts',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T23:45:00.000Z',
+  },
+  {
     id: 'iam-access-review-v49721-2026-07-21',
     version: '4.9.721',
     title: 'V4.9.721 — IAM privileged access reviews and attestations (Prompt 19)',

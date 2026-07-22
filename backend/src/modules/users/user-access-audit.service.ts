@@ -40,6 +40,11 @@ export const UserAccessAuditAction = {
   ACCESS_REVIEW_CAMPAIGN_COMPLETED: 'ACCESS_REVIEW_CAMPAIGN_COMPLETED',
   ACCESS_REVIEW_DECISION_RECORDED: 'ACCESS_REVIEW_DECISION_RECORDED',
   ACCESS_REVIEW_DECISION_APPLIED: 'ACCESS_REVIEW_DECISION_APPLIED',
+  IAM_DSAR_EXPORT_REQUESTED: 'IAM_DSAR_EXPORT_REQUESTED',
+  IAM_USER_PSEUDONYMIZED: 'IAM_USER_PSEUDONYMIZED',
+  IAM_RETENTION_RUN_COMPLETED: 'IAM_RETENTION_RUN_COMPLETED',
+  IAM_LEGAL_HOLD_PLACED: 'IAM_LEGAL_HOLD_PLACED',
+  IAM_LEGAL_HOLD_RELEASED: 'IAM_LEGAL_HOLD_RELEASED',
 } as const;
 
 export type UserAccessAuditActionCode =
@@ -157,7 +162,11 @@ export class UserAccessAuditService {
       auditAction === UserAccessAuditAction.SESSION_REVOKED ||
       auditAction === UserAccessAuditAction.SESSIONS_REVOKED_OTHERS ||
       auditAction === UserAccessAuditAction.ACCESS_REVIEW_DECISION_RECORDED ||
-      auditAction === UserAccessAuditAction.ACCESS_REVIEW_DECISION_APPLIED
+      auditAction === UserAccessAuditAction.ACCESS_REVIEW_DECISION_APPLIED ||
+      auditAction === UserAccessAuditAction.IAM_DSAR_EXPORT_REQUESTED ||
+      auditAction === UserAccessAuditAction.IAM_USER_PSEUDONYMIZED ||
+      auditAction === UserAccessAuditAction.IAM_LEGAL_HOLD_PLACED ||
+      auditAction === UserAccessAuditAction.IAM_LEGAL_HOLD_RELEASED
     ) {
       return 'WARN';
     }

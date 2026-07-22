@@ -90,6 +90,27 @@ enum AccessReviewResultApplicationStatus {
   NOT_APPLICABLE
 }
 
+enum IamDataCategory {
+  GLOBAL_USER_PROFILE
+  MEMBERSHIP
+  SESSION_REFRESH_TOKEN
+  IP_USER_AGENT
+  LOGIN_FAILURE
+  INVITE
+  RESET_TOKEN
+  MFA_DATA
+  AUDIT_LOG
+  ACCESS_REVIEW
+  SECURITY_EVENT
+}
+
+enum IamRetentionStrategy {
+  DELETE
+  ANONYMIZE
+  PSEUDONYMIZE
+  NO_OP
+}
+
 enum OrganizationInviteStatus {
   PENDING
   ACCEPTED
@@ -1630,6 +1651,10 @@ model Organization {
   accessReviewCampaigns                  AccessReviewCampaign[]
   accessReviewItems                      AccessReviewItem[]
   accessReviewDecisions                  AccessReviewDecision[]
+  iamRetentionPolicyOverrides            IamRetentionPolicyOverride[]
+  iamLegalHolds                          IamLegalHold[]
+  iamRetentionRunLogs                    IamRetentionRunLog[]
+  iamDsarExportLogs                      IamDsarExportLog[]
   orgEmailSettings                       OrgEmailSettings?
   orgEmailDomains                        OrgEmailDomain[]
   outboundEmails                         OutboundEmail[]
@@ -1696,6 +1721,10 @@ model User {
   accessReviewCampaignsAsReviewer     AccessReviewCampaign[]        @relation("AccessReviewReviewer")
   accessReviewDecisions               AccessReviewDecision[]        @relation("AccessReviewDecisions")
   accessReviewItems                   AccessReviewItem[]
+  dsarExportsAsSubject                IamDsarExportLog[]            @relation("DsarSubject")
+  dsarExportsRequested                IamDsarExportLog[]            @relation("DsarRequestedBy")
+  iamLegalHoldsPlaced                 IamLegalHold[]                @relation("IamLegalHoldPlacedBy")
+  iamRetentionPolicyApprovals         IamRetentionPolicyOverride[]  @relation("IamRetentionPolicyApprovedBy")
   accountPreferences                  UserAccountPreference[]
   notificationPreferences             UserNotificationPreference[]
   invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
@@ -2140,6 +2169,93 @@ model AccessReviewDecision {
   @@index([organizationId])
   @@index([itemId])
   @@map("access_review_decisions")
+}
+
+// ------------------------------------------------
+// IAM DATA RETENTION & DATA SUBJECT RIGHTS
+// ------------------------------------------------
+
+model IamRetentionPolicyOverride {
+  id               String               @id @default(uuid())
+  organizationId   String               @map("organization_id")
+  category         IamDataCategory
+  retentionDays    Int                  @map("retention_days")
+  strategy         IamRetentionStrategy
+  enabled          Boolean              @default(false)
+  approvedAt       DateTime?            @map("approved_at")
+  approvedByUserId String?              @map("approved_by_user_id")
+  notes            String?
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvedBy   User?        @relation("IamRetentionPolicyApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, category])
+  @@index([organizationId, enabled])
+  @@map("iam_retention_policy_overrides")
+}
+
+model IamLegalHold {
+  id               String           @id @default(uuid())
+  organizationId   String?          @map("organization_id")
+  userId           String?          @map("user_id")
+  category         IamDataCategory?
+  reason           String
+  placedByUserId   String           @map("placed_by_user_id")
+  placedAt         DateTime         @default(now()) @map("placed_at")
+  releasedAt       DateTime?        @map("released_at")
+  releasedByUserId String?          @map("released_by_user_id")
+  metadata         Json?
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  placedBy     User          @relation("IamLegalHoldPlacedBy", fields: [placedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, userId])
+  @@index([userId, releasedAt])
+  @@map("iam_legal_holds")
+}
+
+model IamRetentionRunLog {
+  id             String          @id @default(uuid())
+  organizationId String?         @map("organization_id")
+  category       IamDataCategory
+  trigger        String
+  dryRun         Boolean         @map("dry_run")
+  candidates     Int             @default(0)
+  affected       Int             @default(0)
+  skipped        Int             @default(0)
+  errorMessage   String?         @map("error_message")
+  durationMs     Int?            @map("duration_ms")
+  metadata       Json?
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, category, createdAt])
+  @@map("iam_retention_run_logs")
+}
+
+model IamDsarExportLog {
+  id                String    @id @default(uuid())
+  organizationId    String    @map("organization_id")
+  subjectUserId     String    @map("subject_user_id")
+  requestedByUserId String    @map("requested_by_user_id")
+  idempotencyKey    String    @unique @map("idempotency_key")
+  exportFormat      String    @default("json") @map("export_format")
+  status            String    @default("COMPLETED")
+  recordCount       Int?      @map("record_count")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subjectUser  User         @relation("DsarSubject", fields: [subjectUserId], references: [id], onDelete: Cascade)
+  requestedBy  User         @relation("DsarRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, subjectUserId])
+  @@map("iam_dsar_export_logs")
 }
 
 // ------------------------------------------------
