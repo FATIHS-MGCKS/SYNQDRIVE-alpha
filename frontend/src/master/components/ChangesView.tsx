@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-upload-wizard-2026-07-22',
+    version: '4.9.763',
+    title: 'Legal Documents — Upload & Review Wizard (Prompt 24/32)',
+    summary: [
+      'Inline-Upload durch 4-stufigen FormDialog-Wizard ersetzt: Einordnung, Version, Datei, Prüfung.',
+      'Upload mit Fortschritt (XHR), Abort und Server-Metadaten (Seiten, Scan, Prüfsumme) auf Schritt 4.',
+      'Als Entwurf speichern oder Review anfordern — keine direkte Aktivierung aus dem Upload.',
+      'Client- + Server-Validierung, Duplikat-Versionsbezeichnung, iOS-PDF-Unterstützung.',
+      'PageHeader-Aktion „Neue Version“; Schnellaktionen nur noch Aktivieren/Archivieren.',
+      'api.legalDocuments.uploadWithProgress + submitForReview; Component- und Validierungstests.',
+    ],
+    reason: 'Production-Readiness — professioneller geführter Upload- und Review-Workflow für Kunden-Rechtstexte.',
+    previousBehavior: 'Inline-Upload pro Kategorie unter Schnellaktionen ohne Scope-, Gültigkeits- oder Review-Schritte.',
+    details:
+      'docs/audits/legal-documents-upload-wizard-2026-07.md, rental/components/legal-documents/LegalDocumentUploadWizard*, legal-document-upload-wizard.*.test.ts',
+    affectsArchitecture: true,
+    module: 'Frontend / Documents',
+    createdAt: '2026-07-23T01:00:00.000Z',
+  },
+  {
     id: 'legal-documents-customer-texts-ia-2026-07-22',
     version: '4.9.762',
     title: 'Legal Documents — Kunden-Rechtstexte IA (Prompt 23/32)',
