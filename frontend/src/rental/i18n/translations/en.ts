@@ -34,7 +34,7 @@ export const en = {
   'nav.companyInfo': 'Company Information',
   'nav.usersRoles': 'Users & Roles',
   'nav.dataAuthorization': 'Data Authorization & Consent',
-  'nav.legalDocuments': 'Legal Documents',
+  'nav.legalDocuments': 'Customer legal texts',
   'nav.emailVersand': 'Email & delivery',
   'nav.billingSubscription': 'Billing & Subscription',
   'nav.rentalRules': 'Rental Rules',
@@ -376,7 +376,7 @@ export const en = {
   'settingsTab.users': 'Users & Roles',
   'settingsTab.billing': 'Billing & Subscription',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
-  'settingsTab.legalDocuments': 'Legal Documents',
+  'settingsTab.legalDocuments': 'Customer legal texts',
   'settingsTab.rentalRules': 'Rental Rules',
 
   // Administration in-page tab bar (short labels)
@@ -385,7 +385,7 @@ export const en = {
   'adminTab.users': 'Users & Roles',
   'adminTab.billing': 'Billing',
   'adminTab.dataAuthorization': 'Data Authorization',
-  'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.legalDocuments': 'Customer legal texts',
   'adminTab.emailVersand': 'Email & delivery',
   'adminTab.rentalRules': 'Rental Rules',
 

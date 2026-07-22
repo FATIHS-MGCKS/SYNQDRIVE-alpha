@@ -36,7 +36,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.companyInfo': 'Firmeninformationen',
   'nav.usersRoles': 'Benutzer & Rollen',
   'nav.dataAuthorization': 'Data Authorization & Consent',
-  'nav.legalDocuments': 'Rechtliche Dokumente',
+  'nav.legalDocuments': 'Kunden-Rechtstexte',
   'nav.emailVersand': 'E-Mail & Versand',
   'nav.billingSubscription': 'Abrechnung & Abonnement',
   'nav.rentalRules': 'Mietregeln',
@@ -448,7 +448,7 @@ export const de: Record<TranslationKey, string> = {
   'settingsTab.users': 'Benutzer & Rollen',
   'settingsTab.billing': 'Abrechnung & Abonnement',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
-  'settingsTab.legalDocuments': 'Rechtliche Dokumente',
+  'settingsTab.legalDocuments': 'Kunden-Rechtstexte',
   'settingsTab.rentalRules': 'Mietregeln',
 
   // Administration in-page tab bar (short labels)
@@ -457,7 +457,7 @@ export const de: Record<TranslationKey, string> = {
   'adminTab.users': 'Benutzer & Rollen',
   'adminTab.billing': 'Abrechnung',
   'adminTab.dataAuthorization': 'Data Authorization',
-  'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.legalDocuments': 'Kunden-Rechtstexte',
   'adminTab.emailVersand': 'E-Mail & Versand',
   'adminTab.rentalRules': 'Mietregeln',
 
