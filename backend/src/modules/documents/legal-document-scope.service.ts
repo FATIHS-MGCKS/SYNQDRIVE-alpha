@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { LEGAL_STATUS } from './documents.constants';
@@ -10,7 +10,7 @@ import {
   type LegalScopeConflict,
 } from './legal-document-scope.conflicts';
 import { toLegalDocumentScopeShape } from './legal-document-scope.util';
-import { LEGAL_DOCUMENT_ERROR_CODES } from './legal-documents.errors';
+import { LegalDocumentScopeConflictError } from './legal-documents-api.errors';
 
 const ACTIVE_SCOPE_STATUSES = [LEGAL_STATUS.ACTIVE, LEGAL_STATUS.SCHEDULED, LEGAL_STATUS.APPROVED];
 
@@ -70,12 +70,7 @@ export class LegalDocumentScopeService {
     const conflicts = await this.detectConflictsForCandidate(orgId, candidate, options);
     if (conflicts.length === 0) return;
 
-    throw new ConflictException({
-      message: 'Legal document application scope conflicts with an existing rule',
-      code: LEGAL_DOCUMENT_ERROR_CODES.SCOPE_CONFLICT,
-      organizationId: orgId,
-      conflicts,
-    });
+    throw new LegalDocumentScopeConflictError(orgId, conflicts);
   }
 
   findIdenticalScopePeers(

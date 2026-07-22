@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { LegalDocumentActiveConflictError } from './legal-documents-api.errors';
 import { Readable } from 'stream';
 import { LegalDocumentsService } from './legal-documents.service';
 import { DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
@@ -70,13 +70,15 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
     expect(rejected).toHaveLength(1);
 
     const conflict = (rejected[0] as PromiseRejectedResult).reason;
-    expect(conflict).toBeInstanceOf(ConflictException);
+    expect(conflict).toBeInstanceOf(LegalDocumentActiveConflictError);
     expect(conflict.getResponse()).toEqual(
       expect.objectContaining({
         code: LEGAL_DOCUMENT_ERROR_CODES.ACTIVE_CONFLICT,
-        organizationId: 'org-a',
-        documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
-        language: 'de',
+        details: expect.objectContaining({
+          organizationId: 'org-a',
+          documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+          language: 'de',
+        }),
       }),
     );
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   OrganizationLegalDocument,
   OrganizationLegalDocumentEvent,
@@ -15,6 +15,8 @@ import {
   resolveLegalDocumentEventType,
   type LegalDocumentEventType,
 } from './legal-document-events.constants';
+import type { LegalDocumentEventsQueryDto } from './dto/legal-document-events-query.dto';
+import { LegalDocumentNotFoundError } from './legal-documents-api.errors';
 
 export interface LegalDocumentActorContext {
   userId?: string | null;
@@ -113,7 +115,7 @@ export class LegalDocumentEventsService {
   async listForDocument(
     orgId: string,
     legalDocumentId: string,
-    params: PaginationParams = {},
+    params: LegalDocumentEventsQueryDto = {},
   ): Promise<PaginatedResult<LegalDocumentEventDto>> {
     await this.assertDocumentInOrg(orgId, legalDocumentId);
     return this.listEvents(orgId, { legalDocumentId }, params);
@@ -121,18 +123,15 @@ export class LegalDocumentEventsService {
 
   async listForOrganization(
     orgId: string,
-    params: PaginationParams & { legalDocumentId?: string; eventType?: string } = {},
+    params: LegalDocumentEventsQueryDto = {},
   ): Promise<PaginatedResult<LegalDocumentEventDto>> {
-    const { legalDocumentId, eventType, ...pagination } = params;
+    const { legalDocumentId, eventType, from, to, sort, order, ...pagination } = params;
     if (legalDocumentId) {
       await this.assertDocumentInOrg(orgId, legalDocumentId);
     }
     return this.listEvents(
       orgId,
-      {
-        legalDocumentId,
-        eventType,
-      },
+      { legalDocumentId, eventType, from, to, sort, order },
       pagination,
     );
   }
@@ -164,23 +163,40 @@ export class LegalDocumentEventsService {
 
   private async listEvents(
     orgId: string,
-    filters: { legalDocumentId?: string; eventType?: string },
+    filters: {
+      legalDocumentId?: string;
+      eventType?: string;
+      from?: string;
+      to?: string;
+      sort?: 'createdAt';
+      order?: 'asc' | 'desc';
+    },
     params: PaginationParams,
   ): Promise<PaginatedResult<LegalDocumentEventDto>> {
     const page = Math.max(1, params.page || 1);
     const limit = Math.min(100, Math.max(1, params.limit || 20));
     const skip = (page - 1) * limit;
+    const direction = filters.order === 'desc' ? 'desc' : 'asc';
+
+    const createdAtFilter =
+      filters.from || filters.to
+        ? {
+            ...(filters.from ? { gte: new Date(filters.from) } : {}),
+            ...(filters.to ? { lte: new Date(filters.to) } : {}),
+          }
+        : undefined;
 
     const where: Prisma.OrganizationLegalDocumentEventWhereInput = {
       organizationId: orgId,
       ...(filters.legalDocumentId ? { legalDocumentId: filters.legalDocumentId } : {}),
       ...(filters.eventType ? { eventType: filters.eventType } : {}),
+      ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
     };
 
     const [rows, total] = await Promise.all([
       this.prisma.organizationLegalDocumentEvent.findMany({
         where,
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: direction },
         skip,
         take: limit,
       }),
@@ -195,6 +211,6 @@ export class LegalDocumentEventsService {
       where: { id: legalDocumentId, organizationId: orgId },
       select: { id: true },
     });
-    if (!doc) throw new NotFoundException('Legal document not found');
+    if (!doc) throw new LegalDocumentNotFoundError();
   }
 }
