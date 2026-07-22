@@ -15,6 +15,8 @@ export const LEGAL_DOCUMENT_PERMISSION_CODES = {
   ARCHIVE: 'LEGAL_DOCUMENT_ARCHIVE',
   AUDIT_VIEW: 'LEGAL_DOCUMENT_AUDIT_VIEW',
   OVERRIDE_HANDOVER: 'LEGAL_DOCUMENT_OVERRIDE_HANDOVER',
+  MANAGE_LEGAL_HOLD: 'LEGAL_DOCUMENT_MANAGE_LEGAL_HOLD',
+  RETENTION_ADMIN: 'LEGAL_DOCUMENT_RETENTION_ADMIN',
 } as const;
 
 export type LegalDocumentPermissionCode =
@@ -36,6 +38,8 @@ export const LEGAL_DOCUMENT_PERMISSION_ACTIONS = [
   'legal_documents.schedule',
   'legal_documents.manage_scope',
   'legal_documents.override_handover',
+  'legal_documents.manage_legal_hold',
+  'legal_documents.retention_admin',
 ] as const;
 
 export type LegalDocumentPermissionAction =
@@ -99,6 +103,16 @@ export const LEGAL_DOCUMENT_PERMISSION_REQUIREMENTS: Readonly<
     module: 'legal-documents',
     level: 'manage',
     code: LEGAL_DOCUMENT_PERMISSION_CODES.OVERRIDE_HANDOVER,
+  },
+  'legal_documents.manage_legal_hold': {
+    module: 'legal-documents',
+    level: 'manage',
+    code: LEGAL_DOCUMENT_PERMISSION_CODES.MANAGE_LEGAL_HOLD,
+  },
+  'legal_documents.retention_admin': {
+    module: 'legal-documents',
+    level: 'manage',
+    code: LEGAL_DOCUMENT_PERMISSION_CODES.RETENTION_ADMIN,
   },
   'legal_documents.audit_view': {
     module: 'legal-documents-audit',

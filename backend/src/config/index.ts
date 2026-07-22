@@ -43,6 +43,7 @@ export { default as batteryHealthV2Config } from './battery-health-v2.config';
 export { default as batteryV2RetentionConfig } from './battery-v2-retention.config';
 export { default as voiceRetentionConfig } from './voice-retention.config';
 export { default as documentRetentionConfig } from './document-retention.config';
+export { default as legalDocumentRetentionConfig } from './legal-document-retention.config';
 export {
   BATTERY_CRANK_SIGNAL_CADENCE_MS,
   BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV,

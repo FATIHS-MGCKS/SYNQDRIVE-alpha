@@ -25,6 +25,13 @@ import { RentalContractService } from './rental-contract.service';
 import { BookingDocumentGenerationModule } from './booking-document-generation/booking-document-generation.module';
 import { LegalDocumentDeliveryEvidenceService } from './legal-document-delivery-evidence.service';
 import { DocumentNumberingService } from './document-numbering.service';
+import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
+import { LegalDocumentRetentionReferenceService } from './retention/legal-document-retention-reference.service';
+import { LegalDocumentLegalHoldService } from './retention/legal-document-legal-hold.service';
+import { LegalDocumentRetentionService } from './retention/legal-document-retention.service';
+import { LegalDocumentSubjectAccessService } from './retention/legal-document-subject-access.service';
+import { LegalDocumentRetentionScheduler } from './retention/legal-document-retention.scheduler';
+import legalDocumentRetentionConfig from '@config/legal-document-retention.config';
 import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
 import { DOCUMENTS_STORAGE } from './storage/document-storage.interface';
@@ -139,6 +146,12 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     RentalContractService,
     LegalDocumentDeliveryEvidenceService,
     BookingDocumentBundleService,
+    LegalDocumentRetentionPolicyService,
+    LegalDocumentRetentionReferenceService,
+    LegalDocumentLegalHoldService,
+    LegalDocumentRetentionService,
+    LegalDocumentSubjectAccessService,
+    LegalDocumentRetentionScheduler,
   ],
   exports: [
     BookingDocumentBundleService,
@@ -156,6 +169,8 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     LegalDocumentMalwareScannerHealthService,
     DocumentStorageHealthService,
     LegalDocumentStorageReconciliationService,
+    LegalDocumentRetentionService,
+    LegalDocumentLegalHoldService,
   ],
 })
 export class DocumentsModule {}

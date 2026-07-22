@@ -1570,6 +1570,8 @@ model Organization {
   bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
   bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
   legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
+  legalDocumentRetentionPurgeRuns        LegalDocumentRetentionPurgeRun[]
+  legalDocumentRetentionPolicy           OrganizationLegalDocumentRetentionPolicy?
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
   organizationPaymentAccounts            OrganizationPaymentAccount[]
@@ -6245,6 +6247,16 @@ model GeneratedDocument {
   voidedAt           DateTime?    @map("voided_at")
   metadata           Json?
   snapshot           Json?
+  retentionClass     String       @default("BOOKING_SNAPSHOT") @map("retention_class")
+  retainUntil        DateTime?    @map("retain_until")
+  legalHold          Boolean      @default(false) @map("legal_hold")
+  legalHoldReason    String?      @map("legal_hold_reason")
+  legalHoldSetAt     DateTime?    @map("legal_hold_set_at")
+  legalHoldSetByUserId String?    @map("legal_hold_set_by_user_id")
+  deletionEligibleAt DateTime?    @map("deletion_eligible_at")
+  deletedAt          DateTime?    @map("deleted_at")
+  storagePurgedAt    DateTime?    @map("storage_purged_at")
+  storagePurgeError  String?      @map("storage_purge_error")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
@@ -6266,6 +6278,8 @@ model GeneratedDocument {
   @@index([invoiceId])
   @@index([documentType])
   @@index([status])
+  @@index([organizationId, retentionClass, deletionEligibleAt], map: "generated_documents_org_retention_eligible_idx")
+  @@index([organizationId, legalHold], map: "generated_documents_org_legal_hold_idx")
   @@map("generated_documents")
 }
 
@@ -6323,6 +6337,16 @@ model OrganizationLegalDocument {
   integrityCheckedAt         DateTime?    @map("integrity_checked_at")
   integrityDetail            String?      @map("integrity_detail")
   integrityUnavailable       Boolean      @default(false) @map("integrity_unavailable")
+  retentionClass             String       @default("LEGAL_MASTER") @map("retention_class")
+  retainUntil                DateTime?    @map("retain_until")
+  legalHold                  Boolean      @default(false) @map("legal_hold")
+  legalHoldReason            String?      @map("legal_hold_reason")
+  legalHoldSetAt             DateTime?    @map("legal_hold_set_at")
+  legalHoldSetByUserId       String?      @map("legal_hold_set_by_user_id")
+  deletionEligibleAt         DateTime?    @map("deletion_eligible_at")
+  deletedAt                  DateTime?    @map("deleted_at")
+  storagePurgedAt            DateTime?    @map("storage_purged_at")
+  storagePurgeError          String?      @map("storage_purge_error")
   createdAt                  DateTime     @default(now()) @map("created_at")
   updatedAt                  DateTime     @updatedAt @map("updated_at")
 
@@ -6341,6 +6365,8 @@ model OrganizationLegalDocument {
   @@index([organizationId, status, documentType, language, jurisdictionCountry, customerSegment, bookingChannel], map: "organization_legal_documents_resolver_scope_idx")
   @@index([organizationId, scanStatus], map: "organization_legal_documents_org_scan_status_idx")
   @@index([organizationId, integrityStatus], map: "organization_legal_documents_org_integrity_status_idx")
+  @@index([organizationId, retentionClass, deletionEligibleAt], map: "organization_legal_documents_org_retention_eligible_idx")
+  @@index([organizationId, legalHold], map: "organization_legal_documents_org_legal_hold_idx")
   @@map("organization_legal_documents")
 }
 
@@ -6391,6 +6417,7 @@ model OrganizationLegalDocumentEvent {
   validFrom        DateTime? @map("valid_from")
   validUntil       DateTime? @map("valid_until")
   correlationId    String?  @map("correlation_id")
+  retentionClass   String   @default("AUDIT_EVENT") @map("retention_class")
   createdAt        DateTime @default(now()) @map("created_at")
 
   organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -6427,6 +6454,15 @@ model LegalDocumentDeliveryEvidence {
   recipientSnapshot   Json      @map("recipient_snapshot")
   requestId           String?   @map("request_id")
   outboundEmailId     String?   @map("outbound_email_id")
+  retentionClass    String    @default("DELIVERY_EVIDENCE") @map("retention_class")
+  retainUntil         DateTime? @map("retain_until")
+  legalHold           Boolean   @default(false) @map("legal_hold")
+  legalHoldReason     String?   @map("legal_hold_reason")
+  legalHoldSetAt      DateTime? @map("legal_hold_set_at")
+  legalHoldSetByUserId String?  @map("legal_hold_set_by_user_id")
+  deletionEligibleAt  DateTime? @map("deletion_eligible_at")
+  deletedAt           DateTime? @map("deleted_at")
+  recipientRedactedAt DateTime? @map("recipient_redacted_at")
   createdAt           DateTime  @default(now()) @map("created_at")
 
   organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -6441,6 +6477,8 @@ model LegalDocumentDeliveryEvidence {
   @@index([organizationId, bookingId, documentType], map: "legal_document_delivery_evidence_org_booking_doc_type_idx")
   @@index([generatedDocumentId], map: "legal_document_delivery_evidence_generated_document_idx")
   @@index([outboundEmailId], map: "legal_document_delivery_evidence_outbound_email_idx")
+  @@index([organizationId, retentionClass, deletionEligibleAt], map: "legal_document_delivery_evidence_org_retention_eligible_idx")
+  @@index([organizationId, legalHold], map: "legal_document_delivery_evidence_org_legal_hold_idx")
   @@map("legal_document_delivery_evidence")
 }
 
@@ -6499,6 +6537,39 @@ model BookingPickupGateAuditEvent {
   @@index([organizationId, bookingId, createdAt], map: "booking_pickup_gate_audit_events_org_booking_created_idx")
   @@index([organizationId, createdAt], map: "booking_pickup_gate_audit_events_org_created_idx")
   @@map("booking_pickup_gate_audit_events")
+}
+
+/// Per-organization retention policy overrides for legal document classes.
+/// Platform env defaults apply when a class is absent; `0` days disables automatic purge.
+model OrganizationLegalDocumentRetentionPolicy {
+  id              String   @id @default(uuid())
+  organizationId  String   @unique @map("organization_id")
+  policyVersion   String   @map("policy_version")
+  classPolicies   Json     @map("class_policies")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  updatedByUserId String?  @map("updated_by_user_id")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_legal_document_retention_policies")
+}
+
+/// Checkpointed retention purge runs (dry-run or apply) for legal document storage lifecycle.
+model LegalDocumentRetentionPurgeRun {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  trigger        String    @default("manual")
+  dryRun         Boolean   @default(true) @map("dry_run")
+  status         String    @default("RUNNING")
+  report         Json      @default("{}")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  correlationId  String?   @map("correlation_id")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt], map: "legal_document_retention_purge_runs_org_started_idx")
+  @@map("legal_document_retention_purge_runs")
 }
 
 /// Checkpointed storage reconciliation runs for legal document integrity audits.

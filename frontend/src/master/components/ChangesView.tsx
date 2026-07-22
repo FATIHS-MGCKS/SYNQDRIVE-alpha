@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-retention-legal-hold-2026-07-22',
+    version: '4.9.761',
+    title: 'Legal Documents — Retention, Legal Hold & Secure Deletion (Prompt 22/32)',
+    summary: [
+      'Differenzierte Retention-Klassen: LEGAL_MASTER, BOOKING_SNAPSHOT, DELIVERY_EVIDENCE, QUARANTINE_TEMP, AUDIT_EVENT.',
+      'Felder retentionClass, retainUntil, legalHold, deletionEligibleAt, deletedAt/storagePurgedAt auf Master, Snapshots und Evidence.',
+      'LegalDocumentRetentionService mit Dry-Run, Referenz-Guards und idempotentem Storage-Purge.',
+      'Legal Hold nur mit legal_documents.manage_legal_hold; Retention-Admin für Policy und manuellen Run.',
+      'Org-Policy-Overrides in organization_legal_document_retention_policies — keine hart codierten Mandantenfristen.',
+      'GDPR: LegalDocumentSubjectAccessService für Export und Anonymisierung unter Hold-Schutz.',
+      'Purge-Runs in legal_document_retention_purge_runs; fehlgeschlagene Löschung in storagePurgeError.',
+    ],
+    reason: 'Production-Readiness — rechtskonforme Aufbewahrung und sichere Löschung ohne Zerstörung von Beweisketten.',
+    previousBehavior: 'Kein Retention-Modell; Archivierung änderte nur Status; Quarantäne-Objekte blieben liegen.',
+    details:
+      'docs/audits/legal-documents-retention-legal-hold-2026-07.md, architecture/LEGAL_DOCUMENT_RETENTION_LEGAL_HOLD_2026-07-22.md, docs/runbooks/legal-document-retention.md, legal-document-retention.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T23:30:00.000Z',
+  },
+  {
     id: 'legal-documents-email-delivery-2026-07-22',
     version: '4.9.760',
     title: 'Legal Documents — Email Delivery Integration (Prompt 21/32)',

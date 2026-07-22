@@ -35,6 +35,17 @@ import {
   LegalDocumentRevokeDto,
   LegalDocumentScheduleDto,
 } from './dto/legal-document-lifecycle.dto';
+import {
+  ClearLegalDocumentLegalHoldDto,
+  SetLegalDocumentLegalHoldDto,
+} from './dto/legal-document-legal-hold.dto';
+import {
+  RunLegalDocumentRetentionDto,
+  UpsertLegalDocumentRetentionPolicyDto,
+} from './dto/legal-document-retention.dto';
+import { LegalDocumentLegalHoldService } from './retention/legal-document-legal-hold.service';
+import { LegalDocumentRetentionService } from './retention/legal-document-retention.service';
+import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
 
 const MAX_LEGAL_BYTES =
   Math.max(1, parseInt(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB || '15', 10)) * 1024 * 1024;
@@ -52,6 +63,9 @@ export class LegalDocumentsController {
   constructor(
     private readonly legal: LegalDocumentsService,
     private readonly events: LegalDocumentEventsService,
+    private readonly legalHold: LegalDocumentLegalHoldService,
+    private readonly retention: LegalDocumentRetentionService,
+    private readonly retentionPolicy: LegalDocumentRetentionPolicyService,
   ) {}
 
   @Get()
@@ -67,6 +81,53 @@ export class LegalDocumentsController {
     @Query() query: LegalDocumentEventsQueryDto,
   ) {
     return this.events.listForOrganization(orgId, query);
+  }
+
+  @Get('retention/policy')
+  @RequireLegalDocumentPermission('legal_documents.retention_admin')
+  async getRetentionPolicy(@Param('orgId') orgId: string) {
+    const policy = await this.retentionPolicy.getOrganizationPolicy(orgId);
+    return {
+      organizationId: orgId,
+      policyVersion: policy?.policyVersion ?? this.retentionPolicy.getPlatformPolicyVersion(),
+      classPolicies: policy?.classPolicies ?? {},
+      platformDefaults: this.retentionPolicy.getPlatformDefaults(),
+    };
+  }
+
+  @Post('retention/policy')
+  @RequireLegalDocumentPermission('legal_documents.retention_admin')
+  async upsertRetentionPolicy(
+    @Param('orgId') orgId: string,
+    @Body() body: UpsertLegalDocumentRetentionPolicyDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const policy = await this.retentionPolicy.upsertOrganizationPolicy(
+      orgId,
+      body.classPolicies,
+      userId ?? null,
+    );
+    return {
+      organizationId: orgId,
+      policyVersion: policy.policyVersion,
+      classPolicies: policy.classPolicies,
+      updatedAt: policy.updatedAt.toISOString(),
+    };
+  }
+
+  @Post('retention/run')
+  @RequireLegalDocumentPermission('legal_documents.retention_admin')
+  async runRetention(
+    @Param('orgId') orgId: string,
+    @Body() body: RunLegalDocumentRetentionDto,
+    @Req() req: Request,
+  ) {
+    return this.retention.runOnce({
+      trigger: 'manual',
+      dryRun: body.dryRun,
+      organizationId: orgId,
+      correlationId: (req as Request & { requestId?: string }).requestId ?? null,
+    });
   }
 
   @Post('upload')
@@ -298,6 +359,43 @@ export class LegalDocumentsController {
       statusReason: body.statusReason,
       changeSummary: body.changeSummary,
     });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/legal-hold')
+  @RequireLegalDocumentPermission('legal_documents.manage_legal_hold')
+  async setLegalHold(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: SetLegalDocumentLegalHoldDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legalHold.setMasterLegalHold(
+      orgId,
+      id,
+      body.reason,
+      this.actorFromRequest(req, userId, userName),
+    );
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
+  @Post(':id/legal-hold/clear')
+  @RequireLegalDocumentPermission('legal_documents.manage_legal_hold')
+  async clearLegalHold(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() _body: ClearLegalDocumentLegalHoldDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legalHold.clearMasterLegalHold(
+      orgId,
+      id,
+      this.actorFromRequest(req, userId, userName),
+    );
     return this.legal.getDetail(orgId, doc.id);
   }
 

@@ -82,6 +82,8 @@ import { createChecksumVerifyingTransform } from './integrity/legal-document-che
 import { LEGAL_DOCUMENT_INTEGRITY_STATUS } from './integrity/legal-document-integrity.constants';
 import { pipeline } from 'stream/promises';
 import { PassThrough } from 'stream';
+import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
+import { LEGAL_MASTER_PURGEABLE_STATUSES, LEGAL_DOCUMENT_RETENTION_CLASS } from './retention/legal-document-retention.constants';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -138,6 +140,7 @@ export class LegalDocumentsService {
     private readonly ingestion: LegalDocumentIngestionService,
     private readonly checksumVerification: LegalDocumentChecksumVerificationService,
     private readonly integrityPersistence: LegalDocumentIntegrityPersistenceService,
+    private readonly retentionPolicy: LegalDocumentRetentionPolicyService,
     @Inject(documentsConfig.KEY)
     private readonly config: ConfigType<typeof documentsConfig>,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
@@ -797,6 +800,33 @@ export class LegalDocumentsService {
       validFrom: audit?.validFrom,
       validUntil: audit?.validUntil,
     });
+
+    if (
+      (LEGAL_MASTER_PURGEABLE_STATUSES as readonly string[]).includes(toStatus) &&
+      !updated.legalHold
+    ) {
+      const anchorDate =
+        toStatus === LEGAL_STATUS.REVOKED
+          ? updated.revokedAt ?? new Date()
+          : toStatus === LEGAL_STATUS.SUPERSEDED
+            ? updated.validUntil ?? new Date()
+            : new Date();
+      const classPolicy = await this.retentionPolicy.resolveClassPolicy(
+        updated.organizationId,
+        LEGAL_DOCUMENT_RETENTION_CLASS.LEGAL_MASTER,
+      );
+      const deletionEligibleAt = this.retentionPolicy.computeDeletionEligibleAt(
+        LEGAL_DOCUMENT_RETENTION_CLASS.LEGAL_MASTER,
+        anchorDate,
+        classPolicy.retentionDays,
+      );
+      if (deletionEligibleAt) {
+        return tx.organizationLegalDocument.update({
+          where: { id: updated.id },
+          data: { deletionEligibleAt },
+        });
+      }
+    }
 
     return updated;
   }
