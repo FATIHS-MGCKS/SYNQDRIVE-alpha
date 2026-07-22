@@ -24,7 +24,7 @@ import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RequireLegalDocumentPermission } from './decorators/require-legal-document-permission.decorator';
 import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LegalDocumentsService } from './legal-documents.service';
-import { isLegalPdfUpload } from './legal-documents.util';
+import { LegalDocumentValidationError } from './legal-documents-api.errors';
 import { LegalDocumentListQueryDto } from './dto/legal-document-list-query.dto';
 import { LegalDocumentEventsQueryDto } from './dto/legal-document-events-query.dto';
 import { UpdateLegalDocumentScopeDto } from './dto/legal-document-scope.dto';
@@ -34,7 +34,6 @@ import {
   LegalDocumentRevokeDto,
   LegalDocumentScheduleDto,
 } from './dto/legal-document-lifecycle.dto';
-import { LegalDocumentValidationError } from './legal-documents-api.errors';
 
 const MAX_LEGAL_BYTES =
   Math.max(1, parseInt(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB || '15', 10)) * 1024 * 1024;
@@ -75,19 +74,6 @@ export class LegalDocumentsController {
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: { fileSize: MAX_LEGAL_BYTES },
-      fileFilter: (_req, file, cb) => {
-        if (!isLegalPdfUpload(file)) {
-          cb(
-            new LegalDocumentValidationError(
-              'Legal documents must be PDF files',
-              'file',
-            ),
-            false,
-          );
-          return;
-        }
-        cb(null, true);
-      },
     }),
   )
   async upload(

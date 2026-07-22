@@ -1,12 +1,16 @@
 import type { OrganizationLegalDocument } from '@prisma/client';
 import { toLegacyDocumentType } from './legal-document-type.compat';
 import {
+  isLegalDocumentScanPassed,
+  type LegalDocumentScanStatus,
+} from './legal-document-scan-status.constants';
+import {
   scopeToDto,
   type LegalDocumentApplicationScopeDto,
   type LegalDocumentWithStations,
 } from './legal-document-scope.util';
 
-export type LegalDocumentScanStatus = 'NOT_SCANNED' | 'PENDING' | 'PASSED' | 'FAILED';
+export type { LegalDocumentScanStatus };
 export type LegalDocumentIntegrityStatus = 'VERIFIED' | 'UNVERIFIED' | 'MISSING';
 
 export interface LegalDocumentActorRef {
@@ -79,8 +83,15 @@ export function deriveIntegrityStatus(
   return 'UNVERIFIED';
 }
 
-export function deriveScanStatus(): LegalDocumentScanStatus {
-  return 'NOT_SCANNED';
+export function deriveScanStatus(
+  scanStatus: string | null | undefined,
+): LegalDocumentScanStatus {
+  if (!scanStatus) return 'UPLOADED';
+  return scanStatus as LegalDocumentScanStatus;
+}
+
+export function deriveScanPassed(scanStatus: string | null | undefined): boolean {
+  return isLegalDocumentScanPassed(scanStatus);
 }
 
 export function resolveActorRef(
@@ -119,8 +130,8 @@ export function mapLegalDocumentToApiResponse(
     validUntil: doc.validUntil ? doc.validUntil.toISOString() : null,
     checksum: doc.checksum,
     fileSize: doc.sizeBytes,
-    pageCount: null,
-    scanStatus: deriveScanStatus(),
+    pageCount: doc.pageCount ?? null,
+    scanStatus: deriveScanStatus(doc.scanStatus),
     integrityStatus: deriveIntegrityStatus(doc.checksum, doc.sizeBytes),
     uploadedAt: doc.createdAt.toISOString(),
     uploadedBy: resolveActorRef(doc.uploadedByUserId, usersById),

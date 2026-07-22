@@ -7,6 +7,7 @@ import { createLegalDocumentActivationHarness } from './legal-documents-activati
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 import { createNoopLegalDocumentFourEyesService } from './legal-document-four-eyes.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
+import { createNoopLegalDocumentIngestionService } from './legal-document-ingestion.test-utils';
 
 const storage = {
   putObject: jest.fn(),
@@ -16,7 +17,7 @@ const storage = {
 const events = createNoopLegalDocumentEventsService();
 
 function makeSvc(h: ReturnType<typeof createLegalDocumentActivationHarness>) {
-  return new LegalDocumentsService(h.prisma as any, events, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, storage);
+  return new LegalDocumentsService(h.prisma as any, events, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, createNoopLegalDocumentIngestionService() as any, storage);
 }
 
 describe('LegalDocumentsService.activate (integration — concurrent activation)', () => {

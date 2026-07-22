@@ -3,13 +3,14 @@ import { LegalDocumentsService } from './legal-documents.service';
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 import { createNoopLegalDocumentFourEyesService } from './legal-document-four-eyes.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
+import { createNoopLegalDocumentIngestionService } from './legal-document-ingestion.test-utils';
 
 describe('LegalDocumentsService tenant isolation', () => {
   const storage = { putObject: jest.fn(), getObjectStream: jest.fn() } as any;
   const events = createNoopLegalDocumentEventsService();
 
   function makeSvc(prisma: any) {
-    return new LegalDocumentsService(prisma, events, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, storage);
+    return new LegalDocumentsService(prisma, events, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, createNoopLegalDocumentIngestionService() as any, storage);
   }
 
   it('returns structured 404 when document belongs to another organization', async () => {
