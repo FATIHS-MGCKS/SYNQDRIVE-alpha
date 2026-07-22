@@ -63,6 +63,7 @@ import {
 } from './booking-document-bundle.errors';
 import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
 import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
+import { RentalContractService } from './rental-contract.service';
 import {
   completenessLegalMissingDocumentTypes,
   completenessToBundleViewWarnings,
@@ -131,6 +132,7 @@ export class BookingDocumentBundleService {
     private readonly orgLegalNotification: BookingDocumentOrgLegalNotificationService,
     private readonly bundleMonitoring: BookingDocumentBundleMonitoringService,
     private readonly bundleCompleteness: BookingDocumentCompletenessService,
+    private readonly rentalContract: RentalContractService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -588,67 +590,44 @@ export class BookingDocumentBundleService {
     force: boolean,
   ): Promise<void> {
     const existing = await this.existingBundleDoc(orgId, bundle, DOCUMENT_TYPE.RENTAL_CONTRACT);
+    const contract = await this.getOrCreateContract(orgId, booking);
+
+    if (this.rentalContract.shouldSkipLegalSnapshotUpdate(contract) && existing && !force) {
+      return;
+    }
     if (existing && !force) return;
 
-    const resolution = await this.legalResolver.resolveForBooking(orgId, booking.id);
-    const selectionByType = new Map(
-      resolution.selectedDocuments.map((selection) => [selection.documentType, selection]),
-    );
-
-    const terms = await this.resolveLegalRefForContract(
+    const { refs, resolution, frozenAt } = await this.rentalContract.resolveLegalRefsForGeneration(
       orgId,
+      booking.id,
       bundle,
-      DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-      selectionByType.get(DOCUMENT_TYPE.TERMS_AND_CONDITIONS),
+      contract,
     );
-    const consumer = await this.resolveLegalRefForContract(
-      orgId,
-      bundle,
-      DOCUMENT_TYPE.CONSUMER_INFORMATION,
-      selectionByType.get(DOCUMENT_TYPE.CONSUMER_INFORMATION),
-    );
-    const privacy = await this.resolveLegalRefForContract(
-      orgId,
-      bundle,
-      DOCUMENT_TYPE.PRIVACY_POLICY,
-      selectionByType.get(DOCUMENT_TYPE.PRIVACY_POLICY),
-    );
-
-    const contract = await this.getOrCreateContract(orgId, booking);
+    const legalRefs = this.rentalContract.toLegalRefsForRendering(refs);
+    const pointerIds = this.rentalContract.toContractPointerIds(refs);
+    const refsBySlot = new Map(refs.map((ref) => [ref.slot, ref]));
     const cur = (booking.currency || 'EUR').toUpperCase();
     const extraKmPriceCents = booking.vehicle.extraKmPrice != null ? Math.round(booking.vehicle.extraKmPrice * 100) : null;
 
-    const snapshot = {
+    const renderSnapshot = {
       kind: 'RENTAL_CONTRACT',
       org: this.orgInfo(booking.organization),
       customer: this.customerInfo(booking.customer),
       vehicle: this.vehicleInfo(booking.vehicle),
       booking: this.bookingInfo(booking),
       legal: {
-        terms: terms ? { id: terms.id, versionLabel: terms.versionLabel } : null,
-        withdrawal: consumer ? { id: consumer.id, versionLabel: consumer.versionLabel } : null,
-        privacy: privacy ? { id: privacy.id, versionLabel: privacy.versionLabel } : null,
+        terms: refsBySlot.get('TERMS')
+          ? { id: refsBySlot.get('TERMS')!.legalDocumentId, versionLabel: refsBySlot.get('TERMS')!.versionLabel }
+          : null,
+        withdrawal: refsBySlot.get('CONSUMER')
+          ? { id: refsBySlot.get('CONSUMER')!.legalDocumentId, versionLabel: refsBySlot.get('CONSUMER')!.versionLabel }
+          : null,
+        privacy: refsBySlot.get('PRIVACY')
+          ? { id: refsBySlot.get('PRIVACY')!.legalDocumentId, versionLabel: refsBySlot.get('PRIVACY')!.versionLabel }
+          : null,
       },
       generatedAt: new Date().toISOString(),
     };
-
-    const legalRefs = [
-      { label: 'AGB', versionLabel: terms?.versionLabel ?? '', present: !!terms },
-      {
-        label: consumer
-          ? legalDocumentTitleDe(consumer.documentType, consumer.legalVariant)
-          : 'Verbraucherinformation',
-        versionLabel: consumer?.versionLabel ?? '',
-        present: !!consumer,
-      },
-      {
-        label: privacy
-          ? legalDocumentTitleDe(privacy.documentType, privacy.legalVariant)
-          : 'Datenschutzhinweise',
-        versionLabel: privacy?.versionLabel ?? '',
-        present: !!privacy,
-      },
-    ];
 
     const renderable = buildRentalContractDocument({
       org: this.orgInfo(booking.organization),
@@ -671,9 +650,14 @@ export class BookingDocumentBundleService {
       userId,
       documentNumber: contractNumber,
       links: { rentalContractId: contract.id },
-      snapshot,
+      snapshot: renderSnapshot,
     });
     if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
+
+    const legalRefsSnapshot = this.rentalContract.shouldSkipLegalSnapshotUpdate(contract)
+      ? contract.legalRefsSnapshot
+      : this.rentalContract.buildImmutableSnapshot(orgId, booking.id, refs, resolution, frozenAt);
+
     await this.prisma.rentalContract.update({
       where: { id: contract.id },
       data: {
@@ -681,77 +665,19 @@ export class BookingDocumentBundleService {
         status: 'GENERATED',
         generatedAt: new Date(),
         generatedDocumentId: doc.id,
-        termsDocumentId: terms?.generatedDocumentId ?? null,
-        withdrawalDocumentId: consumer?.generatedDocumentId ?? null,
-        privacyDocumentId: privacy?.generatedDocumentId ?? null,
-        snapshot: snapshot as object,
+        termsDocumentId: pointerIds.termsDocumentId,
+        withdrawalDocumentId: pointerIds.withdrawalDocumentId,
+        privacyDocumentId: pointerIds.privacyDocumentId,
+        snapshot: renderSnapshot as object,
+        ...(this.rentalContract.shouldSkipLegalSnapshotUpdate(contract)
+          ? {}
+          : {
+              legalRefsSnapshot: legalRefsSnapshot as object,
+              legalSnapshotFrozenAt: frozenAt,
+            }),
       },
     });
     await this.setBundlePointer(bundle, DOCUMENT_TYPE.RENTAL_CONTRACT, doc.id);
-  }
-
-  /** Prefer frozen bundle pointer; fall back to resolver selection (no re-pick of ACTIVE). */
-  private async resolveLegalRefForContract(
-    orgId: string,
-    bundle: BookingDocumentBundle,
-    slotType: BundleLegalDocumentSlotType,
-    selection: { legalDocumentId: string } | undefined,
-  ): Promise<{
-    id: string;
-    generatedDocumentId: string | null;
-    versionLabel: string;
-    documentType: DocumentType;
-    legalVariant: string | null;
-  } | null> {
-    const frozenPointerId = bundlePointerValue(bundle, slotType);
-    if (frozenPointerId) {
-      const frozenDoc = await this.prisma.generatedDocument.findFirst({
-        where: { id: frozenPointerId, organizationId: orgId, status: { not: DOCUMENT_STATUS.VOID } },
-      });
-      if (frozenDoc?.legalDocumentId) {
-        const legal = await this.prisma.organizationLegalDocument.findFirst({
-          where: { id: frozenDoc.legalDocumentId, organizationId: orgId },
-        });
-        if (legal) {
-          return {
-            id: legal.id,
-            generatedDocumentId: frozenDoc.id,
-            versionLabel: legal.versionLabel,
-            documentType: legal.documentType as DocumentType,
-            legalVariant: legal.legalVariant,
-          };
-        }
-      }
-    }
-
-    if (!selection) return null;
-    const legal = await this.prisma.organizationLegalDocument.findFirst({
-      where: { id: selection.legalDocumentId, organizationId: orgId },
-    });
-    if (!legal) return null;
-
-    const consumerTypes =
-      slotType === DOCUMENT_TYPE.CONSUMER_INFORMATION
-        ? [DOCUMENT_TYPE.CONSUMER_INFORMATION, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
-        : [slotType];
-    const generated = await this.prisma.generatedDocument.findFirst({
-      where: {
-        organizationId: orgId,
-        bookingId: bundle.bookingId,
-        documentType: { in: consumerTypes },
-        legalDocumentId: legal.id,
-        status: { not: DOCUMENT_STATUS.VOID },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return {
-      id: legal.id,
-      generatedDocumentId: generated?.id ?? frozenPointerId ?? null,
-      versionLabel: legal.versionLabel,
-      documentType: legal.documentType as DocumentType,
-      legalVariant: legal.legalVariant,
-    };
   }
 
   private async attachLegalDocuments(
