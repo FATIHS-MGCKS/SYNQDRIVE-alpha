@@ -2582,6 +2582,219 @@ export interface UserSecurityActivityDto {
   }>;
 }
 
+export type IamMfaState =
+  | 'ENABLED'
+  | 'DISABLED'
+  | 'REQUIRED'
+  | 'UNKNOWN'
+  | 'NOT_SUPPORTED'
+  | 'ACTION_REQUIRED';
+
+export type IamRiskClassification = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type IamReviewState = 'NONE' | 'PENDING' | 'OVERDUE' | 'COMPLETED';
+
+export interface IamTeamKpisDto {
+  activeUsers: number;
+  openInvites: number;
+  privilegedAccounts: number;
+  reviewRequired: number;
+}
+
+export interface IamTeamListItemDto {
+  kind: 'MEMBER' | 'INVITE';
+  membershipId: string | null;
+  inviteId: string | null;
+  userSummary: {
+    userId: string | null;
+    email: string;
+    displayName: string;
+    avatarUrl: string | null;
+    status: string;
+  };
+  membershipStatus: string;
+  effectiveRole: string;
+  effectiveRoleLabel: string | null;
+  riskClassification: IamRiskClassification;
+  stationScopeSummary: string;
+  mfaState: IamMfaState;
+  activeSessionCount: number;
+  lastActivityAt: string | null;
+  reviewState: IamReviewState;
+  requiresAction: boolean;
+  reasonCodes: string[];
+}
+
+export interface IamAvailableActionDto {
+  enabled: boolean;
+  requiresStepUp?: boolean;
+  blockedReason?: string | null;
+  impactPreview?: string | null;
+}
+
+export interface IamTeamMemberDetailDto {
+  membershipId: string;
+  userId: string;
+  userSummary: IamTeamListItemDto['userSummary'];
+  membershipStatus: string;
+  effectiveAccess: {
+    membershipId: string;
+    membershipVersion: number;
+    effectiveRole: string;
+    effectiveRoleId: string | null;
+    effectiveRoleLabel: string | null;
+    privilegedCapabilities: string[];
+    permissions: MembershipPermissionsMap | null;
+    stationScope: string | null;
+    stationIds: string[] | null;
+    stationNames: string[];
+    fieldAgentAccess: boolean;
+    riskClassification: IamRiskClassification;
+    reasonCodes: string[];
+    isLastOrgAdmin: boolean;
+  };
+  inheritedPermissions: MembershipPermissionsMap | null;
+  overrides: {
+    permissions: MembershipPermissionsMap | null;
+    stationScope: string | null;
+    stationIds: string[] | null;
+    fieldAgentAccess: boolean;
+  };
+  roleVersion: string;
+  scope: {
+    stationScope: string | null;
+    stationIds: string[] | null;
+    stationNames: string[];
+    fieldAgentAccess: boolean;
+  };
+  sessions: {
+    activeSessionCount: number;
+    items: Array<{
+      id: string;
+      createdAt: string;
+      expiresAt: string;
+      ipAddress: string | null;
+      userAgent: string | null;
+      isCurrent: boolean;
+    }>;
+  };
+  securityEvents: Array<{
+    id: string;
+    action: string;
+    description: string;
+    auditAction: string | null;
+    createdAt: string;
+    level: string;
+  }>;
+  inviteHistory: Array<{
+    id: string;
+    status: string;
+    createdAt: string;
+    acceptedAt: string | null;
+    revokedAt: string | null;
+  }>;
+  accessReviews: Array<{
+    id: string;
+    campaignId: string;
+    status: string;
+    effectiveRole: string | null;
+    riskReasons: string[];
+    createdAt: string;
+  }>;
+  auditTimeline: Array<{
+    id: string;
+    action: string;
+    description: string;
+    auditAction: string | null;
+    createdAt: string;
+    level: string;
+  }>;
+  mfaState: IamMfaState;
+  reviewState: IamReviewState;
+  requiresAction: boolean;
+  reasonCodes: string[];
+  availableActions: {
+    sendResetLink: IamAvailableActionDto;
+    revokeSessions: IamAvailableActionDto;
+    suspendMembership: IamAvailableActionDto;
+    changeRole: IamAvailableActionDto;
+    changeScope: IamAvailableActionDto;
+    openAccessReview: IamAvailableActionDto;
+  };
+}
+
+export interface IamRoleListItemDto {
+  id: string;
+  name: string;
+  description: string | null;
+  membershipRole: string;
+  assignmentCount: number;
+  riskClassification: IamRiskClassification;
+  roleVersion: string;
+  lastChangedAt: string;
+  isSystemTemplate: boolean;
+  isDefault: boolean;
+  followsLatest: boolean;
+  pinned: boolean;
+  isActive: boolean;
+}
+
+export interface IamRoleDetailDto extends IamRoleListItemDto {
+  effectivePermissions: MembershipPermissionsMap | null;
+  overrides: {
+    stationScopeDefault: string | null;
+    defaultStationIds: string[];
+    fieldAgentAccessDefault: boolean;
+  };
+  impactPreview: {
+    affectedMemberCount: number;
+    privilegedCapabilities: string[];
+    stationScopeImpact: string;
+  };
+  assignments: Array<{
+    membershipId: string;
+    userId: string;
+    displayName: string;
+    email: string;
+    membershipStatus: string;
+  }>;
+}
+
+export interface IamSecurityOverviewDto {
+  mfaSummary: Record<IamMfaState, number>;
+  activeSessions: number;
+  privilegedAccounts: number;
+  reviewRequired: number;
+  loginSecurityEvents: Array<{
+    id: string;
+    userId: string | null;
+    description: string;
+    createdAt: string;
+    level: string;
+  }>;
+  iamAudit: Array<{
+    id: string;
+    auditAction: string | null;
+    description: string;
+    createdAt: string;
+    level: string;
+  }>;
+  accessReviews: Array<{
+    id: string;
+    status: string;
+    scope: string;
+    dueAt: string;
+    pendingItems: number;
+  }>;
+  privilegedMembers: Array<{
+    membershipId: string;
+    userId: string;
+    displayName: string;
+    email: string;
+    riskClassification: IamRiskClassification;
+    mfaState: IamMfaState;
+  }>;
+}
+
 export type CustomerVerificationCheckKindApi =
   | 'ID_DOCUMENT'
   | 'DRIVING_LICENSE'
@@ -2952,6 +3165,26 @@ export const api = {
       post<OrganizationRoleDto>(`/organizations/${orgId}/roles/${roleId}/duplicate`, {}),
     delete: (orgId: string, roleId: string) =>
       del<{ deleted: boolean }>(`/organizations/${orgId}/roles/${roleId}`),
+  },
+  iam: {
+    teamKpis: (orgId: string) => get<IamTeamKpisDto>(`/organizations/${orgId}/iam/team/kpis`),
+    teamList: (orgId: string, search?: string) =>
+      get<IamTeamListItemDto[]>(
+        `/organizations/${orgId}/iam/team${search ? `?search=${encodeURIComponent(search)}` : ''}`,
+      ),
+    teamMember: (orgId: string, membershipId: string) =>
+      get<IamTeamMemberDetailDto>(`/organizations/${orgId}/iam/team/members/${membershipId}`),
+    sendResetLink: (orgId: string, membershipId: string) =>
+      post<{ queued: boolean }>(`/organizations/${orgId}/iam/team/members/${membershipId}/send-reset-link`, {}),
+    rolesList: (orgId: string) => get<IamRoleListItemDto[]>(`/organizations/${orgId}/iam/roles`),
+    roleDetail: (orgId: string, roleId: string) =>
+      get<IamRoleDetailDto>(`/organizations/${orgId}/iam/roles/${roleId}`),
+    securityOverview: (orgId: string) =>
+      get<IamSecurityOverviewDto>(`/organizations/${orgId}/iam/security`),
+    revokeAllSessions: (orgId: string, userId: string, idempotencyKey: string) =>
+      post<{ revoked: boolean }>(`/organizations/${orgId}/users/${userId}/sessions/revoke-all`, {
+        idempotencyKey,
+      }),
   },
   vehicles: {
     listAll: (params?: { page?: number; limit?: number }) =>

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-users-roles-redesign-v49723-2026-07-21',
+    version: '4.9.723',
+    title: 'V4.9.723 — IAM users & roles redesign around effective access (Prompt 21)',
+    summary: [
+      'Canonical IAM team API: list/detail/KPIs, roles with impact preview, security overview.',
+      'UI reduced to Team, Roles & Access, Security & Audit (invites integrated into Team).',
+      'Server-side effective access, MFA state, session counts, last-admin action gates.',
+      'No admin password entry — reset link flow only for dangerous actions.',
+      'DE/EN i18n, mobile member cards, semantic tabs, MFA unknown state styling.',
+    ],
+    reason: 'Replace placeholder-heavy users & roles UI with a clear, secure, canonically wired IAM administration surface.',
+    previousBehavior: 'Five tabs, client-side permission preview, admin password modal, null MFA/session placeholders.',
+    details:
+      'iam-team.service/controller, TeamTab, TeamMemberDrawer, RolesAccessTab, SecurityAuditTab, iam-team.security.spec.ts, iam-team.ui.test.ts',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-21T23:55:00.000Z',
+  },
+  {
     id: 'iam-data-retention-v49722-2026-07-21',
     version: '4.9.722',
     title: 'V4.9.722 — IAM configurable retention and data subject workflows (Prompt 20)',

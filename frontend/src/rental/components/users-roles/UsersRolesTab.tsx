@@ -1,55 +1,51 @@
 import { useState } from 'react';
 import { PageHeader } from '../../../components/patterns';
-import { ACCESS_CONTROL_TABS } from './constants';
-import { useAccessControlCenter } from './useAccessControlCenter';
-import { UsersTab } from './UsersTab';
-import { InvitesTab } from './InvitesTab';
-import { RolesTab } from './RolesTab';
-import { AccessScopesTab } from './AccessScopesTab';
-import { SecurityActivityTab } from './SecurityActivityTab';
-import type { AccessControlTab, UsersRolesTabProps } from './types';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { IAM_TABS, type IamTabId } from './iam-team.utils';
+import { useIamTeam } from './useIamTeam';
+import { TeamTab } from './TeamTab';
+import { RolesAccessTab } from './RolesAccessTab';
+import { SecurityAuditTab } from './SecurityAuditTab';
+import type { UsersRolesTabProps } from './types';
 
 export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
-  const [activeTab, setActiveTab] = useState<AccessControlTab>('users');
-  const [focusUserId, setFocusUserId] = useState<string | null>(null);
-
+  const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<IamTabId>('team');
   const {
-    users,
-    invites,
-    roles,
-    stations,
-    stationNameById,
     kpis,
-    usersLoading,
-    rolesLoading,
-    usersError,
-    rolesError,
-    loadUsers,
-    loadRoles,
+    team,
+    roles,
+    security,
+    loading,
+    error,
+    loadTeam,
     refreshAll,
-    notifySuccess,
-    notifyError,
-  } = useAccessControlCenter(orgId);
+    openMember,
+  } = useIamTeam(orgId);
 
   if (!orgId?.trim()) {
     return (
       <div className="max-w-[1600px] mx-auto py-12 text-center text-[13px] text-muted-foreground">
-        Keine Organisation geladen.
+        No organization loaded.
       </div>
     );
   }
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5 animate-fade-up">
-      <PageHeader
-        title="Benutzer & Rollen"
-      />
+      <PageHeader title={t('iam.title')} />
 
-      <div className="flex gap-1 overflow-x-auto pb-1 border-b border-border/60">
-        {ACCESS_CONTROL_TABS.map((tab) => (
+      <div
+        role="tablist"
+        aria-label={t('iam.a11y.mainTabs')}
+        className="flex gap-1 overflow-x-auto pb-1 border-b border-border/60"
+      >
+        {IAM_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap rounded-t-xl transition-colors border-b-2 -mb-px ${
               activeTab === tab.id
@@ -57,72 +53,42 @@ export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {tab.label}
-            {tab.id === 'invites' && kpis.pendingInvites > 0 && (
+            {t(tab.labelKey)}
+            {tab.id === 'team' && kpis && kpis.openInvites > 0 && (
               <span className="ml-1.5 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-amber-500/15 text-amber-700 text-[10px] px-1">
-                {kpis.pendingInvites}
+                {kpis.openInvites}
               </span>
             )}
           </button>
         ))}
       </div>
 
-      {activeTab === 'users' && (
-        <UsersTab
-          orgId={orgId}
-          users={users}
-          stations={stations}
-          stationNameById={stationNameById}
-          kpis={{ ...kpis, pendingInvites: invites.filter((i) => i.status === 'PENDING').length }}
-          loading={usersLoading}
-          error={usersError}
-          rolesLoading={rolesLoading}
-          focusUserId={focusUserId}
-          onFocusUserHandled={() => setFocusUserId(null)}
-          onRefresh={refreshAll}
-          onNotifySuccess={notifySuccess}
-          onNotifyError={notifyError}
-        />
-      )}
-
-      {activeTab === 'invites' && (
-        <InvitesTab
-          orgId={orgId}
-          onRefreshParent={refreshAll}
-          onNotifySuccess={notifySuccess}
-          onNotifyError={notifyError}
-        />
+      {activeTab === 'team' && (
+        <div role="tabpanel">
+          <TeamTab
+            orgId={orgId}
+            team={team}
+            kpis={kpis}
+            loading={loading}
+            error={error}
+            onSearch={(q) => loadTeam(q)}
+            onRefresh={refreshAll}
+            onOpenMember={openMember}
+          />
+        </div>
       )}
 
       {activeTab === 'roles' && (
-        <RolesTab
-          orgId={orgId}
-          roles={roles}
-          stations={stations}
-          loading={rolesLoading}
-          error={rolesError}
-          onRefresh={loadRoles}
-          onNotifySuccess={notifySuccess}
-          onNotifyError={notifyError}
-        />
+        <div role="tabpanel">
+          <RolesAccessTab orgId={orgId} roles={roles} loading={loading} />
+        </div>
       )}
 
-      {activeTab === 'scopes' && (
-        <AccessScopesTab
-          users={users}
-          stations={stations}
-          stationNameById={stationNameById}
-          loading={usersLoading}
-          error={usersError}
-          onRetry={() => void loadUsers()}
-          onSelectUser={(u) => {
-            setFocusUserId(u.id);
-            setActiveTab('users');
-          }}
-        />
+      {activeTab === 'security' && (
+        <div role="tabpanel">
+          <SecurityAuditTab security={security} loading={loading} />
+        </div>
       )}
-
-      {activeTab === 'security' && <SecurityActivityTab orgId={orgId} />}
     </div>
   );
 }

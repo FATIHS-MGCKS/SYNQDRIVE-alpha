@@ -78,12 +78,7 @@ export function userStationLabel(
 }
 
 export function inviteStationLabel(invite: OrganizationInviteDto): string {
-  const ids = invite.stationIds ?? [];
-  if (ids.length > 0) {
-    return ids.length === 1 ? '1 Standort' : `${ids.length} Standorte`;
-  }
-  if (invite.stationScope?.trim()) return invite.stationScope;
-  return 'Alle Standorte';
+  return invite.roleSummary?.trim() || 'Alle Standorte';
 }
 
 export function isScopedUser(user: OrgUserDto): boolean {

@@ -22,7 +22,9 @@ import { IamMembershipLifecycleService } from './iam-membership-lifecycle.servic
 import { IamMembershipLifecycleNotificationService } from './iam-membership-lifecycle-notification.service';
 import { IamAccessReviewService } from './iam-access-review.service';
 import { IamAccessReviewSnapshotService } from './iam-access-review-snapshot.service';
+import { IamTeamService } from './iam-team.service';
 import { IamAccessReviewController } from './iam-access-review.controller';
+import { IamTeamController } from './iam-team.controller';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 
 @Module({
@@ -33,6 +35,7 @@ import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
     OrganizationRolesController,
     PublicInvitesController,
     IamAccessReviewController,
+    IamTeamController,
   ],
   providers: [
     UsersService,
@@ -54,6 +57,7 @@ import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
     IamMembershipLifecycleNotificationService,
     IamAccessReviewService,
     IamAccessReviewSnapshotService,
+    IamTeamService,
   ],
   exports: [
     UsersService,

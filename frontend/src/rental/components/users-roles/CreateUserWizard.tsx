@@ -38,14 +38,15 @@ const EMPTY_FORM: CreateUserFormState = {
 interface CreateUserWizardProps {
   orgId: string;
   stations: Station[];
+  inviteOnly?: boolean;
   onClose: () => void;
   onDone: () => void;
   onError: (err: unknown) => void;
 }
 
-export function CreateUserWizard({ orgId, stations, onClose, onDone, onError }: CreateUserWizardProps) {
+export function CreateUserWizard({ orgId, stations, inviteOnly = false, onClose, onDone, onError }: CreateUserWizardProps) {
   const [step, setStep] = useState<WizardStep>('person');
-  const [form, setForm] = useState<CreateUserFormState>({ ...EMPTY_FORM, password: generatePassword() });
+  const [form, setForm] = useState<CreateUserFormState>({ ...EMPTY_FORM, accountMethod: 'invite', password: '' });
   const [roles, setRoles] = useState<OrganizationRoleDto[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
   const [rolesError, setRolesError] = useState<string | null>(null);
@@ -307,6 +308,7 @@ export function CreateUserWizard({ orgId, stations, onClose, onDone, onError }: 
 
         {step === 'invite' && (
           <div className="space-y-3">
+            {!inviteOnly && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
@@ -327,7 +329,8 @@ export function CreateUserWizard({ orgId, stations, onClose, onDone, onError }: 
                 <p className="text-[11px] text-muted-foreground mt-1">Erweitert — nur bei Bedarf</p>
               </button>
             </div>
-            {form.accountMethod === 'password' && (
+            )}
+            {!inviteOnly && form.accountMethod === 'password' && (
               <div className="rounded-xl border border-border p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                   Einmal-Passwort
