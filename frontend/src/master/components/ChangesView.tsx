@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-delivery-evidence-2026-07-22',
+    version: '4.9.757',
+    title: 'Legal Documents — Delivery Evidence Model (Prompt 18/32)',
+    summary: [
+      'Neues append-only Modell LegalDocumentDeliveryEvidence für Präsentation, Zustellung und Kenntnisnahme von Rechtstexten.',
+      'Kontrollierte Werte: deliveryChannel, deliveryStatus, acknowledgmentMethod.',
+      'Serverseitige Zeitstempel und Actor aus Auth-Kontext — keine Client-Zeitstempel.',
+      'E-Mail-Zustellstatus später aktualisierbar bis terminal; abgeschlossene Events unveränderlich.',
+      'Datenschutzhinweis-Kenntnisnahme strikt von Einwilligung getrennt (kein Consent-Store).',
+      'recipientSnapshot datenminimiert — keine Dokumentinhalte.',
+      'API unter …/bookings/:bookingId/legal-delivery-evidence.',
+    ],
+    reason: 'Production-Readiness — nachweisbare Kundenkontakt-Historie für Rechtstexte.',
+    previousBehavior: 'Kein dediziertes Nachweismodell; Delivery nur indirekt über OutboundEmail/Completeness.',
+    details:
+      'docs/audits/legal-documents-delivery-evidence-2026-07.md, architecture/LEGAL_DOCUMENT_DELIVERY_EVIDENCE_2026-07-22.md, legal-document-delivery-evidence.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T19:30:00.000Z',
+  },
+  {
     id: 'legal-documents-rental-contract-snapshot-2026-07-22',
     version: '4.9.756',
     title: 'Legal Documents — Rental Contract Legal Snapshot (Prompt 17/32)',
