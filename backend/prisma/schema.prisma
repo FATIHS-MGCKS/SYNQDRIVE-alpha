@@ -1566,6 +1566,7 @@ model Organization {
   legalDocuments                         OrganizationLegalDocument[]
   legalDocumentStations                  OrganizationLegalDocumentStation[]
   legalDocumentEvents                    OrganizationLegalDocumentEvent[]
+  legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
   organizationPaymentAccounts            OrganizationPaymentAccount[]
@@ -6310,6 +6311,10 @@ model OrganizationLegalDocument {
   malwareScanDetail          String?      @map("malware_scan_detail")
   malwareScanAttempts        Int?         @default(0) @map("malware_scan_attempts")
   quarantineObjectKey        String?      @map("quarantine_object_key")
+  integrityStatus            String       @default("UNVERIFIED") @map("integrity_status")
+  integrityCheckedAt         DateTime?    @map("integrity_checked_at")
+  integrityDetail            String?      @map("integrity_detail")
+  integrityUnavailable       Boolean      @default(false) @map("integrity_unavailable")
   createdAt                  DateTime     @default(now()) @map("created_at")
   updatedAt                  DateTime     @updatedAt @map("updated_at")
 
@@ -6326,6 +6331,7 @@ model OrganizationLegalDocument {
   @@index([organizationId, documentType, legalVariant], map: "organization_legal_documents_org_type_variant_idx")
   @@index([organizationId, status, documentType, language, jurisdictionCountry, customerSegment, bookingChannel], map: "organization_legal_documents_resolver_scope_idx")
   @@index([organizationId, scanStatus], map: "organization_legal_documents_org_scan_status_idx")
+  @@index([organizationId, integrityStatus], map: "organization_legal_documents_org_integrity_status_idx")
   @@map("organization_legal_documents")
 }
 
@@ -6385,6 +6391,25 @@ model OrganizationLegalDocumentEvent {
   @@index([legalDocumentId, createdAt], map: "organization_legal_document_events_doc_created_idx")
   @@index([organizationId, legalDocumentId, createdAt], map: "organization_legal_document_events_org_doc_created_idx")
   @@map("organization_legal_document_events")
+}
+
+/// Checkpointed storage reconciliation runs for legal document integrity audits.
+model LegalDocumentStorageReconciliationRun {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  status         String    @default("RUNNING")
+  dryRun         Boolean   @default(true) @map("dry_run")
+  cursor         String?
+  metrics        Json      @default("{}")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  interruptedAt  DateTime? @map("interrupted_at")
+  correlationId  String?   @map("correlation_id")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, startedAt], map: "legal_document_storage_reconciliation_runs_org_started_idx")
+  @@map("legal_document_storage_reconciliation_runs")
 }
 
 model BookingDocumentBundle {

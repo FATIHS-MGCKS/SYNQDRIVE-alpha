@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-integrity-reconciliation-2026-07-22',
+    version: '4.9.753',
+    title: 'Legal Documents — Checksum Verification & Reconciliation (Prompt 14/32)',
+    summary: [
+      'SHA-256-Prüfsummen werden bei Download und Reconciliation gegen Storage verifiziert.',
+      'Integritätsstatus: VERIFIED, MISSING_OBJECT, CHECKSUM_MISMATCH, UNVERIFIED, STORAGE_ERROR.',
+      'Reconciliation-Service: mandantenweise, paginiert, dry-run, checkpoint/resume, Metriken.',
+      'Erkennung fehlender/unerwarteter Objects und Hash-Abweichungen — keine Auto-Löschung.',
+      'Audit-Events + ALERT bei Drift; Resolver blockiert beschädigte Docs für neue Buchungen.',
+      'Historische Referenzen bleiben erhalten (integrityUnavailable).',
+    ],
+    reason: 'Production-Readiness — fortlaufende Integritätskontrolle für private Rechtsdokumente.',
+    previousBehavior: 'Checksum nur beim Upload gespeichert; deriveIntegrityStatus rein heuristisch ohne Storage-Check.',
+    details:
+      'docs/audits/legal-documents-integrity-reconciliation-2026-07.md, architecture/LEGAL_DOCUMENT_INTEGRITY_RECONCILIATION_2026-07-22.md, legal-document-storage-reconciliation.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T15:30:00.000Z',
+  },
+  {
     id: 'legal-documents-private-storage-2026-07-22',
     version: '4.9.752',
     title: 'Legal Documents — Private Object Storage (Prompt 13/32)',

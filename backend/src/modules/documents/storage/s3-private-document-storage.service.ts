@@ -18,6 +18,7 @@ import {
 import {
   buildDocumentObjectKey,
   assertSafeDocumentObjectKey,
+  safeStorageSegment,
 } from './document-storage-key.util';
 import { sha256Hex } from './document-storage-content-hash.util';
 import {
@@ -191,6 +192,61 @@ export class S3PrivateDocumentStorageService implements DocumentStoragePort {
 
   getInternalPath(_objectKey: string): string | null {
     return null;
+  }
+
+  async listObjectKeysForOrganization(input: {
+    organizationId: string;
+    cursor?: string | null;
+    limit: number;
+    zone?: 'clean' | 'quarantine' | 'all';
+  }): Promise<import('./document-storage.interface').DocumentStorageListKeysResult> {
+    const orgSeg = safeStorageSegment(input.organizationId);
+    const limit = Math.max(1, Math.min(input.limit, 500));
+    const s3 = await this.getS3Ops();
+    const bucket = this.bucket;
+    const keyPrefix = this.config.privateS3.keyPrefix;
+    const prefixes: string[] = [];
+
+    if (!input.zone || input.zone === 'clean' || input.zone === 'all') {
+      prefixes.push(
+        keyPrefix ? `${keyPrefix}/organizations/${orgSeg}/` : `organizations/${orgSeg}/`,
+      );
+    }
+    if (!input.zone || input.zone === 'quarantine' || input.zone === 'all') {
+      prefixes.push(
+        keyPrefix
+          ? `${keyPrefix}/quarantine/organizations/${orgSeg}/`
+          : `quarantine/organizations/${orgSeg}/`,
+      );
+    }
+
+    const allKeys: string[] = [];
+    for (const prefix of prefixes) {
+      let cursor = input.cursor ?? undefined;
+      let hasMore = true;
+      while (hasMore && allKeys.length < limit) {
+        const page = await s3.listObjectKeys({
+          bucket,
+          prefix,
+          cursor,
+          limit: Math.min(limit - allKeys.length, 200),
+        });
+        for (const key of page.keys) {
+          const relative = keyPrefix && key.startsWith(`${keyPrefix}/`)
+            ? key.slice(keyPrefix.length + 1)
+            : key;
+          allKeys.push(relative);
+        }
+        cursor = page.nextCursor;
+        hasMore = Boolean(page.nextCursor);
+        if (!page.keys.length) break;
+      }
+    }
+
+    allKeys.sort();
+    const slice = allKeys.slice(0, limit);
+    const nextCursor = allKeys.length > limit ? slice[slice.length - 1] ?? null : null;
+    return { keys: slice, nextCursor };
   }
 
   async checkHealth(): Promise<DocumentStorageHealthStatus> {

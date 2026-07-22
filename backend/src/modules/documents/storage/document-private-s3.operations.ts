@@ -45,4 +45,10 @@ export interface DocumentPrivateS3Operations {
   }): Promise<void>;
   deleteObject(params: { bucket: string; key: string }): Promise<void>;
   headBucket(params: { bucket: string }): Promise<void>;
+  listObjectKeys(params: {
+    bucket: string;
+    prefix: string;
+    cursor?: string;
+    limit: number;
+  }): Promise<{ keys: string[]; nextCursor?: string }>;
 }

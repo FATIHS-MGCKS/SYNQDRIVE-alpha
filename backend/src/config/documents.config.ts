@@ -38,6 +38,20 @@ export default registerAs('documents', () => ({
     process.env.DOCUMENT_STORAGE_HEALTH_ALERT_THRESHOLD,
     5,
   ),
+  integrityVerifyOnDownload:
+    (process.env.DOCUMENT_LEGAL_INTEGRITY_VERIFY_ON_DOWNLOAD ?? 'true') === 'true',
+  integrityReconciliationBatchSize: parsePositiveIntEnv(
+    process.env.DOCUMENT_LEGAL_INTEGRITY_RECONCILIATION_BATCH_SIZE,
+    50,
+  ),
+  integrityReconciliationRateLimitMs: parsePositiveIntEnv(
+    process.env.DOCUMENT_LEGAL_INTEGRITY_RECONCILIATION_RATE_LIMIT_MS,
+    25,
+  ),
+  integrityAlertThreshold: parsePositiveIntEnv(
+    process.env.DOCUMENT_LEGAL_INTEGRITY_ALERT_THRESHOLD,
+    5,
+  ),
   pdfRenderer: (process.env.DOCUMENT_PDF_RENDERER || 'html').toLowerCase(),
   generationEnabled: (process.env.DOCUMENT_GENERATION_ENABLED || 'true') === 'true',
   maxLegalUploadMb: parsePositiveIntEnv(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB, 15),

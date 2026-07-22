@@ -167,6 +167,18 @@ export class LegalDocumentScanNotPassedError extends LegalDocumentDomainError {
   }
 }
 
+export class LegalDocumentIntegrityUnavailableError extends LegalDocumentDomainError {
+  constructor(integrityStatus: string, detail?: string) {
+    super(
+      'Legal document file is unavailable due to storage integrity issue',
+      LEGAL_DOCUMENT_ERROR_CODES.INTEGRITY_UNAVAILABLE,
+      HttpStatus.CONFLICT,
+      { details: { integrityStatus, detail: detail ?? null } },
+    );
+    this.name = 'LegalDocumentIntegrityUnavailableError';
+  }
+}
+
 export function isLegalDocumentDomainError(err: unknown): err is LegalDocumentDomainError {
   return err instanceof LegalDocumentDomainError;
 }

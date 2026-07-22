@@ -125,6 +125,8 @@ export class LegalDocumentResolverService {
       status: row.status,
       validFrom: row.validFrom,
       validUntil: row.validUntil,
+      integrityStatus: row.integrityStatus,
+      integrityUnavailable: row.integrityUnavailable,
     };
   }
 
