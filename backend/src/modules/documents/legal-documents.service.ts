@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
-import { createHash } from 'crypto';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OrganizationLegalDocument, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -29,13 +24,15 @@ import {
   resolveLegalVariantInput,
 } from './legal-document-type.compat';
 import { DocumentDownload } from './generated-documents.service';
-import { isLegalPdfUpload, normalizeLegalPdfMimeType } from './legal-documents.util';
 import {
   LegalDocumentActiveConflictError,
   LegalDocumentDomainError,
   LegalDocumentInvalidTransitionError,
   LegalDocumentNotActivatableError,
   LegalDocumentNotFoundError,
+  LegalDocumentPdfValidationError,
+  LegalDocumentScanFailedError,
+  LegalDocumentScanNotPassedError,
   LegalDocumentScopeLockedError,
   LegalDocumentValidationError,
 } from './legal-documents-api.errors';
@@ -72,6 +69,8 @@ import {
   LegalDocumentEventsService,
 } from './legal-document-events.service';
 import { LegalDocumentFourEyesService } from './legal-document-four-eyes.service';
+import { LegalDocumentIngestionService } from './legal-document-ingestion.service';
+import { isLegalDocumentScanPassed } from './legal-document-scan-status.constants';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -125,6 +124,7 @@ export class LegalDocumentsService {
     private readonly events: LegalDocumentEventsService,
     private readonly scope: LegalDocumentScopeService,
     private readonly fourEyes: LegalDocumentFourEyesService,
+    private readonly ingestion: LegalDocumentIngestionService,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
   ) {}
 
@@ -134,9 +134,6 @@ export class LegalDocumentsService {
         'documentType must be one of: TERMS_AND_CONDITIONS, CONSUMER_INFORMATION, PRIVACY_POLICY (legacy: WITHDRAWAL_INFORMATION)',
         'documentType',
       );
-    }
-    if (!isLegalPdfUpload({ mimetype: input.mimeType, originalname: input.fileName })) {
-      throw new LegalDocumentValidationError('Legal documents must be PDF files', 'file');
     }
     const versionLabel = (input.versionLabel || '').trim();
     if (!versionLabel) {
@@ -157,7 +154,6 @@ export class LegalDocumentsService {
     }
 
 
-    const mimeType = normalizeLegalPdfMimeType(input.mimeType, input.fileName);
     const defaultTitle = legalDocumentTitleDe(canonicalType, legalVariant);
 
     let scopeInput;
@@ -187,15 +183,25 @@ export class LegalDocumentsService {
 
     await this.scope.assertStationsBelongToOrg(input.organizationId, scopeInput.stationIds);
 
-    const stored = await this.storage.putObject({
-      organizationId: input.organizationId,
-      bookingId: null,
-      documentType: canonicalType,
-      originalName: input.fileName,
-      buffer: input.buffer,
-      mimeType,
-    });
-    const checksum = createHash('sha256').update(input.buffer).digest('hex');
+    let ingested;
+    try {
+      ingested = await this.ingestion.ingest({
+        organizationId: input.organizationId,
+        documentType: canonicalType,
+        fileName: input.fileName,
+        buffer: input.buffer,
+        mimeType: input.mimeType,
+      });
+    } catch (err) {
+      if (
+        err instanceof LegalDocumentPdfValidationError ||
+        err instanceof LegalDocumentScanFailedError
+      ) {
+        throw err;
+      }
+      throw err;
+    }
+
     const actor = this.resolveActor(input.actor, input.uploadedByUserId);
 
     return this.prisma.$transaction(async (tx) => {
@@ -217,11 +223,17 @@ export class LegalDocumentsService {
           noticePurpose: scopeInput.noticePurpose as never,
           status: LEGAL_STATUS.DRAFT,
           fileName: input.fileName,
-          mimeType,
-          storageProvider: stored.storageProvider,
-          objectKey: stored.objectKey,
-          checksum,
-          sizeBytes: stored.sizeBytes,
+          mimeType: ingested.mimeType,
+          storageProvider: ingested.storageProvider,
+          objectKey: ingested.objectKey,
+          checksum: ingested.checksum,
+          sizeBytes: ingested.sizeBytes,
+          pageCount: ingested.pageCount,
+          scanStatus: ingested.scanStatus,
+          validatedAt: ingested.validatedAt,
+          malwareScannedAt: ingested.malwareScannedAt,
+          malwareScannerId: ingested.malwareScannerId,
+          quarantineObjectKey: ingested.quarantineObjectKey,
           uploadedByUserId: input.uploadedByUserId ?? null,
           legalOwnerName: input.legalOwnerName?.trim() || null,
           changeSummary: input.changeSummary?.trim() || null,
@@ -396,6 +408,8 @@ export class LegalDocumentsService {
     id: string,
     input: LegalDocumentStatusChangeInput = {},
   ): Promise<OrganizationLegalDocument> {
+    const doc = await this.getById(orgId, id);
+    this.assertScanPassed(doc);
     const actor = this.resolveActor(input);
     return this.transitionStatus(
       orgId,
@@ -477,6 +491,8 @@ export class LegalDocumentsService {
         { status: doc.status },
       );
     }
+
+    this.assertScanPassed(doc);
 
     await this.fourEyes.assertSeparation(orgId, doc, actor.userId, 'activate');
 
@@ -876,5 +892,11 @@ export class LegalDocumentsService {
         { id: row.id, displayName: buildUserDisplayName(row) },
       ]),
     );
+  }
+
+  private assertScanPassed(doc: Pick<OrganizationLegalDocument, 'scanStatus'>): void {
+    if (!isLegalDocumentScanPassed(doc.scanStatus)) {
+      throw new LegalDocumentScanNotPassedError(doc.scanStatus);
+    }
   }
 }

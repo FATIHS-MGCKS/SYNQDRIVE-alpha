@@ -44,6 +44,14 @@ describe('legal-document-api.mapper', () => {
     changeSummary: 'Initial',
     legalOwnerName: 'Legal Team',
     uploadedByUserId: 'user-1',
+    scanStatus: 'SCAN_PASSED',
+    pageCount: 3,
+    validationErrorCode: null,
+    validationErrorDetail: null,
+    validatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    malwareScannedAt: null,
+    malwareScannerId: null,
+    quarantineObjectKey: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-03T00:00:00.000Z'),
     stations: [{ stationId: 'station-1' }],
@@ -72,8 +80,8 @@ describe('legal-document-api.mapper', () => {
         stationScope: { mode: 'ORGANIZATION_WIDE', stationIds: ['station-1'] },
         fileSize: 2048,
         checksum: 'abc123',
-        pageCount: null,
-        scanStatus: 'NOT_SCANNED',
+        pageCount: 3,
+        scanStatus: 'SCAN_PASSED',
         integrityStatus: 'VERIFIED',
         snapshotCount: 7,
         uploadedBy: { id: 'user-1', displayName: 'Uploader' },
@@ -98,8 +106,10 @@ describe('legal-document-api.mapper', () => {
     expect(deriveIntegrityStatus(null, 100)).toBe('MISSING');
   });
 
-  it('defaults scan status when no scanner pipeline exists', () => {
-    expect(deriveScanStatus()).toBe('NOT_SCANNED');
+  it('derives scan status from persisted record', () => {
+    expect(deriveScanStatus('SCAN_PASSED')).toBe('SCAN_PASSED');
+    expect(deriveScanStatus(null)).toBe('UPLOADED');
+    expect(deriveScanStatus('VALIDATION_FAILED')).toBe('VALIDATION_FAILED');
   });
 
   it('falls back to unknown user display when actor map is missing', () => {

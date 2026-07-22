@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-pdf-validation-2026-07-22',
+    version: '4.9.750',
+    title: 'Legal Documents — PDF Validation & Quarantine (Prompt 11/32)',
+    summary: [
+      'Serverseitige PDF-Validierung statt MIME/Extension-only.',
+      'Pipeline: Magic Bytes, Struktur-Probe, pdf-parse, Active-Content-Scan (JS/Launch/Embedded).',
+      'Scan-Status: UPLOADED → VALIDATING → SCAN_PASSED | VALIDATION_FAILED | SCAN_FAILED.',
+      'Optional: Quarantäne + Malware-Scan vor Promotion in Clean Storage.',
+      'Review/Aktivierung nur bei scanStatus=SCAN_PASSED; strukturierte LEGAL_PDF_* Codes.',
+      'Legacy: Nicht-DRAFT → SCAN_PASSED; Legacy-DRAFT → Re-Upload erforderlich.',
+    ],
+    reason: 'Production-Readiness — sichere Annahme rechtlicher PDFs ohne aktive Inhalte.',
+    previousBehavior: 'Upload prüfte nur MIME oder .pdf-Endung; sofortige Speicherung ohne Parse/Malware.',
+    details:
+      'docs/audits/legal-documents-pdf-validation-2026-07.md, architecture/LEGAL_DOCUMENT_PDF_VALIDATION_2026-07-22.md, legal-document-pdf-validation.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T13:00:00.000Z',
+  },
+  {
     id: 'legal-documents-permissions-2026-07-22',
     version: '4.9.749',
     title: 'Legal Documents — Dedicated Permissions (Prompt 10/32)',

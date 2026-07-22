@@ -6298,6 +6298,14 @@ model OrganizationLegalDocument {
   changeSummary              String?      @map("change_summary")
   legalOwnerName             String?      @map("legal_owner_name")
   uploadedByUserId           String?      @map("uploaded_by_user_id")
+  scanStatus                 String       @default("UPLOADED") @map("scan_status")
+  pageCount                  Int?         @map("page_count")
+  validationErrorCode        String?      @map("validation_error_code")
+  validationErrorDetail      String?      @map("validation_error_detail")
+  validatedAt                DateTime?    @map("validated_at")
+  malwareScannedAt           DateTime?    @map("malware_scanned_at")
+  malwareScannerId           String?      @map("malware_scanner_id")
+  quarantineObjectKey        String?      @map("quarantine_object_key")
   createdAt                  DateTime     @default(now()) @map("created_at")
   updatedAt                  DateTime     @updatedAt @map("updated_at")
 
@@ -6313,6 +6321,7 @@ model OrganizationLegalDocument {
   @@index([organizationId, documentType, language, status], map: "organization_legal_documents_org_type_lang_status_idx")
   @@index([organizationId, documentType, legalVariant], map: "organization_legal_documents_org_type_variant_idx")
   @@index([organizationId, status, documentType, language, jurisdictionCountry, customerSegment, bookingChannel], map: "organization_legal_documents_resolver_scope_idx")
+  @@index([organizationId, scanStatus], map: "organization_legal_documents_org_scan_status_idx")
   @@map("organization_legal_documents")
 }
 

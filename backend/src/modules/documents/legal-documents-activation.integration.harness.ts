@@ -40,6 +40,14 @@ export type HarnessLegalRow = {
   changeSummary: string | null;
   legalOwnerName: string | null;
   uploadedByUserId: string | null;
+  scanStatus: string;
+  pageCount: number | null;
+  validationErrorCode: string | null;
+  validationErrorDetail: string | null;
+  validatedAt: Date | null;
+  malwareScannedAt: Date | null;
+  malwareScannerId: string | null;
+  quarantineObjectKey: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -219,6 +227,14 @@ export function createLegalDocumentActivationHarness() {
           changeSummary: data.changeSummary ?? null,
           legalOwnerName: data.legalOwnerName ?? null,
           uploadedByUserId: data.uploadedByUserId ?? null,
+          scanStatus: data.scanStatus ?? 'SCAN_PASSED',
+          pageCount: data.pageCount ?? 1,
+          validationErrorCode: data.validationErrorCode ?? null,
+          validationErrorDetail: data.validationErrorDetail ?? null,
+          validatedAt: data.validatedAt ?? now,
+          malwareScannedAt: data.malwareScannedAt ?? null,
+          malwareScannerId: data.malwareScannerId ?? null,
+          quarantineObjectKey: data.quarantineObjectKey ?? null,
           createdAt: now,
           updatedAt: now,
         };
@@ -319,6 +335,14 @@ export function createLegalDocumentActivationHarness() {
       changeSummary: null,
       legalOwnerName: null,
       uploadedByUserId: null,
+      scanStatus: 'SCAN_PASSED',
+      pageCount: 1,
+      validationErrorCode: null,
+      validationErrorDetail: null,
+      validatedAt: now,
+      malwareScannedAt: null,
+      malwareScannerId: null,
+      quarantineObjectKey: null,
       createdAt: now,
       updatedAt: now,
     };

@@ -123,6 +123,50 @@ export class LegalDocumentForbiddenError extends HttpException {
   }
 }
 
+export class LegalDocumentPdfValidationError extends LegalDocumentDomainError {
+  constructor(
+    message: string,
+    public readonly validationCode: string,
+    field = 'file',
+  ) {
+    super(
+      message,
+      LEGAL_DOCUMENT_ERROR_CODES.PDF_VALIDATION_FAILED,
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      { field, details: { validationCode } },
+    );
+    this.name = 'LegalDocumentPdfValidationError';
+  }
+}
+
+export class LegalDocumentScanFailedError extends LegalDocumentDomainError {
+  constructor(
+    message: string,
+    public readonly validationCode: string,
+    scannerId?: string | null,
+  ) {
+    super(
+      message,
+      LEGAL_DOCUMENT_ERROR_CODES.MALWARE_SCAN_FAILED,
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      { details: { validationCode, scannerId: scannerId ?? null } },
+    );
+    this.name = 'LegalDocumentScanFailedError';
+  }
+}
+
+export class LegalDocumentScanNotPassedError extends LegalDocumentDomainError {
+  constructor(scanStatus: string) {
+    super(
+      'Legal document must pass PDF validation and malware scanning before review or activation',
+      LEGAL_DOCUMENT_ERROR_CODES.SCAN_NOT_PASSED,
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      { details: { scanStatus } },
+    );
+    this.name = 'LegalDocumentScanNotPassedError';
+  }
+}
+
 export function isLegalDocumentDomainError(err: unknown): err is LegalDocumentDomainError {
   return err instanceof LegalDocumentDomainError;
 }

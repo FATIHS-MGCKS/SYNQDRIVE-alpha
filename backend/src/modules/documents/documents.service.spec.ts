@@ -10,8 +10,10 @@ import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import {
   LegalDocumentNotActivatableError,
+  LegalDocumentPdfValidationError,
   LegalDocumentValidationError,
 } from './legal-documents-api.errors';
+import { LegalDocumentIngestionService } from './legal-document-ingestion.service';
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 import { createNoopLegalDocumentFourEyesService } from './legal-document-four-eyes.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
@@ -131,8 +133,32 @@ describe('LegalDocumentsService', () => {
   } as any;
   const events = createNoopLegalDocumentEventsService();
 
-  function makeLegalSvc(prisma: any) {
-    return new LegalDocumentsService(prisma, events, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, storage);
+  function makeLegalSvc(prisma: any, ingestion?: Partial<LegalDocumentIngestionService>) {
+    const ingestionSvc = {
+      ingest: jest.fn(async (input) => ({
+        ok: true as const,
+        objectKey: 'organizations/org-1/legal/x/2026/01/u-a.pdf',
+        storageProvider: 'local',
+        sizeBytes: input.buffer.length,
+        mimeType: 'application/pdf',
+        checksum: 'test-checksum',
+        pageCount: 1,
+        scanStatus: 'SCAN_PASSED',
+        validatedAt: new Date(),
+        malwareScannedAt: null,
+        malwareScannerId: null,
+        quarantineObjectKey: null,
+      })),
+      ...ingestion,
+    };
+    return new LegalDocumentsService(
+      prisma,
+      events,
+      createNoopLegalDocumentScopeService(),
+      createNoopLegalDocumentFourEyesService() as any,
+      ingestionSvc as any,
+      storage,
+    );
   }
 
   function baseInput() {
@@ -147,10 +173,18 @@ describe('LegalDocumentsService', () => {
   }
 
   it('rejects non-PDF uploads', async () => {
-    const svc = makeLegalSvc({} as any);
+    const ingestion = {
+      ingest: jest.fn().mockRejectedValue(
+        new LegalDocumentPdfValidationError(
+          'File content is not a valid PDF',
+          'LEGAL_PDF_NOT_PDF',
+        ),
+      ),
+    };
+    const svc = makeLegalSvc({} as any, ingestion);
     await expect(
       svc.upload({ ...baseInput(), fileName: 'scan.png', mimeType: 'image/png' }),
-    ).rejects.toBeInstanceOf(LegalDocumentValidationError);
+    ).rejects.toBeInstanceOf(LegalDocumentPdfValidationError);
   });
 
   it('rejects unknown legal document types', async () => {
@@ -206,7 +240,14 @@ describe('LegalDocumentsService', () => {
   });
 
   it('activating a version supersedes the other ACTIVE version of the same type+language (single-active)', async () => {
-    const target = { id: 'legal-2', organizationId: 'org-1', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, language: 'de', status: LEGAL_STATUS.APPROVED };
+    const target = {
+      id: 'legal-2',
+      organizationId: 'org-1',
+      documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+      language: 'de',
+      status: LEGAL_STATUS.APPROVED,
+      scanStatus: 'SCAN_PASSED',
+    };
     const tx = {
       organizationLegalDocument: {
         findFirst: jest.fn().mockResolvedValue(target),
@@ -255,6 +296,7 @@ describe('LegalDocumentsService', () => {
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       language: 'de',
       status: LEGAL_STATUS.ACTIVE,
+      scanStatus: 'SCAN_PASSED',
       activatedAt: new Date('2026-01-01'),
     };
     const tx = {
