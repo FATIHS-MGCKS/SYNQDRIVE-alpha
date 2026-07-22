@@ -4,58 +4,89 @@ import { DOCUMENT_PHASE_REQUIREMENTS } from './booking-document-phase.util';
 import type { MissingBookingDocumentSlot } from './booking-document-task.types';
 import { hasOrgActiveLegalDocument } from './legal-document-type.compat';
 import { resolveBundlePointerField } from './booking-document-bundle-pointer.mapping';
+import { evaluateBookingDocumentCompleteness } from './booking-document-completeness.engine';
+import type { BookingDocumentCompletenessContext } from './booking-document-completeness.types';
 
-const CHECKLIST_SLOT_PREFIX = 'documentSlot:';
-
-export function checklistSlotMarker(documentType: DocumentType): string {
-  return `${CHECKLIST_SLOT_PREFIX}${documentType}`;
-}
-
-export function parseChecklistSlotMarker(description: string | null | undefined): DocumentType | null {
-  if (!description?.startsWith(CHECKLIST_SLOT_PREFIX)) return null;
-  return description.slice(CHECKLIST_SLOT_PREFIX.length) as DocumentType;
-}
-
-export function buildDocumentPackageTaskTitle(missingCount: number): string {
-  if (missingCount <= 0) return 'Dokumentenpaket vollständig';
-  if (missingCount === 1) return 'Dokumentenpaket unvollständig – 1 Dokument fehlt';
-  return `Dokumentenpaket unvollständig – ${missingCount} Dokumente fehlen`;
-}
-
+/**
+ * @deprecated Use BookingDocumentCompletenessService — kept for backward-compatible tests.
+ */
 export function computeMissingDocumentSlots(input: {
   phase: BookingDocumentPhase;
   bundle: Record<string, string | null | undefined>;
   orgActiveLegal: Partial<Record<DocumentType, { id: string } | undefined>>;
   generationError: string | null;
 }): MissingBookingDocumentSlot[] {
-  const required = DOCUMENT_PHASE_REQUIREMENTS[input.phase];
-  const missing: MissingBookingDocumentSlot[] = [];
+  const ctx = buildCompletenessContextFromLegacyInput(input);
+  const result = evaluateBookingDocumentCompleteness(ctx);
+  const phaseResult = result.phases.find((p) => p.phase === input.phase);
+  return phaseResult?.missingDocuments ?? [];
+}
 
-  for (const documentType of required) {
-    const pointerField = resolveBundlePointerField(documentType);
-    if (pointerField && input.bundle[pointerField]) continue;
+function buildCompletenessContextFromLegacyInput(input: {
+  phase: BookingDocumentPhase;
+  bundle: Record<string, string | null | undefined>;
+  orgActiveLegal: Partial<Record<DocumentType, { id: string } | undefined>>;
+  generationError: string | null;
+}): BookingDocumentCompletenessContext {
+  const bookingStatus =
+    input.phase === 'CONFIRMED' ? 'CONFIRMED' : input.phase === 'ACTIVE' ? 'ACTIVE' : 'COMPLETED';
 
-    const isLegal = (LEGAL_DOCUMENT_TYPES as string[]).includes(documentType) ||
-      documentType === DOCUMENT_TYPE.WITHDRAWAL_INFORMATION;
-    const orgLegalConfigured = isLegal && hasOrgActiveLegalDocument(input.orgActiveLegal, documentType);
-    const configurationProblem = isLegal && !orgLegalConfigured;
-
-    if (configurationProblem) {
-      continue;
+  const resolverMissingMandatory: Array<{ documentType: string; reason: string }> = [];
+  for (const documentType of LEGAL_DOCUMENT_TYPES) {
+    if (!hasOrgActiveLegalDocument(input.orgActiveLegal, documentType)) {
+      resolverMissingMandatory.push({
+        documentType,
+        reason: 'No active org legal template',
+      });
     }
-
-    const generationFailed = !!input.generationError && !isLegal;
-    missing.push({
-      documentType,
-      humanReadableLabel: legalDocumentTitleDe(documentType, null),
-      reason: generationFailed ? 'generation_failed' : 'not_generated',
-      actionType: generationFailed ? 'RETRY' : isLegal ? 'GENERATE' : 'GENERATE',
-      canGenerateAutomatically: !isLegal || orgLegalConfigured,
-      configurationProblem: false,
-    });
   }
 
-  return missing;
+  return {
+    organizationId: 'legacy-eval',
+    bookingId: 'legacy-eval',
+    bookingStatus,
+    bundle: {
+      termsDocumentId: (input.bundle.termsDocumentId as string) ?? null,
+      withdrawalDocumentId: (input.bundle.withdrawalDocumentId as string) ?? null,
+      privacyDocumentId: (input.bundle.privacyDocumentId as string) ?? null,
+      bookingInvoiceDocumentId: (input.bundle.bookingInvoiceDocumentId as string) ?? null,
+      depositReceiptDocumentId: (input.bundle.depositReceiptDocumentId as string) ?? null,
+      rentalContractDocumentId: (input.bundle.rentalContractDocumentId as string) ?? null,
+      pickupProtocolDocumentId: (input.bundle.pickupProtocolDocumentId as string) ?? null,
+      returnProtocolDocumentId: (input.bundle.returnProtocolDocumentId as string) ?? null,
+      finalInvoiceDocumentId: (input.bundle.finalInvoiceDocumentId as string) ?? null,
+    },
+    generatedDocuments: [],
+    legalDocumentsById: new Map(
+      Object.entries(input.orgActiveLegal)
+        .filter(([, v]) => v?.id)
+        .map(([documentType, v]) => [
+          v!.id,
+          {
+            id: v!.id,
+            documentType,
+            integrityStatus: 'VERIFIED',
+            integrityUnavailable: false,
+            scanStatus: 'SCAN_PASSED',
+          },
+        ]),
+    ),
+    resolverVersion: 'legacy',
+    resolverConflicts: [],
+    resolverMissingMandatory,
+    resolverSelectedTypes: [],
+    handoverProtocols: [],
+    deliveryProofs: [],
+    generationError: input.generationError,
+    orgActiveLegalTypes: (
+      [
+        DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+        DOCUMENT_TYPE.CONSUMER_INFORMATION,
+        DOCUMENT_TYPE.PRIVACY_POLICY,
+      ] as DocumentType[]
+    ).filter((t) => hasOrgActiveLegalDocument(input.orgActiveLegal, t)),
+    evaluatedAt: new Date().toISOString(),
+  };
 }
 
 export function orgMissingLegalTemplateTypes(

@@ -950,31 +950,53 @@ export class BookingsService {
       { type: DOCUMENT_TYPE.DEPOSIT_RECEIPT, required: true },
       { type: DOCUMENT_TYPE.RENTAL_CONTRACT, required: true },
       { type: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, required: true },
-      { type: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION, required: true },
+      { type: DOCUMENT_TYPE.CONSUMER_INFORMATION, required: true },
+      { type: DOCUMENT_TYPE.PRIVACY_POLICY, required: true },
       { type: DOCUMENT_TYPE.HANDOVER_PICKUP, required: false },
       { type: DOCUMENT_TYPE.HANDOVER_RETURN, required: false },
       { type: DOCUMENT_TYPE.FINAL_INVOICE, required: false },
     ];
 
+    const completenessRequired = new Set(bundleView?.completeness?.cumulativeRequiredTypes ?? []);
+    const completenessPresent = new Set(bundleView?.completeness?.presentTypes ?? []);
+
     const documentSlots = DOC_SLOTS.map(({ type, required }) => {
+      const slotRequired = completenessRequired.has(type as typeof DOCUMENT_TYPE[keyof typeof DOCUMENT_TYPE]) || required;
       const row = docByType.get(type);
-      if (!row) {
+      if (!row && !completenessPresent.has(type as typeof DOCUMENT_TYPE[keyof typeof DOCUMENT_TYPE])) {
         const isLegal =
           type === DOCUMENT_TYPE.TERMS_AND_CONDITIONS ||
+          type === DOCUMENT_TYPE.CONSUMER_INFORMATION ||
+          type === DOCUMENT_TYPE.PRIVACY_POLICY ||
           type === DOCUMENT_TYPE.WITHDRAWAL_INFORMATION;
+        const missingItem = bundleView?.completeness?.missingItems.find((m) => m.documentType === type);
         return {
           documentType: type,
           status: 'missing' as const,
-          required,
+          required: slotRequired,
           available: false,
           generatedAt: null,
           signedAt: null,
           documentId: null,
-          missingReason: isLegal
+          missingReason: missingItem?.reason === 'configuration_problem'
             ? 'In Administration hinterlegen'
-            : required
-              ? 'Noch nicht erstellt'
-              : null,
+            : isLegal
+              ? 'In Administration hinterlegen'
+              : slotRequired
+                ? 'Noch nicht erstellt'
+                : null,
+        };
+      }
+      if (!row) {
+        return {
+          documentType: type,
+          status: 'missing' as const,
+          required: slotRequired,
+          available: false,
+          generatedAt: null,
+          signedAt: null,
+          documentId: null,
+          missingReason: slotRequired ? 'Noch nicht erstellt' : null,
         };
       }
       const status =
@@ -1189,8 +1211,10 @@ export class BookingsService {
       },
       documents: {
         bundleStatus: bundleView?.bundle.status ?? null,
+        completenessStatus: bundleView?.completeness?.status ?? null,
         legalTermsAttached: bundleView?.legal.termsAttached ?? false,
         legalWithdrawalAttached: bundleView?.legal.consumerAttached ?? bundleView?.legal.withdrawalAttached ?? false,
+        legalPrivacyAttached: bundleView?.legal.privacyAttached ?? false,
         legalMissing: bundleView?.legal.missing ?? [],
         warnings: bundleView?.warnings ?? [],
         slots: documentSlots,

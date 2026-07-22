@@ -77,16 +77,7 @@ export class BookingDocumentOrgLegalNotificationService {
     orgId: string,
     orgActiveLegal: Partial<Record<DocumentType, { id: string } | undefined>>,
   ): Promise<void> {
-    const missing: DocumentType[] = [];
-    if (!orgActiveLegal[DOCUMENT_TYPE.TERMS_AND_CONDITIONS]) {
-      missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-    }
-    if (
-      !orgActiveLegal[DOCUMENT_TYPE.CONSUMER_INFORMATION] &&
-      !orgActiveLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
-    ) {
-      missing.push(DOCUMENT_TYPE.CONSUMER_INFORMATION);
-    }
-    await this.syncOrgMissingLegalTemplates(orgId, missing);
+    const { orgMissingLegalTemplateTypes } = await import('./booking-document-missing-slots.util');
+    await this.syncOrgMissingLegalTemplates(orgId, orgMissingLegalTemplateTypes(orgActiveLegal));
   }
 }

@@ -20,7 +20,6 @@ import { DocumentNumberingService } from './document-numbering.service';
 import { DOCUMENT_RENDERER, DocumentRenderer, RenderableDocument } from './renderers/render-model';
 import {
   BUNDLE_STATUS,
-  BundleStatus,
   DOCUMENT_ORIGIN,
   DOCUMENT_STATUS,
   DOCUMENT_TITLE_DE,
@@ -45,11 +44,9 @@ import { buildReturnHandoverDocument } from './templates/return-handover.templat
 import { buildFinalInvoiceDocument, FinalInvoiceLineItem } from './templates/final-invoice.template';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
-  applicableDocumentPhases,
   bookingDocumentPackageDedupKey,
   documentPhaseForBookingStatus,
 } from './booking-document-phase.util';
-import { computeMissingDocumentSlots } from './booking-document-missing-slots.util';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import {
@@ -65,6 +62,13 @@ import {
   BookingDocumentBundleResolverConflictError,
 } from './booking-document-bundle.errors';
 import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
+import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
+import {
+  completenessLegalMissingDocumentTypes,
+  completenessToBundleViewWarnings,
+  completenessToLegacyMissingLegalLabels,
+} from './booking-document-completeness.engine';
+import type { BundleCompletenessResult } from './booking-document-completeness.types';
 
 const TEMPLATE_VERSION = '1';
 
@@ -100,6 +104,7 @@ export interface BundleView {
   legal: BundleLegalPointerView;
   missingLegalDocuments: string[];
   warnings: string[];
+  completeness: BundleCompletenessResult;
 }
 
 /**
@@ -125,6 +130,7 @@ export class BookingDocumentBundleService {
     private readonly taskAutomation: TaskAutomationService,
     private readonly orgLegalNotification: BookingDocumentOrgLegalNotificationService,
     private readonly bundleMonitoring: BookingDocumentBundleMonitoringService,
+    private readonly bundleCompleteness: BookingDocumentCompletenessService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -166,49 +172,16 @@ export class BookingDocumentBundleService {
   async getBundleView(orgId: string, bookingId: string): Promise<BundleView> {
     const bundle = await this.getOrCreateBundle(orgId, bookingId);
     const documents = await this.generatedDocs.listForBooking(orgId, bookingId);
-    const hasDoc = (type: DocumentType) =>
-      documents.some((d) => d.documentType === type && d.status !== DOCUMENT_STATUS.VOID);
-    const termsAttached = !!bundle.termsDocumentId || hasDoc(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-    const consumerAttached =
-      !!bundle.withdrawalDocumentId ||
-      hasDoc(DOCUMENT_TYPE.CONSUMER_INFORMATION) ||
-      hasDoc(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
-    const privacyAttached =
-      !!bundle.privacyDocumentId || hasDoc(DOCUMENT_TYPE.PRIVACY_POLICY);
-    const missing: DocumentType[] = [];
-    const missingLegalDocuments: string[] = [];
-    if (!termsAttached) {
-      missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-      missingLegalDocuments.push('TERMS_AND_CONDITIONS');
-    }
-    if (!consumerAttached) {
-      missing.push(DOCUMENT_TYPE.CONSUMER_INFORMATION);
-      missingLegalDocuments.push('REVOCATION_POLICY');
-    }
-    if (!privacyAttached) {
-      missing.push(DOCUMENT_TYPE.PRIVACY_POLICY);
-      missingLegalDocuments.push('PRIVACY_POLICY');
-    }
-    const warnings: string[] = [];
-    if (missing.length) {
-      const activeLegal = await this.legalDocs.getActiveByType(orgId, 'de');
-      const orgMissingTerms = !activeLegal[DOCUMENT_TYPE.TERMS_AND_CONDITIONS];
-      const orgMissingConsumer =
-        !activeLegal[DOCUMENT_TYPE.CONSUMER_INFORMATION] &&
-        !activeLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
-      const orgMissingPrivacy = !activeLegal[DOCUMENT_TYPE.PRIVACY_POLICY];
-      if (orgMissingTerms || orgMissingConsumer || orgMissingPrivacy) {
-        warnings.push(
-          'Dokumentenpaket unvollständig: AGB oder Verbraucherinformation fehlt. Bitte in Administration → Unternehmen hochladen.',
-        );
-      } else if (bundle.lastError) {
-        warnings.push(`Dokumentenerstellung fehlgeschlagen: ${bundle.lastError}`);
-      } else {
-        warnings.push(
-          'Dokumente werden vorbereitet. Bitte kurz warten oder die Seite aktualisieren.',
-        );
-      }
-    }
+    const completeness = await this.bundleCompleteness.evaluateForBooking(orgId, bookingId, {
+      generationError: bundle.lastError,
+    });
+
+    const missing = completenessLegalMissingDocumentTypes(completeness);
+    const termsAttached = completeness.legal.terms.present;
+    const consumerAttached = completeness.legal.consumer.present;
+    const privacyAttached = completeness.legal.privacy.present;
+    const warnings = completenessToBundleViewWarnings(completeness);
+
     return {
       bundle: {
         id: bundle.id,
@@ -228,8 +201,9 @@ export class BookingDocumentBundleService {
         consumerDocumentId: bundle.withdrawalDocumentId,
         missing,
       },
-      missingLegalDocuments,
+      missingLegalDocuments: completenessToLegacyMissingLegalLabels(completeness),
       warnings,
+      completeness,
     };
   }
 
@@ -919,22 +893,6 @@ export class BookingDocumentBundleService {
 
   // ── status ─────────────────────────────────────────────────────────────
 
-  private requiredTypesForStage(status: string): DocumentType[] {
-    const base: DocumentType[] = [
-      DOCUMENT_TYPE.BOOKING_INVOICE,
-      DOCUMENT_TYPE.DEPOSIT_RECEIPT,
-      DOCUMENT_TYPE.RENTAL_CONTRACT,
-      DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-      DOCUMENT_TYPE.CONSUMER_INFORMATION,
-      DOCUMENT_TYPE.PRIVACY_POLICY,
-    ];
-    if (status === 'ACTIVE') base.push(DOCUMENT_TYPE.HANDOVER_PICKUP);
-    if (status === 'COMPLETED') {
-      base.push(DOCUMENT_TYPE.HANDOVER_PICKUP, DOCUMENT_TYPE.HANDOVER_RETURN, DOCUMENT_TYPE.FINAL_INVOICE);
-    }
-    return base;
-  }
-
   private async refreshBundleStatus(
     orgId: string,
     bookingId: string,
@@ -943,36 +901,28 @@ export class BookingDocumentBundleService {
   ): Promise<void> {
     const bundle = await this.prisma.bookingDocumentBundle.findUnique({ where: { bookingId } });
     if (!bundle) return;
-    const required = this.requiredTypesForStage(bookingStatus);
-    const present = required.filter((t) => !!bundlePointerValue(bundle, t));
 
-    let status: BundleStatus;
-    if (lastError) {
-      status = present.length ? BUNDLE_STATUS.PARTIAL : BUNDLE_STATUS.FAILED;
-    } else if (present.length === required.length) {
-      status = BUNDLE_STATUS.COMPLETE;
-    } else if (present.length > 0) {
-      status = BUNDLE_STATUS.PARTIAL;
-    } else {
-      status = BUNDLE_STATUS.PENDING;
-    }
-
-    const legalMissing =
-      !bundle.termsDocumentId ||
-      !bundle.withdrawalDocumentId ||
-      !bundle.privacyDocumentId;
+    const completeness = await this.bundleCompleteness.evaluateForBooking(orgId, bookingId, {
+      generationError: lastError ?? bundle.lastError,
+    });
+    const status = completeness.legacyBundleStatus;
     const warning =
-      lastError ??
-      (legalMissing && status !== BUNDLE_STATUS.PENDING
+      completeness.blockingReasons.find((r) => r.blocking)?.message ??
+      completeness.nonBlockingWarnings[0]?.message ??
+      (completeness.orgConfigurationGaps.length > 0
         ? 'Rechtliche Dokumente fehlen in Administration. Das Buchungsdokumentenpaket ist unvollständig.'
         : null);
 
     await this.prisma.bookingDocumentBundle.update({
       where: { id: bundle.id },
-      data: { status, lastError: warning, generatedAt: status === BUNDLE_STATUS.COMPLETE ? new Date() : bundle.generatedAt },
+      data: {
+        status,
+        lastError: warning,
+        generatedAt: status === BUNDLE_STATUS.COMPLETE ? new Date() : bundle.generatedAt,
+      },
     });
 
-    void this.syncMissingDocumentTasks(orgId, bookingId, bookingStatus).catch((err) =>
+    void this.syncMissingDocumentTasks(orgId, bookingId, bookingStatus, completeness).catch((err) =>
       this.logger.warn(`syncMissingDocumentTasks(${bookingId}) failed: ${this.shortError(err)}`),
     );
   }
@@ -994,6 +944,7 @@ export class BookingDocumentBundleService {
     orgId: string,
     bookingId: string,
     bookingStatus: string,
+    completeness?: BundleCompletenessResult,
   ): Promise<void> {
     const bundle = await this.prisma.bookingDocumentBundle.findUnique({ where: { bookingId } });
     if (!bundle || bundle.organizationId !== orgId) return;
@@ -1004,8 +955,15 @@ export class BookingDocumentBundleService {
     });
     if (!booking) return;
 
-    const orgActiveLegal = await this.legalDocs.getActiveByType(orgId, 'de');
-    void this.orgLegalNotification.syncFromOrgLegalState(orgId, orgActiveLegal).catch(() => {});
+    const evaluation =
+      completeness ??
+      (await this.bundleCompleteness.evaluateForBooking(orgId, bookingId, {
+        generationError: bundle.lastError,
+      }));
+
+    void this.orgLegalNotification
+      .syncOrgMissingLegalTemplates(orgId, evaluation.orgConfigurationGaps)
+      .catch(() => {});
 
     if (!documentPhaseForBookingStatus(bookingStatus)) {
       this.runBackgroundTask(
@@ -1015,26 +973,18 @@ export class BookingDocumentBundleService {
       return;
     }
 
-    const bundleRow = bundle as unknown as Record<string, string | null | undefined>;
-    const phases = applicableDocumentPhases(bookingStatus);
     const activeKeys: string[] = [];
 
-    for (const phase of phases) {
-      const missingDocuments = computeMissingDocumentSlots({
-        phase,
-        bundle: bundleRow,
-        orgActiveLegal,
-        generationError: bundle.lastError,
-      });
-      const dedupKey = bookingDocumentPackageDedupKey(phase, bookingId);
+    for (const phaseResult of evaluation.phases) {
+      const dedupKey = bookingDocumentPackageDedupKey(phaseResult.phase, bookingId);
       activeKeys.push(dedupKey);
       await this.taskAutomation.syncBookingDocumentPackageTask(orgId, {
         bookingId: booking.id,
         vehicleId: booking.vehicleId,
         customerId: booking.customerId,
-        phase,
+        phase: phaseResult.phase,
         dedupKey,
-        missingDocuments,
+        missingDocuments: phaseResult.missingDocuments,
       });
     }
 
