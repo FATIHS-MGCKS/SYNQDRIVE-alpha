@@ -9,6 +9,12 @@ import {
   StatusChip,
   type DataTableColumn,
 } from '../../../components/patterns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../components/ui/dropdown-menu';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -114,7 +120,6 @@ function VersionHistoryMobileCard({
   onOpenDetail: (document: LegalDocumentDto) => void;
   onOpenAction: (state: LegalDocumentLifecycleDialogState) => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const currentUserId = getStoredUser()?.id ?? null;
 
   const copyChecksum = async () => {
@@ -149,18 +154,24 @@ function VersionHistoryMobileCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {document ? (
-            <Button type="button" variant="ghost" size="icon" title="Details" onClick={() => onOpenDetail(document)}>
-              <Eye className="h-4 w-4" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Details zu Version ${row.versionLabel} anzeigen`}
+              onClick={() => onOpenDetail(document)}
+            >
+              <Eye className="h-4 w-4" aria-hidden />
             </Button>
           ) : null}
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            title="Herunterladen"
+            aria-label={`Version ${row.versionLabel} herunterladen`}
             onClick={() => void api.legalDocuments.open(orgId, row.id)}
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       </div>
@@ -214,49 +225,47 @@ function VersionHistoryMobileCard({
       </dl>
 
       {actions.length > 0 && document ? (
-        <div className="relative mt-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => setMenuOpen((prev) => !prev)}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-            Aktionen
-          </Button>
-          {menuOpen ? (
-            <div className="absolute inset-x-0 z-20 mt-1 rounded-lg border border-border bg-background p-1 shadow-lg">
-              {actions.map((item) => (
-                <button
-                  key={item.action}
-                  type="button"
-                  disabled={item.disabled}
-                  title={item.disabledReason}
-                  className="block w-full rounded-md px-3 py-2 text-left text-[12px] hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    if (item.disabled) return;
-                    onOpenAction({
-                      action: item.action,
-                      document,
-                      activePeer:
-                        documents.find(
-                          (d) =>
-                            d.id !== document.id &&
-                            d.documentType === document.documentType &&
-                            d.language === document.language &&
-                            d.status === 'ACTIVE',
-                        ) ?? null,
-                    });
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 w-full"
+              aria-haspopup="menu"
+              aria-label={`Lifecycle-Aktionen für Version ${row.versionLabel}`}
+            >
+              <MoreHorizontal className="h-4 w-4" aria-hidden />
+              Aktionen
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-[min(100vw-2rem,16rem)]">
+            {actions.map((item) => (
+              <DropdownMenuItem
+                key={item.action}
+                disabled={item.disabled}
+                title={item.disabledReason}
+                onClick={() => {
+                  if (item.disabled) return;
+                  onOpenAction({
+                    action: item.action,
+                    document,
+                    activePeer:
+                      documents.find(
+                        (d) =>
+                          d.id !== document.id &&
+                          d.documentType === document.documentType &&
+                          d.language === document.language &&
+                          d.status === 'ACTIVE',
+                      ) ?? null,
+                  });
+                }}
+              >
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
     </div>
   );
@@ -272,7 +281,6 @@ export function LegalDocumentTypeVersionHistory({
   defaultExpanded = true,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const currentUserId = getStoredUser()?.id ?? null;
 
   const {
@@ -427,7 +435,7 @@ export function LegalDocumentTypeVersionHistory({
         title={config.title}
         description={config.hint}
         as="label"
-        action={
+        actions={
           <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded((prev) => !prev)}>
             {expanded ? 'Einklappen' : 'Ausklappen'}
           </Button>
@@ -558,66 +566,64 @@ export function LegalDocumentTypeVersionHistory({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            title="Details"
+                            aria-label={`Details zu Version ${row.versionLabel} anzeigen`}
                             onClick={() => onOpenDetail(document)}
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4" aria-hidden />
                           </Button>
                         ) : null}
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          title="Herunterladen"
+                          aria-label={`Version ${row.versionLabel} herunterladen`}
                           onClick={() => void api.legalDocuments.open(orgId, row.id)}
                         >
-                          <Download className="h-4 w-4" />
+                          <Download className="h-4 w-4" aria-hidden />
                         </Button>
                         {actions.length > 0 && document ? (
-                          <div className="relative">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              data-testid={`legal-version-actions-${row.id}`}
-                              onClick={() => setOpenMenuId((prev) => (prev === row.id ? null : row.id))}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              Aktionen
-                            </Button>
-                            {openMenuId === row.id ? (
-                              <div className="absolute right-0 z-20 mt-1 min-w-[12rem] rounded-lg border border-border bg-background p-1 shadow-lg">
-                                {actions.map((item) => (
-                                  <button
-                                    key={item.action}
-                                    type="button"
-                                    disabled={item.disabled}
-                                    title={item.disabledReason}
-                                    className="block w-full rounded-md px-3 py-2 text-left text-[12px] hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                                    data-testid={`legal-lifecycle-action-${item.action}`}
-                                    onClick={() => {
-                                      setOpenMenuId(null);
-                                      if (item.disabled) return;
-                                      onOpenAction({
-                                        action: item.action,
-                                        document,
-                                        activePeer:
-                                          documents.find(
-                                            (d) =>
-                                              d.id !== document.id &&
-                                              d.documentType === document.documentType &&
-                                              d.language === document.language &&
-                                              d.status === 'ACTIVE',
-                                          ) ?? null,
-                                      });
-                                    }}
-                                  >
-                                    {item.label}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                data-testid={`legal-version-actions-${row.id}`}
+                                aria-haspopup="menu"
+                                aria-label={`Lifecycle-Aktionen für Version ${row.versionLabel}`}
+                              >
+                                <MoreHorizontal className="h-4 w-4" aria-hidden />
+                                Aktionen
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[12rem]">
+                              {actions.map((item) => (
+                                <DropdownMenuItem
+                                  key={item.action}
+                                  disabled={item.disabled}
+                                  title={item.disabledReason}
+                                  data-testid={`legal-lifecycle-action-${item.action}`}
+                                  onClick={() => {
+                                    if (item.disabled) return;
+                                    onOpenAction({
+                                      action: item.action,
+                                      document,
+                                      activePeer:
+                                        documents.find(
+                                          (d) =>
+                                            d.id !== document.id &&
+                                            d.documentType === document.documentType &&
+                                            d.language === document.language &&
+                                            d.status === 'ACTIVE',
+                                        ) ?? null,
+                                    });
+                                  }}
+                                >
+                                  {item.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         ) : null}
                       </div>
                     );

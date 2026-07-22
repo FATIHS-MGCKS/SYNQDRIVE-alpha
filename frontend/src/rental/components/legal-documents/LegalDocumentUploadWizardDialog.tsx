@@ -23,6 +23,11 @@ import {
   scanStatusErrorMessage,
 } from '../../lib/legal-document-upload-wizard.utils';
 import {
+  FormErrorSummary,
+  LiveStatusMessage,
+} from './legal-form-a11y';
+import { LEGAL_UPLOAD_ERROR_SUMMARY_ID, LEGAL_UPLOAD_PROGRESS_STATUS_ID } from './legal-documents-a11y';
+import {
   LegalDocumentUploadWizardStepClassification,
   LegalDocumentUploadWizardStepFile,
   LegalDocumentUploadWizardStepReview,
@@ -405,6 +410,22 @@ export function LegalDocumentUploadWizardDialog({
           className="legal-upload-wizard"
         >
           <WizardStepIndicator currentStep={step} />
+
+          <FormErrorSummary
+            id={LEGAL_UPLOAD_ERROR_SUMMARY_ID}
+            title="Bitte korrigieren Sie die markierten Felder:"
+            errors={errors}
+          />
+
+          {uploadProgress != null ? (
+            <LiveStatusMessage id={LEGAL_UPLOAD_PROGRESS_STATUS_ID}>
+              {uploading
+                ? `Upload läuft: ${uploadProgress} Prozent`
+                : uploadProgress === 100
+                  ? 'Upload abgeschlossen'
+                  : ''}
+            </LiveStatusMessage>
+          ) : null}
 
           <div
             role="region"

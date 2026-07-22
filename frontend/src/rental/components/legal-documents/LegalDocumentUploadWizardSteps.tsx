@@ -10,18 +10,13 @@ import {
   LEGAL_UPLOAD_STATION_SCOPE_MODES,
 } from '../../lib/legal-document-upload-wizard.constants';
 import { LEGAL_DOCUMENT_TYPE } from '../../lib/legal-document-types';
+import {
+  LegalUploadFieldError,
+  legalUploadInputA11y,
+} from './legal-form-a11y';
 
 const fieldClass =
-  'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)]';
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <p className="mt-1 text-[11px] text-[color:var(--status-critical)]" role="alert">
-      {message}
-    </p>
-  );
-}
+  'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)] motion-reduce:transition-none';
 
 function Label({ htmlFor, children, required }: { htmlFor: string; children: string; required?: boolean }) {
   return (
@@ -57,6 +52,7 @@ export function LegalDocumentUploadWizardStepClassification({
             value={form.documentType}
             onChange={(e) => onChange({ documentType: e.target.value })}
             className={fieldClass}
+            {...legalUploadInputA11y('documentType', errors)}
           >
             <option value="">Bitte wählen…</option>
             {LEGAL_DOCUMENT_TYPE_OPTIONS.map((o) => (
@@ -65,7 +61,7 @@ export function LegalDocumentUploadWizardStepClassification({
               </option>
             ))}
           </select>
-          <FieldError message={errors.documentType} />
+          <LegalUploadFieldError field="documentType" message={errors.documentType} />
         </div>
 
         {form.documentType === LEGAL_DOCUMENT_TYPE.CONSUMER_INFORMATION ? (
@@ -78,6 +74,7 @@ export function LegalDocumentUploadWizardStepClassification({
               value={form.legalVariant}
               onChange={(e) => onChange({ legalVariant: e.target.value as never })}
               className={fieldClass}
+              {...legalUploadInputA11y('legalVariant', errors)}
             >
               <option value="">Bitte wählen…</option>
               {LEGAL_CONSUMER_VARIANT_OPTIONS.map((o) => (
@@ -86,7 +83,7 @@ export function LegalDocumentUploadWizardStepClassification({
                 </option>
               ))}
             </select>
-            <FieldError message={errors.legalVariant} />
+            <LegalUploadFieldError field="legalVariant" message={errors.legalVariant} />
           </div>
         ) : null}
       </div>
@@ -108,7 +105,7 @@ export function LegalDocumentUploadWizardStepClassification({
               </option>
             ))}
           </select>
-          <FieldError message={errors.language} />
+          <LegalUploadFieldError field="language" message={errors.language} />
         </div>
         <div>
           <Label htmlFor="jurisdictionCountry" required>
@@ -126,7 +123,7 @@ export function LegalDocumentUploadWizardStepClassification({
               </option>
             ))}
           </select>
-          <FieldError message={errors.jurisdictionCountry} />
+          <LegalUploadFieldError field="jurisdictionCountry" message={errors.jurisdictionCountry} />
         </div>
       </div>
 
@@ -147,7 +144,7 @@ export function LegalDocumentUploadWizardStepClassification({
               </option>
             ))}
           </select>
-          <FieldError message={errors.customerSegment} />
+          <LegalUploadFieldError field="customerSegment" message={errors.customerSegment} />
         </div>
         <div>
           <Label htmlFor="bookingChannel" required>
@@ -165,7 +162,7 @@ export function LegalDocumentUploadWizardStepClassification({
               </option>
             ))}
           </select>
-          <FieldError message={errors.bookingChannel} />
+          <LegalUploadFieldError field="bookingChannel" message={errors.bookingChannel} />
         </div>
       </div>
 
@@ -186,7 +183,7 @@ export function LegalDocumentUploadWizardStepClassification({
               </option>
             ))}
           </select>
-          <FieldError message={errors.stationScopeMode} />
+          <LegalUploadFieldError field="stationScopeMode" message={errors.stationScopeMode} />
         </div>
         <div>
           <Label htmlFor="productScope">Produktbereich</Label>
@@ -227,7 +224,7 @@ export function LegalDocumentUploadWizardStepClassification({
               </option>
             ))}
           </select>
-          <FieldError message={errors.stationIds} />
+          <LegalUploadFieldError field="stationIds" message={errors.stationIds} />
         </div>
       ) : null}
 
@@ -262,8 +259,9 @@ export function LegalDocumentUploadWizardStepVersion({
             onChange={(e) => onChange({ versionLabel: e.target.value })}
             placeholder="z. B. 2026-01"
             className={fieldClass}
+            {...legalUploadInputA11y('versionLabel', errors)}
           />
-          <FieldError message={errors.versionLabel} />
+          <LegalUploadFieldError field="versionLabel" message={errors.versionLabel} />
         </div>
         <div>
           <Label htmlFor="title">Anzeigetitel</Label>
@@ -297,7 +295,7 @@ export function LegalDocumentUploadWizardStepVersion({
             onChange={(e) => onChange({ validUntil: e.target.value })}
             className={fieldClass}
           />
-          <FieldError message={errors.validUntil} />
+          <LegalUploadFieldError field="validUntil" message={errors.validUntil} />
         </div>
       </div>
 
@@ -377,7 +375,7 @@ export function LegalDocumentUploadWizardStepFile({
         </div>
       </div>
 
-      <FieldError message={errors.file} />
+      <LegalUploadFieldError field="file" message={errors.file} />
 
       {file ? (
         <dl className="grid gap-2 rounded-lg border border-border/60 bg-muted/10 p-3 text-[12px] sm:grid-cols-2">

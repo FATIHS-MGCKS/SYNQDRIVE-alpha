@@ -26,6 +26,8 @@ export interface DataCardProps {
   flush?: boolean;
   /** Explicit surface layer — overrides flush/interactive defaults when set. */
   surface?: DataCardSurface;
+  /** Accessible name when the card is interactive (button semantics). */
+  ariaLabel?: string;
   className?: string;
   bodyClassName?: string;
   onClick?: () => void;
@@ -43,6 +45,7 @@ export function DataCard({
   className,
   bodyClassName,
   onClick,
+  ariaLabel,
 }: DataCardProps) {
   const hasHeader = title != null || actions != null || description != null;
   const isInteractive = interactive || onClick != null;
@@ -58,9 +61,24 @@ export function DataCard({
         surfaceClass,
         'overflow-hidden',
         isInteractive && 'cursor-pointer',
+        isInteractive &&
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)] focus-visible:ring-offset-2 motion-reduce:transition-none',
         className,
       )}
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      aria-label={isInteractive ? ariaLabel : undefined}
       onClick={onClick}
+      onKeyDown={
+        isInteractive
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
     >
       {hasHeader && (
         <div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-3 border-b border-border/70">

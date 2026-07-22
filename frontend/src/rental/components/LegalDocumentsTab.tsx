@@ -22,6 +22,7 @@ import { LegalDocumentLifecycleActionDialog } from './legal-documents/lifecycle/
 import { LEGAL_LIFECYCLE_ACTION_CONFIG } from '../lib/legal-document-lifecycle.constants';
 import type { LegalDocumentLifecycleDialogState } from '../lib/legal-document-lifecycle.types';
 import { formatLifecycleEventLabel } from '../lib/legal-document-lifecycle.utils';
+import { LEGAL_DOCS_HEADING_ID, LEGAL_DOCS_MAIN_ID } from './legal-documents/legal-documents-a11y';
 
 interface LegalDocumentsTabProps {
   /** @deprecated Design-system migration — prop ignored; uses theme tokens */
@@ -69,11 +70,15 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <section
+      className="space-y-6"
+      aria-labelledby={LEGAL_DOCS_HEADING_ID}
+      id={LEGAL_DOCS_MAIN_ID}
+    >
       <PageHeader
         variant="full"
         eyebrow="Verwaltung"
-        title="Kunden-Rechtstexte"
+        title={<span id={LEGAL_DOCS_HEADING_ID}>Kunden-Rechtstexte</span>}
         description="Verwalten Sie freigegebene Vertrags- und Datenschutzhinweise für Buchungen und Kundenprozesse."
         icon={<FileText className="h-4 w-4" />}
         status={
@@ -183,6 +188,6 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
           />
         </>
       )}
-    </div>
+    </section>
   );
 }
