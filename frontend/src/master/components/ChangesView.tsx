@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-permissions-2026-07-22',
+    version: '4.9.749',
+    title: 'Legal Documents — Dedicated Permissions (Prompt 10/32)',
+    summary: [
+      'Feingranulare Berechtigungen statt nur ORG_ADMIN/@Roles auf Mutations.',
+      'Module `legal-documents` + `legal-documents-audit`; Actions VIEW/UPLOAD/APPROVE/ACTIVATE/…',
+      'PermissionsGuard + `@RequireLegalDocumentPermission` auf allen List/Detail/Download/Event/Mutation-Endpunkten.',
+      'Vier-Augen optional per `legalDocumentFourEyesEnabled` (Approve/Activate ≠ Uploader/Submitter).',
+      'Default-Rollen: Org Admin voll, Sub Admin/Accounting read+audit, Mitarbeiter viewer.',
+      'Backfill-Script für System-Rollenvorlagen; Frontend-Buttons ergänzend per hasPermission.',
+    ],
+    reason: 'Production-Readiness — RBAC mit Trennung Uploader/Freigeber und tenant-sicherer Enforcement.',
+    previousBehavior: 'Mutations nur `@Roles(ORG_ADMIN, MASTER_ADMIN)`; Reads für alle Org-Mitglieder ohne Permission-Check.',
+    details:
+      'docs/audits/legal-documents-permissions-2026-07.md, architecture/LEGAL_DOCUMENT_PERMISSIONS_2026-07-22.md, legal-documents.permissions.*.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T12:30:00.000Z',
+  },
+  {
     id: 'legal-documents-api-2026-07-22',
     version: '4.9.748',
     title: 'Legal Documents — API & DTO Professionalization (Prompt 9/32)',

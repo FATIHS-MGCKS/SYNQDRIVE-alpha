@@ -51,6 +51,8 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { key: 'price-tariffs', label: 'Preise & Tarife', icon: Tag, group: 'Preise & Tarife' },
   { key: 'ai-assistant', label: 'Insights & KI', icon: MessageSquare, group: 'Insights' },
   { key: 'document-upload', label: 'Dokumente', icon: Upload, group: 'Dokumente' },
+  { key: 'legal-documents', label: 'Rechtliche Dokumente', icon: FileText, group: 'Unternehmen' },
+  { key: 'legal-documents-audit', label: 'Rechtstext-Audit', icon: FileText, group: 'Unternehmen' },
   { key: 'workflow-automation', label: 'Workflow-Automatisierung', icon: Zap, group: 'Workflow' },
   { key: 'company-info', label: 'Unternehmensinformationen', icon: Building2, group: 'Unternehmen' },
   { key: 'users-roles', label: 'Benutzer & Rollen', icon: UserCog, group: 'Benutzer & Rollen' },

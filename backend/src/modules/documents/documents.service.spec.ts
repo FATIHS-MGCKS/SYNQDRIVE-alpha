@@ -13,6 +13,7 @@ import {
   LegalDocumentValidationError,
 } from './legal-documents-api.errors';
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
+import { createNoopLegalDocumentFourEyesService } from './legal-document-four-eyes.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BUNDLE_STATUS, DOCUMENT_STATUS, DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
@@ -131,7 +132,7 @@ describe('LegalDocumentsService', () => {
   const events = createNoopLegalDocumentEventsService();
 
   function makeLegalSvc(prisma: any) {
-    return new LegalDocumentsService(prisma, events, createNoopLegalDocumentScopeService(), storage);
+    return new LegalDocumentsService(prisma, events, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, storage);
   }
 
   function baseInput() {
