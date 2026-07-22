@@ -6,6 +6,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
+import { LegalDocumentDeliveryEvidenceController } from './legal-document-delivery-evidence.controller';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LegalDocumentScopeService } from './legal-document-scope.service';
@@ -21,6 +22,7 @@ import { BookingDocumentBundleMonitoringService } from './booking-document-bundl
 import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
 import { RentalContractLegalSnapshotService } from './rental-contract-legal-snapshot.service';
 import { RentalContractService } from './rental-contract.service';
+import { LegalDocumentDeliveryEvidenceService } from './legal-document-delivery-evidence.service';
 import { DocumentNumberingService } from './document-numbering.service';
 import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
@@ -57,7 +59,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     forwardRef(() => NotificationsModule),
     TasksModule,
   ],
-  controllers: [DocumentsController, LegalDocumentsController],
+  controllers: [DocumentsController, LegalDocumentsController, LegalDocumentDeliveryEvidenceController],
   providers: [
     LocalDocumentStorageService,
     S3PrivateDocumentStorageService,
@@ -133,12 +135,14 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     BookingDocumentCompletenessService,
     RentalContractLegalSnapshotService,
     RentalContractService,
+    LegalDocumentDeliveryEvidenceService,
     BookingDocumentBundleService,
   ],
   exports: [
     BookingDocumentBundleService,
     BookingDocumentCompletenessService,
     RentalContractService,
+    LegalDocumentDeliveryEvidenceService,
     GeneratedDocumentsService,
     LegalDocumentEventsService,
     LegalDocumentResolverService,

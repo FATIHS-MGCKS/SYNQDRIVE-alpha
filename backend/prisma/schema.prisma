@@ -1566,6 +1566,7 @@ model Organization {
   legalDocuments                         OrganizationLegalDocument[]
   legalDocumentStations                  OrganizationLegalDocumentStation[]
   legalDocumentEvents                    OrganizationLegalDocumentEvent[]
+  legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
@@ -4381,6 +4382,7 @@ model Customer {
   driverAttributionsAsBookingCustomer    DriverAttribution[]         @relation("DriverAttributionBookingCustomer")
   driverAttributionsAsDriver             DriverAttribution[]         @relation("DriverAttributionDriver")
   outboundEmails                         OutboundEmail[]
+  legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
   bookingPaymentRequests                 BookingPaymentRequest[]
 
   vehicleDamages        VehicleDamage[]
@@ -4790,6 +4792,7 @@ model Booking {
   vehicleDamages          VehicleDamage[]
   whatsappConversations   WhatsAppConversation[]
   outboundEmails          OutboundEmail[]
+  legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
@@ -6250,6 +6253,7 @@ model GeneratedDocument {
   rentalContractsAsTermsDocument      RentalContract[]          @relation("RentalContractTermsDocument")
   rentalContractsAsWithdrawalDocument RentalContract[]          @relation("RentalContractWithdrawalDocument")
   rentalContractsAsPrivacyDocument    RentalContract[]          @relation("RentalContractPrivacyDocument")
+  legalDocumentDeliveryEvidence       LegalDocumentDeliveryEvidence[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -6318,7 +6322,8 @@ model OrganizationLegalDocument {
   createdAt                  DateTime     @default(now()) @map("created_at")
   updatedAt                  DateTime     @updatedAt @map("updated_at")
 
-  events   OrganizationLegalDocumentEvent[]
+  events            OrganizationLegalDocumentEvent[]
+  deliveryEvidence  LegalDocumentDeliveryEvidence[]
   stations OrganizationLegalDocumentStation[]
 
   // Scope-aware ACTIVE uniqueness is enforced via conflict detection at activation
@@ -6391,6 +6396,48 @@ model OrganizationLegalDocumentEvent {
   @@index([legalDocumentId, createdAt], map: "organization_legal_document_events_doc_created_idx")
   @@index([organizationId, legalDocumentId, createdAt], map: "organization_legal_document_events_org_doc_created_idx")
   @@map("organization_legal_document_events")
+}
+
+/// Append-only proof of legal text presentation, delivery, and acknowledgment to customers.
+/// NOT a consent store — marketing/KYC/data-processing consents use separate models.
+/// Rows are created via controlled service methods; completed events are immutable.
+model LegalDocumentDeliveryEvidence {
+  id                  String    @id @default(uuid())
+  organizationId      String    @map("organization_id")
+  bookingId           String    @map("booking_id")
+  customerId          String    @map("customer_id")
+  legalDocumentId     String    @map("legal_document_id")
+  generatedDocumentId String    @map("generated_document_id")
+  documentType        String    @map("document_type")
+  versionLabel        String    @map("version_label")
+  language            String
+  checksum            String?
+  presentedAt         DateTime  @map("presented_at")
+  deliveryChannel     String    @map("delivery_channel")
+  deliveryStatus      String    @map("delivery_status")
+  deliveredAt         DateTime? @map("delivered_at")
+  acknowledgedAt      DateTime? @map("acknowledged_at")
+  acknowledgmentMethod String?  @map("acknowledgment_method")
+  signatureReference  String?   @map("signature_reference")
+  actorUserId         String?   @map("actor_user_id")
+  recipientSnapshot   Json      @map("recipient_snapshot")
+  requestId           String?   @map("request_id")
+  outboundEmailId     String?   @map("outbound_email_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking           Booking                   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer          Customer                  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  legalDocument     OrganizationLegalDocument @relation(fields: [legalDocumentId], references: [id], onDelete: Restrict)
+  generatedDocument GeneratedDocument         @relation(fields: [generatedDocumentId], references: [id], onDelete: Restrict)
+  outboundEmail     OutboundEmail?            @relation(fields: [outboundEmailId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, requestId], map: "legal_document_delivery_evidence_org_request_id_key")
+  @@index([organizationId, bookingId], map: "legal_document_delivery_evidence_org_booking_idx")
+  @@index([organizationId, bookingId, documentType], map: "legal_document_delivery_evidence_org_booking_doc_type_idx")
+  @@index([generatedDocumentId], map: "legal_document_delivery_evidence_generated_document_idx")
+  @@index([outboundEmailId], map: "legal_document_delivery_evidence_outbound_email_idx")
+  @@map("legal_document_delivery_evidence")
 }
 
 /// Checkpointed storage reconciliation runs for legal document integrity audits.
@@ -10122,6 +10169,7 @@ model OutboundEmail {
   events                   OutboundEmailEvent[]
   paymentEmailOutbox       PaymentEmailOutbox[]
   billingEmailSuppressions BillingEmailSuppression[]
+  legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
 
   @@index([organizationId])
   @@index([organizationId, bookingId])
