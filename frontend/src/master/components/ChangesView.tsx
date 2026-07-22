@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-generation-workflow-2026-07-22',
+    version: '4.9.758',
+    title: 'Legal Documents — Idempotent Generation Workflow (Prompt 19/32)',
+    summary: [
+      'BookingDocumentGenerationJob + BullMQ queue booking.document.generation.',
+      'Zustände: PENDING, PROCESSING, SUCCEEDED, FAILED_RETRYABLE, FAILED_FINAL.',
+      'Idempotenter Job pro Booking + Dokumenttyp mit eindeutigem Idempotency Key.',
+      'Retry mit exponentiellem Backoff; Recovery-Scheduler für Neustart/Deployment.',
+      'Booking/Handover-Flows enqueuen statt fire-and-forget; Fehler werden geloggt.',
+      'Manuelle Wiederholung via POST document-generation-jobs/:id/retry.',
+      'Worker validiert Mandant serverseitig; Bundle-Service bleibt idempotent.',
+    ],
+    reason: 'Production-Readiness — beobachtbare, wiederaufnehmbare Dokumentenerzeugung.',
+    previousBehavior: 'void generateInitialBundle().catch(() => {}) ohne durable Job-State.',
+    details:
+      'docs/audits/legal-documents-generation-workflow-2026-07.md, architecture/LEGAL_DOCUMENT_GENERATION_WORKFLOW_2026-07-22.md, booking-document-generation.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T20:30:00.000Z',
+  },
+  {
     id: 'legal-documents-delivery-evidence-2026-07-22',
     version: '4.9.757',
     title: 'Legal Documents — Delivery Evidence Model (Prompt 18/32)',

@@ -54,6 +54,9 @@ export default registerAs('documents', () => ({
   ),
   pdfRenderer: (process.env.DOCUMENT_PDF_RENDERER || 'html').toLowerCase(),
   generationEnabled: (process.env.DOCUMENT_GENERATION_ENABLED || 'true') === 'true',
+  generationQueueEnabled: (process.env.DOCUMENT_GENERATION_QUEUE_ENABLED ?? 'true') === 'true',
+  generationJobMaxAttempts: parsePositiveIntEnv(process.env.DOCUMENT_GENERATION_JOB_MAX_ATTEMPTS, 5),
+  generationJobBackoffMs: parsePositiveIntEnv(process.env.DOCUMENT_GENERATION_JOB_BACKOFF_MS, 5_000),
   maxLegalUploadMb: parsePositiveIntEnv(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB, 15),
   legalPdfValidationTimeoutMs: parsePositiveIntEnv(
     process.env.DOCUMENT_LEGAL_PDF_VALIDATION_TIMEOUT_MS,

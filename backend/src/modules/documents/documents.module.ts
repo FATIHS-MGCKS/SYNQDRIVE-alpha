@@ -22,6 +22,7 @@ import { BookingDocumentBundleMonitoringService } from './booking-document-bundl
 import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
 import { RentalContractLegalSnapshotService } from './rental-contract-legal-snapshot.service';
 import { RentalContractService } from './rental-contract.service';
+import { BookingDocumentGenerationModule } from './booking-document-generation/booking-document-generation.module';
 import { LegalDocumentDeliveryEvidenceService } from './legal-document-delivery-evidence.service';
 import { DocumentNumberingService } from './document-numbering.service';
 import { DocumentRendererService } from './document-renderer.service';
@@ -58,6 +59,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     forwardRef(() => InvoicesModule),
     forwardRef(() => NotificationsModule),
     TasksModule,
+    forwardRef(() => BookingDocumentGenerationModule),
   ],
   controllers: [DocumentsController, LegalDocumentsController, LegalDocumentDeliveryEvidenceController],
   providers: [
@@ -141,6 +143,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
   exports: [
     BookingDocumentBundleService,
     BookingDocumentCompletenessService,
+    BookingDocumentGenerationModule,
     RentalContractService,
     LegalDocumentDeliveryEvidenceService,
     GeneratedDocumentsService,

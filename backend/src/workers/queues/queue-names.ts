@@ -12,6 +12,8 @@ export const QUEUE_NAMES = {
   DRIVING_INTELLIGENCE: 'driving.intelligence.jobs',
   /** AI Document Upload — async text extraction + DIMO agent structuring. */
   DOCUMENT_EXTRACTION: 'document.extraction',
+  /** Booking document lifecycle — async PDF generation with durable workflow state. */
+  BOOKING_DOCUMENT_GENERATION: 'booking.document.generation',
   /** DTC Knowledge Base — async AI enrichment of error codes (generic + vehicle). */
   DTC_KNOWLEDGE_ENRICHMENT: 'dtc.knowledge.enrichment',
   /** Notification evaluation — org-scoped BI + V2 producer sync (debounced/scheduled). */
