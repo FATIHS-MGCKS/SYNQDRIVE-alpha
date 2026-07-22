@@ -30,8 +30,10 @@ import { LegalDocumentListQueryDto } from './dto/legal-document-list-query.dto';
 import { LegalDocumentEventsQueryDto } from './dto/legal-document-events-query.dto';
 import { UpdateLegalDocumentScopeDto } from './dto/legal-document-scope.dto';
 import {
+  LegalDocumentActivateDto,
   LegalDocumentArchiveDto,
   LegalDocumentChangeSummaryDto,
+  LegalDocumentRequestChangesDto,
   LegalDocumentRevokeDto,
   LegalDocumentScheduleDto,
 } from './dto/legal-document-lifecycle.dto';
@@ -128,6 +130,12 @@ export class LegalDocumentsController {
       organizationId: orgId,
       correlationId: (req as Request & { requestId?: string }).requestId ?? null,
     });
+  }
+
+  @Get('settings')
+  @RequireLegalDocumentPermission('legal_documents.view')
+  async getWorkflowSettings(@Param('orgId') orgId: string) {
+    return this.legal.getWorkflowSettings(orgId);
   }
 
   @Post('upload')
@@ -285,6 +293,24 @@ export class LegalDocumentsController {
     return this.legal.getDetail(orgId, doc.id);
   }
 
+  @Post(':id/request-changes')
+  @RequireLegalDocumentPermission('legal_documents.approve')
+  async requestChanges(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: LegalDocumentRequestChangesDto,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    const doc = await this.legal.requestChanges(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      statusReason: body.statusReason,
+      changeSummary: body.changeSummary,
+    });
+    return this.legal.getDetail(orgId, doc.id);
+  }
+
   @Patch(':id/application-scope')
   @RequireLegalDocumentPermission('legal_documents.manage_scope')
   async updateApplicationScope(
@@ -318,11 +344,16 @@ export class LegalDocumentsController {
   async activate(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @Body() body: LegalDocumentActivateDto,
     @CurrentUser('id') userId: string | undefined,
     @CurrentUser('name') userName: string | undefined,
     @Req() req: Request,
   ) {
-    const doc = await this.legal.activate(orgId, id, this.actorFromRequest(req, userId, userName));
+    const doc = await this.legal.activate(orgId, id, {
+      ...this.actorFromRequest(req, userId, userName),
+      statusReason: body.statusReason,
+      changeSummary: body.changeSummary,
+    });
     return this.legal.getDetail(orgId, doc.id);
   }
 

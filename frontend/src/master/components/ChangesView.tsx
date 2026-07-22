@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-lifecycle-dialogs-2026-07-22',
+    version: '4.9.764',
+    title: 'Legal Documents — Lifecycle Dialogs (Prompt 25/32)',
+    summary: [
+      'Getrennte Dialoge für Review, Änderungen, Freigabe, Planung, Aktivierung, Ersetzung, Widerruf, Archivierung.',
+      'Impact-Panel pro Dialog: Versionen, Scope, Buchungsauswirkung, Vier-Augen-Hinweis.',
+      'Versionshistorie mit „Aktionen“-Menü statt Icon-Only-Archivierung; Legacy-Mutations entfernt.',
+      'Backend: request-changes, settings (fourEyes), activate mit Pflicht-Begründung.',
+      '409/403-Konflikte mit Reload; kein optimistischer ACTIVE-Status; Audit-Event nach Erfolg.',
+    ],
+    reason: 'Production-Readiness — verständliche Lifecycle-Workflows mit klarer Auswirkung und Berechtigungen.',
+    previousBehavior: 'Nur direkte Aktivieren/Archivieren-Buttons ohne Bestätigung, Begründung oder Impact.',
+    details:
+      'docs/audits/legal-documents-lifecycle-dialogs-2026-07.md, lifecycle/*, legal-document-lifecycle.*',
+    affectsArchitecture: true,
+    module: 'Frontend / Documents',
+    createdAt: '2026-07-23T01:30:00.000Z',
+  },
+  {
     id: 'legal-documents-upload-wizard-2026-07-22',
     version: '4.9.763',
     title: 'Legal Documents — Upload & Review Wizard (Prompt 24/32)',

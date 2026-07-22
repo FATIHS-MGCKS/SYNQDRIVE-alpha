@@ -1673,6 +1673,8 @@ export interface LegalDocumentDto {
   integrityStatus?: string;
   uploadedAt?: string;
   uploadedBy?: LegalDocumentActorRef | null;
+  submittedForReviewAt?: string | null;
+  submittedForReviewBy?: LegalDocumentActorRef | null;
   approvedAt?: string | null;
   approvedBy?: LegalDocumentActorRef | null;
   activatedAt?: string | null;
@@ -3556,6 +3558,10 @@ export const api = {
   // versioning. Mutations are ORG_ADMIN-gated server-side.
   legalDocuments: {
     list: (orgId: string) => get<LegalDocumentDto[]>(`/organizations/${orgId}/legal-documents`),
+    getSettings: (orgId: string) =>
+      get<{ fourEyesEnabled: boolean }>(`/organizations/${orgId}/legal-documents/settings`),
+    get: (orgId: string, id: string) =>
+      get<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}`),
     listEvents: (orgId: string, params?: { page?: number; limit?: number; legalDocumentId?: string }) => {
       const qs = new URLSearchParams();
       if (params?.page) qs.set('page', String(params.page));
@@ -3566,10 +3572,24 @@ export const api = {
         `/organizations/${orgId}/legal-documents/events${query ? `?${query}` : ''}`,
       );
     },
-    activate: (orgId: string, id: string) =>
-      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, {}),
-    archive: (orgId: string, id: string) =>
-      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, {}),
+    activate: (orgId: string, id: string, body: { statusReason: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, body),
+    approve: (orgId: string, id: string, body?: { changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/approve`, body ?? {}),
+    schedule: (
+      orgId: string,
+      id: string,
+      body: { validFrom: string; changeSummary?: string; statusReason?: string },
+    ) => post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/schedule`, body),
+    requestChanges: (
+      orgId: string,
+      id: string,
+      body: { statusReason: string; changeSummary?: string },
+    ) => post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/request-changes`, body),
+    revoke: (orgId: string, id: string, body: { statusReason: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/revoke`, body),
+    archive: (orgId: string, id: string, body?: { statusReason?: string; changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, body ?? {}),
     open: (orgId: string, id: string) =>
       openAuthedDocument(`/organizations/${orgId}/legal-documents/${id}/download`),
     submitForReview: (orgId: string, id: string, body?: { changeSummary?: string }) =>

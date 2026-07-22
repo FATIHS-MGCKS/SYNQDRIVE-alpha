@@ -646,6 +646,32 @@ export class LegalDocumentsService {
     );
   }
 
+  async requestChanges(
+    orgId: string,
+    id: string,
+    input: LegalDocumentStatusChangeInput = {},
+  ): Promise<OrganizationLegalDocument> {
+    const reason = input.statusReason?.trim();
+    if (!reason) {
+      throw new LegalDocumentValidationError(
+        'statusReason is required when requesting changes',
+        'statusReason',
+      );
+    }
+    const actor = this.resolveActor(input);
+    return this.transitionStatus(
+      orgId,
+      id,
+      LEGAL_STATUS.DRAFT,
+      actor,
+      () => ({
+        statusReason: reason,
+        changeSummary: input.changeSummary?.trim() ?? undefined,
+      }),
+      { reason, changeSummary: input.changeSummary },
+    );
+  }
+
   /** Returns resolvable active legal documents per type (excludes expired / not-yet-valid). */
   async getActiveByType(
     orgId: string,
@@ -737,6 +763,10 @@ export class LegalDocumentsService {
       mimeType: doc.mimeType,
       sizeBytes: doc.sizeBytes,
     };
+  }
+
+  async getWorkflowSettings(orgId: string): Promise<{ fourEyesEnabled: boolean }> {
+    return { fourEyesEnabled: await this.fourEyes.isEnabled(orgId) };
   }
 
   toDto(doc: OrganizationLegalDocument & { stations?: { stationId: string }[] }): LegalDocumentDto {

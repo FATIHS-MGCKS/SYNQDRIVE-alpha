@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type LegalDocumentDto, type LegalDocumentEventDto } from '../../../lib/api';
 import { buildLegalDocumentsReadinessSummary } from '../../lib/legal-documents-overview';
+import type { LegalDocumentWorkflowSettings } from '../../lib/legal-document-lifecycle.types';
 
 export interface UseLegalDocumentsOverviewResult {
   docs: LegalDocumentDto[];
   summary: ReturnType<typeof buildLegalDocumentsReadinessSummary>;
   events: LegalDocumentEventDto[];
+  settings: LegalDocumentWorkflowSettings;
   loading: boolean;
   eventsLoading: boolean;
   error: string | null;
@@ -22,6 +24,8 @@ export function useLegalDocumentsOverview(
   const [loading, setLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<LegalDocumentWorkflowSettings>({ fourEyesEnabled: false });
+
   const [eventsError, setEventsError] = useState<string | null>(null);
 
   const loadEvents = options?.loadEvents ?? false;
@@ -31,8 +35,12 @@ export function useLegalDocumentsOverview(
     setLoading(true);
     setError(null);
     try {
-      const list = await api.legalDocuments.list(orgId);
+      const [list, workflowSettings] = await Promise.all([
+        api.legalDocuments.list(orgId),
+        api.legalDocuments.getSettings(orgId).catch(() => ({ fourEyesEnabled: false })),
+      ]);
       setDocs(Array.isArray(list) ? list : []);
+      setSettings(workflowSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Laden fehlgeschlagen');
     } finally {
@@ -63,6 +71,7 @@ export function useLegalDocumentsOverview(
     docs,
     summary,
     events,
+    settings,
     loading,
     eventsLoading,
     error,
