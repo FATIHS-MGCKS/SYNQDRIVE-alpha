@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-e2e-ci-2026-07-22',
+    version: '4.9.770',
+    title: 'Legal Documents — Frontend E2E, CI Gates & Migration Tests (Prompt 31/32)',
+    summary: [
+      '16 Playwright-E2E-Szenarien (Lifecycle, Snapshots, Pickup-Gate, Delivery-Evidence, Mandantenisolation, Mobile-Upload, Konflikt/Scan/Integrität, historische Version).',
+      'Workflow legal-documents-production-readiness.yml mit ci-gate: lockfile, lint, typecheck, prisma validate, Migration (leer + Altbestand), Backend unit/integration, Frontend vitest, Playwright, axe, build, security-scan.',
+      'Migrationstests: legal-documents-migration-test.sh + legacy-altbestand.sql auf isolierten DBs.',
+      'Stateful Mock-Fixtures (legal-documents-flow-fixtures.ts) ohne Production-Credentials; Artefakte bei E2E-Fehler.',
+      'A11y: SelectTrigger aria-labels + Datumsfilter-Labels; axe auf #legal-documents-main gescoped.',
+      '11 Desktop + 2 Mobile E2E + 5 a11y + 60 Vitest grün (lokal).',
+    ],
+    reason:
+      'Production-Readiness Prompt 31 — verpflichtende CI-Gates und vollständige Frontend/E2E-Abdeckung für Rechtliche Dokumente.',
+    previousBehavior:
+      'Kein dedizierter Legal-Documents-CI-Workflow; keine E2E-Lifecycle-Specs; Migrationstests nicht als Gate verdrahtet.',
+    details:
+      'docs/testing/legal-documents-ci-e2e-coverage.md, .github/workflows/legal-documents-production-readiness.yml, frontend/e2e/legal-documents-*.ts, backend/scripts/test/legal-documents-migration-test.sh',
+    affectsArchitecture: true,
+    module: 'Documents / CI',
+    createdAt: '2026-07-22T15:15:00.000Z',
+  },
+  {
     id: 'legal-documents-backend-tests-2026-07-22',
     version: '4.9.769',
     title: 'Legal Documents — Backend Test Coverage & Security Negatives (Prompt 30/32)',

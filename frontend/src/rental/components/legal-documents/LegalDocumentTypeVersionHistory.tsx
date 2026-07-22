@@ -464,7 +464,7 @@ export function LegalDocumentTypeVersionHistory({
             <div className="space-y-1">
               <Label className="text-[11px]">{t('legalDocuments.history.filter.language')}</Label>
               <Select value={filters.language || '__all'} onValueChange={(v) => applyFilters({ language: v === '__all' ? '' : v })}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9" aria-label={t('legalDocuments.history.filter.language')}>
                   <SelectValue placeholder={t('legalDocuments.history.filter.all')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -480,7 +480,7 @@ export function LegalDocumentTypeVersionHistory({
             <div className="space-y-1">
               <Label className="text-[11px]">{t('legalDocuments.history.filter.status')}</Label>
               <Select value={filters.status || '__all'} onValueChange={(v) => applyFilters({ status: v === '__all' ? '' : v })}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9" aria-label={t('legalDocuments.history.filter.status')}>
                   <SelectValue placeholder={t('legalDocuments.history.filter.all')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -498,7 +498,7 @@ export function LegalDocumentTypeVersionHistory({
                 value={filters.jurisdiction || '__all'}
                 onValueChange={(v) => applyFilters({ jurisdiction: v === '__all' ? '' : v })}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9" aria-label={t('legalDocuments.history.filter.jurisdiction')}>
                   <SelectValue placeholder={t('legalDocuments.history.filter.all')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -512,8 +512,11 @@ export function LegalDocumentTypeVersionHistory({
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">{t('legalDocuments.history.filter.from')}</Label>
+              <Label htmlFor={`legal-filter-from-${config.key}`} className="text-[11px]">
+                {t('legalDocuments.history.filter.from')}
+              </Label>
               <Input
+                id={`legal-filter-from-${config.key}`}
                 type="date"
                 className="h-9"
                 value={filters.from}
@@ -521,8 +524,11 @@ export function LegalDocumentTypeVersionHistory({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">{t('legalDocuments.history.filter.to')}</Label>
+              <Label htmlFor={`legal-filter-to-${config.key}`} className="text-[11px]">
+                {t('legalDocuments.history.filter.to')}
+              </Label>
               <Input
+                id={`legal-filter-to-${config.key}`}
                 type="date"
                 className="h-9"
                 value={filters.to}
