@@ -903,3 +903,131 @@ groups:
           description: BullMQ failed jobs are at least 5 and exceed 2% of the current fleet health row count — inspect queues feeding health/task materialization.
           runbook_url: docs/runbooks/fleet-health-service-readiness.md#fleethealthqueuefailedjobselevated
           clear_condition: failed jobs total below 3 for 30m, or ratio drops below 1% of fleet rows.
+
+  - name: synqdrive_iam
+    rules:
+      - alert: IamAuditOutboxDeadLetter
+        expr: increase(iam_audit_dead_letter_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          owner: iam
+        annotations:
+          summary: IAM audit outbox dead-letter events detected
+          description: At least one IAM audit outbox event moved to dead letter in the last 15 minutes — critical access changes may lack durable audit records.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#audit-outbox-dlq
+          clear_condition: no new dead-letter increments for 30m and backlog processed.
+
+      - alert: IamAuditOutboxRetrySustained
+        expr: increase(iam_audit_outbox_failed_total[30m]) >= 5
+        for: 10m
+        labels:
+          severity: warning
+          owner: iam
+        annotations:
+          summary: IAM audit outbox retries sustained
+          description: IAM audit outbox processing failures are retrying repeatedly — inspect worker health and outbox backlog.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#audit-outbox-dlq
+          clear_condition: retry rate below 1 per 30m for 30m.
+
+      - alert: IamSeedAdminEnabledInProduction
+        expr: iam_seed_admin_enabled == 1
+        for: 1m
+        labels:
+          severity: critical
+          owner: iam
+        annotations:
+          summary: Seed-admin bootstrap endpoint is enabled
+          description: ENABLE_SEED_ADMIN=true — disable immediately in production after bootstrap.
+          runbook_url: docs/runbooks/iam-production-rollout.md#seed-admin
+          clear_condition: iam_seed_admin_enabled == 0 for 5m.
+
+      - alert: IamSessionReuseDetected
+        expr: increase(iam_session_reuse_detected_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          owner: iam
+        annotations:
+          summary: Refresh token reuse detected
+          description: At least one refresh-token reuse was detected and the token family was revoked — possible token theft or client double-refresh bug.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#refresh-reuse
+          clear_condition: no reuse detections for 1h.
+
+      - alert: IamPrivilegedChangesSpike
+        expr: |
+          (
+            increase(iam_role_change_total[1h])
+            + increase(iam_permission_change_total[1h])
+            + increase(iam_membership_lifecycle_total{outcome="success"}[1h])
+          ) > 50
+        for: 15m
+        labels:
+          severity: warning
+          owner: iam
+        annotations:
+          summary: Unusually high IAM privileged change volume
+          description: More than 50 role/permission/membership changes in one hour — verify authorized administrative activity.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#privileged-change-spike
+          clear_condition: combined hourly increase below 20 for 1h.
+
+      - alert: IamOrganizationWithoutAdmin
+        expr: iam_organizations_without_admin_total > 0
+        for: 15m
+        labels:
+          severity: warning
+          owner: iam
+        annotations:
+          summary: Organization without active ORG_ADMIN
+          description: At least one non-archived organization has zero active ORG_ADMIN memberships.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#org-without-admin
+          clear_condition: gauge returns to 0.
+
+      - alert: IamInviteDeliveryFailures
+        expr: increase(iam_invite_delivery_failed_total[30m]) >= 3
+        for: 10m
+        labels:
+          severity: warning
+          owner: iam
+        annotations:
+          summary: Invite email delivery failures sustained
+          description: Three or more invite delivery failures in 30 minutes — check Resend/SMTP and invite outbox.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#invite-delivery
+          clear_condition: no delivery failures for 30m.
+
+      - alert: IamCrossTenantDenialsElevated
+        expr: increase(iam_cross_tenant_denial_total[15m]) >= 10
+        for: 10m
+        labels:
+          severity: warning
+          owner: iam
+        annotations:
+          summary: Elevated cross-tenant access denials
+          description: Ten or more cross-tenant denials in 15 minutes — may indicate IDOR probing or client misconfiguration.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#cross-tenant-denials
+          clear_condition: denial rate below 3 per 15m for 30m.
+
+      - alert: IamAccessReviewOverdue
+        expr: iam_access_review_overdue_total > 0
+        for: 1h
+        labels:
+          severity: info
+          owner: iam
+        annotations:
+          summary: Overdue IAM access review campaigns
+          description: Active access review campaigns are past their due date.
+          runbook_url: docs/runbooks/iam-incident-and-access-revocation.md#access-reviews
+          clear_condition: overdue gauge returns to 0.
+
+      - alert: IamRetentionJobFailures
+        expr: increase(iam_retention_job_failed_total[1h]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          owner: iam
+        annotations:
+          summary: IAM retention job phase failures
+          description: IAM data retention worker reported phase failures — review legal holds and retention config before enabling mutations.
+          runbook_url: docs/runbooks/iam-data-retention-and-user-rights.md
+          clear_condition: no retention failures for 2h.
+

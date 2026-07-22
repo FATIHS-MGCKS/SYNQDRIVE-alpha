@@ -89,6 +89,10 @@ describe('IAM invite secret surface (Prompt 14)', () => {
       enqueueInviteDelivery: jest.fn().mockResolvedValue({ outboxId: 'outbox-1' }),
       processOutboxIds: jest.fn().mockResolvedValue(undefined),
     };
+    const iamAudit = {
+      enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
+      processOutboxIds: jest.fn().mockResolvedValue(undefined),
+    };
     mail = { sendOrganizationInvite: jest.fn().mockResolvedValue({ sent: false, fallback: true }) };
 
     service = new OrganizationInviteService(
@@ -98,7 +102,7 @@ describe('IAM invite secret surface (Prompt 14)', () => {
         resolveRoleForInvite: jest.fn(),
         inviteExpiryDays: 7,
       } as unknown as OrganizationRoleService,
-      { record: jest.fn() } as unknown as UserAccessAuditService,
+      iamAudit as unknown as import('./iam-audit.service').IamAuditService,
       inviteRateLimit as unknown as InviteRateLimitService,
       inviteDelivery as unknown as InviteEmailDeliveryService,
       inviteOutbox as unknown as InviteEmailOutboxRepository,

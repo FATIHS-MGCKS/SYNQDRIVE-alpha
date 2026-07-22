@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import { INVITE_EMAIL_OUTBOX } from './invite-email.constants';
 import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
 import { TransactionalMailService } from './transactional-mail.service';
@@ -14,6 +15,7 @@ export class InviteEmailDeliveryService {
     private readonly prisma: PrismaService,
     private readonly outboxRepo: InviteEmailOutboxRepository,
     private readonly mail: TransactionalMailService,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
 
   async enqueueInviteDelivery(input: {
@@ -84,6 +86,7 @@ export class InviteEmailDeliveryService {
     const errorMessage = 'INVITE_EMAIL_SEND_FAILED';
     if (claimed.attempts >= INVITE_EMAIL_OUTBOX.maxAttempts) {
       await this.outboxRepo.markDeadLetter(claimed.id, errorMessage);
+      this.iamMetrics?.recordInviteDeliveryFailed('smtp');
       return 'dead_letter';
     }
 

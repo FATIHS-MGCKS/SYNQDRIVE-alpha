@@ -1717,14 +1717,14 @@ model User {
   mfaFactors                          UserMfaFactor[]
   mfaRecoveryCodes                    UserMfaRecoveryCode[]
   mfaStepUpGrants                     UserMfaStepUpGrant[]
-  accessReviewCampaignsCreated        AccessReviewCampaign[]        @relation("AccessReviewCampaignsCreated")
-  accessReviewCampaignsAsReviewer     AccessReviewCampaign[]        @relation("AccessReviewReviewer")
-  accessReviewDecisions               AccessReviewDecision[]        @relation("AccessReviewDecisions")
+  accessReviewCampaignsCreated        AccessReviewCampaign[]                  @relation("AccessReviewCampaignsCreated")
+  accessReviewCampaignsAsReviewer     AccessReviewCampaign[]                  @relation("AccessReviewReviewer")
+  accessReviewDecisions               AccessReviewDecision[]                  @relation("AccessReviewDecisions")
   accessReviewItems                   AccessReviewItem[]
-  dsarExportsAsSubject                IamDsarExportLog[]            @relation("DsarSubject")
-  dsarExportsRequested                IamDsarExportLog[]            @relation("DsarRequestedBy")
-  iamLegalHoldsPlaced                 IamLegalHold[]                @relation("IamLegalHoldPlacedBy")
-  iamRetentionPolicyApprovals         IamRetentionPolicyOverride[]  @relation("IamRetentionPolicyApprovedBy")
+  dsarExportsAsSubject                IamDsarExportLog[]                      @relation("DsarSubject")
+  dsarExportsRequested                IamDsarExportLog[]                      @relation("DsarRequestedBy")
+  iamLegalHoldsPlaced                 IamLegalHold[]                          @relation("IamLegalHoldPlacedBy")
+  iamRetentionPolicyApprovals         IamRetentionPolicyOverride[]            @relation("IamRetentionPolicyApprovedBy")
   accountPreferences                  UserAccountPreference[]
   notificationPreferences             UserNotificationPreference[]
   invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
@@ -1907,9 +1907,9 @@ model OrganizationMembership {
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole  OrganizationRole?  @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
   accessReviewItems AccessReviewItem[]
 
   @@unique([userId, organizationId])
@@ -1979,10 +1979,10 @@ model OrganizationUserInvite {
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
 
-  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
-  invitedBy        User              @relation("InvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
-  acceptedBy       User?             @relation("InvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole  OrganizationRole?   @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  invitedBy         User                @relation("InvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy        User?               @relation("InvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
   inviteEmailOutbox InviteEmailOutbox[]
 
   @@index([organizationId, status])
@@ -2095,9 +2095,9 @@ model AccessReviewCampaign {
   createdAt       DateTime                   @default(now()) @map("created_at")
   updatedAt       DateTime                   @updatedAt @map("updated_at")
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  reviewer     User                 @relation("AccessReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: Restrict)
-  createdBy    User                 @relation("AccessReviewCampaignsCreated", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewer     User                   @relation("AccessReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: Restrict)
+  createdBy    User                   @relation("AccessReviewCampaignsCreated", fields: [createdByUserId], references: [id], onDelete: Restrict)
   items        AccessReviewItem[]
   decisions    AccessReviewDecision[]
 
@@ -2131,11 +2131,11 @@ model AccessReviewItem {
   createdAt              DateTime               @default(now()) @map("created_at")
   updatedAt              DateTime               @updatedAt @map("updated_at")
 
-  campaign   AccessReviewCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  membership OrganizationMembership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
-  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  decisions  AccessReviewDecision[]
+  campaign     AccessReviewCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decisions    AccessReviewDecision[]
 
   @@unique([campaignId, membershipId])
   @@index([organizationId, campaignId])
@@ -2144,26 +2144,26 @@ model AccessReviewItem {
 }
 
 model AccessReviewDecision {
-  id                          String                            @id @default(uuid())
-  itemId                      String                            @map("item_id")
-  campaignId                  String                            @map("campaign_id")
-  organizationId              String                            @map("organization_id")
-  reviewerUserId              String                            @map("reviewer_user_id")
+  id                          String                              @id @default(uuid())
+  itemId                      String                              @map("item_id")
+  campaignId                  String                              @map("campaign_id")
+  organizationId              String                              @map("organization_id")
+  reviewerUserId              String                              @map("reviewer_user_id")
   decision                    AccessReviewDecisionType
   reason                      String
-  decidedAt                   DateTime                          @map("decided_at")
+  decidedAt                   DateTime                            @map("decided_at")
   resultApplicationStatus     AccessReviewResultApplicationStatus @default(PENDING) @map("result_application_status")
-  appliedAt                   DateTime?                         @map("applied_at")
-  applicationError            String?                           @map("application_error")
-  modifyPayload               Json?                             @map("modify_payload")
-  idempotencyKey              String                            @unique @map("idempotency_key")
-  membershipVersionAtDecision Int                               @map("membership_version_at_decision")
-  createdAt                   DateTime                          @default(now()) @map("created_at")
+  appliedAt                   DateTime?                           @map("applied_at")
+  applicationError            String?                             @map("application_error")
+  modifyPayload               Json?                               @map("modify_payload")
+  idempotencyKey              String                              @unique @map("idempotency_key")
+  membershipVersionAtDecision Int                                 @map("membership_version_at_decision")
+  createdAt                   DateTime                            @default(now()) @map("created_at")
 
-  item       AccessReviewItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  campaign   AccessReviewCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  reviewer   User                 @relation("AccessReviewDecisions", fields: [reviewerUserId], references: [id], onDelete: Restrict)
+  item         AccessReviewItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  campaign     AccessReviewCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewer     User                 @relation("AccessReviewDecisions", fields: [reviewerUserId], references: [id], onDelete: Restrict)
 
   @@index([campaignId])
   @@index([organizationId])

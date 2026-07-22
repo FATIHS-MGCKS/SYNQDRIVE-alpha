@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import * as crypto from 'crypto';
@@ -8,6 +8,7 @@ import {
   AuthSessionClaims,
   buildPasswordOnlyClaims,
 } from '@shared/auth/auth-session-claims.types';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
 const REFRESH_TOKEN_BYTES = 40;
 const REFRESH_TOKEN_TTL_DAYS = 30;
@@ -22,6 +23,7 @@ export class RefreshTokenService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {
     this.jwtSecret = this.config.get<string>('app.jwtSecret')!;
     this.jwtExpiresIn = this.config.get<string>('app.jwtExpiresIn', '15m');
@@ -100,6 +102,7 @@ export class RefreshTokenService {
         this.logger.warn(
           `Refresh token reuse detected for user ${stored.userId}, family ${stored.family}. Revoking entire family.`,
         );
+        this.iamMetrics?.recordSessionReuseDetected();
         await this.revokeFamily(stored.family);
       }
       throw new UnauthorizedException('Refresh token is no longer valid');
@@ -130,6 +133,7 @@ export class RefreshTokenService {
       undefined,
       sessionClaims,
     );
+    this.iamMetrics?.recordSessionCreated('refresh');
 
     // Mark old token as revoked/replaced
     await this.prisma.refreshToken.update({
@@ -150,20 +154,26 @@ export class RefreshTokenService {
   /** Revoke a single refresh token (logout from one device). */
   async revoke(rawToken: string): Promise<void> {
     const tokenHash = await this.hashToken(rawToken);
-    await this.prisma.refreshToken
+    const result = await this.prisma.refreshToken
       .updateMany({
         where: { tokenHash, revokedAt: null },
         data: { revokedAt: new Date() },
       })
-      .catch(() => undefined);
+      .catch(() => ({ count: 0 }));
+    if (result.count > 0) {
+      this.iamMetrics?.recordSessionRevoked('single');
+    }
   }
 
   /** Revoke all refresh tokens for a user (logout from all devices). */
   async revokeAllForUser(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
+    const result = await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (result.count > 0) {
+      this.iamMetrics?.recordSessionRevoked('all');
+    }
   }
 
   /** List refresh-token sessions for account self-service (metadata only). */
@@ -241,6 +251,7 @@ export class RefreshTokenService {
   ): Promise<string> {
     const family = crypto.randomUUID();
     const result = await this.issueTokenPairWithFamily(null, null, family, context, userId);
+    this.iamMetrics?.recordSessionCreated('login');
     return result.rawRefreshToken;
   }
 
@@ -276,10 +287,13 @@ export class RefreshTokenService {
   }
 
   private async revokeFamily(family: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
+    const result = await this.prisma.refreshToken.updateMany({
       where: { family, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (result.count > 0) {
+      this.iamMetrics?.recordSessionRevoked('family');
+    }
   }
 
   private signAccessToken(

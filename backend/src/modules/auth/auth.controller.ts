@@ -18,6 +18,7 @@ import { LoginDto, RefreshTokenDto, LogoutDto } from '@shared/dto/auth.dto';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
 @Controller('auth')
 export class AuthController {
@@ -29,6 +30,7 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly audit: AuditService,
+    private readonly iamMetrics: IamMetricsService,
   ) {
     // JWT_SECRET is validated at startup by app.config.ts; reading it here is safe
     this.jwtSecret = this.configService.get<string>('app.jwtSecret')!;
@@ -42,6 +44,7 @@ export class AuthController {
   async login(@Body() body: LoginDto, @Req() req: any) {
     const { email, password } = body;
     if (!email || !password) {
+      this.iamMetrics.recordLoginFailure('missing_credentials');
       throw new UnauthorizedException('Email and password are required');
     }
 
@@ -65,6 +68,7 @@ export class AuthController {
     };
 
     if (!user) {
+      this.iamMetrics.recordLoginFailure('unknown_email');
       void this.audit.warn({
         ...auditBase,
         action: ActivityAction.AUTH_FAIL,
@@ -75,6 +79,7 @@ export class AuthController {
     }
 
     if (user.status !== 'ACTIVE') {
+      this.iamMetrics.recordLoginFailure('inactive_account');
       void this.audit.warn({
         ...auditBase,
         actorUserId: user.id,
@@ -87,11 +92,13 @@ export class AuthController {
     }
 
     if (!user.passwordHash) {
+      this.iamMetrics.recordLoginFailure('invalid_password');
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
     if (!passwordValid) {
+      this.iamMetrics.recordLoginFailure('invalid_password');
       void this.audit.warn({
         ...auditBase,
         actorUserId: user.id,
@@ -148,6 +155,7 @@ export class AuthController {
       },
     );
 
+    this.iamMetrics.recordLoginSuccess();
     void this.audit.record({
       ...auditBase,
       actorUserId: user.id,

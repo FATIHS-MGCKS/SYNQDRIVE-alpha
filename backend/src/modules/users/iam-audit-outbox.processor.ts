@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { IamAuditOutboxStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { UserAccessAuditService, UserAccessAuditActionCode } from './user-access-audit.service';
 import { IamAuditOutboxRepository } from './iam-audit-outbox.repository';
 import { IAM_AUDIT_OUTBOX } from './iam-audit.constants';
 import { IamAuditOutboxMetricsService } from './iam-audit-outbox.metrics';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import { scanIamAuditPayloadForSecrets } from './iam-audit-sanitize.util';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class IamAuditOutboxProcessorService {
     private readonly outboxRepo: IamAuditOutboxRepository,
     private readonly userAudit: UserAccessAuditService,
     private readonly metrics: IamAuditOutboxMetricsService,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
 
   async processOutboxId(
@@ -80,6 +82,7 @@ export class IamAuditOutboxProcessorService {
       if (claimed.attempts >= IAM_AUDIT_OUTBOX.maxAttempts) {
         await this.outboxRepo.markDeadLetter(claimed.id, message);
         this.metrics.record('dead_letter', claimed.eventType);
+        this.iamMetrics?.recordAuditDeadLetter(claimed.eventType);
         this.logger.error(`iam audit outbox dead-letter id=${claimed.id}: ${message}`);
         return 'dead_letter';
       }
@@ -90,6 +93,7 @@ export class IamAuditOutboxProcessorService {
       );
       await this.outboxRepo.markRetry(claimed.id, message, retryAt);
       this.metrics.record('retry', claimed.eventType);
+      this.iamMetrics?.recordAuditOutboxFailed(claimed.eventType);
       this.logger.warn(
         `iam audit outbox retry id=${claimed.id} attempts=${claimed.attempts} next=${retryAt.toISOString()}`,
       );

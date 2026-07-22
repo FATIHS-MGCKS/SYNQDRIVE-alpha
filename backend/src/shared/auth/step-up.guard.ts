@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { STEP_UP_METADATA_KEY } from '@shared/decorators/require-step-up.decorator';
@@ -15,12 +16,14 @@ import {
 import { resolveIamMfaEffectiveFeatureFlags } from '@modules/iam-mfa/iam-mfa-feature-flags.resolver';
 import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
 import { AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
 @Injectable()
 export class StepUpGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly stepUp: IamMfaStepUpService,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -58,6 +61,7 @@ export class StepUpGuard implements CanActivate {
     if (headerToken) {
       const valid = await this.stepUp.validateGrant(user.id, headerToken, action);
       if (valid) return true;
+      this.iamMetrics?.recordStepUpDenied('invalid');
       throw new ForbiddenException({
         code: MFA_ERROR.STEP_UP_EXPIRED,
         message: 'Step-up authentication expired or invalid',
@@ -65,6 +69,7 @@ export class StepUpGuard implements CanActivate {
       });
     }
 
+    this.iamMetrics?.recordStepUpDenied('required');
     throw new ForbiddenException({
       code: MFA_ERROR.STEP_UP_REQUIRED,
       message: 'Fresh MFA step-up required for this action',

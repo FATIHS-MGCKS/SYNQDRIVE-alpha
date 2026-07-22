@@ -4,6 +4,7 @@ import {
   Injectable,
   ForbiddenException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -16,6 +17,7 @@ import {
   normalizeMembershipPermissions,
   resolvePermissionOrgId,
 } from './permission.util';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
 /**
  * Permission-based authorization using `OrganizationMembership.permissions` JSON.
@@ -36,6 +38,7 @@ export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -82,6 +85,7 @@ export class PermissionsGuard implements CanActivate {
       this.logger.warn(
         `PermissionsGuard: user ${user.id} missing ${required.module}.${required.level} in org ${orgId}`,
       );
+      this.iamMetrics?.recordEffectiveAccessDenied(required.module, required.level);
       throw new ForbiddenException(
         `Missing permission: ${required.module}.${required.level}`,
       );

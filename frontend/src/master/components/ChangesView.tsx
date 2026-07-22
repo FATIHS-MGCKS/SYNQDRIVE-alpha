@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-production-readiness-rc-v49724-2026-07-22',
+    version: '4.9.724',
+    title: 'V4.9.724 — IAM production readiness RC observability and final gate (Prompt 22)',
+    summary: [
+      'Prometheus IAM metrics (19 counters/gauges) without high-cardinality IDs.',
+      'Prometheus alerts: audit DLQ, seed admin, refresh reuse, privileged spikes, cross-tenant denials.',
+      'Production rollout and incident/access-revocation runbooks.',
+      'Post-remediation readiness audit — CONDITIONALLY_READY (staging path).',
+    ],
+    reason:
+      'Final RC verification gate for 22-prompt IAM remediation: observability, runbooks, honest production verdict.',
+    previousBehavior:
+      'IAM modules lacked unified Prometheus metrics and production rollout/incident runbooks; no consolidated RC audit document.',
+    details:
+      'IamObservabilityModule, alerts in monitoring/prometheus/alerts.yml, docs/implementation + docs/audits final reports. Prompts 1–13 integration remains pre-production gate.',
+    affectsArchitecture: true,
+    module: 'Access Control Center',
+    createdAt: '2026-07-22T11:00:00.000Z',
+  },
+  {
     id: 'iam-users-roles-redesign-v49723-2026-07-21',
     version: '4.9.723',
     title: 'V4.9.723 — IAM users & roles redesign around effective access (Prompt 21)',

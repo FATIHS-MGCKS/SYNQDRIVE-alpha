@@ -5,8 +5,10 @@ import {
   ForbiddenException,
   NotFoundException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
 /**
  * OrgScopingGuard — centralized multi-tenant enforcement for org-scoped routes.
@@ -27,7 +29,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 export class OrgScopingGuard implements CanActivate {
   private readonly logger = new Logger(OrgScopingGuard.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -55,6 +60,7 @@ export class OrgScopingGuard implements CanActivate {
       this.logger.warn(
         `OrgScopingGuard: user ${user.id} tried to access org ${orgId} but JWT claims org ${user.organizationId}`,
       );
+      this.iamMetrics?.recordCrossTenantDenial('org_scoping');
       throw new ForbiddenException('You do not have access to this organization');
     }
 
@@ -72,6 +78,7 @@ export class OrgScopingGuard implements CanActivate {
       this.logger.warn(
         `OrgScopingGuard: no active membership for user ${user.id} in org ${orgId}`,
       );
+      this.iamMetrics?.recordCrossTenantDenial('membership');
       throw new ForbiddenException('You do not have access to this organization');
     }
 

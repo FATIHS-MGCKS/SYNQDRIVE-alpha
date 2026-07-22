@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   ActivityAction,
@@ -20,6 +20,7 @@ import {
 } from './iam-data-retention.policy';
 import { IAM_DATA_CATEGORY_DEFINITIONS } from './iam-data-retention.contract';
 import { IamDataRetentionMetricsService } from './iam-data-retention.metrics';
+import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 
 export interface IamRetentionPhaseResult {
   category: IamDataCategory;
@@ -66,6 +67,7 @@ export class IamDataRetentionWorkerService implements OnModuleInit {
     private readonly metrics: IamDataRetentionMetricsService,
     @Inject(iamDataRetentionConfig.KEY)
     private readonly config: ConfigType<typeof iamDataRetentionConfig>,
+    @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
 
   async run(options: IamRetentionRunOptions = {}): Promise<IamRetentionRunResult> {
@@ -169,6 +171,7 @@ export class IamDataRetentionWorkerService implements OnModuleInit {
           await this.logRun(phase, trigger, organizationId);
           if (phase.errorMessage) {
             this.metrics.record('phase_failed', phase.category);
+            this.iamMetrics?.recordRetentionJobFailed(phase.category);
           } else {
             this.metrics.record('phase_completed', phase.category);
           }
