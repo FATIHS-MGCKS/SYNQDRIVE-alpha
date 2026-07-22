@@ -47,6 +47,7 @@ import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
+import { BookingLegalDocumentEmailService } from '@modules/outbound-email/booking-legal-document-email.service';
 import type { Station } from '@prisma/client';
 import {
   DEFAULT_TARIFF_TIMEZONE,
@@ -92,6 +93,8 @@ export class BookingsService {
     private readonly generatedDocumentsService: GeneratedDocumentsService,
     @Inject(forwardRef(() => BookingDocumentEmailService))
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
+    @Inject(forwardRef(() => BookingLegalDocumentEmailService))
+    private readonly bookingLegalDocumentEmailService: BookingLegalDocumentEmailService,
     // V4.8.3 Task Action Layer — materializes booking lifecycle tasks
     // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
     // never blocks/breaks booking writes.
@@ -314,7 +317,7 @@ export class BookingsService {
         .enqueueInitialBundle(orgId, booking.id, options?.userId ?? null)
         .then(() => {
           if (booking.status === 'CONFIRMED') {
-            return this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
+            return this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(
               orgId,
               booking.id,
               options?.userId ?? null,
@@ -1787,7 +1790,7 @@ export class BookingsService {
       void this.bookingDocumentGenerationDispatcher
         .enqueueInitialBundle(orgId, id, null)
         .then(() =>
-          this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(orgId, id, null),
+          this.bookingLegalDocumentEmailService.maybeAutoSendFrozenBookingDocuments(orgId, id, null),
         )
         .catch((err) => {
           this.logger.error(

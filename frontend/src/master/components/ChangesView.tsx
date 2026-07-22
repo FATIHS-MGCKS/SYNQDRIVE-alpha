@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-email-delivery-2026-07-22',
+    version: '4.9.760',
+    title: 'Legal Documents — Email Delivery Integration (Prompt 21/32)',
+    summary: [
+      'BookingLegalDocumentEmailService sendet eingefrorene Bundle-GeneratedDocuments per E-Mail.',
+      'Kein Anhang der aktuellen Master-Rechtstextversion — nur objectKey des Snapshots.',
+      'LegalDocumentDeliveryEvidence wird pro Rechtstext-Anhang bei Versand erzeugt.',
+      'sendIdempotencyKey verhindert doppelte E-Mails bei Retry/Button-Doppelklick.',
+      'Resend-Webhook aktualisiert Zustellstatus in Evidence-Kette.',
+      'POST legal-documents/send-email + Retry-Endpunkt; Auto-Send nutzt Frozen Bundle.',
+    ],
+    reason: 'Production-Readiness — nachweisbarer E-Mail-Versand eingefrorener Rechtstexte.',
+    previousBehavior: 'Generischer documentIds-Send ohne Bundle-Pointer-Validierung und ohne Evidence.',
+    details:
+      'docs/audits/legal-documents-email-delivery-2026-07.md, architecture/LEGAL_DOCUMENT_EMAIL_DELIVERY_2026-07-22.md, booking-legal-document-email.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Outbound Email / Documents',
+    createdAt: '2026-07-22T22:30:00.000Z',
+  },
+  {
     id: 'legal-documents-pickup-gate-2026-07-22',
     version: '4.9.759',
     title: 'Legal Documents — Server-Side Pickup Gate (Prompt 20/32)',

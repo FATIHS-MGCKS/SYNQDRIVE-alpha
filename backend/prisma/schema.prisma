@@ -10215,6 +10215,7 @@ model OutboundEmail {
   errorCode                   String?                 @map("error_code")
   errorMessage                String?                 @map("error_message")
   sentByUserId                String?                 @map("sent_by_user_id")
+  sendIdempotencyKey          String?                 @map("send_idempotency_key")
   sentAt                      DateTime?               @map("sent_at")
   createdAt                   DateTime                @default(now()) @map("created_at")
   updatedAt                   DateTime                @updatedAt @map("updated_at")
@@ -10244,6 +10245,7 @@ model OutboundEmail {
   @@index([bookingPaymentRequestId])
   @@index([status])
   @@index([createdAt])
+  @@unique([organizationId, sendIdempotencyKey], map: "outbound_emails_org_send_idempotency_key")
   @@map("outbound_emails")
 }
 

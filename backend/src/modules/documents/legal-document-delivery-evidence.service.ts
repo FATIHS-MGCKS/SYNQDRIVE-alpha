@@ -216,6 +216,63 @@ export class LegalDocumentDeliveryEvidenceService {
     return rows.map(toLegalDocumentDeliveryEvidenceDto);
   }
 
+  /**
+   * Propagate Resend/outbound email webhook events to linked delivery evidence rows.
+   * Idempotent — terminal evidence rows and duplicate transitions are skipped.
+   */
+  async applyOutboundEmailWebhookUpdate(
+    organizationId: string,
+    outboundEmailId: string,
+    eventType: string,
+  ): Promise<number> {
+    const mapped = this.mapOutboundEventToDeliveryStatus(eventType);
+    if (!mapped) return 0;
+
+    const rows = await this.prisma.legalDocumentDeliveryEvidence.findMany({
+      where: { organizationId, outboundEmailId },
+    });
+
+    let updated = 0;
+    for (const row of rows) {
+      if (this.isImmutable(row)) continue;
+      if (!this.canTransition(row.deliveryStatus as LegalDeliveryStatus, mapped)) continue;
+      if (row.deliveryStatus === mapped) continue;
+      try {
+        await this.updateDeliveryStatus(
+          {
+            organizationId,
+            evidenceId: row.id,
+            deliveryStatus: mapped,
+            outboundEmailId,
+          },
+          { userId: null },
+        );
+        updated += 1;
+      } catch {
+        // Skip immutable / invalid transition races
+      }
+    }
+    return updated;
+  }
+
+  private mapOutboundEventToDeliveryStatus(
+    eventType: string,
+  ): LegalDeliveryStatus | null {
+    switch (eventType) {
+      case 'DELIVERED':
+        return LEGAL_DELIVERY_STATUS.DELIVERED;
+      case 'BOUNCED':
+      case 'COMPLAINED':
+        return LEGAL_DELIVERY_STATUS.BOUNCED;
+      case 'OPENED':
+        return LEGAL_DELIVERY_STATUS.OPENED;
+      case 'FAILED':
+        return LEGAL_DELIVERY_STATUS.FAILED;
+      default:
+        return null;
+    }
+  }
+
   isImmutable(evidence: Pick<LegalDocumentDeliveryEvidence, 'acknowledgedAt' | 'deliveryStatus'>): boolean {
     if (evidence.acknowledgedAt) return true;
     return LEGAL_DELIVERY_TERMINAL_STATUSES.has(evidence.deliveryStatus as LegalDeliveryStatus);

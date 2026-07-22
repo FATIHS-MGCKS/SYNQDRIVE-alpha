@@ -3,14 +3,16 @@ import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { LegalDocumentDeliveryEvidenceService } from '@modules/documents/legal-document-delivery-evidence.service';
 import { ResendWebhookService } from './resend-webhook.service';
 import { OutboundEmailService } from './outbound-email.service';
 
 describe('ResendWebhookService', () => {
   let service: ResendWebhookService;
-  const outboundEmail = { applyWebhookEvent: jest.fn() };
+  const outboundEmail = { applyWebhookEvent: jest.fn().mockResolvedValue('mail-1') };
+  const deliveryEvidence = { applyOutboundEmailWebhookUpdate: jest.fn() };
   const prisma = {
-    outboundEmail: { findUnique: jest.fn() },
+    outboundEmail: { findUnique: jest.fn().mockResolvedValue({ organizationId: 'org-1' }) },
     billingEmailSuppression: { upsert: jest.fn() },
   };
 
@@ -20,6 +22,7 @@ describe('ResendWebhookService', () => {
       providers: [
         ResendWebhookService,
         { provide: OutboundEmailService, useValue: outboundEmail },
+        { provide: LegalDocumentDeliveryEvidenceService, useValue: deliveryEvidence },
         {
           provide: ConfigService,
           useValue: { get: jest.fn(() => 'whsec_' + Buffer.from('test-secret').toString('base64')) },
@@ -49,6 +52,11 @@ describe('ResendWebhookService', () => {
     );
 
     expect(outboundEmail.applyWebhookEvent).toHaveBeenCalled();
+    expect(deliveryEvidence.applyOutboundEmailWebhookUpdate).toHaveBeenCalledWith(
+      'org-1',
+      'mail-1',
+      expect.any(String),
+    );
   });
 
   it('rejects invalid Svix signature', async () => {
@@ -70,6 +78,7 @@ describe('ResendWebhookService', () => {
         providers: [
           ResendWebhookService,
           { provide: OutboundEmailService, useValue: outboundEmail },
+          { provide: LegalDocumentDeliveryEvidenceService, useValue: deliveryEvidence },
           { provide: ConfigService, useValue: { get: jest.fn(() => '') } },
           { provide: PrismaService, useValue: prisma },
         ],
