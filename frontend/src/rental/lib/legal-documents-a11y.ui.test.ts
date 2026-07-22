@@ -39,6 +39,8 @@ describe('legal documents a11y quality audit', () => {
     );
     expect(source).toContain('DropdownMenu');
     expect(source).toContain('aria-label=');
+    expect(source).toContain('ariaSort:');
+    expect(source).toContain('aria-busy={loading}');
     expect(source).toContain('md:hidden');
     expect(source).toContain('hidden md:block');
   });

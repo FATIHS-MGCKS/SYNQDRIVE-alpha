@@ -81,11 +81,15 @@ function SortButton({
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1 font-semibold hover:text-foreground"
+      className="inline-flex items-center gap-1 rounded font-semibold hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)] focus-visible:ring-offset-1 motion-reduce:transition-none"
       onClick={onClick}
     >
       {label}
-      {active ? <span className="text-[10px] text-muted-foreground">{order === 'asc' ? '↑' : '↓'}</span> : null}
+      {active ? (
+        <span className="text-[10px] text-muted-foreground" aria-hidden="true">
+          {order === 'asc' ? '↑' : '↓'}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -309,9 +313,13 @@ export function LegalDocumentTypeVersionHistory({
 
   const documentById = new Map(documents.map((doc) => [doc.id, doc]));
 
+  const sortAria = (field: typeof sort) =>
+    sort === field ? (order === 'asc' ? ('ascending' as const) : ('descending' as const)) : ('none' as const);
+
   const columns: DataTableColumn<LegalDocumentVersionHistoryItem>[] = [
     {
       key: 'version',
+      ariaSort: sortAria('versionLabel'),
       header: (
         <SortButton
           label={t('legalDocuments.history.column.version')}
@@ -342,6 +350,7 @@ export function LegalDocumentTypeVersionHistory({
     },
     {
       key: 'status',
+      ariaSort: sortAria('status'),
       header: (
         <SortButton
           label={t('legalDocuments.history.column.status')}
@@ -373,6 +382,7 @@ export function LegalDocumentTypeVersionHistory({
     },
     {
       key: 'activated',
+      ariaSort: sortAria('activatedAt'),
       header: (
         <SortButton
           label={t('legalDocuments.history.column.activated')}
@@ -443,6 +453,7 @@ export function LegalDocumentTypeVersionHistory({
       className="space-y-3"
       data-testid={`legal-version-history-${config.key}`}
       id={`legal-version-history-${config.key}`}
+      aria-busy={loading}
     >
       <SectionHeader
         title={t(config.titleKey)}

@@ -29,7 +29,8 @@ WCAG-oriented accessibility for **Verwaltung → Administration tab bar** and **
 ### Kunden-Rechtstexte
 - `LegalDocumentsTab` — `<section aria-labelledby>` + Hauptüberschrift-ID
 - `DataCard` — interaktive Karten als `role="button"` mit Enter/Space
-- `LegalDocumentTypeVersionHistory` — Radix `DropdownMenu`, `aria-label` auf Icon-Buttons
+- `DataTable` — optional `ariaSort` auf `<th scope="col">` für sortierbare Spalten
+- `LegalDocumentTypeVersionHistory` — Radix `DropdownMenu`, `aria-label` auf Icon-Buttons, `aria-sort` auf Spaltenköpfen, `aria-busy` beim Laden
 - `legal-form-a11y` — `FormErrorSummary`, `aria-describedby` auf Feldern, `LiveStatusMessage` für Upload
 - Lifecycle-Dialog — Error Summary + Feld-Aria
 - Detail-Drawer — PDF-iframe `tabIndex={0}`, beschreibender `title`
@@ -39,7 +40,6 @@ WCAG-oriented accessibility for **Verwaltung → Administration tab bar** and **
 | Thema | Einschränkung |
 |-------|----------------|
 | PDF-Inhalt | Eingebettete PDF-Reader-Barrierefreiheit hängt vom Browser-Plugin ab; nur Container ist fokussierbar |
-| Sortier-Buttons | Tabellen-Header-Sortierung per Klick; keine separate `aria-sort`-Deklaration (Enhancement) |
 | Vollständige i18n | Einige SR-only-Strings noch Deutsch-hardcoded (Administrationskontext DE) |
 | Axe E2E | Mock-API-Setup deckt nicht alle Unterdialoge ab; manuelle Prüfung für komplexe Lifecycle-Flows empfohlen |
 
@@ -86,7 +86,7 @@ cd frontend && npx playwright test -c e2e/playwright.config.ts legal-documents-a
 ```
 frontend: useRovingTablist.test.ts — 2 passed
 frontend: administration-a11y.ui.test.tsx — 2 passed
-frontend: legal-documents-a11y.ui.test.ts — 6 passed
+frontend: legal-documents-a11y.ui.test.ts — 6 passed (inkl. aria-sort, aria-busy)
 ```
 
 Playwright/Axe: `e2e/legal-documents-a11y.spec.ts` (requires dev server on :5173).
