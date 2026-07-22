@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-application-scope-2026-07-22',
+    version: '4.9.746',
+    title: 'Legal Documents — Application Scope (Prompt 7/32)',
+    summary: [
+      'Expliziter Anwendungsbereich: language, jurisdictionCountry, customerSegment, bookingChannel, productScope, stationScopeMode, priority, isMandatory, noticePurpose, validFrom/validUntil.',
+      'Normalisierte Station-Relation `OrganizationLegalDocumentStation`; keine JSON-Freitext-Matching.',
+      'Konflikterkennung bei überlappenden Scopes gleicher Priorität; kein stilles findFirst.',
+      'Migration mit Legacy-Defaults (DE/BOTH/ALL/ORGANIZATION_WIDE); Single-ACTIVE-Index entfernt.',
+      'API: scope auf Upload + `PATCH …/application-scope`; DTO-Validierung (ISO-Sprach-/Ländercodes).',
+    ],
+    reason: 'Production-Readiness — fachlicher Anwendungsbereich vor Resolver (Prompt 8).',
+    previousBehavior: 'Nur language + validFrom/validUntil; ein ACTIVE pro (org, type, language); keine Segment-/Kanal-/Stations-Scopes.',
+    details:
+      'docs/audits/legal-documents-application-scope-2026-07.md, architecture/LEGAL_DOCUMENT_APPLICATION_SCOPE_2026-07-22.md, legal-document-scope.*.spec.ts',
+    affectsArchitecture: true,
+    module: 'Booking Documents',
+    createdAt: '2026-07-22T11:50:00.000Z',
+  },
+  {
     id: 'legal-documents-consumer-information-2026-07-22',
     version: '4.9.745',
     title: 'Legal Documents — Consumer Information (Prompt 6/32)',

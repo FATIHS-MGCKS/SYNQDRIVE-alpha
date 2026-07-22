@@ -5,6 +5,7 @@ import {
   Get,
   Header,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -96,6 +97,17 @@ export class LegalDocumentsController {
       changeSummary?: string;
       legalOwnerName?: string;
       legalVariant?: string;
+      jurisdictionCountry?: string;
+      customerSegment?: string;
+      bookingChannel?: string;
+      productScope?: string;
+      stationScopeMode?: string;
+      stationIds?: string;
+      priority?: string;
+      isMandatory?: string;
+      noticePurpose?: string;
+      validFrom?: string;
+      validUntil?: string;
     },
     @CurrentUser('id') userId: string | undefined,
     @CurrentUser('name') userName: string | undefined,
@@ -104,6 +116,9 @@ export class LegalDocumentsController {
     if (!file) throw new BadRequestException('file is required');
     if (!body.documentType) throw new BadRequestException('documentType is required');
     if (!body.versionLabel) throw new BadRequestException('versionLabel is required');
+    const stationIds = body.stationIds
+      ? body.stationIds.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined;
     const doc = await this.legal.upload({
       organizationId: orgId,
       documentType: body.documentType,
@@ -117,6 +132,20 @@ export class LegalDocumentsController {
       changeSummary: body.changeSummary ?? null,
       legalOwnerName: body.legalOwnerName ?? null,
       legalVariant: body.legalVariant ?? null,
+      applicationScope: {
+        language: body.language,
+        jurisdictionCountry: body.jurisdictionCountry,
+        customerSegment: body.customerSegment,
+        bookingChannel: body.bookingChannel,
+        productScope: body.productScope,
+        stationScopeMode: body.stationScopeMode,
+        stationIds,
+        priority: body.priority != null ? Number(body.priority) : undefined,
+        isMandatory: body.isMandatory != null ? body.isMandatory === 'true' : undefined,
+        noticePurpose: body.noticePurpose,
+        validFrom: body.validFrom,
+        validUntil: body.validUntil,
+      },
       actor: this.actorFromRequest(req, userId, userName),
     });
     return this.legal.toDto(doc);
@@ -192,6 +221,35 @@ export class LegalDocumentsController {
         validFrom,
         ...this.actorFromRequest(req, userId, userName),
         changeSummary: body.changeSummary,
+      }),
+    );
+  }
+
+  @Patch(':id/application-scope')
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  async updateApplicationScope(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('name') userName: string | undefined,
+    @Req() req: Request,
+  ) {
+    return this.legal.toDto(
+      await this.legal.updateApplicationScope(orgId, id, {
+        language: body.language as string | undefined,
+        jurisdictionCountry: body.jurisdictionCountry as string | undefined,
+        customerSegment: body.customerSegment as string | undefined,
+        bookingChannel: body.bookingChannel as string | undefined,
+        productScope: body.productScope as string | undefined,
+        stationScopeMode: body.stationScopeMode as string | undefined,
+        stationIds: body.stationIds as string[] | undefined,
+        priority: body.priority != null ? Number(body.priority) : undefined,
+        isMandatory: body.isMandatory as boolean | undefined,
+        noticePurpose: body.noticePurpose as string | undefined,
+        validFrom: body.validFrom as string | undefined,
+        validUntil: body.validUntil as string | undefined,
+        actor: this.actorFromRequest(req, userId, userName),
       }),
     );
   }

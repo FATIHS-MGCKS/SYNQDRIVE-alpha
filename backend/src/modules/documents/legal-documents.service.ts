@@ -40,6 +40,22 @@ import {
   isLegalStatusTransitionAllowed,
 } from './legal-document-lifecycle.transitions';
 import {
+  deriveNoticePurpose,
+} from './legal-document-scope.constants';
+import {
+  LegalScopeValidationError,
+  validateLegalScopeInput,
+  type RawLegalScopeInput,
+} from './legal-document-scope.validation';
+import { LegalDocumentScopeService } from './legal-document-scope.service';
+import {
+  scopeToDto,
+  toLegalDocumentScopeShape,
+  type LegalDocumentApplicationScopeDto,
+  type LegalDocumentWithStations,
+} from './legal-document-scope.util';
+import { scopeFingerprint } from './legal-document-scope.conflicts';
+import {
   LegalDocumentActorContext,
   LegalDocumentEventsService,
 } from './legal-document-events.service';
@@ -57,6 +73,11 @@ export interface UploadLegalDocumentInput {
   legalOwnerName?: string | null;
   changeSummary?: string | null;
   legalVariant?: string | null;
+  actor?: LegalDocumentActorContext;
+  applicationScope?: RawLegalScopeInput;
+}
+
+export interface UpdateLegalDocumentApplicationScopeInput extends RawLegalScopeInput {
   actor?: LegalDocumentActorContext;
 }
 
@@ -96,6 +117,7 @@ export interface LegalDocumentDto {
   legalOwnerName: string | null;
   changeSummary: string | null;
   statusReason: string | null;
+  applicationScope: LegalDocumentApplicationScopeDto;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,7 +127,8 @@ type Tx = Prisma.TransactionClient;
 /**
  * Legal texts (AGB, consumer information, privacy) are uploaded and versioned by
  * the rental company — SynqDrive does not generate binding legal content.
- * Exactly one ACTIVE document is allowed per (organization, documentType, language).
+ * Exactly one ACTIVE document per identical application-scope fingerprint is expected;
+ * overlapping scopes with the same priority are rejected at activation (Prompt 7/32).
  */
 @Injectable()
 export class LegalDocumentsService {
@@ -114,6 +137,7 @@ export class LegalDocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: LegalDocumentEventsService,
+    private readonly scope: LegalDocumentScopeService,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
   ) {}
 
@@ -143,9 +167,37 @@ export class LegalDocumentsService {
       }
     }
 
-    const language = (input.language || 'de').toLowerCase();
+
     const mimeType = normalizeLegalPdfMimeType(input.mimeType, input.fileName);
     const defaultTitle = legalDocumentTitleDe(canonicalType, legalVariant);
+
+    let scopeInput;
+    try {
+      scopeInput = validateLegalScopeInput({
+        language: input.language ?? input.applicationScope?.language,
+        jurisdictionCountry: input.applicationScope?.jurisdictionCountry,
+        customerSegment: input.applicationScope?.customerSegment,
+        bookingChannel: input.applicationScope?.bookingChannel,
+        productScope: input.applicationScope?.productScope,
+        stationScopeMode: input.applicationScope?.stationScopeMode,
+        stationIds: input.applicationScope?.stationIds,
+        priority: input.applicationScope?.priority,
+        isMandatory: input.applicationScope?.isMandatory,
+        noticePurpose:
+          input.applicationScope?.noticePurpose ??
+          deriveNoticePurpose(canonicalType, legalVariant),
+        validFrom: input.applicationScope?.validFrom,
+        validUntil: input.applicationScope?.validUntil,
+      });
+    } catch (err) {
+      if (err instanceof LegalScopeValidationError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
+
+    await this.scope.assertStationsBelongToOrg(input.organizationId, scopeInput.stationIds);
+
     const stored = await this.storage.putObject({
       organizationId: input.organizationId,
       bookingId: null,
@@ -165,7 +217,15 @@ export class LegalDocumentsService {
           legalVariant,
           title: input.title?.trim() || defaultTitle,
           versionLabel,
-          language,
+          language: scopeInput.language,
+          jurisdictionCountry: scopeInput.jurisdictionCountry,
+          customerSegment: scopeInput.customerSegment as never,
+          bookingChannel: scopeInput.bookingChannel as never,
+          productScope: scopeInput.productScope as never,
+          stationScopeMode: scopeInput.stationScopeMode as never,
+          priority: scopeInput.priority,
+          isMandatory: scopeInput.isMandatory,
+          noticePurpose: scopeInput.noticePurpose as never,
           status: LEGAL_STATUS.DRAFT,
           fileName: input.fileName,
           mimeType,
@@ -178,6 +238,13 @@ export class LegalDocumentsService {
           changeSummary: input.changeSummary?.trim() || null,
         },
       });
+
+      await this.scope.replaceStationScope(
+        tx,
+        input.organizationId,
+        doc.id,
+        scopeInput.stationIds,
+      );
 
       await this.events.appendInTransaction(tx, {
         organizationId: doc.organizationId,
@@ -195,16 +262,101 @@ export class LegalDocumentsService {
   async list(orgId: string): Promise<OrganizationLegalDocument[]> {
     return this.prisma.organizationLegalDocument.findMany({
       where: { organizationId: orgId },
+      include: { stations: { select: { stationId: true } } },
       orderBy: [{ documentType: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
-  async getById(orgId: string, id: string): Promise<OrganizationLegalDocument> {
+  async getById(orgId: string, id: string): Promise<LegalDocumentWithStations> {
     const doc = await this.prisma.organizationLegalDocument.findFirst({
       where: { id, organizationId: orgId },
+      include: { stations: { select: { stationId: true } } },
     });
     if (!doc) throw new NotFoundException('Legal document not found');
     return doc;
+  }
+
+  async updateApplicationScope(
+    orgId: string,
+    id: string,
+    input: UpdateLegalDocumentApplicationScopeInput,
+  ): Promise<LegalDocumentWithStations> {
+    const doc = await this.getById(orgId, id);
+    if (doc.status === LEGAL_STATUS.ACTIVE || doc.status === LEGAL_STATUS.SUPERSEDED) {
+      throw new BadRequestException(
+        'Application scope cannot be changed on ACTIVE or SUPERSEDED legal documents',
+      );
+    }
+
+    let scopeInput;
+    try {
+      scopeInput = validateLegalScopeInput({
+        language: input.language ?? doc.language,
+        jurisdictionCountry: input.jurisdictionCountry ?? doc.jurisdictionCountry,
+        customerSegment: input.customerSegment ?? doc.customerSegment,
+        bookingChannel: input.bookingChannel ?? doc.bookingChannel,
+        productScope: input.productScope ?? doc.productScope,
+        stationScopeMode: input.stationScopeMode ?? doc.stationScopeMode,
+        stationIds: input.stationIds ?? doc.stations?.map((s) => s.stationId) ?? [],
+        priority: input.priority ?? doc.priority,
+        isMandatory: input.isMandatory ?? doc.isMandatory,
+        noticePurpose: input.noticePurpose ?? doc.noticePurpose,
+        validFrom: input.validFrom ?? doc.validFrom,
+        validUntil: input.validUntil ?? doc.validUntil,
+      });
+    } catch (err) {
+      if (err instanceof LegalScopeValidationError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
+
+    await this.scope.assertStationsBelongToOrg(orgId, scopeInput.stationIds);
+
+    const candidate = toLegalDocumentScopeShape({
+      ...doc,
+      language: scopeInput.language,
+      jurisdictionCountry: scopeInput.jurisdictionCountry,
+      customerSegment: scopeInput.customerSegment as LegalDocumentWithStations['customerSegment'],
+      bookingChannel: scopeInput.bookingChannel as LegalDocumentWithStations['bookingChannel'],
+      productScope: scopeInput.productScope as LegalDocumentWithStations['productScope'],
+      stationScopeMode: scopeInput.stationScopeMode as LegalDocumentWithStations['stationScopeMode'],
+      priority: scopeInput.priority,
+      noticePurpose: scopeInput.noticePurpose as LegalDocumentWithStations['noticePurpose'],
+      stations: scopeInput.stationIds.map((stationId) => ({ stationId })),
+      validFrom:
+        input.validFrom != null ? new Date(input.validFrom) : doc.validFrom,
+      validUntil:
+        input.validUntil != null ? new Date(input.validUntil) : doc.validUntil,
+    });
+
+    await this.scope.assertNoScopeConflicts(orgId, candidate, {
+      excludeId: doc.id,
+      statuses: [LEGAL_STATUS.ACTIVE, LEGAL_STATUS.SCHEDULED, LEGAL_STATUS.APPROVED],
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.organizationLegalDocument.update({
+        where: { id: doc.id },
+        data: {
+          language: scopeInput.language,
+          jurisdictionCountry: scopeInput.jurisdictionCountry,
+          customerSegment: scopeInput.customerSegment as never,
+          bookingChannel: scopeInput.bookingChannel as never,
+          productScope: scopeInput.productScope as never,
+          stationScopeMode: scopeInput.stationScopeMode as never,
+          priority: scopeInput.priority,
+          isMandatory: scopeInput.isMandatory,
+          noticePurpose: scopeInput.noticePurpose as never,
+          ...(input.validFrom != null ? { validFrom: new Date(input.validFrom) } : {}),
+          ...(input.validUntil != null ? { validUntil: new Date(input.validUntil) } : {}),
+        },
+        include: { stations: { select: { stationId: true } } },
+      });
+
+      await this.scope.replaceStationScope(tx, orgId, doc.id, scopeInput.stationIds);
+      return updated;
+    });
   }
 
   async submitForReview(
@@ -323,6 +475,20 @@ export class LegalDocumentsService {
           });
         }
 
+        if (current.status !== LEGAL_STATUS.ACTIVE) {
+          const withStations = await tx.organizationLegalDocument.findFirst({
+            where: { id: current.id },
+            include: { stations: { select: { stationId: true } } },
+          });
+          if (withStations) {
+            await this.scope.assertNoScopeConflicts(
+              orgId,
+              { ...toLegalDocumentScopeShape(withStations), status: LEGAL_STATUS.ACTIVE },
+              { statuses: [LEGAL_STATUS.ACTIVE], excludeId: current.id },
+            );
+          }
+        }
+
         if (otherActiveCount > 0) {
           await this.supersedeActivePeers(tx, orgId, current, actor);
         }
@@ -434,7 +600,7 @@ export class LegalDocumentsService {
     return { stream, fileName: doc.fileName, mimeType: doc.mimeType, sizeBytes: doc.sizeBytes };
   }
 
-  toDto(doc: OrganizationLegalDocument): LegalDocumentDto {
+  toDto(doc: OrganizationLegalDocument & { stations?: { stationId: string }[] }): LegalDocumentDto {
     const activatedAt = doc.activatedAt ? doc.activatedAt.toISOString() : null;
     return {
       id: doc.id,
@@ -454,6 +620,7 @@ export class LegalDocumentsService {
       legalOwnerName: doc.legalOwnerName,
       changeSummary: doc.changeSummary,
       statusReason: doc.statusReason,
+      applicationScope: scopeToDto(doc),
       createdAt: doc.createdAt.toISOString(),
       updatedAt: doc.updatedAt.toISOString(),
     };
@@ -531,6 +698,15 @@ export class LegalDocumentsService {
     current: OrganizationLegalDocument,
     actor: LegalDocumentActorContext,
   ): Promise<void> {
+    const currentWithStations = await tx.organizationLegalDocument.findFirst({
+      where: { id: current.id },
+      include: { stations: { select: { stationId: true } } },
+    });
+    const currentScope = currentWithStations
+      ? toLegalDocumentScopeShape(currentWithStations)
+      : toLegalDocumentScopeShape(current);
+    const currentFp = scopeFingerprint(currentScope);
+
     const peers = await tx.organizationLegalDocument.findMany({
       where: {
         organizationId: orgId,
@@ -539,9 +715,13 @@ export class LegalDocumentsService {
         status: LEGAL_STATUS.ACTIVE,
         id: { not: current.id },
       },
+      include: { stations: { select: { stationId: true } } },
     });
     const now = new Date();
     for (const peer of peers) {
+      if (scopeFingerprint(toLegalDocumentScopeShape(peer)) !== currentFp) {
+        continue;
+      }
       const reason =
         peer.statusReason ?? 'Superseded by a newer active legal document version';
       await this.applyStatusTransition(

@@ -6,6 +6,7 @@ import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentEventsService } from './legal-document-events.service';
+import { LegalDocumentScopeService } from './legal-document-scope.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
@@ -38,6 +39,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
     { provide: DOCUMENT_RENDERER, useClass: DocumentRendererService },
     GeneratedDocumentsService,
     LegalDocumentEventsService,
+    LegalDocumentScopeService,
     LegalDocumentsService,
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,

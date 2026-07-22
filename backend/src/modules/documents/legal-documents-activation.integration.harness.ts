@@ -7,7 +7,16 @@ export type HarnessLegalRow = {
   id: string;
   organizationId: string;
   documentType: string;
+  legalVariant: string | null;
   language: string;
+  jurisdictionCountry: string;
+  customerSegment: string;
+  bookingChannel: string;
+  productScope: string | null;
+  stationScopeMode: string;
+  priority: number;
+  isMandatory: boolean;
+  noticePurpose: string;
   status: string;
   versionLabel: string;
   title: string;
@@ -122,15 +131,24 @@ export function createLegalDocumentActivationHarness() {
 
   const makeTx = (): TxClient => ({
     organizationLegalDocument: {
-      findFirst: async ({ where }) => {
+      findFirst: async ({ where, include }) => {
+        let row: HarnessLegalRow | null = null;
         if (where.id && where.organizationId) {
-          const row = rows.get(where.id);
-          return row && row.organizationId === where.organizationId ? cloneRow(row) : null;
+          const found = rows.get(where.id);
+          row = found && found.organizationId === where.organizationId ? cloneRow(found) : null;
+        } else {
+          for (const candidate of rows.values()) {
+            if (matchesWhere(candidate, where)) {
+              row = cloneRow(candidate);
+              break;
+            }
+          }
         }
-        for (const row of rows.values()) {
-          if (matchesWhere(row, where)) return cloneRow(row);
+        if (!row) return null;
+        if (include?.stations) {
+          return { ...row, stations: [] };
         }
-        return null;
+        return row;
       },
       findUnique: async ({ where }) => {
         const row = rows.get(where.id);
@@ -168,7 +186,16 @@ export function createLegalDocumentActivationHarness() {
           id: data.id ?? randomUUID(),
           organizationId: data.organizationId,
           documentType: data.documentType,
+          legalVariant: data.legalVariant ?? null,
           language: data.language ?? 'de',
+          jurisdictionCountry: data.jurisdictionCountry ?? 'DE',
+          customerSegment: data.customerSegment ?? 'BOTH',
+          bookingChannel: data.bookingChannel ?? 'ALL',
+          productScope: data.productScope ?? null,
+          stationScopeMode: data.stationScopeMode ?? 'ORGANIZATION_WIDE',
+          priority: data.priority ?? 0,
+          isMandatory: data.isMandatory ?? true,
+          noticePurpose: data.noticePurpose ?? 'GENERAL_NOTICE',
           status: data.status ?? LEGAL_STATUS.DRAFT,
           versionLabel: data.versionLabel ?? 'v1',
           title: data.title ?? data.documentType,
@@ -198,12 +225,15 @@ export function createLegalDocumentActivationHarness() {
         rows.set(row.id, row);
         return cloneRow(row);
       },
-      findMany: async ({ where, orderBy }) => {
+      findMany: async ({ where, orderBy, include }) => {
         const list = [...rows.values()].filter((row) => matchesWhere(row, where));
         if (orderBy?.activatedAt === 'desc') {
           list.sort((a, b) => (b.activatedAt?.getTime() ?? 0) - (a.activatedAt?.getTime() ?? 0));
         }
-        return list.map(cloneRow);
+        return list.map((row) => {
+          const cloned = cloneRow(row);
+          return include?.stations ? { ...cloned, stations: [] } : cloned;
+        });
       },
     },
   });
@@ -256,7 +286,16 @@ export function createLegalDocumentActivationHarness() {
       id: input.id,
       organizationId: input.organizationId,
       documentType: input.documentType,
+      legalVariant: null,
       language: input.language ?? 'de',
+      jurisdictionCountry: 'DE',
+      customerSegment: 'BOTH',
+      bookingChannel: 'ALL',
+      productScope: null,
+      stationScopeMode: 'ORGANIZATION_WIDE',
+      priority: 0,
+      isMandatory: true,
+      noticePurpose: 'GENERAL_NOTICE',
       status: input.status ?? LEGAL_STATUS.DRAFT,
       versionLabel: input.versionLabel,
       title: input.documentType,

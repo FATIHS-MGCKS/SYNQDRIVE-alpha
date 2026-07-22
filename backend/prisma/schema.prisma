@@ -31,6 +31,38 @@ enum BusinessType {
   OTHER
 }
 
+/// Customer segment a legal document rule applies to.
+enum LegalCustomerSegment {
+  B2C
+  B2B
+  BOTH
+}
+
+/// Booking origin channel a legal document rule applies to.
+enum LegalBookingChannel {
+  MANUAL
+  WEBSITE
+  API
+  OPERATOR_APP
+  ALL
+}
+
+/// Whether a legal document applies org-wide or only at specific stations.
+enum LegalStationScopeMode {
+  ORGANIZATION_WIDE
+  STATION_SPECIFIC
+}
+
+/// Administrative purpose of the notice (not legal advice — org selects).
+enum LegalNoticePurpose {
+  TERMS_AND_CONDITIONS
+  PRIVACY_POLICY
+  WITHDRAWAL_RIGHT_NOTICE
+  NO_WITHDRAWAL_RIGHT_NOTICE
+  OTHER_CONSUMER_INFORMATION
+  GENERAL_NOTICE
+}
+
 enum MembershipRole {
   ORG_ADMIN
   SUB_ADMIN
@@ -1530,6 +1562,7 @@ model Organization {
   providerConsents                       VehicleProviderConsent[]
   generatedDocuments                     GeneratedDocument[]
   legalDocuments                         OrganizationLegalDocument[]
+  legalDocumentStations                  OrganizationLegalDocumentStation[]
   legalDocumentEvents                    OrganizationLegalDocumentEvent[]
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
@@ -1892,6 +1925,7 @@ model Station {
   returnBookings         Booking[]                @relation("BookingReturnStation")
   actualPickupBookings   Booking[]                @relation("BookingActualPickupStation")
   actualReturnBookings   Booking[]                @relation("BookingActualReturnStation")
+  legalDocumentStations  OrganizationLegalDocumentStation[]
   userAccountPreferences UserAccountPreference[]
 
   @@unique([organizationId, code])
@@ -6242,6 +6276,14 @@ model OrganizationLegalDocument {
   sizeBytes                  Int?         @map("size_bytes")
   validFrom                  DateTime?    @map("valid_from")
   validUntil                 DateTime?    @map("valid_until")
+  jurisdictionCountry        String       @default("DE") @map("jurisdiction_country") // ISO 3166-1 alpha-2
+  customerSegment            LegalCustomerSegment @default(BOTH) @map("customer_segment")
+  bookingChannel             LegalBookingChannel @default(ALL) @map("booking_channel")
+  productScope               BusinessType? @map("product_scope") // null = all business types
+  stationScopeMode           LegalStationScopeMode @default(ORGANIZATION_WIDE) @map("station_scope_mode")
+  priority                   Int          @default(0)
+  isMandatory                Boolean      @default(true) @map("is_mandatory")
+  noticePurpose              LegalNoticePurpose @default(GENERAL_NOTICE) @map("notice_purpose")
   submittedForReviewAt       DateTime?    @map("submitted_for_review_at")
   submittedForReviewByUserId String?      @map("submitted_for_review_by_user_id")
   approvedAt                 DateTime?    @map("approved_at")
@@ -6257,16 +6299,37 @@ model OrganizationLegalDocument {
   createdAt                  DateTime     @default(now()) @map("created_at")
   updatedAt                  DateTime     @updatedAt @map("updated_at")
 
-  events OrganizationLegalDocumentEvent[]
+  events   OrganizationLegalDocumentEvent[]
+  stations OrganizationLegalDocumentStation[]
 
-  // Partial unique index `organization_legal_documents_single_active_key` on
-  // (organization_id, document_type, language) WHERE status = 'ACTIVE' — see migration
-  // 20260722110000_legal_document_single_active_invariant.
+  // Scope-aware ACTIVE uniqueness is enforced via conflict detection at activation
+  // (Prompt 7/32) — legacy partial index `organization_legal_documents_single_active_key`
+  // is dropped in migration 20260722150000.
 
   @@index([organizationId])
   @@index([organizationId, documentType, status], map: "organization_legal_documents_org_type_status_idx")
   @@index([organizationId, documentType, language, status], map: "organization_legal_documents_org_type_lang_status_idx")
+  @@index([organizationId, documentType, legalVariant], map: "organization_legal_documents_org_type_variant_idx")
+  @@index([organizationId, status, documentType, language, jurisdictionCountry, customerSegment, bookingChannel], map: "organization_legal_documents_resolver_scope_idx")
   @@map("organization_legal_documents")
+}
+
+/// Normalized station scope for legal documents (STATION_SPECIFIC mode only).
+model OrganizationLegalDocumentStation {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  legalDocumentId String   @map("legal_document_id")
+  stationId       String   @map("station_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  legalDocument OrganizationLegalDocument @relation(fields: [legalDocumentId], references: [id], onDelete: Cascade)
+  station       Station                   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@unique([legalDocumentId, stationId], map: "organization_legal_document_stations_doc_station_key")
+  @@index([organizationId, stationId], map: "organization_legal_document_stations_org_station_idx")
+  @@index([legalDocumentId], map: "organization_legal_document_stations_doc_idx")
+  @@map("organization_legal_document_stations")
 }
 
 /// Append-only audit log for organization legal document lifecycle transitions.
@@ -6288,6 +6351,13 @@ model OrganizationLegalDocumentEvent {
   checksum         String?
   language         String
   jurisdiction     String?
+  customerSegment  String?  @map("customer_segment")
+  bookingChannel   String?  @map("booking_channel")
+  productScope     String?  @map("product_scope")
+  stationScopeMode String?  @map("station_scope_mode")
+  priority         Int?
+  isMandatory      Boolean? @map("is_mandatory")
+  noticePurpose    String?  @map("notice_purpose")
   validFrom        DateTime? @map("valid_from")
   validUntil       DateTime? @map("valid_until")
   correlationId    String?  @map("correlation_id")

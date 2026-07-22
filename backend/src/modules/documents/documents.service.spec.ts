@@ -9,6 +9,7 @@ import { DocumentNumberingService } from './document-numbering.service';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
+import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BUNDLE_STATUS, DOCUMENT_STATUS, DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
 
@@ -126,7 +127,7 @@ describe('LegalDocumentsService', () => {
   const events = createNoopLegalDocumentEventsService();
 
   function makeLegalSvc(prisma: any) {
-    return new LegalDocumentsService(prisma, events, storage);
+    return new LegalDocumentsService(prisma, events, createNoopLegalDocumentScopeService(), storage);
   }
 
   function baseInput() {

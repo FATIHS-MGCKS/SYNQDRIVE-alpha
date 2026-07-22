@@ -93,7 +93,16 @@ export class LegalDocumentEventsService {
         legalVariant: input.legalDocument.legalVariant,
         checksum: input.legalDocument.checksum,
         language: input.legalDocument.language,
-        jurisdiction: deriveJurisdictionFromLanguage(input.legalDocument.language),
+        jurisdiction:
+          input.legalDocument.jurisdictionCountry ??
+          deriveJurisdictionFromLanguage(input.legalDocument.language),
+        customerSegment: input.legalDocument.customerSegment,
+        bookingChannel: input.legalDocument.bookingChannel,
+        productScope: input.legalDocument.productScope,
+        stationScopeMode: input.legalDocument.stationScopeMode,
+        priority: input.legalDocument.priority,
+        isMandatory: input.legalDocument.isMandatory,
+        noticePurpose: input.legalDocument.noticePurpose,
         validFrom: input.validFrom ?? input.legalDocument.validFrom,
         validUntil: input.validUntil ?? input.legalDocument.validUntil,
         correlationId: input.actor?.correlationId ?? null,
