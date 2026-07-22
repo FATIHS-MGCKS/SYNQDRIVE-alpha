@@ -13,6 +13,7 @@ import { RentalDrivingAnalysisRecomputeTriggerService } from '../rental-driving-
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../rental-driving-analysis/rental-driving-analysis.recompute.types';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import {
   parsePagination,
   buildPaginatedResult,
@@ -85,6 +86,8 @@ export class BookingsService {
     // booking is confirmed. Fire-and-forget; never blocks/breaks booking create.
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
+    private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
     @Inject(forwardRef(() => GeneratedDocumentsService))
     private readonly generatedDocumentsService: GeneratedDocumentsService,
     @Inject(forwardRef(() => BookingDocumentEmailService))
@@ -307,8 +310,8 @@ export class BookingsService {
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
     // explicitly as well — the bundle service is idempotent.
     if (booking.status === 'CONFIRMED' || booking.status === 'PENDING') {
-      void this.bookingDocumentBundleService
-        .generateInitialBundle(orgId, booking.id)
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueInitialBundle(orgId, booking.id, options?.userId ?? null)
         .then(() => {
           if (booking.status === 'CONFIRMED') {
             return this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
@@ -318,7 +321,11 @@ export class BookingsService {
             );
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue initial document bundle for booking ${booking.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
 
     if (booking.status === 'CONFIRMED' || booking.status === 'ACTIVE') {
@@ -1769,12 +1776,16 @@ export class BookingsService {
     // Generate the initial document bundle when a booking transitions INTO
     // CONFIRMED via update. Idempotent + fire-and-forget.
     if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
-      void this.bookingDocumentBundleService
-        .generateInitialBundle(orgId, id)
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueInitialBundle(orgId, id, null)
         .then(() =>
           this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(orgId, id, null),
         )
-        .catch(() => {});
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue initial document bundle for booking ${id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
     // Materialize booking lifecycle tasks on any status transition. The
     // automation service is idempotent (dedup per generatedKey), so calling it

@@ -1567,6 +1567,7 @@ model Organization {
   legalDocumentStations                  OrganizationLegalDocumentStation[]
   legalDocumentEvents                    OrganizationLegalDocumentEvent[]
   legalDocumentDeliveryEvidence          LegalDocumentDeliveryEvidence[]
+  bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
   legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
@@ -4793,6 +4794,7 @@ model Booking {
   whatsappConversations   WhatsAppConversation[]
   outboundEmails          OutboundEmail[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
+  documentGenerationJobs        BookingDocumentGenerationJob[]
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
@@ -6440,6 +6442,40 @@ model LegalDocumentDeliveryEvidence {
   @@map("legal_document_delivery_evidence")
 }
 
+/// Durable workflow state for async booking document generation (Prompt 19).
+model BookingDocumentGenerationJob {
+  id                 String    @id @default(uuid())
+  organizationId     String    @map("organization_id")
+  bookingId          String    @map("booking_id")
+  bundleId           String?   @map("bundle_id")
+  jobType            String    @map("job_type")
+  documentType       String?   @map("document_type")
+  handoverProtocolId String?   @map("handover_protocol_id")
+  idempotencyKey     String    @map("idempotency_key")
+  correlationId      String    @map("correlation_id")
+  status             String    @default("PENDING")
+  attemptCount       Int       @default(0) @map("attempt_count")
+  maxAttempts        Int       @default(5) @map("max_attempts")
+  nextRetryAt        DateTime? @map("next_retry_at")
+  lastAttemptAt      DateTime? @map("last_attempt_at")
+  bullJobId          String?   @map("bull_job_id")
+  errorCode          String?   @map("error_code")
+  errorMessage       String?   @map("error_message")
+  requestedByUserId  String?   @map("requested_by_user_id")
+  completedAt        DateTime? @map("completed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking                @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bundle       BookingDocumentBundle? @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey], map: "booking_document_generation_jobs_org_idempotency_key")
+  @@index([organizationId, bookingId], map: "booking_document_generation_jobs_org_booking_idx")
+  @@index([status, nextRetryAt], map: "booking_document_generation_jobs_status_retry_idx")
+  @@map("booking_document_generation_jobs")
+}
+
 /// Checkpointed storage reconciliation runs for legal document integrity audits.
 model LegalDocumentStorageReconciliationRun {
   id             String    @id @default(uuid())
@@ -6481,6 +6517,8 @@ model BookingDocumentBundle {
   lastError                String?            @map("last_error")
   createdAt                DateTime           @default(now()) @map("created_at")
   updatedAt                DateTime           @updatedAt @map("updated_at")
+
+  generationJobs           BookingDocumentGenerationJob[]
 
   @@index([organizationId])
   @@index([bookingId])

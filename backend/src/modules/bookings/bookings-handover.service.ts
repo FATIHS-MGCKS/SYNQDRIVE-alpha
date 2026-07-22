@@ -19,7 +19,7 @@ import {
   CreateHandoverProtocolPayload,
   HandoverProtocolDto,
 } from './handover.types';
-import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import { BookingDocumentGenerationDispatcherService } from '@modules/documents/booking-document-generation/booking-document-generation.dispatcher.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
@@ -48,10 +48,8 @@ export class BookingsHandoverService {
 
   constructor(
     private readonly prisma: PrismaService,
-    // Booking Document Lifecycle — generates handover protocol PDFs (and, on
-    // return, the final invoice) after a successful handover. Fire-and-forget.
-    @Inject(forwardRef(() => BookingDocumentBundleService))
-    private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    @Inject(forwardRef(() => BookingDocumentGenerationDispatcherService))
+    private readonly bookingDocumentGenerationDispatcher: BookingDocumentGenerationDispatcherService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly taskAutomation: TaskAutomationService,
     private readonly fleetMapCache: FleetMapCacheService,
@@ -338,9 +336,13 @@ export class BookingsHandoverService {
     // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
     // status transitions above are never affected by document generation.
     if (kind === 'PICKUP') {
-      this.bookingDocumentBundleService
-        .generatePickupProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
-        .catch(() => {});
+      void this.bookingDocumentGenerationDispatcher
+        .enqueuePickupProtocol(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue pickup protocol generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
       this.runBackgroundTask(
         `taskAutomation.onPickupHandoverCompleted(${bookingId})`,
         this.taskAutomation.onPickupHandoverCompleted({
@@ -356,12 +358,13 @@ export class BookingsHandoverService {
         }),
       );
     } else {
-      this.bookingDocumentBundleService
-        .generateReturnProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
-        .catch(() => {});
-      this.bookingDocumentBundleService
-        .generateFinalInvoiceAndDocument(orgId, bookingId, payload.performedByUserId ?? null)
-        .catch(() => {});
+      void this.bookingDocumentGenerationDispatcher
+        .enqueueReturnDocuments(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
+        .catch((err) => {
+          this.logger.error(
+            `Failed to enqueue return document generation booking=${bookingId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
 
       const eventBase = {
         organizationId: orgId,
