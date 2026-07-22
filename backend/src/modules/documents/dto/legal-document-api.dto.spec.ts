@@ -3,6 +3,8 @@ import { validate } from 'class-validator';
 import { LegalDocumentListQueryDto } from './legal-document-list-query.dto';
 import { LegalDocumentEventsQueryDto } from './legal-document-events-query.dto';
 import {
+  LegalDocumentActivateDto,
+  LegalDocumentRequestChangesDto,
   LegalDocumentRevokeDto,
   LegalDocumentScheduleDto,
 } from './legal-document-lifecycle.dto';
@@ -76,5 +78,15 @@ describe('LegalDocument lifecycle DTOs', () => {
   it('requires statusReason for revoke', async () => {
     const errors = await validateDto(LegalDocumentRevokeDto, { statusReason: '' });
     expect(errors.some((e) => e.property === 'statusReason')).toBe(true);
+  });
+
+  it('requires statusReason for activate and request-changes', async () => {
+    const activateErrors = await validateDto(LegalDocumentActivateDto, { statusReason: 'short' });
+    expect(activateErrors.some((e) => e.property === 'statusReason')).toBe(true);
+
+    const requestErrors = await validateDto(LegalDocumentRequestChangesDto, {
+      statusReason: 'too short',
+    });
+    expect(requestErrors.some((e) => e.property === 'statusReason')).toBe(true);
   });
 });
