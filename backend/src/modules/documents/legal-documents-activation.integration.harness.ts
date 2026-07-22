@@ -47,6 +47,10 @@ export type HarnessLegalRow = {
   validatedAt: Date | null;
   malwareScannedAt: Date | null;
   malwareScannerId: string | null;
+  malwareEngineVersion: string | null;
+  malwareThreatName: string | null;
+  malwareScanDetail: string | null;
+  malwareScanAttempts: number | null;
   quarantineObjectKey: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -234,6 +238,10 @@ export function createLegalDocumentActivationHarness() {
           validatedAt: data.validatedAt ?? now,
           malwareScannedAt: data.malwareScannedAt ?? null,
           malwareScannerId: data.malwareScannerId ?? null,
+          malwareEngineVersion: data.malwareEngineVersion ?? null,
+          malwareThreatName: data.malwareThreatName ?? null,
+          malwareScanDetail: data.malwareScanDetail ?? null,
+          malwareScanAttempts: data.malwareScanAttempts ?? 0,
           quarantineObjectKey: data.quarantineObjectKey ?? null,
           createdAt: now,
           updatedAt: now,
@@ -342,6 +350,10 @@ export function createLegalDocumentActivationHarness() {
       validatedAt: now,
       malwareScannedAt: null,
       malwareScannerId: null,
+      malwareEngineVersion: null,
+      malwareThreatName: null,
+      malwareScanDetail: null,
+      malwareScanAttempts: 0,
       quarantineObjectKey: null,
       createdAt: now,
       updatedAt: now,

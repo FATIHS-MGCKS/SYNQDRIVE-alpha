@@ -70,7 +70,7 @@ import {
 } from './legal-document-events.service';
 import { LegalDocumentFourEyesService } from './legal-document-four-eyes.service';
 import { LegalDocumentIngestionService } from './legal-document-ingestion.service';
-import { isLegalDocumentScanPassed } from './legal-document-scan-status.constants';
+import { isLegalDocumentScanPassed, isLegalDocumentUnknownScanStatus } from './legal-document-scan-status.constants';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -233,6 +233,10 @@ export class LegalDocumentsService {
           validatedAt: ingested.validatedAt,
           malwareScannedAt: ingested.malwareScannedAt,
           malwareScannerId: ingested.malwareScannerId,
+          malwareEngineVersion: ingested.malwareEngineVersion,
+          malwareThreatName: ingested.malwareThreatName,
+          malwareScanDetail: ingested.malwareScanDetail,
+          malwareScanAttempts: ingested.malwareScanAttempts,
           quarantineObjectKey: ingested.quarantineObjectKey,
           uploadedByUserId: input.uploadedByUserId ?? null,
           legalOwnerName: input.legalOwnerName?.trim() || null,
@@ -895,6 +899,9 @@ export class LegalDocumentsService {
   }
 
   private assertScanPassed(doc: Pick<OrganizationLegalDocument, 'scanStatus'>): void {
+    if (isLegalDocumentUnknownScanStatus(doc.scanStatus)) {
+      throw new LegalDocumentScanNotPassedError(doc.scanStatus ?? 'UNKNOWN');
+    }
     if (!isLegalDocumentScanPassed(doc.scanStatus)) {
       throw new LegalDocumentScanNotPassedError(doc.scanStatus);
     }
