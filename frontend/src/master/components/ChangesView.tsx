@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-privacy-pointers-schema-2026-07-22',
+    version: '4.9.741',
+    title: 'Legal Documents — Privacy Pointer Schema (Prompt 2/32)',
+    summary: [
+      'Prisma: `privacyDocumentId` auf `BookingDocumentBundle` und `RentalContract` (nullable).',
+      'Explizite Prisma-Relationen terms/withdrawal/privacy → `GeneratedDocument` mit `onDelete: SetNull`.',
+      'Migration `20260722100000_legal_document_privacy_pointers` — additive Spalten, Indizes, FKs (terms/withdrawal NOT VALID).',
+      'Keine Bundle-Service-Änderung in diesem Prompt; Backfill folgt Prompt 3+.',
+    ],
+    reason: 'Production-Readiness Rechtliche Dokumente — konsistente Legal-Pointer im Datenmodell.',
+    previousBehavior: 'Privacy nur als `GeneratedDocument`-Row ohne Bundle-/Contract-Pointer; terms/withdrawal ohne Prisma-Relation/FK.',
+    details:
+      'docs/audits/legal-documents-schema-privacy-pointers-2026-07.md, architecture/LEGAL_DOCUMENT_PRIVACY_POINTERS_2026-07-22.md',
+    affectsArchitecture: true,
+    module: 'Booking Documents',
+    createdAt: '2026-07-22T11:05:00.000Z',
+  },
+  {
     id: 'fleet-health-service-followups-2026-07-21',
     version: '4.9.740',
     title: 'Fleet Health Service — Follow-ups (Pagination, Runtime, Matching)',

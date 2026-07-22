@@ -6162,14 +6162,15 @@ model OrgInvoice {
 // versions, and the per-booking bundle that tracks which documents exist.
 // Status fields use plain strings (values documented inline) to keep the
 // migration small and consistent with other recent additions. Cross-entity
-// links to Booking/Customer/Vehicle/Invoice/Handover are kept as scalar id
-// columns + indexes (no Prisma relations) to avoid migration friction.
+// Booking/Customer/Vehicle/Invoice/Handover links on GeneratedDocument stay scalar.
+// Legal snapshot pointers on BookingDocumentBundle and RentalContract use explicit
+// relations to GeneratedDocument with onDelete: SetNull (historical evidence preserved).
 
 model GeneratedDocument {
   id                 String       @id @default(uuid())
   organizationId     String       @map("organization_id")
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType       String       @map("document_type") // BOOKING_INVOICE, DEPOSIT_RECEIPT, RENTAL_CONTRACT, TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, HANDOVER_PICKUP, HANDOVER_RETURN, FINAL_INVOICE
+  documentType       String       @map("document_type") // BOOKING_INVOICE, DEPOSIT_RECEIPT, RENTAL_CONTRACT, TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, PRIVACY_POLICY, HANDOVER_PICKUP, HANDOVER_RETURN, FINAL_INVOICE
   origin             String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
   status             String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
   bookingId          String?      @map("booking_id")
@@ -6201,9 +6202,15 @@ model GeneratedDocument {
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
-  outboundEmailAttachments OutboundEmailAttachment[]
-  activeForInvoice         OrgInvoice?               @relation("InvoiceActiveDocument")
-  invoiceRecord            OrgInvoice?               @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
+  outboundEmailAttachments            OutboundEmailAttachment[]
+  activeForInvoice                    OrgInvoice?               @relation("InvoiceActiveDocument")
+  invoiceRecord                       OrgInvoice?               @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
+  bookingBundlesAsTermsDocument       BookingDocumentBundle[]   @relation("BookingBundleTermsDocument")
+  bookingBundlesAsWithdrawalDocument  BookingDocumentBundle[]   @relation("BookingBundleWithdrawalDocument")
+  bookingBundlesAsPrivacyDocument     BookingDocumentBundle[]   @relation("BookingBundlePrivacyDocument")
+  rentalContractsAsTermsDocument      RentalContract[]          @relation("RentalContractTermsDocument")
+  rentalContractsAsWithdrawalDocument RentalContract[]          @relation("RentalContractWithdrawalDocument")
+  rentalContractsAsPrivacyDocument    RentalContract[]          @relation("RentalContractPrivacyDocument")
 
   @@index([organizationId])
   @@index([bookingId])
@@ -6219,7 +6226,7 @@ model OrganizationLegalDocument {
   id               String       @id @default(uuid())
   organizationId   String       @map("organization_id")
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType     String       @map("document_type") // TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION
+  documentType     String       @map("document_type") // TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, PRIVACY_POLICY
   title            String
   versionLabel     String       @map("version_label")
   language         String       @default("de")
@@ -6241,27 +6248,34 @@ model OrganizationLegalDocument {
 }
 
 model BookingDocumentBundle {
-  id                       String       @id @default(uuid())
-  organizationId           String       @map("organization_id")
-  organization             Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bookingId                String       @unique @map("booking_id")
-  status                   String       @default("PENDING") // PENDING, PARTIAL, COMPLETE, FAILED
-  bookingInvoiceDocumentId String?      @map("booking_invoice_document_id")
-  depositReceiptDocumentId String?      @map("deposit_receipt_document_id")
-  rentalContractDocumentId String?      @map("rental_contract_document_id")
-  termsDocumentId          String?      @map("terms_document_id")
-  withdrawalDocumentId     String?      @map("withdrawal_document_id")
-  pickupProtocolDocumentId String?      @map("pickup_protocol_document_id")
-  returnProtocolDocumentId String?      @map("return_protocol_document_id")
-  finalInvoiceDocumentId   String?      @map("final_invoice_document_id")
-  generatedAt              DateTime?    @map("generated_at")
-  lastError                String?      @map("last_error")
-  createdAt                DateTime     @default(now()) @map("created_at")
-  updatedAt                DateTime     @updatedAt @map("updated_at")
+  id                       String             @id @default(uuid())
+  organizationId           String             @map("organization_id")
+  organization             Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId                String             @unique @map("booking_id")
+  status                   String             @default("PENDING") // PENDING, PARTIAL, COMPLETE, FAILED
+  bookingInvoiceDocumentId String?            @map("booking_invoice_document_id")
+  depositReceiptDocumentId String?            @map("deposit_receipt_document_id")
+  rentalContractDocumentId String?            @map("rental_contract_document_id")
+  termsDocumentId          String?            @map("terms_document_id")
+  termsDocument            GeneratedDocument? @relation("BookingBundleTermsDocument", fields: [termsDocumentId], references: [id], onDelete: SetNull)
+  withdrawalDocumentId     String?            @map("withdrawal_document_id")
+  withdrawalDocument       GeneratedDocument? @relation("BookingBundleWithdrawalDocument", fields: [withdrawalDocumentId], references: [id], onDelete: SetNull)
+  privacyDocumentId        String?            @map("privacy_document_id")
+  privacyDocument          GeneratedDocument? @relation("BookingBundlePrivacyDocument", fields: [privacyDocumentId], references: [id], onDelete: SetNull)
+  pickupProtocolDocumentId String?            @map("pickup_protocol_document_id")
+  returnProtocolDocumentId String?            @map("return_protocol_document_id")
+  finalInvoiceDocumentId   String?            @map("final_invoice_document_id")
+  generatedAt              DateTime?          @map("generated_at")
+  lastError                String?            @map("last_error")
+  createdAt                DateTime           @default(now()) @map("created_at")
+  updatedAt                DateTime           @updatedAt @map("updated_at")
 
   @@index([organizationId])
   @@index([bookingId])
   @@index([status])
+  @@index([termsDocumentId])
+  @@index([withdrawalDocumentId])
+  @@index([privacyDocumentId])
   @@map("booking_document_bundles")
 }
 
@@ -6292,28 +6306,35 @@ model BookingDeposit {
 }
 
 model RentalContract {
-  id                   String       @id @default(uuid())
-  organizationId       String       @map("organization_id")
-  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bookingId            String       @unique @map("booking_id")
-  customerId           String?      @map("customer_id")
-  vehicleId            String?      @map("vehicle_id")
-  contractNumber       String?      @map("contract_number")
-  status               String       @default("DRAFT") // DRAFT, GENERATED, SIGNED, CANCELLED
-  termsDocumentId      String?      @map("terms_document_id")
-  withdrawalDocumentId String?      @map("withdrawal_document_id")
-  generatedDocumentId  String?      @map("generated_document_id")
+  id                   String             @id @default(uuid())
+  organizationId       String             @map("organization_id")
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId            String             @unique @map("booking_id")
+  customerId           String?            @map("customer_id")
+  vehicleId            String?            @map("vehicle_id")
+  contractNumber       String?            @map("contract_number")
+  status               String             @default("DRAFT") // DRAFT, GENERATED, SIGNED, CANCELLED
+  termsDocumentId      String?            @map("terms_document_id")
+  termsDocument        GeneratedDocument? @relation("RentalContractTermsDocument", fields: [termsDocumentId], references: [id], onDelete: SetNull)
+  withdrawalDocumentId String?            @map("withdrawal_document_id")
+  withdrawalDocument   GeneratedDocument? @relation("RentalContractWithdrawalDocument", fields: [withdrawalDocumentId], references: [id], onDelete: SetNull)
+  privacyDocumentId    String?            @map("privacy_document_id")
+  privacyDocument      GeneratedDocument? @relation("RentalContractPrivacyDocument", fields: [privacyDocumentId], references: [id], onDelete: SetNull)
+  generatedDocumentId  String?            @map("generated_document_id")
   snapshot             Json?
-  generatedAt          DateTime?    @map("generated_at")
-  signedAt             DateTime?    @map("signed_at")
-  createdAt            DateTime     @default(now()) @map("created_at")
-  updatedAt            DateTime     @updatedAt @map("updated_at")
+  generatedAt          DateTime?          @map("generated_at")
+  signedAt             DateTime?          @map("signed_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
 
   @@index([organizationId])
   @@index([bookingId])
   @@index([customerId])
   @@index([vehicleId])
   @@index([status])
+  @@index([termsDocumentId])
+  @@index([withdrawalDocumentId])
+  @@index([privacyDocumentId])
   @@map("rental_contracts")
 }
 
