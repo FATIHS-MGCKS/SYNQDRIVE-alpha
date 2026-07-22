@@ -6242,6 +6242,10 @@ model OrganizationLegalDocument {
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")
 
+  // Partial unique index `organization_legal_documents_single_active_key` on
+  // (organization_id, document_type, language) WHERE status = 'ACTIVE' — see migration
+  // 20260722110000_legal_document_single_active_invariant.
+
   @@index([organizationId])
   @@index([organizationId, documentType, status])
   @@map("organization_legal_documents")

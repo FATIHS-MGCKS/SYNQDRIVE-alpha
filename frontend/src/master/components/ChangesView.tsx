@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-single-active-invariant-2026-07-22',
+    version: '4.9.742',
+    title: 'Legal Documents — Single-ACTIVE DB Invariant (Prompt 3/32)',
+    summary: [
+      'Partial unique index `organization_legal_documents_single_active_key` auf (org, type, language) WHERE ACTIVE.',
+      'Migration bereinigt Dubletten deterministisch (neueste Aktivierung bleibt) + `organization_legal_document_repair_log`.',
+      '`LegalDocumentsService.activate` transaktional, idempotent, HTTP 409 `LEGAL_DOCUMENT_ACTIVE_CONFLICT` bei Race.',
+      'Integrationstests für parallele Aktivierung + Mandantentrennung.',
+    ],
+    reason: 'Production-Readiness — keine stillen Mehrfach-Aktivzustände auf DB-Ebene.',
+    previousBehavior: 'Single-active nur per Application-Logik; parallele Aktivierungen konnten theoretisch doppelte ACTIVE erzeugen.',
+    details:
+      'docs/audits/legal-documents-single-active-invariant-2026-07.md, legal-documents.errors.ts, legal-documents-activation.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Booking Documents',
+    createdAt: '2026-07-22T11:15:00.000Z',
+  },
+  {
     id: 'legal-documents-privacy-pointers-schema-2026-07-22',
     version: '4.9.741',
     title: 'Legal Documents — Privacy Pointer Schema (Prompt 2/32)',

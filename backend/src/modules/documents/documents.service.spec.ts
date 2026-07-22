@@ -176,6 +176,8 @@ describe('LegalDocumentsService', () => {
     const target = { id: 'legal-2', organizationId: 'org-1', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, language: 'de', status: LEGAL_STATUS.DRAFT };
     const tx = {
       organizationLegalDocument: {
+        findFirst: jest.fn().mockResolvedValue(target),
+        count: jest.fn().mockResolvedValue(1),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         update: jest.fn().mockResolvedValue({ ...target, status: LEGAL_STATUS.ACTIVE }),
       },
@@ -204,6 +206,35 @@ describe('LegalDocumentsService', () => {
     expect(tx.organizationLegalDocument.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'legal-2' }, data: expect.objectContaining({ status: LEGAL_STATUS.ACTIVE }) }),
     );
+  });
+
+  it('activate is idempotent when the version is already the sole ACTIVE document', async () => {
+    const active = {
+      id: 'legal-1',
+      organizationId: 'org-1',
+      documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+      language: 'de',
+      status: LEGAL_STATUS.ACTIVE,
+      activeFrom: new Date('2026-01-01'),
+    };
+    const tx = {
+      organizationLegalDocument: {
+        findFirst: jest.fn().mockResolvedValue(active),
+        count: jest.fn().mockResolvedValue(0),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+      },
+    };
+    const prisma = {
+      organizationLegalDocument: { findFirst: jest.fn().mockResolvedValue(active) },
+      $transaction: jest.fn(async (cb: any) => cb(tx)),
+    } as any;
+    const svc = new LegalDocumentsService(prisma, storage);
+
+    const res = await svc.activate('org-1', 'legal-1');
+    expect(res.status).toBe(LEGAL_STATUS.ACTIVE);
+    expect(tx.organizationLegalDocument.update).not.toHaveBeenCalled();
+    expect(tx.organizationLegalDocument.updateMany).not.toHaveBeenCalled();
   });
 
   it('getActiveByType returns at most one active doc per type', async () => {

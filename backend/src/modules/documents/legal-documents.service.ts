@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Logger,
@@ -20,6 +21,11 @@ import {
 } from './documents.constants';
 import { DocumentDownload } from './generated-documents.service';
 import { isLegalPdfUpload, normalizeLegalPdfMimeType } from './legal-documents.util';
+import {
+  LEGAL_DOCUMENT_ERROR_CODES,
+  type LegalDocumentConflictBody,
+} from './legal-documents.errors';
+import { isLegalDocumentSingleActiveViolation } from './legal-documents-prisma.util';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -125,22 +131,85 @@ export class LegalDocumentsService {
   /** Activates a version and archives any other ACTIVE version of the same type+language. */
   async activate(orgId: string, id: string): Promise<OrganizationLegalDocument> {
     const doc = await this.getById(orgId, id);
-    return this.prisma.$transaction(async (tx) => {
-      await tx.organizationLegalDocument.updateMany({
-        where: {
-          organizationId: orgId,
-          documentType: doc.documentType,
-          language: doc.language,
-          status: LEGAL_STATUS.ACTIVE,
-          id: { not: doc.id },
-        },
-        data: { status: LEGAL_STATUS.ARCHIVED },
+    if (doc.status === LEGAL_STATUS.ARCHIVED) {
+      throw new BadRequestException({
+        message: 'Archived legal documents cannot be activated',
+        code: LEGAL_DOCUMENT_ERROR_CODES.NOT_ACTIVATABLE,
       });
-      return tx.organizationLegalDocument.update({
-        where: { id: doc.id },
-        data: { status: LEGAL_STATUS.ACTIVE, activeFrom: new Date() },
+    }
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const current = await tx.organizationLegalDocument.findFirst({
+          where: { id: doc.id, organizationId: orgId },
+        });
+        if (!current) throw new NotFoundException('Legal document not found');
+
+        const otherActiveCount = await tx.organizationLegalDocument.count({
+          where: {
+            organizationId: orgId,
+            documentType: current.documentType,
+            language: current.language,
+            status: LEGAL_STATUS.ACTIVE,
+            id: { not: current.id },
+          },
+        });
+
+        if (current.status === LEGAL_STATUS.ACTIVE && otherActiveCount === 0) {
+          return current;
+        }
+
+        if (otherActiveCount > 0) {
+          await tx.organizationLegalDocument.updateMany({
+            where: {
+              organizationId: orgId,
+              documentType: current.documentType,
+              language: current.language,
+              status: LEGAL_STATUS.ACTIVE,
+              id: { not: current.id },
+            },
+            data: { status: LEGAL_STATUS.ARCHIVED },
+          });
+        }
+
+        if (current.status === LEGAL_STATUS.ACTIVE) {
+          return current;
+        }
+
+        return tx.organizationLegalDocument.update({
+          where: { id: current.id },
+          data: { status: LEGAL_STATUS.ACTIVE, activeFrom: new Date() },
+        });
       });
-    });
+    } catch (err) {
+      throw this.rethrowActivationError(err, orgId, doc);
+    }
+  }
+
+  private rethrowActivationError(
+    err: unknown,
+    orgId: string,
+    doc: OrganizationLegalDocument,
+  ): never {
+    if (
+      err instanceof NotFoundException ||
+      err instanceof BadRequestException ||
+      err instanceof ConflictException
+    ) {
+      throw err;
+    }
+    if (isLegalDocumentSingleActiveViolation(err)) {
+      const body: LegalDocumentConflictBody = {
+        message:
+          'Another legal document version is already active for this organization, document type, and language',
+        code: LEGAL_DOCUMENT_ERROR_CODES.ACTIVE_CONFLICT,
+        organizationId: orgId,
+        documentType: doc.documentType,
+        language: doc.language,
+      };
+      throw new ConflictException(body);
+    }
+    throw err;
   }
 
   async archive(orgId: string, id: string): Promise<OrganizationLegalDocument> {
