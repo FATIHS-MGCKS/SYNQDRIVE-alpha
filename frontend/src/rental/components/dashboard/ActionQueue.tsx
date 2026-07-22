@@ -50,6 +50,7 @@ interface ActionQueueHandlers {
   onOpenCustomerById?: (customerId: string) => void;
   onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenSettingsTab?: (tab: string) => void;
   onOpenPriceTariffs?: () => void;
 }
 
@@ -60,6 +61,7 @@ interface ActionQueueProps {
   onOpenCustomerById?: (customerId: string) => void;
   onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenSettingsTab?: (tab: string) => void;
   onOpenPriceTariffs?: () => void;
   layout?: NotificationPanelLayout;
 }
@@ -613,6 +615,7 @@ export function ActionQueue({
   onOpenCustomerById,
   onOpenInvoiceById,
   onOpenRentalView,
+  onOpenSettingsTab,
   onOpenPriceTariffs,
   layout = 'default',
 }: ActionQueueProps) {
@@ -711,6 +714,7 @@ export function ActionQueue({
     onOpenCustomerById,
     onOpenInvoiceById,
     onOpenRentalView,
+    onOpenSettingsTab,
     onOpenPriceTariffs,
   };
   const hasItems = atomicCount > 0;

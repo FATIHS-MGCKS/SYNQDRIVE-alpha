@@ -6,40 +6,31 @@ describe('BookingDocumentOrgLegalNotificationService', () => {
   const orgId = 'org-legal-test';
 
   function makeService() {
+    const operationalNotifications = {
+      loadAndSyncOrgReadiness: jest.fn().mockResolvedValue(undefined),
+    };
     const notificationCore = {
       isEnabled: jest.fn().mockReturnValue(true),
-      ingestCandidate: jest.fn().mockResolvedValue(undefined),
       resolveNotificationByFingerprint: jest.fn().mockResolvedValue(undefined),
     };
-    const service = new BookingDocumentOrgLegalNotificationService(notificationCore as never);
-    return { service, notificationCore };
+    const service = new BookingDocumentOrgLegalNotificationService(
+      operationalNotifications as never,
+      { loadOrgReadinessState: jest.fn() } as never,
+      notificationCore as never,
+    );
+    return { service, operationalNotifications, notificationCore };
   }
 
-  it('ingests a central org notification when AGB templates are missing', async () => {
-    const { service, notificationCore } = makeService();
+  it('syncs central org readiness when AGB templates are missing', async () => {
+    const { service, operationalNotifications } = makeService();
 
     await service.syncOrgMissingLegalTemplates(orgId, [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]);
 
-    expect(notificationCore.ingestCandidate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        organizationId: orgId,
-        eventType: 'REQUIRED_DOCUMENT_MISSING',
-        entityType: NotificationEntityType.ORGANIZATION,
-        entityId: orgId,
-      }),
-    );
-    expect(notificationCore.ingestCandidate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metadata: expect.objectContaining({
-          scope: 'org-legal-template',
-          missingTypes: [DOCUMENT_TYPE.TERMS_AND_CONDITIONS],
-        }),
-      }),
-    );
+    expect(operationalNotifications.loadAndSyncOrgReadiness).toHaveBeenCalledWith(orgId);
   });
 
-  it('resolves the org notification when templates are configured again', async () => {
-    const { service, notificationCore } = makeService();
+  it('resolves legacy notification and reloads readiness when templates are configured', async () => {
+    const { service, operationalNotifications, notificationCore } = makeService();
 
     await service.syncFromOrgLegalState(orgId, {
       [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: { id: 'terms-1' },
@@ -50,6 +41,6 @@ describe('BookingDocumentOrgLegalNotificationService', () => {
     expect(notificationCore.resolveNotificationByFingerprint).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: orgId }),
     );
-    expect(notificationCore.ingestCandidate).not.toHaveBeenCalled();
+    expect(operationalNotifications.loadAndSyncOrgReadiness).toHaveBeenCalledWith(orgId);
   });
 });

@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import documentsConfig from '@config/documents.config';
+import { LEGAL_NOTIFICATION_EVENT } from '../notifications/legal-document-operational-notification.constants';
+import { LegalDocumentOperationalNotificationService } from '../notifications/legal-document-operational-notification.service';
 import type { LegalDocumentIntegrityStatus } from './legal-document-integrity.constants';
 
 export interface LegalDocumentIntegrityAlertPayload {
@@ -21,6 +23,7 @@ export class LegalDocumentIntegrityAlertService {
   constructor(
     @Inject(documentsConfig.KEY)
     private readonly config: ConfigType<typeof documentsConfig>,
+    private readonly operationalNotifications: LegalDocumentOperationalNotificationService,
   ) {}
 
   async emitDriftAlert(payload: LegalDocumentIntegrityAlertPayload): Promise<void> {
@@ -32,6 +35,21 @@ export class LegalDocumentIntegrityAlertService {
       this.logger.error(
         `ALERT: Legal document integrity sustained drift — ${this.consecutiveAlerts} alerts in this process`,
       );
+    }
+
+    await this.operationalNotifications.syncIntegrityTechnicalAlert({
+      organizationId: payload.organizationId,
+      legalDocumentId: payload.legalDocumentId,
+      objectKey: payload.objectKey,
+      status: payload.status,
+      detail: payload.detail,
+      source: payload.source,
+    });
+
+    if (payload.legalDocumentId) {
+      void this.operationalNotifications
+        .loadAndSyncOrgReadiness(payload.organizationId)
+        .catch(() => undefined);
     }
   }
 
@@ -46,6 +64,20 @@ export class LegalDocumentIntegrityAlertService {
       status: 'UNEXPECTED_OBJECT',
       detail: payload.detail ?? 'Object exists in storage without database reference',
       source: 'reconciliation',
+    });
+  }
+
+  async emitReconciliationFailed(input: {
+    organizationId?: string | null;
+    detail: string;
+    runId: string;
+  }): Promise<void> {
+    if (!input.organizationId) return;
+    await this.operationalNotifications.syncTechnicalAlert({
+      organizationId: input.organizationId,
+      eventType: LEGAL_NOTIFICATION_EVENT.TECH_RECONCILIATION_FAILED,
+      detail: input.detail,
+      sourceRef: `reconciliation-run:${input.runId}`,
     });
   }
 

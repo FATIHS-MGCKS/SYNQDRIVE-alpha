@@ -48,6 +48,7 @@ import {
   documentPhaseForBookingStatus,
 } from './booking-document-phase.util';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
+import { LegalDocumentOperationalNotificationService } from './notifications/legal-document-operational-notification.service';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import {
   BUNDLE_LEGAL_DOCUMENT_SLOT_TYPES,
@@ -130,6 +131,7 @@ export class BookingDocumentBundleService {
     @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRenderer,
     private readonly taskAutomation: TaskAutomationService,
     private readonly orgLegalNotification: BookingDocumentOrgLegalNotificationService,
+    private readonly operationalNotifications: LegalDocumentOperationalNotificationService,
     private readonly bundleMonitoring: BookingDocumentBundleMonitoringService,
     private readonly bundleCompleteness: BookingDocumentCompletenessService,
     private readonly rentalContract: RentalContractService,
@@ -889,6 +891,15 @@ export class BookingDocumentBundleService {
 
     void this.orgLegalNotification
       .syncOrgMissingLegalTemplates(orgId, evaluation.orgConfigurationGaps)
+      .catch(() => {});
+
+    void this.operationalNotifications
+      .syncBundleCompleteness({
+        organizationId: orgId,
+        bookingId,
+        bookingRef: bookingRef(bookingId),
+        completeness: evaluation,
+      })
       .catch(() => {});
 
     if (!documentPhaseForBookingStatus(bookingStatus)) {

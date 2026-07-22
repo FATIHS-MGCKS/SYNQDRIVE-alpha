@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-notifications-2026-07-22',
+    version: '4.9.768',
+    title: 'Legal Documents — Notifications, Tasks & Monitoring (Prompt 29/32)',
+    summary: [
+      'Zentraler LegalDocumentOperationalNotificationService + reine Matrix aus Resolver-, Bundle-, Integritäts- und Workflowzuständen.',
+      '20 LEGAL_* Notification-Registry-Events (Nutzer + Technik), stabile Dedup-Keys, Auto-Close per Scope-Sync.',
+      'Wiring: Lifecycle, Bundle-Completeness, Integritäts-Alerts, Reconciliation, Bundle-Monitoring.',
+      'Frontend: notification.* i18n (DE/EN), Navigation zu Verwaltung → Rechtliche Dokumente.',
+      '15 Vitest-Tests (Dedup, Re-Eval, Resolution, Severity, Mandant, Kategorien, Ablauf, Integrität).',
+    ],
+    reason:
+      'Rechtstext-Alerts waren fragmentiert (nur REQUIRED_DOCUMENT_MISSING, Log-only Integrity/Monitoring). Production-Readiness verlangt zentrale Ableitung ohne Duplikate.',
+    previousBehavior:
+      'Org-Gap nur über BookingDocumentOrgLegalNotificationService; Integrität/Resolver nur Logger; OPEN_BOOKING für Org-Alerts.',
+    details:
+      'docs/audits/legal-documents-notifications-2026-07.md, architecture/LEGAL_DOCUMENT_OPERATIONAL_NOTIFICATIONS_2026-07-22.md, legal-document-operational-notification.*',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T14:30:00.000Z',
+  },
+  {
     id: 'legal-documents-i18n-2026-07-22',
     version: '4.9.767',
     title: 'Legal Documents — i18n & UX Copy (Prompt 28/32)',

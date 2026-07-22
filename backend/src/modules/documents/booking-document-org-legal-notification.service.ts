@@ -1,76 +1,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NotificationCoreService } from '@modules/notifications/notification-core.service';
+import { buildRegistryFingerprint } from '@modules/notifications/registry/notification-event-registry';
 import { NotificationEntityType } from '@modules/notifications/notification.enums';
-import {
-  buildCandidateFromRegistry,
-  buildRegistryFingerprint,
-} from '@modules/notifications/registry/notification-event-registry';
 import { DOCUMENT_TYPE, legalDocumentTitleDe, type DocumentType } from './documents.constants';
+import { LegalDocumentOperationalNotificationService } from './notifications/legal-document-operational-notification.service';
+import { LegalDocumentOrgReadinessLoader } from './notifications/legal-document-org-readiness.loader';
 
 /**
- * Central org-level hint when required legal templates are not configured.
+ * @deprecated Use LegalDocumentOperationalNotificationService — thin compatibility bridge.
  */
 @Injectable()
 export class BookingDocumentOrgLegalNotificationService {
   private readonly logger = new Logger(BookingDocumentOrgLegalNotificationService.name);
 
-  constructor(private readonly notificationCore: NotificationCoreService) {}
-
-  private orgLegalFingerprint(orgId: string): string {
-    return buildRegistryFingerprint(
-      orgId,
-      'REQUIRED_DOCUMENT_MISSING',
-      orgId,
-      NotificationEntityType.ORGANIZATION,
-    ).canonical;
-  }
+  constructor(
+    private readonly operationalNotifications: LegalDocumentOperationalNotificationService,
+    private readonly orgReadinessLoader: LegalDocumentOrgReadinessLoader,
+    private readonly notificationCore: NotificationCoreService,
+  ) {}
 
   async syncOrgMissingLegalTemplates(
     orgId: string,
     missingTypes: DocumentType[],
   ): Promise<void> {
-    if (!this.notificationCore.isEnabled()) return;
-
     if (missingTypes.length === 0) {
-      try {
-        await this.notificationCore.resolveNotificationByFingerprint({
-          organizationId: orgId,
-          fingerprint: this.orgLegalFingerprint(orgId),
-        });
-      } catch (err: any) {
-        this.logger.debug(
-          `resolve org legal notification (${orgId}): ${err?.message ?? err}`,
-        );
-      }
+      await this.resolveLegacyOrgNotification(orgId);
+      await this.operationalNotifications.loadAndSyncOrgReadiness(orgId);
       return;
     }
 
-    const labels = missingTypes
-      .map((t) => legalDocumentTitleDe(t, null))
-      .join(', ');
-    try {
-      const candidate = buildCandidateFromRegistry({
-        organizationId: orgId,
-        eventType: 'REQUIRED_DOCUMENT_MISSING',
-        entityType: NotificationEntityType.ORGANIZATION,
-        entityId: orgId,
-        sourceRef: `org-legal-template:${orgId}`,
-        occurredAt: new Date(),
-        templateParams: {
-          bookingRef: 'Organisation',
-          documentType: labels,
-        },
-        metadata: {
-          scope: 'org-legal-template',
-          missingTypes,
-        },
-      });
-      await this.notificationCore.ingestCandidate(candidate);
-    } catch (err: any) {
-      this.logger.warn(
-        `syncOrgMissingLegalTemplates(${orgId}) failed: ${err?.message ?? err}`,
-      );
-    }
+    await this.operationalNotifications.loadAndSyncOrgReadiness(orgId);
   }
 
   async syncFromOrgLegalState(
@@ -79,5 +38,25 @@ export class BookingDocumentOrgLegalNotificationService {
   ): Promise<void> {
     const { orgMissingLegalTemplateTypes } = await import('./booking-document-missing-slots.util');
     await this.syncOrgMissingLegalTemplates(orgId, orgMissingLegalTemplateTypes(orgActiveLegal));
+  }
+
+  private async resolveLegacyOrgNotification(orgId: string): Promise<void> {
+    if (!this.notificationCore.isEnabled()) return;
+    try {
+      const legacyFingerprint = buildRegistryFingerprint(
+        orgId,
+        'REQUIRED_DOCUMENT_MISSING',
+        orgId,
+        NotificationEntityType.ORGANIZATION,
+      ).canonical;
+      await this.notificationCore.resolveNotificationByFingerprint({
+        organizationId: orgId,
+        fingerprint: legacyFingerprint,
+      });
+    } catch (err: unknown) {
+      this.logger.debug(
+        `resolve legacy org legal notification (${orgId}): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 }
