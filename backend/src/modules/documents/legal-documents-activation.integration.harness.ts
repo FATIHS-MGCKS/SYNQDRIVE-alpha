@@ -52,6 +52,8 @@ export type HarnessLegalRow = {
   malwareScanDetail: string | null;
   malwareScanAttempts: number | null;
   quarantineObjectKey: string | null;
+  integrityStatus: string;
+  integrityUnavailable: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -243,6 +245,8 @@ export function createLegalDocumentActivationHarness() {
           malwareScanDetail: data.malwareScanDetail ?? null,
           malwareScanAttempts: data.malwareScanAttempts ?? 0,
           quarantineObjectKey: data.quarantineObjectKey ?? null,
+          integrityStatus: data.integrityStatus ?? 'UNVERIFIED',
+          integrityUnavailable: data.integrityUnavailable ?? false,
           createdAt: now,
           updatedAt: now,
         };
@@ -355,6 +359,8 @@ export function createLegalDocumentActivationHarness() {
       malwareScanDetail: null,
       malwareScanAttempts: 0,
       quarantineObjectKey: null,
+      integrityStatus: 'UNVERIFIED',
+      integrityUnavailable: false,
       createdAt: now,
       updatedAt: now,
     };

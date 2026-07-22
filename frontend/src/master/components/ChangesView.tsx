@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-backend-tests-2026-07-22',
+    version: '4.9.769',
+    title: 'Legal Documents — Backend Test Coverage & Security Negatives (Prompt 30/32)',
+    summary: [
+      '22 Security-Negativtests in legal-documents-security-negative.spec.ts (Mandant, Vier-Augen, Lifecycle, Integrität, Idempotenz, Resolver, Pickup-Gate).',
+      '7 PostgreSQL-Invariantentests (gated: LEGAL_DOCUMENTS_POSTGRES_INTEGRATION=1) für Mandantentrennung, Audit, Legal Hold, Delivery-Evidence-Unique, Cascade.',
+      'Verify-Script: scripts/test/legal-documents-backend-verify.sh + npm test:legal-documents:* Scripts.',
+      'Test-Factory erweitert (Retention, Operational Notifications); Harness um integrityStatus ergänzt.',
+      '358 Unit/Harness-Tests grün über 46 Suites; keine deaktivierten kritischen Tests.',
+    ],
+    reason:
+      'Production-Readiness Prompt 30 — vollständige Backend-Testabdeckung mit echten Service-Pfaden und Security-Negativmatrix, nicht nur gemockte Happy Paths.',
+    previousBehavior:
+      'Fragmentierte Specs ohne zentrale Security-Matrix; keine gated PostgreSQL-Invarianten; Test-Factory veraltet nach Prompt 29 Service-Erweiterungen.',
+    details:
+      'docs/audits/legal-documents-backend-tests-2026-07.md, architecture/LEGAL_DOCUMENT_BACKEND_TESTS_2026-07-22.md, legal-documents-security-negative.spec.ts, testing/legal-documents-postgres.*',
+    affectsArchitecture: true,
+    module: 'Documents / Backend Tests',
+    createdAt: '2026-07-22T14:45:00.000Z',
+  },
+  {
     id: 'legal-documents-notifications-2026-07-22',
     version: '4.9.768',
     title: 'Legal Documents — Notifications, Tasks & Monitoring (Prompt 29/32)',

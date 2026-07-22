@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { LEGAL_NOTIFICATION_EVENT } from '../notifications/legal-document-operational-notification.constants';
-import { LegalDocumentOperationalNotificationService } from '../notifications/legal-document-operational-notification.service';
+import { LEGAL_NOTIFICATION_EVENT } from './notifications/legal-document-operational-notification.constants';
+import { LegalDocumentOperationalNotificationService } from './notifications/legal-document-operational-notification.service';
 
 @Injectable()
 export class BookingDocumentBundleMonitoringService {

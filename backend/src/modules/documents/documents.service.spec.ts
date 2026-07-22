@@ -495,6 +495,7 @@ describe('BookingDocumentBundleService', () => {
       renderer,
       taskAutomation,
       orgLegalNotification,
+      { syncBundleCompleteness: jest.fn() } as any,
       bundleMonitoring,
       bundleCompleteness,
       rentalContract,

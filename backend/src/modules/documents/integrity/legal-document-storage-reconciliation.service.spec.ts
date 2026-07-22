@@ -67,7 +67,14 @@ describe('LegalDocumentStorageReconciliationService (integration)', () => {
     };
 
     const verification = new LegalDocumentChecksumVerificationService(storage);
-    const alerts = new LegalDocumentIntegrityAlertService(documentsCfg);
+    const operationalNotifications = {
+      syncIntegrityAlert: jest.fn().mockResolvedValue(undefined),
+      syncIntegrityTechnicalAlert: jest.fn().mockResolvedValue(undefined),
+      syncReconciliationFailure: jest.fn().mockResolvedValue(undefined),
+      syncTechnicalAlert: jest.fn().mockResolvedValue(undefined),
+      loadAndSyncOrgReadiness: jest.fn().mockResolvedValue(undefined),
+    };
+    const alerts = new LegalDocumentIntegrityAlertService(documentsCfg, operationalNotifications as any);
     const persistence = new LegalDocumentIntegrityPersistenceService(
       prisma,
       { appendIntegrityEventInTransaction: jest.fn().mockResolvedValue({ id: 'evt-1' }) } as any,

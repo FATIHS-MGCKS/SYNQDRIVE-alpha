@@ -35,6 +35,27 @@ export function createNoopDocumentsConfigStub(
   };
 }
 
+export function createNoopLegalDocumentOperationalNotificationService() {
+  return {
+    loadAndSyncOrgReadiness: jest.fn().mockResolvedValue(undefined),
+    syncBundleCompleteness: jest.fn().mockResolvedValue(undefined),
+    syncPickupGateBlock: jest.fn().mockResolvedValue(undefined),
+    syncIntegrityAlert: jest.fn().mockResolvedValue(undefined),
+    syncReconciliationFailure: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+export function createNoopLegalDocumentRetentionPolicyService() {
+  return {
+    getOrganizationPolicy: jest.fn().mockResolvedValue(null),
+    upsertOrganizationPolicy: jest.fn(),
+    getPlatformPolicyVersion: jest.fn().mockResolvedValue('test'),
+    getPlatformDefaults: jest.fn().mockResolvedValue({}),
+    resolveClassPolicy: jest.fn().mockResolvedValue({ retentionDays: 365, anchor: 'ARCHIVED_AT' }),
+    computeDeletionEligibleAt: jest.fn().mockReturnValue(new Date('2099-01-01T00:00:00.000Z')),
+  };
+}
+
 export function createLegalDocumentsServiceForTests(
   prisma: unknown,
   deps: {
@@ -45,6 +66,8 @@ export function createLegalDocumentsServiceForTests(
     storage: unknown;
     checksumVerification?: unknown;
     integrityPersistence?: unknown;
+    retentionPolicy?: unknown;
+    operationalNotifications?: unknown;
     config?: Record<string, unknown>;
   },
 ) {
@@ -57,6 +80,8 @@ export function createLegalDocumentsServiceForTests(
     deps.ingestion as any,
     (deps.checksumVerification ?? createNoopLegalDocumentChecksumVerificationService()) as any,
     (deps.integrityPersistence ?? createNoopLegalDocumentIntegrityPersistenceService()) as any,
+    (deps.retentionPolicy ?? createNoopLegalDocumentRetentionPolicyService()) as any,
+    (deps.operationalNotifications ?? createNoopLegalDocumentOperationalNotificationService()) as any,
     createNoopDocumentsConfigStub(deps.config) as any,
     deps.storage as any,
   );
