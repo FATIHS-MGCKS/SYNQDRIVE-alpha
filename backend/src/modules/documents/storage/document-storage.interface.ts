@@ -2,7 +2,8 @@ import { Readable } from 'stream';
 
 /**
  * DI token for the booking-document storage port. Bind to a concrete
- * implementation (local disk today, S3-compatible later) in DocumentsModule.
+ * implementation (local disk for dev/test, private S3-compatible for production)
+ * in DocumentsModule.
  */
 export const DOCUMENTS_STORAGE = Symbol('DOCUMENTS_STORAGE');
 
@@ -23,6 +24,25 @@ export interface PutDocumentResult {
   storageProvider: string;
   sizeBytes: number;
   mimeType: string;
+  /** Lowercase hex SHA-256 of stored bytes. */
+  contentHash: string;
+  /** Provider etag when available (S3 ETag); for local storage equals contentHash. */
+  etag: string | null;
+}
+
+export interface DocumentObjectMetadata {
+  objectKey: string;
+  sizeBytes: number;
+  mimeType: string | null;
+  contentHash: string | null;
+  etag: string | null;
+}
+
+export interface DocumentStorageHealthStatus {
+  healthy: boolean;
+  provider: string;
+  detail?: string;
+  checkedAt: Date;
 }
 
 /**
@@ -32,6 +52,8 @@ export interface PutDocumentResult {
  * through authenticated, org-scoped download endpoints.
  */
 export interface DocumentStoragePort {
+  readonly provider: string;
+
   /** Stores bytes under a safe generated key and returns storage metadata. */
   putObject(input: PutDocumentInput): Promise<PutDocumentResult>;
   /** Stores bytes in the private quarantine zone before malware scanning. */
@@ -48,8 +70,12 @@ export interface DocumentStoragePort {
   getObject(objectKey: string): Promise<Buffer>;
   /** Streams the object (for authenticated downloads). */
   getObjectStream(objectKey: string): Promise<Readable>;
+  /** Optional object metadata (hash / etag) without loading the full body. */
+  getObjectMetadata?(objectKey: string): Promise<DocumentObjectMetadata>;
   /** Best-effort delete; never throws for a missing object. */
   deleteObject(objectKey: string): Promise<void>;
   /** Local-only: absolute filesystem path for a key, or null for non-local providers. */
   getInternalPath(objectKey: string): string | null;
+  /** Probes storage reachability (disk writable / bucket head). */
+  checkHealth(): Promise<DocumentStorageHealthStatus>;
 }

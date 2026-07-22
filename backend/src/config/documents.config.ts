@@ -17,10 +17,27 @@ function parsePositiveIntEnv(value: string | undefined, defaultValue: number): n
  */
 export default registerAs('documents', () => ({
   storageProvider: (process.env.DOCUMENT_STORAGE_PROVIDER || 'local').toLowerCase(),
+  allowLocalStorageInProduction:
+    (process.env.DOCUMENT_STORAGE_ALLOW_LOCAL_IN_PRODUCTION || 'false') === 'true',
   // Reuses the same private storage root as document-extraction by default.
   localStorageDir: process.env.LOCAL_DOCUMENT_STORAGE_DIR || './storage/documents',
   localQuarantineStorageDir:
     process.env.LOCAL_DOCUMENT_QUARANTINE_STORAGE_DIR || './storage/documents-quarantine',
+  privateS3: {
+    bucket: process.env.DOCUMENT_PRIVATE_S3_BUCKET || '',
+    region: process.env.DOCUMENT_PRIVATE_S3_REGION || 'auto',
+    endpoint: process.env.DOCUMENT_PRIVATE_S3_ENDPOINT || '',
+    accessKeyId: process.env.DOCUMENT_PRIVATE_S3_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.DOCUMENT_PRIVATE_S3_SECRET_ACCESS_KEY || '',
+    forcePathStyle: (process.env.DOCUMENT_PRIVATE_S3_FORCE_PATH_STYLE || 'true') === 'true',
+    keyPrefix: (process.env.DOCUMENT_PRIVATE_S3_KEY_PREFIX || '').replace(/^\/|\/$/g, ''),
+    sseAlgorithm: (process.env.DOCUMENT_PRIVATE_S3_SSE || 'AES256').toLowerCase(),
+    kmsKeyId: process.env.DOCUMENT_PRIVATE_S3_KMS_KEY_ID || '',
+  },
+  storageHealthAlertThreshold: parsePositiveIntEnv(
+    process.env.DOCUMENT_STORAGE_HEALTH_ALERT_THRESHOLD,
+    5,
+  ),
   pdfRenderer: (process.env.DOCUMENT_PDF_RENDERER || 'html').toLowerCase(),
   generationEnabled: (process.env.DOCUMENT_GENERATION_ENABLED || 'true') === 'true',
   maxLegalUploadMb: parsePositiveIntEnv(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB, 15),

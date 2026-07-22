@@ -25,6 +25,7 @@ import { RequireLegalDocumentPermission } from './decorators/require-legal-docum
 import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { LegalDocumentValidationError } from './legal-documents-api.errors';
+import { buildContentDispositionInline } from './storage/document-storage-content-disposition.util';
 import { LegalDocumentListQueryDto } from './dto/legal-document-list-query.dto';
 import { LegalDocumentEventsQueryDto } from './dto/legal-document-events-query.dto';
 import { UpdateLegalDocumentScopeDto } from './dto/legal-document-scope.dto';
@@ -311,7 +312,7 @@ export class LegalDocumentsController {
     const dl = await this.legal.getDownload(orgId, id);
     res.set({
       'Content-Type': dl.mimeType,
-      'Content-Disposition': `inline; filename="${encodeURIComponent(dl.fileName)}"`,
+      'Content-Disposition': buildContentDispositionInline(dl.fileName),
     });
     return new StreamableFile(dl.stream);
   }

@@ -15,6 +15,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
+import { buildContentDispositionInline } from './storage/document-storage-content-disposition.util';
 
 /**
  * Booking document lifecycle + document download/metadata/void.
@@ -78,7 +79,7 @@ export class DocumentsController {
     const dl = await this.generated.getDownload(orgId, documentId);
     res.set({
       'Content-Type': dl.mimeType,
-      'Content-Disposition': `inline; filename="${encodeURIComponent(dl.fileName)}"`,
+      'Content-Disposition': buildContentDispositionInline(dl.fileName),
     });
     return new StreamableFile(dl.stream);
   }
