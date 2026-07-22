@@ -41,6 +41,7 @@ All user-visible strings for the legal documents administration surface are inte
 - `LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE`, `CONSUMER_INFORMATION_VARIANT_LABELS_DE`
 - `STATUS_LABEL_DE`, `EVENT_LABEL_DE`, `SCAN_LABELS_DE`, `INTEGRITY_LABELS_DE`
 - Inline German in all legal-documents components, wizard steps, lifecycle dialogs
+- Hook fallbacks in `useLegalDocumentsOverview` / `useLegalDocumentVersionHistory` (`Laden fehlgeschlagen`, audit load)
 - `LEGAL_LIFECYCLE_ACTION_CONFIG` / `LEGAL_LIFECYCLE_CONFLICT_MESSAGES` string values → translation keys
 - `LEGAL_PDF_PREVIEW_TITLE` constant → `legalDocuments.a11y.pdfPreview`
 
@@ -57,7 +58,7 @@ All user-visible strings for the legal documents administration surface are inte
 
 ## DE / EN completeness
 
-- **267 keys** in `legalDocumentsEn`; mirrored in `legalDocumentsDe`
+- **268 keys** in `legalDocumentsEn`; mirrored in `legalDocumentsDe`
 - Other locales (`fr`, `pl`, …) inherit English via `...en` spread until translated
 - Parity enforced by `legal-documents.i18n.test.ts`
 

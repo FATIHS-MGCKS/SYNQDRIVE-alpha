@@ -433,6 +433,7 @@ export const legalDocumentsEn = {
   'legalDocuments.audit.title': 'Audit & usage',
   'legalDocuments.audit.description': 'Recent lifecycle events and approvals (read-only)',
   'legalDocuments.audit.empty': 'No audit entries yet.',
+  'legalDocuments.audit.loadError': 'Could not load audit events',
   'legalDocuments.audit.system': 'System',
 
   'legalDocuments.scan.UPLOADED': 'Uploaded',

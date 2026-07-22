@@ -54,7 +54,7 @@ export function useLegalDocumentVersionHistory(orgId: string, documentType: stri
         },
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Laden fehlgeschlagen');
+      setError(err instanceof Error ? err.message : t('legalDocuments.history.loadError'));
       setItems([]);
       setDocuments([]);
       setMeta({ total: 0, page: 1, limit: VERSION_HISTORY_PAGE_SIZE, totalPages: 1 });

@@ -44,7 +44,7 @@ export function useLegalDocumentsOverview(
       setDocs(Array.isArray(list) ? list : []);
       setSettings(workflowSettings);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Laden fehlgeschlagen');
+      setError(err instanceof Error ? err.message : t('legalDocuments.page.loadError'));
     } finally {
       setLoading(false);
     }
@@ -56,12 +56,12 @@ export function useLegalDocumentsOverview(
         const page = await api.legalDocuments.listEvents(orgId, { page: 1, limit: 20 });
         setEvents(page.data ?? []);
       } catch (err) {
-        setEventsError(err instanceof Error ? err.message : 'Audit konnte nicht geladen werden');
+        setEventsError(err instanceof Error ? err.message : t('legalDocuments.audit.loadError'));
       } finally {
         setEventsLoading(false);
       }
     }
-  }, [orgId, loadEvents]);
+  }, [orgId, loadEvents, t]);
 
   useEffect(() => {
     void refresh();

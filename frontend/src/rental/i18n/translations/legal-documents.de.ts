@@ -435,6 +435,7 @@ export const legalDocumentsDe: Record<LegalDocumentsTranslationKey, string> = {
   'legalDocuments.audit.title': 'Audit & Verwendung',
   'legalDocuments.audit.description': 'Letzte Lifecycle-Ereignisse und Freigaben (read-only)',
   'legalDocuments.audit.empty': 'Noch keine Audit-Einträge vorhanden.',
+  'legalDocuments.audit.loadError': 'Audit-Ereignisse konnten nicht geladen werden',
   'legalDocuments.audit.system': 'System',
 
   'legalDocuments.scan.UPLOADED': 'Hochgeladen',
