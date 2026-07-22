@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-rental-contract-snapshot-2026-07-22',
+    version: '4.9.756',
+    title: 'Legal Documents — Rental Contract Legal Snapshot (Prompt 17/32)',
+    summary: [
+      'RentalContract speichert verification-grade legal_refs_snapshot (schema v1) + legal_snapshot_frozen_at.',
+      'Je Rechtstext: GeneratedDocument-ID, LegalDocument-ID, Typ, Variante, Version, Sprache, Jurisdiktion, SHA-256, Gültigkeit, Snapshot-Zeitpunkt.',
+      'Datenschutzhinweise gleichwertig zu AGB und Verbraucherinformation — alle drei Pflicht.',
+      'Vertragserzeugung nur über LegalDocumentResolverService + Bundle-Frozen-Pointer (kein findFirst).',
+      'Fehlende Pflichttexte → strukturierter RentalContractMissingMandatoryLegalTextError.',
+      'Download-Endpunkt nutzt eingefrorene generatedDocumentId; Snapshot wird nie überschrieben.',
+      'API: GET rental-contract + GET rental-contract/download.',
+    ],
+    reason: 'Production-Readiness — historisch nachvollziehbare Rechtstextversionen auf Mietverträgen.',
+    previousBehavior: 'Minimales legal-Objekt im Render-Snapshot; resolveLegalRefForContract mit findFirst-Fallbacks.',
+    details:
+      'docs/audits/legal-documents-rental-contract-snapshot-2026-07.md, architecture/LEGAL_DOCUMENT_RENTAL_CONTRACT_SNAPSHOT_2026-07-22.md, rental-contract-legal-snapshot.service.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T18:30:00.000Z',
+  },
+  {
     id: 'legal-documents-bundle-completeness-2026-07-22',
     version: '4.9.755',
     title: 'Legal Documents — Bundle Completeness Service (Prompt 16/32)',

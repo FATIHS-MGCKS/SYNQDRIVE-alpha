@@ -6486,6 +6486,9 @@ model RentalContract {
   privacyDocumentId    String?            @map("privacy_document_id")
   privacyDocument      GeneratedDocument? @relation("RentalContractPrivacyDocument", fields: [privacyDocumentId], references: [id], onDelete: SetNull)
   generatedDocumentId  String?            @map("generated_document_id")
+  /// Immutable verification snapshot of legal document versions used at contract time.
+  legalRefsSnapshot    Json?              @map("legal_refs_snapshot")
+  legalSnapshotFrozenAt DateTime?           @map("legal_snapshot_frozen_at")
   snapshot             Json?
   generatedAt          DateTime?          @map("generated_at")
   signedAt             DateTime?          @map("signed_at")

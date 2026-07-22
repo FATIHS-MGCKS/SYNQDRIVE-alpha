@@ -477,6 +477,13 @@ describe('BookingDocumentBundleService', () => {
       ...prisma,
       $executeRaw: jest.fn().mockResolvedValue(undefined),
     };
+    const rentalContract = {
+      shouldSkipLegalSnapshotUpdate: jest.fn().mockReturnValue(false),
+      resolveLegalRefsForGeneration: jest.fn(),
+      toLegalRefsForRendering: jest.fn(),
+      toContractPointerIds: jest.fn(),
+      buildImmutableSnapshot: jest.fn(),
+    } as any;
     const svc = new BookingDocumentBundleService(
       prismaWithLock,
       config,
@@ -490,8 +497,9 @@ describe('BookingDocumentBundleService', () => {
       orgLegalNotification,
       bundleMonitoring,
       bundleCompleteness,
+      rentalContract,
     );
-    return { svc, generatedDocs, renderer, taskAutomation, orgLegalNotification, legalResolver, bundleMonitoring, bundleCompleteness };
+    return { svc, generatedDocs, renderer, taskAutomation, orgLegalNotification, legalResolver, bundleMonitoring, bundleCompleteness, rentalContract };
   }
 
   it('getOrCreateBundle rejects cross-org access (tenant isolation)', async () => {

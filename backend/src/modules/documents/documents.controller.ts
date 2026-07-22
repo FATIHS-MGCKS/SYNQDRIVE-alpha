@@ -15,6 +15,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
+import { RentalContractService } from './rental-contract.service';
 import { buildContentDispositionInline } from './storage/document-storage-content-disposition.util';
 
 /**
@@ -30,7 +31,30 @@ export class DocumentsController {
   constructor(
     private readonly bundle: BookingDocumentBundleService,
     private readonly generated: GeneratedDocumentsService,
+    private readonly rentalContract: RentalContractService,
   ) {}
+
+  @Get('bookings/:bookingId/rental-contract')
+  getRentalContract(@Param('orgId') orgId: string, @Param('bookingId') bookingId: string) {
+    return this.rentalContract.getByBooking(orgId, bookingId);
+  }
+
+  @Get('bookings/:bookingId/rental-contract/download')
+  @Header('Cache-Control', 'no-store')
+  async downloadRentalContract(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const ctx = await this.rentalContract.getDownloadContext(orgId, bookingId);
+    const dl = await this.generated.getDownload(orgId, ctx.generatedDocumentId);
+    res.set({
+      'Content-Type': dl.mimeType,
+      'Content-Disposition': buildContentDispositionInline(dl.fileName),
+      'X-SynqDrive-Legal-Snapshot-Frozen-At': ctx.legalSnapshotFrozenAt ?? '',
+    });
+    return new StreamableFile(dl.stream);
+  }
 
   @Get('bookings/:bookingId/documents')
   getBookingDocuments(@Param('orgId') orgId: string, @Param('bookingId') bookingId: string) {
