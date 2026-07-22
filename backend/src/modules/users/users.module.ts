@@ -6,6 +6,8 @@ import { PublicInvitesController } from './public-invites.controller';
 import { UsersService } from './users.service';
 import { OrganizationInviteService } from './organization-invite.service';
 import { OrganizationRoleService } from './organization-role.service';
+import { OrganizationRoleVersionService } from './organization-role-version.service';
+import { OrganizationRoleChangeService } from './organization-role-change.service';
 import { UserAccessAuditService } from './user-access-audit.service';
 import { TransactionalMailService } from './transactional-mail.service';
 import { InviteRateLimitService } from './invite-rate-limit.service';
@@ -42,6 +44,8 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     UsersService,
     OrganizationInviteService,
     OrganizationRoleService,
+    OrganizationRoleVersionService,
+    OrganizationRoleChangeService,
     UserAccessAuditService,
     TransactionalMailService,
     InviteRateLimitService,
@@ -64,6 +68,8 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     UsersService,
     OrganizationInviteService,
     OrganizationRoleService,
+    OrganizationRoleVersionService,
+    OrganizationRoleChangeService,
     UserAccessAuditService,
     IamAuditService,
     IamMembershipLifecycleService,
