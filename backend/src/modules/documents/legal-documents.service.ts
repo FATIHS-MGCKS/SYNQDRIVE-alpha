@@ -941,6 +941,14 @@ export class LegalDocumentsService {
     query: LegalDocumentListQueryDto,
   ): Prisma.OrganizationLegalDocumentWhereInput {
     const search = query.search?.trim();
+    const createdAt: Prisma.DateTimeFilter | undefined =
+      query.from || query.to
+        ? {
+            ...(query.from ? { gte: new Date(query.from) } : {}),
+            ...(query.to ? { lte: new Date(query.to) } : {}),
+          }
+        : undefined;
+
     return {
       organizationId: orgId,
       ...(query.documentType ? { documentType: query.documentType } : {}),
@@ -949,6 +957,7 @@ export class LegalDocumentsService {
       ...(query.jurisdiction ? { jurisdictionCountry: query.jurisdiction.toUpperCase() } : {}),
       ...(query.customerSegment ? { customerSegment: query.customerSegment as never } : {}),
       ...(query.channelScope ? { bookingChannel: query.channelScope as never } : {}),
+      ...(createdAt ? { createdAt } : {}),
       ...(search
         ? {
             OR: [

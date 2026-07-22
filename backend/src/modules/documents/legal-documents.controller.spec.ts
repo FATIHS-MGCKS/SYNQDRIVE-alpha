@@ -32,9 +32,33 @@ describe('LegalDocumentsController', () => {
     listForDocument: jest.fn(),
   };
 
+  const legalHoldService = {
+    setHold: jest.fn(),
+    clearHold: jest.fn(),
+  };
+
+  const retentionService = {
+    runRetention: jest.fn(),
+  };
+
+  const retentionPolicyService = {
+    getOrganizationPolicy: jest.fn(),
+    upsertOrganizationPolicy: jest.fn(),
+    getPlatformPolicyVersion: jest.fn(),
+    getPlatformDefaults: jest.fn(),
+  };
+
+  const usageService = {
+    getUsage: jest.fn(),
+  };
+
   const controller = new LegalDocumentsController(
     legalService as any,
     eventsService as any,
+    legalHoldService as any,
+    retentionService as any,
+    retentionPolicyService as any,
+    usageService as any,
   );
 
   const req = { requestId: 'corr-1' } as any;
@@ -99,6 +123,12 @@ describe('LegalDocumentsController', () => {
     const query = { page: 2, limit: 5 };
     await controller.listDocumentEvents(orgId, docId, query as any);
     expect(eventsService.listForDocument).toHaveBeenCalledWith(orgId, docId, query);
+  });
+
+  it('delegates usage lookup with pagination', async () => {
+    usageService.getUsage.mockResolvedValue({ legalDocumentId: docId, summary: {}, references: { data: [], meta: {} } });
+    await controller.getUsage(orgId, docId, '2', '10');
+    expect(usageService.getUsage).toHaveBeenCalledWith(orgId, docId, { page: 2, limit: 10 });
   });
 
   it('propagates tenant-safe not-found from detail lookup', async () => {

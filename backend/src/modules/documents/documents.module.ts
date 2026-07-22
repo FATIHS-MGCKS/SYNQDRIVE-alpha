@@ -15,7 +15,7 @@ import { LegalDocumentFourEyesService } from './legal-document-four-eyes.service
 import { LegalDocumentPdfValidationService } from './legal-document-pdf-validation.service';
 import { LegalDocumentMalwareScanService } from './legal-document-malware-scan.service';
 import { LegalDocumentIngestionService } from './legal-document-ingestion.service';
-import { LegalDocumentsService } from './legal-documents.service';
+import { LegalDocumentUsageService } from './legal-document-usage.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
 import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
@@ -138,6 +138,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     LegalDocumentMalwareScannerStartupService,
     LegalDocumentMalwareScannerHealthService,
     LegalDocumentsService,
+    LegalDocumentUsageService,
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,
     BookingDocumentBundleMonitoringService,
@@ -163,6 +164,7 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     LegalDocumentEventsService,
     LegalDocumentResolverService,
     LegalDocumentsService,
+    LegalDocumentUsageService,
     DocumentNumberingService,
     DOCUMENTS_STORAGE,
     DOCUMENT_RENDERER,

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-version-history-2026-07-22',
+    version: '4.9.765',
+    title: 'Legal Documents — Versionshistorie & Detailansicht (Prompt 26/32)',
+    summary: [
+      'Serverseitig paginierte Versionshistorie je Rechtstexttyp (Desktop-Tabelle, Mobile-Karten).',
+      'Filter: Sprache, Status, Jurisdiktion, Erstellungszeitraum; Sortierung und Pagination.',
+      'Detail-Drawer: Metadaten, Lifecycle-Timeline, Audit-Events, sichere PDF-Vorschau (Blob).',
+      'GET …/legal-documents/:id/usage — Snapshots, Buchungen, Verträge, Zustellnachweise aggregiert.',
+      'Keine N+1 bei Vertragsnummern; Prüfsumme kopierbar; keine technischen IDs als Primärlabel.',
+      'Tests für Filter, Pagination, Mobile-Markup, leere Zustände, Berechtigungen, Usage-Service.',
+    ],
+    reason: 'Production-Readiness — performante Historie und nachvollziehbare Detailansicht pro Version.',
+    previousBehavior: 'Eine clientseitige Gesamt-Tabelle ohne Filter, Pagination oder Detail-Drawer.',
+    details:
+      'docs/audits/legal-documents-version-history-2026-07.md, LegalDocumentVersionHistoriesPanel, legal-document-usage.service.ts',
+    affectsArchitecture: true,
+    module: 'Frontend / Documents',
+    createdAt: '2026-07-23T02:00:00.000Z',
+  },
+  {
     id: 'legal-documents-lifecycle-dialogs-2026-07-22',
     version: '4.9.764',
     title: 'Legal Documents — Lifecycle Dialogs (Prompt 25/32)',

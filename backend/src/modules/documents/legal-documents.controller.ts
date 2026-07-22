@@ -48,6 +48,7 @@ import {
 import { LegalDocumentLegalHoldService } from './retention/legal-document-legal-hold.service';
 import { LegalDocumentRetentionService } from './retention/legal-document-retention.service';
 import { LegalDocumentRetentionPolicyService } from './retention/legal-document-retention-policy.service';
+import { LegalDocumentUsageService } from './legal-document-usage.service';
 
 const MAX_LEGAL_BYTES =
   Math.max(1, parseInt(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB || '15', 10)) * 1024 * 1024;
@@ -68,6 +69,7 @@ export class LegalDocumentsController {
     private readonly legalHold: LegalDocumentLegalHoldService,
     private readonly retention: LegalDocumentRetentionService,
     private readonly retentionPolicy: LegalDocumentRetentionPolicyService,
+    private readonly usage: LegalDocumentUsageService,
   ) {}
 
   @Get()
@@ -222,6 +224,20 @@ export class LegalDocumentsController {
   @RequireLegalDocumentPermission('legal_documents.view')
   async getOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.legal.getDetail(orgId, id);
+  }
+
+  @Get(':id/usage')
+  @RequireLegalDocumentPermission('legal_documents.view')
+  async getUsage(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.usage.getUsage(orgId, id, {
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
   @Get(':id/events')

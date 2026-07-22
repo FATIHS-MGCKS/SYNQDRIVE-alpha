@@ -7,13 +7,15 @@ import {
   StatusChip,
 } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
+import type { LegalDocumentDto } from '../../lib/api';
 import { LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE } from '../lib/legal-document-types';
 import { useRentalOrg } from '../RentalContext';
 import { useLegalDocumentsOverview } from './legal-documents/useLegalDocumentsOverview';
 import { LegalDocumentsReadinessStrip } from './legal-documents/LegalDocumentsReadinessStrip';
 import { LegalDocumentCategoryCards } from './legal-documents/LegalDocumentCategoryCards';
 import { LegalDocumentConfigAlerts } from './legal-documents/LegalDocumentConfigAlerts';
-import { LegalDocumentVersionHistorySection } from './legal-documents/LegalDocumentVersionHistorySection';
+import { LegalDocumentVersionHistoriesPanel } from './legal-documents/LegalDocumentVersionHistoriesPanel';
+import { LegalDocumentVersionDetailDrawer } from './legal-documents/LegalDocumentVersionDetailDrawer';
 import { LegalDocumentAuditSection } from './legal-documents/LegalDocumentAuditSection';
 import { LegalDocumentUploadWizardDialog } from './legal-documents/LegalDocumentUploadWizardDialog';
 import { LegalDocumentLifecycleActionDialog } from './legal-documents/lifecycle/LegalDocumentLifecycleActionDialog';
@@ -29,6 +31,7 @@ interface LegalDocumentsTabProps {
 export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const canViewAudit = hasPermission('legal-documents-audit', 'read');
+  const canViewUsage = hasPermission('legal-documents', 'read');
   const canUploadLegal = hasPermission('legal-documents', 'write');
   const canPublishLegal = hasPermission('legal-documents', 'manage');
   const canSubmitReview = canUploadLegal;
@@ -36,14 +39,24 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [lifecycleOpen, setLifecycleOpen] = useState(false);
   const [lifecycleState, setLifecycleState] = useState<LegalDocumentLifecycleDialogState | null>(null);
+  const [detailDocument, setDetailDocument] = useState<LegalDocumentDto | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [focusCategoryKey, setFocusCategoryKey] = useState<string | null>(null);
   const historyRef = useRef<HTMLDivElement | null>(null);
 
   const { docs, summary, events, settings, loading, eventsLoading, error, eventsError, refresh } =
     useLegalDocumentsOverview(orgId, { loadEvents: canViewAudit });
 
   const scrollToHistory = (categoryKey: string) => {
+    setFocusCategoryKey(categoryKey);
     historyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    void categoryKey;
+    const target = document.getElementById(`legal-version-history-${categoryKey}`);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const openDetail = (document: LegalDocumentDto) => {
+    setDetailDocument(document);
+    setDetailOpen(true);
   };
 
   if (!orgId) {
@@ -104,13 +117,12 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
           />
 
           <div ref={historyRef}>
-            <LegalDocumentVersionHistorySection
+            <LegalDocumentVersionHistoriesPanel
               orgId={orgId}
-              rows={summary.allVersions}
-              documents={docs}
-              loading={loading}
               permissions={{ canWrite: canUploadLegal, canManage: canPublishLegal }}
               settings={settings}
+              focusCategoryKey={focusCategoryKey}
+              onOpenDetail={openDetail}
               onOpenAction={(state) => {
                 setLifecycleState(state);
                 setLifecycleOpen(true);
@@ -125,6 +137,18 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
           {eventsError ? (
             <p className="text-[12px] text-muted-foreground">Audit-Hinweis: {eventsError}</p>
           ) : null}
+
+          <LegalDocumentVersionDetailDrawer
+            orgId={orgId}
+            document={detailDocument}
+            open={detailOpen}
+            onOpenChange={(open) => {
+              setDetailOpen(open);
+              if (!open) setDetailDocument(null);
+            }}
+            canViewAudit={canViewAudit}
+            canViewUsage={canViewUsage}
+          />
 
           <LegalDocumentUploadWizardDialog
             open={wizardOpen}
