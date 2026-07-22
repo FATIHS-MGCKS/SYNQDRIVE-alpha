@@ -5,6 +5,7 @@ import {
   formatLegalDocumentDate,
   legalDocumentVariantLabel,
 } from '../../lib/legal-documents-overview';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface Props {
   categories: LegalDocumentCategoryOverview[];
@@ -13,12 +14,14 @@ interface Props {
 }
 
 export function LegalDocumentCategoryCards({ categories, loading, onSelectCategory }: Props) {
+  const { t, locale } = useLanguage();
+
   if (loading) {
     return (
       <div
         className="grid gap-3 lg:grid-cols-3"
         role="status"
-        aria-label="Dokumentkategorien werden geladen"
+        aria-label={t('legalDocuments.categories.loading')}
       >
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="surface-premium h-44 animate-pulse rounded-xl border border-border/60" />
@@ -30,8 +33,8 @@ export function LegalDocumentCategoryCards({ categories, loading, onSelectCatego
   return (
     <div className="space-y-3">
       <SectionHeader
-        title="Dokumentkategorien"
-        description="Pflicht-Rechtstexte für Buchungs- und Kundenprozesse"
+        title={t('legalDocuments.categories.title')}
+        description={t('legalDocuments.categories.description')}
         as="label"
       />
       <div className="grid gap-3 lg:grid-cols-3">
@@ -41,12 +44,12 @@ export function LegalDocumentCategoryCards({ categories, loading, onSelectCatego
             interactive={Boolean(onSelectCategory)}
             ariaLabel={
               onSelectCategory
-                ? `${category.config.title} — Versionshistorie anzeigen`
+                ? t('legalDocuments.categories.showHistory', { title: category.title })
                 : undefined
             }
             onClick={onSelectCategory ? () => onSelectCategory(category.config.key) : undefined}
-            title={category.config.title}
-            description={category.config.hint}
+            title={category.title}
+            description={category.hint}
             className="h-full"
             bodyClassName="space-y-3"
           >
@@ -55,41 +58,47 @@ export function LegalDocumentCategoryCards({ categories, loading, onSelectCatego
                 {category.statusLabel}
               </StatusChip>
               {category.pendingReviewCount > 0 ? (
-                <StatusChip tone="info">{category.pendingReviewCount} in Prüfung</StatusChip>
+                <StatusChip tone="info">
+                  {t('legalDocuments.categories.inReview', { count: category.pendingReviewCount })}
+                </StatusChip>
               ) : null}
               {category.draftCount > 0 ? (
-                <StatusChip tone="neutral">{category.draftCount} Entwurf</StatusChip>
+                <StatusChip tone="neutral">
+                  {t('legalDocuments.categories.drafts', { count: category.draftCount })}
+                </StatusChip>
               ) : null}
             </div>
 
             {category.activeDocument ? (
               <dl className="grid gap-2 text-[12px]">
                 <div className="flex items-start justify-between gap-2">
-                  <dt className="text-muted-foreground">Aktive Version</dt>
+                  <dt className="text-muted-foreground">{t('legalDocuments.categories.activeVersion')}</dt>
                   <dd className="font-medium text-foreground">v{category.activeDocument.versionLabel}</dd>
                 </div>
                 <div className="flex items-start justify-between gap-2">
-                  <dt className="text-muted-foreground">Gültig seit</dt>
-                  <dd className="text-foreground">{formatLegalDocumentDate(category.activeSince)}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <dt className="text-muted-foreground">Freigegeben von</dt>
-                  <dd className="truncate text-foreground">
-                    {category.approvedBy ?? category.activatedBy ?? '—'}
-                  </dd>
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <dt className="text-muted-foreground">Sprache / Jurisdiktion</dt>
+                  <dt className="text-muted-foreground">{t('legalDocuments.categories.validSince')}</dt>
                   <dd className="text-foreground">
-                    {(category.languageLabel ?? '—').toUpperCase()} ·{' '}
-                    {(category.jurisdictionLabel ?? '—').toUpperCase()}
+                    {formatLegalDocumentDate(category.activeSince, locale)}
                   </dd>
                 </div>
-                {legalDocumentVariantLabel(category.activeDocument) ? (
+                <div className="flex items-start justify-between gap-2">
+                  <dt className="text-muted-foreground">{t('legalDocuments.categories.approvedBy')}</dt>
+                  <dd className="truncate text-foreground">
+                    {category.approvedBy ?? category.activatedBy ?? t('legalDocuments.common.emDash')}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-2">
+                  <dt className="text-muted-foreground">{t('legalDocuments.categories.languageJurisdiction')}</dt>
+                  <dd className="text-foreground">
+                    {(category.languageLabel ?? t('legalDocuments.common.emDash')).toUpperCase()} ·{' '}
+                    {(category.jurisdictionLabel ?? t('legalDocuments.common.emDash')).toUpperCase()}
+                  </dd>
+                </div>
+                {legalDocumentVariantLabel(category.activeDocument, t) ? (
                   <div className="flex items-start justify-between gap-2">
-                    <dt className="text-muted-foreground">Variante</dt>
+                    <dt className="text-muted-foreground">{t('legalDocuments.categories.variant')}</dt>
                     <dd className="text-right text-foreground">
-                      {legalDocumentVariantLabel(category.activeDocument)}
+                      {legalDocumentVariantLabel(category.activeDocument, t)}
                     </dd>
                   </div>
                 ) : null}
@@ -97,7 +106,7 @@ export function LegalDocumentCategoryCards({ categories, loading, onSelectCatego
             ) : (
               <div className="flex items-start gap-2 rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-[12px] text-muted-foreground">
                 <FileText className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>Keine aktive Version — Buchungsanhänge für diese Kategorie fehlen.</span>
+                <span>{t('legalDocuments.categories.noActive')}</span>
               </div>
             )}
 
@@ -121,7 +130,7 @@ export function LegalDocumentCategoryCards({ categories, loading, onSelectCatego
             {category.nextAction ? (
               <div className="flex items-center gap-1.5 border-t border-border/60 pt-2 text-[12px] font-medium text-foreground">
                 <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span>Nächster Schritt: {category.nextAction}</span>
+                <span>{t('legalDocuments.categories.nextStep', { action: category.nextAction })}</span>
               </div>
             ) : null}
           </DataCard>

@@ -31,8 +31,8 @@ describe('LegalDocumentLifecycleImpactPanel', () => {
       />,
     );
     expect(html).toContain('data-testid="legal-lifecycle-impact-panel"');
-    expect(html).toContain('Bestehende Buchungen');
-    expect(html).toContain('Neue Buchungen');
+    expect(html).toContain('Existing bookings');
+    expect(html).toContain('New bookings');
     expect(html).toContain('v2026-07');
   });
 
@@ -46,7 +46,7 @@ describe('LegalDocumentLifecycleImpactPanel', () => {
         fourEyesBlocked={false}
       />,
     );
-    expect(revokeHtml).toContain('Widerruf ist rechtlich anders');
+    expect(revokeHtml).toContain('Revocation differs from replacement');
 
     const replaceHtml = renderToStaticMarkup(
       <LegalDocumentLifecycleImpactPanel
@@ -57,8 +57,8 @@ describe('LegalDocumentLifecycleImpactPanel', () => {
         fourEyesBlocked={false}
       />,
     );
-    expect(replaceHtml).toContain('Ersetzt');
-    expect(replaceHtml).not.toContain('Widerruf ist rechtlich anders');
+    expect(replaceHtml).toContain('Superseded');
+    expect(replaceHtml).not.toContain('Revocation differs from replacement');
   });
 
   it('shows four-eyes warning when blocked', () => {
@@ -72,7 +72,7 @@ describe('LegalDocumentLifecycleImpactPanel', () => {
       />,
     );
     expect(html).toContain('data-testid="legal-lifecycle-four-eyes"');
-    expect(html).toContain('gesperrt');
+    expect(html).toContain('blocked for this action');
   });
 
   it('clarifies archive is not deletion', () => {
@@ -85,6 +85,6 @@ describe('LegalDocumentLifecycleImpactPanel', () => {
         fourEyesBlocked={false}
       />,
     );
-    expect(html).toContain('keine Löschung');
+    expect(html).toContain('No files are deleted');
   });
 });

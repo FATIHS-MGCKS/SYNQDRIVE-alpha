@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type LegalDocumentDto } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   EMPTY_VERSION_HISTORY_FILTERS,
   type LegalDocumentVersionHistoryFilters,
@@ -14,6 +15,7 @@ import {
 import type { LegalDocumentVersionHistoryItem } from '../../lib/legal-document-version-history.types';
 
 export function useLegalDocumentVersionHistory(orgId: string, documentType: string) {
+  const { t } = useLanguage();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<LegalDocumentVersionHistoryFilters>({
     ...EMPTY_VERSION_HISTORY_FILTERS,
@@ -42,7 +44,7 @@ export function useLegalDocumentVersionHistory(orgId: string, documentType: stri
       );
       const docs = response.data ?? [];
       setDocuments(docs);
-      setItems(docs.map(mapDtoToVersionHistoryItem));
+      setItems(docs.map((doc) => mapDtoToVersionHistoryItem(doc, t)));
       setMeta(
         response.meta ?? {
           total: docs.length,
@@ -59,7 +61,7 @@ export function useLegalDocumentVersionHistory(orgId: string, documentType: stri
     } finally {
       setLoading(false);
     }
-  }, [orgId, documentType, page, filters, sort, order]);
+  }, [orgId, documentType, page, filters, sort, order, t]);
 
   useEffect(() => {
     void load();

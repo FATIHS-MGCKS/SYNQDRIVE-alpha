@@ -8,7 +8,7 @@ import {
 } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
 import type { LegalDocumentDto } from '../../lib/api';
-import { LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE } from '../lib/legal-document-types';
+import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useLegalDocumentsOverview } from './legal-documents/useLegalDocumentsOverview';
 import { LegalDocumentsReadinessStrip } from './legal-documents/LegalDocumentsReadinessStrip';
@@ -22,6 +22,7 @@ import { LegalDocumentLifecycleActionDialog } from './legal-documents/lifecycle/
 import { LEGAL_LIFECYCLE_ACTION_CONFIG } from '../lib/legal-document-lifecycle.constants';
 import type { LegalDocumentLifecycleDialogState } from '../lib/legal-document-lifecycle.types';
 import { formatLifecycleEventLabel } from '../lib/legal-document-lifecycle.utils';
+import { formatLegalDocumentStatusI18n } from '../lib/legal-documents-i18n';
 import { LEGAL_DOCS_HEADING_ID, LEGAL_DOCS_MAIN_ID } from './legal-documents/legal-documents-a11y';
 
 interface LegalDocumentsTabProps {
@@ -30,6 +31,7 @@ interface LegalDocumentsTabProps {
 }
 
 export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
+  const { t } = useLanguage();
   const { orgId, hasPermission } = useRentalOrg();
   const canViewAudit = hasPermission('legal-documents-audit', 'read');
   const canViewUsage = hasPermission('legal-documents', 'read');
@@ -63,8 +65,8 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
   if (!orgId) {
     return (
       <ErrorState
-        title="Organisation nicht verfügbar"
-        description="Die Rechtstexte können ohne Mandantenkontext nicht geladen werden."
+        title={t('legalDocuments.page.orgUnavailable')}
+        description={t('legalDocuments.page.orgUnavailableDetail')}
       />
     );
   }
@@ -77,16 +79,16 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
     >
       <PageHeader
         variant="full"
-        eyebrow="Verwaltung"
-        title={<span id={LEGAL_DOCS_HEADING_ID}>Kunden-Rechtstexte</span>}
-        description="Verwalten Sie freigegebene Vertrags- und Datenschutzhinweise für Buchungen und Kundenprozesse."
+        eyebrow={t('legalDocuments.page.eyebrow')}
+        title={<span id={LEGAL_DOCS_HEADING_ID}>{t('legalDocuments.page.title')}</span>}
+        description={t('legalDocuments.page.description')}
         icon={<FileText className="h-4 w-4" />}
         status={
           <StatusChip tone={summary.overallTone} dot>
             {summary.overallLabel}
           </StatusChip>
         }
-        meta={<span>{LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE}</span>}
+        meta={<span>{t('legalDocuments.disclaimer')}</span>}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canUploadLegal ? (
@@ -98,19 +100,23 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
                 data-testid="legal-documents-new-version"
               >
                 <Plus />
-                Neue Version
+                {t('legalDocuments.page.newVersion')}
               </Button>
             ) : null}
             <Button type="button" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
               <RefreshCw className={loading ? 'animate-spin' : ''} />
-              Aktualisieren
+              {t('legalDocuments.page.refresh')}
             </Button>
           </div>
         }
       />
 
       {error ? (
-        <ErrorState title="Rechtstexte konnten nicht geladen werden" error={error} onRetry={() => void refresh()} />
+        <ErrorState
+          title={t('legalDocuments.page.loadError')}
+          error={error}
+          onRetry={() => void refresh()}
+        />
       ) : (
         <>
           <LegalDocumentsReadinessStrip summary={summary} loading={loading} />
@@ -140,7 +146,9 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
           ) : null}
 
           {eventsError ? (
-            <p className="text-[12px] text-muted-foreground">Audit-Hinweis: {eventsError}</p>
+            <p className="text-[12px] text-muted-foreground">
+              {t('legalDocuments.page.auditHint', { message: eventsError })}
+            </p>
           ) : null}
 
           <LegalDocumentVersionDetailDrawer
@@ -177,11 +185,19 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
             onSuccess={async ({ document, latestEvent }) => {
               await refresh();
               const action = lifecycleState?.action;
-              const label = action ? LEGAL_LIFECYCLE_ACTION_CONFIG[action].confirmLabel : 'Aktion';
+              const label = action
+                ? t(LEGAL_LIFECYCLE_ACTION_CONFIG[action].confirmLabelKey)
+                : t('legalDocuments.toast.actionFallback');
               toast.success(
                 latestEvent
-                  ? `${label} — ${formatLifecycleEventLabel(latestEvent.eventType)}`
-                  : `${label} — Status: ${document.status}`,
+                  ? t('legalDocuments.toast.actionSuccess', {
+                      action: label,
+                      event: formatLifecycleEventLabel(latestEvent.eventType, t),
+                    })
+                  : t('legalDocuments.toast.actionStatus', {
+                      action: label,
+                      status: formatLegalDocumentStatusI18n(document.status, t),
+                    }),
               );
             }}
             onConflict={refresh}

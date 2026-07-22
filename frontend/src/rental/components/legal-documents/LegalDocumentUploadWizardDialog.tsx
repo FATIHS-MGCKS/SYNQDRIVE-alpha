@@ -22,6 +22,7 @@ import {
   isScanStatusBlocking,
   scanStatusErrorMessage,
 } from '../../lib/legal-document-upload-wizard.utils';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   FormErrorSummary,
   LiveStatusMessage,
@@ -61,6 +62,7 @@ function isFormDirty(
 }
 
 function WizardStepIndicator({ currentStep }: { currentStep: number }) {
+  const { t } = useLanguage();
   const total = LEGAL_UPLOAD_WIZARD_STEPS.length;
   const active = LEGAL_UPLOAD_WIZARD_STEPS.find((s) => s.id === currentStep);
   const progress = Math.round((currentStep / total) * 100);
@@ -69,9 +71,9 @@ function WizardStepIndicator({ currentStep }: { currentStep: number }) {
     <div className="mb-4 space-y-2" data-testid="legal-upload-wizard-stepper">
       <div className="flex items-center justify-between gap-2 text-xs">
         <p className="font-semibold text-foreground">
-          Schritt {currentStep} von {total}
+          {t('legalDocuments.wizard.stepProgress', { current: currentStep, total })}
           {active ? (
-            <span className="font-normal text-muted-foreground"> · {active.label}</span>
+            <span className="font-normal text-muted-foreground"> · {t(active.labelKey)}</span>
           ) : null}
         </p>
       </div>
@@ -81,7 +83,7 @@ function WizardStepIndicator({ currentStep }: { currentStep: number }) {
         aria-valuemin={1}
         aria-valuemax={total}
         aria-valuenow={currentStep}
-        aria-label={`Upload-Fortschritt: Schritt ${currentStep} von ${total}`}
+        aria-label={t('legalDocuments.wizard.stepProgressAria', { current: currentStep, total })}
       >
         <div
           className="h-full bg-[var(--brand)] transition-all"
@@ -104,7 +106,7 @@ function WizardStepIndicator({ currentStep }: { currentStep: number }) {
                     : 'text-[11px] text-muted-foreground/60'
               }
             >
-              {step.label}
+              {t(step.labelKey)}
             </li>
           );
         })}
@@ -123,6 +125,7 @@ export function LegalDocumentUploadWizardDialog({
   onSuccess,
   initialDocumentType,
 }: LegalDocumentUploadWizardDialogProps) {
+  const { t } = useLanguage();
   const dialogTitleId = useId();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<LegalDocumentUploadWizardForm>(() => ({
@@ -220,10 +223,10 @@ export function LegalDocumentUploadWizardDialog({
       setUploadProgress(100);
 
       if (isScanStatusBlocking(doc.scanStatus)) {
-        setUploadError(scanStatusErrorMessage(doc.scanStatus!));
+        setUploadError(scanStatusErrorMessage(doc.scanStatus!, t));
       }
     } catch (err) {
-      const parsed = parseLegalDocumentApiError(err);
+      const parsed = parseLegalDocumentApiError(err, t);
       setUploadError(parsed.message);
       if (parsed.field === 'versionLabel') {
         setErrors((prev) => ({ ...prev, versionLabel: parsed.message }));
@@ -233,7 +236,7 @@ export function LegalDocumentUploadWizardDialog({
       setUploading(false);
       abortRef.current = null;
     }
-  }, [orgId, form, file]);
+  }, [orgId, form, file, t]);
 
   useEffect(() => {
     if (step === 4 && file && !uploadedDocument && !uploading && !uploadError) {
@@ -242,7 +245,7 @@ export function LegalDocumentUploadWizardDialog({
   }, [step, file, uploadedDocument, uploading, uploadError, runUpload]);
 
   const validateCurrentStep = (): boolean => {
-    const nextErrors = validateLegalUploadWizardStep(step, form, file, existingDocs);
+    const nextErrors = validateLegalUploadWizardStep(step, form, file, t, existingDocs);
     setErrors(nextErrors);
     return !hasValidationErrors(nextErrors);
   };
@@ -293,7 +296,7 @@ export function LegalDocumentUploadWizardDialog({
     if (!uploadedDocument || submitting || uploading || uploadError) return;
     setSubmitting(true);
     try {
-      await finishSuccess('Entwurf gespeichert.');
+      await finishSuccess(t('legalDocuments.wizard.draftSaved'));
     } finally {
       setSubmitting(false);
     }
@@ -306,15 +309,16 @@ export function LegalDocumentUploadWizardDialog({
       await api.legalDocuments.submitForReview(orgId, uploadedDocument.id, {
         changeSummary: form.changeSummary.trim() || undefined,
       });
-      await finishSuccess('Review angefordert.');
+      await finishSuccess(t('legalDocuments.wizard.reviewRequested'));
     } catch (err) {
-      toast.error(parseLegalDocumentApiError(err).message);
+      toast.error(parseLegalDocumentApiError(err, t).message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const activeStepLabel = LEGAL_UPLOAD_WIZARD_STEPS.find((s) => s.id === step)?.label ?? '';
+  const activeStep = LEGAL_UPLOAD_WIZARD_STEPS.find((s) => s.id === step);
+  const activeStepLabel = activeStep ? t(activeStep.labelKey) : '';
 
   return (
     <>
@@ -327,9 +331,9 @@ export function LegalDocumentUploadWizardDialog({
         maxWidthClassName="sm:max-w-2xl"
         hideClose={uploading || submitting}
         title={
-          <span id={dialogTitleId}>Neue Rechtstext-Version</span>
+          <span id={dialogTitleId}>{t('legalDocuments.wizard.title')}</span>
         }
-        description="Mehrstufiger Upload — Aktivierung erfolgt separat nach Freigabe."
+        description={t('legalDocuments.wizard.description')}
         footer={
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-between">
             <Button
@@ -338,7 +342,7 @@ export function LegalDocumentUploadWizardDialog({
               onClick={requestClose}
               disabled={uploading || submitting}
             >
-              Abbrechen
+              {t('legalDocuments.wizard.cancel')}
             </Button>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               {step > 1 ? (
@@ -348,7 +352,7 @@ export function LegalDocumentUploadWizardDialog({
                   onClick={handleBack}
                   disabled={uploading || submitting}
                 >
-                  Zurück
+                  {t('legalDocuments.wizard.back')}
                 </Button>
               ) : null}
               {step < 4 ? (
@@ -359,7 +363,7 @@ export function LegalDocumentUploadWizardDialog({
                   disabled={!canUpload || uploading}
                   data-testid="legal-upload-wizard-next"
                 >
-                  Weiter
+                  {t('legalDocuments.wizard.next')}
                 </Button>
               ) : (
                 <>
@@ -377,7 +381,7 @@ export function LegalDocumentUploadWizardDialog({
                     data-testid="legal-upload-save-draft"
                   >
                     {submitting ? <Loader2 className="animate-spin" /> : null}
-                    Als Entwurf speichern
+                    {t('legalDocuments.wizard.saveDraft')}
                   </Button>
                   {canSubmitReview ? (
                     <Button
@@ -393,7 +397,7 @@ export function LegalDocumentUploadWizardDialog({
                       data-testid="legal-upload-request-review"
                     >
                       {submitting ? <Loader2 className="animate-spin" /> : null}
-                      Review anfordern
+                      {t('legalDocuments.wizard.requestReview')}
                     </Button>
                   ) : null}
                 </>
@@ -413,16 +417,16 @@ export function LegalDocumentUploadWizardDialog({
 
           <FormErrorSummary
             id={LEGAL_UPLOAD_ERROR_SUMMARY_ID}
-            title="Bitte korrigieren Sie die markierten Felder:"
+            title={t('legalDocuments.wizard.errorSummary')}
             errors={errors}
           />
 
           {uploadProgress != null ? (
             <LiveStatusMessage id={LEGAL_UPLOAD_PROGRESS_STATUS_ID}>
               {uploading
-                ? `Upload läuft: ${uploadProgress} Prozent`
+                ? t('legalDocuments.wizard.uploadLive', { percent: uploadProgress })
                 : uploadProgress === 100
-                  ? 'Upload abgeschlossen'
+                  ? t('legalDocuments.wizard.uploadComplete')
                   : ''}
             </LiveStatusMessage>
           ) : null}
@@ -472,14 +476,14 @@ export function LegalDocumentUploadWizardDialog({
       <ConfirmDialog
         open={abortConfirmOpen}
         onOpenChange={setAbortConfirmOpen}
-        title="Upload abbrechen?"
+        title={t('legalDocuments.wizard.abortTitle')}
         description={
           uploading
-            ? 'Der laufende Upload wird abgebrochen. Bereits hochgeladene Entwürfe bleiben als Entwurf gespeichert.'
-            : 'Nicht gespeicherte Eingaben gehen verloren.'
+            ? t('legalDocuments.wizard.abortUploading')
+            : t('legalDocuments.wizard.abortDirty')
         }
-        confirmLabel="Abbrechen"
-        cancelLabel="Weiter bearbeiten"
+        confirmLabel={t('legalDocuments.wizard.abortConfirm')}
+        cancelLabel={t('legalDocuments.wizard.abortContinue')}
         tone="critical"
         onConfirm={handleConfirmAbort}
       />

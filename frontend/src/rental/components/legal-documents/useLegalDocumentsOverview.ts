@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type LegalDocumentDto, type LegalDocumentEventDto } from '../../../lib/api';
 import { buildLegalDocumentsReadinessSummary } from '../../lib/legal-documents-overview';
 import type { LegalDocumentWorkflowSettings } from '../../lib/legal-document-lifecycle.types';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export interface UseLegalDocumentsOverviewResult {
   docs: LegalDocumentDto[];
@@ -19,6 +20,7 @@ export function useLegalDocumentsOverview(
   orgId: string | null | undefined,
   options?: { loadEvents?: boolean },
 ): UseLegalDocumentsOverviewResult {
+  const { t } = useLanguage();
   const [docs, setDocs] = useState<LegalDocumentDto[]>([]);
   const [events, setEvents] = useState<LegalDocumentEventDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export function useLegalDocumentsOverview(
     void refresh();
   }, [refresh]);
 
-  const summary = useMemo(() => buildLegalDocumentsReadinessSummary(docs), [docs]);
+  const summary = useMemo(() => buildLegalDocumentsReadinessSummary(docs, t), [docs, t]);
 
   return {
     docs,

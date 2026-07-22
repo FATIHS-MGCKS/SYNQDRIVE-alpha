@@ -13,6 +13,13 @@ import type {
   LegalDocumentWorkflowSettings,
 } from './legal-document-lifecycle.types';
 import { LEGAL_LIFECYCLE_ACTION_CONFIG } from './legal-document-lifecycle.constants';
+import {
+  formatLegalDocumentTypeTitle,
+  formatLifecycleEventLabelI18n,
+  formatOptionLabel,
+  lifecycleActionLabelKey,
+  type LegalDocumentsTranslate,
+} from './legal-documents-i18n';
 
 export interface LifecycleActionAvailability {
   action: LegalDocumentLifecycleAction;
@@ -21,14 +28,11 @@ export interface LifecycleActionAvailability {
   disabledReason?: string;
 }
 
-function labelForScope(value: string | undefined | null, options: readonly { value: string; label: string }[]) {
-  if (!value) return '—';
-  return options.find((o) => o.value === value)?.label ?? value;
-}
-
-export function formatLegalDocumentTypeLabel(document: LegalDocumentDto): string {
-  const config = LEGAL_DOCUMENT_TYPE_CONFIGS.find((c) => c.key === document.documentType);
-  return config?.title ?? document.title ?? document.documentType;
+export function formatLegalDocumentTypeLabel(
+  document: LegalDocumentDto,
+  t: LegalDocumentsTranslate,
+): string {
+  return formatLegalDocumentTypeTitle(document.documentType, t) || document.title || document.documentType;
 }
 
 export function findActivePeer(
@@ -71,6 +75,7 @@ export function getLifecycleActionsForDocument(
   permissions: LegalDocumentLifecyclePermissions,
   settings: LegalDocumentWorkflowSettings,
   currentUserId: string | null | undefined,
+  t: LegalDocumentsTranslate,
 ): LifecycleActionAvailability[] {
   const actions: LifecycleActionAvailability[] = [];
   const activePeer = findActivePeer(document, allDocs);
@@ -78,68 +83,65 @@ export function getLifecycleActionsForDocument(
 
   const push = (
     action: LegalDocumentLifecycleAction,
-    label: string,
     allowed: boolean,
     disabledReason?: string,
   ) => {
     if (!allowed) return;
-    actions.push({ action, label, disabled: Boolean(disabledReason), disabledReason });
+    actions.push({
+      action,
+      label: t(lifecycleActionLabelKey(action)),
+      disabled: Boolean(disabledReason),
+      disabledReason,
+    });
   };
 
   if (document.status === 'DRAFT') {
     push(
       'submit_review',
-      'Review anfordern',
       permissions.canWrite,
-      scanBlocked ? 'Malware-Scan nicht bestanden' : undefined,
+      scanBlocked ? t('legalDocuments.lifecycle.disabled.scanFailed') : undefined,
     );
-    push('archive', 'Archivieren', permissions.canWrite);
+    push('archive', permissions.canWrite);
   }
 
   if (document.status === 'IN_REVIEW') {
     push(
       'approve',
-      'Freigeben',
       permissions.canManage,
       violatesFourEyes(document, currentUserId, settings, 'approve')
-        ? 'Vier-Augen: Sie haben diese Version eingereicht oder hochgeladen'
+        ? t('legalDocuments.lifecycle.disabled.fourEyesReview')
         : undefined,
     );
-    push('request_changes', 'Änderungen anfordern', permissions.canManage);
-    push('archive', 'Archivieren', permissions.canWrite);
+    push('request_changes', permissions.canManage);
+    push('archive', permissions.canWrite);
   }
 
   if (document.status === 'APPROVED' || document.status === 'SCHEDULED') {
     const activateDisabled = violatesFourEyes(document, currentUserId, settings, 'activate')
-      ? 'Vier-Augen: Sie haben diese Version hochgeladen'
+      ? t('legalDocuments.lifecycle.disabled.fourEyesUpload')
       : scanBlocked
-        ? 'Malware-Scan nicht bestanden'
+        ? t('legalDocuments.lifecycle.disabled.scanFailed')
         : undefined;
 
     if (document.status === 'APPROVED') {
-      push('schedule_activation', 'Aktivierung planen', permissions.canWrite, activateDisabled);
+      push('schedule_activation', permissions.canWrite, activateDisabled);
     }
 
     if (activePeer) {
-      push(
-        'replace_active',
-        'Aktive Version ersetzen',
-        permissions.canManage,
-        activateDisabled,
-      );
+      push('replace_active', permissions.canManage, activateDisabled);
     } else {
-      push('activate_now', 'Sofort aktivieren', permissions.canManage, activateDisabled);
+      push('activate_now', permissions.canManage, activateDisabled);
     }
 
-    push('archive', 'Archivieren', permissions.canWrite);
+    push('archive', permissions.canWrite);
   }
 
   if (document.status === 'ACTIVE') {
-    push('revoke', 'Widerrufen', permissions.canManage);
+    push('revoke', permissions.canManage);
   }
 
   if (document.status === 'SUPERSEDED' || document.status === 'REVOKED') {
-    push('archive', 'Archivieren', permissions.canWrite);
+    push('archive', permissions.canWrite);
   }
 
   return actions;
@@ -148,6 +150,7 @@ export function getLifecycleActionsForDocument(
 export function validateLifecycleForm(
   action: LegalDocumentLifecycleAction,
   form: LegalDocumentLifecycleFormState,
+  t: LegalDocumentsTranslate,
 ): Partial<Record<keyof LegalDocumentLifecycleFormState, string>> {
   const config = LEGAL_LIFECYCLE_ACTION_CONFIG[action];
   const errors: Partial<Record<keyof LegalDocumentLifecycleFormState, string>> = {};
@@ -155,21 +158,23 @@ export function validateLifecycleForm(
   if (config.requiresReason) {
     const reason = form.statusReason.trim();
     if (!reason) {
-      errors.statusReason = 'Begründung ist erforderlich.';
+      errors.statusReason = t('legalDocuments.validation.reasonRequired');
     } else if (reason.length < config.reasonMinLength) {
-      errors.statusReason = `Mindestens ${config.reasonMinLength} Zeichen erforderlich.`;
+      errors.statusReason = t('legalDocuments.validation.reasonMinLength', {
+        min: config.reasonMinLength,
+      });
     }
   }
 
   if (config.requiresValidFrom) {
     if (!form.validFrom.trim()) {
-      errors.validFrom = 'Gültigkeitsbeginn ist erforderlich.';
+      errors.validFrom = t('legalDocuments.validation.validFromRequired');
     } else {
       const date = new Date(form.validFrom);
       if (Number.isNaN(date.getTime())) {
-        errors.validFrom = 'Ungültiges Datum.';
+        errors.validFrom = t('legalDocuments.validation.validFromInvalid');
       } else if (date.getTime() <= Date.now()) {
-        errors.validFrom = 'Der Gültigkeitsbeginn muss in der Zukunft liegen.';
+        errors.validFrom = t('legalDocuments.validation.validFromFuture');
       }
     }
   }
@@ -177,56 +182,69 @@ export function validateLifecycleForm(
   return errors;
 }
 
+function labelForScope(
+  value: string | undefined | null,
+  options: readonly { value: string; labelKey: import('../i18n/translations/en').TranslationKey }[],
+  t: LegalDocumentsTranslate,
+) {
+  if (!value) return t('legalDocuments.common.emDash');
+  const match = options.find((o) => o.value === value);
+  return match ? t(match.labelKey) : value;
+}
+
 export function buildLifecycleImpactRows(
   document: LegalDocumentDto,
   activePeer: LegalDocumentDto | null,
   action: LegalDocumentLifecycleAction,
+  t: LegalDocumentsTranslate,
 ) {
   const rows: { label: string; value: string }[] = [
-    { label: 'Neue Version', value: `v${document.versionLabel}` },
+    { label: t('legalDocuments.lifecycle.impact.newVersion'), value: `v${document.versionLabel}` },
     {
-      label: 'Bisher aktive Version',
-      value: activePeer ? `v${activePeer.versionLabel}` : 'Keine aktive Version',
+      label: t('legalDocuments.lifecycle.impact.previousActive'),
+      value: activePeer
+        ? `v${activePeer.versionLabel}`
+        : t('legalDocuments.lifecycle.impact.noActive'),
     },
     {
-      label: 'Gültigkeitsbeginn',
+      label: t('legalDocuments.lifecycle.impact.validFrom'),
       value:
         action === 'schedule_activation'
-          ? '(wird beim Planen festgelegt)'
+          ? t('legalDocuments.lifecycle.impact.validFromOnSchedule')
           : document.validFrom
-            ? new Date(document.validFrom).toLocaleString('de-DE')
-            : 'Bei Aktivierung sofort',
+            ? new Date(document.validFrom).toLocaleString()
+            : t('legalDocuments.lifecycle.impact.validFromOnActivate'),
     },
     {
-      label: 'Sprache',
-      value: labelForScope(document.language, LEGAL_UPLOAD_LANGUAGES),
+      label: t('legalDocuments.lifecycle.impact.language'),
+      value: labelForScope(document.language, LEGAL_UPLOAD_LANGUAGES, t),
     },
     {
-      label: 'Jurisdiktion',
-      value: labelForScope(document.jurisdiction, LEGAL_UPLOAD_JURISDICTIONS),
+      label: t('legalDocuments.lifecycle.impact.jurisdiction'),
+      value: labelForScope(document.jurisdiction, LEGAL_UPLOAD_JURISDICTIONS, t),
     },
     {
-      label: 'Kanal',
-      value: labelForScope(document.channelScope, LEGAL_UPLOAD_BOOKING_CHANNELS),
+      label: t('legalDocuments.lifecycle.impact.channel'),
+      value: labelForScope(document.channelScope, LEGAL_UPLOAD_BOOKING_CHANNELS, t),
     },
     {
-      label: 'Kundensegment',
-      value: labelForScope(document.customerSegment, LEGAL_UPLOAD_CUSTOMER_SEGMENTS),
+      label: t('legalDocuments.lifecycle.impact.customerSegment'),
+      value: labelForScope(document.customerSegment, LEGAL_UPLOAD_CUSTOMER_SEGMENTS, t),
     },
     {
-      label: 'Bestehende Buchungen',
-      value: 'Bleiben unverändert (gebundene Snapshots)',
+      label: t('legalDocuments.lifecycle.impact.existingBookings'),
+      value: t('legalDocuments.lifecycle.impact.existingBookingsValue'),
     },
     {
-      label: 'Neue Buchungen',
+      label: t('legalDocuments.lifecycle.impact.newBookings'),
       value:
         action === 'revoke'
-          ? 'Erhalten diese Version nicht mehr — Widerruf wirkt vorwärts'
+          ? t('legalDocuments.lifecycle.impact.newBookings.revoke')
           : action === 'archive'
-            ? 'Unverändert — Archivierung betrifft nur den Workflow'
+            ? t('legalDocuments.lifecycle.impact.newBookings.archive')
             : action === 'request_changes' || action === 'submit_review' || action === 'approve'
-              ? 'Noch keine Änderung — erst nach Aktivierung'
-              : 'Verwenden die neue Version nach Aktivierung',
+              ? t('legalDocuments.lifecycle.impact.newBookings.pending')
+              : t('legalDocuments.lifecycle.impact.newBookings.afterActivation'),
     },
   ];
 
@@ -240,16 +258,12 @@ export function resolveActivateAction(
   return findActivePeer(document, allDocs) ? 'replace_active' : 'activate_now';
 }
 
-export function formatLifecycleEventLabel(eventType: string): string {
-  const labels: Record<string, string> = {
-    SUBMITTED_FOR_REVIEW: 'Review angefordert',
-    APPROVED: 'Freigegeben',
-    SCHEDULED: 'Aktivierung geplant',
-    ACTIVATED: 'Aktiviert',
-    SUPERSEDED: 'Ersetzt',
-    REVOKED: 'Widerrufen',
-    ARCHIVED: 'Archiviert',
-    RETURNED_TO_DRAFT: 'Änderungen angefordert',
-  };
-  return labels[eventType] ?? eventType;
+export function formatLifecycleEventLabel(eventType: string, t?: LegalDocumentsTranslate): string {
+  if (t) return formatLifecycleEventLabelI18n(eventType, t);
+  return eventType;
+}
+
+export function resolveTypeConfigTitle(documentType: string, t: LegalDocumentsTranslate): string {
+  const config = LEGAL_DOCUMENT_TYPE_CONFIGS.find((c) => c.key === documentType);
+  return config ? t(config.titleKey) : documentType;
 }

@@ -102,7 +102,7 @@ describe('LegalDocument version history components', () => {
         onOpenAction={() => {}}
       />,
     );
-    expect(html).toContain('Noch keine Versionen für diesen Rechtstexttyp');
+    expect(html).toContain('No versions for this document type yet');
   });
 
   it('renders pagination when total exceeds page size', () => {
@@ -142,8 +142,8 @@ describe('LegalDocument version history components', () => {
       />,
     );
     expect(html).toContain('data-testid="legal-version-pagination-TERMS_AND_CONDITIONS"');
-    expect(html).toContain('42 Versionen');
-    expect(html).toContain('Seite 2 von 3');
+    expect(html).toContain('42 versions');
+    expect(html).toContain('page 2 of 3');
   });
 
   it('renders mobile card markup for version rows', () => {
@@ -199,7 +199,7 @@ describe('LegalDocument version history components', () => {
         onOpenAction={() => {}}
       />,
     );
-    expect(html).toContain('Keine Versionen für die gewählten Filter');
+    expect(html).toContain('No versions match the selected filters');
     expect(html).toContain('data-testid="legal-version-filters-TERMS_AND_CONDITIONS"');
   });
 });

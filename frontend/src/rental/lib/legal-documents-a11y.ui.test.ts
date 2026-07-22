@@ -57,6 +57,6 @@ describe('legal documents a11y quality audit', () => {
       'utf8',
     );
     expect(source).toContain('tabIndex={0}');
-    expect(source).toContain('LEGAL_PDF_PREVIEW_TITLE');
+    expect(source).toContain("t('legalDocuments.a11y.pdfPreview')");
   });
 });

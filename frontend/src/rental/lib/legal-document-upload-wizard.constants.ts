@@ -1,60 +1,73 @@
-import { CONSUMER_INFORMATION_VARIANT_LABELS_DE, LEGAL_DOCUMENT_TYPE_CONFIGS } from './legal-document-types';
+import type { TranslationKey } from '../i18n/translations/en';
+import { LEGAL_DOCUMENT_TYPE_CONFIGS } from './legal-document-types';
 
-export const LEGAL_UPLOAD_WIZARD_STEPS = [
-  { id: 1, key: 'classification', label: 'Einordnung' },
-  { id: 2, key: 'version', label: 'Version & Gültigkeit' },
-  { id: 3, key: 'file', label: 'Datei' },
-  { id: 4, key: 'review', label: 'Prüfung' },
-] as const;
+export const LEGAL_UPLOAD_WIZARD_STEPS: {
+  id: number;
+  key: string;
+  labelKey: TranslationKey;
+}[] = [
+  { id: 1, key: 'classification', labelKey: 'legalDocuments.wizard.step.classification' },
+  { id: 2, key: 'version', labelKey: 'legalDocuments.wizard.step.version' },
+  { id: 3, key: 'file', labelKey: 'legalDocuments.wizard.step.file' },
+  { id: 4, key: 'review', labelKey: 'legalDocuments.wizard.step.review' },
+];
 
 export const LEGAL_UPLOAD_LANGUAGES = [
-  { value: 'de', label: 'Deutsch (de)' },
-  { value: 'en', label: 'Englisch (en)' },
-  { value: 'fr', label: 'Französisch (fr)' },
+  { value: 'de', labelKey: 'legalDocuments.option.language.de' as TranslationKey },
+  { value: 'en', labelKey: 'legalDocuments.option.language.en' as TranslationKey },
+  { value: 'fr', labelKey: 'legalDocuments.option.language.fr' as TranslationKey },
 ] as const;
 
 export const LEGAL_UPLOAD_JURISDICTIONS = [
-  { value: 'DE', label: 'Deutschland (DE)' },
-  { value: 'AT', label: 'Österreich (AT)' },
-  { value: 'CH', label: 'Schweiz (CH)' },
+  { value: 'DE', labelKey: 'legalDocuments.option.jurisdiction.DE' as TranslationKey },
+  { value: 'AT', labelKey: 'legalDocuments.option.jurisdiction.AT' as TranslationKey },
+  { value: 'CH', labelKey: 'legalDocuments.option.jurisdiction.CH' as TranslationKey },
 ] as const;
 
 export const LEGAL_UPLOAD_CUSTOMER_SEGMENTS = [
-  { value: 'BOTH', label: 'B2B & B2C' },
-  { value: 'B2C', label: 'B2C — Privatkunden' },
-  { value: 'B2B', label: 'B2B — Geschäftskunden' },
+  { value: 'BOTH', labelKey: 'legalDocuments.option.segment.BOTH' as TranslationKey },
+  { value: 'B2C', labelKey: 'legalDocuments.option.segment.B2C' as TranslationKey },
+  { value: 'B2B', labelKey: 'legalDocuments.option.segment.B2B' as TranslationKey },
 ] as const;
 
 export const LEGAL_UPLOAD_BOOKING_CHANNELS = [
-  { value: 'ALL', label: 'Alle Kanäle' },
-  { value: 'WEBSITE', label: 'Website' },
-  { value: 'OPERATOR_APP', label: 'Operator-App' },
-  { value: 'MANUAL', label: 'Manuelle Buchung' },
-  { value: 'API', label: 'API' },
+  { value: 'ALL', labelKey: 'legalDocuments.option.channel.ALL' as TranslationKey },
+  { value: 'WEBSITE', labelKey: 'legalDocuments.option.channel.WEBSITE' as TranslationKey },
+  { value: 'OPERATOR_APP', labelKey: 'legalDocuments.option.channel.OPERATOR_APP' as TranslationKey },
+  { value: 'MANUAL', labelKey: 'legalDocuments.option.channel.MANUAL' as TranslationKey },
+  { value: 'API', labelKey: 'legalDocuments.option.channel.API' as TranslationKey },
 ] as const;
 
 export const LEGAL_UPLOAD_STATION_SCOPE_MODES = [
-  { value: 'ORGANIZATION_WIDE', label: 'Organisationsweit' },
-  { value: 'STATION_SPECIFIC', label: 'Stationsspezifisch' },
+  {
+    value: 'ORGANIZATION_WIDE',
+    labelKey: 'legalDocuments.option.stationScope.ORGANIZATION_WIDE' as TranslationKey,
+  },
+  {
+    value: 'STATION_SPECIFIC',
+    labelKey: 'legalDocuments.option.stationScope.STATION_SPECIFIC' as TranslationKey,
+  },
 ] as const;
 
 export const LEGAL_UPLOAD_PRODUCT_SCOPES = [
-  { value: '', label: 'Alle Geschäftsbereiche' },
-  { value: 'RENTAL', label: 'Vermietung' },
-  { value: 'FLEET', label: 'Flotte' },
-  { value: 'TAXI', label: 'Taxi' },
-  { value: 'LOGISTICS', label: 'Logistik' },
-  { value: 'OTHER', label: 'Sonstige' },
+  { value: '', labelKey: 'legalDocuments.option.productScope.all' as TranslationKey },
+  { value: 'RENTAL', labelKey: 'legalDocuments.option.productScope.RENTAL' as TranslationKey },
+  { value: 'FLEET', labelKey: 'legalDocuments.option.productScope.FLEET' as TranslationKey },
+  { value: 'TAXI', labelKey: 'legalDocuments.option.productScope.TAXI' as TranslationKey },
+  { value: 'LOGISTICS', labelKey: 'legalDocuments.option.productScope.LOGISTICS' as TranslationKey },
+  { value: 'OTHER', labelKey: 'legalDocuments.option.productScope.OTHER' as TranslationKey },
 ] as const;
 
 export const LEGAL_DOCUMENT_TYPE_OPTIONS = LEGAL_DOCUMENT_TYPE_CONFIGS.map((c) => ({
   value: c.key,
-  label: c.title,
+  labelKey: c.titleKey,
 }));
 
-export const LEGAL_CONSUMER_VARIANT_OPTIONS = Object.entries(CONSUMER_INFORMATION_VARIANT_LABELS_DE).map(
-  ([value, label]) => ({ value, label }),
-);
+export const LEGAL_CONSUMER_VARIANT_OPTIONS =
+  LEGAL_DOCUMENT_TYPE_CONFIGS.find((c) => c.key === 'CONSUMER_INFORMATION')?.variants?.map((v) => ({
+    value: v.value,
+    labelKey: v.labelKey,
+  })) ?? [];
 
 export const LEGAL_UPLOAD_MAX_MB = Math.max(
   1,

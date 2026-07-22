@@ -1,31 +1,16 @@
 import { DataCard, SectionHeader, StatusChip, Timeline } from '../../../components/patterns';
 import type { LegalDocumentEventDto } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   formatLegalDocumentDate,
   legalDocumentTypeTitle,
 } from '../../lib/legal-documents-overview';
+import { formatLifecycleEventLabel } from '../../lib/legal-document-lifecycle.utils';
 
 interface Props {
   events: LegalDocumentEventDto[];
   loading?: boolean;
 }
-
-const EVENT_LABEL_DE: Record<string, string> = {
-  UPLOADED: 'Hochgeladen',
-  SUBMITTED_FOR_REVIEW: 'Zur Prüfung eingereicht',
-  RETURNED_TO_DRAFT: 'Zurück in Entwurf',
-  APPROVED: 'Freigegeben',
-  SCHEDULED: 'Aktivierung geplant',
-  ACTIVATED: 'Aktiviert',
-  SUPERSEDED: 'Ersetzt',
-  REVOKED: 'Zurückgezogen',
-  ARCHIVED: 'Archiviert',
-  LEGAL_HOLD_SET: 'Legal Hold gesetzt',
-  LEGAL_HOLD_CLEARED: 'Legal Hold aufgehoben',
-  STORAGE_PURGED: 'Datei gelöscht (Retention)',
-  STORAGE_PURGE_FAILED: 'Löschung fehlgeschlagen',
-  RECIPIENT_REDACTED: 'Empfängerdaten redigiert',
-};
 
 function eventTone(eventType: string) {
   if (eventType.includes('FAILED') || eventType === 'REVOKED') return 'critical' as const;
@@ -35,11 +20,13 @@ function eventTone(eventType: string) {
 }
 
 export function LegalDocumentAuditSection({ events, loading }: Props) {
+  const { t, locale } = useLanguage();
+
   return (
     <div className="space-y-3">
       <SectionHeader
-        title="Audit & Verwendung"
-        description="Letzte Lifecycle-Ereignisse und Freigaben (read-only)"
+        title={t('legalDocuments.audit.title')}
+        description={t('legalDocuments.audit.description')}
         as="label"
       />
       <DataCard>
@@ -50,7 +37,7 @@ export function LegalDocumentAuditSection({ events, loading }: Props) {
             ))}
           </div>
         ) : events.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">Noch keine Audit-Einträge vorhanden.</p>
+          <p className="text-[12px] text-muted-foreground">{t('legalDocuments.audit.empty')}</p>
         ) : (
           <Timeline
             items={events.map((event) => ({
@@ -58,18 +45,18 @@ export function LegalDocumentAuditSection({ events, loading }: Props) {
               tone: eventTone(event.eventType),
               title: (
                 <span className="inline-flex flex-wrap items-center gap-2">
-                  <span>{EVENT_LABEL_DE[event.eventType] ?? event.eventType}</span>
+                  <span>{formatLifecycleEventLabel(event.eventType, t)}</span>
                   <StatusChip tone={eventTone(event.eventType)}>v{event.versionLabel}</StatusChip>
                 </span>
               ),
-              time: formatLegalDocumentDate(event.createdAt),
+              time: formatLegalDocumentDate(event.createdAt, locale),
               description: (
                 <>
-                  {legalDocumentTypeTitle(event.documentType, event.legalVariant)} ·{' '}
+                  {legalDocumentTypeTitle(event.documentType, event.legalVariant, t)} ·{' '}
                   {event.language.toUpperCase()}
                   {event.jurisdiction ? ` · ${event.jurisdiction}` : ''}
                   <br />
-                  {event.actorDisplayName ?? 'System'}
+                  {event.actorDisplayName ?? t('legalDocuments.audit.system')}
                   {event.reason ? ` — ${event.reason}` : ''}
                 </>
               ),

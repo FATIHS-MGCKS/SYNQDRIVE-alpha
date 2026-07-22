@@ -1,6 +1,7 @@
 import { AlertTriangle, Info } from 'lucide-react';
 import { DataCard, SectionHeader, StatusChip } from '../../../components/patterns';
 import type { LegalDocumentConfigAlert } from '../../lib/legal-documents-overview';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface Props {
   alerts: LegalDocumentConfigAlert[];
@@ -13,13 +14,15 @@ function alertTone(severity: LegalDocumentConfigAlert['severity']) {
 }
 
 export function LegalDocumentConfigAlerts({ alerts }: Props) {
+  const { t } = useLanguage();
+
   if (alerts.length === 0) return null;
 
   return (
     <div className="space-y-3">
       <SectionHeader
-        title="Kritische Konfigurationshinweise"
-        description="Priorisierte Maßnahmen vor Freigabe oder Buchungsbetrieb"
+        title={t('legalDocuments.alerts.title')}
+        description={t('legalDocuments.alerts.description')}
         as="label"
       />
       <DataCard flush bodyClassName="divide-y divide-border/60">
@@ -37,10 +40,10 @@ export function LegalDocumentConfigAlerts({ alerts }: Props) {
                 <p className="text-[13px] font-medium text-foreground">{alert.title}</p>
                 <StatusChip tone={alertTone(alert.severity)}>
                   {alert.severity === 'critical'
-                    ? 'Kritisch'
+                    ? t('legalDocuments.alerts.severity.critical')
                     : alert.severity === 'warning'
-                      ? 'Hinweis'
-                      : 'Info'}
+                      ? t('legalDocuments.alerts.severity.warning')
+                      : t('legalDocuments.alerts.severity.info')}
                 </StatusChip>
               </div>
               <p className="mt-0.5 text-[12px] text-muted-foreground">{alert.detail}</p>

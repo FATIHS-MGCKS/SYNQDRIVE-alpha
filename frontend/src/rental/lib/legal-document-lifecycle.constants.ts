@@ -1,11 +1,12 @@
+import type { TranslationKey } from '../i18n/translations/en';
 import type { LegalDocumentLifecycleAction } from './legal-document-lifecycle.types';
 
 export const LEGAL_LIFECYCLE_ACTION_CONFIG: Record<
   LegalDocumentLifecycleAction,
   {
-    title: string;
-    description: string;
-    confirmLabel: string;
+    titleKey: TranslationKey;
+    descriptionKey: TranslationKey;
+    confirmLabelKey: TranslationKey;
     tone: 'default' | 'critical';
     requiresReason: boolean;
     requiresValidFrom?: boolean;
@@ -13,83 +14,78 @@ export const LEGAL_LIFECYCLE_ACTION_CONFIG: Record<
   }
 > = {
   submit_review: {
-    title: 'Review anfordern',
-    description: 'Die Version wird zur fachlichen Prüfung eingereicht. Sie wird erst nach Freigabe und Aktivierung für neue Buchungen verbindlich.',
-    confirmLabel: 'Review anfordern',
+    titleKey: 'legalDocuments.lifecycle.action.submit_review.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.submit_review.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.submit_review.confirm',
     tone: 'default',
     requiresReason: false,
     reasonMinLength: 0,
   },
   request_changes: {
-    title: 'Änderungen anfordern',
-    description: 'Die Version geht zurück in den Entwurfsstatus. Der Uploader kann Inhalte anpassen und erneut einreichen.',
-    confirmLabel: 'Zurück an Entwurf',
+    titleKey: 'legalDocuments.lifecycle.action.request_changes.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.request_changes.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.request_changes.confirm',
     tone: 'default',
     requiresReason: true,
     reasonMinLength: 10,
   },
   approve: {
-    title: 'Version freigeben',
-    description: 'Nach der Freigabe kann die Version sofort oder zu einem geplanten Zeitpunkt aktiviert werden.',
-    confirmLabel: 'Freigeben',
+    titleKey: 'legalDocuments.lifecycle.action.approve.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.approve.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.approve.confirm',
     tone: 'default',
     requiresReason: false,
     reasonMinLength: 0,
   },
   schedule_activation: {
-    title: 'Aktivierung planen',
-    description: 'Die Version wird für den gewählten Gültigkeitsbeginn geplant. Bis dahin bleibt die bisher aktive Version für neue Buchungen maßgeblich.',
-    confirmLabel: 'Aktivierung planen',
+    titleKey: 'legalDocuments.lifecycle.action.schedule_activation.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.schedule_activation.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.schedule_activation.confirm',
     tone: 'default',
     requiresReason: true,
     requiresValidFrom: true,
     reasonMinLength: 10,
   },
   activate_now: {
-    title: 'Sofort aktivieren',
-    description: 'Die Version wird unmittelbar für neue Buchungen verbindlich. Bestehende Buchungen bleiben unverändert.',
-    confirmLabel: 'Jetzt aktivieren',
+    titleKey: 'legalDocuments.lifecycle.action.activate_now.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.activate_now.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.activate_now.confirm',
     tone: 'default',
     requiresReason: true,
     reasonMinLength: 10,
   },
   replace_active: {
-    title: 'Aktive Version ersetzen',
-    description: 'Die neue Version wird sofort aktiv. Die bisher aktive Version wird als „Ersetzt“ markiert — kein Widerruf der Rechtstexte.',
-    confirmLabel: 'Aktive Version ersetzen',
+    titleKey: 'legalDocuments.lifecycle.action.replace_active.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.replace_active.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.replace_active.confirm',
     tone: 'default',
     requiresReason: true,
     reasonMinLength: 10,
   },
   revoke: {
-    title: 'Version widerrufen',
-    description: 'Widerruf zieht die Version für neue Buchungen zurück. Dies ist keine normale Ersetzung — verwenden Sie Aktivierung nur bei inhaltlichen Updates.',
-    confirmLabel: 'Widerrufen',
+    titleKey: 'legalDocuments.lifecycle.action.revoke.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.revoke.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.revoke.confirm',
     tone: 'critical',
     requiresReason: true,
     reasonMinLength: 10,
   },
   archive: {
-    title: 'Version archivieren',
-    description: 'Die Version wird archiviert und aus dem operativen Workflow entfernt. Historische Snapshots und Nachweise bleiben erhalten — es erfolgt keine Löschung.',
-    confirmLabel: 'Archivieren',
+    titleKey: 'legalDocuments.lifecycle.action.archive.title',
+    descriptionKey: 'legalDocuments.lifecycle.action.archive.description',
+    confirmLabelKey: 'legalDocuments.lifecycle.action.archive.confirm',
     tone: 'critical',
     requiresReason: false,
     reasonMinLength: 0,
   },
 };
 
-export const LEGAL_LIFECYCLE_CONFLICT_MESSAGES: Record<string, string> = {
-  LEGAL_DOCUMENT_ACTIVE_CONFLICT:
-    'Eine andere Version wurde parallel aktiviert. Die Daten wurden aktualisiert — bitte prüfen Sie den aktuellen Status erneut.',
-  LEGAL_DOCUMENT_SCOPE_CONFLICT:
-    'Der Geltungsbereich überschneidet sich mit einer bereits aktiven Version. Passen Sie Scope oder Version an.',
-  LEGAL_DOCUMENT_FOUR_EYES_VIOLATION:
-    'Vier-Augen-Prinzip: Freigabe oder Aktivierung durch denselben Benutzer wie Upload oder Review-Einreichung ist nicht erlaubt.',
+export const LEGAL_LIFECYCLE_CONFLICT_CODE_KEYS: Record<string, TranslationKey> = {
+  LEGAL_DOCUMENT_ACTIVE_CONFLICT: 'legalDocuments.lifecycle.conflict.ACTIVE_CONFLICT',
+  LEGAL_DOCUMENT_SCOPE_CONFLICT: 'legalDocuments.lifecycle.conflict.SCOPE_CONFLICT',
+  LEGAL_DOCUMENT_FOUR_EYES_VIOLATION: 'legalDocuments.lifecycle.conflict.FOUR_EYES_VIOLATION',
   LEGAL_DOCUMENT_INVALID_STATUS_TRANSITION:
-    'Der Status hat sich zwischenzeitlich geändert. Bitte laden Sie die Liste neu.',
-  LEGAL_DOCUMENT_NOT_ACTIVATABLE:
-    'Diese Version kann im aktuellen Status nicht aktiviert werden.',
-  LEGAL_DOCUMENT_SCAN_NOT_PASSED:
-    'Malware-Scan nicht bestanden — Aktivierung oder Review ist blockiert.',
+    'legalDocuments.lifecycle.conflict.INVALID_STATUS_TRANSITION',
+  LEGAL_DOCUMENT_NOT_ACTIVATABLE: 'legalDocuments.lifecycle.conflict.NOT_ACTIVATABLE',
+  LEGAL_DOCUMENT_SCAN_NOT_PASSED: 'legalDocuments.lifecycle.conflict.SCAN_NOT_PASSED',
 };

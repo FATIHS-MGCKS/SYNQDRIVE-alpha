@@ -25,28 +25,28 @@ describe('LegalDocumentUploadWizard steps', () => {
     const html = renderToStaticMarkup(
       <LegalDocumentUploadWizardStepClassification
         form={filledForm}
-        errors={{ documentType: 'Dokumenttyp ist erforderlich.' }}
+        errors={{ documentType: 'Document type is required.' }}
         onChange={noop}
         stationOptions={[{ value: 'st-1', label: 'Berlin' }]}
       />,
     );
     expect(html).toContain('data-testid="legal-upload-step-classification"');
-    expect(html).toContain('Dokumenttyp');
-    expect(html).toContain('Dokumenttyp ist erforderlich.');
-    expect(html).toContain('Pflichtdokument');
+    expect(html).toContain('Document type');
+    expect(html).toContain('Document type is required.');
+    expect(html).toContain('Required document for bookings');
   });
 
   it('renders version step with validation errors', () => {
     const html = renderToStaticMarkup(
       <LegalDocumentUploadWizardStepVersion
         form={filledForm}
-        errors={{ versionLabel: 'Versionsbezeichnung ist erforderlich.' }}
+        errors={{ versionLabel: 'Version label is required.' }}
         onChange={noop}
       />,
     );
     expect(html).toContain('data-testid="legal-upload-step-version"');
-    expect(html).toContain('Versionsbezeichnung ist erforderlich.');
-    expect(html).toContain('Verantwortliche Fachperson');
+    expect(html).toContain('Version label is required.');
+    expect(html).toContain('Responsible contact');
   });
 
   it('renders file step with drag-drop and selected file metadata', () => {
@@ -59,7 +59,7 @@ describe('LegalDocumentUploadWizard steps', () => {
       />,
     );
     expect(html).toContain('data-testid="legal-upload-step-file"');
-    expect(html).toContain('PDF hier ablegen');
+    expect(html).toContain('Drop PDF here');
     expect(html).toContain('agb.pdf');
     expect(html).toContain('accept="application/pdf,.pdf"');
   });
@@ -71,13 +71,13 @@ describe('LegalDocumentUploadWizard steps', () => {
         file={new File(['x'], 'agb.pdf', { type: 'application/pdf' })}
         uploadedDocument={null}
         uploadProgress={null}
-        uploadError="Netzwerkfehler beim Upload"
+        uploadError="Network upload error"
         canRequestReview
       />,
     );
     expect(html).toContain('data-testid="legal-upload-step-review"');
-    expect(html).toContain('Netzwerkfehler beim Upload');
-    expect(html).toContain('nicht automatisch beim Speichern');
+    expect(html).toContain('Network upload error');
+    expect(html).toContain('not when saving as a draft');
   });
 
   it('shows scan metadata after successful upload', () => {
@@ -122,7 +122,7 @@ describe('LegalDocumentUploadWizard steps', () => {
         canRequestReview
       />,
     );
-    expect(html).not.toContain('Review anfordern erfordert');
+    expect(html).not.toContain('submit for review');
   });
 
   it('shows review permission hint when user cannot submit review', () => {
@@ -136,7 +136,7 @@ describe('LegalDocumentUploadWizard steps', () => {
         canRequestReview={false}
       />,
     );
-    expect(html).toContain('Review anfordern erfordert');
+    expect(html).toContain('submit for review');
   });
 });
 

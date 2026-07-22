@@ -1,5 +1,6 @@
 import type { LegalDocumentUploadWizardForm } from './legal-document-upload-wizard.types';
 import { LEGAL_DOCUMENT_TYPE } from './legal-document-types';
+import type { LegalDocumentsTranslate } from './legal-documents-i18n';
 
 export function toIsoDateTime(value: string): string | undefined {
   if (!value.trim()) return undefined;
@@ -38,9 +39,9 @@ export function isScanStatusBlocking(scanStatus: string | null | undefined): boo
   return Boolean(scanStatus && scanStatus !== 'SCAN_PASSED');
 }
 
-export function scanStatusErrorMessage(scanStatus: string): string {
+export function scanStatusErrorMessage(scanStatus: string, t: LegalDocumentsTranslate): string {
   if (scanStatus === 'SCAN_FAILED') {
-    return 'Malware-Scan fehlgeschlagen — Entwurf wurde nicht freigegeben.';
+    return t('legalDocuments.scanError.failed');
   }
-  return `Malware-Scan-Status: ${scanStatus}`;
+  return t('legalDocuments.scanError.status', { status: scanStatus });
 }

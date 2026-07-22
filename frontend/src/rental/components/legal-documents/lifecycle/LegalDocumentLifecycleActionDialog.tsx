@@ -22,6 +22,8 @@ import {
   validateLifecycleForm,
   violatesFourEyes,
 } from '../../../lib/legal-document-lifecycle.utils';
+import { formatLegalDocumentStatusI18n } from '../../../lib/legal-documents-i18n';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { LegalDocumentLifecycleImpactPanel } from './LegalDocumentLifecycleImpactPanel';
 import {
   FormErrorSummary,
@@ -55,6 +57,7 @@ export function LegalDocumentLifecycleActionDialog({
   onSuccess,
   onConflict,
 }: LegalDocumentLifecycleActionDialogProps) {
+  const { t, locale } = useLanguage();
   const [form, setForm] = useState<LegalDocumentLifecycleFormState>(EMPTY_LIFECYCLE_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof LegalDocumentLifecycleFormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -88,45 +91,45 @@ export function LegalDocumentLifecycleActionDialog({
 
   const runMutation = async () => {
     const orgId = getStoredUser()?.organizationId;
-    if (!orgId) throw new Error('Organisation nicht verfügbar');
+    if (!orgId) throw new Error(t('legalDocuments.lifecycle.dialog.orgUnavailable'));
 
     switch (action) {
       case 'submit_review':
         return postLegalDocumentMutation(orgId, `/${document.id}/submit-for-review`, {
           changeSummary: form.changeSummary.trim() || undefined,
-        });
+        }, t);
       case 'request_changes':
         return postLegalDocumentMutation(orgId, `/${document.id}/request-changes`, {
           statusReason: form.statusReason.trim(),
           changeSummary: form.changeSummary.trim() || undefined,
-        });
+        }, t);
       case 'approve':
         return postLegalDocumentMutation(orgId, `/${document.id}/approve`, {
           changeSummary: form.changeSummary.trim() || undefined,
-        });
+        }, t);
       case 'schedule_activation':
         return postLegalDocumentMutation(orgId, `/${document.id}/schedule`, {
           validFrom: new Date(form.validFrom).toISOString(),
           changeSummary: form.changeSummary.trim() || form.statusReason.trim() || undefined,
-        });
+        }, t);
       case 'activate_now':
       case 'replace_active':
         return postLegalDocumentMutation(orgId, `/${document.id}/activate`, {
           statusReason: form.statusReason.trim(),
           changeSummary: form.changeSummary.trim() || undefined,
-        });
+        }, t);
       case 'revoke':
         return postLegalDocumentMutation(orgId, `/${document.id}/revoke`, {
           statusReason: form.statusReason.trim(),
           changeSummary: form.changeSummary.trim() || undefined,
-        });
+        }, t);
       case 'archive':
         return postLegalDocumentMutation(orgId, `/${document.id}/archive`, {
           statusReason: form.statusReason.trim() || undefined,
           changeSummary: form.changeSummary.trim() || undefined,
-        });
+        }, t);
       default:
-        throw new Error('Unbekannte Aktion');
+        throw new Error(t('legalDocuments.lifecycle.dialog.unknownAction'));
     }
   };
 
@@ -146,7 +149,7 @@ export function LegalDocumentLifecycleActionDialog({
   };
 
   const handleSubmit = async () => {
-    const nextErrors = validateLifecycleForm(action, form);
+    const nextErrors = validateLifecycleForm(action, form, t);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     if (fourEyesBlocked) return;
@@ -160,11 +163,11 @@ export function LegalDocumentLifecycleActionDialog({
       await onSuccess({ document: updated, latestEvent: event });
     } catch (err) {
       if (err instanceof LegalDocumentMutationError && err.isConflict) {
-        setSubmitError(formatLegalDocumentMutationError(err));
+        setSubmitError(formatLegalDocumentMutationError(err, t));
         await onConflict();
         return;
       }
-      setSubmitError(formatLegalDocumentMutationError(err));
+      setSubmitError(formatLegalDocumentMutationError(err, t));
     } finally {
       setSubmitting(false);
     }
@@ -184,12 +187,15 @@ export function LegalDocumentLifecycleActionDialog({
       onOpenChange={onOpenChange}
       maxWidthClassName="sm:max-w-xl"
       hideClose={submitting}
-      title={config.title}
-      description={`Status: ${document.status} · v${document.versionLabel}`}
+      title={t(config.titleKey)}
+      description={t('legalDocuments.lifecycle.dialog.statusLine', {
+        status: formatLegalDocumentStatusI18n(document.status, t),
+        version: document.versionLabel,
+      })}
       footer={
         <div className="flex w-full justify-end gap-2">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
-            {successEvent ? 'Schließen' : 'Abbrechen'}
+            {successEvent ? t('legalDocuments.lifecycle.dialog.close') : t('legalDocuments.lifecycle.dialog.cancel')}
           </Button>
           {!successEvent ? (
             <Button
@@ -200,7 +206,7 @@ export function LegalDocumentLifecycleActionDialog({
               data-testid="legal-lifecycle-dialog-confirm"
             >
               {submitting ? <Loader2 className="animate-spin" /> : null}
-              {config.confirmLabel}
+              {t(config.confirmLabelKey)}
             </Button>
           ) : null}
         </div>
@@ -209,7 +215,7 @@ export function LegalDocumentLifecycleActionDialog({
       <div data-testid="legal-lifecycle-dialog-body">
         <FormErrorSummary
           id={LEGAL_LIFECYCLE_ERROR_SUMMARY_ID}
-          title="Bitte korrigieren Sie die markierten Felder:"
+          title={t('legalDocuments.wizard.errorSummary')}
           errors={errors}
         />
 
@@ -224,7 +230,7 @@ export function LegalDocumentLifecycleActionDialog({
         {config.requiresValidFrom ? (
           <div className="mt-4">
             <label htmlFor="validFrom" className="mb-1 block text-[11px] font-semibold text-muted-foreground">
-              Gültig ab (geplante Aktivierung) *
+              {t('legalDocuments.lifecycle.dialog.validFromLabel')}
             </label>
             <input
               id="validFrom"
@@ -242,7 +248,7 @@ export function LegalDocumentLifecycleActionDialog({
         {config.requiresReason ? (
           <div className="mt-4">
             <label htmlFor="statusReason" className="mb-1 block text-[11px] font-semibold text-muted-foreground">
-              Begründung *
+              {t('legalDocuments.lifecycle.dialog.reasonLabel')}
             </label>
             <textarea
               id="statusReason"
@@ -251,7 +257,7 @@ export function LegalDocumentLifecycleActionDialog({
               onChange={(e) => setForm((prev) => ({ ...prev, statusReason: e.target.value }))}
               className={fieldClass}
               disabled={submitting || Boolean(successEvent)}
-              placeholder="Pflichtbegründung für Audit und Nachvollziehbarkeit"
+              placeholder={t('legalDocuments.lifecycle.dialog.reasonPlaceholder')}
               {...legalLifecycleInputA11y('statusReason', errors)}
             />
             <LegalLifecycleFieldError field="statusReason" message={errors.statusReason} />
@@ -260,7 +266,7 @@ export function LegalDocumentLifecycleActionDialog({
 
         <div className="mt-4">
           <label htmlFor="changeSummary" className="mb-1 block text-[11px] font-semibold text-muted-foreground">
-            Änderungshinweis (optional)
+            {t('legalDocuments.lifecycle.dialog.changeSummaryLabel')}
           </label>
           <textarea
             id="changeSummary"
@@ -285,10 +291,12 @@ export function LegalDocumentLifecycleActionDialog({
             role="status"
             aria-live="polite"
           >
-            <p className="font-medium text-foreground">Aktion bestätigt</p>
+            <p className="font-medium text-foreground">{t('legalDocuments.lifecycle.dialog.confirmed')}</p>
             <p className="text-muted-foreground">
-              Audit: {formatLifecycleEventLabel(successEvent.eventType)} ·{' '}
-              {new Date(successEvent.createdAt).toLocaleString('de-DE')}
+              {t('legalDocuments.lifecycle.dialog.auditLine', {
+                event: formatLifecycleEventLabel(successEvent.eventType, t),
+                time: new Date(successEvent.createdAt).toLocaleString(locale),
+              })}
             </p>
           </div>
         ) : null}

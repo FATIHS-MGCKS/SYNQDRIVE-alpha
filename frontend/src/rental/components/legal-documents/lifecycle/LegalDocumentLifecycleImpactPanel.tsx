@@ -1,7 +1,11 @@
 import type { LegalDocumentDto } from '../../../../lib/api';
 import type { LegalDocumentLifecycleAction } from '../../../lib/legal-document-lifecycle.types';
-import { buildLifecycleImpactRows, formatLegalDocumentTypeLabel } from '../../../lib/legal-document-lifecycle.utils';
+import {
+  buildLifecycleImpactRows,
+  formatLegalDocumentTypeLabel,
+} from '../../../lib/legal-document-lifecycle.utils';
 import { LEGAL_LIFECYCLE_ACTION_CONFIG } from '../../../lib/legal-document-lifecycle.constants';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface Props {
   action: LegalDocumentLifecycleAction;
@@ -18,17 +22,18 @@ export function LegalDocumentLifecycleImpactPanel({
   fourEyesEnabled,
   fourEyesBlocked,
 }: Props) {
+  const { t } = useLanguage();
   const config = LEGAL_LIFECYCLE_ACTION_CONFIG[action];
-  const rows = buildLifecycleImpactRows(document, activePeer, action);
+  const rows = buildLifecycleImpactRows(document, activePeer, action, t);
 
   return (
     <div className="space-y-4" data-testid="legal-lifecycle-impact-panel">
-      <p className="text-[12px] text-muted-foreground">{config.description}</p>
+      <p className="text-[12px] text-muted-foreground">{t(config.descriptionKey)}</p>
 
       <dl className="divide-y divide-border/60 rounded-lg border border-border/60 text-[12px]">
         <div className="grid gap-1 px-3 py-2 sm:grid-cols-2">
-          <dt className="text-muted-foreground">Dokumenttyp</dt>
-          <dd className="font-medium text-foreground">{formatLegalDocumentTypeLabel(document)}</dd>
+          <dt className="text-muted-foreground">{t('legalDocuments.lifecycle.impact.documentType')}</dt>
+          <dd className="font-medium text-foreground">{formatLegalDocumentTypeLabel(document, t)}</dd>
         </div>
         {rows.map((row) => (
           <div key={row.label} className="grid gap-1 px-3 py-2 sm:grid-cols-2">
@@ -40,20 +45,19 @@ export function LegalDocumentLifecycleImpactPanel({
 
       {action === 'revoke' ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
-          Widerruf ist rechtlich anders als eine Ersetzung: bestehende Verträge bleiben gebunden, neue
-          Buchungen erhalten diese Version nicht mehr.
+          {t('legalDocuments.lifecycle.notice.revoke')}
         </p>
       ) : null}
 
       {action === 'replace_active' ? (
         <p className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2 text-[11px] text-muted-foreground">
-          Die bisher aktive Version wird als „Ersetzt“ markiert — kein Widerruf, keine Löschung.
+          {t('legalDocuments.lifecycle.notice.replace')}
         </p>
       ) : null}
 
       {action === 'archive' ? (
         <p className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2 text-[11px] text-muted-foreground">
-          Archivierte Versionen bleiben in Snapshots und Nachweisen sichtbar. Es werden keine Dateien gelöscht.
+          {t('legalDocuments.lifecycle.notice.archive')}
         </p>
       ) : null}
 
@@ -66,9 +70,8 @@ export function LegalDocumentLifecycleImpactPanel({
           }`}
           data-testid="legal-lifecycle-four-eyes"
         >
-          Vier-Augen-Prinzip ist aktiv: Freigabe und Aktivierung dürfen nicht durch dieselbe Person
-          erfolgen, die hochgeladen oder zur Prüfung eingereicht hat.
-          {fourEyesBlocked ? ' Sie sind für diese Aktion gesperrt.' : ''}
+          {t('legalDocuments.lifecycle.notice.fourEyes')}
+          {fourEyesBlocked ? t('legalDocuments.lifecycle.notice.fourEyesBlocked') : ''}
         </p>
       ) : null}
     </div>

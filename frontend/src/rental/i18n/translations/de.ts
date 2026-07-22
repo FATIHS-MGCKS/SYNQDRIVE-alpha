@@ -1,4 +1,5 @@
 import type { TranslationKey } from './en';
+import { legalDocumentsDe } from './legal-documents.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -2516,4 +2517,6 @@ export const de: Record<TranslationKey, string> = {
   'voice.analytics.remaining': 'Verbleibend',
   'voice.analytics.overage': 'Mehrverbrauch',
   'voice.analytics.forecast': 'Prognostizierte Periodensumme: {amount}',
+
+  ...legalDocumentsDe,
 };
