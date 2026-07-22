@@ -1034,7 +1034,10 @@ export class LegalDocumentsService {
     docs: Array<
       Pick<
         OrganizationLegalDocument,
-        'uploadedByUserId' | 'approvedByUserId' | 'activatedByUserId'
+        | 'uploadedByUserId'
+        | 'approvedByUserId'
+        | 'activatedByUserId'
+        | 'submittedForReviewByUserId'
       >
     >,
   ): Promise<Map<string, LegalDocumentActorRef>> {

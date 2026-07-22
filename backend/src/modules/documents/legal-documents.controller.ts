@@ -130,7 +130,7 @@ export class LegalDocumentsController {
       trigger: 'manual',
       dryRun: body.dryRun,
       organizationId: orgId,
-      correlationId: (req as Request & { requestId?: string }).requestId ?? null,
+      correlationId: (req as Request & { requestId?: string }).requestId ?? undefined,
     });
   }
 

@@ -104,7 +104,9 @@ describe('BookingDocumentBundleService legal pointer wiring', () => {
     } as any;
     const legalDocs = { getActiveByType: jest.fn().mockResolvedValue({}) } as any;
     const legalResolver = { resolveForBooking: jest.fn().mockResolvedValue(resolution) } as any;
-    const bundleMonitoring = new BookingDocumentBundleMonitoringService();
+    const bundleMonitoring = new BookingDocumentBundleMonitoringService({
+      syncTechnicalAlert: jest.fn().mockResolvedValue(undefined),
+    } as any);
     jest.spyOn(bundleMonitoring, 'recordPointerMappingMissing');
     jest.spyOn(bundleMonitoring, 'recordResolverConflict');
     const bundleCompleteness = { evaluateForBooking: jest.fn() } as any;
@@ -130,6 +132,7 @@ describe('BookingDocumentBundleService legal pointer wiring', () => {
         closeStaleDocumentPackageTasksForBooking: jest.fn(),
       } as any,
       { syncFromOrgLegalState: jest.fn() } as any,
+      { syncBundleCompleteness: jest.fn() } as any,
       bundleMonitoring,
       bundleCompleteness,
       rentalContract,
