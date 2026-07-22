@@ -1,6 +1,7 @@
 import { getToken } from '../../lib/auth';
 import type { LegalDocumentDto } from '../../lib/api';
-import { LEGAL_LIFECYCLE_CONFLICT_MESSAGES } from './legal-document-lifecycle.constants';
+import { LEGAL_LIFECYCLE_CONFLICT_CODE_KEYS } from './legal-document-lifecycle.constants';
+import type { LegalDocumentsTranslate } from './legal-documents-i18n';
 
 const BASE_URL = '/api/v1';
 
@@ -10,13 +11,17 @@ export class LegalDocumentMutationError extends Error {
   readonly field?: string;
   readonly isConflict: boolean;
 
-  constructor(status: number, body: { message?: string | string[]; code?: string; field?: string }) {
+  constructor(
+    status: number,
+    body: { message?: string | string[]; code?: string; field?: string },
+    t: LegalDocumentsTranslate,
+  ) {
     const raw = body.message;
     const message = Array.isArray(raw)
       ? raw.join(', ')
       : typeof raw === 'string'
         ? raw
-        : `API-Fehler ${status}`;
+        : t('legalDocuments.error.api', { status });
     super(message);
     this.name = 'LegalDocumentMutationError';
     this.status = status;
@@ -26,21 +31,25 @@ export class LegalDocumentMutationError extends Error {
   }
 }
 
-export function formatLegalDocumentMutationError(err: unknown): string {
+export function formatLegalDocumentMutationError(
+  err: unknown,
+  t: LegalDocumentsTranslate,
+): string {
   if (err instanceof LegalDocumentMutationError) {
-    if (err.code && LEGAL_LIFECYCLE_CONFLICT_MESSAGES[err.code]) {
-      return LEGAL_LIFECYCLE_CONFLICT_MESSAGES[err.code];
+    if (err.code && LEGAL_LIFECYCLE_CONFLICT_CODE_KEYS[err.code]) {
+      return t(LEGAL_LIFECYCLE_CONFLICT_CODE_KEYS[err.code]);
     }
     return err.message;
   }
   if (err instanceof Error) return err.message;
-  return 'Unbekannter Fehler';
+  return t('legalDocuments.error.unknown');
 }
 
 export async function postLegalDocumentMutation(
   orgId: string,
   suffix: string,
   body: Record<string, unknown> = {},
+  t: LegalDocumentsTranslate,
 ): Promise<LegalDocumentDto> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}/organizations/${orgId}/legal-documents${suffix}`, {
@@ -59,7 +68,7 @@ export async function postLegalDocumentMutation(
   };
 
   if (!res.ok) {
-    throw new LegalDocumentMutationError(res.status, payload);
+    throw new LegalDocumentMutationError(res.status, payload, t);
   }
 
   return payload as LegalDocumentDto;

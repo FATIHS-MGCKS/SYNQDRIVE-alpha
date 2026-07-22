@@ -1,12 +1,10 @@
 /**
- * Neutral legal document type definitions for Administration → Rechtliche Dokumente.
+ * Neutral legal document type definitions for Administration → Customer legal texts.
  *
- * SynqDrive führt administrativ freigegebene Rechtstextregeln aus, ersetzt jedoch
- * keine juristische Prüfung oder Rechtsberatung.
+ * UI copy is resolved via i18n keys — see legal-documents-i18n.ts.
  */
 
-export const LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE =
-  'SynqDrive führt administrativ freigegebene Rechtstextregeln aus, ersetzt jedoch keine juristische Prüfung oder Rechtsberatung.';
+import type { TranslationKey } from '../i18n/translations/en';
 
 export const LEGAL_DOCUMENT_TYPE = {
   TERMS_AND_CONDITIONS: 'TERMS_AND_CONDITIONS',
@@ -25,19 +23,13 @@ export const CONSUMER_INFORMATION_VARIANT = {
 export type ConsumerInformationVariant =
   (typeof CONSUMER_INFORMATION_VARIANT)[keyof typeof CONSUMER_INFORMATION_VARIANT];
 
-export const CONSUMER_INFORMATION_VARIANT_LABELS_DE: Record<ConsumerInformationVariant, string> = {
-  WITHDRAWAL_RIGHT_NOTICE: 'Widerrufsbelehrung',
-  NO_WITHDRAWAL_RIGHT_NOTICE: 'Information über das Nichtbestehen eines Widerrufsrechts',
-  OTHER_CONSUMER_INFORMATION: 'Sonstige Verbraucherinformation',
-};
-
 export interface LegalDocumentTypeConfig {
   /** Canonical API documentType for new uploads */
   key: string;
-  title: string;
-  hint: string;
+  titleKey: TranslationKey;
+  hintKey: TranslationKey;
   /** Required when key is CONSUMER_INFORMATION */
-  variants?: { value: ConsumerInformationVariant; label: string }[];
+  variants?: { value: ConsumerInformationVariant; labelKey: TranslationKey }[];
   /** Accepted legacy documentType values from API list responses */
   legacyKeys?: string[];
 }
@@ -45,23 +37,33 @@ export interface LegalDocumentTypeConfig {
 export const LEGAL_DOCUMENT_TYPE_CONFIGS: LegalDocumentTypeConfig[] = [
   {
     key: LEGAL_DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-    title: 'Allgemeine Geschäftsbedingungen (AGB)',
-    hint: 'Wird der Buchung beigefügt und im Mietvertrag referenziert.',
+    titleKey: 'legalDocuments.type.TERMS_AND_CONDITIONS.title',
+    hintKey: 'legalDocuments.type.TERMS_AND_CONDITIONS.hint',
   },
   {
     key: LEGAL_DOCUMENT_TYPE.CONSUMER_INFORMATION,
-    title: 'Verbraucherinformation',
-    hint: 'Administrativ freigegebene Verbraucherinformation — Variante nach org-interner Auswahl (keine Rechtsberatung durch SynqDrive).',
-    variants: Object.entries(CONSUMER_INFORMATION_VARIANT_LABELS_DE).map(([value, label]) => ({
-      value: value as ConsumerInformationVariant,
-      label,
-    })),
+    titleKey: 'legalDocuments.type.CONSUMER_INFORMATION.title',
+    hintKey: 'legalDocuments.type.CONSUMER_INFORMATION.hint',
+    variants: [
+      {
+        value: CONSUMER_INFORMATION_VARIANT.WITHDRAWAL_RIGHT_NOTICE,
+        labelKey: 'legalDocuments.variant.WITHDRAWAL_RIGHT_NOTICE',
+      },
+      {
+        value: CONSUMER_INFORMATION_VARIANT.NO_WITHDRAWAL_RIGHT_NOTICE,
+        labelKey: 'legalDocuments.variant.NO_WITHDRAWAL_RIGHT_NOTICE',
+      },
+      {
+        value: CONSUMER_INFORMATION_VARIANT.OTHER_CONSUMER_INFORMATION,
+        labelKey: 'legalDocuments.variant.OTHER_CONSUMER_INFORMATION',
+      },
+    ],
     legacyKeys: [LEGAL_DOCUMENT_TYPE.WITHDRAWAL_INFORMATION],
   },
   {
     key: LEGAL_DOCUMENT_TYPE.PRIVACY_POLICY,
-    title: 'Datenschutzerklärung',
-    hint: 'Wird dem Kunden bei der Buchung zur Verfügung gestellt und kann per E-Mail versendet werden.',
+    titleKey: 'legalDocuments.type.PRIVACY_POLICY.title',
+    hintKey: 'legalDocuments.type.PRIVACY_POLICY.hint',
   },
 ];
 

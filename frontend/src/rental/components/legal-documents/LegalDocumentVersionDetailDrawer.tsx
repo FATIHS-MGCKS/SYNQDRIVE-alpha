@@ -10,6 +10,7 @@ import {
   type LegalDocumentEventDto,
   type LegalDocumentUsageResponseDto,
 } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   formatLegalDocumentBytes,
   formatLegalDocumentDate,
@@ -17,12 +18,12 @@ import {
   legalDocumentTypeTitle,
   legalDocumentVariantLabel,
 } from '../../lib/legal-documents-overview';
+import type { LegalDocumentsTranslate } from '../../lib/legal-documents-i18n';
 import {
   formatIntegrityStatusLabel,
   formatScanStatusLabel,
   shortenChecksum,
 } from '../../lib/legal-document-version-history.utils';
-import { LEGAL_PDF_PREVIEW_TITLE } from './legal-documents-a11y';
 import { formatLifecycleEventLabel } from '../../lib/legal-document-lifecycle.utils';
 
 interface Props {
@@ -34,26 +35,56 @@ interface Props {
   canViewUsage: boolean;
 }
 
-function MetadataRow({ label, value }: { label: string; value: ReactNode }) {
+function MetadataRow({
+  label,
+  labelTitle,
+  value,
+}: {
+  label: string;
+  labelTitle?: string;
+  value: ReactNode;
+}) {
   return (
     <div className="grid grid-cols-[9rem_1fr] gap-2 border-b border-border/50 py-2 text-[12px] last:border-0">
-      <dt className="text-muted-foreground">{label}</dt>
+      <dt className="text-muted-foreground" title={labelTitle}>
+        {label}
+      </dt>
       <dd className="min-w-0 text-foreground">{value}</dd>
     </div>
   );
 }
 
-function buildLifecycleTimeline(document: LegalDocumentDto, events: LegalDocumentEventDto[]) {
+function buildLifecycleTimeline(
+  document: LegalDocumentDto,
+  events: LegalDocumentEventDto[],
+  t: LegalDocumentsTranslate,
+  locale: string,
+) {
   const milestones: { id: string; at: string | null; title: string; actor?: string | null }[] = [
-    { id: 'uploaded', at: document.uploadedAt ?? document.createdAt, title: 'Hochgeladen', actor: document.uploadedBy?.displayName },
+    {
+      id: 'uploaded',
+      at: document.uploadedAt ?? document.createdAt,
+      title: t('legalDocuments.lifecycle.event.UPLOADED'),
+      actor: document.uploadedBy?.displayName,
+    },
     {
       id: 'review',
       at: document.submittedForReviewAt ?? null,
-      title: 'Zur Prüfung eingereicht',
+      title: t('legalDocuments.lifecycle.event.SUBMITTED_FOR_REVIEW_DETAIL'),
       actor: document.submittedForReviewBy?.displayName,
     },
-    { id: 'approved', at: document.approvedAt ?? null, title: 'Freigegeben', actor: document.approvedBy?.displayName },
-    { id: 'activated', at: document.activatedAt ?? document.activeFrom ?? null, title: 'Aktiviert', actor: document.activatedBy?.displayName },
+    {
+      id: 'approved',
+      at: document.approvedAt ?? null,
+      title: t('legalDocuments.lifecycle.event.APPROVED'),
+      actor: document.approvedBy?.displayName,
+    },
+    {
+      id: 'activated',
+      at: document.activatedAt ?? document.activeFrom ?? null,
+      title: t('legalDocuments.lifecycle.event.ACTIVATED'),
+      actor: document.activatedBy?.displayName,
+    },
   ];
 
   const items: TimelineItem[] = milestones
@@ -62,7 +93,7 @@ function buildLifecycleTimeline(document: LegalDocumentDto, events: LegalDocumen
       id: m.id,
       tone: 'neutral' as const,
       title: m.title,
-      time: formatLegalDocumentDate(m.at),
+      time: formatLegalDocumentDate(m.at, locale),
       description: m.actor ?? undefined,
     }));
 
@@ -75,8 +106,8 @@ function buildLifecycleTimeline(document: LegalDocumentDto, events: LegalDocumen
           : event.eventType === 'ACTIVATED' || event.eventType === 'APPROVED'
             ? ('success' as const)
             : ('neutral' as const),
-      title: formatLifecycleEventLabel(event.eventType),
-      time: formatLegalDocumentDate(event.createdAt),
+      title: formatLifecycleEventLabel(event.eventType, t),
+      time: formatLegalDocumentDate(event.createdAt, locale),
       description: event.actorDisplayName ?? event.reason ?? undefined,
     });
   }
@@ -84,10 +115,13 @@ function buildLifecycleTimeline(document: LegalDocumentDto, events: LegalDocumen
   return items;
 }
 
-function deliveryStatusSummary(usage: LegalDocumentUsageResponseDto | null): string {
-  if (!usage) return '—';
+function deliveryStatusSummary(
+  usage: LegalDocumentUsageResponseDto | null,
+  t: LegalDocumentsTranslate,
+): string {
+  if (!usage) return t('legalDocuments.common.emDash');
   const entries = Object.entries(usage.summary.deliveryByStatus);
-  if (entries.length === 0) return 'Keine Zustellnachweise';
+  if (entries.length === 0) return t('legalDocuments.detail.usage.noDelivery');
   return entries.map(([status, count]) => `${status}: ${count}`).join(' · ');
 }
 
@@ -99,6 +133,7 @@ export function LegalDocumentVersionDetailDrawer({
   canViewAudit,
   canViewUsage,
 }: Props) {
+  const { t, locale } = useLanguage();
   const [detail, setDetail] = useState<LegalDocumentDto | null>(null);
   const [events, setEvents] = useState<LegalDocumentEventDto[]>([]);
   const [usage, setUsage] = useState<LegalDocumentUsageResponseDto | null>(null);
@@ -140,7 +175,7 @@ export function LegalDocumentVersionDetailDrawer({
         setUsage(usageResult);
       } catch (err) {
         if (!cancelled) {
-          toast.error(err instanceof Error ? err.message : 'Details konnten nicht geladen werden');
+          toast.error(err instanceof Error ? err.message : t('legalDocuments.detail.loadError'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -150,7 +185,7 @@ export function LegalDocumentVersionDetailDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, orgId, docId, canViewAudit, canViewUsage, revokePreview]);
+  }, [open, orgId, docId, canViewAudit, canViewUsage, revokePreview, t]);
 
   useEffect(() => {
     if (!open || !orgId || !docId) {
@@ -181,17 +216,17 @@ export function LegalDocumentVersionDetailDrawer({
   }, [open, orgId, docId, revokePreview]);
 
   const timelineItems = useMemo(
-    () => (detail ? buildLifecycleTimeline(detail, events) : []),
-    [detail, events],
+    () => (detail ? buildLifecycleTimeline(detail, events, t, locale) : []),
+    [detail, events, t, locale],
   );
 
   const copyChecksum = async () => {
     if (!detail?.checksum) return;
     try {
       await navigator.clipboard.writeText(detail.checksum);
-      toast.success('Prüfsumme kopiert');
+      toast.success(t('legalDocuments.toast.checksumCopied'));
     } catch {
-      toast.error('Kopieren fehlgeschlagen');
+      toast.error(t('legalDocuments.toast.copyFailed'));
     }
   };
 
@@ -207,12 +242,20 @@ export function LegalDocumentVersionDetailDrawer({
       open={open}
       onOpenChange={onOpenChange}
       widthClassName="sm:max-w-2xl"
-      eyebrow={detail ? legalDocumentTypeTitle(detail.documentType, detail.legacyDocumentType) : 'Rechtstext'}
-      title={detail ? `Version ${detail.versionLabel}` : 'Version'}
+      eyebrow={
+        detail
+          ? legalDocumentTypeTitle(detail.documentType, detail.legacyDocumentType, t)
+          : t('legalDocuments.detail.eyebrow')
+      }
+      title={
+        detail
+          ? t('legalDocuments.detail.title', { version: detail.versionLabel })
+          : t('legalDocuments.wizard.field.version')
+      }
       description={detail?.title}
       status={
         detail ? (
-          <StatusChip tone={statusTone}>{formatLegalDocumentStatus(detail.status)}</StatusChip>
+          <StatusChip tone={statusTone}>{formatLegalDocumentStatus(detail.status, t)}</StatusChip>
         ) : null
       }
       footer={
@@ -224,7 +267,7 @@ export function LegalDocumentVersionDetailDrawer({
             onClick={() => void api.legalDocuments.open(orgId, detail.id)}
           >
             <Download className="h-4 w-4" />
-            PDF herunterladen
+            {t('legalDocuments.detail.download')}
           </Button>
         ) : null
       }
@@ -232,33 +275,64 @@ export function LegalDocumentVersionDetailDrawer({
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          Details werden geladen…
+          {t('legalDocuments.detail.loading')}
         </div>
       ) : detail ? (
         <div className="space-y-6 p-5" data-testid="legal-version-detail-drawer">
           <section>
-            <h3 className="mb-2 text-[13px] font-semibold text-foreground">Metadaten</h3>
+            <h3 className="mb-2 text-[13px] font-semibold text-foreground">
+              {t('legalDocuments.detail.metadata')}
+            </h3>
             <dl className="rounded-xl border border-border/60 bg-muted/10 px-3">
-              <MetadataRow label="Variante" value={legalDocumentVariantLabel(detail) ?? '—'} />
-              <MetadataRow label="Sprache" value={detail.language.toUpperCase()} />
-              <MetadataRow label="Jurisdiktion" value={detail.jurisdiction ?? '—'} />
               <MetadataRow
-                label="Gültigkeit"
-                value={`${formatLegalDocumentDate(detail.validFrom)} – ${formatLegalDocumentDate(detail.validUntil)}`}
+                label={t('legalDocuments.wizard.field.variant')}
+                value={legalDocumentVariantLabel(detail, t) ?? t('legalDocuments.common.emDash')}
               />
-              <MetadataRow label="Datei" value={`${detail.fileName} (${formatLegalDocumentBytes(detail.sizeBytes ?? detail.fileSize)})`} />
-              <MetadataRow label="Seiten" value={detail.pageCount ?? '—'} />
-              <MetadataRow label="Scan" value={formatScanStatusLabel(detail.scanStatus)} />
-              <MetadataRow label="Integrität" value={formatIntegrityStatusLabel(detail.integrityStatus)} />
               <MetadataRow
-                label="Prüfsumme"
+                label={t('legalDocuments.wizard.field.language')}
+                value={detail.language.toUpperCase()}
+              />
+              <MetadataRow
+                label={t('legalDocuments.wizard.field.jurisdiction')}
+                value={detail.jurisdiction ?? t('legalDocuments.common.emDash')}
+              />
+              <MetadataRow
+                label={t('legalDocuments.history.column.validity')}
+                value={`${formatLegalDocumentDate(detail.validFrom, locale)} – ${formatLegalDocumentDate(detail.validUntil, locale)}`}
+              />
+              <MetadataRow
+                label={t('legalDocuments.wizard.field.file')}
+                value={`${detail.fileName} (${formatLegalDocumentBytes(detail.sizeBytes ?? detail.fileSize)})`}
+              />
+              <MetadataRow
+                label={t('legalDocuments.detail.pages')}
+                value={detail.pageCount ?? t('legalDocuments.common.emDash')}
+              />
+              <MetadataRow
+                label={t('legalDocuments.wizard.field.scan')}
+                labelTitle={t('legalDocuments.tooltip.scan')}
+                value={formatScanStatusLabel(detail.scanStatus, t)}
+              />
+              <MetadataRow
+                label={t('legalDocuments.wizard.field.integrity')}
+                labelTitle={t('legalDocuments.tooltip.integrity')}
+                value={formatIntegrityStatusLabel(detail.integrityStatus, t)}
+              />
+              <MetadataRow
+                label={t('legalDocuments.wizard.field.checksum')}
+                labelTitle={t('legalDocuments.tooltip.checksum')}
                 value={
                   <span className="inline-flex items-center gap-2">
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      {shortenChecksum(detail.checksum) ?? '—'}
+                      {shortenChecksum(detail.checksum) ?? t('legalDocuments.common.emDash')}
                     </span>
                     {detail.checksum ? (
-                      <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => void copyChecksum()}>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground"
+                        title={t('legalDocuments.a11y.copyChecksum')}
+                        onClick={() => void copyChecksum()}
+                      >
                         <Copy className="h-3.5 w-3.5" />
                       </button>
                     ) : null}
@@ -266,18 +340,20 @@ export function LegalDocumentVersionDetailDrawer({
                 }
               />
               {detail.changeSummary ? (
-                <MetadataRow label="Änderungen" value={detail.changeSummary} />
+                <MetadataRow label={t('legalDocuments.detail.changes')} value={detail.changeSummary} />
               ) : null}
               {detail.legalOwnerName ? (
-                <MetadataRow label="Verantwortlich" value={detail.legalOwnerName} />
+                <MetadataRow label={t('legalDocuments.detail.responsible')} value={detail.legalOwnerName} />
               ) : null}
             </dl>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[13px] font-semibold text-foreground">Lifecycle</h3>
+            <h3 className="mb-2 text-[13px] font-semibold text-foreground">
+              {t('legalDocuments.detail.lifecycle')}
+            </h3>
             {timelineItems.length === 0 ? (
-              <p className="text-[12px] text-muted-foreground">Noch keine Lifecycle-Ereignisse.</p>
+              <p className="text-[12px] text-muted-foreground">{t('legalDocuments.detail.noLifecycle')}</p>
             ) : (
               <Timeline items={timelineItems} />
             )}
@@ -285,13 +361,15 @@ export function LegalDocumentVersionDetailDrawer({
 
           {canViewAudit && events.length > 0 ? (
             <section>
-              <h3 className="mb-2 text-[13px] font-semibold text-foreground">Audit-Ereignisse</h3>
+              <h3 className="mb-2 text-[13px] font-semibold text-foreground">
+                {t('legalDocuments.detail.auditEvents')}
+              </h3>
               <ul className="space-y-2 text-[12px]">
                 {events.map((event) => (
                   <li key={event.id} className="rounded-lg border border-border/60 px-3 py-2">
-                    <div className="font-medium">{formatLifecycleEventLabel(event.eventType)}</div>
+                    <div className="font-medium">{formatLifecycleEventLabel(event.eventType, t)}</div>
                     <div className="text-muted-foreground">
-                      {formatLegalDocumentDate(event.createdAt)}
+                      {formatLegalDocumentDate(event.createdAt, locale)}
                       {event.actorDisplayName ? ` · ${event.actorDisplayName}` : ''}
                     </div>
                     {event.reason ? <p className="mt-1 text-foreground">{event.reason}</p> : null}
@@ -303,57 +381,85 @@ export function LegalDocumentVersionDetailDrawer({
 
           {canViewUsage ? (
             <section data-testid="legal-version-usage-section">
-              <h3 className="mb-2 text-[13px] font-semibold text-foreground">Verwendung</h3>
+              <h3 className="mb-2 text-[13px] font-semibold text-foreground">
+                {t('legalDocuments.detail.usage')}
+              </h3>
               {usage ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {[
-                      { label: 'Snapshots', value: usage.summary.snapshotCount },
-                      { label: 'Buchungen', value: usage.summary.bookingCount },
-                      { label: 'Verträge', value: usage.summary.contractCount },
-                      { label: 'Zustellnachweise', value: usage.summary.deliveryEvidenceCount },
+                      {
+                        label: t('legalDocuments.detail.usage.snapshots'),
+                        labelTitle: t('legalDocuments.tooltip.snapshot'),
+                        value: usage.summary.snapshotCount,
+                      },
+                      {
+                        label: t('legalDocuments.detail.usage.bookings'),
+                        value: usage.summary.bookingCount,
+                      },
+                      {
+                        label: t('legalDocuments.detail.usage.contracts'),
+                        value: usage.summary.contractCount,
+                      },
+                      {
+                        label: t('legalDocuments.detail.usage.deliveryEvidence'),
+                        value: usage.summary.deliveryEvidenceCount,
+                      },
                     ].map((item) => (
-                      <div key={item.label} className="rounded-lg border border-border/60 bg-muted/10 p-2 text-center">
+                      <div
+                        key={item.label}
+                        className="rounded-lg border border-border/60 bg-muted/10 p-2 text-center"
+                      >
                         <div className="text-lg font-semibold tabular-nums">{item.value}</div>
-                        <div className="text-[10px] text-muted-foreground">{item.label}</div>
+                        <div className="text-[10px] text-muted-foreground" title={item.labelTitle}>
+                          {item.label}
+                        </div>
                       </div>
                     ))}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Zustellstatus: {deliveryStatusSummary(usage)}
+                    {t('legalDocuments.detail.usage.deliveryStatus', {
+                      summary: deliveryStatusSummary(usage, t),
+                    })}
                   </p>
                   {usage.references.data.length > 0 ? (
                     <ul className="space-y-1.5 text-[12px]">
                       {usage.references.data.map((ref) => (
                         <li key={ref.generatedDocumentId} className="rounded-md border border-border/50 px-2 py-1.5">
                           {ref.contractNumber
-                            ? `Vertrag ${ref.contractNumber}`
-                            : ref.bookingLabel ?? 'Generiertes Dokument'}
-                          {ref.generatedAt ? ` · ${formatLegalDocumentDate(ref.generatedAt)}` : ''}
+                            ? t('legalDocuments.detail.usage.contractRef', { number: ref.contractNumber })
+                            : (ref.bookingLabel ?? t('legalDocuments.detail.usage.generatedDoc'))}
+                          {ref.generatedAt ? ` · ${formatLegalDocumentDate(ref.generatedAt, locale)}` : ''}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-[12px] text-muted-foreground">Noch keine Verwendungen in Buchungen oder Verträgen.</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      {t('legalDocuments.detail.usage.noReferences')}
+                    </p>
                   )}
                 </div>
               ) : (
-                <p className="text-[12px] text-muted-foreground">Verwendungsdaten nicht verfügbar.</p>
+                <p className="text-[12px] text-muted-foreground">
+                  {t('legalDocuments.detail.usage.unavailable')}
+                </p>
               )}
             </section>
           ) : null}
 
           <section>
-            <h3 className="mb-2 text-[13px] font-semibold text-foreground">PDF-Vorschau</h3>
+            <h3 className="mb-2 text-[13px] font-semibold text-foreground">
+              {t('legalDocuments.detail.preview')}
+            </h3>
             <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20">
               {previewLoading ? (
                 <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Vorschau wird geladen…
+                  {t('legalDocuments.detail.previewLoading')}
                 </div>
               ) : previewUrl ? (
                 <iframe
-                  title={LEGAL_PDF_PREVIEW_TITLE}
+                  title={t('legalDocuments.a11y.pdfPreview')}
                   src={previewUrl}
                   className="h-[min(70vh,32rem)] w-full bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)] motion-reduce:transition-none"
                   data-testid="legal-version-pdf-preview"
@@ -361,14 +467,14 @@ export function LegalDocumentVersionDetailDrawer({
                 />
               ) : (
                 <p className="p-6 text-center text-[12px] text-muted-foreground">
-                  Vorschau nicht verfügbar. Download erfordert Berechtigung.
+                  {t('legalDocuments.detail.previewUnavailable')}
                 </p>
               )}
             </div>
           </section>
         </div>
       ) : (
-        <p className="p-5 text-[12px] text-muted-foreground">Keine Version ausgewählt.</p>
+        <p className="p-5 text-[12px] text-muted-foreground">{t('legalDocuments.detail.noneSelected')}</p>
       )}
     </DetailDrawer>
   );

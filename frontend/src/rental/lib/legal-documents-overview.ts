@@ -1,12 +1,16 @@
 import type { LegalDocumentDto } from '../../lib/api';
 import {
-  CONSUMER_INFORMATION_VARIANT_LABELS_DE,
-  LEGAL_DOCUMENT_TYPE,
   LEGAL_DOCUMENT_TYPE_CONFIGS,
   legalDocumentGroupKey,
   type LegalDocumentTypeConfig,
 } from './legal-document-types';
 import type { StatusTone } from '../../components/patterns';
+import {
+  formatLegalDocumentStatusI18n,
+  formatLegalDocumentTypeTitle,
+  formatLegalDocumentVariantLabel,
+  type LegalDocumentsTranslate,
+} from './legal-documents-i18n';
 
 export type LegalDocumentCategoryReadiness = 'ready' | 'attention' | 'blocked' | 'empty';
 
@@ -20,6 +24,8 @@ export interface LegalDocumentConfigAlert {
 
 export interface LegalDocumentCategoryOverview {
   config: LegalDocumentTypeConfig;
+  title: string;
+  hint: string;
   readiness: LegalDocumentCategoryReadiness;
   statusLabel: string;
   statusTone: StatusTone;
@@ -77,41 +83,26 @@ const INTEGRITY_BLOCKING = new Set([
   'INTEGRITY_FAILED',
 ]);
 
-const STATUS_LABEL_DE: Record<string, string> = {
-  ACTIVE: 'Aktiv',
-  DRAFT: 'Entwurf',
-  IN_REVIEW: 'In Prüfung',
-  APPROVED: 'Freigegeben',
-  SCHEDULED: 'Geplant',
-  SUPERSEDED: 'Ersetzt',
-  REVOKED: 'Zurückgezogen',
-  ARCHIVED: 'Archiviert',
-};
-
 const EXPECTED_LANGUAGE = 'de';
 const EXPECTED_JURISDICTION = 'DE';
 
-function variantLabel(doc: LegalDocumentDto): string | null {
-  const variant = doc.documentVariant ?? doc.legalVariant;
-  if (!variant) return null;
-  return (
-    CONSUMER_INFORMATION_VARIANT_LABELS_DE[
-      variant as keyof typeof CONSUMER_INFORMATION_VARIANT_LABELS_DE
-    ] ?? variant
-  );
-}
-
-function scanIssue(doc: LegalDocumentDto): string | null {
+function scanIssue(doc: LegalDocumentDto, t: LegalDocumentsTranslate): string | null {
   const status = (doc.scanStatus ?? 'UPLOADED').toUpperCase();
-  if (SCAN_BLOCKING.has(status)) return `Malware-Scan: ${status}`;
-  if (SCAN_ATTENTION.has(status)) return `Scan ausstehend: ${status}`;
+  if (SCAN_BLOCKING.has(status)) {
+    return t('legalDocuments.readiness.issue.scanBlocking', { status });
+  }
+  if (SCAN_ATTENTION.has(status)) {
+    return t('legalDocuments.readiness.issue.scanPending', { status });
+  }
   return null;
 }
 
-function integrityIssue(doc: LegalDocumentDto): string | null {
+function integrityIssue(doc: LegalDocumentDto, t: LegalDocumentsTranslate): string | null {
   const status = (doc.integrityStatus ?? 'UNVERIFIED').toUpperCase();
-  if (INTEGRITY_BLOCKING.has(status)) return `Integrität: ${status}`;
-  if (status === 'UNVERIFIED') return 'Integrität noch nicht verifiziert';
+  if (INTEGRITY_BLOCKING.has(status)) {
+    return t('legalDocuments.readiness.issue.integrityBlocking', { status });
+  }
+  if (status === 'UNVERIFIED') return t('legalDocuments.readiness.issue.integrityUnverified');
   return null;
 }
 
@@ -126,16 +117,17 @@ function pickActiveDocument(versions: LegalDocumentDto[]): LegalDocumentDto | nu
 function resolveReadiness(
   versions: LegalDocumentDto[],
   active: LegalDocumentDto | null,
+  t: LegalDocumentsTranslate,
 ): Pick<LegalDocumentCategoryOverview, 'readiness' | 'statusLabel' | 'statusTone' | 'issues' | 'nextAction'> {
   const issues: string[] = [];
 
   if (versions.length === 0) {
     return {
       readiness: 'empty',
-      statusLabel: 'Nicht hinterlegt',
+      statusLabel: t('legalDocuments.readiness.category.notProvided'),
       statusTone: 'critical',
-      issues: ['Keine Version vorhanden'],
-      nextAction: 'PDF hochladen und freigeben',
+      issues: [t('legalDocuments.readiness.issue.noVersion')],
+      nextAction: t('legalDocuments.readiness.next.uploadAndApprove'),
     };
   }
 
@@ -144,54 +136,74 @@ function resolveReadiness(
     const approved = versions.some((v) => v.status === 'APPROVED');
     return {
       readiness: 'blocked',
-      statusLabel: 'Nicht einsatzbereit',
+      statusLabel: t('legalDocuments.readiness.category.notReady'),
       statusTone: 'critical',
-      issues: ['Keine aktive Version für Buchungen'],
+      issues: [t('legalDocuments.readiness.issue.noActive')],
       nextAction: draft
-        ? 'Entwurf prüfen und aktivieren'
+        ? t('legalDocuments.readiness.next.reviewAndActivate')
         : approved
-          ? 'Freigegebene Version aktivieren'
-          : 'Version hochladen und aktivieren',
+          ? t('legalDocuments.readiness.next.activateApproved')
+          : t('legalDocuments.readiness.next.uploadAndActivate'),
     };
   }
 
-  const scan = scanIssue(active);
-  const integrity = integrityIssue(active);
+  const scan = scanIssue(active, t);
+  const integrity = integrityIssue(active, t);
   if (scan) issues.push(scan);
   if (integrity) issues.push(integrity);
 
   if (active.language?.toLowerCase() !== EXPECTED_LANGUAGE) {
-    issues.push(`Aktive Sprache: ${active.language} (erwartet: ${EXPECTED_LANGUAGE})`);
+    issues.push(
+      t('legalDocuments.readiness.issue.languageMismatch', {
+        actual: active.language,
+        expected: EXPECTED_LANGUAGE,
+      }),
+    );
   }
   if ((active.jurisdiction ?? '').toUpperCase() !== EXPECTED_JURISDICTION) {
     issues.push(
-      `Jurisdiktion: ${active.jurisdiction ?? '—'} (erwartet: ${EXPECTED_JURISDICTION})`,
+      t('legalDocuments.readiness.issue.jurisdictionMismatch', {
+        actual: active.jurisdiction ?? t('legalDocuments.common.emDash'),
+        expected: EXPECTED_JURISDICTION,
+      }),
     );
   }
 
-  if (issues.some((i) => i.startsWith('Malware') || i.startsWith('Integrität: CHECKSUM') || i.startsWith('Integrität: MISSING'))) {
+  const blockingIntegrity = issues.some(
+    (i) =>
+      i.includes('CHECKSUM') ||
+      i.includes('MISSING') ||
+      i.includes('checksum') ||
+      i.includes('Integrität: CHECKSUM') ||
+      i.includes('Integrity: CHECKSUM'),
+  );
+  const blockingScan = issues.some(
+    (i) => i.includes('FAILED') || i.includes('INFECTED') || i.includes('Malware'),
+  );
+
+  if (blockingScan || blockingIntegrity) {
     return {
       readiness: 'blocked',
-      statusLabel: 'Blockiert',
+      statusLabel: t('legalDocuments.readiness.category.blocked'),
       statusTone: 'critical',
       issues,
-      nextAction: 'Scan- oder Integritätsfehler beheben',
+      nextAction: t('legalDocuments.readiness.next.fixScanIntegrity'),
     };
   }
 
   if (issues.length > 0) {
     return {
       readiness: 'attention',
-      statusLabel: 'Einschränkung',
+      statusLabel: t('legalDocuments.readiness.category.limited'),
       statusTone: 'watch',
       issues,
-      nextAction: issues[0] ?? 'Prüfen',
+      nextAction: issues[0] ?? t('legalDocuments.readiness.next.review'),
     };
   }
 
   return {
     readiness: 'ready',
-    statusLabel: 'Einsatzbereit',
+    statusLabel: t('legalDocuments.readiness.category.ready'),
     statusTone: 'success',
     issues: [],
     nextAction: null,
@@ -200,6 +212,7 @@ function resolveReadiness(
 
 export function buildLegalDocumentsReadinessSummary(
   docs: LegalDocumentDto[],
+  t: LegalDocumentsTranslate,
 ): LegalDocumentsReadinessSummary {
   const byType: Record<string, LegalDocumentDto[]> = {};
   for (const config of LEGAL_DOCUMENT_TYPE_CONFIGS) {
@@ -216,18 +229,26 @@ export function buildLegalDocumentsReadinessSummary(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     const activeDocument = pickActiveDocument(versions);
-    const readiness = resolveReadiness(versions, activeDocument);
+    const readiness = resolveReadiness(versions, activeDocument, t);
+    const title = t(config.titleKey);
+    const hint = t(config.hintKey);
 
     const missingCoverage: string[] = [];
     const hasExpectedLanguage = versions.some(
       (v) => v.status === 'ACTIVE' && v.language?.toLowerCase() === EXPECTED_LANGUAGE,
     );
     if (!hasExpectedLanguage && versions.length > 0) {
-      missingCoverage.push(`Keine aktive Version für Sprache ${EXPECTED_LANGUAGE.toUpperCase()}`);
+      missingCoverage.push(
+        t('legalDocuments.readiness.missingLanguage', {
+          language: EXPECTED_LANGUAGE.toUpperCase(),
+        }),
+      );
     }
 
     return {
       config,
+      title,
+      hint,
       ...readiness,
       activeDocument,
       activeSince: activeDocument?.activatedAt ?? activeDocument?.activeFrom ?? null,
@@ -248,25 +269,32 @@ export function buildLegalDocumentsReadinessSummary(
       configAlerts.push({
         id: `${category.config.key}-readiness`,
         severity: 'critical',
-        title: `${category.config.title}: ${category.statusLabel}`,
-        detail: category.nextAction ?? category.issues[0] ?? 'Aktion erforderlich',
+        title: `${category.title}: ${category.statusLabel}`,
+        detail: category.nextAction ?? category.issues[0] ?? t('legalDocuments.alerts.actionRequired'),
         categoryKey: category.config.key,
       });
     } else if (category.readiness === 'attention') {
       configAlerts.push({
         id: `${category.config.key}-attention`,
         severity: 'warning',
-        title: `${category.config.title}: ${category.issues[0] ?? 'Prüfung empfohlen'}`,
-        detail: category.nextAction ?? 'Details in der Kategorie prüfen',
+        title: `${category.title}: ${category.issues[0] ?? t('legalDocuments.alerts.reviewRecommended')}`,
+        detail: category.nextAction ?? t('legalDocuments.alerts.checkCategory'),
         categoryKey: category.config.key,
       });
     }
     for (const issue of category.issues) {
-      if (issue.includes('Scan') || issue.includes('Integrität')) {
+      if (
+        issue.toLowerCase().includes('scan') ||
+        issue.toLowerCase().includes('integr') ||
+        issue.includes('Malware')
+      ) {
         configAlerts.push({
           id: `${category.config.key}-${issue}`,
-          severity: issue.includes('FAILED') || issue.includes('MISSING') ? 'critical' : 'warning',
-          title: category.config.title,
+          severity:
+            issue.includes('FAILED') || issue.includes('MISSING') || issue.includes('INFECTED')
+              ? 'critical'
+              : 'warning',
+          title: category.title,
           detail: issue,
           categoryKey: category.config.key,
         });
@@ -274,9 +302,7 @@ export function buildLegalDocumentsReadinessSummary(
     }
   }
 
-  const dedupedAlerts = Array.from(
-    new Map(configAlerts.map((a) => [a.id, a])).values(),
-  );
+  const dedupedAlerts = Array.from(new Map(configAlerts.map((a) => [a.id, a])).values());
 
   const readyCount = categories.filter((c) => c.readiness === 'ready').length;
   const attentionCount = categories.filter((c) => c.readiness === 'attention').length;
@@ -284,23 +310,25 @@ export function buildLegalDocumentsReadinessSummary(
   const emptyCount = categories.filter((c) => c.readiness === 'empty').length;
 
   let overallTone: StatusTone = 'success';
-  let overallLabel = 'Einsatzbereit';
-  let overallDetail = 'Alle Pflicht-Kategorien sind für Buchungen freigegeben.';
+  let overallLabel = t('legalDocuments.readiness.overall.ready');
+  let overallDetail = t('legalDocuments.readiness.overall.readyDetail');
 
   if (blockedCount > 0 || emptyCount > 0) {
     overallTone = 'critical';
-    overallLabel = 'Nicht einsatzbereit';
-    overallDetail = `${blockedCount + emptyCount} Kategorie(n) blockieren vollständige Buchungsdokumente.`;
+    overallLabel = t('legalDocuments.readiness.overall.critical');
+    overallDetail = t('legalDocuments.readiness.overall.criticalDetail', {
+      count: blockedCount + emptyCount,
+    });
   } else if (attentionCount > 0) {
     overallTone = 'watch';
-    overallLabel = 'Teilweise eingeschränkt';
-    overallDetail = `${attentionCount} Kategorie(n) mit offenen Hinweisen — Buchungen können eingeschränkt sein.`;
+    overallLabel = t('legalDocuments.readiness.overall.attention');
+    overallDetail = t('legalDocuments.readiness.overall.attentionDetail', { count: attentionCount });
   }
 
   const allVersions: LegalDocumentVersionRow[] = categories.flatMap((category) =>
     category.versions.map((doc) => ({
       id: doc.id,
-      categoryTitle: category.config.title,
+      categoryTitle: category.title,
       documentType: doc.documentType,
       versionLabel: doc.versionLabel,
       status: doc.status,
@@ -331,15 +359,19 @@ export function buildLegalDocumentsReadinessSummary(
   };
 }
 
-export function formatLegalDocumentStatus(status: string): string {
-  return STATUS_LABEL_DE[status] ?? status;
+export function formatLegalDocumentStatus(status: string, t?: LegalDocumentsTranslate): string {
+  if (t) return formatLegalDocumentStatusI18n(status, t);
+  return status;
 }
 
-export function formatLegalDocumentDate(iso: string | null | undefined): string {
+export function formatLegalDocumentDate(
+  iso: string | null | undefined,
+  locale?: string,
+): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function formatLegalDocumentBytes(bytes: number | null | undefined): string {
@@ -349,13 +381,24 @@ export function formatLegalDocumentBytes(bytes: number | null | undefined): stri
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function legalDocumentVariantLabel(doc: LegalDocumentDto): string | null {
-  return variantLabel(doc);
+export function legalDocumentVariantLabel(
+  doc: LegalDocumentDto,
+  t?: LegalDocumentsTranslate,
+): string | null {
+  const variant = doc.documentVariant ?? doc.legalVariant;
+  if (!variant) return null;
+  if (t) return formatLegalDocumentVariantLabel(variant, t);
+  return variant;
 }
 
-export function legalDocumentTypeTitle(documentType: string, legacyDocumentType?: string | null): string {
+export function legalDocumentTypeTitle(
+  documentType: string,
+  legacyDocumentType?: string | null,
+  t?: LegalDocumentsTranslate,
+): string {
   const key = legalDocumentGroupKey(documentType, legacyDocumentType);
-  return LEGAL_DOCUMENT_TYPE_CONFIGS.find((c) => c.key === key)?.title ?? documentType;
+  if (t) return formatLegalDocumentTypeTitle(key, t);
+  return key;
 }
 
 export const LEGAL_DOCUMENT_EXPECTED_LANGUAGE = EXPECTED_LANGUAGE;

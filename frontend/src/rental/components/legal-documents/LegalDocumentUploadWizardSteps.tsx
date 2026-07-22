@@ -10,6 +10,7 @@ import {
   LEGAL_UPLOAD_STATION_SCOPE_MODES,
 } from '../../lib/legal-document-upload-wizard.constants';
 import { LEGAL_DOCUMENT_TYPE } from '../../lib/legal-document-types';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   LegalUploadFieldError,
   legalUploadInputA11y,
@@ -40,12 +41,14 @@ export function LegalDocumentUploadWizardStepClassification({
   onChange,
   stationOptions = [],
 }: WizardStepProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-4" data-testid="legal-upload-step-classification">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="documentType" required>
-            Dokumenttyp
+            {t('legalDocuments.wizard.field.documentType')}
           </Label>
           <select
             id="documentType"
@@ -54,10 +57,10 @@ export function LegalDocumentUploadWizardStepClassification({
             className={fieldClass}
             {...legalUploadInputA11y('documentType', errors)}
           >
-            <option value="">Bitte wählen…</option>
+            <option value="">{t('legalDocuments.wizard.placeholder.select')}</option>
             {LEGAL_DOCUMENT_TYPE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
@@ -67,7 +70,7 @@ export function LegalDocumentUploadWizardStepClassification({
         {form.documentType === LEGAL_DOCUMENT_TYPE.CONSUMER_INFORMATION ? (
           <div>
             <Label htmlFor="legalVariant" required>
-              Dokumentvariante
+              {t('legalDocuments.wizard.field.variant')}
             </Label>
             <select
               id="legalVariant"
@@ -76,10 +79,10 @@ export function LegalDocumentUploadWizardStepClassification({
               className={fieldClass}
               {...legalUploadInputA11y('legalVariant', errors)}
             >
-              <option value="">Bitte wählen…</option>
+              <option value="">{t('legalDocuments.wizard.placeholder.select')}</option>
               {LEGAL_CONSUMER_VARIANT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.labelKey)}
                 </option>
               ))}
             </select>
@@ -91,7 +94,7 @@ export function LegalDocumentUploadWizardStepClassification({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="language" required>
-            Sprache
+            {t('legalDocuments.wizard.field.language')}
           </Label>
           <select
             id="language"
@@ -101,7 +104,7 @@ export function LegalDocumentUploadWizardStepClassification({
           >
             {LEGAL_UPLOAD_LANGUAGES.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
@@ -109,7 +112,7 @@ export function LegalDocumentUploadWizardStepClassification({
         </div>
         <div>
           <Label htmlFor="jurisdictionCountry" required>
-            Jurisdiktion
+            {t('legalDocuments.wizard.field.jurisdiction')}
           </Label>
           <select
             id="jurisdictionCountry"
@@ -119,7 +122,7 @@ export function LegalDocumentUploadWizardStepClassification({
           >
             {LEGAL_UPLOAD_JURISDICTIONS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
@@ -130,7 +133,7 @@ export function LegalDocumentUploadWizardStepClassification({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="customerSegment" required>
-            B2B / B2C
+            {t('legalDocuments.wizard.field.customerSegment')}
           </Label>
           <select
             id="customerSegment"
@@ -140,7 +143,7 @@ export function LegalDocumentUploadWizardStepClassification({
           >
             {LEGAL_UPLOAD_CUSTOMER_SEGMENTS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
@@ -148,7 +151,7 @@ export function LegalDocumentUploadWizardStepClassification({
         </div>
         <div>
           <Label htmlFor="bookingChannel" required>
-            Buchungskanal
+            {t('legalDocuments.wizard.field.bookingChannel')}
           </Label>
           <select
             id="bookingChannel"
@@ -158,7 +161,7 @@ export function LegalDocumentUploadWizardStepClassification({
           >
             {LEGAL_UPLOAD_BOOKING_CHANNELS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
@@ -169,7 +172,7 @@ export function LegalDocumentUploadWizardStepClassification({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="stationScopeMode" required>
-            Geltungsbereich
+            {t('legalDocuments.wizard.field.stationScope')}
           </Label>
           <select
             id="stationScopeMode"
@@ -179,14 +182,14 @@ export function LegalDocumentUploadWizardStepClassification({
           >
             {LEGAL_UPLOAD_STATION_SCOPE_MODES.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
           <LegalUploadFieldError field="stationScopeMode" message={errors.stationScopeMode} />
         </div>
         <div>
-          <Label htmlFor="productScope">Produktbereich</Label>
+          <Label htmlFor="productScope">{t('legalDocuments.wizard.field.productScope')}</Label>
           <select
             id="productScope"
             value={form.productScope}
@@ -195,7 +198,7 @@ export function LegalDocumentUploadWizardStepClassification({
           >
             {LEGAL_UPLOAD_PRODUCT_SCOPES.map((o) => (
               <option key={o.value || 'all'} value={o.value}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
@@ -205,7 +208,7 @@ export function LegalDocumentUploadWizardStepClassification({
       {form.stationScopeMode === 'STATION_SPECIFIC' ? (
         <div>
           <Label htmlFor="stationIds" required>
-            Stationen
+            {t('legalDocuments.wizard.field.stations')}
           </Label>
           <select
             id="stationIds"
@@ -235,7 +238,7 @@ export function LegalDocumentUploadWizardStepClassification({
           onChange={(e) => onChange({ isMandatory: e.target.checked })}
           className="rounded border-border"
         />
-        Pflichtdokument für Buchungen
+        {t('legalDocuments.wizard.field.mandatory')}
       </label>
     </div>
   );
@@ -246,30 +249,32 @@ export function LegalDocumentUploadWizardStepVersion({
   errors,
   onChange,
 }: WizardStepProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-4" data-testid="legal-upload-step-version">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="versionLabel" required>
-            Versionsbezeichnung
+            {t('legalDocuments.wizard.field.versionLabel')}
           </Label>
           <input
             id="versionLabel"
             value={form.versionLabel}
             onChange={(e) => onChange({ versionLabel: e.target.value })}
-            placeholder="z. B. 2026-01"
+            placeholder={t('legalDocuments.wizard.placeholder.version')}
             className={fieldClass}
             {...legalUploadInputA11y('versionLabel', errors)}
           />
           <LegalUploadFieldError field="versionLabel" message={errors.versionLabel} />
         </div>
         <div>
-          <Label htmlFor="title">Anzeigetitel</Label>
+          <Label htmlFor="title">{t('legalDocuments.wizard.field.displayTitle')}</Label>
           <input
             id="title"
             value={form.title}
             onChange={(e) => onChange({ title: e.target.value })}
-            placeholder="Optional"
+            placeholder={t('legalDocuments.wizard.placeholder.optional')}
             className={fieldClass}
           />
         </div>
@@ -277,7 +282,7 @@ export function LegalDocumentUploadWizardStepVersion({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="validFrom">Gültig ab</Label>
+          <Label htmlFor="validFrom">{t('legalDocuments.wizard.field.validFrom')}</Label>
           <input
             id="validFrom"
             type="datetime-local"
@@ -287,7 +292,7 @@ export function LegalDocumentUploadWizardStepVersion({
           />
         </div>
         <div>
-          <Label htmlFor="validUntil">Gültig bis (optional)</Label>
+          <Label htmlFor="validUntil">{t('legalDocuments.wizard.field.validUntil')}</Label>
           <input
             id="validUntil"
             type="datetime-local"
@@ -300,24 +305,24 @@ export function LegalDocumentUploadWizardStepVersion({
       </div>
 
       <div>
-        <Label htmlFor="changeSummary">Änderungshinweis</Label>
+        <Label htmlFor="changeSummary">{t('legalDocuments.wizard.field.changeSummary')}</Label>
         <textarea
           id="changeSummary"
           rows={3}
           value={form.changeSummary}
           onChange={(e) => onChange({ changeSummary: e.target.value })}
           className={fieldClass}
-          placeholder="Kurzbeschreibung der inhaltlichen Änderungen"
+          placeholder={t('legalDocuments.wizard.placeholder.changeSummary')}
         />
       </div>
 
       <div>
-        <Label htmlFor="legalOwnerName">Verantwortliche Fachperson</Label>
+        <Label htmlFor="legalOwnerName">{t('legalDocuments.wizard.field.legalOwner')}</Label>
         <input
           id="legalOwnerName"
           value={form.legalOwnerName}
           onChange={(e) => onChange({ legalOwnerName: e.target.value })}
-          placeholder="Name der fachlich Verantwortlichen"
+          placeholder={t('legalDocuments.wizard.placeholder.legalOwner')}
           className={fieldClass}
         />
       </div>
@@ -338,6 +343,8 @@ export function LegalDocumentUploadWizardStepFile({
   onFileSelected,
   disabled,
 }: FileStepProps) {
+  const { t } = useLanguage();
+
   const onInput = (selected: File | null) => {
     onFileSelected(selected);
   };
@@ -356,11 +363,11 @@ export function LegalDocumentUploadWizardStepFile({
           onInput(dropped);
         }}
       >
-        <p className="text-sm font-medium text-foreground">PDF hier ablegen</p>
-        <p className="mt-1 text-[12px] text-muted-foreground">oder Datei auswählen</p>
+        <p className="text-sm font-medium text-foreground">{t('legalDocuments.wizard.file.dropTitle')}</p>
+        <p className="mt-1 text-[12px] text-muted-foreground">{t('legalDocuments.wizard.file.dropHint')}</p>
         <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
           <label className="inline-flex cursor-pointer items-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">
-            Datei wählen
+            {t('legalDocuments.wizard.file.choose')}
             <input
               type="file"
               accept="application/pdf,.pdf"
@@ -380,18 +387,18 @@ export function LegalDocumentUploadWizardStepFile({
       {file ? (
         <dl className="grid gap-2 rounded-lg border border-border/60 bg-muted/10 p-3 text-[12px] sm:grid-cols-2">
           <div>
-            <dt className="text-muted-foreground">Dateiname</dt>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.fileName')}</dt>
             <dd className="font-medium text-foreground break-all">{file.name}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Größe</dt>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.fileSize')}</dt>
             <dd className="font-medium text-foreground">
               {(file.size / 1024).toFixed(0)} KB
             </dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-muted-foreground">Client-Validierung</dt>
-            <dd className="text-foreground">PDF-Format geprüft (Server validiert beim Upload)</dd>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.clientValidation')}</dt>
+            <dd className="text-foreground">{t('legalDocuments.wizard.file.clientOk')}</dd>
           </div>
         </dl>
       ) : null}
@@ -416,34 +423,33 @@ export function LegalDocumentUploadWizardStepReview({
   uploadError,
   canRequestReview,
 }: ReviewStepProps) {
-  const typeLabel =
-    LEGAL_DOCUMENT_TYPE_OPTIONS.find((o) => o.value === form.documentType)?.label ??
-    form.documentType;
+  const { t } = useLanguage();
+  const typeOption = LEGAL_DOCUMENT_TYPE_OPTIONS.find((o) => o.value === form.documentType);
+  const typeLabel = typeOption ? t(typeOption.labelKey) : form.documentType;
 
   return (
     <div className="space-y-4" data-testid="legal-upload-step-review">
       <p className="text-[12px] text-muted-foreground">
-        Neue Buchungen erhalten nach Freigabe und Aktivierung die hier hinterlegte Version —
-        nicht automatisch beim Speichern als Entwurf.
+        {t('legalDocuments.wizard.reviewNote')}
       </p>
 
       <dl className="divide-y divide-border/60 rounded-lg border border-border/60 text-[12px]">
         <div className="grid gap-1 px-3 py-2 sm:grid-cols-2">
-          <dt className="text-muted-foreground">Dokumenttyp</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.documentType')}</dt>
           <dd className="font-medium text-foreground">{typeLabel}</dd>
         </div>
         <div className="grid gap-1 px-3 py-2 sm:grid-cols-2">
-          <dt className="text-muted-foreground">Version</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.version')}</dt>
           <dd className="font-medium text-foreground">{form.versionLabel}</dd>
         </div>
         <div className="grid gap-1 px-3 py-2 sm:grid-cols-2">
-          <dt className="text-muted-foreground">Sprache / Jurisdiktion</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.categories.languageJurisdiction')}</dt>
           <dd className="text-foreground">
             {form.language.toUpperCase()} · {form.jurisdictionCountry}
           </dd>
         </div>
         <div className="grid gap-1 px-3 py-2 sm:grid-cols-2">
-          <dt className="text-muted-foreground">Datei</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.file')}</dt>
           <dd className="text-foreground">{file?.name ?? '—'}</dd>
         </div>
       </dl>
@@ -451,8 +457,8 @@ export function LegalDocumentUploadWizardStepReview({
       {uploadProgress != null && uploadProgress < 100 ? (
         <div className="space-y-1">
           <div className="flex justify-between text-[11px] text-muted-foreground">
-            <span>Upload läuft…</span>
-            <span>{uploadProgress}%</span>
+            <span>{t('legalDocuments.wizard.uploadProgress')}</span>
+            <span>{t('legalDocuments.wizard.uploadPercent', { percent: uploadProgress })}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
@@ -472,23 +478,23 @@ export function LegalDocumentUploadWizardStepReview({
       {uploadedDocument ? (
         <dl className="grid gap-2 rounded-lg border border-border/60 bg-muted/10 p-3 text-[12px] sm:grid-cols-2">
           <div>
-            <dt className="text-muted-foreground">Status</dt>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.status')}</dt>
             <dd className="font-medium text-foreground">{uploadedDocument.status}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Seitenzahl</dt>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.pageCount')}</dt>
             <dd className="text-foreground">{uploadedDocument.pageCount ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Malware-Scan</dt>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.scan')}</dt>
             <dd className="text-foreground">{uploadedDocument.scanStatus ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Integrität</dt>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.integrity')}</dt>
             <dd className="text-foreground">{uploadedDocument.integrityStatus ?? '—'}</dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-muted-foreground">Prüfsumme</dt>
+            <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.checksum')}</dt>
             <dd className="break-all font-mono text-[11px] text-foreground">
               {uploadedDocument.checksum ?? '—'}
             </dd>
@@ -498,7 +504,7 @@ export function LegalDocumentUploadWizardStepReview({
 
       {!canRequestReview ? (
         <p className="text-[11px] text-muted-foreground">
-          Review anfordern erfordert die Berechtigung „Prüfung einreichen“.
+          {t('legalDocuments.wizard.review.permissionHint')}
         </p>
       ) : null}
     </div>

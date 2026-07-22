@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-i18n-2026-07-22',
+    version: '4.9.767',
+    title: 'Legal Documents — i18n & UX Copy (Prompt 28/32)',
+    summary: [
+      'Alle sichtbaren Texte der Rechtstextverwaltung in legalDocuments.* i18n-Keys (DE + EN).',
+      'Neue Module legal-documents.en.ts / legal-documents.de.ts + legal-documents-i18n.ts Helper.',
+      'Konsistente Statuslabels: Entwurf, In Prüfung, Freigegeben, Geplante Aktivierung, Aktiv, Ersetzt, Widerrufen, Archiviert.',
+      'UX: Datenschutz ohne Einwilligungs-Framing; Widerrufsbelehrung „falls anwendbar“; kein „automatisch angehängt“.',
+      'Tooltips für Prüfsumme, Integrität, Snapshot; handlungsorientierte Validierung und Konfliktmeldungen.',
+      'Vitest legal-documents.i18n.test.ts + angepasste Component/Lib-Tests (60 Tests grün).',
+    ],
+    reason: 'Production-Readiness — zweisprachige, juristisch sachliche UI-Copy ohne Hardcodings.',
+    previousBehavior: 'Überwiegend hardcodierte deutsche Strings in Komponenten und Lib-Hilfsfunktionen.',
+    details:
+      'docs/audits/legal-documents-i18n-2026-07.md, legal-documents.en.ts, legal-documents.de.ts, legal-documents-i18n.ts',
+    affectsArchitecture: false,
+    module: 'Frontend / Documents',
+    createdAt: '2026-07-23T03:00:00.000Z',
+  },
+  {
     id: 'legal-documents-accessibility-2026-07-22',
     version: '4.9.766',
     title: 'Legal Documents — Accessibility WCAG (Prompt 27/32)',

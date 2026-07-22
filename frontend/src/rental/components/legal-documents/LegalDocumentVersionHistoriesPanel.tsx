@@ -8,6 +8,7 @@ import type {
 import type { LegalDocumentDto } from '../../../lib/api';
 import { SectionHeader } from '../../../components/patterns';
 import { LegalDocumentTypeVersionHistory } from './LegalDocumentTypeVersionHistory';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface Props {
   orgId: string;
@@ -26,11 +27,13 @@ export function LegalDocumentVersionHistoriesPanel({
   onOpenAction,
   focusCategoryKey,
 }: Props) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-8" data-testid="legal-version-histories-panel" id={LEGAL_VERSION_HISTORY_REGION_ID}>
       <SectionHeader
-        title="Versionshistorie"
-        description="Serverseitig paginierte Historie je Rechtstexttyp mit Filtern und Detailansicht"
+        title={t('legalDocuments.history.title')}
+        description={t('legalDocuments.history.description')}
         as="label"
       />
       {LEGAL_DOCUMENT_TYPE_CONFIGS.map((config) => (

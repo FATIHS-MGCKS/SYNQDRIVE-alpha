@@ -1,37 +1,32 @@
 import type { LegalDocumentDto } from '../../lib/api';
-import { CONSUMER_INFORMATION_VARIANT_LABELS_DE, LEGAL_DOCUMENT_TYPE_CONFIGS } from './legal-document-types';
+import { LEGAL_DOCUMENT_TYPE_CONFIGS } from './legal-document-types';
 import type { LegalDocumentVersionHistoryItem } from './legal-document-version-history.types';
+import {
+  formatLegalDocumentTypeTitle,
+  formatLegalDocumentVariantLabel,
+  formatIntegrityStatusLabelI18n,
+  formatScanStatusLabelI18n,
+  type LegalDocumentsTranslate,
+} from './legal-documents-i18n';
 
 export const VERSION_HISTORY_PAGE_SIZE = 15;
 
-const SCAN_LABELS_DE: Record<string, string> = {
-  UPLOADED: 'Hochgeladen',
-  PENDING: 'Ausstehend',
-  SCANNING: 'Wird gescannt',
-  SCAN_PASSED: 'OK',
-  FAILED: 'Fehlgeschlagen',
-  INFECTED: 'Infiziert',
-  REJECTED: 'Abgelehnt',
-  QUARANTINED: 'Quarantäne',
-};
-
-const INTEGRITY_LABELS_DE: Record<string, string> = {
-  UNVERIFIED: 'Ungeprüft',
-  VERIFIED: 'Verifiziert',
-  CHECKSUM_MISMATCH: 'Prüfsumme abweichend',
-  MISSING_OBJECT: 'Datei fehlt',
-  STORAGE_ERROR: 'Speicherfehler',
-  INTEGRITY_FAILED: 'Integrität fehlgeschlagen',
-};
-
-export function formatScanStatusLabel(status: string | null | undefined): string {
+export function formatScanStatusLabel(
+  status: string | null | undefined,
+  t?: LegalDocumentsTranslate,
+): string {
+  if (t) return formatScanStatusLabelI18n(status, t);
   if (!status) return '—';
-  return SCAN_LABELS_DE[status.toUpperCase()] ?? status;
+  return status;
 }
 
-export function formatIntegrityStatusLabel(status: string | null | undefined): string {
+export function formatIntegrityStatusLabel(
+  status: string | null | undefined,
+  t?: LegalDocumentsTranslate,
+): string {
+  if (t) return formatIntegrityStatusLabelI18n(status, t);
   if (!status) return '—';
-  return INTEGRITY_LABELS_DE[status.toUpperCase()] ?? status;
+  return status;
 }
 
 export function shortenChecksum(checksum: string | null | undefined): string | null {
@@ -41,26 +36,27 @@ export function shortenChecksum(checksum: string | null | undefined): string | n
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
-export function resolveVariantLabel(doc: LegalDocumentDto): string | null {
+export function resolveVariantLabel(
+  doc: LegalDocumentDto,
+  t: LegalDocumentsTranslate,
+): string | null {
   const variant = doc.documentVariant ?? doc.legalVariant;
   if (!variant) return null;
-  return (
-    CONSUMER_INFORMATION_VARIANT_LABELS_DE[
-      variant as keyof typeof CONSUMER_INFORMATION_VARIANT_LABELS_DE
-    ] ?? variant
-  );
+  return formatLegalDocumentVariantLabel(variant, t);
 }
 
-export function mapDtoToVersionHistoryItem(doc: LegalDocumentDto): LegalDocumentVersionHistoryItem {
-  const categoryTitle =
-    LEGAL_DOCUMENT_TYPE_CONFIGS.find((c) => c.key === doc.documentType)?.title ?? doc.documentType;
+export function mapDtoToVersionHistoryItem(
+  doc: LegalDocumentDto,
+  t: LegalDocumentsTranslate,
+): LegalDocumentVersionHistoryItem {
+  const categoryTitle = formatLegalDocumentTypeTitle(doc.documentType, t);
 
   return {
     id: doc.id,
     documentType: doc.documentType,
     categoryTitle,
     versionLabel: doc.versionLabel,
-    variantLabel: resolveVariantLabel(doc),
+    variantLabel: resolveVariantLabel(doc, t),
     language: doc.language,
     jurisdiction: doc.jurisdiction ?? null,
     status: doc.status,
@@ -97,4 +93,9 @@ export function buildVersionHistoryQueryParams(input: {
   if (input.filters.from) params.from = new Date(input.filters.from).toISOString();
   if (input.filters.to) params.to = new Date(input.filters.to).toISOString();
   return params;
+}
+
+export function resolveCategoryTitle(documentType: string, t: LegalDocumentsTranslate): string {
+  const config = LEGAL_DOCUMENT_TYPE_CONFIGS.find((c) => c.key === documentType);
+  return config ? t(config.titleKey) : documentType;
 }

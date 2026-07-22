@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../i18n/translations/en';
 import { LEGAL_DOCUMENT_TYPE } from './legal-document-types';
 import { EMPTY_LEGAL_UPLOAD_WIZARD_FORM } from './legal-document-upload-wizard.types';
 import {
@@ -7,6 +9,16 @@ import {
   scanStatusErrorMessage,
   toIsoDateTime,
 } from './legal-document-upload-wizard.utils';
+
+function t(key: TranslationKey, vars?: Record<string, string | number>): string {
+  let text = en[key] ?? key;
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      text = text.replace(`{${k}}`, String(v));
+    });
+  }
+  return text;
+}
 
 describe('legal-document-upload-wizard.utils', () => {
   it('builds upload params with scope and validity dates', () => {
@@ -45,6 +57,6 @@ describe('legal-document-upload-wizard.utils', () => {
   it('detects blocking scan statuses for review gating', () => {
     expect(isScanStatusBlocking('SCAN_PASSED')).toBe(false);
     expect(isScanStatusBlocking('SCAN_FAILED')).toBe(true);
-    expect(scanStatusErrorMessage('SCAN_FAILED')).toContain('Malware-Scan');
+    expect(scanStatusErrorMessage('SCAN_FAILED', t)).toContain('Malware');
   });
 });

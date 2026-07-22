@@ -27,6 +27,7 @@ import {
 } from '../../../components/ui/select';
 import { api, type LegalDocumentDto } from '../../../lib/api';
 import { getStoredUser } from '../../../lib/auth';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { LegalDocumentTypeConfig } from '../../lib/legal-document-types';
 import {
   LEGAL_UPLOAD_JURISDICTIONS,
@@ -58,18 +59,6 @@ interface Props {
   onOpenAction: (state: LegalDocumentLifecycleDialogState) => void;
   defaultExpanded?: boolean;
 }
-
-const STATUS_FILTER_OPTIONS = [
-  { value: '', label: 'Alle Status' },
-  { value: 'ACTIVE', label: 'Aktiv' },
-  { value: 'DRAFT', label: 'Entwurf' },
-  { value: 'IN_REVIEW', label: 'In Prüfung' },
-  { value: 'APPROVED', label: 'Freigegeben' },
-  { value: 'SCHEDULED', label: 'Geplant' },
-  { value: 'SUPERSEDED', label: 'Ersetzt' },
-  { value: 'REVOKED', label: 'Zurückgezogen' },
-  { value: 'ARCHIVED', label: 'Archiviert' },
-];
 
 function statusTone(status: string) {
   if (status === 'ACTIVE') return 'success' as const;
@@ -120,21 +109,22 @@ function VersionHistoryMobileCard({
   onOpenDetail: (document: LegalDocumentDto) => void;
   onOpenAction: (state: LegalDocumentLifecycleDialogState) => void;
 }) {
+  const { t } = useLanguage();
   const currentUserId = getStoredUser()?.id ?? null;
 
   const copyChecksum = async () => {
     if (!row.checksum) return;
     try {
       await navigator.clipboard.writeText(row.checksum);
-      toast.success('Prüfsumme kopiert');
+      toast.success(t('legalDocuments.toast.checksumCopied'));
     } catch {
-      toast.error('Kopieren fehlgeschlagen');
+      toast.error(t('legalDocuments.toast.copyFailed'));
     }
   };
 
   const actions =
     document != null
-      ? getLifecycleActionsForDocument(document, documents, permissions, settings, currentUserId)
+      ? getLifecycleActionsForDocument(document, documents, permissions, settings, currentUserId, t)
       : [];
 
   return (
@@ -146,7 +136,7 @@ function VersionHistoryMobileCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-foreground">v{row.versionLabel}</span>
-            <StatusChip tone={statusTone(row.status)}>{formatLegalDocumentStatus(row.status)}</StatusChip>
+            <StatusChip tone={statusTone(row.status)}>{formatLegalDocumentStatus(row.status, t)}</StatusChip>
           </div>
           {row.variantLabel ? (
             <p className="mt-1 text-[11px] text-muted-foreground">{row.variantLabel}</p>
@@ -158,7 +148,7 @@ function VersionHistoryMobileCard({
               type="button"
               variant="ghost"
               size="icon"
-              aria-label={`Details zu Version ${row.versionLabel} anzeigen`}
+              aria-label={t('legalDocuments.a11y.showDetail', { version: row.versionLabel })}
               onClick={() => onOpenDetail(document)}
             >
               <Eye className="h-4 w-4" aria-hidden />
@@ -168,7 +158,7 @@ function VersionHistoryMobileCard({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={`Version ${row.versionLabel} herunterladen`}
+            aria-label={t('legalDocuments.a11y.downloadVersion', { version: row.versionLabel })}
             onClick={() => void api.legalDocuments.open(orgId, row.id)}
           >
             <Download className="h-4 w-4" aria-hidden />
@@ -178,49 +168,54 @@ function VersionHistoryMobileCard({
 
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
         <div>
-          <dt className="text-muted-foreground">Sprache</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.history.column.language')}</dt>
           <dd className="font-medium text-foreground">{row.language.toUpperCase()}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Jurisdiktion</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.history.column.jurisdiction')}</dt>
           <dd className="font-medium text-foreground">{row.jurisdiction ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Gültigkeit</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.history.column.validity')}</dt>
           <dd className="text-foreground">
             {formatLegalDocumentDate(row.validFrom)} – {formatLegalDocumentDate(row.validUntil)}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Freigabe</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.history.column.approved')}</dt>
           <dd className="text-foreground">{formatLegalDocumentDate(row.approvedAt)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Aktivierung</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.history.column.activated')}</dt>
           <dd className="text-foreground">{formatLegalDocumentDate(row.activatedAt)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Verwendungen</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.history.column.usage')}</dt>
           <dd className="tabular-nums text-foreground">{row.snapshotCount}</dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-muted-foreground">Prüfsumme</dt>
+          <dt className="text-muted-foreground">{t('legalDocuments.history.column.checksum')}</dt>
           <dd className="flex items-center gap-2 text-foreground">
             <span className="font-mono text-[10px]">{row.checksumShort ?? '—'}</span>
             {row.checksum ? (
-              <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => void copyChecksum()}>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                title={t('legalDocuments.a11y.copyChecksum')}
+                onClick={() => void copyChecksum()}
+              >
                 <Copy className="h-3 w-3" />
               </button>
             ) : null}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Scan</dt>
-          <dd>{formatScanStatusLabel(row.scanStatus)}</dd>
+          <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.scan')}</dt>
+          <dd>{formatScanStatusLabel(row.scanStatus, t)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Integrität</dt>
-          <dd>{formatIntegrityStatusLabel(row.integrityStatus)}</dd>
+          <dt className="text-muted-foreground">{t('legalDocuments.wizard.field.integrity')}</dt>
+          <dd>{formatIntegrityStatusLabel(row.integrityStatus, t)}</dd>
         </div>
       </dl>
 
@@ -233,10 +228,10 @@ function VersionHistoryMobileCard({
               size="sm"
               className="mt-3 w-full"
               aria-haspopup="menu"
-              aria-label={`Lifecycle-Aktionen für Version ${row.versionLabel}`}
+              aria-label={t('legalDocuments.a11y.lifecycleActions', { version: row.versionLabel })}
             >
               <MoreHorizontal className="h-4 w-4" aria-hidden />
-              Aktionen
+              {t('legalDocuments.history.actions')}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-[min(100vw-2rem,16rem)]">
@@ -280,8 +275,21 @@ export function LegalDocumentTypeVersionHistory({
   onOpenAction,
   defaultExpanded = true,
 }: Props) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const currentUserId = getStoredUser()?.id ?? null;
+
+  const statusFilterOptions = [
+    { value: '', label: t('legalDocuments.history.filter.allStatuses') },
+    { value: 'ACTIVE', label: t('legalDocuments.status.ACTIVE') },
+    { value: 'DRAFT', label: t('legalDocuments.status.DRAFT') },
+    { value: 'IN_REVIEW', label: t('legalDocuments.status.IN_REVIEW') },
+    { value: 'APPROVED', label: t('legalDocuments.status.APPROVED') },
+    { value: 'SCHEDULED', label: t('legalDocuments.status.SCHEDULED') },
+    { value: 'SUPERSEDED', label: t('legalDocuments.status.SUPERSEDED') },
+    { value: 'REVOKED', label: t('legalDocuments.status.REVOKED') },
+    { value: 'ARCHIVED', label: t('legalDocuments.status.ARCHIVED') },
+  ];
 
   const {
     items,
@@ -306,7 +314,7 @@ export function LegalDocumentTypeVersionHistory({
       key: 'version',
       header: (
         <SortButton
-          label="Version"
+          label={t('legalDocuments.history.column.version')}
           active={sort === 'versionLabel'}
           order={order}
           onClick={() => applySort('versionLabel')}
@@ -324,36 +332,41 @@ export function LegalDocumentTypeVersionHistory({
     },
     {
       key: 'language',
-      header: 'Sprache',
+      header: t('legalDocuments.history.column.language'),
       cell: (row) => <span className="text-[12px]">{row.language.toUpperCase()}</span>,
     },
     {
       key: 'jurisdiction',
-      header: 'Jurisdiktion',
+      header: t('legalDocuments.history.column.jurisdiction'),
       cell: (row) => <span className="text-[12px]">{row.jurisdiction ?? '—'}</span>,
     },
     {
       key: 'status',
       header: (
-        <SortButton label="Status" active={sort === 'status'} order={order} onClick={() => applySort('status')} />
+        <SortButton
+          label={t('legalDocuments.history.column.status')}
+          active={sort === 'status'}
+          order={order}
+          onClick={() => applySort('status')}
+        />
       ),
       cell: (row) => (
-        <StatusChip tone={statusTone(row.status)}>{formatLegalDocumentStatus(row.status)}</StatusChip>
+        <StatusChip tone={statusTone(row.status)}>{formatLegalDocumentStatus(row.status, t)}</StatusChip>
       ),
     },
     {
       key: 'validity',
-      header: 'Gültigkeit',
+      header: t('legalDocuments.history.column.validity'),
       cell: (row) => (
         <div className="text-[11px] text-muted-foreground whitespace-nowrap">
           <div>{formatLegalDocumentDate(row.validFrom)}</div>
-          <div>bis {formatLegalDocumentDate(row.validUntil)}</div>
+          <div>{t('legalDocuments.history.validUntil', { date: formatLegalDocumentDate(row.validUntil) })}</div>
         </div>
       ),
     },
     {
       key: 'approved',
-      header: 'Freigabe',
+      header: t('legalDocuments.history.column.approved'),
       cell: (row) => (
         <span className="text-[11px] text-muted-foreground">{formatLegalDocumentDate(row.approvedAt)}</span>
       ),
@@ -362,7 +375,7 @@ export function LegalDocumentTypeVersionHistory({
       key: 'activated',
       header: (
         <SortButton
-          label="Aktivierung"
+          label={t('legalDocuments.history.column.activated')}
           active={sort === 'activatedAt'}
           order={order}
           onClick={() => applySort('activatedAt')}
@@ -374,7 +387,7 @@ export function LegalDocumentTypeVersionHistory({
     },
     {
       key: 'checksum',
-      header: 'Prüfsumme',
+      header: t('legalDocuments.history.column.checksum'),
       cell: (row) => (
         <div className="flex items-center gap-1.5">
           <span className="font-mono text-[10px] text-muted-foreground">{row.checksumShort ?? '—'}</span>
@@ -382,14 +395,14 @@ export function LegalDocumentTypeVersionHistory({
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground"
-              title="Prüfsumme kopieren"
+              title={t('legalDocuments.a11y.copyChecksum')}
               onClick={async (event) => {
                 event.stopPropagation();
                 try {
                   await navigator.clipboard.writeText(row.checksum!);
-                  toast.success('Prüfsumme kopiert');
+                  toast.success(t('legalDocuments.toast.checksumCopied'));
                 } catch {
-                  toast.error('Kopieren fehlgeschlagen');
+                  toast.error(t('legalDocuments.toast.copyFailed'));
                 }
               }}
             >
@@ -401,17 +414,17 @@ export function LegalDocumentTypeVersionHistory({
     },
     {
       key: 'health',
-      header: 'Scan / Integrität',
+      header: t('legalDocuments.history.column.scanIntegrity'),
       cell: (row) => (
         <div className="text-[11px] text-muted-foreground">
-          <div>{formatScanStatusLabel(row.scanStatus)}</div>
-          <div>{formatIntegrityStatusLabel(row.integrityStatus)}</div>
+          <div>{formatScanStatusLabel(row.scanStatus, t)}</div>
+          <div>{formatIntegrityStatusLabel(row.integrityStatus, t)}</div>
         </div>
       ),
     },
     {
       key: 'usage',
-      header: 'Verwendungen',
+      header: t('legalDocuments.history.column.usage'),
       cell: (row) => <span className="tabular-nums text-[12px]">{row.snapshotCount}</span>,
       numeric: true,
     },
@@ -432,12 +445,12 @@ export function LegalDocumentTypeVersionHistory({
       id={`legal-version-history-${config.key}`}
     >
       <SectionHeader
-        title={config.title}
-        description={config.hint}
+        title={t(config.titleKey)}
+        description={t(config.hintKey)}
         as="label"
         actions={
           <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded((prev) => !prev)}>
-            {expanded ? 'Einklappen' : 'Ausklappen'}
+            {expanded ? t('legalDocuments.history.collapse') : t('legalDocuments.history.expand')}
           </Button>
         }
       />
@@ -449,29 +462,29 @@ export function LegalDocumentTypeVersionHistory({
             data-testid={`legal-version-filters-${config.key}`}
           >
             <div className="space-y-1">
-              <Label className="text-[11px]">Sprache</Label>
+              <Label className="text-[11px]">{t('legalDocuments.history.filter.language')}</Label>
               <Select value={filters.language || '__all'} onValueChange={(v) => applyFilters({ language: v === '__all' ? '' : v })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Alle" />
+                  <SelectValue placeholder={t('legalDocuments.history.filter.all')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all">Alle Sprachen</SelectItem>
+                  <SelectItem value="__all">{t('legalDocuments.history.filter.allLanguages')}</SelectItem>
                   {LEGAL_UPLOAD_LANGUAGES.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Status</Label>
+              <Label className="text-[11px]">{t('legalDocuments.history.filter.status')}</Label>
               <Select value={filters.status || '__all'} onValueChange={(v) => applyFilters({ status: v === '__all' ? '' : v })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Alle" />
+                  <SelectValue placeholder={t('legalDocuments.history.filter.all')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_FILTER_OPTIONS.map((opt) => (
+                  {statusFilterOptions.map((opt) => (
                     <SelectItem key={opt.value || '__all'} value={opt.value || '__all'}>
                       {opt.label}
                     </SelectItem>
@@ -480,26 +493,26 @@ export function LegalDocumentTypeVersionHistory({
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Jurisdiktion</Label>
+              <Label className="text-[11px]">{t('legalDocuments.history.filter.jurisdiction')}</Label>
               <Select
                 value={filters.jurisdiction || '__all'}
                 onValueChange={(v) => applyFilters({ jurisdiction: v === '__all' ? '' : v })}
               >
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Alle" />
+                  <SelectValue placeholder={t('legalDocuments.history.filter.all')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all">Alle Jurisdiktionen</SelectItem>
+                  <SelectItem value="__all">{t('legalDocuments.history.filter.allJurisdictions')}</SelectItem>
                   {LEGAL_UPLOAD_JURISDICTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Erstellt ab</Label>
+              <Label className="text-[11px]">{t('legalDocuments.history.filter.from')}</Label>
               <Input
                 type="date"
                 className="h-9"
@@ -508,7 +521,7 @@ export function LegalDocumentTypeVersionHistory({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Erstellt bis</Label>
+              <Label className="text-[11px]">{t('legalDocuments.history.filter.to')}</Label>
               <Input
                 type="date"
                 className="h-9"
@@ -519,14 +532,14 @@ export function LegalDocumentTypeVersionHistory({
             {hasActiveFilters ? (
               <div className="flex items-end sm:col-span-2 lg:col-span-5">
                 <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
-                  Filter zurücksetzen
+                  {t('legalDocuments.history.filter.reset')}
                 </Button>
               </div>
             ) : null}
           </div>
 
           {error ? (
-            <EmptyState title="Versionen konnten nicht geladen werden" description={error} compact />
+            <EmptyState title={t('legalDocuments.history.loadError')} description={error} compact />
           ) : (
             <DataCard flush>
               <div className="hidden md:block">
@@ -538,8 +551,8 @@ export function LegalDocumentTypeVersionHistory({
                   card={false}
                   empty={
                     hasActiveFilters
-                      ? 'Keine Versionen für die gewählten Filter'
-                      : 'Noch keine Versionen für diesen Rechtstexttyp'
+                      ? t('legalDocuments.history.emptyFiltered')
+                      : t('legalDocuments.history.empty')
                   }
                   getRowKey={(row) => row.id}
                   onRowClick={(row) => {
@@ -556,6 +569,7 @@ export function LegalDocumentTypeVersionHistory({
                             permissions,
                             settings,
                             currentUserId,
+                            t,
                           )
                         : [];
 
@@ -566,7 +580,7 @@ export function LegalDocumentTypeVersionHistory({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            aria-label={`Details zu Version ${row.versionLabel} anzeigen`}
+                            aria-label={t('legalDocuments.a11y.showDetail', { version: row.versionLabel })}
                             onClick={() => onOpenDetail(document)}
                           >
                             <Eye className="h-4 w-4" aria-hidden />
@@ -576,7 +590,7 @@ export function LegalDocumentTypeVersionHistory({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          aria-label={`Version ${row.versionLabel} herunterladen`}
+                          aria-label={t('legalDocuments.a11y.downloadVersion', { version: row.versionLabel })}
                           onClick={() => void api.legalDocuments.open(orgId, row.id)}
                         >
                           <Download className="h-4 w-4" aria-hidden />
@@ -590,10 +604,10 @@ export function LegalDocumentTypeVersionHistory({
                                 size="sm"
                                 data-testid={`legal-version-actions-${row.id}`}
                                 aria-haspopup="menu"
-                                aria-label={`Lifecycle-Aktionen für Version ${row.versionLabel}`}
+                                aria-label={t('legalDocuments.a11y.lifecycleActions', { version: row.versionLabel })}
                               >
                                 <MoreHorizontal className="h-4 w-4" aria-hidden />
-                                Aktionen
+                                {t('legalDocuments.history.actions')}
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="min-w-[12rem]">
@@ -640,8 +654,8 @@ export function LegalDocumentTypeVersionHistory({
                   <EmptyState
                     title={
                       hasActiveFilters
-                        ? 'Keine Versionen für die gewählten Filter'
-                        : 'Noch keine Versionen für diesen Rechtstexttyp'
+                        ? t('legalDocuments.history.emptyFiltered')
+                        : t('legalDocuments.history.empty')
                     }
                     compact
                   />
@@ -668,7 +682,17 @@ export function LegalDocumentTypeVersionHistory({
                   data-testid={`legal-version-pagination-${config.key}`}
                 >
                   <span>
-                    {meta.total} Version{meta.total === 1 ? '' : 'en'} · Seite {meta.page} von {meta.totalPages}
+                    {meta.total === 1
+                      ? t('legalDocuments.history.paginationSingle', {
+                          total: meta.total,
+                          page: meta.page,
+                          totalPages: meta.totalPages,
+                        })
+                      : t('legalDocuments.history.pagination', {
+                          total: meta.total,
+                          page: meta.page,
+                          totalPages: meta.totalPages,
+                        })}
                   </span>
                   <div className="flex items-center gap-1">
                     <Button
@@ -677,7 +701,7 @@ export function LegalDocumentTypeVersionHistory({
                       size="icon"
                       disabled={page <= 1 || loading}
                       onClick={() => setPage(page - 1)}
-                      aria-label="Vorherige Seite"
+                      aria-label={t('legalDocuments.history.prevPage')}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -687,7 +711,7 @@ export function LegalDocumentTypeVersionHistory({
                       size="icon"
                       disabled={page >= meta.totalPages || loading}
                       onClick={() => setPage(page + 1)}
-                      aria-label="Nächste Seite"
+                      aria-label={t('legalDocuments.history.nextPage')}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>

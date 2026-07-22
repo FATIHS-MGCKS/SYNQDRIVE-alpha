@@ -16,5 +16,3 @@ export function legalLifecycleFieldErrorId(field: string): string {
 export const LEGAL_UPLOAD_ERROR_SUMMARY_ID = 'legal-upload-error-summary';
 export const LEGAL_LIFECYCLE_ERROR_SUMMARY_ID = 'legal-lifecycle-error-summary';
 export const LEGAL_UPLOAD_PROGRESS_STATUS_ID = 'legal-upload-progress-status';
-
-export const LEGAL_PDF_PREVIEW_TITLE = 'PDF-Vorschau des Rechtstexts';

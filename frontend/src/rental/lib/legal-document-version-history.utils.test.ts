@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LegalDocumentDto } from '../../lib/api';
+import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../i18n/translations/en';
 import {
   buildVersionHistoryQueryParams,
   formatIntegrityStatusLabel,
@@ -9,6 +11,16 @@ import {
   VERSION_HISTORY_PAGE_SIZE,
 } from './legal-document-version-history.utils';
 import { EMPTY_VERSION_HISTORY_FILTERS } from './legal-document-version-history.types';
+
+function t(key: TranslationKey, vars?: Record<string, string | number>): string {
+  let text = en[key] ?? key;
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      text = text.replace(`{${k}}`, String(v));
+    });
+  }
+  return text;
+}
 
 const sampleDoc: LegalDocumentDto = {
   id: 'doc-abc-123',
@@ -37,8 +49,8 @@ describe('legal-document-version-history.utils', () => {
   });
 
   it('maps DTO to history item without exposing raw IDs as primary labels', () => {
-    const item = mapDtoToVersionHistoryItem(sampleDoc);
-    expect(item.categoryTitle).toContain('AGB');
+    const item = mapDtoToVersionHistoryItem(sampleDoc, t);
+    expect(item.categoryTitle).toContain('Terms');
     expect(item.versionLabel).toBe('2026-07');
     expect(item.checksumShort).toBe('abcdef…7890');
     expect(item.snapshotCount).toBe(12);
@@ -73,9 +85,9 @@ describe('legal-document-version-history.utils', () => {
     expect(params.to).toMatch(/2026-12-31/);
   });
 
-  it('formats scan and integrity labels in German', () => {
-    expect(formatScanStatusLabel('SCAN_PASSED')).toBe('OK');
-    expect(formatIntegrityStatusLabel('VERIFIED')).toBe('Verifiziert');
-    expect(formatScanStatusLabel(null)).toBe('—');
+  it('formats scan and integrity labels via i18n', () => {
+    expect(formatScanStatusLabel('SCAN_PASSED', t)).toBe('OK');
+    expect(formatIntegrityStatusLabel('VERIFIED', t)).toBe('Verified');
+    expect(formatScanStatusLabel(null, t)).toBe('—');
   });
 });

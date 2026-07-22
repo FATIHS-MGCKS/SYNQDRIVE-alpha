@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LegalDocumentDto } from '../../lib/api';
+import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../i18n/translations/en';
 import {
   findActivePeer,
   getLifecycleActionsForDocument,
@@ -7,6 +9,16 @@ import {
   violatesFourEyes,
 } from './legal-document-lifecycle.utils';
 import { EMPTY_LIFECYCLE_FORM } from './legal-document-lifecycle.types';
+
+function t(key: TranslationKey, vars?: Record<string, string | number>): string {
+  let text = en[key] ?? key;
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      text = text.replace(`{${k}}`, String(v));
+    });
+  }
+  return text;
+}
 
 function doc(partial: Partial<LegalDocumentDto> & Pick<LegalDocumentDto, 'id' | 'status'>): LegalDocumentDto {
   return {
@@ -38,6 +50,7 @@ describe('legal-document-lifecycle.utils', () => {
       { canWrite: true, canManage: true },
       { fourEyesEnabled: false },
       'user-1',
+      t,
     );
     expect(actions.some((a) => a.action === 'replace_active')).toBe(true);
     expect(actions.some((a) => a.action === 'activate_now')).toBe(false);
@@ -58,6 +71,7 @@ describe('legal-document-lifecycle.utils', () => {
       { canWrite: true, canManage: true },
       { fourEyesEnabled: true },
       'user-1',
+      t,
     );
     const approve = actions.find((a) => a.action === 'approve');
     expect(approve?.disabled).toBe(true);
@@ -66,9 +80,9 @@ describe('legal-document-lifecycle.utils', () => {
   it('requires future validFrom for schedule', () => {
     const errors = validateLifecycleForm('schedule_activation', {
       ...EMPTY_LIFECYCLE_FORM,
-      statusReason: 'Geplante Aktivierung wegen Release',
+      statusReason: 'Scheduled activation for release',
       validFrom: '2020-01-01T08:00',
-    });
+    }, t);
     expect(errors.validFrom).toBeTruthy();
   });
 
@@ -80,6 +94,7 @@ describe('legal-document-lifecycle.utils', () => {
       { canWrite: false, canManage: true },
       { fourEyesEnabled: false },
       'user-2',
+      t,
     );
     expect(actions.map((a) => a.action)).toEqual(['revoke']);
   });

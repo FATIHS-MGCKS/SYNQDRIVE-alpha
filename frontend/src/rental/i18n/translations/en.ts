@@ -1,3 +1,5 @@
+import { legalDocumentsEn } from './legal-documents.en';
+
 export const en = {
   // ─── Navigation / Sidebar ───
   'nav.operations': 'Operations',
@@ -2515,6 +2517,8 @@ export const en = {
   'voice.analytics.remaining': 'Remaining',
   'voice.analytics.overage': 'Overage',
   'voice.analytics.forecast': 'Projected period total: {amount}',
+
+  ...legalDocumentsEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;
