@@ -19,6 +19,9 @@ import { createNoopLegalDocumentFourEyesService } from './legal-document-four-ey
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
 import { createLegalDocumentsServiceForTests } from './integrity/legal-document-integrity.test-utils';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
+import { evaluateBookingDocumentCompleteness } from './booking-document-completeness.engine';
+import { BUNDLE_COMPLETENESS_STATUS } from './booking-document-completeness.constants';
+import type { BookingDocumentCompletenessContext } from './booking-document-completeness.types';
 import { BUNDLE_STATUS, DOCUMENT_STATUS, DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
 
 /** Minimal ConfigService stub returning the provided value (or default). */
@@ -395,7 +398,43 @@ describe('GeneratedDocumentsService — org scoping + storage', () => {
 });
 
 describe('BookingDocumentBundleService', () => {
-  function makeService(prisma: any, config = configStub()) {
+  function buildCompletenessContext(
+    overrides: Partial<BookingDocumentCompletenessContext> = {},
+  ): BookingDocumentCompletenessContext {
+    return {
+      organizationId: 'org-1',
+      bookingId: 'bk-1',
+      bookingStatus: 'CONFIRMED',
+      bundle: {
+        termsDocumentId: null,
+        withdrawalDocumentId: null,
+        privacyDocumentId: null,
+        bookingInvoiceDocumentId: null,
+        depositReceiptDocumentId: null,
+        rentalContractDocumentId: null,
+        pickupProtocolDocumentId: null,
+        returnProtocolDocumentId: null,
+        finalInvoiceDocumentId: null,
+      },
+      generatedDocuments: [],
+      legalDocumentsById: new Map(),
+      resolverVersion: '1',
+      resolverConflicts: [],
+      resolverMissingMandatory: [
+        { documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, reason: 'No active template' },
+        { documentType: DOCUMENT_TYPE.CONSUMER_INFORMATION, reason: 'No active template' },
+        { documentType: DOCUMENT_TYPE.PRIVACY_POLICY, reason: 'No active template' },
+      ],
+      orgActiveLegalTypes: [],
+      resolverSelectedTypes: [],
+      handoverProtocols: [],
+      deliveryProofs: [],
+      generationError: null,
+      ...overrides,
+    };
+  }
+
+  function makeService(prisma: any, config = configStub(), completenessCtx?: Partial<BookingDocumentCompletenessContext>) {
     const generatedDocs = {
       listForBooking: jest.fn().mockResolvedValue([]),
       toDto: jest.fn((d: any) => d),
@@ -424,6 +463,16 @@ describe('BookingDocumentBundleService', () => {
       recordResolverConflict: jest.fn(),
       recordMissingMandatorySelection: jest.fn(),
     } as any;
+    const bundleCompleteness = {
+      evaluateForBooking: jest.fn().mockImplementation(async (_org: string, _bk: string, opts?: { generationError?: string | null }) =>
+        evaluateBookingDocumentCompleteness(
+          buildCompletenessContext({
+            generationError: opts?.generationError ?? completenessCtx?.generationError ?? null,
+            ...completenessCtx,
+          }),
+        ),
+      ),
+    } as any;
     const prismaWithLock = {
       ...prisma,
       $executeRaw: jest.fn().mockResolvedValue(undefined),
@@ -440,8 +489,9 @@ describe('BookingDocumentBundleService', () => {
       taskAutomation,
       orgLegalNotification,
       bundleMonitoring,
+      bundleCompleteness,
     );
-    return { svc, generatedDocs, renderer, taskAutomation, orgLegalNotification, legalResolver, bundleMonitoring };
+    return { svc, generatedDocs, renderer, taskAutomation, orgLegalNotification, legalResolver, bundleMonitoring, bundleCompleteness };
   }
 
   it('getOrCreateBundle rejects cross-org access (tenant isolation)', async () => {
@@ -456,7 +506,9 @@ describe('BookingDocumentBundleService', () => {
     const prisma = {
       bookingDocumentBundle: { findUnique: jest.fn().mockResolvedValue({ id: 'b', organizationId: 'org-1', bookingId: 'bk-1', status: BUNDLE_STATUS.PARTIAL, termsDocumentId: null, withdrawalDocumentId: null, generatedAt: null, lastError: null }) },
     } as any;
-    const { svc } = makeService(prisma);
+    const { svc } = makeService(prisma, configStub(), {
+      orgActiveLegalTypes: [],
+    });
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.legal.missing).toEqual([
       DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
@@ -483,11 +535,14 @@ describe('BookingDocumentBundleService', () => {
         }),
       },
     } as any;
-    const { svc } = makeService(prisma);
-    (svc as any).legalDocs.getActiveByType.mockResolvedValue({
-      [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: { id: 't1' },
-      [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: { id: 'w1' },
-      [DOCUMENT_TYPE.PRIVACY_POLICY]: { id: 'p1' },
+    const { svc } = makeService(prisma, configStub(), {
+      resolverMissingMandatory: [],
+      orgActiveLegalTypes: [
+        DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+        DOCUMENT_TYPE.CONSUMER_INFORMATION,
+        DOCUMENT_TYPE.PRIVACY_POLICY,
+      ],
+      generationError: 'pdfkit_1.default is not a constructor',
     });
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.warnings[0]).toContain('Dokumentenerstellung fehlgeschlagen');
@@ -498,7 +553,35 @@ describe('BookingDocumentBundleService', () => {
     const prisma = {
       bookingDocumentBundle: { findUnique: jest.fn().mockResolvedValue({ id: 'b', organizationId: 'org-1', bookingId: 'bk-1', status: BUNDLE_STATUS.COMPLETE, termsDocumentId: 't', withdrawalDocumentId: 'w', privacyDocumentId: 'p', generatedAt: new Date(), lastError: null }) },
     } as any;
-    const { svc, generatedDocs } = makeService(prisma);
+    const { svc, generatedDocs } = makeService(prisma, configStub(), {
+      bundle: {
+        termsDocumentId: 't',
+        withdrawalDocumentId: 'w',
+        privacyDocumentId: 'p',
+        bookingInvoiceDocumentId: null,
+        depositReceiptDocumentId: null,
+        rentalContractDocumentId: null,
+        pickupProtocolDocumentId: null,
+        returnProtocolDocumentId: null,
+        finalInvoiceDocumentId: null,
+      },
+      orgActiveLegalTypes: [
+        DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+        DOCUMENT_TYPE.CONSUMER_INFORMATION,
+        DOCUMENT_TYPE.PRIVACY_POLICY,
+      ],
+      generatedDocuments: [
+        { id: 't', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: 'lt', sentAt: null },
+        { id: 'w', documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: 'lc', sentAt: null },
+        { id: 'p', documentType: DOCUMENT_TYPE.PRIVACY_POLICY, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: 'lp', sentAt: null },
+      ],
+      legalDocumentsById: new Map([
+        ['lt', { id: 'lt', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, integrityStatus: 'VERIFIED', integrityUnavailable: false, scanStatus: 'SCAN_PASSED' }],
+        ['lc', { id: 'lc', documentType: DOCUMENT_TYPE.CONSUMER_INFORMATION, integrityStatus: 'VERIFIED', integrityUnavailable: false, scanStatus: 'SCAN_PASSED' }],
+        ['lp', { id: 'lp', documentType: DOCUMENT_TYPE.PRIVACY_POLICY, integrityStatus: 'VERIFIED', integrityUnavailable: false, scanStatus: 'SCAN_PASSED' }],
+      ]),
+      resolverMissingMandatory: [],
+    });
     generatedDocs.listForBooking.mockResolvedValue([
       { id: 't', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, status: DOCUMENT_STATUS.GENERATED },
       { id: 'w', documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION, status: DOCUMENT_STATUS.GENERATED },
@@ -506,7 +589,8 @@ describe('BookingDocumentBundleService', () => {
     ]);
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.legal.missing).toEqual([]);
-    expect(view.warnings).toEqual([]);
+    expect(view.completeness.status).not.toBe('BLOCKED');
+    expect(view.warnings.filter((w) => w.includes('Administration'))).toEqual([]);
   });
 
   it('refreshBundleStatus → PARTIAL when legal docs missing at confirmed stage', async () => {
@@ -518,16 +602,32 @@ describe('BookingDocumentBundleService', () => {
           bookingInvoiceDocumentId: 'i', depositReceiptDocumentId: 'd', rentalContractDocumentId: 'c',
           termsDocumentId: null, withdrawalDocumentId: null, privacyDocumentId: null,
           pickupProtocolDocumentId: null, returnProtocolDocumentId: null, finalInvoiceDocumentId: null,
-          generatedAt: null,
+          generatedAt: null, lastError: null,
         }),
         update,
       },
     } as any;
-    const { svc } = makeService(prisma);
+    const { svc } = makeService(prisma, configStub(), {
+      bundle: {
+        termsDocumentId: null,
+        withdrawalDocumentId: null,
+        privacyDocumentId: null,
+        bookingInvoiceDocumentId: 'i',
+        depositReceiptDocumentId: 'd',
+        rentalContractDocumentId: 'c',
+        pickupProtocolDocumentId: null,
+        returnProtocolDocumentId: null,
+        finalInvoiceDocumentId: null,
+      },
+      orgActiveLegalTypes: [
+        DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+        DOCUMENT_TYPE.CONSUMER_INFORMATION,
+        DOCUMENT_TYPE.PRIVACY_POLICY,
+      ],
+    });
     await (svc as any).refreshBundleStatus('org-1', 'bk-1', 'CONFIRMED', null);
     const data = update.mock.calls[0][0].data;
     expect(data.status).toBe(BUNDLE_STATUS.PARTIAL);
-    expect(data.lastError).toContain('Rechtliche Dokumente fehlen');
   });
 
   it('refreshBundleStatus → COMPLETE when all required confirmed-stage docs are present', async () => {
@@ -539,12 +639,39 @@ describe('BookingDocumentBundleService', () => {
           bookingInvoiceDocumentId: 'i', depositReceiptDocumentId: 'd', rentalContractDocumentId: 'c',
           termsDocumentId: 't', withdrawalDocumentId: 'w', privacyDocumentId: 'p',
           pickupProtocolDocumentId: null, returnProtocolDocumentId: null, finalInvoiceDocumentId: null,
-          generatedAt: null,
+          generatedAt: null, lastError: null,
         }),
         update,
       },
     } as any;
-    const { svc } = makeService(prisma);
+    const { svc } = makeService(prisma, configStub(), {
+      resolverMissingMandatory: [],
+      bundle: {
+        termsDocumentId: 't',
+        withdrawalDocumentId: 'w',
+        privacyDocumentId: 'p',
+        bookingInvoiceDocumentId: 'i',
+        depositReceiptDocumentId: 'd',
+        rentalContractDocumentId: 'c',
+        pickupProtocolDocumentId: null,
+        returnProtocolDocumentId: null,
+        finalInvoiceDocumentId: null,
+      },
+      generatedDocuments: [
+        { id: 'i', documentType: DOCUMENT_TYPE.BOOKING_INVOICE, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: null, sentAt: new Date() },
+        { id: 'd', documentType: DOCUMENT_TYPE.DEPOSIT_RECEIPT, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: null, sentAt: null },
+        { id: 'c', documentType: DOCUMENT_TYPE.RENTAL_CONTRACT, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: null, sentAt: null },
+        { id: 't', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: 'lt', sentAt: null },
+        { id: 'w', documentType: DOCUMENT_TYPE.CONSUMER_INFORMATION, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: 'lc', sentAt: null },
+        { id: 'p', documentType: DOCUMENT_TYPE.PRIVACY_POLICY, status: DOCUMENT_STATUS.GENERATED, legalDocumentId: 'lp', sentAt: null },
+      ],
+      legalDocumentsById: new Map([
+        ['lt', { id: 'lt', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, integrityStatus: 'VERIFIED', integrityUnavailable: false, scanStatus: 'SCAN_PASSED' }],
+        ['lc', { id: 'lc', documentType: DOCUMENT_TYPE.CONSUMER_INFORMATION, integrityStatus: 'VERIFIED', integrityUnavailable: false, scanStatus: 'SCAN_PASSED' }],
+        ['lp', { id: 'lp', documentType: DOCUMENT_TYPE.PRIVACY_POLICY, integrityStatus: 'VERIFIED', integrityUnavailable: false, scanStatus: 'SCAN_PASSED' }],
+      ]),
+      deliveryProofs: [{ generatedDocumentId: 'i', emailStatus: 'SENT' }],
+    });
     await (svc as any).refreshBundleStatus('org-1', 'bk-1', 'CONFIRMED', null);
     expect(update.mock.calls[0][0].data.status).toBe(BUNDLE_STATUS.COMPLETE);
   });

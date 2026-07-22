@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-bundle-completeness-2026-07-22',
+    version: '4.9.755',
+    title: 'Legal Documents — Bundle Completeness Service (Prompt 16/32)',
+    summary: [
+      'Zentraler BookingDocumentCompletenessService ersetzt verstreute Status-Ableitungen.',
+      'Statusmodell: COMPLETE, INCOMPLETE, BLOCKED, GENERATING, DELIVERY_PENDING, ACKNOWLEDGMENT_PENDING, INTEGRITY_FAILED.',
+      'Strukturiertes Ergebnis: missingItems, blockingReasons, nonBlockingWarnings, resolverVersion, phases.',
+      'Nie COMPLETE ohne AGB, Verbraucherinformation und Datenschutzhinweis.',
+      'Integritäts-/Scanfehler, Zustell- und Bestätigungsnachweise in einer Bewertung.',
+      'Task-, Notification- und Bundle-View-Logik konsumieren denselben Zustand.',
+    ],
+    reason: 'Production-Readiness — fachlich korrekte, zentrale Bundle-Vollständigkeitslogik.',
+    previousBehavior: 'Parallele Ableitungen in refreshBundleStatus, getBundleView, computeMissingDocumentSlots und bookings.service DOC_SLOTS.',
+    details:
+      'docs/audits/legal-documents-bundle-completeness-2026-07.md, architecture/LEGAL_DOCUMENT_BUNDLE_COMPLETENESS_2026-07-22.md, booking-document-completeness.engine.spec.ts',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-22T17:30:00.000Z',
+  },
+  {
     id: 'legal-documents-bundle-pointers-2026-07-22',
     version: '4.9.754',
     title: 'Legal Documents — Bundle Pointer Wiring (Prompt 15/32)',

@@ -18,6 +18,7 @@ import { LegalDocumentsService } from './legal-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
 import { BookingDocumentBundleMonitoringService } from './booking-document-bundle-monitoring.service';
+import { BookingDocumentCompletenessService } from './booking-document-completeness.service';
 import { DocumentNumberingService } from './document-numbering.service';
 import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
@@ -127,10 +128,12 @@ import { LegalDocumentMalwareScannerHealthService } from './malware-scanner/lega
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,
     BookingDocumentBundleMonitoringService,
+    BookingDocumentCompletenessService,
     BookingDocumentBundleService,
   ],
   exports: [
     BookingDocumentBundleService,
+    BookingDocumentCompletenessService,
     GeneratedDocumentsService,
     LegalDocumentEventsService,
     LegalDocumentResolverService,

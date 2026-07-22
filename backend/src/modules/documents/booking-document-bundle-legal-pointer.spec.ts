@@ -107,6 +107,7 @@ describe('BookingDocumentBundleService legal pointer wiring', () => {
     const bundleMonitoring = new BookingDocumentBundleMonitoringService();
     jest.spyOn(bundleMonitoring, 'recordPointerMappingMissing');
     jest.spyOn(bundleMonitoring, 'recordResolverConflict');
+    const bundleCompleteness = { evaluateForBooking: jest.fn() } as any;
     const svc = new BookingDocumentBundleService(
       prisma,
       configStub({ 'documents.generationEnabled': true }),
@@ -123,6 +124,7 @@ describe('BookingDocumentBundleService legal pointer wiring', () => {
       } as any,
       { syncFromOrgLegalState: jest.fn() } as any,
       bundleMonitoring,
+      bundleCompleteness,
     );
     return { svc, legalResolver, bundleMonitoring, generatedDocs, prisma };
   }

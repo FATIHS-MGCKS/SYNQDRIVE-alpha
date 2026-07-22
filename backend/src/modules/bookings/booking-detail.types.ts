@@ -111,8 +111,10 @@ export type BookingDetailDto = {
   };
   documents: {
     bundleStatus: string | null;
+    completenessStatus: string | null;
     legalTermsAttached: boolean;
     legalWithdrawalAttached: boolean;
+    legalPrivacyAttached: boolean;
     legalMissing: string[];
     warnings: string[];
     slots: BookingDetailDocumentSlot[];
