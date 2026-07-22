@@ -5,6 +5,7 @@ import { TasksModule } from '@modules/tasks/tasks.module';
 import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
 import { GeneratedDocumentsService } from './generated-documents.service';
+import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
@@ -36,6 +37,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
     DocumentRendererService,
     { provide: DOCUMENT_RENDERER, useClass: DocumentRendererService },
     GeneratedDocumentsService,
+    LegalDocumentEventsService,
     LegalDocumentsService,
     DocumentNumberingService,
     BookingDocumentOrgLegalNotificationService,
@@ -44,6 +46,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
   exports: [
     BookingDocumentBundleService,
     GeneratedDocumentsService,
+    LegalDocumentEventsService,
     LegalDocumentsService,
     DocumentNumberingService,
     DOCUMENTS_STORAGE,

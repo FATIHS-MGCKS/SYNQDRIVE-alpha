@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-lifecycle-events-2026-07-22',
+    version: '4.9.744',
+    title: 'Legal Documents — Append-only Lifecycle Events (Prompt 5/32)',
+    summary: [
+      'Neues Modell `OrganizationLegalDocumentEvent` (append-only, keine Update/Delete-API).',
+      'Events werden in derselben Transaktion wie Statusänderungen erzeugt; Audit-Fehler rollt zurück.',
+      '`LegalDocumentEventsService` + Read-API `GET …/legal-documents/events` und `GET …/:id/events`.',
+      'Lifecycle-Controller: submit-for-review, approve, schedule, revoke; Tests für alle Eventtypen.',
+    ],
+    reason: 'Production-Readiness — fachliches Audit unabhängig vom generischen HTTP-Audit-Interceptor.',
+    previousBehavior: 'Lifecycle-Übergänge ohne dediziertes append-only Event-Log; nur Dokumentstatus in `organization_legal_documents`.',
+    details:
+      'docs/audits/legal-documents-lifecycle-events-2026-07.md, architecture/LEGAL_DOCUMENT_LIFECYCLE_EVENTS_2026-07-22.md',
+    affectsArchitecture: true,
+    module: 'Booking Documents',
+    createdAt: '2026-07-22T11:35:00.000Z',
+  },
+  {
     id: 'legal-documents-lifecycle-2026-07-22',
     version: '4.9.743',
     title: 'Legal Documents — Professional Lifecycle (Prompt 4/32)',

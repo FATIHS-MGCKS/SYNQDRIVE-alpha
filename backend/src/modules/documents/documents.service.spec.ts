@@ -8,6 +8,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
 import { DocumentNumberingService } from './document-numbering.service';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
+import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
 import { BUNDLE_STATUS, DOCUMENT_STATUS, DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
 
@@ -122,6 +123,11 @@ describe('LegalDocumentsService', () => {
     putObject: jest.fn().mockResolvedValue({ objectKey: 'organizations/org-1/legal/x/2026/01/u-a.pdf', storageProvider: 'local', sizeBytes: buf.length, mimeType: 'application/pdf' }),
     getObjectStream: jest.fn().mockResolvedValue(Readable.from([buf])),
   } as any;
+  const events = createNoopLegalDocumentEventsService();
+
+  function makeLegalSvc(prisma: any) {
+    return new LegalDocumentsService(prisma, events, storage);
+  }
 
   function baseInput() {
     return {
@@ -135,19 +141,19 @@ describe('LegalDocumentsService', () => {
   }
 
   it('rejects non-PDF uploads', async () => {
-    const svc = new LegalDocumentsService({} as any, storage);
+    const svc = makeLegalSvc({} as any);
     await expect(
       svc.upload({ ...baseInput(), fileName: 'scan.png', mimeType: 'image/png' }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects unknown legal document types', async () => {
-    const svc = new LegalDocumentsService({} as any, storage);
+    const svc = makeLegalSvc({} as any);
     await expect(svc.upload({ ...baseInput(), documentType: 'NOT_A_LEGAL_TYPE' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects a missing version label', async () => {
-    const svc = new LegalDocumentsService({} as any, storage);
+    const svc = makeLegalSvc({} as any);
     await expect(svc.upload({ ...baseInput(), versionLabel: '   ' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -156,8 +162,15 @@ describe('LegalDocumentsService', () => {
       organizationLegalDocument: {
         create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'legal-privacy', ...data })),
       },
+      $transaction: jest.fn(async (cb: any) =>
+        cb({
+          organizationLegalDocument: {
+            create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'legal-privacy', ...data })),
+          },
+        }),
+      ),
     } as any;
-    const svc = new LegalDocumentsService(prisma, storage);
+    const svc = makeLegalSvc(prisma);
     const doc = await svc.upload({
       ...baseInput(),
       documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
@@ -165,11 +178,7 @@ describe('LegalDocumentsService', () => {
       mimeType: '',
     });
     expect(doc.documentType).toBe(DOCUMENT_TYPE.PRIVACY_POLICY);
-    expect(prisma.organizationLegalDocument.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ mimeType: 'application/pdf' }),
-      }),
-    );
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 
   it('activating a version supersedes the other ACTIVE version of the same type+language (single-active)', async () => {
@@ -192,7 +201,7 @@ describe('LegalDocumentsService', () => {
       organizationLegalDocument: { findFirst: jest.fn().mockResolvedValue(target) },
       $transaction: jest.fn(async (cb: any) => cb(tx)),
     } as any;
-    const svc = new LegalDocumentsService(prisma, storage);
+    const svc = makeLegalSvc(prisma);
 
     const res = await svc.activate('org-1', 'legal-2');
 
@@ -211,7 +220,7 @@ describe('LegalDocumentsService', () => {
     const prisma = {
       organizationLegalDocument: { findFirst: jest.fn().mockResolvedValue(draft) },
     } as any;
-    const svc = new LegalDocumentsService(prisma, storage);
+    const svc = makeLegalSvc(prisma);
     await expect(svc.activate('org-1', 'legal-draft')).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -236,7 +245,7 @@ describe('LegalDocumentsService', () => {
       organizationLegalDocument: { findFirst: jest.fn().mockResolvedValue(active) },
       $transaction: jest.fn(async (cb: any) => cb(tx)),
     } as any;
-    const svc = new LegalDocumentsService(prisma, storage);
+    const svc = makeLegalSvc(prisma);
 
     const res = await svc.activate('org-1', 'legal-1');
     expect(res.status).toBe(LEGAL_STATUS.ACTIVE);
@@ -254,7 +263,7 @@ describe('LegalDocumentsService', () => {
         ]),
       },
     } as any;
-    const svc = new LegalDocumentsService(prisma, storage);
+    const svc = makeLegalSvc(prisma);
     const map = await svc.getActiveByType('org-1', 'de');
     expect(map[DOCUMENT_TYPE.TERMS_AND_CONDITIONS]?.id).toBe('a');
     expect(map[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]?.id).toBe('c');

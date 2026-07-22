@@ -213,8 +213,20 @@ export function createLegalDocumentActivationHarness() {
     $transaction: async <T>(fn: (tx: TxClient) => Promise<T>): Promise<T> => {
       const run = async () => {
         transactionDepth++;
+        const snapshot = new Map<string, HarnessLegalRow>();
+        for (const [id, row] of rows.entries()) {
+          snapshot.set(id, cloneRow(row));
+        }
         try {
           return await fn(makeTx());
+        } catch (err) {
+          if (!bypassTransactionQueue) {
+            rows.clear();
+            for (const [id, row] of snapshot.entries()) {
+              rows.set(id, cloneRow(row));
+            }
+          }
+          throw err;
         } finally {
           transactionDepth--;
         }

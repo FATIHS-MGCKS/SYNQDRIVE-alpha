@@ -4,11 +4,18 @@ import { LegalDocumentsService } from './legal-documents.service';
 import { DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
 import { LEGAL_DOCUMENT_ERROR_CODES } from './legal-documents.errors';
 import { createLegalDocumentActivationHarness } from './legal-documents-activation.integration.harness';
+import { createNoopLegalDocumentEventsService } from './legal-document-events.test-utils';
 
 const storage = {
   putObject: jest.fn(),
   getObjectStream: jest.fn().mockResolvedValue(Readable.from([Buffer.from('%PDF')])),
 } as any;
+
+const events = createNoopLegalDocumentEventsService();
+
+function makeSvc(h: ReturnType<typeof createLegalDocumentActivationHarness>) {
+  return new LegalDocumentsService(h.prisma as any, events, storage);
+}
 
 describe('LegalDocumentsService.activate (integration — concurrent activation)', () => {
   it('never leaves two ACTIVE versions for the same org+type+language after sequential activations', async () => {
@@ -25,7 +32,7 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       versionLabel: '2026-02',
     });
-    const svc = new LegalDocumentsService(h.prisma as any, storage);
+    const svc = makeSvc(h);
 
     await svc.activate('org-a', 'v1');
     await svc.activate('org-a', 'v2');
@@ -49,7 +56,7 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
       documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
       versionLabel: 'B',
     });
-    const svc = new LegalDocumentsService(h.prisma as any, storage);
+    const svc = makeSvc(h);
 
     const results = await h.withConcurrentTransactions(() =>
       Promise.allSettled([svc.activate('org-a', 'v-a'), svc.activate('org-a', 'v-b')]),
@@ -86,7 +93,7 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
     seeded.status = LEGAL_STATUS.ACTIVE;
     seeded.activatedAt = new Date('2026-01-01T00:00:00.000Z');
 
-    const svc = new LegalDocumentsService(h.prisma as any, storage);
+    const svc = makeSvc(h);
     const [a, b] = await h.withConcurrentTransactions(() =>
       Promise.all([svc.activate('org-a', 'v-same'), svc.activate('org-a', 'v-same')]),
     );
@@ -111,7 +118,7 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       versionLabel: '1',
     });
-    const svc = new LegalDocumentsService(h.prisma as any, storage);
+    const svc = makeSvc(h);
 
     const [r1, r2] = await Promise.all([
       svc.activate('org-1', 'org1-v1'),
@@ -132,7 +139,7 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       versionLabel: 'draft',
     });
-    const svc = new LegalDocumentsService(h.prisma as any, storage);
+    const svc = makeSvc(h);
     await expect(svc.activate('org-a', 'draft-only')).rejects.toMatchObject({
       response: expect.objectContaining({ code: LEGAL_DOCUMENT_ERROR_CODES.NOT_ACTIVATABLE }),
     });

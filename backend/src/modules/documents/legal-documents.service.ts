@@ -32,6 +32,10 @@ import {
   assertLegalStatusTransition,
   isLegalStatusTransitionAllowed,
 } from './legal-document-lifecycle.transitions';
+import {
+  LegalDocumentActorContext,
+  LegalDocumentEventsService,
+} from './legal-document-events.service';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -45,10 +49,13 @@ export interface UploadLegalDocumentInput {
   uploadedByUserId?: string | null;
   legalOwnerName?: string | null;
   changeSummary?: string | null;
+  actor?: LegalDocumentActorContext;
 }
 
 export interface LegalDocumentStatusChangeInput {
   userId?: string | null;
+  displayName?: string | null;
+  correlationId?: string | null;
   statusReason?: string | null;
   changeSummary?: string | null;
 }
@@ -93,6 +100,7 @@ export class LegalDocumentsService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly events: LegalDocumentEventsService,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
   ) {}
 
@@ -121,25 +129,40 @@ export class LegalDocumentsService {
       mimeType,
     });
     const checksum = createHash('sha256').update(input.buffer).digest('hex');
+    const actor = this.resolveActor(input.actor, input.uploadedByUserId);
 
-    return this.prisma.organizationLegalDocument.create({
-      data: {
-        organizationId: input.organizationId,
-        documentType: input.documentType,
-        title: input.title?.trim() || DOCUMENT_TITLE_DE[input.documentType] || input.documentType,
-        versionLabel,
-        language,
-        status: LEGAL_STATUS.DRAFT,
-        fileName: input.fileName,
-        mimeType,
-        storageProvider: stored.storageProvider,
-        objectKey: stored.objectKey,
-        checksum,
-        sizeBytes: stored.sizeBytes,
-        uploadedByUserId: input.uploadedByUserId ?? null,
-        legalOwnerName: input.legalOwnerName?.trim() || null,
-        changeSummary: input.changeSummary?.trim() || null,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const doc = await tx.organizationLegalDocument.create({
+        data: {
+          organizationId: input.organizationId,
+          documentType: input.documentType,
+          title:
+            input.title?.trim() || DOCUMENT_TITLE_DE[input.documentType] || input.documentType,
+          versionLabel,
+          language,
+          status: LEGAL_STATUS.DRAFT,
+          fileName: input.fileName,
+          mimeType,
+          storageProvider: stored.storageProvider,
+          objectKey: stored.objectKey,
+          checksum,
+          sizeBytes: stored.sizeBytes,
+          uploadedByUserId: input.uploadedByUserId ?? null,
+          legalOwnerName: input.legalOwnerName?.trim() || null,
+          changeSummary: input.changeSummary?.trim() || null,
+        },
+      });
+
+      await this.events.appendInTransaction(tx, {
+        organizationId: doc.organizationId,
+        legalDocument: doc,
+        previousStatus: null,
+        newStatus: LEGAL_STATUS.DRAFT,
+        actor,
+        changeSummary: input.changeSummary,
+      });
+
+      return doc;
     });
   }
 
@@ -163,11 +186,19 @@ export class LegalDocumentsService {
     id: string,
     input: LegalDocumentStatusChangeInput = {},
   ): Promise<OrganizationLegalDocument> {
-    return this.transitionStatus(orgId, id, LEGAL_STATUS.IN_REVIEW, (now) => ({
-      submittedForReviewAt: now,
-      submittedForReviewByUserId: input.userId ?? null,
-      changeSummary: input.changeSummary?.trim() ?? undefined,
-    }));
+    const actor = this.resolveActor(input);
+    return this.transitionStatus(
+      orgId,
+      id,
+      LEGAL_STATUS.IN_REVIEW,
+      actor,
+      (now) => ({
+        submittedForReviewAt: now,
+        submittedForReviewByUserId: actor.userId ?? null,
+        changeSummary: input.changeSummary?.trim() ?? undefined,
+      }),
+      { changeSummary: input.changeSummary, reason: input.statusReason },
+    );
   }
 
   async approve(
@@ -175,11 +206,19 @@ export class LegalDocumentsService {
     id: string,
     input: LegalDocumentStatusChangeInput = {},
   ): Promise<OrganizationLegalDocument> {
-    return this.transitionStatus(orgId, id, LEGAL_STATUS.APPROVED, (now) => ({
-      approvedAt: now,
-      approvedByUserId: input.userId ?? null,
-      changeSummary: input.changeSummary?.trim() ?? undefined,
-    }));
+    const actor = this.resolveActor(input);
+    return this.transitionStatus(
+      orgId,
+      id,
+      LEGAL_STATUS.APPROVED,
+      actor,
+      (now) => ({
+        approvedAt: now,
+        approvedByUserId: actor.userId ?? null,
+        changeSummary: input.changeSummary?.trim() ?? undefined,
+      }),
+      { changeSummary: input.changeSummary, reason: input.statusReason },
+    );
   }
 
   async schedule(
@@ -190,10 +229,22 @@ export class LegalDocumentsService {
     if (!(input.validFrom instanceof Date) || Number.isNaN(input.validFrom.getTime())) {
       throw new BadRequestException('validFrom must be a valid date');
     }
-    return this.transitionStatus(orgId, id, LEGAL_STATUS.SCHEDULED, () => ({
-      validFrom: input.validFrom,
-      changeSummary: input.changeSummary?.trim() ?? undefined,
-    }));
+    const actor = this.resolveActor(input);
+    return this.transitionStatus(
+      orgId,
+      id,
+      LEGAL_STATUS.SCHEDULED,
+      actor,
+      () => ({
+        validFrom: input.validFrom,
+        changeSummary: input.changeSummary?.trim() ?? undefined,
+      }),
+      {
+        changeSummary: input.changeSummary,
+        reason: input.statusReason,
+        validFrom: input.validFrom,
+      },
+    );
   }
 
   /** Activates an approved or scheduled version and supersedes any other ACTIVE version. */
@@ -203,6 +254,7 @@ export class LegalDocumentsService {
     input: LegalDocumentStatusChangeInput = {},
   ): Promise<OrganizationLegalDocument> {
     const doc = await this.getById(orgId, id);
+    const actor = this.resolveActor(input);
 
     if (
       doc.status !== LEGAL_STATUS.ACTIVE &&
@@ -246,7 +298,7 @@ export class LegalDocumentsService {
         }
 
         if (otherActiveCount > 0) {
-          await this.supersedeActivePeers(tx, orgId, current);
+          await this.supersedeActivePeers(tx, orgId, current, actor);
         }
 
         if (current.status === LEGAL_STATUS.ACTIVE) {
@@ -259,11 +311,22 @@ export class LegalDocumentsService {
             ? current.validFrom
             : now;
 
-        return this.applyStatusTransition(tx, current, LEGAL_STATUS.ACTIVE, {
-          activatedAt: activationTime,
-          activatedByUserId: input.userId ?? null,
-          validFrom: current.validFrom ?? activationTime,
-        });
+        return this.applyStatusTransition(
+          tx,
+          current,
+          LEGAL_STATUS.ACTIVE,
+          {
+            activatedAt: activationTime,
+            activatedByUserId: actor.userId ?? null,
+            validFrom: current.validFrom ?? activationTime,
+          },
+          actor,
+          {
+            changeSummary: input.changeSummary,
+            reason: input.statusReason,
+            validFrom: current.validFrom ?? activationTime,
+          },
+        );
       });
     } catch (err) {
       throw this.rethrowActivationError(err, orgId, doc);
@@ -279,11 +342,19 @@ export class LegalDocumentsService {
     if (!reason) {
       throw new BadRequestException('statusReason is required when revoking a legal document');
     }
-    return this.transitionStatus(orgId, id, LEGAL_STATUS.REVOKED, (now) => ({
-      revokedAt: now,
-      revokedByUserId: input.userId ?? null,
-      statusReason: reason,
-    }));
+    const actor = this.resolveActor(input);
+    return this.transitionStatus(
+      orgId,
+      id,
+      LEGAL_STATUS.REVOKED,
+      actor,
+      (now) => ({
+        revokedAt: now,
+        revokedByUserId: actor.userId ?? null,
+        statusReason: reason,
+      }),
+      { reason, changeSummary: input.changeSummary },
+    );
   }
 
   async archive(
@@ -291,9 +362,17 @@ export class LegalDocumentsService {
     id: string,
     input: LegalDocumentStatusChangeInput = {},
   ): Promise<OrganizationLegalDocument> {
-    return this.transitionStatus(orgId, id, LEGAL_STATUS.ARCHIVED, () => ({
-      statusReason: input.statusReason?.trim() ?? undefined,
-    }));
+    const actor = this.resolveActor(input);
+    return this.transitionStatus(
+      orgId,
+      id,
+      LEGAL_STATUS.ARCHIVED,
+      actor,
+      () => ({
+        statusReason: input.statusReason?.trim() ?? undefined,
+      }),
+      { reason: input.statusReason, changeSummary: input.changeSummary },
+    );
   }
 
   /** Returns resolvable active legal documents per type (excludes expired / not-yet-valid). */
@@ -354,7 +433,14 @@ export class LegalDocumentsService {
     orgId: string,
     id: string,
     toStatus: string,
+    actor: LegalDocumentActorContext,
     patch: (now: Date) => Prisma.OrganizationLegalDocumentUpdateInput,
+    audit?: {
+      reason?: string | null;
+      changeSummary?: string | null;
+      validFrom?: Date | null;
+      validUntil?: Date | null;
+    },
   ): Promise<OrganizationLegalDocument> {
     const doc = await this.getById(orgId, id);
     if (!isLegalStatusTransitionAllowed(doc.status, toStatus)) {
@@ -371,7 +457,7 @@ export class LegalDocumentsService {
         where: { id: doc.id, organizationId: orgId },
       });
       if (!current) throw new NotFoundException('Legal document not found');
-      return this.applyStatusTransition(tx, current, toStatus, patch(new Date()));
+      return this.applyStatusTransition(tx, current, toStatus, patch(new Date()), actor, audit);
     });
   }
 
@@ -380,18 +466,40 @@ export class LegalDocumentsService {
     current: OrganizationLegalDocument,
     toStatus: string,
     data: Prisma.OrganizationLegalDocumentUpdateInput,
+    actor: LegalDocumentActorContext,
+    audit?: {
+      reason?: string | null;
+      changeSummary?: string | null;
+      validFrom?: Date | null;
+      validUntil?: Date | null;
+    },
   ): Promise<OrganizationLegalDocument> {
     assertLegalStatusTransition(current.status, toStatus);
-    return tx.organizationLegalDocument.update({
+    const updated = await tx.organizationLegalDocument.update({
       where: { id: current.id },
       data: { status: toStatus, ...data },
     });
+
+    await this.events.appendInTransaction(tx, {
+      organizationId: updated.organizationId,
+      legalDocument: updated,
+      previousStatus: current.status,
+      newStatus: toStatus,
+      actor,
+      reason: audit?.reason ?? updated.statusReason,
+      changeSummary: audit?.changeSummary,
+      validFrom: audit?.validFrom,
+      validUntil: audit?.validUntil,
+    });
+
+    return updated;
   }
 
   private async supersedeActivePeers(
     tx: Tx,
     orgId: string,
     current: OrganizationLegalDocument,
+    actor: LegalDocumentActorContext,
   ): Promise<void> {
     const peers = await tx.organizationLegalDocument.findMany({
       where: {
@@ -404,11 +512,32 @@ export class LegalDocumentsService {
     });
     const now = new Date();
     for (const peer of peers) {
-      await this.applyStatusTransition(tx, peer, LEGAL_STATUS.SUPERSEDED, {
-        validUntil: peer.validUntil ?? now,
-        statusReason: peer.statusReason ?? 'Superseded by a newer active legal document version',
-      });
+      const reason =
+        peer.statusReason ?? 'Superseded by a newer active legal document version';
+      await this.applyStatusTransition(
+        tx,
+        peer,
+        LEGAL_STATUS.SUPERSEDED,
+        {
+          validUntil: peer.validUntil ?? now,
+          statusReason: reason,
+        },
+        actor,
+        { reason, validUntil: peer.validUntil ?? now },
+      );
     }
+  }
+
+  private resolveActor(
+    input?: LegalDocumentActorContext | LegalDocumentStatusChangeInput,
+    fallbackUserId?: string | null,
+  ): LegalDocumentActorContext {
+    return {
+      userId: input?.userId ?? fallbackUserId ?? null,
+      displayName:
+        ('displayName' in (input ?? {}) ? input?.displayName : undefined) ?? null,
+      correlationId: input?.correlationId ?? null,
+    };
   }
 
   private rethrowActivationError(
