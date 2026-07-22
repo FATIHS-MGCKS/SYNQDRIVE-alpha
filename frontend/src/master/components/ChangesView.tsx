@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-lifecycle-2026-07-22',
+    version: '4.9.743',
+    title: 'Legal Documents — Professional Lifecycle (Prompt 4/32)',
+    summary: [
+      'Acht Zustände: DRAFT → IN_REVIEW → APPROVED → SCHEDULED → ACTIVE → SUPERSEDED/REVOKED → ARCHIVED.',
+      'Migration `20260722120000_legal_document_lifecycle`: `active_from`→`activated_at`, Audit-/Gültigkeitsfelder, ARCHIVED+activated_at→SUPERSEDED.',
+      'Zentraler Transition-Validator (`legal-document-lifecycle.transitions.ts`); DRAFT→ACTIVE verboten; Ersetzung via SUPERSEDED statt ARCHIVED.',
+      '`getActiveByType` schließt abgelaufene/nicht-yet-valid ACTIVE aus; Statuswechsel nur über `LegalDocumentsService`.',
+    ],
+    reason: 'Production-Readiness — kontrollierter Rechtstext-Lifecycle vor UI-Workflow (Prompt 5+).',
+    previousBehavior: 'Nur DRAFT/ACTIVE/ARCHIVED; `activate` aus DRAFT; Ersetzung archivierte Vorgänger; keine Review-/Gültigkeits-Auditfelder.',
+    details:
+      'docs/audits/legal-documents-lifecycle-2026-07.md, architecture/LEGAL_DOCUMENT_LIFECYCLE_2026-07-22.md, legal-document-lifecycle.transitions.spec.ts',
+    affectsArchitecture: true,
+    module: 'Booking Documents',
+    createdAt: '2026-07-22T11:30:00.000Z',
+  },
+  {
     id: 'legal-documents-single-active-invariant-2026-07-22',
     version: '4.9.742',
     title: 'Legal Documents — Single-ACTIVE DB Invariant (Prompt 3/32)',

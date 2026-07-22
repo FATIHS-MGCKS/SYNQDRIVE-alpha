@@ -71,9 +71,21 @@ export type BundleStatus = (typeof BUNDLE_STATUS)[keyof typeof BUNDLE_STATUS];
 
 export const LEGAL_STATUS = {
   DRAFT: 'DRAFT',
+  IN_REVIEW: 'IN_REVIEW',
+  APPROVED: 'APPROVED',
+  SCHEDULED: 'SCHEDULED',
   ACTIVE: 'ACTIVE',
+  SUPERSEDED: 'SUPERSEDED',
+  REVOKED: 'REVOKED',
   ARCHIVED: 'ARCHIVED',
 } as const;
+
+export type LegalStatus = (typeof LEGAL_STATUS)[keyof typeof LEGAL_STATUS];
+
+/** Terminal lifecycle states — no further user-driven transitions. */
+export const LEGAL_TERMINAL_STATUSES: ReadonlySet<LegalStatus> = new Set([
+  LEGAL_STATUS.ARCHIVED,
+]);
 
 /** Per-type document-number prefixes (scoped per organization + year). */
 export const DOCUMENT_NUMBER_PREFIX: Record<string, string> = {

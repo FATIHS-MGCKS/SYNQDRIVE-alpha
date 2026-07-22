@@ -6223,31 +6223,44 @@ model GeneratedDocument {
 }
 
 model OrganizationLegalDocument {
-  id               String       @id @default(uuid())
-  organizationId   String       @map("organization_id")
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType     String       @map("document_type") // TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, PRIVACY_POLICY
-  title            String
-  versionLabel     String       @map("version_label")
-  language         String       @default("de")
-  status           String       @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
-  fileName         String       @map("file_name")
-  mimeType         String       @default("application/pdf") @map("mime_type")
-  storageProvider  String       @default("local") @map("storage_provider")
-  objectKey        String       @map("object_key")
-  checksum         String?
-  sizeBytes        Int?         @map("size_bytes")
-  activeFrom       DateTime?    @map("active_from")
-  uploadedByUserId String?      @map("uploaded_by_user_id")
-  createdAt        DateTime     @default(now()) @map("created_at")
-  updatedAt        DateTime     @updatedAt @map("updated_at")
+  id                         String       @id @default(uuid())
+  organizationId             String       @map("organization_id")
+  organization               Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType               String       @map("document_type") // TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, PRIVACY_POLICY
+  title                      String
+  versionLabel               String       @map("version_label")
+  language                   String       @default("de")
+  status                     String       @default("DRAFT") // DRAFT, IN_REVIEW, APPROVED, SCHEDULED, ACTIVE, SUPERSEDED, REVOKED, ARCHIVED
+  fileName                   String       @map("file_name")
+  mimeType                   String       @default("application/pdf") @map("mime_type")
+  storageProvider            String       @default("local") @map("storage_provider")
+  objectKey                  String       @map("object_key")
+  checksum                   String?
+  sizeBytes                  Int?         @map("size_bytes")
+  validFrom                  DateTime?    @map("valid_from")
+  validUntil                 DateTime?    @map("valid_until")
+  submittedForReviewAt       DateTime?    @map("submitted_for_review_at")
+  submittedForReviewByUserId String?      @map("submitted_for_review_by_user_id")
+  approvedAt                 DateTime?    @map("approved_at")
+  approvedByUserId           String?      @map("approved_by_user_id")
+  activatedAt                DateTime?    @map("activated_at")
+  activatedByUserId          String?      @map("activated_by_user_id")
+  revokedAt                  DateTime?    @map("revoked_at")
+  revokedByUserId            String?      @map("revoked_by_user_id")
+  statusReason               String?      @map("status_reason")
+  changeSummary              String?      @map("change_summary")
+  legalOwnerName             String?      @map("legal_owner_name")
+  uploadedByUserId           String?      @map("uploaded_by_user_id")
+  createdAt                  DateTime     @default(now()) @map("created_at")
+  updatedAt                  DateTime     @updatedAt @map("updated_at")
 
   // Partial unique index `organization_legal_documents_single_active_key` on
   // (organization_id, document_type, language) WHERE status = 'ACTIVE' — see migration
   // 20260722110000_legal_document_single_active_invariant.
 
   @@index([organizationId])
-  @@index([organizationId, documentType, status])
+  @@index([organizationId, documentType, status], map: "organization_legal_documents_org_type_status_idx")
+  @@index([organizationId, documentType, language, status], map: "organization_legal_documents_org_type_lang_status_idx")
   @@map("organization_legal_documents")
 }
 

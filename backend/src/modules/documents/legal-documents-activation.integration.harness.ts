@@ -17,7 +17,19 @@ export type HarnessLegalRow = {
   objectKey: string;
   checksum: string | null;
   sizeBytes: number | null;
-  activeFrom: Date | null;
+  validFrom: Date | null;
+  validUntil: Date | null;
+  submittedForReviewAt: Date | null;
+  submittedForReviewByUserId: string | null;
+  approvedAt: Date | null;
+  approvedByUserId: string | null;
+  activatedAt: Date | null;
+  activatedByUserId: string | null;
+  revokedAt: Date | null;
+  revokedByUserId: string | null;
+  statusReason: string | null;
+  changeSummary: string | null;
+  legalOwnerName: string | null;
   uploadedByUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -43,6 +55,35 @@ function matchesWhere(row: HarnessLegalRow, where: Record<string, unknown>): boo
   for (const [key, value] of Object.entries(where)) {
     if (key === 'id' && typeof value === 'object' && value && 'not' in (value as object)) {
       if (row.id === (value as { not: string }).not) return false;
+      continue;
+    }
+    if (key === 'OR' && Array.isArray(value)) {
+      if (!value.some((clause) => matchesWhere(row, clause as Record<string, unknown>))) {
+        return false;
+      }
+      continue;
+    }
+    if (key === 'AND' && Array.isArray(value)) {
+      if (!value.every((clause) => matchesWhere(row, clause as Record<string, unknown>))) {
+        return false;
+      }
+      continue;
+    }
+    if (
+      typeof value === 'object' &&
+      value &&
+      !Array.isArray(value) &&
+      ('lte' in (value as object) || 'gt' in (value as object))
+    ) {
+      const field = (row as Record<string, unknown>)[key];
+      if (field == null) return false;
+      const dateField = field instanceof Date ? field : new Date(String(field));
+      if ('lte' in (value as object)) {
+        if (dateField > new Date((value as { lte: Date }).lte)) return false;
+      }
+      if ('gt' in (value as object)) {
+        if (dateField <= new Date((value as { gt: Date }).gt)) return false;
+      }
       continue;
     }
     if ((row as Record<string, unknown>)[key] !== value) return false;
@@ -137,7 +178,19 @@ export function createLegalDocumentActivationHarness() {
           objectKey: data.objectKey ?? 'k',
           checksum: data.checksum ?? null,
           sizeBytes: data.sizeBytes ?? null,
-          activeFrom: data.activeFrom ?? null,
+          validFrom: data.validFrom ?? null,
+          validUntil: data.validUntil ?? null,
+          submittedForReviewAt: data.submittedForReviewAt ?? null,
+          submittedForReviewByUserId: data.submittedForReviewByUserId ?? null,
+          approvedAt: data.approvedAt ?? null,
+          approvedByUserId: data.approvedByUserId ?? null,
+          activatedAt: data.activatedAt ?? null,
+          activatedByUserId: data.activatedByUserId ?? null,
+          revokedAt: data.revokedAt ?? null,
+          revokedByUserId: data.revokedByUserId ?? null,
+          statusReason: data.statusReason ?? null,
+          changeSummary: data.changeSummary ?? null,
+          legalOwnerName: data.legalOwnerName ?? null,
           uploadedByUserId: data.uploadedByUserId ?? null,
           createdAt: now,
           updatedAt: now,
@@ -147,8 +200,8 @@ export function createLegalDocumentActivationHarness() {
       },
       findMany: async ({ where, orderBy }) => {
         const list = [...rows.values()].filter((row) => matchesWhere(row, where));
-        if (orderBy?.activeFrom === 'desc') {
-          list.sort((a, b) => (b.activeFrom?.getTime() ?? 0) - (a.activeFrom?.getTime() ?? 0));
+        if (orderBy?.activatedAt === 'desc') {
+          list.sort((a, b) => (b.activatedAt?.getTime() ?? 0) - (a.activatedAt?.getTime() ?? 0));
         }
         return list.map(cloneRow);
       },
@@ -178,6 +231,48 @@ export function createLegalDocumentActivationHarness() {
     },
   };
 
+  function baseRow(input: {
+    id: string;
+    organizationId: string;
+    documentType: string;
+    language?: string;
+    versionLabel: string;
+    status?: string;
+  }): HarnessLegalRow {
+    const now = new Date();
+    return {
+      id: input.id,
+      organizationId: input.organizationId,
+      documentType: input.documentType,
+      language: input.language ?? 'de',
+      status: input.status ?? LEGAL_STATUS.DRAFT,
+      versionLabel: input.versionLabel,
+      title: input.documentType,
+      fileName: 'doc.pdf',
+      mimeType: 'application/pdf',
+      storageProvider: 'local',
+      objectKey: `k/${input.id}`,
+      checksum: null,
+      sizeBytes: 100,
+      validFrom: null,
+      validUntil: null,
+      submittedForReviewAt: null,
+      submittedForReviewByUserId: null,
+      approvedAt: null,
+      approvedByUserId: null,
+      activatedAt: null,
+      activatedByUserId: null,
+      revokedAt: null,
+      revokedByUserId: null,
+      statusReason: null,
+      changeSummary: null,
+      legalOwnerName: null,
+      uploadedByUserId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
   return {
     prisma,
     rows,
@@ -188,26 +283,19 @@ export function createLegalDocumentActivationHarness() {
       language?: string;
       versionLabel: string;
     }) {
-      const now = new Date();
-      const row: HarnessLegalRow = {
-        id: input.id,
-        organizationId: input.organizationId,
-        documentType: input.documentType,
-        language: input.language ?? 'de',
-        status: LEGAL_STATUS.DRAFT,
-        versionLabel: input.versionLabel,
-        title: input.documentType,
-        fileName: 'doc.pdf',
-        mimeType: 'application/pdf',
-        storageProvider: 'local',
-        objectKey: `k/${input.id}`,
-        checksum: null,
-        sizeBytes: 100,
-        activeFrom: null,
-        uploadedByUserId: null,
-        createdAt: now,
-        updatedAt: now,
-      };
+      const row = baseRow(input);
+      rows.set(row.id, row);
+      return row;
+    },
+    seedApproved(input: {
+      id: string;
+      organizationId: string;
+      documentType: string;
+      language?: string;
+      versionLabel: string;
+    }) {
+      const row = baseRow({ ...input, status: LEGAL_STATUS.APPROVED });
+      row.approvedAt = new Date();
       rows.set(row.id, row);
       return row;
     },
@@ -220,11 +308,9 @@ export function createLegalDocumentActivationHarness() {
           r.status === LEGAL_STATUS.ACTIVE,
       ).length;
     },
-    /** Release queued transactions to interleave (used to simulate concurrent commits). */
     async flushTransactions() {
       await transactionChain;
     },
-    /** Run callbacks with top-level transactions allowed to overlap (race simulation). */
     async withConcurrentTransactions<T>(fn: () => Promise<T>): Promise<T> {
       bypassTransactionQueue = true;
       try {

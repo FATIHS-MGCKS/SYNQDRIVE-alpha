@@ -172,14 +172,20 @@ describe('LegalDocumentsService', () => {
     );
   });
 
-  it('activating a version archives the other ACTIVE version of the same type+language (single-active)', async () => {
-    const target = { id: 'legal-2', organizationId: 'org-1', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, language: 'de', status: LEGAL_STATUS.DRAFT };
+  it('activating a version supersedes the other ACTIVE version of the same type+language (single-active)', async () => {
+    const target = { id: 'legal-2', organizationId: 'org-1', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, language: 'de', status: LEGAL_STATUS.APPROVED };
     const tx = {
       organizationLegalDocument: {
         findFirst: jest.fn().mockResolvedValue(target),
         count: jest.fn().mockResolvedValue(1),
-        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        update: jest.fn().mockResolvedValue({ ...target, status: LEGAL_STATUS.ACTIVE }),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'legal-1', organizationId: 'org-1', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, language: 'de', status: LEGAL_STATUS.ACTIVE },
+        ]),
+        update: jest
+          .fn()
+          .mockImplementation(({ where, data }) =>
+            Promise.resolve({ ...(where.id === 'legal-2' ? target : { id: where.id }), ...data }),
+          ),
       },
     };
     const prisma = {
@@ -191,21 +197,22 @@ describe('LegalDocumentsService', () => {
     const res = await svc.activate('org-1', 'legal-2');
 
     expect(res.status).toBe(LEGAL_STATUS.ACTIVE);
-    expect(tx.organizationLegalDocument.updateMany).toHaveBeenCalledWith(
+    expect(tx.organizationLegalDocument.findMany).toHaveBeenCalled();
+    expect(tx.organizationLegalDocument.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          organizationId: 'org-1',
-          documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-          language: 'de',
-          status: LEGAL_STATUS.ACTIVE,
-          id: { not: 'legal-2' },
-        }),
-        data: { status: LEGAL_STATUS.ARCHIVED },
+        where: { id: 'legal-2' },
+        data: expect.objectContaining({ status: LEGAL_STATUS.ACTIVE }),
       }),
     );
-    expect(tx.organizationLegalDocument.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'legal-2' }, data: expect.objectContaining({ status: LEGAL_STATUS.ACTIVE }) }),
-    );
+  });
+
+  it('rejects activate when document is still DRAFT', async () => {
+    const draft = { id: 'legal-draft', organizationId: 'org-1', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, language: 'de', status: LEGAL_STATUS.DRAFT };
+    const prisma = {
+      organizationLegalDocument: { findFirst: jest.fn().mockResolvedValue(draft) },
+    } as any;
+    const svc = new LegalDocumentsService(prisma, storage);
+    await expect(svc.activate('org-1', 'legal-draft')).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('activate is idempotent when the version is already the sole ACTIVE document', async () => {
@@ -215,7 +222,7 @@ describe('LegalDocumentsService', () => {
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       language: 'de',
       status: LEGAL_STATUS.ACTIVE,
-      activeFrom: new Date('2026-01-01'),
+      activatedAt: new Date('2026-01-01'),
     };
     const tx = {
       organizationLegalDocument: {
@@ -237,7 +244,7 @@ describe('LegalDocumentsService', () => {
     expect(tx.organizationLegalDocument.updateMany).not.toHaveBeenCalled();
   });
 
-  it('getActiveByType returns at most one active doc per type', async () => {
+  it('getActiveByType returns at most one active doc per type and excludes expired rows', async () => {
     const prisma = {
       organizationLegalDocument: {
         findMany: jest.fn().mockResolvedValue([
@@ -251,6 +258,17 @@ describe('LegalDocumentsService', () => {
     const map = await svc.getActiveByType('org-1', 'de');
     expect(map[DOCUMENT_TYPE.TERMS_AND_CONDITIONS]?.id).toBe('a');
     expect(map[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]?.id).toBe('c');
+    expect(prisma.organizationLegalDocument.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: LEGAL_STATUS.ACTIVE,
+          AND: expect.arrayContaining([
+            expect.objectContaining({ OR: expect.any(Array) }),
+          ]),
+        }),
+        orderBy: { activatedAt: 'desc' },
+      }),
+    );
   });
 });
 

@@ -13,13 +13,13 @@ const storage = {
 describe('LegalDocumentsService.activate (integration — concurrent activation)', () => {
   it('never leaves two ACTIVE versions for the same org+type+language after sequential activations', async () => {
     const h = createLegalDocumentActivationHarness();
-    h.seedDraft({
+    h.seedApproved({
       id: 'v1',
       organizationId: 'org-a',
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       versionLabel: '2026-01',
     });
-    h.seedDraft({
+    h.seedApproved({
       id: 'v2',
       organizationId: 'org-a',
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
@@ -31,19 +31,19 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
     await svc.activate('org-a', 'v2');
 
     expect(h.countActive('org-a', DOCUMENT_TYPE.TERMS_AND_CONDITIONS, 'de')).toBe(1);
-    expect(h.rows.get('v1')?.status).toBe(LEGAL_STATUS.ARCHIVED);
+    expect(h.rows.get('v1')?.status).toBe(LEGAL_STATUS.SUPERSEDED);
     expect(h.rows.get('v2')?.status).toBe(LEGAL_STATUS.ACTIVE);
   });
 
   it('returns exactly one winner and one ACTIVE_CONFLICT when two different versions activate concurrently', async () => {
     const h = createLegalDocumentActivationHarness();
-    h.seedDraft({
+    h.seedApproved({
       id: 'v-a',
       organizationId: 'org-a',
       documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
       versionLabel: 'A',
     });
-    h.seedDraft({
+    h.seedApproved({
       id: 'v-b',
       organizationId: 'org-a',
       documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
@@ -77,14 +77,14 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
 
   it('is idempotent when activating the same already-active version twice in parallel', async () => {
     const h = createLegalDocumentActivationHarness();
-    const seeded = h.seedDraft({
+    const seeded = h.seedApproved({
       id: 'v-same',
       organizationId: 'org-a',
       documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
       versionLabel: 'stable',
     });
     seeded.status = LEGAL_STATUS.ACTIVE;
-    seeded.activeFrom = new Date('2026-01-01T00:00:00.000Z');
+    seeded.activatedAt = new Date('2026-01-01T00:00:00.000Z');
 
     const svc = new LegalDocumentsService(h.prisma as any, storage);
     const [a, b] = await h.withConcurrentTransactions(() =>
@@ -94,18 +94,18 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
     expect(a.status).toBe(LEGAL_STATUS.ACTIVE);
     expect(b.status).toBe(LEGAL_STATUS.ACTIVE);
     expect(h.countActive('org-a', DOCUMENT_TYPE.PRIVACY_POLICY, 'de')).toBe(1);
-    expect(h.rows.get('v-same')?.activeFrom?.toISOString()).toBe('2026-01-01T00:00:00.000Z');
+    expect(h.rows.get('v-same')?.activatedAt?.toISOString()).toBe('2026-01-01T00:00:00.000Z');
   });
 
   it('preserves tenant isolation — activations in different orgs do not conflict', async () => {
     const h = createLegalDocumentActivationHarness();
-    h.seedDraft({
+    h.seedApproved({
       id: 'org1-v1',
       organizationId: 'org-1',
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
       versionLabel: '1',
     });
-    h.seedDraft({
+    h.seedApproved({
       id: 'org2-v1',
       organizationId: 'org-2',
       documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
@@ -122,5 +122,19 @@ describe('LegalDocumentsService.activate (integration — concurrent activation)
     expect(r2.status).toBe(LEGAL_STATUS.ACTIVE);
     expect(h.countActive('org-1', DOCUMENT_TYPE.TERMS_AND_CONDITIONS, 'de')).toBe(1);
     expect(h.countActive('org-2', DOCUMENT_TYPE.TERMS_AND_CONDITIONS, 'de')).toBe(1);
+  });
+
+  it('rejects activation from DRAFT without review/approval workflow', async () => {
+    const h = createLegalDocumentActivationHarness();
+    h.seedDraft({
+      id: 'draft-only',
+      organizationId: 'org-a',
+      documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+      versionLabel: 'draft',
+    });
+    const svc = new LegalDocumentsService(h.prisma as any, storage);
+    await expect(svc.activate('org-a', 'draft-only')).rejects.toMatchObject({
+      response: expect.objectContaining({ code: LEGAL_DOCUMENT_ERROR_CODES.NOT_ACTIVATABLE }),
+    });
   });
 });
