@@ -48,8 +48,11 @@ function formatDate(iso: string | null): string {
 }
 
 export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
-  const { orgId, userRole } = useRentalOrg();
-  const isOrgAdmin = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
+  const { orgId, hasPermission } = useRentalOrg();
+  const canViewLegal = hasPermission('legal-documents', 'read');
+  const canUploadLegal = hasPermission('legal-documents', 'write');
+  const canPublishLegal = hasPermission('legal-documents', 'manage');
+  const canMutateLegal = canUploadLegal || canPublishLegal;
 
   const [docs, setDocs] = useState<LegalDocumentDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,7 +257,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
         </div>
       )}
 
-      {isOrgAdmin && (
+      {canUploadLegal && (
         <input
           ref={fileInputRef}
           type="file"
@@ -303,7 +306,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
               </div>
 
               {/* Upload (admin only) */}
-              {isOrgAdmin && (
+              {canUploadLegal && (
                 <div className={`mt-3 rounded-xl border border-dashed p-3 ${isDarkMode ? 'border-border' : 'border-gray-300'}`}>
                   <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                     {type.key === LEGAL_DOCUMENT_TYPE.CONSUMER_INFORMATION && type.variants && (
@@ -395,7 +398,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                         >
                           <Download />
                         </Button>
-                        {isOrgAdmin && v.status !== 'ACTIVE' && (
+                        {canPublishLegal && v.status !== 'ACTIVE' && (
                           <Button
                             type="button"
                             variant="success"
@@ -405,7 +408,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                             Aktivieren
                           </Button>
                         )}
-                        {isOrgAdmin && v.status === 'DRAFT' && (
+                        {canUploadLegal && v.status === 'DRAFT' && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -425,7 +428,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
         })
       )}
 
-      {!isOrgAdmin && (
+      {!canMutateLegal && (
         <p className={`text-xs ${subtle}`}>
           Nur Administratoren können rechtliche Dokumente hochladen oder aktivieren.
         </p>

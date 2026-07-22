@@ -1,5 +1,6 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { LegalDocumentsController } from './legal-documents.controller';
 import { LegalDocumentNotFoundError } from './legal-documents-api.errors';
@@ -45,9 +46,11 @@ describe('LegalDocumentsController', () => {
     eventsService.listForDocument.mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
   });
 
-  it('applies OrgScopingGuard and RolesGuard', () => {
+  it('applies OrgScopingGuard, RolesGuard and PermissionsGuard', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, LegalDocumentsController);
-    expect(guards).toEqual(expect.arrayContaining([OrgScopingGuard, RolesGuard]));
+    expect(guards).toEqual(
+      expect.arrayContaining([OrgScopingGuard, RolesGuard, PermissionsGuard]),
+    );
   });
 
   it('delegates list to listPaginated with query DTO', async () => {

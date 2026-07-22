@@ -113,6 +113,16 @@ export class LegalDocumentNotFoundError extends NotFoundException {
   }
 }
 
+export class LegalDocumentForbiddenError extends HttpException {
+  constructor(
+    message: string,
+    public readonly code: string = LEGAL_DOCUMENT_ERROR_CODES.FORBIDDEN,
+  ) {
+    super({ message, code }, HttpStatus.FORBIDDEN);
+    this.name = 'LegalDocumentForbiddenError';
+  }
+}
+
 export function isLegalDocumentDomainError(err: unknown): err is LegalDocumentDomainError {
   return err instanceof LegalDocumentDomainError;
 }

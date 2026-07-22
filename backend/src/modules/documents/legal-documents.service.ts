@@ -71,6 +71,7 @@ import {
   LegalDocumentActorContext,
   LegalDocumentEventsService,
 } from './legal-document-events.service';
+import { LegalDocumentFourEyesService } from './legal-document-four-eyes.service';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -123,6 +124,7 @@ export class LegalDocumentsService {
     private readonly prisma: PrismaService,
     private readonly events: LegalDocumentEventsService,
     private readonly scope: LegalDocumentScopeService,
+    private readonly fourEyes: LegalDocumentFourEyesService,
     @Inject(DOCUMENTS_STORAGE) private readonly storage: DocumentStoragePort,
   ) {}
 
@@ -414,7 +416,9 @@ export class LegalDocumentsService {
     id: string,
     input: LegalDocumentStatusChangeInput = {},
   ): Promise<OrganizationLegalDocument> {
+    const doc = await this.getById(orgId, id);
     const actor = this.resolveActor(input);
+    await this.fourEyes.assertSeparation(orgId, doc, actor.userId, 'approve');
     return this.transitionStatus(
       orgId,
       id,
@@ -473,6 +477,8 @@ export class LegalDocumentsService {
         { status: doc.status },
       );
     }
+
+    await this.fourEyes.assertSeparation(orgId, doc, actor.userId, 'activate');
 
     try {
       return await this.prisma.$transaction(async (tx) => {

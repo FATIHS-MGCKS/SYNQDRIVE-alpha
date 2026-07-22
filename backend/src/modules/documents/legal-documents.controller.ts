@@ -19,8 +19,9 @@ import { memoryStorage } from 'multer';
 import type { Request, Response } from 'express';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
-import { Roles } from '@shared/decorators/roles.decorator';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { RequireLegalDocumentPermission } from './decorators/require-legal-document-permission.decorator';
 import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { isLegalPdfUpload } from './legal-documents.util';
@@ -33,9 +34,7 @@ import {
   LegalDocumentRevokeDto,
   LegalDocumentScheduleDto,
 } from './dto/legal-document-lifecycle.dto';
-import {
-  LegalDocumentValidationError,
-} from './legal-documents-api.errors';
+import { LegalDocumentValidationError } from './legal-documents-api.errors';
 
 const MAX_LEGAL_BYTES =
   Math.max(1, parseInt(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB || '15', 10)) * 1024 * 1024;
@@ -43,12 +42,12 @@ const MAX_LEGAL_BYTES =
 /**
  * Administration → Legal Documents (AGB / consumer information / privacy).
  *
- * Reading is allowed for any org member; mutations are restricted to ORG_ADMIN
- * (and MASTER_ADMIN). OrgScopingGuard enforces tenant isolation via :orgId.
- * Files are private — responses never include storage paths or public URLs.
+ * Tenant isolation via OrgScopingGuard; capabilities via PermissionsGuard +
+ * `@RequireLegalDocumentPermission`. ORG_ADMIN / MASTER_ADMIN retain access via
+ * existing guard bypass rules. Files are private — never public URLs in JSON.
  */
 @Controller('organizations/:orgId/legal-documents')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class LegalDocumentsController {
   constructor(
     private readonly legal: LegalDocumentsService,
@@ -56,11 +55,13 @@ export class LegalDocumentsController {
   ) {}
 
   @Get()
+  @RequireLegalDocumentPermission('legal_documents.view')
   async list(@Param('orgId') orgId: string, @Query() query: LegalDocumentListQueryDto) {
     return this.legal.listPaginated(orgId, query);
   }
 
   @Get('events')
+  @RequireLegalDocumentPermission('legal_documents.audit_view')
   async listOrganizationEvents(
     @Param('orgId') orgId: string,
     @Query() query: LegalDocumentEventsQueryDto,
@@ -69,7 +70,7 @@ export class LegalDocumentsController {
   }
 
   @Post('upload')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.upload')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -162,11 +163,13 @@ export class LegalDocumentsController {
   }
 
   @Get(':id')
+  @RequireLegalDocumentPermission('legal_documents.view')
   async getOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.legal.getDetail(orgId, id);
   }
 
   @Get(':id/events')
+  @RequireLegalDocumentPermission('legal_documents.audit_view')
   async listDocumentEvents(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -176,7 +179,7 @@ export class LegalDocumentsController {
   }
 
   @Post(':id/submit-for-review')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.submit_review')
   async submitForReview(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -193,7 +196,7 @@ export class LegalDocumentsController {
   }
 
   @Post(':id/approve')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.approve')
   async approve(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -210,7 +213,7 @@ export class LegalDocumentsController {
   }
 
   @Post(':id/schedule')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.schedule')
   async schedule(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -235,7 +238,7 @@ export class LegalDocumentsController {
   }
 
   @Patch(':id/application-scope')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.manage_scope')
   async updateApplicationScope(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -263,7 +266,7 @@ export class LegalDocumentsController {
   }
 
   @Post(':id/activate')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.activate')
   async activate(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -276,7 +279,7 @@ export class LegalDocumentsController {
   }
 
   @Post(':id/revoke')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.revoke')
   async revoke(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -294,7 +297,7 @@ export class LegalDocumentsController {
   }
 
   @Post(':id/archive')
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequireLegalDocumentPermission('legal_documents.archive')
   async archive(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -312,6 +315,7 @@ export class LegalDocumentsController {
   }
 
   @Get(':id/download')
+  @RequireLegalDocumentPermission('legal_documents.view')
   @Header('Cache-Control', 'no-store')
   async download(
     @Param('orgId') orgId: string,

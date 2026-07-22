@@ -4,6 +4,7 @@ import { LegalDocumentsService } from './legal-documents.service';
 import { DOCUMENT_TYPE, LEGAL_STATUS } from './documents.constants';
 import { LEGAL_DOCUMENT_EVENT_TYPE, resolveLegalDocumentEventType } from './legal-document-events.constants';
 import { createLegalDocumentActivationHarness } from './legal-documents-activation.integration.harness';
+import { createNoopLegalDocumentFourEyesService } from './legal-document-four-eyes.test-utils';
 import { createNoopLegalDocumentScopeService } from './legal-document-scope.test-utils';
 
 const storage = {
@@ -58,7 +59,7 @@ describe('LegalDocumentsService lifecycle events (integration)', () => {
 
   function makeSvc(h: ReturnType<typeof createLegalDocumentActivationHarness>) {
     const { eventsService, events } = createEventsHarness();
-    const svc = new LegalDocumentsService(h.prisma as any, eventsService, createNoopLegalDocumentScopeService(), storage);
+    const svc = new LegalDocumentsService(h.prisma as any, eventsService, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, storage);
     return { svc, events, eventsService };
   }
 
@@ -178,7 +179,7 @@ describe('LegalDocumentsService lifecycle events (integration)', () => {
     (eventsService.appendInTransaction as jest.Mock).mockRejectedValue(
       new Error('audit write failed'),
     );
-    const svc = new LegalDocumentsService(h.prisma as any, eventsService, createNoopLegalDocumentScopeService(), storage);
+    const svc = new LegalDocumentsService(h.prisma as any, eventsService, createNoopLegalDocumentScopeService(), createNoopLegalDocumentFourEyesService() as any, storage);
 
     await expect(
       svc.submitForReview('org-a', draft.id, actor),

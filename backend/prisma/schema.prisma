@@ -1500,6 +1500,8 @@ model Organization {
   status            OrganizationStatus @default(ACTIVE)
   /// End-customer Stripe Connect payments — disabled by default; enable via platform admin only.
   paymentsEnabled   Boolean            @default(false) @map("payments_enabled")
+  /// When true, legal document approve/activate must be performed by a user other than the uploader/submitter.
+  legalDocumentFourEyesEnabled Boolean @default(false) @map("legal_document_four_eyes_enabled")
   lastActiveAt      DateTime?          @map("last_active_at")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
