@@ -157,6 +157,24 @@ describe('LegalDocumentsService', () => {
     await expect(svc.upload({ ...baseInput(), versionLabel: '   ' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('accepts legacy WITHDRAWAL_INFORMATION upload and stores CONSUMER_INFORMATION', async () => {
+    const tx = {
+      organizationLegalDocument: {
+        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'legal-w', ...data })),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (cb: any) => cb(tx)),
+    } as any;
+    const svc = makeLegalSvc(prisma);
+    const doc = await svc.upload({
+      ...baseInput(),
+      documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+    });
+    expect(doc.documentType).toBe(DOCUMENT_TYPE.CONSUMER_INFORMATION);
+    expect(doc.legalVariant).toBe('WITHDRAWAL_RIGHT_NOTICE');
+  });
+
   it('accepts PRIVACY_POLICY uploads with empty client mime when filename ends with .pdf', async () => {
     const prisma = {
       organizationLegalDocument: {
@@ -369,7 +387,7 @@ describe('BookingDocumentBundleService', () => {
     } as any;
     const { svc } = makeService(prisma);
     const view = await svc.getBundleView('org-1', 'bk-1');
-    expect(view.legal.missing).toEqual([DOCUMENT_TYPE.TERMS_AND_CONDITIONS, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]);
+    expect(view.legal.missing).toEqual([DOCUMENT_TYPE.TERMS_AND_CONDITIONS, DOCUMENT_TYPE.CONSUMER_INFORMATION]);
     expect(view.missingLegalDocuments).toEqual(['TERMS_AND_CONDITIONS', 'REVOCATION_POLICY']);
     expect(view.warnings[0]).toContain('Administration → Unternehmen hochladen');
   });

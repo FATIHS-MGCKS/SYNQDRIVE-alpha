@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-consumer-information-2026-07-22',
+    version: '4.9.745',
+    title: 'Legal Documents — Consumer Information (Prompt 6/32)',
+    summary: [
+      'Neutrale Kategorie `CONSUMER_INFORMATION` mit administrativ wählbarer `legalVariant` (Widerrufsbelehrung / kein Widerrufsrecht / sonstige Verbraucherinformation).',
+      'Migration `20260722140000_legal_document_consumer_information`: WITHDRAWAL_INFORMATION → CONSUMER_INFORMATION + WITHDRAWAL_RIGHT_NOTICE; PDF-Inhalte unverändert.',
+      'Compatibility-Modul `legal-document-type.compat.ts`: Legacy-Mapping, API-Read-Alias `legacyDocumentType`, historische Lookup-Keys.',
+      'Frontend `LegalDocumentsTab` + `legal-document-types.ts`: Varianten-Auswahl, neutraler Disclaimer, keine Rechtsberatung durch SynqDrive.',
+    ],
+    reason: 'Production-Readiness — keine fest codierte juristische Aussage über Widerrufsrecht bei jeder Vermietung.',
+    previousBehavior: 'Fester Dokumenttyp `WITHDRAWAL_INFORMATION` / „Widerrufsbelehrung“ implizierte fachlich ein Widerrufsrecht.',
+    details:
+      'docs/audits/legal-documents-consumer-information-2026-07.md, architecture/LEGAL_DOCUMENT_CONSUMER_INFORMATION_2026-07-22.md, legal-document-type.compat.spec.ts',
+    affectsArchitecture: true,
+    module: 'Booking Documents',
+    createdAt: '2026-07-22T11:45:00.000Z',
+  },
+  {
     id: 'legal-documents-lifecycle-events-2026-07-22',
     version: '4.9.744',
     title: 'Legal Documents — Append-only Lifecycle Events (Prompt 5/32)',

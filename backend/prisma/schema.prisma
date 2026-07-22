@@ -6171,7 +6171,8 @@ model GeneratedDocument {
   id                 String       @id @default(uuid())
   organizationId     String       @map("organization_id")
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType       String       @map("document_type") // BOOKING_INVOICE, DEPOSIT_RECEIPT, RENTAL_CONTRACT, TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, PRIVACY_POLICY, HANDOVER_PICKUP, HANDOVER_RETURN, FINAL_INVOICE
+  documentType       String       @map("document_type") // BOOKING_INVOICE, … CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy)
+  legalVariant       String?      @map("legal_variant")
   origin             String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
   status             String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
   bookingId          String?      @map("booking_id")
@@ -6227,7 +6228,8 @@ model OrganizationLegalDocument {
   id                         String       @id @default(uuid())
   organizationId             String       @map("organization_id")
   organization               Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType               String       @map("document_type") // TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, PRIVACY_POLICY
+  documentType               String       @map("document_type") // TERMS_AND_CONDITIONS, CONSUMER_INFORMATION, PRIVACY_POLICY (+ legacy values)
+  legalVariant               String?      @map("legal_variant") // CONSUMER_INFORMATION variants only
   title                      String
   versionLabel               String       @map("version_label")
   language                   String       @default("de")
@@ -6281,6 +6283,8 @@ model OrganizationLegalDocumentEvent {
   reason           String?
   changeSummary    String?  @map("change_summary")
   versionLabel     String   @map("version_label")
+  documentType     String   @map("document_type")
+  legalVariant     String?  @map("legal_variant")
   checksum         String?
   language         String
   jurisdiction     String?

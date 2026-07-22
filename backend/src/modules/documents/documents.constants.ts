@@ -11,6 +11,12 @@ export const DOCUMENT_TYPE = {
   DEPOSIT_RECEIPT: 'DEPOSIT_RECEIPT',
   RENTAL_CONTRACT: 'RENTAL_CONTRACT',
   TERMS_AND_CONDITIONS: 'TERMS_AND_CONDITIONS',
+  /** Neutral category for administratively approved consumer-facing legal information. */
+  CONSUMER_INFORMATION: 'CONSUMER_INFORMATION',
+  /**
+   * @deprecated Legacy alias — use CONSUMER_INFORMATION + legalVariant instead.
+   * Accepted on API input for backward compatibility only.
+   */
   WITHDRAWAL_INFORMATION: 'WITHDRAWAL_INFORMATION',
   PRIVACY_POLICY: 'PRIVACY_POLICY',
   HANDOVER_PICKUP: 'HANDOVER_PICKUP',
@@ -33,7 +39,7 @@ export const GENERATED_DOCUMENT_TYPES: DocumentType[] = [
 /** Types managed (uploaded + versioned) by the rental company in Administration. */
 export const LEGAL_DOCUMENT_TYPES: DocumentType[] = [
   DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-  DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+  DOCUMENT_TYPE.CONSUMER_INFORMATION,
   DOCUMENT_TYPE.PRIVACY_POLICY,
 ];
 
@@ -97,23 +103,53 @@ export const DOCUMENT_NUMBER_PREFIX: Record<string, string> = {
   [DOCUMENT_TYPE.HANDOVER_RETURN]: 'RP',
 };
 
-/** Human title per document type (German, customer-facing). */
+import {
+  CONSUMER_INFORMATION_VARIANT_TITLE_DE,
+  normalizeLegalDocumentType,
+  CONSUMER_INFORMATION_VARIANT,
+} from './legal-document-type.compat';
+
+/** Human title per document type (German, customer-facing / admin default). */
 export const DOCUMENT_TITLE_DE: Record<string, string> = {
   [DOCUMENT_TYPE.BOOKING_INVOICE]: 'Rechnung',
   [DOCUMENT_TYPE.DEPOSIT_RECEIPT]: 'Kautionsbeleg',
   [DOCUMENT_TYPE.RENTAL_CONTRACT]: 'Mietvertrag',
   [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: 'Allgemeine Geschäftsbedingungen (AGB)',
-  [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: 'Widerrufsbelehrung',
+  [DOCUMENT_TYPE.CONSUMER_INFORMATION]: 'Verbraucherinformation',
+  [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]:
+    CONSUMER_INFORMATION_VARIANT_TITLE_DE[CONSUMER_INFORMATION_VARIANT.WITHDRAWAL_RIGHT_NOTICE],
   [DOCUMENT_TYPE.PRIVACY_POLICY]: 'Datenschutzerklärung',
   [DOCUMENT_TYPE.HANDOVER_PICKUP]: 'Übergabeprotokoll (Abholung)',
   [DOCUMENT_TYPE.HANDOVER_RETURN]: 'Übergabeprotokoll (Rückgabe)',
   [DOCUMENT_TYPE.FINAL_INVOICE]: 'Schlussrechnung',
 };
 
+export function legalDocumentTitleDe(
+  documentType: string,
+  legalVariant?: string | null,
+): string {
+  const canonical = normalizeLegalDocumentType(documentType);
+  if (
+    canonical === 'CONSUMER_INFORMATION' &&
+    legalVariant &&
+    legalVariant in CONSUMER_INFORMATION_VARIANT_TITLE_DE
+  ) {
+    return CONSUMER_INFORMATION_VARIANT_TITLE_DE[
+      legalVariant as keyof typeof CONSUMER_INFORMATION_VARIANT_TITLE_DE
+    ];
+  }
+  return DOCUMENT_TITLE_DE[canonical] ?? DOCUMENT_TITLE_DE[documentType] ?? documentType;
+}
+
 export function isGeneratedDocumentType(value: string): value is DocumentType {
   return (GENERATED_DOCUMENT_TYPES as string[]).includes(value);
 }
 
 export function isLegalDocumentType(value: string): value is DocumentType {
-  return (LEGAL_DOCUMENT_TYPES as string[]).includes(value);
+  return (
+    value === DOCUMENT_TYPE.TERMS_AND_CONDITIONS ||
+    value === DOCUMENT_TYPE.CONSUMER_INFORMATION ||
+    value === DOCUMENT_TYPE.PRIVACY_POLICY ||
+    value === DOCUMENT_TYPE.WITHDRAWAL_INFORMATION
+  );
 }

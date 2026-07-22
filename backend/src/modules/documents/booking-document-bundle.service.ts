@@ -25,6 +25,7 @@ import {
   DOCUMENT_TITLE_DE,
   DOCUMENT_TYPE,
   DocumentType,
+  legalDocumentTitleDe,
 } from './documents.constants';
 import {
   BookingInfo,
@@ -59,6 +60,8 @@ const BUNDLE_FIELD: Record<string, keyof BookingDocumentBundle> = {
   [DOCUMENT_TYPE.DEPOSIT_RECEIPT]: 'depositReceiptDocumentId',
   [DOCUMENT_TYPE.RENTAL_CONTRACT]: 'rentalContractDocumentId',
   [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: 'termsDocumentId',
+  [DOCUMENT_TYPE.CONSUMER_INFORMATION]: 'withdrawalDocumentId',
+  /** @deprecated Legacy alias — same bundle pointer as CONSUMER_INFORMATION */
   [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: 'withdrawalDocumentId',
   [DOCUMENT_TYPE.HANDOVER_PICKUP]: 'pickupProtocolDocumentId',
   [DOCUMENT_TYPE.HANDOVER_RETURN]: 'returnProtocolDocumentId',
@@ -92,8 +95,7 @@ export interface BundleView {
  * this service renders, stores, versions and tracks documents. Generation is
  * idempotent (existing non-void documents are reused unless `force`), never
  * blocks the booking/handover flow (callers fire-and-forget), and degrades to a
- * PARTIAL bundle (with a clear warning) when the org's AGB / Widerruf are
- * missing in Administration.
+ * PARTIAL bundle (with a clear warning) when required org legal texts are missing.
  */
 @Injectable()
 export class BookingDocumentBundleService {
@@ -153,26 +155,30 @@ export class BookingDocumentBundleService {
     const hasDoc = (type: DocumentType) =>
       documents.some((d) => d.documentType === type && d.status !== DOCUMENT_STATUS.VOID);
     const termsAttached = !!bundle.termsDocumentId || hasDoc(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-    const withdrawalAttached =
-      !!bundle.withdrawalDocumentId || hasDoc(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
+    const consumerAttached =
+      !!bundle.withdrawalDocumentId ||
+      hasDoc(DOCUMENT_TYPE.CONSUMER_INFORMATION) ||
+      hasDoc(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
     const missing: string[] = [];
     const missingLegalDocuments: string[] = [];
     if (!termsAttached) {
       missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
       missingLegalDocuments.push('TERMS_AND_CONDITIONS');
     }
-    if (!withdrawalAttached) {
-      missing.push(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
+    if (!consumerAttached) {
+      missing.push(DOCUMENT_TYPE.CONSUMER_INFORMATION);
       missingLegalDocuments.push('REVOCATION_POLICY');
     }
     const warnings: string[] = [];
     if (missing.length) {
       const activeLegal = await this.legalDocs.getActiveByType(orgId, 'de');
       const orgMissingTerms = !activeLegal[DOCUMENT_TYPE.TERMS_AND_CONDITIONS];
-      const orgMissingWithdrawal = !activeLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
-      if (orgMissingTerms || orgMissingWithdrawal) {
+      const orgMissingConsumer =
+        !activeLegal[DOCUMENT_TYPE.CONSUMER_INFORMATION] &&
+        !activeLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
+      if (orgMissingTerms || orgMissingConsumer) {
         warnings.push(
-          'Dokumentenpaket unvollständig: AGB/Widerrufsbelehrung fehlt. Bitte in Administration → Unternehmen hochladen.',
+          'Dokumentenpaket unvollständig: AGB oder Verbraucherinformation fehlt. Bitte in Administration → Unternehmen hochladen.',
         );
       } else if (bundle.lastError) {
         warnings.push(`Dokumentenerstellung fehlgeschlagen: ${bundle.lastError}`);
@@ -191,7 +197,7 @@ export class BookingDocumentBundleService {
         lastError: bundle.lastError,
       },
       documents: documents.map((d) => this.generatedDocs.toDto(d)),
-      legal: { termsAttached, withdrawalAttached, missing },
+      legal: { termsAttached, withdrawalAttached: consumerAttached, missing },
       missingLegalDocuments,
       warnings,
     };
@@ -273,6 +279,7 @@ export class BookingDocumentBundleService {
         await this.ensureRentalContract(orgId, bundle, booking, userId, true);
         break;
       case DOCUMENT_TYPE.TERMS_AND_CONDITIONS:
+      case DOCUMENT_TYPE.CONSUMER_INFORMATION:
       case DOCUMENT_TYPE.WITHDRAWAL_INFORMATION:
       case DOCUMENT_TYPE.PRIVACY_POLICY:
         await this.attachLegalDocuments(orgId, bundle, booking, userId, true);
@@ -582,7 +589,8 @@ export class BookingDocumentBundleService {
     const contract = await this.getOrCreateContract(orgId, booking);
     const active = await this.legalDocs.getActiveByType(orgId, 'de');
     const terms = active[DOCUMENT_TYPE.TERMS_AND_CONDITIONS];
-    const withdrawal = active[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
+    const withdrawal =
+      active[DOCUMENT_TYPE.CONSUMER_INFORMATION] ?? active[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
     const cur = (booking.currency || 'EUR').toUpperCase();
     const extraKmPriceCents = booking.vehicle.extraKmPrice != null ? Math.round(booking.vehicle.extraKmPrice * 100) : null;
 
@@ -610,7 +618,13 @@ export class BookingDocumentBundleService {
       currency: cur,
       legalRefs: [
         { label: 'AGB', versionLabel: terms?.versionLabel ?? '', present: !!terms },
-        { label: 'Widerrufsbelehrung', versionLabel: withdrawal?.versionLabel ?? '', present: !!withdrawal },
+        {
+          label: withdrawal
+            ? legalDocumentTitleDe(withdrawal.documentType, withdrawal.legalVariant)
+            : 'Verbraucherinformation',
+          versionLabel: withdrawal?.versionLabel ?? '',
+          present: !!withdrawal,
+        },
       ],
     });
 
@@ -642,9 +656,7 @@ export class BookingDocumentBundleService {
   }
 
   /**
-   * Snapshots the org's ACTIVE AGB + Widerruf into the bundle as STATIC_LEGAL
-   * references (pointing to the immutable uploaded object — never regenerated).
-   * Missing legal documents are tolerated: the bundle becomes PARTIAL.
+   * Snapshots the org's ACTIVE legal texts into the bundle as STATIC_LEGAL references.
    */
   private async attachLegalDocuments(
     orgId: string,
@@ -656,17 +668,25 @@ export class BookingDocumentBundleService {
     const active = await this.legalDocs.getActiveByType(orgId, 'de');
     for (const type of [
       DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-      DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+      DOCUMENT_TYPE.CONSUMER_INFORMATION,
       DOCUMENT_TYPE.PRIVACY_POLICY,
     ] as DocumentType[]) {
-      const legal = active[type];
+      const legal =
+        type === DOCUMENT_TYPE.CONSUMER_INFORMATION
+          ? active[DOCUMENT_TYPE.CONSUMER_INFORMATION] ?? active[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
+          : active[type];
       if (!legal) continue;
+
+      const consumerTypes =
+        type === DOCUMENT_TYPE.CONSUMER_INFORMATION
+          ? [DOCUMENT_TYPE.CONSUMER_INFORMATION, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
+          : [type];
 
       const existingActive = await this.prisma.generatedDocument.findFirst({
         where: {
           organizationId: orgId,
           bookingId: booking.id,
-          documentType: type,
+          documentType: { in: consumerTypes },
           status: { not: DOCUMENT_STATUS.VOID },
         },
         orderBy: { createdAt: 'desc' },
@@ -684,14 +704,15 @@ export class BookingDocumentBundleService {
       const ref = await this.prisma.generatedDocument.create({
         data: {
           organizationId: orgId,
-          documentType: type,
+          documentType: legal.documentType,
+          legalVariant: legal.legalVariant,
           origin: DOCUMENT_ORIGIN.STATIC_LEGAL,
           status: DOCUMENT_STATUS.GENERATED,
           bookingId: booking.id,
           customerId: booking.customerId,
           vehicleId: booking.vehicleId,
           legalDocumentId: legal.id,
-          title: legal.title || DOCUMENT_TITLE_DE[type],
+          title: legal.title || legalDocumentTitleDe(legal.documentType, legal.legalVariant),
           fileName: legal.fileName,
           mimeType: legal.mimeType,
           storageProvider: legal.storageProvider,
@@ -716,7 +737,7 @@ export class BookingDocumentBundleService {
       DOCUMENT_TYPE.DEPOSIT_RECEIPT,
       DOCUMENT_TYPE.RENTAL_CONTRACT,
       DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-      DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+      DOCUMENT_TYPE.CONSUMER_INFORMATION,
     ];
     if (status === 'ACTIVE') base.push(DOCUMENT_TYPE.HANDOVER_PICKUP);
     if (status === 'COMPLETED') {

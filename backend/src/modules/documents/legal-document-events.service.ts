@@ -47,6 +47,8 @@ export interface LegalDocumentEventDto {
   reason: string | null;
   changeSummary: string | null;
   versionLabel: string;
+  documentType: string;
+  legalVariant: string | null;
   checksum: string | null;
   language: string;
   jurisdiction: string | null;
@@ -87,6 +89,8 @@ export class LegalDocumentEventsService {
         changeSummary:
           input.changeSummary?.trim() ?? input.legalDocument.changeSummary ?? null,
         versionLabel: input.legalDocument.versionLabel,
+        documentType: input.legalDocument.documentType,
+        legalVariant: input.legalDocument.legalVariant,
         checksum: input.legalDocument.checksum,
         language: input.legalDocument.language,
         jurisdiction: deriveJurisdictionFromLanguage(input.legalDocument.language),
@@ -137,6 +141,8 @@ export class LegalDocumentEventsService {
       reason: event.reason,
       changeSummary: event.changeSummary,
       versionLabel: event.versionLabel,
+      documentType: event.documentType,
+      legalVariant: event.legalVariant,
       checksum: event.checksum,
       language: event.language,
       jurisdiction: event.jurisdiction,

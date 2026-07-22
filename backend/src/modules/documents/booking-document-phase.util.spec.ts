@@ -81,7 +81,7 @@ describe('computeMissingDocumentSlots', () => {
       DOCUMENT_TYPE.DEPOSIT_RECEIPT,
       DOCUMENT_TYPE.RENTAL_CONTRACT,
       DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-      DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+      DOCUMENT_TYPE.CONSUMER_INFORMATION,
     ]);
   });
 
@@ -94,7 +94,7 @@ describe('computeMissingDocumentSlots', () => {
     });
 
     expect(missing.map((m) => m.documentType)).not.toContain(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-    expect(missing.map((m) => m.documentType)).not.toContain(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
+    expect(missing.map((m) => m.documentType)).not.toContain(DOCUMENT_TYPE.CONSUMER_INFORMATION);
     expect(missing.length).toBe(3);
   });
 

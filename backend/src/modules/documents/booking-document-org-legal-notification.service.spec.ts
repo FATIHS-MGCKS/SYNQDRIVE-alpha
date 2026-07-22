@@ -43,7 +43,7 @@ describe('BookingDocumentOrgLegalNotificationService', () => {
 
     await service.syncFromOrgLegalState(orgId, {
       [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: { id: 'terms-1' },
-      [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: { id: 'withdrawal-1' },
+      [DOCUMENT_TYPE.CONSUMER_INFORMATION]: { id: 'withdrawal-1' },
     });
 
     expect(notificationCore.resolveNotificationByFingerprint).toHaveBeenCalledWith(

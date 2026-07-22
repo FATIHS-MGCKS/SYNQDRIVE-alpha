@@ -13,24 +13,14 @@ import { api, type LegalDocumentDto } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 import { useRentalOrg } from '../RentalContext';
 import { isLegalPdfFile } from '../lib/legal-documents.utils';
-
-const LEGAL_TYPES: { key: string; title: string; hint: string }[] = [
-  {
-    key: 'TERMS_AND_CONDITIONS',
-    title: 'Allgemeine Geschäftsbedingungen (AGB)',
-    hint: 'Wird der Buchung beigefügt und im Mietvertrag referenziert.',
-  },
-  {
-    key: 'WITHDRAWAL_INFORMATION',
-    title: 'Widerrufsbelehrung',
-    hint: 'Pflichtinformation zum Widerrufsrecht, wird der Buchung beigefügt.',
-  },
-  {
-    key: 'PRIVACY_POLICY',
-    title: 'Datenschutzerklärung',
-    hint: 'Wird dem Kunden bei der Buchung zur Verfügung gestellt und kann per E-Mail versendet werden.',
-  },
-];
+import {
+  CONSUMER_INFORMATION_VARIANT,
+  LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE,
+  LEGAL_DOCUMENT_TYPE,
+  LEGAL_DOCUMENT_TYPE_CONFIGS,
+  legalDocumentGroupKey,
+  type ConsumerInformationVariant,
+} from '../lib/legal-document-types';
 
 interface LegalDocumentsTabProps {
   isDarkMode: boolean;
@@ -39,6 +29,7 @@ interface LegalDocumentsTabProps {
 interface UploadState {
   versionLabel: string;
   title: string;
+  legalVariant?: ConsumerInformationVariant;
   busy: boolean;
 }
 
@@ -65,7 +56,12 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
   const [banner, setBanner] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [uploads, setUploads] = useState<Record<string, UploadState>>({
     TERMS_AND_CONDITIONS: { versionLabel: '', title: '', busy: false },
-    WITHDRAWAL_INFORMATION: { versionLabel: '', title: '', busy: false },
+    CONSUMER_INFORMATION: {
+      versionLabel: '',
+      title: '',
+      legalVariant: CONSUMER_INFORMATION_VARIANT.WITHDRAWAL_RIGHT_NOTICE,
+      busy: false,
+    },
     PRIVACY_POLICY: { versionLabel: '', title: '', busy: false },
   });
   const uploadsRef = useRef(uploads);
@@ -92,16 +88,17 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
 
   const byType = useMemo(() => {
     const map: Record<string, LegalDocumentDto[]> = {};
-    for (const t of LEGAL_TYPES) map[t.key] = [];
+    for (const t of LEGAL_DOCUMENT_TYPE_CONFIGS) map[t.key] = [];
     for (const d of docs) {
-      if (!map[d.documentType]) map[d.documentType] = [];
-      map[d.documentType].push(d);
+      const key = legalDocumentGroupKey(d.documentType, d.legacyDocumentType);
+      if (!map[key]) map[key] = [];
+      map[key].push(d);
     }
     return map;
   }, [docs]);
 
   const missingActive = useMemo(
-    () => LEGAL_TYPES.filter((t) => !(byType[t.key] || []).some((d) => d.status === 'ACTIVE')),
+    () => LEGAL_DOCUMENT_TYPE_CONFIGS.filter((t) => !(byType[t.key] || []).some((d) => d.status === 'ACTIVE')),
     [byType],
   );
 
@@ -127,6 +124,8 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
           documentType: type,
           versionLabel: state.versionLabel.trim(),
           title: state.title.trim() || undefined,
+          legalVariant:
+            type === LEGAL_DOCUMENT_TYPE.CONSUMER_INFORMATION ? state.legalVariant : undefined,
           file,
         });
         setUpload(type, { busy: false, versionLabel: '', title: '' });
@@ -211,10 +210,11 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
           Rechtliche Dokumente
         </h2>
         <p className={`text-sm mt-0.5 ${subtle}`}>
-          Laden Sie AGB, Widerrufsbelehrung und Datenschutzerklärung hoch und verwalten Sie Versionen.
-          Die aktive Version wird automatisch an Buchungsdokumente angehängt. SynqDrive generiert diese
-          Rechtstexte nicht — sie werden von Ihrem Unternehmen verwaltet.
+          Laden Sie AGB, Verbraucherinformation und Datenschutzerklärung hoch und verwalten Sie Versionen.
+          Die aktive Version wird automatisch an Buchungsdokumente angehängt. SynqDrive generiert keine
+          rechtsverbindlichen Standardtexte — Inhalte werden von Ihrem Unternehmen verwaltet.
         </p>
+        <p className={`text-xs mt-2 ${subtle}`}>{LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE}</p>
       </div>
 
       {banner && (
@@ -275,7 +275,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
           <Loader2 className="w-4 h-4 animate-spin" /> Lädt…
         </div>
       ) : (
-        LEGAL_TYPES.map((type) => {
+        LEGAL_DOCUMENT_TYPE_CONFIGS.map((type) => {
           const versions = byType[type.key] || [];
           const active = versions.find((v) => v.status === 'ACTIVE');
           const up = uploads[type.key];
@@ -306,6 +306,27 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
               {isOrgAdmin && (
                 <div className={`mt-3 rounded-xl border border-dashed p-3 ${isDarkMode ? 'border-border' : 'border-gray-300'}`}>
                   <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                    {type.key === LEGAL_DOCUMENT_TYPE.CONSUMER_INFORMATION && type.variants && (
+                      <select
+                        value={up?.legalVariant ?? CONSUMER_INFORMATION_VARIANT.WITHDRAWAL_RIGHT_NOTICE}
+                        onChange={(e) =>
+                          setUpload(type.key, {
+                            legalVariant: e.target.value as ConsumerInformationVariant,
+                          })
+                        }
+                        className={`rounded-lg border px-3 py-1.5 text-sm ${
+                          isDarkMode
+                            ? 'bg-muted border-border text-foreground'
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      >
+                        {type.variants.map((v) => (
+                          <option key={v.value} value={v.value}>
+                            {v.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <input
                       type="text"
                       value={up?.versionLabel ?? ''}
@@ -361,6 +382,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                         </div>
                         <div className={`text-[11px] ${subtle} truncate`}>
                           {v.fileName} · {formatBytes(v.sizeBytes)} · {formatDate(v.createdAt)}
+                          {v.legalVariant ? ` · ${v.legalVariant}` : ''}
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">

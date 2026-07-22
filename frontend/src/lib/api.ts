@@ -1645,14 +1645,19 @@ export type BookingPaymentRequestDto = {
 export interface LegalDocumentDto {
   id: string;
   documentType: string;
+  legalVariant?: string | null;
+  /** @deprecated Use documentType + legalVariant */
+  legacyDocumentType?: string | null;
   title: string;
   versionLabel: string;
   language: string;
-  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  status: string;
   fileName: string;
   sizeBytes: number | null;
   activeFrom: string | null;
+  activatedAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // V4.6.95 — `ASSIGNED_USER` / `USER` removed alongside the unused user-score
@@ -3501,7 +3506,14 @@ export const api = {
       openAuthedDocument(`/organizations/${orgId}/legal-documents/${id}/download`),
     upload: async (
       orgId: string,
-      params: { documentType: string; versionLabel: string; title?: string; language?: string; file: File },
+      params: {
+        documentType: string;
+        versionLabel: string;
+        title?: string;
+        language?: string;
+        legalVariant?: string;
+        file: File;
+      },
     ) => {
       const form = new FormData();
       form.append('file', params.file);
@@ -3509,6 +3521,7 @@ export const api = {
       form.append('versionLabel', params.versionLabel);
       if (params.title) form.append('title', params.title);
       if (params.language) form.append('language', params.language);
+      if (params.legalVariant) form.append('legalVariant', params.legalVariant);
       const token = getToken();
       const res = await fetch(`${BASE_URL}/organizations/${orgId}/legal-documents/upload`, {
         method: 'POST',

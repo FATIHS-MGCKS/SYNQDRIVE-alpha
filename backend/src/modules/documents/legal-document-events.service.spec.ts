@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { DOCUMENT_TYPE } from './documents.constants';
 import { LegalDocumentEventsService } from './legal-document-events.service';
 import { LEGAL_DOCUMENT_EVENT_TYPE } from './legal-document-events.constants';
 import { LEGAL_STATUS } from './documents.constants';
@@ -94,6 +95,8 @@ describe('LegalDocumentEventsService', () => {
             changeSummary: null,
             versionLabel: 'v1',
             checksum: null,
+            documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+            legalVariant: null,
             language: 'de',
             jurisdiction: 'DE',
             validFrom: null,

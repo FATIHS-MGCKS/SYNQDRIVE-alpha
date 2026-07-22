@@ -1,7 +1,8 @@
-import { DOCUMENT_TITLE_DE, DOCUMENT_TYPE, LEGAL_DOCUMENT_TYPES, type DocumentType } from './documents.constants';
+import { DOCUMENT_TYPE, LEGAL_DOCUMENT_TYPES, legalDocumentTitleDe, type DocumentType } from './documents.constants';
 import type { BookingDocumentPhase } from './booking-document-phase.util';
 import { DOCUMENT_PHASE_REQUIREMENTS } from './booking-document-phase.util';
 import type { MissingBookingDocumentSlot } from './booking-document-task.types';
+import { hasOrgActiveLegalDocument } from './legal-document-type.compat';
 
 const CHECKLIST_SLOT_PREFIX = 'documentSlot:';
 
@@ -33,9 +34,10 @@ export function computeMissingDocumentSlots(input: {
     const pointerField = bundlePointerField(documentType);
     if (pointerField && input.bundle[pointerField]) continue;
 
-    const isLegal = (LEGAL_DOCUMENT_TYPES as string[]).includes(documentType);
-    const orgLegalMissing = isLegal && !input.orgActiveLegal[documentType];
-    const configurationProblem = orgLegalMissing;
+    const isLegal = (LEGAL_DOCUMENT_TYPES as string[]).includes(documentType) ||
+      documentType === DOCUMENT_TYPE.WITHDRAWAL_INFORMATION;
+    const orgLegalConfigured = isLegal && hasOrgActiveLegalDocument(input.orgActiveLegal, documentType);
+    const configurationProblem = isLegal && !orgLegalConfigured;
 
     if (configurationProblem) {
       continue;
@@ -44,10 +46,10 @@ export function computeMissingDocumentSlots(input: {
     const generationFailed = !!input.generationError && !isLegal;
     missing.push({
       documentType,
-      humanReadableLabel: DOCUMENT_TITLE_DE[documentType] ?? documentType,
+      humanReadableLabel: legalDocumentTitleDe(documentType, null),
       reason: generationFailed ? 'generation_failed' : 'not_generated',
       actionType: generationFailed ? 'RETRY' : isLegal ? 'GENERATE' : 'GENERATE',
-      canGenerateAutomatically: !isLegal || !!input.orgActiveLegal[documentType],
+      canGenerateAutomatically: !isLegal || orgLegalConfigured,
       configurationProblem: false,
     });
   }
@@ -61,6 +63,7 @@ function bundlePointerField(documentType: DocumentType): string | null {
     [DOCUMENT_TYPE.DEPOSIT_RECEIPT]: 'depositReceiptDocumentId',
     [DOCUMENT_TYPE.RENTAL_CONTRACT]: 'rentalContractDocumentId',
     [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: 'termsDocumentId',
+    [DOCUMENT_TYPE.CONSUMER_INFORMATION]: 'withdrawalDocumentId',
     [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: 'withdrawalDocumentId',
     [DOCUMENT_TYPE.HANDOVER_PICKUP]: 'pickupProtocolDocumentId',
     [DOCUMENT_TYPE.HANDOVER_RETURN]: 'returnProtocolDocumentId',
@@ -76,8 +79,11 @@ export function orgMissingLegalTemplateTypes(
   if (!orgActiveLegal[DOCUMENT_TYPE.TERMS_AND_CONDITIONS]) {
     missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
   }
-  if (!orgActiveLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]) {
-    missing.push(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
+  if (
+    !orgActiveLegal[DOCUMENT_TYPE.CONSUMER_INFORMATION] &&
+    !orgActiveLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
+  ) {
+    missing.push(DOCUMENT_TYPE.CONSUMER_INFORMATION);
   }
   return missing;
 }

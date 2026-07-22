@@ -5,11 +5,10 @@ import {
   buildCandidateFromRegistry,
   buildRegistryFingerprint,
 } from '@modules/notifications/registry/notification-event-registry';
-import { DOCUMENT_TITLE_DE, DOCUMENT_TYPE, type DocumentType } from './documents.constants';
+import { DOCUMENT_TYPE, legalDocumentTitleDe, type DocumentType } from './documents.constants';
 
 /**
- * Central org-level hint when legal templates (AGB/Widerruf) are not configured.
- * Avoids duplicating the same configuration problem on every booking task.
+ * Central org-level hint when required legal templates are not configured.
  */
 @Injectable()
 export class BookingDocumentOrgLegalNotificationService {
@@ -46,7 +45,9 @@ export class BookingDocumentOrgLegalNotificationService {
       return;
     }
 
-    const labels = missingTypes.map((t) => DOCUMENT_TITLE_DE[t] ?? t).join(', ');
+    const labels = missingTypes
+      .map((t) => legalDocumentTitleDe(t, null))
+      .join(', ');
     try {
       const candidate = buildCandidateFromRegistry({
         organizationId: orgId,
@@ -80,8 +81,11 @@ export class BookingDocumentOrgLegalNotificationService {
     if (!orgActiveLegal[DOCUMENT_TYPE.TERMS_AND_CONDITIONS]) {
       missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
     }
-    if (!orgActiveLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]) {
-      missing.push(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
+    if (
+      !orgActiveLegal[DOCUMENT_TYPE.CONSUMER_INFORMATION] &&
+      !orgActiveLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]
+    ) {
+      missing.push(DOCUMENT_TYPE.CONSUMER_INFORMATION);
     }
     await this.syncOrgMissingLegalTemplates(orgId, missing);
   }

@@ -95,6 +95,7 @@ export class LegalDocumentsController {
       language?: string;
       changeSummary?: string;
       legalOwnerName?: string;
+      legalVariant?: string;
     },
     @CurrentUser('id') userId: string | undefined,
     @CurrentUser('name') userName: string | undefined,
@@ -115,6 +116,7 @@ export class LegalDocumentsController {
       uploadedByUserId: userId ?? null,
       changeSummary: body.changeSummary ?? null,
       legalOwnerName: body.legalOwnerName ?? null,
+      legalVariant: body.legalVariant ?? null,
       actor: this.actorFromRequest(req, userId, userName),
     });
     return this.legal.toDto(doc);
