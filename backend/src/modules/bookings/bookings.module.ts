@@ -22,6 +22,7 @@ import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.s
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
+import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-gate.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-
     forwardRef(() => InvoicesModule),
     forwardRef(() => RentalHealthModule),
     forwardRef(() => DocumentsModule),
+    BookingPickupGateModule,
     TasksModule,
     CustomersModule,
     CustomerVerificationModule,

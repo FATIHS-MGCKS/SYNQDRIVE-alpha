@@ -1695,6 +1695,14 @@ export class BookingsService {
       );
     }
 
+    if (existing.status === 'CONFIRMED' && nextStatus === 'ACTIVE') {
+      throw new ConflictException({
+        code: 'BOOKING_ACTIVATION_REQUIRES_HANDOVER',
+        message:
+          'Status ACTIVE requires pickup handover via POST /bookings/:id/handover/pickup',
+      });
+    }
+
     const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
     const pricingRelevant =
       (vehicleOrDatesChanged ||
