@@ -47,6 +47,8 @@ export interface LegalDocumentApiResponse {
   uploadedBy: LegalDocumentActorRef | null;
   approvedAt: string | null;
   approvedBy: LegalDocumentActorRef | null;
+  submittedForReviewAt: string | null;
+  submittedForReviewBy: LegalDocumentActorRef | null;
   activatedAt: string | null;
   activatedBy: LegalDocumentActorRef | null;
   changeSummary: string | null;
@@ -141,6 +143,10 @@ export function mapLegalDocumentToApiResponse(
     uploadedBy: resolveActorRef(doc.uploadedByUserId, usersById),
     approvedAt: doc.approvedAt ? doc.approvedAt.toISOString() : null,
     approvedBy: resolveActorRef(doc.approvedByUserId, usersById),
+    submittedForReviewAt: doc.submittedForReviewAt
+      ? doc.submittedForReviewAt.toISOString()
+      : null,
+    submittedForReviewBy: resolveActorRef(doc.submittedForReviewByUserId, usersById),
     activatedAt,
     activatedBy: resolveActorRef(doc.activatedByUserId, usersById),
     changeSummary: doc.changeSummary,
@@ -159,13 +165,22 @@ export function mapLegalDocumentToApiResponse(
 }
 
 export function collectLegalDocumentActorUserIds(
-  docs: Array<Pick<OrganizationLegalDocument, 'uploadedByUserId' | 'approvedByUserId' | 'activatedByUserId'>>,
+  docs: Array<
+    Pick<
+      OrganizationLegalDocument,
+      | 'uploadedByUserId'
+      | 'approvedByUserId'
+      | 'activatedByUserId'
+      | 'submittedForReviewByUserId'
+    >
+  >,
 ): string[] {
   const ids = new Set<string>();
   for (const doc of docs) {
     if (doc.uploadedByUserId) ids.add(doc.uploadedByUserId);
     if (doc.approvedByUserId) ids.add(doc.approvedByUserId);
     if (doc.activatedByUserId) ids.add(doc.activatedByUserId);
+    if (doc.submittedForReviewByUserId) ids.add(doc.submittedForReviewByUserId);
   }
   return [...ids];
 }

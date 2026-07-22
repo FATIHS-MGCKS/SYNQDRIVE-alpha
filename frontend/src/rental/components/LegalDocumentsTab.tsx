@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { FileText, Plus, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   ErrorState,
   PageHeader,
@@ -14,8 +15,11 @@ import { LegalDocumentCategoryCards } from './legal-documents/LegalDocumentCateg
 import { LegalDocumentConfigAlerts } from './legal-documents/LegalDocumentConfigAlerts';
 import { LegalDocumentVersionHistorySection } from './legal-documents/LegalDocumentVersionHistorySection';
 import { LegalDocumentAuditSection } from './legal-documents/LegalDocumentAuditSection';
-import { LegalDocumentsLegacyMutations } from './legal-documents/LegalDocumentsLegacyMutations';
 import { LegalDocumentUploadWizardDialog } from './legal-documents/LegalDocumentUploadWizardDialog';
+import { LegalDocumentLifecycleActionDialog } from './legal-documents/lifecycle/LegalDocumentLifecycleActionDialog';
+import { LEGAL_LIFECYCLE_ACTION_CONFIG } from '../lib/legal-document-lifecycle.constants';
+import type { LegalDocumentLifecycleDialogState } from '../lib/legal-document-lifecycle.types';
+import { formatLifecycleEventLabel } from '../lib/legal-document-lifecycle.utils';
 
 interface LegalDocumentsTabProps {
   /** @deprecated Design-system migration — prop ignored; uses theme tokens */
@@ -30,9 +34,11 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
   const canSubmitReview = canUploadLegal;
 
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [lifecycleOpen, setLifecycleOpen] = useState(false);
+  const [lifecycleState, setLifecycleState] = useState<LegalDocumentLifecycleDialogState | null>(null);
   const historyRef = useRef<HTMLDivElement | null>(null);
 
-  const { docs, summary, events, loading, eventsLoading, error, eventsError, refresh } =
+  const { docs, summary, events, settings, loading, eventsLoading, error, eventsError, refresh } =
     useLegalDocumentsOverview(orgId, { loadEvents: canViewAudit });
 
   const scrollToHistory = (categoryKey: string) => {
@@ -101,7 +107,14 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
             <LegalDocumentVersionHistorySection
               orgId={orgId}
               rows={summary.allVersions}
+              documents={docs}
               loading={loading}
+              permissions={{ canWrite: canUploadLegal, canManage: canPublishLegal }}
+              settings={settings}
+              onOpenAction={(state) => {
+                setLifecycleState(state);
+                setLifecycleOpen(true);
+              }}
             />
           </div>
 
@@ -113,14 +126,6 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
             <p className="text-[12px] text-muted-foreground">Audit-Hinweis: {eventsError}</p>
           ) : null}
 
-          <LegalDocumentsLegacyMutations
-            orgId={orgId}
-            categories={summary.categories}
-            canUpload={canUploadLegal}
-            canPublish={canPublishLegal}
-            onChanged={refresh}
-          />
-
           <LegalDocumentUploadWizardDialog
             open={wizardOpen}
             onOpenChange={setWizardOpen}
@@ -129,6 +134,28 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
             canUpload={canUploadLegal}
             canSubmitReview={canSubmitReview}
             onSuccess={refresh}
+          />
+
+          <LegalDocumentLifecycleActionDialog
+            open={lifecycleOpen}
+            state={lifecycleState}
+            settings={settings}
+            permissions={{ canWrite: canUploadLegal, canManage: canPublishLegal }}
+            onOpenChange={(open) => {
+              setLifecycleOpen(open);
+              if (!open) setLifecycleState(null);
+            }}
+            onSuccess={async ({ document, latestEvent }) => {
+              await refresh();
+              const action = lifecycleState?.action;
+              const label = action ? LEGAL_LIFECYCLE_ACTION_CONFIG[action].confirmLabel : 'Aktion';
+              toast.success(
+                latestEvent
+                  ? `${label} — ${formatLifecycleEventLabel(latestEvent.eventType)}`
+                  : `${label} — Status: ${document.status}`,
+              );
+            }}
+            onConflict={refresh}
           />
         </>
       )}

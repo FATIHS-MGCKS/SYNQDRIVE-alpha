@@ -23,3 +23,17 @@ export class LegalDocumentArchiveDto extends LegalDocumentChangeSummaryDto {
   @IsString()
   statusReason?: string;
 }
+
+export class LegalDocumentActivateDto extends LegalDocumentChangeSummaryDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(10)
+  statusReason!: string;
+}
+
+export class LegalDocumentRequestChangesDto extends LegalDocumentChangeSummaryDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(10)
+  statusReason!: string;
+}

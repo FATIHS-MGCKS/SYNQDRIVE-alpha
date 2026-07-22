@@ -1,4 +1,5 @@
-import { Download } from 'lucide-react';
+import { Download, MoreHorizontal } from 'lucide-react';
+import { useState } from 'react';
 import {
   DataCard,
   DataTable,
@@ -7,18 +8,26 @@ import {
   type DataTableColumn,
 } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
-import { api } from '../../../lib/api';
+import { api, type LegalDocumentDto } from '../../../lib/api';
 import type { LegalDocumentVersionRow } from '../../lib/legal-documents-overview';
 import {
   formatLegalDocumentBytes,
   formatLegalDocumentDate,
   formatLegalDocumentStatus,
 } from '../../lib/legal-documents-overview';
+import type { LegalDocumentLifecycleDialogState } from '../../lib/legal-document-lifecycle.types';
+import type { LegalDocumentLifecyclePermissions, LegalDocumentWorkflowSettings } from '../../lib/legal-document-lifecycle.types';
+import { getLifecycleActionsForDocument } from '../../lib/legal-document-lifecycle.utils';
+import { getStoredUser } from '../../../lib/auth';
 
 interface Props {
   orgId: string;
   rows: LegalDocumentVersionRow[];
+  documents: LegalDocumentDto[];
   loading?: boolean;
+  permissions: LegalDocumentLifecyclePermissions;
+  settings: LegalDocumentWorkflowSettings;
+  onOpenAction: (state: LegalDocumentLifecycleDialogState) => void;
 }
 
 function statusTone(status: string) {
@@ -28,7 +37,18 @@ function statusTone(status: string) {
   return 'info' as const;
 }
 
-export function LegalDocumentVersionHistorySection({ orgId, rows, loading }: Props) {
+export function LegalDocumentVersionHistorySection({
+  orgId,
+  rows,
+  documents,
+  loading,
+  permissions,
+  settings,
+  onOpenAction,
+}: Props) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const currentUserId = getStoredUser()?.id ?? null;
+
   const columns: DataTableColumn<LegalDocumentVersionRow>[] = [
     {
       key: 'category',
@@ -105,7 +125,7 @@ export function LegalDocumentVersionHistorySection({ orgId, rows, loading }: Pro
     <div className="space-y-3">
       <SectionHeader
         title="Versionshistorie"
-        description="Alle hinterlegten Versionen mit Status, Gültigkeit und Verwendung"
+        description="Alle Versionen mit Status, Gültigkeit und Lifecycle-Aktionen"
         as="label"
       />
       <DataCard flush>
@@ -117,17 +137,90 @@ export function LegalDocumentVersionHistorySection({ orgId, rows, loading }: Pro
           card={false}
           empty="Noch keine Versionen hinterlegt"
           getRowKey={(row) => row.id}
-          rowActions={(row) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              title="Herunterladen"
-              onClick={() => void api.legalDocuments.open(orgId, row.id)}
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          )}
+          rowActions={(row) => {
+            const document = documents.find((d) => d.id === row.id);
+            if (!document) {
+              return (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title="Herunterladen"
+                  onClick={() => void api.legalDocuments.open(orgId, row.id)}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              );
+            }
+
+            const actions = getLifecycleActionsForDocument(
+              document,
+              documents,
+              permissions,
+              settings,
+              currentUserId,
+            );
+
+            return (
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title="Herunterladen"
+                  onClick={() => void api.legalDocuments.open(orgId, row.id)}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                {actions.length > 0 ? (
+                  <div className="relative">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid={`legal-version-actions-${row.id}`}
+                      onClick={() => setOpenMenuId((prev) => (prev === row.id ? null : row.id))}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                      Aktionen
+                    </Button>
+                    {openMenuId === row.id ? (
+                      <div className="absolute right-0 z-20 mt-1 min-w-[12rem] rounded-lg border border-border bg-background p-1 shadow-lg">
+                        {actions.map((item) => (
+                          <button
+                            key={item.action}
+                            type="button"
+                            disabled={item.disabled}
+                            title={item.disabledReason}
+                            className="block w-full rounded-md px-3 py-2 text-left text-[12px] text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                            data-testid={`legal-lifecycle-action-${item.action}`}
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              if (item.disabled) return;
+                              onOpenAction({
+                                action: item.action,
+                                document,
+                                activePeer:
+                                  documents.find(
+                                    (d) =>
+                                      d.id !== document.id &&
+                                      d.documentType === document.documentType &&
+                                      d.language === document.language &&
+                                      d.status === 'ACTIVE',
+                                  ) ?? null,
+                              });
+                            }}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }}
         />
       </DataCard>
     </div>

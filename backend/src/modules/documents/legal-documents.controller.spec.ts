@@ -14,9 +14,11 @@ describe('LegalDocumentsController', () => {
   const legalService = {
     listPaginated: jest.fn(),
     getDetail: jest.fn(),
+    getWorkflowSettings: jest.fn(),
     upload: jest.fn(),
     submitForReview: jest.fn(),
     approve: jest.fn(),
+    requestChanges: jest.fn(),
     schedule: jest.fn(),
     updateApplicationScope: jest.fn(),
     activate: jest.fn(),
@@ -66,11 +68,23 @@ describe('LegalDocumentsController', () => {
 
   it('returns enriched detail after lifecycle mutations', async () => {
     legalService.activate.mockResolvedValue({ id: docId });
-    await controller.activate(orgId, docId, userId, userName, req);
+    await controller.activate(
+      orgId,
+      docId,
+      { statusReason: 'Sofortige Aktivierung nach Freigabe' },
+      userId,
+      userName,
+      req,
+    );
     expect(legalService.activate).toHaveBeenCalledWith(
       orgId,
       docId,
-      expect.objectContaining({ userId, displayName: userName, correlationId: 'corr-1' }),
+      expect.objectContaining({
+        userId,
+        displayName: userName,
+        correlationId: 'corr-1',
+        statusReason: 'Sofortige Aktivierung nach Freigabe',
+      }),
     );
     expect(legalService.getDetail).toHaveBeenCalledWith(orgId, docId);
   });
