@@ -1,8 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { MembershipRole } from '@prisma/client';
 import { OrganizationRoleService } from './organization-role.service';
+import { OrganizationRoleVersionService } from './organization-role-version.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { IamAuditService } from './iam-audit.service';
+import { UserAccessAuditService } from './user-access-audit.service';
 import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from './defaults/organization-role.defaults';
 
 describe('OrganizationRoleService', () => {
@@ -19,16 +20,18 @@ describe('OrganizationRoleService', () => {
       create: jest.Mock;
       update: jest.Mock;
     };
+    organizationRoleVersion: { count: jest.Mock };
     organizationMembership: {
       findFirst: jest.Mock;
       update: jest.Mock;
       count: jest.Mock;
     };
-    $transaction: jest.Mock;
   };
-  let iamAudit: {
-    enqueueInTransaction: jest.Mock;
-    processOutboxIds: jest.Mock;
+  let userAudit: { record: jest.Mock };
+  let roleVersionService: {
+    createInitialVersionForRole: jest.Mock;
+    maybeCreateVersionOnRoleUpdate: jest.Mock;
+    assignRoleToMembership: jest.Mock;
   };
   let service: OrganizationRoleService;
 
@@ -36,26 +39,35 @@ describe('OrganizationRoleService', () => {
     prisma = {
       organizationRole: {
         count: jest.fn(),
-        upsert: jest.fn().mockResolvedValue({}),
+        upsert: jest.fn().mockResolvedValue({ id: 'seed-role' }),
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
       },
+      organizationRoleVersion: { count: jest.fn().mockResolvedValue(0) },
       organizationMembership: {
         findFirst: jest.fn(),
         update: jest.fn(),
         count: jest.fn().mockResolvedValue(0),
       },
-      $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma)),
     };
-    iamAudit = {
-      enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
-      processOutboxIds: jest.fn().mockResolvedValue(undefined),
+    userAudit = { record: jest.fn().mockResolvedValue(undefined) };
+    roleVersionService = {
+      createInitialVersionForRole: jest.fn().mockResolvedValue({ id: 'ver-1' }),
+      maybeCreateVersionOnRoleUpdate: jest.fn().mockResolvedValue(null),
+      assignRoleToMembership: jest.fn().mockResolvedValue({
+        assignment: {
+          id: 'assign-1',
+          assignmentMode: 'FOLLOW_LATEST_APPROVED_VERSION',
+        },
+        membership: { organizationRoleId: roleId, role: MembershipRole.SUB_ADMIN },
+      }),
     };
     service = new OrganizationRoleService(
       prisma as unknown as PrismaService,
-      iamAudit as unknown as IamAuditService,
+      userAudit as unknown as UserAccessAuditService,
+      roleVersionService as unknown as OrganizationRoleVersionService,
     );
   });
 
@@ -68,6 +80,7 @@ describe('OrganizationRoleService', () => {
     expect(prisma.organizationRole.upsert).toHaveBeenCalledTimes(
       DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length,
     );
+    expect(roleVersionService.createInitialVersionForRole).toHaveBeenCalled();
   });
 
   it('creates custom role and writes audit', async () => {
@@ -85,6 +98,7 @@ describe('OrganizationRoleService', () => {
       fieldAgentAccessDefault: false,
       stationScopeDefault: null,
       defaultStationIds: null,
+      createdByUserId: actorId,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -100,13 +114,13 @@ describe('OrganizationRoleService', () => {
     );
 
     expect(role.name).toBe('Custom Desk');
-    expect(iamAudit.enqueueInTransaction).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ eventType: 'ROLE_CREATED' }),
+    expect(roleVersionService.createInitialVersionForRole).toHaveBeenCalled();
+    expect(userAudit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ auditAction: 'ROLE_CREATED' }),
     );
   });
 
-  it('assigns role to user membership', async () => {
+  it('assigns role to user membership via versioned assignment', async () => {
     prisma.organizationRole.findFirst.mockResolvedValue({
       id: roleId,
       organizationId: orgId,
@@ -132,22 +146,36 @@ describe('OrganizationRoleService', () => {
       stationIds: null,
       roleLabel: null,
     });
-    prisma.organizationMembership.update.mockResolvedValue({});
 
     await service.assignRoleToUser(orgId, 'user-1', roleId, actorId);
 
-    expect(prisma.organizationMembership.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          organizationRoleId: roleId,
-          role: MembershipRole.SUB_ADMIN,
-        }),
-      }),
+    expect(roleVersionService.assignRoleToMembership).toHaveBeenCalledWith(
+      orgId,
+      'm-1',
+      roleId,
+      actorId,
     );
-    expect(iamAudit.enqueueInTransaction).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ eventType: 'ROLE_ASSIGNED' }),
+    expect(userAudit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ auditAction: 'ROLE_ASSIGNED' }),
     );
+  });
+
+  it('blocks structural updates without preview/apply flow', async () => {
+    prisma.organizationRole.findFirst.mockResolvedValue({
+      id: roleId,
+      organizationId: orgId,
+      isSystemTemplate: false,
+      name: 'Custom',
+    });
+
+    await expect(
+      service.updateRole(
+        orgId,
+        roleId,
+        { permissions: { bookings: { read: true, write: true } } },
+        actorId,
+      ),
+    ).rejects.toThrow(/previewRoleChange/);
   });
 
   it('blocks deleting system template', async () => {

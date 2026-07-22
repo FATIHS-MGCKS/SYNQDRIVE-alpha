@@ -14,11 +14,22 @@ import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { PasswordResetService } from './password-reset.service';
+import {
+  ConfirmPasswordResetDto,
+  RequestPasswordResetDto,
+} from './dto/password-reset.dto';
 import { LoginDto, RefreshTokenDto, LogoutDto } from '@shared/dto/auth.dto';
+import { SwitchOrganizationDto } from './dto/switch-organization.dto';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { resolveLoginMembership } from '@modules/users/policies/refresh-session-binding.policy';
+import { mapMembershipsToOrganizationOptions } from '@modules/users/policies/organization-switch.policy';
+import { AuthSessionContextService } from './auth-session-context.service';
+import { OrganizationSwitchService } from './organization-switch.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
+import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
 
 @Controller('auth')
 export class AuthController {
@@ -29,7 +40,10 @@ export class AuthController {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly passwordResetService: PasswordResetService,
     private readonly audit: AuditService,
+    private readonly sessionContext: AuthSessionContextService,
+    private readonly organizationSwitch: OrganizationSwitchService,
     private readonly iamMetrics: IamMetricsService,
   ) {
     // JWT_SECRET is validated at startup by app.config.ts; reading it here is safe
@@ -42,7 +56,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: LoginDto, @Req() req: any) {
-    const { email, password } = body;
+    const { email, password, organizationId } = body;
     if (!email || !password) {
       this.iamMetrics.recordLoginFailure('missing_credentials');
       throw new UnauthorizedException('Email and password are required');
@@ -54,7 +68,7 @@ export class AuthController {
         memberships: {
           where: { status: 'ACTIVE' },
           include: { organization: true },
-          take: 1,
+          orderBy: { createdAt: 'asc' },
         },
       },
     });
@@ -119,20 +133,66 @@ export class AuthController {
       },
     });
 
-    const membership = user.memberships[0];
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-      platformRole: user.platformRole,
-      membershipRole: membership?.role ?? null,
-      organizationId: membership?.organizationId ?? null,
-      organizationName: membership?.organization?.companyName ?? null,
-      organizationLogoUrl: membership?.organization?.logoUrl ?? null,
-    };
+    const membershipCandidates = user.memberships.map((m) => ({
+      id: m.id,
+      userId: m.userId,
+      organizationId: m.organizationId,
+      role: m.role,
+      status: m.status,
+      membershipVersion: m.membershipVersion,
+      permissions: m.permissions,
+      organizationRoleId: m.organizationRoleId,
+      organization: m.organization,
+    }));
+
+    const membershipResolution = resolveLoginMembership(membershipCandidates, {
+      requestedOrganizationId: organizationId,
+    });
+
+    if (!membershipResolution.ok) {
+      if (membershipResolution.code === 'ORGANIZATION_SELECTION_REQUIRED') {
+        void this.audit.record({
+          ...auditBase,
+          actorUserId: user.id,
+          action: ActivityAction.LOGIN,
+          entity: ActivityEntity.AUTH_EVENT,
+          entityId: user.id,
+          description: `Login credentials verified — organization selection required: ${email}`,
+        });
+        return this.sessionContext.buildOrganizationSelectionPayload(
+          membershipCandidates,
+          user.lastSelectedOrganizationId,
+        );
+      }
+
+      void this.audit.warn({
+        ...auditBase,
+        actorUserId: user.id,
+        action: ActivityAction.AUTH_FAIL,
+        entity: ActivityEntity.AUTH_EVENT,
+        entityId: user.id,
+        description: `Login rejected — ${membershipResolution.code}: ${email}`,
+      });
+      throw new UnauthorizedException(membershipResolution.message);
+    }
+
+    const membership = membershipResolution.membership;
+
+    if (membership?.organizationId && organizationId) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastSelectedOrganizationId: membership.organizationId },
+      });
+    }
 
     const { accessToken, refreshToken, expiresIn } = await this.refreshTokenService.issueTokenPair(
-      user,
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        platformRole: user.platformRole,
+        sessionVersion: user.sessionVersion,
+      },
       membership
         ? {
             role: membership.role,
@@ -140,18 +200,14 @@ export class AuthController {
             organizationName: membership.organization?.companyName ?? null,
             organizationLogoUrl: membership.organization?.logoUrl ?? null,
             permissions: membership.permissions,
+            membershipId: membership.id,
+            membershipVersion: membership.membershipVersion,
+            organizationRoleId: membership.organizationRoleId,
           }
         : null,
       {
         userAgent: (req as any)?.headers?.['user-agent'],
         ipAddress: (req as any)?.ip,
-      },
-      {
-        assuranceLevel: 1,
-        authenticatedAt: new Date().toISOString(),
-        mfaAuthenticatedAt: null,
-        authMethods: ['pwd'],
-        securityVersion: user.securityVersion ?? 0,
       },
     );
 
@@ -172,18 +228,95 @@ export class AuthController {
       refreshToken,
       expiresIn,
       mustChangePassword: user.mustChangePassword,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        platformRole: user.platformRole,
-        membershipRole: membership?.role ?? null,
-        organizationId: membership?.organizationId ?? null,
-        organizationName: membership?.organization?.companyName ?? null,
-        organizationLogoUrl: membership?.organization?.logoUrl ?? null,
-        permissions: (membership?.permissions as Record<string, { read: boolean; write: boolean }>) ?? null,
-      },
+      user: this.sessionContext.buildUserResponse(user, membership),
+      organizations: mapMembershipsToOrganizationOptions(membershipCandidates),
     };
+  }
+
+  /** List active organization memberships for the authenticated user. */
+  @Get('memberships')
+  async memberships(@Req() req: any) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { lastSelectedOrganizationId: true },
+    });
+    const organizations = await this.organizationSwitch.listActiveOrganizations(userId);
+    return {
+      organizations,
+      activeOrganizationId: req.user?.organizationId ?? null,
+      suggestedOrganizationId: user?.lastSelectedOrganizationId ?? null,
+    };
+  }
+
+  /** Explicit organization session switch — mints a new org-bound token family. */
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @Post('switch-organization')
+  @HttpCode(HttpStatus.OK)
+  async switchOrganization(@Body() body: SwitchOrganizationDto, @Req() req: any) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+
+    const result = await this.organizationSwitch.switchOrganization({
+      userId,
+      currentOrganizationId: req.user?.organizationId ?? null,
+      targetOrganizationId: body.organizationId,
+      refreshToken: body.refreshToken,
+      context: {
+        userAgent: req?.headers?.['user-agent'],
+        ipAddress: req?.ip,
+        route: 'POST /auth/switch-organization',
+      },
+    });
+
+    return {
+      token: result.accessToken,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+      user: {
+        id: userId,
+        email: req.user?.email,
+        name: req.user?.name,
+        platformRole: req.user?.platformRole,
+        ...result.user,
+      },
+      organizations: result.organizations,
+    };
+  }
+
+  /** Public self-service password reset request (enumeration-safe). */
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('password-reset/request')
+  @HttpCode(HttpStatus.OK)
+  async requestPasswordReset(@Body() body: RequestPasswordResetDto, @Req() req: any) {
+    return this.passwordResetService.requestSelfServiceReset({
+      email: body.email,
+      context: {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    });
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('password-reset/confirm')
+  @HttpCode(HttpStatus.OK)
+  async confirmPasswordReset(@Body() body: ConfirmPasswordResetDto, @Req() req: any) {
+    return this.passwordResetService.confirmReset({
+      token: body.token,
+      newPassword: body.newPassword,
+      confirmPassword: body.confirmPassword,
+      context: {
+        ipAddress: req?.ip,
+        userAgent: req?.headers?.['user-agent'],
+      },
+    });
   }
 
   /** Exchange a valid refresh token for a new access + refresh token pair (rotation). */
@@ -201,10 +334,24 @@ export class AuthController {
       userAgent: req?.headers?.['user-agent'],
       ipAddress: req?.ip,
     });
+    const decoded = this.decodeAccessToken(result.accessToken);
+    const membership = decoded
+      ? await this.sessionContext.resolveSessionMembership(
+          decoded.id,
+          decoded.organizationId,
+          decoded.membershipId,
+        )
+      : null;
+    const fullUser = decoded
+      ? await this.prisma.user.findUnique({ where: { id: decoded.id } })
+      : null;
+
     void this.audit.record({
       ipAddress: req?.ip,
       userAgent: req?.headers?.['user-agent'],
       route: 'POST /auth/refresh',
+      actorUserId: decoded?.id,
+      actorOrganizationId: decoded?.organizationId ?? undefined,
       action: ActivityAction.REFRESH,
       entity: ActivityEntity.REFRESH_TOKEN,
       description: 'Access token refreshed via rotation',
@@ -214,6 +361,10 @@ export class AuthController {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
       expiresIn: result.expiresIn,
+      user:
+        fullUser && decoded
+          ? this.sessionContext.buildUserResponse(fullUser, membership)
+          : undefined,
     };
   }
 
@@ -261,31 +412,19 @@ export class AuthController {
 
     const fullUser = await this.prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        memberships: {
-          where: { status: 'ACTIVE' },
-          include: { organization: true },
-          take: 1,
-        },
-      },
     });
 
     if (!fullUser) {
       throw new UnauthorizedException('User not found');
     }
 
-    const membership = fullUser.memberships[0];
-    return {
-      id: fullUser.id,
-      email: fullUser.email,
-      name: fullUser.name,
-      platformRole: fullUser.platformRole,
-      membershipRole: membership?.role ?? null,
-      organizationId: membership?.organizationId ?? null,
-      organizationName: membership?.organization?.companyName ?? null,
-      organizationLogoUrl: membership?.organization?.logoUrl ?? null,
-      permissions: (membership?.permissions as Record<string, { read: boolean; write: boolean }>) ?? null,
-    };
+    const membership = await this.sessionContext.resolveSessionMembership(
+      user.id,
+      user.organizationId,
+      user.membershipId,
+    );
+
+    return this.sessionContext.buildUserResponse(fullUser, membership);
   }
 
   /**
@@ -334,5 +473,26 @@ export class AuthController {
     });
 
     return { message: 'Admin created — set a password before use', email: admin.email };
+  }
+
+  private decodeAccessToken(accessToken: string): {
+    id: string;
+    organizationId: string | null;
+    membershipId: string | null;
+  } | null {
+    try {
+      const decoded = jwt.verify(accessToken, this.jwtSecret) as {
+        sub: string;
+        organizationId?: string | null;
+        membershipId?: string | null;
+      };
+      return {
+        id: decoded.sub,
+        organizationId: decoded.organizationId ?? null,
+        membershipId: decoded.membershipId ?? null,
+      };
+    } catch {
+      return null;
+    }
   }
 }

@@ -1,0 +1,25 @@
+capability,supported,evidence,gap,organizationalDependency,severity,findingId
+datenauskunft_access,PARTIAL,Account me + org user detail + activity-log read; no unified subject-access package across orgs/memberships/invites/sessions/logs,No DSAR orchestration service,Process/legal ownership of requests,P1,UR-P6-GDPR-01
+datenexport_portability,MISSING,No IAM data-portability export (JSON/CSV package) with tenant scope for a data subject,Missing export builder + audit of export,Define export schema and delivery channel,P1,UR-P6-GDPR-02
+berichtigung_rectification,PARTIAL,Self profile patch allow-list; org admin can patch global email/name/phone,Org admin global email change multi-org risk (Phase2); no audit completeness,Policy who may correct what,P1,UR-P6-GDPR-03
+loeschung_erasure,PARTIAL_WEAK,Membership REMOVED without deleting User; users.service.delete hard-deletes User; FK Restrict on some domains may block; no anonymize path for User,No safe multi-org erase orchestrator; audit SetNull loses actor link,Legal hold vs erase playbook,P0,UR-P6-GDPR-04
+einschraenkung_restriction,MISSING,No processing-restriction flag on User/Membership for IAM,Cannot mark account restricted while retaining data,Define restriction semantics,P2,UR-P6-GDPR-05
+anonymisierung,MISSING_FOR_IAM,Customer module has piiAnonymizedAt fields but placeholder service; User has no anonymization fields/job,IAM identity cannot be anonymized in-place,Decide anonymize vs delete,P0,UR-P6-GDPR-06
+datenportabilitaet,MISSING,Same as export — no machine-readable subject package,Missing,Format standards organizational,P1,UR-P6-GDPR-02
+aufbewahrungs_ausnahmen,PARTIAL,Document extraction has legal hold; IAM activity_logs/refresh have no legal-hold flag,IAM evidence can be retention-deleted without hold check,Define IAM legal hold,P1,UR-P6-GDPR-07
+legal_hold,PARTIAL_NOT_IAM,document-lifecycle legal hold blocks mutation/deletion for documents only,No IAM ActivityLog/User legal hold,Extend hold model to IAM evidence,P1,UR-P6-GDPR-07
+invite_session_deletion,PARTIAL,Sessions: refresh prune 30d; revoke APIs exist. Invites: no prune job for expired/accepted rows; remove user does not auto-revoke invites,Invite PII/token hashes linger,Retention jobs for invites,P1,UR-P6-GDPR-08
+global_identity_vs_membership_delete,PARTIAL,Q1 YES: removeOrgUser keeps User. Q2 NO safe global orchestration — delete(id) direct. Q3 Restrict FKs (e.g. certain review/audit relations) can block delete,Cross-org consent/notification missing,Multi-tenant erase workflow,P0,UR-P6-GDPR-04
+log_audit_minimization,PARTIAL_WEAK,Intent to scrub via ActivityLogService; AuditService bypass; invite audits embed email in description; IP/UA stored raw,Over-collection in IAM audit path,Logging standard + scrub on write,P0,UR-P6-RET-02
+ip_ua_storage_duration,PARTIAL,Refresh default 30d; activityLogs default never delete (days=0); lastLoginIp unbounded,Likely longer than required if no policy,Set TTLs organizationally then configure ENV,P0,UR-P6-RET-07
+automated_retention_jobs,PARTIAL,DataRetentionScheduler exists; activityLogs opt-in 0; invites not covered; IAM erase not covered,Incomplete IAM coverage,Enable/configure per policy; add invite target,P1,UR-P6-GDPR-09
+tenant_scoped_exports,PARTIAL,Org-scoped activity-log listing exists; not a DSAR export; no cross-entity package,Insufficient for Auskunft,Build tenant+subject export,P1,UR-P6-GDPR-02
+privacy_by_default,PARTIAL_WEAK,Invite plaintext to FE; clipboard secrets; MFA off; long JWT; audit emails,Defaults not privacy-minimizing,Change defaults in remediation,P0,UR-P6-GDPR-10
+q1_remove_membership_without_global_delete,YES,removeOrgUser sets membership REMOVED only,Sessions/invites not cleaned,OK base capability,P0,UR-P6-GDPR-04
+q2_global_delete_orchestration,NO,users.service.delete direct prisma.user.delete — no multi-org check/notify/anonymize,Unsafe/incomplete,Need orchestrator,P0,UR-P6-GDPR-04
+q3_fk_blockers,YES_SOME,Cascades on many IAM child rows; Restrict on some non-IAM relations (e.g. certain grant/audit tables per schema),Delete may fail opaquely,Map blockers in erase design,P1,UR-P6-GDPR-11
+q4_logs_minimized,NO,AuditService unsanitized; Phase4 zero auditAction rows but AUTH/UPDATE contain context,Minimization incomplete,Scrub+outbox,P0,UR-P6-RET-02
+q5_ip_ua_longer_than_needed,LIKELY_YES if activityLogs retention 0,Defaults keep activity IPs forever when master retention enabled but days=0 means no delete,Policy+config gap,Set finite TTL,P0,UR-P6-RET-07
+q6_automated_retention_jobs,PARTIAL,Yes scheduler; IAM incomplete,Invites/User anonymize missing,Extend jobs,P1,UR-P6-GDPR-09
+q7_exports_mandantentrennung,PARTIAL,Org activity log scoped by orgId+OrgScopingGuard; admin global log is platform-wide,No subject package; admin export cross-tenant by design for MASTER_ADMIN,Document admin access; add subject export,P1,UR-P6-GDPR-02
+disclaimer,n/a,This matrix is technical capability only — not legal advice and not a statement of GDPR compliance or certification,n/a,Legal assessment required separately,n/a,UR-P6-DISCLAIMER

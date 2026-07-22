@@ -1,0 +1,152 @@
+{
+  "auditId": "users-roles-production-readiness-2026-07",
+  "phase": 1,
+  "capturedAt": "2026-07-20T23:59:00Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "hostAnonymized": "VPS_001",
+  "notes": [
+    "All counts are aggregates. No user/org/membership/invite/session IDs, emails, IPs, tokens, or hashes are stored.",
+    "Stable aliases for later phases: ORG_001, USER_001, MEMBERSHIP_001, ROLE_001, INVITE_001, SESSION_GROUP_001."
+  ],
+  "process": {
+    "pm2Apps": [
+      { "name": "synqdrive", "status": "online", "execMode": "fork_mode", "nodeMajor": 22 },
+      { "name": "pm2-logrotate", "status": "online", "execMode": "fork_mode" }
+    ],
+    "iamWorkersDedicated": false,
+    "inviteDeliveryQueue": false,
+    "comment": "Single PM2 app hosts API + in-process schedulers/workers. Invite mail is synchronous TransactionalMailService (log fallback), not BullMQ."
+  },
+  "configShape": {
+    "nodeEnv": "production",
+    "jwtExpiresIn": "24h",
+    "jwtSecretSet": true,
+    "enableSeedAdmin": true,
+    "seedAdminTokenSet": true,
+    "dataRetentionEnabled": true,
+    "retentionRefreshTokensDays": "default-or-env (not echoed if unset in scan)",
+    "retentionActivityLogsDays": "default 0 when unset (keep forever)",
+    "smtpHostConfigured": "UNSET_OR_EMPTY_IN_SCAN",
+    "resendConfigured": true,
+    "refreshTokenOrgBinding": false,
+    "mfaUserColumns": []
+  },
+  "securityHeadersSample": {
+    "source": "GET https://app.synqdrive.eu/api/v1/health",
+    "helmetPresent": true,
+    "xFrameOptions": "SAMEORIGIN",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
+    "cspPresent": true,
+    "accessControlAllowCredentials": true,
+    "setCookieAuth": false,
+    "globalRateLimitHeader": 200
+  },
+  "postgresAggregates": {
+    "usersTotal": 2,
+    "usersByStatus": { "ACTIVE": 2 },
+    "usersByPlatformRole": { "MASTER_ADMIN": 1, "USER": 1 },
+    "usersMustChangePassword": 0,
+    "usersWithPasswordHash": 2,
+    "usersNullPassword": 0,
+    "organizationsTotal": 2,
+    "orgsWithActiveMembers": 1,
+    "membershipsTotal": 1,
+    "membershipsByStatus": { "ACTIVE": 1 },
+    "membershipsByRole": { "ORG_ADMIN": 1 },
+    "membershipsWithOrgRoleId": 0,
+    "membershipsWithPermissionsJson": 0,
+    "membershipsWithStationIds": 0,
+    "membershipsFieldAgent": 0,
+    "membershipsMissingRoleLinkActive": 1,
+    "multiOrgActiveUsers": 0,
+    "orgRolesTotal": 10,
+    "orgRolesActive": 10,
+    "orgRolesSystem": 10,
+    "invitesTotal": 0,
+    "invitesPendingUnexpired": 0,
+    "roleTemplateVsMembershipPermMismatchActive": 0,
+    "refreshTokensTotal": 80,
+    "refreshTokensActive": 70,
+    "refreshTokensRevoked": 0,
+    "refreshTokensExpiredUnrevoked": 10,
+    "refreshFamiliesActive": 70,
+    "usersWithMultipleActiveSessions": 2,
+    "activeSessionsPerUserBucket": { "6-20": 1, "21+": 1 },
+    "refreshTokenHasOrganizationIdColumn": false,
+    "activityLogsTotal": 836,
+    "activityAuthActions": { "LOGIN": 129, "AUTH_FAIL": 10 },
+    "activityEntitiesTop": {
+      "AUTH_EVENT": 282,
+      "ORGANIZATION": 263,
+      "VEHICLE": 151,
+      "BOOKING": 61,
+      "CUSTOMER": 34,
+      "USER": 2,
+      "ORGANIZATION_INVITE": 0,
+      "ORGANIZATION_ROLE": 0,
+      "REFRESH_TOKEN": 0
+    },
+    "iamAuditActionRows": 0,
+    "loginLast7d": 10,
+    "authFailLast7d": 0
+  },
+  "redis": {
+    "dbSize": 1242,
+    "sessionOrRefreshKeys": 0,
+    "prefixTop": { "bull": 1236, "dimo": 6 },
+    "bullQueuesObserved": [
+      "battery.v2",
+      "dimo.tire.recalculation",
+      "dimo.dtc.poll",
+      "dimo.brake.recalculation",
+      "dimo.vehicle.sync",
+      "notification.evaluation",
+      "dimo.trip-tracking",
+      "document.extraction",
+      "notification.delivery",
+      "payment.email"
+    ],
+    "iamQueuePresent": false,
+    "comment": "Refresh/session material is PostgreSQL-backed, not Redis."
+  },
+  "preliminaryRuntimeSignals": [
+    {
+      "id": "UR-RT-01",
+      "severity": "P0",
+      "signal": "ENABLE_SEED_ADMIN=true with SEED_ADMIN_TOKEN set in production",
+      "hypothesisLink": "runtime bootstrap surface"
+    },
+    {
+      "id": "UR-RT-02",
+      "severity": "P1",
+      "signal": "70 active refresh families / 0 revoked rows; sessions accumulate; SPA does not call refresh/logout APIs",
+      "hypothesisLink": "H2 H5"
+    },
+    {
+      "id": "UR-RT-03",
+      "severity": "P1",
+      "signal": "JWT_EXPIRES_IN=24h — long-lived access tokens after suspend/role/password change until expiry",
+      "hypothesisLink": "H2"
+    },
+    {
+      "id": "UR-RT-04",
+      "severity": "P1",
+      "signal": "0 ActivityLog rows with metaJson.auditAction — UserAccessAudit path unused or never exercised in this environment",
+      "hypothesisLink": "H8"
+    },
+    {
+      "id": "UR-RT-05",
+      "severity": "P2",
+      "signal": "Active ORG_ADMIN membership has null organizationRoleId and null permissions JSON (role-bypass path only)",
+      "hypothesisLink": "H10"
+    },
+    {
+      "id": "UR-RT-06",
+      "severity": "P1",
+      "signal": "Invite mail not on Resend/OutboundEmail; Redis has no invite queue; SMTP unset",
+      "hypothesisLink": "H6 invite delivery"
+    }
+  ]
+}

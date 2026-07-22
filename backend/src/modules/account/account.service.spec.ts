@@ -9,7 +9,8 @@ import { AccountService } from './account.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
-import { IamAuditService } from '@modules/users/iam-audit.service';
+import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { PasswordPolicyService } from '@shared/auth/password-policy.service';
 
 describe('AccountService', () => {
   const userId = 'user-1';
@@ -76,34 +77,34 @@ describe('AccountService', () => {
       findFirst: jest.fn(),
       count: jest.fn(),
     },
-    refreshToken: {
-      updateMany: jest.fn().mockResolvedValue({ count: 2 }),
-      findMany: jest.fn().mockResolvedValue([
-        { id: 's1', revokedAt: null, expiresAt: new Date(Date.now() + 60_000), replacedBy: null, createdAt: new Date() },
-        { id: 's2', revokedAt: null, expiresAt: new Date(Date.now() + 60_000), replacedBy: null, createdAt: new Date() },
-      ]),
-    },
-    $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma)),
+    $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
+      fn(prisma),
+    ),
   } as unknown as PrismaService;
 
   const audit = { record: jest.fn().mockResolvedValue('log-1') } as unknown as AuditService;
 
   const refreshTokens = {
-    listSessionsForUser: jest.fn().mockResolvedValue([
-      { id: 's1', revokedAt: null, expiresAt: new Date(Date.now() + 60_000), replacedBy: null, createdAt: new Date() },
-      { id: 's2', revokedAt: null, expiresAt: new Date(Date.now() + 60_000), replacedBy: null, createdAt: new Date() },
-    ]),
-    resolveCurrentSessionId: jest.fn().mockReturnValue('s1'),
+    listSessionsForUser: jest.fn().mockResolvedValue([]),
+    resolveCurrentSessionId: jest.fn().mockReturnValue(null),
     revokeOtherSessionsForUser: jest.fn().mockResolvedValue({ revoked: 2, keptSessionId: 's1' }),
     revokeSessionById: jest.fn().mockResolvedValue(true),
   } as unknown as RefreshTokenService;
 
-  const iamAudit = {
-    enqueueInTransaction: jest.fn().mockResolvedValue({ id: 'audit-outbox-1' }),
-    processOutboxIds: jest.fn().mockResolvedValue(undefined),
-  } as unknown as IamAuditService;
+  const sessionPolicy = {
+    enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: ['intent-1'], scopes: [] }),
+    processIntents: jest.fn().mockResolvedValue([]),
+  } as unknown as IamSessionPolicyService;
 
-  const service = new AccountService(prisma, audit, refreshTokens, iamAudit);
+  const passwordPolicy = new PasswordPolicyService();
+
+  const service = new AccountService(
+    prisma,
+    audit,
+    refreshTokens,
+    sessionPolicy,
+    passwordPolicy,
+  );
 
   function mockContext() {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(baseUser);
@@ -284,8 +285,11 @@ describe('AccountService', () => {
     );
 
     expect(result.message).toContain('success');
-    expect(iamAudit.enqueueInTransaction).toHaveBeenCalled();
-    expect(refreshTokens.revokeOtherSessionsForUser).toHaveBeenCalledWith(userId);
+    expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ eventType: 'PASSWORD_CHANGED', userId }),
+    );
+    expect(sessionPolicy.processIntents).toHaveBeenCalled();
   });
 
   it('rejects identical new and current password', async () => {
@@ -306,8 +310,7 @@ describe('AccountService', () => {
   it('revokeOtherSessions only affects own user context', async () => {
     const result = await service.revokeOtherSessions(userId, orgId, 's1', {});
 
-    expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
-    expect(iamAudit.enqueueInTransaction).toHaveBeenCalled();
+    expect(refreshTokens.revokeOtherSessionsForUser).toHaveBeenCalledWith(userId, 's1');
     expect(result.revoked).toBe(2);
   });
 

@@ -1,0 +1,22 @@
+capabilityOrAction,category,currentState,requiredControl,stepUpRequired,mfaRequired,recentAuthRequired,auditRequired,notificationRequired,severity,findingId,recommendation
+mfa_enrollment,capability,NOT_IMPLEMENTED — AccountMe security.twoFactorEnabled/Available/passkeysAvailable hardcoded false,TOTP and/or WebAuthn enrollment UX+API,n/a,target_yes,n/a,yes,yes,P1,UR-P5-MFA-01,Implement MFA foundation before privileged step-up
+totp,capability,NOT_IMPLEMENTED,TOTP secret encrypted at rest + verify login,n/a,target_yes,n/a,yes,optional,P1,UR-P5-MFA-01,Standard second factor
+webauthn_passkeys,capability,NOT_IMPLEMENTED — passkeysAvailable false UI placeholder,WebAuthn credentials per user,n/a,target_optional,n/a,yes,optional,P1,UR-P5-MFA-02,Prefer passkeys for privileged users
+recovery_codes,capability,NOT_IMPLEMENTED,Hashed one-time recovery codes,n/a,with_mfa,n/a,yes_on_use,yes_on_generate,P1,UR-P5-MFA-03,Required with MFA enrollment
+mfa_reset_by_admin,capability,NOT_IMPLEMENTED (no MFA to reset),Admin MFA clear with step-up + notify,YES,YES_admin,YES,CRITICAL,YES_user,P1,UR-P5-MFA-04,Define before MFA ship
+remembered_devices,capability,NOT_IMPLEMENTED,Device binding optional with short TTL,n/a,policy,n/a,yes,no,P2,UR-P5-MFA-05,Avoid long-lived remember for privileged
+step_up_auth_framework,capability,NOT_IMPLEMENTED — no amr/aal/auth_time in JWT,Re-auth challenge producing stepUp token or auth_time claim,YES,policy,YES,yes,no,P0,UR-P5-MFA-06,Prerequisite for all privileged actions below
+recent_authentication,capability,NOT_IMPLEMENTED,Max age e.g. 5–15 min for sensitive ops,YES,policy,YES,yes,no,P0,UR-P5-MFA-06,Gate high-risk mutations
+assign_org_admin_role,privileged_action,JWT + users-roles.manage only,Step-up + MFA if enrolled + justification,YES,YES_if_enrolled_else_block_or_enroll,YES,CRITICAL,YES_target,P0,UR-P5-SU-01,Dual control optional for break-glass orgs
+grant_critical_permissions_users-roles_billing_manage,privileged_action,permission guard only,Step-up + impact preview,YES,YES_if_enrolled,YES,CRITICAL,optional,P0,UR-P5-SU-02,Treat as privileged emergence
+edit_role_template_with_many_assignees,privileged_action,no assignee blast-radius gate (Phase 3),Step-up + member count confirm + propagation plan,YES,recommended,YES,WARN/CRITICAL,YES_affected,P0,UR-P5-SU-03,Block silent template edits
+trigger_password_reset_or_set,privileged_action,direct hash set no step-up,Step-up; prefer token reset not direct set,YES,YES_if_enrolled,YES,CRITICAL,YES_target,P0,UR-P5-SU-04,Align with password target policy
+reset_mfa_for_user,privileged_action,n/a no MFA,Step-up + MFA admin + notify,YES,YES,YES,CRITICAL,YES,P1,UR-P5-SU-05,When MFA exists
+revoke_other_user_sessions,privileged_action,no admin revoke-other-user session API found (self revoke-others only),Step-up + reason,YES,YES_if_enrolled,YES,CRITICAL,YES_target,P1,UR-P5-SU-06,Add admin session kill with step-up
+manually_reveal_invite_link,privileged_action,resend returns plaintext + clipboard no step-up,Step-up; prefer email-only never reveal,YES,YES_if_enrolled,YES,CRITICAL,no,P0,UR-P5-SU-07,Eliminate FE token return
+remove_user_from_org,privileged_action,users-roles.manage; no session revoke,Step-up + deprovision checklist,YES,recommended,YES,CRITICAL,optional,P0,UR-P5-SU-08,Tie to leaver service
+export_audit_or_security_activity,privileged_action,activity-log read via users-roles.read,Step-up for bulk export,YES_for_export,recommended,YES,WARN,no,P1,UR-P5-SU-09,Separate export permission
+dsgvo_export_or_erasure,privileged_action,no dedicated IAM DSGVO erase flow found,Step-up + dual control + legal hold check,YES,YES,YES,CRITICAL,YES_subject,P1,UR-P5-SU-10,Phase 7/8 compliance
+break_glass_usage,privileged_action,ENABLE_SEED_ADMIN runtime; no break-glass role model,Time-boxed break-glass with step-up MFA dual control,YES,YES,YES,CRITICAL,YES_security,P0,UR-P5-SU-11,Disable seed-admin in prod; formal break-glass
+ui_mfa_placeholders,ui,AccountSessionsSection / AccountSecurityCard / UserDetailDrawer show unavailable placeholders,Replace with real enrollment or hide until ready,n/a,n/a,n/a,n/a,n/a,P1,UR-P5-MFA-07,Do not imply MFA exists
+org_user_security_activity_placeholders,ui,twoFactorEnabled null activeSessionCount null in getSecurityActivity,Wire real session+MFA signals,n/a,n/a,n/a,n/a,n/a,P1,UR-P5-MFA-08,Admin visibility of assurance

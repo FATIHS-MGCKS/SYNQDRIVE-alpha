@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  GoneException,
 } from '@nestjs/common';
 import {
   MembershipStatus,
@@ -29,6 +30,8 @@ import { UserAccessAuditAction } from './user-access-audit.service';
 import { IamAuditService } from './iam-audit.service';
 import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
+import { ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE } from './policies/org-membership-admin.policy';
+import { PasswordResetService } from '@modules/auth/password-reset.service';
 
 const ROLE_DISPLAY: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -89,6 +92,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly iamAudit: IamAuditService,
     private readonly lifecycle: IamMembershipLifecycleService,
+    private readonly passwordReset: PasswordResetService,
   ) {}
 
   private assertPasswordStrength(password: string): void {
@@ -697,55 +701,47 @@ export class UsersService {
   async changeOrgUserPassword(
     orgId: string,
     userId: string,
-    password: string,
-    requesterId: string,
-    actor: PermissionActor,
+    _password: string,
+    _requesterId: string,
+    _actor: PermissionActor,
   ) {
     const membership = await this.prisma.organizationMembership.findFirst({
       where: { organizationId: orgId, userId },
     });
     if (!membership) throw new NotFoundException('User not found in organization');
 
-    const isSelf = requesterId === userId;
-    if (!isSelf) {
-      await assertMembershipPermission(
-        this.prisma,
-        actor,
-        orgId,
-        USERS_ROLES_MODULE,
-        'manage',
-      );
-    }
-
-    this.assertPasswordStrength(password);
-    const hash = await bcrypt.hash(password, 10);
-    const outboxIds: string[] = [];
-    await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          passwordHash: hash,
-          mustChangePassword: !isSelf,
-        },
-      });
-
-      if (!isSelf) {
-        const outbox = await this.iamAudit.enqueueInTransaction(tx, {
-          organizationId: orgId,
-          idempotencyKey: `user-password-reset-admin:${orgId}:${userId}:${Date.now()}`,
-          eventType: UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN,
-          actorUserId: actor.id,
-          subjectUserId: userId,
-          membershipId: membership.id,
-          description: `Passwort von Admin für Benutzer ${userId} zurückgesetzt`,
-          level: 'WARN',
-        });
-        outboxIds.push(outbox.id);
-      }
+    throw new GoneException({
+      statusCode: 410,
+      code: 'ORG_ADMIN_DIRECT_PASSWORD_WRITE_DEPRECATED',
+      message: ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE,
+      resetRequestRoute: `POST /organizations/${orgId}/users/${userId}/request-password-reset`,
     });
+  }
 
-    await this.iamAudit.processOutboxIds(outboxIds);
-    return { message: 'Password updated successfully' };
+  async requestOrgUserPasswordReset(
+    orgId: string,
+    userId: string,
+    actor: PermissionActor,
+    options?: { reason?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    await assertMembershipPermission(
+      this.prisma,
+      actor,
+      orgId,
+      USERS_ROLES_MODULE,
+      'manage',
+    );
+
+    return this.passwordReset.requestAdminReset({
+      organizationId: orgId,
+      userId,
+      actorUserId: actor.id,
+      reason: options?.reason,
+      context: {
+        ipAddress: options?.ipAddress,
+        userAgent: options?.userAgent,
+      },
+    });
   }
 
   async removeOrgUser(orgId: string, userId: string, actor?: PermissionActor) {

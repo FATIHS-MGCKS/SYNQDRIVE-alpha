@@ -1,0 +1,2 @@
+inviteAlias,organizationAlias,status,membershipRole,hasOrganizationRoleId,expiredByTime,acceptedWithoutMembership,emailLengthBucket,emailAlreadyLowercase,highRiskRole,possibleResendRotation,acceptedAfterExpiry,notes
+(none),,,,False,False,False,,,False,False,False,Zero organization_user_invites rows in production snapshot

@@ -1,0 +1,24 @@
+check,result,evidence,criticalIamImpact,severity,findingId
+void_userAudit_record_pattern,YES widespread,users.service organization-invite.service organization-role.service all use void this.userAudit.record after mutations,Mutation can succeed while audit returns null,P0,UR-P6-FF-01
+void_audit_record_auth_account,YES,auth.controller login/fail/logout/refresh; account.service password/sessions,Auth security events droppable,P0,UR-P6-FF-01
+audit_service_swallows_errors,YES by design,AuditService.record catch logs error returns null; docs say never throw,Caller cannot detect failure unless checks return,P0,UR-P6-FF-02
+awaited_audit_rare_in_iam,YES void dominant,UserAccessAuditService.record itself awaits AuditService but callers void the promise,Outer void discards failure,P0,UR-P6-FF-01
+mutation_before_audit,YES,Typical pattern: prisma update/transaction completes then void audit (invite accept; removeOrgUser; changeOrgUserPassword),Committed state without evidence row,P0,UR-P6-FF-03
+audit_inside_same_db_transaction,NO,AuditService uses separate prisma.activityLog.create; not passed tx client from domain transactions,No atomicity with IAM mutation,P0,UR-P6-FF-03
+outbox_table,NO,No AuditOutbox / transactional outbox model found in prisma schema for IAM,No reliable delivery,P0,UR-P6-FF-04
+retry_worker,NO,No audit retry/Bull processor for failed ActivityLog writes,Dropped events stay dropped,P0,UR-P6-FF-04
+dead_letter_queue,NO,Only logger.error on failure,Ops cannot replay,P0,UR-P6-FF-04
+failure_visible_to_actor,NO,UI/API success even if audit null,Silent evidence loss,P0,UR-P6-FF-02
+missing_audit_detectable,PARTIAL_WEAK,Phase4: iamAuditActionsAllTime empty despite 89 password UPDATEs — empirical gap; no automated reconcile job,Can detect via offline audit vs mutation correlation only,P1,UR-P6-FF-05
+refresh_reuse_not_audited,YES gap,refresh-token.service logger.warn only on reuse,Security incident without durable audit,P0,UR-P6-AC-06
+master_admin_password_no_audit,YES gap,changePasswordAdmin no userAudit/audit.record,Highest privilege mutation invisible,P0,UR-P6-AC-08
+pii_scrub_bypass,YES,ActivityLogService.log scrubs PII; AuditService.create bypasses scrub — IAM emails in descriptions/metadata possible,Inconsistent minimization,P1,UR-P6-FF-06
+audit_interceptor_void,YES,shared/interceptors/audit.interceptor.ts void this.audit.record,Generic HTTP audits also fire-and-forget,P2,UR-P6-FF-07
+target_architecture_documented,YES audit-only,IAM mutation + Audit Outbox in same DB transaction → immutable audit worker → retry + DLQ — NOT IMPLEMENTED,Remediation blueprint for later prompts,P0,UR-P6-FF-TARGET
+can_org_admin_hide_own_changes,PARTIAL,No UPDATE API on activity_logs; org admin with users-roles.read can READ own org logs; cannot API-delete; MASTER_ADMIN platform prune deletes ALL activity logs; DB superuser can UPDATE/DELETE; no hash-chain,Concealment via prune/retention/DB not via org API update,P1,UR-P6-MP-01
+append_only_enforcement,NO,No DB trigger/RLS/immutability; ActivityLog has no updatedAt but rows deletable via retention/prune,Not append-only,P0,UR-P6-MP-02
+hash_chain_or_worm,NO,No previousHash/contentHash fields,Tamper evidence weak,P0,UR-P6-MP-02
+export_endpoint,PARTIAL,GET org/admin activity-log pagination only — not dedicated auditor export package; export of read not itself audited,Weak evidence package,P1,UR-P6-MP-03
+export_contains_sensitive_data,YES risk,Logs may include email in description/metaJson; IP; UA; before/after permissions; AuditService unsanitized,Export needs redaction policy,P1,UR-P6-MP-04
+pseudonymization_on_read,NO,findByOrganization returns user include without aliasing,Readers see raw identifiers,P1,UR-P6-MP-05
+deleted_user_historical_reference,PARTIAL,ActivityLog.userId onDelete SetNull — actor FK nulls; metaJson.targetUserId may remain; descriptions may keep email,Orphaned evidence inconsistent,P1,UR-P6-MP-06

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'iam-full-integration-production-v49725-2026-07-22',
+    version: '4.9.725',
+    title: 'V4.9.725 — IAM full integration + direct production rollout (Prompts 1–22)',
+    summary: [
+      'Merged foundation stack (Prompts 1–13) with RC stack (Prompts 14–22) on cursor/iam-full-integration-fb6e.',
+      'Unified schema, session policy, effective access, endpoint hardening, observability, and users/roles UI.',
+      'Direct production deploy per explicit operator request — soak gate skipped.',
+    ],
+    reason: 'Complete IAM remediation integration and release to production without staging soak.',
+    previousBehavior:
+      'Prompts 1–13 and 14–22 lived on divergent branches; RC was CONDITIONALLY_READY pending merge.',
+    details:
+      'cursor/iam-full-integration-fb6e → main, cloud-agent-deploy.sh, docs/implementation/users-roles-production-readiness-remediation-2026-07.md',
+    affectsArchitecture: true,
+    module: 'IAM',
+    createdAt: '2026-07-22T13:35:00.000Z',
+  },
+  {
     id: 'iam-production-readiness-rc-v49724-2026-07-22',
     version: '4.9.724',
     title: 'V4.9.724 — IAM production readiness RC observability and final gate (Prompt 22)',
@@ -557,6 +575,203 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'IAM',
     createdAt: '2026-07-21T22:45:00.000Z',
+  },
+  {
+    id: 'iam-endpoint-enforcement-triage-v49715-2026-07-21',
+    version: '4.9.715',
+    title: 'V4.9.715 — IAM endpoint enforcement triage and guard hardening (Prompt 13)',
+    summary: [
+      'Manual triage of 152 P0/P1 static audit candidates with classification taxonomy.',
+      'Hardened confirmed gaps: Chat, WhatsApp, integrations secrets, fines IDOR, document download, fleet writes.',
+      'Webhooks, public auth, and service-level auth paths left unchanged by design.',
+    ],
+    reason: 'Users & Roles remediation Prompt 13 — close confirmed authorization gaps without blanket false-positive fixes.',
+    previousBehavior:
+      'Several org-scoped routes relied on RolesGuard only or lacked OrgScopingGuard; fines findById allowed cross-tenant IDOR.',
+    details:
+      'docs/audits/iam-endpoint-enforcement-triage-2026-07.md, architecture/IAM_ENDPOINT_ENFORCEMENT_TRIAGE_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-22T01:30:00.000Z',
+  },
+  {
+    id: 'iam-role-assignment-drift-reconciliation-v49714-2026-07-21',
+    version: '4.9.714',
+    title: 'V4.9.714 — IAM role assignment drift reconciliation (Prompt 12)',
+    summary: [
+      'Read-only drift classifier with evidence packages for legacy membership permission snapshots.',
+      'Classifications: exact match, intentional override, stale snapshot, privileged drift, unknown source, etc.',
+      'Guarded apply: evidence hash, git commit, backup confirmation, operator, reason, batch limit, idempotency.',
+    ],
+    reason: 'Users & Roles remediation Prompt 12 — safe migration into versioned role assignments without guessing permissions.',
+    previousBehavior:
+      'Legacy MIGRATION_LEGACY_SNAPSHOT assignments had no classified drift path or controlled reconciliation apply.',
+    details:
+      'scripts/audits/audit-effective-access.ts, backend/src/modules/users/role-assignment-drift-reconciliation.service.ts, architecture/IAM_ROLE_ASSIGNMENT_DRIFT_RECONCILIATION_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-22T01:00:00.000Z',
+  },
+  {
+    id: 'iam-role-change-impact-v49713-2026-07-21',
+    version: '4.9.713',
+    title: 'V4.9.713 — IAM role change impact preview and apply (Prompt 11)',
+    summary: [
+      'POST preview-change / apply-change with impact analysis, preview hash, version check, idempotency.',
+      'Structural PATCH blocked; new RoleVersion on apply; FOLLOW_LATEST propagates with session invalidation.',
+      'Effective last-admin protection via privileged capabilities; PINNED assignments unchanged.',
+    ],
+    reason: 'Users & Roles remediation Prompt 11 — no silent role propagation.',
+    previousBehavior: 'PATCH /roles/:id overwrote template without preview, versioning, or session handling.',
+    details:
+      'backend/src/modules/users/organization-role-change.service.ts, architecture/IAM_ROLE_CHANGE_IMPACT_PREVIEW_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-22T00:15:00.000Z',
+  },
+  {
+    id: 'iam-versioned-role-assignments-v49712-2026-07-21',
+    version: '4.9.712',
+    title: 'V4.9.712 — IAM versioned organization role assignments (Prompt 10)',
+    summary: [
+      'OrganizationRoleVersion, OrganizationRoleAssignment, MembershipPermissionOverride models.',
+      'Assignment modes: FOLLOW_LATEST_APPROVED_VERSION, PINNED_VERSION, MIGRATION_LEGACY_SNAPSHOT.',
+      'Explicit ALLOW/DENY overrides; legacy membership JSON preserved; migration backfill.',
+    ],
+    reason: 'Users & Roles remediation Prompt 10 — traceable role history and separated assignment from template.',
+    previousBehavior:
+      'Role permissions copied once to membership JSON with no version history or explicit overrides.',
+    details:
+      'backend/src/modules/users/organization-role-version.service.ts, architecture/IAM_VERSIONED_ROLE_ASSIGNMENTS_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T23:45:00.000Z',
+  },
+  {
+    id: 'iam-effective-access-engine-v49711-2026-07-21',
+    version: '4.9.711',
+    title: 'V4.9.711 — IAM canonical EffectiveAccessEngine (Prompt 9)',
+    summary: [
+      'Single server-side EffectiveAccessEngine for module permissions, station scope, and privileged capabilities.',
+      'PermissionsGuard, assertMembershipPermission, StationAccessService, and permissionPreview use the same engine.',
+      'Default deny; central MASTER_ADMIN / ORG_ADMIN bypass; decision reasons and version snapshots.',
+    ],
+    reason: 'Users & Roles remediation Prompt 9 — one effective-access truth for guards, APIs, and UI preview.',
+    previousBehavior:
+      'PermissionsGuard, assertMembershipPermission, StationAccessService, and frontend each evaluated access independently.',
+    details:
+      'backend/src/modules/users/policies/effective-access-engine.ts, backend/src/shared/auth/effective-access-loader.service.ts, architecture/IAM_EFFECTIVE_ACCESS_ENGINE_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T23:15:00.000Z',
+  },
+  {
+    id: 'iam-org-session-switching-v49710-2026-07-21',
+    version: '4.9.710',
+    title: 'V4.9.710 — IAM explicit organization session switching (Prompt 8)',
+    summary: [
+      'POST /auth/switch-organization mints new org-bound token family; revokes current refresh token.',
+      'Multi-org login returns organization picker without tokens until user confirms organizationId.',
+      'Frontend OrganizationSwitcher in TopBar; /auth/me uses JWT-bound membership.',
+    ],
+    reason: 'Users & Roles remediation Prompt 8 — org changes only via explicit user action.',
+    previousBehavior:
+      'Multi-org login could fall back to lastAuthOrganizationId; /auth/me used take:1 membership; no switch endpoint.',
+    details:
+      'backend/src/modules/auth/organization-switch.service.ts, architecture/IAM_ORG_SESSION_SWITCHING_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:45:00.000Z',
+  },
+  {
+    id: 'iam-org-bound-refresh-sessions-v49709-2026-07-21',
+    version: '4.9.709',
+    title: 'V4.9.709 — IAM org-bound refresh sessions (Prompt 7)',
+    summary: [
+      'Refresh tokens bound to organizationId + membershipId with version snapshots (session, membership, role, permission).',
+      'Login resolves org deterministically; multi-org requires organizationId or lastAuthOrganizationId.',
+      'LEGACY_UNSCOPED tokens have controlled grace migration; refresh cannot switch organizations.',
+    ],
+    reason: 'Users & Roles remediation Prompt 7 — multi-org session isolation and refresh integrity.',
+    previousBehavior:
+      'Refresh rotate used take:1 on active memberships — could switch organization without explicit org selection.',
+    details:
+      'backend/src/modules/auth/refresh-token.service.ts, policies/refresh-session-binding.policy.ts, architecture/IAM_ORG_BOUND_REFRESH_SESSIONS_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:30:00.000Z',
+  },
+  {
+    id: 'iam-password-reset-self-service-v49708-2026-07-21',
+    version: '4.9.708',
+    title: 'V4.9.708 — IAM secure password self-service reset (Prompt 6)',
+    summary: [
+      'Org admin password reset: neutral API only — token emailed to verified global address, never returned in API.',
+      'PasswordResetService with hash-only tokens, rate limits, central PasswordPolicyService.',
+      'Confirm flow revokes all sessions via IamSessionPolicyService; public /auth/password-reset/* endpoints.',
+    ],
+    reason: 'Users & Roles remediation Prompt 6 — admin never sets or knows user passwords.',
+    previousBehavior:
+      'Org admin change-password endpoint accepted plaintext passwords; reset request was audit-only stub without token/email flow.',
+    details:
+      'backend/src/modules/auth/password-reset.service.ts, architecture/IAM_PASSWORD_RESET_SELF_SERVICE_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:05:00.000Z',
+  },
+  {
+    id: 'iam-session-invalidation-policy-v49707-2026-07-21',
+    version: '4.9.707',
+    title: 'V4.9.707 — IAM central session invalidation policy (Prompt 5)',
+    summary: [
+      'IamSessionPolicyService with deterministic scopes and transactional revocation-intent outbox.',
+      'sessionVersion / membershipVersion on User + Membership; refresh tokens org-bound for multi-org revocation.',
+      'Wired into membership suspend/remove, permission/role changes, password change, refresh-token reuse.',
+    ],
+    reason: 'Users & Roles remediation Prompt 5 — no scattered ad-hoc session revocations.',
+    previousBehavior:
+      'Session revocation was ad-hoc (optional revokeOtherSessions on password change only); membership IAM changes did not revoke tokens.',
+    details:
+      'backend/src/modules/auth/iam-session-policy.service.ts, policies/iam-session-invalidation.policy.ts, architecture/IAM_SESSION_INVALIDATION_POLICY_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T22:00:00.000Z',
+  },
+  {
+    id: 'iam-membership-identity-isolation-v49706-2026-07-21',
+    version: '4.9.706',
+    title: 'V4.9.706 — IAM: org membership admin isolated from global identity (Prompt 4)',
+    summary: [
+      'Org admin PATCH updates membership only; global email/profile/status rejected with explicit 400.',
+      'Suspend/remove sets OrganizationMembership.status (org-scoped); User.status and other orgs unchanged.',
+      'POST .../change-password deprecated (410); new POST .../request-password-reset audit contract (no passwordHash write).',
+    ],
+    reason: 'Users & Roles remediation Prompt 4 — prevent org admins from mutating global identity of other users.',
+    previousBehavior:
+      'Org admins could set passwordHash, email, and global User.status via org-scoped user endpoints.',
+    details:
+      'backend/src/modules/users/users.service.ts, policies/org-membership-admin.policy.ts, architecture/IAM_MEMBERSHIP_IDENTITY_ISOLATION_2026-07-21.md',
+    affectsArchitecture: true,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T21:45:00.000Z',
+  },
+  {
+    id: 'iam-security-regression-harness-v49705-2026-07-21',
+    version: '4.9.705',
+    title: 'V4.9.705 — IAM security regression harness (Users & Roles remediation Prompt 2)',
+    summary: [
+      'Added IAM security regression tests (scenarios A–K) documenting confirmed P0 gaps before remediation.',
+      'Pure policy modules for target session invalidation, effective access, and global identity boundaries (test-only, not wired to runtime).',
+      'npm script `test:iam:security` — characterization tests green; 12 TARGET RED tests fail until Prompts 3–13 land.',
+    ],
+    reason: 'Users & Roles production-readiness remediation Prompt 2 — reproducible security test net before fixes.',
+    previousBehavior:
+      'IAM risks documented in audit only; no dedicated regression suite for multi-org sessions, invite secrets, role drift, or audit outbox.',
+    details:
+      'backend/src/modules/users/iam-security-regression*.ts, policies/iam-*.policy.ts, docs/implementation/users-roles-production-readiness-remediation-2026-07.md',
+    affectsArchitecture: false,
+    module: 'Users & Roles',
+    createdAt: '2026-07-21T21:35:00.000Z',
   },
   {
     id: 'fleet-connectivity-production-rollout-v49704-2026-07-20',

@@ -1,5 +1,14 @@
 const TOKEN_KEY = 'synqdrive_token';
+const REFRESH_TOKEN_KEY = 'synqdrive_refresh_token';
 const USER_KEY = 'synqdrive_user';
+
+export interface AuthOrganizationOption {
+  organizationId: string;
+  organizationName: string | null;
+  organizationLogoUrl: string | null;
+  membershipId: string;
+  role: string;
+}
 
 export interface AuthUser {
   id: string;
@@ -11,6 +20,7 @@ export interface AuthUser {
   organizationId: string | null;
   organizationName: string | null;
   organizationLogoUrl?: string | null;
+  membershipId?: string | null;
   permissions: Record<string, { read: boolean; write: boolean; manage?: boolean }> | null;
 }
 
@@ -28,9 +38,16 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
-export function setAuth(token: string, user: AuthUser): void {
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setAuth(token: string, user: AuthUser, refreshToken?: string): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
 }
 
 /**
@@ -48,6 +65,7 @@ export function patchStoredUser(patch: Partial<AuthUser>): AuthUser | null {
 
 export function clearAuth(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
 

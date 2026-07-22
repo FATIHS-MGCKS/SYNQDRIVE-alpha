@@ -1,5 +1,9 @@
 import { ForbiddenException } from '@nestjs/common';
-import { MembershipRole } from '@prisma/client';
+import { MembershipRole, MembershipStatus } from '@prisma/client';
+import {
+  computeEffectiveAccess,
+  isModuleAccessAllowed,
+} from '@modules/users/policies/effective-access-engine';
 import {
   PERMISSION_MODULE_KEYS,
   type PermissionModuleKey,
@@ -50,21 +54,21 @@ export function evaluateModulePermission(
   permissions: MembershipPermissionsMap | null,
   module: string,
   level: PermissionLevel,
+  options: {
+    membershipRole?: MembershipRole;
+    platformRole?: string | null;
+    membershipStatus?: MembershipStatus;
+  } = {},
 ): boolean {
-  if (!permissions || !isKnownPermissionModule(module)) return false;
-  const flags = permissions[module];
-  if (!flags) return false;
-
-  switch (level) {
-    case 'read':
-      return flags.read === true || flags.write === true || flags.manage === true;
-    case 'write':
-      return flags.write === true || flags.manage === true;
-    case 'manage':
-      return flags.manage === true;
-    default:
-      return false;
-  }
+  const result = computeEffectiveAccess({
+    platformRole: options.platformRole,
+    membership: {
+      role: options.membershipRole ?? MembershipRole.WORKER,
+      status: options.membershipStatus ?? MembershipStatus.ACTIVE,
+      permissions,
+    },
+  });
+  return isModuleAccessAllowed(result, module, level);
 }
 
 export interface PermissionActor {
@@ -120,8 +124,24 @@ export async function assertMembershipPermission(
   prisma: {
     organizationMembership: {
       findFirst: (args: unknown) => Promise<{
+        id: string;
+        organizationId: string;
         role: MembershipRole;
+        status: MembershipStatus;
         permissions: unknown;
+        stationScope: string | null;
+        stationIds: unknown;
+        fieldAgentAccess: boolean;
+        membershipVersion: number;
+        organizationRoleId: string | null;
+        organizationRole?: {
+          id: string;
+          permissions: unknown;
+          membershipRole: MembershipRole;
+          stationScopeDefault: string | null;
+          defaultStationIds: unknown;
+          fieldAgentAccessDefault: boolean;
+        } | null;
       } | null>;
     };
   },
@@ -142,17 +162,63 @@ export async function assertMembershipPermission(
       organizationId: orgId,
       status: 'ACTIVE',
     },
-    select: { role: true, permissions: true },
+    select: {
+      id: true,
+      organizationId: true,
+      role: true,
+      status: true,
+      permissions: true,
+      stationScope: true,
+      stationIds: true,
+      fieldAgentAccess: true,
+      membershipVersion: true,
+      organizationRoleId: true,
+      organizationRole: {
+        select: {
+          id: true,
+          permissions: true,
+          membershipRole: true,
+          stationScopeDefault: true,
+          defaultStationIds: true,
+          fieldAgentAccessDefault: true,
+        },
+      },
+    },
   });
 
   if (!membership) {
     throw new ForbiddenException('You do not have access to this organization');
   }
 
-  if (membership.role === MembershipRole.ORG_ADMIN) return;
+  const access = computeEffectiveAccess({
+    platformRole: actor.platformRole,
+    membership: {
+      id: membership.id,
+      organizationId: membership.organizationId,
+      role: membership.role,
+      status: membership.status ?? MembershipStatus.ACTIVE,
+      permissions: membership.permissions,
+      stationScope: membership.stationScope,
+      stationIds: membership.stationIds,
+      fieldAgentAccess: membership.fieldAgentAccess,
+      membershipVersion: membership.membershipVersion,
+      organizationRoleId: membership.organizationRoleId,
+    },
+    organizationRole: membership.organizationRole
+      ? {
+          id: membership.organizationRole.id,
+          permissions: membership.organizationRole.permissions,
+          membershipRole: membership.organizationRole.membershipRole,
+          stationScopeDefault: membership.organizationRole.stationScopeDefault,
+          defaultStationIds: membership.organizationRole.defaultStationIds,
+          fieldAgentAccessDefault:
+            membership.organizationRole.fieldAgentAccessDefault,
+        }
+      : null,
+    resourceContext: { organizationId: orgId },
+  });
 
-  const normalized = normalizeMembershipPermissions(membership.permissions);
-  if (!evaluateModulePermission(normalized, module, level)) {
+  if (!isModuleAccessAllowed(access, module, level)) {
     throw new ForbiddenException(`Missing permission: ${module}.${level}`);
   }
 }

@@ -1,0 +1,30 @@
+{
+  "totalControllersScanned": 94,
+  "totalHttpHandlersScanned": 935,
+  "matrixRows": 525,
+  "riskCounts": {
+    "OK": 373,
+    "P0": 151,
+    "P1": 1
+  },
+  "orgWriteWithoutPermissionsGuard": 122,
+  "orgIdWriteMissingOrgScopingNonAdmin": 29,
+  "gapPermByDomain": {
+    "bookings": 17,
+    "customers": 9,
+    "documents": 4,
+    "fines_tariffs": 2,
+    "export_import": 1,
+    "payments": 1,
+    "integrations": 1,
+    "organizations_other": 34,
+    "organizations_profile": 2,
+    "billing_subscription": 12,
+    "other": 10,
+    "vehicles_fleet": 3,
+    "support": 6,
+    "workflows_tasks": 20
+  },
+  "usersRolesEndpoints": 20,
+  "usersRolesWithOrgAndPermGuard": 13
+}

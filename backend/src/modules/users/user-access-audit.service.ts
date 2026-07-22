@@ -15,6 +15,8 @@ export const UserAccessAuditAction = {
   USER_PASSWORD_RESET_BY_ADMIN: 'USER_PASSWORD_RESET_BY_ADMIN',
   USER_PASSWORD_RESET_REQUESTED: 'USER_PASSWORD_RESET_REQUESTED',
   USER_PASSWORD_RESET_COMPLETED: 'USER_PASSWORD_RESET_COMPLETED',
+  SESSION_INVALIDATION_EXECUTED: 'SESSION_INVALIDATION_EXECUTED',
+  ORGANIZATION_SESSION_SWITCHED: 'ORGANIZATION_SESSION_SWITCHED',
   USER_INVITED: 'USER_INVITED',
   USER_INVITE_RESENT: 'USER_INVITE_RESENT',
   USER_INVITE_ROTATED: 'USER_INVITE_ROTATED',
@@ -24,6 +26,9 @@ export const UserAccessAuditAction = {
   ROLE_UPDATED: 'ROLE_UPDATED',
   ROLE_DELETED: 'ROLE_DELETED',
   ROLE_ASSIGNED: 'ROLE_ASSIGNED',
+  ROLE_CHANGE_PREVIEWED: 'ROLE_CHANGE_PREVIEWED',
+  ROLE_CHANGE_APPLIED: 'ROLE_CHANGE_APPLIED',
+  ROLE_ASSIGNMENT_DRIFT_RECONCILED: 'ROLE_ASSIGNMENT_DRIFT_RECONCILED',
   SESSION_REVOKED: 'SESSION_REVOKED',
   SESSIONS_REVOKED_OTHERS: 'SESSIONS_REVOKED_OTHERS',
   MFA_CHANGED: 'MFA_CHANGED',
@@ -51,7 +56,7 @@ export type UserAccessAuditActionCode =
   (typeof UserAccessAuditAction)[keyof typeof UserAccessAuditAction];
 
 export interface UserAccessAuditInput {
-  organizationId: string;
+  organizationId?: string;
   actorUserId?: string;
   auditAction: UserAccessAuditActionCode;
   targetUserId?: string;
@@ -120,7 +125,8 @@ export class UserAccessAuditService {
     }
     if (
       auditAction === UserAccessAuditAction.BREAK_GLASS_ACTIVATED ||
-      auditAction === UserAccessAuditAction.ORGANIZATION_SWITCHED
+      auditAction === UserAccessAuditAction.ORGANIZATION_SWITCHED ||
+      auditAction === UserAccessAuditAction.ORGANIZATION_SESSION_SWITCHED
     ) {
       return ActivityEntity.AUTH_EVENT;
     }

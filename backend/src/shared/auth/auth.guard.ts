@@ -1,6 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
-import { sessionClaimsFromJwt } from './auth-session-claims.types';
 
 /**
  * Exact paths (not prefixes) that require no authentication.
@@ -11,6 +10,8 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/auth/login',
   '/api/v1/auth/refresh',
   '/api/v1/auth/logout',
+  '/api/v1/auth/password-reset/request',
+  '/api/v1/auth/password-reset/confirm',
   // Seed-admin bootstrap: still token-gated via SEED_ADMIN_TOKEN + ENABLE_SEED_ADMIN in controller.
   '/api/v1/auth/seed-admin',
   '/api/v1/invites/validate',
@@ -97,8 +98,9 @@ export class AuthGuard implements CanActivate {
         platformPermissions: decoded.platformPermissions ?? [],
         membershipRole: decoded.membershipRole,
         organizationId: decoded.organizationId,
-        sessionClaims: sessionClaimsFromJwt(decoded as Record<string, unknown>),
-        securityVersion: decoded.securityVersion ?? 0,
+        membershipId: decoded.membershipId ?? null,
+        sessionVersion: decoded.sessionVersion ?? 0,
+        membershipVersion: decoded.membershipVersion ?? null,
       };
       return true;
     } catch {

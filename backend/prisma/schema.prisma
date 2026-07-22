@@ -1645,6 +1645,11 @@ model Organization {
   bookingPriceLineItems                  BookingPriceLineItem[]
   pricingQuotes                          PricingQuote[]
   organizationRoles                      OrganizationRole[]
+  organizationRoleVersions               OrganizationRoleVersion[]
+  organizationRoleAssignments            OrganizationRoleAssignment[]
+  membershipPermissionOverrides          MembershipPermissionOverride[]
+  organizationRoleChangeApplications     OrganizationRoleChangeApplication[]
+  organizationRoleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
   organizationUserInvites                OrganizationUserInvite[]
   inviteEmailOutbox                      InviteEmailOutbox[]
   iamAuditOutbox                         IamAuditOutbox[]
@@ -1677,6 +1682,7 @@ model Organization {
   hvCapacityObservations                 HvCapacityObservation[]
   batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
   batteryRetentionAggregates             BatteryRetentionAggregate[]
+  refreshTokens                          RefreshToken[]
 
   @@index([status])
   @@map("organizations")
@@ -1705,15 +1711,17 @@ model User {
   dateFormat         String?          @default("DD.MM.YYYY") @map("date_format")
   mustChangePassword Boolean          @default(false) @map("must_change_password")
   securityVersion    Int              @default(0) @map("security_version")
+  sessionVersion           Int              @default(0) @map("session_version")
+  lastSelectedOrganizationId String?          @map("last_selected_organization_id")
   lastLoginAt        DateTime?        @map("last_login_at")
   lastLoginIp        String?          @map("last_login_ip")
   lastLoginDevice    String?          @map("last_login_device")
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
+  refreshTokens                       RefreshToken[]
   memberships                         OrganizationMembership[]
   activityLogs                        ActivityLog[]
-  refreshTokens                       RefreshToken[]
   mfaFactors                          UserMfaFactor[]
   mfaRecoveryCodes                    UserMfaRecoveryCode[]
   mfaStepUpGrants                     UserMfaStepUpGrant[]
@@ -1725,12 +1733,18 @@ model User {
   dsarExportsRequested                IamDsarExportLog[]                      @relation("DsarRequestedBy")
   iamLegalHoldsPlaced                 IamLegalHold[]                          @relation("IamLegalHoldPlacedBy")
   iamRetentionPolicyApprovals         IamRetentionPolicyOverride[]            @relation("IamRetentionPolicyApprovedBy")
+  iamSessionRevocationIntents         IamSessionRevocationIntent[]
+  passwordResetTokens                 PasswordResetToken[]
   accountPreferences                  UserAccountPreference[]
   notificationPreferences             UserNotificationPreference[]
   invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
   invitesAccepted                     OrganizationUserInvite[]                @relation("InvitesAccepted")
   inviteEmailOutboxSent               InviteEmailOutbox[]                     @relation("InviteEmailOutboxSentBy")
   organizationRolesCreated            OrganizationRole[]                      @relation("RolesCreated")
+  organizationRoleVersionsCreated     OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
+  organizationRoleAssignmentsCreated  OrganizationRoleAssignment[]          @relation("RoleAssignmentsCreated")
+  membershipPermissionOverridesCreated MembershipPermissionOverride[]       @relation("PermissionOverridesCreated")
+  organizationRoleChangeApplications   OrganizationRoleChangeApplication[] @relation("RoleChangeApplications")
   billingPriceVersionsCreated         BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
   billingPriceVersionsPublished       BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
   billingSubscriptionsCreated         BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
@@ -1763,22 +1777,49 @@ model User {
 // REFRESH TOKENS
 // ------------------------------------------------
 
-model RefreshToken {
-  id         String    @id @default(uuid())
-  userId     String    @map("user_id")
-  tokenHash  String    @unique @map("token_hash") // bcrypt hash of the actual token
-  family     String    @map("family") // rotation family — revoke all on reuse detection
-  expiresAt  DateTime  @map("expires_at")
-  revokedAt  DateTime? @map("revoked_at")
-  replacedBy String?   @map("replaced_by") // id of the next token in chain
-  userAgent  String?   @map("user_agent")
-  ipAddress  String?   @map("ip_address")
-  createdAt  DateTime  @default(now()) @map("created_at")
+enum RefreshTokenScope {
+  ORG_MEMBERSHIP_BOUND
+  LEGACY_UNSCOPED
+}
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum SessionAssuranceLevel {
+  PASSWORD
+  MFA
+}
+
+model RefreshToken {
+  id                String                 @id @default(uuid())
+  userId            String                 @map("user_id")
+  tokenHash         String                 @unique @map("token_hash") // bcrypt hash of the actual token
+  family            String                 @map("family") // rotation family — revoke all on reuse detection
+  scope             RefreshTokenScope      @default(LEGACY_UNSCOPED) @map("scope")
+  organizationId    String?                @map("organization_id")
+  membershipId      String?                @map("membership_id")
+  sessionVersion    Int?                   @map("session_version")
+  membershipVersion Int?                   @map("membership_version")
+  permissionVersion Int?                   @map("permission_version")
+  roleVersion       Int?                   @map("role_version")
+  assuranceLevel    SessionAssuranceLevel? @map("assurance_level")
+  authenticatedAt   DateTime?              @map("authenticated_at")
+  lastUsedAt        DateTime?              @map("last_used_at")
+  privilegedSession Boolean                @default(false) @map("privileged_session")
+  expiresAt         DateTime               @map("expires_at")
+  revokedAt         DateTime?              @map("revoked_at")
+  revocationReason  String?                @map("revocation_reason")
+  replacedBy        String?                @map("replaced_by") // id of the next token in chain
+  userAgent         String?                @map("user_agent")
+  ipAddress         String?                @map("ip_address")
+  createdAt         DateTime               @default(now()) @map("created_at")
+
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  membership   OrganizationMembership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([family])
+  @@index([userId, organizationId])
+  @@index([membershipId])
+  @@index([scope])
   @@map("refresh_tokens")
 }
 
@@ -1911,6 +1952,10 @@ model OrganizationMembership {
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   organizationRole  OrganizationRole?  @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
   accessReviewItems AccessReviewItem[]
+  refreshTokens    RefreshToken[]
+  roleAssignments  OrganizationRoleAssignment[]
+  permissionOverrides MembershipPermissionOverride[]
+  roleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
 
   @@unique([userId, organizationId])
   @@index([organizationId])
@@ -1919,9 +1964,113 @@ model OrganizationMembership {
   @@map("organization_memberships")
 }
 
+enum IamSessionRevocationScope {
+  CURRENT_SESSION
+  USER_ALL_SESSIONS
+  ORGANIZATION_MEMBERSHIP_SESSIONS
+  TOKEN_FAMILY
+  PRIVILEGED_SESSIONS
+  NO_IMMEDIATE_REVOCATION
+}
+
+enum IamSessionRevocationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model IamSessionRevocationIntent {
+  id                String                     @id @default(uuid())
+  idempotencyKey    String                     @unique @map("idempotency_key")
+  eventType         String                     @map("event_type")
+  scope             IamSessionRevocationScope
+  userId            String                     @map("user_id")
+  organizationId    String?                    @map("organization_id")
+  membershipId      String?                    @map("membership_id")
+  refreshTokenId    String?                    @map("refresh_token_id")
+  tokenFamily       String?                    @map("token_family")
+  actorUserId       String?                    @map("actor_user_id")
+  metadata          Json?
+  status            IamSessionRevocationStatus @default(PENDING)
+  processedAt       DateTime?                  @map("processed_at")
+  failureReason     String?                    @map("failure_reason")
+  revokedTokenCount Int                        @default(0) @map("revoked_token_count")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("iam_session_revocation_intents")
+}
+
+enum PasswordResetPurpose {
+  ADMIN_INITIATED
+  SELF_SERVICE
+}
+
+model PasswordResetToken {
+  id             String               @id @default(uuid())
+  userId         String               @map("user_id")
+  tokenHash      String               @map("token_hash")
+  tokenLookup    String               @unique @map("token_lookup")
+  purpose        PasswordResetPurpose
+  organizationId String?              @map("organization_id")
+  actorUserId    String?              @map("actor_user_id")
+  reason         String?
+  expiresAt      DateTime             @map("expires_at")
+  usedAt         DateTime?            @map("used_at")
+  revokedAt      DateTime?            @map("revoked_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model PasswordResetAttempt {
+  id             String   @id @default(uuid())
+  scope          String
+  scopeKey       String   @map("scope_key")
+  organizationId String?  @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([scope, scopeKey, createdAt])
+  @@map("password_reset_attempts")
+}
+
 // ------------------------------------------------
 // ORGANIZATION ROLE TEMPLATES (Access Control)
 // ------------------------------------------------
+
+enum OrganizationRoleVersionStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+  RETIRED
+}
+
+enum OrganizationRoleRiskClassification {
+  STANDARD
+  ELEVATED
+  PRIVILEGED
+  CRITICAL
+}
+
+enum OrganizationRoleAssignmentMode {
+  FOLLOW_LATEST_APPROVED_VERSION
+  PINNED_VERSION
+  MIGRATION_LEGACY_SNAPSHOT
+}
+
+enum MembershipPermissionOverrideEffect {
+  ALLOW
+  DENY
+}
 
 model OrganizationRole {
   id                      String         @id @default(uuid())
@@ -1945,10 +2094,133 @@ model OrganizationRole {
   createdBy    User?                    @relation("RolesCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
   memberships  OrganizationMembership[]
   invites      OrganizationUserInvite[]
+  versions     OrganizationRoleVersion[]
+  assignments  OrganizationRoleAssignment[]
+  changeApplications OrganizationRoleChangeApplication[]
 
   @@unique([organizationId, systemKey])
   @@index([organizationId, isActive])
   @@map("organization_roles")
+}
+
+model OrganizationRoleVersion {
+  id                  String                           @id @default(uuid())
+  organizationRoleId  String                           @map("organization_role_id")
+  organizationId      String                           @map("organization_id")
+  version             Int
+  nameSnapshot        String                           @map("name_snapshot")
+  descriptionSnapshot String?                          @map("description_snapshot")
+  permissions         Json?
+  defaultStationScope String?                          @map("default_station_scope")
+  defaultStationIds   Json?                            @map("default_station_ids")
+  fieldAgentAccess    Boolean                          @default(false) @map("field_agent_access")
+  riskClassification  OrganizationRoleRiskClassification @default(STANDARD) @map("risk_classification")
+  createdByUserId     String?                          @map("created_by_user_id")
+  createdAt           DateTime                         @default(now()) @map("created_at")
+  changeReason        String?                          @map("change_reason")
+  status              OrganizationRoleVersionStatus    @default(APPROVED)
+
+  organizationRole OrganizationRole             @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
+  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy        User?                        @relation("RoleVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignments      OrganizationRoleAssignment[] @relation("AssignedRoleVersion")
+  changeApplications OrganizationRoleChangeApplication[]
+
+  @@unique([organizationRoleId, version])
+  @@index([organizationId, status])
+  @@index([organizationRoleId, status, version])
+  @@map("organization_role_versions")
+}
+
+model OrganizationRoleAssignment {
+  id                    String                         @id @default(uuid())
+  organizationId        String                         @map("organization_id")
+  membershipId          String                         @map("membership_id")
+  organizationRoleId    String?                        @map("organization_role_id")
+  assignedRoleVersionId String?                        @map("assigned_role_version_id")
+  assignmentMode        OrganizationRoleAssignmentMode @map("assignment_mode")
+  assignedByUserId      String?                        @map("assigned_by_user_id")
+  assignedAt            DateTime                       @default(now()) @map("assigned_at")
+  effectiveFrom         DateTime                       @default(now()) @map("effective_from")
+  endedAt               DateTime?                      @map("ended_at")
+  isCurrent             Boolean                        @default(true) @map("is_current")
+
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership          OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  organizationRole    OrganizationRole?        @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  assignedRoleVersion OrganizationRoleVersion? @relation("AssignedRoleVersion", fields: [assignedRoleVersionId], references: [id], onDelete: SetNull)
+  assignedBy          User?                    @relation("RoleAssignmentsCreated", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, membershipId, isCurrent])
+  @@index([membershipId, isCurrent])
+  @@index([organizationRoleId])
+  @@index([assignedRoleVersionId])
+  @@map("organization_role_assignments")
+}
+
+model MembershipPermissionOverride {
+  id             String                           @id @default(uuid())
+  organizationId String                           @map("organization_id")
+  membershipId   String                           @map("membership_id")
+  moduleKey      String                           @map("module_key")
+  permissionLevel String                          @map("permission_level")
+  effect         MembershipPermissionOverrideEffect
+  actorUserId    String?                          @map("actor_user_id")
+  reason         String?
+  expiresAt      DateTime?                        @map("expires_at")
+  revokedAt      DateTime?                        @map("revoked_at")
+  createdAt      DateTime                         @default(now()) @map("created_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  actor        User?                  @relation("PermissionOverridesCreated", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([membershipId, moduleKey, revokedAt])
+  @@index([organizationId, membershipId])
+  @@index([expiresAt])
+  @@map("membership_permission_overrides")
+}
+
+model OrganizationRoleChangeApplication {
+  id                    String   @id @default(uuid())
+  idempotencyKey        String   @unique @map("idempotency_key")
+  organizationId        String   @map("organization_id")
+  organizationRoleId    String   @map("organization_role_id")
+  previewHash           String   @map("preview_hash")
+  expectedVersionNumber Int      @map("expected_version_number")
+  actorUserId           String?  @map("actor_user_id")
+  reason                String?
+  createdRoleVersionId  String?  @map("created_role_version_id")
+  result                Json?
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole   OrganizationRole        @relation(fields: [organizationRoleId], references: [id], onDelete: Cascade)
+  actor              User?                   @relation("RoleChangeApplications", fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdRoleVersion OrganizationRoleVersion? @relation(fields: [createdRoleVersionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, organizationRoleId, createdAt])
+  @@map("organization_role_change_applications")
+}
+
+model OrganizationRoleAssignmentDriftReconciliationApplication {
+  id                  String   @id @default(uuid())
+  idempotencyKey      String   @unique @map("idempotency_key")
+  organizationId      String   @map("organization_id")
+  membershipId        String   @map("membership_id")
+  evidenceHash        String   @map("evidence_hash")
+  expectedGitCommit   String   @map("expected_git_commit")
+  operator            String
+  reason              String
+  classification      String
+  result              Json?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "org_role_assignment_drift_recon_app_org_fkey")
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade, map: "org_role_assignment_drift_recon_app_mem_fkey")
+
+  @@index([organizationId, membershipId, createdAt])
+  @@map("organization_role_assignment_drift_reconciliation_applications")
 }
 
 // ------------------------------------------------

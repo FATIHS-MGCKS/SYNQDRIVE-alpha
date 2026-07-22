@@ -1,0 +1,32 @@
+lifecycle,step,questionOrControl,present,implementation,sessionEffect,audit,notification,gap,severity,findingId
+JOINER,approval,Manager/dual approval before invite?,NO,CreateUserWizard / invites create with users-roles.write (manage for ORG_ADMIN),n/a,USER_INVITED void,mail fallback only,No approval workflow,P1,UR-P5-JML-01
+JOINER,role_selection,Role/template selected at invite?,YES,organizationRoleId or membershipRole+permissions snapshot copied to invite,n/a,metadata in audit,n/a,Snapshot not live-joined later (Phase 3),P2,UR-P5-JML-02
+JOINER,station_scope,Scope set at invite?,YES,stationScope/stationIds/fieldAgentAccess on invite→membership,n/a,partial,n/a,OK for joiner; mover gaps separate,P2,UR-P5-JML-02
+JOINER,invite_delivery,Secure invite delivery?,PARTIAL,Token hashed at rest; plaintext to FE+logs; no SPA accept route,none until login,USER_INVITED,fallback log,See invite CSV P0s,P0,UR-P5-INV-01
+JOINER,mfa_onboarding,MFA enrollment required for joiner?,NO,twoFactorAvailable false,n/a,n/a,n/a,No assurance on join,P1,UR-P5-JML-03
+JOINER,initial_sessions,Sessions created on accept?,NO_AUTO,acceptInvite does not mint JWT/refresh; user must login separately,none at accept,USER_INVITE_ACCEPTED,n/a,Accept≠login OK; existing-user accept still unsafe,P0,UR-P5-INV-16
+JOINER,direct_password_create,Alt path admin sets password?,YES,createOrgUser with password + clipboard; mustChangePassword unenforced,n/a,USER_CREATED paths,clipboard secret,Bypasses invite entirely,P0,UR-P5-PW-11
+JOINER,legacy_inviteByEmail,Membership INVITED without token lifecycle?,YES,users.service createOrgUser inviteByEmail can set INVITED status,n/a,varies,n/a,Parallel incomplete joiner path,P1,UR-P5-JML-04
+MOVER,role_change,Role assign / PATCH role?,YES,assignRole + updateOrgUser; template copy to membership,NONE — JWT claims stale until expiry; refresh may mint new claims,USER_ROLE_CHANGED void,NONE,No session invalidation / no impact API,P0,UR-P5-JML-05
+MOVER,station_change,Station scope change?,YES,updateOrgUser station fields,NONE,USER_STATION_SCOPE_CHANGED void,NONE,Broader station access keeps old JWT until expiry,P0,UR-P5-JML-05
+MOVER,permission_gain_loss,Detect gain/loss?,PARTIAL_FE,UserDetailDrawer warns on permission removals only; backend no preview,NONE,USER_PERMISSIONS_CHANGED void,NONE,No privileged-emergence flag; no revoke on loss,P1,UR-P5-JML-06
+MOVER,impact_preview,Blast radius before change?,NO,permissionPreview = template normalize only (Phase 3),n/a,n/a,n/a,Required for role template edits with assignees,P0,UR-P5-JML-07
+MOVER,session_invalidation,Invalidate on privilege change?,NO,No revokeAll / no token version / no membershipVersion claim,OLD_ACCESS_JWT_VALID,optional audits,NONE,Confirmed Phase 2/4,P0,UR-P5-JML-05
+MOVER,user_notification,Notify user of access change?,NO,No mail/in-app for role/scope changes,n/a,n/a,NONE,User unaware of privilege changes,P1,UR-P5-JML-08
+LEAVER,membership_deactivate,Suspend path?,PARTIAL,updateOrgUser status SUSPENDED sets global User.status (all orgs) — not membership.status=SUSPENDED,NONE revoke,USER_DEACTIVATED void,NONE,Wrong layer; multi-org blast; sessions survive,P0,UR-P5-JML-09
+LEAVER,membership_remove,Remove from org?,YES,membership.status=REMOVED only,NONE — refresh user-global still works; org routes fail OrgScoping for that org,USER_REMOVED_FROM_ORG void,NONE,Other orgs + JWT until expiry; no invite cleanup auto,P0,UR-P5-JML-10
+LEAVER,session_revoke,Revoke all sessions on leave?,NO,revokeAllForUser not called on remove/suspend/password admin,ACTIVE sessions remain (Phase 4: 0 revoked),n/a,n/a,Core leaver failure,P0,UR-P5-JML-10
+LEAVER,open_invites_revoke,Revoke pending invites for email?,NO_AUTO,Only explicit invite revoke API; remove user does not scan invites,n/a,USER_INVITE_REVOKED if manual,n/a,Orphan pending invites possible,P1,UR-P5-JML-11
+LEAVER,api_keys_integrations,Personal API keys / service tokens?,N/A_NO_MODEL,No personal API key model in schema for IAM users,n/a,n/a,n/a,Document absence; future keys need deprovision hook,P2,UR-P5-JML-12
+LEAVER,task_booking_doc_ownership,Reassign tasks/bookings/documents?,NO,No deprovisioning ownership transfer service found,n/a,n/a,n/a,Operational orphan risk,P1,UR-P5-JML-13
+LEAVER,audit_history_retention,Preserve audit on leave?,PARTIAL,activity_logs remain; fire-and-forget may miss events,n/a,void record,n/a,Evidence incomplete,P1,UR-P5-JML-14
+LEAVER,reactivation,Reactivate REMOVED via invite/create?,YES,acceptInvite or createOrgUser updates membership to ACTIVE,existing sessions untouched,USER_REACTIVATED possible,n/a,No re-approval / MFA / session reset,P1,UR-P5-JML-15
+LEAVER,deletion_anonymization,GDPR erase/anonymize user?,NO,No IAM anonymization pipeline in users module,n/a,n/a,n/a,Phase 7/8,P1,UR-P5-JML-16
+LEAVER,central_deprovisioning_service,Single DeprovisioningService?,NO,Logic scattered in UsersService + OrganizationInviteService,incomplete,partial,none,Need central orchestrator,P0,UR-P5-JML-17
+LEAVER_Q1,central_service,Gibt es zentralen Deprovisioning-Service?,NO,n/a,n/a,n/a,n/a,Missing,P0,UR-P5-JML-17
+LEAVER_Q2,all_channels,Werden alle Zugriffskanäle deaktiviert?,NO,Org membership removed/suspended only; refresh+JWT+other orgs+seed-admin remain,sessions live,partial,none,Incomplete,P0,UR-P5-JML-10
+LEAVER_Q3,personal_api_keys,Was geschieht mit persönlichen API Keys?,N/A,No personal API key entity found,n/a,n/a,n/a,Gap when introduced,P2,UR-P5-JML-12
+LEAVER_Q4,tasks_bookings_docs,Was geschieht mit Aufgaben/Buchungen/Dokumenten?,NOTHING_AUTOMATED,No ownership transfer on remove,n/a,n/a,n/a,Manual ops only,P1,UR-P5-JML-13
+LEAVER_Q5,invite_reactivate,Kann entfernte Membership per Invite reaktiviert werden?,YES,acceptInvite sets ACTIVE on existing membership including REMOVED,no session reset,USER_REACTIVATED,n/a,Token-only accept risk,P0,UR-P5-INV-16
+LEAVER_Q6,old_sessions,Bleiben alte Sessions gültig?,YES,Phase 4: 70 active 0 revoked; remove/suspend paths do not revoke,YES,n/a,n/a,Blocker,P0,UR-P5-JML-10
+LEAVER_Q7,exit_audited,Wird Austritt vollständig auditiert?,PARTIAL,USER_REMOVED_FROM_ORG / USER_DEACTIVATED via void; master paths weaker; no session-revoke audit,n/a,fire-and-forget,none,Not complete/reliable,P1,UR-P5-JML-14

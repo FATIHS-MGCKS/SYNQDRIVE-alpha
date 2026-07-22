@@ -26,9 +26,10 @@ import { IamTeamService } from './iam-team.service';
 import { IamAccessReviewController } from './iam-access-review.controller';
 import { IamTeamController } from './iam-team.controller';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
+import { AuthApiModule } from '@modules/auth/auth.module';
 
 @Module({
-  imports: [forwardRef(() => IamMfaModule)],
+  imports: [forwardRef(() => IamMfaModule), forwardRef(() => AuthApiModule)],
   controllers: [
     UsersController,
     OrganizationInvitesController,

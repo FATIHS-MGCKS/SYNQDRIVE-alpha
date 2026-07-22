@@ -11,10 +11,12 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
-import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
+import { computeEffectiveAccess } from './policies/effective-access-engine';
+import { assertNotLastEffectiveOrgAdmin } from './org-admin-protection.util';
+import { hasStructuralRoleChanges } from './policies/role-change-impact.policy';
 import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from './defaults/organization-role.defaults';
-import { UserAccessAuditAction } from './user-access-audit.service';
-import { IamAuditService } from './iam-audit.service';
+import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
+import { OrganizationRoleVersionService } from './organization-role-version.service';
 import type { CreateOrganizationRoleDto, UpdateOrganizationRoleDto } from './dto/organization-role.dto';
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -23,7 +25,8 @@ const INVITE_EXPIRY_DAYS = 7;
 export class OrganizationRoleService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly iamAudit: IamAuditService,
+    private readonly userAudit: UserAccessAuditService,
+    private readonly roleVersionService: OrganizationRoleVersionService,
   ) {}
 
   async ensureDefaultRoles(orgId: string, createdByUserId?: string): Promise<void> {
@@ -33,7 +36,7 @@ export class OrganizationRoleService {
     if (count >= DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length) return;
 
     for (const template of DEFAULT_ORGANIZATION_ROLE_TEMPLATES) {
-      await this.prisma.organizationRole.upsert({
+      const role = await this.prisma.organizationRole.upsert({
         where: {
           organizationId_systemKey: {
             organizationId: orgId,
@@ -55,6 +58,17 @@ export class OrganizationRoleService {
         },
         update: {},
       });
+
+      const versionCount = await this.prisma.organizationRoleVersion.count({
+        where: { organizationRoleId: role.id },
+      });
+      if (versionCount === 0) {
+        await this.roleVersionService.createInitialVersionForRole(
+          role,
+          createdByUserId,
+          'System template seed — initial approved version',
+        );
+      }
     }
   }
 
@@ -78,44 +92,43 @@ export class OrganizationRoleService {
     actorUserId?: string,
   ) {
     const permissions = normalizeMembershipPermissions(dto.permissions);
-    const outboxIds: string[] = [];
-    const role = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.organizationRole.create({
-        data: {
-          organizationId: orgId,
-          name: dto.name.trim(),
-          description: dto.description?.trim() || null,
-          systemKey: null,
-          isSystemTemplate: false,
-          isDefault: false,
-          isActive: true,
-          membershipRole: dto.membershipRole as MembershipRole,
-          permissions: permissions
-            ? (permissions as unknown as Prisma.InputJsonValue)
-            : Prisma.JsonNull,
-          stationScopeDefault: dto.stationScopeDefault?.trim() || null,
-          defaultStationIds: dto.defaultStationIds?.length
-            ? dto.defaultStationIds
-            : Prisma.JsonNull,
-          fieldAgentAccessDefault: dto.fieldAgentAccessDefault ?? false,
-          createdByUserId: actorUserId ?? null,
-        },
-      });
-
-      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+    const role = await this.prisma.organizationRole.create({
+      data: {
         organizationId: orgId,
-        idempotencyKey: `role-created:${orgId}:${created.id}`,
-        eventType: UserAccessAuditAction.ROLE_CREATED,
-        actorUserId,
-        targetRoleId: created.id,
-        description: `Rolle „${created.name}" erstellt`,
-        after: this.mapRole(created),
-      });
-      outboxIds.push(outbox.id);
-      return created;
+        name: dto.name.trim(),
+        description: dto.description?.trim() || null,
+        systemKey: null,
+        isSystemTemplate: false,
+        isDefault: false,
+        isActive: true,
+        membershipRole: dto.membershipRole as MembershipRole,
+        permissions: permissions
+          ? (permissions as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        stationScopeDefault: dto.stationScopeDefault?.trim() || null,
+        defaultStationIds: dto.defaultStationIds?.length
+          ? dto.defaultStationIds
+          : Prisma.JsonNull,
+        fieldAgentAccessDefault: dto.fieldAgentAccessDefault ?? false,
+        createdByUserId: actorUserId ?? null,
+      },
     });
 
-    await this.iamAudit.processOutboxIds(outboxIds);
+    await this.roleVersionService.createInitialVersionForRole(
+      role,
+      actorUserId,
+      'Role created — initial approved version',
+    );
+
+    void this.userAudit.record({
+      organizationId: orgId,
+      actorUserId,
+      auditAction: UserAccessAuditAction.ROLE_CREATED,
+      targetRoleId: role.id,
+      description: `Rolle „${role.name}" erstellt`,
+      after: this.mapRole(role),
+    });
+
     return this.mapRole(role);
   }
 
@@ -125,6 +138,12 @@ export class OrganizationRoleService {
     dto: UpdateOrganizationRoleDto,
     actorUserId?: string,
   ) {
+    if (hasStructuralRoleChanges(dto)) {
+      throw new BadRequestException(
+        'Structural role changes require previewRoleChange and applyRoleChange',
+      );
+    }
+
     const before = await this.findRoleOrThrow(orgId, roleId);
     if (before.isSystemTemplate && dto.name && dto.name !== before.name) {
       throw new BadRequestException('System role templates cannot be renamed');
@@ -142,62 +161,27 @@ export class OrganizationRoleService {
       );
     }
 
-    const permissions =
-      dto.permissions !== undefined
-        ? normalizeMembershipPermissions(dto.permissions)
-        : undefined;
-
-    const outboxIds: string[] = [];
-    const role = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.organizationRole.update({
-        where: { id: roleId },
-        data: {
-          ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
-          ...(dto.description !== undefined
-            ? { description: dto.description?.trim() || null }
-            : {}),
-          ...(dto.membershipRole !== undefined
-            ? { membershipRole: dto.membershipRole as MembershipRole }
-            : {}),
-          ...(permissions !== undefined
-            ? {
-                permissions: permissions
-                  ? (permissions as unknown as Prisma.InputJsonValue)
-                  : Prisma.JsonNull,
-              }
-            : {}),
-          ...(dto.stationScopeDefault !== undefined
-            ? { stationScopeDefault: dto.stationScopeDefault?.trim() || null }
-            : {}),
-          ...(dto.defaultStationIds !== undefined
-            ? {
-                defaultStationIds: dto.defaultStationIds?.length
-                  ? dto.defaultStationIds
-                  : Prisma.JsonNull,
-              }
-            : {}),
-          ...(dto.fieldAgentAccessDefault !== undefined
-            ? { fieldAgentAccessDefault: dto.fieldAgentAccessDefault }
-            : {}),
-          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        },
-      });
-
-      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
-        organizationId: orgId,
-        idempotencyKey: `role-updated:${orgId}:${roleId}:${updated.updatedAt.toISOString()}`,
-        eventType: UserAccessAuditAction.ROLE_UPDATED,
-        actorUserId,
-        targetRoleId: updated.id,
-        description: `Rolle „${updated.name}" aktualisiert`,
-        before: this.mapRole(before),
-        after: this.mapRole(updated),
-      });
-      outboxIds.push(outbox.id);
-      return updated;
+    const role = await this.prisma.organizationRole.update({
+      where: { id: roleId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description?.trim() || null }
+          : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+      },
     });
 
-    await this.iamAudit.processOutboxIds(outboxIds);
+    void this.userAudit.record({
+      organizationId: orgId,
+      actorUserId,
+      auditAction: UserAccessAuditAction.ROLE_UPDATED,
+      targetRoleId: role.id,
+      description: `Rolle „${role.name}" aktualisiert`,
+      before: this.mapRole(before),
+      after: this.mapRole(role),
+    });
+
     return this.mapRole(role);
   }
 
@@ -235,41 +219,60 @@ export class OrganizationRoleService {
       );
     }
 
-    const outboxIds: string[] = [];
-    await this.prisma.$transaction(async (tx) => {
-      await tx.organizationRole.update({
-        where: { id: roleId },
-        data: { isActive: false },
-      });
-
-      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
-        organizationId: orgId,
-        idempotencyKey: `role-deleted:${orgId}:${roleId}`,
-        eventType: UserAccessAuditAction.ROLE_DELETED,
-        actorUserId,
-        targetRoleId: roleId,
-        description: `Rolle „${role.name}" deaktiviert`,
-        before: this.mapRole(role),
-      });
-      outboxIds.push(outbox.id);
+    await this.prisma.organizationRole.update({
+      where: { id: roleId },
+      data: { isActive: false },
     });
 
-    await this.iamAudit.processOutboxIds(outboxIds);
+    void this.userAudit.record({
+      organizationId: orgId,
+      actorUserId,
+      auditAction: UserAccessAuditAction.ROLE_DELETED,
+      targetRoleId: roleId,
+      description: `Rolle „${role.name}" deaktiviert`,
+      before: this.mapRole(role),
+    });
+
     return { deleted: true };
   }
 
   async permissionPreview(orgId: string, roleId: string) {
     const role = await this.findRoleOrThrow(orgId, roleId);
+    const normalized = normalizeMembershipPermissions(role.permissions);
+    const effectiveAccess = computeEffectiveAccess({
+      membership: {
+        role: role.membershipRole,
+        status: MembershipStatus.ACTIVE,
+        organizationId: orgId,
+        organizationRoleId: role.id,
+        permissions: normalized,
+        stationScope: role.stationScopeDefault,
+        stationIds: Array.isArray(role.defaultStationIds)
+          ? role.defaultStationIds
+          : [],
+        fieldAgentAccess: role.fieldAgentAccessDefault,
+      },
+      organizationRole: {
+        id: role.id,
+        permissions: role.permissions,
+        membershipRole: role.membershipRole,
+        stationScopeDefault: role.stationScopeDefault,
+        defaultStationIds: role.defaultStationIds,
+        fieldAgentAccessDefault: role.fieldAgentAccessDefault,
+      },
+      resourceContext: { organizationId: orgId },
+    });
     return {
       roleId: role.id,
       name: role.name,
       membershipRole: role.membershipRole,
-      permissions: normalizeMembershipPermissions(role.permissions),
+      permissions: normalized,
       fieldAgentAccessDefault: role.fieldAgentAccessDefault,
       stationScopeDefault: role.stationScopeDefault,
       defaultStationIds: Array.isArray(role.defaultStationIds)
         ? role.defaultStationIds
         : [],
+      effectiveAccess,
     };
   }
 
@@ -292,44 +295,32 @@ export class OrganizationRoleService {
       role.membershipRole !== MembershipRole.ORG_ADMIN &&
       membership.status === MembershipStatus.ACTIVE
     ) {
-      await assertNotLastActiveOrgAdmin(this.prisma, orgId, userId);
+      await assertNotLastEffectiveOrgAdmin(this.prisma, orgId, userId);
     }
 
-    const permissions = normalizeMembershipPermissions(role.permissions);
-    const outboxIds: string[] = [];
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const membershipUpdated = await tx.organizationMembership.update({
-        where: { id: membership.id },
-        data: {
-          organizationRoleId: role.id,
-          role: role.membershipRole,
-          roleLabel: role.name,
-          permissions: permissions
-            ? (permissions as unknown as Prisma.InputJsonValue)
-            : Prisma.JsonNull,
-          fieldAgentAccess: role.fieldAgentAccessDefault,
-          stationScope: role.stationScopeDefault,
-          stationIds: role.defaultStationIds ?? Prisma.JsonNull,
-        },
-      });
-
-      const outbox = await this.iamAudit.enqueueInTransaction(tx, {
-        organizationId: orgId,
-        idempotencyKey: `role-assigned:${orgId}:${userId}:${role.id}`,
-        eventType: UserAccessAuditAction.ROLE_ASSIGNED,
+    const { assignment, membership: updated } =
+      await this.roleVersionService.assignRoleToMembership(
+        orgId,
+        membership.id,
+        roleId,
         actorUserId,
-        subjectUserId: userId,
-        membershipId: membership.id,
-        targetRoleId: role.id,
-        description: `Rolle „${role.name}" zugewiesen`,
-        before: { organizationRoleId: membership.organizationRoleId },
-        after: { organizationRoleId: membershipUpdated.organizationRoleId },
-      });
-      outboxIds.push(outbox.id);
-      return membershipUpdated;
+      );
+
+    void this.userAudit.record({
+      organizationId: orgId,
+      actorUserId,
+      auditAction: UserAccessAuditAction.ROLE_ASSIGNED,
+      targetUserId: userId,
+      targetRoleId: role.id,
+      description: `Rolle „${role.name}" zugewiesen`,
+      before: { organizationRoleId: membership.organizationRoleId },
+      after: {
+        organizationRoleId: updated.organizationRoleId,
+        assignmentId: assignment.id,
+        assignmentMode: assignment.assignmentMode,
+      },
     });
 
-    await this.iamAudit.processOutboxIds(outboxIds);
     return updated;
   }
 

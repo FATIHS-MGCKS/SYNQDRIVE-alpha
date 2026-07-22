@@ -1,0 +1,28 @@
+dimension,currentState,issue,targetRecommendation,severity,findingId
+main_tabs_count,5 — users invites roles scopes security,High cognitive load; invites+users overlap; scopes duplicates user station info; security thin,Reduce to 3: Team | Roles & Access | Security & Audit,P0,UR-P7-IA-01
+sub_views,Users table+drawer+wizard; Invites buckets; Roles list+editor; Scopes station lists; Security timeline,Many peer surfaces without hierarchy,Team embeds invites filters; Roles embeds scopes+effective access; Security embeds MFA sessions AR audit,P0,UR-P7-IA-01
+kpi_cards_users,5 — total active pendingInvites admins scoped,total≈active noise; scoped not actionable; admins enum-only misses custom privileged,4 KPIs: Active users | Open invites | Privileged accounts | Review required,P0,UR-P7-IA-02
+kpi_cards_scopes,3 additional KPIs on scopes tab,Further KPI sprawl,Fold into Team filters / Roles scope summary — no separate KPI strip,P1,UR-P7-IA-03
+information_density,Dense tables + full permission matrix + multi-section drawer,Operators see technical membershipRole + module keys semantics,Progressive disclosure; business labels; risk badges; effective-access summary first,P1,UR-P7-IA-04
+redundant_areas,Invites in Users KPI + Invites tab + Users pending resend; Scopes vs user Standort column; Permission preview in roles and drawer,Duplicate navigation paths,Single invite inbox under Team; station scope under Roles&Access and drawer section C,P1,UR-P7-IA-05
+duplicate_terms,Benutzer vs Team; Zugriffsbereiche vs Standort vs Stationen; Sub-Admin; Basis-Membership; Field Agent,Mixed DE/EN product jargon,Glossary: Team member; Access level; Stations; Field handover; avoid Membership in UI,P1,UR-P7-IA-06
+technical_jargon,ORG_ADMIN keys sometimes surface; read/write/manage; Stripe Connect; Health group; Membership,Hard for non-technical fleet admins,Fachbegriffe + tooltips; map manage→Vollzugriff with risk,P1,UR-P7-IA-07
+permission_semantics_ux,Select levels without explaining cascade or privileged modules,Easy accidental users-roles.manage / billing.manage,Risk badges; dependency hints; server EffectiveAccess preview before save,P0,UR-P7-IA-08
+dangerous_actions_visibility,Password set in list/drawer flow; clipboard invite/password; role delete unlabeled impact,High blast radius near casual clicks,Dangerous Action pattern: confirm+step-up+reason+impact; no password entry; reset-link only,P0,UR-P7-IA-09
+missing_previews,No role blast-radius; no session revoke preview; no admin-grant screen,Operators cannot foresee impact,Mandatory Impact Preview for role save assign admin suspend remove,P0,UR-P7-IA-10
+missing_security_info,MFA/sessions placeholders; no failed logins panel; no AR; empty timeline ≠ healthy,False calm,Explicit UNKNOWN/NOT_SUPPORTED/ACTION_REQUIRED states never green-default,P0,UR-P7-IA-11
+mobile_problems,Inner tabs overflow; permission matrix selects; custom wizard overlay; role editor long,Hard on phone,Team cards; role cards; permission accordion; sticky save; full-width drawer,P1,UR-P7-IA-12
+loading_error_empty,Present on most tabs via patterns,CreateUserWizard rolesError unused; Security partial failure silent if 1/3 ok,Unify Empty/Error/Loading; never silent partial failure for security,P1,UR-P7-IA-13
+light_dark,Uses CSS vars border muted brand,Generally theme-aware,Keep design tokens; audit contrast on amber badges,P2,UR-P7-IA-14
+target_nav_team,n/a,n/a,Active+suspended users; open invites; search/filters — merge Users+Invites,P0,UR-P7-IA-01
+target_nav_roles_access,n/a,n/a,Roles; effective permissions; station scope; assignments; impact preview — merge Roles+Scopes,P0,UR-P7-IA-01
+target_nav_security_audit,n/a,n/a,Privileged accounts; MFA; sessions; login activity; IAM audit; access reviews — expand Security,P0,UR-P7-IA-01
+kpi_active_users,users.status Active client count,Excludes REMOVED already; may mix membership vs user status,Source: ACTIVE memberships; drilldown Team filter active; empty: No team members yet,P1,UR-P7-KPI-01
+kpi_open_invites,PENDING invites count,Does not separate expired pending,Source: PENDING and expiresAt>now; drilldown Team invites open; empty: No open invites,P1,UR-P7-KPI-02
+kpi_privileged_accounts,ORG_ADMIN+SUB_ADMIN only,Misses custom users-roles.manage / billing.manage,Source: EffectiveAccess privileged flag; drilldown Security privileged; empty: None — warn if also zero admins,P0,UR-P7-KPI-03
+kpi_review_required,MISSING,No composite signal,Union: MFA missing on privileged; AR overdue; expired invite; role drift; no valid role; session after suspend; single admin; unsafe scope — each item once; drilldown Security review queue; empty: All clear with timestamp,P0,UR-P7-KPI-04
+user_list_columns_current,Benutzer Rolle Status Standort Letzter Login Sicherheit + actions,7+ columns; password in actions; Sicherheit thin,Max 6: User | Access | Scope | Security | Last activity | Action — no password field,P0,UR-P7-LIST-01
+drawer_current,Flat sections profile/role/scope/permissions/security/activity,No effective-access truth; admin password path,A Overview B Effective access C Stations D Security&Sessions E Activity — reset-link not password entry,P0,UR-P7-DRW-01
+roles_target_fields,Editor lacks assignee count risk version lastChangedBy,Cannot govern roles,Show name system/custom assignees risk effective perms default scope last change actor roleVersion + Impact Preview on save,P0,UR-P7-ROL-01
+permission_matrix_target,Checkbox-wall of selects,Unexplained privilege,Grouped fach modules; tooltips; risk badges; no silent Select-all manage; server preview,P0,UR-P7-PERM-01
+security_state_model,null shown as Nicht verfügbar or —,Can be misread as OK,ENABLED DISABLED REQUIRED UNKNOWN NOT_SUPPORTED ACTION_REQUIRED only,P0,UR-P7-SEC-01

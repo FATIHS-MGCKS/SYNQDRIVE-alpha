@@ -9,6 +9,8 @@ import { existsSync, mkdirSync } from 'fs';
 import { FinesService } from './fines.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { StorageService } from '@shared/storage/storage.service';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'fines');
@@ -34,9 +36,10 @@ export class FinesController {
   }
 
   @Get('organizations/:orgId/fines/:id')
-  @UseGuards(OrgScopingGuard, RolesGuard)
-  async findOne(@Param('id') id: string) {
-    return this.finesService.findById(id);
+  @UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
+  @RequirePermission('fines', 'read')
+  async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.finesService.findById(orgId, id);
   }
 
   @Get('organizations/:orgId/customers/:customerId/fines')
@@ -74,8 +77,10 @@ export class FinesController {
   }
 
   @Patch('organizations/:orgId/fines/:id')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
+  @RequirePermission('fines', 'write')
   async update(
+    @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: {
       fineNumber?: string;
@@ -93,11 +98,12 @@ export class FinesController {
       notes?: string;
     },
   ) {
-    return this.finesService.update(id, body);
+    return this.finesService.update(orgId, id, body);
   }
 
   @Post('organizations/:orgId/fines/upload')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
+  @RequirePermission('fines', 'write')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({

@@ -1,0 +1,2 @@
+membershipAlias,userAlias,organizationAlias,effectiveRole,roleSource,roleAlias,hasPermissionSnapshot,permissionModuleCount,manageModuleCount,privileged,stationMode,fieldAgentAccess,driftClass
+MEMBERSHIP_001,USER_002,ORG_001,ORG_ADMIN,direct_or_legacy,,False,0,0,True,ALL_OR_BYPASS,False,NO_ROLE_LINK
