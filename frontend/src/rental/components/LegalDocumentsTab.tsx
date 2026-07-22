@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { FileText, RefreshCw } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { FileText, Plus, RefreshCw } from 'lucide-react';
 import {
   ErrorState,
   PageHeader,
@@ -15,6 +15,7 @@ import { LegalDocumentConfigAlerts } from './legal-documents/LegalDocumentConfig
 import { LegalDocumentVersionHistorySection } from './legal-documents/LegalDocumentVersionHistorySection';
 import { LegalDocumentAuditSection } from './legal-documents/LegalDocumentAuditSection';
 import { LegalDocumentsLegacyMutations } from './legal-documents/LegalDocumentsLegacyMutations';
+import { LegalDocumentUploadWizardDialog } from './legal-documents/LegalDocumentUploadWizardDialog';
 
 interface LegalDocumentsTabProps {
   /** @deprecated Design-system migration — prop ignored; uses theme tokens */
@@ -26,10 +27,12 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
   const canViewAudit = hasPermission('legal-documents-audit', 'read');
   const canUploadLegal = hasPermission('legal-documents', 'write');
   const canPublishLegal = hasPermission('legal-documents', 'manage');
+  const canSubmitReview = canUploadLegal;
 
+  const [wizardOpen, setWizardOpen] = useState(false);
   const historyRef = useRef<HTMLDivElement | null>(null);
 
-  const { summary, events, loading, eventsLoading, error, eventsError, refresh } =
+  const { docs, summary, events, loading, eventsLoading, error, eventsError, refresh } =
     useLegalDocumentsOverview(orgId, { loadEvents: canViewAudit });
 
   const scrollToHistory = (categoryKey: string) => {
@@ -61,10 +64,24 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
         }
         meta={<span>{LEGAL_DOCUMENT_ADMIN_DISCLAIMER_DE}</span>}
         actions={
-          <Button type="button" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
-            <RefreshCw className={loading ? 'animate-spin' : ''} />
-            Aktualisieren
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {canUploadLegal ? (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setWizardOpen(true)}
+                data-testid="legal-documents-new-version"
+              >
+                <Plus />
+                Neue Version
+              </Button>
+            ) : null}
+            <Button type="button" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
+              <RefreshCw className={loading ? 'animate-spin' : ''} />
+              Aktualisieren
+            </Button>
+          </div>
         }
       />
 
@@ -102,6 +119,16 @@ export function LegalDocumentsTab(_props: LegalDocumentsTabProps) {
             canUpload={canUploadLegal}
             canPublish={canPublishLegal}
             onChanged={refresh}
+          />
+
+          <LegalDocumentUploadWizardDialog
+            open={wizardOpen}
+            onOpenChange={setWizardOpen}
+            orgId={orgId}
+            existingDocs={docs}
+            canUpload={canUploadLegal}
+            canSubmitReview={canSubmitReview}
+            onSuccess={refresh}
           />
         </>
       )}

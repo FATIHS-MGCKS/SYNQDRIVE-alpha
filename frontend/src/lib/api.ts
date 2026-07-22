@@ -3572,6 +3572,103 @@ export const api = {
       post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, {}),
     open: (orgId: string, id: string) =>
       openAuthedDocument(`/organizations/${orgId}/legal-documents/${id}/download`),
+    submitForReview: (orgId: string, id: string, body?: { changeSummary?: string }) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/submit-for-review`, body ?? {}),
+    uploadWithProgress: (
+      orgId: string,
+      params: {
+        documentType: string;
+        versionLabel: string;
+        title?: string;
+        language?: string;
+        legalVariant?: string;
+        changeSummary?: string;
+        legalOwnerName?: string;
+        jurisdictionCountry?: string;
+        customerSegment?: string;
+        bookingChannel?: string;
+        productScope?: string;
+        stationScopeMode?: string;
+        stationIds?: string[];
+        priority?: number;
+        isMandatory?: boolean;
+        noticePurpose?: string;
+        validFrom?: string;
+        validUntil?: string;
+        file: File;
+      },
+      options?: {
+        onProgress?: (percent: number) => void;
+        signal?: AbortSignal;
+      },
+    ) =>
+      new Promise<LegalDocumentDto>((resolve, reject) => {
+        const form = new FormData();
+        form.append('file', params.file);
+        form.append('documentType', params.documentType);
+        form.append('versionLabel', params.versionLabel);
+        if (params.title) form.append('title', params.title);
+        if (params.language) form.append('language', params.language);
+        if (params.legalVariant) form.append('legalVariant', params.legalVariant);
+        if (params.changeSummary) form.append('changeSummary', params.changeSummary);
+        if (params.legalOwnerName) form.append('legalOwnerName', params.legalOwnerName);
+        if (params.jurisdictionCountry) form.append('jurisdictionCountry', params.jurisdictionCountry);
+        if (params.customerSegment) form.append('customerSegment', params.customerSegment);
+        if (params.bookingChannel) form.append('bookingChannel', params.bookingChannel);
+        if (params.productScope) form.append('productScope', params.productScope);
+        if (params.stationScopeMode) form.append('stationScopeMode', params.stationScopeMode);
+        if (params.stationIds?.length) form.append('stationIds', params.stationIds.join(','));
+        if (params.priority != null) form.append('priority', String(params.priority));
+        if (params.isMandatory != null) form.append('isMandatory', String(params.isMandatory));
+        if (params.validFrom) form.append('validFrom', params.validFrom);
+        if (params.validUntil) form.append('validUntil', params.validUntil);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${BASE_URL}/organizations/${orgId}/legal-documents/upload`);
+        const token = getToken();
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable || !options?.onProgress) return;
+          options.onProgress(Math.round((event.loaded / event.total) * 100));
+        };
+
+        xhr.onload = () => {
+          let body: { message?: string | string[]; field?: string; code?: string } = {};
+          try {
+            body = JSON.parse(xhr.responseText) as typeof body;
+          } catch {
+            /* ignore */
+          }
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText) as LegalDocumentDto);
+            } catch {
+              reject(new Error('Ungültige Serverantwort'));
+            }
+            return;
+          }
+          const msg = body.message;
+          const message = Array.isArray(msg) ? msg.join(', ') : msg || `API-Fehler ${xhr.status}`;
+          const error = new Error(message) as Error & { field?: string; code?: string };
+          error.field = body.field;
+          error.code = body.code;
+          reject(error);
+        };
+
+        xhr.onerror = () => reject(new Error('Netzwerkfehler beim Upload'));
+        xhr.onabort = () => reject(new Error('Upload abgebrochen'));
+
+        if (options?.signal) {
+          if (options.signal.aborted) {
+            xhr.abort();
+            return;
+          }
+          options.signal.addEventListener('abort', () => xhr.abort(), { once: true });
+        }
+
+        xhr.send(form);
+      }),
     upload: async (
       orgId: string,
       params: {
