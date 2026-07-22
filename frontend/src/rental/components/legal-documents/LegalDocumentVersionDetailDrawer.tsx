@@ -22,6 +22,7 @@ import {
   formatScanStatusLabel,
   shortenChecksum,
 } from '../../lib/legal-document-version-history.utils';
+import { LEGAL_PDF_PREVIEW_TITLE } from './legal-documents-a11y';
 import { formatLifecycleEventLabel } from '../../lib/legal-document-lifecycle.utils';
 
 interface Props {
@@ -352,10 +353,11 @@ export function LegalDocumentVersionDetailDrawer({
                 </div>
               ) : previewUrl ? (
                 <iframe
-                  title="PDF-Vorschau"
+                  title={LEGAL_PDF_PREVIEW_TITLE}
                   src={previewUrl}
-                  className="h-[min(70vh,32rem)] w-full bg-white"
+                  className="h-[min(70vh,32rem)] w-full bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)] motion-reduce:transition-none"
                   data-testid="legal-version-pdf-preview"
+                  tabIndex={0}
                 />
               ) : (
                 <p className="p-6 text-center text-[12px] text-muted-foreground">

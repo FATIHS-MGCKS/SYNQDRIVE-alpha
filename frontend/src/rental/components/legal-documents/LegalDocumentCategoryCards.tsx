@@ -15,7 +15,11 @@ interface Props {
 export function LegalDocumentCategoryCards({ categories, loading, onSelectCategory }: Props) {
   if (loading) {
     return (
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div
+        className="grid gap-3 lg:grid-cols-3"
+        role="status"
+        aria-label="Dokumentkategorien werden geladen"
+      >
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="surface-premium h-44 animate-pulse rounded-xl border border-border/60" />
         ))}
@@ -35,6 +39,11 @@ export function LegalDocumentCategoryCards({ categories, loading, onSelectCatego
           <DataCard
             key={category.config.key}
             interactive={Boolean(onSelectCategory)}
+            ariaLabel={
+              onSelectCategory
+                ? `${category.config.title} — Versionshistorie anzeigen`
+                : undefined
+            }
             onClick={onSelectCategory ? () => onSelectCategory(category.config.key) : undefined}
             title={category.config.title}
             description={category.config.hint}

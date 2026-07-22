@@ -1,4 +1,5 @@
 import { LEGAL_DOCUMENT_TYPE_CONFIGS } from '../../lib/legal-document-types';
+import { LEGAL_VERSION_HISTORY_REGION_ID } from './legal-documents-a11y';
 import type { LegalDocumentLifecycleDialogState } from '../../lib/legal-document-lifecycle.types';
 import type {
   LegalDocumentLifecyclePermissions,
@@ -26,7 +27,7 @@ export function LegalDocumentVersionHistoriesPanel({
   focusCategoryKey,
 }: Props) {
   return (
-    <div className="space-y-8" data-testid="legal-version-histories-panel">
+    <div className="space-y-8" data-testid="legal-version-histories-panel" id={LEGAL_VERSION_HISTORY_REGION_ID}>
       <SectionHeader
         title="Versionshistorie"
         description="Serverseitig paginierte Historie je Rechtstexttyp mit Filtern und Detailansicht"

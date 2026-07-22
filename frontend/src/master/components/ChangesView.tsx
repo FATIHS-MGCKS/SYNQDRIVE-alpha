@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-accessibility-2026-07-22',
+    version: '4.9.766',
+    title: 'Legal Documents — Accessibility WCAG (Prompt 27/32)',
+    summary: [
+      'Administration-Tableiste: tablist/tab/tabpanel, roving tabIndex, Pfeiltasten/Home/End, Enter-Aktivierung.',
+      'Kunden-Rechtstexte: section-Landmark, keyboard-fähige Kategorie-Karten, aria-label auf Icon-Aktionen.',
+      'Dialoge: Error Summary, aria-describedby auf Feldern, Upload-Fortschritt role=status, Radix DropdownMenu.',
+      'PDF-Vorschau tabIndex=0; focus-visible und motion-reduce auf Tab-Triggers.',
+      'Vitest a11y UI-Tests + Playwright/Axe legal-documents-a11y.spec.ts.',
+    ],
+    reason: 'Production-Readiness — WCAG-taugliche Bedienbarkeit für Verwaltung und Rechtstext-Workflows.',
+    previousBehavior: 'Tableiste ohne Panel-Verknüpfung; Icon-only-Buttons; Custom-Menüs ohne Keyboard-Trap.',
+    details: 'docs/audits/legal-documents-accessibility-2026-07.md, useRovingTablist, administration-a11y.*, legal-form-a11y.*',
+    affectsArchitecture: false,
+    module: 'Frontend / Documents',
+    createdAt: '2026-07-23T02:30:00.000Z',
+  },
+  {
     id: 'legal-documents-version-history-2026-07-22',
     version: '4.9.765',
     title: 'Legal Documents — Versionshistorie & Detailansicht (Prompt 26/32)',

@@ -23,6 +23,12 @@ import {
   violatesFourEyes,
 } from '../../../lib/legal-document-lifecycle.utils';
 import { LegalDocumentLifecycleImpactPanel } from './LegalDocumentLifecycleImpactPanel';
+import {
+  FormErrorSummary,
+  LegalLifecycleFieldError,
+  legalLifecycleInputA11y,
+} from '../legal-form-a11y';
+import { LEGAL_LIFECYCLE_ERROR_SUMMARY_ID } from '../legal-documents-a11y';
 
 const fieldClass =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)]';
@@ -201,6 +207,12 @@ export function LegalDocumentLifecycleActionDialog({
       }
     >
       <div data-testid="legal-lifecycle-dialog-body">
+        <FormErrorSummary
+          id={LEGAL_LIFECYCLE_ERROR_SUMMARY_ID}
+          title="Bitte korrigieren Sie die markierten Felder:"
+          errors={errors}
+        />
+
         <LegalDocumentLifecycleImpactPanel
           action={action}
           document={document}
@@ -221,12 +233,9 @@ export function LegalDocumentLifecycleActionDialog({
               onChange={(e) => setForm((prev) => ({ ...prev, validFrom: e.target.value }))}
               className={fieldClass}
               disabled={submitting || Boolean(successEvent)}
+              {...legalLifecycleInputA11y('validFrom', errors)}
             />
-            {errors.validFrom ? (
-              <p className="mt-1 text-[11px] text-[color:var(--status-critical)]" role="alert">
-                {errors.validFrom}
-              </p>
-            ) : null}
+            <LegalLifecycleFieldError field="validFrom" message={errors.validFrom} />
           </div>
         ) : null}
 
@@ -243,12 +252,9 @@ export function LegalDocumentLifecycleActionDialog({
               className={fieldClass}
               disabled={submitting || Boolean(successEvent)}
               placeholder="Pflichtbegründung für Audit und Nachvollziehbarkeit"
+              {...legalLifecycleInputA11y('statusReason', errors)}
             />
-            {errors.statusReason ? (
-              <p className="mt-1 text-[11px] text-[color:var(--status-critical)]" role="alert">
-                {errors.statusReason}
-              </p>
-            ) : null}
+            <LegalLifecycleFieldError field="statusReason" message={errors.statusReason} />
           </div>
         ) : null}
 
@@ -267,7 +273,7 @@ export function LegalDocumentLifecycleActionDialog({
         </div>
 
         {submitError ? (
-          <p className="mt-3 text-[12px] text-[color:var(--status-critical)]" role="alert">
+          <p className="mt-3 text-[12px] text-[color:var(--status-critical)]" role="alert" aria-live="assertive">
             {submitError}
           </p>
         ) : null}
@@ -276,6 +282,8 @@ export function LegalDocumentLifecycleActionDialog({
           <div
             className="mt-4 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-[12px]"
             data-testid="legal-lifecycle-success-event"
+            role="status"
+            aria-live="polite"
           >
             <p className="font-medium text-foreground">Aktion bestätigt</p>
             <p className="text-muted-foreground">
