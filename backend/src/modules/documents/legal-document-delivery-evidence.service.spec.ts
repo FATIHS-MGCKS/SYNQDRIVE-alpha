@@ -327,3 +327,65 @@ describe('LegalDocumentDeliveryEvidenceService privacy parity', () => {
     expect(create).toHaveBeenCalled();
   });
 });
+
+describe('LegalDocumentDeliveryEvidenceService outbound webhook bridge', () => {
+  it('updates linked evidence rows on delivered webhook', async () => {
+    const row = {
+      id: 'ev-1',
+      organizationId: 'org-1',
+      outboundEmailId: 'mail-1',
+      bookingId: 'bk-1',
+      customerId: 'cust-1',
+      legalDocumentId: 'legal-1',
+      generatedDocumentId: 'gen-1',
+      documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+      versionLabel: 'v1',
+      language: 'de',
+      checksum: null,
+      presentedAt: new Date(),
+      deliveryChannel: LEGAL_DELIVERY_CHANNEL.EMAIL,
+      deliveryStatus: LEGAL_DELIVERY_STATUS.SENT,
+      deliveredAt: null,
+      acknowledgedAt: null,
+      acknowledgmentMethod: null,
+      signatureReference: null,
+      actorUserId: 'user-1',
+      recipientSnapshot: { customerId: 'cust-1' },
+      requestId: null,
+      createdAt: new Date(),
+    };
+    const prisma = {
+      legalDocumentDeliveryEvidence: {
+        findMany: jest.fn().mockResolvedValue([row]),
+        findFirst: jest.fn().mockResolvedValue(row),
+        update: jest.fn().mockResolvedValue({
+          ...row,
+          deliveryStatus: LEGAL_DELIVERY_STATUS.DELIVERED,
+          deliveredAt: new Date(),
+        }),
+      },
+    } as any;
+    const svc = new LegalDocumentDeliveryEvidenceService(prisma);
+    const count = await svc.applyOutboundEmailWebhookUpdate('org-1', 'mail-1', 'DELIVERED');
+    expect(count).toBe(1);
+    expect(prisma.legalDocumentDeliveryEvidence.update).toHaveBeenCalled();
+  });
+
+  it('is idempotent on repeated provider webhook delivery', async () => {
+    const row = {
+      id: 'ev-1',
+      organizationId: 'org-1',
+      outboundEmailId: 'mail-1',
+      deliveryStatus: LEGAL_DELIVERY_STATUS.DELIVERED,
+      acknowledgedAt: null,
+    };
+    const prisma = {
+      legalDocumentDeliveryEvidence: {
+        findMany: jest.fn().mockResolvedValue([row]),
+      },
+    } as any;
+    const svc = new LegalDocumentDeliveryEvidenceService(prisma);
+    const count = await svc.applyOutboundEmailWebhookUpdate('org-1', 'mail-1', 'DELIVERED');
+    expect(count).toBe(0);
+  });
+});

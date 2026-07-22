@@ -7,6 +7,7 @@ import {
   OutboundEmailSourceType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { LegalDocumentDeliveryEvidenceService } from '@modules/documents/legal-document-delivery-evidence.service';
 import { OutboundEmailService } from './outbound-email.service';
 
 const SVIX_TOLERANCE_SECONDS = 5 * 60;
@@ -19,6 +20,7 @@ export class ResendWebhookService {
     private readonly outboundEmail: OutboundEmailService,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly deliveryEvidence: LegalDocumentDeliveryEvidenceService,
   ) {}
 
   async handle(
@@ -55,6 +57,20 @@ export class ResendWebhookService {
 
     if (outboundEmailId && (mapped === OutboundEmailEventType.BOUNCED || mapped === OutboundEmailEventType.COMPLAINED)) {
       await this.handleBillingSuppression(outboundEmailId, mapped);
+    }
+
+    if (outboundEmailId) {
+      const email = await this.prisma.outboundEmail.findUnique({
+        where: { id: outboundEmailId },
+        select: { organizationId: true },
+      });
+      if (email) {
+        await this.deliveryEvidence.applyOutboundEmailWebhookUpdate(
+          email.organizationId,
+          outboundEmailId,
+          mapped,
+        );
+      }
     }
 
     return { ok: true };

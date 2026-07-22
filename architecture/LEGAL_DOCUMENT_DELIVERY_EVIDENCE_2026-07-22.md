@@ -14,8 +14,10 @@ LegalDocumentDeliveryEvidenceController
     → recordAcknowledgment (seals row)
 ```
 
-Future producers (not Prompt 18):
-- `BookingDocumentEmailService` → EMAIL channel evidence
+- Pickup gate (Prompt 20) reads evidence for presentation/acknowledgment — **email send now populates EMAIL channel evidence**
+
+Future producers (partially addressed Prompt 21):
+- `BookingDocumentEmailService` → EMAIL channel evidence ✅
 - Checkout wizard → PORTAL + EXPLICIT_CHECKBOX acknowledgment
 - Handover → IN_PERSON (Prompt 20 gate)
 
