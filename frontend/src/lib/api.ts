@@ -1642,22 +1642,80 @@ export type BookingPaymentRequestDto = {
   stripePaymentIntentId: string | null;
 };
 
+export interface LegalDocumentActorRef {
+  id: string;
+  displayName: string;
+}
+
 export interface LegalDocumentDto {
   id: string;
   documentType: string;
+  documentVariant?: string | null;
   legalVariant?: string | null;
   /** @deprecated Use documentType + legalVariant */
   legacyDocumentType?: string | null;
   title: string;
   versionLabel: string;
   language: string;
+  jurisdiction?: string;
+  customerSegment?: string;
+  channelScope?: string;
   status: string;
+  isMandatory?: boolean;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  checksum?: string | null;
   fileName: string;
+  fileSize?: number | null;
   sizeBytes: number | null;
-  activeFrom: string | null;
+  pageCount?: number | null;
+  scanStatus?: string;
+  integrityStatus?: string;
+  uploadedAt?: string;
+  uploadedBy?: LegalDocumentActorRef | null;
+  approvedAt?: string | null;
+  approvedBy?: LegalDocumentActorRef | null;
   activatedAt?: string | null;
+  activatedBy?: LegalDocumentActorRef | null;
+  changeSummary?: string | null;
+  snapshotCount?: number;
+  activeFrom: string | null;
+  statusReason?: string | null;
+  legalOwnerName?: string | null;
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface LegalDocumentEventDto {
+  id: string;
+  organizationId: string;
+  legalDocumentId: string;
+  eventType: string;
+  previousStatus: string | null;
+  newStatus: string;
+  actorUserId: string | null;
+  actorDisplayName: string | null;
+  reason: string | null;
+  changeSummary: string | null;
+  versionLabel: string;
+  documentType: string;
+  legalVariant: string | null;
+  language: string;
+  jurisdiction: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  correlationId: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedLegalDocumentEvents {
+  data: LegalDocumentEventDto[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 // V4.6.95 — `ASSIGNED_USER` / `USER` removed alongside the unused user-score
@@ -3498,6 +3556,16 @@ export const api = {
   // versioning. Mutations are ORG_ADMIN-gated server-side.
   legalDocuments: {
     list: (orgId: string) => get<LegalDocumentDto[]>(`/organizations/${orgId}/legal-documents`),
+    listEvents: (orgId: string, params?: { page?: number; limit?: number; legalDocumentId?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set('page', String(params.page));
+      if (params?.limit) qs.set('limit', String(params.limit));
+      if (params?.legalDocumentId) qs.set('legalDocumentId', params.legalDocumentId);
+      const query = qs.toString();
+      return get<PaginatedLegalDocumentEvents>(
+        `/organizations/${orgId}/legal-documents/events${query ? `?${query}` : ''}`,
+      );
+    },
     activate: (orgId: string, id: string) =>
       post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, {}),
     archive: (orgId: string, id: string) =>

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-documents-customer-texts-ia-2026-07-22',
+    version: '4.9.762',
+    title: 'Legal Documents — Kunden-Rechtstexte IA (Prompt 23/32)',
+    summary: [
+      'Admin-Tab umbenannt und strukturiert: Kunden-Rechtstexte mit PageHeader + Untertitel.',
+      'Readiness-Strip, Kategorie-Karten, Konfigurationshinweise, Versionshistorie, Audit-Timeline.',
+      'buildLegalDocumentsReadinessSummary beantwortet Einsatzbereitschaft, Lücken und nächste Aktion.',
+      'Kein irreführender Gesamt-Grünstatus bei Teilfehlern — StatusChip mit Textlabels.',
+      'Bestehende Upload/Aktivieren-Logik unter Schnellaktionen erhalten (Dialoge später).',
+      'LegalDocumentDto + listEvents API an Backend-Response angeglichen.',
+    ],
+    reason: 'Production-Readiness — sofort erkennbare Compliance- und Einsatzbereitschaft ohne Informationsüberladung.',
+    previousBehavior: 'Handgerollter h2-Header, isDarkMode-Ternaries, drei gleichförmige Upload-Karten ohne Übersicht.',
+    details:
+      'docs/audits/legal-documents-customer-texts-ia-2026-07.md, rental/components/legal-documents/*, legal-documents-overview.test.ts',
+    affectsArchitecture: false,
+    module: 'Frontend / Documents',
+    createdAt: '2026-07-23T00:30:00.000Z',
+  },
+  {
     id: 'legal-documents-retention-legal-hold-2026-07-22',
     version: '4.9.761',
     title: 'Legal Documents — Retention, Legal Hold & Secure Deletion (Prompt 22/32)',
