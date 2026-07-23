@@ -187,7 +187,9 @@ export function BookingDossier({
         ))}
       </nav>
 
-      {activeTab === 'overview' && <BookingOverviewTab detail={detail} matrix={matrix} />}
+      {activeTab === 'overview' && (
+        <BookingOverviewTab detail={detail} matrix={matrix} orgId={orgId} onRefresh={refresh} />
+      )}
       {activeTab === 'finance_documents' && orgId && (
         <BookingFinanceDocumentsTab
           orgId={orgId}

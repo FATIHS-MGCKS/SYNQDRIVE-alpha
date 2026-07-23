@@ -21,6 +21,41 @@ export class RentalContractService {
     return toRentalContractDto(contract);
   }
 
+  /** Idempotently ensure a draft rental contract row exists for a booking. */
+  async ensureDraftRecordForBooking(
+    orgId: string,
+    booking: { id: string; customerId: string; vehicleId: string },
+  ): Promise<RentalContract> {
+    const existing = await this.prisma.rentalContract.findUnique({
+      where: { bookingId: booking.id },
+    });
+    if (existing) {
+      if (existing.organizationId !== orgId) {
+        throw new RentalContractLegalSnapshotError(
+          RENTAL_CONTRACT_ERROR_CODE.TENANT_MISMATCH,
+          'Rental contract tenant mismatch',
+          { organizationId: orgId, bookingId: booking.id },
+        );
+      }
+      return existing;
+    }
+    try {
+      return await this.prisma.rentalContract.create({
+        data: {
+          organizationId: orgId,
+          bookingId: booking.id,
+          customerId: booking.customerId,
+          vehicleId: booking.vehicleId,
+          status: 'DRAFT',
+        },
+      });
+    } catch {
+      const row = await this.prisma.rentalContract.findUnique({ where: { bookingId: booking.id } });
+      if (row) return row;
+      throw new NotFoundException('Rental contract could not be created');
+    }
+  }
+
   async getDownloadContext(orgId: string, bookingId: string): Promise<RentalContractDownloadContext> {
     const contract = await this.prisma.rentalContract.findFirst({
       where: { organizationId: orgId, bookingId },

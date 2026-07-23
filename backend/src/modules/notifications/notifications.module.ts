@@ -6,6 +6,7 @@ import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.modu
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
 import { ObservabilityModule } from '@modules/observability/observability.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { BookingNotificationAdapter } from './adapters/booking-notification.adapter';
 import { DrivingAssessmentNotificationAdapter } from './adapters/driving-assessment-notification.adapter';
 import { NotificationProducerIngestService } from './adapters/notification-producer.ingest.service';
 import { NotificationProducerRouter } from './adapters/notification-producer.router';
@@ -77,6 +78,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
     DrivingAssessmentNotificationAdapter,
+    BookingNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,
@@ -104,6 +106,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     NotificationMigrationAcceptanceService,
     NotificationArchitectureAuditService,
     DrivingAssessmentNotificationAdapter,
+    BookingNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,

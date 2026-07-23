@@ -74,6 +74,16 @@ export function financeShortStatus(detail: BookingDetailDto): string {
   return paymentStatusLabel(detail.finance.paymentStatus);
 }
 
+export function preparationShortStatus(detail: BookingDetailDto): string {
+  const prep = detail.preparation;
+  if (!prep) return 'Unbekannt';
+  if (prep.isOperationallyReady) return 'Bereit';
+  if (prep.failedCount > 0) return `${prep.failedCount} fehlgeschlagen`;
+  if (prep.processingCount > 0) return 'In Bearbeitung';
+  if (prep.missingRequiredCount > 0) return `${prep.missingRequiredCount} ausstehend`;
+  return 'Unvollständig';
+}
+
 export type BookingExtraLine = {
   name: string;
   quantity: number;

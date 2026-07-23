@@ -22,6 +22,8 @@ export const QUEUE_NAMES = {
   NOTIFICATION_DELIVERY: 'notification.delivery',
   PAYMENT_EMAIL: 'payment.email',
   TASK_AUTOMATION: 'task.automation',
+  /** Booking domain events — transactional outbox dispatch. */
+  BOOKING_DOMAIN_EVENTS: 'booking.domain.events',
   /** Battery Health V2 — typed async jobs (observation, assessment, HV reconcile). */
   BATTERY_V2: 'battery.v2',
   /** Voice provider webhook async processing — lifecycle correlation. */

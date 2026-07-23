@@ -166,6 +166,32 @@ export type BookingDetailDto = {
   } | null;
   activity: ActivityItem[];
   payments: BookingPaymentCardSection | null;
+  preparation: BookingPreparationSnapshotSection | null;
+};
+
+export type BookingPreparationArtifactSection = {
+  artifactType: string;
+  label: string;
+  status: string;
+  required: boolean;
+  blocksPickup: boolean;
+  blocksReturn: boolean;
+  lastError: string | null;
+  recoverable: boolean;
+  recoveryAction: string | null;
+};
+
+export type BookingPreparationSnapshotSection = {
+  overallStatus: string;
+  isOperationallyReady: boolean;
+  missingRequiredCount: number;
+  failedCount: number;
+  processingCount: number;
+  blocksPickup: boolean;
+  blocksReturn: boolean;
+  pickupBlockReasons: string[];
+  artifacts: BookingPreparationArtifactSection[];
+  updatedAt: string;
 };
 
 export type BookingPaymentCardSection = {

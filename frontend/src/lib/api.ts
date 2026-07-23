@@ -1589,6 +1589,45 @@ export type BookingDetailDto = {
     createdAt: string;
   }>;
   payments: BookingPaymentCardDto | null;
+  preparation: BookingPreparationSnapshotDto | null;
+};
+
+export type BookingPreparationArtifactDto = {
+  artifactType: string;
+  label: string;
+  status: string;
+  required: boolean;
+  blocksPickup: boolean;
+  blocksReturn: boolean;
+  lastError: string | null;
+  lastErrorCode?: string | null;
+  lastAttemptAt?: string | null;
+  readyAt?: string | null;
+  retryCount?: number;
+  nextRetryAt?: string | null;
+  recoverable: boolean;
+  recoveryAction: 'RETRY_INVOICE' | 'RETRY_DOCUMENT' | 'RETRY_EMAIL' | 'REBUILD_TASKS' | null;
+};
+
+export type BookingPreparationSnapshotDto = {
+  overallStatus: string;
+  isOperationallyReady: boolean;
+  missingRequiredCount: number;
+  failedCount: number;
+  processingCount: number;
+  blocksPickup: boolean;
+  blocksReturn: boolean;
+  pickupBlockReasons: string[];
+  artifacts: BookingPreparationArtifactDto[];
+  updatedAt: string;
+};
+
+export type BookingPreparationRecoveryResultDto = {
+  action: string;
+  artifactType: string;
+  deduplicated: boolean;
+  status: string;
+  message?: string;
 };
 
 export type BookingPaymentCardDto = {
@@ -3680,6 +3719,17 @@ export const api = {
     },
     get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/bookings/${id}`),
     detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
+    getPreparation: (orgId: string, bookingId: string) =>
+      get<BookingPreparationSnapshotDto>(`/organizations/${orgId}/bookings/${bookingId}/preparation`),
+    retryPreparation: (
+      orgId: string,
+      bookingId: string,
+      body: { artifactType: string; idempotencyKey?: string },
+    ) =>
+      post<BookingPreparationRecoveryResultDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/preparation/retry`,
+        body,
+      ),
     create: (orgId: string, data: OperatorBookingCreatePayload) =>
       post<unknown>(`/organizations/${orgId}/bookings`, data),
     update: (orgId: string, id: string, data: OperatorBookingUpdatePayload) =>
