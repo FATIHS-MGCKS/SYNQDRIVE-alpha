@@ -21,7 +21,7 @@ Primary blockers from the initial audit (**build failures**, **delivery-evidence
 
 | Field | Value |
 |-------|-------|
-| **Commit (remediation)** | _pending push — P0/P1 fixes on `cursor/legal-docs-e2e-ci-28ca`_ |
+| **Commit (remediation)** | `21c485c1` — P0/P1 fixes on `cursor/legal-docs-e2e-ci-28ca` |
 | **Commit (prior audit)** | `9ddeb5156701ebcc1381521b68f67f45d84a9581` |
 | **Message (prior)** | `fix(legal-docs): aria-sort on table headers and loading aria-busy (Prompt 27)` |
 | **Branch** | `cursor/legal-docs-e2e-ci-28ca` |
@@ -233,11 +233,11 @@ Backend build **FAIL**; P1 trust/permission findings open on commit `9ddeb515`.
 
 | Control | Requirement | Status | Gap |
 |---------|-------------|--------|-----|
-| **Art. 5(1)(f) Integrity** | Tamper-evident legal proofs | ⚠️ | Client-supplied checksum/version on evidence (P1-1) |
+| **Art. 5(1)(f) Integrity** | Tamper-evident legal proofs | ✅ | Server-derived checksum/version on evidence (P1-1 fixed) |
 | **Art. 5(2) Accountability** | Demonstrable controls | ✅ | Audit events, retention, legal hold |
 | **Art. 17 Erasure** | Retention + hold guards | ✅ | Phased purge with reference checks |
 | **Art. 30 Records** | Processing documentation | ✅ | Architecture + audit docs |
-| **Art. 32 Security** | Encryption, access control | ⚠️ | Private storage OK; build broken (P0) |
+| **Art. 32 Security** | Encryption, access control | ✅ | Private storage OK; nest build green (P0 fixed) |
 | **ISO 27001 A.8.2** | Classification / handling | ✅ | Legal docs segregated module |
 | **ISO 27001 A.8.24** | Cryptography | ✅ | SHA-256, SSE on S3 |
 | **ISO 27001 A.8.28** | Secure coding | ⚠️ | Trust boundary on evidence API |
@@ -310,7 +310,7 @@ P0 and P1-1–P1-4 are resolved on the remediation commit. **Do not deploy to pr
 
 | Pattern | Found? | Location |
 |---------|--------|----------|
-| Stille `return`-Pfade | Yes | `four-eyes.service.ts:34` |
+| Stille `return`-Pfade | **Fixed** | four-eyes fail-closed (P1-3) |
 | `findFirst` bei eindeutigen Daten | Mitigated in snapshots; elsewhere tenant-scoped | `rental-contract-legal-snapshot.service.ts` documents avoidance |
 | Fire-and-forget | Yes | Bundle/notification paths (P2-2) |
 | Client-vertraute Actor-Felder | Mitigated on pickup gate; **not** on evidence metadata | Pickup gate vs delivery evidence |
