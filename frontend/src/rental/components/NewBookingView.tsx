@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
+import { useRentalRulesPermissions } from '../hooks/useRentalRulesPermissions';
+import { mapBookingEligibilityLoadError } from '../lib/rental-rules-permissions';
 import { api, type BookingDocumentBundleView, type WizardCheckoutContext } from '../../lib/api';
 import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
@@ -130,6 +132,7 @@ export function NewBookingView({
   const isDarkMode = useDocumentDark();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
+  const { canReviewEligibility, canOverrideEligibility } = useRentalRulesPermissions();
   const { catalog, loading: catalogLoading } = usePriceTariffs(orgId);
   const taxRatePercent = catalog?.priceBook?.taxRatePercent ?? 19;
   const [customers, setCustomers] = useState<BookingCustomer[]>([]);
@@ -545,6 +548,12 @@ export function NewBookingView({
       setRentalEligibilityLoading(false);
       return;
     }
+    if (!canReviewEligibility) {
+      setRentalEligibility(null);
+      setRentalEligibilityError(null);
+      setRentalEligibilityLoading(false);
+      return;
+    }
     let cancelled = false;
     setRentalEligibilityLoading(true);
     setRentalEligibilityError(null);
@@ -562,9 +571,7 @@ export function NewBookingView({
       .catch((err: unknown) => {
         if (!cancelled) {
           setRentalEligibility(null);
-          setRentalEligibilityError(
-            err instanceof Error ? err.message : 'Fahrzeugvoraussetzungen konnten nicht geprüft werden',
-          );
+          setRentalEligibilityError(mapBookingEligibilityLoadError(err).message);
         }
       })
       .finally(() => {
@@ -573,7 +580,7 @@ export function NewBookingView({
     return () => {
       cancelled = true;
     };
-  }, [orgId, selectedVehicle?.id, selectedCustomer?.id, pickupAtIso, returnAtIso, paymentIntent]);
+  }, [orgId, selectedVehicle?.id, selectedCustomer?.id, pickupAtIso, returnAtIso, paymentIntent, canReviewEligibility]);
 
   const pricingInputBase = useMemo(
     () => ({
@@ -1613,6 +1620,7 @@ export function NewBookingView({
               rentalEligibility={rentalEligibility}
               rentalEligibilityLoading={rentalEligibilityLoading}
               rentalEligibilityError={rentalEligibilityError}
+              canOverrideEligibility={canOverrideEligibility}
               onCompleteCustomerData={() => {
                 if (!selectedCustomer) return;
                 setCustomerDetailTarget(selectedCustomer);

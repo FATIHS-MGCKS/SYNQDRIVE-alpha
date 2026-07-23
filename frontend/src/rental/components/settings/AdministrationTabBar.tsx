@@ -4,6 +4,7 @@ import {
   chromeTabTriggerClass,
   CHROME_TAB_BAR_SCROLL_CLASS,
 } from '../../../components/patterns/chrome-tab-bar';
+import { useRentalOrg } from '../../RentalContext';
 import { useRovingTablist } from '../../../hooks/useRovingTablist';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
@@ -32,9 +33,14 @@ interface AdministrationTabBarProps {
 
 export function AdministrationTabBar({ activeTab, onTabChange }: AdministrationTabBarProps) {
   const { t } = useLanguage();
+  const { hasPermission } = useRentalOrg();
+
+  const visibleTabs = ADMINISTRATION_TAB_ORDER.filter(
+    (tab) => tab !== 'rental-rules' || hasPermission('rental-rules', 'read'),
+  );
 
   const { getTabProps } = useRovingTablist({
-    items: ADMINISTRATION_TAB_ORDER,
+    items: visibleTabs,
     activeId: activeTab,
     onActivate: onTabChange,
     getItemId: (tab) => ADMIN_TAB_ID[tab],
@@ -50,7 +56,7 @@ export function AdministrationTabBar({ activeTab, onTabChange }: AdministrationT
       aria-orientation="horizontal"
     >
       <div className={CHROME_TAB_BAR_SCROLL_CLASS}>
-        {ADMINISTRATION_TAB_ORDER.map((tab, index) => {
+        {visibleTabs.map((tab, index) => {
           const isActive = activeTab === tab;
           const tabProps = getTabProps(tab, index);
           const { ref, onKeyDown, onFocus, ...restTabProps } = tabProps;

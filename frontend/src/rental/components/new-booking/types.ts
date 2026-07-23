@@ -105,6 +105,7 @@ export interface BookingSidebarProps extends BookingSummaryPanelProps {
   rentalEligibility: BookingRentalEligibilityResult | null;
   rentalEligibilityLoading: boolean;
   rentalEligibilityError: string | null;
+  canOverrideEligibility?: boolean;
   onCompleteCustomerData: () => void;
   onChooseAnotherVehicle: () => void;
 }

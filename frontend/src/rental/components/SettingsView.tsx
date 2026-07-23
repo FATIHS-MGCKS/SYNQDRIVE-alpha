@@ -10,6 +10,8 @@ import { DataAuthorizationTab } from './DataAuthorizationTab';
 import { LegalDocumentsTab } from './LegalDocumentsTab';
 import { EmailVersandTab } from './settings/email/EmailVersandTab';
 import { RentalRulesTab } from './settings/rental-rules/RentalRulesTab';
+import { useRentalRulesPermissions } from '../hooks/useRentalRulesPermissions';
+import { RENTAL_RULES_PERMISSION_DENIED_MESSAGE } from '../lib/rental-rules-permissions';
 import { AccountInformationTab } from './settings/AccountInformationTab';
 import { CompanyInformationTab } from './settings/CompanyInformationTab';
 import { BillingTab } from './billing/BillingTab';
@@ -18,6 +20,7 @@ import {
   DataCard,
   MetricCard,
   EmptyState,
+  ErrorState,
   StatusChip,
   SectionHeader,
 } from '../../components/patterns';
@@ -1828,7 +1831,7 @@ export function SettingsView({
   const activeTab = controlledTab;
   const canWriteDataAuth = hasPermission('data-authorization', 'write');
   const canManageDataAuth = hasPermission('data-authorization', 'manage');
-  const canWriteRentalRules = hasPermission('company-info', 'write');
+  const rentalRulesPermissions = useRentalRulesPermissions();
   const bridgeDark = useDocumentDark();
 
   return (
@@ -1880,7 +1883,14 @@ export function SettingsView({
       )}
       {activeTab === 'rental-rules' && (
         <AdministrationTabPanel tab="rental-rules" activeTab={activeTab}>
-          <RentalRulesTab canWrite={canWriteRentalRules} />
+          {rentalRulesPermissions.canRead ? (
+            <RentalRulesTab />
+          ) : (
+            <ErrorState
+              title="Kein Zugriff auf Mietregeln"
+              description={RENTAL_RULES_PERMISSION_DENIED_MESSAGE}
+            />
+          )}
         </AdministrationTabPanel>
       )}
     </div>

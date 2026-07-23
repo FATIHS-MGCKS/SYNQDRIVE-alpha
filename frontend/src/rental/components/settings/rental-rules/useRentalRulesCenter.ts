@@ -6,7 +6,7 @@ import type {
   RentalRulesOverviewDto,
   RentalVehicleCategoryDto,
 } from './rental-rules.types';
-import { parseApiError } from './rental-rules.utils';
+import { mapRentalRulesLoadError } from '../../../lib/rental-rules-permissions';
 
 export function useRentalRulesCenter(orgId: string | null) {
   const [overview, setOverview] = useState<RentalRulesOverviewDto | null>(null);
@@ -15,6 +15,7 @@ export function useRentalRulesCenter(orgId: string | null) {
   const [fleetVehicles, setFleetVehicles] = useState<RentalFleetVehicleDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -27,6 +28,7 @@ export function useRentalRulesCenter(orgId: string | null) {
     }
     setLoading(true);
     setError(null);
+    setAccessDenied(false);
     try {
       const [ov, defs, cats, fleet] = await Promise.all([
         api.rentalRules.overview(orgId),
@@ -39,7 +41,9 @@ export function useRentalRulesCenter(orgId: string | null) {
       setCategories(cats);
       setFleetVehicles(fleet);
     } catch (e: unknown) {
-      setError(parseApiError(e));
+      const parsed = mapRentalRulesLoadError(e);
+      setAccessDenied(parsed.forbidden);
+      setError(parsed.message);
     } finally {
       setLoading(false);
     }
@@ -70,6 +74,7 @@ export function useRentalRulesCenter(orgId: string | null) {
     fleetVehicles,
     loading,
     error,
+    accessDenied,
     actionId,
     load,
     runAction,

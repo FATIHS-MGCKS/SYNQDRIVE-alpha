@@ -5,8 +5,8 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 4 of 34 — Permission model definition** |
-| **Mode** | IAM permission catalog + role templates + tests — **no controller enforcement yet** (Prompt 5) |
+| **Phase** | **Prompt 6 of 34 — Frontend permission alignment** |
+| **Mode** | Granular `rental_rules.*` / `booking_eligibility.*` gates in Rental UI |
 | **Method** | Direct code/schema verification; no unverified assumptions |
 
 ---
@@ -400,7 +400,7 @@ flowchart TB
 | **2** | Build-/Test-Baseline dokumentieren (`rental-rules-baseline-2026-07.md`) | **DONE** | 1 | — | — |
 | **3** | Code-Map / Endpoint-Inventar + Pfad-Analyse (§17) | **DONE** | 1–2 | — | — |
 | **4** | IAM: Permission-Modell (Katalog, Rollen-Matrix, Seeds, Tests) | **DONE** | 2, 3 | Nein | Ja |
-| **5** | IAM: `PermissionsGuard` auf Rental-Rules-Endpunkte | NOT_STARTED | 4 | Nein | Ja |
+| **5** | IAM: `PermissionsGuard` auf Rental-Rules-Endpunkte | **DONE** | 4 | Nein | Ja |
 | **6** | IAM: Leserechte-Matrix + `@Roles` verifizieren | NOT_STARTED | 5 | Nein | Ja |
 | **7** | Service-Layer `assertMembershipPermission` (falls erforderlich) | NOT_STARTED | 5 | Nein | Ja |
 | **8** | Controller-Security-Regressionstests | NOT_STARTED | 5–7 | Nein | Ja |
@@ -450,7 +450,7 @@ flowchart TB
 
 | Risiko | Schwere | Mitigation (geplant) |
 |--------|---------|----------------------|
-| Org-Member mit `RolesGuard` allein kann Regeln ändern (IAM P0) | **Hoch** | Prompt 5–8 (Katalog ✅ Prompt 4) |
+| Org-Member mit `RolesGuard` allein kann Regeln ändern (IAM P0) | **Hoch** | **Mitigiert Prompt 5–6** (Backend + Frontend) |
 | Buchung trotz `NOT_ELIGIBLE` möglich (nur UI-Warnung) | **Hoch** | Prompt 16–20 (Policy) |
 | Zwei Kaution-Quellen verwirren Operator/Checkout | **Mittel** | Prompt 22 |
 | Regeländerungen nicht auditierbar | **Mittel** | Prompt 23 |
@@ -656,9 +656,9 @@ flowchart LR
 | Effective Rules API | `rental-rules.controller.ts` | `GET .../vehicles/:id/rental-requirements/effective` | `getVehicleEffectiveRules` |
 | Persistenz | `rental-rules.service.ts` | diverse | Prisma CRUD auf `OrganizationRentalRules`, `RentalVehicleCategory`, `VehicleRentalRequirementOverride` |
 | DTO-Normalisierung | `rental-rules.mapper.ts` | `pickRulePatch`, `format*` | `depositAmount`→cents, years→months |
-| Frontend Admin | `useRentalRulesCenter.ts`, `RentalRulesTab.tsx`, Drawer-Komponenten | `api.rentalRules.*` | UI-only `canWrite` via `hasPermission('company-info','write')` |
+| Frontend Admin | `useRentalRulesCenter.ts`, `RentalRulesTab.tsx`, Drawer-Komponenten | `api.rentalRules.*` | Granulare Gates via `useRentalRulesPermissions()` (Prompt 6) |
 
-**Guards (Schreiben):** `OrgScopingGuard` + `RolesGuard` — **kein** `PermissionsGuard`, **kein** `@Roles` pro Handler (IAM P0).
+**Guards (Schreiben):** `OrgScopingGuard` + `RolesGuard` + `PermissionsGuard` + `@RequireRentalRulePermission` (Prompt 5).
 
 #### B. Effective Rule Resolution (Berechnen)
 
@@ -726,9 +726,9 @@ flowchart LR
 
 | Ebene | Ist-Zustand |
 |-------|-------------|
-| Backend Rental-Rules-API | `OrgScopingGuard` + `RolesGuard` only |
-| Backend Booking-Eligibility-API | `OrgScopingGuard` + `RolesGuard` only |
-| Frontend Rental Rules Tab | `canWrite` = `hasPermission('company-info', 'write')` — **UI-only**, nicht an Backend gekoppelt |
+| Backend Rental-Rules-API | `OrgScopingGuard` + `RolesGuard` + `PermissionsGuard` (Prompt 5) |
+| Backend Booking-Eligibility-API | `OrgScopingGuard` + `RolesGuard` + `PermissionsGuard` (Prompt 5) |
+| Frontend Rental Rules Tab | `useRentalRulesPermissions()` — `rental-rules` read/write + separate assign/publish/override modules (Prompt 6) |
 | Pickup Override | `assertMembershipPermission` in `booking-pickup-gate.service.ts` — Legal, nicht Rental Rules |
 
 #### I. Automationen / KI / Import
@@ -811,7 +811,7 @@ flowchart LR
 | **P0-RR-09** | Pickup Gate (`BookingPickupGateService`) prüft Customer Eligibility, **nicht** `BookingRentalEligibilityService` | CONFIRMED |
 | **P0-RR-10** | `NewBookingView` blockiert Confirm nur bei Customer Eligibility, nicht bei `NOT_ELIGIBLE` Rental Rules | CONFIRMED |
 | **P0-RR-11** | `BookingDetailDto.eligibility` = Customer only; kein `rentalEligibility` Feld | CONFIRMED |
-| **P1-RR-09** | Frontend `canWriteRentalRules` = `company-info` write — semantisch fragwürdig, Backend ungekoppelt | CONFIRMED |
+| **P1-RR-09** | Frontend `canWriteRentalRules` = `company-info` write — semantisch fragwürdig, Backend ungekoppelt | **MITIGIERT Prompt 6** — `useRentalRulesPermissions()` spiegelt Backend-Module |
 | **P1-RR-10** | `operational-issue-normalization.md` definiert `rental_requirement_unmet` — kein Producer im Code | CONFIRMED |
 | **P2-RR-06** | Voice Knowledge „booking prerequisites“ basiert auf Rules Overview, nicht Effective Rules pro Fahrzeug | CONFIRMED |
 
@@ -944,27 +944,158 @@ npm test -- --testPathPattern="rental-rules-permission|rental-rules.permissions.
 → 23/23 PASS
 ```
 
-### 18.7 Offen (Prompt 5+)
+### 18.7 Offen (Prompt 7+)
 
-- `@RequirePermission` + `PermissionsGuard` auf `RentalRulesController` / Eligibility-Endpunkte
-- Frontend `canWrite` in `RentalRulesTab` von `company-info` auf `rental_rules.write` umstellen
-- Produktions-Backfill auf VPS ausführen
+- Checkliste #6: Leserechte-Matrix + `@Roles` verifizieren
+- Produktions-Backfill auf VPS ausführen (`backfill-rental-rules-permissions.ts`)
+- Dedizierter `booking_eligibility.override` Endpunkt (Permission vorbereitet)
+- UI für `rental_rules.publish` (Kategorie löschen/deaktivieren) — Backend erzwingt bereits, kein dedizierter Publish-Button in Admin-UI
 
 ---
 
-## Prompt 4 — Abschluss
+## 19. Controller-Enforcement (Prompt 5)
+
+Alle Rental-Rules- und Eligibility-Preview-Routen sind mit `PermissionsGuard` + `@RequireRentalRulePermission` / `@RequireBookingEligibilityPermission` abgesichert.
+
+### 19.1 Abgesicherte Endpunkte
+
+| Methode | Route | Permission | Guard |
+|---------|-------|------------|-------|
+| GET | `.../rental-rules/overview` | `rental_rules.read` | ✅ |
+| GET | `.../rental-rules/fleet-vehicles` | `rental_rules.read` | ✅ |
+| GET | `.../rental-rules/defaults` | `rental_rules.read` | ✅ |
+| PATCH | `.../rental-rules/defaults` | `rental_rules.write` (+ publish wenn `isActive`) | ✅ |
+| GET | `.../rental-rules/categories` | `rental_rules.read` | ✅ |
+| POST | `.../rental-rules/categories` | `rental_rules.write` (+ publish wenn `isActive`) | ✅ |
+| GET | `.../rental-rules/categories/:id` | `rental_rules.read` | ✅ |
+| PATCH | `.../rental-rules/categories/:id` | `rental_rules.write` (+ publish wenn `isActive`) | ✅ |
+| DELETE | `.../rental-rules/categories/:id` | `rental_rules.publish` | ✅ |
+| GET | `.../rental-rules/categories/:id/vehicles` | `rental_rules.read` | ✅ |
+| PATCH | `.../rental-rules/categories/:id/vehicles` | `rental_rules.assign_vehicles` | ✅ |
+| GET | `.../vehicles/:id/rental-requirements` | `rental_rules.read` | ✅ |
+| PATCH | `.../vehicles/:id/rental-requirements/overrides` | `rental_rules.manage_overrides` | ✅ |
+| GET | `.../vehicles/:id/rental-requirements/effective` | `rental_rules.read` | ✅ |
+| POST | `.../bookings/eligibility-check` | `booking_eligibility.review` | ✅ |
+| GET | `.../bookings/:id/rental-eligibility` | `booking_eligibility.review` | ✅ |
+
+**Service-Layer (Publish-Trennung):** `RentalRulePermissionService.assertPublishIfActiveChange` bei `isActive` in PATCH/POST Defaults/Kategorien.
+
+**MASTER_ADMIN Cross-Tenant:** `RentalRulePermissionService` loggt Warnung bei organisationsübergreifenden Aktionen.
+
+**Noch nicht implementiert:** Dedizierter manueller Override-Endpunkt (`booking_eligibility.override`) — Permission-Mapping dokumentiert in Characterization-Test.
+
+### 19.2 Testabdeckung (2026-07-23)
+
+| Suite | Tests | Ergebnis |
+|-------|-------|----------|
+| `rental-rules.permissions.enforcement.spec.ts` | 12 | ✅ PASS |
+| `rental-rules.permissions.characterization.spec.ts` | 16 | ✅ PASS |
+| `booking-eligibility.permissions.enforcement.spec.ts` | 6 | ✅ PASS |
+| `booking-eligibility.permissions.characterization.spec.ts` | 4 | ✅ PASS |
+| `rental-rule-permission.service.spec.ts` | 2 | ✅ PASS |
+| Gesamt (rental-rules + eligibility permission) | **75** | ✅ PASS |
+
+**Getestete Szenarien:** unauthenticated, ohne Membership, Cross-Tenant/IDOR, read-only, write, publish, assign, override, ORG_ADMIN-Bypass, MASTER_ADMIN-Bypass.
+
+---
+
+## Prompt 5 — Abschluss
 
 | Kriterium | Erfüllt |
 |-----------|---------|
-| Permissions zentral definiert | ✅ §18.2–18.3 |
-| Rollen erhalten nur erforderliche Rechte | ✅ §18.4 |
-| Worker/Driver können Regeln nicht ändern | ✅ Matrix-Tests |
-| Publish und Override getrennt geschützt | ✅ Separate Module |
-| Bestehende Rollen kompatibel | ✅ Merge-Pattern wie Legal Docs |
-| Unit Tests bestehen | ✅ 23/23 |
-| Keine Controller-Umstellung | ✅ |
-| Prompt 4 Status | **DONE** |
+| Keine schreibende Route ohne explizite Permission | ✅ §19.1 |
+| Read-only kann keine Mutation ausführen | ✅ Enforcement-Tests |
+| Cross-Tenant blockiert | ✅ OrgScopingGuard-Tests |
+| 403/404 folgt Standard | ✅ `ForbiddenException` Messages |
+| Tests bestehen | ✅ 75/75 |
+| Prompt 5 Status | **DONE** |
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 4).*
+## 20. Frontend Permission Alignment (Prompt 6)
+
+Die Rental-Rules-Oberfläche nutzt dieselbe Permission-Semantik wie das Backend (§18, §19). Generisches `company-info.write` wurde entfernt.
+
+### 20.1 Permission-Mapping (Frontend → Backend)
+
+| Frontend Gate | IAM-Modul | Level | Backend Action |
+|---------------|-----------|-------|----------------|
+| `canRead` | `rental-rules` | read | `rental_rules.read` |
+| `canWrite` | `rental-rules` | write | `rental_rules.write` |
+| `canPublish` | `rental-rules-publish` | write | `rental_rules.publish` |
+| `canAssignVehicles` | `rental-rules-assign` | write | `rental_rules.assign_vehicles` |
+| `canManageOverrides` | `rental-rules-overrides` | write | `rental_rules.manage_overrides` |
+| `canReviewEligibility` | `booking-eligibility` | read | `booking_eligibility.review` |
+| `canOverrideEligibility` | `booking-eligibility-override` | manage | `booking_eligibility.override` |
+
+Zentrale Implementierung: `frontend/src/rental/lib/rental-rules-permissions.ts`, Hook `useRentalRulesPermissions.ts`.
+
+### 20.2 UI-Rechte pro Aktion
+
+| UI-Oberfläche / Aktion | Permission | Verhalten ohne Recht |
+|------------------------|------------|----------------------|
+| Sidebar → Mietregeln | `rental_rules.read` | Nav-Eintrag ausgeblendet |
+| Administration Tab „Rental Rules“ | `rental_rules.read` | Tab ausgeblendet |
+| Direkt-URL `settings?tab=rental-rules` | `rental_rules.read` | `ErrorState` 403 (kein Tab-Inhalt) |
+| Rental Rules Center laden | `rental_rules.read` | `ErrorState` + `mapRentalRulesLoadError` bei API-403 |
+| Regeln/Herkunft ansehen (Read-only) | `rental_rules.read` | Voll nutzbar (Preview, KPIs, Kategorien-Liste) |
+| Org-Defaults bearbeiten | `rental_rules.write` | Kein Edit-Button / Drawer read-only |
+| Kategorie anlegen/bearbeiten | `rental_rules.write` | Kein Create/Edit |
+| Fahrzeuge zu Kategorie zuweisen | `rental_rules.assign_vehicles` | Kein „Assign vehicles“ / Assignment-Drawer disabled |
+| Fahrzeug-Kategorie zuweisen (Vehicle Detail) | `rental_rules.assign_vehicles` | `VehicleCategoryAssignDrawer` read-only |
+| Fahrzeug-Overrides bearbeiten | `rental_rules.manage_overrides` | Override-Editor read-only / kein Edit-Button |
+| Kategorie löschen/deaktivieren | `rental_rules.publish` | **Kein UI-Control** — Backend blockiert DELETE |
+| Eligibility-Preview (New Booking) | `booking_eligibility.review` | API-Call übersprungen; Karte ausgeblendet |
+| Manuelle Freigabe-Hinweis | `booking_eligibility.override` | Chip: „keine Override-Berechtigung“ |
+| Vehicle Requirements Tab | `rental_rules.read` | `ErrorState` ohne Lese-Recht |
+
+### 20.3 403-Behandlung
+
+- `mapRentalRulesLoadError()` / `mapBookingEligibilityLoadError()` erkennen Permission-Fehler (403, „Missing permission“, „Forbidden“).
+- `useRentalRulesCenter` setzt `accessDenied` — kein Retry-Button bei 403.
+- `BookingRentalEligibilityCard` zeigt permission-spezifische Meldung statt generischem Fehler.
+
+### 20.4 Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `frontend/src/rental/lib/rental-rules-permissions.ts` | Gate-Builder + Error-Mapper |
+| `frontend/src/rental/hooks/useRentalRulesPermissions.ts` | React-Hook |
+| `frontend/src/rental/components/settings/rental-rules/RentalRulesTab.tsx` | Granulare Gates, 403-UI |
+| `frontend/src/rental/components/settings/rental-rules/useRentalRulesCenter.ts` | 403-State |
+| `frontend/src/rental/components/SettingsView.tsx` | Tab-Gate statt `company-info` |
+| `frontend/src/rental/components/settings/AdministrationTabBar.tsx` | Tab-Sichtbarkeit |
+| `frontend/src/rental/components/Sidebar.tsx` | Nav-Sichtbarkeit |
+| `frontend/src/rental/components/vehicle-detail/VehicleRequirementsTab.tsx` | assign/override/read Gates |
+| `frontend/src/rental/hooks/useVehicleRentalRequirements.ts` | 403-Mapping |
+| `frontend/src/rental/components/NewBookingView.tsx` | Eligibility review/override Gates |
+| `frontend/src/rental/components/bookings/BookingRentalEligibilityCard.tsx` | Override-Chip + 403 |
+| `frontend/src/rental/lib/rental-rules-permissions.test.ts` | 10 Unit-Tests |
+| `frontend/src/rental/components/settings/rental-rules/rental-rules-permissions.ui.test.ts` | 3 UI-Sichtbarkeits-Tests |
+
+### 20.5 Tests (2026-07-23)
+
+```
+cd frontend && npm test -- rental-rules-permissions
+→ 13/13 PASS
+
+cd frontend && npm run build
+→ PASS
+```
+
+---
+
+## Prompt 6 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| UI und Backend verwenden dieselbe Permission-Semantik | ✅ §20.1 |
+| Keine nur visuell versteckte Sicherheitslogik (API bleibt autoritativ) | ✅ §19 + 403-Handling |
+| Read-only-Modus vollständig nutzbar | ✅ Preview, KPIs, Herkunft |
+| Direkte URL-Aufrufe backendseitig geschützt | ✅ Prompt 5 |
+| Tests bestehen | ✅ 13/13 Frontend |
+| Prompt 6 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 6).*

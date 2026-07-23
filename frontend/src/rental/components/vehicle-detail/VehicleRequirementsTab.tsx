@@ -8,7 +8,7 @@ import {
   effectiveSourceSummaryDe,
 } from '../../lib/vehicle-rental-requirements.utils';
 import { EmptyState, ErrorState } from '../../../components/patterns';
-import { useRentalOrg } from '../../RentalContext';
+import { useRentalRulesPermissions } from '../../hooks/useRentalRulesPermissions';
 import { VehicleCategoryAssignDrawer } from './VehicleCategoryAssignDrawer';
 import { VehicleOverrideEditorDrawer } from './VehicleOverrideEditorDrawer';
 import {
@@ -39,8 +39,10 @@ export function VehicleRequirementsTab({
   orgId,
   onOpenRentalRulesCenter,
 }: VehicleRequirementsTabProps) {
-  const { hasPermission } = useRentalOrg();
-  const canWrite = hasPermission('company-info', 'write');
+  const permissions = useRentalRulesPermissions();
+  const canRead = permissions.canRead;
+  const canManageOverrides = permissions.canManageOverrides;
+  const canAssignVehicles = permissions.canAssignVehicles;
   const vehicleId = selectedVehicle?.id ?? null;
 
   const { effective, requirements, orgDefaults, loading, error, reload } =
@@ -70,6 +72,15 @@ export function VehicleRequirementsTab({
       <EmptyState
         title="Kein Fahrzeug ausgewählt"
         description="Wähle ein Fahrzeug aus der Flotte, um Mietvoraussetzungen anzuzeigen."
+      />
+    );
+  }
+
+  if (!canRead) {
+    return (
+      <ErrorState
+        title="Kein Zugriff auf Mietvoraussetzungen"
+        description="Keine Berechtigung für Mietregeln. Bitte wende dich an einen Administrator."
       />
     );
   }
@@ -138,7 +149,7 @@ export function VehicleRequirementsTab({
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            {canWrite && (
+            {canManageOverrides && (
               <button
                 type="button"
                 className="sq-btn sq-btn-secondary min-h-8 gap-1 px-2.5 text-[11px] sm:text-[12px]"
@@ -232,7 +243,7 @@ export function VehicleRequirementsTab({
           hasOverrides={hasOverrides}
           orgConfigured={orgDefaults?.configured ?? false}
           incompleteRules={incompleteRules}
-          canWrite={canWrite}
+          canWrite={canAssignVehicles}
           onAssignCategory={() => setAssignOpen(true)}
           onOpenRentalRules={onOpenRentalRulesCenter}
           locale={LOCALE}
@@ -245,7 +256,7 @@ export function VehicleRequirementsTab({
         orgId={orgId}
         vehicleId={vehicleId}
         requirements={requirements}
-        canWrite={canWrite}
+        canWrite={canManageOverrides}
         onSaved={() => void reload()}
       />
 
@@ -255,7 +266,7 @@ export function VehicleRequirementsTab({
         orgId={orgId}
         vehicleId={vehicleId}
         currentCategoryId={requirements?.rentalCategoryId ?? null}
-        canWrite={canWrite}
+        canWrite={canManageOverrides}
         onAssigned={() => void reload()}
       />
     </div>

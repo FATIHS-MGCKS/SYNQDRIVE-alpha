@@ -6,6 +6,7 @@ export function BookingSidebar({
   rentalEligibility,
   rentalEligibilityLoading,
   rentalEligibilityError,
+  canOverrideEligibility,
   onCompleteCustomerData,
   onChooseAnotherVehicle,
   selectedVehicle,
@@ -20,6 +21,7 @@ export function BookingSidebar({
           result={rentalEligibility}
           loading={rentalEligibilityLoading}
           error={rentalEligibilityError}
+          canOverrideEligibility={canOverrideEligibility}
           onCompleteCustomerData={onCompleteCustomerData}
           onChooseAnotherVehicle={onChooseAnotherVehicle}
         />

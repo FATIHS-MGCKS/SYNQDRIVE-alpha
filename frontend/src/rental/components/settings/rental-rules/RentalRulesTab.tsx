@@ -13,6 +13,8 @@ import { api } from '../../../../lib/api';
 import { Button } from '../../../../components/ui/button';
 import { EmptyState, ErrorState, PageHeader } from '../../../../components/patterns';
 import { useRentalOrg } from '../../../RentalContext';
+import { RENTAL_RULES_PERMISSION_DENIED_MESSAGE } from '../../../lib/rental-rules-permissions';
+import { useRentalRulesPermissions } from '../../../hooks/useRentalRulesPermissions';
 import { CategoryDetailDrawer } from './CategoryDetailDrawer';
 import { DefaultRulesDrawer } from './DefaultRulesDrawer';
 import { EffectiveRulesPreviewDrawer } from './EffectiveRulesPreviewDrawer';
@@ -38,7 +40,8 @@ import {
 } from '../../shared/rental-requirements-ui';
 
 interface RentalRulesTabProps {
-  canWrite?: boolean;
+  /** @deprecated Use internal `useRentalRulesPermissions` — kept for test injection only */
+  permissions?: ReturnType<typeof useRentalRulesPermissions>;
 }
 
 const RULE_HIERARCHY_STEPS = [
@@ -73,8 +76,15 @@ function SummarySkeleton() {
   );
 }
 
-export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
+export function RentalRulesTab({ permissions: permissionsOverride }: RentalRulesTabProps = {}) {
   const { orgId } = useRentalOrg();
+  const resolvedPermissions = useRentalRulesPermissions();
+  const permissions = permissionsOverride ?? resolvedPermissions;
+  const {
+    canRead,
+    canWrite,
+    canAssignVehicles,
+  } = permissions;
   const {
     overview,
     defaults,
@@ -83,9 +93,19 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
     loading,
     error,
     actionId,
+    accessDenied,
     load,
     runAction,
   } = useRentalRulesCenter(orgId);
+
+  if (!canRead) {
+    return (
+      <ErrorState
+        title="Kein Zugriff auf Mietregeln"
+        description={RENTAL_RULES_PERMISSION_DENIED_MESSAGE}
+      />
+    );
+  }
 
   const [defaultsOpen, setDefaultsOpen] = useState(false);
   const [categoryDrawer, setCategoryDrawer] = useState<{
@@ -172,9 +192,9 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
   if (error && !overview) {
     return (
       <ErrorState
-        title="Rental rules could not be loaded"
+        title={accessDenied ? 'Kein Zugriff auf Mietregeln' : 'Rental rules could not be loaded'}
         description={error}
-        onRetry={() => void load()}
+        onRetry={accessDenied ? undefined : () => void load()}
       />
     );
   }
@@ -451,16 +471,18 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
                   </dl>
 
                   <div className="mt-2.5 flex flex-wrap gap-1 border-t border-border/50 pt-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-[11px]"
-                      onClick={() => void openCategoryEdit(cat)}
-                    >
-                      Edit
-                    </Button>
                     {canWrite && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => void openCategoryEdit(cat)}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                    {canAssignVehicles && (
                       <Button
                         type="button"
                         variant="ghost"
@@ -561,6 +583,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
           category={categoryDrawer.category}
           assignedVehicles={assignedVehicles}
           canWrite={canWrite}
+          canAssignVehicles={canAssignVehicles}
           saving={actionId === 'category'}
           onSave={async (payload) => {
             if (!orgId) return;
@@ -587,7 +610,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
           categoryName={assignDrawer.name}
           fleetVehicles={fleetVehicles}
           assignedIds={assignedVehicles.map((v) => v.id)}
-          canWrite={canWrite}
+          canWrite={canAssignVehicles}
           saving={actionId === 'assign'}
           onSave={async (vehicleIds) => {
             await runAction('assign', () =>

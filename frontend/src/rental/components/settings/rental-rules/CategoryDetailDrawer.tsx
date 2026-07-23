@@ -19,6 +19,7 @@ interface CategoryDetailDrawerProps {
   category: RentalVehicleCategoryDto | null;
   assignedVehicles: RentalCategoryVehicleDto[];
   canWrite: boolean;
+  canAssignVehicles?: boolean;
   saving: boolean;
   onSave: (payload: Record<string, unknown>) => Promise<void>;
   onAssignVehicles: () => void;
@@ -32,6 +33,7 @@ export function CategoryDetailDrawer({
   category,
   assignedVehicles,
   canWrite,
+  canAssignVehicles = false,
   saving,
   onSave,
   onAssignVehicles,
@@ -205,7 +207,7 @@ export function CategoryDetailDrawer({
               <h4 className="text-[13px] font-semibold text-foreground">
                 Assigned vehicles ({assignedVehicles.length})
               </h4>
-              {canWrite && (
+              {canAssignVehicles && (
                 <button type="button" className="sq-btn sq-btn-ghost min-h-8 text-[12px]" onClick={onAssignVehicles}>
                   Assign vehicles
                 </button>

@@ -48,6 +48,7 @@ export interface BookingRentalEligibilityCardProps {
   result: BookingRentalEligibilityResult | null;
   loading?: boolean;
   error?: string | null;
+  canOverrideEligibility?: boolean;
   onCompleteCustomerData?: () => void;
   onChooseAnotherVehicle?: () => void;
 }
@@ -56,18 +57,22 @@ export function BookingRentalEligibilityCard({
   result,
   loading,
   error,
+  canOverrideEligibility = false,
   onCompleteCustomerData,
   onChooseAnotherVehicle,
 }: BookingRentalEligibilityCardProps) {
   if (loading) return <EligibilitySkeleton />;
 
   if (error) {
+    const isForbidden = /keine berechtigung|missing permission|forbidden|403/i.test(error);
     return (
       <div
         className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-xs"
         role="alert"
       >
-        <p className="font-semibold text-foreground">Voraussetzungsprüfung nicht verfügbar</p>
+        <p className="font-semibold text-foreground">
+          {isForbidden ? 'Keine Berechtigung für Eligibility-Prüfung' : 'Voraussetzungsprüfung nicht verfügbar'}
+        </p>
         <p className="mt-1 text-muted-foreground">{error}</p>
       </div>
     );
@@ -166,7 +171,9 @@ export function BookingRentalEligibilityCard({
         )}
         {result.status === 'MANUAL_APPROVAL_REQUIRED' && (
           <StatusChip tone="neutral" className="self-center">
-            Buchung kann als Ausstehend angelegt werden
+            {canOverrideEligibility
+              ? 'Manuelle Freigabe durch berechtigte Rolle möglich'
+              : 'Manuelle Freigabe erforderlich — keine Override-Berechtigung'}
           </StatusChip>
         )}
       </div>
