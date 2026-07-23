@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-rules-prod-di-fix-v49788-2026-07-23',
+    version: '4.9.788',
+    title: 'V4.9.788 — Rental Rules production hotfix (DI + release train)',
+    summary: [
+      'Production 502 behoben: `forwardRef` für `BookingEligibilityEnforcementService` ↔ `BookingEligibilityApprovalService` ↔ `BookingEligibilityRecheckService` (NestJS circular DI).',
+      'Release-Train auf `main`: Prompts 1–34 konsolidiert; P1/P2-Risiken (BookingDetail rentalEligibility, Wizard-Perm, Fingerprint, Draft-Index, Lint).',
+      'Prod-Migrations idempotent nachgezogen (`rental_rule_revisions`, `one_draft_per_scope`).',
+      'Playwright-E2E-Scaffold für Rental-Rules-Flow; Domain-Suite grün.',
+    ],
+    reason: 'Production war nach Rental-Rules-Deploy down (Nest DI crash loop); Hotfix + vollständiger Release-Train.',
+    previousBehavior: 'PM2 crash loop: BookingEligibilityRecheckService konnte Enforcement nicht auflösen; isolierte Branches nicht auf main.',
+    details:
+      'booking-eligibility-recheck.service.ts, booking-eligibility-enforcement.service.ts, migrations 20260723130000/20260723240000, frontend/e2e/rental-rules-flow.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Rental Rules / Bookings / Deploy',
+    createdAt: '2026-07-23T22:10:00.000Z',
+  },
+  {
     id: 'rental-rules-post-remediation-audit-v49787-2026-07-23',
     version: '4.9.787',
     title: 'V4.9.787 — Rental Rules post-remediation audit (Prompt 34)',

@@ -31,6 +31,7 @@ export class BookingEligibilityRecheckService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly decisions: BookingEligibilityDecisionService,
+    @Inject(forwardRef(() => BookingEligibilityEnforcementService))
     private readonly enforcement: BookingEligibilityEnforcementService,
     @Inject(forwardRef(() => BookingEligibilityApprovalService))
     private readonly approvals: BookingEligibilityApprovalService,

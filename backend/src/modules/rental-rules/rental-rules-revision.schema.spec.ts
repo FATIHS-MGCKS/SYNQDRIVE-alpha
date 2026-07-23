@@ -48,6 +48,6 @@ describe('Rental rule revisions schema (Prompt 24)', () => {
     expect(sql).toContain('FROM "rental_vehicle_categories"');
     expect(sql).toContain('FROM "vehicle_rental_requirement_overrides"');
     expect(sql).toContain('Initial revision backfill (Prompt 24)');
-    expect(sql).toContain('ON CONFLICT ON CONSTRAINT "rental_rule_revisions_scope_version_key" DO NOTHING');
+    expect(sql).toContain('ON CONFLICT ("organization_id", "scope_type", "scope_id", "version") DO NOTHING');
   });
 });

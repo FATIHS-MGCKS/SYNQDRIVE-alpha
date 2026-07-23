@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { BookingStatus, MembershipRole } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isWizardDraftBooking } from '../booking-wizard-draft.util';
@@ -73,6 +73,7 @@ export class BookingEligibilityEnforcementService {
     private readonly prisma: PrismaService,
     private readonly gatekeeper: BookingEligibilityGatekeeperService,
     private readonly auditLogger: BookingEligibilityAuditLogger,
+    @Inject(forwardRef(() => BookingEligibilityApprovalService))
     private readonly eligibilityApproval: BookingEligibilityApprovalService,
     private readonly eligibilityDecision: BookingEligibilityDecisionService,
     private readonly businessAudit: BusinessAuditService,
