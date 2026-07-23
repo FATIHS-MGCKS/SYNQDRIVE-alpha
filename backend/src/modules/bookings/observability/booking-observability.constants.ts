@@ -1,0 +1,58 @@
+export const BOOKING_OBSERVABILITY_OPERATIONS = {
+  CREATE: 'booking.create',
+  UPDATE: 'booking.update',
+  CANCEL: 'booking.cancel',
+  NO_SHOW: 'booking.no_show',
+  DETAIL_READ: 'booking.detail.read',
+  DOCUMENT_ENQUEUE: 'booking.document.enqueue',
+  EMAIL_SEND: 'booking.email.send',
+  TASK_SYNC: 'booking.task.sync',
+  INVOICE_BOOTSTRAP: 'booking.invoice.bootstrap',
+  INVOICE_SYNC: 'booking.invoice.sync',
+  HANDOVER_PICKUP: 'booking.handover.pickup',
+  HANDOVER_RETURN: 'booking.handover.return',
+  PICKUP_GATE_AUDIT: 'booking.pickup_gate.audit',
+  TENANT_DENIAL: 'booking.tenant.denial',
+  RENTAL_RECOMPUTE: 'booking.rental_recompute',
+  DOCUMENT_VOID: 'booking.document.void',
+  VEHICLE_CLEANING: 'booking.vehicle_cleaning',
+} as const;
+
+export type BookingObservabilityOperation =
+  (typeof BOOKING_OBSERVABILITY_OPERATIONS)[keyof typeof BOOKING_OBSERVABILITY_OPERATIONS];
+
+export const BOOKING_FAILURE_CATEGORIES = {
+  INVOICE: 'INVOICE',
+  DOCUMENT: 'DOCUMENT',
+  EMAIL: 'EMAIL',
+  TASK: 'TASK',
+  HANDOVER: 'HANDOVER',
+  CONFLICT: 'CONFLICT',
+  DETAIL_READ: 'DETAIL_READ',
+  SIDE_EFFECT: 'SIDE_EFFECT',
+  TENANT: 'TENANT',
+  OUTBOX: 'OUTBOX',
+  OTHER: 'OTHER',
+} as const;
+
+export type BookingFailureCategory =
+  (typeof BOOKING_FAILURE_CATEGORIES)[keyof typeof BOOKING_FAILURE_CATEGORIES];
+
+export const BOOKING_SAFE_ERROR_CODES = {
+  UNKNOWN: 'UNKNOWN',
+  INVOICE_BOOTSTRAP_FAILED: 'INVOICE_BOOTSTRAP_FAILED',
+  DOCUMENT_ENQUEUE_FAILED: 'DOCUMENT_ENQUEUE_FAILED',
+  EMAIL_SEND_FAILED: 'EMAIL_SEND_FAILED',
+  TASK_SYNC_FAILED: 'TASK_SYNC_FAILED',
+  HANDOVER_SIDE_EFFECT_FAILED: 'HANDOVER_SIDE_EFFECT_FAILED',
+  DETAIL_PARTIAL_READ: 'DETAIL_PARTIAL_READ',
+  VEHICLE_BOOKING_OVERLAP: 'VEHICLE_BOOKING_OVERLAP',
+  TENANT_MISMATCH: 'TENANT_MISMATCH',
+  PICKUP_GATE_AUDIT_FAILED: 'PICKUP_GATE_AUDIT_FAILED',
+  RENTAL_RECOMPUTE_FAILED: 'RENTAL_RECOMPUTE_FAILED',
+  DOCUMENT_VOID_FAILED: 'DOCUMENT_VOID_FAILED',
+  ODOMETER_LOOKUP_FAILED: 'ODOMETER_LOOKUP_FAILED',
+} as const;
+
+export type BookingSafeErrorCode =
+  (typeof BOOKING_SAFE_ERROR_CODES)[keyof typeof BOOKING_SAFE_ERROR_CODES];

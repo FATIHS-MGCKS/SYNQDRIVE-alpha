@@ -1070,6 +1070,26 @@ enum BookingPaymentIntent {
   TERMINAL
 }
 
+enum BookingProcessingFailureCategory {
+  INVOICE
+  DOCUMENT
+  EMAIL
+  TASK
+  HANDOVER
+  CONFLICT
+  DETAIL_READ
+  SIDE_EFFECT
+  TENANT
+  OUTBOX
+  OTHER
+}
+
+enum BookingProcessingFailureSeverity {
+  WARNING
+  ERROR
+  CRITICAL
+}
+
 enum InsightType {
   TIGHT_HANDOVER
   RETURN_NEEDS_INSPECTION
@@ -1643,6 +1663,7 @@ model Organization {
   legalDocumentRetentionPolicy           OrganizationLegalDocumentRetentionPolicy?
   bookingDocumentBundles                 BookingDocumentBundle[]
   bookingDeposits                        BookingDeposit[]
+  bookingProcessingFailures              BookingProcessingFailure[]
   organizationPaymentAccounts            OrganizationPaymentAccount[]
   bookingPaymentRequests                 BookingPaymentRequest[]
   paymentEmailOutbox                     PaymentEmailOutbox[]
@@ -5611,6 +5632,7 @@ model Booking {
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
   allowedDrivers          BookingAllowedDriver[]
+  processingFailures      BookingProcessingFailure[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -5654,6 +5676,33 @@ model BookingAllowedDriver {
   @@index([customerId])
   @@index([bookingId, role])
   @@map("booking_allowed_drivers")
+}
+
+model BookingProcessingFailure {
+  id             String                           @id @default(uuid())
+  organizationId String                           @map("organization_id")
+  bookingId      String?                          @map("booking_id")
+  category       BookingProcessingFailureCategory
+  operation      String
+  errorCode      String                           @map("error_code")
+  message        String
+  correlationId  String?                          @map("correlation_id")
+  requestId      String?                          @map("request_id")
+  eventId        String?                          @map("event_id")
+  retryable      Boolean                          @default(true)
+  severity       BookingProcessingFailureSeverity @default(ERROR)
+  resolvedAt     DateTime?                        @map("resolved_at")
+  metadata       Json?
+  createdAt      DateTime                         @default(now()) @map("created_at")
+  updatedAt      DateTime                         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking?     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, bookingId])
+  @@index([organizationId, category, resolvedAt])
+  @@index([errorCode, createdAt])
+  @@map("booking_processing_failures")
 }
 
 // ------------------------------------------------

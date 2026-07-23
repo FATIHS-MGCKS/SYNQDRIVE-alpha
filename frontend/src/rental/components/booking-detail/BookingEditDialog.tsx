@@ -33,6 +33,7 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
       detail.core.pickupStationId === detail.core.returnStationId,
   );
   const [stations, setStations] = useState<Station[]>([]);
+  const [stationsLoadError, setStationsLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -40,10 +41,18 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
     api.stations
       .list(orgId)
       .then((rows) => {
-        if (!cancelled) setStations(Array.isArray(rows) ? rows : []);
+        if (!cancelled) {
+          setStations(Array.isArray(rows) ? rows : []);
+          setStationsLoadError(null);
+        }
       })
-      .catch(() => {
-        if (!cancelled) setStations([]);
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setStations([]);
+          setStationsLoadError(
+            err instanceof Error ? err.message : 'Stationen konnten nicht geladen werden',
+          );
+        }
       });
     return () => {
       cancelled = true;
@@ -134,6 +143,9 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
             />
           </Field>
           <Field label="Stationen">
+            {stationsLoadError && (
+              <p className="text-[11px] text-destructive mb-2">{stationsLoadError}</p>
+            )}
             <StationSelectFields
               stations={stations}
               pickupStationId={pickupStationId}

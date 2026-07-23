@@ -26,6 +26,7 @@ export function BookingUsageMisuseTab({
     rentalAnalysisProp ?? null,
   );
   const [analysisLoading, setAnalysisLoading] = useState(analysisLoadingProp ?? false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +41,7 @@ export function BookingUsageMisuseTab({
     void Promise.resolve().then(() => {
       if (cancelled) return;
       setAnalysisLoading(true);
+      setAnalysisError(null);
       api.rentalDrivingAnalyses
         .list(orgId, { bookingId: detail.core.bookingId, limit: 1 })
         .then((res) => {
@@ -47,8 +49,12 @@ export function BookingUsageMisuseTab({
           const rows = Array.isArray(res?.data) ? res.data : [];
           setRentalAnalysis(rows[0] ?? null);
         })
-        .catch(() => {
-          if (!cancelled) setRentalAnalysis(null);
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setRentalAnalysis(null);
+          setAnalysisError(
+            err instanceof Error ? err.message : 'Nutzungsanalyse konnte nicht geladen werden',
+          );
         })
         .finally(() => {
           if (!cancelled) setAnalysisLoading(false);
@@ -84,14 +90,18 @@ export function BookingUsageMisuseTab({
         />
       </div>
 
-      {(rentalAnalysis || analysisLoading) && (
+      {analysisError && (
+        <p className="text-xs text-destructive px-1">{analysisError}</p>
+      )}
+
+      {(rentalAnalysis || analysisLoading) && !analysisError && (
         <RentalStressAnalysisCard
           analysis={rentalAnalysis ?? null}
           loading={analysisLoading}
         />
       )}
 
-      {!u.hasAnalysis && u.misuseCaseCount === 0 && !rentalAnalysis && !analysisLoading && (
+      {!u.hasAnalysis && u.misuseCaseCount === 0 && !rentalAnalysis && !analysisLoading && !analysisError && (
         <p className="text-xs text-muted-foreground px-1">
           Nutzungsanalyse steht nach oder während der Vermietung zur Verfügung, sobald Fahrdaten vorliegen.
         </p>

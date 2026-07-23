@@ -177,6 +177,19 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityCoverageRatio: Gauge<string>;
   readonly connectivityReconciliationConflictTotal: Counter<string>;
 
+  /** Booking operations — low-cardinality labels only (Prompt 25). */
+  readonly bookingCreateSuccess: Counter<string>;
+  readonly bookingCreateFailure: Counter<string>;
+  readonly bookingConflictTotal: Counter<string>;
+  readonly bookingInvoiceFailure: Counter<string>;
+  readonly bookingDocumentFailure: Counter<string>;
+  readonly bookingEmailFailure: Counter<string>;
+  readonly bookingTaskFailure: Counter<string>;
+  readonly bookingHandoverFailure: Counter<string>;
+  readonly bookingOutboxRetry: Counter<string>;
+  readonly bookingOutboxDeadLetter: Counter<string>;
+  readonly bookingTenantDenialTotal: Counter<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
@@ -197,6 +210,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly taskAutomationOutboxBacklog: Gauge<string>;
   readonly batteryV2DeadLetterBacklog: Gauge<string>;
   readonly batteryV2VehiclesWithoutPublication: Gauge<string>;
+  readonly bookingOutboxLagSeconds: Gauge<string>;
+  readonly bookingProcessingFailureUnresolved: Gauge<string>;
+  readonly bookingConflictRateWindow: Gauge<string>;
+  readonly bookingTenantDenialWindow: Gauge<string>;
   readonly batteryPostgresTableRows: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
@@ -1317,6 +1334,128 @@ export class TripMetricsService implements OnModuleInit {
       labelNames: ['classification'],
       registers: [this.registry],
     });
+
+    this.bookingCreateSuccess = new Counter({
+      name: 'synqdrive_booking_create_success_total',
+      help: 'Successful booking create operations',
+      labelNames: ['organization_id'],
+      registers: [this.registry],
+    });
+
+    this.bookingCreateFailure = new Counter({
+      name: 'synqdrive_booking_create_failure_total',
+      help: 'Failed booking create operations',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingConflictTotal = new Counter({
+      name: 'synqdrive_booking_conflict_total',
+      help: 'Booking conflict rejections (overlap, health gate, etc.)',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingInvoiceFailure = new Counter({
+      name: 'synqdrive_booking_invoice_failure_total',
+      help: 'Booking invoice side-effect failures',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingDocumentFailure = new Counter({
+      name: 'synqdrive_booking_document_failure_total',
+      help: 'Booking document side-effect failures',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingEmailFailure = new Counter({
+      name: 'synqdrive_booking_email_failure_total',
+      help: 'Booking email side-effect failures',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingTaskFailure = new Counter({
+      name: 'synqdrive_booking_task_failure_total',
+      help: 'Booking task automation side-effect failures',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingHandoverFailure = new Counter({
+      name: 'synqdrive_booking_handover_failure_total',
+      help: 'Pickup/return handover side-effect failures',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingOutboxRetry = new Counter({
+      name: 'synqdrive_booking_outbox_retry_total',
+      help: 'Booking domain event outbox retries',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingOutboxDeadLetter = new Counter({
+      name: 'synqdrive_booking_outbox_dead_letter_total',
+      help: 'Booking domain event outbox dead-letter events',
+      labelNames: ['event_type'],
+      registers: [this.registry],
+    });
+
+    this.bookingTenantDenialTotal = new Counter({
+      name: 'synqdrive_booking_tenant_denial_total',
+      help: 'Cross-tenant or org-scoping denials on booking operations',
+      labelNames: ['error_code'],
+      registers: [this.registry],
+    });
+
+    this.bookingOutboxLagSeconds = new Gauge({
+      name: 'synqdrive_booking_outbox_lag_seconds',
+      help: 'Oldest pending booking domain event outbox age in seconds',
+      registers: [this.registry],
+    });
+
+    this.bookingProcessingFailureUnresolved = new Gauge({
+      name: 'synqdrive_booking_processing_failure_unresolved',
+      help: 'Unresolved booking processing failures older than threshold',
+      labelNames: ['category'],
+      registers: [this.registry],
+    });
+
+    this.bookingConflictRateWindow = new Gauge({
+      name: 'synqdrive_booking_conflict_rate_window',
+      help: 'Booking conflicts observed in the monitoring window',
+      registers: [this.registry],
+    });
+
+    this.bookingTenantDenialWindow = new Gauge({
+      name: 'synqdrive_booking_tenant_denial_window',
+      help: 'Cross-tenant denials observed in the monitoring window',
+      registers: [this.registry],
+    });
+  }
+
+  setBookingOutboxLagGauge(seconds: number): void {
+    this.bookingOutboxLagSeconds.set(Math.max(0, seconds));
+  }
+
+  setBookingProcessingFailureGauge(category: string, count: number): void {
+    this.bookingProcessingFailureUnresolved.set({ category }, Math.max(0, count));
+  }
+
+  setBookingConflictRateGauge(count: number): void {
+    this.bookingConflictRateWindow.set(Math.max(0, count));
+  }
+
+  setBookingTenantDenialGauge(count: number): void {
+    this.bookingTenantDenialWindow.set(Math.max(0, count));
+  }
+
+  recordBookingOutboxDeadLetter(eventType: string): void {
+    this.bookingOutboxDeadLetter.inc({ event_type: eventType });
   }
 
   async onModuleInit(): Promise<void> {

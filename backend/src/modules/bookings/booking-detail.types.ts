@@ -166,6 +166,13 @@ export type BookingDetailDto = {
   } | null;
   activity: ActivityItem[];
   payments: BookingPaymentCardSection | null;
+  readIssues: BookingDetailReadIssue[];
+};
+
+export type BookingDetailReadIssue = {
+  scope: string;
+  code: string;
+  message: string;
 };
 
 export type BookingPaymentCardSection = {
