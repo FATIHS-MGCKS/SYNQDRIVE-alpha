@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'authorization-decision-engine-v49796-2026-07-23',
+    version: '4.9.796',
+    title: 'V4.9.796 — Fail-closed Authorization Decision Engine (Prompt 13)',
+    summary: [
+      'Zentrale AuthorizationDecisionService-Schicht auf PolicyResolver — explizite ALLOW/DENY/SHADOW_WOULD_DENY mit strukturierten Reason Codes.',
+      'Fail-closed: fehlende Pflichtfelder, Resolverfehler, unklare Policy, unbekannte Kategorie/Processor und DB-Fehler führen zu DENY.',
+      'Versionssicherer Ingestion-Cache, Global-Deny-Switch, Production-Startup-Guard, append-only AuthorizationDecisionEvent-Audit.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 13 — operative Entscheidungsschicht mit Shadow-Mode-Markierung und Production-Sicherheit.',
+    previousBehavior:
+      'EnforcementService delegierte direkt an PolicyResolver ohne operative Decision-Schicht, Audit-Events oder Fail-closed-Garantien.',
+    details:
+      'Module: authorization-decision-engine/. Enforcement delegiert an AuthorizationDecisionService. Doku: docs/architecture/authorization-decision-engine-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorization',
+    createdAt: '2026-07-23T23:30:00.000Z',
+  },
+  {
     id: 'central-policy-resolver-v49795-2026-07-23',
     version: '4.9.795',
     title: 'V4.9.795 — Zentraler Policy Resolver (Prompt 12)',
