@@ -42,8 +42,16 @@ import type { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import type {
   BookingDetailDto,
   BookingStationContext,
-  HandoverSideSummary,
 } from './booking-detail.types';
+import type { BookingReadProjectionContext } from './read-model/booking-read-projection.context';
+import {
+  mapBookingCalendarItem,
+  mapBookingListItem,
+  mapHandoverProtocolToSide,
+  mapHandoverProtocolToSummary,
+  toLegacyListRowCompat,
+} from './read-model/booking-response.mapper';
+import { BookingDetailProjectionService } from './read-model/booking-detail-projection.service';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
@@ -129,6 +137,7 @@ export class BookingsService {
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly legalConfirmationEnforcement: BookingLegalConfirmationEnforcementService,
     private readonly handoverService: BookingsHandoverService,
+    private readonly detailProjection: BookingDetailProjectionService,
   ) {}
 
   /**
@@ -430,13 +439,21 @@ export class BookingsService {
     };
   }
 
-  async findAll(orgId: string, params?: ListBookingsQueryDto) {
+  async findAll(
+    orgId: string,
+    params?: ListBookingsQueryDto,
+    projectionCtx?: BookingReadProjectionContext,
+  ) {
     const page = Math.max(1, params?.page || 1);
     const limit = Math.min(500, Math.max(1, params?.limit || 100));
     const skip = (page - 1) * limit;
     const take = limit;
 
     const andClauses: Prisma.BookingWhereInput[] = [{ organizationId: orgId }];
+
+    if (projectionCtx?.customerScopeId) {
+      andClauses.push({ customerId: projectionCtx.customerScopeId });
+    }
 
     if (params?.status) {
       const statuses = Array.isArray(params.status) ? params.status : [params.status];
@@ -519,52 +536,19 @@ export class BookingsService {
       const protocols = protocolsMap.get(b.id) ?? [];
       const pickup = protocols.find((p) => p.kind === 'PICKUP') ?? null;
       const ret = protocols.find((p) => p.kind === 'RETURN') ?? null;
-      return this.mapBookingListRow(b, stationMap, pickup, ret);
+      const listItem = mapBookingListItem({
+        booking: b,
+        stationMap,
+        pickup,
+        returnProtocol: ret,
+      });
+      if (params?.view === 'calendar') {
+        return mapBookingCalendarItem(listItem);
+      }
+      return toLegacyListRowCompat(listItem);
     });
 
     return buildPaginatedResult(mapped, total, { page, limit });
-  }
-
-  private mapBookingListRow(
-    b: Booking & { customer: { firstName: string; lastName: string }; vehicle: { vehicleName?: string | null; make: string; model: string; licensePlate?: string | null } },
-    stationMap: Map<string, string>,
-    pickup: HandoverProtocolDto | null,
-    ret: HandoverProtocolDto | null,
-  ) {
-    const pickupStationName = b.pickupStationId ? stationMap.get(b.pickupStationId) || '' : '';
-    const returnStationName = b.returnStationId ? stationMap.get(b.returnStationId) || '' : '';
-    return {
-      id: b.id,
-      vehicleId: b.vehicleId,
-      customerId: b.customerId,
-      pickupStationId: b.pickupStationId,
-      returnStationId: b.returnStationId,
-      customerName: `${b.customer.firstName} ${b.customer.lastName}`.trim(),
-      vehicleName: b.vehicle.vehicleName || `${b.vehicle.make} ${b.vehicle.model}`.trim(),
-      vehicleLicense: b.vehicle.licensePlate || '',
-      station: pickupStationName,
-      pickupStationName,
-      returnStationName,
-      startDate: b.startDate.toISOString(),
-      endDate: b.endDate.toISOString(),
-      status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
-      statusEnum: b.status,
-      dailyRate: (b.dailyRateCents || 0) / 100,
-      dailyRateCents: b.dailyRateCents,
-      totalPrice: (b.totalPriceCents || 0) / 100,
-      totalPriceCents: b.totalPriceCents,
-      currency: b.currency,
-      kmIncluded: b.kmIncluded || 0,
-      kmDriven: b.kmDriven || 0,
-      notes: b.notes,
-      insuranceOptions: Array.isArray(b.insuranceOptions) ? b.insuranceOptions : [],
-      extras: Array.isArray(b.extrasJson) ? b.extrasJson : [],
-      pickupProtocol: pickup,
-      returnProtocol: ret,
-      isOneWayRental: b.isOneWayRental ?? false,
-      actualPickupStationId: b.actualPickupStationId ?? null,
-      actualReturnStationId: b.actualReturnStationId ?? null,
-    };
   }
 
   private async assertNoVehicleOverlap(input: {
@@ -806,12 +790,6 @@ export class BookingsService {
       stationName = station?.name || '';
     }
 
-    // V4.6.75 — Include handover protocols for the detail view.
-    const protocolsMap = await this.handoverService.findForBookingsMap(orgId, [b.id]);
-    const protocols = protocolsMap.get(b.id) ?? [];
-    const pickup = protocols.find((p) => p.kind === 'PICKUP') ?? null;
-    const ret = protocols.find((p) => p.kind === 'RETURN') ?? null;
-
     let returnStationName = '';
     if (b.returnStationId) {
       const returnStation = await this.prisma.station.findUnique({
@@ -820,45 +798,42 @@ export class BookingsService {
       returnStationName = returnStation?.name || '';
     }
 
-    return {
-      id: b.id,
-      vehicleId: b.vehicleId,
-      customerId: b.customerId,
-      pickupStationId: b.pickupStationId,
-      returnStationId: b.returnStationId,
-      customerName: `${(b as any).customer.firstName} ${(b as any).customer.lastName}`,
-      vehicleName:
-        (b as any).vehicle.vehicleName ||
-        `${(b as any).vehicle.make} ${(b as any).vehicle.model}`,
-      vehicleLicense: (b as any).vehicle.licensePlate || '',
-      station: stationName,
-      pickupStationName: stationName,
-      returnStationName,
-      startDate: b.startDate.toISOString(),
-      endDate: b.endDate.toISOString(),
-      status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
-      statusEnum: b.status,
-      dailyRate: (b.dailyRateCents || 0) / 100,
-      dailyRateCents: b.dailyRateCents,
-      totalPrice: (b.totalPriceCents || 0) / 100,
-      totalPriceCents: b.totalPriceCents,
-      currency: b.currency,
-      kmIncluded: b.kmIncluded || 0,
-      kmDriven: b.kmDriven || 0,
-      notes: b.notes,
-      insuranceOptions: Array.isArray(b.insuranceOptions) ? b.insuranceOptions : [],
-      extras: Array.isArray(b.extrasJson) ? b.extrasJson : [],
-      pickupProtocol: pickup,
-      returnProtocol: ret,
-    };
+    // V4.6.75 — Include handover protocols for the detail view.
+    const protocolsMap = await this.handoverService.findForBookingsMap(orgId, [b.id]);
+    const protocols = protocolsMap.get(b.id) ?? [];
+    const pickup = protocols.find((p) => p.kind === 'PICKUP') ?? null;
+    const ret = protocols.find((p) => p.kind === 'RETURN') ?? null;
+
+    const stationNames = new Map<string, string>();
+    if (stationName) stationNames.set(b.pickupStationId!, stationName);
+    if (returnStationName && b.returnStationId) {
+      stationNames.set(b.returnStationId, returnStationName);
+    }
+
+    return toLegacyListRowCompat(
+      mapBookingListItem({
+        booking: b,
+        stationMap: stationNames,
+        pickup,
+        returnProtocol: ret,
+      }),
+    );
   }
 
-  async findDetail(orgId: string, id: string): Promise<BookingDetailDto | null> {
+  async findDetail(
+    orgId: string,
+    id: string,
+    projectionCtx?: BookingReadProjectionContext,
+  ): Promise<BookingDetailDto | null> {
     const b = await this.prisma.booking.findFirst({
       where: { id, organizationId: orgId },
       include: { customer: true, vehicle: true },
     });
     if (!b) return null;
+
+    if (projectionCtx?.customerScopeId && b.customerId !== projectionCtx.customerScopeId) {
+      return null;
+    }
 
     const customer = b.customer as {
       id: string;
@@ -901,19 +876,7 @@ export class BookingsService {
     const pickupProto = protocols.find((p) => p.kind === 'PICKUP') ?? null;
     const returnProto = protocols.find((p) => p.kind === 'RETURN') ?? null;
 
-    const mapHandover = (p: HandoverProtocolDto): HandoverSideSummary => ({
-      protocolId: p.id,
-      status: 'completed',
-      completedAt: p.performedAt,
-      odometerKm: p.odometerKm,
-      fuelPercent: p.fuelPercent,
-      fuelFull: p.fuelFull,
-      damageCount: p.damageIds.length,
-      protocolCompleted: p.protocolCompleted,
-      customerSignature: p.customerSignature,
-      staffSignature: p.staffSignature,
-      performedByName: p.performedByName,
-    });
+    const mapHandover = (p: HandoverProtocolDto) => mapHandoverProtocolToSide(p)!;
 
     const [deposit, priceSnapshot, invoices, tasks, misuseCount, analysis, activityRows, noShowCount, openInvoices, openFines, paymentsCard] =
       await Promise.all([
@@ -941,6 +904,13 @@ export class BookingsService {
           where: { organizationId: orgId, entity: 'BOOKING', entityId: id },
           orderBy: { createdAt: 'desc' },
           take: 30,
+          select: {
+            id: true,
+            action: true,
+            description: true,
+            createdAt: true,
+            userName: true,
+          },
         }),
         this.prisma.booking.count({
           where: { organizationId: orgId, customerId: b.customerId, status: 'NO_SHOW' },
@@ -1163,11 +1133,18 @@ export class BookingsService {
       else if (m.state === 'warning') warningWarnings.push(m.reason || mod);
     }
 
-    return {
+    const auditItems = activityRows.map((a) => ({
+      id: a.id,
+      action: a.action,
+      description: a.description,
+      createdAt: a.createdAt.toISOString(),
+      actorName: a.userName ?? null,
+    }));
+
+    const detail: BookingDetailDto = {
       core: {
         bookingId: b.id,
         bookingNumber: `BK-${b.id.slice(-6).toUpperCase()}`,
-        organizationId: orgId,
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
         statusEnum: b.status,
         startDate: b.startDate.toISOString(),
@@ -1310,14 +1287,19 @@ export class BookingsService {
       },
       eligibility,
       rentalEligibility,
-      activity: activityRows.map((a) => ({
-        id: a.id,
-        action: a.action,
-        description: a.description,
-        createdAt: a.createdAt.toISOString(),
+      audit: { items: auditItems },
+      activity: auditItems.map(({ id, action, description, createdAt }) => ({
+        id,
+        action,
+        description,
+        createdAt,
       })),
       payments: paymentsCard,
     };
+
+    return projectionCtx
+      ? this.detailProjection.applyDetailProjection(detail, projectionCtx)
+      : detail;
   }
 
   private async resolveOrgTimezone(orgId: string): Promise<string> {
@@ -1430,8 +1412,28 @@ export class BookingsService {
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
         dailyRate: (b.dailyRateCents || 0) / 100,
         totalPrice: (b.totalPriceCents || 0) / 100,
-        pickupProtocol: pickup,
-        returnProtocol: ret,
+        pickupProtocol: pickup
+          ? {
+              id: mapHandoverProtocolToSummary(pickup)!.protocolId,
+              kind: pickup.kind,
+              performedAt: pickup.performedAt,
+              odometerKm: pickup.odometerKm,
+              fuelPercent: pickup.fuelPercent,
+              fuelFull: pickup.fuelFull,
+              protocolCompleted: pickup.protocolCompleted,
+            }
+          : null,
+        returnProtocol: ret
+          ? {
+              id: mapHandoverProtocolToSummary(ret)!.protocolId,
+              kind: ret.kind,
+              performedAt: ret.performedAt,
+              odometerKm: ret.odometerKm,
+              fuelPercent: ret.fuelPercent,
+              fuelFull: ret.fuelFull,
+              protocolCompleted: ret.protocolCompleted,
+            }
+          : null,
         // V4.6.81 — Pickup-overdue surfaces on dashboard tiles.
         isOverdue,
         minutesOverdue,
@@ -1611,8 +1613,28 @@ export class BookingsService {
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
         dailyRate: (b.dailyRateCents || 0) / 100,
         totalPrice: (b.totalPriceCents || 0) / 100,
-        pickupProtocol: pickup,
-        returnProtocol: ret,
+        pickupProtocol: pickup
+          ? {
+              id: mapHandoverProtocolToSummary(pickup)!.protocolId,
+              kind: pickup.kind,
+              performedAt: pickup.performedAt,
+              odometerKm: pickup.odometerKm,
+              fuelPercent: pickup.fuelPercent,
+              fuelFull: pickup.fuelFull,
+              protocolCompleted: pickup.protocolCompleted,
+            }
+          : null,
+        returnProtocol: ret
+          ? {
+              id: mapHandoverProtocolToSummary(ret)!.protocolId,
+              kind: ret.kind,
+              performedAt: ret.performedAt,
+              odometerKm: ret.odometerKm,
+              fuelPercent: ret.fuelPercent,
+              fuelFull: ret.fuelFull,
+              protocolCompleted: ret.protocolCompleted,
+            }
+          : null,
         ...signals,
       };
     });

@@ -454,14 +454,18 @@ function mapSignatureSummary(raw: any): HandoverSignatureSummaryRow {
 
 // V4.6.75 — Normalise a raw protocol payload (server DTO or partial) into
 // the typed UI shape used across BookingsView / Dashboard tiles.
+// V4.9.793 — Accept lean list/detail projections (`protocolId`, `completedAt`).
 function mapApiHandoverProtocol(raw: any): HandoverProtocolRow | null {
   if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.id ?? raw.protocolId ?? '');
+  if (!id) return null;
+  const performedAt = String(raw.performedAt ?? raw.completedAt ?? '');
   return {
-    id: String(raw.id ?? ''),
+    id,
     bookingId: String(raw.bookingId ?? ''),
     vehicleId: String(raw.vehicleId ?? ''),
     kind: raw.kind === 'RETURN' ? 'RETURN' : 'PICKUP',
-    performedAt: String(raw.performedAt ?? ''),
+    performedAt,
     performedByUserId: raw.performedByUserId ?? null,
     performedByName: raw.performedByName ?? null,
     odometerKm: typeof raw.odometerKm === 'number' ? raw.odometerKm : 0,
@@ -482,8 +486,8 @@ function mapApiHandoverProtocol(raw: any): HandoverProtocolRow | null {
     damageIds: Array.isArray(raw.damageIds)
       ? raw.damageIds.filter((x: any): x is string => typeof x === 'string')
       : [],
-    createdAt: String(raw.createdAt ?? ''),
-    updatedAt: String(raw.updatedAt ?? ''),
+    createdAt: String(raw.createdAt ?? performedAt ?? ''),
+    updatedAt: String(raw.updatedAt ?? performedAt ?? ''),
   };
 }
 
@@ -522,8 +526,8 @@ export function mapApiBooking(api: any): BookingUiRow {
   // returnProtocol objects (or null). Mileage/fuel/handover-by are derived
   // from those real records instead of being forced to null. Superseded
   // V4.6.72 placeholder behaviour.
-  const pickupProtocol = mapApiHandoverProtocol(api.pickupProtocol);
-  const returnProtocol = mapApiHandoverProtocol(api.returnProtocol);
+  const pickupProtocol = mapApiHandoverProtocol(api.pickupProtocol ?? api.pickupHandover);
+  const returnProtocol = mapApiHandoverProtocol(api.returnProtocol ?? api.returnHandover);
   const fuelLevel = pickupProtocol
     ? formatFuelPercent(pickupProtocol.fuelPercent, pickupProtocol.fuelFull)
     : api.fuelLevel ?? 'Voll';

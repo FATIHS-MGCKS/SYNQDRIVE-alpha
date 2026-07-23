@@ -1447,13 +1447,121 @@ export interface BookingsListParams {
   from?: string;
   to?: string;
   search?: string;
+  /** `calendar` returns a lean BookingCalendarItemDto projection. */
+  view?: 'list' | 'calendar';
 }
+
+export type BookingHandoverSummaryDto = {
+  protocolId: string;
+  kind: 'PICKUP' | 'RETURN';
+  completedAt: string;
+  protocolCompleted: boolean;
+  odometerKm: number;
+  fuelPercent: number;
+  fuelFull: boolean;
+  damageCount: number;
+};
+
+export type BookingListItemDto = {
+  id: string;
+  bookingNumber: string;
+  vehicleId: string;
+  customerId: string;
+  pickupStationId: string | null;
+  returnStationId: string | null;
+  customerName: string;
+  vehicleName: string;
+  vehicleLicense: string;
+  pickupStationName: string;
+  returnStationName: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  statusEnum: string;
+  totalPriceCents: number | null;
+  currency: string;
+  kmIncluded: number;
+  kmDriven: number;
+  pickupHandover: BookingHandoverSummaryDto | null;
+  returnHandover: BookingHandoverSummaryDto | null;
+  isOneWayRental: boolean;
+  actualPickupStationId: string | null;
+  actualReturnStationId: string | null;
+  /** @deprecated Legacy alias — use pickupHandover */
+  pickupProtocol?: {
+    id: string;
+    kind: 'PICKUP' | 'RETURN';
+    performedAt: string;
+    odometerKm: number;
+    fuelPercent: number;
+    fuelFull: boolean;
+    protocolCompleted: boolean;
+  } | null;
+  /** @deprecated Legacy alias — use returnHandover */
+  returnProtocol?: BookingListItemDto['pickupProtocol'];
+  station?: string;
+  totalPrice?: number;
+};
+
+export type BookingCalendarItemDto = Pick<
+  BookingListItemDto,
+  | 'id'
+  | 'bookingNumber'
+  | 'vehicleId'
+  | 'customerId'
+  | 'customerName'
+  | 'vehicleName'
+  | 'vehicleLicense'
+  | 'startDate'
+  | 'endDate'
+  | 'statusEnum'
+  | 'pickupStationId'
+  | 'returnStationId'
+  | 'pickupStationName'
+  | 'returnStationName'
+  | 'pickupHandover'
+  | 'returnHandover'
+  | 'isOneWayRental'
+>;
+
+export type BookingTimelineItemDto = {
+  id: string;
+  kind: 'ACTIVITY' | 'TASK' | 'HANDOVER';
+  title: string;
+  description: string | null;
+  occurredAt: string;
+  status: string | null;
+};
+
+export type BookingAuditEntryDto = {
+  id: string;
+  action: string;
+  description: string;
+  createdAt: string;
+  actorName: string | null;
+};
+
+export type BookingAuditDto = {
+  items: BookingAuditEntryDto[];
+};
+
+export type BookingPaymentSummaryDto = {
+  enabled: boolean;
+  summary: {
+    bookingPaymentStatus: string;
+    paymentIntent: string | null;
+  };
+  primaryRequestId: string | null;
+  requestCount: number;
+  invoiceId: string | null;
+  invoiceStatus: string | null;
+  outstandingCents: number | null;
+};
 
 export type BookingDetailDto = {
   core: {
     bookingId: string;
     bookingNumber: string;
-    organizationId: string;
     status: string;
     statusEnum: string;
     startDate: string;
@@ -1531,11 +1639,13 @@ export type BookingDetailDto = {
     refundAmountCents: number | null;
     retainedDepositAmountCents: number | null;
     computed: boolean;
-  };
+  } | null;
   documents: {
     bundleStatus: string | null;
+    completenessStatus?: string | null;
     legalTermsAttached: boolean;
     legalWithdrawalAttached: boolean;
+    legalPrivacyAttached?: boolean;
     legalMissing: string[];
     warnings: string[];
     slots: BookingDetailDocumentSlot[];
@@ -1592,13 +1702,15 @@ export type BookingDetailDto = {
     evaluatedAt: string;
     rentalRulesStatus: string | null;
   } | null;
+  audit: BookingAuditDto;
+  /** @deprecated Use `audit.items` */
   activity: Array<{
     id: string;
     action: string;
     description: string;
     createdAt: string;
   }>;
-  payments: BookingPaymentCardDto | null;
+  payments: BookingPaymentCardDto | BookingPaymentSummaryDto | null;
 };
 
 export type BookingPaymentCardDto = {
@@ -3683,13 +3795,16 @@ export const api = {
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);
       if (params?.search) q.set('search', params.search);
+      if (params?.view) q.set('view', params.view);
       const suffix = q.toString() ? `?${q.toString()}` : '';
-      return get<{ data: unknown[]; meta?: unknown } | unknown[]>(
+      return get<{ data: BookingListItemDto[] | BookingCalendarItemDto[]; meta?: unknown } | BookingListItemDto[]>(
         `/organizations/${orgId}/bookings${suffix}`,
       );
     },
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/bookings/${id}`),
+    get: (orgId: string, id: string) => get<BookingListItemDto>(`/organizations/${orgId}/bookings/${id}`),
     detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
+    timeline: (orgId: string, id: string) =>
+      get<BookingTimelineItemDto[]>(`/organizations/${orgId}/bookings/${id}/timeline`),
     create: (orgId: string, data: OperatorBookingCreatePayload) =>
       post<unknown>(`/organizations/${orgId}/bookings`, data),
     update: (orgId: string, id: string, data: OperatorBookingUpdatePayload) =>

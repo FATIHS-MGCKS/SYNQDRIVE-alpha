@@ -10,4 +10,6 @@ export interface ListBookingsQueryDto {
   from?: string;
   to?: string;
   search?: string;
+  /** `calendar` returns a lean BookingCalendarItemDto projection. */
+  view?: 'list' | 'calendar';
 }

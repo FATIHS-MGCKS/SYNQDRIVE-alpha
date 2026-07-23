@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-response-dtos-v49793-2026-07-23',
+    version: '4.9.793',
+    title: 'V4.9.793 — Booking response DTOs & permission projections (Prompt 21)',
+    summary: [
+      'Explizite Response-DTOs: `BookingListItemDto`, `BookingCalendarItemDto`, `BookingTimelineItemDto`, `BookingDetailDto`, `BookingFinanceDto`, `BookingHandoverDto`, `BookingAuditDto`.',
+      'Read-Model-Mapper + `BookingDetailProjectionService` redigiert Felder nach Permissions (PII, Finance, Payments, Audit, Eligibility, Signature-Refs).',
+      'Listenpayload schlank: keine Signature-Blobs, Stripe-Refs, Storage-Pfade oder rohe Prisma-Relationen; `view=calendar` für Agenda.',
+      'Neuer Endpoint `GET .../bookings/:id/timeline`; Contract-Tests schließen verbotene Felder explizit aus.',
+      'Frontend-Typen (`api.ts`, `entityMappers`) für Lean-Handover-Stubs (`protocolId`/`completedAt`).',
+    ],
+    reason:
+      'Booking Production-Readiness Prompt 21 — überladene Responses exponierten unnötige interne/sensible Daten und erschwerten Contract-Stabilität.',
+    previousBehavior:
+      'Rohe Prisma-Objekte und vollständige Handover-Protokolle in List/Detail-Responses eingebettet.',
+    details:
+      'backend/src/modules/bookings/dto/response/*, read-model/*, bookings.service.ts, bookings.controller.ts, docs/privacy/booking-response-projections.md, frontend/src/lib/api.ts, frontend/src/rental/lib/entityMappers.ts',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-23T23:30:00.000Z',
+  },
+  {
     id: 'booking-signature-protection-v49792-2026-07-23',
     version: '4.9.792',
     title: 'V4.9.792 — Handover signature minimization & protection (Prompt 20)',

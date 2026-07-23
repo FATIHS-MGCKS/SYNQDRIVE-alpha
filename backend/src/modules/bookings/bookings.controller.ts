@@ -52,6 +52,8 @@ import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { resolveHandoverActor } from './handover-actor.util';
+import { BookingReadContextService } from './read-model/booking-read-context.service';
+import { BookingTimelineAssemblerService } from './read-model/booking-timeline-assembler.service';
 
 @Controller('organizations/:orgId/bookings')
 @UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
@@ -65,6 +67,8 @@ export class BookingsController {
     private readonly allowedDriversService: BookingAllowedDriversService,
     private readonly eligibilityApprovalService: BookingEligibilityApprovalService,
     private readonly eligibilityDecisionService: BookingEligibilityDecisionService,
+    private readonly readContext: BookingReadContextService,
+    private readonly timelineAssembler: BookingTimelineAssemblerService,
   ) {}
 
   @Get('today/pickups')
@@ -86,8 +90,12 @@ export class BookingsController {
   async findAll(
     @Param('orgId') orgId: string,
     @Query() query: ListBookingsQueryDto,
+    @CurrentUser() user: { id?: string; platformRole?: string; membershipRole?: string; customerScopeId?: string } | undefined,
   ) {
-    return this.bookingsService.findAll(orgId, query);
+    const projectionCtx = await this.readContext.resolve(orgId, user ?? null, {
+      customerScopeId: user?.customerScopeId ?? null,
+    });
+    return this.bookingsService.findAll(orgId, query, projectionCtx);
   }
 
   @Post('eligibility-check')
@@ -361,10 +369,38 @@ export class BookingsController {
   async findDetail(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser() user: { id?: string; platformRole?: string; membershipRole?: string; customerScopeId?: string } | undefined,
   ) {
-    const detail = await this.bookingsService.findDetail(orgId, id);
+    const projectionCtx = await this.readContext.resolve(orgId, user ?? null, {
+      customerScopeId: user?.customerScopeId ?? null,
+    });
+    const detail = await this.bookingsService.findDetail(orgId, id, projectionCtx);
     if (!detail) throw new NotFoundException(`Booking ${id} not found`);
     return detail;
+  }
+
+  @Get(':id/timeline')
+  async findTimeline(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser() user: { id?: string; platformRole?: string; membershipRole?: string; customerScopeId?: string } | undefined,
+  ) {
+    const projectionCtx = await this.readContext.resolve(orgId, user ?? null, {
+      customerScopeId: user?.customerScopeId ?? null,
+    });
+    if (!projectionCtx.canViewAudit) {
+      return [];
+    }
+    const exists = await this.bookingsService.findById(orgId, id);
+    if (!exists) throw new NotFoundException(`Booking ${id} not found`);
+    if (
+      projectionCtx.customerScopeId &&
+      exists.customerId &&
+      exists.customerId !== projectionCtx.customerScopeId
+    ) {
+      throw new NotFoundException(`Booking ${id} not found`);
+    }
+    return this.timelineAssembler.assembleForBooking(orgId, id);
   }
 
   @Get(':id')

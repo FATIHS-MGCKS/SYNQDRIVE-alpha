@@ -27,6 +27,9 @@ import { BookingPickupGateModule } from './booking-pickup-gate/booking-pickup-ga
 import { BookingLegalAcceptanceModule } from './legal-acceptance/booking-legal-acceptance.module';
 import { BookingLegalConfirmationModule } from './legal-confirmation/booking-legal-confirmation.module';
 import { BookingHandoverSignatureModule } from './signature/booking-handover-signature.module';
+import { BookingDetailProjectionService } from './read-model/booking-detail-projection.service';
+import { BookingReadContextService } from './read-model/booking-read-context.service';
+import { BookingTimelineAssemblerService } from './read-model/booking-timeline-assembler.service';
 import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
@@ -74,6 +77,9 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
+    BookingDetailProjectionService,
+    BookingReadContextService,
+    BookingTimelineAssemblerService,
   ],
   exports: [
     BookingsService,
@@ -87,6 +93,8 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     BookingEligibilityDecisionService,
     BookingEligibilityRecheckService,
     BookingEligibilityRecheckSchedulerService,
+    BookingReadContextService,
+    BookingTimelineAssemblerService,
   ],
 })
 export class BookingsModule {}
