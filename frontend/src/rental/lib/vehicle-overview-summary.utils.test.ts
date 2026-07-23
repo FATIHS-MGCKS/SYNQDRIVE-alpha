@@ -45,6 +45,31 @@ describe('vehicle-overview-cards.utils', () => {
     expect(card.status).toBe('clear');
   });
 
+  it('tolerates paginated task list responses without throwing', () => {
+    const rawTasks = [
+      {
+        id: 'task-1',
+        title: 'Check tires',
+        status: 'OPEN',
+        priority: 'NORMAL',
+        blocksVehicleAvailability: false,
+      },
+    ] as ApiTask[];
+
+    expect(() =>
+      buildTasksOverviewCard({
+        tasks: [],
+        rawTasks: { data: rawTasks, meta: { limit: 50, nextCursor: null } } as never,
+      }),
+    ).not.toThrow();
+
+    const card = buildTasksOverviewCard({
+      tasks: [],
+      rawTasks: { data: rawTasks, meta: { limit: 50, nextCursor: null } } as never,
+    });
+    expect(card.topTaskSubline).toContain('Check tires');
+  });
+
   it('builds blocking tasks card from raw tasks', () => {
     const rawTasks = [
       {

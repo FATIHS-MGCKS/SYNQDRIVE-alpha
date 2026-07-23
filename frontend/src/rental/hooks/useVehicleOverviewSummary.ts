@@ -24,6 +24,7 @@ import {
   registerVehicleOperationalInvalidationHandler,
   vehicleOperationalQueryKeys,
 } from '../lib/vehicle-operational-query';
+import { unwrapTaskArrayResponse } from '../../lib/task-list-response.utils';
 
 export interface UseVehicleOverviewSummaryOptions {
   orgId: string | null | undefined;
@@ -183,7 +184,7 @@ export function useVehicleOverviewSummary(
       orgId != null
         ? api.tasks
             .forVehicle(orgId, vehicleId)
-            .then((rows) => rows as ApiTask[])
+            .then((rows) => unwrapTaskArrayResponse<ApiTask>(rows))
             .catch(() => {
               if (!cancelled) setTasksError(true);
               return [] as ApiTask[];
@@ -229,10 +230,11 @@ export function useVehicleOverviewSummary(
     ])
       .then(([bookings, rawTasks, damageStats, fileSummary, tripStats, todayTrips]) => {
         if (cancelled || activeVehicleIdRef.current !== fetchVehicleId) return;
+        const normalizedRawTasks = unwrapTaskArrayResponse<ApiTask>(rawTasks);
         setPayload({
           bookings,
-          tasks: parseVehicleTaskList(rawTasks),
-          rawTasks,
+          tasks: parseVehicleTaskList(normalizedRawTasks),
+          rawTasks: normalizedRawTasks,
           damageStats,
           fileSummary,
           tripStats,

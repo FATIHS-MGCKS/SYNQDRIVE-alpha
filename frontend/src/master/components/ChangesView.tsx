@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-rental-crash-task-pagination-v49726-2026-07-23',
+    version: '4.9.726',
+    title: 'V4.9.726 — Fleet/Rental crash: task pagination unwrap (`{} is not iterable`)',
+    summary: [
+      'Fix: `api.tasks.forVehicle|forBooking|forVendor|forCustomer` unwrap paginated `{ data, meta }` task list responses via `fetchAllTasks` instead of treating the page object as `ApiTask[]`.',
+      'Defense: `buildTasksOverviewCard` / `useVehicleOverviewSummary` normalize non-array task payloads before `countTaskUrgency` iterates `rawTasks`.',
+      'Regression tests for paginated payloads and `unwrapTaskArrayResponse`.',
+    ],
+    reason:
+      'Production crash opening Fleet after vehicle overview: backend convenience task routes now return paginated pages (same as `GET /tasks`), but overview summary still iterated the page object — `TypeError: {} is not iterable`.',
+    previousBehavior:
+      '`countTaskUrgency` did `for...of` on `rawTasks`; paginated API responses stored as `{}`/`{ data }` crashed the rental error boundary (“Rental view crashed”). `VehicleTasksView` silently showed zero tasks (`Array.isArray` guard).',
+    details:
+      'frontend/src/lib/api.ts, frontend/src/lib/task-list-response.utils.ts, frontend/src/rental/lib/vehicle-overview-cards.utils.ts, frontend/src/rental/hooks/useVehicleOverviewSummary.ts, tests.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-23T15:10:00.000Z',
+  },
+  {
     id: 'iam-full-integration-production-v49725-2026-07-22',
     version: '4.9.725',
     title: 'V4.9.725 — IAM full integration + direct production rollout (Prompts 1–22)',

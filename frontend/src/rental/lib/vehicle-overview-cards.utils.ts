@@ -72,6 +72,15 @@ function isDueSoon(iso: string | null, now: Date, withinHours = 48): boolean {
   return delta >= 0 && delta <= withinHours * MS_HOUR;
 }
 
+function normalizeRawTasks(rawTasks: unknown): ApiTask[] {
+  if (Array.isArray(rawTasks)) return rawTasks;
+  if (rawTasks && typeof rawTasks === 'object') {
+    const data = (rawTasks as { data?: unknown }).data;
+    if (Array.isArray(data)) return data as ApiTask[];
+  }
+  return [];
+}
+
 function countTaskUrgency(rawTasks: ApiTask[], now: Date) {
   let critical = 0;
   let dueToday = 0;
@@ -351,8 +360,9 @@ export function buildTasksOverviewCard(input: {
     input.unavailable === true,
   );
   const counts = countVehicleTasks(input.tasks);
-  const urgency = countTaskUrgency(input.rawTasks ?? [], nowDate);
-  const operatorRows = parseVehicleOperatorTaskList(input.rawTasks ?? [], null);
+  const rawTasks = normalizeRawTasks(input.rawTasks);
+  const urgency = countTaskUrgency(rawTasks, nowDate);
+  const operatorRows = parseVehicleOperatorTaskList(rawTasks, null);
   const nextAction = pickNextBestAction(operatorRows);
 
   if (loadState === 'loading') {

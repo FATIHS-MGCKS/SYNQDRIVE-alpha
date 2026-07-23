@@ -5101,10 +5101,22 @@ export const api = {
       id: string,
       data: { fileUrl: string; fileName?: string; mimeType?: string; size?: number },
     ) => post<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/attachments`, data),
-    forVehicle: (orgId: string, vehicleId: string) => get<ApiTask[]>(`/organizations/${orgId}/vehicles/${vehicleId}/tasks`),
-    forBooking: (orgId: string, bookingId: string) => get<ApiTask[]>(`/organizations/${orgId}/bookings/${bookingId}/tasks`),
-    forVendor: (orgId: string, vendorId: string) => get<ApiTask[]>(`/organizations/${orgId}/vendors/${vendorId}/tasks`),
-    forCustomer: (orgId: string, customerId: string) => get<ApiTask[]>(`/organizations/${orgId}/customers/${customerId}/tasks`),
+    forVehicle: async (orgId: string, vehicleId: string) => {
+      const { fetchAllTasks } = await import('./tasks-pagination');
+      return fetchAllTasks(orgId, { vehicleId });
+    },
+    forBooking: async (orgId: string, bookingId: string) => {
+      const { fetchAllTasks } = await import('./tasks-pagination');
+      return fetchAllTasks(orgId, { bookingId });
+    },
+    forVendor: async (orgId: string, vendorId: string) => {
+      const { fetchAllTasks } = await import('./tasks-pagination');
+      return fetchAllTasks(orgId, { vendorId });
+    },
+    forCustomer: async (orgId: string, customerId: string) => {
+      const { fetchAllTasks } = await import('./tasks-pagination');
+      return fetchAllTasks(orgId, { customerId });
+    },
   },
   serviceCases: {
     list: (orgId: string, filters?: ServiceCaseListFilters) => {
