@@ -35,6 +35,8 @@ import { DataProcessingReviewWorkflowController } from './privacy-domain/review-
 import { LiveGpsEnforcementService } from './live-gps-enforcement/live-gps-enforcement.service';
 import { TelemetryIngestionEnforcementService } from './telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.service';
 import { TelemetryIngestionEnforcementMetricsService } from './telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.metrics';
+import { TripLocationEnforcementService } from './trip-location-enforcement/trip-location-enforcement.service';
+import { TripLocationEnforcementMetricsService } from './trip-location-enforcement/trip-location-enforcement.metrics';
 
 @Module({
   imports: [RedisModule],
@@ -77,6 +79,8 @@ import { TelemetryIngestionEnforcementMetricsService } from './telemetry-ingesti
     LiveGpsEnforcementService,
     TelemetryIngestionEnforcementService,
     TelemetryIngestionEnforcementMetricsService,
+    TripLocationEnforcementService,
+    TripLocationEnforcementMetricsService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -98,6 +102,8 @@ import { TelemetryIngestionEnforcementMetricsService } from './telemetry-ingesti
     LiveGpsEnforcementService,
     TelemetryIngestionEnforcementService,
     TelemetryIngestionEnforcementMetricsService,
+    TripLocationEnforcementService,
+    TripLocationEnforcementMetricsService,
   ],
 })
 export class DataAuthorizationsModule {}

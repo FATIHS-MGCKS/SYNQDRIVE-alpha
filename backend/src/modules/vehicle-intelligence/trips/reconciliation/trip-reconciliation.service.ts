@@ -35,6 +35,13 @@ import {
 import { TripEnrichmentOrchestratorService } from '../trip-enrichment-orchestrator.service';
 import { TripPostFinalizeAnalysisProducer } from '../../driving-analysis-init/trip-post-finalize-analysis.producer';
 import { EnergyEventsService } from '../../energy-events/energy-events.service';
+import { TripLocationEnforcementService } from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.service';
+import {
+  TRIP_LOCATION_DATA_CATEGORY,
+  TRIP_LOCATION_PATH,
+  TRIP_LOCATION_PURPOSE,
+  TRIP_LOCATION_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.constants';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
@@ -143,6 +150,7 @@ export class TripReconciliationService {
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly energyEventsService?: EnergyEventsService,
+    @Optional() private readonly tripLocationEnforcement?: TripLocationEnforcementService,
   ) {
     this.TRIP_MID_GAP_SPLIT_MS =
       this.configService?.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
@@ -183,6 +191,39 @@ export class TripReconciliationService {
     let repairsProposed = 0;
     let repairsApplied = 0;
     let repairsRejected = 0;
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (vehicle?.organizationId && this.tripLocationEnforcement) {
+      const mayDerive = await this.tripLocationEnforcement.mayDerive({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        dataCategory: TRIP_LOCATION_DATA_CATEGORY.GPS_LOCATION,
+        purpose: TRIP_LOCATION_PURPOSE.TRIPS,
+        processingPath: TRIP_LOCATION_PATH.TRIP_RECONCILE,
+        serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIP_RECONCILIATION,
+        correlationId: `trip-reconcile:${vehicleId}:${from.toISOString()}`,
+        effectiveTimestamp: from,
+        isBackfill: true,
+      });
+      if (!mayDerive) {
+        this.logger.warn(
+          `Trip reconciliation derive denied vehicle=${vehicleId} window=${from.toISOString()}`,
+        );
+        return {
+          vehicleId,
+          tier,
+          windowFrom: from,
+          windowTo: to,
+          repairsProposed: 0,
+          repairsApplied: 0,
+          repairsRejected: 0,
+          durationMs: Date.now() - startedMs,
+        };
+      }
+    }
 
     try {
       // ── Step 1: Fix stale ongoing trips in this window ──────────────────

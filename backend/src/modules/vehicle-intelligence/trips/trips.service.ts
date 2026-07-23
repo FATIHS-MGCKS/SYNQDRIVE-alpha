@@ -5,6 +5,13 @@ import {
   LIVE_GPS_PURPOSE,
   LIVE_GPS_SERVICE_IDENTITY,
 } from '@modules/data-authorizations/live-gps-enforcement/live-gps-enforcement.constants';
+import { TripLocationEnforcementService } from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.service';
+import {
+  TRIP_LOCATION_DATA_CATEGORY,
+  TRIP_LOCATION_PATH,
+  TRIP_LOCATION_PURPOSE,
+  TRIP_LOCATION_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.constants';
 import {
   DimoSegmentsService,
   RoutePoint,
@@ -67,6 +74,7 @@ export class TripsService {
     private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
     private readonly liveGpsEnforcement: LiveGpsEnforcementService,
+    private readonly tripLocationEnforcement: TripLocationEnforcementService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -101,11 +109,24 @@ export class TripsService {
       Object.assign(where, driverFilter);
     }
 
-    return this.prisma.vehicleTrip.findMany({
+    if (options?.driverCustomerId) {
+      await this.tripLocationEnforcement.assertCustomerScope(
+        organizationId,
+        options.driverCustomerId,
+      );
+    }
+
+    const trips = await this.prisma.vehicleTrip.findMany({
       where,
       orderBy: { startTime: 'desc' },
       take: options?.limit ?? 50,
     });
+
+    return this.tripLocationEnforcement.applyTripSummaryGate(
+      organizationId,
+      trips,
+      'trip-list',
+    );
   }
 
   async findById(organizationId: string, tripId: string) {
@@ -186,13 +207,28 @@ export class TripsService {
     if (!tokenId) return this.getStoredWaypoints(tripId);
 
     const endTime = trip.endTime ?? new Date();
+
+    const mayDerive = await this.tripLocationEnforcement.mayDerive({
+      organizationId,
+      vehicleId,
+      dataCategory: TRIP_LOCATION_DATA_CATEGORY.GPS_LOCATION,
+      purpose: TRIP_LOCATION_PURPOSE.TRIPS,
+      processingPath: TRIP_LOCATION_PATH.TRIP_ROUTE_DERIVE,
+      serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIPS_ROUTE_API,
+      correlationId: `trip-route-derive:${tripId}`,
+      effectiveTimestamp: trip.startTime,
+    });
+    if (!mayDerive) {
+      return this.getStoredWaypoints(tripId);
+    }
+
     const points = await this.segments.fetchRouteEnrichment(
       tokenId,
       trip.startTime,
       endTime,
     );
     if (points.length > 0) {
-      await this.storeWaypoints(tripId, points);
+      await this.persistWaypointsIfAllowed(organizationId, vehicleId, tripId, points);
     }
     return points.length > 0 ? points : this.getStoredWaypoints(tripId);
   }
@@ -309,6 +345,21 @@ export class TripsService {
 
     const endTime = trip.endTime ?? new Date();
 
+    const mayDerive = await this.tripLocationEnforcement.mayDerive({
+      organizationId,
+      vehicleId,
+      dataCategory: TRIP_LOCATION_DATA_CATEGORY.GPS_LOCATION,
+      purpose: TRIP_LOCATION_PURPOSE.FLEET_ANALYTICS,
+      processingPath: TRIP_LOCATION_PATH.TRIP_ENRICH,
+      serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIP_ENRICH_WORKER,
+      correlationId: `trip-enrich:${tripId}`,
+      effectiveTimestamp: trip.startTime,
+    });
+    if (!mayDerive) {
+      this.logger.warn(`Trip enrich derive denied tripId=${tripId}`);
+      return null;
+    }
+
     const [routePoints, tempReadings, perfReadings] = await Promise.all([
       this.segments.fetchRouteEnrichment(tokenId, trip.startTime, endTime),
       this.segments.fetchEnvironmentTemperature(
@@ -320,7 +371,12 @@ export class TripsService {
     ]);
 
     if (routePoints.length > 0) {
-      await this.storeWaypoints(tripId, routePoints);
+      await this.persistWaypointsIfAllowed(
+        organizationId,
+        vehicleId,
+        tripId,
+        routePoints,
+      );
     }
 
     const matchResult =
@@ -524,6 +580,28 @@ export class TripsService {
   // ────────────────────────────────────────────────────────
   // WAYPOINT STORAGE
   // ────────────────────────────────────────────────────────
+
+  private async persistWaypointsIfAllowed(
+    organizationId: string,
+    vehicleId: string,
+    tripId: string,
+    points: RoutePoint[],
+  ): Promise<void> {
+    const mayIngest = await this.tripLocationEnforcement.mayIngest({
+      organizationId,
+      vehicleId,
+      dataCategory: TRIP_LOCATION_DATA_CATEGORY.GPS_LOCATION,
+      purpose: TRIP_LOCATION_PURPOSE.TRIPS,
+      processingPath: TRIP_LOCATION_PATH.TRIP_WAYPOINT_PERSIST,
+      serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIP_TRACKING_WORKER,
+      correlationId: `trip-waypoints:${tripId}`,
+    });
+    if (!mayIngest) {
+      this.logger.warn(`Waypoint ingest denied tripId=${tripId}`);
+      return;
+    }
+    await this.storeWaypoints(tripId, points);
+  }
 
   private async storeWaypoints(
     tripId: string,

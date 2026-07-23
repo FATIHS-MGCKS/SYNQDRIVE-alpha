@@ -94,6 +94,14 @@ export const AUTHORIZATION_KNOWN_SERVICE_IDENTITIES = new Set([
   'synqdrive-hm-health-poll',
   'synqdrive-trip-backfill-worker',
   'synqdrive-trip-replay-worker',
+  'synqdrive-trip-tracking-worker',
+  'synqdrive-trip-reconciliation',
+  'synqdrive-trip-enrich-worker',
+  'synqdrive-trips-list',
+  'synqdrive-trips-timeline',
+  'synqdrive-trips-behavior-events',
+  'synqdrive-trips-energy-events',
+  'synqdrive-trips-export',
 ]);
 
 /** Default cache TTL for high-frequency ingestion paths (ms). */

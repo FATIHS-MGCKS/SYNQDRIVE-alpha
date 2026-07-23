@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-location-enforcement-v49801-2026-07-23',
+    version: '4.9.801',
+    title: 'V4.9.801 — Trips, Waypoints und Standortverläufe geschützt (Prompt 18)',
+    summary: [
+      'TripLocationEnforcementService — INGEST/DERIVE/READ/EXPORT für Trip-Lifecycle, Waypoints, Route, Timeline, Energy/Behavior-Events.',
+      'Gebunden: Trip-Erstellung, Waypoint-Persist, Trip-Liste, Enrich, Reconcile, Energy/Behavior-APIs. Customer/Booking-Scope-Checks.',
+      'Shadow Mode (DATA_AUTH_TRIP_LOCATION_SHADOW_MODE). Historische Daten: READ-Redaction statt Löschung. Kein Legacy-Fallback.',
+    ],
+    reason:
+      'Data Authorization Production Readiness Prompt 18 — Trip-Verarbeitung nicht allein aufgrund vorhandener Telemetrie erlaubt.',
+    previousBehavior:
+      'Nur Trip-Detail und Route mit LiveGpsEnforcement; Listen/Timeline/Energy/Behavior offen; Trip-Worker ohne INGEST/DERIVE-Gate.',
+    details:
+      'trip-location-enforcement/, TripsService, TripDetectionOrchestration, TripReconciliation, VehicleIntelligenceController. Tests: trip-location-enforcement.service.spec.ts. Doku: docs/architecture/trip-location-enforcement-2026-07.md.',
+    affectsArchitecture: true,
+    module: 'Data Authorizations',
+    createdAt: '2026-07-23T23:55:00.000Z',
+  },
+  {
     id: 'telemetry-ingestion-enforcement-v49800-2026-07-23',
     version: '4.9.800',
     title: 'V4.9.800 — Telemetrie-Ingestion vor Persistierung geschützt (Prompt 17)',

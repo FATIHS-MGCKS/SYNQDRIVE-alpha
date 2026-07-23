@@ -118,6 +118,13 @@ import {
 } from './trips/unified-behavior-read-model';
 import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dto';
 import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
+import { TripLocationEnforcementService } from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.service';
+import {
+  TRIP_LOCATION_DATA_CATEGORY,
+  TRIP_LOCATION_PATH,
+  TRIP_LOCATION_PURPOSE,
+  TRIP_LOCATION_SERVICE_IDENTITY,
+} from '@modules/data-authorizations/trip-location-enforcement/trip-location-enforcement.constants';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -173,6 +180,7 @@ export class VehicleIntelligenceController {
     private readonly drivingAssessmentQuality: DrivingAssessmentDeviceQualityService,
     private readonly drivingImpactService: DrivingImpactService,
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
+    private readonly tripLocationEnforcement: TripLocationEnforcementService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1114,13 +1122,25 @@ export class VehicleIntelligenceController {
   @Get('energy-events')
   async getEnergyEvents(
     @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.energyEventsService.listEnergyEvents(vehicleId, {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const events = await this.energyEventsService.listEnergyEvents(vehicleId, {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     });
+    const allowed = await this.tripLocationEnforcement.isReadAllowed({
+      organizationId,
+      vehicleId,
+      dataCategory: TRIP_LOCATION_DATA_CATEGORY.GPS_LOCATION,
+      purpose: TRIP_LOCATION_PURPOSE.TRIPS,
+      processingPath: TRIP_LOCATION_PATH.TRIP_ENERGY_READ,
+      serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIPS_ENERGY_API,
+      correlationId: `trip-energy:${vehicleId}`,
+    });
+    return this.tripLocationEnforcement.redactEnergyEvents(events, allowed);
   }
 
   @Post('energy-events/detect')
@@ -1353,6 +1373,7 @@ export class VehicleIntelligenceController {
   async getTripBehaviorEvents(
     @Param('vehicleId') vehicleId: string,
     @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
     @Query('category') category?: string,
   ) {
     // ── False-zero guard ─────────────────────────────────────────────────
@@ -1422,11 +1443,32 @@ export class VehicleIntelligenceController {
       tripId,
     });
 
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const allowed = await this.tripLocationEnforcement.isReadAllowed({
+      organizationId,
+      vehicleId,
+      dataCategory: TRIP_LOCATION_DATA_CATEGORY.DRIVING_BEHAVIOR,
+      purpose: TRIP_LOCATION_PURPOSE.TRIPS,
+      processingPath: TRIP_LOCATION_PATH.TRIP_BEHAVIOR_READ,
+      serviceIdentity: TRIP_LOCATION_SERVICE_IDENTITY.TRIPS_BEHAVIOR_API,
+      correlationId: `trip-behavior:${tripId}`,
+    });
+
+    const redactedDriving = this.tripLocationEnforcement.redactDrivingEvents(
+      drivingEvents,
+      allowed,
+    );
+    const redactedMerged = buildUnifiedBehaviorEvents({
+      behaviorEvents,
+      drivingEvents: redactedDriving,
+      tripId,
+    });
+
     return {
       status: 'ready',
       behaviorReady: true,
-      visibleEventCount: merged.length,
-      events: merged.map(serializeUnifiedBehaviorEvent),
+      visibleEventCount: redactedMerged.length,
+      events: redactedMerged.map(serializeUnifiedBehaviorEvent),
     };
   }
 
