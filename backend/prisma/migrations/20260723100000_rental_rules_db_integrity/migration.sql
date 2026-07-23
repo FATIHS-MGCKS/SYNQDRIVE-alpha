@@ -274,6 +274,16 @@ WHERE ("minimum_age_years" IS NOT NULL AND ("minimum_age_years" < 18 OR "minimum
    OR ("deposit_amount_cents" IS NOT NULL AND ("deposit_amount_cents" < 0 OR "deposit_amount_cents" > 10000000));
 
 -- 8) Remove semantically empty override shells (no active override fields)
+-- Production may predate full eligibility columns — add defensively before purge.
+ALTER TABLE "vehicle_rental_requirement_overrides"
+  ADD COLUMN IF NOT EXISTS "credit_card_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "foreign_travel_policy" "RentalForeignTravelPolicy",
+  ADD COLUMN IF NOT EXISTS "additional_driver_policy" "RentalAdditionalDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "young_driver_policy" "RentalYoungDriverPolicy",
+  ADD COLUMN IF NOT EXISTS "insurance_requirement" TEXT,
+  ADD COLUMN IF NOT EXISTS "manual_approval_required" BOOLEAN,
+  ADD COLUMN IF NOT EXISTS "notes" TEXT;
+
 DELETE FROM "vehicle_rental_requirement_overrides" o
 WHERE o."minimum_age_years" IS NULL
   AND o."minimum_license_holding_months" IS NULL
