@@ -148,7 +148,7 @@ export class BookingDocumentGenerationDispatcherService {
         attempts: BOOKING_DOCUMENT_GENERATION_DEFAULT_MAX_ATTEMPTS,
         backoff: { type: 'exponential', delay: BOOKING_DOCUMENT_GENERATION_BASE_BACKOFF_MS },
       });
-      await this.repository.markEnqueued(prepared.job.id, bullJobId);
+      await this.repository.markEnqueued(input.organizationId, prepared.job.id, bullJobId);
       this.logger.log(
         `Enqueued booking document job type=${input.jobType} booking=${input.bookingId} jobId=${prepared.job.id}`,
       );
@@ -185,7 +185,7 @@ export class BookingDocumentGenerationDispatcherService {
     if (!job) {
       throw new Error(`Job ${jobId} not found`);
     }
-    await this.repository.resetForManualRetry(jobId);
+    await this.repository.resetForManualRetry(organizationId, jobId);
     return this.enqueue({
       organizationId: job.organizationId,
       bookingId: job.bookingId,

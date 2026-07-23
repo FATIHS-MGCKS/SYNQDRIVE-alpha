@@ -47,7 +47,7 @@ import {
 } from './booking-wizard-eligibility.util';
 import { resolveGatekeeperPaymentIntent } from './booking-eligibility-gatekeeper/booking-eligibility-context.util';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
-import type { ValidatedBookingEligibilityApproval } from './booking-eligibility-approval/booking-eligibility-approval.types';
+import { BookingForeignKeyScopeService } from './tenant-scope/booking-foreign-key-scope.service';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -76,6 +76,7 @@ export class BookingWizardDraftService {
     private readonly eligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly eligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingDepositSnapshot: BookingDepositSnapshotService,
+    private readonly foreignKeyScope: BookingForeignKeyScopeService,
   ) {}
 
   async createOrRefreshDraft(
@@ -104,6 +105,12 @@ export class BookingWizardDraftService {
     }
 
     const quoteId = requireQuoteId(body.quoteId);
+    await this.foreignKeyScope.assertBookingForeignKeys(orgId, {
+      customerId: body.customerId,
+      vehicleId: body.vehicleId,
+      stationIds: [body.pickupStationId, body.returnStationId],
+    });
+
     const consumedBookingId = await this.pricingQuoteService.findConsumedBookingId(orgId, quoteId);
     if (consumedBookingId) {
       const consumed = await this.prisma.booking.findFirst({
@@ -176,10 +183,12 @@ export class BookingWizardDraftService {
       if (currentQuote) {
         await this.pricingQuoteService.releaseQuoteFromWizardDraft(tx, orgId, bookingId);
       }
-      await tx.booking.update({
-        where: { id: bookingId },
-        data: pricedFields as never,
-      });
+      await this.foreignKeyScope.updateBookingScoped(
+        orgId,
+        bookingId,
+        pricedFields as never,
+        tx,
+      );
       await this.pricingQuoteService.markConsumed(tx, quoteId, orgId, bookingId);
       await this.pricingService.createBookingPriceSnapshotFromSimulation(
         orgId,

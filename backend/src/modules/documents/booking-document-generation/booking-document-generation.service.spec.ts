@@ -103,7 +103,7 @@ describe('BookingDocumentGenerationDispatcherService', () => {
     const dispatcher = new BookingDocumentGenerationDispatcherService(repo, config, queue);
 
     const result = await dispatcher.manualRetry('org-1', 'job-1', 'user-1');
-    expect(repo.resetForManualRetry).toHaveBeenCalledWith('job-1');
+    expect(repo.resetForManualRetry).toHaveBeenCalledWith('org-1', 'job-1');
     expect(queue.add).toHaveBeenCalled();
     expect(result.enqueued).toBe(true);
   });
@@ -273,6 +273,7 @@ describe('BookingDocumentGenerationRecoveryScheduler', () => {
     await scheduler.recoverStaleProcessing();
 
     expect(repo.markFailedRetryable).toHaveBeenCalledWith(
+      'org-1',
       'job-stale',
       2,
       'STALE_PROCESSING',

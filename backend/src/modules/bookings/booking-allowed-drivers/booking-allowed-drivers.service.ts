@@ -16,6 +16,7 @@ import { BookingEligibilityEnforcementService } from '../booking-eligibility-gat
 import { BookingEligibilityApprovalService } from '../booking-eligibility-approval/booking-eligibility-approval.service';
 import { BookingEligibilityRecheckService } from '../booking-eligibility-recheck/booking-eligibility-recheck.service';
 import { isWizardDraftBooking } from '../booking-wizard-draft.util';
+import { BookingForeignKeyScopeService } from '../tenant-scope/booking-foreign-key-scope.service';
 
 @Injectable()
 export class BookingAllowedDriversService {
@@ -25,6 +26,7 @@ export class BookingAllowedDriversService {
     private readonly bookingEligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly bookingEligibilityApproval: BookingEligibilityApprovalService,
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
+    private readonly foreignKeyScope: BookingForeignKeyScopeService,
   ) {}
 
   async listForBooking(organizationId: string, bookingId: string) {
@@ -160,10 +162,12 @@ export class BookingAllowedDriversService {
         },
       });
 
-      await tx.booking.update({
-        where: { id: input.bookingId },
-        data: { assignedDriverId: input.customerId },
-      });
+      await this.foreignKeyScope.updateBookingScoped(
+        input.organizationId,
+        input.bookingId,
+        { assignedDriverId: input.customerId } as Prisma.BookingUpdateManyMutationInput,
+        tx,
+      );
 
       if (
         booking.assignedDriverId &&
@@ -236,10 +240,12 @@ export class BookingAllowedDriversService {
     await this.prisma.$transaction(async (tx) => {
       await tx.bookingAllowedDriver.delete({ where: { id: row.id } });
       if (row.role === BookingDriverRole.PRIMARY || booking.assignedDriverId === input.customerId) {
-        await tx.booking.update({
-          where: { id: input.bookingId },
-          data: { assignedDriverId: null },
-        });
+        await this.foreignKeyScope.updateBookingScoped(
+          input.organizationId,
+          input.bookingId,
+          { assignedDriverId: null } as Prisma.BookingUpdateManyMutationInput,
+          tx,
+        );
       }
     });
 

@@ -21,7 +21,20 @@ describe('BookingAllowedDriversService', () => {
   beforeEach(() => {
     prisma = makePrisma();
     activityLog = { log: jest.fn().mockResolvedValue({}) };
-    service = new BookingAllowedDriversService(prisma, activityLog as any);
+    service = new BookingAllowedDriversService(
+      prisma,
+      activityLog as any,
+      { assertAllowedForBooking: jest.fn() } as any,
+      {
+        revokeActiveApprovals: jest.fn().mockResolvedValue(undefined),
+      } as any,
+      {
+        processMutationRecheckFromInvalidationFacts: jest.fn().mockResolvedValue(undefined),
+      } as any,
+      {
+        updateBookingScoped: jest.fn().mockResolvedValue({ id: 'book-1' }),
+      } as any,
+    );
   });
 
   it('rejects adding contract holder as additional driver', async () => {
