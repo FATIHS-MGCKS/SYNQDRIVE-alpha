@@ -1,0 +1,95 @@
+import { POLICY_RESOLVER_ACTION, POLICY_RESOLVER_REASON } from '../policy-resolver/policy-resolver.constants';
+
+/** Decision engine contract version — bump on breaking output changes. */
+export const AUTHORIZATION_DECISION_ENGINE_VERSION = '1.0.0';
+
+/** Supported operational actions — explicit enum, no empty = ANY. */
+export const AUTHORIZATION_DECISION_ACTION = {
+  INGEST: 'INGEST',
+  READ: 'READ',
+  WRITE: 'WRITE',
+  DERIVE: 'DERIVE',
+  PROFILE: 'PROFILE',
+  EXPORT: 'EXPORT',
+  SHARE: 'SHARE',
+  DELETE: 'DELETE',
+  NOTIFY: 'NOTIFY',
+  USE_FOR_AI: 'USE_FOR_AI',
+} as const;
+
+export type AuthorizationDecisionAction =
+  (typeof AUTHORIZATION_DECISION_ACTION)[keyof typeof AUTHORIZATION_DECISION_ACTION];
+
+export const AUTHORIZATION_DECISION_ACTION_VALUES = Object.values(AUTHORIZATION_DECISION_ACTION);
+
+/** Operational outcomes exposed to callers — shadow is explicit, never silent. */
+export const AUTHORIZATION_DECISION_OUTCOME = {
+  ALLOW: 'ALLOW',
+  DENY: 'DENY',
+  SHADOW_WOULD_DENY: 'SHADOW_WOULD_DENY',
+} as const;
+
+export type AuthorizationDecisionOutcome =
+  (typeof AUTHORIZATION_DECISION_OUTCOME)[keyof typeof AUTHORIZATION_DECISION_OUTCOME];
+
+/** Maps decision actions to policy-resolver actions without duplicating policy logic. */
+export const DECISION_TO_RESOLVER_ACTION: Record<
+  AuthorizationDecisionAction,
+  (typeof POLICY_RESOLVER_ACTION)[keyof typeof POLICY_RESOLVER_ACTION]
+> = {
+  INGEST: POLICY_RESOLVER_ACTION.INGEST,
+  READ: POLICY_RESOLVER_ACTION.READ,
+  WRITE: POLICY_RESOLVER_ACTION.WRITE,
+  SHARE: POLICY_RESOLVER_ACTION.SHARE,
+  DERIVE: POLICY_RESOLVER_ACTION.PROCESS,
+  PROFILE: POLICY_RESOLVER_ACTION.PROCESS,
+  EXPORT: POLICY_RESOLVER_ACTION.SHARE,
+  DELETE: POLICY_RESOLVER_ACTION.WRITE,
+  NOTIFY: POLICY_RESOLVER_ACTION.PROCESS,
+  USE_FOR_AI: POLICY_RESOLVER_ACTION.PROCESS,
+};
+
+/** Decision-layer reason codes — extends resolver reasons with fail-closed codes. */
+export const AUTHORIZATION_DECISION_REASON = {
+  ...POLICY_RESOLVER_REASON,
+  REQUEST_INVALID: 'REQUEST_INVALID',
+  MISSING_CORRELATION_ID: 'MISSING_CORRELATION_ID',
+  MISSING_PROCESSOR_IDENTITY: 'MISSING_PROCESSOR_IDENTITY',
+  MISSING_RESOURCE_SCOPE: 'MISSING_RESOURCE_SCOPE',
+  UNKNOWN_DATA_CATEGORY: 'UNKNOWN_DATA_CATEGORY',
+  UNKNOWN_PROCESSOR: 'UNKNOWN_PROCESSOR',
+  UNKNOWN_ACTION: 'UNKNOWN_ACTION',
+  RESOLVER_ERROR: 'RESOLVER_ERROR',
+  POLICY_UNCLEAR: 'POLICY_UNCLEAR',
+  DATABASE_ERROR: 'DATABASE_ERROR',
+  GLOBAL_DENY_SWITCH: 'GLOBAL_DENY_SWITCH',
+  DEVELOPMENT_BYPASS: 'DEVELOPMENT_BYPASS',
+  POLICY_MATCH: 'POLICY_MATCH',
+} as const;
+
+export type AuthorizationDecisionReasonCode =
+  (typeof AUTHORIZATION_DECISION_REASON)[keyof typeof AUTHORIZATION_DECISION_REASON];
+
+/** Known provider platform identities — empty identity is never ANY. */
+export const AUTHORIZATION_KNOWN_PROVIDER_IDENTITIES = new Set([
+  'DIMO',
+  'HIGH_MOBILITY',
+  'SYNQDRIVE',
+  'SYNQDRIVE_PLATFORM',
+]);
+
+/** Known internal service identities for processor validation. */
+export const AUTHORIZATION_KNOWN_SERVICE_IDENTITIES = new Set([
+  'synqdrive-platform',
+  'synqdrive-ingestion',
+  'synqdrive-worker',
+  'synqdrive-api',
+  'dimo-telemetry',
+  'high-mobility',
+]);
+
+/** Default cache TTL for high-frequency ingestion paths (ms). */
+export const AUTHORIZATION_DECISION_DEFAULT_CACHE_TTL_MS = 30_000;
+
+/** Default max in-memory cache entries. */
+export const AUTHORIZATION_DECISION_DEFAULT_CACHE_MAX_ENTRIES = 10_000;

@@ -4,20 +4,24 @@ import {
   DataAuthorizationSourceType,
   OrgDataAuthorization,
   Prisma,
+  AuthorizationActorType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
+import {
+  AUTHORIZATION_DECISION_ACTION,
+  AUTHORIZATION_DECISION_OUTCOME,
+} from './authorization-decision-engine/authorization-decision.constants';
+import type { AuthorizationDecisionRequest } from './authorization-decision-engine/authorization-decision.types';
 import { DataAuthorizationDeniedException } from './data-authorization.exceptions';
 import { normalizeDataCategories } from './data-authorization-risk.util';
 import {
-  POLICY_RESOLVER_ACTION,
-  POLICY_RESOLVER_DECISION,
   POLICY_RESOLVER_PROCESSOR_TYPE,
   POLICY_RESOLVER_RESOURCE_TYPE,
   POLICY_RESOLVER_SOURCE_SYSTEM,
   type PolicyResolverSourceSystem,
 } from './policy-resolver/policy-resolver.constants';
-import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
-import type { PolicyResolverInput, PolicyResolverResult } from './policy-resolver/policy-resolver.types';
+import type { PolicyResolverResult } from './policy-resolver/policy-resolver.types';
 
 export interface AssertDataAuthorizationParams {
   orgId: string;
@@ -31,6 +35,7 @@ export interface AssertDataAuthorizationParams {
   processorType?: DataAuthorizationProcessorType | string;
   processorId?: string;
   dataSubjectReference?: string;
+  correlationId?: string;
   /** When true, increments accessCount / lastAccessAt on success (legacy path only). */
   trackAccess?: boolean;
 }
@@ -39,31 +44,32 @@ type AuthorizationRow = OrgDataAuthorization;
 
 /**
  * Enforcement layer for org-level data consent records.
- * Delegates to PolicyResolverService for privacy-domain policies;
- * falls back to legacy OrgDataAuthorization when resolver yields no match.
+ * Delegates to AuthorizationDecisionService (fail-closed) with PolicyResolver underneath;
+ * falls back to legacy OrgDataAuthorization when decision engine yields no privacy match.
  */
 @Injectable()
 export class DataAuthorizationEnforcementService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly policyResolver: PolicyResolverService,
+    private readonly authorizationDecision: AuthorizationDecisionService,
   ) {}
 
-  async resolve(params: AssertDataAuthorizationParams): Promise<PolicyResolverResult> {
-    return this.policyResolver.resolve(this.toResolverInput(params));
+  async resolve(params: AssertDataAuthorizationParams): Promise<PolicyResolverResult | null> {
+    const decision = await this.authorizationDecision.decide(this.toDecisionRequest(params));
+    return decision.resolverResult;
   }
 
   async assertDataAuthorization(
     params: AssertDataAuthorizationParams,
   ): Promise<AuthorizationRow> {
-    const resolution = await this.resolve(params);
+    const decision = await this.authorizationDecision.decide(this.toDecisionRequest(params));
 
     if (
-      resolution.decisionCandidate === POLICY_RESOLVER_DECISION.ALLOW ||
-      resolution.decisionCandidate === POLICY_RESOLVER_DECISION.SHADOW_WOULD_DENY
+      decision.decision === AUTHORIZATION_DECISION_OUTCOME.ALLOW ||
+      decision.decision === AUTHORIZATION_DECISION_OUTCOME.SHADOW_WOULD_DENY
     ) {
-      if (resolution.matchedPolicy) {
-        return this.syntheticLegacyRow(params, resolution);
+      if (decision.matchedPolicyId && decision.resolverResult) {
+        return this.syntheticLegacyRow(params, decision.resolverResult);
       }
     }
 
@@ -78,7 +84,8 @@ export class DataAuthorizationEnforcementService {
           dataCategory: params.dataCategory,
           purpose: params.purpose,
           vehicleId: params.vehicleId,
-          blockingReasons: resolution.blockingReasons,
+          blockingReasons: decision.reasonCodes,
+          correlationId: decision.correlationId,
         },
       );
     }
@@ -97,18 +104,18 @@ export class DataAuthorizationEnforcementService {
   }
 
   async isAuthorized(params: AssertDataAuthorizationParams): Promise<boolean> {
-    const resolution = await this.resolve(params);
-    if (resolution.decisionCandidate === POLICY_RESOLVER_DECISION.ALLOW) {
+    const decision = await this.authorizationDecision.decide(this.toDecisionRequest(params));
+    if (decision.decision === AUTHORIZATION_DECISION_OUTCOME.ALLOW) {
       return true;
     }
-    if (resolution.decisionCandidate === POLICY_RESOLVER_DECISION.SHADOW_WOULD_DENY) {
+    if (decision.decision === AUTHORIZATION_DECISION_OUTCOME.SHADOW_WOULD_DENY) {
       return true;
     }
     const match = await this.findMatchingAuthorization(params);
     return !!match;
   }
 
-  private toResolverInput(params: AssertDataAuthorizationParams): PolicyResolverInput {
+  private toDecisionRequest(params: AssertDataAuthorizationParams): AuthorizationDecisionRequest {
     const sourceSystem = mapSourceSystem(params.sourceType);
     const processorType = mapProcessorType(params.processorType);
     const resourceType = params.vehicleId
@@ -124,18 +131,21 @@ export class DataAuthorizationEnforcementService {
     return {
       organizationId: params.orgId,
       sourceSystem,
-      dataCategory: normalizeDataCategories([params.dataCategory])[0] as PolicyResolverInput['dataCategory'],
-      purpose: params.purpose as PolicyResolverInput['purpose'],
-      action: POLICY_RESOLVER_ACTION.READ,
+      dataCategory: normalizeDataCategories([params.dataCategory])[0],
+      purpose: params.purpose,
+      action: AUTHORIZATION_DECISION_ACTION.READ,
       processorType,
       processorId: params.processorId ?? params.processorType ?? processorType,
       resourceType,
       resourceId: params.vehicleId ?? params.bookingId ?? params.customerId ?? params.stationId ?? null,
+      organizationWideScope: resourceType === POLICY_RESOLVER_RESOURCE_TYPE.ORGANIZATION,
       vehicleId: params.vehicleId ?? null,
       customerId: params.customerId ?? null,
       bookingId: params.bookingId ?? null,
       stationId: params.stationId ?? null,
       dataSubjectReference: params.dataSubjectReference ?? null,
+      correlationId: params.correlationId ?? `legacy-${params.orgId}-${Date.now()}`,
+      actorType: AuthorizationActorType.SYSTEM,
     };
   }
 
@@ -263,7 +273,7 @@ function mapSourceSystem(sourceType: string): PolicyResolverSourceSystem {
   return POLICY_RESOLVER_SOURCE_SYSTEM.API_INTEGRATION;
 }
 
-function mapProcessorType(processorType?: string): PolicyResolverInput['processorType'] {
+function mapProcessorType(processorType?: string): AuthorizationDecisionRequest['processorType'] {
   if (!processorType) return POLICY_RESOLVER_PROCESSOR_TYPE.SYNQDRIVE;
   const upper = processorType.toUpperCase();
   if (upper === 'SYNQDRIVE') return POLICY_RESOLVER_PROCESSOR_TYPE.SYNQDRIVE;

@@ -20,6 +20,9 @@ import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from './pr
 import { ProcessingActivityLifecycleService } from './privacy-domain/policy-lifecycle/processing-activity-lifecycle.service';
 import { PolicyLifecycleController } from './privacy-domain/policy-lifecycle/policy-lifecycle.controller';
 import { PolicyResolverService } from './policy-resolver/policy-resolver.service';
+import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
+import { AuthorizationDecisionEventsService } from './authorization-decision-engine/authorization-decision-events.service';
+import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
 
 @Module({
   controllers: [
@@ -47,6 +50,9 @@ import { PolicyResolverService } from './policy-resolver/policy-resolver.service
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
+    AuthorizationDecisionService,
+    AuthorizationDecisionEventsService,
+    AuthorizationDecisionStartupService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -62,6 +68,7 @@ import { PolicyResolverService } from './policy-resolver/policy-resolver.service
     ProcessingActivityLifecycleService,
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
+    AuthorizationDecisionService,
   ],
 })
 export class DataAuthorizationsModule {}

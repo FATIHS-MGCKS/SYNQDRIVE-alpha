@@ -1,7 +1,9 @@
 import { DataAuthorizationEnforcementService } from './data-authorization-enforcement.service';
 import { DataAuthorizationDeniedException } from './data-authorization.exceptions';
-import { POLICY_RESOLVER_DECISION } from './policy-resolver/policy-resolver.constants';
-import type { PolicyResolverService } from './policy-resolver/policy-resolver.service';
+import {
+  AUTHORIZATION_DECISION_OUTCOME,
+} from './authorization-decision-engine/authorization-decision.constants';
+import type { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
 
 describe('DataAuthorizationEnforcementService', () => {
   const prisma = {
@@ -11,24 +13,26 @@ describe('DataAuthorizationEnforcementService', () => {
     },
   };
 
-  const policyResolver = {
-    resolve: jest.fn(),
+  const authorizationDecision = {
+    decide: jest.fn(),
   };
 
   let service: DataAuthorizationEnforcementService;
 
-  const denyResolution = {
-    decisionCandidate: POLICY_RESOLVER_DECISION.DENY,
-    matchedPolicy: null,
-    blockingReasons: ['NO_MATCHING_POLICY'],
+  const denyDecision = {
+    decision: AUTHORIZATION_DECISION_OUTCOME.DENY,
+    matchedPolicyId: null,
+    resolverResult: null,
+    reasonCodes: ['NO_MATCHING_POLICY'],
+    correlationId: 'corr-1',
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    policyResolver.resolve.mockResolvedValue(denyResolution);
+    authorizationDecision.decide.mockResolvedValue(denyDecision);
     service = new DataAuthorizationEnforcementService(
       prisma as never,
-      policyResolver as unknown as PolicyResolverService,
+      authorizationDecision as unknown as AuthorizationDecisionService,
     );
   });
 
@@ -122,11 +126,15 @@ describe('DataAuthorizationEnforcementService', () => {
     ).rejects.toBeInstanceOf(DataAuthorizationDeniedException);
   });
 
-  it('uses policy resolver result when ALLOW with matched policy', async () => {
-    policyResolver.resolve.mockResolvedValue({
-      decisionCandidate: POLICY_RESOLVER_DECISION.ALLOW,
-      matchedPolicy: { id: 'policy-resolved-1' },
-      blockingReasons: [],
+  it('uses decision engine result when ALLOW with matched policy', async () => {
+    authorizationDecision.decide.mockResolvedValue({
+      decision: AUTHORIZATION_DECISION_OUTCOME.ALLOW,
+      matchedPolicyId: 'policy-resolved-1',
+      resolverResult: {
+        matchedPolicy: { id: 'policy-resolved-1' },
+      },
+      reasonCodes: ['POLICY_MATCH'],
+      correlationId: 'corr-1',
     });
 
     const result = await service.assertDataAuthorization({
