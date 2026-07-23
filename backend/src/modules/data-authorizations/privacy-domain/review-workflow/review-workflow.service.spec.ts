@@ -102,7 +102,11 @@ describe('DataProcessingReviewWorkflowService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new DataProcessingReviewWorkflowService(prisma as never, permissions as never);
+    service = new DataProcessingReviewWorkflowService(
+      prisma as never,
+      permissions as never,
+      { enqueueReviewDecisionAuditInTransaction: jest.fn().mockResolvedValue(null) } as never,
+    );
   });
 
   it('rejects decision without reason', async () => {

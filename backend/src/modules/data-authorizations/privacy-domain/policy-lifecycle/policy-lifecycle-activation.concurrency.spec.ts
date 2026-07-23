@@ -3,6 +3,13 @@ import { PolicyActiveConflictException, PolicyNotActivatableException } from './
 import { PolicyLifecycleEventsService } from './policy-lifecycle-events.service';
 import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from './policy-lifecycle.service';
 
+function noopAuditService() {
+  return {
+    enqueueLifecycleAuditInTransaction: jest.fn().mockResolvedValue(null),
+    enqueueReviewDecisionAuditInTransaction: jest.fn().mockResolvedValue(null),
+  };
+}
+
 type Row = {
   id: string;
   organizationId: string;
@@ -33,7 +40,7 @@ describe('PolicyLifecycleService.activateVersion (concurrency)', () => {
     const lifecycle = new PolicyLifecycleService(
       prisma as never,
       new PolicyLifecycleTransitionValidator(),
-      new PolicyLifecycleEventsService(),
+      new PolicyLifecycleEventsService(noopAuditService() as never),
     );
 
     const activate = (id: string) =>

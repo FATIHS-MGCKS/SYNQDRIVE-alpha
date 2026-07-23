@@ -9,6 +9,13 @@ import { LegalBasisAssessmentException } from './legal-basis-assessment.exceptio
 import { PolicyLifecycleEventsService } from '../policy-lifecycle/policy-lifecycle-events.service';
 import { PolicyLifecycleService, PolicyLifecycleTransitionValidator } from '../policy-lifecycle/policy-lifecycle.service';
 
+function noopAuditService() {
+  return {
+    enqueueLifecycleAuditInTransaction: jest.fn().mockResolvedValue(null),
+    enqueueReviewDecisionAuditInTransaction: jest.fn().mockResolvedValue(null),
+  };
+}
+
 describe('LegalBasisAssessmentService', () => {
   const orgId = 'org-1';
   const activityId = 'activity-1';
@@ -36,6 +43,7 @@ describe('LegalBasisAssessmentService', () => {
       createMany: jest.Mock;
     };
     legalBasisAssessmentLifecycleEvent: { create: jest.Mock };
+    dataAuthorizationAuditOutbox?: { create: jest.Mock; findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -88,19 +96,23 @@ describe('LegalBasisAssessmentService', () => {
       legalBasisAssessmentLifecycleEvent: {
         create: jest.fn().mockResolvedValue({}),
       },
+      dataAuthorizationAuditOutbox: {
+        create: jest.fn().mockResolvedValue({ id: 'outbox-1' }),
+        findUnique: jest.fn(),
+      },
       $transaction: jest.fn(async (callback) => callback(prisma)),
     };
 
     const lifecycle = new PolicyLifecycleService(
       prisma as never,
       new PolicyLifecycleTransitionValidator(),
-      new PolicyLifecycleEventsService(),
+      new PolicyLifecycleEventsService(noopAuditService() as never),
     );
 
     service = new LegalBasisAssessmentService(
       prisma as never,
       lifecycle,
-      new PolicyLifecycleEventsService(),
+      new PolicyLifecycleEventsService(noopAuditService() as never),
     );
   });
 

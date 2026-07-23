@@ -6,6 +6,7 @@ import {
   PrivacyPolicyLifecycleStatus,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { DataAuthorizationAuditService } from '../audit-log/data-authorization-audit.service';
 
 export interface PolicyLifecycleActorInput {
   actorUserId?: string | null;
@@ -29,6 +30,8 @@ export interface RecordPolicyLifecycleEventParams extends PolicyLifecycleEventIn
 
 @Injectable()
 export class PolicyLifecycleEventsService {
+  constructor(private readonly audit: DataAuthorizationAuditService) {}
+
   async recordProcessingActivityEvent(
     tx: Prisma.TransactionClient,
     processingActivityId: string,
@@ -50,6 +53,17 @@ export class PolicyLifecycleEventsService {
         validUntil: params.validUntil ?? null,
         correlationId: params.correlationId ?? null,
       },
+    });
+
+    await this.audit.enqueueLifecycleAuditInTransaction(tx, {
+      organizationId: params.organizationId,
+      entityType: 'PROCESSING_ACTIVITY',
+      entityId: processingActivityId,
+      eventType: params.eventType,
+      correlationId: params.correlationId,
+      actorUserId: params.actorUserId,
+      previousStatus: params.previousStatus,
+      newStatus: params.newStatus,
     });
   }
 
@@ -75,6 +89,17 @@ export class PolicyLifecycleEventsService {
         correlationId: params.correlationId ?? null,
       },
     });
+
+    await this.audit.enqueueLifecycleAuditInTransaction(tx, {
+      organizationId: params.organizationId,
+      entityType: 'LEGAL_BASIS_ASSESSMENT',
+      entityId: legalBasisAssessmentId,
+      eventType: params.eventType,
+      correlationId: params.correlationId,
+      actorUserId: params.actorUserId,
+      previousStatus: params.previousStatus,
+      newStatus: params.newStatus,
+    });
   }
 
   async recordEnforcementPolicyEvent(
@@ -98,6 +123,17 @@ export class PolicyLifecycleEventsService {
         validUntil: params.validUntil ?? null,
         correlationId: params.correlationId ?? null,
       },
+    });
+
+    await this.audit.enqueueLifecycleAuditInTransaction(tx, {
+      organizationId: params.organizationId,
+      entityType: 'ENFORCEMENT_POLICY',
+      entityId: enforcementPolicyId,
+      eventType: params.eventType,
+      correlationId: params.correlationId,
+      actorUserId: params.actorUserId,
+      previousStatus: params.previousStatus,
+      newStatus: params.newStatus,
     });
   }
 }
