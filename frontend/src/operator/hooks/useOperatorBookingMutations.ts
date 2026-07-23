@@ -7,6 +7,10 @@ import {
   type OperatorBookingUpdatePayload,
 } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
+import {
+  applyBookingFieldUpdates,
+  bookingVersionConflictMessage,
+} from '../../rental/lib/bookingUpdateCommands';
 import { invalidateVehicleOperationalAfterBookingChange } from '../../rental/lib/vehicle-operational-query';
 import { formatOperatorBookingError } from '../bookings/operatorBooking.utils';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -14,9 +18,7 @@ import { useOperatorShell } from '../context/OperatorShellContext';
 function resolveVehicleIdFromUpdatePayload(
   payload: OperatorBookingUpdatePayload,
 ): string | null {
-  if (payload.vehicle?.connect?.id) return payload.vehicle.connect.id;
-  if (payload.vehicleId) return payload.vehicleId;
-  return null;
+  return payload.vehicleId ?? null;
 }
 
 export function useOperatorBookingMutations() {
@@ -59,7 +61,13 @@ export function useOperatorBookingMutations() {
         onSuccess?.();
         return result;
       } catch (e) {
-        reportError(e);
+        const versionMsg = bookingVersionConflictMessage(e);
+        if (versionMsg.includes('zwischenzeitlich')) {
+          setError(versionMsg);
+          toast.error('Datensatz veraltet', { description: versionMsg });
+        } else {
+          reportError(e);
+        }
         return null;
       } finally {
         setMutating(false);
@@ -77,7 +85,7 @@ export function useOperatorBookingMutations() {
         () => {
           void invalidateVehicleOperationalAfterBookingChange({
             orgId: orgId!,
-            vehicleId: payload.vehicle.connect.id,
+            vehicleId: payload.vehicleId,
             reason: 'booking-created',
           });
         },
@@ -90,18 +98,48 @@ export function useOperatorBookingMutations() {
       bookingId: string,
       payload: OperatorBookingUpdatePayload,
       onSuccess?: () => void,
-      previousVehicleId?: string | null,
+      context?: {
+        previousVehicleId?: string | null;
+        current?: {
+          startDate?: string;
+          endDate?: string;
+          notes?: string | null;
+          kmIncluded?: number | null;
+          vehicleId?: string;
+          customerId?: string;
+          pickupStationId?: string | null;
+          returnStationId?: string | null;
+        };
+      },
     ) =>
       run(
-        () => api.bookings.update(orgId!, bookingId, payload),
+        () =>
+          applyBookingFieldUpdates(
+            orgId!,
+            bookingId,
+            payload.expectedUpdatedAt,
+            {
+              startDate: payload.startDate,
+              endDate: payload.endDate,
+              notes: payload.notes,
+              kmIncluded: payload.kmIncluded,
+              vehicleId: payload.vehicleId,
+              customerId: payload.customerId,
+              pickupStationId: payload.pickupStationId,
+              returnStationId: payload.returnStationId,
+              pricingQuoteId: payload.pricingQuoteId,
+              pricingInput: payload.pricingInput,
+            },
+            context?.current,
+          ),
         'Buchung gespeichert',
         onSuccess,
         () => {
-          const nextVehicleId = resolveVehicleIdFromUpdatePayload(payload) ?? previousVehicleId;
+          const nextVehicleId = resolveVehicleIdFromUpdatePayload(payload) ?? context?.previousVehicleId;
           void invalidateVehicleOperationalAfterBookingChange({
             orgId: orgId!,
             vehicleId: nextVehicleId,
-            previousVehicleId,
+            previousVehicleId: context?.previousVehicleId,
             reason: 'booking-updated',
           });
         },
