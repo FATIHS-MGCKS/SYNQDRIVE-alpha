@@ -31,6 +31,8 @@ import {
 } from './booking-eligibility-error.policy';
 import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-transition.policy';
 import { BookingEligibilityApprovalService } from '../booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityDecisionService } from '../booking-eligibility-decision/booking-eligibility-decision.service';
+import type { BookingEligibilityDecisionEventType } from '@prisma/client';
 
 export type BookingEligibilityMutationContext = {
   organizationId: string;
@@ -66,6 +68,7 @@ export class BookingEligibilityEnforcementService {
     private readonly gatekeeper: BookingEligibilityGatekeeperService,
     private readonly auditLogger: BookingEligibilityAuditLogger,
     private readonly eligibilityApproval: BookingEligibilityApprovalService,
+    private readonly eligibilityDecision: BookingEligibilityDecisionService,
   ) {}
 
   shouldEnforceForUpdate(input: {
@@ -172,12 +175,104 @@ export class BookingEligibilityEnforcementService {
       }
     }
 
-    assertBookingEligibilityTransitionAllowed(gateResult, mode!, {
-      validatedApproval,
-      correlation: gateResult.correlation,
+    const command = options.command ?? this.resolveCommandForMode(mode!);
+
+    try {
+      assertBookingEligibilityTransitionAllowed(gateResult, mode!, {
+        validatedApproval,
+        correlation: gateResult.correlation,
+      });
+    } catch (error) {
+      await this.recordDecisionSnapshot({
+        context,
+        gateResult,
+        command,
+        blocked: true,
+        manualApprovalId: options.eligibilityApprovalId,
+        additionalDriverCount,
+      });
+      throw error;
+    }
+
+    await this.recordDecisionSnapshot({
+      context,
+      gateResult,
+      command,
+      blocked: false,
+      manualApprovalId: options.eligibilityApprovalId,
+      additionalDriverCount,
     });
 
     return gateResult;
+  }
+
+  async recordConfirmSucceededSnapshot(input: {
+    organizationId: string;
+    bookingId: string;
+    gateResult: BookingEligibilityGateResult;
+    manualApprovalId?: string | null;
+    bookingDataContext: {
+      customerId: string;
+      vehicleId: string;
+      startDate: Date;
+      endDate: Date;
+      paymentIntent?: unknown;
+      extrasJson?: unknown;
+      additionalDriverCount?: number;
+    };
+  }) {
+    return this.eligibilityDecision.appendFromGateResult({
+      organizationId: input.organizationId,
+      bookingId: input.bookingId,
+      eventType: 'CONFIRM_SUCCEEDED',
+      gateResult: input.gateResult,
+      manualApprovalId: input.manualApprovalId,
+      bookingDataContext: input.bookingDataContext,
+    });
+  }
+
+  private async recordDecisionSnapshot(input: {
+    context: BookingEligibilityMutationContext;
+    gateResult: BookingEligibilityGateResult;
+    command: BookingEligibilityCommandKind;
+    blocked: boolean;
+    manualApprovalId?: string | null;
+    additionalDriverCount: number;
+  }): Promise<void> {
+    if (!input.context.bookingId) return;
+
+    const eventType = this.resolveDecisionEventType(input.command, input.blocked);
+    if (!eventType) return;
+
+    await this.eligibilityDecision.appendFromGateResult({
+      organizationId: input.context.organizationId,
+      bookingId: input.context.bookingId,
+      eventType,
+      gateResult: input.gateResult,
+      manualApprovalId: input.manualApprovalId,
+      bookingDataContext: {
+        customerId: input.context.customerId,
+        vehicleId: input.context.vehicleId,
+        startDate: input.context.startDate,
+        endDate: input.context.endDate,
+        paymentIntent: input.context.paymentIntent,
+        extrasJson: input.context.extrasJson,
+        additionalDriverCount: input.additionalDriverCount,
+      },
+    });
+  }
+
+  private resolveDecisionEventType(
+    command: BookingEligibilityCommandKind,
+    blocked: boolean,
+  ): BookingEligibilityDecisionEventType | null {
+    if (command === 'confirm') {
+      return blocked ? 'CONFIRM_REJECTED' : 'CONFIRM_ATTEMPT';
+    }
+    if (command === 'pickup') {
+      return 'PICKUP_CHECK';
+    }
+    return null;
   }
 
   async assertAllowedForBooking(

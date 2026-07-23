@@ -41,6 +41,8 @@ import {
   resolveApprovalGateStage,
   resolveApprovalTargetStatus,
 } from './booking-eligibility-approval.util';
+import { BookingEligibilityDecisionService } from '../booking-eligibility-decision/booking-eligibility-decision.service';
+import { BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION } from '../booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.constants';
 
 type Tx = Prisma.TransactionClient;
 
@@ -49,6 +51,7 @@ export class BookingEligibilityApprovalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gatekeeper: BookingEligibilityGatekeeperService,
+    private readonly eligibilityDecision: BookingEligibilityDecisionService,
   ) {}
 
   async listForBooking(
@@ -238,6 +241,27 @@ export class BookingEligibilityApprovalService {
           decidedAt: new Date(),
         },
       });
+    });
+
+    await this.eligibilityDecision.appendManualApprovalDecision({
+      organizationId: input.organizationId,
+      bookingId: input.bookingId,
+      eventType:
+        input.decision === 'APPROVE'
+          ? 'MANUAL_APPROVAL_APPROVED'
+          : 'MANUAL_APPROVAL_REJECTED',
+      approval: {
+        id: updated.id,
+        eligibilityDecision: updated.eligibilityDecision,
+        reasonCodes: updated.reasonCodes,
+        gateResultSnapshot: updated.gateResultSnapshot,
+        ruleRevision: updated.ruleRevision,
+        bookingDataVersion: updated.bookingDataVersion,
+        eligibilityFingerprint: updated.eligibilityFingerprint,
+      },
+      correlationId: `manual-approval:${updated.id}:${input.decision}`,
+      evaluatedAt: updated.decidedAt?.toISOString() ?? new Date().toISOString(),
+      engineVersion: BOOKING_ELIGIBILITY_GATE_ENGINE_VERSION,
     });
 
     return this.mapRow(updated);

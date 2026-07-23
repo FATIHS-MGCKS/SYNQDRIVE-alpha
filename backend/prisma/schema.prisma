@@ -1637,6 +1637,7 @@ model Organization {
   bookingDocumentGenerationJobs          BookingDocumentGenerationJob[]
   bookingPickupGateAuditEvents           BookingPickupGateAuditEvent[]
   bookingEligibilityApprovals          BookingEligibilityApproval[]
+  bookingEligibilityDecisions          BookingEligibilityDecision[]
   legalDocumentStorageReconciliationRuns LegalDocumentStorageReconciliationRun[]
   legalDocumentRetentionPurgeRuns        LegalDocumentRetentionPurgeRun[]
   legalDocumentRetentionPolicy           OrganizationLegalDocumentRetentionPolicy?
@@ -5557,6 +5558,7 @@ model Booking {
   documentGenerationJobs        BookingDocumentGenerationJob[]
   pickupGateAuditEvents         BookingPickupGateAuditEvent[]
   eligibilityApprovals          BookingEligibilityApproval[]
+  eligibilityDecisions          BookingEligibilityDecision[]
   bookingPaymentRequests  BookingPaymentRequest[]
   drivingIntelligenceJobs DrivingIntelligenceJob[]
   driverAttributions      DriverAttribution[]
@@ -7315,6 +7317,49 @@ model BookingEligibilityApproval {
   @@index([organizationId, bookingId, ruleRevision], map: "booking_eligibility_approvals_org_booking_revision_idx")
   @@index([organizationId, ruleRevision, createdAt], map: "booking_eligibility_approvals_org_revision_created_idx")
   @@map("booking_eligibility_approvals")
+}
+
+enum BookingEligibilityDecisionEventType {
+  CONFIRM_ATTEMPT
+  CONFIRM_SUCCEEDED
+  CONFIRM_REJECTED
+  PICKUP_CHECK
+  MANUAL_APPROVAL_APPROVED
+  MANUAL_APPROVAL_REJECTED
+}
+
+/// Append-only eligibility decision snapshots for reproducible booking decisions.
+model BookingEligibilityDecision {
+  id                 String                              @id @default(uuid())
+  organizationId     String                              @map("organization_id")
+  bookingId          String                              @map("booking_id")
+  eventType          BookingEligibilityDecisionEventType @map("event_type")
+  decisionStatus     String                              @map("decision_status")
+  reasonCodes        Json                                @default("[]") @map("reason_codes")
+  blockingReasons    Json                                @default("[]") @map("blocking_reasons")
+  warnings           Json                                @default("[]") @map("warnings")
+  missingFields      Json                                @default("[]") @map("missing_fields")
+  evaluatedAt        DateTime                            @map("evaluated_at")
+  recheckAt          DateTime?                           @map("recheck_at")
+  engineVersion      String                              @map("engine_version")
+  ruleRevisionIds    Json                                @default("[]") @map("rule_revision_ids")
+  rulesHash          String                              @map("rules_hash")
+  derivedFacts       Json                                @default("{}") @map("derived_facts")
+  dataSources        Json                                @default("{}") @map("data_sources")
+  manualApprovalId   String?                             @map("manual_approval_id")
+  bookingDataVersion String                              @map("booking_data_version")
+  correlationId      String                              @map("correlation_id")
+  evaluationId       String?                             @map("evaluation_id")
+  createdAt          DateTime                            @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, bookingId, createdAt], map: "booking_eligibility_decisions_org_booking_created_idx")
+  @@index([organizationId, bookingId, eventType], map: "booking_eligibility_decisions_org_booking_event_idx")
+  @@index([organizationId, rulesHash, createdAt], map: "booking_eligibility_decisions_org_rules_hash_created_idx")
+  @@index([organizationId, correlationId], map: "booking_eligibility_decisions_org_correlation_idx")
+  @@map("booking_eligibility_decisions")
 }
 
 /// Append-only audit trail for pickup gate evaluations, blocks, and authorized overrides.

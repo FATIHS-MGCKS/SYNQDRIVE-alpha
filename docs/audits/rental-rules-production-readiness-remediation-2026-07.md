@@ -2548,4 +2548,55 @@ Draft erstellen/bearbeiten, Publish, paralleler Publish (lockVersion), fehlende 
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 26).*
+## Prompt 27 — Booking Eligibility Decision Snapshots
+
+**Ziel:** Für jede relevante Buchungsentscheidung nachvollziehbar speichern, warum sie getroffen wurde.
+
+### 27.1 Modell `booking_eligibility_decisions` (append-only)
+
+| Feld | Inhalt |
+|------|--------|
+| `eventType` | `CONFIRM_ATTEMPT`, `CONFIRM_SUCCEEDED`, `CONFIRM_REJECTED`, `PICKUP_CHECK`, `MANUAL_APPROVAL_APPROVED`, `MANUAL_APPROVAL_REJECTED` |
+| `decisionStatus` | Gatekeeper-Status zum Zeitpunkt der Entscheidung |
+| `reasonCodes`, `blockingReasons`, `warnings`, `missingFields` | Strukturierte Gatekeeper-Ergebnisse |
+| `engineVersion`, `ruleRevisionIds`, `rulesHash` | Reproduzierbare Regelstände |
+| `derivedFacts` | Minimierte abgeleitete Fakten (keine Dokument-Payloads) |
+| `dataSources` | Evaluations- und Verifizierungsstatus je Domain |
+| `bookingDataVersion`, `manualApprovalId`, `correlationId`, `evaluationId` | Kontext-Bindung |
+| `recheckAt` | Optional bei `recheckRequired` |
+
+### 27.2 Snapshot-Ereignisse
+
+| Ereignis | Trigger |
+|----------|---------|
+| Confirm-Versuch / abgelehnt | `BookingEligibilityEnforcementService.assertAllowed` (`confirm`) |
+| Erfolgreiche Bestätigung | `BookingsService.update` nach CONFIRMED-Commit |
+| Pickup-/Active-Prüfung | `assertAllowedForPickup` |
+| Manuelle Freigabe/Ablehnung | `BookingEligibilityApprovalService.decide` |
+
+### 27.3 API
+
+| Route | Permission |
+|-------|------------|
+| `GET .../bookings/:id/eligibility-decisions` | `booking_eligibility.review` |
+| `GET .../bookings/:id/eligibility-decisions/:decisionId` | `booking_eligibility.review` |
+
+### 27.4 Grenzen
+
+- Keine Updates/Deletes — neue Prüfung = neuer Snapshot
+- Keine vollständigen Ausweis-/Führerscheindokumente in `derivedFacts`
+- `factProvenance` speichert nur Feld, Quelle und Verifizierungsstatus
+
+## Prompt 27 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Historische Entscheidungen bleiben unverändert | ✅ |
+| Rule Version und Datenquellen nachvollziehbar | ✅ |
+| Personenbezogene Daten minimiert | ✅ |
+| Tests bestehen | ✅ |
+| Prompt 27 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 27).*

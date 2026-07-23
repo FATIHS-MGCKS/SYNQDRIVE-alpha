@@ -27,6 +27,7 @@ import { BookingEligibilityGatekeeperService } from './booking-eligibility-gatek
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import { BookingEligibilityAuditLogger } from './booking-eligibility-gatekeeper/booking-eligibility-audit.logger';
 import { BookingEligibilityApprovalService } from './booking-eligibility-approval/booking-eligibility-approval.service';
+import { BookingEligibilityDecisionService } from './booking-eligibility-decision/booking-eligibility-decision.service';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { BookingEligibilityApprovalService } from './booking-eligibility-approva
     BookingEligibilityEnforcementService,
     BookingEligibilityAuditLogger,
     BookingEligibilityApprovalService,
+    BookingEligibilityDecisionService,
     BookingWizardDraftService,
     BookingWizardCheckoutContextService,
     BookingWizardPaymentFlowService,
@@ -70,6 +72,7 @@ import { BookingEligibilityApprovalService } from './booking-eligibility-approva
     BookingWizardDraftService,
     BookingAllowedDriversService,
     BookingEligibilityApprovalService,
+    BookingEligibilityDecisionService,
   ],
 })
 export class BookingsModule {}

@@ -25,6 +25,7 @@ describe('BookingEligibilityApprovalService', () => {
     organizationMembership: { findFirst: jest.Mock };
   };
   let gatekeeper: { evaluate: jest.Mock };
+  let eligibilityDecision: { appendManualApprovalDecision: jest.Mock };
   let service: BookingEligibilityApprovalService;
 
   const booking = {
@@ -58,7 +59,14 @@ describe('BookingEligibilityApprovalService', () => {
         testGateResult({ status: 'MANUAL_APPROVAL_REQUIRED', reasonCodes: ['RENTAL_MANUAL_APPROVAL_REQUIRED'] }),
       ),
     };
-    service = new BookingEligibilityApprovalService(prisma as never, gatekeeper as never);
+    eligibilityDecision = {
+      appendManualApprovalDecision: jest.fn().mockResolvedValue({ id: 'decision-1' }),
+    };
+    service = new BookingEligibilityApprovalService(
+      prisma as never,
+      gatekeeper as never,
+      eligibilityDecision as never,
+    );
   });
 
   it('creates a pending approval when gatekeeper requires manual approval', async () => {

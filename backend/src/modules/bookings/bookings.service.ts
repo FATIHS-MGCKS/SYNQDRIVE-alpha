@@ -1930,11 +1930,32 @@ export class BookingsService {
 
     const updated = confirmingTransition
       ? await this.prisma.$transaction(async (tx) => {
-          await this.bookingEligibilityEnforcement.assertAllowed(
+          const gateResult = await this.bookingEligibilityEnforcement.assertAllowed(
             enforcementContext,
             enforcementOptions,
           );
-          return tx.booking.update({ where: { id }, data });
+          const updatedBooking = await tx.booking.update({ where: { id }, data });
+          if (
+            updatedBooking.status === 'CONFIRMED' &&
+            gateResult &&
+            existing.status !== 'CONFIRMED'
+          ) {
+            await this.bookingEligibilityEnforcement.recordConfirmSucceededSnapshot({
+              organizationId: orgId,
+              bookingId: id,
+              gateResult,
+              manualApprovalId: enforcementOptions.eligibilityApprovalId,
+              bookingDataContext: {
+                customerId: updatedBooking.customerId,
+                vehicleId: updatedBooking.vehicleId,
+                startDate: updatedBooking.startDate,
+                endDate: updatedBooking.endDate,
+                paymentIntent: updatedBooking.paymentIntent,
+                extrasJson: updatedBooking.extrasJson,
+              },
+            });
+          }
+          return updatedBooking;
         })
       : await this.prisma.booking.update({ where: { id }, data });
 

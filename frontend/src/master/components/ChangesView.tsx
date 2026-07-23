@@ -92,6 +92,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-24T04:00:00.000Z',
   },
   {
+    id: 'booking-eligibility-decisions-v49780-2026-07-23',
+    version: '4.9.780',
+    title: 'V4.9.780 — Booking eligibility decision snapshots (Prompt 27)',
+    summary: [
+      'Neues append-only Modell `BookingEligibilityDecision` für reproduzierbare Buchungsentscheidungen.',
+      'Snapshots bei Confirm-Versuch, erfolgreicher/abgelehnter Bestätigung, Pickup-Prüfung und manueller Freigabe/Ablehnung.',
+      'Enthält ruleRevisionIds, rulesHash, engineVersion, bookingDataVersion, correlationId und minimierte abgeleitete Fakten ohne Ausweis-/Führerschein-Kopien.',
+      'Abfrage-API: `GET .../eligibility-decisions` und `GET .../eligibility-decisions/:id` mit `booking_eligibility.review`.',
+    ],
+    reason: 'Historische Buchungsentscheidungen müssen nachvollziehbar und unveränderlich bleiben (Remediation Prompt 27).',
+    previousBehavior: 'Eligibility-Entscheidungen nur ephemeral im Gatekeeper-Log oder im Manual-Approval-Workflow.',
+    details:
+      'booking-eligibility-decision.service.ts, migration 20260723210000, enforcement/approval/bookings integration.',
+    affectsArchitecture: true,
+    module: 'Bookings / Eligibility',
+    createdAt: '2026-07-23T23:00:00.000Z',
+  },
+  {
     id: 'rental-rule-publish-diff-impact-v49779-2026-07-23',
     version: '4.9.779',
     title: 'V4.9.779 — Rental rule publish diff + impact analysis (Prompt 26)',

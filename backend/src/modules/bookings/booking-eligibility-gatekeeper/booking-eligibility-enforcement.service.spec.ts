@@ -27,11 +27,16 @@ describe('BookingEligibilityEnforcementService', () => {
     expireStale: jest.fn(),
   } as never;
 
+  const eligibilityDecision = {
+    appendFromGateResult: jest.fn().mockResolvedValue({}),
+  } as never;
+
   const service = new BookingEligibilityEnforcementService(
     prisma,
     gatekeeper,
     auditLogger,
     eligibilityApproval,
+    eligibilityDecision,
   );
 
   const eligibleResult = testGateResult({

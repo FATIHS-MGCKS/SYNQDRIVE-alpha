@@ -37,11 +37,16 @@ describe('Booking wizard eligibility E2E flow', () => {
     expireStale: jest.fn(),
   } as never;
 
+  const eligibilityDecision = {
+    appendFromGateResult: jest.fn().mockResolvedValue({}),
+  } as never;
+
   const enforcement = new BookingEligibilityEnforcementService(
     prisma,
     gatekeeper,
     auditLogger,
     eligibilityApproval,
+    eligibilityDecision,
   );
 
   const eligibilityEnforcement = {
