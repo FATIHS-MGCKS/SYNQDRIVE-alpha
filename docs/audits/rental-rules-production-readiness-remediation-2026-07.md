@@ -5,7 +5,7 @@
 | **Remediation ID** | `rental-rules-production-readiness-remediation-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Product surface** | Verwaltung → Rental Rules / Mietregeln |
-| **Phase** | **Prompt 2 of 34 — Build & test baseline** |
+| **Phase** | **Prompt 3 of 34 — Deep path & data-flow inventory** |
 | **Baseline commit** | `410efa54cdf0361df94cb318848d5ba977638c2f` + Prompt 2 docs |
 | **Baseline report** | `docs/audits/rental-rules-baseline-2026-07.md` |
 | **Mode** | Documentation only — **no product code changes** |
@@ -400,7 +400,7 @@ flowchart TB
 |---|-------------|--------|--------------|-----------|-------|
 | **1** | Audit- & Fortschrittsdokumentation (diese Datei) | **DONE** | — | — | — |
 | **2** | Build-/Test-Baseline dokumentieren (`rental-rules-baseline-2026-07.md`) | **DONE** | 1 | — | — |
-| **3** | Code-Map / Endpoint-Inventar (CSV) | NOT_STARTED | 1 | — | — |
+| **3** | Code-Map / Endpoint-Inventar + Pfad-Analyse (§17) | **DONE** | 1–2 | — | — |
 | **4** | IAM: `PermissionsGuard` auf Rental-Rules-Schreib-Endpunkte | NOT_STARTED | 2, 3 | Nein | Ja |
 | **5** | IAM: Leserechte-Matrix + `@Roles` verifizieren | NOT_STARTED | 4 | Nein | Ja |
 | **6** | Service-Layer `assertMembershipPermission` (falls erforderlich) | NOT_STARTED | 4 | Nein | Ja |
@@ -558,6 +558,266 @@ cd frontend && npx tsc -b && npm run build
 
 ---
 
+## 17. Tiefe Pfad-Analyse & Soll-Datenfluss (Prompt 3)
+
+Vollständige Code-Inventur vor Sicherheits-/Fachlogik-Änderungen. **Kein Produktcode geändert.**
+
+### 17.1 Soll-Datenflusskarte (Remediation-Zielbild)
+
+```mermaid
+flowchart LR
+  subgraph Define["1. Rental Rule Definition"]
+    ADM[RentalRulesTab / VehicleRequirementsTab]
+    API_W[RentalRulesController PATCH/POST]
+    SVC_W[RentalRulesService]
+    DB[(organization_rental_rules\nrental_vehicle_categories\nvehicle_rental_requirement_overrides\nvehicles.rental_category_id)]
+    ADM --> API_W --> SVC_W --> DB
+  end
+
+  subgraph Resolve["2. Effective Rule Resolution"]
+    ERS[RentalEffectiveRulesService.computeForVehicle]
+    UTIL[buildEffectiveRentalRules]
+    DB --> ERS --> UTIL
+  end
+
+  subgraph Facts["3. Customer Facts"]
+    CUST[(customers: DOB, licenseIssuedAt)]
+    DOC[(customer_documents OCR extractedJson)]
+    VER[CustomerVerificationService.getEligibilityStatus]
+    DEP[(booking_deposits status)]
+    CUST --> BRE
+    DOC --> BRE
+    VER --> BRE
+    DEP --> BRE
+  end
+
+  subgraph Decide["4. Eligibility Decision"]
+    BRE[BookingRentalEligibilityService.check]
+    UTIL[evaluateRentalEligibilityChecks]
+    ERS --> BRE
+    UTIL --> BRE
+    BRE --> DEC{Status:\nELIGIBLE / NOT_ELIGIBLE /\nMANUAL_APPROVAL / MISSING_INFO}
+  end
+
+  subgraph Gate["5. Booking Gate — IST: Lücke"]
+    CREATE[BookingsService.create]
+    CONF[BookingWizardDraftService.confirmDraft]
+    PICK[BookingsHandoverService.createHandover PICKUP]
+    DEC -.->|Soll: enforce| CREATE
+    DEC -.->|Soll: enforce| CONF
+    DEC -.->|Soll: enforce| PICK
+    CE[CustomerEligibilityService] -->|Hard-Gate| CREATE
+    CE -->|Hard-Gate| CONF via update
+    CE -->|Hard-Gate| PickupGate
+    RH[RentalHealthService] -->|Hard-Gate| CREATE
+  end
+
+  subgraph Price["6. Pricing / Deposit — parallel"]
+    PQ[PricingQuoteService.consumeForBooking]
+    SIM[simulateBookingPrice → depositAmountCents]
+    SNAP[booking_price_snapshots]
+    PQ --> SIM --> SNAP
+  end
+
+  subgraph Snapshot["7. Booking Snapshot"]
+    BKG[(bookings + price snapshot)]
+    CREATE --> BKG
+    CONF --> BKG
+  end
+
+  subgraph Status["8. Status Transition"]
+    PENDING --> CONFIRMED --> ACTIVE --> COMPLETED
+    HAND[handover/pickup] --> ACTIVE
+  end
+
+  subgraph Audit["9. Audit Trail — IST: Lücke"]
+    PGA[BookingPickupGateAuditService]
+    IAM[IAM audit outbox — other domains]
+    PGA -->|legal pickup only| HAND
+    SVC_W -.->|Soll: rule mutation events| AUD[(audit events)]
+  end
+```
+
+**Ist-Abweichung (verifiziert):** Schritte 5 (Rental-Rules-Gate) und 9 (Regel-Mutations-Audit) sind **nicht** an `BookingRentalEligibilityService` angebunden. Pricing-Kaution (Schritt 6) läuft **parallel** ohne Merge mit Rental-Rules-Kaution.
+
+---
+
+### 17.2 Codepfad-Inventar (lesen / schreiben / berechnen / indirekt)
+
+#### A. Definition & Verwaltung (Schreiben)
+
+| Pfad | Datei | Methode / Route | Rolle |
+|------|-------|-----------------|-------|
+| Org-Defaults lesen | `rental-rules.controller.ts` | `GET .../rental-rules/defaults` | `getDefaults` → `getOrganizationDefaults` |
+| Org-Defaults schreiben | `rental-rules.controller.ts` | `PATCH .../rental-rules/defaults` | `patchDefaults` → `upsertOrganizationDefaults` |
+| Kategorie CRUD | `rental-rules.controller.ts` | `GET/POST/PATCH/DELETE .../categories*` | `listCategories`, `createCategory`, `updateCategory`, `disableCategory` |
+| Fahrzeug-Zuordnung | `rental-rules.controller.ts` | `PATCH .../categories/:id/vehicles` | `assignCategoryVehicles` → `Vehicle.rentalCategoryId` |
+| Fahrzeug-Override | `rental-rules.controller.ts` | `PATCH .../vehicles/:id/rental-requirements/overrides` | `upsertVehicleOverrides` |
+| Overview / Fleet | `rental-rules.controller.ts` | `GET overview`, `GET fleet-vehicles` | Aggregates |
+| Effective Rules API | `rental-rules.controller.ts` | `GET .../vehicles/:id/rental-requirements/effective` | `getVehicleEffectiveRules` |
+| Persistenz | `rental-rules.service.ts` | diverse | Prisma CRUD auf `OrganizationRentalRules`, `RentalVehicleCategory`, `VehicleRentalRequirementOverride` |
+| DTO-Normalisierung | `rental-rules.mapper.ts` | `pickRulePatch`, `format*` | `depositAmount`→cents, years→months |
+| Frontend Admin | `useRentalRulesCenter.ts`, `RentalRulesTab.tsx`, Drawer-Komponenten | `api.rentalRules.*` | UI-only `canWrite` via `hasPermission('company-info','write')` |
+
+**Guards (Schreiben):** `OrgScopingGuard` + `RolesGuard` — **kein** `PermissionsGuard`, **kein** `@Roles` pro Handler (IAM P0).
+
+#### B. Effective Rule Resolution (Berechnen)
+
+| Pfad | Datei | Methode |
+|------|-------|---------|
+| DB → Layers | `rental-effective-rules.service.ts` | `computeForVehicle` |
+| Merge-Logik | `rental-effective-rules.util.ts` | `buildEffectiveRentalRules`, `resolveEffectiveField` |
+| API-Format | `rental-effective-rules.service.ts` | `formatEffectiveRules` (deposit alias, license years) |
+| Einziger Backend-Consumer | `booking-rental-eligibility.service.ts` | `check` → `computeForVehicle` |
+| Frontend read-only | `useVehicleRentalRequirements.ts`, `VehicleRequirementsTab.tsx`, `EffectiveRulesPreviewDrawer.tsx` | `api.rentalRules.getEffectiveRules` |
+
+#### C. Eligibility Decision (Berechnen)
+
+| Pfad | Datei | Methode / Route |
+|------|-------|-----------------|
+| Preview API | `bookings.controller.ts` | `POST .../bookings/eligibility-check` → `checkRentalEligibility` |
+| Booking-bound API | `bookings.controller.ts` | `GET .../bookings/:id/rental-eligibility` → `getBookingRentalEligibility` |
+| Orchestrierung | `booking-rental-eligibility.service.ts` | `check`, `checkForBooking` |
+| Regel-Auswertung | `booking-rental-eligibility.util.ts` | `evaluateRentalEligibilityChecks`, `resolveEligibilityStatus` |
+| Kundendaten | `booking-rental-eligibility.service.ts` | `Customer` DOB / `licenseIssuedAt` |
+| OCR-Fallback | `booking-rental-eligibility.service.ts` | `resolveLicenseIssuedAtFromDocuments` → `customer_documents.extractedJson` + `parseLicenseIssuedAtFromExtractedJson` |
+| KYC-Warnungen | `booking-rental-eligibility.service.ts` | `CustomerVerificationService.getEligibilityStatus` (nur **warnings**, blockiert Status nicht) |
+| Kaution erhalten | `booking-rental-eligibility.service.ts` | `isDepositReceived` → `booking_deposits.status` |
+| Frontend Preview | `NewBookingView.tsx` | `api.bookings.checkRentalEligibility` (useEffect) |
+| UI-Anzeige | `BookingRentalEligibilityCard.tsx`, `rental-requirements-ui.tsx` | Badge, keine Gate-Logik |
+
+#### D. Parallele Eligibility-Systeme (nicht Rental Rules)
+
+| System | Datei | Zweck | Booking-Gate? |
+|--------|-------|-------|---------------|
+| **Customer Eligibility** | `customer-eligibility.service.ts` | KYC, Risiko, Finanzen, Verifikation, Policy | **Ja** — `BookingsService.assertCustomerBookingEligibility` |
+| **Rental Health** | `rental-health.service.ts` | Bremsen/Reifen/Technik | **Ja** — `enforceRentalHealthGate` |
+| **Pickup Gate (Legal)** | `booking-pickup-gate.service.ts` | AGB, Privacy, Bundle, Signature | **Ja** — `assertPickupAllowed`; nutzt `CustomerEligibility` für `canStartRental`, **nicht** Rental Rules |
+| **Rental Clearance UI** | `rental-clearance.util.ts` | Badge aus **Customer** Eligibility | Nein (Anzeige) |
+
+#### E. Pricing / Deposit (indirekt — getrennte Domäne)
+
+| Pfad | Datei | Bezug zu Rental Rules |
+|------|-------|----------------------|
+| Quote / Simulation | `pricing-quote.service.ts`, `pricing-calculation.util.ts` | `depositAmountCents` aus **Tarif** |
+| Wizard Draft | `booking-wizard-draft.service.ts` | `consumeForBooking` → Price Snapshot |
+| Checkout Context | `booking-wizard-checkout-context.service.ts` | `depositAmountCents` für UI/Zahlung |
+| Eligibility Deposit-Check | `booking-rental-eligibility.util.ts` | Nutzt **Rental-Rules** `depositAmountCents` + `booking_deposits` — **nicht** Tarif-Snapshot |
+
+**Konflikt (verifiziert):** Checkout zeigt Tarif-Kaution; Eligibility warnt bei Rental-Rules-Kaution — keine Cross-Validierung.
+
+#### F. Indirekte / Wissens-Verknüpfungen (kein Enforcement)
+
+| Pfad | Datei | Rolle |
+|------|-------|-------|
+| Voice Onboarding | `useVoiceKnowledgeLinks.ts` | `api.rentalRules.overview` — „connected“ wenn Defaults/Kategorien konfiguriert |
+| Operational Issues (Spec) | `docs/operational-issue-normalization.md` | `rental_requirements` / `rental_requirement_unmet` — **kein** Producer im Backend verifiziert |
+| Architektur/Changes | `ArchitekturView.tsx`, `ChangesView.tsx` | Dokumentation |
+| Operator Booking | `useOperatorBookingMutations.ts` | `api.bookings.create` — keine Rental-Eligibility |
+
+#### G. Audit Logging
+
+| Domäne | Datei | Rental Rules? |
+|--------|-------|---------------|
+| Pickup Gate | `booking-pickup-gate-audit.service.ts` | Legal/Document blocks only |
+| Rental Rules Mutationen | — | **Kein** Audit-Event verifiziert |
+| IAM / andere | `iam-audit*` | Nicht an Rental Rules gebunden |
+
+#### H. Rollen & Permissions
+
+| Ebene | Ist-Zustand |
+|-------|-------------|
+| Backend Rental-Rules-API | `OrgScopingGuard` + `RolesGuard` only |
+| Backend Booking-Eligibility-API | `OrgScopingGuard` + `RolesGuard` only |
+| Frontend Rental Rules Tab | `canWrite` = `hasPermission('company-info', 'write')` — **UI-only**, nicht an Backend gekoppelt |
+| Pickup Override | `assertMembershipPermission` in `booking-pickup-gate.service.ts` — Legal, nicht Rental Rules |
+
+#### I. Automationen / KI / Import
+
+| Bereich | Verifiziert |
+|---------|-------------|
+| Task Automation (`task-automation.service.ts`) | **Kein** Rental-Rules-Trigger |
+| Voice Assistant Builder | Knowledge-Link nur (Overview) |
+| Vehicle Import / DIMO | **Kein** `rentalCategoryId`-Import verifiziert |
+| Öffentliche Booking-API | **Keine** separate Public-Route — alle unter `organizations/:orgId/bookings` + Auth Guards |
+
+---
+
+### 17.3 Buchungspfade — Erstellen, Bestätigen, Aktivieren
+
+| # | Pfad | Einstieg | Server-Methode | Rental-Rules-Check | Customer Eligibility | Rental Health | Legal Pickup Gate | Schutzstatus |
+|---|------|----------|----------------|-------------------|---------------------|---------------|-------------------|--------------|
+| B1 | Wizard Draft anlegen | `POST .../bookings/wizard-draft` | `BookingWizardDraftService.createOrRefreshDraft` → `BookingsService.create` (PENDING) | ❌ | ✅ `assertCustomerBookingEligibility(PENDING)` | ✅ | — | **teilweise geschützt** |
+| B2 | Wizard Draft Quote Update | `PATCH .../bookings/wizard-draft/:id` | `updateDraftQuote` | ❌ | ❌ | ❌ | — | **ungeschützt** (nur Draft) |
+| B3 | Wizard Confirm → CONFIRMED/PENDING | `POST .../wizard-draft/:id/confirm` | `confirmDraft` → `BookingsService.update(status)` | ❌ | ✅ bei Status CONFIRMED via `assertCustomerBookingEligibility` | ❌ (kein Fahrzeugwechsel) | — | **teilweise geschützt** |
+| B4 | Direktes Booking Create | `POST .../bookings` | `BookingsService.create` | ❌ | ✅ | ✅ | — | **teilweise geschützt** |
+| B5 | Operator Create | `useOperatorBookingMutations` → B4 | wie B4 | ❌ | ✅ | ✅ | — | **teilweise geschützt** |
+| B6 | Booking Update (Fahrzeug/Kunde/Datum) | `PATCH .../bookings/:id` | `BookingsService.update` | ❌ | ✅ wenn Kunde/Datum/Status | ✅ bei Fahrzeugwechsel | — | **teilweise geschützt** |
+| B7 | PATCH status ACTIVE (direkt) | `PATCH .../bookings/:id` | `BookingsService.update` | ❌ | ✅ `ACTIVE` | — | — | **blockiert** — `BOOKING_ACTIVATION_REQUIRES_HANDOVER` |
+| B8 | Pickup Handover → ACTIVE | `POST .../bookings/:id/handover/pickup` | `BookingsHandoverService.createHandover` | ❌ | ✅ via Pickup Gate `canStartRental` | ❌ | ✅ Legal/Bundle | **teilweise geschützt** |
+| B9 | Eligibility Preview (API) | `POST .../bookings/eligibility-check` | `BookingRentalEligibilityService.check` | ✅ (Zweck) | Warnungen only | ❌ | — | **N/A** (read-only) |
+| B10 | Eligibility per Booking (API) | `GET .../bookings/:id/rental-eligibility` | `checkForBooking` | ✅ (read-only) | Warnungen only | ❌ | — | **N/A** |
+| B11 | Booking Detail | `GET .../bookings/:id/detail` | `findDetail` | ❌ (nicht im DTO) | ✅ `eligibility` Feld (Customer only) | Anzeige `rentalHealth` | — | **unklar** — Rental Eligibility fehlt im Detail-DTO |
+| B12 | Cancel / No-show | `DELETE`, `POST no-show` | `cancel`, `markNoShow` | — | — | — | — | N/A |
+
+#### Umgehungsmöglichkeiten (verifiziert)
+
+| Umgehung | Beschreibung | Schwere |
+|----------|--------------|---------|
+| **U1 — API-Bypass Frontend** | Jeder authentifizierte Org-User kann `POST/PATCH bookings` aufrufen ohne `eligibility-check` — Server prüft Rental Rules nicht | **P0** |
+| **U2 — NOT_ELIGIBLE trotzdem buchen** | `NewBookingView.handleConfirm` prüft `customerEligibility.canConfirmBooking`, **nicht** `rentalEligibility.status` | **P0** |
+| **U3 — Wizard Draft Step 5** | `canProceed` Step 5: nur AGB/Privacy/Preis — kein Rental-Eligibility-Block | **P0** |
+| **U4 — MANUAL_APPROVAL ohne Workflow** | `MANUAL_APPROVAL_REQUIRED` hat keinen Server-Workflow/Task — Confirm möglich | **P1** |
+| **U5 — Rental Rules Admin ohne PermissionsGuard** | Org-Member mit Rolle könnte Regeln ändern (IAM P0, Runtime unklar) | **P0** |
+| **U6 — Direktes CONFIRMED Create** | `POST bookings` mit `status: CONFIRMED` umgeht Wizard — Customer Eligibility greift, Rental Rules nicht | **P0** |
+| **U7 — Deposit-Quellen-Split** | Tarif-Kaution in Snapshot vs. Rental-Rules-Kaution in Eligibility — inkonsistente Operator-Wahrheit | **P1** |
+| **U8 — Pickup ohne Rental Rules** | Pickup Gate prüft Legal + Customer Eligibility, nicht Mindestalter/Lizenz/Fahrzeugregeln | **P0** |
+
+---
+
+### 17.4 Konkurrierende / doppelte Eligibility-Logik
+
+| Aspekt | Customer Eligibility | Booking Rental Eligibility | Überlappung |
+|--------|---------------------|---------------------------|-------------|
+| **Service** | `CustomerEligibilityService` | `BookingRentalEligibilityService` | Getrennte Services (bewusst) |
+| **Verifikation** | `CustomerVerificationService` — **blocking** in Customer Eligibility | Gleicher Service — nur **warnings** in Rental Eligibility | **Doppelte Abfrage**, unterschiedliche Wirkung |
+| **Mindestalter / Lizenz** | Indirekt über Verifikation/Policy | Explizit über Rental Rules + Customer DOB/OCR | **Potenzielle Doppelprüfung** ohne Single Gate |
+| **Pickup** | `canStartRental` — **Hard block** in Pickup Gate | Nicht im Pickup Gate | **Lücke** — Fahrzeugregeln fehlen bei Pickup |
+| **UI Rental Clearance** | `mapEligibilityToRentalClearance` — nur Customer | `BookingRentalEligibilityCard` — Rental Rules | Zwei Badges, leicht verwechselbar |
+| **Deposit** | Financial blocks in Customer Eligibility | `depositAmountCents` aus Rental Rules + `booking_deposits` | **Getrennt** von Pricing-Tarif-Kaution |
+
+**Fazit:** Keine redundante Implementierung der Merge-Logik, aber **drei konkurrierende Wahrheiten** am Booking-Gate: Customer KYC, Rental Health, Rental Rules (letztere fehlt serverseitig).
+
+---
+
+### 17.5 Frontend-Precheck vs. Sicherheitskontrolle
+
+| UI-Check | Datei | Blockiert Submit? | Server-Gate? | Bewertung |
+|----------|-------|-------------------|--------------|-----------|
+| `rentalEligibility` Card | `BookingRentalEligibilityCard.tsx` | ❌ Nur Hinweis + optional „anderes Fahrzeug“ | ❌ | **Fälschlich als Kontrolle wirkend** — reine Preview |
+| `customerEligibility.canCreatePendingBooking` | `NewBookingView` Step 4 `canProceed` | ✅ | ✅ (PENDING) | Echte UI+Server-Kontrolle |
+| `customerEligibility.canConfirmBooking` | `NewBookingView.handleConfirm` | ✅ | ✅ (CONFIRMED) | Echte UI+Server-Kontrolle |
+| `isBookingVehicleHardBlocked` (Rental Health) | `handleConfirm`, Fahrzeugpicker | ✅ | ✅ `enforceRentalHealthGate` | Echte Kontrolle (Health, nicht Rules) |
+| `canWrite` Rental Rules Admin | `RentalRulesTab` | UI disable only | ❌ Backend ungeschützt | **UI-only** — kein Security-Gate |
+| AGB/Privacy Checkboxen | Step 5 | ✅ Step 5 | Teilweise Legal Bundle | Legal, nicht Rental Rules |
+
+**Kernbefund (Prompt 3):** `BookingRentalEligibilityCard` und `checkRentalEligibility` sind **explizit als Preview** implementiert (`ArchitekturView`, `ChangesView`). Sie dürfen **nicht** als Sicherheitskontrolle behandelt werden — aktuell besteht dieses Risiko für Operatoren.
+
+---
+
+### 17.6 Neue Befunde (Prompt 3)
+
+| ID | Befund | Status |
+|----|--------|--------|
+| **P0-RR-09** | Pickup Gate (`BookingPickupGateService`) prüft Customer Eligibility, **nicht** `BookingRentalEligibilityService` | CONFIRMED |
+| **P0-RR-10** | `NewBookingView` blockiert Confirm nur bei Customer Eligibility, nicht bei `NOT_ELIGIBLE` Rental Rules | CONFIRMED |
+| **P0-RR-11** | `BookingDetailDto.eligibility` = Customer only; kein `rentalEligibility` Feld | CONFIRMED |
+| **P1-RR-09** | Frontend `canWriteRentalRules` = `company-info` write — semantisch fragwürdig, Backend ungekoppelt | CONFIRMED |
+| **P1-RR-10** | `operational-issue-normalization.md` definiert `rental_requirement_unmet` — kein Producer im Code | CONFIRMED |
+| **P2-RR-06** | Voice Knowledge „booking prerequisites“ basiert auf Rules Overview, nicht Effective Rules pro Fahrzeug | CONFIRMED |
+
+---
+
 ## Prompt 1 — Abschluss
 
 | Kriterium | Erfüllt |
@@ -584,4 +844,18 @@ cd frontend && npx tsc -b && npm run build
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 2).*
+## Prompt 3 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Alle relevanten Pfade mit Dateien/Methoden dokumentiert | ✅ §17.2 |
+| Umgehungsmöglichkeiten benannt | ✅ §17.3 U1–U8 |
+| Soll-Datenflusskarte vorhanden | ✅ §17.1 |
+| Doppelte Eligibility-Logik analysiert | ✅ §17.4 |
+| Frontend-Precheck vs. Security bewertet | ✅ §17.5 |
+| Keine fachliche Implementierung geändert | ✅ |
+| Prompt 3 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 3).*
