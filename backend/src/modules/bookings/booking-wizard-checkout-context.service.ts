@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { OrganizationPaymentAccountStatus } from '@prisma/client';
+import { BookingPaymentRequestStatus, OrganizationPaymentAccountStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { OrganizationPaymentAccountService } from '@modules/payments/organization-payment-account.service';
 import { PaymentsAccessService } from '@modules/payments/payments-access.service';
 import { PaymentFeeService } from '@modules/payments/payment-fee.service';
 import { resolveRecipientEmail } from '@modules/payments/booking-payment-invoice.validation';
+import { BookingDepositSnapshotService } from '@modules/deposit/booking-deposit-snapshot.service';
+import type { FrozenBookingDeposit } from '@modules/deposit/frozen-booking-deposit.types';
 
 export interface PaymentLinkEligibilityResult {
   eligible: boolean;
@@ -17,8 +19,15 @@ export interface PaymentLinkEligibilityResult {
 
 export interface WizardCheckoutContextResult {
   currency: string;
+  /** Rental gross total (excludes deposit). */
+  rentalAmountCents: number;
   onlineAmountCents: number;
   depositAmountCents: number;
+  frozenDeposit: FrozenBookingDeposit | null;
+  rentalPaidCents: number;
+  depositPaidCents: number;
+  depositPreauthorizedCents: number;
+  depositDueAtPickupCents: number;
   totalGrossCents: number;
   recipientEmail: string | null;
   paymentLinkEligibility: PaymentLinkEligibilityResult;
@@ -32,6 +41,7 @@ export class BookingWizardCheckoutContextService {
     private readonly paymentsAccess: PaymentsAccessService,
     private readonly organizationPaymentAccountService: OrganizationPaymentAccountService,
     private readonly paymentFeeService: PaymentFeeService,
+    private readonly bookingDepositSnapshot: BookingDepositSnapshotService,
   ) {}
 
   async getCheckoutContext(
@@ -63,11 +73,27 @@ export class BookingWizardCheckoutContextService {
         );
         onlineAmountCents = feeSnapshot.rentalPaymentAmountCents;
       } catch {
-        onlineAmountCents = snapshot.totalDueNowCents ?? snapshot.totalGrossCents;
+        onlineAmountCents = snapshot.totalGrossCents;
       }
     }
 
     const depositAmountCents = snapshot?.depositAmountCents ?? 0;
+    const frozenDeposit = snapshot
+      ? this.bookingDepositSnapshot.extractFrozenDepositFromPricingInput(snapshot.pricingInputJson)
+      : null;
+
+    const [depositRow, rentalPaidCents] = await Promise.all([
+      this.prisma.bookingDeposit.findUnique({
+        where: { bookingId },
+        select: { amountCents: true, status: true },
+      }),
+      this.sumSucceededRentalPayments(orgId, bookingId),
+    ]);
+
+    const depositPaidCents = this.resolveDepositPaidCents(depositRow);
+    const depositPreauthorizedCents = 0;
+    const depositDueAtPickupCents = Math.max(0, depositAmountCents - depositPaidCents - depositPreauthorizedCents);
+
     const recipientEmail = resolveRecipientEmail(undefined, booking.customer?.email ?? null, undefined);
     const paymentLinkEligibility = await this.evaluatePaymentLinkEligibility(
       orgId,
@@ -78,13 +104,49 @@ export class BookingWizardCheckoutContextService {
 
     return {
       currency,
+      rentalAmountCents: snapshot?.totalGrossCents ?? booking.totalPriceCents ?? 0,
       onlineAmountCents,
       depositAmountCents,
+      frozenDeposit,
+      rentalPaidCents,
+      depositPaidCents,
+      depositPreauthorizedCents,
+      depositDueAtPickupCents,
       totalGrossCents: snapshot?.totalGrossCents ?? booking.totalPriceCents ?? 0,
       recipientEmail,
       paymentLinkEligibility,
       checkoutExpiresInSeconds: 7 * 24 * 60 * 60,
     };
+  }
+
+  private resolveDepositPaidCents(
+    deposit: { amountCents: number; status: string } | null,
+  ): number {
+    if (!deposit) return 0;
+    if (
+      deposit.status === 'RECEIVED' ||
+      deposit.status === 'PARTIALLY_USED' ||
+      deposit.status === 'REFUNDED' ||
+      deposit.status === 'PARTIALLY_REFUNDED'
+    ) {
+      return deposit.amountCents;
+    }
+    return 0;
+  }
+
+  private async sumSucceededRentalPayments(
+    organizationId: string,
+    bookingId: string,
+  ): Promise<number> {
+    const requests = await this.prisma.bookingPaymentRequest.findMany({
+      where: {
+        organizationId,
+        bookingId,
+        status: BookingPaymentRequestStatus.PAID,
+      },
+      select: { amountCents: true },
+    });
+    return requests.reduce((sum, row) => sum + row.amountCents, 0);
   }
 
   async evaluatePaymentLinkEligibility(

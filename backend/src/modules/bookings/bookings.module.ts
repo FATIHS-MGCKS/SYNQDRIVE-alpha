@@ -19,6 +19,7 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import { DepositResolverModule } from '@modules/deposit/deposit-resolver.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingAllowedDriversService } from './booking-allowed-drivers/booking-allowed-drivers.service';
@@ -43,6 +44,7 @@ import { BookingEligibilityRecheckSchedulerService } from './booking-eligibility
     CustomerVerificationModule,
     WorkflowsModule,
     PricingModule,
+    DepositResolverModule,
     StationsModule,
     RentalRulesModule,
     OutboundEmailModule,

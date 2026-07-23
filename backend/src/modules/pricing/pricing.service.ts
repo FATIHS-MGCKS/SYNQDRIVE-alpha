@@ -12,6 +12,7 @@ import {
 } from '@shared/money/money.util';
 import { BookingPricingInputDto, SimulateBookingPriceDto } from './dto';
 import { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
+import { BookingDepositSnapshotService } from '@modules/deposit/booking-deposit-snapshot.service';
 import type { ResolvedDeposit } from '@modules/deposit/deposit-resolver.types';
 import type { PricingContextDto, ResolvedTariffContext } from './pricing-context.types';
 import { assertTariffVersionComplete, toPricingContextDto } from './pricing-context.util';
@@ -46,6 +47,7 @@ export class PricingService {
     private readonly prisma: PrismaService,
     private readonly migration: PricingMigrationService,
     private readonly depositResolver: DepositResolverService,
+    private readonly bookingDepositSnapshot: BookingDepositSnapshotService,
   ) {}
 
   async resolveTariffForVehicle(
@@ -406,6 +408,9 @@ export class PricingService {
       where: { bookingId, organizationId: orgId },
     });
 
+    const resolved = simulation.resolvedDeposit ?? null;
+    const frozenDeposit = this.bookingDepositSnapshot.buildFrozenDeposit(resolved, null);
+
     const snapshot = await db.bookingPriceSnapshot.create({
       data: {
         organizationId: orgId,
@@ -426,7 +431,7 @@ export class PricingService {
         totalDueNowCents: simulation.totalDueNowCents,
         pricingInputJson: {
           ...(pricing ?? {}),
-          resolvedDeposit: simulation.resolvedDeposit ?? simulation.pricingContext.resolvedDeposit ?? null,
+          frozenDeposit,
         } as Prisma.InputJsonValue,
         pricingWarningsJson: simulation.warnings.length
           ? (simulation.warnings as unknown as Prisma.InputJsonValue)
@@ -437,6 +442,17 @@ export class PricingService {
       },
       include: { lineItems: true },
     });
+
+    const booking = await db.booking.findFirst({
+      where: { id: bookingId, organizationId: orgId },
+      select: { customerId: true },
+    });
+    await this.bookingDepositSnapshot.syncBookingDepositFromSnapshot(
+      orgId,
+      bookingId,
+      booking?.customerId ?? null,
+      db,
+    );
 
     return { snapshot, simulation };
   }

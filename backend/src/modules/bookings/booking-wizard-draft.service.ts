@@ -37,6 +37,7 @@ import {
 } from './booking-payment-intent.types';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import { BookingDepositSnapshotService } from '@modules/deposit/booking-deposit-snapshot.service';
 import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
 import { BookingEligibilityEnforcementService } from './booking-eligibility-gatekeeper/booking-eligibility-enforcement.service';
 import {
@@ -74,6 +75,7 @@ export class BookingWizardDraftService {
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
     private readonly eligibilityEnforcement: BookingEligibilityEnforcementService,
     private readonly eligibilityApproval: BookingEligibilityApprovalService,
+    private readonly bookingDepositSnapshot: BookingDepositSnapshotService,
   ) {}
 
   async createOrRefreshDraft(
@@ -330,6 +332,8 @@ export class BookingWizardDraftService {
       userId: options?.userId ?? null,
       eligibilityApprovalId: body.eligibilityApprovalId,
     });
+
+    await this.bookingDepositSnapshot.freezeDepositOnSnapshot(orgId, bookingId);
 
     await this.bookingInvoiceLifecycle
       .syncOnBookingConfirmed(orgId, bookingId, {

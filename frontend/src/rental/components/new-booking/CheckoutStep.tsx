@@ -133,6 +133,10 @@ export function CheckoutStep({
               </p>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">{t('newBooking.paymentIntent.rentalAmount')}</span>
+                  <span className="text-foreground">{fmt(checkoutContext.rentalAmountCents)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">{t('newBooking.paymentIntent.onlineAmount')}</span>
                   <span className="text-right text-foreground">
                     {fmt(checkoutContext.onlineAmountCents)}
@@ -141,10 +145,34 @@ export function CheckoutStep({
                     </span>
                   </span>
                 </div>
+                {checkoutContext.rentalPaidCents > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">{t('newBooking.paymentIntent.rentalPaid')}</span>
+                    <span className="text-[color:var(--status-positive)]">{fmt(checkoutContext.rentalPaidCents)}</span>
+                  </div>
+                )}
                 {checkoutContext.depositAmountCents > 0 && (
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">{t('newBooking.paymentIntent.depositAtPickup')}</span>
+                    <span className="text-muted-foreground">{t('newBooking.paymentIntent.depositTotal')}</span>
                     <span className="text-foreground">{fmt(checkoutContext.depositAmountCents)}</span>
+                  </div>
+                )}
+                {checkoutContext.depositPreauthorizedCents > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">{t('newBooking.paymentIntent.depositPreauthorized')}</span>
+                    <span className="text-foreground">{fmt(checkoutContext.depositPreauthorizedCents)}</span>
+                  </div>
+                )}
+                {checkoutContext.depositPaidCents > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">{t('newBooking.paymentIntent.depositPaid')}</span>
+                    <span className="text-[color:var(--status-positive)]">{fmt(checkoutContext.depositPaidCents)}</span>
+                  </div>
+                )}
+                {checkoutContext.depositDueAtPickupCents > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">{t('newBooking.paymentIntent.depositAtPickup')}</span>
+                    <span className="text-[color:var(--status-watch)]">{fmt(checkoutContext.depositDueAtPickupCents)}</span>
                   </div>
                 )}
                 <div className="flex justify-between gap-3">
@@ -173,6 +201,22 @@ export function CheckoutStep({
                 <li key={reason}>• {eligibilityReasonMessage(reason, t)}</li>
               ))}
             </ul>
+          )}
+
+          {paymentIntent !== 'payment_link' && checkoutContext && checkoutContext.depositAmountCents > 0 && (
+            <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4 text-left">
+              <p className="mb-2 text-sm font-medium text-foreground">{t('newBooking.paymentIntent.depositSummaryTitle')}</p>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">{t('newBooking.paymentIntent.rentalAmount')}</span>
+                  <span className="text-foreground">{fmt(checkoutContext.rentalAmountCents)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">{t('newBooking.paymentIntent.depositDueAtPickup')}</span>
+                  <span className="text-[color:var(--status-watch)]">{fmt(checkoutContext.depositDueAtPickupCents)}</span>
+                </div>
+              </div>
+            </div>
           )}
 
           {paymentIntent === 'pay_on_pickup' && (

@@ -1319,8 +1319,14 @@ export interface BookingWizardDraftResult {
 
 export interface WizardCheckoutContext {
   currency: string;
+  rentalAmountCents: number;
   onlineAmountCents: number;
   depositAmountCents: number;
+  frozenDeposit: FrozenDepositSnapshot | null;
+  rentalPaidCents: number;
+  depositPaidCents: number;
+  depositPreauthorizedCents: number;
+  depositDueAtPickupCents: number;
   totalGrossCents: number;
   recipientEmail: string | null;
   paymentLinkEligibility: {
@@ -1332,6 +1338,17 @@ export interface WizardCheckoutContext {
     paymentRequestPossible: boolean;
   };
   checkoutExpiresInSeconds: number;
+}
+
+export interface FrozenDepositSnapshot {
+  amountCents: number;
+  currency: string;
+  source: string;
+  ruleRevisionId: string | null;
+  reason: string;
+  manualOverride: boolean;
+  calculatedAt: string;
+  frozenAt: string | null;
 }
 
 export type BookingDetailDocumentSlot = {
