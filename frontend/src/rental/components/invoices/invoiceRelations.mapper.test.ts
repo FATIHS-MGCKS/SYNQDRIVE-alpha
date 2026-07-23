@@ -154,6 +154,7 @@ const sampleBooking = (): BookingDetailDto => ({
     hasAnalysis: false,
   },
   eligibility: null,
+  rentalEligibility: null,
   activity: [],
   payments: null,
 });
