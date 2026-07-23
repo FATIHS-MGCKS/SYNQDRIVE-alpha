@@ -1,4 +1,5 @@
 import { PAYMENT_PERMISSION_ACTIONS } from '@modules/payments/payment-permission.constants';
+import { DATA_PROCESSING_PERMISSION_ACTIONS } from '@modules/data-authorizations/privacy-domain/review-workflow/data-processing-permission.constants';
 import { SERVICE_CASE_PERMISSION_ACTIONS } from '@modules/service-cases/service-case-permission.constants';
 import { TASK_PERMISSION_ACTIONS } from '@modules/tasks/task-permission.constants';
 import { PERMISSION_MODULE_KEYS } from './permission.constants';
@@ -10,8 +11,12 @@ import { evaluateOperationalPermission } from './operational-permission.util';
 import { normalizeMembershipPermissions } from './permission.util';
 
 describe('operational-permission.registry', () => {
-  it('registers all task and service case actions without duplicates', () => {
-    const combined = [...TASK_PERMISSION_ACTIONS, ...SERVICE_CASE_PERMISSION_ACTIONS];
+  it('registers all task, service case, and data processing actions without duplicates', () => {
+    const combined = [
+      ...TASK_PERMISSION_ACTIONS,
+      ...SERVICE_CASE_PERMISSION_ACTIONS,
+      ...DATA_PROCESSING_PERMISSION_ACTIONS,
+    ];
     expect(OPERATIONAL_PERMISSION_ACTIONS).toEqual(combined);
     expect(new Set(OPERATIONAL_PERMISSION_ACTIONS).size).toBe(combined.length);
   });

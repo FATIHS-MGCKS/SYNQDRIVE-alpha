@@ -23,6 +23,9 @@ import { PolicyResolverService } from './policy-resolver/policy-resolver.service
 import { AuthorizationDecisionService } from './authorization-decision-engine/authorization-decision.service';
 import { AuthorizationDecisionEventsService } from './authorization-decision-engine/authorization-decision-events.service';
 import { AuthorizationDecisionStartupService } from './authorization-decision-engine/authorization-decision-startup.service';
+import { DataProcessingReviewWorkflowService } from './privacy-domain/review-workflow/review-workflow.service';
+import { DataProcessingPermissionService } from './privacy-domain/review-workflow/data-processing-permission.service';
+import { DataProcessingReviewWorkflowController } from './privacy-domain/review-workflow/review-workflow.controller';
 
 @Module({
   controllers: [
@@ -33,6 +36,7 @@ import { AuthorizationDecisionStartupService } from './authorization-decision-en
     DataSharingAuthorizationController,
     EnforcementPolicyScopeController,
     PolicyLifecycleController,
+    DataProcessingReviewWorkflowController,
   ],
   providers: [
     DataAuthorizationsService,
@@ -53,6 +57,8 @@ import { AuthorizationDecisionStartupService } from './authorization-decision-en
     AuthorizationDecisionService,
     AuthorizationDecisionEventsService,
     AuthorizationDecisionStartupService,
+    DataProcessingReviewWorkflowService,
+    DataProcessingPermissionService,
   ],
   exports: [
     DataAuthorizationsService,
@@ -69,6 +75,7 @@ import { AuthorizationDecisionStartupService } from './authorization-decision-en
     EnforcementPolicyLifecycleService,
     PolicyResolverService,
     AuthorizationDecisionService,
+    DataProcessingReviewWorkflowService,
   ],
 })
 export class DataAuthorizationsModule {}

@@ -1,6 +1,10 @@
-import { Body, Controller, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RolesGuard } from '@shared/auth/roles.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { EnforcementPolicyLifecycleService } from './enforcement-policy-lifecycle.service';
 import { ProcessingActivityLifecycleService } from './processing-activity-lifecycle.service';
 import { LegalBasisAssessmentService } from '../legal-basis-assessment/legal-basis-assessment.service';
@@ -9,9 +13,11 @@ import {
   PolicyLifecycleReasonDto,
   PolicyLifecycleScheduleDto,
 } from './dto/policy-lifecycle.dto';
+import { DATA_AUTH_MODULE } from '../../data-authorization.constants';
 
 @ApiTags('data-authorizations/policy-lifecycle')
 @Controller('organizations/:orgId/data-authorizations/policy-lifecycle')
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class PolicyLifecycleController {
   constructor(
     private readonly processingActivityLifecycle: ProcessingActivityLifecycleService,
@@ -24,16 +30,19 @@ export class PolicyLifecycleController {
   }
 
   @Post('processing-activities/:id/submit-for-review')
+  @RequirePermission(DATA_AUTH_MODULE, 'write')
   submitProcessingActivity(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: Request) {
     return this.processingActivityLifecycle.submitForReview(orgId, id, this.actorUserId(req));
   }
 
   @Post('processing-activities/:id/approve')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
   approveProcessingActivity(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: Request) {
     return this.processingActivityLifecycle.approve(orgId, id, this.actorUserId(req));
   }
 
   @Post('processing-activities/:id/reject')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
   rejectProcessingActivity(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -44,6 +53,7 @@ export class PolicyLifecycleController {
   }
 
   @Post('processing-activities/:id/schedule')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
   scheduleProcessingActivity(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -53,11 +63,13 @@ export class PolicyLifecycleController {
   }
 
   @Post('processing-activities/:id/activate')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
   activateProcessingActivity(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: Request) {
     return this.processingActivityLifecycle.activate(orgId, id, { actorUserId: this.actorUserId(req) });
   }
 
   @Post('processing-activities/:id/suspend')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
   suspendProcessingActivity(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -67,6 +79,7 @@ export class PolicyLifecycleController {
   }
 
   @Post('processing-activities/:id/revoke')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
   revokeProcessingActivity(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -76,6 +89,7 @@ export class PolicyLifecycleController {
   }
 
   @Post('legal-basis-assessments/:id/activate')
+  @RequirePermission(DATA_AUTH_MODULE, 'manage')
   activateLegalBasis(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: Request) {
     return this.legalBasisAssessment.activate(orgId, id, this.actorUserId(req));
   }
