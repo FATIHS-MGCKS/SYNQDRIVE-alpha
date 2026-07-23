@@ -1,6 +1,12 @@
 import type { BookingDetailDto, CustomerApiRecord } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
 import { normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
+import {
+  buildBookingUpdateCommand,
+  bookingEditBaselineFromDetail,
+  formatBookingMutationError,
+  type BookingEditFormState,
+} from '../../rental/lib/booking-commands';
 
 export function customerDisplayName(c: CustomerApiRecord): string {
   if (c.name?.trim()) return c.name.trim();
@@ -43,32 +49,16 @@ export function isSameLocalInstant(iso: string, local: string): boolean {
 }
 
 export function formatOperatorBookingError(message: string): { title: string; description: string } {
-  const lower = message.toLowerCase();
-  if (lower.includes('bereits gebucht') || lower.includes('vehicle_booking_overlap')) {
-    return { title: 'Fahrzeug bereits gebucht', description: message };
-  }
-  if (lower.includes('nicht vermietbar') || lower.includes('rental_blocked')) {
-    return { title: 'Fahrzeug blockiert', description: message };
-  }
-  if (lower.includes('health') && (lower.includes('nicht verfügbar') || lower.includes('unavailable'))) {
-    return { title: 'Health-Prüfung nicht verfügbar', description: message };
-  }
-  if (
-    lower.includes('kunde') &&
-    (lower.includes('nicht freigegeben') ||
-      lower.includes('nicht berechtigt') ||
-      lower.includes('booking_blocked') ||
-      lower.includes('confirmation_blocked'))
-  ) {
-    return { title: 'Kunde nicht berechtigt', description: message };
-  }
-  if (lower.includes('enddate must be after') || lower.includes('ungültig') || lower.includes('invalid booking')) {
-    return { title: 'Ungültiger Zeitraum', description: message };
-  }
-  if (lower.includes('no-show') || lower.includes('no_show')) {
-    return { title: 'No-Show nicht möglich', description: message };
-  }
-  return { title: 'Aktion fehlgeschlagen', description: message };
+  const view = formatBookingMutationError(new Error(message));
+  return { title: view.title, description: view.description };
+}
+
+export function buildOperatorBookingUpdateFromDetail(
+  detail: BookingDetailDto,
+  form: BookingEditFormState,
+) {
+  const baseline = bookingEditBaselineFromDetail(detail);
+  return buildBookingUpdateCommand(baseline, form, { allowVehicleChange: true });
 }
 
 export function canOperatorMarkNoShow(detail: BookingDetailDto): { allowed: boolean; reason?: string } {

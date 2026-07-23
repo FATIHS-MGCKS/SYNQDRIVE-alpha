@@ -1424,6 +1424,7 @@ export type OperatorBookingUpdatePayload = {
   returnStationId?: string;
   pickupStation?: { connect: { id: string } };
   returnStation?: { connect: { id: string } };
+  insuranceOptions?: string[];
 };
 
 /** Query params for `GET /organizations/:orgId/bookings` (all optional, backward-compatible). */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { api, type BookingDetailDto, type CustomerApiRecord, type OperatorBookingUpdatePayload, type Station } from '../../lib/api';
+import { api, type BookingDetailDto, type CustomerApiRecord, type Station } from '../../lib/api';
 import { buildBookingCreatePayload } from '../../rental/lib/entityMappers';
 import { StationSelectFields } from '../../rental/components/stations/StationSelectFields';
 import { usePricingSimulation } from '../../rental/hooks/usePricingSimulation';
@@ -13,6 +13,7 @@ import { useOperatorBookingMutations } from '../hooks/useOperatorBookingMutation
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { OperatorBookingSheetShell } from './operatorBookingSheetShell';
 import {
+  buildOperatorBookingUpdateFromDetail,
   customerDisplayName,
   isSameLocalInstant,
   localDateTimeToIso,
@@ -291,33 +292,25 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
       return;
     }
 
-    const patch: OperatorBookingUpdatePayload = {};
-    if (!isSameLocalInstant(detail.core.startDate, startLocal)) patch.startDate = startIso;
-    if (!isSameLocalInstant(detail.core.endDate, endLocal)) patch.endDate = endIso;
-    if (notes !== (detail.core.notes ?? '')) patch.notes = notes;
+    const form = {
+      startLocal,
+      endLocal,
+      notes,
+      kmIncluded,
+      pickupStationId,
+      returnStationId,
+      sameReturnStation,
+      vehicleId,
+      insuranceOptions: detail.core.insuranceOptions ?? [],
+    };
 
-    const km = kmIncluded.trim() ? Number(kmIncluded) : null;
-    if (km != null && Number.isFinite(km) && km !== detail.core.kmIncluded) {
-      patch.kmIncluded = km;
-    }
-
-    if (vehicleId && vehicleId !== detail.vehicle.vehicleId) {
-      patch.vehicle = { connect: { id: vehicleId } };
-    }
-
-    if (pickupStationId && pickupStationId !== detail.core.pickupStationId) {
-      patch.pickupStationId = pickupStationId;
-    }
-    if (effectiveReturnStationId && effectiveReturnStationId !== detail.core.returnStationId) {
-      patch.returnStationId = effectiveReturnStationId;
-    }
-
-    if (Object.keys(patch).length === 0) {
-      setFormError('Keine Änderungen zum Speichern');
+    const command = buildOperatorBookingUpdateFromDetail(detail, form);
+    if (!command.ok) {
+      setFormError(command.error);
       return;
     }
 
-    await updateBooking(bookingId, patch, handleSuccess, detail.vehicle.vehicleId);
+    await updateBooking(bookingId, command.patch, handleSuccess, detail.vehicle.vehicleId);
   };
 
   const title = isEdit ? 'Buchung bearbeiten' : 'Buchung aufnehmen';
