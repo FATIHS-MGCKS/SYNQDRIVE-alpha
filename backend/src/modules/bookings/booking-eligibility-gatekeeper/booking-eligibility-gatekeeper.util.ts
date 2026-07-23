@@ -487,6 +487,7 @@ export function mapGatekeeperToAuthoritativeRentalPreview(
         manualApprovalRequired: { value: false, source: null, sourceName: null },
         notes: { value: null, source: null, sourceName: null },
         minimumLicenseHoldingYears: { value: null, source: null, sourceName: null },
+        minimumLicenseHoldingRemainderMonths: { value: null, source: null, sourceName: null },
       } satisfies BookingRentalEligibilityResult['effectiveRules']),
     decisionSource: BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE,
     facts: rental?.facts ?? [],

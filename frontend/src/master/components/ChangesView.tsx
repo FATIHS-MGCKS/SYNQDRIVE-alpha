@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-rules-post-remediation-audit-v49787-2026-07-23',
+    version: '4.9.787',
+    title: 'V4.9.787 — Rental Rules post-remediation audit (Prompt 34)',
+    summary: [
+      'Unabhängiger Abschluss-Audit für Rental-Rules-Remediation (Prompts 1–33): Code-Review, Security, DSGVO/ISO-Mapping, Testmatrix.',
+      'Release-Empfehlung: CONDITIONAL GO nach Branch-Konsolidierung; effektives NO-GO für isoliertes Workflow-Branch-Deploy.',
+      'P0: Prompts 27–31 auf separaten Branches (Snapshots, Retroactivity, Deposit); fehlende Playwright-E2E.',
+      'Audit-Fix: minimumLicenseHoldingRemainderMonths im Gatekeeper-Fallback (10 Jest-Suites entblockt).',
+      '214 geänderte Dateien seit Baseline dokumentiert; Migrations-Rollback-Plan im Audit.',
+    ],
+    reason: 'Remediation Prompt 34 — belastbarer Post-Remediation-Readiness-Report mit ehrlicher GO/NO-GO-Entscheidung.',
+    previousBehavior: 'Einzelne Prompts implementiert, aber kein konsolidierter Release-Nachweis; Branch-Fragmentierung unklar.',
+    details:
+      'docs/audits/rental-rules-post-remediation-readiness-2026-07.md, architecture/RENTAL_RULES_POST_REMEDIATION_AUDIT_2026-07-23.md, docs/audits/data/rental-rules-remediation-changed-files-2026-07.txt.',
+    affectsArchitecture: true,
+    module: 'Rental Rules / Audit',
+    createdAt: '2026-07-24T08:00:00.000Z',
+  },
+  {
     id: 'rental-rules-workflow-v49786-2026-07-23',
     version: '4.9.786',
     title: 'V4.9.786 — Rental Rules workflow (Prompt 33)',

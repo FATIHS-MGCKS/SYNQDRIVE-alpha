@@ -134,6 +134,7 @@ describe('booking-eligibility-gatekeeper.util', () => {
         manualApprovalRequired: { value: false, source: null, sourceName: null },
         notes: { value: null, source: null, sourceName: null },
         minimumLicenseHoldingYears: { value: 1, source: 'CATEGORY', sourceName: 'Premium' },
+        minimumLicenseHoldingRemainderMonths: { value: 0, source: 'CATEGORY', sourceName: 'Premium' },
       },
       decisionSource: BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE,
       facts: [],

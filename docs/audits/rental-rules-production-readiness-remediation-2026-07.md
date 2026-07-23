@@ -430,7 +430,7 @@ flowchart TB
 | **31** | Voice Knowledge Links Genauigkeit | NOT_STARTED | 9 | Nein | Ja |
 | **32** | Operational-Issue-Normalization Alignment | NOT_STARTED | 17–20 | Nein | Ja |
 | **33** | Architektur-Record + Runbook | NOT_STARTED | 1–32 | Nein | — |
-| **34** | Post-Remediation Readiness Report + Nachweise | NOT_STARTED | 1–33 | — | Ja |
+| **34** | Post-Remediation Readiness Report + Nachweise | ✅ DONE | `cursor/rental-rules-audit-1001` | `docs/audits/rental-rules-post-remediation-readiness-2026-07.md` |
 
 ---
 
