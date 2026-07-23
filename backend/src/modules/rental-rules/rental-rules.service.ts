@@ -26,6 +26,7 @@ import {
   extractRuleFields,
   hasActiveRuleOverrides,
 } from './rental-rules.mapper';
+import { normalizeRentalCategoryName } from './rental-rules-category.util';
 import { RENTAL_RULE_FIELD_KEYS, type RentalRuleFieldKey } from './rental-rules.types';
 import { RentalRulePermissionService } from './rental-rule-permission.service';
 import type { PermissionActor } from '@shared/auth/permission.util';
@@ -205,10 +206,12 @@ export class RentalRulesService {
     await this.rentalRulePermissions.assertPublishIfActiveChange(ctx.actor, orgId, requestedActive);
     this.normalizeDepositCurrency(patch as { depositCurrency?: string | null });
 
+    const trimmedName = dto.name.trim();
     const row = await this.prisma.rentalVehicleCategory.create({
       data: {
         organizationId: orgId,
-        name: dto.name.trim(),
+        name: trimmedName,
+        nameNormalized: normalizeRentalCategoryName(trimmedName),
         description: dto.description?.trim() || null,
         type: dto.type ?? null,
         color: dto.color ?? null,
@@ -239,7 +242,11 @@ export class RentalRulesService {
     const data: Prisma.RentalVehicleCategoryUpdateInput = {
       ...prismaRuleColumns(patch, { layer: 'category' }),
     };
-    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (dto.name !== undefined) {
+      const trimmedName = dto.name.trim();
+      data.name = trimmedName;
+      data.nameNormalized = normalizeRentalCategoryName(trimmedName);
+    }
     if (dto.description !== undefined) data.description = dto.description?.trim() || null;
     if (dto.type !== undefined) data.type = dto.type ?? null;
     if (dto.color !== undefined) data.color = dto.color ?? null;

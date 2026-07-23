@@ -5280,6 +5280,7 @@ model OrganizationRentalRules {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@index([isActive], map: "organization_rental_rules_is_active_idx")
   @@map("organization_rental_rules")
 }
 
@@ -5287,6 +5288,7 @@ model RentalVehicleCategory {
   id                          String                        @id @default(uuid())
   organizationId              String                        @map("organization_id")
   name                        String
+  nameNormalized              String                        @map("name_normalized")
   description                 String?
   type                        RentalVehicleCategoryType?
   color                       String?
@@ -5309,6 +5311,7 @@ model RentalVehicleCategory {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicles     Vehicle[]
 
+  @@unique([organizationId, nameNormalized], map: "rental_vehicle_categories_org_name_normalized_key")
   @@index([organizationId])
   @@index([organizationId, isActive])
   @@map("rental_vehicle_categories")
@@ -7248,6 +7251,8 @@ model BookingEligibilityApproval {
   @@index([organizationId, bookingId, createdAt], map: "booking_eligibility_approvals_org_booking_created_idx")
   @@index([organizationId, bookingId, status], map: "booking_eligibility_approvals_org_booking_status_idx")
   @@index([organizationId, status, expiresAt], map: "booking_eligibility_approvals_org_status_expires_idx")
+  @@index([organizationId, bookingId, ruleRevision], map: "booking_eligibility_approvals_org_booking_revision_idx")
+  @@index([organizationId, ruleRevision, createdAt], map: "booking_eligibility_approvals_org_revision_created_idx")
   @@map("booking_eligibility_approvals")
 }
 

@@ -2074,4 +2074,67 @@ Frontend-i18n: `rentalRules.validation.*` in `en.ts` / `de.ts`; Client-`validate
 
 ---
 
-*Letzte Aktualisierung: 2026-07-23 (Prompt 19).*
+## Prompt 20 — Datenbank-Integrität (Constraints & sichere Migration)
+
+**Ziel:** Kritische Rental-Rules-Integrität auch auf Datenbankebene absichern — ohne unkontrollierte Löschungen.
+
+### 20.1 Schema-Ergänzungen
+
+| Invariante | Mechanismus |
+|------------|-------------|
+| Eindeutiger Kategoriename pro Organisation (normalisiert) | `name_normalized` + `@@unique([organizationId, nameNormalized])` |
+| Ein Override pro Fahrzeug | `vehicleId @unique` (bestehend, beibehalten) |
+| Eine Kategorie pro Fahrzeug | `vehicles.rental_category_id` FK (bestehend) |
+| Aktive Org-Rule-Lookups | `@@index([isActive])` auf `organization_rental_rules` |
+| Booking-Eligibility Revision-Lookups | `@@index([organizationId, bookingId, ruleRevision])`, `@@index([organizationId, ruleRevision, createdAt])` |
+| Feldgrenzen (Alter, Monate, Deposit, Währung) | PostgreSQL `CHECK` auf Org/Category/Override |
+
+Normalisierung: `trim` → Whitespace kollabieren → `toLowerCase()` (`normalizeRentalCategoryName`).
+
+### 20.2 Migration `20260723100000_rental_rules_db_integrity`
+
+**Reihenfolge (repair → constrain):**
+
+1. `rental_rules_integrity_repair_log` anlegen (idempotentes Audit)
+2. Leere Kategorienamen → Platzhalter
+3. `name_normalized` backfillen
+4. Dubletten pro Org (normalisiert) → Verlierer umbenennen `(N)`, ältester gewinnt
+5. Override-`organization_id` an Fahrzeug-Org anpassen
+6. Cross-Tenant `rental_category_id` auf Fahrzeugen leeren
+7. Ungültige Währungen reparieren (Org → EUR, sonst NULL)
+8. Ungültige numerische Felder → NULL
+9. Leere Override-Hüllen löschen (keine aktiven Felder)
+10. `CHECK`-Constraints + Unique-Index + Lookup-Indizes
+
+### 20.3 Preflight & Runbook
+
+| Artefakt | Rolle |
+|----------|-------|
+| `scripts/ops/audit-rental-rules-integrity.ts` | Read-only Preflight (Exit 1 bei Blocking) |
+| `docs/runbooks/rental-rules-db-integrity-migration.md` | Backup, Deploy, Backfill, Rollback |
+| `rental-rules-db-integrity.constants.ts` | DB-Grenzen (aligned mit Validation) |
+| `rental-rules-integrity.schema.spec.ts` | Prisma validate + Migrations-SQL-Vertrag |
+
+### 20.4 Tests
+
+| Suite | Abdeckung |
+|-------|-----------|
+| `rental-rules-category.util.spec.ts` | Normalisierung |
+| `rental-rules-integrity.schema.spec.ts` | Schema + Migration SQL |
+| Bestehende Rental-Rules-Suites | Service/DTO/Permissions unverändert grün |
+
+---
+
+## Prompt 20 — Abschluss
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Kritische Integrität in der DB abgesichert | ✅ |
+| Bestehende Daten nicht unkontrolliert gelöscht | ✅ Repair-Log + gezielte NULL/DELETE nur bei Shells |
+| Migration & Backfill dokumentiert | ✅ Runbook + §20 |
+| Prisma validate & Tests bestehen | ✅ |
+| Prompt 20 Status | **DONE** |
+
+---
+
+*Letzte Aktualisierung: 2026-07-23 (Prompt 20).*

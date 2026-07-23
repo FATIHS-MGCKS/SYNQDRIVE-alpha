@@ -179,6 +179,31 @@ describe('RentalRulesService', () => {
     );
   });
 
+  it('sets nameNormalized when creating a category', async () => {
+    prisma.organization.findUnique.mockResolvedValue({ id: 'org1' });
+    prisma.rentalVehicleCategory.create.mockResolvedValue({
+      id: 'cat1',
+      organizationId: 'org1',
+      name: 'Premium Fleet',
+      nameNormalized: 'premium fleet',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      _count: { vehicles: 0 },
+    });
+
+    await svc.createCategory('org1', { name: '  Premium   Fleet  ', isActive: true });
+
+    expect(prisma.rentalVehicleCategory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Premium   Fleet',
+          nameNormalized: 'premium fleet',
+        }),
+      }),
+    );
+  });
+
   it('clears category override fields with null and preserves false', async () => {
     prisma.rentalVehicleCategory.findFirst.mockResolvedValue({
       id: 'cat1',
