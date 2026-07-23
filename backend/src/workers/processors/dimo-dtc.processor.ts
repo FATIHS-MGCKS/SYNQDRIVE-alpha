@@ -8,6 +8,14 @@ import { DtcService } from '../../modules/vehicle-intelligence/dtc/dtc.service';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 import { normalizeDtcSeverityBand } from '@modules/vehicle-intelligence/dtc/dtc-severity.util';
 import type { VehicleHealthAdapterSource } from '@modules/notifications/adapters/notification-adapter.types';
+import { TelemetryIngestionEnforcementService } from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.service';
+import {
+  TELEMETRY_INGEST_DATA_CATEGORY,
+  TELEMETRY_INGEST_PATH,
+  TELEMETRY_INGEST_PURPOSE,
+  TELEMETRY_INGEST_SERVICE_IDENTITY,
+  TELEMETRY_INGEST_SOURCE_SYSTEM,
+} from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.constants';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 
@@ -29,6 +37,7 @@ export class DimoDtcProcessor extends WorkerHost {
     private readonly dtcService: DtcService,
     @InjectQueue(QUEUE_NAMES.DTC_POLL) private readonly queue: Queue,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly ingestGate?: TelemetryIngestionEnforcementService,
   ) {
     super();
   }
@@ -123,10 +132,34 @@ export class DimoDtcProcessor extends WorkerHost {
         where: { id: vehicleId },
         select: { organizationId: true },
       });
+      if (!vehicle?.organizationId) {
+        this.logger.warn(`DTC poll skipped — vehicle ${vehicleId} missing organizationId`);
+        return;
+      }
+
+      if (this.ingestGate) {
+        const gate = await this.ingestGate.evaluateIngest({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          sourceSystem: TELEMETRY_INGEST_SOURCE_SYSTEM.DIMO,
+          dataCategory: TELEMETRY_INGEST_DATA_CATEGORY.DTC_CODES,
+          purpose: TELEMETRY_INGEST_PURPOSE.VEHICLE_HEALTH,
+          ingestionPath: TELEMETRY_INGEST_PATH.DIMO_DTC_POLL,
+          serviceIdentity: TELEMETRY_INGEST_SERVICE_IDENTITY.DIMO_DTC_WORKER,
+          correlationId: `ingest:dtc-poll:${vehicleId}:${now.toISOString()}`,
+        });
+        if (!gate.mayPersist) {
+          this.logger.warn(
+            `DTC ingest denied vehicleId=${vehicleId} reason=${gate.reasonCode} correlation=${gate.correlationId}`,
+          );
+          return;
+        }
+      }
+
       const producerContext = {
         sourceProvider: 'DIMO' as const,
         sourceTimestamp: dtcSignal?.timestamp ? new Date(dtcSignal.timestamp) : now,
-        organizationId: vehicle?.organizationId ?? null,
+        organizationId: vehicle.organizationId,
       };
 
       // Upsert codes that are present in the new poll

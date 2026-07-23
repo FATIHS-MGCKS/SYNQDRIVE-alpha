@@ -206,6 +206,80 @@ export class DataAuthorizationAuditService {
     });
   }
 
+  async recordIngestionSkipped(params: {
+    organizationId: string;
+    vehicleId: string;
+    sourceSystem: string;
+    dataCategory: string;
+    purpose: string;
+    ingestionPath: string;
+    serviceIdentity: string;
+    correlationId: string;
+    reasonCode: string;
+    reasonCodes: string[];
+    policyVersion: number | null;
+    matchedPolicyId: string | null;
+  }): Promise<string | null> {
+    const eventId = randomUUID();
+    const payload = {
+      id: eventId,
+      organizationId: params.organizationId,
+      processingActivityId: null,
+      enforcementPolicyId: params.matchedPolicyId,
+      policyVersion: params.policyVersion,
+      eventType: AuthorizationDecisionEventType.INGESTION_SKIPPED,
+      pathId: params.ingestionPath,
+      dataCategory: params.dataCategory,
+      processingPurpose: params.purpose,
+      sourceSystem: params.sourceSystem,
+      action: 'INGEST',
+      processorType: 'PROVIDER_PLATFORM',
+      processorIdentity: pseudonymizeProcessorIdentity(params.serviceIdentity),
+      resourceType: 'VEHICLE',
+      resourceReferenceHash: pseudonymizeResourceReference(
+        params.organizationId,
+        'VEHICLE',
+        params.vehicleId,
+      ),
+      actorType: 'SYSTEM',
+      actorId: null,
+      reasonCode: params.reasonCode,
+      correlationId: params.correlationId,
+      evaluatedAt: new Date().toISOString(),
+      policyChecksum: hashPolicyChecksum({
+        policyId: params.matchedPolicyId,
+        policyVersion: params.policyVersion,
+        policyFamilyId: null,
+      }),
+      resolverVersion: POLICY_RESOLVER_VERSION,
+      engineVersion: AUTHORIZATION_DECISION_ENGINE_VERSION,
+      retentionClass: DataAuthorizationAuditRetentionClass.EXTENDED,
+      sampled: false,
+      reasonCodes: params.reasonCodes,
+    };
+
+    const idempotencyKey = buildAuditIdempotencyKey({
+      eventKind: DataAuthorizationAuditEventKind.AUTHORIZATION_DECISION,
+      organizationId: params.organizationId,
+      correlationId: params.correlationId,
+      suffix: `INGESTION_SKIPPED:${eventId}`,
+    });
+
+    const outbox = await this.outboxRepo.enqueue({
+      organizationId: params.organizationId,
+      idempotencyKey,
+      eventKind: DataAuthorizationAuditEventKind.AUTHORIZATION_DECISION,
+      correlationId: params.correlationId,
+      payload,
+    });
+
+    const outcome = await this.outboxProcessor.processOutboxId(outbox.id);
+    if (outcome === 'retry' || outcome === 'dead_letter') {
+      throw new Error(`INGESTION_SKIPPED audit delivery failed: ${outcome}`);
+    }
+    return eventId;
+  }
+
   async listAuthorizationDecisions(params: ListAuthorizationDecisionAuditParams) {
     const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
     const rows = await this.prisma.authorizationDecisionEvent.findMany({

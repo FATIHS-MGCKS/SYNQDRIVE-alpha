@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HmNormalizedTelemetryDto, HmStreamSyncLogDto } from './dto/high-mobility.dto';
@@ -11,6 +11,14 @@ import {
 } from './high-mobility-mqtt-payload.util';
 import { HmSignalUsageService } from './high-mobility-signal-usage.service';
 import { capRawPayload } from '@shared/utils/json-payload.util';
+import { TelemetryIngestionEnforcementService } from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.service';
+import {
+  TELEMETRY_INGEST_DATA_CATEGORY,
+  TELEMETRY_INGEST_PATH,
+  TELEMETRY_INGEST_PURPOSE,
+  TELEMETRY_INGEST_SERVICE_IDENTITY,
+  TELEMETRY_INGEST_SOURCE_SYSTEM,
+} from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.constants';
 
 /**
  * HighMobilityHealthAppIngestionService
@@ -28,6 +36,7 @@ export class HighMobilityHealthAppIngestionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hmSignalUsageService: HmSignalUsageService,
+    @Optional() private readonly ingestGate?: TelemetryIngestionEnforcementService,
   ) {}
 
   async ingest(rawMessage: {
@@ -73,6 +82,28 @@ export class HighMobilityHealthAppIngestionService {
       : null;
 
     const normalized = this.normalizePayload(messageId, vin, hmRecord?.id ?? null, topic, messageTimestamp, parsedPayload ?? {});
+
+    if (hmRecord?.organizationId && hmRecord.synqdriveVehicleId && this.ingestGate) {
+      const gate = await this.ingestGate.evaluateIngest({
+        organizationId: hmRecord.organizationId,
+        vehicleId: hmRecord.synqdriveVehicleId,
+        sourceSystem: TELEMETRY_INGEST_SOURCE_SYSTEM.HIGH_MOBILITY,
+        dataCategory: TELEMETRY_INGEST_DATA_CATEGORY.HEALTH_SIGNALS,
+        purpose: TELEMETRY_INGEST_PURPOSE.VEHICLE_HEALTH,
+        ingestionPath: TELEMETRY_INGEST_PATH.HM_HEALTH_MQTT,
+        serviceIdentity: TELEMETRY_INGEST_SERVICE_IDENTITY.HM_HEALTH_INGEST,
+        correlationId: `ingest:hm-health:${messageId}`,
+        effectiveTimestamp: messageTimestamp,
+      });
+      if (!gate.mayPersist) {
+        await this.persistLog({
+          messageId, topic, messageTimestamp, ingestStatus: 'FAILED', isDuplicate: false,
+          payloadJson: parsedPayload, normalizedSummaryJson: null,
+          errorMessage: `INGEST_DENIED:${gate.reasonCode}`, hmVehicleId: hmRecord.id, vin,
+        });
+        return null;
+      }
+    }
 
     await this.persistLog({
       messageId, topic, messageTimestamp, ingestStatus: 'STORED', isDuplicate: false,

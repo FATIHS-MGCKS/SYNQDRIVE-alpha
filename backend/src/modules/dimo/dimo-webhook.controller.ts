@@ -11,6 +11,7 @@ import {
   HttpCode,
   ServiceUnavailableException,
   Inject,
+  Optional,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ConfigType } from '@nestjs/config';
@@ -31,6 +32,14 @@ import {
 import { createHmac, timingSafeEqual } from 'crypto';
 import dimoConfig from '@config/dimo.config';
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
+import { TelemetryIngestionEnforcementService } from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.service';
+import {
+  TELEMETRY_INGEST_DATA_CATEGORY,
+  TELEMETRY_INGEST_PATH,
+  TELEMETRY_INGEST_PURPOSE,
+  TELEMETRY_INGEST_SERVICE_IDENTITY,
+  TELEMETRY_INGEST_SOURCE_SYSTEM,
+} from '@modules/data-authorizations/telemetry-ingestion-enforcement/telemetry-ingestion-enforcement.constants';
 
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
@@ -46,6 +55,7 @@ export class DimoWebhookController {
     private readonly deviceConnection: DeviceConnectionWebhookService,
     private readonly deviceConnectionInbox: DeviceConnectionWebhookInboxService,
     private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
+    @Optional() private readonly ingestGate?: TelemetryIngestionEnforcementService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
       this.logger.error(
@@ -197,7 +207,10 @@ export class DimoWebhookController {
     }
 
     if (signalName === 'obdDTCList' && value) {
-      await this.handleDtcEvent(vehicle.id, value);
+      const denied = await this.handleDtcEvent(vehicle.id, vehicle.organizationId, value);
+      if (denied) {
+        return { status: 'skipped', type: 'dtc', reason: 'ingest_denied' };
+      }
       return { status: 'processed', type: 'dtc' };
     }
 
@@ -209,6 +222,28 @@ export class DimoWebhookController {
       }
 
       const observedAt = timestamp ? new Date(timestamp) : new Date();
+      if (this.ingestGate) {
+        const gate = await this.ingestGate.evaluateIngest({
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          sourceSystem: TELEMETRY_INGEST_SOURCE_SYSTEM.DIMO,
+          dataCategory: TELEMETRY_INGEST_DATA_CATEGORY.TELEMETRY_DATA,
+          purpose: TELEMETRY_INGEST_PURPOSE.VEHICLE_HEALTH,
+          ingestionPath: TELEMETRY_INGEST_PATH.DIMO_RPM_WEBHOOK,
+          serviceIdentity: TELEMETRY_INGEST_SERVICE_IDENTITY.DIMO_WEBHOOK,
+          correlationId: `ingest:dimo-rpm:${vehicle.id}:${observedAt.toISOString()}`,
+          effectiveTimestamp: observedAt,
+        });
+        if (!gate.mayPersist) {
+          return {
+            status: 'skipped',
+            type: 'rpm_candidate',
+            reason: 'ingest_denied',
+            outcome: 'ingest_denied',
+          };
+        }
+      }
+
       const { outcome, candidateId, status } = await this.rpmWebhookCandidate.ingestRpmThresholdEvent({
         vehicle,
         tokenId,
@@ -256,21 +291,40 @@ export class DimoWebhookController {
     };
   }
 
-  private async handleDtcEvent(vehicleId: string, dtcValue: any) {
+  private async handleDtcEvent(
+    vehicleId: string,
+    organizationId: string,
+    dtcValue: unknown,
+  ): Promise<boolean> {
     const codes = typeof dtcValue === 'string'
       ? dtcValue.split(',').map((c: string) => c.trim()).filter(Boolean)
       : Array.isArray(dtcValue) ? dtcValue : [];
 
     this.logger.log(`DTC webhook for vehicle ${vehicleId}: ${codes.length} codes`);
 
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true },
-    });
+    if (this.ingestGate) {
+      const gate = await this.ingestGate.evaluateIngest({
+        organizationId,
+        vehicleId,
+        sourceSystem: TELEMETRY_INGEST_SOURCE_SYSTEM.DIMO,
+        dataCategory: TELEMETRY_INGEST_DATA_CATEGORY.DTC_CODES,
+        purpose: TELEMETRY_INGEST_PURPOSE.VEHICLE_HEALTH,
+        ingestionPath: TELEMETRY_INGEST_PATH.DIMO_DTC_WEBHOOK,
+        serviceIdentity: TELEMETRY_INGEST_SERVICE_IDENTITY.DIMO_WEBHOOK,
+        correlationId: `ingest:dimo-dtc-webhook:${vehicleId}:${Date.now()}`,
+      });
+      if (!gate.mayPersist) {
+        this.logger.warn(
+          `DTC webhook ingest denied vehicle=${vehicleId} reason=${gate.reasonCode}`,
+        );
+        return true;
+      }
+    }
+
     const producerContext = {
       sourceProvider: 'DIMO' as const,
       sourceTimestamp: new Date(),
-      organizationId: vehicle?.organizationId ?? null,
+      organizationId,
     };
 
     for (const code of codes) {
@@ -281,5 +335,6 @@ export class DimoWebhookController {
       where: { vehicleId },
       data: { obdDtcList: codes, lastDtcPollAt: new Date() },
     });
+    return false;
   }
 }
